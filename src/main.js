@@ -1,7 +1,7 @@
 // Stream Multiview — desktop app (Electron main process)
 const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net } = require('electron');
 const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
-  validCh, isGoogleSignin, firefoxUA, kickFollowsFrom, twitchFollowsFrom, channelFromLink } = require('./live');
+  validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, channelFromLink } = require('./live');
 const path = require('path');
 const fs = require('fs');
 const { youtubeLoginFromFirefox } = require('./firefox-login');
@@ -518,9 +518,6 @@ async function scrapeFollowPage(plat, url, { maxRounds = 70 } = {}) {
     return { items: [...found].map(([ch, name]) => ({ ch, name })) };
   } finally { if (!win.isDestroyed()) win.destroy(); }
 }
-// Kick's follow lists, best first: followed-page gives 20 channels a page, followed only 5.
-const KICK_FOLLOW_APIS = ['/api/v2/channels/followed-page', '/api/v2/channels/followed', '/api/v1/user/following'];
-const KICK_MAX_PAGES = 2000;   // only a safety stop: the list ends long before this
 async function kickFollows() {
   await ensureLiveWin();
   if (!liveWin) return { error: 'failed' };
@@ -537,25 +534,9 @@ async function kickFollows() {
       catch (e) { return { status: 0, d: null }; }
     })()`, true).catch(() => null);
   };
-  const pages = []; let status = 0;
-  for (const base of KICK_FOLLOW_APIS) {
-    let cursor = 0, found = 0;
-    for (let i = 0; i < KICK_MAX_PAGES; i++) {
-      const u = base + (base.includes('v2') ? '?cursor=' + encodeURIComponent(cursor) : '?page=' + (i + 1));
-      const r = await kickGet(u);
-      if (r && r.login) return { error: 'login' };
-      status = r ? r.status : 0;
-      if (!r || !r.d) break;
-      const d = r.d;
-      pages.push(d);
-      const nc = d.nextCursor ?? d.next_cursor ?? (d.meta && (d.meta.next_cursor ?? d.meta.nextCursor)) ?? (d.next_page_url ? 'p' : null);
-      const len = Array.isArray(d) ? d.length : Array.isArray(d.channels) ? d.channels.length : Array.isArray(d.data) ? d.data.length : 0;
-      if (len) progress('kick', `Found ${found += len} so far…`);
-      if (nc == null || nc === cursor || !len) break;
-      cursor = nc;
-    }
-    if (pages.length) break;
-  }
+  const r = await readKickFollowPages(kickGet, { onCount: n => progress('kick', `Found ${n} so far…`) });
+  if (r.login) return { error: 'login' };
+  const { pages, status } = r;
   const items = kickFollowsFrom(pages);
   if (items.length) return { items };
   if ((status === 401 || status === 403) && !pages.length) {
