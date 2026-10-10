@@ -59,6 +59,17 @@ test('adding Kick, Twitch and YouTube links opens their streams and chats', asyn
   assert.equal(await page.isVisible('#empty'), false);
 });
 
+test('the mod view button opens each site\'s mod dashboard, and YouTube has none', async t => {
+  const page = await openApp(t);
+  await add(page, 'https://kick.com/alpha', 'https://www.twitch.tv/bravo', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  const mod = await page.$$eval('#stage .win', els => els.map(e => e.querySelector('.title').textContent + ':' + !!e.querySelector('[data-a=mod]')));
+  assert.deepEqual(mod, ['alpha:true', 'alpha:true', 'bravo:true', 'bravo:true', 'YouTube video:false']);
+  await page.evaluate(() => { window.opened = []; window.open = u => { window.opened.push(u); return null; }; });
+  await page.click('#stage .win.chat.plat-kick [data-a=mod]');
+  await page.click('#stage .win.stream.plat-twitch [data-a=mod]');
+  assert.deepEqual(await page.evaluate(() => window.opened), ['https://dashboard.kick.com/moderator/alpha', 'https://www.twitch.tv/moderator/bravo']);
+});
+
 test('"Stream only" and "Chat only" add just that window, and a channel is not opened twice', async t => {
   const page = await openApp(t);
   await page.selectOption('#mode', 'stream');

@@ -1,7 +1,7 @@
 // Stream Multiview — desktop app (Electron main process)
 const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net } = require('electron');
 const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
-  validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, channelFromLink } = require('./live');
+  validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink } = require('./live');
 const path = require('path');
 const fs = require('fs');
 const { youtubeLoginFromFirefox } = require('./firefox-login');
@@ -518,22 +518,34 @@ async function scrapeFollowPage(plat, url, { maxRounds = 70 } = {}) {
     return { items: [...found].map(([ch, name]) => ({ ch, name })) };
   } finally { if (!win.isDestroyed()) win.destroy(); }
 }
+// One API call from the kick.com page, so your login goes with it.
+async function kickGet(u) {
+  if (!liveWin || liveWin.isDestroyed()) return null;
+  return liveWin.webContents.executeJavaScript(`(async () => {
+    const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
+    const t = ck('session_token'), x = ck('XSRF-TOKEN');
+    if (!t) return { login: true };
+    const h = { Accept: 'application/json', Authorization: 'Bearer ' + t };
+    if (x) h['X-XSRF-TOKEN'] = x;
+    try { const r = await fetch(${JSON.stringify(u)}, { credentials: 'include', headers: h }); return { status: r.status, d: r.ok ? await r.json() : null }; }
+    catch (e) { return { status: 0, d: null }; }
+  })()`, true).catch(() => null);
+}
+async function twitchToken() {
+  try {
+    const c = await session.fromPartition(PARTS.twitch).cookies.get({ name: 'auth-token' });
+    return (c.find(x => /twitch\.tv$/.test(x.domain)) || {}).value || '';
+  } catch { return ''; }
+}
+async function twitchGql(token, query, variables) {
+  const r = await fetch('https://gql.twitch.tv/gql', { method: 'POST',
+    headers: { 'Client-Id': TWITCH_CID, Authorization: 'OAuth ' + token, 'Content-Type': 'text/plain;charset=UTF-8', ...BROWSER_HEADERS() },
+    body: JSON.stringify({ query, variables }) });
+  return { status: r.status, d: r.ok ? await r.json() : null };
+}
 async function kickFollows() {
   await ensureLiveWin();
   if (!liveWin) return { error: 'failed' };
-  // One API call from the kick.com page, so your login goes with it.
-  const kickGet = async u => {
-    if (!liveWin || liveWin.isDestroyed()) return null;
-    return liveWin.webContents.executeJavaScript(`(async () => {
-      const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
-      const t = ck('session_token'), x = ck('XSRF-TOKEN');
-      if (!t) return { login: true };
-      const h = { Accept: 'application/json', Authorization: 'Bearer ' + t };
-      if (x) h['X-XSRF-TOKEN'] = x;
-      try { const r = await fetch(${JSON.stringify(u)}, { credentials: 'include', headers: h }); return { status: r.status, d: r.ok ? await r.json() : null }; }
-      catch (e) { return { status: 0, d: null }; }
-    })()`, true).catch(() => null);
-  };
   const r = await readKickFollowPages(kickGet, { onCount: n => progress('kick', `Found ${n} so far…`) });
   if (r.login) return { error: 'login' };
   const { pages, status } = r;
@@ -546,21 +558,15 @@ async function kickFollows() {
   return scrapeFollowPage('kick', 'https://kick.com/following');
 }
 async function twitchFollows() {
-  let token = '';
-  try {
-    const c = await session.fromPartition(PARTS.twitch).cookies.get({ name: 'auth-token' });
-    token = (c.find(x => /twitch\.tv$/.test(x.domain)) || {}).value || '';
-  } catch {}
+  const token = await twitchToken();
   if (!token) return { error: 'login' };
   const items = new Map(); let after = null, ok = false;
   for (let i = 0; i < 60; i++) {
     let page = null;
     try {
-      const r = await fetch('https://gql.twitch.tv/gql', { method: 'POST',
-        headers: { 'Client-Id': TWITCH_CID, Authorization: 'OAuth ' + token, 'Content-Type': 'text/plain;charset=UTF-8', ...BROWSER_HEADERS() },
-        body: JSON.stringify({ query: 'query($after:Cursor){currentUser{follows(first:100,after:$after){edges{cursor node{login displayName}} pageInfo{hasNextPage}}}}', variables: { after } }) });
+      const r = await twitchGql(token, 'query($after:Cursor){currentUser{follows(first:100,after:$after){edges{cursor node{login displayName}} pageInfo{hasNextPage}}}}', { after });
       if (r.status === 401) return { error: 'login' };
-      if (r.ok) page = twitchFollowsFrom(await r.json());
+      if (r.d) page = twitchFollowsFrom(r.d);
     } catch {}
     if (!page) break;
     ok = true;
@@ -572,6 +578,22 @@ async function twitchFollows() {
   if (ok && items.size) return { items: [...items].map(([ch, name]) => ({ ch, name })) };
   return scrapeFollowPage('twitch', 'https://www.twitch.tv/directory/following/channels');
 }
+// Whether you can moderate a channel (its moderator, or your own channel): true, false, or null when
+// it can't be told (signed out, offline). Windows only show their mod view button when it's true.
+ipcMain.handle('mod:check', async (_e, ch) => {
+  if (typeof ch !== 'string' || !validCh(ch) || /^yt:/.test(ch)) return null;
+  try {
+    if (/^tw:/.test(ch)) {
+      const token = await twitchToken();
+      if (!token) return null;
+      const r = await twitchGql(token, 'query($l:String!){currentUser{login} user(login:$l){self{isModerator isEditor}}}', { l: ch.slice(3) });
+      return canModerate('twitch', r.d, ch.slice(3));
+    }
+    await ensureLiveWin();
+    const r = await kickGet(`/api/v2/channels/${encodeURIComponent(ch)}/me`);
+    return r && r.d ? canModerate('kick', r.d, ch) : null;
+  } catch { return null; }
+});
 const youtubeFollows = () => scrapeFollowPage('youtube', 'https://www.youtube.com/feed/channels');
 let importing = null;
 ipcMain.handle('follows:import', async (_e, plat) => {

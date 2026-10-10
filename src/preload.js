@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('kmv', {
   logout: plat => ipcRenderer.invoke('account:logout', plat || 'kick'),
   accountsStatus: () => ipcRenderer.invoke('accounts:status'),
   ytResolve: ch => ipcRenderer.invoke('yt:resolve', ch),
+  modCheck: ch => ipcRenderer.invoke('mod:check', ch),
   importFollows: plat => ipcRenderer.invoke('follows:import', plat),
   onFollowsProgress: cb => ipcRenderer.on('follows:progress', (_e, p) => cb(p || {})),
   youtubeFromFirefox: () => ipcRenderer.invoke('youtube:fromFirefox'),

@@ -2,7 +2,7 @@
 // and turning them into channels (kickFollowsFrom). Kick is replaced by a fake, so this runs offline.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { readKickFollowPages, kickFollowsFrom, KICK_FOLLOW_APIS } = require('../../src/live');
+const { readKickFollowPages, kickFollowsFrom, canModerate, KICK_FOLLOW_APIS } = require('../../src/live');
 
 const [FOLLOWED_PAGE, FOLLOWED, V1] = KICK_FOLLOW_APIS;
 const channel = i => ({ channel_slug: `streamer${i}`, user_username: `Streamer${i}`, is_live: i < 10 });
@@ -98,4 +98,22 @@ test('kickFollowsFrom: channels and their names from followed-page, without dupl
     { channels: [channel(1), { channel_slug: 'bad slug!', user_username: 'x', is_live: false }] }
   ];
   assert.deepEqual(kickFollowsFrom(pages), [{ ch: 'shazam9468', name: 'Shazam9468' }, { ch: 'streamer1', name: 'Streamer1' }]);
+});
+
+test('canModerate: Kick moderators and the channel owner, from /api/v2/channels/<slug>/me', () => {
+  assert.equal(canModerate('kick', { is_moderator: true, is_broadcaster: false }), true);
+  assert.equal(canModerate('kick', { is_moderator: false, is_broadcaster: true }), true);
+  assert.equal(canModerate('kick', { is_moderator: false, is_broadcaster: false }), false);
+  assert.equal(canModerate('kick', { message: 'Unauthenticated.' }), null, 'signed out: unknown');
+  assert.equal(canModerate('kick', null), null);
+});
+
+test('canModerate: Twitch moderators, editors and your own channel', () => {
+  const tw = (login, self) => ({ data: { currentUser: login ? { login } : null, user: self === undefined ? null : { self } } });
+  assert.equal(canModerate('twitch', tw('me', { isModerator: true, isEditor: false }), 'bravo'), true);
+  assert.equal(canModerate('twitch', tw('me', { isModerator: false, isEditor: true }), 'bravo'), true);
+  assert.equal(canModerate('twitch', tw('me', { isModerator: false, isEditor: false }), 'bravo'), false);
+  assert.equal(canModerate('twitch', tw('Me', { isModerator: false, isEditor: false }), 'me'), true, 'your own channel');
+  assert.equal(canModerate('twitch', tw('me'), 'gone'), false, 'no such channel');
+  assert.equal(canModerate('twitch', tw(null, null), 'bravo'), null, 'signed out: unknown');
 });
