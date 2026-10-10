@@ -3,15 +3,23 @@
 #   2. When you want an update, publish a GitHub release with a new tag like v0.2.11
 #      (click "Generate release notes" to list the merged pull requests).
 #   3. This workflow then:
-#        - sets the version from the tag and adds the notes to CHANGELOG.txt,
+#        - sets the version from the tag and adds the notes to CHANGELOG.md,
 #          commits that to main and moves the tag onto that commit,
 #        - builds the Windows (.exe) and Mac (.dmg) installers from it,
 #        - attaches them to the release.
-# Pull requests just build the installers as a test (see the run's "Artifacts").
+# Pull requests build the installers as a test (see the run's "Artifacts"), unless they only
+# change things that can't affect the installers (docs, tests, text files).
 name: Build installers
 
 on:
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - '**.txt'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'test/**'
+      - '.github/workflows/test.yml'
   release:
     types: [published]
   workflow_dispatch:
@@ -35,6 +43,10 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
       - name: Check the release was made from the latest main
         run: |
           TAG_SHA=$(git rev-list -n 1 "${{ github.event.release.tag_name }}")
@@ -44,12 +56,15 @@ jobs:
             exit 1
           fi
 
-      - name: Set the version and update CHANGELOG.txt
+      - name: Set the version and update CHANGELOG.md
         env:
           NOTES: ${{ github.event.release.body }}
         run: |
           printf '%s' "$NOTES" > "$RUNNER_TEMP/notes.md"
           node scripts/prepare-release.js "${{ github.event.release.tag_name }}" "$RUNNER_TEMP/notes.md"
+
+      - name: Run the quick tests on the release
+        run: npm test
 
       - name: Commit to main and move the tag
         id: commit

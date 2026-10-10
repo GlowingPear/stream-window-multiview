@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('kmv', {
   updateOpenPage: () => ipcRenderer.invoke('update:open-page'),
   onUpdateStatus: cb => ipcRenderer.on('update:status', (_e, s) => cb(s || {})),
   onUpdateShow: cb => ipcRenderer.on('update:show', () => cb()),
+  onHelpShow: cb => ipcRenderer.on('help:show', (_e, tab) => cb(tab)),
   securityGet: () => ipcRenderer.invoke('security:get'),
   securitySetForget: (plat, on) => ipcRenderer.invoke('security:setForget', plat, on),
   onAccountChanged: cb => ipcRenderer.on('account:changed', (_e, info) => cb(info || {})),

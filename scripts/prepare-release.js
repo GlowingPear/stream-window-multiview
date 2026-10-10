@@ -1,5 +1,5 @@
 // Run by the release workflow when a release is published.
-// Sets the app's version from the release tag and adds the release notes to CHANGELOG.txt,
+// Sets the app's version from the release tag and adds the release notes to CHANGELOG.md,
 // so the installers (and the app's What's new) match the release.
 //   node scripts/prepare-release.js v0.2.11 notes.md
 // Pull requests never need to touch the version or the changelog.
@@ -48,8 +48,8 @@ if (!bullets.length) {
   bullets = plain.length ? plain.map(s => '- ' + s.replace(/^[-*]\s+/, '')) : ['- Small fixes and improvements.'];
 }
 
-// 3. CHANGELOG.txt: newest version at the top, marked "(current)".
-const clFile = path.join(root, 'CHANGELOG.txt');
+// 3. CHANGELOG.md: newest version at the top, marked "(current)".
+const clFile = path.join(root, 'CHANGELOG.md');
 let cl = fs.readFileSync(clFile, 'utf8');
 const bom = cl.startsWith('﻿'), crlf = cl.includes('\r\n');
 cl = cl.replace(/^﻿/, '').replace(/\r\n/g, '\n');

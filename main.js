@@ -1011,7 +1011,7 @@ function scheduleUpdates() {
 }
 
 /* ---------- help files ---------- */
-const HELP_FILES = ['INSTRUCTIONS.txt', 'CHANGELOG.txt'];
+const HELP_FILES = ['INSTRUCTIONS.txt', 'CHANGELOG.md'];
 // Installed builds keep the help files next to the packed app (app.asar.unpacked) so other programs can open them.
 const helpPath = name => app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked', name) : path.join(__dirname, name);
 ipcMain.handle('help:read', (_e, name) => {
@@ -1049,7 +1049,7 @@ function buildMenu() {
     ]},
     { label: 'Help', submenu: [
       { label: 'Instructions', click: () => shell.openPath(helpPath('INSTRUCTIONS.txt')) },
-      { label: 'What\'s new', click: () => shell.openPath(helpPath('CHANGELOG.txt')) },
+      { label: 'What\'s new', click: () => mainWin?.webContents.send('help:show', 'news') },
       { label: 'Check for updates', click: () => { mainWin?.webContents.send('update:show'); checkForUpdate({ manual: true }); } }
     ]}
   ]));
