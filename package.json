@@ -34,7 +34,8 @@
       "!*.bat",
       "!*.sh",
       "!README*",
-      "!.needs-install"
+      "!.needs-install",
+      "!*.log"
     ],
     "asarUnpack": [
       "*.txt"
