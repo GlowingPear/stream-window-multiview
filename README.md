@@ -38,7 +38,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 **Comfort**
 - Undo / redo for window changes (Ctrl+Z / Ctrl+Y)
 - Keyboard shortcuts (press **F1**), which you can switch off
-- **Colors and themes**: 11 built-in themes, full color customization, and saved custom themes
+- **Colors and themes**: 12 built-in themes, full color customization, and saved custom themes
 - Auto-pause streams you can't see, and "pause all except focus" to save bandwidth
 - Built-in instructions and a "What's new" list (the **?** button)
 
