@@ -22,7 +22,10 @@ const T = { timeout: 45000 };   // per test, so one stuck test can't hold up the
 
 test.before(async () => {
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-import-'));
-  const env = { ...process.env, SMV_DEV_DATA: data, ELECTRON_ENABLE_LOGGING: '0' };   // a data folder of its own (see npm run dev)
+  // no update check against GitHub during the test: automatic checks off, and the update address goes nowhere
+  fs.mkdirSync(path.join(data, 'Stream Multiview'), { recursive: true });
+  fs.writeFileSync(path.join(data, 'Stream Multiview', 'updates.json'), JSON.stringify({ auto: false }));
+  const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' };   // a data folder of its own (see npm run dev)
   delete env.ELECTRON_RUN_AS_NODE;
   app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', ROOT], env, timeout: 60000 });
   const proc = app.process();

@@ -22,7 +22,7 @@ test('the desktop app starts, adds a stream and quits cleanly', async () => {
   const app = await playwright()._electron.launch({
     executablePath: electronPath(),
     args: ['--no-sandbox', ROOT],
-    env: { ...process.env, HOME: data, XDG_CONFIG_HOME: data, APPDATA: data, ELECTRON_ENABLE_LOGGING: '0' },
+    env: { ...process.env, HOME: data, XDG_CONFIG_HOME: data, APPDATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' },
     timeout: 60000
   });
   const mainErrors = [];
@@ -90,7 +90,7 @@ test('YouTube sign-in copies the login from Firefox', async () => {
   const { DatabaseSync } = require('node:sqlite');
   const { firefoxRoots } = require('../../src/firefox-login');
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-launch-'));
-  const env = { ...process.env, HOME: data, XDG_CONFIG_HOME: data, APPDATA: data, LOCALAPPDATA: data, ELECTRON_ENABLE_LOGGING: '0' };
+  const env = { ...process.env, HOME: data, XDG_CONFIG_HOME: data, APPDATA: data, LOCALAPPDATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' };
 
   // a Firefox profile signed in to YouTube (plus another site's login, which must not be copied)
   const prof = path.join(firefoxRoots(process.platform, env, data)[0], 'Profiles', 'test.default-release');

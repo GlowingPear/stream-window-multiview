@@ -884,7 +884,7 @@ function loadUpd() {
   let d = {};
   try { d = JSON.parse(fs.readFileSync(updFile(), 'utf8')) || {}; } catch {}
   let pkgRepo = '';
-  try { pkgRepo = String(require('./package.json').updateRepo || ''); } catch {}
+  try { pkgRepo = String(require(path.join(APP_ROOT, 'package.json')).updateRepo || ''); } catch {}   // package.json sits above src/
   upd = { repo: updater.REPO_RE.test(d.repo || '') ? d.repo : (updater.REPO_RE.test(pkgRepo) ? pkgRepo : ''), auto: d.auto !== false, lastCheck: +d.lastCheck || 0 };
 }
 const saveUpd = () => { try { fs.writeFileSync(updFile(), JSON.stringify(upd)); } catch {} };

@@ -16,12 +16,15 @@ function electronPath() {
 }
 
 const T = { timeout: 45000 };   // per test, so one stuck test can't hold up the run
-let app, win;
+let app, win, realStatus;
 const pageErrors = [];
 
 test.before(async () => {
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-update-'));
-  const env = { ...process.env, SMV_DEV_DATA: data, ELECTRON_ENABLE_LOGGING: '0' };   // a data folder of its own (see npm run dev)
+  // no update check against GitHub during the test: automatic checks off, and the update address goes nowhere
+  fs.mkdirSync(path.join(data, 'Stream Multiview'), { recursive: true });
+  fs.writeFileSync(path.join(data, 'Stream Multiview', 'updates.json'), JSON.stringify({ auto: false }));
+  const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' };   // a data folder of its own (see npm run dev)
   delete env.ELECTRON_RUN_AS_NODE;
   app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', ROOT], env, timeout: 60000 });
   const proc = app.process();
@@ -30,10 +33,12 @@ test.before(async () => {
   win.setDefaultTimeout(15000);   // a failed step fails its test instead of waiting forever
   win.on('pageerror', e => pageErrors.push(e.message));
   await win.waitForSelector('#helpBtn');
+  realStatus = await win.evaluate(() => window.kmv.updateStatus());   // before the stand-ins: what a fresh copy really has
   // stand-ins: the update status the test sets, and opening links (only recorded)
   await app.evaluate(({ ipcMain }) => {
-    const s = globalThis.__test = { status: {}, opened: [] };
-    for (const ch of ['update:status', 'update:check']) { ipcMain.removeHandler(ch); ipcMain.handle(ch, () => s.status); }
+    const s = globalThis.__test = { status: {}, opened: [], checks: 0 };
+    ipcMain.removeHandler('update:status'); ipcMain.handle('update:status', () => s.status);
+    ipcMain.removeHandler('update:check'); ipcMain.handle('update:check', () => { s.checks++; return s.status; });
     ipcMain.removeHandler('open-external');
     ipcMain.handle('open-external', (_e, url) => { s.opened.push(url); });
   });
@@ -54,6 +59,12 @@ async function showUpdates(extra) {
   await win.click('button[data-h="upd"]');
   await win.waitForSelector('.upd-notes');
 }
+
+test('a fresh copy checks the project\'s GitHub page (package.json updateRepo)', T, async () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  assert.ok(pkg.updateRepo, 'package.json names the GitHub page');
+  assert.equal(realStatus.repo, pkg.updateRepo);
+});
 
 test('the release notes show as GitHub formats them', T, async () => {
   await showUpdates({
@@ -101,4 +112,13 @@ test('without HTML, the notes show as plain text like before', T, async () => {
   assert.equal(n.text, '- New thing\n- Another');
   assert.equal(n.html, false);
   assert.deepEqual(pageErrors, [], 'the page had no errors');
+});
+
+test('a copy run from a git checkout can check (not install) and says which version is newest', T, async () => {
+  await showUpdates({ git: true, latest: '0.2.15', state: 'available', notes: 'x', notesHtml: '' });
+  assert.match(await win.textContent('.upd-state'), /git checkout.*The newest version is 0\.2\.15/s);
+  assert.equal(await win.isEnabled('.upd-check'), true, 'Check now works');
+  assert.equal(await win.locator('.upd-install').count(), 0, 'no Download / Install button');
+  await win.click('.upd-check');
+  assert.equal(await app.evaluate(() => globalThis.__test.checks), 1);
 });
