@@ -305,7 +305,7 @@ test('the toolbar fits any window width, with the rest in the More menu', async 
   assert.ok(await page.isVisible('#moreMenu #clear'), 'so is Clear');
   await page.click('#moreMenu #themeBtn');
   assert.ok(await page.isVisible('#themeDlg'), 'and it opens the theme editor');
-  assert.equal(await page.isVisible('#moreMenu'), false, 'the menu closes');
+  await page.waitForSelector('#moreMenu', { state: 'hidden', timeout: 2000 });   // the menu closes
   await press(page, 'Escape');
 
   // ticking a setting in the menu keeps the menu open and still works

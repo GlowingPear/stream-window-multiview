@@ -4386,7 +4386,7 @@ updateEmpty();
   // a button in the menu does its job and closes the menu; ticking a box or changing chat size keeps it open
   moreMenu.addEventListener('click', e => {
     const b = e.target.closest('.btn');
-    if (b && !b.closest('.zoom, .colnav')) setTimeout(() => { moreMenu.hidden = true; }, 0);
+    if (b && !b.closest('.zoom, .colnav')) moreMenu.hidden = true;     // runs after the button's own click
   });
   document.addEventListener('pointerdown', e => { if (!moreMenu.hidden && !moreMenu.contains(e.target) && !moreBtn.contains(e.target)) moreMenu.hidden = true; });
   fitHeader();
