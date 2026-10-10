@@ -143,6 +143,7 @@ Notes:
 - Create the release from the latest `main`; the workflow stops if the tag points anywhere else.
 - If you turn on a rule that blocks direct pushes to `main`, allow **GitHub Actions** to bypass it, so the workflow can commit the version and changelog.
 - Copies that are a git clone (they have a `.git` folder) never update themselves. Use `git pull` there.
+- **Mac signing certificate:** the repository secrets `MAC_CERT_P12` (the certificate as base64) and `MAC_CERT_PASSWORD` sign every Mac build with the same self-signed certificate. macOS recognises the app by that signature, so it keeps letting each new version read the saved-login key in the Keychain. Without them, Mac builds are signed ad hoc and Mac users are logged out after every update. Keep the same certificate: a new one counts as a different app once more.
 
 ## Project structure
 

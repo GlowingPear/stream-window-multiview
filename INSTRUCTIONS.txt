@@ -95,6 +95,7 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - "Forget my login when I close the app": tick a site and its login is wiped every time you close the app.
 - "Watch signed in": tick a site and its streams play with your login too, so you watch as your account instead of as a logged-out viewer. It's off at first and uses more memory. Open streams of that site restart when you change it.
 - The green lock means saved logins are encrypted on this computer and locked to your user account.
+- Mac: the first time a new version opens, macOS may ask if Stream Multiview can use "Stream Multiview Safe Storage" in your Keychain. Type your Mac password and click **Always Allow**. That's the key your saved logins are encrypted with; if you click Deny, the app can't read them and you'll have to log in again.
 
 ## Alerts
 - @ button: get a notification when someone mentions you or replies to you in a Kick or Twitch chat. Set your usernames there or click Detect.

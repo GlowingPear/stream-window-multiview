@@ -48,6 +48,7 @@
       "CHANGELOG.md"
     ],
     "afterPack": "build/after-pack.js",
+    "afterSign": "build/after-sign.js",
     "win": {
       "target": [
         {
