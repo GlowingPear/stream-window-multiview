@@ -110,6 +110,19 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - @ button: get a notification when someone mentions you or replies to you in a Kick or Twitch chat. Set your usernames there or click Detect.
 - Live alerts come from your saved channels while the app is running.
 
+## YouTube API key (optional)
+Live alerts check your saved channels while the app is running. Kick (when you're logged in) and Twitch answer for many channels at once, so they're checked every 30 seconds. YouTube is checked one channel at a time by reading its page, which is slower and can break when YouTube changes its pages. A free YouTube API key from Google makes YouTube's checks faster and more reliable. You don't need one: without it, everything still works.
+- Getting one (about 5 minutes, needs a Google account):
+  - Go to console.cloud.google.com and create a project (any name, e.g. "Stream Multiview").
+  - In "APIs & Services" > "Library", find **YouTube Data API v3** and click **Enable**.
+  - In "APIs & Services" > "Credentials", click **Create credentials** > **API key** and copy it.
+  - Recommended: click the key, and under "API restrictions" choose **Restrict key** and tick only YouTube Data API v3, so the key can't be used for anything else.
+- Google's own guide, with pictures: developers.google.com/youtube/v3/getting-started
+- Add it in the person button's menu, under YouTube: paste the key and click **Add**. The app tests it once with Google.
+- It's free: Google gives each key 10,000 "units" a day. With the key, YouTube is checked every 30 seconds too, using 1 unit per 50 videos it asks about (about 3,000 a day for 30 channels), plus 1 the first time for each @handle channel.
+- The key is stored encrypted on this computer (like your logins) and only used to ask YouTube which videos are live. Remove it from the same menu.
+- If the key runs out of today's units, Google is busy, or the key stops working, the app goes back to reading pages by itself and the menu says why. Out of units: it tries the key again when Google resets them (midnight Pacific time). Too many requests: after 15 minutes, then longer.
+
 ## Saving bandwidth
 - Auto-pause hidden (toolbar): streams you can't see pause after 2 seconds and jump back to live when you can.
 - Pop out streams: move every stream into a separate window (it opens on your second monitor if you have one). Chats stay here, and new channels go to the right window by themselves. In the streams window, **Tile** gives every stream equal space and **Spotlight** makes the stream you last clicked big; drag one stream onto another to swap them. "Bring streams back" or closing that window returns them.

@@ -503,6 +503,18 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .am-forget,.am-watch{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
 .am-forget span,.am-watch span{width:100%}
 .am-forget .chk,.am-watch .chk{font-size:12px;color:var(--text);gap:5px}
+.am-yk{padding:2px 10px 6px 27px;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:5px}
+.am-yk[hidden]{display:none}
+.am-yk-head b{color:var(--text);font-weight:600}
+.am-yk-st.warn{color:#e8b84a}
+.am-yk-row{display:flex;align-items:center;gap:6px}
+.am-yk-row[hidden],.am-yk .btn[hidden]{display:none}
+.am-yk-in{flex:1;min-width:0;height:26px;padding:0 8px;border-radius:6px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);font:inherit;font-size:12px}
+#accountMenu .am-yk .btn{display:inline-flex;align-items:center;height:26px;padding:0 9px;font-size:11px;font-weight:600;flex:none;
+  border:1px solid var(--line2);background:var(--panel2);color:var(--text)}
+#accountMenu .am-yk .btn:hover{border-color:var(--muted)}
+#accountMenu .am-yk .btn:disabled{opacity:.6;cursor:default}
+#accountMenu .am-yk .linkish{display:inline;padding:0;border-radius:0;background:none}
 .am-alt{padding:7px 10px 4px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);margin-top:4px}
 .linkish{border:0;background:none;padding:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .linkish:hover{filter:brightness(1.2)}
@@ -699,6 +711,12 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
   <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
     <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+  <div class="am-yk" hidden>
+    <div class="am-yk-head"><b>YouTube API key</b> (optional) · <button class="linkish am-yk-how">How to get one</button></div>
+    <span class="am-yk-st">Makes live checks for saved YouTube channels faster and more reliable.</span>
+    <div class="am-yk-row"><input class="am-yk-in" type="password" placeholder="Paste your API key" autocomplete="off" spellcheck="false" aria-label="YouTube API key"><button class="btn am-yk-add">Add</button></div>
+    <div class="am-yk-row am-yk-set" hidden><button class="btn am-yk-rm">Remove key</button></div>
+  </div>
   <div class="am-sec">
     <div class="am-enc"><span class="am-lock"></span><span class="am-enc-txt">Checking how logins are stored…</span></div>
     <div class="am-forget"><span>Forget my login when I close the app:</span>
@@ -3441,6 +3459,7 @@ if (DESKTOP){
   };
   am.addEventListener('click', async e => {
     const b = e.target.closest('button'); if (!b) return;
+    if (b.closest('.am-yk')) return;   // the YouTube key has its own buttons (below)
     if (b.classList.contains('am-ff')){ am.hidden = true; openFfDlg(); return; }
     const p = b.closest('.am-row').dataset.p, name = PLAT_NAME[p];
     am.hidden = true;
@@ -3461,6 +3480,54 @@ if (DESKTOP){
     }
   });
   if (ROLE === 'main') setTimeout(refreshAccount, 5000);
+
+  /* ---- YouTube API key: optional, for live checks. The page only hears whether one is set, never the key. ---- */
+  const yk = am.querySelector('.am-yk'), ykSt = yk.querySelector('.am-yk-st'), ykIn = yk.querySelector('.am-yk-in');
+  const hhmm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const YK_ERR = {
+    format: 'That doesn\'t look like an API key. Copy the whole key from Google Cloud.',
+    network: 'Couldn\'t reach Google to test the key. Check your connection and try again.',
+    badkey: 'Google didn\'t accept that key. Check it\'s enabled for "YouTube Data API v3".'
+  };
+  function showYtKey(st, err){
+    if (!st) return;
+    yk.querySelector('.am-yk-row:not(.am-yk-set)').hidden = !!st.set;
+    yk.querySelector('.am-yk-set').hidden = !st.set;
+    let msg = 'Makes live checks for saved YouTube channels faster and more reliable.', warn = false;
+    if (err){ msg = YK_ERR[err] || YK_ERR.network; warn = true; }
+    else if (st.set){
+      if (st.state === 'quota'){ msg = `Over today's quota: checking YouTube pages instead until ${hhmm(st.until)}.`; warn = true; }
+      else if (st.state === 'rate'){ msg = `Too many requests: checking YouTube pages instead until ${hhmm(st.until)}.`; warn = true; }
+      else if (st.state === 'badkey'){ msg = 'Key not accepted any more: checking YouTube pages instead. Check it\'s enabled for "YouTube Data API v3", or remove it and add a new one.'; warn = true; }
+      else msg = 'Key added: YouTube live checks use it.' + (st.saved ? '' : ' It\'s kept until you close the app, because this computer can\'t store it securely.');
+    }
+    ykSt.textContent = msg; ykSt.classList.toggle('warn', warn);
+  }
+  if (window.kmv.ytKeyStatus){
+    yk.hidden = false;
+    window.kmv.ytKeyStatus().then(st => showYtKey(st)).catch(() => {});
+    if (window.kmv.onYtKeyStatus) window.kmv.onYtKeyStatus(st => showYtKey(st));
+    const add = async () => {
+      const key = ykIn.value.trim(); if (!key) { ykIn.focus(); return; }
+      const btn = yk.querySelector('.am-yk-add'); btn.disabled = true; ykSt.textContent = 'Testing the key with Google…'; ykSt.classList.remove('warn');
+      let st = null; try { st = await window.kmv.ytKeySet(key); } catch {}
+      btn.disabled = false;
+      if (st && !st.error) ykIn.value = '';
+      showYtKey(st || { set: false }, st ? st.error : 'network');
+    };
+    yk.querySelector('.am-yk-add').onclick = add;
+    ykIn.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); add(); } e.stopPropagation(); });
+    yk.querySelector('.am-yk-rm').onclick = async () => {
+      if (!confirm('Remove the YouTube API key? YouTube live checks go back to reading each channel\'s page.')) return;
+      showYtKey(await window.kmv.ytKeyRemove().catch(() => null));
+    };
+    yk.querySelector('.am-yk-how').onclick = async () => {
+      am.hidden = true;
+      await showHelp('guide');
+      const h = [...helpDlg.querySelectorAll('.help-body h3')].find(x => /YouTube API key/i.test(x.textContent));
+      if (h) h.scrollIntoView({ block: 'start' });
+    };
+  }
 
   /* ---- How logins are kept: encryption status + "forget my login when I close the app" ---- */
   async function refreshSecurity(){

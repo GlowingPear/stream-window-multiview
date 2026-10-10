@@ -1,7 +1,8 @@
 // Stream Multiview — desktop app (Electron main process)
-const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net } = require('electron');
+const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage } = require('electron');
 const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
-  validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink } = require('./live');
+  validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink,
+  parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate } = require('./live');
 const path = require('path');
 const fs = require('fs');
 const { youtubeLoginFromFirefox } = require('./firefox-login');
@@ -331,8 +332,157 @@ async function fetchYouTube(ch) {
 const fetchAny = ch => /^tw:/.test(ch) ? fetchTwitch(ch.slice(3)) : /^yt:/.test(ch) ? fetchYouTube(ch) : fetchChannel(ch);
 ipcMain.handle('yt:resolve', async (_e, ch) => (typeof ch === 'string' && /^yt:/.test(ch) ? fetchYouTube(ch) : null));
 
+/* ---------- checking many channels at once ----------
+   Twitch: one question for up to 100 channels. Kick (logged in): the live channels you follow, from your
+   follow list (live ones come first, so usually 1-4 pages); the whole list is read every 30 min to know
+   which saved channels you follow. YouTube with an API key: each channel's feed, then one question per 50
+   videos. Whatever these can't answer is checked one at a time, as before. */
+let kickFollowed = null, kickFollowedAt = 0, kickLiveFirst = true, kickLivePages = 0;
+async function kickBatch(slugs) {
+  // A few saved channels: asking for each is fewer requests than reading the follow list's live pages.
+  if (slugs.length < Math.max(5, kickLivePages + 1)) return { results: [], rest: slugs };
+  await ensureLiveWin();
+  if (!liveWin) return { results: [], rest: slugs };
+  const allPages = !kickFollowed || !kickLiveFirst || Date.now() - kickFollowedAt > 30 * 60e3;
+  const get = async u => { const r = await kickGet(u); if (allPages) await sleep(400); return r; };   // the whole list: unhurried
+  const r = await readKickLive(get, { allPages }).catch(() => null);
+  if (!r || r.login) { if (r) kickFollowed = null; return { results: [], rest: slugs }; }
+  if (r.followed) { kickFollowed = r.followed; kickFollowedAt = Date.now(); kickLiveFirst = r.liveFirst !== false; }
+  if (!allPages) kickLivePages = r.pages;
+  const results = [], rest = [];
+  for (const s of slugs) {
+    if (!kickFollowed || !kickFollowed.has(s)) rest.push(s);
+    else results.push([s, r.live.get(s) || { live: false, partial: true, title: '', viewers: null, category: '', name: '', checked: Date.now() }]);
+  }
+  return { results, rest };
+}
+async function twitchBatch(chs) {
+  const results = [], rest = [];
+  for (let i = 0; i < chs.length; i += 100) {
+    const part = chs.slice(i, i + 100), logins = part.map(c => c.slice(3));
+    let m = null;
+    try {
+      const r = await fetch('https://gql.twitch.tv/gql', { method: 'POST',
+        headers: { 'Client-Id': TWITCH_CID, 'Content-Type': 'text/plain;charset=UTF-8', ...BROWSER_HEADERS() },
+        body: JSON.stringify({ query: 'query($l:[String!]){users(logins:$l){login displayName stream{id title viewersCount game{name}}}}', variables: { l: logins } }) });
+      if (r.ok) m = parseTwitchUsers(await r.json(), logins);
+    } catch {}
+    if (!m) { rest.push(...part); continue; }
+    for (const c of part) results.push([c, m.get(c.slice(3))]);
+  }
+  return { results, rest };
+}
+
+// YouTube API key: optional, stored encrypted with the system's key store, never sent to the page.
+let ytKey = '', ytKeySaved = false;
+const ytGate = createKeyGate();
+const ytKeyFile = () => stateFile('youtube-key');
+function loadYtKey() {
+  try {
+    const d = JSON.parse(fs.readFileSync(ytKeyFile(), 'utf8'));
+    if (d && d.enc && safeStorage.isEncryptionAvailable()) { ytKey = safeStorage.decryptString(Buffer.from(d.enc, 'base64')); ytKeySaved = true; }
+  } catch {}
+}
+function storeYtKey(key) {
+  ytKey = key; ytKeySaved = false; ytGate.reset();
+  try {
+    if (!key) fs.rmSync(ytKeyFile(), { force: true });
+    else if (safeStorage.isEncryptionAvailable()) { fs.writeFileSync(ytKeyFile(), JSON.stringify({ enc: safeStorage.encryptString(key).toString('base64') })); ytKeySaved = true; }
+  } catch {}
+}
+const ytKeyStatus = () => ({ set: !!ytKey, saved: ytKeySaved, ...ytGate.status() });
+let lastYtState = 'ok';
+function ytKeyChanged() {
+  const st = ytGate.status().state;
+  if (st !== lastYtState) { lastYtState = st; mainWin?.webContents.send('ytkey:status', ytKeyStatus()); }
+}
+const YT_API = process.env.SMV_YT_API || 'https://www.googleapis.com/youtube/v3';   // tests point this at a stand-in
+// One YouTube Data API call. Error answers go to the gate (which decides when to use the key again) and throw.
+async function ytApi(pathAndQuery, key = ytKey) {
+  const r = await fetch(`${YT_API}/${pathAndQuery}&key=${encodeURIComponent(key)}`, { headers: { Accept: 'application/json' } });
+  const d = await r.json().catch(() => null);
+  if (!r.ok) { const e = new Error('youtube ' + r.status); e.status = r.status; e.reason = ytErrorReason(d); throw e; }
+  return d;
+}
+const ytIds = new Map();      // "yt:@handle" -> "UC…" (asked once: 1 quota unit)
+const ytDone = new Set();     // videos that can never be live (normal videos, finished streams): not asked about again
+async function ytChannelId(ch) {
+  if (ch.startsWith('yt:c:')) return ch.slice(5);
+  if (ytIds.has(ch)) return ytIds.get(ch);
+  const d = await ytApi('channels?part=id&forHandle=' + encodeURIComponent(ch.slice(3)));
+  const id = d && Array.isArray(d.items) && d.items[0] ? d.items[0].id : '';
+  ytIds.set(ch, id);
+  return id;
+}
+async function ytBatch(chs) {
+  if (!chs.length || !ytKey || !ytGate.usable()) return { results: [], rest: chs };
+  const results = [], rest = [], feeds = new Map(), ask = new Set();
+  try {
+    for (const ch of chs) {
+      if (ch.startsWith('yt:v:')) { ask.add(ch.slice(5)); continue; }
+      const id = await ytChannelId(ch);
+      if (!id) { results.push([ch, { missing: true }]); continue; }
+      let f = null;
+      try {
+        const r = await fetch('https://www.youtube.com/feeds/videos.xml?channel_id=' + id, { headers: BROWSER_HEADERS() });
+        if (r.status === 404) { results.push([ch, { missing: true }]); continue; }
+        if (r.ok) f = parseYtFeed(await r.text());
+      } catch {}
+      if (!f) { rest.push(ch); continue; }
+      feeds.set(ch, f);
+      f.ids.forEach(v => { if (!ytDone.has(v)) ask.add(v); });
+    }
+    const vids = new Map(), ids = [...ask];
+    for (let i = 0; i < ids.length; i += 50) {
+      const part = ids.slice(i, i + 50);
+      const m = parseYtVideos(await ytApi('videos?part=snippet,liveStreamingDetails&id=' + part.join(','))) || new Map();
+      for (const v of part) { const x = m.get(v); if (!x || x.state === 'done') ytDone.add(v); else vids.set(v, x); }
+    }
+    if (ytDone.size > 50000) ytDone.clear();
+    ytGate.ok(); ytKeyChanged();
+    const at = Date.now();
+    for (const ch of chs) {
+      if (results.some(([c]) => c === ch) || rest.includes(ch)) continue;
+      const f = feeds.get(ch), cand = ch.startsWith('yt:v:') ? [ch.slice(5)] : f.ids;
+      const liveId = cand.find(v => vids.has(v) && vids.get(v).state === 'live');
+      const v = liveId && vids.get(liveId);
+      results.push([ch, { live: !!v, videoId: liveId || null, title: v ? v.title : '', viewers: v ? v.viewers : null, category: '',
+        name: (f && f.name) || (v && v.channelTitle) || ch.replace(/^yt:(v:|c:)?/, ''), checked: at }]);
+    }
+    return { results, rest };
+  } catch (e) {
+    if (e && e.status) { ytGate.fail(e); ytKeyChanged(); }
+    return { results: [], rest: chs };   // this round is checked page by page instead
+  }
+}
+async function liveBatch(list) {
+  const kick = list.filter(c => !/^(tw|yt):/.test(c)), tw = list.filter(c => /^tw:/.test(c)), yt = list.filter(c => /^yt:/.test(c));
+  const safe = (fn, chs) => fn(chs).catch(() => ({ results: [], rest: chs }));
+  const parts = await Promise.all([safe(kickBatch, kick), safe(twitchBatch, tw), safe(ytBatch, yt)]);
+  return { results: parts.flatMap(p => p.results), rest: parts.flatMap(p => p.rest) };
+}
+ipcMain.handle('ytkey:status', () => ytKeyStatus());
+ipcMain.handle('ytkey:set', async (_e, key) => {
+  key = String(key || '').trim();
+  if (!/^[\w-]{20,100}$/.test(key)) return { ...ytKeyStatus(), error: 'format' };
+  try { await ytApi('videos?part=id&id=dQw4w9WgXcQ', key); }   // one test question (1 quota unit)
+  catch (e) {
+    if (!e.status) return { ...ytKeyStatus(), error: 'network' };
+    const g = createKeyGate(); const st = g.fail(e);
+    if (st === 'badkey') return { ...ytKeyStatus(), error: 'badkey', reason: e.reason };
+    // over quota or too fast: the key itself is fine, so keep it
+    storeYtKey(key); ytGate.fail(e); ytKeyChanged(); watcher.checkSoon();
+    return ytKeyStatus();
+  }
+  storeYtKey(key); ytKeyChanged(); watcher.checkSoon();
+  return ytKeyStatus();
+});
+ipcMain.handle('ytkey:remove', () => { storeYtKey(''); ytKeyChanged(); return ytKeyStatus(); });
+
 const watcher = createLiveWatcher({
   fetchChannel: fetchAny,
+  fetchBatch: liveBatch,
+  batchIntervalMs: 30000,   // batched checks are cheap: Kick (1-4 requests on your login) and Twitch (1) every 30 s
   onStatus: snap => mainWin?.webContents.send('live:status', snap),
   onWentLive: notifyLive
 });
@@ -1083,6 +1233,7 @@ if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'com.gl
 
 app.whenReady().then(async () => {
   sec = loadSec();
+  loadYtKey();
   if (forgetList().length) await forgetLogins(forgetList());     // the app didn't get to wipe them last time
   encryptOldLogins();
   const ua = chromeUA();
