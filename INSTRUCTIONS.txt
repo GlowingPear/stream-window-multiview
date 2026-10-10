@@ -2,6 +2,7 @@
 
 Watch several Kick, Twitch and YouTube streams and their chats at once.
 In the app, click the ? button in the toolbar (or press F1) to read this.
+In a small window, toolbar buttons that don't fit move into the ⋯ (More) button at the right end of the toolbar.
 
 ## Getting started
 - Download the installer from the project's GitHub page (Releases):
@@ -87,9 +88,10 @@ In the app, click the ? button in the toolbar (or press F1) to read this.
 - Open live, Open all and Save all open are at the bottom.
 
 ## Logging in (person button)
-- Log in once to Kick, Twitch and YouTube. Every chat for that site uses the login.
+- Log in once to Kick and Twitch. Every chat for that site uses the login.
 - Switch and Log out are on the same row. Import follows is there too.
-- If Google won't let you sign in to YouTube, use "Use your browser's YouTube login instead" at the bottom and follow the steps.
+- YouTube sign-in currently only works through the Firefox browser (Google blocks signing in inside apps, and Chrome and Edge lock their logins). Sign in to youtube.com in Firefox, then click YouTube's Log in (or "Sign in to YouTube with Firefox") and **Copy my login from Firefox**. Only the YouTube/Google login is copied, straight from Firefox: no extension, no files.
+- You don't need to sign in to watch YouTube. Signing in is only for typing in YouTube chat, importing follows and "Watch signed in".
 - "Forget my login when I close the app": tick a site and its login is wiped every time you close the app.
 - "Watch signed in": tick a site and its streams play with your login too, so you watch as your account instead of as a logged-out viewer. It's off at first and uses more memory. Open streams of that site restart when you change it.
 - The green lock means saved logins are encrypted on this PC.

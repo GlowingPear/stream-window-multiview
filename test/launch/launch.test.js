@@ -85,3 +85,53 @@ test('the desktop app starts, adds a stream and quits cleanly', async () => {
   // closing saved the window position
   assert.ok(fs.existsSync(path.join(data, 'Stream Multiview', 'window-state.json')), 'window position saved');
 });
+
+test('YouTube sign-in copies the login from Firefox', async () => {
+  const { DatabaseSync } = require('node:sqlite');
+  const { firefoxRoots } = require('../../firefox-login');
+  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-launch-'));
+  const env = { ...process.env, HOME: data, XDG_CONFIG_HOME: data, APPDATA: data, LOCALAPPDATA: data, ELECTRON_ENABLE_LOGGING: '0' };
+
+  // a Firefox profile signed in to YouTube (plus another site's login, which must not be copied)
+  const prof = path.join(firefoxRoots(process.platform, env, data)[0], 'Profiles', 'test.default-release');
+  fs.mkdirSync(prof, { recursive: true });
+  const db = new DatabaseSync(path.join(prof, 'cookies.sqlite'));
+  db.exec(`CREATE TABLE moz_cookies (id INTEGER PRIMARY KEY, originAttributes TEXT NOT NULL DEFAULT '', name TEXT, value TEXT, host TEXT,
+    path TEXT, expiry INTEGER, lastAccessed INTEGER, creationTime INTEGER, isSecure INTEGER, isHttpOnly INTEGER, inBrowserElement INTEGER DEFAULT 0,
+    sameSite INTEGER DEFAULT 0, rawSameSite INTEGER DEFAULT 0, schemeMap INTEGER DEFAULT 0)`);
+  const exp = Math.floor(Date.now() / 1000) + 86400 * 30;
+  const ins = db.prepare("INSERT INTO moz_cookies (name, value, host, path, expiry, isSecure, isHttpOnly) VALUES (?, ?, ?, '/', ?, 1, 1)");
+  ins.run('LOGIN_INFO', 'yt-login', '.youtube.com', exp);
+  ins.run('SAPISID', 'sapisid', '.google.com', exp);
+  ins.run('user_session', 'github-secret', '.github.com', exp);
+  db.close();
+
+  const app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', ROOT], env, timeout: 60000 });
+  try {
+    const win = await app.firstWindow();
+    const pageErrors = [];
+    win.on('pageerror', e => pageErrors.push(e.message));
+    await win.waitForSelector('#empty');
+
+    // YouTube's "Log in" opens the Firefox sign-in steps (Google blocks signing in inside the app)
+    await win.click('#loginBtn');
+    assert.match(await win.textContent('#accountMenu .am-alt'), /only works through Firefox/);
+    await win.click('#accountMenu .am-row[data-p=youtube] .am-in');
+    await win.waitForSelector('#ffDlg:not([hidden])');
+    assert.match(await win.textContent('#ffDlg .dlg-sub'), /only works through the Firefox browser/);
+    assert.equal(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter(w => /google/.test(w.webContents.getURL())).length), 0, 'no Google sign-in window opened');
+
+    await win.click('#ffDlg .ff-copy');
+    await win.waitForSelector('#ffDlg[hidden]', { state: 'attached' });
+    const cookies = await app.evaluate(({ session }) => session.fromPartition('persist:youtube').cookies.get({}).then(l => l.map(c => `${c.domain} ${c.name}=${c.value}`)));
+    assert.ok(cookies.includes('.youtube.com LOGIN_INFO=yt-login'), cookies.join(', '));
+    assert.ok(cookies.includes('.google.com SAPISID=sapisid'));
+    assert.ok(!cookies.some(c => /github/.test(c)), 'only the YouTube/Google login was copied');
+    await win.click('#loginBtn');
+    await win.waitForFunction(() => /Logged in/.test(document.querySelector('#accountMenu .am-row[data-p=youtube] .am-st').textContent));
+    assert.deepEqual(fs.readdirSync(prof), ['cookies.sqlite'], 'Firefox\'s profile is untouched');
+    assert.deepEqual(pageErrors, []);
+  } finally {
+    await app.close();
+  }
+});

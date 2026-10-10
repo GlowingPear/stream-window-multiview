@@ -152,7 +152,8 @@ Notes:
 | `preload.js` | Safe bridge between the app pages and the main process |
 | `index.html` | The main app UI: windows, layouts, switch control, menus and themes |
 | `switcher.html` | The switch control when it's popped out into its own window |
-| `live.js` | Live-status parsing, link parsing, cookie-file reading and follow import helpers |
+| `live.js` | Live-status parsing, link parsing and follow import helpers |
+| `firefox-login.js` | Copies the YouTube/Google login from Firefox for YouTube sign-in |
 | `updater.js` | Checks GitHub for a newer version, downloads it and installs it safely |
 | `build/icon.png` | Large app icon used for the Mac build |
 | `.github/workflows/build.yml` | On each release: stamps the version and changelog, runs the quick tests, builds the .exe and .dmg installers, attaches them |
@@ -171,7 +172,7 @@ Notes:
 
 - **Put a game here** is Windows-only. It works best with games set to **Windowed** mode, and some games refuse to be resized.
 - Windows from other apps (like Discord) are shown as a live picture. Interact with them in the real window.
-- Google sometimes blocks sign-in inside apps. If that happens, use **"Use your browser's YouTube login instead"** in the account menu.
+- YouTube sign-in only works through Firefox: Google blocks signing in inside apps, and Chrome and Edge lock their logins so they can't be copied. Sign in to YouTube in Firefox, then use **Copy my login from Firefox** in the app. Watching YouTube doesn't need a login.
 - YouTube chats aren't watched for @mentions.
 - The app depends on how Kick, Twitch and YouTube's websites work today, so a change on their side can break a feature until the app is updated.
 
