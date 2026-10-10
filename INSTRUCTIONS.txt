@@ -89,6 +89,7 @@ In the app, click the ? button in the toolbar (or press F1) to read this.
 - Switch and Log out are on the same row. Import follows is there too.
 - If Google won't let you sign in to YouTube, use "Use your browser's YouTube login instead" at the bottom and follow the steps.
 - "Forget my login when I close the app": tick a site and its login is wiped every time you close the app.
+- "Watch signed in": tick a site and its streams play with your login too, so you watch as your account instead of as a logged-out viewer. It's off at first and uses more memory. Open streams of that site restart when you change it.
 - The green lock means saved logins are encrypted on this PC.
 
 ## Alerts

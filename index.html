@@ -490,9 +490,9 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .am-enc{display:flex;align-items:center;gap:7px}
 .am-lock svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
 .am-enc.on{color:var(--accent)}.am-enc.off{color:#e8b84a}
-.am-forget{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
-.am-forget span{width:100%}
-.am-forget .chk{font-size:12px;color:var(--text);gap:5px}
+.am-forget,.am-watch{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.am-forget span,.am-watch span{width:100%}
+.am-forget .chk,.am-watch .chk{font-size:12px;color:var(--text);gap:5px}
 .am-alt{padding:7px 10px 4px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);margin-top:4px}
 .linkish{border:0;background:none;padding:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .linkish:hover{filter:brightness(1.2)}
@@ -662,6 +662,8 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <div class="am-enc"><span class="am-lock"></span><span class="am-enc-txt">Checking how logins are stored…</span></div>
     <div class="am-forget"><span>Forget my login when I close the app:</span>
       <label class="chk"><input type="checkbox" data-f="kick">Kick</label><label class="chk"><input type="checkbox" data-f="twitch">Twitch</label><label class="chk"><input type="checkbox" data-f="youtube">YouTube</label></div>
+    <div class="am-watch"><span>Watch signed in: streams play with your login too, so you watch as your account, not as a logged-out viewer. Uses more memory.</span>
+      <label class="chk"><input type="checkbox" data-w="kick">Kick</label><label class="chk"><input type="checkbox" data-w="twitch">Twitch</label><label class="chk"><input type="checkbox" data-w="youtube">YouTube</label></div>
   </div>
   <div class="am-alt">Google won't let you sign in? <button class="linkish am-ck" data-p="youtube">Use your browser's YouTube login instead</button></div>
 </div>
@@ -1069,6 +1071,31 @@ function externalFor(w){
   return w.kind === 'chat' ? chatSrc(ch) : `https://kick.com/${encodeURIComponent(ch)}`;
 }
 const chatPartition = ch => ({ twitch: 'persist:twitch', youtube: 'persist:youtube' })[platOf(ch)] || 'persist:kick';
+// "Watch signed in" (account menu, per site): that site's stream players use your login too,
+// so you watch as your account. Off: each stream player gets its own logged-out storage.
+var watchSignedIn = { kick: false, twitch: false, youtube: false };
+try { const ws = JSON.parse(localStorage.getItem('kickMultiview.watchSignedIn') || '{}'); for (const p in watchSignedIn) watchSignedIn[p] = ws[p] === true; } catch {}
+const streamPartition = ch => watchSignedIn[platOf(ch)] ? chatPartition(ch) : 'persist:kmv-stream-' + String(ch).replace(/[^a-z0-9_-]/gi, '_');
+// A player can't move to other storage, so that site's open streams start again in a new player.
+function remountStreams(p){
+  if (!DESKTOP) return;
+  wins.forEach(w => {
+    if (w.kind !== 'stream' || !w.view || platOf(w.channel) !== p) return;
+    w.view.remove(); w.view = null; w.ready = false; w.sentPause = false;
+    mountView(w);
+  });
+}
+function setWatchSignedIn(p, on){
+  if (!(p in watchSignedIn) || watchSignedIn[p] === !!on) return;
+  watchSignedIn[p] = !!on;
+  try { localStorage.setItem('kickMultiview.watchSignedIn', JSON.stringify(watchSignedIn)); } catch {}
+  remountStreams(p);
+}
+window.addEventListener('storage', e => {          // changed in the other window
+  if (e.key !== 'kickMultiview.watchSignedIn') return;
+  let ws = {}; try { ws = JSON.parse(e.newValue || '{}') || {}; } catch {}
+  for (const p in watchSignedIn) if (watchSignedIn[p] !== (ws[p] === true)){ watchSignedIn[p] = ws[p] === true; remountStreams(p); }
+});
 
 /* ---------- geometry helpers ---------- */
 const SW = () => stage.clientWidth, SH = () => stage.clientHeight;
@@ -1335,9 +1362,9 @@ function mountView(w){
   if (DESKTOP){
     frame = document.createElement('webview');
     // Chats use their platform's saved login. Each stream player gets its own private storage,
-    // so players can't copy volume/mute settings between streams.
-    frame.setAttribute('partition', w.kind === 'stream'
-      ? 'persist:kmv-stream-' + String(w.channel).replace(/[^a-z0-9_-]/gi, '_')
+    // so players can't copy volume/mute settings between streams, unless "Watch signed in" is on
+    // for that site (then VOL_JS keeps each stream's volume its own).
+    frame.setAttribute('partition', w.kind === 'stream' ? streamPartition(w.channel)
       : w.kind === 'chat' ? chatPartition(w.channel) : 'persist:kick');
     frame.setAttribute('allowpopups', '');
   } else {
@@ -3346,7 +3373,7 @@ if (DESKTOP){
   });
   if (window.kmv.onAccountChanged) window.kmv.onAccountChanged(async info => {
     const p = info.platform || 'kick';
-    wins.forEach(w => { if (w.kind === 'chat' && w.ready && platOf(w.channel) === p) w.view.reload(); });   // that platform's chats pick up the new login
+    wins.forEach(w => { if ((w.kind === 'chat' || (w.kind === 'stream' && watchSignedIn[p])) && w.ready && platOf(w.channel) === p) w.view.reload(); });   // that platform's chats (and signed-in streams) pick up the new login
     if (info.loggedOut){ acct[p] = p === 'youtube' ? false : ''; showAccounts(); return; }
     await refreshAccount();
     if (ROLE === 'main' && typeof setMyName === 'function'){
@@ -3374,6 +3401,21 @@ if (DESKTOP){
     try { await window.kmv.securitySetForget(p, i.checked); } catch {}
     flash(i.checked ? `${PLAT_NAME[p]} login will be wiped every time you close the app (you'll log in again next time)` : `${PLAT_NAME[p]} login will be remembered again`);
   }));
+
+  /* ---- Watch signed in: a site's stream players use your login too ---- */
+  am.querySelectorAll('.am-watch input').forEach(i => {
+    i.checked = !!watchSignedIn[i.dataset.w];
+    i.addEventListener('change', () => {
+      const p = i.dataset.w;
+      setWatchSignedIn(p, i.checked);
+      flash(!i.checked ? `${PLAT_NAME[p]} streams play logged out again`
+        : acct[p] ? `${PLAT_NAME[p]} streams now play signed in to your account`
+        : `${PLAT_NAME[p]} streams will play signed in once you log in to ${PLAT_NAME[p]}`);
+    });
+  });
+  window.addEventListener('storage', e => {
+    if (e.key === 'kickMultiview.watchSignedIn') am.querySelectorAll('.am-watch input').forEach(i => { i.checked = !!watchSignedIn[i.dataset.w]; });
+  });
 
   /* ---- Import follows: read the channels you follow (with your login) and pick which to save ---- */
   const dlg = $('#importDlg');
