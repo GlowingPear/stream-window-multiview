@@ -90,9 +90,17 @@ jobs:
           make_latest: 'true'
           files: installers/*
 
-      # A release was published by hand: just attach the installers to it.
-      - if: github.event_name == 'release'
+      # A release was published by hand with notes: just attach the installers to it.
+      - if: github.event_name == 'release' && github.event.release.body != ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
+          files: installers/*
+
+      # A release was published by hand without notes: attach the installers and fill in the notes.
+      - if: github.event_name == 'release' && github.event.release.body == ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          body_path: notes.md
           files: installers/*
