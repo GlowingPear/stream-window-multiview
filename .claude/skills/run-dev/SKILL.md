@@ -29,3 +29,4 @@ Lasting profiles live in the system's app data folder under `Stream Multiview De
 - **Login encryption prompts:** on a Mac, the dev copy may ask for access to "Stream Multiview Safe Storage" in the Keychain: choose **Allow**. Windows (DPAPI) doesn't ask. On Linux, logins are protected by the desktop keyring if there is one.
 - **Never change `HOME`** (or `USERPROFILE`) to isolate a copy: on a Mac that hides the login keychain and shows a "Reset To Defaults" dialog. The data folder is already separate.
 - **The debugging port** only listens on `127.0.0.1`. Use it for test scripts, not for anything shared.
+- **Don't wait on it:** start it as a background task and read its output. If it stalls, see *Don't get stuck* in the `drive-app` skill.

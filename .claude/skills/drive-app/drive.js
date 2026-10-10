@@ -28,6 +28,7 @@ async function connect(port) {
   const pages = () => browser.contexts().flatMap(c => c.pages());
   const main = pages().find(isMain);
   if (!main) throw new Error('No Stream Multiview window on that port.');
+  main.setDefaultTimeout(15000);
   return { browser, main, pages, close: () => browser.close() };   // close() only disconnects; the app keeps running
 }
 
@@ -44,6 +45,7 @@ async function launch({ dir = ROOT, profile = '', video = false, size = { width:
   let main = null;
   for (let i = 0; i < 100 && !main; i++) { main = app.windows().find(isMain); if (!main) await sleep(200); }
   if (!main) { await app.close(); p.cleanup(); throw new Error('The app did not open its main window (is another copy using this profile?).'); }
+  main.setDefaultTimeout(15000);   // a step that can't happen fails instead of waiting forever
   await main.waitForLoadState('domcontentloaded');
   // the same size as the video, so nothing is squashed
   await app.evaluate(({ BrowserWindow }, s) => { const w = BrowserWindow.getAllWindows().find(x => /index\.html$/.test(x.webContents.getURL())); w?.unmaximize(); w?.setContentSize(s.width, s.height); }, size);
@@ -51,7 +53,9 @@ async function launch({ dir = ROOT, profile = '', video = false, size = { width:
     app, main, data: p.data,
     async close() {
       const v = video && main.video();
-      await app.close();
+      // force-quit if the app doesn't close within 10 s, so nothing is left running
+      const closed = app.close().then(() => true, () => false);
+      if (!(await Promise.race([closed, new Promise(r => setTimeout(() => r(false), 10000))]))) app.process().kill('SIGKILL');
       p.cleanup();
       return { video: v ? await v.path() : '' };
     }

@@ -12,9 +12,10 @@ description: Open a pull request for a Stream Multiview change - run the tests, 
 
 ## 2. Run the tests
 
-- `npm test` always. Also `npm run test:ui` and `npm run test:launch` if the change touches the UI or the app's start-up (needs `npm run test:setup` once; Linux without a screen: `xvfb-run -a`).
+- `npm test` always. Also `npm run test:ui` and `npm run test:launch` if the change touches the UI or the app's start-up (needs `npm run test:setup` once; Linux without a screen: `xvfb-run -a`). The launch tests open the app's window on screen; they don't need it focused, so the developer can keep working.
 - The tests need Node.js 22 or newer. On an older Node, `test/unit/firefox-login.test.js` fails with `node:sqlite` missing: say so; it isn't caused by the change.
 - Report failures honestly in the PR, with what was and wasn't run.
+- Run `npm run test:ui` and `npm run test:launch` in the background with a time limit and read the results when they finish (see *Don't get stuck* in the `drive-app` skill). If a run stalls, find out why before running it again.
 
 ## 3. Write the draft
 
