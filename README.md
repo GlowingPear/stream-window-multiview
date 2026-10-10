@@ -2,7 +2,7 @@
 
 A desktop app for watching **Kick, Twitch and YouTube** streams and chats side by side, with custom layouts, live alerts, a game focus mode and color themes.
 
-![Version](https://img.shields.io/badge/version-0.2.9%20beta-53fc18) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey) ![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848f)
+![Version](https://img.shields.io/badge/version-0.2.10%20beta-53fc18) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey) ![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848f)
 
 ---
 
@@ -56,28 +56,34 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 
 ## Getting started
 
-### Requirements
-- [Node.js](https://nodejs.org/) (LTS version)
+### Download (recommended)
+Get the latest installer from the [**Releases**](https://github.com/GlowingPear/stream-window-multiview/releases/latest) page:
 
-### Windows
-1. Download or clone this repository into a permanent folder.
-2. Double-click **`Start Stream Multiview.bat`**. The first launch installs the app engine, which takes about a minute.
-3. Optional: double-click **`Create Desktop Shortcut.bat`** to add a desktop and Start menu shortcut with the pear icon.
+| System | File | How |
+|---|---|---|
+| Windows 10/11 | `Stream-Multiview-Setup-<version>.exe` | Run it and follow the steps |
+| macOS (Intel and Apple Silicon) | `Stream-Multiview-<version>-mac.dmg` | Open it and drag the app into Applications |
 
-### macOS / Linux
-```sh
-./start-mac-linux.sh
-```
+The app isn't code-signed yet, so the first launch shows a warning:
+- **Windows** ("Windows protected your PC"): click **More info → Run anyway**.
+- **Mac** ("can't be opened" / "Apple could not verify"): open **System Settings → Privacy & Security** and click **Open Anyway**.
 
-### From the command line (any platform)
+Installed copies update themselves from new releases.
+
+### Run from source
+Requires [Node.js](https://nodejs.org/) (LTS).
+- **Windows:** double-click **`Start Stream Multiview.bat`** (first launch installs the engine, about a minute). Optional: **`Create Desktop Shortcut.bat`**.
+- **macOS / Linux:** `./start-mac-linux.sh`
+- **Any platform:** `npm install` then `npm start`
+
+> When running from source, always start the app with the launcher, the shortcut or `npm start`. They run `harden.js`, which keeps saved-login encryption switched on. (The installers have it built in.)
+
+### Building the installers yourself
 ```sh
 npm install
-npm start
+npm run dist:win   # on Windows -> dist/Stream-Multiview-Setup-<version>.exe
+npm run dist:mac   # on a Mac   -> dist/Stream-Multiview-<version>-mac.dmg
 ```
-
-> Always start the app with the launcher, the shortcut or `npm start`. They run `harden.js`, which keeps saved-login encryption switched on.
-
----
 
 ## Adding streams
 
@@ -117,7 +123,7 @@ Everyone running the app updates from this repository, so it must be **public**,
 2. Raise `"version"` in `package.json`. The app only updates when this number goes up. While in beta, raise the last number for every update (`0.2.9` → `0.2.10`), and the middle number only for a big milestone (`0.2.x` → `0.3.0`). `1.0.0` is the first finished release.
 3. Add a section for the new version at the top of `CHANGELOG.txt`.
 4. Push to GitHub.
-5. Recommended: create a **Release** with a tag such as `v0.2.10` and short notes. The app shows those notes, and it updates from the newest release. Without releases, it uses the version on the default branch.
+5. Push a tag for the version, such as `v0.2.10` (or publish a release with that tag on GitHub). The **Build installers** workflow then builds the Windows and Mac installers and attaches them to the release, with notes taken from `CHANGELOG.txt`. Installed copies update from the release's installer; copies run from source update from the release's source code.
 
 Notes:
 - If the update changes the Electron version in `package.json`, users are asked to restart with their shortcut, which reinstalls the engine once.
@@ -134,6 +140,9 @@ Notes:
 | `switcher.html` | The switch control when it's popped out into its own window |
 | `live.js` | Live-status parsing, link parsing, cookie-file reading and follow import helpers |
 | `updater.js` | Checks GitHub for a newer version, downloads it and installs it safely |
+| `build/icon.png` | Large app icon used for the Mac build |
+| `.github/workflows/build.yml` | Builds the .exe and .dmg installers on GitHub for every release |
+| `scripts/release-notes.js` | Turns a version's section of `CHANGELOG.txt` into release notes |
 | `harden.js` | Turns on Electron's cookie-encryption fuse so saved logins are encrypted |
 | `signin-preload.js` | Makes Google's sign-in page accept the app |
 | `INSTRUCTIONS.txt` | How to use every feature (also shown in the app) |

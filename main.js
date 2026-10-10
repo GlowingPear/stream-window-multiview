@@ -889,8 +889,11 @@ function loadUpd() {
   upd = { repo: updater.REPO_RE.test(d.repo || '') ? d.repo : (updater.REPO_RE.test(pkgRepo) ? pkgRepo : ''), auto: d.auto !== false, lastCheck: +d.lastCheck || 0 };
 }
 const saveUpd = () => { try { fs.writeFileSync(updFile(), JSON.stringify(upd)); } catch {} };
-const isGitCopy = () => fs.existsSync(path.join(__dirname, '.git'));
-const updStatus = () => ({ current: app.getVersion(), repo: upd.repo, auto: upd.auto, lastCheck: upd.lastCheck, git: isGitCopy(), ...updState });
+const isGitCopy = () => !app.isPackaged && fs.existsSync(path.join(__dirname, '.git'));
+// Installed with the .exe / .dmg: updates come as the new installer. Run from the source folder: the files are replaced.
+const INSTALLED = app.isPackaged;
+const updStatus = () => ({ current: app.getVersion(), repo: upd.repo, auto: upd.auto, lastCheck: upd.lastCheck, git: isGitCopy(),
+  installed_app: INSTALLED, platform: process.platform, ...updState });
 const sendUpd = () => mainWin?.webContents.send('update:status', updStatus());
 const netFetch = (url, opt) => net.fetch(url, opt);
 async function checkForUpdate({ install = upd.auto, manual = false } = {}) {
@@ -901,16 +904,63 @@ async function checkForUpdate({ install = upd.auto, manual = false } = {}) {
     const info = await updater.latestInfo(upd.repo, netFetch);
     upd.lastCheck = Date.now(); saveUpd();
     const ahead = updater.compareVersions(info.version, updState.installed || app.getVersion()) > 0;
-    updState = { ...updState, latest: info.version, notes: info.notes, zip: info.zip, state: ahead ? 'available' : (updState.installed ? 'ready' : 'uptodate') };
+    const inst = INSTALLED ? updater.pickInstaller(info.assets, process.platform) : null;
+    updState = { ...updState, latest: info.version, notes: info.notes, zip: info.zip, page: info.page, asset: inst,
+      manual: INSTALLED && !inst,                       // no installer for this system in that release: download it from the page
+      state: ahead ? 'available' : (updState.installed ? 'ready' : 'uptodate') };
     sendUpd();
-    if (ahead && install && !isGitCopy()) await installUpdate();
+    if (ahead && install && !isGitCopy() && !updState.manual) await installUpdate();
   } catch (e) {
     updState = { ...updState, state: 'error', error: String(e && e.message || e) };
     sendUpd();
   }
   return updStatus();
 }
+// Save a download to disk without holding it all in memory.
+async function downloadTo(url, file) {
+  const r = await net.fetch(url, { headers: { 'User-Agent': 'Stream-Multiview-Updater' } });
+  if (!r.ok || !r.body) throw new Error('download ' + r.status);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = file + '.part', out = fs.createWriteStream(tmp);
+  const reader = r.body.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!out.write(Buffer.from(value))) await new Promise(res => out.once('drain', res));
+    }
+  } finally { await new Promise(res => out.end(res)); }
+  fs.renameSync(tmp, file);
+  return file;
+}
+async function installInstaller() {
+  if (updState.manual || !updState.asset) { shell.openExternal(updState.page || `https://github.com/${upd.repo}/releases/latest`); return updStatus(); }
+  updState = { ...updState, state: 'downloading', error: '' }; sendUpd();
+  try {
+    const dir = process.platform === 'darwin' ? app.getPath('downloads') : path.join(app.getPath('temp'), 'stream-multiview-update');
+    const file = await downloadTo(updState.asset.url, path.join(dir, path.basename(updState.asset.name)));
+    updState = { ...updState, state: 'ready', installed: updState.latest, installerFile: file, needsInstall: false };
+  } catch (e) {
+    updState = { ...updState, state: 'error', error: String(e && e.message || e) };
+  }
+  sendUpd();
+  return updStatus();
+}
+// Hand over to the downloaded installer, then close so it can replace the app.
+function runInstaller() {
+  const f = updState.installerFile;
+  if (!f || !fs.existsSync(f)) return false;
+  if (process.platform === 'win32') {
+    const { spawn } = require('child_process');
+    spawn(f, ['/S', '--force-run'], { detached: true, stdio: 'ignore' }).unref();   // silent install, then it starts the new version
+    setTimeout(() => app.quit(), 300);
+    return true;
+  }
+  shell.openPath(f);     // macOS: the disk image opens; drag Stream Multiview into Applications
+  return true;
+}
 async function installUpdate() {
+  if (INSTALLED) return installInstaller();
   if (!updState.zip || isGitCopy()) return updStatus();
   updState = { ...updState, state: 'downloading', error: '' }; sendUpd();
   try {
@@ -940,7 +990,9 @@ ipcMain.handle('update:settings', (_e, d) => {
   saveUpd(); sendUpd();
   return updStatus();
 });
+ipcMain.handle('update:open-page', () => { shell.openExternal(updState.page || `https://github.com/${upd.repo}/releases/latest`); return true; });
 ipcMain.handle('update:restart', () => {
+  if (INSTALLED) return { installer: runInstaller(), mac: process.platform === 'darwin' };
   if (updState.needsInstall) return { needsInstall: true };      // the launcher has to reinstall the engine first
   app.relaunch(); app.exit(0);
   return { ok: true };
@@ -954,11 +1006,14 @@ function scheduleUpdates() {
 
 /* ---------- help files ---------- */
 const HELP_FILES = ['INSTRUCTIONS.txt', 'CHANGELOG.txt'];
+// Installed builds keep the help files next to the packed app (app.asar.unpacked) so other programs can open them.
+const helpPath = name => app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked', name) : path.join(__dirname, name);
 ipcMain.handle('help:read', (_e, name) => {
   if (!HELP_FILES.includes(name)) return null;
+  try { return fs.readFileSync(helpPath(name), 'utf8'); } catch {}
   try { return fs.readFileSync(path.join(__dirname, name), 'utf8'); } catch { return null; }
 });
-ipcMain.handle('help:open', (_e, name) => { if (HELP_FILES.includes(name)) shell.openPath(path.join(__dirname, name)); });
+ipcMain.handle('help:open', (_e, name) => { if (HELP_FILES.includes(name)) shell.openPath(helpPath(name)); });
 ipcMain.handle('app:version', () => app.getVersion());
 
 /* ---------- menu ---------- */
@@ -987,8 +1042,8 @@ function buildMenu() {
       { role: 'toggleDevTools' }
     ]},
     { label: 'Help', submenu: [
-      { label: 'Instructions', click: () => shell.openPath(path.join(__dirname, 'INSTRUCTIONS.txt')) },
-      { label: 'What\'s new', click: () => shell.openPath(path.join(__dirname, 'CHANGELOG.txt')) },
+      { label: 'Instructions', click: () => shell.openPath(helpPath('INSTRUCTIONS.txt')) },
+      { label: 'What\'s new', click: () => shell.openPath(helpPath('CHANGELOG.txt')) },
       { label: 'Check for updates', click: () => { mainWin?.webContents.send('update:show'); checkForUpdate({ manual: true }); } }
     ]}
   ]));
@@ -997,7 +1052,7 @@ function buildMenu() {
 app.on('second-instance', () => { if (mainWin) { if (mainWin.isMinimized()) mainWin.restore(); mainWin.focus(); } });
 
 // Windows only shows desktop notifications for apps with an ID.
-if (process.platform === 'win32') app.setAppUserModelId(process.execPath);
+if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'com.glowingpear.streammultiview' : process.execPath);
 
 app.whenReady().then(async () => {
   sec = loadSec();

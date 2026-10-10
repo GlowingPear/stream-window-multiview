@@ -1,0 +1,87 @@
+# Builds the Windows (.exe) and Mac (.dmg) installers.
+#  - Pull requests: builds them as a test (download them from the run's "Artifacts").
+#  - A new version tag (v0.2.10, ...) or a published release: builds them and attaches
+#    them to the GitHub release, creating the release if it doesn't exist yet.
+name: Build installers
+
+on:
+  pull_request:
+  push:
+    tags: ['v*']
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win
+            files: dist/*.exe
+          - os: macos-latest
+            target: --mac
+            files: dist/*.dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install the app engine
+        run: npm install --no-audit --no-fund
+
+      - name: Build installer
+        run: npx --yes electron-builder@25.1.8 ${{ matrix.target }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+
+      - name: Release notes from CHANGELOG.txt
+        run: node scripts/release-notes.js "${{ github.ref_name }}" > notes.md
+
+      # A tag was pushed: create the release with notes and installers.
+      - if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Stream Multiview ${{ github.ref_name }} (beta)
+          body_path: notes.md
+          prerelease: false
+          make_latest: 'true'
+          files: installers/*
+
+      # A release was published by hand: just attach the installers to it.
+      - if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: installers/*

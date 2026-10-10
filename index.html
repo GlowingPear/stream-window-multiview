@@ -3800,8 +3800,11 @@ function updMsg(u){
     case 'norepo': return ['bad', 'No GitHub page is set yet. Enter the project\'s GitHub name below (owner/repository).'];
     case 'checking': return ['', '<span class="spin"></span> Checking for updates…'];
     case 'downloading': return ['', `<span class="spin"></span> Downloading version ${escH(u.latest)}…`];
-    case 'available': return ['ok', `Version <b>${escH(u.latest)}</b> is available.`];
-    case 'ready': return ['ok', u.needsInstall
+    case 'available': return ['ok', u.manual ? `Version <b>${escH(u.latest)}</b> is available. Download it from the GitHub page.` : `Version <b>${escH(u.latest)}</b> is available.`];
+    case 'ready': if (u.installed_app) return ['ok', u.platform === 'darwin'
+        ? `Version <b>${escH(u.installed)}</b> is downloaded. Click <b>Install</b>, then drag Stream Multiview into Applications (replace the old one) and open it again.`
+        : `Version <b>${escH(u.installed)}</b> is downloaded. Click <b>Restart and install</b>: the app closes, updates itself and opens again.`];
+      return ['ok', u.needsInstall
       ? `Version <b>${escH(u.installed)}</b> is installed. Close the app and start it again with your shortcut (or Start Stream Multiview.bat) to finish: this update needs a one-time engine install.`
       : `Version <b>${escH(u.installed)}</b> is installed. Restart the app to use it.`];
     case 'uptodate': return ['ok', 'You have the newest version.'];
@@ -3824,8 +3827,8 @@ function renderUpdates(){
     <div class="upd-state ${cls}">${msg || '&nbsp;'}</div>
     <div class="upd-row">
       <button class="btn upd-check"${u.git || !u.repo || u.state === 'checking' || u.state === 'downloading' ? ' disabled' : ''}>Check now</button>
-      ${u.state === 'available' && !u.git ? '<button class="btn primary upd-install">Download and install</button>' : ''}
-      ${u.state === 'ready' && !u.needsInstall ? '<button class="btn primary upd-restart">Restart now</button>' : ''}
+      ${u.state === 'available' && !u.git ? `<button class="btn primary upd-install">${u.manual ? 'Open download page' : u.installed_app ? 'Download update' : 'Download and install'}</button>` : ''}
+      ${u.state === 'ready' && !u.needsInstall ? `<button class="btn primary upd-restart">${u.installed_app ? (u.platform === 'darwin' ? 'Install' : 'Restart and install') : 'Restart now'}</button>` : ''}
       <label class="chk"><input type="checkbox" class="upd-auto"${u.auto ? ' checked' : ''}>Update automatically</label>
     </div>
     ${u.notes ? `<div><h4>What's in version ${escH(u.latest)}</h4><div class="upd-notes"></div></div>` : ''}
@@ -3847,13 +3850,16 @@ function renderUpdates(){
 async function restartForUpdate(){
   const r = await window.kmv.updateRestart();
   if (r && r.needsInstall) flash('Close the app and start it again with your shortcut to finish the update');
+  else if (r && r.mac) flash('Drag Stream Multiview into Applications (replace the old one), then open it again');
 }
 function updBanner(u){
   const b = $('#updBanner');
   if (u.state === 'ready' && u.installed && !sessionStorage.getItem('smvUpdLater' + u.installed)){
     b.querySelector('.ub-txt').textContent = u.needsInstall
       ? `Stream Multiview ${u.installed} is installed. Close the app and start it again with your shortcut to finish.`
+      : u.installed_app ? `Stream Multiview ${u.installed} is downloaded and ready to install.`
       : `Stream Multiview ${u.installed} is ready. Restart to use it.`;
+    b.querySelector('.ub-go').textContent = u.installed_app ? (u.platform === 'darwin' ? 'Install' : 'Restart and install') : 'Restart now';
     b.querySelector('.ub-go').hidden = !!u.needsInstall;
     b.hidden = false;
   }

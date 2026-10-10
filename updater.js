@@ -32,7 +32,9 @@ async function latestInfo(repo, fetchFn) {
     const d = await r.json();
     if (d && d.tag_name && !d.draft) {
       return { version: String(d.tag_name).replace(/^v/i, ''), zip: d.zipball_url || `${API}/repos/${repo}/zipball/${encodeURIComponent(d.tag_name)}`,
-        notes: String(d.body || '').slice(0, 4000), name: d.name || d.tag_name, source: 'release' };
+        notes: String(d.body || '').slice(0, 4000), name: d.name || d.tag_name, source: 'release',
+        page: d.html_url || `https://github.com/${repo}/releases/latest`,
+        assets: (Array.isArray(d.assets) ? d.assets : []).map(x => ({ name: String(x.name || ''), url: String(x.browser_download_url || ''), size: +x.size || 0 })).filter(x => /^https:\/\//.test(x.url) || /^http:\/\/127\.0\.0\.1/.test(x.url)) };
     }
   } else if (r.status !== 404) throw new Error('http ' + r.status);
   // No releases: use the version in package.json on the default branch.
@@ -43,7 +45,8 @@ async function latestInfo(repo, fetchFn) {
   r = await fetchFn(`${RAW}/${repo}/${encodeURIComponent(branch)}/package.json`, { headers: { 'User-Agent': HDRS['User-Agent'] } });
   if (!r.ok) throw new Error('http ' + r.status);
   const pkg = JSON.parse(await r.text());
-  return { version: String(pkg.version || '0'), zip: `${API}/repos/${repo}/zipball/${encodeURIComponent(branch)}`, notes: '', name: 'v' + pkg.version, source: 'branch' };
+  return { version: String(pkg.version || '0'), zip: `${API}/repos/${repo}/zipball/${encodeURIComponent(branch)}`, notes: '', name: 'v' + pkg.version, source: 'branch',
+    page: `https://github.com/${repo}/releases`, assets: [] };
 }
 
 // Minimal .zip reader (stored + deflate), enough for GitHub's source downloads.
@@ -139,4 +142,12 @@ function applyUpdate(appDir, files, backupDir) {
   return { version: String(pkg.version), needsInstall };
 }
 
-module.exports = { compareVersions, latestInfo, readZip, appFiles, applyUpdate, REPO_RE };
+// Installed builds (.exe / .dmg) update by downloading the matching installer from the release.
+function pickInstaller(assets, platform) {
+  const list = Array.isArray(assets) ? assets : [];
+  if (platform === 'win32') return list.find(a => /setup.*\.exe$/i.test(a.name)) || list.find(a => /\.exe$/i.test(a.name)) || null;
+  if (platform === 'darwin') return list.find(a => /(mac|universal).*\.dmg$/i.test(a.name)) || list.find(a => /\.dmg$/i.test(a.name)) || null;
+  return null;
+}
+
+module.exports = { pickInstaller, compareVersions, latestInfo, readZip, appFiles, applyUpdate, REPO_RE };

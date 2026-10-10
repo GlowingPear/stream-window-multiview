@@ -1,15 +1,68 @@
 {
   "name": "stream-multiview",
   "productName": "Stream Multiview",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "updateRepo": "GlowingPear/stream-window-multiview",
   "description": "Watch several Kick, Twitch and YouTube streams and chats at once.",
+  "author": "GlowingPear",
+  "license": "MIT",
+  "homepage": "https://github.com/GlowingPear/stream-window-multiview",
   "main": "main.js",
   "private": true,
   "scripts": {
-    "start": "node harden.js && electron ."
+    "start": "node harden.js && electron .",
+    "dist:win": "npx --yes electron-builder@25.1.8 --win --publish never",
+    "dist:mac": "npx --yes electron-builder@25.1.8 --mac --publish never"
   },
   "devDependencies": {
     "electron": "^38.0.0"
+  },
+  "build": {
+    "appId": "com.glowingpear.streammultiview",
+    "productName": "Stream Multiview",
+    "copyright": "Copyright © 2026 GlowingPear",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": [
+      "**/*",
+      "!dist{,/**/*}",
+      "!build{,/**/*}",
+      "!.github{,/**/*}",
+      "!scripts{,/**/*}",
+      "!*.bat",
+      "!*.sh",
+      "!README*",
+      "!.needs-install"
+    ],
+    "asarUnpack": ["*.txt"],
+    "electronFuses": {
+      "enableCookieEncryption": true
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Stream Multiview",
+      "runAfterFinish": true,
+      "artifactName": "Stream-Multiview-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "icon": "build/icon.png",
+      "category": "public.app-category.entertainment",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "artifactName": "Stream-Multiview-${version}-mac.${ext}",
+      "title": "Stream Multiview ${version}"
+    },
+    "publish": null
   }
 }
