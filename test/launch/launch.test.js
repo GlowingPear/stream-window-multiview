@@ -88,7 +88,7 @@ test('the desktop app starts, adds a stream and quits cleanly', async () => {
 
 test('YouTube sign-in copies the login from Firefox', async () => {
   const { DatabaseSync } = require('node:sqlite');
-  const { firefoxRoots } = require('../../firefox-login');
+  const { firefoxRoots } = require('../../src/firefox-login');
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-launch-'));
   const env = { ...process.env, HOME: data, XDG_CONFIG_HOME: data, APPDATA: data, LOCALAPPDATA: data, ELECTRON_ENABLE_LOGGING: '0' };
 

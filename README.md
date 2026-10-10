@@ -48,7 +48,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 
 **Privacy and security**
 - One login per platform, kept between launches. Passwords are never stored, only each site's "stay signed in" session.
-- Saved logins are **encrypted** with a key tied to your Windows account (macOS: Keychain)
+- Saved logins are **encrypted** with a key tied to your user account (kept by Windows, or by the Keychain on a Mac)
 - Optional "Forget my login when I close the app" for each platform
 - Each stream player gets its own storage, so volumes and settings don't leak between streams
 - Optional "Watch signed in" for each platform: streams play with your login so you watch as your account (uses more memory)
@@ -77,7 +77,7 @@ Requires [Node.js](https://nodejs.org/) (LTS).
 - **macOS / Linux:** `./start-mac-linux.sh`
 - **Any platform:** `npm install` then `npm start`
 
-> When running from source, always start the app with the launcher, the shortcut or `npm start`. They run `harden.js`, which keeps saved-login encryption switched on. (The installers have it built in.)
+> When running from source, always start the app with the launcher, the shortcut or `npm start`. They run `src/harden.js`, which keeps saved-login encryption switched on. (The installers have it built in.)
 
 ### Building the installers yourself
 ```sh
@@ -146,23 +146,27 @@ Notes:
 
 ## Project structure
 
+The app's code is in `src/`. The top folder only has the docs, the launchers and the project setup.
+
 | File | What it is |
 |---|---|
-| `main.js` | Electron main process: windows, logins, live checks, notifications, game window placement |
-| `preload.js` | Safe bridge between the app pages and the main process |
-| `index.html` | The main app UI: windows, layouts, switch control, menus and themes |
-| `switcher.html` | The switch control when it's popped out into its own window |
-| `live.js` | Live-status parsing, link parsing and follow import helpers |
-| `firefox-login.js` | Copies the YouTube/Google login from Firefox for YouTube sign-in |
-| `updater.js` | Checks GitHub for a newer version, downloads it and installs it safely |
-| `build/icon.png` | Large app icon used for the Mac build |
-| `.github/workflows/build.yml` | On each release: stamps the version and changelog, runs the quick tests, builds the .exe and .dmg installers, attaches them |
+| `src/main.js` | Electron main process: windows, logins, live checks, notifications, game window placement |
+| `src/preload.js` | Safe bridge between the app pages and the main process |
+| `src/index.html` | The main app UI: windows, layouts, switch control, menus and themes |
+| `src/switcher.html` | The switch control when it's popped out into its own window |
+| `src/live.js` | Live-status parsing, link parsing and follow import helpers |
+| `src/firefox-login.js` | Copies the YouTube/Google login from Firefox for YouTube sign-in |
+| `src/updater.js` | Checks GitHub for a newer version, downloads it and installs it safely |
+| `src/harden.js` | Turns on Electron's cookie-encryption fuse so saved logins are encrypted |
+| `src/signin-preload.js` | Makes Google's sign-in page accept the app |
+| `src/icon.ico`, `src/icon.png` | App icons |
+| `build/` | Installer setup: the large Mac icon and the hook that turns on login encryption in the installers |
 | `scripts/prepare-release.js` | Sets the version from the release tag and adds the release notes to `CHANGELOG.md` |
 | `scripts/release-notes.js` | Turns a version's section of `CHANGELOG.md` into release notes |
 | `test/` | Quick tests (`unit/`), UI tests (`ui/`) and the desktop-app launch test (`launch/`) |
+| `.github/workflows/build.yml` | On each release: stamps the version and changelog, runs the quick tests, builds the .exe and .dmg installers, attaches them |
 | `.github/workflows/test.yml` | Runs the tests on every pull request and every change to `main` |
-| `harden.js` | Turns on Electron's cookie-encryption fuse so saved logins are encrypted |
-| `signin-preload.js` | Makes Google's sign-in page accept the app |
+| `Start Stream Multiview.bat`, `start-mac-linux.sh`, `Create Desktop Shortcut.bat` | Launchers for running from source |
 | `INSTRUCTIONS.txt` | How to use every feature (also shown in the app) |
 | `CHANGELOG.md` | Version history (also shown in the app) |
 

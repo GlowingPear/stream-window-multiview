@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
-const { firefoxRoots, parseProfilesIni, findProfiles, readYouTubeCookies, youtubeLoginFromFirefox } = require('../../firefox-login');
+const { firefoxRoots, parseProfilesIni, findProfiles, readYouTubeCookies, youtubeLoginFromFirefox } = require('../../src/firefox-login');
 
 const FUTURE = Math.floor(Date.now() / 1000) + 86400 * 365;
 const PAST = Math.floor(Date.now() / 1000) - 86400;

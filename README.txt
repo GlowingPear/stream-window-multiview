@@ -37,10 +37,11 @@ You don't need to sign in to watch YouTube (only to type in its chat).
 KEEPING YOUR LOGINS SAFE
 - Your passwords are never saved: sites give the app a login token, like a
   browser's "stay signed in". Those are saved ENCRYPTED, with a key tied to
-  your Windows account, so a copy of the app's data folder is useless on
-  another PC. The account menu shows a green lock when this is on.
-  (Start the app with "Start Stream Multiview.bat" or its shortcut; that is
-  what keeps encryption switched on.)
+  your user account on this computer (Windows keeps it for your account; on
+  a Mac it's in your Keychain), so a copy of the app's data folder is useless
+  on another computer. The account menu shows a green lock when this is on.
+  (Start the app with its launcher or shortcut; that is what keeps
+  encryption switched on.)
 - Don't run old copies of Kick Multiview anymore: they share the same data
   folder but can't read encrypted logins (you'd just have to log in again).
 - "Forget my login when I close the app" (account menu): tick a site and its

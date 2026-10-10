@@ -19,7 +19,7 @@ if exist ".needs-install" del ".needs-install"
 
 :run
 rem Make sure saved logins are stored encrypted (only changes anything the first time).
-node harden.js >nul 2>nul
+node src\harden.js >nul 2>nul
 start "" "node_modules\electron\dist\electron.exe" .
 exit /b
 

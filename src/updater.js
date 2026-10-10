@@ -105,7 +105,9 @@ function applyUpdate(appDir, files, backupDir) {
   const pkg = JSON.parse(files['package.json'].toString('utf8'));
   const cur = JSON.parse(fs.readFileSync(path.join(appDir, 'package.json'), 'utf8'));
   if (pkg.name !== cur.name) throw new Error('wrongapp');
-  if (!files['main.js'] || !files['index.html']) throw new Error('incomplete');
+  // the app's start file (package.json "main", e.g. src/main.js) and its page must both be there
+  const mainFile = String(pkg.main || 'main.js').replace(/^\.\//, ''), dir = mainFile.includes('/') ? mainFile.slice(0, mainFile.lastIndexOf('/') + 1) : '';
+  if (!files[mainFile] || !files[dir + 'index.html']) throw new Error('incomplete');
   const deps = p => JSON.stringify([p.dependencies || {}, p.devDependencies || {}]);
   const needsInstall = deps(pkg) !== deps(cur);
   fs.mkdirSync(backupDir, { recursive: true });
@@ -137,6 +139,16 @@ function applyUpdate(appDir, files, backupDir) {
     }
     for (const dest of written) { try { fs.unlinkSync(dest + '.smv-new'); } catch {} }
     throw e;
+  }
+  // Files this version moved into a sub-folder (e.g. main.js -> src/main.js): remove the old copies
+  // left in the top folder (they're in the backup), so the folder doesn't fill up with stale code.
+  for (const rel of Object.keys(files)) {
+    const m = rel.match(/^src\/([^/]+)$/);
+    if (!m || files[m[1]] || !/\.(js|html|ico|png)$/i.test(m[1])) continue;
+    const old = path.join(appDir, m[1]);
+    try {
+      if (fs.existsSync(old)) { fs.copyFileSync(old, path.join(backupDir, m[1])); fs.unlinkSync(old); }
+    } catch {}
   }
   if (needsInstall) fs.writeFileSync(path.join(appDir, '.needs-install'), 'The app engine changed in this update: the launcher reinstalls it.\n');
   return { version: String(pkg.version), needsInstall };

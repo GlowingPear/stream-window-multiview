@@ -776,7 +776,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       <div class="th-save"><input class="th-name" placeholder="Name your theme…" maxlength="30" autocomplete="off" spellcheck="false"><button class="btn th-savebtn">Save theme</button></div>
     </div>
   </div>
-  <div class="dlg-foot"><span class="dlg-note">Changes show right away. Saved themes stay on this PC.</span><button class="btn th-reset">Back to Pear</button><button class="btn primary dlg-cancel">Done</button></div>
+  <div class="dlg-foot"><span class="dlg-note">Changes show right away. Saved themes stay on this computer.</span><button class="btn th-reset">Back to Pear</button><button class="btn primary dlg-cancel">Done</button></div>
 </div></div>
 <div class="dlg-bg" id="capDlg" hidden><div class="dlg cap" role="dialog" aria-modal="true">
   <h3><span>Show another window in Stream Multiview</span></h3>
@@ -852,6 +852,9 @@ const icon = {
 };
 
 const DESKTOP = !!(window.kmv && window.kmv.desktop);
+// Shortcut names for this computer: Ctrl on Windows and Linux, ⌘ on a Mac.
+const IS_MAC = (window.kmv && window.kmv.platform === 'darwin') || /Mac/i.test(navigator.platform || '');
+const keyName = s => IS_MAC ? String(s).replace(/Ctrl\+/g, '⌘+') : String(s);
 
 // Runs inside each chat: spots new messages that @mention you or reply to you.
 // It reads the chat's visible text, so it keeps working if Kick changes its page code.
@@ -2270,7 +2273,7 @@ function removeChannel(ch){
     closeWin(cap);
     if (wasBig){ const next = buildCols().find(c => isVid(c.top)); setFeatured(next ? next.key : null); }
     if (colsMode) columnsLayout(); else relayout();
-    toast(`Removed “${cap.capName}” (Ctrl+Z brings it back)`);
+    toast(`Removed “${cap.capName}” (${keyName('Ctrl+Z')} brings it back)`);
     return;
   }
   const ws = wins.filter(w => w.channel === ch); if (!ws.length) return;
@@ -3416,8 +3419,8 @@ if (DESKTOP){
     const enc = am.querySelector('.am-enc'), on = st.encryption === 'on';
     enc.classList.toggle('on', on); enc.classList.toggle('off', !on);
     enc.querySelector('.am-lock').innerHTML = on ? icon.lock : icon.unlock;
-    enc.querySelector('.am-enc-txt').textContent = on ? 'Saved logins are encrypted on this PC (locked to your Windows account).'
-      : 'Saved logins are not encrypted yet. Start the app with "Start Stream Multiview" (or its shortcut) to turn encryption on.';
+    enc.querySelector('.am-enc-txt').textContent = on ? 'Saved logins are encrypted on this computer and locked to your user account.'
+      : 'Saved logins are not encrypted yet. Restart the app with its launcher or shortcut to turn encryption on.';
     am.querySelectorAll('.am-forget input').forEach(i => { i.checked = !!st.forget[i.dataset.f]; });
   }
   am.querySelectorAll('.am-forget input').forEach(i => i.addEventListener('change', async () => {
@@ -3671,6 +3674,7 @@ function updateUndoBtns(){
 if (ROLE === 'main'){
   const u = $('#undoBtn'), r = $('#redoBtn');
   u.innerHTML = icon.undo; r.innerHTML = icon.redo;
+  u.title = `Undo (${keyName('Ctrl+Z')})`; r.title = `Redo (${keyName(IS_MAC ? 'Ctrl+Shift+Z' : 'Ctrl+Y')})`;
   u.hidden = r.hidden = false;
   u.onclick = histUndo; r.onclick = histRedo;
 }
@@ -3823,7 +3827,7 @@ function helpHtml(text){
   close();
   return out;
 }
-const kbdHtml = k => k.split(' or ').map(x => x.split(/(?<=\S)\+(?=\S)/).map(p => `<kbd>${escH(p)}</kbd>`).join('+')).join(' or ');
+const kbdHtml = k => keyName(k).split(' or ').map(x => x.split(/(?<=\S)\+(?=\S)/).map(p => `<kbd>${escH(p)}</kbd>`).join('+')).join(' or ');
 function shortcutsHtml(){
   return `<label class="chk sc-toggle"><input type="checkbox" id="keysOn"${keysOn ? ' checked' : ''}><b>Use keyboard shortcuts</b><span>Untick to switch them all off (Esc still closes menus).</span></label>` +
     '<p>Shortcuts work when the app itself has your keyboard. If you just clicked inside a stream or chat, click a title bar or an empty spot first. They are ignored while you type in a text box.</p><div class="sc-grid">' +
@@ -3853,7 +3857,7 @@ async function showHelp(tab){
   foot.textContent = `${file} in the app folder`;
   let text = null;
   if (DESKTOP && window.kmv.readHelp){ try { text = await window.kmv.readHelp(file); } catch {} }
-  else { try { const r = await fetch(file); if (r.ok) text = await r.text(); } catch {} }
+  else { try { const r = await fetch('../' + file); if (r.ok) text = await r.text(); } catch {} }
   body.innerHTML = text ? helpHtml(text) : `<p>Open <code>${file}</code> in the app folder to read this.</p>`;
   open.hidden = !(DESKTOP && window.kmv.openHelp) || /\.md$/.test(file);
   open.onclick = () => window.kmv.openHelp(file);

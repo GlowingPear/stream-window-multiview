@@ -5,7 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const zlib = require('zlib');
-const { compareVersions, pickInstaller, latestInfo, readZip, appFiles, applyUpdate, REPO_RE } = require('../../updater');
+const { compareVersions, pickInstaller, latestInfo, readZip, appFiles, applyUpdate, REPO_RE } = require('../../src/updater');
 
 /* ---------- version numbers ---------- */
 test('compareVersions orders beta versions correctly', () => {
@@ -196,4 +196,27 @@ test('applyUpdate refuses a download that is a different or incomplete app', () 
   assert.throws(() => applyUpdate(dir, noMain, dir + '-bk'), /incomplete/);
   assert.throws(() => applyUpdate(dir, { 'main.js': Buffer.from('x') }, dir + '-bk'), /nopkg/);
   assert.equal(fs.readFileSync(path.join(dir, 'main.js'), 'utf8'), 'old main', 'nothing was changed');
+});
+
+test('applyUpdate handles the app moving into src/, and tidies the old copies', () => {
+  const dir = appDir(PKG), bk = dir + '-bk';            // an old copy: main.js and index.html in the top folder
+  fs.writeFileSync(path.join(dir, 'live.js'), 'old live');
+  const pkg = { ...PKG, version: '0.2.13', main: 'src/main.js' };
+  const res = applyUpdate(dir, {
+    'package.json': Buffer.from(JSON.stringify(pkg)),
+    'src/main.js': Buffer.from('new main'), 'src/index.html': Buffer.from('new page'), 'src/live.js': Buffer.from('new live'),
+    'CHANGELOG.md': Buffer.from('notes')
+  }, bk);
+  assert.equal(res.version, '0.2.13');
+  assert.equal(fs.readFileSync(path.join(dir, 'src', 'main.js'), 'utf8'), 'new main');
+  for (const f of ['main.js', 'index.html', 'live.js']) {
+    assert.equal(fs.existsSync(path.join(dir, f)), false, `old ${f} removed from the top folder`);
+    assert.ok(fs.existsSync(path.join(bk, f)), `old ${f} kept in the backup`);
+  }
+  assert.equal(fs.readFileSync(path.join(dir, 'keep.txt'), 'utf8'), 'not in the update', 'other files are left alone');
+});
+
+test('applyUpdate refuses an update whose start file is missing', () => {
+  const dir = appDir(PKG);
+  assert.throws(() => applyUpdate(dir, { 'package.json': Buffer.from(JSON.stringify({ ...PKG, main: 'src/main.js' })), 'main.js': Buffer.from('x'), 'index.html': Buffer.from('y') }, dir + '-bk'), /incomplete/);
 });

@@ -10,5 +10,5 @@ if [ ! -d node_modules/electron ] || [ -f .needs-install ]; then
   npm install --no-audit --no-fund || exit 1
   rm -f .needs-install
 fi
-node harden.js >/dev/null 2>&1   # keep saved logins encrypted
+node src/harden.js >/dev/null 2>&1   # keep saved logins encrypted
 nohup npx electron . >/dev/null 2>&1 &
