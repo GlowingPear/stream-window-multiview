@@ -2,7 +2,7 @@
 
 A desktop app for watching **Kick, Twitch and YouTube** streams and chats side by side, with custom layouts, live alerts, a game focus mode and color themes.
 
-![Version](https://img.shields.io/badge/version-2.5.1-53fc18) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey) ![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848f)
+![Version](https://img.shields.io/badge/version-0.2.9%20beta-53fc18) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey) ![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848f)
 
 ---
 
@@ -114,10 +114,10 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 Everyone running the app updates from this repository, so it must be **public**, and `updateRepo` in `package.json` must name it, here `"updateRepo": "GlowingPear/stream-window-multiview"`.
 
 1. Make your changes.
-2. Raise `"version"` in `package.json` (e.g. `2.5.0` → `2.6.0`). The app only updates when this number goes up.
+2. Raise `"version"` in `package.json`. The app only updates when this number goes up. While in beta, raise the last number for every update (`0.2.9` → `0.2.10`), and the middle number only for a big milestone (`0.2.x` → `0.3.0`). `1.0.0` is the first finished release.
 3. Add a section for the new version at the top of `CHANGELOG.txt`.
 4. Push to GitHub.
-5. Recommended: create a **Release** with a tag such as `v2.6` and short notes. The app shows those notes, and it updates from the newest release. Without releases, it uses the version on the default branch.
+5. Recommended: create a **Release** with a tag such as `v0.2.10` and short notes. The app shows those notes, and it updates from the newest release. Without releases, it uses the version on the default branch.
 
 Notes:
 - If the update changes the Electron version in `package.json`, users are asked to restart with their shortcut, which reinstalls the engine once.

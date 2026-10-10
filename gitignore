@@ -1,7 +1,0 @@
-node_modules/
-package-lock.json
-*.log
-.DS_Store
-Thumbs.db
-# exported login files must never be committed
-*cookies*.txt

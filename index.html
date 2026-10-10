@@ -3762,7 +3762,7 @@ async function showHelp(tab){
   helpDlg.querySelectorAll('.help-tabs button').forEach(b => b.classList.toggle('on', b.dataset.h === helpTab));
   const body = helpDlg.querySelector('.help-body'), foot = helpDlg.querySelector('.help-file'), open = helpDlg.querySelector('.help-open');
   if (!appVersion && window.kmv && window.kmv.appVersion){ try { appVersion = await window.kmv.appVersion(); } catch {} }
-  helpDlg.querySelector('.help-ver').textContent = appVersion ? 'v' + appVersion.replace(/\.0$/, '') : '';
+  helpDlg.querySelector('.help-ver').textContent = appVersion ? 'v' + appVersion + (/^0\./.test(appVersion) ? ' beta' : '') : '';
   body.scrollTop = 0;
   if (helpTab === 'upd'){ foot.textContent = 'Updates come from the project\'s GitHub page.'; open.hidden = true; renderUpdates(); return; }
   if (helpTab === 'keys'){
@@ -3820,7 +3820,7 @@ function renderUpdates(){
   const [cls, msg] = updMsg(u);
   const keep = body.querySelector('.upd-repo input'), typed = keep && document.activeElement === keep ? keep.value : null;
   body.innerHTML = `<div class="upd-box">
-    <div class="upd-ver">v${escH(String(u.current || '').replace(/\.0$/, ''))}<small>${u.lastCheck ? 'last checked ' + new Date(u.lastCheck).toLocaleString() : ''}</small></div>
+    <div class="upd-ver">v${escH(String(u.current || ''))}${/^0\./.test(String(u.current || '')) ? ' <small>beta</small>' : ''}<small>${u.lastCheck ? 'last checked ' + new Date(u.lastCheck).toLocaleString() : ''}</small></div>
     <div class="upd-state ${cls}">${msg || '&nbsp;'}</div>
     <div class="upd-row">
       <button class="btn upd-check"${u.git || !u.repo || u.state === 'checking' || u.state === 'downloading' ? ' disabled' : ''}>Check now</button>
@@ -3868,7 +3868,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.updateStatus){
   window.kmv.appVersion().then(v => {
     let seen = null; try { seen = localStorage.getItem('kickMultiview.seenVersion'); } catch {}
     try { localStorage.setItem('kickMultiview.seenVersion', v); } catch {}
-    if (seen && seen !== v) setTimeout(() => { showHelp('news'); flash(`Updated to version ${v.replace(/\.0$/, '')}`); }, 1500);
+    if (seen && seen !== v) setTimeout(() => { showHelp('news'); flash(`Updated to version ${v}`); }, 1500);
   }).catch(() => {});
 }
 
