@@ -1886,6 +1886,33 @@ function gridRects(n, X, Y, W, H, aspect){
     w: best.cw - GAP, h: best.ch - GAP
   }));
 }
+/* Streams in rows that fill the area: rows can hold different numbers of streams (e.g. 5 = 1 + 2 + 2),
+   each row as tall as its streams need at 16:9, scaled to fill the height. Picks the row count and order
+   (fewer streams at the top or the bottom) that gives the most picture, so there are no empty cells. */
+function rowRects(n, X, Y, W, H, aspect){
+  if (!n) return [];
+  let best = null;
+  for (let r = 1; r <= n; r++){
+    const base = Math.floor(n / r), extra = n % r;
+    for (const fewFirst of [true, false]){
+      const counts = Array.from({ length: r }, (_, i) => base + ((fewFirst ? i >= r - extra : i < extra) ? 1 : 0));
+      const ideal = counts.map(k => W / k / aspect + BAR);
+      const scale = H / ideal.reduce((a, b) => a + b, 0);
+      const hs = ideal.map(h => h * scale);
+      let score = 0;
+      counts.forEach((k, i) => { const vw = Math.max(0, Math.min(W / k - GAP, (hs[i] - BAR - GAP) * aspect)); score += k * vw * vw / aspect; });
+      if (!best || score > best.score + 1) best = { score, counts, hs };
+    }
+  }
+  const rects = [];
+  let y = Y;
+  best.counts.forEach((k, i) => {
+    const cw = W / k;
+    for (let j = 0; j < k; j++) rects.push({ x: X + j * cw + GAP / 2, y: y + GAP / 2, w: cw - GAP, h: best.hs[i] - GAP });
+    y += best.hs[i];
+  });
+  return rects;
+}
 function applyRects(list, rects){ list.forEach((w, i) => { w.max = null; setRect(w, rects[i], true); }); }
 
 function autoLayout(){
@@ -1897,15 +1924,10 @@ function autoLayout(){
     .sort((a, b) => (order.indexOf(a.channel) + 1 || 999) - (order.indexOf(b.channel) + 1 || 999));
   if (!vids.length){ layoutChatsOnly(); return; }
   const chatW = Math.min(340, W * 0.24);
-  const chatCols = Math.min(chats.length, 3);
-  const chatArea = chatCols * chatW;
-  const rows = Math.ceil(chats.length / Math.max(chatCols, 1));
-  applyRects(vids, gridRects(vids.length, X, Y, W - chatArea, H, 16 / 9));
-  applyRects(chats, chats.map((c, i) => ({
-    x: X + W - chatArea + (i % chatCols) * chatW + GAP / 2,
-    y: Y + Math.floor(i / chatCols) * (H / rows) + GAP / 2,
-    w: chatW - GAP, h: H / rows - GAP
-  })));
+  const chatArea = Math.min(chats.length, 3) * chatW;
+  applyRects(vids, rowRects(vids.length, X, Y, W - chatArea, H, 16 / 9));
+  // chats in rows too (5 = 3 + 2, the second row's chats wider), so none of the chat area is left empty
+  if (chats.length) applyRects(chats, chatRects(chats.length, X + W - chatArea, Y, chatArea, H));
   save();
 }
 function tile(){

@@ -416,3 +416,18 @@ test('icon-only buttons have a short tooltip, shown quickly, with the longer hin
   await page.mouse.move(800, 600);
   await page.waitForSelector('#tip:not(.on)', { state: 'attached' });
 });
+
+test('Auto layout fills the space with an odd number of streams: no empty cells, nothing overlapping', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'bravo', 'charlie', 'delta', 'echo');
+  await page.click('#layoutBtn'); await page.click('#layoutMenu button[data-l="auto"]');
+  await page.waitForTimeout(500);
+  const w = await windows(page);
+  assert.equal(w.length, 10);
+  for (let i = 0; i < w.length; i++) for (let j = i + 1; j < w.length; j++) assert.ok(!overlaps(w[i], w[j]), `${w[i].kind} ${w[i].title} and ${w[j].kind} ${w[j].title} overlap`);
+  const stage = await page.$eval('#stage', e => ({ w: e.clientWidth, h: e.clientHeight }));
+  const covered = w.reduce((a, x) => a + x.w * x.h, 0) / (stage.w * stage.h);
+  assert.ok(covered > 0.9, `windows cover ${Math.round(covered * 100)}% of the space`);
+  const streams = w.filter(x => x.kind === 'stream');
+  for (const s of streams) assert.ok(Math.abs((s.h - 30) / s.w - 9 / 16) < 0.12, `${s.title} is about 16:9`);
+});
