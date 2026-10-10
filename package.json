@@ -21,7 +21,10 @@
     "appId": "com.glowingpear.streammultiview",
     "productName": "Stream Multiview",
     "copyright": "Copyright © 2026 GlowingPear",
-    "directories": { "output": "dist", "buildResources": "build" },
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
     "files": [
       "**/*",
       "!dist{,/**/*}",
@@ -33,12 +36,19 @@
       "!README*",
       "!.needs-install"
     ],
-    "asarUnpack": ["*.txt"],
-    "electronFuses": {
-      "enableCookieEncryption": true
-    },
+    "asarUnpack": [
+      "*.txt"
+    ],
+    "afterPack": "build/after-pack.js",
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "icon.ico"
     },
     "nsis": {
@@ -52,7 +62,14 @@
       "artifactName": "Stream-Multiview-Setup-${version}.${ext}"
     },
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
       "icon": "build/icon.png",
       "category": "public.app-category.entertainment",
       "identity": "-",
