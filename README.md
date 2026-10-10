@@ -117,7 +117,19 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 
 ## Contributing and releases
 
-**Making a change:** open a pull request against `main`. Don't change the version number or `CHANGELOG.md` in it. Write the pull request title as one line a user would understand (for example *"Add Hikari theme"*), because titles become the app's "What's new" entries. Every pull request builds the Windows and Mac installers as a test; they appear under the run's **Artifacts**.
+**Making a change:** open a pull request against `main`. Don't change the version number or `CHANGELOG.md` in it. Write the pull request title as one line a user would understand (for example *"Add Hikari theme"*), because titles become the app's "What's new" entries. Every pull request runs the tests, and builds the Windows and Mac installers as a test if it changes anything that goes into them (they appear under the run's **Artifacts**). A red ✗ on the pull request means something broke: open **Details** to see which test.
+
+**Running the tests yourself** (needs Node.js 22 or newer):
+
+| Command | What it checks | Time |
+|---|---|---|
+| `npm test` | Updates, the release scripts and login encryption. Needs nothing else installed. | seconds |
+| `npm run test:setup` | Run once: installs the test browser (Playwright). It isn't saved as a dependency of the app. | once |
+| `npm run test:ui` | The app's page in a headless browser: adding streams, layouts, the switch control, undo/redo, shortcuts, themes, Help | ~30 s |
+| `npm run test:launch` | Starts the real desktop app, adds a stream and quits (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~10 s |
+| `npm run test:all` | All of the above | |
+
+The tests are in `test/`. When you add a feature, add a test next to the similar ones.
 
 **Publishing an update** (when one or more pull requests are merged):
 1. Go to **Releases → Draft a new release**.
@@ -142,9 +154,11 @@ Notes:
 | `live.js` | Live-status parsing, link parsing, cookie-file reading and follow import helpers |
 | `updater.js` | Checks GitHub for a newer version, downloads it and installs it safely |
 | `build/icon.png` | Large app icon used for the Mac build |
-| `.github/workflows/build.yml` | On each release: stamps the version and changelog, builds the .exe and .dmg installers, attaches them |
+| `.github/workflows/build.yml` | On each release: stamps the version and changelog, runs the quick tests, builds the .exe and .dmg installers, attaches them |
 | `scripts/prepare-release.js` | Sets the version from the release tag and adds the release notes to `CHANGELOG.md` |
 | `scripts/release-notes.js` | Turns a version's section of `CHANGELOG.md` into release notes |
+| `test/` | Quick tests (`unit/`), UI tests (`ui/`) and the desktop-app launch test (`launch/`) |
+| `.github/workflows/test.yml` | Runs the tests on every pull request and every change to `main` |
 | `harden.js` | Turns on Electron's cookie-encryption fuse so saved logins are encrypted |
 | `signin-preload.js` | Makes Google's sign-in page accept the app |
 | `INSTRUCTIONS.txt` | How to use every feature (also shown in the app) |
