@@ -11,6 +11,8 @@
   "private": true,
   "scripts": {
     "start": "node src/harden.js && electron .",
+    "dev": "node scripts/dev.js",
+    "worktree": "node scripts/worktree.js",
     "test": "node --test --test-timeout=60000 \"test/unit/*.test.js\"",
     "test:ui": "node --test --test-timeout=120000 \"test/ui/*.test.js\"",
     "test:launch": "node --test --test-timeout=120000 \"test/launch/*.test.js\"",

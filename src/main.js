@@ -17,6 +17,12 @@ const LOGIN_URL = {
 
 // The app used to be called "Kick Multiview": keep using that data folder (your logins, saved channels, layouts).
 app.setName('Stream Multiview');
+// npm run dev (scripts/dev.js): a developer copy with its own data folder, and its branch in the window titles.
+const DEV = !app.isPackaged && process.env.SMV_DEV_DATA ? { data: process.env.SMV_DEV_DATA, label: process.env.SMV_DEV_LABEL || 'dev' } : null;
+if (DEV) {
+  app.setPath('appData', DEV.data);
+  app.on('browser-window-created', (_e, w) => w.on('page-title-updated', (e, t) => { e.preventDefault(); w.setTitle(`${t} [${DEV.label}]`); }));
+}
 {
   const oldData = path.join(app.getPath('appData'), 'Kick Multiview');
   const newData = path.join(app.getPath('appData'), 'Stream Multiview');
