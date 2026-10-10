@@ -127,7 +127,7 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 | `npm test` | Updates, the release scripts and login encryption. Needs nothing else installed. | seconds |
 | `npm run test:setup` | Run once: installs the test browser (Playwright). It isn't saved as a dependency of the app. | once |
 | `npm run test:ui` | The app's page in a headless browser: adding streams, layouts, the switch control, undo/redo, shortcuts, themes, Help | ~30 s |
-| `npm run test:launch` | Starts the real desktop app, adds a stream and quits (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~10 s |
+| `npm run test:launch` | Starts the real desktop app: start-up, adding a stream, logins and the Import follows dialog (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~1 min |
 | `npm run test:all` | All of the above | |
 
 The tests are in `test/`. When you add a feature, add a test next to the similar ones.
