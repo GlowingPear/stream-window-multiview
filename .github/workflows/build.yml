@@ -175,7 +175,7 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.sha || github.sha }}
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           path: installers
           merge-multiple: true
