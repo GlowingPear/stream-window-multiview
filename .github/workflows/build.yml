@@ -159,38 +159,43 @@ jobs:
           tail -n 40 "$RUNNER_TEMP/build.log" | sed -e 's/%/%25/g' -e 's/\r//g' | awk '{printf "%s%%0A", $0}' > tail.txt
           echo "::error title=Build log::$(cat tail.txt)"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: installer-${{ matrix.os }}
           path: ${{ matrix.files }}
           if-no-files-found: error
 
+  # Collects both installers (on pull requests too, as a check), then attaches them to the release.
   release:
     needs: [prepare, build]
-    if: always() && github.event_name == 'release' && needs.build.result == 'success'
+    if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ needs.prepare.outputs.sha }}
+          ref: ${{ needs.prepare.outputs.sha || github.sha }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         with:
           path: installers
           merge-multiple: true
 
-      - name: Notes for a release published without any
-        run: node scripts/release-notes.js "${{ github.event.release.tag_name }}" > notes.md
+      - name: Check both installers are there
+        run: |
+          ls -l installers
+          ls installers/*.exe > /dev/null && ls installers/*.dmg > /dev/null \
+            || { echo "::error::An installer is missing (need a Windows .exe and a Mac .dmg)."; exit 1; }
 
-      - if: github.event.release.body != ''
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: installers/*
-
-      - if: github.event.release.body == ''
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          body_path: notes.md
-          files: installers/*
+      - name: Attach the installers to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+          BODY_EMPTY: ${{ github.event.release.body == '' }}
+        run: |
+          gh release upload "$TAG" installers/* --clobber --repo "$GITHUB_REPOSITORY"
+          # a release published without notes gets them from CHANGELOG.md
+          if [ "$BODY_EMPTY" = "true" ]; then
+            node scripts/release-notes.js "$TAG" > notes.md
+            gh release edit "$TAG" --notes-file notes.md --repo "$GITHUB_REPOSITORY"
+          fi
