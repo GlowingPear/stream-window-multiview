@@ -40,13 +40,13 @@ function readFuse(file) {
   return { state, positions };
 }
 
-function harden(exe, { check = false } = {}) {
+function harden(exe, { check = false, resign = true } = {}) {
   const { file, app } = fuseFileFor(exe);
   const r = readFuse(file);
   if (check || r.state === 'on' || !r.positions.length || r.state === 'removed') return r.state;
   const fd = fs.openSync(file, 'r+');
   try { r.positions.forEach(p => fs.writeSync(fd, Buffer.from([ON]), 0, 1, p)); } finally { fs.closeSync(fd); }
-  if (app) {   // macOS: changing the engine breaks its signature; re-sign it for this computer
+  if (app && resign) {   // macOS: changing the engine breaks its signature; re-sign it for this computer
     try { execFileSync('codesign', ['--sign', '-', '--force', '--deep', '--preserve-metadata=entitlements,requirements,flags,runtime', app], { stdio: 'ignore' }); } catch {}
   }
   return readFuse(file).state === 'on' ? 'turned-on' : 'failed';

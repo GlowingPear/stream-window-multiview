@@ -11,7 +11,7 @@ exports.default = async function afterPack(context) {
     ? path.join(context.appOutDir, `${name}.app`, 'Contents', 'MacOS', name)
     : path.join(context.appOutDir, `${name}.exe`);
   if (!fs.existsSync(exe)) throw new Error('after-pack: app not found at ' + exe);
-  const res = harden(exe);
+  const res = harden(exe, { resign: false });      // electron-builder signs the app itself afterwards
   console.log(`  • saved-login encryption: ${res}  file=${path.basename(exe)}`);
   if (res !== 'on' && res !== 'turned-on') throw new Error('after-pack: could not switch on login encryption (' + res + ')');
 };
