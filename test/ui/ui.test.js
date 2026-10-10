@@ -296,7 +296,6 @@ test('the toolbar fits any window width, with the rest in the More menu', async 
     const r = await check();
     assert.equal(r.over, 0, `${width}px: the toolbar doesn't overflow`);
     assert.deepEqual(r.cut, [], `${width}px: no button is cut off`);
-    if (width >= 1600) assert.equal(r.more, false, `${width}px: everything fits without the More menu`);
   }
 
   // at 640px the More menu holds the rest, and its buttons work

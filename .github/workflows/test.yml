@@ -30,7 +30,13 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - run: npm test
+      - name: Quick tests
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee "$RUNNER_TEMP/quick.log" || {
+            awk '/^not ok/{p=1;n=0} p{print; if(++n>25){p=0}}' "$RUNNER_TEMP/quick.log" | head -n 80 | sed -e 's/%/%25/g' -e 's/\r//g' | awk '{printf "%s%%0A", $0}' > fails.txt
+            echo "::error title=Failed tests::$(cat fails.txt)"; exit 1; }
 
   app:
     name: App tests
@@ -48,7 +54,20 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: UI tests
-        run: npm run test:ui
+        shell: bash
+        run: set -o pipefail; npm run test:ui 2>&1 | tee "$RUNNER_TEMP/ui.log"
 
       - name: Launch test
-        run: xvfb-run -a npm run test:launch
+        shell: bash
+        run: set -o pipefail; xvfb-run -a npm run test:launch 2>&1 | tee "$RUNNER_TEMP/launch.log"
+
+      # Puts the failing tests on the run's summary page.
+      - name: Show failed tests
+        if: failure()
+        shell: bash
+        run: |
+          for f in "$RUNNER_TEMP"/ui.log "$RUNNER_TEMP"/launch.log; do
+            [ -f "$f" ] || continue
+            awk '/^not ok/{p=1;n=0} p{print; if(++n>25){p=0}}' "$f" | head -n 80 | sed -e 's/%/%25/g' -e 's/\r//g' | awk '{printf "%s%%0A", $0}' > fails.txt
+            [ -s fails.txt ] && echo "::error title=Failed tests ($(basename "$f"))::$(cat fails.txt)"
+          done
