@@ -67,6 +67,21 @@ test('latestInfo reads the newest release and its installers', async () => {
   assert.deepEqual(info.assets.map(a => a.name), ['Stream-Multiview-Setup-0.2.11.exe'], 'only https downloads are kept');
 });
 
+test('latestInfo also gets the release notes as GitHub renders them (HTML)', async () => {
+  let accept = '';
+  const f = async (url, opt) => {
+    if (url.includes('/releases/latest')) {
+      accept = opt.headers.Accept;
+      return reply(200, { tag_name: 'v0.2.12', body: '## What\'s Changed\n* Fix by @x in https://github.com/o/r/pull/10', body_html: '<h2>What\'s Changed</h2><ul><li>Fix by <a href="https://github.com/x">@x</a></li></ul>' });
+    }
+    return reply(404, {});
+  };
+  const info = await latestInfo('o/r', f);
+  assert.equal(accept, 'application/vnd.github.full+json', 'asks for the notes as text and HTML');
+  assert.match(info.notes, /^## What's Changed/);
+  assert.match(info.notesHtml, /^<h2>What's Changed<\/h2>/);
+});
+
 test('latestInfo falls back to package.json on the main branch when there are no releases', async () => {
   const f = fakeFetch([
     ['/releases/latest', reply(404, {})],
@@ -77,6 +92,7 @@ test('latestInfo falls back to package.json on the main branch when there are no
   assert.equal(info.version, '0.2.12');
   assert.equal(info.source, 'branch');
   assert.deepEqual(info.assets, []);
+  assert.equal(info.notesHtml, '', 'no notes without a release');
 });
 
 test('latestInfo reports a missing repository and rejects bad names', async () => {
@@ -219,4 +235,54 @@ test('applyUpdate handles the app moving into src/, and tidies the old copies', 
 test('applyUpdate refuses an update whose start file is missing', () => {
   const dir = appDir(PKG);
   assert.throws(() => applyUpdate(dir, { 'package.json': Buffer.from(JSON.stringify({ ...PKG, main: 'src/main.js' })), 'main.js': Buffer.from('x'), 'index.html': Buffer.from('y') }, dir + '-bk'), /incomplete/);
+});
+
+/* ---------- removing files a new version no longer has ---------- */
+const listOf = dir => JSON.parse(fs.readFileSync(path.join(dir, '.smv-files.json'), 'utf8')).sort();
+
+test('applyUpdate removes files the last update installed that the new version dropped', () => {
+  const dir = appDir(PKG), bk = dir + '-bk';
+  fs.mkdirSync(path.join(dir, 'old'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'old', 'gone.js'), 'dropped');
+  fs.writeFileSync(path.join(dir, 'dropped.txt'), 'dropped');
+  fs.mkdirSync(path.join(dir, 'node_modules', 'electron'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'node_modules', 'electron', 'index.js'), 'engine');
+  fs.writeFileSync(path.join(dir, '.smv-files.json'), JSON.stringify(['package.json', 'main.js', 'index.html', 'old/gone.js', 'dropped.txt']));
+  applyUpdate(dir, newFiles({ ...PKG, version: '0.2.11' }, { 'NEW.md': Buffer.from('n') }), bk);
+  for (const f of ['old/gone.js', 'dropped.txt']) {
+    assert.equal(fs.existsSync(path.join(dir, f)), false, `${f} removed`);
+    assert.equal(fs.readFileSync(path.join(bk, f), 'utf8'), 'dropped', `${f} kept in the backup`);
+  }
+  assert.equal(fs.existsSync(path.join(dir, 'old')), false, 'its folder went too, once empty');
+  assert.equal(fs.readFileSync(path.join(dir, 'keep.txt'), 'utf8'), 'not in the update', 'files the updater never installed stay');
+  assert.ok(fs.existsSync(path.join(dir, 'node_modules', 'electron', 'index.js')), 'the app engine stays');
+  assert.deepEqual(listOf(dir), ['NEW.md', 'index.html', 'main.js', 'package.json'], 'the list now has this version\'s files');
+});
+
+test('without a list yet, only files the app is known to have dropped are tidied', () => {
+  const dir = appDir(PKG), bk = dir + '-bk';
+  for (const f of ['README.txt', 'CHANGELOG.txt', 'my-notes.txt']) fs.writeFileSync(path.join(dir, f), f);
+  applyUpdate(dir, newFiles({ ...PKG, version: '0.2.15' }, { 'README.md': Buffer.from('r') }), bk);
+  assert.equal(fs.existsSync(path.join(dir, 'README.txt')), false);
+  assert.equal(fs.existsSync(path.join(dir, 'CHANGELOG.txt')), false);
+  assert.ok(fs.existsSync(path.join(bk, 'README.txt')), 'kept in the backup');
+  assert.ok(fs.existsSync(path.join(dir, 'my-notes.txt')), 'your own files stay');
+  assert.ok(fs.existsSync(path.join(dir, 'keep.txt')));
+  assert.deepEqual(listOf(dir), ['README.md', 'index.html', 'main.js', 'package.json']);
+});
+
+test('a damaged or tampered list cannot remove anything outside the app\'s own files', () => {
+  const dir = appDir(PKG), bk = dir + '-bk';
+  const outside = path.join(path.dirname(dir), path.basename(dir) + '-outside.txt');
+  fs.writeFileSync(outside, 'not the app\'s');
+  fs.mkdirSync(path.join(dir, 'node_modules'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'node_modules', 'x.js'), 'engine');
+  fs.writeFileSync(path.join(dir, '.smv-files.json'), JSON.stringify(['../' + path.basename(outside), outside, 'node_modules/x.js', '', 42, 'keep.txt/..', null]));
+  applyUpdate(dir, newFiles({ ...PKG, version: '0.2.11' }), bk);
+  assert.ok(fs.existsSync(outside), 'a file outside the app folder stays');
+  assert.ok(fs.existsSync(path.join(dir, 'node_modules', 'x.js')), 'the app engine stays');
+  assert.ok(fs.existsSync(path.join(dir, 'keep.txt')));
+  fs.writeFileSync(path.join(dir, '.smv-files.json'), 'not json');
+  applyUpdate(dir, newFiles({ ...PKG, version: '0.2.12' }), bk + '2');
+  assert.ok(fs.existsSync(path.join(dir, 'keep.txt')), 'an unreadable list removes nothing but the known dropped files');
 });

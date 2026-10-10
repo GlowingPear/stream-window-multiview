@@ -23,16 +23,18 @@ function compareVersions(a, b) {
 }
 
 const HDRS = { 'User-Agent': 'Stream-Multiview-Updater', Accept: 'application/vnd.github+json' };
+// For releases also ask for the notes as HTML, rendered (and cleaned) by GitHub like on the release page
+const RELEASE_HDRS = { ...HDRS, Accept: 'application/vnd.github.full+json' };
 
-// -> { version, zip, notes, name, source } or throws
+// -> { version, zip, notes, notesHtml, name, source } or throws
 async function latestInfo(repo, fetchFn) {
   if (!REPO_RE.test(repo || '')) throw new Error('repo');
-  let r = await fetchFn(`${API}/repos/${repo}/releases/latest`, { headers: HDRS });
+  let r = await fetchFn(`${API}/repos/${repo}/releases/latest`, { headers: RELEASE_HDRS });
   if (r.ok) {
     const d = await r.json();
     if (d && d.tag_name && !d.draft) {
       return { version: String(d.tag_name).replace(/^v/i, ''), zip: d.zipball_url || `${API}/repos/${repo}/zipball/${encodeURIComponent(d.tag_name)}`,
-        notes: String(d.body || '').slice(0, 4000), name: d.name || d.tag_name, source: 'release',
+        notes: String(d.body || '').slice(0, 4000), notesHtml: String(d.body_html || '').slice(0, 20000), name: d.name || d.tag_name, source: 'release',
         page: d.html_url || `https://github.com/${repo}/releases/latest`,
         assets: (Array.isArray(d.assets) ? d.assets : []).map(x => ({ name: String(x.name || ''), url: String(x.browser_download_url || ''), size: +x.size || 0 })).filter(x => /^https:\/\//.test(x.url) || /^http:\/\/127\.0\.0\.1/.test(x.url)) };
     }
@@ -45,7 +47,7 @@ async function latestInfo(repo, fetchFn) {
   r = await fetchFn(`${RAW}/${repo}/${encodeURIComponent(branch)}/package.json`, { headers: { 'User-Agent': HDRS['User-Agent'] } });
   if (!r.ok) throw new Error('http ' + r.status);
   const pkg = JSON.parse(await r.text());
-  return { version: String(pkg.version || '0'), zip: `${API}/repos/${repo}/zipball/${encodeURIComponent(branch)}`, notes: '', name: 'v' + pkg.version, source: 'branch',
+  return { version: String(pkg.version || '0'), zip: `${API}/repos/${repo}/zipball/${encodeURIComponent(branch)}`, notes: '', notesHtml: '', name: 'v' + pkg.version, source: 'branch',
     page: `https://github.com/${repo}/releases`, assets: [] };
 }
 
@@ -100,6 +102,14 @@ function appFiles(entries) {
 }
 
 // Copy the new files over appDir (backing up the old ones first). Returns { version, needsInstall }.
+// The list of files the last update installed, kept in the app folder. The next update removes the ones
+// it no longer has, and only those, so the app engine (node_modules) and anything else in the folder stay.
+const FILE_LIST = '.smv-files.json';
+// Files the app has stopped shipping. Copies updated before the list existed have no list yet: for them,
+// only these are tidied.
+const REMOVED_FILES = ['README.txt', 'CHANGELOG.txt'];
+const safeRel = rel => typeof rel === 'string' && !!rel && !path.isAbsolute(rel) && !rel.split(/[\\/]/).some(s => s === '..' || s === '');
+
 function applyUpdate(appDir, files, backupDir) {
   if (!files['package.json']) throw new Error('nopkg');
   const pkg = JSON.parse(files['package.json'].toString('utf8'));
@@ -150,6 +160,25 @@ function applyUpdate(appDir, files, backupDir) {
       if (fs.existsSync(old)) { fs.copyFileSync(old, path.join(backupDir, m[1])); fs.unlinkSync(old); }
     } catch {}
   }
+  // Files an earlier update installed that this version no longer has (e.g. README.txt): remove them, after
+  // a backup. A file is only removed if it's on the list, so nothing the updater didn't put there is touched.
+  const root = path.resolve(appDir), listFile = path.join(root, FILE_LIST);
+  let before = REMOVED_FILES;
+  try { const l = JSON.parse(fs.readFileSync(listFile, 'utf8')); if (Array.isArray(l)) before = l; } catch {}
+  for (const rel of before) {
+    if (!safeRel(rel) || files[rel] || /^(node_modules|\.git)(\/|$)/.test(rel)) continue;
+    const old = path.join(root, ...rel.split('/'));
+    if (!old.startsWith(root + path.sep)) continue;
+    try {
+      if (!fs.existsSync(old) || !fs.statSync(old).isFile()) continue;
+      const bk = path.join(backupDir, ...rel.split('/'));
+      fs.mkdirSync(path.dirname(bk), { recursive: true });
+      fs.copyFileSync(old, bk);
+      fs.unlinkSync(old);
+      for (let d = path.dirname(old); d !== root && d.startsWith(root + path.sep) && !fs.readdirSync(d).length; d = path.dirname(d)) fs.rmdirSync(d);
+    } catch {}
+  }
+  try { fs.writeFileSync(listFile, JSON.stringify(written.map(d => path.relative(root, d).split(path.sep).join('/')))); } catch {}
   if (needsInstall) fs.writeFileSync(path.join(appDir, '.needs-install'), 'The app engine changed in this update: the launcher reinstalls it.\n');
   return { version: String(pkg.version), needsInstall };
 }

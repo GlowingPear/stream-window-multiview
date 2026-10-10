@@ -47,11 +47,12 @@ gh pr create --base main --title "<title>" --body-file <body.md> --attach <file>
 
 ## 6. After merging
 
-Remove the worktree and branch:
+Remove the worktree and branch (from the main checkout or another worktree, not the one being removed):
 
 ```sh
-git worktree remove <folder>
-git branch -d <branch>
+npm run worktree -- --clean
 ```
+
+`start-change` also runs this before each new change, so merged worktrees don't pile up.
 
 Delete any temporary dev profile and the captures in the temp folder.

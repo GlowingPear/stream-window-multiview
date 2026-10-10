@@ -1,8 +1,10 @@
+<p align="center"><img src=".github/assets/hero.jpg" alt="Stream Multiview: Kick, Twitch and YouTube streams and chats side by side" width="100%"></p>
+
 # 🍐 Stream Multiview
 
 A desktop app for watching **Kick, Twitch and YouTube** streams and chats side by side, with custom layouts, live alerts, a game focus mode and color themes.
 
-![Version](https://img.shields.io/badge/version-0.2.10%20beta-53fc18) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey) ![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848f)
+![Version](https://img.shields.io/github/v/release/GlowingPear/stream-window-multiview?include_prereleases&label=version&color=53fc18) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey) ![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848f)
 
 ---
 
@@ -74,8 +76,10 @@ Installed copies update themselves from new releases.
 ### Run from source
 Requires [Node.js](https://nodejs.org/) (LTS).
 - **Windows:** double-click **`Start Stream Multiview.bat`** (first launch installs the engine, about a minute). Optional: **`Create Desktop Shortcut.bat`**.
-- **macOS / Linux:** `./start-mac-linux.sh`
+- **macOS / Linux:** `./start-mac-linux.sh` (on a Mac the first time: right-click it › Open With › Terminal)
 - **Any platform:** `npm install` then `npm start`
+
+Keep the folder where it is after setup: the app runs from it. Coming from Kick Multiview? Your logins, saved channels and layouts carry over; copy the old folder's `node_modules` into the new one first to skip the engine install.
 
 > When running from source, always start the app with the launcher, the shortcut or `npm start`. They run `src/harden.js`, which keeps saved-login encryption switched on. (The installers have it built in.)
 
@@ -136,7 +140,8 @@ The tests are in `test/`. When you add a feature, add a test next to the similar
 
 | Command | What it does |
 |---|---|
-| `npm run worktree -- <branch>` | Creates the branch from the latest `main` in its own folder next to this one (a git worktree), with `npm install` done. Lets you work on several changes at once. |
+| `npm run worktree -- <branch>` | Creates the branch from the latest `main` in its own folder, `.worktrees/<branch>` (a git worktree; git and the installers leave that folder out), with `npm install` done. Lets you work on several changes at once. |
+| `npm run worktree -- --clean` | Removes worktrees and their branches once their pull request is merged (keeps any with uncommitted changes). |
 | `npm run dev` | Runs the app from the folder you're in as a separate copy with its own data folder, so it never touches your installed copy's logins and runs next to it. The window title shows the branch. |
 | `npm run dev -- --profile <name>` | The same, but keeps its logins and saved channels between runs |
 | `npm run dev -- --debug` | Also opens a debugging port on `127.0.0.1`, for test scripts (Playwright) |
@@ -182,6 +187,7 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 | `scripts/dev.js`, `scripts/worktree.js`, `scripts/dev-tools.js` | `npm run dev` and `npm run worktree` for developers |
 | `.claude/skills/` | Claude Code skills for making a change, running and driving the app, and opening a pull request |
 | `.github/pull_request_template.md` | What a pull request description should cover |
+| `.github/assets/` | The README's hero image (`hero.jpg`) and the page it's drawn from (`hero.html`) |
 | `test/` | Quick tests (`unit/`), UI tests (`ui/`) and the desktop-app launch test (`launch/`) |
 | `.github/workflows/build.yml` | On each release: stamps the version and changelog, runs the quick tests, builds the .exe and .dmg installers, attaches them |
 | `.github/workflows/test.yml` | Runs the tests on every pull request and every change to `main` |

@@ -9,16 +9,20 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
   - Windows: `Stream-Multiview-Setup-….exe`. Run it and follow the steps. It adds Stream Multiview to the Start menu and your desktop.
   - Mac: `Stream-Multiview-…-mac.dmg`. Open it and drag Stream Multiview into Applications.
 - First time only: Windows may say "Windows protected your PC". Click **More info → Run anyway**. On a Mac, if it says the app can't be checked, open **System Settings → Privacy & Security** and click **Open Anyway**. This is because the app isn't code-signed yet.
-- Running from the source files instead: install Node.js (LTS) and double-click **Start Stream Multiview.bat** (Mac/Linux: `start-mac-linux.sh`).
+- Running from the source files instead: install Node.js (LTS) and double-click **Start Stream Multiview.bat** (Mac/Linux: `start-mac-linux.sh`; on a Mac the first time, right-click it > Open With > Terminal). The first start installs the app engine (about a minute). **Create Desktop Shortcut.bat** adds a shortcut with the pear icon.
+  - Keep that folder where it is after setup: the app runs from it.
+- Coming from Kick Multiview: your logins, saved channels and layouts carry over by themselves. Running from source, copy the old folder's `node_modules` into the new one before the first start to skip the one-minute engine install.
+- Your windows, volumes and saved channels are remembered between launches.
 
 ## Adding streams
 - Paste a link or name into the box at the top and press Enter.
   - Kick: `kick.com/name` or just `name`
   - Twitch: `twitch.tv/name` or `tw:name`
-  - YouTube channel: `youtube.com/@name` or `@name` (opens its live stream)
+  - YouTube channel: `youtube.com/@name`, `@name`, `yt:@name` or a `/channel/UC…` link (opens its live stream)
   - YouTube video: any video link (plays without a chat)
 - The dropdown next to the box picks Stream + chat, Stream only or Chat only.
-- If a YouTube channel isn't live, its window says so and checks again every 2 minutes.
+- If a YouTube channel isn't live, its window says so, checks again every 2 minutes and has a **Check now** button.
+- Window dots show the site: Kick green, Twitch purple, YouTube red.
 
 ## Moving windows around
 - Drag a window by its title bar. Resize it from any edge or corner.
@@ -28,11 +32,16 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 ## Layouts (Layout menu)
 - **Focus view**: one stream (or another app's window) big with its chat, the rest in columns beside it.
 - **Game focus**: your game big, streams, chats and other windows stacked on the side (see "Playing a game" below).
-- **Columns**: every stream above its own chat. Scroll sideways when there are more than fit.
-- **Chat focus**: streams down the side at exact video size, chats get the rest.
+- **Columns**: every stream above its own chat. When there are more than fit, scroll sideways with ‹ › in the toolbar, the scrollbar at the bottom, or the mouse wheel over any title bar.
+  - A strip above the columns has ‹ › to step through the streams (they loop around at either end) and a list to jump to any stream. "Step: 1 / Step: page" sets whether the arrows move one stream or a whole page.
+  - **Highlight** (corner-arrows button on a stream): that stream goes big on the left with its chat beside it, and stays put while you scroll the other columns. Click it again to put it back.
+  - In the highlight view, the **Focus area** under the big stream has a button for every open stream: click a name to make it big, drag one onto another to swap them (and their columns), × closes a stream and its chat (Undo brings them back). Each button has pause / play (play jumps back to live), mute and volume, and its arrow opens a small always-muted live preview. A preview is a second copy of the stream, so it uses some extra bandwidth.
+  - "Side chats" (top of the Focus area) sets how many stream + chat columns sit beside the big stream: Auto or 1–5. The name at the top of each side chat is a dropdown to show any stream there.
+  - The buttons at the top of the Focus area switch to **Columns view** (no highlight) or back to **Chat focus view**.
+- **Chat focus**: streams down the side at exact video size, chats get the rest. Click it again for 1, 2 or 3 columns of streams. Drag a stream onto another to swap them (their chats swap too).
 - **Auto layout** and **Tile**: arrange everything to fit the screen.
-- **Your layouts**: type a name and press Save to keep the current arrangement. Click it later to go back to it.
-- **Linked** (in Columns): a stream and its chat move together. Drag a title bar to reorder columns.
+- **Your layouts**: type a name and press Save to keep the current arrangement (windows, order, columns, highlight). Click it later to go back to it: windows already open stay open, missing ones reopen. ⟳ updates it with the current arrangement, × deletes it.
+- **Linked** (in Columns): a stream and its chat move together. Drag a title bar to reorder columns; the others slide aside to show where it will land, and dragging to the screen edge scrolls. Turn Linked off to move and resize windows freely.
 
 ## The switch control
 - A list of every open stream with pause / play, mute, volume, refresh, a small live preview (the arrow) and remove (×).
@@ -83,17 +92,17 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - Tabs: All, Kick, Twitch, YouTube. K / T / Y badges show each channel's site.
 - Live channels are listed first, with viewers and title. The Saved button shows how many are live.
 - Bell: desktop notification when that channel goes live.
-- Lightning: open that channel automatically when it goes live.
+- Lightning: open that channel automatically when it goes live, once per broadcast (if you close it, it won't reopen until they next go live).
 - Import: add the channels you follow on Kick, Twitch or YouTube (you need to be logged in to that site in the app).
 - Open live, Open all and Save all open are at the bottom.
 
 ## Logging in (person button)
-- Log in once to Kick and Twitch. Every chat for that site uses the login.
+- Log in once to Kick and Twitch (for Kick, enter the email code once). Every chat for that site uses the login, and it's kept when you restart the app.
 - Switch and Log out are on the same row. Import follows is there too.
 - YouTube sign-in currently only works through the Firefox browser (Google blocks signing in inside apps, and Chrome and Edge lock their logins). Sign in to youtube.com in Firefox, then click YouTube's Log in (or "Sign in to YouTube with Firefox") and **Copy my login from Firefox**. Only the YouTube/Google login is copied, straight from Firefox: no extension, no files.
 - You don't need to sign in to watch YouTube. Signing in is only for typing in YouTube chat, importing follows and "Watch signed in".
 - "Forget my login when I close the app": tick a site and its login is wiped every time you close the app.
-- "Watch signed in": tick a site and its streams play with your login too, so you watch as your account instead of as a logged-out viewer. It's off at first and uses more memory. Open streams of that site restart when you change it.
+- "Watch signed in": tick a site and its streams play with your login too, so you watch as your account instead of as a logged-out viewer. It's off at first and uses more memory. Open streams of that site restart when you change it. Without it, Twitch Turbo and YouTube Premium don't remove ads from the video.
 - The green lock means saved logins are encrypted on this computer and locked to your user account.
 - Mac: the first time a new version opens, macOS may ask if Stream Multiview can use "Stream Multiview Safe Storage" in your Keychain. Type your Mac password and click **Always Allow**. That's the key your saved logins are encrypted with; if you click Deny, the app can't read them and you'll have to log in again.
 
@@ -103,7 +112,7 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 
 ## Saving bandwidth
 - Auto-pause hidden (toolbar): streams you can't see pause after 2 seconds and jump back to live when you can.
-- Pop out streams: move every stream into a separate window (for a second monitor). Chats stay here.
+- Pop out streams: move every stream into a separate window (it opens on your second monitor if you have one). Chats stay here, and new channels go to the right window by themselves. In the streams window, **Tile** gives every stream equal space and **Spotlight** makes the stream you last clicked big; drag one stream onto another to swap them. "Bring streams back" or closing that window returns them.
 - Pop out hidden (switch control): send only the streams you can't see to that window.
 
 ## Other handy things
@@ -158,3 +167,4 @@ Shortcuts work when the app has your keyboard. If you just clicked inside a stre
 - Your passwords are never saved, only the "stay signed in" login from each site, and it is encrypted.
 - Don't share the app's data folder (AppData\Roaming\Stream Multiview or Kick Multiview). Sharing the app folder itself is fine.
 - If you think a login was stolen, change that site's password and use its "log out of all sessions" option.
+- Don't run old copies of Kick Multiview any more: they share the same data folder but can't read encrypted logins (you'd just have to log in again).
