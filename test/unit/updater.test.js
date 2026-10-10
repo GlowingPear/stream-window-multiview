@@ -236,3 +236,53 @@ test('applyUpdate refuses an update whose start file is missing', () => {
   const dir = appDir(PKG);
   assert.throws(() => applyUpdate(dir, { 'package.json': Buffer.from(JSON.stringify({ ...PKG, main: 'src/main.js' })), 'main.js': Buffer.from('x'), 'index.html': Buffer.from('y') }, dir + '-bk'), /incomplete/);
 });
+
+/* ---------- removing files a new version no longer has ---------- */
+const listOf = dir => JSON.parse(fs.readFileSync(path.join(dir, '.smv-files.json'), 'utf8')).sort();
+
+test('applyUpdate removes files the last update installed that the new version dropped', () => {
+  const dir = appDir(PKG), bk = dir + '-bk';
+  fs.mkdirSync(path.join(dir, 'old'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'old', 'gone.js'), 'dropped');
+  fs.writeFileSync(path.join(dir, 'dropped.txt'), 'dropped');
+  fs.mkdirSync(path.join(dir, 'node_modules', 'electron'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'node_modules', 'electron', 'index.js'), 'engine');
+  fs.writeFileSync(path.join(dir, '.smv-files.json'), JSON.stringify(['package.json', 'main.js', 'index.html', 'old/gone.js', 'dropped.txt']));
+  applyUpdate(dir, newFiles({ ...PKG, version: '0.2.11' }, { 'NEW.md': Buffer.from('n') }), bk);
+  for (const f of ['old/gone.js', 'dropped.txt']) {
+    assert.equal(fs.existsSync(path.join(dir, f)), false, `${f} removed`);
+    assert.equal(fs.readFileSync(path.join(bk, f), 'utf8'), 'dropped', `${f} kept in the backup`);
+  }
+  assert.equal(fs.existsSync(path.join(dir, 'old')), false, 'its folder went too, once empty');
+  assert.equal(fs.readFileSync(path.join(dir, 'keep.txt'), 'utf8'), 'not in the update', 'files the updater never installed stay');
+  assert.ok(fs.existsSync(path.join(dir, 'node_modules', 'electron', 'index.js')), 'the app engine stays');
+  assert.deepEqual(listOf(dir), ['NEW.md', 'index.html', 'main.js', 'package.json'], 'the list now has this version\'s files');
+});
+
+test('without a list yet, only files the app is known to have dropped are tidied', () => {
+  const dir = appDir(PKG), bk = dir + '-bk';
+  for (const f of ['README.txt', 'CHANGELOG.txt', 'my-notes.txt']) fs.writeFileSync(path.join(dir, f), f);
+  applyUpdate(dir, newFiles({ ...PKG, version: '0.2.15' }, { 'README.md': Buffer.from('r') }), bk);
+  assert.equal(fs.existsSync(path.join(dir, 'README.txt')), false);
+  assert.equal(fs.existsSync(path.join(dir, 'CHANGELOG.txt')), false);
+  assert.ok(fs.existsSync(path.join(bk, 'README.txt')), 'kept in the backup');
+  assert.ok(fs.existsSync(path.join(dir, 'my-notes.txt')), 'your own files stay');
+  assert.ok(fs.existsSync(path.join(dir, 'keep.txt')));
+  assert.deepEqual(listOf(dir), ['README.md', 'index.html', 'main.js', 'package.json']);
+});
+
+test('a damaged or tampered list cannot remove anything outside the app\'s own files', () => {
+  const dir = appDir(PKG), bk = dir + '-bk';
+  const outside = path.join(path.dirname(dir), path.basename(dir) + '-outside.txt');
+  fs.writeFileSync(outside, 'not the app\'s');
+  fs.mkdirSync(path.join(dir, 'node_modules'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'node_modules', 'x.js'), 'engine');
+  fs.writeFileSync(path.join(dir, '.smv-files.json'), JSON.stringify(['../' + path.basename(outside), outside, 'node_modules/x.js', '', 42, 'keep.txt/..', null]));
+  applyUpdate(dir, newFiles({ ...PKG, version: '0.2.11' }), bk);
+  assert.ok(fs.existsSync(outside), 'a file outside the app folder stays');
+  assert.ok(fs.existsSync(path.join(dir, 'node_modules', 'x.js')), 'the app engine stays');
+  assert.ok(fs.existsSync(path.join(dir, 'keep.txt')));
+  fs.writeFileSync(path.join(dir, '.smv-files.json'), 'not json');
+  applyUpdate(dir, newFiles({ ...PKG, version: '0.2.12' }), bk + '2');
+  assert.ok(fs.existsSync(path.join(dir, 'keep.txt')), 'an unreadable list removes nothing but the known dropped files');
+});

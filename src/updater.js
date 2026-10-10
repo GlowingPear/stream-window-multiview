@@ -102,6 +102,14 @@ function appFiles(entries) {
 }
 
 // Copy the new files over appDir (backing up the old ones first). Returns { version, needsInstall }.
+// The list of files the last update installed, kept in the app folder. The next update removes the ones
+// it no longer has, and only those, so the app engine (node_modules) and anything else in the folder stay.
+const FILE_LIST = '.smv-files.json';
+// Files the app has stopped shipping. Copies updated before the list existed have no list yet: for them,
+// only these are tidied.
+const REMOVED_FILES = ['README.txt', 'CHANGELOG.txt'];
+const safeRel = rel => typeof rel === 'string' && !!rel && !path.isAbsolute(rel) && !rel.split(/[\\/]/).some(s => s === '..' || s === '');
+
 function applyUpdate(appDir, files, backupDir) {
   if (!files['package.json']) throw new Error('nopkg');
   const pkg = JSON.parse(files['package.json'].toString('utf8'));
@@ -152,6 +160,25 @@ function applyUpdate(appDir, files, backupDir) {
       if (fs.existsSync(old)) { fs.copyFileSync(old, path.join(backupDir, m[1])); fs.unlinkSync(old); }
     } catch {}
   }
+  // Files an earlier update installed that this version no longer has (e.g. README.txt): remove them, after
+  // a backup. A file is only removed if it's on the list, so nothing the updater didn't put there is touched.
+  const root = path.resolve(appDir), listFile = path.join(root, FILE_LIST);
+  let before = REMOVED_FILES;
+  try { const l = JSON.parse(fs.readFileSync(listFile, 'utf8')); if (Array.isArray(l)) before = l; } catch {}
+  for (const rel of before) {
+    if (!safeRel(rel) || files[rel] || /^(node_modules|\.git)(\/|$)/.test(rel)) continue;
+    const old = path.join(root, ...rel.split('/'));
+    if (!old.startsWith(root + path.sep)) continue;
+    try {
+      if (!fs.existsSync(old) || !fs.statSync(old).isFile()) continue;
+      const bk = path.join(backupDir, ...rel.split('/'));
+      fs.mkdirSync(path.dirname(bk), { recursive: true });
+      fs.copyFileSync(old, bk);
+      fs.unlinkSync(old);
+      for (let d = path.dirname(old); d !== root && d.startsWith(root + path.sep) && !fs.readdirSync(d).length; d = path.dirname(d)) fs.rmdirSync(d);
+    } catch {}
+  }
+  try { fs.writeFileSync(listFile, JSON.stringify(written.map(d => path.relative(root, d).split(path.sep).join('/')))); } catch {}
   if (needsInstall) fs.writeFileSync(path.join(appDir, '.needs-install'), 'The app engine changed in this update: the launcher reinstalls it.\n');
   return { version: String(pkg.version), needsInstall };
 }
