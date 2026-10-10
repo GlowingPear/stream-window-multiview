@@ -348,3 +348,71 @@ test('Help shows the instructions and this version\'s changelog', async t => {
   await page.click('.help-tabs [data-h=keys]');
   assert.ok((await page.$$('#helpDlg .sc-row')).length >= 20, 'the shortcuts are listed');
 });
+
+test('Clear asks in the app first: Cancel, Esc and clicking outside keep the windows, and Undo brings them back', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'tw:bravo');
+  await settle(page);
+  const n = (await windows(page)).length;
+  await page.click('#clear');
+  assert.ok(await page.isVisible('#askDlg'), 'the app\'s own dialog, not the browser\'s');
+  assert.equal(await page.textContent('#askTitle'), 'Close all windows?');
+  assert.equal(await page.textContent('#askDlg .ask-yes'), 'Close all');
+  assert.ok(await page.$eval('#askDlg .ask-yes', b => b.classList.contains('danger-fill')), 'shown as a destructive action');
+  await page.click('#askDlg .ask-no');
+  assert.ok(await page.isHidden('#askDlg'));
+  await page.click('#clear'); await page.keyboard.press('Escape');
+  await page.click('#clear'); await page.mouse.click(5, 895);   // outside the dialog
+  assert.equal((await windows(page)).length, n, 'nothing closed');
+  await page.click('#clear'); await page.keyboard.press('Enter');
+  assert.equal((await windows(page)).length, 0, 'Enter closes them all');
+  await settle(page);
+  await page.click('#undoBtn');
+  await settle(page);
+  assert.equal((await windows(page)).length, n, 'Undo brings them back');
+});
+
+test('keyboard shortcuts don\'t act behind the dialog', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha');
+  const answer = page.evaluate(() => window.ask('Sure?', 'Test', { ok: 'Yes' }));
+  await page.waitForSelector('#askDlg:not([hidden])');
+  await page.keyboard.press('?');   // the shortcut for Help
+  assert.ok(await page.isHidden('#helpDlg'));
+  await page.keyboard.press('Escape');
+  assert.equal(await answer, false);
+});
+
+// Every button that shows only an icon (in windows of every kind, the toolbar, Saved, the layout and theme menus,
+// the switch control) has a one- or two-word name.
+test('icon-only buttons have a short tooltip, shown quickly, with the longer hint underneath', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'tw:bravo', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  await page.click('#stage .win.stream.plat-kick [data-a=star]');
+  await page.click('#savedBtn');
+  await page.click('#layoutBtn');
+  await page.click('#layoutMenu button[data-l="focus"]');
+  await settle(page);
+  const missing = await page.evaluate(() => {
+    const out = [];
+    document.querySelectorAll('button').forEach(b => {
+      if (!b.getClientRects().length || /[A-Za-z]{2,}/.test(b.innerText || '')) return;   // hidden, or its words show
+      const name = window.tipFor(b);
+      if (!name || name.split(/\s+/).length > 2) out.push((b.className || b.id || b.outerHTML.slice(0, 60)) + ' -> ' + JSON.stringify(name));
+    });
+    return out;
+  });
+  assert.deepEqual(missing, []);
+
+  const reload = '#stage .win.stream.plat-kick [data-a=reload]';
+  await page.hover(reload);
+  await page.waitForSelector('#tip.on');
+  assert.equal(await page.$eval('#tip', e => e.firstChild.textContent), 'Reload');
+  assert.equal(await page.getAttribute(reload, 'title'), null, 'no slow browser tooltip on top');
+  await page.hover('#stage .win.stream.plat-kick [data-a=max]');
+  await page.waitForFunction(() => document.querySelector('#tip').firstChild.textContent === 'Maximize');
+  assert.match(await page.textContent('#tip small'), /double-click the bar/, 'the longer title as a hint');
+  assert.equal(await page.getAttribute(reload, 'title'), 'Reload', 'the title is put back after');
+  await page.mouse.move(800, 600);
+  await page.waitForSelector('#tip:not(.on)', { state: 'attached' });
+});

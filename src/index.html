@@ -120,6 +120,11 @@ body.dragging .bar{cursor:grabbing}
 .help-tabs button{height:28px;padding:0 12px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;font-weight:600;font-size:12px}
 .help-tabs button:hover{color:var(--text)}
 .help-tabs button.on{background:var(--panel2);border-color:var(--line2);color:var(--text)}
+/* quick tooltips for buttons that only show an icon (see tipFor) */
+#tip{position:fixed;z-index:2147483647;pointer-events:none;max-width:260px;padding:5px 8px;border-radius:6px;border:1px solid var(--line2);
+  background:var(--panel);color:var(--text);font-size:12px;font-weight:600;line-height:1.3;box-shadow:0 6px 18px rgba(0,0,0,.45);opacity:0;transition:opacity .12s}
+#tip.on{opacity:1}
+#tip small{display:block;margin-top:2px;font-size:11px;font-weight:400;color:var(--muted)}
 .help-x{width:30px;height:28px;border:0;border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center}
 .help-x:hover{background:var(--line);color:var(--text)}
 .help-x svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
@@ -541,6 +546,10 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .dlg .dlg-foot{display:flex;gap:8px;justify-content:flex-end;align-items:center}
 .dlg .dlg-foot .dlg-note{margin-right:auto;font-size:11px;color:var(--muted)}
 .dlg .dlg-foot .btn{height:32px;padding:0 14px}
+#askDlg{z-index:100040}   /* above any dialog that asks */
+.dlg.ask{width:min(420px,calc(100vw - 32px))}
+.dlg.ask .dlg-sub{font-size:13px}
+.dlg.ask .btn.danger-fill{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:700}
 .spin{width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:-2px}
 @keyframes spin{to{transform:rotate(360deg)}}
 /* Import follows: the pear fills up while the channels are read (theme colours only) */
@@ -788,6 +797,11 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 <div id="sizehint"></div>
 <div id="toast" hidden><span></span><button class="btn">Undo</button></div>
 <div id="updBanner" hidden><span class="ub-txt"></span><button class="btn primary ub-go">Restart now</button><button class="btn ub-later">Later</button></div>
+<div class="dlg-bg" id="askDlg" hidden><div class="dlg ask" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askMsg">
+  <h3 id="askTitle"></h3>
+  <div class="dlg-sub" id="askMsg"></div>
+  <div class="dlg-foot"><button class="btn ask-no">Cancel</button><button class="btn primary ask-yes">OK</button></div>
+</div></div>
 <div class="dlg-bg" id="importDlg" hidden><div class="dlg" role="dialog" aria-modal="true">
   <h3><i class="pdot"></i><span class="dlg-title">Import follows</span></h3>
   <div class="dlg-sub"></div>
@@ -2986,23 +3000,23 @@ function renderPresets(){
     row.querySelector('b').textContent = p.name;
     row.querySelector('span').textContent = presetSummary(p);
     row.querySelector('.pr-load').onclick = () => { $('#layoutMenu').hidden = true; applyPreset(p); };
-    row.querySelector('.pr-up').onclick = () => {
-      if (!confirm(`Replace “${p.name}” with what's on screen now?`)) return;
+    row.querySelector('.pr-up').onclick = async () => {
+      if (!await ask(`Update “${p.name}”?`, `Replace this saved layout with what's on screen now.`, { ok: 'Update' })) return;
       presets[i] = capturePreset(p.name); savePresets(); activePreset = p.name; updateLayoutMenu(); flash(`Updated “${p.name}”`);
     };
-    row.querySelector('.pr-x').onclick = () => {
-      if (!confirm(`Delete the layout “${p.name}”?`)) return;
+    row.querySelector('.pr-x').onclick = async () => {
+      if (!await ask(`Delete the layout “${p.name}”?`, 'This can\'t be undone.', { ok: 'Delete', danger: true })) return;
       presets.splice(i, 1); savePresets(); if (activePreset === p.name) activePreset = ''; updateLayoutMenu();
     };
     box.appendChild(row);
   });
 }
-function savePresetFromInput(){
+async function savePresetFromInput(){
   const inp = $('#presetName'), name = inp.value.trim().slice(0, 40);
   if (!name){ inp.focus(); return; }
   if (!wins.length){ flash('Open some streams first'); return; }
   const i = presets.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
-  if (i >= 0 && !confirm(`A layout called “${presets[i].name}” already exists. Replace it?`)) return;
+  if (i >= 0 && !await ask(`Replace “${presets[i].name}”?`, 'A layout with this name already exists. Saving replaces it with what\'s on screen now.', { ok: 'Replace' })) return;
   const p = capturePreset(name);
   if (i >= 0) presets[i] = p; else presets.push(p);
   savePresets(); inp.value = ''; activePreset = name; updateLayoutMenu();
@@ -3245,7 +3259,7 @@ input.addEventListener('paste', () => setTimeout(() => { if (parseInput(input.va
 $('#auto').onclick = () => { lastLayout = 'auto'; autoLayout(); };
 $('#chatFocus').onclick = () => chatFocusLayout(lastLayout === 'chatfocus');
 $('#tile').onclick = tile;
-$('#clear').onclick = () => { if (wins.length && confirm('Close all windows?')) { [...wins].forEach(w => { stopCapture(w); w.el.remove(); }); wins = []; updateEmpty(); save(); } };
+$('#clear').onclick = async () => { if (wins.length && await ask('Close all windows?', 'Every stream, chat and other window closes. Undo brings them back.', { ok: 'Close all', danger: true })) { [...wins].forEach(w => { stopCapture(w); w.el.remove(); }); wins = []; updateEmpty(); save(); } };
 $('#focusBtn').onclick = () => { document.body.classList.add('focus'); input.blur(); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); };
 $('#reveal').addEventListener('mouseenter', () => document.body.classList.add('peek'));
 document.querySelector('header').addEventListener('mouseleave', () => document.body.classList.remove('peek'));
@@ -3465,8 +3479,8 @@ if (DESKTOP){
     am.hidden = true;
     if (b.classList.contains('am-imp')){ importFollows(p); return; }
     if (b.classList.contains('am-in')) window.kmv.openLogin(p);
-    else if (b.classList.contains('am-out')){ if (confirm(`Log out of ${name} in this app? ${name} chats will show as logged out until someone logs in again.`)) await doLogout(p); }
-    else if (b.classList.contains('am-sw')){ if (confirm(`Switch ${name} account? This logs out, then opens the ${name} login so someone else can sign in.`)){ await doLogout(p); window.kmv.openLogin(p); } }
+    else if (b.classList.contains('am-out')){ if (await ask(`Log out of ${name}?`, `${name} chats in this app will show as logged out until someone logs in again.`, { ok: 'Log out', danger: true })) await doLogout(p); }
+    else if (b.classList.contains('am-sw')){ if (await ask(`Switch ${name} account?`, `This logs out, then opens the ${name} login so someone else can sign in.`, { ok: 'Switch' })){ await doLogout(p); window.kmv.openLogin(p); } }
   });
   if (window.kmv.onAccountChanged) window.kmv.onAccountChanged(async info => {
     const p = info.platform || 'kick';
@@ -3518,7 +3532,7 @@ if (DESKTOP){
     yk.querySelector('.am-yk-add').onclick = add;
     ykIn.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); add(); } e.stopPropagation(); });
     yk.querySelector('.am-yk-rm').onclick = async () => {
-      if (!confirm('Remove the YouTube API key? YouTube live checks go back to reading each channel\'s page.')) return;
+      if (!await ask('Remove the YouTube API key?', 'YouTube live checks go back to reading each channel\'s page.', { ok: 'Remove', danger: true })) return;
       showYtKey(await window.kmv.ytKeyRemove().catch(() => null));
     };
     yk.querySelector('.am-yk-how').onclick = async () => {
@@ -4414,9 +4428,9 @@ function renderThemeList(){
     b.innerHTML = swatch(t.vars) + `<b></b>` + (t.note ? `<small></small>` : '') + (mine ? `<button class="th-del" title="Delete this theme">${icon.close}</button>` : '');
     b.querySelector('b').textContent = t.name;
     if (t.note) b.querySelector('small').textContent = t.note;
-    b.onclick = e => {
+    b.onclick = async e => {
       if (e.target.closest('.th-del')){
-        if (!confirm(`Delete the theme “${t.name}”?`)) return;
+        if (!await ask(`Delete the theme “${t.name}”?`, 'This can\'t be undone.', { ok: 'Delete', danger: true })) return;
         myThemes = myThemes.filter(x => x !== t); saveMyThemes(); renderThemeList(); return;
       }
       theme = { name: t.name, vars: { ...BUILTIN_THEMES[0].vars, ...t.vars }, edited: false };
@@ -4461,13 +4475,13 @@ function openThemeDlg(){ themeDlg.hidden = false; renderThemeDlg(); }
 themeDlg.querySelector('.dlg-cancel').onclick = () => { themeDlg.hidden = true; };
 themeDlg.addEventListener('pointerdown', e => { if (e.target === themeDlg) themeDlg.hidden = true; });
 themeDlg.querySelector('.th-reset').onclick = () => { theme = { name: 'Pear', vars: { ...BUILTIN_THEMES[0].vars }, edited: false }; applyTheme(true); renderThemeDlg(); };
-const saveThemeFromInput = () => {
+const saveThemeFromInput = async () => {
   const inp = themeDlg.querySelector('.th-name');
   let name = inp.value.trim().slice(0, 30);
   if (!name){ inp.focus(); flash('Type a name for your theme first'); return; }
   if (BUILTIN_THEMES.some(t => t.name.toLowerCase() === name.toLowerCase())) name += ' (mine)';
   const i = myThemes.findIndex(t => t.name.toLowerCase() === name.toLowerCase());
-  if (i >= 0 && !confirm(`You already have a theme called “${myThemes[i].name}”. Replace it?`)) return;
+  if (i >= 0 && !await ask(`Replace “${myThemes[i].name}”?`, 'You already have a theme with this name. Saving replaces it.', { ok: 'Replace' })) return;
   const t = { name, vars: { ...theme.vars } };
   if (i >= 0) myThemes[i] = t; else myThemes.push(t);
   saveMyThemes();
@@ -4560,6 +4574,103 @@ updateEmpty();
   });
   document.addEventListener('pointerdown', e => { if (!moreMenu.hidden && !moreMenu.contains(e.target) && !moreBtn.contains(e.target)) moreMenu.hidden = true; });
   fitHeader();
+})();
+
+/* ---------- asking before something can't be undone ----------
+   ask(title, message, { ok, danger }) -> Promise<true | false>. An in-app dialog instead of the browser's
+   confirm(), which ignores the theme, freezes the page while it's open and can open behind other windows.
+   Enter answers yes, Esc or clicking outside no. */
+const askDlg = $('#askDlg');
+let askDone = null;
+function ask(title, message, { ok = 'OK', danger = false } = {}){
+  if (askDone) askDone(false);
+  askDlg.querySelector('#askTitle').textContent = title;
+  askDlg.querySelector('#askMsg').textContent = message || '';
+  const yes = askDlg.querySelector('.ask-yes');
+  yes.textContent = ok;
+  yes.classList.toggle('primary', !danger); yes.classList.toggle('danger-fill', danger);
+  askDlg.hidden = false;
+  yes.focus();
+  return new Promise(resolve => {
+    askDone = v => { askDone = null; askDlg.hidden = true; resolve(v); };
+  });
+}
+window.ask = ask;   // for the tests
+askDlg.querySelector('.ask-yes').onclick = () => askDone && askDone(true);
+askDlg.querySelector('.ask-no').onclick = () => askDone && askDone(false);
+askDlg.addEventListener('pointerdown', e => {
+  if (e.target === askDlg && askDone) askDone(false);
+  e.stopPropagation();   // the menu that asked stays open behind it
+});
+document.addEventListener('keydown', e => {
+  if (!askDone) return;
+  if (e.key === 'Escape' || e.key === 'Enter'){ e.preventDefault(); e.stopImmediatePropagation(); askDone(e.key === 'Enter' && document.activeElement !== askDlg.querySelector('.ask-no')); }
+  else if (e.key !== 'Tab') e.stopImmediatePropagation();   // no keyboard shortcuts behind the dialog
+}, true);
+
+/* ---------- quick tooltips ----------
+   Buttons that show only an icon (or whose words are hidden because the toolbar is narrow) get a
+   one- or two-word name a moment after the pointer rests on them. The button's longer title, if it
+   says more, shows underneath as a hint. */
+const ttl = b => b.title || b.dataset.tipTitle || '';   // its title (kept aside while its tooltip shows)
+const TIPS = [
+  ['#capBtn', 'App window'], ['#helpBtn', 'Help'], ['#moreBtn', 'More'], ['#undoBtn', 'Undo'], ['#redoBtn', 'Redo'],
+  ['#themeBtn', 'Themes'], ['#mentBtn', 'Mentions'],
+  ['[data-a=feat]', b => b.classList.contains('on') ? 'Normal size' : 'Highlight'],
+  ['[data-a=star]', b => b.classList.contains('on') ? 'Unsave' : 'Save'],
+  ['[data-a=reload]', b => /different window/i.test(ttl(b)) ? 'Pick window' : 'Reload'],
+  ['[data-a=pop]', 'Pop out'], ['[data-a=max]', 'Maximize'], ['[data-a=mod]', 'Mod view'], ['[data-a=close]', 'Close'],
+  ['[data-v=mute], .fs-mute', 'Mute'],
+  ['[data-z="-1"]', 'Smaller text'], ['[data-z="1"]', 'Bigger text'],
+  ['.colnav [data-d="-1"], #colNav [data-d="-1"]', 'Scroll left'], ['.colnav [data-d="1"], #colNav [data-d="1"]', 'Scroll right'],
+  ['.cs-btn[data-d="-1"]', 'Previous'], ['.cs-btn[data-d="1"]', 'Next'],
+  ['.fs-mdock', 'Dock'], ['.fs-mfloat', 'Float'], ['.fs-mwin', 'Own window'],
+  ['.fs-play', b => /^play/i.test(ttl(b)) ? 'Play' : 'Pause'], ['.fs-rl', b => /reconnect/i.test(ttl(b)) ? 'Reconnect' : 'Refresh'],
+  ['.fs-pv', b => /^hide/i.test(ttl(b)) ? 'Hide preview' : 'Show preview'], ['.fs-x', 'Remove'], ['.fs-grip', 'Move'],
+  ['.help-x', 'Close'], ['.pr-up', 'Update'], ['.pr-x', 'Delete'], ['.th-del', 'Delete'],
+  ['#savedList .auto', 'Auto-open'], ['#savedList .bell', 'Notify'], ['#savedList .rm', 'Remove']
+];
+const hasWords = el => /[A-Za-z]{2,}/.test(el.innerText || '');
+// The short name for a control that shows no words, or '' when it doesn't need one (its words are showing).
+function tipFor(el){
+  if (!el || hasWords(el)) return '';
+  for (const [sel, name] of TIPS) if (el.matches(sel)) return typeof name === 'function' ? name(el) : name;
+  const hidden = (el.textContent || '').replace(/\s+/g, ' ').trim();   // words hidden by the narrow toolbar
+  return /[A-Za-z]{2,}/.test(hidden) ? (el.querySelector('.l-short') || el).textContent.trim() : '';
+}
+window.tipFor = tipFor;   // for the tests
+(function(){
+  const tip = document.createElement('div'); tip.id = 'tip'; document.body.appendChild(tip);
+  let target = null, timer = null;
+  const hide = () => {
+    clearTimeout(timer); tip.classList.remove('on');
+    if (target && target.dataset.tipTitle != null){ if (!target.title) target.title = target.dataset.tipTitle; delete target.dataset.tipTitle; }
+    target = null;
+  };
+  const show = el => {
+    const name = tipFor(el); if (!name || !el.isConnected) return;
+    const hint = el.dataset.tipTitle || '';
+    tip.innerHTML = ''; tip.append(name);
+    const norm = t => t.toLowerCase().replace(/[^a-z]/g, '');
+    if (hint && norm(hint) !== norm(name)){ const sm = document.createElement('small'); sm.textContent = hint; tip.appendChild(sm); }
+    const r = el.getBoundingClientRect(), tr = tip.getBoundingClientRect();
+    const below = r.bottom + 6 + tr.height < innerHeight;
+    tip.style.left = Math.round(Math.max(6, Math.min(innerWidth - tr.width - 6, r.left + r.width / 2 - tr.width / 2))) + 'px';
+    tip.style.top = Math.round(below ? r.bottom + 6 : r.top - 6 - tr.height) + 'px';
+    tip.classList.add('on');
+  };
+  document.addEventListener('pointerover', e => {
+    const el = e.target.closest && e.target.closest('button, .fs-grip');
+    if (el === target) return;
+    hide();
+    if (!el || !tipFor(el)) return;
+    target = el;
+    if (el.title){ el.dataset.tipTitle = el.title; el.removeAttribute('title'); }   // no slow browser tooltip on top of this one
+    timer = setTimeout(() => { if (target === el) show(el); }, 350);
+  });
+  document.addEventListener('pointerout', e => { if (target && !(e.relatedTarget && target.contains(e.relatedTarget))) hide(); });
+  ['pointerdown', 'keydown', 'wheel'].forEach(ev => document.addEventListener(ev, hide, true));
+  window.addEventListener('blur', hide);
 })();
 })();
 </script>

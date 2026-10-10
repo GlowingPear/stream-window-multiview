@@ -106,8 +106,8 @@ test('a working key is kept, and the page only hears that one is set', T, async 
 
 test('removing the key', T, async () => {
   await openMenu();
-  win.once('dialog', d => d.accept());
   await win.click('#accountMenu .am-yk-rm');
+  await win.click('#askDlg .ask-yes');   // "Remove the YouTube API key?"
   await win.waitForSelector('#accountMenu .am-yk-in', { state: 'visible' });
   assert.equal((await win.evaluate(() => window.kmv.ytKeyStatus())).set, false);
 });
