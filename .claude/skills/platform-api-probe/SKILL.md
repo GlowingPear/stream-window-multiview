@@ -11,7 +11,7 @@ The app talks to undocumented Kick, Twitch and YouTube APIs, which change withou
 
 - **Read-only.** GET requests (and Twitch GraphQL *queries*) only. Never follow, unfollow, chat, subscribe or change settings.
 - Use the developer's own account or a test account, and only with their OK.
-- Keep request counts low and don't loop without a limit.
+- Keep request counts low and don't loop without a limit. Kick is behind Cloudflare: bursts of requests (e.g. downloading its scripts to search them) or automated page loads can get the profile checked, and the check can't be passed while Playwright is attached (see `drive-app`).
 - Don't paste tokens, cookies or personal data into the PR or the chat. Report counts, field names and status codes.
 
 ## How
