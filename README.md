@@ -117,14 +117,14 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 
 ## Contributing and releases
 
-**Making a change:** open a pull request against `main`. Don't change the version number or `CHANGELOG.txt` in it. Write the pull request title as one line a user would understand (for example *"Add Hikari theme"*), because titles become the app's "What's new" entries. Every pull request builds the Windows and Mac installers as a test; they appear under the run's **Artifacts**.
+**Making a change:** open a pull request against `main`. Don't change the version number or `CHANGELOG.md` in it. Write the pull request title as one line a user would understand (for example *"Add Hikari theme"*), because titles become the app's "What's new" entries. Every pull request builds the Windows and Mac installers as a test; they appear under the run's **Artifacts**.
 
 **Publishing an update** (when one or more pull requests are merged):
 1. Go to **Releases → Draft a new release**.
 2. **Choose a tag:** type the new version, e.g. `v0.2.11`, and pick *Create new tag on publish*, target **main**. While in beta, raise the last number for each update (`v0.2.10` → `v0.2.11`); raise the middle one only for a big milestone (`v0.3.0`). `v1.0.0` is the first finished release.
 3. Click **Generate release notes** (lists the merged pull requests), tidy them if you like, and **Publish release** (leave "pre-release" unticked).
 
-The **Build installers** workflow then sets the version from the tag, adds the notes to `CHANGELOG.txt`, commits that to `main`, builds the installers and attaches them to the release. Everyone's app updates itself from there: installed copies download the new installer, copies run from source download the new files.
+The **Build installers** workflow then sets the version from the tag, adds the notes to `CHANGELOG.md`, commits that to `main`, builds the installers and attaches them to the release. Everyone's app updates itself from there: installed copies download the new installer, copies run from source download the new files.
 
 Notes:
 - Create the release from the latest `main`; the workflow stops if the tag points anywhere else.
@@ -143,12 +143,12 @@ Notes:
 | `updater.js` | Checks GitHub for a newer version, downloads it and installs it safely |
 | `build/icon.png` | Large app icon used for the Mac build |
 | `.github/workflows/build.yml` | On each release: stamps the version and changelog, builds the .exe and .dmg installers, attaches them |
-| `scripts/prepare-release.js` | Sets the version from the release tag and adds the release notes to `CHANGELOG.txt` |
-| `scripts/release-notes.js` | Turns a version's section of `CHANGELOG.txt` into release notes |
+| `scripts/prepare-release.js` | Sets the version from the release tag and adds the release notes to `CHANGELOG.md` |
+| `scripts/release-notes.js` | Turns a version's section of `CHANGELOG.md` into release notes |
 | `harden.js` | Turns on Electron's cookie-encryption fuse so saved logins are encrypted |
 | `signin-preload.js` | Makes Google's sign-in page accept the app |
 | `INSTRUCTIONS.txt` | How to use every feature (also shown in the app) |
-| `CHANGELOG.txt` | Version history (also shown in the app) |
+| `CHANGELOG.md` | Version history (also shown in the app) |
 
 ---
 

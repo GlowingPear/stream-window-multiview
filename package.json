@@ -38,7 +38,8 @@
       "!*.log"
     ],
     "asarUnpack": [
-      "*.txt"
+      "*.txt",
+      "CHANGELOG.md"
     ],
     "afterPack": "build/after-pack.js",
     "win": {

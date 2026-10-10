@@ -3,7 +3,7 @@
 #   2. When you want an update, publish a GitHub release with a new tag like v0.2.11
 #      (click "Generate release notes" to list the merged pull requests).
 #   3. This workflow then:
-#        - sets the version from the tag and adds the notes to CHANGELOG.txt,
+#        - sets the version from the tag and adds the notes to CHANGELOG.md,
 #          commits that to main and moves the tag onto that commit,
 #        - builds the Windows (.exe) and Mac (.dmg) installers from it,
 #        - attaches them to the release.
@@ -44,7 +44,7 @@ jobs:
             exit 1
           fi
 
-      - name: Set the version and update CHANGELOG.txt
+      - name: Set the version and update CHANGELOG.md
         env:
           NOTES: ${{ github.event.release.body }}
         run: |

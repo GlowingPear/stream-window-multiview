@@ -3776,13 +3776,13 @@ async function showHelp(tab){
     body.querySelector('.sc-grid').classList.toggle('off', !keysOn);
     return;
   }
-  const file = helpTab === 'news' ? 'CHANGELOG.txt' : 'INSTRUCTIONS.txt';
+  const file = helpTab === 'news' ? 'CHANGELOG.md' : 'INSTRUCTIONS.txt';
   foot.textContent = `${file} in the app folder`;
   let text = null;
   if (DESKTOP && window.kmv.readHelp){ try { text = await window.kmv.readHelp(file); } catch {} }
   else { try { const r = await fetch(file); if (r.ok) text = await r.text(); } catch {} }
   body.innerHTML = text ? helpHtml(text) : `<p>Open <code>${file}</code> in the app folder to read this.</p>`;
-  open.hidden = !(DESKTOP && window.kmv.openHelp);
+  open.hidden = !(DESKTOP && window.kmv.openHelp) || /\.md$/.test(file);
   open.onclick = () => window.kmv.openHelp(file);
 }
 helpDlg.querySelector('.help-x').innerHTML = icon.close;
@@ -3868,6 +3868,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.updateStatus){
   window.kmv.updateStatus().then(u => { updSt = u; }).catch(() => {});
   window.kmv.onUpdateStatus(u => { updSt = u; renderUpdates(); updBanner(u); });
   window.kmv.onUpdateShow(() => showHelp('upd'));
+  if (window.kmv.onHelpShow) window.kmv.onHelpShow(tab => showHelp(tab));
   $('#updBanner .ub-go').onclick = restartForUpdate;
   $('#updBanner .ub-later').onclick = () => { $('#updBanner').hidden = true; try { sessionStorage.setItem('smvUpdLater' + (updSt && updSt.installed), '1'); } catch {} };
   // First start after an update: show what's new.

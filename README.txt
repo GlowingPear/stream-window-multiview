@@ -3,7 +3,7 @@ STREAM MULTIVIEW — DESKTOP APP
 Watch several Kick, Twitch and YouTube streams and their chats at once.
 
 How to use every feature: INSTRUCTIONS.txt (or the ? button in the app).
-What changed in each version: CHANGELOG.txt (or ? > What's new).
+What changed in each version: CHANGELOG.md (or ? > What's new).
 
 FIRST TIME SETUP (Windows)
 1. Unzip this folder somewhere permanent (e.g. Documents\Stream Multiview).
