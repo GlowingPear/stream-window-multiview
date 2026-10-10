@@ -968,6 +968,12 @@ async function installUpdate() {
     if (!r.ok) throw new Error('download ' + r.status);
     const buf = Buffer.from(await r.arrayBuffer());
     const files = updater.appFiles(updater.readZip(buf));
+    // A brand-new release may still carry the previous version number for a minute or two
+    // (until the release workflow has stamped it): use the release's own version.
+    if (files['package.json'] && updState.latest) {
+      try { const p = JSON.parse(files['package.json'].toString('utf8'));
+        if (updater.compareVersions(updState.latest, p.version) > 0) { p.version = updState.latest; files['package.json'] = Buffer.from(JSON.stringify(p, null, 2) + '\n'); } } catch {}
+    }
     const backup = path.join(app.getPath('userData'), 'update-backup', app.getVersion() + '-' + Date.now());
     const res = updater.applyUpdate(__dirname, files, backup);
     updState = { ...updState, state: 'ready', installed: res.version, needsInstall: res.needsInstall };

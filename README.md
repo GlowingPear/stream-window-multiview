@@ -115,20 +115,21 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 
 ---
 
-## Publishing an update
+## Contributing and releases
 
-Everyone running the app updates from this repository, so it must be **public**, and `updateRepo` in `package.json` must name it, here `"updateRepo": "GlowingPear/stream-window-multiview"`.
+**Making a change:** open a pull request against `main`. Don't change the version number or `CHANGELOG.txt` in it. Write the pull request title as one line a user would understand (for example *"Add Hikari theme"*), because titles become the app's "What's new" entries. Every pull request builds the Windows and Mac installers as a test; they appear under the run's **Artifacts**.
 
-1. Make your changes.
-2. Raise `"version"` in `package.json`. The app only updates when this number goes up. While in beta, raise the last number for every update (`0.2.9` → `0.2.10`), and the middle number only for a big milestone (`0.2.x` → `0.3.0`). `1.0.0` is the first finished release.
-3. Add a section for the new version at the top of `CHANGELOG.txt`.
-4. Push to GitHub.
-5. Push a tag for the version, such as `v0.2.10` (or publish a release with that tag on GitHub). The **Build installers** workflow then builds the Windows and Mac installers and attaches them to the release, with notes taken from `CHANGELOG.txt`. Installed copies update from the release's installer; copies run from source update from the release's source code.
+**Publishing an update** (when one or more pull requests are merged):
+1. Go to **Releases → Draft a new release**.
+2. **Choose a tag:** type the new version, e.g. `v0.2.11`, and pick *Create new tag on publish*, target **main**. While in beta, raise the last number for each update (`v0.2.10` → `v0.2.11`); raise the middle one only for a big milestone (`v0.3.0`). `v1.0.0` is the first finished release.
+3. Click **Generate release notes** (lists the merged pull requests), tidy them if you like, and **Publish release** (leave "pre-release" unticked).
+
+The **Build installers** workflow then sets the version from the tag, adds the notes to `CHANGELOG.txt`, commits that to `main`, builds the installers and attaches them to the release. Everyone's app updates itself from there: installed copies download the new installer, copies run from source download the new files.
 
 Notes:
-- If the update changes the Electron version in `package.json`, users are asked to restart with their shortcut, which reinstalls the engine once.
+- Create the release from the latest `main`; the workflow stops if the tag points anywhere else.
+- If you turn on a rule that blocks direct pushes to `main`, allow **GitHub Actions** to bypass it, so the workflow can commit the version and changelog.
 - Copies that are a git clone (they have a `.git` folder) never update themselves. Use `git pull` there.
-- Old app files are backed up to the app's data folder (`update-backup`) before each update.
 
 ## Project structure
 
@@ -141,7 +142,8 @@ Notes:
 | `live.js` | Live-status parsing, link parsing, cookie-file reading and follow import helpers |
 | `updater.js` | Checks GitHub for a newer version, downloads it and installs it safely |
 | `build/icon.png` | Large app icon used for the Mac build |
-| `.github/workflows/build.yml` | Builds the .exe and .dmg installers on GitHub for every release |
+| `.github/workflows/build.yml` | On each release: stamps the version and changelog, builds the .exe and .dmg installers, attaches them |
+| `scripts/prepare-release.js` | Sets the version from the release tag and adds the release notes to `CHANGELOG.txt` |
 | `scripts/release-notes.js` | Turns a version's section of `CHANGELOG.txt` into release notes |
 | `harden.js` | Turns on Electron's cookie-encryption fuse so saved logins are encrypted |
 | `signin-preload.js` | Makes Google's sign-in page accept the app |
