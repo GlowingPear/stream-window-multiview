@@ -1,0 +1,74 @@
+// Bridge between the multiview pages and the desktop app.
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('kmv', {
+  desktop: true,
+  openWindow: (url, w, h) => ipcRenderer.invoke('open-window', url, w, h),
+  openLogin: plat => ipcRenderer.invoke('account:login', plat || 'kick'),
+  logout: plat => ipcRenderer.invoke('account:logout', plat || 'kick'),
+  accountsStatus: () => ipcRenderer.invoke('accounts:status'),
+  ytResolve: ch => ipcRenderer.invoke('yt:resolve', ch),
+  importFollows: plat => ipcRenderer.invoke('follows:import', plat),
+  onFollowsProgress: cb => ipcRenderer.on('follows:progress', (_e, p) => cb(p || {})),
+  importCookies: plat => ipcRenderer.invoke('cookies:import', plat),
+  platform: process.platform,
+  gameShape: d => ipcRenderer.send('game:shape', d),
+  gameOnTop: on => ipcRenderer.send('game:onTop', !!on),
+  gameAttach: d => ipcRenderer.invoke('game:attach', d),
+  gameRelease: () => ipcRenderer.invoke('game:release'),
+  gameStrip: on => ipcRenderer.invoke('game:strip', on),
+  gameFocus: () => ipcRenderer.invoke('game:focus'),
+  onGameDetached: cb => ipcRenderer.on('game:detached', (_e, d) => cb(d || {})),
+  captureSources: () => ipcRenderer.invoke('capture:sources'),
+  captureChoose: id => ipcRenderer.invoke('capture:choose', id),
+  readHelp: name => ipcRenderer.invoke('help:read', name),
+  openHelp: name => ipcRenderer.invoke('help:open', name),
+  appVersion: () => ipcRenderer.invoke('app:version'),
+  updateStatus: () => ipcRenderer.invoke('update:status'),
+  updateCheck: () => ipcRenderer.invoke('update:check'),
+  updateInstall: () => ipcRenderer.invoke('update:install'),
+  updateSettings: d => ipcRenderer.invoke('update:settings', d),
+  updateRestart: () => ipcRenderer.invoke('update:restart'),
+  onUpdateStatus: cb => ipcRenderer.on('update:status', (_e, s) => cb(s || {})),
+  onUpdateShow: cb => ipcRenderer.on('update:show', () => cb()),
+  securityGet: () => ipcRenderer.invoke('security:get'),
+  securitySetForget: (plat, on) => ipcRenderer.invoke('security:setForget', plat, on),
+  onAccountChanged: cb => ipcRenderer.on('account:changed', (_e, info) => cb(info || {})),
+  openExternal: url => ipcRenderer.invoke('open-external', url),
+  onReloadAll: cb => ipcRenderer.on('reload-all', () => cb()),
+
+  // Streams pop-out window
+  openStreams: specs => ipcRenderer.invoke('streams:open', specs),
+  closeStreams: () => ipcRenderer.invoke('streams:close'),
+  streamsOpen: () => ipcRenderer.invoke('streams:isOpen'),
+  reportStreams: list => ipcRenderer.send('streams:report', list),
+  addChat: channel => ipcRenderer.invoke('chat:add', channel),
+  onStreamsAdd: cb => ipcRenderer.on('streams:add', (_e, specs) => cb(specs)),
+  onStreamsReturned: cb => ipcRenderer.on('streams:returned', (_e, specs) => cb(specs)),
+  onStreamsState: cb => ipcRenderer.on('streams:state', (_e, open) => cb(open)),
+  onChatAdd: cb => ipcRenderer.on('chat:add', (_e, channel) => cb(channel)),
+
+  // Switch control in its own window
+  openSwitcher: () => ipcRenderer.invoke('switcher:open'),
+  closeSwitcher: () => ipcRenderer.invoke('switcher:close'),
+  sendSwitcherState: st => ipcRenderer.send('switcher:state', st),
+  onSwitcherCmd: cb => ipcRenderer.on('switcher:cmd', (_e, cmd) => cb(cmd)),
+  onSwitcherClosed: cb => ipcRenderer.on('switcher:closed', () => cb()),
+  switcherCmd: cmd => ipcRenderer.send('switcher:cmd', cmd),
+  onSwitcherState: cb => ipcRenderer.on('switcher:state', (_e, st) => cb(st)),
+  onSwitcherPinned: cb => ipcRenderer.on('switcher:pinned', (_e, on) => cb(on)),
+  switcherPin: on => ipcRenderer.invoke('switcher:pin', on),
+
+  // Live alerts for saved channels
+  watchLive: data => ipcRenderer.send('live:watch', data),
+  checkLiveNow: () => ipcRenderer.send('live:check-now'),
+  liveSnapshot: () => ipcRenderer.invoke('live:snapshot'),
+  onLiveStatus: cb => ipcRenderer.on('live:status', (_e, snap) => cb(snap)),
+  onWentLive: cb => ipcRenderer.on('live:went-live', (_e, slug, info) => cb(slug, info)),
+  onOpenChannel: cb => ipcRenderer.on('open-channel', (_e, slug) => cb(slug)),
+
+  // Chat mentions / replies
+  notifyMention: m => ipcRenderer.send('mention:notify', m),
+  detectMe: () => ipcRenderer.invoke('me:detect'),
+  onFocusChat: cb => ipcRenderer.on('focus-chat', (_e, channel) => cb(channel))
+});

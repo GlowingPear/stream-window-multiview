@@ -1,0 +1,15 @@
+{
+  "name": "stream-multiview",
+  "productName": "Stream Multiview",
+  "version": "2.5.0",
+  "updateRepo": "GlowingPear/stream-window-multiview",
+  "description": "Watch several Kick, Twitch and YouTube streams and chats at once.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "node harden.js && electron ."
+  },
+  "devDependencies": {
+    "electron": "^38.0.0"
+  }
+}

@@ -2,7 +2,7 @@
 
 A desktop app for watching **Kick, Twitch and YouTube** streams and chats side by side, with custom layouts, live alerts, a game focus mode and color themes.
 
-![Version](https://img.shields.io/badge/version-2.4-53fc18) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey) ![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848f)
+![Version](https://img.shields.io/badge/version-2.5-53fc18) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey) ![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848f)
 
 ---
 
@@ -41,6 +41,10 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - **Colors and themes**: 10 built-in themes, full color customization, and saved custom themes
 - Auto-pause streams you can't see, and "pause all except focus" to save bandwidth
 - Built-in instructions and a "What's new" list (the **?** button)
+
+**Automatic updates**
+- Checks this GitHub repository for new versions, installs them in the background, then asks you to restart
+- Help › Updates: check now, turn automatic updates on or off
 
 **Privacy and security**
 - One login per platform, kept between launches. Passwords are never stored, only each site's "stay signed in" session.
@@ -105,6 +109,21 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 
 ---
 
+## Publishing an update
+
+Everyone running the app updates from this repository, so it must be **public**, and `updateRepo` in `package.json` must name it, here `"updateRepo": "GlowingPear/stream-window-multiview"`.
+
+1. Make your changes.
+2. Raise `"version"` in `package.json` (e.g. `2.5.0` → `2.6.0`). The app only updates when this number goes up.
+3. Add a section for the new version at the top of `CHANGELOG.txt`.
+4. Push to GitHub.
+5. Recommended: create a **Release** with a tag such as `v2.6` and short notes. The app shows those notes, and it updates from the newest release. Without releases, it uses the version on the default branch.
+
+Notes:
+- If the update changes the Electron version in `package.json`, users are asked to restart with their shortcut, which reinstalls the engine once.
+- Copies that are a git clone (they have a `.git` folder) never update themselves. Use `git pull` there.
+- Old app files are backed up to the app's data folder (`update-backup`) before each update.
+
 ## Project structure
 
 | File | What it is |
@@ -114,6 +133,7 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 | `index.html` | The main app UI: windows, layouts, switch control, menus and themes |
 | `switcher.html` | The switch control when it's popped out into its own window |
 | `live.js` | Live-status parsing, link parsing, cookie-file reading and follow import helpers |
+| `updater.js` | Checks GitHub for a newer version, downloads it and installs it safely |
 | `harden.js` | Turns on Electron's cookie-encryption fuse so saved logins are encrypted |
 | `signin-preload.js` | Makes Google's sign-in page accept the app |
 | `INSTRUCTIONS.txt` | How to use every feature (also shown in the app) |

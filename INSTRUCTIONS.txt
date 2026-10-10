@@ -1,0 +1,153 @@
+﻿# Stream Multiview – How to use it
+
+Watch several Kick, Twitch and YouTube streams and their chats at once.
+In the app, click the ? button in the toolbar (or press F1) to read this.
+
+## Getting started
+- Install Node.js once from nodejs.org (the "LTS" version).
+- Double-click **Start Stream Multiview.bat**. The first start takes about a minute.
+- Optional: double-click **Create Desktop Shortcut.bat** for a desktop shortcut with the pear icon.
+- Always start the app with the .bat file or the shortcut. That keeps your saved logins encrypted.
+
+## Adding streams
+- Paste a link or name into the box at the top and press Enter.
+  - Kick: `kick.com/name` or just `name`
+  - Twitch: `twitch.tv/name` or `tw:name`
+  - YouTube channel: `youtube.com/@name` or `@name` (opens its live stream)
+  - YouTube video: any video link (plays without a chat)
+- The dropdown next to the box picks Stream + chat, Stream only or Chat only.
+- If a YouTube channel isn't live, its window says so and checks again every 2 minutes.
+
+## Moving windows around
+- Drag a window by its title bar. Resize it from any edge or corner.
+- Each window's name is a dropdown: pick another channel to swap the two windows.
+- Title bar buttons: volume and mute, + Chat, make big, save (☆), refresh, open in its own window, maximize, close.
+
+## Layouts (Layout menu)
+- **Focus view**: one stream (or another app's window) big with its chat, the rest in columns beside it.
+- **Game focus**: your game big, streams, chats and other windows stacked on the side (see "Playing a game" below).
+- **Columns**: every stream above its own chat. Scroll sideways when there are more than fit.
+- **Chat focus**: streams down the side at exact video size, chats get the rest.
+- **Auto layout** and **Tile**: arrange everything to fit the screen.
+- **Your layouts**: type a name and press Save to keep the current arrangement. Click it later to go back to it.
+- **Linked** (in Columns): a stream and its chat move together. Drag a title bar to reorder columns.
+
+## The switch control
+- A list of every open stream with pause / play, mute, volume, refresh, a small live preview (the arrow) and remove (×).
+- Click a name to make that stream big. Drag one name onto another to swap two streams.
+- Shift-click a mute button to hear only that stream.
+- Where it lives (toolbar Switch control button, or Layout menu > Switch control):
+  - Docked: under the big stream in Focus view.
+  - Floating: a panel you can drag and resize anywhere, in every layout.
+  - Own window: its own window, even on another monitor. The pin keeps it on top.
+- "Pause all except focus" pauses every stream except the big one.
+
+## Playing a game (Game focus)
+- Pick Layout > Game focus (or press G). The big area on the left is for your game, everything else goes in the side panel.
+- **Put a game here** (Windows): start your game in **Windowed** mode, click **Put a game here** in the game area's bar and pick the game. Its window moves into the game area and stays there when you change the panel size or move Stream Multiview. Click it and play.
+  - **No border** hides the game's own title bar so it fills the area. **Play** clicks you into the game. **Release** puts the game back where it was (leaving Game focus or closing the app does this too).
+  - If a game won't resize, set it to Windowed mode in its own settings and try again.
+- **See-through (play)**: the game area is a see-through hole. Whatever is behind Stream Multiview shows there and you can click into it. (On Linux, put the game behind the app yourself.)
+  - "Keep on top" keeps your streams visible when you click into the game.
+  - Any window you drag over the game area stays visible on top of the game.
+  - Works on Windows (and Linux). On a Mac use "Show a window" instead.
+- **Show a window**: put a stream or another app's window in the big area instead, using the dropdown or Pick window. Another app's window is only a picture, so you can't play a game through it.
+- S / M / L sets the side panel width, and "Panel left / right" moves it to the other side.
+- Pick any other layout to go back to normal.
+
+## Colours and themes
+- Click the palette button in the toolbar.
+- Pick a ready-made theme: Pear, Purple Night, Ocean, Sunset, Cherry, Neon Arcade, Retro Amber, Midnight Mono, Daylight (light) or Paper (light).
+- Change any colour with its colour box, or type a colour code like #3fb6ff. Changes show right away.
+- Type a name and click **Save theme** to keep it under "Your themes". The × deletes one of yours.
+- **Back to Pear** returns to the original colours.
+
+## Undo and redo
+- The curved arrows in the toolbar undo and redo changes to your windows: opening, closing, moving, resizing, swapping and layouts.
+- Keyboard: Ctrl+Z to undo, Ctrl+Y to redo.
+
+## Showing another app's window (e.g. Discord)
+- Click the screen button next to Add (or press W) and pick a window, like a Discord pop-out call or stream.
+- It appears as a live picture you can move and resize like any other window.
+- To click or type in it, use the real window. It can sit behind Stream Multiview, but don't minimize it.
+- The refresh button on that window lets you pick a different window.
+- They show up in the switch control too: click the name to make it the big one, drag it onto another name to swap places, pause to freeze the picture.
+- These windows aren't kept when you close the app.
+
+## Saved channels (★ Saved)
+- Click ☆ on any window to save its channel. Click a saved channel to open it.
+- Tabs: All, Kick, Twitch, YouTube. K / T / Y badges show each channel's site.
+- Live channels are listed first, with viewers and title. The Saved button shows how many are live.
+- Bell: desktop notification when that channel goes live.
+- Lightning: open that channel automatically when it goes live.
+- Import: add the channels you follow on Kick, Twitch or YouTube (you need to be logged in to that site in the app).
+- Open live, Open all and Save all open are at the bottom.
+
+## Logging in (person button)
+- Log in once to Kick, Twitch and YouTube. Every chat for that site uses the login.
+- Switch and Log out are on the same row. Import follows is there too.
+- If Google won't let you sign in to YouTube, use "Use your browser's YouTube login instead" at the bottom and follow the steps.
+- "Forget my login when I close the app": tick a site and its login is wiped every time you close the app.
+- The green lock means saved logins are encrypted on this PC.
+
+## Alerts
+- @ button: get a notification when someone mentions you or replies to you in a Kick or Twitch chat. Set your usernames there or click Detect.
+- Live alerts come from your saved channels while the app is running.
+
+## Saving bandwidth
+- Auto-pause hidden (toolbar): streams you can't see pause after 2 seconds and jump back to live when you can.
+- Pop out streams: move every stream into a separate window (for a second monitor). Chats stay here.
+- Pop out hidden (switch control): send only the streams you can't see to that window.
+
+## Other handy things
+- Chat − 100% +: make the text in every chat smaller or bigger.
+- Hide bar: hides the toolbar. Move the mouse to the top edge or press Esc to bring it back.
+- F11: full screen.
+- Clear: closes every window (Ctrl+Z brings them back).
+
+## Keyboard shortcuts
+To switch every shortcut off, untick "Use keyboard shortcuts" in Help > Keyboard shortcuts.
+Shortcuts work when the app has your keyboard. If you just clicked inside a stream or chat, click a title bar or an empty spot first.
+
+### General
+- F1 or ? : this help (shortcuts)
+- Ctrl+Z : undo
+- Ctrl+Y or Ctrl+Shift+Z : redo
+- N or / : type a link or name
+- B : saved channels
+- W : show another app's window
+- H : hide or show the toolbar
+- Esc : close menus and dialogs
+- F11 : full screen
+
+### Layouts
+- F : Focus view (again for Columns)
+- G : Game focus
+- C : Columns
+- Shift+C : Chat focus
+- T : Tile
+- A : Auto layout
+- L : Layout menu
+- S : switch control on or off
+
+### The big stream (in Focus view; otherwise the first stream)
+- 1 to 9 : make that stream big
+- Left / Right arrows : previous or next stream big (in Columns: scroll)
+- M : mute or unmute
+- Shift+M : mute every stream
+- Space or P : pause or play
+- Up / Down arrows : volume
+- R : refresh
+- Shift+R : refresh every stream
+
+## Updates
+- The app checks the project's GitHub page for new versions a few seconds after it starts, then every few hours.
+- When there's a new version it downloads and installs it by itself, then shows "Restart now / Later" in the corner.
+- Help (?) > Updates shows your version, lets you check right away, and has the "Update automatically" switch.
+- Your logins, saved channels, layouts and themes are kept. The old app files are backed up first.
+- If an update changes the app engine, close the app and start it again with your shortcut. It reinstalls the engine once (about a minute).
+
+## Keeping your logins safe
+- Your passwords are never saved, only the "stay signed in" login from each site, and it is encrypted.
+- Don't share the app's data folder (AppData\Roaming\Stream Multiview or Kick Multiview). Sharing the app folder itself is fine.
+- If you think a login was stolen, change that site's password and use its "log out of all sessions" option.

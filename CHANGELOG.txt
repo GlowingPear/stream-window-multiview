@@ -1,0 +1,102 @@
+﻿# What's new in Stream Multiview
+
+Big updates get a new number (1.1, 1.2 ...). Small fixes in between get a third number (1.4.1).
+
+## 2.5 (current)
+- Automatic updates from GitHub: the app checks for a newer version, installs it in the background and asks you to restart.
+- Help > Updates: check now, install, turn automatic updates on or off, and set the GitHub page.
+- "What's new" opens by itself the first time you start a new version.
+
+## 2.4
+- "Put a game here" (Windows): pick your game's window and it moves right into the game area and stays there, so you play it inside Stream Multiview. "No border" hides its title bar, "Release" gives it back.
+- Colours and themes (palette button): 10 ready-made themes, change any colour yourself, and save your own themes.
+
+## 2.3
+- Game focus layout: your game big, with streams, chats and other windows on the side.
+- See-through game area: the real game running behind Stream Multiview shows through and you can play it (Windows).
+- "Show a window" option to put a stream or another app's window in the game area instead.
+- Other apps' windows (e.g. Discord) now appear in the switch control: drag them to swap places, pause them, or click to make them the big one.
+- Checkbox to switch keyboard shortcuts off (Help > Keyboard shortcuts).
+- G shortcut for Game focus.
+
+## 2.2
+- Refresh button on every stream in the switch control.
+- Undo and redo for your windows (toolbar arrows, Ctrl+Z / Ctrl+Y): closing, opening, moving, resizing, swapping and layout changes.
+- Keyboard shortcuts, with a list in Help (press F1 or ?).
+- Show another app's window inside the app, like a Discord pop-out call or stream (toolbar screen button, or W). Move and resize it like any other window.
+- Help button (?) in the toolbar: Instructions, Keyboard shortcuts and this list.
+- New INSTRUCTIONS.txt and CHANGELOG.txt files.
+
+## 2.1
+- Saved logins are encrypted, locked to your Windows account (green lock in the account menu).
+- "Forget my login when I close the app" option for each site.
+- The cookies file from "Use your browser's YouTube login" is deleted automatically once you're signed in.
+- Kick / Twitch / YouTube badges (K, T, Y) on every saved channel and on the Saved tabs.
+
+## 2.0
+- Import follows: add the channels you follow on Kick, Twitch or YouTube to Saved, ticking the ones you want.
+- YouTube sign-in fix: Google's sign-in pages now accept the app more often.
+- "Use your browser's YouTube login" for when Google still refuses.
+
+## 1.9
+- The switch control can float anywhere in the window (in every layout) or move to its own window, even on another monitor.
+- Switch control button in the toolbar to show or hide it.
+- Focus view added to the top of the Layout menu.
+
+## 1.8.1
+- Fixed YouTube streams and videos not playing (error 152-4).
+
+## 1.8
+- Renamed from Kick Multiview to Stream Multiview, with a new pear icon.
+- Twitch and YouTube streams and chats, plus normal YouTube videos.
+- Log in separately to Kick, Twitch and YouTube.
+- Saved list split into tabs: All, Kick, Twitch, YouTube.
+- Save your own named layouts and load them from the Layout menu.
+- Every window's name is a dropdown to swap it with another stream or chat.
+- × in the switch control to remove a stream (with Undo).
+- Lightning button: open a saved channel automatically when it goes live.
+
+## 1.7
+- Account menu with Log out and Switch account.
+- "Pop out hidden" sends streams you can't see to the Streams window.
+
+## 1.6
+- Saved list sorted A–Z with live channels at the top.
+- Desktop notifications when a saved channel goes live.
+- "Side chats" setting for how many columns sit beside the big stream.
+- Step one stream or a whole page at a time.
+- Alerts when someone @mentions you or replies to you in chat.
+
+## 1.5
+- Strip above the columns with looping ‹ › arrows and a jump-to list.
+- Drag switch buttons onto each other to swap streams.
+- Auto-pause streams you can't see, and "Pause all except focus".
+- Easy switching between Chat focus, Columns and the highlight view.
+
+## 1.4.1
+- Fixed volume copying from one stream to another.
+- Mini previews now stay in place when the list scrolls.
+
+## 1.4
+- Switch control upgrades: pause / play, equal-size buttons, live mini previews and scrolling.
+
+## 1.3.1
+- Fixed windows overlapping the big stream.
+- Switch buttons under the big stream, with volume and mute.
+
+## 1.3
+- Columns layout: each stream above its chat, scrolling sideways.
+- Linked columns you can drag to reorder.
+- Highlight a stream to make it big.
+
+## 1.2
+- Chat focus layout: streams at exact video size, chats get the rest.
+- Pop out every stream into a separate window (e.g. a second monitor).
+
+## 1.1
+- Desktop app, so your Kick login is remembered.
+- Save channels to add them quickly.
+- Volume controls stay visible at any window size.
+
+## 1.0
+- First version: Kick streams and chats in windows you can drag, resize and snap together.
