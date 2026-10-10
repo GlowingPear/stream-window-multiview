@@ -229,6 +229,57 @@ test('themes: pick one, it sticks after a restart, and save your own', async t =
   assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()), '#123456');
 });
 
+test('themes: a black accent keeps buttons readable, and window borders have their own colour', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha');
+  const css = (sel, prop) => page.$eval(sel, (e, p) => getComputedStyle(e)[p], prop);
+  const setVar = async (label, hex) => { await page.fill(`#themeDlg .th-var:has(span:text-is("${label}")) .hex`, hex); };
+  await page.click('#themeBtn');
+
+  // Tron's case: Accent black (text on accent stays near-black) used to make the Done button solid black
+  await setVar('Accent', '#000000');
+  assert.equal(await css('#themeDlg .dlg-cancel', 'color'), 'rgb(255, 255, 255)', 'the button text turns white');
+  assert.notEqual(await css('#themeDlg .dlg-cancel', 'borderTopColor'), 'rgb(0, 0, 0)', 'the button keeps a visible outline');
+  assert.ok(await page.isVisible('#themeDlg .th-warn'), 'the editor explains what happened');
+  assert.match(await page.textContent('#themeDlg .th-warn'), /Window border/);
+
+  // the window border follows Accent until it's set, then has its own colour
+  assert.equal(await css('#stage .win.active', 'borderTopColor'), 'rgb(0, 0, 0)');
+  await setVar('Accent', '#53fc18');
+  assert.equal(await page.isVisible('#themeDlg .th-warn'), false, 'no warning for a readable theme');
+  await setVar('Window border', '#283034');
+  assert.equal(await css('#stage .win.active', 'borderTopColor'), 'rgb(40, 48, 52)', 'only the window border changed');
+  assert.equal(await css('#themeDlg .dlg-cancel', 'backgroundColor'), 'rgb(83, 252, 24)', 'accent buttons stay green');
+
+  await page.reload();
+  assert.equal(await css('#stage .win.active', 'borderTopColor'), 'rgb(40, 48, 52)', 'the window border colour is remembered');
+});
+
+test('themes: Tron (princess) is pink', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha');
+  await page.click('#themeBtn');
+  await page.click('#themeDlg .th-item:has(b:text-is("Tron (princess)"))');
+  const v = await page.evaluate(() => { const s = getComputedStyle(document.documentElement); return { accent: s.getPropertyValue('--accent').trim(), frame: s.getPropertyValue('--frame').trim() }; });
+  assert.deepEqual(v, { accent: '#ff5fae', frame: '#ff9fd0' });
+  assert.equal(await page.isVisible('#themeDlg .th-warn'), false, 'readable as it is');
+});
+
+test('every built-in theme is readable', async t => {
+  const page = await openApp(t);
+  await page.click('#themeBtn');
+  const problems = [];
+  const count = (await page.$$('#themeDlg .th-item')).length;
+  for (let i = 0; i < count; i++) {
+    const item = page.locator('#themeDlg .th-item').nth(i);      // the list is redrawn after each click
+    const name = await item.locator('b').textContent();
+    await item.click();
+    if (await page.isVisible('#themeDlg .th-warn')) problems.push(`${name}: ${await page.textContent('#themeDlg .th-warn')}`);
+  }
+  assert.ok((await page.$$('#themeDlg .th-item')).length >= 12);
+  assert.deepEqual(problems, []);
+});
+
 test('Help shows the instructions and this version\'s changelog', async t => {
   const page = await openApp(t);
   const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;

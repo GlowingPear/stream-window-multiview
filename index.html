@@ -9,6 +9,7 @@
 :root{
   --bg:#0a0c0d; --panel:#131719; --panel2:#1b2023; --line:#283034; --line2:#353e43;
   --text:#e7ede9; --muted:#87928c; --accent:#53fc18; --accent-ink:#0a0c0d; --danger:#ff5f5f;
+  --frame:var(--accent); --accent-edge:var(--accent);
   --head:52px;
 }
 *{box-sizing:border-box}
@@ -30,7 +31,7 @@ body.role-streams .brand-txt{display:inline !important}
 select{height:34px;padding:0 8px;border-radius:7px;border:1px solid var(--line2);background:var(--panel2)}
 .btn{height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);background:var(--panel2);cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--muted)}
-.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent-edge);font-weight:700}
 .btn.primary:hover{filter:brightness(1.08)}
 .btn.danger:hover{border-color:var(--danger);color:var(--danger)}
 .sep{width:1px;height:24px;background:var(--line);margin:0 4px}
@@ -58,7 +59,7 @@ body.focus #stage{top:0}
 /* ---------- windows ---------- */
 .win{position:absolute;display:flex;flex-direction:column;background:#000;border:1px solid var(--line2);
   border-radius:8px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.45);min-width:0}
-.win.active{border-color:var(--accent)}
+.win.active{border-color:var(--frame)}
 .win.anim{transition:left .22s ease,top .22s ease,width .22s ease,height .22s ease}
 .bar{height:30px;flex:none;display:flex;align-items:center;gap:7px;padding:0 4px 0 10px;background:var(--panel2);
   cursor:grab;user-select:none;touch-action:none}
@@ -163,6 +164,7 @@ body.dragging .bar{cursor:grabbing}
 .th-var span small{display:block;font-size:10.5px;color:var(--muted)}
 .th-var input[type=color]{width:34px;height:26px;border:1px solid var(--line2);border-radius:6px;background:none;padding:1px;cursor:pointer;flex:none}
 .th-var input.hex{width:76px;height:26px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);padding:0 6px;font:12px ui-monospace,Consolas,monospace;flex:none}
+.th-warn{margin-top:10px;padding:7px 10px;border-radius:8px;border:1px solid #e8b84a;color:#e8b84a;font-size:12px;line-height:1.4}
 .th-save{display:flex;gap:8px;margin-top:12px}
 .th-save input{flex:1;height:32px;padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);outline:none}
 .th-save input:focus{border-color:var(--accent)}
@@ -371,7 +373,7 @@ body.fs-moving,body.fs-moving *{cursor:grabbing !important;user-select:none}
 .btns [data-a=feat]{display:none}
 body.cols .btns [data-a=feat],body.chatfocus .win.stream .btns [data-a=feat]{display:grid}
 body.chatfocus .win.stream .bar,body.role-streams .win.stream .bar{cursor:grab}
-.win.swap-target{box-shadow:0 0 0 3px var(--accent),0 10px 30px rgba(0,0,0,.45)}
+.win.swap-target{box-shadow:0 0 0 3px var(--frame),0 10px 30px rgba(0,0,0,.45)}
 .fs-back{display:flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:6px;border:1px solid var(--line2);background:var(--panel2);
   cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;margin-left:auto}
 .fs-back + .fs-back{margin-left:0}
@@ -385,9 +387,9 @@ body.coldrag #stage{scroll-snap-type:none}
 .win.link-top{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-color:transparent}
 .win.link-bot{border-top-left-radius:0;border-top-right-radius:0;border-top-color:var(--line)}
 .win.link-top.active{border-bottom-color:transparent}
-.win.lifted{box-shadow:0 22px 50px rgba(0,0,0,.7),0 0 0 2px var(--accent);opacity:.93}
+.win.lifted{box-shadow:0 22px 50px rgba(0,0,0,.7),0 0 0 2px var(--frame);opacity:.93}
 .win.featured{scroll-snap-align:none !important}
-.win.featured.stream{border-color:var(--accent)}
+.win.featured.stream{border-color:var(--frame)}
 #featBg{position:absolute;top:0;bottom:0;left:0;background:var(--bg);z-index:89990;display:none;
   box-shadow:6px 0 16px rgba(0,0,0,.5);border-right:1px solid var(--line)}
 .linkbtn{display:flex;align-items:center;gap:6px}
@@ -748,6 +750,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <div class="th-main">
       <div class="th-sec">Customize <span class="th-cur"></span></div>
       <div class="th-vars"></div>
+      <div class="th-warn" hidden></div>
       <div class="th-save"><input class="th-name" placeholder="Name your theme…" maxlength="30" autocomplete="off" spellcheck="false"><button class="btn th-savebtn">Save theme</button></div>
     </div>
   </div>
@@ -4112,7 +4115,8 @@ const THEME_VARS = [
   ['--muted', 'Quiet text', 'Hints and labels'],
   ['--accent', 'Accent', 'Highlights and active things'],
   ['--accent-ink', 'Text on accent', 'Text on accent-coloured buttons'],
-  ['--danger', 'Warning', 'Mute, remove and errors']
+  ['--danger', 'Warning', 'Mute, remove and errors'],
+  ['--frame', 'Window border', 'Selected and big windows. Same as Accent until you set it']
 ];
 const TV = (bg, panel, panel2, line, line2, text, muted, accent, ink, danger) =>
   ({ '--bg': bg, '--panel': panel, '--panel2': panel2, '--line': line, '--line2': line2, '--text': text, '--muted': muted, '--accent': accent, '--accent-ink': ink, '--danger': danger });
@@ -4127,7 +4131,8 @@ const BUILTIN_THEMES = [
   { name: 'Midnight Mono', note: 'Black and white', vars: TV('#0b0b0c', '#141416', '#1c1c1f', '#2a2a2e', '#3a3a3f', '#ececee', '#8d8d94', '#e8e8ea', '#111113', '#ff5f5f') },
   { name: 'Daylight', note: 'Light mode', vars: TV('#eef1f3', '#ffffff', '#f3f5f7', '#dde2e6', '#c8cfd5', '#15191c', '#5f6b73', '#1f9d3a', '#ffffff', '#d93030') },
   { name: 'Paper', note: 'Soft light mode', vars: TV('#f4efe6', '#fffaf2', '#f7f1e6', '#e6dccb', '#d4c6ae', '#2b241a', '#7a6c58', '#c2571a', '#ffffff', '#c0392b') },
-  { name: 'Hikari', note: 'Blue and white', vars: TV('#eaf2fd', '#ffffff', '#f3f8ff', '#d4e3f7', '#b8cfee', '#0f2a4a', '#5a7396', '#1e6fe8', '#ffffff', '#e0394a') }
+  { name: 'Hikari', note: 'Blue and white', vars: TV('#eaf2fd', '#ffffff', '#f3f8ff', '#d4e3f7', '#b8cfee', '#0f2a4a', '#5a7396', '#1e6fe8', '#ffffff', '#e0394a') },
+  { name: 'Tron (princess)', note: 'Pretty in pink', vars: { ...TV('#16080f', '#210d18', '#2b1220', '#3f1d31', '#562a45', '#ffe8f4', '#c992b0', '#ff5fae', '#2b0017', '#ffb547'), '--frame': '#ff9fd0' } }
 ];
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 const cleanVars = v => { const o = {}; THEME_VARS.forEach(([k]) => { if (v && HEX_RE.test(v[k] || '')) o[k] = v[k].toLowerCase(); }); return o; };
@@ -4136,9 +4141,30 @@ let myThemes = [];
 try { myThemes = (JSON.parse(localStorage.getItem('kickMultiview.themes') || '[]') || []).filter(t => t && t.name && t.vars).map(t => ({ name: String(t.name).slice(0, 30), vars: cleanVars(t.vars) })); } catch {}
 let theme = { name: 'Pear', vars: { ...BUILTIN_THEMES[0].vars }, edited: false };
 try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'); if (t && t.vars) theme = { name: t.name || 'Custom', vars: { ...BUILTIN_THEMES[0].vars, ...cleanVars(t.vars) }, edited: !!t.edited }; } catch {}
+// Contrast between two colours (1 = the same, 21 = black on white), as in the accessibility guidelines.
+const lum = hex => { const [r, g, b] = [1, 3, 5].map(i => { const c = parseInt(hex.substr(i, 2), 16) / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+// The colours actually used: fills in the window border, and fixes text on accent buttons
+// that would be unreadable (e.g. a black accent with dark text turned the buttons solid black).
+function themeFixes(v){
+  const out = { ...v }, notes = [];
+  if (!HEX_RE.test(out['--frame'] || '')) out['--frame'] = v['--accent'];
+  out['--accent-edge'] = v['--accent'];
+  if (contrast(v['--accent'], v['--accent-ink']) < 3){
+    out['--accent-ink'] = contrast(v['--accent'], '#ffffff') >= contrast(v['--accent'], '#000000') ? '#ffffff' : '#000000';
+    notes.push(`Text on accent is too close to Accent to read, so accent buttons use ${out['--accent-ink'] === '#ffffff' ? 'white' : 'black'} text instead.`);
+  }
+  if (contrast(v['--accent'], v['--panel']) < 1.6 || contrast(v['--accent'], v['--bg']) < 1.6){
+    out['--accent-edge'] = v['--line2'];
+    notes.push('Accent is very close to the background, so highlighted things will be hard to see. To change only the border around windows, use Window border instead.');
+  }
+  return { vars: out, notes };
+}
 function applyTheme(persist){
-  const v = theme.vars, light = isLight(v);
-  $('#themeVars').textContent = ':root{' + Object.entries(v).map(([k, x]) => `${k}:${x}`).join(';') + `;color-scheme:${light ? 'light' : 'dark'}}`;
+  const v = theme.vars, light = isLight(v), fx = themeFixes(v);
+  $('#themeVars').textContent = ':root{' + Object.entries(fx.vars).map(([k, x]) => `${k}:${x}`).join(';') + `;color-scheme:${light ? 'light' : 'dark'}}`;
+  const warn = $('#themeDlg .th-warn');
+  if (warn){ warn.textContent = fx.notes.join(' '); warn.hidden = !fx.notes.length; }
   document.body.classList.toggle('theme-light', light);
   if (persist){ try { localStorage.setItem('kickMultiview.theme', JSON.stringify({ name: theme.name, vars: v, light, edited: theme.edited })); } catch {} }
   if (typeof swCss !== 'undefined'){ swCss = null; swLastSig = ''; if (typeof pushSwitcherState === 'function') pushSwitcherState(true); }
@@ -4175,15 +4201,19 @@ function renderThemeVars(){
   const box = themeDlg.querySelector('.th-vars');
   box.innerHTML = '';
   THEME_VARS.forEach(([k, label, hint]) => {
-    const r = document.createElement('label'); r.className = 'th-var';
+    const r = document.createElement('label'); r.className = 'th-var'; r.dataset.k = k;
     r.innerHTML = `<span></span><input type="color"><input class="hex" maxlength="7" spellcheck="false">`;
     r.querySelector('span').innerHTML = `${escH(label)}<small>${escH(hint)}</small>`;
     const c = r.querySelector('input[type=color]'), h = r.querySelector('.hex');
-    c.value = h.value = theme.vars[k];
+    c.value = h.value = theme.vars[k] || (k === '--frame' ? theme.vars['--accent'] : '#000000');
     const set = val => {
       if (!HEX_RE.test(val)) return false;
       theme.vars[k] = val.toLowerCase(); theme.edited = true;
       applyTheme(true); themeDlg.querySelector('.th-cur').textContent = `${theme.name} · edited`;
+      if (k === '--accent' && !theme.vars['--frame']){          // the window border follows Accent until it's set
+        const fr = themeDlg.querySelector('.th-var[data-k="--frame"]');
+        if (fr) fr.querySelector('input[type=color]').value = fr.querySelector('.hex').value = theme.vars[k];
+      }
       themeDlg.querySelectorAll('.th-item.on').forEach(x => x.classList.remove('on'));
       return true;
     };
