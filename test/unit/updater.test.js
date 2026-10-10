@@ -67,6 +67,21 @@ test('latestInfo reads the newest release and its installers', async () => {
   assert.deepEqual(info.assets.map(a => a.name), ['Stream-Multiview-Setup-0.2.11.exe'], 'only https downloads are kept');
 });
 
+test('latestInfo also gets the release notes as GitHub renders them (HTML)', async () => {
+  let accept = '';
+  const f = async (url, opt) => {
+    if (url.includes('/releases/latest')) {
+      accept = opt.headers.Accept;
+      return reply(200, { tag_name: 'v0.2.12', body: '## What\'s Changed\n* Fix by @x in https://github.com/o/r/pull/10', body_html: '<h2>What\'s Changed</h2><ul><li>Fix by <a href="https://github.com/x">@x</a></li></ul>' });
+    }
+    return reply(404, {});
+  };
+  const info = await latestInfo('o/r', f);
+  assert.equal(accept, 'application/vnd.github.full+json', 'asks for the notes as text and HTML');
+  assert.match(info.notes, /^## What's Changed/);
+  assert.match(info.notesHtml, /^<h2>What's Changed<\/h2>/);
+});
+
 test('latestInfo falls back to package.json on the main branch when there are no releases', async () => {
   const f = fakeFetch([
     ['/releases/latest', reply(404, {})],
@@ -77,6 +92,7 @@ test('latestInfo falls back to package.json on the main branch when there are no
   assert.equal(info.version, '0.2.12');
   assert.equal(info.source, 'branch');
   assert.deepEqual(info.assets, []);
+  assert.equal(info.notesHtml, '', 'no notes without a release');
 });
 
 test('latestInfo reports a missing repository and rejects bad names', async () => {

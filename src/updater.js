@@ -23,16 +23,18 @@ function compareVersions(a, b) {
 }
 
 const HDRS = { 'User-Agent': 'Stream-Multiview-Updater', Accept: 'application/vnd.github+json' };
+// For releases also ask for the notes as HTML, rendered (and cleaned) by GitHub like on the release page
+const RELEASE_HDRS = { ...HDRS, Accept: 'application/vnd.github.full+json' };
 
-// -> { version, zip, notes, name, source } or throws
+// -> { version, zip, notes, notesHtml, name, source } or throws
 async function latestInfo(repo, fetchFn) {
   if (!REPO_RE.test(repo || '')) throw new Error('repo');
-  let r = await fetchFn(`${API}/repos/${repo}/releases/latest`, { headers: HDRS });
+  let r = await fetchFn(`${API}/repos/${repo}/releases/latest`, { headers: RELEASE_HDRS });
   if (r.ok) {
     const d = await r.json();
     if (d && d.tag_name && !d.draft) {
       return { version: String(d.tag_name).replace(/^v/i, ''), zip: d.zipball_url || `${API}/repos/${repo}/zipball/${encodeURIComponent(d.tag_name)}`,
-        notes: String(d.body || '').slice(0, 4000), name: d.name || d.tag_name, source: 'release',
+        notes: String(d.body || '').slice(0, 4000), notesHtml: String(d.body_html || '').slice(0, 20000), name: d.name || d.tag_name, source: 'release',
         page: d.html_url || `https://github.com/${repo}/releases/latest`,
         assets: (Array.isArray(d.assets) ? d.assets : []).map(x => ({ name: String(x.name || ''), url: String(x.browser_download_url || ''), size: +x.size || 0 })).filter(x => /^https:\/\//.test(x.url) || /^http:\/\/127\.0\.0\.1/.test(x.url)) };
     }
@@ -45,7 +47,7 @@ async function latestInfo(repo, fetchFn) {
   r = await fetchFn(`${RAW}/${repo}/${encodeURIComponent(branch)}/package.json`, { headers: { 'User-Agent': HDRS['User-Agent'] } });
   if (!r.ok) throw new Error('http ' + r.status);
   const pkg = JSON.parse(await r.text());
-  return { version: String(pkg.version || '0'), zip: `${API}/repos/${repo}/zipball/${encodeURIComponent(branch)}`, notes: '', name: 'v' + pkg.version, source: 'branch',
+  return { version: String(pkg.version || '0'), zip: `${API}/repos/${repo}/zipball/${encodeURIComponent(branch)}`, notes: '', notesHtml: '', name: 'v' + pkg.version, source: 'branch',
     page: `https://github.com/${repo}/releases`, assets: [] };
 }
 

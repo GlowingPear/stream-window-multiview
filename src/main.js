@@ -879,7 +879,7 @@ ipcMain.on('game:onTop', (_e, on) => { if (mainWin && !mainWin.isDestroyed()) ma
 const updater = require('./updater');
 const updFile = () => stateFile('updates');
 let upd = null;            // { repo, auto, lastCheck }
-let updState = { state: 'idle', latest: null, notes: '', error: '', installed: null, needsInstall: false };
+let updState = { state: 'idle', latest: null, notes: '', notesHtml: '', error: '', installed: null, needsInstall: false };
 function loadUpd() {
   let d = {};
   try { d = JSON.parse(fs.readFileSync(updFile(), 'utf8')) || {}; } catch {}
@@ -904,7 +904,7 @@ async function checkForUpdate({ install = upd.auto, manual = false } = {}) {
     upd.lastCheck = Date.now(); saveUpd();
     const ahead = updater.compareVersions(info.version, updState.installed || app.getVersion()) > 0;
     const inst = INSTALLED ? updater.pickInstaller(info.assets, process.platform) : null;
-    updState = { ...updState, latest: info.version, notes: info.notes, zip: info.zip, page: info.page, asset: inst,
+    updState = { ...updState, latest: info.version, notes: info.notes, notesHtml: info.notesHtml, zip: info.zip, page: info.page, asset: inst,
       manual: INSTALLED && !inst,                       // no installer for this system in that release: download it from the page
       state: ahead ? 'available' : (updState.installed ? 'ready' : 'uptodate') };
     sendUpd();
