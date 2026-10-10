@@ -22,6 +22,8 @@ app.setName('Stream Multiview');
   const newData = path.join(app.getPath('appData'), 'Stream Multiview');
   app.setPath('userData', fs.existsSync(oldData) && !fs.existsSync(newData) ? oldData : newData);
 }
+// The app's code lives in src/; the project folder (package.json, help files) is one level up.
+const APP_ROOT = path.join(__dirname, '..');
 const ICON = path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png');
 
 // Let streams start with sound when you want them to (the app has its own mute buttons).
@@ -888,7 +890,7 @@ function loadUpd() {
   upd = { repo: updater.REPO_RE.test(d.repo || '') ? d.repo : (updater.REPO_RE.test(pkgRepo) ? pkgRepo : ''), auto: d.auto !== false, lastCheck: +d.lastCheck || 0 };
 }
 const saveUpd = () => { try { fs.writeFileSync(updFile(), JSON.stringify(upd)); } catch {} };
-const isGitCopy = () => !app.isPackaged && fs.existsSync(path.join(__dirname, '.git'));
+const isGitCopy = () => !app.isPackaged && fs.existsSync(path.join(APP_ROOT, '.git'));
 // Installed with the .exe / .dmg: updates come as the new installer. Run from the source folder: the files are replaced.
 const INSTALLED = app.isPackaged;
 const updStatus = () => ({ current: app.getVersion(), repo: upd.repo, auto: upd.auto, lastCheck: upd.lastCheck, git: isGitCopy(),
@@ -974,7 +976,7 @@ async function installUpdate() {
         if (updater.compareVersions(updState.latest, p.version) > 0) { p.version = updState.latest; files['package.json'] = Buffer.from(JSON.stringify(p, null, 2) + '\n'); } } catch {}
     }
     const backup = path.join(app.getPath('userData'), 'update-backup', app.getVersion() + '-' + Date.now());
-    const res = updater.applyUpdate(__dirname, files, backup);
+    const res = updater.applyUpdate(APP_ROOT, files, backup);
     updState = { ...updState, state: 'ready', installed: res.version, needsInstall: res.needsInstall };
   } catch (e) {
     const m = String(e && e.message || e);
@@ -1012,11 +1014,11 @@ function scheduleUpdates() {
 /* ---------- help files ---------- */
 const HELP_FILES = ['INSTRUCTIONS.txt', 'CHANGELOG.md'];
 // Installed builds keep the help files next to the packed app (app.asar.unpacked) so other programs can open them.
-const helpPath = name => app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked', name) : path.join(__dirname, name);
+const helpPath = name => app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked', name) : path.join(APP_ROOT, name);
 ipcMain.handle('help:read', (_e, name) => {
   if (!HELP_FILES.includes(name)) return null;
   try { return fs.readFileSync(helpPath(name), 'utf8'); } catch {}
-  try { return fs.readFileSync(path.join(__dirname, name), 'utf8'); } catch { return null; }
+  try { return fs.readFileSync(path.join(APP_ROOT, name), 'utf8'); } catch { return null; }
 });
 ipcMain.handle('help:open', (_e, name) => { if (HELP_FILES.includes(name)) shell.openPath(helpPath(name)); });
 ipcMain.handle('app:version', () => app.getVersion());

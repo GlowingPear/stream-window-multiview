@@ -22,7 +22,7 @@ async function openApp(t) {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.route(u => !u.href.startsWith(server.url), r => r.abort());
-  await page.goto(server.url + '/index.html');
+  await page.goto(server.url + '/src/index.html');
   t.after(async () => {
     await context.close();
     assert.deepEqual(errors, [], 'the page had no errors');

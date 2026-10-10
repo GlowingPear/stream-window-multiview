@@ -7,10 +7,10 @@
   "author": "GlowingPear",
   "license": "MIT",
   "homepage": "https://github.com/GlowingPear/stream-window-multiview",
-  "main": "main.js",
+  "main": "src/main.js",
   "private": true,
   "scripts": {
-    "start": "node harden.js && electron .",
+    "start": "node src/harden.js && electron .",
     "test": "node --test --test-timeout=60000 \"test/unit/*.test.js\"",
     "test:ui": "node --test --test-timeout=120000 \"test/ui/*.test.js\"",
     "test:launch": "node --test --test-timeout=120000 \"test/launch/*.test.js\"",
@@ -48,6 +48,7 @@
       "CHANGELOG.md"
     ],
     "afterPack": "build/after-pack.js",
+    "afterSign": "build/after-sign.js",
     "win": {
       "target": [
         {
@@ -57,7 +58,7 @@
           ]
         }
       ],
-      "icon": "icon.ico"
+      "icon": "src/icon.ico"
     },
     "nsis": {
       "oneClick": false,
