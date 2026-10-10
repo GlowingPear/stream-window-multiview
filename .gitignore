@@ -6,3 +6,5 @@ Thumbs.db
 # exported login files must never be committed
 *cookies*.txt
 .needs-install
+# Worktrees made by npm run worktree (one per branch)
+.worktrees/

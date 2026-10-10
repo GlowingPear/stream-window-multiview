@@ -41,7 +41,7 @@ Check the tools before promising captures (see the `drive-app` skill): Playwrigh
 npm run worktree -- <branch>
 ```
 
-It creates the branch from the latest `origin/main` next to the main checkout, runs `npm install` and checks the app engine. Work only in the printed folder from now on. Untracked local files (e.g. a `.envrc`) aren't copied: mention any that the developer may need.
+It creates the branch from the latest `origin/main` in `.worktrees/<branch>` inside the main checkout (ignored by git and left out of the installers), runs `npm install` and checks the app engine. Work only in the printed folder from now on. Untracked local files (e.g. a `.envrc`) aren't copied: mention any that the developer may need.
 
 ## 4. Capture "before"
 

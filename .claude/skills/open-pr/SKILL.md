@@ -50,7 +50,7 @@ gh pr create --base main --title "<title>" --body-file <body.md> --attach <file>
 Remove the worktree and branch:
 
 ```sh
-git worktree remove <folder>
+git worktree remove .worktrees/<branch>
 git branch -d <branch>
 ```
 

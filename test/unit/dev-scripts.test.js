@@ -27,8 +27,8 @@ test('npm run worktree options', () => {
   assert.throws(() => worktree.parseArgs([]), /branch a name/);
 });
 
-test('worktrees go next to the main checkout, named after the branch', () => {
+test('worktrees go in .worktrees inside the main checkout, named after the branch', () => {
   const main = path.join(path.sep, 'code', 'stream-window-multiview');
-  assert.equal(worktree.defaultDir(main, 'fix/Kick import!'), path.join(path.sep, 'code', 'stream-window-multiview-fix-kick-import'));
+  assert.equal(worktree.defaultDir(main, 'fix/Kick import!'), path.join(main, '.worktrees', 'fix-kick-import'));
   assert.equal(slug('--feature/A..B--'), 'feature-a..b');
 });

@@ -3,9 +3,9 @@
 //   npm run worktree -- fix/kick-import                 new branch from the latest origin/main
 //   npm run worktree -- fix/kick-import --base main     ... from another branch or commit
 //   npm run worktree -- fix/kick-import --path ../dir   ... in a folder of your choice
-// The worktree goes next to the main checkout (<folder>-<branch>), then gets npm install and the
-// app engine. Run "npm run dev" inside it. When the change is merged:
-//   git worktree remove <folder>   and   git branch -d <branch>
+// The worktree goes in .worktrees/<branch> inside the main checkout (git and the installers leave that
+// folder out), then gets npm install and the app engine. Run "npm run dev" inside it. When the change is
+// merged:   git worktree remove .worktrees/<branch>   and   git branch -d <branch>
 const fs = require('fs');
 const path = require('path');
 const { run, git, ensureElectron, slug } = require('./dev-tools');
@@ -30,12 +30,12 @@ function mainCheckout(dir) {
   return common ? path.dirname(common) : '';
 }
 
-const defaultDir = (main, branch) => path.join(path.dirname(main), `${path.basename(main)}-${slug(branch)}`);
+const defaultDir = (main, branch) => path.join(main, '.worktrees', slug(branch));
 
 function main() {
   let o;
   try { o = parseArgs(process.argv.slice(2)); } catch (e) { console.error(e.message); process.exit(1); }
-  if (o.help) { console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(0, 9).join('\n')); return; }
+  if (o.help) { console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(0, 10).join('\n')); return; }
 
   const here = path.join(__dirname, '..');
   const mainDir = mainCheckout(here);
@@ -43,6 +43,7 @@ function main() {
   if (!git(here, ['check-ref-format', '--branch', o.branch])) { console.error(`"${o.branch}" can't be a branch name.`); process.exit(1); }
   const dir = path.resolve(o.dir || defaultDir(mainDir, o.branch));
   if (fs.existsSync(dir)) { console.error(`${dir} already exists.`); process.exit(1); }
+  fs.mkdirSync(path.dirname(dir), { recursive: true });   // e.g. the .worktrees folder, the first time
 
   if (git(here, ['rev-parse', '--verify', '--quiet', `refs/heads/${o.branch}`])) {
     console.log(`Using the existing branch ${o.branch}.`);
