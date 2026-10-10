@@ -120,20 +120,26 @@ jobs:
             echo "::warning title=No Mac signing certificate::The MAC_CERT_P12 secret isn't set, so the Mac app is signed ad hoc and Mac users' logins won't survive updates."
             exit 0
           fi
+          # if a command fails, say which one on the run's summary page
+          trap 'echo "::error title=Mac certificate setup failed::line $LINENO: $BASH_COMMAND"' ERR
           KC="$RUNNER_TEMP/signing.keychain-db"; KC_PW=$(openssl rand -hex 16)
           printf '%s' "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
           security create-keychain -p "$KC_PW" "$KC"
           security set-keychain-settings -lut 21600 "$KC"
           security unlock-keychain -p "$KC_PW" "$KC"
-          security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security import "$RUNNER_TEMP/cert.p12" -k "$KC" -f pkcs12 -P "$P12_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/cert.p12"
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KC_PW" "$KC" > /dev/null
           security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
-          # it's self-signed, so tell this build machine to trust it for signing code
-          openssl pkcs12 -in "$RUNNER_TEMP/cert.p12" -nokeys -passin env:P12_PASSWORD -out "$RUNNER_TEMP/cert.pem"
-          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain "$RUNNER_TEMP/cert.pem"
-          rm -f "$RUNNER_TEMP/cert.p12"
+          NAME="Stream Multiview Code Signing"
+          HASH=$(security find-certificate -c "$NAME" -Z "$KC" | awk '/SHA-1/{print $NF; exit}')
+          [ -n "$HASH" ] || { echo "::error title=Mac certificate setup failed::the certificate isn't in the secret"; exit 1; }
+          # it's self-signed, so tell this build machine to trust it for signing code (if that's refused, signing may still work)
+          security find-certificate -c "$NAME" -p "$KC" > "$RUNNER_TEMP/cert.pem"
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain "$RUNNER_TEMP/cert.pem" \
+            || echo "::warning title=Mac certificate::couldn't mark the certificate as trusted on the build machine"
           security find-identity -p codesigning "$KC"
-          echo "MAC_SIGN_IDENTITY=Stream Multiview Code Signing" >> "$GITHUB_ENV"
+          echo "MAC_SIGN_IDENTITY=$HASH" >> "$GITHUB_ENV"
           echo "MAC_SIGN_KEYCHAIN=$KC" >> "$GITHUB_ENV"
 
       - name: Build installer
@@ -149,6 +155,7 @@ jobs:
         if: failure()
         shell: bash
         run: |
+          [ -f "$RUNNER_TEMP/build.log" ] || exit 0
           tail -n 40 "$RUNNER_TEMP/build.log" | sed -e 's/%/%25/g' -e 's/\r//g' | awk '{printf "%s%%0A", $0}' > tail.txt
           echo "::error title=Build log::$(cat tail.txt)"
 
