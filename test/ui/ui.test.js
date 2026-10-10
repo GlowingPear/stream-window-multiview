@@ -280,6 +280,48 @@ test('every built-in theme is readable', async t => {
   assert.deepEqual(problems, []);
 });
 
+test('the toolbar fits any window width, with the rest in the More menu', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel');
+  await press(page, 'c');                       // Columns adds the most toolbar buttons
+  const check = () => page.evaluate(() => {
+    const h = document.querySelector('header'), hr = h.getBoundingClientRect();
+    const cut = [...h.children].filter(e => !e.hidden && getComputedStyle(e).display !== 'none')
+      .map(e => [e.id || e.className, e.getBoundingClientRect()]).filter(([, r]) => r.width && (r.right > hr.right + 1 || r.left < hr.left - 1)).map(([n]) => n);
+    return { over: h.scrollWidth - h.clientWidth, cut, more: !document.querySelector('#moreBtn').hidden };
+  });
+  for (const width of [1920, 1600, 1440, 1280, 1100, 900, 760, 640]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.waitForTimeout(150);
+    const r = await check();
+    assert.equal(r.over, 0, `${width}px: the toolbar doesn't overflow`);
+    assert.deepEqual(r.cut, [], `${width}px: no button is cut off`);
+    if (width >= 1600) assert.equal(r.more, false, `${width}px: everything fits without the More menu`);
+  }
+
+  // at 640px the More menu holds the rest, and its buttons work
+  assert.ok(await page.isVisible('#moreBtn'));
+  await page.click('#moreBtn');
+  assert.ok(await page.isVisible('#moreMenu #themeBtn'), 'Colours and themes is in the More menu');
+  assert.ok(await page.isVisible('#moreMenu #clear'), 'so is Clear');
+  await page.click('#moreMenu #themeBtn');
+  assert.ok(await page.isVisible('#themeDlg'), 'and it opens the theme editor');
+  assert.equal(await page.isVisible('#moreMenu'), false, 'the menu closes');
+  await press(page, 'Escape');
+
+  // ticking a setting in the menu keeps the menu open and still works
+  await page.click('#moreBtn');
+  await page.uncheck('#moreMenu #snap');
+  assert.ok(await page.isVisible('#moreMenu'));
+  assert.equal(await page.isChecked('#snap'), false);
+
+  // wide again: everything is back in the toolbar
+  await page.setViewportSize({ width: 1920, height: 800 });
+  await page.waitForTimeout(150);
+  assert.equal(await page.$eval('#themeBtn', e => e.parentElement.tagName), 'HEADER');
+  assert.equal(await page.isVisible('#moreBtn'), false);
+});
+
 test('Help shows the instructions and this version\'s changelog', async t => {
   const page = await openApp(t);
   const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;

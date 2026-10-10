@@ -22,7 +22,7 @@ header{position:fixed;top:0;left:0;right:0;height:var(--head);z-index:100000;dis
   padding:0 12px;background:var(--panel);border-bottom:1px solid var(--line);transition:transform .2s ease}
 .brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.02em;margin-right:6px;white-space:nowrap}
 #layoutBtn{max-width:190px;overflow:hidden;text-overflow:ellipsis;flex:none}
-@media (max-width:2100px){ .brand-txt{display:none} .brand{margin-right:0} }
+header.c1 .brand-txt{display:none} header.c1 .brand{margin-right:0}
 body.role-streams .brand-txt{display:inline !important}
 .brand .pear{width:20px;height:20px;fill:var(--accent);color:var(--accent);filter:drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 35%, transparent))}
 #url{flex:1;min-width:120px;max-width:440px;height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);
@@ -547,7 +547,7 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 #loginBtn .acct-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #loginBtn.has-acct svg{color:var(--accent)}
 #loginBtn .acct-car{font-size:10px;color:var(--muted)}
-@media (max-width:1800px){ #loginBtn.has-acct .acct-name{display:none} }
+header.c1 #loginBtn.has-acct .acct-name{display:none}
 
 /* ---------- saved panel ---------- */
 #savedPanel{position:fixed;top:calc(var(--head) + 6px);left:12px;z-index:100003;width:380px;max-height:78vh;
@@ -591,15 +591,32 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .sp-foot{display:flex;gap:6px}
 .sp-foot .btn{flex:1;height:32px}
 
-@media (max-width:1800px){ .linkbtn span{display:none} .linkbtn{padding:0 9px} body.cols .brand{display:none} }
-@media (max-width:1500px){ #colPos{display:none} }
+/* The toolbar fits itself to the window (fitHeader): first shorter labels (c1), then tighter
+   buttons (c2, c3), then the least-used controls move into the ⋯ More menu. */
 .l-short{display:none}
-@media (max-width:1700px){ .l-long{display:none} .l-short{display:inline} }
-@media (max-width:1500px){ header{gap:6px} .btn{padding:0 9px} .brand{display:none} .zoom span:first-child{display:none} .zoom{padding-left:4px} }
-@media (max-width:1500px){ #swBtn span{display:none} #swBtn{padding:0 9px} .ibtn{width:30px} }
-@media (max-width:1700px){ .zoom span:first-child{display:none} .zoom{padding-left:4px} #msg{max-width:170px} }
-@media (max-width:1400px){ #redoBtn{display:none} #layoutBtn{max-width:112px} #msg{max-width:120px} #mode{max-width:104px} header{gap:4px} }
-@media (max-width:900px){ .hide-sm{display:none} }
+header.c1 .linkbtn span{display:none} header.c1 .linkbtn{padding:0 9px} body.cols header.c1 .brand{display:none}
+header.c1 .l-long{display:none} header.c1 .l-short{display:inline}
+header.c1 .zoom span:first-child{display:none} header.c1 .zoom{padding-left:4px} header.c1 #msg{max-width:170px}
+header.c2{gap:6px} header.c2 .btn{padding:0 9px} header.c2 .brand{display:none} header.c2 #colPos{display:none}
+header.c2 #swBtn span{display:none} header.c2 .ibtn{width:30px}
+header.c3{gap:4px;padding:0 8px} header.c3 #layoutBtn{max-width:112px} header.c3 #msg{max-width:120px} header.c3 #mode{max-width:104px}
+header.c3 #url{min-width:110px}
+#moreBtn{font-size:16px;letter-spacing:1px;line-height:1}
+#moreBtn[hidden]{display:none}
+#moreMenu{width:240px;right:12px}
+#moreMenu > *{width:100%}
+#moreMenu .btn{display:flex;flex-direction:row;align-items:center;gap:8px;justify-content:flex-start;border-color:transparent;background:transparent;padding:0 10px;height:34px;text-align:left}
+#moreMenu .btn:hover{background:var(--panel2)}
+#moreMenu .btn.danger{color:var(--danger)}
+#moreMenu .btn span{font-size:inherit;color:inherit;line-height:inherit}
+#moreMenu .ibtn{width:100%}
+#moreMenu .ibtn::after{content:attr(data-label)}
+#moreMenu .l-long{display:inline !important} #moreMenu .l-short{display:none !important}
+#moreMenu .linkbtn span, #moreMenu #swBtn span{display:inline !important}
+#moreMenu label.chk{padding:8px 10px;color:var(--text)}
+#moreMenu .zoom, #moreMenu .colnav{justify-content:flex-start;padding:4px 10px}
+#moreMenu .zoom span:first-child{display:inline !important}
+#moreMenu .sep{display:none}
 </style>
 <style id="themeVars"></style>
 <script>
@@ -618,16 +635,16 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <option value="chat">Chat only</option>
   </select>
   <button class="btn primary" id="add">Add</button>
-  <button class="btn ibtn" id="capBtn" hidden title="Show another app's window inside Stream Multiview (e.g. a Discord pop-out). Shortcut: W"></button>
+  <button class="btn ibtn" id="capBtn" hidden data-label="Show another app's window" title="Show another app's window inside Stream Multiview (e.g. a Discord pop-out). Shortcut: W"></button>
   <button class="btn" id="savedBtn" title="Your saved channels">★ Saved</button>
   <button class="btn" id="loginBtn" title="Log in to Kick once; every chat window shares it" hidden>Log in ▾</button>
   <button class="btn" id="mentBtn" hidden title="Chat mentions and replies to you"><span class="mb-ico"></span><span class="mb-count" hidden></span></button>
   <span id="msg"></span>
   <div class="spacer"></div>
-  <label class="chk hide-sm" title="New streams start muted (browsers block unmuted autoplay)"><input type="checkbox" id="muted" checked><span class="l-long">Start muted</span><span class="l-short">Muted</span></label>
-  <label class="chk hide-sm" title="Snap windows to screen edges and each other"><input type="checkbox" id="snap" checked>Snap</label>
-  <label class="chk hide-sm" id="autoPauseLbl" title="Pause streams that are off-screen or behind the big stream (after 2 seconds) to save bandwidth; they jump back to live when you can see them again. Streams you can hear are never auto-paused."><input type="checkbox" id="autoPause"><span class="l-long">Auto-pause hidden</span><span class="l-short">Auto-pause</span></label>
-  <div class="sep hide-sm"></div>
+  <label class="chk" id="mutedLbl" title="New streams start muted (browsers block unmuted autoplay)"><input type="checkbox" id="muted" checked><span class="l-long">Start muted</span><span class="l-short">Muted</span></label>
+  <label class="chk" id="snapLbl" title="Snap windows to screen edges and each other"><input type="checkbox" id="snap" checked>Snap</label>
+  <label class="chk" id="autoPauseLbl" title="Pause streams that are off-screen or behind the big stream (after 2 seconds) to save bandwidth; they jump back to live when you can see them again. Streams you can hear are never auto-paused."><input type="checkbox" id="autoPause"><span class="l-long">Auto-pause hidden</span><span class="l-short">Auto-pause</span></label>
+  <div class="sep" id="chkSep"></div>
   <div class="zoom" id="chatZoom" hidden title="Chat text size: smaller fits more messages and emotes">
     <span>Chat</span><button data-z="-1" aria-label="Smaller chat text">−</button><span id="zoomPct">100%</span><button data-z="1" aria-label="Bigger chat text">+</button>
   </div>
@@ -637,19 +654,21 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <button data-d="-1" title="Scroll one column left" aria-label="Scroll left">‹</button><span id="colPos"></span><button data-d="1" title="Scroll one column right" aria-label="Scroll right">›</button>
   </div>
   <button class="btn linkbtn" id="linkBtn" hidden title="Linked: each stream and its chat move together — drag a title bar to move the column. Unlinked: move and resize windows freely."><i></i><span>Linked</span></button>
-  <button class="btn ibtn" id="undoBtn" hidden disabled title="Undo (Ctrl+Z)"></button>
-  <button class="btn ibtn" id="redoBtn" hidden disabled title="Redo (Ctrl+Y)"></button>
+  <button class="btn ibtn" id="undoBtn" hidden disabled data-label="Undo" title="Undo (Ctrl+Z)"></button>
+  <button class="btn ibtn" id="redoBtn" hidden disabled data-label="Redo" title="Redo (Ctrl+Y)"></button>
   <button class="btn" id="swBtn" hidden title="Switch control: show it as a panel you can move and resize, in any layout (click again to put it away)"><i></i><span class="l-long">Switch control</span><span class="l-short">Switch</span></button>
   <button class="btn" id="layoutBtn" hidden title="Arrange the windows">Layout ▾</button>
   <button class="btn" id="chatFocus" hidden>Chat focus</button>
   <button class="btn" id="auto" hidden>Auto layout</button>
   <button class="btn" id="tile" title="Evenly tile every window">Tile</button>
-  <button class="btn ibtn" id="themeBtn" title="Colours and themes"></button>
-  <button class="btn ibtn" id="helpBtn" title="Instructions, keyboard shortcuts and what's new (F1)"></button>
+  <button class="btn ibtn" id="themeBtn" data-label="Colours and themes" title="Colours and themes"></button>
+  <button class="btn ibtn" id="helpBtn" data-label="Help" title="Instructions, keyboard shortcuts and what's new (F1)"></button>
   <button class="btn" id="focusBtn" title="Hide this toolbar (move mouse to top edge or press Esc to bring it back)"><span class="l-long">Hide bar</span><span class="l-short">Hide</span></button>
   <button class="btn danger" id="clear">Clear</button>
   <button class="btn primary" id="backBtn" hidden title="Close this window and put the streams back in the main window">Bring streams back</button>
+  <button class="btn ibtn" id="moreBtn" hidden title="More: the toolbar buttons that don't fit" aria-label="More" aria-haspopup="true">⋯</button>
 </header>
+<div id="moreMenu" class="menu" hidden></div>
 <div id="reveal"></div>
 
 <div id="accountMenu" class="menu" hidden>
@@ -3932,7 +3951,7 @@ function bigStream(){
 function makeBig(s){ if (!s) return; setFeatured(colKey(s)); scrollX = 0; columnsLayout(); }
 function closeOverlays(){
   let any = false;
-  ['#helpDlg', '#themeDlg', '#capDlg', '#importDlg', '#cookieDlg', '#layoutMenu', '#accountMenu', '#savedPanel', '#mentPanel'].forEach(sel => {
+  ['#helpDlg', '#themeDlg', '#capDlg', '#importDlg', '#cookieDlg', '#layoutMenu', '#accountMenu', '#savedPanel', '#mentPanel', '#moreMenu'].forEach(sel => {
     const e = $(sel); if (e && !e.hidden){ e.hidden = true; any = true; }
   });
   const ae = document.activeElement;     // don't leave the keyboard in a box that just closed
@@ -4312,6 +4331,66 @@ if (DESKTOP && ROLE === 'main'){
   if (wasPopped){ popped = true; updatePopBtn(); window.kmv.openStreams([]); }   // reopen it like last time
 }
 updateEmpty();
+
+/* ---- The toolbar fits any window: shorter labels first, then tighter buttons, then the
+   least-used controls move into the ⋯ More menu (in this order) until everything fits. ---- */
+(() => {
+  const hdr = document.querySelector('header'), moreBtn = $('#moreBtn'), moreMenu = $('#moreMenu');
+  const LEVELS = ['c1', 'c2', 'c3'];
+  const ORDER = ['#snapLbl', '#autoPauseLbl', '#mutedLbl', '#chkSep', '#tile', '#helpBtn', '#themeBtn', '#clear', '#focusBtn',
+    '#redoBtn', '#popBtn', '#spotBtn', '#capBtn', '#chatZoom', '#linkBtn', '#undoBtn', '#colNav'];
+  const items = ORDER.map(sel => $(sel)).filter(Boolean).map(el => {
+    const mark = document.createComment(' ' + el.id + ' ');        // where it goes back in the toolbar
+    el.before(mark);
+    return { el, mark };
+  });
+  const shown = el => !el.hidden && getComputedStyle(el).display !== 'none';
+  const fits = () => hdr.scrollWidth <= hdr.clientWidth + 1;
+  let fitting = false, queued = false;
+  function fitHeader(){
+    queued = false; fitting = true;
+    // start from the full toolbar
+    items.forEach(({ el, mark }) => { if (el.parentNode !== hdr) mark.after(el); });
+    hdr.classList.remove(...LEVELS);
+    moreBtn.hidden = true;
+    for (const c of LEVELS){ if (fits()) break; hdr.classList.add(c); }
+    if (!fits()){
+      moreBtn.hidden = false;
+      for (const { el } of items){
+        if (fits()) break;
+        if (!shown(el)) continue;
+        moreMenu.appendChild(el);
+      }
+    }
+    // the More button only shows when something visible is in it
+    moreBtn.hidden = ![...moreMenu.children].some(el => !el.hidden && el.id !== 'chkSep');
+    if (moreBtn.hidden) moreMenu.hidden = true;
+    obs.takeRecords();                                   // ignore our own changes
+    fitting = false;
+  }
+  const refit = () => { if (fitting || queued) return; queued = true; requestAnimationFrame(fitHeader); };
+  const obs = new MutationObserver(refit);
+  obs.observe(hdr, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'class'] });
+  obs.observe(moreMenu, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] });
+  new ResizeObserver(refit).observe(hdr);
+  window.addEventListener('resize', refit);
+  if (document.fonts) document.fonts.ready.then(refit);
+
+  moreBtn.onclick = () => {
+    moreMenu.hidden = !moreMenu.hidden;
+    if (!moreMenu.hidden){
+      const r = moreBtn.getBoundingClientRect();
+      moreMenu.style.right = Math.max(8, innerWidth - r.right) + 'px';
+    }
+  };
+  // a button in the menu does its job and closes the menu; ticking a box or changing chat size keeps it open
+  moreMenu.addEventListener('click', e => {
+    const b = e.target.closest('.btn');
+    if (b && !b.closest('.zoom, .colnav')) setTimeout(() => { moreMenu.hidden = true; }, 0);
+  });
+  document.addEventListener('pointerdown', e => { if (!moreMenu.hidden && !moreMenu.contains(e.target) && !moreBtn.contains(e.target)) moreMenu.hidden = true; });
+  fitHeader();
+})();
 })();
 </script>
 </body>
