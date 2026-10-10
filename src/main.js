@@ -512,36 +512,47 @@ async function scrapeFollowPage(plat, url, { maxRounds = 70 } = {}) {
     return { items: [...found].map(([ch, name]) => ({ ch, name })) };
   } finally { if (!win.isDestroyed()) win.destroy(); }
 }
+// Kick's follow lists, best first: followed-page gives 20 channels a page, followed only 5.
+const KICK_FOLLOW_APIS = ['/api/v2/channels/followed-page', '/api/v2/channels/followed', '/api/v1/user/following'];
+const KICK_MAX_PAGES = 2000;   // only a safety stop: the list ends long before this
 async function kickFollows() {
   await ensureLiveWin();
   if (!liveWin) return { error: 'failed' };
-  const r = await liveWin.webContents.executeJavaScript(`(async () => {
-    const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
-    const t = ck('session_token'), x = ck('XSRF-TOKEN');
-    if (!t) return { login: true };
-    const h = { Accept: 'application/json', Authorization: 'Bearer ' + t };
-    if (x) h['X-XSRF-TOKEN'] = x;
-    const pages = []; let status = 0;
-    for (const base of ['/api/v2/channels/followed', '/api/v1/user/following']) {
-      let cursor = 0;
-      for (let i = 0; i < 60; i++) {
-        const u = base + (base.includes('v2') ? '?cursor=' + encodeURIComponent(cursor) : '?page=' + (i + 1));
-        let d;
-        try { const r = await fetch(u, { credentials: 'include', headers: h }); status = r.status; if (!r.ok) break; d = await r.json(); } catch (e) { break; }
-        pages.push(d);
-        const nc = d && (d.nextCursor ?? d.next_cursor ?? (d.meta && (d.meta.next_cursor ?? d.meta.nextCursor)) ?? (d.next_page_url ? 'p' : null));
-        const len = Array.isArray(d) ? d.length : Array.isArray(d && d.channels) ? d.channels.length : Array.isArray(d && d.data) ? d.data.length : 0;
-        if (nc == null || nc === cursor || !len) break;
-        cursor = nc;
-      }
-      if (pages.length) break;
+  // One API call from the kick.com page, so your login goes with it.
+  const kickGet = async u => {
+    if (!liveWin || liveWin.isDestroyed()) return null;
+    return liveWin.webContents.executeJavaScript(`(async () => {
+      const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
+      const t = ck('session_token'), x = ck('XSRF-TOKEN');
+      if (!t) return { login: true };
+      const h = { Accept: 'application/json', Authorization: 'Bearer ' + t };
+      if (x) h['X-XSRF-TOKEN'] = x;
+      try { const r = await fetch(${JSON.stringify(u)}, { credentials: 'include', headers: h }); return { status: r.status, d: r.ok ? await r.json() : null }; }
+      catch (e) { return { status: 0, d: null }; }
+    })()`, true).catch(() => null);
+  };
+  const pages = []; let status = 0;
+  for (const base of KICK_FOLLOW_APIS) {
+    let cursor = 0, found = 0;
+    for (let i = 0; i < KICK_MAX_PAGES; i++) {
+      const u = base + (base.includes('v2') ? '?cursor=' + encodeURIComponent(cursor) : '?page=' + (i + 1));
+      const r = await kickGet(u);
+      if (r && r.login) return { error: 'login' };
+      status = r ? r.status : 0;
+      if (!r || !r.d) break;
+      const d = r.d;
+      pages.push(d);
+      const nc = d.nextCursor ?? d.next_cursor ?? (d.meta && (d.meta.next_cursor ?? d.meta.nextCursor)) ?? (d.next_page_url ? 'p' : null);
+      const len = Array.isArray(d) ? d.length : Array.isArray(d.channels) ? d.channels.length : Array.isArray(d.data) ? d.data.length : 0;
+      if (len) progress('kick', `Found ${found += len} so far…`);
+      if (nc == null || nc === cursor || !len) break;
+      cursor = nc;
     }
-    return { status, pages };
-  })()`, true).catch(() => null);
-  if (r && r.login) return { error: 'login' };
-  const items = r && r.pages ? kickFollowsFrom(r.pages) : [];
+    if (pages.length) break;
+  }
+  const items = kickFollowsFrom(pages);
   if (items.length) return { items };
-  if (r && (r.status === 401 || r.status === 403) && !(r.pages || []).length) {
+  if ((status === 401 || status === 403) && !pages.length) {
     const s = await scrapeFollowPage('kick', 'https://kick.com/following');   // the API is blocked: read the Following page instead
     return s.items && s.items.length ? s : { error: 'login' };
   }
