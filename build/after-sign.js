@@ -8,7 +8,7 @@
 // same certificate keeps the signature's identity the same, so logins survive updates.
 // The build workflow sets MAC_SIGN_IDENTITY / MAC_SIGN_KEYCHAIN when the MAC_CERT_P12 secret exists.
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 
 exports.default = async function afterSign(context) {
   if (context.electronPlatformName !== 'darwin') return;
@@ -19,7 +19,8 @@ exports.default = async function afterSign(context) {
   execFileSync('codesign', ['--force', '--deep', '--timestamp=none', '--sign', id, ...(kc ? ['--keychain', kc] : []), app], { stdio: 'inherit' });
   execFileSync('codesign', ['--verify', '--deep', '--strict', app], { stdio: 'inherit' });
   // The identity macOS will remember the app by. It must not change between versions.
-  const out = execFileSync('codesign', ['-d', '-r-', app], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  const r = spawnSync('codesign', ['-d', '-r-', app], { encoding: 'utf8' });
+  const out = `${r.stdout || ''}\n${r.stderr || ''}`;
   const req = (out.match(/designated => (.*)/) || [])[1] || out.trim();
   console.log(`  • signed with "${id}"`);
   console.log(`::notice title=Mac app identity::${req}`);
