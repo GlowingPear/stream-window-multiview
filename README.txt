@@ -28,16 +28,12 @@ The account button (person icon) has a row for Kick, Twitch and YouTube, each
 with Log in, Switch and Log out (also in the Account menu). Sign in once per
 site; for Kick, do the email code once. Every chat window shares that login, and it is saved, so
 you stay logged in when you rearrange windows or restart the app.
-Tip: sign in with email + password. Google may refuse sign-in inside apps
-that aren't a regular browser; if YouTube login is blocked, chat still works
-for reading.
-YouTube sign-in: on Google's sign-in pages the app now presents itself as
-Firefox, which Google accepts more often. If Google still refuses, use
-"Use your browser's YouTube login instead" at the bottom of the account menu:
-  1. In your normal browser, install the extension "Get cookies.txt LOCALLY".
-  2. Go to youtube.com (signed in), click the extension, Export.
-  3. In the app, choose that file. Only the YouTube/Google login is copied.
-  4. Once you're signed in, the app deletes that file (it is your login).
+YouTube sign-in currently only works through the Firefox browser: Google
+blocks signing in inside apps, and Chrome and Edge lock their logins so they
+can't be copied. Sign in to youtube.com in Firefox, then in the app click
+YouTube's Log in and "Copy my login from Firefox". Only the YouTube/Google
+login is copied, straight from Firefox: no extension and no files.
+You don't need to sign in to watch YouTube (only to type in its chat).
 KEEPING YOUR LOGINS SAFE
 - Your passwords are never saved: sites give the app a login token, like a
   browser's "stay signed in". Those are saved ENCRYPTED, with a key tied to
@@ -49,8 +45,6 @@ KEEPING YOUR LOGINS SAFE
   folder but can't read encrypted logins (you'd just have to log in again).
 - "Forget my login when I close the app" (account menu): tick a site and its
   login is wiped every time the app closes. You log in again each start.
-- After "Use your browser's YouTube login", the app deletes the exported
-  cookies file once you're signed in.
 - If you ever think a login was stolen: change that site's password and use
   its "log out of all sessions" option. That ends every copied login.
 IMPORT FOLLOWS: "Import follows" on each account row (or Saved > Import)

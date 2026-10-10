@@ -1,9 +1,10 @@
 // Stream Multiview — desktop app (Electron main process)
 const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net } = require('electron');
 const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
-  validCh, isGoogleSignin, firefoxUA, parseCookieFile, kickFollowsFrom, twitchFollowsFrom, channelFromLink } = require('./live');
+  validCh, isGoogleSignin, firefoxUA, kickFollowsFrom, twitchFollowsFrom, channelFromLink } = require('./live');
 const path = require('path');
 const fs = require('fs');
+const { youtubeLoginFromFirefox } = require('./firefox-login');
 
 // Each platform's chats + login window share one saved session per platform, so you log in once.
 const PARTITION = 'persist:kick';
@@ -381,6 +382,8 @@ async function logout(plat = 'kick') {
 }
 function openLogin(plat = 'kick') {
   if (!PARTS[plat]) return;
+  // Google blocks signing in to YouTube inside the app: show how to sign in with Firefox instead.
+  if (plat === 'youtube'){ mainWin?.webContents.send('youtube:signin'); return; }
   const w = openSiteWindow(LOGIN_URL[plat], 1100, 800, PARTS[plat]);
   w?.on('closed', () => mainWin?.webContents.send('account:changed', { platform: plat, loggedOut: false }));
 }
@@ -422,19 +425,11 @@ function setupGoogleSignin(ses) {
   } catch {}
 }
 
-/* ---------- "use your browser's login": import a cookies file ---------- */
-const PLAT_DOMAINS = { kick: ['kick.com'], twitch: ['twitch.tv'], youtube: ['youtube.com', 'google.com'] };
-ipcMain.handle('cookies:import', async (_e, plat) => {
-  if (!PARTS[plat]) return { error: 'bad' };
-  const r = await dialog.showOpenDialog(mainWin, {
-    title: `Choose the cookies file you exported from your browser (${platformName(plat)})`,
-    properties: ['openFile'], filters: [{ name: 'Cookies file', extensions: ['txt', 'json'] }, { name: 'All files', extensions: ['*'] }]
-  });
-  if (r.canceled || !r.filePaths[0]) return { canceled: true };
-  let text = '';
-  try { text = fs.readFileSync(r.filePaths[0], 'utf8'); } catch { return { error: 'read' }; }
-  const list = parseCookieFile(text, PLAT_DOMAINS[plat]);
-  if (!list.length) return { error: 'none' };
+/* ---------- YouTube: copy the login from Firefox ----------
+   Google blocks signing in to YouTube inside apps, so YouTube sign-in goes through Firefox:
+   you sign in there, and the app copies just the YouTube / Google login out of Firefox's
+   cookie database (see firefox-login.js). No extension and no exported file. */
+async function setLoginCookies(plat, list) {
   const ses = session.fromPartition(PARTS[plat]);
   let n = 0;
   for (const c of list) {
@@ -451,11 +446,15 @@ ipcMain.handle('cookies:import', async (_e, plat) => {
     } catch {}
   }
   await ses.cookies.flushStore().catch(() => {});
-  mainWin?.webContents.send('account:changed', { platform: plat, loggedOut: false });
-  // The login is now inside the app, so the exported file (a plain-text copy of your login) is deleted.
-  let deleted = false;
-  if (n && await hasLogin(plat)) { try { fs.unlinkSync(r.filePaths[0]); deleted = true; } catch {} }
-  return { ok: true, count: n, deleted };
+  return n;
+}
+ipcMain.handle('youtube:fromFirefox', async () => {
+  let r;
+  try { r = youtubeLoginFromFirefox(); } catch { return { error: 'read' }; }
+  if (r.error) return r;
+  const n = await setLoginCookies('youtube', r.cookies);
+  mainWin?.webContents.send('account:changed', { platform: 'youtube', loggedOut: false });
+  return { ok: true, count: n, profile: r.profile, signedIn: await hasLogin('youtube') };
 });
 async function hasLogin(plat) {
   const names = { kick: /^session_token$/, twitch: /^auth-token$/, youtube: /^(SAPISID|__Secure-3PSID|LOGIN_INFO)$/ }[plat];

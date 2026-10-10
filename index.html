@@ -507,6 +507,7 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .dlg h3 .pdot{width:10px;height:10px;border-radius:50%}
 .dlg .dlg-sub{font-size:12px;color:var(--muted);line-height:1.45}
 .dlg .dlg-sub ol{margin:6px 0 0;padding-left:18px}.dlg .dlg-sub li{margin:3px 0}
+.dlg .dlg-sub p{margin:0 0 8px}
 .dlg .dlg-tools{display:flex;gap:6px;align-items:center}
 .dlg .dlg-tools input{flex:1;min-width:0;height:30px}
 .dlg .dlg-tools .btn{height:30px;padding:0 10px;font-size:12px}
@@ -686,7 +687,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <div class="am-watch"><span>Watch signed in: streams play with your login too, so you watch as your account, not as a logged-out viewer. Uses more memory.</span>
       <label class="chk"><input type="checkbox" data-w="kick">Kick</label><label class="chk"><input type="checkbox" data-w="twitch">Twitch</label><label class="chk"><input type="checkbox" data-w="youtube">YouTube</label></div>
   </div>
-  <div class="am-alt">Google won't let you sign in? <button class="linkish am-ck" data-p="youtube">Use your browser's YouTube login instead</button></div>
+  <div class="am-alt">YouTube sign-in currently only works through Firefox. <button class="linkish am-ff">Sign in to YouTube with Firefox</button><br>You don't need to sign in to watch YouTube.</div>
 </div>
 
 <div id="layoutMenu" class="menu" hidden>
@@ -783,18 +784,19 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <div class="cap-grid"></div>
   <div class="dlg-foot"><span class="dlg-note cap-note"></span><button class="btn cap-refresh">Refresh list</button><button class="btn dlg-cancel">Cancel</button></div>
 </div></div>
-<div class="dlg-bg" id="cookieDlg" hidden><div class="dlg" role="dialog" aria-modal="true">
-  <h3><i class="pdot" style="background:#ff3d3d"></i><span>Use your browser's YouTube login</span></h3>
-  <div class="dlg-sub">If Google won't let you sign in inside the app, you can copy the login from the browser you already use:
+<div class="dlg-bg" id="ffDlg" hidden><div class="dlg" role="dialog" aria-modal="true">
+  <h3><i class="pdot" style="background:#ff3d3d"></i><span>Sign in to YouTube</span></h3>
+  <div class="dlg-sub">
+    <p><b>YouTube sign-in currently only works through the Firefox browser.</b> Google blocks signing in inside apps like this one, and Chrome and Edge lock their logins so they can't be copied.</p>
+    <p>You don't need to sign in to watch YouTube streams. Signing in is only for typing in YouTube chat, importing the channels you follow, and "Watch signed in".</p>
     <ol>
-      <li>In Chrome, Edge or Firefox, install the free extension <b>"Get cookies.txt LOCALLY"</b>.</li>
-      <li>Open <b>youtube.com</b> there, make sure you're signed in, click the extension and choose <b>Export</b>. It saves a <code>.txt</code> file.</li>
-      <li>Click <b>Choose file</b> below and pick that file. The app copies the YouTube/Google login out of it and nothing else.</li>
-      <li>Once you're signed in, the app deletes that file for you (it is a copy of your login).</li>
+      <li>Install Firefox from <b>firefox.com</b> if you don't have it.</li>
+      <li>In Firefox, go to <b>youtube.com</b> and sign in.</li>
+      <li>Click <b>Copy my login from Firefox</b> below. The app copies only your YouTube/Google login straight from Firefox and keeps it encrypted. No extension, no files.</li>
     </ol>
-    Tip: if you sign out of YouTube in that browser later, this login stops working too (sign in there again and repeat).
+    If you sign out of YouTube in Firefox later, the app is signed out too: sign in there again and click the button again.
   </div>
-  <div class="dlg-foot"><span class="dlg-note ck-note"></span><button class="btn dlg-cancel">Close</button><button class="btn primary ck-pick">Choose file…</button></div>
+  <div class="dlg-foot"><span class="dlg-note ff-note"></span><button class="btn dlg-cancel">Close</button><button class="btn primary ff-copy">Copy my login from Firefox</button></div>
 </div></div>
 
 <script>
@@ -3385,7 +3387,7 @@ if (DESKTOP){
   };
   am.addEventListener('click', async e => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.classList.contains('am-ck')){ am.hidden = true; openCookieDlg(); return; }
+    if (b.classList.contains('am-ff')){ am.hidden = true; openFfDlg(); return; }
     const p = b.closest('.am-row').dataset.p, name = PLAT_NAME[p];
     am.hidden = true;
     if (b.classList.contains('am-imp')){ importFollows(p); return; }
@@ -3514,10 +3516,13 @@ if (DESKTOP){
     if (!r || r.error){
       const sub = dlg.querySelector('.dlg-sub');
       if (r && r.error === 'login'){
-        sub.innerHTML = `You need to be logged in to ${PLAT_NAME[p]} in this app first.` + (p === 'youtube' ? ' If Google won\'t let you sign in, use <button class="linkish imp-ck">your browser\'s YouTube login</button>.' : '');
-        list.innerHTML = `<div class="empty"><button class="btn imp-login">Log in to ${PLAT_NAME[p]}</button></div>`;
-        list.querySelector('.imp-login').onclick = () => { closeImport(); window.kmv.openLogin(p); flash(`Log in, close the login window, then click Import follows again.`); };
-        const ck = sub.querySelector('.imp-ck'); if (ck) ck.onclick = () => { closeImport(); openCookieDlg(); };
+        sub.textContent = `You need to be logged in to ${PLAT_NAME[p]} in this app first.` + (p === 'youtube' ? ' YouTube sign-in currently only works through Firefox.' : '');
+        list.innerHTML = `<div class="empty"><button class="btn imp-login">${p === 'youtube' ? 'Sign in to YouTube with Firefox' : 'Log in to ' + PLAT_NAME[p]}</button></div>`;
+        list.querySelector('.imp-login').onclick = () => {
+          closeImport();
+          if (p === 'youtube'){ openFfDlg(); return; }
+          window.kmv.openLogin(p); flash(`Log in, close the login window, then click Import follows again.`);
+        };
       } else {
         sub.textContent = r && r.error === 'busy' ? 'Another import is still running. Try again in a moment.'
           : `Couldn't read your ${PLAT_NAME[p]} follows right now. ${PLAT_NAME[p]} may have changed its site, or it's asking for a security check. Try again in a minute, or add channels by name.`;
@@ -3546,25 +3551,29 @@ if (DESKTOP){
     $('#importRow').addEventListener('click', e => { const b = e.target.closest('button[data-imp]'); if (b){ $('#importRow').hidden = true; importFollows(b.dataset.imp); } });
   }
 
-  /* ---- Use your browser's login (cookies file) when Google blocks sign-in in the app ---- */
-  const ckDlg = $('#cookieDlg');
-  function openCookieDlg(){ ckDlg.querySelector('.ck-note').textContent = ''; ckDlg.hidden = false; }
-  ckDlg.querySelector('.dlg-cancel').onclick = () => { ckDlg.hidden = true; };
-  ckDlg.addEventListener('pointerdown', e => { if (e.target === ckDlg) ckDlg.hidden = true; });
-  ckDlg.querySelector('.ck-pick').onclick = async () => {
-    if (!window.kmv.importCookies) return;
-    const note = ckDlg.querySelector('.ck-note');
-    note.textContent = '';
+  /* ---- YouTube sign-in: copy the login from Firefox (Google blocks signing in inside the app) ---- */
+  const ffDlg = $('#ffDlg');
+  function openFfDlg(){ ffDlg.querySelector('.ff-note').textContent = ''; ffDlg.hidden = false; }
+  if (window.kmv.onYoutubeSignin) window.kmv.onYoutubeSignin(openFfDlg);
+  ffDlg.querySelector('.dlg-cancel').onclick = () => { ffDlg.hidden = true; };
+  ffDlg.addEventListener('pointerdown', e => { if (e.target === ffDlg) ffDlg.hidden = true; });
+  ffDlg.querySelector('.ff-copy').onclick = async () => {
+    if (!window.kmv.youtubeFromFirefox) return;
+    const note = ffDlg.querySelector('.ff-note'), btn = ffDlg.querySelector('.ff-copy');
+    note.innerHTML = '<span class="spin"></span> Looking for your Firefox login…';
+    btn.disabled = true;
     let r = null;
-    try { r = await window.kmv.importCookies('youtube'); } catch {}
-    if (!r || r.canceled) return;
-    if (r.error){
-      note.textContent = r.error === 'none' ? 'No YouTube/Google login found in that file. Export it while on youtube.com and signed in.' : 'Couldn\'t read that file.';
+    try { r = await window.kmv.youtubeFromFirefox(); } catch {}
+    btn.disabled = false;
+    if (!r || r.error){
+      note.textContent = !r || r.error === 'read' ? 'Couldn\'t read Firefox\'s login. Close Firefox and try again.'
+        : r.error === 'nofirefox' ? 'Couldn\'t find Firefox on this computer. Install it from firefox.com and sign in to YouTube there first.'
+        : 'Firefox isn\'t signed in to YouTube. Open youtube.com in Firefox, sign in, then click the button again.';
       return;
     }
     const st = await refreshAccount();
-    if (st.youtube){ ckDlg.hidden = true; flash('Signed in to YouTube with your browser\'s login' + (r.deleted ? '. The cookies file was deleted for safety.' : '. Delete the cookies file now: it is your login.')); }
-    else note.textContent = `Copied ${r.count} cookies, but YouTube still looks signed out. Make sure you were signed in when you exported.`;
+    if (r.signedIn || st.youtube){ ffDlg.hidden = true; flash('Signed in to YouTube with your Firefox login'); }
+    else note.textContent = 'Copied the login, but YouTube still looks signed out. Sign out and back in to YouTube in Firefox, then try again.';
   };
 
   const zc = $('#chatZoom');
@@ -3951,7 +3960,7 @@ function bigStream(){
 function makeBig(s){ if (!s) return; setFeatured(colKey(s)); scrollX = 0; columnsLayout(); }
 function closeOverlays(){
   let any = false;
-  ['#helpDlg', '#themeDlg', '#capDlg', '#importDlg', '#cookieDlg', '#layoutMenu', '#accountMenu', '#savedPanel', '#mentPanel', '#moreMenu'].forEach(sel => {
+  ['#helpDlg', '#themeDlg', '#capDlg', '#importDlg', '#ffDlg', '#layoutMenu', '#accountMenu', '#savedPanel', '#mentPanel', '#moreMenu'].forEach(sel => {
     const e = $(sel); if (e && !e.hidden){ e.hidden = true; any = true; }
   });
   const ae = document.activeElement;     // don't leave the keyboard in a box that just closed

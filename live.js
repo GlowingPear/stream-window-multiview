@@ -149,40 +149,6 @@ function firefoxUA(platform = process.platform, now) {
   return `Mozilla/5.0 (${os}; rv:${v}.0) Gecko/20100101 Firefox/${v}.0`;
 }
 
-/* ---------- "use your browser's login": cookie files ----------
-   Reads a cookies.txt (Netscape format, from a "Get cookies.txt" browser extension) or a JSON
-   export (array of cookies). Only keeps cookies for the given domains. */
-function parseCookieFile(text, domains) {
-  const keep = d => domains.some(x => d === x || d.endsWith('.' + x));
-  const out = [];
-  const push = c => {
-    const domain = String(c.domain || '').trim().toLowerCase();
-    if (!domain || !c.name || !keep(domain.replace(/^\./, ''))) return;
-    out.push({
-      domain, hostOnly: !!c.hostOnly, path: c.path || '/', name: String(c.name), value: String(c.value ?? ''),
-      secure: !!c.secure, httpOnly: !!c.httpOnly,
-      expirationDate: Number.isFinite(+c.expirationDate) && +c.expirationDate > 0 ? +c.expirationDate : undefined,
-      sameSite: ({ no_restriction: 'no_restriction', none: 'no_restriction', lax: 'lax', strict: 'strict' })[String(c.sameSite || '').toLowerCase()] || 'unspecified'
-    });
-  };
-  const t = String(text || '').replace(/^﻿/, '').trim();
-  if (t.startsWith('[') || t.startsWith('{')) {
-    let d; try { d = JSON.parse(t); } catch { return []; }
-    const list = Array.isArray(d) ? d : Array.isArray(d.cookies) ? d.cookies : [];
-    list.forEach(c => push({ ...c, expirationDate: c.expirationDate ?? c.expires ?? c.expiry }));
-    return out;
-  }
-  for (let line of t.split(/\r?\n/)) {
-    let httpOnly = false;
-    if (line.startsWith('#HttpOnly_')) { httpOnly = true; line = line.slice(10); }
-    else if (!line.trim() || line.startsWith('#')) continue;
-    const f = line.split('\t');
-    if (f.length < 7) continue;
-    push({ domain: f[0], hostOnly: f[1].toUpperCase() !== 'TRUE', path: f[2], secure: f[3].toUpperCase() === 'TRUE', expirationDate: +f[4], name: f[5], value: f[6], httpOnly });
-  }
-  return out;
-}
-
 /* ---------- importing the channels you follow ---------- */
 // Kick: pull channel slugs out of whatever list Kick's API returns.
 function kickFollowsFrom(data) {
@@ -232,4 +198,4 @@ function channelFromLink(plat, href) {
   return SLUG_RE.test(m[1]) ? m[1].toLowerCase() : null;
 }
 
-module.exports = { isGoogleSignin, firefoxVersion, firefoxUA, parseCookieFile, kickFollowsFrom, twitchFollowsFrom, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };
+module.exports = { isGoogleSignin, firefoxVersion, firefoxUA, kickFollowsFrom, twitchFollowsFrom, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };
