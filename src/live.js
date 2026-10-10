@@ -205,6 +205,16 @@ function twitchFollowsFrom(d) {
   const last = edges.length ? edges[edges.length - 1].cursor : null;
   return { items, next: f.pageInfo && f.pageInfo.hasNextPage && last ? last : null };
 }
+// Whether you can moderate a channel, from each platform's answer: Kick's /api/v2/channels/<slug>/me,
+// Twitch's { currentUser { login } user(login) { self { isModerator } } }. null when the answer doesn't say.
+function canModerate(plat, d, ch) {
+  if (!d || typeof d !== 'object') return null;
+  if (plat === 'kick') return typeof d.is_moderator === 'boolean' ? !!(d.is_moderator || d.is_broadcaster) : null;
+  const me = d.data && d.data.currentUser, self = d.data && d.data.user && d.data.user.self;
+  if (!me) return null;
+  if (String(me.login || '').toLowerCase() === String(ch || '').toLowerCase()) return true;   // your own channel
+  return self ? !!(self.isModerator || self.isEditor) : false;
+}
 // A link on a "following" page -> channel id for that platform (or null).
 const RESERVED = {
   kick: /^(categories|category|browse|following|search|settings|dashboard|privacy-policy|terms-of-service|community-guidelines|dmca-policy|contact|careers|about|faq|clips|video|videos|popout|subscriptions|login|signup|home|messages|notifications|wallet|transactions)$/,
@@ -226,4 +236,4 @@ function channelFromLink(plat, href) {
   return SLUG_RE.test(m[1]) ? m[1].toLowerCase() : null;
 }
 
-module.exports = { isGoogleSignin, firefoxVersion, firefoxUA, KICK_FOLLOW_APIS, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };
+module.exports = { isGoogleSignin, firefoxVersion, firefoxUA, KICK_FOLLOW_APIS, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };

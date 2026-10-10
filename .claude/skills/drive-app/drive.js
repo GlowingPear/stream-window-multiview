@@ -25,6 +25,10 @@ function outDir(name = 'captures') {
 // Attach to a running dev copy. `pages()` lists every window and web view (streams, chats, hidden checkers).
 async function connect(port) {
   const browser = await playwright().chromium.connectOverCDP(`http://127.0.0.1:${port}`);
+  // Playwright tells the pages it's attached to that the system is in light mode, which turns sites
+  // that follow it (Twitch, YouTube) light while connected. Keep the real setting.
+  const real = pg => pg.emulateMedia({ colorScheme: null }).catch(() => {});
+  browser.contexts().forEach(c => { c.pages().forEach(real); c.on('page', real); });
   const pages = () => browser.contexts().flatMap(c => c.pages());
   const main = pages().find(isMain);
   if (!main) throw new Error('No Stream Multiview window on that port.');
@@ -40,6 +44,7 @@ async function launch({ dir = ROOT, profile = '', video = false, size = { width:
   const videoDir = video ? fs.mkdtempSync(path.join(outDir('video'), 'run-')) : '';
   const app = await playwright()._electron.launch({
     executablePath: p.electron, args: [p.dir], env: p.env, timeout: 60000,
+    colorScheme: 'no-override',   // keep the system's light/dark setting (see connect)
     ...(video ? { recordVideo: { dir: videoDir, size } } : {})
   });
   let main = null;

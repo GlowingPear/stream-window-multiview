@@ -192,7 +192,7 @@ body.dragging .bar{cursor:grabbing}
 @container (max-width:480px){ .tag,.vol .pct{display:none} .vol input{width:60px} }
 @container (max-width:380px){ .btns .txt{display:none} }
 @container (max-width:340px){ .vol input{width:48px} .btns [data-a=reload]{display:none} }
-@container (max-width:280px){ .btns [data-a=max]{display:none} }
+@container (max-width:280px){ .btns [data-a=max],.btns [data-a=mod]{display:none} }
 @container (max-width:230px){ .win.stream .title{display:none} }
 .shield{position:absolute;inset:0;display:none}
 body.dragging .shield{display:block}
@@ -835,6 +835,7 @@ let wins = [], zTop = 10, uid = 0;
 
 const icon = {
   reload:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>',
+  mod:'<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>',
   pop:'<svg viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
   max:'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>',
   close:'<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
@@ -1082,6 +1083,13 @@ const YT_FIT_JS = `(function(){
   }
   [0, 300, 1000, 2500, 5000].forEach(t => setTimeout(kick, t));
 })()`;
+// Kick's popout chat places a user's card (click a name) to the left of the chat, as on kick.com,
+// which is off the window's left edge here. Keep it inside the window.
+const KICK_CHAT_CSS = `#user-identity { left: 0 !important; right: auto !important; width: min(356px, 100vw) !important;
+  max-height: 100vh !important; overflow-y: auto !important; }`;
+// Twitch's user card is 340px wide, so in a narrower chat its right side (with the close button) is cut off.
+const TWITCH_CHAT_CSS = `.viewer-card-layer__draggable { max-width: 100vw !important; left: 0 !important; }
+.viewer-card-layer__draggable .viewer-card { width: auto !important; max-width: 100vw !important; min-width: 0 !important; }`;
 function trimYouTube(view, ch){
   if (!ch || platOf(ch) !== 'youtube') return;
   try { view.insertCSS(YT_CSS); } catch {}
@@ -1103,6 +1111,22 @@ function chatSrc(ch, vid){
   if (p === 'twitch') return `https://www.twitch.tv/popout/${encodeURIComponent(ch.slice(3))}/chat?popout=`;
   if (p === 'youtube') return vid ? `https://www.youtube.com/live_chat?is_popout=1&v=${vid}` : null;
   return `https://kick.com/popout/${encodeURIComponent(ch)}/chat`;
+}
+// Each platform's moderator dashboard for a channel (YouTube has none for each channel).
+function modUrl(ch){
+  const p = platOf(ch);
+  if (!ch || /^yt:/i.test(ch)) return null;
+  if (p === 'twitch') return `https://www.twitch.tv/moderator/${encodeURIComponent(ch.slice(3))}`;
+  return `https://dashboard.kick.com/moderator/${encodeURIComponent(ch)}`;
+}
+// The mod view button only shows where you can moderate (in the desktop app, which can ask the site
+// with your login). Asked once per channel, and again on Reload or a new login.
+const modOk = new Map();
+function checkMod(w, fresh){
+  const b = w.el.querySelector('[data-a=mod]');
+  if (!b || !DESKTOP || !window.kmv.modCheck) return;
+  if (fresh || !modOk.has(w.channel)) modOk.set(w.channel, window.kmv.modCheck(w.channel).catch(() => null));
+  modOk.get(w.channel).then(ok => { b.hidden = ok !== true; });
 }
 const srcFor = w => w.kind === 'stream' ? streamSrc(w.channel, w.muted, ytVidOf(w)) : w.kind === 'chat' ? chatSrc(w.channel, ytVidOf(w)) : w.url;
 function externalFor(w){
@@ -1195,6 +1219,7 @@ function createWin(spec, rect){
         ${(w.kind === 'stream' || w.kind === 'capture') && ROLE === 'main' ? `<button class="feat" data-a="feat" title="Highlight: make this stream big">${icon.feat}</button>` : ''}
         ${w.channel ? '<button class="star" data-a="star"></button>' : ''}
         <button data-a="reload" title="Reload">${icon.reload}</button>
+        ${modUrl(w.channel) ? `<button data-a="mod" title="Open the mod view for this channel"${DESKTOP ? ' hidden' : ''}>${icon.mod}</button>` : ''}
         <button data-a="pop" title="Open in its own browser window">${icon.pop}</button>
         <button data-a="max" title="Maximize / restore (or double-click the bar)">${icon.max}</button>
         <button data-a="close" class="x" title="Close">${icon.close}</button>
@@ -1216,6 +1241,7 @@ function createWin(spec, rect){
   wins.push(w);
   el.addEventListener('pointerdown', () => focusWin(w), true);
   mountView(w);
+  checkMod(w);
 
   /* volume */
   if (hasVol){
@@ -1251,6 +1277,10 @@ function createWin(spec, rect){
         const feat = w.kind === 'chat' ? 'width=380,height=760' : 'width=1100,height=680';
         window.open(externalFor(w), 'kmv_' + w.kind + '_' + (w.channel || w.id), feat);
       }
+    }
+    else if (a === 'mod') {
+      if (DESKTOP) window.kmv.openWindow(modUrl(w.channel), 1400, 900);
+      else window.open(modUrl(w.channel), 'kmv_mod_' + w.channel, 'width=1400,height=900');
     }
     else if (a === 'max') toggleMax(w);
     else if (a === 'chat'){
@@ -1394,6 +1424,7 @@ function saveSoon(){ clearTimeout(saveT); saveT = setTimeout(save, 600); }
 const ytCache = {};
 function reloadWin(w){
   if (w.kind === 'capture'){ openCapturePicker(w); return; }
+  checkMod(w, true);
   if (!w.view) resolveYt(w); else if (DESKTOP && w.ready) w.view.reload(); else w.view.src = srcFor(w);
   if (w.mini && w.mini.wv){ try { w.mini.wv.reload(); } catch {} }
 }
@@ -1431,6 +1462,7 @@ function mountView(w){
       if (hasVol){ w.enforceUntil = Date.now() + 8000; pushVol(w); }
       if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); }
       if (w.kind === 'chat') try { frame.setZoomFactor(chatZoom()); } catch {}
+      if (w.kind === 'chat') { const css = { kick: KICK_CHAT_CSS, twitch: TWITCH_CHAT_CSS }[platOf(w.channel)]; if (css) try { frame.insertCSS(css); } catch {} }
       if (w.kind === 'chat' && ROLE === 'main') injectMention(w);
     });
   }
@@ -3420,6 +3452,7 @@ if (DESKTOP){
   if (window.kmv.onAccountChanged) window.kmv.onAccountChanged(async info => {
     const p = info.platform || 'kick';
     wins.forEach(w => { if ((w.kind === 'chat' || (w.kind === 'stream' && watchSignedIn[p])) && w.ready && platOf(w.channel) === p) w.view.reload(); });   // that platform's chats (and signed-in streams) pick up the new login
+    modOk.clear(); wins.forEach(w => { if (platOf(w.channel) === p) checkMod(w); });
     if (info.loggedOut){ acct[p] = p === 'youtube' ? false : ''; showAccounts(); return; }
     await refreshAccount();
     if (ROLE === 'main' && typeof setMyName === 'function'){

@@ -59,6 +59,15 @@ const { video } = await run.close();                                 // WebM in 
 - **The last frames are lost when nothing changes on screen.** Video frames are only recorded when the screen changes, and the end is cut off when the app closes. Finish with a little movement, e.g. slowly scroll the result list and back, then wait ~1.5 s before `close()`.
 - **Check every video before using it:** `await drive.frames(video, [3, -0.3])` saves stills (seconds; negative counts from the end). Look at them: is the result on screen at the end, and is anything private visible?
 
+## Kick and Cloudflare
+
+Kick sits behind Cloudflare. Its check fails, and can't be passed even by hand, on a page that Playwright is attached to when it loads. Too many automated loads can also make Cloudflare start checking that profile.
+
+- **Load Kick pages without Playwright.** Start the copy with `npm run dev -- --profile <name> --debug <port>`, let its Kick windows load (complete the check by hand once if it appears; the pass is saved in the profile), and only then attach.
+- `connect()` only sees web views that open after it connects, so attach to an already-loaded Kick chat with plain DevTools commands instead (`/json/list` on the debug port, then `Runtime.evaluate` and `Page.captureScreenshot` over its WebSocket).
+- Keep Kick loads few: open each chat once, don't reopen it for every check, and don't restart the app for every step.
+- Twitch and YouTube have no such check, so Playwright is fine there.
+
 ## Don't get stuck
 
 - **Run anything that can take over a minute in the background** (the app, launch/UI tests, recordings) with an overall time limit, and read its output when it ends. Never block on it in the foreground.
