@@ -2,7 +2,13 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.2.10 (current)
+## 0.2.11 (current)
+- Add a test suite
+- Use CHANGELOG.md instead of CHANGELOG.txt
+- Themes: Window border colour, readable accent buttons, and Tron (princess)
+- Add a "Watch signed in" option for each site
+
+## 0.2.10
 - Installers: a Windows setup (.exe) and a Mac disk image (.dmg). No Node.js needed any more.
 - Installed copies update themselves by downloading the new installer.
 - Each GitHub release now gets the installers attached automatically.
