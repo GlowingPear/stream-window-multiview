@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.2.11 (current)
+## 0.2.12 (current)
+- YouTube sign-in through Firefox, and remove the cookies.txt method
+- Toolbar fits any window size, with a More menu for what doesn't fit
+
+## 0.2.11
 - Add a test suite
 - Use CHANGELOG.md instead of CHANGELOG.txt
 - Themes: Window border colour, readable accent buttons, and Tron (princess)
