@@ -4119,7 +4119,8 @@ const BUILTIN_THEMES = [
   { name: 'Retro Amber', note: 'Old terminal glow', vars: TV('#0c0a05', '#15120a', '#1d190e', '#2d2614', '#3e351c', '#f3e7c4', '#a8996c', '#ffbf2e', '#1a1200', '#ff5f45') },
   { name: 'Midnight Mono', note: 'Black and white', vars: TV('#0b0b0c', '#141416', '#1c1c1f', '#2a2a2e', '#3a3a3f', '#ececee', '#8d8d94', '#e8e8ea', '#111113', '#ff5f5f') },
   { name: 'Daylight', note: 'Light mode', vars: TV('#eef1f3', '#ffffff', '#f3f5f7', '#dde2e6', '#c8cfd5', '#15191c', '#5f6b73', '#1f9d3a', '#ffffff', '#d93030') },
-  { name: 'Paper', note: 'Soft light mode', vars: TV('#f4efe6', '#fffaf2', '#f7f1e6', '#e6dccb', '#d4c6ae', '#2b241a', '#7a6c58', '#c2571a', '#ffffff', '#c0392b') }
+  { name: 'Paper', note: 'Soft light mode', vars: TV('#f4efe6', '#fffaf2', '#f7f1e6', '#e6dccb', '#d4c6ae', '#2b241a', '#7a6c58', '#c2571a', '#ffffff', '#c0392b') },
+  { name: 'Hikari', note: 'Blue and white', vars: TV('#eaf2fd', '#ffffff', '#f3f8ff', '#d4e3f7', '#b8cfee', '#0f2a4a', '#5a7396', '#1e6fe8', '#ffffff', '#e0394a') }
 ];
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 const cleanVars = v => { const o = {}; THEME_VARS.forEach(([k]) => { if (v && HEX_RE.test(v[k] || '')) o[k] = v[k].toLowerCase(); }); return o; };

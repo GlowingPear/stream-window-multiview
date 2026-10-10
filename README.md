@@ -2,7 +2,7 @@
 
 A desktop app for watching **Kick, Twitch and YouTube** streams and chats side by side, with custom layouts, live alerts, a game focus mode and color themes.
 
-![Version](https://img.shields.io/badge/version-2.5-53fc18) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey) ![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848f)
+![Version](https://img.shields.io/badge/version-2.5.1-53fc18) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey) ![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848f)
 
 ---
 
@@ -38,7 +38,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 **Comfort**
 - Undo / redo for window changes (Ctrl+Z / Ctrl+Y)
 - Keyboard shortcuts (press **F1**), which you can switch off
-- **Colors and themes**: 10 built-in themes, full color customization, and saved custom themes
+- **Colors and themes**: 11 built-in themes, full color customization, and saved custom themes
 - Auto-pause streams you can't see, and "pause all except focus" to save bandwidth
 - Built-in instructions and a "What's new" list (the **?** button)
 

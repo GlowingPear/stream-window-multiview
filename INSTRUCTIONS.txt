@@ -57,7 +57,7 @@ In the app, click the ? button in the toolbar (or press F1) to read this.
 
 ## Colours and themes
 - Click the palette button in the toolbar.
-- Pick a ready-made theme: Pear, Purple Night, Ocean, Sunset, Cherry, Neon Arcade, Retro Amber, Midnight Mono, Daylight (light) or Paper (light).
+- Pick a ready-made theme: Pear, Purple Night, Ocean, Sunset, Cherry, Neon Arcade, Retro Amber, Midnight Mono, Daylight (light), Paper (light) or Hikari (blue and white).
 - Change any colour with its colour box, or type a colour code like #3fb6ff. Changes show right away.
 - Type a name and click **Save theme** to keep it under "Your themes". The × deletes one of yours.
 - **Back to Pear** returns to the original colours.

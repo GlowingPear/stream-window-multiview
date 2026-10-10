@@ -2,7 +2,10 @@
 
 Big updates get a new number (1.1, 1.2 ...). Small fixes in between get a third number (1.4.1).
 
-## 2.5 (current)
+## 2.5.1 (current)
+- New theme: Hikari (blue and white).
+
+## 2.5
 - Automatic updates from GitHub: the app checks for a newer version, installs it in the background and asks you to restart.
 - Help > Updates: check now, install, turn automatic updates on or off, and set the GitHub page.
 - "What's new" opens by itself the first time you start a new version.
