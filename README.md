@@ -127,10 +127,25 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 | `npm test` | Updates, the release scripts and login encryption. Needs nothing else installed. | seconds |
 | `npm run test:setup` | Run once: installs the test browser (Playwright). It isn't saved as a dependency of the app. | once |
 | `npm run test:ui` | The app's page in a headless browser: adding streams, layouts, the switch control, undo/redo, shortcuts, themes, Help | ~30 s |
-| `npm run test:launch` | Starts the real desktop app, adds a stream and quits (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~10 s |
+| `npm run test:launch` | Starts the real desktop app: start-up, adding a stream, logins and the Import follows dialog (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~1 min |
 | `npm run test:all` | All of the above | |
 
 The tests are in `test/`. When you add a feature, add a test next to the similar ones.
+
+**Working on a change:**
+
+| Command | What it does |
+|---|---|
+| `npm run worktree -- <branch>` | Creates the branch from the latest `main` in its own folder next to this one (a git worktree), with `npm install` done. Lets you work on several changes at once. |
+| `npm run dev` | Runs the app from the folder you're in as a separate copy with its own data folder, so it never touches your installed copy's logins and runs next to it. The window title shows the branch. |
+| `npm run dev -- --profile <name>` | The same, but keeps its logins and saved channels between runs |
+| `npm run dev -- --debug` | Also opens a debugging port on `127.0.0.1`, for test scripts (Playwright) |
+
+Both work on Windows, Mac and Linux, and download the app engine if `npm install` skipped it. Changes to `src/main.js` need a restart of the app; changes to `src/index.html` only **View › Reload everything**.
+
+Pull requests follow the template in `.github/pull_request_template.md`. For anything you can see in the app, add before/after screenshots or a short video, but don't commit them.
+
+**Claude Code:** `.claude/skills/` has skills for this workflow: `start-change` (plan, worktree, before/after captures), `run-dev`, `drive-app` (Playwright helper for checks, screenshots and videos), `open-pr` and `platform-api-probe` (read-only checks of Kick, Twitch and YouTube APIs).
 
 **Publishing an update** (when one or more pull requests are merged):
 1. Go to **Releases → Draft a new release**.
@@ -164,6 +179,9 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 | `build/` | Installer setup: the large Mac icon and the hook that turns on login encryption in the installers |
 | `scripts/prepare-release.js` | Sets the version from the release tag and adds the release notes to `CHANGELOG.md` |
 | `scripts/release-notes.js` | Turns a version's section of `CHANGELOG.md` into release notes |
+| `scripts/dev.js`, `scripts/worktree.js`, `scripts/dev-tools.js` | `npm run dev` and `npm run worktree` for developers |
+| `.claude/skills/` | Claude Code skills for making a change, running and driving the app, and opening a pull request |
+| `.github/pull_request_template.md` | What a pull request description should cover |
 | `test/` | Quick tests (`unit/`), UI tests (`ui/`) and the desktop-app launch test (`launch/`) |
 | `.github/workflows/build.yml` | On each release: stamps the version and changelog, runs the quick tests, builds the .exe and .dmg installers, attaches them |
 | `.github/workflows/test.yml` | Runs the tests on every pull request and every change to `main` |

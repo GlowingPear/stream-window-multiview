@@ -1,7 +1,7 @@
 // Stream Multiview — desktop app (Electron main process)
 const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net } = require('electron');
 const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
-  validCh, isGoogleSignin, firefoxUA, kickFollowsFrom, twitchFollowsFrom, channelFromLink } = require('./live');
+  validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, channelFromLink } = require('./live');
 const path = require('path');
 const fs = require('fs');
 const { youtubeLoginFromFirefox } = require('./firefox-login');
@@ -17,6 +17,12 @@ const LOGIN_URL = {
 
 // The app used to be called "Kick Multiview": keep using that data folder (your logins, saved channels, layouts).
 app.setName('Stream Multiview');
+// npm run dev (scripts/dev.js): a developer copy with its own data folder, and its branch in the window titles.
+const DEV = !app.isPackaged && process.env.SMV_DEV_DATA ? { data: process.env.SMV_DEV_DATA, label: process.env.SMV_DEV_LABEL || 'dev' } : null;
+if (DEV) {
+  app.setPath('appData', DEV.data);
+  app.on('browser-window-created', (_e, w) => w.on('page-title-updated', (e, t) => { e.preventDefault(); w.setTitle(`${t} [${DEV.label}]`); }));
+}
 {
   const oldData = path.join(app.getPath('appData'), 'Kick Multiview');
   const newData = path.join(app.getPath('appData'), 'Stream Multiview');
@@ -515,33 +521,25 @@ async function scrapeFollowPage(plat, url, { maxRounds = 70 } = {}) {
 async function kickFollows() {
   await ensureLiveWin();
   if (!liveWin) return { error: 'failed' };
-  const r = await liveWin.webContents.executeJavaScript(`(async () => {
-    const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
-    const t = ck('session_token'), x = ck('XSRF-TOKEN');
-    if (!t) return { login: true };
-    const h = { Accept: 'application/json', Authorization: 'Bearer ' + t };
-    if (x) h['X-XSRF-TOKEN'] = x;
-    const pages = []; let status = 0;
-    for (const base of ['/api/v2/channels/followed', '/api/v1/user/following']) {
-      let cursor = 0;
-      for (let i = 0; i < 60; i++) {
-        const u = base + (base.includes('v2') ? '?cursor=' + encodeURIComponent(cursor) : '?page=' + (i + 1));
-        let d;
-        try { const r = await fetch(u, { credentials: 'include', headers: h }); status = r.status; if (!r.ok) break; d = await r.json(); } catch (e) { break; }
-        pages.push(d);
-        const nc = d && (d.nextCursor ?? d.next_cursor ?? (d.meta && (d.meta.next_cursor ?? d.meta.nextCursor)) ?? (d.next_page_url ? 'p' : null));
-        const len = Array.isArray(d) ? d.length : Array.isArray(d && d.channels) ? d.channels.length : Array.isArray(d && d.data) ? d.data.length : 0;
-        if (nc == null || nc === cursor || !len) break;
-        cursor = nc;
-      }
-      if (pages.length) break;
-    }
-    return { status, pages };
-  })()`, true).catch(() => null);
-  if (r && r.login) return { error: 'login' };
-  const items = r && r.pages ? kickFollowsFrom(r.pages) : [];
+  // One API call from the kick.com page, so your login goes with it.
+  const kickGet = async u => {
+    if (!liveWin || liveWin.isDestroyed()) return null;
+    return liveWin.webContents.executeJavaScript(`(async () => {
+      const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
+      const t = ck('session_token'), x = ck('XSRF-TOKEN');
+      if (!t) return { login: true };
+      const h = { Accept: 'application/json', Authorization: 'Bearer ' + t };
+      if (x) h['X-XSRF-TOKEN'] = x;
+      try { const r = await fetch(${JSON.stringify(u)}, { credentials: 'include', headers: h }); return { status: r.status, d: r.ok ? await r.json() : null }; }
+      catch (e) { return { status: 0, d: null }; }
+    })()`, true).catch(() => null);
+  };
+  const r = await readKickFollowPages(kickGet, { onCount: n => progress('kick', `Found ${n} so far…`) });
+  if (r.login) return { error: 'login' };
+  const { pages, status } = r;
+  const items = kickFollowsFrom(pages);
   if (items.length) return { items };
-  if (r && (r.status === 401 || r.status === 403) && !(r.pages || []).length) {
+  if ((status === 401 || status === 403) && !pages.length) {
     const s = await scrapeFollowPage('kick', 'https://kick.com/following');   // the API is blocked: read the Following page instead
     return s.items && s.items.length ? s : { error: 'login' };
   }

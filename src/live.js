@@ -150,6 +150,34 @@ function firefoxUA(platform = process.platform, now) {
 }
 
 /* ---------- importing the channels you follow ---------- */
+// Kick's follow lists, best first: followed-page gives 20 channels a page, followed only 5.
+const KICK_FOLLOW_APIS = ['/api/v2/channels/followed-page', '/api/v2/channels/followed', '/api/v1/user/following'];
+// Reads every page of the first Kick follow list that answers. get(url) makes one call with your
+// login and gives { status, d } (d = the JSON, or null if it failed), { login: true } when you're
+// signed out, or null. onCount(n) hears the running total. -> { pages, status } or { login: true }
+async function readKickFollowPages(get, { apis = KICK_FOLLOW_APIS, maxPages = 2000, onCount } = {}) {
+  const pages = []; let status = 0;
+  for (const base of apis) {
+    let cursor = 0, found = 0;
+    for (let i = 0; i < maxPages; i++) {   // maxPages is only a safety stop: the list ends long before
+      const byCursor = base.includes('v2');   // v2 lists page by cursor, the old v1 list by page number
+      const u = base + (byCursor ? '?cursor=' + encodeURIComponent(cursor) : '?page=' + (i + 1));
+      const r = await get(u);
+      if (r && r.login) return { login: true };
+      status = r ? r.status : 0;
+      if (!r || !r.d) break;
+      const d = r.d;
+      pages.push(d);
+      const nc = d.nextCursor ?? d.next_cursor ?? (d.meta && (d.meta.next_cursor ?? d.meta.nextCursor)) ?? (d.next_page_url ? 'p' : null);
+      const len = Array.isArray(d) ? d.length : Array.isArray(d.channels) ? d.channels.length : Array.isArray(d.data) ? d.data.length : 0;
+      if (len && onCount) onCount(found += len);
+      if (nc == null || (byCursor && nc === cursor) || !len) break;   // a repeated cursor would loop forever
+      cursor = nc;
+    }
+    if (pages.length) break;
+  }
+  return { pages, status };
+}
 // Kick: pull channel slugs out of whatever list Kick's API returns.
 function kickFollowsFrom(data) {
   const out = new Map();
@@ -198,4 +226,4 @@ function channelFromLink(plat, href) {
   return SLUG_RE.test(m[1]) ? m[1].toLowerCase() : null;
 }
 
-module.exports = { isGoogleSignin, firefoxVersion, firefoxUA, kickFollowsFrom, twitchFollowsFrom, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };
+module.exports = { isGoogleSignin, firefoxVersion, firefoxUA, KICK_FOLLOW_APIS, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };

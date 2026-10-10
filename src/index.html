@@ -509,6 +509,7 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .dlg .dlg-sub ol{margin:6px 0 0;padding-left:18px}.dlg .dlg-sub li{margin:3px 0}
 .dlg .dlg-sub p{margin:0 0 8px}
 .dlg .dlg-tools{display:flex;gap:6px;align-items:center}
+.dlg .dlg-tools[hidden]{display:none}
 .dlg .dlg-tools input{flex:1;min-width:0;height:30px}
 .dlg .dlg-tools .btn{height:30px;padding:0 10px;font-size:12px}
 .dlg .dlg-list{flex:1;min-height:60px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:4px}
@@ -522,6 +523,16 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .dlg .dlg-foot .btn{height:32px;padding:0 14px}
 .spin{width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:-2px}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* Import follows: the pear fills up while the channels are read (theme colours only) */
+.dlg .dlg-list .empty.loading{display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px 18px}
+.pear-load{width:40px;height:40px}
+.pear-load .body{fill:var(--line2)}
+.pear-load .juice{fill:var(--accent);animation:pear-fill 2.6s ease-in-out infinite}
+.pear-load .leaf{fill:var(--accent);transform-origin:36px 9px;animation:pear-leaf 1.3s ease-in-out infinite alternate}
+.pear-load .stem{fill:none;stroke:var(--muted);stroke-width:3.2;stroke-linecap:round}
+@keyframes pear-fill{0%{transform:translate(-32px,62px)}85%,100%{transform:translate(0,6px)}}
+@keyframes pear-leaf{to{transform:rotate(-16deg)}}
+@media (prefers-reduced-motion:reduce){.pear-load .juice,.pear-load .leaf{animation-duration:8s}}
 #importRow{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
 #importRow[hidden]{display:none}
 #importRow .btn{flex:1;height:28px;font-size:12px}
@@ -3499,17 +3510,25 @@ if (DESKTOP){
     closeImport();
     flash(`Added ${add.length} ${PLAT_NAME[impPlat]} channel${add.length === 1 ? '' : 's'} to Saved`);
   };
+  const PEAR = 'M32 14.2C25.6 14.2 23.4 19.4 23.4 24.6 23.4 29.6 20.4 31.6 17.2 35.6 13.2 40.6 12 46.8 14.2 52 17.2 58.8 24.4 62 32 62 39.6 62 46.8 58.8 49.8 52 52 46.8 50.8 40.6 46.8 35.6 43.6 31.6 40.6 29.6 40.6 24.6 40.6 19.4 38.4 14.2 32 14.2Z';
+  const impLoading = text => '<div class="empty loading"><svg class="pear-load" viewBox="0 0 64 64" aria-hidden="true">'
+    + `<defs><clipPath id="pearLoadClip"><path d="${PEAR}"/></clipPath></defs><path class="body" d="${PEAR}"/>`
+    + '<g clip-path="url(#pearLoadClip)"><path class="juice" d="M0 8Q8 3 16 8T32 8T48 8T64 8T80 8T96 8V90H0Z"/></g>'
+    + '<path class="leaf" d="M36.2 9.6C40 4.2 47.5 3.2 52.5 5.4 49.6 10.8 42.4 12.8 36.2 9.6Z"/><path class="stem" d="M33.2 15.5C33 11.5 34.2 8 36.6 4.8"/>'
+    + `</svg><span class="prog">${escH(text)}</span></div>`;
   if (window.kmv.onFollowsProgress) window.kmv.onFollowsProgress(p => {
     if (p.platform !== impPlat || !impBusy || dlg.hidden) return;
+    // only the text changes, so the pear keeps filling smoothly
     const l = dlg.querySelector('.dlg-list');
-    l.innerHTML = '<div class="empty"><span class="spin"></span> <span></span></div>';
-    l.querySelector('.empty span:last-child').textContent = p.text || 'Working…';
+    const t = l.querySelector('.empty .prog');
+    if (t) t.textContent = p.text || 'Working…';
+    else l.innerHTML = impLoading(p.text || 'Working…');
   });
   window.importFollows = importFollows;
   async function importFollows(p){
     if (!window.kmv.importFollows || impBusy) return;
     impSetup(p, `Reading the channels you follow on ${PLAT_NAME[p]} with your login in this app. Big lists can take a minute.`);
-    dlg.querySelector('.dlg-list').innerHTML = '<div class="empty"><span class="spin"></span> Reading the channels you follow…</div>';
+    dlg.querySelector('.dlg-list').innerHTML = impLoading('Reading the channels you follow…');
     impBusy = true;
     let r = null;
     try { r = await window.kmv.importFollows(p); } catch {}
