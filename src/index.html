@@ -120,11 +120,12 @@ body.dragging .bar{cursor:grabbing}
 .help-tabs button{height:28px;padding:0 12px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;font-weight:600;font-size:12px}
 .help-tabs button:hover{color:var(--text)}
 .help-tabs button.on{background:var(--panel2);border-color:var(--line2);color:var(--text)}
-/* quick tooltips for buttons that only show an icon (see tipFor) */
+/* the app's own tooltips, instead of the browser's (see tipFor) */
 #tip{position:fixed;z-index:2147483647;pointer-events:none;max-width:260px;padding:5px 8px;border-radius:6px;border:1px solid var(--line2);
   background:var(--panel);color:var(--text);font-size:12px;font-weight:600;line-height:1.3;box-shadow:0 6px 18px rgba(0,0,0,.45);opacity:0;transition:opacity .12s}
 #tip.on{opacity:1}
 #tip small{display:block;margin-top:2px;font-size:11px;font-weight:400;color:var(--muted)}
+#tip.plain{font-weight:400}
 .help-x{width:30px;height:28px;border:0;border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center}
 .help-x:hover{background:var(--line);color:var(--text)}
 .help-x svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
@@ -4630,11 +4631,13 @@ document.addEventListener('keydown', e => {
   else if (e.key !== 'Tab') e.stopImmediatePropagation();   // no keyboard shortcuts behind the dialog
 }, true);
 
-/* ---------- quick tooltips ----------
-   Buttons that show only an icon (or whose words are hidden because the toolbar is narrow) get a
-   one- or two-word name a moment after the pointer rests on them. The button's longer title, if it
-   says more, shows underneath as a hint. */
-const ttl = b => b.title || b.dataset.tipTitle || '';   // its title (kept aside while its tooltip shows)
+/* ---------- tooltips ----------
+   The app shows its own tooltips instead of the browser's (on a Mac those are separate system windows
+   that pop up over everything, including these). Buttons that show only an icon (or whose words are
+   hidden because the toolbar is narrow) get a one- or two-word name, with their longer title underneath
+   when it says more. Anything else with a title shows that. While the pointer rests on something, its
+   title and its parents' titles are put aside so the browser has none to show, and put back after. */
+const ttl = b => b.title || b.dataset.tipTitle || '';   // its title (put aside while the pointer is on it)
 const TIPS = [
   ['#capBtn', 'App window'], ['#helpBtn', 'Help'], ['#moreBtn', 'More'], ['#undoBtn', 'Undo'], ['#redoBtn', 'Redo'],
   ['#themeBtn', 'Themes'], ['#mentBtn', 'Mentions'],
@@ -4663,18 +4666,23 @@ function tipFor(el){
 window.tipFor = tipFor;   // for the tests
 (function(){
   const tip = document.createElement('div'); tip.id = 'tip'; document.body.appendChild(tip);
-  let target = null, timer = null;
+  let target = null, timer = null, aside = [];
   const hide = () => {
     clearTimeout(timer); tip.classList.remove('on');
-    if (target && target.dataset.tipTitle != null){ if (!target.title) target.title = target.dataset.tipTitle; delete target.dataset.tipTitle; }
-    target = null;
+    aside.forEach(el => { if (!el.title) el.title = el.dataset.tipTitle; delete el.dataset.tipTitle; });   // a title set meanwhile wins
+    aside = []; target = null;
   };
   const show = el => {
-    const name = tipFor(el); if (!name || !el.isConnected) return;
-    const hint = el.dataset.tipTitle || '';
-    tip.innerHTML = ''; tip.append(name);
-    const norm = t => t.toLowerCase().replace(/[^a-z]/g, '');
-    if (hint && norm(hint) !== norm(name)){ const sm = document.createElement('small'); sm.textContent = hint; tip.appendChild(sm); }
+    if (!el.isConnected) return;
+    const name = tipFor(el), text = el.dataset.tipTitle || '';
+    if (!name && !text) return;
+    tip.innerHTML = '';
+    tip.classList.toggle('plain', !name);
+    if (name){
+      tip.append(name);
+      const norm = t => t.toLowerCase().replace(/[^a-z]/g, '');
+      if (text && norm(text) !== norm(name)){ const sm = document.createElement('small'); sm.textContent = text; tip.appendChild(sm); }
+    } else tip.append(text);
     const r = el.getBoundingClientRect(), tr = tip.getBoundingClientRect();
     const below = r.bottom + 6 + tr.height < innerHeight;
     tip.style.left = Math.round(Math.max(6, Math.min(innerWidth - tr.width - 6, r.left + r.width / 2 - tr.width / 2))) + 'px';
@@ -4682,15 +4690,18 @@ window.tipFor = tipFor;   // for the tests
     tip.classList.add('on');
   };
   document.addEventListener('pointerover', e => {
-    const el = e.target.closest && e.target.closest('button, .fs-grip');
+    const t = e.target.closest ? e.target : null;
+    const el = t && (t.closest('button, .fs-grip') || t.closest('[title], [data-tip-title]'));
     if (el === target) return;
     hide();
-    if (!el || !tipFor(el)) return;
+    if (!t) return;
+    for (let n = t; n && n !== document.documentElement; n = n.parentElement)   // nothing left for the browser to show
+      if (n.title){ n.dataset.tipTitle = n.title; n.removeAttribute('title'); aside.push(n); }
+    if (!el || !(tipFor(el) || el.dataset.tipTitle)) return;
     target = el;
-    if (el.title){ el.dataset.tipTitle = el.title; el.removeAttribute('title'); }   // no slow browser tooltip on top of this one
-    timer = setTimeout(() => { if (target === el) show(el); }, 350);
+    timer = setTimeout(() => { if (target === el) show(el); }, 400);
   });
-  document.addEventListener('pointerout', e => { if (target && !(e.relatedTarget && target.contains(e.relatedTarget))) hide(); });
+  document.addEventListener('pointerout', e => { if (!target || !e.relatedTarget || !target.contains(e.relatedTarget)) hide(); });   // not when moving onto the icon inside
   ['pointerdown', 'keydown', 'wheel'].forEach(ev => document.addEventListener(ev, hide, true));
   window.addEventListener('blur', hide);
 })();

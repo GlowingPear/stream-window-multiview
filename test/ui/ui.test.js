@@ -408,13 +408,29 @@ test('icon-only buttons have a short tooltip, shown quickly, with the longer hin
   await page.hover(reload);
   await page.waitForSelector('#tip.on');
   assert.equal(await page.$eval('#tip', e => e.firstChild.textContent), 'Reload');
-  assert.equal(await page.getAttribute(reload, 'title'), null, 'no slow browser tooltip on top');
+  const titled = sel => page.evaluate(sel => { for (let n = document.querySelector(sel); n; n = n.parentElement) if (n.title) return n.className || n.tagName; return null; }, sel);
+  assert.equal(await titled(reload), null, 'no title on it or its window bar: the browser has no tooltip to show on top');
   await page.hover('#stage .win.stream.plat-kick [data-a=max]');
   await page.waitForFunction(() => document.querySelector('#tip').firstChild.textContent === 'Maximize');
   assert.match(await page.textContent('#tip small'), /double-click the bar/, 'the longer title as a hint');
   assert.equal(await page.getAttribute(reload, 'title'), 'Reload', 'the title is put back after');
   await page.mouse.move(800, 600);
   await page.waitForSelector('#tip:not(.on)', { state: 'attached' });
+  assert.ok(await page.$eval(reload, b => !!b.closest('.bar').title), 'the window bar\'s title is put back too');
+});
+
+test('everything else with a title gets the app\'s tooltip too, never the browser\'s', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha');
+  const titled = sel => page.evaluate(sel => { for (let n = document.querySelector(sel); n; n = n.parentElement) if (n.title) return n.className || n.tagName; return null; }, sel);
+  await page.hover('#savedBtn');   // a button with words
+  await page.waitForFunction(() => document.querySelector('#tip.on') && document.querySelector('#tip').textContent === 'Your saved channels');
+  assert.equal(await titled('#savedBtn'), null);
+  await page.hover('#stage .win.stream.plat-kick .bar .dot');   // the window bar's title: which channel and window this is
+  await page.waitForFunction(() => document.querySelector('#tip.on') && /alpha/.test(document.querySelector('#tip').textContent));
+  assert.equal(await titled('#stage .win.stream.plat-kick .bar .dot'), null);
+  await page.mouse.move(800, 600);
+  assert.equal(await page.getAttribute('#savedBtn', 'title'), 'Your saved channels', 'titles are put back');
 });
 
 test('Auto layout fills the space with an odd number of streams: no empty cells, nothing overlapping', async t => {
