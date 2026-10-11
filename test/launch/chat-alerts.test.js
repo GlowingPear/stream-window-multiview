@@ -141,6 +141,42 @@ test('the @ button on a chat\'s bar turns mentions off for that chat only', T, a
   await win.keyboard.press('Escape');
 });
 
+test('your own words count as mentions; the @ list shows the latest five and All mentions opens the history', T, async () => {
+  await win.evaluate(() => window.openSettings('mentions'));
+  await win.fill('#mentWordIn', 'Pear'); await win.press('#mentWordIn', 'Enter');
+  await win.fill('#mentWordIn', 'big boss'); await win.click('#mentWordAdd');
+  await win.fill('#mentWordIn', 'PEAR'); await win.click('#mentWordAdd');   // already there
+  assert.deepEqual(await win.$$eval('#mentWords .st-chip > span', e => e.map(x => x.textContent)), ['Pear', 'big boss']);
+  assert.equal(await win.evaluate(() => localStorage.getItem('kickMultiview.mentWords')), '["Pear","big boss"]');
+  await win.keyboard.press('Escape');
+  await ready();                                   // the chats look again with the new words
+  await say('bravo', 'someone', 'pears are tasty');
+  await say('bravo', 'someone', 'is pear on tonight?');
+  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  assert.equal((await alertOf('bravo')).level, 'al-1', 'it lights the chat like a mention');
+  for (let i = 0; i < 5; i++) await say('alpha', 'fan' + i, `hey big boss ${i}`);
+  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '6');
+  await win.click('#mentBtn');
+  assert.equal(await win.$$eval('#mentList .mp-row', r => r.length), 5, 'the latest five');
+  assert.equal(await win.textContent('#mentList .mp-row .mp-kind'), 'Word: big boss');
+  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');   // the ones shown are seen
+  assert.match(await win.textContent('#mentAll'), /All mentions \(6\) · 1 new/);
+  await win.click('#mentAll');
+  assert.ok(await win.isVisible('#mentDlg'));
+  assert.equal(await win.$$eval('#mhList .mp-row', r => r.length), 6);
+  assert.equal(await win.$$eval('#mhList .mp-row.unread', r => r.length), 1, 'the one the list didn\'t show is still new');
+  assert.equal(await win.$eval('#mhList .mp-row:has-text("someone") .mp-body', e => e.innerHTML), 'is <mark>pear</mark> on tonight?');
+  await win.keyboard.press('Escape');
+  assert.ok(await win.isHidden('#mentDlg'));
+  assert.ok(await win.$eval('#mentBtn .mb-count', e => e.hidden), 'closing the history: everything seen');
+  // tidy up for the next tests
+  await win.evaluate(() => window.openSettings('mentions'));
+  await win.click('#mentWords .st-chip button'); await win.click('#mentWords .st-chip button');
+  assert.equal(await win.evaluate(() => localStorage.getItem('kickMultiview.mentWords')), '[]');
+  await win.keyboard.press('Escape');
+  await clickBar('alpha'); await clickBar('bravo');
+});
+
 test('spam alerts: a promo bot in a chat you moderate is tagged and lights the window; elsewhere nothing happens', T, async () => {
   await win.evaluate(() => window.openSettings('spam'));
   await win.check('#spamOn');

@@ -72,7 +72,7 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - **Accounts**: logins, Import follows, "Forget my login" and "Watch signed in".
 - **Notifications**: messages in the app (on or off, and where they show: top, bottom or a corner), and desktop notifications: on or off for everything, live alerts for saved channels, and a test to check your computer lets them through.
 - **YouTube**: your YouTube login, skipping ads, YouTube's cookie question and the YouTube API key (see below).
-- **Mentions**: your Kick and Twitch usernames, and how a chat window gets your attention when someone mentions you (see Alerts below).
+- **Mentions**: your Kick and Twitch usernames, other words that mean you (nicknames), and how a chat window gets your attention when someone mentions you (see Alerts below).
 - **Spam alerts**: for moderators (see below).
 - **Themes**: the app's colours.
 - **Updates**: your version, checking for a new one, and what's new in each version.
@@ -132,7 +132,9 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 
 ## Alerts
 - Mentions: when someone writes @you or replies to you in a Kick or Twitch chat, that chat window lights up and it's listed under the @ button. Set your usernames in Settings > Mentions, or click Detect.
-- The number on the @ button counts mentions you haven't seen. Clicking into that chat, or opening the list, clears them.
+- Also alert me for (Settings > Mentions): add nicknames or other words that mean you. A message with one counts as a mention, with or without an @. Whole words only, any case: "pear" finds "hi Pear!" but not "pears". Your own messages never count. They're listed as "Word".
+- The number on the @ button counts mentions you haven't seen. Clicking into that chat clears that chat's; the @ list shows the latest five and clears those.
+- All mentions (at the bottom of the @ list) opens the history: the last 500 mentions, replies and words, grouped by day. Search by name, message or chat, show only Mentions, Replies or Words, one chat, or unread ones. Click one to go to that chat; hover one to delete it. Mark all read, Clear all. Closing it counts them all as seen.
 - To stop mentions from one chat, click the @ button on that chat window's bar (click it again to turn them back on).
 - Settings > Mentions sets how: the window's border glows briefly or stays lit until you click that chat, and can get stronger while you haven't seen it (pulse, then flash). Pick its colour, a sound (or your own sound file), whether the sound repeats, and when to show a desktop notification.
 - Live alerts come from your saved channels while the app is running.
