@@ -22,7 +22,9 @@ async function launchApp(opts = {}) {
   fs.writeFileSync(path.join(data, 'Stream Multiview', 'updates.json'), JSON.stringify({ auto: false }));
   const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' };
   delete env.ELECTRON_RUN_AS_NODE;
-  const app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', ROOT], env, timeout: 60000 });
+  let app;
+  try { app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', ROOT], env, timeout: 60000 }); }
+  catch (e) { return retry(e); }
   const proc = app.process();
   process.once('exit', () => killApp(proc));   // never leave the app open if the tests die
   try {
@@ -60,9 +62,33 @@ async function launchApp(opts = {}) {
       async close() {
         const closed = app.close().then(() => true, () => false);
         if (!(await Promise.race([closed, new Promise(r => setTimeout(() => r(false), 10000))]))) killApp(proc);
+        await appGone(proc);   // so starting it again with the same data folder doesn't find this copy still there
       }
     };
-  } catch (e) { killApp(proc); throw e; }   // a failed start must not leave the app running (the test file would never end)
+  } catch (e) {
+    killApp(proc);             // a failed start must not leave the app running (the test file would never end)
+    await appGone(proc);
+    return retry(e);
+  }
+  // A start can fail for reasons outside the app: on CI, Playwright's hold on the app's main process sometimes
+  // breaks right after launch ("Execution context was destroyed"), and a copy closed just before can still be
+  // exiting. Try once more; a second failure is real.
+  async function retry(e) {
+    if (opts.retried) throw e;
+    console.log('# The app failed to start, trying once more: ' + String(e && e.message || e).split('\n')[0]);
+    await new Promise(r => setTimeout(r, 1000));
+    return launchApp({ ...opts, data, retried: true });
+  }
+}
+
+// Wait until the app and its helper processes have exited; whatever is left after 5 s is killed.
+async function appGone(proc) {
+  const alive = () => {
+    if (process.platform === 'win32') return proc.exitCode === null && proc.signalCode === null;
+    try { process.kill(-proc.pid, 0); return true; } catch { return false; }
+  };
+  for (let i = 0; i < 50 && alive(); i++) await new Promise(r => setTimeout(r, 100));
+  if (alive()) killApp(proc);
 }
 
 
