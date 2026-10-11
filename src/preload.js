@@ -79,6 +79,13 @@ contextBridge.exposeInMainWorld('kmv', {
   onWentLive: cb => ipcRenderer.on('live:went-live', (_e, slug, info) => cb(slug, info)),
   onOpenChannel: cb => ipcRenderer.on('open-channel', (_e, slug) => cb(slug)),
 
+  // Streamer profiles
+  profileGet: (ch, opt) => ipcRenderer.invoke('profile:get', ch, opt || {}),
+  profileList: chs => ipcRenderer.invoke('profile:list', chs),
+  profileLookup: q => ipcRenderer.invoke('profile:lookup', q),
+  profileMeta: (ch, patch) => ipcRenderer.invoke('profile:meta', ch, patch),
+  kickUnfollow: slug => ipcRenderer.invoke('kick:unfollow', slug),
+
   // Chat mentions / replies
   notifyMention: m => ipcRenderer.send('mention:notify', m),
   notifyEnabled: on => ipcRenderer.send('notify:enabled', !!on),

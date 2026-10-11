@@ -2,7 +2,8 @@
 const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage } = require('electron');
 const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
   validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink,
-  parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate } = require('./live');
+  parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, normCh, toTime } = require('./live');
+const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel } = require('./profiles');
 const path = require('path');
 const fs = require('fs');
 const { youtubeLoginFromFirefox } = require('./firefox-login');
@@ -345,7 +346,7 @@ async function fetchTwitch(login) {
   try {
     const r = await fetch('https://gql.twitch.tv/gql', { method: 'POST',
       headers: { 'Client-Id': TWITCH_CID, 'Content-Type': 'text/plain;charset=UTF-8', ...BROWSER_HEADERS() },
-      body: JSON.stringify({ query: `query{user(login:${JSON.stringify(login)}){login displayName stream{id title viewersCount game{name}}}}` }) });
+      body: JSON.stringify({ query: `query{user(login:${JSON.stringify(login)}){login displayName stream{id title viewersCount createdAt game{name}}}}` }) });
     if (r.ok) { const info = parseTwitch(await r.json(), login); if (info) return info; }
   } catch {}
   try {   // fallback: the channel page
@@ -397,7 +398,7 @@ async function twitchBatch(chs) {
     try {
       const r = await fetch('https://gql.twitch.tv/gql', { method: 'POST',
         headers: { 'Client-Id': TWITCH_CID, 'Content-Type': 'text/plain;charset=UTF-8', ...BROWSER_HEADERS() },
-        body: JSON.stringify({ query: 'query($l:[String!]){users(logins:$l){login displayName stream{id title viewersCount game{name}}}}', variables: { l: logins } }) });
+        body: JSON.stringify({ query: 'query($l:[String!]){users(logins:$l){login displayName stream{id title viewersCount createdAt game{name}}}}', variables: { l: logins } }) });
       if (r.ok) m = parseTwitchUsers(await r.json(), logins);
     } catch {}
     if (!m) { rest.push(...part); continue; }
@@ -479,7 +480,7 @@ async function ytBatch(chs) {
       const f = feeds.get(ch), cand = ch.startsWith('yt:v:') ? [ch.slice(5)] : f.ids;
       const liveId = cand.find(v => vids.has(v) && vids.get(v).state === 'live');
       const v = liveId && vids.get(liveId);
-      results.push([ch, { live: !!v, videoId: liveId || null, title: v ? v.title : '', viewers: v ? v.viewers : null, category: '',
+      results.push([ch, { live: !!v, videoId: liveId || null, title: v ? v.title : '', viewers: v ? v.viewers : null, category: '', startedAt: v ? v.startedAt : null,
         name: (f && f.name) || (v && v.channelTitle) || ch.replace(/^yt:(v:|c:)?/, ''), checked: at }]);
     }
     return { results, rest };
@@ -516,7 +517,7 @@ const watcher = createLiveWatcher({
   fetchChannel: fetchAny,
   fetchBatch: liveBatch,
   batchIntervalMs: 30000,   // batched checks are cheap: Kick (1-4 requests on your login) and Twitch (1) every 30 s
-  onStatus: snap => mainWin?.webContents.send('live:status', snap),
+  onStatus: snap => { recordLive(snap); mainWin?.webContents.send('live:status', snap); },
   onWentLive: notifyLive
 });
 ipcMain.on('live:watch', (_e, data) => {
@@ -525,6 +526,172 @@ ipcMain.on('live:watch', (_e, data) => {
   watcher.setChannels(Array.isArray(d.channels) ? d.channels : []);
 });
 ipcMain.on('live:check-now', () => watcher.checkSoon());
+
+/* ---------- streamer profiles ----------
+   The live checks above are recorded (profiles.json: each stream seen, its viewer counts, a follower
+   count a day, and your notes), and opening a profile asks the site for the rest. Nothing here runs
+   on a timer of its own: the sites are only asked when you open a profile or look a name up. */
+const profFile = () => stateFile('profiles');
+let history = null, histT = null;
+function hist() {
+  if (!history) { let d = null; try { d = JSON.parse(fs.readFileSync(profFile(), 'utf8')); } catch {} history = createHistory(d); }
+  return history;
+}
+function saveHistory() {
+  clearTimeout(histT); histT = null; histDue = 0;
+  if (!history || !history.takeChanged()) return;
+  try { const f = profFile(); fs.writeFileSync(f + '.tmp', JSON.stringify(history.data())); fs.renameSync(f + '.tmp', f); } catch {}
+}
+let histDue = 0;
+function saveHistorySoon(ms = 20000) {      // sooner wins: notes are saved within seconds, live checks once a minute at most
+  const due = Date.now() + ms;
+  if (histT && histDue <= due) return;
+  clearTimeout(histT); histDue = due; histT = setTimeout(saveHistory, ms);
+}
+function recordLive(snap) { try { hist().record(snap); saveHistorySoon(60000); } catch {} }
+app.on('will-quit', () => saveHistory());
+
+// One request to Kick's API from the kick.com page (with your login when you're logged in).
+async function kickApi(u, method = 'GET') {
+  await ensureLiveWin();
+  if (!liveWin || liveWin.isDestroyed()) return null;
+  return liveWin.webContents.executeJavaScript(`(async () => {
+    const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
+    const t = ck('session_token'), x = ck('XSRF-TOKEN'), method = ${JSON.stringify(method)};
+    if (method !== 'GET' && !t) return { login: true };
+    const h = { Accept: 'application/json' };
+    if (t) h.Authorization = 'Bearer ' + t;
+    if (x) h['X-XSRF-TOKEN'] = x;
+    try {
+      const r = await fetch(${JSON.stringify(u)}, { method, credentials: 'include', headers: h });
+      let d = null; try { d = r.status === 204 ? null : await r.json(); } catch {}
+      return { status: r.status, d, auth: !!t };
+    } catch (e) { return { status: 0, d: null, auth: !!t }; }
+  })()`, true).catch(() => null);
+}
+async function twitchQuery(query, variables, token) {
+  const headers = { 'Client-Id': TWITCH_CID, 'Content-Type': 'text/plain;charset=UTF-8', ...BROWSER_HEADERS() };
+  if (token) headers.Authorization = 'OAuth ' + token;
+  const r = await fetch('https://gql.twitch.tv/gql', { method: 'POST', headers, body: JSON.stringify({ query, variables }) });
+  return r.ok ? r.json() : null;
+}
+const TW_PROFILE = `query($l:String!){user(login:$l){id login displayName description profileImageURL(width:300) bannerImageURL createdAt
+  roles{isPartner isAffiliate} followers{totalCount} stream{createdAt viewersCount title game{name} previewImageURL(width:440,height:248)}
+  lastBroadcast{startedAt title game{name}} channel{socialMedias{name title url}}
+  videos(first:40,type:ARCHIVE,sort:TIME){edges{node{id title createdAt lengthSeconds viewCount game{name}}}}}}`;
+const TW_BASIC = 'query($l:String!){user(login:$l){id login displayName description profileImageURL(width:300) bannerImageURL createdAt followers{totalCount} stream{createdAt viewersCount title game{name}}}}';
+const TW_SELF = 'query($l:String!){user(login:$l){self{follower{followedAt} subscriptionBenefit{tier purchasedWithPrime}}}}';
+
+async function fetchProfile(ch) {
+  if (/^tw:/.test(ch)) {
+    const login = ch.slice(3);
+    let d = await twitchQuery(TW_PROFILE, { l: login }).catch(() => null);
+    if (!d || (d.errors && !(d.data && d.data.user !== undefined))) d = await twitchQuery(TW_BASIC, { l: login }).catch(() => null);   // a field Twitch no longer has
+    const p = parseTwitchProfile(d, login);
+    if (!p || p.missing) return p;
+    const token = await twitchToken();
+    if (token) {
+      const me = await twitchQuery(TW_SELF, { l: login }, token).catch(() => null);
+      const self = me && me.data && me.data.user && me.data.user.self;
+      if (self) { const x = parseTwitchProfile({ data: { user: { login, self } } }, login); p.following = x.following; p.sub = x.sub; }
+    }
+    p.loggedIn = !!token;
+    return p;
+  }
+  if (/^yt:/.test(ch)) {
+    if (/^yt:v:/.test(ch)) return { missing: true, video: true };
+    const url = ch.startsWith('yt:c:') ? 'https://www.youtube.com/channel/' + ch.slice(5) : 'https://www.youtube.com/' + ch.slice(3);
+    const r = await fetch(url, { headers: { ...BROWSER_HEADERS(), Cookie: 'SOCS=CAI; CONSENT=YES+1' } });
+    if (r.status === 404) return { missing: true };
+    return r.ok ? parseYouTubeChannel(await r.text(), ch) : null;
+  }
+  const r = await kickApi(`/api/v2/channels/${encodeURIComponent(ch)}`);
+  if (!r) return null;
+  if (r.status === 404) return { missing: true };
+  const p = r.status === 200 ? parseKickProfile(r.d, ch) : null;
+  if (!p) return null;
+  const v = await kickApi(`/api/v2/channels/${encodeURIComponent(ch)}/videos`);
+  const vods = v && v.status === 200 ? parseKickVideos(Array.isArray(v.d) ? v.d : v.d && v.d.data) : null;
+  if (vods && vods.length) p.vods = vods;
+  p.loggedIn = !!r.auth;
+  if (r.auth) {
+    const me = await kickApi(`/api/v2/channels/${encodeURIComponent(ch)}/me`);
+    const m = me && me.status === 200 && me.d;
+    if (m && typeof m.following === 'boolean') p.following = m.following ? { since: toTime(m.following_since || m.followed_at) } : false;
+    if (m && m.subscription) p.sub = { tier: '', months: Number.isFinite(+m.subscription.months) ? +m.subscription.months : null };
+  }
+  if (p.following === undefined && kickFollowed) p.following = kickFollowed.has(ch) ? { since: null } : false;
+  return p;
+}
+
+const siteCache = new Map();          // channel -> { at, data } (10 minutes)
+async function siteProfile(ch, refresh) {
+  const c = siteCache.get(ch);
+  if (c && !refresh && Date.now() - c.at < 10 * 60e3) return c.data;
+  const p = await Promise.race([fetchProfile(ch).catch(() => null), sleep(20000).then(() => null)]);
+  if (p) {
+    siteCache.set(ch, { at: Date.now(), data: p });
+    if (siteCache.size > 300) siteCache.delete(siteCache.keys().next().value);
+    if (!p.missing) {
+      const h = hist();
+      h.mergeVods(ch, p.vods);
+      if (p.followers != null) h.setFollowers(ch, p.followers);
+      h.setInfo(ch, p);
+      saveHistorySoon();
+    }
+  }
+  return p;
+}
+const profileFor = (ch, site) => {
+  const h = hist();
+  const s = site && !site.missing ? { ...site, vods: undefined, vodCount: (site.vods || []).length } : null;
+  return { ch, site: s, missing: !!(site && site.missing), video: !!(site && site.video), failed: !site, summary: profileSummary(h.entry(ch)), meta: h.getMeta(ch), info: h.info(ch) };
+};
+const okCh = ch => typeof ch === 'string' && validCh(normCh(ch));
+ipcMain.handle('profile:get', async (_e, ch, opt) => {
+  if (!okCh(ch)) return { error: 'bad' };
+  ch = normCh(ch);
+  const o = opt || {};
+  return profileFor(ch, o.local ? (siteCache.get(ch) || {}).data || null : await siteProfile(ch, !!o.refresh));
+});
+// The directory: what's known about many channels, without asking the sites.
+ipcMain.handle('profile:list', (_e, chs) => {
+  const h = hist(), out = {};
+  (Array.isArray(chs) ? chs : []).slice(0, 2000).forEach(ch => {
+    if (!okCh(ch)) return;
+    const k = normCh(ch), s = profileSummary(h.entry(k));
+    out[ch] = { info: h.info(k), meta: h.getMeta(k), last: s.recap ? s.recap.end : null, streams30: s.stats ? s.stats.streams30 : 0, tracked: s.tracked };
+  });
+  return out;
+});
+// Looking up a name that isn't saved: the same name on Kick, Twitch and YouTube.
+ipcMain.handle('profile:lookup', async (_e, q) => {
+  const name = String(q || '').trim().replace(/^@/, '').toLowerCase();
+  if (!/^[a-z0-9_.\-]{2,40}$/.test(name)) return [];
+  const cands = [name, 'tw:' + name, 'yt:@' + name].filter(c => validCh(c));
+  const found = await Promise.all(cands.map(async ch => { const p = await siteProfile(ch); return p && !p.missing ? { ch, name: p.name, avatar: p.avatar, followers: p.followers, followersText: p.followersText || '', live: p.live ? { title: p.live.title, viewers: p.live.viewers } : null } : null; }));
+  return found.filter(Boolean);
+});
+ipcMain.handle('profile:meta', (_e, ch, patch) => {
+  if (!okCh(ch) || !patch || typeof patch !== 'object') return null;
+  const m = hist().setMeta(normCh(ch), patch);
+  saveHistorySoon(2000);
+  return m;
+});
+// Unfollow on Kick itself (what the Unfollow button on the channel's page does).
+ipcMain.handle('kick:unfollow', async (_e, slug) => {
+  slug = String(slug || '').toLowerCase();
+  if (!SLUG_RE.test(slug)) return { error: 'bad' };
+  const r = await kickApi(`/api/v2/channels/${encodeURIComponent(slug)}/follow`, 'DELETE');
+  if (!r) return { error: 'failed' };
+  if (r.login || r.status === 401) return { error: 'login' };
+  if (r.status >= 200 && r.status < 300) {
+    if (kickFollowed) kickFollowed.delete(slug);
+    const c = siteCache.get(slug); if (c && c.data) c.data.following = false;
+    return { ok: true };
+  }
+  return { error: r.status === 403 ? 'refused' : 'failed', status: r.status };
+});
 
 /* ---------- chat mentions / replies ---------- */
 ipcMain.on('mention:notify', (_e, m) => {
