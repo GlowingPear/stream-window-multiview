@@ -71,8 +71,8 @@ async function reset() {
 
 async function openImport(plat) {
   await reset();
-  if (!(await shown('#importBtn'))) await win.click('#savedBtn');
-  if (!(await shown('#importRow'))) await win.click('#importBtn');
+  if (!(await shown('#savedPanel'))) await win.click('#savedBtn');
+  if (!(await shown('#importRow'))) await win.click('#spMore');
   await win.click(`#importRow [data-imp="${plat}"]`);
   await win.waitForSelector('#importDlg:not([hidden])');
 }
