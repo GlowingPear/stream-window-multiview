@@ -227,6 +227,15 @@ async function unpackMacApp(zip, dir, req, run) {
   await run('codesign', ['--verify', '--deep', '--strict', `-R=${req}`, app]);
   return app;
 }
+// Mac: can this app change its own files? macOS's App Management setting (Privacy & Security) can stop an app
+// that isn't from the App Store or a known developer replacing itself. Writing a file inside the app, then
+// removing it, is refused the same way, so it's checked before the app closes rather than after.
+function canWriteInside(appDir) {
+  const f = path.join(appDir, '.smv-update-check');
+  try { fs.writeFileSync(f, ''); } catch (e) { if (e && (e.code === 'EPERM' || e.code === 'EACCES')) return false; throw e; }
+  try { fs.unlinkSync(f); } catch {}
+  return true;
+}
 // Run detached after the app quits: $1 the app's process, $2 the app, $3 the new app, $4 what opens it again.
 // The old app is only deleted once the new one is in place; if the move fails, the old one goes back.
 function macSwapScript() {
@@ -245,4 +254,4 @@ xattr -dr com.apple.quarantine "$app" 2>/dev/null
 `;
 }
 
-module.exports = { pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, macSwapScript, compareVersions, latestInfo, readZip, appFiles, applyUpdate, REPO_RE };
+module.exports = { pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript, compareVersions, latestInfo, readZip, appFiles, applyUpdate, REPO_RE };

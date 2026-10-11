@@ -1351,7 +1351,7 @@ async function installInstaller() {
   if (updState.macZip) {
     try {
       const swap = await downloadMacApp();
-      updState = { ...updState, state: 'ready', installed: updState.latest, installerFile: '', swap, needsInstall: false };
+      updState = { ...updState, state: 'ready', installed: updState.latest, installerFile: '', swap, blocked: false, needsInstall: false };
       sendUpd();
       return updStatus();
     } catch (e) { console.log('Update: using the disk image instead (' + (e && e.message || e) + ')'); }
@@ -1359,7 +1359,7 @@ async function installInstaller() {
   try {
     const dir = process.platform === 'darwin' ? app.getPath('downloads') : path.join(app.getPath('temp'), 'stream-multiview-update');
     const file = await downloadTo(updState.asset.url, path.join(dir, path.basename(updState.asset.name)));
-    updState = { ...updState, state: 'ready', installed: updState.latest, installerFile: file, swap: null, needsInstall: false };
+    updState = { ...updState, state: 'ready', installed: updState.latest, installerFile: file, swap: null, blocked: false, needsInstall: false };
   } catch (e) {
     updState = { ...updState, state: 'error', error: String(e && e.message || e) };
   }
@@ -1370,6 +1370,11 @@ async function installInstaller() {
 function runInstaller() {
   const sw = updState.swap;
   if (process.platform === 'darwin' && sw && fs.existsSync(sw.newApp)) {
+    // macOS's App Management setting can refuse: then say where to allow it, and keep the app open
+    let ok = false;
+    try { ok = updater.canWriteInside(sw.appPath); } catch {}
+    updState = { ...updState, blocked: !ok }; sendUpd();
+    if (!ok) return false;
     const { spawn } = require('child_process');
     const script = path.join(path.dirname(path.dirname(sw.newApp)), 'swap.sh');
     fs.writeFileSync(script, updater.macSwapScript());
@@ -1425,9 +1430,17 @@ ipcMain.handle('update:settings', (_e, d) => {
   saveUpd(); sendUpd();
   return updStatus();
 });
+// Mac: System Settings > Privacy & Security > App Management, where the app is allowed to update itself
+ipcMain.handle('update:privacy-settings', () => { shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles'); return true; });
+// Mac: don't swap the app in after all, download the disk image to drag in instead
+ipcMain.handle('update:use-dmg', () => {
+  if (updState.swap) fs.rmSync(path.dirname(path.dirname(updState.swap.newApp)), { recursive: true, force: true });
+  updState = { ...updState, macZip: null, swap: null, blocked: false };
+  return installInstaller();
+});
 ipcMain.handle('update:open-page', () => { shell.openExternal(updState.page || `https://github.com/${upd.repo}/releases/latest`); return true; });
 ipcMain.handle('update:restart', () => {
-  if (INSTALLED) return { installer: runInstaller(), mac: process.platform === 'darwin' && !updState.swap };
+  if (INSTALLED) { const installer = runInstaller(); return { installer, mac: process.platform === 'darwin' && !updState.swap, blocked: !!updState.blocked }; }
   if (updState.needsInstall) return { needsInstall: true };      // the launcher has to reinstall the engine first
   app.relaunch(); app.exit(0);
   return { ok: true };

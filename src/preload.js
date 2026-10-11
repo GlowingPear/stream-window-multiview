@@ -37,6 +37,8 @@ contextBridge.exposeInMainWorld('kmv', {
   updateSettings: d => ipcRenderer.invoke('update:settings', d),
   updateRestart: () => ipcRenderer.invoke('update:restart'),
   updateOpenPage: () => ipcRenderer.invoke('update:open-page'),
+  updatePrivacySettings: () => ipcRenderer.invoke('update:privacy-settings'),
+  updateUseDmg: () => ipcRenderer.invoke('update:use-dmg'),
   onUpdateStatus: cb => ipcRenderer.on('update:status', (_e, s) => cb(s || {})),
   onUpdateShow: cb => ipcRenderer.on('update:show', () => cb()),
   onHelpShow: cb => ipcRenderer.on('help:show', (_e, tab) => cb(tab)),

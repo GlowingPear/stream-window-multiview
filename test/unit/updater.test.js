@@ -6,7 +6,7 @@ const os = require('os');
 const path = require('path');
 const zlib = require('zlib');
 const { execFile, execFileSync, spawn, spawnSync } = require('child_process');
-const { compareVersions, pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, macSwapScript,
+const { compareVersions, pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript,
   latestInfo, readZip, appFiles, applyUpdate, REPO_RE } = require('../../src/updater');
 
 /* ---------- version numbers ---------- */
@@ -70,9 +70,19 @@ test('macSwapBlocker only allows a signed app in a folder it can write to', () =
   assert.equal(macSwapBlocker({ ...ok, req: '' }), 'unsigned');
   assert.equal(macSwapBlocker({ ...ok, req: 'cdhash H"0123abcd"' }), 'adhoc');
 });
+const unix = process.platform !== 'win32';
+test('canWriteInside says whether the app may change its own files, and leaves nothing behind', { skip: !unix || process.getuid?.() === 0 }, () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-write-'));
+  try {
+    assert.equal(canWriteInside(dir), true);
+    assert.deepEqual(fs.readdirSync(dir), []);
+    fs.chmodSync(dir, 0o555);                              // refused, like macOS's App Management does
+    assert.equal(canWriteInside(dir), false);
+    assert.throws(() => canWriteInside(path.join(dir, 'missing')), /ENOENT/);   // anything else isn't a refusal
+  } finally { fs.chmodSync(dir, 0o755); fs.rmSync(dir, { recursive: true, force: true }); }
+});
 
 // The swap script with a stand-in for `open`, on folders that look like apps.
-const unix = process.platform !== 'win32';
 function swapSetup() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-swap-'));
   const app = path.join(dir, 'Applications', 'Stream Multiview.app'), stage = path.join(dir, 'stage', 'Stream Multiview.app');
