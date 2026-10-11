@@ -38,9 +38,11 @@ async function connect(port) {
 
 // Start a dev copy under Playwright. `dir` is the checkout to run (default: this one), `profile` as in
 // npm run dev --profile (a running copy using the same profile must be closed first), `video: true` records
-// the main window as WebM. Only one copy per profile can run at a time.
-async function launch({ dir = ROOT, profile = '', video = false, size = { width: 1280, height: 800 } } = {}) {
+// the main window as WebM, `seed(data)` can write files into the app's data folder before it starts.
+// Only one copy per profile can run at a time.
+async function launch({ dir = ROOT, profile = '', video = false, size = { width: 1280, height: 800 }, seed } = {}) {
   const p = prepare({ dir, profile });
+  if (seed) await seed(p.data);
   const videoDir = video ? fs.mkdtempSync(path.join(outDir('video'), 'run-')) : '';
   const app = await playwright()._electron.launch({
     executablePath: p.electron, args: [p.dir], env: p.env, timeout: 60000,

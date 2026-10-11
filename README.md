@@ -167,7 +167,7 @@ Both work on Windows, Mac and Linux, and download the app engine if `npm install
 
 Pull requests follow the template in `.github/pull_request_template.md`. For anything you can see in the app, add before/after screenshots or a short video, but don't commit them.
 
-**Claude Code:** `.claude/skills/` has skills for this workflow: `start-change` (plan, worktree, before/after captures), `run-dev`, `drive-app` (Playwright helper for checks, screenshots and videos), `open-pr` and `platform-api-probe` (read-only checks of Kick, Twitch and YouTube APIs).
+**Claude Code:** `.claude/skills/` has skills for this workflow: `start-change` (plan, worktree, before/after captures), `run-dev`, `drive-app` (Playwright helper for checks, screenshots and videos), `open-pr`, `platform-api-probe` (read-only checks of Kick, Twitch and YouTube APIs) and `release-video` (a "what's new" video of everything merged since the last release, with made-up channels).
 
 **Publishing an update** (when one or more pull requests are merged):
 1. Go to **Releases → Draft a new release**.
