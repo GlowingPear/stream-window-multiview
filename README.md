@@ -131,11 +131,19 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 |---|---|---|
 | `npm test` | Updates, the release scripts, login encryption, live checks and the spam scoring. Needs nothing else installed. | seconds |
 | `npm run test:setup` | Run once: installs the test browser (Playwright). It isn't saved as a dependency of the app. | once |
-| `npm run test:ui` | The app's page in a headless browser: adding streams, layouts, the switch control, undo/redo, shortcuts, themes, Settings, alerts | ~30 s |
-| `npm run test:launch` | Starts the real desktop app: start-up, adding a stream, logins, the Import follows dialog, the menu bar, Settings, and mention and spam alerts in chat windows (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~1 min |
+| `npm run test:ui` | The app's page in a headless browser: adding streams, moving and resizing windows, layouts, Columns scrolling, the switch control, Saved channels, your layouts, Game focus, undo/redo, shortcuts, themes, Settings, alerts | ~1 min |
+| `npm run test:launch` | Starts the real desktop app with stand-in Kick, Twitch and YouTube pages: start-up, volume and pause, popping streams out, logins, live alerts and notifications, the Import follows dialog, the menu bar, Settings, updates, showing another app's window, and mention and spam alerts in chat windows (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~4 min |
 | `npm run test:all` | All of the above | |
+| `npm run test:coverage` | All of the above, recording which code they run. Prints how much of each file the tests run and writes `coverage/report.md` with the bigger functions no test runs. In CI (which runs it on every pull request and puts the report on the run's summary page) it fails if a file drops below its minimum in `test/coverage-min.json`; on your computer that's only a warning, because some code only runs on Linux or Node 22. | ~6 min |
 
-The tests are in `test/`. When you add a feature, add a test next to the similar ones.
+The tests are in `test/`. When you add a feature, add a test next to the similar ones. Coverage doesn't have to be 100%, but it can't go down: if `npm run test:coverage` says a file is below its minimum, test what you changed. When coverage goes up, raise the minimums in `test/coverage-min.json` to the numbers on the CI run's summary page.
+
+What the tests deliberately don't do, because it needs the real outside world:
+- Real Kick, Twitch and YouTube: live checks, Import follows and signing in to the real sites. The tests use stand-in pages and answers; the parsing is unit tested in `test/unit`.
+- Downloading and running an update installer (the update checks, notes and buttons are tested).
+- Moving a game's window into Game focus: it uses Windows system calls.
+- The real list of other windows for "Show another app's window": on a Mac it needs the screen-recording permission. The picker, the picture and its controls are tested with a stand-in window.
+- The `npm run dev` and `npm run worktree` developer scripts are only partly tested (their option parsing and checks).
 
 **Working on a change:**
 

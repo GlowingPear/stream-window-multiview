@@ -69,8 +69,9 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 ## Settings (gear button)
 - Click the gear in the toolbar, or press Ctrl+, (Mac: ⌘,). It's also in the menu bar: on a Mac in the Stream Multiview menu, on Windows and Linux in File.
 - **General**: start new streams muted, snap windows while you drag, auto-pause hidden streams, and keyboard shortcuts on or off.
-- **Accounts**: logins, Import follows, your usernames for mentions, "Forget my login", "Watch signed in" and the YouTube API key.
-- **Mentions** and **Spam alerts**: how a chat window gets your attention (see Alerts below).
+- **Accounts**: logins, Import follows, "Forget my login", "Watch signed in" and the YouTube API key.
+- **Mentions**: your Kick and Twitch usernames, and how a chat window gets your attention when someone mentions you (see Alerts below).
+- **Spam alerts**: for moderators (see below).
 - **Themes**: the app's colours.
 - **Updates**: your version, checking for a new one, and what's new in each version.
 - **Instructions** and **Keyboard shortcuts**: this help. The Help menu in the menu bar opens them too.
@@ -116,7 +117,7 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - Mac: the first time a new version opens, macOS may ask if Stream Multiview can use "Stream Multiview Safe Storage" in your Keychain. Type your Mac password and click **Always Allow**. That's the key your saved logins are encrypted with; if you click Deny, the app can't read them and you'll have to log in again.
 
 ## Alerts
-- Mentions: when someone writes @you or replies to you in a Kick or Twitch chat, that chat window lights up and it's listed under the @ button. Set your usernames in Settings > Accounts, or click Detect.
+- Mentions: when someone writes @you or replies to you in a Kick or Twitch chat, that chat window lights up and it's listed under the @ button. Set your usernames in Settings > Mentions, or click Detect.
 - Settings > Mentions sets how: the window's border glows briefly or stays lit until you click that chat, and can get stronger while you haven't seen it (pulse, then flash). Pick its colour, a sound (or your own sound file), whether the sound repeats, and when to show a desktop notification.
 - Live alerts come from your saved channels while the app is running.
 
