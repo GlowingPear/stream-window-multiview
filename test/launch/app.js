@@ -27,6 +27,8 @@ async function launchApp(opts = {}) {
   catch (e) { return retry(e); }
   const proc = app.process();
   process.once('exit', () => killApp(proc));   // never leave the app open if the tests die
+  const output = [];                           // the app's last messages, to say why a start failed
+  for (const s of [proc.stdout, proc.stderr]) s?.on('data', d => { output.push(String(d)); if (output.length > 40) output.shift(); });
   try {
     await app.evaluate(({ app: eapp, session }) => {
       const player = '<!doctype html><title>player</title><body style="margin:0;background:#000"><video id="v" muted playsinline style="width:100%;height:100%"></video></body>';
@@ -66,8 +68,11 @@ async function launchApp(opts = {}) {
       }
     };
   } catch (e) {
+    const exited = proc.exitCode !== null || proc.signalCode !== null;
     killApp(proc);             // a failed start must not leave the app running (the test file would never end)
     await appGone(proc);
+    if (e && typeof e.message === 'string') e.message += `\n  (the app ${exited ? `had exited: code ${proc.exitCode}, signal ${proc.signalCode}` : 'was still running'})`
+      + (output.length ? '\n  its last output:\n' + output.join('').split('\n').slice(-25).map(l => '    ' + l).join('\n') : '');
     return retry(e);
   }
   // A start can fail for reasons outside the app: on CI, Playwright's hold on the app's main process sometimes
@@ -75,7 +80,7 @@ async function launchApp(opts = {}) {
   // exiting. Try once more; a second failure is real.
   async function retry(e) {
     if (opts.retried) throw e;
-    console.log('# The app failed to start, trying once more: ' + String(e && e.message || e).split('\n')[0]);
+    console.log('# The app failed to start, trying once more: ' + String(e && e.message || e).split('\n').map(l => l.trim()).filter(Boolean).join('\n# '));
     await new Promise(r => setTimeout(r, 1000));
     return launchApp({ ...opts, data, retried: true });
   }

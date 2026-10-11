@@ -39,6 +39,8 @@ test.before(async () => {
     const s = globalThis.__test = { status: {}, opened: [], checks: 0 };
     ipcMain.removeHandler('update:status'); ipcMain.handle('update:status', () => s.status);
     ipcMain.removeHandler('update:check'); ipcMain.handle('update:check', () => { s.checks++; return s.status; });
+    ipcMain.removeHandler('update:privacy-settings'); ipcMain.handle('update:privacy-settings', () => { s.opened.push('privacy'); return true; });
+    ipcMain.removeHandler('update:use-dmg'); ipcMain.handle('update:use-dmg', () => { s.opened.push('dmg'); return s.status; });
     ipcMain.removeHandler('open-external');
     ipcMain.handle('open-external', (_e, url) => { s.opened.push(url); });
   });
@@ -144,4 +146,27 @@ test('a copy run from a git checkout can check (not install) and says which vers
   assert.equal(await win.locator('.upd-install').count(), 0, 'no Download / Install button');
   await win.click('.upd-check');
   assert.equal(await app.evaluate(() => globalThis.__test.checks), 1);
+});
+
+test('a downloaded Mac update says the app updates itself, or to drag it in when it has to use the disk image', T, async () => {
+  const ready = { platform: 'darwin', state: 'ready', latest: '0.2.15', installed: '0.2.15', notes: 'x', notesHtml: '' };
+  await showUpdates({ ...ready, swap: { appPath: '/Applications/Stream Multiview.app', newApp: '/tmp/x/app/Stream Multiview.app' } });
+  assert.match(await win.textContent('.upd-state'), /Restart and install.*updates itself and opens again/s);
+  assert.equal(await win.textContent('.upd-restart'), 'Restart and install');
+  assert.equal(await win.textContent('#updBanner .ub-go'), 'Restart and install');
+  await showUpdates({ ...ready, swap: null });
+  assert.match(await win.textContent('.upd-state'), /drag Stream Multiview into Applications/);
+  assert.equal(await win.textContent('.upd-restart'), 'Install');
+  assert.equal(await win.textContent('#updBanner .ub-go'), 'Install');
+});
+
+test('when macOS stops the app updating itself, it says where to allow it and offers the disk image', T, async () => {
+  await showUpdates({ platform: 'darwin', state: 'ready', latest: '0.2.15', installed: '0.2.15', notes: 'x', notesHtml: '',
+    swap: { appPath: '/Applications/Stream Multiview.app', newApp: '/tmp/x/app/Stream Multiview.app' }, blocked: true });
+  assert.match(await win.textContent('.upd-state'), /macOS stopped.*App Management.*Restart and install/s);
+  assert.equal(await win.textContent('.upd-restart'), 'Restart and install', 'it can be tried again');
+  await app.evaluate(() => { globalThis.__test.opened.length = 0; });
+  await win.click('.upd-privacy');
+  await win.click('.upd-dmg');
+  assert.deepEqual(await app.evaluate(() => globalThis.__test.opened), ['privacy', 'dmg']);
 });

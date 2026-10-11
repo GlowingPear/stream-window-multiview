@@ -5,7 +5,7 @@
 #   3. This workflow then:
 #        - sets the version from the tag and adds the notes to CHANGELOG.md,
 #          commits that to main and moves the tag onto that commit,
-#        - builds the Windows (.exe) and Mac (.dmg) installers from it,
+#        - builds the Windows (.exe) and Mac (.dmg, plus the app as a .zip for in-app updates) installers from it,
 #        - attaches them to the release.
 # Pull requests build the installers as a test (see the run's "Artifacts"), unless they only
 # change things that can't affect the installers (docs, tests, text files).
@@ -123,7 +123,9 @@ jobs:
             files: dist/*.exe
           - os: macos-latest
             target: --mac
-            files: dist/*.dmg
+            files: |
+              dist/*.dmg
+              dist/*-mac.zip
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -213,8 +215,8 @@ jobs:
       - name: Check both installers are there
         run: |
           ls -l installers
-          ls installers/*.exe > /dev/null && ls installers/*.dmg > /dev/null \
-            || { echo "::error::An installer is missing (need a Windows .exe and a Mac .dmg)."; exit 1; }
+          ls installers/*.exe > /dev/null && ls installers/*.dmg > /dev/null && ls installers/*-mac.zip > /dev/null \
+            || { echo "::error::An installer is missing (need a Windows .exe, a Mac .dmg and the Mac .zip)."; exit 1; }
 
       - name: Attach the installers to the release
         if: github.event_name == 'release'

@@ -80,7 +80,7 @@ The app isn't code-signed yet, so the first launch shows a warning:
 - **Windows** ("Windows protected your PC"): click **More info → Run anyway**.
 - **Mac** ("can't be opened" / "Apple could not verify"): open **System Settings → Privacy & Security** and click **Open Anyway**.
 
-Installed copies update themselves from new releases.
+Installed copies update themselves from new releases: the app closes, updates and opens again. (On a Mac this needs the app in a folder you can write to, like Applications; otherwise it opens the new disk image to drag in.)
 
 ### Run from source
 Requires [Node.js](https://nodejs.org/) (LTS).
@@ -96,7 +96,7 @@ Keep the folder where it is after setup: the app runs from it. Coming from Kick 
 ```sh
 npm install
 npm run dist:win   # on Windows -> dist/Stream-Multiview-Setup-<version>.exe
-npm run dist:mac   # on a Mac   -> dist/Stream-Multiview-<version>-mac.dmg
+npm run dist:mac   # on a Mac   -> dist/Stream-Multiview-<version>-mac.dmg (and -mac.zip, used by in-app updates)
 ```
 
 ## Adding streams
@@ -187,7 +187,7 @@ Notes:
 
   Without the secret the release stops at its first step and says so.
 - Copies that are a git clone (they have a `.git` folder) never update themselves. Use `git pull` there.
-- **Mac signing certificate:** the repository secrets `MAC_CERT_P12` (the certificate as base64) and `MAC_CERT_PASSWORD` sign every Mac build with the same self-signed certificate. macOS recognises the app by that signature, so it keeps letting each new version read the saved-login key in the Keychain. Without them, Mac builds are signed ad hoc and Mac users are logged out after every update. Keep the same certificate: a new one counts as a different app once more.
+- **Mac signing certificate:** the repository secrets `MAC_CERT_P12` (the certificate as base64) and `MAC_CERT_PASSWORD` sign every Mac build with the same self-signed certificate. macOS recognises the app by that signature, so it keeps letting each new version read the saved-login key in the Keychain. Without them, Mac builds are signed ad hoc and Mac users are logged out after every update. The signature is also how an installed Mac app checks an update before swapping it in: an update is only installed in place when it's signed with the same certificate (otherwise the app opens the disk image instead). Keep the same certificate: a new one counts as a different app once more.
 
 ## Project structure
 

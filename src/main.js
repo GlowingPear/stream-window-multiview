@@ -979,7 +979,7 @@ ipcMain.handle('follows:import', async (_e, plat) => {
       saved logins are encrypted with a key tied to your Windows account. Logins saved before that
       are re-saved once so they get encrypted too.
    2. "Forget my login when I close the app" per site: that site's saved login is wiped on quit
-      (and at start-up, in case the app didn't close normally). */
+      (and at start-up if the app didn't get to: it closed without wiping, e.g. it crashed). */
 const secFile = () => stateFile('security');
 function loadSec() {
   let d = {};
@@ -1045,7 +1045,7 @@ app.on('will-quit', e => {            // every window is closed by now
   e.preventDefault();
   forgotten = true; quitTidied = true;
   const jobs = [];
-  if (needForget) jobs.push(forgetLogins(forgetList()));
+  if (needForget) jobs.push(forgetLogins(forgetList()).then(() => { sec.wiped = true; saveSec(sec); }));
   if (gameWin) jobs.push(Promise.race([releaseGame(), sleep(2500)]));
   Promise.all(jobs).finally(() => { try { gameHelper && gameHelper.kill(); } catch {} app.quit(); });
 });
@@ -1291,7 +1291,8 @@ async function checkForUpdate({ install = upd.auto, manual = false } = {}) {
     upd.lastCheck = Date.now(); saveUpd();
     const ahead = updater.compareVersions(info.version, updState.installed || app.getVersion()) > 0;
     const inst = INSTALLED ? updater.pickInstaller(info.assets, process.platform) : null;
-    updState = { ...updState, latest: info.version, notes: info.notes, notesHtml: info.notesHtml, zip: info.zip, page: info.page, asset: inst,
+    const macZip = INSTALLED && process.platform === 'darwin' ? updater.pickMacZip(info.assets) : null;
+    updState = { ...updState, latest: info.version, notes: info.notes, notesHtml: info.notesHtml, zip: info.zip, page: info.page, asset: inst, macZip,
       manual: INSTALLED && !inst,                       // no installer for this system in that release: download it from the page
       state: ahead ? 'available' : (updState.installed ? 'ready' : 'uptodate') };
     sendUpd();
@@ -1319,13 +1320,46 @@ async function downloadTo(url, file) {
   fs.renameSync(tmp, file);
   return file;
 }
+// Mac: can this copy replace itself? '' if so, otherwise why not (see updater.macSwapBlocker).
+const { execFile } = require('child_process');
+const runTool = (cmd, args) => new Promise((res, rej) => execFile(cmd, args, { maxBuffer: 1 << 20 }, (e, stdout, stderr) => e ? rej(e) : res(`${stdout}\n${stderr}`)));
+async function macSwapCheck() {
+  const appPath = updater.macAppBundle(process.execPath);
+  let writable = false, req = '';
+  try { fs.accessSync(path.dirname(appPath), fs.constants.W_OK); fs.accessSync(appPath, fs.constants.W_OK); writable = true; } catch {}
+  if (appPath) req = updater.designatedReq(await runTool('codesign', ['-d', '-r-', appPath]).catch(() => ''));
+  return { appPath, req, why: updater.macSwapBlocker({ app: appPath, writable, req }) };
+}
+// Mac: download the new app and unpack and check it (updater.unpackMacApp). Restart then swaps it in.
+async function downloadMacApp() {
+  const { appPath, req, why } = await macSwapCheck();
+  if (why) throw new Error('mac swap: ' + why);
+  const dir = fs.mkdtempSync(path.join(app.getPath('temp'), 'stream-multiview-update-'));
+  try {
+    const zip = await downloadTo(updState.macZip.url, path.join(dir, path.basename(updState.macZip.name)));
+    const newApp = await updater.unpackMacApp(zip, path.join(dir, 'app'), req, runTool);
+    fs.rmSync(zip, { force: true });
+    return { appPath, newApp };
+  } catch (e) {
+    fs.rmSync(dir, { recursive: true, force: true });
+    throw e;
+  }
+}
 async function installInstaller() {
   if (updState.manual || !updState.asset) { shell.openExternal(updState.page || `https://github.com/${upd.repo}/releases/latest`); return updStatus(); }
   updState = { ...updState, state: 'downloading', error: '' }; sendUpd();
+  if (updState.macZip) {
+    try {
+      const swap = await downloadMacApp();
+      updState = { ...updState, state: 'ready', installed: updState.latest, installerFile: '', swap, blocked: false, needsInstall: false };
+      sendUpd();
+      return updStatus();
+    } catch (e) { console.log('Update: using the disk image instead (' + (e && e.message || e) + ')'); }
+  }
   try {
     const dir = process.platform === 'darwin' ? app.getPath('downloads') : path.join(app.getPath('temp'), 'stream-multiview-update');
     const file = await downloadTo(updState.asset.url, path.join(dir, path.basename(updState.asset.name)));
-    updState = { ...updState, state: 'ready', installed: updState.latest, installerFile: file, needsInstall: false };
+    updState = { ...updState, state: 'ready', installed: updState.latest, installerFile: file, swap: null, blocked: false, needsInstall: false };
   } catch (e) {
     updState = { ...updState, state: 'error', error: String(e && e.message || e) };
   }
@@ -1334,6 +1368,20 @@ async function installInstaller() {
 }
 // Hand over to the downloaded installer, then close so it can replace the app.
 function runInstaller() {
+  const sw = updState.swap;
+  if (process.platform === 'darwin' && sw && fs.existsSync(sw.newApp)) {
+    // macOS's App Management setting can refuse: then say where to allow it, and keep the app open
+    let ok = false;
+    try { ok = updater.canWriteInside(sw.appPath); } catch {}
+    updState = { ...updState, blocked: !ok }; sendUpd();
+    if (!ok) return false;
+    const { spawn } = require('child_process');
+    const script = path.join(path.dirname(path.dirname(sw.newApp)), 'swap.sh');
+    fs.writeFileSync(script, updater.macSwapScript());
+    spawn('/bin/sh', [script, String(process.pid), sw.appPath, sw.newApp], { detached: true, stdio: 'ignore' }).unref();
+    setTimeout(() => app.quit(), 300);    // the script waits for the app to close, swaps in the new one and opens it
+    return true;
+  }
   const f = updState.installerFile;
   if (!f || !fs.existsSync(f)) return false;
   if (process.platform === 'win32') {
@@ -1382,9 +1430,17 @@ ipcMain.handle('update:settings', (_e, d) => {
   saveUpd(); sendUpd();
   return updStatus();
 });
+// Mac: System Settings > Privacy & Security > App Management, where the app is allowed to update itself
+ipcMain.handle('update:privacy-settings', () => { shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles'); return true; });
+// Mac: don't swap the app in after all, download the disk image to drag in instead
+ipcMain.handle('update:use-dmg', () => {
+  if (updState.swap) fs.rmSync(path.dirname(path.dirname(updState.swap.newApp)), { recursive: true, force: true });
+  updState = { ...updState, macZip: null, swap: null, blocked: false };
+  return installInstaller();
+});
 ipcMain.handle('update:open-page', () => { shell.openExternal(updState.page || `https://github.com/${upd.repo}/releases/latest`); return true; });
 ipcMain.handle('update:restart', () => {
-  if (INSTALLED) return { installer: runInstaller(), mac: process.platform === 'darwin' };
+  if (INSTALLED) { const installer = runInstaller(); return { installer, mac: process.platform === 'darwin' && !updState.swap, blocked: !!updState.blocked }; }
   if (updState.needsInstall) return { needsInstall: true };      // the launcher has to reinstall the engine first
   app.relaunch(); app.exit(0);
   return { ok: true };
@@ -1489,7 +1545,8 @@ if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'com.gl
 app.whenReady().then(async () => {
   sec = loadSec();
   loadYtKey();
-  if (forgetList().length) await forgetLogins(forgetList());     // the app didn't get to wipe them last time
+  if (forgetList().length && sec.wiped !== true) await forgetLogins(forgetList());     // the app didn't get to wipe them last time
+  if (sec.wiped !== false) { sec.wiped = false; saveSec(sec); }     // logins saved from now on are wiped when it closes
   encryptOldLogins();
   const ua = chromeUA();
   app.userAgentFallback = ua;

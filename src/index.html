@@ -5110,7 +5110,8 @@ function updMsg(u){
     case 'checking': return ['', '<span class="spin"></span> Checking for updates…'];
     case 'downloading': return ['', `<span class="spin"></span> Downloading version ${escH(u.latest)}…`];
     case 'available': return ['ok', u.manual ? `Version <b>${escH(u.latest)}</b> is available. Download it from the GitHub page.` : `Version <b>${escH(u.latest)}</b> is available.`];
-    case 'ready': if (u.installed_app) return ['ok', u.platform === 'darwin'
+    case 'ready': if (u.installed_app && u.blocked) return ['bad', `macOS stopped Stream Multiview updating itself. Click <b>Open System Settings</b>, turn on Stream Multiview under <b>App Management</b>, then click <b>Restart and install</b> again. Or use the disk image instead.`];
+      if (u.installed_app) return ['ok', u.platform === 'darwin' && !u.swap
         ? `Version <b>${escH(u.installed)}</b> is downloaded. Click <b>Install</b>, then drag Stream Multiview into Applications (replace the old one) and open it again.`
         : `Version <b>${escH(u.installed)}</b> is downloaded. Click <b>Restart and install</b>: the app closes, updates itself and opens again.`];
       return ['ok', u.needsInstall
@@ -5162,7 +5163,8 @@ function renderUpdates(){
     <div class="upd-row">
       <button class="btn upd-check"${!u.repo || u.state === 'checking' || u.state === 'downloading' ? ' disabled' : ''}>Check now</button>
       ${u.state === 'available' && !u.git ? `<button class="btn primary upd-install">${u.manual ? 'Open download page' : u.installed_app ? 'Download update' : 'Download and install'}</button>` : ''}
-      ${u.state === 'ready' && !u.needsInstall ? `<button class="btn primary upd-restart">${u.installed_app ? (u.platform === 'darwin' ? 'Install' : 'Restart and install') : 'Restart now'}</button>` : ''}
+      ${u.state === 'ready' && !u.needsInstall ? `<button class="btn primary upd-restart">${u.installed_app ? (u.platform === 'darwin' && !u.swap ? 'Install' : 'Restart and install') : 'Restart now'}</button>` : ''}
+      ${u.state === 'ready' && u.blocked ? '<button class="btn upd-privacy">Open System Settings</button><button class="btn upd-dmg">Use the disk image instead</button>' : ''}
       <label class="chk"><input type="checkbox" class="upd-auto"${u.auto ? ' checked' : ''}>Update automatically</label>
     </div>
     ${u.notes || u.notesHtml ? `<div><h4>What's in version ${escH(u.latest)}</h4><div class="upd-notes"></div></div>` : ''}
@@ -5187,6 +5189,8 @@ function renderUpdates(){
   on('.upd-check', () => window.kmv.updateCheck());
   on('.upd-install', () => window.kmv.updateInstall());
   on('.upd-restart', restartForUpdate);
+  on('.upd-privacy', () => window.kmv.updatePrivacySettings());
+  on('.upd-dmg', () => window.kmv.updateUseDmg());
   on('.upd-save', async () => { updSt = await window.kmv.updateSettings({ repo: inp.value }); renderUpdates(); if (updSt.repo) window.kmv.updateCheck(); });
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') body.querySelector('.upd-save').click(); });
   body.querySelector('.upd-auto').onchange = async e => { updSt = await window.kmv.updateSettings({ auto: e.target.checked }); };
@@ -5194,6 +5198,7 @@ function renderUpdates(){
 async function restartForUpdate(){
   const r = await window.kmv.updateRestart();
   if (r && r.needsInstall) flash('Close the app and start it again with your shortcut to finish the update');
+  else if (r && r.blocked){ flash('macOS stopped the update: see Settings › Updates'); openSettings('updates'); }
   else if (r && r.mac) flash('Drag Stream Multiview into Applications (replace the old one), then open it again');
 }
 function updBanner(u){
@@ -5203,7 +5208,7 @@ function updBanner(u){
       ? `Stream Multiview ${u.installed} is installed. Close the app and start it again with your shortcut to finish.`
       : u.installed_app ? `Stream Multiview ${u.installed} is downloaded and ready to install.`
       : `Stream Multiview ${u.installed} is ready. Restart to use it.`;
-    b.querySelector('.ub-go').textContent = u.installed_app ? (u.platform === 'darwin' ? 'Install' : 'Restart and install') : 'Restart now';
+    b.querySelector('.ub-go').textContent = u.installed_app ? (u.platform === 'darwin' && !u.swap ? 'Install' : 'Restart and install') : 'Restart now';
     b.querySelector('.ub-go').hidden = !!u.needsInstall;
     b.hidden = false;
   }

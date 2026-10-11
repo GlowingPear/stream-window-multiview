@@ -1,6 +1,8 @@
 // What happens to logins and links: "Forget my login" really wipes a site's login when the app closes (and
 // only that site's), and links clicked inside a chat open in the app (Kick, sign-in pages) or in your browser.
 const test = require('node:test');
+const fs = require('fs');
+const path = require('path');
 const { launchApp, inView, viewLoaded, assert } = require('./app');
 
 const T = { timeout: 90000 };
@@ -16,6 +18,8 @@ test('"Forget my login": that site\'s login is wiped when the app closes, the ot
   await a.win.evaluate(() => window.kmv.securitySetForget('twitch', true));
   assert.deepEqual(a.errors, []);
   await a.close();
+  const secFile = path.join(data, 'Stream Multiview', 'security.json');
+  assert.equal(JSON.parse(fs.readFileSync(secFile, 'utf8')).wiped, true, 'it noted the wipe, so the next start needn\'t wipe again');
 
   a = await launchApp({ data });
   try {
@@ -26,6 +30,7 @@ test('"Forget my login": that site\'s login is wiped when the app closes, the ot
     assert.deepEqual(cookies.twitch, [], 'the Twitch login is gone');
     assert.deepEqual(cookies.kick, ['abc'], 'the Kick login is kept');
     assert.equal((await a.win.evaluate(() => window.kmv.securityGet())).forget.twitch, true, 'and the choice is remembered');
+    assert.equal(JSON.parse(fs.readFileSync(secFile, 'utf8')).wiped, false, 'logins saved from now on are still to be wiped');
     assert.deepEqual(a.errors, []);
   } finally { await a.close(); }
 });

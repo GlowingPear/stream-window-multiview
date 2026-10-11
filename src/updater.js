@@ -191,4 +191,67 @@ function pickInstaller(assets, platform) {
   return null;
 }
 
-module.exports = { pickInstaller, compareVersions, latestInfo, readZip, appFiles, applyUpdate, REPO_RE };
+// Mac: the release also carries the app itself as a .zip. The app swaps that in for itself (no disk image
+// to open and drag), like the Windows installer does; the disk image stays the fallback.
+function pickMacZip(assets) {
+  const list = Array.isArray(assets) ? assets : [];
+  return list.find(a => /(mac|universal).*\.zip$/i.test(a.name)) || null;
+}
+// ".../Stream Multiview.app/Contents/MacOS/Stream Multiview" -> ".../Stream Multiview.app"
+function macAppBundle(execPath) {
+  const m = String(execPath || '').match(/^(.*?\.app)\/Contents\/MacOS\/[^/]+$/);
+  return m ? m[1] : '';
+}
+// `codesign -d -r- <app>` output -> the requirement macOS knows the app by ('' if there's none)
+function designatedReq(out) {
+  const m = String(out || '').match(/designated => (.+)/);
+  return m ? m[1].trim() : '';
+}
+// Why this copy can't replace itself (it falls back to the disk image), or '' if it can.
+function macSwapBlocker({ app, writable, req }) {
+  if (!app) return 'nobundle';
+  if (app.startsWith('/Volumes/')) return 'volume';                 // running from the disk image
+  if (/\/AppTranslocation\//.test(app)) return 'translocated';      // macOS runs it from a read-only copy
+  if (!writable) return 'nowrite';
+  if (!req) return 'unsigned';
+  if (/^cdhash /.test(req)) return 'adhoc';                         // ad-hoc signed: a new build can't be told apart from a fake
+  return '';
+}
+// Unpack the downloaded app and check it's signed by the same certificate as this one (`req`, the running
+// app's designated requirement), so it's really ours and macOS lets it read the saved logins. -> the new .app
+async function unpackMacApp(zip, dir, req, run) {
+  await run('ditto', ['-x', '-k', zip, dir]);
+  const name = fs.readdirSync(dir).find(f => f.endsWith('.app'));
+  if (!name) throw new Error('no app in the download');
+  const app = path.join(dir, name);
+  await run('codesign', ['--verify', '--deep', '--strict', `-R=${req}`, app]);
+  return app;
+}
+// Mac: can this app change its own files? macOS's App Management setting (Privacy & Security) can stop an app
+// that isn't from the App Store or a known developer replacing itself. Writing a file inside the app, then
+// removing it, is refused the same way, so it's checked before the app closes rather than after.
+function canWriteInside(appDir) {
+  const f = path.join(appDir, '.smv-update-check');
+  try { fs.writeFileSync(f, ''); } catch (e) { if (e && (e.code === 'EPERM' || e.code === 'EACCES')) return false; throw e; }
+  try { fs.unlinkSync(f); } catch {}
+  return true;
+}
+// Run detached after the app quits: $1 the app's process, $2 the app, $3 the new app, $4 what opens it again.
+// The old app is only deleted once the new one is in place; if the move fails, the old one goes back.
+function macSwapScript() {
+  return `#!/bin/sh
+pid="$1"; app="$2"; new="$3"; open="\${4:-open}"; old="$app.smv-old-$$"
+i=0
+while kill -0 "$pid" 2>/dev/null; do
+  i=$((i + 1)); [ "$i" -gt 600 ] && exit 1
+  sleep 0.1
+done
+if mv "$app" "$old"; then
+  if mv "$new" "$app"; then rm -rf "$old"; else rm -rf "$app"; mv "$old" "$app"; fi
+fi
+xattr -dr com.apple.quarantine "$app" 2>/dev/null
+"$open" "$app"
+`;
+}
+
+module.exports = { pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript, compareVersions, latestInfo, readZip, appFiles, applyUpdate, REPO_RE };
