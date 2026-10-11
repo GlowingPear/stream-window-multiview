@@ -12,7 +12,7 @@ Files next to this one:
 | File | What it does |
 |---|---|
 | `changes.js` | Lists what to cover: PRs merged since the newest tag (or a range), with their descriptions |
-| `video.js` | Records a scenes file and makes the MP4 (`node video.js <scenes.js>`) |
+| `video.js` | Records a scenes file and makes the MP4, always under 10 MB (`node video.js <scenes.js>`) |
 | `stage.js` | Stand-in kick.com: six made-up channels (`pixelpear`, `nightowl`, `arcadia`, `lofilane`, `tidepool`, `emberfox`) with moving pictures, chats with a chat box and user cards, and Kick's channel API |
 | `capture.js` | Smooth capture of every frame the window paints |
 | `music.js` | Generated upbeat backing track (no samples, nothing to license) |
@@ -82,6 +82,7 @@ module.exports = {
 - **Keep things in frame.** `ring` and `moveTo` scroll their target into view. Take a ring off before scrolling again. Captions move to the top when the pointer is low; check they don't cover what's being shown.
 - **Things that hide must be shown hiding.** Move the pointer away so it goes, then back so it returns (e.g. the hidden bar: away, wait, then to the top edge).
 - **Made-up everything.** Only the stand-in channels and chatters, seeded data with made-up history, and invented names in typed text. Never a real channel, login or chat.
+- **Under 10 MB** (GitHub's limit for a video in release notes or a PR). `video.js` sees to it. It encodes at the window's 1280×800, in two passes when one pass is too big, and drops to 960×600 when the video is too long for 1280×800 to stay sharp (over about 3 minutes). Aim for 2-3 minutes, so it stays at 1280×800.
 - **Pace:** title cards ~2.5 s, a beat of 1-3 s on each result, ~10-20 s per feature. An outro card: `Get <version>` / `Settings › Updates › Check now`, and every feature in a line.
 - **Smooth:** ~24-30 fps captured. Don't use Playwright's own video recording, which drops to 5-15 fps and looks laggy.
 

@@ -1,5 +1,5 @@
 // Records a "what's new" video of the app from a scenes file (see SKILL.md), with title cards, captions,
-// a visible pointer, smooth capture and generated music, and encodes it as an MP4.
+// a visible pointer, smooth capture and generated music, and encodes it as an MP4 under 10 MB.
 //   node .claude/skills/release-video/video.js <scenes.js> [--dir <checkout>] [--out <file.mp4>] [--keep]
 // --dir: the checkout to run (default: this one). --keep: keep the captured frames (for re-encoding).
 // Prints the MP4, a contact sheet (a still every 4 s) to look at, and the capture rate.
@@ -12,7 +12,7 @@ const capture = require('./capture');
 const music = require('./music');
 
 const ROOT = path.join(__dirname, '..', '..', '..');
-const W = 1280, H = 800;   // the window; the MP4 is scaled up to 1920x1200
+const W = 1280, H = 800;   // the window, and the MP4
 
 const CSS = `
 #tr-cap{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);opacity:0;transition:all .45s ease,bottom .5s cubic-bezier(.6,0,.3,1);z-index:2147483646;pointer-events:none;
@@ -114,6 +114,8 @@ function director(run, { features = 0 } = {}) {
     await wait(from ? 2900 : 2500); await uncard(); await wait(800);
     await cap(v, title, sub); await wait(300);
   };
+  // Keep the caption off something: up top while it's in the lower part of the window, at the bottom otherwise.
+  const dodge = box => m.evaluate(low => document.getElementById('tr-cap').classList.toggle('top', low), box.y + box.height > H * .74);
   // Scroll something fully into view, smoothly, if it isn't already (centred in whatever scrolls: a dialog, a list).
   // Without this a ring runs off the edge, and a click on it lands on what's in front (or the backdrop, closing a dialog).
   const reveal = async sel => {
@@ -135,6 +137,7 @@ function director(run, { features = 0 } = {}) {
   const ring = async (sel, pad = 6) => {
     await reveal(sel);
     const r = await m.locator(sel).first().boundingBox();
+    await dodge(r);
     await m.evaluate(([r, pad]) => { const g = document.getElementById('tr-ring');
       Object.assign(g.style, { left: r.x - pad + 'px', top: r.y - pad + 'px', width: r.width + pad * 2 + 'px', height: r.height + pad * 2 + 'px' }); g.classList.add('on'); }, [r, pad]);
   };
@@ -150,7 +153,7 @@ function director(run, { features = 0 } = {}) {
     await reveal(sel);
     const box = await m.locator(sel).first().boundingBox();
     if (!box) throw new Error(`Nothing on screen for ${sel}`);
-    await m.evaluate(low => document.getElementById('tr-cap').classList.toggle('top', low), box.y + box.height > H * .74);
+    await dodge(box);
     await glide(box.x + box.width * (opts.fx ?? .5), box.y + box.height * (opts.fy ?? .5), opts);
   };
   const press = async () => { await wait(150); await m.mouse.down(); await wait(90); await m.mouse.up(); await wait(250); };
@@ -180,6 +183,34 @@ function ffmpeg() {
   }
 }
 const ff = args => { const r = spawnSync('ffmpeg', ['-v', 'error', '-y', ...args], { encoding: 'utf8' }); if (r.status) throw new Error('ffmpeg: ' + r.stderr); };
+
+// MP4s must stay under 10 MB (GitHub's limit for videos in release notes and PRs on a free plan).
+const LIMIT = 9.5e6;
+// Encode a video input and an audio input (ffmpeg input args) to `mp4` under LIMIT, at the window's own
+// 1280x800 (scaling up only costs size): one pass at good quality, or two passes at a bitrate that fits when
+// that's too big. A long video gets too few bits for 1280x800 text to stay sharp, so it's made at 960x600.
+// The poster is added as the cover picture.
+async function encode(inputs, seconds, thumb, mp4, work) {
+  const plain = path.join(work, 'video.mp4'), cover = path.join(work, 'cover.jpg'), log = path.join(work, 'x264');
+  const v = (w = W, h = H) => ['-map', '0:v:0', '-map', '1:a:0', '-vf', `scale=${w}:${h}:flags=lanczos,fps=30`, '-c:v', 'libx264', '-preset', 'slow', '-pix_fmt', 'yuv420p'];
+  const a = ['-c:a', 'aac', '-b:a', '96k', '-shortest', '-movflags', '+faststart'];
+  ff(['-i', thumb, '-vf', `scale=${W}:${H}:flags=lanczos`, '-q:v', '4', cover]);
+  const room = LIMIT - fs.statSync(cover).size;
+  ff([...inputs, ...v(), '-crf', '23', ...a, plain]);
+  // too big: two passes at a bitrate that fits, lower again if the encoder overshoots (it can, at low bitrates)
+  let kbps = Math.floor((room * 8 / seconds - 96e3) / 1000 * .97);   // leave a little for the container
+  for (let i = 0; fs.statSync(plain).size > room; i++, kbps = Math.floor(kbps * .9)) {
+    if (i === 3) throw new Error(`Couldn't get ${mp4} under 10 MB: make the video shorter`);
+    const nul = process.platform === 'win32' ? 'NUL' : '/dev/null';
+    const size = kbps < 300 ? [960, 600] : [W, H];
+    ff([...inputs, ...v(...size), '-b:v', kbps + 'k', '-pass', '1', '-passlogfile', log, '-an', '-f', 'mp4', nul]);
+    ff([...inputs, ...v(...size), '-b:v', kbps + 'k', '-pass', '2', '-passlogfile', log, ...a, plain]);
+    for (const f of fs.readdirSync(work)) if (f.startsWith('x264')) fs.rmSync(path.join(work, f), { force: true });
+  }
+  // the poster as the file's cover picture too (shown by players and file browsers that use one)
+  ff(['-i', plain, '-i', cover, '-map', '0', '-map', '1', '-c', 'copy', '-disposition:v:1', 'attached_pic', '-movflags', '+faststart', mp4]);
+  fs.rmSync(plain, { force: true });
+}
 
 // Record a scenes module ({ name, poster, features, seed, stage, run }) and encode it. Returns { mp4, sheet, capture }.
 async function record(scenes, { dir = ROOT, out, keep = false } = {}) {
@@ -227,14 +258,7 @@ async function record(scenes, { dir = ROOT, out, keep = false } = {}) {
   if (failed) { failed.message += `\n(screenshot of the moment: ${path.join(work, 'fail.png')})`; throw failed; }
 
   const wav = music.write(cap.seconds + 1, path.join(work, 'music.wav'));
-  const plain = path.join(work, 'video.mp4'), cover = path.join(work, 'cover.jpg');
-  ff(['-f', 'concat', '-safe', '0', '-i', cap.list, '-i', wav, '-map', '0:v', '-map', '1:a',
-    '-vf', 'scale=1920:1200:flags=lanczos,fps=30', '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p',
-    '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', plain]);
-  // the poster as the file's cover picture too (shown by players and file browsers that use one)
-  ff(['-i', thumb, '-vf', 'scale=1920:1200:flags=lanczos', '-q:v', '2', cover]);
-  ff(['-i', plain, '-i', cover, '-map', '0', '-map', '1', '-c', 'copy', '-disposition:v:1', 'attached_pic', '-movflags', '+faststart', mp4]);
-  fs.rmSync(plain, { force: true });
+  await encode(['-f', 'concat', '-safe', '0', '-i', cap.list, '-i', wav], cap.seconds, thumb, mp4, work);
   const sheet = path.join(work, 'sheet.png');
   ff(['-i', mp4, '-map', '0:v:0', '-vf', `fps=1/4,scale=400:-1,tile=6x${Math.ceil(cap.seconds / 24)}`, '-frames:v', '1', sheet]);
   if (!keep) fs.rmSync(frames, { recursive: true, force: true });
@@ -254,4 +278,4 @@ if (require.main === module) {
     .catch(e => { console.error(e.stack || e.message); process.exit(1); });
 }
 
-module.exports = { record, director };
+module.exports = { record, director, encode };
