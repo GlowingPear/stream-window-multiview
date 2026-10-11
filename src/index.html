@@ -1289,14 +1289,15 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <select data-al="spam.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
         </div>
         <div class="st-subpane" data-t="how" hidden>
-          <div class="st-explain">A message is only flagged when several signs add up. One sign alone is never enough, so normal links and clip links aren't flagged, and a message needs a link (or to be posted in several chats) to count. The one exception is a wall of the same word, which is flagged on its own.
+          <div class="st-explain">A message is only flagged when several signs add up. One sign alone is never enough, so normal links and clip links aren't flagged, and a message needs a link (or to be posted in several chats) to count. The exceptions are a wall of the same word and a known bot opening line, which are flagged on their own.
             <ul>
               <li><b>Disguised link</b> to a site not on the allowed list, written so the chat doesn't turn it into a link: <code>site com</code>, <code>site[.]com</code>, <code>site dot com</code> (3 points). A normal link to a site not on the list is 1 point.</li>
               <li><b>Promo words</b> like "upgrades", "viewers" or "zero cost" (1 point each, up to 2)</li>
               <li><b>Emotes or junk</b> breaking up the words (1 point)</li>
               <li><b>The same message in another open chat</b> in the last 5 minutes (3 points, the strongest sign)</li>
-              <li><b>A new chatter</b>: started chatting in the last few minutes, often with friendly filler lines first like "Hey stranger, still running the show?" (1 point)</li>
+              <li><b>A new chatter</b>: started chatting in the last few minutes, often with friendly filler lines first like "Don't work too hard" (1 point)</li>
               <li><b>The same word over and over</b>, glued together like <code>WordWordWordWord</code> (10+ times) or spaced out (25+ times). Laughing and hype like <code>hahaha</code> or <code>KEKW KEKW</code> don't count (6 points, enough on its own)</li>
+              <li><b>A known bot opening line</b> from the list in Lists, like "Hey stranger, still running the show?", the greeting some promo bots start with before posting their link (6 points, enough on its own)</li>
             </ul></div>
           <div class="st-row"><span class="st-t">Sensitivity<small>Strict flags more, and may flag a few real messages.</small></span>
             <select data-al="spam.sens"><option value="relaxed">Relaxed (6 points)</option><option value="balanced">Balanced (5 points)</option><option value="strict">Strict (4 points)</option></select></div>
@@ -1308,6 +1309,9 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <div class="st-sec">Promo words</div>
           <div class="st-chips" data-list="words"></div>
           <div class="st-add"><input class="st-in" data-add="words" placeholder="Add a word or phrase" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="words">Add</button><button class="btn" data-reset="words">Reset</button></div>
+          <div class="st-sec">Bot opening lines</div><p class="st-sub" style="margin:2px 0 0">Greetings promo bots start with. A message with one of these is flagged on its own, so you can deal with the bot before it posts its link. Case and punctuation don't matter.</p>
+          <div class="st-chips" data-list="openers"></div>
+          <div class="st-add"><input class="st-in" data-add="openers" placeholder="Add a line a bot opens with" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="openers">Add</button><button class="btn" data-reset="openers">Reset</button></div>
         </div>
         <div class="st-subpane" data-t="try" hidden>
           <p class="st-sub" style="margin:8px 0 0">Paste a message to see whether it would be flagged, and why. It's checked on its own, as if nothing else had been posted.</p>
@@ -2498,7 +2502,7 @@ function injectMention(w){
 const ALERT_DEFAULTS = {
   mention: { hl: 'until', color: '#e8b84a', esc: 20, max: 'pulse', sound: 'chime', vol: 0.5, repeat: false, notify: 'unfocused' },
   spam: { on: false, hl: 'until', color: '#ff5f5f', esc: 0, max: 'pulse', tag: true, sound: 'knock', vol: 0.4, repeat: false, notify: 'never',
-          sens: 'balanced', allow: null, words: null }      // null: the built-in lists
+          sens: 'balanced', allow: null, words: null, openers: null }      // null: the built-in lists
 };
 var alerts = (() => {
   let a = {}; try { a = JSON.parse(localStorage.getItem('kickMultiview.alerts') || '{}') || {}; } catch {}
@@ -2599,7 +2603,7 @@ async function modChat(w){
   if (!modOk.has(w.channel)) modOk.set(w.channel, window.kmv.modCheck(w.channel).catch(() => null));
   return (await modOk.get(w.channel)) === true;
 }
-const spamOpts = () => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS });
+const spamOpts = () => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS });
 async function spamCheck(w, lines){
   const mod = await modChat(w);
   const now = Date.now();
@@ -5684,11 +5688,11 @@ $('#spamTabs').addEventListener('click', e => {
   if (b.dataset.t === 'history') renderSpamHist();   // fresh "x min ago"
 });
 
-/* Spam alerts: allowed sites and promo words */
-const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS };
+/* Spam alerts: allowed sites, promo words and bot opening lines */
+const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS, openers: () => SmvSpam.OPENERS };
 const listOf = which => (alerts.spam[which] || SPAM_LIST[which]()).slice();
 function renderSpamLists(){
-  ['allow', 'words'].forEach(which => {
+  Object.keys(SPAM_LIST).forEach(which => {
     const box = settingsDlg.querySelector(`[data-list="${which}"]`); box.innerHTML = '';
     listOf(which).forEach(item => {
       const c = document.createElement('span'); c.className = 'st-chip';
@@ -5706,10 +5710,11 @@ function setSpamList(which, list){
 }
 function addSpamItem(which){
   const inp = settingsDlg.querySelector(`[data-add="${which}"]`);
-  let v = inp.value.trim().toLowerCase();
+  let v = inp.value.trim().replace(/\s+/g, ' ');
+  if (which !== 'openers') v = v.toLowerCase();   // opening lines keep their capitals: they're shown as typed
   if (which === 'allow') v = v.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '').replace(/\s+(?=[a-z]{2,6}$)/, '.');
-  if (!v || (which === 'allow' && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v))){ inp.focus(); flash(which === 'allow' ? 'Type a site like example.com' : 'Type a word or phrase'); return; }
-  const l = listOf(which); if (!l.includes(v)) l.push(v);
+  if (!/[a-z0-9]/i.test(v) || (which === 'allow' && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v))){ inp.focus(); flash(which === 'allow' ? 'Type a site like example.com' : which === 'openers' ? 'Type a line a bot opens with' : 'Type a word or phrase'); return; }
+  const l = listOf(which); if (!l.some(x => x.toLowerCase() === v.toLowerCase())) l.push(v);
   setSpamList(which, l); inp.value = '';
 }
 settingsDlg.querySelectorAll('[data-addbtn]').forEach(b => { b.onclick = () => addSpamItem(b.dataset.addbtn); });

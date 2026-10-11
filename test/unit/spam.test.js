@@ -82,6 +82,28 @@ test('a wall of one word is spam on its own, with no link needed', () => {
   assert.equal(flagged(Array(25).fill('Fuck').join(' ')), true, 'spaced out, 25 times');
 });
 
+test('a known bot opening line is spam on its own, with no link needed', () => {
+  const r = score(msg('Hey stranger, still running the show?'), {}, { sensitivity: 'relaxed' });
+  assert.equal(r.spam, true);
+  assert.deepEqual(r.signs, [{ text: 'Known bot opening line: "Hey stranger, still running the show?"', points: 6 }]);
+  assert.equal(flagged('hey   STRANGER still running the show!!'), true, 'case, spacing and punctuation ignored');
+  assert.equal(flagged('lol hey stranger, still running the show? haha'), true, 'inside a longer message');
+});
+
+test('normal greetings are not bot opening lines', () => {
+  for (const body of ['hey everyone', 'Hey stranger!', 'still running the show?', 'hey strangers, still running the shows?'])
+    assert.equal(flagged(body), false, body);
+});
+
+test('your own bot opening lines, and an empty list matches nothing', () => {
+  assert.equal(flagged("Don't work too hard, leave some success for the rest of us."), false);
+  const r = score(msg("don't work too hard, leave some success for the rest of us"), {}, { openers: ["Don't work too hard, leave some success for the rest of us.", ' ', '?!'] });
+  assert.deepEqual(r.signs, [{ text: 'Known bot opening line: "Don\'t work too hard, leave some success for the rest of us."', points: 6 }]);
+  assert.equal(r.spam, true);
+  assert.equal(flagged('dont work too hard, leave some success for the rest of us', {}, { openers: ["Don’t work too hard, leave some success for the rest of us"] }), true, 'apostrophes ignored');
+  assert.equal(flagged('Hey stranger, still running the show?', {}, { openers: [] }), false, 'emptied list');
+});
+
 test('hype, laughing and emote walls are not a word flood', () => {
   for (const body of [
     'KEKW KEKW KEKW KEKW KEKW KEKW KEKW KEKW',
