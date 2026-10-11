@@ -350,6 +350,7 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 #swBtn{display:flex;align-items:center;gap:6px}
 #swBtn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 #swBtn.on{border-color:var(--accent);color:var(--accent)}
+#swBtn[hidden]{display:none}
 .lm-sec{margin:6px 4px 2px;padding-top:8px;border-top:1px solid var(--line);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
 .pr-empty{padding:4px 10px 6px;font-size:11px;color:var(--muted)}
 .pr-row{display:flex;align-items:center;gap:2px;border-radius:7px}
@@ -518,6 +519,7 @@ body.coldrag #stage{scroll-snap-type:none}
 .linkbtn{display:flex;align-items:center;gap:6px}
 .linkbtn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .linkbtn.on{border-color:var(--accent);color:var(--accent)}
+.linkbtn[hidden]{display:none}
 
 #colStrip{position:absolute;z-index:89985;display:none;align-items:center;gap:6px;padding:0 4px;
   background:var(--panel);border:1px solid var(--line2);border-radius:8px}

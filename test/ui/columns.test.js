@@ -77,6 +77,8 @@ test('Columns, Linked: drag a column by its title bar to move the stream and its
   const sx = (await box(win(page, 'alpha'))).x, cx = (await box(win(page, 'alpha', 'chat'))).x;
   assert.equal(sx, cx, 'its chat came along');
   assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.colOrder'))).indexOf('alpha') > 0, true, 'the order is remembered');
+  await press(page, 'a');
+  assert.equal(await page.isVisible('#linkBtn'), false, 'no Linked button outside Columns and Focus view');
 
 });
 
