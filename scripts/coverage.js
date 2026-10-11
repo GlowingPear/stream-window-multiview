@@ -7,7 +7,7 @@
 // the desktop app's main process, and the code the unit tests load. The report (coverage/report.md, and the
 // run's summary page on GitHub) lists each file's lines and functions run, and the bigger functions nothing
 // runs. It fails when a test fails. A file below its minimum fails it in CI, where the minimums are measured
-// (Linux, Node 22); on your computer some code can't run (e.g. Windows-only or Node 22 parts), so there it
+// (Linux, the Node version in .nvmrc); on your computer some code can't run (e.g. Windows-only parts, or Node 22+ parts on an older Node), so there it
 // only warns.
 const fs = require('fs');
 const path = require('path');

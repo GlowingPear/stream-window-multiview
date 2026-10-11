@@ -16,6 +16,62 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
 const clear = async () => { if (await a.win.locator('#stage .win').count()){ await a.win.click('#clear'); await a.win.click('#askDlg .ask-yes'); } };
 test.beforeEach(() => a && clear());                       // each test starts with nothing open
 
+test('YouTube: the cookie question is answered with the button you picked, in any language, and an ad\'s Skip button is found', T, async () => {
+  const r = await a.win.evaluate(() => {
+    const lb = document.createElement('ytd-consent-bump-v2-lightbox'), dlg = document.createElement('tp-yt-paper-dialog'), clicked = [];
+    lb.data = { disagreeButton: { buttonRenderer: { text: { simpleText: 'Tout refuser' } } }, agreeButton: { buttonRenderer: { text: { runs: [{ text: 'Tout ' }, { text: 'accepter' }] } } } };
+    for (const t of ['Tout refuser', 'Tout accepter']) { const b = document.createElement('button'); b.textContent = t; b.onclick = () => clicked.push(t); dlg.append(b); }
+    dlg.opened = true; lb.append(dlg); document.body.append(lb);
+    const out = { reject: ytAgent(false, 'reject'), accept: ytAgent(false, 'accept'), off: ytAgent(false, '') };
+    lb.data = {}; out.changed = ytAgent(false, 'reject');
+    dlg.opened = false; out.answered = ytAgent(false, 'reject');
+    lb.remove();
+    const sk = document.createElement('button'); sk.className = 'ytp-skip-ad-button';
+    sk.style.cssText = 'position:fixed;left:100px;top:50px;width:80px;height:30px'; document.body.append(sk);
+    out.skip = ytAgent(true, ''); out.skipOff = ytAgent(false, ''); sk.remove();
+    out.noAd = ytAgent(true, 'reject');
+    return { out, clicked };
+  });
+  assert.deepEqual(r.clicked, ['Tout refuser', 'Tout accepter'], 'each button found by its label from the question itself');
+  assert.deepEqual(r.out, { reject: { consent: 'clicked' }, accept: { consent: 'clicked' }, off: {}, changed: { consent: 'missing' }, answered: {},
+    skip: { skip: { x: 140, y: 65 } }, skipOff: {}, noAd: {} });
+  // the fallback: "Reject all" saved in that YouTube player's storage, and only a player's
+  assert.equal(await a.win.evaluate(() => window.kmv.ytConsentFallback('persist:kmv-stream-yt__test')), true);
+  const c = await a.app.evaluate(({ session }) => session.fromPartition('persist:kmv-stream-yt__test').cookies.get({ name: 'SOCS' }));
+  assert.deepEqual(c.map(x => [x.domain, x.secure]), [['.youtube.com', true]]);
+  assert.equal(await a.win.evaluate(() => window.kmv.ytConsentFallback('persist:kick')), false);
+});
+
+test('YouTube: Skip is clicked for real without taking your keyboard, and a question it can\'t answer falls back to "Reject all"', T, async () => {
+  await a.win.selectOption('#mode', 'stream');
+  await add('https://www.youtube.com/watch?v=abcdefghijk');
+  const title = await a.win.$eval('#stage .win.stream .title', e => e.textContent);
+  await viewLoaded(a.win, title, 'stream', /youtube\.com\/watch/);
+  await add('alpha');                                    // the newest window is the active one
+  await ready('alpha');
+  assert.equal(await a.win.$eval(winSel(title), e => e.classList.contains('active')), false);
+  await a.win.fill('#url', 'typing here');
+  await inView(a.win, title, 'stream', () => {
+    const b = document.createElement('button'); b.className = 'ytp-skip-ad-button';
+    b.style.cssText = 'position:fixed;left:20px;top:20px;width:80px;height:30px';
+    b.onclick = e => { window.__skipped = e.isTrusted; b.remove(); };
+    document.body.append(b);
+  });
+  await until(() => inView(a.win, title, 'stream', () => window.__skipped === true));
+  await a.win.waitForTimeout(300);
+  assert.equal(await a.win.evaluate(() => document.activeElement.id), 'url', 'the keyboard stays where you were typing');
+  assert.equal(await a.win.$eval(winSel(title), e => e.classList.contains('active')), false, 'and the stream isn\'t made the active window');
+  // a cookie question whose buttons can't be found: "Reject all" is saved for that player, and it loads again
+  await inView(a.win, title, 'stream', () => {
+    const lb = document.createElement('ytd-consent-bump-v2-lightbox'), d = document.createElement('tp-yt-paper-dialog');
+    d.opened = true; lb.append(d); document.body.append(lb);
+  });
+  const socs = () => a.app.evaluate(({ session }) => session.fromPartition('persist:kmv-stream-yt_v_abcdefghijk').cookies.get({ name: 'SOCS' }));
+  await until(async () => (await socs()).length === 1);
+  await until(() => inView(a.win, title, 'stream', () => !document.querySelector('ytd-consent-bump-v2-lightbox')).catch(() => false));
+  await a.win.fill('#url', '');
+});
+
 test('volume: the title bar\'s mute button, slider and mouse wheel set that stream\'s own volume', T, async () => {
   await a.win.selectOption('#mode', 'stream');
   await add('alpha');

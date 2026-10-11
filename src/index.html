@@ -38,7 +38,16 @@ select{height:34px;padding:0 8px;border-radius:7px;border:1px solid var(--line2)
 label.chk{display:flex;align-items:center;gap:5px;color:var(--muted);white-space:nowrap;cursor:pointer;user-select:none}
 label.chk input{accent-color:var(--accent)}
 .spacer{flex:1}
-#msg{color:var(--danger);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;min-width:0;flex:0 1 auto}
+header.measuring > :not(#url):not(.spacer){flex-shrink:0}   /* see fitHeader: measured at full size, not squashed */
+/* messages ("Logged out of Twitch"): a toast where Settings > General puts it */
+#msg{position:fixed;z-index:100030;max-width:min(460px,calc(100vw - 32px));padding:8px 14px;border-radius:10px;font-size:13px;line-height:1.35;
+  background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--accent);box-shadow:0 14px 34px rgba(0,0,0,.55);cursor:pointer;
+  animation:msgIn .15s ease-out}
+#msg:empty,#msg.off{display:none}
+#msg[data-pos^=t]{top:calc(var(--head) + 10px)} #msg[data-pos^=b]{bottom:22px}
+#msg[data-pos$=l]{left:16px} #msg[data-pos$=r]{right:16px} #msg[data-pos$=c]{left:50%;transform:translateX(-50%)}
+body:has(#toast:not([hidden])) #msg[data-pos=bc],body:has(#updBanner:not([hidden])) #msg[data-pos=br]{bottom:80px}   /* clear of Undo and the update banner */
+@keyframes msgIn{from{opacity:0}}
 
 body.focus header{transform:translateY(-100%)}
 #reveal{position:fixed;top:0;left:0;right:0;height:6px;z-index:100001;display:none}
@@ -149,11 +158,12 @@ body.dragging .bar{cursor:grabbing}
 .sc-row span{flex:1}
 .sc-row kbd + kbd{margin-left:-6px}
 /* settings */
-.dlg.settings{width:min(880px,calc(100vw - 32px));height:min(86vh,760px);max-height:none;padding:0;gap:0;overflow:hidden}
-.st-wrap{flex:1;min-height:0;display:grid;grid-template-columns:160px minmax(0,1fr)}
+.dlg.settings{width:min(880px,calc(100vw - 32px));height:min(90vh,840px);max-height:none;padding:0;gap:0;overflow:hidden}
+.st-wrap{flex:1;min-height:0;display:grid;grid-template-columns:180px minmax(0,1fr)}
 .st-rail{border-right:1px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:2px;overflow:auto}
 .st-rail button{display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;font-weight:600;font-size:12.5px;text-align:left;white-space:nowrap}
 .st-rail button:hover{color:var(--text)}
+.st-rail button > svg{width:15px;height:15px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .st-rail button.on{background:var(--panel2);border-color:var(--line2);color:var(--text)}
 .st-rail button[hidden]{display:none}
 .st-pill{margin-left:auto;font-size:9px;font-weight:700;letter-spacing:.04em;padding:0 4px;border-radius:4px;border:1px solid var(--accent);color:var(--accent);text-transform:uppercase}
@@ -224,25 +234,27 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .th-wrap{display:grid;grid-template-columns:270px 1fr;gap:16px;min-height:0;overflow:auto}
 .th-sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:2px 0 8px}
 .th-sec .th-cur{text-transform:none;letter-spacing:0;font-weight:600;color:var(--text);margin-left:6px}
-.th-list{display:flex;flex-direction:column;gap:6px}
-.th-item{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;border:1px solid var(--line2);background:var(--panel2);cursor:pointer;color:var(--text);text-align:left;width:100%}
+.th-list{display:flex;flex-direction:column;gap:4px}
+.th-item{display:flex;align-items:center;gap:10px;padding:5px 8px;border-radius:9px;border:1px solid var(--line2);background:var(--panel2);cursor:pointer;color:var(--text);text-align:left;width:100%}
 .th-item:hover{border-color:var(--muted)}
 .th-item.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .th-item .sw{display:flex;flex:none;border-radius:6px;overflow:hidden;border:1px solid rgba(127,127,127,.35)}
-.th-item .sw i{width:13px;height:26px;display:block}
-.th-item b{flex:1;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.th-item .sw i{width:13px;height:22px;display:block}
+.th-txt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.th-item b,.th-item small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.th-item b{font-size:13px}
 .th-item small{font-size:10px;color:var(--muted)}
 .th-item .th-del{flex:none;width:22px;height:22px;border:0;border-radius:5px;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center;padding:0}
 .th-item .th-del:hover{background:var(--danger);color:#fff}
 .th-item .th-del svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
-.th-vars{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
-.th-var{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+.th-vars{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}
+.th-var{display:flex;align-items:center;gap:8px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
 .th-var span{flex:1;font-size:12.5px;min-width:0}
-.th-var span small{display:block;font-size:10.5px;color:var(--muted)}
-.th-var input[type=color]{width:34px;height:26px;border:1px solid var(--line2);border-radius:6px;background:none;padding:1px;cursor:pointer;flex:none}
-.th-var input.hex{width:76px;height:26px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);padding:0 6px;font:12px ui-monospace,Consolas,monospace;flex:none}
+.th-var span small{display:block;font-size:10.5px;line-height:1.3;color:var(--muted)}
+.th-var input[type=color]{width:34px;height:24px;border:1px solid var(--line2);border-radius:6px;background:none;padding:1px;cursor:pointer;flex:none}
+.th-var input.hex{width:76px;height:24px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);padding:0 6px;font:12px ui-monospace,Consolas,monospace;flex:none}
 .th-warn{margin-top:10px;padding:7px 10px;border-radius:8px;border:1px solid #e8b84a;color:#e8b84a;font-size:12px;line-height:1.4}
-.th-save{display:flex;gap:8px;margin-top:12px}
+.th-save{display:flex;gap:8px;margin-top:10px}
 .th-save input{flex:1;height:32px;padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);outline:none}
 .th-save input:focus{border-color:var(--accent)}
 @media (max-width:760px){ .th-wrap{grid-template-columns:1fr} .th-vars{grid-template-columns:1fr} }
@@ -656,7 +668,7 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .am-txt{flex:1;min-width:0;display:flex;flex-direction:column}
 .am-txt b{font-size:13px}
 .am-st{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#accountMenu .am-row .btn,#settingsDlg .am-row .btn{display:inline-flex;align-items:center;height:26px;padding:0 9px;font-size:11px;font-weight:600;flex:none;
+#accountMenu .am-row .btn,#settingsDlg .am-row .btn{display:inline-flex;flex-direction:row;align-items:center;justify-content:center;height:26px;padding:0 9px;font-size:11px;font-weight:600;flex:none;
   border:1px solid var(--line2);background:var(--panel2)}
 #accountMenu .am-row .btn:hover,#settingsDlg .am-row .btn:hover{border-color:var(--muted)}
 #accountMenu .am-row .btn[hidden],#settingsDlg .am-row .btn[hidden]{display:none}
@@ -721,10 +733,10 @@ header.c1 #loginBtn.has-acct .acct-name{display:none}
 .l-short{display:none}
 header.c1 .linkbtn span{display:none} header.c1 .linkbtn{padding:0 9px} body.cols header.c1 .brand{display:none}
 header.c1 .l-long{display:none} header.c1 .l-short{display:inline}
-header.c1 .zoom span:first-child{display:none} header.c1 .zoom{padding-left:4px} header.c1 #msg{max-width:170px}
+header.c1 .zoom span:first-child{display:none} header.c1 .zoom{padding-left:4px}
 header.c2{gap:6px} header.c2 .btn{padding:0 9px} header.c2 .brand{display:none} header.c2 #colPos{display:none}
 header.c2 #swBtn span{display:none} header.c2 .ibtn{width:30px}
-header.c3{gap:4px;padding:0 8px} header.c3 #layoutBtn{max-width:112px} header.c3 #msg{max-width:120px} header.c3 #mode{max-width:104px}
+header.c3{gap:4px;padding:0 8px} header.c3 #layoutBtn{max-width:112px} header.c3 #mode{max-width:104px}
 header.c3 #url{min-width:110px}
 #moreBtn{font-size:16px;letter-spacing:1px;line-height:1}
 #moreBtn[hidden]{display:none}
@@ -764,7 +776,6 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <button class="btn" id="savedBtn" title="Your saved channels">★ Saved</button>
   <button class="btn" id="loginBtn" title="Log in to Kick once; every chat window shares it" hidden>Log in ▾</button>
   <button class="btn" id="mentBtn" hidden title="Chat mentions and replies to you"><span class="mb-ico"></span><span class="mb-count" hidden></span></button>
-  <span id="msg"></span>
   <div class="spacer"></div>
   <div class="zoom" id="chatZoom" hidden title="Chat text size: smaller fits more messages and emotes">
     <span>Chat</span><button data-z="-1" aria-label="Smaller chat text">−</button><span id="zoomPct">100%</span><button data-z="1" aria-label="Bigger chat text">+</button>
@@ -858,6 +869,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   </div></div>
 </main>
 <div id="sizehint"></div>
+<div id="msg" data-pos="tc" role="status" title="Click to close"></div>
 <div id="toast" hidden><span></span><button class="btn">Undo</button></div>
 <div id="updBanner" hidden><span class="ub-txt"></span><button class="btn primary ub-go">Restart now</button><button class="btn ub-later">Later</button></div>
 <div class="dlg-bg" id="askDlg" hidden><div class="dlg ask" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askMsg">
@@ -878,6 +890,8 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <nav class="st-rail">
       <button data-s="general">General</button>
       <button data-s="accounts" class="desk-only">Accounts</button>
+      <button data-s="youtube" class="desk-only">YouTube</button>
+      <button data-s="notify">Notifications</button>
       <button data-s="mentions" class="main-desk">Mentions</button>
       <button data-s="spam" class="main-desk">Spam alerts<span class="st-pill">Mod</span></button>
       <button data-s="themes">Themes</button>
@@ -910,6 +924,18 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <div class="am-watch"><span>Watch signed in: streams play with your login too, so you watch as your account, not as a logged-out viewer. Uses more memory.</span>
             <label class="chk"><input type="checkbox" data-w="kick">Kick</label><label class="chk"><input type="checkbox" data-w="twitch">Twitch</label><label class="chk"><input type="checkbox" data-w="youtube">YouTube</label></div>
         </div>
+        <div class="am-alt">YouTube sign-in currently only works through Firefox. <button class="linkish am-ff">Sign in to YouTube with Firefox</button><br>You don't need to sign in to watch YouTube.</div>
+        <p class="st-sub" style="margin:8px 0 0">Skipping ads, YouTube's cookie question and the API key: <button class="linkish" data-go="youtube">YouTube settings</button></p>
+      </section>
+      <section class="st-pane" data-s="youtube" hidden>
+        <h4>YouTube</h4><p class="st-sub">Your YouTube login, and how YouTube streams play.</p>
+      <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
+        <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+        <div class="am-alt">YouTube sign-in currently only works through Firefox. <button class="linkish am-ff">Sign in to YouTube with Firefox</button><br>You don't need to sign in to watch YouTube.</div>
+        <div class="st-sec">Playing streams</div>
+        <label class="st-row"><span class="st-t">Skip ads<small>Presses an ad's Skip button as soon as it shows. Ads without one still play.</small></span><input type="checkbox" class="st-sw" id="ytSkip" checked></label>
+        <div class="st-row"><span class="st-t">Answer the cookie question<small>In some countries YouTube asks about cookies before a stream plays, and waits until you answer. Off: the question shows in the player for you to answer.</small></span>
+          <select id="ytConsentPick" aria-label="Answer"><option value="reject">Reject all</option><option value="accept">Accept all</option></select><input type="checkbox" class="st-sw" id="ytConsent" checked aria-label="Answer the cookie question"></div>
         <div class="st-sec am-yk-sec" hidden>YouTube API key (optional)</div>
         <div class="am-yk" hidden>
           <div class="am-yk-head"><button class="linkish am-yk-how">How to get one</button></div>
@@ -917,7 +943,21 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <div class="am-yk-row"><input class="am-yk-in" type="password" placeholder="Paste your API key" autocomplete="off" spellcheck="false" aria-label="YouTube API key"><button class="btn am-yk-add">Add</button></div>
           <div class="am-yk-row am-yk-set" hidden><button class="btn am-yk-rm">Remove key</button></div>
         </div>
-        <div class="am-alt">YouTube sign-in currently only works through Firefox. <button class="linkish am-ff">Sign in to YouTube with Firefox</button><br>You don't need to sign in to watch YouTube.</div>
+      </section>
+      <section class="st-pane" data-s="notify" hidden>
+        <h4>Notifications</h4><p class="st-sub">Messages in the app, and your computer's own notifications.</p>
+        <div class="st-sec">Messages</div>
+        <div class="st-row"><span class="st-t">Show messages<small>Short notes like "Logged out of Twitch" or "Couldn't read that link". They go after a few seconds; click one to close it.</small></span>
+          <select id="msgPos" aria-label="Where messages show"><option value="tc">Top</option><option value="tl">Top left</option><option value="tr">Top right</option><option value="bc">Bottom</option><option value="bl">Bottom left</option><option value="br">Bottom right</option></select><input type="checkbox" class="st-sw" id="msgOn" checked aria-label="Show messages"></div>
+        <div class="st-row msg-via" hidden><span class="st-t">Show them as<small>A desktop notification only shows while desktop notifications (below) are on; otherwise it's a toast.</small></span>
+          <select id="msgVia" aria-label="Show messages as"><option value="toast">Toast in the app</option><option value="desktop">Desktop notification</option></select></div>
+        <div class="dn-sec" hidden>
+          <div class="st-sec">Desktop notifications</div>
+          <label class="st-row"><span class="st-t">Desktop notifications<small>Your computer's notifications, also while the app is in the background. Off: none at all, whatever is chosen below.</small></span><input type="checkbox" class="st-sw" id="dnOn" checked></label>
+          <label class="st-row"><span class="st-t">Saved channels going live<small>Pick the channels with the bell next to each one in Saved.</small></span><input type="checkbox" class="st-sw" id="dnLive"></label>
+          <div class="st-row"><span class="st-t">Mentions, replies and spam alerts<small>When each one sends a notification is in <button class="linkish" data-go="mentions">Mentions</button> and <button class="linkish" data-go="spam">Spam alerts</button>.</small></span></div>
+          <div class="st-row"><span class="st-t">Check they work<small class="dn-st">If your computer blocks them, nothing shows. Send a test to check.</small></span><button class="btn dn-test">Send a test</button><button class="btn dn-sys">Open system settings</button></div>
+        </div>
       </section>
       <section class="st-pane" data-s="mentions" hidden>
         <h4>Mentions &amp; replies</h4><p class="st-sub">When someone writes @you or replies to you in an open Kick or Twitch chat. The chat already highlights the message itself; these make the <b>window</b> stand out so you can see which chat it's in.</p>
@@ -1093,7 +1133,11 @@ const icon = {
   feat:'<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
   link:'<svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
   volOn:'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
-  volOff:'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>'
+  volOff:'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>',
+  sliders:'<svg viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>',
+  ytPlay:'<svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="4"/><path d="M10 9.2v5.6l4.8-2.8z" fill="currentColor"/></svg>',
+  update:'<svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>',
+  book:'<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2z"/><path d="M4 20a2 2 0 0 0 2 2h13v-4"/><path d="M9 7h6"/></svg>'
 };
 
 const DESKTOP = !!(window.kmv && window.kmv.desktop);
@@ -1211,8 +1255,8 @@ const VOL_JS = `(function(){
   // volume between them, so a change in one can leak into the others; anything that changes
   // here without you touching THIS player is put back.
   const st = { v: null, m: null, p: false }, seen = new WeakSet();
-  let lastUser = 0, lastSync = 0, undos = [];
-  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(t => window.addEventListener(t, () => { lastUser = Date.now(); }, true));
+  let lastUser = 0, lastSync = 0, notYou = 0, undos = [];
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(t => window.addEventListener(t, () => { if (Date.now() > notYou) lastUser = Date.now(); }, true));
   // Don't let this player hear the other players' saved-volume updates at all.
   window.addEventListener('storage', e => { lastSync = Date.now(); e.stopImmediatePropagation(); }, true);
   const userRecent = () => Date.now() - lastUser < 2500 && Date.now() - lastSync > 400;
@@ -1246,6 +1290,7 @@ const VOL_JS = `(function(){
       return { v: st.v ?? v.volume, m: st.m ?? v.muted, p: st.p };
     },
     pause() { st.p = true; document.querySelectorAll('video').forEach(v => v.pause()); },
+    notYou(ms) { notYou = Date.now() + ms; },   // the app is about to click in the player (Skip YouTube ads)
     thumb(w, h) {
       const v = [...document.querySelectorAll('video')].find(x => x.videoWidth);
       if (!v) return null;
@@ -1355,6 +1400,10 @@ ${YT_PLAYERS.split(', ').map(x => x + ' video.html5-main-video').join(', ')} {
   width: 100% !important; height: 100% !important; left: 0 !important; top: 0 !important; object-fit: contain !important; }
 .ytp-chrome-bottom { left: 12px !important; right: 12px !important; width: auto !important; }
 .ytp-miniplayer-button, .ytp-size-button, .ytp-fullscreen-button { display: none !important; }
+/* Two of YouTube's questions keep the video paused until answered (the cookie question, "Continue watching?"):
+   show those over the player. Its other pop-ups (offers, promos) stay hidden. */
+ytd-consent-bump-v2-lightbox, ytd-popup-container tp-yt-paper-dialog:has(yt-confirm-dialog-renderer) { visibility: visible !important; }
+ytd-popup-container, ytd-consent-bump-v2-lightbox { position: relative !important; z-index: 2147483647 !important; }
 `;
 // Nudges YouTube's player to re-measure itself after the CSS above resizes it.
 const YT_FIT_JS = `(function(){
@@ -1737,7 +1786,10 @@ function mountView(w){
   frame.src = src;
   if (DESKTOP){
     const hasVol = w.kind === 'stream';
-    frame.addEventListener('focus', () => { focusWin(w); clearAlert(w); });   // you clicked into it
+    frame.addEventListener('focus', () => {                                     // you clicked into it
+      if (Date.now() - (frame.skipAt || 0) < 1000) return;                       // Skip YouTube ads did
+      focusWin(w); clearAlert(w);
+    });
     frame.addEventListener('dom-ready', () => {
       w.ready = true;
       if (w.kind === 'stream') trimYouTube(frame, w.channel);
@@ -2258,8 +2310,65 @@ async function addChatIfLive(ch, r){
   if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(false);
   save();
 }
-let flashT;
-function flash(t){ msg.textContent = t; clearTimeout(flashT); if (t) flashT = setTimeout(() => msg.textContent = '', 3500); }
+let flashT, msgAsDesktop = false, desktopNotify = true;      // (Settings > Notifications)
+try { desktopNotify = localStorage.getItem('kickMultiview.desktopNotify') !== '0'; } catch {}
+function flash(t){
+  msg.textContent = t; clearTimeout(flashT); if (t) flashT = setTimeout(() => msg.textContent = '', 3500);
+  if (t && msgAsDesktop) window.kmv.notifyMessage(t);
+}
+msg.onclick = () => flash('');
+/* Settings > General: show messages, and where */
+const msgOn = $('#msgOn'), msgPos = $('#msgPos'), msgVia = $('#msgVia');
+const canDesktopMsg = DESKTOP && !!window.kmv.notifyMessage;
+document.querySelector('#settingsDlg .msg-via').hidden = !canDesktopMsg;
+function loadMsgSettings(){
+  let m = {}; try { m = JSON.parse(localStorage.getItem('kickMultiview.msg') || '{}') || {}; } catch {}
+  msgOn.checked = m.on !== false;
+  msgPos.value = [...msgPos.options].some(o => o.value === m.pos) ? m.pos : 'tc';
+  msgVia.value = m.via === 'desktop' && canDesktopMsg ? 'desktop' : 'toast';
+  msgAsDesktop = msgOn.checked && msgVia.value === 'desktop' && desktopNotify;   // else a toast
+  msgVia.disabled = !msgOn.checked;
+  msgPos.disabled = !msgOn.checked || msgAsDesktop;
+  msg.classList.toggle('off', !msgOn.checked || msgAsDesktop);
+  msg.dataset.pos = msgPos.value;
+}
+loadMsgSettings();
+[msgOn, msgPos, msgVia].forEach(el => el.addEventListener('change', () => {
+  try { localStorage.setItem('kickMultiview.msg', JSON.stringify({ on: msgOn.checked, pos: msgPos.value, via: msgVia.value })); } catch {}
+  loadMsgSettings();
+  if (msgOn.checked) flash(msgAsDesktop ? 'Messages show as desktop notifications' : 'Messages show here');
+}));
+window.addEventListener('storage', e => {          // main and streams windows
+  if (e.key === 'kickMultiview.desktopNotify') desktopNotify = e.newValue !== '0';
+  if (e.key === 'kickMultiview.msg' || e.key === 'kickMultiview.desktopNotify') loadMsgSettings();
+});   // main and streams windows
+/* Settings > Notifications: desktop notifications (the main window's: live alerts, mentions, spam) */
+const dnOn = $('#dnOn'), dnLive = $('#dnLive'), dnSt = document.querySelector('#settingsDlg .dn-st');
+if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled){
+  document.querySelector('#settingsDlg .dn-sec').hidden = false;
+  window.kmv.notifyEnabled(desktopNotify);
+  dnOn.checked = desktopNotify;
+  dnOn.addEventListener('change', () => {
+    desktopNotify = dnOn.checked;
+    try { localStorage.setItem('kickMultiview.desktopNotify', desktopNotify ? '1' : '0'); } catch {}
+    window.kmv.notifyEnabled(desktopNotify);
+    dnLive.disabled = !desktopNotify;
+    loadMsgSettings();                                   // messages sent as notifications become toasts while they're off
+  });
+  dnLive.addEventListener('change', () => { const na = $('#notifyAll'); na.checked = dnLive.checked; na.dispatchEvent(new Event('change')); });
+  const sys = document.querySelector('#settingsDlg .dn-sys');
+  sys.hidden = !['darwin', 'win32'].includes(window.kmv.platform);
+  sys.onclick = () => window.kmv.notifySettings();
+  const where = window.kmv.platform === 'darwin' ? 'System Settings > Notifications' : 'Settings > System > Notifications';
+  document.querySelector('#settingsDlg .dn-test').onclick = async () => {
+    dnSt.textContent = 'Sending…';
+    const r = await window.kmv.notifyTest().catch(() => 'failed');
+    dnSt.textContent = r === 'unsupported' ? 'This computer doesn\'t support desktop notifications.'
+      : r === 'failed' ? `Your computer blocked it. Allow notifications for Stream Multiview in ${where}.`
+      : `Sent. If you didn't see it, allow notifications for Stream Multiview in ${where}.`;
+  };
+}
+function syncNotifyPane(){ dnOn.checked = desktopNotify; dnLive.checked = $('#notifyAll').checked; dnLive.disabled = !desktopNotify; }
 
 /* ---------- layouts ---------- */
 function gridRects(n, X, Y, W, H, aspect){
@@ -3238,6 +3347,78 @@ function autoPauseTick(){
 }
 if (DESKTOP) setInterval(autoPauseTick, 400);
 
+/* Settings > YouTube: skip ads, and answer YouTube's cookie question (it keeps the video paused until
+   it's answered). Checked once a second in each YouTube player. */
+function ytAgent(skip, answer){
+  const out = {};
+  const lb = answer && document.querySelector('ytd-consent-bump-v2-lightbox');
+  const dlg = lb && lb.querySelector('tp-yt-paper-dialog');
+  if (dlg && dlg.opened){
+    // The button is found by its label in the question's own data, so it works in any language.
+    const d = lb.data || {}, br = ((answer === 'accept' ? d.agreeButton : d.disagreeButton) || {}).buttonRenderer || {};
+    const label = br.text ? (br.text.simpleText || (br.text.runs || []).map(r => r.text).join('')).trim() : '';
+    const b = label && [...lb.querySelectorAll('button')].find(x => x.innerText.trim() === label);
+    if (b) b.click();
+    out.consent = b ? 'clicked' : 'missing';
+  }
+  // An ad's Skip button. YouTube ignores clicks made by the page's scripts, so the app clicks it for real.
+  const sb = skip && [...document.querySelectorAll('.ytp-skip-ad-button, .ytp-ad-skip-button, .ytp-ad-skip-button-modern')]
+    .find(e => e.checkVisibility({ visibilityProperty: true }));
+  const r = sb && sb.getBoundingClientRect();
+  if (r && r.width && r.height){
+    if (window.__kmv) window.__kmv.notYou(1500);   // not you touching the player (VOL_JS)
+    out.skip = { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  }
+  return out;
+}
+const skipChk = $('#ytSkip'), consentChk = $('#ytConsent'), consentPick = $('#ytConsentPick');
+function loadYtSettings(){
+  let c = 'reject';
+  try { skipChk.checked = localStorage.getItem('kickMultiview.ytSkip') !== '0'; c = localStorage.getItem('kickMultiview.ytConsent') || 'reject'; } catch {}
+  consentChk.checked = c !== 'off';
+  consentPick.value = c === 'accept' ? 'accept' : 'reject';
+  consentPick.disabled = !consentChk.checked;
+}
+loadYtSettings();
+skipChk.addEventListener('change', () => { try { localStorage.setItem('kickMultiview.ytSkip', skipChk.checked ? '1' : '0'); } catch {} });
+[consentChk, consentPick].forEach(el => el.addEventListener('change', () => {
+  consentPick.disabled = !consentChk.checked;
+  try { localStorage.setItem('kickMultiview.ytConsent', consentChk.checked ? consentPick.value : 'off'); } catch {}
+}));
+window.addEventListener('storage', e => { if (/^kickMultiview\.yt(Skip|Consent)$/.test(e.key || '')) loadYtSettings(); });   // main and streams windows
+function ytTick(view, skip, answer){
+  view.executeJavaScript(`(${ytAgent})(${skip}, ${JSON.stringify(answer)})`).then(r => {
+    if (!r) return;
+    // The question is still open 3 s after clicking (or its button wasn't found, e.g. YouTube changed it):
+    // save "Reject all" in that player's storage the way YouTube does, and load the stream again.
+    view.consentTries = r.consent ? (view.consentTries || 0) + 1 : 0;
+    if (view.consentTries >= 3 && !view.consentFellBack && window.kmv.ytConsentFallback){
+      view.consentFellBack = true;
+      window.kmv.ytConsentFallback(view.getAttribute('partition')).then(() => view.reload()).catch(() => {});
+    }
+    if (!r.skip || !skipChk.checked) return;
+    // The click moves the keyboard to the player: give it straight back to where you were typing.
+    const keep = document.activeElement;
+    if (keep !== view){
+      const back = () => { if (keep && keep !== document.body && keep.isConnected) keep.focus(); else view.blur(); };
+      view.addEventListener('focus', back, { once: true });
+      setTimeout(() => view.removeEventListener('focus', back), 1000);
+    }
+    view.skipAt = Date.now();                       // not you clicking into the stream (see mountView)
+    ['mouseDown', 'mouseUp'].forEach(type => view.sendInputEvent({ type, x: r.skip.x, y: r.skip.y, button: 'left', clickCount: 1 }));
+  }).catch(() => {});
+}
+if (DESKTOP) setInterval(() => {
+  const skip = skipChk.checked, answer = consentChk.checked ? consentPick.value : '';
+  if (!skip && !answer) return;
+  wins.forEach(w => {
+    if (w.kind !== 'stream' || platOf(w.channel) !== 'youtube') return;
+    if (w.ready) ytTick(w.view, skip, answer);
+    if (w.mini && w.mini.ready) ytTick(w.mini.wv, skip, answer);
+  });
+}, 1000);
+window.ytAgent = ytAgent;   // for the tests
+
 /* Pause all except focus (button at the top of the Focus area) */
 let focusOnly = false;
 try { focusOnly = localStorage.getItem('kickMultiview.focusOnly') === '1'; } catch {}
@@ -3856,7 +4037,7 @@ if (DESKTOP){
   const lb = $('#loginBtn');
   lb.hidden = false;
   // Accounts menu (log in and out) and Settings > Accounts (that, and everything else about logins)
-  const am = $('#accountMenu'), sa = $('#settingsDlg .st-pane[data-s=accounts]');
+  const am = $('#accountMenu'), sa = $('#settingsDlg .st-pane[data-s=accounts]'), sy = $('#settingsDlg .st-pane[data-s=youtube]');
   let acct = { kick: '', twitch: '', youtube: false };
   try { acct = Object.assign(acct, JSON.parse(localStorage.getItem('kickMultiview.accounts') || '{}')); acct.kick = acct.kick || localStorage.getItem('kickMultiview.account') || ''; } catch {}
   const showAccounts = () => {
@@ -3913,6 +4094,7 @@ if (DESKTOP){
   };
   am.addEventListener('click', onAccountClick);
   sa.addEventListener('click', onAccountClick);
+  sy.addEventListener('click', onAccountClick);
   if (window.kmv.onMenuAccount) window.kmv.onMenuAccount(async ({ platform: p, action }) => {      // the menu bar's Account menu
     if (!PLAT_NAME[p]) return;
     if (action === 'login') window.kmv.openLogin(p);
@@ -3932,7 +4114,7 @@ if (DESKTOP){
   if (ROLE === 'main') setTimeout(refreshAccount, 5000);
 
   /* ---- YouTube API key: optional, for live checks. The page only hears whether one is set, never the key. ---- */
-  const yk = sa.querySelector('.am-yk'), ykSt = yk.querySelector('.am-yk-st'), ykIn = yk.querySelector('.am-yk-in');
+  const yk = sy.querySelector('.am-yk'), ykSt = yk.querySelector('.am-yk-st'), ykIn = yk.querySelector('.am-yk-in');
   const hhmm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const YK_ERR = {
     format: 'That doesn\'t look like an API key. Copy the whole key from Google Cloud.',
@@ -3954,7 +4136,7 @@ if (DESKTOP){
     ykSt.textContent = msg; ykSt.classList.toggle('warn', warn);
   }
   if (window.kmv.ytKeyStatus){
-    yk.hidden = false; sa.querySelector('.am-yk-sec').hidden = false;
+    yk.hidden = false; sy.querySelector('.am-yk-sec').hidden = false;
     window.kmv.ytKeyStatus().then(st => showYtKey(st)).catch(() => {});
     if (window.kmv.onYtKeyStatus) window.kmv.onYtKeyStatus(st => showYtKey(st));
     const add = async () => {
@@ -4868,7 +5050,7 @@ function renderThemeList(){
   list.innerHTML = '';
   const row = (t, mine) => {
     const b = document.createElement('div'); b.className = 'th-item' + (!theme.edited && theme.name === t.name ? ' on' : ''); b.tabIndex = 0;
-    b.innerHTML = swatch(t.vars) + `<b></b>` + (t.note ? `<small></small>` : '') + (mine ? `<button class="th-del" title="Delete this theme">${icon.close}</button>` : '');
+    b.innerHTML = swatch(t.vars) + `<span class="th-txt"><b></b>${t.note ? '<small></small>' : ''}</span>` + (mine ? `<button class="th-del" title="Delete this theme">${icon.close}</button>` : '');
     b.querySelector('b').textContent = t.name;
     if (t.note) b.querySelector('small').textContent = t.note;
     b.onclick = async e => {
@@ -4936,6 +5118,8 @@ let settingsTab = 'general';
 try { settingsTab = localStorage.getItem('kickMultiview.settingsTab') || 'general'; } catch {}
 const MAIN_DESK = DESKTOP && ROLE === 'main';
 settingsDlg.querySelectorAll('.st-rail .desk-only').forEach(b => { b.hidden = !DESKTOP; });
+const ST_ICONS = { general: 'sliders', accounts: 'user', youtube: 'ytPlay', notify: 'bell', mentions: 'at', spam: 'mod', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys' };
+settingsDlg.querySelectorAll('.st-rail button[data-s]').forEach(b => { if (icon[ST_ICONS[b.dataset.s]]) b.insertAdjacentHTML('afterbegin', icon[ST_ICONS[b.dataset.s]]); });
 settingsDlg.querySelectorAll('.st-rail .main-desk').forEach(b => { b.hidden = !MAIN_DESK; });
 function openSettings(tab){
   const ok = t => { const b = settingsDlg.querySelector(`.st-rail [data-s="${t}"]`); return b && !b.hidden; };
@@ -4948,8 +5132,9 @@ function openSettings(tab){
   if (settingsTab === 'themes') renderThemeDlg();
   if (settingsTab === 'updates') renderUpdates();
   settingsDlg.querySelector('.upd-host').hidden = !MAIN_DESK;
-  if (settingsTab === 'accounts' && typeof refreshAccountsPane === 'function') refreshAccountsPane();
+  if ((settingsTab === 'accounts' || settingsTab === 'youtube') && typeof refreshAccountsPane === 'function') refreshAccountsPane();
   if (settingsTab === 'general') $('#keysSet').checked = keysOn;
+  if (settingsTab === 'notify') syncNotifyPane();
   return renderDoc(settingsTab);
 }
 window.openSettings = openSettings;   // for the tests
@@ -5117,6 +5302,7 @@ updateEmpty();
   let fitting = false, queued = false;
   function fitHeader(){
     queued = false; fitting = true;
+    hdr.classList.add('measuring');                      // buttons at full size while measuring, so squashed ones count as not fitting
     // start from the full toolbar
     items.forEach(({ el, mark }) => { if (el.parentNode !== hdr) mark.after(el); });
     hdr.classList.remove(...LEVELS);
@@ -5133,6 +5319,7 @@ updateEmpty();
     // the More button only shows when something visible is in it
     moreBtn.hidden = ![...moreMenu.children].some(el => !el.hidden);
     if (moreBtn.hidden) moreMenu.hidden = true;
+    hdr.classList.remove('measuring');
     obs.takeRecords();                                   // ignore our own changes
     fitting = false;
   }

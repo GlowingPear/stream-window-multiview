@@ -55,7 +55,10 @@ test('Pop out streams: streams move to their own window with Tile, Spotlight and
   const al = await box(sw, winSel('alpha')), br = await box(sw, winSel('bravo'));
   await sw.mouse.move(al.x + 6, al.y + 12); await sw.mouse.down();      // the bar's left edge (its middle can be the channel dropdown)
   await sw.mouse.move(br.x + br.w / 2, br.y + br.h / 2, { steps: 10 }); await sw.mouse.up();
-  await sw.waitForTimeout(600);
+  await sw.waitForFunction(() => {                      // the swap animates: wait for it (longer on a busy machine)
+    const w = Object.fromEntries([...document.querySelectorAll('#stage .win.stream')].map(e => [e.querySelector('.title').textContent, e.offsetWidth]));
+    return w.alpha > w.bravo * 2;
+  }, null, { timeout: 5000 }).catch(() => {});
   const after = await sw.$$eval('#stage .win.stream', l => Object.fromEntries(l.map(e => [e.querySelector('.title').textContent, e.offsetWidth])));
   assert.ok(after.alpha > after.bravo * 2, `dropped on the big one, alpha takes its place (${JSON.stringify(after)})`);
 
@@ -71,7 +74,8 @@ test('Pop out streams: streams move to their own window with Tile, Spotlight and
   assert.ok((await titles(a.win, 'chat')).includes('delta'));
 
   await keep(sw);
-  await sw.click('#backBtn');
+  // the button closes this window, which can happen before Playwright has finished the click
+  await Promise.all([sw.waitForEvent('close'), sw.click('#backBtn').catch(e => { if (!/closed/i.test(e.message)) throw e; })]);
   await a.win.waitForFunction(() => document.querySelectorAll('#stage .win.stream').length === 4);
   assert.equal(a.app.windows().some(p => /role=streams/.test(p.url())), false, 'the Streams window closed');
   assert.deepEqual(errors, []);
