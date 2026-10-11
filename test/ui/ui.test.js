@@ -567,3 +567,27 @@ test('the chat helper hands over new messages and tags flagged ones without chan
   await page.evaluate(() => window.__kmvMention.take());
   assert.ok(await page.$('#spam > [data-kmv-spam]'));
 });
+
+test('the chat helper reads Kick messages, where the name and the message are on separate lines', async t => {
+  const app = await openApp(t);
+  const js = await app.evaluate(() => window.chatAgentJs);
+  const page = await app.context().newPage();
+  // Kick's layout: the name is a block inside an inline-flex, so its text sits on a line of its own.
+  const row = (id, name, body) => `<div class="row" id="${id}"><span style="display:none">12:01 PM</span>` +
+    `<div style="display:inline-flex"><button style="display:block">${name}</button></div><span style="display:inline-flex">:&nbsp;</span><span>${body}</span></div>`;
+  await page.setContent(`<div id="chat">${row('old', 'regular', 'hello there')}</div>`);
+  assert.match(await page.$eval('#old', e => e.innerText), /^regular\n:\s+hello there$/, 'the name is on its own line');
+  await page.evaluate(js);
+  await page.evaluate(() => { window.__kmvMention.setMe('Mod_Me'); window.__kmvMention.setWatch(true); });
+  await page.waitForTimeout(2800);
+  await page.evaluate(h => document.getElementById('chat').insertAdjacentHTML('beforeend', h),
+    row('spam', 'newacct', 'hq ai stream upgrades botkiva com <img alt=""> zero cost upgrades') + row('ping', 'friend', 'hey @mod_me look'));
+  const q = await page.evaluate(() => window.__kmvMention.take());
+  assert.deepEqual(q.k, ['regular'], 'people chatting before it started are reported once');
+  assert.deepEqual(q.l.map(l => [l.sender, l.body]), [['newacct', 'hq ai stream upgrades botkiva com  zero cost upgrades'], ['friend', 'hey @mod_me look']]);
+  assert.deepEqual(q.m.map(m => [m.sender, m.kind]), [['friend', 'mention']], 'mentions work too');
+
+  await page.evaluate(l => window.__kmvMention.mark(l, 'Likely spam: test', '#ff5f5f'), q.l[0].line);
+  assert.equal(await page.$eval('#spam > [data-kmv-spam]', e => e.title), 'Likely spam: test', 'tagged after the message');
+  assert.equal(await page.$('#ping [data-kmv-spam]'), null, 'only that message');
+});
