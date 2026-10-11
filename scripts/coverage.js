@@ -6,7 +6,9 @@
 // Recorded: the app's pages (src/*.html and the scripts they load) in the browser and in the desktop app,
 // the desktop app's main process, and the code the unit tests load. The report (coverage/report.md, and the
 // run's summary page on GitHub) lists each file's lines and functions run, and the bigger functions nothing
-// runs. It fails when a test fails or a file drops below its minimum, so coverage only goes up.
+// runs. It fails when a test fails. A file below its minimum fails it in CI, where the minimums are measured
+// (Linux, Node 22); on your computer some code can't run (e.g. Windows-only or Node 22 parts), so there it
+// only warns.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -166,8 +168,10 @@ function main() {
     console.log('Minimums updated in test/coverage-min.json');
   }
   if (failed.length) console.error(`\nTests failed: ${failed.join(', ')}`);
-  if (low.length) console.error(`\nBelow the minimum: ${low.map(r => `${r.file} ${r.lines}% (minimum ${min[r.file]}%)`).join(', ')}. Add tests for what you changed.`);
-  process.exit(failed.length || low.length ? 1 : 0);
+  const strict = !!process.env.CI;
+  if (low.length) console.error(`\n${strict ? '' : 'Warning: '}below the minimum: ${low.map(r => `${r.file} ${r.lines}% (minimum ${min[r.file]}%)`).join(', ')}.` +
+    (strict ? ' Add tests for what you changed.' : ' CI checks this; some code may not run on this computer.'));
+  process.exit(failed.length || (strict && low.length) ? 1 : 0);
 }
 
 if (require.main === module) main();

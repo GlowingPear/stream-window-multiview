@@ -14,6 +14,7 @@ test.before(async () => {
     ipcMain.removeHandler('account:logout'); ipcMain.handle('account:logout', (_e, p) => { s.logouts.push(p); s[p] = p === 'youtube' ? false : ''; return true; });
     ipcMain.removeHandler('account:login'); ipcMain.handle('account:login', (_e, p) => { s.logins.push(p); });
     // desktop notifications are recorded instead of shown
+    Notification.isSupported = () => true;          // (Linux test machines have no notification service)
     Notification.prototype.show = function () { s.notes.push({ title: this.title, body: this.body }); globalThis.__lastNote = this; };
   });
   // the app's own live checks can't reach the sites here: only the test says who's live
