@@ -9,6 +9,19 @@ const path = require('path');
 const { ROOT, playwright } = require('../helpers');
 
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+// These tests move the home folder to a temporary one. On a Mac that hides the login keychain, and macOS
+// asks to reset it ("Keychain Not Found") when the app encrypts saved logins: use a stand-in keychain instead.
+const ARGS = ['--no-sandbox', '--use-mock-keychain', ROOT];
+// The app's environment, with its data in the temporary home folder. A Mac finds the app's data folder
+// without looking at HOME, so there the app is told where it is (as npm run dev does), or it would use
+// (or, while it's open, hand over to) your own copy. Without ELECTRON_RUN_AS_NODE, which editors built on
+// Electron set: it starts the app as plain Node.
+function appEnv(vars) {
+  const env = { ...process.env, ...vars };
+  if (process.platform === 'darwin') env.SMV_DEV_DATA = vars.HOME;
+  delete env.ELECTRON_RUN_AS_NODE;
+  return env;
+}
 
 function electronPath() {
   if (process.env.ELECTRON_PATH) return process.env.ELECTRON_PATH;
@@ -21,8 +34,8 @@ test('the desktop app starts, adds a stream and quits cleanly', async () => {
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-launch-'));
   const app = await playwright()._electron.launch({
     executablePath: electronPath(),
-    args: ['--no-sandbox', ROOT],
-    env: { ...process.env, HOME: data, XDG_CONFIG_HOME: data, APPDATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' },
+    args: ARGS,
+    env: appEnv({ HOME: data, XDG_CONFIG_HOME: data, APPDATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' }),
     timeout: 60000
   });
   const mainErrors = [];
@@ -91,7 +104,7 @@ test('YouTube sign-in copies the login from Firefox', async () => {
   const { DatabaseSync } = require('node:sqlite');
   const { firefoxRoots } = require('../../src/firefox-login');
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-launch-'));
-  const env = { ...process.env, HOME: data, XDG_CONFIG_HOME: data, APPDATA: data, LOCALAPPDATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' };
+  const env = appEnv({ HOME: data, XDG_CONFIG_HOME: data, APPDATA: data, LOCALAPPDATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' });
 
   // a Firefox profile signed in to YouTube (plus another site's login, which must not be copied)
   const prof = path.join(firefoxRoots(process.platform, env, data)[0], 'Profiles', 'test.default-release');
@@ -107,7 +120,7 @@ test('YouTube sign-in copies the login from Firefox', async () => {
   ins.run('user_session', 'github-secret', '.github.com', exp);
   db.close();
 
-  const app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', ROOT], env, timeout: 60000 });
+  const app = await playwright()._electron.launch({ executablePath: electronPath(), args: ARGS, env, timeout: 60000 });
   try {
     const win = await app.firstWindow();
     const pageErrors = [];
