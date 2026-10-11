@@ -301,6 +301,32 @@ function createKeyGate({ now = () => Date.now() } = {}) {
   };
 }
 
+// YouTube's channel feeds go down for everyone at once (answering 404), often for minutes, sometimes for hours.
+// One gate for all channels: a round where no feed answered is a miss. After 3 misses in a row the feed is down
+// and only asked again after 1 min, doubling up to 30 min; any feed answering puts it back up.
+function createFeedGate({ now = () => Date.now(), misses = 3 } = {}) {
+  let st = { miss: 0, until: 0, backoff: 0 };
+  return {
+    usable: () => st.miss < misses || now() >= st.until,
+    down: () => st.miss >= misses,
+    ok() { st = { miss: 0, until: 0, backoff: 0 }; },
+    fail() {
+      st.miss++;
+      if (st.miss >= misses) { st.backoff = st.backoff ? Math.min(st.backoff * 2, 30 * 60e3) : 60e3; st.until = now() + st.backoff; }
+    },
+    status: () => ({ ...st })
+  };
+}
+// A YouTube channel whose feed couldn't be read this round (prev: its last result):
+//   'recheck' -> it was live: ask the API about that video again (a stream keeps its video id)
+//   'keep'    -> every feed is failing, but not for long yet: keep its last result for now
+//   'page'    -> check its page instead
+function ytNoFeed(prev, { allFailing, down }) {
+  if (prev && prev.live && prev.videoId) return 'recheck';
+  if (prev && !prev.missing && allFailing && !down) return 'keep';
+  return 'page';
+}
+
 /* ---------- Google sign-in inside the app ----------
    Google refuses sign-in from embedded Chromium ("This browser or app may not be secure"): the
    page sees Chromium without the "Google Chrome" brand. Firefox has no such brand list, so the
@@ -404,4 +430,4 @@ function channelFromLink(plat, href) {
   return SLUG_RE.test(m[1]) ? m[1].toLowerCase() : null;
 }
 
-module.exports = { toTime, decodeHtml, parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, nextPacificMidnight, isGoogleSignin, firefoxVersion, firefoxUA, KICK_FOLLOW_APIS, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };
+module.exports = { toTime, decodeHtml, parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, nextPacificMidnight, isGoogleSignin, firefoxVersion, firefoxUA, KICK_FOLLOW_APIS, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };
