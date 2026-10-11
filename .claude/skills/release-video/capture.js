@@ -25,11 +25,12 @@ async function start(app, dir, { fps = 30, quality = 90 } = {}) {
   }, { dir, fps, quality });
 }
 
-// Stops, writes <dir>/list.txt (ffmpeg concat format) and returns { list, count, seconds, fps, maxGap }.
+// Stops, writes <dir>/list.txt (ffmpeg concat format) and returns { list, count, seconds, fps, maxGap, t0 }
+// (t0: when the first frame was taken, ms since 1970).
 async function stop(app, dir) {
   const r = await app.evaluate(() => {
     const c = globalThis.__cap; clearInterval(c.keep); try { c.wc.endFrameSubscription(); } catch {}
-    return { frames: c.frames, end: Date.now() - c.t0 };
+    return { frames: c.frames, end: Date.now() - c.t0, t0: c.t0 };
   });
   await new Promise(res => setTimeout(res, 1500));   // let the last files land
   const q = f => `file '${path.join(dir, f).replace(/\\/g, '/').replace(/'/g, "'\\''")}'`;
@@ -38,7 +39,7 @@ async function stop(app, dir) {
   L.push(q(r.frames.at(-1)[0]));   // ffmpeg ignores the last duration unless the file is repeated
   fs.writeFileSync(path.join(dir, 'list.txt'), L.join('\n') + '\n');
   const seconds = r.end / 1000;
-  return { list: path.join(dir, 'list.txt'), count: r.frames.length, seconds, fps: +(r.frames.length / seconds).toFixed(1), maxGap: +Math.max(...durs).toFixed(2) };
+  return { list: path.join(dir, 'list.txt'), count: r.frames.length, seconds, fps: +(r.frames.length / seconds).toFixed(1), maxGap: +Math.max(...durs).toFixed(2), t0: r.t0 };
 }
 
 module.exports = { start, stop };

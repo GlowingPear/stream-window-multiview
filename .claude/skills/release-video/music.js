@@ -1,9 +1,10 @@
 // Upbeat synth-pop backing track, made from scratch (no samples, nothing to license).
 // 124 BPM, C-G-Am-F: kick, snare, hats, a driving bass, a 16th-note arpeggio and a soft pad, with fades.
-//   node music.js <seconds> <out.wav>      or   require('./music').write(seconds, file)
+// pauses: [{ from, to }] (seconds) where it fades out so a sound from the app can be heard.
+//   node music.js <seconds> <out.wav>      or   require('./music').write(seconds, file, { pauses })
 const fs = require('fs');
 
-function write(seconds, file, { bpm = 124, seed = 7 } = {}) {
+function write(seconds, file, { bpm = 124, seed = 7, pauses = [] } = {}) {
   const SR = 32000, n = Math.ceil(seconds * SR), beat = 60 / bpm, bar = beat * 4;
   const L = new Float32Array(n), R = new Float32Array(n);
   let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
@@ -50,8 +51,10 @@ function write(seconds, file, { bpm = 124, seed = 7 } = {}) {
   buf.writeUInt16LE(1, 20); buf.writeUInt16LE(2, 22); buf.writeUInt32LE(SR, 24); buf.writeUInt32LE(SR * 4, 28); buf.writeUInt16LE(4, 32); buf.writeUInt16LE(16, 34);
   buf.write('data', 36); buf.writeUInt32LE(n * 4, 40);
   const clip = v => Math.round(Math.max(-1, Math.min(1, v)) * 32767);
+  // 0 inside a pause, fading out over .5 s before it and back in over .6 s after it
+  const duck = t => pauses.reduce((g, p) => Math.min(g, t < p.from ? Math.min(1, (p.from - t) / .5) : t > p.to ? Math.min(1, (t - p.to) / .6) : 0), 1);
   for (let i = 0; i < n; i++) {
-    const g = .85 / peak * Math.min(1, i / fadeIn) * Math.min(1, (n - i) / fadeOut);
+    const g = .85 / peak * Math.min(1, i / fadeIn) * Math.min(1, (n - i) / fadeOut) * (pauses.length ? duck(i / SR) : 1);
     buf.writeInt16LE(clip(L[i] * g), 44 + i * 4); buf.writeInt16LE(clip(R[i] * g), 46 + i * 4);
   }
   fs.writeFileSync(file, buf);
