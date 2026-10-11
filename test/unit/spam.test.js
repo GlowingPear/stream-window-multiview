@@ -72,3 +72,24 @@ test('your own promo words', () => {
   assert.equal(flagged('subs here at botkiva com, sub4sub deal'), false);
   assert.equal(flagged('subs here at botkiva com, sub4sub deal', {}, { words: ['sub4sub', 'subs here'] }), true);
 });
+
+test('a wall of one word is spam on its own, with no link needed', () => {
+  const wall = 'FuckFuckFuckFuckFuck FuckFuckFuckFuckFuckFuckFuckFuckFuckFuckFuckFuckFuckFuckFuck FuckFuckFuckFuckFuck FuckFuckFuckFuckFuck FuckFuckFuckFuckFuckFuckFuckFuckFuckFuckFuckFuckFuckFuckFuck';
+  const r = score(msg(wall), {}, { sensitivity: 'relaxed' });
+  assert.equal(r.spam, true);
+  assert.deepEqual(r.signs, [{ text: 'The same word over and over: "fuck" ×45', points: 6 }]);
+  assert.equal(flagged('BuyNow! BuyNow!BuyNow!BuyNow! BuyNow!BuyNow!BuyNow!BuyNow!BuyNow!BuyNow!'), true, 'punctuation between');
+  assert.equal(flagged(Array(25).fill('Fuck').join(' ')), true, 'spaced out, 25 times');
+});
+
+test('hype, laughing and emote walls are not a word flood', () => {
+  for (const body of [
+    'KEKW KEKW KEKW KEKW KEKW KEKW KEKW KEKW',
+    Array(24).fill('LOL').join(' '),
+    'hahahahahahahahahahahahahahahahahahahahahahaha',
+    'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    'GOAL GOALGOALGOAL',
+    'no way no way no way no way',
+    ''
+  ]) assert.equal(score(msg(body)).signs.length, 0, body);
+});

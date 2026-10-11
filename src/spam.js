@@ -36,6 +36,17 @@
     return toks.filter(w => /^[a-z]{2,}[A-Z][A-Za-z0-9]{2,}$/.test(w) || /^:[\w-]+:$/.test(w) || /^\p{Extended_Pictographic}+$/u.test(w)).length;
   }
 
+  // A wall of one word: glued together ("FuckFuckFuck FuckFuckFuckFuck ...", 10+ times) or spaced out
+  // (25+ words). Short pieces like "haha" or "aaaa" glued together are laughing or hype, not a flood.
+  function flood(text) {
+    const words = String(text || '').toLowerCase().split(/\s+/).map(w => w.replace(/[^\p{L}\p{N}]+/gu, '')).filter(Boolean);
+    const m = /^(.{2,20}?)\1+$/su.exec(words.join(''));
+    if (!m) return null;
+    const unit = m[1], times = words.join('').length / unit.length;
+    const glued = unit.length >= 4 && times >= 10 && words.some(w => w.length >= unit.length * 3);
+    return glued || words.length >= 25 ? { unit, times } : null;
+  }
+
   /**
    * score(msg, ctx, opts) -> { score, need, spam, signs: [{ text, points }] }
    * msg:  { sender, body, chat, t }
@@ -62,6 +73,9 @@
 
     if (junkCount(body) >= 2 && norm(body).split(' ').length >= 4) sign('Emotes breaking up the words', 1);
 
+    const fl = flood(body);
+    if (fl) sign(`The same word over and over: "${fl.unit}" ×${fl.times}`, 6);
+
     const recent = (ctx.recent || []).filter(r => t - (r.t || 0) < WINDOW_MS && r !== msg);
     const key = norm(body);
     if (key.length >= 12) {
@@ -79,8 +93,8 @@
     }
 
     const total = signs.reduce((a, x) => a + x.points, 0);
-    // A link (disguised or not) is needed: without one there's nothing to promote.
-    const spam = total >= need && (hidden.length > 0 || plain.length > 0 || signs.some(x => /^Same message/.test(x.text)));
+    // A link (disguised or not) is needed: without one there's nothing to promote. A word flood is spam on its own.
+    const spam = total >= need && (hidden.length > 0 || plain.length > 0 || !!fl || signs.some(x => /^Same message/.test(x.text)));
     return { score: total, need, spam, signs };
   }
 
