@@ -27,7 +27,7 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 ## Moving windows around
 - Drag a window by its title bar. Resize it from any edge or corner.
 - Each window's name is a dropdown: pick another channel to swap the two windows.
-- Title bar buttons: volume and mute, + Chat, make big, save (☆), refresh, open in its own window, maximize, close.
+- Title bar buttons: volume and mute, + Chat, make big, save (☆), refresh, open in its own window, maximize, close. When a window is too narrow for them all, the rest are in its ⋯ menu.
 
 ## Layouts (Layout menu)
 - **Focus view**: one stream (or another app's window) big with its chat, the rest in columns beside it.
@@ -150,7 +150,7 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 ## Chrome extensions (Settings > Extensions)
 - Install one three ways: **Browse Chrome Web Store** (find it and click **Add to Stream Multiview**), **Install from link…** (paste its Web Store link), or **Load folder…** (an unpacked extension). The app asks first, and shows what it can do.
 - Pick where it's on: Kick, Twitch and YouTube, for streams and for chats. New ones are on for streams only. If you watch a site signed in, its streams follow the Chats setting.
-- The puzzle button on a stream or chat window lists the extensions in it. Click one to open its popup, the gear for its options. On a stream you can switch one on or off for that stream only.
+- Extensions in a stream or chat window's ⋯ menu lists the extensions in it. Click one to open its popup, the gear for its options. On a stream you can switch one on or off for that stream only.
 - Each chat site and each stream keeps its own extension settings.
 - Some extensions need Chrome features the app doesn't have; they're marked. Blockers like uBlock Origin Lite won't block anything.
 - Extensions can read and change the pages they're on, including while you're signed in. Only install ones you trust.

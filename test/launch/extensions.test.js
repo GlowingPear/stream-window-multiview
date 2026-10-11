@@ -29,8 +29,11 @@ const add = async (mode, ...links) => {
   await a.win.selectOption('#mode', mode);
   for (const l of links) { await a.win.fill('#url', l); await a.win.click('#add'); }
 };
-// a window's extensions button (clicked directly: the windows here overlap each other's title bars)
-const extBtn = sel => a.win.locator(sel).dispatchEvent('click');
+// Extensions in a window's ⋯ menu (clicked directly: the windows here overlap each other's title bars)
+const extBtn = async sel => {
+  await a.win.locator(sel.replace(/\[data-a=ext\]$/, '[data-a=more]')).dispatchEvent('click');
+  await a.win.locator('#barMenu button:has(.bm-t:text-is("Extensions"))').dispatchEvent('click');
+};
 const openPane = () => a.win.evaluate(() => openSettings('extensions'));
 const closeSettings = () => a.win.evaluate(() => { document.querySelector('#settingsDlg').hidden = true; });
 const windowUrls = () => a.app.evaluate(({ webContents }) => webContents.getAllWebContents().map(w => w.getURL()));
@@ -79,7 +82,12 @@ test('Installed: on where the grid says (streams by default, plus Twitch chats h
   await markedNow('bravo', 'chat', true);
   assert.equal(await marked('charlie', 'chat'), false, 'not in Kick chats');
   await until(() => a.win.locator(winSel('alpha') + ' [data-a=ext] .ext-n').textContent().then(t => t === '1'));
-  assert.equal(await a.win.locator(winSel('charlie', 'chat') + ' [data-a=ext]').isVisible(), true, 'the button shows, to switch it on');
+  assert.equal(await a.win.locator(winSel('charlie', 'chat') + ' [data-a=more]').isVisible(), true, 'the ⋯ menu shows, to switch it on');
+  assert.equal(await a.win.locator(winSel('charlie', 'chat') + ' [data-a=ext]').isVisible(), false, 'with Extensions in it');
+  await a.win.locator(winSel('alpha') + ' [data-a=more]').dispatchEvent('click');
+  assert.equal(await a.win.textContent('#barMenu button:has(.bm-t:text-is("Extensions")) .bm-n'), '1', 'how many are on, in the menu');
+  await a.win.keyboard.press('Escape');
+  await a.win.waitForSelector('#barMenu', { state: 'hidden' });
 });
 
 test('A stream window can switch it off for itself only; chats follow Settings', T, async () => {
