@@ -1359,7 +1359,9 @@ const keyName = s => IS_MAC ? String(s).replace(/Ctrl\+/g, '⌘+') : String(s);
 function mentionAgent(){
   if (window.__kmvMention) return true;
   const seen = new Set(), marks = new Map(), known = new Set();
-  let me = '', watch = false, armed = false, queue = [], lines = [], armT = 0;
+  let me = '', watch = false, armed = false, queue = [], lines = [], armT = 0, clicked = 0;
+  // Clicks in the chat: the window may already have focus, so the app sees no new focus to mark it seen.
+  document.addEventListener('pointerdown', () => { clicked = Date.now(); }, true);
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const LINE_RE = /^(?:\d{1,2}:\d{2}(?:\s?[AP]M)?\s+)?([A-Za-z0-9_]{2,30})\s?:\s*([\s\S]*)$/i;
   const NAME_RE = /^(?:\d{1,2}:\d{2}(?:\s?[AP]M)?\s+)?[A-Za-z0-9_]{2,30}$/i;
@@ -1461,7 +1463,7 @@ function mentionAgent(){
       marks.set(line, { why, color }); tag(marks.get(line), line);
       if (marks.size > 200) marks.delete(marks.keys().next().value);
     },
-    take(){ scan(); const q = { m: queue, l: lines, k: [...known] }; queue = []; lines = []; known.clear(); return q; }
+    take(){ scan(); const q = { m: queue, l: lines, k: [...known], c: clicked }; queue = []; lines = []; known.clear(); clicked = 0; return q; }
   };
   return true;
 }
@@ -2364,13 +2366,13 @@ function playSound(kind){
 const wantNotify = kind => alerts[kind].notify === 'always' || (alerts[kind].notify === 'unfocused' && !document.hasFocus());
 
 // The window's border: a short glow, or lit until you click that chat, getting stronger while unseen.
-function raiseAlert(w, kind){
+function raiseAlert(w, kind, seen){
   const a = alerts[kind];
   if (!w || !a) return;
   playSound(kind);
   if (a.hl === 'off') return;
   w.el.style.setProperty('--al', a.color);
-  const looking = document.hasFocus() && w.view && document.activeElement === w.view;   // you're in that chat right now
+  const looking = seen || (document.hasFocus() && w.view && document.activeElement === w.view);   // you're in that chat right now
   if (a.hl === 'brief' || looking){
     w.el.classList.remove('al-brief'); void w.el.offsetWidth; w.el.classList.add('al-brief');
     setTimeout(() => w.el.classList.remove('al-brief'), 2600);
@@ -2483,14 +2485,18 @@ async function pollChats(ment, spam){
     if (!q) continue;
     (q.k || []).forEach(n => { const k = w.channel + '\n' + n; if (!(k in spamFirst)) spamFirst[k] = 0; });
     if (spam && q.l && q.l.length) await spamCheck(w, q.l);
+    if (q.c){                                                 // you clicked in the chat: what came before is seen
+      if (w.alert && w.alert.since <= q.c) clearAlert(w);
+      readMentions(w.channel);
+    }
     (q.m || []).forEach(m => {
-      const looking = document.hasFocus() && document.activeElement === w.view;   // you're in that chat right now
+      const looking = (document.hasFocus() && document.activeElement === w.view) || (q.c && (m.t || 0) <= q.c);   // you're in that chat right now
       const item = { channel: w.channel, label: chLabelP(w.channel), sender: m.sender, body: m.body, kind: m.kind, quoted: m.quoted || '', t: m.t || Date.now(),
                      unread: $('#mentPanel').hidden && !looking };
       mentions.unshift(item); mentions = mentions.slice(0, HISTORY_MAX);
       if (wantNotify('mention')) window.kmv.notifyMention(item);
       flash(`${item.sender} ${item.kind === 'reply' ? 'replied to you' : 'mentioned you'} in ${chLabel(item.channel)}`);
-      raiseAlert(w, 'mention');
+      raiseAlert(w, 'mention', looking);
     });
     if (q.m && q.m.length){ saveMentions(); renderMentions(); }
   }

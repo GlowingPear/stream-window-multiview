@@ -109,6 +109,16 @@ test('a mention in another chat is counted until you click into that chat, not a
   assert.ok(await win.$eval('#mentBtn .mb-count', e => e.hidden));
 });
 
+test('clicking inside a chat that already has focus clears its alert and mention too', T, async () => {
+  await say('bravo', 'someone', '@mename over here');
+  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  assert.equal((await alertOf('bravo')).level, 'al-1');
+  // a click in the chat page itself, with no change of focus for the app to notice
+  await inChat('bravo', () => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
+  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').hidden);
+  assert.equal((await alertOf('bravo')).level, '');
+});
+
 test('the @ button on a chat\'s bar turns mentions off for that chat only', T, async () => {
   const at = '#stage .win.chat:has(.title:text-is("alpha")) [data-a=at]';
   assert.equal(await win.$eval(at, b => b.hidden), false);
