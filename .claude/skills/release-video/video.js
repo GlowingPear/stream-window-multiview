@@ -10,6 +10,7 @@ const drive = require('../drive-app/drive');
 const stage = require('./stage');
 const capture = require('./capture');
 const music = require('./music');
+const sounds = require('./sounds');
 
 const ROOT = path.join(__dirname, '..', '..', '..');
 const W = 1280, H = 800;   // the window, and the MP4
@@ -222,7 +223,7 @@ async function record(scenes, { dir = ROOT, out, keep = false } = {}) {
   const thumb = path.join(work, 'thumbnail.png');
   const run = await drive.launch({ dir, size: { width: W, height: H }, seed: scenes.seed });
   const m = run.main;
-  let cap = null, failed = null;
+  let cap = null, sfx = null, failed = null;
   try {
     await stage.install(run.app, scenes.stage);
     await m.evaluate(({ css, pear }) => {
@@ -244,6 +245,7 @@ async function record(scenes, { dir = ROOT, out, keep = false } = {}) {
     await t.card({ still: true, h: 'Stream Multiview', ...scenes.poster });
     await m.waitForTimeout(400);
     await m.screenshot({ path: thumb });
+    await sounds.start(m);
     await capture.start(run.app, frames);
     await m.waitForTimeout(1500);
     await scenes.run(t);
@@ -252,17 +254,27 @@ async function record(scenes, { dir = ROOT, out, keep = false } = {}) {
     failed = e;
     await m.screenshot({ path: path.join(work, 'fail.png') }).catch(() => {});
   } finally {
+    try { sfx = await sounds.stop(m, work); } catch (e) { failed = failed || e; }
     try { cap = await capture.stop(run.app, frames); } catch (e) { failed = failed || e; }
     await run.close();
   }
   if (failed) { failed.message += `\n(screenshot of the moment: ${path.join(work, 'fail.png')})`; throw failed; }
 
-  const wav = music.write(cap.seconds + 1, path.join(work, 'music.wav'));
+  // the music pauses for the app's own sounds (alert chimes and the like), which are mixed in where they played
+  const pauses = sounds.pauses(sfx.events, cap.t0);
+  let wav = music.write(cap.seconds + 1, path.join(work, 'music.wav'), { pauses });
+  if (sfx.clips.length) {
+    const mixed = path.join(work, 'audio.wav');
+    const delays = sfx.clips.map((c, i) => `[${i + 1}:a]adelay=${Math.max(0, c.at - cap.t0)}:all=1,volume=1.6[s${i}]`).join(';');
+    ff(['-i', wav, ...sfx.clips.flatMap(c => ['-i', c.file]), '-filter_complex',
+      `${delays};[0:a]${sfx.clips.map((_, i) => `[s${i}]`).join('')}amix=inputs=${sfx.clips.length + 1}:duration=first:normalize=0[a]`, '-map', '[a]', mixed]);
+    wav = mixed;
+  }
   await encode(['-f', 'concat', '-safe', '0', '-i', cap.list, '-i', wav], cap.seconds, thumb, mp4, work);
   const sheet = path.join(work, 'sheet.png');
   ff(['-i', mp4, '-map', '0:v:0', '-vf', `fps=1/4,scale=400:-1,tile=6x${Math.ceil(cap.seconds / 24)}`, '-frames:v', '1', sheet]);
   if (!keep) fs.rmSync(frames, { recursive: true, force: true });
-  return { mp4, thumbnail: thumb, sheet, capture: cap };
+  return { mp4, thumbnail: thumb, sheet, capture: cap, pauses };
 }
 
 if (require.main === module) {
@@ -274,6 +286,7 @@ if (require.main === module) {
     .then(r => {
       console.log(`MP4:       ${r.mp4}\nThumbnail: ${r.thumbnail}\nSheet:     ${r.sheet}`);
       console.log(`Capture: ${r.capture.seconds.toFixed(1)} s, ${r.capture.fps} fps, longest still ${r.capture.maxGap} s`);
+      console.log(`Sounds:  ${r.pauses.length ? r.pauses.map(p => p.from.toFixed(1) + ' s').join(', ') + ' (the music pauses for each)' : 'none'}`);
     })
     .catch(e => { console.error(e.stack || e.message); process.exit(1); });
 }

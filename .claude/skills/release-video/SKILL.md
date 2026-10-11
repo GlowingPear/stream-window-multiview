@@ -16,6 +16,7 @@ Files next to this one:
 | `stage.js` | Stand-in kick.com: six made-up channels (`pixelpear`, `nightowl`, `arcadia`, `lofilane`, `tidepool`, `emberfox`) with moving pictures, chats with a chat box and user cards, and Kick's channel API |
 | `capture.js` | Smooth capture of every frame the window paints |
 | `music.js` | Generated upbeat backing track (no samples, nothing to license) |
+| `sounds.js` | Records the app's own sounds (alert chimes and the like) so the music can pause for them |
 | `examples/` | Finished scenes files, as models for the next one: `0.2.20.js` (one feature set, seeded data), `0.2.16-to-0.2.18.js` (three releases, chats, alerts; recorded from a v0.2.18 checkout with `--dir`) |
 
 ## 1. Check the tools
@@ -84,6 +85,7 @@ module.exports = {
 - **Made-up everything.** Only the stand-in channels and chatters, seeded data with made-up history, and invented names in typed text. Never a real channel, login or chat.
 - **Under 10 MB** (GitHub's limit for a video in release notes or a PR). `video.js` sees to it. It encodes at the window's 1280×800, in two passes when one pass is too big, and drops to 960×600 when the video is too long for 1280×800 to stay sharp (over about 3 minutes). Aim for 2-3 minutes, so it stays at 1280×800.
 - **Pace:** title cards ~2.5 s, a beat of 1-3 s on each result, ~10-20 s per feature. An outro card: `Get <version>` / `Settings › Updates › Check now`, and every feature in a line.
+- **Hear the app's sounds.** When a demo makes the app play a sound (a mention chime, a spam knock, a sound preview in Settings), the music pauses for it and the real sound plays. `video.js` does this by itself for everything the app plays through WebAudio, which covers all the built-in sounds. Leave alert sounds on in demos, and give each sound a beat (~2 s) before the next thing happens. A custom sound file isn't recorded, so demos use the built-in sounds.
 - **Smooth:** ~24-30 fps captured. Don't use Playwright's own video recording, which drops to 5-15 fps and looks laggy.
 
 ## 5. Record
@@ -92,7 +94,7 @@ module.exports = {
 node .claude/skills/release-video/video.js <scenes.js> [--dir <worktree>] [--out <file.mp4>]
 ```
 
-Run it in the background with a time limit (it takes as long as the video plus about a minute; see *Don't get stuck* in `drive-app`). It prints the MP4, the thumbnail, a contact sheet and the capture rate. On a failure it saves `fail.png` of that moment and says where.
+Run it in the background with a time limit (it takes as long as the video plus about a minute; see *Don't get stuck* in `drive-app`). It prints the MP4, the thumbnail, a contact sheet, the capture rate and when the app's sounds played (the music pauses there). On a failure it saves `fail.png` of that moment and says where.
 
 ## 6. Check it before handing it over
 
