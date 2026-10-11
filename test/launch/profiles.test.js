@@ -105,10 +105,15 @@ test('a profile: what Kick says, the live stream, numbers from the history, and 
   assert.match(tiles['Followers'], /^1\.5K/);
   assert.match(tiles['Avg viewers'], /^\d{3} \| seen by the app/);
   assert.match(tiles['Avg length'], /^4h 00m/);
-  assert.match(tiles['Usually starts'], /^[67]:\d\d\sPM \| Tue–Thu/);
+  // times as this computer writes them (7:00 PM or 19:00)
+  const clock = h => w.evaluate(h => new Date(2026, 0, 1, h).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), h);
+  const re = s => new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s/g, '\\s'));
+  const [six, seven, eleven] = [await clock(18), await clock(19), await clock(23)];
+  const startsAt = t => new RegExp('^' + re(t).source.replace(':00', ':\\d\\d') + ' \\| Tue–Thu');   // 6 or 7 PM, any minute
+  assert.ok([six, seven].some(t => startsAt(t).test(tiles['Usually starts'])), tiles['Usually starts']);
   assert.match(await w.textContent('.pf-cov'), /Tracking since .* seen by the app, \d+ more from Kick's past broadcasts/);
   assert.ok(await w.$('.pf-heat-g'), 'the heatmap is drawn');
-  assert.match(await w.textContent('.pf-heat-k b'), /Tue–Thu, 7:00\sPM – 11:00\sPM/);
+  assert.match(await w.textContent('.pf-heat-k b'), re(`Tue–Thu, ${seven} – ${eleven}`));
   const rows = await w.$$eval('.pf-hist tbody tr', e => e.map(r => r.textContent));
   assert.ok(rows.length >= 10);
   assert.ok(rows.some(r => /VOD/.test(r)) && rows.some(r => !/VOD/.test(r)), 'past broadcasts are marked');
