@@ -3720,6 +3720,13 @@ document.addEventListener('pointerdown', e => {
 });
 $('#savedAdd').onclick = addSavedFromInput;
 $('#savedInput').addEventListener('keydown', e => { if (e.key === 'Enter') addSavedFromInput(); if (e.key === 'Escape') panel.hidden = true; });
+$('#savedTabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  savedTab = b.dataset.t;
+  try { localStorage.setItem('kickMultiview.savedTab', savedTab); } catch {}
+  $('#savedInput').placeholder = savedTab === 'all' ? 'Channel name or link' : `${PLAT_NAME[savedTab]} channel name or link`;
+  renderSaved();
+});
 if (DESKTOP && ROLE === 'main' && window.kmv.watchLive){
   $('#spLive').hidden = false; $('#openLive').hidden = false;
   const na = $('#notifyAll'); na.checked = notifyAll;
@@ -3729,13 +3736,6 @@ if (DESKTOP && ROLE === 'main' && window.kmv.watchLive){
     sendWatch(); renderSaved();
   });
   window.kmv.onLiveStatus(snap => { liveInfo = snap || {}; renderSaved(); checkAutoOpen(); });
-  $('#savedTabs').addEventListener('click', e => {
-    const b = e.target.closest('button'); if (!b) return;
-    savedTab = b.dataset.t;
-    try { localStorage.setItem('kickMultiview.savedTab', savedTab); } catch {}
-    $('#savedInput').placeholder = savedTab === 'all' ? 'Channel name or link' : `${PLAT_NAME[savedTab]} channel name or link`;
-    renderSaved();
-  });
   window.kmv.onWentLive((ch, info) => { flash(`${chLabel(ch)} just went live on ${PLAT_NAME[platOf(ch)]}`); });
   window.kmv.onOpenChannel(ch => addParsed({ channel: ch, only: null }));
   window.kmv.liveSnapshot().then(snap => { liveInfo = snap || {}; renderSaved(); checkAutoOpen(); }).catch(() => {});
