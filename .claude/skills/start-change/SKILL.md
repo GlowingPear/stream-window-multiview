@@ -51,7 +51,7 @@ The new worktree is still identical to `main`, so capture "before" now, before e
 ## 5. Build and check
 
 - Make the change. Match the surrounding code's style.
-- Add or update tests next to similar ones in `test/`.
+- Add or update tests next to similar ones in `test/`: for every new code path, not only the parts that are easy to test. Coverage can't go down; `open-pr` checks it, so don't run the coverage check here as well.
 - Run the dev copy (`run-dev` skill) and check the change in the real app. `src/main.js` and `src/live.js` need a restart, `src/index.html` only Ctrl/Cmd+R.
 - Capture "after" with exactly the same steps as "before".
 - Commit in small, clear commits. Don't change the version or `CHANGELOG.md`.

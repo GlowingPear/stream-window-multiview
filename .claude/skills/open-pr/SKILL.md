@@ -10,12 +10,17 @@ description: Open a pull request for a Stream Multiview change - run the tests, 
 - It must not be `main`. If the work is on `main`, move it to a new branch first.
 - The commits must not change the version in `package.json` or `CHANGELOG.md`: releases do that.
 
-## 2. Run the tests
+## 2. Run the tests and check coverage
 
-- `npm test` always. Also `npm run test:ui` and `npm run test:launch` if the change touches the UI or the app's start-up (needs `npm run test:setup` once; Linux without a screen: `xvfb-run -a`). The launch tests open the app's window on screen; they don't need it focused, so the developer can keep working.
+- If the change touches app code (`src/`, `scripts/`): run `npm run test:coverage`. It runs every test (`npm test`, `test:ui` and `test:launch`) and records coverage, so don't run those separately as well. It needs `npm run test:setup` once; Linux without a screen: `xvfb-run -a`.
+- Otherwise (docs, skills, CI only): `npm test` is enough.
+- The launch tests open the app's window on screen; they don't need it focused, so the developer can keep working. Run it in the background with a time limit and read the results when it finishes (see *Don't get stuck* in the `drive-app` skill). If a run stalls, find out why before running it again.
 - The tests need Node.js 22 or newer. On an older Node, `test/unit/firefox-login.test.js` fails with `node:sqlite` missing: say so; it isn't caused by the change.
-- Report failures honestly in the PR, with what was and wasn't run.
-- Run `npm run test:ui` and `npm run test:launch` in the background with a time limit and read the results when they finish (see *Don't get stuck* in the `drive-app` skill). If a run stalls, find out why before running it again.
+- **Coverage can't go down** (see *Tests* in `README.md`). Look at the per-file numbers it prints:
+  - A file below its minimum in `test/coverage-min.json`: first find out whether this machine is the cause. Some code only runs on Linux or Node 22, and failing tests lower the numbers. Run `npm run test:coverage` once on `origin/main` in a temporary worktree and compare the same file. Only a drop compared with `main` is caused by the change.
+  - A drop caused by the change: add tests for the new code paths until it's back, then run it again. `coverage/report.md` lists the bigger functions no test runs. Test what the change does, not only its easy helpers (e.g. the click a timer sends, a fallback, an error message).
+  - Coverage went up: raise the minimums in `test/coverage-min.json` after CI has run, to the numbers on its summary page.
+- Report failures honestly in the PR, with what was and wasn't run, and the coverage of the files the change touched.
 
 ## 3. Write the draft
 
@@ -24,7 +29,7 @@ Follow `.github/pull_request_template.md` and the style of recent PRs (`gh pr li
 - **Title:** one line a user would understand (e.g. *Add Hikari theme*). Titles become the app's "What's new" entries.
 - **Why:** the problem, and `Fixes #<n>` if there's an issue.
 - **What changed:** what a reviewer needs to know, not every line.
-- **Tests:** what was run and what was tried in the real app.
+- **Tests:** what was run, the coverage of the files the change touched (and `main`'s, if compared), and what was tried in the real app.
 - **Before / after:** a table of screenshots, videos on their own line below it, or `N/A` when nothing visible changed. Reference each file by its path, e.g. `![After](/tmp/.../after.png)`.
 - **Notes:** what users will see, steps before merging, PRs it builds on. Drop the section if empty.
 
