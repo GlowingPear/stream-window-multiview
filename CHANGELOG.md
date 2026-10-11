@@ -2,7 +2,10 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.2.17 (current)
+## 0.2.18 (current)
+- Settings window, chat window alerts, and spam alerts for moderators
+
+## 0.2.17
 - Faster live checks, YouTube API key, the app's own tooltips and confirm dialog, a fuller Auto layout, and a Hide bar fix
 
 ## 0.2.16
