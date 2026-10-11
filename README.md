@@ -227,4 +227,4 @@ Stream Multiview is an independent project. It is not affiliated with or endorse
 
 ## License
 
-Stream Multiview is free software under the [GNU General Public License v3.0](LICENSE). Versions up to 0.2.18 were released under the MIT License.
+Stream Multiview is free software under the [GNU General Public License v3.0](LICENSE). Versions up to 0.2.19 were released under the MIT License.
