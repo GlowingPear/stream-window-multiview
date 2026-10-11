@@ -1154,9 +1154,21 @@ function mentionAgent(){
   let me = '', watch = false, armed = false, queue = [], lines = [], armT = 0;
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const LINE_RE = /^(?:\d{1,2}:\d{2}(?:\s?[AP]M)?\s+)?([A-Za-z0-9_]{2,30})\s?:\s*([\s\S]*)$/i;
+  const NAME_RE = /^(?:\d{1,2}:\d{2}(?:\s?[AP]M)?\s+)?[A-Za-z0-9_]{2,30}$/i;
+  // The text's lines, with each message on one line: Kick shows the name on a line of its own and
+  // ": message" on the next, so those two are joined (with a space, as flat() below would).
+  function textLines(text){
+    const out = [];
+    for (const l of String(text || '').split('\n').map(s => s.trim()).filter(Boolean)){
+      const n = out.length - 1;
+      if (n >= 0 && l[0] === ':' && NAME_RE.test(out[n])) out[n] += ' ' + l;
+      else out.push(l);
+    }
+    return out;
+  }
   function scan(){
     if ((!me && !watch) || !document.body) return;
-    const all = document.body.innerText.split('\n').map(s => s.trim()).filter(Boolean);
+    const all = textLines(document.body.innerText);
     const replyRe = me && new RegExp('^Replying to\\s+@?' + esc(me) + '(?![A-Za-z0-9_])', 'i');
     const atRe = me && new RegExp('(^|[^A-Za-z0-9_])@' + esc(me) + '(?![A-Za-z0-9_])', 'i');
     let reply = '';
@@ -1199,7 +1211,7 @@ function mentionAgent(){
       let best = null;
       for (let el = n.parentElement; el && el !== document.body; el = el.parentElement){
         const t = flat(el.innerText);
-        const more = el.innerText.split('\n').map(x => x.trim()).filter(x => x && !/^Replying to\s/i.test(x)).length > 1;
+        const more = textLines(el.innerText).filter(x => !/^Replying to\s/i.test(x)).length > 1;
         if (more || t.length > want.length + 60) break;   // that's more than this one message
         if (t.includes(want)) best = el;
       }
@@ -1234,7 +1246,7 @@ function mentionAgent(){
       on = !!on; if (on === watch) return;
       watch = on; lines = [];
       if (on && !armed) arm();
-      else if (on && document.body) document.body.innerText.split('\n').forEach(l => { const m = l.trim().match(LINE_RE); if (m) known.add(m[1].toLowerCase()); });
+      else if (on && document.body) textLines(document.body.innerText).forEach(l => { const m = l.match(LINE_RE); if (m) known.add(m[1].toLowerCase()); });
     },
     mark(line, why, color){
       if (marks.has(line)) return;
