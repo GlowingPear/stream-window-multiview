@@ -222,3 +222,9 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 ## Disclaimer
 
 Stream Multiview is an independent project. It is not affiliated with or endorsed by Kick, Twitch, YouTube, Google or Discord. All trademarks belong to their owners.
+
+---
+
+## License
+
+Stream Multiview is free software under the [GNU General Public License v3.0](LICENSE). Versions up to 0.2.18 were released under the MIT License.
