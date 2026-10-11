@@ -86,6 +86,23 @@ contextBridge.exposeInMainWorld('kmv', {
   profileMeta: (ch, patch) => ipcRenderer.invoke('profile:meta', ch, patch),
   kickUnfollow: slug => ipcRenderer.invoke('kick:unfollow', slug),
 
+  // Chrome extensions
+  extList: () => ipcRenderer.invoke('ext:list'),
+  extSet: (id, change) => ipcRenderer.invoke('ext:set', id, change),
+  extRemove: id => ipcRenderer.invoke('ext:remove', id),
+  extPrepare: (partition, plat, kind) => ipcRenderer.invoke('ext:prepare', partition, plat, kind),
+  extWindow: (partition, plat, kind) => ipcRenderer.invoke('ext:window', partition, plat, kind),
+  extOptions: (id, partition) => ipcRenderer.invoke('ext:options', id, partition),
+  extInstallLink: input => ipcRenderer.invoke('ext:installLink', input),
+  extLoadFolder: () => ipcRenderer.invoke('ext:loadFolder'),
+  extOpenStore: () => ipcRenderer.invoke('ext:openStore'),
+  extConfirmReply: (reqId, ans) => ipcRenderer.invoke('ext:confirmReply', reqId, ans),
+  onExtConfirm: cb => ipcRenderer.on('ext:confirm', (_e, info) => cb(info || {})),
+  onExtChanged: cb => ipcRenderer.on('ext:changed', (_e, parts) => cb(parts || [])),
+  // the extension's popup and badge (handled by electron-chrome-extensions in the main process)
+  extActionState: partition => ipcRenderer.invoke('crx-msg-remote', partition, 'browserAction.getState', partition),
+  extActivate: (partition, details) => ipcRenderer.invoke('crx-msg-remote', partition, 'browserAction.activate', details),
+
   // Chat mentions / replies
   notifyMention: m => ipcRenderer.send('mention:notify', m),
   notifyEnabled: on => ipcRenderer.send('notify:enabled', !!on),

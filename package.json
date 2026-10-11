@@ -5,7 +5,7 @@
   "updateRepo": "GlowingPear/stream-window-multiview",
   "description": "Watch several Kick, Twitch and YouTube streams and chats at once.",
   "author": "GlowingPear",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "homepage": "https://github.com/GlowingPear/stream-window-multiview",
   "main": "src/main.js",
   "private": true,
@@ -95,5 +95,9 @@
       "title": "Stream Multiview ${version}"
     },
     "publish": null
+  },
+  "dependencies": {
+    "electron-chrome-extensions": "4.9.0",
+    "electron-chrome-web-store": "0.13.0"
   }
 }

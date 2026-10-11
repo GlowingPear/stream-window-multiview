@@ -39,12 +39,19 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - Alerts when someone @mentions you or replies to you in Kick or Twitch chat: that chat window lights up (and can get stronger until you look), with a sound and desktop notification of your choice
 - **Spam alerts for moderators** (off by default): in chats you moderate, promo-bot messages are tagged "likely spam" and the chat window lights up. Nothing is hidden or removed.
 
+**Chrome extensions**
+- Install from the **Chrome Web Store** (browse it in the app and click **Add to Stream Multiview**), from a store link, or from an unpacked folder
+- Switch each one on per site and per window type (Kick / Twitch / YouTube × streams / chats) in Settings › Extensions
+- Each stream and chat window has an extensions button: the extensions on in it, their popups and options, and switching one on or off for just that stream
+- Extensions that only change pages (like BetterTTV) work well. Some Chrome features aren't available in the app, so blockers that rely on them (like uBlock Origin Lite) won't block anything; the install dialog says when an extension needs one
+- Extensions can read and change the pages they're on, including while you're signed in, so only install ones you trust
+
 **Comfort**
 - Undo / redo for window changes (Ctrl+Z / Ctrl+Y)
 - Keyboard shortcuts (press **F1**), which you can switch off
 - **Colors and themes**: 12 built-in themes, full color customization, and saved custom themes
 - Auto-pause streams you can't see, and "pause all except focus" to save bandwidth
-- One **Settings** window (gear button, Ctrl+, / ⌘,, or the menu bar) for general options, accounts, alerts, themes, updates, and the built-in instructions and keyboard shortcuts (**F1**)
+- One **Settings** window (gear button, Ctrl+, / ⌘,, or the menu bar) for general options, accounts, alerts, extensions, themes, updates, and the built-in instructions and keyboard shortcuts (**F1**)
 
 **Automatic updates**
 - Checks this GitHub repository for new versions, installs them in the background, then asks you to restart
@@ -133,7 +140,7 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 | `npm test` | Updates, the release scripts, login encryption, live checks, streamer profile history and the spam scoring. Needs nothing else installed. | seconds |
 | `npm run test:setup` | Run once: installs the test browser (Playwright). It isn't saved as a dependency of the app. | once |
 | `npm run test:ui` | The app's page in a headless browser: adding streams, moving and resizing windows, layouts, Columns scrolling, the switch control, Saved channels, your layouts, Game focus, undo/redo, shortcuts, themes, Settings, alerts | ~1 min |
-| `npm run test:launch` | Starts the real desktop app with stand-in Kick, Twitch and YouTube pages: start-up, volume and pause, popping streams out, logins, live alerts and notifications, the Import follows dialog, streamer profiles, the menu bar, Settings, updates, showing another app's window, and mention and spam alerts in chat windows (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~1 min |
+| `npm run test:launch` | Starts the real desktop app with stand-in Kick, Twitch and YouTube pages: start-up, volume and pause, popping streams out, logins, live alerts and notifications, the Import follows dialog, streamer profiles, the menu bar, Settings, updates, showing another app's window, mention and spam alerts in chat windows, and Chrome extensions with a small test extension (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~1 min |
 | `npm run test:all` | All of the above | |
 | `npm run test:coverage` | All of the above, recording which code they run. Prints how much of each file the tests run and writes `coverage/report.md` with the bigger functions no test runs. In CI (which runs it on every pull request and puts the report on the run's summary page) it fails if a file drops below its minimum in `test/coverage-min.json`; on your computer that's only a warning, because some code only runs on Linux, or on Node 22 or newer. | ~2 min |
 
@@ -185,6 +192,7 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 | `src/preload.js` | Safe bridge between the app pages and the main process |
 | `src/index.html` | The main app UI: windows, layouts, switch control, menus and themes |
 | `src/switcher.html` | The switch control when it's popped out into its own window |
+| `src/extensions.js` | Chrome extensions: the installed list, which sessions get which extension, installing and updating (with `electron-chrome-extensions` and `electron-chrome-web-store`) |
 | `src/live.js` | Live-status parsing, link parsing and follow import helpers |
 | `src/profiles.js` | Streamer profiles: records the streams the live checks see, works out the profile's numbers, reads what the sites say |
 | `src/spam.js` | Scores chat messages for spam alerts (used by the app page and the tests) |
@@ -215,6 +223,7 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 - Windows from other apps (like Discord) are shown as a live picture. Interact with them in the real window.
 - YouTube sign-in only works through Firefox: Google blocks signing in inside apps, and Chrome and Edge lock their logins so they can't be copied. Sign in to YouTube in Firefox, then use **Copy my login from Firefox** in the app. Watching YouTube doesn't need a login.
 - YouTube chats aren't watched for @mentions.
+- Chrome extensions: each chat site and each stream keeps its own extension settings. Extensions that need Chrome features the app doesn't have (blocking rules, capturing a page's sound, offscreen documents) only partly work.
 - The app depends on how Kick, Twitch and YouTube's websites work today, so a change on their side can break a feature until the app is updated.
 
 ---
@@ -222,3 +231,9 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 ## Disclaimer
 
 Stream Multiview is an independent project. It is not affiliated with or endorsed by Kick, Twitch, YouTube, Google or Discord. All trademarks belong to their owners.
+
+---
+
+## License
+
+Stream Multiview is free software under the [GNU General Public License v3.0](LICENSE). Versions up to 0.2.20 were released under the MIT License.

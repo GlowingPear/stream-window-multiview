@@ -669,6 +669,64 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .dlg .dlg-foot .dlg-note{margin-right:auto;font-size:11px;color:var(--muted)}
 .dlg .dlg-foot .btn{height:32px;padding:0 14px}
 #askDlg{z-index:100040}   /* above any dialog that asks */
+/* Chrome extensions: Settings > Extensions, the install dialog and each window's extensions menu */
+#extDlg{z-index:100035}
+.ex-acts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.ex-acts .btn{height:28px;padding:0 10px;font-size:12px}
+.st-add.ex-linkrow{margin:0 0 12px}
+.ex-linkrow[hidden]{display:none}
+.ex-linkrow .st-in,.ex-linkrow .btn{height:30px}
+.ex-msg{font-size:12px;margin:-4px 0 12px;color:var(--danger)}
+.ex-msg.ok{color:var(--muted)}
+.ex-msg[hidden],.ex-warn[hidden],.ex-empty[hidden]{display:none}
+.ex-card{border:1px solid var(--line2);border-radius:10px;background:var(--panel2);padding:10px 12px;margin-bottom:10px}
+.ex-top{display:flex;align-items:center;gap:10px}
+.ex-ico{width:28px;height:28px;border-radius:6px;flex:none;object-fit:contain;background:var(--panel)}
+.ex-ico.none{visibility:hidden}
+.ex-t{flex:1;min-width:0}.ex-t b{font-size:13px}.ex-t small{display:block;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ex-warn{margin:8px 0 0;padding:6px 8px;border-radius:7px;font-size:11.5px;line-height:1.45;color:#e8b84a;background:color-mix(in srgb,#e8b84a 9%,transparent);border:1px solid color-mix(in srgb,#e8b84a 35%,transparent)}
+.ex-grid{display:grid;grid-template-columns:70px repeat(3,minmax(0,1fr));margin-top:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:12px}
+.ex-grid > *{padding:6px 8px;display:flex;align-items:center;gap:6px;border-top:1px solid var(--line);background:var(--panel)}
+.ex-grid > .h{border-top:0;color:var(--muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;background:transparent}
+.ex-grid .rl{color:var(--muted);font-weight:600}
+.ex-grid input{accent-color:var(--accent);margin:0;width:15px;height:15px;cursor:pointer}
+.ex-grid input:disabled{cursor:default;opacity:.45}
+.ex-grid .pdot{width:7px;height:7px;border-radius:50%}
+.ex-note{font-size:11px;color:var(--muted);margin:6px 0 0}
+.ex-perms{margin:0;padding:0 0 0 16px;font-size:12px}.ex-perms li{margin:3px 0}
+.ex-cfoot{display:flex;gap:6px;margin-top:10px;align-items:center}
+.ex-cfoot .btn{height:24px;padding:0 8px;font-size:11px;font-weight:600}
+.ex-cfoot .ex-rm{margin-left:auto}
+.ex-cfoot .ex-rm:hover{border-color:var(--danger);color:var(--danger)}
+.ex-card .ex-perms{margin-top:8px;color:var(--muted)}
+.ex-card .ex-perms[hidden]{display:none}
+.ex-dlg{width:min(460px,calc(100vw - 32px))}
+.ex-head{display:flex;gap:10px;align-items:center}
+.ex-head .ex-ico{width:40px;height:40px}
+.ex-head small{color:var(--muted);font-size:11.5px}
+.ex-sec{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+#extMenu{width:290px}
+#extMenu .em-h{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:4px 6px 6px}
+#extMenu .em-row{display:flex;flex-direction:row;align-items:center;gap:8px;padding:6px;border-radius:7px}
+#extMenu .em-row:hover{background:var(--panel2)}
+#extMenu .em-main{flex:1;min-width:0;display:flex;flex-direction:row;align-items:center;gap:8px;padding:0;background:none;text-align:left}
+#extMenu .em-main:hover{background:none}
+#extMenu .em-main:disabled{cursor:default}
+#extMenu .em-ico{position:relative;width:24px;height:24px;flex:none}
+#extMenu .em-ico img{width:24px;height:24px;object-fit:contain;border-radius:5px}
+#extMenu .em-badge{position:absolute;right:-4px;bottom:-3px;font:700 9px/1 system-ui;background:#555;color:#fff;border-radius:4px;padding:1.5px 3px;border:1px solid var(--panel)}
+#extMenu .em-badge:empty{display:none}
+#extMenu .em-t{flex:1;min-width:0;display:flex;flex-direction:column}
+#extMenu .em-t b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#extMenu .em-t span{font-size:10.5px;color:var(--muted)}
+#extMenu .em-opt{flex:none;width:24px;height:24px;padding:0;display:grid;place-items:center;color:var(--muted)}
+#extMenu .em-opt svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#extMenu .em-opt:hover{color:var(--text);background:var(--line)}
+#extMenu .em-foot{border-top:1px solid var(--line);margin-top:4px;padding:7px 6px 3px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+#extMenu .em-empty{padding:6px;font-size:12px;color:var(--muted)}
+.btns button.ext-b{position:relative}
+.btns button.ext-b .ext-n{position:absolute;right:0;bottom:1px;font:700 8.5px/1 system-ui;background:var(--line2);color:var(--text);border-radius:4px;padding:1px 2.5px}
+.btns button.ext-b .ext-n:empty{display:none}
 .dlg.ask{width:min(420px,calc(100vw - 32px))}
 .dlg.ask .dlg-sub{font-size:13px}
 .dlg.ask .btn.danger-fill{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:700}
@@ -1076,6 +1134,16 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 <div id="msg" data-pos="tc" role="status" title="Click to close"></div>
 <div id="toast" hidden><span></span><button class="btn">Undo</button></div>
 <div id="updBanner" hidden><span class="ub-txt"></span><button class="btn primary ub-go">Restart now</button><button class="btn ub-later">Later</button></div>
+<div class="dlg-bg" id="extDlg" hidden><div class="dlg ext-dlg" role="dialog" aria-modal="true" aria-labelledby="extDlgTitle">
+  <div class="ex-head"><img class="ex-ico" alt=""><div><h3 id="extDlgTitle"></h3><small class="ex-src"></small></div></div>
+  <div class="ex-sec">It can</div>
+  <ul class="ex-perms"></ul>
+  <div class="ex-warn" hidden></div>
+  <div class="ex-sec">Switch it on for</div>
+  <div class="ex-grid"></div>
+  <div class="dlg-foot"><button class="btn ex-no">Cancel</button><button class="btn primary ex-yes">Add extension</button></div>
+</div></div>
+<div id="extMenu" class="menu" hidden></div>
 <div class="dlg-bg" id="askDlg" hidden><div class="dlg ask" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askMsg">
   <h3 id="askTitle"></h3>
   <div class="dlg-sub" id="askMsg"></div>
@@ -1099,6 +1167,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       <button data-s="notify">Notifications</button>
       <button data-s="mentions" class="main-desk">Mentions</button>
       <button data-s="spam" class="main-desk">Spam alerts<span class="st-pill">Mod</span></button>
+      <button data-s="extensions" class="desk-only">Extensions</button>
       <button data-s="themes">Themes</button>
       <button data-s="updates">Updates</button>
       <div class="st-rail-sec">Help</div>
@@ -1240,6 +1309,15 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <div id="spamHist"></div>
         </div>
       </section>
+      <section class="st-pane" data-s="extensions" hidden>
+        <h4>Extensions</h4><p class="st-sub">Chrome extensions for streams and chats, switched on per site and window type. A window reloads when its extensions change.</p>
+        <div class="ex-acts"><button class="btn primary ex-store">Browse Chrome Web Store</button><button class="btn ex-link">Install from link…</button><button class="btn ex-folder">Load folder…</button></div>
+        <form class="st-add ex-linkrow" hidden><input class="st-in" placeholder="Chrome Web Store link or extension ID" aria-label="Chrome Web Store link or extension ID"><button class="btn primary">Install</button></form>
+        <p class="ex-msg" hidden></p>
+        <div class="ex-list"></div>
+        <p class="st-sub ex-empty" hidden>No extensions yet. Find one in the Chrome Web Store and click <b>Add to Chrome</b>.</p>
+        <p class="st-explain ex-foot">Each chat site and each stream keeps its own extension settings. Open an extension's options from the extensions button on a window. Some extensions use Chrome features this app doesn't have; they're marked here.</p>
+      </section>
       <section class="st-pane" data-s="themes" id="themePane" hidden>
         <h4>Themes</h4><p class="st-sub">Changes show right away. Saved themes stay on this computer. <button class="linkish th-reset">Back to Pear</button></p>
         <div class="th-wrap">
@@ -1332,6 +1410,7 @@ const icon = {
   help:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4"/><circle cx="12" cy="17.3" r=".6" fill="currentColor"/></svg>',
   capture:'<svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/><rect x="11" y="9" width="7" height="5" rx="1"/></svg>',
   keys:'<svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>',
+  ext:'<svg viewBox="0 0 24 24"><path d="M10 4.5a2 2 0 0 1 4 0V6h4a1 1 0 0 1 1 1v4h-1.5a2 2 0 0 0 0 4H19v4a1 1 0 0 1-1 1h-4v-1.5a2 2 0 0 0-4 0V20H6a1 1 0 0 1-1-1v-4h1.5a2 2 0 0 0 0-4H5V7a1 1 0 0 1 1-1h4z"/></svg>',
   lock:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
   unlock:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></svg>',
   pin:'<svg viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 15v6"/></svg>',
@@ -1701,6 +1780,8 @@ const chatPartition = ch => ({ twitch: 'persist:twitch', youtube: 'persist:youtu
 var watchSignedIn = { kick: false, twitch: false, youtube: false };
 try { const ws = JSON.parse(localStorage.getItem('kickMultiview.watchSignedIn') || '{}'); for (const p in watchSignedIn) watchSignedIn[p] = ws[p] === true; } catch {}
 const streamPartition = ch => watchSignedIn[platOf(ch)] ? chatPartition(ch) : 'persist:kmv-stream-' + String(ch).replace(/[^a-z0-9_-]/gi, '_');
+let extCount = null;                    // Chrome extensions installed (null: not known yet)
+const viewPartition = w => w.kind === 'stream' ? streamPartition(w.channel) : w.kind === 'chat' ? chatPartition(w.channel) : 'persist:kick';
 // A player can't move to other storage, so that site's open streams start again in a new player.
 function remountStreams(p){
   if (!DESKTOP) return;
@@ -1775,6 +1856,7 @@ function createWin(spec, rect){
         ${w.kind === 'chat' && DESKTOP && ROLE === 'main' && /^(kick|twitch)$/.test(platOf(w.channel)) ? '<button class="at" data-a="at" hidden></button>' : ''}
         ${w.channel ? '<button class="star" data-a="star"></button>' : ''}
         ${w.channel && DESKTOP && ROLE === 'main' && !/^yt:v:/.test(w.channel) ? `<button data-a="profile" title="Profile: when they stream, past streams, your notes">${icon.user}</button>` : ''}
+        ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="ext" class="ext-b" title="Extensions in this window" hidden>${icon.ext}<b class="ext-n"></b></button>` : ''}
         <button data-a="reload" title="Reload">${icon.reload}</button>
         ${modUrl(w.channel) ? `<button data-a="mod" title="Open the mod view for this channel"${DESKTOP ? ' hidden' : ''}>${icon.mod}</button>` : ''}
         <button data-a="pop" title="Open in its own browser window">${icon.pop}</button>
@@ -1841,6 +1923,7 @@ function createWin(spec, rect){
       else window.open(modUrl(w.channel), 'kmv_mod_' + w.channel, 'width=1400,height=900');
     }
     else if (a === 'max') toggleMax(w);
+    else if (a === 'ext') openExtMenu(w, b);
     else if (a === 'chat'){
       if (ROLE === 'streams'){ window.kmv.addChat(w.channel); flash(`${chLabel(w.channel)}'s chat added to the main window`); }
       else addChatBeside(w);
@@ -2001,8 +2084,7 @@ function mountView(w){
     // Chats use their platform's saved login. Each stream player gets its own private storage,
     // so players can't copy volume/mute settings between streams, unless "Watch signed in" is on
     // for that site (then VOL_JS keeps each stream's volume its own).
-    frame.setAttribute('partition', w.kind === 'stream' ? streamPartition(w.channel)
-      : w.kind === 'chat' ? chatPartition(w.channel) : 'persist:kick');
+    frame.setAttribute('partition', viewPartition(w));
     frame.setAttribute('allowpopups', '');
   } else {
     frame = document.createElement('iframe');
@@ -2012,7 +2094,12 @@ function mountView(w){
   }
   w.view = frame;
   w.el.querySelector('.body').prepend(frame);
-  frame.src = src;
+  // Its session is set up for Chrome extensions first (the main process learns which window type it's for),
+  // and when some are installed the page waits for that, so they're there from its start.
+  const prep = DESKTOP && (w.kind === 'stream' || w.kind === 'chat') && window.kmv.extPrepare(viewPartition(w), platOf(w.channel), w.kind).catch(() => {});
+  if (prep && extCount !== 0)
+    Promise.race([prep, new Promise(r => setTimeout(r, 4000))]).then(() => { if (w.view === frame && !frame.getAttribute('src')) frame.src = src; extButton(w); });
+  else frame.src = src;
   if (DESKTOP){
     const hasVol = w.kind === 'stream';
     frame.addEventListener('focus', () => {                                     // you clicked into it
@@ -5050,9 +5137,9 @@ function makeBig(s){ if (!s) return; setFeatured(colKey(s)); scrollX = 0; column
 function closeOverlays(){
   let any = false;
   // dialogs one at a time, the top one first (Import follows can sit over Settings); menus all at once
-  const top = ['#importDlg', '#ffDlg', '#capDlg', '#settingsDlg', '#profDlg'].map(sel => $(sel)).find(e => e && !e.hidden);
-  if (top){ top.hidden = true; any = true; }
-  else ['#layoutMenu', '#accountMenu', '#savedPanel', '#mentPanel', '#moreMenu'].forEach(sel => {
+  const top = ['#extDlg', '#importDlg', '#ffDlg', '#capDlg', '#settingsDlg', '#profDlg'].map(sel => $(sel)).find(e => e && !e.hidden);
+  if (top){ if (top.id === 'extDlg') extDlgDone(false); else top.hidden = true; any = true; }
+  else ['#layoutMenu', '#accountMenu', '#savedPanel', '#mentPanel', '#moreMenu', '#extMenu'].forEach(sel => {
     const e = $(sel); if (e && !e.hidden){ e.hidden = true; any = true; }
   });
   const ae = document.activeElement;     // don't leave the keyboard in a box that just closed
@@ -5410,7 +5497,7 @@ let settingsTab = 'general';
 try { settingsTab = localStorage.getItem('kickMultiview.settingsTab') || 'general'; } catch {}
 const MAIN_DESK = DESKTOP && ROLE === 'main';
 settingsDlg.querySelectorAll('.st-rail .desk-only').forEach(b => { b.hidden = !DESKTOP; });
-const ST_ICONS = { general: 'sliders', accounts: 'user', youtube: 'ytPlay', notify: 'bell', mentions: 'at', spam: 'mod', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys' };
+const ST_ICONS = { general: 'sliders', accounts: 'user', youtube: 'ytPlay', notify: 'bell', mentions: 'at', spam: 'mod', extensions: 'ext', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys' };
 settingsDlg.querySelectorAll('.st-rail button[data-s]').forEach(b => { if (icon[ST_ICONS[b.dataset.s]]) b.insertAdjacentHTML('afterbegin', icon[ST_ICONS[b.dataset.s]]); });
 settingsDlg.querySelectorAll('.st-rail .main-desk').forEach(b => { b.hidden = !MAIN_DESK; });
 function openSettings(tab){
@@ -5427,6 +5514,7 @@ function openSettings(tab){
   if ((settingsTab === 'accounts' || settingsTab === 'youtube') && typeof refreshAccountsPane === 'function') refreshAccountsPane();
   if (settingsTab === 'general') $('#keysSet').checked = keysOn;
   if (settingsTab === 'notify') syncNotifyPane();
+  if (settingsTab === 'extensions') renderExtPane();
   return renderDoc(settingsTab);
 }
 window.openSettings = openSettings;   // for the tests
@@ -6162,6 +6250,218 @@ if (DESKTOP && ROLE === 'main' && window.kmv.profileGet){
   document.addEventListener('pointerdown', e => { if (!moreMenu.hidden && !moreMenu.contains(e.target) && !moreBtn.contains(e.target)) moreMenu.hidden = true; });
   fitHeader();
 })();
+
+/* ---------- Chrome extensions (desktop app) ----------
+   Settings > Extensions lists them, each with a grid: on or off per site and per window type. Each stream
+   and chat window has an extensions button: the extensions in that window, their popups and options, and
+   for logged-out streams (each has its own session) switching one on or off for just that window. */
+const extPane = $('#settingsDlg .st-pane[data-s=extensions]');
+const EXT_PLATS = ['kick', 'twitch', 'youtube'], EXT_COL = { kick: '#53fc18', twitch: '#a970ff', youtube: '#ff3d3d' };
+const andList = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+function extGridHtml(grid){
+  let h = '<span class="h"></span>' + EXT_PLATS.map(p => `<span class="h"><i class="pdot" style="background:${EXT_COL[p]}"></i>${PLAT_NAME[p]}</span>`).join('');
+  for (const [k, label] of [['stream', 'Streams'], ['chat', 'Chats']]){
+    h += `<span class="rl">${label}</span>`;
+    for (const p of EXT_PLATS){
+      const signed = k === 'stream' && watchSignedIn[p];      // its streams use the chat login, so the Chats setting
+      h += `<span><input type="checkbox" data-p="${p}" data-k="${k}" aria-label="${PLAT_NAME[p]} ${label.toLowerCase()}"${grid[p][k] ? ' checked' : ''}${signed ? ' disabled' : ''}></span>`;
+    }
+  }
+  return h;
+}
+const extSignedNote = () => {
+  const ps = EXT_PLATS.filter(p => watchSignedIn[p]).map(p => PLAT_NAME[p]);
+  return ps.length ? `You watch ${andList(ps)} signed in, so ${andList(ps)} streams use the Chats setting.` : '';
+};
+function extFill(box, x){
+  const warn = box.querySelector('.ex-warn');
+  warn.hidden = !x.compat.length && !x.noBlock;
+  warn.textContent = x.noBlock
+    ? 'It won\'t block anything here: this app doesn\'t have Chrome\'s blocking rules (declarativeNetRequest).' + (x.compat.length ? ` It also uses ${andList(x.compat)}, which aren't here either.` : '')
+    : x.compat.length ? `Partly works here: it uses ${andList(x.compat)}, which this app doesn't have.` : '';
+  box.querySelector('.ex-grid').innerHTML = extGridHtml(x.grid);
+  const note = box.querySelector('.ex-note'), t = extSignedNote();
+  if (note){ note.hidden = !t; note.textContent = t; }
+  const ul = box.querySelector('.ex-perms');
+  ul.replaceChildren(...(x.perms.length ? x.perms : ['No special access']).map(t => Object.assign(document.createElement('li'), { textContent: t })));
+  const img = box.querySelector('.ex-ico');
+  if (x.icon) img.src = x.icon; else { img.removeAttribute('src'); img.classList.add('none'); }
+}
+function extCard(x){
+  const el = document.createElement('div');
+  el.className = 'ex-card'; el.dataset.id = x.id;
+  el.innerHTML = `<div class="ex-top"><img class="ex-ico" alt=""><div class="ex-t"><b></b><small></small></div><input type="checkbox" class="st-sw ex-on" aria-label="On"></div>
+    <div class="ex-warn" hidden></div><div class="ex-grid"></div><p class="ex-note" hidden></p>
+    <div class="ex-cfoot"><button class="btn ex-pm">Permissions</button><button class="btn ex-rm">Remove</button></div><ul class="ex-perms" hidden></ul>`;
+  el.querySelector('.ex-t b').textContent = x.name;
+  el.querySelector('.ex-t small').textContent = [x.version && 'v' + x.version, x.source === 'folder' ? 'Loaded from a folder' : 'Chrome Web Store',
+    x.missing && 'Its files are missing: remove it and install it again'].filter(Boolean).join(' · ');
+  el.querySelector('.ex-on').checked = x.enabled;
+  extFill(el, x);
+  el.querySelector('.ex-grid').classList.toggle('st-dim', !x.enabled);
+  return el;
+}
+async function renderExtPane(){
+  if (!DESKTOP) return;
+  let xs = [];
+  try { xs = await window.kmv.extList(); } catch {}
+  extCount = xs.length;
+  extPane.querySelector('.ex-list').replaceChildren(...xs.map(extCard));
+  extPane.querySelector('.ex-empty').hidden = xs.length > 0;
+  refreshExtButtons();
+}
+function extMsg(t, ok){
+  const m = extPane.querySelector('.ex-msg');
+  m.hidden = !t; m.textContent = t || ''; m.classList.toggle('ok', !!ok);
+}
+async function extInstall(run, busy){
+  extMsg(busy, true);
+  let r = {};
+  try { r = await run(); } catch (e) { r = { error: 'That didn\'t work: ' + e.message }; }
+  extMsg(r.error || '', false);
+  if (r.id){ extPane.querySelector('.ex-linkrow').hidden = true; renderExtPane(); }
+  return r;
+}
+extPane.addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const card = b.closest('.ex-card'), id = card && card.dataset.id;
+  if (b.classList.contains('ex-store')) window.kmv.extOpenStore();
+  else if (b.classList.contains('ex-link')){
+    const row = extPane.querySelector('.ex-linkrow');
+    row.hidden = !row.hidden;
+    if (!row.hidden) row.querySelector('input').focus();
+  }
+  else if (b.classList.contains('ex-folder')) extInstall(() => window.kmv.extLoadFolder(), '');
+  else if (b.classList.contains('ex-pm')){ const ul = card.querySelector('.ex-perms'); ul.hidden = !ul.hidden; }
+  else if (b.classList.contains('ex-rm')){
+    const name = card.querySelector('.ex-t b').textContent;
+    if (!(await ask(`Remove ${name}?`, 'It goes from every window, with its settings.', { ok: 'Remove', danger: true }))) return;
+    await window.kmv.extRemove(id);
+    renderExtPane();
+  }
+});
+extPane.querySelector('.ex-linkrow').addEventListener('submit', e => {
+  e.preventDefault();
+  const v = e.target.querySelector('input').value.trim();
+  if (v) extInstall(() => window.kmv.extInstallLink(v), 'Downloading…').then(r => { if (r.id) e.target.querySelector('input').value = ''; });
+});
+extPane.addEventListener('change', async e => {
+  const card = e.target.closest('.ex-card'); if (!card) return;
+  const id = card.dataset.id, t = e.target;
+  if (t.classList.contains('ex-on')){ card.querySelector('.ex-grid').classList.toggle('st-dim', !t.checked); await window.kmv.extSet(id, { enabled: t.checked }); }
+  else if (t.dataset.p) await window.kmv.extSet(id, { plat: t.dataset.p, kind: t.dataset.k, on: t.checked });
+});
+
+// The install dialog: from the Web Store window, a link or a folder.
+const extDlg = $('#extDlg');
+let extDlgReq = null;
+function showExtDlg(info){
+  if (extDlgReq) extDlgDone(false);
+  extDlgReq = info;
+  extDlg.querySelector('h3').textContent = `Add ${info.name}?`;
+  extDlg.querySelector('.ex-src').textContent = (info.source === 'folder' ? 'From a folder' : 'From the Chrome Web Store') + (info.version ? ' · ' + info.version : '');
+  extFill(extDlg, info);
+  extDlg.hidden = false;
+  extDlg.querySelector('.ex-yes').focus();
+}
+function extDlgDone(ok){
+  extDlg.hidden = true;
+  if (!extDlgReq) return;
+  const grid = {};
+  extDlg.querySelectorAll('.ex-grid input').forEach(i => { (grid[i.dataset.p] = grid[i.dataset.p] || {})[i.dataset.k] = i.checked; });
+  window.kmv.extConfirmReply(extDlgReq.reqId, { ok, grid });
+  extDlgReq = null;
+}
+extDlg.querySelector('.ex-yes').onclick = () => extDlgDone(true);
+extDlg.querySelector('.ex-no').onclick = () => extDlgDone(false);
+extDlg.addEventListener('pointerdown', e => { if (e.target === extDlg) extDlgDone(false); });
+
+// Each window's extensions button and menu.
+const extMenu = $('#extMenu');
+let extMenuFor = null;
+function extButton(w){
+  const b = w.el && w.el.querySelector('.btns [data-a=ext]');
+  if (!b) return;
+  b.hidden = !extCount;
+  const n = b.querySelector('.ext-n');
+  if (!extCount){ n.textContent = ''; return; }
+  window.kmv.extWindow(viewPartition(w), platOf(w.channel), w.kind)
+    .then(xs => { n.textContent = xs.filter(x => x.on).length || ''; }).catch(() => {});
+}
+function refreshExtButtons(){ if (DESKTOP) wins.forEach(extButton); }
+async function openExtMenu(w, btn){
+  if (!extMenu.hidden && extMenuFor && extMenuFor.w === w){ extMenu.hidden = true; return; }
+  const part = viewPartition(w), plat = platOf(w.channel);
+  let xs = [];
+  try { xs = await window.kmv.extWindow(part, plat, w.kind); } catch {}
+  let tabId = -1;
+  try { if (w.view && w.ready) tabId = w.view.getWebContentsId(); } catch {}
+  let state = null;
+  if (tabId >= 0) try { state = await window.kmv.extActionState(part); } catch {}
+  const badge = id => { const a = state && state.actions && state.actions.find(a => a.id === id); return a ? String((a.tabs && a.tabs[tabId] && a.tabs[tabId].text) ?? a.text ?? '') : ''; };
+  extMenuFor = { w, btn, part, tabId };
+  const where = w.kind === 'chat' ? `${PLAT_NAME[plat]} chats` : `${PLAT_NAME[plat]} streams`;
+  const shared = !xs.length || !xs[0].perWindow;
+  extMenu.innerHTML = '<div class="em-h">Extensions in this window</div>';
+  if (!xs.length) extMenu.insertAdjacentHTML('beforeend', '<div class="em-empty">None are switched on. Change that in Settings.</div>');
+  for (const x of xs){
+    const row = document.createElement('div');
+    row.className = 'em-row'; row.dataset.id = x.id;
+    row.innerHTML = `<button class="em-main"><span class="em-ico"><img alt=""><b class="em-badge"></b></span><span class="em-t"><b></b><span></span></span></button>`
+      + (x.options && x.on ? `<button class="em-opt" title="Its options (for ${w.kind === 'chat' ? where : 'this stream'})">${icon.gear}</button>` : '')
+      + '<input type="checkbox" class="st-sw em-on" aria-label="On in this window">';
+    if (x.icon) row.querySelector('img').src = x.icon;
+    row.querySelector('.em-t b').textContent = x.name;
+    row.querySelector('.em-t span').textContent = x.own ? (x.on ? 'On in this window only' : 'Off in this window only') : (x.on ? 'On for ' : 'Off for ') + where;
+    row.querySelector('.em-badge').textContent = x.on ? badge(x.id) : '';
+    const main = row.querySelector('.em-main');
+    main.disabled = !x.on || !x.popup || tabId < 0;
+    if (!main.disabled) main.title = 'Open ' + x.name;
+    const sw = row.querySelector('.em-on');
+    sw.checked = x.on;
+    sw.disabled = !x.perWindow;
+    if (!x.perWindow) sw.title = `The same in every ${w.kind === 'chat' ? PLAT_NAME[plat] + ' chat' : 'window with your ' + PLAT_NAME[plat] + ' login'}: change it in Settings`;
+    extMenu.appendChild(row);
+  }
+  extMenu.insertAdjacentHTML('beforeend', `<div class="em-foot"><span>${shared && xs.length ? 'Same for all ' + (w.kind === 'chat' ? where : PLAT_NAME[plat] + ' chats and signed-in streams') : 'Switching one reloads this window'}</span><button class="linkish em-set">Settings…</button></div>`);
+  extMenu.hidden = false;
+  const r = btn.getBoundingClientRect(), mw = extMenu.offsetWidth;
+  extMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
+  extMenu.style.top = Math.min(innerHeight - extMenu.offsetHeight - 8, r.bottom + 4) + 'px';
+}
+extMenu.addEventListener('click', e => {
+  const f = extMenuFor; if (!f) return;
+  const b = e.target.closest('button'); if (!b) return;
+  const id = b.closest('.em-row') && b.closest('.em-row').dataset.id;
+  if (b.classList.contains('em-set')){ extMenu.hidden = true; openSettings('extensions'); }
+  else if (b.classList.contains('em-opt')){ extMenu.hidden = true; window.kmv.extOptions(id, f.part); }
+  else if (b.classList.contains('em-main')){
+    extMenu.hidden = true;
+    const r = f.btn.getBoundingClientRect();
+    window.kmv.extActivate(f.part, { eventType: 'click', extensionId: id, tabId: f.tabId,
+      anchorRect: { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }, alignment: 'bottom left' }).catch(() => {});
+  }
+});
+extMenu.addEventListener('change', e => {
+  const f = extMenuFor, row = e.target.closest('.em-row');
+  if (!f || !row || !e.target.classList.contains('em-on')) return;
+  extMenu.hidden = true;
+  window.kmv.extSet(row.dataset.id, { partition: f.part, on: e.target.checked });
+});
+document.addEventListener('pointerdown', e => {
+  if (!extMenu.hidden && !extMenu.contains(e.target) && !(extMenuFor && extMenuFor.btn.contains(e.target))) extMenu.hidden = true;
+});
+if (DESKTOP && window.kmv.extList){
+  window.kmv.extList().then(xs => { extCount = xs.length; refreshExtButtons(); }).catch(() => { extCount = 0; });
+  window.kmv.onExtConfirm(showExtDlg);
+  // An extension was switched on or off somewhere: reload the windows it changed, and show the new state.
+  window.kmv.onExtChanged(parts => {
+    wins.forEach(w => { if (w.view && w.ready && parts.includes(viewPartition(w))) w.view.reload(); });
+    extMenu.hidden = true;
+    if (!settingsDlg.hidden && settingsTab === 'extensions') renderExtPane();
+    else window.kmv.extList().then(xs => { extCount = xs.length; refreshExtButtons(); }).catch(() => {});
+  });
+}
 
 /* ---------- asking before something can't be undone ----------
    ask(title, message, { ok, danger }) -> Promise<true | false>. An in-app dialog instead of the browser's
