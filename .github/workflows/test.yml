@@ -1,7 +1,8 @@
 # Runs the tests on every pull request and every change to main.
 #   Quick tests: updates, release scripts and login encryption (Windows, Mac and Linux).
-#   App tests:   the page in a headless browser, then the real desktop app on a virtual screen.
-# Run them yourself with: npm test   (and npm run test:setup once, then npm run test:all)
+#   App tests:   the page in a headless browser, then the real desktop app on a virtual screen, recording
+#                which code the tests run (coverage report on the run's summary page).
+# Run them yourself with: npm test   (and npm run test:setup once, then npm run test:all or npm run test:coverage)
 name: Tests
 
 on:
@@ -53,20 +54,18 @@ jobs:
           npm install --no-save --no-audit --no-fund playwright@1.56.1
           npx playwright install --with-deps chromium
 
-      - name: UI tests
+      # All the tests again (unit, UI, then the real desktop app on a virtual screen), recording which code they
+      # run. The coverage report goes on the run's summary page; it fails if a file drops below its minimum.
+      - name: UI and launch tests, with coverage
         shell: bash
-        run: set -o pipefail; npm run test:ui 2>&1 | tee "$RUNNER_TEMP/ui.log"
-
-      - name: Launch test
-        shell: bash
-        run: set -o pipefail; xvfb-run -a npm run test:launch 2>&1 | tee "$RUNNER_TEMP/launch.log"
+        run: set -o pipefail; xvfb-run -a npm run test:coverage 2>&1 | tee "$RUNNER_TEMP/app.log"
 
       # Puts the failing tests on the run's summary page.
       - name: Show failed tests
         if: failure()
         shell: bash
         run: |
-          for f in "$RUNNER_TEMP"/ui.log "$RUNNER_TEMP"/launch.log; do
+          for f in "$RUNNER_TEMP"/app.log; do
             [ -f "$f" ] || continue
             awk '/^not ok/{p=1;n=0} p{print; if(++n>25){p=0}}' "$f" | head -n 80 | sed -e 's/%/%25/g' -e 's/\r//g' | awk '{printf "%s%%0A", $0}' > fails.txt
             [ -s fails.txt ] && echo "::error title=Failed tests ($(basename "$f"))::$(cat fails.txt)"

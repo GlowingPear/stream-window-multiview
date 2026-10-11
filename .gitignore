@@ -8,3 +8,5 @@ Thumbs.db
 .needs-install
 # Worktrees made by npm run worktree (one per branch)
 .worktrees/
+# npm run test:coverage
+coverage/

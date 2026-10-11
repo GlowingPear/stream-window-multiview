@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { ROOT, playwright, serve } = require('../helpers');
+const { ROOT, playwright, serve, startCoverage, saveCoverage } = require('../helpers');
 
 let browser, server;
 test.before(async () => {
@@ -22,8 +22,10 @@ async function openApp(t) {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.route(u => !u.href.startsWith(server.url), r => r.abort());
+  await startCoverage(page);
   await page.goto(server.url + '/src/index.html');
   t.after(async () => {
+    await saveCoverage(page);
     await context.close();
     assert.deepEqual(errors, [], 'the page had no errors');
   });
