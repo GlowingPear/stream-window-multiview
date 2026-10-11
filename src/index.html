@@ -38,6 +38,7 @@ select{height:34px;padding:0 8px;border-radius:7px;border:1px solid var(--line2)
 label.chk{display:flex;align-items:center;gap:5px;color:var(--muted);white-space:nowrap;cursor:pointer;user-select:none}
 label.chk input{accent-color:var(--accent)}
 .spacer{flex:1}
+header > :not(#url):not(.spacer){flex-shrink:0}   /* never squash the buttons: the More menu takes them instead */
 #msg{color:var(--danger);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;min-width:0;flex:0 1 auto}
 
 body.focus header{transform:translateY(-100%)}
@@ -149,11 +150,12 @@ body.dragging .bar{cursor:grabbing}
 .sc-row span{flex:1}
 .sc-row kbd + kbd{margin-left:-6px}
 /* settings */
-.dlg.settings{width:min(880px,calc(100vw - 32px));height:min(86vh,760px);max-height:none;padding:0;gap:0;overflow:hidden}
-.st-wrap{flex:1;min-height:0;display:grid;grid-template-columns:160px minmax(0,1fr)}
+.dlg.settings{width:min(880px,calc(100vw - 32px));height:min(90vh,840px);max-height:none;padding:0;gap:0;overflow:hidden}
+.st-wrap{flex:1;min-height:0;display:grid;grid-template-columns:180px minmax(0,1fr)}
 .st-rail{border-right:1px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:2px;overflow:auto}
 .st-rail button{display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;font-weight:600;font-size:12.5px;text-align:left;white-space:nowrap}
 .st-rail button:hover{color:var(--text)}
+.st-rail button > svg{width:15px;height:15px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .st-rail button.on{background:var(--panel2);border-color:var(--line2);color:var(--text)}
 .st-rail button[hidden]{display:none}
 .st-pill{margin-left:auto;font-size:9px;font-weight:700;letter-spacing:.04em;padding:0 4px;border-radius:4px;border:1px solid var(--accent);color:var(--accent);text-transform:uppercase}
@@ -224,25 +226,25 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .th-wrap{display:grid;grid-template-columns:270px 1fr;gap:16px;min-height:0;overflow:auto}
 .th-sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:2px 0 8px}
 .th-sec .th-cur{text-transform:none;letter-spacing:0;font-weight:600;color:var(--text);margin-left:6px}
-.th-list{display:flex;flex-direction:column;gap:6px}
-.th-item{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;border:1px solid var(--line2);background:var(--panel2);cursor:pointer;color:var(--text);text-align:left;width:100%}
+.th-list{display:flex;flex-direction:column;gap:4px}
+.th-item{display:flex;align-items:center;gap:10px;padding:5px 8px;border-radius:9px;border:1px solid var(--line2);background:var(--panel2);cursor:pointer;color:var(--text);text-align:left;width:100%}
 .th-item:hover{border-color:var(--muted)}
 .th-item.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .th-item .sw{display:flex;flex:none;border-radius:6px;overflow:hidden;border:1px solid rgba(127,127,127,.35)}
-.th-item .sw i{width:13px;height:26px;display:block}
+.th-item .sw i{width:13px;height:22px;display:block}
 .th-item b{flex:1;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .th-item small{font-size:10px;color:var(--muted)}
 .th-item .th-del{flex:none;width:22px;height:22px;border:0;border-radius:5px;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center;padding:0}
 .th-item .th-del:hover{background:var(--danger);color:#fff}
 .th-item .th-del svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
-.th-vars{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
-.th-var{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+.th-vars{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}
+.th-var{display:flex;align-items:center;gap:8px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
 .th-var span{flex:1;font-size:12.5px;min-width:0}
-.th-var span small{display:block;font-size:10.5px;color:var(--muted)}
-.th-var input[type=color]{width:34px;height:26px;border:1px solid var(--line2);border-radius:6px;background:none;padding:1px;cursor:pointer;flex:none}
-.th-var input.hex{width:76px;height:26px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);padding:0 6px;font:12px ui-monospace,Consolas,monospace;flex:none}
+.th-var span small{display:block;font-size:10.5px;line-height:1.3;color:var(--muted)}
+.th-var input[type=color]{width:34px;height:24px;border:1px solid var(--line2);border-radius:6px;background:none;padding:1px;cursor:pointer;flex:none}
+.th-var input.hex{width:76px;height:24px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);padding:0 6px;font:12px ui-monospace,Consolas,monospace;flex:none}
 .th-warn{margin-top:10px;padding:7px 10px;border-radius:8px;border:1px solid #e8b84a;color:#e8b84a;font-size:12px;line-height:1.4}
-.th-save{display:flex;gap:8px;margin-top:12px}
+.th-save{display:flex;gap:8px;margin-top:10px}
 .th-save input{flex:1;height:32px;padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);outline:none}
 .th-save input:focus{border-color:var(--accent)}
 @media (max-width:760px){ .th-wrap{grid-template-columns:1fr} .th-vars{grid-template-columns:1fr} }
@@ -656,7 +658,7 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .am-txt{flex:1;min-width:0;display:flex;flex-direction:column}
 .am-txt b{font-size:13px}
 .am-st{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#accountMenu .am-row .btn,#settingsDlg .am-row .btn{display:inline-flex;align-items:center;height:26px;padding:0 9px;font-size:11px;font-weight:600;flex:none;
+#accountMenu .am-row .btn,#settingsDlg .am-row .btn{display:inline-flex;flex-direction:row;align-items:center;justify-content:center;height:26px;padding:0 9px;font-size:11px;font-weight:600;flex:none;
   border:1px solid var(--line2);background:var(--panel2)}
 #accountMenu .am-row .btn:hover,#settingsDlg .am-row .btn:hover{border-color:var(--muted)}
 #accountMenu .am-row .btn[hidden],#settingsDlg .am-row .btn[hidden]{display:none}
@@ -878,6 +880,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <nav class="st-rail">
       <button data-s="general">General</button>
       <button data-s="accounts" class="desk-only">Accounts</button>
+      <button data-s="youtube" class="desk-only">YouTube</button>
       <button data-s="mentions" class="main-desk">Mentions</button>
       <button data-s="spam" class="main-desk">Spam alerts<span class="st-pill">Mod</span></button>
       <button data-s="themes">Themes</button>
@@ -910,6 +913,18 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <div class="am-watch"><span>Watch signed in: streams play with your login too, so you watch as your account, not as a logged-out viewer. Uses more memory.</span>
             <label class="chk"><input type="checkbox" data-w="kick">Kick</label><label class="chk"><input type="checkbox" data-w="twitch">Twitch</label><label class="chk"><input type="checkbox" data-w="youtube">YouTube</label></div>
         </div>
+        <div class="am-alt">YouTube sign-in currently only works through Firefox. <button class="linkish am-ff">Sign in to YouTube with Firefox</button><br>You don't need to sign in to watch YouTube.</div>
+        <p class="st-sub" style="margin:8px 0 0">Skipping ads, YouTube's cookie question and the API key: <button class="linkish" data-go="youtube">YouTube settings</button></p>
+      </section>
+      <section class="st-pane" data-s="youtube" hidden>
+        <h4>YouTube</h4><p class="st-sub">Your YouTube login, and how YouTube streams play.</p>
+      <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
+        <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+        <div class="am-alt">YouTube sign-in currently only works through Firefox. <button class="linkish am-ff">Sign in to YouTube with Firefox</button><br>You don't need to sign in to watch YouTube.</div>
+        <div class="st-sec">Playing streams</div>
+        <label class="st-row"><span class="st-t">Skip ads<small>Presses an ad's Skip button as soon as it shows. Ads without one still play.</small></span><input type="checkbox" class="st-sw" id="ytSkip" checked></label>
+        <div class="st-row"><span class="st-t">Answer the cookie question<small>In some countries YouTube asks about cookies before a stream plays, and waits until you answer. Off: the question shows in the player for you to answer.</small></span>
+          <select id="ytConsentPick" aria-label="Answer"><option value="reject">Reject all</option><option value="accept">Accept all</option></select><input type="checkbox" class="st-sw" id="ytConsent" checked aria-label="Answer the cookie question"></div>
         <div class="st-sec am-yk-sec" hidden>YouTube API key (optional)</div>
         <div class="am-yk" hidden>
           <div class="am-yk-head"><button class="linkish am-yk-how">How to get one</button></div>
@@ -917,7 +932,6 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <div class="am-yk-row"><input class="am-yk-in" type="password" placeholder="Paste your API key" autocomplete="off" spellcheck="false" aria-label="YouTube API key"><button class="btn am-yk-add">Add</button></div>
           <div class="am-yk-row am-yk-set" hidden><button class="btn am-yk-rm">Remove key</button></div>
         </div>
-        <div class="am-alt">YouTube sign-in currently only works through Firefox. <button class="linkish am-ff">Sign in to YouTube with Firefox</button><br>You don't need to sign in to watch YouTube.</div>
       </section>
       <section class="st-pane" data-s="mentions" hidden>
         <h4>Mentions &amp; replies</h4><p class="st-sub">When someone writes @you or replies to you in an open Kick or Twitch chat. The chat already highlights the message itself; these make the <b>window</b> stand out so you can see which chat it's in.</p>
@@ -1093,7 +1107,11 @@ const icon = {
   feat:'<svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
   link:'<svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
   volOn:'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
-  volOff:'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>'
+  volOff:'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>',
+  sliders:'<svg viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>',
+  ytPlay:'<svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="4"/><path d="M10 9.2v5.6l4.8-2.8z" fill="currentColor"/></svg>',
+  update:'<svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>',
+  book:'<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2z"/><path d="M4 20a2 2 0 0 0 2 2h13v-4"/><path d="M9 7h6"/></svg>'
 };
 
 const DESKTOP = !!(window.kmv && window.kmv.desktop);
@@ -1211,8 +1229,8 @@ const VOL_JS = `(function(){
   // volume between them, so a change in one can leak into the others; anything that changes
   // here without you touching THIS player is put back.
   const st = { v: null, m: null, p: false }, seen = new WeakSet();
-  let lastUser = 0, lastSync = 0, undos = [];
-  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(t => window.addEventListener(t, () => { lastUser = Date.now(); }, true));
+  let lastUser = 0, lastSync = 0, notYou = 0, undos = [];
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(t => window.addEventListener(t, () => { if (Date.now() > notYou) lastUser = Date.now(); }, true));
   // Don't let this player hear the other players' saved-volume updates at all.
   window.addEventListener('storage', e => { lastSync = Date.now(); e.stopImmediatePropagation(); }, true);
   const userRecent = () => Date.now() - lastUser < 2500 && Date.now() - lastSync > 400;
@@ -1246,6 +1264,7 @@ const VOL_JS = `(function(){
       return { v: st.v ?? v.volume, m: st.m ?? v.muted, p: st.p };
     },
     pause() { st.p = true; document.querySelectorAll('video').forEach(v => v.pause()); },
+    notYou(ms) { notYou = Date.now() + ms; },   // the app is about to click in the player (Skip YouTube ads)
     thumb(w, h) {
       const v = [...document.querySelectorAll('video')].find(x => x.videoWidth);
       if (!v) return null;
@@ -1355,6 +1374,10 @@ ${YT_PLAYERS.split(', ').map(x => x + ' video.html5-main-video').join(', ')} {
   width: 100% !important; height: 100% !important; left: 0 !important; top: 0 !important; object-fit: contain !important; }
 .ytp-chrome-bottom { left: 12px !important; right: 12px !important; width: auto !important; }
 .ytp-miniplayer-button, .ytp-size-button, .ytp-fullscreen-button { display: none !important; }
+/* Two of YouTube's questions keep the video paused until answered (the cookie question, "Continue watching?"):
+   show those over the player. Its other pop-ups (offers, promos) stay hidden. */
+ytd-consent-bump-v2-lightbox, ytd-popup-container tp-yt-paper-dialog:has(yt-confirm-dialog-renderer) { visibility: visible !important; }
+ytd-popup-container, ytd-consent-bump-v2-lightbox { position: relative !important; z-index: 2147483647 !important; }
 `;
 // Nudges YouTube's player to re-measure itself after the CSS above resizes it.
 const YT_FIT_JS = `(function(){
@@ -1737,7 +1760,10 @@ function mountView(w){
   frame.src = src;
   if (DESKTOP){
     const hasVol = w.kind === 'stream';
-    frame.addEventListener('focus', () => { focusWin(w); clearAlert(w); });   // you clicked into it
+    frame.addEventListener('focus', () => {                                     // you clicked into it
+      if (Date.now() - (frame.skipAt || 0) < 1000) return;                       // Skip YouTube ads did
+      focusWin(w); clearAlert(w);
+    });
     frame.addEventListener('dom-ready', () => {
       w.ready = true;
       if (w.kind === 'stream') trimYouTube(frame, w.channel);
@@ -3238,6 +3264,78 @@ function autoPauseTick(){
 }
 if (DESKTOP) setInterval(autoPauseTick, 400);
 
+/* Settings > YouTube: skip ads, and answer YouTube's cookie question (it keeps the video paused until
+   it's answered). Checked once a second in each YouTube player. */
+function ytAgent(skip, answer){
+  const out = {};
+  const lb = answer && document.querySelector('ytd-consent-bump-v2-lightbox');
+  const dlg = lb && lb.querySelector('tp-yt-paper-dialog');
+  if (dlg && dlg.opened){
+    // The button is found by its label in the question's own data, so it works in any language.
+    const d = lb.data || {}, br = ((answer === 'accept' ? d.agreeButton : d.disagreeButton) || {}).buttonRenderer || {};
+    const label = br.text ? (br.text.simpleText || (br.text.runs || []).map(r => r.text).join('')).trim() : '';
+    const b = label && [...lb.querySelectorAll('button')].find(x => x.innerText.trim() === label);
+    if (b) b.click();
+    out.consent = b ? 'clicked' : 'missing';
+  }
+  // An ad's Skip button. YouTube ignores clicks made by the page's scripts, so the app clicks it for real.
+  const sb = skip && [...document.querySelectorAll('.ytp-skip-ad-button, .ytp-ad-skip-button, .ytp-ad-skip-button-modern')]
+    .find(e => e.checkVisibility({ visibilityProperty: true }));
+  const r = sb && sb.getBoundingClientRect();
+  if (r && r.width && r.height){
+    if (window.__kmv) window.__kmv.notYou(1500);   // not you touching the player (VOL_JS)
+    out.skip = { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  }
+  return out;
+}
+const skipChk = $('#ytSkip'), consentChk = $('#ytConsent'), consentPick = $('#ytConsentPick');
+function loadYtSettings(){
+  let c = 'reject';
+  try { skipChk.checked = localStorage.getItem('kickMultiview.ytSkip') !== '0'; c = localStorage.getItem('kickMultiview.ytConsent') || 'reject'; } catch {}
+  consentChk.checked = c !== 'off';
+  consentPick.value = c === 'accept' ? 'accept' : 'reject';
+  consentPick.disabled = !consentChk.checked;
+}
+loadYtSettings();
+skipChk.addEventListener('change', () => { try { localStorage.setItem('kickMultiview.ytSkip', skipChk.checked ? '1' : '0'); } catch {} });
+[consentChk, consentPick].forEach(el => el.addEventListener('change', () => {
+  consentPick.disabled = !consentChk.checked;
+  try { localStorage.setItem('kickMultiview.ytConsent', consentChk.checked ? consentPick.value : 'off'); } catch {}
+}));
+window.addEventListener('storage', e => { if (/^kickMultiview\.yt(Skip|Consent)$/.test(e.key || '')) loadYtSettings(); });   // main and streams windows
+function ytTick(view, skip, answer){
+  view.executeJavaScript(`(${ytAgent})(${skip}, ${JSON.stringify(answer)})`).then(r => {
+    if (!r) return;
+    // The question is still open 3 s after clicking (or its button wasn't found, e.g. YouTube changed it):
+    // save "Reject all" in that player's storage the way YouTube does, and load the stream again.
+    view.consentTries = r.consent ? (view.consentTries || 0) + 1 : 0;
+    if (view.consentTries >= 3 && !view.consentFellBack && window.kmv.ytConsentFallback){
+      view.consentFellBack = true;
+      window.kmv.ytConsentFallback(view.getAttribute('partition')).then(() => view.reload()).catch(() => {});
+    }
+    if (!r.skip || !skipChk.checked) return;
+    // The click moves the keyboard to the player: give it straight back to where you were typing.
+    const keep = document.activeElement;
+    if (keep !== view){
+      const back = () => { if (keep && keep !== document.body && keep.isConnected) keep.focus(); else view.blur(); };
+      view.addEventListener('focus', back, { once: true });
+      setTimeout(() => view.removeEventListener('focus', back), 1000);
+    }
+    view.skipAt = Date.now();                       // not you clicking into the stream (see mountView)
+    ['mouseDown', 'mouseUp'].forEach(type => view.sendInputEvent({ type, x: r.skip.x, y: r.skip.y, button: 'left', clickCount: 1 }));
+  }).catch(() => {});
+}
+if (DESKTOP) setInterval(() => {
+  const skip = skipChk.checked, answer = consentChk.checked ? consentPick.value : '';
+  if (!skip && !answer) return;
+  wins.forEach(w => {
+    if (w.kind !== 'stream' || platOf(w.channel) !== 'youtube') return;
+    if (w.ready) ytTick(w.view, skip, answer);
+    if (w.mini && w.mini.ready) ytTick(w.mini.wv, skip, answer);
+  });
+}, 1000);
+window.ytAgent = ytAgent;   // for the tests
+
 /* Pause all except focus (button at the top of the Focus area) */
 let focusOnly = false;
 try { focusOnly = localStorage.getItem('kickMultiview.focusOnly') === '1'; } catch {}
@@ -3856,7 +3954,7 @@ if (DESKTOP){
   const lb = $('#loginBtn');
   lb.hidden = false;
   // Accounts menu (log in and out) and Settings > Accounts (that, and everything else about logins)
-  const am = $('#accountMenu'), sa = $('#settingsDlg .st-pane[data-s=accounts]');
+  const am = $('#accountMenu'), sa = $('#settingsDlg .st-pane[data-s=accounts]'), sy = $('#settingsDlg .st-pane[data-s=youtube]');
   let acct = { kick: '', twitch: '', youtube: false };
   try { acct = Object.assign(acct, JSON.parse(localStorage.getItem('kickMultiview.accounts') || '{}')); acct.kick = acct.kick || localStorage.getItem('kickMultiview.account') || ''; } catch {}
   const showAccounts = () => {
@@ -3913,6 +4011,7 @@ if (DESKTOP){
   };
   am.addEventListener('click', onAccountClick);
   sa.addEventListener('click', onAccountClick);
+  sy.addEventListener('click', onAccountClick);
   if (window.kmv.onMenuAccount) window.kmv.onMenuAccount(async ({ platform: p, action }) => {      // the menu bar's Account menu
     if (!PLAT_NAME[p]) return;
     if (action === 'login') window.kmv.openLogin(p);
@@ -3932,7 +4031,7 @@ if (DESKTOP){
   if (ROLE === 'main') setTimeout(refreshAccount, 5000);
 
   /* ---- YouTube API key: optional, for live checks. The page only hears whether one is set, never the key. ---- */
-  const yk = sa.querySelector('.am-yk'), ykSt = yk.querySelector('.am-yk-st'), ykIn = yk.querySelector('.am-yk-in');
+  const yk = sy.querySelector('.am-yk'), ykSt = yk.querySelector('.am-yk-st'), ykIn = yk.querySelector('.am-yk-in');
   const hhmm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const YK_ERR = {
     format: 'That doesn\'t look like an API key. Copy the whole key from Google Cloud.',
@@ -3954,7 +4053,7 @@ if (DESKTOP){
     ykSt.textContent = msg; ykSt.classList.toggle('warn', warn);
   }
   if (window.kmv.ytKeyStatus){
-    yk.hidden = false; sa.querySelector('.am-yk-sec').hidden = false;
+    yk.hidden = false; sy.querySelector('.am-yk-sec').hidden = false;
     window.kmv.ytKeyStatus().then(st => showYtKey(st)).catch(() => {});
     if (window.kmv.onYtKeyStatus) window.kmv.onYtKeyStatus(st => showYtKey(st));
     const add = async () => {
@@ -4936,6 +5035,8 @@ let settingsTab = 'general';
 try { settingsTab = localStorage.getItem('kickMultiview.settingsTab') || 'general'; } catch {}
 const MAIN_DESK = DESKTOP && ROLE === 'main';
 settingsDlg.querySelectorAll('.st-rail .desk-only').forEach(b => { b.hidden = !DESKTOP; });
+const ST_ICONS = { general: 'sliders', accounts: 'user', youtube: 'ytPlay', mentions: 'at', spam: 'mod', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys' };
+settingsDlg.querySelectorAll('.st-rail button[data-s]').forEach(b => { if (icon[ST_ICONS[b.dataset.s]]) b.insertAdjacentHTML('afterbegin', icon[ST_ICONS[b.dataset.s]]); });
 settingsDlg.querySelectorAll('.st-rail .main-desk').forEach(b => { b.hidden = !MAIN_DESK; });
 function openSettings(tab){
   const ok = t => { const b = settingsDlg.querySelector(`.st-rail [data-s="${t}"]`); return b && !b.hidden; };
@@ -4948,7 +5049,7 @@ function openSettings(tab){
   if (settingsTab === 'themes') renderThemeDlg();
   if (settingsTab === 'updates') renderUpdates();
   settingsDlg.querySelector('.upd-host').hidden = !MAIN_DESK;
-  if (settingsTab === 'accounts' && typeof refreshAccountsPane === 'function') refreshAccountsPane();
+  if ((settingsTab === 'accounts' || settingsTab === 'youtube') && typeof refreshAccountsPane === 'function') refreshAccountsPane();
   if (settingsTab === 'general') $('#keysSet').checked = keysOn;
   return renderDoc(settingsTab);
 }

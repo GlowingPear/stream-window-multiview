@@ -94,7 +94,7 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   assert.equal(await settingsTab(), 'accounts');
   assert.ok(await win.isHidden('#accountMenu'), 'the menu closes');
   const tabs = await win.$$eval('#settingsDlg .st-rail button', b => b.filter(x => !x.hidden).map(x => x.dataset.s));
-  assert.deepEqual(tabs, ['general', 'accounts', 'mentions', 'spam', 'themes', 'updates', 'guide', 'keys']);
+  assert.deepEqual(tabs, ['general', 'accounts', 'youtube', 'mentions', 'spam', 'themes', 'updates', 'guide', 'keys']);
   assert.ok(await win.isVisible('#settingsDlg .am-watch'), 'Watch signed in moved here');
   assert.ok(await win.isHidden('#mentUser'), 'your usernames are under Mentions');
   await win.click('#settingsDlg .st-rail [data-s=mentions]');
@@ -114,6 +114,29 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   assert.ok(await win.isHidden('#settingsDlg'));
   await win.click('#loginBtn');
   assert.equal(await win.$$eval('#accountMenu .am-imp', b => b.length), 3, 'Import follows is in the Accounts menu too');
+  await win.keyboard.press('Escape');
+});
+
+test('Settings > YouTube: the YouTube login, Skip ads and the cookie question (on to start with), and the API key', T, async () => {
+  await win.evaluate(() => window.openSettings('accounts'));
+  await win.click('#settingsDlg [data-go=youtube]');
+  assert.equal(await settingsTab(), 'youtube', 'Accounts links to it');
+  assert.ok(await win.isVisible('#settingsDlg .st-pane[data-s=youtube] .am-row[data-p=youtube] .am-imp'), 'the YouTube login is here too');
+  assert.ok(await win.isVisible('#settingsDlg .am-yk'), 'and the API key');
+  assert.equal(await win.isChecked('#ytSkip'), true);
+  assert.equal(await win.isChecked('#ytConsent'), true);
+  assert.equal(await win.inputValue('#ytConsentPick'), 'reject');
+  await win.uncheck('#ytSkip');
+  await win.selectOption('#ytConsentPick', 'accept');
+  await win.reload();
+  await win.waitForSelector('#loginBtn:not([hidden])');
+  await win.evaluate(() => window.openSettings('youtube'));
+  assert.equal(await win.isChecked('#ytSkip'), false, 'remembered');
+  assert.equal(await win.inputValue('#ytConsentPick'), 'accept');
+  await win.uncheck('#ytConsent');
+  assert.ok(await win.isDisabled('#ytConsentPick'), 'nothing to pick when it\'s off');
+  assert.equal(await win.evaluate(() => localStorage.getItem('kickMultiview.ytConsent')), 'off');
+  await win.evaluate(() => { localStorage.removeItem('kickMultiview.ytSkip'); localStorage.removeItem('kickMultiview.ytConsent'); });
   await win.keyboard.press('Escape');
 });
 

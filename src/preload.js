@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('kmv', {
   importFollows: plat => ipcRenderer.invoke('follows:import', plat),
   onFollowsProgress: cb => ipcRenderer.on('follows:progress', (_e, p) => cb(p || {})),
   youtubeFromFirefox: () => ipcRenderer.invoke('youtube:fromFirefox'),
+  ytConsentFallback: part => ipcRenderer.invoke('youtube:consentFallback', part),
   onYoutubeSignin: cb => ipcRenderer.on('youtube:signin', () => cb()),
   platform: process.platform,
   gameShape: d => ipcRenderer.send('game:shape', d),

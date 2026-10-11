@@ -62,7 +62,7 @@ test.after(async () => {
 });
 
 const status = () => win.locator('#settingsDlg .am-yk-st').textContent();
-async function openMenu() { if (await win.isHidden('#settingsDlg') || await win.isHidden('#settingsDlg .am-yk')) await win.evaluate(() => window.openSettings('accounts')); await win.waitForSelector('#settingsDlg .am-yk'); }
+async function openMenu() { if (await win.isHidden('#settingsDlg') || await win.isHidden('#settingsDlg .am-yk')) await win.evaluate(() => window.openSettings('youtube')); await win.waitForSelector('#settingsDlg .am-yk'); }
 async function addKey(key) {
   await openMenu();
   await win.fill('#settingsDlg .am-yk-in', key);

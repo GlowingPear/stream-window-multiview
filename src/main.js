@@ -583,6 +583,20 @@ function setupGoogleSignin(ses) {
   } catch {}
 }
 
+/* ---------- YouTube: cookie question ----------
+   In some countries YouTube asks about cookies first and keeps the video paused until you answer.
+   The stream page clicks the answer chosen in Settings > YouTube; if that doesn't work (YouTube changed
+   the question), it asks for this: "Reject all" saved in that player's storage, as YouTube saves it. */
+const YT_REJECT_ALL = 'CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg';
+ipcMain.handle('youtube:consentFallback', async (_e, part) => {
+  if (typeof part !== 'string' || !/^persist:(kmv-[\w-]+|youtube)$/.test(part)) return false;
+  try {
+    await session.fromPartition(part).cookies.set({ url: 'https://www.youtube.com', domain: '.youtube.com', name: 'SOCS', value: YT_REJECT_ALL,
+      secure: true, sameSite: 'lax', expirationDate: Math.floor(Date.now() / 1000) + 390 * 86400 });
+    return true;
+  } catch { return false; }
+});
+
 /* ---------- YouTube: copy the login from Firefox ----------
    Google blocks signing in to YouTube inside apps, so YouTube sign-in goes through Firefox:
    you sign in there, and the app copies just the YouTube / Google login out of Firefox's

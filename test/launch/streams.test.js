@@ -16,6 +16,32 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
 const clear = async () => { if (await a.win.locator('#stage .win').count()){ await a.win.click('#clear'); await a.win.click('#askDlg .ask-yes'); } };
 test.beforeEach(() => a && clear());                       // each test starts with nothing open
 
+test('YouTube: the cookie question is answered with the button you picked, in any language, and an ad\'s Skip button is found', T, async () => {
+  const r = await a.win.evaluate(() => {
+    const lb = document.createElement('ytd-consent-bump-v2-lightbox'), dlg = document.createElement('tp-yt-paper-dialog'), clicked = [];
+    lb.data = { disagreeButton: { buttonRenderer: { text: { simpleText: 'Tout refuser' } } }, agreeButton: { buttonRenderer: { text: { runs: [{ text: 'Tout ' }, { text: 'accepter' }] } } } };
+    for (const t of ['Tout refuser', 'Tout accepter']) { const b = document.createElement('button'); b.textContent = t; b.onclick = () => clicked.push(t); dlg.append(b); }
+    dlg.opened = true; lb.append(dlg); document.body.append(lb);
+    const out = { reject: ytAgent(false, 'reject'), accept: ytAgent(false, 'accept'), off: ytAgent(false, '') };
+    lb.data = {}; out.changed = ytAgent(false, 'reject');
+    dlg.opened = false; out.answered = ytAgent(false, 'reject');
+    lb.remove();
+    const sk = document.createElement('button'); sk.className = 'ytp-skip-ad-button';
+    sk.style.cssText = 'position:fixed;left:100px;top:50px;width:80px;height:30px'; document.body.append(sk);
+    out.skip = ytAgent(true, ''); out.skipOff = ytAgent(false, ''); sk.remove();
+    out.noAd = ytAgent(true, 'reject');
+    return { out, clicked };
+  });
+  assert.deepEqual(r.clicked, ['Tout refuser', 'Tout accepter'], 'each button found by its label from the question itself');
+  assert.deepEqual(r.out, { reject: { consent: 'clicked' }, accept: { consent: 'clicked' }, off: {}, changed: { consent: 'missing' }, answered: {},
+    skip: { skip: { x: 140, y: 65 } }, skipOff: {}, noAd: {} });
+  // the fallback: "Reject all" saved in that YouTube player's storage, and only a player's
+  assert.equal(await a.win.evaluate(() => window.kmv.ytConsentFallback('persist:kmv-stream-yt__test')), true);
+  const c = await a.app.evaluate(({ session }) => session.fromPartition('persist:kmv-stream-yt__test').cookies.get({ name: 'SOCS' }));
+  assert.deepEqual(c.map(x => [x.domain, x.secure]), [['.youtube.com', true]]);
+  assert.equal(await a.win.evaluate(() => window.kmv.ytConsentFallback('persist:kick')), false);
+});
+
 test('volume: the title bar\'s mute button, slider and mouse wheel set that stream\'s own volume', T, async () => {
   await a.win.selectOption('#mode', 'stream');
   await add('alpha');
