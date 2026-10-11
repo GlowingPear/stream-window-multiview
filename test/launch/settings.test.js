@@ -137,3 +137,79 @@ test('spam alerts: off until you turn them on, remembered, and Try it explains a
   assert.ok(saved.allow.includes('botkiva.com'));
   assert.deepEqual(pageErrors, []);
 });
+
+test('alert sounds: each one plays, and you can pick your own sound file', T, async () => {
+  await win.evaluate(() => window.openSettings('mentions'));
+  for (const s of ['chime', 'ping', 'pop', 'knock']) {
+    await win.selectOption('[data-al="mention.sound"]', s);
+    await win.click('[data-play=mention]');
+  }
+  // your own sound: a tiny WAV file
+  const wav = path.join(os.tmpdir(), `smv-test-${process.pid}.wav`);
+  const n = 800, buf = Buffer.alloc(44 + n);
+  buf.write('RIFF', 0); buf.writeUInt32LE(36 + n, 4); buf.write('WAVEfmt ', 8); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+  buf.writeUInt32LE(8000, 24); buf.writeUInt32LE(8000, 28); buf.writeUInt16LE(1, 32); buf.writeUInt16LE(8, 34); buf.write('data', 36); buf.writeUInt32LE(n, 40); buf.fill(128, 44);
+  fs.writeFileSync(wav, buf);
+  const chooser = win.waitForEvent('filechooser');
+  await win.selectOption('[data-al="mention.sound"]', 'custom');
+  await (await chooser).setFiles(wav);
+  await win.waitForFunction(() => /^data:audio/.test(localStorage.getItem('kickMultiview.alertSound.mention') || ''));
+  assert.equal(await win.inputValue('[data-al="mention.sound"]'), 'custom');
+  await win.click('[data-play=mention]');
+  // picking it again and cancelling keeps what you had
+  await win.selectOption('[data-al="mention.sound"]', 'pop');
+  const again = win.waitForEvent('filechooser');
+  await win.selectOption('[data-al="mention.sound"]', 'custom');
+  await (await again).setFiles([]);
+  await win.waitForTimeout(300);
+  assert.equal(await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).mention.sound), 'pop');
+  await win.keyboard.press('Escape');
+  fs.rmSync(wav, { force: true });
+});
+
+test('spam alerts lists: remove an item, and Reset brings back the built-in list', T, async () => {
+  await win.evaluate(() => window.openSettings('spam'));
+  await win.click('#spamTabs [data-t=lists]');
+  const words = () => win.$$eval('[data-list=words] .st-chip > span', l => l.map(x => x.textContent));
+  const before = await words();
+  await win.click('[data-list=words] .st-chip:has-text("cheap") button');
+  assert.deepEqual(await words(), before.filter(w => w !== 'cheap'));
+  await win.fill('[data-add=words]', ''); await win.click('[data-addbtn=words]');
+  assert.match(await win.textContent('#msg'), /Type a word or phrase/);
+  await win.fill('[data-add=allow]', 'not a site'); await win.click('[data-addbtn=allow]');
+  assert.match(await win.textContent('#msg'), /Type a site like example\.com/);
+  await win.click('[data-reset=words]');
+  assert.deepEqual(await words(), before, 'back to the built-in words');
+  assert.equal(await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).spam.words), null);
+  await win.keyboard.press('Escape');
+});
+
+test('a window\'s "open in its own window" and mod view buttons open app windows', T, async () => {
+  await app.evaluate(({ app: eapp, session, ipcMain }) => {
+    const fake = s => { try { s.protocol.handle('https', () => new Response('<!doctype html><title>stand-in</title>', { headers: { 'content-type': 'text/html' } })); } catch {} };
+    ['persist:kick', 'persist:twitch'].forEach(p => fake(session.fromPartition(p)));
+    eapp.on('session-created', fake);
+    ipcMain.removeHandler('mod:check'); ipcMain.handle('mod:check', () => true);
+  });
+  await win.selectOption('#mode', 'chat');
+  await win.fill('#url', 'alpha'); await win.click('#add');
+  const opened = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map(w => w.webContents.getURL()).filter(u => /^https:/.test(u) && !/robots\.txt/.test(u)));   // (not the hidden live checker)
+  await win.waitForSelector('#stage .win.chat [data-a=mod]:not([hidden])');
+  await win.click('#stage .win.chat [data-a=pop]');
+  await win.click('#stage .win.chat [data-a=mod]');
+  for (let i = 0; i < 50 && (await opened()).length < 2; i++) await new Promise(r => setTimeout(r, 100));
+  assert.deepEqual((await opened()).sort(), ['https://dashboard.kick.com/moderator/alpha', 'https://kick.com/popout/alpha/chat']);
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter(w => /^https:/.test(w.webContents.getURL()) && !/robots/.test(w.webContents.getURL())).forEach(w => w.close()));
+  await win.click('#stage .win.chat [data-a=close]');
+  await win.selectOption('#mode', 'both');
+});
+
+test('logging out really clears that site\'s login', T, async () => {
+  await app.evaluate(({ session }) => session.fromPartition('persist:twitch').cookies.set({ url: 'https://www.twitch.tv', name: 'login', value: 'someone' }));
+  assert.equal((await win.evaluate(() => window.kmv.accountsStatus())).twitch, 'someone');
+  const changed = win.evaluate(() => new Promise(r => window.kmv.onAccountChanged(info => r(info))));
+  await win.evaluate(() => window.kmv.logout('twitch'));
+  assert.deepEqual(await changed, { platform: 'twitch', loggedOut: true }, 'the page hears about it');
+  assert.equal((await win.evaluate(() => window.kmv.accountsStatus())).twitch, null);
+  assert.deepEqual(pageErrors, []);
+});
