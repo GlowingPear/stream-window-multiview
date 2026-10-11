@@ -48,6 +48,7 @@ test.before(async () => {
   await win.selectOption('#mode', 'chat');
   for (const ch of ['alpha', 'bravo']) { await win.fill('#url', ch); await win.click('#add'); }
   await win.waitForFunction(() => document.querySelectorAll('#stage .win.chat webview').length === 2);
+  await win.click('#layoutBtn'); await win.click('#layoutMenu [data-l=tile]');   // side by side, so no window covers another's bar
 });
 test.after(async () => {
   if (!app) return;
@@ -74,6 +75,8 @@ const tagOf = (ch, text) => inChat(ch, t => {
   const tag = row && row.querySelector('[data-kmv-spam]');
   return tag ? tag.title : null;
 }, text);
+// Click a chat window's bar at its left end (its middle can be a button).
+const clickBar = ch => win.click(`#stage .win.chat:has(.title:text-is("${ch}")) .bar`, { position: { x: 30, y: 10 } });
 const ready = () => win.waitForTimeout(3000);   // the chat helper treats what's already there as old, for 2.5 s
 
 test('a mention lights up that chat window and is listed, a normal message doesn\'t', T, async () => {
@@ -87,11 +90,45 @@ test('a mention lights up that chat window and is listed, a normal message doesn
   await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
   assert.deepEqual(await alertOf('bravo'), { level: 'al-1', color: '#e8b84a' });
   assert.equal((await alertOf('alpha')).level, '', 'only that chat');
-  await win.click('#mentBtn');
-  assert.match(await win.textContent('#mentList'), /someone.*mentioned you.*are you on later\?/s);
-  await win.keyboard.press('Escape');
-  await win.click('#stage .win.chat:has(.title:text-is("bravo")) .bar');
+  await clickBar('bravo');
   assert.equal((await alertOf('bravo')).level, '', 'clicking the chat clears it');
+  assert.ok(await win.$eval('#mentBtn .mb-count', e => e.hidden), 'and its mention is no longer counted');
+  await win.click('#mentBtn');
+  assert.equal(await win.textContent('#mentList .mp-row .mp-kind'), 'Mention');
+  assert.match(await win.textContent('#mentList'), /someone.*bravo.*are you on later\?/s);
+  assert.equal(await win.$$eval('#mentList .mp-row.unread', r => r.length), 0, 'already seen');
+  await win.keyboard.press('Escape');
+});
+
+test('a mention in another chat is counted until you click into that chat, not another one', T, async () => {
+  await say('alpha', 'someone', 'hey @mename');
+  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  await clickBar('bravo');
+  assert.equal(await win.textContent('#mentBtn .mb-count'), '1', 'bravo has no new mentions');
+  await clickBar('alpha');
+  assert.ok(await win.$eval('#mentBtn .mb-count', e => e.hidden));
+});
+
+test('the @ button on a chat\'s bar turns mentions off for that chat only', T, async () => {
+  const at = '#stage .win.chat:has(.title:text-is("alpha")) [data-a=at]';
+  assert.equal(await win.$eval(at, b => b.hidden), false);
+  await win.click(at);
+  assert.ok(await win.$eval(at, b => b.classList.contains('off')));
+  await win.waitForTimeout(500);
+  await say('alpha', 'someone', '@mename quiet please');
+  await say('bravo', 'someone', '@mename still here');
+  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  await win.waitForTimeout(2000);
+  assert.equal(await win.textContent('#mentBtn .mb-count'), '1', 'only bravo\'s mention');
+  assert.equal((await alertOf('alpha')).level, '');
+  await win.click(at);   // back on
+  assert.equal(await win.$eval(at, b => b.classList.contains('off')), false);
+  assert.equal(await win.evaluate(() => localStorage.getItem('kickMultiview.mentMuted')), '[]');
+  await clickBar('bravo');   // seen
+  await win.click('#mentBtn');
+  await win.click('#mentClear');
+  assert.equal(await win.textContent('#mentList'), 'No mentions yet.');
+  await win.keyboard.press('Escape');
 });
 
 test('spam alerts: a promo bot in a chat you moderate is tagged and lights the window; elsewhere nothing happens', T, async () => {
@@ -111,13 +148,26 @@ test('spam alerts: a promo bot in a chat you moderate is tagged and lights the w
   assert.equal((await alertOf('bravo')).level, '', 'bravo isn\'t a chat you moderate');
   assert.equal(await tagOf('bravo', 'botkiva'), null);
   assert.match(await win.textContent('#msg'), /Likely spam in alpha's chat/);
+  // listed in Settings > Spam alerts > History, with its score
+  await win.evaluate(() => window.openSettings('spam'));
+  await win.click('#spamTabs [data-t=history]');
+  assert.equal(await win.$$eval('#spamHist .sh-row', r => r.length), 1, 'only the flagged one');
+  assert.match(await win.textContent('#spamHist .sh-row'), /newacct\s*\d+ \/ 5 points.*alpha.*botkiva com.*Disguised link: botkiva com \+3/s);
+  await win.click('#spamHist .sh-row');
+  assert.ok(await win.$eval('#settingsDlg', e => e.hidden), 'clicking it shows the chat');
+  await win.evaluate(() => window.openSettings('spam'));
+  await win.click('#spamHistClear');
+  assert.equal(await win.textContent('#spamHist'), 'Nothing flagged yet.');
+  assert.equal(await win.evaluate(() => localStorage.getItem('kickMultiview.spamHistory')), '[]');
+  await win.click('#spamTabs [data-t=alerts]');
+  await win.keyboard.press('Escape');
 });
 
 test('spam alerts off: chats stop handing over their messages', T, async () => {
   await win.evaluate(() => window.openSettings('spam'));
   await win.uncheck('#spamOn');
   await win.keyboard.press('Escape');
-  await win.click('#stage .win.chat:has(.title:text-is("alpha")) .bar');
+  await clickBar('alpha');
   await say('alpha', 'otherbot', 'cheap viewers at promo-site com, zero cost boost');
   await win.waitForTimeout(2500);
   assert.equal((await alertOf('alpha')).level, '');

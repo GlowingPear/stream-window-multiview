@@ -132,6 +132,8 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 
 ## Alerts
 - Mentions: when someone writes @you or replies to you in a Kick or Twitch chat, that chat window lights up and it's listed under the @ button. Set your usernames in Settings > Mentions, or click Detect.
+- The number on the @ button counts mentions you haven't seen. Clicking into that chat, or opening the list, clears them.
+- To stop mentions from one chat, click the @ button on that chat window's bar (click it again to turn them back on).
 - Settings > Mentions sets how: the window's border glows briefly or stays lit until you click that chat, and can get stronger while you haven't seen it (pulse, then flash). Pick its colour, a sound (or your own sound file), whether the sound repeats, and when to show a desktop notification.
 - Live alerts come from your saved channels while the app is running.
 
@@ -142,6 +144,7 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - Lists: sites that never count (Kick, Twitch, YouTube, Discord and so on) and the promo words. Add your own or reset them.
 - Sensitivity: Strict flags more, Relaxed fewer.
 - Try it: paste a message to see whether it would be flagged, and why.
+- History: the last 50 flagged messages, with their score and the signs found. Click one to show that chat.
 - The alert options are the same as for mentions, with their own colour and sound.
 
 ## YouTube ads and the cookie question (Settings > YouTube)
