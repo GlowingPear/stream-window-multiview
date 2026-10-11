@@ -58,8 +58,6 @@ function idFromInput(s) {
 
 // Chrome features extensions use that this app doesn't have.
 const UNSUPPORTED = {
-  declarativeNetRequest: 'blocking rules (declarativeNetRequest), so it won\'t block anything',
-  declarativeNetRequestWithHostAccess: 'blocking rules (declarativeNetRequest), so it won\'t block anything',
   tabCapture: 'capturing a page\'s sound (tabCapture)',
   offscreen: 'offscreen documents',
   userScripts: 'user scripts',
@@ -74,10 +72,13 @@ const UNSUPPORTED = {
   pageCapture: 'saving pages',
   desktopCapture: 'screen capture'
 };
+const permsOf = m => new Set([...(m?.permissions || []), ...(m?.optional_permissions || [])]);
 function compat(manifest) {
-  const perms = new Set([...(manifest?.permissions || []), ...(manifest?.optional_permissions || [])]);
-  return [...new Set(Object.keys(UNSUPPORTED).filter(p => perms.has(p)).map(p => UNSUPPORTED[p]))];
+  const perms = permsOf(manifest);
+  return Object.keys(UNSUPPORTED).filter(p => perms.has(p)).map(p => UNSUPPORTED[p]);
 }
+// Blockers (uBlock Origin Lite and the like) block with Chrome's blocking rules, which Electron doesn't have.
+const blocksNothing = manifest => ['declarativeNetRequest', 'declarativeNetRequestWithHostAccess'].some(p => permsOf(manifest).has(p));
 
 // What the extension can do, in words, for the install dialog.
 function permissionLines(manifest) {
@@ -125,7 +126,7 @@ function readManifest(dir) {
 }
 
 /* ---------- Electron side ---------- */
-// deps: { electron, userData, appWindows: () => BrowserWindow[], chromeUA: () => string }
+// deps: { electron, userData, appWindows: () => BrowserWindow[], rejectCookies: Google's "Reject all" cookie value }
 function createHost(deps) {
   const { electron, userData } = deps;
   const { app, session, BrowserWindow, webContents, ipcMain, dialog } = electron;
@@ -172,6 +173,30 @@ function createHost(deps) {
       // Also called whenever any of its pages goes away (a window closing, the app's windows reloading),
       // so only windows an extension opened itself are closed.
       removeTab: (_wc, win) => { if (win && opened.has(win) && !win.isDestroyed()) win.close(); }
+    });
+    // A popup waits for its page to report its size, which Electron doesn't always do for a hidden window
+    // (or reports the smallest size): then measure the page's natural size, and show it next to the button.
+    s.on('browser-action-popup-created', popup => {
+      popup.whenReady().then(() => setTimeout(async () => {
+        const win = popup.browserWindow;
+        if (popup.isDestroyed() || !win || win.isDestroyed()) return;
+        const b = win.getBounds();
+        if (!popup.hidden && b.width > 25 && b.height > 25) return;
+        try {
+          win.setBounds({ ...win.getBounds(), width: 800, height: 600 });
+          const width = await win.webContents.executeJavaScript(`(() => { const d = document.documentElement, w = d.style.width;
+            d.style.width = 'max-content'; const r = Math.ceil(d.getBoundingClientRect().width); d.style.width = w; return r; })()`);
+          popup.setSize({ width, height: 600 });
+          const height = await win.webContents.executeJavaScript(`(() => { const b = document.body;   // where its content ends
+            const r = document.createRange(); r.selectNodeContents(b);
+            const end = Math.max(r.getBoundingClientRect().bottom, ...[...b.children].map(e => e.getBoundingClientRect().bottom));
+            return Math.ceil(end + parseFloat(getComputedStyle(b).marginBottom || 0)) || 600; })()`);
+          if (popup.isDestroyed()) return;
+          popup.setSize({ width, height });
+          popup.updatePosition();
+          popup.show();
+        } catch {}
+      }, 250));
     });
     shells.set(ses, s);
     // web views already open in this session become its "tabs"
@@ -261,7 +286,7 @@ function createHost(deps) {
     const reqId = ++confirmSeq;
     const m = info.manifest || {};
     win.webContents.send('ext:confirm', { reqId, id: info.id, name: info.name || m.name || info.id, version: info.version || m.version || '',
-      icon: info.icon || '', source: info.source || 'store', perms: permissionLines(m), compat: compat(m), grid: defaultGrid() });
+      icon: info.icon || '', source: info.source || 'store', perms: permissionLines(m), compat: compat(m), noBlock: blocksNothing(m), grid: defaultGrid() });
     if (win.isMinimized()) win.restore();
     win.focus();
     return new Promise(res => confirmWaits.set(reqId, res));
@@ -277,7 +302,7 @@ function createHost(deps) {
     const m = ext?.manifest || {};
     return { id: e.id, source: e.source, enabled: e.enabled, grid: e.grid, missing: !ext,
       name: ext?.name || e.id, version: ext?.version || '', description: m.description && !/^__MSG_/.test(m.description) ? m.description : '',
-      icon: ext ? iconDataUrl(ext.path, m) : '', perms: permissionLines(m), compat: compat(m),
+      icon: ext ? iconDataUrl(ext.path, m) : '', perms: permissionLines(m), compat: compat(m), noBlock: blocksNothing(m),
       popup: !!(m.action?.default_popup || m.browser_action?.default_popup),
       options: !!(m.options_page || m.options_ui?.page) };
   }
@@ -375,6 +400,9 @@ function createHost(deps) {
   ipcMain.handle('ext:openStore', async () => {
     await ready;
     if (storeWin && !storeWin.isDestroyed()) { storeWin.focus(); return true; }
+    // Google's cookie question, answered "Reject all" (as the app does for YouTube), so the store opens straight away
+    if (deps.rejectCookies) await store().cookies.set({ url: 'https://chromewebstore.google.com', domain: '.google.com', name: 'SOCS',
+      value: deps.rejectCookies, secure: true, sameSite: 'lax', expirationDate: Math.floor(Date.now() / 1000) + 390 * 86400 }).catch(() => {});
     storeWin = new BrowserWindow({ width: 1180, height: 820, autoHideMenuBar: true, title: 'Chrome Web Store', backgroundColor: '#ffffff',
       webPreferences: { session: store(), contextIsolation: true, nodeIntegration: false, sandbox: true } });
     storeWin.loadURL(STORE_URL);
@@ -386,4 +414,4 @@ function createHost(deps) {
   return { ready: () => ready, list: () => list, sync, syncAll, update };
 }
 
-module.exports = { PLATS, KINDS, STREAM_PREFIX, STORE_PART, defaultGrid, targetOf, normalizeList, normalizeEntry, isOn, wantedIds, idFromInput, compat, permissionLines, iconDataUrl, readManifest, createHost };
+module.exports = { PLATS, KINDS, STREAM_PREFIX, STORE_PART, defaultGrid, targetOf, normalizeList, normalizeEntry, isOn, wantedIds, idFromInput, compat, blocksNothing, permissionLines, iconDataUrl, readManifest, createHost };

@@ -70,8 +70,11 @@ test('what it can do, in words, and which Chrome features it needs that the app 
     ['Read and change your data on b.com, c.com, d.com, e.com and 1 more']);
   assert.deepEqual(x.permissionLines({ permissions: ['https://*/*'] }), [], 'MV3 hosts are in host_permissions only');
   assert.deepEqual(x.permissionLines(null), []);
-  assert.deepEqual(x.compat({ permissions: ['declarativeNetRequest', 'declarativeNetRequestWithHostAccess', 'storage'], optional_permissions: ['tabCapture'] }),
-    ['blocking rules (declarativeNetRequest), so it won\'t block anything', 'capturing a page\'s sound (tabCapture)']);
+  const blocker = { permissions: ['declarativeNetRequest', 'offscreen', 'storage'], optional_permissions: ['tabCapture'] };
+  assert.deepEqual(x.compat(blocker), ['capturing a page\'s sound (tabCapture)', 'offscreen documents']);
+  assert.equal(x.blocksNothing(blocker), true, 'a blocker that can\'t block here');
+  assert.equal(x.blocksNothing({ optional_permissions: ['declarativeNetRequestWithHostAccess'] }), true);
+  assert.equal(x.blocksNothing({ permissions: ['storage'] }), false);
   assert.deepEqual(x.compat({}), []);
   assert.deepEqual(x.compat(undefined), []);
 });

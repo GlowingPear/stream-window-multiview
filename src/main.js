@@ -1497,7 +1497,7 @@ app.whenReady().then(async () => {
   setupGoogleSignin(session.fromPartition(PARTS.youtube));
   setupCapture();
   extensions.createHost({ electron: require('electron'), userData: app.getPath('userData'),
-    appWindows: () => [mainWin, streamsWin].filter(w => w && !w.isDestroyed()) });
+    appWindows: () => [mainWin, streamsWin].filter(w => w && !w.isDestroyed()), rejectCookies: YT_REJECT_ALL });
   scheduleUpdates();
   buildMenu();
   createMain();

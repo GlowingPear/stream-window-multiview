@@ -6275,8 +6275,10 @@ const extSignedNote = () => {
 };
 function extFill(box, x){
   const warn = box.querySelector('.ex-warn');
-  warn.hidden = !x.compat.length;
-  warn.textContent = x.compat.length ? `Partly works here: it uses ${andList(x.compat)}, which this app doesn't have.` : '';
+  warn.hidden = !x.compat.length && !x.noBlock;
+  warn.textContent = x.noBlock
+    ? 'It won\'t block anything here: this app doesn\'t have Chrome\'s blocking rules (declarativeNetRequest).' + (x.compat.length ? ` It also uses ${andList(x.compat)}, which aren't here either.` : '')
+    : x.compat.length ? `Partly works here: it uses ${andList(x.compat)}, which this app doesn't have.` : '';
   box.querySelector('.ex-grid').innerHTML = extGridHtml(x.grid);
   const note = box.querySelector('.ex-note'), t = extSignedNote();
   if (note){ note.hidden = !t; note.textContent = t; }

@@ -119,7 +119,12 @@ test('Its popup and its options page open from the window\'s menu, in that windo
   await extBtn(winSel('delta') + ' [data-a=ext]');
   await a.win.waitForSelector('#extMenu:not([hidden]) .em-row .em-main:not([disabled])');
   await a.win.click('#extMenu .em-main');
-  await until(async () => (await windowUrls()).some(u => /^chrome-extension:\/\/[a-p]{32}\/popup\.html$/.test(u)));
+  // shown next to the button at its page's own size (the test popup is 160 px wide plus margins)
+  const pop = await until(() => a.app.evaluate(({ BrowserWindow }) => {
+    const w = BrowserWindow.getAllWindows().find(w => /popup\.html$/.test(w.webContents.getURL()));
+    return w && w.isVisible() && w.getBounds().height > 25 ? w.getBounds() : null;
+  }), 4000);
+  assert.ok(pop.width >= 160 && pop.width < 300 && pop.height > 25 && pop.height < 200, JSON.stringify(pop));
   await extBtn(winSel('delta') + ' [data-a=ext]');
   await a.win.waitForSelector('#extMenu:not([hidden]) .em-opt');
   await a.win.click('#extMenu .em-opt');
@@ -161,6 +166,8 @@ test('Install from link: a link that isn\'t one says so; the Web Store opens in 
   const storeWin = () => a.app.evaluate(({ BrowserWindow, session }) => BrowserWindow.getAllWindows()
     .filter(w => w.webContents.session === session.fromPartition('persist:kmv-webstore')).length);
   await until(async () => (await storeWin()) === 1);
+  const socs = await a.app.evaluate(({ session }) => session.fromPartition('persist:kmv-webstore').cookies.get({ name: 'SOCS' }));
+  assert.equal(socs.length, 1, 'Google\'s cookie question answered "Reject all"');
   await a.win.click('#settingsDlg .ex-store');           // a second click brings the same window forward
   assert.equal(await storeWin(), 1);
   await a.app.evaluate(({ BrowserWindow, session }) => BrowserWindow.getAllWindows()
