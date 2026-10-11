@@ -96,7 +96,10 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   const tabs = await win.$$eval('#settingsDlg .st-rail button', b => b.filter(x => !x.hidden).map(x => x.dataset.s));
   assert.deepEqual(tabs, ['general', 'accounts', 'mentions', 'spam', 'themes', 'updates', 'guide', 'keys']);
   assert.ok(await win.isVisible('#settingsDlg .am-watch'), 'Watch signed in moved here');
-  assert.ok(await win.isVisible('#mentUser'), 'so did your usernames');
+  assert.ok(await win.isHidden('#mentUser'), 'your usernames are under Mentions');
+  await win.click('#settingsDlg .st-rail [data-s=mentions]');
+  assert.ok(await win.isVisible('#mentUser'), 'here');
+  await win.click('#settingsDlg .st-rail [data-s=accounts]');
 
   // Import follows opens over Settings, and Esc closes only the top one
   await win.click('#settingsDlg .am-row[data-p=kick] .am-imp');
@@ -140,6 +143,10 @@ test('spam alerts: off until you turn them on, remembered, and Try it explains a
 
 test('alert sounds: each one plays, and you can pick your own sound file', T, async () => {
   await win.evaluate(() => window.openSettings('mentions'));
+  await win.uncheck('#mentOn');
+  assert.equal(await win.evaluate(() => localStorage.getItem('kickMultiview.mentOn')), '0', 'mention alerts off');
+  assert.ok(await win.$eval('.st-opts[data-for=mention]', e => e.classList.contains('st-dim')), 'their options dim');
+  await win.check('#mentOn');
   for (const s of ['chime', 'ping', 'pop', 'knock']) {
     await win.selectOption('[data-al="mention.sound"]', s);
     await win.click('[data-play=mention]');

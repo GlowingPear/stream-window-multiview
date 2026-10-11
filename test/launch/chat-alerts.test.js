@@ -77,7 +77,7 @@ const tagOf = (ch, text) => inChat(ch, t => {
 const ready = () => win.waitForTimeout(3000);   // the chat helper treats what's already there as old, for 2.5 s
 
 test('a mention lights up that chat window and is listed, a normal message doesn\'t', T, async () => {
-  await win.evaluate(() => window.openSettings('accounts'));
+  await win.evaluate(() => window.openSettings('mentions'));
   await win.fill('#mentUser', 'mename');
   await win.press('#mentUser', 'Enter');
   await win.keyboard.press('Escape');

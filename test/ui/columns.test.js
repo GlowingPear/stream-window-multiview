@@ -172,6 +172,11 @@ test('the switch control floats: move it by its handle, resize it, and dock it a
   assert.deepEqual([b2.w - b1b.w, b2.h - b1b.h], [-80, -60], 'resized from its corner');
   const saved = JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.switchRect')));
   assert.deepEqual([saved.w, saved.h], [b2.w, b2.h], 'size and place are remembered');
+  // the Layout menu has the same choices
+  await page.click('#layoutBtn'); await page.click('#swModes [data-sw=dock]');
+  assert.equal(await fs.evaluate(e => e.classList.contains('floating')), false, 'Layout menu: Docked');
+  await page.click('#layoutBtn'); await page.click('#swModes [data-sw=float]');
+  assert.ok(await fs.evaluate(e => e.classList.contains('floating')), 'Layout menu: Floating');
   await page.click('#featSwitch .fs-mdock');
   assert.equal(await fs.evaluate(e => e.classList.contains('floating')), false, 'docked');
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.switchMode')), 'dock');

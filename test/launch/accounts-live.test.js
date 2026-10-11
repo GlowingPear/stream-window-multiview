@@ -16,6 +16,13 @@ test.before(async () => {
     // desktop notifications are recorded instead of shown
     Notification.prototype.show = function () { s.notes.push({ title: this.title, body: this.body }); globalThis.__lastNote = this; };
   });
+  // the app's own live checks can't reach the sites here: only the test says who's live
+  await a.app.evaluate(({ BrowserWindow }) => {
+    const wc = BrowserWindow.getAllWindows().find(w => /index\.html/.test(w.webContents.getURL()) && !/role=streams/.test(w.webContents.getURL())).webContents;
+    const send = wc.send.bind(wc);
+    wc.send = (ch, ...args) => { if (ch !== 'live:status') send(ch, ...args); };
+    globalThis.__sendLive = snap => send('live:status', snap);
+  });
 });
 test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
 
@@ -82,7 +89,7 @@ test('a new login reloads that site\'s chats and fills in your username; "Forget
 test('Saved channels show who\'s live, with bells, auto-open and Open live', T, async () => {
   await a.win.selectOption('#mode', 'both');
   const now = Date.now();
-  const send = snap => a.app.evaluate(({ BrowserWindow }, snap) => BrowserWindow.getAllWindows().forEach(w => w.webContents.send('live:status', snap)), snap);
+  const send = snap => a.app.evaluate((_e, snap) => globalThis.__sendLive(snap), snap);
   await send({ alpha: { live: true, viewers: 1234, title: 'Big match', category: 'Games', checked: now }, bravo: { live: false, checked: now }, 'tw:charlie': { live: false, checked: now } });
   await a.win.click('#savedBtn');
   assert.match(await a.win.textContent('#savedList'), /Live now · 1.*alpha.*LIVE.*1\.2K.*Games · Big match.*Offline.*bravo/s);

@@ -902,11 +902,6 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
       <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
         <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
-        <div class="st-sec">Your usernames</div>
-        <p class="st-sub" style="margin:2px 0 0">Used to spot mentions and replies to you. Kick and Twitch chats are covered; YouTube chat isn't.</p>
-        <div class="st-row"><span class="st-t">Kick</span><input class="st-in" id="mentUser" placeholder="e.g. YourName" autocomplete="off" spellcheck="false"><button class="btn" id="mentDetect" title="Read them from your Kick and Twitch logins">Detect</button></div>
-        <div class="st-row"><span class="st-t">Twitch</span><input class="st-in" id="mentTwitch" placeholder="(optional)" autocomplete="off" spellcheck="false"></div>
-        <span class="mp-note" id="mentNote"></span>
         <div class="st-sec">Logins</div>
         <div class="am-sec">
           <div class="am-enc"><span class="am-lock"></span><span class="am-enc-txt">Checking how logins are stored…</span></div>
@@ -926,7 +921,12 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       </section>
       <section class="st-pane" data-s="mentions" hidden>
         <h4>Mentions &amp; replies</h4><p class="st-sub">When someone writes @you or replies to you in an open Kick or Twitch chat. The chat already highlights the message itself; these make the <b>window</b> stand out so you can see which chat it's in.</p>
-        <label class="st-lead"><span class="st-t"><b>Alert me</b><small>Your usernames are under <button class="linkish" data-go="accounts">Accounts</button>.</small></span><input type="checkbox" class="st-sw" id="mentOn"></label>
+        <label class="st-lead"><span class="st-t"><b>Alert me</b><small>When someone mentions or replies to the usernames below.</small></span><input type="checkbox" class="st-sw" id="mentOn"></label>
+        <div class="st-sec">Your usernames</div>
+        <p class="st-sub" style="margin:2px 0 0">Used to spot mentions and replies to you. Kick and Twitch chats are covered; YouTube chat isn't.</p>
+        <div class="st-row"><span class="st-t">Kick</span><input class="st-in" id="mentUser" placeholder="e.g. YourName" autocomplete="off" spellcheck="false"><button class="btn" id="mentDetect" title="Read them from your Kick and Twitch logins">Detect</button></div>
+        <div class="st-row"><span class="st-t">Twitch</span><input class="st-in" id="mentTwitch" placeholder="(optional)" autocomplete="off" spellcheck="false"></div>
+        <span class="mp-note" id="mentNote"></span>
         <div class="st-opts" data-for="mention">
           <div class="st-sec">Alerts</div>
         <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up.</small></span>
@@ -3767,7 +3767,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.notifyMention){
     try { localStorage.setItem('kickMultiview.mentOn', mentOn ? '1' : '0'); } catch {}
     pushMyName(); renderMentions(); syncAlertControls();
   });
-  $('#mentSettings').onclick = () => { mp.hidden = true; openSettings(myName || myTwitch ? 'mentions' : 'accounts'); };
+  $('#mentSettings').onclick = () => { mp.hidden = true; openSettings('mentions'); };
   $('#mentUser').addEventListener('change', e => setMyName(e.target.value));
   $('#mentUser').addEventListener('keydown', e => { if (e.key === 'Enter') setMyName(e.target.value); });
   const detect = async quiet => {
@@ -3902,7 +3902,7 @@ if (DESKTOP){
   const onAccountClick = async e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.classList.contains('am-more')){ am.hidden = true; openSettings('accounts'); return; }
-    if (b.closest('.am-yk') || !b.closest('.am-row, .am-alt')) return;   // the YouTube key and usernames have their own buttons
+    if (b.closest('.am-yk') || !b.closest('.am-row, .am-alt')) return;   // the YouTube key has its own buttons
     if (b.classList.contains('am-ff')){ openFfDlg(); return; }
     const p = b.closest('.am-row').dataset.p, name = PLAT_NAME[p];
     am.hidden = true;

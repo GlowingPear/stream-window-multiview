@@ -3,6 +3,9 @@
 // window. Players and chats are stand-in pages (see app.js).
 const test = require('node:test');
 const { launchApp, winSel, assert } = require('./app');
+const { startCoverage, saveCoverage } = require('../helpers');
+// npm run test:coverage: keep what a window ran before closing it (a closed window's record is lost)
+const keep = async page => { await saveCoverage(page); await startCoverage(page); };
 
 const T = { timeout: 90000 };
 let a;
@@ -67,6 +70,7 @@ test('Pop out streams: streams move to their own window with Tile, Spotlight and
   assert.deepEqual(await titles(a.win, 'stream'), []);
   assert.ok((await titles(a.win, 'chat')).includes('delta'));
 
+  await keep(sw);
   await sw.click('#backBtn');
   await a.win.waitForFunction(() => document.querySelectorAll('#stage .win.stream').length === 4);
   assert.equal(a.app.windows().some(p => /role=streams/.test(p.url())), false, 'the Streams window closed');
@@ -82,6 +86,7 @@ test('Pop out hidden: only the streams you can\'t see go to the Streams window',
   const out = await titles(sw, 'stream'), here = await titles(a.win, 'stream');
   assert.ok(out.length && here.length, `some went (${out.join(', ')}), some stayed (${here.join(', ')})`);
   assert.ok(here.includes('alpha'), 'the big one stays');
+  await keep(sw);
   await sw.close();
   await a.win.waitForFunction(() => document.querySelectorAll('#stage .win.stream').length === 8);
 });
@@ -107,6 +112,7 @@ test('the switch control in its own window controls the main window', T, async (
   assert.equal(await onTop(), !was, 'the pin keeps it on top of other windows, or not');
   await sc.selectOption('.fs-side select', '2');
   assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.sideCols')), '2');
+  await keep(sc);
   await sc.click('.fs-mfloat');
   await a.win.waitForFunction(() => document.getElementById('featSwitch').classList.contains('floating'));
   assert.equal(a.app.windows().some(p => /switcher\.html/.test(p.url())), false, 'its window closed');
