@@ -15,6 +15,15 @@ function validCh(c) {
          /^yt:c:UC[\w-]{10,40}$/.test(c) || /^yt:v:[\w-]{11}$/.test(c);
 }
 const platformOf = c => /^tw:/.test(c) ? 'Twitch' : /^yt:/.test(c) ? 'YouTube' : 'Kick';
+// A time from a site as ms since 1970, or null. Kick writes UTC times without a zone ("2026-10-11 19:02:11").
+function toTime(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return Number.isFinite(v) && v > 0 ? (v < 1e12 ? v * 1000 : v) : null;
+  let s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(s)) s = s.replace(' ', 'T') + 'Z';
+  const t = Date.parse(s);
+  return Number.isFinite(t) && t > 0 ? t : null;
+}
 const decodeHtml = s => String(s || '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
   .replace(/\\u0026/g, '&').replace(/\\"/g, '"');
 
@@ -30,6 +39,7 @@ function parseTwitch(d, login) {
     viewers: st && Number.isFinite(+st.viewersCount) ? +st.viewersCount : null,
     category: st && st.game ? String(st.game.name || '') : '',
     name: u.displayName || u.login || login,
+    startedAt: st ? toTime(st.createdAt) : null,
     checked: Date.now()
   };
 }
@@ -80,6 +90,7 @@ function parseChannel(text, slug) {
     viewers: live && Number.isFinite(+ls.viewer_count) ? +ls.viewer_count : null,
     category: live ? String(cat || '') : '',
     name: (d.user && d.user.username) || d.slug || slug,
+    startedAt: live ? toTime(ls.start_time || ls.created_at) : null,
     checked: Date.now()
   };
 }
@@ -116,7 +127,7 @@ function createLiveWatcher({ fetchChannel, fetchBatch, onStatus, onWentLive, int
     if (info.partial) {
       next = { ...info };
       delete next.partial;
-      if (info.live && prev && prev.live) next.title = prev.title || '';
+      if (info.live && prev && prev.live) { next.title = prev.title || ''; if (!next.startedAt && prev.startedAt) next.startedAt = prev.startedAt; }
       if (!next.name) next.name = (prev && prev.name) || slug;
       if (info.live && !next.title) needTitle.add(slug); else needTitle.delete(slug);
     } else needTitle.delete(slug);
@@ -245,6 +256,7 @@ function parseYtVideos(d) {
     const lbc = sn.liveBroadcastContent;
     const state = lbc === 'live' && !(ld && ld.actualEndTime) ? 'live' : lbc === 'upcoming' ? 'upcoming' : 'done';
     out.set(v.id, { state, title: String(sn.title || ''), viewers: ld && ld.concurrentViewers != null && Number.isFinite(+ld.concurrentViewers) ? +ld.concurrentViewers : null,
+      startedAt: ld ? toTime(ld.actualStartTime) : null,
       channelId: String(sn.channelId || ''), channelTitle: String(sn.channelTitle || '') });
   }
   return out;
@@ -392,4 +404,4 @@ function channelFromLink(plat, href) {
   return SLUG_RE.test(m[1]) ? m[1].toLowerCase() : null;
 }
 
-module.exports = { parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, nextPacificMidnight, isGoogleSignin, firefoxVersion, firefoxUA, KICK_FOLLOW_APIS, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };
+module.exports = { toTime, decodeHtml, parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, nextPacificMidnight, isGoogleSignin, firefoxVersion, firefoxUA, KICK_FOLLOW_APIS, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };
