@@ -211,6 +211,21 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .st-add .st-in,.st-try .st-in{flex:1;width:auto}
 .st-res{margin-top:10px;border:1px solid var(--line2);border-radius:8px;padding:8px 10px;font-size:12px}
 .st-res[hidden]{display:none}
+.sh-head{display:flex;align-items:center;gap:10px;margin:8px 0}
+.sh-head .st-sub{margin:0;flex:1}
+.sh-head .btn{height:26px;font-size:11px}
+.sh-head .btn[hidden]{display:none}
+#spamHist{border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+#spamHist .sv-empty{padding:12px}
+.sh-row{padding:9px 12px 10px;display:flex;flex-direction:column;gap:3px;border-bottom:1px solid var(--line)}
+.sh-row:last-child{border-bottom:0}
+.sh-row[title]{cursor:pointer}
+.sh-row[title]:hover{background:var(--panel2)}
+.sh-score{flex:none;padding:1px 7px;border-radius:9px;font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--danger);
+  background:color-mix(in srgb,var(--danger) 12%,transparent);border:1px solid color-mix(in srgb,var(--danger) 45%,transparent)}
+.sh-signs{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.sh-signs span{font-size:10.5px;padding:1px 6px;border-radius:5px;background:var(--panel2);border:1px solid var(--line2);color:var(--muted)}
+.sh-signs i{font-style:normal;font-weight:700;color:var(--text)}
 .st-res.bad{border-color:color-mix(in srgb,var(--danger) 55%,transparent);background:color-mix(in srgb,var(--danger) 8%,transparent)}
 .st-res.bad b{color:var(--danger)}
 .st-res table{width:100%;border-collapse:collapse;margin-top:4px}
@@ -541,22 +556,31 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 #mentPanel{position:fixed;top:calc(var(--head) + 6px);z-index:100003;width:380px;max-height:78vh;display:flex;flex-direction:column;gap:10px;padding:12px;
   background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.55)}
 #mentPanel[hidden]{display:none}
-.mp-set{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
-.mp-set .linkish{margin-left:auto;font-size:12px}
 .mp-note{font-size:11px;color:#e8b84a}
 .mp-note:empty{display:none}
-.mp-head{display:flex;align-items:center;justify-content:space-between}
+.mp-head{display:flex;align-items:center;gap:6px}
+.mp-head b{font-size:14px;margin-right:auto}
 .mp-head .btn{height:26px;font-size:11px}
-#mentList{overflow:auto;display:flex;flex-direction:column;gap:2px;min-height:0}
-.mp-row{padding:7px 8px;border-radius:7px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.mp-head .btn[hidden]{display:none}
+#mentList{overflow:auto;display:flex;flex-direction:column;min-height:0;margin:0 -12px -12px;border-top:1px solid var(--line)}
+#mentList .sv-empty{padding:12px}
+.mp-row{position:relative;padding:9px 12px 10px 14px;cursor:pointer;display:flex;flex-direction:column;gap:3px;border-bottom:1px solid var(--line)}
+.mp-row:last-child{border-bottom:0}
 .mp-row:hover{background:var(--panel2)}
-.mp-top{display:flex;align-items:baseline;gap:5px;font-size:12px;min-width:0}
-.mp-top b{color:var(--accent)}
-.mp-kind,.mp-where{color:var(--muted)}
-.mp-where{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.mp-time{margin-left:auto;flex:none;font-size:10px;color:var(--muted)}
-.mp-q{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mp-body{font-size:12px;overflow-wrap:anywhere}
+.mp-row.unread::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.mp-top{display:flex;align-items:center;gap:6px;font-size:12.5px;min-width:0}
+.mp-top b{color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.mp-kind{flex:none;padding:1px 6px;border-radius:9px;font-size:10px;font-weight:700;color:var(--muted);border:1px solid var(--line2)}
+.mp-kind.reply{color:var(--text)}
+.mp-time{margin-left:auto;flex:none;font-size:11px;color:var(--muted)}
+.mp-where{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);min-width:0}
+.mp-where span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mp-where .dot{width:6px;height:6px;border-radius:50%;flex:none;background:#53fc18}
+.mp-row.plat-twitch .mp-where .dot{background:#a970ff}
+.mp-q{margin-top:2px;padding:1px 0 1px 8px;border-left:2px solid var(--line2);font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mp-q[hidden]{display:none}
+.mp-body{font-size:12.5px;line-height:1.4;overflow-wrap:anywhere}
+.btns button.at.off{color:var(--muted);opacity:.6}
 .win.ping{animation:ping 2.4s ease}
 /* a chat window asking for attention (mention or likely spam): steady, then pulsing, then flashing */
 .win.al-1,.win.al-2,.win.al-3{border-color:var(--al)}
@@ -988,9 +1012,8 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 </div>
 
 <div id="mentPanel" class="popover" hidden>
-  <div class="sp-head"><b>Mentions &amp; replies</b><span class="sp-sub">Alerts when someone writes @you or replies to your message in any open chat.</span></div>
-  <div class="mp-set"><span class="mp-note" id="mentState"></span><button class="linkish" id="mentSettings">Mention settings…</button></div>
-  <div class="mp-head"><b>Recent</b><button class="btn" id="mentClear">Clear</button></div>
+  <div class="mp-head"><b>Mentions &amp; replies</b><button class="btn" id="mentClear">Clear</button><button class="btn" id="mentSettings">Settings</button></div>
+  <span class="mp-note" id="mentState"></span>
   <div id="mentList"></div>
 </div>
 
@@ -1167,7 +1190,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       <section class="st-pane" data-s="spam" hidden>
         <h4>Spam alerts <span class="st-beta" title="New: tell us if it flags something it shouldn't, or misses spam">Beta</span></h4><p class="st-sub">A moderator tool: spots promo-bot messages in chats you moderate and points you to them, so you can deal with them. It never hides, deletes or reports anything.</p>
         <label class="st-lead"><span class="st-t"><b>Watch for spam in chats I moderate</b><small>Only Kick and Twitch chats where you're a moderator (the ones with the mod view <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/></svg> button). Other chats are only read to spot the same message posted in several places.</small></span><input type="checkbox" class="st-sw" id="spamOn"></label>
-        <div class="st-tabs" id="spamTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="how">How it works</button><button data-t="lists">Lists</button><button data-t="try">Try it</button></div>
+        <div class="st-tabs" id="spamTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="how">How it works</button><button data-t="lists">Lists</button><button data-t="try">Try it</button><button data-t="history">History</button></div>
         <div class="st-subpane st-opts" data-t="alerts" data-for="spam">
         <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up.</small></span>
           <select data-al="spam.hl"><option value="off">Off</option><option value="brief">Brief glow</option><option value="until">Until I click the chat</option></select>
@@ -1209,6 +1232,10 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <p class="st-sub" style="margin:8px 0 0">Paste a message to see whether it would be flagged, and why. It's checked on its own, as if nothing else had been posted.</p>
           <div class="st-try"><input class="st-in" id="spamTry" placeholder="Paste a chat message" autocomplete="off" spellcheck="false"><button class="btn" id="spamTryBtn">Check</button></div>
           <div class="st-res" id="spamRes" hidden></div>
+        </div>
+        <div class="st-subpane" data-t="history" hidden>
+          <div class="sh-head"><p class="st-sub">The last messages flagged as likely spam, with their score. Click one to show that chat.</p><button class="btn" id="spamHistClear">Clear</button></div>
+          <div id="spamHist"></div>
         </div>
       </section>
       <section class="st-pane" data-s="themes" id="themePane" hidden>
@@ -1332,7 +1359,9 @@ const keyName = s => IS_MAC ? String(s).replace(/Ctrl\+/g, '⌘+') : String(s);
 function mentionAgent(){
   if (window.__kmvMention) return true;
   const seen = new Set(), marks = new Map(), known = new Set();
-  let me = '', watch = false, armed = false, queue = [], lines = [], armT = 0;
+  let me = '', watch = false, armed = false, queue = [], lines = [], armT = 0, clicked = 0;
+  // Clicks in the chat: the window may already have focus, so the app sees no new focus to mark it seen.
+  document.addEventListener('pointerdown', () => { clicked = Date.now(); }, true);
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const LINE_RE = /^(?:\d{1,2}:\d{2}(?:\s?[AP]M)?\s+)?([A-Za-z0-9_]{2,30})\s?:\s*([\s\S]*)$/i;
   const NAME_RE = /^(?:\d{1,2}:\d{2}(?:\s?[AP]M)?\s+)?[A-Za-z0-9_]{2,30}$/i;
@@ -1434,7 +1463,7 @@ function mentionAgent(){
       marks.set(line, { why, color }); tag(marks.get(line), line);
       if (marks.size > 200) marks.delete(marks.keys().next().value);
     },
-    take(){ scan(); const q = { m: queue, l: lines, k: [...known] }; queue = []; lines = []; known.clear(); return q; }
+    take(){ scan(); const q = { m: queue, l: lines, k: [...known], c: clicked }; queue = []; lines = []; known.clear(); clicked = 0; return q; }
   };
   return true;
 }
@@ -1741,6 +1770,7 @@ function createWin(spec, rect){
       <div class="btns">
         ${w.kind === 'stream' ? '<button class="txt" data-a="chat" title="Add this channel\'s chat next to it">+ Chat</button>' : ''}
         ${(w.kind === 'stream' || w.kind === 'capture') && ROLE === 'main' ? `<button class="feat" data-a="feat" title="Highlight: make this stream big">${icon.feat}</button>` : ''}
+        ${w.kind === 'chat' && DESKTOP && ROLE === 'main' && /^(kick|twitch)$/.test(platOf(w.channel)) ? '<button class="at" data-a="at" hidden></button>' : ''}
         ${w.channel ? '<button class="star" data-a="star"></button>' : ''}
         ${w.channel && DESKTOP && ROLE === 'main' && !/^yt:v:/.test(w.channel) ? `<button data-a="profile" title="Profile: when they stream, past streams, your notes">${icon.user}</button>` : ''}
         <button data-a="reload" title="Reload">${icon.reload}</button>
@@ -1767,6 +1797,7 @@ function createWin(spec, rect){
   el.addEventListener('pointerdown', () => focusWin(w), true);
   mountView(w);
   checkMod(w);
+  syncAtBtn(w);
 
   /* volume */
   if (hasVol){
@@ -1814,6 +1845,7 @@ function createWin(spec, rect){
     }
     else if (a === 'star') toggleSaved(w.channel);
     else if (a === 'profile') openProfile(w.channel);
+    else if (a === 'at') toggleChatMentions(w);
     else if (a === 'feat'){
       if (!colsMode){ setFeatured(colKey(w)); scrollX = 0; columnsLayout(); }   // from Chat focus: open the highlight view
       else toggleFeatured(colKey(w));
@@ -1983,7 +2015,7 @@ function mountView(w){
     const hasVol = w.kind === 'stream';
     frame.addEventListener('focus', () => {                                     // you clicked into it
       if (Date.now() - (frame.skipAt || 0) < 1000) return;                       // Skip YouTube ads did
-      focusWin(w); clearAlert(w);
+      focusWin(w); clearAlert(w); readMentions(w.channel);
     });
     frame.addEventListener('dom-ready', () => {
       w.ready = true;
@@ -2192,46 +2224,71 @@ function addSavedFromInput(){
 }
 
 /* ---------- chat mentions / replies ---------- */
-let myName = '', myTwitch = '', mentOn = true, mentions = [], mentUnread = 0;
+const HISTORY_MAX = 50;   // mentions and spam detections kept for the lists
+let myName = '', myTwitch = '', mentOn = true, mentions = [], mentMuted = new Set();
 try {
   myName = localStorage.getItem('kickMultiview.myName') || '';
   myTwitch = localStorage.getItem('kickMultiview.myTwitch') || '';
   mentOn = localStorage.getItem('kickMultiview.mentOn') !== '0';
   mentions = JSON.parse(localStorage.getItem('kickMultiview.mentions') || '[]');
-  mentUnread = +localStorage.getItem('kickMultiview.mentUnread') || 0;
+  mentMuted = new Set(JSON.parse(localStorage.getItem('kickMultiview.mentMuted') || '[]'));
 } catch {}
+const mentUnread = () => mentions.filter(m => m.unread).length;
 function saveMentions(){
-  try {
-    localStorage.setItem('kickMultiview.mentions', JSON.stringify(mentions.slice(0, 50)));
-    localStorage.setItem('kickMultiview.mentUnread', String(mentUnread));
-  } catch {}
+  try { localStorage.setItem('kickMultiview.mentions', JSON.stringify(mentions.slice(0, HISTORY_MAX))); } catch {}
+}
+// Seen: every mention (opening the list), or one chat's (clicking into that chat).
+function readMentions(ch){
+  let n = 0;
+  mentions.forEach(m => { if (m.unread && (!ch || m.channel === ch)){ m.unread = false; n++; } });
+  if (n){ saveMentions(); renderMentions(); }
+}
+// Mentions for one chat can be turned off with the @ button on its bar.
+const mentNameFor = ch => { const p = platOf(ch); return p === 'kick' ? myName : p === 'twitch' ? myTwitch : ''; };   // YouTube chat isn't covered
+function toggleChatMentions(w){
+  if (mentMuted.has(w.channel)) mentMuted.delete(w.channel); else mentMuted.add(w.channel);
+  try { localStorage.setItem('kickMultiview.mentMuted', JSON.stringify([...mentMuted])); } catch {}
+  wins.forEach(x => { if (x.kind === 'chat' && x.channel === w.channel){ syncAtBtn(x); if (x.ready) injectMention(x); } });
+  flash(mentMuted.has(w.channel) ? `Mentions off for ${chLabel(w.channel)}'s chat` : `Mentions on for ${chLabel(w.channel)}'s chat`);
+}
+function syncAtBtn(w){
+  const b = w.el && w.el.querySelector('[data-a=at]'); if (!b) return;
+  const muted = mentMuted.has(w.channel);
+  b.hidden = !(mentOn && mentNameFor(w.channel));
+  b.innerHTML = muted ? icon.atOff : icon.at;
+  b.classList.toggle('off', muted);
+  b.title = muted ? 'Mentions are off for this chat. Click to turn them on' : 'Mentions are on for this chat. Click to turn them off';
 }
 function updateMentBtn(){
+  wins.forEach(syncAtBtn);
   const b = $('#mentBtn'); if (!b) return;
-  const anyName = myName || myTwitch;
+  const anyName = myName || myTwitch, n = mentUnread();
   b.querySelector('.mb-ico').innerHTML = mentOn && anyName ? icon.at : icon.atOff;
   const c = b.querySelector('.mb-count');
-  c.hidden = !mentUnread; c.textContent = mentUnread > 99 ? '99+' : String(mentUnread);
+  c.hidden = !n; c.textContent = n > 99 ? '99+' : String(n);
   b.classList.toggle('off', !(mentOn && anyName));
   b.title = !anyName ? 'Chat mentions: set your username to turn on' : mentOn ? `Chat mentions and replies to @${[myName, myTwitch].filter(Boolean).join(' / @')}` : 'Chat mention alerts are off';
 }
-function timeAgo(t){ const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; }
+function timeAgo(t){ const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 48 * 60 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; }
 function renderMentions(){
   updateMentBtn();
   const list = $('#mentList'); if (!list) return;
   $('#mentNote').textContent = myName || myTwitch ? '' : 'Needed for mention alerts. Click Detect, or type them in.';
   const st = $('#mentState');
   if (st) st.textContent = !(myName || myTwitch) ? 'Set your usernames to get alerts.' : mentOn ? '' : 'Mention alerts are off.';
+  $('#mentClear').hidden = !mentions.length;
   list.innerHTML = '';
   if (!mentions.length){ list.innerHTML = '<div class="sv-empty">No mentions yet.</div>'; return; }
   mentions.forEach(m => {
-    const row = document.createElement('div'); row.className = 'mp-row';
-    row.innerHTML = `<div class="mp-top"><b></b><span class="mp-kind"></span><span class="mp-where"></span><span class="mp-time"></span></div><div class="mp-q" ${m.quoted ? '' : 'hidden'}></div><div class="mp-body"></div>`;
+    const row = document.createElement('div'); row.className = 'mp-row' + (m.unread ? ' unread' : '');
+    row.innerHTML = `<div class="mp-top"><b></b><span class="mp-kind"></span><span class="mp-time"></span></div><div class="mp-where"><span class="dot"></span><span></span></div><div class="mp-q" ${m.quoted ? '' : 'hidden'}></div><div class="mp-body"></div>`;
+    row.classList.add('plat-' + platOf(m.channel));
     row.querySelector('b').textContent = m.sender;
-    row.querySelector('.mp-kind').textContent = m.kind === 'reply' ? 'replied' : 'mentioned you';
-    row.querySelector('.mp-where').textContent = 'in ' + chLabelP(m.channel);
+    row.querySelector('.mp-kind').textContent = m.kind === 'reply' ? 'Reply' : 'Mention';
+    row.querySelector('.mp-kind').classList.toggle('reply', m.kind === 'reply');
+    row.querySelector('.mp-where span:last-child').textContent = chLabelP(m.channel);
     row.querySelector('.mp-time').textContent = timeAgo(m.t);
-    row.querySelector('.mp-q').textContent = m.quoted ? '↪ ' + m.quoted : '';
+    row.querySelector('.mp-q').textContent = m.quoted || '';
     row.querySelector('.mp-body').textContent = m.body;
     row.title = 'Show this chat';
     row.onclick = () => { $('#mentPanel').hidden = true; revealChat(m.channel); };
@@ -2257,7 +2314,7 @@ function setMyTwitch(n){
 }
 function injectMention(w){
   const p = platOf(w.channel);
-  const who = !mentOn ? '' : p === 'kick' ? myName : p === 'twitch' ? myTwitch : '';   // YouTube chat isn't covered
+  const who = !mentOn || mentMuted.has(w.channel) ? '' : mentNameFor(w.channel);
   const watch = !!alerts.spam.on && (p === 'kick' || p === 'twitch');
   w.view.executeJavaScript(`${MENTION_JS};window.__kmvMention.setMe(${JSON.stringify(who)});window.__kmvMention.setWatch(${watch})`).catch(() => {});
 }
@@ -2309,13 +2366,13 @@ function playSound(kind){
 const wantNotify = kind => alerts[kind].notify === 'always' || (alerts[kind].notify === 'unfocused' && !document.hasFocus());
 
 // The window's border: a short glow, or lit until you click that chat, getting stronger while unseen.
-function raiseAlert(w, kind){
+function raiseAlert(w, kind, seen){
   const a = alerts[kind];
   if (!w || !a) return;
   playSound(kind);
   if (a.hl === 'off') return;
   w.el.style.setProperty('--al', a.color);
-  const looking = document.hasFocus() && w.view && document.activeElement === w.view;   // you're in that chat right now
+  const looking = seen || (document.hasFocus() && w.view && document.activeElement === w.view);   // you're in that chat right now
   if (a.hl === 'brief' || looking){
     w.el.classList.remove('al-brief'); void w.el.offsetWidth; w.el.classList.add('al-brief');
     setTimeout(() => w.el.classList.remove('al-brief'), 2600);
@@ -2352,10 +2409,14 @@ function alertTick(){
 // Seen: clicking anywhere on that window (clicks inside the chat itself arrive as the chat getting focus).
 document.addEventListener('pointerdown', e => {
   const el = e.target.closest && e.target.closest('.win');
-  if (el) clearAlert(wins.find(w => w.el === el));
+  const w = el && wins.find(x => x.el === el);
+  if (w){ clearAlert(w); if (w.kind === 'chat') readMentions(w.channel); }
 }, true);
 
 /* ---------- spam alerts: chats you moderate ---------- */
+let spamHist = [];   // flagged messages, newest first (Settings > Spam alerts > History)
+try { spamHist = JSON.parse(localStorage.getItem('kickMultiview.spamHistory') || '[]'); } catch {}
+function saveSpamHist(){ try { localStorage.setItem('kickMultiview.spamHistory', JSON.stringify(spamHist.slice(0, HISTORY_MAX))); } catch {} }
 const spamRecent = [], spamFirst = {};   // messages from the last few minutes (every chat), when each sender first spoke
 // Whether you moderate that chat's channel (the same answer as its mod view button).
 async function modChat(w){
@@ -2386,6 +2447,8 @@ function flagSpam(w, l, r){
     const why = `Likely spam (${r.score} points, ${r.need} needed):\n` + r.signs.map(s => `• ${s.text} (+${s.points})`).join('\n');
     w.view.executeJavaScript(`window.__kmvMention && window.__kmvMention.mark(${JSON.stringify(l.line)}, ${JSON.stringify(why)}, ${JSON.stringify(a.color)})`).catch(() => {});
   }
+  spamHist.unshift({ channel: w.channel, sender: l.sender, body: l.body, score: r.score, need: r.need, signs: r.signs, t: Date.now() });
+  spamHist = spamHist.slice(0, HISTORY_MAX); saveSpamHist(); renderSpamHist();
   raiseAlert(w, 'spam');
   flash(`Likely spam in ${chLabel(w.channel)}'s chat`);
   if (wantNotify('spam')) window.kmv.notifyMention({ kind: 'spam', channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body });
@@ -2422,13 +2485,18 @@ async function pollChats(ment, spam){
     if (!q) continue;
     (q.k || []).forEach(n => { const k = w.channel + '\n' + n; if (!(k in spamFirst)) spamFirst[k] = 0; });
     if (spam && q.l && q.l.length) await spamCheck(w, q.l);
+    if (q.c){                                                 // you clicked in the chat: what came before is seen
+      if (w.alert && w.alert.since <= q.c) clearAlert(w);
+      readMentions(w.channel);
+    }
     (q.m || []).forEach(m => {
-      const item = { channel: w.channel, label: chLabelP(w.channel), sender: m.sender, body: m.body, kind: m.kind, quoted: m.quoted || '', t: m.t || Date.now() };
-      mentions.unshift(item); mentions = mentions.slice(0, 50);
-      if ($('#mentPanel').hidden) mentUnread++;
+      const looking = (document.hasFocus() && document.activeElement === w.view) || (q.c && (m.t || 0) <= q.c);   // you're in that chat right now
+      const item = { channel: w.channel, label: chLabelP(w.channel), sender: m.sender, body: m.body, kind: m.kind, quoted: m.quoted || '', t: m.t || Date.now(),
+                     unread: $('#mentPanel').hidden && !looking };
+      mentions.unshift(item); mentions = mentions.slice(0, HISTORY_MAX);
       if (wantNotify('mention')) window.kmv.notifyMention(item);
       flash(`${item.sender} ${item.kind === 'reply' ? 'replied to you' : 'mentioned you'} in ${chLabel(item.channel)}`);
-      raiseAlert(w, 'mention');
+      raiseAlert(w, 'mention', looking);
     });
     if (q.m && q.m.length){ saveMentions(); renderMentions(); }
   }
@@ -4140,7 +4208,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.notifyMention){
     mp.hidden = !mp.hidden;
     if (!mp.hidden){
       mp.style.left = Math.max(12, Math.min(mb.getBoundingClientRect().left, innerWidth - 392)) + 'px';
-      mentUnread = 0; saveMentions(); renderMentions();
+      readMentions(); renderMentions();
     }
   };
   document.addEventListener('pointerdown', e => { if (!mp.hidden && !mp.contains(e.target) && !mb.contains(e.target)) mp.hidden = true; });
@@ -4162,7 +4230,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.notifyMention){
     else if (n || (st && st.twitch)) $('#mentNote').textContent = '';
   };
   $('#mentDetect').onclick = () => detect(false);
-  $('#mentClear').onclick = () => { mentions = []; mentUnread = 0; saveMentions(); renderMentions(); };
+  $('#mentClear').onclick = () => { mentions = []; saveMentions(); renderMentions(); };
   window.kmv.onFocusChat(ch => revealChat(ch));
   setInterval(pollMentions, 1500);
   if (!myName || !myTwitch) setTimeout(() => detect(true), 4000);
@@ -4276,7 +4344,7 @@ if (DESKTOP){
     if (ROLE === 'main' && typeof setMyName === 'function'){
       if (p === 'kick') setMyName('');
       if (p === 'twitch') setMyTwitch('');
-      if (p !== 'youtube'){ mentions = mentions.filter(m => platOf(m.channel) !== p); mentUnread = 0; saveMentions(); renderMentions(); }
+      if (p !== 'youtube'){ mentions = mentions.filter(m => platOf(m.channel) !== p); saveMentions(); renderMentions(); }
     }
     flash(`Logged out of ${PLAT_NAME[p]}`);
   };
@@ -5428,6 +5496,7 @@ $('#spamTabs').addEventListener('click', e => {
   const b = e.target.closest('button[data-t]'); if (!b) return;
   $('#spamTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   settingsDlg.querySelectorAll('[data-s=spam] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
+  if (b.dataset.t === 'history') renderSpamHist();   // fresh "x min ago"
 });
 
 /* Spam alerts: allowed sites and promo words */
@@ -5472,8 +5541,30 @@ function trySpam(){
   out.innerHTML = head + (r.signs.length ? '<table>' + r.signs.map(s => `<tr><td>${escH(s.text)}</td><td>+${s.points}</td></tr>`).join('') + `<tr class="tot"><td>Total</td><td>${r.score}</td></tr></table>` : '<div>No signs of spam.</div>');
 }
 $('#spamTryBtn').onclick = trySpam;
+
+/* Spam alerts: history of flagged messages */
+function renderSpamHist(){
+  const list = $('#spamHist');
+  $('#spamHistClear').hidden = !spamHist.length;
+  list.innerHTML = '';
+  if (!spamHist.length){ list.innerHTML = '<div class="sv-empty">Nothing flagged yet.</div>'; return; }
+  spamHist.forEach(h => {
+    const row = document.createElement('div'); row.className = 'sh-row';
+    row.innerHTML = `<div class="mp-top"><b></b><span class="sh-score"></span><span class="mp-time"></span></div><div class="mp-where"></div><div class="mp-body"></div><div class="sh-signs"></div>`;
+    row.querySelector('b').textContent = h.sender;
+    row.querySelector('.sh-score').textContent = `${h.score} / ${h.need} points`;
+    row.querySelector('.sh-score').title = `${h.score} points; ${h.need} needed to be flagged`;
+    row.querySelector('.mp-where').textContent = chLabelP(h.channel);
+    row.querySelector('.mp-time').textContent = timeAgo(h.t);
+    row.querySelector('.mp-body').textContent = h.body;
+    row.querySelector('.sh-signs').innerHTML = (h.signs || []).map(x => `<span>${escH(x.text)} <i>+${x.points}</i></span>`).join('');
+    if (ROLE === 'main'){ row.title = 'Show this chat'; row.onclick = () => { closeSettings(); revealChat(h.channel); }; }
+    list.appendChild(row);
+  });
+}
+$('#spamHistClear').onclick = () => { spamHist = []; saveSpamHist(); renderSpamHist(); };
 $('#spamTry').addEventListener('keydown', e => { if (e.key === 'Enter') trySpam(); });
-syncAlertControls(); renderSpamLists();
+syncAlertControls(); renderSpamLists(); renderSpamHist();
 
 restore();
 if (ROLE === 'main'){
