@@ -42,7 +42,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 **Chrome extensions**
 - Install from the **Chrome Web Store** (browse it in the app and click **Add to Stream Multiview**), from a store link, or from an unpacked folder
 - Switch each one on per site and per window type (Kick / Twitch / YouTube × streams / chats) in Settings › Extensions
-- Each stream and chat window has an extensions button: the extensions on in it, their popups and options, and switching one on or off for just that stream
+- Each stream and chat window has Extensions in its ⋯ menu: the extensions on in it, their popups and options, and switching one on or off for just that stream
 - Extensions that only change pages (like BetterTTV) work well. Some Chrome features aren't available in the app, so blockers that rely on them (like uBlock Origin Lite) won't block anything; the install dialog says when an extension needs one
 - Extensions can read and change the pages they're on, including while you're signed in, so only install ones you trust
 

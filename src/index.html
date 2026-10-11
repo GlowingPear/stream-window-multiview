@@ -306,6 +306,7 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #barMenu .bm-ico svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 #barMenu .on .bm-ico{color:var(--accent)}
 #barMenu .bm-t{font-size:12.5px;color:var(--text);line-height:1.3}
+#barMenu .bm-n{margin-left:auto;font:700 10px/1 system-ui;background:var(--line2);color:var(--text);border-radius:4px;padding:2px 4px}
 .shield{position:absolute;inset:0;display:none}
 body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:block}   /* streams and chats under the pointer mustn't swallow the drag */
 
@@ -1325,7 +1326,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <p class="ex-msg" hidden></p>
         <div class="ex-list"></div>
         <p class="st-sub ex-empty" hidden>No extensions yet. Find one in the Chrome Web Store and click <b>Add to Chrome</b>.</p>
-        <p class="st-explain ex-foot">Each chat site and each stream keeps its own extension settings. Open an extension's options from the extensions button on a window. Some extensions use Chrome features this app doesn't have; they're marked here.</p>
+        <p class="st-explain ex-foot">Each chat site and each stream keeps its own extension settings. Open an extension's options from Extensions in a window's ⋯ menu. Some extensions use Chrome features this app doesn't have; they're marked here.</p>
       </section>
       <section class="st-pane" data-s="themes" id="themePane" hidden>
         <h4>Themes</h4><p class="st-sub">Changes show right away. Saved themes stay on this computer. <button class="linkish th-reset">Back to Pear</button></p>
@@ -1851,9 +1852,11 @@ function showHint(e, w){
 /* ---------- title bars fit any window size ----------
    When a window's title bar is too narrow for everything, it first drops the tag and the volume %, then narrows
    the volume slider, then moves the least-used buttons into its ⋯ menu (in BAR_ORDER), and only then lets the
-   title shrink. Close, mute and ⋯ always stay. Re-fits when the window resizes or a button shows or hides. */
+   title shrink. Close, mute and ⋯ always stay. Re-fits when the window resizes or a button shows or hides.
+   Some buttons are always in the ⋯ menu (BAR_MENU). */
 const BAR_LEVELS = ['b1', 'b2'];
-const BAR_ORDER = ['chat', 'mod', 'reload', 'pop', 'profile', 'ext', 'at', 'feat', 'star', 'max'];
+const BAR_MENU = ['ext'];
+const BAR_ORDER = ['chat', 'mod', 'reload', 'pop', 'profile', 'at', 'feat', 'star', 'max'];
 function fitBar(bar){
   if (!bar.isConnected || !bar.clientWidth) return;     // not on screen: fitted when it shows (it resizes then)
   const name = bar.querySelector('.col-pick') || bar.querySelector('.title'), more = bar.querySelector('[data-a=more]');
@@ -1861,7 +1864,10 @@ function fitBar(bar){
   // start from everything showing, with the name keeping a few letters
   bar.classList.remove(...BAR_LEVELS, 'b3', 'b4');
   bar.querySelectorAll('.btns .ovf').forEach(b => b.classList.remove('ovf'));
-  if (more) more.hidden = true;
+  if (more){
+    for (const a of BAR_MENU){ const b = bar.querySelector(`.btns [data-a=${a}]`); if (b) b.classList.add('ovf'); }
+    more.hidden = !bar.querySelector('.btns .ovf:not([hidden])');
+  }
   name.style.minWidth = ''; name.style.flex = 'none';
   name.style.minWidth = Math.min(name.offsetWidth, 64) + 'px'; name.style.flex = '';
   for (const c of BAR_LEVELS){ if (fits()) break; bar.classList.add(c); }
@@ -1901,6 +1907,8 @@ function openBarMenu(more){
     item.innerHTML = '<span class="bm-ico"></span><span class="bm-t"></span>';
     item.querySelector('.bm-ico').innerHTML = b.dataset.a === 'chat' ? '+' : b.querySelector('svg')?.outerHTML || b.textContent;
     item.querySelector('.bm-t').textContent = b.dataset.a === 'chat' ? 'Add chat' : tipName(b) || b.title;
+    const n = b.querySelector('.ext-n')?.textContent;
+    if (n) item.insertAdjacentHTML('beforeend', `<span class="bm-n">${n}</span>`);
     item.title = b.title;
     item.onclick = () => { barMenu.hidden = true; if (b.isConnected) b.click(); };
     barMenu.appendChild(item);
@@ -1999,7 +2007,7 @@ function createWin(spec, rect){
       else window.open(modUrl(w.channel), 'kmv_mod_' + w.channel, 'width=1400,height=900');
     }
     else if (a === 'max') toggleMax(w);
-    else if (a === 'ext') openExtMenu(w, b.classList.contains('ovf') ? el.querySelector('[data-a=more]') : b);   // from the ⋯ menu: open under ⋯
+    else if (a === 'ext') openExtMenu(w, b.classList.contains('ovf') ? el.querySelector('[data-a=more]') : b);   // from the ⋯ menu (always): open under ⋯
     else if (a === 'more') openBarMenu(b);
     else if (a === 'chat'){
       if (ROLE === 'streams'){ window.kmv.addChat(w.channel); flash(`${chLabel(w.channel)}'s chat added to the main window`); }
