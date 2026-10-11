@@ -1,0 +1,147 @@
+// Streams in the real desktop app: each stream's volume (title bar and switch control), pause and play,
+// auto-pause for streams you can't see, "pause all except focus", small previews, chat text size, and
+// YouTube channels waiting until they're live. The players and chats are stand-in pages (see app.js).
+const test = require('node:test');
+const { launchApp, inView, viewLoaded, winSel, assert } = require('./app');
+
+const T = { timeout: 60000 };
+let a;
+test.before(async () => { a = await launchApp({ storage: { 'kickMultiview.alerts': { mention: { sound: 'none' }, spam: { sound: 'none' } } } }); });
+test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
+
+const add = async (...links) => { for (const l of links) { await a.win.fill('#url', l); await a.win.click('#add'); } };
+const video = (title, prop) => inView(a.win, title, 'stream', p => { const v = document.getElementById('v'); return v ? v[p] : null; }, prop);
+const ready = title => viewLoaded(a.win, title, 'stream', /player/);
+const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) { if (await fn()) return; if (Date.now() > end) throw new Error('timed out waiting'); await new Promise(r => setTimeout(r, 150)); } };
+const clear = async () => { if (await a.win.locator('#stage .win').count()){ await a.win.click('#clear'); await a.win.click('#askDlg .ask-yes'); } };
+test.beforeEach(() => a && clear());                       // each test starts with nothing open
+
+test('volume: the title bar\'s mute button, slider and mouse wheel set that stream\'s own volume', T, async () => {
+  await a.win.selectOption('#mode', 'stream');
+  await add('alpha');
+  await ready('alpha');
+  const startedAt = Date.now();
+  await a.win.waitForTimeout(1500);
+  const bar = `${winSel('alpha')} .vol`;
+  assert.equal(await a.win.textContent(`${bar} .pct`), 'off', 'starts muted (Start muted is on)');
+  assert.equal(await video('alpha', 'muted'), true);
+  await a.win.click(`${bar} button`);
+  assert.equal(await a.win.textContent(`${bar} .pct`), '80%');
+  await until(async () => (await video('alpha', 'muted')) === false);
+  await a.win.$eval(`${bar} input`, s => { s.value = 30; s.dispatchEvent(new Event('input', { bubbles: true })); s.dispatchEvent(new Event('change', { bubbles: true })); });
+  assert.equal(await a.win.textContent(`${bar} .pct`), '30%');
+  assert.ok(Math.abs(await video('alpha', 'volume') - 0.3) < 0.001, 'the player\'s own volume');
+  const vb = await a.win.locator(bar).boundingBox();
+  await a.win.mouse.move(vb.x + vb.width / 2, vb.y + vb.height / 2);
+  await a.win.mouse.wheel(0, -100);
+  assert.equal(await a.win.textContent(`${bar} .pct`), '35%', 'scrolling up turns it up');
+  await a.win.waitForTimeout(800);
+  const saved = JSON.parse(await a.win.evaluate(() => localStorage.getItem('kickMultiview.v1')));
+  assert.deepEqual([saved[0].vol, saved[0].muted], [0.35, false], 'remembered');
+  // a change made in the player itself (its own controls) shows in the title bar. For its first 8 s the
+  // app keeps putting its own volume back (players restore a shared saved volume while they load)
+  await a.win.waitForTimeout(Math.max(0, startedAt + 8500 - Date.now()));
+  await inView(a.win, 'alpha', 'stream', () => { window.dispatchEvent(new Event('pointerdown')); document.getElementById('v').volume = 0.6; });
+  await until(async () => (await a.win.textContent(`${bar} .pct`)) === '60%');
+  await clear();
+});
+
+test('the switch control: pause and play, mute, hear only one, its volume, and a small live preview', T, async () => {
+  await a.win.selectOption('#mode', 'both');
+  await add('alpha', 'bravo', 'charlie');
+  await ready('charlie');
+  await a.win.keyboard.press('f');
+  const item = ch => `#featSwitch .fs-item[data-ch=${ch}]`;
+  await a.win.click(`${item('bravo')} .fs-play`);
+  assert.ok(await a.win.$eval(item('bravo'), e => e.classList.contains('paused')), 'paused');
+  await until(() => inView(a.win, 'bravo', 'stream', () => !!(window.__kmv && window.__kmv.get().p)));
+  await a.win.click(`${item('bravo')} .fs-play`);
+  assert.equal(await a.win.$eval(item('bravo'), e => e.classList.contains('paused')), false, 'and playing again');
+
+  await a.win.click(`${item('alpha')} .fs-mute`);
+  assert.match(await a.win.textContent(`${item('alpha')} .fs-pct`), /\d+%/, 'unmuted');
+  await a.win.click(`${item('charlie')} .fs-mute`, { modifiers: ['Shift'] });
+  const muted = await a.win.$$eval('#featSwitch .fs-item', l => l.map(e => [e.dataset.ch, e.querySelector('.fs-mute').classList.contains('muted')]));
+  assert.deepEqual(muted, [['alpha', true], ['bravo', true], ['charlie', false]], 'Shift-click: hear only that one');
+  await a.win.$eval(`${item('charlie')} input`, s => { s.value = 25; s.dispatchEvent(new Event('input', { bubbles: true })); s.dispatchEvent(new Event('change', { bubbles: true })); });
+  assert.equal(await a.win.textContent(`${winSel('charlie')} .vol .pct`), '25%', 'the title bar follows the switch control');
+  const vw = await a.win.locator(`${item('charlie')} .fs-volw`).boundingBox();
+  await a.win.mouse.move(vw.x + 20, vw.y + vw.height / 2);
+  await a.win.waitForTimeout(500);
+  await a.win.mouse.wheel(0, 100);
+  assert.equal(await a.win.textContent(`${item('charlie')} .fs-pct`), '20%', 'scrolling over its volume');
+
+  await a.win.click(`${item('bravo')} .fs-pv`);
+  await a.win.waitForSelector(`${item('bravo')} .fs-thumb`);
+  await a.win.waitForFunction(() => document.querySelectorAll('.fs-mini webview, .mini webview, webview.mini').length > 0 || [...document.querySelectorAll('webview')].length > 6);
+  await a.win.click(`${item('bravo')} .fs-pv`);
+  assert.equal(await a.win.locator(`${item('bravo')} .fs-thumb`).count(), 0, 'preview hidden again');
+});
+
+test('"Pause all except focus", and auto-pause for streams scrolled out of sight', T, async () => {
+  await add('alpha', 'bravo', 'charlie');
+  await ready('charlie');
+  await a.win.keyboard.press('f');
+  await a.win.click('#featSwitch .fs-only');
+  const paused = () => a.win.$$eval('#featSwitch .fs-item', l => l.filter(e => e.classList.contains('paused')).map(e => e.dataset.ch));
+  const big = await a.win.$eval('#featSwitch .fs-item.on', e => e.dataset.ch);
+  await a.win.waitForFunction(() => document.querySelectorAll('#featSwitch .fs-item.paused').length === 2, null, { timeout: 5000 });
+  assert.ok(!(await paused()).includes(big), 'everything but the big one pauses');
+  assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.focusOnly')), '1');
+  await a.win.click('#featSwitch .fs-only');
+  await a.win.waitForFunction(() => !document.querySelector('#featSwitch .fs-item.paused'), null, { timeout: 5000 });
+  await clear();
+
+  // auto-pause: in Columns, the streams you scroll past pause after 2 s
+  await a.win.evaluate(() => window.openSettings('general'));
+  await a.win.check('#autoPause');
+  await a.win.keyboard.press('Escape');
+  await add('alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel');
+  await a.win.keyboard.press('c');
+  await a.win.keyboard.press('s');                         // switch control floating, to see the states
+  await a.win.waitForFunction(() => document.querySelectorAll('#featSwitch .fs-item.autopaused').length >= 2, null, { timeout: 8000 });
+  const hidden = await a.win.$$eval('#featSwitch .fs-item.autopaused', l => l.map(e => e.dataset.ch));
+  assert.ok(!hidden.includes('alpha'), `the ones out of sight (${hidden.join(', ')})`);
+  await a.win.click(`#featSwitch .fs-item[data-ch=${hidden[0]}] .fs-play`);
+  assert.equal(await a.win.$eval(`#featSwitch .fs-item[data-ch=${hidden[0]}]`, e => e.classList.contains('paused')), false, 'play one anyway');
+  await a.win.evaluate(() => window.openSettings('general'));
+  await a.win.uncheck('#autoPause');
+  await a.win.keyboard.press('Escape');
+  await a.win.keyboard.press('s');
+  await clear();
+});
+
+test('chat text size: − and + change every chat and are remembered', T, async () => {
+  await add('alpha');
+  await viewLoaded(a.win, 'alpha', 'chat', /chat/);
+  await a.win.waitForTimeout(500);
+  assert.equal(await a.win.textContent('#zoomPct'), '100%');
+  await a.win.click('#chatZoom [data-z="-1"]');
+  await a.win.click('#chatZoom [data-z="-1"]');
+  assert.equal(await a.win.textContent('#zoomPct'), '80%');
+  const zoom = () => a.win.$eval(`${winSel('alpha', 'chat')} webview`, v => v.getZoomFactor());
+  assert.ok(Math.abs(await zoom() - 0.8) < 0.01, 'the chat is smaller');
+  await a.win.click('#chatZoom [data-z="1"]');
+  assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.chatZoom')), '4');
+  await a.win.click('#chatZoom [data-z="1"]');
+  await clear();
+});
+
+test('a YouTube channel that isn\'t live waits, says so, and opens when it goes live', T, async () => {
+  await a.app.evaluate(({ ipcMain }) => {
+    globalThis.__yt = { live: false, n: 0 };
+    ipcMain.removeHandler('yt:resolve');
+    ipcMain.handle('yt:resolve', () => { globalThis.__yt.n++; return globalThis.__yt.live ? { live: true, videoId: 'dQw4w9WgXcQ', name: 'Some Channel' } : { live: false, name: 'Some Channel' }; });
+  });
+  await a.win.selectOption('#mode', 'stream');
+  await add('https://www.youtube.com/@somechannel');
+  const wait = '#stage .win.stream .waitmsg';
+  await a.win.waitForSelector(`${wait}:has-text("isn’t live right now")`);
+  assert.ok(await a.win.isVisible(`${wait} button`), 'with a Check now button');
+  await a.app.evaluate(() => { globalThis.__yt.live = true; });
+  await a.win.click(`${wait} button`);
+  await a.win.waitForSelector('#stage .win.stream webview');
+  assert.match(await a.win.$eval('#stage .win.stream webview', v => v.getAttribute('src')), /dQw4w9WgXcQ/, 'its live video plays');
+  assert.ok(await a.win.isHidden(wait));
+  await clear();
+});

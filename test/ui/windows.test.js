@@ -129,3 +129,22 @@ test('title bar buttons: + Chat, save, reload, open in a window, swap, close', a
   await win(page, 'bravo').locator('[data-a=close]').click();
   assert.equal(await win(page, 'bravo').count(), 0, 'closed');
 });
+
+test('Chat focus: drag a stream onto another to swap them, and their chats swap too', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'bravo', 'charlie');
+  await page.keyboard.press('Shift+C'); await page.waitForTimeout(400);
+  const order = kind => page.$$eval(`#stage .win.${kind}`, l => l.map(e => [e.querySelector('.title').textContent, e.offsetTop, e.offsetLeft]).sort((a, b) => a[1] - b[1] || a[2] - b[2]).map(x => x[0]));
+  assert.deepEqual(await order('stream'), ['alpha', 'bravo', 'charlie']);
+  const a = await box(win(page, 'alpha')), c = await box(win(page, 'charlie'));
+  await drag(page, { x: a.x + a.w / 2, y: a.y + 12 }, { x: c.x + c.w / 2, y: c.y + c.h / 2 }, { steps: 10 });
+  await page.waitForTimeout(400);
+  assert.deepEqual(await order('stream'), ['charlie', 'bravo', 'alpha'], 'swapped');
+  const chats = await page.$$eval('#stage .win.chat', l => l.map(e => [e.querySelector('.title').textContent, e.offsetLeft]).sort((x, y) => x[1] - y[1]).map(x => x[0]));
+  assert.deepEqual(chats, ['charlie', 'bravo', 'alpha'], 'the chats follow');
+  // dropped on nothing: it goes back
+  const b = await box(win(page, 'bravo'));
+  await drag(page, { x: b.x + b.w / 2, y: b.y + 12 }, { x: b.x + b.w / 2 + 600, y: b.y + 12 }, { steps: 10 });
+  await page.waitForTimeout(400);
+  assert.deepEqual(await box(win(page, 'bravo')), b, 'dropped elsewhere, it snaps back');
+});
