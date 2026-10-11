@@ -343,6 +343,13 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 .menu button span{font-size:11px;color:var(--muted);line-height:1.35}
 .menu button.on b{color:var(--accent)}
 #layoutMenu{width:320px;max-height:80vh;overflow:auto}
+/* A menu's settings: the gear at the top right opens its tab in Settings */
+.menu-head{display:flex;align-items:center;gap:6px}
+.menu-head > :first-child{flex:1;min-width:0}
+.menu .menu-set,.menu-set{flex:none;width:26px;height:26px;padding:0;display:grid;place-items:center;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer}
+.menu .menu-set:hover,.menu-set:hover{color:var(--text);background:var(--line)}
+.menu-set svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.lm-head{padding:2px 2px 4px 10px;font-size:13px;font-weight:700}
 .lm-sw{display:flex;gap:4px;padding:2px 6px 6px}
 .lm-sw button{flex:1;height:28px;border:1px solid var(--line2);border-radius:6px;background:var(--panel2);color:var(--text);cursor:pointer;font-size:12px;font-weight:600;padding:0 4px}
 .lm-sw button:hover{border-color:var(--muted)}
@@ -609,11 +616,9 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 
 .pi{flex:none;display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;font:800 11px/1 system-ui,sans-serif;letter-spacing:0}
 .pi-kick{background:#53fc18;color:#0b0e0f}.pi-twitch{background:#9146ff;color:#fff}.pi-youtube{background:#ff2a2a;color:#fff}
-.am-head{padding:6px 10px 8px;font-size:13px;font-weight:700;border-bottom:1px solid var(--line);margin-bottom:4px}
+.am-head{padding:6px 2px 8px 10px;font-size:13px;font-weight:700;border-bottom:1px solid var(--line);margin-bottom:4px}
 .am-head span{display:block;font-size:11px;font-weight:400;color:var(--muted)}
 #accountMenu{width:440px}
-.am-foot{border-top:1px solid var(--line);margin-top:4px;padding:8px 10px 4px}
-#accountMenu .am-foot .linkish{display:inline;padding:0;font-size:12px;background:none}
 .am-sec{padding:8px 10px 4px;border-top:1px solid var(--line);margin-top:4px;display:flex;flex-direction:column;gap:7px;font-size:11px;color:var(--muted)}
 .am-enc{display:flex;align-items:center;gap:7px}
 .am-lock svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
@@ -1123,14 +1128,13 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 <div id="reveal"></div>
 
 <div id="accountMenu" class="menu" hidden>
-  <div class="am-head">Accounts <span>Each platform's chats use its login.</span></div>
+  <div class="am-head menu-head"><div>Accounts <span>Each platform's chats use its login.</span></div><button class="menu-set am-more" title="Account settings" aria-label="Account settings"></button></div>
   <div class="am-row" data-p="kick"><i class="pdot"></i><div class="am-txt"><b>Kick</b><span class="am-st">Checking…</span></div>
     <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
   <div class="am-row" data-p="twitch"><i class="pdot"></i><div class="am-txt"><b>Twitch</b><span class="am-st">Checking…</span></div>
     <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
   <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
     <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
-  <div class="am-foot"><button class="linkish am-more">Account settings…</button></div>
 </div>
 
 <div id="layoutMenu" class="menu" hidden>
@@ -1152,7 +1156,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 </div>
 
 <div id="mentPanel" class="popover" hidden>
-  <div class="mp-head"><b>Mentions &amp; replies</b><button class="btn" id="mentClear">Clear</button><button class="btn" id="mentSettings">Settings</button></div>
+  <div class="mp-head"><b>Mentions &amp; replies</b><button class="btn" id="mentClear">Clear</button><button class="menu-set" id="mentSettings" title="Mention settings" aria-label="Mention settings"></button></div>
   <span class="mp-note" id="mentState"></span>
   <div id="mentList"></div>
   <button class="btn mp-all" id="mentAll" hidden title="Every mention and reply kept (the last 500), with search and filters">All mentions ›</button>
@@ -5900,6 +5904,7 @@ settingsDlg.addEventListener('click', e => {
   const h = e.target.closest('[data-help]'); if (h){ e.preventDefault(); showHelp(h.dataset.help); }
 });
 $('#settingsBtn').innerHTML = icon.gear;
+document.querySelectorAll('.menu-set:empty').forEach(b => { b.innerHTML = icon.gear; });   // a menu's own settings (top right)
 $('#settingsBtn').onclick = () => openSettings();
 if (DESKTOP && window.kmv.onSettingsShow) window.kmv.onSettingsShow(tab => openSettings(tab));
 document.addEventListener('keydown', e => {                    // Ctrl+, / ⌘, (the desktop app's menu also has it)
@@ -6777,13 +6782,13 @@ async function openExtMenu(w, btn){
   extMenuFor = { w, btn, part, tabId };
   const where = w.kind === 'chat' ? `${PLAT_NAME[plat]} chats` : `${PLAT_NAME[plat]} streams`;
   const shared = !xs.length || !xs[0].perWindow;
-  extMenu.innerHTML = '<div class="em-h">Extensions in this window</div>';
+  extMenu.innerHTML = `<div class="em-h menu-head"><span>Extensions in this window</span><button class="menu-set em-set" title="Extension settings" aria-label="Extension settings">${icon.gear}</button></div>`;
   if (!xs.length) extMenu.insertAdjacentHTML('beforeend', '<div class="em-empty">None are switched on. Change that in Settings.</div>');
   for (const x of xs){
     const row = document.createElement('div');
     row.className = 'em-row'; row.dataset.id = x.id;
     row.innerHTML = `<button class="em-main"><span class="em-ico"><img alt=""><b class="em-badge"></b></span><span class="em-t"><b></b><span></span></span></button>`
-      + (x.options && x.on ? `<button class="em-opt" title="Its options (for ${w.kind === 'chat' ? where : 'this stream'})">${icon.gear}</button>` : '')
+      + (x.options && x.on ? `<button class="em-opt" title="Its options (for ${w.kind === 'chat' ? where : 'this stream'})">${icon.sliders}</button>` : '')
       + '<input type="checkbox" class="st-sw em-on" aria-label="On in this window">';
     if (x.icon) row.querySelector('img').src = x.icon;
     row.querySelector('.em-t b').textContent = x.name;
@@ -6798,7 +6803,7 @@ async function openExtMenu(w, btn){
     if (!x.perWindow) sw.title = `The same in every ${w.kind === 'chat' ? PLAT_NAME[plat] + ' chat' : 'window with your ' + PLAT_NAME[plat] + ' login'}: change it in Settings`;
     extMenu.appendChild(row);
   }
-  extMenu.insertAdjacentHTML('beforeend', `<div class="em-foot"><span>${shared && xs.length ? 'Same for all ' + (w.kind === 'chat' ? where : PLAT_NAME[plat] + ' chats and signed-in streams') : 'Switching one reloads this window'}</span><button class="linkish em-set">Settings…</button></div>`);
+  extMenu.insertAdjacentHTML('beforeend', `<div class="em-foot"><span>${shared && xs.length ? 'Same for all ' + (w.kind === 'chat' ? where : PLAT_NAME[plat] + ' chats and signed-in streams') : 'Switching one reloads this window'}</span></div>`);
   extMenu.hidden = false;
   const r = btn.getBoundingClientRect(), mw = extMenu.offsetWidth;
   extMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
