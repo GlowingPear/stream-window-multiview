@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ROOT, playwright } = require('../helpers');
+const { ROOT, playwright, killApp } = require('../helpers');
 
 function electronPath() {
   if (process.env.ELECTRON_PATH) return process.env.ELECTRON_PATH;
@@ -24,44 +24,47 @@ async function launchApp(opts = {}) {
   delete env.ELECTRON_RUN_AS_NODE;
   const app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', ROOT], env, timeout: 60000 });
   const proc = app.process();
-  process.once('exit', () => { try { proc.kill(); } catch {} });   // never leave the app open if the tests die
-  await app.evaluate(({ app: eapp, session }) => {
-    const player = '<!doctype html><title>player</title><body style="margin:0;background:#000"><video id="v" muted playsinline style="width:100%;height:100%"></video></body>';
-    const chat = '<!doctype html><title>chat</title><body><div id="chat"><div class="row"><b>regular</b>: <span>evening all</span></div></div></body>';
-    const page = html => new Response(html, { headers: { 'content-type': 'text/html' } });
-    const fake = s => {
-      try {
-        s.protocol.handle('https', req => {
-          const u = req.url;
-          if (/player\.kick\.com|player\.twitch\.tv|youtube\.com\/embed/.test(u)) return page(player);
-          if (/\/popout\/|live_chat|\/chat\?/.test(u)) return page(chat);
-          if (/^https:\/\/(www\.)?(kick\.com|twitch\.tv|youtube\.com)\//.test(u)) return page('<!doctype html><title>site</title>');
-          return new Response('', { status: 404 });
-        });
-      } catch {}
-    };
-    ['persist:kick', 'persist:twitch', 'persist:youtube'].forEach(p => fake(session.fromPartition(p)));
-    eapp.on('session-created', fake);
-    globalThis.__fake = fake;
-  });
-  const win = await mainWindow(app);
-  const errors = [];
-  win.on('pageerror', e => errors.push(e.message));
-  win.setDefaultTimeout(15000);   // a failed step fails its test instead of waiting forever
-  await win.waitForSelector('#loginBtn:not([hidden])');
-  if (opts.storage) {
-    await win.evaluate(s => { for (const [k, v] of Object.entries(s)) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); }, opts.storage);
-    await win.reload();
+  process.once('exit', () => killApp(proc));   // never leave the app open if the tests die
+  try {
+    await app.evaluate(({ app: eapp, session }) => {
+      const player = '<!doctype html><title>player</title><body style="margin:0;background:#000"><video id="v" muted playsinline style="width:100%;height:100%"></video></body>';
+      const chat = '<!doctype html><title>chat</title><body><div id="chat"><div class="row"><b>regular</b>: <span>evening all</span></div></div></body>';
+      const page = html => new Response(html, { headers: { 'content-type': 'text/html' } });
+      const fake = s => {
+        try {
+          s.protocol.handle('https', req => {
+            const u = req.url;
+            if (/player\.kick\.com|player\.twitch\.tv|youtube\.com\/embed/.test(u)) return page(player);
+            if (/\/popout\/|live_chat|\/chat\?/.test(u)) return page(chat);
+            if (/^https:\/\/(www\.)?(kick\.com|twitch\.tv|youtube\.com)\//.test(u)) return page('<!doctype html><title>site</title>');
+            return new Response('', { status: 404 });
+          });
+        } catch {}
+      };
+      ['persist:kick', 'persist:twitch', 'persist:youtube'].forEach(p => fake(session.fromPartition(p)));
+      eapp.on('session-created', fake);
+      globalThis.__fake = fake;
+    });
+    const win = await mainWindow(app);
+    const errors = [];
+    win.on('pageerror', e => errors.push(e.message));
+    win.setDefaultTimeout(15000);   // a failed step fails its test instead of waiting forever
     await win.waitForSelector('#loginBtn:not([hidden])');
-  }
-  return {
-    app, win, data, errors,
-    async close() {
-      const closed = app.close().then(() => true, () => false);
-      if (!(await Promise.race([closed, new Promise(r => setTimeout(() => r(false), 10000))]))) app.process().kill('SIGKILL');
+    if (opts.storage) {
+      await win.evaluate(s => { for (const [k, v] of Object.entries(s)) localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); }, opts.storage);
+      await win.reload();
+      await win.waitForSelector('#loginBtn:not([hidden])');
     }
-  };
+    return {
+      app, win, data, errors,
+      async close() {
+        const closed = app.close().then(() => true, () => false);
+        if (!(await Promise.race([closed, new Promise(r => setTimeout(() => r(false), 10000))]))) killApp(proc);
+      }
+    };
+  } catch (e) { killApp(proc); throw e; }   // a failed start must not leave the app running (the test file would never end)
 }
+
 
 // The app's main window (the app also has hidden helper windows).
 async function mainWindow(app) {

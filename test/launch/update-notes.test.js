@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ROOT, playwright } = require('../helpers');
+const { ROOT, playwright, killApp } = require('../helpers');
 
 function electronPath() {
   if (process.env.ELECTRON_PATH) return process.env.ELECTRON_PATH;
@@ -28,7 +28,7 @@ test.before(async () => {
   delete env.ELECTRON_RUN_AS_NODE;
   app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', ROOT], env, timeout: 60000 });
   const proc = app.process();
-  process.once('exit', () => { try { proc.kill(); } catch {} });   // never leave the app open if the tests die
+  process.once('exit', () => killApp(proc));   // never leave the app open if the tests die
   win = await app.firstWindow();
   win.setDefaultTimeout(15000);   // a failed step fails its test instead of waiting forever
   win.on('pageerror', e => pageErrors.push(e.message));
@@ -46,7 +46,7 @@ test.before(async () => {
 test.after(async () => {
   if (!app) return;
   const closed = app.close().then(() => true, () => false);
-  if (!(await Promise.race([closed, new Promise(r => setTimeout(() => r(false), 10000))]))) app.process().kill('SIGKILL');
+  if (!(await Promise.race([closed, new Promise(r => setTimeout(() => r(false), 10000))]))) killApp(app.process());
 });
 
 const STATUS = { current: '0.2.14', repo: 'o/r', auto: true, lastCheck: Date.now(), git: false, installed_app: true, platform: process.platform, state: 'uptodate', latest: '0.2.14' };
