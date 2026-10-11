@@ -5497,7 +5497,7 @@ let settingsTab = 'general';
 try { settingsTab = localStorage.getItem('kickMultiview.settingsTab') || 'general'; } catch {}
 const MAIN_DESK = DESKTOP && ROLE === 'main';
 settingsDlg.querySelectorAll('.st-rail .desk-only').forEach(b => { b.hidden = !DESKTOP; });
-const ST_ICONS = { general: 'sliders', accounts: 'user', youtube: 'ytPlay', notify: 'bell', mentions: 'at', spam: 'mod', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys' };
+const ST_ICONS = { general: 'sliders', accounts: 'user', youtube: 'ytPlay', notify: 'bell', mentions: 'at', spam: 'mod', extensions: 'ext', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys' };
 settingsDlg.querySelectorAll('.st-rail button[data-s]').forEach(b => { if (icon[ST_ICONS[b.dataset.s]]) b.insertAdjacentHTML('afterbegin', icon[ST_ICONS[b.dataset.s]]); });
 settingsDlg.querySelectorAll('.st-rail .main-desk').forEach(b => { b.hidden = !MAIN_DESK; });
 function openSettings(tab){
