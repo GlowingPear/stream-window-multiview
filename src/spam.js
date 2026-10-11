@@ -1,6 +1,7 @@
 // Spam alerts: scores a chat message for the signs promo bots leave. Used by the app page (as
 // window.SmvSpam) and by the tests (require). One sign alone never flags a message: normal links,
-// clip links and someone saying "check kick com/..." stay unflagged.
+// clip links and someone saying "check kick com/..." stay unflagged. The exceptions are a word flood
+// and a known bot opening line.
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.SmvSpam = factory();
@@ -8,6 +9,8 @@
   const ALLOWED = ['kick.com', 'twitch.tv', 'youtube.com', 'youtu.be', 'discord.gg', 'discord.com', 'x.com', 'twitter.com',
     'instagram.com', 'tiktok.com', 'reddit.com', 'imgur.com', 'streamable.com', 'medal.tv', 'github.com', 'spotify.com'];
   const WORDS = ['upgrade', 'viewers', 'followers', 'boost', 'promo', 'promote', 'zero cost', 'cheap', 'free followers', 'grow your'];
+  // Greetings promo bots open with, a few lines before the link. Matched whole, ignoring case and punctuation.
+  const OPENERS = ['Hey stranger, still running the show?'];
   // Endings a bot uses for its site. Kept short so "the com" in normal chat rarely looks like a domain.
   const TLDS = 'com|net|org|io|xyz|gg|tv|me|co|shop|site|online|store|live|app|pro|top|club|info|biz|ru|cc|link|ly|fun|space|vip';
   const NOT_NAMES = new Set(['dot', 'the', 'and', 'for', 'you', 'your', 'this', 'that', 'with', 'from', 'its', 'not', 'are', 'was']);
@@ -15,6 +18,7 @@
   const WINDOW_MS = 5 * 60 * 1000;
 
   const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const flat = s => norm(String(s || '').replace(/['’]/g, ''));   // "don't" and "dont" alike
   const domainOk = (d, allowed) => allowed.some(a => d === a || d.endsWith('.' + a));
   const cleanList = l => [...new Set((l || []).map(x => String(x).trim().toLowerCase()).filter(Boolean))];
 
@@ -52,11 +56,12 @@
    * msg:  { sender, body, chat, t }
    * ctx:  { recent: [{ sender, body, chat, t }], firstSeen: { [chat + '\n' + sender]: time } }
    *       recent holds the other messages seen lately (any chat, including this one).
-   * opts: { sensitivity, allowed, words }
+   * opts: { sensitivity, allowed, words, openers }   (openers: an empty list matches nothing)
    */
   function score(msg, ctx = {}, opts = {}) {
     const allowed = cleanList(opts.allowed && opts.allowed.length ? opts.allowed : ALLOWED);
     const words = cleanList(opts.words && opts.words.length ? opts.words : WORDS);
+    const openers = (Array.isArray(opts.openers) ? opts.openers : OPENERS).map(x => String(x).trim()).filter(x => flat(x));
     const need = LEVELS[opts.sensitivity] || LEVELS.balanced;
     const body = String(msg.body || ''), low = body.toLowerCase(), t = msg.t || Date.now();
     const signs = [];
@@ -76,6 +81,9 @@
     const fl = flood(body);
     if (fl) sign(`The same word over and over: "${fl.unit}" ×${fl.times}`, 6);
 
+    const opener = openers.find(o => ` ${flat(body)} `.includes(` ${flat(o)} `));
+    if (opener) sign(`Known bot opening line: "${opener}"`, 6);
+
     const recent = (ctx.recent || []).filter(r => t - (r.t || 0) < WINDOW_MS && r !== msg);
     const key = norm(body);
     if (key.length >= 12) {
@@ -93,10 +101,11 @@
     }
 
     const total = signs.reduce((a, x) => a + x.points, 0);
-    // A link (disguised or not) is needed: without one there's nothing to promote. A word flood is spam on its own.
-    const spam = total >= need && (hidden.length > 0 || plain.length > 0 || !!fl || signs.some(x => /^Same message/.test(x.text)));
+    // A link (disguised or not) is needed: without one there's nothing to promote. A word flood and a known
+    // bot opening line are spam on their own.
+    const spam = total >= need && (hidden.length > 0 || plain.length > 0 || !!fl || !!opener || signs.some(x => /^Same message/.test(x.text)));
     return { score: total, need, spam, signs };
   }
 
-  return { score, sites, ALLOWED, WORDS, LEVELS };
+  return { score, sites, ALLOWED, WORDS, OPENERS, LEVELS };
 });
