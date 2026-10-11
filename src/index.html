@@ -3494,6 +3494,7 @@ function backToChatFocus(){
 /* In Chat focus, drag a stream onto another stream to swap them (their chats swap too). */
 function startSwapDrag(e, w, bar){
   bar.setPointerCapture(e.pointerId);
+  document.body.classList.add('dragging');      // cover the players right away, so they can't take the mouse moves
   const sx = e.clientX, sy = e.clientY, x0 = w.x, y0 = w.y;
   let moved = false, target = null;
   const others = () => wins.filter(o => o !== w && o.kind !== 'chat');
@@ -3501,7 +3502,7 @@ function startSwapDrag(e, w, bar){
     const dx = ev.clientX - sx, dy = ev.clientY - sy;
     if (!moved){
       if (Math.hypot(dx, dy) < 5) return;
-      moved = true; document.body.classList.add('dragging');
+      moved = true;
       w.el.classList.remove('anim'); w.el.classList.add('lifted'); w.el.style.zIndex = ++zTop;
     }
     setRect(w, { x: x0 + dx, y: y0 + dy, w: w.w, h: w.h });
@@ -3511,8 +3512,9 @@ function startSwapDrag(e, w, bar){
   };
   const up = () => {
     bar.removeEventListener('pointermove', move); bar.removeEventListener('pointerup', up); bar.removeEventListener('pointercancel', up);
+    document.body.classList.remove('dragging');
     if (!moved) return;
-    document.body.classList.remove('dragging'); w.el.classList.remove('lifted');
+    w.el.classList.remove('lifted');
     target?.el.classList.remove('swap-target');
     if (ROLE === 'streams'){
       // Streams window: swap the two streams' spots (and their place in the order used by Tile / Spotlight)
