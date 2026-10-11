@@ -11,12 +11,12 @@ const info = (live, extra = {}) => ({ live, title: live ? 'title' : '', viewers:
 /* ---------- Twitch: many channels in one question ---------- */
 test('Twitch: one answer for many channels, and channels that don\'t exist', () => {
   const d = { data: { users: [
-    { login: 'alpha', displayName: 'Alpha', stream: { title: 'hi', viewersCount: 12, game: { name: 'Chess' } } },
+    { login: 'alpha', displayName: 'Alpha', stream: { title: 'hi', viewersCount: 12, createdAt: '2026-10-11T19:02:11Z', game: { name: 'Chess' } } },
     { login: 'bravo', displayName: 'Bravo', stream: null },
     null
   ] } };
   const m = parseTwitchUsers(d, ['alpha', 'bravo', 'gone']);
-  assert.deepEqual({ ...m.get('alpha'), checked: 0 }, { live: true, title: 'hi', viewers: 12, category: 'Chess', name: 'Alpha', checked: 0 });
+  assert.deepEqual({ ...m.get('alpha'), checked: 0 }, { live: true, title: 'hi', viewers: 12, category: 'Chess', name: 'Alpha', startedAt: Date.UTC(2026, 9, 11, 19, 2, 11), checked: 0 });
   assert.equal(m.get('bravo').live, false);
   assert.deepEqual(m.get('gone'), { missing: true });
   assert.equal(parseTwitchUsers({ errors: [{}] }, ['alpha']), null, 'an error answer is not "every channel is missing"');
@@ -72,12 +72,12 @@ test('YouTube: a channel\'s feed gives its latest videos', () => {
 
 test('YouTube: videos are live, upcoming, or done (normal videos and finished streams are never asked about again)', () => {
   const m = parseYtVideos({ items: [
-    { id: 'live0000000', snippet: { liveBroadcastContent: 'live', title: 'On air', channelId: 'UC1', channelTitle: 'One' }, liveStreamingDetails: { actualStartTime: 'x', concurrentViewers: '1234' } },
+    { id: 'live0000000', snippet: { liveBroadcastContent: 'live', title: 'On air', channelId: 'UC1', channelTitle: 'One' }, liveStreamingDetails: { actualStartTime: '2026-10-11T19:00:00Z', concurrentViewers: '1234' } },
     { id: 'soon0000000', snippet: { liveBroadcastContent: 'upcoming', title: 'Later' }, liveStreamingDetails: { scheduledStartTime: 'x' } },
     { id: 'ended000000', snippet: { liveBroadcastContent: 'none', title: 'Was live' }, liveStreamingDetails: { actualStartTime: 'x', actualEndTime: 'y' } },
     { id: 'video000000', snippet: { liveBroadcastContent: 'none', title: 'A video' } }
   ] });
-  assert.deepEqual(m.get('live0000000'), { state: 'live', title: 'On air', viewers: 1234, channelId: 'UC1', channelTitle: 'One' });
+  assert.deepEqual(m.get('live0000000'), { state: 'live', title: 'On air', viewers: 1234, startedAt: Date.UTC(2026, 9, 11, 19), channelId: 'UC1', channelTitle: 'One' });
   assert.equal(m.get('soon0000000').state, 'upcoming');
   assert.equal(m.get('ended000000').state, 'done');
   assert.equal(m.get('video000000').state, 'done');

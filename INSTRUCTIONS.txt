@@ -105,8 +105,20 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - Live channels are listed first, with viewers and title. The Saved button shows how many are live.
 - Bell: desktop notification when that channel goes live.
 - Lightning: open that channel automatically when it goes live, once per broadcast (if you close it, it won't reopen until they next go live).
-- Import: add the channels you follow on Kick, Twitch or YouTube (you need to be logged in to that site in the app).
+- Import: add the channels you follow on Kick, Twitch or YouTube (you need to be logged in to that site in the app). For Kick, each channel in the import list also has Unfollow.
 - Open live, Open all and Save all open are at the bottom.
+- Person button on a row: that streamer's profile (see below).
+
+## Streamer profiles (Profiles button)
+- Profiles lists your saved streamers. Search by name, nickname or tag, filter (Kick / Twitch / YouTube, Live now, Favourites, Has notes, Tagged) and sort.
+- Type a name that isn't saved and click Look it up to find that name on Kick, Twitch and YouTube, then view or save it.
+- Click a streamer for their profile. It also opens from the person button on a saved channel or on a stream's window.
+- What the site says: picture, banner, about, followers, links, the live stream (title, game, viewers, when it started, chat rules) and subscriber badges.
+- What the app records: each stream it sees while it's open (start, end, title, game, viewer counts once a minute) and a follower count each day. From that: live history, the "when they usually stream" chart, usual start time, average length, streak, average and peak viewers, top games and a viewer graph of the current or last stream.
+- Kick and Twitch past broadcasts fill in streams the app didn't see (marked VOD), when the streamer keeps them. Each number says where it comes from, and the line under the numbers says since when the app has been tracking and how many streams it saw itself.
+- Your notes, tags, a nickname and a favourite star are kept on this computer.
+- Unfollow on Kick unfollows on kick.com itself (it asks first, and can also remove them from Saved). You need to be logged in to Kick in the app.
+- The sites are only asked when you open a profile or look a name up; the history comes from the live checks the app already does.
 
 ## Logging in (person button)
 - Log in once to Kick and Twitch (for Kick, enter the email code once). Every chat for that site uses the login, and it's kept when you restart the app.

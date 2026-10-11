@@ -34,7 +34,8 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 **Saved channels and alerts**
 - Saved list with Kick / Twitch / YouTube tabs, with live channels listed first
 - Desktop notifications when saved channels go live, and optional auto-open when they do
-- **Import follows** from Kick, Twitch and YouTube
+- **Import follows** from Kick, Twitch and YouTube (and unfollow Kick channels right from that list)
+- **Streamer profiles**: search your saved streamers and open a profile for each one: what the site says (picture, about, followers, links, the live stream), plus a live history, a "when they usually stream" chart, usual start time, average length and viewers that the app records from its live checks, with Kick and Twitch past broadcasts filling the gaps. Notes, tags, nicknames, favourites, and **Unfollow on Kick**
 - Alerts when someone @mentions you or replies to you in Kick or Twitch chat: that chat window lights up (and can get stronger until you look), with a sound and desktop notification of your choice
 - **Spam alerts for moderators** (off by default): in chats you moderate, promo-bot messages are tagged "likely spam" and the chat window lights up. Nothing is hidden or removed.
 
@@ -129,10 +130,10 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 
 | Command | What it checks | Time |
 |---|---|---|
-| `npm test` | Updates, the release scripts, login encryption, live checks and the spam scoring. Needs nothing else installed. | seconds |
+| `npm test` | Updates, the release scripts, login encryption, live checks, streamer profile history and the spam scoring. Needs nothing else installed. | seconds |
 | `npm run test:setup` | Run once: installs the test browser (Playwright). It isn't saved as a dependency of the app. | once |
 | `npm run test:ui` | The app's page in a headless browser: adding streams, moving and resizing windows, layouts, Columns scrolling, the switch control, Saved channels, your layouts, Game focus, undo/redo, shortcuts, themes, Settings, alerts | ~1 min |
-| `npm run test:launch` | Starts the real desktop app with stand-in Kick, Twitch and YouTube pages: start-up, volume and pause, popping streams out, logins, live alerts and notifications, the Import follows dialog, the menu bar, Settings, updates, showing another app's window, and mention and spam alerts in chat windows (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~1 min |
+| `npm run test:launch` | Starts the real desktop app with stand-in Kick, Twitch and YouTube pages: start-up, volume and pause, popping streams out, logins, live alerts and notifications, the Import follows dialog, streamer profiles, the menu bar, Settings, updates, showing another app's window, and mention and spam alerts in chat windows (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~1 min |
 | `npm run test:all` | All of the above | |
 | `npm run test:coverage` | All of the above, recording which code they run. Prints how much of each file the tests run and writes `coverage/report.md` with the bigger functions no test runs. In CI (which runs it on every pull request and puts the report on the run's summary page) it fails if a file drops below its minimum in `test/coverage-min.json`; on your computer that's only a warning, because some code only runs on Linux, or on Node 22 or newer. | ~2 min |
 
@@ -185,6 +186,7 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 | `src/index.html` | The main app UI: windows, layouts, switch control, menus and themes |
 | `src/switcher.html` | The switch control when it's popped out into its own window |
 | `src/live.js` | Live-status parsing, link parsing and follow import helpers |
+| `src/profiles.js` | Streamer profiles: records the streams the live checks see, works out the profile's numbers, reads what the sites say |
 | `src/spam.js` | Scores chat messages for spam alerts (used by the app page and the tests) |
 | `src/firefox-login.js` | Copies the YouTube/Google login from Firefox for YouTube sign-in |
 | `src/updater.js` | Checks GitHub for a newer version, downloads it and installs it safely |
