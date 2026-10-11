@@ -131,6 +131,38 @@ test('Saved channels show who\'s live, with bells, auto-open and Open live', T, 
   await a.win.click('#clear'); await a.win.click('#askDlg .ask-yes');
 });
 
+test('In Auto layout, a channel that opens by itself is fitted in as the last stream (Settings > Layouts)', T, async () => {
+  const now = Date.now();
+  const send = (bravo, t) => a.app.evaluate((_e, snap) => globalThis.__sendLive(snap), { alpha: { live: true, checked: now }, bravo: { live: bravo, checked: now + t }, 'tw:charlie': { live: false, checked: now } });
+  const rect = (title, kind) => a.win.$eval(winSel(title, kind), e => ['left', 'top', 'width', 'height'].map(k => parseFloat(e.style[k])));
+  const rects = () => Promise.all([rect('alpha'), rect('charlie'), rect('alpha', 'chat'), rect('charlie', 'chat')]);
+  const goesLive = async t => { await send(false, t); await send(true, t + 1); await a.win.waitForSelector(winSel('bravo')); };
+  for (const ch of ['alpha', 'tw:charlie']){ await a.win.fill('#url', ch); await a.win.click('#add'); }
+  await a.win.click('#layoutBtn'); await a.win.click('#layoutMenu [data-l=auto]');
+
+  // off (the default): the others stay where they are
+  let before = await rects();
+  await goesLive(10);
+  assert.deepEqual(await rects(), before, 'nothing moved');
+
+  // on: Auto layout is redone with bravo after the others
+  await a.win.click(`${winSel('bravo')} [data-a=close]`); await a.win.click(`${winSel('bravo', 'chat')} [data-a=close]`);
+  await a.win.click('#layoutBtn'); await a.win.click('#layoutMenu [data-l=auto]');
+  await a.win.evaluate(() => openSettings('layouts'));
+  await a.win.check('#autoFit');
+  await a.win.keyboard.press('Escape');
+  before = await rects();
+  await goesLive(20);
+  await a.win.waitForTimeout(300);
+  const [al, ch, alc, chc] = await rects(), br = await rect('bravo'), brc = await rect('bravo', 'chat');
+  assert.notDeepEqual([al, ch, alc, chc], before, 'the layout was redone');
+  const at = r => r[1] * 10000 + r[0];                   // reading order: rows, then left to right
+  assert.ok(at(al) < at(ch) && at(ch) < at(br), `streams in order alpha, charlie, bravo (${JSON.stringify([al, ch, br])})`);
+  assert.ok(at(alc) < at(chc) && at(chc) < at(brc), 'chats in the same order');
+  assert.ok(al[0] + al[2] <= alc[0] && br[0] + br[2] <= alc[0], 'streams left of the chats');
+  await a.win.click('#clear'); await a.win.click('#askDlg .ask-yes');
+});
+
 test('mention and spam desktop notifications, and clicking one shows that chat', T, async () => {
   await a.win.evaluate(() => window.kmv.notifyMention({ kind: 'mention', channel: 'alpha', label: 'alpha', sender: 'viewer3', body: 'are you on later?' }));
   await a.win.evaluate(() => window.kmv.notifyMention({ kind: 'reply', channel: 'alpha', label: 'alpha', sender: 'viewer4', body: 'yes', quoted: 'what time' }));

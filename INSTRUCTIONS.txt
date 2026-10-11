@@ -39,9 +39,10 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
   - "Side chats" (top of the Focus area) sets how many stream + chat columns sit beside the big stream: Auto or 1–5. The name at the top of each side chat is a dropdown to show any stream there.
   - The buttons at the top of the Focus area switch to **Columns view** (no highlight) or back to **Chat focus view**.
 - **Chat focus**: streams down the side at exact video size, chats get the rest. Click it again for 1, 2 or 3 columns of streams. Drag a stream onto another to swap them (their chats swap too).
-- **Auto layout** and **Tile**: arrange everything to fit the screen.
-- **Your layouts**: type a name and press Save to keep the current arrangement (windows, order, columns, highlight). Click it later to go back to it: windows already open stay open, missing ones reopen. ⟳ updates it with the current arrangement, × deletes it.
-- **Linked** (in Columns): a stream and its chat move together. Drag a title bar to reorder columns; the others slide aside to show where it will land, and dragging to the screen edge scrolls. Turn Linked off to move and resize windows freely.
+- **Auto layout** and **Tile**: arrange everything to fit the screen. With "Fit in channels that open by themselves" on (Settings > Layouts), a saved channel that opens because it went live is added as the last stream and Auto layout is redone, keeping the other streams in order.
+- The ⚙ at the top right of the Layout menu opens Settings > Layouts: every layout with its options, where the switch control shows, and your layouts.
+- **Your layouts**: type a name and press Save to keep the current arrangement (windows, order, columns, highlight). Click it later to go back to it: windows already open stay open, missing ones reopen. Rename, update (with the current arrangement) or delete them in Settings > Layouts.
+- **Linked** (in Columns and Focus view): a stream and its chat move together. Drag a title bar to reorder columns; the others slide aside to show where it will land, and dragging to the screen edge scrolls. Turn Linked off to move and resize windows freely.
 
 ## The switch control
 - A list of every open stream with pause / play, mute, volume, refresh, a small live preview (the arrow) and remove (×).

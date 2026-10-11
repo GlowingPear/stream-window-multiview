@@ -365,10 +365,6 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 .pr-row .pr-load{flex:1;min-width:0}
 .pr-row .pr-load b,.pr-row .pr-load span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pr-row.on .pr-load b{color:var(--accent)}
-#layoutMenu .pr-row .pr-up,#layoutMenu .pr-row .pr-x{flex:none;width:26px;height:26px;padding:0;display:grid;place-items:center;color:var(--muted)}
-#layoutMenu .pr-row .pr-up:hover{color:var(--text);background:var(--line)}
-#layoutMenu .pr-row .pr-x:hover{color:#fff;background:var(--danger)}
-.pr-row svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .lm-save{display:flex;gap:6px;padding:6px 4px 4px}
 .lm-save input{flex:1;min-width:0;height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);outline:none}
 .lm-save input:focus{border-color:var(--accent)}
@@ -671,6 +667,12 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .ex-acts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .ex-acts .btn{height:28px;padding:0 10px;font-size:12px}
 .st-add.ex-linkrow{margin:0 0 12px}
+/* Settings > Layouts */
+.st-opt{padding-left:18px}
+.ly-row .ly-use{min-width:58px}
+.pr-srow .st-t > span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr-srow.on .st-t > span{color:var(--accent);font-weight:600}
+.pr-srow .pr-x:hover{color:#fff;background:var(--danger);border-color:var(--danger)}
 .ex-linkrow[hidden]{display:none}
 .ex-linkrow .st-in,.ex-linkrow .btn{height:30px}
 .ex-msg{font-size:12px;margin:-4px 0 12px;color:var(--danger)}
@@ -1138,6 +1140,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 </div>
 
 <div id="layoutMenu" class="menu" hidden>
+  <div class="lm-head menu-head"><span>Layout</span><button class="menu-set" id="layoutSet" title="Layout settings" aria-label="Layout settings"></button></div>
   <button data-l="focus"><b>Focus view</b><span>One stream big with its chat, the rest in columns beside it, and the switch control to change which one is big.</span></button>
   <button data-l="game"><b>Game focus</b><span>Your game big, streams, chats and other windows on the side. The game area can be see-through so you play the real game.</span></button>
   <button data-l="columns"><b>Columns</b><span>Each stream sits on top of its own chat. Scroll sideways when there are more than fit.</span></button>
@@ -1264,6 +1267,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <div class="st-wrap">
     <nav class="st-rail">
       <button data-s="general">General</button>
+      <button data-s="layouts" class="main-only">Layouts</button>
       <button data-s="accounts" class="desk-only">Accounts</button>
       <button data-s="youtube" class="desk-only">YouTube</button>
       <button data-s="notify">Notifications</button>
@@ -1283,6 +1287,18 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <label class="st-row"><span class="st-t">Snap windows<small>Windows snap to the screen edges and to each other while you drag.</small></span><input type="checkbox" class="st-sw" id="snap" checked></label>
         <label class="st-row"><span class="st-t">Auto-pause hidden streams<small>Pauses streams that are off-screen or behind the big stream after 2 seconds, to save bandwidth. They jump back to live when you can see them again. Streams you can hear never pause.</small></span><input type="checkbox" class="st-sw" id="autoPause"></label>
         <label class="st-row"><span class="st-t">Keyboard shortcuts<small>Esc still closes menus when they're off. <button class="linkish" data-help="keys">See the list</button></small></span><input type="checkbox" class="st-sw" id="keysSet"></label>
+      </section>
+      <section class="st-pane" data-s="layouts" hidden>
+        <h4>Layouts</h4><p class="st-sub">How the windows are arranged. Switch with <b>Layout ▾</b> in the toolbar, or here.</p>
+        <div id="lyList"></div>
+        <label class="st-row st-opt" data-opt="columns"><span class="st-t">Linked<small>Each stream and its chat move together: drag either title bar to move the column. Off: move and resize windows freely. The same as the Linked button in the toolbar.</small></span><input type="checkbox" class="st-sw" id="lyLinked"></label>
+        <label class="st-row st-opt" data-opt="auto"><span class="st-t">Fit in channels that open by themselves<small>When a saved channel opens because it went live, it's added as the last stream (its chat as the last chat) and the layout is redone. The other streams keep their order. Not once you've moved or resized a window yourself.</small></span><input type="checkbox" class="st-sw" id="autoFit"></label>
+        <div class="st-sec">Switch control</div>
+        <div class="st-row"><span class="st-t">Where it shows<small>Docked: under the big stream, in Focus view only. Floating: a panel you can move and resize, in every layout. Own window: anywhere, even on another monitor.</small></span>
+          <select id="lySw"><option value="dock">Docked</option><option value="float">Floating</option><option value="window" class="desk-only">Own window</option></select></div>
+        <div class="st-sec">Your layouts</div>
+        <div id="lyPresets"></div>
+        <div class="st-add"><input class="st-in" id="lyPresetName" placeholder="Name the current layout…" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="lyPresetSave">Save</button></div>
       </section>
       <section class="st-pane" data-s="accounts" hidden>
         <h4>Accounts</h4><p class="st-sub">Each platform's chats use its login.</p>
@@ -1512,6 +1528,7 @@ const icon = {
   float:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="11" y="11" width="8" height="6" rx="1"/></svg>',
   dock:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15h18"/><path d="M12 6v6M9 9l3 3 3-3"/></svg>',
   grip:'<svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/></svg>',
+  layout:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></svg>',
   gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   palette:'<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-.9 2-1.9 0-1.3-1-1.6-1-2.8 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.4 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2" fill="currentColor"/><circle cx="10.5" cy="7" r="1.2" fill="currentColor"/><circle cx="15" cy="7.5" r="1.2" fill="currentColor"/></svg>',
   game:'<svg viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.5" r=".9" fill="currentColor"/><circle cx="17.5" cy="13.5" r=".9" fill="currentColor"/></svg>',
@@ -2398,6 +2415,8 @@ const tabPlat = () => savedTab === 'all' ? 'kick' : savedTab;
 // Channels that open by themselves when they go live
 let autoOpen = [];
 try { autoOpen = JSON.parse(localStorage.getItem('kickMultiview.autoOpen') || '[]'); } catch {}
+let autoFit = false;                  // Settings > Layouts: in Auto layout, fit them in as the last streams
+try { autoFit = localStorage.getItem('kickMultiview.autoFit') === '1'; } catch {}
 const autoDone = new Set();            // opened during this live session (closing it won't make it reopen until the next time it goes live)
 function toggleAutoOpen(ch){
   autoOpen = autoOpen.includes(ch) ? autoOpen.filter(c => c !== ch) : [...autoOpen, ch];
@@ -2419,6 +2438,7 @@ function checkAutoOpen(){
   });
   if (!opened.length) return;
   if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(false);
+  else if (lastLayout === 'auto' && autoFit) autoLayout();     // new windows are last in the list, so they go last
   flash(`Opened ${opened.map(chLabel).join(', ')} (just went live)`);
 }
 function fmtViewers(n){ return n == null ? '' : n >= 1000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '') + 'K' : String(n); }
@@ -3288,6 +3308,7 @@ function updateLinkBtn(){
   const b = $('#linkBtn'); if (!b) return;
   b.classList.toggle('on', linked);
   b.querySelector('span').textContent = linked ? 'Linked' : 'Unlinked';
+  $('#lyLinked').checked = linked;
 }
 function setFeatured(ch){
   featuredCh = ch;
@@ -4265,19 +4286,22 @@ function updateColNav(){
     next.title = scrollX >= maxScroll - 1 ? 'Next stream (wraps to the first)' : 'Next stream';
   }
 }
+const curLayout = () => colsMode ? (featBase.length && featuredCh ? 'focus' : 'columns') : lastLayout;
 function updateLayoutMenu(){
   const b = $('#layoutBtn'); if (!b) return;
   const names = { focus: 'Focus view', game: 'Game focus', columns: 'Columns', chatfocus: 'Chat focus', auto: 'Auto layout', tile: 'Tile' };
-  const cur = colsMode ? (featBase.length && featuredCh ? 'focus' : 'columns') : lastLayout;
+  const cur = curLayout();
   b.textContent = (activePreset ? 'Layout: ' + activePreset : names[cur] ? 'Layout: ' + names[cur] : 'Layout') + ' ▾';
   document.querySelectorAll('#layoutMenu button[data-l]').forEach(x => x.classList.toggle('on', x.dataset.l === cur && !activePreset));
   if (typeof renderPresets === 'function') renderPresets();
+  if (!$('#settingsDlg').hidden) renderLayoutsPane();
   updateSwBtn();
 }
 function updateSwBtn(){
   const b = $('#swBtn'); if (!b || typeof switchMode === 'undefined') return;
   b.classList.toggle('on', switchMode !== 'dock');
   document.querySelectorAll('#swModes button').forEach(x => x.classList.toggle('on', x.dataset.sw === switchMode));
+  $('#lySw').value = switchMode;
 }
 
 /* ---- Your layouts: save the current arrangement under a name and bring it back from the Layout menu ---- */
@@ -4302,13 +4326,30 @@ function presetSummary(p){
 function renderPresets(){
   const box = $('#presetList'); if (!box) return;
   box.innerHTML = '';
-  if (!presets.length){ box.innerHTML = '<div class="pr-empty">Arrange things how you like, then name and save it below.</div>'; return; }
-  presets.forEach((p, i) => {
+  if (!presets.length) box.innerHTML = '<div class="pr-empty">Arrange things how you like, then name and save it below.</div>';
+  presets.forEach(p => {
     const row = document.createElement('div'); row.className = 'pr-row' + (p.name === activePreset ? ' on' : '');
-    row.innerHTML = `<button class="pr-load"><b></b><span></span></button><button class="pr-up" title="Save the current arrangement over this one">${icon.reload}</button><button class="pr-x" title="Delete this layout">${icon.close}</button>`;
+    row.innerHTML = '<button class="pr-load"><b></b><span></span></button>';
     row.querySelector('b').textContent = p.name;
     row.querySelector('span').textContent = presetSummary(p);
     row.querySelector('.pr-load').onclick = () => { $('#layoutMenu').hidden = true; applyPreset(p); };
+    box.appendChild(row);
+  });
+  renderPresetsPane();
+}
+// Settings > Layouts: use, rename, update and delete them
+function renderPresetsPane(){
+  const box = $('#lyPresets'); if (!box) return;
+  box.innerHTML = '';
+  if (!presets.length){ box.innerHTML = '<div class="st-row"><span class="st-t"><small>None yet. Arrange things how you like, then name and save it below or in Layout ▾.</small></span></div>'; return; }
+  presets.forEach((p, i) => {
+    const row = document.createElement('div'); row.className = 'st-row pr-srow' + (p.name === activePreset ? ' on' : '');
+    row.innerHTML = '<span class="st-t"><span></span><small></small></span><button class="btn pr-use">Use</button><button class="btn pr-ren">Rename</button>'
+      + '<button class="btn pr-up" title="Save what\'s on screen now over this one">Update</button><button class="btn pr-x">Delete</button>';
+    row.querySelector('.st-t > span').textContent = p.name;
+    row.querySelector('small').textContent = presetSummary(p);
+    row.querySelector('.pr-use').onclick = () => { closeSettings(); applyPreset(p); };
+    row.querySelector('.pr-ren').onclick = () => renamePreset(row, p);
     row.querySelector('.pr-up').onclick = async () => {
       if (!await ask(`Update “${p.name}”?`, `Replace this saved layout with what's on screen now.`, { ok: 'Update' })) return;
       presets[i] = capturePreset(p.name); savePresets(); activePreset = p.name; updateLayoutMenu(); flash(`Updated “${p.name}”`);
@@ -4320,8 +4361,28 @@ function renderPresets(){
     box.appendChild(row);
   });
 }
-async function savePresetFromInput(){
-  const inp = $('#presetName'), name = inp.value.trim().slice(0, 40);
+function renamePreset(row, p){
+  const t = row.querySelector('.st-t'), inp = document.createElement('input');
+  inp.className = 'st-in'; inp.maxLength = 40; inp.value = p.name; inp.spellcheck = false; inp.setAttribute('aria-label', 'New name');
+  t.replaceChildren(inp); inp.focus(); inp.select();
+  let done = false;
+  const finish = keep => {
+    if (done) return; done = true;
+    const name = inp.value.trim().slice(0, 40);
+    if (keep && name && name !== p.name){
+      if (presets.some(o => o !== p && o.name.toLowerCase() === name.toLowerCase())) flash(`There's already a layout called “${name}”`);
+      else { if (activePreset === p.name) activePreset = name; p.name = name; savePresets(); }
+    }
+    updateLayoutMenu();
+  };
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); finish(false); }
+  });
+  inp.addEventListener('blur', () => finish(true));
+}
+async function savePresetFromInput(inp = $('#presetName')){
+  const name = inp.value.trim().slice(0, 40);
   if (!name){ inp.focus(); return; }
   if (!wins.length){ flash('Open some streams first'); return; }
   const i = presets.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
@@ -4747,8 +4808,35 @@ if (ROLE === 'main'){
   document.addEventListener('pointerdown', e => {
     if (!layoutMenu.hidden && !layoutMenu.contains(e.target) && e.target !== layoutBtn) layoutMenu.hidden = true;
   });
-  $('#presetSave').onclick = savePresetFromInput;
+  $('#presetSave').onclick = () => savePresetFromInput();
+  $('#layoutSet').onclick = () => { layoutMenu.hidden = true; openSettings('layouts'); };
+  // Settings > Layouts: each layout from the menu, with its options under it
+  const lyList = $('#lyList');
+  layoutMenu.querySelectorAll('button[data-l]').forEach(b => {
+    const row = document.createElement('div'); row.className = 'st-row ly-row'; row.dataset.l = b.dataset.l;
+    row.innerHTML = '<span class="st-t"><span></span><small></small></span><button class="btn ly-use">Use</button>';
+    row.querySelector('.st-t > span').textContent = b.querySelector('b').textContent;
+    row.querySelector('small').textContent = b.querySelector('span').textContent;
+    row.querySelector('.ly-use').onclick = () => { closeSettings(); b.click(); };
+    lyList.appendChild(row);
+    const opt = document.querySelector(`#settingsDlg [data-opt="${b.dataset.l}"]`); if (opt) lyList.appendChild(opt);
+  });
+  if (!DESKTOP) $('#lySw .desk-only').remove();
+  $('#lySw').addEventListener('change', e => setSwitchMode(e.target.value));
+  $('#lyLinked').addEventListener('change', e => setLinked(e.target.checked));
+  $('#lyPresetSave').onclick = () => savePresetFromInput($('#lyPresetName'));
+  $('#lyPresetName').addEventListener('keydown', e => { if (e.key === 'Enter') savePresetFromInput($('#lyPresetName')); });
   $('#presetName').addEventListener('keydown', e => { if (e.key === 'Enter') savePresetFromInput(); });
+}
+function renderLayoutsPane(){
+  const cur = curLayout();
+  document.querySelectorAll('#lyList .ly-row').forEach(r => {
+    const on = r.dataset.l === cur && !activePreset, b = r.querySelector('.ly-use');
+    b.textContent = on ? 'In use' : 'Use'; b.disabled = on;
+  });
+  $('#lyLinked').checked = linked;
+  $('#lySw').value = switchMode;
+  renderPresetsPane();
 }
 $('#colNav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) scrollCols(+b.dataset.d); });
 $('#linkBtn').onclick = () => setLinked(!linked);
@@ -5872,9 +5960,10 @@ let settingsTab = 'general';
 try { settingsTab = localStorage.getItem('kickMultiview.settingsTab') || 'general'; } catch {}
 const MAIN_DESK = DESKTOP && ROLE === 'main';
 settingsDlg.querySelectorAll('.st-rail .desk-only').forEach(b => { b.hidden = !DESKTOP; });
-const ST_ICONS = { general: 'sliders', accounts: 'user', youtube: 'ytPlay', notify: 'bell', mentions: 'at', spam: 'mod', extensions: 'ext', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys' };
+const ST_ICONS = { general: 'sliders', layouts: 'layout', accounts: 'user', youtube: 'ytPlay', notify: 'bell', mentions: 'at', spam: 'mod', extensions: 'ext', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys' };
 settingsDlg.querySelectorAll('.st-rail button[data-s]').forEach(b => { if (icon[ST_ICONS[b.dataset.s]]) b.insertAdjacentHTML('afterbegin', icon[ST_ICONS[b.dataset.s]]); });
 settingsDlg.querySelectorAll('.st-rail .main-desk').forEach(b => { b.hidden = !MAIN_DESK; });
+settingsDlg.querySelectorAll('.st-rail .main-only').forEach(b => { b.hidden = ROLE !== 'main'; });
 function openSettings(tab){
   const ok = t => { const b = settingsDlg.querySelector(`.st-rail [data-s="${t}"]`); return b && !b.hidden; };
   settingsTab = ok(tab) ? tab : ok(settingsTab) ? settingsTab : 'general';
@@ -5890,6 +5979,7 @@ function openSettings(tab){
   if (settingsTab === 'general') $('#keysSet').checked = keysOn;
   if (settingsTab === 'notify') syncNotifyPane();
   if (settingsTab === 'extensions') renderExtPane();
+  if (settingsTab === 'layouts') renderLayoutsPane();
   return renderDoc(settingsTab);
 }
 window.openSettings = openSettings;   // for the tests
@@ -5917,6 +6007,8 @@ document.addEventListener('keydown', e => {                    // Ctrl+, / ⌘, 
   try { const v = localStorage.getItem(key); if (v !== null) c.checked = v === '1'; } catch {}
   c.addEventListener('change', () => { try { localStorage.setItem(key, c.checked ? '1' : '0'); } catch {} });
 });
+$('#autoFit').checked = autoFit;
+$('#autoFit').addEventListener('change', e => { autoFit = e.target.checked; try { localStorage.setItem('kickMultiview.autoFit', autoFit ? '1' : '0'); } catch {} });
 $('#keysSet').checked = keysOn;
 $('#keysSet').addEventListener('change', e => setKeysOn(e.target.checked));
 
