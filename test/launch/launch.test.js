@@ -59,16 +59,17 @@ test('the desktop app starts, adds a stream and quits cleanly', async () => {
     const partitions = () => win.$$eval('#stage .win webview', e => e.map(v => v.closest('.win').classList[1] + ' ' + v.getAttribute('partition')));
     assert.deepEqual(await partitions(), ['stream persist:kmv-stream-alpha', 'chat persist:kick']);
     await win.click('#loginBtn');
-    await win.check('#accountMenu .am-watch input[data-w=kick]');
+    await win.click('#accountMenu .am-more');      // Account settings…
+    await win.check('#settingsDlg .am-watch input[data-w=kick]');
     assert.deepEqual(await partitions(), ['stream persist:kick', 'chat persist:kick'], 'the Kick stream now uses the Kick login');
     assert.equal(await win.$$eval('#stage .win.stream webview', e => e.length), 1, 'the old player was replaced, not added to');
-    await win.uncheck('#accountMenu .am-watch input[data-w=twitch]');
+    await win.uncheck('#settingsDlg .am-watch input[data-w=twitch]');
     await win.reload();
     await win.waitForSelector('#stage .win.stream webview');
     assert.deepEqual(await partitions(), ['stream persist:kick', 'chat persist:kick'], 'the choice is remembered');
-    await win.click('#loginBtn');
-    assert.equal(await win.isChecked('#accountMenu .am-watch input[data-w=kick]'), true);
-    await win.uncheck('#accountMenu .am-watch input[data-w=kick]');
+    await win.evaluate(() => window.openSettings('accounts'));
+    assert.equal(await win.isChecked('#settingsDlg .am-watch input[data-w=kick]'), true);
+    await win.uncheck('#settingsDlg .am-watch input[data-w=kick]');
     assert.deepEqual(await partitions(), ['stream persist:kmv-stream-alpha', 'chat persist:kick'], 'and turning it off goes back');
 
     await win.waitForTimeout(1500);
@@ -114,8 +115,8 @@ test('YouTube sign-in copies the login from Firefox', async () => {
     await win.waitForSelector('#empty');
 
     // YouTube's "Log in" opens the Firefox sign-in steps (Google blocks signing in inside the app)
+    assert.match(await win.textContent('#settingsDlg .am-alt'), /only works through Firefox/);
     await win.click('#loginBtn');
-    assert.match(await win.textContent('#accountMenu .am-alt'), /only works through Firefox/);
     await win.click('#accountMenu .am-row[data-p=youtube] .am-in');
     await win.waitForSelector('#ffDlg:not([hidden])');
     assert.match(await win.textContent('#ffDlg .dlg-sub'), /only works through the Firefox browser/);

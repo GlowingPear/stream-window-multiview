@@ -42,6 +42,9 @@ contextBridge.exposeInMainWorld('kmv', {
   securityGet: () => ipcRenderer.invoke('security:get'),
   securitySetForget: (plat, on) => ipcRenderer.invoke('security:setForget', plat, on),
   onAccountChanged: cb => ipcRenderer.on('account:changed', (_e, info) => cb(info || {})),
+  accountsState: a => ipcRenderer.send('accounts:state', a),
+  onMenuAccount: cb => ipcRenderer.on('menu:account', (_e, d) => cb(d || {})),
+  onSettingsShow: cb => ipcRenderer.on('settings:show', (_e, tab) => cb(tab)),
   openExternal: url => ipcRenderer.invoke('open-external', url),
   onReloadAll: cb => ipcRenderer.on('reload-all', () => cb()),
 

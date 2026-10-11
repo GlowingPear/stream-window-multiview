@@ -39,6 +39,7 @@ const windows = page => page.$$eval('#stage .win', els => els.map(e => ({
 })));
 const press = async (page, key) => { await page.keyboard.press(key); await page.waitForTimeout(350); };
 const settle = page => page.waitForTimeout(1400);     // undo history records changes after a short pause (and settles 1.25 s after an undo)
+const openThemes = async page => { await page.click('#settingsBtn'); await page.click('#settingsDlg .st-rail [data-s=themes]'); };
 const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
 test('starts empty, with the welcome message', async t => {
@@ -195,10 +196,10 @@ test('keyboard shortcuts: help, Esc, typing in the link box, and switching them 
   await add(page, 'alpha', 'bravo');
 
   await press(page, 'F1');
-  assert.ok(await page.isVisible('#helpDlg'));
-  assert.equal(await page.$eval('.help-tabs .on', e => e.dataset.h), 'keys');
+  assert.ok(await page.isVisible('#settingsDlg'), 'Help is part of Settings');
+  assert.equal(await page.$eval('#settingsDlg .st-rail .on', e => e.dataset.s), 'keys');
   await press(page, 'Escape');
-  assert.equal(await page.isVisible('#helpDlg'), false);
+  assert.equal(await page.isVisible('#settingsDlg'), false);
 
   await press(page, 'n');
   assert.equal(await page.evaluate(() => document.activeElement.id), 'url', 'N jumps to the link box');
@@ -223,17 +224,17 @@ test('themes: pick one, it sticks after a restart, and save your own', async t =
   const accent = () => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
   assert.equal(await accent(), '#53fc18', 'starts with Pear');
 
-  await page.click('#themeBtn');
-  const names = await page.$$eval('#themeDlg .th-item b', e => e.map(x => x.textContent));
+  await openThemes(page);
+  const names = await page.$$eval('#themePane .th-item b', e => e.map(x => x.textContent));
   assert.ok(names.length >= 11, 'all the built-in themes are listed');
   assert.ok(names.includes('Hikari'));
-  await page.click('#themeDlg .th-item:has(b:text-is("Ocean"))');
+  await page.click('#themePane .th-item:has(b:text-is("Ocean"))');
   assert.equal(await accent(), '#3fb6ff');
 
-  await page.fill('#themeDlg .th-var >> nth=0 >> .hex', '#123456');
-  await page.fill('#themeDlg .th-name', 'My blue');
-  await page.click('#themeDlg .th-savebtn');
-  assert.ok((await page.$$eval('#themeDlg .th-item b', e => e.map(x => x.textContent))).includes('My blue'));
+  await page.fill('#themePane .th-var >> nth=0 >> .hex', '#123456');
+  await page.fill('#themePane .th-name', 'My blue');
+  await page.click('#themePane .th-savebtn');
+  assert.ok((await page.$$eval('#themePane .th-item b', e => e.map(x => x.textContent))).includes('My blue'));
 
   await page.reload();
   assert.equal(await accent(), '#3fb6ff', 'the theme is remembered');
@@ -244,23 +245,23 @@ test('themes: a black accent keeps buttons readable, and window borders have the
   const page = await openApp(t);
   await add(page, 'alpha');
   const css = (sel, prop) => page.$eval(sel, (e, p) => getComputedStyle(e)[p], prop);
-  const setVar = async (label, hex) => { await page.fill(`#themeDlg .th-var:has(span:text-is("${label}")) .hex`, hex); };
-  await page.click('#themeBtn');
+  const setVar = async (label, hex) => { await page.fill(`#themePane .th-var:has(span:text-is("${label}")) .hex`, hex); };
+  await openThemes(page);
 
-  // Tron's case: Accent black (text on accent stays near-black) used to make the Done button solid black
+  // Tron's case: Accent black (text on accent stays near-black) used to make accent buttons solid black
   await setVar('Accent', '#000000');
-  assert.equal(await css('#themeDlg .dlg-cancel', 'color'), 'rgb(255, 255, 255)', 'the button text turns white');
-  assert.notEqual(await css('#themeDlg .dlg-cancel', 'borderTopColor'), 'rgb(0, 0, 0)', 'the button keeps a visible outline');
-  assert.ok(await page.isVisible('#themeDlg .th-warn'), 'the editor explains what happened');
-  assert.match(await page.textContent('#themeDlg .th-warn'), /Window border/);
+  assert.equal(await css('#add', 'color'), 'rgb(255, 255, 255)', 'the button text turns white');
+  assert.notEqual(await css('#add', 'borderTopColor'), 'rgb(0, 0, 0)', 'the button keeps a visible outline');
+  assert.ok(await page.isVisible('#themePane .th-warn'), 'the editor explains what happened');
+  assert.match(await page.textContent('#themePane .th-warn'), /Window border/);
 
   // the window border follows Accent until it's set, then has its own colour
   assert.equal(await css('#stage .win.active', 'borderTopColor'), 'rgb(0, 0, 0)');
   await setVar('Accent', '#53fc18');
-  assert.equal(await page.isVisible('#themeDlg .th-warn'), false, 'no warning for a readable theme');
+  assert.equal(await page.isVisible('#themePane .th-warn'), false, 'no warning for a readable theme');
   await setVar('Window border', '#283034');
   assert.equal(await css('#stage .win.active', 'borderTopColor'), 'rgb(40, 48, 52)', 'only the window border changed');
-  assert.equal(await css('#themeDlg .dlg-cancel', 'backgroundColor'), 'rgb(83, 252, 24)', 'accent buttons stay green');
+  assert.equal(await css('#add', 'backgroundColor'), 'rgb(83, 252, 24)', 'accent buttons stay green');
 
   await page.reload();
   assert.equal(await css('#stage .win.active', 'borderTopColor'), 'rgb(40, 48, 52)', 'the window border colour is remembered');
@@ -269,25 +270,25 @@ test('themes: a black accent keeps buttons readable, and window borders have the
 test('themes: Tron (princess) is pink', async t => {
   const page = await openApp(t);
   await add(page, 'alpha');
-  await page.click('#themeBtn');
-  await page.click('#themeDlg .th-item:has(b:text-is("Tron (princess)"))');
+  await openThemes(page);
+  await page.click('#themePane .th-item:has(b:text-is("Tron (princess)"))');
   const v = await page.evaluate(() => { const s = getComputedStyle(document.documentElement); return { accent: s.getPropertyValue('--accent').trim(), frame: s.getPropertyValue('--frame').trim() }; });
   assert.deepEqual(v, { accent: '#ff5fae', frame: '#ff9fd0' });
-  assert.equal(await page.isVisible('#themeDlg .th-warn'), false, 'readable as it is');
+  assert.equal(await page.isVisible('#themePane .th-warn'), false, 'readable as it is');
 });
 
 test('every built-in theme is readable', async t => {
   const page = await openApp(t);
-  await page.click('#themeBtn');
+  await openThemes(page);
   const problems = [];
-  const count = (await page.$$('#themeDlg .th-item')).length;
+  const count = (await page.$$('#themePane .th-item')).length;
   for (let i = 0; i < count; i++) {
-    const item = page.locator('#themeDlg .th-item').nth(i);      // the list is redrawn after each click
+    const item = page.locator('#themePane .th-item').nth(i);      // the list is redrawn after each click
     const name = await item.locator('b').textContent();
     await item.click();
-    if (await page.isVisible('#themeDlg .th-warn')) problems.push(`${name}: ${await page.textContent('#themeDlg .th-warn')}`);
+    if (await page.isVisible('#themePane .th-warn')) problems.push(`${name}: ${await page.textContent('#themePane .th-warn')}`);
   }
-  assert.ok((await page.$$('#themeDlg .th-item')).length >= 12);
+  assert.ok((await page.$$('#themePane .th-item')).length >= 12);
   assert.deepEqual(problems, []);
 });
 
@@ -312,41 +313,35 @@ test('the toolbar fits any window width, with the rest in the More menu', async 
   // at 640px the More menu holds the rest, and its buttons work
   assert.ok(await page.isVisible('#moreBtn'));
   await page.click('#moreBtn');
-  assert.ok(await page.isVisible('#moreMenu #themeBtn'), 'Colours and themes is in the More menu');
+  assert.ok(await page.isVisible('#moreMenu #settingsBtn'), 'Settings is in the More menu');
   assert.ok(await page.isVisible('#moreMenu #clear'), 'so is Clear');
-  await page.click('#moreMenu #themeBtn');
-  assert.ok(await page.isVisible('#themeDlg'), 'and it opens the theme editor');
+  await page.click('#moreMenu #settingsBtn');
+  assert.ok(await page.isVisible('#settingsDlg'), 'and it opens Settings');
   await page.waitForSelector('#moreMenu', { state: 'hidden', timeout: 2000 });   // the menu closes
   await press(page, 'Escape');
-
-  // ticking a setting in the menu keeps the menu open and still works
-  await page.click('#moreBtn');
-  await page.uncheck('#moreMenu #snap');
-  assert.ok(await page.isVisible('#moreMenu'));
-  assert.equal(await page.isChecked('#snap'), false);
 
   // wide again: everything is back in the toolbar
   await page.setViewportSize({ width: 1920, height: 800 });
   await page.waitForTimeout(150);
-  assert.equal(await page.$eval('#themeBtn', e => e.parentElement.tagName), 'HEADER');
+  assert.equal(await page.$eval('#settingsBtn', e => e.parentElement.tagName), 'HEADER');
   assert.equal(await page.isVisible('#moreBtn'), false);
 });
 
-test('Help shows the instructions and this version\'s changelog', async t => {
+test('Help is part of Settings: the instructions, the shortcuts, and this version\'s changelog under Updates', async t => {
   const page = await openApp(t);
   const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
-  await page.click('#helpBtn');
-  assert.equal(await page.$eval('.help-tabs .on', e => e.dataset.h), 'guide');
-  await page.waitForSelector('#helpDlg .help-body h3');
-  assert.ok((await page.$$('#helpDlg .help-body h3')).length > 3, 'the instructions are shown');
+  await page.click('#settingsBtn');
+  await page.click('#settingsDlg .st-rail [data-s=guide]');
+  await page.waitForSelector('#settingsDlg [data-doc=guide] h3');
+  assert.ok((await page.$$('#settingsDlg [data-doc=guide] h3')).length > 3, 'the instructions are shown');
 
-  await page.click('.help-tabs [data-h=news]');
-  await page.waitForFunction(() => /\(current\)/.test(document.querySelector('#helpDlg .help-body').textContent));
-  assert.equal(await page.$eval('#helpDlg .help-body h3', e => e.textContent), `${version} (current)`);
-  assert.ok((await page.$$('#helpDlg .help-body li')).length > 0);
+  await page.click('#settingsDlg .st-rail [data-s=updates]');
+  await page.waitForFunction(() => /\(current\)/.test(document.querySelector('#settingsDlg [data-doc=news]').textContent));
+  assert.equal(await page.$eval('#settingsDlg [data-doc=news] h3', e => e.textContent), `${version} (current)`);
+  assert.ok((await page.$$('#settingsDlg [data-doc=news] li')).length > 0);
 
-  await page.click('.help-tabs [data-h=keys]');
-  assert.ok((await page.$$('#helpDlg .sc-row')).length >= 20, 'the shortcuts are listed');
+  await page.click('#settingsDlg .st-rail [data-s=keys]');
+  assert.ok((await page.$$('#settingsDlg .sc-row')).length >= 20, 'the shortcuts are listed');
 });
 
 test('Clear asks in the app first: Cancel, Esc and clicking outside keep the windows, and Undo brings them back', async t => {
@@ -378,7 +373,7 @@ test('keyboard shortcuts don\'t act behind the dialog', async t => {
   const answer = page.evaluate(() => window.ask('Sure?', 'Test', { ok: 'Yes' }));
   await page.waitForSelector('#askDlg:not([hidden])');
   await page.keyboard.press('?');   // the shortcut for Help
-  assert.ok(await page.isHidden('#helpDlg'));
+  assert.ok(await page.isHidden('#settingsDlg'));
   await page.keyboard.press('Escape');
   assert.equal(await answer, false);
 });
@@ -467,4 +462,83 @@ test('Hide bar: the button says Show bar while the bar is hidden, and brings it 
   await page.keyboard.press('Escape');
   assert.equal(await hidden(), false, 'Esc brings it back');
   assert.equal(await page.textContent('#focusBtn .l-long'), 'Hide bar');
+});
+
+test('Settings opens from the gear and Ctrl+, shows only what works in a browser, and remembers General', async t => {
+  const page = await openApp(t);
+  await page.click('#settingsBtn');
+  assert.ok(await page.isVisible('#settingsDlg'));
+  const tabs = await page.$$eval('#settingsDlg .st-rail button', b => b.filter(x => !x.hidden).map(x => x.dataset.s));
+  assert.deepEqual(tabs, ['general', 'themes', 'updates', 'guide', 'keys'], 'accounts, alerts and spam need the desktop app');
+  await press(page, 'Escape');
+  assert.ok(await page.isHidden('#settingsDlg'));
+  await page.keyboard.press('Control+,');
+  assert.ok(await page.isVisible('#settingsDlg'), 'Ctrl+, opens it');
+
+  await page.click('#settingsDlg .st-rail [data-s=general]');
+  await page.uncheck('#snap'); await page.uncheck('#muted'); await page.check('#autoPause');
+  await page.uncheck('#keysSet');
+  await page.reload();
+  assert.deepEqual(await page.evaluate(() => ['snap', 'muted', 'autoPause'].map(id => document.getElementById(id).checked)), [false, false, true], 'remembered');
+  await page.keyboard.press('Control+,');
+  await page.click('#settingsDlg .st-rail [data-s=keys]');
+  assert.equal(await page.isChecked('#keysOn'), false, 'the shortcuts tab shows the same switch');
+  await page.check('#keysOn');
+  await page.click('#settingsDlg .st-rail [data-s=general]');
+  assert.equal(await page.isChecked('#keysSet'), true);
+});
+
+test('a chat window lights up for a mention until you click it, and gets stronger while unseen', async t => {
+  const page = await openApp(t);
+  await page.evaluate(() => localStorage.setItem('kickMultiview.alerts', JSON.stringify({ mention: { esc: 10, max: 'flash', sound: 'none', color: '#123456' } })));
+  await page.reload();
+  await page.clock.install();
+  await add(page, 'alpha');
+  const cls = () => page.$eval('#stage .win.chat', e => ['al-1', 'al-2', 'al-3', 'al-brief'].filter(c => e.classList.contains(c)));
+  await page.evaluate(() => window.raiseAlert('alpha', 'mention'));
+  assert.deepEqual(await cls(), ['al-1']);
+  assert.equal(await page.$eval('#stage .win.chat', e => e.style.getPropertyValue('--al')), '#123456', 'in your colour');
+  await page.clock.fastForward(10500);
+  assert.deepEqual(await cls(), ['al-2'], 'pulses after 10 s');
+  await page.clock.fastForward(10500);
+  assert.deepEqual(await cls(), ['al-3'], 'then flashes');
+  await page.clock.fastForward(30000);
+  assert.deepEqual(await cls(), ['al-3'], 'and no further');
+  await page.$eval('#stage .win.chat .body', e => e.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));   // the paused clock holds up layout, so no real click
+  assert.deepEqual(await cls(), [], 'clicking the chat clears it');
+
+  await page.evaluate(() => localStorage.setItem('kickMultiview.alerts', JSON.stringify({ mention: { hl: 'brief', sound: 'none' } })));
+  await page.reload();
+  await page.evaluate(() => window.raiseAlert('alpha', 'mention'));
+  assert.deepEqual(await cls(), ['al-brief'], 'or just a short glow');
+});
+
+test('the chat helper hands over new messages and tags flagged ones without changing their text', async t => {
+  const app = await openApp(t);
+  const js = await app.evaluate(() => window.chatAgentJs);
+  const page = await app.context().newPage();
+  await page.setContent(`<div id="chat">
+    <div class="row"><span>12:01 PM </span><b>regular</b>: <span>hello there</span></div>
+  </div>`);
+  await page.evaluate(js);
+  await page.evaluate(() => window.__kmvMention.setWatch(true));
+  await page.waitForTimeout(2800);                       // what's already in the chat counts as old
+  await page.evaluate(() => document.getElementById('chat').insertAdjacentHTML('beforeend',
+    '<div class="row" id="spam"><span>12:02 PM </span><b>newacct</b>: <span>hq ai stream upgrades botkiva com <img alt=""> zero cost upgrades</span></div>'));
+  const q = await page.evaluate(() => window.__kmvMention.take());
+  assert.deepEqual(q.k, ['regular'], 'people chatting before it started are reported once');
+  assert.deepEqual(q.l.map(l => [l.sender, l.body]), [['newacct', 'hq ai stream upgrades botkiva com  zero cost upgrades']], 'emotes are pictures, so they leave a gap');
+
+  const before = await page.$eval('#spam', e => e.innerText);
+  await page.evaluate(l => window.__kmvMention.mark(l, 'Likely spam: test', '#ff5f5f'), q.l[0].line);
+  assert.equal(await page.$eval('#spam > [data-kmv-spam]', e => e.title), 'Likely spam: test', 'tagged after the message');
+  assert.equal(await page.$eval('#spam', e => e.innerText), before, 'the message text is unchanged');
+  assert.equal(await page.$eval('#spam', e => getComputedStyle(e.lastElementChild, '::after').content), '"LIKELY SPAM"');
+  assert.equal(await page.$eval('#chat .row', e => e.querySelector('[data-kmv-spam]')), null, 'only that message');
+  assert.deepEqual((await page.evaluate(() => window.__kmvMention.take())).l, [], 'and the tag isn\'t read as a new message');
+
+  // the chat draws the message again (it scrolled out and back): the tag comes back
+  await page.evaluate(() => { const o = document.getElementById('spam'), n = o.cloneNode(true); n.querySelector('[data-kmv-spam]').remove(); o.replaceWith(n); });
+  await page.evaluate(() => window.__kmvMention.take());
+  assert.ok(await page.$('#spam > [data-kmv-spam]'));
 });

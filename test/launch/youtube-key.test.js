@@ -1,4 +1,4 @@
-// The optional YouTube API key in the real desktop app (Accounts menu): it's tested with Google before it's
+// The optional YouTube API key in the real desktop app (Settings > Accounts): it's tested with Google before it's
 // kept, wrong keys and over-quota keys get clear messages, the page never gets the key back, and "How to get
 // one" opens the guide. Google is replaced by a local stand-in, so this needs no network. Uses a temporary
 // data folder.
@@ -61,20 +61,20 @@ test.after(async () => {
   if (!(await Promise.race([closed, new Promise(r => setTimeout(() => r(false), 10000))]))) app.process().kill('SIGKILL');
 });
 
-const status = () => win.locator('#accountMenu .am-yk-st').textContent();
-async function openMenu() { if (await win.isHidden('#accountMenu')) await win.click('#loginBtn'); await win.waitForSelector('#accountMenu .am-yk'); }
+const status = () => win.locator('#settingsDlg .am-yk-st').textContent();
+async function openMenu() { if (await win.isHidden('#settingsDlg') || await win.isHidden('#settingsDlg .am-yk')) await win.evaluate(() => window.openSettings('accounts')); await win.waitForSelector('#settingsDlg .am-yk'); }
 async function addKey(key) {
   await openMenu();
-  await win.fill('#accountMenu .am-yk-in', key);
-  await win.click('#accountMenu .am-yk-add');
-  await win.waitForFunction(() => !document.querySelector('#accountMenu .am-yk-add').disabled && !/Testing/.test(document.querySelector('#accountMenu .am-yk-st').textContent));
+  await win.fill('#settingsDlg .am-yk-in', key);
+  await win.click('#settingsDlg .am-yk-add');
+  await win.waitForFunction(() => !document.querySelector('#settingsDlg .am-yk-add').disabled && !/Testing/.test(document.querySelector('#settingsDlg .am-yk-st').textContent));
 }
 
-test('the Accounts menu offers an optional YouTube API key', T, async () => {
+test('Settings > Accounts offers an optional YouTube API key', T, async () => {
   await openMenu();
   assert.match(await status(), /faster and more reliable/);
-  assert.ok(await win.isVisible('#accountMenu .am-yk-in'));
-  assert.equal(await win.getAttribute('#accountMenu .am-yk-in', 'type'), 'password');
+  assert.ok(await win.isVisible('#settingsDlg .am-yk-in'));
+  assert.equal(await win.getAttribute('#settingsDlg .am-yk-in', 'type'), 'password');
 });
 
 test('something that isn\'t a key is turned down without asking Google', T, async () => {
@@ -96,9 +96,9 @@ test('a working key is kept, and the page only hears that one is set', T, async 
   assert.deepEqual(asked, ['/videos'], 'tested with one question');
   assert.match(await status(), /Key added/);
   assert.match(await status(), /until you close the app/, 'no key store here: kept for this run only');
-  assert.ok(await win.isVisible('#accountMenu .am-yk-rm'));
-  assert.ok(await win.isHidden('#accountMenu .am-yk-in'));
-  assert.equal(await win.inputValue('#accountMenu .am-yk-in'), '', 'the box is emptied');
+  assert.ok(await win.isVisible('#settingsDlg .am-yk-rm'));
+  assert.ok(await win.isHidden('#settingsDlg .am-yk-in'));
+  assert.equal(await win.inputValue('#settingsDlg .am-yk-in'), '', 'the box is emptied');
   const st = await win.evaluate(() => window.kmv.ytKeyStatus());
   assert.equal(st.set, true);
   assert.ok(!JSON.stringify(st).includes(KEYS.good), 'the key itself never comes back to the page');
@@ -106,9 +106,9 @@ test('a working key is kept, and the page only hears that one is set', T, async 
 
 test('removing the key', T, async () => {
   await openMenu();
-  await win.click('#accountMenu .am-yk-rm');
+  await win.click('#settingsDlg .am-yk-rm');
   await win.click('#askDlg .ask-yes');   // "Remove the YouTube API key?"
-  await win.waitForSelector('#accountMenu .am-yk-in', { state: 'visible' });
+  await win.waitForSelector('#settingsDlg .am-yk-in', { state: 'visible' });
   assert.equal((await win.evaluate(() => window.kmv.ytKeyStatus())).set, false);
 });
 
@@ -122,11 +122,11 @@ test('a key that\'s over today\'s quota is kept, and says when it\'s used again'
 
 test('"How to get one" opens the guide at the YouTube API key section', T, async () => {
   await openMenu();
-  await win.click('#accountMenu .am-yk-how');
-  await win.waitForSelector('#helpDlg .help-body h3');
-  const h = win.locator('#helpDlg .help-body h3', { hasText: 'YouTube API key' });
+  await win.click('#settingsDlg .am-yk-how');
+  await win.waitForSelector('#settingsDlg [data-doc=guide] h3');
+  const h = win.locator('#settingsDlg [data-doc=guide] h3', { hasText: 'YouTube API key' });
   assert.equal(await h.count(), 1);
-  const top = await h.evaluate(el => el.getBoundingClientRect().top - el.closest('.help-body').getBoundingClientRect().top);
+  const top = await h.evaluate(el => el.getBoundingClientRect().top - el.closest('.st-body').getBoundingClientRect().top);
   assert.ok(top >= -2 && top < 60, 'scrolled to the section');
   assert.deepEqual(pageErrors, []);
 });

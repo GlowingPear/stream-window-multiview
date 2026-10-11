@@ -1,7 +1,7 @@
 ﻿# Stream Multiview – How to use it
 
 Watch several Kick, Twitch and YouTube streams and their chats at once.
-In the app, click the ? button in the toolbar (or press F1) to read this.
+In the app, this is in Settings > Instructions (gear button in the toolbar). F1 shows the keyboard shortcuts.
 In a small window, toolbar buttons that don't fit move into the ⋯ (More) button at the right end of the toolbar.
 
 ## Getting started
@@ -66,8 +66,17 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - S / M / L sets the side panel width, and "Panel left / right" moves it to the other side.
 - Pick any other layout to go back to normal.
 
+## Settings (gear button)
+- Click the gear in the toolbar, or press Ctrl+, (Mac: ⌘,). It's also in the menu bar: on a Mac in the Stream Multiview menu, on Windows and Linux in File.
+- **General**: start new streams muted, snap windows while you drag, auto-pause hidden streams, and keyboard shortcuts on or off.
+- **Accounts**: logins, Import follows, your usernames for mentions, "Forget my login", "Watch signed in" and the YouTube API key.
+- **Mentions** and **Spam alerts**: how a chat window gets your attention (see Alerts below).
+- **Themes**: the app's colours.
+- **Updates**: your version, checking for a new one, and what's new in each version.
+- **Instructions** and **Keyboard shortcuts**: this help. The Help menu in the menu bar opens them too.
+
 ## Colours and themes
-- Click the palette button in the toolbar.
+- Open Settings > Themes.
 - Pick a ready-made theme: Pear, Purple Night, Ocean, Sunset, Cherry, Neon Arcade, Retro Amber, Midnight Mono, Daylight (light), Paper (light), Hikari (blue and white) or Tron (princess) (pink).
 - Change any colour with its colour box, or type a colour code like #3fb6ff. Changes show right away.
 - **Window border** is the outline around the selected and big windows. It matches Accent until you change it, so you can tone it down without changing the buttons.
@@ -98,17 +107,27 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 
 ## Logging in (person button)
 - Log in once to Kick and Twitch (for Kick, enter the email code once). Every chat for that site uses the login, and it's kept when you restart the app.
-- Switch and Log out are on the same row. Import follows is there too.
+- The person button logs you in and out, and has Switch and Import follows. Settings > Accounts has the same, plus the options below. The menu bar's Account menu logs you in or out of each site too.
 - YouTube sign-in currently only works through the Firefox browser (Google blocks signing in inside apps, and Chrome and Edge lock their logins). Sign in to youtube.com in Firefox, then click YouTube's Log in (or "Sign in to YouTube with Firefox") and **Copy my login from Firefox**. Only the YouTube/Google login is copied, straight from Firefox: no extension, no files.
 - You don't need to sign in to watch YouTube. Signing in is only for typing in YouTube chat, importing follows and "Watch signed in".
-- "Forget my login when I close the app": tick a site and its login is wiped every time you close the app.
-- "Watch signed in": tick a site and its streams play with your login too, so you watch as your account instead of as a logged-out viewer. It's off at first and uses more memory. Open streams of that site restart when you change it. Without it, Twitch Turbo and YouTube Premium don't remove ads from the video.
+- "Forget my login when I close the app" (Settings > Accounts): tick a site and its login is wiped every time you close the app.
+- "Watch signed in" (Settings > Accounts): tick a site and its streams play with your login too, so you watch as your account instead of as a logged-out viewer. It's off at first and uses more memory. Open streams of that site restart when you change it. Without it, Twitch Turbo and YouTube Premium don't remove ads from the video.
 - The green lock means saved logins are encrypted on this computer and locked to your user account.
 - Mac: the first time a new version opens, macOS may ask if Stream Multiview can use "Stream Multiview Safe Storage" in your Keychain. Type your Mac password and click **Always Allow**. That's the key your saved logins are encrypted with; if you click Deny, the app can't read them and you'll have to log in again.
 
 ## Alerts
-- @ button: get a notification when someone mentions you or replies to you in a Kick or Twitch chat. Set your usernames there or click Detect.
+- Mentions: when someone writes @you or replies to you in a Kick or Twitch chat, that chat window lights up and it's listed under the @ button. Set your usernames in Settings > Accounts, or click Detect.
+- Settings > Mentions sets how: the window's border glows briefly or stays lit until you click that chat, and can get stronger while you haven't seen it (pulse, then flash). Pick its colour, a sound (or your own sound file), whether the sound repeats, and when to show a desktop notification.
 - Live alerts come from your saved channels while the app is running.
+
+## Spam alerts (for moderators)
+- Settings > Spam alerts. Off until you turn it on.
+- It only checks Kick and Twitch chats where you're a moderator (the ones with the mod view button). When it spots a promo-bot message, it tags it "LIKELY SPAM" in the chat and lights up that chat window, so you can deal with it. It never hides, deletes or reports anything.
+- A message is only flagged when several signs add up, so normal links and clip links aren't flagged. The signs: a link written so the chat doesn't make it a link (`site com`, `site[.]com`, `site dot com`), promo words like "upgrades" or "zero cost", emotes breaking up the words, the same message in another open chat, and someone who just started chatting. Hover the tag to see which signs it found.
+- Lists: sites that never count (Kick, Twitch, YouTube, Discord and so on) and the promo words. Add your own or reset them.
+- Sensitivity: Strict flags more, Relaxed fewer.
+- Try it: paste a message to see whether it would be flagged, and why.
+- The alert options are the same as for mentions, with their own colour and sound.
 
 ## YouTube API key (optional)
 Live alerts check your saved channels while the app is running. Kick (when you're logged in) and Twitch answer for many channels at once, so they're checked every 30 seconds. YouTube is checked one channel at a time by reading its page, which is slower and can break when YouTube changes its pages. A free YouTube API key from Google makes YouTube's checks faster and more reliable. You don't need one: without it, everything still works.
@@ -118,13 +137,13 @@ Live alerts check your saved channels while the app is running. Kick (when you'r
   - In "APIs & Services" > "Credentials", click **Create credentials** > **API key** and copy it.
   - Recommended: click the key, and under "API restrictions" choose **Restrict key** and tick only YouTube Data API v3, so the key can't be used for anything else.
 - Google's own guide, with pictures: developers.google.com/youtube/v3/getting-started
-- Add it in the person button's menu, under YouTube: paste the key and click **Add**. The app tests it once with Google.
+- Add it in Settings > Accounts, under YouTube API key: paste the key and click **Add**. The app tests it once with Google.
 - It's free: Google gives each key 10,000 "units" a day. With the key, YouTube is checked every 30 seconds too, using 1 unit per 50 videos it asks about (about 3,000 a day for 30 channels), plus 1 the first time for each @handle channel.
-- The key is stored encrypted on this computer (like your logins) and only used to ask YouTube which videos are live. Remove it from the same menu.
-- If the key runs out of today's units, Google is busy, or the key stops working, the app goes back to reading pages by itself and the menu says why. Out of units: it tries the key again when Google resets them (midnight Pacific time). Too many requests: after 15 minutes, then longer.
+- The key is stored encrypted on this computer (like your logins) and only used to ask YouTube which videos are live. Remove it from the same place.
+- If the key runs out of today's units, Google is busy, or the key stops working, the app goes back to reading pages by itself and Settings says why. Out of units: it tries the key again when Google resets them (midnight Pacific time). Too many requests: after 15 minutes, then longer.
 
 ## Saving bandwidth
-- Auto-pause hidden (toolbar): streams you can't see pause after 2 seconds and jump back to live when you can.
+- Auto-pause hidden streams (Settings > General): streams you can't see pause after 2 seconds and jump back to live when you can.
 - Pop out streams: move every stream into a separate window (it opens on your second monitor if you have one). Chats stay here, and new channels go to the right window by themselves. In the streams window, **Tile** gives every stream equal space and **Spotlight** makes the stream you last clicked big; drag one stream onto another to swap them. "Bring streams back" or closing that window returns them.
 - Pop out hidden (switch control): send only the streams you can't see to that window.
 
@@ -135,11 +154,12 @@ Live alerts check your saved channels while the app is running. Kick (when you'r
 - Clear: closes every window (Ctrl+Z brings them back).
 
 ## Keyboard shortcuts
-To switch every shortcut off, untick "Use keyboard shortcuts" in Help > Keyboard shortcuts.
+To switch every shortcut off, use Settings > General (or "Use keyboard shortcuts" in Settings > Keyboard shortcuts).
 Shortcuts work when the app has your keyboard. If you just clicked inside a stream or chat, click a title bar or an empty spot first.
 
 ### General
-- F1 or ? : this help (shortcuts)
+- F1 or ? : the keyboard shortcuts
+- Ctrl+, (Mac: ⌘,) : Settings
 - Ctrl+Z (Mac: ⌘Z) : undo
 - Ctrl+Y or Ctrl+Shift+Z (Mac: ⌘⇧Z) : redo
 - N or / : type a link or name
@@ -172,7 +192,7 @@ Shortcuts work when the app has your keyboard. If you just clicked inside a stre
 ## Updates
 - The app checks the project's GitHub page for new versions a few seconds after it starts, then every few hours.
 - When there's a new version it downloads it by itself, then shows a box in the corner. Installed with the .exe: click **Restart and install** and it updates and reopens. Mac: click **Install**, then drag Stream Multiview into Applications to replace the old one.
-- Help (?) > Updates shows your version, lets you check right away, and has the "Update automatically" switch.
+- Settings > Updates shows your version and what's new, lets you check right away, and has the "Update automatically" switch. "Check for updates" in the Help menu (on a Mac, also in the Stream Multiview menu) opens it and checks.
 - Your logins, saved channels, layouts and themes are kept. The old app files are backed up first.
 - If an update changes the app engine, close the app and start it again with your shortcut. It reinstalls the engine once (about a minute).
 

@@ -35,18 +35,19 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - Saved list with Kick / Twitch / YouTube tabs, with live channels listed first
 - Desktop notifications when saved channels go live, and optional auto-open when they do
 - **Import follows** from Kick, Twitch and YouTube
-- Alerts when someone @mentions you or replies to you in Kick or Twitch chat
+- Alerts when someone @mentions you or replies to you in Kick or Twitch chat: that chat window lights up (and can get stronger until you look), with a sound and desktop notification of your choice
+- **Spam alerts for moderators** (off by default): in chats you moderate, promo-bot messages are tagged "likely spam" and the chat window lights up. Nothing is hidden or removed.
 
 **Comfort**
 - Undo / redo for window changes (Ctrl+Z / Ctrl+Y)
 - Keyboard shortcuts (press **F1**), which you can switch off
 - **Colors and themes**: 12 built-in themes, full color customization, and saved custom themes
 - Auto-pause streams you can't see, and "pause all except focus" to save bandwidth
-- Built-in instructions and a "What's new" list (the **?** button)
+- One **Settings** window (gear button, Ctrl+, / ⌘,, or the menu bar) for general options, accounts, alerts, themes, updates, and the built-in instructions and keyboard shortcuts (**F1**)
 
 **Automatic updates**
 - Checks this GitHub repository for new versions, installs them in the background, then asks you to restart
-- Help › Updates: check now, turn automatic updates on or off
+- Settings › Updates: check now, turn automatic updates on or off, and what's new in each version
 
 **Privacy and security**
 - One login per platform, kept between launches. Passwords are never stored, only each site's "stay signed in" session.
@@ -128,10 +129,10 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 
 | Command | What it checks | Time |
 |---|---|---|
-| `npm test` | Updates, the release scripts and login encryption. Needs nothing else installed. | seconds |
+| `npm test` | Updates, the release scripts, login encryption, live checks and the spam scoring. Needs nothing else installed. | seconds |
 | `npm run test:setup` | Run once: installs the test browser (Playwright). It isn't saved as a dependency of the app. | once |
-| `npm run test:ui` | The app's page in a headless browser: adding streams, layouts, the switch control, undo/redo, shortcuts, themes, Help | ~30 s |
-| `npm run test:launch` | Starts the real desktop app: start-up, adding a stream, logins and the Import follows dialog (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~1 min |
+| `npm run test:ui` | The app's page in a headless browser: adding streams, layouts, the switch control, undo/redo, shortcuts, themes, Settings, alerts | ~30 s |
+| `npm run test:launch` | Starts the real desktop app: start-up, adding a stream, logins, the Import follows dialog, the menu bar, Settings, and mention and spam alerts in chat windows (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~1 min |
 | `npm run test:all` | All of the above | |
 
 The tests are in `test/`. When you add a feature, add a test next to the similar ones.
@@ -176,6 +177,7 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 | `src/index.html` | The main app UI: windows, layouts, switch control, menus and themes |
 | `src/switcher.html` | The switch control when it's popped out into its own window |
 | `src/live.js` | Live-status parsing, link parsing and follow import helpers |
+| `src/spam.js` | Scores chat messages for spam alerts (used by the app page and the tests) |
 | `src/firefox-login.js` | Copies the YouTube/Google login from Firefox for YouTube sign-in |
 | `src/updater.js` | Checks GitHub for a newer version, downloads it and installs it safely |
 | `src/harden.js` | Turns on Electron's cookie-encryption fuse so saved logins are encrypted |
