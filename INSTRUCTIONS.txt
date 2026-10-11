@@ -147,6 +147,15 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - History: the last 50 flagged messages, with their score and the signs found. Click one to show that chat.
 - The alert options are the same as for mentions, with their own colour and sound.
 
+## Chrome extensions (Settings > Extensions)
+- Install one three ways: **Browse Chrome Web Store** (find it and click **Add to Stream Multiview**), **Install from link…** (paste its Web Store link), or **Load folder…** (an unpacked extension). The app asks first, and shows what it can do.
+- Pick where it's on: Kick, Twitch and YouTube, for streams and for chats. New ones are on for streams only. If you watch a site signed in, its streams follow the Chats setting.
+- The puzzle button on a stream or chat window lists the extensions in it. Click one to open its popup, the gear for its options. On a stream you can switch one on or off for that stream only.
+- Each chat site and each stream keeps its own extension settings.
+- Some extensions need Chrome features the app doesn't have; they're marked. Blockers like uBlock Origin Lite won't block anything.
+- Extensions can read and change the pages they're on, including while you're signed in. Only install ones you trust.
+- Extensions from the Web Store update by themselves.
+
 ## YouTube ads and the cookie question (Settings > YouTube)
 - **Skip ads** (on to start with): when an ad shows its Skip button, the app presses it for you. Ads without a Skip button still play.
 - **Answer the cookie question** (on to start with, "Reject all"): in some countries YouTube asks about cookies before a stream plays, and keeps it paused until you answer. The app answers for you with the choice you pick. Each stream remembers the answer, so it's asked once per channel. Turn it off to answer it yourself in the player.
