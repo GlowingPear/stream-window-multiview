@@ -469,6 +469,8 @@ body.fs-moving,body.fs-moving *{cursor:grabbing !important;user-select:none}
 .upd-notes.html a{color:var(--accent)}
 .upd-notes.html :is(code,tt){font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
 .upd-notes.html img{max-width:100%;height:auto}
+.upd-notes.html:has(video){max-height:560px}
+.upd-notes.html video{display:block;max-width:100%;max-height:360px;margin:4px 0 6px;border-radius:6px;background:#000}
 #toast .btn{height:28px;color:var(--accent);border-color:var(--accent)}
 #toast .btn[hidden]{display:none}
 .fs-item input{width:70px;height:4px;accent-color:var(--accent);cursor:pointer}
@@ -4941,9 +4943,14 @@ function updMsg(u){
   }
 }
 // GitHub's release notes as HTML (rendered and cleaned by GitHub, like on the release page). Only plain
-// formatting and https links are kept; anything else becomes its text. Links open in your browser.
-const NOTE_TAGS = new Set(['H1', 'H2', 'H3', 'H4', 'P', 'UL', 'OL', 'LI', 'STRONG', 'B', 'EM', 'I', 'CODE', 'TT', 'PRE', 'A', 'BR', 'BLOCKQUOTE', 'HR', 'DEL', 'IMG']);
-const NOTE_DROP = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'TEMPLATE', 'SVG', 'MATH', 'FORM', 'INPUT', 'BUTTON', 'TEXTAREA', 'SELECT', 'LINK', 'META']);
+// formatting, https links and videos (with controls, never autoplaying) are kept; anything else becomes its
+// text. Links open in your browser.
+const NOTE_TAGS = new Set(['H1', 'H2', 'H3', 'H4', 'P', 'UL', 'OL', 'LI', 'STRONG', 'B', 'EM', 'I', 'CODE', 'TT', 'PRE', 'A', 'BR', 'BLOCKQUOTE', 'HR', 'DEL', 'IMG', 'VIDEO']);
+const NOTE_DROP = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'TEMPLATE', 'SVG', 'MATH', 'FORM', 'INPUT', 'BUTTON', 'TEXTAREA', 'SELECT', 'LINK', 'META', 'SUMMARY']);   // SUMMARY: the file name GitHub shows above a video
+// A video attached to the notes comes as a signed link that stops working after 5 minutes, but the notes
+// are kept from the last check. Its permanent address (which signs a fresh link each time) works for longer.
+const noteVideo = src => src.replace(/^https:\/\/private-user-images\.githubusercontent\.com\/\d+\/\d+-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.\w+(\?.*)?$/i,
+  'https://github.com/user-attachments/assets/$1');
 function releaseNotes(html){
   const t = document.createElement('template');
   t.innerHTML = String(html);
@@ -4953,6 +4960,10 @@ function releaseNotes(html){
     if (!NOTE_TAGS.has(tag)){ el.replaceWith(...el.childNodes); return; }
     for (const a of [...el.attributes]) if (!['href', 'src', 'alt'].includes(a.name)) el.removeAttribute(a.name);
     for (const k of ['href', 'src']) if (el.hasAttribute(k) && !/^https:\/\//i.test(el.getAttribute(k))) el.removeAttribute(k);
+    if (tag === 'VIDEO'){
+      if (el.hasAttribute('src')) el.setAttribute('src', noteVideo(el.getAttribute('src')));
+      el.setAttribute('controls', ''); el.setAttribute('muted', ''); el.setAttribute('preload', 'metadata');
+    }
   });
   return t.content;
 }
