@@ -51,6 +51,13 @@ function recordElectron(pw) {
   };
 }
 
+// Stops the desktop app and its helper processes (GPU, network, pages). Playwright starts it as the leader of
+// its own process group outside Windows, so kill the group: killing only the app leaves the helpers running,
+// and they keep the test file from ever ending.
+function killApp(proc) {
+  try { if (process.platform === 'win32') proc.kill('SIGKILL'); else process.kill(-proc.pid, 'SIGKILL'); } catch {}
+}
+
 // Serves the app's folder on a random local port, like the page sees it outside the desktop app.
 function serve() {
   return new Promise(resolve => {
@@ -65,4 +72,4 @@ function serve() {
   });
 }
 
-module.exports = { ROOT, playwright, serve, startCoverage, saveCoverage };
+module.exports = { ROOT, playwright, serve, startCoverage, saveCoverage, killApp };
