@@ -683,8 +683,28 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .ex-acts .btn{height:28px;padding:0 10px;font-size:12px}
 .st-add.ex-linkrow{margin:0 0 12px}
 /* Settings > Layouts */
-.st-opt{padding-left:18px}
-.ly-row .ly-use{min-width:58px}
+.ly-intro{margin:10px 0 6px}
+.ly-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.ly-card{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel2)}
+.ly-card.on{border-color:var(--accent)}
+.ly-head{display:flex;align-items:center;gap:10px}
+.ly-head .lm-pic{width:56px;height:35px;flex:none}
+.ly-card.on .lm-pic{color:var(--accent)}
+.ly-head b{flex:1;font-size:13.5px}
+.ly-head .btn{height:28px;padding:0 10px;font-size:12px;min-width:62px}
+.ly-desc{margin:0;font-size:11.5px;line-height:1.45;color:var(--muted)}
+.ly-card .st-opt{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:9px;border-top:1px solid var(--line);font-size:12.5px}
+.ly-card .st-opt small{font-size:11px}
+.pr-srow .lm-pic{width:40px;height:25px;flex:none;color:var(--muted)}
+.ly-sw{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ly-sw button{display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel2);color:var(--text);text-align:left;cursor:pointer}
+.ly-sw button:hover{border-color:var(--muted)}
+.ly-sw button.on{border-color:var(--accent)}
+.ly-sw button.on i{color:var(--accent)}
+.ly-sw i{display:grid;color:var(--muted)}
+.ly-sw svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ly-sw b{font-size:13px}
+.ly-sw span{font-size:11.5px;line-height:1.4;color:var(--muted)}
 .pr-srow .st-t > span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pr-srow.on .st-t > span{color:var(--accent);font-weight:600}
 .pr-srow .pr-x:hover{color:#fff;background:var(--danger);border-color:var(--danger)}
@@ -1313,15 +1333,23 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       </section>
       <section class="st-pane" data-s="layouts" hidden>
         <h4>Layouts</h4><p class="st-sub">How the windows are arranged. Switch with <b>Layout ▾</b> in the toolbar, or here.</p>
-        <div id="lyList"></div>
-        <label class="st-row st-opt" data-opt="columns"><span class="st-t">Linked<small>Each stream and its chat move together: drag either title bar to move the column. Off: move and resize windows freely. The same as the Linked button in the toolbar.</small></span><input type="checkbox" class="st-sw" id="lyLinked"></label>
-        <label class="st-row st-opt" data-opt="auto"><span class="st-t">Fit in channels that open by themselves<small>When a saved channel opens because it went live, it's added as the last stream (its chat as the last chat) and the layout is redone. The other streams keep their order. Not once you've moved or resized a window yourself.</small></span><input type="checkbox" class="st-sw" id="autoFit"></label>
-        <div class="st-sec">Switch control</div>
-        <div class="st-row"><span class="st-t">Where it shows<small>Docked: under the big stream, in Focus view only. Floating: a panel you can move and resize, in every layout. Own window: anywhere, even on another monitor.</small></span>
-          <select id="lySw"><option value="dock">Docked</option><option value="float">Floating</option><option value="window" class="desk-only">Own window</option></select></div>
-        <div class="st-sec">Your layouts</div>
-        <div id="lyPresets"></div>
-        <div class="st-add"><input class="st-in" id="lyPresetName" placeholder="Name the current layout…" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="lyPresetSave">Save</button></div>
+        <div class="st-tabs" id="lyTabs"><button data-t="layouts" class="on">Layouts</button><button data-t="saved">Your layouts</button><button data-t="switch">Switch control</button></div>
+        <div class="st-subpane" data-t="layouts"><div class="ly-grid" id="lyList"></div></div>
+        <div class="st-subpane" data-t="saved" hidden>
+          <p class="st-sub ly-intro">Arrangements you've named: their windows, order and columns. Using one keeps the windows that are already open and reopens the rest.</p>
+          <div id="lyPresets"></div>
+          <div class="st-add"><input class="st-in" id="lyPresetName" placeholder="Name the current layout…" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="lyPresetSave">Save</button></div>
+        </div>
+        <div class="st-subpane" data-t="switch" hidden>
+          <p class="st-sub ly-intro">A button for every stream: make one big, swap them, pause, mute and set the volume. Where it shows:</p>
+          <div class="ly-sw" id="lySw">
+            <button data-sw="dock"><i data-ico="dock"></i><b>Docked</b><span>Under the big stream, in Focus view only.</span></button>
+            <button data-sw="float"><i data-ico="float"></i><b>Floating</b><span>A panel you can move and resize, in every layout.</span></button>
+            <button data-sw="window" class="desk-only"><i data-ico="popwin"></i><b>Own window</b><span>Put it anywhere, even on another monitor.</span></button>
+          </div>
+        </div>
+        <label class="st-opt" data-opt="columns"><span class="st-t">Linked<small>Each stream and its chat move together. Off: move and resize windows freely.</small></span><input type="checkbox" class="st-sw" id="lyLinked"></label>
+        <label class="st-opt" data-opt="auto"><span class="st-t">Fit in channels that open by themselves<small>A saved channel that opens because it went live goes last (its chat too), and the others keep their order. Not once you've moved or resized a window yourself.</small></span><input type="checkbox" class="st-sw" id="autoFit"></label>
       </section>
       <section class="st-pane" data-s="accounts" hidden>
         <h4>Accounts</h4><p class="st-sub">Each platform's chats use its login.</p>
@@ -4331,7 +4359,7 @@ function updateSwBtn(){
   const b = $('#swBtn'); if (!b || typeof switchMode === 'undefined') return;
   b.classList.toggle('on', switchMode !== 'dock');
   document.querySelectorAll('#swModes button').forEach(x => x.classList.toggle('on', x.dataset.sw === switchMode));
-  $('#lySw').value = switchMode;
+  syncLySw();
 }
 
 /* ---- Your layouts: save the current arrangement under a name and bring it back from the Layout menu ---- */
@@ -4371,11 +4399,13 @@ function renderPresets(){
 function renderPresetsPane(){
   const box = $('#lyPresets'); if (!box) return;
   box.innerHTML = '';
-  if (!presets.length){ box.innerHTML = '<div class="st-row"><span class="st-t"><small>None yet. Arrange things how you like, then name and save it below or in Layout ▾.</small></span></div>'; return; }
+  if (!presets.length){ box.innerHTML = '<div class="st-row"><span class="st-t"><small>None yet. Arrange things how you like, then name it below (or in Layout ▾) and save it.</small></span></div>'; return; }
   presets.forEach((p, i) => {
     const row = document.createElement('div'); row.className = 'st-row pr-srow' + (p.name === activePreset ? ' on' : '');
+    const pic = document.querySelector(`#layoutMenu [data-l="${p.mode}"] .lm-pic`);
     row.innerHTML = '<span class="st-t"><span></span><small></small></span><button class="btn pr-use">Use</button><button class="btn pr-ren">Rename</button>'
       + '<button class="btn pr-up" title="Save what\'s on screen now over this one">Update</button><button class="btn pr-x">Delete</button>';
+    if (pic) row.prepend(pic.cloneNode(true));
     row.querySelector('.st-t > span').textContent = p.name;
     row.querySelector('small').textContent = presetSummary(p);
     row.querySelector('.pr-use').onclick = () => { closeSettings(); applyPreset(p); };
@@ -4852,29 +4882,37 @@ if (ROLE === 'main'){
   // Settings > Layouts: each layout from the menu, with its options under it
   const lyList = $('#lyList');
   layoutMenu.querySelectorAll('button[data-l]').forEach(b => {
-    const row = document.createElement('div'); row.className = 'st-row ly-row'; row.dataset.l = b.dataset.l;
-    row.innerHTML = '<span class="st-t"><span></span><small></small></span><button class="btn ly-use">Use</button>';
-    row.querySelector('.st-t > span').textContent = b.querySelector('b').textContent;
-    row.querySelector('small').textContent = b.querySelector('span').textContent;
-    row.querySelector('.ly-use').onclick = () => { closeSettings(); b.click(); };
-    lyList.appendChild(row);
-    const opt = document.querySelector(`#settingsDlg [data-opt="${b.dataset.l}"]`); if (opt) lyList.appendChild(opt);
+    const card = document.createElement('div'); card.className = 'ly-card'; card.dataset.l = b.dataset.l;
+    card.innerHTML = '<div class="ly-head"><b></b><button class="btn ly-use">Use</button></div><p class="ly-desc"></p>';
+    card.querySelector('.ly-head').prepend(b.querySelector('.lm-pic').cloneNode(true));
+    card.querySelector('b').textContent = b.querySelector('b').textContent;
+    card.querySelector('.ly-desc').textContent = b.querySelector('span').textContent;
+    card.querySelector('.ly-use').onclick = () => { closeSettings(); b.click(); };
+    const opt = document.querySelector(`#settingsDlg [data-opt="${b.dataset.l}"]`); if (opt) card.appendChild(opt);
+    lyList.appendChild(card);
+  });
+  $('#lyTabs').addEventListener('click', e => {
+    const b = e.target.closest('button[data-t]'); if (!b) return;
+    $('#lyTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('#settingsDlg [data-s=layouts] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
   });
   if (!DESKTOP) $('#lySw .desk-only').remove();
-  $('#lySw').addEventListener('change', e => setSwitchMode(e.target.value));
+  $('#lySw').querySelectorAll('i[data-ico]').forEach(i => { i.innerHTML = icon[i.dataset.ico]; });
+  $('#lySw').addEventListener('click', e => { const b = e.target.closest('button[data-sw]'); if (b) setSwitchMode(b.dataset.sw); });
   $('#lyLinked').addEventListener('change', e => setLinked(e.target.checked));
   $('#lyPresetSave').onclick = () => savePresetFromInput($('#lyPresetName'));
   $('#lyPresetName').addEventListener('keydown', e => { if (e.key === 'Enter') savePresetFromInput($('#lyPresetName')); });
   $('#presetName').addEventListener('keydown', e => { if (e.key === 'Enter') savePresetFromInput(); });
 }
+function syncLySw(){ document.querySelectorAll('#lySw button').forEach(b => b.classList.toggle('on', b.dataset.sw === switchMode)); }
 function renderLayoutsPane(){
   const cur = curLayout();
-  document.querySelectorAll('#lyList .ly-row').forEach(r => {
-    const on = r.dataset.l === cur && !activePreset, b = r.querySelector('.ly-use');
-    b.textContent = on ? 'In use' : 'Use'; b.disabled = on;
+  document.querySelectorAll('#lyList .ly-card').forEach(c => {
+    const on = c.dataset.l === cur && !activePreset, b = c.querySelector('.ly-use');
+    c.classList.toggle('on', on); b.textContent = on ? 'In use' : 'Use'; b.disabled = on;
   });
   $('#lyLinked').checked = linked;
-  $('#lySw').value = switchMode;
+  syncLySw();
   renderPresetsPane();
 }
 $('#colNav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) scrollCols(+b.dataset.d); });

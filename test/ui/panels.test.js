@@ -86,6 +86,8 @@ test('your layouts: save the arrangement under a name, bring it back, update it 
   await page.click('#layoutSet');
   assert.equal(await page.isVisible('#layoutMenu'), false, 'the menu closes');
   assert.equal(await page.$eval('#settingsDlg .st-rail .on', e => e.dataset.s), 'layouts');
+  await page.click('#lyTabs [data-t=saved]');
+  assert.ok(await page.isVisible('#lyPresets .pr-srow .lm-pic'), 'with the picture of its layout');
   assert.match(await page.textContent('#lyPresets'), /two UP.*Tile · 2 streams, 2 chats/s);
   await page.fill('#lyPresetName', 'Solo'); await page.press('#lyPresetName', 'Enter');
   assert.deepEqual(await page.$$eval('#lyPresets .pr-srow .st-t > span', l => l.map(e => e.textContent)), ['two UP', 'Solo']);
@@ -119,8 +121,9 @@ test('Settings > Layouts: each layout with its options, Use, Linked, the switch 
   await add(page, 'alpha', 'bravo');
   await press(page, 'a');
   await page.evaluate(() => openSettings('layouts'));
-  assert.deepEqual(await page.$$eval('#lyList > .st-row', l => l.map(e => e.dataset.l || '+' + e.dataset.opt)),
-    ['focus', 'game', 'columns', '+columns', 'chatfocus', 'auto', '+auto', 'tile'], 'options sit under their layout');
+  assert.deepEqual(await page.$$eval('#lyList .ly-card', l => l.map(e => e.dataset.l + (e.querySelector('.st-opt') ? '+' : ''))),
+    ['focus', 'game', 'columns+', 'chatfocus', 'auto+', 'tile'], 'a card for each layout, with its options in it');
+  assert.ok(await page.locator('#lyList [data-l=auto]').evaluate(e => e.classList.contains('on')));
   assert.equal(await page.textContent('#lyList [data-l=auto] .ly-use'), 'In use');
   assert.ok(await page.isDisabled('#lyList [data-l=auto] .ly-use'));
   assert.equal(await page.isChecked('#autoFit'), false, 'fitting in auto-opened channels is off at first');
@@ -128,10 +131,14 @@ test('Settings > Layouts: each layout with its options, Use, Linked, the switch 
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.autoFit')), '1');
   await page.uncheck('#lyLinked');
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.linked')), '0');
-  await page.selectOption('#lySw', 'float');
+  await page.click('#lyTabs [data-t=switch]');
+  assert.equal(await page.isVisible('#lyList'), false, 'one sub-tab at a time');
+  await page.click('#lySw [data-sw=float]');
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.switchMode')), 'float');
-  assert.equal(await page.locator('#lySw option[value=window]').count(), 0, 'no own window in a browser');
+  assert.equal(await page.$eval('#lySw .on', e => e.dataset.sw), 'float');
+  assert.equal(await page.locator('#lySw [data-sw=window]').count(), 0, 'no own window in a browser');
 
+  await page.click('#lyTabs [data-t=layouts]');
   await page.click('#lyList [data-l=columns] .ly-use');
   assert.equal(await page.isVisible('#settingsDlg'), false, 'Use closes Settings');
   assert.ok(await page.evaluate(() => document.body.classList.contains('cols')), 'and switches');
@@ -146,7 +153,7 @@ test('Settings > Layouts: each layout with its options, Use, Linked, the switch 
   assert.equal(await page.textContent('#lyList [data-l=columns] .ly-use'), 'In use');
   await page.keyboard.press('Escape');
   await page.click('#swBtn');
-  assert.equal(await page.inputValue('#lySw'), 'dock', 'the switch control button changes it too');
+  assert.equal(await page.$eval('#lySw .on', e => e.dataset.sw), 'dock', 'the switch control button changes it too');
 });
 
 test('Layout menu: pictures with a hint line, and the current layout\'s options (Chat focus stream columns)', async t => {
