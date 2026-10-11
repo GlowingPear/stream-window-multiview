@@ -302,7 +302,8 @@ test('the toolbar fits any window width, with the rest in the More menu', async 
     const h = document.querySelector('header'), hr = h.getBoundingClientRect();
     const cut = [...h.children].filter(e => !e.hidden && getComputedStyle(e).display !== 'none')
       .map(e => [e.id || e.className, e.getBoundingClientRect()]).filter(([, r]) => r.width && (r.right > hr.right + 1 || r.left < hr.left - 1)).map(([n]) => n);
-    return { over: h.scrollWidth - h.clientWidth, cut, more: !document.querySelector('#moreBtn').hidden };
+    const shownHidden = [...h.children].filter(e => e.hidden && getComputedStyle(e).display !== 'none').map(e => e.id || e.className);
+    return { over: h.scrollWidth - h.clientWidth, cut, shownHidden, more: !document.querySelector('#moreBtn').hidden };
   });
   for (const width of [1920, 1600, 1440, 1280, 1100, 900, 760, 640]) {
     await page.setViewportSize({ width, height: 800 });
@@ -310,6 +311,7 @@ test('the toolbar fits any window width, with the rest in the More menu', async 
     const r = await check();
     assert.equal(r.over, 0, `${width}px: the toolbar doesn't overflow`);
     assert.deepEqual(r.cut, [], `${width}px: no button is cut off`);
+    assert.deepEqual(r.shownHidden, [], `${width}px: a hidden button stays hidden (the fitting skips it)`);
   }
 
   // at 640px the More menu holds the rest, and its buttons work

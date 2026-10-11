@@ -755,7 +755,7 @@ header.c3 #url{min-width:110px}
 #moreMenu .zoom span:first-child{display:inline !important}
 #moreMenu .sep{display:none}
 /* ---------- Streamer profiles ---------- */
-#profBtn{display:inline-flex;align-items:center;gap:6px}
+#profBtn{display:inline-flex;align-items:center;gap:6px} #profBtn[hidden]{display:none}
 #profBtn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
 .dlg.profiles{width:min(1240px,calc(100vw - 32px));height:min(92vh,980px);max-height:none;padding:0;gap:0;overflow:hidden}
 .pf-head .pf-count{font-size:12px;color:var(--muted)}
@@ -1185,13 +1185,14 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <select data-al="spam.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
         </div>
         <div class="st-subpane" data-t="how" hidden>
-          <div class="st-explain">A message is only flagged when several signs add up. One sign alone is never enough, so normal links and clip links aren't flagged, and a message needs a link (or to be posted in several chats) to count.
+          <div class="st-explain">A message is only flagged when several signs add up. One sign alone is never enough, so normal links and clip links aren't flagged, and a message needs a link (or to be posted in several chats) to count. The one exception is a wall of the same word, which is flagged on its own.
             <ul>
               <li><b>Disguised link</b> to a site not on the allowed list, written so the chat doesn't turn it into a link: <code>site com</code>, <code>site[.]com</code>, <code>site dot com</code> (3 points). A normal link to a site not on the list is 1 point.</li>
               <li><b>Promo words</b> like "upgrades", "viewers" or "zero cost" (1 point each, up to 2)</li>
               <li><b>Emotes or junk</b> breaking up the words (1 point)</li>
               <li><b>The same message in another open chat</b> in the last 5 minutes (3 points, the strongest sign)</li>
               <li><b>A new chatter</b>: started chatting in the last few minutes, often with friendly filler lines first like "Hey stranger, still running the show?" (1 point)</li>
+              <li><b>The same word over and over</b>, glued together like <code>WordWordWordWord</code> (10+ times) or spaced out (25+ times). Laughing and hype like <code>hahaha</code> or <code>KEKW KEKW</code> don't count (6 points, enough on its own)</li>
             </ul></div>
           <div class="st-row"><span class="st-t">Sensitivity<small>Strict flags more, and may flag a few real messages.</small></span>
             <select data-al="spam.sens"><option value="relaxed">Relaxed (6 points)</option><option value="balanced">Balanced (5 points)</option><option value="strict">Strict (4 points)</option></select></div>
