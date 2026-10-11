@@ -1,4 +1,4 @@
-// Help > Updates in the real desktop app: the release notes show formatted (GitHub's HTML), unsafe parts
+// Settings > Updates in the real desktop app: the release notes show formatted (GitHub's HTML), unsafe parts
 // are removed, links open in the browser, and plain text is the fallback. The update status and opening
 // links are replaced by stand-ins, so this needs no network. Uses a temporary data folder.
 const test = require('node:test');
@@ -32,7 +32,7 @@ test.before(async () => {
   win = await app.firstWindow();
   win.setDefaultTimeout(15000);   // a failed step fails its test instead of waiting forever
   win.on('pageerror', e => pageErrors.push(e.message));
-  await win.waitForSelector('#helpBtn');
+  await win.waitForSelector('#settingsBtn');
   realStatus = await win.evaluate(() => window.kmv.updateStatus());   // before the stand-ins: what a fresh copy really has
   // stand-ins: the update status the test sets, and opening links (only recorded)
   await app.evaluate(({ ipcMain }) => {
@@ -55,8 +55,8 @@ async function showUpdates(extra) {
     globalThis.__test.status = s;
     BrowserWindow.getAllWindows().forEach(w => w.webContents.send('update:status', s));
   }, { ...STATUS, ...extra });
-  if (await win.isHidden('#helpDlg')) await win.click('#helpBtn');
-  await win.click('button[data-h="upd"]');
+  if (await win.isHidden('#settingsDlg')) await win.click('#settingsBtn');
+  await win.click('#settingsDlg .st-rail [data-s=updates]');
   await win.waitForSelector('.upd-notes');
 }
 

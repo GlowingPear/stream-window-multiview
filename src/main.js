@@ -497,8 +497,8 @@ ipcMain.on('live:check-now', () => watcher.checkSoon());
 ipcMain.on('mention:notify', (_e, m) => {
   if (!m || typeof m.channel !== 'string' || !Notification.isSupported()) return;
   const who = String(m.sender || 'Someone').slice(0, 40), where = String(m.label || m.channel).slice(0, 40);
-  const title = m.kind === 'reply' ? `${who} replied to you in ${where}'s chat` : `${who} mentioned you in ${where}'s chat`;
-  const body = (m.kind === 'reply' && m.quoted ? `"${String(m.quoted).slice(0, 60)}"  →  ` : '') + String(m.body || '').slice(0, 180);
+  const title = m.kind === 'spam' ? `Likely spam in ${where}'s chat` : m.kind === 'reply' ? `${who} replied to you in ${where}'s chat` : `${who} mentioned you in ${where}'s chat`;
+  const body = (m.kind === 'spam' ? `${who}: ` : m.kind === 'reply' && m.quoted ? `"${String(m.quoted).slice(0, 60)}"  →  ` : '') + String(m.body || '').slice(0, 180);
   const n = new Notification({ title, body: body || ' ', icon: ICON });
   liveNotes.add(n);
   n.on('click', () => {
@@ -1194,20 +1194,51 @@ ipcMain.handle('help:open', (_e, name) => { if (HELP_FILES.includes(name)) shell
 ipcMain.handle('app:version', () => app.getVersion());
 
 /* ---------- menu ---------- */
+// Who is logged in where, as the page last told us (it checks on start and after every log in or out).
+let menuAccounts = { kick: '', twitch: '', youtube: false };
+ipcMain.on('accounts:state', (_e, a) => {
+  const clean = v => (typeof v === 'string' && /^[A-Za-z0-9_]{1,30}$/.test(v) ? v : '');
+  const next = { kick: clean(a && a.kick), twitch: clean(a && a.twitch), youtube: !!(a && a.youtube) };
+  if (JSON.stringify(next) === JSON.stringify(menuAccounts)) return;
+  menuAccounts = next; buildMenu();
+});
+function showMain() {
+  if (!mainWin) return null;
+  if (mainWin.isMinimized()) mainWin.restore();
+  mainWin.show(); mainWin.focus();
+  return mainWin;
+}
+const showSettings = tab => showMain()?.webContents.send('settings:show', tab);
+const checkUpdatesNow = () => { showSettings('updates'); checkForUpdate({ manual: true }); };
+// One item per site that says what clicking it does: log in, or log out of the account that's in.
+function accountItem(plat, name) {
+  const who = menuAccounts[plat];
+  if (!who) return { label: `Log in to ${name}…`, click: () => (plat === 'youtube' ? openLogin('youtube') : showMain()?.webContents.send('menu:account', { platform: plat, action: 'login' })) };
+  return { label: `Log out of ${name}${typeof who === 'string' ? ` (${who})` : ''}`, click: () => showMain()?.webContents.send('menu:account', { platform: plat, action: 'logout' }) };
+}
 function buildMenu() {
   const isMac = process.platform === 'darwin';
+  const settingsItem = { label: 'Settings…', accelerator: 'CmdOrCtrl+,', click: () => showSettings() };
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    ...(isMac ? [{ role: 'appMenu' }] : []),
+    // Mac apps keep Settings and Check for Updates in the app's own menu; Windows and Linux in File.
+    ...(isMac ? [{ label: app.name, submenu: [
+      { role: 'about' },
+      { label: 'Check for Updates…', click: checkUpdatesNow },
+      { type: 'separator' },
+      settingsItem,
+      { type: 'separator' },
+      { role: 'services' },
+      { type: 'separator' },
+      { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' },
+      { type: 'separator' },
+      { role: 'quit' }
+    ]}] : [{ label: 'File', submenu: [settingsItem, { type: 'separator' }, { role: 'quit', label: 'Exit' }] }]),
     { label: 'Account', submenu: [
-      { label: 'Log in to Kick…', click: () => openLogin('kick') },
-      { label: 'Log in to Twitch…', click: () => openLogin('twitch') },
-      { label: 'Log in to YouTube…', click: () => openLogin('youtube') },
+      accountItem('kick', 'Kick'),
+      accountItem('twitch', 'Twitch'),
+      accountItem('youtube', 'YouTube'),
       { type: 'separator' },
-      { label: 'Log out of Kick', click: () => logout('kick') },
-      { label: 'Log out of Twitch', click: () => logout('twitch') },
-      { label: 'Log out of YouTube', click: () => logout('youtube') },
-      { type: 'separator' },
-      isMac ? { role: 'close' } : { role: 'quit' }
+      { label: 'Account settings…', click: () => showSettings('accounts') }
     ]},
     { role: 'editMenu' },
     { label: 'View', submenu: [
@@ -1218,10 +1249,19 @@ function buildMenu() {
       { type: 'separator' },
       { role: 'toggleDevTools' }
     ]},
+    ...(isMac ? [{ label: 'Window', submenu: [
+      { role: 'minimize' }, { role: 'zoom' },
+      { type: 'separator' },
+      { role: 'close' },
+      { type: 'separator' },
+      { role: 'front' }
+    ]}] : []),
     { label: 'Help', submenu: [
-      { label: 'Instructions', click: () => shell.openPath(helpPath('INSTRUCTIONS.txt')) },
-      { label: 'What\'s new', click: () => mainWin?.webContents.send('help:show', 'news') },
-      { label: 'Check for updates', click: () => { mainWin?.webContents.send('update:show'); checkForUpdate({ manual: true }); } }
+      { label: 'Instructions', click: () => showMain()?.webContents.send('help:show', 'guide') },
+      { label: 'Keyboard shortcuts', click: () => showMain()?.webContents.send('help:show', 'keys') },
+      { label: 'What\'s new', click: () => showMain()?.webContents.send('help:show', 'news') },
+      { type: 'separator' },
+      { label: 'Check for updates…', click: checkUpdatesNow }
     ]}
   ]));
 }

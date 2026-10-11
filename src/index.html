@@ -148,6 +148,77 @@ body.dragging .bar{cursor:grabbing}
 .sc-row{display:flex;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid var(--line)}
 .sc-row span{flex:1}
 .sc-row kbd + kbd{margin-left:-6px}
+/* settings */
+.dlg.settings{width:min(880px,calc(100vw - 32px));height:min(86vh,760px);max-height:none;padding:0;gap:0;overflow:hidden}
+.st-wrap{flex:1;min-height:0;display:grid;grid-template-columns:160px minmax(0,1fr)}
+.st-rail{border-right:1px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+.st-rail button{display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;font-weight:600;font-size:12.5px;text-align:left;white-space:nowrap}
+.st-rail button:hover{color:var(--text)}
+.st-rail button.on{background:var(--panel2);border-color:var(--line2);color:var(--text)}
+.st-rail button[hidden]{display:none}
+.st-pill{margin-left:auto;font-size:9px;font-weight:700;letter-spacing:.04em;padding:0 4px;border-radius:4px;border:1px solid var(--accent);color:var(--accent);text-transform:uppercase}
+.st-body{overflow:auto;min-height:0;padding:14px 20px 20px}
+.st-pane[hidden],.st-subpane[hidden]{display:none}
+.st-pane > h4{margin:0 0 2px;font-size:15px}
+.st-beta{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;border:1px solid #e8b84a;color:#e8b84a;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;vertical-align:2px}
+.st-sub{color:var(--muted);font-size:12px;margin:0 0 12px;line-height:1.45}
+.st-sec{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:16px 0 2px}
+.st-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.st-row:last-child{border-bottom:0}
+.st-row[hidden]{display:none}
+.st-t{flex:1;min-width:0}
+.st-t small{display:block;color:var(--muted);font-size:11.5px;line-height:1.4}
+.st-row select{height:28px;font-size:12px}
+.st-row input[type=color]{width:34px;height:26px;border:1px solid var(--line2);border-radius:6px;background:none;padding:1px;cursor:pointer;flex:none}
+.st-row input[type=range]{width:90px;accent-color:var(--accent)}
+.st-row .btn,.st-add .btn,.st-try .btn{height:28px;padding:0 10px;font-size:12px}
+.st-in{height:28px;width:170px;padding:0 8px;border-radius:6px;border:1px solid var(--line2);background:var(--bg);outline:none;font-size:12px}
+.st-in:focus{border-color:var(--accent)}
+.st-lead{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel2);cursor:pointer}
+.st-lead small{display:block;color:var(--muted);font-size:11.5px;line-height:1.4}
+.st-lead svg{width:12px;height:12px;stroke:var(--accent);fill:none;stroke-width:2.2;vertical-align:-2px}
+input.st-sw{appearance:none;-webkit-appearance:none;width:32px;height:18px;border-radius:9px;background:var(--line2);position:relative;cursor:pointer;flex:none;margin:0;transition:background .15s}
+input.st-sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--text);transition:left .15s}
+input.st-sw:checked{background:var(--accent)}
+input.st-sw:checked::after{left:16px;background:var(--accent-ink)}
+input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.st-dim{opacity:.45}
+.st-tabs{display:flex;gap:2px;margin:14px 0 4px;border-bottom:1px solid var(--line)}
+.st-tabs button{border:0;background:none;padding:7px 11px;font-size:12px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
+.st-tabs button:hover{color:var(--text)}
+.st-tabs button.on{color:var(--text);border-color:var(--accent)}
+.st-subpane{min-height:280px}
+.st-explain{font-size:12.5px;line-height:1.55;margin:8px 0 0}
+.st-explain ul{margin:6px 0 8px;padding-left:18px}
+.st-explain li{margin:2px 0}
+.st-explain code{font:600 11.5px ui-monospace,Consolas,monospace;background:var(--panel2);border:1px solid var(--line2);border-radius:5px;padding:0 4px}
+.st-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.st-chip{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;border:1px solid var(--line2);border-radius:999px;padding:1px 3px 1px 9px;background:var(--bg)}
+.st-chip button{border:0;background:none;color:var(--muted);cursor:pointer;width:17px;height:17px;display:grid;place-items:center;border-radius:50%;padding:0}
+.st-chip button:hover{background:var(--line2);color:var(--text)}
+.st-chip svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round}
+.st-add,.st-try{display:flex;gap:6px;margin-top:8px}
+.st-add .st-in,.st-try .st-in{flex:1;width:auto}
+.st-res{margin-top:10px;border:1px solid var(--line2);border-radius:8px;padding:8px 10px;font-size:12px}
+.st-res[hidden]{display:none}
+.st-res.bad{border-color:color-mix(in srgb,var(--danger) 55%,transparent);background:color-mix(in srgb,var(--danger) 8%,transparent)}
+.st-res.bad b{color:var(--danger)}
+.st-res table{width:100%;border-collapse:collapse;margin-top:4px}
+.st-res td{padding:2px 0}
+.st-res td:last-child{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.st-res tr.tot td{border-top:1px solid var(--line2);padding-top:4px;font-weight:700;color:var(--text)}
+#settingsDlg .help-x{margin-left:auto}
+#settingsDlg .th-wrap{overflow:visible;grid-template-columns:270px minmax(0,1fr)}
+#settingsDlg .th-vars{grid-template-columns:1fr}
+#settingsDlg [data-doc=news] > h2:first-child{display:none}
+.st-rail-sec{margin:12px 10px 4px;padding-top:10px;border-top:1px solid var(--line);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+#settingsDlg .help-body.st-doc{flex:none;overflow:visible;padding:0}
+#settingsDlg .help-body.st-doc > h2:first-child{margin-top:0}
+.st-news-sec{margin-top:22px}
+.st-docfoot{display:flex;gap:8px;align-items:center;margin-top:16px;padding-top:10px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+.st-docfoot .btn{margin-left:auto;height:28px;font-size:12px}
+#settingsDlg .am-yk{padding:2px 0 6px}
+#settingsDlg .am-sec,#settingsDlg .am-alt{border-top:0;margin-top:0;padding:4px 0}
 /* window capture picker */
 .dlg.theme{width:min(860px,calc(100vw - 32px))}
 .th-wrap{display:grid;grid-template-columns:270px 1fr;gap:16px;min-height:0;overflow:auto}
@@ -458,11 +529,10 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 #mentPanel{position:fixed;top:calc(var(--head) + 6px);z-index:100003;width:380px;max-height:78vh;display:flex;flex-direction:column;gap:10px;padding:12px;
   background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.55)}
 #mentPanel[hidden]{display:none}
-.mp-on{color:var(--text)}
-.mp-user{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted)}
+.mp-set{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.mp-set .linkish{margin-left:auto;font-size:12px}
 .mp-note{font-size:11px;color:#e8b84a}
 .mp-note:empty{display:none}
-.mp-hint{font-size:11px;color:var(--muted)}
 .mp-head{display:flex;align-items:center;justify-content:space-between}
 .mp-head .btn{height:26px;font-size:11px}
 #mentList{overflow:auto;display:flex;flex-direction:column;gap:2px;min-height:0}
@@ -476,6 +546,16 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .mp-q{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mp-body{font-size:12px;overflow-wrap:anywhere}
 .win.ping{animation:ping 2.4s ease}
+/* a chat window asking for attention (mention or likely spam): steady, then pulsing, then flashing */
+.win.al-1,.win.al-2,.win.al-3{border-color:var(--al)}
+.win.al-1{box-shadow:0 0 0 2px var(--al),0 10px 30px rgba(0,0,0,.45)}
+.win.al-2{animation:alPulse 1.6s ease-in-out infinite}
+.win.al-3{animation:alFlash .9s steps(1,end) infinite}
+.win.al-brief{animation:alBrief 2.4s ease}
+@keyframes alPulse{0%,100%{box-shadow:0 0 0 2px var(--al),0 10px 30px rgba(0,0,0,.45)}50%{box-shadow:0 0 0 4px var(--al),0 0 22px 6px color-mix(in srgb,var(--al) 55%,transparent)}}
+@keyframes alFlash{0%{box-shadow:0 0 0 5px var(--al),0 0 30px 10px var(--al)}50%{box-shadow:0 0 0 2px var(--al),0 10px 30px rgba(0,0,0,.45)}}
+@keyframes alBrief{0%,40%{box-shadow:0 0 0 3px var(--al),0 10px 30px rgba(0,0,0,.45)}100%{box-shadow:0 10px 30px rgba(0,0,0,.45)}}
+@media (prefers-reduced-motion:reduce){.win.al-2,.win.al-3{animation:none;box-shadow:0 0 0 4px var(--al)}}
 @keyframes ping{0%,40%{box-shadow:0 0 0 3px #e8b84a,0 10px 30px rgba(0,0,0,.45)}100%{box-shadow:0 10px 30px rgba(0,0,0,.45)}}
 
 .sv-tabs{display:flex;gap:4px;padding:2px;border-radius:8px;background:var(--bg);border:1px solid var(--line)}
@@ -502,6 +582,8 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .am-head{padding:6px 10px 8px;font-size:13px;font-weight:700;border-bottom:1px solid var(--line);margin-bottom:4px}
 .am-head span{display:block;font-size:11px;font-weight:400;color:var(--muted)}
 #accountMenu{width:440px}
+.am-foot{border-top:1px solid var(--line);margin-top:4px;padding:8px 10px 4px}
+#accountMenu .am-foot .linkish{display:inline;padding:0;font-size:12px;background:none}
 .am-sec{padding:8px 10px 4px;border-top:1px solid var(--line);margin-top:4px;display:flex;flex-direction:column;gap:7px;font-size:11px;color:var(--muted)}
 .am-enc{display:flex;align-items:center;gap:7px}
 .am-lock svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
@@ -516,16 +598,17 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .am-yk-row{display:flex;align-items:center;gap:6px}
 .am-yk-row[hidden],.am-yk .btn[hidden]{display:none}
 .am-yk-in{flex:1;min-width:0;height:26px;padding:0 8px;border-radius:6px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);font:inherit;font-size:12px}
-#accountMenu .am-yk .btn{display:inline-flex;align-items:center;height:26px;padding:0 9px;font-size:11px;font-weight:600;flex:none;
+#settingsDlg .am-yk .btn{display:inline-flex;align-items:center;height:26px;padding:0 9px;font-size:11px;font-weight:600;flex:none;
   border:1px solid var(--line2);background:var(--panel2);color:var(--text)}
-#accountMenu .am-yk .btn:hover{border-color:var(--muted)}
-#accountMenu .am-yk .btn:disabled{opacity:.6;cursor:default}
-#accountMenu .am-yk .linkish{display:inline;padding:0;border-radius:0;background:none}
+#settingsDlg .am-yk .btn:hover{border-color:var(--muted)}
+#settingsDlg .am-yk .btn:disabled{opacity:.6;cursor:default}
+#settingsDlg .am-yk .linkish{display:inline;padding:0;border-radius:0;background:none}
 .am-alt{padding:7px 10px 4px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);margin-top:4px}
 .linkish{border:0;background:none;padding:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .linkish:hover{filter:brightness(1.2)}
 /* import follows / browser login dialogs */
 .dlg-bg{position:fixed;inset:0;z-index:100020;background:rgba(0,0,0,.55);display:grid;place-items:center}
+#importDlg,#ffDlg,#capDlg{z-index:100030}   /* over Settings when opened from it */
 .dlg-bg[hidden]{display:none}
 .dlg{width:min(520px,calc(100vw - 32px));max-height:min(82vh,760px);display:flex;flex-direction:column;gap:10px;padding:16px;
   background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
@@ -566,17 +649,17 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 #importRow{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
 #importRow[hidden]{display:none}
 #importRow .btn{flex:1;height:28px;font-size:12px}
-#accountMenu .am-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px}
-#accountMenu .am-row:hover{background:var(--panel2)}
+#accountMenu .am-row,#settingsDlg .am-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px}
+#accountMenu .am-row:hover,#settingsDlg .am-row:hover{background:var(--panel2)}
 .am-row .pdot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--line2)}
 .am-row[data-p=kick].on .pdot{background:#53fc18}.am-row[data-p=twitch].on .pdot{background:#a970ff}.am-row[data-p=youtube].on .pdot{background:#ff3d3d}
 .am-txt{flex:1;min-width:0;display:flex;flex-direction:column}
 .am-txt b{font-size:13px}
 .am-st{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#accountMenu .am-row .btn{display:inline-flex;align-items:center;height:26px;padding:0 9px;font-size:11px;font-weight:600;flex:none;
+#accountMenu .am-row .btn,#settingsDlg .am-row .btn{display:inline-flex;align-items:center;height:26px;padding:0 9px;font-size:11px;font-weight:600;flex:none;
   border:1px solid var(--line2);background:var(--panel2)}
-#accountMenu .am-row .btn:hover{border-color:var(--muted)}
-#accountMenu .am-row .btn[hidden]{display:none}
+#accountMenu .am-row .btn:hover,#settingsDlg .am-row .btn:hover{border-color:var(--muted)}
+#accountMenu .am-row .btn[hidden],#settingsDlg .am-row .btn[hidden]{display:none}
 .am-note{padding:6px 10px 4px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);margin-top:4px}
 .fs-pophid em{font-style:normal;font-size:10px;font-weight:800;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
 .fs-pophid em:empty{display:none}
@@ -683,10 +766,6 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <button class="btn" id="mentBtn" hidden title="Chat mentions and replies to you"><span class="mb-ico"></span><span class="mb-count" hidden></span></button>
   <span id="msg"></span>
   <div class="spacer"></div>
-  <label class="chk" id="mutedLbl" title="New streams start muted (browsers block unmuted autoplay)"><input type="checkbox" id="muted" checked><span class="l-long">Start muted</span><span class="l-short">Muted</span></label>
-  <label class="chk" id="snapLbl" title="Snap windows to screen edges and each other"><input type="checkbox" id="snap" checked>Snap</label>
-  <label class="chk" id="autoPauseLbl" title="Pause streams that are off-screen or behind the big stream (after 2 seconds) to save bandwidth; they jump back to live when you can see them again. Streams you can hear are never auto-paused."><input type="checkbox" id="autoPause"><span class="l-long">Auto-pause hidden</span><span class="l-short">Auto-pause</span></label>
-  <div class="sep" id="chkSep"></div>
   <div class="zoom" id="chatZoom" hidden title="Chat text size: smaller fits more messages and emotes">
     <span>Chat</span><button data-z="-1" aria-label="Smaller chat text">−</button><span id="zoomPct">100%</span><button data-z="1" aria-label="Bigger chat text">+</button>
   </div>
@@ -703,8 +782,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <button class="btn" id="chatFocus" hidden>Chat focus</button>
   <button class="btn" id="auto" hidden>Auto layout</button>
   <button class="btn" id="tile" title="Evenly tile every window">Tile</button>
-  <button class="btn ibtn" id="themeBtn" data-label="Colours and themes" title="Colours and themes"></button>
-  <button class="btn ibtn" id="helpBtn" data-label="Help" title="Instructions, keyboard shortcuts and what's new (F1)"></button>
+  <button class="btn ibtn" id="settingsBtn" data-label="Settings" title="Settings: general, accounts, alerts, themes and updates"></button>
   <button class="btn" id="focusBtn" title="Hide this toolbar (move mouse to top edge or press Esc to bring it back)"><span class="l-long">Hide bar</span><span class="l-short">Hide</span></button>
   <button class="btn danger" id="clear">Clear</button>
   <button class="btn primary" id="backBtn" hidden title="Close this window and put the streams back in the main window">Bring streams back</button>
@@ -721,20 +799,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
   <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
     <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
-  <div class="am-yk" hidden>
-    <div class="am-yk-head"><b>YouTube API key</b> (optional) · <button class="linkish am-yk-how">How to get one</button></div>
-    <span class="am-yk-st">Makes live checks for saved YouTube channels faster and more reliable.</span>
-    <div class="am-yk-row"><input class="am-yk-in" type="password" placeholder="Paste your API key" autocomplete="off" spellcheck="false" aria-label="YouTube API key"><button class="btn am-yk-add">Add</button></div>
-    <div class="am-yk-row am-yk-set" hidden><button class="btn am-yk-rm">Remove key</button></div>
-  </div>
-  <div class="am-sec">
-    <div class="am-enc"><span class="am-lock"></span><span class="am-enc-txt">Checking how logins are stored…</span></div>
-    <div class="am-forget"><span>Forget my login when I close the app:</span>
-      <label class="chk"><input type="checkbox" data-f="kick">Kick</label><label class="chk"><input type="checkbox" data-f="twitch">Twitch</label><label class="chk"><input type="checkbox" data-f="youtube">YouTube</label></div>
-    <div class="am-watch"><span>Watch signed in: streams play with your login too, so you watch as your account, not as a logged-out viewer. Uses more memory.</span>
-      <label class="chk"><input type="checkbox" data-w="kick">Kick</label><label class="chk"><input type="checkbox" data-w="twitch">Twitch</label><label class="chk"><input type="checkbox" data-w="youtube">YouTube</label></div>
-  </div>
-  <div class="am-alt">YouTube sign-in currently only works through Firefox. <button class="linkish am-ff">Sign in to YouTube with Firefox</button><br>You don't need to sign in to watch YouTube.</div>
+  <div class="am-foot"><button class="linkish am-more">Account settings…</button></div>
 </div>
 
 <div id="layoutMenu" class="menu" hidden>
@@ -757,10 +822,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 
 <div id="mentPanel" class="popover" hidden>
   <div class="sp-head"><b>Mentions &amp; replies</b><span class="sp-sub">Alerts when someone writes @you or replies to your message in any open chat.</span></div>
-  <label class="chk mp-on"><input type="checkbox" id="mentOn">Notify me</label>
-  <div class="mp-user"><span>Your Kick username</span><div class="sp-add"><input id="mentUser" placeholder="e.g. YourName" autocomplete="off" spellcheck="false"><button class="btn" id="mentDetect" title="Read them from your Kick and Twitch logins">Detect</button></div>
-    <span>Your Twitch username</span><div class="sp-add"><input id="mentTwitch" placeholder="(optional)" autocomplete="off" spellcheck="false"></div>
-    <span class="mp-note" id="mentNote"></span><span class="mp-hint">Kick and Twitch chats are covered. YouTube chat isn’t.</span></div>
+  <div class="mp-set"><span class="mp-note" id="mentState"></span><button class="linkish" id="mentSettings">Mention settings…</button></div>
   <div class="mp-head"><b>Recent</b><button class="btn" id="mentClear">Clear</button></div>
   <div id="mentList"></div>
 </div>
@@ -810,25 +872,152 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <div class="dlg-list"></div>
   <div class="dlg-foot"><span class="dlg-note"></span><button class="btn dlg-cancel">Cancel</button><button class="btn primary dlg-ok" hidden>Add to Saved</button></div>
 </div></div>
-<div class="dlg-bg" id="helpDlg" hidden><div class="dlg help" role="dialog" aria-modal="true">
-  <div class="help-head"><h3><svg class="pear" viewBox="0 0 64 64" width="18" height="18" fill="var(--accent)" aria-hidden="true"><path d="M32 14.2C25.6 14.2 23.4 19.4 23.4 24.6 23.4 29.6 20.4 31.6 17.2 35.6 13.2 40.6 12 46.8 14.2 52 17.2 58.8 24.4 62 32 62 39.6 62 46.8 58.8 49.8 52 52 46.8 50.8 40.6 46.8 35.6 43.6 31.6 40.6 29.6 40.6 24.6 40.6 19.4 38.4 14.2 32 14.2Z"/></svg>Stream Multiview <small class="help-ver"></small></h3>
-    <div class="help-tabs"><button data-h="guide">Instructions</button><button data-h="keys">Keyboard shortcuts</button><button data-h="news">What's new</button><button data-h="upd">Updates</button></div>
-    <button class="help-x" title="Close (Esc)"></button></div>
-  <div class="help-body"></div>
-  <div class="help-foot"><span class="help-file"></span><button class="btn help-open" hidden>Open as a file</button></div>
-</div></div>
-<div class="dlg-bg" id="themeDlg" hidden><div class="dlg theme" role="dialog" aria-modal="true">
-  <h3><span>Colours and themes</span></h3>
-  <div class="th-wrap">
-    <div class="th-side"><div class="th-sec">Themes</div><div class="th-list"></div></div>
-    <div class="th-main">
-      <div class="th-sec">Customize <span class="th-cur"></span></div>
-      <div class="th-vars"></div>
-      <div class="th-warn" hidden></div>
-      <div class="th-save"><input class="th-name" placeholder="Name your theme…" maxlength="30" autocomplete="off" spellcheck="false"><button class="btn th-savebtn">Save theme</button></div>
+<div class="dlg-bg" id="settingsDlg" hidden><div class="dlg settings" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="help-head"><h3 id="settingsTitle"><svg class="pear" viewBox="0 0 64 64" width="18" height="18" fill="var(--accent)" aria-hidden="true"><path d="M32 14.2C25.6 14.2 23.4 19.4 23.4 24.6 23.4 29.6 20.4 31.6 17.2 35.6 13.2 40.6 12 46.8 14.2 52 17.2 58.8 24.4 62 32 62 39.6 62 46.8 58.8 49.8 52 52 46.8 50.8 40.6 46.8 35.6 43.6 31.6 40.6 29.6 40.6 24.6 40.6 19.4 38.4 14.2 32 14.2Z"/></svg>Stream Multiview <small class="help-ver"></small></h3><button class="help-x" title="Close (Esc)"></button></div>
+  <div class="st-wrap">
+    <nav class="st-rail">
+      <button data-s="general">General</button>
+      <button data-s="accounts" class="desk-only">Accounts</button>
+      <button data-s="mentions" class="main-desk">Mentions</button>
+      <button data-s="spam" class="main-desk">Spam alerts<span class="st-pill">Mod</span></button>
+      <button data-s="themes">Themes</button>
+      <button data-s="updates">Updates</button>
+      <div class="st-rail-sec">Help</div>
+      <button data-s="guide">Instructions</button>
+      <button data-s="keys">Keyboard shortcuts</button>
+    </nav>
+    <div class="st-body">
+      <section class="st-pane" data-s="general" hidden>
+        <h4>General</h4><p class="st-sub">How streams and windows behave.</p>
+        <label class="st-row"><span class="st-t">Start new streams muted<small>Browsers block sound on autoplay until you've clicked the window.</small></span><input type="checkbox" class="st-sw" id="muted" checked></label>
+        <label class="st-row"><span class="st-t">Snap windows<small>Windows snap to the screen edges and to each other while you drag.</small></span><input type="checkbox" class="st-sw" id="snap" checked></label>
+        <label class="st-row"><span class="st-t">Auto-pause hidden streams<small>Pauses streams that are off-screen or behind the big stream after 2 seconds, to save bandwidth. They jump back to live when you can see them again. Streams you can hear never pause.</small></span><input type="checkbox" class="st-sw" id="autoPause"></label>
+        <label class="st-row"><span class="st-t">Keyboard shortcuts<small>Esc still closes menus when they're off. <button class="linkish" data-help="keys">See the list</button></small></span><input type="checkbox" class="st-sw" id="keysSet"></label>
+      </section>
+      <section class="st-pane" data-s="accounts" hidden>
+        <h4>Accounts</h4><p class="st-sub">Each platform's chats use its login.</p>
+      <div class="am-row" data-p="kick"><i class="pdot"></i><div class="am-txt"><b>Kick</b><span class="am-st">Checking…</span></div>
+        <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+      <div class="am-row" data-p="twitch"><i class="pdot"></i><div class="am-txt"><b>Twitch</b><span class="am-st">Checking…</span></div>
+        <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+      <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
+        <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+        <div class="st-sec">Your usernames</div>
+        <p class="st-sub" style="margin:2px 0 0">Used to spot mentions and replies to you. Kick and Twitch chats are covered; YouTube chat isn't.</p>
+        <div class="st-row"><span class="st-t">Kick</span><input class="st-in" id="mentUser" placeholder="e.g. YourName" autocomplete="off" spellcheck="false"><button class="btn" id="mentDetect" title="Read them from your Kick and Twitch logins">Detect</button></div>
+        <div class="st-row"><span class="st-t">Twitch</span><input class="st-in" id="mentTwitch" placeholder="(optional)" autocomplete="off" spellcheck="false"></div>
+        <span class="mp-note" id="mentNote"></span>
+        <div class="st-sec">Logins</div>
+        <div class="am-sec">
+          <div class="am-enc"><span class="am-lock"></span><span class="am-enc-txt">Checking how logins are stored…</span></div>
+          <div class="am-forget"><span>Forget my login when I close the app:</span>
+            <label class="chk"><input type="checkbox" data-f="kick">Kick</label><label class="chk"><input type="checkbox" data-f="twitch">Twitch</label><label class="chk"><input type="checkbox" data-f="youtube">YouTube</label></div>
+          <div class="am-watch"><span>Watch signed in: streams play with your login too, so you watch as your account, not as a logged-out viewer. Uses more memory.</span>
+            <label class="chk"><input type="checkbox" data-w="kick">Kick</label><label class="chk"><input type="checkbox" data-w="twitch">Twitch</label><label class="chk"><input type="checkbox" data-w="youtube">YouTube</label></div>
+        </div>
+        <div class="st-sec am-yk-sec" hidden>YouTube API key (optional)</div>
+        <div class="am-yk" hidden>
+          <div class="am-yk-head"><button class="linkish am-yk-how">How to get one</button></div>
+          <span class="am-yk-st">Makes live checks for saved YouTube channels faster and more reliable.</span>
+          <div class="am-yk-row"><input class="am-yk-in" type="password" placeholder="Paste your API key" autocomplete="off" spellcheck="false" aria-label="YouTube API key"><button class="btn am-yk-add">Add</button></div>
+          <div class="am-yk-row am-yk-set" hidden><button class="btn am-yk-rm">Remove key</button></div>
+        </div>
+        <div class="am-alt">YouTube sign-in currently only works through Firefox. <button class="linkish am-ff">Sign in to YouTube with Firefox</button><br>You don't need to sign in to watch YouTube.</div>
+      </section>
+      <section class="st-pane" data-s="mentions" hidden>
+        <h4>Mentions &amp; replies</h4><p class="st-sub">When someone writes @you or replies to you in an open Kick or Twitch chat. The chat already highlights the message itself; these make the <b>window</b> stand out so you can see which chat it's in.</p>
+        <label class="st-lead"><span class="st-t"><b>Alert me</b><small>Your usernames are under <button class="linkish" data-go="accounts">Accounts</button>.</small></span><input type="checkbox" class="st-sw" id="mentOn"></label>
+        <div class="st-opts" data-for="mention">
+          <div class="st-sec">Alerts</div>
+        <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up.</small></span>
+          <select data-al="mention.hl"><option value="off">Off</option><option value="brief">Brief glow</option><option value="until">Until I click the chat</option></select>
+          <input type="color" data-al="mention.color" title="Colour"></div>
+        <div class="st-row" data-dep="mention.until"><span class="st-t">Get stronger if unseen<small>Glow, then pulse, then flash.</small></span>
+          <select data-al="mention.esc"><option value="0">Off</option><option value="10">Every 10 s</option><option value="20">Every 20 s</option><option value="40">Every 40 s</option><option value="60">Every minute</option></select>
+          <select data-al="mention.max"><option value="pulse">Up to pulse</option><option value="flash">Up to flash</option></select></div>
+        <div class="st-row"><span class="st-t">Sound</span>
+          <select data-al="mention.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound…</option></select>
+          <button class="btn st-play" data-play="mention" title="Play it">▶</button>
+          <input type="range" min="0" max="1" step="0.05" data-al="mention.vol" title="Volume"></div>
+        <div class="st-row" data-dep="mention.until"><span class="st-t">Repeat the sound while unseen</span><input type="checkbox" class="st-sw" data-al="mention.repeat"></div>
+        <div class="st-row"><span class="st-t">Desktop notification</span>
+          <select data-al="mention.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
+        </div>
+      </section>
+      <section class="st-pane" data-s="spam" hidden>
+        <h4>Spam alerts <span class="st-beta" title="New: tell us if it flags something it shouldn't, or misses spam">Beta</span></h4><p class="st-sub">A moderator tool: spots promo-bot messages in chats you moderate and points you to them, so you can deal with them. It never hides, deletes or reports anything.</p>
+        <label class="st-lead"><span class="st-t"><b>Watch for spam in chats I moderate</b><small>Only Kick and Twitch chats where you're a moderator (the ones with the mod view <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/></svg> button). Other chats are only read to spot the same message posted in several places.</small></span><input type="checkbox" class="st-sw" id="spamOn"></label>
+        <div class="st-tabs" id="spamTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="how">How it works</button><button data-t="lists">Lists</button><button data-t="try">Try it</button></div>
+        <div class="st-subpane st-opts" data-t="alerts" data-for="spam">
+        <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up.</small></span>
+          <select data-al="spam.hl"><option value="off">Off</option><option value="brief">Brief glow</option><option value="until">Until I click the chat</option></select>
+          <input type="color" data-al="spam.color" title="Colour"></div>
+        <div class="st-row" data-dep="spam.until"><span class="st-t">Get stronger if unseen<small>Glow, then pulse, then flash.</small></span>
+          <select data-al="spam.esc"><option value="0">Off</option><option value="10">Every 10 s</option><option value="20">Every 20 s</option><option value="40">Every 40 s</option><option value="60">Every minute</option></select>
+          <select data-al="spam.max"><option value="pulse">Up to pulse</option><option value="flash">Up to flash</option></select></div>
+        <div class="st-row"><span class="st-t">Tag the message in chat<small>Adds "LIKELY SPAM" after the message. Hover the tag to see why.</small></span><input type="checkbox" class="st-sw" data-al="spam.tag"></div>
+        <div class="st-row"><span class="st-t">Sound</span>
+          <select data-al="spam.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound…</option></select>
+          <button class="btn st-play" data-play="spam" title="Play it">▶</button>
+          <input type="range" min="0" max="1" step="0.05" data-al="spam.vol" title="Volume"></div>
+        <div class="st-row" data-dep="spam.until"><span class="st-t">Repeat the sound while unseen</span><input type="checkbox" class="st-sw" data-al="spam.repeat"></div>
+        <div class="st-row"><span class="st-t">Desktop notification</span>
+          <select data-al="spam.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
+        </div>
+        <div class="st-subpane" data-t="how" hidden>
+          <div class="st-explain">A message is only flagged when several signs add up. One sign alone is never enough, so normal links and clip links aren't flagged, and a message needs a link (or to be posted in several chats) to count.
+            <ul>
+              <li><b>Disguised link</b> to a site not on the allowed list, written so the chat doesn't turn it into a link: <code>site com</code>, <code>site[.]com</code>, <code>site dot com</code> (3 points). A normal link to a site not on the list is 1 point.</li>
+              <li><b>Promo words</b> like "upgrades", "viewers" or "zero cost" (1 point each, up to 2)</li>
+              <li><b>Emotes or junk</b> breaking up the words (1 point)</li>
+              <li><b>The same message in another open chat</b> in the last 5 minutes (3 points, the strongest sign)</li>
+              <li><b>A new chatter</b>: started chatting in the last few minutes, often with friendly filler lines first like "Hey stranger, still running the show?" (1 point)</li>
+            </ul></div>
+          <div class="st-row"><span class="st-t">Sensitivity<small>Strict flags more, and may flag a few real messages.</small></span>
+            <select data-al="spam.sens"><option value="relaxed">Relaxed (6 points)</option><option value="balanced">Balanced (5 points)</option><option value="strict">Strict (4 points)</option></select></div>
+        </div>
+        <div class="st-subpane" data-t="lists" hidden>
+          <div class="st-sec">Allowed sites</div><p class="st-sub" style="margin:2px 0 0">Links to these never count, typed normally or with a space.</p>
+          <div class="st-chips" data-list="allow"></div>
+          <div class="st-add"><input class="st-in" data-add="allow" placeholder="Add a site, e.g. example.com" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="allow">Add</button><button class="btn" data-reset="allow">Reset</button></div>
+          <div class="st-sec">Promo words</div>
+          <div class="st-chips" data-list="words"></div>
+          <div class="st-add"><input class="st-in" data-add="words" placeholder="Add a word or phrase" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="words">Add</button><button class="btn" data-reset="words">Reset</button></div>
+        </div>
+        <div class="st-subpane" data-t="try" hidden>
+          <p class="st-sub" style="margin:8px 0 0">Paste a message to see whether it would be flagged, and why. It's checked on its own, as if nothing else had been posted.</p>
+          <div class="st-try"><input class="st-in" id="spamTry" placeholder="Paste a chat message" autocomplete="off" spellcheck="false"><button class="btn" id="spamTryBtn">Check</button></div>
+          <div class="st-res" id="spamRes" hidden></div>
+        </div>
+      </section>
+      <section class="st-pane" data-s="themes" id="themePane" hidden>
+        <h4>Themes</h4><p class="st-sub">Changes show right away. Saved themes stay on this computer. <button class="linkish th-reset">Back to Pear</button></p>
+        <div class="th-wrap">
+          <div class="th-side"><div class="th-sec">Themes</div><div class="th-list"></div></div>
+          <div class="th-main">
+            <div class="th-sec">Customize <span class="th-cur"></span></div>
+            <div class="th-vars"></div>
+            <div class="th-warn" hidden></div>
+            <div class="th-save"><input class="th-name" placeholder="Name your theme…" maxlength="30" autocomplete="off" spellcheck="false"><button class="btn th-savebtn">Save theme</button></div>
+          </div>
+        </div>
+      </section>
+      <section class="st-pane" data-s="updates" hidden>
+        <h4>Updates</h4>
+        <div class="upd-host"></div>
+        <div class="st-sec st-news-sec">What's new</div>
+        <div class="help-body st-doc" data-doc="news"></div>
+      </section>
+      <section class="st-pane" data-s="guide" hidden>
+        <div class="help-body st-doc" data-doc="guide"></div>
+        <div class="st-docfoot"><span class="help-file">INSTRUCTIONS.txt in the app folder</span><button class="btn help-open" hidden>Open as a file</button></div>
+      </section>
+      <section class="st-pane" data-s="keys" hidden>
+        <h4>Keyboard shortcuts</h4>
+        <div class="help-body st-doc" data-doc="keys"></div>
+      </section>
     </div>
   </div>
-  <div class="dlg-foot"><span class="dlg-note">Changes show right away. Saved themes stay on this computer.</span><button class="btn th-reset">Back to Pear</button><button class="btn primary dlg-cancel">Done</button></div>
 </div></div>
 <div class="dlg-bg" id="capDlg" hidden><div class="dlg cap" role="dialog" aria-modal="true">
   <h3><span>Show another window in Stream Multiview</span></h3>
@@ -851,6 +1040,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <div class="dlg-foot"><span class="dlg-note ff-note"></span><button class="btn dlg-cancel">Close</button><button class="btn primary ff-copy">Copy my login from Firefox</button></div>
 </div></div>
 
+<script src="spam.js"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);
@@ -865,6 +1055,7 @@ let popped = false;          // main window: are streams currently in their own 
 let lastLayout = null, streamCols = 1;
 let colsMode = false, colWidth = 0, colCount = 0;   // Columns mode (scrolls sideways)
 let wins = [], zTop = 10, uid = 0;
+var refreshAccountsPane = null;   // Settings > Accounts (desktop app)
 
 const icon = {
   reload:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>',
@@ -883,6 +1074,7 @@ const icon = {
   float:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="11" y="11" width="8" height="6" rx="1"/></svg>',
   dock:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 15h18"/><path d="M12 6v6M9 9l3 3 3-3"/></svg>',
   grip:'<svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/></svg>',
+  gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   palette:'<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-.9 2-1.9 0-1.3-1-1.6-1-2.8 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.4 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2" fill="currentColor"/><circle cx="10.5" cy="7" r="1.2" fill="currentColor"/><circle cx="15" cy="7.5" r="1.2" fill="currentColor"/></svg>',
   game:'<svg viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.5" r=".9" fill="currentColor"/><circle cx="17.5" cy="13.5" r=".9" fill="currentColor"/></svg>',
   undo:'<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
@@ -909,22 +1101,24 @@ const DESKTOP = !!(window.kmv && window.kmv.desktop);
 const IS_MAC = (window.kmv && window.kmv.platform === 'darwin') || /Mac/i.test(navigator.platform || '');
 const keyName = s => IS_MAC ? String(s).replace(/Ctrl\+/g, '⌘+') : String(s);
 
-// Runs inside each chat: spots new messages that @mention you or reply to you.
-// It reads the chat's visible text, so it keeps working if Kick changes its page code.
+// Runs inside each chat: spots new messages that @mention you or reply to you, and (with spam alerts
+// on) hands the app every new message so it can check them, then tags the ones it flags.
+// It reads the chat's visible text, so it keeps working if Kick or Twitch change their page code.
 function mentionAgent(){
   if (window.__kmvMention) return true;
-  const seen = new Set();
-  let me = '', armed = false, queue = [], armT = 0;
+  const seen = new Set(), marks = new Map(), known = new Set();
+  let me = '', watch = false, armed = false, queue = [], lines = [], armT = 0;
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const LINE_RE = /^(?:\d{1,2}:\d{2}(?:\s?[AP]M)?\s+)?([A-Za-z0-9_]{2,30})\s?:\s*([\s\S]*)$/i;
   function scan(){
-    if (!me || !document.body) return;
-    const lines = document.body.innerText.split('\n').map(s => s.trim()).filter(Boolean);
-    const replyRe = new RegExp('^Replying to\\s+@?' + esc(me) + '(?![A-Za-z0-9_])', 'i');
-    const atRe = new RegExp('(^|[^A-Za-z0-9_])@' + esc(me) + '(?![A-Za-z0-9_])', 'i');
+    if ((!me && !watch) || !document.body) return;
+    const all = document.body.innerText.split('\n').map(s => s.trim()).filter(Boolean);
+    const replyRe = me && new RegExp('^Replying to\\s+@?' + esc(me) + '(?![A-Za-z0-9_])', 'i');
+    const atRe = me && new RegExp('(^|[^A-Za-z0-9_])@' + esc(me) + '(?![A-Za-z0-9_])', 'i');
     let reply = '';
-    for (const l of lines){
+    for (const l of all){
       if (/^Replying to\s/i.test(l)){ reply = l; continue; }
-      const m = l.match(/^(?:\d{1,2}:\d{2}(?:\s?[AP]M)?\s+)?([A-Za-z0-9_]{2,30})\s?:\s*([\s\S]*)$/i);
+      const m = l.match(LINE_RE);
       const r = reply; reply = '';
       if (!m) continue;
       // A message line is only ever judged once, even if its "Replying to" line later scrolls away or re-draws.
@@ -932,28 +1126,83 @@ function mentionAgent(){
       const replyNew = key && !seen.has(key);
       if (!lineNew && !replyNew) continue;
       seen.add(l); if (key) seen.add(key);
-      if (!armed) continue;
+      if (!armed){ if (watch) known.add(m[1].toLowerCase()); continue; }   // people already chatting before we started
       const sender = m[1], body = m[2];
-      if (sender.toLowerCase() === me) continue;            // your own messages
+      if (me && sender.toLowerCase() === me) continue;      // your own messages
+      if (watch && lineNew && lines.length < 300) lines.push({ sender, body, line: l, t: Date.now() });
+      if (!me) continue;
       const toMe = replyNew && replyRe.test(r), at = lineNew && atRe.test(body);
       if (toMe || at) queue.push({ sender, body, kind: toMe ? 'reply' : 'mention',
         quoted: toMe ? r.replace(/^Replying to\s+@?[A-Za-z0-9_]+:?\s*/i, '') : '', t: Date.now() });
     }
     if (seen.size > 6000){ const keep = [...seen].slice(-3000); seen.clear(); keep.forEach(k => seen.add(k)); }
+    marks.forEach(tag);                                      // the chat re-draws messages as it scrolls
+  }
+  function arm(){
+    seen.clear(); armed = false; queue = []; lines = [];
+    clearTimeout(armT); scan();                              // everything already in the chat counts as old
+    armT = setTimeout(() => { scan(); armed = true; }, 2500);
+  }
+  // The element showing a message: the biggest one around its text that's still just that message.
+  const flat = s => String(s || '').replace(/\s+/g, ' ').trim();
+  function rowFor(line){
+    const m = line.match(LINE_RE); if (!m) return null;
+    const probe = flat(m[2]).split(' ').slice(0, 3).join(' '), want = flat(line);
+    if (!probe) return null;
+    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()){
+      if (!n.nodeValue.includes(probe)) continue;
+      let best = null;
+      for (let el = n.parentElement; el && el !== document.body; el = el.parentElement){
+        const t = flat(el.innerText);
+        const more = el.innerText.split('\n').map(x => x.trim()).filter(x => x && !/^Replying to\s/i.test(x)).length > 1;
+        if (more || t.length > want.length + 60) break;   // that's more than this one message
+        if (t.includes(want)) best = el;
+      }
+      if (best) return best;
+    }
+    return null;
+  }
+  function tag(m, line){
+    if (m.row && m.row.isConnected && m.row.querySelector(':scope > [data-kmv-spam]')) return;   // still there
+    const row = m.row = rowFor(line);
+    if (!row || row.querySelector(':scope > [data-kmv-spam]')) return;
+    if (!document.getElementById('kmv-spam-css')){
+      const st = document.createElement('style'); st.id = 'kmv-spam-css';
+      // The tag's words come from CSS, so they never become part of the message's text.
+      st.textContent = '[data-kmv-spam]::after{content:"LIKELY SPAM";display:inline-block;margin-left:6px;padding:0 4px;border-radius:3px;font:700 9.5px/1.6 system-ui,sans-serif;letter-spacing:.03em;color:#fff;background:var(--kmv-spam);vertical-align:1px;cursor:help}';
+      document.head.appendChild(st);
+    }
+    row.style.setProperty('--kmv-spam', m.color);
+    row.style.boxShadow = `inset 3px 0 0 ${m.color}`;
+    row.style.background = m.color + '24';
+    const t = document.createElement('span');
+    t.setAttribute('data-kmv-spam', ''); t.title = m.why;
+    row.appendChild(t);
   }
   window.__kmvMention = {
     setMe(u){
       const n = String(u || '').trim().replace(/^@/, '').toLowerCase();
       if (n === me) return;
-      me = n; seen.clear(); armed = false; queue = [];
-      clearTimeout(armT); scan();                              // everything already in the chat counts as old
-      armT = setTimeout(() => { scan(); armed = true; }, 2500);
+      me = n; arm();
     },
-    take(){ scan(); const q = queue; queue = []; return q; }
+    setWatch(on){
+      on = !!on; if (on === watch) return;
+      watch = on; lines = [];
+      if (on && !armed) arm();
+      else if (on && document.body) document.body.innerText.split('\n').forEach(l => { const m = l.trim().match(LINE_RE); if (m) known.add(m[1].toLowerCase()); });
+    },
+    mark(line, why, color){
+      if (marks.has(line)) return;
+      marks.set(line, { why, color }); tag(marks.get(line), line);
+      if (marks.size > 200) marks.delete(marks.keys().next().value);
+    },
+    take(){ scan(); const q = { m: queue, l: lines, k: [...known] }; queue = []; lines = []; known.clear(); return q; }
   };
   return true;
 }
 const MENTION_JS = `(${mentionAgent.toString()})()`;
+window.chatAgentJs = MENTION_JS;   // for the tests
 
 // Runs inside each stream's player page: lets the title-bar slider drive the real <video>.
 const VOL_JS = `(function(){
@@ -1488,7 +1737,7 @@ function mountView(w){
   frame.src = src;
   if (DESKTOP){
     const hasVol = w.kind === 'stream';
-    frame.addEventListener('focus', () => focusWin(w));
+    frame.addEventListener('focus', () => { focusWin(w); clearAlert(w); });   // you clicked into it
     frame.addEventListener('dom-ready', () => {
       w.ready = true;
       if (w.kind === 'stream') trimYouTube(frame, w.channel);
@@ -1717,7 +1966,9 @@ function timeAgo(t){ const m = Math.round((Date.now() - t) / 60000); return m < 
 function renderMentions(){
   updateMentBtn();
   const list = $('#mentList'); if (!list) return;
-  $('#mentNote').textContent = myName || myTwitch ? '' : 'Needed for alerts. Click Detect, or type them in.';
+  $('#mentNote').textContent = myName || myTwitch ? '' : 'Needed for mention alerts. Click Detect, or type them in.';
+  const st = $('#mentState');
+  if (st) st.textContent = !(myName || myTwitch) ? 'Set your usernames to get alerts.' : mentOn ? '' : 'Mention alerts are off.';
   list.innerHTML = '';
   if (!mentions.length){ list.innerHTML = '<div class="sv-empty">No mentions yet.</div>'; return; }
   mentions.forEach(m => {
@@ -1754,7 +2005,137 @@ function setMyTwitch(n){
 function injectMention(w){
   const p = platOf(w.channel);
   const who = !mentOn ? '' : p === 'kick' ? myName : p === 'twitch' ? myTwitch : '';   // YouTube chat isn't covered
-  w.view.executeJavaScript(`${MENTION_JS};window.__kmvMention.setMe(${JSON.stringify(who)})`).catch(() => {});
+  const watch = !!alerts.spam.on && (p === 'kick' || p === 'twitch');
+  w.view.executeJavaScript(`${MENTION_JS};window.__kmvMention.setMe(${JSON.stringify(who)});window.__kmvMention.setWatch(${watch})`).catch(() => {});
+}
+
+/* ---------- alerts: how a chat window gets your attention (Settings > Mentions, Spam alerts) ---------- */
+const ALERT_DEFAULTS = {
+  mention: { hl: 'until', color: '#e8b84a', esc: 20, max: 'pulse', sound: 'chime', vol: 0.5, repeat: false, notify: 'unfocused' },
+  spam: { on: false, hl: 'until', color: '#ff5f5f', esc: 0, max: 'pulse', tag: true, sound: 'knock', vol: 0.4, repeat: false, notify: 'never',
+          sens: 'balanced', allow: null, words: null }      // null: the built-in lists
+};
+var alerts = (() => {
+  let a = {}; try { a = JSON.parse(localStorage.getItem('kickMultiview.alerts') || '{}') || {}; } catch {}
+  return { mention: { ...ALERT_DEFAULTS.mention, ...(a.mention || {}) }, spam: { ...ALERT_DEFAULTS.spam, ...(a.spam || {}) } };
+})();
+const saveAlerts = () => { try { localStorage.setItem('kickMultiview.alerts', JSON.stringify(alerts)); } catch {} };
+const SOUND_KEY = kind => 'kickMultiview.alertSound.' + kind;      // your own sound file, as a data: URL
+
+// The built-in sounds are made on the fly, so there are no sound files to ship.
+let audioCtx = null;
+function tone(c, out, t0, f, dur, type, gain, f2){
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t0);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(out); o.start(t0); o.stop(t0 + dur + 0.05);
+}
+const SOUNDS = {
+  chime: (c, o, t) => { tone(c, o, t, 880, 0.35, 'sine', 0.5); tone(c, o, t + 0.12, 1318.5, 0.5, 'sine', 0.4); },
+  ping: (c, o, t) => tone(c, o, t, 1760, 0.25, 'triangle', 0.5),
+  pop: (c, o, t) => tone(c, o, t, 620, 0.09, 'sine', 0.8, 180),
+  knock: (c, o, t) => { tone(c, o, t, 150, 0.12, 'sine', 1, 70); tone(c, o, t + 0.16, 150, 0.12, 'sine', 1, 70); }
+};
+function playSound(kind){
+  const a = alerts[kind];
+  if (!a || a.sound === 'none' || !(a.vol > 0)) return;
+  if (a.sound === 'custom'){
+    let src = ''; try { src = localStorage.getItem(SOUND_KEY(kind)) || ''; } catch {}
+    if (src){ const el = new Audio(src); el.volume = a.vol; el.play().catch(() => {}); }
+    return;
+  }
+  const f = SOUNDS[a.sound]; if (!f) return;
+  try {
+    audioCtx = audioCtx || new AudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const out = audioCtx.createGain(); out.gain.value = a.vol; out.connect(audioCtx.destination);
+    f(audioCtx, out, audioCtx.currentTime + 0.02);
+  } catch {}
+}
+const wantNotify = kind => alerts[kind].notify === 'always' || (alerts[kind].notify === 'unfocused' && !document.hasFocus());
+
+// The window's border: a short glow, or lit until you click that chat, getting stronger while unseen.
+function raiseAlert(w, kind){
+  const a = alerts[kind];
+  if (!w || !a) return;
+  playSound(kind);
+  if (a.hl === 'off') return;
+  w.el.style.setProperty('--al', a.color);
+  const looking = document.hasFocus() && w.view && document.activeElement === w.view;   // you're in that chat right now
+  if (a.hl === 'brief' || looking){
+    w.el.classList.remove('al-brief'); void w.el.offsetWidth; w.el.classList.add('al-brief');
+    setTimeout(() => w.el.classList.remove('al-brief'), 2600);
+    return;
+  }
+  w.alert = { kind, since: Date.now(), sound: Date.now() };
+  alertLevel(w, 1);
+  alertTick();
+}
+function alertLevel(w, n){
+  w.el.classList.remove('al-1', 'al-2', 'al-3');
+  if (n) w.el.classList.add('al-' + n);
+  w.alertLvl = n;
+}
+function clearAlert(w){
+  if (!w || !w.alert) return;
+  w.alert = null; alertLevel(w, 0);
+}
+let alertT = 0;
+function alertTick(){
+  clearTimeout(alertT);
+  const now = Date.now();
+  let any = false;
+  wins.forEach(w => {
+    if (!w.alert) return;
+    any = true;
+    const a = alerts[w.alert.kind], step = (+a.esc || 0) * 1000;
+    const lvl = step ? Math.min(a.max === 'flash' ? 3 : 2, 1 + Math.floor((now - w.alert.since) / step)) : 1;
+    if (lvl !== w.alertLvl) alertLevel(w, lvl);
+    if (a.repeat && now - w.alert.sound >= (step || 30000)){ w.alert.sound = now; playSound(w.alert.kind); }
+  });
+  if (any) alertT = setTimeout(alertTick, 1000);
+}
+// Seen: clicking anywhere on that window (clicks inside the chat itself arrive as the chat getting focus).
+document.addEventListener('pointerdown', e => {
+  const el = e.target.closest && e.target.closest('.win');
+  if (el) clearAlert(wins.find(w => w.el === el));
+}, true);
+
+/* ---------- spam alerts: chats you moderate ---------- */
+const spamRecent = [], spamFirst = {};   // messages from the last few minutes (every chat), when each sender first spoke
+// Whether you moderate that chat's channel (the same answer as its mod view button).
+async function modChat(w){
+  if (!DESKTOP || !window.kmv.modCheck || !/^(kick|twitch)$/.test(platOf(w.channel))) return false;
+  if (!modOk.has(w.channel)) modOk.set(w.channel, window.kmv.modCheck(w.channel).catch(() => null));
+  return (await modOk.get(w.channel)) === true;
+}
+const spamOpts = () => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS });
+async function spamCheck(w, lines){
+  const mod = await modChat(w);
+  const now = Date.now();
+  while (spamRecent.length && now - spamRecent[0].t > 5 * 60000) spamRecent.shift();
+  lines.forEach(l => {
+    const msg = { sender: l.sender, body: l.body, chat: w.channel, t: l.t || now };
+    const k = w.channel + '\n' + String(l.sender).toLowerCase();
+    if (!(k in spamFirst)) spamFirst[k] = msg.t;
+    if (mod){
+      const r = SmvSpam.score(msg, { recent: spamRecent, firstSeen: spamFirst }, spamOpts());
+      if (r.spam) flagSpam(w, l, r);
+    }
+    spamRecent.push(msg);
+  });
+  if (spamRecent.length > 3000) spamRecent.splice(0, spamRecent.length - 3000);
+}
+function flagSpam(w, l, r){
+  const a = alerts.spam;
+  if (a.tag){
+    const why = `Likely spam (${r.score} points, ${r.need} needed):\n` + r.signs.map(s => `• ${s.text} (+${s.points})`).join('\n');
+    w.view.executeJavaScript(`window.__kmvMention && window.__kmvMention.mark(${JSON.stringify(l.line)}, ${JSON.stringify(why)}, ${JSON.stringify(a.color)})`).catch(() => {});
+  }
+  raiseAlert(w, 'spam');
+  flash(`Likely spam in ${chLabel(w.channel)}'s chat`);
+  if (wantNotify('spam')) window.kmv.notifyMention({ kind: 'spam', channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body });
 }
 // Bring a chat into view (and flash it).
 function revealChat(ch){
@@ -1772,22 +2153,31 @@ function revealChat(ch){
   c.el.classList.remove('ping'); void c.el.offsetWidth; c.el.classList.add('ping');
   setTimeout(() => c.el.classList.remove('ping'), 2600);
 }
+let polling = false;
 async function pollMentions(){
-  if (!mentOn || !(myName || myTwitch)) return;
+  const ment = mentOn && (myName || myTwitch), spam = !!alerts.spam.on;
+  if ((!ment && !spam) || polling) return;
+  polling = true;
+  try { await pollChats(ment, spam); } finally { polling = false; }
+}
+async function pollChats(ment, spam){
   for (const w of wins){
-    if (w.kind !== 'chat' || !w.ready) continue;
-    let q = [];
-    try { q = await w.view.executeJavaScript('window.__kmvMention ? window.__kmvMention.take() : null'); } catch { continue; }
+    if (w.kind !== 'chat' || !w.ready || !w.view) continue;
+    let q;
+    try { q = await w.view.executeJavaScript('window.__kmvMention && window.__kmvMention.setWatch ? window.__kmvMention.take() : null'); } catch { continue; }
     if (q === null){ injectMention(w); continue; }          // chat reloaded: set it up again
-    (q || []).forEach(m => {
+    if (!q) continue;
+    (q.k || []).forEach(n => { const k = w.channel + '\n' + n; if (!(k in spamFirst)) spamFirst[k] = 0; });
+    if (spam && q.l && q.l.length) await spamCheck(w, q.l);
+    (q.m || []).forEach(m => {
       const item = { channel: w.channel, label: chLabelP(w.channel), sender: m.sender, body: m.body, kind: m.kind, quoted: m.quoted || '', t: m.t || Date.now() };
       mentions.unshift(item); mentions = mentions.slice(0, 50);
       if ($('#mentPanel').hidden) mentUnread++;
-      window.kmv.notifyMention(item);
+      if (wantNotify('mention')) window.kmv.notifyMention(item);
       flash(`${item.sender} ${item.kind === 'reply' ? 'replied to you' : 'mentioned you'} in ${chLabel(item.channel)}`);
-      w.el.classList.remove('ping'); void w.el.offsetWidth; w.el.classList.add('ping'); setTimeout(() => w.el.classList.remove('ping'), 2600);
+      raiseAlert(w, 'mention');
     });
-    if (q && q.length){ saveMentions(); renderMentions(); }
+    if (q.m && q.m.length){ saveMentions(); renderMentions(); }
   }
 }
 
@@ -3373,8 +3763,9 @@ if (DESKTOP && ROLE === 'main' && window.kmv.notifyMention){
   $('#mentOn').addEventListener('change', e => {
     mentOn = e.target.checked;
     try { localStorage.setItem('kickMultiview.mentOn', mentOn ? '1' : '0'); } catch {}
-    pushMyName(); renderMentions();
+    pushMyName(); renderMentions(); syncAlertControls();
   });
+  $('#mentSettings').onclick = () => { mp.hidden = true; openSettings(myName || myTwitch ? 'mentions' : 'accounts'); };
   $('#mentUser').addEventListener('change', e => setMyName(e.target.value));
   $('#mentUser').addEventListener('keydown', e => { if (e.key === 'Enter') setMyName(e.target.value); });
   const detect = async quiet => {
@@ -3462,8 +3853,8 @@ stage.addEventListener('wheel', e => {
 if (DESKTOP){
   const lb = $('#loginBtn');
   lb.hidden = false;
-  // Accounts menu: Kick, Twitch and YouTube logins
-  const am = $('#accountMenu');
+  // Accounts menu (log in and out) and Settings > Accounts (that, and everything else about logins)
+  const am = $('#accountMenu'), sa = $('#settingsDlg .st-pane[data-s=accounts]');
   let acct = { kick: '', twitch: '', youtube: false };
   try { acct = Object.assign(acct, JSON.parse(localStorage.getItem('kickMultiview.accounts') || '{}')); acct.kick = acct.kick || localStorage.getItem('kickMultiview.account') || ''; } catch {}
   const showAccounts = () => {
@@ -3473,13 +3864,14 @@ if (DESKTOP){
     lb.querySelector('.acct-name').textContent = n ? (acct.kick || acct.twitch || 'YouTube') + (n > 1 ? ` +${n - 1}` : '') : 'Log in';
     lb.classList.toggle('has-acct', !!n);
     lb.title = n ? 'Logged in: ' + [acct.kick && `Kick (${acct.kick})`, acct.twitch && `Twitch (${acct.twitch})`, acct.youtube && 'YouTube'].filter(Boolean).join(', ') : 'Log in to Kick, Twitch or YouTube';
-    am.querySelectorAll('.am-row').forEach(row => {
+    document.querySelectorAll('#accountMenu .am-row, #settingsDlg .am-row').forEach(row => {
       const p = row.dataset.p, v = acct[p];
       row.querySelector('.am-st').textContent = v ? (p === 'youtube' ? 'Logged in' : `Logged in as ${v}`) : 'Not logged in';
       row.querySelector('.am-in').hidden = !!v;
       row.querySelector('.am-sw').hidden = row.querySelector('.am-out').hidden = !v;
       row.classList.toggle('on', !!v);
     });
+    if (window.kmv.accountsState) window.kmv.accountsState({ ...acct });    // the menu bar's Account menu follows
   };
   const refreshAccount = async () => {
     const k = window.kmv.detectMe ? await window.kmv.detectMe().catch(() => null) : null;
@@ -3491,7 +3883,7 @@ if (DESKTOP){
   showAccounts();
   lb.onclick = () => {
     am.hidden = !am.hidden;
-    if (!am.hidden){ am.style.left = Math.max(12, Math.min(lb.getBoundingClientRect().left, innerWidth - 452)) + 'px'; refreshAccount(); refreshSecurity(); }
+    if (!am.hidden){ am.style.left = Math.max(12, Math.min(lb.getBoundingClientRect().left, innerWidth - 452)) + 'px'; refreshAccount(); }
   };
   document.addEventListener('pointerdown', e => { if (!am.hidden && !am.contains(e.target) && !lb.contains(e.target)) am.hidden = true; });
   const doLogout = async p => {
@@ -3504,16 +3896,25 @@ if (DESKTOP){
     }
     flash(`Logged out of ${PLAT_NAME[p]}`);
   };
-  am.addEventListener('click', async e => {
+  refreshAccountsPane = () => { refreshAccount(); refreshSecurity(); };
+  const onAccountClick = async e => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.closest('.am-yk')) return;   // the YouTube key has its own buttons (below)
-    if (b.classList.contains('am-ff')){ am.hidden = true; openFfDlg(); return; }
+    if (b.classList.contains('am-more')){ am.hidden = true; openSettings('accounts'); return; }
+    if (b.closest('.am-yk') || !b.closest('.am-row, .am-alt')) return;   // the YouTube key and usernames have their own buttons
+    if (b.classList.contains('am-ff')){ openFfDlg(); return; }
     const p = b.closest('.am-row').dataset.p, name = PLAT_NAME[p];
     am.hidden = true;
     if (b.classList.contains('am-imp')){ importFollows(p); return; }
     if (b.classList.contains('am-in')) window.kmv.openLogin(p);
     else if (b.classList.contains('am-out')){ if (await ask(`Log out of ${name}?`, `${name} chats in this app will show as logged out until someone logs in again.`, { ok: 'Log out', danger: true })) await doLogout(p); }
     else if (b.classList.contains('am-sw')){ if (await ask(`Switch ${name} account?`, `This logs out, then opens the ${name} login so someone else can sign in.`, { ok: 'Switch' })){ await doLogout(p); window.kmv.openLogin(p); } }
+  };
+  am.addEventListener('click', onAccountClick);
+  sa.addEventListener('click', onAccountClick);
+  if (window.kmv.onMenuAccount) window.kmv.onMenuAccount(async ({ platform: p, action }) => {      // the menu bar's Account menu
+    if (!PLAT_NAME[p]) return;
+    if (action === 'login') window.kmv.openLogin(p);
+    else if (action === 'logout' && await ask(`Log out of ${PLAT_NAME[p]}?`, `${PLAT_NAME[p]} chats in this app will show as logged out until someone logs in again.`, { ok: 'Log out', danger: true })) await doLogout(p);
   });
   if (window.kmv.onAccountChanged) window.kmv.onAccountChanged(async info => {
     const p = info.platform || 'kick';
@@ -3529,7 +3930,7 @@ if (DESKTOP){
   if (ROLE === 'main') setTimeout(refreshAccount, 5000);
 
   /* ---- YouTube API key: optional, for live checks. The page only hears whether one is set, never the key. ---- */
-  const yk = am.querySelector('.am-yk'), ykSt = yk.querySelector('.am-yk-st'), ykIn = yk.querySelector('.am-yk-in');
+  const yk = sa.querySelector('.am-yk'), ykSt = yk.querySelector('.am-yk-st'), ykIn = yk.querySelector('.am-yk-in');
   const hhmm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const YK_ERR = {
     format: 'That doesn\'t look like an API key. Copy the whole key from Google Cloud.',
@@ -3551,7 +3952,7 @@ if (DESKTOP){
     ykSt.textContent = msg; ykSt.classList.toggle('warn', warn);
   }
   if (window.kmv.ytKeyStatus){
-    yk.hidden = false;
+    yk.hidden = false; sa.querySelector('.am-yk-sec').hidden = false;
     window.kmv.ytKeyStatus().then(st => showYtKey(st)).catch(() => {});
     if (window.kmv.onYtKeyStatus) window.kmv.onYtKeyStatus(st => showYtKey(st));
     const add = async () => {
@@ -3569,34 +3970,33 @@ if (DESKTOP){
       showYtKey(await window.kmv.ytKeyRemove().catch(() => null));
     };
     yk.querySelector('.am-yk-how').onclick = async () => {
-      am.hidden = true;
       await showHelp('guide');
-      const h = [...helpDlg.querySelectorAll('.help-body h3')].find(x => /YouTube API key/i.test(x.textContent));
+      const h = [...document.querySelectorAll('#settingsDlg [data-doc=guide] h3')].find(x => /YouTube API key/i.test(x.textContent));
       if (h) h.scrollIntoView({ block: 'start' });
     };
   }
 
   /* ---- How logins are kept: encryption status + "forget my login when I close the app" ---- */
   async function refreshSecurity(){
-    if (!window.kmv.securityGet) { am.querySelector('.am-sec').hidden = true; return; }
+    if (!window.kmv.securityGet) { sa.querySelector('.am-sec').hidden = true; return; }
     let st = null;
     try { st = await window.kmv.securityGet(); } catch {}
     if (!st) return;
-    const enc = am.querySelector('.am-enc'), on = st.encryption === 'on';
+    const enc = sa.querySelector('.am-enc'), on = st.encryption === 'on';
     enc.classList.toggle('on', on); enc.classList.toggle('off', !on);
     enc.querySelector('.am-lock').innerHTML = on ? icon.lock : icon.unlock;
     enc.querySelector('.am-enc-txt').textContent = on ? 'Saved logins are encrypted on this computer and locked to your user account.'
       : 'Saved logins are not encrypted yet. Restart the app with its launcher or shortcut to turn encryption on.';
-    am.querySelectorAll('.am-forget input').forEach(i => { i.checked = !!st.forget[i.dataset.f]; });
+    sa.querySelectorAll('.am-forget input').forEach(i => { i.checked = !!st.forget[i.dataset.f]; });
   }
-  am.querySelectorAll('.am-forget input').forEach(i => i.addEventListener('change', async () => {
+  sa.querySelectorAll('.am-forget input').forEach(i => i.addEventListener('change', async () => {
     const p = i.dataset.f;
     try { await window.kmv.securitySetForget(p, i.checked); } catch {}
     flash(i.checked ? `${PLAT_NAME[p]} login will be wiped every time you close the app (you'll log in again next time)` : `${PLAT_NAME[p]} login will be remembered again`);
   }));
 
   /* ---- Watch signed in: a site's stream players use your login too ---- */
-  am.querySelectorAll('.am-watch input').forEach(i => {
+  sa.querySelectorAll('.am-watch input').forEach(i => {
     i.checked = !!watchSignedIn[i.dataset.w];
     i.addEventListener('change', () => {
       const p = i.dataset.w;
@@ -3607,7 +4007,7 @@ if (DESKTOP){
     });
   });
   window.addEventListener('storage', e => {
-    if (e.key === 'kickMultiview.watchSignedIn') am.querySelectorAll('.am-watch input').forEach(i => { i.checked = !!watchSignedIn[i.dataset.w]; });
+    if (e.key === 'kickMultiview.watchSignedIn') sa.querySelectorAll('.am-watch input').forEach(i => { i.checked = !!watchSignedIn[i.dataset.w]; });
   });
 
   /* ---- Import follows: read the channels you follow (with your login) and pick which to save ---- */
@@ -3943,7 +4343,8 @@ if (DESKTOP && ROLE === 'main' && window.kmv.captureSources){
 /* ---- Help: instructions, keyboard shortcuts, what's new ---- */
 const SHORTCUTS = [
   ['General', [
-    ['F1 or ?', 'Open this help (keyboard shortcuts)'],
+    ['F1 or ?', 'Show these keyboard shortcuts'],
+    ['Ctrl+,', 'Settings'],
     ['Ctrl+Z', 'Undo the last change to your windows'],
     ['Ctrl+Y or Ctrl+Shift+Z', 'Redo'],
     ['N or /', 'Type a link or channel name'],
@@ -3976,8 +4377,15 @@ const SHORTCUTS = [
 ];
 var keysOn = true;
 try { keysOn = localStorage.getItem('kickMultiview.keys') !== '0'; } catch {}
-const helpDlg = $('#helpDlg');
-let helpTab = 'guide', appVersion = '';
+function setKeysOn(on){
+  keysOn = !!on;
+  try { localStorage.setItem('kickMultiview.keys', keysOn ? '1' : '0'); } catch {}
+  const g = $('#settingsDlg .sc-grid'); if (g) g.classList.toggle('off', !keysOn);
+  const h = $('#keysOn'); if (h) h.checked = keysOn;
+  const st = $('#keysSet'); if (st) st.checked = keysOn;
+  flash(keysOn ? 'Keyboard shortcuts on' : 'Keyboard shortcuts off');
+}
+let appVersion = '';
 const escH = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // Plain-text help files -> simple HTML (# title, ## section, ### subsection, - bullets, blank lines).
 function helpHtml(text){
@@ -4007,41 +4415,38 @@ function shortcutsHtml(){
     '<p>Shortcuts work when the app itself has your keyboard. If you just clicked inside a stream or chat, click a title bar or an empty spot first. They are ignored while you type in a text box.</p><div class="sc-grid">' +
     SHORTCUTS.map(([g, rows]) => `<h4>${escH(g)}</h4>` + rows.map(([k, d]) => `<div class="sc-row"><span>${escH(d)}</span>${kbdHtml(k)}</div>`).join('')).join('') + '</div>';
 }
+// Help is part of Settings: Instructions and Keyboard shortcuts are tabs there, What's new is in Updates.
+const HELP_TAB = { guide: 'guide', keys: 'keys', news: 'updates', upd: 'updates' };
 async function showHelp(tab){
-  helpTab = tab || helpTab;
-  helpDlg.hidden = false;
-  helpDlg.querySelectorAll('.help-tabs button').forEach(b => b.classList.toggle('on', b.dataset.h === helpTab));
-  const body = helpDlg.querySelector('.help-body'), foot = helpDlg.querySelector('.help-file'), open = helpDlg.querySelector('.help-open');
-  if (!appVersion && window.kmv && window.kmv.appVersion){ try { appVersion = await window.kmv.appVersion(); } catch {} }
-  helpDlg.querySelector('.help-ver').textContent = appVersion ? 'v' + appVersion + (/^0\./.test(appVersion) ? ' beta' : '') : '';
-  body.scrollTop = 0;
-  if (helpTab === 'upd'){ foot.textContent = 'Updates come from the project\'s GitHub page.'; open.hidden = true; renderUpdates(); return; }
-  if (helpTab === 'keys'){
-    body.innerHTML = shortcutsHtml(); foot.textContent = 'These are also listed in INSTRUCTIONS.txt.'; open.hidden = true;
-    body.querySelector('#keysOn').onchange = e => {
-      keysOn = e.target.checked;
-      try { localStorage.setItem('kickMultiview.keys', keysOn ? '1' : '0'); } catch {}
-      body.querySelector('.sc-grid').classList.toggle('off', !keysOn);
-      flash(keysOn ? 'Keyboard shortcuts on' : 'Keyboard shortcuts off');
-    };
-    body.querySelector('.sc-grid').classList.toggle('off', !keysOn);
-    return;
-  }
-  const file = helpTab === 'news' ? 'CHANGELOG.md' : 'INSTRUCTIONS.txt';
-  foot.textContent = `${file} in the app folder`;
+  await openSettings(HELP_TAB[tab] || 'guide');
+  if (tab === 'news'){ const h = $('#settingsDlg .st-news-sec'); if (h) h.scrollIntoView({ block: 'start' }); }
+}
+async function readDoc(file){
   let text = null;
   if (DESKTOP && window.kmv.readHelp){ try { text = await window.kmv.readHelp(file); } catch {} }
   else { try { const r = await fetch('../' + file); if (r.ok) text = await r.text(); } catch {} }
-  body.innerHTML = text ? helpHtml(text) : `<p>Open <code>${file}</code> in the app folder to read this.</p>`;
-  open.hidden = !(DESKTOP && window.kmv.openHelp) || /\.md$/.test(file);
-  open.onclick = () => window.kmv.openHelp(file);
+  return text ? helpHtml(text) : `<p>Open <code>${file}</code> in the app folder to read this.</p>`;
 }
-helpDlg.querySelector('.help-x').innerHTML = icon.close;
-helpDlg.querySelector('.help-x').onclick = () => { helpDlg.hidden = true; };
-helpDlg.querySelector('.help-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-h]'); if (b) showHelp(b.dataset.h); });
-helpDlg.addEventListener('pointerdown', e => { if (e.target === helpDlg) helpDlg.hidden = true; });
-$('#helpBtn').innerHTML = icon.help;
-$('#helpBtn').onclick = () => showHelp('guide');
+// Fills in the help text for a Settings tab (Instructions, Keyboard shortcuts, or What's new under Updates).
+async function renderDoc(tab){
+  if (!appVersion && window.kmv && window.kmv.appVersion){ try { appVersion = await window.kmv.appVersion(); } catch {} }
+  $('#settingsDlg .help-ver').textContent = appVersion ? 'v' + appVersion + (/^0\./.test(appVersion) ? ' beta' : '') : '';
+  if (tab === 'keys'){
+    const body = $('#settingsDlg [data-doc=keys]');
+    body.innerHTML = shortcutsHtml();
+    body.querySelector('#keysOn').onchange = e => setKeysOn(e.target.checked);
+    body.querySelector('.sc-grid').classList.toggle('off', !keysOn);
+  } else if (tab === 'guide'){
+    const body = $('#settingsDlg [data-doc=guide]'), open = $('#settingsDlg [data-s=guide] .help-open');
+    if (!body.childElementCount) body.innerHTML = await readDoc('INSTRUCTIONS.txt');
+    open.hidden = !(DESKTOP && window.kmv.openHelp);
+    open.onclick = () => window.kmv.openHelp('INSTRUCTIONS.txt');
+  } else if (tab === 'updates'){
+    const body = $('#settingsDlg [data-doc=news]');
+    if (!body.childElementCount) body.innerHTML = await readDoc('CHANGELOG.md');
+  }
+}
+
 
 /* ---- Updates from GitHub ---- */
 let updSt = null;
@@ -4087,8 +4492,8 @@ function releaseNotes(html){
   return t.content;
 }
 function renderUpdates(){
-  const body = helpDlg.querySelector('.help-body');
-  if (helpDlg.hidden || helpTab !== 'upd') return;
+  const body = settingsDlg.querySelector('.upd-host');
+  if (settingsDlg.hidden || settingsTab !== 'updates') return;
   const u = updSt || { current: appVersion, state: 'idle' };
   if (!DESKTOP || !window.kmv.updateStatus){ body.innerHTML = '<p>Updates work in the desktop app.</p>'; return; }
   const [cls, msg] = updMsg(u);
@@ -4148,7 +4553,7 @@ function updBanner(u){
 if (DESKTOP && ROLE === 'main' && window.kmv.updateStatus){
   window.kmv.updateStatus().then(u => { updSt = u; }).catch(() => {});
   window.kmv.onUpdateStatus(u => { updSt = u; renderUpdates(); updBanner(u); });
-  window.kmv.onUpdateShow(() => showHelp('upd'));
+  window.kmv.onUpdateShow(() => openSettings('updates'));
   if (window.kmv.onHelpShow) window.kmv.onHelpShow(tab => showHelp(tab));
   $('#updBanner .ub-go').onclick = restartForUpdate;
   $('#updBanner .ub-later').onclick = () => { $('#updBanner').hidden = true; try { sessionStorage.setItem('smvUpdLater' + (updSt && updSt.installed), '1'); } catch {} };
@@ -4168,7 +4573,10 @@ function bigStream(){
 function makeBig(s){ if (!s) return; setFeatured(colKey(s)); scrollX = 0; columnsLayout(); }
 function closeOverlays(){
   let any = false;
-  ['#helpDlg', '#themeDlg', '#capDlg', '#importDlg', '#ffDlg', '#layoutMenu', '#accountMenu', '#savedPanel', '#mentPanel', '#moreMenu'].forEach(sel => {
+  // dialogs one at a time, the top one first (Import follows can sit over Settings); menus all at once
+  const top = ['#importDlg', '#ffDlg', '#capDlg', '#settingsDlg'].map(sel => $(sel)).find(e => e && !e.hidden);
+  if (top){ top.hidden = true; any = true; }
+  else ['#layoutMenu', '#accountMenu', '#savedPanel', '#mentPanel', '#moreMenu'].forEach(sel => {
     const e = $(sel); if (e && !e.hidden){ e.hidden = true; any = true; }
   });
   const ae = document.activeElement;     // don't leave the keyboard in a box that just closed
@@ -4180,7 +4588,7 @@ document.addEventListener('keydown', e => {
   const t = e.target, typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
   const k = e.key, ctrl = e.ctrlKey || e.metaKey;
   if (k === 'Escape'){ if (closeOverlays()) e.preventDefault(); return; }
-  if (!keysOn) return;                                   // keyboard shortcuts switched off (Help > Keyboard shortcuts)
+  if (!keysOn) return;                                   // keyboard shortcuts switched off (Settings > General)
   if (k === 'F1'){ e.preventDefault(); showHelp('keys'); return; }
   if (typing || e.altKey) return;
   if (ctrl){
@@ -4441,7 +4849,7 @@ function themeFixes(v){
 function applyTheme(persist){
   const v = theme.vars, light = isLight(v), fx = themeFixes(v);
   $('#themeVars').textContent = ':root{' + Object.entries(fx.vars).map(([k, x]) => `${k}:${x}`).join(';') + `;color-scheme:${light ? 'light' : 'dark'}}`;
-  const warn = $('#themeDlg .th-warn');
+  const warn = $('#themePane .th-warn');
   if (warn){ warn.textContent = fx.notes.join(' '); warn.hidden = !fx.notes.length; }
   document.body.classList.toggle('theme-light', light);
   if (persist){ try { localStorage.setItem('kickMultiview.theme', JSON.stringify({ name: theme.name, vars: v, light, edited: theme.edited })); } catch {} }
@@ -4451,7 +4859,7 @@ applyTheme(false);
 window.addEventListener('storage', e => {          // the other window changed the theme
   if (e.key === 'kickMultiview.theme'){ try { const t = JSON.parse(e.newValue || 'null'); if (t && t.vars){ theme = { name: t.name, vars: { ...BUILTIN_THEMES[0].vars, ...cleanVars(t.vars) }, edited: !!t.edited }; applyTheme(false); } } catch {} }
 });
-const themeDlg = $('#themeDlg');
+const themeDlg = $('#themePane');   // the Themes tab in Settings
 const swatch = v => `<span class="sw">${['--bg', '--panel2', '--text', '--accent', '--danger'].map(k => `<i style="background:${v[k]}"></i>`).join('')}</span>`;
 function renderThemeList(){
   const list = themeDlg.querySelector('.th-list');
@@ -4504,9 +4912,6 @@ function renderThemeDlg(){
   renderThemeList(); renderThemeVars();
   themeDlg.querySelector('.th-cur').textContent = theme.edited ? `${theme.name} · edited` : `(${theme.name})`;
 }
-function openThemeDlg(){ themeDlg.hidden = false; renderThemeDlg(); }
-themeDlg.querySelector('.dlg-cancel').onclick = () => { themeDlg.hidden = true; };
-themeDlg.addEventListener('pointerdown', e => { if (e.target === themeDlg) themeDlg.hidden = true; });
 themeDlg.querySelector('.th-reset').onclick = () => { theme = { name: 'Pear', vars: { ...BUILTIN_THEMES[0].vars }, edited: false }; applyTheme(true); renderThemeDlg(); };
 const saveThemeFromInput = async () => {
   const inp = themeDlg.querySelector('.th-name');
@@ -4523,8 +4928,152 @@ const saveThemeFromInput = async () => {
 };
 themeDlg.querySelector('.th-savebtn').onclick = saveThemeFromInput;
 themeDlg.querySelector('.th-name').addEventListener('keydown', e => { if (e.key === 'Enter') saveThemeFromInput(); });
-$('#themeBtn').innerHTML = icon.palette;
-$('#themeBtn').onclick = openThemeDlg;
+/* ---------- Settings: one window for general options, accounts, alerts, themes and updates ---------- */
+const settingsDlg = $('#settingsDlg');
+let settingsTab = 'general';
+try { settingsTab = localStorage.getItem('kickMultiview.settingsTab') || 'general'; } catch {}
+const MAIN_DESK = DESKTOP && ROLE === 'main';
+settingsDlg.querySelectorAll('.st-rail .desk-only').forEach(b => { b.hidden = !DESKTOP; });
+settingsDlg.querySelectorAll('.st-rail .main-desk').forEach(b => { b.hidden = !MAIN_DESK; });
+function openSettings(tab){
+  const ok = t => { const b = settingsDlg.querySelector(`.st-rail [data-s="${t}"]`); return b && !b.hidden; };
+  settingsTab = ok(tab) ? tab : ok(settingsTab) ? settingsTab : 'general';
+  try { localStorage.setItem('kickMultiview.settingsTab', settingsTab); } catch {}
+  settingsDlg.hidden = false;
+  settingsDlg.querySelectorAll('.st-rail button').forEach(b => b.classList.toggle('on', b.dataset.s === settingsTab));
+  settingsDlg.querySelectorAll('.st-pane').forEach(p => { p.hidden = p.dataset.s !== settingsTab; });
+  settingsDlg.querySelector('.st-body').scrollTop = 0;
+  if (settingsTab === 'themes') renderThemeDlg();
+  if (settingsTab === 'updates') renderUpdates();
+  settingsDlg.querySelector('.upd-host').hidden = !MAIN_DESK;
+  if (settingsTab === 'accounts' && typeof refreshAccountsPane === 'function') refreshAccountsPane();
+  if (settingsTab === 'general') $('#keysSet').checked = keysOn;
+  return renderDoc(settingsTab);
+}
+window.openSettings = openSettings;   // for the tests
+window.raiseAlert = (ch, kind) => raiseAlert(wins.find(w => w.kind === 'chat' && w.channel === ch), kind);   // for the tests
+const closeSettings = () => { settingsDlg.hidden = true; };
+settingsDlg.querySelector('.help-x').innerHTML = icon.close;
+settingsDlg.querySelector('.help-x').onclick = closeSettings;
+settingsDlg.addEventListener('pointerdown', e => { if (e.target === settingsDlg) closeSettings(); });
+settingsDlg.querySelector('.st-rail').addEventListener('click', e => { const b = e.target.closest('button[data-s]'); if (b) openSettings(b.dataset.s); });
+settingsDlg.addEventListener('click', e => {
+  const go = e.target.closest('[data-go]'); if (go){ e.preventDefault(); openSettings(go.dataset.go); return; }
+  const h = e.target.closest('[data-help]'); if (h){ e.preventDefault(); showHelp(h.dataset.help); }
+});
+$('#settingsBtn').innerHTML = icon.gear;
+$('#settingsBtn').onclick = () => openSettings();
+if (DESKTOP && window.kmv.onSettingsShow) window.kmv.onSettingsShow(tab => openSettings(tab));
+document.addEventListener('keydown', e => {                    // Ctrl+, / ⌘, (the desktop app's menu also has it)
+  if ((e.ctrlKey || e.metaKey) && e.key === ',' && !e.altKey){ e.preventDefault(); openSettings(); }
+});
+
+/* General: on and off switches, remembered */
+[['#muted', 'kickMultiview.startMuted'], ['#snap', 'kickMultiview.snap']].forEach(([sel, key]) => {
+  const c = $(sel);
+  try { const v = localStorage.getItem(key); if (v !== null) c.checked = v === '1'; } catch {}
+  c.addEventListener('change', () => { try { localStorage.setItem(key, c.checked ? '1' : '0'); } catch {} });
+});
+$('#keysSet').checked = keysOn;
+$('#keysSet').addEventListener('change', e => setKeysOn(e.target.checked));
+
+/* Mentions and spam alert options: every control with data-al="kind.option" */
+function syncAlertControls(){
+  settingsDlg.querySelectorAll('[data-al]').forEach(c => {
+    const [kind, k] = c.dataset.al.split('.'), v = alerts[kind][k];
+    if (c.type === 'checkbox') c.checked = !!v; else c.value = String(v);
+  });
+  ['mention', 'spam'].forEach(kind => {
+    settingsDlg.querySelectorAll(`[data-dep="${kind}.until"]`).forEach(r => r.classList.toggle('st-dim', alerts[kind].hl !== 'until'));
+  });
+  settingsDlg.querySelectorAll('.st-opts[data-for=mention]').forEach(el => el.classList.toggle('st-dim', !mentOn));
+  settingsDlg.querySelectorAll('.st-opts[data-for=spam]').forEach(el => el.classList.toggle('st-dim', !alerts.spam.on));
+  $('#spamOn').checked = !!alerts.spam.on;
+  if ($('#mentOn')) $('#mentOn').checked = mentOn;
+  const pill = settingsDlg.querySelector('.st-rail [data-s=spam] .st-pill');
+  if (pill) pill.textContent = alerts.spam.on ? 'On' : 'Mod';
+}
+function pickSound(kind){
+  return new Promise(resolve => {
+    const f = document.createElement('input'); f.type = 'file'; f.accept = 'audio/*';
+    f.onchange = () => {
+      const file = f.files && f.files[0];
+      if (!file) return resolve(false);
+      if (file.size > 1.5e6){ flash('That sound file is too big. Pick one under 1.5 MB.'); return resolve(false); }
+      const r = new FileReader();
+      r.onload = () => { try { localStorage.setItem(SOUND_KEY(kind), r.result); resolve(true); } catch { flash('Couldn\'t keep that sound file. Try a smaller one.'); resolve(false); } };
+      r.onerror = () => resolve(false);
+      r.readAsDataURL(file);
+    };
+    f.addEventListener('cancel', () => resolve(false));
+    f.click();
+  });
+}
+settingsDlg.addEventListener('change', async e => {
+  const c = e.target.closest('[data-al]'); if (!c) return;
+  const [kind, k] = c.dataset.al.split('.');
+  let v = c.type === 'checkbox' ? c.checked : c.type === 'range' || k === 'esc' ? +c.value : c.value;
+  if (k === 'sound' && v === 'custom' && !await pickSound(kind)) v = alerts[kind].sound === 'custom' ? 'custom' : alerts[kind].sound;
+  alerts[kind][k] = v; saveAlerts(); syncAlertControls();
+  if (k === 'sound' || k === 'vol') playSound(kind);
+  if (k === 'color') wins.forEach(w => { if (w.alert && w.alert.kind === kind) w.el.style.setProperty('--al', v); });
+});
+settingsDlg.addEventListener('click', e => { const b = e.target.closest('[data-play]'); if (b) playSound(b.dataset.play); });
+$('#spamOn').addEventListener('change', e => {
+  alerts.spam.on = e.target.checked; saveAlerts(); syncAlertControls();
+  if (typeof pushMyName === 'function') pushMyName();      // the chats start or stop handing over their messages
+  flash(alerts.spam.on ? 'Spam alerts on, in chats you moderate' : 'Spam alerts off');
+});
+$('#spamTabs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-t]'); if (!b) return;
+  $('#spamTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  settingsDlg.querySelectorAll('[data-s=spam] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
+});
+
+/* Spam alerts: allowed sites and promo words */
+const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS };
+const listOf = which => (alerts.spam[which] || SPAM_LIST[which]()).slice();
+function renderSpamLists(){
+  ['allow', 'words'].forEach(which => {
+    const box = settingsDlg.querySelector(`[data-list="${which}"]`); box.innerHTML = '';
+    listOf(which).forEach(item => {
+      const c = document.createElement('span'); c.className = 'st-chip';
+      c.innerHTML = `<span></span><button title="Remove">${icon.close}</button>`;
+      c.firstChild.textContent = item;
+      c.querySelector('button').onclick = () => setSpamList(which, listOf(which).filter(x => x !== item));
+      box.appendChild(c);
+    });
+  });
+}
+function setSpamList(which, list){
+  const def = SPAM_LIST[which]();
+  alerts.spam[which] = list.length === def.length && list.every((x, i) => x === def[i]) ? null : list;
+  saveAlerts(); renderSpamLists();
+}
+function addSpamItem(which){
+  const inp = settingsDlg.querySelector(`[data-add="${which}"]`);
+  let v = inp.value.trim().toLowerCase();
+  if (which === 'allow') v = v.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '').replace(/\s+(?=[a-z]{2,6}$)/, '.');
+  if (!v || (which === 'allow' && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v))){ inp.focus(); flash(which === 'allow' ? 'Type a site like example.com' : 'Type a word or phrase'); return; }
+  const l = listOf(which); if (!l.includes(v)) l.push(v);
+  setSpamList(which, l); inp.value = '';
+}
+settingsDlg.querySelectorAll('[data-addbtn]').forEach(b => { b.onclick = () => addSpamItem(b.dataset.addbtn); });
+settingsDlg.querySelectorAll('[data-add]').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') addSpamItem(i.dataset.add); }));
+settingsDlg.querySelectorAll('[data-reset]').forEach(b => { b.onclick = () => { alerts.spam[b.dataset.reset] = null; saveAlerts(); renderSpamLists(); }; });
+
+/* Spam alerts: try a message */
+function trySpam(){
+  const text = $('#spamTry').value.trim(), out = $('#spamRes');
+  if (!text){ out.hidden = true; return; }
+  const r = SmvSpam.score({ sender: 'someone', body: text, chat: '', t: Date.now() }, {}, spamOpts());
+  out.hidden = false; out.classList.toggle('bad', r.spam);
+  const head = r.spam ? `<b>Would be flagged</b> (${r.need} points needed)` : r.score >= r.need ? `Not flagged: it has ${r.score} points but no link to promote` : `Not flagged (${r.score} of the ${r.need} points needed)`;
+  out.innerHTML = head + (r.signs.length ? '<table>' + r.signs.map(s => `<tr><td>${escH(s.text)}</td><td>+${s.points}</td></tr>`).join('') + `<tr class="tot"><td>Total</td><td>${r.score}</td></tr></table>` : '<div>No signs of spam.</div>');
+}
+$('#spamTryBtn').onclick = trySpam;
+$('#spamTry').addEventListener('keydown', e => { if (e.key === 'Enter') trySpam(); });
+syncAlertControls(); renderSpamLists();
 
 restore();
 if (ROLE === 'main'){
@@ -4554,7 +5103,7 @@ updateEmpty();
 (() => {
   const hdr = document.querySelector('header'), moreBtn = $('#moreBtn'), moreMenu = $('#moreMenu');
   const LEVELS = ['c1', 'c2', 'c3'];
-  const ORDER = ['#snapLbl', '#autoPauseLbl', '#mutedLbl', '#chkSep', '#tile', '#helpBtn', '#themeBtn', '#clear', '#focusBtn',
+  const ORDER = ['#tile', '#settingsBtn', '#clear', '#focusBtn',
     '#redoBtn', '#popBtn', '#spotBtn', '#capBtn', '#chatZoom', '#linkBtn', '#undoBtn', '#colNav'];
   const items = ORDER.map(sel => $(sel)).filter(Boolean).map(el => {
     const mark = document.createComment(' ' + el.id + ' ');        // where it goes back in the toolbar
@@ -4580,7 +5129,7 @@ updateEmpty();
       }
     }
     // the More button only shows when something visible is in it
-    moreBtn.hidden = ![...moreMenu.children].some(el => !el.hidden && el.id !== 'chkSep');
+    moreBtn.hidden = ![...moreMenu.children].some(el => !el.hidden);
     if (moreBtn.hidden) moreMenu.hidden = true;
     obs.takeRecords();                                   // ignore our own changes
     fitting = false;
@@ -4649,8 +5198,8 @@ document.addEventListener('keydown', e => {
    title and its parents' titles are put aside so the browser has none to show, and put back after. */
 const ttl = b => b.title || b.dataset.tipTitle || '';   // its title (put aside while the pointer is on it)
 const TIPS = [
-  ['#capBtn', 'App window'], ['#helpBtn', 'Help'], ['#moreBtn', 'More'], ['#undoBtn', 'Undo'], ['#redoBtn', 'Redo'],
-  ['#themeBtn', 'Themes'], ['#mentBtn', 'Mentions'],
+  ['#capBtn', 'App window'], ['#moreBtn', 'More'], ['#undoBtn', 'Undo'], ['#redoBtn', 'Redo'],
+  ['#settingsBtn', 'Settings'], ['#mentBtn', 'Mentions'], ['[data-play]', 'Play'], ['.st-chip button', 'Remove'],
   ['[data-a=feat]', b => b.classList.contains('on') ? 'Normal size' : 'Highlight'],
   ['[data-a=star]', b => b.classList.contains('on') ? 'Unsave' : 'Save'],
   ['[data-a=reload]', b => /different window/i.test(ttl(b)) ? 'Pick window' : 'Reload'],
