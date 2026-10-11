@@ -979,7 +979,7 @@ ipcMain.handle('follows:import', async (_e, plat) => {
       saved logins are encrypted with a key tied to your Windows account. Logins saved before that
       are re-saved once so they get encrypted too.
    2. "Forget my login when I close the app" per site: that site's saved login is wiped on quit
-      (and at start-up, in case the app didn't close normally). */
+      (and at start-up if the app didn't get to: it closed without wiping, e.g. it crashed). */
 const secFile = () => stateFile('security');
 function loadSec() {
   let d = {};
@@ -1045,7 +1045,7 @@ app.on('will-quit', e => {            // every window is closed by now
   e.preventDefault();
   forgotten = true; quitTidied = true;
   const jobs = [];
-  if (needForget) jobs.push(forgetLogins(forgetList()));
+  if (needForget) jobs.push(forgetLogins(forgetList()).then(() => { sec.wiped = true; saveSec(sec); }));
   if (gameWin) jobs.push(Promise.race([releaseGame(), sleep(2500)]));
   Promise.all(jobs).finally(() => { try { gameHelper && gameHelper.kill(); } catch {} app.quit(); });
 });
@@ -1545,7 +1545,8 @@ if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'com.gl
 app.whenReady().then(async () => {
   sec = loadSec();
   loadYtKey();
-  if (forgetList().length) await forgetLogins(forgetList());     // the app didn't get to wipe them last time
+  if (forgetList().length && sec.wiped !== true) await forgetLogins(forgetList());     // the app didn't get to wipe them last time
+  if (sec.wiped !== false) { sec.wiped = false; saveSec(sec); }     // logins saved from now on are wiped when it closes
   encryptOldLogins();
   const ua = chromeUA();
   app.userAgentFallback = ua;
