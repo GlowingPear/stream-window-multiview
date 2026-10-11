@@ -157,6 +157,23 @@ test('unpackMacApp refuses an app that was changed, or signed by someone else', 
     await assert.rejects(unpackMacApp(zip, path.join(dir, 'out'), req, run));
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+test('unpackMacApp checks the new app against this app\'s signature requirement (any system, stand-in tools)', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-unpack-'));
+  try {
+    const out = path.join(dir, 'out'), calls = [];
+    const fake = async (cmd, args) => {
+      calls.push([cmd, ...args]);
+      if (cmd === 'ditto') fs.mkdirSync(path.join(out, 'Stream Multiview.app', 'Contents'), { recursive: true });
+      if (cmd === 'codesign' && !args.includes('-R=identifier "x"')) throw new Error('code failed to satisfy specified code requirement(s)');
+      return '';
+    };
+    const app = path.join(out, 'Stream Multiview.app');
+    assert.equal(await unpackMacApp('u.zip', out, 'identifier "x"', fake), app);
+    assert.deepEqual(calls, [['ditto', '-x', '-k', 'u.zip', out], ['codesign', '--verify', '--deep', '--strict', '-R=identifier "x"', app]]);
+    fs.rmSync(out, { recursive: true, force: true });
+    await assert.rejects(unpackMacApp('u.zip', out, 'identifier "someone else"', fake), /requirement/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
 test('unpackMacApp refuses a download without an app in it', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-unpack-'));
   try {
