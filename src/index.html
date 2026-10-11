@@ -699,7 +699,12 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .ex-grid > .h{border-top:0;color:var(--muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;background:transparent}
 .ex-grid .rl{color:var(--muted);font-weight:600}
 .ex-grid input{accent-color:var(--accent);margin:0;width:15px;height:15px;cursor:pointer}
-.ex-grid input:disabled{cursor:default;opacity:.45}
+.ex-grid > .h small{font-size:10px;font-weight:600;text-transform:none;letter-spacing:0}
+.ex-grid > .h{flex-direction:column;align-items:flex-start;justify-content:center;gap:1px}
+.ex-grid > .h > span{display:flex;align-items:center;gap:6px}
+.ex-grid .ex-chip{font-style:normal;font-size:9.5px;font-weight:600;text-transform:none;letter-spacing:0;padding:0 5px;border:1px solid var(--line2);border-radius:999px;color:var(--text);white-space:nowrap}
+.ex-grid .ex-both{cursor:pointer;color:var(--muted);font-size:11px;line-height:1.3;gap:8px}
+.ex-grid .ex-off > *{opacity:.45}
 .ex-grid .pdot{width:7px;height:7px;border-radius:50%}
 .ex-note{font-size:11px;color:var(--muted);margin:6px 0 0}
 .ex-perms{margin:0;padding:0 0 0 16px;font-size:12px}.ex-perms li{margin:3px 0}
@@ -6344,30 +6349,33 @@ if (DESKTOP && ROLE === 'main' && window.kmv.profileGet){
 const extPane = $('#settingsDlg .st-pane[data-s=extensions]');
 const EXT_PLATS = ['kick', 'twitch', 'youtube'], EXT_COL = { kick: '#53fc18', twitch: '#a970ff', youtube: '#ff3d3d' };
 const andList = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
-function extGridHtml(grid){
-  let h = '<span class="h"></span>' + EXT_PLATS.map(p => `<span class="h"><i class="pdot" style="background:${EXT_COL[p]}"></i>${PLAT_NAME[p]}</span>`).join('');
+// A site watched signed in has one switch for its chats and streams (they share a session), shown as one
+// cell across both rows. A site the extension doesn't name in its manifest is dimmed but can still be set.
+function extGridHtml(grid, sites){
+  const runs = p => !sites || sites.includes(p);
+  let h = '<span class="h"></span>' + EXT_PLATS.map(p => `<span class="h${runs(p) ? '' : ' ex-off'}"><span><i class="pdot" style="background:${EXT_COL[p]}"></i>${PLAT_NAME[p]}`
+    + (watchSignedIn[p] ? '<em class="ex-chip">signed in</em>' : '') + '</span>' + (runs(p) ? '' : '<small>Doesn\'t run here</small>') + '</span>').join('');
   for (const [k, label] of [['stream', 'Streams'], ['chat', 'Chats']]){
     h += `<span class="rl">${label}</span>`;
-    for (const p of EXT_PLATS){
-      const signed = k === 'stream' && watchSignedIn[p];      // its streams use the chat login, so the Chats setting
-      h += `<span><input type="checkbox" data-p="${p}" data-k="${k}" aria-label="${PLAT_NAME[p]} ${label.toLowerCase()}"${grid[p][k] ? ' checked' : ''}${signed ? ' disabled' : ''}></span>`;
-    }
+    EXT_PLATS.forEach((p, i) => {
+      const at = `grid-column:${i + 2}`, off = runs(p) ? '' : ' ex-off';
+      if (!watchSignedIn[p]) h += `<span class="${off}" style="${at}"><input type="checkbox" data-p="${p}" data-k="${k}" aria-label="${PLAT_NAME[p]} ${label.toLowerCase()}"${grid[p][k] ? ' checked' : ''}></span>`;
+      else if (k === 'stream') h += `<label class="ex-both${off}" style="${at};grid-row:span 2"><input type="checkbox" data-p="${p}" data-k="chat" aria-label="${PLAT_NAME[p]} chats and streams"${grid[p].chat ? ' checked' : ''}><span>Chats &amp; streams<br>(signed in)</span></label>`;
+    });
   }
   return h;
 }
-const extSignedNote = () => {
-  const ps = EXT_PLATS.filter(p => watchSignedIn[p]).map(p => PLAT_NAME[p]);
-  return ps.length ? `You watch ${andList(ps)} signed in, so ${andList(ps)} streams use the Chats setting.` : '';
-};
+const extSignedNote = () => EXT_PLATS.some(p => watchSignedIn[p])
+  ? 'Signed-in streams share their chat\'s login, so they share its extensions. To set them separately, watch them logged out in <button class="linkish" data-go="accounts">Accounts</button>.' : '';
 function extFill(box, x){
   const warn = box.querySelector('.ex-warn');
   warn.hidden = !x.compat.length && !x.noBlock;
   warn.textContent = x.noBlock
     ? 'It won\'t block anything here: this app doesn\'t have Chrome\'s blocking rules (declarativeNetRequest).' + (x.compat.length ? ` It also uses ${andList(x.compat)}, which aren't here either.` : '')
     : x.compat.length ? `Partly works here: it uses ${andList(x.compat)}, which this app doesn't have.` : '';
-  box.querySelector('.ex-grid').innerHTML = extGridHtml(x.grid);
+  box.querySelector('.ex-grid').innerHTML = extGridHtml(x.grid, x.sites);
   const note = box.querySelector('.ex-note'), t = extSignedNote();
-  if (note){ note.hidden = !t; note.textContent = t; }
+  if (note){ note.hidden = !t; note.innerHTML = t; }
   const ul = box.querySelector('.ex-perms');
   ul.replaceChildren(...(x.perms.length ? x.perms : ['No special access']).map(t => Object.assign(document.createElement('li'), { textContent: t })));
   const img = box.querySelector('.ex-ico');
