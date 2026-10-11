@@ -54,7 +54,7 @@ const { video } = await run.close();                                 // WebM in 
 ```
 
 - Keep videos short (~15 s, or as long as the "before" slowness takes) and under 10 MB. The window is set to 1280×800 to match the video.
-- Close anything that distracts from the change first. Open streams play ads and chats scroll: in a dev profile, clear them with `#clear` (accept its confirm dialog).
+- Close anything that distracts from the change first. Open streams play ads and chats scroll: in a dev profile, clear them with `#clear`, then click **Close all** in the app's own confirm dialog (`#askDlg .ask-yes`).
 - Wait for real results (`waitForSelector`) instead of fixed sleeps.
 - **The last frames are lost when nothing changes on screen.** Video frames are only recorded when the screen changes, and the end is cut off when the app closes. Finish with a little movement, e.g. slowly scroll the result list and back, then wait ~1.5 s before `close()`.
 - **Check every video before using it:** `await drive.frames(video, [3, -0.3])` saves stills (seconds; negative counts from the end). Look at them: is the result on screen at the end, and is anything private visible?

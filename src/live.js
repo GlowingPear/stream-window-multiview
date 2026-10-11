@@ -84,53 +84,209 @@ function parseChannel(text, slug) {
   };
 }
 
-// The polling loop. fetchChannel(slug) -> parsed info | null (unknown) | { missing: true }.
-function createLiveWatcher({ fetchChannel, onStatus, onWentLive, intervalMs = 60000, spacingMs = 1200, now = () => Date.now(), sleep }) {
+// The polling loop, in two parts so slow checks never hold up fast ones:
+// - every batchIntervalMs, fetchBatch(list) answers many channels at once -> { results: Map(ch -> info),
+//   rest: [channels it couldn't answer] } (optional; without it every channel is checked alone);
+// - the rest are checked one at a time with fetchChannel(ch), spacingMs apart, then the same wait.
+// info: parsed info | null (unknown) | { missing: true }. Batch answers may be { partial: true }: no
+// title. Then the title comes from fetchChannel: straight away when the channel has just gone live (so
+// the notification has it), otherwise later, one at a time.
+// auto: false (for tests) never starts the loops; run passes with _batchPass / _onePass.
+function createLiveWatcher({ fetchChannel, fetchBatch, onStatus, onWentLive, intervalMs = 60000, batchIntervalMs = intervalMs, spacingMs = 1200, now = () => Date.now(), sleep, auto = true }) {
   const wait = sleep || (ms => new Promise(r => setTimeout(r, ms)));
-  let list = [], state = new Map(), running = false, timer = null, stopped = false, wake = null;
+  let list = [], state = new Map(), stopped = false, oneByOne = [], needTitle = new Set();
+  const loops = [];
 
   function setChannels(channels) {
     const next = [...new Set((channels || []).map(normCh).filter(validCh))];
     for (const k of [...state.keys()]) if (!next.includes(k)) state.delete(k);
+    for (const k of [...needTitle]) if (!next.includes(k)) needTitle.delete(k);
     const added = next.some(c => !list.includes(c));
     list = next;
+    if (!fetchBatch) oneByOne = list;
     if (added) checkSoon();
   }
   function snapshot() { const o = {}; for (const [k, v] of state) o[k] = v; return o; }
 
-  async function pass() {
-    for (const slug of [...list]) {
-      if (stopped) return;
-      let info = null;
-      try { info = await fetchChannel(slug); } catch { info = null; }
-      if (!list.includes(slug)) continue;                 // removed while we were checking
-      if (info && !info.missing) {
-        const prev = state.get(slug);
-        state.set(slug, info);
-        // Only a real offline -> live change notifies (not channels that were already live when the app started).
-        if (info.live && prev && !prev.live) onWentLive && onWentLive(slug, info);
-      } else if (info && info.missing) {
-        state.set(slug, { live: false, missing: true, title: '', viewers: null, category: '', name: slug, checked: now() });
+  function apply(slug, info) {
+    if (!list.includes(slug) || !info) return;               // removed while we were checking, or unknown
+    if (info.missing) { state.set(slug, { live: false, missing: true, title: '', viewers: null, category: '', name: slug, checked: now() }); return; }
+    const prev = state.get(slug);
+    let next = info;
+    if (info.partial) {
+      next = { ...info };
+      delete next.partial;
+      if (info.live && prev && prev.live) next.title = prev.title || '';
+      if (!next.name) next.name = (prev && prev.name) || slug;
+      if (info.live && !next.title) needTitle.add(slug); else needTitle.delete(slug);
+    } else needTitle.delete(slug);
+    state.set(slug, next);
+    // Only a real offline -> live change notifies (not channels that were already live when the app started).
+    if (next.live && prev && !prev.live) onWentLive && onWentLive(slug, next);
+  }
+  const fetchOne = async slug => { try { return await fetchChannel(slug); } catch { return null; } };
+
+  async function batchPass() {
+    if (!fetchBatch || !list.length) return;
+    let r = null;
+    try { r = await fetchBatch([...list]); } catch { r = null; }
+    if (stopped) return;
+    const before = oneByOne;
+    if (!r) { oneByOne = [...list]; if (oneByOne.some(c => !before.includes(c))) slow.poke(); return; }   // the batch failed: check them one at a time
+    for (const [slug, info] of r.results || []) {
+      const prev = state.get(slug);
+      let use = info;
+      if (info && info.partial && info.live && prev && !prev.live) {   // just went live: get the title for the notification
+        const full = await fetchOne(slug);
+        if (full && full.live) use = { ...full, viewers: full.viewers ?? info.viewers, category: full.category || info.category };
       }
+      apply(slug, use);
+    }
+    oneByOne = (r.rest || []).filter(c => list.includes(c));
+    onStatus && onStatus(snapshot());
+    if (oneByOne.some(c => !before.includes(c) || !state.has(c)) || needTitle.size) slow.poke();   // new to the one-at-a-time list: don't wait for its next round
+  }
+  async function onePass() {
+    const todo = [...new Set([...oneByOne, ...needTitle])];
+    for (const slug of todo) {
+      if (stopped) return;
+      if (!list.includes(slug)) continue;
+      apply(slug, await fetchOne(slug));
       onStatus && onStatus(snapshot());
       await wait(spacingMs);
     }
   }
-  async function loop() {
-    if (running) return;
-    running = true;
-    try {
-      while (!stopped) {
-        await pass();
-        await new Promise(r => { wake = r; timer = setTimeout(r, intervalMs); });
-        wake = null;
-      }
-    } finally { running = false; }
-  }
-  function checkSoon() { if (wake) { clearTimeout(timer); const w = wake; wake = null; w(); } else if (!running && !stopped) loop(); }
-  function stop() { stopped = true; clearTimeout(timer); if (wake) wake(); }
 
-  return { setChannels, checkSoon, stop, snapshot, start: loop, _pass: pass, _state: state };
+  function makeLoop(pass, ms) {
+    const l = { running: false, wake: null, timer: null };
+    l.run = async () => {
+      if (l.running) return;
+      l.running = true;
+      try {
+        while (!stopped) {
+          await pass();
+          await new Promise(r => { l.wake = r; l.timer = setTimeout(r, ms); });
+          l.wake = null;
+        }
+      } finally { l.running = false; }
+    };
+    l.poke = () => {
+      if (!auto) return;
+      if (l.wake) { clearTimeout(l.timer); const w = l.wake; l.wake = null; w(); } else if (!l.running && !stopped) l.run();
+    };
+    loops.push(l);
+    return l;
+  }
+  const fast = makeLoop(batchPass, batchIntervalMs), slow = makeLoop(onePass, intervalMs);
+  function checkSoon() { if (auto) { fast.poke(); slow.poke(); } }
+  function start() { fast.run(); slow.run(); }
+  function stop() { stopped = true; loops.forEach(l => { clearTimeout(l.timer); if (l.wake) l.wake(); }); }
+
+  return { setChannels, checkSoon, stop, snapshot, start, _batchPass: batchPass, _onePass: onePass, _state: state };
+}
+
+/* ---------- checking many channels at once ---------- */
+// Twitch: { data: { users: [user | null, …] } } for users(logins: […]) -> Map(login -> info | { missing }).
+function parseTwitchUsers(d, logins) {
+  const users = d && d.data && d.data.users;
+  if (!Array.isArray(users)) return null;
+  const out = new Map();
+  for (const u of users) if (u && u.login) out.set(String(u.login).toLowerCase(), parseTwitch({ data: { user: u } }, u.login));
+  for (const l of logins) if (!out.has(l)) out.set(l, { missing: true });
+  return out;
+}
+
+// Kick: the live channels you follow. followed-page lists live channels first, so a normal read stops
+// at the first page with an offline one. allPages reads the whole list, which also gives every channel
+// you follow and whether live channels still come first.
+// get(url) as for readKickFollowPages. -> { live: Map(slug -> info), followed: Set | null, liveFirst } |
+// pages: how many were read. { login: true } | null (the list can't be read)
+const kickLiveInfo = c => ({ live: true, partial: true, title: '', viewers: Number.isFinite(+c.viewer_count) ? +c.viewer_count : null,
+  category: String(c.category_name || ''), name: String(c.user_username || c.channel_slug), checked: Date.now() });
+async function readKickLive(get, { allPages = false, maxPages = 200 } = {}) {
+  const live = new Map(), followed = new Set();
+  let cursor = 0, sawOffline = false, liveFirst = true, done = false, pages = 0;
+  for (let i = 0; i < maxPages; i++) {
+    pages++;
+    const r = await get(KICK_FOLLOW_APIS[0] + '?cursor=' + encodeURIComponent(cursor));
+    if (r && r.login) return { login: true };
+    if (!r || !r.d || !Array.isArray(r.d.channels)) return null;
+    for (const c of r.d.channels) {
+      const slug = String(c && c.channel_slug || '').toLowerCase();
+      if (!SLUG_RE.test(slug)) continue;
+      followed.add(slug);
+      if (c.is_live) { live.set(slug, kickLiveInfo(c)); if (sawOffline) liveFirst = false; }
+      else sawOffline = true;
+    }
+    const next = r.d.nextCursor;
+    if (next == null || next === '' || String(next) === String(cursor) || !r.d.channels.length) { done = true; break; }
+    if (sawOffline && !allPages) break;
+    cursor = next;
+  }
+  return { live, followed: allPages && done ? followed : null, liveFirst: allPages && done ? liveFirst : null, pages };
+}
+
+// YouTube: a channel's feed (https://www.youtube.com/feeds/videos.xml?channel_id=…) -> its latest videos.
+function parseYtFeed(xml) {
+  if (typeof xml !== 'string' || !/<feed[\s>]/.test(xml)) return null;
+  const ids = [...xml.matchAll(/<yt:videoId>([\w-]{11})<\/yt:videoId>/g)].map(m => m[1]);
+  const channelId = (xml.match(/<yt:channelId>(UC[\w-]{10,40})<\/yt:channelId>/) || [])[1] || '';
+  const name = decodeHtml((xml.match(/<author>\s*<name>([^<]*)<\/name>/) || [])[1] || '');
+  return { ids: [...new Set(ids)], channelId, name };
+}
+// YouTube Data API videos.list (part=snippet,liveStreamingDetails) -> Map(videoId -> { state, title, viewers,
+// channelId, channelTitle }). state: 'live', 'upcoming', or 'done' (a normal video or a finished stream: never live again).
+function parseYtVideos(d) {
+  if (!d || !Array.isArray(d.items)) return null;
+  const out = new Map();
+  for (const v of d.items) {
+    if (!v || typeof v.id !== 'string') continue;
+    const sn = v.snippet || {}, ld = v.liveStreamingDetails || null;
+    const lbc = sn.liveBroadcastContent;
+    const state = lbc === 'live' && !(ld && ld.actualEndTime) ? 'live' : lbc === 'upcoming' ? 'upcoming' : 'done';
+    out.set(v.id, { state, title: String(sn.title || ''), viewers: ld && ld.concurrentViewers != null && Number.isFinite(+ld.concurrentViewers) ? +ld.concurrentViewers : null,
+      channelId: String(sn.channelId || ''), channelTitle: String(sn.channelTitle || '') });
+  }
+  return out;
+}
+
+// When the YouTube API key may be used. fail({ status, reason }) after an error answer; while it can't be
+// used, YouTube is checked by reading pages (as without a key).
+//   out of quota  -> until the quota resets (midnight Pacific time)
+//   too fast      -> 15 min, doubling up to 2 h while it keeps happening
+//   key refused   -> until the key is changed
+//   anything else -> just this pass
+const YT_QUOTA = /^(quotaExceeded|dailyLimitExceeded)$/;
+const YT_RATE = /^(rateLimitExceeded|userRateLimitExceeded|RATE_LIMIT_EXCEEDED)$/;
+const YT_BADKEY = /^(keyInvalid|keyExpired|API_KEY_INVALID|API_KEY_SERVICE_BLOCKED|API_KEY_HTTP_REFERRER_BLOCKED|API_KEY_IP_ADDRESS_BLOCKED|accessNotConfigured|SERVICE_DISABLED|forbidden|ipRefererBlocked)$/;
+function nextPacificMidnight(t) {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(t));
+  const g = k => +(parts.find(p => p.type === k) || {}).value || 0;
+  return t - ((g('hour') * 60 + g('minute')) * 60 + g('second')) * 1000 - (t % 1000) + 864e5;
+}
+// The reason in a Google API error answer ({ error: { errors: [{ reason }], details: [{ reason }], status } }).
+function ytErrorReason(d) {
+  const e = d && d.error;
+  if (!e) return '';
+  // details (e.g. API_KEY_INVALID) says more than errors (e.g. badRequest)
+  return (Array.isArray(e.details) && (e.details.find(x => x && x.reason) || {}).reason) || (Array.isArray(e.errors) && e.errors[0] && e.errors[0].reason) || e.status || '';
+}
+function createKeyGate({ now = () => Date.now() } = {}) {
+  let st = { state: 'ok', until: 0, backoff: 0, reason: '' };
+  return {
+    usable: () => st.state === 'ok' || ((st.state === 'quota' || st.state === 'rate') && now() >= st.until),
+    ok() { st = { state: 'ok', until: 0, backoff: 0, reason: '' }; },
+    fail({ status = 0, reason = '' } = {}) {
+      if (YT_QUOTA.test(reason)) st = { state: 'quota', until: nextPacificMidnight(now()), backoff: 0, reason };
+      else if (status === 429 || YT_RATE.test(reason)) {
+        const backoff = st.state === 'rate' ? Math.min(st.backoff * 2, 2 * 3600e3) : 15 * 60e3;
+        st = { state: 'rate', until: now() + backoff, backoff, reason };
+      } else if (status === 401 || YT_BADKEY.test(reason)) st = { state: 'badkey', until: 0, backoff: 0, reason };
+      return st.state;
+    },
+    reset() { this.ok(); },
+    status: () => ({ ...st })
+  };
 }
 
 /* ---------- Google sign-in inside the app ----------
@@ -236,4 +392,4 @@ function channelFromLink(plat, href) {
   return SLUG_RE.test(m[1]) ? m[1].toLowerCase() : null;
 }
 
-module.exports = { isGoogleSignin, firefoxVersion, firefoxUA, KICK_FOLLOW_APIS, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };
+module.exports = { parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, nextPacificMidnight, isGoogleSignin, firefoxVersion, firefoxUA, KICK_FOLLOW_APIS, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };

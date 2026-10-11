@@ -120,6 +120,12 @@ body.dragging .bar{cursor:grabbing}
 .help-tabs button{height:28px;padding:0 12px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;font-weight:600;font-size:12px}
 .help-tabs button:hover{color:var(--text)}
 .help-tabs button.on{background:var(--panel2);border-color:var(--line2);color:var(--text)}
+/* the app's own tooltips, instead of the browser's (see tipFor) */
+#tip{position:fixed;z-index:2147483647;pointer-events:none;max-width:260px;padding:5px 8px;border-radius:6px;border:1px solid var(--line2);
+  background:var(--panel);color:var(--text);font-size:12px;font-weight:600;line-height:1.3;box-shadow:0 6px 18px rgba(0,0,0,.45);opacity:0;transition:opacity .12s}
+#tip.on{opacity:1}
+#tip small{display:block;margin-top:2px;font-size:11px;font-weight:400;color:var(--muted)}
+#tip.plain{font-weight:400}
 .help-x{width:30px;height:28px;border:0;border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center}
 .help-x:hover{background:var(--line);color:var(--text)}
 .help-x svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
@@ -503,6 +509,18 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .am-forget,.am-watch{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
 .am-forget span,.am-watch span{width:100%}
 .am-forget .chk,.am-watch .chk{font-size:12px;color:var(--text);gap:5px}
+.am-yk{padding:2px 10px 6px 27px;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:5px}
+.am-yk[hidden]{display:none}
+.am-yk-head b{color:var(--text);font-weight:600}
+.am-yk-st.warn{color:#e8b84a}
+.am-yk-row{display:flex;align-items:center;gap:6px}
+.am-yk-row[hidden],.am-yk .btn[hidden]{display:none}
+.am-yk-in{flex:1;min-width:0;height:26px;padding:0 8px;border-radius:6px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);font:inherit;font-size:12px}
+#accountMenu .am-yk .btn{display:inline-flex;align-items:center;height:26px;padding:0 9px;font-size:11px;font-weight:600;flex:none;
+  border:1px solid var(--line2);background:var(--panel2);color:var(--text)}
+#accountMenu .am-yk .btn:hover{border-color:var(--muted)}
+#accountMenu .am-yk .btn:disabled{opacity:.6;cursor:default}
+#accountMenu .am-yk .linkish{display:inline;padding:0;border-radius:0;background:none}
 .am-alt{padding:7px 10px 4px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);margin-top:4px}
 .linkish{border:0;background:none;padding:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .linkish:hover{filter:brightness(1.2)}
@@ -529,6 +547,10 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .dlg .dlg-foot{display:flex;gap:8px;justify-content:flex-end;align-items:center}
 .dlg .dlg-foot .dlg-note{margin-right:auto;font-size:11px;color:var(--muted)}
 .dlg .dlg-foot .btn{height:32px;padding:0 14px}
+#askDlg{z-index:100040}   /* above any dialog that asks */
+.dlg.ask{width:min(420px,calc(100vw - 32px))}
+.dlg.ask .dlg-sub{font-size:13px}
+.dlg.ask .btn.danger-fill{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:700}
 .spin{width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:-2px}
 @keyframes spin{to{transform:rotate(360deg)}}
 /* Import follows: the pear fills up while the channels are read (theme colours only) */
@@ -699,6 +721,12 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
   <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
     <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+  <div class="am-yk" hidden>
+    <div class="am-yk-head"><b>YouTube API key</b> (optional) · <button class="linkish am-yk-how">How to get one</button></div>
+    <span class="am-yk-st">Makes live checks for saved YouTube channels faster and more reliable.</span>
+    <div class="am-yk-row"><input class="am-yk-in" type="password" placeholder="Paste your API key" autocomplete="off" spellcheck="false" aria-label="YouTube API key"><button class="btn am-yk-add">Add</button></div>
+    <div class="am-yk-row am-yk-set" hidden><button class="btn am-yk-rm">Remove key</button></div>
+  </div>
   <div class="am-sec">
     <div class="am-enc"><span class="am-lock"></span><span class="am-enc-txt">Checking how logins are stored…</span></div>
     <div class="am-forget"><span>Forget my login when I close the app:</span>
@@ -770,6 +798,11 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 <div id="sizehint"></div>
 <div id="toast" hidden><span></span><button class="btn">Undo</button></div>
 <div id="updBanner" hidden><span class="ub-txt"></span><button class="btn primary ub-go">Restart now</button><button class="btn ub-later">Later</button></div>
+<div class="dlg-bg" id="askDlg" hidden><div class="dlg ask" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askMsg">
+  <h3 id="askTitle"></h3>
+  <div class="dlg-sub" id="askMsg"></div>
+  <div class="dlg-foot"><button class="btn ask-no">Cancel</button><button class="btn primary ask-yes">OK</button></div>
+</div></div>
 <div class="dlg-bg" id="importDlg" hidden><div class="dlg" role="dialog" aria-modal="true">
   <h3><i class="pdot"></i><span class="dlg-title">Import follows</span></h3>
   <div class="dlg-sub"></div>
@@ -1854,6 +1887,33 @@ function gridRects(n, X, Y, W, H, aspect){
     w: best.cw - GAP, h: best.ch - GAP
   }));
 }
+/* Streams in rows that fill the area: rows can hold different numbers of streams (e.g. 5 = 1 + 2 + 2),
+   each row as tall as its streams need at 16:9, scaled to fill the height. Picks the row count and order
+   (fewer streams at the top or the bottom) that gives the most picture, so there are no empty cells. */
+function rowRects(n, X, Y, W, H, aspect){
+  if (!n) return [];
+  let best = null;
+  for (let r = 1; r <= n; r++){
+    const base = Math.floor(n / r), extra = n % r;
+    for (const fewFirst of [true, false]){
+      const counts = Array.from({ length: r }, (_, i) => base + ((fewFirst ? i >= r - extra : i < extra) ? 1 : 0));
+      const ideal = counts.map(k => W / k / aspect + BAR);
+      const scale = H / ideal.reduce((a, b) => a + b, 0);
+      const hs = ideal.map(h => h * scale);
+      let score = 0;
+      counts.forEach((k, i) => { const vw = Math.max(0, Math.min(W / k - GAP, (hs[i] - BAR - GAP) * aspect)); score += k * vw * vw / aspect; });
+      if (!best || score > best.score + 1) best = { score, counts, hs };
+    }
+  }
+  const rects = [];
+  let y = Y;
+  best.counts.forEach((k, i) => {
+    const cw = W / k;
+    for (let j = 0; j < k; j++) rects.push({ x: X + j * cw + GAP / 2, y: y + GAP / 2, w: cw - GAP, h: best.hs[i] - GAP });
+    y += best.hs[i];
+  });
+  return rects;
+}
 function applyRects(list, rects){ list.forEach((w, i) => { w.max = null; setRect(w, rects[i], true); }); }
 
 function autoLayout(){
@@ -1865,15 +1925,10 @@ function autoLayout(){
     .sort((a, b) => (order.indexOf(a.channel) + 1 || 999) - (order.indexOf(b.channel) + 1 || 999));
   if (!vids.length){ layoutChatsOnly(); return; }
   const chatW = Math.min(340, W * 0.24);
-  const chatCols = Math.min(chats.length, 3);
-  const chatArea = chatCols * chatW;
-  const rows = Math.ceil(chats.length / Math.max(chatCols, 1));
-  applyRects(vids, gridRects(vids.length, X, Y, W - chatArea, H, 16 / 9));
-  applyRects(chats, chats.map((c, i) => ({
-    x: X + W - chatArea + (i % chatCols) * chatW + GAP / 2,
-    y: Y + Math.floor(i / chatCols) * (H / rows) + GAP / 2,
-    w: chatW - GAP, h: H / rows - GAP
-  })));
+  const chatArea = Math.min(chats.length, 3) * chatW;
+  applyRects(vids, rowRects(vids.length, X, Y, W - chatArea, H, 16 / 9));
+  // chats in rows too (5 = 3 + 2, the second row's chats wider), so none of the chat area is left empty
+  if (chats.length) applyRects(chats, chatRects(chats.length, X + W - chatArea, Y, chatArea, H));
   save();
 }
 function tile(){
@@ -2968,23 +3023,23 @@ function renderPresets(){
     row.querySelector('b').textContent = p.name;
     row.querySelector('span').textContent = presetSummary(p);
     row.querySelector('.pr-load').onclick = () => { $('#layoutMenu').hidden = true; applyPreset(p); };
-    row.querySelector('.pr-up').onclick = () => {
-      if (!confirm(`Replace “${p.name}” with what's on screen now?`)) return;
+    row.querySelector('.pr-up').onclick = async () => {
+      if (!await ask(`Update “${p.name}”?`, `Replace this saved layout with what's on screen now.`, { ok: 'Update' })) return;
       presets[i] = capturePreset(p.name); savePresets(); activePreset = p.name; updateLayoutMenu(); flash(`Updated “${p.name}”`);
     };
-    row.querySelector('.pr-x').onclick = () => {
-      if (!confirm(`Delete the layout “${p.name}”?`)) return;
+    row.querySelector('.pr-x').onclick = async () => {
+      if (!await ask(`Delete the layout “${p.name}”?`, 'This can\'t be undone.', { ok: 'Delete', danger: true })) return;
       presets.splice(i, 1); savePresets(); if (activePreset === p.name) activePreset = ''; updateLayoutMenu();
     };
     box.appendChild(row);
   });
 }
-function savePresetFromInput(){
+async function savePresetFromInput(){
   const inp = $('#presetName'), name = inp.value.trim().slice(0, 40);
   if (!name){ inp.focus(); return; }
   if (!wins.length){ flash('Open some streams first'); return; }
   const i = presets.findIndex(p => p.name.toLowerCase() === name.toLowerCase());
-  if (i >= 0 && !confirm(`A layout called “${presets[i].name}” already exists. Replace it?`)) return;
+  if (i >= 0 && !await ask(`Replace “${presets[i].name}”?`, 'A layout with this name already exists. Saving replaces it with what\'s on screen now.', { ok: 'Replace' })) return;
   const p = capturePreset(name);
   if (i >= 0) presets[i] = p; else presets.push(p);
   savePresets(); inp.value = ''; activePreset = name; updateLayoutMenu();
@@ -3227,14 +3282,24 @@ input.addEventListener('paste', () => setTimeout(() => { if (parseInput(input.va
 $('#auto').onclick = () => { lastLayout = 'auto'; autoLayout(); };
 $('#chatFocus').onclick = () => chatFocusLayout(lastLayout === 'chatfocus');
 $('#tile').onclick = tile;
-$('#clear').onclick = () => { if (wins.length && confirm('Close all windows?')) { [...wins].forEach(w => { stopCapture(w); w.el.remove(); }); wins = []; updateEmpty(); save(); } };
-$('#focusBtn').onclick = () => { document.body.classList.add('focus'); input.blur(); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); };
+$('#clear').onclick = async () => { if (wins.length && await ask('Close all windows?', 'Every stream, chat and other window closes. Undo brings them back.', { ok: 'Close all', danger: true })) { [...wins].forEach(w => { stopCapture(w); w.el.remove(); }); wins = []; updateEmpty(); save(); } };
+// Hide bar: the toolbar slides away (it peeks out when the mouse touches the top edge). The same button,
+// Esc and H bring it back.
+function setBarHidden(on){
+  document.body.classList.toggle('focus', on);
+  document.body.classList.remove('peek');
+  const b = $('#focusBtn');
+  b.querySelector('.l-long').textContent = on ? 'Show bar' : 'Hide bar';
+  b.querySelector('.l-short').textContent = on ? 'Show' : 'Hide';
+  b.title = on ? 'Keep this toolbar showing (or press Esc)' : 'Hide this toolbar (move mouse to top edge or press Esc to bring it back)';
+  if (on) input.blur();
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 220);
+}
+$('#focusBtn').onclick = () => setBarHidden(!document.body.classList.contains('focus'));
 $('#reveal').addEventListener('mouseenter', () => document.body.classList.add('peek'));
 document.querySelector('header').addEventListener('mouseleave', () => document.body.classList.remove('peek'));
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && document.body.classList.contains('focus')){
-    document.body.classList.remove('focus', 'peek'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220);
-  }
+  if (e.key === 'Escape' && document.body.classList.contains('focus')) setBarHidden(false);
 });
 let refitT;
 window.addEventListener('resize', () => {
@@ -3441,13 +3506,14 @@ if (DESKTOP){
   };
   am.addEventListener('click', async e => {
     const b = e.target.closest('button'); if (!b) return;
+    if (b.closest('.am-yk')) return;   // the YouTube key has its own buttons (below)
     if (b.classList.contains('am-ff')){ am.hidden = true; openFfDlg(); return; }
     const p = b.closest('.am-row').dataset.p, name = PLAT_NAME[p];
     am.hidden = true;
     if (b.classList.contains('am-imp')){ importFollows(p); return; }
     if (b.classList.contains('am-in')) window.kmv.openLogin(p);
-    else if (b.classList.contains('am-out')){ if (confirm(`Log out of ${name} in this app? ${name} chats will show as logged out until someone logs in again.`)) await doLogout(p); }
-    else if (b.classList.contains('am-sw')){ if (confirm(`Switch ${name} account? This logs out, then opens the ${name} login so someone else can sign in.`)){ await doLogout(p); window.kmv.openLogin(p); } }
+    else if (b.classList.contains('am-out')){ if (await ask(`Log out of ${name}?`, `${name} chats in this app will show as logged out until someone logs in again.`, { ok: 'Log out', danger: true })) await doLogout(p); }
+    else if (b.classList.contains('am-sw')){ if (await ask(`Switch ${name} account?`, `This logs out, then opens the ${name} login so someone else can sign in.`, { ok: 'Switch' })){ await doLogout(p); window.kmv.openLogin(p); } }
   });
   if (window.kmv.onAccountChanged) window.kmv.onAccountChanged(async info => {
     const p = info.platform || 'kick';
@@ -3461,6 +3527,54 @@ if (DESKTOP){
     }
   });
   if (ROLE === 'main') setTimeout(refreshAccount, 5000);
+
+  /* ---- YouTube API key: optional, for live checks. The page only hears whether one is set, never the key. ---- */
+  const yk = am.querySelector('.am-yk'), ykSt = yk.querySelector('.am-yk-st'), ykIn = yk.querySelector('.am-yk-in');
+  const hhmm = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const YK_ERR = {
+    format: 'That doesn\'t look like an API key. Copy the whole key from Google Cloud.',
+    network: 'Couldn\'t reach Google to test the key. Check your connection and try again.',
+    badkey: 'Google didn\'t accept that key. Check it\'s enabled for "YouTube Data API v3".'
+  };
+  function showYtKey(st, err){
+    if (!st) return;
+    yk.querySelector('.am-yk-row:not(.am-yk-set)').hidden = !!st.set;
+    yk.querySelector('.am-yk-set').hidden = !st.set;
+    let msg = 'Makes live checks for saved YouTube channels faster and more reliable.', warn = false;
+    if (err){ msg = YK_ERR[err] || YK_ERR.network; warn = true; }
+    else if (st.set){
+      if (st.state === 'quota'){ msg = `Over today's quota: checking YouTube pages instead until ${hhmm(st.until)}.`; warn = true; }
+      else if (st.state === 'rate'){ msg = `Too many requests: checking YouTube pages instead until ${hhmm(st.until)}.`; warn = true; }
+      else if (st.state === 'badkey'){ msg = 'Key not accepted any more: checking YouTube pages instead. Check it\'s enabled for "YouTube Data API v3", or remove it and add a new one.'; warn = true; }
+      else msg = 'Key added: YouTube live checks use it.' + (st.saved ? '' : ' It\'s kept until you close the app, because this computer can\'t store it securely.');
+    }
+    ykSt.textContent = msg; ykSt.classList.toggle('warn', warn);
+  }
+  if (window.kmv.ytKeyStatus){
+    yk.hidden = false;
+    window.kmv.ytKeyStatus().then(st => showYtKey(st)).catch(() => {});
+    if (window.kmv.onYtKeyStatus) window.kmv.onYtKeyStatus(st => showYtKey(st));
+    const add = async () => {
+      const key = ykIn.value.trim(); if (!key) { ykIn.focus(); return; }
+      const btn = yk.querySelector('.am-yk-add'); btn.disabled = true; ykSt.textContent = 'Testing the key with Google…'; ykSt.classList.remove('warn');
+      let st = null; try { st = await window.kmv.ytKeySet(key); } catch {}
+      btn.disabled = false;
+      if (st && !st.error) ykIn.value = '';
+      showYtKey(st || { set: false }, st ? st.error : 'network');
+    };
+    yk.querySelector('.am-yk-add').onclick = add;
+    ykIn.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); add(); } e.stopPropagation(); });
+    yk.querySelector('.am-yk-rm').onclick = async () => {
+      if (!await ask('Remove the YouTube API key?', 'YouTube live checks go back to reading each channel\'s page.', { ok: 'Remove', danger: true })) return;
+      showYtKey(await window.kmv.ytKeyRemove().catch(() => null));
+    };
+    yk.querySelector('.am-yk-how').onclick = async () => {
+      am.hidden = true;
+      await showHelp('guide');
+      const h = [...helpDlg.querySelectorAll('.help-body h3')].find(x => /YouTube API key/i.test(x.textContent));
+      if (h) h.scrollIntoView({ block: 'start' });
+    };
+  }
 
   /* ---- How logins are kept: encryption status + "forget my login when I close the app" ---- */
   async function refreshSecurity(){
@@ -4087,7 +4201,7 @@ document.addEventListener('keydown', e => {
     case 'n': case '/': input.focus(); input.select(); break;
     case 'b': $('#savedBtn').click(); break;
     case 'w': openCapturePicker(null); break;
-    case 'h': if (document.body.classList.contains('focus')){ document.body.classList.remove('focus', 'peek'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); } else $('#focusBtn').click(); break;
+    case 'h': setBarHidden(!document.body.classList.contains('focus')); break;
     case 'f': if (isFocusView()) layoutPick('columns'); else layoutPick('focus'); break;
     case 'c': layoutPick(e.shiftKey ? 'chatfocus' : 'columns'); break;
     case 'g': layoutPick('game'); break;
@@ -4347,9 +4461,9 @@ function renderThemeList(){
     b.innerHTML = swatch(t.vars) + `<b></b>` + (t.note ? `<small></small>` : '') + (mine ? `<button class="th-del" title="Delete this theme">${icon.close}</button>` : '');
     b.querySelector('b').textContent = t.name;
     if (t.note) b.querySelector('small').textContent = t.note;
-    b.onclick = e => {
+    b.onclick = async e => {
       if (e.target.closest('.th-del')){
-        if (!confirm(`Delete the theme “${t.name}”?`)) return;
+        if (!await ask(`Delete the theme “${t.name}”?`, 'This can\'t be undone.', { ok: 'Delete', danger: true })) return;
         myThemes = myThemes.filter(x => x !== t); saveMyThemes(); renderThemeList(); return;
       }
       theme = { name: t.name, vars: { ...BUILTIN_THEMES[0].vars, ...t.vars }, edited: false };
@@ -4394,13 +4508,13 @@ function openThemeDlg(){ themeDlg.hidden = false; renderThemeDlg(); }
 themeDlg.querySelector('.dlg-cancel').onclick = () => { themeDlg.hidden = true; };
 themeDlg.addEventListener('pointerdown', e => { if (e.target === themeDlg) themeDlg.hidden = true; });
 themeDlg.querySelector('.th-reset').onclick = () => { theme = { name: 'Pear', vars: { ...BUILTIN_THEMES[0].vars }, edited: false }; applyTheme(true); renderThemeDlg(); };
-const saveThemeFromInput = () => {
+const saveThemeFromInput = async () => {
   const inp = themeDlg.querySelector('.th-name');
   let name = inp.value.trim().slice(0, 30);
   if (!name){ inp.focus(); flash('Type a name for your theme first'); return; }
   if (BUILTIN_THEMES.some(t => t.name.toLowerCase() === name.toLowerCase())) name += ' (mine)';
   const i = myThemes.findIndex(t => t.name.toLowerCase() === name.toLowerCase());
-  if (i >= 0 && !confirm(`You already have a theme called “${myThemes[i].name}”. Replace it?`)) return;
+  if (i >= 0 && !await ask(`Replace “${myThemes[i].name}”?`, 'You already have a theme with this name. Saving replaces it.', { ok: 'Replace' })) return;
   const t = { name, vars: { ...theme.vars } };
   if (i >= 0) myThemes[i] = t; else myThemes.push(t);
   saveMyThemes();
@@ -4493,6 +4607,113 @@ updateEmpty();
   });
   document.addEventListener('pointerdown', e => { if (!moreMenu.hidden && !moreMenu.contains(e.target) && !moreBtn.contains(e.target)) moreMenu.hidden = true; });
   fitHeader();
+})();
+
+/* ---------- asking before something can't be undone ----------
+   ask(title, message, { ok, danger }) -> Promise<true | false>. An in-app dialog instead of the browser's
+   confirm(), which ignores the theme, freezes the page while it's open and can open behind other windows.
+   Enter answers yes, Esc or clicking outside no. */
+const askDlg = $('#askDlg');
+let askDone = null;
+function ask(title, message, { ok = 'OK', danger = false } = {}){
+  if (askDone) askDone(false);
+  askDlg.querySelector('#askTitle').textContent = title;
+  askDlg.querySelector('#askMsg').textContent = message || '';
+  const yes = askDlg.querySelector('.ask-yes');
+  yes.textContent = ok;
+  yes.classList.toggle('primary', !danger); yes.classList.toggle('danger-fill', danger);
+  askDlg.hidden = false;
+  yes.focus();
+  return new Promise(resolve => {
+    askDone = v => { askDone = null; askDlg.hidden = true; resolve(v); };
+  });
+}
+window.ask = ask;   // for the tests
+askDlg.querySelector('.ask-yes').onclick = () => askDone && askDone(true);
+askDlg.querySelector('.ask-no').onclick = () => askDone && askDone(false);
+askDlg.addEventListener('pointerdown', e => {
+  if (e.target === askDlg && askDone) askDone(false);
+  e.stopPropagation();   // the menu that asked stays open behind it
+});
+document.addEventListener('keydown', e => {
+  if (!askDone) return;
+  if (e.key === 'Escape' || e.key === 'Enter'){ e.preventDefault(); e.stopImmediatePropagation(); askDone(e.key === 'Enter' && document.activeElement !== askDlg.querySelector('.ask-no')); }
+  else if (e.key !== 'Tab') e.stopImmediatePropagation();   // no keyboard shortcuts behind the dialog
+}, true);
+
+/* ---------- tooltips ----------
+   The app shows its own tooltips instead of the browser's (on a Mac those are separate system windows
+   that pop up over everything, including these). Buttons that show only an icon (or whose words are
+   hidden because the toolbar is narrow) get a one- or two-word name, with their longer title underneath
+   when it says more. Anything else with a title shows that. While the pointer rests on something, its
+   title and its parents' titles are put aside so the browser has none to show, and put back after. */
+const ttl = b => b.title || b.dataset.tipTitle || '';   // its title (put aside while the pointer is on it)
+const TIPS = [
+  ['#capBtn', 'App window'], ['#helpBtn', 'Help'], ['#moreBtn', 'More'], ['#undoBtn', 'Undo'], ['#redoBtn', 'Redo'],
+  ['#themeBtn', 'Themes'], ['#mentBtn', 'Mentions'],
+  ['[data-a=feat]', b => b.classList.contains('on') ? 'Normal size' : 'Highlight'],
+  ['[data-a=star]', b => b.classList.contains('on') ? 'Unsave' : 'Save'],
+  ['[data-a=reload]', b => /different window/i.test(ttl(b)) ? 'Pick window' : 'Reload'],
+  ['[data-a=pop]', 'Pop out'], ['[data-a=max]', 'Maximize'], ['[data-a=mod]', 'Mod view'], ['[data-a=close]', 'Close'],
+  ['[data-v=mute], .fs-mute', 'Mute'],
+  ['[data-z="-1"]', 'Smaller text'], ['[data-z="1"]', 'Bigger text'],
+  ['.colnav [data-d="-1"], #colNav [data-d="-1"]', 'Scroll left'], ['.colnav [data-d="1"], #colNav [data-d="1"]', 'Scroll right'],
+  ['.cs-btn[data-d="-1"]', 'Previous'], ['.cs-btn[data-d="1"]', 'Next'],
+  ['.fs-mdock', 'Dock'], ['.fs-mfloat', 'Float'], ['.fs-mwin', 'Own window'],
+  ['.fs-play', b => /^play/i.test(ttl(b)) ? 'Play' : 'Pause'], ['.fs-rl', b => /reconnect/i.test(ttl(b)) ? 'Reconnect' : 'Refresh'],
+  ['.fs-pv', b => /^hide/i.test(ttl(b)) ? 'Hide preview' : 'Show preview'], ['.fs-x', 'Remove'], ['.fs-grip', 'Move'],
+  ['.help-x', 'Close'], ['.pr-up', 'Update'], ['.pr-x', 'Delete'], ['.th-del', 'Delete'],
+  ['#savedList .auto', 'Auto-open'], ['#savedList .bell', 'Notify'], ['#savedList .rm', 'Remove']
+];
+const hasWords = el => /[A-Za-z]{2,}/.test(el.innerText || '');
+// The short name for a control that shows no words, or '' when it doesn't need one (its words are showing).
+function tipFor(el){
+  if (!el || hasWords(el)) return '';
+  for (const [sel, name] of TIPS) if (el.matches(sel)) return typeof name === 'function' ? name(el) : name;
+  const hidden = (el.textContent || '').replace(/\s+/g, ' ').trim();   // words hidden by the narrow toolbar
+  return /[A-Za-z]{2,}/.test(hidden) ? (el.querySelector('.l-short') || el).textContent.trim() : '';
+}
+window.tipFor = tipFor;   // for the tests
+(function(){
+  const tip = document.createElement('div'); tip.id = 'tip'; document.body.appendChild(tip);
+  let target = null, timer = null, aside = [];
+  const hide = () => {
+    clearTimeout(timer); tip.classList.remove('on');
+    aside.forEach(el => { if (!el.title) el.title = el.dataset.tipTitle; delete el.dataset.tipTitle; });   // a title set meanwhile wins
+    aside = []; target = null;
+  };
+  const show = el => {
+    if (!el.isConnected) return;
+    const name = tipFor(el), text = el.dataset.tipTitle || '';
+    if (!name && !text) return;
+    tip.innerHTML = '';
+    tip.classList.toggle('plain', !name);
+    if (name){
+      tip.append(name);
+      const norm = t => t.toLowerCase().replace(/[^a-z]/g, '');
+      if (text && norm(text) !== norm(name)){ const sm = document.createElement('small'); sm.textContent = text; tip.appendChild(sm); }
+    } else tip.append(text);
+    const r = el.getBoundingClientRect(), tr = tip.getBoundingClientRect();
+    const below = r.bottom + 6 + tr.height < innerHeight;
+    tip.style.left = Math.round(Math.max(6, Math.min(innerWidth - tr.width - 6, r.left + r.width / 2 - tr.width / 2))) + 'px';
+    tip.style.top = Math.round(below ? r.bottom + 6 : r.top - 6 - tr.height) + 'px';
+    tip.classList.add('on');
+  };
+  document.addEventListener('pointerover', e => {
+    const t = e.target.closest ? e.target : null;
+    const el = t && (t.closest('button, .fs-grip') || t.closest('[title], [data-tip-title]'));
+    if (el === target) return;
+    hide();
+    if (!t) return;
+    for (let n = t; n && n !== document.documentElement; n = n.parentElement)   // nothing left for the browser to show
+      if (n.title){ n.dataset.tipTitle = n.title; n.removeAttribute('title'); aside.push(n); }
+    if (!el || !(tipFor(el) || el.dataset.tipTitle)) return;
+    target = el;
+    timer = setTimeout(() => { if (target === el) show(el); }, 400);
+  });
+  document.addEventListener('pointerout', e => { if (!target || !e.relatedTarget || !target.contains(e.relatedTarget)) hide(); });   // not when moving onto the icon inside
+  ['pointerdown', 'keydown', 'wheel'].forEach(ev => document.addEventListener(ev, hide, true));
+  window.addEventListener('blur', hide);
 })();
 })();
 </script>
