@@ -145,3 +145,15 @@ test('a copy run from a git checkout can check (not install) and says which vers
   await win.click('.upd-check');
   assert.equal(await app.evaluate(() => globalThis.__test.checks), 1);
 });
+
+test('a downloaded Mac update says the app updates itself, or to drag it in when it has to use the disk image', T, async () => {
+  const ready = { platform: 'darwin', state: 'ready', latest: '0.2.15', installed: '0.2.15', notes: 'x', notesHtml: '' };
+  await showUpdates({ ...ready, swap: { appPath: '/Applications/Stream Multiview.app', newApp: '/tmp/x/app/Stream Multiview.app' } });
+  assert.match(await win.textContent('.upd-state'), /Restart and install.*updates itself and opens again/s);
+  assert.equal(await win.textContent('.upd-restart'), 'Restart and install');
+  assert.equal(await win.textContent('#updBanner .ub-go'), 'Restart and install');
+  await showUpdates({ ...ready, swap: null });
+  assert.match(await win.textContent('.upd-state'), /drag Stream Multiview into Applications/);
+  assert.equal(await win.textContent('.upd-restart'), 'Install');
+  assert.equal(await win.textContent('#updBanner .ub-go'), 'Install');
+});

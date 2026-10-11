@@ -5,7 +5,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const zlib = require('zlib');
-const { compareVersions, pickInstaller, latestInfo, readZip, appFiles, applyUpdate, REPO_RE } = require('../../src/updater');
+const { execFile, execFileSync, spawn, spawnSync } = require('child_process');
+const { compareVersions, pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, macSwapScript,
+  latestInfo, readZip, appFiles, applyUpdate, REPO_RE } = require('../../src/updater');
 
 /* ---------- version numbers ---------- */
 test('compareVersions orders beta versions correctly', () => {
@@ -35,6 +37,123 @@ test('pickInstaller returns nothing when there is no matching installer', () => 
   assert.equal(pickInstaller([], 'win32'), null);
   assert.equal(pickInstaller(undefined, 'darwin'), null);
   assert.equal(pickInstaller([{ name: 'notes.txt', url: 'https://x' }], 'win32'), null);
+});
+
+/* ---------- Mac: the app replacing itself ---------- */
+test('pickMacZip picks the Mac app zip, not the source code or other zips', () => {
+  const assets = [...ASSETS, { name: 'Stream-Multiview-0.2.10-mac.zip', url: 'https://x/4' }, { name: 'extras.zip', url: 'https://x/5' }];
+  assert.equal(pickMacZip(assets).name, 'Stream-Multiview-0.2.10-mac.zip');
+  assert.equal(pickMacZip(ASSETS), null);          // older releases only have the disk image
+  assert.equal(pickMacZip(undefined), null);
+  assert.equal(pickMacZip([{ name: 'extras.zip', url: 'https://x' }]), null);
+});
+test('macAppBundle finds the .app the app runs from', () => {
+  assert.equal(macAppBundle('/Applications/Stream Multiview.app/Contents/MacOS/Stream Multiview'), '/Applications/Stream Multiview.app');
+  assert.equal(macAppBundle('/Users/a/Apps/Stream Multiview.app/Contents/MacOS/Stream Multiview'), '/Users/a/Apps/Stream Multiview.app');
+  assert.equal(macAppBundle('/usr/local/bin/electron'), '');
+  assert.equal(macAppBundle(undefined), '');
+});
+test('designatedReq reads the requirement out of codesign\'s output', () => {
+  const out = 'Executable=/Applications/Stream Multiview.app/Contents/MacOS/Stream Multiview\n'
+    + 'designated => identifier "com.glowingpear.streammultiview" and certificate root = H"abc123"\n';
+  assert.equal(designatedReq(out), 'identifier "com.glowingpear.streammultiview" and certificate root = H"abc123"');
+  assert.equal(designatedReq('code object is not signed at all'), '');
+  assert.equal(designatedReq(''), '');
+});
+test('macSwapBlocker only allows a signed app in a folder it can write to', () => {
+  const ok = { app: '/Applications/Stream Multiview.app', writable: true, req: 'identifier "x" and certificate root = H"1"' };
+  assert.equal(macSwapBlocker(ok), '');
+  assert.equal(macSwapBlocker({ ...ok, app: '' }), 'nobundle');
+  assert.equal(macSwapBlocker({ ...ok, app: '/Volumes/Stream Multiview 0.2.20/Stream Multiview.app' }), 'volume');
+  assert.equal(macSwapBlocker({ ...ok, app: '/private/var/folders/x/T/AppTranslocation/1234/d/Stream Multiview.app' }), 'translocated');
+  assert.equal(macSwapBlocker({ ...ok, writable: false }), 'nowrite');
+  assert.equal(macSwapBlocker({ ...ok, req: '' }), 'unsigned');
+  assert.equal(macSwapBlocker({ ...ok, req: 'cdhash H"0123abcd"' }), 'adhoc');
+});
+
+// The swap script with a stand-in for `open`, on folders that look like apps.
+const unix = process.platform !== 'win32';
+function swapSetup() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-swap-'));
+  const app = path.join(dir, 'Applications', 'Stream Multiview.app'), stage = path.join(dir, 'stage', 'Stream Multiview.app');
+  for (const [d, v] of [[app, 'old'], [stage, 'new']]) { fs.mkdirSync(path.join(d, 'Contents'), { recursive: true }); fs.writeFileSync(path.join(d, 'Contents', 'v'), v); }
+  const script = path.join(dir, 'swap.sh'), opener = path.join(dir, 'open.sh'), opened = path.join(dir, 'opened');
+  fs.writeFileSync(script, macSwapScript());
+  fs.writeFileSync(opener, `#!/bin/sh\nprintf '%s' "$1" > '${opened}'\n`); fs.chmodSync(opener, 0o755);
+  return { dir, app, stage, script, opener, opened };
+}
+const runSwap = (t, pid, newApp = t.stage) => execFileSync('/bin/sh', [t.script, String(pid), t.app, newApp, t.opener]);
+test('the swap script waits for the app to close, swaps in the new app and opens it', { skip: !unix }, async () => {
+  const t = swapSetup();
+  try {
+    const app = spawn('sleep', ['0.6']);                   // stands in for the app, still closing
+    const started = Date.now();
+    await new Promise((res, rej) => { const p = spawn('/bin/sh', [t.script, String(app.pid), t.app, t.stage, t.opener]); p.on('exit', c => c ? rej(new Error('exit ' + c)) : res()); });
+    assert.ok(Date.now() - started >= 400, 'it waited for the app to close');
+    assert.equal(fs.readFileSync(path.join(t.app, 'Contents', 'v'), 'utf8'), 'new');
+    assert.equal(fs.existsSync(t.stage), false);
+    assert.deepEqual(fs.readdirSync(path.dirname(t.app)), ['Stream Multiview.app']);   // the old copy is gone
+    assert.equal(fs.readFileSync(t.opened, 'utf8'), t.app);
+  } finally { fs.rmSync(t.dir, { recursive: true, force: true }); }
+});
+test('if the new app can\'t be moved in, the swap script puts the old one back and opens it', { skip: !unix }, () => {
+  const t = swapSetup();
+  try {
+    runSwap(t, 2 ** 22 + 12345, path.join(t.dir, 'missing.app'));   // a process that doesn't exist: already closed
+    assert.equal(fs.readFileSync(path.join(t.app, 'Contents', 'v'), 'utf8'), 'old');
+    assert.deepEqual(fs.readdirSync(path.dirname(t.app)), ['Stream Multiview.app']);
+    assert.equal(fs.readFileSync(t.opened, 'utf8'), t.app);
+  } finally { fs.rmSync(t.dir, { recursive: true, force: true }); }
+});
+
+// Real ditto and codesign: an app signed (ad hoc) like a release is unpacked; a changed copy is refused.
+const mac = process.platform === 'darwin';
+const run = (cmd, args) => new Promise((res, rej) => execFile(cmd, args, (e, o, er) => e ? rej(e) : res(`${o}\n${er}`)));
+function signedApp(dir) {
+  const app = path.join(dir, 'build', 'Test.app'), exe = path.join(app, 'Contents', 'MacOS', 'Test');
+  fs.mkdirSync(path.dirname(exe), { recursive: true });
+  fs.writeFileSync(path.join(app, 'Contents', 'Info.plist'), `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict><key>CFBundleExecutable</key><string>Test</string><key>CFBundleIdentifier</key><string>test.smv.swap</string></dict></plist>`);
+  fs.writeFileSync(exe, '#!/bin/sh\nexit 0\n'); fs.chmodSync(exe, 0o755);
+  execFileSync('codesign', ['--force', '--sign', '-', app], { stdio: 'ignore' });
+  const r = spawnSync('codesign', ['-d', '-r-', app], { encoding: 'utf8' });
+  return { app, exe, req: designatedReq(`${r.stdout}\n${r.stderr}`) };
+}
+test('unpackMacApp unpacks the app and accepts it when the signature matches', { skip: !mac }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-unpack-'));
+  try {
+    const { app, req } = signedApp(dir);
+    assert.match(req, /cdhash/);
+    const zip = path.join(dir, 'Test-mac.zip');
+    execFileSync('ditto', ['-c', '-k', '--keepParent', app, zip]);
+    const got = await unpackMacApp(zip, path.join(dir, 'out'), req, run);
+    assert.equal(got, path.join(dir, 'out', 'Test.app'));
+    assert.ok(fs.existsSync(path.join(got, 'Contents', 'MacOS', 'Test')));
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+test('unpackMacApp refuses an app that was changed, or signed by someone else', { skip: !mac }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-unpack-'));
+  try {
+    const { app, exe, req } = signedApp(dir);
+    fs.appendFileSync(exe, 'echo changed\n');                      // changed after signing: the signature is broken
+    const broken = path.join(dir, 'broken-mac.zip');
+    execFileSync('ditto', ['-c', '-k', '--keepParent', app, broken]);
+    await assert.rejects(unpackMacApp(broken, path.join(dir, 'out1'), req, run));
+    execFileSync('codesign', ['--force', '--sign', '-', app], { stdio: 'ignore' });   // a valid signature, but not this app's
+    execFileSync('codesign', ['--verify', '--deep', '--strict', app]);             // (valid on its own)
+    const zip = path.join(dir, 'Test-mac.zip');
+    execFileSync('ditto', ['-c', '-k', '--keepParent', app, zip]);
+    await assert.rejects(unpackMacApp(zip, path.join(dir, 'out'), req, run));
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+test('unpackMacApp refuses a download without an app in it', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-unpack-'));
+  try {
+    const out = path.join(dir, 'out');
+    const fake = async cmd => { if (cmd === 'ditto') { fs.mkdirSync(out, { recursive: true }); fs.writeFileSync(path.join(out, 'readme.txt'), 'x'); } return ''; };
+    await assert.rejects(unpackMacApp('x.zip', out, 'req', fake), /no app/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
 /* ---------- asking GitHub for the newest version ---------- */

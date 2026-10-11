@@ -82,8 +82,15 @@
           "arch": [
             "universal"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
         }
       ],
+      "artifactName": "Stream-Multiview-${version}-mac.${ext}",
       "icon": "build/icon.png",
       "category": "public.app-category.entertainment",
       "identity": "-",
