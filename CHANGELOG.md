@@ -2,7 +2,10 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.2.19 (current)
+## 0.2.20 (current)
+- Streamer profiles: a Profiles directory, live history, notes, and Unfollow on Kick
+
+## 0.2.19
 - Test coverage report in CI, many more tests, and fixes they found
 - YouTube streams no longer get stuck: answer YouTube's cookie question and skip ads
 - Spam and mention alerts work in Kick chats again
