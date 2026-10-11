@@ -1,0 +1,389 @@
+// Chrome extensions: which ones are installed, and which pages each one runs on.
+// An extension is switched on per site (Kick, Twitch, YouTube) and per window type (streams, chats).
+// Electron loads an extension into a session (a set of pages sharing storage), so:
+//   - chats use their site's login session, shared by every chat of that site (and by its streams
+//     while "Watch signed in" is on), so they follow the Chats setting;
+//   - each logged-out stream has its own session, so a single stream window can be switched on or off.
+// The top half is plain logic (tested on its own); createHost() below wires it into Electron.
+const fs = require('fs');
+const path = require('path');
+
+const PLATS = ['kick', 'twitch', 'youtube'];
+const KINDS = ['stream', 'chat'];
+const SITE_PARTS = { 'persist:kick': 'kick', 'persist:twitch': 'twitch', 'persist:youtube': 'youtube' };
+const STREAM_PREFIX = 'persist:kmv-stream-';
+const STORE_PART = 'persist:kmv-webstore';
+const STORE_URL = 'https://chromewebstore.google.com/';
+const UPDATE_EVERY = 5 * 60 * 60 * 1000;
+
+// New extensions: on for streams, off for chats.
+const defaultGrid = () => Object.fromEntries(PLATS.map(p => [p, { stream: true, chat: false }]));
+
+// A session's site and window type. Sites' own sessions count as chats.
+function targetOf(partition, plat, kind) {
+  if (SITE_PARTS[partition]) return { plat: SITE_PARTS[partition], kind: 'chat', perWindow: false };
+  if (typeof partition === 'string' && partition.startsWith(STREAM_PREFIX) && PLATS.includes(plat) && kind === 'stream')
+    return { plat, kind: 'stream', perWindow: true };
+  return null;
+}
+
+function normalizeEntry(e) {
+  if (!e || typeof e !== 'object' || !/^[a-p]{32}$/.test(e.id)) return null;
+  const grid = defaultGrid();
+  for (const p of PLATS) for (const k of KINDS) if (typeof e.grid?.[p]?.[k] === 'boolean') grid[p][k] = e.grid[p][k];
+  const win = {};
+  for (const [part, on] of Object.entries(e.win || {})) if (part.startsWith(STREAM_PREFIX) && typeof on === 'boolean') win[part] = on;
+  const out = { id: e.id, source: e.source === 'folder' ? 'folder' : 'store', enabled: e.enabled !== false, grid, win };
+  if (out.source === 'folder') { if (typeof e.path !== 'string' || !e.path) return null; out.path = e.path; }
+  return out;
+}
+function normalizeList(raw) {
+  const seen = new Set();
+  return (Array.isArray(raw) ? raw : []).map(normalizeEntry).filter(e => e && !seen.has(e.id) && seen.add(e.id));
+}
+
+// Is this extension on in this session? A stream window's own choice wins over the grid.
+function isOn(entry, t, partition) {
+  if (!entry.enabled || !t) return false;
+  if (t.perWindow && typeof entry.win[partition] === 'boolean') return entry.win[partition];
+  return entry.grid[t.plat][t.kind];
+}
+const wantedIds = (list, t, partition) => list.filter(e => isOn(e, t, partition)).map(e => e.id);
+
+// The extension ID from a Chrome Web Store link (or the ID itself).
+function idFromInput(s) {
+  const m = String(s || '').trim().match(/(?:^|[/=])([a-p]{32})(?=$|[/?#&])/);
+  return m ? m[1] : null;
+}
+
+// Chrome features extensions use that this app doesn't have.
+const UNSUPPORTED = {
+  declarativeNetRequest: 'blocking rules (declarativeNetRequest), so it won\'t block anything',
+  declarativeNetRequestWithHostAccess: 'blocking rules (declarativeNetRequest), so it won\'t block anything',
+  tabCapture: 'capturing a page\'s sound (tabCapture)',
+  offscreen: 'offscreen documents',
+  userScripts: 'user scripts',
+  debugger: 'the debugger',
+  downloads: 'downloads',
+  history: 'history',
+  bookmarks: 'bookmarks',
+  sidePanel: 'the side panel',
+  identity: 'signing in with Google (identity)',
+  proxy: 'proxy settings',
+  tts: 'text to speech',
+  pageCapture: 'saving pages',
+  desktopCapture: 'screen capture'
+};
+function compat(manifest) {
+  const perms = new Set([...(manifest?.permissions || []), ...(manifest?.optional_permissions || [])]);
+  return [...new Set(Object.keys(UNSUPPORTED).filter(p => perms.has(p)).map(p => UNSUPPORTED[p]))];
+}
+
+// What the extension can do, in words, for the install dialog.
+function permissionLines(manifest) {
+  const m = manifest || {};
+  const perms = new Set(m.permissions || []);
+  const hosts = [...(m.host_permissions || []), ...(m.content_scripts || []).flatMap(c => c.matches || []),
+    ...(m.manifest_version === 2 ? (m.permissions || []).filter(p => /[:/*]/.test(p)) : [])];
+  const lines = [];
+  if (hosts.some(h => h === '<all_urls>' || /^\*:\/\/\*\/|^https?:\/\/\*\//.test(h)))
+    lines.push('Read and change everything on the pages it\'s switched on for, including while you\'re signed in');
+  else if (hosts.length) {
+    const names = [...new Set(hosts.map(h => (h.match(/:\/\/(?:\*\.)?([^/]+)/) || [])[1]).filter(Boolean))];
+    lines.push('Read and change your data on ' + names.slice(0, 4).join(', ') + (names.length > 4 ? ' and ' + (names.length - 4) + ' more' : ''));
+  }
+  const words = {
+    tabs: 'See the address and title of every window', cookies: 'Read and change cookies',
+    webRequest: 'See your network requests', declarativeNetRequest: 'Block or change network requests',
+    tabCapture: 'Capture sound and video from pages', notifications: 'Show notifications',
+    clipboardRead: 'Read what you copy', clipboardWrite: 'Change what you copy', downloads: 'Manage downloads',
+    history: 'Read and change your history', management: 'See and manage your other extensions'
+  };
+  for (const [p, w] of Object.entries(words)) if (perms.has(p)) lines.push(w);
+  return lines;
+}
+
+// The best icon file in an extension folder, as a data: URL.
+function iconDataUrl(dir, manifest) {
+  const icons = manifest?.icons || manifest?.action?.default_icon || {};
+  const list = typeof icons === 'string' ? [[32, icons]] : Object.entries(icons).map(([s, f]) => [+s, f]);
+  list.sort((a, b) => Math.abs(a[0] - 48) - Math.abs(b[0] - 48));
+  for (const [, f] of list) {
+    try {
+      const file = path.join(dir, String(f).replace(/^\/+/, ''));
+      if (!file.startsWith(path.resolve(dir))) continue;
+      const ext = path.extname(file).slice(1).toLowerCase();
+      if (!['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) continue;
+      return 'data:image/' + (ext === 'svg' ? 'svg+xml' : ext === 'jpg' ? 'jpeg' : ext) + ';base64,' + fs.readFileSync(file).toString('base64');
+    } catch {}
+  }
+  return '';
+}
+
+function readManifest(dir) {
+  try { return JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8').replace(/^﻿/, '')); } catch { return null; }
+}
+
+/* ---------- Electron side ---------- */
+// deps: { electron, userData, appWindows: () => BrowserWindow[], chromeUA: () => string }
+function createHost(deps) {
+  const { electron, userData } = deps;
+  const { app, session, BrowserWindow, webContents, ipcMain, dialog } = electron;
+  const { ElectronChromeExtensions } = require('electron-chrome-extensions');
+  const cws = require('electron-chrome-web-store');
+  const listFile = path.join(userData, 'extensions.json');
+  const extDir = path.join(userData, 'Extensions');
+  let list = [];
+  try { list = normalizeList(JSON.parse(fs.readFileSync(listFile, 'utf8'))); } catch {}
+  const save = () => { try { fs.writeFileSync(listFile, JSON.stringify(list, null, 2)); } catch {} };
+  const store = () => session.fromPartition(STORE_PART);
+  const tracked = new Map();              // partition -> { plat, kind }: sessions the app's windows use
+  const shells = new WeakMap();           // session -> ElectronChromeExtensions (tabs, popups, badges)
+  const pending = new Map();              // extension id -> grid chosen in the Web Store's install dialog
+  const opened = new WeakSet();           // windows extensions opened (the only ones they may close)
+  let ready = null;
+
+  // Every installed extension stays loaded in the Web Store's session (no logins there): it's the
+  // catalogue the other sessions load from, and where updates are checked.
+  const catalogue = id => store().extensions.getExtension(id);
+
+  function shellFor(ses) {
+    let s = shells.get(ses);
+    if (s) return s;
+    s = new ElectronChromeExtensions({
+      license: 'GPL-3.0',
+      session: ses,
+      // An extension opening a page (its welcome page, a link in its popup): a window of its own on the same session.
+      createTab: async details => {
+        const win = new BrowserWindow({ width: 1000, height: 760, autoHideMenuBar: true, backgroundColor: '#0a0c0d',
+          webPreferences: { session: ses, contextIsolation: true, nodeIntegration: false, sandbox: true } });
+        opened.add(win);
+        if (details.url) win.loadURL(details.url);
+        return [win.webContents, win];
+      },
+      createWindow: async details => {
+        const win = new BrowserWindow({ width: details.width || 1000, height: details.height || 760, autoHideMenuBar: true,
+          webPreferences: { session: ses, contextIsolation: true, nodeIntegration: false, sandbox: true } });
+        opened.add(win);
+        const url = Array.isArray(details.url) ? details.url[0] : details.url;
+        if (url) win.loadURL(url);
+        return win;
+      },
+      // Also called whenever any of its pages goes away (a window closing, the app's windows reloading),
+      // so only windows an extension opened itself are closed.
+      removeTab: (_wc, win) => { if (win && opened.has(win) && !win.isDestroyed()) win.close(); }
+    });
+    shells.set(ses, s);
+    // web views already open in this session become its "tabs"
+    for (const wc of webContents.getAllWebContents()) if (wc.session === ses) addTab(wc);
+    return s;
+  }
+  function addTab(wc) {
+    try {
+      if (wc.getType() !== 'webview' || !wc.hostWebContents) return;
+      const s = shells.get(wc.session);
+      const win = BrowserWindow.fromWebContents(wc.hostWebContents);
+      if (s && win) s.addTab(wc, win);
+    } catch {}
+  }
+  app.on('web-contents-created', (_e, wc) => { if (wc.getType() === 'webview') wc.once('did-attach', () => addTab(wc)); });
+
+  // Load the extensions a session should have and remove the rest. Returns true if anything changed.
+  async function sync(partition) {
+    const t = tracked.get(partition);
+    const ses = session.fromPartition(partition);
+    const want = new Set(wantedIds(list, targetOf(partition, t?.plat, t?.kind), partition).filter(id => catalogue(id)));
+    if (want.size) shellFor(ses);
+    let changed = false;
+    for (const e of ses.extensions.getAllExtensions()) {
+      const cat = catalogue(e.id);
+      if (!want.has(e.id) || (cat && cat.version !== e.version)) { ses.extensions.removeExtension(e.id); changed = true; }
+    }
+    for (const id of want) {
+      if (ses.extensions.getExtension(id)) continue;
+      try { await ses.extensions.loadExtension(catalogue(id).path); changed = true; } catch (err) { console.error('extension', id, err.message); }
+    }
+    return changed;
+  }
+  // force: tell the app windows even if no session changed (the list itself did).
+  async function syncAll(force) {
+    const changed = [];
+    for (const p of tracked.keys()) if (await sync(p)) changed.push(p);
+    if (changed.length || force) for (const w of deps.appWindows()) w.webContents.send('ext:changed', changed);
+    return changed;
+  }
+
+  async function start() {
+    await cws.installChromeWebStore({
+      session: store(), extensionsPath: extDir, loadExtensions: true, autoUpdate: false,
+      beforeInstall: async d => {
+        const ans = await confirm({ id: d.id, name: d.localizedName || d.manifest?.name, version: d.manifest?.version,
+          icon: d.icon && !d.icon.isEmpty() ? d.icon.toDataURL() : '', manifest: d.manifest });
+        if (ans && ans.ok) { pending.set(d.id, ans.grid); return { action: 'allow' }; }
+        return { action: 'deny' };
+      }
+    });
+    // Installed from the Web Store window: add it once it has loaded.
+    store().extensions.on('extension-loaded', (_e, ext) => {
+      if (!pending.has(ext.id)) return;
+      add({ id: ext.id, source: 'store', grid: pending.get(ext.id) });
+      pending.delete(ext.id);
+    });
+    for (const e of list) if (e.source === 'folder' && !catalogue(e.id)) {
+      try { await store().extensions.loadExtension(e.path); } catch (err) { console.error('extension folder', e.path, err.message); }
+    }
+    for (const p of Object.keys(SITE_PARTS)) tracked.set(p, { plat: SITE_PARTS[p], kind: 'chat' });
+    for (const p of tracked.keys()) await sync(p);
+    setTimeout(update, 60 * 1000).unref?.();
+    setInterval(update, UPDATE_EVERY).unref?.();
+  }
+
+  async function update() {
+    if (!list.some(e => e.source === 'store')) return;
+    try { await cws.updateExtensions(store()); } catch (err) { console.error('extension updates', err.message); }
+    await syncAll();
+  }
+
+  function add({ id, source, path: dir, grid }) {
+    const e = normalizeEntry({ id, source, path: dir, grid: grid || defaultGrid() });
+    if (!e) return;
+    list = list.filter(x => x.id !== id).concat(e);
+    save();
+    return syncAll(true);
+  }
+
+  // Ask the app window to show the install dialog. Resolves { ok, grid }.
+  let confirmSeq = 0;
+  const confirmWaits = new Map();
+  function confirm(info) {
+    const win = deps.appWindows()[0];
+    if (!win) return Promise.resolve({ ok: false });
+    const reqId = ++confirmSeq;
+    const m = info.manifest || {};
+    win.webContents.send('ext:confirm', { reqId, id: info.id, name: info.name || m.name || info.id, version: info.version || m.version || '',
+      icon: info.icon || '', source: info.source || 'store', perms: permissionLines(m), compat: compat(m), grid: defaultGrid() });
+    if (win.isMinimized()) win.restore();
+    win.focus();
+    return new Promise(res => confirmWaits.set(reqId, res));
+  }
+  ipcMain.handle('ext:confirmReply', (_e, reqId, ans) => {
+    const res = confirmWaits.get(reqId);
+    confirmWaits.delete(reqId);
+    if (res) res({ ok: !!ans?.ok, grid: normalizeEntry({ id: 'a'.repeat(32), grid: ans?.grid })?.grid });
+  });
+
+  function describe(e) {
+    const ext = catalogue(e.id);
+    const m = ext?.manifest || {};
+    return { id: e.id, source: e.source, enabled: e.enabled, grid: e.grid, missing: !ext,
+      name: ext?.name || e.id, version: ext?.version || '', description: m.description && !/^__MSG_/.test(m.description) ? m.description : '',
+      icon: ext ? iconDataUrl(ext.path, m) : '', perms: permissionLines(m), compat: compat(m),
+      popup: !!(m.action?.default_popup || m.browser_action?.default_popup),
+      options: !!(m.options_page || m.options_ui?.page) };
+  }
+
+  ipcMain.handle('ext:list', async () => { await ready; return list.map(describe); });
+  ipcMain.handle('ext:set', async (_e, id, change) => {
+    await ready;
+    const e = list.find(x => x.id === id);
+    if (!e || !change || typeof change !== 'object') return null;
+    if (typeof change.enabled === 'boolean') e.enabled = change.enabled;
+    if (PLATS.includes(change.plat) && KINDS.includes(change.kind) && typeof change.on === 'boolean') e.grid[change.plat][change.kind] = change.on;
+    // one stream window: its own choice, forgotten again once it matches the grid
+    const t = tracked.get(change.partition);
+    if (typeof change.partition === 'string' && change.partition.startsWith(STREAM_PREFIX) && !change.plat) {
+      if (typeof change.on === 'boolean' && (!t || change.on !== e.grid[t.plat][t.kind])) e.win[change.partition] = change.on;
+      else delete e.win[change.partition];
+    }
+    save();
+    await syncAll(true);
+    return describe(e);
+  });
+  ipcMain.handle('ext:remove', async (_e, id) => {
+    await ready;
+    const e = list.find(x => x.id === id);
+    if (!e) return false;
+    list = list.filter(x => x !== e);
+    save();
+    await syncAll(true);
+    if (e.source === 'store') { try { await cws.uninstallExtension(id, { session: store(), extensionsPath: extDir }); } catch {} }
+    else if (catalogue(id)) store().extensions.removeExtension(id);
+    return true;
+  });
+
+  // Before a window's page loads: get its session ready, so the extensions are there from the start.
+  ipcMain.handle('ext:prepare', async (_e, partition, plat, kind) => {
+    await ready;
+    if (typeof partition !== 'string' || !targetOf(partition, plat, kind)) return false;
+    if (!SITE_PARTS[partition]) tracked.set(partition, { plat, kind });
+    await sync(partition);
+    return true;
+  });
+
+  // The extensions in one window, for its extensions menu.
+  ipcMain.handle('ext:window', async (_e, partition, plat, kind) => {
+    await ready;
+    const t = targetOf(partition, plat, kind);
+    if (!t) return [];
+    return list.filter(e => e.enabled && catalogue(e.id)).map(e => ({ ...describe(e), on: isOn(e, t, partition),
+      perWindow: t.perWindow, own: t.perWindow && typeof e.win[partition] === 'boolean' }));
+  });
+
+  ipcMain.handle('ext:options', async (_e, id, partition) => {
+    await ready;
+    const ext = session.fromPartition(partition).extensions.getExtension(id) || null;
+    const page = ext && (ext.manifest.options_ui?.page || ext.manifest.options_page);
+    if (!page) return false;
+    const win = new BrowserWindow({ width: 820, height: 680, autoHideMenuBar: true, backgroundColor: '#ffffff', title: ext.name,
+      webPreferences: { session: session.fromPartition(partition), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+    win.loadURL(`chrome-extension://${id}/${page.replace(/^\/+/, '')}`);
+    return true;
+  });
+
+  ipcMain.handle('ext:installLink', async (_e, input) => {
+    await ready;
+    const id = idFromInput(input);
+    if (!id) return { error: 'That isn\'t a Chrome Web Store link or extension ID.' };
+    if (list.some(e => e.id === id)) return { error: 'That extension is already installed.' };
+    let ext;
+    try { ext = await cws.installExtension(id, { session: store(), extensionsPath: extDir }); }
+    catch (err) { return { error: 'Couldn\'t download it from the Chrome Web Store (' + err.message + ').' }; }
+    const ans = await confirm({ id, name: ext.name, version: ext.version, icon: iconDataUrl(ext.path, ext.manifest), manifest: ext.manifest });
+    if (!ans.ok) { try { await cws.uninstallExtension(id, { session: store(), extensionsPath: extDir }); } catch {} return { cancelled: true }; }
+    await add({ id, source: 'store', grid: ans.grid });
+    return { id };
+  });
+
+  ipcMain.handle('ext:loadFolder', async () => {
+    await ready;
+    const r = await dialog.showOpenDialog(deps.appWindows()[0], { title: 'Choose an unpacked extension folder', properties: ['openDirectory'] });
+    if (r.canceled || !r.filePaths[0]) return { cancelled: true };
+    const dir = r.filePaths[0];
+    const m = readManifest(dir);
+    if (!m) return { error: 'That folder has no manifest.json, so it isn\'t an extension.' };
+    let ext;
+    try { ext = await store().extensions.loadExtension(dir); }
+    catch (err) { return { error: 'It couldn\'t be loaded: ' + err.message }; }
+    if (list.some(e => e.id === ext.id)) return { error: 'That extension is already installed.' };
+    const ans = await confirm({ id: ext.id, name: ext.name, version: ext.version, icon: iconDataUrl(dir, m), manifest: m, source: 'folder' });
+    if (!ans.ok) { store().extensions.removeExtension(ext.id); return { cancelled: true }; }
+    await add({ id: ext.id, source: 'folder', path: dir, grid: ans.grid });
+    return { id: ext.id };
+  });
+
+  let storeWin = null;
+  ipcMain.handle('ext:openStore', async () => {
+    await ready;
+    if (storeWin && !storeWin.isDestroyed()) { storeWin.focus(); return true; }
+    storeWin = new BrowserWindow({ width: 1180, height: 820, autoHideMenuBar: true, title: 'Chrome Web Store', backgroundColor: '#ffffff',
+      webPreferences: { session: store(), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+    storeWin.loadURL(STORE_URL);
+    storeWin.on('closed', () => { storeWin = null; });
+    return true;
+  });
+
+  ready = start().catch(err => console.error('extensions', err));
+  return { ready: () => ready, list: () => list, sync, syncAll, update };
+}
+
+module.exports = { PLATS, KINDS, STREAM_PREFIX, STORE_PART, defaultGrid, targetOf, normalizeList, normalizeEntry, isOn, wantedIds, idFromInput, compat, permissionLines, iconDataUrl, readManifest, createHost };

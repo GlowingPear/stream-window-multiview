@@ -7,6 +7,7 @@ const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseT
 const path = require('path');
 const fs = require('fs');
 const { youtubeLoginFromFirefox } = require('./firefox-login');
+const extensions = require('./extensions');
 
 // Each platform's chats + login window share one saved session per platform, so you log in once.
 const PARTITION = 'persist:kick';
@@ -1495,6 +1496,8 @@ app.whenReady().then(async () => {
   Object.values(PARTS).forEach(p => session.fromPartition(p).setUserAgent(ua));
   setupGoogleSignin(session.fromPartition(PARTS.youtube));
   setupCapture();
+  extensions.createHost({ electron: require('electron'), userData: app.getPath('userData'),
+    appWindows: () => [mainWin, streamsWin].filter(w => w && !w.isDestroyed()) });
   scheduleUpdates();
   buildMenu();
   createMain();

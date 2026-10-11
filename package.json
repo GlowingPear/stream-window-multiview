@@ -95,5 +95,9 @@
       "title": "Stream Multiview ${version}"
     },
     "publish": null
+  },
+  "dependencies": {
+    "electron-chrome-extensions": "4.9.0",
+    "electron-chrome-web-store": "0.13.0"
   }
 }
