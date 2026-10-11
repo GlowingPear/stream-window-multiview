@@ -891,6 +891,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       <button data-s="general">General</button>
       <button data-s="accounts" class="desk-only">Accounts</button>
       <button data-s="youtube" class="desk-only">YouTube</button>
+      <button data-s="notify">Notifications</button>
       <button data-s="mentions" class="main-desk">Mentions</button>
       <button data-s="spam" class="main-desk">Spam alerts<span class="st-pill">Mod</span></button>
       <button data-s="themes">Themes</button>
@@ -905,8 +906,6 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <label class="st-row"><span class="st-t">Start new streams muted<small>Browsers block sound on autoplay until you've clicked the window.</small></span><input type="checkbox" class="st-sw" id="muted" checked></label>
         <label class="st-row"><span class="st-t">Snap windows<small>Windows snap to the screen edges and to each other while you drag.</small></span><input type="checkbox" class="st-sw" id="snap" checked></label>
         <label class="st-row"><span class="st-t">Auto-pause hidden streams<small>Pauses streams that are off-screen or behind the big stream after 2 seconds, to save bandwidth. They jump back to live when you can see them again. Streams you can hear never pause.</small></span><input type="checkbox" class="st-sw" id="autoPause"></label>
-        <div class="st-row"><span class="st-t">Show messages<small>Short notes like "Logged out of Twitch" or "Couldn't read that link". They go after a few seconds; click one to close it.</small></span>
-          <select id="msgPos" aria-label="Where messages show"><option value="tc">Top</option><option value="tl">Top left</option><option value="tr">Top right</option><option value="bc">Bottom</option><option value="bl">Bottom left</option><option value="br">Bottom right</option></select><input type="checkbox" class="st-sw" id="msgOn" checked aria-label="Show messages"></div>
         <label class="st-row"><span class="st-t">Keyboard shortcuts<small>Esc still closes menus when they're off. <button class="linkish" data-help="keys">See the list</button></small></span><input type="checkbox" class="st-sw" id="keysSet"></label>
       </section>
       <section class="st-pane" data-s="accounts" hidden>
@@ -943,6 +942,19 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <span class="am-yk-st">Makes live checks for saved YouTube channels faster and more reliable.</span>
           <div class="am-yk-row"><input class="am-yk-in" type="password" placeholder="Paste your API key" autocomplete="off" spellcheck="false" aria-label="YouTube API key"><button class="btn am-yk-add">Add</button></div>
           <div class="am-yk-row am-yk-set" hidden><button class="btn am-yk-rm">Remove key</button></div>
+        </div>
+      </section>
+      <section class="st-pane" data-s="notify" hidden>
+        <h4>Notifications</h4><p class="st-sub">Messages in the app, and your computer's own notifications.</p>
+        <div class="st-sec">In the app</div>
+        <div class="st-row"><span class="st-t">Show messages<small>Short notes like "Logged out of Twitch" or "Couldn't read that link". They go after a few seconds; click one to close it.</small></span>
+          <select id="msgPos" aria-label="Where messages show"><option value="tc">Top</option><option value="tl">Top left</option><option value="tr">Top right</option><option value="bc">Bottom</option><option value="bl">Bottom left</option><option value="br">Bottom right</option></select><input type="checkbox" class="st-sw" id="msgOn" checked aria-label="Show messages"></div>
+        <div class="dn-sec" hidden>
+          <div class="st-sec">Desktop notifications</div>
+          <label class="st-row"><span class="st-t">Desktop notifications<small>Your computer's notifications, also while the app is in the background. Off: none at all, whatever is chosen below.</small></span><input type="checkbox" class="st-sw" id="dnOn" checked></label>
+          <label class="st-row"><span class="st-t">Saved channels going live<small>Pick the channels with the bell next to each one in Saved.</small></span><input type="checkbox" class="st-sw" id="dnLive"></label>
+          <div class="st-row"><span class="st-t">Mentions, replies and spam alerts<small>When each one sends a notification is in <button class="linkish" data-go="mentions">Mentions</button> and <button class="linkish" data-go="spam">Spam alerts</button>.</small></span></div>
+          <div class="st-row"><span class="st-t">Check they work<small class="dn-st">If your computer blocks them, nothing shows. Send a test to check.</small></span><button class="btn dn-test">Send a test</button><button class="btn dn-sys">Open system settings</button></div>
         </div>
       </section>
       <section class="st-pane" data-s="mentions" hidden>
@@ -2316,6 +2328,34 @@ loadMsgSettings();
   if (msgOn.checked) flash('Messages show here');
 }));
 window.addEventListener('storage', e => { if (e.key === 'kickMultiview.msg') loadMsgSettings(); });   // main and streams windows
+/* Settings > Notifications: desktop notifications (the main window's: live alerts, mentions, spam) */
+const dnOn = $('#dnOn'), dnLive = $('#dnLive'), dnSt = document.querySelector('#settingsDlg .dn-st');
+let desktopNotify = true;
+try { desktopNotify = localStorage.getItem('kickMultiview.desktopNotify') !== '0'; } catch {}
+if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled){
+  document.querySelector('#settingsDlg .dn-sec').hidden = false;
+  window.kmv.notifyEnabled(desktopNotify);
+  dnOn.checked = desktopNotify;
+  dnOn.addEventListener('change', () => {
+    desktopNotify = dnOn.checked;
+    try { localStorage.setItem('kickMultiview.desktopNotify', desktopNotify ? '1' : '0'); } catch {}
+    window.kmv.notifyEnabled(desktopNotify);
+    dnLive.disabled = !desktopNotify;
+  });
+  dnLive.addEventListener('change', () => { const na = $('#notifyAll'); na.checked = dnLive.checked; na.dispatchEvent(new Event('change')); });
+  const sys = document.querySelector('#settingsDlg .dn-sys');
+  sys.hidden = !['darwin', 'win32'].includes(window.kmv.platform);
+  sys.onclick = () => window.kmv.notifySettings();
+  const where = window.kmv.platform === 'darwin' ? 'System Settings > Notifications' : 'Settings > System > Notifications';
+  document.querySelector('#settingsDlg .dn-test').onclick = async () => {
+    dnSt.textContent = 'Sending…';
+    const r = await window.kmv.notifyTest().catch(() => 'failed');
+    dnSt.textContent = r === 'unsupported' ? 'This computer doesn\'t support desktop notifications.'
+      : r === 'failed' ? `Your computer blocked it. Allow notifications for Stream Multiview in ${where}.`
+      : `Sent. If you didn't see it, allow notifications for Stream Multiview in ${where}.`;
+  };
+}
+function syncNotifyPane(){ dnOn.checked = desktopNotify; dnLive.checked = $('#notifyAll').checked; dnLive.disabled = !desktopNotify; }
 
 /* ---------- layouts ---------- */
 function gridRects(n, X, Y, W, H, aspect){
@@ -5065,7 +5105,7 @@ let settingsTab = 'general';
 try { settingsTab = localStorage.getItem('kickMultiview.settingsTab') || 'general'; } catch {}
 const MAIN_DESK = DESKTOP && ROLE === 'main';
 settingsDlg.querySelectorAll('.st-rail .desk-only').forEach(b => { b.hidden = !DESKTOP; });
-const ST_ICONS = { general: 'sliders', accounts: 'user', youtube: 'ytPlay', mentions: 'at', spam: 'mod', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys' };
+const ST_ICONS = { general: 'sliders', accounts: 'user', youtube: 'ytPlay', notify: 'bell', mentions: 'at', spam: 'mod', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys' };
 settingsDlg.querySelectorAll('.st-rail button[data-s]').forEach(b => { if (icon[ST_ICONS[b.dataset.s]]) b.insertAdjacentHTML('afterbegin', icon[ST_ICONS[b.dataset.s]]); });
 settingsDlg.querySelectorAll('.st-rail .main-desk').forEach(b => { b.hidden = !MAIN_DESK; });
 function openSettings(tab){
@@ -5081,6 +5121,7 @@ function openSettings(tab){
   settingsDlg.querySelector('.upd-host').hidden = !MAIN_DESK;
   if ((settingsTab === 'accounts' || settingsTab === 'youtube') && typeof refreshAccountsPane === 'function') refreshAccountsPane();
   if (settingsTab === 'general') $('#keysSet').checked = keysOn;
+  if (settingsTab === 'notify') syncNotifyPane();
   return renderDoc(settingsTab);
 }
 window.openSettings = openSettings;   // for the tests

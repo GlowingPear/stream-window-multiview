@@ -81,6 +81,9 @@ contextBridge.exposeInMainWorld('kmv', {
 
   // Chat mentions / replies
   notifyMention: m => ipcRenderer.send('mention:notify', m),
+  notifyEnabled: on => ipcRenderer.send('notify:enabled', !!on),
+  notifyTest: () => ipcRenderer.invoke('notify:test'),
+  notifySettings: () => ipcRenderer.invoke('notify:settings'),
   detectMe: () => ipcRenderer.invoke('me:detect'),
   onFocusChat: cb => ipcRenderer.on('focus-chat', (_e, channel) => cb(channel))
 });

@@ -293,9 +293,28 @@ async function fetchChannel(slug) {
 }
 const liveNotes = new Set();          // keep notifications alive so their click handlers work
 let notifyPrefs = { all: true, off: [] };
+let desktopNotify = true;             // Settings > Notifications: off means no desktop notifications at all
+ipcMain.on('notify:enabled', (_e, on) => { desktopNotify = on !== false; });
+// "Send a test": 'shown', 'failed' (the system refused it) or 'sent' (no answer: macOS doesn't say if it's blocked)
+ipcMain.handle('notify:test', () => new Promise(res => {
+  if (!Notification.isSupported()) return res('unsupported');
+  const n = new Notification({ title: 'Stream Multiview', body: 'Desktop notifications work.', icon: ICON });
+  liveNotes.add(n);
+  n.on('show', () => res('shown'));
+  n.on('failed', () => res('failed'));
+  n.on('close', () => liveNotes.delete(n));
+  setTimeout(() => res('sent'), 3000);
+  n.show();
+}));
+ipcMain.handle('notify:settings', () => {
+  const url = process.platform === 'darwin' ? 'x-apple.systempreferences:com.apple.Notifications-Settings.extension'
+    : process.platform === 'win32' ? 'ms-settings:notifications' : null;
+  if (url) shell.openExternal(url);
+  return !!url;
+});
 function notifyLive(slug, info) {
   mainWin?.webContents.send('live:went-live', slug, info);
-  if (!notifyPrefs.all || notifyPrefs.off.includes(slug) || !Notification.isSupported()) return;
+  if (!desktopNotify || !notifyPrefs.all || notifyPrefs.off.includes(slug) || !Notification.isSupported()) return;
   const body = [info.title, info.category, info.viewers != null ? `${info.viewers.toLocaleString()} watching` : ''].filter(Boolean).join(' · ');
   const n = new Notification({ title: `${info.name || slug} is live on ${platformOf(slug)}`, body: body || 'Click to watch', icon: ICON });
   liveNotes.add(n);
@@ -495,7 +514,7 @@ ipcMain.on('live:check-now', () => watcher.checkSoon());
 
 /* ---------- chat mentions / replies ---------- */
 ipcMain.on('mention:notify', (_e, m) => {
-  if (!m || typeof m.channel !== 'string' || !Notification.isSupported()) return;
+  if (!desktopNotify || !m || typeof m.channel !== 'string' || !Notification.isSupported()) return;
   const who = String(m.sender || 'Someone').slice(0, 40), where = String(m.label || m.channel).slice(0, 40);
   const title = m.kind === 'spam' ? `Likely spam in ${where}'s chat` : m.kind === 'reply' ? `${who} replied to you in ${where}'s chat` : `${who} mentioned you in ${where}'s chat`;
   const body = (m.kind === 'spam' ? `${who}: ` : m.kind === 'reply' && m.quoted ? `"${String(m.quoted).slice(0, 60)}"  →  ` : '') + String(m.body || '').slice(0, 180);

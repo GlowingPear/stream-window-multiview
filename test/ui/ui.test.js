@@ -471,7 +471,7 @@ test('Settings opens from the gear and Ctrl+, shows only what works in a browser
   await page.click('#settingsBtn');
   assert.ok(await page.isVisible('#settingsDlg'));
   const tabs = await page.$$eval('#settingsDlg .st-rail button', b => b.filter(x => !x.hidden).map(x => x.dataset.s));
-  assert.deepEqual(tabs, ['general', 'themes', 'updates', 'guide', 'keys'], 'accounts, alerts and spam need the desktop app');
+  assert.deepEqual(tabs, ['general', 'notify', 'themes', 'updates', 'guide', 'keys'], 'accounts, alerts and spam need the desktop app');
   await press(page, 'Escape');
   assert.ok(await page.isHidden('#settingsDlg'));
   await page.keyboard.press('Control+,');
@@ -499,7 +499,8 @@ test('messages show as a toast where Settings puts it, close on a click, and can
   assert.equal(await page.getAttribute('#msg', 'data-pos'), 'tc', 'under the toolbar to start with');
   await page.click('#msg');
   assert.ok(await page.isHidden('#msg'), 'a click closes it');
-  await page.click('#settingsBtn'); await page.click('#settingsDlg .st-rail [data-s=general]');
+  await page.click('#settingsBtn'); await page.click('#settingsDlg .st-rail [data-s=notify]');
+  assert.ok(await page.isHidden('#dnOn'), 'desktop notifications need the desktop app');
   await page.selectOption('#msgPos', 'br');
   assert.equal(await page.getAttribute('#msg', 'data-pos'), 'br');
   assert.ok(await page.isVisible('#msg'), 'it shows where they go now, over Settings');
