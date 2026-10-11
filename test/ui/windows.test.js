@@ -13,7 +13,7 @@ async function twoStreams(t) {
   await page.waitForTimeout(400);
   return page;
 }
-const grab = b => ({ x: b.x + b.w / 2, y: b.y + 12 });            // an empty spot in the middle of the title bar
+const grab = b => ({ x: b.x + 13, y: b.y + 12 });                  // the dot at the start of the title bar
 const corner = b => ({ x: b.x + b.w - 3, y: b.y + b.h - 3 });
 async function moveBy(page, loc, dx, dy) { const p = grab(await box(loc)); await drag(page, p, { x: p.x + dx, y: p.y + dy }); }
 async function sizeTo(page, loc, w, h) { const b = await box(loc); await drag(page, corner(b), { x: b.x + w - 3, y: b.y + h - 3 }); }
@@ -128,6 +128,66 @@ test('title bar buttons: + Chat, save, reload, open in a window, swap, close', a
 
   await win(page, 'bravo').locator('[data-a=close]').click();
   assert.equal(await win(page, 'bravo').count(), 0, 'closed');
+});
+
+// What a narrow title bar shows: everything still fits, close always shows, and the rest is in its ⋯ menu.
+const barState = loc => loc.evaluate(el => {
+  const bar = el.querySelector('.bar'), shown = b => !b.hidden && getComputedStyle(b).display !== 'none';
+  const name = [...bar.querySelectorAll('.col-pick, .title')].find(shown), right = bar.querySelector('.vol, .btns');
+  return { fits: bar.scrollWidth <= bar.clientWidth + 1,
+    grab: right.getBoundingClientRect().left - name.getBoundingClientRect().right,
+    shown: [...bar.querySelectorAll('.btns button')].filter(shown).map(b => b.dataset.a),
+    inMenu: [...bar.querySelectorAll('.btns button.ovf:not([hidden])')].map(b => b.dataset.a) };
+});
+
+test('a narrow title bar moves buttons into its ⋯ menu, which does what they do, and gets them back when wider', async t => {
+  const page = await twoStreams(t);
+  const a = win(page, 'alpha');
+  await sizeTo(page, a, 600, 300);
+  let st = await barState(a);
+  assert.ok(st.fits && !st.shown.includes('more') && !st.inMenu.length, `wide: everything shows (${st.shown})`);
+
+  await sizeTo(page, a, 220, 300);
+  st = await barState(a);
+  assert.ok(st.fits, 'nothing runs off the edge');
+  assert.ok(st.grab >= 30, `room left to drag it by (${st.grab}px)`);
+  assert.ok(st.shown.includes('close') && st.shown.includes('more'), `close and ⋯ stay (${st.shown})`);
+  const ORDER = ['chat', 'mod', 'reload', 'pop', 'profile', 'ext', 'at', 'feat', 'star', 'max'], rank = a => ORDER.indexOf(a);
+  assert.ok(['chat', 'mod', 'reload'].every(a => st.inMenu.includes(a)), `the least-used go first (${st.inMenu})`);
+  assert.ok(Math.max(...st.inMenu.map(rank)) < Math.min(...st.shown.filter(a => ORDER.includes(a)).map(rank)), 'in that order');
+
+  const more = a.locator('[data-a=more]');
+  await more.click();
+  const items = await page.$$eval('#barMenu .bm-t', ts => ts.map(t => t.textContent));
+  assert.equal(items.length, st.inMenu.length, 'the menu lists them all');
+  assert.ok(items.includes('Add chat') && items.includes('Reload'), JSON.stringify(items));
+  await more.click();
+  assert.equal(await page.isVisible('#barMenu'), false, '⋯ again closes it');
+  await more.click();
+  await page.keyboard.press('Escape');
+  assert.equal(await page.isVisible('#barMenu'), false, 'so does Escape');
+  await more.click();
+  await page.mouse.click(5, 5);
+  assert.equal(await page.isVisible('#barMenu'), false, 'and clicking elsewhere');
+
+  // a menu item does its button's job
+  await more.click();
+  await page.click('#barMenu button:has(.bm-t:text-is("Add chat"))');
+  assert.equal(await page.isVisible('#barMenu'), false);
+  assert.equal(await win(page, 'alpha', 'chat').count(), 1, 'Add chat opened its chat');
+
+  // a button that appears later is fitted too
+  await a.evaluate(el => { el.querySelector('[data-a=mod]').hidden = true; });
+  await page.waitForTimeout(50);
+  st = await barState(a);
+  assert.ok(st.fits && !st.inMenu.includes('mod'), 'a hidden button is not in the menu');
+  await a.evaluate(el => { el.querySelector('[data-a=mod]').hidden = false; });
+  await page.waitForTimeout(50);
+  assert.ok((await barState(a)).fits, 'it still fits when one shows again');
+
+  await sizeTo(page, a, 600, 300);
+  st = await barState(a);
+  assert.ok(st.fits && !st.shown.includes('more') && !st.inMenu.length, `wider again: all back (${st.shown})`);
 });
 
 test('Chat focus: drag a stream onto another to swap them, and their chats swap too', async t => {

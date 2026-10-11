@@ -293,11 +293,18 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .vol input{width:80px;height:4px;accent-color:var(--accent);cursor:pointer}
 .vol .pct{font-size:10px;color:var(--muted);width:26px;text-align:right;font-variant-numeric:tabular-nums}
 .vol + .btns{margin-left:0}
-@container (max-width:480px){ .tag,.vol .pct{display:none} .vol input{width:60px} }
-@container (max-width:380px){ .btns .txt{display:none} }
-@container (max-width:340px){ .vol input{width:48px} .btns [data-a=reload]{display:none} }
-@container (max-width:280px){ .btns [data-a=max],.btns [data-a=mod]{display:none} }
-@container (max-width:230px){ .win.stream .title{display:none} }
+/* a title bar that doesn't fit drops the tag and volume %, narrows the slider, then moves buttons into its ⋯ menu (fitBar) */
+.bar.b1 .tag,.bar.b1 .vol .pct{display:none}
+.bar.b2 .vol input{width:48px}
+.bar.b4 .title{display:none}
+.bar .grab{flex:1 0 36px;align-self:stretch}            /* always some empty bar to drag the window by */
+.btns button.ovf{display:none}
+.btns button.more-b{font-size:15px;line-height:1}
+#barMenu{width:210px}
+#barMenu button{flex-direction:row;align-items:center;gap:9px;padding:7px 10px;font-size:12.5px;color:var(--text)}
+#barMenu .bm-ico{width:16px;display:grid;place-items:center;flex:none;color:var(--muted);font-size:14px;line-height:1}
+#barMenu .bm-ico svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#barMenu .on .bm-ico{color:var(--accent)}
 .shield{position:absolute;inset:0;display:none}
 body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:block}   /* streams and chats under the pointer mustn't swallow the drag */
 
@@ -1144,6 +1151,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <div class="dlg-foot"><button class="btn ex-no">Cancel</button><button class="btn primary ex-yes">Add extension</button></div>
 </div></div>
 <div id="extMenu" class="menu" hidden></div>
+<div id="barMenu" class="menu" role="menu" hidden></div>
 <div class="dlg-bg" id="askDlg" hidden><div class="dlg ask" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askMsg">
   <h3 id="askTitle"></h3>
   <div class="dlg-sub" id="askMsg"></div>
@@ -1839,6 +1847,72 @@ function showHint(e, w){
   sizehint.style.left = (e.clientX + 14) + 'px'; sizehint.style.top = (e.clientY + 14) + 'px';
 }
 
+/* ---------- title bars fit any window size ----------
+   When a window's title bar is too narrow for everything, it first drops the tag and the volume %, then narrows
+   the volume slider, then moves the least-used buttons into its ⋯ menu (in BAR_ORDER), and only then lets the
+   title shrink. Close, mute and ⋯ always stay. Re-fits when the window resizes or a button shows or hides. */
+const BAR_LEVELS = ['b1', 'b2'];
+const BAR_ORDER = ['chat', 'mod', 'reload', 'pop', 'profile', 'ext', 'at', 'feat', 'star', 'max'];
+function fitBar(bar){
+  if (!bar.isConnected || !bar.clientWidth) return;     // not on screen: fitted when it shows (it resizes then)
+  const name = bar.querySelector('.col-pick') || bar.querySelector('.title'), more = bar.querySelector('[data-a=more]');
+  const fits = () => bar.scrollWidth <= bar.clientWidth + 1;
+  // start from everything showing, with the name keeping a few letters
+  bar.classList.remove(...BAR_LEVELS, 'b3', 'b4');
+  bar.querySelectorAll('.btns .ovf').forEach(b => b.classList.remove('ovf'));
+  if (more) more.hidden = true;
+  name.style.minWidth = ''; name.style.flex = 'none';
+  name.style.minWidth = Math.min(name.offsetWidth, 64) + 'px'; name.style.flex = '';
+  for (const c of BAR_LEVELS){ if (fits()) break; bar.classList.add(c); }
+  if (!fits() && more){
+    more.hidden = false;
+    for (const a of BAR_ORDER){
+      if (fits()) break;
+      const b = bar.querySelector(`.btns [data-a=${a}]`);
+      if (b && !b.hidden) b.classList.add('ovf');
+    }
+    more.hidden = !bar.querySelector('.btns .ovf:not([hidden])');
+  }
+  if (!fits()){ bar.classList.add('b3'); name.style.minWidth = ''; }
+  if (!fits()) bar.classList.add('b4');
+  bar.fitObs?.takeRecords();                               // ignore our own changes
+}
+const barSizes = new ResizeObserver(es => es.forEach(e => fitBar(e.target)));
+function watchBar(bar){
+  barSizes.observe(bar);
+  // a button showing or hiding (mod view, extensions, mentions) or a new title changes what fits
+  bar.fitObs = new MutationObserver(() => fitBar(bar));
+  bar.fitObs.observe(bar, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
+}
+if (document.fonts) document.fonts.ready.then(() => document.querySelectorAll('#stage .bar').forEach(fitBar));
+
+// The ⋯ menu: the buttons that didn't fit, each doing what its button does.
+const barMenu = $('#barMenu');
+let barMenuFor = null;
+function openBarMenu(more){
+  if (!barMenu.hidden && barMenuFor === more){ barMenu.hidden = true; return; }
+  barMenuFor = more;
+  barMenu.innerHTML = '';
+  for (const b of more.closest('.btns').querySelectorAll('.ovf:not([hidden])')){
+    const item = document.createElement('button');
+    item.setAttribute('role', 'menuitem');
+    item.className = b.classList.contains('on') ? 'on' : '';
+    item.innerHTML = '<span class="bm-ico"></span><span class="bm-t"></span>';
+    item.querySelector('.bm-ico').innerHTML = b.dataset.a === 'chat' ? '+' : b.querySelector('svg')?.outerHTML || b.textContent;
+    item.querySelector('.bm-t').textContent = b.dataset.a === 'chat' ? 'Add chat' : tipName(b) || b.title;
+    item.title = b.title;
+    item.onclick = () => { barMenu.hidden = true; if (b.isConnected) b.click(); };
+    barMenu.appendChild(item);
+  }
+  barMenu.hidden = false;
+  const r = more.getBoundingClientRect(), mw = barMenu.offsetWidth;
+  barMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
+  barMenu.style.top = Math.min(innerHeight - barMenu.offsetHeight - 8, r.bottom + 4) + 'px';
+}
+document.addEventListener('pointerdown', e => {
+  if (!barMenu.hidden && !barMenu.contains(e.target) && !(barMenuFor && barMenuFor.contains(e.target))) barMenu.hidden = true;
+}, true);
+
 /* ---------- window creation ---------- */
 function createWin(spec, rect){
   const w = { id: ++uid, kind: spec.kind, channel: spec.channel, url: spec.url,
@@ -1848,7 +1922,7 @@ function createWin(spec, rect){
   el.className = 'win ' + w.kind + (w.channel ? ' plat-' + platOf(w.channel) : '');
   el.innerHTML = `
     <div class="bar">
-      <span class="dot"></span><span class="title"></span>${w.channel ? '<select class="col-pick" title="Swap this window with another one"></select>' : ''}<span class="tag"></span>
+      <span class="dot"></span><span class="title"></span>${w.channel ? '<select class="col-pick" title="Swap this window with another one"></select>' : ''}<span class="tag"></span><span class="grab"></span>
       ${hasVol ? `<div class="vol" title="Volume (scroll to adjust)"><button data-v="mute" title="Mute / unmute"></button><input type="range" min="0" max="100" step="1" aria-label="Volume"><span class="pct"></span></div>` : ''}
       <div class="btns">
         ${w.kind === 'stream' ? '<button class="txt" data-a="chat" title="Add this channel\'s chat next to it">+ Chat</button>' : ''}
@@ -1861,6 +1935,7 @@ function createWin(spec, rect){
         ${modUrl(w.channel) ? `<button data-a="mod" title="Open the mod view for this channel"${DESKTOP ? ' hidden' : ''}>${icon.mod}</button>` : ''}
         <button data-a="pop" title="Open in its own browser window">${icon.pop}</button>
         <button data-a="max" title="Maximize / restore (or double-click the bar)">${icon.max}</button>
+        <button data-a="more" class="more-b" title="More: the buttons that don't fit" aria-label="More" aria-haspopup="true" hidden>⋯</button>
         <button data-a="close" class="x" title="Close">${icon.close}</button>
       </div>
     </div>
@@ -1923,7 +1998,8 @@ function createWin(spec, rect){
       else window.open(modUrl(w.channel), 'kmv_mod_' + w.channel, 'width=1400,height=900');
     }
     else if (a === 'max') toggleMax(w);
-    else if (a === 'ext') openExtMenu(w, b);
+    else if (a === 'ext') openExtMenu(w, b.classList.contains('ovf') ? el.querySelector('[data-a=more]') : b);   // from the ⋯ menu: open under ⋯
+    else if (a === 'more') openBarMenu(b);
     else if (a === 'chat'){
       if (ROLE === 'streams'){ window.kmv.addChat(w.channel); flash(`${chLabel(w.channel)}'s chat added to the main window`); }
       else addChatBeside(w);
@@ -1939,6 +2015,7 @@ function createWin(spec, rect){
 
   /* drag */
   const bar = el.querySelector('.bar');
+  watchBar(bar);
   bar.addEventListener('dblclick', e => { if (!e.target.closest('button, .vol, select')) toggleMax(w); });
   const pick = el.querySelector('.col-pick');
   if (pick) pick.addEventListener('change', () => swapWindows(w, pick.value));
@@ -5139,7 +5216,7 @@ function closeOverlays(){
   // dialogs one at a time, the top one first (Import follows can sit over Settings); menus all at once
   const top = ['#extDlg', '#importDlg', '#ffDlg', '#capDlg', '#settingsDlg', '#profDlg'].map(sel => $(sel)).find(e => e && !e.hidden);
   if (top){ if (top.id === 'extDlg') extDlgDone(false); else top.hidden = true; any = true; }
-  else ['#layoutMenu', '#accountMenu', '#savedPanel', '#mentPanel', '#moreMenu', '#extMenu'].forEach(sel => {
+  else ['#layoutMenu', '#accountMenu', '#savedPanel', '#mentPanel', '#moreMenu', '#extMenu', '#barMenu'].forEach(sel => {
     const e = $(sel); if (e && !e.hidden){ e.hidden = true; any = true; }
   });
   const ae = document.activeElement;     // don't leave the keyboard in a box that just closed
@@ -6514,6 +6591,7 @@ const TIPS = [
   ['[data-a=reload]', b => /different window/i.test(ttl(b)) ? 'Pick window' : 'Reload'],
   ['[data-a=profile]', 'Profile'], ['#profBtn', 'Profiles'], ['.sv .prof', 'Profile'],
   ['[data-a=pop]', 'Pop out'], ['[data-a=max]', 'Maximize'], ['[data-a=mod]', 'Mod view'], ['[data-a=close]', 'Close'],
+  ['[data-a=ext]', 'Extensions'], ['[data-a=at]', 'Mentions'], ['[data-a=more]', 'More'],
   ['[data-v=mute], .fs-mute', 'Mute'],
   ['[data-z="-1"]', 'Smaller text'], ['[data-z="1"]', 'Bigger text'],
   ['.colnav [data-d="-1"], #colNav [data-d="-1"]', 'Scroll left'], ['.colnav [data-d="1"], #colNav [data-d="1"]', 'Scroll right'],
@@ -6526,9 +6604,14 @@ const TIPS = [
 ];
 const hasWords = el => /[A-Za-z]{2,}/.test(el.innerText || '');
 // The short name for a control that shows no words, or '' when it doesn't need one (its words are showing).
+// A control's short name from TIPS, or ''.
+function tipName(el){
+  for (const [sel, name] of TIPS) if (el.matches(sel)) return typeof name === 'function' ? name(el) : name;
+  return '';
+}
 function tipFor(el){
   if (!el || hasWords(el)) return '';
-  for (const [sel, name] of TIPS) if (el.matches(sel)) return typeof name === 'function' ? name(el) : name;
+  const name = tipName(el); if (name) return name;
   const hidden = (el.textContent || '').replace(/\s+/g, ' ').trim();   // words hidden by the narrow toolbar
   return /[A-Za-z]{2,}/.test(hidden) ? (el.querySelector('.l-short') || el).textContent.trim() : '';
 }
