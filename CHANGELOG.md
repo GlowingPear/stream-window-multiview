@@ -2,7 +2,13 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.2.20 (current)
+## 0.2.21 (current)
+- Spam alerts flag a wall of the same word
+- Mentions list is easier to read, mentions can be turned off per chat, and spam alerts keep a history
+- Videos in release notes play in Settings > Updates
+- Chrome extensions: install from the Web Store and switch them on per site and window
+
+## 0.2.20
 - Streamer profiles: a Profiles directory, live history, notes, and Unfollow on Kick
 
 ## 0.2.19
