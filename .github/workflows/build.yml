@@ -38,10 +38,24 @@ jobs:
     outputs:
       sha: ${{ steps.commit.outputs.sha }}
     steps:
+      # main is protected (changes only through pull requests with passing tests), and GitHub's own
+      # Actions token can't skip that on a personal repository. The release pushes its version commit
+      # with a deploy key instead: secret RELEASE_DEPLOY_KEY, a key with write access that the
+      # "Protect main" ruleset lists under Bypass. See README > Making a release.
+      - name: Check the release key is set up
+        env:
+          KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error title=Release key missing::Add the RELEASE_DEPLOY_KEY secret (a deploy key with write access, on the Protect main bypass list). Without it the release can't save its version to main."
+            exit 1
+          fi
+
       - uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
+          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
       - uses: actions/setup-node@v5
         with:
@@ -75,7 +89,7 @@ jobs:
             git config user.name "${{ github.event.release.author.login }}"
             git config user.email "${{ github.event.release.author.id }}+${{ github.event.release.author.login }}@users.noreply.github.com"
             git commit -am "Release ${{ github.event.release.tag_name }}"
-            git push origin HEAD:main
+            git push origin HEAD:main || { echo "::error title=Couldn't save the version to main::The push was refused. Check that the release deploy key has write access and is on the Protect main ruleset's bypass list."; exit 1; }
             git tag -f "${{ github.event.release.tag_name }}"
             git push -f origin "refs/tags/${{ github.event.release.tag_name }}"
           fi

@@ -178,7 +178,14 @@ The **Build installers** workflow then sets the version from the tag, adds the n
 
 Notes:
 - Create the release from the latest `main`; the workflow stops if the tag points anywhere else.
-- If you turn on a rule that blocks direct pushes to `main`, allow **GitHub Actions** to bypass it, so the workflow can commit the version and changelog.
+- **Release key:** `main` is protected (the "Protect main" ruleset: pull requests with passing tests only), and GitHub doesn't let its own Actions token skip that on a personal repository. So the workflow commits the version and changelog with a deploy key:
+  1. Make a key pair: `ssh-keygen -t ed25519 -N "" -C "release" -f release_key` (Windows PowerShell, Mac or Linux).
+  2. **Settings → Deploy keys → Add deploy key:** title `release`, paste `release_key.pub`, tick **Allow write access**.
+  3. **Settings → Secrets and variables → Actions → New repository secret:** name `RELEASE_DEPLOY_KEY`, paste the whole of `release_key` (the file without `.pub`).
+  4. **Settings → Rules → Rulesets → Protect main → Bypass list → Add bypass → Deploy keys**, then **Save changes**.
+  5. Delete both key files from your computer.
+
+  Without the secret the release stops at its first step and says so.
 - Copies that are a git clone (they have a `.git` folder) never update themselves. Use `git pull` there.
 - **Mac signing certificate:** the repository secrets `MAC_CERT_P12` (the certificate as base64) and `MAC_CERT_PASSWORD` sign every Mac build with the same self-signed certificate. macOS recognises the app by that signature, so it keeps letting each new version read the saved-login key in the Keychain. Without them, Mac builds are signed ad hoc and Mac users are logged out after every update. Keep the same certificate: a new one counts as a different app once more.
 

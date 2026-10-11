@@ -69,4 +69,7 @@ jobs:
             [ -f "$f" ] || continue
             awk '/^not ok/{p=1;n=0} p{print; if(++n>25){p=0}}' "$f" | head -n 80 | sed -e 's/%/%25/g' -e 's/\r//g' | awk '{printf "%s%%0A", $0}' > fails.txt
             [ -s fails.txt ] && echo "::error title=Failed tests ($(basename "$f"))::$(cat fails.txt)"
+            # no failed test: the end of the log says why (e.g. a file below its coverage minimum)
+            tail -n 40 "$f" | sed -e 's/%/%25/g' -e 's/\r//g' | awk '{printf "%s%%0A", $0}' > tail.txt
+            echo "::error title=End of the log ($(basename "$f"))::$(cat tail.txt)"
           done
