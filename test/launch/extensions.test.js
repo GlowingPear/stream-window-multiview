@@ -145,6 +145,54 @@ test('Its popup and its options page open from the window\'s menu, in that windo
   assert.match(s, /kmv-stream-delta/, 'the stream\'s own session');
 });
 
+test('A site watched signed in has one switch for its chats and streams; sites it doesn\'t run on are marked', T, async () => {
+  const card = '#settingsDlg .ex-card', both = card + ' .ex-both input[data-p=kick][data-k=chat]';
+  const watch = async on => {      // Settings > Accounts > Watch signed in
+    await a.win.evaluate(() => openSettings('accounts'));
+    await a.win.setChecked('#settingsDlg .am-watch input[data-w=kick]', on);
+    await openPane();
+  };
+  await watch(true);
+  assert.equal(await a.win.locator(card + ' .ex-grid input[data-p=kick]').count(), 1, 'one switch for Kick');
+  assert.equal(await a.win.locator(card + ' .ex-grid input[data-p=twitch]').count(), 2);
+  assert.equal(await a.win.isChecked(both), true, 'it shows the Chats setting');
+  assert.match(await a.win.textContent(card + ' .ex-grid'), /signed in/);
+  assert.match(await a.win.textContent(card + ' .ex-note'), /Signed-in streams share their chat's login/);
+  assert.equal(await a.win.locator(card + ' .ex-off').count(), 0, 'it runs on every site');
+  await a.win.uncheck(both);
+  await closeSettings();
+  await markedNow('delta', 'stream', false);
+  await markedNow('charlie', 'chat', false);
+  await openPane();
+  await a.win.check(both);
+  await closeSettings();
+  await markedNow('delta', 'stream', true);
+  await markedNow('charlie', 'chat', true);
+
+  await openPane();
+  await a.win.click(card + ' .ex-note [data-go=accounts]');
+  await a.win.waitForSelector('#settingsDlg .st-pane[data-s=accounts]:not([hidden])');
+  await watch(false);
+  assert.equal(await a.win.locator(card + ' .ex-grid input[data-p=kick]').count(), 2, 'Streams and Chats again');
+  assert.equal(await a.win.isHidden(card + ' .ex-note'), true);
+
+  // an extension made for Kick only: Twitch and YouTube are marked in the install dialog
+  const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'smv-kick-ext-'));
+  fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ manifest_version: 3, name: 'Kick Only', version: '1.0',
+    content_scripts: [{ matches: ['https://kick.com/*'], js: ['c.js'] }] }));
+  fs.writeFileSync(path.join(dir, 'c.js'), '');
+  await a.app.evaluate((_e, d) => { globalThis.__pick = d; }, dir);
+  try {
+    await a.win.click('#settingsDlg .ex-folder');
+    await a.win.waitForSelector('#extDlg:not([hidden])');
+    const off = await a.win.$$eval('#extDlg .ex-grid .h.ex-off', l => l.map(h => h.textContent));
+    assert.deepEqual(off, ['TwitchDoesn\'t run here', 'YouTubeDoesn\'t run here']);
+    await a.win.click('#extDlg .ex-no');
+    await a.win.waitForSelector('#extDlg', { state: 'hidden' });
+  } finally { await a.app.evaluate((_e, d) => { globalThis.__pick = d; }, FIXTURE); }
+  await closeSettings();
+});
+
 test('Switched off in Settings, then removed', T, async () => {
   await openPane();
   await a.win.click('#settingsDlg .ex-card .ex-on');

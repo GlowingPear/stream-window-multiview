@@ -79,6 +79,17 @@ test('what it can do, in words, and which Chrome features it needs that the app 
   assert.deepEqual(x.compat(undefined), []);
 });
 
+test('which of the sites it runs on, from its manifest', () => {
+  assert.deepEqual(x.sitesOf({ content_scripts: [{ matches: ['https://kick.com/*', 'https://www.twitch.tv/*'] }] }), ['kick', 'twitch']);
+  assert.deepEqual(x.sitesOf({ host_permissions: ['*://*.youtube.com/*'] }), ['youtube'], 'any subdomain');
+  assert.deepEqual(x.sitesOf({ manifest_version: 2, permissions: ['tabs', 'https://player.kick.com:443/*'] }), ['kick'], 'MV2 hosts, with a port');
+  assert.deepEqual(x.sitesOf({ host_permissions: ['<all_urls>'] }), ['kick', 'twitch', 'youtube']);
+  assert.deepEqual(x.sitesOf({ content_scripts: [{ matches: ['*://*/*'] }] }), ['kick', 'twitch', 'youtube']);
+  assert.deepEqual(x.sitesOf({ content_scripts: [{ matches: ['https://notkick.com/*'] }] }), [], 'not a lookalike');
+  assert.deepEqual(x.sitesOf({ permissions: ['activeTab'] }), ['kick', 'twitch', 'youtube'], 'no sites named: could be anywhere');
+  assert.deepEqual(x.sitesOf(null), ['kick', 'twitch', 'youtube']);
+});
+
 test('its icon from the folder, as a picture the page can show', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-ext-'));
   fs.writeFileSync(path.join(dir, 'i48.png'), Buffer.from([1, 2, 3]));

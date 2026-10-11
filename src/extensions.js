@@ -80,12 +80,25 @@ function compat(manifest) {
 // Blockers (uBlock Origin Lite and the like) block with Chrome's blocking rules, which Electron doesn't have.
 const blocksNothing = manifest => ['declarativeNetRequest', 'declarativeNetRequestWithHostAccess'].some(p => permsOf(manifest).has(p));
 
+// The sites an extension asks for: its host permissions and where its content scripts run.
+const hostsOf = m => [...(m.host_permissions || []), ...(m.content_scripts || []).flatMap(c => c.matches || []),
+  ...(m.manifest_version === 2 ? (m.permissions || []).filter(p => /[:/*]/.test(p)) : [])];
+
+// Which of Kick, Twitch and YouTube it can run on. One that names no sites (a popup, or activeTab) might
+// run anywhere, so it counts as all of them.
+const SITE_HOSTS = { kick: 'kick.com', twitch: 'twitch.tv', youtube: 'youtube.com' };
+function sitesOf(manifest) {
+  const hosts = hostsOf(manifest || {});
+  if (!hosts.length) return [...PLATS];
+  const names = hosts.map(h => h === '<all_urls>' ? '*' : (h.match(/^(?:[^:/]*:\/\/)?([^/:]+)/) || [])[1]).filter(Boolean).map(n => n.replace(/^\*\./, ''));
+  return PLATS.filter(p => names.some(n => n === '*' || n === SITE_HOSTS[p] || n.endsWith('.' + SITE_HOSTS[p])));
+}
+
 // What the extension can do, in words, for the install dialog.
 function permissionLines(manifest) {
   const m = manifest || {};
   const perms = new Set(m.permissions || []);
-  const hosts = [...(m.host_permissions || []), ...(m.content_scripts || []).flatMap(c => c.matches || []),
-    ...(m.manifest_version === 2 ? (m.permissions || []).filter(p => /[:/*]/.test(p)) : [])];
+  const hosts = hostsOf(m);
   const lines = [];
   if (hosts.some(h => h === '<all_urls>' || /^\*:\/\/\*\/|^https?:\/\/\*\//.test(h)))
     lines.push('Read and change everything on the pages it\'s switched on for, including while you\'re signed in');
@@ -286,7 +299,7 @@ function createHost(deps) {
     const reqId = ++confirmSeq;
     const m = info.manifest || {};
     win.webContents.send('ext:confirm', { reqId, id: info.id, name: info.name || m.name || info.id, version: info.version || m.version || '',
-      icon: info.icon || '', source: info.source || 'store', perms: permissionLines(m), compat: compat(m), noBlock: blocksNothing(m), grid: defaultGrid() });
+      icon: info.icon || '', source: info.source || 'store', perms: permissionLines(m), compat: compat(m), noBlock: blocksNothing(m), sites: sitesOf(m), grid: defaultGrid() });
     if (win.isMinimized()) win.restore();
     win.focus();
     return new Promise(res => confirmWaits.set(reqId, res));
@@ -302,7 +315,7 @@ function createHost(deps) {
     const m = ext?.manifest || {};
     return { id: e.id, source: e.source, enabled: e.enabled, grid: e.grid, missing: !ext,
       name: ext?.name || e.id, version: ext?.version || '', description: m.description && !/^__MSG_/.test(m.description) ? m.description : '',
-      icon: ext ? iconDataUrl(ext.path, m) : '', perms: permissionLines(m), compat: compat(m), noBlock: blocksNothing(m),
+      icon: ext ? iconDataUrl(ext.path, m) : '', perms: permissionLines(m), compat: compat(m), noBlock: blocksNothing(m), sites: sitesOf(m),
       popup: !!(m.action?.default_popup || m.browser_action?.default_popup),
       options: !!(m.options_page || m.options_ui?.page) };
   }
@@ -414,4 +427,4 @@ function createHost(deps) {
   return { ready: () => ready, list: () => list, sync, syncAll, update };
 }
 
-module.exports = { PLATS, KINDS, STREAM_PREFIX, STORE_PART, defaultGrid, targetOf, normalizeList, normalizeEntry, isOn, wantedIds, idFromInput, compat, blocksNothing, permissionLines, iconDataUrl, readManifest, createHost };
+module.exports = { PLATS, KINDS, STREAM_PREFIX, STORE_PART, defaultGrid, targetOf, normalizeList, normalizeEntry, isOn, wantedIds, idFromInput, compat, blocksNothing, sitesOf, permissionLines, iconDataUrl, readManifest, createHost };
