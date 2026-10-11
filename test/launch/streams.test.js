@@ -42,6 +42,36 @@ test('YouTube: the cookie question is answered with the button you picked, in an
   assert.equal(await a.win.evaluate(() => window.kmv.ytConsentFallback('persist:kick')), false);
 });
 
+test('YouTube: Skip is clicked for real without taking your keyboard, and a question it can\'t answer falls back to "Reject all"', T, async () => {
+  await a.win.selectOption('#mode', 'stream');
+  await add('https://www.youtube.com/watch?v=abcdefghijk');
+  const title = await a.win.$eval('#stage .win.stream .title', e => e.textContent);
+  await viewLoaded(a.win, title, 'stream', /youtube\.com\/watch/);
+  await add('alpha');                                    // the newest window is the active one
+  await ready('alpha');
+  assert.equal(await a.win.$eval(winSel(title), e => e.classList.contains('active')), false);
+  await a.win.fill('#url', 'typing here');
+  await inView(a.win, title, 'stream', () => {
+    const b = document.createElement('button'); b.className = 'ytp-skip-ad-button';
+    b.style.cssText = 'position:fixed;left:20px;top:20px;width:80px;height:30px';
+    b.onclick = e => { window.__skipped = e.isTrusted; b.remove(); };
+    document.body.append(b);
+  });
+  await until(() => inView(a.win, title, 'stream', () => window.__skipped === true));
+  await a.win.waitForTimeout(300);
+  assert.equal(await a.win.evaluate(() => document.activeElement.id), 'url', 'the keyboard stays where you were typing');
+  assert.equal(await a.win.$eval(winSel(title), e => e.classList.contains('active')), false, 'and the stream isn\'t made the active window');
+  // a cookie question whose buttons can't be found: "Reject all" is saved for that player, and it loads again
+  await inView(a.win, title, 'stream', () => {
+    const lb = document.createElement('ytd-consent-bump-v2-lightbox'), d = document.createElement('tp-yt-paper-dialog');
+    d.opened = true; lb.append(d); document.body.append(lb);
+  });
+  const socs = () => a.app.evaluate(({ session }) => session.fromPartition('persist:kmv-stream-yt_v_abcdefghijk').cookies.get({ name: 'SOCS' }));
+  await until(async () => (await socs()).length === 1);
+  await until(() => inView(a.win, title, 'stream', () => !document.querySelector('ytd-consent-bump-v2-lightbox')).catch(() => false));
+  await a.win.fill('#url', '');
+});
+
 test('volume: the title bar\'s mute button, slider and mouse wheel set that stream\'s own volume', T, async () => {
   await a.win.selectOption('#mode', 'stream');
   await add('alpha');
