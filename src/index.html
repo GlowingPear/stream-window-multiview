@@ -160,6 +160,7 @@ body.dragging .bar{cursor:grabbing}
 .st-body{overflow:auto;min-height:0;padding:14px 20px 20px}
 .st-pane[hidden],.st-subpane[hidden]{display:none}
 .st-pane > h4{margin:0 0 2px;font-size:15px}
+.st-beta{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;border:1px solid #e8b84a;color:#e8b84a;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;vertical-align:2px}
 .st-sub{color:var(--muted);font-size:12px;margin:0 0 12px;line-height:1.45}
 .st-sec{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:16px 0 2px}
 .st-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
@@ -944,7 +945,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         </div>
       </section>
       <section class="st-pane" data-s="spam" hidden>
-        <h4>Spam alerts</h4><p class="st-sub">A moderator tool: spots promo-bot messages in chats you moderate and points you to them, so you can deal with them. It never hides, deletes or reports anything.</p>
+        <h4>Spam alerts <span class="st-beta" title="New: tell us if it flags something it shouldn't, or misses spam">Beta</span></h4><p class="st-sub">A moderator tool: spots promo-bot messages in chats you moderate and points you to them, so you can deal with them. It never hides, deletes or reports anything.</p>
         <label class="st-lead"><span class="st-t"><b>Watch for spam in chats I moderate</b><small>Only Kick and Twitch chats where you're a moderator (the ones with the mod view <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/></svg> button). Other chats are only read to spot the same message posted in several places.</small></span><input type="checkbox" class="st-sw" id="spamOn"></label>
         <div class="st-tabs" id="spamTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="how">How it works</button><button data-t="lists">Lists</button><button data-t="try">Try it</button></div>
         <div class="st-subpane st-opts" data-t="alerts" data-for="spam">
