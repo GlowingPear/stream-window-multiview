@@ -684,17 +684,27 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .st-add.ex-linkrow{margin:0 0 12px}
 /* Settings > Layouts */
 .ly-intro{margin:10px 0 6px}
-.ly-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
-.ly-card{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel2)}
-.ly-card.on{border-color:var(--accent)}
+.ly-md{display:grid;grid-template-columns:190px minmax(0,1fr);gap:14px;margin-top:12px;align-items:start}
+.ly-list{display:flex;flex-direction:column;gap:2px}
+.ly-item{display:flex;align-items:center;gap:9px;padding:6px 8px;border:1px solid transparent;border-radius:8px;background:none;color:var(--text);font-size:13px;text-align:left;cursor:pointer}
+.ly-item:hover{background:var(--panel2)}
+.ly-item.sel{background:var(--panel2);border-color:var(--line2)}
+.ly-item .lm-pic{width:36px;height:23px;flex:none}
+.ly-item.on .lm-pic{color:var(--accent)}
+.ly-item span{flex:1;min-width:0}
+.ly-item em{font-style:normal;font-size:10.5px;font-weight:700;color:var(--accent)}
+.ly-item em:empty{display:none}
+.ly-detail{padding:16px;border:1px solid var(--line2);border-radius:10px;background:var(--panel2);min-height:260px}
+.ly-panel[hidden]{display:none}
+.ly-panel > .lm-pic{display:block;width:120px;height:75px;margin-bottom:12px}
+.ly-panel.on > .lm-pic{color:var(--accent)}
 .ly-head{display:flex;align-items:center;gap:10px}
-.ly-head .lm-pic{width:56px;height:35px;flex:none}
-.ly-card.on .lm-pic{color:var(--accent)}
-.ly-head b{flex:1;font-size:13.5px}
-.ly-head .btn{height:28px;padding:0 10px;font-size:12px;min-width:62px}
-.ly-desc{margin:0;font-size:11.5px;line-height:1.45;color:var(--muted)}
-.ly-card .st-opt{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:9px;border-top:1px solid var(--line);font-size:12.5px}
-.ly-card .st-opt small{font-size:11px}
+.ly-head b{flex:1;font-size:15px}
+.ly-head .btn{height:28px;padding:0 12px;font-size:12px;min-width:62px}
+.ly-desc{margin:6px 0 0;font-size:12px;line-height:1.5;color:var(--muted)}
+.ly-panel .st-opt{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:13px}
+.ly-panel .st-opt small{font-size:11.5px}
+.ly-none{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted)}
 .pr-srow .lm-pic{width:40px;height:25px;flex:none;color:var(--muted)}
 .ly-sw{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .ly-sw button{display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel2);color:var(--text);text-align:left;cursor:pointer}
@@ -1334,7 +1344,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       <section class="st-pane" data-s="layouts" hidden>
         <h4>Layouts</h4><p class="st-sub">How the windows are arranged. Switch with <b>Layout ▾</b> in the toolbar, or here.</p>
         <div class="st-tabs" id="lyTabs"><button data-t="layouts" class="on">Layouts</button><button data-t="saved">Your layouts</button><button data-t="switch">Switch control</button></div>
-        <div class="st-subpane" data-t="layouts"><div class="ly-grid" id="lyList"></div></div>
+        <div class="st-subpane" data-t="layouts"><div class="ly-md"><div class="ly-list" id="lyList" role="listbox" aria-label="Layouts"></div><div class="ly-detail" id="lyDetail"></div></div></div>
         <div class="st-subpane" data-t="saved" hidden>
           <p class="st-sub ly-intro">Arrangements you've named: their windows, order and columns. Using one keeps the windows that are already open and reopens the rest.</p>
           <div id="lyPresets"></div>
@@ -4882,14 +4892,29 @@ if (ROLE === 'main'){
   // Settings > Layouts: each layout from the menu, with its options under it
   const lyList = $('#lyList');
   layoutMenu.querySelectorAll('button[data-l]').forEach(b => {
-    const card = document.createElement('div'); card.className = 'ly-card'; card.dataset.l = b.dataset.l;
-    card.innerHTML = '<div class="ly-head"><b></b><button class="btn ly-use">Use</button></div><p class="ly-desc"></p>';
-    card.querySelector('.ly-head').prepend(b.querySelector('.lm-pic').cloneNode(true));
-    card.querySelector('b').textContent = b.querySelector('b').textContent;
-    card.querySelector('.ly-desc').textContent = b.querySelector('span').textContent;
-    card.querySelector('.ly-use').onclick = () => { closeSettings(); b.click(); };
-    const opt = document.querySelector(`#settingsDlg [data-opt="${b.dataset.l}"]`); if (opt) card.appendChild(opt);
-    lyList.appendChild(card);
+    const l = b.dataset.l, name = b.querySelector('b').textContent, pic = b.querySelector('.lm-pic');
+    const item = document.createElement('button'); item.className = 'ly-item'; item.dataset.l = l; item.setAttribute('role', 'option');
+    item.innerHTML = '<span></span><em></em>';
+    item.prepend(pic.cloneNode(true)); item.querySelector('span').textContent = name;
+    lyList.appendChild(item);
+    const panel = document.createElement('div'); panel.className = 'ly-panel'; panel.dataset.l = l; panel.hidden = true;
+    panel.innerHTML = '<div class="ly-head"><b></b><button class="btn ly-use">Use</button></div><p class="ly-desc"></p>';
+    panel.prepend(pic.cloneNode(true));
+    panel.querySelector('b').textContent = name;
+    panel.querySelector('.ly-desc').textContent = b.querySelector('span').textContent;
+    panel.querySelector('.ly-use').onclick = () => { closeSettings(); b.click(); };
+    const opt = document.querySelector(`#settingsDlg [data-opt="${l}"]`);
+    if (opt) panel.appendChild(opt); else panel.insertAdjacentHTML('beforeend', '<div class="ly-none">No options for this one.</div>');
+    $('#lyDetail').appendChild(panel);
+  });
+  // pick one on the left (click, or the arrow keys) to see it on the right
+  lyList.addEventListener('click', e => { const it = e.target.closest('.ly-item'); if (it) selectLayoutPane(it.dataset.l); });
+  lyList.addEventListener('keydown', e => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+    e.preventDefault();
+    const items = [...lyList.children], i = items.findIndex(x => x.dataset.l === lySel);
+    const n = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : Math.max(0, Math.min(items.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
+    selectLayoutPane(items[n].dataset.l); items[n].focus();
   });
   $('#lyTabs').addEventListener('click', e => {
     const b = e.target.closest('button[data-t]'); if (!b) return;
@@ -4905,12 +4930,20 @@ if (ROLE === 'main'){
   $('#presetName').addEventListener('keydown', e => { if (e.key === 'Enter') savePresetFromInput(); });
 }
 function syncLySw(){ document.querySelectorAll('#lySw button').forEach(b => b.classList.toggle('on', b.dataset.sw === switchMode)); }
-function renderLayoutsPane(){
-  const cur = curLayout();
-  document.querySelectorAll('#lyList .ly-card').forEach(c => {
-    const on = c.dataset.l === cur && !activePreset, b = c.querySelector('.ly-use');
-    c.classList.toggle('on', on); b.textContent = on ? 'In use' : 'Use'; b.disabled = on;
+let lySel = '';
+function selectLayoutPane(l){
+  lySel = l;
+  document.querySelectorAll('#lyList .ly-item').forEach(x => { const on = x.dataset.l === l; x.classList.toggle('sel', on); x.setAttribute('aria-selected', on); x.tabIndex = on ? 0 : -1; });
+  document.querySelectorAll('#lyDetail .ly-panel').forEach(x => { x.hidden = x.dataset.l !== l; });
+}
+// fresh: opening the tab shows the layout in use
+function renderLayoutsPane(fresh){
+  const cur = curLayout(), inUse = l => l === cur && !activePreset;
+  document.querySelectorAll('#lyList .ly-item').forEach(x => { x.classList.toggle('on', inUse(x.dataset.l)); x.querySelector('em').textContent = inUse(x.dataset.l) ? 'In use' : ''; });
+  document.querySelectorAll('#lyDetail .ly-panel').forEach(x => {
+    const b = x.querySelector('.ly-use'); x.classList.toggle('on', inUse(x.dataset.l)); b.textContent = inUse(x.dataset.l) ? 'In use' : 'Use'; b.disabled = inUse(x.dataset.l);
   });
+  if (fresh || !lySel) selectLayoutPane(document.querySelector(`#lyList [data-l="${cur}"]`) ? cur : lySel || 'focus');
   $('#lyLinked').checked = linked;
   syncLySw();
   renderPresetsPane();
@@ -6054,7 +6087,7 @@ function openSettings(tab){
   if (settingsTab === 'general') $('#keysSet').checked = keysOn;
   if (settingsTab === 'notify') syncNotifyPane();
   if (settingsTab === 'extensions') renderExtPane();
-  if (settingsTab === 'layouts') renderLayoutsPane();
+  if (settingsTab === 'layouts') renderLayoutsPane(true);
   return renderDoc(settingsTab);
 }
 window.openSettings = openSettings;   // for the tests
