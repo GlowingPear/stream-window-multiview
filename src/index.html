@@ -342,7 +342,7 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 .menu button b{font-size:13px}
 .menu button span{font-size:11px;color:var(--muted);line-height:1.35}
 .menu button.on b{color:var(--accent)}
-#layoutMenu{width:320px;max-height:80vh;overflow:auto}
+#layoutMenu{width:316px;max-height:80vh;overflow:auto}
 /* A menu's settings: the gear at the top right opens its tab in Settings */
 .menu-head{display:flex;align-items:center;gap:6px}
 .menu-head > :first-child{flex:1;min-width:0}
@@ -350,8 +350,27 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 .menu .menu-set:hover,.menu-set:hover{color:var(--text);background:var(--line)}
 .menu-set svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .lm-head{padding:2px 2px 4px 10px;font-size:13px;font-weight:700}
+.lm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.menu .lm-grid button{align-items:center;gap:5px;padding:8px 4px 7px;border:1px solid transparent}
+.menu .lm-grid button > span{display:none}
+.menu .lm-grid button b{font-size:11.5px;font-weight:600;text-align:center;white-space:nowrap}
+.menu .lm-grid button.on{border-color:var(--accent);background:var(--panel2)}
+.lm-pic{width:48px;height:30px;color:var(--muted)}
+.lm-pic rect{fill:currentColor;opacity:.55}
+.lm-pic rect.c{opacity:.22}
+.lm-pic rect.g{fill:none;stroke:currentColor;stroke-dasharray:3 2;opacity:.8}
+.lm-grid button:hover .lm-pic,.lm-grid button:focus-visible .lm-pic{color:var(--text)}
+.lm-grid button.on .lm-pic{color:var(--accent)}
+.lm-hint{min-height:47px;padding:4px 8px 2px;font-size:11px;line-height:1.35;color:var(--muted)}
+.lm-opts[hidden],.lm-opt[hidden]{display:none}
+.lm-opt{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 10px;font-size:12.5px;font-weight:600}
+.lm-opt > span{flex:1;min-width:0}
+.lm-opt small{display:block;font-size:11px;font-weight:400;color:var(--muted);line-height:1.35}
+.lm-opt .lm-sw{padding:0}
+.lm-opt .lm-sw button{flex:none;width:32px}
+.lm-sw button:disabled{opacity:.4;cursor:default}
 .lm-sw{display:flex;gap:4px;padding:2px 6px 6px}
-.lm-sw button{flex:1;height:28px;border:1px solid var(--line2);border-radius:6px;background:var(--panel2);color:var(--text);cursor:pointer;font-size:12px;font-weight:600;padding:0 4px}
+.lm-sw button{flex:1;height:28px;justify-content:center;align-items:center;text-align:center;border:1px solid var(--line2);border-radius:6px;background:var(--panel2);color:var(--text);cursor:pointer;font-size:12px;font-weight:600;padding:0 4px}
 .lm-sw button:hover{border-color:var(--muted)}
 .lm-sw button.on{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
 #swBtn{display:flex;align-items:center;gap:6px}
@@ -519,10 +538,6 @@ body.coldrag #stage{scroll-snap-type:none}
 .win.featured.stream{border-color:var(--frame)}
 #featBg{position:absolute;top:0;bottom:0;left:0;background:var(--bg);z-index:89990;display:none;
   box-shadow:6px 0 16px rgba(0,0,0,.5);border-right:1px solid var(--line)}
-.linkbtn{display:flex;align-items:center;gap:6px}
-.linkbtn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.linkbtn.on{border-color:var(--accent);color:var(--accent)}
-.linkbtn[hidden]{display:none}
 
 #colStrip{position:absolute;z-index:89985;display:none;align-items:center;gap:6px;padding:0 4px;
   background:var(--panel);border:1px solid var(--line2);border-radius:8px}
@@ -874,7 +889,7 @@ header.c1 #loginBtn.has-acct .acct-name{display:none}
 /* The toolbar fits itself to the window (fitHeader): first shorter labels (c1), then tighter
    buttons (c2, c3), then the least-used controls move into the ⋯ More menu. */
 .l-short{display:none}
-header.c1 .linkbtn span{display:none} header.c1 .linkbtn{padding:0 9px} body.cols header.c1 .brand{display:none}
+body.cols header.c1 .brand{display:none}
 header.c1 .l-long{display:none} header.c1 .l-short{display:inline}
 header.c1 .zoom span:first-child{display:none} header.c1 .zoom{padding-left:4px}
 header.c2{gap:6px} header.c2 .btn{padding:0 9px} header.c2 .brand{display:none} header.c2 #colPos{display:none}
@@ -892,7 +907,7 @@ header.c3 #url{min-width:110px}
 #moreMenu .ibtn{width:100%}
 #moreMenu .ibtn::after{content:attr(data-label)}
 #moreMenu .l-long{display:inline !important} #moreMenu .l-short{display:none !important}
-#moreMenu .linkbtn span, #moreMenu #swBtn span{display:inline !important}
+#moreMenu #swBtn span{display:inline !important}
 #moreMenu label.chk{padding:8px 10px;color:var(--text)}
 #moreMenu .zoom, #moreMenu .colnav{justify-content:flex-start;padding:4px 10px}
 #moreMenu .zoom span:first-child{display:inline !important}
@@ -1112,7 +1127,6 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <div class="colnav" id="colNav" hidden>
     <button data-d="-1" title="Scroll one column left" aria-label="Scroll left">‹</button><span id="colPos"></span><button data-d="1" title="Scroll one column right" aria-label="Scroll right">›</button>
   </div>
-  <button class="btn linkbtn" id="linkBtn" hidden title="Linked: each stream and its chat move together — drag a title bar to move the column. Unlinked: move and resize windows freely."><i></i><span>Linked</span></button>
   <button class="btn ibtn" id="undoBtn" hidden disabled data-label="Undo" title="Undo (Ctrl+Z)"></button>
   <button class="btn ibtn" id="redoBtn" hidden disabled data-label="Redo" title="Redo (Ctrl+Y)"></button>
   <button class="btn" id="swBtn" hidden title="Switch control: show it as a panel you can move and resize, in any layout (click again to put it away)"><i></i><span class="l-long">Switch control</span><span class="l-short">Switch</span></button>
@@ -1141,12 +1155,21 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 
 <div id="layoutMenu" class="menu" hidden>
   <div class="lm-head menu-head"><span>Layout</span><button class="menu-set" id="layoutSet" title="Layout settings" aria-label="Layout settings"></button></div>
-  <button data-l="focus"><b>Focus view</b><span>One stream big with its chat, the rest in columns beside it, and the switch control to change which one is big.</span></button>
-  <button data-l="game"><b>Game focus</b><span>Your game big, streams, chats and other windows on the side. The game area can be see-through so you play the real game.</span></button>
-  <button data-l="columns"><b>Columns</b><span>Each stream sits on top of its own chat. Scroll sideways when there are more than fit.</span></button>
-  <button data-l="chatfocus"><b>Chat focus</b><span>Streams down the side at exact video size, chats get the rest. Pick again for 1, 2 or 3 stream columns.</span></button>
-  <button data-l="auto"><b>Auto layout</b><span>Streams in a grid, chats on the right.</span></button>
-  <button data-l="tile"><b>Tile</b><span>Every window gets equal space.</span></button>
+  <div class="lm-grid">
+  <button data-l="focus"><svg class="lm-pic" viewBox="0 0 48 30" aria-hidden="true"><rect x="1" y="1" width="26" height="17"/><rect class="c" x="1" y="20" width="26" height="9"/><rect x="29" y="1" width="8.5" height="6"/><rect class="c" x="29" y="9" width="8.5" height="20"/><rect x="39.5" y="1" width="7.5" height="6"/><rect class="c" x="39.5" y="9" width="7.5" height="20"/></svg><b>Focus view</b><span>One stream big with its chat, the rest in columns beside it, and the switch control to change which one is big.</span></button>
+  <button data-l="game"><svg class="lm-pic" viewBox="0 0 48 30" aria-hidden="true"><rect class="g" x="1" y="1" width="33" height="28"/><rect x="36" y="1" width="11" height="7"/><rect x="36" y="10" width="11" height="7"/><rect class="c" x="36" y="19" width="11" height="10"/></svg><b>Game focus</b><span>Your game big, streams, chats and other windows on the side. The game area can be see-through so you play the real game.</span></button>
+  <button data-l="columns"><svg class="lm-pic" viewBox="0 0 48 30" aria-hidden="true"><rect x="1" y="1" width="10" height="6"/><rect class="c" x="1" y="9" width="10" height="20"/><rect x="13" y="1" width="10" height="6"/><rect class="c" x="13" y="9" width="10" height="20"/><rect x="25" y="1" width="10" height="6"/><rect class="c" x="25" y="9" width="10" height="20"/><rect x="37" y="1" width="10" height="6"/><rect class="c" x="37" y="9" width="10" height="20"/></svg><b>Columns</b><span>Each stream sits on top of its own chat. Scroll sideways when there are more than fit.</span></button>
+  <button data-l="chatfocus"><svg class="lm-pic" viewBox="0 0 48 30" aria-hidden="true"><rect x="1" y="1" width="15" height="8.5"/><rect x="1" y="11" width="15" height="8.5"/><rect x="1" y="21" width="15" height="8"/><rect class="c" x="18" y="1" width="14" height="28"/><rect class="c" x="34" y="1" width="13" height="28"/></svg><b>Chat focus</b><span>Streams down the side at exact video size, chats get the rest.</span></button>
+  <button data-l="auto"><svg class="lm-pic" viewBox="0 0 48 30" aria-hidden="true"><rect x="1" y="1" width="16" height="13"/><rect x="19" y="1" width="16" height="13"/><rect x="1" y="16" width="16" height="13"/><rect x="19" y="16" width="16" height="13"/><rect class="c" x="37" y="1" width="10" height="28"/></svg><b>Auto layout</b><span>Streams in a grid, chats on the right.</span></button>
+  <button data-l="tile"><svg class="lm-pic" viewBox="0 0 48 30" aria-hidden="true"><rect x="1" y="1" width="14.3" height="13"/><rect x="16.8" y="1" width="14.3" height="13"/><rect class="c" x="32.7" y="1" width="14.3" height="13"/><rect x="1" y="16" width="14.3" height="13"/><rect class="c" x="16.8" y="16" width="14.3" height="13"/><rect class="c" x="32.7" y="16" width="14.3" height="13"/></svg><b>Tile</b><span>Every window gets equal space.</span></button>
+  </div>
+  <div class="lm-hint" id="lmHint"></div>
+  <div class="lm-opts" id="lmOpts">
+    <div class="lm-sec">Options</div>
+    <label class="lm-opt" data-for="columns focus"><span>Linked<small>Each stream and its chat move together. Off: move and resize windows freely.</small></span><input type="checkbox" class="st-sw" id="lmLinked"></label>
+    <div class="lm-opt" data-for="chatfocus"><span>Stream columns</span><div class="lm-sw" id="lmCols"><button data-n="1">1</button><button data-n="2">2</button><button data-n="3">3</button></div></div>
+    <label class="lm-opt" data-for="auto"><span>Fit in channels that open by themselves<small>Added as the last stream when they go live.</small></span><input type="checkbox" class="st-sw" id="lmAutoFit"></label>
+  </div>
   <div class="lm-sec">Switch control</div>
   <div class="lm-sw" id="swModes">
     <button data-sw="dock" title="Under the big stream, in Focus view only">Docked</button>
@@ -2417,6 +2440,11 @@ let autoOpen = [];
 try { autoOpen = JSON.parse(localStorage.getItem('kickMultiview.autoOpen') || '[]'); } catch {}
 let autoFit = false;                  // Settings > Layouts: in Auto layout, fit them in as the last streams
 try { autoFit = localStorage.getItem('kickMultiview.autoFit') === '1'; } catch {}
+function setAutoFit(on){
+  autoFit = on;
+  try { localStorage.setItem('kickMultiview.autoFit', on ? '1' : '0'); } catch {}
+  $('#autoFit').checked = $('#lmAutoFit').checked = on;
+}
 const autoDone = new Set();            // opened during this live session (closing it won't make it reopen until the next time it goes live)
 function toggleAutoOpen(ch){
   autoOpen = autoOpen.includes(ch) ? autoOpen.filter(c => c !== ch) : [...autoOpen, ch];
@@ -3292,7 +3320,6 @@ function setColsMode(on){
     clearFeaturedLook();
     wins.forEach(w => w.el.classList.remove('link-top', 'link-bot'));
   }
-  $('#linkBtn').hidden = !(on && ROLE === 'main');
   try { if (ROLE === 'main') on ? localStorage.setItem('kickMultiview.cols', '1') : localStorage.removeItem('kickMultiview.cols'); } catch {}
   updateLayoutMenu(); updateLinkBtn();
   if (typeof updateModeClass === 'function') updateModeClass();
@@ -3304,12 +3331,7 @@ function setLinked(on){
   updateLinkBtn();
   if (colsMode) columnsLayout();
 }
-function updateLinkBtn(){
-  const b = $('#linkBtn'); if (!b) return;
-  b.classList.toggle('on', linked);
-  b.querySelector('span').textContent = linked ? 'Linked' : 'Unlinked';
-  $('#lyLinked').checked = linked;
-}
+function updateLinkBtn(){ $('#lmLinked').checked = $('#lyLinked').checked = linked; }
 function setFeatured(ch){
   featuredCh = ch;
   try { ch ? localStorage.setItem('kickMultiview.featured', ch) : localStorage.removeItem('kickMultiview.featured'); } catch {}
@@ -4293,6 +4315,14 @@ function updateLayoutMenu(){
   const cur = curLayout();
   b.textContent = (activePreset ? 'Layout: ' + activePreset : names[cur] ? 'Layout: ' + names[cur] : 'Layout') + ' ▾';
   document.querySelectorAll('#layoutMenu button[data-l]').forEach(x => x.classList.toggle('on', x.dataset.l === cur && !activePreset));
+  // the hint line describes the current layout until you point at another; options are the current layout's
+  const curBtn = document.querySelector(`#layoutMenu button[data-l="${cur}"]`);
+  $('#lmHint').textContent = curBtn ? curBtn.querySelector('span').textContent : 'Pick a layout.';
+  let any = false;
+  document.querySelectorAll('#lmOpts .lm-opt').forEach(o => { o.hidden = !o.dataset.for.split(' ').includes(cur); any ||= !o.hidden; });
+  $('#lmOpts').hidden = !any;
+  const nVids = wins.filter(w => w.kind !== 'chat').length;
+  document.querySelectorAll('#lmCols button').forEach(b => { b.classList.toggle('on', +b.dataset.n === streamCols); b.disabled = +b.dataset.n > Math.max(1, Math.min(3, nVids)); });
   if (typeof renderPresets === 'function') renderPresets();
   if (!$('#settingsDlg').hidden) renderLayoutsPane();
   updateSwBtn();
@@ -4810,6 +4840,15 @@ if (ROLE === 'main'){
   });
   $('#presetSave').onclick = () => savePresetFromInput();
   $('#layoutSet').onclick = () => { layoutMenu.hidden = true; openSettings('layouts'); };
+  const hint = b => { $('#lmHint').textContent = b.querySelector('span').textContent; };
+  layoutMenu.querySelectorAll('.lm-grid button').forEach(b => { b.addEventListener('pointerenter', () => hint(b)); b.addEventListener('focus', () => hint(b)); });
+  layoutMenu.querySelector('.lm-grid').addEventListener('pointerleave', updateLayoutMenu);
+  $('#lmLinked').addEventListener('change', e => setLinked(e.target.checked));
+  $('#lmAutoFit').addEventListener('change', e => setAutoFit(e.target.checked));
+  $('#lmCols').addEventListener('click', e => {
+    const b = e.target.closest('button[data-n]'); if (!b || b.disabled) return;
+    streamCols = +b.dataset.n; chatFocusLayout(false); updateLayoutMenu();
+  });
   // Settings > Layouts: each layout from the menu, with its options under it
   const lyList = $('#lyList');
   layoutMenu.querySelectorAll('button[data-l]').forEach(b => {
@@ -4839,8 +4878,6 @@ function renderLayoutsPane(){
   renderPresetsPane();
 }
 $('#colNav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) scrollCols(+b.dataset.d); });
-$('#linkBtn').onclick = () => setLinked(!linked);
-$('#linkBtn i').outerHTML = icon.link;
 // In Columns mode, scrolling the mouse wheel over title bars or empty space moves sideways.
 stage.addEventListener('wheel', e => {
   if (!colsMode || !(e.target === stage || e.target === hbar || e.target.closest('.bar, #hscroll, #colStrip'))) return;
@@ -6007,8 +6044,8 @@ document.addEventListener('keydown', e => {                    // Ctrl+, / ⌘, 
   try { const v = localStorage.getItem(key); if (v !== null) c.checked = v === '1'; } catch {}
   c.addEventListener('change', () => { try { localStorage.setItem(key, c.checked ? '1' : '0'); } catch {} });
 });
-$('#autoFit').checked = autoFit;
-$('#autoFit').addEventListener('change', e => { autoFit = e.target.checked; try { localStorage.setItem('kickMultiview.autoFit', autoFit ? '1' : '0'); } catch {} });
+$('#autoFit').checked = $('#lmAutoFit').checked = autoFit;
+$('#autoFit').addEventListener('change', e => setAutoFit(e.target.checked));
 $('#keysSet').checked = keysOn;
 $('#keysSet').addEventListener('change', e => setKeysOn(e.target.checked));
 
@@ -6664,7 +6701,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.profileGet){
   const hdr = document.querySelector('header'), moreBtn = $('#moreBtn'), moreMenu = $('#moreMenu');
   const LEVELS = ['c1', 'c2', 'c3'];
   const ORDER = ['#tile', '#settingsBtn', '#clear', '#focusBtn',
-    '#redoBtn', '#popBtn', '#spotBtn', '#capBtn', '#chatZoom', '#linkBtn', '#profBtn', '#undoBtn', '#colNav'];
+    '#redoBtn', '#popBtn', '#spotBtn', '#capBtn', '#chatZoom', '#profBtn', '#undoBtn', '#colNav'];
   const items = ORDER.map(sel => $(sel)).filter(Boolean).map(el => {
     const mark = document.createComment(' ' + el.id + ' ');        // where it goes back in the toolbar
     el.before(mark);

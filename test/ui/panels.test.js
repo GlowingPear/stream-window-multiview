@@ -135,14 +135,41 @@ test('Settings > Layouts: each layout with its options, Use, Linked, the switch 
   await page.click('#lyList [data-l=columns] .ly-use');
   assert.equal(await page.isVisible('#settingsDlg'), false, 'Use closes Settings');
   assert.ok(await page.evaluate(() => document.body.classList.contains('cols')), 'and switches');
-  assert.equal(await page.textContent('#linkBtn span'), 'Unlinked', 'the toolbar button follows');
-  await page.click('#linkBtn');
+  await page.click('#layoutBtn');
+  assert.equal(await page.isChecked('#lmLinked'), false, 'the menu\'s switch follows');
+  assert.equal(await page.isChecked('#lmAutoFit'), true);
+  await page.check('#lmLinked');
+  assert.ok(await page.isVisible('#layoutMenu'), 'the menu stays open for its options');
+  await page.click('#layoutBtn');
   await page.evaluate(() => openSettings('layouts'));
-  assert.equal(await page.isChecked('#lyLinked'), true, 'and the switch follows the button');
+  assert.equal(await page.isChecked('#lyLinked'), true, 'and Settings follows the menu');
   assert.equal(await page.textContent('#lyList [data-l=columns] .ly-use'), 'In use');
   await page.keyboard.press('Escape');
   await page.click('#swBtn');
   assert.equal(await page.inputValue('#lySw'), 'dock', 'the switch control button changes it too');
+});
+
+test('Layout menu: pictures with a hint line, and the current layout\'s options (Chat focus stream columns)', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'bravo');
+  await press(page, 'Shift+C');
+  await page.click('#layoutBtn');
+  assert.equal(await page.textContent('#lmHint'), 'Streams down the side at exact video size, chats get the rest.', 'describes the current layout');
+  await page.hover('#layoutMenu [data-l=tile]');
+  assert.equal(await page.textContent('#lmHint'), 'Every window gets equal space.', 'and the one you point at');
+  await page.hover('#layoutMenu .lm-head');
+  assert.match(await page.textContent('#lmHint'), /^Streams down the side/, 'back when you move away');
+  assert.deepEqual(await page.$$eval('#lmOpts .lm-opt', l => l.filter(o => !o.hidden).map(o => o.dataset.for)), ['chatfocus']);
+  assert.ok(await page.isDisabled('#lmCols [data-n="3"]'), 'no more columns than streams');
+  const x0 = (await box(win(page, 'bravo'))).x;
+  await page.click('#lmCols [data-n="2"]');
+  await page.waitForTimeout(350);
+  assert.ok(await page.locator('#lmCols [data-n="2"]').evaluate(e => e.classList.contains('on')));
+  assert.notEqual((await box(win(page, 'bravo'))).x, x0, 'the streams went side by side');
+  await page.click('#layoutMenu [data-l=tile]');
+  assert.equal(await page.isVisible('#layoutMenu'), false, 'picking a layout closes the menu');
+  await page.click('#layoutBtn');
+  assert.equal(await page.isVisible('#lmOpts'), false, 'Tile has no options');
 });
 
 test('Game focus: pick a stream for the game area, change the panel size and side', async t => {

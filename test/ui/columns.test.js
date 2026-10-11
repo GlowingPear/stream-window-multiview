@@ -66,7 +66,10 @@ test('Columns: more than fit scroll sideways with the arrows, the strip, the scr
 
 test('Columns, Linked: drag a column by its title bar to move the stream and its chat together', async t => {
   const page = await columns(t);
-  assert.ok(await page.isVisible('#linkBtn'));
+  await page.click('#layoutBtn');
+  assert.ok(await page.isVisible('#lmLinked'), 'Linked is in the Layout menu\'s options');
+  assert.ok(await page.isChecked('#lmLinked'));
+  await page.click('#layoutBtn');
   assert.ok(await page.evaluate(() => document.body.classList.contains('linked')), 'linked at first');
   const a = await box(win(page, 'alpha').locator('.bar')), c = await box(win(page, 'charlie').locator('.bar'));
   // grab the bar's left edge (in narrow columns its middle is the channel dropdown)
@@ -78,13 +81,15 @@ test('Columns, Linked: drag a column by its title bar to move the stream and its
   assert.equal(sx, cx, 'its chat came along');
   assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.colOrder'))).indexOf('alpha') > 0, true, 'the order is remembered');
   await press(page, 'a');
-  assert.equal(await page.isVisible('#linkBtn'), false, 'no Linked button outside Columns and Focus view');
+  await page.click('#layoutBtn');
+  assert.equal(await page.isVisible('#lmLinked'), false, 'no Linked outside Columns and Focus view');
+  assert.ok(await page.isVisible('#lmAutoFit'), 'Auto layout has its own option');
 
 });
 
 test('Columns, Unlinked: each window moves on its own', async t => {
   const page = await columns(t);
-  await page.click('#linkBtn');
+  await page.click('#layoutBtn'); await page.uncheck('#lmLinked'); await page.click('#layoutBtn');
   assert.equal(await page.evaluate(() => document.body.classList.contains('linked')), false, 'unlinked');
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.linked')), '0');
   await page.waitForTimeout(400);
