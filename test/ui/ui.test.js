@@ -447,3 +447,24 @@ test('Auto layout fills the space with an odd number of streams: no empty cells,
   const streams = w.filter(x => x.kind === 'stream');
   for (const s of streams) assert.ok(Math.abs((s.h - 30) / s.w - 9 / 16) < 0.12, `${s.title} is about 16:9`);
 });
+
+test('Hide bar: the button says Show bar while the bar is hidden, and brings it back', async t => {
+  const page = await openApp(t);
+  const hidden = () => page.evaluate(() => document.body.classList.contains('focus'));
+  await page.click('#focusBtn');
+  assert.equal(await hidden(), true);
+  assert.equal(await page.textContent('#focusBtn .l-long'), 'Show bar');
+  await page.mouse.move(800, 2);   // the top edge: the bar peeks out
+  await page.waitForTimeout(400);
+  await page.click('#focusBtn');
+  assert.equal(await hidden(), false, 'clicking it again keeps the bar showing');
+  assert.equal(await page.textContent('#focusBtn .l-long'), 'Hide bar');
+  await page.mouse.move(800, 400);
+  await page.waitForTimeout(400);
+  assert.equal(await page.$eval('header', h => h.getBoundingClientRect().top), 0, 'still showing after the mouse leaves');
+  await page.keyboard.press('h');
+  assert.equal(await hidden(), true, 'H hides it');
+  await page.keyboard.press('Escape');
+  assert.equal(await hidden(), false, 'Esc brings it back');
+  assert.equal(await page.textContent('#focusBtn .l-long'), 'Hide bar');
+});

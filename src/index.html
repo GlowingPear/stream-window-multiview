@@ -3283,13 +3283,23 @@ $('#auto').onclick = () => { lastLayout = 'auto'; autoLayout(); };
 $('#chatFocus').onclick = () => chatFocusLayout(lastLayout === 'chatfocus');
 $('#tile').onclick = tile;
 $('#clear').onclick = async () => { if (wins.length && await ask('Close all windows?', 'Every stream, chat and other window closes. Undo brings them back.', { ok: 'Close all', danger: true })) { [...wins].forEach(w => { stopCapture(w); w.el.remove(); }); wins = []; updateEmpty(); save(); } };
-$('#focusBtn').onclick = () => { document.body.classList.add('focus'); input.blur(); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); };
+// Hide bar: the toolbar slides away (it peeks out when the mouse touches the top edge). The same button,
+// Esc and H bring it back.
+function setBarHidden(on){
+  document.body.classList.toggle('focus', on);
+  document.body.classList.remove('peek');
+  const b = $('#focusBtn');
+  b.querySelector('.l-long').textContent = on ? 'Show bar' : 'Hide bar';
+  b.querySelector('.l-short').textContent = on ? 'Show' : 'Hide';
+  b.title = on ? 'Keep this toolbar showing (or press Esc)' : 'Hide this toolbar (move mouse to top edge or press Esc to bring it back)';
+  if (on) input.blur();
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 220);
+}
+$('#focusBtn').onclick = () => setBarHidden(!document.body.classList.contains('focus'));
 $('#reveal').addEventListener('mouseenter', () => document.body.classList.add('peek'));
 document.querySelector('header').addEventListener('mouseleave', () => document.body.classList.remove('peek'));
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && document.body.classList.contains('focus')){
-    document.body.classList.remove('focus', 'peek'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220);
-  }
+  if (e.key === 'Escape' && document.body.classList.contains('focus')) setBarHidden(false);
 });
 let refitT;
 window.addEventListener('resize', () => {
@@ -4191,7 +4201,7 @@ document.addEventListener('keydown', e => {
     case 'n': case '/': input.focus(); input.select(); break;
     case 'b': $('#savedBtn').click(); break;
     case 'w': openCapturePicker(null); break;
-    case 'h': if (document.body.classList.contains('focus')){ document.body.classList.remove('focus', 'peek'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); } else $('#focusBtn').click(); break;
+    case 'h': setBarHidden(!document.body.classList.contains('focus')); break;
     case 'f': if (isFocusView()) layoutPick('columns'); else layoutPick('focus'); break;
     case 'c': layoutPick(e.shiftKey ? 'chatfocus' : 'columns'); break;
     case 'g': layoutPick('game'); break;
