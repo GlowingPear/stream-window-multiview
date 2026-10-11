@@ -19,7 +19,11 @@ function electronPath() {
 
 const T = { timeout: 45000 };   // per test, so one stuck test can't hold up the run
 const KEYS = { good: 'good_key_0123456789abcdefghij', bad: 'bad_key_0123456789abcdefghijk', quota: 'quota_key_0123456789abcdefgh' };
-let app, win, server, asked = [];
+let app, win, server, asked = [], askedIds = [];
+// The channel feed and the stream behind it, for the live check: the feed goes down (404) like YouTube's does.
+const CH = 'UCfeedtest0123456789abcd', VID = 'k62wgMPmQeo', yt = { feedUp: true, live: true };
+const feedXml = () => `<?xml version="1.0"?><feed xmlns:yt="http://www.youtube.com/xml/schemas/2015"><yt:channelId>${CH}</yt:channelId>` +
+  `<author><name>Feed Test</name></author><entry><yt:videoId>${VID}</yt:videoId></entry></feed>`;
 const pageErrors = [];
 
 // Google's YouTube Data API, as far as the key test needs it.
@@ -27,9 +31,16 @@ function fakeGoogle() {
   return new Promise(resolve => {
     const srv = http.createServer((req, res) => {
       const u = new URL(req.url, 'http://x'), key = u.searchParams.get('key');
+      if (u.pathname === '/feeds') {
+        res.writeHead(yt.feedUp ? 200 : 404, { 'Content-Type': 'text/xml' });
+        return res.end(yt.feedUp && u.searchParams.get('channel_id') === CH ? feedXml() : 'Not Found');
+      }
       asked.push(u.pathname);
+      askedIds.push(u.searchParams.get('id') || '');
       const send = (code, body) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
-      if (key === KEYS.good) return send(200, { items: [] });
+      if (key === KEYS.good) return send(200, { items: (u.searchParams.get('id') || '').split(',').filter(v => v === VID).map(id => ({ id,
+        snippet: { title: 'Stand-in stream', channelId: CH, channelTitle: 'Feed Test', liveBroadcastContent: yt.live ? 'live' : 'none' },
+        liveStreamingDetails: { actualStartTime: '2026-10-11T21:06:29Z', concurrentViewers: '42', ...(yt.live ? {} : { actualEndTime: '2026-10-12T09:00:00Z' }) } })) });
       if (key === KEYS.quota) return send(403, { error: { code: 403, errors: [{ reason: 'quotaExceeded' }] } });
       send(400, { error: { code: 400, errors: [{ reason: 'badRequest' }], details: [{ reason: 'API_KEY_INVALID' }] } });
     });
@@ -42,7 +53,7 @@ test.before(async () => {
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-ytkey-'));
   fs.mkdirSync(path.join(data, 'Stream Multiview'), { recursive: true });
   fs.writeFileSync(path.join(data, 'Stream Multiview', 'updates.json'), JSON.stringify({ auto: false }));
-  const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', SMV_YT_API: `http://127.0.0.1:${server.address().port}`, ELECTRON_ENABLE_LOGGING: '0' };
+  const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', SMV_YT_API: `http://127.0.0.1:${server.address().port}`, SMV_YT_FEED: `http://127.0.0.1:${server.address().port}/feeds`, ELECTRON_ENABLE_LOGGING: '0' };
   delete env.ELECTRON_RUN_AS_NODE;
   app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', ROOT], env, timeout: 60000 });
   const proc = app.process();
@@ -102,6 +113,28 @@ test('a working key is kept, and the page only hears that one is set', T, async 
   const st = await win.evaluate(() => window.kmv.ytKeyStatus());
   assert.equal(st.set, true);
   assert.ok(!JSON.stringify(st).includes(KEYS.good), 'the key itself never comes back to the page');
+});
+
+test('with the key, a live channel stays live while YouTube\'s feeds are down (they answer 404)', T, async () => {
+  const ch = 'yt:c:' + CH;
+  const liveInfo = () => win.evaluate(c => window.kmv.liveSnapshot().then(s => s[c] || null), ch);
+  await win.evaluate(c => window.kmv.watchLive({ channels: [c] }), ch);
+  await win.waitForFunction(c => window.kmv.liveSnapshot().then(s => s[c] && s[c].live), ch);
+  assert.equal((await liveInfo()).videoId, VID, 'found through the feed and the API');
+  yt.feedUp = false;
+  for (let i = 0; i < 4; i++) {   // past the 3 rounds after which the feed counts as down
+    askedIds = [];
+    const before = (await liveInfo()).checked;
+    await win.evaluate(() => window.kmv.checkLiveNow());
+    await win.waitForFunction(([c, t]) => window.kmv.liveSnapshot().then(s => s[c] && s[c].checked > t), [ch, before]);
+    const info = await liveInfo();
+    assert.equal(info.live, true, 'still live, round ' + (i + 1));
+    assert.equal(info.missing, undefined, 'a feed 404 is not a missing channel');
+    assert.equal(info.viewers, 42, 'with fresh numbers from the API');
+    assert.ok(askedIds.some(q => q.split(',').includes(VID)), 'the API is asked about the same stream');
+  }
+  await win.evaluate(() => window.kmv.watchLive({ channels: [] }));
+  yt.feedUp = true;
 });
 
 test('removing the key', T, async () => {

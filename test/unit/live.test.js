@@ -3,7 +3,7 @@
 // Every site is replaced by a fake, so this runs offline.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createLiveWatcher, parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate,
+const { createLiveWatcher, parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed,
   nextPacificMidnight, KICK_FOLLOW_APIS } = require('../../src/live');
 
 const info = (live, extra = {}) => ({ live, title: live ? 'title' : '', viewers: live ? 5 : null, category: '', name: 'n', checked: 1, ...extra });
@@ -123,6 +123,38 @@ test('YouTube key: a refused key stays off until it\'s changed; a hiccup changes
   g.reset();
   assert.equal(g.usable(), true, 'a new key gets a fresh start');
   assert.equal(g.fail({ status: 403, reason: 'accessNotConfigured' }), 'badkey', 'YouTube Data API not enabled for the key');
+});
+
+test('YouTube feeds: down after 3 rounds with no answer, then tried again after 1 min, doubling up to 30 min', () => {
+  let t = 0;
+  const g = createFeedGate({ now: () => t });
+  g.fail(); g.fail();
+  assert.equal(g.usable(), true, 'two misses: still asked');
+  assert.equal(g.down(), false);
+  const waits = [];
+  for (let i = 0; i < 7; i++) { g.fail(); waits.push(g.status().until - t); }
+  assert.deepEqual(waits.map(ms => ms / 60e3), [1, 2, 4, 8, 16, 30, 30]);
+  assert.equal(g.down(), true);
+  assert.equal(g.usable(), false, 'not asked while it waits');
+  t += 30 * 60e3;
+  assert.equal(g.usable(), true, 'asked again once the wait is over');
+  g.ok();
+  assert.equal(g.down(), false, 'one answer puts it back up');
+  g.fail(); g.fail(); g.fail();
+  assert.equal(g.status().until - t, 60e3, 'starts again from 1 min');
+});
+
+test('YouTube feeds: what happens to a channel whose feed couldn\'t be read', () => {
+  const live = { live: true, videoId: 'k62wgMPmQeo', name: 'n' }, off = { live: false, videoId: null, name: 'n' };
+  const failing = { allFailing: true, down: false };
+  assert.equal(ytNoFeed(live, failing), 'recheck', 'was live: ask the API about the same video');
+  assert.equal(ytNoFeed(live, { allFailing: true, down: true }), 'recheck', 'even while the feed is down');
+  assert.equal(ytNoFeed(off, failing), 'keep', 'every feed failing for a round or two: keep its last result');
+  assert.equal(ytNoFeed(off, { allFailing: true, down: true }), 'page', 'feed down: check its page');
+  assert.equal(ytNoFeed(off, { allFailing: false, down: false }), 'page', 'only this channel\'s feed fails: check its page');
+  assert.equal(ytNoFeed(undefined, failing), 'page', 'never checked yet: check its page');
+  assert.equal(ytNoFeed({ live: false, missing: true }, failing), 'page');
+  assert.equal(ytNoFeed({ live: true, videoId: null }, failing), 'keep', 'live without a known video: nothing to ask the API');
 });
 
 /* ---------- the watcher ---------- */

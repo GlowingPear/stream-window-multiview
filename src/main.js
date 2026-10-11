@@ -2,7 +2,7 @@
 const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage } = require('electron');
 const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
   validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink,
-  parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, normCh, toTime } = require('./live');
+  parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, normCh, toTime } = require('./live');
 const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel } = require('./profiles');
 const path = require('path');
 const fs = require('fs');
@@ -432,6 +432,7 @@ function ytKeyChanged() {
   if (st !== lastYtState) { lastYtState = st; mainWin?.webContents.send('ytkey:status', ytKeyStatus()); }
 }
 const YT_API = process.env.SMV_YT_API || 'https://www.googleapis.com/youtube/v3';   // tests point this at a stand-in
+const YT_FEED = process.env.SMV_YT_FEED || 'https://www.youtube.com/feeds/videos.xml';   // and this
 // One YouTube Data API call. Error answers go to the gate (which decides when to use the key again) and throw.
 async function ytApi(pathAndQuery, key = ytKey) {
   const r = await fetch(`${YT_API}/${pathAndQuery}&key=${encodeURIComponent(key)}`, { headers: { Accept: 'application/json' } });
@@ -449,23 +450,37 @@ async function ytChannelId(ch) {
   ytIds.set(ch, id);
   return id;
 }
+const ytFeed = createFeedGate();   // the channel feeds, shared: they go down for everyone at once
 async function ytBatch(chs) {
   if (!chs.length || !ytKey || !ytGate.usable()) return { results: [], rest: chs };
-  const results = [], rest = [], feeds = new Map(), ask = new Set();
+  const results = [], rest = [], feeds = new Map(), ask = new Set(), noFeed = [], recheck = new Map();
   try {
+    const tryFeed = ytFeed.usable();
+    let answered = false;
     for (const ch of chs) {
       if (ch.startsWith('yt:v:')) { ask.add(ch.slice(5)); continue; }
       const id = await ytChannelId(ch);
       if (!id) { results.push([ch, { missing: true }]); continue; }
       let f = null;
-      try {
-        const r = await fetch('https://www.youtube.com/feeds/videos.xml?channel_id=' + id, { headers: BROWSER_HEADERS() });
-        if (r.status === 404) { results.push([ch, { missing: true }]); continue; }
-        if (r.ok) f = parseYtFeed(await r.text());
-      } catch {}
-      if (!f) { rest.push(ch); continue; }
+      if (tryFeed) {
+        try {
+          // A 404 here is the feed being down (it happens to every channel at once), not a missing channel
+          const r = await fetch(YT_FEED + '?channel_id=' + id, { headers: BROWSER_HEADERS() });
+          if (r.ok) f = parseYtFeed(await r.text());
+        } catch {}
+      }
+      if (!f) { noFeed.push(ch); continue; }
+      answered = true;
       feeds.set(ch, f);
       f.ids.forEach(v => { if (!ytDone.has(v)) ask.add(v); });
+    }
+    if (answered) ytFeed.ok(); else if (tryFeed && noFeed.length) ytFeed.fail();
+    const prev = noFeed.length ? watcher.snapshot() : {};
+    for (const ch of noFeed) {
+      const what = ytNoFeed(prev[ch], { allFailing: !answered, down: ytFeed.down() });
+      if (what === 'recheck' && !ytDone.has(prev[ch].videoId)) { recheck.set(ch, prev[ch].videoId); ask.add(prev[ch].videoId); }
+      else if (what === 'page' || what === 'recheck') rest.push(ch);
+      // 'keep': left out of this round, so its last result stays
     }
     const vids = new Map(), ids = [...ask];
     for (let i = 0; i < ids.length; i += 50) {
@@ -476,13 +491,20 @@ async function ytBatch(chs) {
     if (ytDone.size > 50000) ytDone.clear();
     ytGate.ok(); ytKeyChanged();
     const at = Date.now();
-    for (const ch of chs) {
-      if (results.some(([c]) => c === ch) || rest.includes(ch)) continue;
-      const f = feeds.get(ch), cand = ch.startsWith('yt:v:') ? [ch.slice(5)] : f.ids;
-      const liveId = cand.find(v => vids.has(v) && vids.get(v).state === 'live');
+    const result = (ch, liveId, f) => {
       const v = liveId && vids.get(liveId);
-      results.push([ch, { live: !!v, videoId: liveId || null, title: v ? v.title : '', viewers: v ? v.viewers : null, category: '', startedAt: v ? v.startedAt : null,
-        name: (f && f.name) || (v && v.channelTitle) || ch.replace(/^yt:(v:|c:)?/, ''), checked: at }]);
+      return [ch, { live: !!v, videoId: liveId || null, title: v ? v.title : '', viewers: v ? v.viewers : null, category: '', startedAt: v ? v.startedAt : null,
+        name: (f && f.name) || (v && v.channelTitle) || ch.replace(/^yt:(v:|c:)?/, ''), checked: at }];
+    };
+    for (const [ch, vid] of recheck) {
+      // still live: the same stream. Ended: a new one may have started, which only its page can tell
+      if (vids.has(vid) && vids.get(vid).state === 'live') results.push(result(ch, vid, { name: prev[ch].name })); else rest.push(ch);
+    }
+    for (const ch of chs) {
+      if (ch.startsWith('yt:v:')) { const v = ch.slice(5); results.push(result(ch, vids.has(v) && vids.get(v).state === 'live' ? v : null, null)); continue; }
+      const f = feeds.get(ch);
+      if (!f) continue;
+      results.push(result(ch, f.ids.find(v => vids.has(v) && vids.get(v).state === 'live'), f));
     }
     return { results, rest };
   } catch (e) {
