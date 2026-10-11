@@ -106,7 +106,7 @@ test('anything unsafe in the notes is removed', T, async () => {
   assert.ok(await win.isVisible('body'));
 });
 
-test('a video in the notes shows with controls, at its permanent address, and can\'t autoplay or run code', T, async () => {
+test('a video in the notes shows with controls, at its permanent address, without GitHub\'s file name, and can\'t autoplay or run code', T, async () => {
   const id = 'acd881d3-6bff-4125-a41a-7aed2363a94e';
   await showUpdates({
     notes: 'x',
@@ -116,12 +116,11 @@ test('a video in the notes shows with controls, at its permanent address, and ca
       + '<video src="https://example.com/other.mp4"></video><video src="javascript:window.bad=2" autoplay></video>'
   });
   const n = await win.$eval('.upd-notes', e => ({
-    details: e.querySelector('details')?.open, summary: e.querySelector('summary')?.textContent, svg: !!e.querySelector('svg'),
+    text: e.textContent.trim(), boxes: e.querySelectorAll('details,summary,svg').length,
     videos: [...e.querySelectorAll('video')].map(v => ({ src: v.getAttribute('src'), attrs: v.getAttributeNames().sort().join(' ') }))
   }));
-  assert.equal(n.details, true, 'the video box is open, like on GitHub');
-  assert.equal(n.summary, 'demo.mp4');
-  assert.equal(n.svg, false);
+  assert.equal(n.text, '', 'the file name is hidden');
+  assert.equal(n.boxes, 0, 'no box to collapse: the video always shows');
   assert.deepEqual(n.videos, [
     { src: `https://github.com/user-attachments/assets/${id}`, attrs: 'controls muted preload src' },
     { src: 'https://example.com/other.mp4', attrs: 'controls muted preload src' },
