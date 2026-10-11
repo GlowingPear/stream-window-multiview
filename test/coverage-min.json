@@ -1,0 +1,15 @@
+{
+  "src/firefox-login.js": 8,
+  "src/harden.js": 75,
+  "src/index.html": 88,
+  "src/live.js": 80,
+  "src/main.js": 60,
+  "src/spam.js": 99,
+  "src/switcher.html": 60,
+  "src/updater.js": 94,
+  "scripts/dev-tools.js": 32,
+  "scripts/dev.js": 42,
+  "scripts/prepare-release.js": 99,
+  "scripts/release-notes.js": 99,
+  "scripts/worktree.js": 30
+}

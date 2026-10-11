@@ -81,8 +81,10 @@ test('show another app\'s window: pick it, it plays as a live picture, pause it,
 
   await a.win.fill('#url', 'alpha'); await a.win.click('#add');   // the switch control shows when there's a stream
   await a.win.keyboard.press('s');                     // the switch control lists it
+  await a.win.waitForSelector('#featSwitch .fs-item.cap .fs-play');
+  await a.win.waitForTimeout(500);                    // the switch control settles after the new stream
   await a.win.click('#featSwitch .fs-item.cap .fs-play');
-  assert.equal(await a.win.$eval('#stage .win.capture video', v => v.srcObject.getVideoTracks()[0].enabled), false, 'paused: the picture freezes');
+  await a.win.waitForFunction(() => document.querySelector('#stage .win.capture video').srcObject.getVideoTracks()[0].enabled === false, null, { timeout: 3000 });   // paused: the picture freezes
   await a.win.click('#featSwitch .fs-item.cap .fs-play');
   await a.win.click('#featSwitch .fs-item.cap .fs-rl');
   await a.win.waitForFunction(() => document.querySelector('#stage .win.capture video').readyState >= 2);

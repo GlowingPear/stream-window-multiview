@@ -15,8 +15,9 @@ function electronPath() {
 }
 
 // opts.storage: localStorage values to start with (the page is reloaded once with them).
+// opts.data: the data folder of an earlier launch, to start the app again with what it saved.
 async function launchApp(opts = {}) {
-  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-test-'));
+  const data = opts.data || fs.mkdtempSync(path.join(os.tmpdir(), 'smv-test-'));
   fs.mkdirSync(path.join(data, 'Stream Multiview'), { recursive: true });
   fs.writeFileSync(path.join(data, 'Stream Multiview', 'updates.json'), JSON.stringify({ auto: false }));
   const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' };
