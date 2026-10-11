@@ -68,7 +68,7 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 
 ## Settings (gear button)
 - Click the gear in the toolbar, or press Ctrl+, (Mac: ⌘,). It's also in the menu bar: on a Mac in the Stream Multiview menu, on Windows and Linux in File.
-- **General**: start new streams muted, snap windows while you drag, auto-pause hidden streams, and keyboard shortcuts on or off.
+- **General**: start new streams muted, snap windows while you drag, auto-pause hidden streams, messages (on or off, and where they show: top, bottom or a corner) and keyboard shortcuts on or off.
 - **Accounts**: logins, Import follows, "Forget my login" and "Watch signed in".
 - **YouTube**: your YouTube login, skipping ads, YouTube's cookie question and the YouTube API key (see below).
 - **Mentions**: your Kick and Twitch usernames, and how a chat window gets your attention when someone mentions you (see Alerts below).

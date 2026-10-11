@@ -490,6 +490,27 @@ test('Settings opens from the gear and Ctrl+, shows only what works in a browser
   assert.equal(await page.isChecked('#keysSet'), true);
 });
 
+test('messages show as a toast where Settings puts it, close on a click, and can be turned off', async t => {
+  const page = await openApp(t);
+  assert.equal(await page.evaluate(() => !!document.querySelector('header #msg')), false, 'not in the toolbar any more');
+  await page.fill('#url', '%%%'); await page.click('#add');
+  assert.match(await page.textContent('#msg'), /Couldn.t read that link/);
+  assert.ok(await page.isVisible('#msg'));
+  assert.equal(await page.getAttribute('#msg', 'data-pos'), 'tc', 'under the toolbar to start with');
+  await page.click('#msg');
+  assert.ok(await page.isHidden('#msg'), 'a click closes it');
+  await page.click('#settingsBtn'); await page.click('#settingsDlg .st-rail [data-s=general]');
+  await page.selectOption('#msgPos', 'br');
+  assert.equal(await page.getAttribute('#msg', 'data-pos'), 'br');
+  assert.ok(await page.isVisible('#msg'), 'it shows where they go now, over Settings');
+  await page.uncheck('#msgOn');
+  assert.ok(await page.isDisabled('#msgPos'));
+  await page.reload();
+  assert.deepEqual(await page.evaluate(() => [msgOn.checked, msgPos.value]), [false, 'br'], 'remembered');
+  await page.fill('#url', '%%%'); await page.click('#add');
+  assert.ok(await page.isHidden('#msg'), 'off: nothing shows');
+});
+
 test('a chat window lights up for a mention until you click it, and gets stronger while unseen', async t => {
   const page = await openApp(t);
   await page.evaluate(() => localStorage.setItem('kickMultiview.alerts', JSON.stringify({ mention: { esc: 10, max: 'flash', sound: 'none', color: '#123456' } })));
