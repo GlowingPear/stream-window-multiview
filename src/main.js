@@ -306,6 +306,20 @@ ipcMain.handle('notify:test', () => new Promise(res => {
   setTimeout(() => res('sent'), 3000);
   n.show();
 }));
+// The app's messages ("Logged out of Twitch") as desktop notifications (Settings > Notifications > Show them as).
+// The same message again within 3 seconds isn't sent twice.
+let lastMessage = { text: '', t: 0 };
+ipcMain.on('notify:message', (_e, text) => {
+  text = String(text || '').slice(0, 200);
+  if (!text || !desktopNotify || !Notification.isSupported()) return;
+  if (text === lastMessage.text && Date.now() - lastMessage.t < 3000) return;
+  lastMessage = { text, t: Date.now() };
+  const n = new Notification({ title: 'Stream Multiview', body: text, icon: ICON });
+  liveNotes.add(n);
+  n.on('click', () => { if (mainWin) { if (mainWin.isMinimized()) mainWin.restore(); mainWin.show(); mainWin.focus(); } liveNotes.delete(n); });
+  n.on('close', () => liveNotes.delete(n));
+  n.show();
+});
 ipcMain.handle('notify:settings', () => {
   const url = process.platform === 'darwin' ? 'x-apple.systempreferences:com.apple.Notifications-Settings.extension'
     : process.platform === 'win32' ? 'ms-settings:notifications' : null;

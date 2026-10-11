@@ -946,9 +946,11 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       </section>
       <section class="st-pane" data-s="notify" hidden>
         <h4>Notifications</h4><p class="st-sub">Messages in the app, and your computer's own notifications.</p>
-        <div class="st-sec">In the app</div>
+        <div class="st-sec">Messages</div>
         <div class="st-row"><span class="st-t">Show messages<small>Short notes like "Logged out of Twitch" or "Couldn't read that link". They go after a few seconds; click one to close it.</small></span>
           <select id="msgPos" aria-label="Where messages show"><option value="tc">Top</option><option value="tl">Top left</option><option value="tr">Top right</option><option value="bc">Bottom</option><option value="bl">Bottom left</option><option value="br">Bottom right</option></select><input type="checkbox" class="st-sw" id="msgOn" checked aria-label="Show messages"></div>
+        <div class="st-row msg-via" hidden><span class="st-t">Show them as<small>A desktop notification only shows while desktop notifications (below) are on; otherwise it's a toast.</small></span>
+          <select id="msgVia" aria-label="Show messages as"><option value="toast">Toast in the app</option><option value="desktop">Desktop notification</option></select></div>
         <div class="dn-sec" hidden>
           <div class="st-sec">Desktop notifications</div>
           <label class="st-row"><span class="st-t">Desktop notifications<small>Your computer's notifications, also while the app is in the background. Off: none at all, whatever is chosen below.</small></span><input type="checkbox" class="st-sw" id="dnOn" checked></label>
@@ -2308,30 +2310,40 @@ async function addChatIfLive(ch, r){
   if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(false);
   save();
 }
-let flashT;
-function flash(t){ msg.textContent = t; clearTimeout(flashT); if (t) flashT = setTimeout(() => msg.textContent = '', 3500); }
+let flashT, msgAsDesktop = false, desktopNotify = true;      // (Settings > Notifications)
+try { desktopNotify = localStorage.getItem('kickMultiview.desktopNotify') !== '0'; } catch {}
+function flash(t){
+  msg.textContent = t; clearTimeout(flashT); if (t) flashT = setTimeout(() => msg.textContent = '', 3500);
+  if (t && msgAsDesktop) window.kmv.notifyMessage(t);
+}
 msg.onclick = () => flash('');
 /* Settings > General: show messages, and where */
-const msgOn = $('#msgOn'), msgPos = $('#msgPos');
+const msgOn = $('#msgOn'), msgPos = $('#msgPos'), msgVia = $('#msgVia');
+const canDesktopMsg = DESKTOP && !!window.kmv.notifyMessage;
+document.querySelector('#settingsDlg .msg-via').hidden = !canDesktopMsg;
 function loadMsgSettings(){
   let m = {}; try { m = JSON.parse(localStorage.getItem('kickMultiview.msg') || '{}') || {}; } catch {}
   msgOn.checked = m.on !== false;
   msgPos.value = [...msgPos.options].some(o => o.value === m.pos) ? m.pos : 'tc';
-  msgPos.disabled = !msgOn.checked;
-  msg.classList.toggle('off', !msgOn.checked);
+  msgVia.value = m.via === 'desktop' && canDesktopMsg ? 'desktop' : 'toast';
+  msgAsDesktop = msgOn.checked && msgVia.value === 'desktop' && desktopNotify;   // else a toast
+  msgVia.disabled = !msgOn.checked;
+  msgPos.disabled = !msgOn.checked || msgAsDesktop;
+  msg.classList.toggle('off', !msgOn.checked || msgAsDesktop);
   msg.dataset.pos = msgPos.value;
 }
 loadMsgSettings();
-[msgOn, msgPos].forEach(el => el.addEventListener('change', () => {
-  try { localStorage.setItem('kickMultiview.msg', JSON.stringify({ on: msgOn.checked, pos: msgPos.value })); } catch {}
+[msgOn, msgPos, msgVia].forEach(el => el.addEventListener('change', () => {
+  try { localStorage.setItem('kickMultiview.msg', JSON.stringify({ on: msgOn.checked, pos: msgPos.value, via: msgVia.value })); } catch {}
   loadMsgSettings();
-  if (msgOn.checked) flash('Messages show here');
+  if (msgOn.checked) flash(msgAsDesktop ? 'Messages show as desktop notifications' : 'Messages show here');
 }));
-window.addEventListener('storage', e => { if (e.key === 'kickMultiview.msg') loadMsgSettings(); });   // main and streams windows
+window.addEventListener('storage', e => {          // main and streams windows
+  if (e.key === 'kickMultiview.desktopNotify') desktopNotify = e.newValue !== '0';
+  if (e.key === 'kickMultiview.msg' || e.key === 'kickMultiview.desktopNotify') loadMsgSettings();
+});   // main and streams windows
 /* Settings > Notifications: desktop notifications (the main window's: live alerts, mentions, spam) */
 const dnOn = $('#dnOn'), dnLive = $('#dnLive'), dnSt = document.querySelector('#settingsDlg .dn-st');
-let desktopNotify = true;
-try { desktopNotify = localStorage.getItem('kickMultiview.desktopNotify') !== '0'; } catch {}
 if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled){
   document.querySelector('#settingsDlg .dn-sec').hidden = false;
   window.kmv.notifyEnabled(desktopNotify);
@@ -2341,6 +2353,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled){
     try { localStorage.setItem('kickMultiview.desktopNotify', desktopNotify ? '1' : '0'); } catch {}
     window.kmv.notifyEnabled(desktopNotify);
     dnLive.disabled = !desktopNotify;
+    loadMsgSettings();                                   // messages sent as notifications become toasts while they're off
   });
   dnLive.addEventListener('change', () => { const na = $('#notifyAll'); na.checked = dnLive.checked; na.dispatchEvent(new Event('change')); });
   const sys = document.querySelector('#settingsDlg .dn-sys');

@@ -501,6 +501,7 @@ test('messages show as a toast where Settings puts it, close on a click, and can
   assert.ok(await page.isHidden('#msg'), 'a click closes it');
   await page.click('#settingsBtn'); await page.click('#settingsDlg .st-rail [data-s=notify]');
   assert.ok(await page.isHidden('#dnOn'), 'desktop notifications need the desktop app');
+  assert.ok(await page.isHidden('#msgVia'), 'and so does sending messages as one');
   await page.selectOption('#msgPos', 'br');
   assert.equal(await page.getAttribute('#msg', 'data-pos'), 'br');
   assert.ok(await page.isVisible('#msg'), 'it shows where they go now, over Settings');

@@ -167,3 +167,24 @@ test('Settings > Notifications: off sends no desktop notifications, the live swi
   assert.equal(await a.win.isChecked('#dnOn'), true, 'remembered');
   await a.win.keyboard.press('Escape');
 });
+
+test('messages can be desktop notifications instead of toasts, and are toasts again while desktop notifications are off', T, async () => {
+  const titles = async () => (await st()).notes.map(n => n.title + ': ' + n.body);
+  await a.win.evaluate(() => window.openSettings('notify'));
+  assert.equal(await a.win.inputValue('#msgVia'), 'toast', 'a toast to start with');
+  const before = (await titles()).length;
+  await a.win.selectOption('#msgVia', 'desktop');
+  assert.ok(await a.win.isDisabled('#msgPos'), 'no position for a desktop notification');
+  await a.win.keyboard.press('Escape');
+  for (let i = 0; i < 2; i++) { await a.win.fill('#url', '%%%'); await a.win.click('#add'); }
+  await a.win.waitForTimeout(300);
+  assert.deepEqual((await titles()).slice(before), ['Messages show as desktop notifications', 'Couldn’t read that link or channel name'].map(t => 'Stream Multiview: ' + t), 'sent once, not twice');
+  assert.ok(await a.win.isHidden('#msg'), 'and no toast');
+  await a.win.evaluate(() => window.openSettings('notify'));
+  await a.win.uncheck('#dnOn');
+  assert.equal(await a.win.isDisabled('#msgPos'), false);
+  await a.win.keyboard.press('Escape');
+  await a.win.fill('#url', '%%%%'); await a.win.click('#add');
+  assert.ok(await a.win.isVisible('#msg'), 'desktop notifications off: a toast instead');
+  await a.win.evaluate(() => { localStorage.removeItem('kickMultiview.msg'); localStorage.removeItem('kickMultiview.desktopNotify'); });
+});
