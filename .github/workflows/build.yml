@@ -42,20 +42,36 @@ jobs:
       # Actions token can't skip that on a personal repository. The release pushes its version commit
       # with a deploy key instead: secret RELEASE_DEPLOY_KEY, a key with write access that the
       # "Protect main" ruleset lists under Bypass. See README > Making a release.
-      - name: Check the release key is set up
+      # Checked first, with a message that says what's wrong: missing, not a usable private key
+      # (e.g. the .pub file was pasted, or the key has a passphrase), or not accepted by GitHub.
+      - name: Check the release key
         env:
           KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
         run: |
-          if [ -z "$KEY" ]; then
-            echo "::error title=Release key missing::Add the RELEASE_DEPLOY_KEY secret (a deploy key with write access, on the Protect main bypass list). Without it the release can't save its version to main."
-            exit 1
+          fail() { echo "::error title=Release key::$1"; exit 1; }
+          [ -n "$KEY" ] || fail "The RELEASE_DEPLOY_KEY secret is missing. Without it the release can't save its version to main (see README > Contributing and releases)."
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$KEY" | tr -d '\r' > ~/.ssh/release_key   # Windows line endings break OpenSSH
+          chmod 600 ~/.ssh/release_key
+          if ! ssh-keygen -y -P '' -f ~/.ssh/release_key > ~/.ssh/release_key.pub 2> ~/.ssh/err; then
+            fail "RELEASE_DEPLOY_KEY isn't a usable private key ($(tr '\n' ' ' < ~/.ssh/err)). Paste the whole release_key file (the one without .pub), from -----BEGIN to -----END-----, made without a passphrase."
           fi
+          FP=$(ssh-keygen -lf ~/.ssh/release_key.pub | awk '{print $2}')
+          echo "::notice title=Release key::Fingerprint $FP. It should match the deploy key in Settings > Deploy keys."
+          ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
+          out=$(ssh -i ~/.ssh/release_key -o IdentitiesOnly=yes -o BatchMode=yes -T git@github.com 2>&1 || true)
+          echo "$out" | grep -q "successfully authenticated" \
+            || fail "GitHub doesn't accept the release key (fingerprint $FP): $out. Add its public key (release_key.pub) under Settings > Deploy keys, with Allow write access."
+          echo "GIT_SSH_COMMAND=ssh -i $HOME/.ssh/release_key -o IdentitiesOnly=yes -o BatchMode=yes" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
-          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
+
+      # pushes (the version commit and the tag) go over SSH with the release key
+      - name: Push with the release key
+        run: git remote set-url --push origin "git@github.com:${{ github.repository }}.git"
 
       - uses: actions/setup-node@v5
         with:
