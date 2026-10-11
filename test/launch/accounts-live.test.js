@@ -1,0 +1,133 @@
+// Logins, live alerts and notifications in the real desktop app. Who's logged in, who's live and the
+// moderator check are answered by the test; nothing goes to Kick, Twitch or YouTube.
+const test = require('node:test');
+const { launchApp, winSel, inView, viewLoaded, assert } = require('./app');
+
+const T = { timeout: 60000 };
+let a;
+test.before(async () => {
+  a = await launchApp({ storage: { 'kickMultiview.saved': ['alpha', 'bravo', 'tw:charlie'] } });
+  await a.app.evaluate(({ ipcMain, Notification }) => {
+    const s = globalThis.__t = { kick: 'someone', twitch: 'tw_user', youtube: true, logouts: [], notes: [], logins: [] };
+    ipcMain.removeHandler('me:detect'); ipcMain.handle('me:detect', () => s.kick || null);
+    ipcMain.removeHandler('accounts:status'); ipcMain.handle('accounts:status', () => ({ kick: s.kick || null, twitch: s.twitch || null, youtube: s.youtube }));
+    ipcMain.removeHandler('account:logout'); ipcMain.handle('account:logout', (_e, p) => { s.logouts.push(p); s[p] = p === 'youtube' ? false : ''; return true; });
+    ipcMain.removeHandler('account:login'); ipcMain.handle('account:login', (_e, p) => { s.logins.push(p); });
+    // desktop notifications are recorded instead of shown
+    Notification.prototype.show = function () { s.notes.push({ title: this.title, body: this.body }); globalThis.__lastNote = this; };
+  });
+});
+test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
+
+const st = () => a.app.evaluate(() => globalThis.__t);
+const row = (where, p) => `${where} .am-row[data-p=${p}]`;
+
+test('the Accounts menu shows who\'s logged in; Log out and Switch ask first', T, async () => {
+  await a.win.click('#loginBtn');
+  await a.win.waitForFunction(() => /someone/.test(document.querySelector('#accountMenu .am-row[data-p=kick] .am-st').textContent));
+  assert.match(await a.win.textContent('#loginBtn'), /someone \+2/, 'the button names the Kick login, plus the others');
+  assert.match(await a.win.textContent(row('#accountMenu', 'twitch') + ' .am-st'), /Logged in as tw_user/);
+  assert.ok(await a.win.isHidden(row('#accountMenu', 'kick') + ' .am-in'), 'no Log in when logged in');
+
+  await a.win.click(row('#accountMenu', 'twitch') + ' .am-out');
+  assert.equal(await a.win.textContent('#askTitle'), 'Log out of Twitch?');
+  await a.win.click('#askDlg .ask-no');
+  assert.deepEqual((await st()).logouts, [], 'Cancel: still logged in');
+  await a.win.click('#loginBtn');
+  await a.win.click(row('#accountMenu', 'twitch') + ' .am-out');
+  await a.win.click('#askDlg .ask-yes');
+  assert.deepEqual((await st()).logouts, ['twitch']);
+  assert.match(await a.win.textContent('#msg'), /Logged out of Twitch/);
+  await a.win.click('#loginBtn');
+  assert.match(await a.win.textContent(row('#accountMenu', 'twitch') + ' .am-st'), /Not logged in/);
+
+  await a.win.click(row('#accountMenu', 'kick') + ' .am-sw');
+  assert.equal(await a.win.textContent('#askTitle'), 'Switch Kick account?');
+  await a.win.click('#askDlg .ask-yes');
+  await a.win.waitForFunction(() => true);
+  const s = await st();
+  assert.deepEqual([s.logouts.at(-1), s.logins.at(-1)], ['kick', 'kick'], 'Switch logs out, then opens the login');
+
+  // the menu bar's Account menu does the same
+  await a.win.evaluate(() => window.kmv.accountsState({ kick: '', twitch: '', youtube: true }));
+  await a.app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find(i => i.label === 'Account').submenu.items.find(x => /Log in to Twitch/.test(x.label)).click());
+  await a.win.waitForTimeout(200);
+  assert.equal((await st()).logins.at(-1), 'twitch');
+});
+
+test('a new login reloads that site\'s chats and fills in your username; "Forget my login" is saved', T, async () => {
+  await a.win.selectOption('#mode', 'chat');
+  await a.win.fill('#url', 'tw:charlie'); await a.win.click('#add');
+  await a.win.waitForSelector(`${winSel('charlie', 'chat')} webview`);
+  await viewLoaded(a.win, 'charlie', 'chat', /chat/);
+  await inView(a.win, 'charlie', 'chat', () => { window.__before = 1; });
+  await a.app.evaluate(() => { globalThis.__t.twitch = 'new_name'; });
+  await a.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach(w => w.webContents.send('account:changed', { platform: 'twitch', loggedOut: false })));
+  const end = Date.now() + 10000;
+  while (await inView(a.win, 'charlie', 'chat', () => !!window.__before).catch(() => true)) { if (Date.now() > end) throw new Error('the chat didn\'t reload'); await new Promise(r => setTimeout(r, 200)); }
+  await a.win.click('#loginBtn');
+  await a.win.waitForFunction(() => /new_name/.test(document.querySelector('#accountMenu .am-row[data-p=twitch] .am-st').textContent));
+  await a.win.keyboard.press('Escape');
+
+  await a.win.evaluate(() => window.openSettings('accounts'));
+  await a.win.check('#settingsDlg .am-forget input[data-f=youtube]');
+  assert.match(await a.win.textContent('#msg'), /YouTube login will be wiped/);
+  assert.equal((await a.win.evaluate(() => window.kmv.securityGet())).forget.youtube, true, 'kept by the app');
+  await a.win.uncheck('#settingsDlg .am-forget input[data-f=youtube]');
+  await a.win.keyboard.press('Escape');
+  await a.win.click(`${winSel('charlie', 'chat')} [data-a=close]`);
+  await a.win.selectOption('#mode', 'both');
+});
+
+test('Saved channels show who\'s live, with bells, auto-open and Open live', T, async () => {
+  await a.win.selectOption('#mode', 'both');
+  const now = Date.now();
+  const send = snap => a.app.evaluate(({ BrowserWindow }, snap) => BrowserWindow.getAllWindows().forEach(w => w.webContents.send('live:status', snap)), snap);
+  await send({ alpha: { live: true, viewers: 1234, title: 'Big match', category: 'Games', checked: now }, bravo: { live: false, checked: now }, 'tw:charlie': { live: false, checked: now } });
+  await a.win.click('#savedBtn');
+  assert.match(await a.win.textContent('#savedList'), /Live now · 1.*alpha.*LIVE.*1\.2K.*Games · Big match.*Offline.*bravo/s);
+  assert.match(await a.win.textContent('#liveStatus'), /1 live now · checked/);
+  assert.match(await a.win.textContent('#savedBtn'), /1/, 'the Saved button counts who\'s live');
+
+  await a.win.click('#savedList .sv:has(.nm:text-is("bravo")) .bell');
+  assert.deepEqual(JSON.parse(await a.win.evaluate(() => localStorage.getItem('kickMultiview.notifyOff'))), ['bravo'], 'no alerts for bravo');
+  await a.win.uncheck('#notifyAll');
+  assert.ok(await a.win.isDisabled('#savedList .sv:has(.nm:text-is("alpha")) .bell'), 'with alerts off the bells are off');
+  await a.win.check('#notifyAll');
+
+  await a.win.click('#savedList .sv:has(.nm:text-is("bravo")) .auto');
+  assert.deepEqual(JSON.parse(await a.win.evaluate(() => localStorage.getItem('kickMultiview.autoOpen'))), ['bravo']);
+  await a.win.click('#openLive');
+  assert.equal(await a.win.locator(winSel('alpha')).count(), 1, 'Open live opens the live ones');
+  await a.win.keyboard.press('Escape');
+
+  // bravo goes live: it opens by itself, once
+  await send({ alpha: { live: true, checked: now }, bravo: { live: true, viewers: 5, checked: now + 1 }, 'tw:charlie': { live: false, checked: now } });
+  await a.win.waitForSelector(winSel('bravo'));
+  assert.match(await a.win.textContent('#msg'), /Opened bravo \(just went live\)/);
+  await a.win.click(`${winSel('bravo')} [data-a=close]`);
+  await send({ alpha: { live: true, checked: now }, bravo: { live: true, checked: now + 2 }, 'tw:charlie': { live: false, checked: now } });
+  await a.win.waitForTimeout(300);
+  assert.equal(await a.win.locator(winSel('bravo')).count(), 0, 'not again while it stays live');
+
+  // "just went live" and clicking a live notification
+  await a.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach(w => w.webContents.send('live:went-live', 'tw:charlie', { live: true })));
+  await a.win.waitForFunction(() => /charlie just went live on Twitch/.test(document.getElementById('msg').textContent));
+  await a.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach(w => w.webContents.send('open-channel', 'tw:charlie')));
+  await a.win.waitForSelector(winSel('charlie'));
+  await a.win.click('#clear'); await a.win.click('#askDlg .ask-yes');
+});
+
+test('mention and spam desktop notifications, and clicking one shows that chat', T, async () => {
+  await a.win.evaluate(() => window.kmv.notifyMention({ kind: 'mention', channel: 'alpha', label: 'alpha', sender: 'viewer3', body: 'are you on later?' }));
+  await a.win.evaluate(() => window.kmv.notifyMention({ kind: 'reply', channel: 'alpha', label: 'alpha', sender: 'viewer4', body: 'yes', quoted: 'what time' }));
+  await a.win.evaluate(() => window.kmv.notifyMention({ kind: 'spam', channel: 'alpha', label: 'alpha', sender: 'newacct', body: 'cheap viewers at x com' }));
+  await a.win.waitForTimeout(300);
+  const notes = (await st()).notes;
+  assert.deepEqual(notes.map(n => n.title), ['viewer3 mentioned you in alpha\'s chat', 'viewer4 replied to you in alpha\'s chat', 'Likely spam in alpha\'s chat']);
+  assert.match(notes[1].body, /"what time"\s+→\s+yes/);
+  assert.equal(notes[2].body, 'newacct: cheap viewers at x com');
+  await a.app.evaluate(() => globalThis.__lastNote.emit('click'));
+  await a.win.waitForSelector(winSel('alpha', 'chat'));
+  assert.ok(await a.win.locator(winSel('alpha', 'chat')).count(), 'clicking it opens that chat');
+});
