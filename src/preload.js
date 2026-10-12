@@ -65,6 +65,8 @@ contextBridge.exposeInMainWorld('kmv', {
   onStreamsReturned: cb => ipcRenderer.on('streams:returned', (_e, specs) => cb(specs)),
   onStreamsState: cb => ipcRenderer.on('streams:state', (_e, open) => cb(open)),
   onChatAdd: cb => ipcRenderer.on('chat:add', (_e, channel) => cb(channel)),
+  raidFollowed: (from, to) => ipcRenderer.send('raid:followed', from, to),
+  onRaid: cb => ipcRenderer.on('raid:follow', (_e, from, to) => cb(from, to)),
 
   // Switch control in its own window
   openSwitcher: () => ipcRenderer.invoke('switcher:open'),
