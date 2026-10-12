@@ -97,7 +97,8 @@ test('Pop out hidden: only the streams you can\'t see go to the Streams window',
 
 test('the switch control in its own window controls the main window', T, async () => {
   await add('alpha', 'bravo', 'charlie');
-  await a.win.keyboard.press('f');
+  // Focus view: the last test can leave the layout on it, and then f would switch it back to Columns
+  if (!(await a.win.$('#layoutMenu [data-l=focus].on'))) await a.win.keyboard.press('f');
   await a.win.click('#featSwitch .fs-mwin');
   const sc = await windowFor(/switcher\.html/);
   await sc.waitForSelector('.fs-item[data-ch=bravo]');
