@@ -236,6 +236,7 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #settingsDlg .th-wrap{overflow:visible;grid-template-columns:270px minmax(0,1fr)}
 #settingsDlg .th-vars{grid-template-columns:1fr}
 #settingsDlg [data-doc=news] > h2:first-child{display:none}
+.st-rail-sec[hidden]{display:none}
 .st-rail-sec{margin:12px 10px 4px;padding-top:10px;border-top:1px solid var(--line);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
 #settingsDlg .help-body.st-doc{flex:none;overflow:visible;padding:0}
 #settingsDlg .help-body.st-doc > h2:first-child{margin-top:0}
@@ -1328,17 +1329,19 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <nav class="st-rail">
       <button data-s="general">General</button>
       <button data-s="layouts" class="main-only">Layouts</button>
+      <button data-s="themes">Themes</button>
+      <div class="st-rail-sec">Sites</div>
       <button data-s="accounts" class="desk-only">Accounts</button>
       <button data-s="youtube" class="desk-only">YouTube</button>
+      <button data-s="extensions" class="desk-only">Extensions</button>
+      <div class="st-rail-sec">Alerts</div>
       <button data-s="notify">Notifications</button>
       <button data-s="mentions" class="main-desk">Mentions</button>
       <button data-s="spam" class="main-desk">Spam alerts<span class="st-pill">Mod</span></button>
-      <button data-s="extensions" class="desk-only">Extensions</button>
-      <button data-s="themes">Themes</button>
-      <button data-s="updates">Updates</button>
       <div class="st-rail-sec">Help</div>
       <button data-s="guide">Instructions</button>
       <button data-s="keys">Keyboard shortcuts</button>
+      <button data-s="updates">Updates</button>
     </nav>
     <div class="st-body">
       <section class="st-pane" data-s="general" hidden>
@@ -6129,6 +6132,12 @@ const ST_ICONS = { general: 'sliders', layouts: 'layout', accounts: 'user', yout
 settingsDlg.querySelectorAll('.st-rail button[data-s]').forEach(b => { if (icon[ST_ICONS[b.dataset.s]]) b.insertAdjacentHTML('afterbegin', icon[ST_ICONS[b.dataset.s]]); });
 settingsDlg.querySelectorAll('.st-rail .main-desk').forEach(b => { b.hidden = !MAIN_DESK; });
 settingsDlg.querySelectorAll('.st-rail .main-only').forEach(b => { b.hidden = ROLE !== 'main'; });
+// a heading goes when none of its tabs work here (Sites in a browser)
+settingsDlg.querySelectorAll('.st-rail-sec').forEach(h => {
+  let n = h.nextElementSibling, any = false;
+  for (; n && !n.classList.contains('st-rail-sec'); n = n.nextElementSibling) any ||= !n.hidden;
+  h.hidden = !any;
+});
 function openSettings(tab){
   const ok = t => { const b = settingsDlg.querySelector(`.st-rail [data-s="${t}"]`); return b && !b.hidden; };
   settingsTab = ok(tab) ? tab : ok(settingsTab) ? settingsTab : 'general';
