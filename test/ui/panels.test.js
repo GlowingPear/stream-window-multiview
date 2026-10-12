@@ -18,6 +18,17 @@ test('Saved channels: type a name (the tab picks the site), tabs with counts, op
   await page.click('#savedTabs [data-t=all]');
   await page.fill('#savedInput', 'https://www.youtube.com/@charlie'); await page.press('#savedInput', 'Enter');
   assert.equal(await page.$$eval('#savedList .sv', r => r.length), 3, 'a link works too');
+  assert.equal(await page.isHidden('#savedAdd'), true, 'Save only shows while typing');
+
+  await page.fill('#savedInput', 'char');
+  assert.equal(await page.isVisible('#savedAdd'), true);
+  assert.deepEqual(await page.$$eval('#savedList .sv .nm', r => r.map(n => n.textContent)), ['@charlie'], 'typing searches the list');
+  await page.fill('#savedInput', 'zulu');
+  assert.match(await page.textContent('#savedList'), /No saved channel matches “zulu”/);
+  await page.press('#savedInput', 'Escape');
+  assert.equal(await page.inputValue('#savedInput'), '', 'Esc clears the search first');
+  assert.equal(await page.$$eval('#savedList .sv', r => r.length), 3);
+  assert.equal(await page.isVisible('#savedPanel'), true, '…and keeps the panel open');
 
   await page.click('#savedList .sv:has(.nm:text-is("alpha"))');
   assert.equal(await win(page, 'alpha').count(), 1, 'clicking one opens it');
@@ -32,7 +43,14 @@ test('Saved channels: type a name (the tab picks the site), tabs with counts, op
   await page.keyboard.press('Escape');
   await add(page, 'delta');
   await page.click('#savedBtn');
+  assert.equal(await page.textContent('#openAll'), 'Open all 2');
+  const fits = await page.evaluate(() => { const p = document.querySelector('#savedPanel').getBoundingClientRect();
+    return [...document.querySelectorAll('.sp-foot > .btn')].filter(b => b.offsetParent).every(b => { const r = b.getBoundingClientRect(); return r.left >= p.left && r.right <= p.right; }); });
+  assert.ok(fits, 'the buttons at the bottom fit in the panel');
+  await page.click('#spMore');
+  assert.match(await page.textContent('#saveOpen'), /1 not saved/);
   await page.click('#saveOpen');
+  assert.equal(await page.isHidden('#spMenu'), true, 'the menu closes after picking');
   assert.ok(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.saved'))).includes('delta'), 'Save all open adds what\'s open');
 });
 

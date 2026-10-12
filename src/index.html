@@ -605,27 +605,8 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 @media (prefers-reduced-motion:reduce){.win.al-2,.win.al-3{animation:none;box-shadow:0 0 0 4px var(--al)}}
 @keyframes ping{0%,40%{box-shadow:0 0 0 3px #e8b84a,0 10px 30px rgba(0,0,0,.45)}100%{box-shadow:0 10px 30px rgba(0,0,0,.45)}}
 
-.sv-tabs{display:flex;gap:4px;padding:2px;border-radius:8px;background:var(--bg);border:1px solid var(--line)}
-.sv-tabs button{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;height:26px;border:0;border-radius:6px;background:transparent;
-  color:var(--muted);font-size:12px;font-weight:600;cursor:pointer}
-.sv-tabs button:hover{color:var(--text)}
-.sv-tabs button.on{background:var(--panel2);color:var(--text)}
-.sv-tabs button[data-t=kick].on{box-shadow:inset 0 -2px #53fc18}.sv-tabs button[data-t=twitch].on{box-shadow:inset 0 -2px #a970ff}.sv-tabs button[data-t=youtube].on{box-shadow:inset 0 -2px #ff3d3d}
-.sv-tabs em{font-style:normal;font-size:10px;opacity:.7}
-.sv-tabs i{width:6px;height:6px;border-radius:50%;background:#ff3b3b}
 .pi{flex:none;display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;font:800 11px/1 system-ui,sans-serif;letter-spacing:0}
 .pi-kick{background:#53fc18;color:#0b0e0f}.pi-twitch{background:#9146ff;color:#fff}.pi-youtube{background:#ff2a2a;color:#fff}
-.sv-tabs button i.pi{width:15px;height:15px;font-size:9.5px;border-radius:4px;box-shadow:none;margin:0;animation:none}
-.sv-tabs button i.pi-kick{background:#53fc18}.sv-tabs button i.pi-twitch{background:#9146ff}.sv-tabs button i.pi-youtube{background:#ff2a2a}
-.sv-plat{flex:none;font-size:9px;font-weight:700;letter-spacing:.04em;padding:1px 4px;border-radius:3px;color:#fff}
-.sv-plat.twitch{background:#7b46d6}.sv-plat.youtube{background:#d42b2b}
-.sv .auto{border:0;background:transparent;color:var(--muted);cursor:pointer;width:24px;height:24px;border-radius:5px;display:grid;place-items:center;padding:0;flex:none}
-.sv .auto:hover{background:var(--line);color:var(--text)}
-.sv .auto.on{color:#e8b84a}
-.sv .auto svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linejoin:round}
-.sv .auto.on svg{fill:currentColor}
-.sv-sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:8px 8px 2px}
-.sv-sec:first-child{padding-top:2px}
 .am-head{padding:6px 10px 8px;font-size:13px;font-weight:700;border-bottom:1px solid var(--line);margin-bottom:4px}
 .am-head span{display:block;font-size:11px;font-weight:400;color:var(--muted)}
 #accountMenu{width:440px}
@@ -756,9 +737,6 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 @keyframes pear-fill{0%{transform:translate(-32px,62px)}85%,100%{transform:translate(0,6px)}}
 @keyframes pear-leaf{to{transform:rotate(-16deg)}}
 @media (prefers-reduced-motion:reduce){.pear-load .juice,.pear-load .leaf{animation-duration:8s}}
-#importRow{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
-#importRow[hidden]{display:none}
-#importRow .btn{flex:1;height:28px;font-size:12px}
 #accountMenu .am-row,#settingsDlg .am-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px}
 #accountMenu .am-row:hover,#settingsDlg .am-row:hover{background:var(--panel2)}
 .am-row .pdot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--line2)}
@@ -786,45 +764,103 @@ header.c1 #loginBtn.has-acct .acct-name{display:none}
 
 /* ---------- saved panel ---------- */
 #savedPanel{position:fixed;top:calc(var(--head) + 6px);left:12px;z-index:100003;width:380px;max-height:78vh;
-  display:flex;flex-direction:column;gap:10px;padding:12px;background:var(--panel);border:1px solid var(--line2);
-  border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.55)}
+  display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line2);
+  border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.55)}
 #savedPanel[hidden]{display:none}
-.sp-head b{display:block;font-size:14px}
-.sp-sub{color:var(--muted);font-size:11px}
-.sp-add{display:flex;gap:6px}
-.sp-add input{flex:1;min-width:0;height:32px;padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);outline:none}
-.sp-add input:focus,.dlg .dlg-q:focus{border-color:var(--accent)}
+.sp-head{display:flex;align-items:center;gap:8px;padding:14px 14px 10px}
+.sp-title{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sp-title b{font-size:15px}
+#liveStatus{font-size:11px;color:var(--muted)}
+#liveStatus:empty{display:none}
+.sp-notify{position:relative;flex:none;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;cursor:pointer;
+  color:var(--muted);border:1px solid var(--line2);background:var(--panel2)}
+.sp-notify[hidden]{display:none}
+.sp-notify:hover{color:var(--text);border-color:var(--muted)}
+.sp-notify:has(input:checked){color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,var(--line2));background:color-mix(in srgb,var(--accent) 10%,var(--panel2))}
+.sp-notify:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.sp-notify input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
+.sp-notify svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.sp-add{display:flex;align-items:center;gap:8px;margin:0 14px;height:34px;padding:0 4px 0 10px;border-radius:8px;border:1px solid var(--line2);background:var(--bg);color:var(--muted)}
+.sp-add:focus-within,.dlg .dlg-q:focus{border-color:var(--accent)}
+.sp-add>svg{flex:none;width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.sp-add input{flex:1;min-width:0;height:100%;padding:0;border:0;background:transparent;color:var(--text);outline:none}
+.sp-add .btn{flex:none;height:26px;padding:0 8px;font-size:11px;font-weight:700;border-radius:6px}
+.sp-add .btn[hidden]{display:none}
 .dlg .dlg-q{padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);color:var(--text);outline:none}
-.sp-add .btn{height:32px}
-#savedList{overflow:auto;display:flex;flex-direction:column;gap:2px;min-height:0}
-.sv{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;cursor:pointer}
-.sv-dot{width:8px;height:8px;border-radius:50%;background:var(--line2);flex:none}
-.sv.live .sv-dot{background:#ff3b3b;box-shadow:0 0 0 3px rgba(255,59,59,.18)}
+.sv-tabs{display:flex;gap:4px;padding:10px 14px 4px}
+.sv-tabs button{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;height:26px;padding:0 7px;border:1px solid var(--line);border-radius:999px;background:transparent;
+  color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.sv-tabs button:hover{color:var(--text);border-color:var(--line2)}
+.sv-tabs button.on{background:var(--text);border-color:var(--text);color:var(--panel)}
+.sv-tabs em{font-style:normal;font-size:11px;opacity:.65}
+.sv-tabs i:not(.pi){flex:none;width:6px;height:6px;border-radius:50%;background:#ff3b3b}
+.sv-tabs button i.pi{width:15px;height:15px;font-size:9.5px;border-radius:4px;box-shadow:none;margin:0;animation:none}
+#savedList{overflow:auto;display:flex;flex-direction:column;gap:1px;min-height:0;padding:0 6px 8px}
+.sv-sec{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:12px 8px 4px}
+.sv-sec.live::before{content:"";width:6px;height:6px;border-radius:50%;background:#ff3b3b;box-shadow:0 0 0 3px rgba(255,59,59,.2)}
+.sv{position:relative;display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;cursor:pointer}
+.sv:hover,.sv:focus-within{background:var(--panel2)}
+.sv-av{--c:#3a5a7a;position:relative;flex:none;width:30px;height:30px;border-radius:50%;background:var(--c);display:grid;place-items:center;
+  font-size:11px;font-weight:800;color:#fff}
+.sv-av img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover}
+.sv.live .sv-av{box-shadow:0 0 0 2px var(--panel),0 0 0 4px #e5262a}
+.sv .sv-av .pi{position:absolute;right:-4px;bottom:-3px;z-index:1;width:13px;height:13px;font-size:8px;border-radius:4px;box-shadow:0 0 0 2px var(--panel)}
+.sv:hover .sv-av .pi,.sv:focus-within .sv-av .pi{box-shadow:0 0 0 2px var(--panel2)}
+.sv.off{padding-block:5px}
+.sv.off .sv-av{width:24px;height:24px;font-size:11px}
+.sv.off .sv-av .pi{width:11px;height:11px;font-size:7px;right:-3px;bottom:-2px}
+.sv.off .sv-av img{filter:grayscale(.6);opacity:.75}
 .sv-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
 .sv-line{display:flex;align-items:center;gap:6px;min-width:0}
-.sv-live{flex:none;font-size:9px;font-weight:800;letter-spacing:.08em;color:#fff;background:#e5262a;border-radius:3px;padding:1px 4px}
-.sv-view{flex:none;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.sv .nm{min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sv.off .nm{font-weight:500;color:color-mix(in srgb,var(--text) 82%,var(--muted))}
+.sv .open{flex:none;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);
+  border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);border-radius:999px;padding:0 6px;line-height:15px}
 .sv-sub{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sv .bell{border:0;background:transparent;color:var(--muted);cursor:pointer;width:24px;height:24px;border-radius:5px;display:grid;place-items:center;padding:0;flex:none}
-.sv .bell:hover:not(:disabled){background:var(--line);color:var(--text)}
+.sv-meta{flex:none;display:flex;align-items:center;gap:6px}
+.sv-meta svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sv-meta .bolt{color:#e8b84a}.sv-meta .bolt svg{fill:currentColor}
+.sv-meta .mute{color:var(--muted)}
+.sv-view{display:flex;align-items:center;gap:4px;font-size:11px;color:#ff8080;font-variant-numeric:tabular-nums}
+.sv-view::before{content:"";width:6px;height:6px;border-radius:50%;background:#ff3b3b}
+/* live rows: the buttons show on hover, over the viewer count and markers */
+.sv-acts{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:flex;gap:2px;padding-left:10px;opacity:0;
+  background:linear-gradient(90deg,transparent,var(--panel2) 10px)}
+.sv:hover .sv-acts,.sv:focus-within .sv-acts{opacity:1}
+/* offline rows have room, so theirs always show (and say the same as the markers) */
+.sv.off .sv-acts{position:static;transform:none;opacity:1;padding-left:0;background:none}
+.sv.off .sv-meta{display:none}
+.sv-acts button{border:0;background:transparent;color:var(--muted);cursor:pointer;width:24px;height:24px;border-radius:6px;display:grid;place-items:center;padding:0;flex:none}
+.sv-acts button:hover:not(:disabled){background:var(--line);color:var(--text)}
+.sv-acts svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sv .auto.on{color:#e8b84a}.sv .auto.on svg{fill:currentColor}
 .sv .bell.on{color:var(--accent)}
 .sv .bell:disabled{opacity:.35;cursor:default}
-.sv .bell svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.sp-live{display:flex;flex-direction:column;gap:2px;margin-top:8px}
-.sp-live[hidden]{display:none}
-.sp-live .chk{color:var(--text)}
-#liveStatus{font-size:11px;color:var(--muted)}
-.sv-badge{display:inline-flex;align-items:center;gap:4px;margin-left:4px;font-size:11px;font-weight:700;color:#ff6b6b}
-.sv-badge i{width:7px;height:7px;border-radius:50%;background:#ff3b3b}
-#openLive:disabled{opacity:.45;cursor:default}
-.sv:hover{background:var(--panel2)}
-.sv .nm{min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sv .open{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent)}
-.sv .rm{border:0;background:transparent;color:var(--muted);cursor:pointer;width:22px;height:22px;border-radius:5px}
-.sv .rm:hover{background:var(--danger);color:#fff}
+.sv .rm:hover{background:var(--danger)!important;color:#fff!important}
 .sv-empty{color:var(--muted);padding:6px 2px}
-.sp-foot{display:flex;gap:6px}
-.sp-foot .btn{flex:1;height:32px}
+#savedList .sv-empty{padding:14px 8px}
+.sv-badge{display:inline-flex;align-items:center;gap:4px;margin-left:4px;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:700;
+  color:#ff8080;background:color-mix(in srgb,#ff3b3b 16%,transparent)}
+.sv-badge i{width:6px;height:6px;border-radius:50%;background:#ff3b3b}
+.sp-foot{position:relative;display:flex;gap:6px;padding:10px 14px 14px;border-top:1px solid var(--line)}
+.sp-foot>.btn{flex:1 1 auto;min-width:0;height:32px;padding:0 10px;font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.sp-foot>.btn[hidden]{display:none}
+#openLive{flex-grow:2}
+#openLive:disabled{opacity:.45;cursor:default;filter:none}
+.sp-foot>#spMore{flex:none;width:32px;padding:0;font-size:16px;letter-spacing:1px}
+#spMore.on{border-color:var(--muted)}
+.sp-menu{position:absolute;right:14px;bottom:calc(100% - 4px);width:230px;padding:4px;display:flex;flex-direction:column;gap:2px;
+  background:var(--panel2);border:1px solid var(--line2);border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.sp-menu[hidden]{display:none}
+.sp-menu>button{display:flex;align-items:center;gap:8px;height:30px;padding:0 9px;border:0;border-radius:6px;background:transparent;color:var(--text);cursor:pointer;text-align:left}
+.sp-menu>button:hover:not(:disabled){background:var(--line)}
+.sp-menu>button:disabled{color:var(--muted);cursor:default}
+.sp-menu small{margin-left:auto;color:var(--muted);font-size:11px}
+#importRow{display:flex;flex-direction:column;gap:4px;padding:6px 6px 8px;border-bottom:1px solid var(--line);margin-bottom:2px;font-size:11px;color:var(--muted)}
+#importRow[hidden]{display:none}
+#importRow div{display:flex;gap:4px}
+#importRow .btn{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:28px;padding:0 6px;font-size:12px}
+#importRow .pi{width:14px;height:14px;font-size:8.5px;border-radius:4px}
 
 /* The toolbar fits itself to the window (fitHeader): first shorter labels (c1), then tighter
    buttons (c2, c3), then the least-used controls move into the ⋯ More menu. */
@@ -1134,13 +1170,16 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 </div></div>
 
 <div id="savedPanel" hidden>
-  <div class="sp-head"><b>Saved channels</b><span class="sp-sub">Click one to add it (uses the Stream / Chat dropdown)</span>
-    <div class="sp-live" id="spLive" hidden><label class="chk"><input type="checkbox" id="notifyAll">Notify me when they go live</label><span id="liveStatus"></span></div></div>
+  <div class="sp-head"><div class="sp-title"><b>Saved channels</b><span id="liveStatus"></span></div>
+    <label class="sp-notify" id="spLive" hidden title="Notify me when they go live"><input type="checkbox" id="notifyAll" aria-label="Notify me when they go live"></label></div>
+  <div class="sp-add"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="savedInput" placeholder="Search, or add a channel name or link" autocomplete="off" spellcheck="false"><button class="btn" id="savedAdd" hidden title="Save this channel (Enter)">↵ Save</button></div>
   <div class="sv-tabs" id="savedTabs"><button data-t="all">All</button><button data-t="kick">Kick</button><button data-t="twitch">Twitch</button><button data-t="youtube">YouTube</button></div>
-  <div class="sp-add"><input id="savedInput" placeholder="Channel name or link" autocomplete="off" spellcheck="false"><button class="btn" id="savedAdd">Save</button></div>
   <div id="savedList"></div>
-  <div id="importRow" hidden><span>Import follows from</span><button class="btn" data-imp="kick">Kick</button><button class="btn" data-imp="twitch">Twitch</button><button class="btn" data-imp="youtube">YouTube</button></div>
-  <div class="sp-foot"><button class="btn" id="importBtn" hidden title="Add the channels you follow on Kick, Twitch or YouTube to Saved">Import</button><button class="btn" id="openLive" hidden title="Open every saved channel that is live right now">Open live</button><button class="btn" id="openAll" title="Open every saved channel and auto-arrange">Open all</button><button class="btn" id="saveOpen" title="Save every channel currently open">Save all open</button></div>
+  <div class="sp-foot"><button class="btn primary" id="openLive" hidden title="Open every saved channel that is live right now">Open live</button><button class="btn" id="openAll" title="Open every saved channel and auto-arrange">Open all</button><button class="btn" id="spMore" title="More" aria-haspopup="menu" aria-expanded="false">⋯</button>
+    <div class="sp-menu" id="spMenu" role="menu" hidden>
+      <div id="importRow" hidden><span>Import the channels you follow from</span><div><button class="btn" data-imp="kick"><i class="pi pi-kick">K</i>Kick</button><button class="btn" data-imp="twitch"><i class="pi pi-twitch">T</i>Twitch</button><button class="btn" data-imp="youtube"><i class="pi pi-youtube">Y</i>YouTube</button></div></div>
+      <button id="saveOpen" role="menuitem" title="Save every channel currently open">Save all open</button>
+    </div></div>
 </div>
 
 <div class="dlg-bg" id="profDlg" hidden><div class="dlg profiles" role="dialog" aria-modal="true" aria-labelledby="profTitle">
@@ -2380,20 +2419,36 @@ function fmtViewers(n){ return n == null ? '' : n >= 1000 ? (n / 1000).toFixed(n
 function updateSavedBadge(){
   const b = $('#savedBtn'); if (!b) return;
   const n = liveNow().length;
-  b.innerHTML = '★ Saved' + (n ? ` <span class="sv-badge" title="${n} saved channel${n > 1 ? 's' : ''} live now"><i></i>${n} live</span>` : '');
+  b.innerHTML = '★ Saved' + (n ? ` <span class="sv-badge" title="${n} saved channel${n > 1 ? 's' : ''} live now"><i></i>${n}</span>` : '');
 }
+// Names and pictures for the saved list, from what the app knows about each channel (src/profiles.js)
+let svProf = {};
+function loadSavedProfiles(){
+  if (!DESKTOP || ROLE !== 'main' || !window.kmv.profileList) return;
+  window.kmv.profileList(saved).then(l => { svProf = l || {}; if (!panel.hidden) renderSaved(); }).catch(() => {});
+}
+// "nightowl" -> NI, "ember_and_oak" -> EA (as on profiles)
+const svInitials = n => { const w = String(n).replace(/^@/, '').split(/[\s_.\-]+/).filter(Boolean); return ((w.length > 1 ? w[0][0] + w[1][0] : String(n).slice(0, 2)) || '?').toUpperCase(); };
+const svHue = ch => { let h = 0; for (const c of String(ch)) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 35% 36%)`; };
+const savedQuery = () => { const q = ($('#savedInput') || {}).value || ''; return /[/:]/.test(q) ? '' : q.trim().replace(/^@/, '').toLowerCase(); };
 function renderSaved(){
   updateSavedBadge();
   const list = $('#savedList'); if (!list) return;
   list.innerHTML = '';
   const st = $('#liveStatus');
+  const n = liveNow().length;
   if (st){
     const checked = Object.values(liveInfo).map(i => i.checked || 0);
     const last = checked.length ? Math.max(...checked) : 0;
-    const n = liveNow().length;
-    st.textContent = !DESKTOP ? '' : !saved.length ? '' : !last ? 'Checking who is live…'
+    st.textContent = !saved.length ? '' : !DESKTOP ? `${saved.length} saved` : !last ? 'Checking who is live…'
       : `${n ? n + ' live now' : 'Nobody live right now'} · checked ${Math.max(0, Math.round((Date.now() - last) / 60000)) || '<1'} min ago`;
   }
+  const nb = $('#spLive');
+  if (nb){ nb.querySelector('svg')?.remove(); nb.insertAdjacentHTML('beforeend', notifyAll ? icon.bell : icon.bellOff); nb.title = notifyAll ? 'Notifying you when they go live (click to turn off)' : 'Notify me when they go live'; }
+  const ol = $('#openLive'); if (ol){ ol.disabled = !n; ol.textContent = n ? `Open ${n} live` : 'Nobody live'; }
+  const oa = $('#openAll'); if (oa) oa.textContent = saved.length ? `Open all ${saved.length}` : 'Open all';
+  const so = $('#saveOpen');
+  if (so){ const k = new Set(wins.filter(w => w.channel && !saved.includes(w.channel)).map(w => w.channel)).size; so.disabled = !k; so.innerHTML = `Save all open<small>${k ? k + ' not saved' : 'all saved'}</small>`; }
   if (!saved.length){ list.innerHTML = '<div class="sv-empty">Nothing saved yet. Click ☆ on any window, or type a name above.</div>'; return; }
   // tabs with counts, then the list for the chosen tab
   const tabs = $('#savedTabs');
@@ -2403,31 +2458,41 @@ function renderSaved(){
     b.classList.toggle('on', t === savedTab);
     b.innerHTML = `${t === 'all' ? 'All' : platIcon(t) + PLAT_NAME[t]} <em>${list.length}</em>${nLive ? `<i title="${nLive} live"></i>` : ''}`;
   });
-  const inTab = c => savedTab === 'all' || platOf(c) === savedTab;
-  const liveList = liveNow().filter(inTab), offList = saved.filter(ch => inTab(ch) && !liveList.includes(ch));   // both already A–Z
-  if (!liveList.length && !offList.length){ list.innerHTML = `<div class="sv-empty">No saved ${PLAT_NAME[savedTab]} channels yet. Type a name above.</div>`; }
-  const head = t => { const h = document.createElement('div'); h.className = 'sv-sec'; h.textContent = t; list.appendChild(h); };
+  const q = savedQuery();
+  const shown = c => (savedTab === 'all' || platOf(c) === savedTab) && (!q || chLabel(c).toLowerCase().includes(q));
+  const liveList = liveNow().filter(shown), offList = saved.filter(ch => shown(ch) && !liveList.includes(ch));   // both already A–Z
+  if (!liveList.length && !offList.length){
+    const e = document.createElement('div'); e.className = 'sv-empty';
+    e.textContent = q ? `No saved channel matches “${q}”. Press Enter to save it.` : `No saved ${PLAT_NAME[savedTab]} channels yet. Type a name above.`;
+    list.appendChild(e);
+  }
+  const head = (t, live) => { const h = document.createElement('div'); h.className = 'sv-sec' + (live ? ' live' : ''); h.textContent = t; list.appendChild(h); };
   [...liveList, ...offList].forEach((ch, i) => {
-    if (liveList.length && i === 0) head(`Live now · ${liveList.length}`);
-    if (liveList.length && offList.length && i === liveList.length) head('Offline');
-    const info = infoFor(ch), live = !!(info && info.live);
-    const row = document.createElement('div'); row.className = 'sv' + (live ? ' live' : '');
-    row.innerHTML = `<i class="sv-dot" title="${live ? 'Live now' : info ? (info.missing ? 'Channel not found' : 'Offline') : 'Checking…'}"></i>${platIcon(platOf(ch))}
-      <div class="sv-txt"><div class="sv-line"><span class="nm"></span>${live ? `<span class="sv-live">LIVE</span>${info.viewers != null ? `<span class="sv-view">${fmtViewers(info.viewers)}</span>` : ''}` : ''}</div>
-      ${live && (info.title || info.category) ? '<div class="sv-sub"></div>' : ''}</div>`;
+    if (liveList.length && i === 0) head(`Live now · ${liveList.length}`, true);
+    if (offList.length && i === liveList.length) head(`Offline · ${offList.length}`);
+    const info = infoFor(ch), live = !!(info && info.live), prof = (svProf[ch] && svProf[ch].info) || {};
+    const row = document.createElement('div'); row.className = 'sv ' + (live ? 'live' : 'off');
+    row.title = 'Add it (as set in the Stream / Chat dropdown)';
+    row.innerHTML = `<span class="sv-av" title="${live ? 'Live now' : info ? (info.missing ? 'Channel not found' : 'Offline') : 'Checking…'}"></span>
+      <div class="sv-txt"><div class="sv-line"><span class="nm"></span></div><div class="sv-sub" hidden></div></div><div class="sv-meta"></div><div class="sv-acts"></div>`;
+    const av = row.querySelector('.sv-av');
+    av.style.setProperty('--c', svHue(ch)); av.textContent = live ? svInitials(chLabel(ch)) : chLabel(ch).replace(/^@/, '').slice(0, 1).toUpperCase(); av.insertAdjacentHTML('beforeend', platIcon(platOf(ch)));
+    if (prof.avatar){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = prof.avatar; av.appendChild(im); }
     row.querySelector('.nm').textContent = chLabel(ch);
-    const sub = row.querySelector('.sv-sub');
-    if (sub){ sub.textContent = [info.category, info.title].filter(Boolean).join(' · '); sub.title = info.title || ''; }
-    if (wins.some(w => w.channel === ch)){ const o = document.createElement('span'); o.className = 'open'; o.textContent = 'open'; row.appendChild(o); }
+    if (wins.some(w => w.channel === ch)){ const o = document.createElement('span'); o.className = 'open'; o.textContent = 'open'; row.querySelector('.sv-line').appendChild(o); }
+    const sub = row.querySelector('.sv-sub'), subText = live ? [...new Set([info.category, info.title].filter(Boolean))].join(' · ') : info && info.missing ? 'Channel not found' : '';
+    if (subText){ sub.hidden = false; sub.textContent = subText; sub.title = live ? info.title || '' : ''; }
+    const meta = row.querySelector('.sv-meta'), acts = row.querySelector('.sv-acts');
     if (DESKTOP && ROLE === 'main'){
+      const aon = autoOpen.includes(ch), on = notifyAll && !notifyOff.includes(ch);
+      if (aon) meta.insertAdjacentHTML('beforeend', `<span class="bolt" title="Opens by itself when it goes live">${icon.bolt}</span>`);
+      if (notifyAll && !on) meta.insertAdjacentHTML('beforeend', `<span class="mute" title="No notification for this channel">${icon.bellOff}</span>`);
       const au = document.createElement('button'); au.className = 'auto';
-      const aon = autoOpen.includes(ch);
       au.innerHTML = icon.bolt; au.classList.toggle('on', aon);
       au.title = aon ? 'Opens by itself when it goes live (click to turn off)' : 'Open this channel by itself when it goes live';
       au.onclick = e => { e.stopPropagation(); toggleAutoOpen(ch); };
-      row.appendChild(au);
+      acts.appendChild(au);
       const bell = document.createElement('button'); bell.className = 'bell';
-      const on = notifyAll && !notifyOff.includes(ch);
       bell.innerHTML = on ? icon.bell : icon.bellOff; bell.classList.toggle('on', on);
       bell.title = !notifyAll ? 'Live notifications are off (turn them on above)' : on ? 'Notify me when this channel goes live (click to turn off)' : 'No notification for this channel (click to turn on)';
       bell.disabled = !notifyAll;
@@ -2437,27 +2502,27 @@ function renderSaved(){
         try { localStorage.setItem('kickMultiview.notifyOff', JSON.stringify(notifyOff)); } catch {}
         sendWatch(); renderSaved();
       };
-      row.appendChild(bell);
+      acts.appendChild(bell);
     }
+    if (live && info.viewers != null) meta.insertAdjacentHTML('beforeend', `<span class="sv-view" title="Watching now">${fmtViewers(info.viewers)}</span>`);
     if (DESKTOP && ROLE === 'main' && !/^yt:v:/.test(ch)){
       const pb = document.createElement('button'); pb.className = 'prof'; pb.innerHTML = icon.user;
       pb.title = `${chLabel(ch)}'s profile: when they stream, past streams, your notes`;
       pb.onclick = e => { e.stopPropagation(); panel.hidden = true; openProfile(ch); };
-      row.appendChild(pb);
+      acts.appendChild(pb);
     }
-    const rm = document.createElement('button'); rm.className = 'rm'; rm.textContent = '✕'; rm.title = 'Remove from saved';
+    const rm = document.createElement('button'); rm.className = 'rm'; rm.innerHTML = icon.close; rm.title = 'Remove from saved';
     rm.onclick = e => { e.stopPropagation(); toggleSaved(ch); };
-    row.appendChild(rm);
+    acts.appendChild(rm);
     row.onclick = () => addParsed({ channel: ch, only: null });
     list.appendChild(row);
   });
-  const ol = $('#openLive'); if (ol){ const n = liveNow().length; ol.disabled = !n; ol.textContent = n ? `Open live (${n})` : 'Open live'; }
 }
 function addSavedFromInput(){
   const el = $('#savedInput'), p = parseInput(el.value, tabPlat());
   if (!p || !p.channel) return;
-  if (!saved.includes(p.channel)){ saved.push(p.channel); persistSaved(); }
-  el.value = '';
+  el.value = ''; $('#savedAdd').hidden = true;
+  if (!saved.includes(p.channel)){ saved.push(p.channel); persistSaved(); loadSavedProfiles(); } else renderSaved();
 }
 
 /* ---------- chat mentions / replies ---------- */
@@ -4537,21 +4602,34 @@ const panel = $('#savedPanel'), savedBtn = $('#savedBtn');
 savedBtn.onclick = () => {
   panel.hidden = !panel.hidden;
   if (!panel.hidden){
-    panel.style.left = Math.max(12, Math.min(savedBtn.getBoundingClientRect().left, innerWidth - 332)) + 'px';
-    renderSaved(); $('#savedInput').focus();
+    panel.style.left = Math.max(12, Math.min(savedBtn.getBoundingClientRect().left, innerWidth - panel.offsetWidth - 12)) + 'px';
+    renderSaved(); loadSavedProfiles(); $('#savedInput').focus();
     if (DESKTOP && ROLE === 'main' && window.kmv.checkLiveNow) window.kmv.checkLiveNow();
   }
 };
 document.addEventListener('pointerdown', e => {
-  if (!panel.hidden && !panel.contains(e.target) && e.target !== savedBtn) panel.hidden = true;
+  if (!panel.hidden && !panel.contains(e.target) && !savedBtn.contains(e.target)) panel.hidden = true;   // the button toggles it itself
+  if (!spMenu.hidden && !spMenu.contains(e.target) && !spMore.contains(e.target)) showSpMenu(false);
 });
+const spMenu = $('#spMenu'), spMore = $('#spMore');
+const showSpMenu = on => { spMenu.hidden = !on; spMore.classList.toggle('on', on); spMore.setAttribute('aria-expanded', on); };
+spMore.onclick = () => showSpMenu(spMenu.hidden);
+spMenu.addEventListener('click', e => { if (e.target.closest('button')) showSpMenu(false); });
+$('#savedInput').addEventListener('input', e => { $('#savedAdd').hidden = !e.target.value.trim(); renderSaved(); });
 $('#savedAdd').onclick = addSavedFromInput;
-$('#savedInput').addEventListener('keydown', e => { if (e.key === 'Enter') addSavedFromInput(); if (e.key === 'Escape') panel.hidden = true; });
+$('#savedInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addSavedFromInput();
+  if (e.key !== 'Escape') return;
+  // Esc steps back: the ⋯ menu, then the search, then the panel (the page-wide Esc closes that one)
+  if (!spMenu.hidden){ showSpMenu(false); e.stopPropagation(); }
+  else if (e.target.value){ e.target.value = ''; $('#savedAdd').hidden = true; renderSaved(); e.stopPropagation(); }
+  else panel.hidden = true;
+});
 $('#savedTabs').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   savedTab = b.dataset.t;
   try { localStorage.setItem('kickMultiview.savedTab', savedTab); } catch {}
-  $('#savedInput').placeholder = savedTab === 'all' ? 'Channel name or link' : `${PLAT_NAME[savedTab]} channel name or link`;
+  $('#savedInput').placeholder = savedTab === 'all' ? 'Search, or add a channel name or link' : `Search, or add a ${PLAT_NAME[savedTab]} channel`;
   renderSaved();
 });
 if (DESKTOP && ROLE === 'main' && window.kmv.watchLive){
@@ -4962,11 +5040,10 @@ if (DESKTOP){
     list.innerHTML = '';
     impRender();
   }
-  // Saved panel: Import ▸ Kick / Twitch / YouTube
+  // Saved panel: ⋯ ▸ Import from Kick / Twitch / YouTube
   if (ROLE === 'main'){
-    $('#importBtn').hidden = false;
-    $('#importBtn').onclick = () => { $('#importRow').hidden = !$('#importRow').hidden; };
-    $('#importRow').addEventListener('click', e => { const b = e.target.closest('button[data-imp]'); if (b){ $('#importRow').hidden = true; importFollows(b.dataset.imp); } });
+    $('#importRow').hidden = false;
+    $('#importRow').addEventListener('click', e => { const b = e.target.closest('button[data-imp]'); if (b){ showSpMenu(false); importFollows(b.dataset.imp); } });
   }
 
   /* ---- YouTube sign-in: copy the login from Firefox (Google blocks signing in inside the app) ---- */

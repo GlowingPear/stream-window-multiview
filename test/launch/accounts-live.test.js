@@ -93,9 +93,14 @@ test('Saved channels show who\'s live, with bells, auto-open and Open live', T, 
   const send = snap => a.app.evaluate((_e, snap) => globalThis.__sendLive(snap), snap);
   await send({ alpha: { live: true, viewers: 1234, title: 'Big match', category: 'Games', checked: now }, bravo: { live: false, checked: now }, 'tw:charlie': { live: false, checked: now } });
   await a.win.click('#savedBtn');
-  assert.match(await a.win.textContent('#savedList'), /Live now · 1.*alpha.*LIVE.*1\.2K.*Games · Big match.*Offline.*bravo/s);
+  assert.match(await a.win.textContent('#savedList'), /Live now · 1.*alpha.*Games · Big match.*1\.2K.*Offline · 2.*bravo/s);
   assert.match(await a.win.textContent('#liveStatus'), /1 live now · checked/);
   assert.match(await a.win.textContent('#savedBtn'), /1/, 'the Saved button counts who\'s live');
+  assert.equal(await a.win.textContent('#openLive'), 'Open 1 live');
+  await a.win.click('#savedBtn .sv-badge');
+  assert.equal(await a.win.isHidden('#savedPanel'), true, 'clicking the live count closes it too');
+  await a.win.click('#savedBtn .sv-badge');
+  assert.equal(await a.win.isVisible('#savedPanel'), true, '…and opens it');
 
   await a.win.click('#savedList .sv:has(.nm:text-is("bravo")) .bell');
   assert.deepEqual(JSON.parse(await a.win.evaluate(() => localStorage.getItem('kickMultiview.notifyOff'))), ['bravo'], 'no alerts for bravo');
