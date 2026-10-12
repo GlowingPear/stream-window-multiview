@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Stream Multiview</title>
 <link rel="icon" href="icon.png">
+<!-- macOS: marked before the first paint, so the toolbar never shows without room for the traffic lights -->
+<script>if (window.kmv && window.kmv.platform === 'darwin' && window.kmv.setLights) document.documentElement.classList.add('mac-bar');</script>
 <style>
 :root{
   --bg:#0a0c0d; --panel:#131719; --panel2:#1b2023; --line:#283034; --line2:#353e43;
@@ -55,10 +57,10 @@ body.focus #reveal{display:block}
 body.focus header:hover, body.focus.peek header{transform:none}
 /* macOS: the toolbar is the window's title bar (see macBar in main.js). Its empty space moves the window, the
    traffic lights sit at its left (not in fullscreen, where macOS hides them), and the pear stands in for the name. */
-body.mac-bar header{-webkit-app-region:drag;padding-left:86px}
-body.mac-bar header :is(button,input,select,label,a,.zoom,.colnav){-webkit-app-region:no-drag}
-body.mac-bar.fullscreen header{padding-left:12px}
-body.mac-bar:not(.role-streams) .brand-txt{display:none}
+html.mac-bar header{-webkit-app-region:drag;padding-left:86px}
+html.mac-bar header :is(button,input,select,label,a,.zoom,.colnav){-webkit-app-region:no-drag}
+html.mac-bar body.fullscreen header{padding-left:12px}
+html.mac-bar body:not(.role-streams) .brand-txt{display:none}
 
 /* ---------- stage ---------- */
 #stage{position:absolute;top:var(--head);left:0;right:0;bottom:0;transition:top .2s ease}
@@ -4777,7 +4779,6 @@ function showLights(on){
   else window.kmv.setLights(false);
 }
 if (MAC_BAR){
-  document.body.classList.add('mac-bar');
   window.kmv.onFullscreen(on => {
     document.body.classList.toggle('fullscreen', on);
     // macOS shows the lights again after fullscreen, even while the bar is hidden

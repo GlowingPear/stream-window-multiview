@@ -56,7 +56,7 @@ test('the desktop app starts, adds a stream and quits cleanly', async () => {
     await win.evaluate(() => { window.kmv.setLights(false); window.kmv.setLights(true); });
     await win.waitForTimeout(200);
     if (process.platform === 'darwin') {
-      assert.ok(await win.evaluate(() => document.body.classList.contains('mac-bar')), 'the toolbar is the title bar');
+      assert.ok(await win.evaluate(() => document.documentElement.classList.contains('mac-bar')), 'the toolbar is the title bar');
       const at = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => /index\.html$/.test(w.webContents.getURL())).getWindowButtonPosition());
       assert.deepEqual(at, { x: 18, y: 19 }, 'the lights are back in the toolbar, not in the corner');
     }
