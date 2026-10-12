@@ -2,7 +2,19 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.2.21 (current)
+## 0.3.0 (current)
+- App tests no longer hang when the app fails to start or close
+- Title bars fit narrow windows: buttons that don't fit go into a ⋯ menu
+- Extensions: signed-in sites get one switch for chats and streams, and sites an extension doesn't run on are marked
+- Spam alerts: catch promo bots at their opening line
+- Mac: the app updates itself, without dragging a new disk image into Applications
+- YouTube API key: live channels no longer show as "not found" while YouTube's feeds are down
+- Mentions: your own words (nicknames) count too, and a mentions history with search and filters
+- Saved: a cleaner panel, the live count closes it, and the bottom buttons fit
+- Settings > Layouts and a new Layout menu, with auto-opened channels fitted into Auto layout
+- On a Mac the toolbar is the window's title bar
+
+## 0.2.21
 - Spam alerts flag a wall of the same word
 - Mentions list is easier to read, mentions can be turned off per chat, and spam alerts keep a history
 - Videos in release notes play in Settings > Updates
