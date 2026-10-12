@@ -30,7 +30,8 @@ const KICK = {
   alpha: { slug: 'alpha', followers_count: 1500, verified: true, user: { username: 'Alpha', bio: 'Speedruns most weeknights.', instagram: 'alpha.live', profile_pic: '' },
     livestream: { is_live: true, session_title: 'Any% attempts', viewer_count: 321, start_time: kickTime(now - 90 * MIN), categories: [{ name: 'Hollow Run' }] },
     chatroom: { followers_mode: true, following_min_duration: 10, slow_mode: true, message_interval: 5 } },
-  bravo: { slug: 'bravo', followers_count: 20, user: { username: 'bravo', bio: '' }, livestream: null, chatroom: {} }
+  bravo: { slug: 'bravo', followers_count: 20, user: { username: 'bravo', bio: '' }, livestream: null, chatroom: {} },
+  echo: { slug: 'echo', followers_count: 77, user: { username: 'Echo', bio: '', profile_pic: 'https://files.kick.com/images/echo.png' }, livestream: null, chatroom: {} }
 };
 
 let a;
@@ -194,5 +195,27 @@ test('streams are recorded from the live checks, and profiles open from Saved an
   await w.waitForSelector('#stage .win.stream [data-a=profile]');
   await w.click('#stage .win.stream [data-a=profile]');
   await w.waitForFunction(() => /Bee/.test((document.querySelector('.pf-prof h2') || {}).textContent || ''));
+  await w.keyboard.press('Escape');
+});
+
+test('a newly saved channel gets its picture in the background, without opening its profile', T, async () => {
+  const w = a.win;
+  // the picture itself, from a stand-in for Kick's image host
+  await a.app.evaluate(({ session, net }) => {
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
+    session.defaultSession.protocol.handle('https', req => /^https:\/\/files\.kick\.com\//.test(req.url)
+      ? new Response(png, { headers: { 'content-type': 'image/png' } }) : net.fetch(req, { bypassCustomProtocolHandlers: true }));
+  });
+  await w.click('#savedBtn');
+  await w.fill('#savedInput', 'echo');
+  await w.press('#savedInput', 'Enter');
+  await w.waitForSelector('#savedList .sv:has-text("echo")');
+  // asked for once, soon after saving, and the row swaps its letter for the picture by itself
+  await w.waitForSelector('#savedList .sv:has-text("echo") .sv-av img', { timeout: 30000 });
+  assert.equal(await w.$eval('#savedList .sv:has-text("echo") .sv-av img', i => i.src), 'https://files.kick.com/images/echo.png');
+  const info = (await w.evaluate(() => window.kmv.profileList(['echo']))).echo.info;
+  assert.equal(info.name, 'Echo');
+  assert.equal(info.followers, 77);
+  assert.equal((await asked()).asked.filter(x => x === 'GET /api/v2/channels/echo').length, 1);
   await w.keyboard.press('Escape');
 });

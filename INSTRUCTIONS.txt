@@ -119,7 +119,7 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - Kick and Twitch past broadcasts fill in streams the app didn't see (marked VOD), when the streamer keeps them. Each number says where it comes from, and the line under the numbers says since when the app has been tracking and how many streams it saw itself.
 - Your notes, tags, a nickname and a favourite star are kept on this computer.
 - Unfollow on Kick unfollows on kick.com itself (it asks first, and can also remove them from Saved). You need to be logged in to Kick in the app.
-- The sites are only asked when you open a profile or look a name up; the history comes from the live checks the app already does.
+- Pictures, names and follower counts load by themselves, one channel at a time: a few seconds after you save or import a channel, when a saved channel goes live (at most once a day each), and slowly (one every 30 seconds) for saved channels the app hasn't looked at yet or for a week. Opening a profile or looking a name up asks the site right away. The history comes from the live checks the app already does.
 
 ## Logging in (person button)
 - Log in once to Kick and Twitch (for Kick, enter the email code once). Every chat for that site uses the login, and it's kept when you restart the app.

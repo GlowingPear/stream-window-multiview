@@ -4,6 +4,7 @@ const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parse
   validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink,
   parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, normCh, toTime } = require('./live');
 const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel } = require('./profiles');
+const { createProfileQueue } = require('./profile-queue');
 const path = require('path');
 const fs = require('fs');
 const { youtubeLoginFromFirefox } = require('./firefox-login');
@@ -577,20 +578,22 @@ const watcher = createLiveWatcher({
   fetchChannel: fetchAny,
   fetchBatch: liveBatch,
   batchIntervalMs: 30000,   // batched checks are cheap: Kick (1-4 requests on your login) and Twitch (1) every 30 s
-  onStatus: snap => { recordLive(snap); mainWin?.webContents.send('live:status', snap); },
+  onStatus: snap => { recordLive(snap); profQueue.sawLive(snap); mainWin?.webContents.send('live:status', snap); },
   onWentLive: notifyLive
 });
 ipcMain.on('live:watch', (_e, data) => {
   const d = data || {};
   notifyPrefs = { all: d.notifyAll !== false, off: Array.isArray(d.off) ? d.off.map(String) : [] };
   watcher.setChannels(Array.isArray(d.channels) ? d.channels : []);
+  profQueue.setSaved((Array.isArray(d.channels) ? d.channels : []).filter(okCh).map(normCh));
 });
 ipcMain.on('live:check-now', () => watcher.checkSoon());
 
 /* ---------- streamer profiles ----------
    The live checks above are recorded (profiles.json: each stream seen, its viewer counts, a follower
-   count a day, and your notes), and opening a profile asks the site for the rest. Nothing here runs
-   on a timer of its own: the sites are only asked when you open a profile or look a name up. */
+   count a day, and your notes), and opening a profile asks the site for the rest. The queue below also
+   asks for saved channels' profiles in the background: soon after one is saved, imported or goes live,
+   and slowly for ones the app knows nothing about yet (src/profile-queue.js). */
 const profFile = () => stateFile('profiles');
 let history = null, histT = null;
 function hist() {
@@ -609,7 +612,18 @@ function saveHistorySoon(ms = 20000) {      // sooner wins: notes are saved with
   clearTimeout(histT); histDue = due; histT = setTimeout(saveHistory, ms);
 }
 function recordLive(snap) { try { hist().record(snap); saveHistorySoon(60000); } catch {} }
-app.on('will-quit', () => saveHistory());
+app.on('will-quit', () => { profQueue.stop(); saveHistory(); });
+
+// Background profiles: one at a time, then the page swaps the letter for the picture.
+const profQueue = createProfileQueue({
+  fetch: async ch => {
+    const p = await siteProfile(ch);
+    if (p && !p.missing) mainWin?.webContents.send('profile:info', ch);
+    return p;
+  },
+  infoAt: ch => { const i = hist().info(ch); return i ? i.at : null; }
+});
+setInterval(() => profQueue.addStale(), 6 * 3600e3).unref?.();
 
 // One request to Kick's API from the kick.com page (with your login when you're logged in).
 async function kickApi(u, method = 'GET') {

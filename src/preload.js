@@ -90,6 +90,7 @@ contextBridge.exposeInMainWorld('kmv', {
   profileList: chs => ipcRenderer.invoke('profile:list', chs),
   profileLookup: q => ipcRenderer.invoke('profile:lookup', q),
   profileMeta: (ch, patch) => ipcRenderer.invoke('profile:meta', ch, patch),
+  onProfileInfo: cb => ipcRenderer.on('profile:info', (_e, ch) => cb(ch)),
   kickUnfollow: slug => ipcRenderer.invoke('kick:unfollow', slug),
 
   // Chrome extensions
