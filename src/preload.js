@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('kmv', {
   ytConsentFallback: part => ipcRenderer.invoke('youtube:consentFallback', part),
   onYoutubeSignin: cb => ipcRenderer.on('youtube:signin', () => cb()),
   platform: process.platform,
+  setLights: on => ipcRenderer.send('win:lights', !!on),
+  onFullscreen: cb => ipcRenderer.on('win:fullscreen', (_e, on) => cb(!!on)),
   gameShape: d => ipcRenderer.send('game:shape', d),
   gameOnTop: on => ipcRenderer.send('game:onTop', !!on),
   gameAttach: d => ipcRenderer.invoke('game:attach', d),

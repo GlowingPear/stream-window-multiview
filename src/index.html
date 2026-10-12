@@ -53,6 +53,12 @@ body.focus header{transform:translateY(-100%)}
 #reveal{position:fixed;top:0;left:0;right:0;height:6px;z-index:100001;display:none}
 body.focus #reveal{display:block}
 body.focus header:hover, body.focus.peek header{transform:none}
+/* macOS: the toolbar is the window's title bar (see macBar in main.js). Its empty space moves the window, the
+   traffic lights sit at its left (not in fullscreen, where macOS hides them), and the pear stands in for the name. */
+body.mac-bar header{-webkit-app-region:drag;padding-left:86px}
+body.mac-bar header :is(button,input,select,label,a,.zoom,.colnav){-webkit-app-region:no-drag}
+body.mac-bar.fullscreen header{padding-left:12px}
+body.mac-bar:not(.role-streams) .brand-txt{display:none}
 
 /* ---------- stage ---------- */
 #stage{position:absolute;top:var(--head);left:0;right:0;bottom:0;transition:top .2s ease}
@@ -4761,9 +4767,27 @@ $('#tile').onclick = tile;
 $('#clear').onclick = async () => { if (wins.length && await ask('Close all windows?', 'Every stream, chat and other window closes. Undo brings them back.', { ok: 'Close all', danger: true })) { [...wins].forEach(w => { stopCapture(w); w.el.remove(); }); wins = []; updateEmpty(); save(); } };
 // Hide bar: the toolbar slides away (it peeks out when the mouse touches the top edge). The same button,
 // Esc and H bring it back.
+// On macOS the traffic lights go with it: away as soon as it starts sliding off, back once it has slid in.
+const MAC_BAR = !!(window.kmv && window.kmv.platform === 'darwin' && window.kmv.setLights);
+let lightsT;
+function showLights(on){
+  if (!MAC_BAR) return;
+  clearTimeout(lightsT);
+  if (on) lightsT = setTimeout(() => window.kmv.setLights(true), 200);   // the header's slide takes .2s
+  else window.kmv.setLights(false);
+}
+if (MAC_BAR){
+  document.body.classList.add('mac-bar');
+  window.kmv.onFullscreen(on => {
+    document.body.classList.toggle('fullscreen', on);
+    // macOS shows the lights again after fullscreen, even while the bar is hidden
+    if (!on && document.body.classList.contains('focus') && !document.body.classList.contains('peek')) window.kmv.setLights(false);
+  });
+}
 function setBarHidden(on){
   document.body.classList.toggle('focus', on);
   document.body.classList.remove('peek');
+  showLights(!on);
   const b = $('#focusBtn');
   b.querySelector('.l-long').textContent = on ? 'Show bar' : 'Hide bar';
   b.querySelector('.l-short').textContent = on ? 'Show' : 'Hide';
@@ -4772,8 +4796,11 @@ function setBarHidden(on){
   setTimeout(() => window.dispatchEvent(new Event('resize')), 220);
 }
 $('#focusBtn').onclick = () => setBarHidden(!document.body.classList.contains('focus'));
-$('#reveal').addEventListener('mouseenter', () => document.body.classList.add('peek'));
-document.querySelector('header').addEventListener('mouseleave', () => document.body.classList.remove('peek'));
+$('#reveal').addEventListener('mouseenter', () => { document.body.classList.add('peek'); showLights(true); });
+document.querySelector('header').addEventListener('mouseleave', () => {
+  document.body.classList.remove('peek');
+  if (document.body.classList.contains('focus')) showLights(false);
+});
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.body.classList.contains('focus')) setBarHidden(false);
 });

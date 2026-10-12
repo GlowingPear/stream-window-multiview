@@ -78,6 +78,24 @@ const appWebPrefs = () => ({
   preload: path.join(__dirname, 'preload.js'),
   contextIsolation: true, nodeIntegration: false, sandbox: true, webviewTag: true
 });
+// macOS: the toolbar is the title bar. The traffic lights sit inside it (centred in its 52px) and the page makes
+// the toolbar's empty space draggable. Other systems keep their normal frame.
+const LIGHTS_AT = { x: 18, y: 19 };
+const macBar = () => process.platform === 'darwin' ? { titleBarStyle: 'hidden', trafficLightPosition: LIGHTS_AT } : {};
+// Tells the page when the window goes fullscreen (macOS hides the lights there, so the toolbar needs no room for them).
+function trackFullscreen(win) {
+  const send = () => { if (!win.isDestroyed()) win.webContents.send('win:fullscreen', win.isFullScreen()); };
+  win.on('enter-full-screen', send);
+  win.on('leave-full-screen', send);
+  win.webContents.on('did-finish-load', send);
+}
+// Hide bar: the lights go away with the toolbar and come back when it peeks out.
+ipcMain.on('win:lights', (e, on) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win || process.platform !== 'darwin') return;
+  win.setWindowButtonVisibility(!!on);
+  if (on) win.setWindowButtonPosition(LIGHTS_AT);   // macOS puts them back in the corner otherwise
+});
 
 function openStreamsWindow(specs = []) {
   pendingStreams.push(...specs);
@@ -95,8 +113,9 @@ function openStreamsWindow(specs = []) {
   streamsWin = new BrowserWindow({
     ...(st ? { width: st.width || 1280, height: st.height || 760, x: st.x, y: st.y } : def),
     minWidth: 480, minHeight: 300, backgroundColor: '#0a0c0d', title: 'Stream Multiview – Streams', autoHideMenuBar: true, icon: ICON,
-    webPreferences: appWebPrefs()
+    ...macBar(), webPreferences: appWebPrefs()
   });
+  trackFullscreen(streamsWin);
   if (st?.maximized || (!st && others[0])) streamsWin.maximize();
   if (st?.fullscreen) streamsWin.setFullScreen(true);
   streamsWin.loadFile(path.join(__dirname, 'index.html'), { query: { role: 'streams' } });
@@ -183,8 +202,9 @@ function createMain() {
   mainWin = new BrowserWindow({
     width: st?.width || 1600, height: st?.height || 900, x: st?.x, y: st?.y,
     minWidth: 800, minHeight: 500, backgroundColor: '#0a0c0d', title: 'Stream Multiview', autoHideMenuBar: true, icon: ICON,
-    webPreferences: appWebPrefs()
+    ...macBar(), webPreferences: appWebPrefs()
   });
+  trackFullscreen(mainWin);
   if (st?.maximized) mainWin.maximize();
   mainWin.loadFile(path.join(__dirname, 'index.html'));
   mainWin.webContents.on('will-navigate', e => e.preventDefault());
