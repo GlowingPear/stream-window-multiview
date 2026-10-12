@@ -89,10 +89,12 @@ test('your layouts: save the arrangement under a name, bring it back, update it 
   const shown = () => page.$eval('#lyDetail .ly-panel:not([hidden])', e => e.dataset.k);
   const panel = n => page.locator(`#lyDetail [data-k="p:${n}"]`), item = n => page.locator(`#lyPresetList [data-k="p:${n}"]`);
   assert.equal(await shown(), 'p:two UP', 'the saved layout in use is picked');
-  assert.deepEqual(await page.$$eval('#lyPresetList .ly-item', l => l.map(e => e.dataset.k)), ['p:two UP', '+new'], 'listed under the built-in ones');
+  assert.deepEqual(await page.$$eval('#lyPresetList .ly-item', l => l.map(e => e.dataset.k)), ['p:two UP'], 'listed under the built-in ones');
   assert.ok(await item('two UP').locator('.lm-pic').count(), 'with the picture of the layout it was made from');
   assert.match(await panel('two UP').textContent(), /Tile · 2 streams, 2 chats · Made from Tile.*No options/s);
-  await page.click('#lyPresetList .ly-new');
+  await page.click('#lyPresetList .ly-add');
+  assert.equal(await shown(), '+new', '+ Save on the heading');
+  assert.ok(await page.evaluate(() => document.activeElement.id === 'lyPresetName'), 'ready to type the name');
   await page.fill('#lyPresetName', 'Solo'); await page.press('#lyPresetName', 'Enter');
   assert.equal(await shown(), 'p:Solo', 'a new one is picked once saved');
   const rename = async (to, how) => { await panel(await shown().then(k => k.slice(2))).locator('.pr-ren').click(); await page.fill('#lyDetail input[aria-label="New name"]', to); await how(); };
@@ -116,7 +118,8 @@ test('your layouts: save the arrangement under a name, bring it back, update it 
   assert.equal(await shown(), 'p:Pair', 'the one in use is picked');
   assert.equal(await item('Pair').locator('em').textContent(), 'In use');
   for (const n of ['Pair', 'two UP']){ await item(n).click(); await panel(n).locator('.pr-x').click(); await page.click('#askDlg .ask-yes'); }
-  assert.deepEqual(await page.$$eval('#lyPresetList .ly-item', l => l.map(e => e.dataset.k)), ['+new']);
+  assert.equal(await page.locator('#lyPresetList .ly-item').count(), 0);
+  assert.match(await page.textContent('#lyPresetList'), /save them here/);
   assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.presets'))), []);
 });
 

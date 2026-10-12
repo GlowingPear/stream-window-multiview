@@ -473,7 +473,7 @@ test('Settings opens from the gear and Ctrl+, shows only what works in a browser
   await page.click('#settingsBtn');
   assert.ok(await page.isVisible('#settingsDlg'));
   const tabs = await page.$$eval('#settingsDlg .st-rail button', b => b.filter(x => !x.hidden).map(x => x.dataset.s));
-  assert.deepEqual(tabs, ['general', 'notify', 'themes', 'updates', 'guide', 'keys'], 'accounts, alerts and spam need the desktop app');
+  assert.deepEqual(tabs, ['general', 'layouts', 'notify', 'themes', 'updates', 'guide', 'keys'], 'accounts, alerts and spam need the desktop app');
   await press(page, 'Escape');
   assert.ok(await page.isHidden('#settingsDlg'));
   await page.keyboard.press('Control+,');

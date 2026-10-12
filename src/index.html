@@ -705,10 +705,11 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .ly-panel .st-opt{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:13px}
 .ly-panel .st-opt small{font-size:11.5px}
 .ly-none{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted)}
-.ly-list-sec{margin:10px 8px 4px;padding-top:10px;border-top:1px solid var(--line);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.ly-list-sec{display:flex;align-items:center;margin:10px 4px 4px 8px;padding-top:8px;border-top:1px solid var(--line);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
 .ly-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ly-item.ly-new{color:var(--muted)}
-.ly-item.ly-new i{width:36px;flex:none;text-align:center;font-style:normal;font-size:16px}
+.ly-add{margin-left:auto;height:22px;padding:0 8px;border:1px solid var(--line2);border-radius:6px;background:var(--panel2);color:var(--text);font:600 11px/1 inherit;letter-spacing:0;text-transform:none;cursor:pointer}
+.ly-add:hover{border-color:var(--muted)}
+.ly-empty{padding:2px 8px 4px;font-size:11px;color:var(--muted);line-height:1.4}
 .ly-item .ly-free{width:36px;height:23px;flex:none;border:1px dashed var(--line2);border-radius:3px}
 .ly-acts{display:flex;gap:6px;margin-top:12px}
 .ly-acts .btn{height:28px;padding:0 10px;font-size:12px}
@@ -1214,7 +1215,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   </div>
   <div class="lm-sec">Your layouts</div>
   <div id="presetList"></div>
-  <div class="lm-save"><input id="presetName" placeholder="Name the current layout…" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="presetSave">Save</button></div>
+  <div class="lm-save"><input id="presetName" placeholder="Name this layout" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="presetSave">Save</button></div>
 </div>
 
 <div id="mentPanel" class="popover" hidden>
@@ -1317,7 +1318,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 <div class="dlg-bg" id="importDlg" hidden><div class="dlg" role="dialog" aria-modal="true">
   <h3><i class="pdot"></i><span class="dlg-title">Import follows</span></h3>
   <div class="dlg-sub"></div>
-  <div class="dlg-tools" hidden><input class="dlg-q" placeholder="Filter…" autocomplete="off" spellcheck="false"><button class="btn dlg-all">All</button><button class="btn dlg-none">None</button></div>
+  <div class="dlg-tools" hidden><input class="dlg-q" placeholder="Filter" autocomplete="off" spellcheck="false"><button class="btn dlg-all">All</button><button class="btn dlg-none">None</button></div>
   <div class="dlg-list"></div>
   <div class="dlg-foot"><span class="dlg-note"></span><button class="btn dlg-cancel">Cancel</button><button class="btn primary dlg-ok" hidden>Add to Saved</button></div>
 </div></div>
@@ -1350,7 +1351,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       <section class="st-pane" data-s="layouts" hidden>
         <h4>Layouts</h4><p class="st-sub">How the windows are arranged. Switch with <b>Layout ▾</b> in the toolbar, or here.</p>
         <div class="st-tabs" id="lyTabs"><button data-t="layouts" class="on">Layouts</button><button data-t="switch">Switch control</button></div>
-        <div class="st-subpane" data-t="layouts"><div class="ly-md"><div class="ly-list" id="lyList" role="listbox" aria-label="Layouts"><div id="lyPresetList"></div></div><div class="ly-detail" id="lyDetail"><div id="lyPresetDetail"></div><div class="ly-panel" data-k="+new" hidden><div class="ly-head"><b>Save the current layout</b></div><p class="ly-desc">Keeps the windows that are open, where they are and their order, with the layout's options. Using it later keeps the windows that are already open and reopens the rest.</p><div class="st-add"><input class="st-in" id="lyPresetName" placeholder="Name it…" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="lyPresetSave">Save</button></div></div></div></div></div>
+        <div class="st-subpane" data-t="layouts"><div class="ly-md"><div class="ly-list" id="lyList" role="listbox" aria-label="Layouts"><div id="lyPresetList"></div></div><div class="ly-detail" id="lyDetail"><div id="lyPresetDetail"></div><div class="ly-panel" data-k="+new" hidden><div class="ly-head"><b>Save what's on screen</b></div><p class="ly-desc">Keeps the open windows, where they are and their order, with the layout's options. Using it later keeps the windows that are already open and reopens the rest.</p><div class="st-add"><input class="st-in" id="lyPresetName" placeholder="Name this layout" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="lyPresetSave">Save</button></div></div></div></div></div>
         <div class="st-subpane" data-t="switch" hidden>
           <p class="st-sub ly-intro">A button for every stream: make one big, swap them, pause, mute and set the volume. Where it shows:</p>
           <div class="ly-sw" id="lySw">
@@ -1434,7 +1435,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <select data-al="mention.esc"><option value="0">Off</option><option value="10">Every 10 s</option><option value="20">Every 20 s</option><option value="40">Every 40 s</option><option value="60">Every minute</option></select>
           <select data-al="mention.max"><option value="pulse">Up to pulse</option><option value="flash">Up to flash</option></select></div>
         <div class="st-row"><span class="st-t">Sound</span>
-          <select data-al="mention.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound…</option></select>
+          <select data-al="mention.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound</option></select>
           <button class="btn st-play" data-play="mention" title="Play it">▶</button>
           <input type="range" min="0" max="1" step="0.05" data-al="mention.vol" title="Volume"></div>
         <div class="st-row" data-dep="mention.until"><span class="st-t">Repeat the sound while unseen</span><input type="checkbox" class="st-sw" data-al="mention.repeat"></div>
@@ -1455,7 +1456,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <select data-al="spam.max"><option value="pulse">Up to pulse</option><option value="flash">Up to flash</option></select></div>
         <div class="st-row"><span class="st-t">Tag the message in chat<small>Adds "LIKELY SPAM" after the message. Hover the tag to see why.</small></span><input type="checkbox" class="st-sw" data-al="spam.tag"></div>
         <div class="st-row"><span class="st-t">Sound</span>
-          <select data-al="spam.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound…</option></select>
+          <select data-al="spam.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound</option></select>
           <button class="btn st-play" data-play="spam" title="Play it">▶</button>
           <input type="range" min="0" max="1" step="0.05" data-al="spam.vol" title="Volume"></div>
         <div class="st-row" data-dep="spam.until"><span class="st-t">Repeat the sound while unseen</span><input type="checkbox" class="st-sw" data-al="spam.repeat"></div>
@@ -1499,7 +1500,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       </section>
       <section class="st-pane" data-s="extensions" hidden>
         <h4>Extensions</h4><p class="st-sub">Chrome extensions for streams and chats, switched on per site and window type. A window reloads when its extensions change.</p>
-        <div class="ex-acts"><button class="btn primary ex-store">Browse Chrome Web Store</button><button class="btn ex-link">Install from link…</button><button class="btn ex-folder">Load folder…</button></div>
+        <div class="ex-acts"><button class="btn primary ex-store">Browse Chrome Web Store</button><button class="btn ex-link">Install from link</button><button class="btn ex-folder">Load folder</button></div>
         <form class="st-add ex-linkrow" hidden><input class="st-in" placeholder="Chrome Web Store link or extension ID" aria-label="Chrome Web Store link or extension ID"><button class="btn primary">Install</button></form>
         <p class="ex-msg" hidden></p>
         <div class="ex-list"></div>
@@ -1514,7 +1515,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
             <div class="th-sec">Customize <span class="th-cur"></span></div>
             <div class="th-vars"></div>
             <div class="th-warn" hidden></div>
-            <div class="th-save"><input class="th-name" placeholder="Name your theme…" maxlength="30" autocomplete="off" spellcheck="false"><button class="btn th-savebtn">Save theme</button></div>
+            <div class="th-save"><input class="th-name" placeholder="Name your theme" maxlength="30" autocomplete="off" spellcheck="false"><button class="btn th-savebtn">Save theme</button></div>
           </div>
         </div>
       </section>
@@ -4435,7 +4436,10 @@ function renderPresets(){
 const OPT_NAMES = { linked: 'Linked', autoFit: 'Fit in channels that open by themselves' };
 function renderPresetsPane(){
   const list = $('#lyPresetList'), detail = $('#lyPresetDetail'); if (!list) return;
-  list.innerHTML = '<div class="ly-list-sec">Your layouts</div>'; detail.innerHTML = '';
+  list.innerHTML = '<div class="ly-list-sec"><span>Your layouts</span><button class="ly-add" title="Save what\'s on screen as a layout">+ Save</button></div>'
+    + (presets.length ? '' : '<div class="ly-empty">Arrange the windows how you like, then save them here.</div>');
+  detail.innerHTML = '';
+  list.querySelector('.ly-add').onclick = () => { selectLayoutPane('+new'); $('#lyPresetName').focus(); };
   presets.forEach((p, i) => {
     const k = 'p:' + p.name, base = presetBase(p), pic = document.querySelector(`#layoutMenu [data-l="${base}"] .lm-pic`);
     const item = document.createElement('button'); item.className = 'ly-item'; item.dataset.k = k; item.setAttribute('role', 'option');
@@ -4478,9 +4482,6 @@ function renderPresetsPane(){
     } else panel.insertAdjacentHTML('beforeend', '<div class="ly-none">No options for this one.</div>');
     detail.appendChild(panel);
   });
-  const add = document.createElement('button'); add.className = 'ly-item ly-new'; add.dataset.k = '+new'; add.setAttribute('role', 'option');
-  add.innerHTML = '<i>+</i><span>Save current layout…</span>';
-  list.appendChild(add);
   if (lySel) selectLayoutPane(lySel);      // rebuilt: keep the one that's picked
 }
 function renamePreset(t, p){
@@ -4993,12 +4994,12 @@ function selectLayoutPane(k){
 function renderLayoutsPane(fresh){
   renderPresetsPane();
   const cur = curLayout(), now = activePreset ? 'p:' + activePreset : cur, inUse = k => k === now;
-  document.querySelectorAll('#lyList .ly-item:not(.ly-new)').forEach(x => { x.classList.toggle('on', inUse(x.dataset.k)); x.querySelector('em').textContent = inUse(x.dataset.k) ? 'In use' : ''; });
+  document.querySelectorAll('#lyList .ly-item').forEach(x => { x.classList.toggle('on', inUse(x.dataset.k)); x.querySelector('em').textContent = inUse(x.dataset.k) ? 'In use' : ''; });
   document.querySelectorAll('#lyDetail .ly-panel').forEach(x => {
     const b = x.querySelector('.ly-use'); if (!b) return;
     x.classList.toggle('on', inUse(x.dataset.k)); b.textContent = inUse(x.dataset.k) ? 'In use' : 'Use'; b.disabled = inUse(x.dataset.k);
   });
-  const has = k => k && document.querySelector(`#lyList .ly-item[data-k="${CSS.escape(k)}"]`);
+  const has = k => k === '+new' || (k && document.querySelector(`#lyList .ly-item[data-k="${CSS.escape(k)}"]`));
   if (fresh || !has(lySel)) selectLayoutPane(has(now) ? now : has(lySel) ? lySel : 'focus');
   else selectLayoutPane(lySel);
   $('#lyLinked').checked = linked;
@@ -5902,7 +5903,7 @@ function renderGameBar(){
   gameBar.innerHTML =
     `<span class="gb-title">${icon.game}<b>Game area</b></span>` +
     (shapeOK ? `<span class="gb-seg"><button data-gm="see" class="${gameMode === 'see' ? 'on' : ''}" title="The real game behind Stream Multiview shows here and you can play it">See-through (play)</button><button data-gm="window" class="${gameMode === 'window' ? 'on' : ''}" title="Show a stream or another app's window here instead">Show a window</button></span>` : '') +
-    (gameMode === 'window' ? `<select class="gb-pick" title="What to show in the game area"><option value="">Choose…</option>${vids.map(w => `<option value="${escH(colKey(w))}"${colKey(w) === gameKey ? ' selected' : ''}>${escH(w.kind === 'capture' ? (w.capName || 'Window') + ' (window)' : chLabelP(w.channel))}</option>`).join('')}</select>` +
+    (gameMode === 'window' ? `<select class="gb-pick" title="What to show in the game area"><option value="">Choose</option>${vids.map(w => `<option value="${escH(colKey(w))}"${colKey(w) === gameKey ? ' selected' : ''}>${escH(w.kind === 'capture' ? (w.capName || 'Window') + ' (window)' : chLabelP(w.channel))}</option>`).join('')}</select>` +
       (DESKTOP && window.kmv.captureSources ? `<button class="gb-btn gb-cap" title="Pick another app's window (e.g. your game) to show here">${icon.capture}<span>Pick window</span></button>` : '') : '') +
     (gameMode === 'see' && attachOK ? (gameAttached
       ? `<span class="gb-game" title="${escH(gameAttached)}">${icon.game}<span>${escH(gameAttached)}</span></span><button class="gb-btn gb-play" title="Click into the game">Play</button><label class="chk gb-strip" title="Hide the game's own title bar and border so it fills the area"><input type="checkbox"${gameStrip ? ' checked' : ''}>No border</label><button class="gb-btn gb-rel" title="Give the game its own window back">Release</button>`
@@ -6711,7 +6712,7 @@ function pfRenderProf(){
   // notes, tags, nickname
   const nb = pfE('div', 'pf-box pf-notes');
   nb.innerHTML = '<h4>Your notes <span>kept on this computer</span></h4>';
-  const ta = document.createElement('textarea'); ta.dataset.k = 'notes'; ta.placeholder = `Anything to remember about ${shown}…`; ta.setAttribute('aria-label', 'Your notes'); ta.value = m.notes || '';
+  const ta = document.createElement('textarea'); ta.dataset.k = 'notes'; ta.placeholder = `Anything to remember about ${shown}`; ta.setAttribute('aria-label', 'Your notes'); ta.value = m.notes || '';
   ta.oninput = () => pfSaveMeta(ch, { notes: ta.value });
   nb.appendChild(ta);
   const tr = pfE('div', 'pf-row'); tr.appendChild(pfE('label', '', 'Tags'));
