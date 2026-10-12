@@ -13,7 +13,7 @@ const FIXTURE = path.join(ROOT, 'test', 'fixtures', 'marker-extension');
 let a;
 test.before(async () => {
   a = await launchApp({ storage: { 'kickMultiview.alerts': { mention: { sound: 'none' }, spam: { sound: 'none' } } } });
-  // "Load folder…" picks the test extension without showing the system's folder picker
+  // "Load folder" picks the test extension without showing the system's folder picker
   await a.app.evaluate(({ session }) => globalThis.__fake(session.fromPartition('persist:kmv-webstore')));   // no network
   await a.app.evaluate(({ dialog }, dir) => {
     globalThis.__pick = dir;

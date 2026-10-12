@@ -74,19 +74,176 @@ test('your layouts: save the arrangement under a name, bring it back, update it 
   assert.equal(await page.locator('#stage .win').count(), 4, 'the closed window comes back');
   assert.deepEqual(await page.$$eval('#stage .win', l => l.map(e => [e.offsetLeft, e.offsetTop, e.offsetWidth])).then(x => x.length), tiled.length);
 
-  // same name again: asks before replacing; the update button too
+  // same name again: asks before replacing
   await page.click('#layoutBtn');
   await page.fill('#presetName', 'two UP'); await page.click('#presetSave');
   assert.equal(await page.textContent('#askTitle'), 'Replace “Two up”?');
   await page.click('#askDlg .ask-yes');
   assert.equal(await page.locator('#presetList .pr-row').count(), 1, 'replaced, not added');
-  await page.click('#presetList .pr-up');
+  assert.equal(await page.locator('#presetList .pr-row button').count(), 1, 'the menu only loads them');
+
+  // Settings > Layouts (the menu's gear) lists them under the built-in ones: save, rename, update, use and delete
+  await page.click('#layoutSet');
+  assert.equal(await page.isVisible('#layoutMenu'), false, 'the menu closes');
+  assert.equal(await page.$eval('#settingsDlg .st-rail .on', e => e.dataset.s), 'layouts');
+  const shown = () => page.$eval('#lyDetail .ly-panel:not([hidden])', e => e.dataset.k);
+  const panel = n => page.locator(`#lyDetail [data-k="p:${n}"]`), item = n => page.locator(`#lyPresetList [data-k="p:${n}"]`);
+  assert.equal(await shown(), 'p:two UP', 'the saved layout in use is picked');
+  assert.deepEqual(await page.$$eval('#lyPresetList .ly-item', l => l.map(e => e.dataset.k)), ['p:two UP'], 'listed under the built-in ones');
+  assert.ok(await item('two UP').locator('.lm-pic').count(), 'with the picture of the layout it was made from');
+  assert.match(await panel('two UP').textContent(), /Tile · 2 streams, 2 chats · Made from Tile.*No options/s);
+  await page.click('#lyPresetList .ly-add');
+  assert.equal(await shown(), '+new', '+ Save on the heading');
+  assert.ok(await page.evaluate(() => document.activeElement.id === 'lyPresetName'), 'ready to type the name');
+  await page.fill('#lyPresetName', 'Solo'); await page.press('#lyPresetName', 'Enter');
+  assert.equal(await shown(), 'p:Solo', 'a new one is picked once saved');
+  const rename = async (to, how) => { await panel(await shown().then(k => k.slice(2))).locator('.pr-ren').click(); await page.fill('#lyDetail input[aria-label="New name"]', to); await how(); };
+  await rename('TWO up', () => page.press('#lyDetail input[aria-label="New name"]', 'Enter'));
+  assert.match(await page.textContent('#msg'), /already a layout called “TWO up”/);
+  assert.equal(await shown(), 'p:Solo', 'not renamed to a name in use');
+  await rename('nope', () => page.press('#lyDetail input[aria-label="New name"]', 'Escape'));
+  assert.equal(await shown(), 'p:Solo', 'Esc keeps the old name');
+  assert.equal(await page.isVisible('#settingsDlg'), true, 'and leaves Settings open');
+  await rename('Pair', () => page.locator('#lyDetail [data-k="p:Solo"] .ly-desc').click());
+  assert.equal(await shown(), 'p:Pair', 'clicking away keeps the new name');
+  assert.match(await page.textContent('#presetList'), /two UP.*Pair/s, 'the menu has it too');
+  await item('two UP').click();
+  await panel('two UP').locator('.pr-up').click();
   assert.equal(await page.textContent('#askTitle'), 'Update “two UP”?');
   await page.click('#askDlg .ask-yes');
-  await page.click('#presetList .pr-x');
-  await page.click('#askDlg .ask-yes');
-  assert.equal(await page.locator('#presetList .pr-row').count(), 0, 'deleted');
+  await item('Pair').click();
+  await panel('Pair').locator('.ly-use').click();
+  assert.equal(await page.isVisible('#settingsDlg'), false, 'Use closes Settings');
+  await page.evaluate(() => openSettings('layouts'));
+  assert.equal(await shown(), 'p:Pair', 'the one in use is picked');
+  assert.equal(await item('Pair').locator('em').textContent(), 'In use');
+  for (const n of ['Pair', 'two UP']){ await item(n).click(); await panel(n).locator('.pr-x').click(); await page.click('#askDlg .ask-yes'); }
+  assert.equal(await page.locator('#lyPresetList .ly-item').count(), 0);
+  assert.match(await page.textContent('#lyPresetList'), /save them here/);
   assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.presets'))), []);
+});
+
+test('your layouts keep their own options (Linked, stream columns, fitting in), apart from the built-in layouts\' ones', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'bravo', 'charlie');
+  const presets = () => page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.presets')));
+  const save = async n => { await page.click('#layoutBtn'); await page.fill('#presetName', n); await page.click('#presetSave'); };
+  const linkedNow = () => page.evaluate(() => document.body.classList.contains('linked'));
+
+  // made from Columns: its own Linked
+  await press(page, 'c');
+  await save('Cols');
+  await page.uncheck('#lmLinked');
+  assert.equal((await presets())[0].linked, false, 'the menu changes the saved layout in use');
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.linked')), null, 'not the built-in Columns');
+  assert.equal(await linkedNow(), false);
+  await page.click('#layoutMenu [data-l=columns]');
+  assert.equal(await linkedNow(), true, 'picking Columns brings its own back');
+  await page.evaluate(() => openSettings('layouts'));
+  await page.click('#lyPresetList [data-k="p:Cols"]');
+  const colsSw = page.locator('#lyDetail [data-k="p:Cols"] [data-opt=linked]');
+  assert.equal(await colsSw.isChecked(), false);
+  await colsSw.check();
+  assert.equal((await presets())[0].linked, true, 'and Settings changes it');
+  await page.keyboard.press('Escape');
+
+  // made from Chat focus: its stream columns, used straight away while it's in use
+  await press(page, 'Shift+C');
+  await save('Chats');
+  await page.click('#layoutBtn');
+  await page.evaluate(() => openSettings('layouts'));
+  await page.click('#lyDetail [data-k="p:Chats"] .pr-cols [data-n="2"]');
+  assert.equal((await presets())[1].streamCols, 2);
+  await page.keyboard.press('Escape');
+  await page.click('#layoutBtn');
+  assert.ok(await page.locator('#lmCols [data-n="2"]').evaluate(e => e.classList.contains('on')), 'in use, so the streams went into 2 columns');
+  await page.click('#layoutBtn');
+
+  // made from Auto layout: its own fitting in
+  await press(page, 'a');
+  await save('Grid');
+  assert.equal(await page.isChecked('#lmAutoFit'), false);
+  await page.check('#lmAutoFit');
+  assert.equal((await presets())[2].autoFit, true);
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.autoFit')), null, 'not the built-in Auto layout');
+  await page.click('#layoutMenu [data-l=auto]');
+  await page.click('#layoutBtn');
+  assert.equal(await page.isChecked('#lmAutoFit'), false, 'Auto layout has its own');
+});
+
+test('Settings > Layouts: each layout with its options, Use, Linked, the switch control and fitting in auto-opened channels', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'bravo');
+  await press(page, 'a');
+  await page.evaluate(() => openSettings('layouts'));
+  assert.deepEqual(await page.$$eval('#lyList > .ly-item', l => l.map(e => e.dataset.l)), ['focus', 'game', 'columns', 'chatfocus', 'auto', 'tile'], 'the layouts on the left');
+  const shown = () => page.$eval('#lyDetail .ly-panel:not([hidden])', e => e.dataset.l);
+  assert.equal(await page.$eval('#lyList .sel', e => e.dataset.l), 'auto', 'the one in use is picked');
+  assert.equal(await shown(), 'auto', 'and shown on the right');
+  assert.equal(await page.textContent('#lyList [data-l=auto] em'), 'In use');
+  assert.equal(await page.textContent('#lyDetail [data-l=auto] .ly-use'), 'In use');
+  assert.ok(await page.isDisabled('#lyDetail [data-l=auto] .ly-use'));
+  assert.equal(await page.isChecked('#autoFit'), false, 'fitting in auto-opened channels is off at first');
+  await page.check('#autoFit');
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.autoFit')), '1');
+  await page.hover('#lyList [data-l=tile]');
+  assert.equal(await shown(), 'auto', 'pointing at another doesn\'t change it');
+  await page.click('#lyList [data-l=columns]');
+  assert.equal(await shown(), 'columns', 'clicking does');
+  assert.equal(await page.isVisible('#autoFit'), false, 'with only its own options');
+  await page.keyboard.press('ArrowDown');
+  assert.equal(await shown(), 'chatfocus', 'so do the arrow keys');
+  assert.match(await page.textContent('#lyDetail [data-l=chatfocus]'), /No options/);
+  await page.keyboard.press('ArrowUp');
+  await page.uncheck('#lyLinked');
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.linked')), '0');
+  await page.click('#lyTabs [data-t=switch]');
+  assert.equal(await page.isVisible('#lyList'), false, 'one sub-tab at a time');
+  await page.click('#lySw [data-sw=float]');
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.switchMode')), 'float');
+  assert.equal(await page.$eval('#lySw .on', e => e.dataset.sw), 'float');
+  assert.equal(await page.locator('#lySw [data-sw=window]').count(), 0, 'no own window in a browser');
+
+  await page.click('#lyTabs [data-t=layouts]');
+  await page.click('#lyDetail [data-l=columns] .ly-use');
+  assert.equal(await page.isVisible('#settingsDlg'), false, 'Use closes Settings');
+  assert.ok(await page.evaluate(() => document.body.classList.contains('cols')), 'and switches');
+  await page.click('#layoutBtn');
+  assert.equal(await page.isChecked('#lmLinked'), false, 'the menu\'s switch follows');
+  assert.equal(await page.isChecked('#lmAutoFit'), true);
+  await page.check('#lmLinked');
+  assert.ok(await page.isVisible('#layoutMenu'), 'the menu stays open for its options');
+  await page.click('#layoutBtn');
+  await page.evaluate(() => openSettings('layouts'));
+  assert.equal(await page.isChecked('#lyLinked'), true, 'and Settings follows the menu');
+  assert.equal(await shown(), 'columns', 'reopening shows the one in use');
+  assert.equal(await page.textContent('#lyDetail [data-l=columns] .ly-use'), 'In use');
+  await page.keyboard.press('Escape');
+  await page.click('#swBtn');
+  assert.equal(await page.$eval('#lySw .on', e => e.dataset.sw), 'dock', 'the switch control button changes it too');
+});
+
+test('Layout menu: pictures with a hint line, and the current layout\'s options (Chat focus stream columns)', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'bravo');
+  await press(page, 'Shift+C');
+  await page.click('#layoutBtn');
+  assert.equal(await page.textContent('#lmHint'), 'Streams down the side at exact video size, chats get the rest.', 'describes the current layout');
+  await page.hover('#layoutMenu [data-l=tile]');
+  assert.equal(await page.textContent('#lmHint'), 'Every window gets equal space.', 'and the one you point at');
+  await page.hover('#layoutMenu .lm-head');
+  assert.match(await page.textContent('#lmHint'), /^Streams down the side/, 'back when you move away');
+  assert.deepEqual(await page.$$eval('#lmOpts .lm-opt', l => l.filter(o => !o.hidden).map(o => o.dataset.for)), ['chatfocus']);
+  assert.ok(await page.isDisabled('#lmCols [data-n="3"]'), 'no more columns than streams');
+  const x0 = (await box(win(page, 'bravo'))).x;
+  await page.click('#lmCols [data-n="2"]');
+  await page.waitForTimeout(350);
+  assert.ok(await page.locator('#lmCols [data-n="2"]').evaluate(e => e.classList.contains('on')));
+  assert.notEqual((await box(win(page, 'bravo'))).x, x0, 'the streams went side by side');
+  await page.click('#layoutMenu [data-l=tile]');
+  assert.equal(await page.isVisible('#layoutMenu'), false, 'picking a layout closes the menu');
+  await page.click('#layoutBtn');
+  assert.equal(await page.isVisible('#lmOpts'), false, 'Tile has no options');
 });
 
 test('Game focus: pick a stream for the game area, change the panel size and side', async t => {

@@ -38,10 +38,11 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
   - In the highlight view, the **Focus area** under the big stream has a button for every open stream: click a name to make it big, drag one onto another to swap them (and their columns), × closes a stream and its chat (Undo brings them back). Each button has pause / play (play jumps back to live), mute and volume, and its arrow opens a small always-muted live preview. A preview is a second copy of the stream, so it uses some extra bandwidth.
   - "Side chats" (top of the Focus area) sets how many stream + chat columns sit beside the big stream: Auto or 1–5. The name at the top of each side chat is a dropdown to show any stream there.
   - The buttons at the top of the Focus area switch to **Columns view** (no highlight) or back to **Chat focus view**.
-- **Chat focus**: streams down the side at exact video size, chats get the rest. Click it again for 1, 2 or 3 columns of streams. Drag a stream onto another to swap them (their chats swap too).
-- **Auto layout** and **Tile**: arrange everything to fit the screen.
-- **Your layouts**: type a name and press Save to keep the current arrangement (windows, order, columns, highlight). Click it later to go back to it: windows already open stay open, missing ones reopen. ⟳ updates it with the current arrangement, × deletes it.
-- **Linked** (in Columns): a stream and its chat move together. Drag a title bar to reorder columns; the others slide aside to show where it will land, and dragging to the screen edge scrolls. Turn Linked off to move and resize windows freely.
+- **Chat focus**: streams down the side at exact video size, chats get the rest. Pick 1, 2 or 3 stream columns under Options in the Layout menu (or pick Chat focus again). Drag a stream onto another to swap them (their chats swap too).
+- **Auto layout** and **Tile**: arrange everything to fit the screen. With "Fit in channels that open by themselves" on (Settings > Layouts), a saved channel that opens because it went live is added as the last stream and Auto layout is redone, keeping the other streams in order.
+- The Layout menu shows the current layout's options under its pictures (point at one to read what it does). The ⚙ at its top right opens Settings > Layouts: every layout with its options, where the switch control shows, and your layouts.
+- **Your layouts**: type a name and press Save to keep the current arrangement (windows, order, columns, highlight). Click it later to go back to it: windows already open stay open, missing ones reopen. In Settings > Layouts they're listed under the built-in layouts: rename, update (with the current arrangement) or delete them there. Each keeps its own copy of the options of the layout it was made from (Linked, stream columns, fitting in channels that open by themselves), so changing them doesn't change the built-in layout's.
+- **Linked** (in Columns and Focus view, switched in the Layout menu's Options): a stream and its chat move together. Drag a title bar to reorder columns; the others slide aside to show where it will land, and dragging to the screen edge scrolls. Turn Linked off to move and resize windows freely.
 
 ## The switch control
 - A list of every open stream with pause / play, mute, volume, refresh, a small live preview (the arrow) and remove (×).
@@ -150,7 +151,7 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - The alert options are the same as for mentions, with their own colour and sound.
 
 ## Chrome extensions (Settings > Extensions)
-- Install one three ways: **Browse Chrome Web Store** (find it and click **Add to Stream Multiview**), **Install from link…** (paste its Web Store link), or **Load folder…** (an unpacked extension). The app asks first, and shows what it can do.
+- Install one three ways: **Browse Chrome Web Store** (find it and click **Add to Stream Multiview**), **Install from link** (paste its Web Store link), or **Load folder** (an unpacked extension). The app asks first, and shows what it can do.
 - Pick where it's on: Kick, Twitch and YouTube, for streams and for chats. New ones are on for streams only. If you watch a site signed in, its chats and streams share one switch. Sites an extension doesn't run on are marked.
 - Extensions in a stream or chat window's ⋯ menu lists the extensions in it. Click one to open its popup, the gear for its options. On a stream you can switch one on or off for that stream only.
 - Each chat site and each stream keeps its own extension settings.

@@ -89,12 +89,16 @@ test('Help opens the matching Settings tab, and Check for updates opens Updates'
 });
 
 test('every tab is there in the app, and the Accounts menu links to the rest', T, async () => {
+  await win.click('#mentBtn');
+  await win.click('#mentPanel #mentSettings');
+  assert.equal(await settingsTab(), 'mentions', 'the Mentions panel\'s gear');
+  await win.keyboard.press('Escape');
   await win.click('#loginBtn');
   await win.click('#accountMenu .am-more');
   assert.equal(await settingsTab(), 'accounts');
   assert.ok(await win.isHidden('#accountMenu'), 'the menu closes');
   const tabs = await win.$$eval('#settingsDlg .st-rail button', b => b.filter(x => !x.hidden).map(x => x.dataset.s));
-  assert.deepEqual(tabs, ['general', 'accounts', 'youtube', 'notify', 'mentions', 'spam', 'extensions', 'themes', 'updates', 'guide', 'keys']);
+  assert.deepEqual(tabs, ['general', 'layouts', 'themes', 'accounts', 'youtube', 'extensions', 'notify', 'mentions', 'spam', 'guide', 'keys', 'updates']);
   assert.ok(await win.isVisible('#settingsDlg .am-watch'), 'Watch signed in moved here');
   assert.ok(await win.isHidden('#mentUser'), 'your usernames are under Mentions');
   await win.click('#settingsDlg .st-rail [data-s=mentions]');
