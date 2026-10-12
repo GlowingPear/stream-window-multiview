@@ -473,7 +473,9 @@ test('macOS: the toolbar is the title bar, and the traffic lights hide and come 
   // The Mac parts of the desktop bridge: records what the page asks of the lights, and lets the test go fullscreen.
   const page = await openApp(t, { init: () => {
     window.lights = [];
-    window.kmv = { platform: 'darwin', setLights: on => window.lights.push(on), onFullscreen: cb => { window.goFullscreen = cb; } };
+    window.watching = [];
+    window.kmv = { platform: 'darwin', setLights: on => window.lights.push(on), onFullscreen: cb => { window.goFullscreen = cb; },
+      watchTop: on => window.watching.push(on), onTop: cb => { window.mouseAtTop = cb; } };
   } });
   const lights = () => page.evaluate(() => window.lights.splice(0));
   const css = (sel, prop) => page.$eval(sel, (e, p) => getComputedStyle(e).getPropertyValue(p), prop);
@@ -515,10 +517,23 @@ test('macOS: the toolbar is the title bar, and the traffic lights hide and come 
   await page.mouse.move(800, 400, { steps: 20 });
   await lights();
 
+  // the app watches the mouse while the bar is hidden (the page can't see the window's top edge on a Mac)
+  assert.deepEqual(await page.evaluate(() => window.watching.splice(0)), [true, false, true]);
+  await page.evaluate(() => window.mouseAtTop());
+  assert.equal(await peeking(), true, 'the mouse at the top edge brings the bar out');
+  await page.mouse.move(800, 30);
+  await page.mouse.move(800, -5);   // up off the top, e.g. into the menu bar in fullscreen
+  assert.equal(await peeking(), true, 'leaving through the top keeps it out');
+  await page.mouse.move(800, 30);
+  await page.mouse.move(800, 400, { steps: 20 });
+  assert.equal(await peeking(), false);
+  await lights();
+
   await page.evaluate(() => window.goFullscreen(true));
   assert.equal(await css('header', 'padding-left'), '12px', 'fullscreen: macOS hides the lights, so no room for them');
   assert.deepEqual(await lights(), [true], 'fullscreen: macOS shows them in the strip that drops down with the menu bar');
   await page.mouse.move(800, 4);
+  await page.waitForTimeout(300);
   await page.mouse.move(800, 400, { steps: 20 });
   await page.waitForTimeout(300);
   assert.deepEqual(await lights(), [], 'and Hide bar leaves them alone there');
@@ -529,6 +544,7 @@ test('macOS: the toolbar is the title bar, and the traffic lights hide and come 
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
   assert.deepEqual(await lights(), [true], 'Esc brings the bar and the lights back');
+  assert.deepEqual(await page.evaluate(() => window.watching.splice(0)), [false], 'and stops watching the mouse');
   await page.evaluate(() => window.goFullscreen(false));
   assert.deepEqual(await lights(), [true], 'leaving fullscreen with the bar showing shows them');
 });

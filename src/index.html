@@ -4783,6 +4783,7 @@ function showLights(on){
   else window.kmv.setLights(false);
 }
 if (MAC_BAR){
+  window.kmv.onTop(() => peekBar());   // the mouse reached the top edge (see win:watchTop in main.js)
   window.kmv.onFullscreen(on => {
     document.body.classList.toggle('fullscreen', on);
     clearTimeout(lightsT);
@@ -4794,6 +4795,7 @@ function setBarHidden(on){
   document.body.classList.toggle('focus', on);
   document.body.classList.remove('peek');
   showLights(!on);
+  if (MAC_BAR) window.kmv.watchTop(on);
   const b = $('#focusBtn');
   b.querySelector('.l-long').textContent = on ? 'Show bar' : 'Hide bar';
   b.querySelector('.l-short').textContent = on ? 'Show' : 'Hide';
@@ -4809,7 +4811,8 @@ function peekBar(){
 }
 $('#reveal').addEventListener('mouseenter', peekBar);
 $('#reveal').addEventListener('mousemove', peekBar);   // the mouse may already be up there when the bar slides away
-document.querySelector('header').addEventListener('mouseleave', () => {
+document.querySelector('header').addEventListener('mouseleave', e => {
+  if (e.clientY <= 0) return;   // up off the top (in fullscreen, into the menu bar): still on its way to the bar
   document.body.classList.remove('peek');
   if (document.body.classList.contains('focus')) showLights(false);
 });

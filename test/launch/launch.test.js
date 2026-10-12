@@ -53,8 +53,9 @@ test('the desktop app starts, adds a stream and quits cleanly', async () => {
     assert.equal(await win.evaluate(() => window.kmv.appVersion()), pkg.version, 'the app reports the version in package.json');
 
     // Hide bar hides the traffic lights and shows them again; on a Mac they come back inside the toolbar
-    await win.evaluate(() => { window.kmv.setLights(false); window.kmv.setLights(true); });
-    await win.waitForTimeout(200);
+    await win.evaluate(() => { window.kmv.setLights(false); window.kmv.setLights(true); window.kmv.watchTop(true); });
+    await win.waitForTimeout(250);   // a few looks at where the mouse is
+    await win.evaluate(() => window.kmv.watchTop(false));
     if (process.platform === 'darwin') {
       assert.ok(await win.evaluate(() => document.documentElement.classList.contains('mac-bar')), 'the toolbar is the title bar');
       const at = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => /index\.html$/.test(w.webContents.getURL())).getWindowButtonPosition());

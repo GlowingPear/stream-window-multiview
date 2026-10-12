@@ -96,6 +96,23 @@ ipcMain.on('win:lights', (e, on) => {
   win.setWindowButtonVisibility(!!on);
   if (on) win.setWindowButtonPosition(LIGHTS_AT);   // macOS puts them back in the corner otherwise
 });
+// Hide bar on macOS: the window's top edge is its resize edge, and in fullscreen the menu bar's, so the page never
+// hears the mouse arrive there. While the bar is hidden, the mouse is watched from here and the page told when it's up there.
+const topWatch = new Map();   // window id -> timer
+ipcMain.on('win:watchTop', (e, on) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win) return;
+  clearInterval(topWatch.get(win.id));
+  topWatch.delete(win.id);
+  if (!on) return;
+  const id = win.id;
+  topWatch.set(id, setInterval(() => {
+    if (win.isDestroyed()) { clearInterval(topWatch.get(id)); topWatch.delete(id); return; }
+    if (!win.isVisible() || win.isMinimized()) return;
+    const p = screen.getCursorScreenPoint(), b = win.getBounds();
+    if (p.x >= b.x && p.x < b.x + b.width && p.y >= b.y && p.y < b.y + 12) win.webContents.send('win:top');
+  }, 100));
+});
 
 function openStreamsWindow(specs = []) {
   pendingStreams.push(...specs);
