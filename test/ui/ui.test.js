@@ -496,17 +496,41 @@ test('macOS: the toolbar is the title bar, and the traffic lights hide and come 
   await page.mouse.move(800, 400, { steps: 20 });   // down through the bar and off it
   assert.deepEqual(await lights(), [false], 'away again when the mouse leaves the bar');
 
+  // back up over the top edge while the bar is out: it stays out (the edge strip used to take the mouse off it)
+  const peeking = () => page.evaluate(() => document.body.classList.contains('peek'));
+  await page.mouse.move(800, 4);
+  await page.mouse.move(800, 30, { steps: 5 });
+  await page.mouse.move(800, 2, { steps: 5 });
+  await page.waitForTimeout(300);
+  assert.equal(await peeking(), true, 'still out with the mouse at the very top');
+  assert.deepEqual(await lights(), [true]);
+  await page.mouse.move(800, 400, { steps: 20 });
+  assert.equal(await peeking(), false);
+  // hidden with the mouse already at the top edge: moving it there brings the bar out
+  await page.keyboard.press('Escape');
+  await page.mouse.move(800, 8);
+  await page.keyboard.press('h');
+  await page.mouse.move(820, 8);
+  assert.equal(await peeking(), true, 'a nudge along the top edge is enough');
+  await page.mouse.move(800, 400, { steps: 20 });
+  await lights();
+
   await page.evaluate(() => window.goFullscreen(true));
   assert.equal(await css('header', 'padding-left'), '12px', 'fullscreen: macOS hides the lights, so no room for them');
+  assert.deepEqual(await lights(), [true], 'fullscreen: macOS shows them in the strip that drops down with the menu bar');
+  await page.mouse.move(800, 4);
+  await page.mouse.move(800, 400, { steps: 20 });
+  await page.waitForTimeout(300);
+  assert.deepEqual(await lights(), [], 'and Hide bar leaves them alone there');
   await page.evaluate(() => window.goFullscreen(false));
-  assert.deepEqual(await lights(), [false], 'leaving fullscreen with the bar hidden keeps them hidden');
+  assert.deepEqual(await lights(), [false], 'leaving fullscreen with the bar hidden hides them');
   assert.equal(await css('header', 'padding-left'), '86px');
 
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
   assert.deepEqual(await lights(), [true], 'Esc brings the bar and the lights back');
   await page.evaluate(() => window.goFullscreen(false));
-  assert.deepEqual(await lights(), [], 'leaving fullscreen with the bar showing leaves them alone');
+  assert.deepEqual(await lights(), [true], 'leaving fullscreen with the bar showing shows them');
 });
 
 test('Settings opens from the gear and Ctrl+, shows only what works in a browser, and remembers General', async t => {

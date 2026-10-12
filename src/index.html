@@ -54,12 +54,14 @@ body:has(#toast:not([hidden])) #msg[data-pos=bc],body:has(#updBanner:not([hidden
 body.focus header{transform:translateY(-100%)}
 #reveal{position:fixed;top:0;left:0;right:0;height:6px;z-index:100001;display:none}
 body.focus #reveal{display:block}
-body.focus header:hover, body.focus.peek header{transform:none}
+body.focus.peek #reveal{display:none}   /* out of the bar's way while it's out, so moving up over it doesn't count as leaving */
+body.focus.peek header{transform:none}
 /* macOS: the toolbar is the window's title bar (see macBar in main.js). Its empty space moves the window, the
    traffic lights sit at its left (not in fullscreen, where macOS hides them), and the pear stands in for the name. */
 html.mac-bar header{-webkit-app-region:drag;padding-left:86px}
 html.mac-bar header :is(button,input,select,label,a,.zoom,.colnav){-webkit-app-region:no-drag}
 html.mac-bar body.fullscreen header{padding-left:12px}
+html.mac-bar #reveal{height:12px}   /* the window's top few pixels are its resize edge, which the page never hears about */
 html.mac-bar body:not(.role-streams) .brand-txt{display:none}
 
 /* ---------- stage ---------- */
@@ -4772,17 +4774,20 @@ $('#clear').onclick = async () => { if (wins.length && await ask('Close all wind
 // On macOS the traffic lights go with it: away as soon as it starts sliding off, back once it has slid in.
 const MAC_BAR = !!(window.kmv && window.kmv.platform === 'darwin' && window.kmv.setLights);
 let lightsT;
+// In fullscreen macOS shows them itself, in the strip that drops down with the menu bar, so they're left alone there.
 function showLights(on){
   if (!MAC_BAR) return;
   clearTimeout(lightsT);
+  if (document.body.classList.contains('fullscreen')) return;
   if (on) lightsT = setTimeout(() => window.kmv.setLights(true), 200);   // the header's slide takes .2s
   else window.kmv.setLights(false);
 }
 if (MAC_BAR){
   window.kmv.onFullscreen(on => {
     document.body.classList.toggle('fullscreen', on);
-    // macOS shows the lights again after fullscreen, even while the bar is hidden
-    if (!on && document.body.classList.contains('focus') && !document.body.classList.contains('peek')) window.kmv.setLights(false);
+    clearTimeout(lightsT);
+    const cls = document.body.classList;
+    window.kmv.setLights(on || !cls.contains('focus') || cls.contains('peek'));
   });
 }
 function setBarHidden(on){
@@ -4797,7 +4802,13 @@ function setBarHidden(on){
   setTimeout(() => window.dispatchEvent(new Event('resize')), 220);
 }
 $('#focusBtn').onclick = () => setBarHidden(!document.body.classList.contains('focus'));
-$('#reveal').addEventListener('mouseenter', () => { document.body.classList.add('peek'); showLights(true); });
+function peekBar(){
+  if (!document.body.classList.contains('focus') || document.body.classList.contains('peek')) return;
+  document.body.classList.add('peek');
+  showLights(true);
+}
+$('#reveal').addEventListener('mouseenter', peekBar);
+$('#reveal').addEventListener('mousemove', peekBar);   // the mouse may already be up there when the bar slides away
 document.querySelector('header').addEventListener('mouseleave', () => {
   document.body.classList.remove('peek');
   if (document.body.classList.contains('focus')) showLights(false);
