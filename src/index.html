@@ -685,7 +685,7 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 /* Settings > Layouts */
 .ly-intro{margin:10px 0 6px}
 .ly-md{display:grid;grid-template-columns:190px minmax(0,1fr);gap:14px;margin-top:12px;align-items:start}
-.ly-list{display:flex;flex-direction:column;gap:2px}
+.ly-list,#lyPresetList{display:flex;flex-direction:column;gap:2px}
 .ly-item{display:flex;align-items:center;gap:9px;padding:6px 8px;border:1px solid transparent;border-radius:8px;background:none;color:var(--text);font-size:13px;text-align:left;cursor:pointer}
 .ly-item:hover{background:var(--panel2)}
 .ly-item.sel{background:var(--panel2);border-color:var(--line2)}
@@ -705,7 +705,15 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .ly-panel .st-opt{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:13px}
 .ly-panel .st-opt small{font-size:11.5px}
 .ly-none{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted)}
-.pr-srow .lm-pic{width:40px;height:25px;flex:none;color:var(--muted)}
+.ly-list-sec{margin:10px 8px 4px;padding-top:10px;border-top:1px solid var(--line);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.ly-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ly-item.ly-new{color:var(--muted)}
+.ly-item.ly-new i{width:36px;flex:none;text-align:center;font-style:normal;font-size:16px}
+.ly-item .ly-free{width:36px;height:23px;flex:none;border:1px dashed var(--line2);border-radius:3px}
+.ly-acts{display:flex;gap:6px;margin-top:12px}
+.ly-acts .btn{height:28px;padding:0 10px;font-size:12px}
+.ly-head .st-in{flex:1}
+.ly-panel .st-add{margin-top:12px}
 .ly-sw{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .ly-sw button{display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel2);color:var(--text);text-align:left;cursor:pointer}
 .ly-sw button:hover{border-color:var(--muted)}
@@ -715,9 +723,7 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .ly-sw svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .ly-sw b{font-size:13px}
 .ly-sw span{font-size:11.5px;line-height:1.4;color:var(--muted)}
-.pr-srow .st-t > span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pr-srow.on .st-t > span{color:var(--accent);font-weight:600}
-.pr-srow .pr-x:hover{color:#fff;background:var(--danger);border-color:var(--danger)}
+.ly-acts .pr-x:hover{color:#fff;background:var(--danger);border-color:var(--danger)}
 .ex-linkrow[hidden]{display:none}
 .ex-linkrow .st-in,.ex-linkrow .btn{height:30px}
 .ex-msg{font-size:12px;margin:-4px 0 12px;color:var(--danger)}
@@ -1343,13 +1349,8 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       </section>
       <section class="st-pane" data-s="layouts" hidden>
         <h4>Layouts</h4><p class="st-sub">How the windows are arranged. Switch with <b>Layout ▾</b> in the toolbar, or here.</p>
-        <div class="st-tabs" id="lyTabs"><button data-t="layouts" class="on">Layouts</button><button data-t="saved">Your layouts</button><button data-t="switch">Switch control</button></div>
-        <div class="st-subpane" data-t="layouts"><div class="ly-md"><div class="ly-list" id="lyList" role="listbox" aria-label="Layouts"></div><div class="ly-detail" id="lyDetail"></div></div></div>
-        <div class="st-subpane" data-t="saved" hidden>
-          <p class="st-sub ly-intro">Arrangements you've named: their windows, order and columns. Using one keeps the windows that are already open and reopens the rest.</p>
-          <div id="lyPresets"></div>
-          <div class="st-add"><input class="st-in" id="lyPresetName" placeholder="Name the current layout…" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="lyPresetSave">Save</button></div>
-        </div>
+        <div class="st-tabs" id="lyTabs"><button data-t="layouts" class="on">Layouts</button><button data-t="switch">Switch control</button></div>
+        <div class="st-subpane" data-t="layouts"><div class="ly-md"><div class="ly-list" id="lyList" role="listbox" aria-label="Layouts"><div id="lyPresetList"></div></div><div class="ly-detail" id="lyDetail"><div id="lyPresetDetail"></div><div class="ly-panel" data-k="+new" hidden><div class="ly-head"><b>Save the current layout</b></div><p class="ly-desc">Keeps the windows that are open, where they are and their order, with the layout's options. Using it later keeps the windows that are already open and reopens the rest.</p><div class="st-add"><input class="st-in" id="lyPresetName" placeholder="Name it…" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="lyPresetSave">Save</button></div></div></div></div></div>
         <div class="st-subpane" data-t="switch" hidden>
           <p class="st-sub ly-intro">A button for every stream: make one big, swap them, pause, mute and set the volume. Where it shows:</p>
           <div class="ly-sw" id="lySw">
@@ -2478,11 +2479,12 @@ let autoOpen = [];
 try { autoOpen = JSON.parse(localStorage.getItem('kickMultiview.autoOpen') || '[]'); } catch {}
 let autoFit = false;                  // Settings > Layouts: in Auto layout, fit them in as the last streams
 try { autoFit = localStorage.getItem('kickMultiview.autoFit') === '1'; } catch {}
-function setAutoFit(on){
+function setAutoFit(on){         // Auto layout's own (Settings); the menu changes the layout in use
   autoFit = on;
   try { localStorage.setItem('kickMultiview.autoFit', on ? '1' : '0'); } catch {}
-  $('#autoFit').checked = $('#lmAutoFit').checked = on;
+  $('#autoFit').checked = on; $('#lmAutoFit').checked = fitOn();
 }
+const fitOn = () => { const ap = activeP(); return ap ? !!ap.autoFit : autoFit; };
 const autoDone = new Set();            // opened during this live session (closing it won't make it reopen until the next time it goes live)
 function toggleAutoOpen(ch){
   autoOpen = autoOpen.includes(ch) ? autoOpen.filter(c => c !== ch) : [...autoOpen, ch];
@@ -2504,7 +2506,7 @@ function checkAutoOpen(){
   });
   if (!opened.length) return;
   if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(false);
-  else if (lastLayout === 'auto' && autoFit) autoLayout();     // new windows are last in the list, so they go last
+  else if (lastLayout === 'auto' && fitOn()) autoLayout();     // new windows are last in the list, so they go last
   flash(`Opened ${opened.map(chLabel).join(', ')} (just went live)`);
 }
 function fmtViewers(n){ return n == null ? '' : n >= 1000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '') + 'K' : String(n); }
@@ -3362,14 +3364,20 @@ function setColsMode(on){
   updateLayoutMenu(); updateLinkBtn();
   if (typeof updateModeClass === 'function') updateModeClass();
 }
+const builtinLinked = () => { try { return localStorage.getItem('kickMultiview.linked') !== '0'; } catch { return true; } };
+// From the Layout menu: changes the layout in use (a saved layout keeps its own)
 function setLinked(on){
+  const ap = activeP();
+  if (ap) setPresetOpt(ap, 'linked', on);
+  else { try { localStorage.setItem('kickMultiview.linked', on ? '1' : '0'); } catch {} liveLinked(on); }
+}
+function liveLinked(on){
   linked = on;
-  try { localStorage.setItem('kickMultiview.linked', on ? '1' : '0'); } catch {}
   document.body.classList.toggle('linked', colsMode && on);
   updateLinkBtn();
   if (colsMode) columnsLayout();
 }
-function updateLinkBtn(){ $('#lmLinked').checked = $('#lyLinked').checked = linked; }
+function updateLinkBtn(){ $('#lmLinked').checked = linked; $('#lyLinked').checked = builtinLinked(); }
 function setFeatured(ch){
   featuredCh = ch;
   try { ch ? localStorage.setItem('kickMultiview.featured', ch) : localStorage.removeItem('kickMultiview.featured'); } catch {}
@@ -4362,6 +4370,7 @@ function updateLayoutMenu(){
   const nVids = wins.filter(w => w.kind !== 'chat').length;
   document.querySelectorAll('#lmCols button').forEach(b => { b.classList.toggle('on', +b.dataset.n === streamCols); b.disabled = +b.dataset.n > Math.max(1, Math.min(3, nVids)); });
   if (typeof renderPresets === 'function') renderPresets();
+  $('#lmLinked').checked = linked; $('#lmAutoFit').checked = fitOn();   // the layout in use: built-in or saved
   if (!$('#settingsDlg').hidden) renderLayoutsPane();
   updateSwBtn();
 }
@@ -4375,6 +4384,23 @@ function updateSwBtn(){
 /* ---- Your layouts: save the current arrangement under a name and bring it back from the Layout menu ---- */
 let presets = [], activePreset = '';
 try { presets = JSON.parse(localStorage.getItem('kickMultiview.presets') || '[]'); } catch {}
+function activeP(){ try { return activePreset ? presets.find(p => p.name === activePreset) || null : null; } catch { return null; } }   // (hoisted: used before the presets load)
+const presetBase = p => p.mode === 'columns' && p.featured ? 'focus' : p.mode;   // the layout it was made from
+function leavePreset(){
+  if (!activePreset) return;
+  activePreset = '';
+  if (builtinLinked() !== linked) liveLinked(builtinLinked());
+  $('#lmAutoFit').checked = fitOn();
+}
+// A saved layout's own options: kept with it, and used straight away if it's the one in use
+function setPresetOpt(p, key, val){
+  p[key] = val; savePresets();
+  if (p.name === activePreset){
+    if (key === 'linked') liveLinked(val);
+    if (key === 'streamCols' && !colsMode && lastLayout === 'chatfocus'){ streamCols = val; chatFocusLayout(false); }
+  }
+  updateLayoutMenu();
+}
 const savePresets = () => { try { localStorage.setItem('kickMultiview.presets', JSON.stringify(presets)); } catch {} };
 const MODE_NAMES = { focus: 'Focus view', game: 'Game focus', columns: 'Columns', chatfocus: 'Chat focus', auto: 'Auto layout', tile: 'Tile', free: 'Free arrangement' };
 function capturePreset(name){
@@ -4382,7 +4408,7 @@ function capturePreset(name){
     name, savedAt: Date.now(), sw: SW(), sh: SH(),
     mode: colsMode ? 'columns' : (['chatfocus', 'auto', 'tile', 'game'].includes(lastLayout) ? lastLayout : 'free'),
     featured: colsMode && featBase.length ? featuredCh : null,
-    sideCols, linked, streamCols, pageStep,
+    sideCols, linked, streamCols, pageStep, autoFit: fitOn(),
     order: buildCols().map(c => c.key),
     windows: wins.filter(w => w.kind !== 'capture').map(w => ({ kind: w.kind, channel: w.channel, url: w.url, vol: w.vol, muted: w.muted, preview: !!w.preview, x: w.x, y: w.y, w: w.w, h: w.h }))
   };
@@ -4405,45 +4431,71 @@ function renderPresets(){
   });
   renderPresetsPane();
 }
-// Settings > Layouts: use, rename, update and delete them
+// Settings > Layouts: your layouts listed under the built-in ones, each with its base layout's options
+const OPT_NAMES = { linked: 'Linked', autoFit: 'Fit in channels that open by themselves' };
 function renderPresetsPane(){
-  const box = $('#lyPresets'); if (!box) return;
-  box.innerHTML = '';
-  if (!presets.length){ box.innerHTML = '<div class="st-row"><span class="st-t"><small>None yet. Arrange things how you like, then name it below (or in Layout ▾) and save it.</small></span></div>'; return; }
+  const list = $('#lyPresetList'), detail = $('#lyPresetDetail'); if (!list) return;
+  list.innerHTML = '<div class="ly-list-sec">Your layouts</div>'; detail.innerHTML = '';
   presets.forEach((p, i) => {
-    const row = document.createElement('div'); row.className = 'st-row pr-srow' + (p.name === activePreset ? ' on' : '');
-    const pic = document.querySelector(`#layoutMenu [data-l="${p.mode}"] .lm-pic`);
-    row.innerHTML = '<span class="st-t"><span></span><small></small></span><button class="btn pr-use">Use</button><button class="btn pr-ren">Rename</button>'
-      + '<button class="btn pr-up" title="Save what\'s on screen now over this one">Update</button><button class="btn pr-x">Delete</button>';
-    if (pic) row.prepend(pic.cloneNode(true));
-    row.querySelector('.st-t > span').textContent = p.name;
-    row.querySelector('small').textContent = presetSummary(p);
-    row.querySelector('.pr-use').onclick = () => { closeSettings(); applyPreset(p); };
-    row.querySelector('.pr-ren').onclick = () => renamePreset(row, p);
-    row.querySelector('.pr-up').onclick = async () => {
+    const k = 'p:' + p.name, base = presetBase(p), pic = document.querySelector(`#layoutMenu [data-l="${base}"] .lm-pic`);
+    const item = document.createElement('button'); item.className = 'ly-item'; item.dataset.k = k; item.setAttribute('role', 'option');
+    item.innerHTML = '<span></span><em></em>';
+    item.prepend(pic ? pic.cloneNode(true) : Object.assign(document.createElement('i'), { className: 'ly-free' }));
+    item.querySelector('span').textContent = p.name;
+    list.appendChild(item);
+    const panel = document.createElement('div'); panel.className = 'ly-panel'; panel.dataset.k = k; panel.hidden = true;
+    panel.innerHTML = '<div class="ly-head"><b></b><button class="btn ly-use">Use</button></div><p class="ly-desc"></p>'
+      + '<div class="ly-acts"><button class="btn pr-ren">Rename</button><button class="btn pr-up" title="Save what\'s on screen now over this one">Update to what\'s on screen</button><button class="btn pr-x">Delete</button></div>';
+    if (pic) panel.prepend(pic.cloneNode(true));
+    panel.querySelector('b').textContent = p.name;
+    panel.querySelector('.ly-desc').textContent = presetSummary(p) + (pic ? ` · Made from ${MODE_NAMES[base]}, with its own options.` : '');
+    panel.querySelector('.ly-use').onclick = () => { closeSettings(); applyPreset(p); };
+    panel.querySelector('.pr-ren').onclick = () => renamePreset(panel.querySelector('.ly-head b'), p);
+    panel.querySelector('.pr-up').onclick = async () => {
       if (!await ask(`Update “${p.name}”?`, `Replace this saved layout with what's on screen now.`, { ok: 'Update' })) return;
       presets[i] = capturePreset(p.name); savePresets(); activePreset = p.name; updateLayoutMenu(); flash(`Updated “${p.name}”`);
     };
-    row.querySelector('.pr-x').onclick = async () => {
+    panel.querySelector('.pr-x').onclick = async () => {
       if (!await ask(`Delete the layout “${p.name}”?`, 'This can\'t be undone.', { ok: 'Delete', danger: true })) return;
-      presets.splice(i, 1); savePresets(); if (activePreset === p.name) activePreset = ''; updateLayoutMenu();
+      presets.splice(i, 1); savePresets(); if (activePreset === p.name) leavePreset(); updateLayoutMenu();
     };
-    box.appendChild(row);
+    // the options of the layout it was made from, its own values
+    const sw = (key, on, small) => {
+      const o = document.createElement('label'); o.className = 'st-opt';
+      o.innerHTML = `<span class="st-t"><span></span><small>${small}</small></span><input type="checkbox" class="st-sw">`;
+      o.querySelector('.st-t > span').textContent = OPT_NAMES[key];
+      const c = o.querySelector('input'); c.checked = on; c.dataset.opt = key;
+      c.addEventListener('change', () => setPresetOpt(p, key, c.checked));
+      panel.appendChild(o);
+    };
+    if (base === 'columns' || base === 'focus') sw('linked', p.linked !== false, 'Each stream and its chat move together. Off: move and resize windows freely.');
+    else if (base === 'auto') sw('autoFit', !!p.autoFit, 'A saved channel that opens because it went live goes last (its chat too), and the others keep their order.');
+    else if (base === 'chatfocus'){
+      const o = document.createElement('div'); o.className = 'st-opt';
+      o.innerHTML = '<span class="st-t">Stream columns</span><div class="lm-sw pr-cols">' + [1, 2, 3].map(n => `<button data-n="${n}">${n}</button>`).join('') + '</div>';
+      o.querySelectorAll('button').forEach(b => { b.classList.toggle('on', +b.dataset.n === (p.streamCols || 1)); b.onclick = () => setPresetOpt(p, 'streamCols', +b.dataset.n); });
+      panel.appendChild(o);
+    } else panel.insertAdjacentHTML('beforeend', '<div class="ly-none">No options for this one.</div>');
+    detail.appendChild(panel);
   });
+  const add = document.createElement('button'); add.className = 'ly-item ly-new'; add.dataset.k = '+new'; add.setAttribute('role', 'option');
+  add.innerHTML = '<i>+</i><span>Save current layout…</span>';
+  list.appendChild(add);
+  if (lySel) selectLayoutPane(lySel);      // rebuilt: keep the one that's picked
 }
-function renamePreset(row, p){
-  const t = row.querySelector('.st-t'), inp = document.createElement('input');
+function renamePreset(t, p){
+  const inp = document.createElement('input');
   inp.className = 'st-in'; inp.maxLength = 40; inp.value = p.name; inp.spellcheck = false; inp.setAttribute('aria-label', 'New name');
-  t.replaceChildren(inp); inp.focus(); inp.select();
+  t.replaceWith(inp); inp.focus(); inp.select();
   let done = false;
   const finish = keep => {
     if (done) return; done = true;
     const name = inp.value.trim().slice(0, 40);
     if (keep && name && name !== p.name){
       if (presets.some(o => o !== p && o.name.toLowerCase() === name.toLowerCase())) flash(`There's already a layout called “${name}”`);
-      else { if (activePreset === p.name) activePreset = name; p.name = name; savePresets(); }
+      else { if (activePreset === p.name) activePreset = name; if (lySel === 'p:' + p.name) lySel = 'p:' + name; p.name = name; savePresets(); }
     }
-    updateLayoutMenu();
+    updateLayoutMenu(); renderLayoutsPane();
   };
   inp.addEventListener('keydown', e => {
     if (e.key === 'Enter'){ e.preventDefault(); finish(true); }
@@ -4461,6 +4513,7 @@ async function savePresetFromInput(inp = $('#presetName')){
   if (i >= 0) presets[i] = p; else presets.push(p);
   savePresets(); inp.value = ''; activePreset = name; updateLayoutMenu();
   flash(`Saved layout “${name}”`);
+  return name;
 }
 function applyPreset(p, opt = {}){
   // Windows that are already open are kept (no reload); the rest close; missing ones open.
@@ -4485,7 +4538,7 @@ function applyPreset(p, opt = {}){
   wins = [...made, ...wins.filter(w => !made.includes(w))];      // same window order as when saved
   colOrder = (p.order || []).slice();
   try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
-  if (typeof p.linked === 'boolean' && p.linked !== linked){ linked = p.linked; try { localStorage.setItem('kickMultiview.linked', linked ? '1' : '0'); } catch {} updateLinkBtn(); }
+  if (typeof p.linked === 'boolean' && p.linked !== linked){ linked = p.linked; if (opt.quiet) try { localStorage.setItem('kickMultiview.linked', linked ? '1' : '0'); } catch {} updateLinkBtn(); }   // a saved layout's own; undo's are the built-in's
   sideCols = p.sideCols || 0; try { localStorage.setItem('kickMultiview.sideCols', String(sideCols)); } catch {}
   if (p.streamCols) streamCols = p.streamCols;
   if (typeof p.pageStep === 'boolean'){ pageStep = p.pageStep; try { localStorage.setItem('kickMultiview.pageStep', pageStep ? '1' : '0'); } catch {} }
@@ -4864,7 +4917,7 @@ if (ROLE === 'main'){
     const b = e.target.closest('button[data-l]'); if (!b) return;
     const l = b.dataset.l;
     layoutMenu.hidden = true;
-    activePreset = '';
+    leavePreset();
     if (l === 'focus'){ openFocusView(); return; }
     if (l === 'game'){ setFeatured(null); setColsMode(false); gameLayout(); return; }
     if (l === 'columns'){ setFeatured(null); scrollX = 0; columnsLayout(); return; }
@@ -4884,20 +4937,20 @@ if (ROLE === 'main'){
   layoutMenu.querySelectorAll('.lm-grid button').forEach(b => { b.addEventListener('pointerenter', () => hint(b)); b.addEventListener('focus', () => hint(b)); });
   layoutMenu.querySelector('.lm-grid').addEventListener('pointerleave', updateLayoutMenu);
   $('#lmLinked').addEventListener('change', e => setLinked(e.target.checked));
-  $('#lmAutoFit').addEventListener('change', e => setAutoFit(e.target.checked));
+  $('#lmAutoFit').addEventListener('change', e => { const ap = activeP(); if (ap) setPresetOpt(ap, 'autoFit', e.target.checked); else setAutoFit(e.target.checked); });
   $('#lmCols').addEventListener('click', e => {
     const b = e.target.closest('button[data-n]'); if (!b || b.disabled) return;
-    streamCols = +b.dataset.n; chatFocusLayout(false); updateLayoutMenu();
+    const ap = activeP(); if (ap) setPresetOpt(ap, 'streamCols', +b.dataset.n); else { streamCols = +b.dataset.n; chatFocusLayout(false); updateLayoutMenu(); }
   });
   // Settings > Layouts: each layout from the menu, with its options under it
   const lyList = $('#lyList');
   layoutMenu.querySelectorAll('button[data-l]').forEach(b => {
     const l = b.dataset.l, name = b.querySelector('b').textContent, pic = b.querySelector('.lm-pic');
-    const item = document.createElement('button'); item.className = 'ly-item'; item.dataset.l = l; item.setAttribute('role', 'option');
+    const item = document.createElement('button'); item.className = 'ly-item'; item.dataset.l = item.dataset.k = l; item.setAttribute('role', 'option');
     item.innerHTML = '<span></span><em></em>';
     item.prepend(pic.cloneNode(true)); item.querySelector('span').textContent = name;
-    lyList.appendChild(item);
-    const panel = document.createElement('div'); panel.className = 'ly-panel'; panel.dataset.l = l; panel.hidden = true;
+    lyList.insertBefore(item, $('#lyPresetList'));
+    const panel = document.createElement('div'); panel.className = 'ly-panel'; panel.dataset.l = panel.dataset.k = l; panel.hidden = true;
     panel.innerHTML = '<div class="ly-head"><b></b><button class="btn ly-use">Use</button></div><p class="ly-desc"></p>';
     panel.prepend(pic.cloneNode(true));
     panel.querySelector('b').textContent = name;
@@ -4905,16 +4958,16 @@ if (ROLE === 'main'){
     panel.querySelector('.ly-use').onclick = () => { closeSettings(); b.click(); };
     const opt = document.querySelector(`#settingsDlg [data-opt="${l}"]`);
     if (opt) panel.appendChild(opt); else panel.insertAdjacentHTML('beforeend', '<div class="ly-none">No options for this one.</div>');
-    $('#lyDetail').appendChild(panel);
+    $('#lyDetail').insertBefore(panel, $('#lyPresetDetail'));
   });
   // pick one on the left (click, or the arrow keys) to see it on the right
-  lyList.addEventListener('click', e => { const it = e.target.closest('.ly-item'); if (it) selectLayoutPane(it.dataset.l); });
+  lyList.addEventListener('click', e => { const it = e.target.closest('.ly-item'); if (it) selectLayoutPane(it.dataset.k); });
   lyList.addEventListener('keydown', e => {
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
     e.preventDefault();
-    const items = [...lyList.children], i = items.findIndex(x => x.dataset.l === lySel);
+    const items = [...lyList.querySelectorAll('.ly-item')], i = items.findIndex(x => x.dataset.k === lySel);
     const n = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : Math.max(0, Math.min(items.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
-    selectLayoutPane(items[n].dataset.l); items[n].focus();
+    selectLayoutPane(items[n].dataset.k); items[n].focus();
   });
   $('#lyTabs').addEventListener('click', e => {
     const b = e.target.closest('button[data-t]'); if (!b) return;
@@ -4924,29 +4977,32 @@ if (ROLE === 'main'){
   if (!DESKTOP) $('#lySw .desk-only').remove();
   $('#lySw').querySelectorAll('i[data-ico]').forEach(i => { i.innerHTML = icon[i.dataset.ico]; });
   $('#lySw').addEventListener('click', e => { const b = e.target.closest('button[data-sw]'); if (b) setSwitchMode(b.dataset.sw); });
-  $('#lyLinked').addEventListener('change', e => setLinked(e.target.checked));
-  $('#lyPresetSave').onclick = () => savePresetFromInput($('#lyPresetName'));
-  $('#lyPresetName').addEventListener('keydown', e => { if (e.key === 'Enter') savePresetFromInput($('#lyPresetName')); });
+  const saveFromPane = async () => { const n = await savePresetFromInput($('#lyPresetName')); if (n){ lySel = 'p:' + n; renderLayoutsPane(); } };
+  $('#lyPresetSave').onclick = saveFromPane;
+  $('#lyPresetName').addEventListener('keydown', e => { if (e.key === 'Enter') saveFromPane(); });
   $('#presetName').addEventListener('keydown', e => { if (e.key === 'Enter') savePresetFromInput(); });
 }
 function syncLySw(){ document.querySelectorAll('#lySw button').forEach(b => b.classList.toggle('on', b.dataset.sw === switchMode)); }
 let lySel = '';
-function selectLayoutPane(l){
-  lySel = l;
-  document.querySelectorAll('#lyList .ly-item').forEach(x => { const on = x.dataset.l === l; x.classList.toggle('sel', on); x.setAttribute('aria-selected', on); x.tabIndex = on ? 0 : -1; });
-  document.querySelectorAll('#lyDetail .ly-panel').forEach(x => { x.hidden = x.dataset.l !== l; });
+function selectLayoutPane(k){
+  lySel = k;
+  document.querySelectorAll('#lyList .ly-item').forEach(x => { const on = x.dataset.k === k; x.classList.toggle('sel', on); x.setAttribute('aria-selected', on); x.tabIndex = on ? 0 : -1; });
+  document.querySelectorAll('#lyDetail .ly-panel').forEach(x => { x.hidden = x.dataset.k !== k; });
 }
 // fresh: opening the tab shows the layout in use
 function renderLayoutsPane(fresh){
-  const cur = curLayout(), inUse = l => l === cur && !activePreset;
-  document.querySelectorAll('#lyList .ly-item').forEach(x => { x.classList.toggle('on', inUse(x.dataset.l)); x.querySelector('em').textContent = inUse(x.dataset.l) ? 'In use' : ''; });
+  renderPresetsPane();
+  const cur = curLayout(), now = activePreset ? 'p:' + activePreset : cur, inUse = k => k === now;
+  document.querySelectorAll('#lyList .ly-item:not(.ly-new)').forEach(x => { x.classList.toggle('on', inUse(x.dataset.k)); x.querySelector('em').textContent = inUse(x.dataset.k) ? 'In use' : ''; });
   document.querySelectorAll('#lyDetail .ly-panel').forEach(x => {
-    const b = x.querySelector('.ly-use'); x.classList.toggle('on', inUse(x.dataset.l)); b.textContent = inUse(x.dataset.l) ? 'In use' : 'Use'; b.disabled = inUse(x.dataset.l);
+    const b = x.querySelector('.ly-use'); if (!b) return;
+    x.classList.toggle('on', inUse(x.dataset.k)); b.textContent = inUse(x.dataset.k) ? 'In use' : 'Use'; b.disabled = inUse(x.dataset.k);
   });
-  if (fresh || !lySel) selectLayoutPane(document.querySelector(`#lyList [data-l="${cur}"]`) ? cur : lySel || 'focus');
+  const has = k => k && document.querySelector(`#lyList .ly-item[data-k="${CSS.escape(k)}"]`);
+  if (fresh || !has(lySel)) selectLayoutPane(has(now) ? now : has(lySel) ? lySel : 'focus');
+  else selectLayoutPane(lySel);
   $('#lyLinked').checked = linked;
   syncLySw();
-  renderPresetsPane();
 }
 $('#colNav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) scrollCols(+b.dataset.d); });
 // In Columns mode, scrolling the mouse wheel over title bars or empty space moves sideways.
@@ -6117,6 +6173,7 @@ document.addEventListener('keydown', e => {                    // Ctrl+, / ⌘, 
 });
 $('#autoFit').checked = $('#lmAutoFit').checked = autoFit;
 $('#autoFit').addEventListener('change', e => setAutoFit(e.target.checked));
+$('#lyLinked').addEventListener('change', e => { try { localStorage.setItem('kickMultiview.linked', e.target.checked ? '1' : '0'); } catch {} if (!activePreset) liveLinked(e.target.checked); });
 $('#keysSet').checked = keysOn;
 $('#keysSet').addEventListener('change', e => setKeysOn(e.target.checked));
 
