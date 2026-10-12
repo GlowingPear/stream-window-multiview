@@ -46,7 +46,7 @@ test('Pop out streams: streams move to their own window with Tile, Spotlight and
   await sw.click('#tile'); await sw.waitForTimeout(400);
   const t = await sw.$$eval('#stage .win.stream', l => l.map(e => e.offsetWidth));
   assert.ok(Math.max(...t) - Math.min(...t) < 4, 'Tile: equal sizes');
-  await sw.click(`${winSel('bravo')} .bar`, { position: { x: 40, y: 12 } });
+  await sw.click(`${winSel('bravo')} .bar .grab`);   // the bar's empty part, not its channel dropdown
   await sw.click('#spotBtn'); await sw.waitForTimeout(400);
   const sizes = await sw.$$eval('#stage .win.stream', l => Object.fromEntries(l.map(e => [e.querySelector('.title').textContent, e.offsetWidth])));
   assert.ok(sizes.bravo > sizes.alpha * 2, 'Spotlight: the one you clicked is big');
