@@ -52,6 +52,16 @@ test('the desktop app starts, adds a stream and quits cleanly', async () => {
     assert.equal(await win.evaluate(() => !!(window.kmv && window.kmv.desktop)), true, 'the desktop bridge is there');
     assert.equal(await win.evaluate(() => window.kmv.appVersion()), pkg.version, 'the app reports the version in package.json');
 
+    // Hide bar hides the traffic lights and shows them again; on a Mac they come back inside the toolbar
+    await win.evaluate(() => { window.kmv.setLights(false); window.kmv.setLights(true); window.kmv.watchTop(true); });
+    await win.waitForTimeout(250);   // a few looks at where the mouse is
+    await win.evaluate(() => window.kmv.watchTop(false));
+    if (process.platform === 'darwin') {
+      assert.ok(await win.evaluate(() => document.documentElement.classList.contains('mac-bar')), 'the toolbar is the title bar');
+      const at = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(w => /index\.html$/.test(w.webContents.getURL())).getWindowButtonPosition());
+      assert.deepEqual(at, { x: 18, y: 19 }, 'the lights are back in the toolbar, not in the corner');
+    }
+
     // the data folder is the temporary one, not the real one
     const userData = await app.evaluate(({ app }) => app.getPath('userData'));
     assert.ok(userData.startsWith(data), userData);

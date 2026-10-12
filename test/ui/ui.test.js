@@ -15,10 +15,11 @@ test.before(async () => {
 test.after(async () => { await browser?.close(); server?.close(); });
 
 // A fresh copy of the app (empty saved settings). Fails the test on any page error.
-async function openApp(t) {
+async function openApp(t, { init } = {}) {
   // Wide enough for every toolbar button (Redo hides at 1400px and below).
   const context = await browser.newContext({ viewport: { width: 1600, height: 900 } });
   const page = await context.newPage();
+  if (init) await page.addInitScript(init);   // runs before the app's own script
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.route(u => !u.href.startsWith(server.url), r => r.abort());
@@ -466,6 +467,86 @@ test('Hide bar: the button says Show bar while the bar is hidden, and brings it 
   await page.keyboard.press('Escape');
   assert.equal(await hidden(), false, 'Esc brings it back');
   assert.equal(await page.textContent('#focusBtn .l-long'), 'Hide bar');
+});
+
+test('macOS: the toolbar is the title bar, and the traffic lights hide and come back with Hide bar', async t => {
+  // The Mac parts of the desktop bridge: records what the page asks of the lights, and lets the test go fullscreen.
+  const page = await openApp(t, { init: () => {
+    window.lights = [];
+    window.watching = [];
+    window.kmv = { platform: 'darwin', setLights: on => window.lights.push(on), onFullscreen: cb => { window.goFullscreen = cb; },
+      watchTop: on => window.watching.push(on), onTop: cb => { window.mouseAtTop = cb; } };
+  } });
+  const lights = () => page.evaluate(() => window.lights.splice(0));
+  const css = (sel, prop) => page.$eval(sel, (e, p) => getComputedStyle(e).getPropertyValue(p), prop);
+  assert.equal(await css('header', '-webkit-app-region'), 'drag', 'empty toolbar space moves the window');
+  assert.equal(await css('#add', '-webkit-app-region'), 'no-drag', 'buttons still click');
+  assert.equal(await css('#url', '-webkit-app-region'), 'no-drag', 'the paste box still types');
+  assert.equal(await css('header', 'padding-left'), '86px', 'room for the lights');
+  assert.ok(await page.isVisible('.brand .pear'), 'the pear stays');
+  assert.equal(await page.isVisible('.brand-txt'), false, 'the name goes');
+
+  await page.click('#focusBtn');
+  assert.deepEqual(await lights(), [false], 'the lights go as soon as the bar starts sliding away');
+  await page.mouse.move(800, 400);
+  await page.waitForTimeout(300);
+  assert.ok((await lights()).every(on => !on), 'and stay away');
+  await page.mouse.move(800, 2);   // the top edge: the bar peeks out
+  assert.deepEqual(await lights(), [], 'not while it is still sliding in');
+  await page.waitForTimeout(300);
+  assert.deepEqual(await lights(), [true], 'back once it is in');
+  await page.mouse.move(800, 400, { steps: 20 });   // down through the bar and off it
+  assert.deepEqual(await lights(), [false], 'away again when the mouse leaves the bar');
+
+  // back up over the top edge while the bar is out: it stays out (the edge strip used to take the mouse off it)
+  const peeking = () => page.evaluate(() => document.body.classList.contains('peek'));
+  await page.mouse.move(800, 4);
+  await page.mouse.move(800, 30, { steps: 5 });
+  await page.mouse.move(800, 2, { steps: 5 });
+  await page.waitForTimeout(300);
+  assert.equal(await peeking(), true, 'still out with the mouse at the very top');
+  assert.deepEqual(await lights(), [true]);
+  await page.mouse.move(800, 400, { steps: 20 });
+  assert.equal(await peeking(), false);
+  // hidden with the mouse already at the top edge: moving it there brings the bar out
+  await page.keyboard.press('Escape');
+  await page.mouse.move(800, 8);
+  await page.keyboard.press('h');
+  await page.mouse.move(820, 8);
+  assert.equal(await peeking(), true, 'a nudge along the top edge is enough');
+  await page.mouse.move(800, 400, { steps: 20 });
+  await lights();
+
+  // the app watches the mouse while the bar is hidden (the page can't see the window's top edge on a Mac)
+  assert.deepEqual(await page.evaluate(() => window.watching.splice(0)), [true, false, true]);
+  await page.evaluate(() => window.mouseAtTop());
+  assert.equal(await peeking(), true, 'the mouse at the top edge brings the bar out');
+  await page.mouse.move(800, 30);
+  await page.mouse.move(800, -5);   // up off the top, e.g. into the menu bar in fullscreen
+  assert.equal(await peeking(), true, 'leaving through the top keeps it out');
+  await page.mouse.move(800, 30);
+  await page.mouse.move(800, 400, { steps: 20 });
+  assert.equal(await peeking(), false);
+  await lights();
+
+  await page.evaluate(() => window.goFullscreen(true));
+  assert.equal(await css('header', 'padding-left'), '12px', 'fullscreen: macOS hides the lights, so no room for them');
+  assert.deepEqual(await lights(), [true], 'fullscreen: macOS shows them in the strip that drops down with the menu bar');
+  await page.mouse.move(800, 4);
+  await page.waitForTimeout(300);
+  await page.mouse.move(800, 400, { steps: 20 });
+  await page.waitForTimeout(300);
+  assert.deepEqual(await lights(), [], 'and Hide bar leaves them alone there');
+  await page.evaluate(() => window.goFullscreen(false));
+  assert.deepEqual(await lights(), [false], 'leaving fullscreen with the bar hidden hides them');
+  assert.equal(await css('header', 'padding-left'), '86px');
+
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  assert.deepEqual(await lights(), [true], 'Esc brings the bar and the lights back');
+  assert.deepEqual(await page.evaluate(() => window.watching.splice(0)), [false], 'and stops watching the mouse');
+  await page.evaluate(() => window.goFullscreen(false));
+  assert.deepEqual(await lights(), [true], 'leaving fullscreen with the bar showing shows them');
 });
 
 test('Settings opens from the gear and Ctrl+, shows only what works in a browser, and remembers General', async t => {

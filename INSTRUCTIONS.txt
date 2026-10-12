@@ -185,6 +185,7 @@ Live alerts check your saved channels while the app is running. Kick (when you'r
 ## Other handy things
 - Chat − 100% +: make the text in every chat smaller or bigger.
 - Hide bar: hides the toolbar. Move the mouse to the top edge or press Esc to bring it back.
+- On a Mac the toolbar is also the window's title bar: drag an empty spot on it to move the window, or double-click one to zoom. With the bar hidden, the window's buttons hide too and come back with it.
 - F11: full screen.
 - Clear: closes every window (Ctrl+Z brings them back).
 

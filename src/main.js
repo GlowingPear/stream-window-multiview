@@ -78,6 +78,41 @@ const appWebPrefs = () => ({
   preload: path.join(__dirname, 'preload.js'),
   contextIsolation: true, nodeIntegration: false, sandbox: true, webviewTag: true
 });
+// macOS: the toolbar is the title bar. The traffic lights sit inside it (centred in its 52px) and the page makes
+// the toolbar's empty space draggable. Other systems keep their normal frame.
+const LIGHTS_AT = { x: 18, y: 19 };
+const macBar = () => process.platform === 'darwin' ? { titleBarStyle: 'hidden', trafficLightPosition: LIGHTS_AT } : {};
+// Tells the page when the window goes fullscreen (macOS hides the lights there, so the toolbar needs no room for them).
+function trackFullscreen(win) {
+  const send = () => { if (!win.isDestroyed()) win.webContents.send('win:fullscreen', win.isFullScreen()); };
+  win.on('enter-full-screen', send);
+  win.on('leave-full-screen', send);
+  win.webContents.on('did-finish-load', send);
+}
+// Hide bar: the lights go away with the toolbar and come back when it peeks out.
+ipcMain.on('win:lights', (e, on) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win || process.platform !== 'darwin') return;
+  win.setWindowButtonVisibility(!!on);
+  if (on) win.setWindowButtonPosition(LIGHTS_AT);   // macOS puts them back in the corner otherwise
+});
+// Hide bar on macOS: the window's top edge is its resize edge, and in fullscreen the menu bar's, so the page never
+// hears the mouse arrive there. While the bar is hidden, the mouse is watched from here and the page told when it's up there.
+const topWatch = new Map();   // window id -> timer
+ipcMain.on('win:watchTop', (e, on) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win) return;
+  clearInterval(topWatch.get(win.id));
+  topWatch.delete(win.id);
+  if (!on) return;
+  const id = win.id;
+  topWatch.set(id, setInterval(() => {
+    if (win.isDestroyed()) { clearInterval(topWatch.get(id)); topWatch.delete(id); return; }
+    if (!win.isVisible() || win.isMinimized()) return;
+    const p = screen.getCursorScreenPoint(), b = win.getBounds();
+    if (p.x >= b.x && p.x < b.x + b.width && p.y >= b.y && p.y < b.y + 12) win.webContents.send('win:top');
+  }, 100));
+});
 
 function openStreamsWindow(specs = []) {
   pendingStreams.push(...specs);
@@ -95,8 +130,9 @@ function openStreamsWindow(specs = []) {
   streamsWin = new BrowserWindow({
     ...(st ? { width: st.width || 1280, height: st.height || 760, x: st.x, y: st.y } : def),
     minWidth: 480, minHeight: 300, backgroundColor: '#0a0c0d', title: 'Stream Multiview – Streams', autoHideMenuBar: true, icon: ICON,
-    webPreferences: appWebPrefs()
+    ...macBar(), webPreferences: appWebPrefs()
   });
+  trackFullscreen(streamsWin);
   if (st?.maximized || (!st && others[0])) streamsWin.maximize();
   if (st?.fullscreen) streamsWin.setFullScreen(true);
   streamsWin.loadFile(path.join(__dirname, 'index.html'), { query: { role: 'streams' } });
@@ -183,8 +219,9 @@ function createMain() {
   mainWin = new BrowserWindow({
     width: st?.width || 1600, height: st?.height || 900, x: st?.x, y: st?.y,
     minWidth: 800, minHeight: 500, backgroundColor: '#0a0c0d', title: 'Stream Multiview', autoHideMenuBar: true, icon: ICON,
-    webPreferences: appWebPrefs()
+    ...macBar(), webPreferences: appWebPrefs()
   });
+  trackFullscreen(mainWin);
   if (st?.maximized) mainWin.maximize();
   mainWin.loadFile(path.join(__dirname, 'index.html'));
   mainWin.webContents.on('will-navigate', e => e.preventDefault());

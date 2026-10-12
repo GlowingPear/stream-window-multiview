@@ -117,7 +117,8 @@ test('the switch control in its own window controls the main window', T, async (
   await sc.selectOption('.fs-side select', '2');
   assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.sideCols')), '2');
   await keep(sc);
-  await sc.click('.fs-mfloat');
+  // the button closes this window, sometimes before the click has finished
+  await Promise.all([sc.waitForEvent('close'), sc.click('.fs-mfloat').catch(e => { if (!/closed/i.test(e.message)) throw e; })]);
   await a.win.waitForFunction(() => document.getElementById('featSwitch').classList.contains('floating'));
   assert.equal(a.app.windows().some(p => /switcher\.html/.test(p.url())), false, 'its window closed');
   await a.win.click('#featSwitch .fs-mdock');
