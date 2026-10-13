@@ -1653,15 +1653,26 @@ const keyName = s => IS_MAC ? String(s).replace(/Ctrl\+/g, '⌘+') : String(s);
 // It reads the chat's visible text, so it keeps working if Kick or Twitch change their page code.
 function mentionAgent(){
   if (window.__kmvMention) return true;
-  const seen = new Set(), marks = new Map(), known = new Set();
+  const seen = new Set(), marks = new Map(), known = new Set(), said = new Map();
   let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0;
   // Clicks and typing in the chat: the window may already have focus, so the app sees no new focus to mark it seen.
-  const looked = () => { seenAt = Date.now(); };
-  document.addEventListener('pointerdown', looked, true);
-  document.addEventListener('keydown', looked, true);
+  // Every kind of click counts, on the window before the page's own handlers: Kick's mod shortcuts on a
+  // name (Shift, Cmd/Ctrl, Cmd/Ctrl + Shift + Click: delete, timeout, ban) may stop some of them.
+  // What's on screen is read first, so messages you could see are timed before the click.
+  const looked = () => { if (Date.now() - seenAt > 300) scan(); seenAt = Date.now(); };
+  ['pointerdown', 'mousedown', 'mouseup', 'click', 'auxclick', 'contextmenu', 'keydown'].forEach(t => window.addEventListener(t, looked, true));
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const LINE_RE = /^(?:\d{1,2}:\d{2}(?:\s?[AP]M)?\s+)?([A-Za-z0-9_]{2,30})\s?:\s*([\s\S]*)$/i;
   const NAME_RE = /^(?:\d{1,2}:\d{2}(?:\s?[AP]M)?\s+)?[A-Za-z0-9_]{2,30}$/i;
+  // A message a moderator removed: the chat shows a notice in its place, or the old text with a note added.
+  const MOD_RE = /^[(<[]?\s*(?:message\s+)?(?:deleted|removed)\b|\b(?:deleted|removed)\s+by\s+(?:a\s+)?mod/i;
+  function modChange(sender, body){
+    const k = sender.toLowerCase(), before = said.get(k) || [];
+    const mod = MOD_RE.test(body) || before.some(b => b !== body && b.length >= 12 && (body.includes(b) || (body.length >= 12 && b.includes(body))));
+    if (!mod){ before.push(body); if (before.length > 20) before.shift(); said.set(k, before); }
+    if (said.size > 2000) said.delete(said.keys().next().value);
+    return mod;
+  }
   // The text's lines, with each message on one line: Kick shows the name on a line of its own and
   // ": message" on the next, so those two are joined (with a space, as flat() below would).
   function textLines(text){
@@ -1689,10 +1700,11 @@ function mentionAgent(){
       const replyNew = key && !seen.has(key);
       if (!lineNew && !replyNew) continue;
       seen.add(l); if (key) seen.add(key);
+      const mod = watch && lineNew && modChange(m[1], m[2]);
       if (!armed){ if (watch) known.add(m[1].toLowerCase()); continue; }   // people already chatting before we started
       const sender = m[1], body = m[2];
       if (me && sender.toLowerCase() === me) continue;      // your own messages
-      if (watch && lineNew && lines.length < 300) lines.push({ sender, body, line: l, t: Date.now() });
+      if (watch && lineNew && lines.length < 300) lines.push({ sender, body, line: l, t: Date.now(), mod });
       if (!me && !wordRe) continue;
       const toMe = !!me && replyNew && replyRe.test(r), at = !!me && lineNew && atRe.test(body);
       const word = !toMe && !at && lineNew && wordRe ? body.match(wordRe) : null;
@@ -1704,7 +1716,7 @@ function mentionAgent(){
     marks.forEach(tag);                                      // the chat re-draws messages as it scrolls
   }
   function arm(){
-    seen.clear(); armed = false; queue = []; lines = [];
+    seen.clear(); said.clear(); armed = false; queue = []; lines = [];
     clearTimeout(armT); scan();                              // everything already in the chat counts as old
     armT = setTimeout(() => { scan(); armed = true; }, 2500);
   }
@@ -3056,23 +3068,25 @@ async function modChat(w){
   return (await modOk.get(w.channel)) === true;
 }
 const spamOpts = () => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS });
-async function spamCheck(w, lines){
+// seenAt: when you last clicked or typed in that chat; messages from before then don't need a lasting alert.
+async function spamCheck(w, lines, seenAt){
   const mod = await modChat(w);
   const now = Date.now();
   while (spamRecent.length && now - spamRecent[0].t > 5 * 60000) spamRecent.shift();
   lines.forEach(l => {
+    if (l.mod) return;                                         // a moderator removed it: not a new message
     const msg = { sender: l.sender, body: l.body, chat: w.channel, t: l.t || now };
     const k = w.channel + '\n' + String(l.sender).toLowerCase();
     if (!(k in spamFirst)) spamFirst[k] = msg.t;
     if (mod){
       const r = SmvSpam.score(msg, { recent: spamRecent, firstSeen: spamFirst }, spamOpts());
-      if (r.spam) flagSpam(w, l, r);
+      if (r.spam) flagSpam(w, l, r, !!seenAt && (l.t || now) <= seenAt);
     }
     spamRecent.push(msg);
   });
   if (spamRecent.length > 3000) spamRecent.splice(0, spamRecent.length - 3000);
 }
-function flagSpam(w, l, r){
+function flagSpam(w, l, r, seen){
   const a = alerts.spam;
   if (a.tag){
     const why = `Likely spam (${r.score} points, ${r.need} needed):\n` + r.signs.map(s => `• ${s.text} (+${s.points})`).join('\n');
@@ -3080,7 +3094,7 @@ function flagSpam(w, l, r){
   }
   spamHist.unshift({ channel: w.channel, sender: l.sender, body: l.body, score: r.score, need: r.need, signs: r.signs, t: Date.now() });
   spamHist = spamHist.slice(0, HISTORY_MAX); saveSpamHist(); renderSpamHist();
-  raiseAlert(w, 'spam');
+  raiseAlert(w, 'spam', seen);
   flash(`Likely spam in ${chLabel(w.channel)}'s chat`);
   if (wantNotify('spam')) window.kmv.notifyMention({ kind: 'spam', channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body });
 }
@@ -3115,7 +3129,7 @@ async function pollChats(ment, spam){
     if (q === null){ injectMention(w); continue; }          // chat reloaded: set it up again
     if (!q) continue;
     (q.k || []).forEach(n => { const k = w.channel + '\n' + n; if (!(k in spamFirst)) spamFirst[k] = 0; });
-    if (spam && q.l && q.l.length) await spamCheck(w, q.l);
+    if (spam && q.l && q.l.length) await spamCheck(w, q.l, q.c);
     if (q.c){                                                 // you clicked or typed in the chat: what came before is seen
       if (w.alert && w.alert.since <= q.c) clearAlert(w);
       readMentions(w.channel);
