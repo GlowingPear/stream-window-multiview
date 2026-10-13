@@ -236,6 +236,17 @@ test('Auto layout stays chosen after a restart and when an edge is only clicked;
   assert.equal(await layoutBtn(), 'Layout: Auto layout ▾', 'a click on an edge keeps it');
   assert.equal(await page.textContent('#msg'), '');
 
+  // swapping two windows with the name list keeps it too: they trade places, and refitting keeps the new order
+  const before = { alpha: await box(a), bravo: await box(win(page, 'bravo')) };
+  await a.locator('.col-pick').selectOption({ label: 'bravo' });
+  await page.waitForTimeout(400);
+  assert.deepEqual([await box(a), await box(win(page, 'bravo'))], [before.bravo, before.alpha], 'swapped');
+  assert.equal(await layoutBtn(), 'Layout: Auto layout ▾', 'a swap keeps it');
+  assert.equal(await page.textContent('#msg'), '');
+  await page.setViewportSize({ width: 1500, height: 850 }); await page.waitForTimeout(400);
+  await page.waitForFunction(() => !document.querySelector('#stage .win.anim'));   // the refit has finished moving them
+  assert.ok((await box(win(page, 'bravo'))).x < (await box(a)).x, 'still refits, in the swapped order');
+
   // really resizing ends it, and the button and a message say so
   await sizeTo(page, a, 400, 300);
   assert.equal(await layoutBtn(), 'Layout ▾', 'resized by hand: no longer Auto layout');
