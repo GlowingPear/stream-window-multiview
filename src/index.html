@@ -1727,13 +1727,14 @@ function mentionAgent(){
       if (!lineNew && !replyNew) continue;
       seen.add(l); if (key) seen.add(key);
       const mod = watch && lineNew && modChange(m[1], m[2]);
-      if (!armed){ if (watch) known.add(m[1].toLowerCase()); continue; }   // people already chatting before we started
+      if (!armed){ if (watch && known.size < 2000) known.add(m[1].toLowerCase()); continue; }   // people already chatting before we started
       const sender = m[1], body = m[2];
       if ((me && sender.toLowerCase() === me) || mine(l)) continue;      // your own messages
       if (watch && lineNew && lines.length < 300) lines.push({ sender, body, line: l, t: Date.now(), mod });
       if (!me && !wordRe) continue;
       const toMe = !!me && replyNew && replyRe.test(r), at = !!me && lineNew && atRe.test(body);
       const word = !toMe && !at && lineNew && wordRe ? body.match(wordRe) : null;
+      if (queue.length >= 100) continue;                    // the app takes them every few seconds; more means it isn't asking
       if (toMe || at) queue.push({ sender, body, kind: toMe ? 'reply' : 'mention',
         quoted: toMe ? r.replace(/^Replying to\s+@?[A-Za-z0-9_]+:?\s*/i, '') : '', t: Date.now() });
       else if (word) queue.push({ sender, body, kind: 'word', word: word[2], quoted: '', t: Date.now() });
@@ -1798,7 +1799,7 @@ function mentionAgent(){
       on = !!on; if (on === watch) return;
       watch = on; lines = [];
       if (on && !armed) arm();
-      else if (on && document.body) textLines(document.body.innerText).forEach(l => { const m = lineOf(l); if (m) known.add(m[1].toLowerCase()); });
+      else if (on && document.body) textLines(document.body.innerText).forEach(l => { const m = lineOf(l); if (m && known.size < 2000) known.add(m[1].toLowerCase()); });
     },
     mark(line, why, color){
       if (marks.has(line)) return;
@@ -2529,11 +2530,17 @@ async function resolveYt(w){
   if (!(r && r.missing)) w.ytT = setTimeout(() => resolveYt(w), 120000);
 }
 
-function closeWin(w){
-  clearTimeout(w.ytT);
+// Everything a window holds besides its element: timers, a screen capture, its mini preview.
+function releaseWin(w){
+  clearTimeout(w.ytT); clearTimeout(w._t);
   stopCapture(w);
   if (typeof dropMini === 'function') dropMini(w);
-  w.el.remove(); wins = wins.filter(o => o !== w); updateEmpty(); save();
+  w.el.remove();
+}
+function closeWin(w){
+  releaseWin(w);
+  wins = wins.filter(o => o !== w); updateEmpty(); save();
+  if (w.kind === 'chat') forgetChat(w.channel);
 }
 /* ---- Raids: when a chat or player moves to another channel, every window of the old channel follows ----
    On a raid, Kick's pop-out chat loads the new channel's page (and Twitch can move its chat or player), so the
@@ -2581,6 +2588,7 @@ let raidSeen = {};
 function followRaid(from, to, tell){
   if (!from || !to || from === to || platOf(from) !== platOf(to)) return;
   if (raidSeen[from + '>' + to] && Date.now() - raidSeen[from + '>' + to] < 15000) return;   // both windows of a channel report it
+  for (const k in raidSeen) if (Date.now() - raidSeen[k] >= 15000) delete raidSeen[k];
   raidSeen[from + '>' + to] = Date.now();
   const old = wins.filter(w => w.channel === from && (w.kind === 'stream' || w.kind === 'chat'));
   if (tell && DESKTOP && window.kmv.raidFollowed) window.kmv.raidFollowed(from, to);   // the other window (streams pop-out or main)
@@ -3135,7 +3143,22 @@ document.addEventListener('pointerdown', e => {
 let spamHist = [];   // flagged messages, newest first (Settings > Spam alerts > History)
 try { spamHist = JSON.parse(localStorage.getItem('kickMultiview.spamHistory') || '[]'); } catch {}
 function saveSpamHist(){ try { localStorage.setItem('kickMultiview.spamHistory', JSON.stringify(spamHist.slice(0, HISTORY_MAX))); } catch {} }
-const spamRecent = [], spamFirst = {};   // messages from the last few minutes (every chat), when each sender first spoke
+const spamRecent = [], spamFirst = new Map();   // messages from the last few minutes (every chat), when each sender first spoke
+const FIRST_MAX = 20000;   // senders remembered: busy chats bring thousands an hour, so the ones seen first go
+function firstSpoke(k, t){
+  if (spamFirst.has(k)) return;
+  spamFirst.set(k, t);
+  if (spamFirst.size > FIRST_MAX) spamFirst.delete(spamFirst.keys().next().value);
+}
+// A chat with no window left: who spoke there isn't needed (opened again, it learns who's chatting again).
+function forgetChat(ch){
+  if (wins.some(w => w.kind === 'chat' && w.channel === ch)) return;
+  const pre = ch + '\n';
+  for (const k of spamFirst.keys()) if (k.startsWith(pre)) spamFirst.delete(k);
+}
+window.spamFirst = spamFirst; window.firstSpoke = firstSpoke;   // for the tests
+window.spamCheck = (ch, lines) => spamCheck(wins.find(w => w.kind === 'chat' && w.channel === ch), lines);   // for the tests
+window.openWins = () => wins;   // for the tests
 // Whether you moderate that chat's channel (the same answer as its mod view button).
 async function modChat(w){
   if (!DESKTOP || !window.kmv.modCheck || !/^(kick|twitch)$/.test(platOf(w.channel))) return false;
@@ -3153,7 +3176,7 @@ async function spamCheck(w, lines, seenAt){
     if (SmvSpam.ignored(l.sender, opts.ignore)) return;        // chat bots: not checked, and their repeats don't count against anyone
     const msg = { sender: l.sender, body: l.body, chat: w.channel, t: l.t || now };
     const k = w.channel + '\n' + String(l.sender).toLowerCase();
-    if (!(k in spamFirst)) spamFirst[k] = msg.t;
+    firstSpoke(k, msg.t);
     if (mod){
       const r = SmvSpam.score(msg, { recent: spamRecent, firstSeen: spamFirst }, opts);
       if (r.spam) flagSpam(w, l, r, !!seenAt && (l.t || now) <= seenAt);
@@ -3204,7 +3227,7 @@ async function pollChats(ment, spam){
     try { q = await w.view.executeJavaScript('window.__kmvMention && window.__kmvMention.setWatch ? window.__kmvMention.take() : null'); } catch { continue; }
     if (q === null){ injectMention(w); continue; }          // chat reloaded: set it up again
     if (!q) continue;
-    (q.k || []).forEach(n => { const k = w.channel + '\n' + n; if (!(k in spamFirst)) spamFirst[k] = 0; });
+    (q.k || []).forEach(n => firstSpoke(w.channel + '\n' + n, 0));
     if (spam && q.l && q.l.length) await spamCheck(w, q.l, q.c);
     if (q.c){                                                 // you clicked or typed in the chat: what came before is seen
       if (w.alert && w.alert.since <= q.c) clearAlert(w);
@@ -4933,7 +4956,7 @@ function popOutHidden(){
   if (!popped){ popPartial = true; try { localStorage.setItem('kickMultiview.popPartial', '1'); } catch {} }   // decide before the window opens
   popped = true;
   window.kmv.openStreams(list.map(w => ({ channel: w.channel, vol: w.vol, muted: w.muted })));
-  list.forEach(w => { if (typeof dropMini === 'function') dropMini(w); w.el.remove(); });
+  list.forEach(releaseWin);
   wins = wins.filter(w => !list.includes(w)); updatePopBtn(); updateEmpty();
   try { localStorage.setItem(POPPED_KEY, '1'); } catch {}
   columnsLayout();
@@ -4943,7 +4966,7 @@ function popOutStreams(){
   const specs = streamSpecs();
   if (!specs.length){ flash('No streams open to pop out'); return; }
   window.kmv.openStreams(specs);
-  wins.filter(w => w.kind === 'stream').forEach(w => w.el.remove());
+  wins.filter(w => w.kind === 'stream').forEach(releaseWin);
   wins = wins.filter(w => w.kind !== 'stream');
   popped = true; updatePopBtn(); updateEmpty();
   try { localStorage.setItem(POPPED_KEY, '1'); } catch {}
@@ -5011,7 +5034,7 @@ input.addEventListener('paste', () => setTimeout(() => { if (parseInput(input.va
 $('#auto').onclick = () => { lastLayout = 'auto'; autoLayout(); };
 $('#chatFocus').onclick = () => chatFocusLayout();
 $('#tile').onclick = tile;
-$('#clear').onclick = async () => { if (wins.length && await ask('Close all windows?', 'Every stream, chat and other window closes. Undo brings them back.', { ok: 'Close all', danger: true })) { [...wins].forEach(w => { stopCapture(w); w.el.remove(); }); wins = []; updateEmpty(); save(); } };
+$('#clear').onclick = async () => { if (wins.length && await ask('Close all windows?', 'Every stream, chat and other window closes. Undo brings them back.', { ok: 'Close all', danger: true })) { [...wins].forEach(releaseWin); wins = []; spamFirst.clear(); updateEmpty(); save(); } };
 // Hide bar: the toolbar slides away (it peeks out when the mouse touches the top edge). The same button,
 // Esc and H bring it back.
 // On macOS the traffic lights go with it: away as soon as it starts sliding off, back once it has slid in.

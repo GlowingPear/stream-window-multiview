@@ -2,7 +2,7 @@
 const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage, powerMonitor } = require('electron');
 const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
   validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink,
-  parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, normCh, toTime, withTimeout } = require('./live');
+  parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, normCh, toTime, withTimeout, keepLatest } = require('./live');
 const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel } = require('./profiles');
 const { createProfileQueue } = require('./profile-queue');
 const path = require('path');
@@ -347,7 +347,16 @@ async function fetchChannel(slug) {
   } catch {}
   return null;
 }
-const liveNotes = new Set();          // keep notifications alive so their click handlers work
+// Notifications are kept so their click handlers work. Electron doesn't always say when one is closed
+// (one left in the notification centre, or that just timed out), so only the latest ones are kept.
+const liveNotes = new Set();
+const NOTES_MAX = 50;
+function keepNote(n) {
+  keepLatest(liveNotes, n, NOTES_MAX);
+  const drop = () => liveNotes.delete(n);
+  n.on('click', drop);
+  n.on('close', drop);
+}
 let notifyPrefs = { all: true, off: [] };
 let desktopNotify = true;             // Settings > Notifications: off means no desktop notifications at all
 ipcMain.on('notify:enabled', (_e, on) => { desktopNotify = on !== false; });
@@ -355,10 +364,9 @@ ipcMain.on('notify:enabled', (_e, on) => { desktopNotify = on !== false; });
 ipcMain.handle('notify:test', () => new Promise(res => {
   if (!Notification.isSupported()) return res('unsupported');
   const n = new Notification({ title: 'Stream Multiview', body: 'Desktop notifications work.', icon: ICON });
-  liveNotes.add(n);
+  keepNote(n);
   n.on('show', () => res('shown'));
   n.on('failed', () => res('failed'));
-  n.on('close', () => liveNotes.delete(n));
   setTimeout(() => res('sent'), 3000);
   n.show();
 }));
@@ -371,9 +379,8 @@ ipcMain.on('notify:message', (_e, text) => {
   if (text === lastMessage.text && Date.now() - lastMessage.t < 3000) return;
   lastMessage = { text, t: Date.now() };
   const n = new Notification({ title: 'Stream Multiview', body: text, icon: ICON });
-  liveNotes.add(n);
-  n.on('click', () => { if (mainWin) { if (mainWin.isMinimized()) mainWin.restore(); mainWin.show(); mainWin.focus(); } liveNotes.delete(n); });
-  n.on('close', () => liveNotes.delete(n));
+  keepNote(n);
+  n.on('click', () => { if (mainWin) { if (mainWin.isMinimized()) mainWin.restore(); mainWin.show(); mainWin.focus(); } });
   n.show();
 });
 ipcMain.handle('notify:settings', () => {
@@ -387,12 +394,10 @@ function notifyLive(slug, info) {
   if (!desktopNotify || !notifyPrefs.all || notifyPrefs.off.includes(slug) || !Notification.isSupported()) return;
   const body = [info.title, info.category, info.viewers != null ? `${info.viewers.toLocaleString()} watching` : ''].filter(Boolean).join(' · ');
   const n = new Notification({ title: `${info.name || slug} is live on ${platformOf(slug)}`, body: body || 'Click to watch', icon: ICON });
-  liveNotes.add(n);
+  keepNote(n);
   n.on('click', () => {
     if (mainWin) { if (mainWin.isMinimized()) mainWin.restore(); mainWin.show(); mainWin.focus(); mainWin.webContents.send('open-channel', slug); }
-    liveNotes.delete(n);
   });
-  n.on('close', () => liveNotes.delete(n));
   n.show();
 }
 const TWITCH_CID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';   // Twitch's public web client id
@@ -794,12 +799,10 @@ ipcMain.on('mention:notify', (_e, m) => {
     : m.kind === 'word' ? `${who} said "${String(m.word || '').slice(0, 40)}" in ${where}'s chat` : `${who} mentioned you in ${where}'s chat`;
   const body = (m.kind === 'spam' ? `${who}: ` : m.kind === 'reply' && m.quoted ? `"${String(m.quoted).slice(0, 60)}"  →  ` : '') + String(m.body || '').slice(0, 180);
   const n = new Notification({ title, body: body || ' ', icon: ICON });
-  liveNotes.add(n);
+  keepNote(n);
   n.on('click', () => {
     if (mainWin) { if (mainWin.isMinimized()) mainWin.restore(); mainWin.show(); mainWin.focus(); mainWin.webContents.send('focus-chat', m.channel); }
-    liveNotes.delete(n);
   });
-  n.on('close', () => liveNotes.delete(n));
   n.show();
 });
 // Best guess at your Kick username from your logged-in session (you can also type it in).
