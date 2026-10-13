@@ -2,7 +2,7 @@
 // (search, filters, grouped by day). The chat helper runs on a small stand-in chat page.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { setup } = require('./app');
+const { setup, add, win } = require('./app');
 const { openApp } = setup();
 
 // (names need 2+ letters, like real ones)
@@ -115,4 +115,41 @@ test('the mentions history: grouped by day, search, filters, unread, delete and 
   assert.match(await page.textContent('#mhList'), /No mentions yet/);
   await page.keyboard.press('Escape');
   assert.ok(await page.isHidden('#mentDlg'));
+});
+
+test('the chat helper holds a limited number of messages and names between the app\'s polls', async t => {
+  const app = await openApp(t);
+  const js = await app.evaluate(() => window.chatAgentJs);
+  const page = await app.context().newPage();
+  await page.setContent('<div id="chat"></div>');
+  await page.evaluate(js);
+  await page.evaluate(() => { window.__kmvMention.setMe('mod_me', []); window.__kmvMention.setWatch(true); });
+  await page.waitForTimeout(2800);
+  await page.evaluate(h => document.getElementById('chat').insertAdjacentHTML('beforeend', h),
+    Array.from({ length: 150 }, (_, i) => row('fan' + i, '@mod_me hi')).join(''));
+  assert.equal((await page.evaluate(() => window.__kmvMention.take())).m.length, 100, 'mentions not taken yet: the oldest 100');
+  // the people already chatting when spam alerts are turned on
+  await page.evaluate(h => document.getElementById('chat').insertAdjacentHTML('beforeend', h),
+    Array.from({ length: 2100 }, (_, i) => row('old' + i, 'hello')).join(''));
+  await page.evaluate(() => { window.__kmvMention.take(); window.__kmvMention.setWatch(false); window.__kmvMention.setWatch(true); });
+  assert.equal((await page.evaluate(() => window.__kmvMention.take())).k.length, 2000);
+});
+
+test('when each sender first spoke: kept per open chat, forgotten when its chat closes, and only the latest 20,000', async t => {
+  const page = await openApp(t);
+  await page.selectOption('#mode', 'chat');
+  await add(page, 'alpha', 'bravo');
+  await page.evaluate(async () => {
+    for (const ch of ['alpha', 'bravo']) await window.spamCheck(ch, [{ sender: 'Ann', body: 'hi', t: 1 }, { sender: 'bob', body: 'yo', t: 2 }]);
+  });
+  const keys = () => page.evaluate(() => [...spamFirst.keys()]);
+  assert.deepEqual(await keys(), ['alpha\nann', 'alpha\nbob', 'bravo\nann', 'bravo\nbob']);
+  await win(page, 'alpha', 'chat').locator('[data-a=close]').click();
+  assert.deepEqual(await keys(), ['bravo\nann', 'bravo\nbob'], 'alpha\'s chat closed');
+  assert.deepEqual(await page.evaluate(() => {
+    for (let i = 0; i < 19999; i++) window.firstSpoke('bravo\nfan' + i, i);
+    return [spamFirst.size, spamFirst.has('bravo\nann'), spamFirst.has('bravo\nbob'), spamFirst.has('bravo\nfan19998')];
+  }), [20000, false, true, true], 'the one seen first went');
+  await page.evaluate(() => window.firstSpoke('bravo\nbob', 99));
+  assert.equal(await page.evaluate(() => spamFirst.get('bravo\nbob')), 2, 'the first time stays');
 });

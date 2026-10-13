@@ -372,6 +372,24 @@ test('Clear asks in the app first: Cancel, Esc and clicking outside keep the win
   assert.equal((await windows(page)).length, n, 'Undo brings them back');
 });
 
+test('Close all lets go of what each window held: its timers and screen capture', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'tw:bravo');
+  await settle(page);
+  await page.evaluate(() => {
+    window.__held = { fired: 0, stopped: 0 };
+    window.openWins().forEach(w => {
+      w.ytT = setTimeout(() => window.__held.fired++, 300);
+      w.capStream = { getTracks: () => [{ stop: () => window.__held.stopped++ }] };
+    });
+  });
+  const n = await page.evaluate(() => window.openWins().length);
+  await page.click('#clear'); await page.keyboard.press('Enter');
+  await page.waitForTimeout(500);
+  assert.deepEqual(await page.evaluate(() => window.__held), { fired: 0, stopped: n });
+  assert.equal(await page.evaluate(() => window.spamFirst.size), 0);
+});
+
 test('keyboard shortcuts don\'t act behind the dialog', async t => {
   const page = await openApp(t);
   await add(page, 'alpha');
