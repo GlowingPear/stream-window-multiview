@@ -11,6 +11,7 @@ const { launchApp, assert } = require('./app');
 const T = { timeout: 60000 };
 const MIN = 60e3, HOUR = 60 * MIN, DAY = 24 * HOUR;
 const now = Date.now();
+const until = async (fn, ms = 30000) => { const end = Date.now() + ms; for (;;) { const v = await fn(); if (v) return v; if (Date.now() > end) throw new Error('timed out waiting'); await new Promise(r => setTimeout(r, 500)); } };   // waitForFunction doesn't wait for an async check
 const kickTime = t => new Date(t).toISOString().replace('T', ' ').slice(0, 19);
 
 // Six weeks of a streamer who streams Tue-Thu from 7 PM: past broadcasts and streams the app saw.
@@ -177,8 +178,7 @@ test('streams are recorded from the live checks, and profiles open from Saved an
   const w = a.win;
   // the app's own live check sees alpha live (Kick's stand-in says so) and records it
   await w.evaluate(() => window.kmv.checkLiveNow());
-  await w.waitForFunction(async () => { const p = await window.kmv.profileGet('alpha', { local: true }); return !!(p.summary && p.summary.live); }, null, { timeout: 30000, polling: 500 });
-  const p = await w.evaluate(() => window.kmv.profileGet('alpha', { local: true }));
+  const p = await until(async () => { const p = await w.evaluate(() => window.kmv.profileGet('alpha', { local: true })); return p.summary && p.summary.live && p; });
   assert.equal(p.summary.live.title, 'Any% attempts');
   assert.equal(p.summary.live.exact, true, 'with the start time Kick gave');
   // the Saved panel's profile button
