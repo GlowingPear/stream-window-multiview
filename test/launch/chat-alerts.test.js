@@ -119,6 +119,26 @@ test('clicking inside a chat that already has focus clears its alert and mention
   assert.equal((await alertOf('bravo')).level, '');
 });
 
+test('typing in a chat that already has focus clears its alert and mention too', T, async () => {
+  await say('bravo', 'someone', '@mename still there?');
+  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  assert.equal((await alertOf('bravo')).level, 'al-1');
+  // a key press in the chat page itself, with no change of focus for the app to notice
+  await inChat('bravo', () => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true })));
+  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').hidden);
+  assert.equal((await alertOf('bravo')).level, '');
+});
+
+test('a mention that comes after you last typed in that chat still alerts', T, async () => {
+  await inChat('bravo', () => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true })));
+  await win.waitForTimeout(50);
+  await say('bravo', 'someone', '@mename one more thing');
+  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  assert.equal((await alertOf('bravo')).level, 'al-1');
+  await clickBar('bravo');   // seen, so the next test starts clear
+  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').hidden);
+});
+
 test('the @ button on a chat\'s bar turns mentions off for that chat only', T, async () => {
   const at = '#stage .win.chat:has(.title:text-is("alpha")) [data-a=at]';
   assert.equal(await win.$eval(at, b => b.hidden), false);

@@ -1654,9 +1654,11 @@ const keyName = s => IS_MAC ? String(s).replace(/Ctrl\+/g, '⌘+') : String(s);
 function mentionAgent(){
   if (window.__kmvMention) return true;
   const seen = new Set(), marks = new Map(), known = new Set();
-  let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, clicked = 0;
-  // Clicks in the chat: the window may already have focus, so the app sees no new focus to mark it seen.
-  document.addEventListener('pointerdown', () => { clicked = Date.now(); }, true);
+  let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0;
+  // Clicks and typing in the chat: the window may already have focus, so the app sees no new focus to mark it seen.
+  const looked = () => { seenAt = Date.now(); };
+  document.addEventListener('pointerdown', looked, true);
+  document.addEventListener('keydown', looked, true);
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const LINE_RE = /^(?:\d{1,2}:\d{2}(?:\s?[AP]M)?\s+)?([A-Za-z0-9_]{2,30})\s?:\s*([\s\S]*)$/i;
   const NAME_RE = /^(?:\d{1,2}:\d{2}(?:\s?[AP]M)?\s+)?[A-Za-z0-9_]{2,30}$/i;
@@ -1765,7 +1767,7 @@ function mentionAgent(){
       marks.set(line, { why, color }); tag(marks.get(line), line);
       if (marks.size > 200) marks.delete(marks.keys().next().value);
     },
-    take(){ scan(); const q = { m: queue, l: lines, k: [...known], c: clicked }; queue = []; lines = []; known.clear(); clicked = 0; return q; }
+    take(){ scan(); const q = { m: queue, l: lines, k: [...known], c: seenAt }; queue = []; lines = []; known.clear(); seenAt = 0; return q; }
   };
   return true;
 }
@@ -3114,7 +3116,7 @@ async function pollChats(ment, spam){
     if (!q) continue;
     (q.k || []).forEach(n => { const k = w.channel + '\n' + n; if (!(k in spamFirst)) spamFirst[k] = 0; });
     if (spam && q.l && q.l.length) await spamCheck(w, q.l);
-    if (q.c){                                                 // you clicked in the chat: what came before is seen
+    if (q.c){                                                 // you clicked or typed in the chat: what came before is seen
       if (w.alert && w.alert.since <= q.c) clearAlert(w);
       readMentions(w.channel);
     }
