@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createLiveWatcher, parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed,
-  nextPacificMidnight, KICK_FOLLOW_APIS, withTimeout } = require('../../src/live');
+  nextPacificMidnight, KICK_FOLLOW_APIS, withTimeout, keepLatest } = require('../../src/live');
 
 const info = (live, extra = {}) => ({ live, title: live ? 'title' : '', viewers: live ? 5 : null, category: '', name: 'n', checked: 1, ...extra });
 
@@ -246,6 +246,14 @@ test('watcher: "check now" while a check is running checks again right after it,
   w.stop();
   assert.equal(passes, 2, 'checked again straight away');
   assert.equal(w.snapshot()['tw:bravo'].live, true);
+});
+
+test('keepLatest: only the newest things stay, and one added again counts as new', () => {
+  const s = new Set();
+  [1, 2, 3].forEach(x => keepLatest(s, x, 2));
+  assert.deepEqual([...s], [2, 3]);
+  keepLatest(s, 2, 2); keepLatest(s, 4, 2);
+  assert.deepEqual([...s], [2, 4]);
 });
 
 test('withTimeout: the answer when it comes in time, the fallback when it doesn\'t', async () => {

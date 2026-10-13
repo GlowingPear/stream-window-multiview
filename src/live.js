@@ -201,6 +201,13 @@ function createLiveWatcher({ fetchChannel, fetchBatch, onStatus, onWentLive, int
 }
 
 // p's answer, or fallback when it takes longer than ms (p is left to finish on its own).
+// Adds x to a Set and keeps only the newest max things in it (a Set keeps the order they were added in).
+function keepLatest(set, x, max) {
+  set.delete(x);
+  set.add(x);
+  while (set.size > max) set.delete(set.values().next().value);
+  return set;
+}
 function withTimeout(p, ms, fallback) {
   let t;
   return Promise.race([p, new Promise(r => { t = setTimeout(() => r(fallback), ms); })]).finally(() => clearTimeout(t));
@@ -440,4 +447,4 @@ function channelFromLink(plat, href) {
   return SLUG_RE.test(m[1]) ? m[1].toLowerCase() : null;
 }
 
-module.exports = { withTimeout, toTime, decodeHtml, parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, nextPacificMidnight, isGoogleSignin, firefoxVersion, firefoxUA, KICK_FOLLOW_APIS, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };
+module.exports = { keepLatest, withTimeout, toTime, decodeHtml, parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, nextPacificMidnight, isGoogleSignin, firefoxVersion, firefoxUA, KICK_FOLLOW_APIS, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };
