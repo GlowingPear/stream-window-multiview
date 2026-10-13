@@ -1812,7 +1812,7 @@ function mentionAgent(){
 const MENTION_JS = `(${mentionAgent.toString()})()`;
 window.chatAgentJs = MENTION_JS;   // for the tests
 
-// Runs inside each stream's player page: lets the title-bar slider drive the real <video>.
+// Runs inside each stream's player page: lets the title-bar slider drive the real player (YouTube's, or the <video>).
 const VOL_JS = `(function(){
   if (window.__kmv) return true;
   // The app's volume / mute / pause for this stream is the truth. Kick's players share a saved
@@ -1829,15 +1829,31 @@ const VOL_JS = `(function(){
     if (undos.length >= 6) return false;
     undos.push(now); return true;
   };
+  // YouTube's player keeps its own volume (the one its slider shows and saves) and sets the <video> from it,
+  // scaled by its loudness levelling, so on YouTube the volume goes through the player instead.
+  const ytp = () => { const p = document.querySelector('ytd-reel-video-renderer[is-active] #shorts-player, #movie_player');
+    return p && typeof p.setVolume === 'function' && typeof p.getVolume === 'function' ? p : null; };
+  const ytNow = p => ({ v: p.getVolume() / 100, m: !!p.isMuted() });
+  let applied = false;
   const apply = vid => { try {
-    if (st.v !== null && Math.abs(vid.volume - st.v) > 0.001) vid.volume = st.v;
-    if (st.m !== null && vid.muted !== st.m) vid.muted = st.m;
+    const p = ytp();
+    if (p){
+      const n = ytNow(p);
+      if (st.v !== null && Math.abs(n.v - st.v) > 0.001) p.setVolume(Math.round(st.v * 100));
+      if (st.m !== null && n.m !== st.m) st.m ? p.mute() : p.unMute();
+      if (st.m !== null && vid.muted !== st.m) vid.muted = st.m;   // the player catches up with its own mute a moment later
+    } else {
+      if (st.v !== null && Math.abs(vid.volume - st.v) > 0.001) vid.volume = st.v;
+      if (st.m !== null && vid.muted !== st.m) vid.muted = st.m;
+    }
+    if (st.v !== null && st.m !== null) applied = true;
     if (st.p && !vid.paused) vid.pause();
   } catch (e) {} };
+  const now = vid => { const p = ytp(); return p ? ytNow(p) : { v: vid.volume, m: vid.muted }; };
   const guard = vid => {
     vid.addEventListener('loadeddata', () => apply(vid));
     vid.addEventListener('volumechange', () => {
-      if (userRecent()){ st.v = vid.volume; st.m = vid.muted; return; }   // you changed it in this player
+      if (userRecent()){ const n = now(vid); st.v = n.v; st.m = n.m; return; }   // you changed it in this player
       if (mayUndo()) apply(vid);                                           // something else did: undo
     });
     vid.addEventListener('play', () => { if (userRecent()) st.p = false; else if (st.p && mayUndo()) vid.pause(); });
@@ -1850,9 +1866,11 @@ const VOL_JS = `(function(){
     set(v, m) { st.v = v; st.m = m; document.querySelectorAll('video').forEach(apply); },
     get() {
       const v = document.querySelector('video'); if (!v) return null;
-      if (userRecent()){ st.v = v.volume; st.m = v.muted; st.p = v.paused; }   // only adopt your own changes
-      return { v: st.v ?? v.volume, m: st.m ?? v.muted, p: st.p };
+      const n = now(v);
+      if (userRecent()){ st.v = n.v; st.m = n.m; st.p = v.paused; }   // only adopt your own changes
+      return { v: st.v ?? n.v, m: st.m ?? n.m, p: st.p };
     },
+    applied() { return applied; },   // the app's volume / mute has reached a player (until then its sound stays off)
     pause() { st.p = true; document.querySelectorAll('video').forEach(v => v.pause()); },
     notYou(ms) { notYou = Date.now() + ms; },   // the app is about to click in the player (Skip YouTube ads)
     thumb(w, h) {
@@ -2385,10 +2403,26 @@ function pushVol(w){
   if (!w.ready) return;
   w.view.executeJavaScript(`${VOL_JS};window.__kmv.set(${w.vol},${w.muted})`).catch(() => {});
 }
+// A stream's sound is turned on once the app's volume / mute has reached its player (see mountView).
+function liftAudio(w){
+  const v = w.view;
+  if (!w.audioHeld || !w.ready || w.audioLoading || !v) return Promise.resolve(false);   // not the page that's leaving
+  let ask; try { ask = v.executeJavaScript('!!(window.__kmv && window.__kmv.applied())'); } catch { return Promise.resolve(false); }   // moved / closed meanwhile
+  return ask.then(ok => {
+    if (ok && w.view === v && w.audioHeld){ w.audioHeld = false; try { v.setAudioMuted(false); } catch {} }
+    return ok;
+  }, () => false);
+}
+// Checked often for its first seconds; after that the slider check below keeps trying.
+function liftAudioSoon(w, left = 75){
+  setTimeout(() => liftAudio(w).then(ok => { if (!ok && w.audioHeld && left > 1) liftAudioSoon(w, left - 1); }), 200);
+}
 // Keep the slider in step if you change volume with the player's own controls.
 if (DESKTOP) setInterval(() => {
   wins.forEach(w => {
-    if (w.kind !== 'stream' || !w.ready || w.adjusting) return;
+    if (w.kind !== 'stream' || !w.ready) return;
+    if (w.audioHeld) liftAudio(w);
+    if (w.adjusting) return;
     if (Date.now() < (w.enforceUntil || 0)){ pushVol(w); return; }
     w.view.executeJavaScript('window.__kmv ? window.__kmv.get() : null').then(r => {
       if (r && (Math.abs(r.v - w.vol) > 0.005 || r.m !== w.muted)){ w.vol = r.v; w.muted = r.m; renderVol(w); saveSoon(); }
@@ -2449,10 +2483,16 @@ function mountView(w){
     const nav = e => { if (e.isMainFrame !== false && w.view === frame) watchRaid(w, e.url); };
     frame.addEventListener('did-navigate', nav);
     frame.addEventListener('did-navigate-in-page', nav);
+    // Every web view starts with its sound off (main.js); a stream's stays off, also while it loads again,
+    // until its volume / mute is on the player, so one that should be muted never plays a moment of sound.
+    if (hasVol) frame.addEventListener('did-start-navigation', e => {
+      if (e.isMainFrame && !e.isInPlace && w.view === frame && w.ready){ w.audioHeld = w.audioLoading = true; try { frame.setAudioMuted(true); } catch {} }
+    });
     frame.addEventListener('dom-ready', () => {
       w.ready = true;
       if (w.kind === 'stream') trimYouTube(frame, w.channel);
-      if (hasVol){ w.enforceUntil = Date.now() + 8000; pushVol(w); }
+      if (hasVol){ w.enforceUntil = Date.now() + 8000; pushVol(w); w.audioHeld = true; w.audioLoading = false; liftAudioSoon(w); }
+      else try { frame.setAudioMuted(false); } catch {}
       if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); }
       if (w.kind === 'chat') try { frame.setZoomFactor(chatZoom()); } catch {}
       if (w.kind === 'chat') { const css = { kick: KICK_CHAT_CSS, twitch: TWITCH_CHAT_CSS }[platOf(w.channel)]; if (css) try { frame.insertCSS(css); } catch {} }

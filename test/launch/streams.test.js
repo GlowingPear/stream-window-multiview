@@ -55,7 +55,7 @@ test('YouTube: Skip is clicked for real without taking your keyboard, and a ques
     const b = document.createElement('button'); b.className = 'ytp-skip-ad-button';
     b.style.cssText = 'position:fixed;left:20px;top:20px;width:80px;height:30px';
     b.onclick = e => { window.__skipped = e.isTrusted; b.remove(); };
-    document.body.append(b);
+    document.getElementById('movie_player').append(b);   // inside the player, as on YouTube
   });
   await until(() => inView(a.win, title, 'stream', () => window.__skipped === true));
   await a.win.waitForTimeout(300);
@@ -100,6 +100,84 @@ test('volume: the title bar\'s mute button, slider and mouse wheel set that stre
   await inView(a.win, 'alpha', 'stream', () => { window.dispatchEvent(new Event('pointerdown')); document.getElementById('v').volume = 0.6; });
   await until(async () => (await a.win.textContent(`${bar} .pct`)) === '60%');
   await clear();
+});
+
+test('YouTube: the app\'s volume and mute go through YouTube\'s own player, from the title bar, the switch control and the keys, and back', T, async () => {
+  await a.win.selectOption('#mode', 'stream');
+  await add('https://www.youtube.com/watch?v=abcdefghijk');
+  const title = await a.win.$eval('#stage .win.stream .title', e => e.textContent);
+  await viewLoaded(a.win, title, 'stream', /youtube\.com\/watch/);
+  const startedAt = Date.now();
+  const yt = () => inView(a.win, title, 'stream', () => { const p = document.getElementById('movie_player'); return [p.getVolume(), p.isMuted()]; });
+  const bar = `${winSel(title)} .vol`, item = `#featSwitch .fs-item`;
+  await until(async () => (await yt())[1] === true);                 // YouTube's player was saved unmuted: Start muted mutes it
+  await a.win.click(`${bar} button`);
+  await until(async () => String(await yt()) === '80,false');
+  assert.equal(await video(title, 'volume'), 0.4, 'YouTube sets the video from its player (levelled)');
+  await a.win.waitForTimeout(1700);
+  assert.deepEqual(await yt(), [80, false], 'and the app doesn\'t fight YouTube\'s levelling');
+  assert.equal(await a.win.textContent(`${bar} .pct`), '80%');
+  await a.win.$eval(`${bar} input`, s => { s.value = 30; s.dispatchEvent(new Event('input', { bubbles: true })); s.dispatchEvent(new Event('change', { bubbles: true })); });
+  await until(async () => String(await yt()) === '30,false');
+  // the switch control and the keys (m, ↑ for the stream in the big spot)
+  await a.win.evaluate(() => document.querySelector('#layoutMenu [data-l=focus]').click());
+  await a.win.click(`${item} .fs-mute`);
+  await until(async () => String(await yt()) === '30,true');
+  await a.win.evaluate(() => document.activeElement.blur());
+  await a.win.keyboard.press('m');
+  await until(async () => String(await yt()) === '30,false');
+  await a.win.keyboard.press('ArrowUp');
+  await until(async () => String(await yt()) === '35,false');
+  await a.win.keyboard.press('Shift+M');
+  await until(async () => String(await yt()) === '35,true');
+  await a.win.keyboard.press('m');
+  await until(async () => String(await yt()) === '35,false');
+  // a change made with YouTube's own controls shows in the title bar (after the first 8 s, see above)
+  await a.win.waitForTimeout(Math.max(0, startedAt + 8500 - Date.now()));
+  await inView(a.win, title, 'stream', () => { window.dispatchEvent(new Event('pointerdown')); document.getElementById('movie_player').setVolume(60); });
+  await until(async () => (await a.win.textContent(`${bar} .pct`)) === '60%');
+  await inView(a.win, title, 'stream', () => { window.dispatchEvent(new Event('pointerdown')); document.getElementById('movie_player').mute(); });
+  await until(async () => (await a.win.textContent(`${bar} .pct`)) === 'off');
+  await a.win.evaluate(() => document.querySelector('#layoutMenu [data-l=columns]').click());
+});
+
+test('a stream\'s sound stays off until the app\'s volume and mute are on its player, also when it loads again; chats get theirs at once', T, async () => {
+  // the main process watches every new web view: is its sound off from the start, and when it comes on, is the player muted yet?
+  await a.app.evaluate(({ app }) => {
+    globalThis.__aud = [];
+    app.on('web-contents-created', (_e, wc) => {
+      if (wc.getType() !== 'webview') return;
+      const rec = { offAtStart: wc.isAudioMuted(), on: [] };
+      globalThis.__aud.push(rec);
+      let was = rec.offAtStart;
+      const t = setInterval(() => {
+        if (wc.isDestroyed()) return clearInterval(t);
+        const off = wc.isAudioMuted();
+        if (was && !off) wc.executeJavaScript('(() => { const p = document.getElementById("movie_player"), v = document.querySelector("video"); return { url: location.href, muted: p ? p.isMuted() : v ? v.muted : null }; })()')
+          .then(r => rec.on.push(r), () => rec.on.push(null));
+        was = off;
+      }, 5);
+    });
+  });
+  await a.win.selectOption('#mode', 'stream');
+  await add('https://www.youtube.com/watch?v=abcdefghijk');
+  const title = await a.win.$eval('#stage .win.stream .title', e => e.textContent);
+  await a.win.selectOption('#mode', 'chat');
+  await add('alpha');
+  await viewLoaded(a.win, 'alpha', 'chat', /popout/);
+  const sound = kind => a.win.evaluate(k => !document.querySelector(`#stage .win.${k} webview`).isAudioMuted(), kind);
+  await until(() => sound('stream'));
+  await until(() => sound('chat'));
+  let aud = await a.app.evaluate(() => globalThis.__aud);
+  const yt = aud.find(r => r.on.some(o => o && /youtube\.com\/watch/.test(o.url)));
+  assert.ok(yt && yt.offAtStart, 'the stream\'s sound is off from the start');
+  assert.deepEqual(yt.on.map(o => o.muted), [true], 'and comes on only once its player is muted (Start muted)');
+  // loading again: off again until the player has the app's volume
+  await a.win.click(`${winSel(title)} [data-a=reload]`);
+  await until(async () => !(await sound('stream')));
+  await until(() => sound('stream'));
+  aud = await a.app.evaluate(() => globalThis.__aud);
+  assert.deepEqual(aud.find(r => r.on.some(o => o && /youtube\.com\/watch/.test(o.url))).on.map(o => o.muted), [true, true], 'after loading again, too');
 });
 
 test('the switch control: pause and play, mute, hear only one, its volume, and a small live preview', T, async () => {
