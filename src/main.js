@@ -242,7 +242,9 @@ function createMain() {
 
 /* ---------- link / popup handling for every web view ---------- */
 app.on('web-contents-created', (_e, wc) => {
-  try { wc.setUserAgent(chromeUA()); } catch {}   // every view (incl. each stream's private storage) looks like normal Chrome
+  try { wc.setUserAgent(chromeUA()); } catch {}
+  // Web views start with their sound off; the page turns it on once it's ready (a stream: once its volume is set).
+  if (wc.getType() === 'webview') try { wc.setAudioMuted(true); } catch {}   // every view (incl. each stream's private storage) looks like normal Chrome
   // Google's sign-in pages get a Firefox identity (see googleSignin below); everything else stays Chrome.
   const syncUA = (url, isMain) => {
     if (!isMain) return;

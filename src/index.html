@@ -2403,10 +2403,25 @@ function pushVol(w){
   if (!w.ready) return;
   w.view.executeJavaScript(`${VOL_JS};window.__kmv.set(${w.vol},${w.muted})`).catch(() => {});
 }
+// A stream's sound is turned on once the app's volume / mute has reached its player (see mountView).
+function liftAudio(w){
+  const v = w.view;
+  if (!w.audioHeld || !w.ready || w.audioLoading || !v) return Promise.resolve(false);   // not the page that's leaving
+  return v.executeJavaScript('!!(window.__kmv && window.__kmv.applied())').then(ok => {
+    if (ok && w.view === v && w.audioHeld){ w.audioHeld = false; try { v.setAudioMuted(false); } catch {} }
+    return ok;
+  }, () => false);
+}
+// Checked often for its first seconds; after that the slider check below keeps trying.
+function liftAudioSoon(w, left = 75){
+  setTimeout(() => liftAudio(w).then(ok => { if (!ok && w.audioHeld && left > 1) liftAudioSoon(w, left - 1); }), 200);
+}
 // Keep the slider in step if you change volume with the player's own controls.
 if (DESKTOP) setInterval(() => {
   wins.forEach(w => {
-    if (w.kind !== 'stream' || !w.ready || w.adjusting) return;
+    if (w.kind !== 'stream' || !w.ready) return;
+    if (w.audioHeld) liftAudio(w);
+    if (w.adjusting) return;
     if (Date.now() < (w.enforceUntil || 0)){ pushVol(w); return; }
     w.view.executeJavaScript('window.__kmv ? window.__kmv.get() : null').then(r => {
       if (r && (Math.abs(r.v - w.vol) > 0.005 || r.m !== w.muted)){ w.vol = r.v; w.muted = r.m; renderVol(w); saveSoon(); }
@@ -2467,10 +2482,16 @@ function mountView(w){
     const nav = e => { if (e.isMainFrame !== false && w.view === frame) watchRaid(w, e.url); };
     frame.addEventListener('did-navigate', nav);
     frame.addEventListener('did-navigate-in-page', nav);
+    // Every web view starts with its sound off (main.js); a stream's stays off, also while it loads again,
+    // until its volume / mute is on the player, so one that should be muted never plays a moment of sound.
+    if (hasVol) frame.addEventListener('did-start-navigation', e => {
+      if (e.isMainFrame && !e.isInPlace && w.view === frame && w.ready){ w.audioHeld = w.audioLoading = true; try { frame.setAudioMuted(true); } catch {} }
+    });
     frame.addEventListener('dom-ready', () => {
       w.ready = true;
       if (w.kind === 'stream') trimYouTube(frame, w.channel);
-      if (hasVol){ w.enforceUntil = Date.now() + 8000; pushVol(w); }
+      if (hasVol){ w.enforceUntil = Date.now() + 8000; pushVol(w); w.audioHeld = true; w.audioLoading = false; liftAudioSoon(w); }
+      else try { frame.setAudioMuted(false); } catch {}
       if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); }
       if (w.kind === 'chat') try { frame.setZoomFactor(chatZoom()); } catch {}
       if (w.kind === 'chat') { const css = { kick: KICK_CHAT_CSS, twitch: TWITCH_CHAT_CSS }[platOf(w.channel)]; if (css) try { frame.insertCSS(css); } catch {} }
