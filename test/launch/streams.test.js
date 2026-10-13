@@ -55,7 +55,7 @@ test('YouTube: Skip is clicked for real without taking your keyboard, and a ques
     const b = document.createElement('button'); b.className = 'ytp-skip-ad-button';
     b.style.cssText = 'position:fixed;left:20px;top:20px;width:80px;height:30px';
     b.onclick = e => { window.__skipped = e.isTrusted; b.remove(); };
-    document.body.append(b);
+    document.getElementById('movie_player').append(b);   // inside the player, as on YouTube
   });
   await until(() => inView(a.win, title, 'stream', () => window.__skipped === true));
   await a.win.waitForTimeout(300);
