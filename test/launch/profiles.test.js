@@ -43,8 +43,10 @@ test.before(async () => {
     meta: { bravo: { notes: 'old friend', tags: ['Friends'], fav: true, nick: 'Bee' } } }));
   a = await launchApp({ data, storage: { 'kickMultiview.saved': ['alpha', 'bravo', 'tw:charlie'] } });
   // kick.com answers like Kick's API; you're logged in to Kick; Unfollow is recorded
-  await a.app.evaluate(({ session, ipcMain }, KICK) => {
+  await a.app.evaluate(async ({ session, ipcMain }, KICK) => {
     const s = session.fromPartition('persist:kick');
+    // signed in first: the live checks are already running, and a profile fetched before the cookie is kept for 10 minutes
+    await s.cookies.set({ url: 'https://kick.com', name: 'session_token', value: 'test' });
     s.protocol.unhandle('https');
     const t = globalThis.__t = { unfollowed: [], asked: [] };
     s.protocol.handle('https', req => {
@@ -62,7 +64,6 @@ test.before(async () => {
       return new Response('<!doctype html><title>kick</title>', { headers: { 'content-type': 'text/html' } });
     });
     ipcMain.removeHandler('mod:check'); ipcMain.handle('mod:check', (_e, ch) => ch === 'alpha');
-    return s.cookies.set({ url: 'https://kick.com', name: 'session_token', value: 'test' });
   }, KICK);
 });
 test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
