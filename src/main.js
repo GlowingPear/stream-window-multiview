@@ -289,6 +289,11 @@ ipcMain.handle('streams:open', (_e, specs) => { openStreamsWindow(cleanSpecs(spe
 ipcMain.handle('streams:close', () => { streamsWin?.close(); });
 ipcMain.handle('streams:isOpen', () => !!streamsWin);
 ipcMain.on('streams:report', (_e, list) => { lastStreams = cleanSpecs(list); });
+// A raid one window followed: the other window (main or streams pop-out) follows it too.
+ipcMain.on('raid:followed', (e, from, to) => {
+  if (typeof from !== 'string' || typeof to !== 'string' || from.length > 120 || to.length > 120) return;
+  [mainWin, streamsWin].forEach(w => { if (w && !w.isDestroyed() && w.webContents !== e.sender) w.webContents.send('raid:follow', from, to); });
+});
 ipcMain.handle('chat:add', (_e, channel) => {
   if (typeof channel === 'string' && mainWin) { mainWin.webContents.send('chat:add', channel); mainWin.focus(); }
 });

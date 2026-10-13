@@ -23,6 +23,7 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - The dropdown next to the box picks Stream + chat, Stream only or Chat only.
 - If a YouTube channel isn't live, its window says so, checks again every 2 minutes and has a **Check now** button.
 - Window dots show the site: Kick green, Twitch purple, YouTube red.
+- **Raids** (Kick and Twitch): when a channel raids another, its stream and chat switch to the raided channel in the same spot, and a message says who raided whom. If that channel is already open, the old windows just close.
 
 ## Moving windows around
 - Drag a window by its title bar. Resize it from any edge or corner.
