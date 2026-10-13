@@ -6882,6 +6882,12 @@ if (DESKTOP && ROLE === 'main' && window.kmv.profileGet){
     pfRenderDir();
   }));
   $('#pfSort').addEventListener('change', () => { pf.sort = $('#pfSort').value; try { localStorage.setItem('kickMultiview.profView', JSON.stringify({ sort: pf.sort })); } catch {} pfRenderDir(); });
+  // a picture fetched in the background (src/profile-queue.js): show it in the Saved list and the Profiles cards
+  let pfInfoT = null;
+  if (window.kmv.onProfileInfo) window.kmv.onProfileInfo(() => {
+    clearTimeout(pfInfoT);
+    pfInfoT = setTimeout(() => { loadSavedProfiles(); if (!profDlg.hidden && !pf.cur) pfLoadList(); }, 400);
+  });
   window.kmv.onLiveStatus(() => { if (!profDlg.hidden){ if (pf.cur) { if (!document.activeElement || !profDlg.contains(document.activeElement) || !/^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName)) pfRenderProf(); } else pfRenderDir(); } });
   window.openProfile = openProfile;   // for the tests
 }
