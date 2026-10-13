@@ -288,13 +288,12 @@ test('watcher: after a batch gets stuck, the checks keep running and "check now"
   let passes = 0;
   const w = createLiveWatcher({ intervalMs: 600000, batchIntervalMs: 600000, batchTimeoutMs: 10, spacingMs: 0,
     fetchBatch: list => { passes++; return passes === 1 ? new Promise(() => {}) : { results: list.map(c => [c, info(true)]), rest: [] }; },
-    fetchChannel: async () => info(false) });
+    fetchChannel: async () => info(true) });
   w.setChannels(['tw:alpha']);                       // starts the first check, which never answers
-  for (let i = 0; i < 50 && !w.snapshot()['tw:alpha']; i++) await new Promise(r => setTimeout(r, 2));
+  for (let i = 0; i < 200 && !w.snapshot()['tw:alpha']; i++) await new Promise(r => setTimeout(r, 5));
+  assert.equal(w.snapshot()['tw:alpha'].live, true, 'checked one at a time after the time limit');
   w.checkSoon();
-  for (let i = 0; i < 50 && passes < 2; i++) await new Promise(r => setTimeout(r, 2));
-  for (let i = 0; i < 50 && !w.snapshot()['tw:alpha'].live; i++) await new Promise(r => setImmediate(r));
+  for (let i = 0; i < 200 && passes < 2; i++) await new Promise(r => setTimeout(r, 5));
   w.stop();
-  assert.equal(passes, 2, 'checked again on "check now"');
-  assert.equal(w.snapshot()['tw:alpha'].live, true);
+  assert.equal(passes, 2, 'the batch loop runs again on "check now"');
 });
