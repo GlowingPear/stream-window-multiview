@@ -169,13 +169,14 @@ function createLiveWatcher({ fetchChannel, fetchBatch, onStatus, onWentLive, int
   }
 
   function makeLoop(pass, ms) {
-    const l = { running: false, wake: null, timer: null };
+    const l = { running: false, again: false, wake: null, timer: null };
     l.run = async () => {
       if (l.running) return;
       l.running = true;
       try {
         while (!stopped) {
           await pass();
+          if (l.again) { l.again = false; continue; }      // poked during the pass: go again now, not in a minute
           await new Promise(r => { l.wake = r; l.timer = setTimeout(r, ms); });
           l.wake = null;
         }
@@ -183,7 +184,7 @@ function createLiveWatcher({ fetchChannel, fetchBatch, onStatus, onWentLive, int
     };
     l.poke = () => {
       if (!auto) return;
-      if (l.wake) { clearTimeout(l.timer); const w = l.wake; l.wake = null; w(); } else if (!l.running && !stopped) l.run();
+      if (l.wake) { clearTimeout(l.timer); const w = l.wake; l.wake = null; w(); } else if (l.running) l.again = true; else if (!stopped) l.run();
     };
     loops.push(l);
     return l;
