@@ -315,7 +315,9 @@ function ensureLiveWin() {
   // a busy computer sets that off too, and closing it then cuts off the checks in flight. Each one has a time limit.)
   const w = liveWin;
   w.webContents.on('render-process-gone', () => { if (!w.isDestroyed()) w.destroy(); });
-  liveLoading = withTimeout(liveWin.loadURL('https://kick.com/robots.txt'), NET_TIMEOUT, null).catch(() => {});
+  // Not on kick.com in time: its requests would run on a blank page (signed out, no answers), so start again next time
+  liveLoading = withTimeout(w.loadURL('https://kick.com/robots.txt').then(() => true, () => true), NET_TIMEOUT, false)
+    .then(ok => { if (ok) return; if (liveWin === w) liveWin = null; if (!w.isDestroyed()) w.destroy(); });
   return liveLoading;
 }
 async function fetchChannel(slug) {
