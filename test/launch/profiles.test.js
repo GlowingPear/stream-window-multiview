@@ -140,6 +140,12 @@ test('notes, tags and nickname are saved to the computer', T, async () => {
 
 test('Unfollow on Kick asks first, then unfollows on kick.com; it can also remove them from Saved', T, async () => {
   const w = a.win;
+  // fails now and then on CI; say what the profile showed instead
+  await w.waitForSelector('.pf-acts .unf', { timeout: 10000 }).catch(async () => {
+    const seen = await w.evaluate(async () => ({ open: !document.querySelector('#profDlg').hidden, title: (document.querySelector('.pf-prof h2') || {}).textContent,
+      buttons: (document.querySelector('.pf-acts') || {}).textContent, site: await window.kmv.profileGet('alpha', { local: true }).then(p => p.site && { loggedIn: p.site.loggedIn, following: p.site.following }, () => 'none') }));
+    assert.fail('no Unfollow on Kick: ' + JSON.stringify(seen));
+  });
   await w.click('.pf-acts .unf');
   await w.waitForSelector('#askDlg:not([hidden])');
   assert.match(await w.textContent('#askTitle'), /Unfollow Al on Kick\?/);
