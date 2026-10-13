@@ -236,6 +236,10 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .sh-signs{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
 .sh-signs span{font-size:10.5px;padding:1px 6px;border-radius:5px;background:var(--panel2);border:1px solid var(--line2);color:var(--muted)}
 .sh-signs i{font-style:normal;font-weight:700;color:var(--text)}
+.sh-acts{display:flex;align-items:center;gap:8px;margin-top:4px}
+.sh-acts .btn{height:24px;padding:0 9px;font-size:11px}
+.sh-acts span{font-size:11px;color:var(--muted)}
+.st-try #spamTrySender{flex:0 0 150px}
 .st-res.bad{border-color:color-mix(in srgb,var(--danger) 55%,transparent);background:color-mix(in srgb,var(--danger) 8%,transparent)}
 .st-res.bad b{color:var(--danger)}
 .st-res table{width:100%;border-collapse:collapse;margin-top:4px}
@@ -1489,12 +1493,13 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <div class="st-subpane" data-t="how" hidden>
           <div class="st-explain">A message is only flagged when several signs add up. One sign alone is never enough, so normal links and clip links aren't flagged, and a message needs a link (or to be posted in several chats) to count. The exceptions are a wall of the same word and a known bot opening line, which are flagged on their own.
             <ul>
-              <li><b>Disguised link</b> to a site not on the allowed list, written so the chat doesn't turn it into a link: <code>site com</code>, <code>site[.]com</code>, <code>site dot com</code> (3 points). A normal link to a site not on the list is 1 point.</li>
+              <li><b>Disguised link</b> to a site not on the allowed list, written so the chat doesn't turn it into a link: <code>site[.]com</code>, <code>site dot com</code>, <code>site . live</code>, or <code>site com</code> with just a space (only for endings like .com, .net and .org that aren't everyday words, so "call me" or "going live" don't count) (3 points). A normal link to a site not on the list is 1 point.</li>
               <li><b>Promo words</b> like "upgrades", "viewers" or "zero cost" (1 point each, up to 2)</li>
               <li><b>Emotes or junk</b> breaking up the words (1 point)</li>
               <li><b>The same message in another open chat</b> in the last 5 minutes (3 points, the strongest sign)</li>
               <li><b>A new chatter</b>: started chatting in the last few minutes, often with friendly filler lines first like "Don't work too hard" (1 point)</li>
               <li><b>The same word over and over</b>, glued together like <code>WordWordWordWord</code> (10+ times) or spaced out (25+ times). Laughing and hype like <code>hahaha</code> or <code>KEKW KEKW</code> don't count (6 points, enough on its own)</li>
+              <li>Messages from accounts on the <b>chat bot list</b> in Lists (like BotRix or Nightbot) are never checked, and don't count as "the same message in another open chat" either.</li>
               <li><b>A known bot opening line</b> from the list in Lists, like "Hey stranger, still running the show?", the greeting some promo bots start with before posting their link (6 points, enough on its own)</li>
             </ul></div>
           <div class="st-row"><span class="st-t">Sensitivity<small>Strict flags more, and may flag a few real messages.</small></span>
@@ -1510,10 +1515,13 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <div class="st-sec">Bot opening lines</div><p class="st-sub" style="margin:2px 0 0">Greetings promo bots start with. A message with one of these is flagged on its own, so you can deal with the bot before it posts its link. Case and punctuation don't matter.</p>
           <div class="st-chips" data-list="openers"></div>
           <div class="st-add"><input class="st-in" data-add="openers" placeholder="Add a line a bot opens with" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="openers">Add</button><button class="btn" data-reset="openers">Reset</button></div>
+          <div class="st-sec">Chat bots to ignore</div><p class="st-sub" style="margin:2px 0 0">Messages from these accounts are never flagged as spam. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> is still checked.</p>
+          <div class="st-chips" data-list="ignore"></div>
+          <div class="st-add"><input class="st-in" data-add="ignore" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="ignore">Add</button><button class="btn" data-reset="ignore">Reset</button></div>
         </div>
         <div class="st-subpane" data-t="try" hidden>
-          <p class="st-sub" style="margin:8px 0 0">Paste a message to see whether it would be flagged, and why. It's checked on its own, as if nothing else had been posted.</p>
-          <div class="st-try"><input class="st-in" id="spamTry" placeholder="Paste a chat message" autocomplete="off" spellcheck="false"><button class="btn" id="spamTryBtn">Check</button></div>
+          <p class="st-sub" style="margin:8px 0 0">Paste a message to see whether it would be flagged, and why. It's checked on its own, as if nothing else had been posted. Add who sent it to check them against the chat bot list.</p>
+          <div class="st-try"><input class="st-in" id="spamTrySender" placeholder="Sender (optional)" autocomplete="off" spellcheck="false"><input class="st-in" id="spamTry" placeholder="Paste a chat message" autocomplete="off" spellcheck="false"><button class="btn" id="spamTryBtn">Check</button></div>
           <div class="st-res" id="spamRes" hidden></div>
         </div>
         <div class="st-subpane" data-t="history" hidden>
@@ -2974,7 +2982,7 @@ function injectMention(w){
 const ALERT_DEFAULTS = {
   mention: { hl: 'until', color: '#e8b84a', esc: 20, max: 'pulse', sound: 'chime', vol: 0.5, repeat: false, notify: 'unfocused' },
   spam: { on: false, hl: 'until', color: '#ff5f5f', esc: 0, max: 'pulse', tag: true, sound: 'knock', vol: 0.4, repeat: false, notify: 'never',
-          sens: 'balanced', allow: null, words: null, openers: null }      // null: the built-in lists
+          sens: 'balanced', allow: null, words: null, openers: null, ignore: null }      // null: the built-in lists
 };
 var alerts = (() => {
   let a = {}; try { a = JSON.parse(localStorage.getItem('kickMultiview.alerts') || '{}') || {}; } catch {}
@@ -3075,19 +3083,20 @@ async function modChat(w){
   if (!modOk.has(w.channel)) modOk.set(w.channel, window.kmv.modCheck(w.channel).catch(() => null));
   return (await modOk.get(w.channel)) === true;
 }
-const spamOpts = () => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS });
+const spamOpts = () => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS, ignore: alerts.spam.ignore || SmvSpam.BOTS });
 // seenAt: when you last clicked or typed in that chat; messages from before then don't need a lasting alert.
 async function spamCheck(w, lines, seenAt){
   const mod = await modChat(w);
-  const now = Date.now();
+  const now = Date.now(), opts = spamOpts();
   while (spamRecent.length && now - spamRecent[0].t > 5 * 60000) spamRecent.shift();
   lines.forEach(l => {
     if (l.mod) return;                                         // a moderator removed it: not a new message
+    if (SmvSpam.ignored(l.sender, opts.ignore)) return;        // chat bots: not checked, and their repeats don't count against anyone
     const msg = { sender: l.sender, body: l.body, chat: w.channel, t: l.t || now };
     const k = w.channel + '\n' + String(l.sender).toLowerCase();
     if (!(k in spamFirst)) spamFirst[k] = msg.t;
     if (mod){
-      const r = SmvSpam.score(msg, { recent: spamRecent, firstSeen: spamFirst }, spamOpts());
+      const r = SmvSpam.score(msg, { recent: spamRecent, firstSeen: spamFirst }, opts);
       if (r.spam) flagSpam(w, l, r, !!seenAt && (l.t || now) <= seenAt);
     }
     spamRecent.push(msg);
@@ -6390,8 +6399,8 @@ $('#spamTabs').addEventListener('click', e => {
   if (b.dataset.t === 'history') renderSpamHist();   // fresh "x min ago"
 });
 
-/* Spam alerts: allowed sites, promo words and bot opening lines */
-const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS, openers: () => SmvSpam.OPENERS };
+/* Spam alerts: allowed sites, promo words, bot opening lines and chat bots to ignore */
+const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS, openers: () => SmvSpam.OPENERS, ignore: () => SmvSpam.BOTS };
 const listOf = which => (alerts.spam[which] || SPAM_LIST[which]()).slice();
 function renderSpamLists(){
   Object.keys(SPAM_LIST).forEach(which => {
@@ -6408,27 +6417,36 @@ function renderSpamLists(){
 function setSpamList(which, list){
   const def = SPAM_LIST[which]();
   alerts.spam[which] = list.length === def.length && list.every((x, i) => x === def[i]) ? null : list;
-  saveAlerts(); renderSpamLists();
+  saveAlerts(); renderSpamLists(); renderSpamHist();
+}
+// "Not spam: ignore this account" in the History tab.
+function ignoreSender(name){
+  const l = listOf('ignore'), v = String(name).trim().toLowerCase();
+  if (!l.includes(v)) setSpamList('ignore', [...l, v]);
+  flash(`${name} added to the chat bot list: never flagged as spam`);
 }
 function addSpamItem(which){
   const inp = settingsDlg.querySelector(`[data-add="${which}"]`);
   let v = inp.value.trim().replace(/\s+/g, ' ');
   if (which !== 'openers') v = v.toLowerCase();   // opening lines keep their capitals: they're shown as typed
+  if (which === 'ignore') v = v.replace(/^@/, '');
   if (which === 'allow') v = v.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '').replace(/\s+(?=[a-z]{2,6}$)/, '.');
-  if (!/[a-z0-9]/i.test(v) || (which === 'allow' && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v))){ inp.focus(); flash(which === 'allow' ? 'Type a site like example.com' : which === 'openers' ? 'Type a line a bot opens with' : 'Type a word or phrase'); return; }
+  if (!/[a-z0-9]/i.test(v) || (which === 'allow' && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v))){ inp.focus(); flash(which === 'allow' ? 'Type a site like example.com' : which === 'openers' ? 'Type a line a bot opens with' : which === 'ignore' ? "Type a chat bot's name" : 'Type a word or phrase'); return; }
   const l = listOf(which); if (!l.some(x => x.toLowerCase() === v.toLowerCase())) l.push(v);
   setSpamList(which, l); inp.value = '';
 }
 settingsDlg.querySelectorAll('[data-addbtn]').forEach(b => { b.onclick = () => addSpamItem(b.dataset.addbtn); });
 settingsDlg.querySelectorAll('[data-add]').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') addSpamItem(i.dataset.add); }));
-settingsDlg.querySelectorAll('[data-reset]').forEach(b => { b.onclick = () => { alerts.spam[b.dataset.reset] = null; saveAlerts(); renderSpamLists(); }; });
+settingsDlg.querySelectorAll('[data-reset]').forEach(b => { b.onclick = () => { alerts.spam[b.dataset.reset] = null; saveAlerts(); renderSpamLists(); renderSpamHist(); }; });
 
 /* Spam alerts: try a message */
 function trySpam(){
   const text = $('#spamTry').value.trim(), out = $('#spamRes');
   if (!text){ out.hidden = true; return; }
-  const r = SmvSpam.score({ sender: 'someone', body: text, chat: '', t: Date.now() }, {}, spamOpts());
+  const sender = $('#spamTrySender').value.trim().replace(/^@/, '');
+  const r = SmvSpam.score({ sender: sender || 'someone', body: text, chat: '', t: Date.now() }, {}, spamOpts());
   out.hidden = false; out.classList.toggle('bad', r.spam);
+  if (r.ignored){ out.innerHTML = `Not checked: <b></b> is on the chat bot list, so it's never flagged.`; out.querySelector('b').textContent = sender; return; }
   const head = r.spam ? `<b>Would be flagged</b> (${r.need} points needed)` : r.score >= r.need ? `Not flagged: it has ${r.score} points but no link to promote` : `Not flagged (${r.score} of the ${r.need} points needed)`;
   out.innerHTML = head + (r.signs.length ? '<table>' + r.signs.map(s => `<tr><td>${escH(s.text)}</td><td>+${s.points}</td></tr>`).join('') + `<tr class="tot"><td>Total</td><td>${r.score}</td></tr></table>` : '<div>No signs of spam.</div>');
 }
@@ -6450,12 +6468,20 @@ function renderSpamHist(){
     row.querySelector('.mp-time').textContent = timeAgo(h.t);
     row.querySelector('.mp-body').textContent = h.body;
     row.querySelector('.sh-signs').innerHTML = (h.signs || []).map(x => `<span>${escH(x.text)} <i>+${x.points}</i></span>`).join('');
+    const acts = document.createElement('div'); acts.className = 'sh-acts';
+    if (SmvSpam.ignored(h.sender, spamOpts().ignore)) acts.innerHTML = '<span>On the chat bot list: no longer flagged</span>';
+    else {
+      acts.innerHTML = '<button class="btn sh-ign">Not spam: ignore this account</button>';
+      acts.firstChild.title = `Add ${h.sender} to the chat bot list (Lists tab), so its messages are never flagged`;
+      acts.firstChild.onclick = e => { e.stopPropagation(); ignoreSender(h.sender); };
+    }
+    row.appendChild(acts);
     if (ROLE === 'main'){ row.title = 'Show this chat'; row.onclick = () => { closeSettings(); revealChat(h.channel); }; }
     list.appendChild(row);
   });
 }
 $('#spamHistClear').onclick = () => { spamHist = []; saveSpamHist(); renderSpamHist(); };
-$('#spamTry').addEventListener('keydown', e => { if (e.key === 'Enter') trySpam(); });
+['#spamTry', '#spamTrySender'].forEach(s => $(s).addEventListener('keydown', e => { if (e.key === 'Enter') trySpam(); }));
 syncAlertControls(); renderSpamLists(); renderSpamHist();
 
 restore();
