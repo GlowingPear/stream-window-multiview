@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createLiveWatcher, parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed,
-  nextPacificMidnight, KICK_FOLLOW_APIS } = require('../../src/live');
+  nextPacificMidnight, KICK_FOLLOW_APIS, withTimeout } = require('../../src/live');
 
 const info = (live, extra = {}) => ({ live, title: live ? 'title' : '', viewers: live ? 5 : null, category: '', name: 'n', checked: 1, ...extra });
 
@@ -246,4 +246,55 @@ test('watcher: "check now" while a check is running checks again right after it,
   w.stop();
   assert.equal(passes, 2, 'checked again straight away');
   assert.equal(w.snapshot()['tw:bravo'].live, true);
+});
+
+test('withTimeout: the answer when it comes in time, the fallback when it doesn\'t', async () => {
+  assert.equal(await withTimeout(Promise.resolve('ok'), 50, 'late'), 'ok');
+  assert.equal(await withTimeout(new Promise(() => {}), 5, 'late'), 'late', 'never answers');
+  await assert.rejects(withTimeout(Promise.reject(new Error('down')), 50, 'late'), /down/, 'a failure is still a failure');
+});
+
+test('watcher: a batch that never answers counts as failed, and every channel is checked one at a time', async () => {
+  const asked = [];
+  const w = createLiveWatcher({ auto: false, sleep: async () => {}, batchTimeoutMs: 5,
+    fetchBatch: () => new Promise(() => {}), fetchChannel: async ch => { asked.push(ch); return info(false); } });
+  w.setChannels(['tw:alpha', 'kickone']);
+  await w._batchPass(); await w._onePass();
+  assert.deepEqual(asked, ['tw:alpha', 'kickone']);
+  assert.equal(w.snapshot()['tw:alpha'].live, false);
+});
+
+test('watcher: a channel that never answers doesn\'t hold up the rest', async () => {
+  const w = createLiveWatcher({ auto: false, sleep: async () => {}, oneTimeoutMs: 5,
+    fetchChannel: async ch => ch === 'stuck' ? new Promise(() => {}) : info(true) });
+  w.setChannels(['stuck', 'kickone']);
+  await w._onePass();
+  assert.equal(w.snapshot().kickone.live, true);
+  assert.equal(w.snapshot().stuck, undefined, 'no answer: nothing known yet');
+});
+
+test('watcher: an answer that comes after the time limit is ignored', async () => {
+  let late;
+  const w = createLiveWatcher({ auto: false, sleep: async () => {}, batchTimeoutMs: 5,
+    fetchBatch: () => new Promise(r => { late = r; }), fetchChannel: async () => info(false) });
+  w.setChannels(['tw:alpha']);
+  await w._batchPass(); await w._onePass();
+  late({ results: [['tw:alpha', info(true)]], rest: [] });
+  await new Promise(r => setImmediate(r));
+  assert.equal(w.snapshot()['tw:alpha'].live, false, 'the one-at-a-time answer stands');
+});
+
+test('watcher: after a batch gets stuck, the checks keep running and "check now" still works', async () => {
+  let passes = 0;
+  const w = createLiveWatcher({ intervalMs: 600000, batchIntervalMs: 600000, batchTimeoutMs: 10, spacingMs: 0,
+    fetchBatch: list => { passes++; return passes === 1 ? new Promise(() => {}) : { results: list.map(c => [c, info(true)]), rest: [] }; },
+    fetchChannel: async () => info(false) });
+  w.setChannels(['tw:alpha']);                       // starts the first check, which never answers
+  for (let i = 0; i < 50 && !w.snapshot()['tw:alpha']; i++) await new Promise(r => setTimeout(r, 2));
+  w.checkSoon();
+  for (let i = 0; i < 50 && passes < 2; i++) await new Promise(r => setTimeout(r, 2));
+  for (let i = 0; i < 50 && !w.snapshot()['tw:alpha'].live; i++) await new Promise(r => setImmediate(r));
+  w.stop();
+  assert.equal(passes, 2, 'checked again on "check now"');
+  assert.equal(w.snapshot()['tw:alpha'].live, true);
 });
