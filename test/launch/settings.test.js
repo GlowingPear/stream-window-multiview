@@ -121,7 +121,7 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   await win.keyboard.press('Escape');
 });
 
-test('Settings > YouTube: the YouTube login, Skip ads and the cookie question (on to start with), and the API key', T, async () => {
+test('Settings > YouTube: the YouTube login, Skip ads and the cookie question (on to start with), Chat to show, and the API key', T, async () => {
   await win.evaluate(() => window.openSettings('accounts'));
   await win.click('#settingsDlg [data-go=youtube]');
   assert.equal(await settingsTab(), 'youtube', 'Accounts links to it');
@@ -130,17 +130,20 @@ test('Settings > YouTube: the YouTube login, Skip ads and the cookie question (o
   assert.equal(await win.isChecked('#ytSkip'), true);
   assert.equal(await win.isChecked('#ytConsent'), true);
   assert.equal(await win.inputValue('#ytConsentPick'), 'reject');
+  assert.equal(await win.inputValue('#ytChatView'), 'top');
   await win.uncheck('#ytSkip');
   await win.selectOption('#ytConsentPick', 'accept');
+  await win.selectOption('#ytChatView', 'live');
   await win.reload();
   await win.waitForSelector('#loginBtn:not([hidden])');
   await win.evaluate(() => window.openSettings('youtube'));
   assert.equal(await win.isChecked('#ytSkip'), false, 'remembered');
   assert.equal(await win.inputValue('#ytConsentPick'), 'accept');
+  assert.equal(await win.inputValue('#ytChatView'), 'live');
   await win.uncheck('#ytConsent');
   assert.ok(await win.isDisabled('#ytConsentPick'), 'nothing to pick when it\'s off');
   assert.equal(await win.evaluate(() => localStorage.getItem('kickMultiview.ytConsent')), 'off');
-  await win.evaluate(() => { localStorage.removeItem('kickMultiview.ytSkip'); localStorage.removeItem('kickMultiview.ytConsent'); });
+  await win.evaluate(() => { localStorage.removeItem('kickMultiview.ytSkip'); localStorage.removeItem('kickMultiview.ytConsent'); localStorage.removeItem('kickMultiview.ytChatView'); });
   await win.keyboard.press('Escape');
 });
 
