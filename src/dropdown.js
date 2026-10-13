@@ -21,6 +21,7 @@
       b.disabled = o.disabled;
       if (i === sel.selectedIndex) { b.classList.add('on'); b.setAttribute('aria-selected', 'true'); }
       b.addEventListener('click', () => pick(i));
+      b.addEventListener('mouseenter', () => { if (!b.disabled) mark(i, false); });   // the mouse and the keyboard share one highlight
       list.appendChild(b);
       return b;
     });

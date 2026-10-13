@@ -25,6 +25,8 @@ test('a click opens the list instead of the system menu; picking sets the value 
   const [sel, box] = await Promise.all([page.locator('#mode').boundingBox(), page.locator(list).boundingBox()]);
   assert.ok(box.y >= sel.y + sel.height && box.width >= sel.width - 1, 'under the dropdown, at least as wide');
   assert.equal(await page.getAttribute('#mode', 'aria-expanded'), 'true');
+  await page.hover(`${list} button:text-is("Stream only")`);
+  assert.deepEqual(await items(page), ['*Stream + chat', '>Stream only', 'Chat only'], 'the highlight follows the mouse');
   await page.click(`${list} button:text-is("Chat only")`);
   assert.equal(await page.$(list), null, 'it closes');
   assert.equal(await page.inputValue('#mode'), 'chat');
@@ -116,6 +118,8 @@ test('the list: above when there\'s no room below, disabled options skipped, and
   assert.ok(box.y + box.height <= sel.y, 'above the dropdown');
   await page.keyboard.press('ArrowDown');
   assert.deepEqual(await items(page), ['*one', 'two', '>three'], 'skips the disabled one');
+  await page.hover(`${list} button:text-is("two")`, { force: true });
+  assert.deepEqual(await items(page), ['*one', 'two', '>three'], 'and the mouse over it doesn\'t highlight it');
   assert.equal(await page.isDisabled(`${list} button:text-is("two")`), true);
   await page.mouse.click(800, 400);
   assert.equal(await page.$(list), null, 'a click outside closes it');
