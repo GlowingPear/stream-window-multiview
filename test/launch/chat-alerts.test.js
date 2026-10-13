@@ -279,6 +279,46 @@ test('a ban in the same moment the spam arrives still counts as seeing it', T, a
   assert.equal((await alertOf('alpha')).level, '', 'but the window isn\'t left lit');
 });
 
+test('spam alerts: chat bots on the list are skipped, and History can add an account to it', T, async () => {
+  await clickBar('alpha'); await clickBar('bravo');
+  const timer = 'cheap viewers at promo-site com, zero cost boost';
+  await say('bravo', 'NightBot', timer);
+  await say('alpha', 'NightBot', timer);
+  await win.waitForTimeout(2500);
+  assert.equal(await tagOf('alpha', 'promo-site'), null, 'a bot on the built-in list');
+  assert.equal((await alertOf('alpha')).level, '');
+  // a link alone isn't enough, but with the same message in another open chat it would be: the bot's copy doesn't count
+  await say('bravo', 'NightBot', 'new video up at promo-site.live tonight');
+  await win.waitForTimeout(2500);
+  await say('alpha', 'fan42', 'new video up at promo-site.live tonight');
+  await win.waitForTimeout(2500);
+  assert.equal(await tagOf('alpha', 'promo-site.live'), null, 'its repeats don\'t count against anyone');
+  await say('alpha', 'timerbot', 'hq ai stream upgrades botkiva com zero cost upgrades, ask timerbot');
+  await win.waitForFunction(() => document.querySelector('#stage .win.chat.al-1'));
+  await win.evaluate(() => window.openSettings('spam'));
+  await win.click('#spamTabs [data-t=history]');
+  await win.click('#spamHist .sh-row .sh-ign');
+  assert.equal(await win.$eval('#settingsDlg', e => e.hidden), false, 'the button doesn\'t open the chat');
+  assert.match(await win.textContent('#msg'), /timerbot added to the chat bot list/);
+  assert.equal(await win.textContent('#spamHist .sh-acts'), 'On the chat bot list: no longer flagged');
+  assert.ok((await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).spam.ignore)).includes('timerbot'));
+  await win.keyboard.press('Escape');
+  await clickBar('alpha');
+  await say('alpha', 'TimerBot', 'hq ai stream upgrades botkiva com zero cost upgrades, again from timerbot');
+  await win.waitForTimeout(2500);
+  assert.equal(await tagOf('alpha', 'again from timerbot'), null, 'any case');
+  assert.equal((await alertOf('alpha')).level, '');
+  await win.evaluate(() => window.openSettings('spam'));
+  await win.click('#spamTabs [data-t=lists]');
+  await win.click('[data-reset=ignore]');
+  assert.equal(await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).spam.ignore), null);
+  await win.click('#spamTabs [data-t=history]');
+  assert.equal(await win.textContent('#spamHist .sh-acts'), 'Not spam: ignore this account', 'off the list again');
+  await win.click('#spamHistClear');
+  await win.click('#spamTabs [data-t=alerts]');
+  await win.keyboard.press('Escape');
+});
+
 test('spam alerts off: chats stop handing over their messages', T, async () => {
   await win.evaluate(() => window.openSettings('spam'));
   await win.uncheck('#spamOn');

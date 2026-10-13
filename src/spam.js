@@ -13,7 +13,13 @@
   const OPENERS = ['Hey stranger, still running the show?'];
   // Endings a bot uses for its site. Kept short so "the com" in normal chat rarely looks like a domain.
   const TLDS = 'com|net|org|io|xyz|gg|tv|me|co|shop|site|online|store|live|app|pro|top|club|info|biz|ru|cc|link|ly|fun|space|vip';
-  const NOT_NAMES = new Set(['dot', 'the', 'and', 'for', 'you', 'your', 'this', 'that', 'with', 'from', 'its', 'not', 'are', 'was']);
+  // Endings that count with just a space before them ("botkiva com"). The rest are everyday words or chat
+  // ("call me", "going live", "art site", "watch tv", "nice gg"), so they need a [.], (.), "dot" or " . ".
+  const SPACE_TLDS = 'com|net|org|io|xyz|ru|cc|biz';
+  const NOT_NAMES = new Set(['dot', 'the', 'and', 'for', 'you', 'your', 'this', 'that', 'with', 'from', 'its', 'not', 'are', 'was',
+    'call', 'text', 'follow', 'read', 'going', 'stream']);
+  // Chat bots that post intros, rules, socials and timers, often the same text in several chats.
+  const BOTS = ['botrix', 'nightbot', 'streamelements', 'fossabot', 'moobot', 'streamlabs', 'wizebot', 'sery_bot', 'kickbot'];
   const LEVELS = { relaxed: 6, balanced: 5, strict: 4 };
   const WINDOW_MS = 5 * 60 * 1000;
 
@@ -22,15 +28,18 @@
   const domainOk = (d, allowed) => allowed.some(a => d === a || d.endsWith('.' + a));
   const cleanList = l => [...new Set((l || []).map(x => String(x).trim().toLowerCase()).filter(Boolean))];
 
-  // Sites in a message: { plain: ['site.com'], hidden: ['botkiva.com'] } (hidden = written with a space,
-  // [.], (.) or "dot" instead of the dot, so the chat doesn't turn it into a link).
+  // Sites in a message: { plain: ['site.com'], hidden: ['botkiva.com'] } (hidden = written with [.], (.),
+  // "dot" or a space (only before SPACE_TLDS) instead of the dot, so the chat doesn't turn it into a link).
   function sites(text) {
     const plain = [], hidden = [], t = String(text || '');
     const plainRe = new RegExp(`(?:https?://)?((?:[a-z0-9-]+\\.)+(?:${TLDS}))(?![a-z0-9])`, 'gi');
-    const hiddenRe = new RegExp(`(?<![a-z0-9.])([a-z0-9-]{3,})(?:\\s*\\[\\s*\\.\\s*\\]\\s*|\\s*\\(\\s*\\.\\s*\\)\\s*|\\s+dot\\s+|\\s+\\.\\s*|\\s*\\.\\s+|\\s+)(${TLDS})(?![a-z0-9])`, 'gi');
+    const hiddenRe = new RegExp(`(?<![a-z0-9.])([a-z0-9-]{3,})(?:\\s*\\[\\s*\\.\\s*\\]\\s*|\\s*\\(\\s*\\.\\s*\\)\\s*|\\s+dot\\s+|\\s+\\.\\s*|\\s*\\.\\s+)(${TLDS})(?![a-z0-9])|(?<![a-z0-9.])([a-z0-9-]{3,})\\s+(${SPACE_TLDS})(?![a-z0-9])`, 'gi');
     let m;
     while ((m = plainRe.exec(t))) plain.push(m[1].toLowerCase());
-    while ((m = hiddenRe.exec(t))) if (!NOT_NAMES.has(m[1].toLowerCase())) hidden.push(`${m[1]}.${m[2]}`.toLowerCase());
+    while ((m = hiddenRe.exec(t))) {
+      const name = m[1] || m[3], end = m[2] || m[4];
+      if (!NOT_NAMES.has(name.toLowerCase())) hidden.push(`${name}.${end}`.toLowerCase());
+    }
     return { plain, hidden };
   }
 
@@ -51,18 +60,26 @@
     return glued || words.length >= 25 ? { unit, times } : null;
   }
 
+  // Whether a sender is on the chat bot list (default BOTS): the whole name, ignoring case.
+  function ignored(sender, list) {
+    const name = String(sender || '').trim().toLowerCase();
+    return !!name && cleanList(Array.isArray(list) ? list : BOTS).includes(name);
+  }
+
   /**
    * score(msg, ctx, opts) -> { score, need, spam, signs: [{ text, points }] }
    * msg:  { sender, body, chat, t }
    * ctx:  { recent: [{ sender, body, chat, t }], firstSeen: { [chat + '\n' + sender]: time } }
    *       recent holds the other messages seen lately (any chat, including this one).
-   * opts: { sensitivity, allowed, words, openers }   (openers: an empty list matches nothing)
+   * opts: { sensitivity, allowed, words, openers, ignore }   (openers, ignore: an empty list matches nothing)
+   *       ignore: senders never flagged (exact name, any case); the result then has ignored: true.
    */
   function score(msg, ctx = {}, opts = {}) {
     const allowed = cleanList(opts.allowed && opts.allowed.length ? opts.allowed : ALLOWED);
     const words = cleanList(opts.words && opts.words.length ? opts.words : WORDS);
     const openers = (Array.isArray(opts.openers) ? opts.openers : OPENERS).map(x => String(x).trim()).filter(x => flat(x));
     const need = LEVELS[opts.sensitivity] || LEVELS.balanced;
+    if (ignored(msg.sender, opts.ignore)) return { score: 0, need, spam: false, signs: [], ignored: true };
     const body = String(msg.body || ''), low = body.toLowerCase(), t = msg.t || Date.now();
     const signs = [];
     const sign = (text, points) => signs.push({ text, points });
@@ -107,5 +124,5 @@
     return { score: total, need, spam, signs };
   }
 
-  return { score, sites, ALLOWED, WORDS, OPENERS, LEVELS };
+  return { score, sites, ignored, ALLOWED, WORDS, OPENERS, BOTS, LEVELS };
 });
