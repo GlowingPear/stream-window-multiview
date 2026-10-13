@@ -2,7 +2,23 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.0 (current)
+## 0.3.1 (current)
+- Dropdowns use the app's own list instead of the system menu
+- Saved channels get their pictures by themselves (when saved, imported or live, and slowly for the rest)
+- Follow raids: the stream and chat switch to the raided channel
+- Fix launch tests that failed at random, and two small bugs behind them
+- Typing in a chat clears its mention alert, the same as a click
+- Spam alert clears when you ban with Kick's mod shortcut
+- Auto layout stays chosen after a restart, so new live channels keep fitting in
+- Spam alerts: "call me" and "going live" are no longer read as links, and chat bots can be ignored
+- Chat focus keeps the chosen stream columns, and chats no longer overlap
+- Saved channels no longer stay shown as live for hours after they go offline
+- YouTube setting: show Top chat or Live chat in YouTube chats
+- Mentions: your own messages no longer show up as alerts (lines with a time but no name)
+- YouTube streams: the app's volume slider and YouTube's stay in step, and a stream opened muted plays no sound
+- Long sessions: chats, notifications and closed windows no longer pile up in memory
+
+## 0.3.0
 - App tests no longer hang when the app fails to start or close
 - Title bars fit narrow windows: buttons that don't fit go into a ⋯ menu
 - Extensions: signed-in sites get one switch for chats and streams, and sites an extension doesn't run on are marked
