@@ -11,6 +11,7 @@ const { launchApp, assert } = require('./app');
 const T = { timeout: 60000 };
 const MIN = 60e3, HOUR = 60 * MIN, DAY = 24 * HOUR;
 const now = Date.now();
+const until = async (fn, ms = 30000) => { const end = Date.now() + ms; for (;;) { const v = await fn(); if (v) return v; if (Date.now() > end) throw new Error('timed out waiting'); await new Promise(r => setTimeout(r, 500)); } };   // waitForFunction doesn't wait for an async check
 const kickTime = t => new Date(t).toISOString().replace('T', ' ').slice(0, 19);
 
 // Six weeks of a streamer who streams Tue-Thu from 7 PM: past broadcasts and streams the app saw.
@@ -42,8 +43,10 @@ test.before(async () => {
     meta: { bravo: { notes: 'old friend', tags: ['Friends'], fav: true, nick: 'Bee' } } }));
   a = await launchApp({ data, storage: { 'kickMultiview.saved': ['alpha', 'bravo', 'tw:charlie'] } });
   // kick.com answers like Kick's API; you're logged in to Kick; Unfollow is recorded
-  await a.app.evaluate(({ session, ipcMain }, KICK) => {
+  await a.app.evaluate(async ({ session, ipcMain }, KICK) => {
     const s = session.fromPartition('persist:kick');
+    // signed in first: the live checks are already running, and a profile fetched before the cookie is kept for 10 minutes
+    await s.cookies.set({ url: 'https://kick.com', name: 'session_token', value: 'test' });
     s.protocol.unhandle('https');
     const t = globalThis.__t = { unfollowed: [], asked: [] };
     s.protocol.handle('https', req => {
@@ -61,7 +64,6 @@ test.before(async () => {
       return new Response('<!doctype html><title>kick</title>', { headers: { 'content-type': 'text/html' } });
     });
     ipcMain.removeHandler('mod:check'); ipcMain.handle('mod:check', (_e, ch) => ch === 'alpha');
-    return s.cookies.set({ url: 'https://kick.com', name: 'session_token', value: 'test' });
   }, KICK);
 });
 test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
@@ -138,6 +140,12 @@ test('notes, tags and nickname are saved to the computer', T, async () => {
 
 test('Unfollow on Kick asks first, then unfollows on kick.com; it can also remove them from Saved', T, async () => {
   const w = a.win;
+  // fails now and then on CI; say what the profile showed instead
+  await w.waitForSelector('.pf-acts .unf', { timeout: 10000 }).catch(async () => {
+    const seen = await w.evaluate(async () => ({ open: !document.querySelector('#profDlg').hidden, title: (document.querySelector('.pf-prof h2') || {}).textContent,
+      buttons: (document.querySelector('.pf-acts') || {}).textContent, site: await window.kmv.profileGet('alpha', { local: true }).then(p => p.site && { loggedIn: p.site.loggedIn, following: p.site.following }, () => 'none') }));
+    assert.fail('no Unfollow on Kick: ' + JSON.stringify(seen));
+  });
   await w.click('.pf-acts .unf');
   await w.waitForSelector('#askDlg:not([hidden])');
   assert.match(await w.textContent('#askTitle'), /Unfollow Al on Kick\?/);
@@ -177,8 +185,7 @@ test('streams are recorded from the live checks, and profiles open from Saved an
   const w = a.win;
   // the app's own live check sees alpha live (Kick's stand-in says so) and records it
   await w.evaluate(() => window.kmv.checkLiveNow());
-  await w.waitForFunction(async () => { const p = await window.kmv.profileGet('alpha', { local: true }); return !!(p.summary && p.summary.live); }, null, { timeout: 30000, polling: 500 });
-  const p = await w.evaluate(() => window.kmv.profileGet('alpha', { local: true }));
+  const p = await until(async () => { const p = await w.evaluate(() => window.kmv.profileGet('alpha', { local: true })); return p.summary && p.summary.live && p; });
   assert.equal(p.summary.live.title, 'Any% attempts');
   assert.equal(p.summary.live.exact, true, 'with the start time Kick gave');
   // the Saved panel's profile button
@@ -216,6 +223,7 @@ test('a newly saved channel gets its picture in the background, without opening 
   const info = (await w.evaluate(() => window.kmv.profileList(['echo']))).echo.info;
   assert.equal(info.name, 'Echo');
   assert.equal(info.followers, 77);
-  assert.equal((await asked()).asked.filter(x => x === 'GET /api/v2/channels/echo').length, 1);
+  // the profile, fetched once (its past broadcasts are only asked for with it; the live check asks for the channel too)
+  assert.equal((await asked()).asked.filter(x => x === 'GET /api/v2/channels/echo/videos').length, 1);
   await w.keyboard.press('Escape');
 });

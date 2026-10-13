@@ -208,3 +208,11 @@ test('Chat focus: drag a stream onto another to swap them, and their chats swap 
   await page.waitForTimeout(400);
   assert.deepEqual(await box(win(page, 'bravo')), b, 'dropped elsewhere, it snaps back');
 });
+
+test('Auto layout with nothing open: choosing it and resizing the window lay out nothing, without an error', async t => {
+  const page = await openApp(t);
+  await page.evaluate(() => document.querySelector('#layoutMenu [data-l=auto]').click());
+  await page.setViewportSize({ width: 1100, height: 700 });
+  await page.waitForTimeout(350);
+  assert.deepEqual(await windows(page), []);
+});

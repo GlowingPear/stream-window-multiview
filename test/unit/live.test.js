@@ -229,3 +229,21 @@ test('watcher: a channel removed while it was being checked is dropped', async (
   await w._batchPass();
   assert.deepEqual(Object.keys(w.snapshot()), ['b']);
 });
+
+test('watcher: "check now" while a check is running checks again right after it, not a minute later', async () => {
+  let release, passes = 0;
+  const w = createLiveWatcher({
+    intervalMs: 600000,
+    fetchBatch: list => { passes++; return passes === 1 ? new Promise(r => { release = () => r({ results: [], rest: [] }); }) : { results: list.map(c => [c, info(true)]), rest: [] }; },
+    fetchChannel: async () => info(false)
+  });
+  w.setChannels(['tw:alpha']);                       // starts the first check
+  await new Promise(r => setImmediate(r));
+  assert.equal(passes, 1);
+  w.setChannels(['tw:alpha', 'tw:bravo']);           // a channel added while it runs
+  release();
+  for (let i = 0; i < 20 && passes < 2; i++) await new Promise(r => setImmediate(r));
+  w.stop();
+  assert.equal(passes, 2, 'checked again straight away');
+  assert.equal(w.snapshot()['tw:bravo'].live, true);
+});

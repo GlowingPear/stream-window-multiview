@@ -3338,6 +3338,7 @@ function tile(){
 /* Chats split a rectangle: as many rows as needed so each chat stays >= ~320px wide,
    otherwise as tall as possible. Rows with fewer chats get wider chats (no gaps). */
 function chatRects(m, X, Y, CW, H){
+  if (!m) return [];                 // nothing open (Auto with no windows lands here)
   let best = null;
   for (let r = 1; r <= m; r++){
     const perRow = Array.from({ length: r }, (_, i) => Math.floor(m / r) + (i < m % r ? 1 : 0));
