@@ -184,9 +184,15 @@ test('alert sounds: each one plays, and you can pick your own sound file', T, as
   buf.write('RIFF', 0); buf.writeUInt32LE(36 + n, 4); buf.write('WAVEfmt ', 8); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
   buf.writeUInt32LE(8000, 24); buf.writeUInt32LE(8000, 28); buf.writeUInt16LE(1, 32); buf.writeUInt16LE(8, 34); buf.write('data', 36); buf.writeUInt32LE(n, 40); buf.fill(128, 44);
   fs.writeFileSync(wav, buf);
+  // picked in the app's own list (not the system menu), it can still open the file picker; Escape there closes only the list
+  await win.click('[data-al="mention.sound"]');
+  await win.keyboard.press('Escape');
+  assert.equal(await win.isVisible('#settingsDlg'), true, 'Escape closed the list, not Settings');
+  await win.click('[data-al="mention.sound"]');
   const chooser = win.waitForEvent('filechooser');
-  await win.selectOption('[data-al="mention.sound"]', 'custom');
+  await win.click('.dd-list button:text-is("Your own sound")');
   await (await chooser).setFiles(wav);
+  assert.equal(await win.isVisible('#settingsDlg'), true, 'Settings is still open');
   await win.waitForFunction(() => /^data:audio/.test(localStorage.getItem('kickMultiview.alertSound.mention') || ''));
   assert.equal(await win.inputValue('[data-al="mention.sound"]'), 'custom');
   await win.click('[data-play=mention]');

@@ -12,8 +12,21 @@ function playwright() {
   try { pw = require('playwright'); } catch {
     throw new Error('Playwright is not installed. Run "npm run test:setup" once, then run the tests again.');
   }
+  hideElectron(pw);
   if (COVERAGE) recordElectron(pw);
   return pw;
+}
+
+/* ---- npm run test:launch:hidden (or SMV_TEST_HIDDEN=1): the desktop app's windows are invisible and never
+   take focus, so the launch tests can run while you work (see test/launch/hidden.js). A launch can also
+   ask for it with { hidden: true }. */
+const HIDDEN = process.env.SMV_TEST_HIDDEN === '1' || /:hidden$/.test(process.env.npm_lifecycle_event || '');
+function hideElectron(pw) {
+  if (pw._electron.__smvHidden) return;
+  pw._electron.__smvHidden = true;
+  const launch = pw._electron.launch.bind(pw._electron);
+  pw._electron.launch = ({ hidden = HIDDEN, ...opts } = {}) =>
+    launch(hidden ? { ...opts, args: ['-r', path.join(__dirname, 'launch', 'hidden.js'), ...(opts.args || [])] } : opts);
 }
 
 /* ---- npm run test:coverage: records which code the tests run (scripts/coverage.js reads it) ----

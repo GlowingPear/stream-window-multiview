@@ -84,7 +84,7 @@ test('maximize with the button or a double-click; dragging a maximized window pu
   assert.ok(Math.abs(ab.w - stage.w) <= 2 && Math.abs(ab.h - stage.h) <= 2, `fills the stage (${ab.w}×${ab.h} vs ${stage.w}×${stage.h})`);
   await a.locator('[data-a=max]').click(); await settle();
   assert.deepEqual(await box(a), before, 'and back');
-  await a.locator('.bar').dblclick({ position: { x: before.w / 2, y: 12 } }); await settle();
+  await a.locator('.bar .grab').dblclick(); await settle();   // the bar's empty part, not its channel dropdown
   ab = await box(a);
   assert.ok(Math.abs(ab.w - stage.w) <= 2, 'a double-click maximizes');
   await moveBy(page, a, 60, 120);

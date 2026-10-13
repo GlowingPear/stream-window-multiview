@@ -75,8 +75,8 @@ const tagOf = (ch, text) => inChat(ch, t => {
   const tag = row && row.querySelector('[data-kmv-spam]');
   return tag ? tag.title : null;
 }, text);
-// Click a chat window's bar at its left end (its middle can be a button).
-const clickBar = ch => win.click(`#stage .win.chat:has(.title:text-is("${ch}")) .bar`, { position: { x: 30, y: 10 } });
+// Click a chat window's bar on its empty part (not its channel dropdown or a button).
+const clickBar = ch => win.click(`#stage .win.chat:has(.title:text-is("${ch}")) .bar .grab`);
 const ready = () => win.waitForTimeout(3000);   // the chat helper treats what's already there as old, for 2.5 s
 
 test('a mention lights up that chat window and is listed, a normal message doesn\'t', T, async () => {

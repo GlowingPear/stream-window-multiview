@@ -46,7 +46,7 @@ test('Pop out streams: streams move to their own window with Tile, Spotlight and
   await sw.click('#tile'); await sw.waitForTimeout(400);
   const t = await sw.$$eval('#stage .win.stream', l => l.map(e => e.offsetWidth));
   assert.ok(Math.max(...t) - Math.min(...t) < 4, 'Tile: equal sizes');
-  await sw.click(`${winSel('bravo')} .bar`, { position: { x: 40, y: 12 } });
+  await sw.click(`${winSel('bravo')} .bar .grab`);   // the bar's empty part, not its channel dropdown
   await sw.click('#spotBtn'); await sw.waitForTimeout(400);
   const sizes = await sw.$$eval('#stage .win.stream', l => Object.fromEntries(l.map(e => [e.querySelector('.title').textContent, e.offsetWidth])));
   assert.ok(sizes.bravo > sizes.alpha * 2, 'Spotlight: the one you clicked is big');
@@ -97,7 +97,8 @@ test('Pop out hidden: only the streams you can\'t see go to the Streams window',
 
 test('the switch control in its own window controls the main window', T, async () => {
   await add('alpha', 'bravo', 'charlie');
-  await a.win.keyboard.press('f');
+  // Focus view: the last test can leave the layout on it, and then f would switch it back to Columns
+  if (!(await a.win.$('#layoutMenu [data-l=focus].on'))) await a.win.keyboard.press('f');
   await a.win.click('#featSwitch .fs-mwin');
   const sc = await windowFor(/switcher\.html/);
   await sc.waitForSelector('.fs-item[data-ch=bravo]');
@@ -114,7 +115,7 @@ test('the switch control in its own window controls the main window', T, async (
   await sc.click('.fs-pin');
   await sc.waitForTimeout(300);
   assert.equal(await onTop(), !was, 'the pin keeps it on top of other windows, or not');
-  await sc.selectOption('.fs-side select', '2');
+  await sc.click('.fs-side select'); await sc.click('.dd-list button:text-is("2")');   // its own window has the app's dropdown list too
   assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.sideCols')), '2');
   await keep(sc);
   // the button closes this window, sometimes before the click has finished

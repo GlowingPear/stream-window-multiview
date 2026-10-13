@@ -16,8 +16,10 @@
     "test": "node --test --test-force-exit --test-timeout=60000 \"test/unit/*.test.js\"",
     "test:ui": "node --test --test-force-exit --test-timeout=120000 \"test/ui/*.test.js\"",
     "test:launch": "node --test --test-force-exit --test-timeout=120000 \"test/launch/*.test.js\"",
+    "test:launch:hidden": "node --test --test-force-exit --test-timeout=120000 \"test/launch/*.test.js\"",
     "test:all": "npm test && npm run test:ui && npm run test:launch",
     "test:coverage": "node scripts/coverage.js",
+    "test:coverage:hidden": "node scripts/coverage.js",
     "test:setup": "npm install --no-save playwright@1.56.1 && npx playwright install chromium",
     "dist:win": "npx --yes electron-builder@25.1.8 --win --publish never",
     "dist:mac": "npx --yes electron-builder@25.1.8 --mac --publish never"
