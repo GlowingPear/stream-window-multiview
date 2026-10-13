@@ -448,6 +448,45 @@ test('Auto layout fills the space with an odd number of streams: no empty cells,
   for (const s of streams) assert.ok(Math.abs((s.h - 30) / s.w - 9 / 16) < 0.12, `${s.title} is about 16:9`);
 });
 
+test('Chat focus keeps the chosen stream columns when picked again, and every chat gets its own space', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot');
+  const colsOn = async () => { await page.click('#layoutBtn'); const n = await page.$eval('#lmCols .on', e => e.dataset.n); await page.keyboard.press('Escape'); return n; };
+  const streamXs = async () => new Set((await windows(page)).filter(x => x.kind === 'stream').map(x => x.x)).size;
+  const noOverlaps = w => { for (let i = 0; i < w.length; i++) for (let j = i + 1; j < w.length; j++) assert.ok(!overlaps(w[i], w[j]), `${w[i].kind} ${w[i].title} and ${w[j].kind} ${w[j].title} overlap`); };
+
+  await press(page, 'Shift+C');
+  assert.equal(await colsOn(), '1');
+  assert.equal(await streamXs(), 1, 'streams in one column');
+  // picking Chat focus again doesn't change the count
+  await page.click('#layoutBtn'); await page.click('#layoutMenu [data-l=chatfocus]'); await page.waitForTimeout(350);
+  await press(page, 'Shift+C');
+  assert.equal(await colsOn(), '1', 'still 1 after the menu and Shift+C');
+  assert.equal(await streamXs(), 1, 'and the streams are still in one column');
+
+  // a saved layout from before it had its own stream columns
+  await page.click('#layoutBtn'); await page.click('#lmCols [data-n="3"]');
+  await page.fill('#presetName', 'Old'); await page.click('#presetSave');
+  await page.keyboard.press('Escape');
+  // two channels with a second copy of their chat
+  await page.evaluate(() => {
+    const p = JSON.parse(localStorage.getItem('kickMultiview.presets')); delete p[0].streamCols;
+    localStorage.setItem('kickMultiview.presets', JSON.stringify(p));
+    const d = JSON.parse(localStorage.getItem('kickMultiview.v1'));
+    for (const c of ['alpha', 'charlie']) d.push({ ...d.find(x => x.kind === 'chat' && x.channel.endsWith(c)), x: 40, y: 40, ord: d.length, z: 99 });
+    localStorage.setItem('kickMultiview.v1', JSON.stringify(d));
+  });
+  await page.reload(); await page.waitForTimeout(500);
+  const w = await windows(page);
+  assert.equal(w.filter(x => x.kind === 'chat').length, 8);
+  noOverlaps(w);
+
+  await page.click('#layoutBtn'); await page.click('#lmCols [data-n="3"]');
+  await page.click('#presetList .pr-load'); await page.waitForTimeout(400);
+  assert.equal(await colsOn(), '1', 'a saved layout without its own count uses 1, the same as its options show');
+  assert.equal(await streamXs(), 1);
+});
+
 test('Hide bar: the button says Show bar while the bar is hidden, and brings it back', async t => {
   const page = await openApp(t);
   const hidden = () => page.evaluate(() => document.body.classList.contains('focus'));
