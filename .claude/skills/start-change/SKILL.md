@@ -20,7 +20,7 @@ Look at the relevant code (see the project structure table in `README.md`), then
 
 - **Why:** the problem in one or two lines (plus `Fixes #<n>` if there's an issue)
 - **Changes:** which files and how
-- **Testing:** which of `npm test`, `npm run test:ui`, `npm run test:launch` and what to try in the app
+- **Testing:** which of `npm test`, `npm run test:ui`, `npm run test:launch:hidden` and what to try in the app. Run the launch tests with the `:hidden` command, so their windows stay invisible and don't take the developer's focus.
 - **Before / after:** what to capture, or N/A (rules below), and whether it needs a login (then use a lasting profile)
 - **Branch:** e.g. `fix/12-kick-follow-limit` or `feat/hikari-theme`. Pick it yourself; don't ask.
 
