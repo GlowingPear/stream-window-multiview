@@ -1812,7 +1812,7 @@ function mentionAgent(){
 const MENTION_JS = `(${mentionAgent.toString()})()`;
 window.chatAgentJs = MENTION_JS;   // for the tests
 
-// Runs inside each stream's player page: lets the title-bar slider drive the real <video>.
+// Runs inside each stream's player page: lets the title-bar slider drive the real player (YouTube's, or the <video>).
 const VOL_JS = `(function(){
   if (window.__kmv) return true;
   // The app's volume / mute / pause for this stream is the truth. Kick's players share a saved
@@ -1829,15 +1829,31 @@ const VOL_JS = `(function(){
     if (undos.length >= 6) return false;
     undos.push(now); return true;
   };
+  // YouTube's player keeps its own volume (the one its slider shows and saves) and sets the <video> from it,
+  // scaled by its loudness levelling, so on YouTube the volume goes through the player instead.
+  const ytp = () => { const p = document.querySelector('ytd-reel-video-renderer[is-active] #shorts-player, #movie_player');
+    return p && typeof p.setVolume === 'function' && typeof p.getVolume === 'function' ? p : null; };
+  const ytNow = p => ({ v: p.getVolume() / 100, m: !!p.isMuted() });
+  let applied = false;
   const apply = vid => { try {
-    if (st.v !== null && Math.abs(vid.volume - st.v) > 0.001) vid.volume = st.v;
-    if (st.m !== null && vid.muted !== st.m) vid.muted = st.m;
+    const p = ytp();
+    if (p){
+      const n = ytNow(p);
+      if (st.v !== null && Math.abs(n.v - st.v) > 0.001) p.setVolume(Math.round(st.v * 100));
+      if (st.m !== null && n.m !== st.m) st.m ? p.mute() : p.unMute();
+      if (st.m !== null && vid.muted !== st.m) vid.muted = st.m;   // the player catches up with its own mute a moment later
+    } else {
+      if (st.v !== null && Math.abs(vid.volume - st.v) > 0.001) vid.volume = st.v;
+      if (st.m !== null && vid.muted !== st.m) vid.muted = st.m;
+    }
+    if (st.v !== null && st.m !== null) applied = true;
     if (st.p && !vid.paused) vid.pause();
   } catch (e) {} };
+  const now = vid => { const p = ytp(); return p ? ytNow(p) : { v: vid.volume, m: vid.muted }; };
   const guard = vid => {
     vid.addEventListener('loadeddata', () => apply(vid));
     vid.addEventListener('volumechange', () => {
-      if (userRecent()){ st.v = vid.volume; st.m = vid.muted; return; }   // you changed it in this player
+      if (userRecent()){ const n = now(vid); st.v = n.v; st.m = n.m; return; }   // you changed it in this player
       if (mayUndo()) apply(vid);                                           // something else did: undo
     });
     vid.addEventListener('play', () => { if (userRecent()) st.p = false; else if (st.p && mayUndo()) vid.pause(); });
@@ -1850,9 +1866,11 @@ const VOL_JS = `(function(){
     set(v, m) { st.v = v; st.m = m; document.querySelectorAll('video').forEach(apply); },
     get() {
       const v = document.querySelector('video'); if (!v) return null;
-      if (userRecent()){ st.v = v.volume; st.m = v.muted; st.p = v.paused; }   // only adopt your own changes
-      return { v: st.v ?? v.volume, m: st.m ?? v.muted, p: st.p };
+      const n = now(v);
+      if (userRecent()){ st.v = n.v; st.m = n.m; st.p = v.paused; }   // only adopt your own changes
+      return { v: st.v ?? n.v, m: st.m ?? n.m, p: st.p };
     },
+    applied() { return applied; },   // the app's volume / mute has reached a player (until then its sound stays off)
     pause() { st.p = true; document.querySelectorAll('video').forEach(v => v.pause()); },
     notYou(ms) { notYou = Date.now() + ms; },   // the app is about to click in the player (Skip YouTube ads)
     thumb(w, h) {
