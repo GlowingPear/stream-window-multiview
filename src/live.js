@@ -102,8 +102,11 @@ function parseChannel(text, slug) {
 // info: parsed info | null (unknown) | { missing: true }. Batch answers may be { partial: true }: no
 // title. Then the title comes from fetchChannel: straight away when the channel has just gone live (so
 // the notification has it), otherwise later, one at a time.
+// A check that never answers (a dead connection after sleep, a stuck page) would stop its loop for good, so
+// each batch gets batchTimeoutMs and each single check oneTimeoutMs: after that it counts as no answer.
 // auto: false (for tests) never starts the loops; run passes with _batchPass / _onePass.
-function createLiveWatcher({ fetchChannel, fetchBatch, onStatus, onWentLive, intervalMs = 60000, batchIntervalMs = intervalMs, spacingMs = 1200, now = () => Date.now(), sleep, auto = true }) {
+function createLiveWatcher({ fetchChannel, fetchBatch, onStatus, onWentLive, intervalMs = 60000, batchIntervalMs = intervalMs, spacingMs = 1200,
+  batchTimeoutMs = 5 * 60e3, oneTimeoutMs = 60e3, now = () => Date.now(), sleep, auto = true }) {
   const wait = sleep || (ms => new Promise(r => setTimeout(r, ms)));
   let list = [], state = new Map(), stopped = false, oneByOne = [], needTitle = new Set();
   const loops = [];
@@ -135,12 +138,12 @@ function createLiveWatcher({ fetchChannel, fetchBatch, onStatus, onWentLive, int
     // Only a real offline -> live change notifies (not channels that were already live when the app started).
     if (next.live && prev && !prev.live) onWentLive && onWentLive(slug, next);
   }
-  const fetchOne = async slug => { try { return await fetchChannel(slug); } catch { return null; } };
+  const fetchOne = slug => withTimeout(Promise.resolve().then(() => fetchChannel(slug)), oneTimeoutMs, null).catch(() => null);
 
   async function batchPass() {
     if (!fetchBatch || !list.length) return;
     let r = null;
-    try { r = await fetchBatch([...list]); } catch { r = null; }
+    try { r = await withTimeout(Promise.resolve().then(() => fetchBatch([...list])), batchTimeoutMs, null); } catch { r = null; }
     if (stopped) return;
     const before = oneByOne;
     if (!r) { oneByOne = [...list]; if (oneByOne.some(c => !before.includes(c))) slow.poke(); return; }   // the batch failed: check them one at a time
@@ -195,6 +198,12 @@ function createLiveWatcher({ fetchChannel, fetchBatch, onStatus, onWentLive, int
   function stop() { stopped = true; loops.forEach(l => { clearTimeout(l.timer); if (l.wake) l.wake(); }); }
 
   return { setChannels, checkSoon, stop, snapshot, start, _batchPass: batchPass, _onePass: onePass, _state: state };
+}
+
+// p's answer, or fallback when it takes longer than ms (p is left to finish on its own).
+function withTimeout(p, ms, fallback) {
+  let t;
+  return Promise.race([p, new Promise(r => { t = setTimeout(() => r(fallback), ms); })]).finally(() => clearTimeout(t));
 }
 
 /* ---------- checking many channels at once ---------- */
@@ -431,4 +440,4 @@ function channelFromLink(plat, href) {
   return SLUG_RE.test(m[1]) ? m[1].toLowerCase() : null;
 }
 
-module.exports = { toTime, decodeHtml, parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, nextPacificMidnight, isGoogleSignin, firefoxVersion, firefoxUA, KICK_FOLLOW_APIS, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };
+module.exports = { withTimeout, toTime, decodeHtml, parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, nextPacificMidnight, isGoogleSignin, firefoxVersion, firefoxUA, KICK_FOLLOW_APIS, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink, parseChannel, createLiveWatcher, SLUG_RE, normCh, validCh, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube };

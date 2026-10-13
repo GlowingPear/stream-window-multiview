@@ -1,8 +1,8 @@
 // Stream Multiview — desktop app (Electron main process)
-const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage } = require('electron');
+const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage, powerMonitor } = require('electron');
 const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
   validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink,
-  parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, normCh, toTime } = require('./live');
+  parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, normCh, toTime, withTimeout } = require('./live');
 const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel } = require('./profiles');
 const { createProfileQueue } = require('./profile-queue');
 const path = require('path');
@@ -302,13 +302,22 @@ ipcMain.handle('chat:add', (_e, channel) => {
 // A hidden, muted window on kick.com (using your Kick login) asks Kick for each saved channel's info.
 let liveWin = null, liveLoading = null;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const NET_TIMEOUT = 20000;   // one request to a site: after this it counts as no answer (a dead connection never ends)
+const netSignal = () => AbortSignal.timeout(NET_TIMEOUT);
+const liveJs = code => liveWin && !liveWin.isDestroyed() ? withTimeout(liveWin.webContents.executeJavaScript(code, true), NET_TIMEOUT, null) : Promise.resolve(null);   // null: no answer
 function ensureLiveWin() {
   if (liveWin && !liveWin.isDestroyed()) return liveLoading;
   liveWin = new BrowserWindow({ show: false, width: 900, height: 700,
     webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
   liveWin.webContents.setAudioMuted(true);
   liveWin.on('closed', () => { liveWin = null; });
-  liveLoading = liveWin.loadURL('https://kick.com/robots.txt').catch(() => {});
+  // A crashed page never answers again: close it, and the next check opens a fresh one. (Not on 'unresponsive':
+  // a busy computer sets that off too, and closing it then cuts off the checks in flight. Each one has a time limit.)
+  const w = liveWin;
+  w.webContents.on('render-process-gone', () => { if (!w.isDestroyed()) w.destroy(); });
+  // Not on kick.com in time: its requests would run on a blank page (signed out, no answers), so start again next time
+  liveLoading = withTimeout(w.loadURL('https://kick.com/robots.txt').then(() => true, () => true), NET_TIMEOUT, false)
+    .then(ok => { if (ok) return; if (liveWin === w) liveWin = null; if (!w.isDestroyed()) w.destroy(); });
   return liveLoading;
 }
 async function fetchChannel(slug) {
@@ -317,19 +326,19 @@ async function fetchChannel(slug) {
   if (!liveWin) return null;
   for (const ver of ['v2', 'v1']) {
     const url = `/api/${ver}/channels/${slug}`;
-    const r = await liveWin.webContents.executeJavaScript(
+    const r = await liveJs(
       `fetch(${JSON.stringify(url)},{credentials:'include',headers:{Accept:'application/json'}})` +
-      `.then(async r=>({status:r.status,body:r.ok?await r.text():''})).catch(()=>({status:0,body:''}))`, true
-    ).catch(() => ({ status: 0, body: '' }));
+      `.then(async r=>({status:r.status,body:r.ok?await r.text():''})).catch(()=>({status:0,body:''}))`
+    ).catch(() => null) || { status: 0, body: '' };
     if (r.status === 200){ const info = parseChannel(r.body, slug); if (info) return info; }
     if (r.status === 404) return { missing: true };
   }
   // Blocked (e.g. a security check): open the address directly so the browser can pass the check, then read it.
   try {
-    await liveWin.loadURL(`https://kick.com/api/v2/channels/${slug}`);
+    await withTimeout(liveWin.loadURL(`https://kick.com/api/v2/channels/${slug}`), NET_TIMEOUT, null);
     for (let i = 0; i < 6; i++) {
       await sleep(1500);
-      const txt = await liveWin.webContents.executeJavaScript('document.body ? document.body.innerText : ""', true).catch(() => '');
+      const txt = await liveJs('document.body ? document.body.innerText : ""').catch(() => '') || '';
       const info = parseChannel(txt, slug);
       if (info) { liveLoading = Promise.resolve(); return info; }
     }
@@ -390,18 +399,18 @@ async function fetchTwitch(login) {
   try {
     const r = await fetch('https://gql.twitch.tv/gql', { method: 'POST',
       headers: { 'Client-Id': TWITCH_CID, 'Content-Type': 'text/plain;charset=UTF-8', ...BROWSER_HEADERS() },
-      body: JSON.stringify({ query: `query{user(login:${JSON.stringify(login)}){login displayName stream{id title viewersCount createdAt game{name}}}}` }) });
+      body: JSON.stringify({ query: `query{user(login:${JSON.stringify(login)}){login displayName stream{id title viewersCount createdAt game{name}}}}` }), signal: netSignal() });
     if (r.ok) { const info = parseTwitch(await r.json(), login); if (info) return info; }
   } catch {}
   try {   // fallback: the channel page
-    const r = await fetch(`https://www.twitch.tv/${login}`, { headers: BROWSER_HEADERS() });
+    const r = await fetch(`https://www.twitch.tv/${login}`, { headers: BROWSER_HEADERS(), signal: netSignal() });
     if (r.ok) return parseTwitchHtml(await r.text(), login);
   } catch {}
   return null;
 }
 async function fetchYouTube(ch) {
   try {
-    const r = await fetch(ytLiveUrl(ch), { headers: { ...BROWSER_HEADERS(), Cookie: 'SOCS=CAI; CONSENT=YES+1' } });
+    const r = await fetch(ytLiveUrl(ch), { headers: { ...BROWSER_HEADERS(), Cookie: 'SOCS=CAI; CONSENT=YES+1' }, signal: netSignal() });
     if (r.status === 404) return { missing: true };
     if (r.ok) return parseYouTube(await r.text(), ch);
   } catch {}
@@ -442,7 +451,7 @@ async function twitchBatch(chs) {
     try {
       const r = await fetch('https://gql.twitch.tv/gql', { method: 'POST',
         headers: { 'Client-Id': TWITCH_CID, 'Content-Type': 'text/plain;charset=UTF-8', ...BROWSER_HEADERS() },
-        body: JSON.stringify({ query: 'query($l:[String!]){users(logins:$l){login displayName stream{id title viewersCount createdAt game{name}}}}', variables: { l: logins } }) });
+        body: JSON.stringify({ query: 'query($l:[String!]){users(logins:$l){login displayName stream{id title viewersCount createdAt game{name}}}}', variables: { l: logins } }), signal: netSignal() });
       if (r.ok) m = parseTwitchUsers(await r.json(), logins);
     } catch {}
     if (!m) { rest.push(...part); continue; }
@@ -478,7 +487,7 @@ const YT_API = process.env.SMV_YT_API || 'https://www.googleapis.com/youtube/v3'
 const YT_FEED = process.env.SMV_YT_FEED || 'https://www.youtube.com/feeds/videos.xml';   // and this
 // One YouTube Data API call. Error answers go to the gate (which decides when to use the key again) and throw.
 async function ytApi(pathAndQuery, key = ytKey) {
-  const r = await fetch(`${YT_API}/${pathAndQuery}&key=${encodeURIComponent(key)}`, { headers: { Accept: 'application/json' } });
+  const r = await fetch(`${YT_API}/${pathAndQuery}&key=${encodeURIComponent(key)}`, { headers: { Accept: 'application/json' }, signal: netSignal() });
   const d = await r.json().catch(() => null);
   if (!r.ok) { const e = new Error('youtube ' + r.status); e.status = r.status; e.reason = ytErrorReason(d); throw e; }
   return d;
@@ -508,7 +517,7 @@ async function ytBatch(chs) {
       if (tryFeed) {
         try {
           // A 404 here is the feed being down (it happens to every channel at once), not a missing channel
-          const r = await fetch(YT_FEED + '?channel_id=' + id, { headers: BROWSER_HEADERS() });
+          const r = await fetch(YT_FEED + '?channel_id=' + id, { headers: BROWSER_HEADERS(), signal: netSignal() });
           if (r.ok) f = parseYtFeed(await r.text());
         } catch {}
       }
@@ -555,9 +564,11 @@ async function ytBatch(chs) {
     return { results: [], rest: chs };   // this round is checked page by page instead
   }
 }
+const SITE_TIMEOUT = 3 * 60e3;   // reading a long Kick follow list takes a while; under the watcher's 5 min for the whole batch
 async function liveBatch(list) {
   const kick = list.filter(c => !/^(tw|yt):/.test(c)), tw = list.filter(c => /^tw:/.test(c)), yt = list.filter(c => /^yt:/.test(c));
-  const safe = (fn, chs) => fn(chs).catch(() => ({ results: [], rest: chs }));
+  // Each site on its own clock: one that doesn't answer in time is checked one at a time instead, without holding up the others
+  const safe = (fn, chs) => { const none = { results: [], rest: chs }; return withTimeout(fn(chs), SITE_TIMEOUT, none).catch(() => none); };
   const parts = await Promise.all([safe(kickBatch, kick), safe(twitchBatch, tw), safe(ytBatch, yt)]);
   return { results: parts.flatMap(p => p.results), rest: parts.flatMap(p => p.rest) };
 }
@@ -593,6 +604,7 @@ ipcMain.on('live:watch', (_e, data) => {
   profQueue.setSaved((Array.isArray(d.channels) ? d.channels : []).filter(okCh).map(normCh));
 });
 ipcMain.on('live:check-now', () => watcher.checkSoon());
+app.whenReady().then(() => powerMonitor.on('resume', () => watcher.checkSoon()));   // after sleep: who's live now, not hours ago
 
 /* ---------- streamer profiles ----------
    The live checks above are recorded (profiles.json: each stream seen, its viewer counts, a follower
@@ -965,7 +977,7 @@ async function scrapeFollowPage(plat, url, { maxRounds = 70 } = {}) {
 // One API call from the kick.com page, so your login goes with it.
 async function kickGet(u) {
   if (!liveWin || liveWin.isDestroyed()) return null;
-  return liveWin.webContents.executeJavaScript(`(async () => {
+  return liveJs(`(async () => {
     const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
     const t = ck('session_token'), x = ck('XSRF-TOKEN');
     if (!t) return { login: true };
@@ -973,7 +985,7 @@ async function kickGet(u) {
     if (x) h['X-XSRF-TOKEN'] = x;
     try { const r = await fetch(${JSON.stringify(u)}, { credentials: 'include', headers: h }); return { status: r.status, d: r.ok ? await r.json() : null }; }
     catch (e) { return { status: 0, d: null }; }
-  })()`, true).catch(() => null);
+  })()`).catch(() => null);
 }
 async function twitchToken() {
   try {
