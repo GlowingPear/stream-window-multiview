@@ -33,9 +33,12 @@ test('hidden: the windows are invisible and click-through, nothing takes focus, 
     // a window it opens itself (and one made hidden, then shown) is see-through too
     await a.win.evaluate(() => window.open('https://kick.com/someone', '_blank'));
     await a.app.evaluate(({ BrowserWindow }) => { const w = new BrowserWindow({ show: false }); w.loadURL('about:blank'); w.show(); });
-    await a.win.waitForTimeout(500);
-    const others = await a.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()
-      .filter(w => /kick\.com\/someone|about:blank/.test(w.webContents.getURL())).map(w => w.getOpacity()));
+    let others = [];
+    for (let i = 0; i < 50 && others.length < 2; i++) {     // they take a moment to open on a busy computer
+      await a.win.waitForTimeout(200);
+      others = await a.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()
+        .filter(w => /kick\.com\/someone|about:blank/.test(w.webContents.getURL())).map(w => w.getOpacity()));
+    }
     assert.equal(others.length, 2, 'the other windows opened');
     if (SEE_THROUGH) assert.deepEqual(others, others.map(() => 0));
 

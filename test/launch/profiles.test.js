@@ -216,6 +216,7 @@ test('a newly saved channel gets its picture in the background, without opening 
   const info = (await w.evaluate(() => window.kmv.profileList(['echo']))).echo.info;
   assert.equal(info.name, 'Echo');
   assert.equal(info.followers, 77);
-  assert.equal((await asked()).asked.filter(x => x === 'GET /api/v2/channels/echo').length, 1);
+  // the profile, fetched once (its past broadcasts are only asked for with it; the live check asks for the channel too)
+  assert.equal((await asked()).asked.filter(x => x === 'GET /api/v2/channels/echo/videos').length, 1);
   await w.keyboard.press('Escape');
 });
