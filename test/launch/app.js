@@ -33,6 +33,14 @@ async function launchApp(opts = {}) {
   try {
     await app.evaluate(({ app: eapp, session }) => {
       const player = '<!doctype html><title>player</title><body style="margin:0;background:#000"><video id="v" muted playsinline style="width:100%;height:100%"></video></body>';
+      // YouTube's watch page: its player keeps its own volume (0-100) and mute, and sets the <video> from them,
+      // levelled down to half (YouTube's loudness levelling), so the video's volume never equals the player's.
+      const ytWatch = '<!doctype html><title>player</title><body style="margin:0;background:#000"><div id="movie_player"><video id="v" playsinline style="width:100%;height:100%"></video></div><script>'
+        + 'const p = document.getElementById("movie_player"), v = document.getElementById("v"); let vol = 100, m = false;'
+        + 'const show = () => { v.volume = vol / 200; v.muted = m; };'
+        + 'p.setVolume = x => { vol = Math.max(0, Math.min(100, Math.round(x))); show(); }; p.getVolume = () => vol;'
+        + 'p.mute = () => { m = true; show(); }; p.unMute = () => { m = false; show(); }; p.isMuted = () => m; show();'
+        + '</script></body>';
       const chat = '<!doctype html><title>chat</title><body><div id="chat"><div class="row"><b>regular</b>: <span>evening all</span></div></div></body>';
       const page = html => new Response(html, { headers: { 'content-type': 'text/html' } });
       const fake = s => {
@@ -41,6 +49,7 @@ async function launchApp(opts = {}) {
             const u = req.url;
             if (/player\.kick\.com|player\.twitch\.tv|youtube\.com\/embed/.test(u)) return page(player);
             if (/\/popout\/|live_chat|\/chat\?/.test(u)) return page(chat);
+            if (/^https:\/\/www\.youtube\.com\/watch\?/.test(u)) return page(ytWatch);
             if (/^https:\/\/(www\.)?(kick\.com|twitch\.tv|youtube\.com)\//.test(u)) return page('<!doctype html><title>site</title>');
             return new Response('', { status: 404 });
           });
