@@ -2407,7 +2407,8 @@ function pushVol(w){
 function liftAudio(w){
   const v = w.view;
   if (!w.audioHeld || !w.ready || w.audioLoading || !v) return Promise.resolve(false);   // not the page that's leaving
-  return v.executeJavaScript('!!(window.__kmv && window.__kmv.applied())').then(ok => {
+  let ask; try { ask = v.executeJavaScript('!!(window.__kmv && window.__kmv.applied())'); } catch { return Promise.resolve(false); }   // moved / closed meanwhile
+  return ask.then(ok => {
     if (ok && w.view === v && w.audioHeld){ w.audioHeld = false; try { v.setAudioMuted(false); } catch {} }
     return ok;
   }, () => false);
