@@ -170,7 +170,8 @@ function director(run, { features = 0 } = {}) {
   // Glide to and click something inside a chat (js returns its element), e.g. a chatter's name.
   const clickInChat = async (ch, js) => {
     const v = await m.locator(`#stage .win.chat:has(.title:text-is("${ch}")) webview`).boundingBox();
-    const p = await inChat(ch, `(() => { const r = (${js}).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+    const p = await inChat(ch, `(() => { const r = (${js}).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, h: r.height }; })()`);
+    await dodge({ y: v.y + p.y - p.h / 2, height: p.h });   // e.g. a chat box at the bottom: the caption goes to the top
     await glide(v.x + p.x, v.y + p.y, { steps: 20 }); await wait(300); await m.mouse.click(mx, my);
   };
   return { m, app: run.app, run, stage, W, H, wait, reveal, card, uncard, cap, uncap, feature, ring, unring, glide, moveTo, press, click, type, add, inChat, chatSay, clickInChat };

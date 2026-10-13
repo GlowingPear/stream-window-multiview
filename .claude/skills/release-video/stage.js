@@ -1,6 +1,6 @@
 // Stand-ins for kick.com, so a video shows only made-up channels and chatters (never real ones):
 // a moving picture for each stream, a scrolling chat with a chat box and Kick-style user cards,
-// and Kick's channel API (live, viewers, start time, bio, follow/unfollow) for live checks and profiles.
+// and Kick's channel API (live, viewers, start time, bio, profile picture, follow/unfollow) for live checks and profiles.
 //   await stage.install(run.app, { mod: 'nightowl' });
 //   add channels by name: stage.CHANNELS
 const CHANNELS = ['pixelpear', 'nightowl', 'arcadia', 'lofilane', 'tidepool', 'emberfox'];
@@ -50,12 +50,19 @@ for(let i=0;i<14;i++)say(NAMES[(i*3+${ch.length})%NAMES.length],LINES[(i*7+${ch.
 let n=${ch.length};setInterval(()=>{n++;say(NAMES[(n*3)%NAMES.length],LINES[(n*7+3)%LINES.length]);},1400+${ch.length}*150);
 </script></body>`;
 
+// A made-up profile picture per channel (an emoji on a gradient), served to every window
+const PIC = 'https://stand-in.kick.com/pic/';
+const EMOJI = { pixelpear: '🍐', nightowl: '🦉', arcadia: '👾', lofilane: '🎧', tidepool: '🌊', emberfox: '🦊' };
+const picSvg = ch => { const h = HUES[ch] ?? 200; return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">`
+  + `<stop offset="0" stop-color="hsl(${h},80%,72%)"/><stop offset="1" stop-color="hsl(${h + 50},70%,38%)"/></linearGradient></defs><rect width="96" height="96" fill="url(#g)"/>`
+  + `<text x="48" y="66" font-size="52" text-anchor="middle">${EMOJI[ch] || '⭐'}</text></svg>`; };
+
 // Kick's /api/v2/channels/<slug> for a made-up channel: live for a while, with viewers and a bio
 const kickTime = t => new Date(t).toISOString().replace('T', ' ').slice(0, 19);
 function kickChannel(ch, i) {
   const live = ch !== 'emberfox';
   return { slug: ch, followers_count: [15400, 3200, 8700, 21000, 1900, 640][i] ?? 1000, verified: i === 0,
-    user: { username: ch, bio: BIOS[ch] || '', profile_pic: '' },
+    user: { username: ch, bio: BIOS[ch] || '', profile_pic: PIC + ch + '.svg' },
     livestream: live ? { is_live: true, session_title: GAMES[ch], viewer_count: [912, 214, 487, 1530, 96, 0][i] ?? 50,
       start_time: kickTime(Date.now() - (40 + i * 35) * 60e3), categories: [{ name: GAMES[ch] }] } : null,
     chatroom: { slow_mode: i === 1, message_interval: 5 } };
@@ -65,8 +72,14 @@ function kickChannel(ch, i) {
 async function install(app, { mod = 'nightowl', kick = {} } = {}) {
   const api = Object.fromEntries(CHANNELS.map((c, i) => [c, kickChannel(c, i)]));
   Object.assign(api, kick);
-  await app.evaluate(({ session, ipcMain }, { pages, api, mod }) => {
+  await app.evaluate(({ session, ipcMain, net }, { pages, api, mod, pics, PIC }) => {
     const html = s => new Response(s, { headers: { 'content-type': 'text/html' } });
+    // profile pictures (shown in the main window's own session); everything else there goes out as normal
+    try { session.defaultSession.protocol.unhandle('https'); } catch {}
+    session.defaultSession.protocol.handle('https', req => {
+      const p = req.url.startsWith(PIC) && pics[req.url.slice(PIC.length).replace(/\.svg$/, '')];
+      return p ? new Response(p, { headers: { 'content-type': 'image/svg+xml' } }) : net.fetch(req, { bypassCustomProtocolHandlers: true });
+    });
     const json = (d, st = 200) => new Response(JSON.stringify(d), { status: st, headers: { 'content-type': 'application/json' } });
     const s = session.fromPartition('persist:kick');
     try { s.protocol.unhandle('https'); } catch {}
@@ -91,7 +104,7 @@ async function install(app, { mod = 'nightowl', kick = {} } = {}) {
     ipcMain.removeHandler('mod:check');
     ipcMain.handle('mod:check', (_e, ch) => ch === mod);
     return s.cookies.set({ url: 'https://kick.com', name: 'session_token', value: 'stand-in' });   // "logged in" to Kick
-  }, { mod, api, pages: {
+  }, { mod, api, PIC, pics: Object.fromEntries(CHANNELS.map(c => [c, picSvg(c)])), pages: {
     chat: Object.fromEntries(CHANNELS.map(c => [c, chatPage(c)])),
     stream: Object.fromEntries(CHANNELS.map(c => [c, streamPage(c)])) } });
 }
