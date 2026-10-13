@@ -37,6 +37,33 @@ test('the chat helper finds your words as whole words, any case, but not inside 
   assert.deepEqual((await page.evaluate(() => window.__kmvMention.take())).m.map(m => m.word), ['pear']);
 });
 
+test('a clock with no name after it is not a sender, and what you send yourself is never an alert', async t => {
+  const app = await openApp(t);
+  const js = await app.evaluate(() => window.chatAgentJs);
+  const page = await app.context().newPage();
+  await page.setContent('<div id="chat"></div><div contenteditable="true" id="box"></div><button id="send">Chat</button>');
+  await page.evaluate(js);
+  await page.evaluate(() => window.__kmvMention.setMe('glowingpear', ['pear']));
+  await page.waitForTimeout(2800);
+  const line = h => page.evaluate(h => document.getElementById('chat').insertAdjacentHTML('beforeend', `<div>${h}</div>`), h);
+  const send = async (text, how) => {
+    await page.click('#box'); await page.keyboard.type(text);
+    if (how === 'click') await page.click('#send'); else await page.keyboard.press('Enter');
+    await page.evaluate(() => { document.getElementById('box').textContent = ''; });
+  };
+  // the chat shows your message without your name, the time stuck to it
+  await send('great joke pear it only took 3 times pear');
+  await line('09:23 PMgreat joke pear it only took 3 times pear');
+  await line('09:24 PMsomeone says pear');                       // no name: can't tell who, so no alert
+  await send('pear by the button', 'click');
+  await line('ann: pear by the button');                          // shown under another name: still yours (once)
+  await line('cat: pear by the button');                          // the same words again later: theirs
+  await send('x');                                                // too short to remember
+  await line('09:25 bob: pear time');                             // a clock and then a name: fine
+  const q = await page.evaluate(() => window.__kmvMention.take());
+  assert.deepEqual(q.m.map(m => [m.sender, m.body]), [['cat', 'pear by the button'], ['bob', 'pear time']]);
+});
+
 test('the mentions history: grouped by day, search, filters, unread, delete and clear', async t => {
   const page = await openApp(t);
   const now = Date.now(), day = 864e5;

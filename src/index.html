@@ -1684,6 +1684,21 @@ function mentionAgent(){
     if (said.size > 2000) said.delete(said.keys().next().value);
     return mod;
   }
+  // "name: message", but not a clock with no name after it ("09:23 PMhello" would read as "09" saying "23 PMhello")
+  const lineOf = l => { const m = l.match(LINE_RE); return m && !(/^\d+$/.test(m[1]) && /^\d{1,2}:\d{2}/.test(l)) ? m : null; };
+  // What you sent in this chat lately: never an alert, even when the chat shows it without your name.
+  let sent = [];
+  const box = () => { const a = document.activeElement; return a && (a.isContentEditable || /^(TEXTAREA|INPUT)$/.test(a.tagName)) ? a
+    : document.querySelector('[contenteditable="true"], textarea'); };
+  const noteSent = () => {
+    const b = box(), t = b ? flat(b.isContentEditable ? b.innerText : b.value) : '';
+    if (t.length < 2) return;
+    sent = sent.filter(x => Date.now() - x.t < 120000 && x.text !== t).slice(-9); sent.push({ text: t, t: Date.now() });
+  };
+  document.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) noteSent(); }, true);
+  document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button')) noteSent(); }, true);
+  // (each one only once: someone else writing the same thing later is still theirs)
+  const mine = l => { const f = flat(l), i = sent.findIndex(x => Date.now() - x.t < 120000 && f.endsWith(x.text)); if (i >= 0) sent.splice(i, 1); return i >= 0; };
   // The text's lines, with each message on one line: Kick shows the name on a line of its own and
   // ": message" on the next, so those two are joined (with a space, as flat() below would).
   function textLines(text){
@@ -1703,7 +1718,7 @@ function mentionAgent(){
     let reply = '';
     for (const l of all){
       if (/^Replying to\s/i.test(l)){ reply = l; continue; }
-      const m = l.match(LINE_RE);
+      const m = lineOf(l);
       const r = reply; reply = '';
       if (!m) continue;
       // A message line is only ever judged once, even if its "Replying to" line later scrolls away or re-draws.
@@ -1714,7 +1729,7 @@ function mentionAgent(){
       const mod = watch && lineNew && modChange(m[1], m[2]);
       if (!armed){ if (watch) known.add(m[1].toLowerCase()); continue; }   // people already chatting before we started
       const sender = m[1], body = m[2];
-      if (me && sender.toLowerCase() === me) continue;      // your own messages
+      if ((me && sender.toLowerCase() === me) || mine(l)) continue;      // your own messages
       if (watch && lineNew && lines.length < 300) lines.push({ sender, body, line: l, t: Date.now(), mod });
       if (!me && !wordRe) continue;
       const toMe = !!me && replyNew && replyRe.test(r), at = !!me && lineNew && atRe.test(body);
@@ -1734,7 +1749,7 @@ function mentionAgent(){
   // The element showing a message: the biggest one around its text that's still just that message.
   const flat = s => String(s || '').replace(/\s+/g, ' ').trim();
   function rowFor(line){
-    const m = line.match(LINE_RE); if (!m) return null;
+    const m = lineOf(line); if (!m) return null;
     const probe = flat(m[2]).split(' ').slice(0, 3).join(' '), want = flat(line);
     if (!probe) return null;
     const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -1783,7 +1798,7 @@ function mentionAgent(){
       on = !!on; if (on === watch) return;
       watch = on; lines = [];
       if (on && !armed) arm();
-      else if (on && document.body) textLines(document.body.innerText).forEach(l => { const m = l.match(LINE_RE); if (m) known.add(m[1].toLowerCase()); });
+      else if (on && document.body) textLines(document.body.innerText).forEach(l => { const m = lineOf(l); if (m) known.add(m[1].toLowerCase()); });
     },
     mark(line, why, color){
       if (marks.has(line)) return;
