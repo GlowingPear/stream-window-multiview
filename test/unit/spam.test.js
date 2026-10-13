@@ -59,6 +59,13 @@ test('friendly filler lines from a new chatter just before add to the score', ()
   assert.equal(r.spam, true);
 });
 
+test('firstSeen can be a Map', () => {
+  const firstSeen = new Map([['alpha\nnewacct', T - 60_000]]);
+  assert.ok(score(msg('hello there friends'), { firstSeen }).signs.some(s => s.text === 'Started chatting in the last few minutes'));
+  firstSeen.set('alpha\nnewacct', T - 10 * 60_000);
+  assert.ok(!score(msg('hello there friends'), { firstSeen }).signs.some(s => s.text === 'Started chatting in the last few minutes'));
+});
+
 test('sensitivity moves the line', () => {
   const body = 'best viewers at botkiva[.]com';        // 4 points
   assert.equal(flagged(body, {}, { sensitivity: 'strict' }), true);

@@ -71,6 +71,7 @@
    * msg:  { sender, body, chat, t }
    * ctx:  { recent: [{ sender, body, chat, t }], firstSeen: { [chat + '\n' + sender]: time } }
    *       recent holds the other messages seen lately (any chat, including this one).
+   *       firstSeen can also be a Map with the same keys.
    * opts: { sensitivity, allowed, words, openers, ignore }   (openers, ignore: an empty list matches nothing)
    *       ignore: senders never flagged (exact name, any case); the result then has ignored: true.
    */
@@ -108,7 +109,8 @@
       if (elsewhere.size) sign(`Same message in ${elsewhere.size === 1 ? 'another open chat' : elsewhere.size + ' other open chats'}`, 3);
     }
 
-    const first = (ctx.firstSeen || {})[`${msg.chat}\n${String(msg.sender || '').toLowerCase()}`];
+    const seenKey = `${msg.chat}\n${String(msg.sender || '').toLowerCase()}`;
+    const first = ctx.firstSeen instanceof Map ? ctx.firstSeen.get(seenKey) : (ctx.firstSeen || {})[seenKey];
     const isNew = first && t - first < WINDOW_MS;
     if (isNew) {
       const before = recent.filter(r => r.chat === msg.chat && String(r.sender).toLowerCase() === String(msg.sender).toLowerCase() && (r.t || 0) <= t);
