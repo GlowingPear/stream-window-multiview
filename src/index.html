@@ -1418,6 +1418,9 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <label class="st-row"><span class="st-t">Skip ads<small>Presses an ad's Skip button as soon as it shows. Ads without one still play.</small></span><input type="checkbox" class="st-sw" id="ytSkip" checked></label>
         <div class="st-row"><span class="st-t">Answer the cookie question<small>In some countries YouTube asks about cookies before a stream plays, and waits until you answer. Off: the question shows in the player for you to answer.</small></span>
           <select id="ytConsentPick" aria-label="Answer"><option value="reject">Reject all</option><option value="accept">Accept all</option></select><input type="checkbox" class="st-sw" id="ytConsent" checked aria-label="Answer the cookie question"></div>
+        <div class="st-sec">Chats</div>
+        <div class="st-row"><span class="st-t">Chat to show<small>Top chat hides some messages. Live chat shows everything, so mention and spam alerts see every message.</small></span>
+          <select id="ytChatView" aria-label="Chat to show"><option value="top">Top chat</option><option value="live">Live chat (all messages)</option></select></div>
         <div class="st-sec am-yk-sec" hidden>YouTube API key (optional)</div>
         <div class="am-yk" hidden>
           <div class="am-yk-head"><button class="linkish am-yk-how">How to get one</button></div>
@@ -2439,6 +2442,7 @@ function mountView(w){
       if (w.kind === 'chat') try { frame.setZoomFactor(chatZoom()); } catch {}
       if (w.kind === 'chat') { const css = { kick: KICK_CHAT_CSS, twitch: TWITCH_CHAT_CSS }[platOf(w.channel)]; if (css) try { frame.insertCSS(css); } catch {} }
       if (w.kind === 'chat' && ROLE === 'main') injectMention(w);
+      applyChatView(w);
     });
   }
 }
@@ -4353,6 +4357,62 @@ if (DESKTOP) setInterval(() => {
   });
 }, 1000);
 window.ytAgent = ytAgent;   // for the tests
+
+/* Settings > YouTube > Chat to show: Top chat (YouTube's default, hides some messages) or Live chat (all of
+   them, so mention and spam alerts see every message). Runs inside each YouTube chat: in the first moments
+   after the chat loads, or after YouTube rebuilds it, it picks the view in the chat's own menu, then stops.
+   Switching the view yourself in that menu wins until the chat reloads or the setting changes (force). */
+function ytChatAgent(want, force){
+  const s = window.__kmvYtChat || (window.__kmvYtChat = { want: 0, mine: false, until: 0, tries: 0, at: 0, el: null });
+  const menu = () => document.querySelector('#view-selector yt-sort-filter-sub-menu-renderer');
+  // The selected item by its position (0 Top chat, 1 Live chat), from the menu's own data, so it works in any language.
+  const view = r => {
+    const items = r && r.data && r.data.subMenuItems;
+    if (Array.isArray(items) && items.length > 1) return items.findIndex(x => x && x.selected);
+    const links = r ? [...r.querySelectorAll('tp-yt-paper-listbox a')] : [];
+    return links.length > 1 ? links.findIndex(a => a.getAttribute('aria-selected') === 'true') : -1;
+  };
+  const start = () => { if (Date.now() > s.until){ s.until = Date.now() + 15000; s.tries = 0; } };
+  function tick(){
+    const r = menu();
+    if (r !== s.el){ s.el = r; if (r) start(); }          // a new chat header: YouTube rebuilt the chat (or switched its view)
+    if (!r || s.mine || Date.now() > s.until) return;
+    const v = view(r);
+    if (v < 0) return;
+    if (v === s.want){ s.until = 0; return; }             // set: stop until the next rebuild
+    if (Date.now() - s.at < 1500 || s.tries >= 3) return;
+    const a = r.querySelectorAll('tp-yt-paper-listbox a')[s.want];
+    if (!a) return;
+    s.at = Date.now(); s.tries++;
+    a.click();
+  }
+  if (!s.timer){
+    // A real click or key press in the view menu is you picking the view yourself.
+    ['click', 'keydown'].forEach(t => window.addEventListener(t, e => {
+      if (e.isTrusted && e.target instanceof Element && e.target.closest('#view-selector tp-yt-paper-listbox')) s.mine = true;
+    }, true));
+    s.timer = setInterval(tick, 500);
+  }
+  s.want = want ? 1 : 0;
+  if (force){ s.mine = false; s.until = 0; }
+  start(); tick();
+  return { view: view(menu()), mine: s.mine };
+}
+const chatViewPick = $('#ytChatView');
+const loadChatView = () => { try { chatViewPick.value = localStorage.getItem('kickMultiview.ytChatView') === 'live' ? 'live' : 'top'; } catch {} };
+loadChatView();
+// One YouTube chat window: on load, or with force when the setting changes.
+function applyChatView(w, force){
+  if (!DESKTOP || w.kind !== 'chat' || !w.ready || platOf(w.channel) !== 'youtube') return;
+  w.view.executeJavaScript(`(${ytChatAgent})(${chatViewPick.value === 'live'}, ${!!force})`).catch(() => {});
+}
+const applyChatViews = () => wins.forEach(w => applyChatView(w, true));
+chatViewPick.addEventListener('change', () => {
+  try { localStorage.setItem('kickMultiview.ytChatView', chatViewPick.value); } catch {}
+  applyChatViews();
+});
+window.addEventListener('storage', e => { if (e.key === 'kickMultiview.ytChatView'){ loadChatView(); applyChatViews(); } });   // main and streams windows
+window.ytChatAgent = ytChatAgent;   // for the tests
 
 /* Pause all except focus (button at the top of the Focus area) */
 let focusOnly = false;
