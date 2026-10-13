@@ -1,7 +1,7 @@
 // What a release video covers: the pull requests merged since the last release (or between two tags), with
 // their descriptions, and the CHANGELOG lines of any releases in that range.
 //   node .claude/skills/release-video/changes.js              merged into origin/main since the newest tag
-//   node .claude/skills/release-video/changes.js v0.2.16      since that tag
+//   node .claude/skills/release-video/changes.js v0.2.16      since that tag (tags with or without the v)
 //   node .claude/skills/release-video/changes.js v0.2.16 v0.2.18
 // Nothing merged since the newest tag: says so and shows the newest release's own changes instead.
 // PR descriptions come from gh when it's installed and logged in; otherwise only the merge commits are listed.
@@ -11,7 +11,10 @@ const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..', '..', '..');
 const git = args => { const r = spawnSync('git', args, { cwd: ROOT, encoding: 'utf8' }); return r.status ? '' : r.stdout.trim(); };
-const tags = () => git(['tag', '--list', 'v*', '--sort=-v:refname']).split('\n').filter(Boolean);
+// release tags, newest first: with or without a leading v (v0.2.21, 0.3.0), so git's own sort can't order them
+const ver = s => (/^v?(\d+)\.(\d+)\.(\d+)$/.exec(s) || []).slice(1).map(Number);
+const tags = () => git(['tag', '--list']).split('\n').filter(t => ver(t).length)
+  .sort((a, b) => { const x = ver(a), y = ver(b); return y[0] - x[0] || y[1] - x[1] || y[2] - x[2]; });
 
 function range(from, to) {
   git(['fetch', '-q', '--tags', 'origin']);

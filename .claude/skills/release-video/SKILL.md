@@ -72,7 +72,7 @@ module.exports = {
 | `glide(x, y)` | The pointer to a point (e.g. the top edge) |
 | `reveal(sel)` | Smoothly scroll something fully into view |
 | `add(names)` | Add channels without showing it (behind a card) |
-| `chatSay(ch, name, text)`, `inChat(ch, js)`, `clickInChat(ch, js)` | Post a message in a stand-in chat, run code there, click something there (e.g. a name) |
+| `chatSay(ch, name, text)`, `inChat(ch, js)`, `clickInChat(ch, js)` | Post a message in a stand-in chat, run code there, click something there (e.g. a name or the chat box; the caption moves off it) |
 
 ## The style (what developers asked for)
 
