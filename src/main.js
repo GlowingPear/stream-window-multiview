@@ -311,10 +311,10 @@ function ensureLiveWin() {
     webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
   liveWin.webContents.setAudioMuted(true);
   liveWin.on('closed', () => { liveWin = null; });
-  // A crashed or frozen page never answers again: close it, and the next check opens a fresh one
-  const w = liveWin, drop = () => { if (!w.isDestroyed()) w.destroy(); };
-  w.webContents.on('render-process-gone', drop);
-  w.webContents.on('unresponsive', drop);
+  // A crashed page never answers again: close it, and the next check opens a fresh one. (Not on 'unresponsive':
+  // a busy computer sets that off too, and closing it then cuts off the checks in flight. Each one has a time limit.)
+  const w = liveWin;
+  w.webContents.on('render-process-gone', () => { if (!w.isDestroyed()) w.destroy(); });
   liveLoading = withTimeout(liveWin.loadURL('https://kick.com/robots.txt'), NET_TIMEOUT, null).catch(() => {});
   return liveLoading;
 }
