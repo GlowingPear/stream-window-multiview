@@ -1,7 +1,7 @@
 // Spam alerts: which chat messages get flagged, and why.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { score, sites } = require('../../src/spam');
+const { score, sites, ignored, BOTS } = require('../../src/spam');
 
 const T = 1_700_000_000_000;
 const msg = (body, extra = {}) => ({ sender: 'newacct', body, chat: 'alpha', t: T, ...extra });
@@ -114,4 +114,44 @@ test('hype, laughing and emote walls are not a word flood', () => {
     'no way no way no way no way',
     ''
   ]) assert.equal(score(msg(body)).signs.length, 0, body);
+});
+
+test('everyday phrases with a word like "me", "live" or "site" are not disguised links', () => {
+  const phrases = [
+    'Hi, the name is Sam, can call me Sam or S! Pronouns are She/Her. I love video games and I draw or read in my spare time! Hope we can be friends and you enjoy the stream!',
+    'you can call me Sam', 'we are going live soon', 'new stream live now', 'text me later', 'follow me on kick',
+    'read me a story', 'check my art site', 'watch tv later', 'nice gg everyone', 'the new app is fun', 'pro tip: top club info'
+  ];
+  const firstSeen = { 'alpha\nnewacct': T - 60_000 };
+  for (const body of phrases) {
+    assert.deepEqual(sites(body).hidden, [], body);
+    for (const sensitivity of ['relaxed', 'balanced', 'strict'])
+      assert.equal(flagged(body, { firstSeen }, { sensitivity }), false, `${body} (${sensitivity}, new sender)`);
+  }
+});
+
+test('a space only hides the dot before endings that aren\'t everyday words; other separators work for every ending', () => {
+  assert.deepEqual(sites('botkiva net, botkiva org and botkiva xyz').hidden, ['botkiva.net', 'botkiva.org', 'botkiva.xyz']);
+  assert.deepEqual(sites('botkiva live').hidden, []);
+  assert.deepEqual(sites('botkiva[.]live botkiva (.) me botkiva dot site botkiva . app').hidden, ['botkiva.live', 'botkiva.me', 'botkiva.site', 'botkiva.app']);
+  assert.deepEqual(sites('call[.]me').hidden, [], 'a common word as the name');
+});
+
+test('chat bots on the ignore list are never flagged: whole name, any case', () => {
+  assert.ok(BOTS.includes('botrix') && BOTS.includes('nightbot'));
+  const spammy = 'hq ai stream upgrades botkiva com emojiBlowKiss zero cost upgrades emojiBlowKiss';
+  const r = score(msg(spammy, { sender: 'BotRix' }));
+  assert.deepEqual(r, { score: 0, need: 5, spam: false, signs: [], ignored: true });
+  assert.equal(score(msg(spammy, { sender: 'botrix_fan' })).spam, true, 'only the whole name');
+  assert.equal(score(msg(spammy, { sender: 'MyBot' }), {}, { ignore: ['mybot'] }).ignored, true, 'your own list');
+  assert.equal(score(msg(spammy, { sender: 'BotRix' }), {}, { ignore: [] }).spam, true, 'emptied list');
+  assert.equal(ignored('', BOTS), false);
+  assert.equal(ignored('  NightBot ', undefined), true, 'the built-in list by default');
+});
+
+test('a bot timer message repeated in several open chats is not flagged', () => {
+  const body = 'Follow the socials! Rules are in the panels below, enjoy the stream';
+  const recent = [{ sender: 'botrix', body, chat: 'bravo', t: T - 60_000 }, { sender: 'botrix', body, chat: 'charlie', t: T - 30_000 }];
+  assert.equal(score(msg(body, { sender: 'botrix' }), { recent }).spam, false);
+  assert.equal(score(msg(body, { sender: 'botrix' }), { recent }, { sensitivity: 'strict' }).spam, false);
 });
