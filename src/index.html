@@ -4374,6 +4374,16 @@ function ytChatAgent(want, force){
   };
   const start = () => { if (Date.now() > s.until){ s.until = Date.now() + 15000; s.tries = 0; } };
   function tick(){
+    // Signed out, YouTube's chat in dark mode is drawn half dark: a white message list under white text, and
+    // menus you can't read. Its light theme is complete, so that chat uses it (and keeps it if YouTube switches back).
+    const de = document.documentElement, list = document.querySelector('yt-live-chat-renderer');
+    if (list && de.hasAttribute('dark') && !s.light){
+      const c = (getComputedStyle(list).backgroundColor.match(/\d+/g) || []).map(Number);
+      if (c.length >= 3 && c[3] !== 0 && c[0] + c[1] + c[2] > 600){
+        s.light = true; de.removeAttribute('dark');
+        new MutationObserver(() => { if (de.hasAttribute('dark')) de.removeAttribute('dark'); }).observe(de, { attributes: true, attributeFilter: ['dark'] });
+      }
+    }
     const r = menu();
     if (r !== s.el){ s.el = r; if (r) start(); }          // a new chat header: YouTube rebuilt the chat (or switched its view)
     if (!r || s.mine || Date.now() > s.until) return;

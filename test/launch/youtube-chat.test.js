@@ -1,6 +1,7 @@
 // YouTube chats in the real desktop app: Settings > YouTube > Chat to show (Top chat or Live chat) picks the
-// view in each chat's own menu, and leaves a chat you switched yourself alone. The chat is a stand-in page
-// with a copy of YouTube's view menu (see app.js).
+// view in each chat's own menu, leaves a chat you switched yourself alone, and a chat YouTube draws half dark
+// (signed out, in dark mode) uses YouTube's light theme. The chat is a stand-in page with a copy of
+// YouTube's view menu (see app.js).
 const test = require('node:test');
 const { launchApp, inView, viewLoaded, assert } = require('./app');
 
@@ -84,4 +85,19 @@ test('a chat you switch yourself stays as you left it, also when YouTube rebuild
   assert.equal(await chat(() => window.__kmvYtChat.mine), false, 'a reload forgets your switch');
   await pick('top');
   await until(async () => (await view()) === 0);
+});
+
+test('YouTube\'s half-dark chat (white under white text, signed out) uses its light theme; a proper dark chat stays dark', T, async () => {
+  const look = () => chat(() => document.documentElement.hasAttribute('dark'));
+  await chat(() => {
+    const list = document.createElement('yt-live-chat-renderer');
+    list.style.cssText = 'display:block;background:#0f0f0f'; document.body.append(list);
+    document.documentElement.setAttribute('dark', '');
+  });
+  await a.win.waitForTimeout(1200);
+  assert.equal(await look(), true, 'dark and drawn dark: left alone');
+  await chat(() => { document.querySelector('yt-live-chat-renderer').style.background = '#fff'; });
+  await until(async () => (await look()) === false);
+  await chat(() => document.documentElement.setAttribute('dark', ''));   // YouTube switching it back
+  await until(async () => (await look()) === false);
 });
