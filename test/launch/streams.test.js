@@ -106,7 +106,7 @@ test('the switch control: pause and play, mute, hear only one, its volume, and a
   await a.win.selectOption('#mode', 'both');
   await add('alpha', 'bravo', 'charlie');
   await ready('charlie');
-  await a.win.keyboard.press('f');
+  await a.win.evaluate(() => document.querySelector('#layoutMenu [data-l=focus]').click());   // not the f key: it goes back to Columns if Focus view is already showing
   const item = ch => `#featSwitch .fs-item[data-ch=${ch}]`;
   await a.win.click(`${item('bravo')} .fs-play`);
   assert.ok(await a.win.$eval(item('bravo'), e => e.classList.contains('paused')), 'paused');
@@ -137,7 +137,7 @@ test('the switch control: pause and play, mute, hear only one, its volume, and a
 test('"Pause all except focus", and auto-pause for streams scrolled out of sight', T, async () => {
   await add('alpha', 'bravo', 'charlie');
   await ready('charlie');
-  await a.win.keyboard.press('f');
+  await a.win.evaluate(() => document.querySelector('#layoutMenu [data-l=focus]').click());   // not the f key: it goes back to Columns if Focus view is already showing
   await a.win.click('#featSwitch .fs-only');
   const paused = () => a.win.$$eval('#featSwitch .fs-item', l => l.filter(e => e.classList.contains('paused')).map(e => e.dataset.ch));
   const big = await a.win.$eval('#featSwitch .fs-item.on', e => e.dataset.ch);
