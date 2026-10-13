@@ -29,8 +29,11 @@ test.before(async () => {
   const proc = app.process();
   process.once('exit', () => killApp(proc));   // never leave the app open if the tests die
   // Kick's chat page: a stand-in with a few old messages. You moderate "alpha", not "bravo".
+  // Like a mod shortcut, it can stop some clicks on the window before anything else sees them (window.blockClicks).
   await app.evaluate(({ session, ipcMain }) => {
-    const page = `<!doctype html><title>chat</title><body><div id="chat">
+    const page = `<!doctype html><title>chat</title><script>
+      ['pointerdown', 'click'].forEach(t => addEventListener(t, e => { if (window.blockClicks) e.stopImmediatePropagation(); }, true));
+      </script><body><div id="chat">
       <div class="row"><b>regular</b>: <span>evening all</span></div>
       <div class="row"><b>another</b>: <span>gg</span></div></div></body>`;
     session.fromPartition('persist:kick').protocol.handle('https', req =>
@@ -227,6 +230,53 @@ test('spam alerts: a promo bot in a chat you moderate is tagged and lights the w
   assert.equal(await win.evaluate(() => localStorage.getItem('kickMultiview.spamHistory')), '[]');
   await win.click('#spamTabs [data-t=alerts]');
   await win.keyboard.press('Escape');
+});
+
+// Kick's ban shortcut on a sender's name: Cmd + Shift + Click on a Mac, Ctrl + Shift + Click on Windows and Linux.
+const banClick = (ch, sender, keys) => inChat(ch, ([s, keys]) => {
+  const name = [...document.querySelectorAll('.row b')].reverse().find(b => b.textContent === s);
+  const o = { bubbles: true, cancelable: true, shiftKey: true, ...keys };
+  name.dispatchEvent(new PointerEvent('pointerdown', o));
+  name.dispatchEvent(new MouseEvent('mousedown', o));
+  name.dispatchEvent(new MouseEvent('mouseup', o));
+  name.dispatchEvent(new MouseEvent('click', o));
+}, [sender, keys]);
+const spamCount = () => win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.spamHistory') || '[]').length);
+
+test('banning a spammer with the mod shortcut clears the alert, even when the page stops the click', T, async () => {
+  await clickBar('alpha');
+  await say('alpha', 'promobot', 'hq ai stream upgrades botkiva com zero cost upgrades today');
+  await win.waitForFunction(() => document.querySelector('#stage .win.chat.al-1'));
+  assert.equal((await alertOf('alpha')).level, 'al-1');
+  await inChat('alpha', () => { window.blockClicks = true; });
+  await banClick('alpha', 'promobot', { metaKey: true });
+  await win.waitForFunction(() => !document.querySelector('#stage .win.chat.al-1'));
+  await inChat('alpha', () => { window.blockClicks = false; });
+});
+
+test('a moderator removing a flagged message doesn\'t raise the alert again', T, async () => {
+  const flagged = await spamCount();
+  await inChat('alpha', () => {
+    const row = [...document.querySelectorAll('.row')].find(r => r.textContent.includes('upgrades today'));
+    row.querySelector('span').textContent += ' (Deleted)';
+  });
+  await say('alpha', 'promobot', 'Deleted by a moderator');
+  await win.waitForTimeout(3000);
+  assert.equal((await alertOf('alpha')).level, '');
+  assert.equal(await spamCount(), flagged, 'nothing new flagged');
+});
+
+test('a ban in the same moment the spam arrives still counts as seeing it', T, async () => {
+  await inChat('alpha', () => {
+    const d = document.createElement('div'); d.className = 'row';
+    d.innerHTML = '<b>fastbot</b>: <span>cheap viewers at quickgrow com zero cost boost upgrades</span>';
+    document.getElementById('chat').appendChild(d);
+  });
+  await banClick('alpha', 'fastbot', { ctrlKey: true });   // before the app next looks at the chat
+  await win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.spamHistory') || '[]').some(h => h.sender === 'fastbot'));
+  await win.waitForTimeout(500);
+  assert.match(await tagOf('alpha', 'quickgrow'), /Likely spam/, 'still flagged and tagged');
+  assert.equal((await alertOf('alpha')).level, '', 'but the window isn\'t left lit');
 });
 
 test('spam alerts off: chats stop handing over their messages', T, async () => {
