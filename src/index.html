@@ -348,6 +348,16 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 .menu{position:fixed;top:calc(var(--head) + 6px);z-index:100003;width:300px;display:flex;flex-direction:column;gap:2px;padding:6px;
   background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.55)}
 .menu[hidden]{display:none}
+/* In-app dropdowns (dropdown.js): every <select> opens this list instead of the system's menu */
+.dd-list{position:fixed;z-index:2147483646;display:flex;flex-direction:column;gap:1px;max-width:min(420px,calc(100vw - 12px));overflow-y:auto;padding:4px;
+  background:var(--panel);border:1px solid var(--line2);border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,.55);font-size:12.5px}
+.dd-list button{flex:none;display:block;width:100%;text-align:left;padding:5px 10px 5px 22px;border:0;border-radius:5px;background:transparent;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;position:relative}
+.dd-list button.hl,.dd-list button:hover:not(:disabled){background:var(--panel2)}
+.dd-list button.on{color:var(--accent);font-weight:600}
+.dd-list button.on::before{content:"";position:absolute;left:9px;top:50%;width:5px;height:5px;margin-top:-3px;border-radius:50%;background:var(--accent)}
+.dd-list button:disabled{color:var(--muted);cursor:default}
+select.dd-open{border-color:var(--accent)}
 .menu button{display:flex;flex-direction:column;gap:2px;text-align:left;padding:8px 10px;border:0;border-radius:7px;background:transparent;cursor:pointer}
 .menu button:hover{background:var(--panel2)}
 .menu button b{font-size:13px}
@@ -1571,6 +1581,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 </div></div>
 
 <script src="spam.js"></script>
+<script src="dropdown.js"></script>
 <script>
 (() => {
 const $ = s => document.querySelector(s);

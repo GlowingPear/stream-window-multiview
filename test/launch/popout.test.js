@@ -115,7 +115,7 @@ test('the switch control in its own window controls the main window', T, async (
   await sc.click('.fs-pin');
   await sc.waitForTimeout(300);
   assert.equal(await onTop(), !was, 'the pin keeps it on top of other windows, or not');
-  await sc.selectOption('.fs-side select', '2');
+  await sc.click('.fs-side select'); await sc.click('.dd-list button:text-is("2")');   // its own window has the app's dropdown list too
   assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.sideCols')), '2');
   await keep(sc);
   // the button closes this window, sometimes before the click has finished
