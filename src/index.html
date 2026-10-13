@@ -2631,7 +2631,7 @@ function checkAutoOpen(){
     addParsed({ channel: ch, only: null }); opened.push(ch);
   });
   if (!opened.length) return;
-  if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(false);
+  if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout();
   else if (lastLayout === 'auto' && fitOn()) autoLayout();     // new windows are last in the list, so they go last
   flash(`Opened ${opened.map(chLabel).join(', ')} (just went live)`);
 }
@@ -3239,7 +3239,7 @@ async function addChatIfLive(ch, r){
   if (info && info.name) rememberYtName(ch, info.name);
   if (!info || !info.live || wins.some(o => o.kind === 'chat' && o.channel === ch) || !wins.some(o => o.channel === ch)) return;
   createWin({ kind: 'chat', channel: ch }, chatRectBeside(r));
-  if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(false);
+  if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout();
   save();
 }
 let flashT, msgAsDesktop = false, desktopNotify = true;      // (Settings > Notifications)
@@ -3386,14 +3386,18 @@ function chatRects(m, X, Y, CW, H){
   });
   return rects;
 }
-function sortedChats(){          // chats in the shared stream order (the same order Columns / highlight use)
-  return buildCols().filter(c => c.chat).map(c => c.chat);
+// Every window that passes `test`, in the shared stream order (the same order Columns / highlight use).
+// A channel's extra windows (e.g. a second copy of its chat) come straight after its first one.
+function inColOrder(test){
+  const rank = new Map(buildCols().map((c, i) => [c.key, i]));
+  return wins.filter(test).sort((a, b) => rank.get(colKey(a)) - rank.get(colKey(b)));
 }
+const sortedChats = () => inColOrder(w => w.kind === 'chat');
 function layoutChatsOnly(){
   if (colsMode) return columnsLayout();
   const W = SW() - GAP, H = SH() - GAP, X = GAP / 2, Y = GAP / 2;
   const others = wins.filter(w => w.kind !== 'chat'), chats = sortedChats();
-  if (others.length){ chatFocusLayout(false); return; }
+  if (others.length){ chatFocusLayout(); return; }
   applyRects(chats, chatRects(chats.length, X, Y, W, H));
   lastLayout = 'chatfocus';
   save();
@@ -3401,17 +3405,15 @@ function layoutChatsOnly(){
 
 /* Chat focus: every stream window is cut to exactly its 16:9 video (no black bars),
    and chats split all the remaining space, as tall columns whenever they fit. */
-function chatFocusLayout(cycle){
+function chatFocusLayout(){
   if (colsMode) return columnsLayout();
   const W = SW() - GAP, H = SH() - GAP, X = GAP / 2, Y = GAP / 2;
-  const vids = buildCols().filter(c => c.top).map(c => c.top);
-  const chats = sortedChats();
+  const vids = inColOrder(w => w.kind !== 'chat'), chats = sortedChats();
   if (!vids.length && chats.length){ applyRects(chats, chatRects(chats.length, X, Y, W, H)); lastLayout = 'chatfocus'; save(); return; }
   if (!vids.length || !chats.length){ tile(); return; }
 
   const n = vids.length, maxCols = Math.min(n, 3);
-  streamCols = cycle ? (streamCols % maxCols) + 1 : Math.min(streamCols, maxCols);
-  const cols = streamCols, rows = Math.ceil(n / cols);
+  const cols = Math.min(streamCols, maxCols), rows = Math.ceil(n / cols);
 
   // Stream size: fill the height, width follows the 16:9 video exactly.
   let cellH = H / rows;
@@ -3428,7 +3430,6 @@ function chatFocusLayout(cycle){
   applyRects(chats, chatRects(chats.length, X + streamArea, Y, W - streamArea, H));
   lastLayout = 'chatfocus';
   updateModeClass(); schedulePicks();
-  if (cycle && maxCols > 1) flash(`Chat focus: streams in ${cols} column${cols > 1 ? 's' : ''}`);
   save();
 }
 
@@ -3616,7 +3617,7 @@ function swapWindows(w, otherCh){
       if (featBase.length && featuredCh === a) setFeatured(b);          // picking on the big one puts the other one big
       else if (featBase.length && featuredCh === b) setFeatured(a);
       columnsLayout();                                                    // same scroll spot, so it appears right here
-    } else chatFocusLayout(false);
+    } else chatFocusLayout();
   } else {
     const ra = { x: w.x, y: w.y, w: w.w, h: w.h }, rb = { x: o.x, y: o.y, w: o.w, h: o.h };
     setRect(w, rb, true); setRect(o, ra, true);
@@ -3830,7 +3831,7 @@ function removeChannel(ch){
     specs.forEach(sp => createWin(sp, sp.rect));
     if (idx >= 0){ colOrder = colOrder.filter(k => k !== ch); colOrder.splice(Math.min(idx, colOrder.length), 0, ch); }
     if (wasBig) setFeatured(ch);
-    if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(false);
+    if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout();
     save();
   });
 }
@@ -3985,7 +3986,7 @@ const isFocusView = () => colsMode && featBase.length > 0 && !!featuredCh;
 // Re-run whatever layout is showing (outside Columns).
 function relayout(){
   if (colsMode) columnsLayout();
-  else if (lastLayout === 'chatfocus') chatFocusLayout(false);
+  else if (lastLayout === 'chatfocus') chatFocusLayout();
   else if (lastLayout === 'game') gameLayout();
 }
 function fsMute(s, solo){
@@ -4014,7 +4015,7 @@ function swapStreams(a, b){
     const order = buildCols().map(c => c.key), i = order.indexOf(a), j = order.indexOf(b);
     if (i >= 0 && j >= 0){ [order[i], order[j]] = [order[j], order[i]]; colOrder = order; }
     try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
-    chatFocusLayout(false);
+    chatFocusLayout();
   } else {
     const wa = vidByKey(a), wb = vidByKey(b);
     if (!wa || !wb) return;
@@ -4498,7 +4499,8 @@ function updateLayoutMenu(){
   document.querySelectorAll('#lmOpts .lm-opt').forEach(o => { o.hidden = !o.dataset.for.split(' ').includes(cur); any ||= !o.hidden; });
   $('#lmOpts').hidden = !any;
   const nVids = wins.filter(w => w.kind !== 'chat').length;
-  document.querySelectorAll('#lmCols button').forEach(b => { b.classList.toggle('on', +b.dataset.n === streamCols); b.disabled = +b.dataset.n > Math.max(1, Math.min(3, nVids)); });
+  const maxCols = Math.max(1, Math.min(3, nVids));      // the count in use: fewer streams than columns use fewer
+  document.querySelectorAll('#lmCols button').forEach(b => { b.classList.toggle('on', +b.dataset.n === Math.min(streamCols, maxCols)); b.disabled = +b.dataset.n > maxCols; });
   if (typeof renderPresets === 'function') renderPresets();
   $('#lmLinked').checked = linked; $('#lmAutoFit').checked = fitOn();   // the layout in use: built-in or saved
   if (!$('#settingsDlg').hidden) renderLayoutsPane();
@@ -4527,7 +4529,7 @@ function setPresetOpt(p, key, val){
   p[key] = val; savePresets();
   if (p.name === activePreset){
     if (key === 'linked') liveLinked(val);
-    if (key === 'streamCols' && !colsMode && lastLayout === 'chatfocus'){ streamCols = val; chatFocusLayout(false); }
+    if (key === 'streamCols' && !colsMode && lastLayout === 'chatfocus'){ streamCols = val; chatFocusLayout(); }
   }
   updateLayoutMenu();
 }
@@ -4670,14 +4672,14 @@ function applyPreset(p, opt = {}){
   try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
   if (typeof p.linked === 'boolean' && p.linked !== linked){ linked = p.linked; if (opt.quiet) try { localStorage.setItem('kickMultiview.linked', linked ? '1' : '0'); } catch {} updateLinkBtn(); }   // a saved layout's own; undo's are the built-in's
   sideCols = p.sideCols || 0; try { localStorage.setItem('kickMultiview.sideCols', String(sideCols)); } catch {}
-  if (p.streamCols) streamCols = p.streamCols;
+  streamCols = p.streamCols || 1;      // the same default its options show
   if (typeof p.pageStep === 'boolean'){ pageStep = p.pageStep; try { localStorage.setItem('kickMultiview.pageStep', pageStep ? '1' : '0'); } catch {} }
   if (p.mode === 'columns'){
     setFeatured(p.featured || null); scrollX = 0; columnsLayout();
     document.body.classList.toggle('linked', linked);
   } else {
     setFeatured(null);
-    if (p.mode === 'chatfocus') chatFocusLayout(false);
+    if (p.mode === 'chatfocus') chatFocusLayout();
     else if (p.mode === 'tile') tile();
     else if (p.mode === 'auto'){ lastLayout = 'auto'; autoLayout(); }
     else if (p.mode === 'game') gameLayout();
@@ -4698,7 +4700,7 @@ setInterval(updateModeClass, 300);   // lastLayout changes in many places; keep 
 function backToChatFocus(){
   setFeatured(null);
   setColsMode(false);
-  chatFocusLayout(false);
+  chatFocusLayout();
   updateLayoutMenu(); updateModeClass();
 }
 /* In Chat focus, drag a stream onto another stream to swap them (their chats swap too). */
@@ -4745,7 +4747,7 @@ function startSwapDrag(e, w, bar){
       if (a >= 0 && b >= 0){ [order[a], order[b]] = [order[b], order[a]]; colOrder = order; }
       try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
     }
-    chatFocusLayout(false);     // swapped, or snap back if dropped elsewhere
+    chatFocusLayout();     // swapped, or snap back if dropped elsewhere
   };
   bar.addEventListener('pointermove', move); bar.addEventListener('pointerup', up); bar.addEventListener('pointercancel', up);
 }
@@ -4828,7 +4830,7 @@ function streamsCameBack(specs){
     if (!wins.some(w => w.kind === 'stream' && w.channel === s.channel))
       createWin({ kind: 'stream', channel: s.channel, vol: s.vol, muted: s.muted }, defaultStreamRect());
   });
-  if ((specs || []).length) chatFocusLayout(false);
+  if ((specs || []).length) chatFocusLayout();
 }
 function receiveStreams(specs){            // streams window
   (specs || []).forEach(s => {
@@ -4882,7 +4884,7 @@ $('#add').onclick = addFromInput;
 input.addEventListener('keydown', e => { if (e.key === 'Enter') addFromInput(); });
 input.addEventListener('paste', () => setTimeout(() => { if (parseInput(input.value)) addFromInput(); }, 0));
 $('#auto').onclick = () => { lastLayout = 'auto'; autoLayout(); };
-$('#chatFocus').onclick = () => chatFocusLayout(lastLayout === 'chatfocus');
+$('#chatFocus').onclick = () => chatFocusLayout();
 $('#tile').onclick = tile;
 $('#clear').onclick = async () => { if (wins.length && await ask('Close all windows?', 'Every stream, chat and other window closes. Undo brings them back.', { ok: 'Close all', danger: true })) { [...wins].forEach(w => { stopCapture(w); w.el.remove(); }); wins = []; updateEmpty(); save(); } };
 // Hide bar: the toolbar slides away (it peeks out when the mouse touches the top edge). The same button,
@@ -4941,7 +4943,7 @@ window.addEventListener('resize', () => {
   // If a layout button arranged things (and you haven't moved anything since), re-fit to the new size.
   clearTimeout(refitT);
   refitT = setTimeout(() => {
-    if (lastLayout === 'chatfocus') chatFocusLayout(false);
+    if (lastLayout === 'chatfocus') chatFocusLayout();
     else if (lastLayout === 'tile') tile();
     else if (lastLayout === 'spot') spotlight();
     else if (lastLayout === 'auto') autoLayout();
@@ -4998,7 +5000,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.watchLive){
   window.kmv.liveSnapshot().then(snap => { liveInfo = snap || {}; renderSaved(); checkAutoOpen(); }).catch(() => {});
   $('#openLive').onclick = () => {
     liveNow().forEach(ch => { if (!wins.some(w => w.kind === 'stream' && w.channel === ch)) addParsed({ channel: ch, only: null }); });
-    if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(false); else autoLayout();
+    if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(); else autoLayout();
   };
   setInterval(() => { if (!$('#savedPanel').hidden) renderSaved(); }, 30000);   // keep "checked x min ago" fresh
   sendWatch();
@@ -5083,9 +5085,8 @@ if (ROLE === 'main'){
     if (l === 'focus'){ openFocusView(); return; }
     if (l === 'game'){ setFeatured(null); setColsMode(false); gameLayout(); return; }
     if (l === 'columns'){ setFeatured(null); scrollX = 0; columnsLayout(); return; }
-    const wasChatFocus = !colsMode && lastLayout === 'chatfocus';
     setColsMode(false);
-    if (l === 'chatfocus') chatFocusLayout(wasChatFocus);
+    if (l === 'chatfocus') chatFocusLayout();
     else if (l === 'auto'){ lastLayout = 'auto'; autoLayout(); }   // first, so its save() stores it
     else tile();
     updateLayoutMenu();
@@ -5102,7 +5103,7 @@ if (ROLE === 'main'){
   $('#lmAutoFit').addEventListener('change', e => { const ap = activeP(); if (ap) setPresetOpt(ap, 'autoFit', e.target.checked); else setAutoFit(e.target.checked); });
   $('#lmCols').addEventListener('click', e => {
     const b = e.target.closest('button[data-n]'); if (!b || b.disabled) return;
-    const ap = activeP(); if (ap) setPresetOpt(ap, 'streamCols', +b.dataset.n); else { streamCols = +b.dataset.n; chatFocusLayout(false); updateLayoutMenu(); }
+    const ap = activeP(); if (ap) setPresetOpt(ap, 'streamCols', +b.dataset.n); else { streamCols = +b.dataset.n; chatFocusLayout(); updateLayoutMenu(); }
   });
   // Settings > Layouts: each layout from the menu, with its options under it
   const lyList = $('#lyList');
@@ -6490,7 +6491,7 @@ if (ROLE === 'main'){
   try { wasCols = localStorage.getItem('kickMultiview.cols') === '1'; } catch {}
   if (wasCols) columnsLayout();
   else { let ll = ''; try { ll = localStorage.getItem('kickMultiview.lastLayout') || ''; } catch {}
-         if (ll === 'chatfocus' && wins.length) chatFocusLayout(false);
+         if (ll === 'chatfocus' && wins.length) chatFocusLayout();
          else if (ll === 'auto') lastLayout = 'auto'; }   // the windows are already where it left them
   updateLayoutMenu(); updateModeClass();
   setTimeout(() => { histCur = histSnap(); histSig = histSigOf(histCur); undoStack.length = redoStack.length = 0; updateUndoBtns(); }, 800);   // history starts here
