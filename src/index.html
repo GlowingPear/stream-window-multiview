@@ -2290,7 +2290,7 @@ function createWin(spec, rect){
       bar.removeEventListener('pointermove', move);
       bar.removeEventListener('pointerup', up); bar.removeEventListener('pointercancel', up);
       document.body.classList.remove('dragging');
-      if (moved) lastLayout = null;      // you arranged it by hand: don't auto-refit on window resize
+      if (moved) arrangedByHand();
       save();
     };
     let moved = false;
@@ -2331,7 +2331,9 @@ function createWin(spec, rect){
     const up = () => {
       h.removeEventListener('pointermove', move);
       h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up);
-      document.body.classList.remove('dragging'); sizehint.style.display = 'none'; lastLayout = null; save();
+      document.body.classList.remove('dragging'); sizehint.style.display = 'none';
+      if (w.x !== r.x || w.y !== r.y || w.w !== r.w || w.h !== r.h) arrangedByHand();   // just clicking an edge keeps the layout
+      save();
     };
     h.addEventListener('pointermove', move);
     h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
@@ -2533,6 +2535,12 @@ function followRaid(from, to, tell){
   flash(`${chLabel(from)} raided ${chLabel(to)}: switched to them`);
 }
 
+// You moved or resized a window yourself: don't auto-refit on window resize. Fitting in channels that open
+// by themselves only works in Auto layout, so say so when it stops.
+function arrangedByHand(){
+  if (lastLayout === 'auto' && ROLE === 'main' && fitOn()) flash('Auto layout is off because you moved a window. Pick it again to fit in channels that go live.');
+  lastLayout = null; updateLayoutMenu();
+}
 function toggleMax(w){
   if (w.max){ setRect(w, w.max, true); w.max = null; }
   else { w.max = { x: w.x, y: w.y, w: w.w, h: w.h }; setRect(w, { x: 0, y: 0, w: SW(), h: SH() }, true); focusWin(w); }
@@ -4662,7 +4670,7 @@ function applyPreset(p, opt = {}){
     setFeatured(null);
     if (p.mode === 'chatfocus') chatFocusLayout(false);
     else if (p.mode === 'tile') tile();
-    else if (p.mode === 'auto'){ autoLayout(); lastLayout = 'auto'; }
+    else if (p.mode === 'auto'){ lastLayout = 'auto'; autoLayout(); }
     else if (p.mode === 'game') gameLayout();
     else lastLayout = null;
   }
@@ -5069,7 +5077,7 @@ if (ROLE === 'main'){
     const wasChatFocus = !colsMode && lastLayout === 'chatfocus';
     setColsMode(false);
     if (l === 'chatfocus') chatFocusLayout(wasChatFocus);
-    else if (l === 'auto'){ autoLayout(); lastLayout = 'auto'; }
+    else if (l === 'auto'){ lastLayout = 'auto'; autoLayout(); }   // first, so its save() stores it
     else tile();
     updateLayoutMenu();
   });
@@ -6456,7 +6464,8 @@ if (ROLE === 'main'){
   try { wasCols = localStorage.getItem('kickMultiview.cols') === '1'; } catch {}
   if (wasCols) columnsLayout();
   else { let ll = ''; try { ll = localStorage.getItem('kickMultiview.lastLayout') || ''; } catch {}
-         if (ll === 'chatfocus' && wins.length) chatFocusLayout(false); }
+         if (ll === 'chatfocus' && wins.length) chatFocusLayout(false);
+         else if (ll === 'auto') lastLayout = 'auto'; }   // the windows are already where it left them
   updateLayoutMenu(); updateModeClass();
   setTimeout(() => { histCur = histSnap(); histSig = histSigOf(histCur); undoStack.length = redoStack.length = 0; updateUndoBtns(); }, 800);   // history starts here
   if (switchMode === 'window') setSwitchMode('window');           // reopen it the way you left it
