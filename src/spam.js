@@ -18,8 +18,12 @@
   const SPACE_TLDS = 'com|net|org|io|xyz|ru|cc|biz';
   const NOT_NAMES = new Set(['dot', 'the', 'and', 'for', 'you', 'your', 'this', 'that', 'with', 'from', 'its', 'not', 'are', 'was',
     'call', 'text', 'follow', 'read', 'going', 'stream']);
-  // Chat bots that post intros, rules, socials and timers, often the same text in several chats.
-  const BOTS = ['botrix', 'nightbot', 'streamelements', 'fossabot', 'moobot', 'streamlabs', 'wizebot', 'sery_bot', 'kickbot'];
+  // Chat bots that post intros, rules, socials and timers, often the same text in several chats, and repeat
+  // names back ("thanks for the follow, @you"). Never flagged as spam, and never a mention.
+  const BOTS = ['botrix', 'nightbot', 'streamelements', 'fossabot', 'moobot', 'streamlabs', 'wizebot', 'sery_bot', 'kickbot',
+    'griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream'];
+  // The bots offered before the app remembered which ones it had offered.
+  const FIRST_BOTS = BOTS.slice(0, 9);
   const LEVELS = { relaxed: 6, balanced: 5, strict: 4 };
   const WINDOW_MS = 5 * 60 * 1000;
 
@@ -64,6 +68,19 @@
   function ignored(sender, list) {
     const name = String(sender || '').trim().toLowerCase();
     return !!name && cleanList(Array.isArray(list) ? list : BOTS).includes(name);
+  }
+
+  /**
+   * withNewBots(list, offered) -> { list, offered }
+   * A chat bot list you changed is saved whole, so bots added to BOTS later would never reach it. This adds
+   * the ones not offered before, once: a bot you removed stays removed. list: your saved list (null: the
+   * built-in one, nothing to add). offered: the built-in bots already offered (null: FIRST_BOTS).
+   */
+  function withNewBots(list, offered) {
+    if (!Array.isArray(list)) return { list: null, offered: BOTS.slice() };
+    const before = new Set(cleanList(Array.isArray(offered) ? offered : FIRST_BOTS)), have = cleanList(list);
+    const add = BOTS.filter(b => !before.has(b) && !have.includes(b));
+    return { list: add.length ? [...list, ...add] : list, offered: BOTS.slice() };
   }
 
   /**
@@ -126,5 +143,5 @@
     return { score: total, need, spam, signs };
   }
 
-  return { score, sites, ignored, ALLOWED, WORDS, OPENERS, BOTS, LEVELS };
+  return { score, sites, ignored, withNewBots, ALLOWED, WORDS, OPENERS, BOTS, LEVELS };
 });
