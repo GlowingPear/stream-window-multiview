@@ -1,7 +1,7 @@
 // Spam alerts: which chat messages get flagged, and why.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { score, sites, ignored, BOTS } = require('../../src/spam');
+const { score, sites, ignored, withNewBots, BOTS } = require('../../src/spam');
 
 const T = 1_700_000_000_000;
 const msg = (body, extra = {}) => ({ sender: 'newacct', body, chat: 'alpha', t: T, ...extra });
@@ -154,6 +154,32 @@ test('chat bots on the ignore list are never flagged: whole name, any case', () 
   assert.equal(score(msg(spammy, { sender: 'BotRix' }), {}, { ignore: [] }).spam, true, 'emptied list');
   assert.equal(ignored('', BOTS), false);
   assert.equal(ignored('  NightBot ', undefined), true, 'the built-in list by default');
+});
+
+test('the Kick bots griddlebot, kickpulsebot, kicklet and lumiastream are on the built-in list', () => {
+  const spammy = 'hq ai stream upgrades botkiva com emojiBlowKiss zero cost upgrades emojiBlowKiss';
+  for (const bot of ['griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream']) {
+    assert.ok(BOTS.includes(bot), bot);
+    assert.equal(score(msg(spammy, { sender: bot.toUpperCase() })).ignored, true, bot);
+    assert.equal(ignored('@' + bot), false, 'the @ is dropped when the name is added, not when checking');
+  }
+});
+
+test('bots added to the built-in list reach a list you changed, once', () => {
+  const first = ['botrix', 'nightbot', 'streamelements', 'fossabot', 'moobot', 'streamlabs', 'wizebot', 'sery_bot', 'kickbot'];
+  // the built-in list (nothing saved): nothing to add, but what was offered is remembered
+  assert.deepEqual(withNewBots(null, null), { list: null, offered: BOTS });
+  // changed before the app remembered what it offered: the bots added since are added
+  const mine = ['botrix', 'MyTimerBot'];
+  const r = withNewBots(mine, null);
+  assert.deepEqual(r.list, ['botrix', 'MyTimerBot', ...BOTS.filter(b => !first.includes(b))]);
+  assert.deepEqual(r.offered, BOTS);
+  // removed afterwards: stays removed
+  const removed = r.list.filter(b => b !== 'kicklet');
+  assert.deepEqual(withNewBots(removed, r.offered).list, removed);
+  assert.equal(withNewBots(removed, r.offered).list, removed, 'the same list when nothing is added');
+  // already on your list (any case): not added twice
+  assert.deepEqual(withNewBots(['GriddleBot'], first).list, ['GriddleBot', 'kickpulsebot', 'kicklet', 'lumiastream']);
 });
 
 test('a bot timer message repeated in several open chats is not flagged', () => {
