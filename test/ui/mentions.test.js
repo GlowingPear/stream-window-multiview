@@ -153,3 +153,66 @@ test('when each sender first spoke: kept per open chat, forgotten when its chat 
   await page.evaluate(() => window.firstSpoke('bravo\nbob', 99));
   assert.equal(await page.evaluate(() => spamFirst.get('bravo\nbob')), 2, 'the first time stays');
 });
+
+// #44: emotes in mentions
+const PIC = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+const em = (src, alt) => `<img src="${src}" alt="${alt}" width="28" height="28">`;
+const KICK = n => `https://files.kick.com/emotes/${n}/fullsize`, TW = 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0';
+
+test('the chat helper keeps the emotes in a mention, in order, with the reply it answers', async t => {
+  // (run in the app's own page, on a stand-in chat added to it, so its code counts for coverage)
+  const page = await openApp(t);
+  await page.evaluate(h => { const c = document.createElement('div'); c.id = 'chat'; c.innerHTML = h; document.body.append(c); window.mentionAgent(); }, row('regular', 'hello'));
+  await page.evaluate(() => window.__kmvMention.setMe('mod_me', ['pear']));
+  await page.waitForTimeout(2800);
+  const add = h => page.evaluate(h => document.getElementById('chat').insertAdjacentHTML('beforeend', h), h);
+  // Kick: time, a badge picture, the name, then text and emotes
+  await add(`<div class="row"><span>12:01 PM </span><img src="https://files.kick.com/images/badges/sub.png" alt="Subscriber" width="16" height="16"><b>ann</b>: <span>@mod_me ${em(KICK(1), 'pearHype')} gg ${em(KICK(2), 'lulBlob')}</span></div>`);
+  // Twitch: name, ": ", text pieces and emote pictures; a word, not a mention
+  await add(`<div class="chat-line"><span class="author">bob</span><span>: </span><span>pear time</span>${em(TW, 'Kappa2')}<span> nice</span></div>`);
+  // a reply, with an emote in the message it answers
+  await add(`<div class="msg"><div>Replying to @mod_me: want to raid? ${em('https://cdn.7tv.app/emote/abc/1x.webp', 'oakCozy')}</div><div><b>cat</b>: <span>sure ${em(KICK(3), 'pearHype')}</span></div></div>`);
+  // pictures that aren't emotes, and no emotes at all: plain text as before
+  await add(`<div class="row"><b>dan</b>: <span>@mod_me look ${em('https://example.com/x.png', 'x')}</span></div>`);
+  const q = (await page.evaluate(() => window.__kmvMention.take())).m;
+  const by = n => q.find(m => m.sender === n);
+  assert.deepEqual(by('ann').parts, [{ t: '@mod_me ' }, { e: 'pearHype', src: KICK(1) }, { t: ' gg ' }, { e: 'lulBlob', src: KICK(2) }]);
+  assert.equal(by('ann').kind, 'mention');
+  assert.deepEqual(by('bob').parts, [{ t: 'pear time' }, { e: 'Kappa2', src: TW }, { t: ' nice' }]);
+  assert.equal(by('bob').kind, 'word');
+  assert.equal(by('cat').kind, 'reply');
+  assert.deepEqual(by('cat').parts, [{ t: 'sure ' }, { e: 'pearHype', src: KICK(3) }]);
+  assert.deepEqual(by('cat').qparts, [{ t: 'want to raid? ' }, { e: 'oakCozy', src: 'https://cdn.7tv.app/emote/abc/1x.webp' }]);
+  assert.equal(by('dan').parts, undefined);
+  assert.equal(by('dan').body, '@mod_me look');
+});
+
+test('mentions show their emotes inline, safely, with the name when a picture is missing; names are searchable', async t => {
+  const page = await openApp(t);
+  await page.route(/files\.kick\.com\/emotes\/1\//, r => r.fulfill({ body: Buffer.from(PIC, 'base64'), contentType: 'image/png' }));
+  const now = Date.now();
+  await page.evaluate(() => localStorage.setItem('kickMultiview.myName', 'me'));
+  await page.evaluate(list => localStorage.setItem('kickMultiview.mentions', JSON.stringify(list)), [
+    { channel: 'alpha', sender: 'ann', kind: 'mention', body: '@me pearHype <b>gg</b> gone', unread: true, t: now - 1000, quoted: '',
+      parts: [{ t: '@me ' }, { e: 'pearHype', src: KICK(1) }, { t: ' <b>gg</b> ' }, { e: 'gone', src: KICK(9) }] },
+    { channel: 'alpha', sender: 'bob', kind: 'reply', body: 'sure', quoted: 'raid? oakCozy', t: now - 2000,
+      qparts: [{ t: 'raid? ' }, { e: 'oakCozy', src: KICK(1) }] },
+    { channel: 'alpha', sender: 'cat', kind: 'mention', body: '@me old one', t: now - 3000, quoted: '' },          // saved before emotes
+    { channel: 'alpha', sender: 'dan', kind: 'mention', body: '@me bad', t: now - 4000, quoted: '',
+      parts: [{ t: '@me ' }, { e: 'evil', src: 'https://example.com/x.png' }] }                                    // not an emote site: text only
+  ]);
+  await page.reload();
+  await page.evaluate(() => window.openMentHistory());
+  const body = s => page.locator(`#mhList .mp-row:has(b:text-is("${s}")) .mp-body`);
+  await page.waitForFunction(() => [...document.querySelectorAll('#mhList .mp-emote')].some(i => i.complete && i.naturalWidth));
+  assert.equal(await body('ann').locator('img.mp-emote').getAttribute('alt'), 'pearHype');
+  assert.equal(await body('ann').locator('b').count(), 0, 'chat text stays text');
+  await page.waitForFunction(() => /:gone:/.test(document.querySelector('#mhList .mp-row .mp-body').textContent));
+  assert.equal(await body('ann').textContent(), '@me  <b>gg</b> :gone:', 'a picture that can\'t load shows its name');
+  assert.ok(await body('ann').locator('mark').count(), 'the @mention is still marked');
+  assert.equal(await page.locator('#mhList .mp-row:has(b:text-is("bob")) .mp-q img.mp-emote').getAttribute('alt'), 'oakCozy', 'emotes in the reply\'s quote');
+  assert.equal(await body('cat').textContent(), '@me old one');
+  assert.equal(await body('dan').textContent(), '@me bad', 'a saved entry with a picture from elsewhere shows as text');
+  await page.fill('#mhQ', 'pearhype');
+  assert.deepEqual(await page.$$eval('#mhList .mp-row b', e => e.map(b => b.textContent)), ['ann'], 'emote names are searchable');
+});

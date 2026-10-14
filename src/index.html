@@ -1133,6 +1133,7 @@ header.c3 #url{min-width:110px}
 .mp-all{margin:2px 0 -2px;height:30px;font-size:12px}
 .mp-all[hidden]{display:none}
 .mp-kind.word{color:#e8b84a;border-color:#6b5524}
+.mp-emote{height:1.6em;width:auto;max-width:4.5em;vertical-align:-.45em;margin:0 1px;object-fit:contain}
 .mp-body mark{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--text);border-radius:3px;padding:0 2px}
 .dlg.menthist{width:min(860px,calc(100vw - 32px));height:min(86vh,900px);max-height:none;padding:0;gap:0;overflow:hidden}
 .menthist .help-x{margin-left:auto}
@@ -1735,9 +1736,17 @@ function mentionAgent(){
       const toMe = !!me && replyNew && replyRe.test(r), at = !!me && lineNew && atRe.test(body);
       const word = !toMe && !at && lineNew && wordRe ? body.match(wordRe) : null;
       if (queue.length >= 100) continue;                    // the app takes them every few seconds; more means it isn't asking
-      if (toMe || at) queue.push({ sender, body, kind: toMe ? 'reply' : 'mention',
-        quoted: toMe ? r.replace(/^Replying to\s+@?[A-Za-z0-9_]+:?\s*/i, '') : '', t: Date.now() });
-      else if (word) queue.push({ sender, body, kind: 'word', word: word[2], quoted: '', t: Date.now() });
+      if (!toMe && !at && !word) continue;
+      const nameRe = new RegExp('(^|[^A-Za-z0-9_])' + esc(sender) + '\\s?:\\s*', 'i');
+      let parts = null, qparts = null;
+      try { parts = partsFor(l, nameRe, body); } catch {}
+      const quoted = toMe ? r.replace(/^Replying to\s+@?[A-Za-z0-9_]+:?\s*/i, '') : '';
+      if (toMe && quoted) try { qparts = partsFor(r, /^\s*Replying to\s+@?[A-Za-z0-9_]+:?\s*/i, quoted); } catch {}
+      const item = toMe || at ? { sender, body, kind: toMe ? 'reply' : 'mention', quoted, t: Date.now() }
+        : { sender, body, kind: 'word', word: word[2], quoted: '', t: Date.now() };
+      if (parts) item.parts = parts;
+      if (qparts) item.qparts = qparts;
+      queue.push(item);
     }
     if (seen.size > 6000){ const keep = [...seen].slice(-3000); seen.clear(); keep.forEach(k => seen.add(k)); }
     marks.forEach(tag);                                      // the chat re-draws messages as it scrolls
@@ -1751,7 +1760,50 @@ function mentionAgent(){
   const flat = s => String(s || '').replace(/\s+/g, ' ').trim();
   function rowFor(line){
     const m = lineOf(line); if (!m) return null;
-    const probe = flat(m[2]).split(' ').slice(0, 3).join(' '), want = flat(line);
+    return elFor(line, m[2]);
+  }
+  // A message's text and emotes in order, after "name:" (or "Replying to @name:"): [{ t: text } | { e: name, src }].
+  // null when it can't be told apart exactly (then the plain text is used, as before).
+  const EMOTE_HOST = /^(files\.kick\.com|static-cdn\.jtvnw\.net|(\w+\.)?7tv\.app|cdn\.betterttv\.net|cdn\.frankerfacez\.com)$/;
+  function emoteIn(img){
+    let u; try { u = new URL(img.currentSrc || img.src); } catch { return null; }
+    const name = String(img.getAttribute('data-emote-name') || img.alt || img.title || '').replace(/^:|:$/g, '').trim();
+    const r = img.getBoundingClientRect();
+    if (u.protocol !== 'https:' || !EMOTE_HOST.test(u.hostname) || !name || name.length > 60 || r.width > 96 || r.height > 96) return null;
+    if (u.hostname === 'files.kick.com' && !/^\/emotes\//.test(u.pathname)) return null;
+    return { e: name, src: u.href.slice(0, 300) };
+  }
+  function partsFor(line, prefix, text){
+    const el = elFor(line, text, true); if (!el) return null;
+    const all = [], walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()){
+      if (n.nodeType === 3){
+        const p = n.parentElement;
+        if (p && p.checkVisibility && !p.checkVisibility()) continue;
+        if (n.nodeValue) all.push({ t: n.nodeValue.replace(/\s+/g, ' ') });
+      } else if (n.tagName === 'IMG'){ const e = emoteIn(n); if (e) all.push(e); }
+    }
+    // cut off what comes before the message: the time, badges, the name and its colon
+    const full = all.map(x => x.t || '').join(''), cut = full.match(prefix);
+    if (!cut) return null;
+    let skip = cut.index + cut[0].length;
+    const out = [];
+    for (const x of all){
+      if (skip > 0){ if (x.t){ if (x.t.length <= skip){ skip -= x.t.length; continue; } out.push({ t: x.t.slice(skip) }); skip = 0; } continue; }
+      const last = out[out.length - 1];
+      if (x.t && last && last.t != null) last.t += x.t; else out.push(x);
+    }
+    if (out.length && out[0].t != null) out[0].t = out[0].t.replace(/^\s+/, '');
+    const lastT = out[out.length - 1]; if (lastT && lastT.t != null) lastT.t = lastT.t.replace(/\s+$/, '');
+    const parts = out.filter(x => x.e || x.t);
+    if (!parts.some(x => x.e) || parts.filter(x => x.e).length > 20) return null;
+    if (flat(parts.map(x => x.t || ' ').join('')) !== flat(text)) return null;   // not the same message after all
+    return parts;
+  }
+  // smallest: the innermost element holding the whole line (for reading it), else the biggest (for marking it)
+  function elFor(line, text, smallest){
+    // (the first word: an emote can split the text right after it; the whole line is checked below)
+    const probe = flat(text).split(' ')[0], want = flat(line);
     if (!probe) return null;
     const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let n = walk.nextNode(); n; n = walk.nextNode()){
@@ -1761,7 +1813,7 @@ function mentionAgent(){
         const t = flat(el.innerText);
         const more = textLines(el.innerText).filter(x => !/^Replying to\s/i.test(x)).length > 1;
         if (more || t.length > want.length + 60) break;   // that's more than this one message
-        if (t.includes(want)) best = el;
+        if (t.includes(want)){ best = el; if (smallest) break; }
       }
       if (best) return best;
     }
@@ -1811,7 +1863,7 @@ function mentionAgent(){
   return true;
 }
 const MENTION_JS = `(${mentionAgent.toString()})()`;
-window.chatAgentJs = MENTION_JS;   // for the tests
+window.chatAgentJs = MENTION_JS; window.mentionAgent = mentionAgent;   // for the tests
 
 // Runs inside each stream's player page: lets the title-bar slider drive the real player (YouTube's, or the <video>).
 const VOL_JS = `(function(){
@@ -2867,6 +2919,46 @@ function timeAgo(t){ const m = Math.round((Date.now() - t) / 60000); return m < 
 // (escH is defined further down, after this can first run)
 function escM(t){ return String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 const MENT_KIND = { mention: 'Mention', reply: 'Reply', word: 'Word' };
+// Emotes in a mention: [{ t: text } | { e: name, src }], from the chat helper (and saved), so checked here.
+const EMOTE_SRC = /^https:\/\/(files\.kick\.com\/emotes\/|static-cdn\.jtvnw\.net\/|([\w-]+\.)?7tv\.app\/|cdn\.betterttv\.net\/|cdn\.frankerfacez\.com\/)/;
+function cleanParts(p){
+  if (!Array.isArray(p) || !p.length || p.length > 80) return null;
+  const out = [];
+  for (const x of p){
+    if (x && typeof x.t === 'string') out.push({ t: x.t.slice(0, 500) });
+    else if (x && typeof x.e === 'string' && x.e && typeof x.src === 'string' && EMOTE_SRC.test(x.src) && x.src.length <= 300) out.push({ e: x.e.slice(0, 60), src: x.src });
+    else return null;
+  }
+  const n = out.filter(x => x.e).length;
+  return n && n <= 20 ? out : null;
+}
+// The text with each emote's name in its place (search, notifications, older views)
+const partsText = parts => parts.map(x => x.e != null ? x.e : x.t).join('').replace(/\s+/g, ' ').trim();
+// The message as elements: text (what made it a mention marked) and emotes at text height.
+function mentBodyNodes(m, parts, mark){
+  const frag = document.createDocumentFragment();
+  const term = !mark ? '' : m.kind === 'word' ? m.word : m.kind === 'mention' ? '@' + (mentNameFor(m.channel) || '') : '';
+  const re = term && term !== '@' ? new RegExp('(^|[^\\p{L}\\p{N}_])(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?![\\p{L}\\p{N}_])', 'giu') : null;
+  for (const x of parts){
+    if (x.e != null){
+      const im = document.createElement('img');
+      im.className = 'mp-emote'; im.alt = x.e; im.title = x.e; im.loading = 'lazy'; im.referrerPolicy = 'no-referrer';
+      im.onerror = () => im.replaceWith(document.createTextNode(`:${x.e}:`));
+      if (EMOTE_SRC.test(x.src)) im.src = x.src; else { frag.append(`:${x.e}:`); continue; }
+      frag.append(im); continue;
+    }
+    if (!re){ frag.append(x.t); continue; }
+    let last = 0;
+    for (const hit of x.t.matchAll(re)){
+      const at = hit.index + hit[1].length;
+      frag.append(x.t.slice(last, at));
+      const mk = document.createElement('mark'); mk.textContent = hit[2]; frag.append(mk);
+      last = at + hit[2].length;
+    }
+    frag.append(x.t.slice(last));
+  }
+  return frag;
+}
 // The message with what made it a mention marked: @you, or the word.
 function mentBodyHtml(m){
   const term = m.kind === 'word' ? m.word : m.kind === 'mention' ? '@' + (mentNameFor(m.channel) || '') : '';
@@ -2892,8 +2984,10 @@ function mentRow(m, { onOpen, onDelete, clock } = {}){
   const tm = row.querySelector('.mp-time');
   tm.textContent = clock ? new Date(m.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : timeAgo(m.t);
   tm.title = new Date(m.t).toLocaleString();
-  row.querySelector('.mp-q').textContent = m.quoted || '';
-  row.querySelector('.mp-body').innerHTML = mentBodyHtml(m);
+  const q = row.querySelector('.mp-q'), qp = cleanParts(m.qparts), bp = cleanParts(m.parts);
+  if (qp) q.append(mentBodyNodes(m, qp, false)); else q.textContent = m.quoted || '';
+  if (bp) row.querySelector('.mp-body').append(mentBodyNodes(m, bp, true));
+  else row.querySelector('.mp-body').innerHTML = mentBodyHtml(m);
   row.title = 'Show this chat';
   row.onclick = () => onOpen && onOpen(m);
   if (onDelete){
@@ -3238,6 +3332,10 @@ async function pollChats(ment, spam){
       const item = { channel: w.channel, label: chLabelP(w.channel), sender: m.sender, body: m.body, kind: m.kind, quoted: m.quoted || '', t: m.t || Date.now(),
                      unread: $('#mentPanel').hidden && $('#mentDlg').hidden && !looking };
       if (m.kind === 'word') item.word = m.word;
+      // emotes in the message (and the message it replies to): kept with it, their names in its text
+      const parts = cleanParts(m.parts), qparts = cleanParts(m.qparts);
+      if (parts){ item.parts = parts; item.body = partsText(parts); }
+      if (qparts){ item.qparts = qparts; item.quoted = partsText(qparts); }
       mentions.unshift(item); mentions = mentions.slice(0, MENT_MAX);
       if (wantNotify('mention')) window.kmv.notifyMention(item);
       flash(`${item.sender} ${item.kind === 'reply' ? 'replied to you' : item.kind === 'word' ? `said “${item.word}”` : 'mentioned you'} in ${chLabel(item.channel)}`);
