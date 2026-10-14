@@ -138,6 +138,22 @@ function readManifest(dir) {
   try { return JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8').replace(/^﻿/, '')); } catch { return null; }
 }
 
+// Before reloading an extension from its folder: { manifest }, or { error } saying what's wrong with the folder.
+function checkFolder(dir) {
+  try { if (!fs.statSync(dir).isDirectory()) throw new Error(); } catch { return { error: 'Its folder isn\'t there any more: ' + dir }; }
+  let text;
+  try { text = fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'); } catch { return { error: 'Its folder has no manifest.json any more.' }; }
+  let manifest;
+  try { manifest = JSON.parse(text.replace(/^﻿/, '')); } catch (err) { return { error: 'Its manifest.json has a mistake in it: ' + err.message }; }
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) return { error: 'Its manifest.json has a mistake in it.' };
+  return { manifest };
+}
+// What a new version of an extension can do that the old one couldn't, in words (then it asks again).
+function addedAccess(before, after) {
+  const had = new Set(permissionLines(before));
+  return permissionLines(after).filter(l => !had.has(l));
+}
+
 /* ---------- Electron side ---------- */
 // deps: { electron, userData, appWindows: () => BrowserWindow[], rejectCookies: Google's "Reject all" cookie value }
 function createHost(deps) {
@@ -244,9 +260,10 @@ function createHost(deps) {
     return changed;
   }
   // force: tell the app windows even if no session changed (the list itself did).
-  async function syncAll(force) {
-    const changed = [];
-    for (const p of tracked.keys()) if (await sync(p)) changed.push(p);
+  // also: sessions already changed by the caller, whose windows need reloading too.
+  async function syncAll(force, also = []) {
+    const changed = [...also];
+    for (const p of tracked.keys()) if (await sync(p) && !changed.includes(p)) changed.push(p);
     if (changed.length || force) for (const w of deps.appWindows()) w.webContents.send('ext:changed', changed);
     return changed;
   }
@@ -299,7 +316,8 @@ function createHost(deps) {
     const reqId = ++confirmSeq;
     const m = info.manifest || {};
     win.webContents.send('ext:confirm', { reqId, id: info.id, name: info.name || m.name || info.id, version: info.version || m.version || '',
-      icon: info.icon || '', source: info.source || 'store', perms: permissionLines(m), compat: compat(m), noBlock: blocksNothing(m), sites: sitesOf(m), grid: defaultGrid() });
+      icon: info.icon || '', source: info.source || 'store', perms: permissionLines(m), compat: compat(m), noBlock: blocksNothing(m), sites: sitesOf(m),
+      grid: info.grid || defaultGrid(), reload: !!info.reload });
     if (win.isMinimized()) win.restore();
     win.focus();
     return new Promise(res => confirmWaits.set(reqId, res));
@@ -409,6 +427,41 @@ function createHost(deps) {
     return { id: ext.id };
   });
 
+  // Read an extension loaded from a folder again (after its files were edited), keeping its settings.
+  ipcMain.handle('ext:reload', async (_e, id) => {
+    await ready;
+    const e = list.find(x => x.id === id);
+    if (!e || e.source !== 'folder') return { error: 'Only extensions loaded from a folder can be reloaded.' };
+    const chk = checkFolder(e.path);
+    if (chk.error) return chk;
+    const old = catalogue(id);
+    // it asks for more than when it was added: ask again (Cancel keeps the one that's loaded)
+    if (old && addedAccess(old.manifest, chk.manifest).length) {
+      const ans = await confirm({ id, name: chk.manifest.name, version: chk.manifest.version, icon: iconDataUrl(e.path, chk.manifest),
+        manifest: chk.manifest, source: 'folder', reload: true, grid: e.grid });
+      if (!ans.ok) return { cancelled: true };
+      e.grid = ans.grid;
+      save();
+    }
+    // out of every session (sync() only reloads one whose version changed), then back from the folder
+    const had = [...tracked.keys()].filter(p => {
+      const exts = session.fromPartition(p).extensions;
+      if (!exts.getExtension(id)) return false;
+      exts.removeExtension(id);
+      return true;
+    });
+    if (old) store().extensions.removeExtension(id);
+    let ext, error = '';
+    try { ext = await store().extensions.loadExtension(e.path); }
+    catch (err) { error = 'It couldn\'t be loaded: ' + err.message; }
+    if (ext && ext.id !== id) {           // a "key" added to (or changed in) its manifest gives it another ID
+      store().extensions.removeExtension(ext.id);
+      error = 'Its ID changed (the "key" in its manifest.json), so remove it and add it again.';
+    }
+    await syncAll(true, had);
+    return error ? { error } : describe(e);
+  });
+
   let storeWin = null;
   ipcMain.handle('ext:openStore', async () => {
     await ready;
@@ -427,4 +480,4 @@ function createHost(deps) {
   return { ready: () => ready, list: () => list, sync, syncAll, update };
 }
 
-module.exports = { PLATS, KINDS, STREAM_PREFIX, STORE_PART, defaultGrid, targetOf, normalizeList, normalizeEntry, isOn, wantedIds, idFromInput, compat, blocksNothing, sitesOf, permissionLines, iconDataUrl, readManifest, createHost };
+module.exports = { PLATS, KINDS, STREAM_PREFIX, STORE_PART, defaultGrid, targetOf, normalizeList, normalizeEntry, isOn, wantedIds, idFromInput, compat, blocksNothing, sitesOf, permissionLines, addedAccess, iconDataUrl, readManifest, checkFolder, createHost };
