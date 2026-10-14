@@ -249,6 +249,51 @@ test('spam alerts lists: remove an item, and Reset brings back the built-in list
   await win.keyboard.press('Escape');
 });
 
+test('chat bots: one list in Mentions and Spam alerts until you split them, and new built-in bots reach a list you changed once', T, async () => {
+  const chips = sel => win.$$eval(`${sel} .st-chip > span`, l => l.map(x => x.textContent));
+  await win.evaluate(() => window.openSettings('mentions'));
+  assert.equal(await win.isChecked('[data-s=mentions] [data-al="mention.sharedBots"]'), true, 'shared to start with');
+  await win.fill('[data-add=mbots]', '@Mention_Only_Bot'); await win.press('[data-add=mbots]', 'Enter');
+  assert.ok((await chips('[data-list=ignore]')).includes('mention_only_bot'), 'added in Mentions: in the spam alerts list too');
+  await win.fill('[data-add=mbots]', ''); await win.click('[data-addbtn=mbots]');
+  assert.match(await win.textContent('#msg'), /Type a chat bot's name/);
+  await win.evaluate(() => window.openSettings('spam'));
+  await win.click('#spamTabs [data-t=lists]');
+  await win.click('[data-list=ignore] .st-chip:has-text("mention_only_bot") button');
+  assert.ok(!(await chips('[data-list=mbots]')).includes('mention_only_bot'), 'removed in Spam alerts: gone in Mentions too');
+
+  await win.uncheck('[data-s=spam] [data-al="mention.sharedBots"]');
+  assert.equal(await win.isChecked('[data-s=mentions] [data-al="mention.sharedBots"]'), false, 'the other switch follows');
+  assert.match(await win.textContent('#msg'), /Mentions have their own chat bot list/);
+  await win.fill('[data-add=ignore]', 'spam_only_bot'); await win.click('[data-addbtn=ignore]');
+  assert.ok(!(await chips('[data-list=mbots]')).includes('spam_only_bot'), 'split: not in Mentions');
+  await win.click('[data-reset=ignore]');
+  await win.check('[data-s=spam] [data-al="mention.sharedBots"]');
+  await win.keyboard.press('Escape');
+
+  // a list changed before griddlebot, kickpulsebot, kicklet and lumiastream were built in: they're added once
+  await win.evaluate(() => {
+    const a = JSON.parse(localStorage.getItem('kickMultiview.alerts') || '{}');
+    a.spam = { ...a.spam, ignore: ['botrix', 'mytimerbot'], botsOffered: null };
+    localStorage.setItem('kickMultiview.alerts', JSON.stringify(a));
+  });
+  await win.reload();
+  await win.waitForSelector('#loginBtn:not([hidden])');
+  const saved = () => win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).spam.ignore);
+  assert.deepEqual(await saved(), ['botrix', 'mytimerbot', 'griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream']);
+  await win.evaluate(() => window.openSettings('spam'));
+  await win.click('#spamTabs [data-t=lists]');
+  await win.click('[data-list=ignore] .st-chip:has-text("kicklet") button');
+  await win.keyboard.press('Escape');
+  await win.reload();
+  await win.waitForSelector('#loginBtn:not([hidden])');
+  assert.ok(!(await saved()).includes('kicklet'), 'removed: stays removed');
+  await win.evaluate(() => window.openSettings('spam'));
+  await win.click('#spamTabs [data-t=lists]');
+  await win.click('[data-reset=ignore]');
+  await win.keyboard.press('Escape');
+});
+
 test('a window\'s "open in its own window" and mod view buttons open app windows', T, async () => {
   await app.evaluate(({ app: eapp, session, ipcMain }) => {
     const fake = s => { try { s.protocol.handle('https', () => new Response('<!doctype html><title>stand-in</title>', { headers: { 'content-type': 'text/html' } })); } catch {} };
