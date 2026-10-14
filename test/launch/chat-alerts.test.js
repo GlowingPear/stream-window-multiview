@@ -179,8 +179,10 @@ test('chat bots on the list never count as a mention; a name that only contains 
   // split: mentions get their own list (the switch is in both panes), spam alerts keep theirs
   await win.evaluate(() => window.openSettings('spam'));
   await win.click('#spamTabs [data-t=lists]');
+  await win.click('#spamListPick [data-l=ignore]');
   await win.uncheck('[data-s=spam] [data-al="mention.sharedBots"]');
   await win.evaluate(() => window.openSettings('mentions'));
+  await win.click('#mentTabs [data-t=bots]');
   assert.equal(await win.isChecked('[data-s=mentions] [data-al="mention.sharedBots"]'), false, 'off in Mentions too');
   await win.click('[data-list=mbots] .st-chip:has-text("botrix") button');
   await win.keyboard.press('Escape');
@@ -195,6 +197,7 @@ test('chat bots on the list never count as a mention; a name that only contains 
 
   // shared again: botrix is on the spam alerts list, so ignored again
   await win.evaluate(() => window.openSettings('mentions'));
+  await win.click('#mentTabs [data-t=bots]');
   await win.check('[data-s=mentions] [data-al="mention.sharedBots"]');
   await win.keyboard.press('Escape');
   await say('bravo', 'BotRix', '@mename last one');
@@ -207,6 +210,7 @@ test('chat bots on the list never count as a mention; a name that only contains 
 
 test('your own words count as mentions; the @ list shows the latest five and All mentions opens the history', T, async () => {
   await win.evaluate(() => window.openSettings('mentions'));
+  await win.click('#mentTabs [data-t=names]');
   await win.fill('#mentWordIn', 'Pear'); await win.press('#mentWordIn', 'Enter');
   await win.fill('#mentWordIn', 'big boss'); await win.click('#mentWordAdd');
   await win.fill('#mentWordIn', 'PEAR'); await win.click('#mentWordAdd');   // already there
@@ -235,6 +239,7 @@ test('your own words count as mentions; the @ list shows the latest five and All
   assert.ok(await win.$eval('#mentBtn .mb-count', e => e.hidden), 'closing the history: everything seen');
   // tidy up for the next tests
   await win.evaluate(() => window.openSettings('mentions'));
+  await win.click('#mentTabs [data-t=names]');
   await win.click('#mentWords .st-chip button'); await win.click('#mentWords .st-chip button');
   assert.equal(await win.evaluate(() => localStorage.getItem('kickMultiview.mentWords')), '[]');
   await win.keyboard.press('Escape');
@@ -351,6 +356,7 @@ test('spam alerts: chat bots on the list are skipped, and History can add an acc
   assert.equal((await alertOf('alpha')).level, '');
   await win.evaluate(() => window.openSettings('spam'));
   await win.click('#spamTabs [data-t=lists]');
+  await win.click('#spamListPick [data-l=ignore]');
   await win.click('[data-reset=ignore]');
   assert.equal(await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).spam.ignore), null);
   await win.click('#spamTabs [data-t=history]');

@@ -171,6 +171,7 @@ test('spam alerts: off until you turn them on, remembered, and Try it explains a
   assert.match(await win.textContent('#spamRes'), /Would be flagged/, 'only the whole name');
   await win.fill('#spamTrySender', '');
   await win.click('#spamTabs [data-t=lists]');
+  await win.click('#spamListPick [data-l=allow]');
   await win.fill('[data-add=allow]', 'https://www.botkiva.com/promo');
   await win.click('[data-addbtn=allow]');
   assert.ok((await win.$$eval('[data-list=allow] .st-chip', c => c.map(x => x.textContent))).includes('botkiva.com'), 'kept as just the site');
@@ -184,6 +185,8 @@ test('spam alerts: off until you turn them on, remembered, and Try it explains a
 
 test('alert sounds: each one plays, and you can pick your own sound file', T, async () => {
   await win.evaluate(() => window.openSettings('mentions'));
+  await win.click('#mentTabs [data-t=alerts]');
+  assert.ok(await win.isHidden('#mentUser') && await win.isHidden('[data-add=mbots]'), 'one sub-tab at a time');
   await win.uncheck('#mentOn');
   assert.equal(await win.evaluate(() => localStorage.getItem('kickMultiview.mentOn')), '0', 'mention alerts off');
   assert.ok(await win.$eval('.st-opts[data-for=mention]', e => e.classList.contains('st-dim')), 'their options dim');
@@ -224,17 +227,20 @@ test('alert sounds: each one plays, and you can pick your own sound file', T, as
 test('spam alerts lists: remove an item, and Reset brings back the built-in list', T, async () => {
   await win.evaluate(() => window.openSettings('spam'));
   await win.click('#spamTabs [data-t=lists]');
+  await win.click('#spamListPick [data-l=words]');
   const words = () => win.$$eval('[data-list=words] .st-chip > span', l => l.map(x => x.textContent));
   const before = await words();
   await win.click('[data-list=words] .st-chip:has-text("cheap") button');
   assert.deepEqual(await words(), before.filter(w => w !== 'cheap'));
   await win.fill('[data-add=words]', ''); await win.click('[data-addbtn=words]');
   assert.match(await win.textContent('#msg'), /Type a word or phrase/);
+  await win.click('#spamListPick [data-l=allow]');
   await win.fill('[data-add=allow]', 'not a site'); await win.click('[data-addbtn=allow]');
   assert.match(await win.textContent('#msg'), /Type a site like example\.com/);
   const bots = () => win.$$eval('[data-list=ignore] .st-chip > span', l => l.map(x => x.textContent));
   const builtIn = await bots();
   assert.ok(builtIn.includes('botrix') && builtIn.includes('nightbot'), 'filled with common chat bots');
+  await win.click('#spamListPick [data-l=ignore]');
   await win.fill('[data-add=ignore]', '@MyTimerBot'); await win.press('[data-add=ignore]', 'Enter');
   assert.deepEqual(await bots(), [...builtIn, 'mytimerbot'], 'kept lower case, without the @');
   await win.click('[data-list=ignore] .st-chip:has-text("nightbot") button');
@@ -243,6 +249,7 @@ test('spam alerts lists: remove an item, and Reset brings back the built-in list
   assert.match(await win.textContent('#msg'), /Type a chat bot's name/);
   await win.click('[data-reset=ignore]');
   assert.deepEqual(await bots(), builtIn, 'back to the built-in bots');
+  await win.click('#spamListPick [data-l=words]');
   await win.click('[data-reset=words]');
   assert.deepEqual(await words(), before, 'back to the built-in words');
   assert.equal(await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).spam.words), null);
@@ -252,6 +259,7 @@ test('spam alerts lists: remove an item, and Reset brings back the built-in list
 test('chat bots: one list in Mentions and Spam alerts until you split them, and new built-in bots reach a list you changed once', T, async () => {
   const chips = sel => win.$$eval(`${sel} .st-chip > span`, l => l.map(x => x.textContent));
   await win.evaluate(() => window.openSettings('mentions'));
+  await win.click('#mentTabs [data-t=bots]');
   assert.equal(await win.isChecked('[data-s=mentions] [data-al="mention.sharedBots"]'), true, 'shared to start with');
   await win.fill('[data-add=mbots]', '@Mention_Only_Bot'); await win.press('[data-add=mbots]', 'Enter');
   assert.ok((await chips('[data-list=ignore]')).includes('mention_only_bot'), 'added in Mentions: in the spam alerts list too');
@@ -259,6 +267,9 @@ test('chat bots: one list in Mentions and Spam alerts until you split them, and 
   assert.match(await win.textContent('#msg'), /Type a chat bot's name/);
   await win.evaluate(() => window.openSettings('spam'));
   await win.click('#spamTabs [data-t=lists]');
+  await win.click('#spamListPick [data-l=ignore]');
+  assert.equal(await win.textContent('[data-lcount=ignore]'), String((await chips('[data-list=ignore]')).length), 'its count on the left');
+  assert.ok(await win.isHidden('[data-add=allow]'), 'one list at a time');
   await win.click('[data-list=ignore] .st-chip:has-text("mention_only_bot") button');
   assert.ok(!(await chips('[data-list=mbots]')).includes('mention_only_bot'), 'removed in Spam alerts: gone in Mentions too');
 
@@ -283,6 +294,7 @@ test('chat bots: one list in Mentions and Spam alerts until you split them, and 
   assert.deepEqual(await saved(), ['botrix', 'mytimerbot', 'griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream']);
   await win.evaluate(() => window.openSettings('spam'));
   await win.click('#spamTabs [data-t=lists]');
+  await win.click('#spamListPick [data-l=ignore]');
   await win.click('[data-list=ignore] .st-chip:has-text("kicklet") button');
   await win.keyboard.press('Escape');
   await win.reload();
@@ -290,6 +302,7 @@ test('chat bots: one list in Mentions and Spam alerts until you split them, and 
   assert.ok(!(await saved()).includes('kicklet'), 'removed: stays removed');
   await win.evaluate(() => window.openSettings('spam'));
   await win.click('#spamTabs [data-t=lists]');
+  await win.click('#spamListPick [data-l=ignore]');
   await win.click('[data-reset=ignore]');
   await win.keyboard.press('Escape');
 });
