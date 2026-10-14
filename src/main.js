@@ -781,6 +781,32 @@ ipcMain.handle('profile:meta', (_e, ch, patch) => {
   return m;
 });
 // Unfollow on Kick itself (what the Unfollow button on the channel's page does).
+// Download an emote from an emote card in a chat (see emoteAgent in index.html): only pictures from the
+// emote sites, at most 10 MB, saved where you choose (Downloads, named after the emote).
+const EMOTE_HOSTS = /^(files\.kick\.com|static-cdn\.jtvnw\.net|cdn\.7tv\.app|(\w+\.)?7tv\.app|cdn\.betterttv\.net|cdn\.frankerfacez\.com|(\w+\.)?ggpht\.com|www\.gstatic\.com)$/;
+const EMOTE_TYPES = { 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp', 'image/avif': '.avif', 'image/jpeg': '.jpg', 'image/svg+xml': '.svg' };
+const emoteUrlOk = u => { try { const x = new URL(u); return x.protocol === 'https:' && EMOTE_HOSTS.test(x.hostname); } catch { return false; } };
+async function fetchEmote(url) {
+  const r = await Promise.race([net.fetch(url, { headers: BROWSER_HEADERS() }), sleep(15000).then(() => null)]);
+  if (!r || !r.ok) return null;
+  const type = String(r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  if (!EMOTE_TYPES[type]) return null;
+  const buf = Buffer.from(await r.arrayBuffer());
+  return buf.length && buf.length <= 10 * 1024 * 1024 ? { buf, ext: EMOTE_TYPES[type] } : null;
+}
+ipcMain.handle('emote:download', async (e, url, name, small) => {
+  if (!emoteUrlOk(url)) return { error: 'bad' };
+  let got = await fetchEmote(url).catch(() => null);
+  if (!got && small && small !== url && emoteUrlOk(small)) got = await fetchEmote(small).catch(() => null);   // the big one isn't there: the one in chat
+  if (!got) return { error: 'fetch' };
+  const base = String(name || 'emote').replace(/[^\w.\-]+/g, '_').replace(/^[._]+/, '').slice(0, 60) || 'emote';
+  const win = BrowserWindow.fromWebContents(e.sender) || mainWin;
+  const { canceled, filePath } = await dialog.showSaveDialog(win, { title: 'Save emote', defaultPath: path.join(app.getPath('downloads'), base + got.ext),
+    filters: [{ name: 'Image', extensions: [got.ext.slice(1)] }] });
+  if (canceled || !filePath) return { canceled: true };
+  try { fs.writeFileSync(filePath, got.buf); } catch { return { error: 'write' }; }
+  return { saved: true, file: path.basename(filePath) };
+});
 ipcMain.handle('kick:unfollow', async (_e, slug) => {
   slug = String(slug || '').toLowerCase();
   if (!SLUG_RE.test(slug)) return { error: 'bad' };

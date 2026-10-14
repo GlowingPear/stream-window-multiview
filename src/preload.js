@@ -94,6 +94,7 @@ contextBridge.exposeInMainWorld('kmv', {
   profileMeta: (ch, patch) => ipcRenderer.invoke('profile:meta', ch, patch),
   onProfileInfo: cb => ipcRenderer.on('profile:info', (_e, ch) => cb(ch)),
   kickUnfollow: slug => ipcRenderer.invoke('kick:unfollow', slug),
+  emoteDownload: (url, name, small) => ipcRenderer.invoke('emote:download', url, name, small),
 
   // Chrome extensions
   extList: () => ipcRenderer.invoke('ext:list'),

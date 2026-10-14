@@ -141,6 +141,11 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - Settings > Mentions sets how: the window's border glows briefly or stays lit until you click that chat, and can get stronger while you haven't seen it (pulse, then flash). Pick its colour, a sound (or your own sound file), whether the sound repeats, and when to show a desktop notification.
 - Live alerts come from your saved channels while the app is running.
 
+## Emote preview
+- Point at an emote in any chat for a moment: a card shows it bigger, with its name and where it's from (Kick, Twitch, YouTube, or an add-on like 7TV, BetterTTV or FrankerFaceZ).
+- Move onto the card to use **Copy name** or **Download** (saves the picture where you choose, named after the emote).
+- Turn it off in Settings > General > **Emote preview in chats**.
+
 ## Spam alerts (for moderators)
 - Settings > Spam alerts. Off until you turn it on.
 - It only checks Kick and Twitch chats where you're a moderator (the ones with the mod view button). When it spots a promo-bot message, it tags it "LIKELY SPAM" in the chat and lights up that chat window, so you can deal with it. It never hides, deletes or reports anything.
