@@ -719,6 +719,8 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .ly-item span{flex:1;min-width:0}
 .ly-item em{font-style:normal;font-size:10.5px;font-weight:700;color:var(--accent)}
 .ly-item em:empty{display:none}
+.ly-item small{font-size:11px;color:var(--muted)}
+.ly-panel .st-row{margin-top:8px}
 .ly-detail{padding:16px;border:1px solid var(--line2);border-radius:10px;background:var(--panel2);min-height:260px}
 .ly-panel[hidden]{display:none}
 .ly-panel > .lm-pic{display:block;width:120px;height:75px;margin-bottom:12px}
@@ -1449,6 +1451,8 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       <section class="st-pane" data-s="mentions" hidden>
         <h4>Mentions &amp; replies</h4><p class="st-sub">When someone writes @you or replies to you in an open Kick or Twitch chat. The chat already highlights the message itself; these make the <b>window</b> stand out so you can see which chat it's in.</p>
         <label class="st-lead"><span class="st-t"><b>Alert me</b><small>When someone mentions or replies to the usernames below, or writes one of your words.</small></span><input type="checkbox" class="st-sw" id="mentOn"></label>
+        <div class="st-tabs" id="mentTabs"><button data-t="names" class="on">Names &amp; words</button><button data-t="bots">Chat bots</button><button data-t="alerts">Alerts</button></div>
+        <div class="st-subpane" data-t="names">
         <div class="st-sec">Your usernames</div>
         <p class="st-sub" style="margin:2px 0 0">Used to spot mentions and replies to you. Kick and Twitch chats are covered; YouTube chat isn't.</p>
         <div class="st-row"><span class="st-t">Kick</span><input class="st-in" id="mentUser" placeholder="e.g. YourName" autocomplete="off" spellcheck="false"><button class="btn" id="mentDetect" title="Read them from your Kick and Twitch logins">Detect</button></div>
@@ -1458,13 +1462,14 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <p class="st-sub" style="margin:2px 0 0">Nicknames or other words that mean you. A message with one counts as a mention, with or without an @. Whole words only, any case: "pear" finds "hi Pear!" but not "pears". Your own messages never count.</p>
         <div class="st-chips" id="mentWords"></div>
         <div class="st-add"><input class="st-in" id="mentWordIn" placeholder="Add a nickname, word or phrase" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="mentWordAdd">Add</button></div>
-        <div class="st-sec">Chat bots to ignore</div>
-        <p class="st-sub" style="margin:2px 0 0">Bots that repeat names back to chat ("thanks for the follow, @you"). Their messages never count as a mention, reply or word. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> still alerts.</p>
+        </div>
+        <div class="st-subpane" data-t="bots" hidden>
+        <p class="st-sub" style="margin:12px 0 0">Bots that repeat names back to chat ("thanks for the follow, @you"). Their messages never count as a mention, reply or word. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> still alerts.</p>
         <div class="st-row"><span class="st-t">Same list as spam alerts<small>Off: mentions keep their own list.</small></span><input type="checkbox" class="st-sw" data-al="mention.sharedBots"></div>
         <div class="st-chips" data-list="mbots"></div>
         <div class="st-add"><input class="st-in" data-add="mbots" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="mbots">Add</button><button class="btn" data-reset="mbots">Reset</button></div>
-        <div class="st-opts" data-for="mention">
-          <div class="st-sec">Alerts</div>
+        </div>
+        <div class="st-subpane st-opts" data-t="alerts" data-for="mention" hidden>
         <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up.</small></span>
           <select data-al="mention.hl"><option value="off">Off</option><option value="brief">Brief glow</option><option value="until">Until I click the chat</option></select>
           <input type="color" data-al="mention.color" title="Colour"></div>
@@ -1515,21 +1520,24 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <div class="st-row"><span class="st-t">Sensitivity<small>Strict flags more, and may flag a few real messages.</small></span>
             <select data-al="spam.sens"><option value="relaxed">Relaxed (6 points)</option><option value="balanced">Balanced (5 points)</option><option value="strict">Strict (4 points)</option></select></div>
         </div>
-        <div class="st-subpane" data-t="lists" hidden>
-          <div class="st-sec">Allowed sites</div><p class="st-sub" style="margin:2px 0 0">Links to these never count, typed normally or with a space.</p>
-          <div class="st-chips" data-list="allow"></div>
-          <div class="st-add"><input class="st-in" data-add="allow" placeholder="Add a site, e.g. example.com" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="allow">Add</button><button class="btn" data-reset="allow">Reset</button></div>
-          <div class="st-sec">Promo words</div>
-          <div class="st-chips" data-list="words"></div>
-          <div class="st-add"><input class="st-in" data-add="words" placeholder="Add a word or phrase" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="words">Add</button><button class="btn" data-reset="words">Reset</button></div>
-          <div class="st-sec">Bot opening lines</div><p class="st-sub" style="margin:2px 0 0">Greetings promo bots start with. A message with one of these is flagged on its own, so you can deal with the bot before it posts its link. Case and punctuation don't matter.</p>
-          <div class="st-chips" data-list="openers"></div>
-          <div class="st-add"><input class="st-in" data-add="openers" placeholder="Add a line a bot opens with" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="openers">Add</button><button class="btn" data-reset="openers">Reset</button></div>
-          <div class="st-sec">Chat bots to ignore</div><p class="st-sub" style="margin:2px 0 0">Messages from these accounts are never flagged as spam. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> is still checked.</p>
-          <div class="st-row"><span class="st-t">Same list for mentions<small>On: these bots never count as a mention either.</small></span><input type="checkbox" class="st-sw" data-al="mention.sharedBots"></div>
-          <div class="st-chips" data-list="ignore"></div>
-          <div class="st-add"><input class="st-in" data-add="ignore" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="ignore">Add</button><button class="btn" data-reset="ignore">Reset</button></div>
-        </div>
+        <div class="st-subpane" data-t="lists" hidden><div class="ly-md">
+          <div class="ly-list" id="spamListPick"><button class="ly-item sel" data-l="allow"><span>Allowed sites</span><small data-lcount="allow"></small></button><button class="ly-item" data-l="words"><span>Promo words</span><small data-lcount="words"></small></button><button class="ly-item" data-l="openers"><span>Bot opening lines</span><small data-lcount="openers"></small></button><button class="ly-item" data-l="ignore"><span>Chat bots to ignore</span><small data-lcount="ignore"></small></button></div>
+          <div class="ly-detail">
+            <div class="ly-panel" data-l="allow"><div class="ly-head"><b>Allowed sites</b></div><p class="ly-desc">Links to these never count, typed normally or with a space.</p>
+              <div class="st-chips" data-list="allow"></div>
+              <div class="st-add"><input class="st-in" data-add="allow" placeholder="Add a site, e.g. example.com" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="allow">Add</button><button class="btn" data-reset="allow">Reset</button></div></div>
+            <div class="ly-panel" data-l="words" hidden><div class="ly-head"><b>Promo words</b></div><p class="ly-desc">Words and phrases promo bots use. Each one found adds a point (up to 2).</p>
+              <div class="st-chips" data-list="words"></div>
+              <div class="st-add"><input class="st-in" data-add="words" placeholder="Add a word or phrase" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="words">Add</button><button class="btn" data-reset="words">Reset</button></div></div>
+            <div class="ly-panel" data-l="openers" hidden><div class="ly-head"><b>Bot opening lines</b></div><p class="ly-desc">Greetings promo bots start with. A message with one of these is flagged on its own, so you can deal with the bot before it posts its link. Case and punctuation don't matter.</p>
+              <div class="st-chips" data-list="openers"></div>
+              <div class="st-add"><input class="st-in" data-add="openers" placeholder="Add a line a bot opens with" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="openers">Add</button><button class="btn" data-reset="openers">Reset</button></div></div>
+            <div class="ly-panel" data-l="ignore" hidden><div class="ly-head"><b>Chat bots to ignore</b></div><p class="ly-desc">Messages from these accounts are never flagged as spam. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> is still checked.</p>
+              <div class="st-row"><span class="st-t">Same list for mentions<small>On: these bots never count as a mention either.</small></span><input type="checkbox" class="st-sw" data-al="mention.sharedBots"></div>
+              <div class="st-chips" data-list="ignore"></div>
+              <div class="st-add"><input class="st-in" data-add="ignore" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="ignore">Add</button><button class="btn" data-reset="ignore">Reset</button></div></div>
+          </div>
+        </div></div>
         <div class="st-subpane" data-t="try" hidden>
           <p class="st-sub" style="margin:8px 0 0">Paste a message to see whether it would be flagged, and why. It's checked on its own, as if nothing else had been posted. Add who sent it to check them against the chat bot list.</p>
           <div class="st-try"><input class="st-in" id="spamTrySender" placeholder="Sender (optional)" autocomplete="off" spellcheck="false"><input class="st-in" id="spamTry" placeholder="Paste a chat message" autocomplete="off" spellcheck="false"><button class="btn" id="spamTryBtn">Check</button></div>
@@ -6801,6 +6809,17 @@ $('#spamOn').addEventListener('change', e => {
   if (typeof pushMyName === 'function') pushMyName();      // the chats start or stop handing over their messages
   flash(alerts.spam.on ? 'Spam alerts on, in chats you moderate' : 'Spam alerts off');
 });
+$('#mentTabs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-t]'); if (!b) return;
+  $('#mentTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  settingsDlg.querySelectorAll('[data-s=mentions] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
+});
+// Spam alerts > Lists: pick a list on the left, it shows on the right.
+$('#spamListPick').addEventListener('click', e => {
+  const b = e.target.closest('button[data-l]'); if (!b) return;
+  $('#spamListPick').querySelectorAll('button').forEach(x => x.classList.toggle('sel', x === b));
+  settingsDlg.querySelectorAll('[data-s=spam] .ly-panel[data-l]').forEach(p => { p.hidden = p.dataset.l !== b.dataset.l; });
+});
 $('#spamTabs').addEventListener('click', e => {
   const b = e.target.closest('button[data-t]'); if (!b) return;
   $('#spamTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
@@ -6817,6 +6836,7 @@ const listOf = which => { const [a, k] = listStore(listKey(which)); return (a[k]
 function renderSpamLists(){
   Object.keys(SPAM_LIST).forEach(which => {
     const box = settingsDlg.querySelector(`[data-list="${which}"]`); box.innerHTML = '';
+    const n = settingsDlg.querySelector(`[data-lcount="${which}"]`); if (n) n.textContent = listOf(which).length;
     listOf(which).forEach(item => {
       const c = document.createElement('span'); c.className = 'st-chip';
       c.innerHTML = `<span></span><button title="Remove">${icon.close}</button>`;
