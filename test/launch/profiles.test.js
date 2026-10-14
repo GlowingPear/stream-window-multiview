@@ -78,7 +78,7 @@ test('Profiles lists the saved streamers, with search and filters', T, async () 
   const cards = () => w.$$eval('#profDlg .pf-card', e => e.map(c => c.dataset.ch));
   assert.deepEqual((await cards()).sort(), ['alpha', 'bravo', 'tw:charlie']);
   // (the app's live checks may already have seen alpha live)
-  assert.match(await w.textContent('.pf-card[data-ch=alpha] .pf-st'), /Last live \d+ days? ago|yesterday|LIVE/, 'from the recorded history');
+  assert.match(await w.textContent('.pf-card[data-ch=alpha] .pf-st'), /Last live (\d+ (days?|h|min) ago|yesterday)|LIVE/, 'from the recorded history (an hour ago just after midnight)');
   assert.match(await w.textContent('.pf-card[data-ch=bravo] .pf-nm'), /★\s*Bee/, 'favourite and nickname');
   await w.click('.pf-chips[data-g=flag] [data-v=fav]');
   assert.deepEqual(await cards(), ['bravo']);
@@ -226,4 +226,21 @@ test('a newly saved channel gets its picture in the background, without opening 
   // the profile, fetched once (its past broadcasts are only asked for with it; the live check asks for the channel too)
   assert.equal((await asked()).asked.filter(x => x === 'GET /api/v2/channels/echo/videos').length, 1);
   await w.keyboard.press('Escape');
+});
+
+test('a Kick profile seen before you signed in is asked again once you are signed in', T, async () => {
+  const w = a.win;
+  const cookie = on => a.app.evaluate(({ session }, on) => {
+    const c = session.fromPartition('persist:kick').cookies;
+    return on ? c.set({ url: 'https://kick.com', name: 'session_token', value: 'test' }) : c.remove('https://kick.com', 'session_token');
+  }, on);
+  await cookie(false);
+  await w.waitForTimeout(500);                                       // the page sees the change
+  const before = await w.evaluate(() => window.kmv.profileGet('bravo', { refresh: true }));
+  assert.equal(before.site.loggedIn, false);
+  await cookie(true);
+  await w.waitForTimeout(500);
+  const after = await w.evaluate(() => window.kmv.profileGet('bravo'));
+  assert.equal(after.site.loggedIn, true, 'not the copy kept from before');
+  assert.deepEqual(after.site.following, { since: null });
 });

@@ -723,9 +723,13 @@ async function fetchProfile(ch) {
 }
 
 const siteCache = new Map();          // channel -> { at, data } (10 minutes)
+// Signed in to Kick (its login cookie), asked of the session itself: a page can still see the old cookies for a moment.
+const kickSignedIn = () => session.fromPartition(PARTITION).cookies.get({ url: 'https://kick.com', name: 'session_token' }).then(l => l.some(c => c.value), () => false);
 async function siteProfile(ch, refresh) {
   const c = siteCache.get(ch);
-  if (c && !refresh && Date.now() - c.at < 10 * 60e3) return c.data;
+  // a Kick profile kept from before you signed in (no follow state, no Unfollow): ask again
+  const stale = c && c.data && !/^(tw|yt):/.test(ch) && c.data.loggedIn === false && await kickSignedIn();
+  if (c && !refresh && !stale && Date.now() - c.at < 10 * 60e3) return c.data;
   const p = await Promise.race([fetchProfile(ch).catch(() => null), sleep(20000).then(() => null)]);
   if (p) {
     siteCache.set(ch, { at: Date.now(), data: p });
