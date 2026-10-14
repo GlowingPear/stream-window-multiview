@@ -1458,6 +1458,11 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <p class="st-sub" style="margin:2px 0 0">Nicknames or other words that mean you. A message with one counts as a mention, with or without an @. Whole words only, any case: "pear" finds "hi Pear!" but not "pears". Your own messages never count.</p>
         <div class="st-chips" id="mentWords"></div>
         <div class="st-add"><input class="st-in" id="mentWordIn" placeholder="Add a nickname, word or phrase" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="mentWordAdd">Add</button></div>
+        <div class="st-sec">Chat bots to ignore</div>
+        <p class="st-sub" style="margin:2px 0 0">Bots that repeat names back to chat ("thanks for the follow, @you"). Their messages never count as a mention, reply or word. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> still alerts.</p>
+        <div class="st-row"><span class="st-t">Same list as spam alerts<small>Off: mentions keep their own list.</small></span><input type="checkbox" class="st-sw" data-al="mention.sharedBots"></div>
+        <div class="st-chips" data-list="mbots"></div>
+        <div class="st-add"><input class="st-in" data-add="mbots" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="mbots">Add</button><button class="btn" data-reset="mbots">Reset</button></div>
         <div class="st-opts" data-for="mention">
           <div class="st-sec">Alerts</div>
         <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up.</small></span>
@@ -1521,6 +1526,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <div class="st-chips" data-list="openers"></div>
           <div class="st-add"><input class="st-in" data-add="openers" placeholder="Add a line a bot opens with" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="openers">Add</button><button class="btn" data-reset="openers">Reset</button></div>
           <div class="st-sec">Chat bots to ignore</div><p class="st-sub" style="margin:2px 0 0">Messages from these accounts are never flagged as spam. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> is still checked.</p>
+          <div class="st-row"><span class="st-t">Same list for mentions<small>On: these bots never count as a mention either.</small></span><input type="checkbox" class="st-sw" data-al="mention.sharedBots"></div>
           <div class="st-chips" data-list="ignore"></div>
           <div class="st-add"><input class="st-in" data-add="ignore" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="ignore">Add</button><button class="btn" data-reset="ignore">Reset</button></div>
         </div>
@@ -3279,15 +3285,22 @@ function injectMention(w){
 
 /* ---------- alerts: how a chat window gets your attention (Settings > Mentions, Spam alerts) ---------- */
 const ALERT_DEFAULTS = {
-  mention: { hl: 'until', color: '#e8b84a', esc: 20, max: 'pulse', sound: 'chime', vol: 0.5, repeat: false, notify: 'unfocused' },
+  mention: { hl: 'until', color: '#e8b84a', esc: 20, max: 'pulse', sound: 'chime', vol: 0.5, repeat: false, notify: 'unfocused',
+             sharedBots: true, bots: null, botsOffered: null },   // sharedBots: the spam alerts' chat bot list; bots: their own (null: built-in)
   spam: { on: false, hl: 'until', color: '#ff5f5f', esc: 0, max: 'pulse', tag: true, sound: 'knock', vol: 0.4, repeat: false, notify: 'never',
-          sens: 'balanced', allow: null, words: null, openers: null, ignore: null }      // null: the built-in lists
+          sens: 'balanced', allow: null, words: null, openers: null, ignore: null, botsOffered: null }   // null: the built-in lists
 };
 var alerts = (() => {
   let a = {}; try { a = JSON.parse(localStorage.getItem('kickMultiview.alerts') || '{}') || {}; } catch {}
   return { mention: { ...ALERT_DEFAULTS.mention, ...(a.mention || {}) }, spam: { ...ALERT_DEFAULTS.spam, ...(a.spam || {}) } };
 })();
 const saveAlerts = () => { try { localStorage.setItem('kickMultiview.alerts', JSON.stringify(alerts)); } catch {} };
+// Chat bots added to the built-in list since: added to a list you changed, once (one you removed stays removed).
+[[alerts.spam, 'ignore'], [alerts.mention, 'bots']].forEach(([a, k]) => {
+  const r = SmvSpam.withNewBots(a[k], a.botsOffered);
+  if (r.list === a[k] && JSON.stringify(r.offered) === JSON.stringify(a.botsOffered)) return;
+  a[k] = r.list; a.botsOffered = r.offered; saveAlerts();
+});
 const SOUND_KEY = kind => 'kickMultiview.alertSound.' + kind;      // your own sound file, as a data: URL
 
 // The built-in sounds are made on the fly, so there are no sound files to ship.
@@ -3397,7 +3410,9 @@ async function modChat(w){
   if (!modOk.has(w.channel)) modOk.set(w.channel, window.kmv.modCheck(w.channel).catch(() => null));
   return (await modOk.get(w.channel)) === true;
 }
-const spamOpts = () => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS, ignore: alerts.spam.ignore || SmvSpam.BOTS });
+// The chat bots never flagged as spam ('spam') or counted as a mention ('mention'): one list unless you split them.
+const botsFor = kind => kind === 'mention' && !alerts.mention.sharedBots ? alerts.mention.bots || SmvSpam.BOTS : alerts.spam.ignore || SmvSpam.BOTS;
+const spamOpts = () => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS, ignore: botsFor('spam') });
 // seenAt: when you last clicked or typed in that chat; messages from before then don't need a lasting alert.
 async function spamCheck(w, lines, seenAt){
   const mod = await modChat(w);
@@ -3465,7 +3480,8 @@ async function pollChats(ment, spam){
       if (w.alert && w.alert.since <= q.c) clearAlert(w);
       readMentions(w.channel);
     }
-    (q.m || []).forEach(m => {
+    const bots = botsFor('mention');
+    (q.m || []).filter(m => !SmvSpam.ignored(m.sender, bots)).forEach(m => {
       const looking = (document.hasFocus() && document.activeElement === w.view) || (q.c && (m.t || 0) <= q.c);   // you're in that chat right now
       const item = { channel: w.channel, label: chLabelP(w.channel), sender: m.sender, body: m.body, kind: m.kind, quoted: m.quoted || '', t: m.t || Date.now(),
                      unread: $('#mentPanel').hidden && $('#mentDlg').hidden && !looking };
@@ -3479,7 +3495,7 @@ async function pollChats(ment, spam){
       flash(`${item.sender} ${item.kind === 'reply' ? 'replied to you' : item.kind === 'word' ? `said “${item.word}”` : 'mentioned you'} in ${chLabel(item.channel)}`);
       raiseAlert(w, 'mention', looking);
     });
-    if (q.m && q.m.length){ saveMentions(); renderMentions(); }
+    if (q.m && q.m.some(m => !SmvSpam.ignored(m.sender, bots))){ saveMentions(); renderMentions(); }
   }
 }
 
@@ -6775,6 +6791,7 @@ settingsDlg.addEventListener('change', async e => {
   let v = c.type === 'checkbox' ? c.checked : c.type === 'range' || k === 'esc' ? +c.value : c.value;
   if (k === 'sound' && v === 'custom' && !await pickSound(kind)) v = alerts[kind].sound === 'custom' ? 'custom' : alerts[kind].sound;
   alerts[kind][k] = v; saveAlerts(); syncAlertControls();
+  if (k === 'sharedBots'){ renderSpamLists(); flash(v ? 'Mentions and spam alerts share one chat bot list' : 'Mentions have their own chat bot list'); }
   if (k === 'sound' || k === 'vol') playSound(kind);
   if (k === 'color') wins.forEach(w => { if (w.alert && w.alert.kind === kind) w.el.style.setProperty('--al', v); });
 });
@@ -6791,9 +6808,12 @@ $('#spamTabs').addEventListener('click', e => {
   if (b.dataset.t === 'history') renderSpamHist();   // fresh "x min ago"
 });
 
-/* Spam alerts: allowed sites, promo words, bot opening lines and chat bots to ignore */
-const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS, openers: () => SmvSpam.OPENERS, ignore: () => SmvSpam.BOTS };
-const listOf = which => (alerts.spam[which] || SPAM_LIST[which]()).slice();
+/* Spam alerts: allowed sites, promo words, bot opening lines and chat bots to ignore. Mentions: their own chat bots
+   ('mbots', in Settings > Mentions), which are the spam alerts' list while the two are shared. */
+const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS, openers: () => SmvSpam.OPENERS, ignore: () => SmvSpam.BOTS, mbots: () => SmvSpam.BOTS };
+const listKey = which => which === 'mbots' && alerts.mention.sharedBots ? 'ignore' : which;
+const listStore = which => which === 'mbots' ? [alerts.mention, 'bots'] : [alerts.spam, which];
+const listOf = which => { const [a, k] = listStore(listKey(which)); return (a[k] || SPAM_LIST[which]()).slice(); };
 function renderSpamLists(){
   Object.keys(SPAM_LIST).forEach(which => {
     const box = settingsDlg.querySelector(`[data-list="${which}"]`); box.innerHTML = '';
@@ -6807,29 +6827,29 @@ function renderSpamLists(){
   });
 }
 function setSpamList(which, list){
-  const def = SPAM_LIST[which]();
-  alerts.spam[which] = list.length === def.length && list.every((x, i) => x === def[i]) ? null : list;
+  const def = SPAM_LIST[which](), [a, k] = listStore(listKey(which));
+  a[k] = list && !(list.length === def.length && list.every((x, i) => x === def[i])) ? list : null;
   saveAlerts(); renderSpamLists(); renderSpamHist();
 }
 // "Not spam: ignore this account" in the History tab.
 function ignoreSender(name){
   const l = listOf('ignore'), v = String(name).trim().toLowerCase();
   if (!l.includes(v)) setSpamList('ignore', [...l, v]);
-  flash(`${name} added to the chat bot list: never flagged as spam`);
+  flash(`${name} added to the chat bot list: never flagged as spam${alerts.mention.sharedBots ? ' or counted as a mention' : ''}`);
 }
 function addSpamItem(which){
   const inp = settingsDlg.querySelector(`[data-add="${which}"]`);
   let v = inp.value.trim().replace(/\s+/g, ' ');
   if (which !== 'openers') v = v.toLowerCase();   // opening lines keep their capitals: they're shown as typed
-  if (which === 'ignore') v = v.replace(/^@/, '');
+  if (which === 'ignore' || which === 'mbots') v = v.replace(/^@/, '');
   if (which === 'allow') v = v.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '').replace(/\s+(?=[a-z]{2,6}$)/, '.');
-  if (!/[a-z0-9]/i.test(v) || (which === 'allow' && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v))){ inp.focus(); flash(which === 'allow' ? 'Type a site like example.com' : which === 'openers' ? 'Type a line a bot opens with' : which === 'ignore' ? "Type a chat bot's name" : 'Type a word or phrase'); return; }
+  if (!/[a-z0-9]/i.test(v) || (which === 'allow' && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v))){ inp.focus(); flash(which === 'allow' ? 'Type a site like example.com' : which === 'openers' ? 'Type a line a bot opens with' : which === 'ignore' || which === 'mbots' ? "Type a chat bot's name" : 'Type a word or phrase'); return; }
   const l = listOf(which); if (!l.some(x => x.toLowerCase() === v.toLowerCase())) l.push(v);
   setSpamList(which, l); inp.value = '';
 }
 settingsDlg.querySelectorAll('[data-addbtn]').forEach(b => { b.onclick = () => addSpamItem(b.dataset.addbtn); });
 settingsDlg.querySelectorAll('[data-add]').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') addSpamItem(i.dataset.add); }));
-settingsDlg.querySelectorAll('[data-reset]').forEach(b => { b.onclick = () => { alerts.spam[b.dataset.reset] = null; saveAlerts(); renderSpamLists(); renderSpamHist(); }; });
+settingsDlg.querySelectorAll('[data-reset]').forEach(b => { b.onclick = () => setSpamList(b.dataset.reset, null); });
 
 /* Spam alerts: try a message */
 function trySpam(){
