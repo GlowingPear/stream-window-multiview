@@ -164,41 +164,34 @@ test('the @ button on a chat\'s bar turns mentions off for that chat only', T, a
   await win.keyboard.press('Escape');
 });
 
-test('chat bots on the list never count as a mention; a name that only contains one does; split lists work on their own', T, async () => {
+test('chat bots on the list never count as a mention, a name that only contains one does, and the list is yours to change', T, async () => {
   const count = () => win.evaluate(() => { const c = document.querySelector('#mentBtn .mb-count'); return c.hidden ? '' : c.textContent; });
+  const stored = () => win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.mentions') || '[]').map(m => m.sender));
   await say('bravo', 'BotRix', '@mename thanks for the follow!');
   await say('bravo', 'griddlebot', '@mename won the giveaway');
   await say('bravo', 'botrix_fan', '@mename hi from a fan');
   await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
   await win.waitForTimeout(2000);
   assert.equal(await count(), '1', 'only the fan');
-  const stored = () => win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.mentions') || '[]').map(m => m.sender));
   assert.deepEqual(await stored(), ['botrix_fan'], 'the bots aren\'t in the mentions history');
   await clickBar('bravo');
 
-  // split: mentions get their own list (the switch is in both panes), spam alerts keep theirs
-  await win.evaluate(() => window.openSettings('spam'));
-  await win.click('#spamTabs [data-t=lists]');
-  await win.click('#spamListPick [data-l=ignore]');
-  await win.uncheck('[data-s=spam] [data-al="mention.sharedBots"]');
+  // taken off the list in Mentions > Chat bots: it alerts again, the others still don't
   await win.evaluate(() => window.openSettings('mentions'));
   await win.click('#mentTabs [data-t=bots]');
-  assert.equal(await win.isChecked('[data-s=mentions] [data-al="mention.sharedBots"]'), false, 'off in Mentions too');
   await win.click('[data-list=mbots] .st-chip:has-text("botrix") button');
   await win.keyboard.press('Escape');
-  const saved = await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')));
-  assert.ok(!saved.mention.bots.includes('botrix') && saved.mention.bots.includes('nightbot'));
-  assert.equal(saved.spam.ignore, null, 'the spam alerts list is untouched');
-  await say('bravo', 'BotRix', '@mename one more');
+  const saved = await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).mention.bots);
+  assert.ok(!saved.includes('botrix') && saved.includes('nightbot'));
   await say('bravo', 'nightbot', '@mename still a bot');
+  await say('bravo', 'BotRix', '@mename one more');
   await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
-  assert.equal((await stored())[0], 'BotRix');
+  assert.deepEqual((await stored()).slice(0, 2), ['BotRix', 'botrix_fan']);
   await clickBar('bravo');
 
-  // shared again: botrix is on the spam alerts list, so ignored again
+  // Reset: the built-in list again
   await win.evaluate(() => window.openSettings('mentions'));
-  await win.click('#mentTabs [data-t=bots]');
-  await win.check('[data-s=mentions] [data-al="mention.sharedBots"]');
+  await win.click('[data-reset=mbots]');
   await win.keyboard.press('Escape');
   await say('bravo', 'BotRix', '@mename last one');
   await win.waitForTimeout(2500);
@@ -347,18 +340,19 @@ test('spam alerts: chat bots on the list are skipped, and History can add an acc
   assert.equal(await win.$eval('#settingsDlg', e => e.hidden), false, 'the button doesn\'t open the chat');
   assert.match(await win.textContent('#msg'), /timerbot added to the chat bot list/);
   assert.equal(await win.textContent('#spamHist .sh-acts'), 'On the chat bot list: no longer flagged');
-  assert.ok((await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).spam.ignore)).includes('timerbot'));
+  assert.match(await win.textContent('#msg'), /never flagged as spam or counted as a mention/, 'the list is shared with mentions');
+  assert.ok((await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).mention.bots)).includes('timerbot'));
   await win.keyboard.press('Escape');
   await clickBar('alpha');
   await say('alpha', 'TimerBot', 'hq ai stream upgrades botkiva com zero cost upgrades, again from timerbot');
   await win.waitForTimeout(2500);
   assert.equal(await tagOf('alpha', 'again from timerbot'), null, 'any case');
   assert.equal((await alertOf('alpha')).level, '');
+  await win.evaluate(() => window.openSettings('mentions'));
+  await win.click('#mentTabs [data-t=bots]');
+  await win.click('[data-reset=mbots]');
+  assert.equal(await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).mention.bots), null);
   await win.evaluate(() => window.openSettings('spam'));
-  await win.click('#spamTabs [data-t=lists]');
-  await win.click('#spamListPick [data-l=ignore]');
-  await win.click('[data-reset=ignore]');
-  assert.equal(await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).spam.ignore), null);
   await win.click('#spamTabs [data-t=history]');
   assert.equal(await win.textContent('#spamHist .sh-acts'), 'Not spam: ignore this account', 'off the list again');
   await win.click('#spamHistClear');

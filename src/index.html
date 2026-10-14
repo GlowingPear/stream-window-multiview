@@ -721,6 +721,9 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .ly-item em:empty{display:none}
 .ly-item small{font-size:11px;color:var(--muted)}
 .ly-panel .st-row{margin-top:8px}
+[data-own][hidden],[data-shared][hidden]{display:none}
+.st-head{display:flex;align-items:center;justify-content:space-between}
+.st-head .btn{height:24px;padding:0 9px;font-size:11.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--text)}
 .ly-detail{padding:16px;border:1px solid var(--line2);border-radius:10px;background:var(--panel2);min-height:260px}
 .ly-panel[hidden]{display:none}
 .ly-panel > .lm-pic{display:block;width:120px;height:75px;margin-bottom:12px}
@@ -1460,14 +1463,14 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <span class="mp-note" id="mentNote"></span>
         <div class="st-sec">Also alert me for</div>
         <p class="st-sub" style="margin:2px 0 0">Nicknames or other words that mean you. A message with one counts as a mention, with or without an @. Whole words only, any case: "pear" finds "hi Pear!" but not "pears". Your own messages never count.</p>
-        <div class="st-chips" id="mentWords"></div>
         <div class="st-add"><input class="st-in" id="mentWordIn" placeholder="Add a nickname, word or phrase" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="mentWordAdd">Add</button></div>
+        <div class="st-chips" id="mentWords"></div>
         </div>
         <div class="st-subpane" data-t="bots" hidden>
-        <p class="st-sub" style="margin:12px 0 0">Bots that repeat names back to chat ("thanks for the follow, @you"). Their messages never count as a mention, reply or word. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> still alerts.</p>
-        <div class="st-row"><span class="st-t">Same list as spam alerts<small>Off: mentions keep their own list.</small></span><input type="checkbox" class="st-sw" data-al="mention.sharedBots"></div>
+        <div class="st-sec st-head">Chat bots to ignore<button class="btn" data-reset="mbots">Reset</button></div>
+        <p class="st-sub" style="margin:2px 0 0">Bots that repeat names back to chat ("thanks for the follow, @you"). Their messages never count as a mention, reply or word. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> still alerts. Spam alerts use this list too, unless you give them their own.</p>
+        <div class="st-add"><input class="st-in" data-add="mbots" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="mbots">Add</button></div>
         <div class="st-chips" data-list="mbots"></div>
-        <div class="st-add"><input class="st-in" data-add="mbots" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="mbots">Add</button><button class="btn" data-reset="mbots">Reset</button></div>
         </div>
         <div class="st-subpane st-opts" data-t="alerts" data-for="mention" hidden>
         <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up.</small></span>
@@ -1523,19 +1526,20 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <div class="st-subpane" data-t="lists" hidden><div class="ly-md">
           <div class="ly-list" id="spamListPick"><button class="ly-item sel" data-l="allow"><span>Allowed sites</span><small data-lcount="allow"></small></button><button class="ly-item" data-l="words"><span>Promo words</span><small data-lcount="words"></small></button><button class="ly-item" data-l="openers"><span>Bot opening lines</span><small data-lcount="openers"></small></button><button class="ly-item" data-l="ignore"><span>Chat bots to ignore</span><small data-lcount="ignore"></small></button></div>
           <div class="ly-detail">
-            <div class="ly-panel" data-l="allow"><div class="ly-head"><b>Allowed sites</b></div><p class="ly-desc">Links to these never count, typed normally or with a space.</p>
-              <div class="st-chips" data-list="allow"></div>
-              <div class="st-add"><input class="st-in" data-add="allow" placeholder="Add a site, e.g. example.com" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="allow">Add</button><button class="btn" data-reset="allow">Reset</button></div></div>
-            <div class="ly-panel" data-l="words" hidden><div class="ly-head"><b>Promo words</b></div><p class="ly-desc">Words and phrases promo bots use. Each one found adds a point (up to 2).</p>
-              <div class="st-chips" data-list="words"></div>
-              <div class="st-add"><input class="st-in" data-add="words" placeholder="Add a word or phrase" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="words">Add</button><button class="btn" data-reset="words">Reset</button></div></div>
-            <div class="ly-panel" data-l="openers" hidden><div class="ly-head"><b>Bot opening lines</b></div><p class="ly-desc">Greetings promo bots start with. A message with one of these is flagged on its own, so you can deal with the bot before it posts its link. Case and punctuation don't matter.</p>
-              <div class="st-chips" data-list="openers"></div>
-              <div class="st-add"><input class="st-in" data-add="openers" placeholder="Add a line a bot opens with" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="openers">Add</button><button class="btn" data-reset="openers">Reset</button></div></div>
-            <div class="ly-panel" data-l="ignore" hidden><div class="ly-head"><b>Chat bots to ignore</b></div><p class="ly-desc">Messages from these accounts are never flagged as spam. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> is still checked.</p>
-              <div class="st-row"><span class="st-t">Same list for mentions<small>On: these bots never count as a mention either.</small></span><input type="checkbox" class="st-sw" data-al="mention.sharedBots"></div>
-              <div class="st-chips" data-list="ignore"></div>
-              <div class="st-add"><input class="st-in" data-add="ignore" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="ignore">Add</button><button class="btn" data-reset="ignore">Reset</button></div></div>
+            <div class="ly-panel" data-l="allow"><div class="ly-head"><b>Allowed sites</b><button class="btn" data-reset="allow">Reset</button></div><p class="ly-desc">Links to these never count, typed normally or with a space.</p>
+              <div class="st-add"><input class="st-in" data-add="allow" placeholder="Add a site, e.g. example.com" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="allow">Add</button></div>
+              <div class="st-chips" data-list="allow"></div></div>
+            <div class="ly-panel" data-l="words" hidden><div class="ly-head"><b>Promo words</b><button class="btn" data-reset="words">Reset</button></div><p class="ly-desc">Words and phrases promo bots use. Each one found adds a point (up to 2).</p>
+              <div class="st-add"><input class="st-in" data-add="words" placeholder="Add a word or phrase" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="words">Add</button></div>
+              <div class="st-chips" data-list="words"></div></div>
+            <div class="ly-panel" data-l="openers" hidden><div class="ly-head"><b>Bot opening lines</b><button class="btn" data-reset="openers">Reset</button></div><p class="ly-desc">Greetings promo bots start with. A message with one of these is flagged on its own, so you can deal with the bot before it posts its link. Case and punctuation don't matter.</p>
+              <div class="st-add"><input class="st-in" data-add="openers" placeholder="Add a line a bot opens with" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="openers">Add</button></div>
+              <div class="st-chips" data-list="openers"></div></div>
+            <div class="ly-panel" data-l="ignore" hidden><div class="ly-head"><b>Chat bots to ignore</b><button class="btn" data-reset="ignore" data-own>Reset</button></div><p class="ly-desc">Messages from these accounts are never flagged as spam. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> is still checked.</p>
+              <div class="st-row"><span class="st-t">Same list as mentions<small>On: the chat bots from Mentions, so one list does both.</small></span><input type="checkbox" class="st-sw" data-al="spam.sharedBots"></div>
+              <p class="ly-desc" data-shared>Shared with mentions, so it's changed there: <button class="linkish" data-go="mentions" data-sub="bots">Mentions › Chat bots</button></p>
+              <div class="st-add" data-own><input class="st-in" data-add="ignore" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="ignore">Add</button></div>
+              <div class="st-chips" data-list="ignore"></div></div>
           </div>
         </div></div>
         <div class="st-subpane" data-t="try" hidden>
@@ -3294,12 +3298,16 @@ function injectMention(w){
 /* ---------- alerts: how a chat window gets your attention (Settings > Mentions, Spam alerts) ---------- */
 const ALERT_DEFAULTS = {
   mention: { hl: 'until', color: '#e8b84a', esc: 20, max: 'pulse', sound: 'chime', vol: 0.5, repeat: false, notify: 'unfocused',
-             sharedBots: true, bots: null, botsOffered: null },   // sharedBots: the spam alerts' chat bot list; bots: their own (null: built-in)
+             bots: null, botsOffered: null },   // bots: the chat bot list (null: built-in), spam alerts' too while they share it
   spam: { on: false, hl: 'until', color: '#ff5f5f', esc: 0, max: 'pulse', tag: true, sound: 'knock', vol: 0.4, repeat: false, notify: 'never',
-          sens: 'balanced', allow: null, words: null, openers: null, ignore: null, botsOffered: null }   // null: the built-in lists
+          sens: 'balanced', allow: null, words: null, openers: null, ignore: null, botsOffered: null,   // null: the built-in lists
+          sharedBots: true }   // the chat bot list from Mentions instead of ignore
 };
 var alerts = (() => {
   let a = {}; try { a = JSON.parse(localStorage.getItem('kickMultiview.alerts') || '{}') || {}; } catch {}
+  // From before mentions had a chat bot list: the one you made for spam alerts becomes the shared one.
+  const m = a.mention = a.mention || {}, s = a.spam || {};
+  if (!('bots' in m) && Array.isArray(s.ignore)){ m.bots = s.ignore.slice(); m.botsOffered = s.botsOffered || null; }
   return { mention: { ...ALERT_DEFAULTS.mention, ...(a.mention || {}) }, spam: { ...ALERT_DEFAULTS.spam, ...(a.spam || {}) } };
 })();
 const saveAlerts = () => { try { localStorage.setItem('kickMultiview.alerts', JSON.stringify(alerts)); } catch {} };
@@ -3418,8 +3426,9 @@ async function modChat(w){
   if (!modOk.has(w.channel)) modOk.set(w.channel, window.kmv.modCheck(w.channel).catch(() => null));
   return (await modOk.get(w.channel)) === true;
 }
-// The chat bots never flagged as spam ('spam') or counted as a mention ('mention'): one list unless you split them.
-const botsFor = kind => kind === 'mention' && !alerts.mention.sharedBots ? alerts.mention.bots || SmvSpam.BOTS : alerts.spam.ignore || SmvSpam.BOTS;
+// The chat bots never counted as a mention ('mention') or flagged as spam ('spam'): the list in Mentions, unless
+// spam alerts have their own.
+const botsFor = kind => kind === 'spam' && !alerts.spam.sharedBots ? alerts.spam.ignore || SmvSpam.BOTS : alerts.mention.bots || SmvSpam.BOTS;
 const spamOpts = () => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS, ignore: botsFor('spam') });
 // seenAt: when you last clicked or typed in that chat; messages from before then don't need a lasting alert.
 async function spamCheck(w, lines, seenAt){
@@ -6731,7 +6740,12 @@ settingsDlg.querySelector('.help-x').onclick = closeSettings;
 settingsDlg.addEventListener('pointerdown', e => { if (e.target === settingsDlg) closeSettings(); });
 settingsDlg.querySelector('.st-rail').addEventListener('click', e => { const b = e.target.closest('button[data-s]'); if (b) openSettings(b.dataset.s); });
 settingsDlg.addEventListener('click', e => {
-  const go = e.target.closest('[data-go]'); if (go){ e.preventDefault(); openSettings(go.dataset.go); return; }
+  const go = e.target.closest('[data-go]');
+  if (go){
+    e.preventDefault(); openSettings(go.dataset.go);
+    if (go.dataset.sub) settingsDlg.querySelector(`.st-pane[data-s="${go.dataset.go}"] .st-tabs button[data-t="${go.dataset.sub}"]`)?.click();   // and its sub-tab
+    return;
+  }
   const h = e.target.closest('[data-help]'); if (h){ e.preventDefault(); showHelp(h.dataset.help); }
 });
 $('#settingsBtn').innerHTML = icon.gear;
@@ -6799,7 +6813,7 @@ settingsDlg.addEventListener('change', async e => {
   let v = c.type === 'checkbox' ? c.checked : c.type === 'range' || k === 'esc' ? +c.value : c.value;
   if (k === 'sound' && v === 'custom' && !await pickSound(kind)) v = alerts[kind].sound === 'custom' ? 'custom' : alerts[kind].sound;
   alerts[kind][k] = v; saveAlerts(); syncAlertControls();
-  if (k === 'sharedBots'){ renderSpamLists(); flash(v ? 'Mentions and spam alerts share one chat bot list' : 'Mentions have their own chat bot list'); }
+  if (k === 'sharedBots'){ renderSpamLists(); renderSpamHist(); flash(v ? 'Spam alerts use the chat bot list from Mentions' : 'Spam alerts have their own chat bot list'); }
   if (k === 'sound' || k === 'vol') playSound(kind);
   if (k === 'color') wins.forEach(w => { if (w.alert && w.alert.kind === kind) w.el.style.setProperty('--al', v); });
 });
@@ -6827,21 +6841,25 @@ $('#spamTabs').addEventListener('click', e => {
   if (b.dataset.t === 'history') renderSpamHist();   // fresh "x min ago"
 });
 
-/* Spam alerts: allowed sites, promo words, bot opening lines and chat bots to ignore. Mentions: their own chat bots
-   ('mbots', in Settings > Mentions), which are the spam alerts' list while the two are shared. */
+/* Spam alerts: allowed sites, promo words, bot opening lines and chat bots to ignore. Mentions: chat bots to ignore
+   ('mbots'), which spam alerts show (read-only) and use instead of their own while they share it. */
 const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS, openers: () => SmvSpam.OPENERS, ignore: () => SmvSpam.BOTS, mbots: () => SmvSpam.BOTS };
-const listKey = which => which === 'mbots' && alerts.mention.sharedBots ? 'ignore' : which;
+const listKey = which => which === 'ignore' && alerts.spam.sharedBots ? 'mbots' : which;
 const listStore = which => which === 'mbots' ? [alerts.mention, 'bots'] : [alerts.spam, which];
 const listOf = which => { const [a, k] = listStore(listKey(which)); return (a[k] || SPAM_LIST[which]()).slice(); };
 function renderSpamLists(){
+  const shared = !!alerts.spam.sharedBots;
+  settingsDlg.querySelectorAll('[data-s=spam] .ly-panel[data-l=ignore] [data-own]').forEach(el => { el.hidden = shared; });
+  settingsDlg.querySelectorAll('[data-s=spam] .ly-panel[data-l=ignore] [data-shared]').forEach(el => { el.hidden = !shared; });
   Object.keys(SPAM_LIST).forEach(which => {
+    const ro = which === 'ignore' && shared;   // changed in Mentions
     const box = settingsDlg.querySelector(`[data-list="${which}"]`); box.innerHTML = '';
     const n = settingsDlg.querySelector(`[data-lcount="${which}"]`); if (n) n.textContent = listOf(which).length;
     listOf(which).forEach(item => {
       const c = document.createElement('span'); c.className = 'st-chip';
-      c.innerHTML = `<span></span><button title="Remove">${icon.close}</button>`;
+      c.innerHTML = ro ? '<span></span>' : `<span></span><button title="Remove">${icon.close}</button>`;
       c.firstChild.textContent = item;
-      c.querySelector('button').onclick = () => setSpamList(which, listOf(which).filter(x => x !== item));
+      if (!ro) c.querySelector('button').onclick = () => setSpamList(which, listOf(which).filter(x => x !== item));
       box.appendChild(c);
     });
   });
@@ -6855,7 +6873,7 @@ function setSpamList(which, list){
 function ignoreSender(name){
   const l = listOf('ignore'), v = String(name).trim().toLowerCase();
   if (!l.includes(v)) setSpamList('ignore', [...l, v]);
-  flash(`${name} added to the chat bot list: never flagged as spam${alerts.mention.sharedBots ? ' or counted as a mention' : ''}`);
+  flash(`${name} added to the chat bot list: never flagged as spam${alerts.spam.sharedBots ? ' or counted as a mention' : ''}`);
 }
 function addSpamItem(which){
   const inp = settingsDlg.querySelector(`[data-add="${which}"]`);
