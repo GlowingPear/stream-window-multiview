@@ -783,6 +783,9 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .ex-cfoot{display:flex;gap:6px;margin-top:10px;align-items:center}
 .ex-cfoot .btn{height:24px;padding:0 8px;font-size:11px;font-weight:600}
 .ex-cfoot .ex-rm{margin-left:auto}
+.ex-cfoot .ex-reload{display:inline-flex;align-items:center;gap:4px}
+.ex-cfoot .ex-reload svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.ex-cfoot .ex-reload.spin svg{animation:spin .7s linear infinite}
 .ex-cfoot .ex-rm:hover{border-color:var(--danger);color:var(--danger)}
 .ex-card .ex-perms{margin-top:8px;color:var(--muted)}
 .ex-card .ex-perms[hidden]{display:none}
@@ -7571,10 +7574,11 @@ function extCard(x){
   el.className = 'ex-card'; el.dataset.id = x.id;
   el.innerHTML = `<div class="ex-top"><img class="ex-ico" alt=""><div class="ex-t"><b></b><small></small></div><input type="checkbox" class="st-sw ex-on" aria-label="On"></div>
     <div class="ex-warn" hidden></div><div class="ex-grid"></div><p class="ex-note" hidden></p>
-    <div class="ex-cfoot"><button class="btn ex-pm">Permissions</button><button class="btn ex-rm">Remove</button></div><ul class="ex-perms" hidden></ul>`;
+    <div class="ex-cfoot"><button class="btn ex-pm">Permissions</button>${x.source === 'folder'
+      ? `<button class="btn ex-reload" title="Read its folder again, after changing its files">${icon.reload}<span>Reload</span></button>` : ''}<button class="btn ex-rm">Remove</button></div><ul class="ex-perms" hidden></ul>`;
   el.querySelector('.ex-t b').textContent = x.name;
   el.querySelector('.ex-t small').textContent = [x.version && 'v' + x.version, x.source === 'folder' ? 'Loaded from a folder' : 'Chrome Web Store',
-    x.missing && 'Its files are missing: remove it and install it again'].filter(Boolean).join(' · ');
+    x.missing && (x.source === 'folder' ? 'It couldn\'t be loaded from its folder: fix it and click Reload' : 'Its files are missing: remove it and install it again')].filter(Boolean).join(' · ');
   el.querySelector('.ex-on').checked = x.enabled;
   extFill(el, x);
   el.querySelector('.ex-grid').classList.toggle('st-dim', !x.enabled);
@@ -7612,6 +7616,15 @@ extPane.addEventListener('click', async e => {
   }
   else if (b.classList.contains('ex-folder')) extInstall(() => window.kmv.extLoadFolder(), '');
   else if (b.classList.contains('ex-pm')){ const ul = card.querySelector('.ex-perms'); ul.hidden = !ul.hidden; }
+  else if (b.classList.contains('ex-reload')){
+    b.disabled = true; b.classList.add('spin'); b.querySelector('span').textContent = 'Reloading…';
+    extMsg('', false);
+    let r = {};
+    try { r = await window.kmv.extReload(id); } catch (err) { r = { error: 'That didn\'t work: ' + err.message }; }
+    if (r.error) extMsg(r.error, false);
+    else if (r.id) extMsg(`Reloaded ${r.name}${r.version ? ' v' + r.version : ''}.`, true);
+    renderExtPane();
+  }
   else if (b.classList.contains('ex-rm')){
     const name = card.querySelector('.ex-t b').textContent;
     if (!(await ask(`Remove ${name}?`, 'It goes from every window, with its settings.', { ok: 'Remove', danger: true }))) return;
@@ -7637,8 +7650,10 @@ let extDlgReq = null;
 function showExtDlg(info){
   if (extDlgReq) extDlgDone(false);
   extDlgReq = info;
-  extDlg.querySelector('h3').textContent = `Add ${info.name}?`;
-  extDlg.querySelector('.ex-src').textContent = (info.source === 'folder' ? 'From a folder' : 'From the Chrome Web Store') + (info.version ? ' · ' + info.version : '');
+  extDlg.querySelector('h3').textContent = `${info.reload ? 'Reload' : 'Add'} ${info.name}?`;
+  extDlg.querySelector('.ex-src').textContent = (info.source === 'folder' ? 'From a folder' : 'From the Chrome Web Store') + (info.version ? ' · ' + info.version : '')
+    + (info.reload ? ' · It now asks for more than before' : '');
+  extDlg.querySelector('.ex-yes').textContent = info.reload ? 'Reload' : 'Add extension';
   extFill(extDlg, info);
   extDlg.hidden = false;
   extDlg.querySelector('.ex-yes').focus();
