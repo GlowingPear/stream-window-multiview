@@ -1,9 +1,10 @@
 // Stream Multiview — desktop app (Electron main process)
-const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage, powerMonitor } = require('electron');
+const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage, powerMonitor, clipboard } = require('electron');
 const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
   validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink,
   parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, normCh, toTime, withTimeout, keepLatest } = require('./live');
 const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel } = require('./profiles');
+const { menuFor } = require('./context-menu');
 const { createProfileQueue } = require('./profile-queue');
 const path = require('path');
 const fs = require('fs');
@@ -241,7 +242,46 @@ function createMain() {
 }
 
 /* ---------- link / popup handling for every web view ---------- */
+/* ---------- right-click menu in chat and stream windows (src/context-menu.js) ---------- */
+const savingAs = new Map(), hookedSessions = new WeakSet();   // "Save image as…": the picture's address -> the name to suggest
+const IMAGE_EXT = { 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp', 'image/avif': '.avif', 'image/jpeg': '.jpg', 'image/svg+xml': '.svg' };
+function hookSaveAs(ses) {
+  if (hookedSessions.has(ses)) return;
+  hookedSessions.add(ses);
+  ses.on('will-download', (_e, item) => {
+    if (!savingAs.has(item.getURL())) return;                  // a download of the page's own: as usual
+    const name = savingAs.get(item.getURL()); savingAs.delete(item.getURL());
+    const ext = IMAGE_EXT[String(item.getMimeType() || '').toLowerCase()] || path.extname(item.getFilename()) || '';
+    const base = String(name || path.parse(item.getFilename()).name || 'image').replace(/[^\w.\-]+/g, '_').replace(/^[._]+/, '').slice(0, 60) || 'image';
+    item.setSaveDialogOptions({ title: 'Save image', defaultPath: path.join(app.getPath('downloads'), base + ext) });
+  });
+}
+function runMenuAct(wc, a) {
+  if (!a || wc.isDestroyed()) return;
+  switch (a.do) {
+    case 'external': if (/^https?:\/\//i.test(a.url)) shell.openExternal(a.url); break;
+    case 'copyText': clipboard.writeText(String(a.text || '')); break;
+    case 'openImage': openSiteWindow(a.url, 520, 520); break;
+    case 'saveImage': if (/^https?:\/\//i.test(a.url)) { hookSaveAs(wc.session); savingAs.set(a.url, a.name); wc.downloadURL(a.url); } break;
+    case 'copyImage': wc.copyImageAt(a.x, a.y); break;
+    case 'replaceMisspelling': wc.replaceMisspelling(a.word); break;
+    case 'addWord': wc.session.addWordToSpellCheckerDictionary(a.word); break;
+    case 'inspect': wc.inspectElement(a.x, a.y); break;
+    case 'undo': case 'redo': case 'cut': case 'copy': case 'paste': case 'selectAll': case 'reload': wc[a.do](); break;
+  }
+}
+function showViewMenu(wc, params) {
+  const langs = (app.getPreferredSystemLanguages && app.getPreferredSystemLanguages()) || [app.getLocale()];
+  const items = menuFor(params, { langs, dev: !!DEV });
+  if (!items.length) return;
+  const tmpl = items.map(x => x.type ? x : { label: x.label, enabled: x.enabled !== false, click: () => runMenuAct(wc, x.act) });
+  const host = wc.hostWebContents && BrowserWindow.fromWebContents(wc.hostWebContents);
+  Menu.buildFromTemplate(tmpl).popup(host ? { window: host } : {});
+}
+
 app.on('web-contents-created', (_e, wc) => {
+  // the streams' and chats' own pages (not the app's page, which has its own right-click)
+  if (wc.getType() === 'webview') wc.on('context-menu', (_ev, params) => showViewMenu(wc, params));
   try { wc.setUserAgent(chromeUA()); } catch {}
   // Web views start with their sound off; the page turns it on once it's ready (a stream: once its volume is set).
   if (wc.getType() === 'webview') try { wc.setAudioMuted(true); } catch {}   // every view (incl. each stream's private storage) looks like normal Chrome
