@@ -37,6 +37,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - **Import follows** from Kick, Twitch and YouTube (and unfollow Kick channels right from that list)
 - **Streamer profiles**: search your saved streamers and open a profile for each one: what the site says (picture, about, followers, links, the live stream), plus a live history, a "when they usually stream" chart, usual start time, average length and viewers that the app records from its live checks, with Kick and Twitch past broadcasts filling the gaps. Notes, tags, nicknames, favourites, and **Unfollow on Kick**
 - **Emote preview**: point at an emote in chat to see it bigger with its name, then copy the name or download it
+- **Right-click menu** in chats and streams: copy, paste, open or copy links, translate selected text to your language, open or save emotes and images
 - **Follows raids**: when a Kick or Twitch channel raids another, its stream and chat switch to the raided channel in the same spot
 - Alerts when someone @mentions you, replies to you, or writes one of your own words (nicknames) in Kick or Twitch chat, with a searchable history of the last 500: that chat window lights up (and can get stronger until you look), with a sound and desktop notification of your choice
 - **Spam alerts for moderators** (off by default): in chats you moderate, promo-bot messages are tagged "likely spam" and the chat window lights up. Nothing is hidden or removed.

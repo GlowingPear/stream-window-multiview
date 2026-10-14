@@ -146,6 +146,13 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - Move onto the card to use **Copy name** or **Download** (saves the picture where you choose, named after the emote).
 - Turn it off in Settings > General > **Emote preview in chats**.
 
+## Right-click in a chat or stream
+- **Selected text:** Copy, **Translate to <your language>** (opens Google Translate in your browser with the text) and Search Google.
+- **A link:** open it in your browser, or copy its address.
+- **An image or emote:** open it in a new window, **Save image as…** (named after the emote), copy it, or copy its address.
+- **The chat box:** Undo, Redo, Cut, Copy, Paste, Select all, and spelling suggestions for a misspelled word.
+- **Anywhere else:** Reload.
+
 ## Spam alerts (for moderators)
 - Settings > Spam alerts. Off until you turn it on.
 - It only checks Kick and Twitch chats where you're a moderator (the ones with the mod view button). When it spots a promo-bot message, it tags it "LIKELY SPAM" in the chat and lights up that chat window, so you can deal with it. It never hides, deletes or reports anything.
