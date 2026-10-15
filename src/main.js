@@ -99,9 +99,10 @@ ipcMain.on('win:lights', (e, on) => {
   if (on) win.setWindowButtonPosition(LIGHTS_AT);   // macOS puts them back in the corner otherwise
 });
 // Hide bar on macOS: the window's top edge is its resize edge, and in fullscreen the menu bar's, so the page never
-// hears the mouse arrive there. While the bar is hidden, the mouse is watched from here and the page told when it's up there.
+// hears the mouse arrive there. While the bar is hidden, the mouse is watched from here and the page told when it's up
+// there. With the toolbar on the left it's the left edge (also a resize edge).
 const topWatch = new Map();   // window id -> timer
-ipcMain.on('win:watchTop', (e, on) => {
+ipcMain.on('win:watchTop', (e, on, edge) => {
   const win = BrowserWindow.fromWebContents(e.sender);
   if (!win) return;
   clearInterval(topWatch.get(win.id));
@@ -112,7 +113,8 @@ ipcMain.on('win:watchTop', (e, on) => {
     if (win.isDestroyed()) { clearInterval(topWatch.get(id)); topWatch.delete(id); return; }
     if (!win.isVisible() || win.isMinimized()) return;
     const p = screen.getCursorScreenPoint(), b = win.getBounds();
-    if (p.x >= b.x && p.x < b.x + b.width && p.y >= b.y && p.y < b.y + 12) win.webContents.send('win:top');
+    const inside = p.x >= b.x && p.x < b.x + b.width && p.y >= b.y && p.y < b.y + b.height;
+    if (inside && (edge === 'left' ? p.x < b.x + 12 : p.y < b.y + 12)) win.webContents.send('win:top');
   }, 100));
 });
 
@@ -805,6 +807,13 @@ ipcMain.handle('profile:list', (_e, chs) => {
     out[ch] = { info: h.info(k), meta: h.getMeta(k), last: s.recap ? s.recap.end : null, streams30: s.stats ? s.stats.streams30 : 0, tracked: s.tracked };
   });
   return out;
+});
+// Opening a channel from the Channels box: does it exist on that site? 'yes', 'missing' (the site says there's no
+// such channel) or 'unknown' (the site couldn't be asked: offline, rate-limited, slow), which doesn't stop it opening.
+ipcMain.handle('channel:exists', async (_e, ch) => {
+  if (!okCh(ch)) return 'unknown';
+  const p = await Promise.race([siteProfile(normCh(ch)).catch(() => null), sleep(8000).then(() => null)]);
+  return !p ? 'unknown' : p.missing ? 'missing' : 'yes';
 });
 // Looking up a name that isn't saved: the same name on Kick, Twitch and YouTube.
 ipcMain.handle('profile:lookup', async (_e, q) => {
