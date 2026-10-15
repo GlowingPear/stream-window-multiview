@@ -2629,20 +2629,51 @@ const PLAT_NAME = { kick: 'Kick', twitch: 'Twitch', youtube: 'YouTube' };
 // Small platform badge (K / T / Y in each platform's colour) shown next to channel names.
 const platIcon = p => `<i class="pi pi-${p}" title="${PLAT_NAME[p]}" aria-label="${PLAT_NAME[p]}">${({ kick: 'K', twitch: 'T', youtube: 'Y' })[p] || '?'}</i>`;
 const platOf = ch => !ch ? '' : /^tw:/i.test(ch) ? 'twitch' : /^yt:/i.test(ch) ? 'youtube' : 'kick';
-const ytNames = {};                                     // names learned from YouTube pages (for ids that aren't handles)
-try { Object.assign(ytNames, JSON.parse(localStorage.getItem('kickMultiview.ytNames') || '{}')); } catch {}
-function rememberYtName(ch, name){
-  if (!name || ytNames[ch] === name) return;
-  ytNames[ch] = name;
-  try { localStorage.setItem('kickMultiview.ytNames', JSON.stringify(ytNames)); } catch {}
-  wins.forEach(w => { if (w.channel === ch){ w.el.querySelector('.title').textContent = chLabel(ch); } });
-  schedulePicks();
+// Display names learned from the sites (live checks, follows imports, profiles, YouTube pages), so channels show as
+// "PixelBandit" rather than their id "pixelbandit". Kick and Twitch: only the same handle in other capitals (Twitch
+// names in another script would hide which channel it is). YouTube: the name of a channel or video id ("@handles" stay).
+const NAMES = 'kickMultiview.chNames';
+const chNames = {};
+try { Object.assign(chNames, JSON.parse(localStorage.getItem('kickMultiview.ytNames') || '{}'), JSON.parse(localStorage.getItem(NAMES) || '{}')); } catch {}
+const handleKey = s => String(s).toLowerCase().replace(/[-_]/g, '');   // Kick turns "Retro_Rally" into retro-rally
+function nameFits(ch, name){
+  if (name === ch) return false;
+  if (platOf(ch) === 'youtube') return /^yt:(v|c):/.test(ch);
+  const id = platOf(ch) === 'twitch' ? ch.slice(3) : ch;
+  return name !== id && handleKey(name) === handleKey(id);
 }
+// names: { channel: name }. Saves and redraws only when something changed.
+function rememberNames(names){
+  const changed = [];
+  for (const [ch, n] of Object.entries(names || {})){
+    const name = typeof n === 'string' ? n.trim().slice(0, 100) : '';
+    if (!ch || !name || chNames[ch] === name || !nameFits(ch, name)) continue;
+    chNames[ch] = name; changed.push(ch);
+  }
+  if (!changed.length) return;
+  try { localStorage.setItem(NAMES, JSON.stringify(chNames)); } catch {}
+  namesChanged(changed);
+}
+const rememberName = (ch, name) => rememberNames({ [ch]: name });
+function namesChanged(chs){
+  wins.forEach(w => { if (chs.includes(w.channel)) w.el.querySelector('.title').textContent = chLabel(w.channel); });
+  schedulePicks();
+  renderSaved();
+}
+window.addEventListener('storage', e => {          // learned in the other window
+  if (e.key !== NAMES) return;
+  let got = {}; try { got = JSON.parse(e.newValue || '{}') || {}; } catch {}
+  const changed = Object.keys(got).filter(ch => typeof got[ch] === 'string' && chNames[ch] !== got[ch]);
+  changed.forEach(ch => { chNames[ch] = got[ch]; });
+  if (changed.length) namesChanged(changed);
+});
+const infoNames = snap => Object.fromEntries(Object.entries(snap || {}).filter(([, i]) => i && !i.missing).map(([ch, i]) => [ch, i.name]));
 function chLabel(ch){
   if (!ch) return '';
+  if (chNames[ch]) return chNames[ch];
   const p = platOf(ch);
   if (p === 'twitch') return ch.slice(3);
-  if (p === 'youtube'){ const r = ch.slice(3); return /^(v|c):/.test(r) ? (ytNames[ch] || (r[0] === 'v' ? 'YouTube video' : 'YouTube channel')) : r; }
+  if (p === 'youtube'){ const r = ch.slice(3); return /^(v|c):/.test(r) ? (r[0] === 'v' ? 'YouTube video' : 'YouTube channel') : r; }
   return ch;
 }
 const chLabelP = ch => chLabel(ch) + (platOf(ch) === 'kick' ? '' : ' · ' + PLAT_NAME[platOf(ch)]);
@@ -3446,7 +3477,7 @@ async function resolveYt(w){
   }
   w.ytBusy = false;
   if (!wins.includes(w)) return;
-  if (r && r.name) rememberYtName(w.channel, r.name);
+  if (r && r.name) rememberName(w.channel, r.name);
   if (r && r.live && r.videoId){ w.ytVid = r.videoId; mountView(w); return; }
   setWait(w, !r ? 'Couldn’t reach YouTube. Trying again in 2 minutes.'
               : r.missing ? `Couldn’t find ${chLabel(w.channel)} on YouTube.`
@@ -3589,7 +3620,8 @@ const SAVED = 'kickMultiview.saved';
 const abc = list => [...new Set(list)].sort((x, y) => x.localeCompare(y, undefined, { sensitivity: 'base', numeric: true }));
 let saved = [];
 try { saved = abc(JSON.parse(localStorage.getItem(SAVED) || '[]')); } catch {}
-let liveInfo = {};                                  // channel -> { live, title, viewers, category, checked }
+let liveInfo = {};                                  // channel -> { live, title, viewers, category, name, checked }
+function gotLive(snap){ liveInfo = snap || {}; rememberNames(infoNames(liveInfo)); renderSaved(); checkAutoOpen(); }
 let notifyAll = true, notifyOff = [];
 try { notifyAll = localStorage.getItem('kickMultiview.notifyAll') !== '0'; notifyOff = JSON.parse(localStorage.getItem('kickMultiview.notifyOff') || '[]'); } catch {}
 function sendWatch(){
@@ -4598,7 +4630,7 @@ function addParsed(p){
 async function addChatIfLive(ch, r){
   if (!DESKTOP || !window.kmv.ytResolve) return;
   let info = null; try { info = await window.kmv.ytResolve(ch); } catch {}
-  if (info && info.name) rememberYtName(ch, info.name);
+  if (info && info.name) rememberName(ch, info.name);
   if (!info || !info.live || wins.some(o => o.kind === 'chat' && o.channel === ch) || !wins.some(o => o.channel === ch)) return;
   createWin({ kind: 'chat', channel: ch }, chatRectBeside(r));
   if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout();
@@ -6729,10 +6761,10 @@ if (DESKTOP && ROLE === 'main' && window.kmv.watchLive){
     alerts.live.notify = !na.checked ? 'never' : alerts.live.notify === 'never' ? 'always' : alerts.live.notify;
     saveAlerts(); syncLiveAlerts(); syncAlertControls();
   });
-  window.kmv.onLiveStatus(snap => { liveInfo = snap || {}; renderSaved(); checkAutoOpen(); });
+  window.kmv.onLiveStatus(gotLive);
   window.kmv.onWentLive((ch, info) => liveNote(ch, info, false));
   window.kmv.onOpenChannel(ch => addParsed({ channel: ch, only: null }));
-  window.kmv.liveSnapshot().then(snap => { liveInfo = snap || {}; renderSaved(); checkAutoOpen(); }).catch(() => {});
+  window.kmv.liveSnapshot().then(gotLive).catch(() => {});
   $('#openLive').onclick = () => {
     liveNow().forEach(ch => { if (!wins.some(w => w.kind === 'stream' && w.channel === ch)) addParsed({ channel: ch, only: null }); });
     if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(); else autoLayout();
@@ -7185,7 +7217,7 @@ if (DESKTOP){
     }
     impItems = (r.items || []).map(x => ({ ch: x.ch, name: x.name || x.ch, pick: true }))
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-    impItems.forEach(x => { if (platOf(x.ch) === 'youtube' && x.name && x.name !== x.ch) rememberYtName(x.ch, x.name); });
+    rememberNames(Object.fromEntries(impItems.map(x => [x.ch, x.name])));
     const fresh = impItems.filter(x => !saved.includes(x.ch)).length;
     dlg.querySelector('.dlg-sub').textContent = !impItems.length ? `No followed ${PLAT_NAME[p]} channels found.`
       : `Found ${impItems.length} channel${impItems.length === 1 ? '' : 's'} you follow` + (fresh < impItems.length ? ` (${impItems.length - fresh} already saved)` : '') + '. Untick any you don\'t want.';
@@ -8054,7 +8086,7 @@ function openSettings(tab){
 window.openSettings = openSettings;   // for the tests
 window.smvNotes = {   // for the tests
   get notes(){ return notes; }, get alerts(){ return alerts; }, get bellCount(){ return bellCount; }, get dndUntil(){ return dndUntil; },
-  liveNote, flash, removeChannel, playSound, dndOn, endDnd(){ dndUntil = Date.now() - 1; syncDnd(); }, setInfo(ch, i){ liveInfo[ch] = i; }
+  liveNote, flash, removeChannel, playSound, dndOn, endDnd(){ dndUntil = Date.now() - 1; syncDnd(); }, setInfo(ch, i){ liveInfo[ch] = i; }, liveStatus: gotLive
 };
 window.raiseAlert = (ch, kind) => raiseAlert(wins.find(w => w.kind === 'chat' && w.channel === ch), kind);   // for the tests
 const closeSettings = () => { settingsDlg.hidden = true; };
@@ -8375,6 +8407,7 @@ function openProfiles(){
 }
 async function pfLoadList(){
   pf.list = await window.kmv.profileList(saved).catch(() => ({})) || {};
+  rememberNames(Object.fromEntries(Object.entries(pf.list).map(([ch, x]) => [ch, x && x.info && x.info.name])));
   pfRenderDir();
 }
 function pfShow(view){
@@ -8492,6 +8525,7 @@ async function openProfile(ch){
   const full = await window.kmv.profileGet(ch).catch(() => null);
   if (req !== pf.req) return;
   pf.data = full ? { ...full, meta: pf.data.meta || full.meta } : { ...pf.data, loading: false, failed: true };
+  if (full && full.site) rememberName(ch, full.site.name);
   pfRenderProf();
 }
 const pfE = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };

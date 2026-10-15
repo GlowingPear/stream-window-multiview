@@ -120,6 +120,7 @@ test('a profile: what Kick says, the live stream, numbers from the history, and 
   const rows = await w.$$eval('.pf-hist tbody tr', e => e.map(r => r.textContent));
   assert.ok(rows.length >= 10);
   assert.ok(rows.some(r => /VOD/.test(r)) && rows.some(r => !/VOD/.test(r)), 'past broadcasts are marked');
+  assert.equal(await w.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.chNames') || '{}').alpha), 'Alpha', 'Kick\'s name for the channel is used in the rest of the app');
 });
 
 test('notes, tags and nickname are saved to the computer', T, async () => {

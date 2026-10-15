@@ -127,6 +127,9 @@ test('the results: sorted by name, already-saved ones marked, everything new tic
   assert.equal(await text('#importDlg .dlg-ok'), 'Add 8 to Saved');
   assert.ok(await shown('#importDlg .dlg-tools'), 'a filter for 8 or more');
   assert.equal(await text('#importDlg .dlg-note'), '', 'no long-list tip for 8 channels');
+  const names = await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.chNames') || '{}'));
+  assert.equal(names.alpha, 'Alpha', 'the display names are remembered for the rest of the app');
+  assert.equal(names.streamer5, undefined, 'a name that isn\'t the channel\'s handle is not');
 });
 
 test('picking: untick one, None, All', T, async () => {
