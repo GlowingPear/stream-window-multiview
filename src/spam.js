@@ -1,7 +1,7 @@
 // Spam alerts: scores a chat message for the signs promo bots leave. Used by the app page (as
 // window.SmvSpam) and by the tests (require). One sign alone never flags a message: normal links,
 // clip links and someone saying "check kick com/..." stay unflagged. The exceptions are a word flood
-// and a known bot opening line.
+// and a known bot opening line. Asking to be added on Discord (or Telegram, ...) counts like a link.
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.SmvSpam = factory();
@@ -10,7 +10,14 @@
     'instagram.com', 'tiktok.com', 'reddit.com', 'imgur.com', 'streamable.com', 'medal.tv', 'github.com', 'spotify.com'];
   const WORDS = ['upgrade', 'viewers', 'followers', 'boost', 'promo', 'promote', 'zero cost', 'cheap', 'free followers', 'grow your'];
   // Greetings promo bots open with, a few lines before the link. Matched whole, ignoring case and punctuation.
-  const OPENERS = ['Hey stranger, still running the show?'];
+  const OPENERS = ['Hey stranger, still running the show?', 'Your stream’s got something special, friend'];
+  // Apps a bot asks to be added on ("add me up on discord bram209"), to take the scam out of the chat.
+  const APPS = 'discord|telegram|tele|whatsapp|snapchat|snap|signal|skype|instagram|insta|ig';
+  // Words after the app that aren't a name ("add me on discord later").
+  const NOT_HANDLES = new Set(['and', 'or', 'but', 'so', 'if', 'too', 'pls', 'plz', 'please', 'bro', 'man', 'later', 'sometime', 'now',
+    'rn', 'tonight', 'tomorrow', 'today', 'then', 'lol', 'lmao', 'haha', 'thanks', 'thx', 'ty', 'when', 'after', 'maybe', 'instead',
+    'server', 'as', 'well', 'again', 'yeah', 'yes', 'no', 'it', 'is', 'my', 'me', 'the', 'a', 'an', 'to', 'with', 'for', 'name',
+    'id', 'username', 'user', 'handle', 'at', 'on']);
   // Endings a bot uses for its site. Kept short so "the com" in normal chat rarely looks like a domain.
   const TLDS = 'com|net|org|io|xyz|gg|tv|me|co|shop|site|online|store|live|app|pro|top|club|info|biz|ru|cc|link|ly|fun|space|vip';
   // Endings that count with just a space before them ("botkiva com"). The rest are everyday words or chat
@@ -45,6 +52,20 @@
       if (!NOT_NAMES.has(name.toLowerCase())) hidden.push(`${name}.${end}`.toLowerCase());
     }
     return { plain, hidden };
+  }
+
+  // The app and name in "add me (up) on discord bram209", "dm me on telegram: x_y", "my discord is bram209"
+  // ("discord bram209"), or null. A name is needed: "add me on discord later" asks nothing of anyone yet. After
+  // "my discord" it also needs a digit, "." "_" or "#", so "my discord is down" isn't a name.
+  function contact(text) {
+    const re = new RegExp(`(?:\\b(?:add|hit|dm|message|msg|text|contact|reach|find)\\s+me(?:\\s+up)?\\s+(?:on|at|via|in)\\s+|\\b(my)\\s+)(${APPS})\\b` +
+      `(?:\\s*[:@-]|\\s+(?:is|id|name|username|user|handle|tag)(?![\\p{L}\\p{N}]))*\\s*@?([\\p{L}\\p{N}._#]{3,32})`, 'giu');
+    let m;
+    while ((m = re.exec(String(text || '')))) {
+      const name = m[3].replace(/[._]+$/, '');
+      if (name.length >= 3 && !NOT_HANDLES.has(name.toLowerCase()) && (!m[1] || /[\d._#]/.test(name))) return `${m[2].toLowerCase()} ${name}`;
+    }
+    return null;
   }
 
   // Emote codes and emoji the chat shows as pictures, sitting between the words.
@@ -108,6 +129,9 @@
     if (hidden.length) sign(`Disguised link: ${hidden.join(', ').replace(/\./g, ' ')}`, 3);
     else if (plain.length) sign(`Link to a site not on the allowed list: ${plain.join(', ')}`, 1);
 
+    const asks = contact(body);
+    if (asks) sign(`Asks to be added off-site: ${asks}`, 4);
+
     const found = words.filter(w => new RegExp(`(^|[^a-z0-9])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i').test(low));
     if (found.length) sign(`Promo words: ${found.join(', ')}`, Math.min(2, found.length));
 
@@ -137,11 +161,11 @@
     }
 
     const total = signs.reduce((a, x) => a + x.points, 0);
-    // A link (disguised or not) is needed: without one there's nothing to promote. A word flood and a known
-    // bot opening line are spam on their own.
-    const spam = total >= need && (hidden.length > 0 || plain.length > 0 || !!fl || !!opener || signs.some(x => /^Same message/.test(x.text)));
+    // A link (disguised or not) or an off-site name is needed: without one there's nothing to promote. A word
+    // flood and a known bot opening line are spam on their own.
+    const spam = total >= need && (hidden.length > 0 || plain.length > 0 || !!asks || !!fl || !!opener || signs.some(x => /^Same message/.test(x.text)));
     return { score: total, need, spam, signs };
   }
 
-  return { score, sites, ignored, withNewBots, ALLOWED, WORDS, OPENERS, BOTS, LEVELS };
+  return { score, sites, contact, ignored, withNewBots, ALLOWED, WORDS, OPENERS, BOTS, LEVELS };
 });

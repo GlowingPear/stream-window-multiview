@@ -1,7 +1,7 @@
 // Spam alerts: which chat messages get flagged, and why.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { score, sites, ignored, withNewBots, BOTS } = require('../../src/spam');
+const { score, sites, contact, ignored, withNewBots, BOTS } = require('../../src/spam');
 
 const T = 1_700_000_000_000;
 const msg = (body, extra = {}) => ({ sender: 'newacct', body, chat: 'alpha', t: T, ...extra });
@@ -95,6 +95,41 @@ test('a known bot opening line is spam on its own, with no link needed', () => {
   assert.deepEqual(r.signs, [{ text: 'Known bot opening line: "Hey stranger, still running the show?"', points: 6 }]);
   assert.equal(flagged('hey   STRANGER still running the show!!'), true, 'case, spacing and punctuation ignored');
   assert.equal(flagged('lol hey stranger, still running the show? haha'), true, 'inside a longer message');
+});
+
+test('the "something special, friend" bot: its opening line, then asking to be added on Discord', () => {
+  const firstSeen = { 'alpha\nnewacct': T - 3_000 };
+  const hello = { sender: 'newacct', body: 'Your stream’s got something special, friend.I’m busy at the moment but I’ll be back with my squad.', chat: 'alpha', t: T - 3_000 };
+  const r1 = score(msg(hello.body, { t: hello.t }), { recent: [hello], firstSeen }, { sensitivity: 'relaxed' });
+  assert.equal(r1.spam, true);
+  assert.equal(r1.signs[0].text, 'Known bot opening line: "Your stream’s got something special, friend"');
+  assert.equal(flagged("your stream's got something special friend"), true, 'straight apostrophe, no comma');
+  const r2 = score(msg('Add me up on discord bram209'), { recent: [hello], firstSeen });
+  assert.equal(r2.spam, true);
+  assert.deepEqual(r2.signs, [{ text: 'Asks to be added off-site: discord bram209', points: 4 }, { text: 'Started chatting in the last few minutes', points: 1 }]);
+  assert.equal(r2.score, 5);
+  // from someone who's been chatting a while it's only enough on Strict
+  assert.equal(flagged('Add me up on discord bram209'), false);
+  assert.equal(flagged('Add me up on discord bram209', {}, { sensitivity: 'strict' }), true);
+});
+
+test('asking to be added off-site: the app and the name, however it\'s written', () => {
+  for (const [body, want] of [
+    ['Add me up on discord bram209', 'discord bram209'],
+    ['add me on Discord: @Bram_209.', 'discord Bram_209'],
+    ['dm me on telegram: @cryptoguy', 'telegram cryptoguy'],
+    ['hit me up on snap - xx.yy', 'snap xx.yy'],
+    ['message me via whatsapp id 5551234', 'whatsapp 5551234'],
+    ['my discord is bram#1234', 'discord bram#1234'],
+    ['my telegram username is @grow_fast', 'telegram grow_fast'],
+    ['add me on discord isabel', 'discord isabel']
+  ]) assert.equal(contact(body), want, body);
+  // no name, or not asking: nothing
+  for (const body of ['add me on discord later', 'add me on discord pls', 'join the discord', 'my discord is down',
+    'my discord server is fun', 'see you on discord tonight', 'whats your discord?', 'add me on discord', '', null])
+    assert.equal(contact(body), null, String(body));
+  // a name to add counts as something to promote, like a link: with enough points it's flagged
+  assert.equal(score(msg('add me on telegram @promo_king for cheap viewers'), {}).spam, true);
 });
 
 test('normal greetings are not bot opening lines', () => {
