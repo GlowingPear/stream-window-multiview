@@ -54,6 +54,11 @@ for (const bar of [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left',
       const head = await rect(page, 'header');
       assert.ok(p.x >= head.r, 'beside the toolbar, not over it');
     }
+    const d = await rect(page, '#bellPanel .nc-dnd');
+    assert.ok(d.w > 0 && d.x >= p.x && d.r <= p.r && d.y >= p.y && d.b <= p.b, 'its Do not disturb button is inside it, top right');
+    await page.click('#bellPanel .nc-dnd');
+    assert.equal(await page.evaluate(() => document.querySelector('#bellBtn').classList.contains('off')), true, 'and works from here');
+    await page.click('#bellPanel .nc-dnd');
     assert.equal(await page.getAttribute('#bellBtn', 'aria-expanded'), 'true');
     assert.equal(await badge(page), '', 'what it shows is seen');
     await page.keyboard.press('Escape');
@@ -146,12 +151,50 @@ test('the red number: mentions and spam, everything, or off', async t => {
   const page = await open(t);
   assert.equal(await badge(page), '3');
   await page.evaluate(() => openSettings('notify'));
+  await page.click('#ntTabs [data-t=bell]');
   await page.selectOption('#bellCount', 'all');
   assert.equal(await badge(page), '5', 'went live and raids too, never app messages');
   await page.selectOption('#bellCount', 'off');
   assert.equal(await badge(page), '');
   await page.reload();
   assert.equal(await page.evaluate(() => [smvNotes.bellCount, document.querySelector('#bellCount').value].join()), 'off,off', 'remembered');
+});
+
+test('Settings > Notifications: Do not disturb, then tabs, with nothing to scroll', async t => {
+  const page = await open(t, seed(), {}, { width: 1280, height: 800 });
+  await page.evaluate(() => openSettings('notify'));
+  const fits = () => page.$eval('#settingsDlg .st-body', b => b.scrollHeight <= b.clientHeight + 1);
+  assert.ok(await page.isVisible('#dndOn') && await page.isVisible('#ntGrid'), 'Do not disturb, and Alerts to start with');
+  assert.ok(await page.isHidden('#bellCount'));
+  assert.ok(await fits(), 'Alerts fits without scrolling');
+  await page.click('#ntTabs [data-t=bell]');
+  assert.ok(await page.isVisible('#bellCount') && await page.isVisible('#msgPos') && await page.isHidden('#ntGrid'), 'Bell & pop-ups');
+  assert.ok(await page.isVisible('#dndOn'), 'Do not disturb stays on every tab');
+  assert.ok(await fits());
+});
+
+test('Do not disturb from the bell and All notifications: on for the chosen time, and off again', async t => {
+  const page = await open(t);
+  const state = () => page.evaluate(() => [smvNotes.dndOn(), document.querySelector('#dndOn').checked, document.querySelector('#bellBtn').classList.contains('off'),
+    ...[...document.querySelectorAll('.nc-dnd')].map(b => b.classList.contains('on') && b.getAttribute('aria-pressed') === 'true')].join());
+  await page.evaluate(() => { const f = document.querySelector('#dndFor'); f.value = '60'; f.dispatchEvent(new Event('change')); });   // Settings' "For 1 hour"
+  await page.click('#bellBtn');
+  assert.match(await page.$eval('#bellPanel .nc-dnd', b => b.title), /^Do not disturb \(for 1 hour\)/, 'says how long');
+  await page.click('#bellPanel .nc-dnd');
+  assert.equal(await state(), 'true,true,true,true,true', 'on: Settings, the bell and both buttons');
+  const left = await page.evaluate(() => smvNotes.dndUntil - Date.now());
+  assert.ok(left > 59 * 60e3 && left <= 60 * 60e3, 'for the chosen hour');
+  assert.match(await page.textContent('#msg'), /^Do not disturb until /);
+  assert.match(await page.$eval('#bellPanel .nc-dnd', b => b.title), /^Do not disturb is on until .*Click to turn it off$/);
+  await page.click('#bellAll');
+  await page.click('#noteDlg .nc-dnd');
+  assert.equal(await state(), 'false,false,false,false,false', 'off from All notifications');
+  assert.equal(await page.textContent('#msg'), 'Do not disturb off');
+  await page.evaluate(() => { const f = document.querySelector('#dndFor'); f.value = '0'; f.dispatchEvent(new Event('change')); });
+  await page.click('#noteDlg .nc-dnd');
+  assert.equal(await page.evaluate(() => smvNotes.dndUntil), -1, '"Until I turn it off"');
+  assert.match(await page.$eval('#noteDlg .nc-dnd', b => b.title), /until you turn it off/);
+  assert.equal(await page.textContent('#msg'), 'Do not disturb on');
 });
 
 test('All notifications: search, Unread only, Mark all read, delete, clear a tab, grouped by day; opens on the bell\'s tab', async t => {
