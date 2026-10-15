@@ -35,6 +35,8 @@ const badge = page => page.$eval('#bellBtn .mb-count', e => e.hidden ? '' : e.te
 const rows = (page, sel = '#bellList') => page.$$eval(`${sel} .nc-row`, e => e.map(r => r.dataset.id));
 const tab = (page, t, root = '#bellPanel') => page.click(`${root} .nc-tabs [data-tab=${t}]`);
 const chip = (page, v, root = '#bellPanel') => page.click(`${root} .nc-chips [data-v=${v}]`);
+// a button's title (put aside in data-tip-title while the pointer is on it, for the app's own tooltip)
+const tip = b => b.title || b.dataset.tipTitle || '';
 const rect = (page, sel) => page.$eval(sel, e => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, r: r.right, b: r.bottom, w: r.width, h: r.height }; });
 
 for (const bar of [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left', labels: false }]){
@@ -179,13 +181,13 @@ test('Do not disturb from the bell and All notifications: on for the chosen time
     ...[...document.querySelectorAll('.nc-dnd')].map(b => b.classList.contains('on') && b.getAttribute('aria-pressed') === 'true')].join());
   await page.evaluate(() => { const f = document.querySelector('#dndFor'); f.value = '60'; f.dispatchEvent(new Event('change')); });   // Settings' "For 1 hour"
   await page.click('#bellBtn');
-  assert.match(await page.$eval('#bellPanel .nc-dnd', b => b.title), /^Do not disturb \(for 1 hour\)/, 'says how long');
+  assert.match(await page.$eval('#bellPanel .nc-dnd', tip), /^Do not disturb \(for 1 hour\)/, 'says how long');
   await page.click('#bellPanel .nc-dnd');
   assert.equal(await state(), 'true,true,true,true,true', 'on: Settings, the bell and both buttons');
   const left = await page.evaluate(() => smvNotes.dndUntil - Date.now());
   assert.ok(left > 59 * 60e3 && left <= 60 * 60e3, 'for the chosen hour');
   assert.match(await page.textContent('#msg'), /^Do not disturb until /);
-  assert.match(await page.$eval('#bellPanel .nc-dnd', b => b.title), /^Do not disturb is on until .*Click to turn it off$/);
+  assert.match(await page.$eval('#bellPanel .nc-dnd', tip), /^Do not disturb is on until .*Click to turn it off$/);
   await page.click('#bellAll');
   await page.click('#noteDlg .nc-dnd');
   assert.equal(await state(), 'false,false,false,false,false', 'off from All notifications');
@@ -193,7 +195,7 @@ test('Do not disturb from the bell and All notifications: on for the chosen time
   await page.evaluate(() => { const f = document.querySelector('#dndFor'); f.value = '0'; f.dispatchEvent(new Event('change')); });
   await page.click('#noteDlg .nc-dnd');
   assert.equal(await page.evaluate(() => smvNotes.dndUntil), -1, '"Until I turn it off"');
-  assert.match(await page.$eval('#noteDlg .nc-dnd', b => b.title), /until you turn it off/);
+  assert.match(await page.$eval('#noteDlg .nc-dnd', tip), /until you turn it off/);
   assert.equal(await page.textContent('#msg'), 'Do not disturb on');
 });
 
