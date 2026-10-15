@@ -2,7 +2,13 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.3 (current)
+## 0.3.4 (current)
+- Emote right-click menu with preview and Copy emote text; translate a whole chat
+- Layout menu: Layouts, Switch control and Toolbar tabs; the toolbar as one choice of three
+- Kick: replies and @mentions keep their message (name, ":" and text on lines of their own)
+- Setting: translate new messages in every chat (off by default)
+
+## 0.3.3
 - All notifications: days with few notifications are no longer cut off
 - Spam alerts: chat bot names centred in their pills when the list is shared with Mentions
 - Settings › Layouts › Toolbar: the Icons only button fits on one line
