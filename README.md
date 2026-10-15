@@ -36,6 +36,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - One **Channels** box to open a channel (name or link, on Kick, Twitch or YouTube, checked to exist first) or open and save it, and to search your saved channels
 - Saved list with Kick / Twitch / YouTube tabs, with live channels listed first
 - Desktop notifications when saved channels go live, and optional auto-open when they do
+- Suggestions from the channels you follow but haven't saved, as you type in the Channels box (and who's live among them)
 - **Import follows** from Kick, Twitch and YouTube (and unfollow Kick channels right from that list)
 - **Streamer profiles**: search your saved streamers and open a profile for each one: what the site says (picture, about, followers, links, the live stream), plus a live history, a "when they usually stream" chart, usual start time, average length and viewers that the app records from its live checks, with Kick and Twitch past broadcasts filling the gaps. Notes, tags, nicknames, favourites, and **Unfollow on Kick**
 - **Emote preview**: point at an emote in chat to see it bigger with its name, then copy the name or download it
