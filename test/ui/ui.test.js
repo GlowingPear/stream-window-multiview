@@ -559,6 +559,25 @@ test('Hide bar: the button says Show bar while the bar is hidden, and brings it 
   assert.equal(await page.getAttribute('#focusBtn', 'aria-label'), 'Hide bar');
 });
 
+for (const bar of [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left', labels: false }]){
+  const name = bar.pos === 'top' ? 'at the top' : bar.labels ? 'on the left' : 'on the left, icons only';
+  test(`toolbar ${name}: Top / Left and Labels / Icons only each fit on one line, in Settings and the Layout menu (#87)`, async t => {
+    const page = await openApp(t, { init: `localStorage.setItem('kickMultiview.toolbar', ${JSON.stringify(JSON.stringify(bar))})` });
+    const fits = async root => {
+      const b = await page.$$eval(`${root} [data-tb] button`, e => e.map(x => ({ t: x.textContent, h: x.clientHeight, full: x.scrollHeight, w: x.clientWidth, need: x.scrollWidth })));
+      assert.deepEqual(b.map(x => x.t), ['Top', 'Left', 'Labels', 'Icons only']);
+      for (const x of b) assert.ok(x.full <= x.h && x.need <= x.w, `"${x.t}" fits its button: ${JSON.stringify(b)}`);
+      assert.equal(new Set(b.map(x => x.h)).size, 1, 'all the same height');
+    };
+    await page.evaluate(() => window.openSettings('layouts'));
+    await page.click('#lyTabs [data-t=toolbar]');
+    await fits('#settingsDlg');
+    await page.keyboard.press('Escape');
+    await page.click('#layoutBtn');
+    await fits('#layoutMenu');
+  });
+}
+
 test('toolbar on the left: a column of named rows or slim icons (names over the streams on hover), menus beside it, remembered', async t => {
   const page = await openApp(t);
   await add(page, 'alpha', 'bravo');
