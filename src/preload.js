@@ -105,6 +105,7 @@ contextBridge.exposeInMainWorld('kmv', {
   extOptions: (id, partition) => ipcRenderer.invoke('ext:options', id, partition),
   extInstallLink: input => ipcRenderer.invoke('ext:installLink', input),
   extLoadFolder: () => ipcRenderer.invoke('ext:loadFolder'),
+  extReload: id => ipcRenderer.invoke('ext:reload', id),
   extOpenStore: () => ipcRenderer.invoke('ext:openStore'),
   extConfirmReply: (reqId, ans) => ipcRenderer.invoke('ext:confirmReply', reqId, ans),
   onExtConfirm: cb => ipcRenderer.on('ext:confirm', (_e, info) => cb(info || {})),
