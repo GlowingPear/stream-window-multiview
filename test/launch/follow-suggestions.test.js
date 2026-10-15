@@ -43,6 +43,8 @@ test.before(async () => {
       return json({ data: {} });
     };
   });
+  // read them now (the app's own first read may have run before these stand-ins were in place): off and on again
+  await a.win.evaluate(async () => { await window.kmv.followsSetOn(false); await window.kmv.followsSetOn(true); });
 });
 test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
 
