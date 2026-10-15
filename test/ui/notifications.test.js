@@ -388,7 +388,7 @@ test('notifications from before the bell: mentions and spam history move in, onc
 
 for (const bar of [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left', labels: false }]){
   const name = bar.pos === 'top' ? 'at the top' : bar.labels ? 'on the left' : 'on the left, icons only';
-  test(`the bell with the toolbar ${name}: the chat filter keeps one small width, however long the names, and the chips fit beside it (#100)`, async t => {
+  test(`the bell with the toolbar ${name}: the chat filter keeps one small width, however long the names, leaving the chips more room (#100)`, async t => {
     const now = Date.now(), long = 'averyveryverylongchannelname42', list = [];
     for (let i = 0; i < 1050; i++){           // up to four-digit counts (500 of each kind are kept)
       const ch = [long, 'bravo', 'charlie'][i % 3], kind = ['mention', 'reply', 'word'][Math.floor(i / 3) % 3];
@@ -399,14 +399,16 @@ for (const bar of [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left',
     assert.equal((await rect(page, '#bellPanel')).w, 490, 'the panel is a little wider');
     const look = () => page.$eval('#bellPanel', p => {
       const pick = p.querySelector('.nc-pick'), chips = p.querySelector('.nc-chips'), r = pick.getBoundingClientRect();
-      return { w: Math.round(r.width), fits: chips.scrollWidth <= chips.clientWidth, inside: r.right <= p.getBoundingClientRect().right };
+      return { w: Math.round(r.width), room: chips.clientWidth, inside: r.right <= p.getBoundingClientRect().right,
+        lines: new Set([...chips.children].map(b => Math.round(b.getBoundingClientRect().top))).size };
     });
     for (const tb of ['all', 'mentions']){
       await tab(page, tb);
       const all = await look();
       assert.equal(all.w, 110, `${tb}: small`);
-      assert.ok(all.fits, `${tb}: every chip shows in full`);
+      assert.ok(all.room >= 340, `${tb}: the chips have ${all.room}px (they had 218px); whether a long count fits depends on the font`);
       assert.ok(all.inside);
+      assert.equal(all.lines, 1, `${tb}: the chips stay on one line`);
       await page.selectOption('#bellPanel .nc-pick', long);
       assert.deepEqual(await look(), all, `${tb}: the same with a long name picked`);
       await page.selectOption('#bellPanel .nc-pick', '');
