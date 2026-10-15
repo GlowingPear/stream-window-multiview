@@ -6,6 +6,7 @@ const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parse
 const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel } = require('./profiles');
 const { menuFor } = require('./context-menu');
 const { createProfileQueue } = require('./profile-queue');
+const SmvFollows = require('./follows');
 const path = require('path');
 const fs = require('fs');
 const { youtubeLoginFromFirefox } = require('./firefox-login');
@@ -485,6 +486,7 @@ async function kickBatch(slugs) {
   if (!r || r.login) { if (r) kickFollowed = null; return { results: [], rest: slugs }; }
   if (r.followed) { kickFollowed = r.followed; kickFollowedAt = Date.now(); kickLiveFirst = r.liveFirst !== false; }
   if (!allPages) kickLivePages = r.pages;
+  keptKickRead(r);
   const results = [], rest = [];
   for (const s of slugs) {
     if (!kickFollowed || !kickFollowed.has(s)) rest.push(s);
@@ -654,6 +656,111 @@ ipcMain.on('live:watch', (_e, data) => {
 });
 ipcMain.on('live:check-now', () => watcher.checkSoon());
 app.whenReady().then(() => powerMonitor.on('resume', () => watcher.checkSoon()));   // after sleep: who's live now, not hours ago
+
+/* ---------- suggestions from the channels you follow (the Channels box) ----------
+   The last follow list read from each site is kept in follows.json (names only), with who's live among them:
+   - Kick: the live checks read your follow list when you have 5 or more saved Kick channels. For suggestions it's
+     also read whenever you're signed in: the whole list at start-up and every 30 minutes, the live ones (1-4 pages)
+     about once a minute when the live checks haven't just done it.
+   - Twitch and YouTube: what Import follows found, read again in the background at most once a day while you're
+     signed in. Who's live on Twitch: one question per 100 channels every 2 minutes. YouTube: no live state.
+   The switch in the Channels panel's ⋯ menu turns it all off and forgets the lists. A site you aren't signed in to
+   shows no suggestions. */
+const followsFile = () => stateFile('follows');
+let follows = null;
+const followLive = { kick: new Map(), twitch: new Map() }, followLiveAt = { kick: 0, twitch: 0 };
+const followTried = { kick: 0, twitch: 0, youtube: 0 };   // the last time the whole list was asked for (worked or not)
+function followStore() {
+  if (!follows) { let d = null; try { d = JSON.parse(fs.readFileSync(followsFile(), 'utf8')); } catch {} follows = SmvFollows.normStore(d); }
+  return follows;
+}
+const followsOn = () => !followStore().off;
+function saveFollows(next) {
+  follows = SmvFollows.normStore(next);
+  try { const f = followsFile(); fs.writeFileSync(f + '.tmp', JSON.stringify(follows)); fs.renameSync(f + '.tmp', f); } catch {}
+  followsChanged();
+}
+let followsChangedT = null;
+function followsChanged() {            // the page asks again (follows:get), at most twice a second
+  if (followsChangedT) return;
+  followsChangedT = setTimeout(() => { followsChangedT = null; mainWin?.webContents.send('follows:changed'); }, 500);
+}
+function keepFollows(site, items) {
+  if (!followsOn() || !Array.isArray(items)) return;
+  saveFollows(SmvFollows.setSite(followStore(), site, items));
+}
+// A read of Kick's follow list (by the live checks or for suggestions): who's live, and the whole list when it was read
+function keptKickRead(r) {
+  if (!r || r.login) return;
+  followLive.kick = r.live || new Map(); followLiveAt.kick = Date.now();
+  if (r.followed) keepFollows('kick', [...r.followed].map(ch => ({ ch, name: (r.live.get(ch) || {}).name || '' })));
+  else followsChanged();
+}
+let followsBusy = false;
+async function followsTick() {
+  if (followsBusy || !followsOn() || !mainWin) return;
+  followsBusy = true;
+  try {
+    const st = followStore(), now = Date.now();
+    if (await kickSignedIn()) {
+      const whole = (!kickFollowedAt || now - kickFollowedAt > 30 * 60e3 || !st.kick) && now - followTried.kick > 30 * 60e3;
+      if (whole) followTried.kick = now;
+      if (whole || now - followLiveAt.kick > 75e3) {
+        await ensureLiveWin();
+        if (liveWin) {
+          const get = async u => { const x = await kickGet(u); if (whole) await sleep(400); return x; };   // the whole list: unhurried
+          const r = await readKickLive(get, { allPages: whole }).catch(() => null);
+          if (r && r.login) { kickFollowed = null; followLive.kick = new Map(); }
+          else if (r) {
+            if (r.followed) { kickFollowed = r.followed; kickFollowedAt = Date.now(); kickLiveFirst = r.liveFirst !== false; }
+            keptKickRead(r);
+          }
+        }
+      }
+    } else if (followLive.kick.size) { followLive.kick = new Map(); followsChanged(); }
+    const token = await twitchToken();
+    if (token) {
+      if ((!st.twitch || now - st.twitch.at > 24 * 3600e3) && now - followTried.twitch > 6 * 3600e3) {
+        followTried.twitch = now;
+        const r = await twitchFollows({ scrape: false }).catch(() => null);
+        if (r && r.items) keepFollows('twitch', r.items);
+      }
+      const tw = (followStore().twitch || { items: [] }).items.map(x => x.ch);
+      if (tw.length && now - followLiveAt.twitch > 120e3) {
+        const r = await twitchBatch(tw).catch(() => null);
+        if (r) {
+          const m = new Map(r.results.filter(([, x]) => x && x.live).map(([ch, x]) => [ch, x]));
+          if (m.size || followLive.twitch.size) followsChanged();
+          followLive.twitch = m; followLiveAt.twitch = Date.now();
+        }
+      }
+    } else if (followLive.twitch.size) { followLive.twitch = new Map(); followsChanged(); }
+    const yt = followStore().youtube;
+    if ((!yt || now - yt.at > 24 * 3600e3) && now - followTried.youtube > 6 * 3600e3 && !importing && (await youtubeSignedIn())) {
+      importing = 'youtube'; followTried.youtube = now;
+      try { const r = await youtubeFollows().catch(() => null); if (r && r.items && r.items.length) keepFollows('youtube', r.items.filter(x => validCh(x.ch))); }
+      finally { importing = null; }
+    }
+  } catch {} finally { followsBusy = false; }
+}
+app.whenReady().then(() => {
+  setTimeout(followsTick, 8000);                         // soon after start-up, after the first live checks
+  setInterval(followsTick, 60e3).unref?.();
+});
+// The followed channels from the sites you're signed in to, and who's live among them (the page picks suggestions)
+ipcMain.handle('follows:get', async () => {
+  if (!followsOn()) return { on: false, items: [], live: {} };
+  const [k, tw, yt] = await Promise.all([kickSignedIn(), twitchToken().then(Boolean), youtubeSignedIn()]);
+  const sites = SmvFollows.SITES.filter((s, i) => [k, tw, yt][i]);
+  const live = {};
+  for (const s of ['kick', 'twitch']) if (sites.includes(s)) followLive[s].forEach((x, ch) => { live[ch] = { live: true, viewers: x.viewers, title: x.title || '', category: x.category || '' }; });
+  return { on: true, items: SmvFollows.allFollows(followStore(), sites), live };
+});
+ipcMain.handle('follows:set-on', (_e, on) => {
+  if (on) { if (!followsOn()) { saveFollows({ v: 1 }); Object.keys(followTried).forEach(k => { followTried[k] = 0; }); setTimeout(followsTick, 500); } }
+  else { followLive.kick = new Map(); followLive.twitch = new Map(); saveFollows({ v: 1, off: true }); }
+  return followsOn();
+});
 
 /* ---------- streamer profiles ----------
    The live checks above are recorded (profiles.json: each stream seen, its viewer counts, a follower
@@ -924,6 +1031,7 @@ function openLogin(plat = 'kick') {
 ipcMain.handle('account:logout', async (_e, plat) => { await logout(PARTS[plat] ? plat : 'kick'); return true; });
 ipcMain.handle('account:login', (_e, plat) => { openLogin(PARTS[plat] ? plat : 'kick'); });
 // Who is logged in where (Twitch keeps your name in a cookie; YouTube only tells us that you're signed in).
+const youtubeSignedIn = () => session.fromPartition(PARTS.youtube).cookies.get({}).then(c => c.some(x => /(youtube|google)\.com$/.test(x.domain) && /^(SAPISID|__Secure-3PSID|LOGIN_INFO)$/.test(x.name)), () => false);
 ipcMain.handle('accounts:status', async () => {
   const out = { kick: null, twitch: null, youtube: false };
   try {
@@ -1097,7 +1205,7 @@ async function kickFollows() {
   }
   return scrapeFollowPage('kick', 'https://kick.com/following');
 }
-async function twitchFollows() {
+async function twitchFollows({ scrape = true } = {}) {
   const token = await twitchToken();
   if (!token) return { error: 'login' };
   const items = new Map(); let after = null, ok = false;
@@ -1116,7 +1224,8 @@ async function twitchFollows() {
     after = page.next;
   }
   if (ok && items.size) return { items: [...items].map(([ch, name]) => ({ ch, name })) };
-  return scrapeFollowPage('twitch', 'https://www.twitch.tv/directory/following/channels');
+  if (ok && !scrape) return { items: [] };               // follows nobody (Import also looks at the Following page)
+  return scrape ? scrapeFollowPage('twitch', 'https://www.twitch.tv/directory/following/channels') : null;
 }
 // Whether you can moderate a channel (its moderator, or your own channel): true, false, or null when
 // it can't be told (signed out, offline). Windows only show their mod view button when it's true.
@@ -1143,7 +1252,7 @@ ipcMain.handle('follows:import', async (_e, plat) => {
   try {
     progress(plat, 'Reading the channels you follow…');
     const r = await (plat === 'kick' ? kickFollows() : plat === 'twitch' ? twitchFollows() : youtubeFollows());
-    if (r && r.items) r.items = r.items.filter(x => validCh(x.ch));
+    if (r && r.items) { r.items = r.items.filter(x => validCh(x.ch)); if (r.items.length) keepFollows(plat, r.items); }
     return r || { error: 'failed' };
   } catch { return { error: 'failed' }; }
   finally { importing = null; }
