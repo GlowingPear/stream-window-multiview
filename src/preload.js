@@ -100,6 +100,13 @@ contextBridge.exposeInMainWorld('kmv', {
   kickUnfollow: slug => ipcRenderer.invoke('kick:unfollow', slug),
   emoteDownload: (url, name, small) => ipcRenderer.invoke('emote:download', url, name, small),
   emoteShow: id => ipcRenderer.invoke('emote:show', id),
+  emoteFetch: (url, small) => ipcRenderer.invoke('emote:fetch', url, small),
+  clipboardPng: dataUrl => ipcRenderer.invoke('clipboard:png', dataUrl),
+  translate: (texts, tl) => ipcRenderer.invoke('translate:texts', texts, tl),
+  onViewMenu: cb => ipcRenderer.on('view:menu', (_e, id, d) => cb(id, d || {})),
+  viewMenuAct: (id, i) => ipcRenderer.send('view:menu-act', id, i),
+  viewMenuClose: id => ipcRenderer.send('view:menu-close', id),
+  onViewTranslate: cb => ipcRenderer.on('view:translate', (_e, id, a) => cb(id, a || {})),
 
   // Chrome extensions
   extList: () => ipcRenderer.invoke('ext:list'),

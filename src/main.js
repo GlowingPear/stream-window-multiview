@@ -1,10 +1,11 @@
 // Stream Multiview — desktop app (Electron main process)
-const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage, powerMonitor, clipboard } = require('electron');
+const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage, powerMonitor, clipboard, nativeImage, webContents } = require('electron');
 const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
   validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink,
   parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, normCh, toTime, withTimeout, keepLatest } = require('./live');
 const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel } = require('./profiles');
-const { menuFor } = require('./context-menu');
+const { menuFor, translateTarget } = require('./context-menu');
+const { makeTranslator } = require('./translate');
 const { createProfileQueue } = require('./profile-queue');
 const SmvFollows = require('./follows');
 const path = require('path');
@@ -271,16 +272,60 @@ function runMenuAct(wc, a) {
     case 'addWord': wc.session.addWordToSpellCheckerDictionary(a.word); break;
     case 'inspect': wc.inspectElement(a.x, a.y); break;
     case 'undo': case 'redo': case 'cut': case 'copy': case 'paste': case 'selectAll': case 'reload': wc[a.do](); break;
+    // translating a chat: the app's page runs it (it talks to the chat and remembers it per chat)
+    case 'translateChat': case 'translateAuto': case 'translateStop':
+      if (wc.hostWebContents && !wc.hostWebContents.isDestroyed()) wc.hostWebContents.send('view:translate', wc.id, { do: a.do, tl: a.tl, on: !!a.on });
+      break;
   }
 }
-function showViewMenu(wc, params) {
-  const langs = (app.getPreferredSystemLanguages && app.getPreferredSystemLanguages()) || [app.getLocale()];
-  const items = menuFor(params, { langs, dev: !!DEV });
-  if (!items.length) return;
-  const tmpl = items.map(x => x.type ? x : { label: x.label, enabled: x.enabled !== false, click: () => runMenuAct(wc, x.act) });
-  const host = wc.hostWebContents && BrowserWindow.fromWebContents(wc.hostWebContents);
-  Menu.buildFromTemplate(tmpl).popup(host ? { window: host } : {});
+// What the page under the pointer says about it: the emote there (emoteAgent) and whether it's a chat being
+// translated (translateAgent). Only from chat windows the app loaded its helpers into; quick, or nothing.
+async function viewContext(wc) {
+  const js = '({ emote: window.__kmvEmote && window.__kmvEmote.ctx ? window.__kmvEmote.ctx() : null, chat: window.__kmvTr ? window.__kmvTr.state() : null })';
+  const got = await Promise.race([wc.executeJavaScript(js).catch(() => null), sleep(400).then(() => null)]);
+  return got && typeof got === 'object' ? got : {};
 }
+// The emote menu is drawn by the app's page (it has the big preview); it sends back which item was chosen.
+const drawnMenus = new Map();   // web view id -> its menu's items
+const appPage = wc => !!wc && !wc.isDestroyed() && /\/index\.html(\?|$)/.test(wc.getURL());
+async function showViewMenu(wc, params) {
+  const langs = (app.getPreferredSystemLanguages && app.getPreferredSystemLanguages()) || [app.getLocale()];
+  const ctx = wc.hostWebContents ? await viewContext(wc) : {};
+  if (wc.isDestroyed()) return;
+  const emote = ctx.emote && typeof ctx.emote === 'object' && typeof ctx.emote.text === 'string' && params.mediaType === 'image' ? ctx.emote : null;
+  const chat = ctx.chat && typeof ctx.chat === 'object' ? { on: !!ctx.chat.on, auto: !!ctx.chat.auto } : null;
+  const items = menuFor(params, { langs, dev: !!DEV, emote, chat });
+  if (!items.length) return;
+  const host = wc.hostWebContents;
+  if (emote && appPage(host)) {
+    drawnMenus.set(wc.id, items);
+    host.send('view:menu', wc.id, {
+      emote: { name: String(emote.name || '').slice(0, 60), site: String(emote.site || ''), big: String(emote.big || ''), small: String(emote.small || ''), animated: !!emote.animated, x: +emote.x || 0, y: +emote.y || 0 },
+      items: items.map(x => x.type ? { sep: true } : { label: x.label, enabled: x.enabled !== false, checked: !!x.checked })
+    });
+    return;
+  }
+  const tmpl = items.map(x => x.type ? x : { label: x.label, enabled: x.enabled !== false, click: () => runMenuAct(wc, x.act),
+    ...('checked' in x ? { type: 'checkbox', checked: !!x.checked } : {}) });
+  const win = host && BrowserWindow.fromWebContents(host);
+  Menu.buildFromTemplate(tmpl).popup(win ? { window: win } : {});
+}
+ipcMain.on('view:menu-act', (e, id, i) => {
+  const items = drawnMenus.get(id); drawnMenus.delete(id);
+  const wc = items && webContents.fromId(id);
+  const x = items && items[i];
+  if (!wc || !x || x.type || x.enabled === false || wc.hostWebContents !== e.sender) return;   // only the page that drew it
+  runMenuAct(wc, x.act);
+});
+ipcMain.on('view:menu-close', (_e, id) => drawnMenus.delete(id));
+// Translating chat messages for the app's page (see translateAgent in index.html)
+const translateTexts = makeTranslator(async url => {
+  const r = await Promise.race([net.fetch(url, { headers: BROWSER_HEADERS() }), sleep(8000).then(() => null)]);
+  if (!r) throw new Error('timeout');
+  if (!r.ok) { const err = new Error('refused'); err.status = r.status; throw err; }
+  return r.json();
+});
+ipcMain.handle('translate:texts', (_e, texts, tl) => translateTexts(texts, tl || translateTarget((app.getPreferredSystemLanguages && app.getPreferredSystemLanguages()) || [app.getLocale()])));
 
 app.on('web-contents-created', (_e, wc) => {
   // the streams' and chats' own pages (not the app's page, which has its own right-click)
@@ -972,6 +1017,23 @@ ipcMain.handle('emote:download', async (e, url, name, small) => {
   savedEmotes.set(id, filePath);
   while (savedEmotes.size > 50) savedEmotes.delete(savedEmotes.keys().next().value);
   return { saved: true, file: path.basename(filePath), id };
+});
+// "Copy image" on an emote card: the picture, fetched like Download. The app's page turns it into a still
+// PNG (the clipboard has no moving pictures, and not every kind of picture can be read here) and puts it on the clipboard.
+ipcMain.handle('emote:fetch', async (_e, url, small) => {
+  if (!emoteUrlOk(url)) return { error: 'bad' };
+  let got = await fetchEmote(url).catch(() => null);
+  if (!got && small && small !== url && emoteUrlOk(small)) got = await fetchEmote(small).catch(() => null);
+  if (!got) return { error: 'fetch' };
+  const type = Object.keys(EMOTE_TYPES).find(k => EMOTE_TYPES[k] === got.ext);
+  return { type, data: got.buf.toString('base64') };
+});
+ipcMain.handle('clipboard:png', (_e, dataUrl) => {
+  if (typeof dataUrl !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(dataUrl) || dataUrl.length > 20 * 1024 * 1024) return false;
+  const img = nativeImage.createFromDataURL(dataUrl);
+  if (img.isEmpty()) return false;
+  clipboard.writeImage(img);
+  return true;
 });
 ipcMain.handle('emote:show', (_e, id) => {
   const f = savedEmotes.get(String(id));

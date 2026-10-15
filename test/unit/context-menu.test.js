@@ -82,3 +82,39 @@ test('anywhere else: Reload; Inspect only in a dev copy', () => {
   assert.deepEqual(labels(menuFor({ selectionText: 'hi' }, { dev: true })).slice(-1), ['Inspect']);
   assert.ok(!labels(menuFor({ selectionText: 'hi' })).includes('Inspect'));
 });
+
+test('an emote in a chat: Copy emote text first, then the image items with Save image as… named after it', () => {
+  const p = { mediaType: 'image', srcURL: 'https://files.kick.com/emotes/1/fullsize', altText: 'alt', x: 3, y: 4 };
+  const m = menuFor(p, { emote: { name: 'pearHype', text: 'pearHype' } });
+  assert.deepEqual(labels(m), ['Copy emote text', '—', 'Open image in new window', 'Save image as…', 'Copy image', 'Copy image address']);
+  assert.deepEqual(m[0].act, { do: 'copyText', text: 'pearHype' });
+  assert.equal(find(m, 'Save image as…').act.name, 'pearHype');
+  assert.deepEqual(find(m, 'Copy image').act, { do: 'copyImage', x: 3, y: 4 });
+  // the text is whatever that chat needs (worked out where the emote is: see emoteAgent's textOf)
+  for (const text of ['KEKW', 'pearHype', '😂', ':_pearWave:']) assert.deepEqual(menuFor(p, { emote: { name: 'x', text } })[0].act, { do: 'copyText', text });
+  assert.deepEqual(labels(menuFor(p, { emote: { name: 'x', text: '' } })).slice(0, 1), ['Open image in new window'], 'no text: no Copy emote text');
+  assert.deepEqual(labels(menuFor({}, { emote: { name: 'x', text: 'x' } })), ['Reload'], 'not on a picture: no emote items');
+  // the drawn menu gets these same items (main.js sends exactly menuFor's list), with Inspect in a dev copy
+  assert.deepEqual(labels(menuFor(p, { emote: { name: 'x', text: 'x' }, dev: true })).slice(-2), ['—', 'Inspect']);
+});
+
+test('a chat: Translate this chat, Translate new messages too and (while translating) Stop translating', () => {
+  const off = menuFor({}, { langs: ['en-US'], chat: { on: false, auto: false } });
+  assert.deepEqual(labels(off), ['Translate this chat to English', 'Translate new messages too', '—', 'Reload']);
+  assert.deepEqual(off[0].act, { do: 'translateChat', tl: 'en' });
+  assert.equal(off[0].checked, false);
+  assert.deepEqual(off[1].act, { do: 'translateAuto', tl: 'en', on: true });
+  const on = menuFor({}, { langs: ['de'], chat: { on: true, auto: true } });
+  assert.deepEqual(labels(on), ['Translate this chat to Deutsch', 'Translate new messages too', 'Stop translating', '—', 'Reload']);
+  assert.equal(on[0].checked, true); assert.equal(on[1].checked, true);
+  assert.deepEqual(on[1].act, { do: 'translateAuto', tl: 'de', on: false }, 'ticked: choosing it again turns it off');
+  assert.deepEqual(on[2].act, { do: 'translateStop' });
+  // with text selected the Translate "…" item stays, and the chat's items are there too
+  assert.deepEqual(labels(menuFor({ selectionText: 'hola' }, { chat: { on: false, auto: false } })),
+    ['Copy', 'Translate “hola” to English', 'Search Google for “hola”', '—', 'Translate this chat to English', 'Translate new messages too']);
+  // on an emote too; not in the chat box, not on a link, and not in a stream window (no chat)
+  assert.ok(labels(menuFor({ mediaType: 'image', srcURL: 'https://a/b.png' }, { emote: { name: 'x', text: 'x' }, chat: {} })).includes('Translate new messages too'));
+  assert.ok(!labels(menuFor({ isEditable: true }, { chat: {} })).some(l => /Translate/.test(l)));
+  assert.ok(!labels(menuFor({ linkURL: 'https://a/' }, { chat: {} })).some(l => /Translate/.test(l)));
+  assert.deepEqual(labels(menuFor({})), ['Reload']);
+});
