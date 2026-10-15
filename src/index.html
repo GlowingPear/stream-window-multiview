@@ -4658,9 +4658,12 @@ function columnsLayout(preview){
 
   const rest = avail - featW;
   const perScreen = sideN || Math.max(1, Math.min(colCount || 1, Math.floor(rest / COL_MIN)));
+  const oldWidth = colWidth;
   colWidth = sideN ? rest / perScreen : feat ? Math.max(COL_MIN, rest / perScreen) : avail / perScreen;
   colX0 = GAP / 2 + featW;
   maxScroll = Math.max(0, colCount * colWidth - rest);
+  // the space changed (window resized, toolbar moved): stay on the same column, lined up with the edge
+  if (oldWidth && Math.abs(colWidth - oldWidth) > 0.5){ cancelAnimationFrame(scrollRaf); scrollX = Math.round(scrollX / oldWidth) * colWidth; }
   scrollX = Math.min(scrollX, maxScroll);
   const colH = Hfull - (maxScroll > 0 ? HBAR : 0);   // leave room for the scrollbar
   // navigation strip above the columns whenever there are more than fit
