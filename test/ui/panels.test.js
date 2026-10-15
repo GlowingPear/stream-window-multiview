@@ -91,6 +91,24 @@ test('Channels: one box searches your channels and opens (or opens and saves) a 
   assert.ok((await savedList()).includes('delta'), 'Save all open adds what\'s open');
 });
 
+test('Channels: with a long list, only the list gets shorter (it scrolls); the search box keeps its height (#92)', async t => {
+  const names = Array.from({ length: 60 }, (_, i) => 'chan' + i);
+  const page = await openApp(t, { init: `localStorage.setItem('kickMultiview.saved', '${JSON.stringify(names)}')` });
+  await page.click('#savedBtn');
+  const sizes = () => page.evaluate(() => {
+    const h = s => document.querySelector(s).getBoundingClientRect().height;
+    const l = document.querySelector('#savedList');
+    return { box: h('.sp-add'), tabs: h('#savedTabs'), foot: h('.sp-foot'), scrolls: l.scrollHeight > l.clientHeight };
+  });
+  const long = await sizes();
+  assert.ok(long.scrolls, 'the list is long enough to scroll');
+  assert.equal(long.box, 46, 'the search box is its full height');
+  await page.fill('#savedInput', 'chan1');   // a short list: nothing needs to give way
+  const short = await sizes();
+  assert.equal(short.scrolls, false);
+  assert.deepEqual([long.box, long.tabs, long.foot], [short.box, short.tabs, short.foot], 'the box, the filters and the buttons are the same size either way');
+});
+
 test('Channels: the open/save row fits on one line, and a channel the site says doesn\'t exist is not opened', async t => {
   const page = await openApp(t, { init: () => {
     window.asked = [];
