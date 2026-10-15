@@ -403,7 +403,7 @@ function keepNote(n) {
   n.on('click', drop);
   n.on('close', drop);
 }
-let notifyPrefs = { all: true, off: [] };
+let notifyPrefs = { all: true, away: false, off: [] };   // away: only while the app isn't in front
 let desktopNotify = true;             // Settings > Notifications: off means no desktop notifications at all
 ipcMain.on('notify:enabled', (_e, on) => { desktopNotify = on !== false; });
 // "Send a test": 'shown', 'failed' (the system refused it) or 'sent' (no answer: macOS doesn't say if it's blocked)
@@ -438,6 +438,7 @@ ipcMain.handle('notify:settings', () => {
 function notifyLive(slug, info) {
   mainWin?.webContents.send('live:went-live', slug, info);
   if (!desktopNotify || !notifyPrefs.all || notifyPrefs.off.includes(slug) || !Notification.isSupported()) return;
+  if (notifyPrefs.away && BrowserWindow.getFocusedWindow()) return;
   const body = [info.title, info.category, info.viewers != null ? `${info.viewers.toLocaleString()} watching` : ''].filter(Boolean).join(' · ');
   const n = new Notification({ title: `${info.name || slug} is live on ${platformOf(slug)}`, body: body || 'Click to watch', icon: ICON });
   keepNote(n);
@@ -653,7 +654,7 @@ const watcher = createLiveWatcher({
 });
 ipcMain.on('live:watch', (_e, data) => {
   const d = data || {};
-  notifyPrefs = { all: d.notifyAll !== false, off: Array.isArray(d.off) ? d.off.map(String) : [] };
+  notifyPrefs = { all: d.notifyAll !== false, away: d.away === true, off: Array.isArray(d.off) ? d.off.map(String) : [] };
   watcher.setChannels(Array.isArray(d.channels) ? d.channels : []);
   profQueue.setSaved((Array.isArray(d.channels) ? d.channels : []).filter(okCh).map(normCh));
 });
@@ -953,6 +954,9 @@ async function fetchEmote(url) {
   const buf = Buffer.from(await r.arrayBuffer());
   return buf.length && buf.length <= 10 * 1024 * 1024 ? { buf, ext: EMOTE_TYPES[type] } : null;
 }
+// "Show in folder" on a saved emote under the bell: only files this app saved (this session), by their id.
+const savedEmotes = new Map();
+let savedEmoteId = 0;
 ipcMain.handle('emote:download', async (e, url, name, small) => {
   if (!emoteUrlOk(url)) return { error: 'bad' };
   let got = await fetchEmote(url).catch(() => null);
@@ -964,7 +968,16 @@ ipcMain.handle('emote:download', async (e, url, name, small) => {
     filters: [{ name: 'Image', extensions: [got.ext.slice(1)] }] });
   if (canceled || !filePath) return { canceled: true };
   try { fs.writeFileSync(filePath, got.buf); } catch { return { error: 'write' }; }
-  return { saved: true, file: path.basename(filePath) };
+  const id = String(++savedEmoteId);
+  savedEmotes.set(id, filePath);
+  while (savedEmotes.size > 50) savedEmotes.delete(savedEmotes.keys().next().value);
+  return { saved: true, file: path.basename(filePath), id };
+});
+ipcMain.handle('emote:show', (_e, id) => {
+  const f = savedEmotes.get(String(id));
+  if (!f || !fs.existsSync(f)) return false;
+  shell.showItemInFolder(f);
+  return true;
 });
 ipcMain.handle('kick:unfollow', async (_e, slug) => {
   slug = String(slug || '').toLowerCase();
