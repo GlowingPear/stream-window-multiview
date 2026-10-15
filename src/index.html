@@ -85,7 +85,7 @@ body.bar-left.bar-icons:not(.bar-peek) header :is(.brand-txt,.tb-l,.car){display
 body.bar-left.bar-icons:not(.bar-peek) header .tb{justify-content:center;padding:0}
 body.bar-left.bar-icons:not(.bar-peek) #savedBtn .sv-badge{position:absolute;top:1px;right:0;padding:0 4px;font-size:9.5px;line-height:14px}
 body.bar-left.bar-icons:not(.bar-peek) #savedBtn .sv-badge i{display:none}
-body.bar-left.bar-icons:not(.bar-peek) #mentBtn .mb-count{position:absolute;top:1px;right:1px}
+body.bar-left.bar-icons:not(.bar-peek) #bellBtn .mb-count{position:absolute;top:1px;right:1px}
 body.bar-left.bar-icons.bar-peek header{width:180px;box-shadow:12px 0 36px rgba(0,0,0,.5)}
 body.bar-left #stage{top:0;left:var(--barw);transition:left .2s ease}
 body.bar-left.focus #stage{left:0}
@@ -702,24 +702,95 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .cs-mode:hover{border-color:var(--muted)}
 .cs-mode.on{border-color:var(--accent);color:var(--accent)}
 
-#mentBtn[hidden]{display:none}
-#mentBtn .mb-ico{display:grid;place-items:center}
-#mentBtn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-#mentBtn.off{color:var(--muted)}
-header #mentBtn .mb-count{position:absolute;top:2px;right:0;min-width:15px;height:15px;font-size:9.5px;padding:0 4px}
+#bellBtn[hidden]{display:none}
+#bellBtn .mb-ico{display:grid;place-items:center}
+#bellBtn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#bellBtn.off{color:var(--muted)}
+header #bellBtn .mb-count{position:absolute;top:2px;right:0;min-width:15px;height:15px;font-size:9.5px;padding:0 4px}
 .mb-count{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#e5262a;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center}
 .mb-count[hidden]{display:none}
-#mentPanel{position:fixed;top:calc(var(--head) + 6px);z-index:100003;width:380px;max-height:78vh;display:flex;flex-direction:column;gap:10px;padding:12px;
+#bellPanel{position:fixed;top:calc(var(--head) + 6px);z-index:100003;width:420px;max-width:calc(100vw - 16px);max-height:78vh;display:flex;flex-direction:column;gap:8px;padding:12px 12px 10px;
   background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.55)}
-#mentPanel[hidden]{display:none}
+#bellPanel[hidden]{display:none}
 .mp-note{font-size:11px;color:#e8b84a}
 .mp-note:empty{display:none}
 .mp-head{display:flex;align-items:center;gap:6px}
 .mp-head b{font-size:14px;margin-right:auto}
 .mp-head .btn{height:26px;font-size:11px}
 .mp-head .btn[hidden]{display:none}
-#mentList{overflow:auto;display:flex;flex-direction:column;min-height:0;margin:0 -12px -12px;border-top:1px solid var(--line)}
-#mentList .sv-empty{padding:12px}
+/* the bell and All notifications: tabs, sub-filter chips, the chat or site picker */
+.nc-tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:0 -12px;padding:0 8px}
+.menthist .nc-tabs{margin:0;padding:0 14px}
+.nc-tabs button{display:flex;align-items:center;gap:5px;height:32px;padding:0 9px;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;background:none;color:var(--muted);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+.nc-tabs button:hover{color:var(--text)}
+.nc-tabs button.on{color:var(--text);border-bottom-color:var(--accent)}
+.nc-tabs i{font-style:normal;min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:var(--line2);color:var(--text);font-size:10.5px;font-weight:700;display:grid;place-items:center}
+.nc-tabs button.on i{background:var(--accent);color:var(--accent-ink)}
+.nc-bar{display:flex;align-items:center;gap:8px;min-width:0}
+.nc-bar[hidden],.nc-chips[hidden],.nc-sum[hidden],.nc-pick[hidden]{display:none}
+.nc-chips{display:flex;gap:4px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+.nc-chips::-webkit-scrollbar{display:none}
+.nc-chips button{flex:none;height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);cursor:pointer;font-size:11.5px;font-weight:600;white-space:nowrap}
+.nc-chips.small button{height:23px;padding:0 8px;font-size:11px}
+.nc-chips button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent-edge)}
+.nc-sum{flex:1;font-size:11.5px;color:var(--muted)}
+.nc-pick{height:26px;max-width:170px;margin-left:auto;font-size:11.5px}
+.nc-list{overflow:auto;display:flex;flex-direction:column;min-height:0;border-top:1px solid var(--line)}
+#bellList{margin:0 -12px}
+#bellList .sv-empty{padding:14px 12px;color:var(--muted);font-size:12.5px}
+.mp-row.nc-row{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:10px;row-gap:0;align-content:start}
+.nc-row>:not(.nc-ico):not(.mp-top):not(.mp-x){margin-top:3px}
+.nc-row>:not(.nc-ico):not(.mp-x){grid-column:2}
+.nc-ico{grid-row:1 / span 8;width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+.nc-ico svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nc-t{font:700 14px Georgia,serif;color:#e8b84a}
+.nc-row.k-mention .nc-ico{color:var(--accent)}
+.nc-row.k-spam .nc-ico,.nc-row.k-live .nc-ico{color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,transparent);border-color:color-mix(in srgb,var(--danger) 30%,transparent)}
+.nc-row.k-raid .nc-ico{color:#a970ff}
+.nc-row.k-app .nc-ico{color:#6aa8ff}
+.nc-row.k-reply.unread::before{background:var(--text)}
+.nc-row.k-word.unread::before{background:#e8b84a}
+.nc-row.k-spam.unread::before,.nc-row.k-live.unread::before{background:var(--danger)}
+.nc-row.k-app .mp-top b,.nc-row.k-raid .mp-top b,.nc-row.k-live .mp-top b{white-space:normal}
+.nc-row.k-app .mp-top b{color:var(--text)}
+.nc-row.k-app .mp-body{color:var(--muted);font-size:12px}
+.nc-row .mp-body:empty{display:none}
+.mp-kind.spam{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
+.mp-kind.plain{border:0;padding:0;font-size:12px;font-weight:500}
+.nc-auto{font-size:11px;font-weight:700;color:var(--accent)}
+.nc-acts{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px}
+.nc-acts .btn{height:24px;padding:0 9px;font-size:11.5px}
+.nc-acts .btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
+.nc-acts .btn.accent{color:var(--accent);border-color:var(--accent)}
+.nc-acts .btn.linkish{border:0;background:none;color:var(--muted);text-decoration:none;font-weight:500}
+.nc-acts .btn.linkish:hover{color:var(--text)}
+.nc-note{font-size:11.5px;color:var(--muted)}
+.nc-why{white-space:pre-wrap;font-size:11.5px;color:var(--muted);padding:6px 8px;border-radius:7px;background:var(--panel2);border:1px solid var(--line)}
+.nc-why[hidden]{display:none}
+/* Settings > Notifications */
+.nt-grid{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;column-gap:14px;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+.nt-grid>*{padding:8px 0;border-top:1px solid var(--line);align-self:stretch;display:flex;align-items:center}
+.nt-grid>:nth-child(4n+1){padding-left:12px}
+.nt-grid>:nth-child(4n){margin-right:12px}
+.nt-grid>.nt-h{border-top:0;padding:8px 0 6px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.nt-grid>.nt-h:first-child{padding-left:12px}
+.nt-grid>.nt-desk[hidden]{display:block;visibility:hidden}   /* (no desktop notifications outside the desktop app: the column stays in place) */
+.nt-grid select{height:28px;font-size:12px}
+.nt-grid>.nt-k{gap:8px;align-items:baseline;font-size:13px;min-width:0}
+.nt-k>i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--accent);transform:translateY(-1px)}
+.nt-k.k-spam>i,.nt-k.k-live>i{background:var(--danger)}
+.nt-k.k-raid>i{background:#a970ff}
+.nt-k.k-app>i{background:#6aa8ff}
+.nt-k .linkish{display:block;font-size:11px;font-weight:600;text-decoration:none}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+.seg[hidden]{display:none}
+.seg button{height:26px;padding:0 9px;border:0;border-left:1px solid var(--line2);background:var(--panel2);color:var(--muted);font:inherit;font-size:11.5px;font-weight:600;cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+.nt-chip{display:inline-flex;align-items:center;gap:4px;margin-left:8px;padding:1px 7px;border-radius:9px;border:1px solid color-mix(in srgb,#6aa8ff 45%,transparent);background:color-mix(in srgb,#6aa8ff 12%,transparent);color:#6aa8ff;font:inherit;font-size:10.5px;font-weight:700;cursor:pointer;vertical-align:1px}
+.nt-chip::before{content:"🔗";font-size:9px}
+.st-row.nt-shared{background:color-mix(in srgb,#6aa8ff 5%,transparent)}
+.st-row[hidden]{display:none}
 .mp-row{position:relative;padding:9px 12px 10px 14px;cursor:pointer;display:flex;flex-direction:column;gap:3px;border-bottom:1px solid var(--line)}
 .mp-row:last-child{border-bottom:0}
 .mp-row:hover{background:var(--panel2)}
@@ -1260,11 +1331,13 @@ header.c3 :is(#loginBtn,#savedBtn,#profBtn) .tb-l{display:none}
 .mh-chips{display:flex;gap:4px}
 .mh-chips button{height:28px;padding:0 10px;border-radius:999px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);cursor:pointer;font-size:12px;font-weight:600}
 .mh-chips button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent-edge)}
-#mhChan{height:30px;max-width:200px}
+.menthist .nc-pick{height:30px;max-width:200px;margin-left:0;font-size:12.5px}
+.menthist .nc-bar{padding:8px 14px}
+.menthist .nc-chips button{height:28px;font-size:12px}
 .mh-sp{flex:1}
 .mh-tools .btn{height:30px;font-size:12px}
-#mhList{flex:1;min-height:0;overflow:auto;padding:4px 14px 16px}
-#mhList .sv-empty{padding:28px 12px;text-align:center;color:var(--muted);font-size:13px}
+#nhList{flex:1;min-height:0;overflow:auto;padding:4px 14px 16px;border-top:0}
+#nhList .sv-empty{padding:28px 12px;text-align:center;color:var(--muted);font-size:13px}
 .mh-day{position:sticky;top:0;z-index:1;display:flex;align-items:baseline;gap:8px;padding:10px 2px 6px;background:var(--panel);font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .mh-day b{color:var(--text);font-weight:700}
 .mh-group{border:1px solid var(--line);border-radius:10px;overflow:hidden}
@@ -1300,7 +1373,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <button class="btn tb ibtn" id="undoBtn" hidden disabled data-label="Undo" aria-label="Undo" title="Undo (Ctrl+Z)"><i data-ico="undo"></i><span class="tb-l">Undo</span></button>
   <button class="btn tb ibtn" id="redoBtn" hidden disabled data-label="Redo" aria-label="Redo" title="Redo (Ctrl+Y)"><i data-ico="redo"></i><span class="tb-l">Redo</span></button>
   <i class="sep"></i>
-  <button class="btn tb ibtn" id="mentBtn" hidden data-label="Mentions" aria-label="Mentions" title="Chat mentions and replies to you"><span class="mb-ico"></span><span class="tb-l">Mentions</span><span class="mb-count" hidden></span></button>
+  <button class="btn tb ibtn" id="bellBtn" hidden data-label="Notifications" aria-label="Notifications" title="Notifications: mentions, spam alerts, channels going live and the app's messages"><span class="mb-ico"></span><span class="tb-l">Notifications</span><span class="mb-count" hidden></span></button>
   <button class="btn tb ibtn" id="settingsBtn" data-label="Settings" aria-label="Settings" title="Settings: general, accounts, alerts, themes and updates"><i data-ico="gear"></i><span class="tb-l">Settings</span></button>
   <button class="btn tb ibtn" id="focusBtn" data-label="Hide bar" aria-label="Hide bar" title="Hide this toolbar (move mouse to top edge or press Esc to bring it back)"><i data-ico="hidebar"></i><span class="tb-l">Hide bar</span></button>
   <i class="sep"></i>
@@ -1354,24 +1427,26 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <div class="lm-save"><input id="presetName" placeholder="Name this layout" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="presetSave">Save</button></div>
 </div>
 
-<div id="mentPanel" class="popover" hidden>
-  <div class="mp-head"><b>Mentions &amp; replies</b><button class="btn" id="mentClear">Clear</button><button class="menu-set" id="mentSettings" title="Mention settings" aria-label="Mention settings"></button></div>
+<div id="bellPanel" class="popover nc" hidden>
+  <div class="mp-head"><b>Notifications</b><button class="btn" id="bellRead">Mark all read</button><button class="btn" id="bellClear" title="Delete the ones in this tab">Clear</button><button class="menu-set" id="bellSettings" title="Notification settings" aria-label="Notification settings"></button></div>
+  <div class="nc-tabs" role="tablist" aria-label="Kinds of notification"></div>
+  <div class="nc-bar"><div class="nc-chips"></div><span class="nc-sum"></span><select class="nc-pick" aria-label="Which chat"></select></div>
   <span class="mp-note" id="mentState"></span>
-  <div id="mentList"></div>
-  <button class="btn mp-all" id="mentAll" hidden title="Every mention and reply kept (the last 500), with search and filters">All mentions ›</button>
+  <div class="nc-list" id="bellList"></div>
+  <button class="btn mp-all" id="bellAll" title="Every notification kept (the last 500 of each kind), with search and filters">All notifications ›</button>
 </div>
-<div class="dlg-bg" id="mentDlg" hidden><div class="dlg menthist" role="dialog" aria-modal="true" aria-labelledby="mhTitle">
-  <div class="help-head"><h3 id="mhTitle">Mentions &amp; replies</h3><span class="mh-count"></span>
+<div class="dlg-bg" id="noteDlg" hidden><div class="dlg menthist nc" role="dialog" aria-modal="true" aria-labelledby="nhTitle">
+  <div class="help-head"><h3 id="nhTitle">All notifications</h3><span class="mh-count"></span>
     <button class="help-x" title="Close (Esc)" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="nc-tabs" role="tablist" aria-label="Kinds of notification"></div>
   <div class="mh-tools">
-    <label class="mh-q"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="mhQ" placeholder="Search by name, message or chat" aria-label="Search mentions" autocomplete="off" spellcheck="false"></label>
-    <div class="mh-chips" id="mhKinds"><button data-v="all" class="on">All</button><button data-v="mention">Mentions</button><button data-v="reply">Replies</button><button data-v="word">Words</button></div>
-    <select id="mhChan" aria-label="Which chat"><option value="">All chats</option></select>
-    <label class="chk"><input type="checkbox" id="mhUnread">Unread only</label>
-    <span class="mh-sp"></span>
-    <button class="btn" id="mhRead">Mark all read</button><button class="btn danger" id="mhClear">Clear all</button>
+    <label class="mh-q"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="nhQ" placeholder="Search by name, message or chat" aria-label="Search notifications" autocomplete="off" spellcheck="false"></label>
+    <select class="nc-pick" aria-label="Which chat"></select>
+    <label class="chk"><input type="checkbox" id="nhUnread">Unread only</label>
   </div>
-  <div id="mhList"></div>
+  <div class="mh-tools nc-bar"><div class="nc-chips"></div><span class="nc-sum"></span>
+    <button class="btn" id="nhRead">Mark all read</button><button class="btn danger" id="nhClear">Clear all</button></div>
+  <div class="nc-list" id="nhList"></div>
 </div></div>
 
 <div id="savedPanel" hidden>
@@ -1558,17 +1633,19 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         </div>
       </section>
       <section class="st-pane" data-s="notify" hidden>
-        <h4>Notifications</h4><p class="st-sub">Messages in the app, and your computer's own notifications.</p>
-        <div class="st-sec">Messages</div>
-        <div class="st-row"><span class="st-t">Show messages<small>Short notes like "Logged out of Twitch" or "Couldn't read that link". They go after a few seconds; click one to close it.</small></span>
-          <select id="msgPos" aria-label="Where messages show"><option value="tc">Top</option><option value="tl">Top left</option><option value="tr">Top right</option><option value="bc">Bottom</option><option value="bl">Bottom left</option><option value="br">Bottom right</option></select><input type="checkbox" class="st-sw" id="msgOn" checked aria-label="Show messages"></div>
-        <div class="st-row msg-via" hidden><span class="st-t">Show them as<small>A desktop notification only shows while desktop notifications (below) are on; otherwise it's a toast.</small></span>
-          <select id="msgVia" aria-label="Show messages as"><option value="toast">Toast in the app</option><option value="desktop">Desktop notification</option></select></div>
+        <h4>Notifications</h4><p class="st-sub">What happens when something new arrives. Everything is kept under the bell in the toolbar either way.</p>
+        <div class="st-lead nt-dnd"><span class="st-t"><b>Do not disturb</b><small id="dndSt">Still collected under the bell, but no pop-ups, sounds or desktop notifications.</small></span>
+          <select id="dndFor" aria-label="For how long"><option value="30">For 30 minutes</option><option value="60">For 1 hour</option><option value="120">For 2 hours</option><option value="240">For 4 hours</option><option value="480">For 8 hours</option><option value="0">Until I turn it off</option></select><input type="checkbox" class="st-sw" id="dndOn" aria-label="Do not disturb"></div>
+        <div class="st-sec">For each kind</div>
+        <div class="nt-grid" id="ntGrid"><span class="nt-h">Kind</span><span class="nt-h">Pop-up</span><span class="nt-h nt-desk">Desktop</span><span class="nt-h">Sound</span></div>
+        <div class="st-sec">The bell</div>
+        <div class="st-row"><span class="st-t">Red number counts<small>Things that are new since you last opened it. App messages never count.</small></span>
+          <select id="bellCount" aria-label="What the red number counts"><option value="ms">Mentions &amp; spam</option><option value="all">Everything</option><option value="off">Off</option></select></div>
+        <div class="st-row"><span class="st-t">Pop-ups show<small>Where the short messages in the app appear. Click one to close it.</small></span>
+          <select id="msgPos" aria-label="Where pop-ups show"><option value="tc">Top</option><option value="tl">Top left</option><option value="tr">Top right</option><option value="bc">Bottom</option><option value="bl">Bottom left</option><option value="br">Bottom right</option></select></div>
         <div class="dn-sec" hidden>
           <div class="st-sec">Desktop notifications</div>
-          <label class="st-row"><span class="st-t">Desktop notifications<small>Your computer's notifications, also while the app is in the background. Off: none at all, whatever is chosen below.</small></span><input type="checkbox" class="st-sw" id="dnOn" checked></label>
-          <label class="st-row"><span class="st-t">Saved channels going live<small>Pick the channels with the bell next to each one in Channels.</small></span><input type="checkbox" class="st-sw" id="dnLive"></label>
-          <div class="st-row"><span class="st-t">Mentions, replies and spam alerts<small>When each one sends a notification is in <button class="linkish" data-go="mentions">Mentions</button> and <button class="linkish" data-go="spam">Spam alerts</button>.</small></span></div>
+          <label class="st-row"><span class="st-t">Desktop notifications<small>Your computer's notifications, also while the app is in the background. Off: none at all, whatever is chosen above.</small></span><input type="checkbox" class="st-sw" id="dnOn" checked></label>
           <div class="st-row"><span class="st-t">Check they work<small class="dn-st">If your computer blocks them, nothing shows. Send a test to check.</small></span><button class="btn dn-test">Send a test</button><button class="btn dn-sys">Open system settings</button></div>
         </div>
       </section>
@@ -1600,12 +1677,13 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <div class="st-row" data-dep="mention.until"><span class="st-t">Get stronger if unseen<small>Glow, then pulse, then flash.</small></span>
           <select data-al="mention.esc"><option value="0">Off</option><option value="10">Every 10 s</option><option value="20">Every 20 s</option><option value="40">Every 40 s</option><option value="60">Every minute</option></select>
           <select data-al="mention.max"><option value="pulse">Up to pulse</option><option value="flash">Up to flash</option></select></div>
-        <div class="st-row"><span class="st-t">Sound</span>
+        <div class="st-row nt-shared"><span class="st-t">Pop-up in the app<button class="nt-chip" data-go="notify" title="The same setting as in Notifications: changing one changes both">Notifications</button><small>A short message saying what happened and where.</small></span><input type="checkbox" class="st-sw" data-al="mention.popup"></div>
+        <div class="st-row nt-shared"><span class="st-t">Sound<button class="nt-chip" data-go="notify" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="mention.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound</option></select>
           <button class="btn st-play" data-play="mention" title="Play it">▶</button>
           <input type="range" min="0" max="1" step="0.05" data-al="mention.vol" title="Volume"></div>
         <div class="st-row" data-dep="mention.until"><span class="st-t">Repeat the sound while unseen</span><input type="checkbox" class="st-sw" data-al="mention.repeat"></div>
-        <div class="st-row"><span class="st-t">Desktop notification</span>
+        <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="mention.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
         </div>
       </section>
@@ -1621,12 +1699,13 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <select data-al="spam.esc"><option value="0">Off</option><option value="10">Every 10 s</option><option value="20">Every 20 s</option><option value="40">Every 40 s</option><option value="60">Every minute</option></select>
           <select data-al="spam.max"><option value="pulse">Up to pulse</option><option value="flash">Up to flash</option></select></div>
         <div class="st-row"><span class="st-t">Tag the message in chat<small>Adds "LIKELY SPAM" after the message. Hover the tag to see why.</small></span><input type="checkbox" class="st-sw" data-al="spam.tag"></div>
-        <div class="st-row"><span class="st-t">Sound</span>
+        <div class="st-row nt-shared"><span class="st-t">Pop-up in the app<button class="nt-chip" data-go="notify" title="The same setting as in Notifications: changing one changes both">Notifications</button><small>A short message saying what happened and where.</small></span><input type="checkbox" class="st-sw" data-al="spam.popup"></div>
+        <div class="st-row nt-shared"><span class="st-t">Sound<button class="nt-chip" data-go="notify" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="spam.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound</option></select>
           <button class="btn st-play" data-play="spam" title="Play it">▶</button>
           <input type="range" min="0" max="1" step="0.05" data-al="spam.vol" title="Volume"></div>
         <div class="st-row" data-dep="spam.until"><span class="st-t">Repeat the sound while unseen</span><input type="checkbox" class="st-sw" data-al="spam.repeat"></div>
-        <div class="st-row"><span class="st-t">Desktop notification</span>
+        <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="spam.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
         </div>
         <div class="st-subpane" data-t="how" hidden>
@@ -1733,6 +1812,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 </div></div>
 
 <script src="spam.js"></script>
+<script src="notifications.js"></script>
 <script src="follows.js"></script>
 <script src="dropdown.js"></script>
 <script>
@@ -1763,6 +1843,10 @@ const icon = {
   atOff:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/><path d="M3 3l18 18"/></svg>',
   bolt:'<svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>',
   bell:'<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>',
+  reply:'<svg viewBox="0 0 24 24"><path d="M10 8L5 12.5 10 17"/><path d="M5 12.5h9a5 5 0 0 1 5 5V19"/></svg>',
+  live:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7M5.6 18.4a9 9 0 0 1 0-12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>',
+  raid:'<svg viewBox="0 0 24 24"><path d="M4 12h12"/><path d="M12 7l5 5-5 5"/><path d="M20 5v14"/></svg>',
+  download:'<svg viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 20h14"/></svg>',
   bellOff:'<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 9.5-4.9M18 11v5l1.5 2H8"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/><path d="M4 4l16 16"/></svg>',
   user:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
   float:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="11" y="11" width="8" height="6" rx="1"/></svg>',
@@ -2865,7 +2949,7 @@ function mountView(w){
     const hasVol = w.kind === 'stream';
     frame.addEventListener('focus', () => {                                     // you clicked into it
       if (Date.now() - (frame.skipAt || 0) < 1000) return;                       // Skip YouTube ads did
-      focusWin(w); clearAlert(w); readMentions(w.channel);
+      focusWin(w); clearAlert(w); readChat(w.channel);
     });
     // a raid moves the chat (or player) to another channel: follow it with every window of this channel
     const nav = e => { if (e.isMainFrame !== false && w.view === frame) watchRaid(w, e.url); };
@@ -2908,8 +2992,11 @@ async function saveEmote(json){
   let d; try { d = JSON.parse(json); } catch { return; }
   if (!d || typeof d.url !== 'string' || typeof d.name !== 'string' || !window.kmv || !window.kmv.emoteDownload) return;
   const r = await window.kmv.emoteDownload(d.url, d.name, typeof d.small === 'string' ? d.small : '').catch(() => null);
-  if (r && r.saved) flash(`Saved ${d.name}`);
-  else if (!r || r.error) flash(`Couldn’t download ${d.name}`);
+  if (r && r.saved){
+    const n = addNote({ kind: 'app', subject: 'downloads', text: `Saved emote “${d.name}”`, detail: r.file || '', act: r.id ? { t: 'folder' } : null }, `Saved ${d.name}`);
+    if (n && r.id && window.kmv.emoteShow) noteActs.set(n.id, { run: () => window.kmv.emoteShow(r.id).then(ok => { if (!ok) flash('That file isn\'t there any more'); }) });
+  }
+  else if (!r || r.error) flash(`Couldn’t download ${d.name}`, { subject: 'downloads' });
 }
 function setWait(w, text, retry){
   const wait = w.el.querySelector('.waitmsg');
@@ -3001,6 +3088,9 @@ function followRaid(from, to, tell){
   raidSeen[from + '>' + to] = Date.now();
   const old = wins.filter(w => w.channel === from && (w.kind === 'stream' || w.kind === 'chat'));
   if (tell && DESKTOP && window.kmv.raidFollowed) window.kmv.raidFollowed(from, to);   // the other window (streams pop-out or main)
+  // kept under the bell (the main window's, also for a raid the streams window followed); its pop-up where it switched
+  const text = `${chLabel(from)} raided ${chLabel(to)}: switched to them`;
+  addNote({ kind: 'raid', channel: to, from, label: chLabel(to) }, old.length ? text : null, `${chLabel(from)} raided ${chLabel(to)}`);
   if (!old.length) return;
   if (featuredCh === from) setFeatured(to);                     // the big one stays big
   old.forEach(w => {
@@ -3016,13 +3106,12 @@ function followRaid(from, to, tell){
     try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
   }
   updateEmpty(); save();
-  flash(`${chLabel(from)} raided ${chLabel(to)}: switched to them`);
 }
 
 // You moved or resized a window yourself: don't auto-refit on window resize. Fitting in channels that open
 // by themselves only works in Auto layout, so say so when it stops.
 function arrangedByHand(){
-  if (lastLayout === 'auto' && ROLE === 'main' && fitOn()) flash('Auto layout is off because you moved a window. Pick it again to fit in channels that go live.');
+  if (lastLayout === 'auto' && ROLE === 'main' && fitOn()) flash('Auto layout is off because you moved a window. Pick it again to fit in channels that go live.', { subject: 'layouts' });
   lastLayout = null; updateLayoutMenu();
 }
 function toggleMax(w){
@@ -3048,7 +3137,7 @@ let liveInfo = {};                                  // channel -> { live, title,
 let notifyAll = true, notifyOff = [];
 try { notifyAll = localStorage.getItem('kickMultiview.notifyAll') !== '0'; notifyOff = JSON.parse(localStorage.getItem('kickMultiview.notifyOff') || '[]'); } catch {}
 function sendWatch(){
-  if (DESKTOP && ROLE === 'main' && window.kmv.watchLive) window.kmv.watchLive({ channels: saved, notifyAll, off: notifyOff.map(c => String(c).toLowerCase()) });
+  if (DESKTOP && ROLE === 'main' && window.kmv.watchLive) window.kmv.watchLive({ channels: saved, notifyAll, away: !!alerts && alerts.live.notify === 'unfocused', off: notifyOff.map(c => String(c).toLowerCase()) });
 }
 function persistSaved(){
   saved = abc(saved);
@@ -3094,6 +3183,20 @@ function toggleAutoOpen(ch){
   if (autoOpen.includes(ch)) checkAutoOpen(); else autoDone.delete(ch);
   renderSaved();
 }
+/* A saved channel went live: kept under the bell (Live). Opening by itself (checkAutoOpen) and the went-live
+   message can come in either order, so they share one notification. */
+function liveNote(ch, info, auto){
+  info = info || infoFor(ch) || {};
+  const recent = notes.find(n => n.kind === 'live' && n.channel === ch && Date.now() - n.t < 10 * 60000);
+  const data = { label: info.name || chLabel(ch), title: info.title || '', category: info.category || '', ...(info.viewers != null ? { viewers: info.viewers } : {}) };
+  if (recent){
+    Object.assign(recent, Object.fromEntries(Object.entries(data).filter(([, v]) => v !== '' && v != null)), auto ? { auto: true } : {});
+    saveNotes(); renderBell();
+    return recent;
+  }
+  return addNote({ kind: 'live', channel: ch, ...data, ...(auto ? { auto: true } : {}) },
+    auto ? null : `${chLabel(ch)} just went live on ${PLAT_NAME[platOf(ch)]}`);
+}
 function checkAutoOpen(){
   if (ROLE !== 'main') return;
   const opened = [];
@@ -3109,7 +3212,8 @@ function checkAutoOpen(){
   if (!opened.length) return;
   if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout();
   else if (lastLayout === 'auto' && fitOn()) autoLayout();     // new windows are last in the list, so they go last
-  flash(`Opened ${opened.map(chLabel).join(', ')} (just went live)`);
+  opened.forEach(ch => liveNote(ch, null, true));
+  if (alerts.live.popup !== false && !dndOn()) flash(`Opened ${opened.map(chLabel).join(', ')} (just went live)`, true);
 }
 function fmtViewers(n){ return n == null ? '' : n >= 1000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '') + 'K' : String(n); }
 function updateSavedBadge(){
@@ -3323,29 +3427,62 @@ async function openFromBox(saveToo){
   addParsed(t.p);
 }
 
-/* ---------- chat mentions / replies ---------- */
-const HISTORY_MAX = 50;   // spam detections kept for the list
-const MENT_MAX = 500;     // mentions kept for the history
-const MENT_SHOWN = 5;     // the latest ones in the @ popover (the rest in the history)
-let myName = '', myTwitch = '', mentOn = true, mentions = [], mentMuted = new Set(), mentWords = [];
+/* ---------- the notification centre: the toolbar bell ----------
+   Chat mentions, likely spam, saved channels going live, raids and the app's own messages, in one list
+   (src/notifications.js) kept in localStorage. Only the main window keeps it. */
+const MENT_MAX = 500;     // (the chat helper's limits)
+const NOTE_SHOWN = 30;    // the latest in each tab of the bell (the rest in All notifications)
+const NOTES_KEY = 'kickMultiview.notifications';
+let myName = '', myTwitch = '', mentOn = true, mentMuted = new Set(), mentWords = [];
 try {
   myName = localStorage.getItem('kickMultiview.myName') || '';
   myTwitch = localStorage.getItem('kickMultiview.myTwitch') || '';
   mentOn = localStorage.getItem('kickMultiview.mentOn') !== '0';
-  mentions = JSON.parse(localStorage.getItem('kickMultiview.mentions') || '[]');
   mentMuted = new Set(JSON.parse(localStorage.getItem('kickMultiview.mentMuted') || '[]'));
   mentWords = JSON.parse(localStorage.getItem('kickMultiview.mentWords') || '[]').filter(x => typeof x === 'string');
 } catch {}
-const mentUnread = () => mentions.filter(m => m.unread).length;
-function saveMentions(){
-  try { localStorage.setItem('kickMultiview.mentions', JSON.stringify(mentions.slice(0, MENT_MAX))); } catch {}
+const readJson = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
+let notes = readJson(NOTES_KEY);
+if (Array.isArray(notes)) notes = notes.filter(n => n && typeof n === 'object');
+else {
+  // The first start with the bell: the mentions history and spam alerts' history move in. The old ones are
+  // left as they were, so an older version still has them.
+  notes = SmvNotes.migrate(readJson('kickMultiview.mentions'), readJson('kickMultiview.spamHistory'));
+  if (ROLE === 'main') saveNotes();
 }
-// Seen: one chat's (clicking into that chat), the ones the @ popover shows, or all of them (the history).
-function readMentions(ch, list){
+function saveNotes(){ try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch {} }
+// What each one can still do this session: Undo (a closed channel), Show in folder (a saved emote).
+const noteActs = new Map();
+// Settings > Notifications: the red number, and Do not disturb (until when; -1: until it's turned off).
+let bellCount = 'ms', dndUntil = 0, dndT = 0;
+try { bellCount = localStorage.getItem('kickMultiview.bellCount') || 'ms'; dndUntil = +localStorage.getItem('kickMultiview.dnd') || 0; } catch {}
+const dndOn = () => dndUntil < 0 || dndUntil > Date.now();
+// The kind of alert settings a notification uses.
+const alertKind = n => SmvNotes.tabOf(n) === 'mentions' ? 'mention' : n.kind;
+// Keeps a notification (the main window only) and shows its pop-up, plays its sound and sends its desktop
+// notification, as Settings > Notifications says. Mentions and spam make their own sound and desktop
+// notification (with the chat window's alert); went live's desktop notification comes from the app itself.
+function addNote(n, text, desk = text){
+  const kind = alertKind(n), a = alerts[kind] || {}, quiet = dndOn();
+  if (text && a.popup !== false && !quiet) flash(text, true);
+  if (ROLE !== 'main') return null;
+  if (!quiet && (kind === 'live' || kind === 'raid' || kind === 'app')) playSound(kind);
+  if (desk && (kind === 'raid' || kind === 'app') && wantNotify(kind) && DESKTOP && window.kmv.notifyMessage) window.kmv.notifyMessage(desk);
+  notes = SmvNotes.add(notes, n); saveNotes(); renderBell();
+  return notes[0];
+}
+function dropNotes(test){
+  const before = notes.length;
+  notes = notes.filter(n => !test(n));
+  if (notes.length !== before){ saveNotes(); renderBell(); }
+}
+// Seen: one chat's mentions and spam (clicking into that chat), a given list, or all of them.
+function readNotes(test){
   let n = 0;
-  (list || mentions).forEach(m => { if (m.unread && (!ch || m.channel === ch)){ m.unread = false; n++; } });
-  if (n){ saveMentions(); renderMentions(); }
+  notes.forEach(x => { if (x.unread && (!test || test(x))){ x.unread = false; n++; } });
+  if (n){ saveNotes(); renderBell(); }
 }
+const readChat = ch => readNotes(n => n.channel === ch && (SmvNotes.tabOf(n) === 'mentions' || n.kind === 'spam'));
 // Mentions for one chat can be turned off with the @ button on its bar.
 const mentNameFor = ch => { const p = platOf(ch); return p === 'kick' ? myName : p === 'twitch' ? myTwitch : ''; };   // YouTube chat isn't covered
 const mentCovered = ch => /^(kick|twitch)$/.test(platOf(ch)) && !!(mentNameFor(ch) || mentWords.length);
@@ -3364,15 +3501,16 @@ function syncAtBtn(w){
   b.classList.toggle('off', muted);
   b.title = muted ? 'Mentions are off for this chat. Click to turn them on' : 'Mentions are on for this chat. Click to turn them off';
 }
-function updateMentBtn(){
+function updateBellBtn(){
   wins.forEach(syncAtBtn);
-  const b = $('#mentBtn'); if (!b) return;
-  const anyName = mentAny(), n = mentUnread();
-  b.querySelector('.mb-ico').innerHTML = mentOn && anyName ? icon.at : icon.atOff;
+  const b = $('#bellBtn'); if (!b) return;
+  const n = SmvNotes.badge(notes, bellCount), quiet = dndOn();
+  b.querySelector('.mb-ico').innerHTML = quiet ? icon.bellOff : icon.bell;
   const c = b.querySelector('.mb-count');
   c.hidden = !n; c.textContent = n > 99 ? '99+' : String(n);
-  b.classList.toggle('off', !(mentOn && anyName));
-  b.title = !anyName ? 'Chat mentions: set your username to turn on' : mentOn ? `Chat mentions and replies to ${[myName, myTwitch].filter(Boolean).map(x => '@' + x).concat(mentWords.map(x => '"' + x + '"')).join(' / ')}` : 'Chat mention alerts are off';
+  b.classList.toggle('off', quiet);
+  b.title = quiet ? `Notifications (Do not disturb is on${dndUntil > 0 ? ' until ' + new Date(dndUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''})`
+    : 'Notifications: mentions, spam alerts, channels going live and the app\'s messages';
 }
 function timeAgo(t){ const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 48 * 60 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; }
 // (escH is defined further down, after this can first run)
@@ -3432,44 +3570,90 @@ function mentBodyHtml(m){
   }
   return out + escM(body.slice(last));
 }
-function mentRow(m, { onOpen, onDelete, clock } = {}){
-  const row = document.createElement('div'); row.className = 'mp-row plat-' + platOf(m.channel) + (m.unread ? ' unread' : '');
-  row.innerHTML = `<div class="mp-top"><b></b><span class="mp-kind"></span><span class="mp-time"></span></div><div class="mp-where"><span class="dot"></span><span></span></div><div class="mp-q" ${m.quoted ? '' : 'hidden'}></div><div class="mp-body"></div>`;
-  row.querySelector('b').textContent = m.sender;
-  const k = row.querySelector('.mp-kind');
-  k.textContent = m.kind === 'word' ? `Word: ${m.word}` : MENT_KIND[m.kind] || 'Mention';
-  k.classList.add(m.kind || 'mention');
-  row.querySelector('.mp-where span:last-child').textContent = chLabelP(m.channel);
+/* One row of the bell or All notifications. o: { clock (the time, not "x min ago"), onDelete, close (what's
+   open: the bell or the history) } */
+const NOTE_ICO = { mention: 'at', reply: 'reply', spam: 'mod', live: 'live', raid: 'raid', accounts: 'user', layouts: 'tile', windows: 'popwin', downloads: 'download', updates: 'update' };
+function noteRow(n, o = {}){
+  const kind = n.kind || 'mention', tab = SmvNotes.tabOf(n);
+  const row = document.createElement('div');
+  row.className = `mp-row nc-row k-${kind} plat-${platOf(n.channel || '')}` + (n.unread ? ' unread' : '');
+  row.dataset.id = n.id || '';
+  row.innerHTML = `<span class="nc-ico"></span><div class="mp-top"><b></b><span class="mp-kind"></span><span class="mp-time"></span></div><div class="mp-where"><span class="dot"></span><span></span></div><div class="mp-q" hidden></div><div class="mp-body"></div>`;
+  const ico = NOTE_ICO[kind === 'app' ? n.subject : kind];
+  row.querySelector('.nc-ico').innerHTML = ico && icon[ico] ? icon[ico] : '<span class="nc-t">T</span>';
+  const top = row.querySelector('.mp-top b'), k = row.querySelector('.mp-kind'), where = row.querySelector('.mp-where span:last-child'), body = row.querySelector('.mp-body');
   const tm = row.querySelector('.mp-time');
-  tm.textContent = clock ? new Date(m.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : timeAgo(m.t);
-  tm.title = new Date(m.t).toLocaleString();
-  const q = row.querySelector('.mp-q'), qp = cleanParts(m.qparts), bp = cleanParts(m.parts);
-  if (qp) q.append(mentBodyNodes(m, qp, false)); else q.textContent = m.quoted || '';
-  if (bp) row.querySelector('.mp-body').append(mentBodyNodes(m, bp, true));
-  else row.querySelector('.mp-body').innerHTML = mentBodyHtml(m);
-  row.title = 'Show this chat';
-  row.onclick = () => onOpen && onOpen(m);
-  if (onDelete){
+  tm.textContent = o.clock ? new Date(n.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : timeAgo(n.t);
+  tm.title = new Date(n.t).toLocaleString();
+  const acts = document.createElement('div'); acts.className = 'nc-acts';
+  const act = (label, fn, cls = '') => {
+    const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = label;
+    b.onclick = e => { e.stopPropagation(); fn(b); };
+    acts.appendChild(b); return b;
+  };
+  const close = () => { if (o.close) o.close(); };
+  if (tab === 'mentions'){
+    top.textContent = n.sender;
+    k.textContent = kind === 'word' ? `Word: ${n.word}` : MENT_KIND[kind] || 'Mention';
+    k.classList.add(kind);
+    where.textContent = chLabelP(n.channel);
+    const q = row.querySelector('.mp-q'), qp = cleanParts(n.qparts), bp = cleanParts(n.parts);
+    q.hidden = !n.quoted;
+    if (qp) q.append(mentBodyNodes(n, qp, false)); else q.textContent = n.quoted || '';
+    if (bp) body.append(mentBodyNodes(n, bp, true)); else body.innerHTML = mentBodyHtml(n);
+    row.title = 'Show this chat';
+    row.onclick = () => { close(); revealChat(n.channel); };
+  } else if (kind === 'spam'){
+    top.textContent = n.sender;
+    k.textContent = `${n.score} / ${n.need}`; k.classList.add('spam');
+    k.title = `${n.score} points; ${n.need} needed to be flagged`;
+    where.textContent = chLabelP(n.channel);
+    body.textContent = n.body || '';
+    act('Show chat', () => { close(); revealChat(n.channel); });
+    act('Not spam', () => dropNotes(x => x === n)).title = 'Take it off this list';
+    if (SmvSpam.ignored(n.sender, spamOpts().ignore)) acts.insertAdjacentHTML('beforeend', '<span class="nc-note">On the chat bot list</span>');
+    else act('Add to bots', () => ignoreSender(n.sender), 'danger').title = `Add ${n.sender} to the chat bot list, so its messages are never flagged`;
+    const why = document.createElement('div'); why.className = 'nc-why'; why.hidden = true;
+    why.textContent = spamWhy(n);
+    act('Why?', () => { why.hidden = !why.hidden; }, 'linkish');
+    row.append(acts, why);
+    row.title = 'Show this chat';
+    row.onclick = () => { close(); revealChat(n.channel); };
+  } else if (kind === 'live' || kind === 'raid'){
+    if (kind === 'live'){ top.textContent = n.label || chLabel(n.channel); k.textContent = 'went live'; }
+    else { top.textContent = n.label || chLabel(n.channel); k.textContent = `raided by ${n.from ? chLabel(n.from) : 'someone'}`; }
+    k.classList.add('plain');
+    where.textContent = PLAT_NAME[platOf(n.channel)] || '';
+    if (n.auto) where.insertAdjacentHTML('afterend', '<span class="nc-auto">opened by itself</span>');
+    body.textContent = [n.title, n.category, n.viewers != null ? `${Number(n.viewers).toLocaleString()} watching` : ''].filter(Boolean).join(' · ');
+    const open = wins.some(w => (w.kind === 'stream' || w.kind === 'chat') && w.channel === n.channel), info = infoFor(n.channel);
+    if (open) acts.insertAdjacentHTML('beforeend', '<span class="nc-note">Already open</span>');
+    else if (info && info.live === false) acts.insertAdjacentHTML('beforeend', '<span class="nc-note">Offline</span>');
+    else {
+      act('Watch', () => { close(); addParsed({ channel: n.channel, only: null }); }, 'primary');
+      act('Chat only', () => { close(); addParsed({ channel: n.channel, only: 'chat' }); });
+    }
+    row.appendChild(acts);
+  } else {
+    top.textContent = n.text || '';
+    row.querySelector('.mp-where').remove();
+    body.textContent = n.detail || '';
+    const a = n.act || {}, live = noteActs.get(n.id);
+    if (a.t === 'login' && DESKTOP && window.kmv.openLogin) act('Log in', () => { close(); window.kmv.openLogin(a.p); }, 'primary');
+    if (a.t === 'undo' && live && live.ok()) act('Undo', b => { live.run(); noteActs.delete(n.id); b.remove(); }, 'accent');
+    if (a.t === 'folder' && live) act('Show in folder', () => live.run());
+    if (a.t === 'news') act('What\'s new', () => { close(); showHelp('news'); });
+    if (acts.children.length) row.appendChild(acts);
+  }
+  if (o.onDelete){
     const x = document.createElement('button'); x.className = 'mp-x'; x.innerHTML = icon.close; x.title = 'Delete this one';
-    x.onclick = e => { e.stopPropagation(); onDelete(m); };
+    x.onclick = e => { e.stopPropagation(); o.onDelete(n); };
     row.appendChild(x);
   }
   return row;
 }
-function renderMentions(){
-  updateMentBtn();
-  renderMentHistory();
-  const list = $('#mentList'); if (!list) return;
-  $('#mentNote').textContent = myName || myTwitch ? '' : mentWords.length ? 'Without a username, only your words are found (and your own messages can count).' : 'Needed for mention alerts. Click Detect, or type them in.';
-  const st = $('#mentState');
-  if (st) st.textContent = !mentAny() ? 'Set your usernames to get alerts.' : mentOn ? '' : 'Mention alerts are off.';
-  $('#mentClear').hidden = !mentions.length;
-  const all = $('#mentAll');
-  if (all){ all.hidden = !mentions.length; const u = mentUnread(); all.textContent = `All mentions (${mentions.length})` + (u ? ` · ${u} new` : '') + ' ›'; }
-  list.innerHTML = '';
-  if (!mentions.length){ list.innerHTML = '<div class="sv-empty">No mentions yet.</div>'; return; }
-  mentions.slice(0, MENT_SHOWN).forEach(m => list.appendChild(mentRow(m, { onOpen: m => { $('#mentPanel').hidden = true; revealChat(m.channel); } })));
-}
+// The same text as the "LIKELY SPAM" tag in the chat.
+const spamWhy = r => `Likely spam (${r.score} points, ${r.need} needed):\n` + (r.signs || []).map(s => `• ${s.text} (+${s.points})`).join('\n');
 function setMyName(n){
   myName = String(n || '').trim().replace(/^@/, '');
   if (myName && !/^[A-Za-z0-9_]{2,30}$/.test(myName)) myName = '';
@@ -3477,87 +3661,157 @@ function setMyName(n){
   $('#mentUser').value = myName;
   pushMyName(); renderMentions();
 }
-/* The full history (the @ popover's "All mentions"): search, filters, grouped by day. */
-const mh = { kind: 'all', chan: '', unread: false };
-function openMentHistory(){
-  const d = $('#mentDlg'); if (!d) return;
-  d.hidden = false;
-  renderMentHistory();
-  $('#mhQ').focus();
+
+/* The bell and All notifications share how they draw: tabs, the sub-filter chips, the chat (or site) picker
+   and the list. v: their filters ({ tab, sub, pick, unread }). */
+const bell = { tab: 'all', sub: 'all', pick: '' }, nh = { tab: 'all', sub: 'all', pick: '', unread: false };
+const TAB_NAME = { all: 'All', mentions: 'Mentions', spam: 'Spam', live: 'Live', app: 'App' };
+const subName = (tab, s) => tab === 'live' && s === 'live' ? 'Went live' : ({ all: 'All', mentions: 'Mentions', spam: 'Spam', live: 'Live', app: 'App',
+  mention: '@ Mentions', reply: 'Replies', word: 'Words', raid: 'Raids', auto: 'Opened by itself',
+  accounts: 'Accounts', layouts: 'Layouts', windows: 'Windows', downloads: 'Downloads', updates: 'Updates' })[s];
+const pickBy = tab => tab === 'live' ? 'site' : tab === 'app' ? '' : 'chan';
+function noteFilter(v, q){
+  const by = pickBy(v.tab);
+  return { tab: v.tab, sub: v.sub, unread: !!v.unread, q, label: chLabelP, ...(by && v.pick ? { [by]: v.pick } : {}) };
 }
-// Closing the history counts as having seen them all.
-function closeMentHistory(){
-  const d = $('#mentDlg'); if (!d || d.hidden) return;
-  d.hidden = true;
-  readMentions();
-}
-function mentDay(t){
-  const d = new Date(t), today = new Date(); today.setHours(0, 0, 0, 0);
-  const days = Math.round((today - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
-  return days === 0 ? 'Today' : days === 1 ? 'Yesterday'
-    : d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', ...(d.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}) });
-}
-function renderMentHistory(){
-  const d = $('#mentDlg'); if (!d || d.hidden) return;
-  // the chats that have mentions, busiest first
-  const per = new Map(); mentions.forEach(m => per.set(m.channel, (per.get(m.channel) || 0) + 1));
-  const sel = $('#mhChan');
-  if (mh.chan && !per.has(mh.chan)) mh.chan = '';
-  sel.innerHTML = '<option value="">All chats</option>' + [...per].sort((a, b) => b[1] - a[1]).map(([ch, n]) => `<option value="${escM(ch)}">${escM(chLabelP(ch))} (${n})</option>`).join('');
-  sel.value = mh.chan;
-  d.querySelectorAll('#mhKinds button').forEach(b => {
-    b.classList.toggle('on', b.dataset.v === mh.kind);
-    const n = b.dataset.v === 'all' ? mentions.length : mentions.filter(m => (m.kind || 'mention') === b.dataset.v).length;
-    b.textContent = `${{ all: 'All', mention: 'Mentions', reply: 'Replies', word: 'Words' }[b.dataset.v]}${n ? ' ' + n : ''}`;
+function drawNotes(root, v, { limit, q = '', onTab } = {}){
+  const tabs = root.querySelector('.nc-tabs');
+  tabs.innerHTML = '';
+  SmvNotes.TABS.forEach(t => {
+    const n = t === 'app' ? 0 : SmvNotes.filter(notes, { tab: t, unread: true }).filter(x => SmvNotes.tabOf(x) !== 'app').length;
+    const b = document.createElement('button'); b.dataset.tab = t; b.setAttribute('role', 'tab');
+    b.className = t === v.tab ? 'on' : ''; b.setAttribute('aria-selected', String(t === v.tab));
+    b.innerHTML = `<span></span>${n ? `<i>${n}</i>` : ''}`; b.firstChild.textContent = TAB_NAME[t];
+    b.onclick = () => { if (v.tab === t) return; v.tab = t; v.sub = 'all'; v.pick = ''; if (onTab) onTab(); };
+    tabs.appendChild(b);
   });
-  $('#mhUnread').checked = mh.unread;
-  const u = mentUnread();
-  d.querySelector('.mh-count').textContent = mentions.length ? `${mentions.length} kept${u ? ` · ${u} unread` : ''}` : '';
-  $('#mhRead').disabled = !u; $('#mhClear').disabled = !mentions.length;
-  const q = $('#mhQ').value.trim().toLowerCase();
-  const shown = mentions.filter(m => (mh.kind === 'all' || (m.kind || 'mention') === mh.kind) && (!mh.chan || m.channel === mh.chan) && (!mh.unread || m.unread)
-    && (!q || [m.sender, m.body, m.quoted, m.word, chLabelP(m.channel)].some(x => x && String(x).toLowerCase().includes(q))));
-  const list = $('#mhList'); list.innerHTML = '';
-  if (!shown.length){
-    list.innerHTML = `<div class="sv-empty">${!mentions.length ? 'No mentions yet. When someone @mentions you, replies to you or writes one of your words in an open Kick or Twitch chat, it shows here.' : 'Nothing matches.'}</div>`;
-    return;
+  // the picker: chats (sites in Live), not in App
+  const by = pickBy(v.tab), sel = root.querySelector('.nc-pick'), inTab = SmvNotes.filter(notes, { tab: v.tab });
+  sel.hidden = !by;
+  if (by === 'chan'){
+    const per = SmvNotes.chats(inTab);
+    if (v.pick && !per.some(([c]) => c === v.pick)) v.pick = '';
+    sel.innerHTML = '<option value="">All chats</option>' + per.map(([ch, n]) => `<option value="${escM(ch)}">${escM(chLabelP(ch))} (${n})</option>`).join('');
+    sel.setAttribute('aria-label', 'Which chat');
+  } else if (by === 'site'){
+    sel.innerHTML = '<option value="">All sites</option>' + Object.keys(PLAT_NAME).map(p => `<option value="${p}">${PLAT_NAME[p]}</option>`).join('');
+    sel.setAttribute('aria-label', 'Which site');
   }
-  let day = '', box = null;
-  shown.forEach(m => {
-    const dl = mentDay(m.t);
-    if (dl !== day){
-      day = dl;
-      const n = shown.filter(x => mentDay(x.t) === dl).length;
-      const h = document.createElement('div'); h.className = 'mh-day'; h.innerHTML = '<b></b><span></span>';
-      h.firstChild.textContent = dl; h.lastChild.textContent = String(n);
-      list.appendChild(h);
-      box = document.createElement('div'); box.className = 'mh-group'; list.appendChild(box);
-    }
-    box.appendChild(mentRow(m, {
-      clock: true,
-      onOpen: m => { closeMentHistory(); revealChat(m.channel); },
-      onDelete: m => { mentions = mentions.filter(x => x !== m); saveMentions(); renderMentions(); }
-    }));
+  sel.value = v.pick;
+  // the chips (Spam has none: a summary instead). App's only show how many are new.
+  const f = noteFilter(v, q), chips = root.querySelector('.nc-chips'), sum = root.querySelector('.nc-sum');
+  const subs = SmvNotes.SUBS[v.tab], counts = SmvNotes.subCounts(notes, { ...f, sub: 'all' });
+  const fresh = v.tab === 'app' ? SmvNotes.subCounts(notes, { ...f, sub: 'all', unread: true }) : null;
+  chips.innerHTML = ''; chips.hidden = subs.length < 2; chips.classList.toggle('small', v.tab === 'app');
+  if (!subs.includes(v.sub)) v.sub = 'all';
+  subs.length > 1 && subs.forEach(s => {
+    const n = fresh ? fresh[s] : counts[s];
+    const b = document.createElement('button'); b.dataset.v = s; b.className = s === v.sub ? 'on' : '';
+    b.textContent = subName(v.tab, s) + (n ? ' ' + n : '');
+    b.onclick = () => { v.sub = s; if (onTab) onTab(); };
+    chips.appendChild(b);
+  });
+  sum.hidden = v.tab !== 'spam';
+  if (v.tab === 'spam'){
+    const sp = SmvNotes.filter(notes, { ...f, sub: 'all', unread: false, q: '' }), now = Date.now();
+    const nw = sp.filter(x => x.unread).length, day = sp.filter(x => now - x.t < 864e5).length;
+    sum.textContent = sp.length ? [nw ? `${nw} new` : '', `${day} in the last day`].filter(Boolean).join(' · ') : '';
+  }
+  return SmvNotes.filter(notes, f).slice(0, limit || Infinity);
+}
+const EMPTY = {
+  all: 'Nothing yet. Mentions, spam alerts, channels going live and the app\'s messages show here.',
+  mentions: 'No mentions yet. When someone @mentions you, replies to you or writes one of your words in an open Kick or Twitch chat, it shows here.',
+  spam: 'Nothing flagged. Spam alerts watch the chats you moderate (Settings › Spam alerts).',
+  live: 'Nobody has gone live yet. Saved channels show here when they go live, and raids the app followed.',
+  app: 'No messages from the app.'
+};
+function renderBell(){
+  updateBellBtn();
+  renderNoteHistory();
+  renderSpamHist();
+  const p = $('#bellPanel'); if (!p || p.hidden) return;
+  const shown = drawNotes(p, bell, { limit: NOTE_SHOWN, onTab: () => { renderBell(); seeBell(); } });
+  const st = $('#mentState');
+  st.textContent = !DESKTOP || !['all', 'mentions'].includes(bell.tab) ? '' : !mentAny() ? 'Set your usernames to get mention alerts.' : mentOn ? '' : 'Mention alerts are off.';
+  const inTab = SmvNotes.filter(notes, { tab: bell.tab }), unread = inTab.some(n => n.unread);
+  $('#bellRead').hidden = !unread; $('#bellClear').hidden = unread || !inTab.length;
+  const all = $('#bellAll'); all.textContent = `All notifications (${notes.length}) ›`;
+  const list = $('#bellList'); list.innerHTML = '';
+  if (!shown.length){ list.innerHTML = `<div class="sv-empty">${inTab.length ? 'Nothing matches.' : EMPTY[bell.tab]}</div>`; return; }
+  shown.forEach(n => list.appendChild(noteRow(n, { close: () => { p.hidden = true; } })));
+}
+// The bell's open tab is seen: its rows keep their "new" mark until it's opened again.
+function seeBell(){
+  const shown = new Set(SmvNotes.filter(notes, noteFilter(bell, '')).slice(0, NOTE_SHOWN));
+  let n = 0; shown.forEach(x => { if (x.unread){ x.unread = false; n++; } });
+  if (n){ saveNotes(); updateBellBtn(); renderNoteHistory(); }
+}
+
+/* All notifications: every one kept, with search and filters, grouped by day. */
+function openNoteHistory(tab){
+  const d = $('#noteDlg'); if (!d) return;
+  if (tab){ nh.tab = tab; nh.sub = bell.tab === tab ? bell.sub : 'all'; nh.pick = ''; }
+  d.hidden = false;
+  renderNoteHistory();
+  $('#nhQ').focus();
+}
+// Closing it counts as having seen them all.
+function closeNoteHistory(){
+  const d = $('#noteDlg'); if (!d || d.hidden) return;
+  d.hidden = true;
+  readNotes();
+}
+function renderNoteHistory(){
+  const d = $('#noteDlg'); if (!d || d.hidden) return;
+  const q = $('#nhQ').value;
+  const shown = drawNotes(d, nh, { q, onTab: renderNoteHistory });
+  $('#nhUnread').checked = nh.unread;
+  const u = notes.filter(n => n.unread).length;
+  d.querySelector('.mh-count').textContent = notes.length ? `${notes.length} kept${u ? ` · ${u} new` : ''}` : '';
+  const inTab = SmvNotes.filter(notes, { tab: nh.tab });
+  $('#nhRead').disabled = !inTab.some(n => n.unread); $('#nhClear').disabled = !inTab.length;
+  const list = $('#nhList'); list.innerHTML = '';
+  if (!shown.length){ list.innerHTML = `<div class="sv-empty">${inTab.length ? 'Nothing matches.' : EMPTY[nh.tab]}</div>`; return; }
+  SmvNotes.byDay(shown).forEach(g => {
+    const h = document.createElement('div'); h.className = 'mh-day'; h.innerHTML = '<b></b><span></span>';
+    h.firstChild.textContent = g.day; h.lastChild.textContent = String(g.items.length);
+    const box = document.createElement('div'); box.className = 'mh-group';
+    g.items.forEach(n => box.appendChild(noteRow(n, { clock: true, close: closeNoteHistory, onDelete: n => dropNotes(x => x === n) })));
+    list.append(h, box);
   });
 }
 {
   $('#mentWordAdd').onclick = addMentWord;
   $('#mentWordIn').addEventListener('keydown', e => { if (e.key === 'Enter') addMentWord(); });
   renderMentWords();
-  const md = $('#mentDlg');
-  md.querySelector('.help-x').onclick = closeMentHistory;
-  md.addEventListener('pointerdown', e => { if (e.target === md) closeMentHistory(); });
-  $('#mhQ').addEventListener('input', renderMentHistory);
-  $('#mhKinds').addEventListener('click', e => { const b = e.target.closest('button'); if (b){ mh.kind = b.dataset.v; renderMentHistory(); } });
-  $('#mhChan').addEventListener('change', e => { mh.chan = e.target.value; renderMentHistory(); });
-  $('#mhUnread').addEventListener('change', e => { mh.unread = e.target.checked; renderMentHistory(); });
-  $('#mhRead').onclick = () => { readMentions(); renderMentHistory(); };
-  $('#mhClear').onclick = async () => {
-    if (!await ask('Clear every mention?', `All ${mentions.length} mentions and replies kept here are deleted. The chats themselves aren't changed.`, { ok: 'Clear all', danger: true })) return;
-    mentions = []; saveMentions(); renderMentions();
+  const d = $('#noteDlg');
+  d.querySelector('.help-x').onclick = closeNoteHistory;
+  d.addEventListener('pointerdown', e => { if (e.target === d) closeNoteHistory(); });
+  $('#nhQ').addEventListener('input', renderNoteHistory);
+  d.querySelector('.nc-pick').addEventListener('change', e => { nh.pick = e.target.value; renderNoteHistory(); });
+  $('#nhUnread').addEventListener('change', e => { nh.unread = e.target.checked; renderNoteHistory(); });
+  $('#nhRead').onclick = () => readNotes(n => nh.tab === 'all' || SmvNotes.tabOf(n) === nh.tab);
+  $('#nhClear').onclick = async () => {
+    const list = SmvNotes.filter(notes, { tab: nh.tab });
+    if (!await ask(nh.tab === 'all' ? 'Clear every notification?' : `Clear every ${TAB_NAME[nh.tab].toLowerCase()} notification?`,
+      `All ${list.length} kept here are deleted. The chats themselves aren't changed.`, { ok: 'Clear all', danger: true })) return;
+    const gone = new Set(list); dropNotes(n => gone.has(n));
   };
+  const p = $('#bellPanel');
+  p.querySelector('.nc-pick').addEventListener('change', e => { bell.pick = e.target.value; renderBell(); seeBell(); });
+  $('#bellRead').onclick = () => readNotes(n => bell.tab === 'all' || SmvNotes.tabOf(n) === bell.tab);
+  $('#bellClear').onclick = () => { const gone = new Set(SmvNotes.filter(notes, { tab: bell.tab })); dropNotes(n => gone.has(n)); };
+  $('#bellAll').onclick = () => { p.hidden = true; openNoteHistory(bell.tab); };
+  $('#bellSettings').onclick = () => { p.hidden = true; openSettings('notify'); };
 }
-window.openMentHistory = openMentHistory;   // for the tests
+// The names or words changed (Settings > Mentions).
+function renderMentions(){
+  const note = $('#mentNote');
+  if (note) note.textContent = myName || myTwitch ? '' : mentWords.length ? 'Without a username, only your words are found (and your own messages can count).' : 'Needed for mention alerts. Click Detect, or type them in.';
+  renderBell();
+}
+window.openNoteHistory = openNoteHistory;   // for the tests
 function setMentWords(list){
   mentWords = [...new Set(list.map(x => String(x || '').trim().replace(/^@/, '').replace(/\s+/g, ' ')).filter(x => x.length >= 2 && x.length <= 40))].slice(0, 30);
   try { localStorage.setItem('kickMultiview.mentWords', JSON.stringify(mentWords)); } catch {}
@@ -3600,18 +3854,28 @@ function injectMention(w){
 
 /* ---------- alerts: how a chat window gets your attention (Settings > Mentions, Spam alerts) ---------- */
 const ALERT_DEFAULTS = {
-  mention: { hl: 'until', color: '#e8b84a', esc: 20, max: 'pulse', sound: 'chime', vol: 0.5, repeat: false, notify: 'unfocused',
+  mention: { popup: true, hl: 'until', color: '#e8b84a', esc: 20, max: 'pulse', sound: 'chime', vol: 0.5, repeat: false, notify: 'unfocused',
              bots: null, botsOffered: null },   // bots: the chat bot list (null: built-in), spam alerts' too while they share it
-  spam: { on: false, hl: 'until', color: '#ff5f5f', esc: 0, max: 'pulse', tag: true, sound: 'knock', vol: 0.4, repeat: false, notify: 'never',
+  spam: { popup: true, on: false, hl: 'until', color: '#ff5f5f', esc: 0, max: 'pulse', tag: true, sound: 'knock', vol: 0.4, repeat: false, notify: 'never',
           sens: 'balanced', allow: null, words: null, openers: null, ignore: null, botsOffered: null,   // null: the built-in lists
-          sharedBots: true }   // the chat bot list from Mentions instead of ignore
+          sharedBots: true },  // the chat bot list from Mentions instead of ignore
+  // Settings > Notifications only: a saved channel went live, a raid was followed, the app's own messages
+  live: { popup: true, notify: 'always', sound: 'none', vol: 0.5 },
+  raid: { popup: true, notify: 'never', sound: 'none', vol: 0.5 },
+  app: { popup: true, notify: 'never', sound: 'none', vol: 0.5 }
 };
+const ALERT_KINDS = Object.keys(ALERT_DEFAULTS);
 var alerts = (() => {
   let a = {}; try { a = JSON.parse(localStorage.getItem('kickMultiview.alerts') || '{}') || {}; } catch {}
   // From before mentions had a chat bot list: the one you made for spam alerts becomes the shared one.
   const m = a.mention = a.mention || {}, s = a.spam || {};
   if (!('bots' in m) && Array.isArray(s.ignore)){ m.bots = s.ignore.slice(); m.botsOffered = s.botsOffered || null; }
-  return { mention: { ...ALERT_DEFAULTS.mention, ...(a.mention || {}) }, spam: { ...ALERT_DEFAULTS.spam, ...(a.spam || {}) } };
+  // From before Settings > Notifications had a row for each kind: "Saved channels going live" and how the app's
+  // messages showed (Settings > Notifications > Messages).
+  if (!a.live) try { a.live = { notify: localStorage.getItem('kickMultiview.notifyAll') === '0' ? 'never' : 'always' }; } catch {}
+  if (!a.app){ let g = {}; try { g = JSON.parse(localStorage.getItem('kickMultiview.msg') || '{}') || {}; } catch {}
+               a.app = { popup: g.on !== false, notify: g.via === 'desktop' ? 'always' : 'never' }; }
+  return Object.fromEntries(ALERT_KINDS.map(k => [k, { ...ALERT_DEFAULTS[k], ...(a[k] || {}) }]));
 })();
 const saveAlerts = () => { try { localStorage.setItem('kickMultiview.alerts', JSON.stringify(alerts)); } catch {} };
 // Chat bots added to the built-in list since: added to a list you changed, once (one you removed stays removed).
@@ -3637,8 +3901,9 @@ const SOUNDS = {
   pop: (c, o, t) => tone(c, o, t, 620, 0.09, 'sine', 0.8, 180),
   knock: (c, o, t) => { tone(c, o, t, 150, 0.12, 'sine', 1, 70); tone(c, o, t + 0.16, 150, 0.12, 'sine', 1, 70); }
 };
-function playSound(kind){
+function playSound(kind, test){
   const a = alerts[kind];
+  if (!test && dndOn()) return;                                 // Do not disturb (the ▶ buttons still play)
   if (!a || a.sound === 'none' || !(a.vol > 0)) return;
   if (a.sound === 'custom'){
     let src = ''; try { src = localStorage.getItem(SOUND_KEY(kind)) || ''; } catch {}
@@ -3653,7 +3918,7 @@ function playSound(kind){
     f(audioCtx, out, audioCtx.currentTime + 0.02);
   } catch {}
 }
-const wantNotify = kind => alerts[kind].notify === 'always' || (alerts[kind].notify === 'unfocused' && !document.hasFocus());
+const wantNotify = kind => !dndOn() && (alerts[kind].notify === 'always' || (alerts[kind].notify === 'unfocused' && !document.hasFocus()));
 
 // The window's border: a short glow, or lit until you click that chat, getting stronger while unseen.
 function raiseAlert(w, kind, seen){
@@ -3700,13 +3965,10 @@ function alertTick(){
 document.addEventListener('pointerdown', e => {
   const el = e.target.closest && e.target.closest('.win');
   const w = el && wins.find(x => x.el === el);
-  if (w){ clearAlert(w); if (w.kind === 'chat') readMentions(w.channel); }
+  if (w){ clearAlert(w); if (w.kind === 'chat') readChat(w.channel); }
 }, true);
 
 /* ---------- spam alerts: chats you moderate ---------- */
-let spamHist = [];   // flagged messages, newest first (Settings > Spam alerts > History)
-try { spamHist = JSON.parse(localStorage.getItem('kickMultiview.spamHistory') || '[]'); } catch {}
-function saveSpamHist(){ try { localStorage.setItem('kickMultiview.spamHistory', JSON.stringify(spamHist.slice(0, HISTORY_MAX))); } catch {} }
 const spamRecent = [], spamFirst = new Map();   // messages from the last few minutes (every chat), when each sender first spoke
 const FIRST_MAX = 20000;   // senders remembered: busy chats bring thousands an hour, so the ones seen first go
 function firstSpoke(k, t){
@@ -3755,13 +4017,12 @@ async function spamCheck(w, lines, seenAt){
 function flagSpam(w, l, r, seen){
   const a = alerts.spam;
   if (a.tag){
-    const why = `Likely spam (${r.score} points, ${r.need} needed):\n` + r.signs.map(s => `• ${s.text} (+${s.points})`).join('\n');
+    const why = spamWhy(r);
     w.view.executeJavaScript(`window.__kmvMention && window.__kmvMention.mark(${JSON.stringify(l.line)}, ${JSON.stringify(why)}, ${JSON.stringify(a.color)})`).catch(() => {});
   }
-  spamHist.unshift({ channel: w.channel, sender: l.sender, body: l.body, score: r.score, need: r.need, signs: r.signs, t: Date.now() });
-  spamHist = spamHist.slice(0, HISTORY_MAX); saveSpamHist(); renderSpamHist();
   raiseAlert(w, 'spam', seen);
-  flash(`Likely spam in ${chLabel(w.channel)}'s chat`);
+  addNote({ kind: 'spam', channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body, score: r.score, need: r.need, signs: r.signs,
+            unread: !seen }, `Likely spam in ${chLabel(w.channel)}'s chat`);
   if (wantNotify('spam')) window.kmv.notifyMention({ kind: 'spam', channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body });
 }
 // Bring a chat into view (and flash it).
@@ -3798,24 +4059,22 @@ async function pollChats(ment, spam){
     if (spam && q.l && q.l.length) await spamCheck(w, q.l, q.c);
     if (q.c){                                                 // you clicked or typed in the chat: what came before is seen
       if (w.alert && w.alert.since <= q.c) clearAlert(w);
-      readMentions(w.channel);
+      readChat(w.channel);
     }
     const bots = botsFor('mention');
     (q.m || []).filter(m => !SmvSpam.ignored(m.sender, bots)).forEach(m => {
       const looking = (document.hasFocus() && document.activeElement === w.view) || (q.c && (m.t || 0) <= q.c);   // you're in that chat right now
       const item = { channel: w.channel, label: chLabelP(w.channel), sender: m.sender, body: m.body, kind: m.kind, quoted: m.quoted || '', t: m.t || Date.now(),
-                     unread: $('#mentPanel').hidden && $('#mentDlg').hidden && !looking };
+                     unread: !looking };
       if (m.kind === 'word') item.word = m.word;
       // emotes in the message (and the message it replies to): kept with it, their names in its text
       const parts = cleanParts(m.parts), qparts = cleanParts(m.qparts);
       if (parts){ item.parts = parts; item.body = partsText(parts); }
       if (qparts){ item.qparts = qparts; item.quoted = partsText(qparts); }
-      mentions.unshift(item); mentions = mentions.slice(0, MENT_MAX);
       if (wantNotify('mention')) window.kmv.notifyMention(item);
-      flash(`${item.sender} ${item.kind === 'reply' ? 'replied to you' : item.kind === 'word' ? `said “${item.word}”` : 'mentioned you'} in ${chLabel(item.channel)}`);
+      addNote(item, `${item.sender} ${item.kind === 'reply' ? 'replied to you' : item.kind === 'word' ? `said “${item.word}”` : 'mentioned you'} in ${chLabel(item.channel)}`);
       raiseAlert(w, 'mention', looking);
     });
-    if (q.m && q.m.some(m => !SmvSpam.ignored(m.sender, bots))){ saveMentions(); renderMentions(); }
   }
 }
 
@@ -3890,52 +4149,94 @@ async function addChatIfLive(ch, r){
   if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout();
   save();
 }
-let flashT, msgAsDesktop = false, desktopNotify = true;      // (Settings > Notifications)
+let flashT, desktopNotify = true;      // (Settings > Notifications)
 try { desktopNotify = localStorage.getItem('kickMultiview.desktopNotify') !== '0'; } catch {}
-function flash(t){
-  msg.textContent = t; clearTimeout(flashT); if (t) flashT = setTimeout(() => msg.textContent = '', 3500);
-  if (t && msgAsDesktop) window.kmv.notifyMessage(t);
+/* A short message in the app ("Saved layout"). o: { subject, detail, act } also keeps it under the bell (App);
+   true: a notification's pop-up (addNote checked it may show). The rest are the app's messages: they show and
+   go to the desktop as Settings > Notifications > App messages says. */
+function flash(t, o){
+  if (t && o && o.subject) return void addNote({ kind: 'app', subject: o.subject, text: t, ...(o.detail ? { detail: o.detail } : {}), ...(o.act ? { act: o.act } : {}) }, t);
+  if (!t || o === true || !alerts || alerts.app.popup !== false){
+    msg.textContent = t; clearTimeout(flashT); if (t) flashT = setTimeout(() => msg.textContent = '', 3500);
+  }
+  if (t && o !== true && alerts && wantNotify('app') && DESKTOP && window.kmv.notifyMessage) window.kmv.notifyMessage(t);
 }
 msg.onclick = () => flash('');
-/* Settings > General: show messages, and where */
-const msgOn = $('#msgOn'), msgPos = $('#msgPos'), msgVia = $('#msgVia');
-const canDesktopMsg = DESKTOP && !!window.kmv.notifyMessage;
-document.querySelector('#settingsDlg .msg-via').hidden = !canDesktopMsg;
+/* Settings > Notifications: where pop-ups show */
+const msgPos = $('#msgPos');
 function loadMsgSettings(){
   let m = {}; try { m = JSON.parse(localStorage.getItem('kickMultiview.msg') || '{}') || {}; } catch {}
-  msgOn.checked = m.on !== false;
   msgPos.value = [...msgPos.options].some(o => o.value === m.pos) ? m.pos : 'tc';
-  msgVia.value = m.via === 'desktop' && canDesktopMsg ? 'desktop' : 'toast';
-  msgAsDesktop = msgOn.checked && msgVia.value === 'desktop' && desktopNotify;   // else a toast
-  msgVia.disabled = !msgOn.checked;
-  msgPos.disabled = !msgOn.checked || msgAsDesktop;
-  msg.classList.toggle('off', !msgOn.checked || msgAsDesktop);
   msg.dataset.pos = msgPos.value;
 }
 loadMsgSettings();
-[msgOn, msgPos, msgVia].forEach(el => el.addEventListener('change', () => {
-  try { localStorage.setItem('kickMultiview.msg', JSON.stringify({ on: msgOn.checked, pos: msgPos.value, via: msgVia.value })); } catch {}
+msgPos.addEventListener('change', () => {
+  let m = {}; try { m = JSON.parse(localStorage.getItem('kickMultiview.msg') || '{}') || {}; } catch {}
+  try { localStorage.setItem('kickMultiview.msg', JSON.stringify({ ...m, pos: msgPos.value })); } catch {}
   loadMsgSettings();
-  if (msgOn.checked) flash(msgAsDesktop ? 'Messages show as desktop notifications' : 'Messages show here');
-}));
+  flash('Pop-ups show here');
+});
 window.addEventListener('storage', e => {          // main and streams windows
   if (e.key === 'kickMultiview.desktopNotify') desktopNotify = e.newValue !== '0';
-  if (e.key === 'kickMultiview.msg' || e.key === 'kickMultiview.desktopNotify') loadMsgSettings();
-});   // main and streams windows
+  if (e.key === 'kickMultiview.msg') loadMsgSettings();
+  if (e.key === 'kickMultiview.alerts') try { const a = JSON.parse(e.newValue || '{}'); ALERT_KINDS.forEach(k => Object.assign(alerts[k], a[k] || {})); } catch {}
+  if (e.key === 'kickMultiview.dnd'){ dndUntil = +e.newValue || 0; syncDnd(); }
+});
+/* Settings > Notifications: for each kind, a row with its pop-up, desktop notification and sound. Mentions and
+   spam alerts' are the same settings as on their own pages (the same data-al). */
+const NT_ROWS = [['mention', 'Mentions &amp; replies', 'mentions', 'More on Mentions ›'], ['spam', 'Likely spam', 'spam', 'More on Spam alerts ›'],
+  ['live', 'Saved channel went live'], ['raid', 'Raids'], ['app', 'App messages']];
+const SOUND_OPTS = '<option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound</option>';
+NT_ROWS.forEach(([k, name, go, more]) => {
+  $('#ntGrid').insertAdjacentHTML('beforeend', `<span class="nt-k k-${k}"><i></i><span>${name}${go ? `<button class="linkish" data-go="${go}" data-sub="alerts">${more}</button>` : ''}</span></span>`
+    + `<span class="nt-c"><input type="checkbox" class="st-sw" data-al="${k}.popup" aria-label="Pop-up in the app"></span>`
+    + `<span class="nt-c nt-desk"><span class="seg" data-al="${k}.notify" role="radiogroup" aria-label="Desktop notification"><button data-v="never">Never</button><button data-v="unfocused" title="When the app isn't in front">Away</button><button data-v="always">Always</button></span></span>`
+    + `<span class="nt-c"><select data-al="${k}.sound" aria-label="Sound">${SOUND_OPTS}</select></span>`);
+});
+// Live alerts: off (Never) also turns off the bell in Channels, and Away is checked by the app itself.
+function syncLiveAlerts(){
+  notifyAll = alerts.live.notify !== 'never';
+  try { localStorage.setItem('kickMultiview.notifyAll', notifyAll ? '1' : '0'); } catch {}
+  const na = $('#notifyAll'); if (na) na.checked = notifyAll;
+  sendWatch(); renderSaved();
+}
+// Do not disturb: still collected under the bell, but quiet. The desktop notifications stop in the app itself too.
+const dndOnEl = $('#dndOn'), dndFor = $('#dndFor');
+function syncDnd(){
+  clearTimeout(dndT);
+  const on = dndOn();
+  if (!on && dndUntil > 0){ dndUntil = 0; try { localStorage.setItem('kickMultiview.dnd', '0'); } catch {} }
+  if (on && dndUntil > 0) dndT = setTimeout(syncDnd, Math.min(dndUntil - Date.now() + 50, 2 ** 31 - 1));
+  dndOnEl.checked = on;
+  $('#dndSt').textContent = !on ? 'Still collected under the bell, but no pop-ups, sounds or desktop notifications.'
+    : dndUntil < 0 ? 'On until you turn it off. Everything is still collected under the bell.'
+    : `On until ${new Date(dndUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}. Everything is still collected under the bell.`;
+  if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled) window.kmv.notifyEnabled(desktopNotify && !on);
+  updateBellBtn();
+}
+function setDnd(on){
+  dndUntil = !on ? 0 : +dndFor.value ? Date.now() + +dndFor.value * 60000 : -1;
+  try { localStorage.setItem('kickMultiview.dnd', String(dndUntil)); localStorage.setItem('kickMultiview.dndFor', dndFor.value); } catch {}
+  syncDnd();
+}
+try { const f = localStorage.getItem('kickMultiview.dndFor'); if ([...dndFor.options].some(o => o.value === f)) dndFor.value = f; } catch {}
+dndOnEl.addEventListener('change', () => setDnd(dndOnEl.checked));
+dndFor.addEventListener('change', () => { if (dndOn()) setDnd(true); else try { localStorage.setItem('kickMultiview.dndFor', dndFor.value); } catch {} });
+// The red number on the bell.
+const bellCountEl = $('#bellCount');
+bellCountEl.value = ['ms', 'all', 'off'].includes(bellCount) ? bellCount : 'ms';
+bellCountEl.addEventListener('change', () => { bellCount = bellCountEl.value; try { localStorage.setItem('kickMultiview.bellCount', bellCount); } catch {} updateBellBtn(); });
+document.querySelectorAll('#settingsDlg .nt-desk').forEach(el => { el.hidden = !(DESKTOP && ROLE === 'main'); });
 /* Settings > Notifications: desktop notifications (the main window's: live alerts, mentions, spam) */
-const dnOn = $('#dnOn'), dnLive = $('#dnLive'), dnSt = document.querySelector('#settingsDlg .dn-st');
+const dnOn = $('#dnOn'), dnSt = document.querySelector('#settingsDlg .dn-st');
 if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled){
   document.querySelector('#settingsDlg .dn-sec').hidden = false;
-  window.kmv.notifyEnabled(desktopNotify);
   dnOn.checked = desktopNotify;
   dnOn.addEventListener('change', () => {
     desktopNotify = dnOn.checked;
     try { localStorage.setItem('kickMultiview.desktopNotify', desktopNotify ? '1' : '0'); } catch {}
-    window.kmv.notifyEnabled(desktopNotify);
-    dnLive.disabled = !desktopNotify;
-    loadMsgSettings();                                   // messages sent as notifications become toasts while they're off
+    syncDnd();
   });
-  dnLive.addEventListener('change', () => { const na = $('#notifyAll'); na.checked = dnLive.checked; na.dispatchEvent(new Event('change')); });
   const sys = document.querySelector('#settingsDlg .dn-sys');
   sys.hidden = !['darwin', 'win32'].includes(window.kmv.platform);
   sys.onclick = () => window.kmv.notifySettings();
@@ -3948,7 +4249,8 @@ if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled){
       : `Sent. If you didn't see it, allow notifications for Stream Multiview in ${where}.`;
   };
 }
-function syncNotifyPane(){ dnOn.checked = desktopNotify; dnLive.checked = $('#notifyAll').checked; dnLive.disabled = !desktopNotify; }
+syncDnd();
+function syncNotifyPane(){ dnOn.checked = desktopNotify; syncDnd(); syncAlertControls(); }
 
 /* ---------- layouts ---------- */
 function gridRects(n, X, Y, W, H, aspect){
@@ -4444,16 +4746,24 @@ function placeCol(col, x, H, animate){
    Click the name to put it in the big spot; play/pause, mute + slider (mouse wheel over them too).
    Shift-click a mute button to hear only that stream. The arrow opens a small live preview. */
 /* Remove a channel's stream + chat (switcher ×), with a few seconds to undo. */
-let toastT = 0, undoFn = null;
-function toast(text, undo){
+/* It's kept under the bell too (App > Windows), where Undo works as long as it still can (ok()). */
+let toastT = 0, undoFn = null, undoNote = null;
+function toast(text, undo, ok){
   const t = $('#toast');
   t.querySelector('span').textContent = text;
   t.querySelector('button').hidden = !undo;
   undoFn = undo || null;
   t.hidden = false;
   clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; undoFn = null; }, 7000);
+  const n = addNote({ kind: 'app', subject: 'windows', text, ...(undo ? { act: { t: 'undo' } } : {}) });
+  undoNote = n && undo ? n.id : null;
+  if (undoNote) noteActs.set(undoNote, { run: undo, ok: ok || (() => true) });
 }
-$('#toast button').onclick = () => { const f = undoFn; $('#toast').hidden = true; undoFn = null; if (f) f(); };
+$('#toast button').onclick = () => {
+  const f = undoFn; $('#toast').hidden = true; undoFn = null;
+  if (undoNote){ noteActs.delete(undoNote); undoNote = null; renderBell(); }
+  if (f) f();
+};
 function removeChannel(ch){
   const cap = vidByKey(ch);
   if (cap && cap.kind === 'capture'){
@@ -4481,7 +4791,7 @@ function removeChannel(ch){
     if (wasBig) setFeatured(ch);
     if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout();
     save();
-  });
+  }, () => !wins.some(w => w.channel === ch));
 }
 
 /* Drag a switcher button onto another to swap them (also swaps their columns). */
@@ -5382,7 +5692,7 @@ function renderPresetsPane(){
     panel.querySelector('.pr-ren').onclick = () => renamePreset(panel.querySelector('.ly-head b'), p);
     panel.querySelector('.pr-up').onclick = async () => {
       if (!await ask(`Update “${p.name}”?`, `Replace this saved layout with what's on screen now.`, { ok: 'Update' })) return;
-      presets[i] = capturePreset(p.name); savePresets(); activePreset = p.name; updateLayoutMenu(); flash(`Updated “${p.name}”`);
+      presets[i] = capturePreset(p.name); savePresets(); activePreset = p.name; updateLayoutMenu(); flash(`Updated layout “${p.name}”`, { subject: 'layouts' });
     };
     panel.querySelector('.pr-x').onclick = async () => {
       if (!await ask(`Delete the layout “${p.name}”?`, 'This can\'t be undone.', { ok: 'Delete', danger: true })) return;
@@ -5438,7 +5748,7 @@ async function savePresetFromInput(inp = $('#presetName')){
   const p = capturePreset(name);
   if (i >= 0) presets[i] = p; else presets.push(p);
   savePresets(); inp.value = ''; activePreset = name; updateLayoutMenu();
-  flash(`Saved layout “${name}”`);
+  flash(`Saved layout “${name}”`, { subject: 'layouts' });
   return name;
 }
 function applyPreset(p, opt = {}){
@@ -5776,7 +6086,7 @@ function applyToolbar(start){
 function setToolbar(pos, labels){
   barPos = pos === 'left' ? 'left' : 'top'; barLabels = !!labels;
   try { localStorage.setItem('kickMultiview.toolbar', JSON.stringify({ pos: barPos, labels: barLabels })); } catch {}
-  ['#layoutMenu', '#accountMenu', '#savedPanel', '#mentPanel', '#moreMenu'].forEach(sel => { $(sel).hidden = true; });   // they were placed for the old toolbar
+  ['#layoutMenu', '#accountMenu', '#savedPanel', '#bellPanel', '#moreMenu'].forEach(sel => { $(sel).hidden = true; });   // they were placed for the old toolbar
   applyToolbar();
 }
 document.addEventListener('click', e => {
@@ -5809,7 +6119,7 @@ function placeMenu(el, anchor, alignRight){
   else { el.style.right = ''; el.style.left = Math.max(12, Math.min(r.left, innerWidth - el.offsetWidth - 12)) + 'px'; }
 }
 // The toolbar item whose menu or panel is open is marked (and the column of names closes)
-const OPENS = [['#savedPanel', '#savedBtn'], ['#accountMenu', '#loginBtn'], ['#layoutMenu', '#layoutBtn'], ['#mentPanel', '#mentBtn'], ['#moreMenu', '#moreBtn']];
+const OPENS = [['#savedPanel', '#savedBtn'], ['#accountMenu', '#loginBtn'], ['#layoutMenu', '#layoutBtn'], ['#bellPanel', '#bellBtn'], ['#moreMenu', '#moreBtn']];
 function syncOpen(){
   OPENS.forEach(([m, b]) => { const on = !$(m).hidden; $(b).setAttribute('aria-expanded', on); });
 }
@@ -5889,13 +6199,12 @@ $('#savedTabs').addEventListener('click', e => {
 if (DESKTOP && ROLE === 'main' && window.kmv.watchLive){
   $('#spLive').hidden = false; $('#openLive').hidden = false;
   const na = $('#notifyAll'); na.checked = notifyAll;
-  na.addEventListener('change', () => {
-    notifyAll = na.checked;
-    try { localStorage.setItem('kickMultiview.notifyAll', notifyAll ? '1' : '0'); } catch {}
-    sendWatch(); renderSaved();
+  na.addEventListener('change', () => {          // the same as Settings > Notifications > Saved channel went live
+    alerts.live.notify = !na.checked ? 'never' : alerts.live.notify === 'never' ? 'always' : alerts.live.notify;
+    saveAlerts(); syncLiveAlerts(); syncAlertControls();
   });
   window.kmv.onLiveStatus(snap => { liveInfo = snap || {}; renderSaved(); checkAutoOpen(); });
-  window.kmv.onWentLive((ch, info) => { flash(`${chLabel(ch)} just went live on ${PLAT_NAME[platOf(ch)]}`); });
+  window.kmv.onWentLive((ch, info) => liveNote(ch, info, false));
   window.kmv.onOpenChannel(ch => addParsed({ channel: ch, only: null }));
   window.kmv.liveSnapshot().then(snap => { liveInfo = snap || {}; renderSaved(); checkAutoOpen(); }).catch(() => {});
   $('#openLive').onclick = () => {
@@ -5905,27 +6214,27 @@ if (DESKTOP && ROLE === 'main' && window.kmv.watchLive){
   setInterval(() => { if (!$('#savedPanel').hidden) renderSaved(); }, 30000);   // keep "checked x min ago" fresh
   sendWatch();
 }
-if (DESKTOP && ROLE === 'main' && window.kmv.notifyMention){
-  const mb = $('#mentBtn'), mp = $('#mentPanel');
+// The bell: the main window's (opening it shows the tab it was on; its rows lose their "new" mark next time).
+if (ROLE === 'main'){
+  const mb = $('#bellBtn'), mp = $('#bellPanel');
   mb.hidden = false;
+  mb.onclick = () => {
+    mp.hidden = !mp.hidden;
+    if (!mp.hidden){ renderBell(); placeMenu(mp, mb); seeBell(); }
+  };
+  document.addEventListener('pointerdown', e => { if (!mp.hidden && !mp.contains(e.target) && !mb.contains(e.target)) mp.hidden = true; });
+  setInterval(() => { if (!mp.hidden) renderBell(); }, 30000);   // keep "x min ago" fresh
+  renderBell();
+}
+if (DESKTOP && ROLE === 'main' && window.kmv.notifyMention){
   $('#mentOn').checked = mentOn; $('#mentUser').value = myName; $('#mentTwitch').value = myTwitch;
   $('#mentTwitch').addEventListener('change', e => setMyTwitch(e.target.value));
   $('#mentTwitch').addEventListener('keydown', e => { if (e.key === 'Enter') setMyTwitch(e.target.value); });
-  mb.onclick = () => {
-    mp.hidden = !mp.hidden;
-    if (!mp.hidden){
-      readMentions(null, mentions.slice(0, MENT_SHOWN)); renderMentions();
-      placeMenu(mp, mb);
-    }
-  };
-  $('#mentAll').onclick = () => { mp.hidden = true; openMentHistory(); };
-  document.addEventListener('pointerdown', e => { if (!mp.hidden && !mp.contains(e.target) && !mb.contains(e.target)) mp.hidden = true; });
   $('#mentOn').addEventListener('change', e => {
     mentOn = e.target.checked;
     try { localStorage.setItem('kickMultiview.mentOn', mentOn ? '1' : '0'); } catch {}
     pushMyName(); renderMentions(); syncAlertControls();
   });
-  $('#mentSettings').onclick = () => { mp.hidden = true; openSettings('mentions'); };
   $('#mentUser').addEventListener('change', e => setMyName(e.target.value));
   $('#mentUser').addEventListener('keydown', e => { if (e.key === 'Enter') setMyName(e.target.value); });
   const detect = async quiet => {
@@ -5938,7 +6247,6 @@ if (DESKTOP && ROLE === 'main' && window.kmv.notifyMention){
     else if (n || (st && st.twitch)) $('#mentNote').textContent = '';
   };
   $('#mentDetect').onclick = () => detect(false);
-  $('#mentClear').onclick = () => { mentions = []; saveMentions(); renderMentions(); };
   window.kmv.onFocusChat(ch => revealChat(ch));
   setInterval(pollMentions, 1500);
   if (!myName || !myTwitch) setTimeout(() => detect(true), 4000);
@@ -6115,9 +6423,9 @@ if (DESKTOP){
     if (ROLE === 'main' && typeof setMyName === 'function'){
       if (p === 'kick') setMyName('');
       if (p === 'twitch') setMyTwitch('');
-      if (p !== 'youtube'){ mentions = mentions.filter(m => platOf(m.channel) !== p); saveMentions(); renderMentions(); }
+      if (p !== 'youtube') dropNotes(n => SmvNotes.tabOf(n) === 'mentions' && platOf(n.channel) === p);
     }
-    flash(`Logged out of ${PLAT_NAME[p]}`);
+    flash(`Logged out of ${PLAT_NAME[p]}`, { subject: 'accounts', detail: 'Log in again to keep chat and follows working.', act: { t: 'login', p } });
   };
   refreshAccountsPane = () => { refreshAccount(); refreshSecurity(); };
   const onAccountClick = async e => {
@@ -6299,7 +6607,7 @@ if (DESKTOP){
     saved = [...saved, ...add];
     persistSaved();
     closeImport();
-    flash(`Added ${add.length} ${PLAT_NAME[impPlat]} channel${add.length === 1 ? '' : 's'} to Saved`);
+    flash(`Added ${add.length} ${PLAT_NAME[impPlat]} channel${add.length === 1 ? '' : 's'} to Saved`, { subject: 'accounts' });
   };
   const PEAR = 'M32 14.2C25.6 14.2 23.4 19.4 23.4 24.6 23.4 29.6 20.4 31.6 17.2 35.6 13.2 40.6 12 46.8 14.2 52 17.2 58.8 24.4 62 32 62 39.6 62 46.8 58.8 49.8 52 52 46.8 50.8 40.6 46.8 35.6 43.6 31.6 40.6 29.6 40.6 24.6 40.6 19.4 38.4 14.2 32 14.2Z';
   const impLoading = text => '<div class="empty loading"><svg class="pear-load" viewBox="0 0 64 64" aria-hidden="true">'
@@ -6384,7 +6692,7 @@ if (DESKTOP){
       return;
     }
     const st = await refreshAccount();
-    if (r.signedIn || st.youtube){ ffDlg.hidden = true; flash('Signed in to YouTube with your Firefox login'); }
+    if (r.signedIn || st.youtube){ ffDlg.hidden = true; flash('Signed in to YouTube with your Firefox login', { subject: 'accounts' }); }
     else note.textContent = 'Copied the login, but YouTube still looks signed out. Sign out and back in to YouTube in Firefox, then try again.';
   };
 
@@ -6781,9 +7089,9 @@ function renderUpdates(){
 }
 async function restartForUpdate(){
   const r = await window.kmv.updateRestart();
-  if (r && r.needsInstall) flash('Close the app and start it again with your shortcut to finish the update');
-  else if (r && r.blocked){ flash('macOS stopped the update: see Settings › Updates'); openSettings('updates'); }
-  else if (r && r.mac) flash('Drag Stream Multiview into Applications (replace the old one), then open it again');
+  if (r && r.needsInstall) flash('Close the app and start it again with your shortcut to finish the update', { subject: 'updates' });
+  else if (r && r.blocked){ flash('macOS stopped the update: see Settings › Updates', { subject: 'updates' }); openSettings('updates'); }
+  else if (r && r.mac) flash('Drag Stream Multiview into Applications (replace the old one), then open it again', { subject: 'updates' });
 }
 function updBanner(u){
   const b = $('#updBanner');
@@ -6808,7 +7116,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.updateStatus){
   window.kmv.appVersion().then(v => {
     let seen = null; try { seen = localStorage.getItem('kickMultiview.seenVersion'); } catch {}
     try { localStorage.setItem('kickMultiview.seenVersion', v); } catch {}
-    if (seen && seen !== v) setTimeout(() => { showHelp('news'); flash(`Updated to version ${v}`); }, 1500);
+    if (seen && seen !== v) setTimeout(() => { showHelp('news'); flash(`Updated to version ${v}`, { subject: 'updates', act: { t: 'news' } }); }, 1500);
   }).catch(() => {});
 }
 
@@ -6821,13 +7129,13 @@ function makeBig(s){ if (!s) return; setFeatured(colKey(s)); scrollX = 0; column
 function closeOverlays(){
   let any = false;
   // dialogs one at a time, the top one first (Import follows can sit over Settings); menus all at once
-  const top = ['#extDlg', '#importDlg', '#ffDlg', '#capDlg', '#settingsDlg', '#profDlg', '#mentDlg'].map(sel => $(sel)).find(e => e && !e.hidden);
-  if (top){ if (top.id === 'extDlg') extDlgDone(false); else if (top.id === 'mentDlg') closeMentHistory(); else top.hidden = true; any = true; }
-  else ['#layoutMenu', '#accountMenu', '#savedPanel', '#mentPanel', '#moreMenu', '#extMenu', '#barMenu'].forEach(sel => {
+  const top = ['#extDlg', '#importDlg', '#ffDlg', '#capDlg', '#settingsDlg', '#profDlg', '#noteDlg'].map(sel => $(sel)).find(e => e && !e.hidden);
+  if (top){ if (top.id === 'extDlg') extDlgDone(false); else if (top.id === 'noteDlg') closeNoteHistory(); else top.hidden = true; any = true; }
+  else ['#layoutMenu', '#accountMenu', '#savedPanel', '#bellPanel', '#moreMenu', '#extMenu', '#barMenu'].forEach(sel => {
     const e = $(sel); if (e && !e.hidden){ e.hidden = true; any = true; }
   });
   const ae = document.activeElement;     // don't leave the keyboard in a box that just closed
-  if (any && ae && ae !== document.body && ae.closest('.dlg-bg, .menu, #savedPanel, #mentPanel')) ae.blur();
+  if (any && ae && ae !== document.body && ae.closest('.dlg-bg, .menu, #savedPanel, #bellPanel')) ae.blur();
   return any;
 }
 const layoutPick = l => { const b = document.querySelector(`#layoutMenu [data-l=${l}]`); if (b) b.click(); };
@@ -6999,7 +7307,7 @@ async function releaseGameWin(say){
   if (say) flash(`“${n}” is back in its own window`);
   if (isGame()) renderGameBar();
 }
-if (attachOK && window.kmv.onGameDetached) window.kmv.onGameDetached(d => { if (gameAttached){ flash(`“${gameAttached}” was closed`); gameAttached = null; if (isGame()) renderGameBar(); } });
+if (attachOK && window.kmv.onGameDetached) window.kmv.onGameDetached(d => { if (gameAttached){ flash(`“${gameAttached}” was closed`, { subject: 'windows' }); gameAttached = null; if (isGame()) renderGameBar(); } });
 gameBar.addEventListener('change', e => {
   if (e.target.classList.contains('gb-pick')){ gameKey = e.target.value || null; gameLayout(); }
   else if (e.target.closest('.gb-top')){ gameOnTop = e.target.checked; saveGame(); }
@@ -7255,7 +7563,8 @@ $('#emoteSet').addEventListener('change', e => {
 function syncAlertControls(){
   settingsDlg.querySelectorAll('[data-al]').forEach(c => {
     const [kind, k] = c.dataset.al.split('.'), v = alerts[kind][k];
-    if (c.type === 'checkbox') c.checked = !!v; else c.value = String(v);
+    if (c.classList.contains('seg')) c.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.v === v); b.setAttribute('aria-checked', String(b.dataset.v === v)); });
+    else if (c.type === 'checkbox') c.checked = !!v; else c.value = String(v);
   });
   ['mention', 'spam'].forEach(kind => {
     settingsDlg.querySelectorAll(`[data-dep="${kind}.until"]`).forEach(r => r.classList.toggle('st-dim', alerts[kind].hl !== 'until'));
@@ -7283,17 +7592,25 @@ function pickSound(kind){
     f.click();
   });
 }
-settingsDlg.addEventListener('change', async e => {
-  const c = e.target.closest('[data-al]'); if (!c) return;
-  const [kind, k] = c.dataset.al.split('.');
-  let v = c.type === 'checkbox' ? c.checked : c.type === 'range' || k === 'esc' ? +c.value : c.value;
-  if (k === 'sound' && v === 'custom' && !await pickSound(kind)) v = alerts[kind].sound === 'custom' ? 'custom' : alerts[kind].sound;
+// One alert option changed, in whichever place it's shown (Settings > Notifications, Mentions or Spam alerts).
+async function setAlert(kind, k, v){
+  if (k === 'sound' && v === 'custom' && !await pickSound(kind)) v = alerts[kind].sound;
   alerts[kind][k] = v; saveAlerts(); syncAlertControls();
   if (k === 'sharedBots'){ renderSpamLists(); renderSpamHist(); flash(v ? 'Spam alerts use the chat bot list from Mentions' : 'Spam alerts have their own chat bot list'); }
-  if (k === 'sound' || k === 'vol') playSound(kind);
+  if (k === 'sound' || k === 'vol') playSound(kind, true);
   if (k === 'color') wins.forEach(w => { if (w.alert && w.alert.kind === kind) w.el.style.setProperty('--al', v); });
+  if (kind === 'live' && k === 'notify') syncLiveAlerts();
+}
+settingsDlg.addEventListener('change', e => {
+  const c = e.target.closest('[data-al]'); if (!c || c.classList.contains('seg')) return;
+  const [kind, k] = c.dataset.al.split('.');
+  setAlert(kind, k, c.type === 'checkbox' ? c.checked : c.type === 'range' || k === 'esc' ? +c.value : c.value);
 });
-settingsDlg.addEventListener('click', e => { const b = e.target.closest('[data-play]'); if (b) playSound(b.dataset.play); });
+settingsDlg.addEventListener('click', e => {
+  const b = e.target.closest('[data-play]'); if (b) playSound(b.dataset.play, true);
+  const s = e.target.closest('.seg[data-al] button');
+  if (s){ const [kind, k] = s.parentNode.dataset.al.split('.'); setAlert(kind, k, s.dataset.v); }
+});
 $('#spamOn').addEventListener('change', e => {
   alerts.spam.on = e.target.checked; saveAlerts(); syncAlertControls();
   if (typeof pushMyName === 'function') pushMyName();      // the chats start or stop handing over their messages
@@ -7380,7 +7697,8 @@ $('#spamTryBtn').onclick = trySpam;
 
 /* Spam alerts: history of flagged messages */
 function renderSpamHist(){
-  const list = $('#spamHist');
+  const list = $('#spamHist'); if (!list) return;
+  const spamHist = notes.filter(n => n.kind === 'spam');   // the bell's Spam tab
   $('#spamHistClear').hidden = !spamHist.length;
   list.innerHTML = '';
   if (!spamHist.length){ list.innerHTML = '<div class="sv-empty">Nothing flagged yet.</div>'; return; }
@@ -7393,7 +7711,7 @@ function renderSpamHist(){
     row.querySelector('.mp-where').textContent = chLabelP(h.channel);
     row.querySelector('.mp-time').textContent = timeAgo(h.t);
     row.querySelector('.mp-body').textContent = h.body;
-    row.querySelector('.sh-signs').innerHTML = (h.signs || []).map(x => `<span>${escH(x.text)} <i>+${x.points}</i></span>`).join('');
+    row.querySelector('.sh-signs').innerHTML = (h.signs || []).map(x => `<span>${escM(x.text)} <i>+${x.points}</i></span>`).join('');
     const acts = document.createElement('div'); acts.className = 'sh-acts';
     if (SmvSpam.ignored(h.sender, spamOpts().ignore)) acts.innerHTML = '<span>On the chat bot list: no longer flagged</span>';
     else {
@@ -7406,7 +7724,7 @@ function renderSpamHist(){
     list.appendChild(row);
   });
 }
-$('#spamHistClear').onclick = () => { spamHist = []; saveSpamHist(); renderSpamHist(); };
+$('#spamHistClear').onclick = () => dropNotes(n => n.kind === 'spam');
 ['#spamTry', '#spamTrySender'].forEach(s => $(s).addEventListener('keydown', e => { if (e.key === 'Enter') trySpam(); }));
 syncAlertControls(); renderSpamLists(); renderSpamHist();
 
@@ -7635,8 +7953,9 @@ async function unfollowKick(ch, name){
   const r = await window.kmv.kickUnfollow(ch).catch(() => null);
   if (r && r.ok){
     if (alsoRemove && saved.includes(ch)) toggleSaved(ch);
-    flash(`Unfollowed ${name} on Kick` + (alsoRemove ? ' and removed from Saved' : ''));
-  } else flash(r && r.error === 'login' ? 'Log in to Kick in this app first, then try again.' : `Couldn't unfollow ${name} on Kick right now. Try again in a minute, or unfollow on kick.com.`);
+    flash(`Unfollowed ${name} on Kick` + (alsoRemove ? ' and removed from Saved' : ''), { subject: 'accounts' });
+  } else flash(r && r.error === 'login' ? 'Log in to Kick in this app first, then try again.' : `Couldn't unfollow ${name} on Kick right now. Try again in a minute, or unfollow on kick.com.`,
+    { subject: 'accounts', ...(r && r.error === 'login' ? { act: { t: 'login', p: 'kick' } } : {}) });
   return r;
 }
 
