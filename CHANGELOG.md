@@ -2,7 +2,18 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.2 (current)
+## 0.3.3 (current)
+- All notifications: days with few notifications are no longer cut off
+- Spam alerts: chat bot names centred in their pills when the list is shared with Mentions
+- Settings › Layouts › Toolbar: the Icons only button fits on one line
+- Left toolbar, Icons only: the column stays slim on hover; on a Mac the pear shows the window buttons
+- Settings › Mentions: the Alerts tab first, and it opens there
+- Channels: the search box keeps its height with a long list
+- Layout menu: keeps its height while you point at the layouts
+- Lock layout: block resizing, keep swapping and closing; clearer swap preview
+- Notifications: the chat filter keeps one small width; a slightly wider panel
+
+## 0.3.2
 - Release video skill: finds tags without a v, keeps the caption off a chat's message box, and gives stand-in channels profile pictures
 - Mentions show the emotes from the message
 - Profiles: Unfollow shows straight after signing in to Kick (fixes a flaky launch test)
