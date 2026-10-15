@@ -315,10 +315,13 @@ test('notifications from before the bell: mentions and spam history move in, onc
   }})()` });
   const kept = () => page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.notifications')).map(n => [n.kind, n.sender, n.unread]));
   assert.deepEqual(await kept(), [['spam', 'bot', false], ['mention', 'ann', true]]);
-  assert.match(await page.$eval('#spamHist', e => e.textContent), /bot6 \/ 6 points/);
+  await page.evaluate(() => openSettings('notify'));
+  assert.match(await page.$eval('#spamHist', e => e.textContent), /bot6 \/ 6 points/, 'Spam alerts > History (drawn when Settings opens)');
+  await page.keyboard.press('Escape');
   assert.ok(await page.evaluate(() => localStorage.getItem('kickMultiview.mentions')), 'the old ones stay, for an older version');
   await page.evaluate(() => { localStorage.setItem('kickMultiview.notifications', '[]'); });
   await page.reload();
   assert.deepEqual(await kept(), [], 'only the first time');
+  await page.evaluate(() => openSettings('notify'));
   assert.match(await page.$eval('#spamHist', e => e.textContent), /Nothing flagged yet/, 'Spam alerts > History (the desktop app\'s) is the bell\'s spam');
 });

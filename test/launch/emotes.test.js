@@ -45,7 +45,15 @@ test('chat windows get the emote preview, and Download saves the emote, named af
   assert.deepEqual(await dl('https://example.com/x.png', 'x'), { error: 'bad' });
   assert.deepEqual(await dl('http://files.kick.com/emotes/1/fullsize', 'x'), { error: 'bad' });
   assert.deepEqual(await dl('https://files.kick.com/emotes/2/fullsize', 'x'), { error: 'fetch' }, 'not a picture');
-  assert.deepEqual(await dl('https://files.kick.com/emotes/2/fullsize', 'small', 'https://files.kick.com/emotes/1/small'), { saved: true, file: 'small.png' }, 'the big one fails: the one from chat');
+  const got = await dl('https://files.kick.com/emotes/2/fullsize', 'small', 'https://files.kick.com/emotes/1/small');
+  assert.deepEqual({ ...got, id: typeof got.id }, { saved: true, file: 'small.png', id: 'string' }, 'the big one fails: the one from chat');
+  // Show in folder (from the bell): only a file this app saved, by its id
+  await a.app.evaluate(({ shell }) => { shell.showItemInFolder = f => { globalThis.__shown = f; }; });
+  assert.equal(await w.evaluate(id => window.kmv.emoteShow(id), got.id), true);
+  assert.equal(path.basename(await a.app.evaluate(() => globalThis.__shown)), 'small.png');
+  assert.equal(await w.evaluate(() => window.kmv.emoteShow('../../etc/passwd')), false, 'nothing else');
+  fs.rmSync(path.join(out, 'small.png'), { force: true });
+  assert.equal(await w.evaluate(id => window.kmv.emoteShow(id), got.id), false, 'nor a file that\'s gone');
   await a.app.evaluate(() => { globalThis.__cancel = true; });
   assert.deepEqual(await dl('https://files.kick.com/emotes/1/fullsize', 'x'), { canceled: true });
   await inView(w, 'alpha', 'chat', () => console.log('__kmv:emote-dl {"url":"https://example.com/x.png","name":"nope"}'));

@@ -3430,7 +3430,6 @@ async function openFromBox(saveToo){
 /* ---------- the notification centre: the toolbar bell ----------
    Chat mentions, likely spam, saved channels going live, raids and the app's own messages, in one list
    (src/notifications.js) kept in localStorage. Only the main window keeps it. */
-const MENT_MAX = 500;     // (the chat helper's limits)
 const NOTE_SHOWN = 30;    // the latest in each tab of the bell (the rest in All notifications)
 const NOTES_KEY = 'kickMultiview.notifications';
 let myName = '', myTwitch = '', mentOn = true, mentMuted = new Set(), mentWords = [];
@@ -7514,6 +7513,7 @@ function openSettings(tab){
   if ((settingsTab === 'accounts' || settingsTab === 'youtube') && typeof refreshAccountsPane === 'function') refreshAccountsPane();
   if (settingsTab === 'general') $('#keysSet').checked = keysOn;
   if (settingsTab === 'notify') syncNotifyPane();
+  renderSpamHist();   // (only drawn while Settings is open)
   if (settingsTab === 'extensions') renderExtPane();
   if (settingsTab === 'layouts') renderLayoutsPane(true);
   return renderDoc(settingsTab);
@@ -7702,7 +7702,7 @@ $('#spamTryBtn').onclick = trySpam;
 
 /* Spam alerts: history of flagged messages */
 function renderSpamHist(){
-  const list = $('#spamHist'); if (!list) return;
+  const list = $('#spamHist'); if (!list || $('#settingsDlg').hidden) return;   // (drawn when Settings opens)
   const spamHist = notes.filter(n => n.kind === 'spam');   // the bell's Spam tab
   $('#spamHistClear').hidden = !spamHist.length;
   list.innerHTML = '';
