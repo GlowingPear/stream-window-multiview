@@ -561,20 +561,26 @@ test('Hide bar: the button says Show bar while the bar is hidden, and brings it 
 
 for (const bar of [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left', labels: false }]){
   const name = bar.pos === 'top' ? 'at the top' : bar.labels ? 'on the left' : 'on the left, icons only';
-  test(`toolbar ${name}: Top / Left and Labels / Icons only each fit on one line, in Settings and the Layout menu (#87)`, async t => {
+  const v = bar.pos === 'top' ? 'top' : bar.labels ? 'left' : 'icons';
+  test(`toolbar ${name}: Top, Left and Left, icons only are cards in Settings and the Layout menu, the one in use ticked (#103)`, async t => {
     const page = await openApp(t, { init: `localStorage.setItem('kickMultiview.toolbar', ${JSON.stringify(JSON.stringify(bar))})` });
-    const fits = async root => {
-      const b = await page.$$eval(`${root} [data-tb] button`, e => e.map(x => ({ t: x.textContent, h: x.clientHeight, full: x.scrollHeight, w: x.clientWidth, need: x.scrollWidth })));
-      assert.deepEqual(b.map(x => x.t), ['Top', 'Left', 'Labels', 'Icons only']);
-      for (const x of b) assert.ok(x.full <= x.h && x.need <= x.w, `"${x.t}" fits its button: ${JSON.stringify(b)}`);
-      assert.equal(new Set(b.map(x => x.h)).size, 1, 'all the same height');
+    const cards = async root => {
+      const b = await page.$$eval(`${root} [data-tbv]`, e => e.map(x => ({ v: x.dataset.tbv, t: x.querySelector('b').textContent, on: x.getAttribute('aria-checked'),
+        nameFits: x.querySelector('b').scrollWidth <= x.querySelector('b').clientWidth + 1 && x.querySelector('b').getClientRects().length === 1,
+        pic: !!x.querySelector('svg.tb-pic'), desc: x.querySelector('.lc-t span').textContent })));
+      assert.deepEqual(b.map(x => x.t), ['Top', 'Left', 'Left, icons only']);
+      assert.deepEqual(b.filter(x => x.on === 'true').map(x => x.v), [v], 'the one in use is ticked');
+      for (const x of b) assert.ok(x.nameFits && x.pic && x.desc, `"${x.t}": a picture, its name on one line and what it does: ${JSON.stringify(b)}`);
+      const tops = await page.$$eval(`${root} [data-tbv]`, e => e.map(x => x.getBoundingClientRect().top));
+      assert.ok(tops[0] < tops[1] && tops[1] < tops[2], 'stacked, one per row');
     };
     await page.evaluate(() => window.openSettings('layouts'));
     await page.click('#lyTabs [data-t=toolbar]');
-    await fits('#settingsDlg');
+    await cards('#settingsDlg');
     await page.keyboard.press('Escape');
     await page.click('#layoutBtn');
-    await fits('#layoutMenu');
+    await page.click('#layoutMenu .lm-tabs [data-t=toolbar]');
+    await cards('#layoutMenu');
   });
 }
 
@@ -584,12 +590,18 @@ test('toolbar on the left: a column of named rows or slim icons, menus beside it
   await press(page, 't');
   const body = c => page.evaluate(c => document.body.classList.contains(c), c);
   const rect = sel => page.$eval(sel, e => { const r = e.getBoundingClientRect(); return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height), right: Math.round(r.right) }; });
-  // Layout menu > Toolbar: Left. "Left toolbar" (Labels / Icons only) only works on the left
+  // Layout menu > Toolbar: Left. The menu stays open on its Toolbar tab, moved beside the new toolbar
   await page.click('#layoutBtn');
-  assert.ok(await page.isDisabled('#layoutMenu [data-tb=labels] [data-v="0"]'), 'Icons only is greyed out while the toolbar is on top');
-  await page.click('#layoutMenu [data-tb=pos] [data-v=left]');
+  await page.click('#layoutMenu .lm-tabs [data-t=toolbar]');
+  await page.click('#layoutMenu [data-tbv=left]');
   assert.ok(await body('bar-left'));
-  assert.equal(await page.isVisible('#layoutMenu'), false, 'the menu closes (it was placed for the top bar)');
+  await page.waitForTimeout(100);
+  assert.equal(await page.isVisible('#layoutMenu'), true, 'the menu stays open');
+  assert.equal(await page.getAttribute('#layoutMenu .lm-tabs [data-t=toolbar]', 'aria-selected'), 'true', 'on its Toolbar tab');
+  assert.equal(await page.getAttribute('#layoutMenu [data-tbv=left]', 'aria-checked'), 'true', 'Left ticked');
+  assert.equal((await rect('#layoutMenu')).x, 186, 'beside the new toolbar');
+  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.toolbar'))), { pos: 'left', labels: true }, 'stored as before');
+  await page.keyboard.press('Escape');
   await page.waitForTimeout(900);                    // the layout fits the new space
   const h = await rect('header'), st = await rect('#stage');
   assert.deepEqual([h.x, h.y, h.w, h.h], [0, 0, 180, 900], 'a 180px column down the left');
@@ -613,9 +625,11 @@ test('toolbar on the left: a column of named rows or slim icons, menus beside it
   // Settings > Layouts > Toolbar: Icons only, the same setting as the Layout menu
   await page.evaluate(() => window.openSettings('layouts'));
   await page.click('#lyTabs [data-t=toolbar]');
-  assert.ok(await page.$eval('#settingsDlg [data-tb=pos] [data-v=left]', b => b.classList.contains('on')), 'Settings shows Left too');
-  await page.click('#settingsDlg [data-tb=labels] [data-v="0"]');
+  assert.equal(await page.getAttribute('#settingsDlg [data-tbv=left]', 'aria-checked'), 'true', 'Settings shows Left too');
+  await page.click('#settingsDlg [data-tbv=icons]');
   assert.ok(await body('bar-icons'));
+  assert.equal(await page.getAttribute('#settingsDlg [data-tbv=icons]', 'aria-checked'), 'true', 'the tick moves');
+  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.toolbar'))), { pos: 'left', labels: false });
   await page.keyboard.press('Escape');
   await page.waitForTimeout(400);
   assert.equal((await rect('header')).w, 44, 'a slim 44px column');
@@ -648,7 +662,7 @@ test('toolbar on the left: a column of named rows or slim icons, menus beside it
   assert.equal(await body('bar-icons'), false);
   assert.equal(await page.getAttribute('#barFold', 'aria-label'), 'Collapse');
   await page.click('#layoutBtn');
-  assert.ok(await page.$eval('#layoutMenu [data-tb=labels] [data-v="1"]', b => b.classList.contains('on')), 'the Layout menu follows');
+  assert.equal(await page.getAttribute('#layoutMenu [data-tbv=left]', 'aria-checked'), 'true', 'the Layout menu follows');
   await page.keyboard.press('Escape');
   await page.click('#barFold');
   assert.ok(await body('bar-icons'));
@@ -682,7 +696,8 @@ test('toolbar on the left: a column of named rows or slim icons, menus beside it
   // back on top
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.click('#layoutBtn');
-  await page.click('#layoutMenu [data-tb=pos] [data-v=top]');
+  await page.click('#layoutMenu .lm-tabs [data-t=toolbar]');
+  await page.click('#layoutMenu [data-tbv=top]');
   assert.equal(await body('bar-left'), false);
   assert.equal(await body('bar-icons'), false, 'Icons only is for the left toolbar');
   assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.toolbar'))), { pos: 'top', labels: false }, 'it keeps Icons only for next time');
