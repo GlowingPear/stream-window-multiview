@@ -1,11 +1,11 @@
 // Kick's /clip, /poll and /prediction in the real app: Kick chats get the helper that stops them (Twitch chats don't), the chat
 // window says so, and Open channel page opens kick.com/<channel> with its sound off. kick.com and the chats are stand-ins (see app.js).
 const test = require('node:test');
-const { launchApp, inView, viewLoaded, winSel, assert } = require('./app');
+const { launchApp, stubExists, inView, viewLoaded, winSel, assert, openChannel } = require('./app');
 
 const T = { timeout: 60000 };
 let a;
-test.before(async () => { a = await launchApp(); });
+test.before(async () => { a = await launchApp(); await stubExists(a.app); });
 test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
 
 const helper = (title) => a.win.waitForFunction(title => {
@@ -30,7 +30,7 @@ const siteWindows = () => a.app.evaluate(({ BrowserWindow }, re) => BrowserWindo
 
 test('/clip and /poll in a Kick chat: the chat window asks, and Open channel page opens the channel muted; Cancel opens nothing', T, async () => {
   const w = a.win;
-  await w.fill('#url', 'alpha'); await w.click('#add');
+  await openChannel(w, 'alpha');
   await viewLoaded(w, 'alpha', 'chat', /popout\/alpha\/chat/);
   await helper('alpha');
   await w.waitForFunction(() => {
@@ -57,7 +57,7 @@ test('/clip and /poll in a Kick chat: the chat window asks, and Open channel pag
 
 test('Twitch chats keep their own commands', T, async () => {
   const w = a.win;
-  await w.fill('#url', 'https://www.twitch.tv/bravo'); await w.click('#add');
+  await openChannel(w, 'tw:bravo');
   await viewLoaded(w, 'bravo', 'chat', /popout\/bravo\/chat/);
   await helper('bravo');
   assert.equal(await inView(w, 'bravo', 'chat', () => !!window.__kmvKickCmd), false, 'no Kick helper');
