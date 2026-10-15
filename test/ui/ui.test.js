@@ -825,10 +825,13 @@ test('messages show as a pop-up where Settings puts it, close on a click, and ca
   assert.ok(await page.isHidden('#msg'), 'a click closes it');
   await page.click('#settingsBtn'); await page.click('#settingsDlg .st-rail [data-s=notify]');
   assert.ok(await page.isHidden('#dnOn'), 'desktop notifications need the desktop app');
+  assert.ok(await page.isHidden('#ntTabs [data-t=desktop]'), 'so there\'s no Desktop tab');
   assert.equal(await page.locator('#ntGrid .seg').first().evaluate(e => getComputedStyle(e.parentNode).visibility), 'hidden', 'and so does the Desktop column');
+  await page.click('#ntTabs [data-t=bell]');
   await page.selectOption('#msgPos', 'br');
   assert.equal(await page.getAttribute('#msg', 'data-pos'), 'br');
   assert.ok(await page.isVisible('#msg'), 'it shows where they go now, over Settings');
+  await page.click('#ntTabs [data-t=kinds]');
   await page.uncheck('#ntGrid [data-al="app.popup"]');
   await page.reload();
   assert.deepEqual(await page.evaluate(() => [document.querySelector('#ntGrid [data-al="app.popup"]').checked, msgPos.value]), [false, 'br'], 'remembered');
