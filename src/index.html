@@ -23,13 +23,9 @@ button,input,select{font:inherit;color:inherit}
 header{position:fixed;top:0;left:0;right:0;height:var(--head);z-index:100000;display:flex;align-items:center;gap:8px;
   padding:0 12px;background:var(--panel);border-bottom:1px solid var(--line);transition:transform .2s ease}
 .brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.02em;margin-right:6px;white-space:nowrap}
-#layoutBtn{max-width:190px;overflow:hidden;text-overflow:ellipsis;flex:none}
 header.c1 .brand-txt{display:none} header.c1 .brand{margin-right:0}
 body.role-streams .brand-txt{display:inline !important}
 .brand .pear{width:20px;height:20px;fill:var(--accent);color:var(--accent);filter:drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 35%, transparent))}
-#url{flex:1;min-width:120px;max-width:440px;height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);
-  background:var(--bg);outline:none}
-#url:focus{border-color:var(--accent)}
 select{height:34px;padding:0 8px;border-radius:7px;border:1px solid var(--line2);background:var(--panel2)}
 .btn{height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);background:var(--panel2);cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--muted)}
@@ -37,10 +33,66 @@ select{height:34px;padding:0 8px;border-radius:7px;border:1px solid var(--line2)
 .btn.primary:hover{filter:brightness(1.08)}
 .btn.danger:hover{border-color:var(--danger);color:var(--danger)}
 .sep{width:1px;height:24px;background:var(--line);margin:0 4px}
+header .sep{flex:none;height:20px;margin:0 2px}
+header .sep[hidden]{display:none}
 label.chk{display:flex;align-items:center;gap:5px;color:var(--muted);white-space:nowrap;cursor:pointer;user-select:none}
 label.chk input{accent-color:var(--accent)}
 .spacer{flex:1}
-header.measuring > :not(#url):not(.spacer){flex-shrink:0}   /* see fitHeader: measured at full size, not squashed */
+header.measuring > :not(.spacer){flex-shrink:0}   /* see fitHeader: measured at full size, not squashed */
+/* Toolbar items (.tb): menu style, not boxed buttons. An icon, a name, and ▾ for the ones that open a menu.
+   On the top bar the right side shows icons only (their names are in the tooltips), except Layout, which keeps
+   its name while there's room (fitHeader drops it first). The item whose menu or panel is open is underlined. */
+header .tb{position:relative;display:flex;align-items:center;justify-content:center;gap:7px;height:34px;padding:0 9px;border:0;border-radius:7px;
+  background:transparent;color:var(--text);font-weight:600}
+header .tb:hover:not(:disabled){background:var(--panel2)}
+header .tb.ibtn{width:auto;min-width:34px;padding:0 8px}
+.tb > i[data-ico]{display:grid;place-items:center;flex:none}
+.tb > i[data-ico] svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tb .car{font-size:10px;color:var(--muted);margin-left:-2px}
+.tb .car::before{content:"▾"}
+header .tb.ibtn .tb-l{display:none}
+body:not(.bar-left) header:not(.c2) #layoutBtn .tb-l{display:inline}
+header .tb[aria-expanded="true"]{background:color-mix(in srgb,var(--accent) 9%,transparent);box-shadow:inset 0 -2px 0 var(--accent);border-radius:7px 7px 0 0}
+header #clear{color:var(--danger)}
+header #clear:hover{background:color-mix(in srgb,var(--danger) 14%,transparent)}
+header .tb.primary{background:var(--accent);color:var(--accent-ink)}
+#loginBtn.has-acct > i{color:var(--accent)}
+#savedBtn .sv-badge[hidden]{display:none}
+#savedBtn .sv-badge{margin-left:0}
+#barFold{display:none}
+/* ---------- the toolbar on the left (Layout menu / Settings > Layouts > Toolbar) ----------
+   A column down the side: Logins, Channels and Profiles at the top, the rest at the bottom. With names it's a
+   list of menu rows (about 180px); Icons only is a slim column (44px) that shows the names over the streams while
+   the pointer rests on it (body.bar-peek), without moving anything underneath. */
+body.bar-left{--barw:180px}
+body.bar-left.bar-icons{--barw:44px}
+body.bar-left header{bottom:0;right:auto;width:var(--barw);height:auto;flex-direction:column;align-items:stretch;gap:1px;padding:8px 6px;
+  border-bottom:0;border-right:1px solid var(--line);overflow:hidden;transition:transform .2s ease,width .15s ease,box-shadow .15s ease}
+body.bar-left header .brand{flex:none;height:36px;margin:0 0 6px;padding-left:6px}
+body.bar-left header .brand-txt{display:inline}
+body.bar-left header .tb{justify-content:flex-start;width:100%;min-width:0;flex:none;height:32px;padding:0 9px;gap:10px;font-weight:500}
+body.bar-left header .tb .tb-l{display:inline;flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.bar-left header .tb .car::before{content:"▸"}
+body.bar-left header .tb[aria-expanded="true"]{box-shadow:inset 2px 0 0 var(--accent);border-radius:0 7px 7px 0}
+body.bar-left header .sep{width:auto;height:1px;margin:5px 4px}
+body.bar-left header .spacer{flex:1 1 0;min-height:8px}
+body.bar-left #barFold{display:flex;color:var(--muted)}
+body.bar-left #moreBtn{font-size:15px}
+body.bar-left.bar-icons:not(.bar-peek) header{padding:8px 4px}
+body.bar-left.bar-icons:not(.bar-peek) header .brand{justify-content:center;padding:0;margin-right:0}
+body.bar-left.bar-icons:not(.bar-peek) header :is(.brand-txt,.tb-l,.car){display:none}
+body.bar-left.bar-icons:not(.bar-peek) header .tb{justify-content:center;padding:0}
+body.bar-left.bar-icons:not(.bar-peek) #savedBtn .sv-badge{position:absolute;top:1px;right:0;padding:0 4px;font-size:9.5px;line-height:14px}
+body.bar-left.bar-icons:not(.bar-peek) #savedBtn .sv-badge i{display:none}
+body.bar-left.bar-icons:not(.bar-peek) #mentBtn .mb-count{position:absolute;top:1px;right:1px}
+body.bar-left.bar-icons.bar-peek header{width:180px;box-shadow:12px 0 36px rgba(0,0,0,.5)}
+body.bar-left #stage{top:0;left:var(--barw);transition:left .2s ease}
+body.bar-left.focus #stage{left:0}
+body.bar-left.focus header{transform:translateX(-100%)}
+body.bar-left.focus.peek header{transform:none}
+body.bar-left #reveal{bottom:0;right:auto;width:6px;height:auto}
+body.bar-left #msg[data-pos^=t]{top:10px}
+body.bar-left #msg[data-pos$=l]{left:calc(var(--barw) + 16px)}
 /* messages ("Logged out of Twitch"): a toast where Settings > General puts it */
 #msg{position:fixed;z-index:100030;max-width:min(460px,calc(100vw - 32px));padding:8px 14px;border-radius:10px;font-size:13px;line-height:1.35;
   background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--accent);box-shadow:0 14px 34px rgba(0,0,0,.55);cursor:pointer;
@@ -59,10 +111,16 @@ body.focus.peek header{transform:none}
 /* macOS: the toolbar is the window's title bar (see macBar in main.js). Its empty space moves the window, the
    traffic lights sit at its left (not in fullscreen, where macOS hides them), and the pear stands in for the name. */
 html.mac-bar header{-webkit-app-region:drag;padding-left:86px}
-html.mac-bar header :is(button,input,select,label,a,.zoom,.colnav){-webkit-app-region:no-drag}
+html.mac-bar header :is(button,input,select,label,a){-webkit-app-region:no-drag}
 html.mac-bar body.fullscreen header{padding-left:12px}
 html.mac-bar #reveal{height:12px}   /* the window's top few pixels are its resize edge, which the page never hears about */
 html.mac-bar body:not(.role-streams) .brand-txt{display:none}
+/* on the left, the lights sit where they always do (top left), in a strip at the top of the column with the pear
+   at its right. Icons only is too narrow for them, so they're hidden until the column opens over the streams. */
+html.mac-bar body.bar-left header{padding-left:6px}
+html.mac-bar body.bar-left header .brand{height:40px;padding-left:80px;margin-top:-4px}
+html.mac-bar body.bar-left.bar-icons:not(.bar-peek) header .brand{padding-left:0}
+html.mac-bar body.bar-left.fullscreen header .brand{padding-left:6px}
 
 /* ---------- stage ---------- */
 #stage{position:absolute;top:var(--head);left:0;right:0;bottom:0;transition:top .2s ease}
@@ -344,7 +402,8 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 .zoom[hidden]{display:none}
 .zoom button{border:0;background:transparent;width:24px;height:26px;border-radius:5px;cursor:pointer;color:var(--text);font-size:15px;padding:0}
 .zoom button:hover{background:var(--line)}
-#zoomPct{min-width:38px;text-align:center;color:var(--text);font-variant-numeric:tabular-nums}
+.zoomPct{min-width:38px;text-align:center;color:var(--text);font-variant-numeric:tabular-nums}
+.zoom{padding:0 4px}
 .btns button.star{font-size:15px;line-height:1}
 .btns button.star.on{color:var(--accent)}
 .btns button.like.on{color:var(--accent)}
@@ -397,13 +456,19 @@ select.dd-open{border-color:var(--accent)}
 .lm-opt .lm-sw{padding:0}
 .lm-opt .lm-sw button{flex:none;width:32px}
 .lm-sw button:disabled{opacity:.4;cursor:default}
+.lm-opt.lm-tb{padding-block:3px}
+.lm-opt.lm-tb .lm-sw button,.ly-tb .lm-sw button{width:auto;min-width:46px;padding:0 9px}
+.ly-tb .lm-sw,.ly-zoom .zoom{padding:0;flex:none}
+.ly-zoom{margin-top:14px;border-top:1px solid var(--line);border-bottom:0}
+.menu .zoom button{display:grid;place-items:center;padding:0;font-size:15px;color:var(--text)}
+.menu .zoom button:hover{background:var(--line)}
+.zoom-row .zoom{flex:none}
+.desk-only[hidden]{display:none}
 .lm-sw{display:flex;gap:4px;padding:2px 6px 6px}
 .lm-sw button{flex:1;height:28px;justify-content:center;align-items:center;text-align:center;border:1px solid var(--line2);border-radius:6px;background:var(--panel2);color:var(--text);cursor:pointer;font-size:12px;font-weight:600;padding:0 4px}
 .lm-sw button:hover{border-color:var(--muted)}
 .lm-sw button.on{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
-#swBtn{display:flex;align-items:center;gap:6px}
-#swBtn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-#swBtn.on{border-color:var(--accent);color:var(--accent)}
+#swBtn.on{color:var(--accent)}
 #swBtn[hidden]{display:none}
 .lm-sec{margin:6px 4px 2px;padding-top:8px;border-top:1px solid var(--line);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
 .pr-empty{padding:4px 10px 6px;font-size:11px;color:var(--muted)}
@@ -416,11 +481,20 @@ select.dd-open{border-color:var(--accent)}
 .lm-save input{flex:1;min-width:0;height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);outline:none}
 .lm-save input:focus{border-color:var(--accent)}
 .lm-save .btn{height:30px}
-.colnav{display:flex;align-items:center;gap:2px;height:34px;padding:0 4px;border:1px solid var(--line2);border-radius:7px;background:var(--panel2)}
-.colnav[hidden]{display:none}
-.colnav button{border:0;background:transparent;width:26px;height:26px;border-radius:5px;cursor:pointer;font-size:18px;line-height:1;padding:0}
-.colnav button:hover{background:var(--line)}
-#colPos{font-size:11px;color:var(--muted);min-width:64px;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Columns: ‹ and › on the edges of the streams, half way down, when there's more to scroll (faint until the
+   mouse is over the streams), with where you are (2/6) under the › */
+#colNav{position:absolute;inset:0;pointer-events:none;z-index:89986}
+#colNav[hidden]{display:none}
+#colNav button{position:absolute;top:50%;width:32px;height:60px;margin-top:-30px;padding:0 0 3px;pointer-events:auto;cursor:pointer;
+  border:1px solid var(--line2);border-radius:10px;background:color-mix(in srgb,var(--panel) 90%,transparent);color:var(--text);
+  font-size:26px;line-height:1;box-shadow:0 6px 18px rgba(0,0,0,.45);opacity:.3;transition:opacity .15s}
+#stage:hover #colNav button{opacity:.85}
+#colNav button:hover{opacity:1;border-color:var(--muted)}
+#colNav [data-d="-1"]{left:var(--cn-left,8px)}
+#colNav [data-d="1"]{right:8px}
+#colPos{position:absolute;right:8px;top:50%;margin-top:36px;width:32px;text-align:center;font-size:10.5px;font-weight:700;color:var(--muted);
+  font-variant-numeric:tabular-nums;white-space:nowrap;opacity:.5;transition:opacity .15s;text-shadow:0 1px 3px #000}
+#stage:hover #colPos{opacity:1}
 #stage{overflow:hidden}
 #hscroll{position:absolute;bottom:3px;height:10px;border-radius:5px;background:var(--panel);display:none;z-index:89980;cursor:pointer}
 #hscroll .thumb{position:absolute;top:1px;bottom:1px;border-radius:4px;background:var(--line2);cursor:grab}
@@ -606,10 +680,11 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .cs-mode:hover{border-color:var(--muted)}
 .cs-mode.on{border-color:var(--accent);color:var(--accent)}
 
-#mentBtn{position:relative;display:flex;align-items:center;gap:5px;padding:0 9px}
 #mentBtn[hidden]{display:none}
-#mentBtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#mentBtn .mb-ico{display:grid;place-items:center}
+#mentBtn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 #mentBtn.off{color:var(--muted)}
+header #mentBtn .mb-count{position:absolute;top:2px;right:0;min-width:15px;height:15px;font-size:9.5px;padding:0 4px}
 .mb-count{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#e5262a;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center}
 .mb-count[hidden]{display:none}
 #mentPanel{position:fixed;top:calc(var(--head) + 6px);z-index:100003;width:380px;max-height:78vh;display:flex;flex-direction:column;gap:10px;padding:12px;
@@ -851,16 +926,10 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .fs-pophid:disabled{opacity:.45;cursor:default}
 .fs-pophid:disabled:hover{border-color:var(--line2);color:inherit}
 
-#loginBtn{display:flex;align-items:center;gap:6px;max-width:140px}
 #loginBtn[hidden]{display:none}
-#loginBtn svg{width:15px;height:15px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-#loginBtn .acct-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#loginBtn.has-acct svg{color:var(--accent)}
-#loginBtn .acct-car{font-size:10px;color:var(--muted)}
-header.c1 #loginBtn.has-acct .acct-name{display:none}
 
 /* ---------- saved panel ---------- */
-#savedPanel{position:fixed;top:calc(var(--head) + 6px);left:12px;z-index:100003;width:380px;max-height:78vh;
+#savedPanel{position:fixed;top:calc(var(--head) + 6px);left:12px;z-index:100003;width:min(580px,calc(100vw - 24px));max-height:82vh;
   display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line2);
   border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.55)}
 #savedPanel[hidden]{display:none}
@@ -877,12 +946,32 @@ header.c1 #loginBtn.has-acct .acct-name{display:none}
 .sp-notify:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
 .sp-notify input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
 .sp-notify svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
-.sp-add{display:flex;align-items:center;gap:8px;margin:0 14px;height:34px;padding:0 4px 0 10px;border-radius:8px;border:1px solid var(--line2);background:var(--bg);color:var(--muted)}
+.sp-add{display:flex;align-items:center;gap:10px;margin:0 14px;height:46px;padding:0 6px 0 14px;border-radius:10px;border:1px solid var(--line2);background:var(--bg);color:var(--muted)}
+.sp-add input{font-size:14.5px}
+.sp-add select{flex:none;height:34px;border-color:transparent;background:var(--panel2);color:var(--text);font-size:12.5px;font-weight:600}
+.sp-addrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 14px 0;font-size:12.5px;color:var(--muted)}
+.sp-addrow[hidden]{display:none}
+.sp-addl{min-width:0;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-addl b{color:var(--text)}
+.sp-plat{display:flex;gap:3px}
+.sp-plat[hidden]{display:none}
+.sp-plat button{height:26px;padding:0 8px;border:1px solid var(--line2);border-radius:999px;background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer}
+.sp-plat button:hover:not(:disabled){border-color:var(--muted)}
+.sp-plat button.on{background:var(--text);border-color:var(--text);color:var(--panel)}
+.sp-plat button:disabled{opacity:.35;cursor:default}
+.sp-plat button.bad{border-color:var(--danger);box-shadow:0 0 0 1px var(--danger)}
+.sp-plat button.on.bad{background:transparent;color:var(--danger)}
+.sp-addrow .btn{height:28px;padding:0 10px;font-size:12px;font-weight:700;margin-left:auto}
+.sp-addrow .btn + .btn{margin-left:0}
+.sp-addrow .btn[hidden]{display:none}
+.sp-addrow .btn.busy{color:transparent;position:relative;pointer-events:none}
+.sp-addrow .btn.busy::after{content:"";position:absolute;inset:0;margin:auto;width:12px;height:12px;border-radius:50%;border:2px solid currentColor;border-color:var(--text) transparent var(--text) transparent;animation:spin .7s linear infinite}
+.sp-addrow .btn.primary.busy::after{border-color:var(--accent-ink) transparent var(--accent-ink) transparent}
+.sp-err{margin:6px 14px 0;font-size:12px;color:var(--danger)}
+.sp-err[hidden]{display:none}
 .sp-add:focus-within,.dlg .dlg-q:focus{border-color:var(--accent)}
 .sp-add>svg{flex:none;width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
 .sp-add input{flex:1;min-width:0;height:100%;padding:0;border:0;background:transparent;color:var(--text);outline:none}
-.sp-add .btn{flex:none;height:26px;padding:0 8px;font-size:11px;font-weight:700;border-radius:6px}
-.sp-add .btn[hidden]{display:none}
 .dlg .dlg-q{padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);color:var(--text);outline:none}
 .sv-tabs{display:flex;gap:4px;padding:10px 14px 4px}
 .sv-tabs button{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;height:26px;padding:0 7px;border:1px solid var(--line);border-radius:999px;background:transparent;
@@ -959,35 +1048,24 @@ header.c1 #loginBtn.has-acct .acct-name{display:none}
 #importRow .btn{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:28px;padding:0 6px;font-size:12px}
 #importRow .pi{width:14px;height:14px;font-size:8.5px;border-radius:4px}
 
-/* The toolbar fits itself to the window (fitHeader): first shorter labels (c1), then tighter
-   buttons (c2, c3), then the least-used controls move into the ⋯ More menu. */
-.l-short{display:none}
-body.cols header.c1 .brand{display:none}
-header.c1 .l-long{display:none} header.c1 .l-short{display:inline}
-header.c1 .zoom span:first-child{display:none} header.c1 .zoom{padding-left:4px}
-header.c2{gap:6px} header.c2 .btn{padding:0 9px} header.c2 .brand{display:none} header.c2 #colPos{display:none}
-header.c2 #swBtn span{display:none} header.c2 .ibtn{width:30px}
-header.c3{gap:4px;padding:0 8px} header.c3 #layoutBtn{max-width:112px} header.c3 #mode{max-width:104px}
-header.c3 #url{min-width:110px}
+/* The toolbar fits itself to the window (fitHeader): first the brand's name goes and the gaps get tighter (c1),
+   then Layout's name (c2), then the least-used buttons move into the ⋯ More menu, and last the names of
+   Logins, Channels and Profiles (c3). */
+header.c1{gap:4px;padding-right:8px} header.c1 .brand{display:none}
+header.c3 :is(#loginBtn,#savedBtn,#profBtn) .tb-l{display:none}
 #moreBtn{font-size:16px;letter-spacing:1px;line-height:1}
 #moreBtn[hidden]{display:none}
 #moreMenu{width:240px;right:12px}
 #moreMenu > *{width:100%}
-#moreMenu .btn{display:flex;flex-direction:row;align-items:center;gap:8px;justify-content:flex-start;border-color:transparent;background:transparent;padding:0 10px;height:34px;text-align:left}
+#moreMenu .btn{display:flex;flex-direction:row;align-items:center;gap:10px;justify-content:flex-start;border-color:transparent;background:transparent;padding:0 10px;height:34px;text-align:left;box-shadow:none}
 #moreMenu .btn:hover{background:var(--panel2)}
-#moreMenu .btn.danger{color:var(--danger)}
+#moreMenu .btn.danger,#moreMenu #clear{color:var(--danger)}
 #moreMenu .btn span{font-size:inherit;color:inherit;line-height:inherit}
 #moreMenu .ibtn{width:100%}
-#moreMenu .ibtn::after{content:attr(data-label)}
-#moreMenu .l-long{display:inline !important} #moreMenu .l-short{display:none !important}
-#moreMenu #swBtn span{display:inline !important}
-#moreMenu label.chk{padding:8px 10px;color:var(--text)}
-#moreMenu .zoom, #moreMenu .colnav{justify-content:flex-start;padding:4px 10px}
-#moreMenu .zoom span:first-child{display:inline !important}
+#moreMenu .tb .tb-l{display:inline}
 #moreMenu .sep{display:none}
 /* ---------- Streamer profiles ---------- */
-#profBtn{display:inline-flex;align-items:center;gap:6px} #profBtn[hidden]{display:none}
-#profBtn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+#profBtn[hidden]{display:none}
 .dlg.profiles{width:min(1240px,calc(100vw - 32px));height:min(92vh,980px);max-height:none;padding:0;gap:0;overflow:hidden}
 .pf-head .pf-count{font-size:12px;color:var(--muted)}
 .pf-head .help-x{margin-left:auto}
@@ -1180,39 +1258,30 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 <body>
 <header>
   <div class="brand" title="Stream Multiview"><svg class="pear" viewBox="0 0 64 64" aria-hidden="true"><path d="M33.2 15.5C33 11.5 34.2 8 36.6 4.8" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M36.2 9.6C40 4.2 47.5 3.2 52.5 5.4 49.6 10.8 42.4 12.8 36.2 9.6Z"/><path d="M32 14.2C25.6 14.2 23.4 19.4 23.4 24.6 23.4 29.6 20.4 31.6 17.2 35.6 13.2 40.6 12 46.8 14.2 52 17.2 58.8 24.4 62 32 62 39.6 62 46.8 58.8 49.8 52 52 46.8 50.8 40.6 46.8 35.6 43.6 31.6 40.6 29.6 40.6 24.6 40.6 19.4 38.4 14.2 32 14.2Z"/></svg><span class="brand-txt">Stream Multiview</span></div>
-  <input id="url" placeholder="Paste a Kick, Twitch or YouTube link, or a Kick name" autocomplete="off" spellcheck="false">
-  <select id="mode" title="What to add for a channel link">
-    <option value="both">Stream + chat</option>
-    <option value="stream">Stream only</option>
-    <option value="chat">Chat only</option>
-  </select>
-  <button class="btn primary" id="add">Add</button>
-  <button class="btn ibtn" id="capBtn" hidden data-label="Show another app's window" title="Show another app's window inside Stream Multiview (e.g. a Discord pop-out). Shortcut: W"></button>
-  <button class="btn" id="savedBtn" title="Your saved channels">★ Saved</button>
-  <button class="btn" id="profBtn" hidden title="Streamer profiles: search your saved streamers, see when they stream, keep notes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="l-long">Profiles</span><span class="l-short">Profiles</span></button>
-  <button class="btn" id="loginBtn" title="Log in to Kick once; every chat window shares it" hidden>Log in ▾</button>
-  <button class="btn" id="mentBtn" hidden title="Chat mentions and replies to you"><span class="mb-ico"></span><span class="mb-count" hidden></span></button>
+  <button class="btn tb" id="loginBtn" hidden data-label="Logins" aria-label="Logins" title="Log in to Kick, Twitch or YouTube"><i data-ico="signin"></i><span class="tb-l">Logins</span><span class="car"></span></button>
+  <button class="btn tb" id="savedBtn" data-label="Channels" aria-label="Channels" title="Your channels: open one, add a new one, see who's live"><i data-ico="star"></i><span class="tb-l">Channels</span><span class="sv-badge" hidden><i></i><b></b></span><span class="car"></span></button>
+  <button class="btn tb" id="profBtn" hidden data-label="Profiles" aria-label="Profiles" title="Streamer profiles: search your saved streamers, see when they stream, keep notes"><i data-ico="user"></i><span class="tb-l">Profiles</span></button>
   <div class="spacer"></div>
-  <div class="zoom" id="chatZoom" hidden title="Chat text size: smaller fits more messages and emotes">
-    <span>Chat</span><button data-z="-1" aria-label="Smaller chat text">−</button><span id="zoomPct">100%</span><button data-z="1" aria-label="Bigger chat text">+</button>
-  </div>
-  <button class="btn" id="popBtn" hidden title="Move every stream into its own window (drag it to another monitor). Chats then fill this window."><span class="l-long">Pop out streams</span><span class="l-short">Pop out</span></button>
-  <button class="btn" id="spotBtn" hidden title="Click a stream first: it goes big, the others line up beside it">Spotlight</button>
-  <div class="colnav" id="colNav" hidden>
-    <button data-d="-1" title="Scroll one column left" aria-label="Scroll left">‹</button><span id="colPos"></span><button data-d="1" title="Scroll one column right" aria-label="Scroll right">›</button>
-  </div>
-  <button class="btn ibtn" id="undoBtn" hidden disabled data-label="Undo" title="Undo (Ctrl+Z)"></button>
-  <button class="btn ibtn" id="redoBtn" hidden disabled data-label="Redo" title="Redo (Ctrl+Y)"></button>
-  <button class="btn" id="swBtn" hidden title="Switch control: show it as a panel you can move and resize, in any layout (click again to put it away)"><i></i><span class="l-long">Switch control</span><span class="l-short">Switch</span></button>
-  <button class="btn" id="layoutBtn" hidden title="Arrange the windows">Layout ▾</button>
+  <button class="btn tb ibtn" id="layoutBtn" hidden data-label="Layout" aria-label="Layout" title="Arrange the windows"><i data-ico="layout"></i><span class="tb-l">Layout</span><span class="car"></span></button>
+  <button class="btn tb ibtn" id="swBtn" hidden data-label="Switch control" aria-label="Switch control" title="Switch control: show it as a panel you can move and resize, in any layout (click again to put it away)"><i data-ico="float"></i><span class="tb-l">Switch control</span></button>
+  <button class="btn tb ibtn" id="popBtn" hidden data-label="Pop out streams" aria-label="Pop out streams" title="Move every stream into its own window (drag it to another monitor). Chats then fill this window."><i data-ico="popwin"></i><span class="tb-l">Pop out streams</span></button>
+  <button class="btn tb ibtn" id="capBtn" hidden data-label="App window" aria-label="App window" title="Show another app's window inside Stream Multiview (e.g. a Discord pop-out). Shortcut: W"><i data-ico="capture"></i><span class="tb-l">App window</span></button>
+  <button class="btn tb ibtn" id="spotBtn" hidden data-label="Spotlight" aria-label="Spotlight" title="Click a stream first: it goes big, the others line up beside it"><i data-ico="feat"></i><span class="tb-l">Spotlight</span></button>
+  <button class="btn tb ibtn" id="tile" data-label="Tile" aria-label="Tile" title="Evenly tile every window"><i data-ico="tile"></i><span class="tb-l">Tile</span></button>
   <button class="btn" id="chatFocus" hidden>Chat focus</button>
   <button class="btn" id="auto" hidden>Auto layout</button>
-  <button class="btn" id="tile" title="Evenly tile every window">Tile</button>
-  <button class="btn ibtn" id="settingsBtn" data-label="Settings" title="Settings: general, accounts, alerts, themes and updates"></button>
-  <button class="btn" id="focusBtn" title="Hide this toolbar (move mouse to top edge or press Esc to bring it back)"><span class="l-long">Hide bar</span><span class="l-short">Hide</span></button>
-  <button class="btn danger" id="clear">Clear</button>
-  <button class="btn primary" id="backBtn" hidden title="Close this window and put the streams back in the main window">Bring streams back</button>
-  <button class="btn ibtn" id="moreBtn" hidden title="More: the toolbar buttons that don't fit" aria-label="More" aria-haspopup="true">⋯</button>
+  <i class="sep"></i>
+  <button class="btn tb ibtn" id="undoBtn" hidden disabled data-label="Undo" aria-label="Undo" title="Undo (Ctrl+Z)"><i data-ico="undo"></i><span class="tb-l">Undo</span></button>
+  <button class="btn tb ibtn" id="redoBtn" hidden disabled data-label="Redo" aria-label="Redo" title="Redo (Ctrl+Y)"><i data-ico="redo"></i><span class="tb-l">Redo</span></button>
+  <i class="sep"></i>
+  <button class="btn tb ibtn" id="mentBtn" hidden data-label="Mentions" aria-label="Mentions" title="Chat mentions and replies to you"><span class="mb-ico"></span><span class="tb-l">Mentions</span><span class="mb-count" hidden></span></button>
+  <button class="btn tb ibtn" id="settingsBtn" data-label="Settings" aria-label="Settings" title="Settings: general, accounts, alerts, themes and updates"><i data-ico="gear"></i><span class="tb-l">Settings</span></button>
+  <button class="btn tb ibtn" id="focusBtn" data-label="Hide bar" aria-label="Hide bar" title="Hide this toolbar (move mouse to top edge or press Esc to bring it back)"><i data-ico="hidebar"></i><span class="tb-l">Hide bar</span></button>
+  <i class="sep"></i>
+  <button class="btn tb ibtn" id="clear" data-label="Clear" aria-label="Clear" title="Close every window"><i data-ico="bin"></i><span class="tb-l">Clear</span></button>
+  <button class="btn tb ibtn primary" id="backBtn" hidden data-label="Bring streams back" aria-label="Bring streams back" title="Close this window and put the streams back in the main window"><i data-ico="dock"></i><span class="tb-l">Bring streams back</span></button>
+  <button class="btn tb ibtn" id="moreBtn" hidden title="More: the toolbar buttons that don't fit" aria-label="More" aria-haspopup="true">⋯</button>
+  <button class="btn tb ibtn" id="barFold" data-label="Collapse" aria-label="Collapse" title="Show icons only"><i data-ico="fold"></i><span class="tb-l">Collapse</span></button>
 </header>
 <div id="moreMenu" class="menu" hidden></div>
 <div id="reveal"></div>
@@ -1220,11 +1289,11 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 <div id="accountMenu" class="menu" hidden>
   <div class="am-head menu-head"><div>Accounts <span>Each platform's chats use its login.</span></div><button class="menu-set am-more" title="Account settings" aria-label="Account settings"></button></div>
   <div class="am-row" data-p="kick"><i class="pdot"></i><div class="am-txt"><b>Kick</b><span class="am-st">Checking…</span></div>
-    <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+    <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
   <div class="am-row" data-p="twitch"><i class="pdot"></i><div class="am-txt"><b>Twitch</b><span class="am-st">Checking…</span></div>
-    <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+    <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
   <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
-    <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+    <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
 </div>
 
 <div id="layoutMenu" class="menu" hidden>
@@ -1240,6 +1309,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <div class="lm-hint" id="lmHint"></div>
   <div class="lm-opts" id="lmOpts">
     <div class="lm-sec">Options</div>
+    <div class="lm-opt zoom-row desk-only" data-for="*"><span>Chat text size<small>Smaller fits more messages and emotes.</small></span><div class="zoom" id="chatZoom" title="Chat text size: smaller fits more messages and emotes"><button data-z="-1" aria-label="Smaller chat text">−</button><span class="zoomPct" id="zoomPct">100%</span><button data-z="1" aria-label="Bigger chat text">+</button></div></div>
     <label class="lm-opt" data-for="columns focus"><span>Linked<small>Each stream and its chat move together. Off: move and resize windows freely.</small></span><input type="checkbox" class="st-sw" id="lmLinked"></label>
     <div class="lm-opt" data-for="chatfocus"><span>Stream columns</span><div class="lm-sw" id="lmCols"><button data-n="1">1</button><button data-n="2">2</button><button data-n="3">3</button></div></div>
     <label class="lm-opt" data-for="auto"><span>Fit in channels that open by themselves<small>Added as the last stream when they go live.</small></span><input type="checkbox" class="st-sw" id="lmAutoFit"></label>
@@ -1250,6 +1320,9 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <button data-sw="float" title="A panel you can move and resize anywhere in this window, in every layout">Floating</button>
     <button data-sw="window" class="desk-only" title="In its own window: put it anywhere, even on another monitor">Own window</button>
   </div>
+  <div class="lm-sec">Toolbar</div>
+  <div class="lm-opt lm-tb"><span>Position</span><div class="lm-sw" data-tb="pos"><button data-v="top">Top</button><button data-v="left">Left</button></div></div>
+  <div class="lm-opt lm-tb"><span>Left toolbar</span><div class="lm-sw" data-tb="labels"><button data-v="1">Labels</button><button data-v="0">Icons only</button></div></div>
   <div class="lm-sec">Your layouts</div>
   <div id="presetList"></div>
   <div class="lm-save"><input id="presetName" placeholder="Name this layout" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="presetSave">Save</button></div>
@@ -1276,9 +1349,16 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 </div></div>
 
 <div id="savedPanel" hidden>
-  <div class="sp-head"><div class="sp-title"><b>Saved channels</b><span id="liveStatus"></span></div>
+  <div class="sp-head"><div class="sp-title"><b>Channels</b><span id="liveStatus"></span></div>
     <label class="sp-notify" id="spLive" hidden title="Notify me when they go live"><input type="checkbox" id="notifyAll" aria-label="Notify me when they go live"></label></div>
-  <div class="sp-add"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="savedInput" placeholder="Search, or add a channel name or link" autocomplete="off" spellcheck="false"><button class="btn" id="savedAdd" hidden title="Save this channel (Enter)">↵ Save</button></div>
+  <div class="sp-add"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="savedInput" placeholder="Search, or type a channel name or link to open it" autocomplete="off" spellcheck="false" aria-label="Search your channels, or a channel name or link to open">
+    <select id="mode" title="What to open for a channel"><option value="both">Stream + chat</option><option value="stream">Stream only</option><option value="chat">Chat only</option></select></div>
+  <div class="sp-addrow" id="spAddRow" hidden>
+    <span class="sp-addl">Add “<b id="spAddName"></b>”<span id="spFrom"> from</span></span>
+    <div class="sp-plat" id="spPlat" role="radiogroup" aria-label="Site"><button data-p="kick" role="radio">Kick</button><button data-p="twitch" role="radio">Twitch</button><button data-p="youtube" role="radio">YouTube</button></div>
+    <button class="btn primary" id="spOpen" title="Open it (Enter)">Open</button><button class="btn" id="spOpenSave" title="Open it and save it to your channels">☆ Open &amp; save</button>
+  </div>
+  <div class="sp-err" id="spErr" role="alert" hidden></div>
   <div class="sv-tabs" id="savedTabs"><button data-t="all">All</button><button data-t="kick">Kick</button><button data-t="twitch">Twitch</button><button data-t="youtube">YouTube</button></div>
   <div id="savedList"></div>
   <div class="sp-foot"><button class="btn primary" id="openLive" hidden title="Open every saved channel that is live right now">Open live</button><button class="btn" id="openAll" title="Open every saved channel and auto-arrange">Open all</button><button class="btn" id="spMore" title="More" aria-haspopup="menu" aria-expanded="false">⋯</button>
@@ -1312,9 +1392,10 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 </div></div>
 
 <main id="stage">
+  <div id="colNav" hidden><button data-d="-1" title="Scroll one column left" aria-label="Scroll left">‹</button><button data-d="1" title="Scroll one column right" aria-label="Scroll right">›</button><span id="colPos"></span></div>
   <div id="empty"><div class="card">
     <h2>Add a stream to get started</h2>
-    Paste any of these into the box above and press Enter:
+    Open <b>Channels</b> at the top left (or press <b>N</b>), type or paste any of these and press Enter:
     <ul>
       <li><code>https://kick.com/lumiellevt</code> or just <code>lumiellevt</code> — Kick stream + chat</li>
       <li><code>https://twitch.tv/shroud</code> or <code>tw:shroud</code> — Twitch</li>
@@ -1322,7 +1403,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       <li><code>https://youtube.com/watch?v=…</code> or <code>youtu.be/…</code> — any YouTube video</li>
     </ul>
     <ul>
-      <li>Use the <b>account button</b> to log in to Kick, Twitch and YouTube once. Chats use those logins.</li>
+      <li>Use <b>Logins</b> to log in to Kick, Twitch and YouTube once. Chats use those logins.</li>
       <li>Drag a window by its title bar, resize from any edge or corner.</li>
       <li>Each stream has its own volume slider in its title bar. Scroll over it to adjust.</li>
       <li>Hold <b>Shift</b> while resizing a stream to keep it 16:9.</li>
@@ -1390,8 +1471,9 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       </section>
       <section class="st-pane" data-s="layouts" hidden>
         <h4>Layouts</h4><p class="st-sub">How the windows are arranged. Switch with <b>Layout ▾</b> in the toolbar, or here.</p>
-        <div class="st-tabs" id="lyTabs"><button data-t="layouts" class="on">Layouts</button><button data-t="switch">Switch control</button></div>
-        <div class="st-subpane" data-t="layouts"><div class="ly-md"><div class="ly-list" id="lyList" role="listbox" aria-label="Layouts"><div id="lyPresetList"></div></div><div class="ly-detail" id="lyDetail"><div id="lyPresetDetail"></div><div class="ly-panel" data-k="+new" hidden><div class="ly-head"><b>Save what's on screen</b></div><p class="ly-desc">Keeps the open windows, where they are and their order, with the layout's options. Using it later keeps the windows that are already open and reopens the rest.</p><div class="st-add"><input class="st-in" id="lyPresetName" placeholder="Name this layout" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="lyPresetSave">Save</button></div></div></div></div></div>
+        <div class="st-tabs" id="lyTabs"><button data-t="layouts" class="on">Layouts</button><button data-t="switch">Switch control</button><button data-t="toolbar">Toolbar</button></div>
+        <div class="st-subpane" data-t="layouts"><div class="ly-md"><div class="ly-list" id="lyList" role="listbox" aria-label="Layouts"><div id="lyPresetList"></div></div><div class="ly-detail" id="lyDetail"><div id="lyPresetDetail"></div><div class="ly-panel" data-k="+new" hidden><div class="ly-head"><b>Save what's on screen</b></div><p class="ly-desc">Keeps the open windows, where they are and their order, with the layout's options. Using it later keeps the windows that are already open and reopens the rest.</p><div class="st-add"><input class="st-in" id="lyPresetName" placeholder="Name this layout" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="lyPresetSave">Save</button></div></div></div></div>
+          <div class="st-row ly-zoom desk-only"><span class="st-t">Chat text size<small>For every chat window. Smaller fits more messages and emotes. Also in <b>Layout ▾</b>.</small></span><div class="zoom" id="lyZoom" title="Chat text size: smaller fits more messages and emotes"><button data-z="-1" aria-label="Smaller chat text">−</button><span class="zoomPct">100%</span><button data-z="1" aria-label="Bigger chat text">+</button></div></div></div>
         <div class="st-subpane" data-t="switch" hidden>
           <p class="st-sub ly-intro">A button for every stream: make one big, swap them, pause, mute and set the volume. Where it shows:</p>
           <div class="ly-sw" id="lySw">
@@ -1400,17 +1482,22 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
             <button data-sw="window" class="desk-only"><i data-ico="popwin"></i><b>Own window</b><span>Put it anywhere, even on another monitor.</span></button>
           </div>
         </div>
+        <div class="st-subpane" data-t="toolbar" hidden>
+          <p class="st-sub ly-intro">Where the toolbar sits, in every layout. On the left it leaves more height for the streams.</p>
+          <div class="st-row ly-tb"><span class="st-t">Position<small>Top: a bar across the window. Left: a column down its side.</small></span><div class="lm-sw" data-tb="pos"><button data-v="top">Top</button><button data-v="left">Left</button></div></div>
+          <div class="st-row ly-tb"><span class="st-t">Left toolbar<small>Labels: each button with its name. Icons only: a slim column; point at it to see the names.</small></span><div class="lm-sw" data-tb="labels"><button data-v="1">Labels</button><button data-v="0">Icons only</button></div></div>
+        </div>
         <label class="st-opt" data-opt="columns"><span class="st-t">Linked<small>Each stream and its chat move together. Off: move and resize windows freely.</small></span><input type="checkbox" class="st-sw" id="lyLinked"></label>
         <label class="st-opt" data-opt="auto"><span class="st-t">Fit in channels that open by themselves<small>A saved channel that opens because it went live goes last (its chat too), and the others keep their order. Not once you've moved or resized a window yourself.</small></span><input type="checkbox" class="st-sw" id="autoFit"></label>
       </section>
       <section class="st-pane" data-s="accounts" hidden>
         <h4>Accounts</h4><p class="st-sub">Each platform's chats use its login.</p>
       <div class="am-row" data-p="kick"><i class="pdot"></i><div class="am-txt"><b>Kick</b><span class="am-st">Checking…</span></div>
-        <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+        <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
       <div class="am-row" data-p="twitch"><i class="pdot"></i><div class="am-txt"><b>Twitch</b><span class="am-st">Checking…</span></div>
-        <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+        <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
       <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
-        <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+        <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
         <div class="st-sec">Logins</div>
         <div class="am-sec">
           <div class="am-enc"><span class="am-lock"></span><span class="am-enc-txt">Checking how logins are stored…</span></div>
@@ -1425,7 +1512,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       <section class="st-pane" data-s="youtube" hidden>
         <h4>YouTube</h4><p class="st-sub">Your YouTube login, and how YouTube streams play.</p>
       <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
-        <button class="btn am-imp" title="Import the channels you follow into Saved">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+        <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
         <div class="am-alt">YouTube sign-in currently only works through Firefox. <button class="linkish am-ff">Sign in to YouTube with Firefox</button><br>You don't need to sign in to watch YouTube.</div>
         <div class="st-sec">Playing streams</div>
         <label class="st-row"><span class="st-t">Skip ads<small>Presses an ad's Skip button as soon as it shows. Ads without one still play.</small></span><input type="checkbox" class="st-sw" id="ytSkip" checked></label>
@@ -1453,7 +1540,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <div class="dn-sec" hidden>
           <div class="st-sec">Desktop notifications</div>
           <label class="st-row"><span class="st-t">Desktop notifications<small>Your computer's notifications, also while the app is in the background. Off: none at all, whatever is chosen below.</small></span><input type="checkbox" class="st-sw" id="dnOn" checked></label>
-          <label class="st-row"><span class="st-t">Saved channels going live<small>Pick the channels with the bell next to each one in Saved.</small></span><input type="checkbox" class="st-sw" id="dnLive"></label>
+          <label class="st-row"><span class="st-t">Saved channels going live<small>Pick the channels with the bell next to each one in Channels.</small></span><input type="checkbox" class="st-sw" id="dnLive"></label>
           <div class="st-row"><span class="st-t">Mentions, replies and spam alerts<small>When each one sends a notification is in <button class="linkish" data-go="mentions">Mentions</button> and <button class="linkish" data-go="spam">Spam alerts</button>.</small></span></div>
           <div class="st-row"><span class="st-t">Check they work<small class="dn-st">If your computer blocks them, nothing shows. Send a test to check.</small></span><button class="btn dn-test">Send a test</button><button class="btn dn-sys">Open system settings</button></div>
         </div>
@@ -1623,7 +1710,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 <script>
 (() => {
 const $ = s => document.querySelector(s);
-const stage = $('#stage'), input = $('#url'), modeSel = $('#mode'), mutedChk = $('#muted'),
+const stage = $('#stage'), input = $('#savedInput'), modeSel = $('#mode'), mutedChk = $('#muted'),
       snapChk = $('#snap'), msg = $('#msg'), empty = $('#empty'), sizehint = $('#sizehint');
 // This page runs as the main window, or (?role=streams) as the popped-out streams window.
 const ROLE = new URLSearchParams(location.search).get('role') === 'streams' ? 'streams' : 'main';
@@ -1679,8 +1766,28 @@ const icon = {
   sliders:'<svg viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>',
   ytPlay:'<svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="4"/><path d="M10 9.2v5.6l4.8-2.8z" fill="currentColor"/></svg>',
   update:'<svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>',
-  book:'<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2z"/><path d="M4 20a2 2 0 0 0 2 2h13v-4"/><path d="M9 7h6"/></svg>'
+  book:'<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2z"/><path d="M4 20a2 2 0 0 0 2 2h13v-4"/><path d="M9 7h6"/></svg>',
+  star:'<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
+  signin:'<svg viewBox="0 0 24 24"><path d="M14 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M9 17l5-5-5-5"/><path d="M14 12H3"/></svg>',
+  bin:'<svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6 7l1 12.5a1.5 1.5 0 0 0 1.5 1.5h7a1.5 1.5 0 0 0 1.5-1.5L18 7"/><path d="M10 11v6M14 11v6"/></svg>',
+  hidebar:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 8h18"/><path d="M9 16l3-3 3 3"/></svg>',
+  showbar:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 8h18"/><path d="M9 13l3 3 3-3"/></svg>',
+  hidebarL:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 3v18"/><path d="M16 9l-3 3 3 3"/></svg>',
+  showbarL:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 3v18"/><path d="M13 9l3 3-3 3"/></svg>',
+  tile:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>',
+  fold:'<svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg>',
+  unfold:'<svg viewBox="0 0 24 24"><path d="M6 17l5-5-5-5M13 17l5-5-5-5"/></svg>'
 };
+// Icons in the page's own markup: <i data-ico="name"></i>
+const fillIcons = root => root.querySelectorAll('i[data-ico]').forEach(i => { i.innerHTML = icon[i.dataset.ico] || ''; });
+fillIcons(document);
+// A toolbar item's name (shown on the left toolbar, in ⋯ and as its tooltip) and icon
+function setTb(b, label, ico){
+  if (!b) return;
+  b.dataset.label = label; b.setAttribute('aria-label', label);
+  const l = b.querySelector('.tb-l'); if (l) l.textContent = label;
+  const i = b.querySelector('i[data-ico]'); if (i && ico && i.dataset.ico !== ico){ i.dataset.ico = ico; i.innerHTML = icon[ico]; }
+}
 
 const DESKTOP = !!(window.kmv && window.kmv.desktop);
 // Shortcut names for this computer: Ctrl on Windows and Linux, ⌘ on a Mac.
@@ -2928,8 +3035,9 @@ function checkAutoOpen(){
 function fmtViewers(n){ return n == null ? '' : n >= 1000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '') + 'K' : String(n); }
 function updateSavedBadge(){
   const b = $('#savedBtn'); if (!b) return;
-  const n = liveNow().length;
-  b.innerHTML = '★ Saved' + (n ? ` <span class="sv-badge" title="${n} saved channel${n > 1 ? 's' : ''} live now"><i></i>${n}</span>` : '');
+  const n = liveNow().length, badge = b.querySelector('.sv-badge');
+  badge.hidden = !n; badge.querySelector('b').textContent = n || '';
+  badge.title = n ? `${n} saved channel${n > 1 ? 's' : ''} live now` : '';
 }
 // Names and pictures for the saved list, from what the app knows about each channel (src/profiles.js)
 let svProf = {};
@@ -3028,11 +3136,59 @@ function renderSaved(){
     list.appendChild(row);
   });
 }
-function addSavedFromInput(){
-  const el = $('#savedInput'), p = parseInput(el.value, tabPlat());
-  if (!p || !p.channel) return;
-  el.value = ''; $('#savedAdd').hidden = true;
-  if (!saved.includes(p.channel)){ saved.push(p.channel); persistSaved(); loadSavedProfiles(); } else renderSaved();
+/* Opening a channel from the Channels box. The same box searches your saved channels; for a name or link it
+   also offers "Add <name> from Kick / Twitch / YouTube" with Open (Enter) and Open & save. A bare name goes to
+   the site picked there (the tab's site at first, Kick on All); a link or @handle picks its own. Before opening,
+   the site is asked whether the channel exists: only a definite "no" stops it (a site that can't be reached
+   doesn't block anything), and then that site is outlined in red. */
+let addPlat = null;      // the site picked for a bare name (null: the tab's)
+function addTarget(){
+  const raw = input.value.trim(); if (!raw) return null;
+  const bare = /^[A-Za-z0-9_-]+$/.test(raw);
+  const p = parseInput(raw, addPlat || tabPlat());
+  if (!p) return null;
+  return { raw, p, bare, plat: p.channel ? platOf(p.channel) : '', name: p.channel ? chLabel(p.channel) : (p.url || raw).replace(/^https?:\/\//, '') };
+}
+function renderAddRow(){
+  const t = addTarget(), row = $('#spAddRow');
+  $('#spErr').hidden = true;
+  row.hidden = !t;
+  if (!t) return;
+  $('#spAddName').textContent = t.name;
+  $('#spFrom').hidden = $('#spPlat').hidden = !t.plat;
+  $('#spPlat').querySelectorAll('button').forEach(b => {
+    const on = b.dataset.p === t.plat;
+    b.classList.toggle('on', on); b.classList.remove('bad');
+    b.setAttribute('aria-checked', on); b.tabIndex = on ? 0 : -1;
+    b.disabled = !t.bare && !on;       // a link or @handle is on its own site
+  });
+  const os = $('#spOpenSave'), isSaved = !!t.p.channel && saved.includes(t.p.channel);
+  os.hidden = !t.p.channel || isSaved;
+}
+let addBusy = false;
+async function openFromBox(saveToo){
+  if (addBusy) return;
+  const t = addTarget();
+  if (!t){ if (input.value.trim()) flash('Couldn’t read that link or channel name'); return; }
+  const ch = t.p.channel;
+  if (ch && DESKTOP && window.kmv.channelExists && !/^yt:v:/.test(ch)){
+    const btn = saveToo ? $('#spOpenSave') : $('#spOpen');
+    addBusy = true; btn.classList.add('busy');
+    const r = await window.kmv.channelExists(ch).catch(() => 'unknown');
+    addBusy = false; btn.classList.remove('busy');
+    if (input.value.trim() !== t.raw) return;          // typed something else meanwhile
+    if (r === 'missing'){
+      const pb = $(`#spPlat [data-p=${t.plat}]`); if (pb) pb.classList.add('bad');
+      const e = $('#spErr');
+      e.textContent = `There's no ${PLAT_NAME[t.plat]} channel called “${t.name}”.` + (t.bare ? ' Check the spelling, or pick another site.' : '');
+      e.hidden = false;
+      return;
+    }
+  }
+  if (saveToo && ch && !saved.includes(ch)){ saved.push(ch); persistSaved(); loadSavedProfiles(); }
+  input.value = ''; addPlat = null;
+  renderAddRow(); renderSaved();
+  addParsed(t.p);
 }
 
 /* ---------- chat mentions / replies ---------- */
@@ -3552,12 +3708,6 @@ function addChatBeside(sw){
   createWin({ kind: 'chat', channel: sw.channel }, chatRectBeside(sw)); save();
 }
 
-function addFromInput(){
-  const p = parseInput(input.value);
-  if (!p){ flash('Couldn’t read that link or channel name'); return; }
-  addParsed(p);
-  input.value = '';
-}
 function addParsed(p){
   const mode = modeSel.value;
   // Streams are popped out: send the stream to the streams window, keep its chat here.
@@ -4981,7 +5131,10 @@ function updateColNav(){
   const first = Math.round(scrollX / colWidth) + 1;
   const shown = Math.max(1, Math.floor((visible + 1) / colWidth));
   const last = Math.min(colCount, first + shown - 1);
-  $('#colPos').textContent = `${first}–${last} of ${colCount}`;
+  const pos = $('#colPos');
+  pos.textContent = `${first}/${colCount}`;
+  pos.title = shown > 1 ? `Columns ${first}–${last} of ${colCount}` : `Column ${first} of ${colCount}`;
+  nav.style.setProperty('--cn-left', Math.round(featW + GAP / 2 + 8) + 'px');
   if (colStrip.style.display === 'flex'){
     const pick = colStrip.querySelector('.cs-pick');
     if (document.activeElement !== pick) pick.value = String(first - 1);
@@ -4998,13 +5151,14 @@ function updateLayoutMenu(){
   const b = $('#layoutBtn'); if (!b) return;
   const names = { focus: 'Focus view', game: 'Game focus', columns: 'Columns', chatfocus: 'Chat focus', auto: 'Auto layout', tile: 'Tile' };
   const cur = curLayout();
-  b.textContent = (activePreset ? 'Layout: ' + activePreset : names[cur] ? 'Layout: ' + names[cur] : 'Layout') + ' ▾';
+  // its name stays "Layout" (when there's room); the layout in use is in its tooltip
+  b.title = (activePreset ? 'Layout: ' + activePreset : names[cur] ? 'Layout: ' + names[cur] : 'Layout') + '. Arrange the windows';
   document.querySelectorAll('#layoutMenu button[data-l]').forEach(x => x.classList.toggle('on', x.dataset.l === cur && !activePreset));
   // the hint line describes the current layout until you point at another; options are the current layout's
   const curBtn = document.querySelector(`#layoutMenu button[data-l="${cur}"]`);
   $('#lmHint').textContent = curBtn ? curBtn.querySelector('span').textContent : 'Pick a layout.';
   let any = false;
-  document.querySelectorAll('#lmOpts .lm-opt').forEach(o => { o.hidden = !o.dataset.for.split(' ').includes(cur); any ||= !o.hidden; });
+  document.querySelectorAll('#lmOpts .lm-opt').forEach(o => { o.hidden = !(o.dataset.for === '*' || o.dataset.for.split(' ').includes(cur)); any ||= !o.hidden; });
   $('#lmOpts').hidden = !any;
   const nVids = wins.filter(w => w.kind !== 'chat').length;
   const maxCols = Math.max(1, Math.min(3, nVids));      // the count in use: fewer streams than columns use fewer
@@ -5290,7 +5444,8 @@ function spotlight(){
 function streamSpecs(){ return wins.filter(w => w.kind === 'stream').map(w => ({ channel: w.channel, vol: w.vol, muted: w.muted })); }
 function updatePopBtn(){
   const b = $('#popBtn'); if (!b) return;
-  b.innerHTML = popped ? '<span class="l-long">Bring streams back</span><span class="l-short">Bring back</span>' : '<span class="l-long">Pop out streams</span><span class="l-short">Pop out</span>';
+  setTb(b, popped ? 'Bring streams back' : 'Pop out streams', popped ? 'dock' : 'popwin');
+  b.title = popped ? 'Close the streams window and put the streams back here' : 'Move every stream into its own window (drag it to another monitor). Chats then fill this window.';
   b.classList.toggle('primary', popped);
 }
 /* Highlight / Columns: send the streams you can't currently see to the Streams window (chats stay here). */
@@ -5361,7 +5516,8 @@ let zoomIdx = 5;
 try { const s = localStorage.getItem('kickMultiview.chatZoom'); if (s !== null && ZOOMS[+s]) zoomIdx = +s; } catch {}
 function chatZoom(){ return ZOOMS[zoomIdx]; }
 function applyChatZoom(){
-  $('#zoomPct').textContent = Math.round(chatZoom() * 100) + '%';
+  document.querySelectorAll('.zoomPct').forEach(e => { e.textContent = Math.round(chatZoom() * 100) + '%'; });
+  document.querySelectorAll('.zoom [data-z]').forEach(b => { b.disabled = +b.dataset.z < 0 ? zoomIdx === 0 : zoomIdx === ZOOMS.length - 1; });
   wins.forEach(w => { if (w.kind === 'chat' && w.ready) try { w.view.setZoomFactor(chatZoom()); } catch {} });
   try { localStorage.setItem('kickMultiview.chatZoom', zoomIdx); } catch {}
 }
@@ -5388,9 +5544,6 @@ function restore(){
 }
 
 /* ---------- wiring ---------- */
-$('#add').onclick = addFromInput;
-input.addEventListener('keydown', e => { if (e.key === 'Enter') addFromInput(); });
-input.addEventListener('paste', () => setTimeout(() => { if (parseInput(input.value)) addFromInput(); }, 0));
 $('#auto').onclick = () => { lastLayout = 'auto'; autoLayout(); };
 $('#chatFocus').onclick = () => chatFocusLayout();
 $('#tile').onclick = tile;
@@ -5403,6 +5556,8 @@ let lightsT;
 // In fullscreen macOS shows them itself, in the strip that drops down with the menu bar, so they're left alone there.
 function showLights(on){
   if (!MAC_BAR) return;
+  const cls = document.body.classList;
+  if (cls.contains('bar-icons') && !cls.contains('bar-peek')) on = false;   // the slim left column has no room for them
   clearTimeout(lightsT);
   if (document.body.classList.contains('fullscreen')) return;
   if (on) lightsT = setTimeout(() => window.kmv.setLights(true), 200);   // the header's slide takes .2s
@@ -5414,20 +5569,22 @@ if (MAC_BAR){
     document.body.classList.toggle('fullscreen', on);
     clearTimeout(lightsT);
     const cls = document.body.classList;
-    window.kmv.setLights(on || !cls.contains('focus') || cls.contains('peek'));
+    window.kmv.setLights(on || ((!cls.contains('focus') || cls.contains('peek')) && !(cls.contains('bar-icons') && !cls.contains('bar-peek'))));
   });
 }
 function setBarHidden(on){
   document.body.classList.toggle('focus', on);
   document.body.classList.remove('peek');
   showLights(!on);
-  if (MAC_BAR) window.kmv.watchTop(on);
-  const b = $('#focusBtn');
-  b.querySelector('.l-long').textContent = on ? 'Show bar' : 'Hide bar';
-  b.querySelector('.l-short').textContent = on ? 'Show' : 'Hide';
-  b.title = on ? 'Keep this toolbar showing (or press Esc)' : 'Hide this toolbar (move mouse to top edge or press Esc to bring it back)';
-  if (on) input.blur();
+  if (MAC_BAR) window.kmv.watchTop(on, document.body.classList.contains('bar-left') ? 'left' : 'top');
+  updateFocusBtn();
+  if (on && document.activeElement && document.activeElement.closest('header')) document.activeElement.blur();
   setTimeout(() => window.dispatchEvent(new Event('resize')), 220);
+}
+function updateFocusBtn(){
+  const on = document.body.classList.contains('focus'), left = document.body.classList.contains('bar-left'), b = $('#focusBtn');
+  setTb(b, on ? 'Show bar' : 'Hide bar', (on ? 'showbar' : 'hidebar') + (left ? 'L' : ''));
+  b.title = on ? 'Keep this toolbar showing (or press Esc)' : `Hide this toolbar (move the mouse to the ${left ? 'left' : 'top'} edge or press Esc to bring it back)`;
 }
 $('#focusBtn').onclick = () => setBarHidden(!document.body.classList.contains('focus'));
 function peekBar(){
@@ -5438,13 +5595,93 @@ function peekBar(){
 $('#reveal').addEventListener('mouseenter', peekBar);
 $('#reveal').addEventListener('mousemove', peekBar);   // the mouse may already be up there when the bar slides away
 document.querySelector('header').addEventListener('mouseleave', e => {
-  if (e.clientY <= 0) return;   // up off the top (in fullscreen, into the menu bar): still on its way to the bar
+  if (document.body.classList.contains('bar-left') ? e.clientX <= 0 : e.clientY <= 0) return;   // off the edge (in fullscreen, into the menu bar): still on its way to the bar
   document.body.classList.remove('peek');
   if (document.body.classList.contains('focus')) showLights(false);
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.body.classList.contains('focus')) setBarHidden(false);
 });
+
+/* ---- The toolbar on top or on the left (Layout menu and Settings > Layouts > Toolbar), main window only ----
+   On the left, Labels is a column of named rows, Icons only a slim column of icons that slides its names out over
+   the streams while the pointer rests on it (or the keyboard is in it). Nothing underneath moves: the stage keeps
+   its place next to the slim column. */
+let barPos = 'top', barLabels = true;
+try { const t = JSON.parse(localStorage.getItem('kickMultiview.toolbar') || '{}'); if (t.pos === 'left') barPos = 'left'; if (t.labels === false) barLabels = false; } catch {}
+const hdrEl = document.querySelector('header');
+const iconsLeft = () => document.body.classList.contains('bar-icons');
+let barPeekT = 0;
+function setBarPeek(on){
+  clearTimeout(barPeekT);
+  on = !!on && iconsLeft();
+  if (document.body.classList.contains('bar-peek') === on) return;
+  document.body.classList.toggle('bar-peek', on);
+  updateFold();
+  const cls = document.body.classList;
+  showLights(!cls.contains('focus') || cls.contains('peek'));
+}
+function updateFold(){
+  const b = $('#barFold');
+  if (barLabels){ setTb(b, 'Collapse', 'fold'); b.title = 'Show icons only'; }
+  else if (document.body.classList.contains('bar-peek')){ setTb(b, 'Keep open', 'unfold'); b.title = 'Keep the names showing'; }
+  else { setTb(b, 'Keep names open', 'unfold'); b.title = 'Keep the names showing'; }
+}
+function applyToolbar(){
+  const left = ROLE === 'main' && barPos === 'left', cls = document.body.classList;
+  cls.toggle('bar-left', left);
+  cls.toggle('bar-icons', left && !barLabels);
+  if (!cls.contains('bar-icons')) cls.remove('bar-peek');
+  document.querySelectorAll('[data-tb=pos] button').forEach(b => b.classList.toggle('on', b.dataset.v === barPos));
+  document.querySelectorAll('[data-tb=labels] button').forEach(b => { b.classList.toggle('on', (b.dataset.v === '1') === barLabels); b.disabled = barPos !== 'left'; });
+  updateFold(); updateFocusBtn();
+  showLights(!cls.contains('focus') || cls.contains('peek'));
+  if (MAC_BAR && cls.contains('focus')) window.kmv.watchTop(true, left ? 'left' : 'top');
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 220);   // the layouts fit the new space
+}
+function setToolbar(pos, labels){
+  barPos = pos === 'left' ? 'left' : 'top'; barLabels = !!labels;
+  try { localStorage.setItem('kickMultiview.toolbar', JSON.stringify({ pos: barPos, labels: barLabels })); } catch {}
+  ['#layoutMenu', '#accountMenu', '#savedPanel', '#mentPanel', '#moreMenu'].forEach(sel => { $(sel).hidden = true; });   // they were placed for the old toolbar
+  applyToolbar();
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-tb] button'); if (!b || b.disabled) return;
+  if (b.parentElement.dataset.tb === 'pos') setToolbar(b.dataset.v, barLabels); else setToolbar(barPos, b.dataset.v === '1');
+});
+$('#barFold').onclick = () => setToolbar(barPos, !barLabels);
+hdrEl.addEventListener('pointerenter', () => { if (!iconsLeft()) return; clearTimeout(barPeekT); if (!document.body.classList.contains('bar-peek')) barPeekT = setTimeout(() => setBarPeek(true), 250); });
+hdrEl.addEventListener('pointerleave', () => {
+  clearTimeout(barPeekT);
+  if (document.body.classList.contains('bar-peek')) barPeekT = setTimeout(() => { if (!hdrEl.contains(document.activeElement) || !document.activeElement.matches(':focus-visible')) setBarPeek(false); }, 300);
+});
+hdrEl.addEventListener('focusin', e => { if (iconsLeft() && e.target.matches(':focus-visible')) setBarPeek(true); });   // Tab into it (a click works straight away)
+hdrEl.addEventListener('focusout', e => { if (!hdrEl.contains(e.relatedTarget) && !hdrEl.matches(':hover')) setBarPeek(false); });
+applyToolbar();
+
+// A toolbar menu or panel opens under its button, or beside the left toolbar, next to its row.
+function placeMenu(el, anchor, alignRight){
+  const r = anchor.getBoundingClientRect();
+  if (document.body.classList.contains('bar-left') && anchor.closest('header')){
+    setBarPeek(false);
+    const bw = parseFloat(getComputedStyle(document.body).getPropertyValue('--barw')) || 180;
+    el.style.right = 'auto';
+    el.style.left = (bw + 6) + 'px';
+    el.style.top = Math.max(8, Math.min(r.top, innerHeight - el.offsetHeight - 8)) + 'px';
+    return;
+  }
+  el.style.top = '';
+  if (alignRight){ el.style.left = 'auto'; el.style.right = Math.max(8, innerWidth - r.right) + 'px'; }
+  else { el.style.right = ''; el.style.left = Math.max(12, Math.min(r.left, innerWidth - el.offsetWidth - 12)) + 'px'; }
+}
+// The toolbar item whose menu or panel is open is marked (and the column of names closes)
+const OPENS = [['#savedPanel', '#savedBtn'], ['#accountMenu', '#loginBtn'], ['#layoutMenu', '#layoutBtn'], ['#mentPanel', '#mentBtn'], ['#moreMenu', '#moreBtn']];
+function syncOpen(){
+  OPENS.forEach(([m, b]) => { const on = !$(m).hidden; $(b).setAttribute('aria-expanded', on); });
+}
+const openObs = new MutationObserver(syncOpen);
+OPENS.forEach(([m]) => openObs.observe($(m), { attributes: true, attributeFilter: ['hidden'] }));
+syncOpen();
 let refitT;
 window.addEventListener('resize', () => {
   wins.forEach(w => { if (w.max) setRect(w, { x: 0, y: 0, w: SW(), h: SH() }); clampPos(w); });
@@ -5464,8 +5701,9 @@ const panel = $('#savedPanel'), savedBtn = $('#savedBtn');
 savedBtn.onclick = () => {
   panel.hidden = !panel.hidden;
   if (!panel.hidden){
-    panel.style.left = Math.max(12, Math.min(savedBtn.getBoundingClientRect().left, innerWidth - panel.offsetWidth - 12)) + 'px';
-    renderSaved(); loadSavedProfiles(); $('#savedInput').focus();
+    renderSaved(); renderAddRow(); loadSavedProfiles();
+    placeMenu(panel, savedBtn);
+    $('#savedInput').focus();
     if (DESKTOP && ROLE === 'main' && window.kmv.checkLiveNow) window.kmv.checkLiveNow();
   }
 };
@@ -5477,22 +5715,36 @@ const spMenu = $('#spMenu'), spMore = $('#spMore');
 const showSpMenu = on => { spMenu.hidden = !on; spMore.classList.toggle('on', on); spMore.setAttribute('aria-expanded', on); };
 spMore.onclick = () => showSpMenu(spMenu.hidden);
 spMenu.addEventListener('click', e => { if (e.target.closest('button')) showSpMenu(false); });
-$('#savedInput').addEventListener('input', e => { $('#savedAdd').hidden = !e.target.value.trim(); renderSaved(); });
-$('#savedAdd').onclick = addSavedFromInput;
+$('#savedInput').addEventListener('input', e => { if (!e.target.value.trim()) addPlat = null; renderAddRow(); renderSaved(); });
+$('#spOpen').onclick = () => openFromBox(false);
+$('#spOpenSave').onclick = () => openFromBox(true);
+$('#spPlat').addEventListener('click', e => {
+  const b = e.target.closest('button[data-p]'); if (!b || b.disabled) return;
+  addPlat = b.dataset.p; renderAddRow(); renderSaved();
+  $(`#spPlat [data-p=${addPlat}]`).focus();
+});
+$('#spPlat').addEventListener('keydown', e => {      // arrow keys move along the sites
+  const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key]; if (!d) return;
+  const bs = [...$('#spPlat').querySelectorAll('button:not(:disabled)')]; if (bs.length < 2) return;
+  e.preventDefault();
+  const i = bs.findIndex(b => b.classList.contains('on'));
+  bs[(i + d + bs.length) % bs.length].click();
+});
+$('#spAddRow').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest('#spPlat')){ e.preventDefault(); openFromBox(false); } });
 $('#savedInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') addSavedFromInput();
+  if (e.key === 'Enter') openFromBox(false);
   if (e.key !== 'Escape') return;
   // Esc steps back: the ⋯ menu, then the search, then the panel (the page-wide Esc closes that one)
   if (!spMenu.hidden){ showSpMenu(false); e.stopPropagation(); }
-  else if (e.target.value){ e.target.value = ''; $('#savedAdd').hidden = true; renderSaved(); e.stopPropagation(); }
+  else if (e.target.value){ e.target.value = ''; addPlat = null; renderAddRow(); renderSaved(); e.stopPropagation(); }
   else panel.hidden = true;
 });
 $('#savedTabs').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   savedTab = b.dataset.t;
   try { localStorage.setItem('kickMultiview.savedTab', savedTab); } catch {}
-  $('#savedInput').placeholder = savedTab === 'all' ? 'Search, or add a channel name or link' : `Search, or add a ${PLAT_NAME[savedTab]} channel`;
-  renderSaved();
+  $('#savedInput').placeholder = savedTab === 'all' ? 'Search, or type a channel name or link to open it' : `Search, or type a ${PLAT_NAME[savedTab]} channel to open it`;
+  renderAddRow(); renderSaved();
 });
 if (DESKTOP && ROLE === 'main' && window.kmv.watchLive){
   $('#spLive').hidden = false; $('#openLive').hidden = false;
@@ -5522,8 +5774,8 @@ if (DESKTOP && ROLE === 'main' && window.kmv.notifyMention){
   mb.onclick = () => {
     mp.hidden = !mp.hidden;
     if (!mp.hidden){
-      mp.style.left = Math.max(12, Math.min(mb.getBoundingClientRect().left, innerWidth - 392)) + 'px';
       readMentions(null, mentions.slice(0, MENT_SHOWN)); renderMentions();
+      placeMenu(mp, mb);
     }
   };
   $('#mentAll').onclick = () => { mp.hidden = true; openMentHistory(); };
@@ -5568,9 +5820,8 @@ if (ROLE === 'main'){
   $('#tile').hidden = true;
   const swBtn = $('#swBtn');
   swBtn.hidden = false;
-  swBtn.querySelector('i').outerHTML = icon.float;
   swBtn.onclick = () => setSwitchMode(switchMode === 'dock' ? 'float' : 'dock');
-  if (!DESKTOP) document.querySelectorAll('#swModes .desk-only').forEach(b => b.remove());
+  if (!DESKTOP) document.querySelectorAll('#swModes .desk-only, #layoutMenu .zoom-row, #settingsDlg .ly-zoom').forEach(b => b.remove());
   $('#swModes').addEventListener('click', e => {
     const b = e.target.closest('button[data-sw]'); if (!b) return;
     layoutMenu.hidden = true;
@@ -5580,9 +5831,8 @@ if (ROLE === 'main'){
   layoutBtn.onclick = () => {
     layoutMenu.hidden = !layoutMenu.hidden;
     if (!layoutMenu.hidden){
-      const r = layoutBtn.getBoundingClientRect();
-      layoutMenu.style.left = Math.max(12, Math.min(r.left, innerWidth - 312)) + 'px';
       updateLayoutMenu();
+      placeMenu(layoutMenu, layoutBtn);
     }
   };
   layoutMenu.addEventListener('click', e => {
@@ -5678,7 +5928,7 @@ function renderLayoutsPane(fresh){
 $('#colNav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) scrollCols(+b.dataset.d); });
 // In Columns mode, scrolling the mouse wheel over title bars or empty space moves sideways.
 stage.addEventListener('wheel', e => {
-  if (!colsMode || !(e.target === stage || e.target === hbar || e.target.closest('.bar, #hscroll, #colStrip'))) return;
+  if (!colsMode || !(e.target === stage || e.target === hbar || e.target.closest('.bar, #hscroll, #colStrip, #colNav'))) return;
   e.preventDefault();
   cancelAnimationFrame(scrollRaf);
   setScrollX(scrollX + (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY));
@@ -5695,8 +5945,6 @@ if (DESKTOP){
   const showAccounts = () => {
     try { localStorage.setItem('kickMultiview.accounts', JSON.stringify(acct)); } catch {}
     const n = [acct.kick, acct.twitch, acct.youtube].filter(Boolean).length;
-    lb.innerHTML = `${icon.user}<span class="acct-name"></span><span class="acct-car">▾</span>`;
-    lb.querySelector('.acct-name').textContent = n ? (acct.kick || acct.twitch || 'YouTube') + (n > 1 ? ` +${n - 1}` : '') : 'Log in';
     lb.classList.toggle('has-acct', !!n);
     lb.title = n ? 'Logged in: ' + [acct.kick && `Kick (${acct.kick})`, acct.twitch && `Twitch (${acct.twitch})`, acct.youtube && 'YouTube'].filter(Boolean).join(', ') : 'Log in to Kick, Twitch or YouTube';
     document.querySelectorAll('#accountMenu .am-row, #settingsDlg .am-row').forEach(row => {
@@ -5718,7 +5966,7 @@ if (DESKTOP){
   showAccounts();
   lb.onclick = () => {
     am.hidden = !am.hidden;
-    if (!am.hidden){ am.style.left = Math.max(12, Math.min(lb.getBoundingClientRect().left, innerWidth - 452)) + 'px'; refreshAccount(); }
+    if (!am.hidden){ placeMenu(am, lb); refreshAccount(); }
   };
   document.addEventListener('pointerdown', e => { if (!am.hidden && !am.contains(e.target) && !lb.contains(e.target)) am.hidden = true; });
   const doLogout = async p => {
@@ -6000,13 +6248,12 @@ if (DESKTOP){
     else note.textContent = 'Copied the login, but YouTube still looks signed out. Sign out and back in to YouTube in Firefox, then try again.';
   };
 
-  const zc = $('#chatZoom');
-  zc.hidden = false;
-  zc.addEventListener('click', e => {
-    const b = e.target.closest('button'); if (!b) return;
+  // Chat text size: in the Layout menu and in Settings > Layouts, both the same setting
+  document.querySelectorAll('#chatZoom, #lyZoom').forEach(zc => zc.addEventListener('click', e => {
+    const b = e.target.closest('button[data-z]'); if (!b) return;
     zoomIdx = Math.min(ZOOMS.length - 1, Math.max(0, zoomIdx + +b.dataset.z));
     applyChatZoom();
-  });
+  }));
   applyChatZoom();
   window.kmv.onReloadAll(() => wins.forEach(w => { if (w.ready) w.view.reload(); }));
 
@@ -6026,7 +6273,7 @@ if (DESKTOP){
     document.title = 'Stream Multiview – Streams';
     document.body.classList.add('role-streams');
     document.querySelector('.brand').lastChild.textContent = 'Streams';
-    ['#url', '#mode', '#add', '#savedBtn', '#loginBtn', '#chatZoom', '#chatFocus', '#auto', '#popBtn', '#clear']
+    ['#savedBtn', '#loginBtn', '#chatFocus', '#auto', '#popBtn', '#clear']
       .forEach(s => { $(s).hidden = true; });
     $('#spotBtn').hidden = false;
     $('#spotBtn').onclick = spotlight;
@@ -6094,7 +6341,6 @@ function updateUndoBtns(){
 }
 if (ROLE === 'main'){
   const u = $('#undoBtn'), r = $('#redoBtn');
-  u.innerHTML = icon.undo; r.innerHTML = icon.redo;
   u.title = `Undo (${keyName('Ctrl+Z')})`; r.title = `Redo (${keyName(IS_MAC ? 'Ctrl+Shift+Z' : 'Ctrl+Y')})`;
   u.hidden = r.hidden = false;
   u.onclick = histUndo; r.onclick = histRedo;
@@ -6184,7 +6430,7 @@ capDlg.querySelector('.dlg-cancel').onclick = () => { capDlg.hidden = true; capF
 capDlg.querySelector('.cap-refresh').onclick = fillCapturePicker;
 capDlg.addEventListener('pointerdown', e => { if (e.target === capDlg) capDlg.hidden = true; });
 if (DESKTOP && ROLE === 'main' && window.kmv.captureSources){
-  const cb = $('#capBtn'); cb.innerHTML = icon.capture; cb.hidden = false; cb.onclick = () => openCapturePicker(null);
+  const cb = $('#capBtn'); cb.hidden = false; cb.onclick = () => openCapturePicker(null);
 }
 
 /* ---- Help: instructions, keyboard shortcuts, what's new ---- */
@@ -6194,8 +6440,8 @@ const SHORTCUTS = [
     ['Ctrl+,', 'Settings'],
     ['Ctrl+Z', 'Undo the last change to your windows'],
     ['Ctrl+Y or Ctrl+Shift+Z', 'Redo'],
-    ['N or /', 'Type a link or channel name'],
-    ['B', 'Saved channels'],
+    ['N or /', 'Open a channel: type its name or paste a link'],
+    ['B', 'Channels'],
     ['W', 'Show another app\'s window (e.g. Discord)'],
     ['H', 'Hide / show the toolbar'],
     ['Esc', 'Close menus and dialogs, or bring the toolbar back'],
@@ -6467,7 +6713,7 @@ document.addEventListener('keydown', e => {
   let handled = true;
   if (digit) makeBig(streams()[+digit[1] - 1]);
   else switch (k.length === 1 ? k.toLowerCase() : k){
-    case 'n': case '/': input.focus(); input.select(); break;
+    case 'n': case '/': if (panel.hidden) savedBtn.click(); input.focus(); input.select(); break;
     case 'b': $('#savedBtn').click(); break;
     case 'w': openCapturePicker(null); break;
     case 'h': setBarHidden(!document.body.classList.contains('focus')); break;
@@ -6839,7 +7085,6 @@ settingsDlg.addEventListener('click', e => {
   }
   const h = e.target.closest('[data-help]'); if (h){ e.preventDefault(); showHelp(h.dataset.help); }
 });
-$('#settingsBtn').innerHTML = icon.gear;
 document.querySelectorAll('.menu-set:empty').forEach(b => { b.innerHTML = icon.gear; });   // a menu's own settings (top right)
 $('#settingsBtn').onclick = () => openSettings();
 if (DESKTOP && window.kmv.onSettingsShow) window.kmv.onSettingsShow(tab => openSettings(tab));
@@ -7309,7 +7554,7 @@ function pfRenderProf(){
   if (isSaved && DESKTOP){
     const on = notifyAll && !notifyOff.includes(ch);
     const bell = pfE('button', 'btn' + (on ? ' on' : '')); bell.innerHTML = (on ? icon.bell : icon.bellOff) + (on ? 'Live alerts on' : 'Live alerts off');
-    bell.disabled = !notifyAll; bell.title = !notifyAll ? 'Live notifications are off for every channel (Saved panel)' : on ? 'Notify me when they go live (click to turn off)' : 'No notification for this channel (click to turn on)';
+    bell.disabled = !notifyAll; bell.title = !notifyAll ? 'Live notifications are off for every channel (Channels panel)' : on ? 'Notify me when they go live (click to turn off)' : 'No notification for this channel (click to turn on)';
     bell.onclick = () => { notifyOff = notifyOff.includes(ch) ? notifyOff.filter(c => c !== ch) : [...notifyOff, ch]; try { localStorage.setItem('kickMultiview.notifyOff', JSON.stringify(notifyOff)); } catch {} sendWatch(); renderSaved(); pfRenderProf(); };
     acts.appendChild(bell);
   }
@@ -7556,40 +7801,57 @@ if (DESKTOP && ROLE === 'main' && window.kmv.profileGet){
   window.openProfile = openProfile;   // for the tests
 }
 
-/* ---- The toolbar fits any window: shorter labels first, then tighter buttons, then the
-   least-used controls move into the ⋯ More menu (in this order) until everything fits. ---- */
+/* ---- The toolbar fits any window. On top: the brand's name goes and the gaps get tighter (c1), then Layout loses
+   its name (c2), then the least-used buttons move into the ⋯ More menu (in this order) until everything fits, and
+   last Logins, Channels and Profiles lose theirs (c3). On the left the same buttons move into ⋯ when the column is
+   too short. Logins, Channels, Layout, Mentions and Settings never go into ⋯. ---- */
 (() => {
   const hdr = document.querySelector('header'), moreBtn = $('#moreBtn'), moreMenu = $('#moreMenu');
-  const LEVELS = ['c1', 'c2', 'c3'];
-  const ORDER = ['#tile', '#settingsBtn', '#clear', '#focusBtn',
-    '#redoBtn', '#popBtn', '#spotBtn', '#capBtn', '#chatZoom', '#profBtn', '#undoBtn', '#colNav'];
+  const ORDER = ['#clear', '#popBtn', '#capBtn', '#swBtn', '#redoBtn', '#undoBtn', '#focusBtn', '#profBtn', '#tile', '#spotBtn'];
   const items = ORDER.map(sel => $(sel)).filter(Boolean).map(el => {
     const mark = document.createComment(' ' + el.id + ' ');        // where it goes back in the toolbar
     el.before(mark);
     return { el, mark };
   });
   const shown = el => !el.hidden && getComputedStyle(el).display !== 'none';
-  const fits = () => hdr.scrollWidth <= hdr.clientWidth + 1;
+  const left = () => document.body.classList.contains('bar-left');
+  const fits = () => left() ? hdr.scrollHeight <= hdr.clientHeight + 1 : hdr.scrollWidth <= hdr.clientWidth + 1;
+  // a divider only between two groups that both have something showing
+  function tidySeps(){
+    for (const sp of hdr.querySelectorAll(':scope > .sep')){
+      sp.hidden = false;
+      let before = false, after = false;
+      for (let n = sp.previousElementSibling; n && !n.matches('.spacer') && !(n.matches('.sep') && !n.hidden); n = n.previousElementSibling)
+        if (n.matches('.btn') && shown(n)){ before = true; break; }
+      for (let n = sp.nextElementSibling; n && !n.matches('.sep'); n = n.nextElementSibling)
+        if (n.matches('.btn') && n !== moreBtn && n.id !== 'barFold' && shown(n)){ after = true; break; }
+      sp.hidden = !(before && after);
+    }
+  }
   let fitting = false, queued = false;
   function fitHeader(){
     queued = false; fitting = true;
     hdr.classList.add('measuring');                      // buttons at full size while measuring, so squashed ones count as not fitting
     // start from the full toolbar
     items.forEach(({ el, mark }) => { if (el.parentNode !== hdr) mark.after(el); });
-    hdr.classList.remove(...LEVELS);
+    hdr.classList.remove('c1', 'c2', 'c3');
     moreBtn.hidden = true;
-    for (const c of LEVELS){ if (fits()) break; hdr.classList.add(c); }
+    tidySeps();
+    if (!left()) for (const c of ['c1', 'c2']){ if (fits()) break; hdr.classList.add(c); }
     if (!fits()){
       moreBtn.hidden = false;
       for (const { el } of items){
         if (fits()) break;
         if (!shown(el)) continue;
         moreMenu.appendChild(el);
+        tidySeps();
       }
     }
+    if (!left() && !fits()) hdr.classList.add('c3');
     // the More button only shows when something visible is in it
     moreBtn.hidden = ![...moreMenu.children].some(el => !el.hidden);
     if (moreBtn.hidden) moreMenu.hidden = true;
+    tidySeps();
     hdr.classList.remove('measuring');
     obs.takeRecords();                                   // ignore our own changes
     fitting = false;
@@ -7598,21 +7860,19 @@ if (DESKTOP && ROLE === 'main' && window.kmv.profileGet){
   const obs = new MutationObserver(refit);
   obs.observe(hdr, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'class'] });
   obs.observe(moreMenu, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] });
+  new MutationObserver(refit).observe(document.body, { attributes: true, attributeFilter: ['class'] });   // toolbar moved to the left or back
   new ResizeObserver(refit).observe(hdr);
   window.addEventListener('resize', refit);
   if (document.fonts) document.fonts.ready.then(refit);
 
   moreBtn.onclick = () => {
     moreMenu.hidden = !moreMenu.hidden;
-    if (!moreMenu.hidden){
-      const r = moreBtn.getBoundingClientRect();
-      moreMenu.style.right = Math.max(8, innerWidth - r.right) + 'px';
-    }
+    if (!moreMenu.hidden) placeMenu(moreMenu, moreBtn, true);
   };
-  // a button in the menu does its job and closes the menu; ticking a box or changing chat size keeps it open
+  // a button in the menu does its job and closes the menu
   moreMenu.addEventListener('click', e => {
     const b = e.target.closest('.btn');
-    if (b && !b.closest('.zoom, .colnav')) moreMenu.hidden = true;     // runs after the button's own click
+    if (b) moreMenu.hidden = true;     // runs after the button's own click
   });
   document.addEventListener('pointerdown', e => { if (!moreMenu.hidden && !moreMenu.contains(e.target) && !moreBtn.contains(e.target)) moreMenu.hidden = true; });
   fitHeader();
@@ -7889,8 +8149,7 @@ document.addEventListener('keydown', e => {
    title and its parents' titles are put aside so the browser has none to show, and put back after. */
 const ttl = b => b.title || b.dataset.tipTitle || '';   // its title (put aside while the pointer is on it)
 const TIPS = [
-  ['#capBtn', 'App window'], ['#moreBtn', 'More'], ['#undoBtn', 'Undo'], ['#redoBtn', 'Redo'],
-  ['#settingsBtn', 'Settings'], ['#mentBtn', 'Mentions'], ['[data-play]', 'Play'], ['.st-chip button', 'Remove'],
+  ['#moreBtn', 'More'], ['[data-play]', 'Play'], ['.st-chip button', 'Remove'],
   ['[data-a=feat]', b => b.classList.contains('on') ? 'Normal size' : 'Highlight'],
   ['[data-a=star]', b => b.classList.contains('on') ? 'Unsave' : 'Save'],
   ['[data-a=like]', b => b.classList.contains('on') ? 'Remove like' : 'Like'],
@@ -7900,7 +8159,7 @@ const TIPS = [
   ['[data-a=ext]', 'Extensions'], ['[data-a=at]', 'Mentions'], ['[data-a=more]', 'More'],
   ['[data-v=mute], .fs-mute', 'Mute'],
   ['[data-z="-1"]', 'Smaller text'], ['[data-z="1"]', 'Bigger text'],
-  ['.colnav [data-d="-1"], #colNav [data-d="-1"]', 'Scroll left'], ['.colnav [data-d="1"], #colNav [data-d="1"]', 'Scroll right'],
+  ['#colNav [data-d="-1"]', 'Scroll left'], ['#colNav [data-d="1"]', 'Scroll right'],
   ['.cs-btn[data-d="-1"]', 'Previous'], ['.cs-btn[data-d="1"]', 'Next'],
   ['.fs-mdock', 'Dock'], ['.fs-mfloat', 'Float'], ['.fs-mwin', 'Own window'],
   ['.fs-play', b => /^play/i.test(ttl(b)) ? 'Play' : 'Pause'], ['.fs-rl', b => /reconnect/i.test(ttl(b)) ? 'Reconnect' : 'Refresh'],
@@ -7918,8 +8177,9 @@ function tipName(el){
 function tipFor(el){
   if (!el || hasWords(el)) return '';
   const name = tipName(el); if (name) return name;
+  if (el.dataset.label) return el.dataset.label;                        // a toolbar item showing its icon only
   const hidden = (el.textContent || '').replace(/\s+/g, ' ').trim();   // words hidden by the narrow toolbar
-  return /[A-Za-z]{2,}/.test(hidden) ? (el.querySelector('.l-short') || el).textContent.trim() : '';
+  return /[A-Za-z]{2,}/.test(hidden) ? el.textContent.trim() : '';
 }
 window.tipFor = tipFor;   // for the tests
 (function(){
@@ -7942,6 +8202,12 @@ window.tipFor = tipFor;   // for the tests
       if (text && norm(text) !== norm(name)){ const sm = document.createElement('small'); sm.textContent = text; tip.appendChild(sm); }
     } else tip.append(text);
     const r = el.getBoundingClientRect(), tr = tip.getBoundingClientRect();
+    if (document.body.classList.contains('bar-left') && el.closest('header')){     // beside the left toolbar
+      tip.style.left = Math.round(el.closest('header').getBoundingClientRect().right + 8) + 'px';
+      tip.style.top = Math.round(Math.max(6, Math.min(innerHeight - tr.height - 6, r.top + r.height / 2 - tr.height / 2))) + 'px';
+      tip.classList.add('on');
+      return;
+    }
     const below = r.bottom + 6 + tr.height < innerHeight;
     tip.style.left = Math.round(Math.max(6, Math.min(innerWidth - tr.width - 6, r.left + r.width / 2 - tr.width / 2))) + 'px';
     tip.style.top = Math.round(below ? r.bottom + 6 : r.top - 6 - tr.height) + 'px';
