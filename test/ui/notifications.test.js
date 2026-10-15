@@ -385,3 +385,45 @@ test('notifications from before the bell: mentions and spam history move in, onc
   await page.evaluate(() => openSettings('notify'));
   assert.match(await page.$eval('#spamHist', e => e.textContent), /Nothing flagged yet/, 'Spam alerts > History (the desktop app\'s) is the bell\'s spam');
 });
+
+for (const bar of [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left', labels: false }]){
+  const name = bar.pos === 'top' ? 'at the top' : bar.labels ? 'on the left' : 'on the left, icons only';
+  test(`the bell with the toolbar ${name}: the chat filter keeps one small width, however long the names, leaving the chips more room (#100)`, async t => {
+    const now = Date.now(), long = 'averyveryverylongchannelname42', list = [];
+    for (let i = 0; i < 1050; i++){           // up to four-digit counts (500 of each kind are kept)
+      const ch = [long, 'bravo', 'charlie'][i % 3], kind = ['mention', 'reply', 'word'][Math.floor(i / 3) % 3];
+      list.push({ id: 'n' + i, kind, ...(kind === 'word' ? { word: 'pear' } : {}), channel: ch, label: ch, sender: 'ann', body: '@me hi pear', quoted: kind === 'reply' ? 'hm?' : '', t: now - i * MIN, unread: false });
+    }
+    const page = await open(t, list, { 'kickMultiview.toolbar': JSON.stringify(bar) });
+    await page.click('#bellBtn');
+    assert.equal((await rect(page, '#bellPanel')).w, 490, 'the panel is a little wider');
+    const look = () => page.$eval('#bellPanel', p => {
+      const pick = p.querySelector('.nc-pick'), chips = p.querySelector('.nc-chips'), r = pick.getBoundingClientRect();
+      return { w: Math.round(r.width), room: chips.clientWidth, inside: r.right <= p.getBoundingClientRect().right,
+        lines: new Set([...chips.children].map(b => Math.round(b.getBoundingClientRect().top))).size };
+    });
+    for (const tb of ['all', 'mentions']){
+      await tab(page, tb);
+      const all = await look();
+      assert.equal(all.w, 110, `${tb}: small`);
+      assert.ok(all.room >= 340, `${tb}: the chips have ${all.room}px (they had 218px); whether a long count fits depends on the font`);
+      assert.ok(all.inside);
+      assert.equal(all.lines, 1, `${tb}: the chips stay on one line`);
+      await page.selectOption('#bellPanel .nc-pick', long);
+      assert.deepEqual(await look(), all, `${tb}: the same with a long name picked`);
+      await page.selectOption('#bellPanel .nc-pick', '');
+    }
+    const cut = await page.$eval('#bellPanel .nc-pick', e => getComputedStyle(e).textOverflow);
+    assert.equal(cut, 'ellipsis', 'a long name is cut short with …');
+  });
+}
+
+test('All notifications: the chat filter is the same width with short or long channel names (#100)', async t => {
+  const width = async names => {
+    const page = await open(t, names.map((ch, i) => ({ id: 'w' + i, kind: 'mention', channel: ch, label: ch, sender: 'ann', body: '@me hi', quoted: '', t: Date.now() - i * MIN, unread: false })));
+    await page.click('#bellBtn');
+    await page.click('#bellPanel .mp-all');
+    return page.$eval('.menthist .nc-pick', e => Math.round(e.getBoundingClientRect().width));
+  };
+  assert.equal(await width(['averyveryverylongchannelname42', 'bravo']), await width(['al', 'bo']));
+});
