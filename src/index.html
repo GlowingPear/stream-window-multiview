@@ -3157,7 +3157,7 @@ function loadFollows(){
     follows = { on: !!(f && f.on), items: (f && Array.isArray(f.items)) ? f.items : [], live: (f && f.live) || {} };
     const fo = $('#followsOn');
     if (fo){ fo.hidden = !k.followsSetOn; fo.setAttribute('aria-checked', follows.on); fo.innerHTML = `Suggest channels you follow<small>${follows.on ? 'On' : 'Off'}</small>`; }
-    if (k.profileList && follows.items.length) k.profileList(follows.items.slice(0, 2000).map(x => x.ch)).then(l => { fsProf = l || {}; if (!panel.hidden) renderSaved(); }).catch(() => {});
+    if (k.profileList && follows.items.length && !panel.hidden) k.profileList(follows.items.slice(0, 2000).map(x => x.ch)).then(l => { fsProf = l || {}; if (!panel.hidden) renderSaved(); }).catch(() => {});
     if (!panel.hidden) renderSaved();
   }).catch(() => {});
 }
