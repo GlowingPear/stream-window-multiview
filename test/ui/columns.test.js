@@ -64,6 +64,46 @@ test('Columns: more than fit scroll sideways with the arrows, the strip, the scr
   assert.ok(await firstX(page) > before, 'over the strip it steps back a column');
 });
 
+// Streams only partly on the stage (cut off at its left or right edge).
+const cutOff = page => page.evaluate(() => {
+  const s = document.querySelector('#stage').getBoundingClientRect();
+  return [...document.querySelectorAll('#stage .win.stream')].filter(e => {
+    const r = e.getBoundingClientRect();
+    return r.right > s.left + 2 && r.left < s.right - 2 && (r.left < s.left - 2 || r.right > s.right + 2);
+  }).map(e => e.querySelector('.title').textContent);
+});
+test('Columns: when the space changes, the same column stays first and lined up with the edge', async t => {
+  const page = await columns(t);
+  await page.click('#colNav [data-d="1"]'); await settle(page);
+  await page.click('#colNav [data-d="1"]'); await settle(page);
+  const pos = await page.textContent('#colPos');
+  assert.match(pos, /^3\//);
+  assert.deepEqual(await cutOff(page), [], 'lined up to start with');
+  const toolbar = (k, v) => page.evaluate(([k, v]) => document.querySelector(`#layoutMenu [data-tb=${k}] [data-v="${v}"]`).click(), [k, v]);   // as in the Layout menu
+  const changes = [
+    ['the toolbar on the left', () => toolbar('pos', 'left')],
+    ['icons only', () => toolbar('labels', '0')],
+    ['back on top', () => toolbar('pos', 'top')],
+    ['a narrower window', () => page.setViewportSize({ width: 1000, height: 800 })],
+    ['a wider window', () => page.setViewportSize({ width: 1500, height: 800 })]
+  ];
+  for (const [what, change] of changes){
+    await change(); await page.waitForTimeout(800);   // the layout refits after the resize settles
+    assert.equal(await page.textContent('#colPos'), pos, `${what}: the same column is first`);
+    assert.deepEqual(await cutOff(page), [], `${what}: no column cut off`);
+  }
+  // at the end, more room: the last column stays in view, lined up
+  await page.setViewportSize({ width: 1100, height: 800 }); await page.waitForTimeout(800);
+  await page.selectOption('#colStrip .cs-pick', String(NAMES.length - 1)); await settle(page);
+  await page.setViewportSize({ width: 1500, height: 800 }); await page.waitForTimeout(800);
+  assert.deepEqual(await cutOff(page), [], 'at the end: no column cut off');
+  assert.ok(await page.evaluate(() => {
+    const s = document.querySelector('#stage').getBoundingClientRect(), r = [...document.querySelectorAll('#stage .win.stream')]
+      .find(e => e.querySelector('.title').textContent === 'hotel').getBoundingClientRect();
+    return r.left >= s.left - 2 && r.right <= s.right + 2;
+  }), 'the last column is still in view');
+});
+
 test('Columns, Linked: drag a column by its title bar to move the stream and its chat together', async t => {
   const page = await columns(t);
   await page.click('#layoutBtn');
