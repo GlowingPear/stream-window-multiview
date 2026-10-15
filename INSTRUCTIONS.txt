@@ -153,8 +153,8 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
 - Move onto the card to use **Copy name** or **Download** (saves the picture where you choose, named after the emote).
 - Turn it off in Settings > General > **Emote preview in chats**.
 
-## Kick's /clip and /poll
-- Kick only shows the clip and poll popups on the channel page, so these commands do nothing in the app's Kick chats. Typing /clip or /poll there isn't sent: the app asks whether to open that channel's kick.com page (with its sound off, and your Kick login), where you can do it yourself.
+## Kick's /clip, /poll and /prediction
+- Kick only shows the clip, poll and prediction popups on the channel page, so these commands do nothing in the app's Kick chats. Typing one there isn't sent: the chat window asks whether to open that channel's kick.com page (with its sound off, and your Kick login), where you can do it yourself.
 
 ## Right-click in a chat or stream
 - **Selected text:** Copy, **Translate to <your language>** (opens Google Translate in your browser with the text) and Search Google.
