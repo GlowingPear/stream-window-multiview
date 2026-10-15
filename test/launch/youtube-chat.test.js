@@ -3,15 +3,14 @@
 // (signed out, in dark mode) uses YouTube's light theme. The chat is a stand-in page with a copy of
 // YouTube's view menu (see app.js).
 const test = require('node:test');
-const { launchApp, inView, viewLoaded, assert } = require('./app');
+const { launchApp, inView, viewLoaded, assert, openChannel, setMode } = require('./app');
 
 const T = { timeout: 90000 };
 let a, title;
 test.before(async () => {
   a = await launchApp();
-  await a.win.selectOption('#mode', 'chat');
-  await a.win.fill('#url', 'https://www.youtube.com/live_chat?v=abcdefghijk');
-  await a.win.click('#add');
+  await setMode(a.win, 'chat');
+  await openChannel(a.win, 'https://www.youtube.com/live_chat?v=abcdefghijk');
   title = await a.win.$eval('#stage .win.chat .title', e => e.textContent);
   await viewLoaded(a.win, title, 'chat', /live_chat/);
 });

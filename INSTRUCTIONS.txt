@@ -2,7 +2,7 @@
 
 Watch several Kick, Twitch and YouTube streams and their chats at once.
 In the app, this is in Settings > Instructions (gear button in the toolbar). F1 shows the keyboard shortcuts.
-In a small window, toolbar buttons that don't fit move into the ⋯ (More) button at the right end of the toolbar.
+The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and then buttons that show just an icon (point at one for its name). In a small window, buttons that don't fit move into the ⋯ (More) button at the end of the toolbar.
 
 ## Getting started
 - Download the installer from the project's GitHub page (Releases):
@@ -15,12 +15,15 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - Your windows, volumes and saved channels are remembered between launches.
 
 ## Adding streams
-- Paste a link or name into the box at the top and press Enter.
+- Open **Channels** (top left, or press N), type a name or paste a link into its box, and press Enter (or click **Open**).
+  - For a name, pick the site under the box: Kick, Twitch or YouTube (the tab you're on picks it first). A link picks its own site.
+  - **☆ Open & save** also saves it to your channels.
+  - The app asks the site whether that channel exists first. If the site says it doesn't, nothing opens and that site is outlined in red; if the site can't be reached, it opens anyway.
   - Kick: `kick.com/name` or just `name`
   - Twitch: `twitch.tv/name` or `tw:name`
   - YouTube channel: `youtube.com/@name`, `@name`, `yt:@name` or a `/channel/UC…` link (opens its live stream)
   - YouTube video: any video link (plays without a chat)
-- The dropdown next to the box picks Stream + chat, Stream only or Chat only.
+- The dropdown in the box picks Stream + chat, Stream only or Chat only. It also applies when you click a saved channel.
 - If a YouTube channel isn't live, its window says so, checks again every 2 minutes and has a **Check now** button.
 - Window dots show the site: Kick green, Twitch purple, YouTube red.
 - **Raids** (Kick and Twitch): when a channel raids another, its stream and chat switch to the raided channel in the same spot, and a message says who raided whom. If that channel is already open, the old windows just close.
@@ -33,7 +36,7 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 ## Layouts (Layout menu)
 - **Focus view**: one stream (or another app's window) big with its chat, the rest in columns beside it.
 - **Game focus**: your game big, streams, chats and other windows stacked on the side (see "Playing a game" below).
-- **Columns**: every stream above its own chat. When there are more than fit, scroll sideways with ‹ › in the toolbar, the scrollbar at the bottom, or the mouse wheel over any title bar.
+- **Columns**: every stream above its own chat. When there are more than fit, scroll sideways with the ‹ › on the left and right edges of the streams (with where you are, like 2/6, under the ›), the scrollbar at the bottom, or the mouse wheel over any title bar.
   - A strip above the columns has ‹ › to step through the streams (they loop around at either end) and a list to jump to any stream. "Step: 1 / Step: page" sets whether the arrows move one stream or a whole page.
   - **Highlight** (corner-arrows button on a stream): that stream goes big on the left with its chat beside it, and stays put while you scroll the other columns. Click it again to put it back.
   - In the highlight view, the **Focus area** under the big stream has a button for every open stream: click a name to make it big, drag one onto another to swap them (and their columns), × closes a stream and its chat (Undo brings them back). Each button has pause / play (play jumps back to live), mute and volume, and its arrow opens a small always-muted live preview. A preview is a second copy of the stream, so it uses some extra bandwidth.
@@ -94,17 +97,18 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - Keyboard: Ctrl+Z to undo, Ctrl+Y to redo (on a Mac: ⌘Z and ⌘⇧Z).
 
 ## Showing another app's window (e.g. Discord)
-- Click the screen button next to Add (or press W) and pick a window, like a Discord pop-out call or stream.
+- Click the screen button (App window) in the toolbar (or press W) and pick a window, like a Discord pop-out call or stream.
 - It appears as a live picture you can move and resize like any other window.
 - To click or type in it, use the real window. It can sit behind Stream Multiview, but don't minimize it.
 - The refresh button on that window lets you pick a different window.
 - They show up in the switch control too: click the name to make it the big one, drag it onto another name to swap places, pause to freeze the picture.
 - These windows aren't kept when you close the app.
 
-## Saved channels (★ Saved)
-- Click ☆ on any window to save its channel. Click a saved channel to open it.
+## Channels (☆ Channels)
+- Click ☆ on any window to save its channel, or use **☆ Open & save** in the Channels box. Click a saved channel to open it.
+- Typing in the box also searches your saved channels.
 - Tabs: All, Kick, Twitch, YouTube. K / T / Y badges show each channel's site.
-- Live channels are listed first, with viewers and title. The Saved button shows how many are live.
+- Live channels are listed first, with viewers and title. The Channels button shows how many are live.
 - Bell: desktop notification when that channel goes live.
 - Lightning: open that channel automatically when it goes live, once per broadcast (if you close it, it won't reopen until they next go live).
 - Import: add the channels you follow on Kick, Twitch or YouTube (you need to be logged in to that site in the app). For Kick, each channel in the import list also has Unfollow.
@@ -201,8 +205,9 @@ Live alerts check your saved channels while the app is running. Kick (when you'r
 - Pop out hidden (switch control): send only the streams you can't see to that window.
 
 ## Other handy things
-- Chat − 100% +: make the text in every chat smaller or bigger.
-- Hide bar: hides the toolbar. Move the mouse to the top edge or press Esc to bring it back.
+- Chat text size (Layout ▾, or Settings > Layouts): − and + make the text in every chat smaller or bigger.
+- Toolbar on the left (Layout ▾ > Toolbar, or Settings > Layouts > Toolbar): a column down the side instead of a bar across the top, which leaves more height for the streams. **Labels** shows each button's name; **Icons only** is a slim column that slides its names out over the streams while you point at it. « Collapse and » at the bottom switch between the two.
+- Hide bar: hides the toolbar. Move the mouse to the top edge (the left edge for the toolbar on the left) or press Esc to bring it back.
 - On a Mac the toolbar is also the window's title bar: drag an empty spot on it to move the window, or double-click one to zoom. With the bar hidden, the window's buttons hide too and come back with it.
 - F11: full screen.
 - Clear: closes every window (Ctrl+Z brings them back).
@@ -216,8 +221,8 @@ Shortcuts work when the app has your keyboard. If you just clicked inside a stre
 - Ctrl+, (Mac: ⌘,) : Settings
 - Ctrl+Z (Mac: ⌘Z) : undo
 - Ctrl+Y or Ctrl+Shift+Z (Mac: ⌘⇧Z) : redo
-- N or / : type a link or name
-- B : saved channels
+- N or / : open a channel (type its name or paste a link)
+- B : Channels
 - W : show another app's window
 - H : hide or show the toolbar
 - Esc : close menus and dialogs

@@ -6,7 +6,7 @@ const test = require('node:test');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { launchApp, assert } = require('./app');
+const { launchApp, assert, openChannel } = require('./app');
 
 const T = { timeout: 60000 };
 const MIN = 60e3, HOUR = 60 * MIN, DAY = 24 * HOUR;
@@ -41,7 +41,7 @@ test.before(async () => {
   fs.mkdirSync(path.join(data, 'Stream Multiview'), { recursive: true });
   fs.writeFileSync(path.join(data, 'Stream Multiview', 'profiles.json'), JSON.stringify({ v: 1, ch: { alpha: history() },
     meta: { bravo: { notes: 'old friend', tags: ['Friends'], fav: true, nick: 'Bee' } } }));
-  a = await launchApp({ data, storage: { 'kickMultiview.saved': ['alpha', 'bravo', 'tw:charlie'] } });
+  a = await launchApp({ data, realExists: true, storage: { 'kickMultiview.saved': ['alpha', 'bravo', 'tw:charlie'] } });
   // kick.com answers like Kick's API; you're logged in to Kick; Unfollow is recorded
   await a.app.evaluate(async ({ session, ipcMain }, KICK) => {
     const s = session.fromPartition('persist:kick');
@@ -197,11 +197,26 @@ test('streams are recorded from the live checks, and profiles open from Saved an
   assert.equal(await w.isVisible('.pf-dir'), true);
   await w.keyboard.press('Escape');
   // a stream window's profile button
-  await w.fill('#url', 'bravo');
-  await w.click('#add');
+  await openChannel(w, 'bravo');
   await w.waitForSelector('#stage .win.stream [data-a=profile]');
   await w.click('#stage .win.stream [data-a=profile]');
   await w.waitForFunction(() => /Bee/.test((document.querySelector('.pf-prof h2') || {}).textContent || ''));
+  await w.keyboard.press('Escape');
+});
+
+test('opening a channel from the Channels box asks Kick whether it exists, and stops only when Kick says it doesn\'t', T, async () => {
+  const w = a.win;
+  assert.equal(await w.evaluate(() => window.kmv.channelExists('bravo')), 'yes');
+  assert.equal(await w.evaluate(() => window.kmv.channelExists('not a channel!')), 'unknown', 'not a channel name: not asked');
+  await w.click('#savedBtn');
+  await w.fill('#savedInput', 'zzghost');
+  await w.click('#spOpen');
+  await w.waitForSelector('#spErr:not([hidden])');
+  assert.match(await w.textContent('#spErr'), /no Kick channel called “zzghost”/);
+  assert.ok(await w.$eval('#spPlat [data-p=kick]', b => b.classList.contains('bad')), 'Kick is outlined in red');
+  assert.equal(await w.locator('#stage .win:has(.title:text-is("zzghost"))').count(), 0, 'nothing opens');
+  assert.ok((await asked()).asked.includes('GET /api/v2/channels/zzghost'), 'Kick was asked');
+  await w.fill('#savedInput', '');
   await w.keyboard.press('Escape');
 });
 
@@ -215,7 +230,7 @@ test('a newly saved channel gets its picture in the background, without opening 
   });
   await w.click('#savedBtn');
   await w.fill('#savedInput', 'echo');
-  await w.press('#savedInput', 'Enter');
+  await w.click('#spOpenSave');
   await w.waitForSelector('#savedList .sv:has-text("echo")');
   // asked for once, soon after saving, and the row swaps its letter for the picture by itself
   await w.waitForSelector('#savedList .sv:has-text("echo") .sv-av img', { timeout: 30000 });

@@ -4,7 +4,7 @@ const test = require('node:test');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { launchApp, inView, viewLoaded, assert } = require('./app');
+const { launchApp, inView, viewLoaded, assert, openChannel } = require('./app');
 
 const T = { timeout: 60000 };
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
@@ -27,7 +27,7 @@ test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had n
 
 test('chat windows get the emote preview, and Download saves the emote, named after it', T, async () => {
   const w = a.win;
-  await w.fill('#url', 'alpha'); await w.click('#add');
+  await openChannel(w, 'alpha');
   await viewLoaded(w, 'alpha', 'chat', /popout\/alpha\/chat/);
   await w.waitForFunction(() => {
     const v = [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent === 'alpha')?.querySelector('webview');

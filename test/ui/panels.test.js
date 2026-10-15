@@ -4,25 +4,59 @@ const assert = require('node:assert/strict');
 const { setup, add, win, box, press } = require('./app');
 const { openApp } = setup();
 
-test('Saved channels: type a name (the tab picks the site), tabs with counts, open, remove, Open all and Save all open', async t => {
+test('Channels: one box searches your channels and opens (or opens and saves) a new one; tabs with counts, remove, Open all and Save all open', async t => {
   const page = await openApp(t);
+  const savedList = async () => JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.saved')) || '[]');
   await page.click('#savedBtn');
+  assert.equal(await page.getAttribute('#savedBtn', 'aria-expanded'), 'true', 'the toolbar marks Channels as open');
+  assert.match(await page.textContent('#savedPanel .sp-title b'), /^Channels$/);
   assert.match(await page.textContent('#savedList'), /Nothing saved yet/);
-  await page.fill('#savedInput', 'alpha'); await page.press('#savedInput', 'Enter');
+  assert.equal(await page.isVisible('#spAddRow'), false, 'nothing to add before typing');
+  assert.ok(await page.isVisible('#savedPanel #mode'), 'Stream + chat / Stream only / Chat only is in the box');
+
+  // a name: "Add alpha from" Kick (on All), then Open & save
+  await page.fill('#savedInput', 'alpha');
+  assert.equal(await page.textContent('#spAddName'), 'alpha');
+  assert.equal(await page.getAttribute('#spPlat [data-p=kick]', 'aria-checked'), 'true', 'Kick is picked on the All tab');
+  await page.click('#spOpenSave');
+  assert.deepEqual(await savedList(), ['alpha'], 'Open & save saves it');
+  assert.equal(await win(page, 'alpha').count(), 1, '…and opens it');
+  assert.equal(await win(page, 'alpha', 'chat').count(), 1, 'with its chat');
+  assert.equal(await page.inputValue('#savedInput'), '', 'the box is cleared');
+  assert.equal(await page.isVisible('#spAddRow'), false);
+
+  // on the Twitch tab a name is a Twitch channel; another site can be picked
   await page.click('#savedTabs [data-t=twitch]');
   assert.match(await page.textContent('#savedList'), /No saved Twitch channels yet/);
-  await page.fill('#savedInput', 'bravo'); await page.click('#savedAdd');
-  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.saved'))), ['alpha', 'tw:bravo'], 'typed on the Twitch tab, it\'s a Twitch channel');
+  await page.fill('#savedInput', 'bravo');
+  assert.equal(await page.getAttribute('#spPlat [data-p=twitch]', 'aria-checked'), 'true', 'the tab picks the site');
+  await page.click('#spPlat [data-p=youtube]');
+  assert.equal(await page.getAttribute('#spPlat [data-p=youtube]', 'aria-checked'), 'true');
+  await page.keyboard.press('ArrowLeft');
+  assert.equal(await page.getAttribute('#spPlat [data-p=twitch]', 'aria-checked'), 'true', 'the arrow keys move along the sites');
+  await page.click('#spOpenSave');
+  assert.deepEqual(await savedList(), ['alpha', 'tw:bravo'], 'picked Twitch, it\'s a Twitch channel');
   assert.equal(await page.textContent('#savedTabs [data-t=all] em'), '2');
   assert.equal(await page.textContent('#savedTabs [data-t=kick] em'), '1');
-  await page.click('#savedTabs [data-t=all]');
-  await page.fill('#savedInput', 'https://www.youtube.com/@charlie'); await page.press('#savedInput', 'Enter');
-  assert.equal(await page.$$eval('#savedList .sv', r => r.length), 3, 'a link works too');
-  assert.equal(await page.isHidden('#savedAdd'), true, 'Save only shows while typing');
 
+  // a link picks its own site; Enter opens it without saving
+  await page.click('#savedTabs [data-t=all]');
+  await page.fill('#savedInput', 'https://www.youtube.com/@charlie');
+  assert.equal(await page.getAttribute('#spPlat [data-p=youtube]', 'aria-checked'), 'true', 'a link picks its site');
+  assert.ok(await page.isDisabled('#spPlat [data-p=kick]'), 'and the others are off');
+  await page.press('#savedInput', 'Enter');
+  assert.equal(await page.locator('#stage .win.stream').count(), 3, 'Enter opens it');
+  assert.equal((await savedList()).length, 2, '…without saving it');
+  await page.fill('#savedInput', 'https://www.youtube.com/@charlie'); await page.click('#spOpenSave');
+  assert.deepEqual(await savedList(), ['alpha', 'tw:bravo', 'yt:@charlie']);
+  assert.equal(await page.locator('#stage .win.stream').count(), 3, 'an open channel is not opened twice');
+
+  // typing searches the list too
   await page.fill('#savedInput', 'char');
-  assert.equal(await page.isVisible('#savedAdd'), true);
   assert.deepEqual(await page.$$eval('#savedList .sv .nm', r => r.map(n => n.textContent)), ['@charlie'], 'typing searches the list');
+  assert.ok(await page.isVisible('#spAddRow'), 'and offers to open the name');
+  await page.fill('#savedInput', 'alpha');
+  assert.equal(await page.isVisible('#spOpenSave'), false, 'no Open & save for a channel already saved');
   await page.fill('#savedInput', 'zulu');
   assert.match(await page.textContent('#savedList'), /No saved channel matches “zulu”/);
   await page.press('#savedInput', 'Escape');
@@ -30,28 +64,62 @@ test('Saved channels: type a name (the tab picks the site), tabs with counts, op
   assert.equal(await page.$$eval('#savedList .sv', r => r.length), 3);
   assert.equal(await page.isVisible('#savedPanel'), true, '…and keeps the panel open');
 
+  await page.click('#savedList .sv:has(.nm:text-is("bravo")) .rm');
+  assert.deepEqual(await savedList(), ['alpha', 'yt:@charlie'], '✕ removes it');
+
+  await page.click('#savedBtn');
+  await win(page, 'alpha').locator('[data-a=close]').click();
+  await page.click('#savedBtn');
   await page.click('#savedList .sv:has(.nm:text-is("alpha"))');
   assert.equal(await win(page, 'alpha').count(), 1, 'clicking one opens it');
-  assert.equal(await win(page, 'alpha', 'chat').count(), 1);
   assert.equal(await page.locator('#savedList .sv:has(.nm:text-is("alpha")) .open').count(), 1, 'and it shows as open');
-
-  await page.click('#savedList .sv:has(.nm:text-is("bravo")) .rm');
-  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.saved'))), ['alpha', 'yt:@charlie'], '✕ removes it');
-
+  await win(page, 'alpha').locator('[data-a=close]').click();
+  await page.click('#savedBtn');
   await page.click('#openAll');
-  assert.equal(await page.locator('#stage .win.stream').count(), 2, 'Open all opens the rest');
+  assert.equal(await win(page, 'alpha').count(), 1, 'Open all opens the rest');
   await page.keyboard.press('Escape');
   await add(page, 'delta');
   await page.click('#savedBtn');
   assert.equal(await page.textContent('#openAll'), 'Open all 2');
   const fits = await page.evaluate(() => { const p = document.querySelector('#savedPanel').getBoundingClientRect();
-    return [...document.querySelectorAll('.sp-foot > .btn')].filter(b => b.offsetParent).every(b => { const r = b.getBoundingClientRect(); return r.left >= p.left && r.right <= p.right; }); });
-  assert.ok(fits, 'the buttons at the bottom fit in the panel');
+    return [...document.querySelectorAll('.sp-foot > .btn, .sp-add select')].filter(b => b.offsetParent).every(b => { const r = b.getBoundingClientRect(); return r.left >= p.left && r.right <= p.right; }); });
+  assert.ok(fits, 'the buttons fit in the panel');
   await page.click('#spMore');
-  assert.match(await page.textContent('#saveOpen'), /1 not saved/);
+  assert.match(await page.textContent('#saveOpen'), /2 not saved/);
   await page.click('#saveOpen');
   assert.equal(await page.isHidden('#spMenu'), true, 'the menu closes after picking');
-  assert.ok(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.saved'))).includes('delta'), 'Save all open adds what\'s open');
+  assert.ok((await savedList()).includes('delta'), 'Save all open adds what\'s open');
+});
+
+test('Channels: the open/save row fits on one line, and a channel the site says doesn\'t exist is not opened', async t => {
+  const page = await openApp(t, { init: () => {
+    window.asked = [];
+    window.kmv = { channelExists: ch => { window.asked.push(ch); return new Promise(r => setTimeout(() => r(ch === 'ghost' ? 'missing' : ch === 'tw:slow' ? 'unknown' : 'yes'), 150)); } };
+  } });
+  await page.click('#savedBtn');
+  await page.fill('#savedInput', 'ghost');
+  const row = await page.$$eval('#spAddRow > *:not([hidden])', els => new Set(els.filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().top + e.getBoundingClientRect().height / 2))).size);
+  assert.equal(row, 1, 'Add “ghost” from, the sites, Open and Open & save sit on one line');
+  await page.click('#spOpen');
+  assert.ok(await page.$eval('#spOpen', b => b.classList.contains('busy')), 'Open shows it\'s checking');
+  await page.waitForSelector('#spErr:not([hidden])');
+  assert.match(await page.textContent('#spErr'), /no Kick channel called “ghost”/);
+  assert.ok(await page.$eval('#spPlat [data-p=kick]', b => b.classList.contains('bad')), 'the site is outlined in red');
+  assert.equal(await page.locator('#stage .win').count(), 0, 'nothing opens');
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.saved')), null, 'or gets saved');
+  await page.click('#spPlat [data-p=twitch]');
+  assert.equal(await page.isVisible('#spErr'), false, 'picking another site clears it');
+  assert.equal(await page.$eval('#spPlat [data-p=kick]', b => b.classList.contains('bad')), false);
+  // a site that couldn't be asked doesn't block it
+  await page.fill('#savedInput', 'slow');
+  await page.press('#savedInput', 'Enter');
+  await page.waitForSelector('#stage .win.stream');
+  assert.deepEqual(await page.evaluate(() => window.asked), ['ghost', 'tw:slow']);
+  // a YouTube video link isn't asked about (the panel stays open for the next one)
+  await page.fill('#savedInput', 'https://youtu.be/abcdefghijk');
+  await page.press('#savedInput', 'Enter');
+  await page.waitForFunction(() => document.querySelectorAll('#stage .win.stream').length === 2);
+  assert.equal((await page.evaluate(() => window.asked)).length, 2);
 });
 
 test('your layouts: save the arrangement under a name, bring it back, update it and delete it', async t => {
