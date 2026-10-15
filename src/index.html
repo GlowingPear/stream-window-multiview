@@ -1025,6 +1025,10 @@ header #mentBtn .mb-count{position:absolute;top:2px;right:0;min-width:15px;heigh
 .sv .bell:disabled{opacity:.35;cursor:default}
 .sv .rm:hover{background:var(--danger)!important;color:#fff!important}
 .sv-empty{color:var(--muted);padding:6px 2px}
+.sv-sec.fs-sec{margin-top:4px;border-top:1px solid var(--line);padding-top:12px}
+.sv.fsug .fsave{font-size:15px;line-height:1}
+.sv.fsug .fsave:hover{color:var(--accent)!important}
+.sv.fsug:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 #savedList .sv-empty{padding:14px 8px}
 .sv-badge{display:inline-flex;align-items:center;gap:4px;margin-left:4px;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:700;
   color:#ff8080;background:color-mix(in srgb,#ff3b3b 16%,transparent)}
@@ -1366,6 +1370,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <div class="sp-menu" id="spMenu" role="menu" hidden>
       <div id="importRow" hidden><span>Import the channels you follow from</span><div><button class="btn" data-imp="kick"><i class="pi pi-kick">K</i>Kick</button><button class="btn" data-imp="twitch"><i class="pi pi-twitch">T</i>Twitch</button><button class="btn" data-imp="youtube"><i class="pi pi-youtube">Y</i>YouTube</button></div></div>
       <button id="saveOpen" role="menuitem" title="Save every channel currently open">Save all open</button>
+      <button id="followsOn" role="menuitemcheckbox" aria-checked="true" hidden title="While you type, channels you follow on Kick, Twitch and YouTube that you haven't saved, and who's live among them. Off: the lists the app kept are forgotten">Suggest channels you follow</button>
     </div></div>
 </div>
 
@@ -1707,6 +1712,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 </div></div>
 
 <script src="spam.js"></script>
+<script src="follows.js"></script>
 <script src="dropdown.js"></script>
 <script>
 (() => {
@@ -3068,7 +3074,7 @@ function renderSaved(){
   const oa = $('#openAll'); if (oa) oa.textContent = saved.length ? `Open all ${saved.length}` : 'Open all';
   const so = $('#saveOpen');
   if (so){ const k = new Set(wins.filter(w => w.channel && !saved.includes(w.channel)).map(w => w.channel)).size; so.disabled = !k; so.innerHTML = `Save all open<small>${k ? k + ' not saved' : 'all saved'}</small>`; }
-  if (!saved.length){ list.innerHTML = '<div class="sv-empty">Nothing saved yet. Click ☆ on any window, or type a name above.</div>'; return; }
+  if (!saved.length){ list.innerHTML = '<div class="sv-empty">Nothing saved yet. Click ☆ on any window, or type a name above.</div>'; appendFollowSugs(list, savedQuery()); return; }
   // tabs with counts, then the list for the chosen tab
   const tabs = $('#savedTabs');
   if (tabs) tabs.querySelectorAll('button').forEach(b => {
@@ -3082,7 +3088,7 @@ function renderSaved(){
   const liveList = liveNow().filter(shown), offList = saved.filter(ch => shown(ch) && !liveList.includes(ch));   // both already A–Z
   if (!liveList.length && !offList.length){
     const e = document.createElement('div'); e.className = 'sv-empty';
-    e.textContent = q ? `No saved channel matches “${q}”. Press Enter to save it.` : `No saved ${PLAT_NAME[savedTab]} channels yet. Type a name above.`;
+    e.textContent = q ? `No saved channel matches “${q}”. Press Enter to open it.` : `No saved ${PLAT_NAME[savedTab]} channels yet. Type a name above.`;
     list.appendChild(e);
   }
   const head = (t, live) => { const h = document.createElement('div'); h.className = 'sv-sec' + (live ? ' live' : ''); h.textContent = t; list.appendChild(h); };
@@ -3134,6 +3140,59 @@ function renderSaved(){
     rm.onclick = e => { e.stopPropagation(); toggleSaved(ch); };
     acts.appendChild(rm);
     row.onclick = () => addParsed({ channel: ch, only: null });
+    list.appendChild(row);
+  });
+  appendFollowSugs(list, q);
+}
+/* Suggestions from the channels you follow (src/follows.js): under the saved matches while you type ("From your
+   follows"), or the live ones when the box is empty ("Live now from your follows"). Only channels you haven't
+   saved, at most 5, on the tab's site. The main process keeps the lists (Kick from the live checks, Twitch and
+   YouTube from Import follows); a site you aren't signed in to has none. Click or Enter opens it as the Stream /
+   Chat dropdown says; ☆ saves it. */
+let follows = { on: false, items: [], live: {} }, fsProf = {};
+const followsApi = () => ROLE === 'main' && window.kmv && window.kmv.followsGet ? window.kmv : null;
+function loadFollows(){
+  const k = followsApi(); if (!k) return;
+  k.followsGet().then(f => {
+    follows = { on: !!(f && f.on), items: (f && Array.isArray(f.items)) ? f.items : [], live: (f && f.live) || {} };
+    const fo = $('#followsOn');
+    if (fo){ fo.hidden = !k.followsSetOn; fo.setAttribute('aria-checked', follows.on); fo.innerHTML = `Suggest channels you follow<small>${follows.on ? 'On' : 'Off'}</small>`; }
+    if (k.profileList && follows.items.length && !panel.hidden) k.profileList(follows.items.slice(0, 2000).map(x => x.ch)).then(l => { fsProf = l || {}; if (!panel.hidden) renderSaved(); }).catch(() => {});
+    if (!panel.hidden) renderSaved();
+  }).catch(() => {});
+}
+function followSugs(q){
+  if (!follows.on || !follows.items.length || !window.SmvFollows) return [];
+  const items = savedTab === 'all' ? follows.items : follows.items.filter(f => f.site === savedTab);
+  return SmvFollows.suggest({ follows: items, saved, live: follows.live, q, max: 5 });
+}
+function appendFollowSugs(list, q){
+  if (!q && input.value.trim()) return;                  // a link in the box: nothing to suggest
+  const rows = followSugs(q); if (!rows.length) return;
+  const h = document.createElement('div'); h.className = 'sv-sec fs-sec' + (q ? '' : ' live');
+  h.textContent = q ? 'From your follows' : 'Live now from your follows';
+  list.appendChild(h);
+  rows.forEach(f => {
+    const info = follows.live[f.ch] || {}, live = f.live, prof = (fsProf[f.ch] && fsProf[f.ch].info) || {};
+    const row = document.createElement('div'); row.className = 'sv fsug ' + (live ? 'live' : 'off'); row.dataset.ch = f.ch;
+    row.tabIndex = 0; row.setAttribute('role', 'button');
+    row.title = `Open it (as set in the Stream / Chat dropdown). You follow ${f.name} on ${PLAT_NAME[f.site]}`;
+    row.innerHTML = `<span class="sv-av"></span><div class="sv-txt"><div class="sv-line"><span class="nm"></span></div><div class="sv-sub" hidden></div></div><div class="sv-meta"></div><div class="sv-acts"></div>`;
+    const av = row.querySelector('.sv-av');
+    av.style.setProperty('--c', svHue(f.ch)); av.textContent = live ? svInitials(f.name) : f.name.replace(/^@/, '').slice(0, 1).toUpperCase(); av.insertAdjacentHTML('beforeend', platIcon(f.site));
+    const pic = prof.avatar;
+    if (pic){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = pic; av.appendChild(im); }
+    row.querySelector('.nm').textContent = f.name;
+    if (wins.some(w => w.channel === f.ch)){ const o = document.createElement('span'); o.className = 'open'; o.textContent = 'open'; row.querySelector('.sv-line').appendChild(o); }
+    const sub = row.querySelector('.sv-sub'), subText = live ? [...new Set([info.category, info.title].filter(Boolean))].join(' · ') : '';
+    if (subText){ sub.hidden = false; sub.textContent = subText; sub.title = info.title || ''; }
+    if (live && info.viewers != null) row.querySelector('.sv-meta').insertAdjacentHTML('beforeend', `<span class="sv-view" title="Watching now">${fmtViewers(info.viewers)}</span>`);
+    const st = document.createElement('button'); st.className = 'fsave'; st.textContent = '☆'; st.title = 'Save it to your channels';
+    st.onclick = e => { e.stopPropagation(); if (!saved.includes(f.ch)){ saved.push(f.ch); persistSaved(); loadSavedProfiles(); flash(`Saved ${f.name}`); } };
+    row.querySelector('.sv-acts').appendChild(st);
+    const open = () => addParsed({ channel: f.ch, only: null });
+    row.onclick = open;
+    row.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === row){ e.preventDefault(); e.stopPropagation(); open(); } });
     list.appendChild(row);
   });
 }
@@ -5705,7 +5764,7 @@ const panel = $('#savedPanel'), savedBtn = $('#savedBtn');
 savedBtn.onclick = () => {
   panel.hidden = !panel.hidden;
   if (!panel.hidden){
-    renderSaved(); renderAddRow(); loadSavedProfiles();
+    renderSaved(); renderAddRow(); loadSavedProfiles(); loadFollows();
     placeMenu(panel, savedBtn);
     $('#savedInput').focus();
     if (DESKTOP && ROLE === 'main' && window.kmv.checkLiveNow) window.kmv.checkLiveNow();
@@ -5719,6 +5778,11 @@ const spMenu = $('#spMenu'), spMore = $('#spMore');
 const showSpMenu = on => { spMenu.hidden = !on; spMore.classList.toggle('on', on); spMore.setAttribute('aria-expanded', on); };
 spMore.onclick = () => showSpMenu(spMenu.hidden);
 spMenu.addEventListener('click', e => { if (e.target.closest('button')) showSpMenu(false); });
+if (followsApi()){
+  window.kmv.onFollowsChanged && window.kmv.onFollowsChanged(loadFollows);
+  loadFollows();
+  $('#followsOn').onclick = () => { if (window.kmv.followsSetOn) window.kmv.followsSetOn(!follows.on).then(loadFollows).catch(() => {}); };
+}
 $('#savedInput').addEventListener('input', e => { if (!e.target.value.trim()) addPlat = null; renderAddRow(); renderSaved(); });
 $('#spOpen').onclick = () => openFromBox(false);
 $('#spOpenSave').onclick = () => openFromBox(true);

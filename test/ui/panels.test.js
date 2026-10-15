@@ -94,7 +94,7 @@ test('Channels: one box searches your channels and opens (or opens and saves) a 
 test('Channels: the open/save row fits on one line, and a channel the site says doesn\'t exist is not opened', async t => {
   const page = await openApp(t, { init: () => {
     window.asked = [];
-    window.kmv = { channelExists: ch => { window.asked.push(ch); return new Promise(r => setTimeout(() => r(ch === 'ghost' ? 'missing' : ch === 'tw:slow' ? 'unknown' : 'yes'), 150)); } };
+    window.kmv = { channelExists: ch => { window.asked.push(ch); return new Promise(r => setTimeout(() => r(ch === 'ghost' ? 'missing' : ch === 'tw:slow' ? 'unknown' : 'yes'), 800)); } };
   } });
   await page.click('#savedBtn');
   await page.fill('#savedInput', 'ghost');
@@ -364,4 +364,78 @@ test('two app windows stay in step: saved channels, themes, auto-pause and Watch
   assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()), '#3fb6ff', 'its theme');
   await fromOther('kickMultiview.autoPause', '1');
   assert.equal(await page.isChecked('#autoPause'), true, 'its auto-pause switch');
+});
+
+test('Channels: suggestions from the channels you follow while typing, the live ones with an empty box, open, save and switch off', async t => {
+  const page = await openApp(t, { init: () => {
+    const items = [{ ch: 'nightjar', name: 'Nightjar', site: 'kick' }, { ch: 'nightowl', name: 'nightowl', site: 'kick' },
+      { ch: 'tw:nightfall_tv', name: 'Nightfall_TV', site: 'twitch' }, { ch: 'tw:pinata', name: 'Pinata', site: 'twitch' },
+      { ch: 'yt:@nightskylofi', name: 'Night Sky Lofi', site: 'youtube' }];
+    window.followsState = { on: true, items, live: { 'tw:nightfall_tv': { live: true, viewers: 1240, category: 'Art', title: 'cozy' }, 'tw:pinata': { live: true, viewers: 9 } } };
+    window.kmv = {
+      followsGet: () => Promise.resolve(window.followsState.on ? window.followsState : { on: false, items: [], live: {} }),
+      followsSetOn: on => { window.followsState.on = on; return Promise.resolve(on); },
+      onFollowsChanged: cb => { window.followsChanged = cb; }
+    };
+    try { localStorage.setItem('kickMultiview.saved', JSON.stringify(['nightowl'])); } catch {}   // (not on the blank page before the app's)
+  } });
+  const sugs = () => page.$$eval('#savedList .fsug', r => r.map(x => x.dataset.ch));
+  const sec = () => page.$$eval('#savedList .fs-sec', r => r.map(x => x.textContent));
+  await page.click('#savedBtn');
+  // an empty box: the live ones you follow, most viewers first
+  await page.waitForSelector('#savedList .fsug');
+  assert.deepEqual(await sec(), ['Live now from your follows']);
+  assert.deepEqual(await sugs(), ['tw:nightfall_tv', 'tw:pinata']);
+  assert.match(await page.textContent('#savedList .fsug[data-ch="tw:nightfall_tv"]'), /Nightfall_TV.*Art · cozy.*1\.2K/s, 'name, game and title, viewers');
+  assert.equal(await page.locator('#savedList .fsug[data-ch="tw:nightfall_tv"] .pi').count(), 1, 'with its site badge');
+
+  // typing: matches you haven't saved, under the saved ones; live first
+  await page.fill('#savedInput', 'night');
+  assert.deepEqual(await sec(), ['From your follows']);
+  assert.deepEqual(await sugs(), ['tw:nightfall_tv', 'nightjar', 'yt:@nightskylofi'], 'nightowl is saved, so it isn\'t suggested');
+  assert.ok(await page.$eval('#savedList', l => l.querySelector('.sv:not(.fsug)').compareDocumentPosition(l.querySelector('.fsug')) & Node.DOCUMENT_POSITION_FOLLOWING), 'saved matches first');
+  await page.click('#savedTabs [data-t=kick]');
+  assert.deepEqual(await sugs(), ['nightjar'], 'the tab\'s site only');
+  await page.click('#savedTabs [data-t=all]');
+  await page.fill('#savedInput', 'https://kick.com/night');
+  assert.deepEqual(await sugs(), [], 'nothing for a link');
+
+  // click opens it (as set in the dropdown); Enter on a row too; ☆ saves it
+  await page.fill('#savedInput', 'night');
+  await page.click('#savedList .fsug[data-ch=nightjar]');
+  assert.equal(await page.locator('#stage .win.stream:has(.title:text-is("nightjar"))').count(), 1, 'opened');
+  await page.focus('#savedList .fsug[data-ch="yt:@nightskylofi"]');
+  await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#stage .win.stream').count(), 2, 'Enter on a row opens it');
+  await page.hover('#savedList .fsug[data-ch="tw:nightfall_tv"]');
+  await page.click('#savedList .fsug[data-ch="tw:nightfall_tv"] .fsave');
+  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.saved'))), ['nightowl', 'tw:nightfall_tv'], '☆ saves it');
+  assert.ok(!(await sugs()).includes('tw:nightfall_tv'), 'and it\'s no longer a suggestion');
+
+  // the switch in ⋯: off forgets them
+  await page.click('#spMore');
+  assert.match(await page.textContent('#followsOn'), /Suggest channels you follow.*On/);
+  await page.click('#followsOn');
+  await page.waitForFunction(() => !document.querySelector('#savedList .fsug'));
+  await page.click('#spMore');
+  assert.match(await page.textContent('#followsOn'), /Off/);
+  assert.equal(await page.getAttribute('#followsOn', 'aria-checked'), 'false');
+  await page.click('#followsOn');
+  await page.waitForSelector('#savedList .fsug');
+  // a list that changes while the panel is open shows straight away
+  await page.evaluate(() => { window.followsState.items = []; window.followsChanged(); });
+  await page.waitForFunction(() => !document.querySelector('#savedList .fsug'));
+});
+
+test('Channels: with nothing saved, suggestions still show', async t => {
+  const page = await openApp(t, { init: () => {
+    window.kmv = { followsGet: () => Promise.resolve({ on: true, items: [{ ch: 'alpha', name: 'Alpha', site: 'kick' }], live: { alpha: { live: true, viewers: 3 } } }) };
+  } });
+  await page.click('#savedBtn');
+  await page.waitForSelector('#savedList .fsug[data-ch=alpha]');
+  assert.match(await page.textContent('#savedList'), /Nothing saved yet.*Live now from your follows.*Alpha/s);
+  assert.equal(await page.isHidden('#followsOn'), true, 'no switch without the desktop app\'s');
+  await page.fill('#savedInput', 'zzz');
+  assert.match(await page.textContent('#savedList'), /Nothing saved yet/);
+  assert.equal(await page.locator('#savedList .fsug').count(), 0);
 });
