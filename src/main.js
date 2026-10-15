@@ -324,7 +324,10 @@ app.on('web-contents-created', (_e, wc) => {
 });
 
 /* ---------- messages from the multiview page ---------- */
-ipcMain.handle('open-window', (_e, url, w, h) => { openSiteWindow(url, w, h); });
+ipcMain.handle('open-window', (_e, url, w, h, opts) => {
+  const win = openSiteWindow(url, w, h);
+  if (win && opts && opts.muted) win.webContents.setAudioMuted(true);   // e.g. a channel page opened for its popups, not to watch
+});
 ipcMain.handle('open-external', (_e, url) => { if (/^https?:\/\//.test(url)) shell.openExternal(url); });
 
 // Streams pop-out window
