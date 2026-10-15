@@ -13,6 +13,11 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
   - Keep that folder where it is after setup: the app runs from it.
 - Coming from Kick Multiview: your logins, saved channels and layouts carry over by themselves. Running from source, copy the old folder's `node_modules` into the new one before the first start to skip the one-minute engine install.
 - Your windows, volumes and saved channels are remembered between launches.
+- **With no windows open**, the stage helps you get going:
+  - **The first time: Welcome.** A box to paste a link or type a name (a link shows what it is; for a name, pick Kick, Twitch or YouTube), Log in and Import follows for each site, and handy keys. **Learn the app** has a card for each feature: **Show me** points at it and ticks it off. **Take the tour** steps through the toolbar's buttons (arrow keys move, Esc ends it).
+  - **After your first stream: the Launchpad.** The same box, your saved channels that are live now (open one, all of them, or as a Focus view), **Reopen last session** (the windows you had open before closing them all), Import follows, and **Learn the app** to go back to Welcome.
+  - The first time a window opens, a small card shows tips for moving and resizing windows.
+  - Settings > General > **Welcome screen: Show it again** brings Welcome, its cards and the tour back.
 
 ## Adding streams
 - Open **Channels** (top left, or press N), type a name or paste a link into its box, and press Enter (or click **Open**).
