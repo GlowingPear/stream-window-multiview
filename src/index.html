@@ -347,6 +347,9 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 #zoomPct{min-width:38px;text-align:center;color:var(--text);font-variant-numeric:tabular-nums}
 .btns button.star{font-size:15px;line-height:1}
 .btns button.star.on{color:var(--accent)}
+.btns button.like.on{color:var(--accent)}
+.btns button.like.on svg path{fill:currentColor}
+.btns button.like.dim{opacity:.4}
 
 /* ---------- layout menu + columns mode ---------- */
 .menu{position:fixed;top:calc(var(--head) + 6px);z-index:100003;width:300px;display:flex;flex-direction:column;gap:2px;padding:6px;
@@ -1661,6 +1664,7 @@ const icon = {
   ext:'<svg viewBox="0 0 24 24"><path d="M10 4.5a2 2 0 0 1 4 0V6h4a1 1 0 0 1 1 1v4h-1.5a2 2 0 0 0 0 4H19v4a1 1 0 0 1-1 1h-4v-1.5a2 2 0 0 0-4 0V20H6a1 1 0 0 1-1-1v-4h1.5a2 2 0 0 0 0-4H5V7a1 1 0 0 1 1-1h4z"/></svg>',
   lock:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
   unlock:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></svg>',
+  like:'<svg viewBox="0 0 24 24"><path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/><path d="M7 10l4-7a2.5 2.5 0 0 1 3 2.6L13.5 9H19a2 2 0 0 1 2 2.3l-1.3 8A2 2 0 0 1 17.7 21H7"/></svg>',
   pin:'<svg viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 15v6"/></svg>',
   popwin:'<svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="12" rx="2"/><path d="M9 3h12v12"/><path d="M21 3l-7 7"/></svg>',
   colsview:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="9.5" y="4" width="5" height="16" rx="1"/><rect x="16" y="4" width="5" height="16" rx="1"/></svg>',
@@ -2263,7 +2267,7 @@ function remountStreams(p){
   if (!DESKTOP) return;
   wins.forEach(w => {
     if (w.kind !== 'stream' || !w.view || platOf(w.channel) !== p) return;
-    w.view.remove(); w.view = null; w.ready = false; w.sentPause = false;
+    w.view.remove(); w.view = null; w.ready = false; w.sentPause = false; w.like = null; syncLike(w);
     mountView(w);
   });
 }
@@ -2322,7 +2326,7 @@ function showHint(e, w){
    Some buttons are always in the ⋯ menu (BAR_MENU). */
 const BAR_LEVELS = ['b1', 'b2'];
 const BAR_MENU = ['ext'];
-const BAR_ORDER = ['chat', 'mod', 'reload', 'pop', 'profile', 'at', 'feat', 'star', 'max'];
+const BAR_ORDER = ['chat', 'mod', 'reload', 'pop', 'profile', 'at', 'feat', 'like', 'star', 'max'];
 function fitBar(bar){
   if (!bar.isConnected || !bar.clientWidth) return;     // not on screen: fitted when it shows (it resizes then)
   const name = bar.querySelector('.col-pick') || bar.querySelector('.title'), more = bar.querySelector('[data-a=more]');
@@ -2403,6 +2407,7 @@ function createWin(spec, rect){
         ${w.kind === 'stream' ? '<button class="txt" data-a="chat" title="Add this channel\'s chat next to it">+ Chat</button>' : ''}
         ${(w.kind === 'stream' || w.kind === 'capture') && ROLE === 'main' ? `<button class="feat" data-a="feat" title="Highlight: make this stream big">${icon.feat}</button>` : ''}
         ${w.kind === 'chat' && DESKTOP && ROLE === 'main' && /^(kick|twitch)$/.test(platOf(w.channel)) ? '<button class="at" data-a="at" hidden></button>' : ''}
+        ${w.kind === 'stream' && DESKTOP && platOf(w.channel) === 'youtube' ? `<button class="like dim" data-a="like" aria-pressed="false">${icon.like}</button>` : ''}
         ${w.channel ? '<button class="star" data-a="star"></button>' : ''}
         ${w.channel && DESKTOP && ROLE === 'main' && !/^yt:v:/.test(w.channel) ? `<button data-a="profile" title="Profile: when they stream, past streams, your notes">${icon.user}</button>` : ''}
         ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="ext" class="ext-b" title="Extensions in this window" hidden>${icon.ext}<b class="ext-n"></b></button>` : ''}
@@ -2432,6 +2437,7 @@ function createWin(spec, rect){
   mountView(w);
   checkMod(w);
   syncAtBtn(w);
+  syncLike(w);
 
   /* volume */
   if (hasVol){
@@ -2480,6 +2486,7 @@ function createWin(spec, rect){
       else addChatBeside(w);
     }
     else if (a === 'star') toggleSaved(w.channel);
+    else if (a === 'like') toggleLike(w);
     else if (a === 'profile') openProfile(w.channel);
     else if (a === 'at') toggleChatMentions(w);
     else if (a === 'feat'){
@@ -2684,6 +2691,10 @@ function mountView(w){
     // until its volume / mute is on the player, so one that should be muted never plays a moment of sound.
     if (hasVol) frame.addEventListener('did-start-navigation', e => {
       if (e.isMainFrame && !e.isInPlace && w.view === frame && w.ready){ w.audioHeld = w.audioLoading = true; try { frame.setAudioMuted(true); } catch {} }
+    });
+    // a new page (another video, or loaded again): its like state is read again (see readLike)
+    if (w.kind === 'stream' && platOf(w.channel) === 'youtube') frame.addEventListener('did-start-navigation', e => {
+      if (e.isMainFrame && !e.isInPlace && w.view === frame){ w.like = null; syncLike(w); }
     });
     // Download from an emote card (see emoteAgent): the chat page asks through a console message
     if (w.kind === 'chat') frame.addEventListener('console-message', e => {
@@ -4699,14 +4710,64 @@ function ytTick(view, skip, answer){
 }
 if (DESKTOP) setInterval(() => {
   const skip = skipChk.checked, answer = consentChk.checked ? consentPick.value : '';
-  if (!skip && !answer) return;
   wins.forEach(w => {
     if (w.kind !== 'stream' || platOf(w.channel) !== 'youtube') return;
+    if (w.ready) readLike(w);
+    if (!skip && !answer) return;
     if (w.ready) ytTick(w.view, skip, answer);
     if (w.mini && w.mini.ready) ytTick(w.mini.wv, skip, answer);
   });
 }, 1000);
 window.ytAgent = ytAgent;   // for the tests
+
+/* The like button on YouTube streams. The watch page keeps YouTube's own like button (hidden with the rest
+   of the page, see YT_CSS), so the app reads whether it's pressed once a second and clicks it for you. It
+   works when the player uses your login: Watch signed in for YouTube (Settings > Accounts), and signed in. */
+function ytLikeAgent(click){
+  const b = document.querySelector('ytd-watch-metadata like-button-view-model button[aria-pressed]');
+  const signedIn = !!(window.ytcfg && window.ytcfg.get && window.ytcfg.get('LOGGED_IN'));
+  const vid = new URLSearchParams(location.search).get('v');
+  if (!b) return { vid, signedIn, liked: null };
+  let liked = b.getAttribute('aria-pressed') === 'true';
+  if (click && signedIn){ b.click(); liked = !liked; }
+  return { vid, signedIn, liked };
+}
+// w.like: what the page said last ({ signedIn, liked }), or null while it's loading
+function syncLike(w){
+  const b = w.el.querySelector('[data-a=like]'); if (!b) return;
+  const l = w.like, on = !!(l && l.signedIn && l.liked);
+  b.classList.toggle('on', on);
+  b.classList.toggle('dim', !(l && l.signedIn && l.liked !== null));
+  b.setAttribute('aria-pressed', String(on));
+  b.title = likeHelp(w) || (on ? 'You like this stream on YouTube: click to remove your like' : 'Like this stream on YouTube');
+}
+// Why the button can't like right now (or '' when it can)
+function likeHelp(w){
+  const l = w.like;
+  if (!watchSignedIn.youtube) return 'To like streams, tick "Watch signed in" for YouTube in Settings › Accounts';
+  if (!l) return 'The stream is still loading';
+  if (!l.signedIn) return 'To like streams, sign in to YouTube in Settings › Accounts';
+  if (l.liked === null) return 'YouTube\'s like button isn\'t on this page';
+  return '';
+}
+function readLike(w, click){
+  const view = w.view;
+  return view.executeJavaScript(`(${ytLikeAgent})(${!!click})`).then(r => {
+    if (!r || w.view !== view || r.vid !== ytVidOf(w)) return;   // an old page's answer
+    w.like = { signedIn: r.signedIn, liked: r.liked };
+    syncLike(w);
+  }).catch(() => {});
+}
+function toggleLike(w){
+  const help = likeHelp(w);
+  if (help){
+    flash(help);
+    if (ROLE === 'main' && /Settings/.test(help)) openSettings('accounts');
+    return;
+  }
+  readLike(w, true);
+}
+window.ytLikeAgent = ytLikeAgent;   // for the tests
 
 /* Settings > YouTube > Chat to show: Top chat (YouTube's default, hides some messages) or Live chat (all of
    them, so mention and spam alerts see every message). Runs inside each YouTube chat: in the first moments
@@ -7805,6 +7866,7 @@ const TIPS = [
   ['#settingsBtn', 'Settings'], ['#mentBtn', 'Mentions'], ['[data-play]', 'Play'], ['.st-chip button', 'Remove'],
   ['[data-a=feat]', b => b.classList.contains('on') ? 'Normal size' : 'Highlight'],
   ['[data-a=star]', b => b.classList.contains('on') ? 'Unsave' : 'Save'],
+  ['[data-a=like]', b => b.classList.contains('on') ? 'Remove like' : 'Like'],
   ['[data-a=reload]', b => /different window/i.test(ttl(b)) ? 'Pick window' : 'Reload'],
   ['[data-a=profile]', 'Profile'], ['#profBtn', 'Profiles'], ['.sv .prof', 'Profile'],
   ['[data-a=pop]', 'Pop out'], ['[data-a=max]', 'Maximize'], ['[data-a=mod]', 'Mod view'], ['[data-a=close]', 'Close'],
