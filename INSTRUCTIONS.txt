@@ -73,7 +73,7 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - **General**: start new streams muted, snap windows while you drag, auto-pause hidden streams, and keyboard shortcuts on or off.
 - **Accounts**: logins, Import follows, "Forget my login" and "Watch signed in".
 - **Notifications**: messages in the app (on or off, and where they show: top, bottom or a corner), and desktop notifications: on or off for everything, live alerts for saved channels, and a test to check your computer lets them through.
-- **YouTube**: your YouTube login, skipping ads, YouTube's cookie question and the YouTube API key (see below).
+- **YouTube**: your YouTube login, skipping ads, YouTube's cookie question, liking streams automatically and the YouTube API key (see below).
 - **Mentions**: your Kick and Twitch usernames, other words that mean you (nicknames), and how a chat window gets your attention when someone mentions you (see Alerts below).
 - **Spam alerts**: for moderators (see below).
 - **Themes**: the app's colours.
@@ -176,6 +176,11 @@ In a small window, toolbar buttons that don't fit move into the ⋯ (More) butto
 - **Skip ads** (on to start with): when an ad shows its Skip button, the app presses it for you. Ads without a Skip button still play.
 - **Answer the cookie question** (on to start with, "Reject all"): in some countries YouTube asks about cookies before a stream plays, and keeps it paused until you answer. The app answers for you with the choice you pick. Each stream remembers the answer, so it's asked once per channel. Turn it off to answer it yourself in the player.
 - If YouTube changes the question so the app can't find the button, the app answers "Reject all" by itself and starts the stream again.
+
+## Liking YouTube streams
+- YouTube streams have a 👍 button in their title bar: click it to like the stream with your YouTube login, and again to remove the like. It's filled in when you already like it, also when you liked it on youtube.com.
+- It needs "Watch signed in" for YouTube (Settings > Accounts) and a YouTube login. Until then it's greyed out, and clicking it says what to do.
+- **Like streams automatically** (Settings > YouTube, off to start with): each YouTube stream you open is liked once it's playing, after the cookie question and any ads. Each video is liked once: remove a like and it isn't liked again.
 
 ## YouTube API key (optional)
 Live alerts check your saved channels while the app is running. Kick (when you're logged in) and Twitch answer for many channels at once, so they're checked every 30 seconds. YouTube is checked one channel at a time by reading its page, which is slower and can break when YouTube changes its pages. A free YouTube API key from Google makes YouTube's checks faster and more reliable. You don't need one: without it, everything still works.
