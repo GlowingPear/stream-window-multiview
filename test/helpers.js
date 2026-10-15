@@ -13,6 +13,7 @@ function playwright() {
     throw new Error('Playwright is not installed. Run "npm run test:setup" once, then run the tests again.');
   }
   hideElectron(pw);
+  quietElectron(pw);
   if (COVERAGE) recordElectron(pw);
   return pw;
 }
@@ -27,6 +28,14 @@ function hideElectron(pw) {
   const launch = pw._electron.launch.bind(pw._electron);
   pw._electron.launch = ({ hidden = HIDDEN, ...opts } = {}) =>
     launch(hidden ? { ...opts, args: ['-r', path.join(__dirname, 'launch', 'hidden.js'), ...(opts.args || [])] } : opts);
+}
+
+// Every test copy of the app makes no sound (see test/launch/quiet.js).
+function quietElectron(pw) {
+  if (pw._electron.__smvQuiet) return;
+  pw._electron.__smvQuiet = true;
+  const launch = pw._electron.launch.bind(pw._electron);
+  pw._electron.launch = (opts = {}) => launch({ ...opts, args: ['-r', path.join(__dirname, 'launch', 'quiet.js'), ...(opts.args || [])] });
 }
 
 /* ---- npm run test:coverage: records which code the tests run (scripts/coverage.js reads it) ----
