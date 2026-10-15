@@ -450,7 +450,7 @@ select.dd-open{border-color:var(--accent)}
 .lm-pic rect.g{fill:none;stroke:currentColor;stroke-dasharray:3 2;opacity:.8}
 .lm-grid button:hover .lm-pic,.lm-grid button:focus-visible .lm-pic{color:var(--text)}
 .lm-grid button.on .lm-pic{color:var(--accent)}
-.lm-hint{min-height:47px;padding:4px 8px 2px;font-size:11px;line-height:1.35;color:var(--muted)}
+.lm-hint{min-height:calc(3 * 1.35em + 6px);padding:4px 8px 2px;font-size:11px;line-height:1.35;color:var(--muted)}   /* room for the longest description (3 lines), so the menu doesn't jump */
 .lm-opts[hidden],.lm-opt[hidden]{display:none}
 .lm-opt{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 10px;font-size:12.5px;font-weight:600}
 .lm-opt > span{flex:1;min-width:0}
