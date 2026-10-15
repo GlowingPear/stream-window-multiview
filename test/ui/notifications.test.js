@@ -244,6 +244,21 @@ test('All notifications: search, Unread only, Mark all read, delete, clear a tab
   assert.deepEqual(await rows(page, '#nhList'), ['l1']);
 });
 
+test('All notifications: a long list scrolls, and a small day isn\'t squashed to a sliver (#85)', async t => {
+  const now = Date.now(), y = new Date(now - 864e5); y.setHours(23, 0, 0, 0);
+  const list = [];
+  for (let i = 0; i < 4; i++) list.push({ id: 'a' + i, kind: 'app', subject: 'updates', text: `Note ${i}`, t: now - i * MIN, unread: false });
+  for (let i = 0; i < 60; i++) list.push({ id: 'm' + i, kind: 'mention', channel: 'alpha', label: 'alpha', sender: 'ann', body: `@me ${i}`, quoted: '', t: +y - i * MIN, unread: false });
+  const page = await open(t, list);
+  await page.evaluate(() => openNoteHistory('all'));
+  assert.deepEqual(await page.$$eval('#nhList .mh-day b', e => e.map(d => d.textContent)), ['Today', 'Yesterday']);
+  const groups = await page.$$eval('#nhList .mh-group', e => e.map(g => [g.clientHeight, g.scrollHeight]));
+  for (const [h, full] of groups) assert.ok(h >= full - 1, `each day is as tall as its rows: ${JSON.stringify(groups)}`);
+  assert.ok(await page.$eval('#nhList', l => l.scrollHeight > l.clientHeight), 'the list scrolls instead');
+  const r = await rect(page, '#nhList .nc-row[data-id=a3]');
+  assert.ok(r.h > 30, 'the last of today\'s rows is whole');
+});
+
 test('Undo from the bell works while it still can; raids and going live are kept; a pop-up can be turned off per kind', async t => {
   const page = await open(t, []);
   await add(page, 'alpha', 'bravo');
