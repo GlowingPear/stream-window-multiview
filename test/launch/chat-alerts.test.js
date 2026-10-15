@@ -219,9 +219,9 @@ test('your own words count as mentions; the bell lists them and All notification
   for (let i = 0; i < 5; i++) await say('alpha', 'fan' + i, `hey big boss ${i}`);
   await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').textContent === '6');
   await win.click('#bellBtn');
+  assert.equal(await win.$$eval('#bellList .mp-row.unread', r => r.length), 6, 'marked new while it shows them');
   await win.click('#bellPanel .nc-tabs [data-tab=mentions]');
   assert.equal(await win.$$eval('#bellList .mp-row', r => r.length), 6);
-  assert.equal(await win.$$eval('#bellList .mp-row.unread', r => r.length), 6, 'marked new while it shows them');
   assert.equal(await win.textContent('#bellList .mp-row .mp-kind'), 'Word: big boss');
   await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').hidden);   // the ones shown are seen
   assert.equal(await win.textContent('#bellAll'), 'All notifications (6) ›');
