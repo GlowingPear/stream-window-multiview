@@ -1431,6 +1431,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <label class="st-row"><span class="st-t">Skip ads<small>Presses an ad's Skip button as soon as it shows. Ads without one still play.</small></span><input type="checkbox" class="st-sw" id="ytSkip" checked></label>
         <div class="st-row"><span class="st-t">Answer the cookie question<small>In some countries YouTube asks about cookies before a stream plays, and waits until you answer. Off: the question shows in the player for you to answer.</small></span>
           <select id="ytConsentPick" aria-label="Answer"><option value="reject">Reject all</option><option value="accept">Accept all</option></select><input type="checkbox" class="st-sw" id="ytConsent" checked aria-label="Answer the cookie question"></div>
+        <label class="st-row"><span class="st-t">Like streams automatically<small>Likes each YouTube stream you open once it's playing, after the cookie question and any ads. Needs "Watch signed in" for YouTube (Settings › Accounts). Remove a like and it isn't liked again.</small></span><input type="checkbox" class="st-sw" id="ytAutoLike"></label>
         <div class="st-sec">Chats</div>
         <div class="st-row"><span class="st-t">Chat to show<small>Top chat hides some messages. Live chat shows everything, so mention and spam alerts see every message.</small></span>
           <select id="ytChatView" aria-label="Chat to show"><option value="top">Top chat</option><option value="live">Live chat (all messages)</option></select></div>
@@ -4727,10 +4728,13 @@ function ytLikeAgent(click){
   const b = document.querySelector('ytd-watch-metadata like-button-view-model button[aria-pressed]');
   const signedIn = !!(window.ytcfg && window.ytcfg.get && window.ytcfg.get('LOGGED_IN'));
   const vid = new URLSearchParams(location.search).get('v');
-  if (!b) return { vid, signedIn, liked: null };
+  // the stream itself is playing: no ad, and no cookie question waiting for an answer
+  const p = document.getElementById('movie_player'), dlg = document.querySelector('ytd-consent-bump-v2-lightbox tp-yt-paper-dialog');
+  const playing = !!(p && p.getPlayerState && p.getPlayerState() === 1 && !p.classList.contains('ad-showing') && !p.classList.contains('ad-interrupting') && !(dlg && dlg.opened));
+  if (!b) return { vid, signedIn, liked: null, playing };
   let liked = b.getAttribute('aria-pressed') === 'true';
   if (click && signedIn){ b.click(); liked = !liked; }
-  return { vid, signedIn, liked };
+  return { vid, signedIn, liked, playing };
 }
 // w.like: what the page said last ({ signedIn, liked }), or null while it's loading
 function syncLike(w){
@@ -4756,7 +4760,30 @@ function readLike(w, click){
     if (!r || w.view !== view || r.vid !== ytVidOf(w)) return;   // an old page's answer
     w.like = { signedIn: r.signedIn, liked: r.liked };
     syncLike(w);
+    if (!click) autoLike(w, r);
   }).catch(() => {});
+}
+/* Settings > YouTube > Like streams automatically: once the stream itself has played for a few seconds (after
+   the cookie question and any ads), it's liked. Each video once: one you've liked, or removed the like from,
+   isn't touched again (remembered between launches). */
+const autoLikeChk = $('#ytAutoLike');
+const loadAutoLike = () => { try { autoLikeChk.checked = localStorage.getItem('kickMultiview.ytAutoLike') === '1'; } catch {} };
+loadAutoLike();
+autoLikeChk.addEventListener('change', () => { try { localStorage.setItem('kickMultiview.ytAutoLike', autoLikeChk.checked ? '1' : '0'); } catch {} });
+window.addEventListener('storage', e => { if (e.key === 'kickMultiview.ytAutoLike') loadAutoLike(); });   // main and streams windows
+const likedVids = () => { try { return JSON.parse(localStorage.getItem('kickMultiview.ytAutoLiked') || '[]'); } catch { return []; } };
+function markLiked(vid){
+  const l = likedVids().filter(v => v !== vid); l.push(vid);
+  try { localStorage.setItem('kickMultiview.ytAutoLiked', JSON.stringify(l.slice(-500))); } catch {}
+}
+function autoLike(w, r){
+  if (!autoLikeChk.checked || !r.signedIn || r.liked === null || !r.vid) return;
+  if (likedVids().includes(r.vid)){ w.likeWait = 0; return; }
+  if (r.liked){ markLiked(r.vid); return; }                 // already liked (by you, or on youtube.com)
+  w.likeWait = r.playing ? (w.likeWait || 0) + 1 : 0;      // seconds the stream itself has been playing
+  if (w.likeWait < 3) return;
+  w.likeWait = 0; markLiked(r.vid);
+  readLike(w, true);
 }
 function toggleLike(w){
   const help = likeHelp(w);
