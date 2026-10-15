@@ -578,7 +578,7 @@ for (const bar of [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left',
   });
 }
 
-test('toolbar on the left: a column of named rows or slim icons (names over the streams on hover), menus beside it, remembered', async t => {
+test('toolbar on the left: a column of named rows or slim icons, menus beside it, remembered', async t => {
   const page = await openApp(t);
   await add(page, 'alpha', 'bravo');
   await press(page, 't');
@@ -622,33 +622,25 @@ test('toolbar on the left: a column of named rows or slim icons (names over the 
   assert.equal((await rect('#stage')).x, 44);
   assert.equal(await page.isVisible('#layoutBtn .tb-l'), false, 'icons only');
 
-  // pointing at it slides the names out over the streams, after a short pause; nothing underneath moves
+  // pointing at it leaves it slim: each button's name is in its tooltip (#88)
   await page.mouse.move(22, 400);
-  await page.waitForTimeout(100);
-  assert.equal(await body('bar-peek'), false, 'not when the mouse just passes over it');
-  await page.waitForTimeout(400);
-  assert.ok(await body('bar-peek'), 'the names come out');
-  await page.waitForTimeout(250);
-  assert.equal((await rect('header')).w, 180);
-  assert.equal((await rect('#stage')).x, 44, 'over the streams: the stage stays where it was');
-  assert.equal(await page.getAttribute('#barFold', 'aria-label'), 'Keep open');
-  await page.mouse.move(900, 400);
-  await page.waitForTimeout(600);
-  assert.equal(await body('bar-peek'), false, 'and go again when the mouse leaves');
-  assert.equal(await page.getAttribute('#barFold', 'aria-label'), 'Keep names open');
-  // a click works straight away, without the names coming out first; opening a panel puts them away
-  await page.mouse.move(22, 400);
-  await page.waitForTimeout(450);
+  await page.hover('#layoutBtn');
+  await page.waitForTimeout(700);
+  assert.equal((await rect('header')).w, 44, 'the column stays slim');
+  assert.equal((await rect('#stage')).x, 44, 'and nothing moves');
+  assert.equal(await page.isVisible('#layoutBtn .tb-l'), false, 'no names');
+  await page.waitForSelector('#tip.on');
+  assert.equal(await page.$eval('#tip', e => e.firstChild.textContent), 'Layout', 'the name is in its tooltip');
+  assert.equal(await page.getAttribute('#barFold', 'aria-label'), 'Show names');
   await page.click('#savedBtn');
-  assert.equal(await body('bar-peek'), false, 'opening a panel closes the names');
-  assert.equal((await rect('#savedPanel')).x, 50, 'and it opens beside the slim column');
+  assert.equal((await rect('#savedPanel')).x, 50, 'panels open beside the slim column');
   await page.click('#savedBtn');
   await page.mouse.move(900, 400);
-  await page.waitForTimeout(600);
-  // the keyboard: Tab into the column opens it
+  // the keyboard: Tab into the column leaves it slim too
   await page.evaluate(() => document.activeElement && document.activeElement.blur());
   for (let i = 0; i < 4 && !(await page.evaluate(() => !!document.activeElement.closest('header'))); i++) await page.keyboard.press('Tab');
-  assert.ok(await body('bar-peek'), 'Tab into the column shows the names');
+  assert.ok(await page.evaluate(() => !!document.activeElement.closest('header')));
+  assert.equal((await rect('header')).w, 44, 'Tab into the column: still slim');
   await page.evaluate(() => document.activeElement.blur());
 
   // » keeps the names open (Labels); « Collapse goes back to icons only
@@ -696,7 +688,7 @@ test('toolbar on the left: a column of named rows or slim icons (names over the 
   assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.toolbar'))), { pos: 'top', labels: false }, 'it keeps Icons only for next time');
 });
 
-test('macOS, toolbar on the left: the lights sit at the top of the column, hide with Icons only and show while its names are out', async t => {
+test('macOS, toolbar on the left: the lights sit at the top of the column; with Icons only they show while the pointer is on the pear (#88)', async t => {
   const page = await openApp(t, { init: () => {
     localStorage.setItem('kickMultiview.toolbar', JSON.stringify({ pos: 'left', labels: false }));
     window.lights = []; window.watching = [];
@@ -704,28 +696,44 @@ test('macOS, toolbar on the left: the lights sit at the top of the column, hide 
       watchTop: (on, edge) => window.watching.push([on, edge]), onTop: cb => { window.mouseAtTop = cb; } };
   } });
   const lights = () => page.evaluate(() => window.lights.splice(0));
+  const body = c => page.evaluate(c => document.body.classList.contains(c), c);
+  const css = (sel, prop) => page.$eval(sel, (e, p) => getComputedStyle(e).getPropertyValue(p), prop);
   await page.waitForTimeout(300);
   assert.deepEqual(await lights(), [false], 'no room for them in the slim column');
   await page.mouse.move(22, 400);
   await page.waitForTimeout(700);
-  assert.deepEqual(await lights(), [true], 'they show while the names are out');
-  await page.mouse.move(900, 400);
+  assert.deepEqual(await lights(), [], 'not for the rest of the column');
+  assert.equal(await css('header', '-webkit-app-region'), 'drag', 'the column moves the window');
+  assert.equal(await css('header .brand', '-webkit-app-region'), 'no-drag', 'but not the pear: the page hears the pointer there');
+  const pear = await page.$eval('header .brand', e => { const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+  await page.mouse.move(...pear);
+  await page.waitForTimeout(300);
+  assert.deepEqual(await lights(), [true], 'the pear shows them');
+  assert.ok(await body('bar-lights'));
+  assert.equal(await css('header .pear', 'visibility'), 'hidden', 'in its place');
+  await page.mouse.move(60, 25, { steps: 5 });   // on to them (the page stops hearing the pointer over them in the app)
   await page.waitForTimeout(600);
-  assert.deepEqual(await lights(), [false], 'and hide again');
-  assert.equal(await page.$eval('header', e => getComputedStyle(e).getPropertyValue('-webkit-app-region')), 'drag', 'the column moves the window');
+  assert.deepEqual(await lights(), [], 'they stay while the pointer is in their corner');
+  await page.mouse.move(900, 400, { steps: 5 });
+  await page.waitForTimeout(150);
+  assert.ok(await body('bar-lights'), 'not gone the moment the pointer slips off');
+  await page.waitForTimeout(400);
+  assert.deepEqual(await lights(), [false], 'and go when it moves somewhere else');
+  assert.equal(await css('header .pear', 'visibility'), 'visible');
   // Hide bar watches the left edge (the window's resize edge, which the page can't see)
   await page.click('#focusBtn');
   assert.deepEqual(await page.evaluate(() => window.watching.splice(0)), [[true, 'left']]);
   await page.evaluate(() => window.mouseAtTop());
-  assert.ok(await page.evaluate(() => document.body.classList.contains('peek')), 'the mouse at the left edge brings it out');
+  assert.ok(await body('peek'), 'the mouse at the left edge brings it out');
   await page.keyboard.press('Escape');
-  // with names, the lights stay where they are
-  await page.mouse.move(22, 400); await page.waitForTimeout(600);
+  // with names, the lights stay where they are, and the pear is part of the title bar again
   await page.click('#barFold');
   await page.mouse.move(900, 400); await page.waitForTimeout(600);
   await lights();
   assert.equal(await page.$eval('header .brand', e => getComputedStyle(e).paddingLeft), '80px', 'room for the lights at the top of the column');
-  await page.mouse.move(22, 400); await page.mouse.move(900, 400); await page.waitForTimeout(600);
+  assert.notEqual(await css('header .brand', '-webkit-app-region'), 'no-drag', 'the header\'s drag area covers it');
+  assert.equal(await body('bar-lights'), false);
+  await page.mouse.move(22, 400); await page.mouse.move(60, 25); await page.mouse.move(900, 400); await page.waitForTimeout(600);
   assert.ok((await lights()).every(Boolean), 'and stay showing');
 });
 

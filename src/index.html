@@ -63,8 +63,7 @@ header .tb.primary{background:var(--accent);color:var(--accent-ink)}
 #barFold{display:none}
 /* ---------- the toolbar on the left (Layout menu / Settings > Layouts > Toolbar) ----------
    A column down the side: Logins, Channels and Profiles at the top, the rest at the bottom. With names it's a
-   list of menu rows (about 180px); Icons only is a slim column (44px) that shows the names over the streams while
-   the pointer rests on it (body.bar-peek), without moving anything underneath. */
+   list of menu rows (about 180px); Icons only is a slim column (44px): pointing at a button shows its name. */
 body.bar-left{--barw:180px}
 body.bar-left.bar-icons{--barw:44px}
 body.bar-left header{bottom:0;right:auto;width:var(--barw);height:auto;flex-direction:column;align-items:stretch;gap:1px;padding:8px 6px;
@@ -79,14 +78,13 @@ body.bar-left header .sep{width:auto;height:1px;margin:5px 4px}
 body.bar-left header .spacer{flex:1 1 0;min-height:8px}
 body.bar-left #barFold{display:flex;color:var(--muted)}
 body.bar-left #moreBtn{font-size:15px}
-body.bar-left.bar-icons:not(.bar-peek) header{padding:8px 4px}
-body.bar-left.bar-icons:not(.bar-peek) header .brand{justify-content:center;padding:0;margin-right:0}
-body.bar-left.bar-icons:not(.bar-peek) header :is(.brand-txt,.tb-l,.car){display:none}
-body.bar-left.bar-icons:not(.bar-peek) header .tb{justify-content:center;padding:0}
-body.bar-left.bar-icons:not(.bar-peek) #savedBtn .sv-badge{position:absolute;top:1px;right:0;padding:0 4px;font-size:9.5px;line-height:14px}
-body.bar-left.bar-icons:not(.bar-peek) #savedBtn .sv-badge i{display:none}
-body.bar-left.bar-icons:not(.bar-peek) #bellBtn .mb-count{position:absolute;top:1px;right:1px}
-body.bar-left.bar-icons.bar-peek header{width:180px;box-shadow:12px 0 36px rgba(0,0,0,.5)}
+body.bar-left.bar-icons header{padding:8px 4px}
+body.bar-left.bar-icons header .brand{justify-content:center;padding:0;margin-right:0}
+body.bar-left.bar-icons header :is(.brand-txt,.tb-l,.car){display:none}
+body.bar-left.bar-icons header .tb{justify-content:center;padding:0}
+body.bar-left.bar-icons #savedBtn .sv-badge{position:absolute;top:1px;right:0;padding:0 4px;font-size:9.5px;line-height:14px}
+body.bar-left.bar-icons #savedBtn .sv-badge i{display:none}
+body.bar-left.bar-icons #bellBtn .mb-count{position:absolute;top:1px;right:1px}
 body.bar-left #stage{top:0;left:var(--barw);transition:left .2s ease}
 body.bar-left.focus #stage{left:0}
 body.bar-left.focus header{transform:translateX(-100%)}
@@ -117,10 +115,12 @@ html.mac-bar body.fullscreen header{padding-left:12px}
 html.mac-bar #reveal{height:12px}   /* the window's top few pixels are its resize edge, which the page never hears about */
 html.mac-bar body:not(.role-streams) .brand-txt{display:none}
 /* on the left, the lights sit where they always do (top left), in a strip at the top of the column with the pear
-   at its right. Icons only is too narrow for them, so they're hidden until the column opens over the streams. */
+   at its right. Icons only is too narrow for them, so they're hidden until the pointer is on the pear (body.bar-lights),
+   and show in its place. The pear isn't part of the title bar there: the page never hears the pointer on a drag area. */
 html.mac-bar body.bar-left header{padding-left:6px}
 html.mac-bar body.bar-left header .brand{height:40px;padding-left:80px;margin-top:-4px}
-html.mac-bar body.bar-left.bar-icons:not(.bar-peek) header .brand{padding-left:0}
+html.mac-bar body.bar-left.bar-icons header .brand{padding-left:0;-webkit-app-region:no-drag}
+html.mac-bar body.bar-left.bar-icons.bar-lights header .pear{visibility:hidden}
 html.mac-bar body.bar-left.fullscreen header .brand{padding-left:6px}
 
 /* ---------- stage ---------- */
@@ -1593,7 +1593,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <div class="st-subpane" data-t="toolbar" hidden>
           <p class="st-sub ly-intro">Where the toolbar sits, in every layout. On the left it leaves more height for the streams.</p>
           <div class="st-row ly-tb"><span class="st-t">Position<small>Top: a bar across the window. Left: a column down its side.</small></span><div class="lm-sw" data-tb="pos"><button data-v="top">Top</button><button data-v="left">Left</button></div></div>
-          <div class="st-row ly-tb"><span class="st-t">Left toolbar<small>Labels: each button with its name. Icons only: a slim column; point at it to see the names.</small></span><div class="lm-sw" data-tb="labels"><button data-v="1">Labels</button><button data-v="0">Icons only</button></div></div>
+          <div class="st-row ly-tb"><span class="st-t">Left toolbar<small>Labels: each button with its name. Icons only: a slim column; point at a button to see its name.</small></span><div class="lm-sw" data-tb="labels"><button data-v="1">Labels</button><button data-v="0">Icons only</button></div></div>
         </div>
         <label class="st-opt" data-opt="columns"><span class="st-t">Linked<small>Each stream and its chat move together. Off: move and resize windows freely.</small></span><input type="checkbox" class="st-sw" id="lyLinked"></label>
         <label class="st-opt" data-opt="auto"><span class="st-t">Fit in channels that open by themselves<small>A saved channel that opens because it went live goes last (its chat too), and the others keep their order. Not once you've moved or resized a window yourself.</small></span><input type="checkbox" class="st-sw" id="autoFit"></label>
@@ -6020,7 +6020,7 @@ let lightsT;
 function showLights(on){
   if (!MAC_BAR) return;
   const cls = document.body.classList;
-  if (cls.contains('bar-icons') && !cls.contains('bar-peek')) on = false;   // the slim left column has no room for them
+  if (cls.contains('bar-icons') && !cls.contains('bar-lights')) on = false;   // the slim left column has no room for them (but see setBarLights)
   clearTimeout(lightsT);
   if (document.body.classList.contains('fullscreen')) return;
   if (on) lightsT = setTimeout(() => window.kmv.setLights(true), 200);   // the header's slide takes .2s
@@ -6032,7 +6032,7 @@ if (MAC_BAR){
     document.body.classList.toggle('fullscreen', on);
     clearTimeout(lightsT);
     const cls = document.body.classList;
-    window.kmv.setLights(on || ((!cls.contains('focus') || cls.contains('peek')) && !(cls.contains('bar-icons') && !cls.contains('bar-peek'))));
+    window.kmv.setLights(on || ((!cls.contains('focus') || cls.contains('peek')) && !(cls.contains('bar-icons') && !cls.contains('bar-lights'))));
   });
 }
 function setBarHidden(on){
@@ -6067,34 +6067,42 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---- The toolbar on top or on the left (Layout menu and Settings > Layouts > Toolbar), main window only ----
-   On the left, Labels is a column of named rows, Icons only a slim column of icons that slides its names out over
-   the streams while the pointer rests on it (or the keyboard is in it). Nothing underneath moves: the stage keeps
-   its place next to the slim column. */
+   On the left, Labels is a column of named rows, Icons only a slim column of icons, each with its name in its tooltip.
+   On a Mac the slim column has no room for the lights: they show while the pointer is on the pear (body.bar-lights). */
 let barPos = 'top', barLabels = true;
 try { const t = JSON.parse(localStorage.getItem('kickMultiview.toolbar') || '{}'); if (t.pos === 'left') barPos = 'left'; if (t.labels === false) barLabels = false; } catch {}
 const hdrEl = document.querySelector('header');
 const iconsLeft = () => document.body.classList.contains('bar-icons');
-let barPeekT = 0;
-function setBarPeek(on){
-  clearTimeout(barPeekT);
-  on = !!on && iconsLeft();
-  if (document.body.classList.contains('bar-peek') === on) return;
-  document.body.classList.toggle('bar-peek', on);
-  updateFold();
+let barLightsT = 0;
+function setBarLights(on){
+  clearTimeout(barLightsT);
   const cls = document.body.classList;
+  on = !!on && iconsLeft();
+  if (cls.contains('bar-lights') === on) return;
+  cls.toggle('bar-lights', on);
   showLights(!cls.contains('focus') || cls.contains('peek'));
 }
+// On the pear: they show. Over them the page doesn't hear the pointer at all, so they stay while it was last in the
+// corner they sit in (LIGHTS_AT in main.js, three buttons to x 70); anywhere else they go after a moment.
+const LIGHTS_CORNER = { x: 80, y: 44 };
+if (MAC_BAR) document.addEventListener('pointermove', e => {
+  if (!iconsLeft()) return;
+  const b = hdrEl.querySelector('.brand').getBoundingClientRect(), x = e.clientX, y = e.clientY;
+  const onPear = x >= b.left && x <= b.right && y >= b.top && y <= b.bottom;
+  if (onPear) setBarLights(true);
+  else if (document.body.classList.contains('bar-lights') && !(x <= LIGHTS_CORNER.x && y <= LIGHTS_CORNER.y)){ clearTimeout(barLightsT); barLightsT = setTimeout(() => setBarLights(false), 300); }
+  else clearTimeout(barLightsT);
+});
 function updateFold(){
   const b = $('#barFold');
   if (barLabels){ setTb(b, 'Collapse', 'fold'); b.title = 'Show icons only'; }
-  else if (document.body.classList.contains('bar-peek')){ setTb(b, 'Keep open', 'unfold'); b.title = 'Keep the names showing'; }
-  else { setTb(b, 'Keep names open', 'unfold'); b.title = 'Keep the names showing'; }
+  else { setTb(b, 'Show names', 'unfold'); b.title = 'Show each button\'s name'; }
 }
 function applyToolbar(start){
   const left = ROLE === 'main' && barPos === 'left', cls = document.body.classList;
   cls.toggle('bar-left', left);
   cls.toggle('bar-icons', left && !barLabels);
-  if (!cls.contains('bar-icons')) cls.remove('bar-peek');
+  if (!cls.contains('bar-icons')) cls.remove('bar-lights');
   document.querySelectorAll('[data-tb=pos] button').forEach(b => b.classList.toggle('on', b.dataset.v === barPos));
   document.querySelectorAll('[data-tb=labels] button').forEach(b => { b.classList.toggle('on', (b.dataset.v === '1') === barLabels); b.disabled = barPos !== 'left'; });
   updateFold(); updateFocusBtn();
@@ -6115,20 +6123,12 @@ document.addEventListener('click', e => {
   if (b.parentElement.dataset.tb === 'pos') setToolbar(b.dataset.v, barLabels); else setToolbar(barPos, b.dataset.v === '1');
 });
 $('#barFold').onclick = () => setToolbar(barPos, !barLabels);
-hdrEl.addEventListener('pointerenter', () => { if (!iconsLeft()) return; clearTimeout(barPeekT); if (!document.body.classList.contains('bar-peek')) barPeekT = setTimeout(() => setBarPeek(true), 250); });
-hdrEl.addEventListener('pointerleave', () => {
-  clearTimeout(barPeekT);
-  if (document.body.classList.contains('bar-peek')) barPeekT = setTimeout(() => { if (!hdrEl.contains(document.activeElement) || !document.activeElement.matches(':focus-visible')) setBarPeek(false); }, 300);
-});
-hdrEl.addEventListener('focusin', e => { if (iconsLeft() && e.target.matches(':focus-visible')) setBarPeek(true); });   // Tab into it (a click works straight away)
-hdrEl.addEventListener('focusout', e => { if (!hdrEl.contains(e.relatedTarget) && !hdrEl.matches(':hover')) setBarPeek(false); });
 applyToolbar(true);
 
 // A toolbar menu or panel opens under its button, or beside the left toolbar, next to its row.
 function placeMenu(el, anchor, alignRight){
   const r = anchor.getBoundingClientRect();
   if (document.body.classList.contains('bar-left') && anchor.closest('header')){
-    setBarPeek(false);
     const bw = parseFloat(getComputedStyle(document.body).getPropertyValue('--barw')) || 180;
     el.style.right = 'auto';
     el.style.left = (bw + 6) + 'px';
