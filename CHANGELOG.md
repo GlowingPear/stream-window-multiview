@@ -2,7 +2,22 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.1 (current)
+## 0.3.2 (current)
+- Release video skill: finds tags without a v, keeps the caption off a chat's message box, and gives stand-in channels profile pictures
+- Mentions show the emotes from the message
+- Profiles: Unfollow shows straight after signing in to Kick (fixes a flaky launch test)
+- Emote preview: point at an emote in chat to see it bigger, copy its name or download it
+- Right-click menu in chats and streams: copy, paste, links, translate, open or save emotes
+- Mentions ignore chat bots, with one bot list shared with spam alerts
+- Reload button for extensions loaded from a folder
+- Like YouTube streams from their title bar, or automatically once they're playing
+- New toolbar: icons on the right (Layout keeps its name when there's room), Logins, one Channels box to open channels, chat text size in Layout, Columns arrows on the streams, and an option to put the toolbar on the left
+- Channels box suggests the channels you follow but haven't saved, and who's live among them
+- Kick chats: /clip, /poll and /prediction offer to open the channel page
+- A notification bell for mentions, spam, channels going live and the app's messages
+- Columns stay lined up when the toolbar moves or the window resizes; Notifications settings in tabs, and Do not disturb from the bell
+
+## 0.3.1
 - Dropdowns use the app's own list instead of the system menu
 - Saved channels get their pictures by themselves (when saved, imported or live, and slowly for the rest)
 - Follow raids: the stream and chat switch to the raided channel
