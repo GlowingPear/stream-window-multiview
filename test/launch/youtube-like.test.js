@@ -1,7 +1,7 @@
 // The like button on YouTube streams, and Settings > YouTube > Like streams automatically. The watch page is a
 // stand-in (see app.js) with a hidden like button, so nothing is ever liked for real.
 const test = require('node:test');
-const { launchApp, inView, viewLoaded, winSel, assert } = require('./app');
+const { launchApp, inView, viewLoaded, winSel, assert, openChannel, setMode } = require('./app');
 
 const T = { timeout: 60000 };
 const VID = 'abcdefghijk';
@@ -9,7 +9,7 @@ let a;
 test.before(async () => { a = await launchApp({ storage: { 'kickMultiview.alerts': { mention: { sound: 'none' }, spam: { sound: 'none' } } } }); });
 test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
 
-const add = async (...links) => { for (const l of links) { await a.win.fill('#url', l); await a.win.click('#add'); } };
+const add = async (...links) => { for (const l of links) await openChannel(a.win, l); };
 const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) { if (await fn()) return; if (Date.now() > end) throw new Error('timed out waiting'); await new Promise(r => setTimeout(r, 150)); } };
 const clear = async () => { if (await a.win.locator('#stage .win').count()){ await a.win.click('#clear'); await a.win.click('#askDlg .ask-yes'); } };
 test.beforeEach(() => a && clear());
@@ -26,7 +26,7 @@ async function signIn(on) {
 }
 // opens a YouTube video as a stream and waits for its page; returns its window title
 async function openVideo(vid = VID) {
-  await a.win.selectOption('#mode', 'stream');
+  await setMode(a.win, 'stream');
   await add('https://www.youtube.com/watch?v=' + vid);
   const title = await a.win.$eval('#stage .win.stream.plat-youtube .title', e => e.textContent);
   await viewLoaded(a.win, title, 'stream', /youtube\.com\/watch/);
@@ -63,7 +63,7 @@ test('ytLikeAgent reads YouTube\'s like button and whether you\'re signed in, an
 });
 
 test('the like button is only on YouTube streams (a video opens no chat)', T, async () => {
-  await a.win.selectOption('#mode', 'both');
+  await setMode(a.win, 'both');
   await add('https://www.youtube.com/watch?v=' + VID, 'alpha', 'tw:beta');
   await a.win.waitForSelector('#stage .win.chat.plat-twitch');
   const has = await a.win.$$eval('#stage .win', es => es.map(e => [e.classList[1], e.classList[2], !!e.querySelector('[data-a=like]')]).sort());
