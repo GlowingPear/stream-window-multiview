@@ -63,7 +63,8 @@ test('the chat window offers to open the channel page; Cancel leaves nothing ope
   const page = await openApp(t);
   await page.evaluate(() => {
     window.__opened = []; window.open = (...a) => { window.__opened.push(a.slice(0, 2)); return null; };
-    window.__win = ch => { const el = document.createElement('div'); el.className = 'win chat'; el.dataset.ch = ch;
+    window.__win = ch => { const had = document.querySelector(`.win[data-ch="${ch}"]`); if (had) return { channel: ch, el: had };
+      const el = document.createElement('div'); el.className = 'win chat'; el.dataset.ch = ch;
       el.style.cssText = 'position:fixed;left:10px;top:60px;width:340px;height:500px;display:flex'; el.innerHTML = '<div class="body"></div>';
       document.body.append(el); return { channel: ch, el }; };
   });
@@ -81,6 +82,9 @@ test('the chat window offers to open the channel page; Cancel leaves nothing ope
   await page.evaluate(() => document.querySelectorAll('.win[data-ch]').forEach(e => e.remove()));
   await run('xqc', 'prediction');
   assert.match(await page.textContent(`${card} .kcmd-sub`), /start a prediction/);
+  await page.click(`${card} .kcmd-x`);
+  assert.equal(await page.locator(card).count(), 0, '× closes it too');
+  await run('xqc', 'prediction');
   await page.evaluate(() => window.kickPageCmd({ channel: 'xqc', el: document.querySelector('.win[data-ch="xqc"]') }, 'clip'));
   assert.equal(await page.locator(card).count(), 1, 'one at a time: the newest');
   assert.match(await page.textContent(`${card} .kcmd-sub`), /make a clip/);
@@ -93,4 +97,22 @@ test('the chat window offers to open the channel page; Cancel leaves nothing ope
   await run('xqc', 'raid');
   await page.evaluate(() => window.kickPageCmd({ channel: 'xqc' }, 'poll'));   // a window that's gone
   assert.equal(await page.locator('.kcmd').count(), 0, 'not shown');
+});
+
+test('narrower chats: the Open button gets a shorter name, and the narrowest stacks the buttons', async t => {
+  const page = await openApp(t);
+  const at = width => page.evaluate(width => {
+    document.querySelectorAll('.win[data-ch]').forEach(e => e.remove());
+    const el = document.createElement('div'); el.className = 'win chat'; el.dataset.ch = 'xqc';
+    el.style.cssText = `position:fixed;left:10px;top:60px;width:${width}px;height:500px;display:flex`; el.innerHTML = '<div class="body"></div>';
+    document.body.append(el);
+    window.kickPageCmd({ channel: 'xqc', el }, 'poll');
+    const yes = el.querySelector('.kcmd-yes'), no = el.querySelector('.kcmd-no');
+    return { label: yes.innerText.trim(), stacked: yes.getBoundingClientRect().top !== no.getBoundingClientRect().top,
+      fits: yes.scrollWidth <= yes.clientWidth };
+  }, width);
+  assert.deepEqual(await at(400), { label: 'Open channel page', stacked: false, fits: true });
+  assert.deepEqual(await at(270), { label: 'Open channel', stacked: false, fits: true });
+  assert.deepEqual(await at(210), { label: 'Open', stacked: false, fits: true });
+  assert.deepEqual(await at(150), { label: 'Open', stacked: true, fits: true });
 });
