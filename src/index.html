@@ -677,6 +677,11 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
   text-align:center;color:var(--muted);background:#000;font-size:13px}
 .waitmsg[hidden]{display:none}
 .waitmsg button[hidden]{display:none}
+.kcmd{position:absolute;left:8px;right:8px;bottom:8px;z-index:3;display:flex;flex-direction:column;gap:8px;padding:12px;
+  background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.6)}
+.kcmd h3{margin:0;font-size:14px}
+.kcmd .kcmd-sub{font-size:12px;color:var(--muted);line-height:1.45}
+.kcmd .kcmd-foot{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
 .cs-mode{flex:none;height:22px;padding:0 8px;border:1px solid var(--line2);border-radius:6px;background:var(--panel2);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
 .cs-mode:hover{border-color:var(--muted)}
 .cs-mode.on{border-color:var(--accent);color:var(--accent)}
@@ -2129,7 +2134,7 @@ const EMOTE_JS = `(${emoteAgent.toString()})()`;
 
 // Kick chat commands that only work on the channel page: the popout chat (what the app shows) knows them
 // but has nowhere to show their popup, so they do nothing there. The app offers to open the channel page.
-const KICK_PAGE_CMDS = { clip: 'make a clip', poll: 'start a poll' };
+const KICK_PAGE_CMDS = { clip: 'make a clip', poll: 'start a poll', prediction: 'start a prediction' };
 // Runs inside each Kick chat page: a message that is one of these commands isn't sent (Enter or the send
 // button); the app is told through a console message instead.
 function kickCmdAgent(names){
@@ -2153,14 +2158,25 @@ function kickCmdAgent(names){
   return true;
 }
 const KICK_CMD_JS = `(${kickCmdAgent.toString()})(${JSON.stringify(Object.keys(KICK_PAGE_CMDS))})`;
-async function kickPageCmd(w, cmd){
-  if (!KICK_PAGE_CMDS[cmd] || platOf(w.channel) !== 'kick') return;
-  const url = `https://kick.com/${encodeURIComponent(w.channel)}`;
-  if (!await ask(`/${cmd} doesn’t work in this chat`,
-    `Kick only lets you ${KICK_PAGE_CMDS[cmd]} on the channel page. Open ${w.channel}’s page (muted) to do it there?`,
-    { ok: 'Open channel page' })) return;
-  if (DESKTOP) window.kmv.openWindow(url, 1280, 800, { muted: true });
-  else window.open(url, 'kmv_page_' + w.channel, 'width=1280,height=800');
+// Says so in the chat window itself, over its chat box, with Cancel / Open channel page (muted, your login).
+function kickPageCmd(w, cmd){
+  if (!KICK_PAGE_CMDS[cmd] || platOf(w.channel) !== 'kick' || !w.el) return;
+  const body = w.el.querySelector('.body');
+  body.querySelector('.kcmd')?.remove();
+  const card = document.createElement('div');
+  card.className = 'kcmd'; card.setAttribute('role', 'alertdialog');
+  card.innerHTML = '<h3></h3><div class="kcmd-sub"></div><div class="kcmd-foot"><button class="btn kcmd-no">Cancel</button><button class="btn primary kcmd-yes">Open channel page</button></div>';
+  card.querySelector('h3').textContent = `/${cmd} doesn’t work in this chat`;
+  card.querySelector('.kcmd-sub').textContent = `Kick only lets you ${KICK_PAGE_CMDS[cmd]} on the channel page. Open ${w.channel}’s page (muted) to do it there?`;
+  card.querySelector('.kcmd-no').onclick = () => card.remove();
+  card.querySelector('.kcmd-yes').onclick = () => {
+    card.remove();
+    const url = `https://kick.com/${encodeURIComponent(w.channel)}`;
+    if (DESKTOP) window.kmv.openWindow(url, 1280, 800, { muted: true });
+    else window.open(url, 'kmv_page_' + w.channel, 'width=1280,height=800');
+  };
+  body.append(card);
+  card.querySelector('.kcmd-yes').focus();
 }
 window.chatAgentJs = MENTION_JS; window.mentionAgent = mentionAgent; window.emoteAgent = emoteAgent;   // for the tests
 window.kickCmdAgent = kickCmdAgent; window.kickPageCmd = kickPageCmd; window.KICK_PAGE_CMDS = KICK_PAGE_CMDS;
