@@ -261,3 +261,144 @@ test('Auto layout stays chosen after a restart and when an edge is only clicked;
   assert.equal(await layoutBtn(), 'Layout', 'moved by hand: no longer Auto layout');
   assert.equal(await page.textContent('#msg'), '', 'no message while fitting in is off');
 });
+
+for (const bar of [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left', labels: false }]){
+  const name = bar.pos === 'top' ? 'at the top' : bar.labels ? 'on the left' : 'on the left, icons only';
+  test(`Lock layout, toolbar ${name}: the padlock in the Layout menu and Shift+L lock it, the Layout button shows a padlock, remembered (#83)`, async t => {
+    const page = await openApp(t, { init: `localStorage.setItem('kickMultiview.toolbar', ${JSON.stringify(JSON.stringify(bar))})` });
+    const state = () => page.evaluate(() => ({
+      pressed: document.querySelector('#layoutLock').getAttribute('aria-pressed'), lit: document.querySelector('#layoutLock').classList.contains('on'),
+      ico: document.querySelector('#layoutBtn i[data-ico]').dataset.ico, title: document.querySelector('#layoutBtn').title,
+      saved: localStorage.getItem('kickMultiview.layoutLocked')
+    }));
+    await page.click('#layoutBtn');
+    assert.equal(await page.getAttribute('#layoutLock', 'title'), 'Lock layout (Shift+L)');
+    const head = await page.$$eval('#layoutMenu .lm-head button', l => l.map(b => b.id));
+    assert.deepEqual(head, ['layoutLock', 'layoutSet'], 'next to Layout settings');
+    await page.click('#layoutLock');
+    let s = await state();
+    assert.deepEqual([s.pressed, s.lit, s.ico, s.saved], ['true', true, 'lock', '1'], 'lit up, and the Layout button is a padlock');
+    assert.match(s.title, /\(locked\)/);
+    assert.equal(await page.getAttribute('#layoutLock', 'title'), 'Unlock layout (Shift+L)');
+    assert.match(await page.textContent('#msg'), /Layout locked/);
+    await page.keyboard.press('Escape');
+    await page.reload();
+    s = await state();
+    assert.deepEqual([s.pressed, s.ico], ['true', 'lock'], 'still locked after a restart');
+    assert.ok(await page.evaluate(() => document.body.classList.contains('layout-locked')));
+    await page.keyboard.press('Shift+L');
+    s = await state();
+    assert.deepEqual([s.pressed, s.lit, s.ico, s.saved], ['false', false, 'layout', '0'], 'Shift+L unlocks it');
+    assert.doesNotMatch(s.title, /locked/);
+    await page.keyboard.press('Shift+L');
+    assert.equal((await state()).pressed, 'true', 'and locks it again');
+    await page.keyboard.press('l');
+    assert.ok(await page.isVisible('#layoutMenu'), 'L still opens the Layout menu');
+  });
+}
+
+test('Lock layout, Auto layout: no resizing or moving; drag a stream onto a stream to swap just those two, with a preview; closing and opening refit it (#83)', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'bravo', 'charlie');
+  await page.click('#layoutBtn'); await page.click('#layoutMenu [data-l=auto]');
+  await page.waitForTimeout(400);
+  await page.keyboard.press('Shift+L');
+  const layoutBtn = async () => (await page.getAttribute('#layoutBtn', 'title')).split('. ')[0];
+  const settle = () => page.waitForFunction(() => !document.querySelector('#stage .win.anim'));
+  const placed = await windows(page);
+
+  // resizing is blocked, and says why
+  const a = win(page, 'alpha');
+  await sizeTo(page, a, 300, 200);
+  assert.deepEqual(await windows(page), placed, 'nothing changed size');
+  assert.match(await page.textContent('#msg'), /layout is locked/i);
+  assert.equal(await page.$eval('#stage .win .rz-se', e => getComputedStyle(e).cursor), 'not-allowed');
+  await page.click('#msg');                  // closes the message (it sits over the top of the chats)
+  // moving into free space or onto a chat: it goes back
+  await moveBy(page, a, 700, 0); await settle();
+  assert.deepEqual(await windows(page), placed, 'dropped on a chat, it goes back');
+  await moveBy(page, a, 0, -400); await settle();
+  assert.deepEqual(await windows(page), placed, 'and off the top, too');
+  assert.equal(await layoutBtn(), 'Layout: Auto layout (locked)', 'still Auto layout');
+
+  // dragging alpha over charlie: charlie lights up with "Swap alpha ⇄ charlie", an outline where charlie will land
+  const ab = await box(a), cb = await box(win(page, 'charlie'));
+  await page.mouse.move(ab.x + 13, ab.y + 12); await page.mouse.down();
+  await page.mouse.move(cb.x + cb.w / 2, cb.y + cb.h / 2, { steps: 10 });
+  const during = await page.evaluate(() => {
+    const lit = [...document.querySelectorAll('#stage .win.swap-target')].map(e => e.className.split(' ')[1] + ':' + e.querySelector('.title').textContent);
+    const g = document.querySelector('#swapGhost'), r = g.getBoundingClientRect();
+    return { lit, label: document.querySelector('.win.swap-target .shield')?.dataset.swap, ghost: getComputedStyle(g).display, ghostText: g.textContent,
+      ghostAt: [Math.round(r.x), Math.round(r.y)], back: g.classList.contains('back') };
+  });
+  assert.deepEqual(during.lit, ['stream:charlie'], 'only charlie (its chat stays)');
+  assert.equal(during.label, 'Swap alpha ⇄ charlie');
+  assert.equal(during.ghost, 'grid');
+  assert.equal(during.ghostText, 'charlie goes here');
+  assert.deepEqual(during.ghostAt, [ab.x, ab.y], 'where alpha was');
+  assert.equal(during.back, false);
+  const over = await box(win(page, 'bravo', 'chat'));
+  await page.mouse.move(over.x + over.w / 2, over.y + over.h / 2, { steps: 5 });   // over a chat: not a stream, so it would go back
+  assert.deepEqual(await page.$$eval('#stage .win.swap-target', l => l.length), 0);
+  assert.ok(await page.$eval('#swapGhost', g => g.classList.contains('back')), 'the outline says it goes back');
+  await page.mouse.move(cb.x + cb.w / 2, cb.y + cb.h / 2, { steps: 5 });
+  await page.mouse.up(); await settle();
+  assert.equal(await page.$eval('#swapGhost', g => getComputedStyle(g).display), 'none');
+  assert.deepEqual([await box(a), await box(win(page, 'charlie'))], [cb, ab], 'swapped');
+  const chatsAt = await page.$$eval('#stage .win.chat', l => l.map(e => e.querySelector('.title').textContent + '@' + e.offsetLeft + ',' + e.offsetTop));
+  assert.deepEqual(chatsAt, placed.filter(w => w.kind === 'chat').map(w => w.title + '@' + w.x + ',' + w.y), 'the chats stay where they were');
+  assert.equal(await layoutBtn(), 'Layout: Auto layout (locked)');
+
+  // a chat onto a chat swaps those two
+  const ach = await box(win(page, 'alpha', 'chat')), bch = await box(win(page, 'bravo', 'chat'));
+  await drag(page, { x: ach.x + 13, y: ach.y + 12 }, { x: bch.x + bch.w / 2, y: bch.y + bch.h / 2 }, { steps: 10 }); await settle();
+  assert.deepEqual([await box(win(page, 'alpha', 'chat')), await box(win(page, 'bravo', 'chat'))], [bch, ach]);
+
+  // closing bravo: Auto layout refits around what's left, keeping the swapped order
+  await win(page, 'bravo').locator('[data-a=close]').evaluate(b => b.click());
+  await settle();
+  const streams = async () => (await windows(page)).filter(w => w.kind === 'stream').sort((p, q) => p.y - q.y || p.x - q.x);
+  let s = await streams();
+  assert.deepEqual(s.map(w => w.title), ['charlie', 'alpha'], 'swapped order kept');
+  assert.ok(s[0].h > ab.h, 'the streams got bigger');
+  // opening delta: fitted in as the last stream, without moving the chats out of their swapped places
+  await add(page, 'delta'); await settle();
+  s = await streams();
+  assert.deepEqual(s.map(w => w.title), ['charlie', 'alpha', 'delta'], 'fitted in last');
+  const all = await windows(page);
+  const overlap = (p, q) => p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h;
+  assert.ok(all.every(p => all.every(q => p === q || !overlap(p, q))), 'nothing overlaps');
+  const chats = all.filter(w => w.kind === 'chat').sort((p, q) => p.y - q.y || p.x - q.x).map(w => w.title);
+  assert.deepEqual(chats, ['bravo', 'alpha', 'charlie', 'delta'], 'the chats keep their swapped order (bravo\'s stays open), delta\'s last');
+  assert.equal(await layoutBtn(), 'Layout: Auto layout (locked)');
+});
+
+test('Lock layout: maximise still works, a maximised window doesn\'t move, and unlocking lets windows move again (#83)', async t => {
+  const page = await twoStreams(t);
+  await page.keyboard.press('Shift+L');
+  const a = win(page, 'alpha'), before = await box(a);
+  await a.locator('.bar .grab').dblclick(); await page.waitForTimeout(350);
+  const max = await box(a);
+  assert.ok(max.w > before.w, 'maximised');
+  await moveBy(page, a, 200, 150); await page.waitForTimeout(350);
+  assert.deepEqual(await box(a), max, 'a maximised window stays put');
+  await a.locator('.bar .grab').dblclick(); await page.waitForTimeout(350);
+  assert.deepEqual(await box(a), before, 'and goes back');
+  await page.keyboard.press('Shift+L');
+  await moveBy(page, a, 50, 40);
+  assert.deepEqual(await box(a), { ...before, x: before.x + 50, y: before.y + 40 }, 'unlocked: it moves');
+});
+
+test('Chat focus: while dragging, the stream and its chat light up, with the swap shown (#83)', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'bravo');
+  await page.keyboard.press('Shift+C'); await page.waitForTimeout(400);
+  const a = await box(win(page, 'alpha')), b = await box(win(page, 'bravo'));
+  await page.mouse.move(a.x + a.w / 2, a.y + 12); await page.mouse.down();
+  await page.mouse.move(b.x + b.w / 2, b.y + b.h / 2, { steps: 10 });
+  const lit = await page.$$eval('#stage .win.swap-target', l => l.map(e => e.className.split(' ')[1] + ':' + e.querySelector('.title').textContent).sort());
+  assert.deepEqual(lit, ['chat:bravo', 'stream:bravo'], 'the whole pair');
+  assert.equal(await page.$eval('#stage .win.stream.swap-target .shield', e => e.dataset.swap), 'Swap alpha ⇄ bravo');
+  await page.mouse.up(); await page.waitForTimeout(400);
+  assert.deepEqual(await page.$$eval('#stage .win.swap-target', l => l.length), 0);
+});
