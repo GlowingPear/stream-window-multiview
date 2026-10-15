@@ -104,3 +104,31 @@ test('its icon from the folder, as a picture the page can show', () => {
   assert.equal(x.readManifest(path.join(dir, 'nope')), null);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('reloading from a folder: its manifest, or what\'s wrong with the folder', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-ext-'));
+  const file = path.join(dir, 'manifest.json');
+  fs.writeFileSync(file, '﻿{"name":"x","version":"2"}');
+  assert.deepEqual(x.checkFolder(dir), { manifest: { name: 'x', version: '2' } });
+  fs.writeFileSync(file, '{ "name": ');
+  assert.match(x.checkFolder(dir).error, /^Its manifest\.json has a mistake in it: /, 'with what the mistake is');
+  fs.writeFileSync(file, '[]');
+  assert.equal(x.checkFolder(dir).error, 'Its manifest.json has a mistake in it.');
+  fs.writeFileSync(file, 'null');
+  assert.equal(x.checkFolder(dir).error, 'Its manifest.json has a mistake in it.');
+  fs.rmSync(file);
+  assert.equal(x.checkFolder(dir).error, 'Its folder has no manifest.json any more.');
+  assert.equal(x.checkFolder(file).error, 'Its folder isn\'t there any more: ' + file, 'not a folder');
+  fs.rmSync(dir, { recursive: true, force: true });
+  assert.equal(x.checkFolder(dir).error, 'Its folder isn\'t there any more: ' + dir);
+});
+
+test('what a new version can do that the old one couldn\'t', () => {
+  const v1 = { content_scripts: [{ matches: ['https://kick.com/*'] }], permissions: ['storage'] };
+  assert.deepEqual(x.addedAccess(v1, { ...v1, version: '2' }), [], 'nothing new');
+  assert.deepEqual(x.addedAccess(v1, { ...v1, permissions: ['storage', 'tabs', 'cookies'] }),
+    ['See the address and title of every window', 'Read and change cookies']);
+  assert.deepEqual(x.addedAccess(v1, { ...v1, host_permissions: ['https://twitch.tv/*'] }), ['Read and change your data on twitch.tv, kick.com'], 'more sites');
+  assert.deepEqual(x.addedAccess({ ...v1, permissions: ['tabs'] }, v1), [], 'asking for less');
+  assert.deepEqual(x.addedAccess(null, { permissions: ['tabs'] }), ['See the address and title of every window']);
+});

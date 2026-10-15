@@ -211,6 +211,95 @@ test('Switched off in Settings, then removed', T, async () => {
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(data, 'extensions.json'), 'utf8')), []);
 });
 
+test('A folder extension reloads after its files change, keeping its settings; a broken folder says what\'s wrong', T, async () => {
+  const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'smv-reload-ext-'));
+  fs.cpSync(FIXTURE, dir, { recursive: true });
+  const manifest = () => JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+  const write = m => fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(m));
+  const card = '#settingsDlg .ex-card', msg = '#settingsDlg .ex-msg';
+  const small = () => a.win.textContent(card + ' .ex-t small');
+  const reload = async () => { await a.win.click(card + ' .ex-reload'); await a.win.waitForSelector(card + ' .ex-reload:not([disabled])'); };
+  const version = (title, kind) => inView(a.win, title, kind, () => document.documentElement.getAttribute('data-test-version')).catch(() => null);
+  await a.app.evaluate((_e, d) => { globalThis.__pick = d; }, dir);
+  try {
+    await openPane();
+    await a.win.click('#settingsDlg .ex-folder');
+    await a.win.waitForSelector('#extDlg:not([hidden])');
+    await a.win.check('#extDlg .ex-grid input[data-p=kick][data-k=chat]');
+    await a.win.click('#extDlg .ex-yes');
+    await a.win.waitForSelector(card + ' .ex-reload');
+    await closeSettings();
+    await markedNow('delta', 'stream', true);
+    await markedNow('charlie', 'chat', true);
+    await extBtn(winSel('alpha') + ' [data-a=ext]');          // off in this stream only
+    await a.win.waitForSelector('#extMenu:not([hidden]) .em-row');
+    await a.win.click('#extMenu .em-on');
+    await markedNow('alpha', 'stream', false);
+    const data = await a.app.evaluate(({ app }) => app.getPath('userData'));
+    const saved = () => JSON.parse(fs.readFileSync(path.join(data, 'extensions.json'), 'utf8'))[0];
+    const before = saved();
+
+    // its files changed: the new version, in the windows it runs in (they reload), with the same settings
+    write({ ...manifest(), version: '1.2.4' });
+    fs.appendFileSync(path.join(dir, 'mark.js'), "\ndocument.documentElement.setAttribute('data-test-version', '2');\n");
+    await openPane();
+    assert.match(await a.win.getAttribute(card + ' .ex-reload', 'title'), /Read its folder again/);
+    await reload();
+    await until(async () => /v1\.2\.4 · Loaded from a folder/.test(await small()));
+    assert.equal(await a.win.textContent(msg), 'Reloaded Test Marker v1.2.4.');
+    assert.equal(await a.win.isChecked(card + ' .ex-grid input[data-p=kick][data-k=chat]'), true);
+    assert.deepEqual(saved(), before, 'its settings are kept');
+    await closeSettings();
+    await until(async () => (await version('delta', 'stream')) === '2');
+    await until(async () => (await version('charlie', 'chat')) === '2');
+    assert.equal(await marked('alpha', 'stream'), false, 'still off in that stream');
+
+    // the folder gone, then a broken manifest: it says so, and nothing changes
+    fs.renameSync(dir, dir + '-moved');
+    await openPane();
+    await reload();
+    assert.equal(await a.win.textContent(msg), 'Its folder isn\'t there any more: ' + dir);
+    fs.renameSync(dir + '-moved', dir);
+    fs.writeFileSync(path.join(dir, 'manifest.json'), '{ "name": ');
+    await reload();
+    assert.match(await a.win.textContent(msg), /^Its manifest\.json has a mistake in it: /);
+    assert.match(await small(), /v1\.2\.4 · Loaded from a folder$/, 'the loaded one stays');
+    assert.equal(await a.win.locator(card).count(), 1);
+    assert.equal(await version('delta', 'stream'), '2');
+
+    // it asks for more than before: asked again, and Cancel keeps the loaded one
+    write({ ...JSON.parse(fs.readFileSync(path.join(FIXTURE, 'manifest.json'), 'utf8')), version: '1.2.5', permissions: ['storage', 'tabCapture', 'cookies'] });
+    await a.win.click(card + ' .ex-reload');
+    await a.win.waitForSelector('#extDlg:not([hidden])');
+    assert.equal(await a.win.textContent('#extDlgTitle'), 'Reload Test Marker?');
+    assert.match(await a.win.textContent('#extDlg .ex-src'), /From a folder · 1\.2\.5 · It now asks for more than before/);
+    assert.equal(await a.win.textContent('#extDlg .ex-yes'), 'Reload');
+    assert.equal(await a.win.isChecked('#extDlg .ex-grid input[data-p=kick][data-k=chat]'), true, 'with its own settings');
+    await a.win.click('#extDlg .ex-no');
+    await a.win.waitForSelector(card + ' .ex-reload:not([disabled])');
+    assert.match(await small(), /v1\.2\.4/);
+    await a.win.click(card + ' .ex-reload');
+    await a.win.waitForSelector('#extDlg:not([hidden])');
+    await a.win.uncheck('#extDlg .ex-grid input[data-p=kick][data-k=chat]');
+    await a.win.click('#extDlg .ex-yes');
+    await until(async () => /v1\.2\.5/.test(await small()));
+    assert.equal(saved().grid.kick.chat, false, 'what was chosen in the dialog');
+    assert.equal(await a.win.isChecked(card + ' .ex-grid input[data-p=kick][data-k=chat]'), false);
+    await closeSettings();
+    await markedNow('charlie', 'chat', false);
+
+    await openPane();
+    await a.win.click(card + ' .ex-rm');
+    await a.win.click('#askDlg .ask-yes');
+    await a.win.waitForSelector('#settingsDlg .ex-empty:not([hidden])');
+    await closeSettings();
+  } finally {
+    await a.app.evaluate((_e, d) => { globalThis.__pick = d; }, FIXTURE);
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(dir + '-moved', { recursive: true, force: true });
+  }
+});
+
 test('Install from link: a link that isn\'t one says so; the Web Store opens in its own window', T, async () => {
   await openPane();
   await a.win.click('#settingsDlg .ex-link');
