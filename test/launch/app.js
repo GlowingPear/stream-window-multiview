@@ -35,11 +35,18 @@ async function launchApp(opts = {}) {
       const player = '<!doctype html><title>player</title><body style="margin:0;background:#000"><video id="v" muted playsinline style="width:100%;height:100%"></video></body>';
       // YouTube's watch page: its player keeps its own volume (0-100) and mute, and sets the <video> from them,
       // levelled down to half (YouTube's loudness levelling), so the video's volume never equals the player's.
-      const ytWatch = '<!doctype html><title>player</title><body style="margin:0;background:#000"><div id="movie_player"><video id="v" playsinline style="width:100%;height:100%"></video></div><script>'
+      // Its hidden like button flips on a click (counted in __likes), and the page is signed in when the
+      // session has YouTube's SAPISID cookie. The player says it's playing (state 1) unless a test sets p.state.
+      const ytWatch = '<!doctype html><title>player</title><body style="margin:0;background:#000"><div id="movie_player"><video id="v" playsinline style="width:100%;height:100%"></video></div>'
+        + '<ytd-watch-metadata hidden><like-button-view-model><button aria-pressed="false"></button></like-button-view-model></ytd-watch-metadata><script>'
         + 'const p = document.getElementById("movie_player"), v = document.getElementById("v"); let vol = 100, m = false;'
         + 'const show = () => { v.volume = vol / 200; v.muted = m; };'
         + 'p.setVolume = x => { vol = Math.max(0, Math.min(100, Math.round(x))); show(); }; p.getVolume = () => vol;'
         + 'p.mute = () => { m = true; show(); }; p.unMute = () => { m = false; show(); }; p.isMuted = () => m; show();'
+        + 'p.getPlayerState = () => p.state ?? 1;'
+        + 'const lb = document.querySelector("like-button-view-model button"); window.__likes = 0;'
+        + 'lb.onclick = () => { window.__likes++; lb.setAttribute("aria-pressed", String(lb.getAttribute("aria-pressed") !== "true")); };'
+        + 'window.ytcfg = { get: k => k === "LOGGED_IN" ? /(^|; )SAPISID=/.test(document.cookie) : undefined };'
         + '</script></body>';
       const chat = '<!doctype html><title>chat</title><body><div id="chat"><div class="row"><b>regular</b>: <span>evening all</span></div></div></body>';
       const page = html => new Response(html, { headers: { 'content-type': 'text/html' } });
