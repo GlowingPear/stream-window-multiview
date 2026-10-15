@@ -273,6 +273,7 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .st-explain code{font:600 11.5px ui-monospace,Consolas,monospace;background:var(--panel2);border:1px solid var(--line2);border-radius:5px;padding:0 4px}
 .st-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
 .st-chip{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;border:1px solid var(--line2);border-radius:999px;padding:1px 3px 1px 9px;background:var(--bg)}
+.st-chip.ro{padding-right:9px}   /* shared, so no × to make room for */
 .st-chip button{border:0;background:none;color:var(--muted);cursor:pointer;width:17px;height:17px;display:grid;place-items:center;border-radius:50%;padding:0}
 .st-chip button:hover{background:var(--line2);color:var(--text)}
 .st-chip svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round}
@@ -7679,7 +7680,7 @@ function renderSpamLists(){
     const box = settingsDlg.querySelector(`[data-list="${which}"]`); box.innerHTML = '';
     const n = settingsDlg.querySelector(`[data-lcount="${which}"]`); if (n) n.textContent = listOf(which).length;
     listOf(which).forEach(item => {
-      const c = document.createElement('span'); c.className = 'st-chip';
+      const c = document.createElement('span'); c.className = ro ? 'st-chip ro' : 'st-chip';
       c.innerHTML = ro ? '<span></span>' : `<span></span><button title="Remove">${icon.close}</button>`;
       c.firstChild.textContent = item;
       if (!ro) c.querySelector('button').onclick = () => setSpamList(which, listOf(which).filter(x => x !== item));
