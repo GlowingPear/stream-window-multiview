@@ -736,6 +736,7 @@ header #bellBtn .mb-count{position:absolute;top:2px;right:0;min-width:15px;heigh
 .nc-sum{flex:1;font-size:11.5px;color:var(--muted)}
 .nc-pick{height:26px;max-width:170px;margin-left:auto;font-size:11.5px}
 .nc-list{overflow:auto;display:flex;flex-direction:column;min-height:0;border-top:1px solid var(--line)}
+.nc-list > *{flex-shrink:0}   /* it scrolls instead: a day's box (overflow:hidden) would shrink to a sliver */
 #bellList{margin:0 -12px}
 #bellList .sv-empty{padding:14px 12px;color:var(--muted);font-size:12.5px}
 .mp-row.nc-row{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:10px;row-gap:0;align-content:start}
