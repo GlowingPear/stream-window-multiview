@@ -79,11 +79,11 @@ test('Columns: when the space changes, the same column stays first and lined up 
   const pos = await page.textContent('#colPos');
   assert.match(pos, /^3\//);
   assert.deepEqual(await cutOff(page), [], 'lined up to start with');
-  const toolbar = (k, v) => page.evaluate(([k, v]) => document.querySelector(`#layoutMenu [data-tb=${k}] [data-v="${v}"]`).click(), [k, v]);   // as in the Layout menu
+  const toolbar = v => page.evaluate(v => document.querySelector(`#layoutMenu [data-tbv="${v}"]`).click(), v);   // as in the Layout menu's Toolbar tab
   const changes = [
-    ['the toolbar on the left', () => toolbar('pos', 'left')],
-    ['icons only', () => toolbar('labels', '0')],
-    ['back on top', () => toolbar('pos', 'top')],
+    ['the toolbar on the left', () => toolbar('left')],
+    ['icons only', () => toolbar('icons')],
+    ['back on top', () => toolbar('top')],
     ['a narrower window', () => page.setViewportSize({ width: 1000, height: 800 })],
     ['a wider window', () => page.setViewportSize({ width: 1500, height: 800 })]
   ];
@@ -220,10 +220,13 @@ test('the switch control floats: move it by its handle, resize it, and dock it a
   const saved = JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.switchRect')));
   assert.deepEqual([saved.w, saved.h], [b2.w, b2.h], 'size and place are remembered');
   // the Layout menu has the same choices
-  await page.click('#layoutBtn'); await page.click('#swModes [data-sw=dock]');
+  await page.click('#layoutBtn'); await page.click('#layoutMenu .lm-tabs [data-t=switch]'); await page.click('#swModes [data-sw=dock]');
   assert.equal(await fs.evaluate(e => e.classList.contains('floating')), false, 'Layout menu: Docked');
-  await page.click('#layoutBtn'); await page.click('#swModes [data-sw=float]');
-  assert.ok(await fs.evaluate(e => e.classList.contains('floating')), 'Layout menu: Floating');
+  assert.equal(await page.getAttribute('#swModes [data-sw=dock]', 'aria-checked'), 'true', 'its tick');
+  await page.click('#swModes [data-sw=float]');
+  assert.ok(await fs.evaluate(e => e.classList.contains('floating')), 'Layout menu: Floating (the menu stays open)');
+  assert.equal(await page.getAttribute('#swModes [data-sw=float]', 'aria-checked'), 'true', 'the tick moves');
+  await page.keyboard.press('Escape');
   await page.click('#featSwitch .fs-mdock');
   assert.equal(await fs.evaluate(e => e.classList.contains('floating')), false, 'docked');
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.switchMode')), 'dock');

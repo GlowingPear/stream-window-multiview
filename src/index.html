@@ -459,6 +459,37 @@ select.dd-open{border-color:var(--accent)}
 .menu-set > i{display:grid;place-items:center}
 #layoutLock.on{color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
 .lm-head{padding:2px 2px 4px 10px;font-size:13px;font-weight:700}
+/* Its tabs: Settings' tabs as they are (the menu's own button style doesn't apply), only spaced for the menu */
+.menu .lm-tabs{margin:0 4px 6px}
+.menu .lm-tabs button{display:block;flex:none;padding:7px 11px;border:0;border-bottom:2px solid transparent;border-radius:0;background:none;white-space:nowrap}
+.menu .lm-tabs button:hover{background:none}
+.menu .lm-tabs button.on{border-bottom-color:var(--accent)}
+/* every tab as tall as the tallest (Layouts): they share one cell, and only the open one shows */
+.lm-panes{display:grid}
+.lm-pane{grid-area:1/1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.lm-pane:not(.on){visibility:hidden}
+.lm-intro{margin:0 0 8px;padding:0 6px;font-size:11.5px;line-height:1.4;color:var(--muted)}
+/* Cards, one per row: Switch control (an icon) and Toolbar (a picture of the window), a tick on the one in use */
+.ly-cards{display:flex;flex-direction:column;gap:8px}
+.ly-cards button,.menu .ly-cards button{display:flex;flex-direction:row;align-items:center;gap:12px;padding:12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel2);color:var(--text);text-align:left;cursor:pointer}
+.ly-cards button:hover,.menu .ly-cards button:hover{border-color:var(--muted);background:var(--panel2)}
+.ly-cards button.on,.menu .ly-cards button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--panel2))}
+.ly-cards .lc-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.ly-cards .lc-t b,.menu .ly-cards .lc-t b{font-size:13px;color:var(--text)}
+.ly-cards button.on .lc-t b{color:var(--accent)}
+.ly-cards .lc-t span,.menu .ly-cards .lc-t span{font-size:11.5px;line-height:1.4;color:var(--muted)}
+.ly-cards .lc-ico{flex:none;width:34px;height:34px;display:grid;place-items:center;border-radius:8px;background:var(--panel);color:var(--muted)}
+.ly-cards button.on .lc-ico{color:var(--accent)}
+.ly-cards .lc-ico svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ly-cards .lc-tick{flex:none;width:18px;height:18px;box-sizing:border-box;border:2px solid var(--line2);border-radius:50%}
+.ly-cards button.on .lc-tick{border:5px solid var(--accent);background:var(--bg)}
+.tb-pic{flex:none;width:58px;height:36px}
+.tb-cards.big .tb-pic{width:80px;height:50px}
+.tb-cards.big button{padding:14px 18px;gap:16px}
+.tb-pic rect.o{fill:none;stroke:currentColor;stroke-width:1.2;opacity:.6}
+.tb-pic rect.b{opacity:.85}
+.tb-pic rect.l{fill:var(--panel2);opacity:1}
+.ly-cards button.on .tb-pic{color:var(--accent)}
 .lm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
 .menu .lm-grid button{align-items:center;gap:5px;padding:8px 4px 7px;border:1px solid transparent}
 .menu .lm-grid button > span{display:none}
@@ -478,9 +509,7 @@ select.dd-open{border-color:var(--accent)}
 .lm-opt .lm-sw{padding:0}
 .lm-opt .lm-sw button{flex:none;width:32px}
 .lm-sw button:disabled{opacity:.4;cursor:default}
-.lm-opt.lm-tb{padding-block:3px}
-.lm-opt.lm-tb .lm-sw button,.ly-tb .lm-sw button{flex:none;width:auto;min-width:46px;padding:0 9px;white-space:nowrap}   /* each as wide as its name, on one line */
-.ly-tb .lm-sw,.ly-zoom .zoom{padding:0;flex:none}
+.ly-zoom .zoom{padding:0;flex:none}
 .ly-zoom{margin-top:14px;border-top:1px solid var(--line);border-bottom:0}
 .menu .zoom button{display:grid;place-items:center;padding:0;font-size:15px;color:var(--text)}
 .menu .zoom button:hover{background:var(--line)}
@@ -1436,6 +1465,9 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 
 <div id="layoutMenu" class="menu" hidden>
   <div class="lm-head menu-head"><span>Layout</span><button class="menu-set" id="layoutLock" aria-pressed="false" title="Lock layout (Shift+L)" aria-label="Lock layout"><i data-ico="lock"></i></button><button class="menu-set" id="layoutSet" title="Layout settings" aria-label="Layout settings"></button></div>
+  <div class="st-tabs lm-tabs" role="tablist" aria-label="Layout menu"><button role="tab" data-t="layouts" class="on" aria-selected="true">Layouts</button><button role="tab" data-t="switch" aria-selected="false" tabindex="-1">Switch control</button><button role="tab" data-t="toolbar" aria-selected="false" tabindex="-1">Toolbar</button></div>
+  <div class="lm-panes">
+  <div class="lm-pane on" data-t="layouts" role="tabpanel" aria-label="Layouts">
   <div class="lm-grid">
   <button data-l="focus"><svg class="lm-pic" viewBox="0 0 48 30" aria-hidden="true"><rect x="1" y="1" width="26" height="17"/><rect class="c" x="1" y="20" width="26" height="9"/><rect x="29" y="1" width="8.5" height="6"/><rect class="c" x="29" y="9" width="8.5" height="20"/><rect x="39.5" y="1" width="7.5" height="6"/><rect class="c" x="39.5" y="9" width="7.5" height="20"/></svg><b>Focus view</b><span>One stream big with its chat, the rest in columns beside it, and the switch control to change which one is big.</span></button>
   <button data-l="game"><svg class="lm-pic" viewBox="0 0 48 30" aria-hidden="true"><rect class="g" x="1" y="1" width="33" height="28"/><rect x="36" y="1" width="11" height="7"/><rect x="36" y="10" width="11" height="7"/><rect class="c" x="36" y="19" width="11" height="10"/></svg><b>Game focus</b><span>Your game big, streams, chats and other windows on the side. The game area can be see-through so you play the real game.</span></button>
@@ -1452,18 +1484,19 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
     <div class="lm-opt" data-for="chatfocus"><span>Stream columns</span><div class="lm-sw" id="lmCols"><button data-n="1">1</button><button data-n="2">2</button><button data-n="3">3</button></div></div>
     <label class="lm-opt" data-for="auto"><span>Fit in channels that open by themselves<small>Added as the last stream when they go live.</small></span><input type="checkbox" class="st-sw" id="lmAutoFit"></label>
   </div>
-  <div class="lm-sec">Switch control</div>
-  <div class="lm-sw" id="swModes">
-    <button data-sw="dock" title="Under the big stream, in Focus view only">Docked</button>
-    <button data-sw="float" title="A panel you can move and resize anywhere in this window, in every layout">Floating</button>
-    <button data-sw="window" class="desk-only" title="In its own window: put it anywhere, even on another monitor">Own window</button>
-  </div>
-  <div class="lm-sec">Toolbar</div>
-  <div class="lm-opt lm-tb"><span>Position</span><div class="lm-sw" data-tb="pos"><button data-v="top">Top</button><button data-v="left">Left</button></div></div>
-  <div class="lm-opt lm-tb"><span>Left toolbar</span><div class="lm-sw" data-tb="labels"><button data-v="1">Labels</button><button data-v="0">Icons only</button></div></div>
   <div class="lm-sec">Your layouts</div>
   <div id="presetList"></div>
   <div class="lm-save"><input id="presetName" placeholder="Name this layout" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="presetSave">Save</button></div>
+  </div>
+  <div class="lm-pane" data-t="switch" role="tabpanel" aria-label="Switch control" inert>
+    <p class="lm-intro">A button for every stream: make one big, swap them, pause, mute and set the volume. Where it shows:</p>
+    <div class="ly-cards" id="swModes" role="radiogroup" aria-label="Where the switch control shows"><button data-sw="dock" role="radio" aria-checked="false"><i class="lc-ico" data-ico="dock"></i><span class="lc-t"><b>Docked</b><span>Under the big stream, in Focus view only.</span></span><i class="lc-tick" aria-hidden="true"></i></button><button data-sw="float" role="radio" aria-checked="false"><i class="lc-ico" data-ico="float"></i><span class="lc-t"><b>Floating</b><span>A panel you can move and resize, in every layout.</span></span><i class="lc-tick" aria-hidden="true"></i></button><button data-sw="window" class="desk-only" role="radio" aria-checked="false"><i class="lc-ico" data-ico="popwin"></i><span class="lc-t"><b>Own window</b><span>Put it anywhere, even on another monitor.</span></span><i class="lc-tick" aria-hidden="true"></i></button></div>
+  </div>
+  <div class="lm-pane" data-t="toolbar" role="tabpanel" aria-label="Toolbar" inert>
+    <p class="lm-intro">Where the toolbar sits, in every layout.</p>
+    <div class="ly-cards tb-cards" role="radiogroup" aria-label="Toolbar"><button data-tbv="top" role="radio" aria-checked="false"><svg class="lm-pic tb-pic" viewBox="0 0 48 30" aria-hidden="true"><rect class="o" x="1" y="1" width="46" height="28" rx="2"/><rect class="b" x="1" y="1" width="46" height="5"/><rect x="3" y="8" width="20.5" height="19"/><rect class="c" x="25.5" y="8" width="19.5" height="19"/></svg><span class="lc-t"><b>Top</b><span>A bar across the top of the window.</span></span><i class="lc-tick" aria-hidden="true"></i></button><button data-tbv="left" role="radio" aria-checked="false"><svg class="lm-pic tb-pic" viewBox="0 0 48 30" aria-hidden="true"><rect class="o" x="1" y="1" width="46" height="28" rx="2"/><rect class="b" x="1" y="1" width="11" height="28"/><rect class="l" x="3" y="5" width="7" height="1.6"/><rect class="l" x="3" y="9" width="7" height="1.6"/><rect class="l" x="3" y="13" width="7" height="1.6"/><rect x="14" y="3" width="15" height="24"/><rect class="c" x="31" y="3" width="14" height="24"/></svg><span class="lc-t"><b>Left</b><span>A column down the side, each button with its name. More height for the streams.</span></span><i class="lc-tick" aria-hidden="true"></i></button><button data-tbv="icons" role="radio" aria-checked="false"><svg class="lm-pic tb-pic" viewBox="0 0 48 30" aria-hidden="true"><rect class="o" x="1" y="1" width="46" height="28" rx="2"/><rect class="b" x="1" y="1" width="5" height="28"/><rect class="l" x="2.5" y="5" width="2" height="2"/><rect class="l" x="2.5" y="9" width="2" height="2"/><rect class="l" x="2.5" y="13" width="2" height="2"/><rect x="8" y="3" width="18.5" height="24"/><rect class="c" x="28.5" y="3" width="16.5" height="24"/></svg><span class="lc-t"><b>Left, icons only</b><span>A slim column: the most room for the streams. Point at a button to see its name.</span></span><i class="lc-tick" aria-hidden="true"></i></button></div>
+  </div>
+  </div>
 </div>
 
 <div id="bellPanel" class="popover nc" hidden>
@@ -1614,7 +1647,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       </section>
       <section class="st-pane" data-s="layouts" hidden>
         <h4>Layouts</h4><p class="st-sub">How the windows are arranged. Switch with <b>Layout ▾</b> in the toolbar, or here.</p>
-        <div class="st-tabs" id="lyTabs"><button data-t="layouts" class="on">Layouts</button><button data-t="switch">Switch control</button><button data-t="toolbar">Toolbar</button></div>
+        <div class="st-tabs" id="lyTabs" role="tablist" aria-label="Layouts"><button role="tab" data-t="layouts" class="on" aria-selected="true">Layouts</button><button role="tab" data-t="switch" aria-selected="false" tabindex="-1">Switch control</button><button role="tab" data-t="toolbar" aria-selected="false" tabindex="-1">Toolbar</button></div>
         <div class="st-subpane" data-t="layouts"><div class="ly-md"><div class="ly-list" id="lyList" role="listbox" aria-label="Layouts"><div id="lyPresetList"></div></div><div class="ly-detail" id="lyDetail"><div id="lyPresetDetail"></div><div class="ly-panel" data-k="+new" hidden><div class="ly-head"><b>Save what's on screen</b></div><p class="ly-desc">Keeps the open windows, where they are and their order, with the layout's options. Using it later keeps the windows that are already open and reopens the rest.</p><div class="st-add"><input class="st-in" id="lyPresetName" placeholder="Name this layout" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="lyPresetSave">Save</button></div></div></div></div>
           <div class="st-row ly-zoom desk-only"><span class="st-t">Chat text size<small>For every chat window. Smaller fits more messages and emotes. Also in <b>Layout ▾</b>.</small></span><div class="zoom" id="lyZoom" title="Chat text size: smaller fits more messages and emotes"><button data-z="-1" aria-label="Smaller chat text">−</button><span class="zoomPct">100%</span><button data-z="1" aria-label="Bigger chat text">+</button></div></div></div>
         <div class="st-subpane" data-t="switch" hidden>
@@ -1627,8 +1660,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         </div>
         <div class="st-subpane" data-t="toolbar" hidden>
           <p class="st-sub ly-intro">Where the toolbar sits, in every layout. On the left it leaves more height for the streams.</p>
-          <div class="st-row ly-tb"><span class="st-t">Position<small>Top: a bar across the window. Left: a column down its side.</small></span><div class="lm-sw" data-tb="pos"><button data-v="top">Top</button><button data-v="left">Left</button></div></div>
-          <div class="st-row ly-tb"><span class="st-t">Left toolbar<small>Labels: each button with its name. Icons only: a slim column; point at a button to see its name.</small></span><div class="lm-sw" data-tb="labels"><button data-v="1">Labels</button><button data-v="0">Icons only</button></div></div>
+          <div class="ly-cards tb-cards big" role="radiogroup" aria-label="Toolbar"><button data-tbv="top" role="radio" aria-checked="false"><svg class="lm-pic tb-pic" viewBox="0 0 48 30" aria-hidden="true"><rect class="o" x="1" y="1" width="46" height="28" rx="2"/><rect class="b" x="1" y="1" width="46" height="5"/><rect x="3" y="8" width="20.5" height="19"/><rect class="c" x="25.5" y="8" width="19.5" height="19"/></svg><span class="lc-t"><b>Top</b><span>A bar across the top of the window.</span></span><i class="lc-tick" aria-hidden="true"></i></button><button data-tbv="left" role="radio" aria-checked="false"><svg class="lm-pic tb-pic" viewBox="0 0 48 30" aria-hidden="true"><rect class="o" x="1" y="1" width="46" height="28" rx="2"/><rect class="b" x="1" y="1" width="11" height="28"/><rect class="l" x="3" y="5" width="7" height="1.6"/><rect class="l" x="3" y="9" width="7" height="1.6"/><rect class="l" x="3" y="13" width="7" height="1.6"/><rect x="14" y="3" width="15" height="24"/><rect class="c" x="31" y="3" width="14" height="24"/></svg><span class="lc-t"><b>Left</b><span>A column down the side, each button with its name. More height for the streams.</span></span><i class="lc-tick" aria-hidden="true"></i></button><button data-tbv="icons" role="radio" aria-checked="false"><svg class="lm-pic tb-pic" viewBox="0 0 48 30" aria-hidden="true"><rect class="o" x="1" y="1" width="46" height="28" rx="2"/><rect class="b" x="1" y="1" width="5" height="28"/><rect class="l" x="2.5" y="5" width="2" height="2"/><rect class="l" x="2.5" y="9" width="2" height="2"/><rect class="l" x="2.5" y="13" width="2" height="2"/><rect x="8" y="3" width="18.5" height="24"/><rect class="c" x="28.5" y="3" width="16.5" height="24"/></svg><span class="lc-t"><b>Left, icons only</b><span>A slim column: the most room for the streams. Point at a button to see its name.</span></span><i class="lc-tick" aria-hidden="true"></i></button></div>
         </div>
         <label class="st-opt" data-opt="columns"><span class="st-t">Linked<small>Each stream and its chat move together. Off: move and resize windows freely.</small></span><input type="checkbox" class="st-sw" id="lyLinked"></label>
         <label class="st-opt" data-opt="auto"><span class="st-t">Fit in channels that open by themselves<small>A saved channel that opens because it went live goes last (its chat too), and the others keep their order. Not once you've moved or resized a window yourself.</small></span><input type="checkbox" class="st-sw" id="autoFit"></label>
@@ -6020,7 +6052,7 @@ function updateLayoutMenu(){
 function updateSwBtn(){
   const b = $('#swBtn'); if (!b || typeof switchMode === 'undefined') return;
   b.classList.toggle('on', switchMode !== 'dock');
-  document.querySelectorAll('#swModes button').forEach(x => x.classList.toggle('on', x.dataset.sw === switchMode));
+  document.querySelectorAll('#swModes button').forEach(x => { x.classList.toggle('on', x.dataset.sw === switchMode); x.setAttribute('aria-checked', String(x.dataset.sw === switchMode)); });
   syncLySw();
 }
 
@@ -6514,6 +6546,24 @@ if (MAC_BAR) document.addEventListener('pointermove', e => {
   else if (document.body.classList.contains('bar-lights') && !(x <= LIGHTS_CORNER.x && y <= LIGHTS_CORNER.y)){ clearTimeout(barLightsT); barLightsT = setTimeout(() => setBarLights(false), 300); }
   else clearTimeout(barLightsT);
 });
+// A row of tabs (role="tablist"): click one, or the arrow keys, Home and End. onPick(name) shows its part.
+// list.selectTab(name) picks one from code.
+function wireTabs(list, onPick){
+  const tabs = () => [...list.querySelectorAll('[role=tab]')];
+  const pick = (b, focus) => {
+    tabs().forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-selected', String(on)); x.tabIndex = on ? 0 : -1; });
+    onPick(b.dataset.t);
+    if (focus) b.focus();
+  };
+  list.addEventListener('click', e => { const b = e.target.closest('[role=tab]'); if (b) pick(b); });
+  list.addEventListener('keydown', e => {
+    const all = tabs(), i = all.indexOf(document.activeElement); if (i < 0) return;
+    const n = e.key === 'ArrowRight' ? (i + 1) % all.length : e.key === 'ArrowLeft' ? (i - 1 + all.length) % all.length : e.key === 'Home' ? 0 : e.key === 'End' ? all.length - 1 : -1;
+    if (n < 0) return;
+    e.preventDefault(); pick(all[n], true);
+  });
+  list.selectTab = t => { const b = tabs().find(x => x.dataset.t === t); if (b) pick(b); };
+}
 function updateFold(){
   const b = $('#barFold');
   if (barLabels){ setTb(b, 'Collapse', 'fold'); b.title = 'Show icons only'; }
@@ -6524,8 +6574,8 @@ function applyToolbar(start){
   cls.toggle('bar-left', left);
   cls.toggle('bar-icons', left && !barLabels);
   if (!cls.contains('bar-icons')) cls.remove('bar-lights');
-  document.querySelectorAll('[data-tb=pos] button').forEach(b => b.classList.toggle('on', b.dataset.v === barPos));
-  document.querySelectorAll('[data-tb=labels] button').forEach(b => { b.classList.toggle('on', (b.dataset.v === '1') === barLabels); b.disabled = barPos !== 'left'; });
+  const tbv = barPos === 'top' ? 'top' : barLabels ? 'left' : 'icons';
+  document.querySelectorAll('[data-tbv]').forEach(b => { b.classList.toggle('on', b.dataset.tbv === tbv); b.setAttribute('aria-checked', String(b.dataset.tbv === tbv)); });
   updateFold(); updateFocusBtn();
   if (start && !cls.contains('bar-icons')) return;     // the lights are as macOS opened the window
   showLights(!cls.contains('focus') || cls.contains('peek'));
@@ -6536,12 +6586,16 @@ function applyToolbar(start){
 function setToolbar(pos, labels){
   barPos = pos === 'left' ? 'left' : 'top'; barLabels = !!labels;
   try { localStorage.setItem('kickMultiview.toolbar', JSON.stringify({ pos: barPos, labels: barLabels })); } catch {}
-  ['#layoutMenu', '#accountMenu', '#savedPanel', '#bellPanel', '#moreMenu'].forEach(sel => { $(sel).hidden = true; });   // they were placed for the old toolbar
+  ['#accountMenu', '#savedPanel', '#bellPanel', '#moreMenu'].forEach(sel => { $(sel).hidden = true; });   // they were placed for the old toolbar
   applyToolbar();
+  // the Layout menu stays open (its Toolbar tab is where you chose it), beside the new toolbar
+  if (!layoutMenu.hidden) requestAnimationFrame(() => { if (!layoutMenu.hidden) placeMenu(layoutMenu, layoutBtn); });
 }
+// Toolbar: Top, Left, or Left with icons only (Top keeps the last Labels / Icons only for going back to the left)
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-tb] button'); if (!b || b.disabled) return;
-  if (b.parentElement.dataset.tb === 'pos') setToolbar(b.dataset.v, barLabels); else setToolbar(barPos, b.dataset.v === '1');
+  const b = e.target.closest('button[data-tbv]'); if (!b) return;
+  const v = b.dataset.tbv;
+  setToolbar(v === 'top' ? 'top' : 'left', v === 'top' ? barLabels : v === 'left');
 });
 $('#barFold').onclick = () => setToolbar(barPos, !barLabels);
 applyToolbar(true);
@@ -6712,15 +6766,20 @@ if (ROLE === 'main'){
   swBtn.hidden = false;
   swBtn.onclick = () => setSwitchMode(switchMode === 'dock' ? 'float' : 'dock');
   if (!DESKTOP) document.querySelectorAll('#swModes .desk-only, #layoutMenu .zoom-row, #settingsDlg .ly-zoom').forEach(b => b.remove());
+  $('#swModes').querySelectorAll('i[data-ico]').forEach(i => { i.innerHTML = icon[i.dataset.ico]; });
   $('#swModes').addEventListener('click', e => {
     const b = e.target.closest('button[data-sw]'); if (!b) return;
-    layoutMenu.hidden = true;
-    setSwitchMode(b.dataset.sw);
+    setSwitchMode(b.dataset.sw);                         // the menu stays open: the tick moves
+  });
+  // its tabs: Layouts (where it opens), Switch control and Toolbar, like Settings > Layouts
+  wireTabs(layoutMenu.querySelector('.lm-tabs'), t => {
+    layoutMenu.querySelectorAll('.lm-pane').forEach(p => { const on = p.dataset.t === t; p.classList.toggle('on', on); p.inert = !on; });
   });
   updateSwBtn();
   layoutBtn.onclick = () => {
     layoutMenu.hidden = !layoutMenu.hidden;
     if (!layoutMenu.hidden){
+      layoutMenu.querySelector('.lm-tabs').selectTab('layouts');
       updateLayoutMenu();
       placeMenu(layoutMenu, layoutBtn);
     }
@@ -6743,7 +6802,10 @@ if (ROLE === 'main'){
     if (!layoutMenu.hidden && !layoutMenu.contains(e.target) && e.target !== layoutBtn) layoutMenu.hidden = true;
   });
   $('#presetSave').onclick = () => savePresetFromInput();
-  $('#layoutSet').onclick = () => { layoutMenu.hidden = true; openSettings('layouts'); };
+  $('#layoutSet').onclick = () => {                     // Settings > Layouts, on the menu's tab
+    const t = layoutMenu.querySelector('.lm-tabs button.on').dataset.t;
+    layoutMenu.hidden = true; openSettings('layouts'); $('#lyTabs').selectTab(t);
+  };
   const hint = b => { $('#lmHint').textContent = b.querySelector('span').textContent; };
   layoutMenu.querySelectorAll('.lm-grid button').forEach(b => { b.addEventListener('pointerenter', () => hint(b)); b.addEventListener('focus', () => hint(b)); });
   layoutMenu.querySelector('.lm-grid').addEventListener('pointerleave', updateLayoutMenu);
@@ -6780,10 +6842,8 @@ if (ROLE === 'main'){
     const n = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : Math.max(0, Math.min(items.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
     selectLayoutPane(items[n].dataset.k); items[n].focus();
   });
-  $('#lyTabs').addEventListener('click', e => {
-    const b = e.target.closest('button[data-t]'); if (!b) return;
-    $('#lyTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-    document.querySelectorAll('#settingsDlg [data-s=layouts] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
+  wireTabs($('#lyTabs'), t => {
+    document.querySelectorAll('#settingsDlg [data-s=layouts] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== t; });
   });
   if (!DESKTOP) $('#lySw .desk-only').remove();
   $('#lySw').querySelectorAll('i[data-ico]').forEach(i => { i.innerHTML = icon[i.dataset.ico]; });
