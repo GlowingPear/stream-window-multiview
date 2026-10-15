@@ -152,7 +152,7 @@ test('right-clicking an emote the chat shows: the app draws the menu with its pr
   assert.ok(items.includes('Inspect'), 'the same items as the system menu would have');
   // where it was right-clicked: the chat window's place plus the pointer's place in it
   const [mb, vb] = await a.win.evaluate(() => {
-    const v = [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent === 'alpha').querySelector('webview');
+    const v = [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent.toLowerCase() === 'alpha').querySelector('webview');
     const m = document.querySelector('.vmenu').getBoundingClientRect(), r = v.getBoundingClientRect();
     return [{ x: m.left, y: m.top }, { x: r.left + 40 * v.getZoomFactor(), y: r.top + 50 * v.getZoomFactor() }];
   });
@@ -189,7 +189,7 @@ test('Translate new messages in every chat: on in open and new chats, off in one
   await until(() => st('alpha'), { on: false, auto: false });
   assert.deepEqual(await w.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.noTranslate'))), ['alpha']);
   assert.deepEqual(await st('bravo'), { on: true, auto: true }, 'the other chat keeps going');
-  await w.evaluate(() => [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent === 'alpha').querySelector('webview').reload());
+  await w.evaluate(() => [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent.toLowerCase() === 'alpha').querySelector('webview').reload());
   await new Promise(r => setTimeout(r, 1500));
   await until(() => st('alpha'), { on: false, auto: false });
   // switched off: back to each chat's own choice (neither chose it)
