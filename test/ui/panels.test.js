@@ -332,6 +332,24 @@ test('Layout menu: pictures with a hint line, and the current layout\'s options 
   assert.equal(await page.isVisible('#lmOpts'), false, 'Tile has no options');
 });
 
+for (const bar of [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left', labels: false }]){
+  const name = bar.pos === 'top' ? 'at the top' : bar.labels ? 'on the left' : 'on the left, icons only';
+  test(`Layout menu, toolbar ${name}: pointing at the layouts doesn't change the menu's height; every description fits (#94)`, async t => {
+    const page = await openApp(t, { init: `localStorage.setItem('kickMultiview.toolbar', ${JSON.stringify(JSON.stringify(bar))})` });
+    await page.click('#layoutBtn');
+    const sizes = [];
+    for (const l of await page.$$eval('#layoutMenu .lm-grid [data-l]', e => e.map(b => b.dataset.l))){
+      await page.hover(`#layoutMenu [data-l=${l}]`);
+      sizes.push(await page.evaluate(l => {
+        const h = document.querySelector('#lmHint'), m = document.querySelector('#layoutMenu');
+        return { l, hint: h.offsetHeight, fits: h.scrollHeight <= h.clientHeight, menu: m.scrollHeight };
+      }, l));
+    }
+    assert.ok(sizes.every(s => s.fits), `every description fits: ${JSON.stringify(sizes)}`);
+    for (const k of ['hint', 'menu']) assert.equal(new Set(sizes.map(s => s[k])).size, 1, `the same ${k} for every layout: ${JSON.stringify(sizes)}`);
+  });
+}
+
 test('Game focus: pick a stream for the game area, change the panel size and side', async t => {
   const page = await openApp(t);
   await add(page, 'alpha', 'bravo');
