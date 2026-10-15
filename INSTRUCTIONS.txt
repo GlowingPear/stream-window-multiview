@@ -218,7 +218,7 @@ Live alerts check your saved channels while the app is running. Kick (when you'r
 
 ## Other handy things
 - Chat text size (Layout ▾, or Settings > Layouts): − and + make the text in every chat smaller or bigger.
-- Toolbar on the left (Layout ▾ > Toolbar, or Settings > Layouts > Toolbar): a column down the side instead of a bar across the top, which leaves more height for the streams. **Labels** shows each button's name; **Icons only** is a slim column that slides its names out over the streams while you point at it. « Collapse and » at the bottom switch between the two.
+- Toolbar on the left (Layout ▾ > Toolbar, or Settings > Layouts > Toolbar): a column down the side instead of a bar across the top, which leaves more height for the streams. **Labels** shows each button's name; **Icons only** is a slim column: point at a button to see its name (on a Mac, point at the pear for the window's close, minimise and full-screen buttons). « Collapse and » at the bottom switch between the two.
 - Hide bar: hides the toolbar. Move the mouse to the top edge (the left edge for the toolbar on the left) or press Esc to bring it back.
 - On a Mac the toolbar is also the window's title bar: drag an empty spot on it to move the window, or double-click one to zoom. With the bar hidden, the window's buttons hide too and come back with it.
 - F11: full screen.
