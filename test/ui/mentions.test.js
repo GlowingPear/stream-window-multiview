@@ -216,3 +216,19 @@ test('mentions show their emotes inline, safely, with the name when a picture is
   await page.fill('#nhQ', 'pearhype');
   assert.deepEqual(await page.$$eval('#nhList .mp-row .mp-top b', e => e.map(b => b.textContent)), ['ann'], 'emote names are searchable');
 });
+
+test('Spam alerts › Chat bots to ignore, shared with Mentions: read-only pills with the name centred (#86)', async t => {
+  const page = await openApp(t);
+  await page.evaluate(() => { document.querySelector('.st-rail [data-s=spam]').hidden = false; openSettings('spam'); });   // (the desktop app's page)
+  await page.click('#spamTabs [data-t=lists]');
+  await page.click('#spamListPick [data-l=ignore]');
+  const gaps = () => page.$$eval('[data-list=ignore] .st-chip', e => e.map(c => {
+    const a = c.getBoundingClientRect(), b = c.firstChild.getBoundingClientRect();
+    return [Math.round(b.left - a.left), Math.round(a.right - b.right), c.querySelectorAll('button').length, c.classList.contains('ro')];
+  }));
+  const shared = await gaps();
+  assert.ok(shared.length > 3, 'the Mentions chat bots');
+  for (const [l, r, x, ro] of shared){ assert.equal(x, 0, 'nothing to remove here'); assert.ok(ro); assert.ok(Math.abs(l - r) <= 1, `centred: ${JSON.stringify(shared)}`); }
+  await page.click('[data-s=spam] [data-al="spam.sharedBots"]');
+  for (const [, , x, ro] of await gaps()){ assert.equal(x, 1, 'its own list: each has its ×'); assert.equal(ro, false, 'and the usual spacing for it'); }
+});
