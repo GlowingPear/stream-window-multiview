@@ -1660,8 +1660,8 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       <section class="st-pane" data-s="mentions" hidden>
         <h4>Mentions &amp; replies</h4><p class="st-sub">When someone writes @you or replies to you in an open Kick or Twitch chat. The chat already highlights the message itself; these make the <b>window</b> stand out so you can see which chat it's in.</p>
         <label class="st-lead"><span class="st-t"><b>Alert me</b><small>When someone mentions or replies to the usernames below, or writes one of your words.</small></span><input type="checkbox" class="st-sw" id="mentOn"></label>
-        <div class="st-tabs" id="mentTabs"><button data-t="names" class="on">Names &amp; words</button><button data-t="bots">Chat bots</button><button data-t="alerts">Alerts</button></div>
-        <div class="st-subpane" data-t="names">
+        <div class="st-tabs" id="mentTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="names">Names &amp; words</button><button data-t="bots">Chat bots</button></div>
+        <div class="st-subpane" data-t="names" hidden>
         <div class="st-sec">Your usernames</div>
         <p class="st-sub" style="margin:2px 0 0">Used to spot mentions and replies to you. Kick and Twitch chats are covered; YouTube chat isn't.</p>
         <div class="st-row"><span class="st-t">Kick</span><input class="st-in" id="mentUser" placeholder="e.g. YourName" autocomplete="off" spellcheck="false"><button class="btn" id="mentDetect" title="Read them from your Kick and Twitch logins">Detect</button></div>
@@ -1678,7 +1678,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <div class="st-add"><input class="st-in" data-add="mbots" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="mbots">Add</button></div>
         <div class="st-chips" data-list="mbots"></div>
         </div>
-        <div class="st-subpane st-opts" data-t="alerts" data-for="mention" hidden>
+        <div class="st-subpane st-opts" data-t="alerts" data-for="mention">
         <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up.</small></span>
           <select data-al="mention.hl"><option value="off">Off</option><option value="brief">Brief glow</option><option value="until">Until I click the chat</option></select>
           <input type="color" data-al="mention.color" title="Colour"></div>

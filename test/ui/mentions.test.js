@@ -232,3 +232,24 @@ test('Spam alerts › Chat bots to ignore, shared with Mentions: read-only pills
   await page.click('[data-s=spam] [data-al="spam.sharedBots"]');
   for (const [, , x, ro] of await gaps()){ assert.equal(x, 1, 'its own list: each has its ×'); assert.equal(ro, false, 'and the usual spacing for it'); }
 });
+
+test('Settings › Mentions opens on Alerts, its first tab, as Notifications and Spam alerts do; links still open their tab (#89)', async t => {
+  const page = await openApp(t);
+  await page.evaluate(() => { ['mentions', 'spam'].forEach(s => { document.querySelector(`.st-rail [data-s=${s}]`).hidden = false; }); openSettings('mentions'); });   // (the desktop app's pages)
+  const tabs = () => page.$$eval('#mentTabs button', e => e.map(b => b.textContent + (b.classList.contains('on') ? ' *' : '')));
+  const shown = () => page.$$eval('[data-s=mentions] .st-subpane', e => e.filter(p => !p.hidden).map(p => p.dataset.t));
+  assert.deepEqual(await tabs(), ['Alerts *', 'Names & words', 'Chat bots']);
+  assert.deepEqual(await shown(), ['alerts']);
+  assert.ok(await page.isVisible('[data-s=mentions] [data-al="mention.popup"]'), 'its settings show');
+  for (const p of ['notify', 'spam']) assert.equal(await page.$eval(`[data-s=${p}] .st-tabs button`, b => b.textContent), 'Alerts', `the same first tab as ${p}`);
+  await page.click('#mentTabs [data-t=names]');
+  assert.deepEqual(await shown(), ['names']);
+  assert.ok(await page.isVisible('#mentUser'));
+  // Spam alerts › Lists › Chat bots to ignore links to Mentions › Chat bots
+  await page.evaluate(() => openSettings('spam'));
+  await page.click('#spamTabs [data-t=lists]');
+  await page.click('#spamListPick [data-l=ignore]');
+  await page.click('[data-s=spam] [data-go=mentions][data-sub=bots]');
+  assert.deepEqual(await tabs(), ['Alerts', 'Names & words', 'Chat bots *']);
+  assert.deepEqual(await shown(), ['bots']);
+});
