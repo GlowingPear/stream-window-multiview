@@ -3188,13 +3188,13 @@ function toggleAutoOpen(ch){
 function liveNote(ch, info, auto){
   info = info || infoFor(ch) || {};
   const recent = notes.find(n => n.kind === 'live' && n.channel === ch && Date.now() - n.t < 10 * 60000);
-  const data = { label: info.name || chLabel(ch), title: info.title || '', category: info.category || '', ...(info.viewers != null ? { viewers: info.viewers } : {}) };
+  const data = { label: info.name || '', title: info.title || '', category: info.category || '', ...(info.viewers != null ? { viewers: info.viewers } : {}) };
   if (recent){
-    Object.assign(recent, Object.fromEntries(Object.entries(data).filter(([, v]) => v !== '' && v != null)), auto ? { auto: true } : {});
+    Object.assign(recent, Object.fromEntries(Object.entries(data).filter(([, v]) => v !== '')), auto ? { auto: true } : {});
     saveNotes(); renderBell();
     return recent;
   }
-  return addNote({ kind: 'live', channel: ch, ...data, ...(auto ? { auto: true } : {}) },
+  return addNote({ kind: 'live', channel: ch, ...data, label: data.label || chLabel(ch), ...(auto ? { auto: true } : {}) },
     auto ? null : `${chLabel(ch)} just went live on ${PLAT_NAME[platOf(ch)]}`);
 }
 function checkAutoOpen(){
@@ -3612,7 +3612,7 @@ function noteRow(n, o = {}){
     act('Show chat', () => { close(); revealChat(n.channel); });
     act('Not spam', () => dropNotes(x => x === n)).title = 'Take it off this list';
     if (SmvSpam.ignored(n.sender, spamOpts().ignore)) acts.insertAdjacentHTML('beforeend', '<span class="nc-note">On the chat bot list</span>');
-    else act('Add to bots', () => ignoreSender(n.sender), 'danger').title = `Add ${n.sender} to the chat bot list, so its messages are never flagged`;
+    else act('Add to bots', () => { ignoreSender(n.sender); renderBell(); }, 'danger').title = `Add ${n.sender} to the chat bot list, so its messages are never flagged`;
     const why = document.createElement('div'); why.className = 'nc-why'; why.hidden = true;
     why.textContent = spamWhy(n);
     act('Why?', () => { why.hidden = !why.hidden; }, 'linkish');
@@ -4188,7 +4188,8 @@ const NT_ROWS = [['mention', 'Mentions &amp; replies', 'mentions', 'More on Ment
   ['live', 'Saved channel went live'], ['raid', 'Raids'], ['app', 'App messages']];
 const SOUND_OPTS = '<option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound</option>';
 NT_ROWS.forEach(([k, name, go, more]) => {
-  $('#ntGrid').insertAdjacentHTML('beforeend', `<span class="nt-k k-${k}"><i></i><span>${name}${go ? `<button class="linkish" data-go="${go}" data-sub="alerts">${more}</button>` : ''}</span></span>`
+  // (the Mentions and Spam alerts pages are the desktop app's main window's)
+  $('#ntGrid').insertAdjacentHTML('beforeend', `<span class="nt-k k-${k}"><i></i><span>${name}${go && DESKTOP && ROLE === 'main' ? `<button class="linkish" data-go="${go}" data-sub="alerts">${more}</button>` : ''}</span></span>`
     + `<span class="nt-c"><input type="checkbox" class="st-sw" data-al="${k}.popup" aria-label="Pop-up in the app"></span>`
     + `<span class="nt-c nt-desk"><span class="seg" data-al="${k}.notify" role="radiogroup" aria-label="Desktop notification"><button data-v="never">Never</button><button data-v="unfocused" title="When the app isn't in front">Away</button><button data-v="always">Always</button></span></span>`
     + `<span class="nt-c"><select data-al="${k}.sound" aria-label="Sound">${SOUND_OPTS}</select></span>`);
@@ -7518,6 +7519,10 @@ function openSettings(tab){
   return renderDoc(settingsTab);
 }
 window.openSettings = openSettings;   // for the tests
+window.smvNotes = {   // for the tests
+  get notes(){ return notes; }, get alerts(){ return alerts; }, get bellCount(){ return bellCount; }, get dndUntil(){ return dndUntil; },
+  liveNote, flash, removeChannel, playSound, dndOn, endDnd(){ dndUntil = Date.now() - 1; syncDnd(); }, setInfo(ch, i){ liveInfo[ch] = i; }
+};
 window.raiseAlert = (ch, kind) => raiseAlert(wins.find(w => w.kind === 'chat' && w.channel === ch), kind);   // for the tests
 const closeSettings = () => { settingsDlg.hidden = true; };
 settingsDlg.querySelector('.help-x').innerHTML = icon.close;
@@ -8263,7 +8268,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.profileGet){
 /* ---- The toolbar fits any window. On top: the brand's name goes and the gaps get tighter (c1), then Layout loses
    its name (c2), then the least-used buttons move into the ⋯ More menu (in this order) until everything fits, and
    last Logins, Channels and Profiles lose theirs (c3). On the left the same buttons move into ⋯ when the column is
-   too short. Logins, Channels, Layout, Mentions and Settings never go into ⋯. ---- */
+   too short. Logins, Channels, Layout, Notifications and Settings never go into ⋯. ---- */
 (() => {
   const hdr = document.querySelector('header'), moreBtn = $('#moreBtn'), moreMenu = $('#moreMenu');
   const ORDER = ['#clear', '#popBtn', '#capBtn', '#swBtn', '#redoBtn', '#undoBtn', '#focusBtn', '#profBtn', '#tile', '#spotBtn'];

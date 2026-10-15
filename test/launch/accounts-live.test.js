@@ -48,6 +48,12 @@ test('the Accounts menu shows who\'s logged in; Log out and Switch ask first', T
   await a.win.click('#askDlg .ask-yes');
   assert.deepEqual((await st()).logouts, ['twitch']);
   assert.match(await a.win.textContent('#msg'), /Logged out of Twitch/);
+  // kept under the bell (App), with Log in
+  await a.win.click('#bellBtn');
+  await a.win.click('#bellPanel .nc-tabs [data-tab=app]');
+  await a.win.click('#bellList .nc-row:has-text("Logged out of Twitch") button:text-is("Log in")');
+  assert.equal((await st()).logins.at(-1), 'twitch', 'Log in from the bell');
+  assert.ok(await a.win.isHidden('#bellPanel'));
   await a.win.click('#loginBtn');
   assert.match(await a.win.textContent(row('#accountMenu', 'twitch') + ' .am-st'), /Not logged in/);
 
@@ -130,6 +136,13 @@ test('Saved channels show who\'s live, with bells, auto-open and Open live', T, 
   await a.win.waitForFunction(() => /charlie just went live on Twitch/.test(document.getElementById('msg').textContent));
   await a.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach(w => w.webContents.send('open-channel', 'tw:charlie')));
   await a.win.waitForSelector(winSel('charlie'));
+  // both kept under the bell (Live): the one that opened by itself marked so
+  assert.deepEqual(await a.win.evaluate(() => window.smvNotes.notes.filter(n => n.kind === 'live').map(n => [n.channel, !!n.auto])), [['tw:charlie', false], ['bravo', true]]);
+  await a.win.click('#bellBtn');
+  await a.win.click('#bellPanel .nc-tabs [data-tab=live]');
+  assert.equal(await a.win.textContent('#bellList .nc-row:has-text("charlie") .nc-acts'), 'Already open');
+  assert.match(await a.win.textContent('#bellList .nc-row:has-text("bravo")'), /opened by itself/);
+  await a.win.keyboard.press('Escape');
   await a.win.click('#clear'); await a.win.click('#askDlg .ask-yes');
 });
 
@@ -179,18 +192,24 @@ test('mention and spam desktop notifications, and clicking one shows that chat',
   assert.ok(await a.win.locator(winSel('alpha', 'chat')).count(), 'clicking it opens that chat');
 });
 
-test('Settings > Notifications: off sends no desktop notifications, the live switch is the one in Saved, and Send a test', T, async () => {
+test('Settings > Notifications: off sends no desktop notifications, the live row is the switch in Saved, Do not disturb, and Send a test', T, async () => {
   const notes = async () => (await st()).notes.length;
   const mention = () => a.win.evaluate(() => window.kmv.notifyMention({ kind: 'mention', channel: 'alpha', label: 'alpha', sender: 'viewer3', body: 'hi' }));
+  const live = v => a.win.click(`#ntGrid .seg[data-al="live.notify"] [data-v=${v}]`);
+  const liveOn = () => a.win.getAttribute('#ntGrid .seg[data-al="live.notify"] .on', 'data-v');
   await a.win.evaluate(() => window.openSettings('notify'));
   assert.equal(await a.win.isChecked('#dnOn'), true, 'on to start with');
-  assert.equal(await a.win.isChecked('#dnLive'), await a.win.isChecked('#notifyAll'));
-  await a.win.uncheck('#dnLive');
+  assert.equal(await liveOn(), 'always', 'live alerts: Always, as the switch in Saved was');
+  await live('never');
   assert.equal(await a.win.isChecked('#notifyAll'), false, 'the same setting as in Saved');
   assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.notifyAll')), '0');
-  await a.win.check('#dnLive');
+  await live('unfocused');
+  assert.equal(await a.win.isChecked('#notifyAll'), true, 'Away is on too');
+  await a.win.evaluate(() => { const na = document.querySelector('#notifyAll'); na.checked = false; na.dispatchEvent(new Event('change')); });
+  assert.equal(await liveOn(), 'never', 'and the switch in Saved sets it');
+  await a.win.evaluate(() => { const na = document.querySelector('#notifyAll'); na.checked = true; na.dispatchEvent(new Event('change')); });
+  assert.equal(await liveOn(), 'always');
   await a.win.uncheck('#dnOn');
-  assert.ok(await a.win.isDisabled('#dnLive'));
   const before = await notes();
   await mention(); await a.win.waitForTimeout(300);
   assert.equal(await notes(), before, 'off: none at all');
@@ -200,6 +219,12 @@ test('Settings > Notifications: off sends no desktop notifications, the live swi
   await a.win.check('#dnOn');
   await mention(); await a.win.waitForTimeout(300);
   assert.equal(await notes(), before + 2, 'on again');
+  await a.win.check('#dndOn');
+  await mention(); await a.win.waitForTimeout(300);
+  assert.equal(await notes(), before + 2, 'Do not disturb: none either');
+  await a.win.uncheck('#dndOn');
+  await mention(); await a.win.waitForTimeout(300);
+  assert.equal(await notes(), before + 3, 'and back when it ends');
   await a.win.reload();
   await a.win.waitForSelector('#loginBtn:not([hidden])');
   await a.win.evaluate(() => window.openSettings('notify'));
@@ -207,23 +232,25 @@ test('Settings > Notifications: off sends no desktop notifications, the live swi
   await a.win.keyboard.press('Escape');
 });
 
-test('messages can be desktop notifications instead of toasts, and are toasts again while desktop notifications are off', T, async () => {
+test('app messages can be desktop notifications too, and the pop-up can be turned off', T, async () => {
   const titles = async () => (await st()).notes.map(n => n.title + ': ' + n.body);
   await a.win.evaluate(() => window.openSettings('notify'));
-  assert.equal(await a.win.inputValue('#msgVia'), 'toast', 'a toast to start with');
+  assert.equal(await a.win.getAttribute('#ntGrid .seg[data-al="app.notify"] .on', 'data-v'), 'never', 'not to start with');
   const before = (await titles()).length;
-  await a.win.selectOption('#msgVia', 'desktop');
-  assert.ok(await a.win.isDisabled('#msgPos'), 'no position for a desktop notification');
+  await a.win.click('#ntGrid .seg[data-al="app.notify"] [data-v=always]');
   await a.win.keyboard.press('Escape');
   for (let i = 0; i < 2; i++) { await typeChannel(a.win, '%%%'); }
   await a.win.waitForTimeout(300);
-  assert.deepEqual((await titles()).slice(before), ['Messages show as desktop notifications', 'Couldn’t read that link or channel name'].map(t => 'Stream Multiview: ' + t), 'sent once, not twice');
-  assert.ok(await a.win.isHidden('#msg'), 'and no toast');
+  assert.deepEqual((await titles()).slice(before), ['Stream Multiview: Couldn’t read that link or channel name'], 'sent once, not twice');
+  assert.ok(await a.win.isVisible('#msg'), 'and the pop-up too');
   await a.win.evaluate(() => window.openSettings('notify'));
+  await a.win.uncheck('#ntGrid [data-al="app.popup"]');
   await a.win.uncheck('#dnOn');
-  assert.equal(await a.win.isDisabled('#msgPos'), false);
   await a.win.keyboard.press('Escape');
+  await a.win.evaluate(() => window.smvNotes.flash(''));
   await typeChannel(a.win, '%%%%');
-  assert.ok(await a.win.isVisible('#msg'), 'desktop notifications off: a toast instead');
-  await a.win.evaluate(() => { localStorage.removeItem('kickMultiview.msg'); localStorage.removeItem('kickMultiview.desktopNotify'); });
+  await a.win.waitForTimeout(300);
+  assert.ok(await a.win.isHidden('#msg'), 'no pop-up');
+  assert.equal((await titles()).length, before + 1, 'and with desktop notifications off, nothing');
+  await a.win.evaluate(() => { localStorage.removeItem('kickMultiview.alerts'); localStorage.removeItem('kickMultiview.desktopNotify'); });
 });

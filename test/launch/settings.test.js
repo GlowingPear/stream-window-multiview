@@ -91,9 +91,22 @@ test('Help opens the matching Settings tab, and Check for updates opens Updates'
 });
 
 test('every tab is there in the app, and the Accounts menu links to the rest', T, async () => {
-  await win.click('#mentBtn');
-  await win.click('#mentPanel #mentSettings');
-  assert.equal(await settingsTab(), 'mentions', 'the Mentions panel\'s gear');
+  await win.click('#bellBtn');
+  await win.click('#bellPanel #bellSettings');
+  assert.equal(await settingsTab(), 'notify', 'the bell\'s gear');
+  await win.click('#ntGrid .k-mention [data-go]');
+  assert.equal(await settingsTab(), 'mentions', 'More on Mentions');
+  assert.ok(await win.isVisible('[data-s=mentions] .st-subpane[data-t=alerts]'), 'on its alerts');
+  await win.click('[data-s=mentions] .nt-chip >> nth=0');
+  assert.equal(await settingsTab(), 'notify', 'its 🔗 Notifications chip goes back');
+  await win.click('#ntGrid .seg[data-al="mention.notify"] [data-v=always]');
+  await win.click('#ntGrid .k-spam [data-go]');
+  assert.ok(await win.isVisible('[data-s=spam] .st-subpane[data-t=alerts]'), 'More on Spam alerts');
+  await win.click('#settingsDlg .st-rail [data-s=mentions]');
+  assert.equal(await win.inputValue('[data-s=mentions] [data-al="mention.notify"]'), 'always', 'the grid\'s Desktop is the page\'s Desktop notification');
+  await win.selectOption('[data-s=mentions] [data-al="mention.notify"]', 'unfocused');
+  await win.click('#settingsDlg .st-rail [data-s=notify]');
+  assert.equal(await win.getAttribute('#ntGrid .seg[data-al="mention.notify"] [data-v=unfocused]', 'aria-checked'), 'true', 'and back');
   await win.keyboard.press('Escape');
   await win.click('#loginBtn');
   await win.click('#accountMenu .am-more');
