@@ -2126,7 +2126,44 @@ function emoteAgent(){
   return true;
 }
 const EMOTE_JS = `(${emoteAgent.toString()})()`;
+
+// Kick chat commands that only work on the channel page: the popout chat (what the app shows) knows them
+// but has nowhere to show their popup, so they do nothing there. The app offers to open the channel page.
+const KICK_PAGE_CMDS = { clip: 'make a clip', poll: 'start a poll' };
+// Runs inside each Kick chat page: a message that is one of these commands isn't sent (Enter or the send
+// button); the app is told through a console message instead.
+function kickCmdAgent(names){
+  if (window.__kmvKickCmd) return true;
+  const re = new RegExp('^\\s*/(' + names.join('|') + ')(?:\\s|$)', 'i');
+  const box = () => document.querySelector('[data-testid="chat-input"]') || document.querySelector('[contenteditable="true"], textarea');
+  const cmdOf = text => { const m = re.exec(String(text || '')); return m ? m[1].toLowerCase() : null; };
+  function catchIt(e, tell){
+    const b = box(), cmd = b && cmdOf(b.isContentEditable ? b.innerText : b.value);
+    if (!cmd) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (tell) console.log('__kmv:kick-cmd ' + cmd);
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.target && e.target === box()) catchIt(e, true);
+  }, true);
+  ['pointerdown', 'mousedown', 'click'].forEach(t => document.addEventListener(t, e => {
+    if (e.target.closest && e.target.closest('#send-message-button')) catchIt(e, t === 'click');   // the press too, said once
+  }, true));
+  window.__kmvKickCmd = { cmdOf };
+  return true;
+}
+const KICK_CMD_JS = `(${kickCmdAgent.toString()})(${JSON.stringify(Object.keys(KICK_PAGE_CMDS))})`;
+async function kickPageCmd(w, cmd){
+  if (!KICK_PAGE_CMDS[cmd] || platOf(w.channel) !== 'kick') return;
+  const url = `https://kick.com/${encodeURIComponent(w.channel)}`;
+  if (!await ask(`/${cmd} doesn’t work in this chat`,
+    `Kick only lets you ${KICK_PAGE_CMDS[cmd]} on the channel page. Open ${w.channel}’s page (muted) to do it there?`,
+    { ok: 'Open channel page' })) return;
+  if (DESKTOP) window.kmv.openWindow(url, 1280, 800, { muted: true });
+  else window.open(url, 'kmv_page_' + w.channel, 'width=1280,height=800');
+}
 window.chatAgentJs = MENTION_JS; window.mentionAgent = mentionAgent; window.emoteAgent = emoteAgent;   // for the tests
+window.kickCmdAgent = kickCmdAgent; window.kickPageCmd = kickPageCmd; window.KICK_PAGE_CMDS = KICK_PAGE_CMDS;
 
 // Runs inside each stream's player page: lets the title-bar slider drive the real player (YouTube's, or the <video>).
 const VOL_JS = `(function(){
@@ -2815,6 +2852,8 @@ function mountView(w){
     if (w.kind === 'chat') frame.addEventListener('console-message', e => {
       const m = /^__kmv:emote-dl (\{.*\})$/.exec(String(e.message || ''));
       if (m) saveEmote(m[1]);
+      const c = /^__kmv:kick-cmd ([a-z]+)$/.exec(String(e.message || ''));   // see kickCmdAgent
+      if (c && w.view === frame) kickPageCmd(w, c[1]);
     });
     frame.addEventListener('dom-ready', () => {
       w.ready = true;
@@ -2826,6 +2865,7 @@ function mountView(w){
       if (w.kind === 'chat') { const css = { kick: KICK_CHAT_CSS, twitch: TWITCH_CHAT_CSS }[platOf(w.channel)]; if (css) try { frame.insertCSS(css); } catch {} }
       if (w.kind === 'chat' && ROLE === 'main') injectMention(w);
       if (w.kind === 'chat') frame.executeJavaScript(`${EMOTE_JS};window.__kmvEmote.on(${emoteOn})`).catch(() => {});
+      if (w.kind === 'chat' && platOf(w.channel) === 'kick') frame.executeJavaScript(KICK_CMD_JS).catch(() => {});
       applyChatView(w);
     });
   }
