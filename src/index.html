@@ -2022,13 +2022,17 @@ function mentionAgent(){
   document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('button')) noteSent(); }, true);
   // (each one only once: someone else writing the same thing later is still theirs)
   const mine = l => { const f = flat(l), i = sent.findIndex(x => Date.now() - x.t < 120000 && f.endsWith(x.text)); if (i >= 0) sent.splice(i, 1); return i >= 0; };
-  // The text's lines, with each message on one line: Kick shows the name on a line of its own and
-  // ": message" on the next, so those two are joined (with a space, as flat() below would).
+  // The text's lines, with each message on one line: Kick shows the name on a line of its own, then ":" and
+  // the message, either together (": message") or on lines of their own (":" then "message"), so those are joined
+  // (with a space, as flat() below would). Not when the message is only emotes (no text): the next line is then
+  // the next name (followed by its ":"), or a reply's "Replying to …".
   function textLines(text){
-    const out = [];
-    for (const l of String(text || '').split('\n').map(s => s.trim()).filter(Boolean)){
-      const n = out.length - 1;
-      if (n >= 0 && l[0] === ':' && NAME_RE.test(out[n])) out[n] += ' ' + l;
+    const raw = String(text || '').split('\n').map(s => s.trim()).filter(Boolean), out = [];
+    for (let i = 0; i < raw.length; i++){
+      const l = raw[i], n = out.length - 1, prev = n >= 0 ? out[n] : '';
+      if (n >= 0 && l[0] === ':' && NAME_RE.test(prev)) out[n] += ' ' + l;
+      else if (n >= 0 && /\s:$/.test(prev) && NAME_RE.test(prev.slice(0, -2)) && !/^Replying to\s/i.test(l)
+        && !(NAME_RE.test(l) && (raw[i + 1] || '')[0] === ':')) out[n] += ' ' + l;
       else out.push(l);
     }
     return out;
