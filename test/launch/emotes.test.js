@@ -67,9 +67,25 @@ test('Settings > General switches the emote preview off and on in open chats', T
   await on();
   await w.evaluate(() => { document.getElementById('settingsBtn').click(); });
   await w.click('#settingsDlg [data-s=general]').catch(() => {});
-  await w.locator('label:has(#emoteSet)').click();
-  assert.equal(await w.evaluate(() => localStorage.getItem('kickMultiview.emotePreview')), '0');
+  assert.equal(await w.isChecked('#emoteSet'), false, 'off by default');
+  assert.equal(await inView(w, 'alpha', 'chat', () => { const i = document.querySelector('img[alt=e]'); i.dispatchEvent(new PointerEvent('pointerover', { bubbles: true })); return new Promise(r => setTimeout(() => r(!!document.querySelector('kmv-emote-card')), 400)); }), false, 'no card');
   await w.locator('label:has(#emoteSet)').click();
   assert.equal(await w.evaluate(() => localStorage.getItem('kickMultiview.emotePreview')), '1');
+  assert.equal(await inView(w, 'alpha', 'chat', () => { const i = document.querySelector('img[alt=e]'); i.dispatchEvent(new PointerEvent('pointerover', { bubbles: true })); return new Promise(r => setTimeout(() => r(!!document.querySelector('kmv-emote-card')), 400)); }), true, 'on in the open chat straight away');
+  await w.locator('label:has(#emoteSet)').click();
+  assert.equal(await w.evaluate(() => localStorage.getItem('kickMultiview.emotePreview')), '0');
   await w.keyboard.press('Escape');
+});
+
+test('the card\'s Copy image puts the emote\'s picture on the clipboard; only pictures from the emote sites', T, async () => {
+  const w = a.win;
+  await a.app.evaluate(({ clipboard }) => clipboard.clear());
+  await inView(w, 'alpha', 'chat', () => console.log('__kmv:emote-copy ' + JSON.stringify({ url: 'https://files.kick.com/emotes/1/fullsize', small: '', name: 'pearHype' })));
+  for (let i = 0; i < 50 && (await a.app.evaluate(({ clipboard }) => clipboard.readImage().isEmpty())); i++) await new Promise(r => setTimeout(r, 100));
+  assert.deepEqual(await a.app.evaluate(({ clipboard }) => clipboard.readImage().getSize()), { width: 1, height: 1 }, 'the picture');
+  await inView(w, 'alpha', 'chat', () => console.log('__kmv:emote-copy {"url":"https://example.com/x.png","name":"nope"}'));
+  await w.waitForFunction(() => /Couldn’t copy nope/.test(document.getElementById('msg').textContent));
+  // straight to the main process
+  assert.deepEqual(await w.evaluate(() => window.kmv.emoteFetch('https://example.com/x.png')), { error: 'bad' });
+  assert.equal(await w.evaluate(() => window.kmv.clipboardPng('data:text/html;base64,PGI+')), false, 'only a PNG');
 });
