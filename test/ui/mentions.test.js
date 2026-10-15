@@ -64,57 +64,57 @@ test('a clock with no name after it is not a sender, and what you send yourself 
   assert.deepEqual(q.m.map(m => [m.sender, m.body]), [['cat', 'pear by the button'], ['bob', 'pear time']]);
 });
 
-test('the mentions history: grouped by day, search, filters, unread, delete and clear', async t => {
+test('mentions in All notifications (moved over from the old history): grouped by day, search, filters, unread, delete and clear', async t => {
   const page = await openApp(t);
   const now = Date.now(), day = 864e5;
   const m = (o) => ({ label: '', quoted: '', unread: false, ...o });
-  await page.evaluate(list => localStorage.setItem('kickMultiview.mentions', JSON.stringify(list)), [
+  await page.evaluate(list => { localStorage.setItem('kickMultiview.mentions', JSON.stringify(list)); localStorage.removeItem('kickMultiview.notifications'); }, [
     m({ channel: 'alpha', sender: 'ann', body: 'hey @me look', kind: 'mention', t: now - 60e3, unread: true }),
     m({ channel: 'tw:bravo', sender: 'bob', body: 'is pear around?', kind: 'word', word: 'pear', t: now - 120e3, unread: true }),
     m({ channel: 'alpha', sender: 'cat', body: 'sure thing', kind: 'reply', quoted: 'want to raid?', t: now - day - 60e3 }),
     m({ channel: 'alpha', sender: 'dan', body: 'pear <b>hi</b>', kind: 'word', word: 'pear', t: now - 5 * day })
   ]);
   await page.reload();
-  await page.evaluate(() => window.openMentHistory());
-  const days = () => page.$$eval('#mhList .mh-day', e => e.map(d => d.textContent));
-  const senders = () => page.$$eval('#mhList .mp-row b', e => e.map(b => b.textContent));
+  await page.evaluate(() => window.openNoteHistory('mentions'));
+  const days = () => page.$$eval('#nhList .mh-day', e => e.map(d => d.textContent));
+  const senders = () => page.$$eval('#nhList .mp-row .mp-top b', e => e.map(b => b.textContent));
   const ds = await days();
   assert.deepEqual(ds.slice(0, 2), ['Today2', 'Yesterday1']);
   assert.equal(ds.length, 3, 'and the older day by its date');
-  assert.match(await page.textContent('#mentDlg .mh-count'), /4 kept · 2 unread/);
-  assert.deepEqual(await page.$$eval('#mhList .mp-row .mp-kind', e => e.map(k => k.textContent)), ['Mention', 'Word: pear', 'Reply', 'Word: pear']);
-  assert.equal(await page.$eval('#mhList .mp-row:nth-child(2) .mp-body', e => e.innerHTML), 'is <mark>pear</mark> around?', 'the word is marked');
-  assert.equal(await page.$eval('#mhList .mh-group:last-child .mp-body', e => e.innerHTML), '<mark>pear</mark> &lt;b&gt;hi&lt;/b&gt;', 'and the message stays text');
+  assert.match(await page.textContent('#noteDlg .mh-count'), /4 kept · 2 new/);
+  assert.deepEqual(await page.$$eval('#nhList .mp-row .mp-kind', e => e.map(k => k.textContent)), ['Mention', 'Word: pear', 'Reply', 'Word: pear']);
+  assert.equal(await page.$eval('#nhList .mp-row:nth-child(2) .mp-body', e => e.innerHTML), 'is <mark>pear</mark> around?', 'the word is marked');
+  assert.equal(await page.$eval('#nhList .mh-group:last-child .mp-body', e => e.innerHTML), '<mark>pear</mark> &lt;b&gt;hi&lt;/b&gt;', 'and the message stays text');
 
-  await page.click('#mhKinds [data-v=word]');
+  await page.click('#noteDlg .nc-chips [data-v=word]');
   assert.deepEqual(await senders(), ['bob', 'dan']);
-  assert.equal(await page.textContent('#mhKinds [data-v=word]'), 'Words 2');
-  await page.click('#mhKinds [data-v=all]');
-  await page.fill('#mhQ', 'raid');
+  assert.equal(await page.textContent('#noteDlg .nc-chips [data-v=word]'), 'Words 2');
+  await page.click('#noteDlg .nc-chips [data-v=all]');
+  await page.fill('#nhQ', 'raid');
   assert.deepEqual(await senders(), ['cat'], 'search finds the quoted message too');
-  await page.fill('#mhQ', '');
-  await page.selectOption('#mhChan', 'tw:bravo');
+  await page.fill('#nhQ', '');
+  await page.selectOption('#noteDlg .nc-pick', 'tw:bravo');
   assert.deepEqual(await senders(), ['bob']);
-  await page.selectOption('#mhChan', '');
-  await page.check('#mhUnread');
+  await page.selectOption('#noteDlg .nc-pick', '');
+  await page.check('#nhUnread');
   assert.deepEqual(await senders(), ['ann', 'bob']);
-  await page.click('#mhRead');
-  assert.match(await page.textContent('#mhList'), /Nothing matches/);
-  await page.uncheck('#mhUnread');
+  await page.click('#nhRead');
+  assert.match(await page.textContent('#nhList'), /Nothing matches/);
+  await page.uncheck('#nhUnread');
 
-  await page.hover('#mhList .mp-row:has-text("cat")');
-  await page.click('#mhList .mp-row:has-text("cat") .mp-x');
+  await page.hover('#nhList .mp-row:has-text("cat")');
+  await page.click('#nhList .mp-row:has-text("cat") .mp-x');
   assert.deepEqual(await senders(), ['ann', 'bob', 'dan'], 'one deleted');
-  assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.mentions'))).length, 3);
+  assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.notifications'))).length, 3);
 
-  await page.click('#mhClear');
+  await page.click('#nhClear');
   await page.click('#askDlg .ask-no');
   assert.equal((await senders()).length, 3, 'Clear asks first');
-  await page.click('#mhClear');
+  await page.click('#nhClear');
   await page.click('#askDlg .ask-yes');
-  assert.match(await page.textContent('#mhList'), /No mentions yet/);
+  assert.match(await page.textContent('#nhList'), /No mentions yet/);
   await page.keyboard.press('Escape');
-  assert.ok(await page.isHidden('#mentDlg'));
+  assert.ok(await page.isHidden('#noteDlg'));
 });
 
 test('the chat helper holds a limited number of messages and names between the app\'s polls', async t => {
@@ -192,7 +192,7 @@ test('mentions show their emotes inline, safely, with the name when a picture is
   await page.route(/files\.kick\.com\/emotes\/1\//, r => r.fulfill({ body: Buffer.from(PIC, 'base64'), contentType: 'image/png' }));
   const now = Date.now();
   await page.evaluate(() => localStorage.setItem('kickMultiview.myName', 'me'));
-  await page.evaluate(list => localStorage.setItem('kickMultiview.mentions', JSON.stringify(list)), [
+  await page.evaluate(list => { localStorage.setItem('kickMultiview.mentions', JSON.stringify(list)); localStorage.removeItem('kickMultiview.notifications'); }, [
     { channel: 'alpha', sender: 'ann', kind: 'mention', body: '@me pearHype <b>gg</b> gone', unread: true, t: now - 1000, quoted: '',
       parts: [{ t: '@me ' }, { e: 'pearHype', src: KICK(1) }, { t: ' <b>gg</b> ' }, { e: 'gone', src: KICK(9) }] },
     { channel: 'alpha', sender: 'bob', kind: 'reply', body: 'sure', quoted: 'raid? oakCozy', t: now - 2000,
@@ -202,17 +202,17 @@ test('mentions show their emotes inline, safely, with the name when a picture is
       parts: [{ t: '@me ' }, { e: 'evil', src: 'https://example.com/x.png' }] }                                    // not an emote site: text only
   ]);
   await page.reload();
-  await page.evaluate(() => window.openMentHistory());
-  const body = s => page.locator(`#mhList .mp-row:has(b:text-is("${s}")) .mp-body`);
-  await page.waitForFunction(() => [...document.querySelectorAll('#mhList .mp-emote')].some(i => i.complete && i.naturalWidth));
+  await page.evaluate(() => window.openNoteHistory('mentions'));
+  const body = s => page.locator(`#nhList .mp-row:has(.mp-top b:text-is("${s}")) .mp-body`);
+  await page.waitForFunction(() => [...document.querySelectorAll('#nhList .mp-emote')].some(i => i.complete && i.naturalWidth));
   assert.equal(await body('ann').locator('img.mp-emote').getAttribute('alt'), 'pearHype');
   assert.equal(await body('ann').locator('b').count(), 0, 'chat text stays text');
-  await page.waitForFunction(() => /:gone:/.test(document.querySelector('#mhList .mp-row .mp-body').textContent));
+  await page.waitForFunction(() => /:gone:/.test(document.querySelector('#nhList .mp-row .mp-body').textContent));
   assert.equal(await body('ann').textContent(), '@me  <b>gg</b> :gone:', 'a picture that can\'t load shows its name');
   assert.ok(await body('ann').locator('mark').count(), 'the @mention is still marked');
-  assert.equal(await page.locator('#mhList .mp-row:has(b:text-is("bob")) .mp-q img.mp-emote').getAttribute('alt'), 'oakCozy', 'emotes in the reply\'s quote');
+  assert.equal(await page.locator('#nhList .mp-row:has(.mp-top b:text-is("bob")) .mp-q img.mp-emote').getAttribute('alt'), 'oakCozy', 'emotes in the reply\'s quote');
   assert.equal(await body('cat').textContent(), '@me old one');
   assert.equal(await body('dan').textContent(), '@me bad', 'a saved entry with a picture from elsewhere shows as text');
-  await page.fill('#mhQ', 'pearhype');
-  assert.deepEqual(await page.$$eval('#mhList .mp-row b', e => e.map(b => b.textContent)), ['ann'], 'emote names are searchable');
+  await page.fill('#nhQ', 'pearhype');
+  assert.deepEqual(await page.$$eval('#nhList .mp-row .mp-top b', e => e.map(b => b.textContent)), ['ann'], 'emote names are searchable');
 });

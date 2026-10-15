@@ -91,45 +91,45 @@ test('a mention lights up that chat window and is listed, a normal message doesn
   await ready();
   await say('bravo', 'someone', 'nice one');
   await say('bravo', 'someone', '@mename are you on later?');
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').textContent === '1');
   assert.deepEqual(await alertOf('bravo'), { level: 'al-1', color: '#e8b84a' });
   assert.equal((await alertOf('alpha')).level, '', 'only that chat');
   await clickBar('bravo');
   assert.equal((await alertOf('bravo')).level, '', 'clicking the chat clears it');
-  assert.ok(await win.$eval('#mentBtn .mb-count', e => e.hidden), 'and its mention is no longer counted');
-  await win.click('#mentBtn');
-  assert.equal(await win.textContent('#mentList .mp-row .mp-kind'), 'Mention');
-  assert.match(await win.textContent('#mentList'), /someone.*bravo.*are you on later\?/s);
-  assert.equal(await win.$$eval('#mentList .mp-row.unread', r => r.length), 0, 'already seen');
+  assert.ok(await win.$eval('#bellBtn .mb-count', e => e.hidden), 'and its mention is no longer counted');
+  await win.click('#bellBtn');
+  assert.equal(await win.textContent('#bellList .mp-row .mp-kind'), 'Mention');
+  assert.match(await win.textContent('#bellList'), /someone.*bravo.*are you on later\?/s);
+  assert.equal(await win.$$eval('#bellList .mp-row.unread', r => r.length), 0, 'already seen');
   await win.keyboard.press('Escape');
 });
 
 test('a mention in another chat is counted until you click into that chat, not another one', T, async () => {
   await say('alpha', 'someone', 'hey @mename');
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').textContent === '1');
   await clickBar('bravo');
-  assert.equal(await win.textContent('#mentBtn .mb-count'), '1', 'bravo has no new mentions');
+  assert.equal(await win.textContent('#bellBtn .mb-count'), '1', 'bravo has no new mentions');
   await clickBar('alpha');
-  assert.ok(await win.$eval('#mentBtn .mb-count', e => e.hidden));
+  assert.ok(await win.$eval('#bellBtn .mb-count', e => e.hidden));
 });
 
 test('clicking inside a chat that already has focus clears its alert and mention too', T, async () => {
   await say('bravo', 'someone', '@mename over here');
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').textContent === '1');
   assert.equal((await alertOf('bravo')).level, 'al-1');
   // a click in the chat page itself, with no change of focus for the app to notice
   await inChat('bravo', () => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').hidden);
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').hidden);
   assert.equal((await alertOf('bravo')).level, '');
 });
 
 test('typing in a chat that already has focus clears its alert and mention too', T, async () => {
   await say('bravo', 'someone', '@mename still there?');
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').textContent === '1');
   assert.equal((await alertOf('bravo')).level, 'al-1');
   // a key press in the chat page itself, with no change of focus for the app to notice
   await inChat('bravo', () => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true })));
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').hidden);
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').hidden);
   assert.equal((await alertOf('bravo')).level, '');
 });
 
@@ -137,10 +137,10 @@ test('a mention that comes after you last typed in that chat still alerts', T, a
   await inChat('bravo', () => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true })));
   await win.waitForTimeout(50);
   await say('bravo', 'someone', '@mename one more thing');
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').textContent === '1');
   assert.equal((await alertOf('bravo')).level, 'al-1');
   await clickBar('bravo');   // seen, so the next test starts clear
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').hidden);
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').hidden);
 });
 
 test('the @ button on a chat\'s bar turns mentions off for that chat only', T, async () => {
@@ -151,27 +151,27 @@ test('the @ button on a chat\'s bar turns mentions off for that chat only', T, a
   await win.waitForTimeout(500);
   await say('alpha', 'someone', '@mename quiet please');
   await say('bravo', 'someone', '@mename still here');
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').textContent === '1');
   await win.waitForTimeout(2000);
-  assert.equal(await win.textContent('#mentBtn .mb-count'), '1', 'only bravo\'s mention');
+  assert.equal(await win.textContent('#bellBtn .mb-count'), '1', 'only bravo\'s mention');
   assert.equal((await alertOf('alpha')).level, '');
   await win.click(at);   // back on
   assert.equal(await win.$eval(at, b => b.classList.contains('off')), false);
   assert.equal(await win.evaluate(() => localStorage.getItem('kickMultiview.mentMuted')), '[]');
   await clickBar('bravo');   // seen
-  await win.click('#mentBtn');
-  await win.click('#mentClear');
-  assert.equal(await win.textContent('#mentList'), 'No mentions yet.');
+  await win.click('#bellBtn');
+  await win.click('#bellClear');
+  assert.match(await win.textContent('#bellList'), /^Nothing yet/);
   await win.keyboard.press('Escape');
 });
 
 test('chat bots on the list never count as a mention, a name that only contains one does, and the list is yours to change', T, async () => {
-  const count = () => win.evaluate(() => { const c = document.querySelector('#mentBtn .mb-count'); return c.hidden ? '' : c.textContent; });
-  const stored = () => win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.mentions') || '[]').map(m => m.sender));
+  const count = () => win.evaluate(() => { const c = document.querySelector('#bellBtn .mb-count'); return c.hidden ? '' : c.textContent; });
+  const stored = () => win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').filter(n => /^(mention|reply|word)$/.test(n.kind)).map(m => m.sender));
   await say('bravo', 'BotRix', '@mename thanks for the follow!');
   await say('bravo', 'griddlebot', '@mename won the giveaway');
   await say('bravo', 'botrix_fan', '@mename hi from a fan');
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').textContent === '1');
   await win.waitForTimeout(2000);
   assert.equal(await count(), '1', 'only the fan');
   assert.deepEqual(await stored(), ['botrix_fan'], 'the bots aren\'t in the mentions history');
@@ -186,7 +186,7 @@ test('chat bots on the list never count as a mention, a name that only contains 
   assert.ok(!saved.includes('botrix') && saved.includes('nightbot'));
   await say('bravo', 'nightbot', '@mename still a bot');
   await say('bravo', 'BotRix', '@mename one more');
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').textContent === '1');
   assert.deepEqual((await stored()).slice(0, 2), ['BotRix', 'botrix_fan']);
   await clickBar('bravo');
 
@@ -197,12 +197,12 @@ test('chat bots on the list never count as a mention, a name that only contains 
   await say('bravo', 'BotRix', '@mename last one');
   await win.waitForTimeout(2500);
   assert.equal(await count(), '');
-  await win.click('#mentBtn');
-  await win.click('#mentClear');
+  await win.click('#bellBtn');
+  await win.click('#bellClear');
   await win.keyboard.press('Escape');
 });
 
-test('your own words count as mentions; the @ list shows the latest five and All mentions opens the history', T, async () => {
+test('your own words count as mentions; the bell lists them and All notifications opens the history', T, async () => {
   await win.evaluate(() => window.openSettings('mentions'));
   await win.click('#mentTabs [data-t=names]');
   await win.fill('#mentWordIn', 'Pear'); await win.press('#mentWordIn', 'Enter');
@@ -214,23 +214,24 @@ test('your own words count as mentions; the @ list shows the latest five and All
   await ready();                                   // the chats look again with the new words
   await say('bravo', 'someone', 'pears are tasty');
   await say('bravo', 'someone', 'is pear on tonight?');
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').textContent === '1');
   assert.equal((await alertOf('bravo')).level, 'al-1', 'it lights the chat like a mention');
   for (let i = 0; i < 5; i++) await say('alpha', 'fan' + i, `hey big boss ${i}`);
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '6');
-  await win.click('#mentBtn');
-  assert.equal(await win.$$eval('#mentList .mp-row', r => r.length), 5, 'the latest five');
-  assert.equal(await win.textContent('#mentList .mp-row .mp-kind'), 'Word: big boss');
-  await win.waitForFunction(() => document.querySelector('#mentBtn .mb-count').textContent === '1');   // the ones shown are seen
-  assert.match(await win.textContent('#mentAll'), /All mentions \(6\) · 1 new/);
-  await win.click('#mentAll');
-  assert.ok(await win.isVisible('#mentDlg'));
-  assert.equal(await win.$$eval('#mhList .mp-row', r => r.length), 6);
-  assert.equal(await win.$$eval('#mhList .mp-row.unread', r => r.length), 1, 'the one the list didn\'t show is still new');
-  assert.equal(await win.$eval('#mhList .mp-row:has-text("someone") .mp-body', e => e.innerHTML), 'is <mark>pear</mark> on tonight?');
-  await win.keyboard.press('Escape');
-  assert.ok(await win.isHidden('#mentDlg'));
-  assert.ok(await win.$eval('#mentBtn .mb-count', e => e.hidden), 'closing the history: everything seen');
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').textContent === '6');
+  await win.click('#bellBtn');
+  await win.click('#bellPanel .nc-tabs [data-tab=mentions]');
+  assert.equal(await win.$$eval('#bellList .mp-row', r => r.length), 6);
+  assert.equal(await win.$$eval('#bellList .mp-row.unread', r => r.length), 6, 'marked new while it shows them');
+  assert.equal(await win.textContent('#bellList .mp-row .mp-kind'), 'Word: big boss');
+  await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').hidden);   // the ones shown are seen
+  assert.equal(await win.textContent('#bellAll'), 'All notifications (6) ›');
+  await win.click('#bellAll');
+  assert.ok(await win.isVisible('#noteDlg'));
+  assert.equal(await win.textContent('#noteDlg .nc-tabs .on span'), 'Mentions', 'on the bell\'s tab');
+  assert.equal(await win.$$eval('#nhList .mp-row', r => r.length), 6);
+  assert.equal(await win.$eval('#nhList .mp-row:has-text("someone") .mp-body', e => e.innerHTML), 'is <mark>pear</mark> on tonight?');
+  await win.click('#nhList .mp-row:has-text("someone")');
+  assert.ok(await win.isHidden('#noteDlg'), 'a mention shows its chat');
   // tidy up for the next tests
   await win.evaluate(() => window.openSettings('mentions'));
   await win.click('#mentTabs [data-t=names]');
@@ -267,7 +268,7 @@ test('spam alerts: a promo bot in a chat you moderate is tagged and lights the w
   await win.evaluate(() => window.openSettings('spam'));
   await win.click('#spamHistClear');
   assert.equal(await win.textContent('#spamHist'), 'Nothing flagged yet.');
-  assert.equal(await win.evaluate(() => localStorage.getItem('kickMultiview.spamHistory')), '[]');
+  assert.equal(await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.notifications')).filter(n => n.kind === 'spam').length), 0);
   await win.click('#spamTabs [data-t=alerts]');
   await win.keyboard.press('Escape');
 });
@@ -281,7 +282,7 @@ const banClick = (ch, sender, keys) => inChat(ch, ([s, keys]) => {
   name.dispatchEvent(new MouseEvent('mouseup', o));
   name.dispatchEvent(new MouseEvent('click', o));
 }, [sender, keys]);
-const spamCount = () => win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.spamHistory') || '[]').length);
+const spamCount = () => win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').filter(n => n.kind === 'spam').length);
 
 test('banning a spammer with the mod shortcut clears the alert, even when the page stops the click', T, async () => {
   await clickBar('alpha');
@@ -313,7 +314,7 @@ test('a ban in the same moment the spam arrives still counts as seeing it', T, a
     document.getElementById('chat').appendChild(d);
   });
   await banClick('alpha', 'fastbot', { ctrlKey: true });   // before the app next looks at the chat
-  await win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.spamHistory') || '[]').some(h => h.sender === 'fastbot'));
+  await win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').some(h => h.kind === 'spam' && h.sender === 'fastbot'));
   await win.waitForTimeout(500);
   assert.match(await tagOf('alpha', 'quickgrow'), /Likely spam/, 'still flagged and tagged');
   assert.equal((await alertOf('alpha')).level, '', 'but the window isn\'t left lit');

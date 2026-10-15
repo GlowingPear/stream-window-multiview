@@ -214,6 +214,7 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 | `src/profiles.js` | Streamer profiles: records the streams the live checks see, works out the profile's numbers, reads what the sites say |
 | `src/profile-queue.js` | Fetches saved channels' profiles in the background (just saved or imported, just went live, or never looked at), one at a time |
 | `src/spam.js` | Scores chat messages for spam alerts (used by the app page and the tests) |
+| `src/notifications.js` | The notification centre's list (the toolbar bell): kept per kind, the red number, filters, days, and moving the old mention and spam histories in |
 | `src/firefox-login.js` | Copies the YouTube/Google login from Firefox for YouTube sign-in |
 | `src/updater.js` | Checks GitHub for a newer version, downloads it and installs it safely |
 | `src/harden.js` | Turns on Electron's cookie-encryption fuse so saved logins are encrypted |
