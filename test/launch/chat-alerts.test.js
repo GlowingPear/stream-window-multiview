@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { stubExists, openChannel } = require('./app');
+const { stubExists, openChannel, nameIs } = require('./app');
 const { ROOT, playwright, killApp } = require('../helpers');
 
 function electronPath() {
@@ -62,7 +62,7 @@ test.after(async () => {
 
 // Run something inside a chat's page.
 const inChat = (ch, fn, arg) => win.evaluate(([ch, src, arg]) => {
-  const v = [...document.querySelectorAll('#stage .win.chat')].find(w => w.querySelector('.title').textContent === ch).querySelector('webview');
+  const v = [...document.querySelectorAll('#stage .win.chat')].find(w => w.querySelector('.title').textContent.toLowerCase() === ch).querySelector('webview');
   return v.executeJavaScript(`(${src})(${JSON.stringify(arg)})`);
 }, [ch, fn.toString(), arg]);
 const say = (ch, sender, text) => inChat(ch, ([s, t]) => {
@@ -71,7 +71,7 @@ const say = (ch, sender, text) => inChat(ch, ([s, t]) => {
   document.getElementById('chat').appendChild(d);
 }, [sender, text]);
 const alertOf = ch => win.evaluate(ch => {
-  const w = [...document.querySelectorAll('#stage .win.chat')].find(x => x.querySelector('.title').textContent === ch);
+  const w = [...document.querySelectorAll('#stage .win.chat')].find(x => x.querySelector('.title').textContent.toLowerCase() === ch);
   return { level: ['al-1', 'al-2', 'al-3'].find(c => w.classList.contains(c)) || '', color: w.style.getPropertyValue('--al') };
 }, ch);
 const tagOf = (ch, text) => inChat(ch, t => {
@@ -80,7 +80,7 @@ const tagOf = (ch, text) => inChat(ch, t => {
   return tag ? tag.title : null;
 }, text);
 // Click a chat window's bar on its empty part (not its channel dropdown or a button).
-const clickBar = ch => win.click(`#stage .win.chat:has(.title:text-is("${ch}")) .bar .grab`);
+const clickBar = ch => win.click(`#stage .win.chat:has(.title${nameIs(ch)}) .bar .grab`);
 const ready = () => win.waitForTimeout(3000);   // the chat helper treats what's already there as old, for 2.5 s
 
 test('a mention lights up that chat window and is listed, a normal message doesn\'t', T, async () => {
@@ -145,7 +145,7 @@ test('a mention that comes after you last typed in that chat still alerts', T, a
 });
 
 test('the @ button on a chat\'s bar turns mentions off for that chat only', T, async () => {
-  const at = '#stage .win.chat:has(.title:text-is("alpha")) [data-a=at]';
+  const at = `#stage .win.chat:has(.title${nameIs('alpha')}) [data-a=at]`;
   assert.equal(await win.$eval(at, b => b.hidden), false);
   await win.click(at);
   assert.ok(await win.$eval(at, b => b.classList.contains('off')));

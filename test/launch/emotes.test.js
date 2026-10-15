@@ -30,7 +30,7 @@ test('chat windows get the emote preview, and Download saves the emote, named af
   await openChannel(w, 'alpha');
   await viewLoaded(w, 'alpha', 'chat', /popout\/alpha\/chat/);
   await w.waitForFunction(() => {
-    const v = [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent === 'alpha')?.querySelector('webview');
+    const v = [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent.toLowerCase() === 'alpha')?.querySelector('webview');
     return v && v.executeJavaScript('!!window.__kmvEmote');
   });
   // the card's Download button: the chat page asks the app
