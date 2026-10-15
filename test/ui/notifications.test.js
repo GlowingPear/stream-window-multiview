@@ -146,12 +146,26 @@ test('the red number: mentions and spam, everything, or off', async t => {
   const page = await open(t);
   assert.equal(await badge(page), '3');
   await page.evaluate(() => openSettings('notify'));
+  await page.click('#ntTabs [data-t=bell]');
   await page.selectOption('#bellCount', 'all');
   assert.equal(await badge(page), '5', 'went live and raids too, never app messages');
   await page.selectOption('#bellCount', 'off');
   assert.equal(await badge(page), '');
   await page.reload();
   assert.equal(await page.evaluate(() => [smvNotes.bellCount, document.querySelector('#bellCount').value].join()), 'off,off', 'remembered');
+});
+
+test('Settings > Notifications: Do not disturb, then tabs, with nothing to scroll', async t => {
+  const page = await open(t, seed(), {}, { width: 1280, height: 800 });
+  await page.evaluate(() => openSettings('notify'));
+  const fits = () => page.$eval('#settingsDlg .st-body', b => b.scrollHeight <= b.clientHeight + 1);
+  assert.ok(await page.isVisible('#dndOn') && await page.isVisible('#ntGrid'), 'Do not disturb, and Each kind to start with');
+  assert.ok(await page.isHidden('#bellCount'));
+  assert.ok(await fits(), 'Each kind fits without scrolling');
+  await page.click('#ntTabs [data-t=bell]');
+  assert.ok(await page.isVisible('#bellCount') && await page.isVisible('#msgPos') && await page.isHidden('#ntGrid'), 'Bell & pop-ups');
+  assert.ok(await page.isVisible('#dndOn'), 'Do not disturb stays on every tab');
+  assert.ok(await fits());
 });
 
 test('All notifications: search, Unread only, Mark all read, delete, clear a tab, grouped by day; opens on the bell\'s tab', async t => {

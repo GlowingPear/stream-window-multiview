@@ -209,6 +209,7 @@ test('Settings > Notifications: off sends no desktop notifications, the live row
   assert.equal(await liveOn(), 'never', 'and the switch in Saved sets it');
   await a.win.evaluate(() => { const na = document.querySelector('#notifyAll'); na.checked = true; na.dispatchEvent(new Event('change')); });
   assert.equal(await liveOn(), 'always');
+  await a.win.click('#ntTabs [data-t=desktop]');
   await a.win.uncheck('#dnOn');
   const before = await notes();
   await mention(); await a.win.waitForTimeout(300);
@@ -245,6 +246,7 @@ test('app messages can be desktop notifications too, and the pop-up can be turne
   assert.ok(await a.win.isVisible('#msg'), 'and the pop-up too');
   await a.win.evaluate(() => window.openSettings('notify'));
   await a.win.uncheck('#ntGrid [data-al="app.popup"]');
+  await a.win.click('#ntTabs [data-t=desktop]');
   await a.win.uncheck('#dnOn');
   await a.win.keyboard.press('Escape');
   await a.win.evaluate(() => window.smvNotes.flash(''));

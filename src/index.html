@@ -1637,16 +1637,18 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <h4>Notifications</h4><p class="st-sub">What happens when something new arrives. Everything is kept under the bell in the toolbar either way.</p>
         <div class="st-lead nt-dnd"><span class="st-t"><b>Do not disturb</b><small id="dndSt">Still collected under the bell, but no pop-ups, sounds or desktop notifications.</small></span>
           <select id="dndFor" aria-label="For how long"><option value="30">For 30 minutes</option><option value="60">For 1 hour</option><option value="120">For 2 hours</option><option value="240">For 4 hours</option><option value="480">For 8 hours</option><option value="0">Until I turn it off</option></select><input type="checkbox" class="st-sw" id="dndOn" aria-label="Do not disturb"></div>
-        <div class="st-sec">For each kind</div>
+        <div class="st-tabs" id="ntTabs"><button data-t="kinds" class="on">Each kind</button><button data-t="bell">Bell &amp; pop-ups</button><button data-t="desktop" class="dn-tab" hidden>Desktop</button></div>
+        <div class="st-subpane" data-t="kinds">
         <div class="nt-grid" id="ntGrid"><span class="nt-h">Kind</span><span class="nt-h">Pop-up</span><span class="nt-h nt-desk">Desktop</span><span class="nt-h">Sound</span></div>
-        <div class="st-sec">The bell</div>
+        </div>
+        <div class="st-subpane" data-t="bell" hidden>
         <div class="st-row"><span class="st-t">Red number counts<small>Things that are new since you last opened it. App messages never count.</small></span>
           <select id="bellCount" aria-label="What the red number counts"><option value="ms">Mentions &amp; spam</option><option value="all">Everything</option><option value="off">Off</option></select></div>
         <div class="st-row"><span class="st-t">Pop-ups show<small>Where the short messages in the app appear. Click one to close it.</small></span>
           <select id="msgPos" aria-label="Where pop-ups show"><option value="tc">Top</option><option value="tl">Top left</option><option value="tr">Top right</option><option value="bc">Bottom</option><option value="bl">Bottom left</option><option value="br">Bottom right</option></select></div>
-        <div class="dn-sec" hidden>
-          <div class="st-sec">Desktop notifications</div>
-          <label class="st-row"><span class="st-t">Desktop notifications<small>Your computer's notifications, also while the app is in the background. Off: none at all, whatever is chosen above.</small></span><input type="checkbox" class="st-sw" id="dnOn" checked></label>
+        </div>
+        <div class="st-subpane dn-sec" data-t="desktop" hidden>
+          <label class="st-row"><span class="st-t">Desktop notifications<small>Your computer's notifications, also while the app is in the background. Off: none at all, whatever is chosen under Each kind.</small></span><input type="checkbox" class="st-sw" id="dnOn" checked></label>
           <div class="st-row"><span class="st-t">Check they work<small class="dn-st">If your computer blocks them, nothing shows. Send a test to check.</small></span><button class="btn dn-test">Send a test</button><button class="btn dn-sys">Open system settings</button></div>
         </div>
       </section>
@@ -1678,13 +1680,13 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <div class="st-row" data-dep="mention.until"><span class="st-t">Get stronger if unseen<small>Glow, then pulse, then flash.</small></span>
           <select data-al="mention.esc"><option value="0">Off</option><option value="10">Every 10 s</option><option value="20">Every 20 s</option><option value="40">Every 40 s</option><option value="60">Every minute</option></select>
           <select data-al="mention.max"><option value="pulse">Up to pulse</option><option value="flash">Up to flash</option></select></div>
-        <div class="st-row nt-shared"><span class="st-t">Pop-up in the app<button class="nt-chip" data-go="notify" title="The same setting as in Notifications: changing one changes both">Notifications</button><small>A short message saying what happened and where.</small></span><input type="checkbox" class="st-sw" data-al="mention.popup"></div>
-        <div class="st-row nt-shared"><span class="st-t">Sound<button class="nt-chip" data-go="notify" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
+        <div class="st-row nt-shared"><span class="st-t">Pop-up in the app<button class="nt-chip" data-go="notify" data-sub="kinds" title="The same setting as in Notifications: changing one changes both">Notifications</button><small>A short message saying what happened and where.</small></span><input type="checkbox" class="st-sw" data-al="mention.popup"></div>
+        <div class="st-row nt-shared"><span class="st-t">Sound<button class="nt-chip" data-go="notify" data-sub="kinds" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="mention.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound</option></select>
           <button class="btn st-play" data-play="mention" title="Play it">▶</button>
           <input type="range" min="0" max="1" step="0.05" data-al="mention.vol" title="Volume"></div>
         <div class="st-row" data-dep="mention.until"><span class="st-t">Repeat the sound while unseen</span><input type="checkbox" class="st-sw" data-al="mention.repeat"></div>
-        <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
+        <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" data-sub="kinds" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="mention.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
         </div>
       </section>
@@ -1700,13 +1702,13 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <select data-al="spam.esc"><option value="0">Off</option><option value="10">Every 10 s</option><option value="20">Every 20 s</option><option value="40">Every 40 s</option><option value="60">Every minute</option></select>
           <select data-al="spam.max"><option value="pulse">Up to pulse</option><option value="flash">Up to flash</option></select></div>
         <div class="st-row"><span class="st-t">Tag the message in chat<small>Adds "LIKELY SPAM" after the message. Hover the tag to see why.</small></span><input type="checkbox" class="st-sw" data-al="spam.tag"></div>
-        <div class="st-row nt-shared"><span class="st-t">Pop-up in the app<button class="nt-chip" data-go="notify" title="The same setting as in Notifications: changing one changes both">Notifications</button><small>A short message saying what happened and where.</small></span><input type="checkbox" class="st-sw" data-al="spam.popup"></div>
-        <div class="st-row nt-shared"><span class="st-t">Sound<button class="nt-chip" data-go="notify" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
+        <div class="st-row nt-shared"><span class="st-t">Pop-up in the app<button class="nt-chip" data-go="notify" data-sub="kinds" title="The same setting as in Notifications: changing one changes both">Notifications</button><small>A short message saying what happened and where.</small></span><input type="checkbox" class="st-sw" data-al="spam.popup"></div>
+        <div class="st-row nt-shared"><span class="st-t">Sound<button class="nt-chip" data-go="notify" data-sub="kinds" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="spam.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound</option></select>
           <button class="btn st-play" data-play="spam" title="Play it">▶</button>
           <input type="range" min="0" max="1" step="0.05" data-al="spam.vol" title="Volume"></div>
         <div class="st-row" data-dep="spam.until"><span class="st-t">Repeat the sound while unseen</span><input type="checkbox" class="st-sw" data-al="spam.repeat"></div>
-        <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
+        <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" data-sub="kinds" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="spam.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
         </div>
         <div class="st-subpane" data-t="how" hidden>
@@ -4231,7 +4233,7 @@ document.querySelectorAll('#settingsDlg .nt-desk').forEach(el => { el.hidden = !
 /* Settings > Notifications: desktop notifications (the main window's: live alerts, mentions, spam) */
 const dnOn = $('#dnOn'), dnSt = document.querySelector('#settingsDlg .dn-st');
 if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled){
-  document.querySelector('#settingsDlg .dn-sec').hidden = false;
+  document.querySelector('#ntTabs .dn-tab').hidden = false;
   dnOn.checked = desktopNotify;
   dnOn.addEventListener('change', () => {
     desktopNotify = dnOn.checked;
@@ -7629,6 +7631,11 @@ $('#mentTabs').addEventListener('click', e => {
   const b = e.target.closest('button[data-t]'); if (!b) return;
   $('#mentTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   settingsDlg.querySelectorAll('[data-s=mentions] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
+});
+$('#ntTabs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-t]'); if (!b) return;
+  $('#ntTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  settingsDlg.querySelectorAll('[data-s=notify] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
 });
 // Spam alerts > Lists: pick a list on the left, it shows on the right.
 $('#spamListPick').addEventListener('click', e => {
