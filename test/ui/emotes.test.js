@@ -5,7 +5,8 @@ const assert = require('node:assert/strict');
 const { setup } = require('./app');
 const { openApp } = setup();
 
-const img = (src, alt, size = 28) => `<img src="${src}" alt="${alt}" width="${size}" height="${size}">`;
+// (the sites are blocked, so each picture fails to load: sized in CSS, it keeps its size instead of shrinking to its alt text)
+const img = (src, alt, size = 28) => `<img src="${src}" alt="${alt}" style="display:inline-block;width:${size}px;height:${size}px">`;
 // The helper runs in the app's own page here (the same code it sends to chat pages), on a stand-in chat.
 async function chat(t, body) {
   const page = await openApp(t, { width: 420, height: 640 });
