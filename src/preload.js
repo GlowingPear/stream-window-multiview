@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('kmv', {
   desktop: true,
-  openWindow: (url, w, h) => ipcRenderer.invoke('open-window', url, w, h),
+  openWindow: (url, w, h, opts) => ipcRenderer.invoke('open-window', url, w, h, opts),
   openLogin: plat => ipcRenderer.invoke('account:login', plat || 'kick'),
   logout: plat => ipcRenderer.invoke('account:logout', plat || 'kick'),
   accountsStatus: () => ipcRenderer.invoke('accounts:status'),
