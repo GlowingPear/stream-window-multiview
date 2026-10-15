@@ -163,3 +163,39 @@ test('right-clicking an emote the chat shows: the app draws the menu with its pr
   assert.equal(await a.win.locator('.vmenu').count(), 0, 'closed');
   await inView(a.win, 'alpha', 'chat', () => { document.querySelectorAll('img[alt=pearHype]').forEach(e => e.remove()); return true; });
 });
+
+test('Translate new messages in every chat: on in open and new chats, off in one chat only, and back to each chat\'s choice when switched off', T, async () => {
+  const w = a.win;
+  const st = ch => inView(w, ch, 'chat', () => window.__kmvTr ? window.__kmvTr.state() : null);
+  const until = async (fn, want) => { for (let i = 0; i < 80 && JSON.stringify(await fn().catch(() => null)) !== JSON.stringify(want); i++) await new Promise(r => setTimeout(r, 100)); assert.deepEqual(await fn(), want); };
+  await until(() => st('alpha'), { on: false, auto: false });
+  // switched on: the open chat starts straight away
+  await w.evaluate(() => window.openSettings('general'));
+  await w.locator('label:has(#trAllSet)').click();
+  await w.keyboard.press('Escape');
+  await until(() => st('alpha'), { on: true, auto: true });
+  await inView(w, 'alpha', 'chat', h => { document.body.insertAdjacentHTML('beforeend', h); return true; }, kickMsg('quietkoala', 'hola amigos'));
+  for (let i = 0; i < 50 && (await chatText())[0] !== 'hello friends [SPANISH]'; i++) await new Promise(r => setTimeout(r, 100));
+  assert.deepEqual(await chatText(), ['hello friends [SPANISH]']);
+  // the menu shows it ticked
+  const m = await rightClick(CHAT, {});
+  assert.equal(await a.app.evaluate(() => globalThis.__m.menus.at(-1)[1].checked), true);
+  // a chat opened later starts on too
+  await openChannel(w, 'bravo', 'chat');
+  await viewLoaded(w, 'bravo', 'chat', /popout\/bravo\/chat/);
+  await until(() => st('bravo'), { on: true, auto: true });
+  // Stop translating in one chat: off there only, remembered (the chat loaded again stays off)
+  await m.pick('Stop translating');
+  await until(() => st('alpha'), { on: false, auto: false });
+  assert.deepEqual(await w.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.noTranslate'))), ['alpha']);
+  assert.deepEqual(await st('bravo'), { on: true, auto: true }, 'the other chat keeps going');
+  await w.evaluate(() => [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent === 'alpha').querySelector('webview').reload());
+  await new Promise(r => setTimeout(r, 1500));
+  await until(() => st('alpha'), { on: false, auto: false });
+  // switched off: back to each chat's own choice (neither chose it)
+  await w.evaluate(() => window.openSettings('general'));
+  await w.locator('label:has(#trAllSet)').click();
+  await w.keyboard.press('Escape');
+  await until(() => st('bravo'), { on: false, auto: false });
+  assert.equal(await w.evaluate(() => localStorage.getItem('kickMultiview.translateAll')), '0');
+});
