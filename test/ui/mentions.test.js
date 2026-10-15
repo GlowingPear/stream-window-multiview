@@ -253,3 +253,27 @@ test('Settings › Mentions opens on Alerts, its first tab, as Notifications and
   assert.deepEqual(await tabs(), ['Alerts', 'Names & words', 'Chat bots *']);
   assert.deepEqual(await shown(), ['bots']);
 });
+
+// #104: Kick's chat now shows the name, ":" and the message on lines of their own (its name block is a flex box)
+const kickRow = (name, body, reply) => `<div data-index="1"><div class="group">${reply ? `<button style="display:block"><span>Replying to <span>${reply[0]}</span>: <span>${reply[1]}</span></span></button>` : ''}
+  <div><div style="display:inline-flex;align-items:baseline"><span style="display:none">10:34 PM</span><div style="display:inline-flex"><button>${name}</button></div><span style="display:inline-flex" aria-hidden="true">:&nbsp;</span></div><span>${body}</span></div></div></div>`;
+
+test('Kick, with the name, ":" and the message on lines of their own: replies and mentions keep the message (#104)', async t => {
+  const page = await openApp(t);
+  await page.evaluate(h => { const c = document.createElement('div'); c.id = 'chat'; c.innerHTML = h; document.body.append(c); window.mentionAgent(); }, kickRow('regular', 'hello'));
+  assert.match(await page.$eval('#chat', e => e.innerText), /regular\n:\s*\nhello/, 'the stand-in reads like Kick\'s chat');
+  await page.evaluate(() => window.__kmvMention.setMe('mod_me', []));
+  await page.waitForTimeout(2800);
+  const add = h => page.evaluate(h => document.getElementById('chat').insertAdjacentHTML('beforeend', h), h);
+  await add(kickRow('pixelpear', em(KICK(4), 'pearHype')));   // a message that's only an emote
+  await add(kickRow('quietkoala', 'sure, see you there', ['mod_me', 'want to raid later?']));
+  await add(kickRow('nightowl', `gg @mod_me ${em(KICK(1), 'pearHype')} nice`));
+  await add(kickRow('tidepool', 'not for you', ['someone_else', 'hi']));
+  const q = (await page.evaluate(() => window.__kmvMention.take())).m;
+  const by = n => q.find(m => m.sender === n);
+  assert.deepEqual(q.map(m => [m.sender, m.kind]), [['quietkoala', 'reply'], ['nightowl', 'mention']]);
+  assert.equal(by('quietkoala').body, 'sure, see you there', 'the reply itself');
+  assert.equal(by('quietkoala').quoted, 'want to raid later?', 'and the message it answers');
+  assert.match(by('nightowl').body, /^gg @mod_me\s+nice$/, '(the emote is in parts)');
+  assert.deepEqual(by('nightowl').parts, [{ t: 'gg @mod_me ' }, { e: 'pearHype', src: KICK(1) }, { t: ' nice' }]);
+});
