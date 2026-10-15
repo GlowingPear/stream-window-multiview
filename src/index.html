@@ -677,6 +677,27 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
   text-align:center;color:var(--muted);background:#000;font-size:13px}
 .waitmsg[hidden]{display:none}
 .waitmsg button[hidden]{display:none}
+/* Kick's /clip, /poll, /prediction: a panel that slides up over the bottom of the chat, full width, in the style
+   of Kick's own chat panels (channel points, command list) */
+.kcmd{position:absolute;left:0;right:0;bottom:0;z-index:3;display:flex;flex-direction:column;gap:6px;padding:14px 14px 12px;
+  background:#191b1f;border-top:1px solid #2a2d33;border-radius:10px 10px 0 0;box-shadow:0 -10px 28px rgba(0,0,0,.5);
+  color:#fff;animation:kcmdIn .22s cubic-bezier(.2,.8,.3,1)}
+@keyframes kcmdIn{from{transform:translateY(100%)}}
+@media (prefers-reduced-motion:reduce){.kcmd{animation:msgIn .15s}}
+.kcmd h3{margin:0;padding-right:26px;font-size:14px;font-weight:600}
+.kcmd .kcmd-sub{font-size:12px;color:#a0a6b1;line-height:1.45}
+.kcmd .kcmd-x{position:absolute;top:8px;right:8px;width:26px;height:26px;padding:0;border:0;border-radius:4px;background:none;color:#a0a6b1;cursor:pointer;font-size:18px;line-height:26px}
+.kcmd .kcmd-x:hover{background:#2a2d33;color:#fff}
+.kcmd{container-type:inline-size}
+.kcmd .kcmd-foot{display:flex;gap:8px;margin-top:6px}
+.kcmd .kcmd-foot button{flex:1;height:32px;padding:0 12px;border:0;border-radius:4px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.kcmd .kcmd-no{background:#2a2d33;color:#fff}.kcmd .kcmd-no:hover{background:#373a41}
+.kcmd .kcmd-yes{background:#53fc18;color:#090b0f}.kcmd .kcmd-yes:hover{background:#75fd46}
+/* narrower chats: "Open channel page", then "Open channel", then "Open"; the narrowest stacks the buttons */
+.kcmd .kcmd-yes span{display:none}.kcmd .kcmd-yes .l3{display:inline}
+@container (max-width:290px){.kcmd .kcmd-yes .l3{display:none}.kcmd .kcmd-yes .l2{display:inline}}
+@container (max-width:230px){.kcmd .kcmd-yes .l2{display:none}.kcmd .kcmd-yes .l1{display:inline}}
+@container (max-width:170px){.kcmd .kcmd-foot{flex-direction:column-reverse}}
 .cs-mode{flex:none;height:22px;padding:0 8px;border:1px solid var(--line2);border-radius:6px;background:var(--panel2);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
 .cs-mode:hover{border-color:var(--muted)}
 .cs-mode.on{border-color:var(--accent);color:var(--accent)}
@@ -2126,7 +2147,55 @@ function emoteAgent(){
   return true;
 }
 const EMOTE_JS = `(${emoteAgent.toString()})()`;
+
+// Kick chat commands that only work on the channel page: the popout chat (what the app shows) knows them
+// but has nowhere to show their popup, so they do nothing there. The app offers to open the channel page.
+const KICK_PAGE_CMDS = { clip: 'make a clip', poll: 'start a poll', prediction: 'start a prediction' };
+// Runs inside each Kick chat page: a message that is one of these commands isn't sent (Enter or the send
+// button); the app is told through a console message instead.
+function kickCmdAgent(names){
+  if (window.__kmvKickCmd) return true;
+  const re = new RegExp('^\\s*/(' + names.join('|') + ')(?:\\s|$)', 'i');
+  const box = () => document.querySelector('[data-testid="chat-input"]') || document.querySelector('[contenteditable="true"], textarea');
+  const cmdOf = text => { const m = re.exec(String(text || '')); return m ? m[1].toLowerCase() : null; };
+  function catchIt(e, tell){
+    const b = box(), cmd = b && cmdOf(b.isContentEditable ? b.innerText : b.value);
+    if (!cmd) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (tell) console.log('__kmv:kick-cmd ' + cmd);
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.target && e.target === box()) catchIt(e, true);
+  }, true);
+  ['pointerdown', 'mousedown', 'click'].forEach(t => document.addEventListener(t, e => {
+    if (e.target.closest && e.target.closest('#send-message-button')) catchIt(e, t === 'click');   // the press too, said once
+  }, true));
+  window.__kmvKickCmd = { cmdOf };
+  return true;
+}
+const KICK_CMD_JS = `(${kickCmdAgent.toString()})(${JSON.stringify(Object.keys(KICK_PAGE_CMDS))})`;
+// Says so in the chat window itself, over its chat box, with Cancel / Open channel page (muted, your login).
+function kickPageCmd(w, cmd){
+  if (!KICK_PAGE_CMDS[cmd] || platOf(w.channel) !== 'kick' || !w.el) return;
+  const body = w.el.querySelector('.body');
+  body.querySelector('.kcmd')?.remove();
+  const card = document.createElement('div');
+  card.className = 'kcmd'; card.setAttribute('role', 'alertdialog');
+  card.innerHTML = '<button class="kcmd-x" title="Close" aria-label="Close">×</button><h3></h3><div class="kcmd-sub"></div>'
+    + '<div class="kcmd-foot"><button class="kcmd-no">Cancel</button><button class="kcmd-yes" aria-label="Open channel page"><span class="l3">Open channel page</span><span class="l2">Open channel</span><span class="l1">Open</span></button></div>';
+  card.querySelector('h3').textContent = `/${cmd} doesn’t work in this chat`;
+  card.querySelector('.kcmd-sub').textContent = `Kick only lets you ${KICK_PAGE_CMDS[cmd]} on the channel page. Open ${w.channel}’s page (muted) to do it there?`;
+  card.querySelector('.kcmd-no').onclick = card.querySelector('.kcmd-x').onclick = () => card.remove();
+  card.querySelector('.kcmd-yes').onclick = () => {
+    card.remove();
+    const url = `https://kick.com/${encodeURIComponent(w.channel)}`;
+    if (DESKTOP) window.kmv.openWindow(url, 1280, 800, { muted: true });
+    else window.open(url, 'kmv_page_' + w.channel, 'width=1280,height=800');
+  };
+  body.append(card);   // (not focused: another Enter in the chat mustn't open the page)
+}
 window.chatAgentJs = MENTION_JS; window.mentionAgent = mentionAgent; window.emoteAgent = emoteAgent;   // for the tests
+window.kickCmdAgent = kickCmdAgent; window.kickPageCmd = kickPageCmd; window.KICK_PAGE_CMDS = KICK_PAGE_CMDS;
 
 // Runs inside each stream's player page: lets the title-bar slider drive the real player (YouTube's, or the <video>).
 const VOL_JS = `(function(){
@@ -2815,6 +2884,8 @@ function mountView(w){
     if (w.kind === 'chat') frame.addEventListener('console-message', e => {
       const m = /^__kmv:emote-dl (\{.*\})$/.exec(String(e.message || ''));
       if (m) saveEmote(m[1]);
+      const c = /^__kmv:kick-cmd ([a-z]+)$/.exec(String(e.message || ''));   // see kickCmdAgent
+      if (c && w.view === frame) kickPageCmd(w, c[1]);
     });
     frame.addEventListener('dom-ready', () => {
       w.ready = true;
@@ -2826,6 +2897,7 @@ function mountView(w){
       if (w.kind === 'chat') { const css = { kick: KICK_CHAT_CSS, twitch: TWITCH_CHAT_CSS }[platOf(w.channel)]; if (css) try { frame.insertCSS(css); } catch {} }
       if (w.kind === 'chat' && ROLE === 'main') injectMention(w);
       if (w.kind === 'chat') frame.executeJavaScript(`${EMOTE_JS};window.__kmvEmote.on(${emoteOn})`).catch(() => {});
+      if (w.kind === 'chat' && platOf(w.channel) === 'kick') frame.executeJavaScript(KICK_CMD_JS).catch(() => {});
       applyChatView(w);
     });
   }
