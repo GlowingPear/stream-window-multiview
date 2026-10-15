@@ -94,7 +94,7 @@ test('Channels: one box searches your channels and opens (or opens and saves) a 
 test('Channels: the open/save row fits on one line, and a channel the site says doesn\'t exist is not opened', async t => {
   const page = await openApp(t, { init: () => {
     window.asked = [];
-    window.kmv = { channelExists: ch => { window.asked.push(ch); return new Promise(r => setTimeout(() => r(ch === 'ghost' ? 'missing' : ch === 'tw:slow' ? 'unknown' : 'yes'), 150)); } };
+    window.kmv = { channelExists: ch => { window.asked.push(ch); return new Promise(r => setTimeout(() => r(ch === 'ghost' ? 'missing' : ch === 'tw:slow' ? 'unknown' : 'yes'), 800)); } };
   } });
   await page.click('#savedBtn');
   await page.fill('#savedInput', 'ghost');
