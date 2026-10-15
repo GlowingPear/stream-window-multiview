@@ -45,6 +45,7 @@ header.measuring > :not(.spacer){flex-shrink:0}   /* see fitHeader: measured at 
 header .tb{position:relative;display:flex;align-items:center;justify-content:center;gap:7px;height:34px;padding:0 9px;border:0;border-radius:7px;
   background:transparent;color:var(--text);font-weight:600}
 header .tb:hover:not(:disabled){background:var(--panel2)}
+header .tb:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 header .tb.ibtn{width:auto;min-width:34px;padding:0 8px}
 .tb > i[data-ico]{display:grid;place-items:center;flex:none}
 .tb > i[data-ico] svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -3171,7 +3172,7 @@ async function openFromBox(saveToo){
   const t = addTarget();
   if (!t){ if (input.value.trim()) flash('Couldn’t read that link or channel name'); return; }
   const ch = t.p.channel;
-  if (ch && DESKTOP && window.kmv.channelExists && !/^yt:v:/.test(ch)){
+  if (ch && window.kmv && window.kmv.channelExists && !/^yt:v:/.test(ch)){
     const btn = saveToo ? $('#spOpenSave') : $('#spOpen');
     addBusy = true; btn.classList.add('busy');
     const r = await window.kmv.channelExists(ch).catch(() => 'unknown');
@@ -5627,7 +5628,7 @@ function updateFold(){
   else if (document.body.classList.contains('bar-peek')){ setTb(b, 'Keep open', 'unfold'); b.title = 'Keep the names showing'; }
   else { setTb(b, 'Keep names open', 'unfold'); b.title = 'Keep the names showing'; }
 }
-function applyToolbar(){
+function applyToolbar(start){
   const left = ROLE === 'main' && barPos === 'left', cls = document.body.classList;
   cls.toggle('bar-left', left);
   cls.toggle('bar-icons', left && !barLabels);
@@ -5635,7 +5636,9 @@ function applyToolbar(){
   document.querySelectorAll('[data-tb=pos] button').forEach(b => b.classList.toggle('on', b.dataset.v === barPos));
   document.querySelectorAll('[data-tb=labels] button').forEach(b => { b.classList.toggle('on', (b.dataset.v === '1') === barLabels); b.disabled = barPos !== 'left'; });
   updateFold(); updateFocusBtn();
+  if (start && !cls.contains('bar-icons')) return;     // the lights are as macOS opened the window
   showLights(!cls.contains('focus') || cls.contains('peek'));
+  if (start) return;
   if (MAC_BAR && cls.contains('focus')) window.kmv.watchTop(true, left ? 'left' : 'top');
   setTimeout(() => window.dispatchEvent(new Event('resize')), 220);   // the layouts fit the new space
 }
@@ -5657,7 +5660,7 @@ hdrEl.addEventListener('pointerleave', () => {
 });
 hdrEl.addEventListener('focusin', e => { if (iconsLeft() && e.target.matches(':focus-visible')) setBarPeek(true); });   // Tab into it (a click works straight away)
 hdrEl.addEventListener('focusout', e => { if (!hdrEl.contains(e.relatedTarget) && !hdrEl.matches(':hover')) setBarPeek(false); });
-applyToolbar();
+applyToolbar(true);
 
 // A toolbar menu or panel opens under its button, or beside the left toolbar, next to its row.
 function placeMenu(el, anchor, alignRight){
@@ -5682,6 +5685,7 @@ function syncOpen(){
 const openObs = new MutationObserver(syncOpen);
 OPENS.forEach(([m]) => openObs.observe($(m), { attributes: true, attributeFilter: ['hidden'] }));
 syncOpen();
+
 let refitT;
 window.addEventListener('resize', () => {
   wins.forEach(w => { if (w.max) setRect(w, { x: 0, y: 0, w: SW(), h: SH() }); clampPos(w); });

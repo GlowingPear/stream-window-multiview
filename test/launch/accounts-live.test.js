@@ -1,7 +1,7 @@
 // Logins, live alerts and notifications in the real desktop app. Who's logged in, who's live and the
 // moderator check are answered by the test; nothing goes to Kick, Twitch or YouTube.
 const test = require('node:test');
-const { launchApp, winSel, inView, viewLoaded, assert } = require('./app');
+const { launchApp, winSel, inView, viewLoaded, assert, openChannel, setMode, typeChannel } = require('./app');
 
 const T = { timeout: 60000 };
 let a;
@@ -33,7 +33,9 @@ const row = (where, p) => `${where} .am-row[data-p=${p}]`;
 test('the Accounts menu shows who\'s logged in; Log out and Switch ask first', T, async () => {
   await a.win.click('#loginBtn');
   await a.win.waitForFunction(() => /someone/.test(document.querySelector('#accountMenu .am-row[data-p=kick] .am-st').textContent));
-  assert.match(await a.win.textContent('#loginBtn'), /someone \+2/, 'the button names the Kick login, plus the others');
+  assert.equal((await a.win.textContent('#loginBtn')).trim(), 'Logins', 'the button says Logins, not a username');
+  assert.ok(await a.win.$eval('#loginBtn', b => b.classList.contains('has-acct')), 'green while logged in');
+  assert.match(await a.win.$eval('#loginBtn', b => b.title || b.dataset.tipTitle), /Kick \(someone\), Twitch \(tw_user\), YouTube/, 'its tooltip names the logins');
   assert.match(await a.win.textContent(row('#accountMenu', 'twitch') + ' .am-st'), /Logged in as tw_user/);
   assert.ok(await a.win.isHidden(row('#accountMenu', 'kick') + ' .am-in'), 'no Log in when logged in');
 
@@ -64,8 +66,8 @@ test('the Accounts menu shows who\'s logged in; Log out and Switch ask first', T
 });
 
 test('a new login reloads that site\'s chats and fills in your username; "Forget my login" is saved', T, async () => {
-  await a.win.selectOption('#mode', 'chat');
-  await a.win.fill('#url', 'tw:charlie'); await a.win.click('#add');
+  await setMode(a.win, 'chat');
+  await openChannel(a.win, 'tw:charlie');
   await a.win.waitForSelector(`${winSel('charlie', 'chat')} webview`);
   await viewLoaded(a.win, 'charlie', 'chat', /chat/);
   await inView(a.win, 'charlie', 'chat', () => { window.__before = 1; });
@@ -84,11 +86,11 @@ test('a new login reloads that site\'s chats and fills in your username; "Forget
   await a.win.uncheck('#settingsDlg .am-forget input[data-f=youtube]');
   await a.win.keyboard.press('Escape');
   await a.win.click(`${winSel('charlie', 'chat')} [data-a=close]`);
-  await a.win.selectOption('#mode', 'both');
+  await setMode(a.win, 'both');
 });
 
 test('Saved channels show who\'s live, with bells, auto-open and Open live', T, async () => {
-  await a.win.selectOption('#mode', 'both');
+  await setMode(a.win, 'both');
   const now = Date.now();
   const send = snap => a.app.evaluate((_e, snap) => globalThis.__sendLive(snap), snap);
   await send({ alpha: { live: true, viewers: 1234, title: 'Big match', category: 'Games', checked: now }, bravo: { live: false, checked: now }, 'tw:charlie': { live: false, checked: now } });
@@ -137,7 +139,7 @@ test('In Auto layout, a channel that opens by itself is fitted in as the last st
   const rect = (title, kind) => a.win.$eval(winSel(title, kind), e => ['left', 'top', 'width', 'height'].map(k => parseFloat(e.style[k])));
   const rects = () => Promise.all([rect('alpha'), rect('charlie'), rect('alpha', 'chat'), rect('charlie', 'chat')]);
   const goesLive = async t => { await send(false, t); await send(true, t + 1); await a.win.waitForSelector(winSel('bravo')); };
-  for (const ch of ['alpha', 'tw:charlie']){ await a.win.fill('#url', ch); await a.win.click('#add'); }
+  for (const ch of ['alpha', 'tw:charlie']){ await openChannel(a.win, ch); }
   await a.win.click('#layoutBtn'); await a.win.click('#layoutMenu [data-l=auto]');
 
   // off (the default): the others stay where they are
@@ -213,7 +215,7 @@ test('messages can be desktop notifications instead of toasts, and are toasts ag
   await a.win.selectOption('#msgVia', 'desktop');
   assert.ok(await a.win.isDisabled('#msgPos'), 'no position for a desktop notification');
   await a.win.keyboard.press('Escape');
-  for (let i = 0; i < 2; i++) { await a.win.fill('#url', '%%%'); await a.win.click('#add'); }
+  for (let i = 0; i < 2; i++) { await typeChannel(a.win, '%%%'); }
   await a.win.waitForTimeout(300);
   assert.deepEqual((await titles()).slice(before), ['Messages show as desktop notifications', 'Couldn’t read that link or channel name'].map(t => 'Stream Multiview: ' + t), 'sent once, not twice');
   assert.ok(await a.win.isHidden('#msg'), 'and no toast');
@@ -221,7 +223,7 @@ test('messages can be desktop notifications instead of toasts, and are toasts ag
   await a.win.uncheck('#dnOn');
   assert.equal(await a.win.isDisabled('#msgPos'), false);
   await a.win.keyboard.press('Escape');
-  await a.win.fill('#url', '%%%%'); await a.win.click('#add');
+  await typeChannel(a.win, '%%%%');
   assert.ok(await a.win.isVisible('#msg'), 'desktop notifications off: a toast instead');
   await a.win.evaluate(() => { localStorage.removeItem('kickMultiview.msg'); localStorage.removeItem('kickMultiview.desktopNotify'); });
 });

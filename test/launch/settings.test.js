@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { stubExists, openChannel, setMode } = require('./app');
 const { ROOT, playwright, killApp } = require('../helpers');
 
 function electronPath() {
@@ -26,6 +27,7 @@ test.before(async () => {
   const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' };
   delete env.ELECTRON_RUN_AS_NODE;
   app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', ROOT], env, timeout: 60000 });
+  await stubExists(app);
   const proc = app.process();
   process.once('exit', () => killApp(proc));   // never leave the app open if the tests die
   win = await app.firstWindow();
@@ -330,8 +332,7 @@ test('a window\'s "open in its own window" and mod view buttons open app windows
     eapp.on('session-created', fake);
     ipcMain.removeHandler('mod:check'); ipcMain.handle('mod:check', () => true);
   });
-  await win.selectOption('#mode', 'chat');
-  await win.fill('#url', 'alpha'); await win.click('#add');
+  await openChannel(win, 'alpha', 'chat');
   const opened = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map(w => w.webContents.getURL()).filter(u => /^https:/.test(u) && !/robots\.txt/.test(u)));   // (not the hidden live checker)
   await win.waitForSelector('#stage .win.chat [data-a=mod]:not([hidden])');
   await win.click('#stage .win.chat [data-a=pop]');
@@ -340,7 +341,7 @@ test('a window\'s "open in its own window" and mod view buttons open app windows
   assert.deepEqual((await opened()).sort(), ['https://dashboard.kick.com/moderator/alpha', 'https://kick.com/popout/alpha/chat']);
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter(w => /^https:/.test(w.webContents.getURL()) && !/robots/.test(w.webContents.getURL())).forEach(w => w.close()));
   await win.click('#stage .win.chat [data-a=close]');
-  await win.selectOption('#mode', 'both');
+  await setMode(win, 'both');
 });
 
 test('logging out really clears that site\'s login', T, async () => {

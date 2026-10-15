@@ -2,14 +2,14 @@
 // auto-pause for streams you can't see, "pause all except focus", small previews, chat text size, and
 // YouTube channels waiting until they're live. The players and chats are stand-in pages (see app.js).
 const test = require('node:test');
-const { launchApp, inView, viewLoaded, winSel, assert } = require('./app');
+const { launchApp, inView, viewLoaded, winSel, assert, openChannel, setMode } = require('./app');
 
 const T = { timeout: 60000 };
 let a;
 test.before(async () => { a = await launchApp({ storage: { 'kickMultiview.alerts': { mention: { sound: 'none' }, spam: { sound: 'none' } } } }); });
 test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
 
-const add = async (...links) => { for (const l of links) { await a.win.fill('#url', l); await a.win.click('#add'); } };
+const add = async (...links) => { for (const l of links) await openChannel(a.win, l); };
 const video = (title, prop) => inView(a.win, title, 'stream', p => { const v = document.getElementById('v'); return v ? v[p] : null; }, prop);
 const ready = title => viewLoaded(a.win, title, 'stream', /player/);
 const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) { if (await fn()) return; if (Date.now() > end) throw new Error('timed out waiting'); await new Promise(r => setTimeout(r, 150)); } };
@@ -43,14 +43,14 @@ test('YouTube: the cookie question is answered with the button you picked, in an
 });
 
 test('YouTube: Skip is clicked for real without taking your keyboard, and a question it can\'t answer falls back to "Reject all"', T, async () => {
-  await a.win.selectOption('#mode', 'stream');
+  await setMode(a.win, 'stream');
   await add('https://www.youtube.com/watch?v=abcdefghijk');
   const title = await a.win.$eval('#stage .win.stream .title', e => e.textContent);
   await viewLoaded(a.win, title, 'stream', /youtube\.com\/watch/);
   await add('alpha');                                    // the newest window is the active one
   await ready('alpha');
   assert.equal(await a.win.$eval(winSel(title), e => e.classList.contains('active')), false);
-  await a.win.fill('#url', 'typing here');
+  await a.win.click('#savedBtn'); await a.win.fill('#savedInput', 'typing here');
   await inView(a.win, title, 'stream', () => {
     const b = document.createElement('button'); b.className = 'ytp-skip-ad-button';
     b.style.cssText = 'position:fixed;left:20px;top:20px;width:80px;height:30px';
@@ -59,7 +59,7 @@ test('YouTube: Skip is clicked for real without taking your keyboard, and a ques
   });
   await until(() => inView(a.win, title, 'stream', () => window.__skipped === true));
   await a.win.waitForTimeout(300);
-  assert.equal(await a.win.evaluate(() => document.activeElement.id), 'url', 'the keyboard stays where you were typing');
+  assert.equal(await a.win.evaluate(() => document.activeElement.id), 'savedInput', 'the keyboard stays where you were typing');
   assert.equal(await a.win.$eval(winSel(title), e => e.classList.contains('active')), false, 'and the stream isn\'t made the active window');
   // a cookie question whose buttons can't be found: "Reject all" is saved for that player, and it loads again
   await inView(a.win, title, 'stream', () => {
@@ -69,11 +69,11 @@ test('YouTube: Skip is clicked for real without taking your keyboard, and a ques
   const socs = () => a.app.evaluate(({ session }) => session.fromPartition('persist:kmv-stream-yt_v_abcdefghijk').cookies.get({ name: 'SOCS' }));
   await until(async () => (await socs()).length === 1);
   await until(() => inView(a.win, title, 'stream', () => !document.querySelector('ytd-consent-bump-v2-lightbox')).catch(() => false));
-  await a.win.fill('#url', '');
+  await a.win.fill('#savedInput', ''); await a.win.click('#savedBtn');
 });
 
 test('volume: the title bar\'s mute button, slider and mouse wheel set that stream\'s own volume', T, async () => {
-  await a.win.selectOption('#mode', 'stream');
+  await setMode(a.win, 'stream');
   await add('alpha');
   await ready('alpha');
   const startedAt = Date.now();
@@ -103,7 +103,7 @@ test('volume: the title bar\'s mute button, slider and mouse wheel set that stre
 });
 
 test('YouTube: the app\'s volume and mute go through YouTube\'s own player, from the title bar, the switch control and the keys, and back', T, async () => {
-  await a.win.selectOption('#mode', 'stream');
+  await setMode(a.win, 'stream');
   await add('https://www.youtube.com/watch?v=abcdefghijk');
   const title = await a.win.$eval('#stage .win.stream .title', e => e.textContent);
   await viewLoaded(a.win, title, 'stream', /youtube\.com\/watch/);
@@ -159,10 +159,10 @@ test('a stream\'s sound stays off until the app\'s volume and mute are on its pl
       }, 5);
     });
   });
-  await a.win.selectOption('#mode', 'stream');
+  await setMode(a.win, 'stream');
   await add('https://www.youtube.com/watch?v=abcdefghijk');
   const title = await a.win.$eval('#stage .win.stream .title', e => e.textContent);
-  await a.win.selectOption('#mode', 'chat');
+  await setMode(a.win, 'chat');
   await add('alpha');
   await viewLoaded(a.win, 'alpha', 'chat', /popout/);
   const sound = kind => a.win.evaluate(k => !document.querySelector(`#stage .win.${k} webview`).isAudioMuted(), kind);
@@ -181,7 +181,7 @@ test('a stream\'s sound stays off until the app\'s volume and mute are on its pl
 });
 
 test('the switch control: pause and play, mute, hear only one, its volume, and a small live preview', T, async () => {
-  await a.win.selectOption('#mode', 'both');
+  await setMode(a.win, 'both');
   await add('alpha', 'bravo', 'charlie');
   await ready('charlie');
   await a.win.evaluate(() => document.querySelector('#layoutMenu [data-l=focus]').click());   // not the f key: it goes back to Columns if Focus view is already showing
@@ -245,10 +245,12 @@ test('"Pause all except focus", and auto-pause for streams scrolled out of sight
   await clear();
 });
 
-test('chat text size: − and + change every chat and are remembered', T, async () => {
+test('chat text size: − and + in the Layout menu (and Settings > Layouts) change every chat and are remembered', T, async () => {
   await add('alpha');
   await viewLoaded(a.win, 'alpha', 'chat', /chat/);
   await a.win.waitForTimeout(500);
+  await a.win.click('#layoutBtn');
+  assert.ok(await a.win.isVisible('#layoutMenu #chatZoom'), 'in the Layout menu, in every layout');
   assert.equal(await a.win.textContent('#zoomPct'), '100%');
   await a.win.click('#chatZoom [data-z="-1"]');
   await a.win.click('#chatZoom [data-z="-1"]');
@@ -257,7 +259,13 @@ test('chat text size: − and + change every chat and are remembered', T, async 
   assert.ok(Math.abs(await zoom() - 0.8) < 0.01, 'the chat is smaller');
   await a.win.click('#chatZoom [data-z="1"]');
   assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.chatZoom')), '4');
-  await a.win.click('#chatZoom [data-z="1"]');
+  await a.win.keyboard.press('Escape');
+  await a.win.evaluate(() => window.openSettings('layouts'));
+  assert.equal(await a.win.textContent('#lyZoom .zoomPct'), '90%', 'Settings > Layouts shows the same size');
+  await a.win.click('#lyZoom [data-z="1"]');
+  assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.chatZoom')), '5', 'and changes it');
+  assert.equal(await a.win.textContent('#zoomPct'), '100%', 'the Layout menu follows');
+  await a.win.keyboard.press('Escape');
   await clear();
 });
 
@@ -267,7 +275,7 @@ test('a YouTube channel that isn\'t live waits, says so, and opens when it goes 
     ipcMain.removeHandler('yt:resolve');
     ipcMain.handle('yt:resolve', () => { globalThis.__yt.n++; return globalThis.__yt.live ? { live: true, videoId: 'dQw4w9WgXcQ', name: 'Some Channel' } : { live: false, name: 'Some Channel' }; });
   });
-  await a.win.selectOption('#mode', 'stream');
+  await setMode(a.win, 'stream');
   await add('https://www.youtube.com/@somechannel');
   const wait = '#stage .win.stream .waitmsg';
   await a.win.waitForSelector(`${wait}:has-text("isn’t live right now")`);

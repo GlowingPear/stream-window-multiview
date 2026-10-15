@@ -5,7 +5,7 @@
 const test = require('node:test');
 const fs = require('fs');
 const path = require('path');
-const { launchApp, inView, viewLoaded, winSel, assert } = require('./app');
+const { launchApp, inView, viewLoaded, winSel, assert, openChannel, setMode } = require('./app');
 const { ROOT } = require('../helpers');
 
 const T = { timeout: 60000 };
@@ -26,8 +26,8 @@ const until = async (fn, ms = 10000) => { const end = Date.now() + ms; for (;;) 
 const marked = (title, kind) => inView(a.win, title, kind, () => document.documentElement.getAttribute('data-test-marker') === '1').catch(() => null);
 const markedNow = async (title, kind, want) => until(async () => (await marked(title, kind)) === want, 10000);
 const add = async (mode, ...links) => {
-  await a.win.selectOption('#mode', mode);
-  for (const l of links) { await a.win.fill('#url', l); await a.win.click('#add'); }
+  await setMode(a.win, mode);
+  for (const l of links) { await openChannel(a.win, l); }
 };
 // Extensions in a window's ⋯ menu (clicked directly: the windows here overlap each other's title bars)
 const extBtn = async sel => {

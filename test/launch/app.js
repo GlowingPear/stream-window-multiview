@@ -66,6 +66,9 @@ async function launchApp(opts = {}) {
       eapp.on('session-created', fake);
       globalThis.__fake = fake;
     });
+    // Opening a channel asks its site whether it exists: here the answer is 'unknown' (which opens it) unless a test
+    // sets globalThis.__exists[channel]. opts.realExists keeps the app's own check (with a stand-in site).
+    if (!opts.realExists) await stubExists(app);
     const win = await mainWindow(app);
     const errors = [];
     win.on('pageerror', e => errors.push(e.message));
@@ -143,4 +146,40 @@ function viewLoaded(win, title, kind, re) {
 // A Playwright selector for a window by its title.
 const winSel = (title, kind = 'stream') => `#stage .win.${kind}:has(.title:text-is("${title}"))`;
 
-module.exports = { launchApp, mainWindow, inView, viewLoaded, winSel, assert };
+// Opening a channel asks its site whether it exists: in the tests the answer is 'unknown' (which opens it) unless a
+// test sets globalThis.__exists[channel]. For the tests that start the app themselves.
+function stubExists(app) {
+  return app.evaluate(({ ipcMain }) => {
+    globalThis.__exists = {}; globalThis.__existsAsked = [];
+    ipcMain.removeHandler('channel:exists');
+    ipcMain.handle('channel:exists', (_e, ch) => { globalThis.__existsAsked.push(ch); return globalThis.__exists[ch] || 'unknown'; });
+  });
+}
+
+// Opens a channel name or link from the Channels box, as typing it there and pressing Open does (optionally with
+// Stream + chat / Stream only / Chat only), and closes the panel again.
+async function openChannel(win, link, mode) {
+  if (!(await win.isVisible('#savedPanel'))) await win.click('#savedBtn');
+  if (mode) await win.selectOption('#mode', mode);
+  await win.fill('#savedInput', link);
+  await win.click('#spOpen');
+  // opened (after asking the site), or said why not
+  await win.waitForFunction(() => !document.querySelector('#savedInput').value || !document.querySelector('#spErr').hidden);
+  const err = await win.$eval('#spErr', e => e.hidden ? '' : e.textContent);
+  if (err) throw new Error(`Opening ${link} failed: ${err}`);
+  await win.click('#savedBtn');
+}
+// What the Channels box opens from now on
+async function setMode(win, mode) {
+  if (!(await win.isVisible('#savedPanel'))) await win.click('#savedBtn');
+  await win.selectOption('#mode', mode);
+  await win.click('#savedBtn');
+}
+// Types something into the Channels box and presses Enter (e.g. something that isn't a channel)
+async function typeChannel(win, text) {
+  if (!(await win.isVisible('#savedPanel'))) await win.click('#savedBtn');
+  await win.fill('#savedInput', text);
+  await win.press('#savedInput', 'Enter');
+}
+
+module.exports = { launchApp, stubExists, mainWindow, inView, viewLoaded, winSel, assert, openChannel, setMode, typeChannel };

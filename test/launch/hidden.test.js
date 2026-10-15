@@ -1,7 +1,7 @@
 // npm run test:launch:hidden: the app's windows are invisible and never take focus, while the tests can
 // still click and type in them. Linux can't make a window see-through (CI runs it under xvfb-run anyway).
 const test = require('node:test');
-const { launchApp, assert } = require('./app');
+const { launchApp, assert, openChannel } = require('./app');
 
 const T = { timeout: 90000 };
 const MAC = process.platform === 'darwin', SEE_THROUGH = process.platform !== 'linux';
@@ -46,8 +46,7 @@ test('hidden: the windows are invisible and click-through, nothing takes focus, 
     await a.app.evaluate(({ Notification }) => new Notification({ title: 'test', body: 'hidden' }).show());
 
     // the tests still click and type in it
-    await a.win.fill('#url', 'alpha');
-    await a.win.click('#add');
+    await openChannel(a.win, 'alpha');
     await a.win.waitForSelector('#stage .win.stream');
   } finally { await a.close(); }
 });

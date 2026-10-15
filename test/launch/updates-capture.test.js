@@ -1,7 +1,7 @@
 // Updates (Settings > Updates and the banner) and showing another app's window, in the real desktop app.
 // The update status and the list of other windows are stand-ins; nothing is downloaded or captured.
 const test = require('node:test');
-const { launchApp, winSel, assert } = require('./app');
+const { launchApp, winSel, assert, openChannel } = require('./app');
 
 const T = { timeout: 60000 };
 let a;
@@ -79,7 +79,7 @@ test('show another app\'s window: pick it, it plays as a live picture, pause it,
   await a.win.waitForFunction(() => document.querySelector('#stage .win.capture video').readyState >= 2);
   assert.ok(await a.win.isHidden(`${winSel('Discord call', 'capture')} .waitmsg`), 'playing');
 
-  await a.win.fill('#url', 'alpha'); await a.win.click('#add');   // the switch control shows when there's a stream
+  await openChannel(a.win, 'alpha');   // the switch control shows when there's a stream
   await a.win.keyboard.press('s');                     // the switch control lists it
   await a.win.waitForSelector('#featSwitch .fs-item.cap .fs-play');
   await a.win.waitForTimeout(500);                    // the switch control settles after the new stream

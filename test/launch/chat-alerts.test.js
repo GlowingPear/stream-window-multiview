@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { stubExists, openChannel } = require('./app');
 const { ROOT, playwright, killApp } = require('../helpers');
 
 function electronPath() {
@@ -26,6 +27,7 @@ test.before(async () => {
   const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' };
   delete env.ELECTRON_RUN_AS_NODE;
   app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', ROOT], env, timeout: 60000 });
+  await stubExists(app);
   const proc = app.process();
   process.once('exit', () => killApp(proc));   // never leave the app open if the tests die
   // Kick's chat page: a stand-in with a few old messages. You moderate "alpha", not "bravo".
@@ -48,8 +50,7 @@ test.before(async () => {
   await win.evaluate(() => localStorage.setItem('kickMultiview.alerts', JSON.stringify({ mention: { sound: 'none' }, spam: { sound: 'none' } })));
   await win.reload();
   await win.waitForSelector('#loginBtn:not([hidden])');
-  await win.selectOption('#mode', 'chat');
-  for (const ch of ['alpha', 'bravo']) { await win.fill('#url', ch); await win.click('#add'); }
+  for (const ch of ['alpha', 'bravo']) await openChannel(win, ch, 'chat');
   await win.waitForFunction(() => document.querySelectorAll('#stage .win.chat webview').length === 2);
   await win.click('#layoutBtn'); await win.click('#layoutMenu [data-l=tile]');   // side by side, so no window covers another's bar
 });

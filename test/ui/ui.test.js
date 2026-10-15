@@ -32,7 +32,20 @@ async function openApp(t, { init } = {}) {
   });
   return page;
 }
-const add = async (page, ...links) => { for (const l of links) { await page.fill('#url', l); await page.click('#add'); } };
+// Opens each link or name from the Channels box, as typing it there and pressing Open does (the panel closes after)
+const add = async (page, ...links) => {
+  for (const l of links) {
+    if (!(await page.isVisible('#savedPanel'))) await page.click('#savedBtn');
+    await page.fill('#savedInput', l); await page.click('#spOpen');
+  }
+  if (await page.isVisible('#savedPanel')) await page.click('#savedBtn');
+};
+// What the Channels box opens: Stream + chat, Stream only or Chat only (it's in the Channels panel)
+const mode = async (page, v) => {
+  if (!(await page.isVisible('#savedPanel'))) await page.click('#savedBtn');
+  await page.selectOption('#mode', v);
+  await page.click('#savedBtn');
+};
 const windows = page => page.$$eval('#stage .win', els => els.map(e => ({
   kind: ['stream', 'chat', 'web', 'capture'].find(k => e.classList.contains(k)),
   plat: (e.className.match(/plat-(\w+)/) || [])[1],
@@ -76,11 +89,11 @@ test('the mod view button opens each site\'s mod dashboard, and YouTube has none
 
 test('"Stream only" and "Chat only" add just that window, and a channel is not opened twice', async t => {
   const page = await openApp(t);
-  await page.selectOption('#mode', 'stream');
+  await mode(page, 'stream');
   await add(page, 'alpha');
-  await page.selectOption('#mode', 'chat');
+  await mode(page, 'chat');
   await add(page, 'bravo');
-  await page.selectOption('#mode', 'stream');
+  await mode(page, 'stream');
   await add(page, 'alpha');
   assert.deepEqual((await windows(page)).map(x => `${x.kind}:${x.title}`), ['stream:alpha', 'chat:bravo']);
 });
@@ -194,7 +207,7 @@ test('undo puts a layout change back', async t => {
   assert.deepEqual((await windows(page)).map(({ x, y, w, h }) => [x, y, w, h]), before.map(({ x, y, w, h }) => [x, y, w, h]));
 });
 
-test('keyboard shortcuts: help, Esc, typing in the link box, and switching them off', async t => {
+test('keyboard shortcuts: help, Esc, typing in the Channels box, and switching them off', async t => {
   const page = await openApp(t);
   await add(page, 'alpha', 'bravo');
 
@@ -205,12 +218,14 @@ test('keyboard shortcuts: help, Esc, typing in the link box, and switching them 
   assert.equal(await page.isVisible('#settingsDlg'), false);
 
   await press(page, 'n');
-  assert.equal(await page.evaluate(() => document.activeElement.id), 'url', 'N jumps to the link box');
+  assert.ok(await page.isVisible('#savedPanel'), 'N opens Channels');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'savedInput', 'and jumps to its box');
   await page.keyboard.type('tc');
-  assert.equal(await page.inputValue('#url'), 'tc', 'letters typed in the box are not shortcuts');
+  assert.equal(await page.inputValue('#savedInput'), 'tc', 'letters typed in the box are not shortcuts');
   assert.ok(!(await page.evaluate(() => document.body.classList.contains('cols'))));
-  await page.fill('#url', '');
-  await page.evaluate(() => document.activeElement.blur());
+  await page.fill('#savedInput', '');
+  await press(page, 'Escape');
+  assert.equal(await page.isVisible('#savedPanel'), false);
 
   await press(page, '?');
   await page.uncheck('#keysOn');
@@ -253,8 +268,8 @@ test('themes: a black accent keeps buttons readable, and window borders have the
 
   // Tron's case: Accent black (text on accent stays near-black) used to make accent buttons solid black
   await setVar('Accent', '#000000');
-  assert.equal(await css('#add', 'color'), 'rgb(255, 255, 255)', 'the button text turns white');
-  assert.notEqual(await css('#add', 'borderTopColor'), 'rgb(0, 0, 0)', 'the button keeps a visible outline');
+  assert.equal(await css('#spOpen', 'color'), 'rgb(255, 255, 255)', 'the button text turns white');
+  assert.notEqual(await css('#spOpen', 'borderTopColor'), 'rgb(0, 0, 0)', 'the button keeps a visible outline');
   assert.ok(await page.isVisible('#themePane .th-warn'), 'the editor explains what happened');
   assert.match(await page.textContent('#themePane .th-warn'), /Window border/);
 
@@ -264,7 +279,7 @@ test('themes: a black accent keeps buttons readable, and window borders have the
   assert.equal(await page.isVisible('#themePane .th-warn'), false, 'no warning for a readable theme');
   await setVar('Window border', '#283034');
   assert.equal(await css('#stage .win.active', 'borderTopColor'), 'rgb(40, 48, 52)', 'only the window border changed');
-  assert.equal(await css('#add', 'backgroundColor'), 'rgb(83, 252, 24)', 'accent buttons stay green');
+  assert.equal(await css('#spOpen', 'backgroundColor'), 'rgb(83, 252, 24)', 'accent buttons stay green');
 
   await page.reload();
   assert.equal(await css('#stage .win.active', 'borderTopColor'), 'rgb(40, 48, 52)', 'the window border colour is remembered');
@@ -295,40 +310,56 @@ test('every built-in theme is readable', async t => {
   assert.deepEqual(problems, []);
 });
 
-test('the toolbar fits any window width, with the rest in the More menu', async t => {
+test('the toolbar fits any window width: Layout keeps its name while there is room, then the least-used buttons go into More', async t => {
   const page = await openApp(t);
   await add(page, 'alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel');
-  await press(page, 'c');                       // Columns adds the most toolbar buttons
+  await press(page, 'c');
+  // the order: Channels on the left; Layout leads the right side, Clear is last
+  const order = await page.$$eval('header > .btn', els => els.filter(e => !e.hidden && getComputedStyle(e).display !== 'none').map(e => e.id));
+  assert.deepEqual(order, ['savedBtn', 'layoutBtn', 'swBtn', 'undoBtn', 'redoBtn', 'settingsBtn', 'focusBtn', 'clear']);
   const check = () => page.evaluate(() => {
     const h = document.querySelector('header'), hr = h.getBoundingClientRect();
     const cut = [...h.children].filter(e => !e.hidden && getComputedStyle(e).display !== 'none')
       .map(e => [e.id || e.className, e.getBoundingClientRect()]).filter(([, r]) => r.width && (r.right > hr.right + 1 || r.left < hr.left - 1)).map(([n]) => n);
     const shownHidden = [...h.children].filter(e => e.hidden && getComputedStyle(e).display !== 'none').map(e => e.id || e.className);
-    return { over: h.scrollWidth - h.clientWidth, cut, shownHidden, more: !document.querySelector('#moreBtn').hidden };
+    const lb = document.querySelector('#layoutBtn .tb-l');
+    return { over: h.scrollWidth - h.clientWidth, cut, shownHidden, more: !document.querySelector('#moreBtn').hidden,
+      layoutName: getComputedStyle(lb).display !== 'none', layoutIcon: !!document.querySelector('#layoutBtn svg').getBoundingClientRect().width };
   });
-  for (const width of [1920, 1600, 1440, 1280, 1100, 900, 760, 640]) {
+  let sawNameGo = false;
+  for (const width of [1920, 1280, 800, 640, 520, 460, 420, 380, 340]) {
     await page.setViewportSize({ width, height: 800 });
     await page.waitForTimeout(150);
     const r = await check();
     assert.equal(r.over, 0, `${width}px: the toolbar doesn't overflow`);
     assert.deepEqual(r.cut, [], `${width}px: no button is cut off`);
     assert.deepEqual(r.shownHidden, [], `${width}px: a hidden button stays hidden (the fitting skips it)`);
+    assert.ok(r.layoutIcon, `${width}px: Layout always shows its icon`);
+    if (width >= 800) assert.ok(r.layoutName, `${width}px: Layout shows its name when there's room`);
+    if (!r.layoutName) sawNameGo = true;
+    if (r.more) assert.ok(!r.layoutName, `${width}px: Layout's name goes before any button moves into More`);
   }
+  assert.ok(sawNameGo, 'a narrow toolbar drops Layout\'s name');
 
-  // at 640px the More menu holds the rest, and its buttons work
+  // at 340px the More menu holds the rest (Clear first), never Settings, and its buttons work
   assert.ok(await page.isVisible('#moreBtn'));
   await page.click('#moreBtn');
-  assert.ok(await page.isVisible('#moreMenu #settingsBtn'), 'Settings is in the More menu');
-  assert.ok(await page.isVisible('#moreMenu #clear'), 'so is Clear');
-  await page.click('#moreMenu #settingsBtn');
-  assert.ok(await page.isVisible('#settingsDlg'), 'and it opens Settings');
+  assert.equal(await page.getAttribute('#moreBtn', 'aria-expanded'), 'true', 'the More button is marked open');
+  assert.ok(await page.isVisible('#moreMenu #clear'), 'Clear is the first to go into More');
+  assert.equal(await page.$eval('#settingsBtn', e => e.parentElement.tagName), 'HEADER', 'Settings never goes into More');
+  assert.equal(await page.$eval('#layoutBtn', e => e.parentElement.tagName), 'HEADER', 'nor does Layout');
+  assert.match(await page.textContent('#moreMenu #clear'), /Clear/, 'in the menu each button shows its name');
+  const first = await page.$eval('#moreMenu .btn', e => e.id);
+  assert.equal(first, 'clear');
+  await page.click('#moreMenu #clear');
+  assert.ok(await page.isVisible('#askDlg'), 'and it works (Clear asks first)');
   await page.waitForSelector('#moreMenu', { state: 'hidden', timeout: 2000 });   // the menu closes
   await press(page, 'Escape');
 
   // wide again: everything is back in the toolbar
   await page.setViewportSize({ width: 1920, height: 800 });
   await page.waitForTimeout(150);
-  assert.equal(await page.$eval('#settingsBtn', e => e.parentElement.tagName), 'HEADER');
+  assert.equal(await page.$eval('#clear', e => e.parentElement.tagName), 'HEADER');
   assert.equal(await page.isVisible('#moreBtn'), false);
 });
 
@@ -441,14 +472,15 @@ test('everything else with a title gets the app\'s tooltip too, never the browse
   const page = await openApp(t);
   await add(page, 'alpha');
   const titled = sel => page.evaluate(sel => { for (let n = document.querySelector(sel); n; n = n.parentElement) if (n.title) return n.className || n.tagName; return null; }, sel);
+  await page.mouse.move(800, 500);
   await page.hover('#savedBtn');   // a button with words
-  await page.waitForFunction(() => document.querySelector('#tip.on') && document.querySelector('#tip').textContent === 'Your saved channels');
+  await page.waitForFunction(() => document.querySelector('#tip.on') && document.querySelector('#tip').textContent === "Your channels: open one, add a new one, see who's live");
   assert.equal(await titled('#savedBtn'), null);
   await page.hover('#stage .win.stream.plat-kick .bar .dot');   // the window bar's title: which channel and window this is
   await page.waitForFunction(() => document.querySelector('#tip.on') && /alpha/.test(document.querySelector('#tip').textContent));
   assert.equal(await titled('#stage .win.stream.plat-kick .bar .dot'), null);
   await page.mouse.move(800, 600);
-  assert.equal(await page.getAttribute('#savedBtn', 'title'), 'Your saved channels', 'titles are put back');
+  assert.equal(await page.getAttribute('#savedBtn', 'title'), "Your channels: open one, add a new one, see who's live", 'titles are put back');
 });
 
 test('Auto layout fills the space with an odd number of streams: no empty cells, nothing overlapping', async t => {
@@ -510,12 +542,12 @@ test('Hide bar: the button says Show bar while the bar is hidden, and brings it 
   const hidden = () => page.evaluate(() => document.body.classList.contains('focus'));
   await page.click('#focusBtn');
   assert.equal(await hidden(), true);
-  assert.equal(await page.textContent('#focusBtn .l-long'), 'Show bar');
+  assert.equal(await page.getAttribute('#focusBtn', 'aria-label'), 'Show bar');
   await page.mouse.move(800, 2);   // the top edge: the bar peeks out
   await page.waitForTimeout(400);
   await page.click('#focusBtn');
   assert.equal(await hidden(), false, 'clicking it again keeps the bar showing');
-  assert.equal(await page.textContent('#focusBtn .l-long'), 'Hide bar');
+  assert.equal(await page.getAttribute('#focusBtn', 'aria-label'), 'Hide bar');
   await page.mouse.move(800, 400);
   await page.waitForTimeout(400);
   assert.equal(await page.$eval('header', h => h.getBoundingClientRect().top), 0, 'still showing after the mouse leaves');
@@ -523,7 +555,158 @@ test('Hide bar: the button says Show bar while the bar is hidden, and brings it 
   assert.equal(await hidden(), true, 'H hides it');
   await page.keyboard.press('Escape');
   assert.equal(await hidden(), false, 'Esc brings it back');
-  assert.equal(await page.textContent('#focusBtn .l-long'), 'Hide bar');
+  assert.equal(await page.getAttribute('#focusBtn', 'aria-label'), 'Hide bar');
+});
+
+test('toolbar on the left: a column of named rows or slim icons (names over the streams on hover), menus beside it, remembered', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'bravo');
+  await press(page, 't');
+  const body = c => page.evaluate(c => document.body.classList.contains(c), c);
+  const rect = sel => page.$eval(sel, e => { const r = e.getBoundingClientRect(); return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height), right: Math.round(r.right) }; });
+  // Layout menu > Toolbar: Left. "Left toolbar" (Labels / Icons only) only works on the left
+  await page.click('#layoutBtn');
+  assert.ok(await page.isDisabled('#layoutMenu [data-tb=labels] [data-v="0"]'), 'Icons only is greyed out while the toolbar is on top');
+  await page.click('#layoutMenu [data-tb=pos] [data-v=left]');
+  assert.ok(await body('bar-left'));
+  assert.equal(await page.isVisible('#layoutMenu'), false, 'the menu closes (it was placed for the top bar)');
+  await page.waitForTimeout(900);                    // the layout fits the new space
+  const h = await rect('header'), st = await rect('#stage');
+  assert.deepEqual([h.x, h.y, h.w, h.h], [0, 0, 180, 900], 'a 180px column down the left');
+  assert.deepEqual([st.x, st.y, st.w], [180, 0, 1420], 'the streams get the rest, the whole height');
+  const wins = await windows(page);
+  assert.ok(wins.every(w => w.x >= 0 && w.x + w.w <= 1420 + 1), 'Tile fits in the space left');
+  assert.equal(await page.isVisible('#layoutBtn .tb-l'), true, 'every row shows its name');
+  assert.ok((await rect('#savedBtn')).y < (await rect('#layoutBtn')).y, 'Channels at the top, Layout further down');
+
+  // menus and panels open beside the column, next to their row
+  await page.click('#layoutBtn');
+  const lm = await rect('#layoutMenu'), lb = await rect('#layoutBtn');
+  assert.equal(lm.x, 186, 'the Layout menu opens to the right of the column');
+  assert.ok(lm.y <= lb.y && lm.y + lm.h <= 900, 'by its row, and inside the window');
+  assert.equal(await page.getAttribute('#layoutBtn', 'aria-expanded'), 'true', 'its row is marked open');
+  await page.keyboard.press('Escape');
+  await page.click('#savedBtn');
+  assert.equal((await rect('#savedPanel')).x, 186);
+  await page.click('#savedBtn');
+
+  // Settings > Layouts > Toolbar: Icons only, the same setting as the Layout menu
+  await page.evaluate(() => window.openSettings('layouts'));
+  await page.click('#lyTabs [data-t=toolbar]');
+  assert.ok(await page.$eval('#settingsDlg [data-tb=pos] [data-v=left]', b => b.classList.contains('on')), 'Settings shows Left too');
+  await page.click('#settingsDlg [data-tb=labels] [data-v="0"]');
+  assert.ok(await body('bar-icons'));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+  assert.equal((await rect('header')).w, 44, 'a slim 44px column');
+  assert.equal((await rect('#stage')).x, 44);
+  assert.equal(await page.isVisible('#layoutBtn .tb-l'), false, 'icons only');
+
+  // pointing at it slides the names out over the streams, after a short pause; nothing underneath moves
+  await page.mouse.move(22, 400);
+  await page.waitForTimeout(100);
+  assert.equal(await body('bar-peek'), false, 'not when the mouse just passes over it');
+  await page.waitForTimeout(400);
+  assert.ok(await body('bar-peek'), 'the names come out');
+  await page.waitForTimeout(250);
+  assert.equal((await rect('header')).w, 180);
+  assert.equal((await rect('#stage')).x, 44, 'over the streams: the stage stays where it was');
+  assert.equal(await page.getAttribute('#barFold', 'aria-label'), 'Keep open');
+  await page.mouse.move(900, 400);
+  await page.waitForTimeout(600);
+  assert.equal(await body('bar-peek'), false, 'and go again when the mouse leaves');
+  assert.equal(await page.getAttribute('#barFold', 'aria-label'), 'Keep names open');
+  // a click works straight away, without the names coming out first; opening a panel puts them away
+  await page.mouse.move(22, 400);
+  await page.waitForTimeout(450);
+  await page.click('#savedBtn');
+  assert.equal(await body('bar-peek'), false, 'opening a panel closes the names');
+  assert.equal((await rect('#savedPanel')).x, 50, 'and it opens beside the slim column');
+  await page.click('#savedBtn');
+  await page.mouse.move(900, 400);
+  await page.waitForTimeout(600);
+  // the keyboard: Tab into the column opens it
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  for (let i = 0; i < 4 && !(await page.evaluate(() => !!document.activeElement.closest('header'))); i++) await page.keyboard.press('Tab');
+  assert.ok(await body('bar-peek'), 'Tab into the column shows the names');
+  await page.evaluate(() => document.activeElement.blur());
+
+  // » keeps the names open (Labels); « Collapse goes back to icons only
+  await page.click('#barFold');
+  assert.equal(await body('bar-icons'), false);
+  assert.equal(await page.getAttribute('#barFold', 'aria-label'), 'Collapse');
+  await page.click('#layoutBtn');
+  assert.ok(await page.$eval('#layoutMenu [data-tb=labels] [data-v="1"]', b => b.classList.contains('on')), 'the Layout menu follows');
+  await page.keyboard.press('Escape');
+  await page.click('#barFold');
+  assert.ok(await body('bar-icons'));
+
+  // Hide bar: the column slides off to the left, and the left edge brings it back
+  await page.click('#focusBtn');
+  await page.waitForTimeout(400);
+  assert.ok((await rect('header')).right <= 0, 'slid off to the left');
+  assert.equal((await rect('#stage')).x, 0);
+  await page.mouse.move(2, 400);
+  await page.waitForTimeout(300);
+  assert.ok(await body('peek'), 'the left edge brings it out');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  assert.equal(await body('focus'), false);
+
+  // a short window: the least-used buttons go into ⋯ at the bottom, whose menu opens beside it
+  await page.setViewportSize({ width: 1600, height: 300 });
+  await page.waitForTimeout(400);
+  assert.equal(await page.$eval('header', h => h.scrollHeight <= h.clientHeight + 1), true, 'nothing is cut off');
+  assert.ok(await page.isVisible('#moreBtn'));
+  await page.click('#moreBtn');
+  assert.ok(await page.isVisible('#moreMenu #clear'), 'Clear goes first');
+  assert.ok((await rect('#moreMenu')).x >= 44);
+  await page.keyboard.press('Escape');
+
+  // remembered
+  await page.reload();
+  assert.ok(await body('bar-left'));
+  assert.ok(await body('bar-icons'));
+  // back on top
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.click('#layoutBtn');
+  await page.click('#layoutMenu [data-tb=pos] [data-v=top]');
+  assert.equal(await body('bar-left'), false);
+  assert.equal(await body('bar-icons'), false, 'Icons only is for the left toolbar');
+  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.toolbar'))), { pos: 'top', labels: false }, 'it keeps Icons only for next time');
+});
+
+test('macOS, toolbar on the left: the lights sit at the top of the column, hide with Icons only and show while its names are out', async t => {
+  const page = await openApp(t, { init: () => {
+    localStorage.setItem('kickMultiview.toolbar', JSON.stringify({ pos: 'left', labels: false }));
+    window.lights = []; window.watching = [];
+    window.kmv = { platform: 'darwin', setLights: on => window.lights.push(on), onFullscreen: cb => { window.goFullscreen = cb; },
+      watchTop: (on, edge) => window.watching.push([on, edge]), onTop: cb => { window.mouseAtTop = cb; } };
+  } });
+  const lights = () => page.evaluate(() => window.lights.splice(0));
+  await page.waitForTimeout(300);
+  assert.deepEqual(await lights(), [false], 'no room for them in the slim column');
+  await page.mouse.move(22, 400);
+  await page.waitForTimeout(700);
+  assert.deepEqual(await lights(), [true], 'they show while the names are out');
+  await page.mouse.move(900, 400);
+  await page.waitForTimeout(600);
+  assert.deepEqual(await lights(), [false], 'and hide again');
+  assert.equal(await page.$eval('header', e => getComputedStyle(e).getPropertyValue('-webkit-app-region')), 'drag', 'the column moves the window');
+  // Hide bar watches the left edge (the window's resize edge, which the page can't see)
+  await page.click('#focusBtn');
+  assert.deepEqual(await page.evaluate(() => window.watching.splice(0)), [[true, 'left']]);
+  await page.evaluate(() => window.mouseAtTop());
+  assert.ok(await page.evaluate(() => document.body.classList.contains('peek')), 'the mouse at the left edge brings it out');
+  await page.keyboard.press('Escape');
+  // with names, the lights stay where they are
+  await page.mouse.move(22, 400); await page.waitForTimeout(600);
+  await page.click('#barFold');
+  await page.mouse.move(900, 400); await page.waitForTimeout(600);
+  await lights();
+  assert.equal(await page.$eval('header .brand', e => getComputedStyle(e).paddingLeft), '80px', 'room for the lights at the top of the column');
+  await page.mouse.move(22, 400); await page.mouse.move(900, 400); await page.waitForTimeout(600);
+  assert.ok((await lights()).every(Boolean), 'and stay showing');
 });
 
 test('macOS: the toolbar is the title bar, and the traffic lights hide and come back with Hide bar', async t => {
@@ -537,8 +720,7 @@ test('macOS: the toolbar is the title bar, and the traffic lights hide and come 
   const lights = () => page.evaluate(() => window.lights.splice(0));
   const css = (sel, prop) => page.$eval(sel, (e, p) => getComputedStyle(e).getPropertyValue(p), prop);
   assert.equal(await css('header', '-webkit-app-region'), 'drag', 'empty toolbar space moves the window');
-  assert.equal(await css('#add', '-webkit-app-region'), 'no-drag', 'buttons still click');
-  assert.equal(await css('#url', '-webkit-app-region'), 'no-drag', 'the paste box still types');
+  assert.equal(await css('#savedBtn', '-webkit-app-region'), 'no-drag', 'buttons still click');
   assert.equal(await css('header', 'padding-left'), '86px', 'room for the lights');
   assert.ok(await page.isVisible('.brand .pear'), 'the pear stays');
   assert.equal(await page.isVisible('.brand-txt'), false, 'the name goes');
@@ -634,7 +816,7 @@ test('Settings opens from the gear and Ctrl+, shows only what works in a browser
 test('messages show as a toast where Settings puts it, close on a click, and can be turned off', async t => {
   const page = await openApp(t);
   assert.equal(await page.evaluate(() => !!document.querySelector('header #msg')), false, 'not in the toolbar any more');
-  await page.fill('#url', '%%%'); await page.click('#add');
+  await page.click('#savedBtn'); await page.fill('#savedInput', '%%%'); await page.press('#savedInput', 'Enter');
   assert.match(await page.textContent('#msg'), /Couldn.t read that link/);
   assert.ok(await page.isVisible('#msg'));
   assert.equal(await page.getAttribute('#msg', 'data-pos'), 'tc', 'under the toolbar to start with');
@@ -650,7 +832,7 @@ test('messages show as a toast where Settings puts it, close on a click, and can
   assert.ok(await page.isDisabled('#msgPos'));
   await page.reload();
   assert.deepEqual(await page.evaluate(() => [msgOn.checked, msgPos.value]), [false, 'br'], 'remembered');
-  await page.fill('#url', '%%%'); await page.click('#add');
+  await page.click('#savedBtn'); await page.fill('#savedInput', '%%%'); await page.press('#savedInput', 'Enter');
   assert.ok(await page.isHidden('#msg'), 'off: nothing shows');
 });
 
