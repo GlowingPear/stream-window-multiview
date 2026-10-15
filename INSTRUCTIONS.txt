@@ -75,7 +75,7 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
 - Click the gear in the toolbar, or press Ctrl+, (Mac: ⌘,). It's also in the menu bar: on a Mac in the Stream Multiview menu, on Windows and Linux in File.
 - **General**: start new streams muted, snap windows while you drag, auto-pause hidden streams, and keyboard shortcuts on or off.
 - **Accounts**: logins, Import follows, "Forget my login" and "Watch signed in".
-- **Notifications**: Do not disturb at the top, then three tabs. **Each kind** (mentions, likely spam, a saved channel going live, raids, the app's own messages): a pop-up in the app, a desktop notification (never, when the app isn't in front, or always) and a sound. **Bell & pop-ups**: what the red number on the bell counts and where pop-ups show. **Desktop**: desktop notifications on or off for everything, and a test to check your computer lets them through.
+- **Notifications**: Do not disturb at the top, then three tabs. **Alerts**, for each kind (mentions, likely spam, a saved channel going live, raids, the app's own messages): a pop-up in the app, a desktop notification (never, when the app isn't in front, or always) and a sound. **Bell & pop-ups**: what the red number on the bell counts and where pop-ups show. **Desktop**: desktop notifications on or off for everything, and a test to check your computer lets them through.
 - **YouTube**: your YouTube login, skipping ads, YouTube's cookie question, liking streams automatically and the YouTube API key (see below).
 - **Mentions**: your Kick and Twitch usernames, other words that mean you (nicknames), and how a chat window gets your attention when someone mentions you (see Alerts below).
 - **Spam alerts**: for moderators (see below).
@@ -144,7 +144,7 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
 - Its tabs: All, Mentions (@ Mentions, Replies, Words, and one chat), Spam (one chat; Show chat, Not spam, Add to bots, and Why? for the signs it found), Live (Went live, Raids, Opened by itself, and one site; Watch or Chat only, "Already open" or "Offline") and App (Accounts, Layouts, Windows, Downloads, Updates; Log in, Undo while it still works, Show in folder, What's new). Each tab shows its latest 30.
 - The red number counts new mentions and spam (Settings > Notifications can make it everything but app messages, or nothing). What a tab shows counts as seen; new ones keep their mark until the next time.
 - All notifications (at the bottom of the bell) opens every one kept (the last 500 of each kind): the same tabs, search by name, message or chat, Unread only, grouped by day. Click one to go to that chat; hover one to delete it. Mark all read, Clear all (in that tab). Closing it counts them all as seen.
-- Do not disturb (Settings > Notifications): for a while or until you turn it off. Everything is still kept under the bell, with no pop-ups, sounds or desktop notifications.
+- Do not disturb (Settings > Notifications, or the crossed-out bell at the top right of the bell's list and of All notifications): for a while or until you turn it off. Everything is still kept under the bell, with no pop-ups, sounds or desktop notifications.
 
 ## Alerts
 - Mentions: when someone writes @you or replies to you in a Kick or Twitch chat, that chat window lights up and it's listed under the bell. Set your usernames in Settings > Mentions, or click Detect.

@@ -831,7 +831,7 @@ test('messages show as a pop-up where Settings puts it, close on a click, and ca
   await page.selectOption('#msgPos', 'br');
   assert.equal(await page.getAttribute('#msg', 'data-pos'), 'br');
   assert.ok(await page.isVisible('#msg'), 'it shows where they go now, over Settings');
-  await page.click('#ntTabs [data-t=kinds]');
+  await page.click('#ntTabs [data-t=alerts]');
   await page.uncheck('#ntGrid [data-al="app.popup"]');
   await page.reload();
   assert.deepEqual(await page.evaluate(() => [document.querySelector('#ntGrid [data-al="app.popup"]').checked, msgPos.value]), [false, 'br'], 'remembered');
