@@ -1323,7 +1323,10 @@ header.c3 :is(#loginBtn,#savedBtn,#profBtn) .tb-l{display:none}
 .mp-emote{height:1.6em;width:auto;max-width:4.5em;vertical-align:-.45em;margin:0 1px;object-fit:contain}
 .mp-body mark{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--text);border-radius:3px;padding:0 2px}
 .dlg.menthist{width:min(860px,calc(100vw - 32px));height:min(86vh,900px);max-height:none;padding:0;gap:0;overflow:hidden}
-.menthist .help-x{margin-left:auto}
+.menthist .help-x{margin-left:0}
+.menthist .nc-dnd{margin-left:auto;width:30px;height:28px}
+.nc-dnd.on{color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.nc-dnd.on:hover{color:var(--accent)}
 .menthist .mh-count{font-size:12px;color:var(--muted)}
 .mh-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
 .mh-q{flex:1 1 260px;display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border:1px solid var(--line2);border-radius:8px;background:var(--bg)}
@@ -1429,7 +1432,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 </div>
 
 <div id="bellPanel" class="popover nc" hidden>
-  <div class="mp-head"><b>Notifications</b><button class="btn" id="bellRead">Mark all read</button><button class="btn" id="bellClear" title="Delete the ones in this tab">Clear</button><button class="menu-set" id="bellSettings" title="Notification settings" aria-label="Notification settings"></button></div>
+  <div class="mp-head"><b>Notifications</b><button class="btn" id="bellRead">Mark all read</button><button class="btn" id="bellClear" title="Delete the ones in this tab">Clear</button><button class="menu-set nc-dnd" aria-label="Do not disturb" aria-pressed="false"></button><button class="menu-set" id="bellSettings" title="Notification settings" aria-label="Notification settings"></button></div>
   <div class="nc-tabs" role="tablist" aria-label="Kinds of notification"></div>
   <div class="nc-bar"><div class="nc-chips"></div><span class="nc-sum"></span><select class="nc-pick" aria-label="Which chat"></select></div>
   <span class="mp-note" id="mentState"></span>
@@ -1438,7 +1441,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 </div>
 <div class="dlg-bg" id="noteDlg" hidden><div class="dlg menthist nc" role="dialog" aria-modal="true" aria-labelledby="nhTitle">
   <div class="help-head"><h3 id="nhTitle">All notifications</h3><span class="mh-count"></span>
-    <button class="help-x" title="Close (Esc)" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <button class="menu-set nc-dnd" aria-label="Do not disturb" aria-pressed="false"></button><button class="help-x" title="Close (Esc)" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <div class="nc-tabs" role="tablist" aria-label="Kinds of notification"></div>
   <div class="mh-tools">
     <label class="mh-q"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="nhQ" placeholder="Search by name, message or chat" aria-label="Search notifications" autocomplete="off" spellcheck="false"></label>
@@ -1637,8 +1640,8 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <h4>Notifications</h4><p class="st-sub">What happens when something new arrives. Everything is kept under the bell in the toolbar either way.</p>
         <div class="st-lead nt-dnd"><span class="st-t"><b>Do not disturb</b><small id="dndSt">Still collected under the bell, but no pop-ups, sounds or desktop notifications.</small></span>
           <select id="dndFor" aria-label="For how long"><option value="30">For 30 minutes</option><option value="60">For 1 hour</option><option value="120">For 2 hours</option><option value="240">For 4 hours</option><option value="480">For 8 hours</option><option value="0">Until I turn it off</option></select><input type="checkbox" class="st-sw" id="dndOn" aria-label="Do not disturb"></div>
-        <div class="st-tabs" id="ntTabs"><button data-t="kinds" class="on">Each kind</button><button data-t="bell">Bell &amp; pop-ups</button><button data-t="desktop" class="dn-tab" hidden>Desktop</button></div>
-        <div class="st-subpane" data-t="kinds">
+        <div class="st-tabs" id="ntTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="bell">Bell &amp; pop-ups</button><button data-t="desktop" class="dn-tab" hidden>Desktop</button></div>
+        <div class="st-subpane" data-t="alerts">
         <div class="nt-grid" id="ntGrid"><span class="nt-h">Kind</span><span class="nt-h">Pop-up</span><span class="nt-h nt-desk">Desktop</span><span class="nt-h">Sound</span></div>
         </div>
         <div class="st-subpane" data-t="bell" hidden>
@@ -1648,7 +1651,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <select id="msgPos" aria-label="Where pop-ups show"><option value="tc">Top</option><option value="tl">Top left</option><option value="tr">Top right</option><option value="bc">Bottom</option><option value="bl">Bottom left</option><option value="br">Bottom right</option></select></div>
         </div>
         <div class="st-subpane dn-sec" data-t="desktop" hidden>
-          <label class="st-row"><span class="st-t">Desktop notifications<small>Your computer's notifications, also while the app is in the background. Off: none at all, whatever is chosen under Each kind.</small></span><input type="checkbox" class="st-sw" id="dnOn" checked></label>
+          <label class="st-row"><span class="st-t">Desktop notifications<small>Your computer's notifications, also while the app is in the background. Off: none at all, whatever is chosen under Alerts.</small></span><input type="checkbox" class="st-sw" id="dnOn" checked></label>
           <div class="st-row"><span class="st-t">Check they work<small class="dn-st">If your computer blocks them, nothing shows. Send a test to check.</small></span><button class="btn dn-test">Send a test</button><button class="btn dn-sys">Open system settings</button></div>
         </div>
       </section>
@@ -1680,13 +1683,13 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <div class="st-row" data-dep="mention.until"><span class="st-t">Get stronger if unseen<small>Glow, then pulse, then flash.</small></span>
           <select data-al="mention.esc"><option value="0">Off</option><option value="10">Every 10 s</option><option value="20">Every 20 s</option><option value="40">Every 40 s</option><option value="60">Every minute</option></select>
           <select data-al="mention.max"><option value="pulse">Up to pulse</option><option value="flash">Up to flash</option></select></div>
-        <div class="st-row nt-shared"><span class="st-t">Pop-up in the app<button class="nt-chip" data-go="notify" data-sub="kinds" title="The same setting as in Notifications: changing one changes both">Notifications</button><small>A short message saying what happened and where.</small></span><input type="checkbox" class="st-sw" data-al="mention.popup"></div>
-        <div class="st-row nt-shared"><span class="st-t">Sound<button class="nt-chip" data-go="notify" data-sub="kinds" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
+        <div class="st-row nt-shared"><span class="st-t">Pop-up in the app<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button><small>A short message saying what happened and where.</small></span><input type="checkbox" class="st-sw" data-al="mention.popup"></div>
+        <div class="st-row nt-shared"><span class="st-t">Sound<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="mention.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound</option></select>
           <button class="btn st-play" data-play="mention" title="Play it">▶</button>
           <input type="range" min="0" max="1" step="0.05" data-al="mention.vol" title="Volume"></div>
         <div class="st-row" data-dep="mention.until"><span class="st-t">Repeat the sound while unseen</span><input type="checkbox" class="st-sw" data-al="mention.repeat"></div>
-        <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" data-sub="kinds" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
+        <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="mention.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
         </div>
       </section>
@@ -1702,13 +1705,13 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <select data-al="spam.esc"><option value="0">Off</option><option value="10">Every 10 s</option><option value="20">Every 20 s</option><option value="40">Every 40 s</option><option value="60">Every minute</option></select>
           <select data-al="spam.max"><option value="pulse">Up to pulse</option><option value="flash">Up to flash</option></select></div>
         <div class="st-row"><span class="st-t">Tag the message in chat<small>Adds "LIKELY SPAM" after the message. Hover the tag to see why.</small></span><input type="checkbox" class="st-sw" data-al="spam.tag"></div>
-        <div class="st-row nt-shared"><span class="st-t">Pop-up in the app<button class="nt-chip" data-go="notify" data-sub="kinds" title="The same setting as in Notifications: changing one changes both">Notifications</button><small>A short message saying what happened and where.</small></span><input type="checkbox" class="st-sw" data-al="spam.popup"></div>
-        <div class="st-row nt-shared"><span class="st-t">Sound<button class="nt-chip" data-go="notify" data-sub="kinds" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
+        <div class="st-row nt-shared"><span class="st-t">Pop-up in the app<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button><small>A short message saying what happened and where.</small></span><input type="checkbox" class="st-sw" data-al="spam.popup"></div>
+        <div class="st-row nt-shared"><span class="st-t">Sound<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="spam.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound</option></select>
           <button class="btn st-play" data-play="spam" title="Play it">▶</button>
           <input type="range" min="0" max="1" step="0.05" data-al="spam.vol" title="Volume"></div>
         <div class="st-row" data-dep="spam.until"><span class="st-t">Repeat the sound while unseen</span><input type="checkbox" class="st-sw" data-al="spam.repeat"></div>
-        <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" data-sub="kinds" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
+        <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="spam.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
         </div>
         <div class="st-subpane" data-t="how" hidden>
@@ -4215,6 +4218,12 @@ function syncDnd(){
     : dndUntil < 0 ? 'On until you turn it off. Everything is still collected under the bell.'
     : `On until ${new Date(dndUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}. Everything is still collected under the bell.`;
   if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled) window.kmv.notifyEnabled(desktopNotify && !on);
+  document.querySelectorAll('.nc-dnd').forEach(b => {        // the quick switch in the bell and All notifications
+    b.innerHTML = icon.bellOff; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
+    b.title = !on ? `Do not disturb (${dndFor.selectedOptions[0].textContent.toLowerCase()}): no pop-ups, sounds or desktop notifications`
+      : dndUntil < 0 ? 'Do not disturb is on until you turn it off. Click to turn it off'
+      : `Do not disturb is on until ${new Date(dndUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}. Click to turn it off`;
+  });
   updateBellBtn();
 }
 function setDnd(on){
@@ -4224,7 +4233,11 @@ function setDnd(on){
 }
 try { const f = localStorage.getItem('kickMultiview.dndFor'); if ([...dndFor.options].some(o => o.value === f)) dndFor.value = f; } catch {}
 dndOnEl.addEventListener('change', () => setDnd(dndOnEl.checked));
-dndFor.addEventListener('change', () => { if (dndOn()) setDnd(true); else try { localStorage.setItem('kickMultiview.dndFor', dndFor.value); } catch {} });
+document.querySelectorAll('.nc-dnd').forEach(b => b.addEventListener('click', () => {
+  setDnd(!dndOn());
+  flash(dndOn() ? (dndUntil < 0 ? 'Do not disturb on' : `Do not disturb until ${new Date(dndUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`) : 'Do not disturb off');
+}));
+dndFor.addEventListener('change', () => { if (dndOn()) setDnd(true); else { try { localStorage.setItem('kickMultiview.dndFor', dndFor.value); } catch {} syncDnd(); } });
 // The red number on the bell.
 const bellCountEl = $('#bellCount');
 bellCountEl.value = ['ms', 'all', 'off'].includes(bellCount) ? bellCount : 'ms';

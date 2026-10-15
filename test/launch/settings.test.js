@@ -100,7 +100,7 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   await win.evaluate(() => document.querySelector('#ntTabs [data-t=bell]').click());   // Notifications was left on another tab
   await win.click('[data-s=mentions] .nt-chip >> nth=0');
   assert.equal(await settingsTab(), 'notify', 'its 🔗 Notifications chip goes back');
-  assert.equal(await win.getAttribute('#ntTabs .on', 'data-t'), 'kinds', 'to Each kind, where the grid is');
+  assert.equal(await win.getAttribute('#ntTabs .on', 'data-t'), 'alerts', 'to Alerts, where the grid is');
   await win.click('#ntGrid .seg[data-al="mention.notify"] [data-v=always]');
   await win.click('#ntGrid .k-spam [data-go]');
   assert.ok(await win.isVisible('[data-s=spam] .st-subpane[data-t=alerts]'), 'More on Spam alerts');
