@@ -75,7 +75,7 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
 - Click the gear in the toolbar, or press Ctrl+, (Mac: ⌘,). It's also in the menu bar: on a Mac in the Stream Multiview menu, on Windows and Linux in File.
 - **General**: start new streams muted, snap windows while you drag, auto-pause hidden streams, and keyboard shortcuts on or off.
 - **Accounts**: logins, Import follows, "Forget my login" and "Watch signed in".
-- **Notifications**: messages in the app (on or off, and where they show: top, bottom or a corner), and desktop notifications: on or off for everything, live alerts for saved channels, and a test to check your computer lets them through.
+- **Notifications**: Do not disturb, and for each kind (mentions, likely spam, a saved channel going live, raids, the app's own messages): a pop-up in the app, a desktop notification (never, when the app isn't in front, or always) and a sound. What the red number on the bell counts, where pop-ups show, desktop notifications on or off for everything, and a test to check your computer lets them through.
 - **YouTube**: your YouTube login, skipping ads, YouTube's cookie question, liking streams automatically and the YouTube API key (see below).
 - **Mentions**: your Kick and Twitch usernames, other words that mean you (nicknames), and how a chat window gets your attention when someone mentions you (see Alerts below).
 - **Spam alerts**: for moderators (see below).
@@ -139,13 +139,19 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
 - The green lock means saved logins are encrypted on this computer and locked to your user account.
 - Mac: the first time a new version opens, macOS may ask if Stream Multiview can use "Stream Multiview Safe Storage" in your Keychain. Type your Mac password and click **Always Allow**. That's the key your saved logins are encrypted with; if you click Deny, the app can't read them and you'll have to log in again.
 
+## Notifications (the bell)
+- The bell in the toolbar keeps everything the app tells you about: mentions, likely spam, saved channels going live, raids it followed, and the app's own messages ("Logged out of Twitch", "Saved layout", a saved emote, an update, a closed channel you can still undo).
+- Its tabs: All, Mentions (@ Mentions, Replies, Words, and one chat), Spam (one chat; Show chat, Not spam, Add to bots, and Why? for the signs it found), Live (Went live, Raids, Opened by itself, and one site; Watch or Chat only, "Already open" or "Offline") and App (Accounts, Layouts, Windows, Downloads, Updates; Log in, Undo while it still works, Show in folder, What's new). Each tab shows its latest 30.
+- The red number counts new mentions and spam (Settings > Notifications can make it everything but app messages, or nothing). What a tab shows counts as seen; new ones keep their mark until the next time.
+- All notifications (at the bottom of the bell) opens every one kept (the last 500 of each kind): the same tabs, search by name, message or chat, Unread only, grouped by day. Click one to go to that chat; hover one to delete it. Mark all read, Clear all (in that tab). Closing it counts them all as seen.
+- Do not disturb (Settings > Notifications): for a while or until you turn it off. Everything is still kept under the bell, with no pop-ups, sounds or desktop notifications.
+
 ## Alerts
-- Mentions: when someone writes @you or replies to you in a Kick or Twitch chat, that chat window lights up and it's listed under the @ button. Set your usernames in Settings > Mentions, or click Detect.
+- Mentions: when someone writes @you or replies to you in a Kick or Twitch chat, that chat window lights up and it's listed under the bell. Set your usernames in Settings > Mentions, or click Detect.
 - Also alert me for (Settings > Mentions): add nicknames or other words that mean you. A message with one counts as a mention, with or without an @. Whole words only, any case: "pear" finds "hi Pear!" but not "pears". Your own messages never count. They're listed as "Word".
-- The number on the @ button counts mentions you haven't seen. Clicking into that chat clears that chat's; the @ list shows the latest five and clears those.
-- All mentions (at the bottom of the @ list) opens the history: the last 500 mentions, replies and words, grouped by day. Search by name, message or chat, show only Mentions, Replies or Words, one chat, or unread ones. Click one to go to that chat; hover one to delete it. Mark all read, Clear all. Closing it counts them all as seen.
+- Clicking into a chat counts its mentions and spam as seen.
 - To stop mentions from one chat, click the @ button on that chat window's bar (click it again to turn them back on).
-- Settings > Mentions sets how: the window's border glows briefly or stays lit until you click that chat, and can get stronger while you haven't seen it (pulse, then flash). Pick its colour, a sound (or your own sound file), whether the sound repeats, and when to show a desktop notification.
+- Settings > Mentions sets how: the window's border glows briefly or stays lit until you click that chat, and can get stronger while you haven't seen it (pulse, then flash). Pick its colour, a sound (or your own sound file), whether the sound repeats, whether a pop-up shows in the app, and when to show a desktop notification. The pop-up, sound and desktop notification are the same settings as the Mentions row in Settings > Notifications.
 - Live alerts come from your saved channels while the app is running.
 
 ## Emote preview
@@ -170,7 +176,7 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
 - Lists: sites that never count (Kick, Twitch, YouTube, Discord and so on) and the promo words. Add your own or reset them.
 - Sensitivity: Strict flags more, Relaxed fewer.
 - Try it: paste a message to see whether it would be flagged, and why.
-- History: the last 50 flagged messages, with their score and the signs found. Click one to show that chat.
+- History: the flagged messages (the same as the bell's Spam tab), with their score and the signs found. Click one to show that chat.
 - The alert options are the same as for mentions, with their own colour and sound.
 
 ## Chrome extensions (Settings > Extensions)

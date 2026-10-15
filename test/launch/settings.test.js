@@ -91,9 +91,24 @@ test('Help opens the matching Settings tab, and Check for updates opens Updates'
 });
 
 test('every tab is there in the app, and the Accounts menu links to the rest', T, async () => {
-  await win.click('#mentBtn');
-  await win.click('#mentPanel #mentSettings');
-  assert.equal(await settingsTab(), 'mentions', 'the Mentions panel\'s gear');
+  await win.click('#bellBtn');
+  await win.click('#bellPanel #bellSettings');
+  assert.equal(await settingsTab(), 'notify', 'the bell\'s gear');
+  await win.click('#ntGrid .k-mention [data-go]');
+  assert.equal(await settingsTab(), 'mentions', 'More on Mentions');
+  assert.ok(await win.isVisible('[data-s=mentions] .st-subpane[data-t=alerts]'), 'on its alerts');
+  await win.click('[data-s=mentions] .nt-chip >> nth=0');
+  assert.equal(await settingsTab(), 'notify', 'its 🔗 Notifications chip goes back');
+  await win.click('#ntGrid .seg[data-al="mention.notify"] [data-v=always]');
+  await win.click('#ntGrid .k-spam [data-go]');
+  assert.ok(await win.isVisible('[data-s=spam] .st-subpane[data-t=alerts]'), 'More on Spam alerts');
+  await win.click('#settingsDlg .st-rail [data-s=mentions]');
+  assert.equal(await win.inputValue('[data-s=mentions] [data-al="mention.notify"]'), 'always', 'the grid\'s Desktop is the page\'s Desktop notification');
+  await win.selectOption('[data-s=mentions] [data-al="mention.notify"]', 'unfocused');
+  await win.click('#settingsDlg .st-rail [data-s=notify]');
+  assert.equal(await win.getAttribute('#ntGrid .seg[data-al="mention.notify"] [data-v=unfocused]', 'aria-checked'), 'true', 'and back');
+  await win.click('#settingsDlg .st-rail [data-s=mentions]');
+  await win.click('#mentTabs [data-t=names]');
   await win.keyboard.press('Escape');
   await win.click('#loginBtn');
   await win.click('#accountMenu .am-more');
@@ -194,7 +209,7 @@ test('alert sounds: each one plays, and you can pick your own sound file', T, as
   assert.ok(await win.$eval('.st-opts[data-for=mention]', e => e.classList.contains('st-dim')), 'their options dim');
   await win.check('#mentOn');
   for (const s of ['chime', 'ping', 'pop', 'knock']) {
-    await win.selectOption('[data-al="mention.sound"]', s);
+    await win.selectOption('[data-s=mentions] [data-al="mention.sound"]', s);
     await win.click('[data-play=mention]');
   }
   // your own sound: a tiny WAV file
@@ -204,21 +219,21 @@ test('alert sounds: each one plays, and you can pick your own sound file', T, as
   buf.writeUInt32LE(8000, 24); buf.writeUInt32LE(8000, 28); buf.writeUInt16LE(1, 32); buf.writeUInt16LE(8, 34); buf.write('data', 36); buf.writeUInt32LE(n, 40); buf.fill(128, 44);
   fs.writeFileSync(wav, buf);
   // picked in the app's own list (not the system menu), it can still open the file picker; Escape there closes only the list
-  await win.click('[data-al="mention.sound"]');
+  await win.click('[data-s=mentions] [data-al="mention.sound"]');
   await win.keyboard.press('Escape');
   assert.equal(await win.isVisible('#settingsDlg'), true, 'Escape closed the list, not Settings');
-  await win.click('[data-al="mention.sound"]');
+  await win.click('[data-s=mentions] [data-al="mention.sound"]');
   const chooser = win.waitForEvent('filechooser');
   await win.click('.dd-list button:text-is("Your own sound")');
   await (await chooser).setFiles(wav);
   assert.equal(await win.isVisible('#settingsDlg'), true, 'Settings is still open');
   await win.waitForFunction(() => /^data:audio/.test(localStorage.getItem('kickMultiview.alertSound.mention') || ''));
-  assert.equal(await win.inputValue('[data-al="mention.sound"]'), 'custom');
+  assert.equal(await win.inputValue('[data-s=mentions] [data-al="mention.sound"]'), 'custom');
   await win.click('[data-play=mention]');
   // picking it again and cancelling keeps what you had
-  await win.selectOption('[data-al="mention.sound"]', 'pop');
+  await win.selectOption('[data-s=mentions] [data-al="mention.sound"]', 'pop');
   const again = win.waitForEvent('filechooser');
-  await win.selectOption('[data-al="mention.sound"]', 'custom');
+  await win.selectOption('[data-s=mentions] [data-al="mention.sound"]', 'custom');
   await (await again).setFiles([]);
   await win.waitForTimeout(300);
   assert.equal(await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).mention.sound), 'pop');

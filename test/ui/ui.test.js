@@ -316,7 +316,7 @@ test('the toolbar fits any window width: Layout keeps its name while there is ro
   await press(page, 'c');
   // the order: Channels on the left; Layout leads the right side, Clear is last
   const order = await page.$$eval('header > .btn', els => els.filter(e => !e.hidden && getComputedStyle(e).display !== 'none').map(e => e.id));
-  assert.deepEqual(order, ['savedBtn', 'layoutBtn', 'swBtn', 'undoBtn', 'redoBtn', 'settingsBtn', 'focusBtn', 'clear']);
+  assert.deepEqual(order, ['savedBtn', 'layoutBtn', 'swBtn', 'undoBtn', 'redoBtn', 'bellBtn', 'settingsBtn', 'focusBtn', 'clear']);
   const check = () => page.evaluate(() => {
     const h = document.querySelector('header'), hr = h.getBoundingClientRect();
     const cut = [...h.children].filter(e => !e.hidden && getComputedStyle(e).display !== 'none')
@@ -348,6 +348,7 @@ test('the toolbar fits any window width: Layout keeps its name while there is ro
   assert.ok(await page.isVisible('#moreMenu #clear'), 'Clear is the first to go into More');
   assert.equal(await page.$eval('#settingsBtn', e => e.parentElement.tagName), 'HEADER', 'Settings never goes into More');
   assert.equal(await page.$eval('#layoutBtn', e => e.parentElement.tagName), 'HEADER', 'nor does Layout');
+  assert.equal(await page.$eval('#bellBtn', e => e.parentElement.tagName), 'HEADER', 'nor the bell');
   assert.match(await page.textContent('#moreMenu #clear'), /Clear/, 'in the menu each button shows its name');
   const first = await page.$eval('#moreMenu .btn', e => e.id);
   assert.equal(first, 'clear');
@@ -813,7 +814,7 @@ test('Settings opens from the gear and Ctrl+, shows only what works in a browser
   assert.equal(await page.isChecked('#keysSet'), true);
 });
 
-test('messages show as a toast where Settings puts it, close on a click, and can be turned off', async t => {
+test('messages show as a pop-up where Settings puts it, close on a click, and can be turned off', async t => {
   const page = await openApp(t);
   assert.equal(await page.evaluate(() => !!document.querySelector('header #msg')), false, 'not in the toolbar any more');
   await page.click('#savedBtn'); await page.fill('#savedInput', '%%%'); await page.press('#savedInput', 'Enter');
@@ -824,16 +825,20 @@ test('messages show as a toast where Settings puts it, close on a click, and can
   assert.ok(await page.isHidden('#msg'), 'a click closes it');
   await page.click('#settingsBtn'); await page.click('#settingsDlg .st-rail [data-s=notify]');
   assert.ok(await page.isHidden('#dnOn'), 'desktop notifications need the desktop app');
-  assert.ok(await page.isHidden('#msgVia'), 'and so does sending messages as one');
+  assert.equal(await page.locator('#ntGrid .seg').first().evaluate(e => getComputedStyle(e.parentNode).visibility), 'hidden', 'and so does the Desktop column');
   await page.selectOption('#msgPos', 'br');
   assert.equal(await page.getAttribute('#msg', 'data-pos'), 'br');
   assert.ok(await page.isVisible('#msg'), 'it shows where they go now, over Settings');
-  await page.uncheck('#msgOn');
-  assert.ok(await page.isDisabled('#msgPos'));
+  await page.uncheck('#ntGrid [data-al="app.popup"]');
   await page.reload();
-  assert.deepEqual(await page.evaluate(() => [msgOn.checked, msgPos.value]), [false, 'br'], 'remembered');
+  assert.deepEqual(await page.evaluate(() => [document.querySelector('#ntGrid [data-al="app.popup"]').checked, msgPos.value]), [false, 'br'], 'remembered');
   await page.click('#savedBtn'); await page.fill('#savedInput', '%%%'); await page.press('#savedInput', 'Enter');
   assert.ok(await page.isHidden('#msg'), 'off: nothing shows');
+});
+
+test('messages from before the bell: "Show messages" off and "as desktop notifications" become the App messages row', async t => {
+  const page = await openApp(t, { init: () => { if (!sessionStorage.getItem('seeded')){ sessionStorage.setItem('seeded', '1'); localStorage.setItem('kickMultiview.msg', JSON.stringify({ on: false, pos: 'bl', via: 'desktop' })); localStorage.setItem('kickMultiview.notifyAll', '0'); } } });
+  assert.deepEqual(await page.evaluate(() => [smvNotes.alerts.app.popup, smvNotes.alerts.app.notify, smvNotes.alerts.live.notify, msg.dataset.pos]), [false, 'always', 'never', 'bl']);
 });
 
 test('a chat window lights up for a mention until you click it, and gets stronger while unseen', async t => {
