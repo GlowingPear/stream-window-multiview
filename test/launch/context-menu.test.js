@@ -4,7 +4,7 @@ const test = require('node:test');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { launchApp, viewLoaded, assert } = require('./app');
+const { launchApp, viewLoaded, assert, openChannel } = require('./app');
 
 const T = { timeout: 60000 };
 let a, out;
@@ -20,7 +20,7 @@ test.before(async () => {
       item.setSaveDialogOptions = o => { t.saved.push(o.defaultPath); item.setSavePath(out + '/' + String(o.defaultPath).split(/[\\/]/).pop()); };
     });
   }, out);
-  await a.win.fill('#url', 'alpha'); await a.win.click('#add');
+  await openChannel(a.win, 'alpha');
   await viewLoaded(a.win, 'alpha', 'chat', /popout\/alpha\/chat/);
   await viewLoaded(a.win, 'alpha', 'stream', /player\.kick\.com\/alpha/);
 });

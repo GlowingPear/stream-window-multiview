@@ -162,7 +162,16 @@ function director(run, { features = 0 } = {}) {
   // Click, then type like a person. Long text takes a while, hence the long limit.
   const type = async (sel, text) => { await click(sel); await m.locator(sel).first().pressSequentially(text, { delay: 50, timeout: 60000 }); };
   // Add channels without showing it (do it behind a title card).
-  const add = async names => { for (const ch of names) { await m.fill('#url', ch); await m.click('#add'); } };
+  // opens each channel from the Channels box (older versions: the toolbar's link box), then closes the panel
+  const add = async names => {
+    for (const ch of names) {
+      if (await m.$('#url')) { await m.fill('#url', ch); await m.click('#add'); continue; }
+      if (!(await m.isVisible('#savedPanel'))) await m.click('#savedBtn');
+      await m.fill('#savedInput', ch); await m.click('#spOpen');
+      await m.waitForFunction(() => !document.querySelector('#savedInput').value);
+    }
+    if (await m.isVisible('#savedPanel').catch(() => false)) await m.click('#savedBtn');
+  };
   // Run code in a stand-in chat, by channel name; say() posts a message there.
   const inChat = (ch, js) => m.evaluate(([ch, js]) => [...document.querySelectorAll('#stage .win.chat')]
     .find(w => w.querySelector('.title').textContent === ch).querySelector('webview').executeJavaScript(js), [ch, js]);

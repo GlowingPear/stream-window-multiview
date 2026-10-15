@@ -2,7 +2,7 @@
 // back, bringing the streams back, popping out only the hidden ones, and the switch control in its own
 // window. Players and chats are stand-in pages (see app.js).
 const test = require('node:test');
-const { launchApp, winSel, assert } = require('./app');
+const { launchApp, winSel, assert, openChannel } = require('./app');
 const { startCoverage, saveCoverage } = require('../helpers');
 // npm run test:coverage: keep what a window ran before closing it (a closed window's record is lost)
 const keep = async page => { await saveCoverage(page); await startCoverage(page); };
@@ -12,7 +12,7 @@ let a;
 test.before(async () => { a = await launchApp(); });
 test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
 
-const add = async (...links) => { for (const l of links) { await a.win.fill('#url', l); await a.win.click('#add'); } };
+const add = async (...links) => { for (const l of links) await openChannel(a.win, l); };
 const titles = (page, kind) => page.$$eval(`#stage .win.${kind}`, l => l.map(e => e.querySelector('.title').textContent).sort());
 const clear = async () => { if (await a.win.locator('#stage .win').count()){ await a.win.click('#clear'); await a.win.click('#askDlg .ask-yes'); } };
 test.beforeEach(async () => {                             // each test starts with nothing open, streams back here

@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { stubExists, openChannel } = require('./app');
 const { ROOT, playwright } = require('../helpers');
 
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
@@ -38,6 +39,7 @@ test('the desktop app starts, adds a stream and quits cleanly', async () => {
     env: appEnv({ HOME: data, XDG_CONFIG_HOME: data, APPDATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' }),
     timeout: 60000
   });
+  await stubExists(app);
   const mainErrors = [];
   app.process().stderr.on('data', d => { const s = String(d); if (/Uncaught|TypeError|ReferenceError|SyntaxError|Error: /.test(s) && !/(GPU|gpu|dbus|DBus|libva|viz|vaapi|ALSA|pulse)/.test(s)) mainErrors.push(s.trim()); });
 
@@ -73,8 +75,7 @@ test('the desktop app starts, adds a stream and quits cleanly', async () => {
     assert.equal(await win.evaluate(() => window.kmv.readHelp('../package.json')), null, 'other files are refused');
 
     // adding a channel opens a stream and its chat, each in a web view
-    await win.fill('#url', 'https://kick.com/alpha');
-    await win.click('#add');
+    await openChannel(win, 'https://kick.com/alpha');
     await win.waitForSelector('#stage .win.stream webview');
     assert.equal(await win.$$eval('#stage .win', e => e.length), 2);
 

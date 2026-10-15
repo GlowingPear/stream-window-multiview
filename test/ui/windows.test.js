@@ -1,13 +1,13 @@
 // Moving and resizing windows by hand, snapping, maximizing, and the buttons on each window's title bar.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { setup, add, win, box, drag, windows } = require('./app');
+const { setup, add, mode, win, box, drag, windows } = require('./app');
 const { openApp } = setup();
 
 // Two streams side by side to work with ("Stream only", so each channel is one window).
 async function twoStreams(t) {
   const page = await openApp(t);
-  await page.selectOption('#mode', 'stream');
+  await mode(page, 'stream');
   await add(page, 'alpha', 'bravo');
   await page.keyboard.press('t');            // Tile
   await page.waitForTimeout(400);
@@ -219,12 +219,12 @@ test('Auto layout with nothing open: choosing it and resizing the window lay out
 
 test('Auto layout stays chosen after a restart and when an edge is only clicked; moving a window by hand ends it, and says so if fitting in is on', async t => {
   const page = await twoStreams(t);
-  const layoutBtn = () => page.textContent('#layoutBtn');
+  const layoutBtn = async () => (await page.getAttribute('#layoutBtn', 'title')).split('. ')[0];   // its tooltip names the layout in use
   await page.click('#layoutBtn'); await page.click('#layoutMenu [data-l=auto]');
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.lastLayout')), 'auto', 'saved straight away');
   const placed = await windows(page);
   await page.reload(); await page.waitForTimeout(400);
-  assert.equal(await layoutBtn(), 'Layout: Auto layout ▾', 'still Auto layout after a restart');
+  assert.equal(await layoutBtn(), 'Layout: Auto layout', 'still Auto layout after a restart');
   assert.deepEqual(await windows(page), placed, 'with the windows where they were');
   await page.click('#layoutBtn');
   assert.ok(await page.isVisible('#lmAutoFit'), 'so fitting in is offered (and works) again');
@@ -233,7 +233,7 @@ test('Auto layout stays chosen after a restart and when an edge is only clicked;
   // clicking a resize edge without moving keeps it
   const a = win(page, 'alpha'), c = corner(await box(a));
   await page.mouse.move(c.x, c.y); await page.mouse.down(); await page.mouse.up();
-  assert.equal(await layoutBtn(), 'Layout: Auto layout ▾', 'a click on an edge keeps it');
+  assert.equal(await layoutBtn(), 'Layout: Auto layout', 'a click on an edge keeps it');
   assert.equal(await page.textContent('#msg'), '');
 
   // swapping two windows with the name list keeps it too: they trade places, and refitting keeps the new order
@@ -241,7 +241,7 @@ test('Auto layout stays chosen after a restart and when an edge is only clicked;
   await a.locator('.col-pick').selectOption({ label: 'bravo' });
   await page.waitForTimeout(400);
   assert.deepEqual([await box(a), await box(win(page, 'bravo'))], [before.bravo, before.alpha], 'swapped');
-  assert.equal(await layoutBtn(), 'Layout: Auto layout ▾', 'a swap keeps it');
+  assert.equal(await layoutBtn(), 'Layout: Auto layout', 'a swap keeps it');
   assert.equal(await page.textContent('#msg'), '');
   await page.setViewportSize({ width: 1500, height: 850 }); await page.waitForTimeout(400);
   await page.waitForFunction(() => !document.querySelector('#stage .win.anim'));   // the refit has finished moving them
@@ -249,7 +249,7 @@ test('Auto layout stays chosen after a restart and when an edge is only clicked;
 
   // really resizing ends it, and the button and a message say so
   await sizeTo(page, a, 400, 300);
-  assert.equal(await layoutBtn(), 'Layout ▾', 'resized by hand: no longer Auto layout');
+  assert.equal(await layoutBtn(), 'Layout', 'resized by hand: no longer Auto layout');
   assert.match(await page.textContent('#msg'), /Auto layout is off because you moved a window/);
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.lastLayout')), '');
 
@@ -258,6 +258,6 @@ test('Auto layout stays chosen after a restart and when an edge is only clicked;
   await page.click('#layoutBtn'); await page.uncheck('#lmAutoFit'); await page.keyboard.press('Escape');
   await page.click('#msg');                  // closes the message
   await moveBy(page, a, 50, 40);
-  assert.equal(await layoutBtn(), 'Layout ▾', 'moved by hand: no longer Auto layout');
+  assert.equal(await layoutBtn(), 'Layout', 'moved by hand: no longer Auto layout');
   assert.equal(await page.textContent('#msg'), '', 'no message while fitting in is off');
 });
