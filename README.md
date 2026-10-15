@@ -16,6 +16,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - Layouts: **Focus view**, **Game focus**, **Columns**, **Chat focus**, **Auto** and **Tile**
 - Save your own named layouts and switch between them from a dropdown
 - Every window's name is a dropdown, so you can swap any two streams or chats
+- The toolbar across the top or down the left side (with names, or a slim column of icons that shows the names when you point at it)
 
 **Switch control**
 - One panel for every stream: play/pause, mute, volume, refresh, a live mini preview and remove
@@ -31,7 +32,8 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - Show any window (such as a Discord pop-out call) as a live picture inside the app
 - These windows appear in the switch control and can be made the big one
 
-**Saved channels and alerts**
+**Channels and alerts**
+- One **Channels** box to open a channel (name or link, on Kick, Twitch or YouTube, checked to exist first) or open and save it, and to search your saved channels
 - Saved list with Kick / Twitch / YouTube tabs, with live channels listed first
 - Desktop notifications when saved channels go live, and optional auto-open when they do
 - **Import follows** from Kick, Twitch and YouTube (and unfollow Kick channels right from that list)
@@ -105,7 +107,7 @@ npm run dist:mac   # on a Mac   -> dist/Stream-Multiview-<version>-mac.dmg (and 
 
 ## Adding streams
 
-Paste any of these into the box at the top and press Enter:
+Open **Channels** (top left, or press `N`), paste or type any of these into its box and press Enter:
 
 | Platform | Examples |
 |---|---|

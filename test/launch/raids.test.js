@@ -2,14 +2,14 @@
 // in-page like Kick's site does), and the stream and chat follow, in this window and in the Streams window.
 // The chats and players are stand-in pages (see app.js).
 const test = require('node:test');
-const { launchApp, inView, viewLoaded, winSel, assert } = require('./app');
+const { launchApp, inView, viewLoaded, winSel, assert, openChannel } = require('./app');
 
 const T = { timeout: 90000 };
 let a;
 test.before(async () => { a = await launchApp(); });
 test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
 
-const add = async (...links) => { for (const l of links) { await a.win.fill('#url', l); await a.win.click('#add'); } };
+const add = async (...links) => { for (const l of links) await openChannel(a.win, l); };
 const titles = (page, kind) => page.$$eval(`#stage .win.${kind}`, l => l.map(e => e.querySelector('.title').textContent).sort());
 const src = (page, title, kind) => page.$eval(`${winSel(title, kind)} webview`, v => v.getAttribute('src'));
 

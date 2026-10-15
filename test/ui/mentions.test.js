@@ -2,7 +2,7 @@
 // (search, filters, grouped by day). The chat helper runs on a small stand-in chat page.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { setup, add, win } = require('./app');
+const { setup, add, mode, win } = require('./app');
 const { openApp } = setup();
 
 // (names need 2+ letters, like real ones)
@@ -137,7 +137,7 @@ test('the chat helper holds a limited number of messages and names between the a
 
 test('when each sender first spoke: kept per open chat, forgotten when its chat closes, and only the latest 20,000', async t => {
   const page = await openApp(t);
-  await page.selectOption('#mode', 'chat');
+  await mode(page, 'chat');
   await add(page, 'alpha', 'bravo');
   await page.evaluate(async () => {
     for (const ch of ['alpha', 'bravo']) await window.spamCheck(ch, [{ sender: 'Ann', body: 'hi', t: 1 }, { sender: 'bob', body: 'yo', t: 2 }]);

@@ -13,9 +13,10 @@ function setup() {
   test.after(async () => { await browser?.close(); server?.close(); });
 
   // A fresh copy of the app (empty saved settings). Fails the test on any page error.
-  async function openApp(t, { width = 1600, height = 900, query = '' } = {}) {
+  async function openApp(t, { width = 1600, height = 900, query = '', init } = {}) {
     const context = await browser.newContext({ viewport: { width, height } });
     const page = await context.newPage();
+    if (init) await page.addInitScript(init);   // runs before the app's own script
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.route(u => !u.href.startsWith(server.url), r => r.abort());
@@ -31,7 +32,20 @@ function setup() {
   return { openApp, url: () => server.url };
 }
 
-const add = async (page, ...links) => { for (const l of links) { await page.fill('#url', l); await page.click('#add'); } };
+// Opens each link or name from the Channels box, as typing it there and pressing Open does (the panel closes after)
+const add = async (page, ...links) => {
+  for (const l of links) {
+    if (!(await page.isVisible('#savedPanel'))) await page.click('#savedBtn');
+    await page.fill('#savedInput', l); await page.click('#spOpen');
+  }
+  if (await page.isVisible('#savedPanel')) await page.click('#savedBtn');
+};
+// What the Channels box opens: Stream + chat, Stream only or Chat only (it's in the Channels panel)
+const mode = async (page, v) => {
+  if (!(await page.isVisible('#savedPanel'))) await page.click('#savedBtn');
+  await page.selectOption('#mode', v);
+  await page.click('#savedBtn');
+};
 const windows = page => page.$$eval('#stage .win', els => els.map(e => ({
   kind: ['stream', 'chat', 'web', 'capture'].find(k => e.classList.contains(k)),
   title: e.querySelector('.title').textContent,
@@ -51,4 +65,4 @@ async function drag(page, from, to, { steps = 8, shift = false } = {}) {
   await page.mouse.up();
 }
 
-module.exports = { setup, add, windows, win, box, press, drag };
+module.exports = { setup, add, mode, windows, win, box, press, drag };

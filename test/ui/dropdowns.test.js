@@ -2,7 +2,7 @@
 // with the mouse and the keyboard, and the <select> keeps its value and 'change' event.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { setup, add, win } = require('./app');
+const { setup, add, mode, win } = require('./app');
 
 const { openApp } = setup();
 const list = '.dd-list';
@@ -10,6 +10,7 @@ const items = page => page.$$eval(`${list} button`, l => l.map(b => (b.classList
 
 test('a click opens the list instead of the system menu; picking sets the value and tells the page', async t => {
   const page = await openApp(t);
+  await page.click('#savedBtn');                    // Stream + chat / Stream only / Chat only, in the Channels panel
   await page.evaluate(() => { window.__changes = 0; document.getElementById('mode').addEventListener('change', () => window.__changes++); });
   const prevented = await page.evaluate(() => {
     const e = new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 });
@@ -49,6 +50,7 @@ test('a click opens the list instead of the system menu; picking sets the value 
 
 test('the keyboard: open with arrows, Space or Enter; move, pick, Escape and Tab', async t => {
   const page = await openApp(t);
+  await page.click('#savedBtn');
   await page.focus('#mode');
   await page.keyboard.press('ArrowDown');
   assert.deepEqual(await items(page), ['*>Stream + chat', 'Stream only', 'Chat only']);
@@ -88,7 +90,7 @@ test('the keyboard: open with arrows, Space or Enter; move, pick, Escape and Tab
 
 test('a window\'s channel dropdown swaps it with another window', async t => {
   const page = await openApp(t);
-  await page.selectOption('#mode', 'stream');
+  await mode(page, 'stream');
   await add(page, 'alpha', 'bravo');
   const pick = win(page, 'alpha').locator('.col-pick');
   await page.waitForFunction(() => [...document.querySelectorAll('#stage .win.stream .col-pick')].every(s => s.options.length === 2));

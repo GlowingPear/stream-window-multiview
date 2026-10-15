@@ -3,7 +3,7 @@
 const test = require('node:test');
 const fs = require('fs');
 const path = require('path');
-const { launchApp, inView, viewLoaded, assert } = require('./app');
+const { launchApp, inView, viewLoaded, assert, openChannel } = require('./app');
 
 const T = { timeout: 90000 };
 
@@ -39,8 +39,7 @@ test('links in a chat: Kick pages open in the app with the same login, anything 
   const a = await launchApp();
   try {
     await a.app.evaluate(({ shell }) => { globalThis.__ext = []; shell.openExternal = url => { globalThis.__ext.push(url); return Promise.resolve(); }; });
-    await a.win.selectOption('#mode', 'chat');
-    await a.win.fill('#url', 'alpha'); await a.win.click('#add');
+    await openChannel(a.win, 'alpha', 'chat');
     await viewLoaded(a.win, 'alpha', 'chat', /chat/);
     await inView(a.win, 'alpha', 'chat', () => { window.open('https://kick.com/someone'); window.open('https://example.com/clip'); });
     let wins = [];
