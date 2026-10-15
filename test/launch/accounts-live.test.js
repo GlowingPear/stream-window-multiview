@@ -1,7 +1,7 @@
 // Logins, live alerts and notifications in the real desktop app. Who's logged in, who's live and the
 // moderator check are answered by the test; nothing goes to Kick, Twitch or YouTube.
 const test = require('node:test');
-const { launchApp, winSel, inView, viewLoaded, assert, openChannel, setMode, typeChannel } = require('./app');
+const { launchApp, winSel, nameIs, inView, viewLoaded, assert, openChannel, setMode, typeChannel } = require('./app');
 
 const T = { timeout: 60000 };
 let a;
@@ -110,13 +110,13 @@ test('Saved channels show who\'s live, with bells, auto-open and Open live', T, 
   await a.win.click('#savedBtn .sv-badge');
   assert.equal(await a.win.isVisible('#savedPanel'), true, '…and opens it');
 
-  await a.win.click('#savedList .sv:has(.nm:text-is("bravo")) .bell');
+  await a.win.click(`#savedList .sv:has(.nm${nameIs('bravo')}) .bell`);
   assert.deepEqual(JSON.parse(await a.win.evaluate(() => localStorage.getItem('kickMultiview.notifyOff'))), ['bravo'], 'no alerts for bravo');
   await a.win.uncheck('#notifyAll');
-  assert.ok(await a.win.isDisabled('#savedList .sv:has(.nm:text-is("alpha")) .bell'), 'with alerts off the bells are off');
+  assert.ok(await a.win.isDisabled(`#savedList .sv:has(.nm${nameIs('alpha')}) .bell`), 'with alerts off the bells are off');
   await a.win.check('#notifyAll');
 
-  await a.win.click('#savedList .sv:has(.nm:text-is("bravo")) .auto');
+  await a.win.click(`#savedList .sv:has(.nm${nameIs('bravo')}) .auto`);
   assert.deepEqual(JSON.parse(await a.win.evaluate(() => localStorage.getItem('kickMultiview.autoOpen'))), ['bravo']);
   await a.win.click('#openLive');
   assert.equal(await a.win.locator(winSel('alpha')).count(), 1, 'Open live opens the live ones');
@@ -133,7 +133,7 @@ test('Saved channels show who\'s live, with bells, auto-open and Open live', T, 
 
   // "just went live" and clicking a live notification
   await a.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach(w => w.webContents.send('live:went-live', 'tw:charlie', { live: true })));
-  await a.win.waitForFunction(() => /charlie just went live on Twitch/.test(document.getElementById('msg').textContent));
+  await a.win.waitForFunction(() => /charlie just went live on Twitch/i.test(document.getElementById('msg').textContent));
   await a.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach(w => w.webContents.send('open-channel', 'tw:charlie')));
   await a.win.waitForSelector(winSel('charlie'));
   // both kept under the bell (Live): the one that opened by itself marked so

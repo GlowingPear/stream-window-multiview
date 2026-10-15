@@ -131,20 +131,23 @@ async function mainWindow(app) {
 // Run a function inside a window's web view (its stream player or chat page). The window is found by its title.
 function inView(win, title, kind, fn, arg) {
   return win.evaluate(([title, kind, src, arg]) => {
-    const w = [...document.querySelectorAll('#stage .win.' + kind)].find(e => e.querySelector('.title').textContent === title);
+    const w = [...document.querySelectorAll('#stage .win.' + kind)].find(e => e.querySelector('.title').textContent.toLowerCase() === title.toLowerCase());
     return w.querySelector('webview').executeJavaScript(`(${src})(${JSON.stringify(arg)})`);
   }, [title, kind, fn.toString(), arg]);
 }
 // Wait until a window's web view has loaded a page whose address matches.
 function viewLoaded(win, title, kind, re) {
   return win.waitForFunction(([title, kind, re]) => {
-    const w = [...document.querySelectorAll('#stage .win.' + kind)].find(e => e.querySelector('.title').textContent === title);
+    const w = [...document.querySelectorAll('#stage .win.' + kind)].find(e => e.querySelector('.title').textContent.toLowerCase() === title.toLowerCase());
     const v = w && w.querySelector('webview');
     try { return !!v && new RegExp(re).test(v.getURL()); } catch { return false; }
   }, [title, kind, re.source]);
 }
 // A Playwright selector for a window by its title.
-const winSel = (title, kind = 'stream') => `#stage .win.${kind}:has(.title:text-is("${title}"))`;
+// A channel's name, in any capitals: the app shows the site's display name once a live check has seen it
+// ("Charlie" for tw:charlie, as the real Twitch says).
+const nameIs = name => `:text-matches("^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\\\$&')}$", "i")`;
+const winSel = (title, kind = 'stream') => `#stage .win.${kind}:has(.title${nameIs(title)})`;
 
 // Opening a channel asks its site whether it exists: in the tests the answer is 'unknown' (which opens it) unless a
 // test sets globalThis.__exists[channel]. For the tests that start the app themselves.
@@ -182,4 +185,4 @@ async function typeChannel(win, text) {
   await win.press('#savedInput', 'Enter');
 }
 
-module.exports = { launchApp, stubExists, mainWindow, inView, viewLoaded, winSel, assert, openChannel, setMode, typeChannel };
+module.exports = { nameIs, launchApp, stubExists, mainWindow, inView, viewLoaded, winSel, assert, openChannel, setMode, typeChannel };
