@@ -22,9 +22,16 @@ const translateUrl = (text, tl) => `https://translate.google.com/?sl=auto&tl=${e
 const searchUrl = text => `https://www.google.com/search?q=${encodeURIComponent(String(text).slice(0, 500))}`;
 const webUrl = u => /^https?:\/\//i.test(String(u || ''));
 
-// params: Electron's context-menu params. opts: { langs, dev }
-// -> [{ label, act, enabled? } | { type: 'separator' }]
-function menuFor(params, { langs = ['en'], dev = false } = {}) {
+// Language names in another language: "Spanish" for es, in English (the badge on a translated message).
+function languageIn(code, inLang) {
+  try { const n = new Intl.DisplayNames([inLang], { type: 'language' }).of(code); return n && n !== code ? n.charAt(0).toLocaleUpperCase(inLang) + n.slice(1) : code; } catch { return code; }
+}
+
+// params: Electron's context-menu params. opts: { langs, dev, emote, chat }
+//   emote: the emote under the pointer (see emoteAgent in index.html): { name, text } where text is what to paste in that chat
+//   chat: a chat window's translation state (see translateAgent): { on, auto }; null: not a chat
+// -> [{ label, act, enabled?, checked? } | { type: 'separator' }]
+function menuFor(params, { langs = ['en'], dev = false, emote = null, chat = null } = {}) {
   const p = params || {}, f = p.editFlags || {}, out = [];
   const group = items => { const list = items.filter(Boolean); if (!list.length) return; if (out.length) out.push({ type: 'separator' }); out.push(...list); };
   const sel = String(p.selectionText || '').trim();
@@ -39,9 +46,11 @@ function menuFor(params, { langs = ['en'], dev = false } = {}) {
     { label: 'Open link in your browser', act: { do: 'external', url: p.linkURL } },
     { label: 'Copy link address', act: { do: 'copyText', text: p.linkURL } }
   ]);
+  const em = emote && typeof emote.text === 'string' && emote.text ? emote : null;
+  if (em && p.mediaType === 'image') group([{ label: 'Copy emote text', act: { do: 'copyText', text: em.text } }]);
   if (p.mediaType === 'image' && webUrl(p.srcURL)) group([
     { label: 'Open image in new window', act: { do: 'openImage', url: p.srcURL } },
-    { label: 'Save image as…', act: { do: 'saveImage', url: p.srcURL, name: p.altText || p.titleText || '' } },
+    { label: 'Save image as…', act: { do: 'saveImage', url: p.srcURL, name: (em && em.name) || p.altText || p.titleText || '' } },
     { label: 'Copy image', act: { do: 'copyImage', x: p.x, y: p.y } },
     { label: 'Copy image address', act: { do: 'copyText', text: p.srcURL } }
   ]);
@@ -59,10 +68,16 @@ function menuFor(params, { langs = ['en'], dev = false } = {}) {
     { label: `Translate ${quoteShort(sel)} to ${languageName(tl)}`, act: { do: 'external', url: translateUrl(sel, tl) } },
     { label: `Search Google for ${quoteShort(sel)}`, act: { do: 'external', url: searchUrl(sel) } }
   ]);
+  // a chat: translate all of it (like Chrome's "Translate to English"), and its new messages as they come
+  if (chat && !p.isEditable && !webUrl(p.linkURL)) group([
+    { label: `Translate this chat to ${languageName(tl)}`, act: { do: 'translateChat', tl }, checked: !!chat.on },
+    { label: 'Translate new messages too', act: { do: 'translateAuto', tl, on: !chat.auto }, checked: !!chat.auto },
+    chat.on ? { label: 'Stop translating', act: { do: 'translateStop' } } : null
+  ]);
   // nothing in particular: the page itself
-  if (!out.length) group([{ label: 'Reload', act: { do: 'reload' } }]);
+  if (!out.length || (chat && !sel && !em && !webUrl(p.linkURL) && !p.isEditable && p.mediaType !== 'image')) group([{ label: 'Reload', act: { do: 'reload' } }]);
   if (dev) group([{ label: 'Inspect', act: { do: 'inspect', x: p.x, y: p.y } }]);
   return out;
 }
 
-module.exports = { menuFor, translateTarget, languageName, translateUrl, searchUrl };
+module.exports = { menuFor, translateTarget, languageName, languageIn, translateUrl, searchUrl };

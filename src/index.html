@@ -251,6 +251,7 @@ body.dragging .bar{cursor:grabbing}
 .st-row input[type=color]{width:34px;height:26px;border:1px solid var(--line2);border-radius:6px;background:none;padding:1px;cursor:pointer;flex:none}
 .st-row input[type=range]{width:90px;accent-color:var(--accent)}
 .st-row .btn,.st-add .btn,.st-try .btn{height:28px;padding:0 10px;font-size:12px}
+.st-ex img{flex:none;width:28px;height:28px;cursor:help}
 .st-in{height:28px;width:170px;padding:0 8px;border-radius:6px;border:1px solid var(--line2);background:var(--bg);outline:none;font-size:12px}
 .st-in:focus{border-color:var(--accent)}
 .st-lead{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel2);cursor:pointer}
@@ -413,6 +414,23 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 .btns button.like.dim{opacity:.4}
 
 /* ---------- layout menu + columns mode ---------- */
+/* The right-click menu on an emote in a chat (drawn here for its big preview; every other menu is the system's) */
+.vmenu{position:fixed;z-index:2147483600;min-width:232px;max-width:280px;max-height:calc(100vh - 8px);overflow-y:auto;padding:5px;box-sizing:border-box;background:var(--panel2);border:1px solid var(--line2);border-radius:9px;
+  box-shadow:0 14px 40px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.35);font:13px/1.3 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);outline:none;user-select:none}
+.vmenu .vm-pre{display:flex;flex-direction:column;gap:8px;padding:6px 6px 9px;margin-bottom:4px;border-bottom:1px solid var(--line)}
+.vmenu .vm-pic{position:relative;height:124px;border-radius:7px;background:var(--panel);border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.vmenu .vm-pic img{width:104px;height:104px;object-fit:contain}
+.vmenu .vm-anim{position:absolute;right:7px;top:7px;font-size:10px;font-weight:800;letter-spacing:.06em;background:rgba(10,12,13,.8);border:1px solid var(--line2);border-radius:4px;padding:1px 5px}
+.vmenu .vm-top{display:flex;align-items:center;gap:8px;min-width:0}
+.vmenu .vm-nm{font-size:15px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vmenu .vm-badge{flex:none;font-size:10px;font-weight:800;letter-spacing:.06em;border-radius:4px;padding:1px 5px;text-transform:uppercase}
+.vmenu .vm-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.vmenu [role=menuitem],.vmenu [role=menuitemcheckbox]{display:flex;align-items:center;gap:6px;width:100%;box-sizing:border-box;padding:5px 10px 5px 24px;border:0;border-radius:5px;background:none;color:inherit;font:inherit;text-align:left;cursor:default;position:relative}
+.vmenu [aria-checked=true]::before{content:"✓";position:absolute;left:8px}
+.vmenu [role^=menuitem].cur{background:var(--accent);color:var(--accent-ink)}
+.vmenu [role^=menuitem]:focus{outline:none}
+.vmenu [role^=menuitem][aria-disabled=true]{color:var(--muted)}
+.vmenu [role=separator]{height:1px;margin:4px 6px;background:var(--line)}
 .menu{position:fixed;top:calc(var(--head) + 6px);z-index:100003;width:300px;display:flex;flex-direction:column;gap:2px;padding:6px;
   background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.55)}
 .menu[hidden]{display:none}
@@ -1589,7 +1607,9 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
         <label class="st-row"><span class="st-t">Start new streams muted<small>Browsers block sound on autoplay until you've clicked the window.</small></span><input type="checkbox" class="st-sw" id="muted" checked></label>
         <label class="st-row"><span class="st-t">Snap windows<small>Windows snap to the screen edges and to each other while you drag.</small></span><input type="checkbox" class="st-sw" id="snap" checked></label>
         <label class="st-row"><span class="st-t">Auto-pause hidden streams<small>Pauses streams that are off-screen or behind the big stream after 2 seconds, to save bandwidth. They jump back to live when you can see them again. Streams you can hear never pause.</small></span><input type="checkbox" class="st-sw" id="autoPause"></label>
-        <label class="st-row"><span class="st-t">Emote preview in chats<small>Point at an emote in a chat to see it bigger, with its name. Copy its name or download it from there.</small></span><input type="checkbox" class="st-sw" id="emoteSet"></label>
+        <label class="st-row"><span class="st-t">Emote preview in chats<small>Point at an emote in a chat to see it bigger, with its name, and copy its name or picture or download it. The same preview is always in the right-click menu on an emote, with Copy emote text and Save image as…</small></span><input type="checkbox" class="st-sw" id="emoteSet"></label>
+        <div class="st-row st-ex"><span class="st-t">Example<small>Point at the emote (or click Show example) to see the preview. It works whether the setting is on or off.</small></span><img id="emoteSample" alt="pearWave" width="28" height="28"><button type="button" class="btn" id="emoteExample">Show example</button></div>
+        <div class="st-row"><span class="st-t">Translating chats<small>Right-click a chat and choose Translate this chat, or Translate new messages too. The messages are sent to Google Translate to be translated. Nothing is sent until you choose it.</small></span></div>
         <label class="st-row"><span class="st-t">Keyboard shortcuts<small>Esc still closes menus when they're off. <button class="linkish" data-help="keys">See the list</button></small></span><input type="checkbox" class="st-sw" id="keysSet"></label>
       </section>
       <section class="st-pane" data-s="layouts" hidden>
@@ -1992,6 +2012,7 @@ function mentionAgent(){
       const m = lineOf(l);
       const r = reply; reply = '';
       if (!m) continue;
+      if (window.__kmvTr && window.__kmvTr.has(m[2])){ seen.add(l); continue; }   // shown translated: its original was read already
       // A message line is only ever judged once, even if its "Replying to" line later scrolls away or re-draws.
       const lineNew = !seen.has(l), key = r ? r + '\u0001' + l : '';
       const replyNew = key && !seen.has(key);
@@ -2128,6 +2149,7 @@ function mentionAgent(){
       marks.set(line, { why, color }); tag(marks.get(line), line);
       if (marks.size > 200) marks.delete(marks.keys().next().value);
     },
+    look(){ scan(); },
     take(){ scan(); const q = { m: queue, l: lines, k: [...known], c: seenAt }; queue = []; lines = []; known.clear(); seenAt = 0; return q; }
   };
   return true;
@@ -2140,7 +2162,9 @@ const MENTION_JS = `(${mentionAgent.toString()})()`;
    Download is asked of the app through a console message (the chat page can't reach the app any other way). */
 function emoteAgent(){
   if (window.__kmvEmote) return true;
-  let on = true, host = null, root = null, card = null, cur = null, pending = null, showT = 0, hideT = 0;
+  let on = false, host = null, root = null, card = null, cur = null, pending = null, showT = 0, hideT = 0, example = false, ctxAt = null, menuOpen = false, exSend = null;
+  // How the card asks the app for things: a console message from a chat page (the app's page swaps this for a direct call)
+  const send = (what, d) => console.log('__kmv:emote-' + what + ' ' + JSON.stringify(d));
   // The emote behind a picture: its name, a bigger picture, the site, and whether it moves. null: not an emote.
   function emoteOf(img){
     if (!img || img.tagName !== 'IMG') return null;
@@ -2158,12 +2182,22 @@ function emoteAgent(){
     else if (/(^|\.)frankerfacez\.com$/.test(h) && /\/emote\//.test(path)){ site = 'FFZ'; big = u.href.replace(/\/[12](?=$|\?)/, '/4'); }
     else if (/(^|\.)ggpht\.com$|^www\.gstatic\.com$/.test(h) && img.closest('yt-live-chat-text-message-renderer, #message')){ site = 'YouTube'; big = u.href.replace(/=w\d+-h\d+/, '=w128-h128'); }
     else return null;
-    return { name, small: u.href, big: big || u.href, site, animated: /\/animated\/|\.gif(\?|$)/i.test(u.href), addOn: /^(7TV|BTTV|FFZ)$/.test(site) };
+    return { name, text: textOf(img, site, name), small: u.href, big: big || u.href, site, animated: /\/animated\/|\.gif(\?|$)/i.test(u.href), addOn: /^(7TV|BTTV|FFZ)$/.test(site) };
+  }
+  // What to type (or paste) in this chat to get the emote: its code on Twitch and the add-ons, its name on Kick,
+  // and on YouTube a standard emoji itself, or a YouTube or channel emoji's shortcode (":_name:").
+  function textOf(img, site, name){
+    if (site !== 'YouTube') return name;
+    const alt = String(img.alt || '').trim(), tip = String(img.getAttribute('shared-tooltip-text') || '').trim();
+    if (alt && /\p{Extended_Pictographic}/u.test(alt) && !/[A-Za-z]/.test(alt)) return alt;
+    if (/^:[^\s:]+:$/.test(tip)) return tip;
+    if (/^:[^\s:]+:$/.test(alt)) return alt;
+    return ':' + name + ':';
   }
   const SITE = { Kick: ['#53fc18', '#0a0c0d', 'Kick emote'], Twitch: ['#8a4fff', '#fff', 'Twitch emote'], YouTube: ['#ff3d3d', '#fff', 'YouTube emoji'],
     '7TV': ['#353e43', '#e7ede9', 'From the 7TV add-on'], BTTV: ['#353e43', '#e7ede9', 'From the BetterTTV add-on'], FFZ: ['#353e43', '#e7ede9', 'From the FrankerFaceZ add-on'] };
   const CSS = `:host{all:initial}
-    .card{position:fixed;z-index:2147483647;width:232px;box-sizing:border-box;padding:12px;display:flex;flex-direction:column;gap:10px;
+    .card{position:fixed;z-index:2147483647;width:272px;box-sizing:border-box;padding:12px;display:flex;flex-direction:column;gap:10px;
       background:#1b2023;border:1px solid #353e43;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.4);
       font:13px/1.35 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#e7ede9;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s}
     .card.show{opacity:1;transform:none} .card[hidden]{display:none}
@@ -2174,7 +2208,7 @@ function emoteAgent(){
     .badge{flex:none;font-size:10px;font-weight:800;letter-spacing:.06em;border-radius:4px;padding:1px 5px;text-transform:uppercase}
     .sub{font-size:12px;color:#a7b2ac;margin-top:3px}
     .acts{display:flex;gap:8px;border-top:1px solid #283034;padding-top:10px}
-    button{all:unset;flex:1;box-sizing:border-box;height:30px;border-radius:7px;border:1px solid #353e43;background:#131719;color:#e7ede9;
+    button{all:unset;flex:1;box-sizing:border-box;height:30px;padding:0 4px;white-space:nowrap;border-radius:7px;border:1px solid #353e43;background:#131719;color:#e7ede9;
       font:600 12px ui-sans-serif,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;cursor:pointer}
     button:hover{border-color:#87928c} button:focus-visible{outline:2px solid #53fc18;outline-offset:1px}
     .tip{position:absolute;width:12px;height:12px;background:#1b2023;transform:rotate(45deg)}
@@ -2202,19 +2236,26 @@ function emoteAgent(){
     top.append(el('span', 'nm', e.name));
     const b = el('span', 'badge', e.addOn ? 'Add-on' : e.site); b.style.background = s[0]; b.style.color = s[1]; top.append(b);
     const info = el('div'); info.append(top, el('div', 'sub', s[2]));
-    const acts = el('div', 'acts'), copy = el('button', '', 'Copy name'), dl = el('button', '', 'Download');
-    copy.type = dl.type = 'button';
+    const acts = el('div', 'acts'), copy = el('button', '', 'Copy name'), pic2 = el('button', '', 'Copy image'), dl = el('button', '', 'Download');
+    copy.type = pic2.type = dl.type = 'button';
+    const said = (b, text, back) => { b.textContent = text; setTimeout(() => { b.textContent = back; }, 1200); };
+    copy.title = 'Copy “' + (e.text || e.name) + '”, to paste into this chat';
     copy.addEventListener('click', () => {
-      const done = () => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy name'; }, 1200); };
-      const old = () => { const t = el('textarea'); t.value = e.name; t.style.cssText = 'position:fixed;left:-999px'; root.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch {} t.remove(); };
-      try { navigator.clipboard.writeText(e.name).then(done, old); } catch { old(); }
+      const t0 = e.text || e.name, done = () => said(copy, 'Copied', 'Copy name');
+      const old = () => { const t = el('textarea'); t.value = t0; t.style.cssText = 'position:fixed;left:-999px'; root.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch {} t.remove(); };
+      try { navigator.clipboard.writeText(t0).then(done, old); } catch { old(); }
     });
-    dl.addEventListener('click', () => { console.log('__kmv:emote-dl ' + JSON.stringify({ url: e.big, small: e.small, name: e.name })); dl.textContent = 'Saving…'; setTimeout(() => { dl.textContent = 'Download'; }, 1500); });
-    acts.append(copy, dl);
+    pic2.title = e.animated ? 'Copy the picture (as a still picture: the clipboard has no moving ones)' : 'Copy the picture';
+    pic2.addEventListener('click', () => { (example && exSend ? exSend : send)('copy', { url: e.big, small: e.small, name: e.name }); said(pic2, 'Copied', 'Copy image'); });
+    dl.addEventListener('click', () => {
+      if (example){ said(dl, 'Only an example', 'Download'); return; }
+      send('dl', { url: e.big, small: e.small, name: e.name }); said(dl, 'Saving…', 'Download');
+    });
+    acts.append(copy, pic2, dl);
     card.append(pic, info, acts, el('span', 'tip'));
   }
   function place(target){
-    const r = target.getBoundingClientRect(), W = 232, H = card.offsetHeight || 260, gap = 10;
+    const r = target.getBoundingClientRect(), W = 272, H = card.offsetHeight || 260, gap = 10;
     const below = r.top - H - gap < 6 && r.bottom + gap + H <= innerHeight - 6;
     const left = Math.max(6, Math.min(innerWidth - W - 6, r.left + r.width / 2 - 28));
     card.style.left = left + 'px';
@@ -2242,19 +2283,175 @@ function emoteAgent(){
     if (t === cur) return;
     clearTimeout(showT);
     pending = t;
-    showT = setTimeout(() => { if (pending === t && t.isConnected) show(t, e); }, cur ? 90 : 150);   // from one emote to the next: quicker, but passing over one on the way to the card doesn't count
+    showT = setTimeout(() => { if (pending === t && t.isConnected){ example = false; show(t, e); } }, cur ? 90 : 150);   // from one emote to the next: quicker, but passing over one on the way to the card doesn't count
   }, true);
   document.addEventListener('pointerout', ev => {
     if (ev.target === pending){ pending = null; clearTimeout(showT); }
     if (cur && ev.target === cur) hideSoon();
   }, true);
-  addEventListener('scroll', () => { if (cur) hide(); }, true);
+  // The app's right-click menu on an emote is drawn by the app (with the big picture): what was right-clicked, and where.
+  document.addEventListener('contextmenu', ev => { ctxAt = { target: ev.target, x: ev.clientX, y: ev.clientY, t: Date.now() }; hide(); }, true);
+  // while that menu is open, scrolling the chat closes it (like a native menu)
+  const scrolled = () => { if (menuOpen){ menuOpen = false; send('menu-close', {}); } };
+  addEventListener('wheel', scrolled, { capture: true, passive: true });
+  addEventListener('scroll', () => { scrolled(); if (cur) hide(); }, true);
   addEventListener('blur', hide);
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && cur) hide(); }, true);
-  window.__kmvEmote = { on(v){ on = !!v; if (!on) hide(); }, emoteOf };
+  window.__kmvEmote = {
+    on(v){ on = !!v; if (!on) hide(); }, emoteOf,
+    ctx(){
+      const c = ctxAt; ctxAt = null;
+      if (!c || Date.now() - c.t > 3000) return null;
+      const e = emoteOf(c.target); if (!e) return null;
+      menuOpen = true;
+      return { ...e, x: c.x, y: c.y };
+    },
+    menuClosed(){ menuOpen = false; },
+    // The card for a picture that isn't in a chat (Settings' example): Download does nothing there.
+    preview(target, e, ex){ example = !!ex; clearTimeout(hideT); show(target, e); },
+    hideSoon(){ hideSoon(); }, hide(){ hide(); },
+    setExampleSend(fn){ if (typeof fn === 'function') exSend = fn; }
+  };
   return true;
 }
 const EMOTE_JS = `(${emoteAgent.toString()})()`;
+/* ---- Translating a chat (right-click a chat > Translate this chat): runs inside each chat page.
+   Each message's own text is translated where it is, and a TRANSLATED · <language> badge goes on its end (click: the
+   original, and back). Emotes, @mentions, links and names stay as they are: only the text around them is sent.
+   The app does the asking (console message "__kmv:tr", answered with got()), and nothing is sent until you choose it. */
+function translateAgent(){
+  if (window.__kmvTr) return true;
+  // each site's message text: Twitch, YouTube, Kick (the part after the name and its colon)
+  const BODY = '[data-a-target="chat-line-message-body"], yt-live-chat-text-message-renderer #message, [data-index] div:has(> span[aria-hidden="true"]) + span';
+  const SKIP = 'a, button, img, svg, [data-emote-name], [data-a-target="chat-message-mention"], .mention-fragment, [data-kmv-trb], kmv-emote-card';
+  // kept as they are inside a message's text: @names and links (and a piece with no words isn't sent)
+  const KEEP = /(@[A-Za-z0-9_]{2,30}|https?:\/\/\S+|www\.\S+)/;
+  const CSS = '[data-kmv-trb]{display:inline-block;margin-left:6px;padding:0 5px;border-radius:4px;font:700 9.5px/1.7 system-ui,sans-serif;letter-spacing:.04em;'
+    + 'color:#c9d1cc;background:rgba(135,146,140,.22);vertical-align:1px;cursor:pointer;white-space:nowrap;user-select:none}'
+    + '[data-kmv-trb]::after{content:"TRANSLATED · " attr(data-from)} [data-kmv-trb][data-orig]::after{content:"ORIGINAL · " attr(data-from)}'
+    + '[data-kmv-trb]:hover{background:rgba(135,146,140,.38)}';
+  let on = false, auto = false, flushT = 0, scanT = 0, obs = null;
+  const answers = new Map(), waiting = new Set(), failed = new Map(), queue = [], allowed = new Set(), shown = new Set();
+  const orig = new WeakMap(), trans = new WeakMap();
+  let send = (what, d) => console.log('__kmv:' + what + ' ' + JSON.stringify(d));
+  const flat = s => String(s || '').replace(/\s+/g, ' ').trim();
+  const worth = t => (t.match(/\p{L}/gu) || []).length >= 2;
+  // a text node's pieces: [{ t, ask }] where ask means "send it" (the rest stays)
+  function runs(text){
+    return text.split(KEEP).filter(x => x !== '').map(t => ({ t, ask: !KEEP.test(t) && worth(t) }));
+  }
+  const keyOf = t => t.trim();
+  function textNodes(body){
+    const out = [], walk = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()){
+      const p = n.parentElement;
+      if (!p || p.closest(SKIP) || !n.nodeValue.trim()) continue;
+      out.push(n);
+    }
+    return out;
+  }
+  function css(){
+    if (document.getElementById('kmv-tr-css')) return;
+    const st = document.createElement('style'); st.id = 'kmv-tr-css'; st.textContent = CSS;
+    (document.head || document.documentElement).appendChild(st);
+  }
+  function ask(t){
+    const k = keyOf(t);
+    if (!k || answers.has(k) || waiting.has(k) || (failed.get(k) || 0) > Date.now()) return;
+    waiting.add(k); queue.push(k);
+    clearTimeout(flushT); flushT = setTimeout(flush, 120);
+  }
+  function flush(){
+    const texts = queue.splice(0, 25);
+    if (texts.length) send('tr', { texts });
+    if (queue.length) flushT = setTimeout(flush, 120);
+  }
+  // one message: translate its text nodes when every piece has an answer
+  function apply(body){
+    const nodes = textNodes(body);
+    if (!nodes.length) return;
+    let from = '';
+    for (const n of nodes){
+      const was = orig.has(n) && n.nodeValue === trans.get(n) ? orig.get(n) : n.nodeValue;
+      if (orig.has(n) && n.nodeValue === trans.get(n)) continue;          // already done
+      if (body.hasAttribute('data-kmv-show-orig') && orig.has(n) && n.nodeValue === orig.get(n)) continue;
+      const rs = runs(was);
+      const pending = rs.filter(r => r.ask && !answers.has(keyOf(r.t)));
+      if (pending.length){
+        const k = flat(was);
+        if (auto || allowed.has(k)) pending.forEach(r => ask(r.t));   // with new messages off: only what was shown when it started
+        continue;
+      }
+      const tr = rs.map(r => {
+        const a = r.ask ? answers.get(keyOf(r.t)) : null;
+        if (!a || a.same || !a.text) return r.t;
+        if (!from) from = a.fromName || a.from || '';
+        return r.t.match(/^\s*/)[0] + a.text + r.t.match(/\s*$/)[0];
+      }).join('');
+      if (tr === was) continue;
+      if (window.__kmvMention && window.__kmvMention.look) try { window.__kmvMention.look(); } catch {}   // the original is read first (mentions)
+      orig.set(n, was); trans.set(n, tr);
+      n.nodeValue = tr;
+    }
+    if (from && !body.querySelector(':scope > [data-kmv-trb]')){
+      const b = document.createElement('span');
+      b.setAttribute('data-kmv-trb', ''); b.setAttribute('data-from', from.toUpperCase());
+      b.title = 'Translated from ' + from + '. Click to see the original';
+      b.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); toggle(body, b); }, true);
+      body.appendChild(b);
+      shown.add(flat(body.innerText));
+    }
+  }
+  function toggle(body, b){
+    const showOrig = !b.hasAttribute('data-orig');
+    for (const n of textNodes(body)) if (orig.has(n)) n.nodeValue = showOrig ? orig.get(n) : trans.get(n);
+    if (showOrig){ b.setAttribute('data-orig', ''); body.setAttribute('data-kmv-show-orig', ''); b.title = 'The original. Click to see it translated'; }
+    else { b.removeAttribute('data-orig'); body.removeAttribute('data-kmv-show-orig'); b.title = 'Translated. Click to see the original'; shown.add(flat(body.innerText)); }
+  }
+  function scan(){ if (on) document.querySelectorAll(BODY).forEach(apply); }
+  function scanSoon(){ clearTimeout(scanT); scanT = setTimeout(scan, 200); }
+  function restore(){
+    document.querySelectorAll('[data-kmv-trb]').forEach(b => b.remove());
+    document.querySelectorAll(BODY).forEach(body => {
+      for (const n of textNodes(body)) if (orig.has(n)) n.nodeValue = orig.get(n);
+      body.removeAttribute('data-kmv-show-orig');
+    });
+  }
+  window.__kmvTr = {
+    state(){ return { on, auto }; },
+    // a: also new messages as they come
+    start(a){
+      css();
+      if (!on){
+        allowed.clear();
+        document.querySelectorAll(BODY).forEach(b => textNodes(b).forEach(n => allowed.add(flat(n.nodeValue))));
+      }
+      on = true; auto = !!a;
+      if (!obs){ obs = new MutationObserver(scanSoon); obs.observe(document.body, { childList: true, subtree: true, characterData: true }); }
+      scan();
+    },
+    setAuto(a){ if (!on) return this.start(a); auto = !!a; scan(); },
+    stop(){ on = auto = false; if (obs){ obs.disconnect(); obs = null; } queue.length = 0; waiting.clear(); restore(); },
+    // the app's answers: one for each text, in order ({ text, from, fromName } | { same: true } | null: couldn't)
+    got(texts, list){
+      if (!Array.isArray(texts) || !Array.isArray(list)) return;
+      texts.forEach((t, i) => {
+        waiting.delete(t);
+        const a = list[i];
+        if (a && (a.same || typeof a.text === 'string')){ answers.set(t, a.same ? { same: true } : { text: String(a.text), from: String(a.from || ''), fromName: String(a.fromName || a.from || '') }); }
+        else failed.set(t, Date.now() + 30000);              // not now (offline or refused): later, quietly
+      });
+      if (answers.size > 4000) answers.delete(answers.keys().next().value);
+      scan();
+    },
+    // a message line the chat now shows translated (the mention reader skips those: it saw the original)
+    has(text){ return shown.has(flat(text)); },
+    setSend(fn){ if (typeof fn === 'function') send = fn; }
+  };
+  return true;
+}
+const TRANSLATE_JS = `(${translateAgent.toString()})()`;
+
 
 // Kick chat commands that only work on the channel page: the popout chat (what the app shows) knows them
 // but has nowhere to show their popup, so they do nothing there. The app offers to open the channel page.
@@ -2302,7 +2499,7 @@ function kickPageCmd(w, cmd){
   };
   body.append(card);   // (not focused: another Enter in the chat mustn't open the page)
 }
-window.chatAgentJs = MENTION_JS; window.mentionAgent = mentionAgent; window.emoteAgent = emoteAgent;   // for the tests
+window.chatAgentJs = MENTION_JS; window.mentionAgent = mentionAgent; window.emoteAgent = emoteAgent; window.translateAgent = translateAgent;   // for the tests
 window.kickCmdAgent = kickCmdAgent; window.kickPageCmd = kickPageCmd; window.KICK_PAGE_CMDS = KICK_PAGE_CMDS;
 
 // Runs inside each stream's player page: lets the title-bar slider drive the real player (YouTube's, or the <video>).
@@ -2992,8 +3189,14 @@ function mountView(w){
     });
     // Download from an emote card (see emoteAgent): the chat page asks through a console message
     if (w.kind === 'chat') frame.addEventListener('console-message', e => {
-      const m = /^__kmv:emote-dl (\{.*\})$/.exec(String(e.message || ''));
+      const msg = String(e.message || '');
+      const m = /^__kmv:emote-dl (\{.*\})$/.exec(msg);
       if (m) saveEmote(m[1]);
+      const cp = /^__kmv:emote-copy (\{.*\})$/.exec(msg);
+      if (cp) copyEmote(cp[1]);
+      if (msg === '__kmv:emote-menu-close {}' && viewMenu && viewMenu.view === frame) closeViewMenu();
+      const tr = /^__kmv:tr (\{.*\})$/.exec(msg);
+      if (tr && w.view === frame) translateFor(frame, tr[1]);
       const c = /^__kmv:kick-cmd ([a-z]+)$/.exec(String(e.message || ''));   // see kickCmdAgent
       if (c && w.view === frame) kickPageCmd(w, c[1]);
     });
@@ -3007,13 +3210,151 @@ function mountView(w){
       if (w.kind === 'chat') { const css = { kick: KICK_CHAT_CSS, twitch: TWITCH_CHAT_CSS }[platOf(w.channel)]; if (css) try { frame.insertCSS(css); } catch {} }
       if (w.kind === 'chat' && ROLE === 'main') injectMention(w);
       if (w.kind === 'chat') frame.executeJavaScript(`${EMOTE_JS};window.__kmvEmote.on(${emoteOn})`).catch(() => {});
+      if (w.kind === 'chat') frame.executeJavaScript(`${TRANSLATE_JS};${autoTr.has(w.channel) ? 'window.__kmvTr.start(true)' : ''}`).catch(() => {});
       if (w.kind === 'chat' && platOf(w.channel) === 'kick') frame.executeJavaScript(KICK_CMD_JS).catch(() => {});
       applyChatView(w);
     });
   }
 }
-var emoteOn = true;
-try { emoteOn = localStorage.getItem('kickMultiview.emotePreview') !== '0'; } catch {}
+// The hover card is off unless switched on (the same preview is always in the right-click menu on an emote)
+var emoteOn = false;
+try { emoteOn = localStorage.getItem('kickMultiview.emotePreview') === '1'; } catch {}
+// "Copy image" on an emote card: the app fetches the picture (only from the emote sites) and copies a still of it
+async function copyEmote(json){
+  let d; try { d = JSON.parse(json); } catch { return; }
+  if (!d || typeof d.url !== 'string' || !window.kmv || !window.kmv.emoteFetch) return;
+  const name = typeof d.name === 'string' ? d.name.slice(0, 60) : 'emote';
+  const r = await window.kmv.emoteFetch(d.url, typeof d.small === 'string' ? d.small : '').catch(() => null);
+  const png = r && r.data ? await pngOf(`data:${r.type};base64,${r.data}`) : null;
+  if (!png || !(await window.kmv.clipboardPng(png).catch(() => false))) flash(`Couldn’t copy ${name}`, { subject: 'downloads' });
+}
+// A picture as a still PNG (an animated one: its first frame)
+async function pngOf(src){
+  try {
+    const im = new Image(); im.src = src; await im.decode();
+    const c = document.createElement('canvas'); c.width = im.naturalWidth || 112; c.height = im.naturalHeight || 112;
+    c.getContext('2d').drawImage(im, 0, 0);
+    return c.toDataURL('image/png');
+  } catch { return null; }
+}
+
+/* Translating a chat (see translateAgent): the chat asks through console messages, the main process translates.
+   "Translate new messages too" is remembered for each chat. */
+const autoTr = new Set();
+try { (JSON.parse(localStorage.getItem('kickMultiview.autoTranslate') || '[]') || []).forEach(c => { if (typeof c === 'string') autoTr.add(c); }); } catch {}
+const saveAutoTr = () => { try { localStorage.setItem('kickMultiview.autoTranslate', JSON.stringify([...autoTr].slice(-200))); } catch {} };
+async function translateFor(frame, json){
+  let d; try { d = JSON.parse(json); } catch { return; }
+  const texts = d && Array.isArray(d.texts) ? d.texts.filter(t => typeof t === 'string').slice(0, 25) : [];
+  if (!texts.length || !window.kmv || !window.kmv.translate) return;
+  const got = await window.kmv.translate(texts).catch(() => null);
+  const list = texts.map((_, i) => (Array.isArray(got) && got[i]) || null);
+  frame.executeJavaScript(`window.__kmvTr && window.__kmvTr.got(${JSON.stringify(texts)}, ${JSON.stringify(list)})`).catch(() => {});
+}
+function translateChat(w, a){
+  if (!w || w.kind !== 'chat' || !w.view) return;
+  const js = a.do === 'translateStop' ? 'window.__kmvTr.stop()' : a.do === 'translateAuto' ? `window.__kmvTr.setAuto(${!!a.on})` : 'window.__kmvTr.start(window.__kmvTr.state().auto)';
+  if (a.do === 'translateStop' || a.do === 'translateAuto'){ if (a.do === 'translateAuto' && a.on) autoTr.add(w.channel); else autoTr.delete(w.channel); saveAutoTr(); }
+  w.view.executeJavaScript(`${TRANSLATE_JS};${js}`).catch(() => {});
+}
+const winOfView = id => wins.find(w => w.view && w.view.getWebContentsId && (() => { try { return w.view.getWebContentsId() === id; } catch { return false; } })());
+if (window.kmv && window.kmv.onViewTranslate) window.kmv.onViewTranslate((id, a) => translateChat(winOfView(id), a));
+
+/* The right-click menu on an emote in a chat: the main process sends its items (the same ones the system menu would
+   have, from src/context-menu.js) with the emote, and gets back the one you chose. It looks and works like a
+   system menu (arrows, Enter, Esc, typing a letter), but stays inside this window. */
+const EMOTE_SITE = { Kick: ['#53fc18', '#0a0c0d', 'Kick emote'], Twitch: ['#8a4fff', '#fff', 'Twitch emote'], YouTube: ['#ff3d3d', '#fff', 'YouTube emoji'],
+  '7TV': ['#353e43', '#e7ede9', 'From the 7TV add-on'], BTTV: ['#353e43', '#e7ede9', 'From the BetterTTV add-on'], FFZ: ['#353e43', '#e7ede9', 'From the FrankerFaceZ add-on'] };
+const VM_SRC = /^https:\/\/(files\.kick\.com\/emotes\/|static-cdn\.jtvnw\.net\/|([\w-]+\.)?7tv\.app\/|cdn\.betterttv\.net\/|cdn\.frankerfacez\.com\/|([\w-]+\.)?ggpht\.com\/|www\.gstatic\.com\/)/;
+let viewMenu = null;
+function closeViewMenu(chosen){
+  const m = viewMenu; if (!m) return;
+  viewMenu = null;
+  m.el.remove();
+  removeEventListener('blur', m.off); removeEventListener('resize', m.off);
+  document.removeEventListener('pointerdown', m.out, true);
+  if (m.view && m.view.executeJavaScript) m.view.executeJavaScript('window.__kmvEmote && window.__kmvEmote.menuClosed()').catch(() => {});
+  if (chosen == null && window.kmv && window.kmv.viewMenuClose) window.kmv.viewMenuClose(m.id);
+}
+// d: { emote: { name, site, big, small, animated, x, y }, items: [{ label, enabled, checked } | { sep }] }; x, y: in the chat page
+function showViewMenu(view, id, d, pick){
+  closeViewMenu();
+  const e = d.emote || {}, el = document.createElement('div');
+  el.className = 'vmenu'; el.setAttribute('role', 'menu'); el.tabIndex = -1;
+  el.setAttribute('aria-label', e.name ? `Emote ${e.name}` : 'Menu');
+  if (e.name){
+    const pre = document.createElement('div'); pre.className = 'vm-pre'; pre.setAttribute('aria-hidden', 'true');
+    const s = EMOTE_SITE[e.site] || ['#353e43', '#e7ede9', 'Emote'], addOn = /^(7TV|BTTV|FFZ)$/.test(e.site);
+    pre.innerHTML = '<div class="vm-pic"><img alt="" referrerpolicy="no-referrer"></div><div><div class="vm-top"><span class="vm-nm"></span><span class="vm-badge"></span></div><div class="vm-sub"></div></div>';
+    const img = pre.querySelector('img');
+    if (VM_SRC.test(e.big)) img.src = e.big;
+    img.onerror = () => { if (VM_SRC.test(e.small) && img.src !== e.small) img.src = e.small; else img.remove(); };
+    if (e.animated) pre.querySelector('.vm-pic').insertAdjacentHTML('beforeend', '<span class="vm-anim">ANIMATED</span>');
+    pre.querySelector('.vm-nm').textContent = e.name;
+    const b = pre.querySelector('.vm-badge'); b.textContent = addOn ? 'Add-on' : (e.site || ''); b.style.background = s[0]; b.style.color = s[1];
+    pre.querySelector('.vm-sub').textContent = s[2];
+    el.append(pre);
+  }
+  const rows = [];
+  (d.items || []).forEach((x, i) => {
+    if (x.sep){ const r = document.createElement('div'); r.setAttribute('role', 'separator'); el.append(r); return; }
+    const b = document.createElement('div');
+    b.setAttribute('role', 'checked' in x && x.checked ? 'menuitemcheckbox' : 'menuitem');
+    if (x.checked) b.setAttribute('aria-checked', 'true');
+    if (x.enabled === false) b.setAttribute('aria-disabled', 'true');
+    b.textContent = x.label; b.dataset.i = i; b.tabIndex = -1;
+    b.addEventListener('pointermove', () => cur(rows.indexOf(b)));
+    b.addEventListener('pointerleave', () => cur(-1));
+    b.addEventListener('click', () => choose(b));
+    el.append(b); rows.push(b);
+  });
+  let at = -1;
+  function cur(n){ at = n; rows.forEach((r, j) => r.classList.toggle('cur', j === n)); if (n >= 0) rows[n].focus({ preventScroll: true }); else el.focus({ preventScroll: true }); }
+  const usable = r => r.getAttribute('aria-disabled') !== 'true';
+  function step(dir){
+    for (let k = 1; k <= rows.length; k++){ const n = ((at < 0 && dir < 0 ? rows.length : at) + dir * k + rows.length * 2) % rows.length; if (usable(rows[n])){ cur(n); return; } }
+  }
+  function choose(b){
+    if (!b || !usable(b)) return;
+    const i = +b.dataset.i;
+    closeViewMenu(i);
+    pick(i);
+  }
+  el.addEventListener('keydown', ev => {
+    if (ev.key === 'ArrowDown'){ ev.preventDefault(); step(1); }
+    else if (ev.key === 'ArrowUp'){ ev.preventDefault(); step(-1); }
+    else if (ev.key === 'Home'){ ev.preventDefault(); at = -1; step(1); }
+    else if (ev.key === 'End'){ ev.preventDefault(); at = -1; step(-1); }
+    else if (ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); if (at >= 0) choose(rows[at]); }
+    else if (ev.key === 'Escape' || ev.key === 'Tab'){ ev.preventDefault(); closeViewMenu(); if (view) view.focus(); }
+    else if (ev.key.length === 1 && /\S/.test(ev.key)){   // type a letter: the next item starting with it
+      const k = ev.key.toLowerCase();
+      for (let j = 1; j <= rows.length; j++){ const n = (at + j + rows.length) % rows.length; if (usable(rows[n]) && rows[n].textContent.trim().toLowerCase().startsWith(k)){ cur(n); break; } }
+    }
+    ev.stopPropagation();
+  });
+  document.body.append(el);
+  // where you right-clicked (the chat may be zoomed), kept inside this window: flipped up or left near an edge
+  const r = view ? view.getBoundingClientRect() : { left: 0, top: 0 };
+  let z = 1; try { z = view && view.getZoomFactor ? view.getZoomFactor() || 1 : 1; } catch {}
+  const px = r.left + (+e.x || 0) * z, py = r.top + (+e.y || 0) * z, W = el.offsetWidth, H = el.offsetHeight, M = 4;
+  let left = px + W + M > innerWidth ? px - W : px, top = py + H + M > innerHeight ? py - H : py;
+  left = Math.max(M, Math.min(innerWidth - W - M, left)); top = Math.max(M, Math.min(innerHeight - H - M, top));
+  el.style.left = left + 'px'; el.style.top = top + 'px';
+  const off = () => closeViewMenu();
+  const out = ev => { if (!el.contains(ev.target)) closeViewMenu(); };
+  addEventListener('blur', off); addEventListener('resize', off);
+  document.addEventListener('pointerdown', out, true);
+  el.addEventListener('focusout', ev => { if (!el.contains(ev.relatedTarget)) setTimeout(() => { if (viewMenu && viewMenu.el === el && !el.contains(document.activeElement)) closeViewMenu(); }, 0); });
+  viewMenu = { el, view, id, off, out };
+  el.focus({ preventScroll: true });
+  return el;
+}
+if (window.kmv && window.kmv.onViewMenu) window.kmv.onViewMenu((id, d) => {
+  const w = winOfView(id);
+  showViewMenu(w && w.view, id, d, i => window.kmv.viewMenuAct(id, i));
+});
+window.showViewMenu = showViewMenu; window.closeViewMenu = closeViewMenu;   // for the tests
 async function saveEmote(json){
   let d; try { d = JSON.parse(json); } catch { return; }
   if (!d || typeof d.url !== 'string' || typeof d.name !== 'string' || !window.kmv || !window.kmv.emoteDownload) return;
@@ -7665,6 +8006,25 @@ $('#emoteSet').addEventListener('change', e => {
   try { localStorage.setItem('kickMultiview.emotePreview', emoteOn ? '1' : '0'); } catch {}
   wins.forEach(w => { if (w.kind === 'chat' && w.ready) w.view.executeJavaScript(`window.__kmvEmote && window.__kmvEmote.on(${emoteOn})`).catch(() => {}); });
 });
+// Its example: a made-up emote drawn here (nothing is fetched), shown with the same card a chat gets.
+const SAMPLE_EMOTE = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M33 15c0-4 1-7 3.6-10.2" fill="none" stroke="#7a4b1e" stroke-width="3.4" stroke-linecap="round"/><path d="M36 9.6C40 4.2 47.5 3.2 52.5 5.4 49.6 10.8 42.4 12.8 36 9.6Z" fill="#3fbf1f"/><path d="M32 14C25.6 14 23.4 19.4 23.4 24.6c0 5-3 7-6.2 11C13.2 40.6 12 46.8 14.2 52 17.2 58.8 24.4 62 32 62s14.8-3.2 17.8-10c2.2-5.2 1-11.4-3-16.4-3.2-4-6.2-6-6.2-11C40.6 19.4 38.4 14 32 14Z" fill="#9be35a"/><circle cx="26" cy="38" r="3" fill="#0a0c0d"/><circle cx="38" cy="38" r="3" fill="#0a0c0d"/><path d="M25 46c4 4 10 4 14 0" fill="none" stroke="#0a0c0d" stroke-width="3" stroke-linecap="round"/><path d="M50 30l8-8M54 34l8-4" stroke="#e7ede9" stroke-width="3" stroke-linecap="round"/></svg>');
+{
+  const pic = $('#emoteSample');
+  pic.src = SAMPLE_EMOTE;
+  emoteAgent();                                            // the card, here (it doesn't open by itself: it's off in this page)
+  window.__kmvEmote.setExampleSend((what, d) => { if (what === 'copy') copySample(d && d.url); });
+  const e = () => ({ name: 'pearWave', text: 'pearWave', small: SAMPLE_EMOTE, big: SAMPLE_EMOTE, site: 'Kick', animated: false, addOn: false });
+  let t = 0;
+  pic.addEventListener('pointerenter', () => { clearTimeout(t); t = setTimeout(() => window.__kmvEmote.preview(pic, e(), true), 120); });
+  pic.addEventListener('pointerleave', () => { clearTimeout(t); window.__kmvEmote.hideSoon(); });
+  $('#emoteExample').addEventListener('click', () => window.__kmvEmote.preview(pic, e(), true));
+}
+async function copySample(src){
+  const png = src === SAMPLE_EMOTE ? await pngOf(src) : null;
+  if (!png) return;
+  if (window.kmv && window.kmv.clipboardPng){ await window.kmv.clipboardPng(png).catch(() => {}); return; }
+  try { const b = await (await fetch(png)).blob(); await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]); } catch {}
+}
 
 /* Mentions and spam alert options: every control with data-al="kind.option" */
 function syncAlertControls(){

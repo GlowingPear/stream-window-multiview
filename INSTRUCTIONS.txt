@@ -156,9 +156,9 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
 - Live alerts come from your saved channels while the app is running.
 
 ## Emote preview
-- Point at an emote in any chat for a moment: a card shows it bigger, with its name and where it's from (Kick, Twitch, YouTube, or an add-on like 7TV, BetterTTV or FrankerFaceZ).
-- Move onto the card to use **Copy name** or **Download** (saves the picture where you choose, named after the emote).
-- Turn it off in Settings > General > **Emote preview in chats**.
+- Right-click an emote in any chat: the menu shows it bigger, with its name and where it's from (Kick, Twitch, YouTube, or an add-on like 7TV, BetterTTV or FrankerFaceZ).
+- **Copy emote text** copies what to type in that chat to get the emote (its code, e.g. `KEKW`; on YouTube the emoji or its `:shortcode:`), ready to paste into the chat box. **Save image as…** saves the picture, named after the emote.
+- A card when you point at an emote is off at first: switch it on in Settings > General > **Emote preview in chats** (point at the example there to see it). Move onto the card to use **Copy name**, **Copy image** (a still picture) or **Download**.
 
 ## Kick's /clip, /poll and /prediction
 - Kick only shows the clip, poll and prediction popups on the channel page, so these commands do nothing in the app's Kick chats. Typing one there isn't sent: the chat window asks whether to open that channel's kick.com page (with its sound off, and your Kick login), where you can do it yourself.
@@ -167,6 +167,7 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
 - **Selected text:** Copy, **Translate to <your language>** (opens Google Translate in your browser with the text) and Search Google.
 - **A link:** open it in your browser, or copy its address.
 - **An image or emote:** open it in a new window, **Save image as…** (named after the emote), copy it, or copy its address.
+- **A chat:** **Translate this chat to <your language>** translates the messages shown, each with a **TRANSLATED · <language>** badge (click it for the original). **Translate new messages too** keeps translating as messages come (remembered for that chat), and **Stop translating** puts them all back. Emotes, @names and links stay as they are. The messages are sent to Google Translate, and nothing is sent until you choose it.
 - **The chat box:** Undo, Redo, Cut, Copy, Paste, Select all, and spelling suggestions for a misspelled word.
 - **Anywhere else:** Reload.
 
