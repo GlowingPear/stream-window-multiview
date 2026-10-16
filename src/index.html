@@ -443,6 +443,8 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 .dd-list button.on{color:var(--accent);font-weight:600}
 .dd-list button.on::before{content:"";position:absolute;left:9px;top:50%;width:5px;height:5px;margin-top:-3px;border-radius:50%;background:var(--accent)}
 .dd-list button:disabled{color:var(--muted);cursor:default}
+.dd-list button.ic{display:flex;align-items:center;gap:8px}   /* a picture before the words (ddIcon) */
+.dd-list button.ic .dd-t{min-width:0;overflow:hidden;text-overflow:ellipsis}
 select.dd-open{border-color:var(--accent)}
 .menu button{display:flex;flex-direction:column;gap:2px;text-align:left;padding:8px 10px;border:0;border-radius:7px;background:transparent;cursor:pointer}
 .menu button:hover{background:var(--panel2)}
@@ -740,7 +742,7 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .ch-av .pi{position:absolute;right:-3px;bottom:-2px;z-index:1;width:8px;height:8px;font-size:5.5px;border-radius:2px;box-shadow:0 0 0 1.5px var(--gap)}
 .bar .bar-av{z-index:1;margin:0 -26px 0 1px;pointer-events:none}     /* the bar's left edge still drags the window */
 .bar .bar-av ~ .col-pick{padding-left:25px}
-.dd-list .ch-av{--gap:var(--panel);display:inline-grid;vertical-align:-4px;margin-right:8px}
+.dd-list .ch-av{--gap:var(--panel)}
 /* platform colours: Kick green, Twitch purple, YouTube red */
 .fs-item.plat-twitch .fs-name .dot{background:#a970ff}
 .fs-item.plat-youtube .fs-name .dot{background:#ff3d3d}
