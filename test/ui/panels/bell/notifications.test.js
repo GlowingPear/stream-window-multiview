@@ -427,3 +427,24 @@ test('All notifications: the chat filter is the same width with short or long ch
   };
   assert.equal(await width(['averyveryverylongchannelname42', 'bravo']), await width(['al', 'bo']));
 });
+
+test('settings changed in the other window apply here too: Do not disturb, where pop-ups show, alert sounds', async t => {
+  const page = await openApp(t);
+  // as the other window (the streams window) changes one: saved, and this window told
+  const change = (name, value) => page.evaluate(([k, v]) => {
+    localStorage.setItem(k, v);
+    window.dispatchEvent(new StorageEvent('storage', { key: k, newValue: v }));
+  }, ['kickMultiview.' + name, value]);
+  const until = Date.now() + 60 * MIN;
+  await change('dnd', String(until));
+  assert.equal(await page.evaluate(() => smvNotes.dndUntil), until);
+  assert.equal(await page.evaluate(() => smvNotes.dndOn()), true, 'Do not disturb is on here too');
+  await change('msg', JSON.stringify({ pos: 'bl' }));
+  assert.equal(await page.getAttribute('#msg', 'data-pos'), 'bl', 'pop-ups show bottom left');
+  assert.equal(await page.inputValue('#msgPos'), 'bl');
+  await change('alerts', JSON.stringify({ mention: { sound: 'ping', vol: 0.3 } }));
+  assert.deepEqual(await page.evaluate(() => [smvNotes.alerts.mention.sound, smvNotes.alerts.mention.vol]), ['ping', 0.3]);
+  await change('desktopNotify', '0');                     // (only the desktop app shows desktop notifications)
+  await change('dnd', '0');
+  assert.equal(await page.evaluate(() => smvNotes.dndOn()), false, 'and off again');
+});
