@@ -5,7 +5,7 @@
 | Folder | What's in it |
 |---|---|
 | `core.js` | The page's shared state and constants: the windows (`wins`), the layout, the role (`ROLE`) |
-| `shared/` | Building blocks: saved settings (`settings.js`), icons, messages (`flash.js`), the confirm dialog (`ask.js`), menus that close on an outside press (`popover.js`), tooltips |
+| `shared/` | Building blocks: saved settings (`settings.js`), what several parts show (`store.js`), messages from outside the page (`incoming.js`), building elements (`element.js`), timers (`timers.js`), icons, pop-up messages (`flash.js`), the confirm dialog (`ask.js`), menus that close on an outside press (`popover.js`), tooltips |
 | `platforms/` | One module per site (`kick.js`, `twitch.js`, `youtube.js`), `platforms.js` (channel ids and links), the YouTube-only settings |
 | `in-site/` | Scripts that run inside the Kick, Twitch and YouTube pages (see below) |
 | `windows/` | Stream, chat and other windows: creating them, their views (`view.js`), title bars, pausing (`pause.js`, `pause-state.js`), pop-out, raids, window capture |
@@ -19,11 +19,20 @@
 
 **Load order.** `app.js` lists every module in the order they run, which is the order the code had when it was one script. Each of those modules starts with `import '<the one before>';   // runs after it (see app.js)`, so importing the last one loads them all, first to last. Code that runs while a module loads can use what the modules before it set up. Functions from later modules can be called at any time, but their other values are only there once that module has run.
 - A new module that runs code as it loads goes into the list in `app.js` and into the chain: it imports the one before it, and the one after it now imports it.
-- A module that only defines things and has no imports of its own (e.g. `shared/settings.js`, `platforms/kick.js`, `windows/view.js`, `windows/pause-state.js`) stays out of the list. It's simply imported where it's used.
+- A module that only defines things and has no imports of its own (e.g. `shared/settings.js`, `shared/store.js`, `shared/element.js`, `platforms/kick.js`, `windows/view.js`, `windows/pause-state.js`) stays out of the list. It's simply imported where it's used.
 
 **Imports and exports.** Don't write them by hand: run `npm run page-imports` after a change. It works out each module's `import { … }` lines and its `export { … }` list from what the code uses and declares, and keeps the load-order line. `npm test` fails when they're out of step.
 
 **Another module's variable.** A module can read a variable it imports, but can't assign to it. The module that owns it has an accessor object for the ones other modules change: `coreVars.wins = …`, `layoutVars.scrollX = 0`, `bellVars.dndUntil = …`. To let another module change one more, add a getter and setter for it to that object.
+
+**Redrawing after a change.** A part that shows something watches it in the store (`shared/store.js`): `store.watch(['saved', 'live'], () => renderSaved())`. Code that changes it says so with `store.changed('saved')`, and doesn't call the parts that show it. Watchers run straight away, in the order they started watching, and each runs once per `changed()` call. The values stay in the module that owns them; the store only knows who to tell. What can change is listed in `TOPICS` in `store.js`: add to it for something new. Only redraws are watchers. Saving, and messages to the main process, stay where the change is made.
+
+**Messages from outside the page** come in through `shared/incoming.js`:
+- `fromApp('onLiveStatus', fn)`: the desktop app's main process. Keep any `DESKTOP` or `ROLE` check around it, as the UI tests can give the page a partial `window.kmv`.
+- `fromSite('kind', (w, data, view) => …)`: the scripts inside the sites' chat pages. They send `console.log('__kmv:<kind> <json>')`, and the handler goes in the module that owns that kind.
+- `settings.onChange`: the other window.
+
+Don't call `window.kmv.on…` directly.
 
 **Saved settings.** Only through `shared/settings.js`, never `localStorage` directly. Every key is listed there once: add new ones to the list. `settings.flag(name, on)`, `text`, `num` and `json` read a setting, `set(name, value)` and `remove(name)` change it, and `settings.onChange(names, fn)` hears about changes made in the other window. None of them throw.
 
@@ -37,7 +46,9 @@
 
 **Menus and panels** that close when you press outside them use `closeOnOutside(el, { button })` from `shared/popover.js`.
 
-**Text in markup.** Text that comes from a site or from you (channel names, chat messages, titles) is escaped with `escH()` (`panels/help/help.js`) when it goes into `innerHTML`, or set with `textContent`.
+**Building elements.** Use `element(tag, props, ...children)` from `shared/element.js`, e.g. `element('div', { class: 'row', title, onclick }, icon, element('span', 'nm', name))`. Children that are text are always text. Keep `innerHTML` for fixed markup (an icon, a static template). Text that comes from a site or from you (channel names, chat messages, titles) never goes into `innerHTML` unescaped: use `element()` or `textContent`, or `esc()` where it has to be in a markup string. A list whose rows look alike shares a row builder (e.g. `channelRow()` in `panels/channels/channels.js` for the Channels list and follow suggestions).
+
+**Timers.** A debounce is `const saveSoon = soon(() => save(), 600)`. A timer that belongs to a window is `winTimer(w, name, fn, ms)`, and closing the window stops it (`releaseWin` calls `stopWinTimers`). Both are in `shared/timers.js`.
 
 **No system pop-ups.** Use `ask()` (`shared/ask.js`) and `flash()` (`shared/flash.js`), not `alert()`, `confirm()` or `prompt()`. See *No system pop-ups* in the main README.
 
@@ -49,6 +60,6 @@ Each part's CSS is next to its code (`toolbar/toolbar.css`, `panels/settings/set
 
 ## Tests
 
-- **Unit tests** (`test/unit/page/`, the same folders as the code) are for modules that don't touch the page (`shared/settings.js`, the site modules, `windows/pause-state.js`). They load them with `await import(…)`.
+- **Unit tests** (`test/unit/page/`, the same folders as the code) are for modules that don't touch the page (`shared/settings.js`, `store.js`, `timers.js`, `incoming.js`, the site modules, `windows/pause-state.js`). They load them with `await import(…)`. A module that needs a DOM (`shared/element.js`) is tested in a UI test, which imports it into the page.
 - **UI tests** (`test/ui/<part>/`) open the page in a browser. **Launch tests** (`test/launch/<part>/`) start the real desktop app. Both are in folders by part of the app, and tests of the whole app are at the top of each folder.
 - **A refactor that shouldn't change anything:** change the code first, with the tests as they are, and make them pass. Then run `npm run visual-diff`: it compares how the page looks with `main` and should find no differences. Only change tests after that, in their own commits.
