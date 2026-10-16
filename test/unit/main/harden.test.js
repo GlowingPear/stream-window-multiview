@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { harden, readFuse } = require('../../src/harden');
+const { harden, readFuse } = require('../../../src/main/harden');
 
 const SENTINEL = 'dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX';
 const ON = 0x31, OFF = 0x30, REMOVED = 0x72;

@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createLiveWatcher, parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed,
-  nextPacificMidnight, KICK_FOLLOW_APIS, withTimeout, keepLatest } = require('../../src/live');
+  nextPacificMidnight, KICK_FOLLOW_APIS, withTimeout, keepLatest } = require('../../../src/main/live');
 
 const info = (live, extra = {}) => ({ live, title: live ? 'title' : '', viewers: live ? 5 : null, category: '', name: 'n', checked: 1, ...extra });
 

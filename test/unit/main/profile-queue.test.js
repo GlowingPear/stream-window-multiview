@@ -1,7 +1,7 @@
 // The background profile queue (src/profile-queue.js): who gets fetched, how soon, and how often.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createProfileQueue, DAY } = require('../../src/profile-queue');
+const { createProfileQueue, DAY } = require('../../../src/main/profile-queue');
 
 const tick = (ms = 0) => new Promise(r => setTimeout(r, ms));
 async function settle(q) { for (let i = 0; i < 200 && q.busy(); i++) await tick(5); }

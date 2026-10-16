@@ -1,7 +1,7 @@
 // Spam alerts: which chat messages get flagged, and why.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { score, sites, contact, ignored, withNewBots, BOTS } = require('../../src/spam');
+const { score, sites, contact, ignored, withNewBots, BOTS } = require('../../../../src/page/alerts/spam.js').SmvSpam;
 
 const T = 1_700_000_000_000;
 const msg = (body, extra = {}) => ({ sender: 'newacct', body, chat: 'alpha', t: T, ...extra });

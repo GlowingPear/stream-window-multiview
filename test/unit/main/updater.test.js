@@ -7,7 +7,7 @@ const path = require('path');
 const zlib = require('zlib');
 const { execFile, execFileSync, spawn, spawnSync } = require('child_process');
 const { compareVersions, pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript,
-  latestInfo, readZip, appFiles, applyUpdate, REPO_RE } = require('../../src/updater');
+  latestInfo, readZip, appFiles, applyUpdate, REPO_RE } = require('../../../src/main/updater');
 
 /* ---------- version numbers ---------- */
 test('compareVersions orders beta versions correctly', () => {

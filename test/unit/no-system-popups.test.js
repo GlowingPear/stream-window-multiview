@@ -35,7 +35,7 @@ function findPopups(file, text) {
 
 test('nothing in src/ opens a system pop-up', () => {
   const files = fs.readdirSync(SRC, { recursive: true }).map(f => f.split(path.sep).join('/')).filter(f => /\.(html|js)$/.test(f));
-  assert.ok(files.includes('index.html') && files.includes('main.js') && files.includes('page/shared/ask.js'));
+  assert.ok(files.includes('index.html') && files.includes('main/main.js') && files.includes('page/shared/ask.js'));
   const found = files.flatMap(f => findPopups('src/' + f, fs.readFileSync(path.join(SRC, f), 'utf8')));
   assert.deepEqual(found, [], 'system pop-ups found:\n' + found.join('\n'));
 });

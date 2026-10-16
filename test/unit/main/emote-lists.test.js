@@ -1,7 +1,7 @@
 // New emotes (src/emote-lists.js): reading each site's emote list, and which emotes count as new.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parseKickEmotes, parseTwitchEmotes, parse7tv, parseBttv, parseFfz, createEmoteStore, KEEP_NEW } = require('../../src/emote-lists');
+const { parseKickEmotes, parseTwitchEmotes, parse7tv, parseBttv, parseFfz, createEmoteStore, KEEP_NEW } = require('../../../src/main/emote-lists');
 
 test('reading the emote lists', () => {
   assert.deepEqual(parseKickEmotes([

@@ -2,8 +2,8 @@
 // the numbers the profile shows, and reading what Kick, Twitch and YouTube say about a channel.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel, social, usualStart, GAP } = require('../../src/profiles');
-const { toTime } = require('../../src/live');
+const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel, social, usualStart, GAP } = require('../../../src/main/profiles');
+const { toTime } = require('../../../src/main/live');
 
 const MIN = 60e3, HOUR = 60 * MIN, DAY = 24 * HOUR;
 // a clock the test moves by hand

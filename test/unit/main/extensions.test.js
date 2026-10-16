@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const x = require('../../src/extensions');
+const x = require('../../../src/main/extensions');
 
 const ID = 'abcdefghijklmnopabcdefghijklmnop';
 const entry = over => x.normalizeEntry({ id: ID, ...over });
