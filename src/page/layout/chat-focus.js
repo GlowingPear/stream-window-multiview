@@ -1,15 +1,16 @@
 import './saved-layouts.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { ROLE, colsMode, coreVars, lastLayout, stage, wins } from '../core.js';
 import { clampPos, focusWin, setRect } from './geometry.js';
 import { chatFocusLayout, colKey, colOrder, layoutVars, setColsMode, setFeatured } from './layouts.js';
 import { refreshPicks } from '../windows/channel-picker.js';
 import { buildCols, columnsLayout } from './columns.js';
-import { updateLayoutMenu } from './column-drag.js';
 import { save } from '../persistence.js';
 import { gameKey, gameLayout, setGameKey } from './game-focus.js';
 
 /* ---- Chat focus <-> highlight ---- */
+store.watch('layout', () => updateModeClass());
 function updateModeClass(){
   const on = ROLE === 'main' && !colsMode && lastLayout === 'chatfocus';
   document.body.classList.toggle('chatfocus', on);
@@ -20,7 +21,7 @@ function backToChatFocus(){
   setFeatured(null);
   setColsMode(false);
   chatFocusLayout();
-  updateLayoutMenu(); updateModeClass();
+  store.changed('layout');
 }
 /* Drag a window onto another to swap them: streams in Chat focus (their chats swap too) and the streams window,
    and any window while the layout is locked (a stream onto a stream, a chat onto a chat). Dropped anywhere else, it goes back. */

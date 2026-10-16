@@ -1,5 +1,6 @@
 import './column-drag.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { $, MIN_H, MIN_W, colsMode, coreVars, lastLayout, streamCols, wins } from '../core.js';
 import { SH, SW, setRect } from './geometry.js';
 import { createWin, pushVol } from '../windows/windows.js';
@@ -11,8 +12,6 @@ import { autoLayout, builtinLinked, chatFocusLayout, colOrder, featBase, feature
 import { pageStep, scrollVars } from './sideways-scroll.js';
 import { refreshPicks } from '../windows/channel-picker.js';
 import { buildCols, columnVars, columnsLayout, sideCols } from './columns.js';
-import { updateLayoutMenu } from './column-drag.js';
-import { updateModeClass } from './chat-focus.js';
 import { save } from '../persistence.js';
 import { panel } from '../toolbar/toolbar.js';
 import { layoutMenuVars, lySel, renderLayoutsPane, selectLayoutPane } from '../toolbar/layout-menu.js';
@@ -38,7 +37,7 @@ function setPresetOpt(p, key, val){
     if (key === 'linked') liveLinked(val);
     if (key === 'streamCols' && !colsMode && lastLayout === 'chatfocus'){ coreVars.streamCols = val; chatFocusLayout(); }
   }
-  updateLayoutMenu();
+  store.changed('layout');
 }
 const savePresets = () => { settings.set('presets', presets); };
 const MODE_NAMES = { focus: 'Focus view', game: 'Game focus', columns: 'Columns', chatfocus: 'Chat focus', auto: 'Auto layout', tile: 'Tile', free: 'Free arrangement' };
@@ -95,11 +94,11 @@ function renderPresetsPane(){
     panel.querySelector('.pr-ren').onclick = () => renamePreset(panel.querySelector('.ly-head b'), p);
     panel.querySelector('.pr-up').onclick = async () => {
       if (!await ask(`Update “${p.name}”?`, `Replace this saved layout with what's on screen now.`, { ok: 'Update' })) return;
-      presets[i] = capturePreset(p.name); savePresets(); activePreset = p.name; updateLayoutMenu(); flash(`Updated layout “${p.name}”`, { subject: 'layouts' });
+      presets[i] = capturePreset(p.name); savePresets(); activePreset = p.name; store.changed('layout'); flash(`Updated layout “${p.name}”`, { subject: 'layouts' });
     };
     panel.querySelector('.pr-x').onclick = async () => {
       if (!await ask(`Delete the layout “${p.name}”?`, 'This can\'t be undone.', { ok: 'Delete', danger: true })) return;
-      presets.splice(i, 1); savePresets(); if (activePreset === p.name) leavePreset(); updateLayoutMenu();
+      presets.splice(i, 1); savePresets(); if (activePreset === p.name) leavePreset(); store.changed('layout');
     };
     // the options of the layout it was made from, its own values
     const sw = (key, on, small) => {
@@ -134,7 +133,7 @@ function renamePreset(t, p){
       if (presets.some(o => o !== p && o.name.toLowerCase() === name.toLowerCase())) flash(`There's already a layout called “${name}”`);
       else { if (activePreset === p.name) activePreset = name; if (lySel === 'p:' + p.name) layoutMenuVars.lySel = 'p:' + name; p.name = name; savePresets(); }
     }
-    updateLayoutMenu(); renderLayoutsPane();
+    store.changed('layout'); renderLayoutsPane();
   };
   inp.addEventListener('keydown', e => {
     if (e.key === 'Enter'){ e.preventDefault(); finish(true); }
@@ -150,7 +149,7 @@ async function savePresetFromInput(inp = $('#presetName')){
   if (i >= 0 && !await ask(`Replace “${presets[i].name}”?`, 'A layout with this name already exists. Saving replaces it with what\'s on screen now.', { ok: 'Replace' })) return;
   const p = capturePreset(name);
   if (i >= 0) presets[i] = p; else presets.push(p);
-  savePresets(); inp.value = ''; activePreset = name; updateLayoutMenu();
+  savePresets(); inp.value = ''; activePreset = name; store.changed('layout');
   flash(`Saved layout “${name}”`, { subject: 'layouts' });
   return name;
 }
@@ -193,7 +192,7 @@ function applyPreset(p, opt = {}){
     else coreVars.lastLayout = null;
   }
   if (!opt.quiet) activePreset = p.name;
-  updateLayoutMenu(); updateModeClass(); refreshPicks(); save();
+  store.changed('layout'); refreshPicks(); save();
   if (!opt.quiet) flash(`Layout “${p.name}” loaded`);
 }
 

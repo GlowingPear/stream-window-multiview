@@ -1,5 +1,6 @@
 import '../windows/channel-picker.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { BAR, GAP, ROLE, colCount, colWidth, colsMode, coreVars, wins } from '../core.js';
 import { chLabelP } from '../platforms/platforms.js';
 import { SH, SW, setRect } from './geometry.js';
@@ -10,7 +11,7 @@ import { refreshPicks, updateHbar } from '../windows/channel-picker.js';
 import { renderSwitcher } from './switcher.js';
 import { placeMinis, placeSwitcher } from './switch-control.js';
 import { applyFocusOnly } from './focus-only.js';
-import { updateColNav, updateLayoutMenu } from './column-drag.js';
+import { updateColNav } from './column-drag.js';
 import { save } from '../persistence.js';
 
 /* Columns, in the saved order. Each column: { key, top (stream or web page), chat }. */
@@ -131,7 +132,7 @@ function columnsLayout(preview){
     if (preview && col.key === preview.key) return;
     placeCol(col, colX0 + i * colWidth - scrollX, colH, true);
   });
-  if (!preview){ coreVars.lastLayout = 'columns'; save(); applyFocusOnly(); refreshPicks(); updateLayoutMenu(); }
+  if (!preview){ coreVars.lastLayout = 'columns'; save(); applyFocusOnly(); refreshPicks(); store.changed('layout'); }
   updateColNav(); updateHbar();
   refreshFeatButtons();
 }

@@ -1,6 +1,7 @@
 import './switcher.js';   // runs after it (see app.js)
 import { youtube } from '../platforms/youtube.js';
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { pauseWhy } from '../windows/pause-state.js';
 import { runIn } from '../windows/view.js';
 import { ROLE, colsMode, lastLayout, wins } from '../core.js';
@@ -17,7 +18,7 @@ import { buildCols, columnsLayout, sideCols } from './columns.js';
 import { fsMute, isFocusView, removeChannel, renderSwitcher, setSideCols, swapStreams, toggleCapPause } from './switcher.js';
 import { isPaused, miniPaused, togglePause } from '../windows/pause.js';
 import { focusOnly, syncSwitcher, toggleFocusOnly } from './focus-only.js';
-import { updateLayoutMenu, updateSwBtn } from './column-drag.js';
+import { updateSwBtn } from './column-drag.js';
 import { backToChatFocus } from './chat-focus.js';
 import { hiddenStreams, popOutHidden } from '../windows/popout.js';
 import { save } from '../persistence.js';
@@ -173,7 +174,7 @@ featSwitch.addEventListener('scroll', () => { fsScrolledAt = performance.now(); 
 // Layout menu > Focus view: the current big stream (or the first one) goes big.
 function openFocusView(){
   const streams = buildCols().filter(c => isVid(c.top)).map(c => c.key);
-  if (!streams.length){ flash('Open a stream first: Focus view makes one of them big.'); updateLayoutMenu(); return; }
+  if (!streams.length){ flash('Open a stream first: Focus view makes one of them big.'); store.changed('layout'); return; }
   setFeatured(streams.includes(featuredCh) ? featuredCh : streams[0]);
   layoutVars.scrollX = 0; columnsLayout();
 }

@@ -6,8 +6,6 @@ import { DESKTOP } from './shared/env.js';
 import { chatFocusLayout, featSwitch, switchMode } from './layout/layouts.js';
 import { columnsLayout } from './layout/columns.js';
 import { placeSwitcher, setSwitchMode } from './layout/switch-control.js';
-import { updateLayoutMenu } from './layout/column-drag.js';
-import { updateModeClass } from './layout/chat-focus.js';
 import { updatePopBtn } from './windows/popout.js';
 import { restore, save } from './persistence.js';
 import { histCur, histSigOf, histSnap, redoStack, undoStack, undoVars, updateUndoBtns } from './layout/undo.js';
@@ -20,7 +18,7 @@ if (ROLE === 'main'){
   else { const ll = settings.text('lastLayout');
          if (ll === 'chatfocus' && wins.length) chatFocusLayout();
          else if (ll === 'auto') coreVars.lastLayout = 'auto'; }   // the windows are already where it left them
-  updateLayoutMenu(); updateModeClass();
+  store.changed('layout');
   setTimeout(() => { undoVars.histCur = histSnap(); undoVars.histSig = histSigOf(histCur); undoStack.length = redoStack.length = 0; updateUndoBtns(); }, 800);   // history starts here
   if (switchMode === 'window') setSwitchMode('window');           // reopen it the way you left it
   else if (switchMode === 'float'){ featSwitch.classList.add('floating'); placeSwitcher(); }
