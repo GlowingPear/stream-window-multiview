@@ -1,4 +1,5 @@
 import '../platforms/platforms.js';   // runs after it (see app.js)
+import { winTimer } from '../shared/timers.js';
 import { BAR, GAP, SNAP, colsMode, coreVars, sizehint, snapChk, stage, wins, zTop } from '../core.js';
 import { linked } from './layouts.js';
 
@@ -6,7 +7,7 @@ import { linked } from './layouts.js';
 const SW = () => stage.clientWidth, SH = () => stage.clientHeight;
 function setRect(w, r, animate){
   w.x = Math.round(r.x); w.y = Math.round(r.y); w.w = Math.round(r.w); w.h = Math.round(r.h);
-  if (animate){ w.el.classList.add('anim'); clearTimeout(w._t); w._t = setTimeout(() => w.el.classList.remove('anim'), 260); }
+  if (animate){ w.el.classList.add('anim'); winTimer(w, 'anim', () => w.el.classList.remove('anim'), 260); }
   Object.assign(w.el.style, { left: w.x + 'px', top: w.y + 'px', width: w.w + 'px', height: w.h + 'px' });
 }
 function clampPos(w){

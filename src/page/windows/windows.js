@@ -1,5 +1,6 @@
 import './window-bar.js';   // runs after it (see app.js)
 import { store } from '../shared/store.js';
+import { soon } from '../shared/timers.js';
 import { PLAYING, pauseEvents } from './pause-state.js';
 import { askIn, runIn, setMuted } from './view.js';
 import { BAR, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, mutedChk, sizehint, snapChk, stage, wins } from '../core.js';
@@ -275,7 +276,6 @@ if (DESKTOP) setInterval(() => {
     }).catch(() => {});
   });
 }, 1500);
-let saveT;
-function saveSoon(){ clearTimeout(saveT); saveT = setTimeout(save, 600); }
+const saveSoon = soon(() => save(), 600);
 
 export { createWin, liftAudioSoon, pushVol, saveSoon };

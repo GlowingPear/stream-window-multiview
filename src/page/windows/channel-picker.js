@@ -1,6 +1,7 @@
 import '../layout/sideways-scroll.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
+import { soon } from '../shared/timers.js';
 import { GAP, ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { chLabel, chLabelP, platIcon, platOf } from '../platforms/platforms.js';
@@ -16,9 +17,8 @@ import { save } from '../persistence.js';
 /* Highlight / Columns: the channel name on each side chat is a dropdown to pick which stream that column shows. */
 /* Every stream / chat window's name is a dropdown: pick another one of the same kind to swap them.
    Columns, highlight and Chat focus swap whole stream + chat pairs; any other arrangement swaps the two windows. */
-let picksT = 0;
 store.watch(['wins', 'names'], () => schedulePicks());
-function schedulePicks(){ clearTimeout(picksT); picksT = setTimeout(() => { refreshPicks(); if (switchMode !== 'dock') placeSwitcher(); }, 30); }
+const schedulePicks = soon(() => { refreshPicks(); if (switchMode !== 'dock') placeSwitcher(); }, 30);
 function refreshPicks(){
   const order = buildCols().map(c => c.key);
   ['stream', 'chat'].forEach(kind => {
