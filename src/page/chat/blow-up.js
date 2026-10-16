@@ -1,4 +1,3 @@
-import { chatZoom } from './chat-zoom.js';
 import { wins } from '../core.js';
 import { featSwitch } from '../layout/layouts.js';
 import { pushSwitcherState } from '../layout/switch-control.js';
@@ -8,18 +7,15 @@ import { flash } from '../shared/flash.js';
 import { icon } from '../shared/icons.js';
 import { fromSite } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
-import { runIn, setZoom } from '../windows/view.js';
+import { runIn, setViewScale } from '../windows/view.js';
 
 /* ---- Blow up chat on click: a mode in the switch control. While it's on, clicking into a chat window lifts it
    to the middle of the screen, big and with bigger text, over a dimmed layout. Esc, Put back, or a click on the
    dimmed part puts it back where it was, at the normal chat text size. */
-const BLOW_SIZES = [1.25, 1.5, 1.75, 2, 2.5, 3];   // the blown-up chat's text, times the normal chat text size
+const BLOW_SIZES = [1.25, 1.5, 1.75, 2, 2.5, 3];   // the blown-up chat, times the size of the other chats
 let blowOn = false, blowIdx = 2, blown = null, blowBg = null, blowBar = null;
 
-// The text size a chat window should have: bigger while it's blown up
-function chatZoomFor(w){ return chatZoom() * (w === blown ? BLOW_SIZES[blowIdx] : 1); }
-
-// again: the blown-up chat's page loaded again (its text size and Esc are set up anew)
+// again: the blown-up chat's page loaded again (Esc in it is set up anew; its size stays)
 function blowUp(w, again = false){
   if (!w || w.kind !== 'chat' || !wins.includes(w) || (w === blown) !== again) return;
   if (!again){
@@ -30,7 +26,8 @@ function blowUp(w, again = false){
     blowBar.querySelector('.bb-name').textContent = w.channel ? chLabel(w.channel) : 'Chat';
     showBlowSize();
   }
-  if (w.ready) setZoom(w.view, chatZoomFor(w));
+  // this chat's own view only: the site's zoom is shared by all its chats (every Kick chat would grow)
+  setViewScale(w.view, BLOW_SIZES[blowIdx]);
   // Esc while you're typing in the chat: the chat page tells the app (it has the keyboard, not the app's page)
   if (w.ready) runIn(w.view, `(${blowEscAgent})()`);
 }
@@ -39,7 +36,7 @@ function putBack(){
   blown = null;
   w.el.classList.remove('blown');
   blowBg.hidden = true; blowBar.hidden = true;
-  if (w.ready) setZoom(w.view, chatZoom());
+  setViewScale(w.view, 1);
   // let go of the keyboard, so a click into this chat blows it up again
   if (document.activeElement === w.view) w.view.blur();
 }
@@ -51,11 +48,11 @@ function blowSize(d){
   blowIdx = i;
   settings.set('chatBlowSize', blowIdx);
   showBlowSize();
-  if (blown && blown.ready) setZoom(blown.view, chatZoomFor(blown));
+  if (blown) setViewScale(blown.view, BLOW_SIZES[blowIdx]);
 }
 function showBlowSize(){
   if (!blowBar) return;
-  blowBar.querySelector('.bb-pct').textContent = Math.round(chatZoom() * BLOW_SIZES[blowIdx] * 100) + '%';
+  blowBar.querySelector('.bb-pct').textContent = Math.round(BLOW_SIZES[blowIdx] * 100) + '%';
   blowBar.querySelector('[data-b="-1"]').disabled = blowIdx === 0;
   blowBar.querySelector('[data-b="1"]').disabled = blowIdx === BLOW_SIZES.length - 1;
 }
@@ -102,9 +99,8 @@ function init(){
   blowBar.querySelector('.bb-icon').innerHTML = icon.zoomin;
   document.body.append(blowBg, blowBar);
   fromSite('blow-esc', w => { if (w === blown) putBack(); });
-  window.addEventListener('resize', () => { if (blown) showBlowSize(); });
   window.blowUpChat = ch => blowUp(wins.find(w => w.kind === 'chat' && w.channel === ch));   // for the tests
   window.blownWin = () => blown && blown.channel;   // for the tests
 }
 
-export { blownWin, blowOn, blowUp, chatZoomFor, init, putBack, showBlowSize, toggleBlowMode, updateBlowBtn };
+export { blownWin, blowOn, blowUp, init, putBack, toggleBlowMode, updateBlowBtn };

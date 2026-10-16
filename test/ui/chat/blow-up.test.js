@@ -46,6 +46,9 @@ test('Blow up chat: the chat goes big in the middle over a dimmed layout, with i
   assert.ok(await page.isVisible('#blowBar'));
   assert.equal(await page.textContent('#blowBar .bb-name'), 'bravo');
   assert.equal(await page.textContent('#blowBar .bb-pct'), '175%');
+  // only this chat's own view is scaled (a site's zoom is shared by all its chats)
+  const scales = () => page.$$eval('#stage .win.chat', l => l.map(e => e.querySelector('.title').textContent + ':' + e.querySelector('.body > :first-child').style.zoom).sort());
+  assert.deepEqual(await scales(), ['alpha:', 'bravo:1.75', 'charlie:']);
   // text size: − and +, kept for next time, and the ends can't go further
   await page.click('#blowBar [data-b="1"]');
   assert.equal(await page.textContent('#blowBar .bb-pct'), '200%');
@@ -58,6 +61,7 @@ test('Blow up chat: the chat goes big in the middle over a dimmed layout, with i
   await press(page, 'Escape');
   assert.equal(await blown(page), null);
   assert.deepEqual(await box(chat), before, 'back where it was');
+  assert.deepEqual(await scales(), ['alpha:', 'bravo:', 'charlie:'], 'and its normal size');
   assert.ok(!(await page.isVisible('#blowBg')) && !(await page.isVisible('#blowBar')));
 });
 
