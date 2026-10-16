@@ -65,13 +65,38 @@ function mentionAgent(){
     try { return row.innerText; }
     finally { bars.forEach((b, i) => was[i] == null ? b.removeAttribute('style') : b.setAttribute('style', was[i])); }
   }
-  // The chat's lines: [{ l: line, row }]. Kick puts each message in a row of its own (div[data-index]), so each
-  // row is read on its own: a message that's only emotes can't be joined to the next row's text, or to what
-  // is below the chat (the chat box, a pop-up). Other chats: the whole page's text, with no rows.
+  // A Kick row, read by its parts rather than its text: the name (the last button before the ":" box), the message
+  // (the box after the name's), and a reply's quote (in the "Replying to" button above them), each with its emotes.
+  // { name, text, parts, reply: { name, text, parts } }, or null for a row that isn't built like that.
+  const KICK_NAME = /^[A-Za-z0-9_]{2,30}$/;
+  function readRow(row){
+    const colon = [...row.querySelectorAll('span[aria-hidden="true"]')].find(s => /^:\s*$/.test(s.textContent) && !s.closest('button'));
+    const by = colon && colon.previousElementSibling, msg = colon && colon.parentElement.nextElementSibling;
+    const names = by ? by.querySelectorAll('button') : [], name = names.length ? names[names.length - 1].textContent.trim() : '';
+    if (!msg || !KICK_NAME.test(name)) return null;
+    const out = { name, ...piecesOf(msg) };
+    const rb = [...row.querySelectorAll('button')].find(b => /^\s*Replying to\s/i.test(b.textContent));
+    const q = rb && rb.querySelector('span') ? [...rb.querySelector('span').children] : [];
+    if (q.length >= 2 && KICK_NAME.test(q[0].textContent.trim())) out.reply = { name: q[0].textContent.trim(), ...piecesOf(q[q.length - 1]) };
+    return out;
+  }
+  // An element's text and emotes, in order: { text (without the emotes), parts (null when it has no emotes) }.
+  function piecesOf(el){
+    const parts = tidy(pieces(el));
+    return { text: flat(parts.map(x => x.t || ' ').join('')), parts: parts.some(x => x.e) && parts.filter(x => x.e).length <= 20 ? parts : null };
+  }
+  // The chat's lines: [{ l: line, row, parts }]. Kick puts each message in a row of its own (div[data-index]), so
+  // each row is read on its own, by its parts (its line reads as Kick's text does: "name : message"). Other chats,
+  // and a row that isn't built as Kick's: the text, a row at a time or the whole page's, with no parts.
   function chatLines(){
     const rows = [...document.querySelectorAll('[data-index]')].filter(r => !r.parentElement || !r.parentElement.closest('[data-index]'));
     const out = [];
-    for (const row of rows) for (const l of textLines(rowText(row))) out.push({ l, row });
+    for (const row of rows){
+      const k = readRow(row);
+      if (!k){ for (const l of textLines(rowText(row))) out.push({ l, row }); continue; }
+      if (k.reply) out.push({ l: `Replying to ${k.reply.name}: ${k.reply.text}`, row, parts: k.reply.parts });
+      out.push({ l: `${k.name} : ${k.text}`.trim(), row, parts: k.parts });
+    }
     return out.some(x => lineOf(x.l)) ? out : textLines(document.body.innerText).map(l => ({ l }));
   }
   function scan(){
@@ -79,17 +104,17 @@ function mentionAgent(){
     const all = chatLines();
     const replyRe = me && new RegExp('^Replying to\\s+@?' + esc(me) + '(?![A-Za-z0-9_])', 'i');
     const atRe = me && new RegExp('(^|[^A-Za-z0-9_])@' + esc(me) + '(?![A-Za-z0-9_])', 'i');
-    let reply = '';
-    for (const { l, row } of all){
-      if (/^Replying to\s/i.test(l)){ reply = l; continue; }
+    let reply = '', replyParts;
+    for (const { l, row, parts: read } of all){
+      if (/^Replying to\s/i.test(l)){ reply = l; replyParts = read; continue; }
       const m = lineOf(l);
-      const r = reply; reply = '';
+      const r = reply, rparts = replyParts; reply = ''; replyParts = undefined;
       if (!m) continue;
       const nameRe = () => new RegExp('(^|[^A-Za-z0-9_])' + esc(m[1]) + '\\s?:\\s*', 'i');
       // In a row, its emotes are read from the row (a message that's only emotes has no text to find it by),
       // and they're part of the message: two messages with the same text but other emotes aren't the same line.
-      let rowParts = null;
-      if (row && row.querySelector('img')) try { rowParts = partsFor(l, nameRe(), m[2], row); } catch {}
+      let rowParts = read === undefined ? null : read;
+      if (read === undefined && row && row.querySelector('img')) try { rowParts = partsFor(l, nameRe(), m[2], row); } catch {}
       const id = rowParts ? l + '\u0002' + rowParts.filter(x => x.e).map(x => x.e).join(' ') : l;
       if (window.__kmvTr && window.__kmvTr.has(m[2])){ seen.add(id); continue; }   // shown translated: its original was read already
       // A message line is only ever judged once, even if its "Replying to" line later scrolls away or re-draws.
@@ -115,7 +140,8 @@ function mentionAgent(){
       let parts = rowParts, qparts = null;
       if (!row) try { parts = partsFor(l, nameRe(), body); } catch {}
       const quoted = toMe ? r.replace(/^Replying to\s+@?[A-Za-z0-9_]+:?\s*/i, '') : '';
-      if (toMe && quoted) try { qparts = partsFor(r, /^\s*Replying to\s+@?[A-Za-z0-9_]+:?\s*/i, quoted); } catch {}
+      if (toMe && quoted && rparts !== undefined) qparts = rparts;
+      else if (toMe && quoted) try { qparts = partsFor(r, /^\s*Replying to\s+@?[A-Za-z0-9_]+:?\s*/i, quoted); } catch {}
       const item = toMe || at ? { sender, body, kind: toMe ? 'reply' : 'mention', quoted, t: Date.now() }
         : { sender, body, kind: 'word', word: word[2], quoted: '', t: Date.now() };
       if (parts) item.parts = parts;
@@ -147,8 +173,8 @@ function mentionAgent(){
     if (u.hostname === 'files.kick.com' && !/^\/emotes\//.test(u.pathname)) return null;
     return { e: name, src: u.href.slice(0, 300) };
   }
-  function partsFor(line, prefix, text, row){
-    const el = row || elFor(line, text, true); if (!el) return null;
+  // An element's shown text and emotes, in order, as they are: [{ t: text } | { e: name, src }]
+  function pieces(el){
     const all = [], walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
     for (let n = walk.nextNode(); n; n = walk.nextNode()){
       if (n.nodeType === 3){
@@ -157,6 +183,19 @@ function mentionAgent(){
         if (n.nodeValue) all.push({ t: n.nodeValue.replace(/\s+/g, ' ') });
       } else if (n.tagName === 'IMG' && !n.closest(BAR)){ const e = emoteIn(n); if (e) all.push(e); }
     }
+    return all;
+  }
+  // Text next to text joined, the spaces at either end left out, and nothing empty.
+  function tidy(list){
+    const out = [];
+    for (const x of list){ const last = out[out.length - 1]; if (x.t && last && last.t != null) last.t += x.t; else out.push({ ...x }); }
+    if (out.length && out[0].t != null) out[0].t = out[0].t.replace(/^\s+/, '');
+    const lastT = out[out.length - 1]; if (lastT && lastT.t != null) lastT.t = lastT.t.replace(/\s+$/, '');
+    return out.filter(x => x.e || x.t);
+  }
+  function partsFor(line, prefix, text, row){
+    const el = row || elFor(line, text, true); if (!el) return null;
+    const all = pieces(el);
     // cut off what comes before the message: the time, badges, the name and its colon
     const full = all.map(x => x.t || '').join(''), cut = full.match(prefix);
     if (!cut) return null;
@@ -164,12 +203,9 @@ function mentionAgent(){
     const out = [];
     for (const x of all){
       if (skip > 0){ if (x.t){ if (x.t.length <= skip){ skip -= x.t.length; continue; } out.push({ t: x.t.slice(skip) }); skip = 0; } continue; }
-      const last = out[out.length - 1];
-      if (x.t && last && last.t != null) last.t += x.t; else out.push(x);
+      out.push(x);
     }
-    if (out.length && out[0].t != null) out[0].t = out[0].t.replace(/^\s+/, '');
-    const lastT = out[out.length - 1]; if (lastT && lastT.t != null) lastT.t = lastT.t.replace(/\s+$/, '');
-    const parts = out.filter(x => x.e || x.t);
+    const parts = tidy(out);
     if (!parts.some(x => x.e) || parts.filter(x => x.e).length > 20) return null;
     if (flat(parts.map(x => x.t || ' ').join('')) !== flat(text)) return null;   // not the same message after all
     return parts;
