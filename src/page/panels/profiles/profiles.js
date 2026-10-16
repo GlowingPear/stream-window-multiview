@@ -3,10 +3,10 @@ import { settings } from '../../shared/settings.js';
 import { $, ROLE } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { DESKTOP } from '../../shared/env.js';
-import { PLAT_NAME, chLabel, normCh, platOf, rememberName, rememberNames } from '../../platforms/platforms.js';
+import { PLAT_NAME, chLabel, modUrl, normCh, platOf, platform, rememberName, rememberNames } from '../../platforms/platforms.js';
 import { channelVars, infoFor, liveNow, loadSavedProfiles, notifyAll, notifyOff, persistSaved, renderSaved, saved,
   sendWatch, toggleSaved } from '../channels/channels.js';
-import { bell, notes } from '../bell/bell.js';
+import { bell } from '../bell/bell.js';
 import { addParsed } from '../../layout/placement.js';
 import { flash } from '../../shared/flash.js';
 import { tile } from '../../layout/layouts.js';
@@ -187,7 +187,7 @@ async function openProfile(ch){
   const local = await window.kmv.profileGet(ch, { local: true }).catch(() => null);
   if (req !== pf.req) return;
   if (local) { pf.data = { ...local, loading: true }; pfRenderProf(); }
-  if (platOf(ch) !== 'youtube' && window.kmv.modCheck && pf.mod[ch] === undefined)
+  if (modUrl(ch) && window.kmv.modCheck && pf.mod[ch] === undefined)
     window.kmv.modCheck(ch).then(v => { pf.mod[ch] = v; if (req === pf.req) pfRenderProf(); }).catch(() => {});
   const full = await window.kmv.profileGet(ch).catch(() => null);
   if (req !== pf.req) return;
@@ -292,7 +292,7 @@ function pfRenderProf(){
   sv.title = isSaved ? 'Remove from your saved streamers (keeps this profile\'s notes and history)' : 'Save: check when they go live and keep a history';
   sv.onclick = () => { toggleSaved(ch); pfLoadList(); pfRenderProf(); };
   acts.appendChild(sv);
-  const url = (s && s.url) || (plat === 'twitch' ? 'https://twitch.tv/' + ch.slice(3) : plat === 'youtube' ? ytLiveUrl2(ch) : 'https://kick.com/' + ch);
+  const url = (s && s.url) || platform(ch).profileUrl(ch);
   const ext = pfE('button', 'btn'); ext.innerHTML = pfIco.ext + 'Open on ' + P; ext.onclick = () => window.kmv.openExternal(url);
   acts.appendChild(ext);
   main.appendChild(acts);
@@ -452,7 +452,6 @@ function pfRenderProf(){
   scroller.scrollTop = keepY;
   if (focused){ const f = box.querySelector(`[data-k="${focused}"]`); if (f){ f.focus(); if (f.value != null) { const n = f.value.length; try { f.setSelectionRange(n, n); } catch {} } } }
 }
-const ytLiveUrl2 = ch => ch.startsWith('yt:c:') ? 'https://www.youtube.com/channel/' + ch.slice(5) : 'https://www.youtube.com/' + ch.slice(3);
 function pfChatRules(c){
   const r = [];
   if (c.subsOnly) r.push('subscribers-only chat');

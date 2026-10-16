@@ -2,7 +2,7 @@ import '../chat/view-menu.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
 import { ROLE, coreVars, lastLayout, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
-import { chLabel, chatSrc, parseInput, platOf, ytVidOf } from '../platforms/platforms.js';
+import { chLabel, chatSrc, platOf, platform, ytVidOf } from '../platforms/platforms.js';
 import { createWin } from './windows.js';
 import { closeWin } from '../chat/view-menu.js';
 import { updateEmpty } from '../layout/lock.js';
@@ -16,32 +16,11 @@ import { save } from '../persistence.js';
 /* ---- Raids: when a chat or player moves to another channel, every window of the old channel follows ----
    On a raid, Kick's pop-out chat loads the new channel's page (and Twitch can move its chat or player), so the
    chat shows a whole site page and the stream stays on the old, now offline, channel. */
-const KICK_NOT_CH = new Set(['login', 'signup', 'register', 'categories', 'category', 'browse', 'following', 'search', 'settings', 'dashboard',
-  'subscriptions', 'messages', 'notifications', 'wallet', 'video', 'videos', 'clips', 'clip', 'terms-of-service', 'privacy-policy',
-  'community-guidelines', 'dmca-policy', 'popout', 'api', 'auth', 'oauth', 'verify', 'stream', 'chatroom', 'help', 'about', 'careers', 'kick-creators', 'emotes']);
 // The channel a window's new address is for (same site only), or null when it isn't a channel's chat, page or player.
 function raidTarget(w, url){
   if (!w || !w.channel || (w.kind !== 'chat' && w.kind !== 'stream')) return null;
-  const plat = platOf(w.channel);
   let u; try { u = new URL(url); } catch { return null; }
-  const host = u.hostname.replace(/^(www|m)\./, ''), parts = u.pathname.split('/').filter(Boolean).map(x => x.toLowerCase());
-  let ch = null;
-  if (plat === 'kick'){
-    if (w.kind === 'stream') ch = host === 'player.kick.com' && parts.length === 1 ? parts[0] : null;
-    else if (host === 'kick.com'){
-      if (parts[0] === 'popout' && parts[2] === 'chat') ch = parts[1];
-      else if (parts.length === 1 || (parts.length === 2 && parts[1] === 'chatroom')) ch = parts[0];
-    }
-    if (ch && (!/^[a-z0-9_-]{3,25}$/.test(ch) || KICK_NOT_CH.has(ch))) ch = null;
-  } else if (plat === 'twitch'){
-    const one = parseInput(u.href);
-    if (one && /^tw:/.test(one.channel || '')){
-      const player = host === 'player.twitch.tv';
-      if (w.kind === 'stream' ? player : !player && (one.only === 'chat' || parts.length === 1)) ch = one.channel.slice(3);
-    }
-    return ch ? 'tw:' + ch : null;
-  }
-  return ch;
+  return platform(w.channel).raidTarget(w.kind, u);
 }
 // What a window's view did: a different channel follows the raid; its own channel's page goes back to the pop-out chat.
 function watchRaid(w, url){
