@@ -1,0 +1,56 @@
+/* switch control: docked under the big stream, floating in the window, or in its own window */
+.fs-modes{display:flex;gap:2px;margin-left:auto;flex:none}
+.fs-back ~ .fs-modes{margin-left:0}
+.fs-mbtn{width:26px;height:24px;border:1px solid var(--line2);border-radius:6px;background:var(--panel2);color:var(--muted);cursor:pointer;display:grid;place-items:center;padding:0}
+.fs-mbtn:hover{border-color:var(--accent);color:var(--accent)}
+.fs-mbtn.on{border-color:var(--accent);color:var(--accent-ink);background:var(--accent)}
+.fs-mbtn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fs-grip{display:none;width:18px;height:24px;place-items:center;color:var(--muted);cursor:grab;flex:none;margin-left:-4px}
+.fs-grip svg{width:14px;height:14px;fill:currentColor;stroke:none}
+#featSwitch.floating{box-shadow:0 18px 44px rgba(0,0,0,.6),0 0 0 1px var(--line2);border-color:var(--line2);z-index:89996}
+#featSwitch.floating .fs-grip{display:grid}
+#featSwitch.floating .fs-head{position:sticky;top:-6px;z-index:3;background:var(--panel);margin:-6px -8px 0;padding:6px 8px 4px;cursor:grab}
+#featSwitch.floating .fs-head button,#featSwitch.floating .fs-head select,#featSwitch.floating .fs-head label{cursor:pointer}
+body.fs-moving,body.fs-moving *{cursor:grabbing !important;user-select:none}
+#fsResize{position:absolute;z-index:89998;width:16px;height:16px;cursor:nwse-resize;display:none;
+  background:linear-gradient(135deg,transparent 50%,var(--muted) 50%,var(--muted) 58%,transparent 58%,transparent 70%,var(--muted) 70%,var(--muted) 78%,transparent 78%);border-radius:0 0 8px 0}
+.fs-empty{grid-column:1/-1;color:var(--muted);font-size:12px;padding:10px 4px}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:100010;display:flex;align-items:center;gap:12px;padding:8px 8px 8px 16px;
+  border-radius:10px;background:var(--panel);border:1px solid var(--line2);box-shadow:0 14px 34px rgba(0,0,0,.55);font-size:13px}
+#toast[hidden]{display:none}
+#updBanner{position:fixed;right:16px;bottom:16px;z-index:100011;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 16px;max-width:520px;
+  border-radius:11px;background:var(--panel);border:1px solid var(--accent);box-shadow:0 16px 40px rgba(0,0,0,.5);font-size:13px}
+#updBanner[hidden]{display:none}
+#updBanner .btn{height:30px;flex:none}
+.upd-box{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.upd-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.upd-ver{font-size:22px;font-weight:800}
+.upd-ver small{font-size:12px;font-weight:600;color:var(--muted);margin-left:8px}
+.upd-state{padding:10px 12px;border-radius:9px;border:1px solid var(--line2);background:var(--panel2)}
+.upd-state.ok{border-color:var(--accent)}
+.upd-state.bad{border-color:var(--danger)}
+.upd-repo{display:flex;gap:8px;align-items:center}
+.upd-repo input{flex:1;max-width:360px;height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);color:var(--text);outline:none;font:12.5px ui-monospace,Consolas,monospace}
+.upd-repo input:focus{border-color:var(--accent)}
+.upd-notes{white-space:pre-wrap;font-size:12.5px;color:var(--muted);max-height:220px;overflow:auto;border-left:3px solid var(--line2);padding-left:10px}
+.upd-notes.html{white-space:normal}
+.upd-notes.html :is(h1,h2,h3,h4){font-size:13px;color:var(--text);margin:8px 0 4px}
+.upd-notes.html :is(h1,h2,h3,h4):first-child{margin-top:0}
+.upd-notes.html :is(p,ul,ol){margin:0 0 6px}
+.upd-notes.html :is(ul,ol){padding-left:18px}
+.upd-notes.html a{color:var(--accent)}
+.upd-notes.html :is(code,tt){font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.upd-notes.html img{max-width:100%;height:auto}
+.upd-notes.html:has(video){max-height:560px}
+.upd-notes.html video{display:block;max-width:100%;max-height:360px;margin:4px 0 6px;border-radius:6px;background:#000}
+#toast .btn{height:28px;color:var(--accent);border-color:var(--accent)}
+#toast .btn[hidden]{display:none}
+.fs-item input{width:70px;height:4px;accent-color:var(--accent);cursor:pointer}
+.fs-pct{font-size:10px;color:var(--muted);width:28px;text-align:right;font-variant-numeric:tabular-nums}
+.fs-chip{display:flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);
+  background:var(--panel2);cursor:pointer;font-weight:600;white-space:nowrap}
+.fs-chip:hover{border-color:var(--muted)}
+.fs-chip .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.fs-chip.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, transparent)}
+.fs-chip em{display:grid;color:var(--danger)}
+.fs-chip em svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}

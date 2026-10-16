@@ -1,0 +1,42 @@
+/* Settings > Notifications */
+.nt-grid{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;column-gap:14px;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
+.nt-grid>*{padding:8px 0;border-top:1px solid var(--line);align-self:stretch;display:flex;align-items:center}
+.nt-grid>:nth-child(4n+1){padding-left:12px}
+.nt-grid>:nth-child(4n){margin-right:12px}
+.nt-grid>.nt-h{border-top:0;padding:8px 0 6px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.nt-grid>.nt-h:first-child{padding-left:12px}
+.nt-grid>.nt-desk[hidden]{display:block;visibility:hidden}   /* (no desktop notifications outside the desktop app: the column stays in place) */
+.nt-grid select{height:28px;font-size:12px}
+.nt-grid>.nt-k{gap:8px;align-items:baseline;font-size:13px;min-width:0}
+.nt-k>i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--accent);transform:translateY(-1px)}
+.nt-k.k-spam>i,.nt-k.k-live>i{background:var(--danger)}
+.nt-k.k-raid>i{background:#a970ff}
+.nt-k.k-app>i{background:#6aa8ff}
+.nt-k .linkish{display:block;font-size:11px;font-weight:600;text-decoration:none}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+.seg[hidden]{display:none}
+.seg button{height:26px;padding:0 9px;border:0;border-left:1px solid var(--line2);background:var(--panel2);color:var(--muted);font:inherit;font-size:11.5px;font-weight:600;cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+.nt-chip{display:inline-flex;align-items:center;gap:4px;margin-left:8px;padding:1px 7px;border-radius:9px;border:1px solid color-mix(in srgb,#6aa8ff 45%,transparent);background:color-mix(in srgb,#6aa8ff 12%,transparent);color:#6aa8ff;font:inherit;font-size:10.5px;font-weight:700;cursor:pointer;vertical-align:1px}
+.nt-chip::before{content:"🔗";font-size:9px}
+.st-row.nt-shared{background:color-mix(in srgb,#6aa8ff 5%,transparent)}
+.st-row[hidden]{display:none}
+.mp-row{position:relative;padding:9px 12px 10px 14px;cursor:pointer;display:flex;flex-direction:column;gap:3px;border-bottom:1px solid var(--line)}
+.mp-row:last-child{border-bottom:0}
+.mp-row:hover{background:var(--panel2)}
+.mp-row.unread::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.mp-top{display:flex;align-items:center;gap:6px;font-size:12.5px;min-width:0}
+.mp-top b{color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.mp-kind{flex:none;padding:1px 6px;border-radius:9px;font-size:10px;font-weight:700;color:var(--muted);border:1px solid var(--line2)}
+.mp-kind.reply{color:var(--text)}
+.mp-time{margin-left:auto;flex:none;font-size:11px;color:var(--muted)}
+.mp-where{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);min-width:0}
+.mp-where span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mp-where .dot{width:6px;height:6px;border-radius:50%;flex:none;background:#53fc18}
+.mp-row.plat-twitch .mp-where .dot{background:#a970ff}
+.mp-q{margin-top:2px;padding:1px 0 1px 8px;border-left:2px solid var(--line2);font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mp-q[hidden]{display:none}
+.mp-body{font-size:12.5px;line-height:1.4;overflow-wrap:anywhere}
+.btns button.at.off{color:var(--muted);opacity:.6}
+.win.ping{animation:ping 2.4s ease}

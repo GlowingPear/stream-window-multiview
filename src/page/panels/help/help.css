@@ -1,0 +1,9 @@
+/* help */
+.dlg.help{width:min(820px,calc(100vw - 32px));height:min(84vh,860px);max-height:none;padding:0;gap:0;overflow:hidden}
+.help-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.help-head h3{margin:0;font-size:15px;display:flex;align-items:center;gap:8px}
+.help-head h3 small{font-size:11px;font-weight:600;color:var(--muted)}
+.help-tabs{display:flex;gap:4px;margin-left:auto}
+.help-tabs button{height:28px;padding:0 12px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;font-weight:600;font-size:12px}
+.help-tabs button:hover{color:var(--text)}
+.help-tabs button.on{background:var(--panel2);border-color:var(--line2);color:var(--text)}
