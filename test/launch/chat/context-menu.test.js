@@ -11,8 +11,12 @@ let a, out;
 test.before(async () => {
   a = await launchApp();
   out = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-menu-'));
-  await a.app.evaluate(({ Menu, shell, session }, out) => {
-    const t = globalThis.__m = { menus: [], opened: [], saved: [] };
+  await a.app.evaluate(({ Menu, shell, session, clipboard }, out) => {
+    const t = globalThis.__m = { menus: [], opened: [], saved: [], copied: null };
+    // What the app copies: the test files run side by side and share the computer's clipboard, so another one
+    // may copy something in between. (It still goes on the clipboard.)
+    const writeText = clipboard.writeText.bind(clipboard);
+    clipboard.writeText = (text, ...rest) => { t.copied = text; return writeText(text, ...rest); };
     Menu.buildFromTemplate = tmpl => { t.menus.push(tmpl); return { popup() {} }; };
     shell.openExternal = async u => { t.opened.push(u); };
     // "Save image as…": answer the save dialog with a folder of the test's
@@ -73,7 +77,7 @@ test('its items: translate and search open the browser, copy copies, links open 
 
   const link = await rightClick(/popout\/alpha\/chat/, { linkURL: 'https://example.com/clip' });
   await link.pick('Copy link address');
-  assert.equal(await a.app.evaluate(({ clipboard }) => clipboard.readText()), 'https://example.com/clip');
+  assert.equal(await a.app.evaluate(() => globalThis.__m.copied), 'https://example.com/clip');
   await link.pick('Open link in your browser');
   assert.equal((await state()).opened[2], 'https://example.com/clip');
 });
@@ -89,7 +93,7 @@ test('an emote: Save image as… suggests its name in Downloads and saves it; Op
   for (let i = 0; i < 100 && !fs.existsSync(path.join(out, 'pear_Hype.png')); i++) await new Promise(r => setTimeout(r, 100));
   assert.ok(fs.existsSync(path.join(out, 'pear_Hype.png')));
   await img.pick('Copy image address');
-  assert.equal(await a.app.evaluate(({ clipboard }) => clipboard.readText()), 'https://kick.com/emotes/pear.png');
+  assert.equal(await a.app.evaluate(() => globalThis.__m.copied), 'https://kick.com/emotes/pear.png');
   await img.pick('Open image in new window');
   await a.app.evaluate(async ({ BrowserWindow }) => {
     const find = () => BrowserWindow.getAllWindows().find(x => /emotes\/pear\.png/.test(x.webContents.getURL()));
@@ -158,8 +162,8 @@ test('right-clicking an emote the chat shows: the app draws the menu with its pr
   });
   assert.ok(Math.abs(mb.x - vb.x) < 2 || mb.x < vb.x, JSON.stringify([mb, vb]));
   await a.win.click('.vmenu [role=menuitem]:text-is("Copy emote text")');
-  for (let i = 0; i < 50 && (await a.app.evaluate(({ clipboard }) => clipboard.readText())) !== 'pearHype'; i++) await new Promise(r => setTimeout(r, 100));
-  assert.equal(await a.app.evaluate(({ clipboard }) => clipboard.readText()), 'pearHype');
+  for (let i = 0; i < 50 && (await a.app.evaluate(() => globalThis.__m.copied)) !== 'pearHype'; i++) await new Promise(r => setTimeout(r, 100));
+  assert.equal(await a.app.evaluate(() => globalThis.__m.copied), 'pearHype');
   assert.equal(await a.win.locator('.vmenu').count(), 0, 'closed');
   await inView(a.win, 'alpha', 'chat', () => { document.querySelectorAll('img[alt=pearHype]').forEach(e => e.remove()); return true; });
 });

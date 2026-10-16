@@ -79,10 +79,16 @@ test('Settings > General switches the emote preview off and on in open chats', T
 
 test('the card\'s Copy image puts the emote\'s picture on the clipboard; only pictures from the emote sites', T, async () => {
   const w = a.win;
-  await a.app.evaluate(({ clipboard }) => clipboard.clear());
+  // What the app copies: the test files run side by side and share the computer's clipboard, so another one may
+  // copy something in between. (It still goes on the clipboard.)
+  await a.app.evaluate(({ clipboard }) => {
+    globalThis.__copiedImage = null;
+    const writeImage = clipboard.writeImage.bind(clipboard);
+    clipboard.writeImage = (img, ...rest) => { globalThis.__copiedImage = img.getSize(); return writeImage(img, ...rest); };
+  });
   await inView(w, 'alpha', 'chat', () => console.log('__kmv:emote-copy ' + JSON.stringify({ url: 'https://files.kick.com/emotes/1/fullsize', small: '', name: 'pearHype' })));
-  for (let i = 0; i < 50 && (await a.app.evaluate(({ clipboard }) => clipboard.readImage().isEmpty())); i++) await new Promise(r => setTimeout(r, 100));
-  assert.deepEqual(await a.app.evaluate(({ clipboard }) => clipboard.readImage().getSize()), { width: 1, height: 1 }, 'the picture');
+  for (let i = 0; i < 50 && !(await a.app.evaluate(() => globalThis.__copiedImage)); i++) await new Promise(r => setTimeout(r, 100));
+  assert.deepEqual(await a.app.evaluate(() => globalThis.__copiedImage), { width: 1, height: 1 }, 'the picture');
   await inView(w, 'alpha', 'chat', () => console.log('__kmv:emote-copy {"url":"https://example.com/x.png","name":"nope"}'));
   await w.waitForFunction(() => /Couldn’t copy nope/.test(document.getElementById('msg').textContent));
   // straight to the main process
