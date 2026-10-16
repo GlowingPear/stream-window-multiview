@@ -1,3 +1,4 @@
+import { blownWin, putBack } from './chat/blow-up.js';
 import { $, ROLE, colsMode, input, wins } from './core.js';
 import { buildCols, columnsLayout } from './layout/columns.js';
 import { syncSwitcher } from './layout/focus-only.js';
@@ -33,6 +34,7 @@ function closeOverlays(){
   else ['#layoutMenu', '#accountMenu', '#savedPanel', '#bellPanel', '#moreMenu', '#extMenu', '#barMenu'].forEach(sel => {
     const e = $(sel); if (e && !e.hidden){ e.hidden = true; any = true; }
   });
+  if (!any && blownWin()){ putBack(); any = true; }   // a blown-up chat goes back after everything over it
   const ae = document.activeElement;     // don't leave the keyboard in a box that just closed
   if (any && ae && ae !== document.body && ae.closest('.dlg-bg, .menu, #savedPanel, #bellPanel')) ae.blur();
   return any;

@@ -1,3 +1,4 @@
+import { toggleBlowMode, updateBlowBtn } from '../chat/blow-up.js';
 import { closeWin } from '../chat/view-menu.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { backToChatFocus } from './chat-focus.js';
@@ -114,6 +115,7 @@ function renderSwitcher(){
     (!isCF ? `<button class="fs-back fs-tocf" title="The Chat focus layout (streams down the side, chats filling the rest)">${icon.chatview}<span>Chat focus view</span></button>` : '') +
     (featOn && DESKTOP && ROLE === 'main' ? `<button class="fs-back fs-pophid">${icon.popwin}<span>Pop out hidden</span><em></em></button>` : '') +
     (featOn && DESKTOP ? '<button class="fs-only"></button>' : '') +
+    '<button class="fs-blow"></button>' +
     (ROLE === 'main' ? '<span class="fs-modes">' +
       (floating ? `<button class="fs-mbtn fs-mdock" title="Dock: put the switch control back under the big stream in Focus view">${icon.dock}</button>`
                 : `<button class="fs-mbtn fs-mfloat" title="Float: pop the switch control out so you can drag it anywhere in this window (works in every layout)">${icon.float}</button>`) +
@@ -128,6 +130,7 @@ function renderSwitcher(){
   const mf = featSwitch.querySelector('.fs-mfloat'); if (mf) mf.onclick = () => setSwitchMode('float');
   const mw = featSwitch.querySelector('.fs-mwin'); if (mw) mw.onclick = () => setSwitchMode('window');
   const fo = featSwitch.querySelector('.fs-only'); if (fo){ fo.onclick = toggleFocusOnly; updateFocusOnlyBtn(); }
+  const fb = featSwitch.querySelector('.fs-blow'); if (fb){ fb.onclick = toggleBlowMode; updateBlowBtn(); }
   const sc = featSwitch.querySelector('.fs-side select');
   if (sc){
     sc.value = String(sideCols);

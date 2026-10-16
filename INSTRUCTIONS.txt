@@ -63,6 +63,7 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
   - Floating: a panel you can drag and resize anywhere, in every layout.
   - Own window: its own window, even on another monitor. The pin keeps it on top.
 - "Pause all except focus" pauses every stream except the big one.
+- **Blow up chat on click**: while it's on, clicking into a chat window lifts it into the middle of the screen, big and with bigger text, so it's easy to read. − and + in its bar set how big its text is (remembered). Esc, **Put back** or a click outside it puts it back.
 
 ## Playing a game (Game focus)
 - Pick Layout > Game focus (or press G). The big area on the left is for your game, everything else goes in the side panel.
@@ -225,7 +226,7 @@ Live alerts check your saved channels while the app is running. Kick (when you'r
 - Pop out hidden (switch control): send only the streams you can't see to that window.
 
 ## Other handy things
-- Chat text size (Layout ▾, or Settings > Layouts): − and + make the text in every chat smaller or bigger.
+- Chat text size (Layout ▾, or Settings > Layouts): − and + make the text in every chat smaller or bigger. To read one chat big for a moment, switch on **Blow up chat on click** in the switch control.
 - Where the toolbar sits (Layout ▾ > Toolbar tab, or Settings > Layouts > Toolbar): **Top**, a bar across the window; **Left**, a column down the side with each button's name, which leaves more height for the streams; or **Left, icons only**, a slim column: point at a button to see its name (on a Mac, point at the pear for the window's close, minimise and full-screen buttons). It changes straight away. « Collapse and » at the bottom of the left toolbar switch between the two left ones.
 - Hide bar: hides the toolbar. Move the mouse to the top edge (the left edge for the toolbar on the left) or press Esc to bring it back.
 - On a Mac the toolbar is also the window's title bar: drag an empty spot on it to move the window, or double-click one to zoom. With the bar hidden, the window's buttons hide too and come back with it.
