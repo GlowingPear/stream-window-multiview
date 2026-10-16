@@ -1,18 +1,17 @@
-import '../windows/channel-picker.js';   // runs after it (see app.js)
-import { settings } from '../shared/settings.js';
-import { store } from '../shared/store.js';
 import { BAR, GAP, ROLE, colCount, colWidth, colsMode, coreVars, wins } from '../core.js';
-import { chLabelP } from '../platforms/platforms.js';
+import { updateColNav } from './column-drag.js';
+import { applyFocusOnly } from './focus-only.js';
 import { SH, SW, setRect } from './geometry.js';
 import { HBAR, STRIP_H, SWITCH_MIN, colKey, colOrder, colStrip, colTopOff, colX0, featBase, featBg, featSwitch,
   featW, featuredCh, fsResize, isVid, layoutVars, linked, maxScroll, refreshFeatButtons, scrollRaf, scrollX,
   setColsMode, setFeatured, switchMode } from './layouts.js';
-import { refreshPicks, updateHbar } from '../windows/channel-picker.js';
-import { renderSwitcher } from './switcher.js';
 import { placeMinis, placeSwitcher } from './switch-control.js';
-import { applyFocusOnly } from './focus-only.js';
-import { updateColNav } from './column-drag.js';
+import { renderSwitcher } from './switcher.js';
 import { save } from '../persistence.js';
+import { chLabelP } from '../platforms/platforms.js';
+import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
+import { refreshPicks, updateHbar } from '../windows/channel-picker.js';
 
 /* Columns, in the saved order. Each column: { key, top (stream or web page), chat }. */
 function buildCols(){
@@ -41,7 +40,6 @@ let sideCols = 0;                                     // highlight view: side co
 const columnVars = {
   get sideCols(){ return sideCols; }, set sideCols(v){ sideCols = v; },
 };
-sideCols = Math.max(0, Math.min(5, settings.num('sideCols')));
 function columnsLayout(preview){
   if (!colsMode) setColsMode(true);
   const all = buildCols();
@@ -165,4 +163,9 @@ function placeCol(col, x, H, animate){
   }
 }
 
-export { buildCols, columnsLayout, columnVars, sideCols };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  sideCols = Math.max(0, Math.min(5, settings.num('sideCols')));
+}
+
+export { buildCols, columnsLayout, columnVars, init, sideCols };

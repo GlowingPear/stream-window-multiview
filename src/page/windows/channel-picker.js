@@ -1,24 +1,19 @@
-import '../layout/sideways-scroll.js';   // runs after it (see app.js)
-import { settings } from '../shared/settings.js';
-import { store } from '../shared/store.js';
-import { soon } from '../shared/timers.js';
 import { GAP, ROLE, colsMode, lastLayout, wins } from '../core.js';
-import { DESKTOP } from '../shared/env.js';
-import { chLabel, chLabelP, platIcon, platOf } from '../platforms/platforms.js';
+import { buildCols, columnsLayout } from '../layout/columns.js';
 import { SW, focusWin, setRect } from '../layout/geometry.js';
-import { infoFor, svHue, svInitials, svProf } from '../panels/channels/channels.js';
 import { chatFocusLayout, colKey, colOrder, colX0, featBase, featuredCh, hbar, layoutVars, maxScroll, scrollRaf,
   scrollX, setFeatured, switchMode } from '../layout/layouts.js';
 import { scrollCols, setScrollX, snapSoon } from '../layout/sideways-scroll.js';
-import { buildCols, columnsLayout } from '../layout/columns.js';
 import { placeSwitcher } from '../layout/switch-control.js';
+import { infoFor, svHue, svInitials, svProf } from '../panels/channels/channels.js';
 import { save } from '../persistence.js';
+import { chLabel, chLabelP, platIcon, platOf } from '../platforms/platforms.js';
+import { DESKTOP } from '../shared/env.js';
+import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
+import { soon } from '../shared/timers.js';
 
-/* Highlight / Columns: the channel name on each side chat is a dropdown to pick which stream that column shows. */
-/* Every stream / chat window's name is a dropdown: pick another one of the same kind to swap them.
-   Columns, highlight and Chat focus swap whole stream + chat pairs; any other arrangement swaps the two windows. */
-store.watch(['wins', 'names'], () => schedulePicks());
-const schedulePicks = soon(() => { refreshPicks(); if (switchMode !== 'dock') placeSwitcher(); }, 30);
+let schedulePicks;
 function refreshPicks(){
   const order = buildCols().map(c => c.key);
   ['stream', 'chat'].forEach(kind => {
@@ -57,7 +52,6 @@ function chAvatar(ch){
   a.dataset.k = [a.className, pic, a.firstChild.textContent].join('|');
   return a;
 }
-store.watch('live', () => paintBarAvatars());
 function paintBarAvatars(){
   wins.forEach(w => {
     const old = w.el.querySelector('.bar-av'); if (!old) return;
@@ -96,16 +90,26 @@ function updateHbar(){
   th.style.width = tw + 'px';
   th.style.left = ((width - tw) * (scrollX / maxScroll)) + 'px';
 }
-hbar.addEventListener('pointerdown', e => {
-  e.preventDefault();
-  const th = hbar.firstChild;
-  if (e.target !== th){ scrollCols(e.offsetX < th.offsetLeft ? -1 : 1); return; }
-  th.setPointerCapture(e.pointerId);
-  cancelAnimationFrame(scrollRaf);
-  const sx = e.clientX, s0 = scrollX, free = hbar.clientWidth - th.offsetWidth;
-  const move = ev => setScrollX(s0 + (ev.clientX - sx) / Math.max(1, free) * maxScroll);
-  const up = () => { th.removeEventListener('pointermove', move); th.removeEventListener('pointerup', up); snapSoon(); };
-  th.addEventListener('pointermove', move); th.addEventListener('pointerup', up);
-});
 
-export { chAvatar, loadBarAvatars, refreshPicks, schedulePicks, swapWindows, updateHbar };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  /* Highlight / Columns: the channel name on each side chat is a dropdown to pick which stream that column shows. */
+  /* Every stream / chat window's name is a dropdown: pick another one of the same kind to swap them.
+     Columns, highlight and Chat focus swap whole stream + chat pairs; any other arrangement swaps the two windows. */
+  store.watch(['wins', 'names'], () => schedulePicks());
+  schedulePicks = soon(() => { refreshPicks(); if (switchMode !== 'dock') placeSwitcher(); }, 30);
+  store.watch('live', () => paintBarAvatars());
+  hbar.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const th = hbar.firstChild;
+    if (e.target !== th){ scrollCols(e.offsetX < th.offsetLeft ? -1 : 1); return; }
+    th.setPointerCapture(e.pointerId);
+    cancelAnimationFrame(scrollRaf);
+    const sx = e.clientX, s0 = scrollX, free = hbar.clientWidth - th.offsetWidth;
+    const move = ev => setScrollX(s0 + (ev.clientX - sx) / Math.max(1, free) * maxScroll);
+    const up = () => { th.removeEventListener('pointermove', move); th.removeEventListener('pointerup', up); snapSoon(); };
+    th.addEventListener('pointermove', move); th.addEventListener('pointerup', up);
+  });
+}
+
+export { chAvatar, init, loadBarAvatars, refreshPicks, schedulePicks, swapWindows, updateHbar };

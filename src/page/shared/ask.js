@@ -1,11 +1,6 @@
-import '../panels/extensions/extensions.js';   // runs after it (see app.js)
 import { $ } from '../core.js';
 
-/* ---------- asking before something can't be undone ----------
-   ask(title, message, { ok, danger }) -> Promise<true | false>. An in-app dialog instead of the browser's
-   confirm(), which ignores the theme, freezes the page while it's open and can open behind other windows.
-   Enter answers yes, Esc or clicking outside no. */
-const askDlg = $('#askDlg');
+let askDlg;
 let askDone = null;
 // With { check: 'label' } a tick box shows under the message; askChecked() says whether it was ticked.
 function ask(title, message, { ok = 'OK', danger = false, check = '' } = {}){
@@ -24,17 +19,26 @@ function ask(title, message, { ok = 'OK', danger = false, check = '' } = {}){
   });
 }
 const askChecked = () => !askDlg.querySelector('.ask-chk').hidden && askDlg.querySelector('.ask-chk input').checked;
-window.ask = ask;   // for the tests
-askDlg.querySelector('.ask-yes').onclick = () => askDone && askDone(true);
-askDlg.querySelector('.ask-no').onclick = () => askDone && askDone(false);
-askDlg.addEventListener('pointerdown', e => {
-  if (e.target === askDlg && askDone) askDone(false);
-  e.stopPropagation();   // the menu that asked stays open behind it
-});
-document.addEventListener('keydown', e => {
-  if (!askDone) return;
-  if (e.key === 'Escape' || e.key === 'Enter'){ e.preventDefault(); e.stopImmediatePropagation(); askDone(e.key === 'Enter' && document.activeElement !== askDlg.querySelector('.ask-no')); }
-  else if (e.key !== 'Tab') e.stopImmediatePropagation();   // no keyboard shortcuts behind the dialog
-}, true);
 
-export { ask, askChecked };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  /* ---------- asking before something can't be undone ----------
+     ask(title, message, { ok, danger }) -> Promise<true | false>. An in-app dialog instead of the browser's
+     confirm(), which ignores the theme, freezes the page while it's open and can open behind other windows.
+     Enter answers yes, Esc or clicking outside no. */
+  askDlg = $('#askDlg');
+  window.ask = ask;   // for the tests
+  askDlg.querySelector('.ask-yes').onclick = () => askDone && askDone(true);
+  askDlg.querySelector('.ask-no').onclick = () => askDone && askDone(false);
+  askDlg.addEventListener('pointerdown', e => {
+    if (e.target === askDlg && askDone) askDone(false);
+    e.stopPropagation();   // the menu that asked stays open behind it
+  });
+  document.addEventListener('keydown', e => {
+    if (!askDone) return;
+    if (e.key === 'Escape' || e.key === 'Enter'){ e.preventDefault(); e.stopImmediatePropagation(); askDone(e.key === 'Enter' && document.activeElement !== askDlg.querySelector('.ask-no')); }
+    else if (e.key !== 'Tab') e.stopImmediatePropagation();   // no keyboard shortcuts behind the dialog
+  }, true);
+}
+
+export { ask, askChecked, init };

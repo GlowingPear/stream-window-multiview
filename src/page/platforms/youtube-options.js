@@ -1,11 +1,10 @@
-import '../windows/pause.js';   // runs after it (see app.js)
+import { $, ROLE, wins } from '../core.js';
+import { openSettings } from '../panels/settings/settings.js';
+import { platOf, watchSignedIn, ytVidOf } from './platforms.js';
+import { DESKTOP } from '../shared/env.js';
+import { flash } from '../shared/flash.js';
 import { settings } from '../shared/settings.js';
 import { askIn, reloadView, runIn } from '../windows/view.js';
-import { $, ROLE, wins } from '../core.js';
-import { DESKTOP } from '../shared/env.js';
-import { platOf, watchSignedIn, ytVidOf } from './platforms.js';
-import { flash } from '../shared/flash.js';
-import { openSettings } from '../panels/settings/settings.js';
 
 /* Settings > YouTube: skip ads, and answer YouTube's cookie question (it keeps the video paused until
    it's answered). Checked once a second in each YouTube player. */
@@ -31,7 +30,7 @@ function ytAgent(skip, answer){
   }
   return out;
 }
-const skipChk = $('#ytSkip'), consentChk = $('#ytConsent'), consentPick = $('#ytConsentPick');
+let skipChk, consentChk, consentPick;
 function loadYtSettings(){
   skipChk.checked = settings.flag('ytSkip', true);
   const c = settings.text('ytConsent', 'reject');
@@ -39,13 +38,6 @@ function loadYtSettings(){
   consentPick.value = c === 'accept' ? 'accept' : 'reject';
   consentPick.disabled = !consentChk.checked;
 }
-loadYtSettings();
-skipChk.addEventListener('change', () => { settings.set('ytSkip', skipChk.checked); });
-[consentChk, consentPick].forEach(el => el.addEventListener('change', () => {
-  consentPick.disabled = !consentChk.checked;
-  settings.set('ytConsent', consentChk.checked ? consentPick.value : 'off');
-}));
-settings.onChange(['ytSkip', 'ytConsent'], loadYtSettings);   // main and streams windows
 function ytTick(view, skip, answer){
   askIn(view, `(${ytAgent})(${skip}, ${JSON.stringify(answer)})`).then(r => {
     if (!r) return;
@@ -68,18 +60,6 @@ function ytTick(view, skip, answer){
     ['mouseDown', 'mouseUp'].forEach(type => view.sendInputEvent({ type, x: r.skip.x, y: r.skip.y, button: 'left', clickCount: 1 }));
   }).catch(() => {});
 }
-if (DESKTOP) setInterval(() => {
-  const skip = skipChk.checked, answer = consentChk.checked ? consentPick.value : '';
-  wins.forEach(w => {
-    if (w.kind !== 'stream' || platOf(w.channel) !== 'youtube') return;
-    if (w.ready) readLike(w);
-    if (!skip && !answer) return;
-    if (w.ready) ytTick(w.view, skip, answer);
-    if (w.mini && w.mini.ready) ytTick(w.mini.wv, skip, answer);
-  });
-}, 1000);
-window.ytAgent = ytAgent;   // for the tests
-
 /* The like button on YouTube streams. The watch page keeps YouTube's own like button (hidden with the rest
    of the page, see YT_CSS), so the app reads whether it's pressed once a second and clicks it for you. It
    works when the player uses your login: Watch signed in for YouTube (Settings > Accounts), and signed in. */
@@ -122,14 +102,8 @@ function readLike(w, click){
     if (!click) autoLike(w, r);
   }).catch(() => {});
 }
-/* Settings > YouTube > Like streams automatically: once the stream itself has played for a few seconds (after
-   the cookie question and any ads), it's liked. Each video once: one you've liked, or removed the like from,
-   isn't touched again (remembered between launches). */
-const autoLikeChk = $('#ytAutoLike');
+let autoLikeChk;
 const loadAutoLike = () => { autoLikeChk.checked = settings.flag('ytAutoLike'); };
-loadAutoLike();
-autoLikeChk.addEventListener('change', () => { settings.set('ytAutoLike', autoLikeChk.checked); });
-settings.onChange('ytAutoLike', loadAutoLike);   // main and streams windows
 const likedVids = () => { const l = settings.json('ytAutoLiked', []); return Array.isArray(l) ? l : []; };
 function markLiked(vid){
   const l = likedVids().filter(v => v !== vid); l.push(vid);
@@ -153,8 +127,6 @@ function toggleLike(w){
   }
   readLike(w, true);
 }
-window.ytLikeAgent = ytLikeAgent;   // for the tests
-
 /* Settings > YouTube > Chat to show: Top chat (YouTube's default, hides some messages) or Live chat (all of
    them, so mention and spam alerts see every message). Runs inside each YouTube chat: in the first moments
    after the chat loads, or after YouTube rebuilds it, it picks the view in the chat's own menu, then stops.
@@ -205,20 +177,54 @@ function ytChatAgent(want, force){
   start(); tick();
   return { view: view(menu()), mine: s.mine };
 }
-const chatViewPick = $('#ytChatView');
+let chatViewPick;
 const loadChatView = () => { chatViewPick.value = settings.get('ytChatView') === 'live' ? 'live' : 'top'; };
-loadChatView();
 // One YouTube chat window: on load, or with force when the setting changes.
 function applyChatView(w, force){
   if (!DESKTOP || w.kind !== 'chat' || !w.ready || platOf(w.channel) !== 'youtube') return;
   runIn(w.view, `(${ytChatAgent})(${chatViewPick.value === 'live'}, ${!!force})`);
 }
 const applyChatViews = () => wins.forEach(w => applyChatView(w, true));
-chatViewPick.addEventListener('change', () => {
-  settings.set('ytChatView', chatViewPick.value);
-  applyChatViews();
-});
-settings.onChange('ytChatView', () => { loadChatView(); applyChatViews(); });   // main and streams windows
-window.ytChatAgent = ytChatAgent;   // for the tests
 
-export { applyChatView, syncLike, toggleLike };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  skipChk = $('#ytSkip'), consentChk = $('#ytConsent'), consentPick = $('#ytConsentPick');
+  loadYtSettings();
+  skipChk.addEventListener('change', () => { settings.set('ytSkip', skipChk.checked); });
+  [consentChk, consentPick].forEach(el => el.addEventListener('change', () => {
+    consentPick.disabled = !consentChk.checked;
+    settings.set('ytConsent', consentChk.checked ? consentPick.value : 'off');
+  }));
+  settings.onChange(['ytSkip', 'ytConsent'], loadYtSettings);   // main and streams windows
+  if (DESKTOP) setInterval(() => {
+    const skip = skipChk.checked, answer = consentChk.checked ? consentPick.value : '';
+    wins.forEach(w => {
+      if (w.kind !== 'stream' || platOf(w.channel) !== 'youtube') return;
+      if (w.ready) readLike(w);
+      if (!skip && !answer) return;
+      if (w.ready) ytTick(w.view, skip, answer);
+      if (w.mini && w.mini.ready) ytTick(w.mini.wv, skip, answer);
+    });
+  }, 1000);
+  window.ytAgent = ytAgent;   // for the tests
+
+  /* Settings > YouTube > Like streams automatically: once the stream itself has played for a few seconds (after
+     the cookie question and any ads), it's liked. Each video once: one you've liked, or removed the like from,
+     isn't touched again (remembered between launches). */
+  autoLikeChk = $('#ytAutoLike');
+  loadAutoLike();
+  autoLikeChk.addEventListener('change', () => { settings.set('ytAutoLike', autoLikeChk.checked); });
+  settings.onChange('ytAutoLike', loadAutoLike);   // main and streams windows
+  window.ytLikeAgent = ytLikeAgent;   // for the tests
+
+  chatViewPick = $('#ytChatView');
+  loadChatView();
+  chatViewPick.addEventListener('change', () => {
+    settings.set('ytChatView', chatViewPick.value);
+    applyChatViews();
+  });
+  settings.onChange('ytChatView', () => { loadChatView(); applyChatViews(); });   // main and streams windows
+  window.ytChatAgent = ytChatAgent;   // for the tests
+}
+
+export { applyChatView, init, syncLike, toggleLike };

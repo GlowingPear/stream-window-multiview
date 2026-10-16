@@ -1,14 +1,13 @@
-import '../layout/undo.js';   // runs after it (see app.js)
-import { store } from '../shared/store.js';
-import { $, BAR, ROLE, colsMode, wins } from '../core.js';
-import { DESKTOP } from '../shared/env.js';
-import { createWin } from './windows.js';
 import { setWait } from '../chat/view-menu.js';
-import { defaultStreamRect } from '../layout/placement.js';
-import { flash } from '../shared/flash.js';
-import { colKey } from '../layout/layouts.js';
+import { $, BAR, ROLE, colsMode, wins } from '../core.js';
 import { columnsLayout } from '../layout/columns.js';
 import { attachForGame, attachGame, capForGame, gameLayout, gameVars, isGame, saveGame } from '../layout/game-focus.js';
+import { colKey } from '../layout/layouts.js';
+import { defaultStreamRect } from '../layout/placement.js';
+import { DESKTOP } from '../shared/env.js';
+import { flash } from '../shared/flash.js';
+import { store } from '../shared/store.js';
+import { createWin } from './windows.js';
 
 /* ---- Window capture: show another app's window (e.g. a Discord pop-out) as a live picture ---- */
 function stopCapture(w){
@@ -44,7 +43,7 @@ async function mountCapture(w){
   const tr = st.getVideoTracks()[0];
   if (tr) tr.addEventListener('ended', () => { if (w.capStream === st) setWait(w, `“${w.capName}” was closed.`, true); });
 }
-const capDlg = $('#capDlg');
+let capDlg;
 let capTarget = null;
 async function openCapturePicker(target){
   if (!DESKTOP || !window.kmv.captureSources){ flash('Showing other windows needs the desktop app'); return; }
@@ -90,11 +89,16 @@ async function fillCapturePicker(){
     grid.appendChild(b);
   });
 }
-capDlg.querySelector('.dlg-cancel').onclick = () => { capDlg.hidden = true; gameVars.capForGame = false; gameVars.attachForGame = false; };
-capDlg.querySelector('.cap-refresh').onclick = fillCapturePicker;
-capDlg.addEventListener('pointerdown', e => { if (e.target === capDlg) capDlg.hidden = true; });
-if (DESKTOP && ROLE === 'main' && window.kmv.captureSources){
-  const cb = $('#capBtn'); cb.hidden = false; cb.onclick = () => openCapturePicker(null);
+
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  capDlg = $('#capDlg');
+  capDlg.querySelector('.dlg-cancel').onclick = () => { capDlg.hidden = true; gameVars.capForGame = false; gameVars.attachForGame = false; };
+  capDlg.querySelector('.cap-refresh').onclick = fillCapturePicker;
+  capDlg.addEventListener('pointerdown', e => { if (e.target === capDlg) capDlg.hidden = true; });
+  if (DESKTOP && ROLE === 'main' && window.kmv.captureSources){
+    const cb = $('#capBtn'); cb.hidden = false; cb.onclick = () => openCapturePicker(null);
+  }
 }
 
-export { mountCapture, openCapturePicker, stopCapture };
+export { init, mountCapture, openCapturePicker, stopCapture };

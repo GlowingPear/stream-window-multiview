@@ -1,8 +1,7 @@
-import '../panels/bell/all-notifications.js';   // runs after it (see app.js)
 import { SmvSpam } from './spam.js';
-import { settings } from '../shared/settings.js';
 import { wins } from '../core.js';
 import { dndOn, readChat } from '../panels/bell/bell.js';
+import { settings } from '../shared/settings.js';
 
 /* ---------- alerts: how a chat window gets your attention (Settings > Mentions, Spam alerts) ---------- */
 const ALERT_DEFAULTS = {
@@ -17,25 +16,8 @@ const ALERT_DEFAULTS = {
   app: { popup: true, notify: 'never', sound: 'none', vol: 0.5 }
 };
 const ALERT_KINDS = Object.keys(ALERT_DEFAULTS);
-var alerts = (() => {
-  const a = settings.json('alerts', {}) || {};
-  // From before mentions had a chat bot list: the one you made for spam alerts becomes the shared one.
-  const m = a.mention = a.mention || {}, s = a.spam || {};
-  if (!('bots' in m) && Array.isArray(s.ignore)){ m.bots = s.ignore.slice(); m.botsOffered = s.botsOffered || null; }
-  // From before Settings > Notifications had a row for each kind: "Saved channels going live" and how the app's
-  // messages showed (Settings > Notifications > Messages).
-  if (!a.live) a.live = { notify: settings.get('notifyAll') === '0' ? 'never' : 'always' };
-  if (!a.app){ const g = settings.json('msg', {}) || {};
-               a.app = { popup: g.on !== false, notify: g.via === 'desktop' ? 'always' : 'never' }; }
-  return Object.fromEntries(ALERT_KINDS.map(k => [k, { ...ALERT_DEFAULTS[k], ...(a[k] || {}) }]));
-})();
+let alerts;
 const saveAlerts = () => { settings.set('alerts', alerts); };
-// Chat bots added to the built-in list since: added to a list you changed, once (one you removed stays removed).
-[[alerts.spam, 'ignore'], [alerts.mention, 'bots']].forEach(([a, k]) => {
-  const r = SmvSpam.withNewBots(a[k], a.botsOffered);
-  if (r.list === a[k] && JSON.stringify(r.offered) === JSON.stringify(a.botsOffered)) return;
-  a[k] = r.list; a.botsOffered = r.offered; saveAlerts();
-});
 const SOUND_KEY = kind => 'alertSound.' + kind;      // your own sound file, as a data: URL (a saved setting)
 
 // The built-in sounds are made on the fly, so there are no sound files to ship.
@@ -47,12 +29,7 @@ function tone(c, out, t0, f, dur, type, gain, f2){
   g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
   o.connect(g); g.connect(out); o.start(t0); o.stop(t0 + dur + 0.05);
 }
-const SOUNDS = {
-  chime: (c, o, t) => { tone(c, o, t, 880, 0.35, 'sine', 0.5); tone(c, o, t + 0.12, 1318.5, 0.5, 'sine', 0.4); },
-  ping: (c, o, t) => tone(c, o, t, 1760, 0.25, 'triangle', 0.5),
-  pop: (c, o, t) => tone(c, o, t, 620, 0.09, 'sine', 0.8, 180),
-  knock: (c, o, t) => { tone(c, o, t, 150, 0.12, 'sine', 1, 70); tone(c, o, t + 0.16, 150, 0.12, 'sine', 1, 70); }
-};
+let SOUNDS;
 function playSound(kind, test){
   const a = alerts[kind];
   if (!test && dndOn()) return;                                 // Do not disturb (the ▶ buttons still play)
@@ -113,11 +90,39 @@ function alertTick(){
   });
   if (any) alertT = setTimeout(alertTick, 1000);
 }
-// Seen: clicking anywhere on that window (clicks inside the chat itself arrive as the chat getting focus).
-document.addEventListener('pointerdown', e => {
-  const el = e.target.closest && e.target.closest('.win');
-  const w = el && wins.find(x => x.el === el);
-  if (w){ clearAlert(w); if (w.kind === 'chat') readChat(w.channel); }
-}, true);
 
-export { ALERT_KINDS, alerts, clearAlert, playSound, raiseAlert, saveAlerts, SOUND_KEY, wantNotify };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  alerts = (() => {
+    const a = settings.json('alerts', {}) || {};
+    // From before mentions had a chat bot list: the one you made for spam alerts becomes the shared one.
+    const m = a.mention = a.mention || {}, s = a.spam || {};
+    if (!('bots' in m) && Array.isArray(s.ignore)){ m.bots = s.ignore.slice(); m.botsOffered = s.botsOffered || null; }
+    // From before Settings > Notifications had a row for each kind: "Saved channels going live" and how the app's
+    // messages showed (Settings > Notifications > Messages).
+    if (!a.live) a.live = { notify: settings.get('notifyAll') === '0' ? 'never' : 'always' };
+    if (!a.app){ const g = settings.json('msg', {}) || {};
+                 a.app = { popup: g.on !== false, notify: g.via === 'desktop' ? 'always' : 'never' }; }
+    return Object.fromEntries(ALERT_KINDS.map(k => [k, { ...ALERT_DEFAULTS[k], ...(a[k] || {}) }]));
+  })();
+  // Chat bots added to the built-in list since: added to a list you changed, once (one you removed stays removed).
+  [[alerts.spam, 'ignore'], [alerts.mention, 'bots']].forEach(([a, k]) => {
+    const r = SmvSpam.withNewBots(a[k], a.botsOffered);
+    if (r.list === a[k] && JSON.stringify(r.offered) === JSON.stringify(a.botsOffered)) return;
+    a[k] = r.list; a.botsOffered = r.offered; saveAlerts();
+  });
+  SOUNDS = {
+    chime: (c, o, t) => { tone(c, o, t, 880, 0.35, 'sine', 0.5); tone(c, o, t + 0.12, 1318.5, 0.5, 'sine', 0.4); },
+    ping: (c, o, t) => tone(c, o, t, 1760, 0.25, 'triangle', 0.5),
+    pop: (c, o, t) => tone(c, o, t, 620, 0.09, 'sine', 0.8, 180),
+    knock: (c, o, t) => { tone(c, o, t, 150, 0.12, 'sine', 1, 70); tone(c, o, t + 0.16, 150, 0.12, 'sine', 1, 70); }
+  };
+  // Seen: clicking anywhere on that window (clicks inside the chat itself arrive as the chat getting focus).
+  document.addEventListener('pointerdown', e => {
+    const el = e.target.closest && e.target.closest('.win');
+    const w = el && wins.find(x => x.el === el);
+    if (w){ clearAlert(w); if (w.kind === 'chat') readChat(w.channel); }
+  }, true);
+}
+
+export { ALERT_KINDS, alerts, clearAlert, init, playSound, raiseAlert, saveAlerts, SOUND_KEY, wantNotify };

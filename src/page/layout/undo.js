@@ -1,11 +1,10 @@
-import '../toolbar/accounts-menu.js';   // runs after it (see app.js)
 import { $, ROLE } from '../core.js';
-import { IS_MAC, keyName } from '../shared/env.js';
-import { reloadWin } from '../windows/views.js';
-import { flash } from '../shared/flash.js';
 import { vidLabel } from './layouts.js';
 import { applyPreset, capturePreset } from './saved-layouts.js';
+import { IS_MAC, keyName } from '../shared/env.js';
+import { flash } from '../shared/flash.js';
 import { mountCapture } from '../windows/capture.js';
+import { reloadWin } from '../windows/views.js';
 
 /* ===================== 2.2: refresh, undo/redo, window capture, shortcuts, help ===================== */
 
@@ -66,12 +65,16 @@ function updateUndoBtns(){
   const u = $('#undoBtn'), r = $('#redoBtn'); if (!u) return;
   u.disabled = !undoStack.length; r.disabled = !redoStack.length;
 }
-if (ROLE === 'main'){
-  const u = $('#undoBtn'), r = $('#redoBtn');
-  u.title = `Undo (${keyName('Ctrl+Z')})`; r.title = `Redo (${keyName(IS_MAC ? 'Ctrl+Shift+Z' : 'Ctrl+Y')})`;
-  u.hidden = r.hidden = false;
-  u.onclick = histUndo; r.onclick = histRedo;
+
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  if (ROLE === 'main'){
+    const u = $('#undoBtn'), r = $('#redoBtn');
+    u.title = `Undo (${keyName('Ctrl+Z')})`; r.title = `Redo (${keyName(IS_MAC ? 'Ctrl+Shift+Z' : 'Ctrl+Y')})`;
+    u.hidden = r.hidden = false;
+    u.onclick = histUndo; r.onclick = histRedo;
+  }
 }
 
-export { histCur, histRecord, histRedo, histSigOf, histSnap, histUndo, redoStack, refreshFromSwitcher, undoStack,
-  undoVars, updateUndoBtns };
+export { histCur, histRecord, histRedo, histSigOf, histSnap, histUndo, init, redoStack, refreshFromSwitcher,
+  undoStack, undoVars, updateUndoBtns };

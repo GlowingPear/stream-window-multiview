@@ -17,11 +17,11 @@
 
 ## Rules for the code
 
-**Load order.** `app.js` lists every module in the order they run, which is the order the code had when it was one script. Each of those modules starts with `import '<the one before>';   // runs after it (see app.js)`, so importing the last one loads them all, first to last. Code that runs while a module loads can use what the modules before it set up. Functions from later modules can be called at any time, but their other values are only there once that module has run.
-- A new module that runs code as it loads goes into the list in `app.js` and into the chain: it imports the one before it, and the one after it now imports it.
-- A module that only defines things and has no imports of its own (e.g. `shared/settings.js`, `shared/store.js`, `shared/element.js`, `platforms/kick.js`, `windows/view.js`, `windows/pause-state.js`) stays out of the list. It's simply imported where it's used.
+**Load order.** Loading a module only defines things: functions, constants, and variables to fill in later. What it does as the page starts goes in its `init()`. `app.js` imports every module, then runs their `init()`s in a fixed order, the order the code had when it was one script, so each part's start-up can use what the parts before it set up.
+- **At the top of a module**, only what can run in any order: functions, plain values (numbers, text, lists, objects), arrow functions, and values from modules that import nothing. Anything that calls a function, looks something up in the page, or reads another part's state is declared at the top with `let` and set in `init()`.
+- **A new module with start-up code** exports `init()` and gets a place in the list in `app.js`. A module that only defines things (e.g. `shared/settings.js`, `shared/store.js`, `platforms/kick.js`) has no `init()` and isn't in the list.
 
-**Imports and exports.** Don't write them by hand: run `npm run page-imports` after a change. It works out each module's `import { … }` lines and its `export { … }` list from what the code uses and declares, and keeps the load-order line. `npm test` fails when they're out of step.
+**Imports and exports.** Don't write them by hand: run `npm run page-imports` after a change. It works out each module's `import { … }` lines and its `export { … }` list (with `init`) from what the code uses and declares. `npm test` fails when they're out of step.
 
 **Another module's variable.** A module can read a variable it imports, but can't assign to it. The module that owns it has an accessor object for the ones other modules change: `coreVars.wins = …`, `layoutVars.scrollX = 0`, `bellVars.dndUntil = …`. To let another module change one more, add a getter and setter for it to that object.
 

@@ -1,6 +1,5 @@
-import '../layout/geometry.js';   // runs after it (see app.js)
-import { closeOnOutside } from '../shared/popover.js';
 import { $ } from '../core.js';
+import { closeOnOutside } from '../shared/popover.js';
 import { tipName } from '../shared/tooltips.js';
 
 /* ---------- title bars fit any window size ----------
@@ -38,17 +37,14 @@ function fitBar(bar){
   if (!fits()) bar.classList.add('b4');
   bar.fitObs?.takeRecords();                               // ignore our own changes
 }
-const barSizes = new ResizeObserver(es => es.forEach(e => fitBar(e.target)));
+let barSizes;
 function watchBar(bar){
   barSizes.observe(bar);
   // a button showing or hiding (mod view, extensions, mentions) or a new title changes what fits
   bar.fitObs = new MutationObserver(() => fitBar(bar));
   bar.fitObs.observe(bar, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
 }
-if (document.fonts) document.fonts.ready.then(() => document.querySelectorAll('#stage .bar').forEach(fitBar));
-
-// The ⋯ menu: the buttons that didn't fit, each doing what its button does.
-const barMenu = $('#barMenu');
+let barMenu;
 let barMenuFor = null;
 function openBarMenu(more){
   if (!barMenu.hidden && barMenuFor === more){ barMenu.hidden = true; return; }
@@ -72,6 +68,15 @@ function openBarMenu(more){
   barMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
   barMenu.style.top = Math.min(innerHeight - barMenu.offsetHeight - 8, r.bottom + 4) + 'px';
 }
-closeOnOutside(barMenu, { button: () => barMenuFor, capture: true });
 
-export { openBarMenu, watchBar };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  barSizes = new ResizeObserver(es => es.forEach(e => fitBar(e.target)));
+  if (document.fonts) document.fonts.ready.then(() => document.querySelectorAll('#stage .bar').forEach(fitBar));
+
+  // The ⋯ menu: the buttons that didn't fit, each doing what its button does.
+  barMenu = $('#barMenu');
+  closeOnOutside(barMenu, { button: () => barMenuFor, capture: true });
+}
+
+export { init, openBarMenu, watchBar };

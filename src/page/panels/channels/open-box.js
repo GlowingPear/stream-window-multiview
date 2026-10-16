@@ -1,10 +1,9 @@
-import './follow-suggestions.js';   // runs after it (see app.js)
-import { store } from '../../shared/store.js';
 import { $, input } from '../../core.js';
-import { PLAT_NAME, chLabel, parseInput, platOf } from '../../platforms/platforms.js';
-import { loadSavedProfiles, persistSaved, saved, tabPlat } from './channels.js';
 import { addParsed } from '../../layout/placement.js';
+import { loadSavedProfiles, persistSaved, saved, tabPlat } from './channels.js';
+import { PLAT_NAME, chLabel, parseInput, platOf } from '../../platforms/platforms.js';
 import { flash } from '../../shared/flash.js';
+import { store } from '../../shared/store.js';
 
 /* Opening a channel from the Channels box. The same box searches your saved channels; for a name or link it
    also offers "Add <name> from Kick / Twitch / YouTube" with Open (Enter) and Open & save. A bare name goes to
@@ -23,7 +22,6 @@ function addTarget(){
   if (!p) return null;
   return { raw, p, bare, plat: p.channel ? platOf(p.channel) : '', name: p.channel ? chLabel(p.channel) : (p.url || raw).replace(/^https?:\/\//, '') };
 }
-store.watch('channelsBox', () => renderAddRow());
 function renderAddRow(){
   const t = addTarget(), row = $('#spAddRow');
   $('#spErr').hidden = true;
@@ -66,4 +64,9 @@ async function openFromBox(saveToo){
   addParsed(t.p);
 }
 
-export { addPlat, openBoxVars, openFromBox };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  store.watch('channelsBox', () => renderAddRow());
+}
+
+export { addPlat, init, openBoxVars, openFromBox };

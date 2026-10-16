@@ -1,11 +1,10 @@
-import './translate.js';   // runs after it (see app.js)
-import { fromSite } from '../shared/incoming.js';
-import { DESKTOP } from '../shared/env.js';
-import { MENTION_JS, mentionAgent } from './mentions.js';
 import { emoteAgent } from './emote-preview.js';
+import { MENTION_JS, mentionAgent } from './mentions.js';
 import { newEmoteAgent } from './new-emotes.js';
 import { translateAgent } from './translate.js';
 import { platOf } from '../platforms/platforms.js';
+import { DESKTOP } from '../shared/env.js';
+import { fromSite } from '../shared/incoming.js';
 
 // Kick chat commands that only work on the channel page: the popout chat (what the app shows) knows them
 // but has nowhere to show their popup, so they do nothing there. The app offers to open the channel page.
@@ -32,9 +31,7 @@ function kickCmdAgent(names){
   window.__kmvKickCmd = { cmdOf };
   return true;
 }
-const KICK_CMD_JS = `(${kickCmdAgent.toString()})(${JSON.stringify(Object.keys(KICK_PAGE_CMDS))})`;
-// Says so in the chat window itself, over its chat box, with Cancel / Open channel page (muted, your login).
-fromSite('kick-cmd', (w, cmd, view) => { if (w.view === view) kickPageCmd(w, cmd); }, /^[a-z]+$/);   // see kickCmdAgent
+let KICK_CMD_JS;
 function kickPageCmd(w, cmd){
   if (!KICK_PAGE_CMDS[cmd] || platOf(w.channel) !== 'kick' || !w.el) return;
   const body = w.el.querySelector('.body');
@@ -54,7 +51,14 @@ function kickPageCmd(w, cmd){
   };
   body.append(card);   // (not focused: another Enter in the chat mustn't open the page)
 }
-window.chatAgentJs = MENTION_JS; window.newEmoteAgent = newEmoteAgent; window.mentionAgent = mentionAgent; window.emoteAgent = emoteAgent; window.translateAgent = translateAgent;   // for the tests
-window.kickCmdAgent = kickCmdAgent; window.kickPageCmd = kickPageCmd; window.KICK_PAGE_CMDS = KICK_PAGE_CMDS;
 
-export { KICK_CMD_JS };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  KICK_CMD_JS = `(${kickCmdAgent.toString()})(${JSON.stringify(Object.keys(KICK_PAGE_CMDS))})`;
+  // Says so in the chat window itself, over its chat box, with Cancel / Open channel page (muted, your login).
+  fromSite('kick-cmd', (w, cmd, view) => { if (w.view === view) kickPageCmd(w, cmd); }, /^[a-z]+$/);   // see kickCmdAgent
+  window.chatAgentJs = MENTION_JS; window.newEmoteAgent = newEmoteAgent; window.mentionAgent = mentionAgent; window.emoteAgent = emoteAgent; window.translateAgent = translateAgent;   // for the tests
+  window.kickCmdAgent = kickCmdAgent; window.kickPageCmd = kickPageCmd; window.KICK_PAGE_CMDS = KICK_PAGE_CMDS;
+}
+
+export { init, KICK_CMD_JS };

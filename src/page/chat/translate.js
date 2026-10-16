@@ -1,18 +1,15 @@
-import '../windows/views.js';   // runs after it (see app.js)
+import { wins } from '../core.js';
+import { TRANSLATE_JS } from '../in-site/translate.js';
 import { fromApp, fromSite } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { runIn, viewId } from '../windows/view.js';
-import { wins } from '../core.js';
-import { TRANSLATE_JS } from '../in-site/translate.js';
 
 /* Translating a chat (see translateAgent): the chat asks through console messages, the main process translates.
    "Translate new messages too" is remembered for each chat. */
 const autoTr = new Set();
-[].concat(settings.json('autoTranslate', [])).forEach(c => { if (typeof c === 'string') autoTr.add(c); });
 // Settings > General > Translate new messages in every chat (off unless switched on); the chats it's switched off in
 let trAll = settings.flag('translateAll');
 const noTr = new Set();
-[].concat(settings.json('noTranslate', [])).forEach(c => { if (typeof c === 'string') noTr.add(c); });
 const saveAutoTr = () => { settings.set('autoTranslate', [...autoTr].slice(-200)) && settings.set('noTranslate', [...noTr].slice(-200)); };
 // Does this chat translate new messages as they come?
 const autoTrFor = ch => trAll ? !noTr.has(ch) : autoTr.has(ch);
@@ -26,7 +23,6 @@ function setTrAll(on){
     runIn(w.view, `${TRANSLATE_JS};${js}`);
   });
 }
-fromSite('tr', (w, json, view) => { if (w.view === view) translateFor(view, json); });
 async function translateFor(frame, json){
   let d; try { d = JSON.parse(json); } catch { return; }
   const texts = d && Array.isArray(d.texts) ? d.texts.filter(t => typeof t === 'string').slice(0, 25) : [];
@@ -47,6 +43,13 @@ function translateChat(w, a){
   runIn(w.view, `${TRANSLATE_JS};${js}`);
 }
 const winOfView = id => wins.find(w => w.view && viewId(w.view) === id);
-fromApp('onViewTranslate', (id, a) => translateChat(winOfView(id), a));
 
-export { autoTrFor, setTrAll, trAll, winOfView };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  [].concat(settings.json('autoTranslate', [])).forEach(c => { if (typeof c === 'string') autoTr.add(c); });
+  [].concat(settings.json('noTranslate', [])).forEach(c => { if (typeof c === 'string') noTr.add(c); });
+  fromSite('tr', (w, json, view) => { if (w.view === view) translateFor(view, json); });
+  fromApp('onViewTranslate', (id, a) => translateChat(winOfView(id), a));
+}
+
+export { autoTrFor, init, setTrAll, trAll, winOfView };

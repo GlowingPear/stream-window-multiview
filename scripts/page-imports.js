@@ -2,11 +2,12 @@
 // Mac and Linux.
 //   npm run page-imports              rewrites each module's imports (what it uses from the others) and exports
 //   npm run page-imports -- --check   only says which modules are out of step (npm test runs this)
-// A module's first line, when it's the bare "runs after it" import, is the load order (see src/page/app.js) and
-// stays as it is. Everything else in the import block, and the export list at the end, is worked out again:
+// A bare import '…'; line (one that only loads a module) stays as it is. The other imports, and the export list at
+// the end, are worked out again:
 // a module imports each name it uses that another module declares at its top level, and exports the names
 // other modules use. An object's key ({ name: … }) isn't a use. A name the module also declares inside itself
-// (a parameter, a local variable) is only imported if it already was: the script says so, to check by hand.
+// (a parameter, a local variable) is only imported if it already was: the script says so, to check by hand. A
+// module's init() (what it does as the page starts) is always exported: src/page/app.js runs it.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -112,13 +113,13 @@ function localNames(text) {
   return out;
 }
 
-/* ---- A module: its load-order line, what it imports now, and its code ---- */
+/* ---- A module: a bare import line it may have, what it imports now, and its code ---- */
 function readModule(file) {
   const L = fs.readFileSync(file, 'utf8').replace(/\n$/, '').split('\n');
-  let i = 0, chain = null;
+  let i = 0, bare = null;
   const had = new Set();
   while (i < L.length && /^import /.test(L[i])) {
-    if (/^import '[^']+';/.test(L[i])) { chain = L[i]; i++; continue; }
+    if (/^import '[^']+';/.test(L[i])) { bare = L[i]; i++; continue; }
     const st = i;
     while (i < L.length && !/;(\s*\/\/.*)?$/.test(L[i])) i++;
     const m = L.slice(st, i + 1).join(' ').match(/\{([^}]*)\}/);
@@ -133,7 +134,7 @@ function readModule(file) {
     if (s >= 0 && L.slice(s, k + 1).every((l, x) => x === 0 || /^ {2}/.test(l))) j = s;
   }
   while (j > i && L[j - 1] === '') j--;
-  return { chain, had, body: L.slice(i, j) };
+  return { bare, had, body: L.slice(i, j) };
 }
 
 // Wraps "import { a, b, … } from '…';" at about 120 characters.
@@ -147,8 +148,6 @@ function wrap(list, lead, tail) {
 // { file: new text } for the modules whose imports or exports aren't what their code needs, and notes to check.
 function plan(dir = PAGE) {
   const files = fs.readdirSync(dir, { recursive: true }).map(f => f.split(path.sep).join('/')).filter(f => f.endsWith('.js') && f !== 'app.js').sort();
-  const order = fs.readFileSync(path.join(dir, 'app.js'), 'utf8').split('\n').map(l => l.match(/^\/\/\s+\d+\. (.+)$/)).filter(Boolean).map(m => m[1]);
-  const rank = f => order.indexOf(f);          // modules outside the load order (-1) first
   const mods = Object.fromEntries(files.map(f => [f, readModule(path.join(dir, f))]));
   const declared = Object.fromEntries(files.map(f => [f, topLevelNames(mods[f].body)]));
   const owner = {}, ambiguous = new Set();     // a name several modules declare (each its own) is never imported
@@ -176,10 +175,10 @@ function plan(dir = PAGE) {
   const rel = (from, to) => { const r = path.posix.relative(path.posix.dirname(from), to); return r.startsWith('.') ? r : './' + r; };
   const changes = {};
   for (const f of files) {
-    const head = mods[f].chain ? [mods[f].chain] : [];
-    for (const src of [...uses[f].keys()].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b)))
+    const head = mods[f].bare ? [mods[f].bare] : [];
+    for (const src of [...uses[f].keys()].sort((a, b) => a.localeCompare(b)))
       head.push(...wrap([...uses[f].get(src)].sort(), 'import { ', ` } from '${rel(f, src)}';`));
-    const ex = [...(exportsOf[f] || [])].sort((a, b) => a.localeCompare(b));
+    const ex = [...(exportsOf[f] || []), ...(declared[f].has('init') ? ['init'] : [])].sort((a, b) => a.localeCompare(b));   // init: app.js runs it
     const tail = ex.length ? ['', ...wrap(ex, 'export { ', ' };')] : [];
     const text = [...head, ...(head.length ? [''] : []), ...mods[f].body, ...tail].join('\n') + '\n';
     if (fs.readFileSync(path.join(dir, f), 'utf8') !== text) changes[f] = text;

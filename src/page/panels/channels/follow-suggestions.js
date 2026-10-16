@@ -1,8 +1,7 @@
-import './channels.js';   // runs after it (see app.js)
 import { $, ROLE, input } from '../../core.js';
-import { PLAT_NAME } from '../../platforms/platforms.js';
-import { channelRow, fmtViewers, loadSavedProfiles, persistSaved, renderSaved, saved, savedTab } from './channels.js';
 import { addParsed } from '../../layout/placement.js';
+import { channelRow, fmtViewers, loadSavedProfiles, persistSaved, renderSaved, saved, savedTab } from './channels.js';
+import { PLAT_NAME } from '../../platforms/platforms.js';
 import { flash } from '../../shared/flash.js';
 import { panel } from '../../toolbar/toolbar.js';
 

@@ -1,4 +1,3 @@
-import './new-emotes.js';   // runs after it (see app.js)
 import { restore } from '../persistence.js';
 import { ask } from '../shared/ask.js';
 
@@ -137,6 +136,11 @@ function translateAgent(){
   };
   return true;
 }
-const TRANSLATE_JS = `(${translateAgent.toString()})()`;
+let TRANSLATE_JS;
 
-export { TRANSLATE_JS, translateAgent };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  TRANSLATE_JS = `(${translateAgent.toString()})()`;
+}
+
+export { init, TRANSLATE_JS, translateAgent };

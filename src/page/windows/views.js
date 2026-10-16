@@ -1,28 +1,27 @@
-import './windows.js';   // runs after it (see app.js)
-import { fromSite, siteMessage } from '../shared/incoming.js';
-import { settings } from '../shared/settings.js';
-import { addCss, reloadView, runIn, setMuted, setZoom } from './view.js';
-import { ROLE, wins } from '../core.js';
-import { DESKTOP } from '../shared/env.js';
-import { EMOTE_JS } from '../in-site/emote-preview.js';
-import { NEW_EMOTE_CSS, NEW_EMOTE_JS } from '../in-site/new-emotes.js';
-import { TRANSLATE_JS } from '../in-site/translate.js';
-import { KICK_CMD_JS } from '../in-site/kick-commands.js';
-import { chLabel, checkMod, extCount, platOf, platform, srcFor, trimPlayerPage, viewPartition } from '../platforms/platforms.js';
-import { focusWin } from '../layout/geometry.js';
-import { liftAudioSoon, pushVol } from './windows.js';
+import { clearAlert } from '../alerts/alerts.js';
+import { chatZoom } from '../chat/chat-zoom.js';
 import { autoTrFor } from '../chat/translate.js';
 import { resolveYt } from '../chat/view-menu.js';
-import { watchRaid } from './raids.js';
-import { readChat } from '../panels/bell/bell.js';
+import { ROLE, wins } from '../core.js';
+import { EMOTE_JS } from '../in-site/emote-preview.js';
+import { KICK_CMD_JS } from '../in-site/kick-commands.js';
+import { NEW_EMOTE_CSS, NEW_EMOTE_JS } from '../in-site/new-emotes.js';
+import { TRANSLATE_JS } from '../in-site/translate.js';
+import { focusWin } from '../layout/geometry.js';
 import { injectMention } from '../panels/bell/all-notifications.js';
-import { clearAlert } from '../alerts/alerts.js';
-import { flash } from '../shared/flash.js';
-import { applyPlay } from './pause.js';
-import { applyChatView, syncLike } from '../platforms/youtube-options.js';
-import { chatZoom } from '../chat/chat-zoom.js';
-import { mountCapture, openCapturePicker } from './capture.js';
+import { readChat } from '../panels/bell/bell.js';
 import { extButton } from '../panels/extensions/extensions.js';
+import { chLabel, checkMod, extCount, platOf, platform, srcFor, trimPlayerPage, viewPartition } from '../platforms/platforms.js';
+import { applyChatView, syncLike } from '../platforms/youtube-options.js';
+import { DESKTOP } from '../shared/env.js';
+import { flash } from '../shared/flash.js';
+import { fromSite, siteMessage } from '../shared/incoming.js';
+import { settings } from '../shared/settings.js';
+import { mountCapture, openCapturePicker } from './capture.js';
+import { applyPlay } from './pause.js';
+import { watchRaid } from './raids.js';
+import { addCss, reloadView, runIn, setMuted, setZoom } from './view.js';
+import { liftAudioSoon, pushVol } from './windows.js';
 
 /* The player / chat inside a window. YouTube channels first need their current live video looked up. */
 const ytCache = {};
@@ -102,7 +101,6 @@ function mountView(w){
 // New emotes (Settings > General, off unless switched on): ask the app which are new for this channel, mark them,
 // and say so once when there are newly added ones.
 var newEmotesOn = false;
-newEmotesOn = settings.flag('newEmotes');
 async function markNewEmotes(w){
   if (!DESKTOP || !window.kmv.emotesOpen || !w.channel || !platform(w.channel).emoteLists) return;
   const frame = w.view;
@@ -113,7 +111,6 @@ async function markNewEmotes(w){
   const a = r.added || [];
   if (a.length) flash(`${chLabel(w.channel)} has ${a.length === 1 ? 'a new emote' : a.length + ' new emotes'}: ${a.slice(0, 5).join(', ')}${a.length > 5 ? ` and ${a.length - 5} more` : ''}`);
 }
-fromSite('emote-seen', (w, json, view) => { if (w.view === view) newEmoteSeen(w, json); });
 function newEmoteSeen(w, json){
   let d; try { d = JSON.parse(json); } catch { return; }
   if (!d || typeof d.name !== 'string' || !window.kmv.emotesSeen) return;
@@ -128,9 +125,6 @@ const viewVars = {
   get newEmotesOn(){ return newEmotesOn; }, set newEmotesOn(v){ newEmotesOn = v; },
   get emoteOn(){ return emoteOn; }, set emoteOn(v){ emoteOn = v; },
 };
-emoteOn = settings.flag('emotePreview');
-// "Copy image" on an emote card: the app fetches the picture (only from the emote sites) and copies a still of it
-fromSite('emote-copy', (w, json) => copyEmote(json));
 async function copyEmote(json){
   let d; try { d = JSON.parse(json); } catch { return; }
   if (!d || typeof d.url !== 'string' || !window.kmv || !window.kmv.emoteFetch) return;
@@ -149,4 +143,13 @@ async function pngOf(src){
   } catch { return null; }
 }
 
-export { emoteOn, markNewEmotes, mountView, newEmotesOn, pngOf, reloadWin, viewVars, ytCache };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  newEmotesOn = settings.flag('newEmotes');
+  fromSite('emote-seen', (w, json, view) => { if (w.view === view) newEmoteSeen(w, json); });
+  emoteOn = settings.flag('emotePreview');
+  // "Copy image" on an emote card: the app fetches the picture (only from the emote sites) and copies a still of it
+  fromSite('emote-copy', (w, json) => copyEmote(json));
+}
+
+export { emoteOn, init, markNewEmotes, mountView, newEmotesOn, pngOf, reloadWin, viewVars, ytCache };

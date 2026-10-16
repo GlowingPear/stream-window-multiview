@@ -1,21 +1,20 @@
-import '../shortcuts.js';   // runs after it (see app.js)
+import { BAR, GAP, ROLE, colsMode, coreVars, lastLayout, wins } from '../core.js';
+import { buildCols } from './columns.js';
+import { SH, SW, setRect } from './geometry.js';
+import { applyRects, chatRects, colKey, gridRects, mkDiv, setColsMode, switchMode } from './layouts.js';
+import { placeSwitcher } from './switch-control.js';
+import { save } from '../persistence.js';
+import { chLabelP } from '../platforms/platforms.js';
 import { esc } from '../shared/element.js';
+import { DESKTOP } from '../shared/env.js';
+import { flash } from '../shared/flash.js';
+import { icon } from '../shared/icons.js';
 import { fromApp } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
-import { BAR, GAP, ROLE, colsMode, coreVars, lastLayout, wins } from '../core.js';
-import { icon } from '../shared/icons.js';
-import { DESKTOP } from '../shared/env.js';
-import { chLabelP } from '../platforms/platforms.js';
-import { SH, SW, setRect } from './geometry.js';
-import { flash } from '../shared/flash.js';
-import { applyRects, chatRects, colKey, gridRects, mkDiv, setColsMode, switchMode } from './layouts.js';
-import { refreshPicks } from '../windows/channel-picker.js';
-import { buildCols } from './columns.js';
-import { placeSwitcher } from './switch-control.js';
-import { save } from '../persistence.js';
 import { panel } from '../toolbar/toolbar.js';
 import { openCapturePicker } from '../windows/capture.js';
+import { refreshPicks } from '../windows/channel-picker.js';
 
 /* ===================== 2.3: Game focus layout ===================== */
 // The game gets the big area; streams, chats and other windows stack up on the side.
@@ -31,19 +30,12 @@ const gameVars = {
   get gameKey(){ return gameKey; }, set gameKey(v){ gameKey = v; },
   get attachForGame(){ return attachForGame; }, set attachForGame(v){ attachForGame = v; },
 };
-{ const g = settings.json('game', {});
-  if (g.mode === 'see' || g.mode === 'window') gameMode = g.mode;
-  if (['s', 'm', 'l'].includes(g.size)) gameSize = g.size;
-  if (g.side === 'left' || g.side === 'right') gameSide = g.side;
-  if (typeof g.onTop === 'boolean') gameOnTop = g.onTop;
-  if (typeof g.strip === 'boolean') gameStrip = g.strip; }
 const saveGame = () => { settings.set('game', { mode: gameMode, size: gameSize, side: gameSide, onTop: gameOnTop, strip: gameStrip }); };
-const shapeOK = DESKTOP && ROLE === 'main' && !!(window.kmv && window.kmv.gameShape) && window.kmv.platform !== 'darwin';
-const attachOK = shapeOK && window.kmv.platform === 'win32' && !!window.kmv.gameAttach;
-if (!shapeOK) gameMode = 'window';
+let shapeOK;
+let attachOK;
 const GAME_FR = { s: 0.24, m: 0.31, l: 0.40 }, GBAR = 34;
-const gameArea = mkDiv('gameArea', '<div class="ga-hole"><div class="ga-tip"></div></div>');
-const gameBar = mkDiv('gameBar');
+let gameArea;
+let gameBar;
 function setGameKey(k){ gameKey = k; }
 const isGame = () => ROLE === 'main' && !colsMode && lastLayout === 'game';
 function gameRects(){
@@ -105,16 +97,6 @@ function renderGameBar(){
                 : '<b>Your game shows here.</b><br>Start the game in <b>borderless</b> or <b>windowed</b> mode (not exclusive full screen) and put it behind Stream Multiview. This area turns see-through so you can play it.')
     : '<b>Pick what to show here</b><br>Choose a stream or another app\'s window above, or drag one onto this spot from the switch control.';
 }
-gameBar.addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.gm){ gameMode = b.dataset.gm; saveGame(); gameLayout(); }
-  else if (b.dataset.gs){ gameSize = b.dataset.gs; saveGame(); gameLayout(); }
-  else if (b.classList.contains('gb-side')){ gameSide = gameSide === 'right' ? 'left' : 'right'; saveGame(); gameLayout(); }
-  else if (b.classList.contains('gb-cap')){ capForGame = true; openCapturePicker(null); }
-  else if (b.classList.contains('gb-attach')){ attachForGame = true; openCapturePicker(null); }
-  else if (b.classList.contains('gb-rel')) releaseGameWin(true);
-  else if (b.classList.contains('gb-play')) window.kmv.gameFocus();
-});
 async function attachGame(src){
   flash(`Moving “${src.name}” into the game area…`);
   let r = null;
@@ -130,12 +112,6 @@ async function releaseGameWin(say){
   if (say) flash(`“${n}” is back in its own window`);
   if (isGame()) renderGameBar();
 }
-if (attachOK) fromApp('onGameDetached', d => { if (gameAttached){ flash(`“${gameAttached}” was closed`, { subject: 'windows' }); gameAttached = null; if (isGame()) renderGameBar(); } });
-gameBar.addEventListener('change', e => {
-  if (e.target.classList.contains('gb-pick')){ gameKey = e.target.value || null; gameLayout(); }
-  else if (e.target.closest('.gb-top')){ gameOnTop = e.target.checked; saveGame(); }
-  else if (e.target.closest('.gb-strip')){ gameStrip = e.target.checked; saveGame(); window.kmv.gameStrip(gameStrip); }
-});
 // Keep the see-through hole, "keep on top" and the game area's look in step with what's on screen.
 let lastShapeSig = '', lastOnTop = null;
 function gameTick(){
@@ -165,6 +141,37 @@ function gameTick(){
   const top = see && gameOnTop;
   if (top !== lastOnTop){ lastOnTop = top; if (shapeOK) window.kmv.gameOnTop(top); }
 }
-if (ROLE === 'main') setInterval(gameTick, 200);
 
-export { attachForGame, attachGame, capForGame, gameKey, gameLayout, gameVars, isGame, saveGame, setGameKey };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  { const g = settings.json('game', {});
+    if (g.mode === 'see' || g.mode === 'window') gameMode = g.mode;
+    if (['s', 'm', 'l'].includes(g.size)) gameSize = g.size;
+    if (g.side === 'left' || g.side === 'right') gameSide = g.side;
+    if (typeof g.onTop === 'boolean') gameOnTop = g.onTop;
+    if (typeof g.strip === 'boolean') gameStrip = g.strip; }
+  shapeOK = DESKTOP && ROLE === 'main' && !!(window.kmv && window.kmv.gameShape) && window.kmv.platform !== 'darwin';
+  attachOK = shapeOK && window.kmv.platform === 'win32' && !!window.kmv.gameAttach;
+  if (!shapeOK) gameMode = 'window';
+  gameArea = mkDiv('gameArea', '<div class="ga-hole"><div class="ga-tip"></div></div>');
+  gameBar = mkDiv('gameBar');
+  gameBar.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.gm){ gameMode = b.dataset.gm; saveGame(); gameLayout(); }
+    else if (b.dataset.gs){ gameSize = b.dataset.gs; saveGame(); gameLayout(); }
+    else if (b.classList.contains('gb-side')){ gameSide = gameSide === 'right' ? 'left' : 'right'; saveGame(); gameLayout(); }
+    else if (b.classList.contains('gb-cap')){ capForGame = true; openCapturePicker(null); }
+    else if (b.classList.contains('gb-attach')){ attachForGame = true; openCapturePicker(null); }
+    else if (b.classList.contains('gb-rel')) releaseGameWin(true);
+    else if (b.classList.contains('gb-play')) window.kmv.gameFocus();
+  });
+  if (attachOK) fromApp('onGameDetached', d => { if (gameAttached){ flash(`“${gameAttached}” was closed`, { subject: 'windows' }); gameAttached = null; if (isGame()) renderGameBar(); } });
+  gameBar.addEventListener('change', e => {
+    if (e.target.classList.contains('gb-pick')){ gameKey = e.target.value || null; gameLayout(); }
+    else if (e.target.closest('.gb-top')){ gameOnTop = e.target.checked; saveGame(); }
+    else if (e.target.closest('.gb-strip')){ gameStrip = e.target.checked; saveGame(); window.kmv.gameStrip(gameStrip); }
+  });
+  if (ROLE === 'main') setInterval(gameTick, 200);
+}
+
+export { attachForGame, attachGame, capForGame, gameKey, gameLayout, gameVars, init, isGame, saveGame, setGameKey };

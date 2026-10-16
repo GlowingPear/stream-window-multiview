@@ -1,14 +1,13 @@
-import '../in-site/volume.js';   // runs after it (see app.js)
+import { wins } from '../core.js';
 import { kick } from './kick.js';
 import { twitch } from './twitch.js';
+import { syncLike } from './youtube-options.js';
 import { youtube } from './youtube.js';
+import { DESKTOP } from '../shared/env.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { addCss, runIn } from '../windows/view.js';
-import { wins } from '../core.js';
-import { DESKTOP } from '../shared/env.js';
 import { mountView } from '../windows/views.js';
-import { syncLike } from './youtube-options.js';
 
 /* ---------- URL parsing ---------- */
 /* ---------- platforms ----------
@@ -17,7 +16,7 @@ import { syncLike } from './youtube-options.js';
    platform(ch) is a channel's. */
 const PLATFORMS = { kick, twitch, youtube };
 const DEFAULT_SITE = kick;     // a bare name is a Kick channel (unless a Channels tab says otherwise)
-const PLAT_NAME = Object.fromEntries(Object.values(PLATFORMS).map(p => [p.id, p.name]));
+let PLAT_NAME;
 // Small platform badge (K / T / Y in each platform's colour) shown next to channel names.
 const platIcon = p => `<i class="pi pi-${p}" title="${PLAT_NAME[p]}" aria-label="${PLAT_NAME[p]}">${(PLATFORMS[p] || {}).letter || '?'}</i>`;
 const platOf = ch => !ch ? '' : /^tw:/i.test(ch) ? 'twitch' : /^yt:/i.test(ch) ? 'youtube' : 'kick';
@@ -27,7 +26,6 @@ const platform = ch => PLATFORMS[platOf(ch)];
 // names in another script would hide which channel it is). YouTube: the name of a channel or video id ("@handles" stay).
 const NAMES = 'chNames';   // (a saved setting: shared/settings.js)
 const chNames = {};
-Object.assign(chNames, settings.json('ytNames', {}), settings.json(NAMES, {}));
 const handleKey = s => String(s).toLowerCase().replace(/[-_]/g, '');   // Kick turns "Retro_Rally" into retro-rally
 function nameFits(ch, name){
   if (name === ch) return false;
@@ -53,12 +51,6 @@ function namesChanged(chs){
   wins.forEach(w => { if (chs.includes(w.channel)) w.el.querySelector('.title').textContent = chLabel(w.channel); });
   store.changed('names');
 }
-settings.onChange(NAMES, (_, v) => {          // learned in the other window
-  let got = {}; try { got = JSON.parse(v || '{}') || {}; } catch {}
-  const changed = Object.keys(got).filter(ch => typeof got[ch] === 'string' && chNames[ch] !== got[ch]);
-  changed.forEach(ch => { chNames[ch] = got[ch]; });
-  if (changed.length) namesChanged(changed);
-});
 const infoNames = snap => Object.fromEntries(Object.entries(snap || {}).filter(([, i]) => i && !i.missing).map(([ch, i]) => [ch, i.name]));
 function chLabel(ch){
   if (!ch) return '';
@@ -117,7 +109,6 @@ const chatPartition = ch => (platform(ch) || DEFAULT_SITE).partition;
 // "Watch signed in" (account menu, per site): that site's stream players use your login too,
 // so you watch as your account. Off: each stream player gets its own logged-out storage.
 var watchSignedIn = { kick: false, twitch: false, youtube: false };
-{ const ws = settings.json('watchSignedIn', {}); for (const p in watchSignedIn) watchSignedIn[p] = ws[p] === true; }
 const streamPartition = ch => watchSignedIn[platOf(ch)] ? chatPartition(ch) : 'persist:kmv-stream-' + String(ch).replace(/[^a-z0-9_-]/gi, '_');
 let extCount = null;                    // Chrome extensions installed (null: not known yet)
 // Other files change these through platformVars: a variable imported from another file can't be assigned to.
@@ -140,11 +131,24 @@ function setWatchSignedIn(p, on){
   settings.set('watchSignedIn', watchSignedIn);
   remountStreams(p);
 }
-settings.onChange('watchSignedIn', (_, v) => {          // changed in the other window
-  let ws = {}; try { ws = JSON.parse(v || '{}') || {}; } catch {}
-  for (const p in watchSignedIn) if (watchSignedIn[p] !== (ws[p] === true)){ watchSignedIn[p] = ws[p] === true; remountStreams(p); }
-});
 
-export { chatSrc, checkMod, chLabel, chLabelP, extCount, externalFor, infoNames, modOk, modUrl, normCh, parseInput,
-  PLAT_NAME, platform, platformVars, platIcon, platOf, rememberName, rememberNames, setWatchSignedIn, srcFor,
-  streamSrc, trimPlayerPage, viewPartition, watchSignedIn, ytVidOf };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  PLAT_NAME = Object.fromEntries(Object.values(PLATFORMS).map(p => [p.id, p.name]));
+  Object.assign(chNames, settings.json('ytNames', {}), settings.json(NAMES, {}));
+  settings.onChange(NAMES, (_, v) => {          // learned in the other window
+    let got = {}; try { got = JSON.parse(v || '{}') || {}; } catch {}
+    const changed = Object.keys(got).filter(ch => typeof got[ch] === 'string' && chNames[ch] !== got[ch]);
+    changed.forEach(ch => { chNames[ch] = got[ch]; });
+    if (changed.length) namesChanged(changed);
+  });
+  { const ws = settings.json('watchSignedIn', {}); for (const p in watchSignedIn) watchSignedIn[p] = ws[p] === true; }
+  settings.onChange('watchSignedIn', (_, v) => {          // changed in the other window
+    let ws = {}; try { ws = JSON.parse(v || '{}') || {}; } catch {}
+    for (const p in watchSignedIn) if (watchSignedIn[p] !== (ws[p] === true)){ watchSignedIn[p] = ws[p] === true; remountStreams(p); }
+  });
+}
+
+export { chatSrc, checkMod, chLabel, chLabelP, extCount, externalFor, infoNames, init, modOk, modUrl, normCh,
+  parseInput, PLAT_NAME, platform, platformVars, platIcon, platOf, rememberName, rememberNames, setWatchSignedIn,
+  srcFor, streamSrc, trimPlayerPage, viewPartition, watchSignedIn, ytVidOf };

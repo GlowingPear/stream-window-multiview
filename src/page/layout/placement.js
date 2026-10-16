@@ -1,15 +1,14 @@
-import '../alerts/spam-alerts.js';   // runs after it (see app.js)
 import { BAR, GAP, colsMode, lastLayout, modeSel, mutedChk, popped, wins } from '../core.js';
-import { DESKTOP } from '../shared/env.js';
-import { chLabel, rememberName } from '../platforms/platforms.js';
-import { SH, SW, focusWin } from './geometry.js';
-import { createWin } from '../windows/windows.js';
-import { refitLocked } from './lock.js';
-import { flash } from '../shared/flash.js';
-import { chatFocusLayout, layoutChatsOnly } from './layouts.js';
 import { columnsLayout } from './columns.js';
-import { popPartial } from '../windows/popout.js';
+import { SH, SW, focusWin } from './geometry.js';
+import { chatFocusLayout, layoutChatsOnly } from './layouts.js';
+import { refitLocked } from './lock.js';
 import { save } from '../persistence.js';
+import { chLabel, rememberName } from '../platforms/platforms.js';
+import { DESKTOP } from '../shared/env.js';
+import { flash } from '../shared/flash.js';
+import { popPartial } from '../windows/popout.js';
+import { createWin } from '../windows/windows.js';
 
 /* ---------- placement ---------- */
 function defaultStreamRect(){

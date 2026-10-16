@@ -1,10 +1,9 @@
-import './layouts.js';   // runs after it (see app.js)
-import { settings } from '../shared/settings.js';
 import { GAP, colWidth, wins } from '../core.js';
+import { updateColNav } from './column-drag.js';
 import { SW } from './geometry.js';
 import { colStrip, featW, layoutVars, maxScroll, scrollRaf, scrollX, snapT } from './layouts.js';
+import { settings } from '../shared/settings.js';
 import { updateHbar } from '../windows/channel-picker.js';
-import { updateColNav } from './column-drag.js';
 
 /* ---- sideways scrolling (done by the app, so the highlighted area never moves) ---- */
 function setScrollX(x){
@@ -39,7 +38,6 @@ let pageStep = false;                 // false: one column per click; true: a wh
 const scrollVars = {
   get pageStep(){ return pageStep; }, set pageStep(v){ pageStep = v; },
 };
-pageStep = settings.flag('pageStep');
 function scrollCols(dir){   // steps one column (or one page); past the last it wraps to the first (and back)
   if (!colWidth || maxScroll <= 0) return;
   const lastIdx = Math.ceil(maxScroll / colWidth - 0.01);
@@ -59,4 +57,9 @@ function updatePageBtn(){
   ['-1', '1'].forEach(d => { const a = colStrip.querySelector(`.cs-btn[data-d="${d}"]`); if (a) a.title = (d === '1' ? 'Next' : 'Previous') + (pageStep ? ' page of streams' : ' stream'); });
 }
 
-export { pageStep, scrollCols, scrollVars, setScrollX, smoothScrollTo, snapSoon, updatePageBtn };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  pageStep = settings.flag('pageStep');
+}
+
+export { init, pageStep, scrollCols, scrollVars, setScrollX, smoothScrollTo, snapSoon, updatePageBtn };

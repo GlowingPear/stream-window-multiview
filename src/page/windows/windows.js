@@ -1,34 +1,33 @@
-import './window-bar.js';   // runs after it (see app.js)
+import { closeWin, resolveYt } from '../chat/view-menu.js';
+import { BAR, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, mutedChk, sizehint, snapChk, stage, wins } from '../core.js';
+import { VOL_JS } from '../in-site/volume.js';
+import { startSwapDrag } from '../layout/chat-focus.js';
+import { startColDrag } from '../layout/column-drag.js';
+import { columnsLayout } from '../layout/columns.js';
+import { syncSwitcher } from '../layout/focus-only.js';
+import { SH, SW, edges, focusWin, near, setRect, showHint, snapE } from '../layout/geometry.js';
+import { colKey, layoutVars, linked, setFeatured, toggleFeatured } from '../layout/layouts.js';
+import { locked, refitLocked, toggleMax } from '../layout/lock.js';
+import { addChatBeside } from '../layout/placement.js';
+import { nh, syncAtBtn, toggleChatMentions } from '../panels/bell/bell.js';
+import { toggleSaved } from '../panels/channels/channels.js';
+import { openExtMenu } from '../panels/extensions/extensions.js';
+import { openProfile } from '../panels/profiles/profiles.js';
+import { save } from '../persistence.js';
+import { chLabel, chLabelP, checkMod, externalFor, modUrl, platOf, platform } from '../platforms/platforms.js';
+import { syncLike, toggleLike } from '../platforms/youtube-options.js';
+import { DESKTOP } from '../shared/env.js';
+import { flash } from '../shared/flash.js';
+import { icon } from '../shared/icons.js';
 import { store } from '../shared/store.js';
 import { soon } from '../shared/timers.js';
-import { PLAYING, pauseEvents } from './pause-state.js';
-import { askIn, runIn, setMuted } from './view.js';
-import { BAR, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, mutedChk, sizehint, snapChk, stage, wins } from '../core.js';
-import { icon } from '../shared/icons.js';
-import { DESKTOP } from '../shared/env.js';
-import { VOL_JS } from '../in-site/volume.js';
-import { chLabel, chLabelP, checkMod, externalFor, modUrl, platOf, platform } from '../platforms/platforms.js';
-import { SH, SW, edges, focusWin, near, setRect, showHint, snapE } from '../layout/geometry.js';
-import { openBarMenu, watchBar } from './window-bar.js';
-import { mountView, reloadWin, ytCache } from './views.js';
-import { closeWin, resolveYt } from '../chat/view-menu.js';
-import { arrangedByHand } from './raids.js';
-import { locked, refitLocked, toggleMax } from '../layout/lock.js';
-import { toggleSaved } from '../panels/channels/channels.js';
-import { nh, syncAtBtn, toggleChatMentions } from '../panels/bell/bell.js';
-import { addChatBeside } from '../layout/placement.js';
-import { flash } from '../shared/flash.js';
-import { colKey, layoutVars, linked, setFeatured, toggleFeatured } from '../layout/layouts.js';
 import { chAvatar, swapWindows } from './channel-picker.js';
-import { columnsLayout } from '../layout/columns.js';
+import { PLAYING, pauseEvents } from './pause-state.js';
 import { isPaused } from './pause.js';
-import { syncLike, toggleLike } from '../platforms/youtube-options.js';
-import { syncSwitcher } from '../layout/focus-only.js';
-import { startColDrag } from '../layout/column-drag.js';
-import { startSwapDrag } from '../layout/chat-focus.js';
-import { save } from '../persistence.js';
-import { openProfile } from '../panels/profiles/profiles.js';
-import { openExtMenu } from '../panels/extensions/extensions.js';
+import { arrangedByHand } from './raids.js';
+import { askIn, runIn, setMuted } from './view.js';
+import { mountView, reloadWin, ytCache } from './views.js';
+import { openBarMenu, watchBar } from './window-bar.js';
 
 /* ---------- window creation ---------- */
 function createWin(spec, rect){
@@ -260,22 +259,27 @@ function liftAudio(w){
 function liftAudioSoon(w, left = 75){
   setTimeout(() => liftAudio(w).then(ok => { if (!ok && w.audioHeld && left > 1) liftAudioSoon(w, left - 1); }), 200);
 }
-// Keep the slider in step if you change volume with the player's own controls.
-if (DESKTOP) setInterval(() => {
-  wins.forEach(w => {
-    if (w.kind !== 'stream' || !w.ready) return;
-    if (w.audioHeld) liftAudio(w);
-    if (w.adjusting) return;
-    if (Date.now() < (w.enforceUntil || 0)){ pushVol(w); return; }
-    askIn(w.view, 'window.__kmv ? window.__kmv.get() : null').then(r => {
-      if (r && (Math.abs(r.v - w.vol) > 0.005 || r.m !== w.muted)){ w.vol = r.v; w.muted = r.m; renderVol(w); saveSoon(); }
-      if (r && r.p !== isPaused(w)){
-        w.pause = r.p ? pauseEvents.youPause(w.pause) : pauseEvents.youPlay(w.pause);   // its own player paused or played
-        w.sentPause = r.p; syncSwitcher();
-      }
-    }).catch(() => {});
-  });
-}, 1500);
-const saveSoon = soon(() => save(), 600);
+let saveSoon;
 
-export { createWin, liftAudioSoon, pushVol, saveSoon };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  // Keep the slider in step if you change volume with the player's own controls.
+  if (DESKTOP) setInterval(() => {
+    wins.forEach(w => {
+      if (w.kind !== 'stream' || !w.ready) return;
+      if (w.audioHeld) liftAudio(w);
+      if (w.adjusting) return;
+      if (Date.now() < (w.enforceUntil || 0)){ pushVol(w); return; }
+      askIn(w.view, 'window.__kmv ? window.__kmv.get() : null').then(r => {
+        if (r && (Math.abs(r.v - w.vol) > 0.005 || r.m !== w.muted)){ w.vol = r.v; w.muted = r.m; renderVol(w); saveSoon(); }
+        if (r && r.p !== isPaused(w)){
+          w.pause = r.p ? pauseEvents.youPause(w.pause) : pauseEvents.youPlay(w.pause);   // its own player paused or played
+          w.sentPause = r.p; syncSwitcher();
+        }
+      }).catch(() => {});
+    });
+  }, 1500);
+  saveSoon = soon(() => save(), 600);
+}
+
+export { createWin, init, liftAudioSoon, pushVol, saveSoon };

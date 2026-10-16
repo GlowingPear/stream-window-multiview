@@ -1,17 +1,16 @@
-import './general.js';   // runs after it (see app.js)
-import { SmvSpam } from '../../alerts/spam.js';
-import { esc } from '../../shared/element.js';
-import { settings } from '../../shared/settings.js';
-import { $, ROLE, wins } from '../../core.js';
-import { icon } from '../../shared/icons.js';
-import { chLabelP } from '../../platforms/platforms.js';
-import { dropNotes, mentOn, notes, timeAgo } from '../bell/bell.js';
-import { pushMyName } from '../bell/all-notifications.js';
 import { SOUND_KEY, alerts, playSound, saveAlerts } from '../../alerts/alerts.js';
 import { revealChat, spamOpts } from '../../alerts/spam-alerts.js';
-import { flash } from '../../shared/flash.js';
+import { SmvSpam } from '../../alerts/spam.js';
+import { $, ROLE, wins } from '../../core.js';
+import { pushMyName } from '../bell/all-notifications.js';
+import { dropNotes, mentOn, notes, timeAgo } from '../bell/bell.js';
 import { syncLiveAlerts } from './notifications.js';
 import { closeSettings, settingsDlg } from './settings.js';
+import { chLabelP } from '../../platforms/platforms.js';
+import { esc } from '../../shared/element.js';
+import { flash } from '../../shared/flash.js';
+import { icon } from '../../shared/icons.js';
+import { settings } from '../../shared/settings.js';
 
 /* Mentions and spam alert options: every control with data-al="kind.option" */
 function syncAlertControls(){
@@ -55,44 +54,6 @@ async function setAlert(kind, k, v){
   if (k === 'color') wins.forEach(w => { if (w.alert && w.alert.kind === kind) w.el.style.setProperty('--al', v); });
   if (kind === 'live' && k === 'notify') syncLiveAlerts();
 }
-settingsDlg.addEventListener('change', e => {
-  const c = e.target.closest('[data-al]'); if (!c || c.classList.contains('seg')) return;
-  const [kind, k] = c.dataset.al.split('.');
-  setAlert(kind, k, c.type === 'checkbox' ? c.checked : c.type === 'range' || k === 'esc' ? +c.value : c.value);
-});
-settingsDlg.addEventListener('click', e => {
-  const b = e.target.closest('[data-play]'); if (b) playSound(b.dataset.play, true);
-  const s = e.target.closest('.seg[data-al] button');
-  if (s){ const [kind, k] = s.parentNode.dataset.al.split('.'); setAlert(kind, k, s.dataset.v); }
-});
-$('#spamOn').addEventListener('change', e => {
-  alerts.spam.on = e.target.checked; saveAlerts(); syncAlertControls();
-  if (typeof pushMyName === 'function') pushMyName();      // the chats start or stop handing over their messages
-  flash(alerts.spam.on ? 'Spam alerts on, in chats you moderate' : 'Spam alerts off');
-});
-$('#mentTabs').addEventListener('click', e => {
-  const b = e.target.closest('button[data-t]'); if (!b) return;
-  $('#mentTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-  settingsDlg.querySelectorAll('[data-s=mentions] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
-});
-$('#ntTabs').addEventListener('click', e => {
-  const b = e.target.closest('button[data-t]'); if (!b) return;
-  $('#ntTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-  settingsDlg.querySelectorAll('[data-s=notify] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
-});
-// Spam alerts > Lists: pick a list on the left, it shows on the right.
-$('#spamListPick').addEventListener('click', e => {
-  const b = e.target.closest('button[data-l]'); if (!b) return;
-  $('#spamListPick').querySelectorAll('button').forEach(x => x.classList.toggle('sel', x === b));
-  settingsDlg.querySelectorAll('[data-s=spam] .ly-panel[data-l]').forEach(p => { p.hidden = p.dataset.l !== b.dataset.l; });
-});
-$('#spamTabs').addEventListener('click', e => {
-  const b = e.target.closest('button[data-t]'); if (!b) return;
-  $('#spamTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-  settingsDlg.querySelectorAll('[data-s=spam] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
-  if (b.dataset.t === 'history') renderSpamHist();   // fresh "x min ago"
-});
-
 /* Spam alerts: allowed sites, promo words, bot opening lines and chat bots to ignore. Mentions: chat bots to ignore
    ('mbots'), which spam alerts show (read-only) and use instead of their own while they share it. */
 const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS, openers: () => SmvSpam.OPENERS, ignore: () => SmvSpam.BOTS, mbots: () => SmvSpam.BOTS };
@@ -137,10 +98,6 @@ function addSpamItem(which){
   const l = listOf(which); if (!l.some(x => x.toLowerCase() === v.toLowerCase())) l.push(v);
   setSpamList(which, l); inp.value = '';
 }
-settingsDlg.querySelectorAll('[data-addbtn]').forEach(b => { b.onclick = () => addSpamItem(b.dataset.addbtn); });
-settingsDlg.querySelectorAll('[data-add]').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') addSpamItem(i.dataset.add); }));
-settingsDlg.querySelectorAll('[data-reset]').forEach(b => { b.onclick = () => setSpamList(b.dataset.reset, null); });
-
 /* Spam alerts: try a message */
 function trySpam(){
   const text = $('#spamTry').value.trim(), out = $('#spamRes');
@@ -152,8 +109,6 @@ function trySpam(){
   const head = r.spam ? `<b>Would be flagged</b> (${r.need} points needed)` : r.score >= r.need ? `Not flagged: it has ${r.score} points but no link to promote` : `Not flagged (${r.score} of the ${r.need} points needed)`;
   out.innerHTML = head + (r.signs.length ? '<table>' + r.signs.map(s => `<tr><td>${esc(s.text)}</td><td>+${s.points}</td></tr>`).join('') + `<tr class="tot"><td>Total</td><td>${r.score}</td></tr></table>` : '<div>No signs of spam.</div>');
 }
-$('#spamTryBtn').onclick = trySpam;
-
 /* Spam alerts: history of flagged messages */
 function renderSpamHist(){
   const list = $('#spamHist'); if (!list || $('#settingsDlg').hidden) return;   // (drawn when Settings opens)
@@ -183,8 +138,56 @@ function renderSpamHist(){
     list.appendChild(row);
   });
 }
-$('#spamHistClear').onclick = () => dropNotes(n => n.kind === 'spam');
-['#spamTry', '#spamTrySender'].forEach(s => $(s).addEventListener('keydown', e => { if (e.key === 'Enter') trySpam(); }));
-syncAlertControls(); renderSpamLists(); renderSpamHist();
 
-export { ignoreSender, renderSpamHist, syncAlertControls };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  settingsDlg.addEventListener('change', e => {
+    const c = e.target.closest('[data-al]'); if (!c || c.classList.contains('seg')) return;
+    const [kind, k] = c.dataset.al.split('.');
+    setAlert(kind, k, c.type === 'checkbox' ? c.checked : c.type === 'range' || k === 'esc' ? +c.value : c.value);
+  });
+  settingsDlg.addEventListener('click', e => {
+    const b = e.target.closest('[data-play]'); if (b) playSound(b.dataset.play, true);
+    const s = e.target.closest('.seg[data-al] button');
+    if (s){ const [kind, k] = s.parentNode.dataset.al.split('.'); setAlert(kind, k, s.dataset.v); }
+  });
+  $('#spamOn').addEventListener('change', e => {
+    alerts.spam.on = e.target.checked; saveAlerts(); syncAlertControls();
+    if (typeof pushMyName === 'function') pushMyName();      // the chats start or stop handing over their messages
+    flash(alerts.spam.on ? 'Spam alerts on, in chats you moderate' : 'Spam alerts off');
+  });
+  $('#mentTabs').addEventListener('click', e => {
+    const b = e.target.closest('button[data-t]'); if (!b) return;
+    $('#mentTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    settingsDlg.querySelectorAll('[data-s=mentions] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
+  });
+  $('#ntTabs').addEventListener('click', e => {
+    const b = e.target.closest('button[data-t]'); if (!b) return;
+    $('#ntTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    settingsDlg.querySelectorAll('[data-s=notify] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
+  });
+  // Spam alerts > Lists: pick a list on the left, it shows on the right.
+  $('#spamListPick').addEventListener('click', e => {
+    const b = e.target.closest('button[data-l]'); if (!b) return;
+    $('#spamListPick').querySelectorAll('button').forEach(x => x.classList.toggle('sel', x === b));
+    settingsDlg.querySelectorAll('[data-s=spam] .ly-panel[data-l]').forEach(p => { p.hidden = p.dataset.l !== b.dataset.l; });
+  });
+  $('#spamTabs').addEventListener('click', e => {
+    const b = e.target.closest('button[data-t]'); if (!b) return;
+    $('#spamTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    settingsDlg.querySelectorAll('[data-s=spam] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
+    if (b.dataset.t === 'history') renderSpamHist();   // fresh "x min ago"
+  });
+
+  settingsDlg.querySelectorAll('[data-addbtn]').forEach(b => { b.onclick = () => addSpamItem(b.dataset.addbtn); });
+  settingsDlg.querySelectorAll('[data-add]').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') addSpamItem(i.dataset.add); }));
+  settingsDlg.querySelectorAll('[data-reset]').forEach(b => { b.onclick = () => setSpamList(b.dataset.reset, null); });
+
+  $('#spamTryBtn').onclick = trySpam;
+
+  $('#spamHistClear').onclick = () => dropNotes(n => n.kind === 'spam');
+  ['#spamTry', '#spamTrySender'].forEach(s => $(s).addEventListener('keydown', e => { if (e.key === 'Enter') trySpam(); }));
+  syncAlertControls(); renderSpamLists(); renderSpamHist();
+}
+
+export { ignoreSender, init, renderSpamHist, syncAlertControls };

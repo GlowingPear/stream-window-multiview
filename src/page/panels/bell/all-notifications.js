@@ -1,17 +1,16 @@
-import './bell.js';   // runs after it (see app.js)
-import { SmvNotes } from './notifications.js';
-import { settings } from '../../shared/settings.js';
-import { runIn } from '../../windows/view.js';
+import { alerts } from '../../alerts/alerts.js';
 import { $, wins } from '../../core.js';
-import { icon } from '../../shared/icons.js';
 import { MENTION_JS } from '../../in-site/mentions.js';
-import { platform } from '../../platforms/platforms.js';
 import { EMPTY, TAB_NAME, bell, bellVars, drawNotes, dropNotes, mentMuted, mentNameFor, mentOn, mentWords, myName,
   myTwitch, nh, noteRow, notes, readNotes, renderBell, seeBell } from './bell.js';
-import { alerts } from '../../alerts/alerts.js';
-import { flash } from '../../shared/flash.js';
+import { SmvNotes } from './notifications.js';
 import { openSettings } from '../settings/settings.js';
+import { platform } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
+import { flash } from '../../shared/flash.js';
+import { icon } from '../../shared/icons.js';
+import { settings } from '../../shared/settings.js';
+import { runIn } from '../../windows/view.js';
 
 /* All notifications: every one kept, with search and filters, grouped by day. */
 function openNoteHistory(tab){
@@ -46,37 +45,12 @@ function renderNoteHistory(){
     list.append(h, box);
   });
 }
-{
-  $('#mentWordAdd').onclick = addMentWord;
-  $('#mentWordIn').addEventListener('keydown', e => { if (e.key === 'Enter') addMentWord(); });
-  renderMentWords();
-  const d = $('#noteDlg');
-  d.querySelector('.help-x').onclick = closeNoteHistory;
-  d.addEventListener('pointerdown', e => { if (e.target === d) closeNoteHistory(); });
-  $('#nhQ').addEventListener('input', renderNoteHistory);
-  d.querySelector('.nc-pick').addEventListener('change', e => { nh.pick = e.target.value; renderNoteHistory(); });
-  $('#nhUnread').addEventListener('change', e => { nh.unread = e.target.checked; renderNoteHistory(); });
-  $('#nhRead').onclick = () => readNotes(n => nh.tab === 'all' || SmvNotes.tabOf(n) === nh.tab);
-  $('#nhClear').onclick = async () => {
-    const list = SmvNotes.filter(notes, { tab: nh.tab });
-    if (!await ask(nh.tab === 'all' ? 'Clear every notification?' : `Clear every ${TAB_NAME[nh.tab].toLowerCase()} notification?`,
-      `All ${list.length} kept here are deleted. The chats themselves aren't changed.`, { ok: 'Clear all', danger: true })) return;
-    const gone = new Set(list); dropNotes(n => gone.has(n));
-  };
-  const p = $('#bellPanel');
-  p.querySelector('.nc-pick').addEventListener('change', e => { bell.pick = e.target.value; renderBell(); seeBell(); });
-  $('#bellRead').onclick = () => readNotes(n => bell.tab === 'all' || SmvNotes.tabOf(n) === bell.tab);
-  $('#bellClear').onclick = () => { const gone = new Set(SmvNotes.filter(notes, { tab: bell.tab })); dropNotes(n => gone.has(n)); };
-  $('#bellAll').onclick = () => { p.hidden = true; openNoteHistory(bell.tab); };
-  $('#bellSettings').onclick = () => { p.hidden = true; openSettings('notify'); };
-}
 // The names or words changed (Settings > Mentions).
 function renderMentions(){
   const note = $('#mentNote');
   if (note) note.textContent = myName || myTwitch ? '' : mentWords.length ? 'Without a username, only your words are found (and your own messages can count).' : 'Needed for mention alerts. Click Detect, or type them in.';
   renderBell();
 }
-window.openNoteHistory = openNoteHistory;   // for the tests
 function setMentWords(list){
   bellVars.mentWords = [...new Set(list.map(x => String(x || '').trim().replace(/^@/, '').replace(/\s+/g, ' ')).filter(x => x.length >= 2 && x.length <= 40))].slice(0, 30);
   settings.set('mentWords', mentWords);
@@ -117,4 +91,33 @@ function injectMention(w){
   runIn(w.view, `${MENTION_JS};window.__kmvMention.setMe(${JSON.stringify(who)},${JSON.stringify(words)});window.__kmvMention.setWatch(${watch})`);
 }
 
-export { closeNoteHistory, injectMention, pushMyName, renderMentions, renderNoteHistory, setMyTwitch };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  {
+    $('#mentWordAdd').onclick = addMentWord;
+    $('#mentWordIn').addEventListener('keydown', e => { if (e.key === 'Enter') addMentWord(); });
+    renderMentWords();
+    const d = $('#noteDlg');
+    d.querySelector('.help-x').onclick = closeNoteHistory;
+    d.addEventListener('pointerdown', e => { if (e.target === d) closeNoteHistory(); });
+    $('#nhQ').addEventListener('input', renderNoteHistory);
+    d.querySelector('.nc-pick').addEventListener('change', e => { nh.pick = e.target.value; renderNoteHistory(); });
+    $('#nhUnread').addEventListener('change', e => { nh.unread = e.target.checked; renderNoteHistory(); });
+    $('#nhRead').onclick = () => readNotes(n => nh.tab === 'all' || SmvNotes.tabOf(n) === nh.tab);
+    $('#nhClear').onclick = async () => {
+      const list = SmvNotes.filter(notes, { tab: nh.tab });
+      if (!await ask(nh.tab === 'all' ? 'Clear every notification?' : `Clear every ${TAB_NAME[nh.tab].toLowerCase()} notification?`,
+        `All ${list.length} kept here are deleted. The chats themselves aren't changed.`, { ok: 'Clear all', danger: true })) return;
+      const gone = new Set(list); dropNotes(n => gone.has(n));
+    };
+    const p = $('#bellPanel');
+    p.querySelector('.nc-pick').addEventListener('change', e => { bell.pick = e.target.value; renderBell(); seeBell(); });
+    $('#bellRead').onclick = () => readNotes(n => bell.tab === 'all' || SmvNotes.tabOf(n) === bell.tab);
+    $('#bellClear').onclick = () => { const gone = new Set(SmvNotes.filter(notes, { tab: bell.tab })); dropNotes(n => gone.has(n)); };
+    $('#bellAll').onclick = () => { p.hidden = true; openNoteHistory(bell.tab); };
+    $('#bellSettings').onclick = () => { p.hidden = true; openSettings('notify'); };
+  }
+  window.openNoteHistory = openNoteHistory;   // for the tests
+}
+
+export { closeNoteHistory, init, injectMention, pushMyName, renderMentions, renderNoteHistory, setMyTwitch };

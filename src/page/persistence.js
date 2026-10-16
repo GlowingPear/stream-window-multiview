@@ -1,11 +1,10 @@
-import './chat/chat-zoom.js';   // runs after it (see app.js)
-import { settings } from './shared/settings.js';
 import { ROLE, STORE, lastLayout, wins } from './core.js';
-import { DESKTOP } from './shared/env.js';
 import { clampPos } from './layout/geometry.js';
-import { createWin } from './windows/windows.js';
-import { streamSpecs } from './windows/popout.js';
 import { histRecord } from './layout/undo.js';
+import { DESKTOP } from './shared/env.js';
+import { settings } from './shared/settings.js';
+import { streamSpecs } from './windows/popout.js';
+import { createWin } from './windows/windows.js';
 
 /* ---------- persistence ---------- */
 function save(){
