@@ -1,5 +1,6 @@
 import { clearAlert } from '../alerts/alerts.js';
-import { blowOn, blowUp, blownWin, chatZoomFor } from '../chat/blow-up.js';
+import { blowOn, blowUp, blownWin } from '../chat/blow-up.js';
+import { chatZoom } from '../chat/chat-zoom.js';
 import { autoTrFor } from '../chat/translate.js';
 import { resolveYt } from '../chat/view-menu.js';
 import { ROLE, wins } from '../core.js';
@@ -94,7 +95,7 @@ function mountView(w){
       if (hasVol){ w.enforceUntil = Date.now() + 8000; pushVol(w); w.audioHeld = true; w.audioLoading = false; liftAudioSoon(w); }
       else setMuted(frame, false);
       if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); watchStuck(w); }
-      if (w.kind === 'chat') setZoom(frame, chatZoomFor(w));
+      if (w.kind === 'chat') setZoom(frame, chatZoom());
       if (w.kind === 'chat' && w === blownWin()) blowUp(w, true);
       if (w.kind === 'chat') { const css = platform(w.channel).chatCss; if (css) addCss(frame, css); }
       if (w.kind === 'chat' && ROLE === 'main') injectMention(w);
