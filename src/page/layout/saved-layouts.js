@@ -4,7 +4,7 @@ import { $, MIN_H, MIN_W, colsMode, coreVars, lastLayout, streamCols, wins } fro
 import { SH, SW, setRect } from './geometry.js';
 import { createWin, pushVol } from '../windows/windows.js';
 import { closeWin } from '../chat/view-menu.js';
-import { autoFit, fitOn } from '../panels/channels/channels.js';
+import { fitOn } from '../panels/channels/channels.js';
 import { flash } from '../shared/flash.js';
 import { autoLayout, builtinLinked, chatFocusLayout, colOrder, featBase, featuredCh, layoutVars, linked, liveLinked,
   setColsMode, setFeatured, tile, updateLinkBtn } from './layouts.js';

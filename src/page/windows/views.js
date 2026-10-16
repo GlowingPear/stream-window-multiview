@@ -6,7 +6,7 @@ import { EMOTE_JS } from '../in-site/emote-preview.js';
 import { NEW_EMOTE_CSS, NEW_EMOTE_JS } from '../in-site/new-emotes.js';
 import { TRANSLATE_JS } from '../in-site/translate.js';
 import { KICK_CMD_JS, kickPageCmd } from '../in-site/kick-commands.js';
-import { KICK_CHAT_CSS, TWITCH_CHAT_CSS, chLabel, checkMod, extCount, platOf, srcFor, trimYouTube, viewPartition } from '../platforms/platforms.js';
+import { chLabel, checkMod, extCount, platOf, platform, srcFor, trimPlayerPage, viewPartition } from '../platforms/platforms.js';
 import { focusWin } from '../layout/geometry.js';
 import { liftAudioSoon, pushVol } from './windows.js';
 import { autoTrFor, translateFor } from '../chat/translate.js';
@@ -95,17 +95,17 @@ function mountView(w){
     });
     frame.addEventListener('dom-ready', () => {
       w.ready = true;
-      if (w.kind === 'stream') trimYouTube(frame, w.channel);
+      if (w.kind === 'stream') trimPlayerPage(frame, w.channel);
       if (hasVol){ w.enforceUntil = Date.now() + 8000; pushVol(w); w.audioHeld = true; w.audioLoading = false; liftAudioSoon(w); }
       else try { frame.setAudioMuted(false); } catch {}
       if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); }
       if (w.kind === 'chat') try { frame.setZoomFactor(chatZoom()); } catch {}
-      if (w.kind === 'chat') { const css = { kick: KICK_CHAT_CSS, twitch: TWITCH_CHAT_CSS }[platOf(w.channel)]; if (css) try { frame.insertCSS(css); } catch {} }
+      if (w.kind === 'chat') { const css = platform(w.channel).chatCss; if (css) try { frame.insertCSS(css); } catch {} }
       if (w.kind === 'chat' && ROLE === 'main') injectMention(w);
       if (w.kind === 'chat') frame.executeJavaScript(`${EMOTE_JS};window.__kmvEmote.on(${emoteOn})`).catch(() => {});
       if (w.kind === 'chat' && newEmotesOn) markNewEmotes(w);
       if (w.kind === 'chat') frame.executeJavaScript(`${TRANSLATE_JS};${autoTrFor(w.channel) ? 'window.__kmvTr.start(true)' : ''}`).catch(() => {});
-      if (w.kind === 'chat' && platOf(w.channel) === 'kick') frame.executeJavaScript(KICK_CMD_JS).catch(() => {});
+      if (w.kind === 'chat' && platform(w.channel).pageCommands) frame.executeJavaScript(KICK_CMD_JS).catch(() => {});
       applyChatView(w);
     });
   }
@@ -115,7 +115,7 @@ function mountView(w){
 var newEmotesOn = false;
 newEmotesOn = settings.flag('newEmotes');
 async function markNewEmotes(w){
-  if (!DESKTOP || !window.kmv.emotesOpen || !w.channel || platOf(w.channel) === 'youtube') return;
+  if (!DESKTOP || !window.kmv.emotesOpen || !w.channel || !platform(w.channel).emoteLists) return;
   const frame = w.view;
   const r = await window.kmv.emotesOpen(w.channel).catch(() => null);
   if (!r || w.view !== frame || !newEmotesOn) return;

@@ -1,6 +1,4 @@
 import '../core.js';   // runs after it (see app.js)
-import { bell } from '../panels/bell/bell.js';
-import { tile } from '../layout/layouts.js';
 
 const icon = {
   reload:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>',

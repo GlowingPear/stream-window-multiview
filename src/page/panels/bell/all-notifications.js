@@ -3,7 +3,7 @@ import { settings } from '../../shared/settings.js';
 import { $, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { MENTION_JS } from '../../in-site/mentions.js';
-import { platOf } from '../../platforms/platforms.js';
+import { platform } from '../../platforms/platforms.js';
 import { EMPTY, TAB_NAME, bell, bellVars, drawNotes, dropNotes, mentMuted, mentNameFor, mentOn, mentWords, myName,
   myTwitch, nh, noteRow, notes, readNotes, renderBell, seeBell } from './bell.js';
 import { alerts } from '../../alerts/alerts.js';
@@ -108,10 +108,10 @@ function setMyTwitch(n){
   pushMyName(); renderMentions();
 }
 function injectMention(w){
-  const p = platOf(w.channel);
-  const off = !mentOn || mentMuted.has(w.channel) || !(p === 'kick' || p === 'twitch');
+  const site = platform(w.channel);
+  const off = !mentOn || mentMuted.has(w.channel) || !site.mentions;
   const who = off ? '' : mentNameFor(w.channel), words = off ? [] : mentWords;
-  const watch = !!alerts.spam.on && (p === 'kick' || p === 'twitch');
+  const watch = !!alerts.spam.on && site.spamAlerts;
   w.view.executeJavaScript(`${MENTION_JS};window.__kmvMention.setMe(${JSON.stringify(who)},${JSON.stringify(words)});window.__kmvMention.setWatch(${watch})`).catch(() => {});
 }
 

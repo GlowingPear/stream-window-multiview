@@ -3,7 +3,7 @@ import { BAR, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, mutedChk, size
 import { icon } from '../shared/icons.js';
 import { DESKTOP } from '../shared/env.js';
 import { VOL_JS } from '../in-site/volume.js';
-import { chLabel, chLabelP, checkMod, externalFor, modUrl, platOf } from '../platforms/platforms.js';
+import { chLabel, chLabelP, checkMod, externalFor, modUrl, platOf, platform } from '../platforms/platforms.js';
 import { SH, SW, edges, focusWin, near, setRect, showHint, snapE } from '../layout/geometry.js';
 import { openBarMenu, watchBar } from './window-bar.js';
 import { mountView, reloadWin, ytCache } from './views.js';
@@ -42,7 +42,7 @@ function createWin(spec, rect){
         ${w.kind === 'stream' ? '<button class="txt" data-a="chat" title="Add this channel\'s chat next to it">+ Chat</button>' : ''}
         ${(w.kind === 'stream' || w.kind === 'capture') && ROLE === 'main' ? `<button class="feat" data-a="feat" title="Highlight: make this stream big">${icon.feat}</button>` : ''}
         ${w.kind === 'chat' && DESKTOP && ROLE === 'main' && /^(kick|twitch)$/.test(platOf(w.channel)) ? '<button class="at" data-a="at" hidden></button>' : ''}
-        ${w.kind === 'stream' && DESKTOP && platOf(w.channel) === 'youtube' ? `<button class="like dim" data-a="like" aria-pressed="false">${icon.like}</button>` : ''}
+        ${w.kind === 'stream' && DESKTOP && platform(w.channel)?.likes ? `<button class="like dim" data-a="like" aria-pressed="false">${icon.like}</button>` : ''}
         ${w.channel ? '<button class="star" data-a="star"></button>' : ''}
         ${w.channel && DESKTOP && ROLE === 'main' && !/^yt:v:/.test(w.channel) ? `<button data-a="profile" title="Profile: when they stream, past streams, your notes">${icon.user}</button>` : ''}
         ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="ext" class="ext-b" title="Extensions in this window" hidden>${icon.ext}<b class="ext-n"></b></button>` : ''}

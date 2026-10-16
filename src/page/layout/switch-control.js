@@ -1,10 +1,11 @@
 import './switcher.js';   // runs after it (see app.js)
+import { youtube } from '../platforms/youtube.js';
 import { settings } from '../shared/settings.js';
 import { ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { icon } from '../shared/icons.js';
 import { DESKTOP } from '../shared/env.js';
 import { VOL_JS } from '../in-site/volume.js';
-import { YT_CSS, YT_FIT_JS, chLabel, platOf, streamSrc, trimYouTube, ytVidOf } from '../platforms/platforms.js';
+import { chLabel, platOf, streamSrc, trimPlayerPage, ytVidOf } from '../platforms/platforms.js';
 import { SH, SW } from './geometry.js';
 import { pushVol, saveSoon } from '../windows/windows.js';
 import { flash } from '../shared/flash.js';
@@ -134,7 +135,7 @@ function pushSwitcherState(force){
     files: [...document.querySelectorAll('link[rel=stylesheet]')].map(l => l.getAttribute('href')),
     text: [...document.querySelectorAll('style')].map(x => x.textContent).join('\n')
   };
-  window.kmv.sendSwitcherState({ ...core, css: swCss, icons: icon, scripts: { vol: VOL_JS, ytcss: YT_CSS, ytfit: YT_FIT_JS } });
+  window.kmv.sendSwitcherState({ ...core, css: swCss, icons: icon, scripts: { vol: VOL_JS, ytcss: youtube.playerCss, ytfit: youtube.playerFitJs } });
 }
 if (DESKTOP && ROLE === 'main' && window.kmv.onSwitcherCmd){
   setInterval(() => pushSwitcherState(), 300);
@@ -191,7 +192,7 @@ function ensureMini(s){
   miniClip.appendChild(wrap);
   wv.src = miniSrc;
   wv.addEventListener('dom-ready', () => {
-    trimYouTube(wv, s.channel);
+    trimPlayerPage(wv, s.channel);
     if (s.mini){ s.mini.ready = true; s.mini.sentPause = miniPaused(s); }
     wv.executeJavaScript(`${VOL_JS};window.__kmv.set(0,true);${miniPaused(s) ? 'window.__kmv.pause();' : ''}`).catch(() => {});
   });

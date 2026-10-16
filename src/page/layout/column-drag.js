@@ -4,7 +4,7 @@ import { SW, setRect } from './geometry.js';
 import { locked } from './lock.js';
 import { fitOn } from '../panels/channels/channels.js';
 import { colKey, colOrder, colStrip, colX0, featBase, featW, featuredCh, layoutVars, linked, maxScroll, scrollX,
-  switchMode, tile } from './layouts.js';
+  switchMode } from './layouts.js';
 import { setScrollX, snapSoon, updatePageBtn } from './sideways-scroll.js';
 import { buildCols, columnsLayout } from './columns.js';
 import { activePreset, renderPresets } from './saved-layouts.js';
