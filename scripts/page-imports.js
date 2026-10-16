@@ -14,6 +14,8 @@ const path = require('path');
 const vm = require('vm');
 
 const PAGE = path.join(__dirname, '..', 'src', 'page');
+// A file's text with \n line ends, whatever the checkout uses (git on Windows can check files out with \r\n)
+const readText = file => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
 
 /* ---- Reading code: identifiers outside strings, comments and regular expressions ---- */
 function scan(src) {
@@ -120,7 +122,7 @@ function localNames(text) {
 
 /* ---- A module: a bare import line it may have, what it imports now, and its code ---- */
 function readModule(file) {
-  const L = fs.readFileSync(file, 'utf8').replace(/\n$/, '').split('\n');
+  const L = readText(file).replace(/\n$/, '').split('\n');
   let i = 0, bare = null;
   const had = new Set();
   while (i < L.length && /^import /.test(L[i])) {
@@ -204,7 +206,7 @@ function startupProblems(dir = PAGE) {
   const html = fs.readdirSync(path.join(dir, '..')).filter(f => f.endsWith('.html')).map(f => fs.readFileSync(path.join(dir, '..', f), 'utf8')).join('\n');
   const own = f => [...html.matchAll(/<script[^>]*src="page\/([^"]+)"/g)].some(m => m[1] === f && f !== 'app.js');
   const mods = Object.fromEntries(files.map(f => [f, readModule(path.join(dir, f))]));
-  const importsOf = f => { const m = new Map(), text = fs.readFileSync(path.join(dir, f), 'utf8');
+  const importsOf = f => { const m = new Map(), text = readText(path.join(dir, f));
     for (const x of text.matchAll(/^import \{([^}]*)\} from '([^']+)';/gm)) {
       const src = path.posix.normalize(path.posix.join(path.posix.dirname(f), x[2]));
       x[1].split(',').map(y => y.trim()).filter(Boolean).forEach(n => m.set(n, src)); }
@@ -268,7 +270,7 @@ function plan(dir = PAGE) {
     const ex = [...(exportsOf[f] || []), ...(declared[f].has('init') ? ['init'] : [])].sort((a, b) => a.localeCompare(b));   // init: app.js runs it
     const tail = ex.length ? ['', ...wrap(ex, 'export { ', ' };')] : [];
     const text = [...head, ...(head.length ? [''] : []), ...mods[f].body, ...tail].join('\n') + '\n';
-    if (fs.readFileSync(path.join(dir, f), 'utf8') !== text) changes[f] = text;
+    if (readText(path.join(dir, f)) !== text) changes[f] = text;
   }
   return { changes, notes };
 }
@@ -284,7 +286,10 @@ if (require.main === module) {
     else console.log('Every module\'s imports and exports match its code.');
     if (problems.length) process.exitCode = 1;
   } else {
-    for (const f of files) fs.writeFileSync(path.join(PAGE, f), changes[f]);
+    for (const f of files) {       // in the file's own line ends
+      const file = path.join(PAGE, f), crlf = fs.readFileSync(file, 'utf8').includes('\r\n');
+      fs.writeFileSync(file, crlf ? changes[f].replace(/\n/g, '\r\n') : changes[f]);
+    }
     console.log(files.length ? `Updated: ${files.join(', ')}` : 'Nothing to change.');
   }
 }
