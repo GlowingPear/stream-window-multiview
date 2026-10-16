@@ -72,6 +72,7 @@ const youtube = {
   profileUrl: ch => ch.startsWith('yt:c:') ? 'https://www.youtube.com/channel/' + ch.slice(5) : 'https://www.youtube.com/' + ch.slice(3),
   modUrl: () => null,    // no moderator dashboard for each channel
   chatCss: null,
+  stuckJs: null,   // a stream that comes back is a new video, which resolveYt finds (see kick.js)
   // For its stream windows: the watch page trimmed to the player
   playerCss: YT_CSS,
   playerFitJs: YT_FIT_JS,

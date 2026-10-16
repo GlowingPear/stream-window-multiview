@@ -6,7 +6,8 @@ import { DESKTOP } from '../../shared/env.js';
 import { icon } from '../../shared/icons.js';
 import { fromApp } from '../../shared/incoming.js';
 import { closeOnOutside } from '../../shared/popover.js';
-import { reloadView, viewId } from '../../windows/view.js';
+import { viewId } from '../../windows/view.js';
+import { reloadPage } from '../../windows/views.js';
 
 let extPane;
 const EXT_PLATS = ['kick', 'twitch', 'youtube'], EXT_COL = { kick: '#53fc18', twitch: '#a970ff', youtube: '#ff3d3d' };
@@ -232,7 +233,7 @@ function init(){
     fromApp('onExtConfirm', showExtDlg);
     // An extension was switched on or off somewhere: reload the windows it changed, and show the new state.
     fromApp('onExtChanged', parts => {
-      wins.forEach(w => { if (w.view && w.ready && parts.includes(viewPartition(w))) reloadView(w.view); });
+      wins.forEach(w => { if (w.view && w.ready && parts.includes(viewPartition(w))) reloadPage(w); });
       extMenu.hidden = true;
       if (!settingsDlg.hidden && settingsTab === 'extensions') renderExtPane();
       else window.kmv.extList().then(xs => { platformVars.extCount = xs.length; refreshExtButtons(); }).catch(() => {});

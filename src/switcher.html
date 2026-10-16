@@ -137,7 +137,7 @@ function render(){
     it.querySelector('.fs-rl').onclick = e => {
       e.stopPropagation(); send('reload', { ch: s.ch });
       const b = e.currentTarget; b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
-      const m = minis.get(s.ch); if (m && m.ready){ try { m.wv.reload(); } catch {} }
+      const m = minis.get(s.ch); if (m && m.ready){ try { m.wv.loadURL(m.src).catch(() => {}); } catch {} }   // its address, not where its player moved to
     };
     it.querySelector('.fs-mute').onclick = e => send('mute', { ch: s.ch, solo: e.shiftKey });
     const slider = it.querySelector('input');

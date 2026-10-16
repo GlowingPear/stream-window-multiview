@@ -37,6 +37,11 @@ const kick = {
   pageUrl: (ch, kind) => kind === 'chat' ? kick.chatUrl(ch) : `https://kick.com/${encodeURIComponent(ch)}`,
   profileUrl: ch => 'https://kick.com/' + ch,
   modUrl: ch => `https://dashboard.kick.com/moderator/${encodeURIComponent(ch)}`,
+  // What its player shows (run in the player's page; windows/stuck.js): 'error' for its error page ("This embed
+  // seems to be misconfigured", which never tries again), 'offline' for its offline screen (/<name>/offline, which
+  // never goes back to the player when the channel is live again), else 'ok'.
+  stuckJs: `(() => /This embed seems to be misconfigured/i.test(document.body ? document.body.innerText : '') ? 'error'
+    : /^\\/[^/]+\\/offline\\/?$/i.test(location.pathname) ? 'offline' : 'ok')()`,
   // Its popout chat places a user's card (click a name) to the left of the chat, as on kick.com, which is off
   // the window's left edge here. Keep it inside the window.
   chatCss: `#user-identity { left: 0 !important; right: auto !important; width: min(356px, 100vw) !important;

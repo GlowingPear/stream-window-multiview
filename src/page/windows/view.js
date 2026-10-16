@@ -20,7 +20,12 @@ function setZoom(view, factor){ try { view.setZoomFactor(factor); } catch {} }
 function zoomOf(view){ try { return view && view.getZoomFactor ? view.getZoomFactor() || 1 : 1; } catch { return 1; } }
 function setMuted(view, on){ try { view.setAudioMuted(on); } catch {} }
 function reloadView(view){ try { view.reload(); } catch {} }
+// Loads an address in the view (also the one it's already on, which setting src again may not do)
+function loadView(view, url){
+  if (!view || !url) return;
+  try { if (view.loadURL) view.loadURL(url).catch(() => {}); else view.src = url; } catch {}
+}
 // The view's id in the desktop app (the main process names views by it), or null
 function viewId(view){ try { return view && view.getWebContentsId ? view.getWebContentsId() : null; } catch { return null; } }
 
-export { addCss, askIn, reloadView, runIn, setMuted, setZoom, viewId, zoomOf };
+export { addCss, askIn, loadView, reloadView, runIn, setMuted, setZoom, viewId, zoomOf };
