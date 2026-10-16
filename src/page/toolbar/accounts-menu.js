@@ -1,4 +1,5 @@
 import './layout-menu.js';   // runs after it (see app.js)
+import { esc } from '../shared/element.js';
 import { fromApp } from '../shared/incoming.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
@@ -16,7 +17,7 @@ import { popOutStreams, popoutVars, receiveChat, receiveStreams, streamsCameBack
 import { ZOOMS, applyChatZoom, zoomIdx, zoomVars } from '../chat/chat-zoom.js';
 import { esRefresh } from '../panels/empty-stage/empty-stage.js';
 import { placeMenu, showSpMenu } from './toolbar.js';
-import { escH, showHelp } from '../panels/help/help.js';
+import { showHelp } from '../panels/help/help.js';
 import { openSettings } from '../panels/settings/settings.js';
 import { unfollowKick } from '../panels/profiles/profiles.js';
 import { ask } from '../shared/ask.js';
@@ -253,7 +254,7 @@ if (DESKTOP){
     + `<defs><clipPath id="pearLoadClip"><path d="${PEAR}"/></clipPath></defs><path class="body" d="${PEAR}"/>`
     + '<g clip-path="url(#pearLoadClip)"><path class="juice" d="M0 8Q8 3 16 8T32 8T48 8T64 8T80 8T96 8V90H0Z"/></g>'
     + '<path class="leaf" d="M36.2 9.6C40 4.2 47.5 3.2 52.5 5.4 49.6 10.8 42.4 12.8 36.2 9.6Z"/><path class="stem" d="M33.2 15.5C33 11.5 34.2 8 36.6 4.8"/>'
-    + `</svg><span class="prog">${escH(text)}</span></div>`;
+    + `</svg><span class="prog">${esc(text)}</span></div>`;
   fromApp('onFollowsProgress', p => {
     if (p.platform !== impPlat || !impBusy || dlg.hidden) return;
     // only the text changes, so the pear keeps filling smoothly

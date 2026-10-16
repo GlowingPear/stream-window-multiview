@@ -1,11 +1,12 @@
 import '../help/help.js';   // runs after it (see app.js)
+import { esc } from '../../shared/element.js';
 import { fromApp } from '../../shared/incoming.js';
 import { settings } from '../../shared/settings.js';
 import { $, ROLE, msg } from '../../core.js';
 import { DESKTOP } from '../../shared/env.js';
 import { notes } from '../bell/bell.js';
 import { flash } from '../../shared/flash.js';
-import { appVersion, escH, showHelp } from '../help/help.js';
+import { appVersion, showHelp } from '../help/help.js';
 import { openSettings, settingsDlg, settingsTab } from '../settings/settings.js';
 
 /* ---- Updates from GitHub ---- */
@@ -13,26 +14,26 @@ let updSt = null;
 function updMsg(u){
   if (u.git){   // checking still works (to see the latest release and its notes), installing doesn't
     const now = u.state === 'checking' ? ' <span class="spin"></span> Checking…' : u.state === 'error' ? ' The check didn\'t work.'
-      : u.latest ? ` The newest version is <b>${escH(u.latest)}</b>.` : '';
+      : u.latest ? ` The newest version is <b>${esc(u.latest)}</b>.` : '';
     return ['', 'This copy is a git checkout, so it isn\'t updated automatically. Use <code>git pull</code> to update it.' + now];
   }
   switch (u.state){
     case 'norepo': return ['bad', 'No GitHub page is set yet. Enter the project\'s GitHub name below (owner/repository).'];
     case 'checking': return ['', '<span class="spin"></span> Checking for updates…'];
-    case 'downloading': return ['', `<span class="spin"></span> Downloading version ${escH(u.latest)}…`];
-    case 'available': return ['ok', u.manual ? `Version <b>${escH(u.latest)}</b> is available. Download it from the GitHub page.` : `Version <b>${escH(u.latest)}</b> is available.`];
+    case 'downloading': return ['', `<span class="spin"></span> Downloading version ${esc(u.latest)}…`];
+    case 'available': return ['ok', u.manual ? `Version <b>${esc(u.latest)}</b> is available. Download it from the GitHub page.` : `Version <b>${esc(u.latest)}</b> is available.`];
     case 'ready': if (u.installed_app && u.blocked) return ['bad', `macOS stopped Stream Multiview updating itself. Click <b>Open System Settings</b>, turn on Stream Multiview under <b>App Management</b>, then click <b>Restart and install</b> again. Or use the disk image instead.`];
       if (u.installed_app) return ['ok', u.platform === 'darwin' && !u.swap
-        ? `Version <b>${escH(u.installed)}</b> is downloaded. Click <b>Install</b>, then drag Stream Multiview into Applications (replace the old one) and open it again.`
-        : `Version <b>${escH(u.installed)}</b> is downloaded. Click <b>Restart and install</b>: the app closes, updates itself and opens again.`];
+        ? `Version <b>${esc(u.installed)}</b> is downloaded. Click <b>Install</b>, then drag Stream Multiview into Applications (replace the old one) and open it again.`
+        : `Version <b>${esc(u.installed)}</b> is downloaded. Click <b>Restart and install</b>: the app closes, updates itself and opens again.`];
       return ['ok', u.needsInstall
-      ? `Version <b>${escH(u.installed)}</b> is installed. Close the app and start it again with your shortcut (or Start Stream Multiview.bat) to finish: this update needs a one-time engine install.`
-      : `Version <b>${escH(u.installed)}</b> is installed. Restart the app to use it.`];
+      ? `Version <b>${esc(u.installed)}</b> is installed. Close the app and start it again with your shortcut (or Start Stream Multiview.bat) to finish: this update needs a one-time engine install.`
+      : `Version <b>${esc(u.installed)}</b> is installed. Restart the app to use it.`];
     case 'uptodate': return ['ok', 'You have the newest version.'];
     case 'error': return ['bad', u.error === 'notfound' ? 'That GitHub page wasn\'t found. Check the name, and that the repository is public.'
       : u.error === 'nowrite' ? 'Couldn\'t save the new files in the app folder. Move the app to a folder you own (like Documents) and try again.'
       : u.error === 'wrongapp' || u.error === 'nopkg' || u.error === 'incomplete' ? 'That GitHub page doesn\'t look like Stream Multiview.'
-      : `Couldn't check for updates right now (${escH(u.error)}). Try again later.`];
+      : `Couldn't check for updates right now (${esc(u.error)}). Try again later.`];
     default: return ['', u.repo ? 'Not checked yet.' : ''];
   }
 }
@@ -69,7 +70,7 @@ function renderUpdates(){
   const [cls, msg] = updMsg(u);
   const keep = body.querySelector('.upd-repo input'), typed = keep && document.activeElement === keep ? keep.value : null;
   body.innerHTML = `<div class="upd-box">
-    <div class="upd-ver">v${escH(String(u.current || ''))}${/^0\./.test(String(u.current || '')) ? ' <small>beta</small>' : ''}<small>${u.lastCheck ? 'last checked ' + new Date(u.lastCheck).toLocaleString() : ''}</small></div>
+    <div class="upd-ver">v${esc(String(u.current || ''))}${/^0\./.test(String(u.current || '')) ? ' <small>beta</small>' : ''}<small>${u.lastCheck ? 'last checked ' + new Date(u.lastCheck).toLocaleString() : ''}</small></div>
     <div class="upd-state ${cls}">${msg || '&nbsp;'}</div>
     <div class="upd-row">
       <button class="btn upd-check"${!u.repo || u.state === 'checking' || u.state === 'downloading' ? ' disabled' : ''}>Check now</button>
@@ -78,7 +79,7 @@ function renderUpdates(){
       ${u.state === 'ready' && u.blocked ? '<button class="btn upd-privacy">Open System Settings</button><button class="btn upd-dmg">Use the disk image instead</button>' : ''}
       <label class="chk"><input type="checkbox" class="upd-auto"${u.auto ? ' checked' : ''}>Update automatically</label>
     </div>
-    ${u.notes || u.notesHtml ? `<div><h4>What's in version ${escH(u.latest)}</h4><div class="upd-notes"></div></div>` : ''}
+    ${u.notes || u.notesHtml ? `<div><h4>What's in version ${esc(u.latest)}</h4><div class="upd-notes"></div></div>` : ''}
     <div><h4>GitHub page</h4><p>The app checks this GitHub repository for new versions (it must be public).</p>
       <div class="upd-repo"><input placeholder="owner/repository" spellcheck="false" autocomplete="off"><button class="btn upd-save">Save</button></div></div>
     <p style="color:var(--muted);font-size:12px">Updating replaces the app's files with the new version's (the old ones are kept as a backup). Your logins, saved channels, layouts and themes aren't touched.</p>

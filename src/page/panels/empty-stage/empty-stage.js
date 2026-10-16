@@ -1,4 +1,5 @@
 import '../../persistence.js';   // runs after it (see app.js)
+import { esc } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
 import { $, ROLE, STORE, modeSel, stage, wins } from '../../core.js';
@@ -11,7 +12,6 @@ import { flash } from '../../shared/flash.js';
 import { autoLayout } from '../../layout/layouts.js';
 import { restore, save } from '../../persistence.js';
 import { panel, savedBtn } from '../../toolbar/toolbar.js';
-import { escH } from '../help/help.js';
 import { closeOverlays, layoutPick } from '../../shortcuts.js';
 import { openSettings } from '../settings/settings.js';
 
@@ -144,7 +144,7 @@ function esRefresh(){
     const a = esAccounts();
     first.querySelector('.es-accts').innerHTML = ['kick', 'twitch', 'youtube'].map(p => {
       const v = a[p];
-      return `<div class="es-acct${v ? ' on' : ''}">${platIcon(p)}<span>${PLAT_NAME[p]}<small>${v ? (p === 'youtube' ? 'Logged in' : 'Logged in as ' + escH(String(v))) : 'Not logged in'}</small></span>${v ? '' : `<button class="btn" data-login="${p}">Log in</button>`}</div>`;
+      return `<div class="es-acct${v ? ' on' : ''}">${platIcon(p)}<span>${PLAT_NAME[p]}<small>${v ? (p === 'youtube' ? 'Logged in' : 'Logged in as ' + esc(String(v))) : 'Not logged in'}</small></span>${v ? '' : `<button class="btn" data-login="${p}">Log in</button>`}</div>`;
     }).join('');
     const list = esLearnList(), seen = new Set(intro.seen || []);
     first.querySelector('.es-prog').textContent = `${list.filter(c => seen.has(c.id)).length} of ${list.length} seen`;
@@ -156,8 +156,8 @@ function esRefresh(){
       box.innerHTML = `<div class="es-live-h"><b><i></i>Live now · ${live.length}</b><span class="es-gap"></span><button class="btn" data-all="open">Open all ${live.length}</button><button class="btn" data-all="focus">Open as Focus view</button></div>
         <div class="es-cards">${live.slice(0, 12).map(ch => {
           const i = infoFor(ch) || {}, prof = (svProf[ch] && svProf[ch].info) || {}, sub = [i.category, i.title].filter(Boolean).join(' · ');
-          return `<button class="es-lc" data-ch="${escH(ch)}" title="Open ${escH(chLabel(ch))}"><span class="es-av" style="--c:${svHue(ch)}">${escH(svInitials(chLabel(ch)))}${prof.avatar ? `<img alt="" referrerpolicy="no-referrer" src="${escH(prof.avatar)}" onerror="this.remove()">` : ''}</span>
-            <span class="es-lt"><span class="es-ln">${platIcon(platOf(ch))}<span>${escH(chLabel(ch))}</span></span><span class="es-ls">${escH(sub)}</span></span>${i.viewers != null ? `<span class="es-lv">${fmtViewers(i.viewers)}</span>` : ''}</button>`;
+          return `<button class="es-lc" data-ch="${esc(ch)}" title="Open ${esc(chLabel(ch))}"><span class="es-av" style="--c:${svHue(ch)}">${esc(svInitials(chLabel(ch)))}${prof.avatar ? `<img alt="" referrerpolicy="no-referrer" src="${esc(prof.avatar)}" onerror="this.remove()">` : ''}</span>
+            <span class="es-lt"><span class="es-ln">${platIcon(platOf(ch))}<span>${esc(chLabel(ch))}</span></span><span class="es-ls">${esc(sub)}</span></span>${i.viewers != null ? `<span class="es-lv">${fmtViewers(i.viewers)}</span>` : ''}</button>`;
         }).join('')}</div>`;
     } else if (!saved.length){
       box.innerHTML = `<div class="es-none">You haven’t saved any channels yet.${DESKTOP ? ' <button class="btn" data-imp-any>Import the channels you follow</button>' : ''}</div>`;

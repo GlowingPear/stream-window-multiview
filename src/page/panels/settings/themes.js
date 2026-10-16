@@ -1,4 +1,5 @@
 import '../../layout/game-focus.js';   // runs after it (see app.js)
+import { esc } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
 import { $ } from '../../core.js';
 import { icon } from '../../shared/icons.js';
@@ -6,7 +7,6 @@ import { notes } from '../bell/bell.js';
 import { flash } from '../../shared/flash.js';
 import { pushSwitcherState, swCss, switchVars } from '../../layout/switch-control.js';
 import { panel } from '../../toolbar/toolbar.js';
-import { escH } from '../help/help.js';
 import { ask } from '../../shared/ask.js';
 
 /* ===================== 2.4: colours and themes ===================== */
@@ -108,7 +108,7 @@ function renderThemeVars(){
   THEME_VARS.forEach(([k, label, hint]) => {
     const r = document.createElement('label'); r.className = 'th-var'; r.dataset.k = k;
     r.innerHTML = `<span></span><input type="color"><input class="hex" maxlength="7" spellcheck="false">`;
-    r.querySelector('span').innerHTML = `${escH(label)}<small>${escH(hint)}</small>`;
+    r.querySelector('span').innerHTML = `${esc(label)}<small>${esc(hint)}</small>`;
     const c = r.querySelector('input[type=color]'), h = r.querySelector('.hex');
     c.value = h.value = theme.vars[k] || (k === '--frame' ? theme.vars['--accent'] : '#000000');
     const set = val => {
