@@ -1,13 +1,12 @@
-import '../layout/switch-control.js';   // runs after it (see app.js)
+import { $, GAP, colsMode, wins } from '../core.js';
+import { VOL_JS } from '../in-site/volume.js';
+import { syncSwitcher } from '../layout/focus-only.js';
+import { SH, SW } from '../layout/geometry.js';
+import { featW } from '../layout/layouts.js';
+import { DESKTOP } from '../shared/env.js';
 import { settings } from '../shared/settings.js';
 import { isPausedBy, miniPausedBy, pauseEvents } from './pause-state.js';
 import { runIn } from './view.js';
-import { $, GAP, colsMode, wins } from '../core.js';
-import { DESKTOP } from '../shared/env.js';
-import { VOL_JS } from '../in-site/volume.js';
-import { SH, SW } from '../layout/geometry.js';
-import { featW } from '../layout/layouts.js';
-import { syncSwitcher } from '../layout/focus-only.js';
 
 /* A stream can be paused for three separate reasons: you paused it, "Pause all except focus",
    or auto-pause while hidden (w.pause, see pause-state.js). This sends it to the player. */
@@ -30,16 +29,7 @@ function togglePause(s){
   applyPlay(s); syncSwitcher();
 }
 
-/* Auto-pause hidden streams (toolbar checkbox) */
-const autoChk = $('#autoPause');
-autoChk.checked = settings.flag('autoPause');
-autoChk.addEventListener('change', () => {
-  settings.set('autoPause', autoChk.checked);
-  autoPauseTick();
-});
-settings.onChange('autoPause', (_, v) => {          // keep the main and streams windows in step
-  autoChk.checked = v === '1'; autoPauseTick();
-});
+let autoChk;
 function streamHidden(w){
   const W = SW(), H = SH();
   if (w.x + w.w <= 4 || w.x >= W - 4 || w.y + w.h <= 4 || w.y >= H - 4) return true;              // off-screen
@@ -65,6 +55,20 @@ function autoPauseTick(){
     if (next !== w.pause){ w.pause = next; applyPlay(w); syncSwitcher(); }
   });
 }
-if (DESKTOP) setInterval(autoPauseTick, 400);
 
-export { applyPlay, isPaused, miniPaused, togglePause };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  /* Auto-pause hidden streams (toolbar checkbox) */
+  autoChk = $('#autoPause');
+  autoChk.checked = settings.flag('autoPause');
+  autoChk.addEventListener('change', () => {
+    settings.set('autoPause', autoChk.checked);
+    autoPauseTick();
+  });
+  settings.onChange('autoPause', (_, v) => {          // keep the main and streams windows in step
+    autoChk.checked = v === '1'; autoPauseTick();
+  });
+  if (DESKTOP) setInterval(autoPauseTick, 400);
+}
+
+export { applyPlay, init, isPaused, miniPaused, togglePause };

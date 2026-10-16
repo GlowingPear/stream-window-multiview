@@ -1,29 +1,28 @@
-import './switcher.js';   // runs after it (see app.js)
+import { ROLE, colsMode, lastLayout, wins } from '../core.js';
+import { VOL_JS } from '../in-site/volume.js';
+import { backToChatFocus } from './chat-focus.js';
+import { updateSwBtn } from './column-drag.js';
+import { buildCols, columnsLayout, sideCols } from './columns.js';
+import { focusOnly, syncSwitcher, toggleFocusOnly } from './focus-only.js';
+import { SH, SW } from './geometry.js';
+import { colKey, featSwitch, featuredCh, fsResize, isVid, layoutVars, mkDiv, setFeatured, switchMode, switchRect,
+  toggleFeatured, vidByKey } from './layouts.js';
+import { fsMute, isFocusView, removeChannel, renderSwitcher, setSideCols, swapStreams, toggleCapPause } from './switcher.js';
+import { refreshFromSwitcher } from './undo.js';
+import { save } from '../persistence.js';
+import { chLabel, platOf, streamSrc, trimPlayerPage, ytVidOf } from '../platforms/platforms.js';
 import { youtube } from '../platforms/youtube.js';
+import { DESKTOP } from '../shared/env.js';
+import { flash } from '../shared/flash.js';
+import { icon } from '../shared/icons.js';
 import { fromApp } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { pauseWhy } from '../windows/pause-state.js';
-import { runIn } from '../windows/view.js';
-import { ROLE, colsMode, lastLayout, wins } from '../core.js';
-import { icon } from '../shared/icons.js';
-import { DESKTOP } from '../shared/env.js';
-import { VOL_JS } from '../in-site/volume.js';
-import { chLabel, platOf, streamSrc, trimPlayerPage, ytVidOf } from '../platforms/platforms.js';
-import { SH, SW } from './geometry.js';
-import { pushVol, saveSoon } from '../windows/windows.js';
-import { flash } from '../shared/flash.js';
-import { colKey, featSwitch, featuredCh, fsResize, isVid, layoutVars, mkDiv, setFeatured, switchMode, switchRect,
-  toggleFeatured, vidByKey } from './layouts.js';
-import { buildCols, columnsLayout, sideCols } from './columns.js';
-import { fsMute, isFocusView, removeChannel, renderSwitcher, setSideCols, swapStreams, toggleCapPause } from './switcher.js';
 import { isPaused, miniPaused, togglePause } from '../windows/pause.js';
-import { focusOnly, syncSwitcher, toggleFocusOnly } from './focus-only.js';
-import { updateSwBtn } from './column-drag.js';
-import { backToChatFocus } from './chat-focus.js';
 import { hiddenStreams, popOutHidden } from '../windows/popout.js';
-import { save } from '../persistence.js';
-import { refreshFromSwitcher } from './undo.js';
+import { runIn } from '../windows/view.js';
+import { pushVol, saveSoon } from '../windows/windows.js';
 
 /* ---- the switch control floating in the window / in its own window ---- */
 function setSwitchMode(m){
@@ -86,27 +85,6 @@ function fsMoveStart(e){
   };
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
 }
-fsResize.addEventListener('pointerdown', e => {
-  if (e.button !== 0) return;
-  e.preventDefault(); fsResize.setPointerCapture(e.pointerId);
-  const sx = e.clientX, sy = e.clientY, w0 = switchRect.w, h0 = switchRect.h;
-  let raf = 0;
-  document.body.classList.add('dragging');
-  const move = ev => {
-    switchRect.w = w0 + ev.clientX - sx; switchRect.h = h0 + ev.clientY - sy;
-    clampSwitchRect();
-    Object.assign(featSwitch.style, { width: switchRect.w + 'px', height: switchRect.h + 'px' });
-    Object.assign(fsResize.style, { left: (switchRect.x + switchRect.w - 16) + 'px', top: (switchRect.y + switchRect.h - 16) + 'px' });
-    cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const k = featSwitch.scrollTop; renderSwitcher(); featSwitch.scrollTop = k; });
-  };
-  const up = () => {
-    fsResize.removeEventListener('pointermove', move); fsResize.removeEventListener('pointerup', up); fsResize.removeEventListener('pointercancel', up);
-    document.body.classList.remove('dragging'); saveSwitchRect();
-  };
-  fsResize.addEventListener('pointermove', move); fsResize.addEventListener('pointerup', up); fsResize.addEventListener('pointercancel', up);
-});
-window.addEventListener('resize', () => { if (switchMode === 'float') setTimeout(placeSwitcher, 60); });
-
 // Own window: this window stays in charge; the switcher window shows its state and sends clicks back.
 let swLastSig = '', swCss = null;
 // Other files change these through switchVars: a variable imported from another file can't be assigned to.
@@ -141,37 +119,8 @@ function pushSwitcherState(force){
   };
   window.kmv.sendSwitcherState({ ...core, css: swCss, icons: icon, scripts: { vol: VOL_JS, ytcss: youtube.playerCss, ytfit: youtube.playerFitJs } });
 }
-if (DESKTOP && ROLE === 'main' && window.kmv.onSwitcherCmd){
-  setInterval(() => pushSwitcherState(), 300);
-  fromApp('onSwitcherClosed', () => { if (switchMode === 'window') setSwitchMode('dock'); });
-  fromApp('onSwitcherCmd', c => {
-    const v = c.ch ? vidByKey(c.ch) : null, s = v && v.kind === 'stream' ? v : null;
-    switch (c.type){
-      case 'focus': if (v) focusChannel(colKey(v)); break;
-      case 'play': if (s) togglePause(s); else if (v) toggleCapPause(v); break;
-      case 'mute': if (s) fsMute(s, !!c.solo); break;
-      case 'vol': if (s){ s.vol = Math.max(0, Math.min(1, +c.v || 0)); s.muted = s.vol === 0; s.adjusting = !c.final; pushVol(s); c.final ? save() : saveSoon(); syncSwitcher(); } break;
-      case 'reload': if (v) refreshFromSwitcher(v); break;
-      case 'preview': if (s){ s.preview = !s.preview; save(); if (featSwitch.style.display === 'grid') renderSwitcher(); } break;
-      case 'remove': if (v) removeChannel(colKey(v)); break;
-      case 'swap': if (c.ch && c.to) swapStreams(c.ch, c.to); break;
-      case 'side': setSideCols(c.n); break;
-      case 'tofocus': openFocusView(); break;
-      case 'tocols': setFeatured(null); layoutVars.scrollX = 0; columnsLayout(); break;
-      case 'tocf': backToChatFocus(); break;
-      case 'pophid': popOutHidden(); break;
-      case 'focusonly': toggleFocusOnly(); break;
-      case 'dock': setSwitchMode('dock'); break;
-      case 'float': setSwitchMode('float'); break;
-    }
-    swLastSig = ''; pushSwitcherState();
-  });
-}
-// Small live previews: a real, always-muted mini player per open preview. They live in their own
-// layer laid over the switcher (never inside it), so re-drawing the switcher never reloads them.
-const miniClip = mkDiv('miniClip');
+let miniClip;
 let fsScrolledAt = 0;
-featSwitch.addEventListener('scroll', () => { fsScrolledAt = performance.now(); placeMinis(); }, { passive: true });
 // Layout menu > Focus view: the current big stream (or the first one) goes big.
 function openFocusView(){
   const streams = buildCols().filter(c => isVid(c.top)).map(c => c.key);
@@ -224,5 +173,60 @@ function placeMinis(){
   });
 }
 
-export { dropMini, focusChannel, fsMoveStart, fsScrolledAt, openFocusView, placeMinis, placeSwitcher,
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  fsResize.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault(); fsResize.setPointerCapture(e.pointerId);
+    const sx = e.clientX, sy = e.clientY, w0 = switchRect.w, h0 = switchRect.h;
+    let raf = 0;
+    document.body.classList.add('dragging');
+    const move = ev => {
+      switchRect.w = w0 + ev.clientX - sx; switchRect.h = h0 + ev.clientY - sy;
+      clampSwitchRect();
+      Object.assign(featSwitch.style, { width: switchRect.w + 'px', height: switchRect.h + 'px' });
+      Object.assign(fsResize.style, { left: (switchRect.x + switchRect.w - 16) + 'px', top: (switchRect.y + switchRect.h - 16) + 'px' });
+      cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const k = featSwitch.scrollTop; renderSwitcher(); featSwitch.scrollTop = k; });
+    };
+    const up = () => {
+      fsResize.removeEventListener('pointermove', move); fsResize.removeEventListener('pointerup', up); fsResize.removeEventListener('pointercancel', up);
+      document.body.classList.remove('dragging'); saveSwitchRect();
+    };
+    fsResize.addEventListener('pointermove', move); fsResize.addEventListener('pointerup', up); fsResize.addEventListener('pointercancel', up);
+  });
+  window.addEventListener('resize', () => { if (switchMode === 'float') setTimeout(placeSwitcher, 60); });
+
+  if (DESKTOP && ROLE === 'main' && window.kmv.onSwitcherCmd){
+    setInterval(() => pushSwitcherState(), 300);
+    fromApp('onSwitcherClosed', () => { if (switchMode === 'window') setSwitchMode('dock'); });
+    fromApp('onSwitcherCmd', c => {
+      const v = c.ch ? vidByKey(c.ch) : null, s = v && v.kind === 'stream' ? v : null;
+      switch (c.type){
+        case 'focus': if (v) focusChannel(colKey(v)); break;
+        case 'play': if (s) togglePause(s); else if (v) toggleCapPause(v); break;
+        case 'mute': if (s) fsMute(s, !!c.solo); break;
+        case 'vol': if (s){ s.vol = Math.max(0, Math.min(1, +c.v || 0)); s.muted = s.vol === 0; s.adjusting = !c.final; pushVol(s); c.final ? save() : saveSoon(); syncSwitcher(); } break;
+        case 'reload': if (v) refreshFromSwitcher(v); break;
+        case 'preview': if (s){ s.preview = !s.preview; save(); if (featSwitch.style.display === 'grid') renderSwitcher(); } break;
+        case 'remove': if (v) removeChannel(colKey(v)); break;
+        case 'swap': if (c.ch && c.to) swapStreams(c.ch, c.to); break;
+        case 'side': setSideCols(c.n); break;
+        case 'tofocus': openFocusView(); break;
+        case 'tocols': setFeatured(null); layoutVars.scrollX = 0; columnsLayout(); break;
+        case 'tocf': backToChatFocus(); break;
+        case 'pophid': popOutHidden(); break;
+        case 'focusonly': toggleFocusOnly(); break;
+        case 'dock': setSwitchMode('dock'); break;
+        case 'float': setSwitchMode('float'); break;
+      }
+      swLastSig = ''; pushSwitcherState();
+    });
+  }
+  // Small live previews: a real, always-muted mini player per open preview. They live in their own
+  // layer laid over the switcher (never inside it), so re-drawing the switcher never reloads them.
+  miniClip = mkDiv('miniClip');
+  featSwitch.addEventListener('scroll', () => { fsScrolledAt = performance.now(); placeMinis(); }, { passive: true });
+}
+
+export { dropMini, focusChannel, fsMoveStart, fsScrolledAt, init, openFocusView, placeMinis, placeSwitcher,
   pushSwitcherState, setSwitchMode, swCss, switchVars };

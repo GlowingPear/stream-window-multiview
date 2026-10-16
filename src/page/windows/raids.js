@@ -1,17 +1,16 @@
-import '../chat/view-menu.js';   // runs after it (see app.js)
+import { closeWin } from '../chat/view-menu.js';
+import { ROLE, coreVars, lastLayout, wins } from '../core.js';
+import { colOrder, featuredCh, layoutVars, setFeatured } from '../layout/layouts.js';
+import { addNote } from '../panels/bell/bell.js';
+import { fitOn } from '../panels/channels/channels.js';
+import { save } from '../persistence.js';
+import { chLabel, chatSrc, platOf, platform, ytVidOf } from '../platforms/platforms.js';
+import { DESKTOP } from '../shared/env.js';
+import { flash } from '../shared/flash.js';
 import { fromApp } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
-import { ROLE, coreVars, lastLayout, wins } from '../core.js';
-import { DESKTOP } from '../shared/env.js';
-import { chLabel, chatSrc, platOf, platform, ytVidOf } from '../platforms/platforms.js';
 import { createWin } from './windows.js';
-import { closeWin } from '../chat/view-menu.js';
-import { fitOn } from '../panels/channels/channels.js';
-import { addNote } from '../panels/bell/bell.js';
-import { flash } from '../shared/flash.js';
-import { colOrder, featuredCh, layoutVars, setFeatured } from '../layout/layouts.js';
-import { save } from '../persistence.js';
 
 /* ---- Raids: when a chat or player moves to another channel, every window of the old channel follows ----
    On a raid, Kick's pop-out chat loads the new channel's page (and Twitch can move its chat or player), so the
@@ -32,8 +31,6 @@ function watchRaid(w, url){
     const src = chatSrc(w.channel, ytVidOf(w)); if (src) w.view.src = src;
   }
 }
-if (DESKTOP) fromApp('onRaid', (from, to) => followRaid(String(from), String(to), false));
-window.followRaid = followRaid; window.raidTarget = raidTarget;   // for the tests
 let raidSeen = {};
 function followRaid(from, to, tell){
   if (!from || !to || from === to || platOf(from) !== platOf(to)) return;
@@ -69,4 +66,10 @@ function arrangedByHand(){
   coreVars.lastLayout = null; store.changed('layout');
 }
 
-export { arrangedByHand, watchRaid };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  if (DESKTOP) fromApp('onRaid', (from, to) => followRaid(String(from), String(to), false));
+  window.followRaid = followRaid; window.raidTarget = raidTarget;   // for the tests
+}
+
+export { arrangedByHand, init, watchRaid };

@@ -1,5 +1,3 @@
-import './emote-preview.js';   // runs after it (see app.js)
-
 /* ---- New emotes: emotes a channel added since you last opened its chat glow until you point at one (#new-emotes).
    The app works out which are new (src/main/emote-lists.js, asked when the chat opens); this marks them in the chat page,
    also in messages that come in later, and tells the app when you've pointed at one. */
@@ -31,10 +29,15 @@ function newEmoteAgent(){
   window.__kmvNew = { set(list){ fresh = new Set(Array.isArray(list) ? list.map(String) : []); mark(); }, list: () => [...fresh] };
   return true;
 }
-const NEW_EMOTE_JS = `(${newEmoteAgent.toString()})()`;
+let NEW_EMOTE_JS;
 // The glow: put in by the app (a page's own rules can't block it), in the theme's accent colour.
 const NEW_EMOTE_CSS = () => { const a = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#53fc18';
   return `img[data-kmv-new]{outline:2px solid ${a} !important;outline-offset:1px;border-radius:4px;animation:kmvNewEmote 1.6s ease-in-out infinite}
   @keyframes kmvNewEmote{0%,100%{box-shadow:0 0 0 0 ${a}00}50%{box-shadow:0 0 10px 3px ${a}cc}}`; };
 
-export { NEW_EMOTE_CSS, NEW_EMOTE_JS, newEmoteAgent };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  NEW_EMOTE_JS = `(${newEmoteAgent.toString()})()`;
+}
+
+export { init, NEW_EMOTE_CSS, NEW_EMOTE_JS, newEmoteAgent };

@@ -1,14 +1,12 @@
-import '../platforms/youtube-options.js';   // runs after it (see app.js)
+import { wins } from '../core.js';
+import { featBase, featSwitch, featuredCh, vidByKey } from './layouts.js';
+import { icon } from '../shared/icons.js';
 import { settings } from '../shared/settings.js';
 import { pauseEvents, pauseWhy } from '../windows/pause-state.js';
-import { wins } from '../core.js';
-import { icon } from '../shared/icons.js';
-import { featBase, featSwitch, featuredCh, vidByKey } from './layouts.js';
 import { applyPlay, isPaused, miniPaused } from '../windows/pause.js';
 
 /* Pause all except focus (button at the top of the Focus area) */
 let focusOnly = false;
-focusOnly = settings.flag('focusOnly');
 function applyFocusOnly(){
   const featOn = featBase.length > 0 && !!featuredCh;
   wins.forEach(w => {
@@ -63,4 +61,9 @@ function syncSwitcher(){
   });
 }
 
-export { applyFocusOnly, focusOnly, syncSwitcher, toggleFocusOnly, updateFocusOnlyBtn };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  focusOnly = settings.flag('focusOnly');
+}
+
+export { applyFocusOnly, focusOnly, init, syncSwitcher, toggleFocusOnly, updateFocusOnlyBtn };

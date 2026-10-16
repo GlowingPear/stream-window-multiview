@@ -1,19 +1,14 @@
-import '../../toolbar/toolbar-fit.js';   // runs after it (see app.js)
+import { $, wins } from '../../core.js';
+import { openSettings, settingsDlg, settingsTab } from '../settings/settings.js';
+import { PLAT_NAME, extCount, platOf, platformVars, viewPartition, watchSignedIn } from '../../platforms/platforms.js';
+import { ask } from '../../shared/ask.js';
+import { DESKTOP } from '../../shared/env.js';
+import { icon } from '../../shared/icons.js';
 import { fromApp } from '../../shared/incoming.js';
 import { closeOnOutside } from '../../shared/popover.js';
 import { reloadView, viewId } from '../../windows/view.js';
-import { $, wins } from '../../core.js';
-import { icon } from '../../shared/icons.js';
-import { DESKTOP } from '../../shared/env.js';
-import { PLAT_NAME, extCount, platOf, platformVars, viewPartition, watchSignedIn } from '../../platforms/platforms.js';
-import { openSettings, settingsDlg, settingsTab } from '../settings/settings.js';
-import { ask } from '../../shared/ask.js';
 
-/* ---------- Chrome extensions (desktop app) ----------
-   Settings > Extensions lists them, each with a grid: on or off per site and per window type. Each stream
-   and chat window has an extensions button: the extensions in that window, their popups and options, and
-   for logged-out streams (each has its own session) switching one on or off for just that window. */
-const extPane = $('#settingsDlg .st-pane[data-s=extensions]');
+let extPane;
 const EXT_PLATS = ['kick', 'twitch', 'youtube'], EXT_COL = { kick: '#53fc18', twitch: '#a970ff', youtube: '#ff3d3d' };
 const andList = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
 // A site watched signed in has one switch for its chats and streams (they share a session), shown as one
@@ -84,47 +79,7 @@ async function extInstall(run, busy){
   if (r.id){ extPane.querySelector('.ex-linkrow').hidden = true; renderExtPane(); }
   return r;
 }
-extPane.addEventListener('click', async e => {
-  const b = e.target.closest('button'); if (!b) return;
-  const card = b.closest('.ex-card'), id = card && card.dataset.id;
-  if (b.classList.contains('ex-store')) window.kmv.extOpenStore();
-  else if (b.classList.contains('ex-link')){
-    const row = extPane.querySelector('.ex-linkrow');
-    row.hidden = !row.hidden;
-    if (!row.hidden) row.querySelector('input').focus();
-  }
-  else if (b.classList.contains('ex-folder')) extInstall(() => window.kmv.extLoadFolder(), '');
-  else if (b.classList.contains('ex-pm')){ const ul = card.querySelector('.ex-perms'); ul.hidden = !ul.hidden; }
-  else if (b.classList.contains('ex-reload')){
-    b.disabled = true; b.classList.add('spin'); b.querySelector('span').textContent = 'Reloading…';
-    extMsg('', false);
-    let r = {};
-    try { r = await window.kmv.extReload(id); } catch (err) { r = { error: 'That didn\'t work: ' + err.message }; }
-    if (r.error) extMsg(r.error, false);
-    else if (r.id) extMsg(`Reloaded ${r.name}${r.version ? ' v' + r.version : ''}.`, true);
-    renderExtPane();
-  }
-  else if (b.classList.contains('ex-rm')){
-    const name = card.querySelector('.ex-t b').textContent;
-    if (!(await ask(`Remove ${name}?`, 'It goes from every window, with its settings.', { ok: 'Remove', danger: true }))) return;
-    await window.kmv.extRemove(id);
-    renderExtPane();
-  }
-});
-extPane.querySelector('.ex-linkrow').addEventListener('submit', e => {
-  e.preventDefault();
-  const v = e.target.querySelector('input').value.trim();
-  if (v) extInstall(() => window.kmv.extInstallLink(v), 'Downloading…').then(r => { if (r.id) e.target.querySelector('input').value = ''; });
-});
-extPane.addEventListener('change', async e => {
-  const card = e.target.closest('.ex-card'); if (!card) return;
-  const id = card.dataset.id, t = e.target;
-  if (t.classList.contains('ex-on')){ card.querySelector('.ex-grid').classList.toggle('st-dim', !t.checked); await window.kmv.extSet(id, { enabled: t.checked }); }
-  else if (t.dataset.p) await window.kmv.extSet(id, { plat: t.dataset.p, kind: t.dataset.k, on: t.checked });
-});
-
-// The install dialog: from the Web Store window, a link or a folder.
-const extDlg = $('#extDlg');
+let extDlg;
 let extDlgReq = null;
 function showExtDlg(info){
   if (extDlgReq) extDlgDone(false);
@@ -145,12 +100,7 @@ function extDlgDone(ok){
   window.kmv.extConfirmReply(extDlgReq.reqId, { ok, grid });
   extDlgReq = null;
 }
-extDlg.querySelector('.ex-yes').onclick = () => extDlgDone(true);
-extDlg.querySelector('.ex-no').onclick = () => extDlgDone(false);
-extDlg.addEventListener('pointerdown', e => { if (e.target === extDlg) extDlgDone(false); });
-
-// Each window's extensions button and menu.
-const extMenu = $('#extMenu');
+let extMenu;
 let extMenuFor = null;
 function extButton(w){
   const b = w.el && w.el.querySelector('.btns [data-a=ext]');
@@ -202,36 +152,92 @@ async function openExtMenu(w, btn){
   extMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
   extMenu.style.top = Math.min(innerHeight - extMenu.offsetHeight - 8, r.bottom + 4) + 'px';
 }
-extMenu.addEventListener('click', e => {
-  const f = extMenuFor; if (!f) return;
-  const b = e.target.closest('button'); if (!b) return;
-  const id = b.closest('.em-row') && b.closest('.em-row').dataset.id;
-  if (b.classList.contains('em-set')){ extMenu.hidden = true; openSettings('extensions'); }
-  else if (b.classList.contains('em-opt')){ extMenu.hidden = true; window.kmv.extOptions(id, f.part); }
-  else if (b.classList.contains('em-main')){
-    extMenu.hidden = true;
-    const r = f.btn.getBoundingClientRect();
-    window.kmv.extActivate(f.part, { eventType: 'click', extensionId: id, tabId: f.tabId,
-      anchorRect: { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }, alignment: 'bottom left' }).catch(() => {});
-  }
-});
-extMenu.addEventListener('change', e => {
-  const f = extMenuFor, row = e.target.closest('.em-row');
-  if (!f || !row || !e.target.classList.contains('em-on')) return;
-  extMenu.hidden = true;
-  window.kmv.extSet(row.dataset.id, { partition: f.part, on: e.target.checked });
-});
-closeOnOutside(extMenu, { button: () => extMenuFor && extMenuFor.btn });
-if (DESKTOP && window.kmv.extList){
-  window.kmv.extList().then(xs => { platformVars.extCount = xs.length; refreshExtButtons(); }).catch(() => { platformVars.extCount = 0; });
-  fromApp('onExtConfirm', showExtDlg);
-  // An extension was switched on or off somewhere: reload the windows it changed, and show the new state.
-  fromApp('onExtChanged', parts => {
-    wins.forEach(w => { if (w.view && w.ready && parts.includes(viewPartition(w))) reloadView(w.view); });
-    extMenu.hidden = true;
-    if (!settingsDlg.hidden && settingsTab === 'extensions') renderExtPane();
-    else window.kmv.extList().then(xs => { platformVars.extCount = xs.length; refreshExtButtons(); }).catch(() => {});
+
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  /* ---------- Chrome extensions (desktop app) ----------
+     Settings > Extensions lists them, each with a grid: on or off per site and per window type. Each stream
+     and chat window has an extensions button: the extensions in that window, their popups and options, and
+     for logged-out streams (each has its own session) switching one on or off for just that window. */
+  extPane = $('#settingsDlg .st-pane[data-s=extensions]');
+  extPane.addEventListener('click', async e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const card = b.closest('.ex-card'), id = card && card.dataset.id;
+    if (b.classList.contains('ex-store')) window.kmv.extOpenStore();
+    else if (b.classList.contains('ex-link')){
+      const row = extPane.querySelector('.ex-linkrow');
+      row.hidden = !row.hidden;
+      if (!row.hidden) row.querySelector('input').focus();
+    }
+    else if (b.classList.contains('ex-folder')) extInstall(() => window.kmv.extLoadFolder(), '');
+    else if (b.classList.contains('ex-pm')){ const ul = card.querySelector('.ex-perms'); ul.hidden = !ul.hidden; }
+    else if (b.classList.contains('ex-reload')){
+      b.disabled = true; b.classList.add('spin'); b.querySelector('span').textContent = 'Reloading…';
+      extMsg('', false);
+      let r = {};
+      try { r = await window.kmv.extReload(id); } catch (err) { r = { error: 'That didn\'t work: ' + err.message }; }
+      if (r.error) extMsg(r.error, false);
+      else if (r.id) extMsg(`Reloaded ${r.name}${r.version ? ' v' + r.version : ''}.`, true);
+      renderExtPane();
+    }
+    else if (b.classList.contains('ex-rm')){
+      const name = card.querySelector('.ex-t b').textContent;
+      if (!(await ask(`Remove ${name}?`, 'It goes from every window, with its settings.', { ok: 'Remove', danger: true }))) return;
+      await window.kmv.extRemove(id);
+      renderExtPane();
+    }
   });
+  extPane.querySelector('.ex-linkrow').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = e.target.querySelector('input').value.trim();
+    if (v) extInstall(() => window.kmv.extInstallLink(v), 'Downloading…').then(r => { if (r.id) e.target.querySelector('input').value = ''; });
+  });
+  extPane.addEventListener('change', async e => {
+    const card = e.target.closest('.ex-card'); if (!card) return;
+    const id = card.dataset.id, t = e.target;
+    if (t.classList.contains('ex-on')){ card.querySelector('.ex-grid').classList.toggle('st-dim', !t.checked); await window.kmv.extSet(id, { enabled: t.checked }); }
+    else if (t.dataset.p) await window.kmv.extSet(id, { plat: t.dataset.p, kind: t.dataset.k, on: t.checked });
+  });
+
+  // The install dialog: from the Web Store window, a link or a folder.
+  extDlg = $('#extDlg');
+  extDlg.querySelector('.ex-yes').onclick = () => extDlgDone(true);
+  extDlg.querySelector('.ex-no').onclick = () => extDlgDone(false);
+  extDlg.addEventListener('pointerdown', e => { if (e.target === extDlg) extDlgDone(false); });
+
+  // Each window's extensions button and menu.
+  extMenu = $('#extMenu');
+  extMenu.addEventListener('click', e => {
+    const f = extMenuFor; if (!f) return;
+    const b = e.target.closest('button'); if (!b) return;
+    const id = b.closest('.em-row') && b.closest('.em-row').dataset.id;
+    if (b.classList.contains('em-set')){ extMenu.hidden = true; openSettings('extensions'); }
+    else if (b.classList.contains('em-opt')){ extMenu.hidden = true; window.kmv.extOptions(id, f.part); }
+    else if (b.classList.contains('em-main')){
+      extMenu.hidden = true;
+      const r = f.btn.getBoundingClientRect();
+      window.kmv.extActivate(f.part, { eventType: 'click', extensionId: id, tabId: f.tabId,
+        anchorRect: { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }, alignment: 'bottom left' }).catch(() => {});
+    }
+  });
+  extMenu.addEventListener('change', e => {
+    const f = extMenuFor, row = e.target.closest('.em-row');
+    if (!f || !row || !e.target.classList.contains('em-on')) return;
+    extMenu.hidden = true;
+    window.kmv.extSet(row.dataset.id, { partition: f.part, on: e.target.checked });
+  });
+  closeOnOutside(extMenu, { button: () => extMenuFor && extMenuFor.btn });
+  if (DESKTOP && window.kmv.extList){
+    window.kmv.extList().then(xs => { platformVars.extCount = xs.length; refreshExtButtons(); }).catch(() => { platformVars.extCount = 0; });
+    fromApp('onExtConfirm', showExtDlg);
+    // An extension was switched on or off somewhere: reload the windows it changed, and show the new state.
+    fromApp('onExtChanged', parts => {
+      wins.forEach(w => { if (w.view && w.ready && parts.includes(viewPartition(w))) reloadView(w.view); });
+      extMenu.hidden = true;
+      if (!settingsDlg.hidden && settingsTab === 'extensions') renderExtPane();
+      else window.kmv.extList().then(xs => { platformVars.extCount = xs.length; refreshExtButtons(); }).catch(() => {});
+    });
+  }
 }
 
-export { extButton, extDlgDone, openExtMenu, renderExtPane };
+export { extButton, extDlgDone, init, openExtMenu, renderExtPane };

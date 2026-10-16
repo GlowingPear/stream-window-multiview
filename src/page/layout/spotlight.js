@@ -1,4 +1,3 @@
-import './chat-focus.js';   // runs after it (see app.js)
 import { BAR, GAP, coreVars, wins } from '../core.js';
 import { SH, SW } from './geometry.js';
 import { applyRects } from './layouts.js';

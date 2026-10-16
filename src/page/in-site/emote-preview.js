@@ -1,5 +1,3 @@
-import './mentions.js';   // runs after it (see app.js)
-
 /* ---- Emote preview: point at an emote in a chat to see it big, with its name, Copy name and Download.
    Runs inside each chat page (Kick, Twitch, YouTube, and emotes from add-ons like 7TV, BTTV and FFZ). The card
    lives in its own shadow root, styled with a constructed sheet, so the site's styles and rules don't touch it.
@@ -158,6 +156,11 @@ function emoteAgent(){
   };
   return true;
 }
-const EMOTE_JS = `(${emoteAgent.toString()})()`;
+let EMOTE_JS;
 
-export { EMOTE_JS, emoteAgent };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  EMOTE_JS = `(${emoteAgent.toString()})()`;
+}
+
+export { EMOTE_JS, emoteAgent, init };

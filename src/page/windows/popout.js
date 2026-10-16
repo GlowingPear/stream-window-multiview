@@ -1,18 +1,17 @@
-import '../layout/spotlight.js';   // runs after it (see app.js)
-import { settings } from '../shared/settings.js';
-import { store } from '../shared/store.js';
-import { $, GAP, colWidth, colsMode, coreVars, lastLayout, mutedChk, popped, wins } from '../core.js';
-import { setTb } from '../shared/icons.js';
-import { chLabel } from '../platforms/platforms.js';
-import { SW, focusWin } from '../layout/geometry.js';
-import { createWin } from './windows.js';
 import { releaseWin } from '../chat/view-menu.js';
-import { defaultStreamRect } from '../layout/placement.js';
-import { flash } from '../shared/flash.js';
-import { chatFocusLayout, featBase, featSwitch, featW, featuredCh, layoutChatsOnly, scrollX, tile } from '../layout/layouts.js';
+import { $, GAP, colWidth, colsMode, coreVars, lastLayout, mutedChk, popped, wins } from '../core.js';
 import { buildCols, columnsLayout } from '../layout/columns.js';
+import { SW, focusWin } from '../layout/geometry.js';
+import { chatFocusLayout, featBase, featSwitch, featW, featuredCh, layoutChatsOnly, scrollX, tile } from '../layout/layouts.js';
+import { defaultStreamRect } from '../layout/placement.js';
 import { spotlight } from '../layout/spotlight.js';
 import { save } from '../persistence.js';
+import { chLabel } from '../platforms/platforms.js';
+import { flash } from '../shared/flash.js';
+import { setTb } from '../shared/icons.js';
+import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
+import { createWin } from './windows.js';
 
 /* ---------- streams pop-out ---------- */
 function streamSpecs(){ return wins.filter(w => w.kind === 'stream').map(w => ({ channel: w.channel, vol: w.vol, muted: w.muted })); }
@@ -28,7 +27,6 @@ let popPartial = false;
 const popoutVars = {
   get popPartial(){ return popPartial; }, set popPartial(v){ popPartial = v; },
 };
-popPartial = settings.flag('popPartial');
 function hiddenStreams(){
   if (!colsMode || !colWidth) return [];
   const cols = buildCols().filter(c => !(featBase.length && c.key === featuredCh));
@@ -88,5 +86,10 @@ function receiveChat(channel){             // main window, "+ Chat" pressed in t
   if (popped) layoutChatsOnly(); else save();
 }
 
-export { hiddenStreams, popOutHidden, popOutStreams, popoutVars, popPartial, receiveChat, receiveStreams,
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  popPartial = settings.flag('popPartial');
+}
+
+export { hiddenStreams, init, popOutHidden, popOutStreams, popoutVars, popPartial, receiveChat, receiveStreams,
   streamsCameBack, streamSpecs, updatePopBtn, updatePopHiddenBtn };

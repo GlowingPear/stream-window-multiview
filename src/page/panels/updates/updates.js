@@ -1,13 +1,12 @@
-import '../help/help.js';   // runs after it (see app.js)
-import { esc } from '../../shared/element.js';
-import { fromApp } from '../../shared/incoming.js';
-import { settings } from '../../shared/settings.js';
 import { $, ROLE, msg } from '../../core.js';
-import { DESKTOP } from '../../shared/env.js';
 import { notes } from '../bell/bell.js';
-import { flash } from '../../shared/flash.js';
 import { appVersion, showHelp } from '../help/help.js';
 import { openSettings, settingsDlg, settingsTab } from '../settings/settings.js';
+import { esc } from '../../shared/element.js';
+import { DESKTOP } from '../../shared/env.js';
+import { flash } from '../../shared/flash.js';
+import { fromApp } from '../../shared/incoming.js';
+import { settings } from '../../shared/settings.js';
 
 /* ---- Updates from GitHub ---- */
 let updSt = null;
@@ -125,19 +124,23 @@ function updBanner(u){
     b.hidden = false;
   }
 }
-if (DESKTOP && ROLE === 'main' && window.kmv.updateStatus){
-  window.kmv.updateStatus().then(u => { updSt = u; }).catch(() => {});
-  fromApp('onUpdateStatus', u => { updSt = u; renderUpdates(); updBanner(u); });
-  fromApp('onUpdateShow', () => openSettings('updates'));
-  fromApp('onHelpShow', tab => showHelp(tab));
-  $('#updBanner .ub-go').onclick = restartForUpdate;
-  $('#updBanner .ub-later').onclick = () => { $('#updBanner').hidden = true; try { sessionStorage.setItem('smvUpdLater' + (updSt && updSt.installed), '1'); } catch {} };
-  // First start after an update: show what's new.
-  window.kmv.appVersion().then(v => {
-    const seen = settings.get('seenVersion');
-    settings.set('seenVersion', v);
-    if (seen && seen !== v) setTimeout(() => { showHelp('news'); flash(`Updated to version ${v}`, { subject: 'updates', act: { t: 'news' } }); }, 1500);
-  }).catch(() => {});
+
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  if (DESKTOP && ROLE === 'main' && window.kmv.updateStatus){
+    window.kmv.updateStatus().then(u => { updSt = u; }).catch(() => {});
+    fromApp('onUpdateStatus', u => { updSt = u; renderUpdates(); updBanner(u); });
+    fromApp('onUpdateShow', () => openSettings('updates'));
+    fromApp('onHelpShow', tab => showHelp(tab));
+    $('#updBanner .ub-go').onclick = restartForUpdate;
+    $('#updBanner .ub-later').onclick = () => { $('#updBanner').hidden = true; try { sessionStorage.setItem('smvUpdLater' + (updSt && updSt.installed), '1'); } catch {} };
+    // First start after an update: show what's new.
+    window.kmv.appVersion().then(v => {
+      const seen = settings.get('seenVersion');
+      settings.set('seenVersion', v);
+      if (seen && seen !== v) setTimeout(() => { showHelp('news'); flash(`Updated to version ${v}`, { subject: 'updates', act: { t: 'news' } }); }, 1500);
+    }).catch(() => {});
+  }
 }
 
-export { renderUpdates };
+export { init, renderUpdates };

@@ -1,21 +1,20 @@
-import '../channels/open-box.js';   // runs after it (see app.js)
-import { SmvSpam } from '../../alerts/spam.js';
-import { SmvNotes } from './notifications.js';
-import { element, esc } from '../../shared/element.js';
-import { settings } from '../../shared/settings.js';
-import { store } from '../../shared/store.js';
-import { $, ROLE, wins } from '../../core.js';
-import { icon } from '../../shared/icons.js';
-import { DESKTOP } from '../../shared/env.js';
-import { PLAT_NAME, chLabel, chLabelP, platOf } from '../../platforms/platforms.js';
-import { infoFor } from '../channels/channels.js';
-import { injectMention, pushMyName, renderMentions, renderNoteHistory } from './all-notifications.js';
 import { alerts, playSound, wantNotify } from '../../alerts/alerts.js';
 import { revealChat, spamOpts } from '../../alerts/spam-alerts.js';
+import { SmvSpam } from '../../alerts/spam.js';
+import { $, ROLE, wins } from '../../core.js';
 import { addParsed } from '../../layout/placement.js';
-import { flash } from '../../shared/flash.js';
+import { injectMention, pushMyName, renderMentions, renderNoteHistory } from './all-notifications.js';
+import { SmvNotes } from './notifications.js';
+import { infoFor } from '../channels/channels.js';
 import { showHelp } from '../help/help.js';
 import { ignoreSender, renderSpamHist } from '../settings/alerts.js';
+import { PLAT_NAME, chLabel, chLabelP, platOf } from '../../platforms/platforms.js';
+import { element, esc } from '../../shared/element.js';
+import { DESKTOP } from '../../shared/env.js';
+import { flash } from '../../shared/flash.js';
+import { icon } from '../../shared/icons.js';
+import { settings } from '../../shared/settings.js';
+import { store } from '../../shared/store.js';
 
 /* ---------- the notification centre: the toolbar bell ----------
    Chat mentions, likely spam, saved channels going live, raids and the app's own messages, in one list
@@ -23,19 +22,7 @@ import { ignoreSender, renderSpamHist } from '../settings/alerts.js';
 const NOTE_SHOWN = 30;    // the latest in each tab of the bell (the rest in All notifications)
 const NOTES_KEY = 'notifications';   // (a saved setting: shared/settings.js)
 let myName = '', myTwitch = '', mentOn = true, mentMuted = new Set(), mentWords = [];
-myName = settings.text('myName');
-myTwitch = settings.text('myTwitch');
-mentOn = settings.flag('mentOn', true);
-mentMuted = new Set([].concat(settings.json('mentMuted', [])));
-mentWords = [].concat(settings.json('mentWords', [])).filter(x => typeof x === 'string');
 let notes = settings.json(NOTES_KEY);
-if (Array.isArray(notes)) notes = notes.filter(n => n && typeof n === 'object');
-else {
-  // The first start with the bell: the mentions history and spam alerts' history move in. The old ones are
-  // left as they were, so an older version still has them.
-  notes = SmvNotes.migrate(settings.json('mentions'), settings.json('spamHistory'));
-  if (ROLE === 'main') saveNotes();
-}
 function saveNotes(){ settings.set(NOTES_KEY, notes); }
 // What each one can still do this session: Undo (a closed channel), Show in folder (a saved emote).
 const noteActs = new Map();
@@ -50,7 +37,6 @@ const bellVars = {
   get dndT(){ return dndT; }, set dndT(v){ dndT = v; },
   get bellCount(){ return bellCount; }, set bellCount(v){ bellCount = v; },
 };
-bellCount = settings.text('bellCount', 'ms'); dndUntil = settings.num('dnd');
 const dndOn = () => dndUntil < 0 || dndUntil > Date.now();
 // The kind of alert settings a notification uses.
 const alertKind = n => SmvNotes.tabOf(n) === 'mentions' ? 'mention' : n.kind;
@@ -316,8 +302,6 @@ const EMPTY = {
   live: 'Nobody has gone live yet. Saved channels show here when they go live, and raids the app followed.',
   app: 'No messages from the app.'
 };
-// The bell's button, its panel and All notifications show the notifications.
-store.watch('notes', () => renderBell());
 function renderBell(){
   updateBellBtn();
   renderNoteHistory();
@@ -340,7 +324,26 @@ function seeBell(){
   if (n){ saveNotes(); updateBellBtn(); renderNoteHistory(); }
 }
 
-export { addNote, bell, bellCount, bellVars, cleanParts, dndOn, dndT, dndUntil, drawNotes, dropNotes, EMPTY, mentAny,
-  mentMuted, mentNameFor, mentOn, mentWords, myName, myTwitch, nh, noteActs, noteRow, notes, partsText, readChat,
-  readNotes, renderBell, saveNotes, seeBell, setMyName, spamWhy, syncAtBtn, TAB_NAME, timeAgo, toggleChatMentions,
-  updateBellBtn };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  myName = settings.text('myName');
+  myTwitch = settings.text('myTwitch');
+  mentOn = settings.flag('mentOn', true);
+  mentMuted = new Set([].concat(settings.json('mentMuted', [])));
+  mentWords = [].concat(settings.json('mentWords', [])).filter(x => typeof x === 'string');
+  if (Array.isArray(notes)) notes = notes.filter(n => n && typeof n === 'object');
+  else {
+    // The first start with the bell: the mentions history and spam alerts' history move in. The old ones are
+    // left as they were, so an older version still has them.
+    notes = SmvNotes.migrate(settings.json('mentions'), settings.json('spamHistory'));
+    if (ROLE === 'main') saveNotes();
+  }
+  bellCount = settings.text('bellCount', 'ms'); dndUntil = settings.num('dnd');
+  // The bell's button, its panel and All notifications show the notifications.
+  store.watch('notes', () => renderBell());
+}
+
+export { addNote, bell, bellCount, bellVars, cleanParts, dndOn, dndT, dndUntil, drawNotes, dropNotes, EMPTY, init,
+  mentAny, mentMuted, mentNameFor, mentOn, mentWords, myName, myTwitch, nh, noteActs, noteRow, notes, partsText,
+  readChat, readNotes, renderBell, saveNotes, seeBell, setMyName, spamWhy, syncAtBtn, TAB_NAME, timeAgo,
+  toggleChatMentions, updateBellBtn };

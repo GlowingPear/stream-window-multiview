@@ -1,25 +1,24 @@
-import './columns.js';   // runs after it (see app.js)
-import { settings } from '../shared/settings.js';
-import { $, ROLE, colsMode, lastLayout, wins } from '../core.js';
-import { icon } from '../shared/icons.js';
-import { DESKTOP, keyName } from '../shared/env.js';
-import { chLabel, platOf } from '../platforms/platforms.js';
-import { setRect } from './geometry.js';
-import { createWin, pushVol, saveSoon } from '../windows/windows.js';
 import { closeWin } from '../chat/view-menu.js';
-import { addNote, noteActs, renderBell } from '../panels/bell/bell.js';
+import { $, ROLE, colsMode, lastLayout, wins } from '../core.js';
+import { backToChatFocus } from './chat-focus.js';
+import { buildCols, columnVars, columnsLayout, sideCols } from './columns.js';
+import { syncSwitcher, toggleFocusOnly, updateFocusOnlyBtn } from './focus-only.js';
+import { gameKey, gameLayout, setGameKey } from './game-focus.js';
+import { setRect } from './geometry.js';
 import { chatFocusLayout, colKey, colOrder, featBase, featSwitch, featuredCh, isVid, layoutVars, setFeatured,
   toggleFeatured, vidByKey } from './layouts.js';
-import { refreshPicks } from '../windows/channel-picker.js';
-import { buildCols, columnVars, columnsLayout, sideCols } from './columns.js';
 import { focusChannel, fsMoveStart, fsScrolledAt, openFocusView, placeMinis, setSwitchMode } from './switch-control.js';
-import { togglePause } from '../windows/pause.js';
-import { syncSwitcher, toggleFocusOnly, updateFocusOnlyBtn } from './focus-only.js';
-import { backToChatFocus } from './chat-focus.js';
-import { popOutHidden, updatePopHiddenBtn } from '../windows/popout.js';
-import { save } from '../persistence.js';
 import { refreshFromSwitcher } from './undo.js';
-import { gameKey, gameLayout, setGameKey } from './game-focus.js';
+import { addNote, noteActs, renderBell } from '../panels/bell/bell.js';
+import { save } from '../persistence.js';
+import { chLabel, platOf } from '../platforms/platforms.js';
+import { DESKTOP, keyName } from '../shared/env.js';
+import { icon } from '../shared/icons.js';
+import { settings } from '../shared/settings.js';
+import { refreshPicks } from '../windows/channel-picker.js';
+import { togglePause } from '../windows/pause.js';
+import { popOutHidden, updatePopHiddenBtn } from '../windows/popout.js';
+import { createWin, pushVol, saveSoon } from '../windows/windows.js';
 
 /* Switcher under the big stream: one item per open stream.
    Click the name to put it in the big spot; play/pause, mute + slider (mouse wheel over them too).
@@ -38,11 +37,6 @@ function toast(text, undo, ok){
   undoNote = n && undo ? n.id : null;
   if (undoNote) noteActs.set(undoNote, { run: undo, ok: ok || (() => true) });
 }
-$('#toast button').onclick = () => {
-  const f = undoFn; $('#toast').hidden = true; undoFn = null;
-  if (undoNote){ noteActs.delete(undoNote); undoNote = null; renderBell(); }
-  if (f) f();
-};
 function removeChannel(ch){
   const cap = vidByKey(ch);
   if (cap && cap.kind === 'capture'){
@@ -272,4 +266,13 @@ function swapRects(p, q){
   const i = wins.indexOf(p), j = wins.indexOf(q); if (i >= 0 && j >= 0) [wins[i], wins[j]] = [wins[j], wins[i]];
 }
 
-export { fsMute, isFocusView, removeChannel, renderSwitcher, setSideCols, swapStreams, toggleCapPause };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  $('#toast button').onclick = () => {
+    const f = undoFn; $('#toast').hidden = true; undoFn = null;
+    if (undoNote){ noteActs.delete(undoNote); undoNote = null; renderBell(); }
+    if (f) f();
+  };
+}
+
+export { fsMute, init, isFocusView, removeChannel, renderSwitcher, setSideCols, swapStreams, toggleCapPause };

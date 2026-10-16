@@ -1,33 +1,30 @@
-import '../../layout/lock.js';   // runs after it (see app.js)
+import { alerts } from '../../alerts/alerts.js';
+import { $, ROLE, colsMode, lastLayout, wins } from '../../core.js';
+import { columnsLayout } from '../../layout/columns.js';
+import { autoLayout, chatFocusLayout } from '../../layout/layouts.js';
+import { locked } from '../../layout/lock.js';
+import { addParsed } from '../../layout/placement.js';
+import { activeP } from '../../layout/saved-layouts.js';
+import { addNote, bell, dndOn, notes, saveNotes } from '../bell/bell.js';
+import { appendFollowSugs } from './follow-suggestions.js';
+import { esRefresh } from '../empty-stage/empty-stage.js';
+import { openProfile } from '../profiles/profiles.js';
+import { PLAT_NAME, chLabel, infoNames, normCh, platIcon, platOf, rememberNames } from '../../platforms/platforms.js';
 import { element } from '../../shared/element.js';
+import { DESKTOP } from '../../shared/env.js';
+import { flash } from '../../shared/flash.js';
+import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
-import { $, ROLE, colsMode, lastLayout, wins } from '../../core.js';
-import { icon } from '../../shared/icons.js';
-import { DESKTOP } from '../../shared/env.js';
-import { PLAT_NAME, chLabel, infoNames, normCh, platIcon, platOf, rememberNames } from '../../platforms/platforms.js';
-import { locked } from '../../layout/lock.js';
-import { appendFollowSugs } from './follow-suggestions.js';
-import { addNote, bell, dndOn, notes, saveNotes } from '../bell/bell.js';
-import { alerts } from '../../alerts/alerts.js';
-import { addParsed } from '../../layout/placement.js';
-import { flash } from '../../shared/flash.js';
-import { autoLayout, chatFocusLayout } from '../../layout/layouts.js';
-import { columnsLayout } from '../../layout/columns.js';
-import { activeP } from '../../layout/saved-layouts.js';
-import { esRefresh } from '../empty-stage/empty-stage.js';
 import { panel } from '../../toolbar/toolbar.js';
-import { openProfile } from '../profiles/profiles.js';
 
 /* ---------- saved channels (always A–Z) + live status ---------- */
 const SAVED = 'saved';   // (a saved setting: shared/settings.js)
 const abc = list => [...new Set(list)].sort((x, y) => x.localeCompare(y, undefined, { sensitivity: 'base', numeric: true }));
 let saved = [];
-try { saved = abc(settings.json(SAVED, [])); } catch {}
 let liveInfo = {};                                  // channel -> { live, title, viewers, category, name, checked }
 function gotLive(snap){ liveInfo = snap || {}; rememberNames(infoNames(liveInfo)); store.changed('live'); checkAutoOpen(); if (!wins.length) esRefresh(); }
 let notifyAll = true, notifyOff = [];
-notifyAll = settings.flag('notifyAll', true); notifyOff = settings.json('notifyOff', []);
 function sendWatch(){
   if (DESKTOP && ROLE === 'main' && window.kmv.watchLive) window.kmv.watchLive({ channels: saved, notifyAll, away: !!alerts && alerts.live.notify === 'unfocused', off: notifyOff.map(c => String(c).toLowerCase()) });
 }
@@ -40,10 +37,6 @@ function toggleSaved(ch){
   saved = saved.includes(ch) ? saved.filter(c => c !== ch) : [...saved, ch];
   persistSaved();
 }
-settings.onChange(SAVED, (_, v) => {            // a star clicked in the other window
-  try { saved = abc(JSON.parse(v || '[]')); } catch {} store.changed('saved'); sendWatch();
-});
-store.watch(['saved', 'wins'], () => refreshStars());
 function refreshStars(){
   wins.forEach(w => {
     const b = w.el.querySelector('[data-a=star]'); if (!b) return;
@@ -63,13 +56,10 @@ const channelVars = {
   get notifyOff(){ return notifyOff; }, set notifyOff(v){ notifyOff = v; },
   get savedTab(){ return savedTab; }, set savedTab(v){ savedTab = v; },
 };
-savedTab = settings.text('savedTab', 'all');
 const tabPlat = () => savedTab === 'all' ? 'kick' : savedTab;
 // Channels that open by themselves when they go live
 let autoOpen = [];
-autoOpen = settings.json('autoOpen', []);
 let autoFit = false;                  // Settings > Layouts: in Auto layout, fit them in as the last streams
-autoFit = settings.flag('autoFit');
 function setAutoFit(on){         // Auto layout's own (Settings); the menu changes the layout in use
   autoFit = on;
   settings.set('autoFit', on);
@@ -149,9 +139,6 @@ function channelRow({ ch, name, site, live, photo, sub, subTitle, cls = '', titl
   return { row, meta, acts };
 }
 const savedQuery = () => { const q = ($('#savedInput') || {}).value || ''; return /[/:]/.test(q) ? '' : q.trim().replace(/^@/, '').toLowerCase(); };
-// The Channels list shows the saved channels, their live status and names, which are open, the Channels box's
-// search and tab, and each one's auto-open and live alert.
-store.watch(['saved', 'live', 'wins', 'names', 'channelsBox', 'autoOpen', 'liveAlerts'], () => renderSaved());
 function renderSaved(){
   updateSavedBadge();
   const list = $('#savedList'); if (!list) return;
@@ -233,6 +220,22 @@ function renderSaved(){
   appendFollowSugs(list, q);
 }
 
-export { autoFit, channelRow, channelVars, fitOn, fmtViewers, gotLive, infoFor, liveInfo, liveNote, liveNow,
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  try { saved = abc(settings.json(SAVED, [])); } catch {}
+  notifyAll = settings.flag('notifyAll', true); notifyOff = settings.json('notifyOff', []);
+  settings.onChange(SAVED, (_, v) => {            // a star clicked in the other window
+    try { saved = abc(JSON.parse(v || '[]')); } catch {} store.changed('saved'); sendWatch();
+  });
+  store.watch(['saved', 'wins'], () => refreshStars());
+  savedTab = settings.text('savedTab', 'all');
+  autoOpen = settings.json('autoOpen', []);
+  autoFit = settings.flag('autoFit');
+  // The Channels list shows the saved channels, their live status and names, which are open, the Channels box's
+  // search and tab, and each one's auto-open and live alert.
+  store.watch(['saved', 'live', 'wins', 'names', 'channelsBox', 'autoOpen', 'liveAlerts'], () => renderSaved());
+}
+
+export { autoFit, channelRow, channelVars, fitOn, fmtViewers, gotLive, infoFor, init, liveInfo, liveNote, liveNow,
   loadSavedProfiles, notifyAll, notifyOff, persistSaved, renderSaved, saved, savedTab, sendWatch, setAutoFit, svHue,
   svInitials, svProf, tabPlat, toggleSaved };

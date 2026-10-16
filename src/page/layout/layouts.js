@@ -1,19 +1,18 @@
-import '../panels/settings/notifications.js';   // runs after it (see app.js)
-import { settings } from '../shared/settings.js';
-import { store } from '../shared/store.js';
 import { $, BAR, GAP, ROLE, colWidth, colsMode, coreVars, stage, streamCols, wins } from '../core.js';
-import { DESKTOP } from '../shared/env.js';
-import { chLabel } from '../platforms/platforms.js';
+import { updateModeClass } from './chat-focus.js';
+import { buildCols, columnsLayout } from './columns.js';
+import { applyFocusOnly } from './focus-only.js';
 import { SH, SW, setRect } from './geometry.js';
 import { locked } from './lock.js';
-import { pageStep, scrollCols, scrollVars, smoothScrollTo, updatePageBtn } from './sideways-scroll.js';
-import { schedulePicks } from '../windows/channel-picker.js';
-import { buildCols, columnsLayout } from './columns.js';
-import { placeMinis, placeSwitcher } from './switch-control.js';
-import { applyFocusOnly } from './focus-only.js';
 import { activeP, setPresetOpt } from './saved-layouts.js';
-import { updateModeClass } from './chat-focus.js';
+import { pageStep, scrollCols, scrollVars, smoothScrollTo, updatePageBtn } from './sideways-scroll.js';
+import { placeMinis, placeSwitcher } from './switch-control.js';
 import { save } from '../persistence.js';
+import { chLabel } from '../platforms/platforms.js';
+import { DESKTOP } from '../shared/env.js';
+import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
+import { schedulePicks } from '../windows/channel-picker.js';
 
 /* ---------- layouts ---------- */
 function gridRects(n, X, Y, W, H, aspect){
@@ -150,33 +149,20 @@ let colX0 = GAP / 2, featW = 0, featBase = [];
 let colOrder = [], linked = true, featuredCh = null;
 let scrollX = 0, maxScroll = 0, snapT = 0, scrollRaf = 0;
 const HBAR = 14, SWITCH_MIN = 54;
-colOrder = settings.json('colOrder', []);
-linked = settings.flag('linked', true);
-featuredCh = settings.text('featured', null);
 const colKey = w => w.kind === 'web' ? 'web:' + w.id : w.kind === 'capture' ? 'cap:' + w.id : w.channel;
 // "Videos": streams and other apps' windows. Both can be in the switch control and be the big one.
 const isVid = w => !!w && (w.kind === 'stream' || w.kind === 'capture');
 const vidByKey = k => wins.find(w => isVid(w) && colKey(w) === k);
 const vidLabel = w => w.kind === 'capture' ? (w.capName || 'Window') : chLabel(w.channel);
 const mkDiv = (id, html) => { const d = document.createElement('div'); d.id = id; if (html) d.innerHTML = html; stage.appendChild(d); return d; };
-const featBg = mkDiv('featBg');                                   // covers columns passing under the highlight
-const featSwitch = mkDiv('featSwitch');                           // stream switcher under the big stream
-const fsResize = mkDiv('fsResize');                               // resize corner when it floats
-fsResize.title = 'Drag to resize';
+let featBg;
+let featSwitch;
+let fsResize;
 // Where the switch control lives: 'dock' (under the big stream in Focus view), 'float' (a panel you
 // can drag anywhere in this window, in any layout) or 'window' (its own window, e.g. on another monitor).
 let switchMode = 'dock', switchRect = { x: null, y: null, w: 680, h: 380 };
-{
-  const m = settings.get('switchMode');
-  if (ROLE === 'main' && (m === 'float' || (m === 'window' && DESKTOP))) switchMode = m;
-  Object.assign(switchRect, settings.json('switchRect', {}));
-}
-const hbar = mkDiv('hscroll', '<div class="thumb"></div>');       // our own sideways scrollbar
-// Strip just above the columns: ‹ [which stream ▾] › to step or jump between them.
-const colStrip = mkDiv('colStrip', '<button class="cs-btn" data-d="-1" title="Previous stream" aria-label="Previous stream">‹</button>' +
-  '<select class="cs-pick" title="Jump to a stream" aria-label="Jump to a stream"></select><span class="cs-pos"></span>' +
-  '<button class="cs-mode"></button>' +
-  '<button class="cs-btn" data-d="1" title="Next stream" aria-label="Next stream">›</button>');
+let hbar;
+let colStrip;
 const STRIP_H = 34;
 let colTopOff = 0, colKeysShown = [];
 // Other files change these through layoutVars: a variable imported from another file can't be assigned to.
@@ -194,20 +180,8 @@ const layoutVars = {
   get colTopOff(){ return colTopOff; }, set colTopOff(v){ colTopOff = v; },
   get colKeysShown(){ return colKeysShown; }, set colKeysShown(v){ colKeysShown = v; },
 };
-colStrip.addEventListener('click', e => {
-  const b = e.target.closest('.cs-btn'); if (b) scrollCols(+b.dataset.d);
-  if (e.target.closest('.cs-mode')){ scrollVars.pageStep = !pageStep; settings.set('pageStep', pageStep); updatePageBtn(); }
-});
 // Mouse wheel over the strip steps like the arrows (one notch = one click).
 let stripWheelAt = 0;
-colStrip.addEventListener('wheel', e => {
-  e.preventDefault(); e.stopPropagation();
-  const now = performance.now(); if (now - stripWheelAt < 220) return; stripWheelAt = now;
-  const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-  if (d) scrollCols(d > 0 ? 1 : -1);
-}, { passive: false });
-colStrip.querySelector('.cs-pick').addEventListener('change', e => { smoothScrollTo(+e.target.value * colWidth); });
-
 function setColsMode(on){
   coreVars.colsMode = on;
   document.body.classList.toggle('cols', on);
@@ -263,8 +237,42 @@ function clearFeaturedLook(){
   if (typeof applyFocusOnly === 'function') applyFocusOnly();   // no big stream -> resume what it paused
 }
 
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  colOrder = settings.json('colOrder', []);
+  linked = settings.flag('linked', true);
+  featuredCh = settings.text('featured', null);
+  featBg = mkDiv('featBg');                                   // covers columns passing under the highlight
+  featSwitch = mkDiv('featSwitch');                           // stream switcher under the big stream
+  fsResize = mkDiv('fsResize');                               // resize corner when it floats
+  fsResize.title = 'Drag to resize';
+  {
+    const m = settings.get('switchMode');
+    if (ROLE === 'main' && (m === 'float' || (m === 'window' && DESKTOP))) switchMode = m;
+    Object.assign(switchRect, settings.json('switchRect', {}));
+  }
+  hbar = mkDiv('hscroll', '<div class="thumb"></div>');       // our own sideways scrollbar
+  // Strip just above the columns: ‹ [which stream ▾] › to step or jump between them.
+  colStrip = mkDiv('colStrip', '<button class="cs-btn" data-d="-1" title="Previous stream" aria-label="Previous stream">‹</button>' +
+    '<select class="cs-pick" title="Jump to a stream" aria-label="Jump to a stream"></select><span class="cs-pos"></span>' +
+    '<button class="cs-mode"></button>' +
+    '<button class="cs-btn" data-d="1" title="Next stream" aria-label="Next stream">›</button>');
+  colStrip.addEventListener('click', e => {
+    const b = e.target.closest('.cs-btn'); if (b) scrollCols(+b.dataset.d);
+    if (e.target.closest('.cs-mode')){ scrollVars.pageStep = !pageStep; settings.set('pageStep', pageStep); updatePageBtn(); }
+  });
+  colStrip.addEventListener('wheel', e => {
+    e.preventDefault(); e.stopPropagation();
+    const now = performance.now(); if (now - stripWheelAt < 220) return; stripWheelAt = now;
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (d) scrollCols(d > 0 ? 1 : -1);
+  }, { passive: false });
+  colStrip.querySelector('.cs-pick').addEventListener('change', e => { smoothScrollTo(+e.target.value * colWidth); });
+
+}
+
 export { applyRects, autoLayout, builtinLinked, chatFocusLayout, chatRects, colKey, colOrder, colStrip, colTopOff,
-  colX0, featBase, featBg, featSwitch, featuredCh, featW, fsResize, gridRects, hbar, HBAR, isVid, layoutChatsOnly,
-  layoutVars, linked, liveLinked, maxScroll, mkDiv, refreshFeatButtons, scrollRaf, scrollX, setColsMode, setFeatured,
-  setLinked, snapT, STRIP_H, SWITCH_MIN, switchMode, switchRect, tile, toggleFeatured, updateLinkBtn, vidByKey,
-  vidLabel };
+  colX0, featBase, featBg, featSwitch, featuredCh, featW, fsResize, gridRects, hbar, HBAR, init, isVid,
+  layoutChatsOnly, layoutVars, linked, liveLinked, maxScroll, mkDiv, refreshFeatButtons, scrollRaf, scrollX,
+  setColsMode, setFeatured, setLinked, snapT, STRIP_H, SWITCH_MIN, switchMode, switchRect, tile, toggleFeatured,
+  updateLinkBtn, vidByKey, vidLabel };

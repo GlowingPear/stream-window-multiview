@@ -1,10 +1,9 @@
-import '../../windows/capture.js';   // runs after it (see app.js)
-import { esc } from '../../shared/element.js';
-import { settings } from '../../shared/settings.js';
 import { $ } from '../../core.js';
+import { openSettings } from '../settings/settings.js';
+import { esc } from '../../shared/element.js';
 import { DESKTOP, keyName } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
-import { openSettings } from '../settings/settings.js';
+import { settings } from '../../shared/settings.js';
 
 /* ---- Help: instructions, keyboard shortcuts, what's new ---- */
 const SHORTCUTS = [
@@ -43,7 +42,6 @@ const SHORTCUTS = [
   ]]
 ];
 var keysOn = true;
-keysOn = settings.flag('keys', true);
 function setKeysOn(on){
   keysOn = !!on;
   settings.set('keys', keysOn);
@@ -113,4 +111,9 @@ async function renderDoc(tab){
   }
 }
 
-export { appVersion, keysOn, renderDoc, setKeysOn, showHelp };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  keysOn = settings.flag('keys', true);
+}
+
+export { appVersion, init, keysOn, renderDoc, setKeysOn, showHelp };

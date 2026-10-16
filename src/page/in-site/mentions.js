@@ -1,5 +1,3 @@
-import '../shared/env.js';   // runs after it (see app.js)
-
 // Runs inside each chat: spots new messages that @mention you or reply to you, and (with spam alerts
 // on) hands the app every new message so it can check them, then tags the ones it flags.
 // It reads the chat's visible text, so it keeps working if Kick or Twitch change their page code.
@@ -208,6 +206,11 @@ function mentionAgent(){
   };
   return true;
 }
-const MENTION_JS = `(${mentionAgent.toString()})()`;
+let MENTION_JS;
 
-export { MENTION_JS, mentionAgent };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  MENTION_JS = `(${mentionAgent.toString()})()`;
+}
+
+export { init, MENTION_JS, mentionAgent };

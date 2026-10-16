@@ -1,16 +1,15 @@
-import './focus-only.js';   // runs after it (see app.js)
-import { store } from '../shared/store.js';
 import { $, GAP, colCount, colWidth, colsMode, coreVars, lastLayout, stage, streamCols, wins } from '../core.js';
+import { buildCols, columnsLayout } from './columns.js';
 import { SW, setRect } from './geometry.js';
-import { locked } from './lock.js';
-import { fitOn } from '../panels/channels/channels.js';
 import { colKey, colOrder, colStrip, colX0, featBase, featW, featuredCh, layoutVars, linked, maxScroll, scrollX,
   switchMode } from './layouts.js';
-import { setScrollX, snapSoon, updatePageBtn } from './sideways-scroll.js';
-import { buildCols, columnsLayout } from './columns.js';
+import { locked } from './lock.js';
 import { activePreset, renderPresets } from './saved-layouts.js';
-import { updatePopHiddenBtn } from '../windows/popout.js';
+import { setScrollX, snapSoon, updatePageBtn } from './sideways-scroll.js';
+import { fitOn } from '../panels/channels/channels.js';
+import { store } from '../shared/store.js';
 import { renderLayoutsPane, syncLySw } from '../toolbar/layout-menu.js';
+import { updatePopHiddenBtn } from '../windows/popout.js';
 
 /* Drag a linked column by either title bar; the others slide aside to show where it lands. */
 function startColDrag(e, w, bar){
@@ -91,8 +90,6 @@ function updateColNav(){
   }
 }
 const curLayout = () => colsMode ? (featBase.length && featuredCh ? 'focus' : 'columns') : lastLayout;
-// The Layout menu shows the layout in use and its options.
-store.watch('layout', () => updateLayoutMenu());
 function updateLayoutMenu(){
   const b = $('#layoutBtn'); if (!b) return;
   const names = { focus: 'Focus view', game: 'Game focus', columns: 'Columns', chatfocus: 'Chat focus', auto: 'Auto layout', tile: 'Tile' };
@@ -121,4 +118,10 @@ function updateSwBtn(){
   syncLySw();
 }
 
-export { curLayout, startColDrag, updateColNav, updateLayoutMenu, updateSwBtn };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  // The Layout menu shows the layout in use and its options.
+  store.watch('layout', () => updateLayoutMenu());
+}
+
+export { curLayout, init, startColDrag, updateColNav, updateLayoutMenu, updateSwBtn };

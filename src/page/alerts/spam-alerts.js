@@ -1,17 +1,16 @@
-import './alerts.js';   // runs after it (see app.js)
-import { SmvSpam } from './spam.js';
-import { askIn, runIn } from '../windows/view.js';
-import { GAP, colWidth, colsMode, msg, wins } from '../core.js';
-import { DESKTOP } from '../shared/env.js';
-import { chLabel, chLabelP, modOk, platOf } from '../platforms/platforms.js';
-import { SW, focusWin } from '../layout/geometry.js';
-import { addNote, cleanParts, mentAny, mentOn, partsText, readChat, spamWhy } from '../panels/bell/bell.js';
-import { injectMention } from '../panels/bell/all-notifications.js';
 import { alerts, clearAlert, raiseAlert, wantNotify } from './alerts.js';
-import { addParsed } from '../layout/placement.js';
-import { colKey, featBase, featW, featuredCh, scrollX } from '../layout/layouts.js';
-import { smoothScrollTo } from '../layout/sideways-scroll.js';
+import { SmvSpam } from './spam.js';
+import { GAP, colWidth, colsMode, msg, wins } from '../core.js';
 import { buildCols } from '../layout/columns.js';
+import { SW, focusWin } from '../layout/geometry.js';
+import { colKey, featBase, featW, featuredCh, scrollX } from '../layout/layouts.js';
+import { addParsed } from '../layout/placement.js';
+import { smoothScrollTo } from '../layout/sideways-scroll.js';
+import { injectMention } from '../panels/bell/all-notifications.js';
+import { addNote, cleanParts, mentAny, mentOn, partsText, readChat, spamWhy } from '../panels/bell/bell.js';
+import { chLabel, chLabelP, modOk, platOf } from '../platforms/platforms.js';
+import { DESKTOP } from '../shared/env.js';
+import { askIn, runIn } from '../windows/view.js';
 
 /* ---------- spam alerts: chats you moderate ---------- */
 const spamRecent = [], spamFirst = new Map();   // messages from the last few minutes (every chat), when each sender first spoke
@@ -27,9 +26,6 @@ function forgetChat(ch){
   const pre = ch + '\n';
   for (const k of spamFirst.keys()) if (k.startsWith(pre)) spamFirst.delete(k);
 }
-window.spamFirst = spamFirst; window.firstSpoke = firstSpoke;   // for the tests
-window.spamCheck = (ch, lines) => spamCheck(wins.find(w => w.kind === 'chat' && w.channel === ch), lines);   // for the tests
-window.openWins = () => wins;   // for the tests
 // Whether you moderate that chat's channel (the same answer as its mod view button).
 async function modChat(w){
   if (!DESKTOP || !window.kmv.modCheck || !/^(kick|twitch)$/.test(platOf(w.channel))) return false;
@@ -123,4 +119,11 @@ async function pollChats(ment, spam){
   }
 }
 
-export { forgetChat, pollMentions, revealChat, spamFirst, spamOpts };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  window.spamFirst = spamFirst; window.firstSpoke = firstSpoke;   // for the tests
+  window.spamCheck = (ch, lines) => spamCheck(wins.find(w => w.kind === 'chat' && w.channel === ch), lines);   // for the tests
+  window.openWins = () => wins;   // for the tests
+}
+
+export { forgetChat, init, pollMentions, revealChat, spamFirst, spamOpts };

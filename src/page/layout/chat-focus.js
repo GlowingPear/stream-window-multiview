@@ -1,22 +1,18 @@
-import './saved-layouts.js';   // runs after it (see app.js)
-import { settings } from '../shared/settings.js';
-import { store } from '../shared/store.js';
 import { ROLE, colsMode, coreVars, lastLayout, stage, wins } from '../core.js';
+import { buildCols, columnsLayout } from './columns.js';
+import { gameKey, gameLayout, setGameKey } from './game-focus.js';
 import { clampPos, focusWin, setRect } from './geometry.js';
 import { chatFocusLayout, colKey, colOrder, layoutVars, setColsMode, setFeatured } from './layouts.js';
-import { refreshPicks } from '../windows/channel-picker.js';
-import { buildCols, columnsLayout } from './columns.js';
 import { save } from '../persistence.js';
-import { gameKey, gameLayout, setGameKey } from './game-focus.js';
+import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
+import { refreshPicks } from '../windows/channel-picker.js';
 
-/* ---- Chat focus <-> highlight ---- */
-store.watch('layout', () => updateModeClass());
 function updateModeClass(){
   const on = ROLE === 'main' && !colsMode && lastLayout === 'chatfocus';
   document.body.classList.toggle('chatfocus', on);
   if (on) wins.forEach(w => { const b = w.el.querySelector('[data-a=feat]'); if (b){ b.classList.remove('on'); b.title = 'Show this stream big (switches to the highlight view)'; } });
 }
-setInterval(updateModeClass, 300);   // lastLayout changes in many places; keep the look in step
 function backToChatFocus(){
   setFeatured(null);
   setColsMode(false);
@@ -107,4 +103,11 @@ function swapColOrder(a, b){
   settings.set('colOrder', colOrder);
 }
 
-export { backToChatFocus, startSwapDrag, updateModeClass };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  /* ---- Chat focus <-> highlight ---- */
+  store.watch('layout', () => updateModeClass());
+  setInterval(updateModeClass, 300);   // lastLayout changes in many places; keep the look in step
+}
+
+export { backToChatFocus, init, startSwapDrag, updateModeClass };

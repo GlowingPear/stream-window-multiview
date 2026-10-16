@@ -1,19 +1,18 @@
-import './translate.js';   // runs after it (see app.js)
+import { forgetChat } from '../alerts/spam-alerts.js';
+import { winOfView } from './translate.js';
+import { coreVars, wins } from '../core.js';
+import { dropMini } from '../layout/switch-control.js';
+import { addNote, noteActs } from '../panels/bell/bell.js';
+import { save } from '../persistence.js';
+import { chLabel, rememberName } from '../platforms/platforms.js';
+import { DESKTOP } from '../shared/env.js';
+import { flash } from '../shared/flash.js';
 import { fromApp, fromSite } from '../shared/incoming.js';
 import { store } from '../shared/store.js';
 import { stopWinTimer, stopWinTimers, winTimer } from '../shared/timers.js';
-import { runIn, zoomOf } from '../windows/view.js';
-import { coreVars, wins } from '../core.js';
-import { DESKTOP } from '../shared/env.js';
-import { chLabel, rememberName } from '../platforms/platforms.js';
-import { mountView, ytCache } from '../windows/views.js';
-import { winOfView } from './translate.js';
-import { addNote, noteActs } from '../panels/bell/bell.js';
-import { forgetChat } from '../alerts/spam-alerts.js';
-import { flash } from '../shared/flash.js';
-import { dropMini } from '../layout/switch-control.js';
-import { save } from '../persistence.js';
 import { stopCapture } from '../windows/capture.js';
+import { runIn, zoomOf } from '../windows/view.js';
+import { mountView, ytCache } from '../windows/views.js';
 
 /* The right-click menu on an emote in a chat: the main process sends its items (the same ones the system menu would
    have, from src/main/context-menu.js) with the emote, and gets back the one you chose. It looks and works like a
@@ -22,7 +21,6 @@ const EMOTE_SITE = { Kick: ['#53fc18', '#0a0c0d', 'Kick emote'], Twitch: ['#8a4f
   '7TV': ['#353e43', '#e7ede9', 'From the 7TV add-on'], BTTV: ['#353e43', '#e7ede9', 'From the BetterTTV add-on'], FFZ: ['#353e43', '#e7ede9', 'From the FrankerFaceZ add-on'] };
 const VM_SRC = /^https:\/\/(files\.kick\.com\/emotes\/|static-cdn\.jtvnw\.net\/|([\w-]+\.)?7tv\.app\/|cdn\.betterttv\.net\/|cdn\.frankerfacez\.com\/|([\w-]+\.)?ggpht\.com\/|www\.gstatic\.com\/)/;
 let viewMenu = null;
-fromSite('emote-menu-close', (w, data, view) => { if (data === '{}' && viewMenu && viewMenu.view === view) closeViewMenu(); });
 function closeViewMenu(chosen){
   const m = viewMenu; if (!m) return;
   viewMenu = null;
@@ -106,12 +104,6 @@ function showViewMenu(view, id, d, pick){
   el.focus({ preventScroll: true });
   return el;
 }
-fromApp('onViewMenu', (id, d) => {
-  const w = winOfView(id);
-  showViewMenu(w && w.view, id, d, i => window.kmv.viewMenuAct(id, i));
-});
-window.showViewMenu = showViewMenu; window.closeViewMenu = closeViewMenu;   // for the tests
-fromSite('emote-dl', (w, json) => saveEmote(json));
 async function saveEmote(json){
   let d; try { d = JSON.parse(json); } catch { return; }
   if (!d || typeof d.url !== 'string' || typeof d.name !== 'string' || !window.kmv || !window.kmv.emoteDownload) return;
@@ -163,4 +155,15 @@ function closeWin(w){
   if (w.kind === 'chat') forgetChat(w.channel);
 }
 
-export { closeWin, releaseWin, resolveYt, setWait };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  fromSite('emote-menu-close', (w, data, view) => { if (data === '{}' && viewMenu && viewMenu.view === view) closeViewMenu(); });
+  fromApp('onViewMenu', (id, d) => {
+    const w = winOfView(id);
+    showViewMenu(w && w.view, id, d, i => window.kmv.viewMenuAct(id, i));
+  });
+  window.showViewMenu = showViewMenu; window.closeViewMenu = closeViewMenu;   // for the tests
+  fromSite('emote-dl', (w, json) => saveEmote(json));
+}
+
+export { closeWin, init, releaseWin, resolveYt, setWait };

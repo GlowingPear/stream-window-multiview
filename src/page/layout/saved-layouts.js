@@ -1,28 +1,26 @@
-import './column-drag.js';   // runs after it (see app.js)
-import { element } from '../shared/element.js';
-import { settings } from '../shared/settings.js';
-import { store } from '../shared/store.js';
-import { $, MIN_H, MIN_W, colsMode, coreVars, lastLayout, streamCols, wins } from '../core.js';
-import { SH, SW, setRect } from './geometry.js';
-import { createWin, pushVol } from '../windows/windows.js';
 import { closeWin } from '../chat/view-menu.js';
-import { fitOn } from '../panels/channels/channels.js';
-import { flash } from '../shared/flash.js';
+import { $, MIN_H, MIN_W, colsMode, coreVars, lastLayout, streamCols, wins } from '../core.js';
+import { buildCols, columnVars, columnsLayout, sideCols } from './columns.js';
+import { gameLayout } from './game-focus.js';
+import { SH, SW, setRect } from './geometry.js';
 import { autoLayout, builtinLinked, chatFocusLayout, colOrder, featBase, featuredCh, layoutVars, linked, liveLinked,
   setColsMode, setFeatured, tile, updateLinkBtn } from './layouts.js';
 import { pageStep, scrollVars } from './sideways-scroll.js';
-import { refreshPicks } from '../windows/channel-picker.js';
-import { buildCols, columnVars, columnsLayout, sideCols } from './columns.js';
-import { save } from '../persistence.js';
-import { panel } from '../toolbar/toolbar.js';
-import { layoutMenuVars, lySel, renderLayoutsPane, selectLayoutPane } from '../toolbar/layout-menu.js';
-import { gameLayout } from './game-focus.js';
+import { fitOn } from '../panels/channels/channels.js';
 import { closeSettings } from '../panels/settings/settings.js';
+import { save } from '../persistence.js';
 import { ask } from '../shared/ask.js';
+import { element } from '../shared/element.js';
+import { flash } from '../shared/flash.js';
+import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
+import { layoutMenuVars, lySel, renderLayoutsPane, selectLayoutPane } from '../toolbar/layout-menu.js';
+import { panel } from '../toolbar/toolbar.js';
+import { refreshPicks } from '../windows/channel-picker.js';
+import { createWin, pushVol } from '../windows/windows.js';
 
 /* ---- Your layouts: save the current arrangement under a name and bring it back from the Layout menu ---- */
 let presets = [], activePreset = '';
-presets = settings.json('presets', []);
 function activeP(){ try { return activePreset ? presets.find(p => p.name === activePreset) || null : null; } catch { return null; } }   // (hoisted: used before the presets load)
 const presetBase = p => p.mode === 'columns' && p.featured ? 'focus' : p.mode;   // the layout it was made from
 function leavePreset(){
@@ -192,5 +190,10 @@ function applyPreset(p, opt = {}){
   if (!opt.quiet) flash(`Layout “${p.name}” loaded`);
 }
 
-export { activeP, activePreset, applyPreset, capturePreset, leavePreset, renderPresets, renderPresetsPane,
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  presets = settings.json('presets', []);
+}
+
+export { activeP, activePreset, applyPreset, capturePreset, init, leavePreset, renderPresets, renderPresetsPane,
   savePresetFromInput, setPresetOpt };

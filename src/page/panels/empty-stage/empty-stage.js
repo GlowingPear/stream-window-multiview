@@ -1,19 +1,18 @@
-import '../../persistence.js';   // runs after it (see app.js)
+import { $, ROLE, STORE, modeSel, stage, wins } from '../../core.js';
+import { autoLayout } from '../../layout/layouts.js';
+import { addParsed } from '../../layout/placement.js';
+import { fmtViewers, infoFor, liveNow, saved, svHue, svInitials, svProf } from '../channels/channels.js';
+import { openSettings } from '../settings/settings.js';
+import { restore, save } from '../../persistence.js';
+import { PLAT_NAME, chLabel, parseInput, platIcon, platOf } from '../../platforms/platforms.js';
 import { esc } from '../../shared/element.js';
+import { DESKTOP } from '../../shared/env.js';
+import { flash } from '../../shared/flash.js';
+import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
-import { $, ROLE, STORE, modeSel, stage, wins } from '../../core.js';
-import { icon } from '../../shared/icons.js';
-import { DESKTOP } from '../../shared/env.js';
-import { PLAT_NAME, chLabel, parseInput, platIcon, platOf } from '../../platforms/platforms.js';
-import { fmtViewers, infoFor, liveNow, saved, svHue, svInitials, svProf } from '../channels/channels.js';
-import { addParsed } from '../../layout/placement.js';
-import { flash } from '../../shared/flash.js';
-import { autoLayout } from '../../layout/layouts.js';
-import { restore, save } from '../../persistence.js';
-import { panel, savedBtn } from '../../toolbar/toolbar.js';
 import { closeOverlays, layoutPick } from '../../shortcuts.js';
-import { openSettings } from '../settings/settings.js';
+import { panel, savedBtn } from '../../toolbar/toolbar.js';
 
 /* ---------- the empty stage: Welcome for a first run, then the Launchpad (#53) ----------
    Welcome: a paste box, logins, Import follows and handy keys; feature cards with "Show me" (seen ones are
@@ -21,9 +20,6 @@ import { openSettings } from '../settings/settings.js';
    stream (or skip it): the paste box, saved channels that are live now, and reopening the last session.
    Progress is kept in kickMultiview.intro and can be reset from Settings > General. */
 var intro = {}, esBuilt = false, esPlat = 'kick', esPrevWins = 0, esReady = false;
-intro = settings.json('intro', {}) || {};
-// someone who already used the app (before this screen existed): straight to the launchpad, no window tips
-if (intro.done === undefined){ const had = saved.length > 0 || settings.json(STORE, []).length > 0; if (had){ intro.done = true; intro.tips = true; saveIntro(); } }
 function saveIntro(){ settings.set('intro', intro); }
 const ES_SEARCH = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
 const ES_FORMATS = `<details class="es-formats"><summary>What can I paste?</summary><ul>
@@ -177,8 +173,6 @@ function reopenSession(){
   restore(); store.changed('wins'); save();
   flash(`Reopened ${d.length} window${d.length > 1 ? 's' : ''}`);
 }
-// Called whenever the windows change (updateEmpty): keep the session, switch screens, show the window tips once.
-store.watch('wins', () => esWinsChanged());
 function esWinsChanged(){
   if (ROLE !== 'main' || !esReady) return;
   if (!wins.length && esPrevWins){ const cur = settings.get(STORE); if (cur && cur !== '[]') settings.set('lastSession', cur); }
@@ -197,8 +191,6 @@ function showTips(){
   c.hidden = false; intro.tips = true; saveIntro();
   clearTimeout(tipT); tipT = setTimeout(() => { c.hidden = true; }, 20000);
 }
-$('#tipCard .tip-ok').onclick = () => { clearTimeout(tipT); $('#tipCard').hidden = true; };
-$('#introReset').onclick = () => { intro = {}; saveIntro(); esRefresh(); flash('The welcome screen shows again when no windows are open'); };
 // "Show me": point at the feature (or open its Settings tab), and tick it off.
 function showMe(id){
   const c = ES_LEARN.find(x => x.id === id); if (!c) return;
@@ -244,17 +236,28 @@ function showTourStep(){
   tip.style.top = Math.max(12, Math.min(innerHeight - H - 12, y)) + 'px';
   tip.querySelector('.tour-next').focus();
 }
-$('#tourLayer .tour-next').onclick = () => { if (!tour) return; if (tour.i < tour.steps.length - 1){ tour.i++; showTourStep(); } else endTour(); };
-$('#tourLayer .tour-back').onclick = () => { if (tour && tour.i > 0){ tour.i--; showTourStep(); } };
-$('#tourLayer .tour-end').onclick = endTour;
-document.addEventListener('keydown', e => {
-  if (!tour) return;
-  if (e.key === 'Escape'){ e.preventDefault(); e.stopImmediatePropagation(); endTour(); }
-  else if (e.key === 'ArrowRight'){ e.preventDefault(); $('#tourLayer .tour-next').click(); }
-  else if (e.key === 'ArrowLeft'){ e.preventDefault(); $('#tourLayer .tour-back').click(); }
-}, true);
-addEventListener('resize', () => { if (tour) showTourStep(); });
-esReady = true; esPrevWins = wins.length;
-if (!wins.length) esRefresh();
 
-export { esRefresh };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  intro = settings.json('intro', {}) || {};
+  // someone who already used the app (before this screen existed): straight to the launchpad, no window tips
+  if (intro.done === undefined){ const had = saved.length > 0 || settings.json(STORE, []).length > 0; if (had){ intro.done = true; intro.tips = true; saveIntro(); } }
+  // Called whenever the windows change (updateEmpty): keep the session, switch screens, show the window tips once.
+  store.watch('wins', () => esWinsChanged());
+  $('#tipCard .tip-ok').onclick = () => { clearTimeout(tipT); $('#tipCard').hidden = true; };
+  $('#introReset').onclick = () => { intro = {}; saveIntro(); esRefresh(); flash('The welcome screen shows again when no windows are open'); };
+  $('#tourLayer .tour-next').onclick = () => { if (!tour) return; if (tour.i < tour.steps.length - 1){ tour.i++; showTourStep(); } else endTour(); };
+  $('#tourLayer .tour-back').onclick = () => { if (tour && tour.i > 0){ tour.i--; showTourStep(); } };
+  $('#tourLayer .tour-end').onclick = endTour;
+  document.addEventListener('keydown', e => {
+    if (!tour) return;
+    if (e.key === 'Escape'){ e.preventDefault(); e.stopImmediatePropagation(); endTour(); }
+    else if (e.key === 'ArrowRight'){ e.preventDefault(); $('#tourLayer .tour-next').click(); }
+    else if (e.key === 'ArrowLeft'){ e.preventDefault(); $('#tourLayer .tour-back').click(); }
+  }, true);
+  addEventListener('resize', () => { if (tour) showTourStep(); });
+  esReady = true; esPrevWins = wins.length;
+  if (!wins.length) esRefresh();
+}
+
+export { esRefresh, init };

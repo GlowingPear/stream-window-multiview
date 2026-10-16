@@ -1,5 +1,3 @@
-import '../core.js';   // runs after it (see app.js)
-
 const icon = {
   reload:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>',
   mod:'<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>',
@@ -62,7 +60,6 @@ const icon = {
 };
 // Icons in the page's own markup: <i data-ico="name"></i>
 const fillIcons = root => root.querySelectorAll('i[data-ico]').forEach(i => { i.innerHTML = icon[i.dataset.ico] || ''; });
-fillIcons(document);
 // A toolbar item's name (shown on the left toolbar, in ⋯ and as its tooltip) and icon
 function setTb(b, label, ico){
   if (!b) return;
@@ -71,4 +68,9 @@ function setTb(b, label, ico){
   const i = b.querySelector('i[data-ico]'); if (i && ico && i.dataset.ico !== ico){ i.dataset.ico = ico; i.innerHTML = icon[ico]; }
 }
 
-export { icon, setTb };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  fillIcons(document);
+}
+
+export { icon, init, setTb };

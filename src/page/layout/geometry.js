@@ -1,10 +1,8 @@
-import '../platforms/platforms.js';   // runs after it (see app.js)
-import { winTimer } from '../shared/timers.js';
 import { BAR, GAP, SNAP, colsMode, coreVars, sizehint, snapChk, stage, wins, zTop } from '../core.js';
 import { linked } from './layouts.js';
+import { winTimer } from '../shared/timers.js';
 
-/* ---------- geometry helpers ---------- */
-const SW = () => stage.clientWidth, SH = () => stage.clientHeight;
+let SW, SH;
 function setRect(w, r, animate){
   w.x = Math.round(r.x); w.y = Math.round(r.y); w.w = Math.round(r.w); w.h = Math.round(r.h);
   if (animate){ w.el.classList.add('anim'); winTimer(w, 'anim', () => w.el.classList.remove('anim'), 260); }
@@ -39,4 +37,10 @@ function showHint(e, w){
   sizehint.style.left = (e.clientX + 14) + 'px'; sizehint.style.top = (e.clientY + 14) + 'px';
 }
 
-export { clampPos, edges, focusWin, near, setRect, SH, showHint, snapE, SW };
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  /* ---------- geometry helpers ---------- */
+  SW = () => stage.clientWidth, SH = () => stage.clientHeight;
+}
+
+export { clampPos, edges, focusWin, init, near, setRect, SH, showHint, snapE, SW };

@@ -1,29 +1,23 @@
-import '../../start.js';   // runs after it (see app.js)
+import { $, ROLE } from '../../core.js';
+import { tile } from '../../layout/layouts.js';
+import { addParsed } from '../../layout/placement.js';
+import { bell } from '../bell/bell.js';
+import { channelVars, infoFor, liveNow, loadSavedProfiles, notifyAll, notifyOff, persistSaved, saved, sendWatch,
+  toggleSaved } from '../channels/channels.js';
+import { PLAT_NAME, chLabel, modUrl, normCh, platOf, platform, rememberName, rememberNames } from '../../platforms/platforms.js';
+import { ask, askChecked } from '../../shared/ask.js';
 import { element, esc } from '../../shared/element.js';
+import { DESKTOP } from '../../shared/env.js';
+import { flash } from '../../shared/flash.js';
+import { icon } from '../../shared/icons.js';
 import { fromApp } from '../../shared/incoming.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
-import { $, ROLE } from '../../core.js';
-import { icon } from '../../shared/icons.js';
-import { DESKTOP } from '../../shared/env.js';
-import { PLAT_NAME, chLabel, modUrl, normCh, platOf, platform, rememberName, rememberNames } from '../../platforms/platforms.js';
-import { channelVars, infoFor, liveNow, loadSavedProfiles, notifyAll, notifyOff, persistSaved, saved, sendWatch,
-  toggleSaved } from '../channels/channels.js';
-import { bell } from '../bell/bell.js';
-import { addParsed } from '../../layout/placement.js';
-import { flash } from '../../shared/flash.js';
-import { tile } from '../../layout/layouts.js';
-import { loadBarAvatars } from '../../windows/channel-picker.js';
 import { closeOverlays } from '../../shortcuts.js';
-import { ask, askChecked } from '../../shared/ask.js';
+import { loadBarAvatars } from '../../windows/channel-picker.js';
 
-/* ---------- Streamer profiles ----------
-   A directory of your saved streamers (search and filters) and a profile for each one: what the site
-   says about them, plus what the app has recorded from its own live checks (src/main/profiles.js). Every
-   number says where it comes from, because the app only sees streams while it's open. */
-const profDlg = $('#profDlg');
+let profDlg;
 const pf = { list: {}, plat: 'all', flags: new Set(), sort: 'live', cur: null, data: null, req: 0, look: null, histAll: false, mod: {} };
-{ const o = settings.json('profView', {}); if (o.sort) pf.sort = o.sort; }
 const pfHue = ch => { let h = 0; for (const c of String(ch)) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 35% 36%)`; };
 // "NovaKit" -> NK, "ember_and_oak" -> EA, "quietcartographer" -> QU
 function pfInitials(n){
@@ -44,7 +38,7 @@ const pfInfo = ch => (pf.list[ch] && pf.list[ch].info) || {};
 const pfName = ch => pfMeta(ch).nick || pfInfo(ch).name || chLabel(ch);
 const pfLive = ch => !!(infoFor(ch) && infoFor(ch).live);
 const fmtN = n => n == null ? '–' : n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'K' : n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(n);
-const fmtDur = ms => { if (ms == null) return '–'; const m = Math.max(0, Math.round(ms / 60000)), h = Math.floor(m / 60); return h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`; };
+let fmtDur;
 const fmtClock = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 const fmtDay = t => new Date(t).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 const fmtDate = t => new Date(t).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
@@ -496,33 +490,44 @@ function pfHeat(heat, st){
   return wrap;
 }
 
-if (DESKTOP && ROLE === 'main' && window.kmv.profileGet){
-  $('#profBtn').hidden = false;
-  $('#profBtn').onclick = openProfiles;
-  profDlg.querySelector('.help-x').onclick = () => { profDlg.hidden = true; };
-  profDlg.querySelector('.pf-back').onclick = () => { pfShow('dir'); pfLoadList(); };
-  profDlg.addEventListener('pointerdown', e => { if (e.target === profDlg) profDlg.hidden = true; });
-  $('#pfQ').addEventListener('input', pfRenderDir);
-  $('#pfQ').addEventListener('keydown', e => {
-    if (e.key !== 'Enter') return;
-    const first = profDlg.querySelector('.pf-card');
-    if (first) first.click(); else { const f = profDlg.querySelector('.pf-find'); if (f) f.click(); }
-  });
-  profDlg.querySelectorAll('.pf-chips').forEach(g => g.addEventListener('click', e => {
-    const b = e.target.closest('button'); if (!b) return;
-    if (g.dataset.g === 'plat') pf.plat = b.dataset.v;
-    else pf.flags.has(b.dataset.v) ? pf.flags.delete(b.dataset.v) : pf.flags.add(b.dataset.v);
-    pfRenderDir();
-  }));
-  $('#pfSort').addEventListener('change', () => { pf.sort = $('#pfSort').value; settings.set('profView', { sort: pf.sort }); pfRenderDir(); });
-  // a picture fetched in the background (src/main/profile-queue.js): show it in the Saved list and the Profiles cards
-  let pfInfoT = null;
-  fromApp('onProfileInfo', () => {
-    clearTimeout(pfInfoT);
-    pfInfoT = setTimeout(() => { loadSavedProfiles(); loadBarAvatars(true); if (!profDlg.hidden && !pf.cur) pfLoadList(); }, 400);
-  });
-  fromApp('onLiveStatus', () => { if (!profDlg.hidden){ if (pf.cur) { if (!document.activeElement || !profDlg.contains(document.activeElement) || !/^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName)) pfRenderProf(); } else pfRenderDir(); } });
-  window.openProfile = openProfile;   // for the tests
+
+// What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+function init(){
+  /* ---------- Streamer profiles ----------
+     A directory of your saved streamers (search and filters) and a profile for each one: what the site
+     says about them, plus what the app has recorded from its own live checks (src/main/profiles.js). Every
+     number says where it comes from, because the app only sees streams while it's open. */
+  profDlg = $('#profDlg');
+  { const o = settings.json('profView', {}); if (o.sort) pf.sort = o.sort; }
+  fmtDur = ms => { if (ms == null) return '–'; const m = Math.max(0, Math.round(ms / 60000)), h = Math.floor(m / 60); return h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`; };
+  if (DESKTOP && ROLE === 'main' && window.kmv.profileGet){
+    $('#profBtn').hidden = false;
+    $('#profBtn').onclick = openProfiles;
+    profDlg.querySelector('.help-x').onclick = () => { profDlg.hidden = true; };
+    profDlg.querySelector('.pf-back').onclick = () => { pfShow('dir'); pfLoadList(); };
+    profDlg.addEventListener('pointerdown', e => { if (e.target === profDlg) profDlg.hidden = true; });
+    $('#pfQ').addEventListener('input', pfRenderDir);
+    $('#pfQ').addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      const first = profDlg.querySelector('.pf-card');
+      if (first) first.click(); else { const f = profDlg.querySelector('.pf-find'); if (f) f.click(); }
+    });
+    profDlg.querySelectorAll('.pf-chips').forEach(g => g.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (g.dataset.g === 'plat') pf.plat = b.dataset.v;
+      else pf.flags.has(b.dataset.v) ? pf.flags.delete(b.dataset.v) : pf.flags.add(b.dataset.v);
+      pfRenderDir();
+    }));
+    $('#pfSort').addEventListener('change', () => { pf.sort = $('#pfSort').value; settings.set('profView', { sort: pf.sort }); pfRenderDir(); });
+    // a picture fetched in the background (src/main/profile-queue.js): show it in the Saved list and the Profiles cards
+    let pfInfoT = null;
+    fromApp('onProfileInfo', () => {
+      clearTimeout(pfInfoT);
+      pfInfoT = setTimeout(() => { loadSavedProfiles(); loadBarAvatars(true); if (!profDlg.hidden && !pf.cur) pfLoadList(); }, 400);
+    });
+    fromApp('onLiveStatus', () => { if (!profDlg.hidden){ if (pf.cur) { if (!document.activeElement || !profDlg.contains(document.activeElement) || !/^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName)) pfRenderProf(); } else pfRenderDir(); } });
+    window.openProfile = openProfile;   // for the tests
+  }
 }
 
-export { openProfile, unfollowKick };
+export { init, openProfile, unfollowKick };
