@@ -1157,6 +1157,12 @@ ipcMain.handle('me:detect', async () => {
   return typeof r === 'string' && /^[A-Za-z0-9_]{2,30}$/.test(r) ? r : null;
 });
 ipcMain.handle('live:snapshot', () => watcher.snapshot());
+// Is one channel live (saved or not)? Asked by a stream window whose player is stuck on its offline screen.
+ipcMain.handle('live:one', async (_e, ch) => {
+  if (!okCh(ch)) return null;
+  const i = await withTimeout(fetchAny(normCh(ch)), NET_TIMEOUT, null).catch(() => null);
+  return i && !i.missing ? { live: !!i.live } : null;
+});
 
 async function logout(plat = 'kick') {
   const part = PARTS[plat];

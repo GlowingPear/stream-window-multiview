@@ -94,3 +94,14 @@ test('YouTube trims its watch page to the player; Kick and Twitch keep their use
   assert.match(twitch.chatCss, /viewer-card/);
   assert.equal(youtube.chatCss, null);
 });
+
+test('a stuck player (#120): Kick\'s error page and offline screen; Twitch and YouTube come back by themselves', () => {
+  const run = (text, path) => new Function('document', 'location', `return ${kick.stuckJs}`)({ body: { innerText: text } }, { pathname: path });
+  assert.equal(run('Kick\nThis embed seems to be misconfigured', '/owl/offline'), 'error');
+  assert.equal(run('This embed seems to be misconfigured', '/owl'), 'error', 'also at the player\'s own address');
+  assert.equal(run('owl is offline\nowl\'s latest stream', '/owl/offline'), 'offline');
+  assert.equal(run('', '/owl'), 'ok');
+  assert.equal(run('', '/owl/videos'), 'ok');
+  assert.equal(new Function('document', 'location', `return ${kick.stuckJs}`)({ body: null }, { pathname: '/owl/offline/' }), 'offline', 'no page yet');
+  assert.deepEqual([twitch.stuckJs, youtube.stuckJs], [null, null]);
+});
