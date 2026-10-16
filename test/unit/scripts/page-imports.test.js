@@ -75,3 +75,12 @@ test('start-up code belongs in init(): a module\'s top only has what can run in 
     'panel.js:11: runs as the module loads: put it in init()'
   ]);
 });
+
+test('files checked out with \\r\\n line ends (git on Windows) are read the same', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-crlf-'));
+  const put = (f, t) => fs.writeFileSync(path.join(dir, f), t.replace(/\n/g, '\r\n'));
+  put('app.js', "import { init } from './b.js';\ninit();\n");
+  put('a.js', 'const wins = [];\n\nexport { wins };\n');
+  put('b.js', "import { wins } from './a.js';\n\nfunction init(){ return wins; }\n\nexport { init };\n");
+  assert.deepEqual(Object.keys(plan(dir).changes), [], 'nothing out of step');
+});
