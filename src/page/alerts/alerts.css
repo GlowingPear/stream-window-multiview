@@ -1,0 +1,39 @@
+/* a chat window asking for attention (mention or likely spam): steady, then pulsing, then flashing */
+.win.al-1,.win.al-2,.win.al-3{border-color:var(--al)}
+.win.al-1{box-shadow:0 0 0 2px var(--al),0 10px 30px rgba(0,0,0,.45)}
+.win.al-2{animation:alPulse 1.6s ease-in-out infinite}
+.win.al-3{animation:alFlash .9s steps(1,end) infinite}
+.win.al-brief{animation:alBrief 2.4s ease}
+@keyframes alPulse{0%,100%{box-shadow:0 0 0 2px var(--al),0 10px 30px rgba(0,0,0,.45)}50%{box-shadow:0 0 0 4px var(--al),0 0 22px 6px color-mix(in srgb,var(--al) 55%,transparent)}}
+@keyframes alFlash{0%{box-shadow:0 0 0 5px var(--al),0 0 30px 10px var(--al)}50%{box-shadow:0 0 0 2px var(--al),0 10px 30px rgba(0,0,0,.45)}}
+@keyframes alBrief{0%,40%{box-shadow:0 0 0 3px var(--al),0 10px 30px rgba(0,0,0,.45)}100%{box-shadow:0 10px 30px rgba(0,0,0,.45)}}
+@media (prefers-reduced-motion:reduce){.win.al-2,.win.al-3{animation:none;box-shadow:0 0 0 4px var(--al)}}
+@keyframes ping{0%,40%{box-shadow:0 0 0 3px #e8b84a,0 10px 30px rgba(0,0,0,.45)}100%{box-shadow:0 10px 30px rgba(0,0,0,.45)}}
+
+.pi{flex:none;display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;font:800 11px/1 system-ui,sans-serif;letter-spacing:0}
+.pi-kick{background:#53fc18;color:#0b0e0f}.pi-twitch{background:#9146ff;color:#fff}.pi-youtube{background:#ff2a2a;color:#fff}
+.am-head{padding:6px 2px 8px 10px;font-size:13px;font-weight:700;border-bottom:1px solid var(--line);margin-bottom:4px}
+.am-head span{display:block;font-size:11px;font-weight:400;color:var(--muted)}
+#accountMenu{width:440px}
+.am-sec{padding:8px 10px 4px;border-top:1px solid var(--line);margin-top:4px;display:flex;flex-direction:column;gap:7px;font-size:11px;color:var(--muted)}
+.am-enc{display:flex;align-items:center;gap:7px}
+.am-lock svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
+.am-enc.on{color:var(--accent)}.am-enc.off{color:#e8b84a}
+.am-forget,.am-watch{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.am-forget span,.am-watch span{width:100%}
+.am-forget .chk,.am-watch .chk{font-size:12px;color:var(--text);gap:5px}
+.am-yk{padding:2px 10px 6px 27px;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:5px}
+.am-yk[hidden]{display:none}
+.am-yk-head b{color:var(--text);font-weight:600}
+.am-yk-st.warn{color:#e8b84a}
+.am-yk-row{display:flex;align-items:center;gap:6px}
+.am-yk-row[hidden],.am-yk .btn[hidden]{display:none}
+.am-yk-in{flex:1;min-width:0;height:26px;padding:0 8px;border-radius:6px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);font:inherit;font-size:12px}
+#settingsDlg .am-yk .btn{display:inline-flex;align-items:center;height:26px;padding:0 9px;font-size:11px;font-weight:600;flex:none;
+  border:1px solid var(--line2);background:var(--panel2);color:var(--text)}
+#settingsDlg .am-yk .btn:hover{border-color:var(--muted)}
+#settingsDlg .am-yk .btn:disabled{opacity:.6;cursor:default}
+#settingsDlg .am-yk .linkish{display:inline;padding:0;border-radius:0;background:none}
+.am-alt{padding:7px 10px 4px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);margin-top:4px}
+.linkish{border:0;background:none;padding:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.linkish:hover{filter:brightness(1.2)}

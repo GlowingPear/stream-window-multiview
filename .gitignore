@@ -10,3 +10,5 @@ Thumbs.db
 .worktrees/
 # npm run test:coverage
 coverage/
+# npm run dist:win / dist:mac
+dist/

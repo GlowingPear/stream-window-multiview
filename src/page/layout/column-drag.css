@@ -1,0 +1,63 @@
+/* linked columns / highlight */
+.btns [data-a=feat]{display:none}
+body.cols .btns [data-a=feat],body.chatfocus .win.stream .btns [data-a=feat]{display:grid}
+body.chatfocus .win.stream .bar,body.role-streams .win.stream .bar{cursor:grab}
+.win.swap-target{box-shadow:0 0 0 4px var(--accent),0 10px 30px rgba(0,0,0,.45)}
+.win.swap-target .shield{display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.win.swap-target .shield[data-swap]::after{content:attr(data-swap);max-width:90%;padding:7px 14px;border-radius:999px;background:var(--accent);color:var(--accent-ink);
+  font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+/* where the dragged window came from: the one it swaps with lands there; dropped anywhere else, it goes back */
+#swapGhost{position:absolute;display:none;place-items:center;border:2px dashed var(--accent);border-radius:8px;pointer-events:none;
+  background:color-mix(in srgb,var(--accent) 6%,transparent);color:var(--accent);font-size:12px;font-weight:700}
+#swapGhost.back{border-color:var(--muted);background:transparent;color:var(--muted)}
+body.layout-locked .win .bar{cursor:grab}
+body.layout-locked.dragging .win .bar{cursor:grabbing}
+body.layout-locked .rz{cursor:not-allowed}
+body.layout-locked .rz-se::after{display:none}
+.fs-back{display:flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:6px;border:1px solid var(--line2);background:var(--panel2);
+  cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;margin-left:auto}
+.fs-back + .fs-back{margin-left:0}
+.fs-back:hover{border-color:var(--accent);color:var(--accent)}
+.fs-back svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btns button.feat.on{color:var(--accent)}
+body.cols.linked .rz{display:none}
+body.cols.linked .bar{cursor:grab}
+body.coldrag, body.coldrag .bar{cursor:grabbing}
+body.coldrag #stage{scroll-snap-type:none}
+.win.link-top{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-color:transparent}
+.win.link-bot{border-top-left-radius:0;border-top-right-radius:0;border-top-color:var(--line)}
+.win.link-top.active{border-bottom-color:transparent}
+.win.lifted{box-shadow:0 22px 50px rgba(0,0,0,.7),0 0 0 2px var(--frame);opacity:.93}
+.win.lifted.shrunk{transform:scale(.5);opacity:.85;transition:transform .12s}   /* dragged to swap: small, so you see what's under it */
+.win.featured{scroll-snap-align:none !important}
+.win.featured.stream{border-color:var(--frame)}
+#featBg{position:absolute;top:0;bottom:0;left:0;background:var(--bg);z-index:89990;display:none;
+  box-shadow:6px 0 16px rgba(0,0,0,.5);border-right:1px solid var(--line)}
+
+#colStrip{position:absolute;z-index:89985;display:none;align-items:center;gap:6px;padding:0 4px;
+  background:var(--panel);border:1px solid var(--line2);border-radius:8px}
+.cs-btn{flex:none;width:44px;height:22px;border:0;border-radius:6px;background:var(--panel2);color:var(--text);cursor:pointer;
+  font-size:20px;line-height:1;display:grid;place-items:center;padding:0 0 2px}
+.cs-btn:hover:not(:disabled){background:var(--accent);color:var(--accent-ink)}
+.cs-btn:disabled{opacity:.35;cursor:default}
+.cs-pick{flex:1;min-width:0;height:22px;padding:0 6px;border:1px solid transparent;border-radius:6px;background:transparent;
+  font-weight:600;text-align:center;text-align-last:center;cursor:pointer}
+.cs-pick:hover{border-color:var(--line2);background:var(--panel2)}
+.cs-pick option{background:var(--panel);color:var(--text)}
+.cs-pos{flex:none;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.fs-item{touch-action:none}
+.fs-item:not(.fs-dragging) .fs-row{cursor:grab}
+.fs-item .fs-row button,.fs-item .fs-row input{cursor:pointer}
+.fs-item.fs-dragging{position:relative;z-index:5;opacity:.9;box-shadow:0 14px 34px rgba(0,0,0,.6),0 0 0 2px var(--accent);cursor:grabbing;transition:none}
+.fs-item.fs-drop{box-shadow:0 0 0 2px var(--accent) inset;background:color-mix(in srgb, var(--accent) 12%, transparent)}
+body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
+
+@container (max-width:720px){ .fs-back span{display:none} .fs-back{padding:0 7px} }
+@container (max-width:470px){ .fs-side span{display:none} }
+
+.col-pick{display:block;min-width:36px;max-width:230px;flex:0 1 auto;height:22px;padding:0 2px 0 4px;border:1px solid transparent;
+  border-radius:5px;background:transparent;font-weight:600;cursor:pointer;text-overflow:ellipsis}
+.col-pick:hover{border-color:var(--line2);background:var(--panel)}
+.col-pick option{background:var(--panel);color:var(--text)}
+.win:has(.col-pick) .title{display:none}

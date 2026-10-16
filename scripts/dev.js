@@ -33,7 +33,7 @@ const profileDir = name => path.join(appDataDir(), 'Stream Multiview Dev', name)
 // start the app themselves (e.g. Playwright's _electron.launch to record a video).
 function prepare({ dir = root, profile = '' } = {}) {
   ensureElectron(dir);
-  spawnSync(process.execPath, [path.join(dir, 'src', 'harden.js')], { stdio: 'inherit' });   // as npm start does
+  spawnSync(process.execPath, [path.join(dir, 'src', 'main', 'harden.js')], { stdio: 'inherit' });   // as npm start does
   const data = profile ? profileDir(profile) : fs.mkdtempSync(path.join(os.tmpdir(), 'stream-multiview-dev-'));
   fs.mkdirSync(data, { recursive: true });
   const branch = git(dir, ['rev-parse', '--abbrev-ref', 'HEAD']) || 'dev';

@@ -1,0 +1,73 @@
+/* ---------- header ---------- */
+header{position:fixed;top:0;left:0;right:0;height:var(--head);z-index:100000;display:flex;align-items:center;gap:8px;
+  padding:0 12px;background:var(--panel);border-bottom:1px solid var(--line);transition:transform .2s ease}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.02em;margin-right:6px;white-space:nowrap}
+header.c1 .brand-txt{display:none} header.c1 .brand{margin-right:0}
+body.role-streams .brand-txt{display:inline !important}
+.brand .pear{width:20px;height:20px;fill:var(--accent);color:var(--accent);filter:drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 35%, transparent))}
+select{height:34px;padding:0 8px;border-radius:7px;border:1px solid var(--line2);background:var(--panel2)}
+.btn{height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);background:var(--panel2);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent-edge);font-weight:700}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger:hover{border-color:var(--danger);color:var(--danger)}
+.sep{width:1px;height:24px;background:var(--line);margin:0 4px}
+header .sep{flex:none;height:20px;margin:0 2px}
+header .sep[hidden]{display:none}
+label.chk{display:flex;align-items:center;gap:5px;color:var(--muted);white-space:nowrap;cursor:pointer;user-select:none}
+label.chk input{accent-color:var(--accent)}
+.spacer{flex:1}
+header.measuring > :not(.spacer){flex-shrink:0}   /* see fitHeader: measured at full size, not squashed */
+/* Toolbar items (.tb): menu style, not boxed buttons. An icon, a name, and ▾ for the ones that open a menu.
+   On the top bar the right side shows icons only (their names are in the tooltips), except Layout, which keeps
+   its name while there's room (fitHeader drops it first). The item whose menu or panel is open is underlined. */
+header .tb{position:relative;display:flex;align-items:center;justify-content:center;gap:7px;height:34px;padding:0 9px;border:0;border-radius:7px;
+  background:transparent;color:var(--text);font-weight:600}
+header .tb:hover:not(:disabled){background:var(--panel2)}
+header .tb:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+header .tb.ibtn{width:auto;min-width:34px;padding:0 8px}
+.tb > i[data-ico]{display:grid;place-items:center;flex:none}
+.tb > i[data-ico] svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tb .car{font-size:10px;color:var(--muted);margin-left:-2px}
+.tb .car::before{content:"▾"}
+header .tb.ibtn .tb-l{display:none}
+body:not(.bar-left) header:not(.c2) #layoutBtn .tb-l{display:inline}
+header .tb[aria-expanded="true"]{background:color-mix(in srgb,var(--accent) 9%,transparent);box-shadow:inset 0 -2px 0 var(--accent);border-radius:7px 7px 0 0}
+header #clear{color:var(--danger)}
+header #clear:hover{background:color-mix(in srgb,var(--danger) 14%,transparent)}
+header .tb.primary{background:var(--accent);color:var(--accent-ink)}
+#loginBtn.has-acct > i{color:var(--accent)}
+#savedBtn .sv-badge[hidden]{display:none}
+#savedBtn .sv-badge{margin-left:0}
+#barFold{display:none}
+/* ---------- the toolbar on the left (Layout menu / Settings > Layouts > Toolbar) ----------
+   A column down the side: Logins, Channels and Profiles at the top, the rest at the bottom. With names it's a
+   list of menu rows (about 180px); Icons only is a slim column (44px): pointing at a button shows its name. */
+body.bar-left{--barw:180px}
+body.bar-left.bar-icons{--barw:44px}
+body.bar-left header{bottom:0;right:auto;width:var(--barw);height:auto;flex-direction:column;align-items:stretch;gap:1px;padding:8px 6px;
+  border-bottom:0;border-right:1px solid var(--line);overflow:hidden;transition:transform .2s ease,width .15s ease,box-shadow .15s ease}
+body.bar-left header .brand{flex:none;height:36px;margin:0 0 6px;padding-left:6px}
+body.bar-left header .brand-txt{display:inline}
+body.bar-left header .tb{justify-content:flex-start;width:100%;min-width:0;flex:none;height:32px;padding:0 9px;gap:10px;font-weight:500}
+body.bar-left header .tb .tb-l{display:inline;flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.bar-left header .tb .car::before{content:"▸"}
+body.bar-left header .tb[aria-expanded="true"]{box-shadow:inset 2px 0 0 var(--accent);border-radius:0 7px 7px 0}
+body.bar-left header .sep{width:auto;height:1px;margin:5px 4px}
+body.bar-left header .spacer{flex:1 1 0;min-height:8px}
+body.bar-left #barFold{display:flex;color:var(--muted)}
+body.bar-left #moreBtn{font-size:15px}
+body.bar-left.bar-icons header{padding:8px 4px}
+body.bar-left.bar-icons header .brand{justify-content:center;padding:0;margin-right:0}
+body.bar-left.bar-icons header :is(.brand-txt,.tb-l,.car){display:none}
+body.bar-left.bar-icons header .tb{justify-content:center;padding:0}
+body.bar-left.bar-icons #savedBtn .sv-badge{position:absolute;top:1px;right:0;padding:0 4px;font-size:9.5px;line-height:14px}
+body.bar-left.bar-icons #savedBtn .sv-badge i{display:none}
+body.bar-left.bar-icons #bellBtn .mb-count{position:absolute;top:1px;right:1px}
+body.bar-left #stage{top:0;left:var(--barw);transition:left .2s ease}
+body.bar-left.focus #stage{left:0}
+body.bar-left.focus header{transform:translateX(-100%)}
+body.bar-left.focus.peek header{transform:none}
+body.bar-left #reveal{bottom:0;right:auto;width:6px;height:auto}
+body.bar-left #msg[data-pos^=t]{top:10px}
+body.bar-left #msg[data-pos$=l]{left:calc(var(--barw) + 16px)}

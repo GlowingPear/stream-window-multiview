@@ -47,7 +47,7 @@ The skill only writes to the temp folder, so a video needs no branch. Run it in 
 
 ## 4. Write the scenes file
 
-Write it in the temp folder (not the repo), starting from the closest example. Find selectors in `src/index.html` and in the PR's launch tests (`test/launch/*.test.js`), which drive the same features.
+Write it in the temp folder (not the repo), starting from the closest example. Find selectors in `src/index.html`, `src/page/` and in the PR's launch tests (`test/launch/**/*.test.js`), which drive the same features.
 
 ```js
 module.exports = {

@@ -1,0 +1,15 @@
+/* macOS: the toolbar is the window's title bar (see macBar in main.js). Its empty space moves the window, the
+   traffic lights sit at its left (not in fullscreen, where macOS hides them), and the pear stands in for the name. */
+html.mac-bar header{-webkit-app-region:drag;padding-left:86px}
+html.mac-bar header :is(button,input,select,label,a){-webkit-app-region:no-drag}
+html.mac-bar body.fullscreen header{padding-left:12px}
+html.mac-bar #reveal{height:12px}   /* the window's top few pixels are its resize edge, which the page never hears about */
+html.mac-bar body:not(.role-streams) .brand-txt{display:none}
+/* on the left, the lights sit where they always do (top left), in a strip at the top of the column with the pear
+   at its right. Icons only is too narrow for them, so they're hidden until the pointer is on the pear (body.bar-lights),
+   and show in its place. The pear isn't part of the title bar there: the page never hears the pointer on a drag area. */
+html.mac-bar body.bar-left header{padding-left:6px}
+html.mac-bar body.bar-left header .brand{height:40px;padding-left:80px;margin-top:-4px}
+html.mac-bar body.bar-left.bar-icons header .brand{padding-left:0;-webkit-app-region:no-drag}
+html.mac-bar body.bar-left.bar-icons.bar-lights header .pear{visibility:hidden}
+html.mac-bar body.bar-left.fullscreen header .brand{padding-left:6px}

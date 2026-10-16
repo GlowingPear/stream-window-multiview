@@ -1,0 +1,67 @@
+#bellBtn[hidden]{display:none}
+#bellBtn .mb-ico{display:grid;place-items:center}
+#bellBtn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#bellBtn.off{color:var(--muted)}
+header #bellBtn .mb-count{position:absolute;top:2px;right:0;min-width:15px;height:15px;font-size:9.5px;padding:0 4px}
+.mb-count{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#e5262a;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center}
+.mb-count[hidden]{display:none}
+#bellPanel{position:fixed;top:calc(var(--head) + 6px);z-index:100003;width:490px;max-width:calc(100vw - 16px);max-height:78vh;display:flex;flex-direction:column;gap:8px;padding:12px 12px 10px;
+  background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.55)}
+#bellPanel[hidden]{display:none}
+.mp-note{font-size:11px;color:#e8b84a}
+.mp-note:empty{display:none}
+.mp-head{display:flex;align-items:center;gap:6px}
+.mp-head b{font-size:14px;margin-right:auto}
+.mp-head .btn{height:26px;font-size:11px}
+.mp-head .btn[hidden]{display:none}
+/* the bell and All notifications: tabs, sub-filter chips, the chat or site picker */
+.nc-tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:0 -12px;padding:0 8px}
+.menthist .nc-tabs{margin:0;padding:0 14px}
+.nc-tabs button{display:flex;align-items:center;gap:5px;height:32px;padding:0 9px;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;background:none;color:var(--muted);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+.nc-tabs button:hover{color:var(--text)}
+.nc-tabs button.on{color:var(--text);border-bottom-color:var(--accent)}
+.nc-tabs i{font-style:normal;min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:var(--line2);color:var(--text);font-size:10.5px;font-weight:700;display:grid;place-items:center}
+.nc-tabs button.on i{background:var(--accent);color:var(--accent-ink)}
+.nc-bar{display:flex;align-items:center;gap:8px;min-width:0}
+.nc-bar[hidden],.nc-chips[hidden],.nc-sum[hidden],.nc-pick[hidden]{display:none}
+.nc-chips{display:flex;gap:4px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+.nc-chips::-webkit-scrollbar{display:none}
+.nc-chips button{flex:none;height:26px;padding:0 7px;border-radius:999px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);cursor:pointer;font-size:11.5px;font-weight:600;white-space:nowrap}
+.nc-chips.small button{height:23px;padding:0 8px;font-size:11px}
+.nc-chips button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent-edge)}
+.nc-sum{flex:1;font-size:11.5px;color:var(--muted)}
+.nc-pick{flex:none;width:110px;height:26px;margin-left:auto;font-size:11.5px;text-overflow:ellipsis}   /* one width: a long channel name in the list doesn't make it grow */
+.nc-list{overflow:auto;display:flex;flex-direction:column;min-height:0;border-top:1px solid var(--line)}
+.nc-list > *{flex-shrink:0}   /* it scrolls instead: a day's box (overflow:hidden) would shrink to a sliver */
+#bellList{margin:0 -12px}
+#bellList .sv-empty{padding:14px 12px;color:var(--muted);font-size:12.5px}
+.mp-row.nc-row{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:10px;row-gap:0;align-content:start}
+.nc-row>:not(.nc-ico):not(.mp-top):not(.mp-x){margin-top:3px}
+.nc-row>:not(.nc-ico):not(.mp-x){grid-column:2}
+.nc-ico{grid-row:1 / span 8;width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+.nc-ico svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nc-t{font:700 14px Georgia,serif;color:#e8b84a}
+.nc-row.k-mention .nc-ico{color:var(--accent)}
+.nc-row.k-spam .nc-ico,.nc-row.k-live .nc-ico{color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,transparent);border-color:color-mix(in srgb,var(--danger) 30%,transparent)}
+.nc-row.k-raid .nc-ico{color:#a970ff}
+.nc-row.k-app .nc-ico{color:#6aa8ff}
+.nc-row.k-reply.unread::before{background:var(--text)}
+.nc-row.k-word.unread::before{background:#e8b84a}
+.nc-row.k-spam.unread::before,.nc-row.k-live.unread::before{background:var(--danger)}
+.nc-row.k-app .mp-top b,.nc-row.k-raid .mp-top b,.nc-row.k-live .mp-top b{white-space:normal}
+.nc-row.k-app .mp-top b{color:var(--text)}
+.nc-row.k-app .mp-body{color:var(--muted);font-size:12px}
+.nc-row .mp-body:empty{display:none}
+.mp-kind.spam{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
+.mp-kind.plain{border:0;padding:0;font-size:12px;font-weight:500}
+.mp-kind:empty{display:none}
+.nc-auto{font-size:11px;font-weight:700;color:var(--accent)}
+.nc-acts{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px}
+.nc-acts .btn{height:24px;padding:0 9px;font-size:11.5px}
+.nc-acts .btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
+.nc-acts .btn.accent{color:var(--accent);border-color:var(--accent)}
+.nc-acts .btn.linkish{border:0;background:none;color:var(--muted);text-decoration:none;font-weight:500}
+.nc-acts .btn.linkish:hover{color:var(--text)}
+.nc-note{font-size:11.5px;color:var(--muted)}
+.nc-why{white-space:pre-wrap;font-size:11.5px;color:var(--muted);padding:6px 8px;border-radius:7px;background:var(--panel2);border:1px solid var(--line)}
+.nc-why[hidden]{display:none}

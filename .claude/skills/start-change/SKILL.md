@@ -30,7 +30,7 @@ For large or risky changes, use plan mode.
 - **Screenshot** for something you can see at one moment: layout, styling, wording, a dialog or list with different content, an error or empty state.
 - **Video** for something that happens over time: progress or loading, animations, drag and drop, resizing, a sequence of steps, timing fixes (flicker, freezes). Keep it under ~15 s. Record "before" too only when the motion itself changed; a new feature needs just "after".
 - **Both** when there's an end state and the steps to get there matter.
-- **N/A** when nothing visible changes (refactors, build/CI, tests, docs).
+- **N/A** when nothing visible changes (refactors, build/CI, tests, docs). For a refactor of the page (`src/index.html`, `src/page/`), `npm run visual-diff` shows it still looks the same: put its result in the PR instead.
 - If unsure, screenshot.
 
 Check the tools before promising captures (see the `drive-app` skill): Playwright (`npm run test:setup`), its ffmpeg for video, a screen (`xvfb-run` on a Linux machine without one), `gh` 2.99+ for attaching. If something is missing, say what will be skipped and how to fix it. Don't install anything without asking.
@@ -53,7 +53,7 @@ The new worktree is still identical to `main`, so capture "before" now, before e
 - Make the change. Match the surrounding code's style.
 - No system pop-ups (`alert`/`confirm`/`prompt`, `<datalist>`, date pickers, system menus or message boxes): use the app's own dropdown list, `ask()` and `flash()`. See *No system pop-ups* in `README.md`; `npm test` checks it.
 - Add or update tests next to similar ones in `test/`: for every new code path, not only the parts that are easy to test. Coverage can't go down; `open-pr` checks it, so don't run the coverage check here as well.
-- Run the dev copy (`run-dev` skill) and check the change in the real app. `src/main.js` and `src/live.js` need a restart, `src/index.html` only Ctrl/Cmd+R.
+- Run the dev copy (`run-dev` skill) and check the change in the real app. the Electron side (`src/main/`, `src/preload/`) needs a restart, the page (`src/index.html`, `src/page/`) only Ctrl/Cmd+R.
 - Capture "after" with exactly the same steps as "before".
 - Commit in small, clear commits. Don't change the version or `CHANGELOG.md`.
 
