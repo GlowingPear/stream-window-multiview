@@ -1981,6 +1981,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 <script src="dropdown.js"></script>
 <script>
 (() => {
+'use strict';
 const $ = s => document.querySelector(s);
 const stage = $('#stage'), input = $('#savedInput'), modeSel = $('#mode'), mutedChk = $('#muted'),
       snapChk = $('#snap'), msg = $('#msg'), empty = $('#empty'), sizehint = $('#sizehint');
