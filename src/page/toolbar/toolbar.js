@@ -1,4 +1,5 @@
 import './header.js';   // runs after it (see app.js)
+import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { setTb } from '../shared/icons.js';
@@ -152,12 +153,10 @@ savedBtn.onclick = () => {
     if (DESKTOP && ROLE === 'main' && window.kmv.checkLiveNow) window.kmv.checkLiveNow();
   }
 };
-document.addEventListener('pointerdown', e => {
-  if (!panel.hidden && !panel.contains(e.target) && !savedBtn.contains(e.target)) panel.hidden = true;   // the button toggles it itself
-  if (!spMenu.hidden && !spMenu.contains(e.target) && !spMore.contains(e.target)) showSpMenu(false);
-});
+closeOnOutside(panel, { button: savedBtn });
 const spMenu = $('#spMenu'), spMore = $('#spMore');
 const showSpMenu = on => { spMenu.hidden = !on; spMore.classList.toggle('on', on); spMore.setAttribute('aria-expanded', on); };
+closeOnOutside(spMenu, { button: spMore, close: () => showSpMenu(false) });
 spMore.onclick = () => showSpMenu(spMenu.hidden);
 spMenu.addEventListener('click', e => { if (e.target.closest('button')) showSpMenu(false); });
 if (followsApi()){
@@ -222,7 +221,7 @@ if (ROLE === 'main'){
     mp.hidden = !mp.hidden;
     if (!mp.hidden){ renderBell(); placeMenu(mp, mb); seeBell(); }
   };
-  document.addEventListener('pointerdown', e => { if (!mp.hidden && !mp.contains(e.target) && !mb.contains(e.target)) mp.hidden = true; });
+  closeOnOutside(mp, { button: mb });
   setInterval(() => { if (!mp.hidden) renderBell(); }, 30000);   // keep "x min ago" fresh
   renderBell();
 }

@@ -1,4 +1,5 @@
 import '../panels/profiles/profiles.js';   // runs after it (see app.js)
+import { closeOnOutside } from '../shared/popover.js';
 import { $ } from '../core.js';
 import { placeMenu } from './toolbar.js';
 
@@ -75,6 +76,6 @@ import { placeMenu } from './toolbar.js';
     const b = e.target.closest('.btn');
     if (b) moreMenu.hidden = true;     // runs after the button's own click
   });
-  document.addEventListener('pointerdown', e => { if (!moreMenu.hidden && !moreMenu.contains(e.target) && !moreBtn.contains(e.target)) moreMenu.hidden = true; });
+  closeOnOutside(moreMenu, { button: moreBtn });
   fitHeader();
 })();

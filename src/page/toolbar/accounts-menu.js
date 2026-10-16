@@ -1,4 +1,5 @@
 import './layout-menu.js';   // runs after it (see app.js)
+import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { reloadView } from '../windows/view.js';
 import { $, ROLE, coreVars, msg, popped, wins } from '../core.js';
@@ -53,7 +54,7 @@ if (DESKTOP){
     am.hidden = !am.hidden;
     if (!am.hidden){ placeMenu(am, lb); refreshAccount(); }
   };
-  document.addEventListener('pointerdown', e => { if (!am.hidden && !am.contains(e.target) && !lb.contains(e.target)) am.hidden = true; });
+  closeOnOutside(am, { button: lb });
   const doLogout = async p => {
     await window.kmv.logout(p);
     acct[p] = p === 'youtube' ? false : ''; showAccounts();

@@ -1,4 +1,5 @@
 import '../../toolbar/toolbar-fit.js';   // runs after it (see app.js)
+import { closeOnOutside } from '../../shared/popover.js';
 import { reloadView, viewId } from '../../windows/view.js';
 import { $, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
@@ -219,9 +220,7 @@ extMenu.addEventListener('change', e => {
   extMenu.hidden = true;
   window.kmv.extSet(row.dataset.id, { partition: f.part, on: e.target.checked });
 });
-document.addEventListener('pointerdown', e => {
-  if (!extMenu.hidden && !extMenu.contains(e.target) && !(extMenuFor && extMenuFor.btn.contains(e.target))) extMenu.hidden = true;
-});
+closeOnOutside(extMenu, { button: () => extMenuFor && extMenuFor.btn });
 if (DESKTOP && window.kmv.extList){
   window.kmv.extList().then(xs => { platformVars.extCount = xs.length; refreshExtButtons(); }).catch(() => { platformVars.extCount = 0; });
   window.kmv.onExtConfirm(showExtDlg);
