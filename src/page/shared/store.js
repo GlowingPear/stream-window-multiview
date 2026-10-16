@@ -19,14 +19,14 @@ const TOPICS = new Set([
   'layout'       // the layout in use and its options
 ]);
 const watchers = [];          // { topics, fn }, in the order they started watching
-const check = t => { if (!TOPICS.has(t)) throw new Error(`Not something the store knows about: ${t} (see src/page/shared/store.js)`); };
+const checkTopic = t => { if (!TOPICS.has(t)) throw new Error(`Not something the store knows about: ${t} (see src/page/shared/store.js)`); };
 const store = {
   watch(topics, fn){
-    topics = [].concat(topics); topics.forEach(check);
+    topics = [].concat(topics); topics.forEach(checkTopic);
     watchers.push({ topics: new Set(topics), fn });
   },
   changed(...topics){
-    topics.forEach(check);
+    topics.forEach(checkTopic);
     watchers.filter(w => topics.some(t => w.topics.has(t))).forEach(w => w.fn());
   }
 };
