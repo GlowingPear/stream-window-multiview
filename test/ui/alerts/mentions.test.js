@@ -379,3 +379,45 @@ test('Kick: text added to a message after it shows (not in its actions) is not a
   await page.evaluate(() => { const r = document.querySelector('#chat [data-index="3"]'); r.dataset.index = '5'; r.querySelector('.group > div > span:last-child').textContent = 'hi @mod_me again'; });
   assert.deepEqual((await take()).m.map(m => [m.sender, m.body]), [['nightowl', 'hi @mod_me again']]);
 });
+
+// Kick's chat as it really is (kick-rows.js, saved from a Kick chat): each message is read by its parts (the name,
+// the message, a reply's quote), not by its text, which an emote splits into lines and where a quote ends right
+// against the sender's name.
+test('Kick, read from its real markup: emote-only replies, text after an emote, quotes with emotes, and the "SO" button', async t => {
+  const real = require('./kick-rows');
+  const page = await openApp(t);
+  await page.evaluate(([h, css]) => {
+    const st = document.createElement('style'); st.textContent = css; document.head.append(st);
+    const c = document.createElement('div'); c.id = 'chat'; c.style.cssText = 'position:relative;width:340px'; c.innerHTML = h; document.body.append(c);
+    window.mentionAgent();
+  }, [real.kickRow(1, 'regular', 'hello'), real.KICK_CSS]);
+  await page.evaluate(() => window.__kmvMention.setMe('mod_me', ['tron']));
+  await page.waitForTimeout(2800);
+  const add = h => page.evaluate(h => document.getElementById('chat').insertAdjacentHTML('beforeend', h), h);
+  const take = () => page.evaluate(() => window.__kmvMention.take());
+  const e = real.kickEmote;
+  await add(real.kickRow(2, 'pixelpear', e(4, 'pearHype') + e(5, 'lulBlob'), ['mod_me', 'that might be the fun police']));
+  await add(real.kickRow(3, 'nightowl', `tron has 2 cats ${e(1, 'pearHype')} wasnt that a year ago ${e(5, 'lulBlob')}`));
+  await add(real.kickRow(4, 'tidepool', 'nice', ['mod_me', `look ${e(4, 'pearHype')} at this`]));
+  await add(real.kickRow(5, 'quietkoala', `hey @mod_me ${e(1, 'pearHype')}`));
+  assert.match(await page.$eval('#chat [data-index="3"]', e => e.innerText), /cats \n wasnt/, '(an emote splits the text into lines, as in Kick\'s chat)');
+  const q = (await take()).m;
+  assert.deepEqual(q.map(m => [m.sender, m.kind, m.body, m.quoted]), [
+    ['pixelpear', 'reply', '', 'that might be the fun police'],
+    ['nightowl', 'word', 'tron has 2 cats wasnt that a year ago', ''],
+    ['tidepool', 'reply', 'nice', 'look at this'],
+    ['quietkoala', 'mention', 'hey @mod_me', '']
+  ]);
+  assert.deepEqual(q[0].parts, [{ e: 'pearHype', src: KICK(4) }, { e: 'lulBlob', src: KICK(5) }], 'the emotes they sent');
+  assert.deepEqual(q[1].parts, [{ t: 'tron has 2 cats ' }, { e: 'pearHype', src: KICK(1) }, { t: ' wasnt that a year ago ' }, { e: 'lulBlob', src: KICK(5) }]);
+  assert.equal(q[2].parts, undefined, '(no emotes in the reply itself)');
+  assert.deepEqual(q[2].qparts, [{ t: 'look ' }, { e: 'pearHype', src: KICK(4) }, { t: ' at this' }], 'the quote\'s emotes');
+  assert.deepEqual(q[3].parts, [{ t: 'hey @mod_me ' }, { e: 'pearHype', src: KICK(1) }]);
+  // the actions (with the extension's "SO") show while the pointer is over a message: nothing new
+  for (const i of [2, 3, 4, 5]){
+    await page.evaluate(i => document.querySelectorAll('#chat [class*="group-hover:flex"]').forEach(b => {
+      b.style.display = b.closest('[data-index]').dataset.index === String(i) ? 'flex' : ''; }), i);
+    assert.match(await page.$eval(`#chat [data-index="${i}"]`, e => e.innerText), /\bSO\b/, '(the actions show)');
+    assert.deepEqual((await take()).m, [], `no new alert with message ${i}'s actions showing`);
+  }
+});
