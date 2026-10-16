@@ -1,6 +1,7 @@
 import './translate.js';   // runs after it (see app.js)
 import { fromApp, fromSite } from '../shared/incoming.js';
 import { store } from '../shared/store.js';
+import { stopWinTimer, stopWinTimers, winTimer } from '../shared/timers.js';
 import { runIn, zoomOf } from '../windows/view.js';
 import { coreVars, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
@@ -145,13 +146,13 @@ async function resolveYt(w){
   setWait(w, !r ? 'Couldn’t reach YouTube. Trying again in 2 minutes.'
               : r.missing ? `Couldn’t find ${chLabel(w.channel)} on YouTube.`
               : `${chLabel(w.channel)} isn’t live right now. Checking again every 2 minutes.`, true);
-  clearTimeout(w.ytT);
-  if (!(r && r.missing)) w.ytT = setTimeout(() => resolveYt(w), 120000);
+  stopWinTimer(w, 'yt');
+  if (!(r && r.missing)) winTimer(w, 'yt', () => resolveYt(w), 120000);
 }
 
 // Everything a window holds besides its element: timers, a screen capture, its mini preview.
 function releaseWin(w){
-  clearTimeout(w.ytT); clearTimeout(w._t);
+  stopWinTimers(w);
   stopCapture(w);
   if (typeof dropMini === 'function') dropMini(w);
   w.el.remove();
