@@ -1,0 +1,4 @@
+{
+  "//": "The page's code is ES modules: says so to Node too, for the unit tests that load them (the browser ignores this file).",
+  "type": "module"
+}
