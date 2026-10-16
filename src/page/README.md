@@ -38,7 +38,7 @@ Don't call `window.kmv.on…` directly.
 
 **Sites.** Ask the channel's site module (`platform(ch)` from `platforms/platforms.js`) rather than checking the site's name: its addresses (`streamUrl`, `chatUrl`, `pageUrl`, `profileUrl`, `modUrl`), reading a channel from a link (`fromUrl`), raids, and what it can do (`mentions`, `spamAlerts`, `emoteLists`, `pageCommands`, `likes`). For something new that differs by site, add it to all three modules, with the same name and shape. A new site is a new module of the same shape, added to `PLATFORMS`. `PLAT_NAME[p]` is a site's name and `platIcon(p)` its badge.
 
-**Views.** Everything done to a stream's or chat's `<webview>` goes through `windows/view.js`: `runIn(view, js)` (for its effect; never fails), `askIn(view, js)` (for its result; a promise that can fail), `addCss`, `setZoom`, `zoomOf`, `setMuted`, `reloadView`, `viewId`. Don't call the webview's own methods.
+**Views.** Everything done to a stream's or chat's `<webview>` goes through `windows/view.js`: `runIn(view, js)` (for its effect; never fails), `askIn(view, js)` (for its result; a promise that can fail), `addCss`, `setZoom`, `zoomOf`, `setMuted`, `reloadView`, `loadView` (an address, also the one it's on), `viewId`. Don't call the webview's own methods.
 
 **Scripts that run inside the sites** (`in-site/`) are turned into text (`fn.toString()`) and run in the Kick, Twitch or YouTube page. They can't use anything else from the page (no imports, no outside variables), only their own code and what they're given. They talk back with `console.log('__kmv:…')` messages, which `windows/views.js` reads.
 
