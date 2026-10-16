@@ -1,4 +1,5 @@
 import './header.js';   // runs after it (see app.js)
+import { fromApp } from '../shared/incoming.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
@@ -161,7 +162,7 @@ closeOnOutside(spMenu, { button: spMore, close: () => showSpMenu(false) });
 spMore.onclick = () => showSpMenu(spMenu.hidden);
 spMenu.addEventListener('click', e => { if (e.target.closest('button')) showSpMenu(false); });
 if (followsApi()){
-  window.kmv.onFollowsChanged && window.kmv.onFollowsChanged(loadFollows);
+  fromApp('onFollowsChanged', loadFollows);
   loadFollows();
   $('#followsOn').onclick = () => { if (window.kmv.followsSetOn) window.kmv.followsSetOn(!follows.on).then(loadFollows).catch(() => {}); };
 }
@@ -203,9 +204,9 @@ if (DESKTOP && ROLE === 'main' && window.kmv.watchLive){
     alerts.live.notify = !na.checked ? 'never' : alerts.live.notify === 'never' ? 'always' : alerts.live.notify;
     saveAlerts(); syncLiveAlerts(); syncAlertControls();
   });
-  window.kmv.onLiveStatus(gotLive);
-  window.kmv.onWentLive((ch, info) => liveNote(ch, info, false));
-  window.kmv.onOpenChannel(ch => addParsed({ channel: ch, only: null }));
+  fromApp('onLiveStatus', gotLive);
+  fromApp('onWentLive', (ch, info) => liveNote(ch, info, false));
+  fromApp('onOpenChannel', ch => addParsed({ channel: ch, only: null }));
   window.kmv.liveSnapshot().then(gotLive).catch(() => {});
   $('#openLive').onclick = () => {
     liveNow().forEach(ch => { if (!wins.some(w => w.kind === 'stream' && w.channel === ch)) addParsed({ channel: ch, only: null }); });
@@ -247,7 +248,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.notifyMention){
     else if (n || (st && st.twitch)) $('#mentNote').textContent = '';
   };
   $('#mentDetect').onclick = () => detect(false);
-  window.kmv.onFocusChat(ch => revealChat(ch));
+  fromApp('onFocusChat', ch => revealChat(ch));
   setInterval(pollMentions, 1500);
   if (!myName || !myTwitch) setTimeout(() => detect(true), 4000);
   renderMentions();

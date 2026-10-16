@@ -1,4 +1,5 @@
 import '../../toolbar/toolbar-fit.js';   // runs after it (see app.js)
+import { fromApp } from '../../shared/incoming.js';
 import { closeOnOutside } from '../../shared/popover.js';
 import { reloadView, viewId } from '../../windows/view.js';
 import { $, wins } from '../../core.js';
@@ -223,9 +224,9 @@ extMenu.addEventListener('change', e => {
 closeOnOutside(extMenu, { button: () => extMenuFor && extMenuFor.btn });
 if (DESKTOP && window.kmv.extList){
   window.kmv.extList().then(xs => { platformVars.extCount = xs.length; refreshExtButtons(); }).catch(() => { platformVars.extCount = 0; });
-  window.kmv.onExtConfirm(showExtDlg);
+  fromApp('onExtConfirm', showExtDlg);
   // An extension was switched on or off somewhere: reload the windows it changed, and show the new state.
-  window.kmv.onExtChanged(parts => {
+  fromApp('onExtChanged', parts => {
     wins.forEach(w => { if (w.view && w.ready && parts.includes(viewPartition(w))) reloadView(w.view); });
     extMenu.hidden = true;
     if (!settingsDlg.hidden && settingsTab === 'extensions') renderExtPane();

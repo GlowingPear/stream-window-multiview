@@ -1,4 +1,5 @@
 import '../help/help.js';   // runs after it (see app.js)
+import { fromApp } from '../../shared/incoming.js';
 import { settings } from '../../shared/settings.js';
 import { $, ROLE, msg } from '../../core.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -125,9 +126,9 @@ function updBanner(u){
 }
 if (DESKTOP && ROLE === 'main' && window.kmv.updateStatus){
   window.kmv.updateStatus().then(u => { updSt = u; }).catch(() => {});
-  window.kmv.onUpdateStatus(u => { updSt = u; renderUpdates(); updBanner(u); });
-  window.kmv.onUpdateShow(() => openSettings('updates'));
-  if (window.kmv.onHelpShow) window.kmv.onHelpShow(tab => showHelp(tab));
+  fromApp('onUpdateStatus', u => { updSt = u; renderUpdates(); updBanner(u); });
+  fromApp('onUpdateShow', () => openSettings('updates'));
+  fromApp('onHelpShow', tab => showHelp(tab));
   $('#updBanner .ub-go').onclick = restartForUpdate;
   $('#updBanner .ub-later').onclick = () => { $('#updBanner').hidden = true; try { sessionStorage.setItem('smvUpdLater' + (updSt && updSt.installed), '1'); } catch {} };
   // First start after an update: show what's new.

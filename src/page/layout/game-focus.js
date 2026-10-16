@@ -1,4 +1,5 @@
 import '../shortcuts.js';   // runs after it (see app.js)
+import { fromApp } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { BAR, GAP, ROLE, colsMode, coreVars, lastLayout, wins } from '../core.js';
@@ -129,7 +130,7 @@ async function releaseGameWin(say){
   if (say) flash(`“${n}” is back in its own window`);
   if (isGame()) renderGameBar();
 }
-if (attachOK && window.kmv.onGameDetached) window.kmv.onGameDetached(d => { if (gameAttached){ flash(`“${gameAttached}” was closed`, { subject: 'windows' }); gameAttached = null; if (isGame()) renderGameBar(); } });
+if (attachOK) fromApp('onGameDetached', d => { if (gameAttached){ flash(`“${gameAttached}” was closed`, { subject: 'windows' }); gameAttached = null; if (isGame()) renderGameBar(); } });
 gameBar.addEventListener('change', e => {
   if (e.target.classList.contains('gb-pick')){ gameKey = e.target.value || null; gameLayout(); }
   else if (e.target.closest('.gb-top')){ gameOnTop = e.target.checked; saveGame(); }

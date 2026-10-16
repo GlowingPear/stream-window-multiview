@@ -1,4 +1,5 @@
 import './translate.js';   // runs after it (see app.js)
+import { fromSite } from '../shared/incoming.js';
 import { DESKTOP } from '../shared/env.js';
 import { MENTION_JS, mentionAgent } from './mentions.js';
 import { emoteAgent } from './emote-preview.js';
@@ -33,6 +34,7 @@ function kickCmdAgent(names){
 }
 const KICK_CMD_JS = `(${kickCmdAgent.toString()})(${JSON.stringify(Object.keys(KICK_PAGE_CMDS))})`;
 // Says so in the chat window itself, over its chat box, with Cancel / Open channel page (muted, your login).
+fromSite('kick-cmd', (w, cmd, view) => { if (w.view === view) kickPageCmd(w, cmd); }, /^[a-z]+$/);   // see kickCmdAgent
 function kickPageCmd(w, cmd){
   if (!KICK_PAGE_CMDS[cmd] || platOf(w.channel) !== 'kick' || !w.el) return;
   const body = w.el.querySelector('.body');
@@ -55,4 +57,4 @@ function kickPageCmd(w, cmd){
 window.chatAgentJs = MENTION_JS; window.newEmoteAgent = newEmoteAgent; window.mentionAgent = mentionAgent; window.emoteAgent = emoteAgent; window.translateAgent = translateAgent;   // for the tests
 window.kickCmdAgent = kickCmdAgent; window.kickPageCmd = kickPageCmd; window.KICK_PAGE_CMDS = KICK_PAGE_CMDS;
 
-export { KICK_CMD_JS, kickPageCmd };
+export { KICK_CMD_JS };

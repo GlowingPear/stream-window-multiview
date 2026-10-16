@@ -1,4 +1,5 @@
 import './layout-menu.js';   // runs after it (see app.js)
+import { fromApp } from '../shared/incoming.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { reloadView } from '../windows/view.js';
@@ -81,12 +82,12 @@ if (DESKTOP){
   am.addEventListener('click', onAccountClick);
   sa.addEventListener('click', onAccountClick);
   sy.addEventListener('click', onAccountClick);
-  if (window.kmv.onMenuAccount) window.kmv.onMenuAccount(async ({ platform: p, action }) => {      // the menu bar's Account menu
+  fromApp('onMenuAccount', async ({ platform: p, action }) => {      // the menu bar's Account menu
     if (!PLAT_NAME[p]) return;
     if (action === 'login') window.kmv.openLogin(p);
     else if (action === 'logout' && await ask(`Log out of ${PLAT_NAME[p]}?`, `${PLAT_NAME[p]} chats in this app will show as logged out until someone logs in again.`, { ok: 'Log out', danger: true })) await doLogout(p);
   });
-  if (window.kmv.onAccountChanged) window.kmv.onAccountChanged(async info => {
+  fromApp('onAccountChanged', async info => {
     const p = info.platform || 'kick';
     wins.forEach(w => { if ((w.kind === 'chat' || (w.kind === 'stream' && watchSignedIn[p])) && w.ready && platOf(w.channel) === p) reloadView(w.view); });   // that platform's chats (and signed-in streams) pick up the new login
     modOk.clear(); wins.forEach(w => { if (platOf(w.channel) === p) checkMod(w); });
@@ -124,7 +125,7 @@ if (DESKTOP){
   if (window.kmv.ytKeyStatus){
     yk.hidden = false; sy.querySelector('.am-yk-sec').hidden = false;
     window.kmv.ytKeyStatus().then(st => showYtKey(st)).catch(() => {});
-    if (window.kmv.onYtKeyStatus) window.kmv.onYtKeyStatus(st => showYtKey(st));
+    fromApp('onYtKeyStatus', st => showYtKey(st));
     const add = async () => {
       const key = ykIn.value.trim(); if (!key) { ykIn.focus(); return; }
       const btn = yk.querySelector('.am-yk-add'); btn.disabled = true; ykSt.textContent = 'Testing the key with Google…'; ykSt.classList.remove('warn');
@@ -253,7 +254,7 @@ if (DESKTOP){
     + '<g clip-path="url(#pearLoadClip)"><path class="juice" d="M0 8Q8 3 16 8T32 8T48 8T64 8T80 8T96 8V90H0Z"/></g>'
     + '<path class="leaf" d="M36.2 9.6C40 4.2 47.5 3.2 52.5 5.4 49.6 10.8 42.4 12.8 36.2 9.6Z"/><path class="stem" d="M33.2 15.5C33 11.5 34.2 8 36.6 4.8"/>'
     + `</svg><span class="prog">${escH(text)}</span></div>`;
-  if (window.kmv.onFollowsProgress) window.kmv.onFollowsProgress(p => {
+  fromApp('onFollowsProgress', p => {
     if (p.platform !== impPlat || !impBusy || dlg.hidden) return;
     // only the text changes, so the pear keeps filling smoothly
     const l = dlg.querySelector('.dlg-list');
@@ -312,7 +313,7 @@ if (DESKTOP){
   /* ---- YouTube sign-in: copy the login from Firefox (Google blocks signing in inside the app) ---- */
   const ffDlg = $('#ffDlg');
   function openFfDlg(){ ffDlg.querySelector('.ff-note').textContent = ''; ffDlg.hidden = false; }
-  if (window.kmv.onYoutubeSignin) window.kmv.onYoutubeSignin(openFfDlg);
+  fromApp('onYoutubeSignin', openFfDlg);
   ffDlg.querySelector('.dlg-cancel').onclick = () => { ffDlg.hidden = true; };
   ffDlg.addEventListener('pointerdown', e => { if (e.target === ffDlg) ffDlg.hidden = true; });
   ffDlg.querySelector('.ff-copy').onclick = async () => {
@@ -341,19 +342,19 @@ if (DESKTOP){
     applyChatZoom();
   }));
   applyChatZoom();
-  window.kmv.onReloadAll(() => wins.forEach(w => { if (w.ready) reloadView(w.view); }));
+  fromApp('onReloadAll', () => wins.forEach(w => { if (w.ready) reloadView(w.view); }));
 
   if (ROLE === 'main'){
     const pb = $('#popBtn');
     pb.hidden = false;
     pb.onclick = () => popped ? window.kmv.closeStreams() : popOutStreams();
-    window.kmv.onStreamsState(open => {
+    fromApp('onStreamsState', open => {
       coreVars.popped = open; updatePopBtn();
       if (!open){ popoutVars.popPartial = false; settings.remove('popPartial'); }
       settings.set('popped', open ? '1' : null);
     });
-    window.kmv.onStreamsReturned(streamsCameBack);
-    window.kmv.onChatAdd(receiveChat);
+    fromApp('onStreamsReturned', streamsCameBack);
+    fromApp('onChatAdd', receiveChat);
   } else {
     // Streams window: a trimmed toolbar for watching.
     document.title = 'Stream Multiview – Streams';
@@ -368,6 +369,6 @@ if (DESKTOP){
     bb.onclick = () => window.kmv.closeStreams();
     $('#empty .es-streams').hidden = false;
     $('#empty .es-streams').innerHTML = '<h2>Streams window</h2>Use <b>Pop out streams</b> in the main window, or add a channel there, and its stream appears here.<ul><li>Drag this window to another monitor and maximize it, or press F11 for full screen.</li><li><b>Tile</b> gives every stream equal space. <b>Spotlight</b> makes the stream you last clicked big.</li><li>Drag a stream by its title bar onto another to swap them.</li><li>Closing this window puts the streams back in the main window.</li></ul>';
-    window.kmv.onStreamsAdd(receiveStreams);
+    fromApp('onStreamsAdd', receiveStreams);
   }
 }

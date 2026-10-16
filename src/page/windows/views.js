@@ -1,17 +1,18 @@
 import './windows.js';   // runs after it (see app.js)
+import { fromSite, siteMessage } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { addCss, reloadView, runIn, setMuted, setZoom } from './view.js';
-import { ROLE, msg, wins } from '../core.js';
+import { ROLE, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { EMOTE_JS } from '../in-site/emote-preview.js';
 import { NEW_EMOTE_CSS, NEW_EMOTE_JS } from '../in-site/new-emotes.js';
 import { TRANSLATE_JS } from '../in-site/translate.js';
-import { KICK_CMD_JS, kickPageCmd } from '../in-site/kick-commands.js';
+import { KICK_CMD_JS } from '../in-site/kick-commands.js';
 import { chLabel, checkMod, extCount, platOf, platform, srcFor, trimPlayerPage, viewPartition } from '../platforms/platforms.js';
 import { focusWin } from '../layout/geometry.js';
 import { liftAudioSoon, pushVol } from './windows.js';
-import { autoTrFor, translateFor } from '../chat/translate.js';
-import { closeViewMenu, resolveYt, saveEmote, viewMenu } from '../chat/view-menu.js';
+import { autoTrFor } from '../chat/translate.js';
+import { resolveYt } from '../chat/view-menu.js';
 import { watchRaid } from './raids.js';
 import { readChat } from '../panels/bell/bell.js';
 import { injectMention } from '../panels/bell/all-notifications.js';
@@ -80,20 +81,7 @@ function mountView(w){
       if (e.isMainFrame && !e.isInPlace && w.view === frame){ w.like = null; syncLike(w); }
     });
     // Download from an emote card (see emoteAgent): the chat page asks through a console message
-    if (w.kind === 'chat') frame.addEventListener('console-message', e => {
-      const msg = String(e.message || '');
-      const m = /^__kmv:emote-dl (\{.*\})$/.exec(msg);
-      if (m) saveEmote(m[1]);
-      const sn = /^__kmv:emote-seen (\{.*\})$/.exec(msg);
-      if (sn && w.view === frame) newEmoteSeen(w, sn[1]);
-      const cp = /^__kmv:emote-copy (\{.*\})$/.exec(msg);
-      if (cp) copyEmote(cp[1]);
-      if (msg === '__kmv:emote-menu-close {}' && viewMenu && viewMenu.view === frame) closeViewMenu();
-      const tr = /^__kmv:tr (\{.*\})$/.exec(msg);
-      if (tr && w.view === frame) translateFor(frame, tr[1]);
-      const c = /^__kmv:kick-cmd ([a-z]+)$/.exec(String(e.message || ''));   // see kickCmdAgent
-      if (c && w.view === frame) kickPageCmd(w, c[1]);
-    });
+    if (w.kind === 'chat') frame.addEventListener('console-message', e => siteMessage(w, frame, e.message));   // (see fromSite)
     frame.addEventListener('dom-ready', () => {
       w.ready = true;
       if (w.kind === 'stream') trimPlayerPage(frame, w.channel);
@@ -125,6 +113,7 @@ async function markNewEmotes(w){
   const a = r.added || [];
   if (a.length) flash(`${chLabel(w.channel)} has ${a.length === 1 ? 'a new emote' : a.length + ' new emotes'}: ${a.slice(0, 5).join(', ')}${a.length > 5 ? ` and ${a.length - 5} more` : ''}`);
 }
+fromSite('emote-seen', (w, json, view) => { if (w.view === view) newEmoteSeen(w, json); });
 function newEmoteSeen(w, json){
   let d; try { d = JSON.parse(json); } catch { return; }
   if (!d || typeof d.name !== 'string' || !window.kmv.emotesSeen) return;
@@ -141,6 +130,7 @@ const viewVars = {
 };
 emoteOn = settings.flag('emotePreview');
 // "Copy image" on an emote card: the app fetches the picture (only from the emote sites) and copies a still of it
+fromSite('emote-copy', (w, json) => copyEmote(json));
 async function copyEmote(json){
   let d; try { d = JSON.parse(json); } catch { return; }
   if (!d || typeof d.url !== 'string' || !window.kmv || !window.kmv.emoteFetch) return;

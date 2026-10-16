@@ -1,4 +1,5 @@
 import '../chat/view-menu.js';   // runs after it (see app.js)
+import { fromApp } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { ROLE, coreVars, lastLayout, wins } from '../core.js';
@@ -31,7 +32,7 @@ function watchRaid(w, url){
     const src = chatSrc(w.channel, ytVidOf(w)); if (src) w.view.src = src;
   }
 }
-if (DESKTOP && window.kmv.onRaid) window.kmv.onRaid((from, to) => followRaid(String(from), String(to), false));
+if (DESKTOP) fromApp('onRaid', (from, to) => followRaid(String(from), String(to), false));
 window.followRaid = followRaid; window.raidTarget = raidTarget;   // for the tests
 let raidSeen = {};
 function followRaid(from, to, tell){

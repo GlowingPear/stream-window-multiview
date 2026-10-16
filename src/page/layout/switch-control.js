@@ -1,5 +1,6 @@
 import './switcher.js';   // runs after it (see app.js)
 import { youtube } from '../platforms/youtube.js';
+import { fromApp } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { pauseWhy } from '../windows/pause-state.js';
@@ -142,8 +143,8 @@ function pushSwitcherState(force){
 }
 if (DESKTOP && ROLE === 'main' && window.kmv.onSwitcherCmd){
   setInterval(() => pushSwitcherState(), 300);
-  window.kmv.onSwitcherClosed(() => { if (switchMode === 'window') setSwitchMode('dock'); });
-  window.kmv.onSwitcherCmd(c => {
+  fromApp('onSwitcherClosed', () => { if (switchMode === 'window') setSwitchMode('dock'); });
+  fromApp('onSwitcherCmd', c => {
     const v = c.ch ? vidByKey(c.ch) : null, s = v && v.kind === 'stream' ? v : null;
     switch (c.type){
       case 'focus': if (v) focusChannel(colKey(v)); break;

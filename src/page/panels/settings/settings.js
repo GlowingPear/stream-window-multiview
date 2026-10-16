@@ -1,4 +1,5 @@
 import './themes.js';   // runs after it (see app.js)
+import { fromApp } from '../../shared/incoming.js';
 import { settings } from '../../shared/settings.js';
 import { $, ROLE, refreshAccountsPane, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
@@ -73,7 +74,7 @@ settingsDlg.addEventListener('click', e => {
 });
 document.querySelectorAll('.menu-set:empty').forEach(b => { b.innerHTML = icon.gear; });   // a menu's own settings (top right)
 $('#settingsBtn').onclick = () => openSettings();
-if (DESKTOP && window.kmv.onSettingsShow) window.kmv.onSettingsShow(tab => openSettings(tab));
+if (DESKTOP) fromApp('onSettingsShow', tab => openSettings(tab));
 document.addEventListener('keydown', e => {                    // Ctrl+, / ⌘, (the desktop app's menu also has it)
   if ((e.ctrlKey || e.metaKey) && e.key === ',' && !e.altKey){ e.preventDefault(); openSettings(); }
 });

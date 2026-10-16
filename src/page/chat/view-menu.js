@@ -1,4 +1,5 @@
 import './translate.js';   // runs after it (see app.js)
+import { fromApp, fromSite } from '../shared/incoming.js';
 import { store } from '../shared/store.js';
 import { runIn, zoomOf } from '../windows/view.js';
 import { coreVars, wins } from '../core.js';
@@ -20,6 +21,7 @@ const EMOTE_SITE = { Kick: ['#53fc18', '#0a0c0d', 'Kick emote'], Twitch: ['#8a4f
   '7TV': ['#353e43', '#e7ede9', 'From the 7TV add-on'], BTTV: ['#353e43', '#e7ede9', 'From the BetterTTV add-on'], FFZ: ['#353e43', '#e7ede9', 'From the FrankerFaceZ add-on'] };
 const VM_SRC = /^https:\/\/(files\.kick\.com\/emotes\/|static-cdn\.jtvnw\.net\/|([\w-]+\.)?7tv\.app\/|cdn\.betterttv\.net\/|cdn\.frankerfacez\.com\/|([\w-]+\.)?ggpht\.com\/|www\.gstatic\.com\/)/;
 let viewMenu = null;
+fromSite('emote-menu-close', (w, data, view) => { if (data === '{}' && viewMenu && viewMenu.view === view) closeViewMenu(); });
 function closeViewMenu(chosen){
   const m = viewMenu; if (!m) return;
   viewMenu = null;
@@ -103,11 +105,12 @@ function showViewMenu(view, id, d, pick){
   el.focus({ preventScroll: true });
   return el;
 }
-if (window.kmv && window.kmv.onViewMenu) window.kmv.onViewMenu((id, d) => {
+fromApp('onViewMenu', (id, d) => {
   const w = winOfView(id);
   showViewMenu(w && w.view, id, d, i => window.kmv.viewMenuAct(id, i));
 });
 window.showViewMenu = showViewMenu; window.closeViewMenu = closeViewMenu;   // for the tests
+fromSite('emote-dl', (w, json) => saveEmote(json));
 async function saveEmote(json){
   let d; try { d = JSON.parse(json); } catch { return; }
   if (!d || typeof d.url !== 'string' || typeof d.name !== 'string' || !window.kmv || !window.kmv.emoteDownload) return;
@@ -159,4 +162,4 @@ function closeWin(w){
   if (w.kind === 'chat') forgetChat(w.channel);
 }
 
-export { closeViewMenu, closeWin, releaseWin, resolveYt, saveEmote, setWait, viewMenu };
+export { closeWin, releaseWin, resolveYt, setWait };
