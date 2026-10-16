@@ -18,9 +18,9 @@ const OUT = path.join(ROOT, 'coverage');
 const RAW = path.join(OUT, 'raw');
 const MIN_FILE = path.join(ROOT, 'test', 'coverage-min.json');
 const SUITES = [
-  ['Unit', 'test/unit/*.test.js', 60000],
-  ['UI', 'test/ui/*.test.js', 120000],
-  ['Launch', 'test/launch/*.test.js', 120000]
+  ['Unit', 'test/unit/**/*.test.js', 60000],
+  ['UI', 'test/ui/**/*.test.js', 120000],
+  ['Launch', 'test/launch/**/*.test.js', 120000]
 ];
 // Not in the report: the preload scripts run inside each window's sandbox, where their code can't be
 // recorded (the launch tests use them all the time), and this script runs the tests rather than being tested.
