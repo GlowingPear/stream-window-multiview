@@ -24,7 +24,7 @@ Lasting profiles live in the system's app data folder under `Stream Multiview De
 
 - **Run it in the background** when you need to keep working: start it as a background task and read its output for the `debug:` line.
 - **One copy per profile.** A second launch with the same profile hands over to the running one and exits. Use another profile, or close the first.
-- **Picking up changes:** `src/main.js`, `src/live.js` and `src/preload.js` need a restart. `src/index.html` only needs View › Reload everything (Ctrl/Cmd+R).
+- **Picking up changes:** `src/main.js`, `src/live.js` and `src/preload.js` need a restart. The page (`src/index.html` and `src/page/`) only needs View › Reload everything (Ctrl/Cmd+R).
 - **Stopping:** close the window, or stop the `npm run dev` process (Ctrl+C). Only that copy stops. Never stop processes by name: an installed copy has the same name.
 - **Login encryption prompts:** on a Mac, the dev copy may ask for access to "Stream Multiview Safe Storage" in the Keychain: choose **Allow**. Windows (DPAPI) doesn't ask. On Linux, logins are protected by the desktop keyring if there is one.
 - **Never change `HOME`** (or `USERPROFILE`) to isolate a copy: on a Mac that hides the login keychain and shows a "Reset To Defaults" dialog. The data folder is already separate.
