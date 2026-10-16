@@ -1995,6 +1995,19 @@ let colsMode = false, colWidth = 0, colCount = 0;   // Columns mode (scrolls sid
 let wins = [], zTop = 10, uid = 0;
 var refreshAccountsPane = null;   // Settings > Accounts (desktop app)
 
+// Other files change these through coreVars: a variable imported from another file can't be assigned to.
+const coreVars = {
+  get popped(){ return popped; }, set popped(v){ popped = v; },
+  get lastLayout(){ return lastLayout; }, set lastLayout(v){ lastLayout = v; },
+  get streamCols(){ return streamCols; }, set streamCols(v){ streamCols = v; },
+  get colsMode(){ return colsMode; }, set colsMode(v){ colsMode = v; },
+  get colCount(){ return colCount; }, set colCount(v){ colCount = v; },
+  get colWidth(){ return colWidth; }, set colWidth(v){ colWidth = v; },
+  get zTop(){ return zTop; }, set zTop(v){ zTop = v; },
+  get uid(){ return uid; }, set uid(v){ uid = v; },
+  get wins(){ return wins; }, set wins(v){ wins = v; },
+  get refreshAccountsPane(){ return refreshAccountsPane; }, set refreshAccountsPane(v){ refreshAccountsPane = v; },
+};
 const icon = {
   reload:'<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>',
   mod:'<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>',
@@ -2943,6 +2956,10 @@ var watchSignedIn = { kick: false, twitch: false, youtube: false };
 try { const ws = JSON.parse(localStorage.getItem('kickMultiview.watchSignedIn') || '{}'); for (const p in watchSignedIn) watchSignedIn[p] = ws[p] === true; } catch {}
 const streamPartition = ch => watchSignedIn[platOf(ch)] ? chatPartition(ch) : 'persist:kmv-stream-' + String(ch).replace(/[^a-z0-9_-]/gi, '_');
 let extCount = null;                    // Chrome extensions installed (null: not known yet)
+// Other files change these through platformVars: a variable imported from another file can't be assigned to.
+const platformVars = {
+  get extCount(){ return extCount; }, set extCount(v){ extCount = v; },
+};
 const viewPartition = w => w.kind === 'stream' ? streamPartition(w.channel) : w.kind === 'chat' ? chatPartition(w.channel) : 'persist:kick';
 // A player can't move to other storage, so that site's open streams start again in a new player.
 function remountStreams(p){
@@ -2992,7 +3009,7 @@ const snapE = (v, arr) => snapChk.checked ? (near(v, arr) ?? v) : v;
 
 function focusWin(w){
   const partner = colsMode && linked && w.channel ? wins.find(o => o !== w && o.channel === w.channel && o.kind !== w.kind) : null;
-  [partner, w].forEach(o => { if (o && !o.el.classList.contains('featured') && +o.el.style.zIndex !== zTop) o.el.style.zIndex = ++zTop; });
+  [partner, w].forEach(o => { if (o && !o.el.classList.contains('featured') && +o.el.style.zIndex !== zTop) o.el.style.zIndex = ++coreVars.zTop; });
   wins.forEach(o => o.el.classList.toggle('active', o === w || o === partner));
 }
 function showHint(e, w){
@@ -3076,7 +3093,7 @@ document.addEventListener('pointerdown', e => {
 
 /* ---------- window creation ---------- */
 function createWin(spec, rect){
-  const w = { id: ++uid, kind: spec.kind, channel: spec.channel, url: spec.url,
+  const w = { id: ++coreVars.uid, kind: spec.kind, channel: spec.channel, url: spec.url,
               muted: spec.muted ?? mutedChk.checked, vol: spec.vol ?? 0.8, preview: !!spec.preview, max: null, ready: false };
   const hasVol = DESKTOP && w.kind === 'stream';
   const el = document.createElement('div');
@@ -3113,7 +3130,7 @@ function createWin(spec, rect){
   w.view = null;
   stage.appendChild(el);
   setRect(w, rect);
-  el.style.zIndex = ++zTop;
+  el.style.zIndex = ++coreVars.zTop;
   wins.push(w);
   el.addEventListener('pointerdown', () => focusWin(w), true);
   mountView(w);
@@ -3172,7 +3189,7 @@ function createWin(spec, rect){
     else if (a === 'profile') openProfile(w.channel);
     else if (a === 'at') toggleChatMentions(w);
     else if (a === 'feat'){
-      if (!colsMode){ setFeatured(colKey(w)); scrollX = 0; columnsLayout(); }   // from Chat focus: open the highlight view
+      if (!colsMode){ setFeatured(colKey(w)); layoutVars.scrollX = 0; columnsLayout(); }   // from Chat focus: open the highlight view
       else toggleFeatured(colKey(w));
     }
   });
@@ -3435,6 +3452,11 @@ function newEmoteSeen(w, json){
 }
 // The hover card is off unless switched on (the same preview is always in the right-click menu on an emote)
 var emoteOn = false;
+// Other files change these through viewVars: a variable imported from another file can't be assigned to.
+const viewVars = {
+  get newEmotesOn(){ return newEmotesOn; }, set newEmotesOn(v){ newEmotesOn = v; },
+  get emoteOn(){ return emoteOn; }, set emoteOn(v){ emoteOn = v; },
+};
 try { emoteOn = localStorage.getItem('kickMultiview.emotePreview') === '1'; } catch {}
 // "Copy image" on an emote card: the app fetches the picture (only from the emote sites) and copies a still of it
 async function copyEmote(json){
@@ -3644,7 +3666,7 @@ function releaseWin(w){
 }
 function closeWin(w){
   releaseWin(w);
-  wins = wins.filter(o => o !== w); updateEmpty(); save();
+  coreVars.wins = wins.filter(o => o !== w); updateEmpty(); save();
   if (w.kind === 'chat') forgetChat(w.channel);
 }
 /* ---- Raids: when a chat or player moves to another channel, every window of the old channel follows ----
@@ -3711,7 +3733,7 @@ function followRaid(from, to, tell){
     closeWin(w);
   });
   if (colOrder.includes(from)){
-    colOrder = colOrder.includes(to) ? colOrder.filter(k => k !== from) : colOrder.map(k => k === from ? to : k);
+    layoutVars.colOrder = colOrder.includes(to) ? colOrder.filter(k => k !== from) : colOrder.map(k => k === from ? to : k);
     try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
   }
   updateEmpty(); save();
@@ -3721,7 +3743,7 @@ function followRaid(from, to, tell){
 // by themselves only works in Auto layout, so say so when it stops.
 function arrangedByHand(){
   if (lastLayout === 'auto' && ROLE === 'main' && fitOn()) flash('Auto layout is off because you moved a window. Pick it again to fit in channels that go live.', { subject: 'layouts' });
-  lastLayout = null; updateLayoutMenu();
+  coreVars.lastLayout = null; updateLayoutMenu();
 }
 /* Lock layout (Layout menu padlock, Shift+L): windows keep their size and place. Dragging one onto another swaps
    them, and the layout fits around windows that close or open. The main window's. */
@@ -3801,6 +3823,13 @@ const infoFor = ch => liveInfo[normCh(ch)] || liveInfo[ch];
 const liveNow = () => saved.filter(ch => infoFor(ch) && infoFor(ch).live);
 // Saved list tabs: All / Kick / Twitch / YouTube
 let savedTab = 'all';
+// Other files change these through channelVars: a variable imported from another file can't be assigned to.
+const channelVars = {
+  get saved(){ return saved; }, set saved(v){ saved = v; },
+  get notifyAll(){ return notifyAll; }, set notifyAll(v){ notifyAll = v; },
+  get notifyOff(){ return notifyOff; }, set notifyOff(v){ notifyOff = v; },
+  get savedTab(){ return savedTab; }, set savedTab(v){ savedTab = v; },
+};
 try { savedTab = localStorage.getItem('kickMultiview.savedTab') || 'all'; } catch {}
 const tabPlat = () => savedTab === 'all' ? 'kick' : savedTab;
 // Channels that open by themselves when they go live
@@ -4016,6 +4045,10 @@ function appendFollowSugs(list, q){
    the site is asked whether the channel exists: only a definite "no" stops it (a site that can't be reached
    doesn't block anything), and then that site is outlined in red. */
 let addPlat = null;      // the site picked for a bare name (null: the tab's)
+// Other files change these through openBoxVars: a variable imported from another file can't be assigned to.
+const openBoxVars = {
+  get addPlat(){ return addPlat; }, set addPlat(v){ addPlat = v; },
+};
 function addTarget(){
   const raw = input.value.trim(); if (!raw) return null;
   const bare = /^[A-Za-z0-9_-]+$/.test(raw);
@@ -4092,6 +4125,15 @@ function saveNotes(){ try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes
 const noteActs = new Map();
 // Settings > Notifications: the red number, and Do not disturb (until when; -1: until it's turned off).
 let bellCount = 'ms', dndUntil = 0, dndT = 0;
+// Other files change these through bellVars: a variable imported from another file can't be assigned to.
+const bellVars = {
+  get mentWords(){ return mentWords; }, set mentWords(v){ mentWords = v; },
+  get myTwitch(){ return myTwitch; }, set myTwitch(v){ myTwitch = v; },
+  get mentOn(){ return mentOn; }, set mentOn(v){ mentOn = v; },
+  get dndUntil(){ return dndUntil; }, set dndUntil(v){ dndUntil = v; },
+  get dndT(){ return dndT; }, set dndT(v){ dndT = v; },
+  get bellCount(){ return bellCount; }, set bellCount(v){ bellCount = v; },
+};
 try { bellCount = localStorage.getItem('kickMultiview.bellCount') || 'ms'; dndUntil = +localStorage.getItem('kickMultiview.dnd') || 0; } catch {}
 const dndOn = () => dndUntil < 0 || dndUntil > Date.now();
 // The kind of alert settings a notification uses.
@@ -4450,7 +4492,7 @@ function renderMentions(){
 }
 window.openNoteHistory = openNoteHistory;   // for the tests
 function setMentWords(list){
-  mentWords = [...new Set(list.map(x => String(x || '').trim().replace(/^@/, '').replace(/\s+/g, ' ')).filter(x => x.length >= 2 && x.length <= 40))].slice(0, 30);
+  bellVars.mentWords = [...new Set(list.map(x => String(x || '').trim().replace(/^@/, '').replace(/\s+/g, ' ')).filter(x => x.length >= 2 && x.length <= 40))].slice(0, 30);
   try { localStorage.setItem('kickMultiview.mentWords', JSON.stringify(mentWords)); } catch {}
   renderMentWords(); pushMyName(); renderMentions();
 }
@@ -4475,8 +4517,8 @@ function pushMyName(){
   wins.forEach(w => { if (w.kind === 'chat' && w.ready) injectMention(w); });
 }
 function setMyTwitch(n){
-  myTwitch = String(n || '').trim().replace(/^@/, '');
-  if (myTwitch && !/^[A-Za-z0-9_]{2,30}$/.test(myTwitch)) myTwitch = '';
+  bellVars.myTwitch = String(n || '').trim().replace(/^@/, '');
+  if (myTwitch && !/^[A-Za-z0-9_]{2,30}$/.test(myTwitch)) bellVars.myTwitch = '';
   try { localStorage.setItem('kickMultiview.myTwitch', myTwitch); } catch {}
   const f = $('#mentTwitch'); if (f) f.value = myTwitch;
   pushMyName(); renderMentions();
@@ -4787,6 +4829,10 @@ async function addChatIfLive(ch, r){
   save();
 }
 let flashT, desktopNotify = true;      // (Settings > Notifications)
+// Other files change these through flashVars: a variable imported from another file can't be assigned to.
+const flashVars = {
+  get desktopNotify(){ return desktopNotify; }, set desktopNotify(v){ desktopNotify = v; },
+};
 try { desktopNotify = localStorage.getItem('kickMultiview.desktopNotify') !== '0'; } catch {}
 /* A short message in the app ("Saved layout"). o: { subject, detail, act } also keeps it under the bell (App);
    true: a notification's pop-up (addNote checked it may show). The rest are the app's messages: they show and
@@ -4814,10 +4860,10 @@ msgPos.addEventListener('change', () => {
   flash('Pop-ups show here');
 });
 window.addEventListener('storage', e => {          // main and streams windows
-  if (e.key === 'kickMultiview.desktopNotify') desktopNotify = e.newValue !== '0';
+  if (e.key === 'kickMultiview.desktopNotify') flashVars.desktopNotify = e.newValue !== '0';
   if (e.key === 'kickMultiview.msg') loadMsgSettings();
   if (e.key === 'kickMultiview.alerts') try { const a = JSON.parse(e.newValue || '{}'); ALERT_KINDS.forEach(k => Object.assign(alerts[k], a[k] || {})); } catch {}
-  if (e.key === 'kickMultiview.dnd'){ dndUntil = +e.newValue || 0; syncDnd(); }
+  if (e.key === 'kickMultiview.dnd'){ bellVars.dndUntil = +e.newValue || 0; syncDnd(); }
 });
 /* Settings > Notifications: for each kind, a row with its pop-up, desktop notification and sound. Mentions and
    spam alerts' are the same settings as on their own pages (the same data-al). */
@@ -4833,7 +4879,7 @@ NT_ROWS.forEach(([k, name, go, more]) => {
 });
 // Live alerts: off (Never) also turns off the bell in Channels, and Away is checked by the app itself.
 function syncLiveAlerts(){
-  notifyAll = alerts.live.notify !== 'never';
+  channelVars.notifyAll = alerts.live.notify !== 'never';
   try { localStorage.setItem('kickMultiview.notifyAll', notifyAll ? '1' : '0'); } catch {}
   const na = $('#notifyAll'); if (na) na.checked = notifyAll;
   sendWatch(); renderSaved();
@@ -4843,8 +4889,8 @@ const dndOnEl = $('#dndOn'), dndFor = $('#dndFor');
 function syncDnd(){
   clearTimeout(dndT);
   const on = dndOn();
-  if (!on && dndUntil > 0){ dndUntil = 0; try { localStorage.setItem('kickMultiview.dnd', '0'); } catch {} }
-  if (on && dndUntil > 0) dndT = setTimeout(syncDnd, Math.min(dndUntil - Date.now() + 50, 2 ** 31 - 1));
+  if (!on && dndUntil > 0){ bellVars.dndUntil = 0; try { localStorage.setItem('kickMultiview.dnd', '0'); } catch {} }
+  if (on && dndUntil > 0) bellVars.dndT = setTimeout(syncDnd, Math.min(dndUntil - Date.now() + 50, 2 ** 31 - 1));
   dndOnEl.checked = on;
   $('#dndSt').textContent = !on ? 'Still collected under the bell, but no pop-ups, sounds or desktop notifications.'
     : dndUntil < 0 ? 'On until you turn it off. Everything is still collected under the bell.'
@@ -4859,7 +4905,7 @@ function syncDnd(){
   updateBellBtn();
 }
 function setDnd(on){
-  dndUntil = !on ? 0 : +dndFor.value ? Date.now() + +dndFor.value * 60000 : -1;
+  bellVars.dndUntil = !on ? 0 : +dndFor.value ? Date.now() + +dndFor.value * 60000 : -1;
   try { localStorage.setItem('kickMultiview.dnd', String(dndUntil)); localStorage.setItem('kickMultiview.dndFor', dndFor.value); } catch {}
   syncDnd();
 }
@@ -4873,7 +4919,7 @@ dndFor.addEventListener('change', () => { if (dndOn()) setDnd(true); else { try 
 // The red number on the bell.
 const bellCountEl = $('#bellCount');
 bellCountEl.value = ['ms', 'all', 'off'].includes(bellCount) ? bellCount : 'ms';
-bellCountEl.addEventListener('change', () => { bellCount = bellCountEl.value; try { localStorage.setItem('kickMultiview.bellCount', bellCount); } catch {} updateBellBtn(); });
+bellCountEl.addEventListener('change', () => { bellVars.bellCount = bellCountEl.value; try { localStorage.setItem('kickMultiview.bellCount', bellCount); } catch {} updateBellBtn(); });
 document.querySelectorAll('#settingsDlg .nt-desk').forEach(el => { el.hidden = !(DESKTOP && ROLE === 'main'); });
 /* Settings > Notifications: desktop notifications (the main window's: live alerts, mentions, spam) */
 const dnOn = $('#dnOn'), dnSt = document.querySelector('#settingsDlg .dn-st');
@@ -4881,7 +4927,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled){
   document.querySelector('#ntTabs .dn-tab').hidden = false;
   dnOn.checked = desktopNotify;
   dnOn.addEventListener('change', () => {
-    desktopNotify = dnOn.checked;
+    flashVars.desktopNotify = dnOn.checked;
     try { localStorage.setItem('kickMultiview.desktopNotify', desktopNotify ? '1' : '0'); } catch {}
     syncDnd();
   });
@@ -4962,7 +5008,7 @@ function autoLayout(){
 }
 function tile(){
   if (colsMode) return columnsLayout();
-  lastLayout = 'tile';
+  coreVars.lastLayout = 'tile';
   applyRects(wins, gridRects(wins.length, GAP / 2, GAP / 2, SW() - GAP, SH() - GAP, 16 / 9)); save();
 }
 
@@ -4997,7 +5043,7 @@ function layoutChatsOnly(){
   const others = wins.filter(w => w.kind !== 'chat'), chats = sortedChats();
   if (others.length){ chatFocusLayout(); return; }
   applyRects(chats, chatRects(chats.length, X, Y, W, H));
-  lastLayout = 'chatfocus';
+  coreVars.lastLayout = 'chatfocus';
   save();
 }
 
@@ -5007,7 +5053,7 @@ function chatFocusLayout(){
   if (colsMode) return columnsLayout();
   const W = SW() - GAP, H = SH() - GAP, X = GAP / 2, Y = GAP / 2;
   const vids = inColOrder(w => w.kind !== 'chat'), chats = sortedChats();
-  if (!vids.length && chats.length){ applyRects(chats, chatRects(chats.length, X, Y, W, H)); lastLayout = 'chatfocus'; save(); return; }
+  if (!vids.length && chats.length){ applyRects(chats, chatRects(chats.length, X, Y, W, H)); coreVars.lastLayout = 'chatfocus'; save(); return; }
   if (!vids.length || !chats.length){ tile(); return; }
 
   const n = vids.length, maxCols = Math.min(n, 3);
@@ -5026,7 +5072,7 @@ function chatFocusLayout(){
 
   // Chats fill everything to the right of the streams.
   applyRects(chats, chatRects(chats.length, X + streamArea, Y, W - streamArea, H));
-  lastLayout = 'chatfocus';
+  coreVars.lastLayout = 'chatfocus';
   updateModeClass(); schedulePicks();
   save();
 }
@@ -5064,9 +5110,24 @@ const colStrip = mkDiv('colStrip', '<button class="cs-btn" data-d="-1" title="Pr
   '<button class="cs-btn" data-d="1" title="Next stream" aria-label="Next stream">›</button>');
 const STRIP_H = 34;
 let colTopOff = 0, colKeysShown = [];
+// Other files change these through layoutVars: a variable imported from another file can't be assigned to.
+const layoutVars = {
+  get featW(){ return featW; }, set featW(v){ featW = v; },
+  get colX0(){ return colX0; }, set colX0(v){ colX0 = v; },
+  get featBase(){ return featBase; }, set featBase(v){ featBase = v; },
+  get colOrder(){ return colOrder; }, set colOrder(v){ colOrder = v; },
+  get linked(){ return linked; }, set linked(v){ linked = v; },
+  get scrollX(){ return scrollX; }, set scrollX(v){ scrollX = v; },
+  get scrollRaf(){ return scrollRaf; }, set scrollRaf(v){ scrollRaf = v; },
+  get snapT(){ return snapT; }, set snapT(v){ snapT = v; },
+  get maxScroll(){ return maxScroll; }, set maxScroll(v){ maxScroll = v; },
+  get switchMode(){ return switchMode; }, set switchMode(v){ switchMode = v; },
+  get colTopOff(){ return colTopOff; }, set colTopOff(v){ colTopOff = v; },
+  get colKeysShown(){ return colKeysShown; }, set colKeysShown(v){ colKeysShown = v; },
+};
 colStrip.addEventListener('click', e => {
   const b = e.target.closest('.cs-btn'); if (b) scrollCols(+b.dataset.d);
-  if (e.target.closest('.cs-mode')){ pageStep = !pageStep; try { localStorage.setItem('kickMultiview.pageStep', pageStep ? '1' : '0'); } catch {} updatePageBtn(); }
+  if (e.target.closest('.cs-mode')){ scrollVars.pageStep = !pageStep; try { localStorage.setItem('kickMultiview.pageStep', pageStep ? '1' : '0'); } catch {} updatePageBtn(); }
 });
 // Mouse wheel over the strip steps like the arrows (one notch = one click).
 let stripWheelAt = 0;
@@ -5079,7 +5140,7 @@ colStrip.addEventListener('wheel', e => {
 colStrip.querySelector('.cs-pick').addEventListener('change', e => { smoothScrollTo(+e.target.value * colWidth); });
 
 function setColsMode(on){
-  colsMode = on;
+  coreVars.colsMode = on;
   document.body.classList.toggle('cols', on);
   document.body.classList.toggle('linked', on && linked);
   if (!on){
@@ -5126,7 +5187,7 @@ function refreshFeatButtons(){
   });
 }
 function clearFeaturedLook(){
-  featBase.forEach(f => { f.w.el.classList.remove('featured'); f.w.el.style.zIndex = ++zTop; });
+  featBase.forEach(f => { f.w.el.classList.remove('featured'); f.w.el.style.zIndex = ++coreVars.zTop; });
   featBase = []; featW = 0;
   featBg.style.display = 'none';
   if (switchMode === 'dock'){ featSwitch.style.display = 'none'; placeMinis(); } else placeSwitcher();
@@ -5138,7 +5199,7 @@ function setScrollX(x){
   x = Math.max(0, Math.min(maxScroll, x));
   const d = x - scrollX;
   if (!d) return;
-  scrollX = x;
+  layoutVars.scrollX = x;
   wins.forEach(w => {
     if (w.dragging || w.el.classList.contains('featured')) return;
     w.el.classList.remove('anim');
@@ -5153,15 +5214,19 @@ function smoothScrollTo(target){
   const step = now => {
     const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
     setScrollX(from + (target - from) * e);
-    if (k < 1) scrollRaf = requestAnimationFrame(step);
+    if (k < 1) layoutVars.scrollRaf = requestAnimationFrame(step);
   };
-  scrollRaf = requestAnimationFrame(step);
+  layoutVars.scrollRaf = requestAnimationFrame(step);
 }
 function snapSoon(){
   clearTimeout(snapT);
-  snapT = setTimeout(() => { if (colWidth) smoothScrollTo(Math.round(scrollX / colWidth) * colWidth); }, 180);
+  layoutVars.snapT = setTimeout(() => { if (colWidth) smoothScrollTo(Math.round(scrollX / colWidth) * colWidth); }, 180);
 }
 let pageStep = false;                 // false: one column per click; true: a whole page of hidden columns
+// Other files change these through scrollVars: a variable imported from another file can't be assigned to.
+const scrollVars = {
+  get pageStep(){ return pageStep; }, set pageStep(v){ pageStep = v; },
+};
 try { pageStep = localStorage.getItem('kickMultiview.pageStep') === '1'; } catch {}
 function scrollCols(dir){   // steps one column (or one page); past the last it wraps to the first (and back)
   if (!colWidth || maxScroll <= 0) return;
@@ -5237,7 +5302,7 @@ function swapWindows(w, otherCh){
   if (ROLE === 'main' && (colsMode || lastLayout === 'chatfocus')){
     const a = colKey(w), b = colKey(o);
     const order = buildCols().map(c => c.key), i = order.indexOf(a), j = order.indexOf(b);
-    if (i >= 0 && j >= 0){ [order[i], order[j]] = [order[j], order[i]]; colOrder = order; }
+    if (i >= 0 && j >= 0){ [order[i], order[j]] = [order[j], order[i]]; layoutVars.colOrder = order; }
     try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
     if (colsMode){
       if (featBase.length && featuredCh === a) setFeatured(b);          // picking on the big one puts the other one big
@@ -5297,12 +5362,16 @@ function buildCols(){
    with a switcher underneath. preview = { key, slot } while a column is dragged. */
 const COL_MIN = 360;
 let sideCols = 0;                                     // highlight view: side columns shown (0 = auto)
+// Other files change these through columnVars: a variable imported from another file can't be assigned to.
+const columnVars = {
+  get sideCols(){ return sideCols; }, set sideCols(v){ sideCols = v; },
+};
 try { sideCols = Math.max(0, Math.min(5, +localStorage.getItem('kickMultiview.sideCols') || 0)); } catch {}
 function columnsLayout(preview){
   if (!colsMode) setColsMode(true);
   const all = buildCols();
   if (!preview){
-    colOrder = all.map(c => c.key);
+    layoutVars.colOrder = all.map(c => c.key);
     try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
   }
   const feat = featuredCh ? all.find(c => c.key === featuredCh && isVid(c.top)) : null;
@@ -5312,7 +5381,7 @@ function columnsLayout(preview){
     const d = cols.find(c => c.key === preview.key);
     cols = cols.filter(c => c !== d); cols.splice(preview.slot, 0, d);
   }
-  colCount = cols.length;
+  coreVars.colCount = cols.length;
   const Hfull = SH() - GAP, Y = GAP / 2, avail = SW() - GAP;
 
   // Highlighted stream geometry
@@ -5328,26 +5397,26 @@ function columnsLayout(preview){
     else cellW = Math.min(cellW, Math.max(avail - chatW - COL_MIN, avail * 0.45));
     const cellH = (cellW - GAP) * 9 / 16 + BAR + GAP;
     fg = { chatW, cellW, cellH };
-    featW = cellW + chatW;
-  } else featW = 0;
+    layoutVars.featW = cellW + chatW;
+  } else layoutVars.featW = 0;
 
   const rest = avail - featW;
   const perScreen = sideN || Math.max(1, Math.min(colCount || 1, Math.floor(rest / COL_MIN)));
   const oldWidth = colWidth;
-  colWidth = sideN ? rest / perScreen : feat ? Math.max(COL_MIN, rest / perScreen) : avail / perScreen;
-  colX0 = GAP / 2 + featW;
-  maxScroll = Math.max(0, colCount * colWidth - rest);
+  coreVars.colWidth = sideN ? rest / perScreen : feat ? Math.max(COL_MIN, rest / perScreen) : avail / perScreen;
+  layoutVars.colX0 = GAP / 2 + featW;
+  layoutVars.maxScroll = Math.max(0, colCount * colWidth - rest);
   // the space changed (window resized, toolbar moved): stay on the same column, lined up with the edge
-  if (oldWidth && Math.abs(colWidth - oldWidth) > 0.5){ cancelAnimationFrame(scrollRaf); scrollX = Math.round(scrollX / oldWidth) * colWidth; }
-  scrollX = Math.min(scrollX, maxScroll);
+  if (oldWidth && Math.abs(colWidth - oldWidth) > 0.5){ cancelAnimationFrame(scrollRaf); layoutVars.scrollX = Math.round(scrollX / oldWidth) * colWidth; }
+  layoutVars.scrollX = Math.min(scrollX, maxScroll);
   const colH = Hfull - (maxScroll > 0 ? HBAR : 0);   // leave room for the scrollbar
   // navigation strip above the columns whenever there are more than fit
   const strip = ROLE === 'main' && maxScroll > 0;
-  colTopOff = strip ? STRIP_H : 0;
+  layoutVars.colTopOff = strip ? STRIP_H : 0;
   if (strip){
     Object.assign(colStrip.style, { display: 'flex', left: (colX0 + GAP / 2) + 'px', top: (GAP) + 'px', width: (SW() - colX0 - GAP * 1.5) + 'px', height: (STRIP_H - GAP) + 'px' });
     if (!preview){
-      colKeysShown = cols.map(c => c.key);
+      layoutVars.colKeysShown = cols.map(c => c.key);
       const pick = colStrip.querySelector('.cs-pick');
       pick.innerHTML = '';
       cols.forEach((c, i) => {
@@ -5359,8 +5428,8 @@ function columnsLayout(preview){
   } else colStrip.style.display = 'none';
 
   if (!preview){
-    featBase.forEach(f => { if (!feat || (f.w !== feat.top && f.w !== feat.chat)){ f.w.el.classList.remove('featured'); f.w.el.style.zIndex = ++zTop; } });
-    featBase = [];
+    featBase.forEach(f => { if (!feat || (f.w !== feat.top && f.w !== feat.chat)){ f.w.el.classList.remove('featured'); f.w.el.style.zIndex = ++coreVars.zTop; } });
+    layoutVars.featBase = [];
     if (fg){
       const parts = [{ w: feat.top, x: GAP, y: Y + GAP / 2, ww: fg.cellW - GAP, hh: fg.cellH - GAP }];
       if (feat.chat) parts.push({ w: feat.chat, x: GAP / 2 + fg.cellW + GAP / 2, y: Y + GAP / 2, ww: fg.chatW - GAP, hh: Hfull - GAP });
@@ -5388,7 +5457,7 @@ function columnsLayout(preview){
     if (preview && col.key === preview.key) return;
     placeCol(col, colX0 + i * colWidth - scrollX, colH, true);
   });
-  if (!preview){ lastLayout = 'columns'; save(); applyFocusOnly(); refreshPicks(); updateLayoutMenu(); }
+  if (!preview){ coreVars.lastLayout = 'columns'; save(); applyFocusOnly(); refreshPicks(); updateLayoutMenu(); }
   updateColNav(); updateHbar();
   refreshFeatButtons();
 }
@@ -5398,7 +5467,7 @@ function placeCol(col, x, H, animate){
   [col.top, col.chat].forEach(w => {      // anything in a column stays below the highlight layer
     if (!w) return;
     w.el.classList.remove('featured');
-    if (+w.el.style.zIndex >= 89000) w.el.style.zIndex = ++zTop;
+    if (+w.el.style.zIndex >= 89000) w.el.style.zIndex = ++coreVars.zTop;
   });
   const join = linked && col.top && col.chat;
   let top = null;
@@ -5466,7 +5535,7 @@ function removeChannel(ch){
   toast(`Removed ${chLabel(ch)}`, () => {
     if (wins.some(w => w.channel === ch)) return;
     specs.forEach(sp => createWin(sp, sp.rect));
-    if (idx >= 0){ colOrder = colOrder.filter(k => k !== ch); colOrder.splice(Math.min(idx, colOrder.length), 0, ch); }
+    if (idx >= 0){ layoutVars.colOrder = colOrder.filter(k => k !== ch); colOrder.splice(Math.min(idx, colOrder.length), 0, ch); }
     if (wasBig) setFeatured(ch);
     if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout();
     save();
@@ -5529,7 +5598,7 @@ function renderSwitcher(){
   const ph = featSwitch.querySelector('.fs-pophid'); if (ph){ ph.onclick = popOutHidden; updatePopHiddenBtn(); }
   const tf = featSwitch.querySelector('.fs-tofocus'); if (tf) tf.onclick = openFocusView;
   const tcf = featSwitch.querySelector('.fs-tocf'); if (tcf) tcf.onclick = backToChatFocus;
-  const tco = featSwitch.querySelector('.fs-tocols'); if (tco) tco.onclick = () => { setFeatured(null); scrollX = 0; columnsLayout(); };
+  const tco = featSwitch.querySelector('.fs-tocols'); if (tco) tco.onclick = () => { setFeatured(null); layoutVars.scrollX = 0; columnsLayout(); };
   const md = featSwitch.querySelector('.fs-mdock'); if (md) md.onclick = () => setSwitchMode('dock');
   const mf = featSwitch.querySelector('.fs-mfloat'); if (mf) mf.onclick = () => setSwitchMode('float');
   const mw = featSwitch.querySelector('.fs-mwin'); if (mw) mw.onclick = () => setSwitchMode('window');
@@ -5637,20 +5706,20 @@ function fsMute(s, solo){
   save(); syncSwitcher();
 }
 function setSideCols(n){
-  sideCols = Math.max(0, Math.min(5, +n || 0));
+  columnVars.sideCols = Math.max(0, Math.min(5, +n || 0));
   try { localStorage.setItem('kickMultiview.sideCols', String(sideCols)); } catch {}
-  scrollX = 0; columnsLayout();
+  layoutVars.scrollX = 0; columnsLayout();
 }
 // Swap two streams' places (and their chats) from the switch control, in any layout.
 function swapStreams(a, b){
   if (a === b) return;
   if (colsMode){
     const order = buildCols().map(c => c.key), i = order.indexOf(a), j = order.indexOf(b);
-    if (i >= 0 && j >= 0){ [order[i], order[j]] = [order[j], order[i]]; colOrder = order; }
+    if (i >= 0 && j >= 0){ [order[i], order[j]] = [order[j], order[i]]; layoutVars.colOrder = order; }
     columnsLayout();
   } else if (lastLayout === 'chatfocus'){
     const order = buildCols().map(c => c.key), i = order.indexOf(a), j = order.indexOf(b);
-    if (i >= 0 && j >= 0){ [order[i], order[j]] = [order[j], order[i]]; colOrder = order; }
+    if (i >= 0 && j >= 0){ [order[i], order[j]] = [order[j], order[i]]; layoutVars.colOrder = order; }
     try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
     chatFocusLayout();
   } else {
@@ -5677,7 +5746,7 @@ function setSwitchMode(m){
   if (ROLE !== 'main') return;
   if (m === 'window' && !DESKTOP) m = 'float';
   const was = switchMode;
-  switchMode = m;
+  layoutVars.switchMode = m;
   try { localStorage.setItem('kickMultiview.switchMode', m); } catch {}
   if (was === 'window' && m !== 'window') window.kmv.closeSwitcher();
   featSwitch.classList.toggle('floating', m === 'float');
@@ -5756,6 +5825,11 @@ window.addEventListener('resize', () => { if (switchMode === 'float') setTimeout
 
 // Own window: this window stays in charge; the switcher window shows its state and sends clicks back.
 let swLastSig = '', swCss = null;
+// Other files change these through switchVars: a variable imported from another file can't be assigned to.
+const switchVars = {
+  get swCss(){ return swCss; }, set swCss(v){ swCss = v; },
+  get swLastSig(){ return swLastSig; }, set swLastSig(v){ swLastSig = v; },
+};
 function switcherCore(){
   const featOn = isFocusView();
   return {
@@ -5796,7 +5870,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.onSwitcherCmd){
       case 'swap': if (c.ch && c.to) swapStreams(c.ch, c.to); break;
       case 'side': setSideCols(c.n); break;
       case 'tofocus': openFocusView(); break;
-      case 'tocols': setFeatured(null); scrollX = 0; columnsLayout(); break;
+      case 'tocols': setFeatured(null); layoutVars.scrollX = 0; columnsLayout(); break;
       case 'tocf': backToChatFocus(); break;
       case 'pophid': popOutHidden(); break;
       case 'focusonly': toggleFocusOnly(); break;
@@ -5816,7 +5890,7 @@ function openFocusView(){
   const streams = buildCols().filter(c => isVid(c.top)).map(c => c.key);
   if (!streams.length){ flash('Open a stream first: Focus view makes one of them big.'); updateLayoutMenu(); return; }
   setFeatured(streams.includes(featuredCh) ? featuredCh : streams[0]);
-  scrollX = 0; columnsLayout();
+  layoutVars.scrollX = 0; columnsLayout();
 }
 function focusChannel(ch){ if (ch === featuredCh) toggleFeatured(ch); else { setFeatured(ch); columnsLayout(); } }
 function ensureMini(s){
@@ -6200,7 +6274,7 @@ function startColDrag(e, w, bar){
   bar.setPointerCapture(e.pointerId);
   const start = members.map(m => ({ m, x: m.x }));
   const sx = e.clientX, s0 = scrollX, startLeft = slot * colWidth;
-  members.forEach(m => { m.dragging = true; m.el.classList.remove('anim'); m.el.classList.add('lifted'); m.el.style.zIndex = ++zTop; });
+  members.forEach(m => { m.dragging = true; m.el.classList.remove('anim'); m.el.classList.add('lifted'); m.el.style.zIndex = ++coreVars.zTop; });
   document.body.classList.add('dragging', 'coldrag');
   let lastX = sx, moved = false, raf = 0;
   const apply = () => {
@@ -6234,7 +6308,7 @@ function startColDrag(e, w, bar){
       const fi = colOrder.indexOf(featuredCh);
       next.splice(fi < 0 ? next.length : Math.min(fi, next.length), 0, featuredCh);
     }
-    colOrder = next;
+    layoutVars.colOrder = next;
     columnsLayout();
     snapSoon();
   };
@@ -6312,7 +6386,7 @@ function setPresetOpt(p, key, val){
   p[key] = val; savePresets();
   if (p.name === activePreset){
     if (key === 'linked') liveLinked(val);
-    if (key === 'streamCols' && !colsMode && lastLayout === 'chatfocus'){ streamCols = val; chatFocusLayout(); }
+    if (key === 'streamCols' && !colsMode && lastLayout === 'chatfocus'){ coreVars.streamCols = val; chatFocusLayout(); }
   }
   updateLayoutMenu();
 }
@@ -6408,7 +6482,7 @@ function renamePreset(t, p){
     const name = inp.value.trim().slice(0, 40);
     if (keep && name && name !== p.name){
       if (presets.some(o => o !== p && o.name.toLowerCase() === name.toLowerCase())) flash(`There's already a layout called “${name}”`);
-      else { if (activePreset === p.name) activePreset = name; if (lySel === 'p:' + p.name) lySel = 'p:' + name; p.name = name; savePresets(); }
+      else { if (activePreset === p.name) activePreset = name; if (lySel === 'p:' + p.name) layoutMenuVars.lySel = 'p:' + name; p.name = name; savePresets(); }
     }
     updateLayoutMenu(); renderLayoutsPane();
   };
@@ -6450,23 +6524,23 @@ function applyPreset(p, opt = {}){
     }
     return createWin({ kind: x.kind, channel: x.channel, url: x.url, vol: x.vol, muted: x.muted, preview: x.preview }, scaled(x));
   });
-  wins = [...made, ...wins.filter(w => !made.includes(w))];      // same window order as when saved
-  colOrder = (p.order || []).slice();
+  coreVars.wins = [...made, ...wins.filter(w => !made.includes(w))];      // same window order as when saved
+  layoutVars.colOrder = (p.order || []).slice();
   try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
-  if (typeof p.linked === 'boolean' && p.linked !== linked){ linked = p.linked; if (opt.quiet) try { localStorage.setItem('kickMultiview.linked', linked ? '1' : '0'); } catch {} updateLinkBtn(); }   // a saved layout's own; undo's are the built-in's
-  sideCols = p.sideCols || 0; try { localStorage.setItem('kickMultiview.sideCols', String(sideCols)); } catch {}
-  streamCols = p.streamCols || 1;      // the same default its options show
-  if (typeof p.pageStep === 'boolean'){ pageStep = p.pageStep; try { localStorage.setItem('kickMultiview.pageStep', pageStep ? '1' : '0'); } catch {} }
+  if (typeof p.linked === 'boolean' && p.linked !== linked){ layoutVars.linked = p.linked; if (opt.quiet) try { localStorage.setItem('kickMultiview.linked', linked ? '1' : '0'); } catch {} updateLinkBtn(); }   // a saved layout's own; undo's are the built-in's
+  columnVars.sideCols = p.sideCols || 0; try { localStorage.setItem('kickMultiview.sideCols', String(sideCols)); } catch {}
+  coreVars.streamCols = p.streamCols || 1;      // the same default its options show
+  if (typeof p.pageStep === 'boolean'){ scrollVars.pageStep = p.pageStep; try { localStorage.setItem('kickMultiview.pageStep', pageStep ? '1' : '0'); } catch {} }
   if (p.mode === 'columns'){
-    setFeatured(p.featured || null); scrollX = 0; columnsLayout();
+    setFeatured(p.featured || null); layoutVars.scrollX = 0; columnsLayout();
     document.body.classList.toggle('linked', linked);
   } else {
     setFeatured(null);
     if (p.mode === 'chatfocus') chatFocusLayout();
     else if (p.mode === 'tile') tile();
-    else if (p.mode === 'auto'){ lastLayout = 'auto'; autoLayout(); }
+    else if (p.mode === 'auto'){ coreVars.lastLayout = 'auto'; autoLayout(); }
     else if (p.mode === 'game') gameLayout();
-    else lastLayout = null;
+    else coreVars.lastLayout = null;
   }
   if (!opt.quiet) activePreset = p.name;
   updateLayoutMenu(); updateModeClass(); refreshPicks(); save();
@@ -6513,8 +6587,8 @@ function startSwapDrag(e, w, bar){
     if (!moved){
       if (Math.hypot(dx, dy) < 5) return;
       moved = true;
-      Object.assign(swapGhost.style, { display: 'grid', left: home.x + 'px', top: home.y + 'px', width: home.w + 'px', height: home.h + 'px', zIndex: ++zTop });
-      w.el.classList.remove('anim'); w.el.classList.add('lifted', 'shrunk'); w.el.style.zIndex = ++zTop;
+      Object.assign(swapGhost.style, { display: 'grid', left: home.x + 'px', top: home.y + 'px', width: home.w + 'px', height: home.h + 'px', zIndex: ++coreVars.zTop });
+      w.el.classList.remove('anim'); w.el.classList.add('lifted', 'shrunk'); w.el.style.zIndex = ++coreVars.zTop;
       w.el.style.transformOrigin = `${sx - stage.getBoundingClientRect().left - x0}px ${sy - stage.getBoundingClientRect().top - y0}px`;   // shrinks towards the pointer
       light(null);
     }
@@ -6566,7 +6640,7 @@ function startSwapDrag(e, w, bar){
 }
 function swapColOrder(a, b){
   const order = buildCols().map(c => c.key), i = order.indexOf(a), j = order.indexOf(b);
-  if (i >= 0 && j >= 0){ [order[i], order[j]] = [order[j], order[i]]; colOrder = order; }
+  if (i >= 0 && j >= 0){ [order[i], order[j]] = [order[j], order[i]]; layoutVars.colOrder = order; }
   try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
 }
 
@@ -6576,7 +6650,7 @@ function spotlight(){
   const act = vids.find(w => w.el.classList.contains('active')) || vids[0];
   const others = vids.filter(w => w !== act);
   const W = SW() - GAP, H = SH() - GAP, X = GAP / 2, Y = GAP / 2;
-  lastLayout = 'spot';
+  coreVars.lastLayout = 'spot';
   if (!others.length){ applyRects([act], [{ x: X + GAP / 2, y: Y + GAP / 2, w: W - GAP, h: H - GAP }]); save(); return; }
   const bigW = Math.min((H - GAP - BAR) * 16 / 9 + GAP, W * 0.78);
   const bigH = Math.min(H, (bigW - GAP) * 9 / 16 + BAR + GAP);
@@ -6606,6 +6680,10 @@ function updatePopBtn(){
 }
 /* Highlight / Columns: send the streams you can't currently see to the Streams window (chats stay here). */
 let popPartial = false;
+// Other files change these through popoutVars: a variable imported from another file can't be assigned to.
+const popoutVars = {
+  get popPartial(){ return popPartial; }, set popPartial(v){ popPartial = v; },
+};
 try { popPartial = localStorage.getItem('kickMultiview.popPartial') === '1'; } catch {}
 function hiddenStreams(){
   if (!colsMode || !colWidth) return [];
@@ -6625,10 +6703,10 @@ function popOutHidden(){
   const list = hiddenStreams();
   if (!list.length){ flash('No hidden streams to pop out'); return; }
   if (!popped){ popPartial = true; try { localStorage.setItem('kickMultiview.popPartial', '1'); } catch {} }   // decide before the window opens
-  popped = true;
+  coreVars.popped = true;
   window.kmv.openStreams(list.map(w => ({ channel: w.channel, vol: w.vol, muted: w.muted })));
   list.forEach(releaseWin);
-  wins = wins.filter(w => !list.includes(w)); updatePopBtn(); updateEmpty();
+  coreVars.wins = wins.filter(w => !list.includes(w)); updatePopBtn(); updateEmpty();
   try { localStorage.setItem(POPPED_KEY, '1'); } catch {}
   columnsLayout();
   flash(`${list.length} stream${list.length > 1 ? 's' : ''} sent to the Streams window`);
@@ -6638,8 +6716,8 @@ function popOutStreams(){
   if (!specs.length){ flash('No streams open to pop out'); return; }
   window.kmv.openStreams(specs);
   wins.filter(w => w.kind === 'stream').forEach(releaseWin);
-  wins = wins.filter(w => w.kind !== 'stream');
-  popped = true; updatePopBtn(); updateEmpty();
+  coreVars.wins = wins.filter(w => w.kind !== 'stream');
+  coreVars.popped = true; updatePopBtn(); updateEmpty();
   try { localStorage.setItem(POPPED_KEY, '1'); } catch {}
   layoutChatsOnly();
 }
@@ -6669,6 +6747,10 @@ function receiveChat(channel){             // main window, "+ Chat" pressed in t
 /* Chat text size (applies to every chat window) */
 const ZOOMS = [0.6, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25];
 let zoomIdx = 5;
+// Other files change these through zoomVars: a variable imported from another file can't be assigned to.
+const zoomVars = {
+  get zoomIdx(){ return zoomIdx; }, set zoomIdx(v){ zoomIdx = v; },
+};
 try { const s = localStorage.getItem('kickMultiview.chatZoom'); if (s !== null && ZOOMS[+s]) zoomIdx = +s; } catch {}
 function chatZoom(){ return ZOOMS[zoomIdx]; }
 function applyChatZoom(){
@@ -6941,10 +7023,10 @@ esReady = true; esPrevWins = wins.length;
 if (!wins.length) esRefresh();
 
 /* ---------- wiring ---------- */
-$('#auto').onclick = () => { lastLayout = 'auto'; autoLayout(); };
+$('#auto').onclick = () => { coreVars.lastLayout = 'auto'; autoLayout(); };
 $('#chatFocus').onclick = () => chatFocusLayout();
 $('#tile').onclick = tile;
-$('#clear').onclick = async () => { if (wins.length && await ask('Close all windows?', 'Every stream, chat and other window closes. Undo brings them back.', { ok: 'Close all', danger: true })) { [...wins].forEach(releaseWin); wins = []; spamFirst.clear(); updateEmpty(); save(); } };
+$('#clear').onclick = async () => { if (wins.length && await ask('Close all windows?', 'Every stream, chat and other window closes. Undo brings them back.', { ok: 'Close all', danger: true })) { [...wins].forEach(releaseWin); coreVars.wins = []; spamFirst.clear(); updateEmpty(); save(); } };
 // Hide bar: the toolbar slides away (it peeks out when the mouse touches the top edge). The same button,
 // Esc and H bring it back.
 // On macOS the traffic lights go with it: away as soon as it starts sliding off, back once it has slid in.
@@ -7142,12 +7224,12 @@ if (followsApi()){
   loadFollows();
   $('#followsOn').onclick = () => { if (window.kmv.followsSetOn) window.kmv.followsSetOn(!follows.on).then(loadFollows).catch(() => {}); };
 }
-$('#savedInput').addEventListener('input', e => { if (!e.target.value.trim()) addPlat = null; renderAddRow(); renderSaved(); });
+$('#savedInput').addEventListener('input', e => { if (!e.target.value.trim()) openBoxVars.addPlat = null; renderAddRow(); renderSaved(); });
 $('#spOpen').onclick = () => openFromBox(false);
 $('#spOpenSave').onclick = () => openFromBox(true);
 $('#spPlat').addEventListener('click', e => {
   const b = e.target.closest('button[data-p]'); if (!b || b.disabled) return;
-  addPlat = b.dataset.p; renderAddRow(); renderSaved();
+  openBoxVars.addPlat = b.dataset.p; renderAddRow(); renderSaved();
   $(`#spPlat [data-p=${addPlat}]`).focus();
 });
 $('#spPlat').addEventListener('keydown', e => {      // arrow keys move along the sites
@@ -7163,12 +7245,12 @@ $('#savedInput').addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   // Esc steps back: the ⋯ menu, then the search, then the panel (the page-wide Esc closes that one)
   if (!spMenu.hidden){ showSpMenu(false); e.stopPropagation(); }
-  else if (e.target.value){ e.target.value = ''; addPlat = null; renderAddRow(); renderSaved(); e.stopPropagation(); }
+  else if (e.target.value){ e.target.value = ''; openBoxVars.addPlat = null; renderAddRow(); renderSaved(); e.stopPropagation(); }
   else panel.hidden = true;
 });
 $('#savedTabs').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  savedTab = b.dataset.t;
+  channelVars.savedTab = b.dataset.t;
   try { localStorage.setItem('kickMultiview.savedTab', savedTab); } catch {}
   $('#savedInput').placeholder = savedTab === 'all' ? 'Search, or type a channel name or link to open it' : `Search, or type a ${PLAT_NAME[savedTab]} channel to open it`;
   renderAddRow(); renderSaved();
@@ -7208,7 +7290,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.notifyMention){
   $('#mentTwitch').addEventListener('change', e => setMyTwitch(e.target.value));
   $('#mentTwitch').addEventListener('keydown', e => { if (e.key === 'Enter') setMyTwitch(e.target.value); });
   $('#mentOn').addEventListener('change', e => {
-    mentOn = e.target.checked;
+    bellVars.mentOn = e.target.checked;
     try { localStorage.setItem('kickMultiview.mentOn', mentOn ? '1' : '0'); } catch {}
     pushMyName(); renderMentions(); syncAlertControls();
   });
@@ -7272,10 +7354,10 @@ if (ROLE === 'main'){
     leavePreset();
     if (l === 'focus'){ openFocusView(); return; }
     if (l === 'game'){ setFeatured(null); setColsMode(false); gameLayout(); return; }
-    if (l === 'columns'){ setFeatured(null); scrollX = 0; columnsLayout(); return; }
+    if (l === 'columns'){ setFeatured(null); layoutVars.scrollX = 0; columnsLayout(); return; }
     setColsMode(false);
     if (l === 'chatfocus') chatFocusLayout();
-    else if (l === 'auto'){ lastLayout = 'auto'; autoLayout(); }   // first, so its save() stores it
+    else if (l === 'auto'){ coreVars.lastLayout = 'auto'; autoLayout(); }   // first, so its save() stores it
     else tile();
     updateLayoutMenu();
   });
@@ -7294,7 +7376,7 @@ if (ROLE === 'main'){
   $('#lmAutoFit').addEventListener('change', e => { const ap = activeP(); if (ap) setPresetOpt(ap, 'autoFit', e.target.checked); else setAutoFit(e.target.checked); });
   $('#lmCols').addEventListener('click', e => {
     const b = e.target.closest('button[data-n]'); if (!b || b.disabled) return;
-    const ap = activeP(); if (ap) setPresetOpt(ap, 'streamCols', +b.dataset.n); else { streamCols = +b.dataset.n; chatFocusLayout(); updateLayoutMenu(); }
+    const ap = activeP(); if (ap) setPresetOpt(ap, 'streamCols', +b.dataset.n); else { coreVars.streamCols = +b.dataset.n; chatFocusLayout(); updateLayoutMenu(); }
   });
   // Settings > Layouts: each layout from the menu, with its options under it
   const lyList = $('#lyList');
@@ -7336,6 +7418,10 @@ if (ROLE === 'main'){
 }
 function syncLySw(){ document.querySelectorAll('#lySw button').forEach(b => b.classList.toggle('on', b.dataset.sw === switchMode)); }
 let lySel = '';
+// Other files change these through layoutMenuVars: a variable imported from another file can't be assigned to.
+const layoutMenuVars = {
+  get lySel(){ return lySel; }, set lySel(v){ lySel = v; },
+};
 function selectLayoutPane(k){
   lySel = k;
   document.querySelectorAll('#lyList .ly-item').forEach(x => { const on = x.dataset.k === k; x.classList.toggle('sel', on); x.setAttribute('aria-selected', on); x.tabIndex = on ? 0 : -1; });
@@ -7411,7 +7497,7 @@ if (DESKTOP){
     }
     flash(`Logged out of ${PLAT_NAME[p]}`, { subject: 'accounts', detail: 'Log in again to keep chat and follows working.', act: { t: 'login', p } });
   };
-  refreshAccountsPane = () => { refreshAccount(); refreshSecurity(); };
+  coreVars.refreshAccountsPane = () => { refreshAccount(); refreshSecurity(); };
   const onAccountClick = async e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.classList.contains('am-more')){ am.hidden = true; openSettings('accounts'); return; }
@@ -7588,7 +7674,7 @@ if (DESKTOP){
     const add = impItems.filter(x => x.pick !== false && !saved.includes(x.ch)).map(x => x.ch)
       .filter(ch => [...dlg.querySelectorAll('.dlg-list input')].every(i => i.value !== ch || i.checked));
     if (!add.length) return;
-    saved = [...saved, ...add];
+    channelVars.saved = [...saved, ...add];
     persistSaved();
     closeImport();
     flash(`Added ${add.length} ${PLAT_NAME[impPlat]} channel${add.length === 1 ? '' : 's'} to Saved`, { subject: 'accounts' });
@@ -7683,7 +7769,7 @@ if (DESKTOP){
   // Chat text size: in the Layout menu and in Settings > Layouts, both the same setting
   document.querySelectorAll('#chatZoom, #lyZoom').forEach(zc => zc.addEventListener('click', e => {
     const b = e.target.closest('button[data-z]'); if (!b) return;
-    zoomIdx = Math.min(ZOOMS.length - 1, Math.max(0, zoomIdx + +b.dataset.z));
+    zoomVars.zoomIdx = Math.min(ZOOMS.length - 1, Math.max(0, zoomIdx + +b.dataset.z));
     applyChatZoom();
   }));
   applyChatZoom();
@@ -7694,8 +7780,8 @@ if (DESKTOP){
     pb.hidden = false;
     pb.onclick = () => popped ? window.kmv.closeStreams() : popOutStreams();
     window.kmv.onStreamsState(open => {
-      popped = open; updatePopBtn();
-      if (!open){ popPartial = false; try { localStorage.removeItem('kickMultiview.popPartial'); } catch {} }
+      coreVars.popped = open; updatePopBtn();
+      if (!open){ popoutVars.popPartial = false; try { localStorage.removeItem('kickMultiview.popPartial'); } catch {} }
       try { open ? localStorage.setItem(POPPED_KEY, '1') : localStorage.removeItem(POPPED_KEY); } catch {}
     });
     window.kmv.onStreamsReturned(streamsCameBack);
@@ -7731,6 +7817,11 @@ function refreshFromSwitcher(s, btn){
    A snapshot is taken shortly after each change (window opened/closed/moved/resized, swaps,
    layout changes). Volume changes aren't undo steps. */
 var undoStack = [], redoStack = [], histCur = null, histSig = '', histMute = 0, histT = 0;
+// Other files change these through undoVars: a variable imported from another file can't be assigned to.
+const undoVars = {
+  get histCur(){ return histCur; }, set histCur(v){ histCur = v; },
+  get histSig(){ return histSig; }, set histSig(v){ histSig = v; },
+};
 const histSnap = () => capturePreset('');
 const histSigOf = p => JSON.stringify([p.mode, p.featured, p.sideCols, p.linked, p.streamCols, p.order,
   p.windows.map(w => [w.kind, w.channel || w.url, Math.round(w.x), Math.round(w.y), Math.round(w.w), Math.round(w.h)])]);
@@ -7846,20 +7937,20 @@ async function fillCapturePicker(){
     b.title = s.name;
     b.onclick = () => {
       capDlg.hidden = true;
-      if (attachForGame){ attachForGame = false; attachGame(s); return; }
+      if (attachForGame){ gameVars.attachForGame = false; attachGame(s); return; }
       if (capTarget){ capTarget.srcId = s.id; capTarget.capName = s.name; capTarget.el.querySelector('.title').textContent = s.name; mountCapture(capTarget); return; }
       const r = defaultStreamRect();
       const w = createWin({ kind: 'capture', srcId: s.id, capName: s.name }, { x: r.x + 40, y: r.y + 40, w: Math.min(r.w, 560), h: Math.min(r.h, 560 * 9 / 16 + BAR) });
       updateEmpty();
-      if (capForGame && isGame()){ capForGame = false; gameMode = 'window'; gameKey = colKey(w); saveGame(); gameLayout(); return; }
-      capForGame = false;
+      if (capForGame && isGame()){ gameVars.capForGame = false; gameVars.gameMode = 'window'; gameVars.gameKey = colKey(w); saveGame(); gameLayout(); return; }
+      gameVars.capForGame = false;
       if (colsMode) columnsLayout(); else if (isGame()) gameLayout();
       flash(`Showing “${s.name}”. Drag it anywhere; use the real window to click or type in it.`);
     };
     grid.appendChild(b);
   });
 }
-capDlg.querySelector('.dlg-cancel').onclick = () => { capDlg.hidden = true; capForGame = false; attachForGame = false; };
+capDlg.querySelector('.dlg-cancel').onclick = () => { capDlg.hidden = true; gameVars.capForGame = false; gameVars.attachForGame = false; };
 capDlg.querySelector('.cap-refresh').onclick = fillCapturePicker;
 capDlg.addEventListener('pointerdown', e => { if (e.target === capDlg) capDlg.hidden = true; });
 if (DESKTOP && ROLE === 'main' && window.kmv.captureSources){
@@ -8111,7 +8202,7 @@ function bigStream(){
   const vids = buildCols().filter(c => isVid(c.top)).map(c => c.top);
   return (isFocusView() && vids.find(s => colKey(s) === featuredCh)) || vids.find(s => s.kind === 'stream') || null;
 }
-function makeBig(s){ if (!s) return; setFeatured(colKey(s)); scrollX = 0; columnsLayout(); }
+function makeBig(s){ if (!s) return; setFeatured(colKey(s)); layoutVars.scrollX = 0; columnsLayout(); }
 function closeOverlays(){
   let any = false;
   // dialogs one at a time, the top one first (Import follows can sit over Settings); menus all at once
@@ -8194,6 +8285,13 @@ document.addEventListener('keydown', e => {
 //  - Show a window: put any stream or other app's window there instead (view-only for apps).
 var gameMode = 'see', gameKey = null, gameSize = 'm', gameSide = 'right', gameOnTop = true, capForGame = false;
 var attachForGame = false, gameAttached = null, gameStrip = true;      // "Put a game here" (Windows)
+// Other files change these through gameVars: a variable imported from another file can't be assigned to.
+const gameVars = {
+  get capForGame(){ return capForGame; }, set capForGame(v){ capForGame = v; },
+  get gameMode(){ return gameMode; }, set gameMode(v){ gameMode = v; },
+  get gameKey(){ return gameKey; }, set gameKey(v){ gameKey = v; },
+  get attachForGame(){ return attachForGame; }, set attachForGame(v){ attachForGame = v; },
+};
 try { const g = JSON.parse(localStorage.getItem('kickMultiview.game') || '{}');
   if (g.mode === 'see' || g.mode === 'window') gameMode = g.mode;
   if (['s', 'm', 'l'].includes(g.size)) gameSize = g.size;
@@ -8218,7 +8316,7 @@ function gameRects(){
 function gameLayout(){
   if (ROLE !== 'main') return;
   if (colsMode) setColsMode(false);
-  lastLayout = 'game';
+  coreVars.lastLayout = 'game';
   const { game, panel } = gameRects();
   const occ = gameMode === 'window' && gameKey ? wins.find(w => colKey(w) === gameKey && w.kind !== 'chat') : null;
   if (gameMode === 'window' && gameKey && !occ) gameKey = null;
@@ -8229,7 +8327,7 @@ function gameLayout(){
   if (occ){
     occ.max = null;
     setRect(occ, { x: game.x, y: game.y + GBAR, w: game.w, h: game.h - GBAR }, true);
-    occ.el.style.zIndex = ++zTop;
+    occ.el.style.zIndex = ++coreVars.zTop;
   }
   // the side panel: videos on top (16:9), chats underneath
   const order = buildCols();
@@ -8394,7 +8492,7 @@ function applyTheme(persist){
   if (warn){ warn.textContent = fx.notes.join(' '); warn.hidden = !fx.notes.length; }
   document.body.classList.toggle('theme-light', light);
   if (persist){ try { localStorage.setItem('kickMultiview.theme', JSON.stringify({ name: theme.name, vars: v, light, edited: theme.edited })); } catch {} }
-  if (typeof swCss !== 'undefined'){ swCss = null; swLastSig = ''; if (typeof pushSwitcherState === 'function') pushSwitcherState(true); }
+  if (typeof swCss !== 'undefined'){ switchVars.swCss = null; switchVars.swLastSig = ''; if (typeof pushSwitcherState === 'function') pushSwitcherState(true); }
 }
 applyTheme(false);
 window.addEventListener('storage', e => {          // the other window changed the theme
@@ -8507,7 +8605,7 @@ function openSettings(tab){
 window.openSettings = openSettings;   // for the tests
 window.smvNotes = {   // for the tests
   get notes(){ return notes; }, get alerts(){ return alerts; }, get bellCount(){ return bellCount; }, get dndUntil(){ return dndUntil; },
-  liveNote, flash, removeChannel, playSound, dndOn, endDnd(){ dndUntil = Date.now() - 1; syncDnd(); }, setInfo(ch, i){ liveInfo[ch] = i; }, liveStatus: gotLive
+  liveNote, flash, removeChannel, playSound, dndOn, endDnd(){ bellVars.dndUntil = Date.now() - 1; syncDnd(); }, setInfo(ch, i){ liveInfo[ch] = i; }, liveStatus: gotLive
 };
 window.raiseAlert = (ch, kind) => raiseAlert(wins.find(w => w.kind === 'chat' && w.channel === ch), kind);   // for the tests
 const closeSettings = () => { settingsDlg.hidden = true; };
@@ -8547,7 +8645,7 @@ $('#trAllSet').addEventListener('change', e => setTrAll(e.target.checked));
 /* Settings > General: emote preview in chats (see emoteAgent) */
 $('#emoteSet').checked = emoteOn;
 $('#emoteSet').addEventListener('change', e => {
-  emoteOn = e.target.checked;
+  viewVars.emoteOn = e.target.checked;
   try { localStorage.setItem('kickMultiview.emotePreview', emoteOn ? '1' : '0'); } catch {}
   wins.forEach(w => { if (w.kind === 'chat' && w.ready) w.view.executeJavaScript(`window.__kmvEmote && window.__kmvEmote.on(${emoteOn})`).catch(() => {}); });
 });
@@ -8555,7 +8653,7 @@ $('#emoteSet').addEventListener('change', e => {
 $('#newEmoteSet').checked = newEmotesOn;
 $('#newEmoteSet').closest('.st-row').hidden = !DESKTOP;   // it asks the sites from the app
 $('#newEmoteSet').addEventListener('change', e => {
-  newEmotesOn = e.target.checked;
+  viewVars.newEmotesOn = e.target.checked;
   try { localStorage.setItem('kickMultiview.newEmotes', newEmotesOn ? '1' : '0'); } catch {}
   wins.forEach(w => {
     if (w.kind !== 'chat' || !w.ready) return;
@@ -8764,20 +8862,20 @@ if (ROLE === 'main'){
   if (wasCols) columnsLayout();
   else { let ll = ''; try { ll = localStorage.getItem('kickMultiview.lastLayout') || ''; } catch {}
          if (ll === 'chatfocus' && wins.length) chatFocusLayout();
-         else if (ll === 'auto') lastLayout = 'auto'; }   // the windows are already where it left them
+         else if (ll === 'auto') coreVars.lastLayout = 'auto'; }   // the windows are already where it left them
   updateLayoutMenu(); updateModeClass();
-  setTimeout(() => { histCur = histSnap(); histSig = histSigOf(histCur); undoStack.length = redoStack.length = 0; updateUndoBtns(); }, 800);   // history starts here
+  setTimeout(() => { undoVars.histCur = histSnap(); undoVars.histSig = histSigOf(histCur); undoStack.length = redoStack.length = 0; updateUndoBtns(); }, 800);   // history starts here
   if (switchMode === 'window') setSwitchMode('window');           // reopen it the way you left it
   else if (switchMode === 'float'){ featSwitch.classList.add('floating'); placeSwitcher(); }
 }
 if (DESKTOP && ROLE === 'streams'){
-  try { const ll = localStorage.getItem('kickMultiview.streams.lastLayout'); if (ll === 'tile' || ll === 'spot') lastLayout = ll; } catch {}
+  try { const ll = localStorage.getItem('kickMultiview.streams.lastLayout'); if (ll === 'tile' || ll === 'spot') coreVars.lastLayout = ll; } catch {}
   save();   // report what's here to the app
 }
 if (DESKTOP && ROLE === 'main'){
   let wasPopped = false;
   try { wasPopped = localStorage.getItem(POPPED_KEY) === '1'; } catch {}
-  if (wasPopped){ popped = true; updatePopBtn(); window.kmv.openStreams([]); }   // reopen it like last time
+  if (wasPopped){ coreVars.popped = true; updatePopBtn(); window.kmv.openStreams([]); }   // reopen it like last time
 }
 updateEmpty();
 
@@ -9045,7 +9143,7 @@ function pfRenderProf(){
     const on = notifyAll && !notifyOff.includes(ch);
     const bell = pfE('button', 'btn' + (on ? ' on' : '')); bell.innerHTML = (on ? icon.bell : icon.bellOff) + (on ? 'Live alerts on' : 'Live alerts off');
     bell.disabled = !notifyAll; bell.title = !notifyAll ? 'Live notifications are off for every channel (Channels panel)' : on ? 'Notify me when they go live (click to turn off)' : 'No notification for this channel (click to turn on)';
-    bell.onclick = () => { notifyOff = notifyOff.includes(ch) ? notifyOff.filter(c => c !== ch) : [...notifyOff, ch]; try { localStorage.setItem('kickMultiview.notifyOff', JSON.stringify(notifyOff)); } catch {} sendWatch(); renderSaved(); pfRenderProf(); };
+    bell.onclick = () => { channelVars.notifyOff = notifyOff.includes(ch) ? notifyOff.filter(c => c !== ch) : [...notifyOff, ch]; try { localStorage.setItem('kickMultiview.notifyOff', JSON.stringify(notifyOff)); } catch {} sendWatch(); renderSaved(); pfRenderProf(); };
     acts.appendChild(bell);
   }
   if (plat === 'kick' && s && s.loggedIn && s.following !== false){
@@ -9426,7 +9524,7 @@ async function renderExtPane(){
   if (!DESKTOP) return;
   let xs = [];
   try { xs = await window.kmv.extList(); } catch {}
-  extCount = xs.length;
+  platformVars.extCount = xs.length;
   extPane.querySelector('.ex-list').replaceChildren(...xs.map(extCard));
   extPane.querySelector('.ex-empty').hidden = xs.length > 0;
   refreshExtButtons();
@@ -9584,14 +9682,14 @@ document.addEventListener('pointerdown', e => {
   if (!extMenu.hidden && !extMenu.contains(e.target) && !(extMenuFor && extMenuFor.btn.contains(e.target))) extMenu.hidden = true;
 });
 if (DESKTOP && window.kmv.extList){
-  window.kmv.extList().then(xs => { extCount = xs.length; refreshExtButtons(); }).catch(() => { extCount = 0; });
+  window.kmv.extList().then(xs => { platformVars.extCount = xs.length; refreshExtButtons(); }).catch(() => { platformVars.extCount = 0; });
   window.kmv.onExtConfirm(showExtDlg);
   // An extension was switched on or off somewhere: reload the windows it changed, and show the new state.
   window.kmv.onExtChanged(parts => {
     wins.forEach(w => { if (w.view && w.ready && parts.includes(viewPartition(w))) w.view.reload(); });
     extMenu.hidden = true;
     if (!settingsDlg.hidden && settingsTab === 'extensions') renderExtPane();
-    else window.kmv.extList().then(xs => { extCount = xs.length; refreshExtButtons(); }).catch(() => {});
+    else window.kmv.extList().then(xs => { platformVars.extCount = xs.length; refreshExtButtons(); }).catch(() => {});
   });
 }
 
