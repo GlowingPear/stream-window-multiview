@@ -1,4 +1,5 @@
 import './window-bar.js';   // runs after it (see app.js)
+import { PLAYING, pauseEvents } from './pause-state.js';
 import { askIn, runIn, setMuted } from './view.js';
 import { BAR, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, mutedChk, sizehint, snapChk, stage, wins } from '../core.js';
 import { icon } from '../shared/icons.js';
@@ -29,7 +30,7 @@ import { openExtMenu } from '../panels/extensions/extensions.js';
 
 /* ---------- window creation ---------- */
 function createWin(spec, rect){
-  const w = { id: ++coreVars.uid, kind: spec.kind, channel: spec.channel, url: spec.url,
+  const w = { id: ++coreVars.uid, kind: spec.kind, channel: spec.channel, url: spec.url, pause: PLAYING,
               muted: spec.muted ?? mutedChk.checked, vol: spec.vol ?? 0.8, preview: !!spec.preview, max: null, ready: false };
   const hasVol = DESKTOP && w.kind === 'stream';
   const el = document.createElement('div');
@@ -267,7 +268,7 @@ if (DESKTOP) setInterval(() => {
     askIn(w.view, 'window.__kmv ? window.__kmv.get() : null').then(r => {
       if (r && (Math.abs(r.v - w.vol) > 0.005 || r.m !== w.muted)){ w.vol = r.v; w.muted = r.m; renderVol(w); saveSoon(); }
       if (r && r.p !== isPaused(w)){
-        if (r.p) w.paused = true; else { w.paused = w.pausedByFocus = w.autoPaused = false; w.focusExempt = true; w.noAuto = true; }
+        w.pause = r.p ? pauseEvents.youPause(w.pause) : pauseEvents.youPlay(w.pause);   // its own player paused or played
         w.sentPause = r.p; syncSwitcher();
       }
     }).catch(() => {});

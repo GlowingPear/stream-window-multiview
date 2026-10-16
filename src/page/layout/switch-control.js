@@ -1,6 +1,7 @@
 import './switcher.js';   // runs after it (see app.js)
 import { youtube } from '../platforms/youtube.js';
 import { settings } from '../shared/settings.js';
+import { pauseWhy } from '../windows/pause-state.js';
 import { runIn } from '../windows/view.js';
 import { ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { icon } from '../shared/icons.js';
@@ -121,7 +122,7 @@ function switcherCore(){
       if (s.kind === 'capture') return { ch: colKey(s), cap: true, label: s.capName || 'Window', plat: 'capture', vol: 0, muted: true,
         paused: !!s.capPaused, why: s.capPaused ? 'you' : '', on: featOn && colKey(s) === featuredCh, preview: false, mini: null, miniPaused: false };
       return { ch: s.channel, label: chLabel(s.channel), plat: platOf(s.channel), vol: s.vol, muted: !!s.muted,
-        paused: isPaused(s), why: s.paused ? 'you' : s.pausedByFocus ? 'focus' : s.autoPaused ? 'auto' : '',
+        paused: isPaused(s), why: pauseWhy(s.pause),
         on: featOn && s.channel === featuredCh, preview: !!s.preview,
         mini: s.preview ? streamSrc(s.channel, true, ytVidOf(s)) : null, miniPaused: miniPaused(s) };
     })
