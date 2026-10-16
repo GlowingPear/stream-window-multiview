@@ -20,7 +20,7 @@ import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { placeMenu, showSpMenu } from './toolbar.js';
 import { popOutStreams, popoutVars, receiveChat, receiveStreams, streamsCameBack, updatePopBtn } from '../windows/popout.js';
-import { reloadView } from '../windows/view.js';
+import { reloadPage } from '../windows/views.js';
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
@@ -92,7 +92,7 @@ function init(){
     });
     fromApp('onAccountChanged', async info => {
       const p = info.platform || 'kick';
-      wins.forEach(w => { if ((w.kind === 'chat' || (w.kind === 'stream' && watchSignedIn[p])) && w.ready && platOf(w.channel) === p) reloadView(w.view); });   // that platform's chats (and signed-in streams) pick up the new login
+      wins.forEach(w => { if ((w.kind === 'chat' || (w.kind === 'stream' && watchSignedIn[p])) && w.ready && platOf(w.channel) === p) reloadPage(w); });   // that platform's chats (and signed-in streams) pick up the new login
       modOk.clear(); wins.forEach(w => { if (platOf(w.channel) === p) checkMod(w); });
       if (info.loggedOut){ acct[p] = p === 'youtube' ? false : ''; showAccounts(); return; }
       await refreshAccount();
@@ -345,7 +345,7 @@ function init(){
       applyChatZoom();
     }));
     applyChatZoom();
-    fromApp('onReloadAll', () => wins.forEach(w => { if (w.ready) reloadView(w.view); }));
+    fromApp('onReloadAll', () => wins.forEach(w => { if (w.ready) reloadPage(w); }));
 
     if (ROLE === 'main'){
       const pb = $('#popBtn');

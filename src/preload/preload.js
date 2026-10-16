@@ -83,6 +83,7 @@ contextBridge.exposeInMainWorld('kmv', {
   watchLive: data => ipcRenderer.send('live:watch', data),
   checkLiveNow: () => ipcRenderer.send('live:check-now'),
   liveSnapshot: () => ipcRenderer.invoke('live:snapshot'),
+  liveOne: ch => ipcRenderer.invoke('live:one', ch),
   onLiveStatus: cb => ipcRenderer.on('live:status', (_e, snap) => cb(snap)),
   onWentLive: cb => ipcRenderer.on('live:went-live', (_e, slug, info) => cb(slug, info)),
   onOpenChannel: cb => ipcRenderer.on('open-channel', (_e, slug) => cb(slug)),

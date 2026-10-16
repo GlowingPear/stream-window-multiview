@@ -11,7 +11,7 @@ import { focusWin } from '../layout/geometry.js';
 import { injectMention } from '../panels/bell/all-notifications.js';
 import { readChat } from '../panels/bell/bell.js';
 import { extButton } from '../panels/extensions/extensions.js';
-import { chLabel, checkMod, extCount, platOf, platform, srcFor, trimPlayerPage, viewPartition } from '../platforms/platforms.js';
+import { chLabel, checkMod, extCount, platOf, platform, srcFor, streamSrc, trimPlayerPage, viewPartition, ytVidOf } from '../platforms/platforms.js';
 import { applyChatView, syncLike } from '../platforms/youtube-options.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
@@ -20,7 +20,8 @@ import { settings } from '../shared/settings.js';
 import { mountCapture, openCapturePicker } from './capture.js';
 import { applyPlay } from './pause.js';
 import { watchRaid } from './raids.js';
-import { addCss, reloadView, runIn, setMuted, setZoom } from './view.js';
+import { watchStuck } from './stuck.js';
+import { addCss, loadView, reloadView, runIn, setMuted, setZoom } from './view.js';
 import { liftAudioSoon, pushVol } from './windows.js';
 
 /* The player / chat inside a window. YouTube channels first need their current live video looked up. */
@@ -28,8 +29,13 @@ const ytCache = {};
 function reloadWin(w){
   if (w.kind === 'capture'){ openCapturePicker(w); return; }
   checkMod(w, true);
-  if (!w.view) resolveYt(w); else if (DESKTOP && w.ready) reloadView(w.view); else w.view.src = srcFor(w);
-  if (w.mini && w.mini.wv){ reloadView(w.mini.wv); }
+  if (!w.view) resolveYt(w); else if (DESKTOP && w.ready) reloadPage(w); else w.view.src = srcFor(w);
+  if (w.mini && w.mini.wv) loadView(w.mini.wv, streamSrc(w.channel, true, ytVidOf(w)));
+}
+// A loaded window's page again. A stream loads its channel's address: its player may have moved to a page that
+// can't be loaded again (Kick's /<name>/offline shows its error page then, see stuck.js).
+function reloadPage(w){
+  if (w.kind === 'stream') loadView(w.view, srcFor(w)); else reloadView(w.view);
 }
 function mountView(w){
   if (w.kind === 'capture'){ mountCapture(w); return; }
@@ -67,7 +73,7 @@ function mountView(w){
       focusWin(w); clearAlert(w); readChat(w.channel);
     });
     // a raid moves the chat (or player) to another channel: follow it with every window of this channel
-    const nav = e => { if (e.isMainFrame !== false && w.view === frame) watchRaid(w, e.url); };
+    const nav = e => { if (e.isMainFrame !== false && w.view === frame){ watchRaid(w, e.url); watchStuck(w); } };
     frame.addEventListener('did-navigate', nav);
     frame.addEventListener('did-navigate-in-page', nav);
     // Every web view starts with its sound off (main.js); a stream's stays off, also while it loads again,
@@ -86,7 +92,7 @@ function mountView(w){
       if (w.kind === 'stream') trimPlayerPage(frame, w.channel);
       if (hasVol){ w.enforceUntil = Date.now() + 8000; pushVol(w); w.audioHeld = true; w.audioLoading = false; liftAudioSoon(w); }
       else setMuted(frame, false);
-      if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); }
+      if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); watchStuck(w); }
       if (w.kind === 'chat') setZoom(frame, chatZoom());
       if (w.kind === 'chat') { const css = platform(w.channel).chatCss; if (css) addCss(frame, css); }
       if (w.kind === 'chat' && ROLE === 'main') injectMention(w);
@@ -152,4 +158,4 @@ function init(){
   fromSite('emote-copy', (w, json) => copyEmote(json));
 }
 
-export { emoteOn, init, markNewEmotes, mountView, newEmotesOn, pngOf, reloadWin, viewVars, ytCache };
+export { emoteOn, init, markNewEmotes, mountView, newEmotesOn, pngOf, reloadPage, reloadWin, viewVars, ytCache };

@@ -18,6 +18,7 @@ import { init as windowsViews } from './windows/views.js';
 import { init as chatTranslate } from './chat/translate.js';
 import { init as chatViewMenu } from './chat/view-menu.js';
 import { init as windowsRaids } from './windows/raids.js';
+import { init as windowsStuck } from './windows/stuck.js';
 import { init as layoutLock } from './layout/lock.js';
 import { init as panelsChannelsChannels } from './panels/channels/channels.js';
 import { init as panelsChannelsOpenBox } from './panels/channels/open-box.js';
@@ -80,6 +81,7 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   chatTranslate,
   chatViewMenu,
   windowsRaids,
+  windowsStuck,
   layoutLock,
   panelsChannelsChannels,
   panelsChannelsOpenBox,
