@@ -1,4 +1,5 @@
 import './layout-menu.js';   // runs after it (see app.js)
+import { SmvNotes } from '../panels/bell/notifications.js';
 import { esc } from '../shared/element.js';
 import { fromApp } from '../shared/incoming.js';
 import { closeOnOutside } from '../shared/popover.js';

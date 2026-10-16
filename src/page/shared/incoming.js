@@ -1,6 +1,6 @@
 // Everything that reaches the page from outside it comes in through here (the other window's changes come
 // through settings.onChange, in shared/settings.js):
-//   fromApp('onLiveStatus', fn)   the desktop app's main process (window.kmv, see src/preload.js). Does nothing
+//   fromApp('onLiveStatus', fn)   the desktop app's main process (window.kmv, see src/preload/preload.js). Does nothing
 //                                 outside the desktop app, or when it doesn't send that.
 //   fromSite('emote-copy', fn)    the scripts running inside the sites' chat pages (in-site/), which send
 //                                 "__kmv:<kind> <data>" console messages: fn(w, data, view) for the chat window

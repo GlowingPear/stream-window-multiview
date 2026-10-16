@@ -1,4 +1,5 @@
 import '../panels/bell/all-notifications.js';   // runs after it (see app.js)
+import { SmvSpam } from './spam.js';
 import { settings } from '../shared/settings.js';
 import { wins } from '../core.js';
 import { dndOn, readChat } from '../panels/bell/bell.js';

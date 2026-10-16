@@ -122,7 +122,7 @@ function updateSavedBadge(){
   badge.hidden = !n; badge.querySelector('b').textContent = n || '';
   badge.title = n ? `${n} saved channel${n > 1 ? 's' : ''} live now` : '';
 }
-// Names and pictures for the saved list, from what the app knows about each channel (src/profiles.js)
+// Names and pictures for the saved list, from what the app knows about each channel (src/main/profiles.js)
 let svProf = {};
 function loadSavedProfiles(){
   if (!DESKTOP || ROLE !== 'main' || !window.kmv.profileList) return;

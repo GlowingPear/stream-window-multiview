@@ -1,4 +1,5 @@
 import './bell.js';   // runs after it (see app.js)
+import { SmvNotes } from './notifications.js';
 import { settings } from '../../shared/settings.js';
 import { runIn } from '../../windows/view.js';
 import { $, wins } from '../../core.js';

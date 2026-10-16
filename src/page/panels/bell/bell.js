@@ -1,4 +1,6 @@
 import '../channels/open-box.js';   // runs after it (see app.js)
+import { SmvSpam } from '../../alerts/spam.js';
+import { SmvNotes } from './notifications.js';
 import { element, esc } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
@@ -17,7 +19,7 @@ import { ignoreSender, renderSpamHist } from '../settings/alerts.js';
 
 /* ---------- the notification centre: the toolbar bell ----------
    Chat mentions, likely spam, saved channels going live, raids and the app's own messages, in one list
-   (src/notifications.js) kept in localStorage. Only the main window keeps it. */
+   (notifications.js) kept in localStorage. Only the main window keeps it. */
 const NOTE_SHOWN = 30;    // the latest in each tab of the bell (the rest in All notifications)
 const NOTES_KEY = 'notifications';   // (a saved setting: shared/settings.js)
 let myName = '', myTwitch = '', mentOn = true, mentMuted = new Set(), mentWords = [];

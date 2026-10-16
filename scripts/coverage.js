@@ -24,7 +24,7 @@ const SUITES = [
 ];
 // Not in the report: the preload scripts run inside each window's sandbox, where their code can't be
 // recorded (the launch tests use them all the time), and this script runs the tests rather than being tested.
-const SKIP = new Set(['src/preload.js', 'src/signin-preload.js', 'scripts/coverage.js']);
+const SKIP = new Set(['src/preload/preload.js', 'src/preload/signin-preload.js', 'scripts/coverage.js']);
 const BIG = 120;            // functions shorter than this many characters aren't listed one by one
 
 // The files the report covers: the app's code and the developer scripts.

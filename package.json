@@ -10,7 +10,7 @@
   "main": "src/main.js",
   "private": true,
   "scripts": {
-    "start": "node src/harden.js && electron .",
+    "start": "node src/main/harden.js && electron .",
     "dev": "node scripts/dev.js",
     "worktree": "node scripts/worktree.js",
     "test": "node --test --test-force-exit --test-timeout=60000 \"test/unit/**/*.test.js\"",

@@ -16,7 +16,7 @@ import { save } from '../persistence.js';
 import { stopCapture } from '../windows/capture.js';
 
 /* The right-click menu on an emote in a chat: the main process sends its items (the same ones the system menu would
-   have, from src/context-menu.js) with the emote, and gets back the one you chose. It looks and works like a
+   have, from src/main/context-menu.js) with the emote, and gets back the one you chose. It looks and works like a
    system menu (arrows, Enter, Esc, typing a letter), but stays inside this window. */
 const EMOTE_SITE = { Kick: ['#53fc18', '#0a0c0d', 'Kick emote'], Twitch: ['#8a4fff', '#fff', 'Twitch emote'], YouTube: ['#ff3d3d', '#fff', 'YouTube emoji'],
   '7TV': ['#353e43', '#e7ede9', 'From the 7TV add-on'], BTTV: ['#353e43', '#e7ede9', 'From the BetterTTV add-on'], FFZ: ['#353e43', '#e7ede9', 'From the FrankerFaceZ add-on'] };

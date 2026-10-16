@@ -19,7 +19,7 @@ import { ask, askChecked } from '../../shared/ask.js';
 
 /* ---------- Streamer profiles ----------
    A directory of your saved streamers (search and filters) and a profile for each one: what the site
-   says about them, plus what the app has recorded from its own live checks (src/profiles.js). Every
+   says about them, plus what the app has recorded from its own live checks (src/main/profiles.js). Every
    number says where it comes from, because the app only sees streams while it's open. */
 const profDlg = $('#profDlg');
 const pf = { list: {}, plat: 'all', flags: new Set(), sort: 'live', cur: null, data: null, req: 0, look: null, histAll: false, mod: {} };
@@ -515,7 +515,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.profileGet){
     pfRenderDir();
   }));
   $('#pfSort').addEventListener('change', () => { pf.sort = $('#pfSort').value; settings.set('profView', { sort: pf.sort }); pfRenderDir(); });
-  // a picture fetched in the background (src/profile-queue.js): show it in the Saved list and the Profiles cards
+  // a picture fetched in the background (src/main/profile-queue.js): show it in the Saved list and the Profiles cards
   let pfInfoT = null;
   fromApp('onProfileInfo', () => {
     clearTimeout(pfInfoT);
