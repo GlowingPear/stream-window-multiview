@@ -39,7 +39,7 @@ const drive = require('<repo>/.claude/skills/drive-app/drive');
 ```
 
 - `main` is the app's window (`src/index.html`). `pages()` also lists each stream and chat, and hidden helper pages such as the `kick.com` page used for Kick's API.
-- Find selectors in `src/index.html`. Examples: `#savedBtn` (Channels), `#savedInput` and `#spOpen` (its box and Open), `#importBtn`, `[data-imp="kick"]`, `#importDlg .dlg-list`. Progress text in dialogs shows in `.dlg-list .empty`.
+- Find selectors in `src/index.html` (the markup) and `src/page/` (markup the code builds). Examples: `#savedBtn` (Channels), `#savedInput` and `#spOpen` (its box and Open), `#importBtn`, `[data-imp="kick"]`, `#importDlg .dlg-list`. Progress text in dialogs shows in `.dlg-list .empty`.
 - Crop to what changed: screenshot an element (`locator.screenshot`) or use `clip`.
 
 ## Videos: start the copy under Playwright
