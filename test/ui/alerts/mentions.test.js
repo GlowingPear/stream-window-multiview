@@ -312,3 +312,70 @@ test('Kick: an emote-only reply is one alert with its emote, whatever text follo
   await below('Chat Rules');
   assert.deepEqual((await take()).m, []);
 });
+
+// #124: Kick's message actions (Reply, Pin) only show while the pointer is over the message. Kick's own are icons,
+// but an extension can add one with text ("SO"): it used to be read as part of the message once it showed, so the
+// message came back as a new alert (an emote-only one as "SO", one with text without its emotes).
+const BAR = '<div class="hidden group-hover:flex" style="display:none;position:absolute;right:0;top:0"><button aria-label="Reply"><svg width="12" height="12"></svg></button></div>';
+const kickBarRow = (i, name, body, reply) => kickRow(name, body, reply).replace('data-index="1"', `data-index="${i}"`).replace(/<\/div><\/div>$/, `</div>${BAR}</div>`);
+
+test('Kick: a mention or reply is one alert, with its emotes, when a button with text shows in its actions on hover (#124)', async t => {
+  const page = await openApp(t);
+  await page.evaluate(h => { const c = document.createElement('div'); c.id = 'chat'; c.innerHTML = h; document.body.append(c); window.mentionAgent(); }, kickBarRow(1, 'regular', 'hello'));
+  await page.evaluate(() => { window.__kmvMention.setMe('mod_me', []); window.__kmvMention.setWatch(true); });
+  await page.waitForTimeout(2800);
+  const add = h => page.evaluate(h => document.getElementById('chat').insertAdjacentHTML('beforeend', h), h);
+  const take = () => page.evaluate(() => window.__kmvMention.take());
+  // the extension puts its button in each message's actions, which stay hidden until the pointer is over the message
+  const so = () => page.evaluate(() => document.querySelectorAll('#chat [class*="group-hover:flex"]').forEach(b => {
+    if (!b.querySelector('[data-so-btn]')) b.insertAdjacentHTML('afterbegin', '<button data-so-btn="true">SO</button>'); }));
+  const hover = i => page.evaluate(i => document.querySelectorAll('#chat [class*="group-hover:flex"]').forEach(b => {
+    b.style.display = b.closest('[data-index]').dataset.index === String(i) ? 'flex' : 'none'; }), i);
+  const quote = ['mod_me', 'who is up next?'];
+  await add(kickBarRow(2, 'pixelpear', `<span data-emote-name="pearHype">${em(KICK(4), 'pearHype')}</span>`, quote));
+  await add(kickBarRow(3, 'nightowl', `tron song @mod_me ${em(KICK(1), 'pearHype')} ${em(KICK(5), 'lulBlob')}`));
+  await so();
+  let q = await take();
+  assert.deepEqual(q.m.map(m => [m.sender, m.kind, m.body]), [['pixelpear', 'reply', ''], ['nightowl', 'mention', 'tron song @mod_me']]);
+  assert.deepEqual(q.m[1].parts, [{ t: 'tron song @mod_me ' }, { e: 'pearHype', src: KICK(1) }, { t: ' ' }, { e: 'lulBlob', src: KICK(5) }]);
+  assert.equal(q.l.length, 2, 'two messages for the spam check');
+  for (const i of [2, 3, 1, 0]){
+    await hover(i);
+    assert.match(await page.$eval('#chat', e => e.innerText), i ? /\nSO(\n|$)/ : /^(?![\s\S]*\bSO\b)/, `(the actions ${i ? 'show' : 'are hidden'})`);
+    q = await take();
+    assert.deepEqual(q.m, [], `no new alert with message ${i}'s actions showing`);
+    assert.deepEqual(q.l, [], 'and nothing new for the spam check');
+  }
+  // the extension adds its button while the actions already show
+  await page.evaluate(() => document.querySelectorAll('#chat [data-so-btn]').forEach(b => b.remove()));
+  await hover(3); await so();
+  assert.deepEqual((await take()).m, []);
+  // a new message, with the actions of another one showing: one alert, as it is
+  await add(kickBarRow(4, 'tidepool', `@mod_me ${em(KICK(5), 'lulBlob')}`)); await so();
+  q = await take();
+  assert.deepEqual(q.m.map(m => [m.sender, m.body]), [['tidepool', '@mod_me']]);
+  assert.deepEqual(q.m[0].parts, [{ t: '@mod_me ' }, { e: 'lulBlob', src: KICK(5) }]);
+  await hover(4);
+  assert.deepEqual((await take()).m, []);
+});
+
+test('Kick: text added to a message after it shows (not in its actions) is not a new message; another message in that row is (#124)', async t => {
+  const page = await openApp(t);
+  await page.evaluate(h => { const c = document.createElement('div'); c.id = 'chat'; c.innerHTML = h; document.body.append(c); window.mentionAgent(); }, kickBarRow(1, 'regular', 'hello'));
+  await page.evaluate(() => { window.__kmvMention.setMe('mod_me', []); window.__kmvMention.setWatch(true); });
+  await page.waitForTimeout(2800);
+  const add = h => page.evaluate(h => document.getElementById('chat').insertAdjacentHTML('beforeend', h), h);
+  const take = () => page.evaluate(() => window.__kmvMention.take());
+  const tail = (i, s) => page.evaluate(([i, s]) => document.querySelector(`#chat [data-index="${i}"] .group > div > span:last-child`).insertAdjacentHTML('beforeend', s), [i, s]);
+  const quote = ['mod_me', 'who is up next?'];
+  await add(kickBarRow(2, 'pixelpear', `<span data-emote-name="pearHype">${em(KICK(4), 'pearHype')}</span>`, quote));
+  await add(kickBarRow(3, 'nightowl', `hi @mod_me ${em(KICK(1), 'pearHype')}`));
+  assert.equal((await take()).m.length, 2);
+  await tail(2, '<b> SO</b>'); await tail(3, '<b> (SO)</b>');
+  let q = await take();
+  assert.deepEqual(q.m, [], 'no new alerts');
+  assert.deepEqual(q.l, [], 'and nothing new for the spam check');
+  // Kick re-uses a row for another message (another data-index): that's a new message, even when it starts the same
+  await page.evaluate(() => { const r = document.querySelector('#chat [data-index="3"]'); r.dataset.index = '5'; r.querySelector('.group > div > span:last-child').textContent = 'hi @mod_me again'; });
+  assert.deepEqual((await take()).m.map(m => [m.sender, m.body]), [['nightowl', 'hi @mod_me again']]);
+});
