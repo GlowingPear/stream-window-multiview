@@ -3,8 +3,8 @@
 //   npm run test:coverage                 unit, UI and launch tests, then the report
 //   npm run test:coverage -- --report     only the report, from the last run (coverage/)
 //   npm run test:coverage -- --update     also raise the minimums in test/coverage-min.json to today's numbers
-// Recorded: the app's pages (src/*.html and the scripts they load) in the browser and in the desktop app,
-// the desktop app's main process, and the code the unit tests load. The report (coverage/report.md, and the
+// Recorded: the app's pages (src/*.html and the scripts they load, e.g. src/page/**) in the browser and in the
+// desktop app, the desktop app's main process, and the code the unit tests load. The report (coverage/report.md, and the
 // run's summary page on GitHub) lists each file's lines and functions run, and the bigger functions nothing
 // runs. It fails when a test fails. A file below its minimum fails it in CI, where the minimums are measured
 // (Linux, the Node version in .nvmrc); on your computer some code can't run (e.g. Windows-only parts, or Node 22+ parts on an older Node), so there it
@@ -30,14 +30,17 @@ const BIG = 120;            // functions shorter than this many characters aren'
 // The files the report covers: the app's code and the developer scripts.
 function sourceFiles() {
   const list = [];
-  for (const dir of ['src', 'scripts']) {
-    for (const f of fs.readdirSync(path.join(ROOT, dir)).sort()) {
-      if (!/\.(js|html)$/.test(f) || SKIP.has(`${dir}/${f}`)) continue;
-      const rel = `${dir}/${f}`, text = fs.readFileSync(path.join(ROOT, rel), 'utf8');
-      if (f.endsWith('.html') && !/<script>/.test(text)) continue;
+  const walk = dir => {      // dir: e.g. 'src', 'src/page/layout'
+    for (const e of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const rel = `${dir}/${e.name}`;
+      if (e.isDirectory()) { walk(rel); continue; }
+      if (!/\.(js|html)$/.test(e.name) || SKIP.has(rel)) continue;
+      const text = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+      if (e.name.endsWith('.html') && !/<script>/.test(text)) continue;
       list.push({ rel, text });
     }
-  }
+  };
+  for (const dir of ['src', 'scripts']) walk(dir);
   return list;
 }
 
@@ -67,9 +70,11 @@ function markRanges(functions, length) {
 function collect(files) {
   const byRel = new Map(files.map(f => [f.rel, { ...f, ran: new Uint8Array(f.text.length), seen: new Uint8Array(f.text.length), fns: new Map() }]));
   // Copies of a script (the release tests run them from a temporary folder) count for the real file.
-  const relOf = url => {
-    const m = String(url).replace(/[?#].*$/, '').match(/\/(src|scripts)\/([^/]+\.(?:js|html))$/);
-    return m && byRel.has(`${m[1]}/${m[2]}`) ? `${m[1]}/${m[2]}` : null;
+  const relOf = url => {     // the last /src/ or /scripts/ in the address that leads to one of the files
+    const u = String(url).replace(/[?#].*$/, '');
+    const at = [...u.matchAll(/\/(?:src|scripts)\//g)].map(m => m.index + 1).reverse();
+    for (const i of at) { const rel = decodeURIComponent(u.slice(i)); if (byRel.has(rel)) return rel; }
+    return null;
   };
   const add = (rel, source, functions) => {
     const f = byRel.get(rel); if (!f) return;
