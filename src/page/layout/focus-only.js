@@ -1,4 +1,5 @@
 import '../platforms/youtube-options.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { wins } from '../core.js';
 import { icon } from '../shared/icons.js';
 import { featBase, featSwitch, featuredCh, vidByKey } from './layouts.js';
@@ -6,7 +7,7 @@ import { applyPlay, isPaused, miniPaused } from '../windows/pause.js';
 
 /* Pause all except focus (button at the top of the Focus area) */
 let focusOnly = false;
-try { focusOnly = localStorage.getItem('kickMultiview.focusOnly') === '1'; } catch {}
+focusOnly = settings.flag('focusOnly');
 function applyFocusOnly(){
   const featOn = featBase.length > 0 && !!featuredCh;
   wins.forEach(w => {
@@ -25,7 +26,7 @@ function updateFocusOnlyBtn(){
 }
 function toggleFocusOnly(){
   focusOnly = !focusOnly;
-  try { localStorage.setItem('kickMultiview.focusOnly', focusOnly ? '1' : '0'); } catch {}
+  settings.set('focusOnly', focusOnly);
   wins.forEach(w => { w.focusExempt = false; });
   applyFocusOnly();
 }

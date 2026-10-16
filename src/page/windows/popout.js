@@ -1,5 +1,6 @@
 import '../layout/spotlight.js';   // runs after it (see app.js)
-import { $, GAP, POPPED_KEY, STREAMS_STORE, colWidth, colsMode, coreVars, lastLayout, mutedChk, popped, wins } from '../core.js';
+import { settings } from '../shared/settings.js';
+import { $, GAP, colWidth, colsMode, coreVars, lastLayout, mutedChk, popped, wins } from '../core.js';
 import { setTb } from '../shared/icons.js';
 import { chLabel } from '../platforms/platforms.js';
 import { SW, focusWin } from '../layout/geometry.js';
@@ -27,7 +28,7 @@ let popPartial = false;
 const popoutVars = {
   get popPartial(){ return popPartial; }, set popPartial(v){ popPartial = v; },
 };
-try { popPartial = localStorage.getItem('kickMultiview.popPartial') === '1'; } catch {}
+popPartial = settings.flag('popPartial');
 function hiddenStreams(){
   if (!colsMode || !colWidth) return [];
   const cols = buildCols().filter(c => !(featBase.length && c.key === featuredCh));
@@ -45,12 +46,12 @@ function updatePopHiddenBtn(){
 function popOutHidden(){
   const list = hiddenStreams();
   if (!list.length){ flash('No hidden streams to pop out'); return; }
-  if (!popped){ popPartial = true; try { localStorage.setItem('kickMultiview.popPartial', '1'); } catch {} }   // decide before the window opens
+  if (!popped){ popPartial = true; settings.set('popPartial', true); }   // decide before the window opens
   coreVars.popped = true;
   window.kmv.openStreams(list.map(w => ({ channel: w.channel, vol: w.vol, muted: w.muted })));
   list.forEach(releaseWin);
   coreVars.wins = wins.filter(w => !list.includes(w)); updatePopBtn(); updateEmpty();
-  try { localStorage.setItem(POPPED_KEY, '1'); } catch {}
+  settings.set('popped', '1');
   columnsLayout();
   flash(`${list.length} stream${list.length > 1 ? 's' : ''} sent to the Streams window`);
 }
@@ -61,11 +62,11 @@ function popOutStreams(){
   wins.filter(w => w.kind === 'stream').forEach(releaseWin);
   coreVars.wins = wins.filter(w => w.kind !== 'stream');
   coreVars.popped = true; updatePopBtn(); updateEmpty();
-  try { localStorage.setItem(POPPED_KEY, '1'); } catch {}
+  settings.set('popped', '1');
   layoutChatsOnly();
 }
 function streamsCameBack(specs){
-  try { localStorage.removeItem(STREAMS_STORE); } catch {}
+  settings.remove('streams.v1');
   (specs || []).forEach(s => {
     if (!wins.some(w => w.kind === 'stream' && w.channel === s.channel))
       createWin({ kind: 'stream', channel: s.channel, vol: s.vol, muted: s.muted }, defaultStreamRect());

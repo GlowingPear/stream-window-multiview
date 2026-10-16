@@ -1,4 +1,5 @@
 import '../../persistence.js';   // runs after it (see app.js)
+import { settings } from '../../shared/settings.js';
 import { $, ROLE, STORE, modeSel, stage, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -20,10 +21,10 @@ import { openSettings } from '../settings/settings.js';
    stream (or skip it): the paste box, saved channels that are live now, and reopening the last session.
    Progress is kept in kickMultiview.intro and can be reset from Settings > General. */
 var intro = {}, esBuilt = false, esPlat = 'kick', esPrevWins = 0, esReady = false;
-try { intro = JSON.parse(localStorage.getItem('kickMultiview.intro') || '{}') || {}; } catch {}
+intro = settings.json('intro', {}) || {};
 // someone who already used the app (before this screen existed): straight to the launchpad, no window tips
-if (intro.done === undefined){ let had = false; try { had = saved.length > 0 || JSON.parse(localStorage.getItem(STORE) || '[]').length > 0; } catch {} if (had){ intro.done = true; intro.tips = true; saveIntro(); } }
-function saveIntro(){ try { localStorage.setItem('kickMultiview.intro', JSON.stringify(intro)); } catch {} }
+if (intro.done === undefined){ const had = saved.length > 0 || settings.json(STORE, []).length > 0; if (had){ intro.done = true; intro.tips = true; saveIntro(); } }
+function saveIntro(){ settings.set('intro', intro); }
 const ES_SEARCH = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
 const ES_FORMATS = `<details class="es-formats"><summary>What can I paste?</summary><ul>
   <li><code>kick.com/nightowl</code> or just <code>nightowl</code>: a Kick stream and chat</li>
@@ -131,7 +132,7 @@ function esBuild(){
   });
 }
 function esImport(p){ const b = $(`#importRow [data-imp="${p}"]`); if (b) b.click(); }
-function esAccounts(){ let a = {}; try { a = JSON.parse(localStorage.getItem('kickMultiview.accounts') || '{}') || {}; } catch {} return a; }
+function esAccounts(){ return settings.json('accounts', {}) || {}; }
 // Fill in what changes: which screen, logins, cards seen, live channels, the last session.
 function esRefresh(){
   if (ROLE !== 'main' || !esReady) return;
@@ -169,17 +170,17 @@ function esRefresh(){
   }
 }
 // The windows open when the stage last emptied (Clear, or closing the last one).
-function lastSession(){ try { const d = JSON.parse(localStorage.getItem('kickMultiview.lastSession') || '[]'); return Array.isArray(d) ? d.filter(x => x && x.kind !== 'capture') : []; } catch { return []; } }
+function lastSession(){ const d = settings.json('lastSession', []); return Array.isArray(d) ? d.filter(x => x && x.kind !== 'capture') : []; }
 function reopenSession(){
   const d = lastSession(); if (!d.length) return;
-  try { localStorage.setItem(STORE, JSON.stringify(d)); } catch {}
+  settings.set(STORE, d);
   restore(); updateEmpty(); save();
   flash(`Reopened ${d.length} window${d.length > 1 ? 's' : ''}`);
 }
 // Called whenever the windows change (updateEmpty): keep the session, switch screens, show the window tips once.
 function esWinsChanged(){
   if (ROLE !== 'main' || !esReady) return;
-  if (!wins.length && esPrevWins){ try { const cur = localStorage.getItem(STORE); if (cur && cur !== '[]') localStorage.setItem('kickMultiview.lastSession', cur); } catch {} }
+  if (!wins.length && esPrevWins){ const cur = settings.get(STORE); if (cur && cur !== '[]') settings.set('lastSession', cur); }
   if (wins.length && !esPrevWins){
     if (!intro.done && wins.some(w => w.kind === 'stream')){ intro.done = true; saveIntro(); }
     if (!intro.tips) showTips();

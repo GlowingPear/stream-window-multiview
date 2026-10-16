@@ -1,4 +1,5 @@
 import '../../windows/capture.js';   // runs after it (see app.js)
+import { settings } from '../../shared/settings.js';
 import { $ } from '../../core.js';
 import { DESKTOP, keyName } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
@@ -41,10 +42,10 @@ const SHORTCUTS = [
   ]]
 ];
 var keysOn = true;
-try { keysOn = localStorage.getItem('kickMultiview.keys') !== '0'; } catch {}
+keysOn = settings.flag('keys', true);
 function setKeysOn(on){
   keysOn = !!on;
-  try { localStorage.setItem('kickMultiview.keys', keysOn ? '1' : '0'); } catch {}
+  settings.set('keys', keysOn);
   const g = $('#settingsDlg .sc-grid'); if (g) g.classList.toggle('off', !keysOn);
   const h = $('#keysOn'); if (h) h.checked = keysOn;
   const st = $('#keysSet'); if (st) st.checked = keysOn;

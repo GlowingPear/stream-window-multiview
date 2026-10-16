@@ -1,4 +1,5 @@
 import './windows.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { ROLE, msg, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { EMOTE_JS } from '../in-site/emote-preview.js';
@@ -112,7 +113,7 @@ function mountView(w){
 // New emotes (Settings > General, off unless switched on): ask the app which are new for this channel, mark them,
 // and say so once when there are newly added ones.
 var newEmotesOn = false;
-try { newEmotesOn = localStorage.getItem('kickMultiview.newEmotes') === '1'; } catch {}
+newEmotesOn = settings.flag('newEmotes');
 async function markNewEmotes(w){
   if (!DESKTOP || !window.kmv.emotesOpen || !w.channel || platOf(w.channel) === 'youtube') return;
   const frame = w.view;
@@ -137,7 +138,7 @@ const viewVars = {
   get newEmotesOn(){ return newEmotesOn; }, set newEmotesOn(v){ newEmotesOn = v; },
   get emoteOn(){ return emoteOn; }, set emoteOn(v){ emoteOn = v; },
 };
-try { emoteOn = localStorage.getItem('kickMultiview.emotePreview') === '1'; } catch {}
+emoteOn = settings.flag('emotePreview');
 // "Copy image" on an emote card: the app fetches the picture (only from the emote sites) and copies a still of it
 async function copyEmote(json){
   let d; try { d = JSON.parse(json); } catch { return; }

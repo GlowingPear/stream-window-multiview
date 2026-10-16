@@ -1,4 +1,5 @@
 import './bell.js';   // runs after it (see app.js)
+import { settings } from '../../shared/settings.js';
 import { $, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { MENTION_JS } from '../../in-site/mentions.js';
@@ -76,7 +77,7 @@ function renderMentions(){
 window.openNoteHistory = openNoteHistory;   // for the tests
 function setMentWords(list){
   bellVars.mentWords = [...new Set(list.map(x => String(x || '').trim().replace(/^@/, '').replace(/\s+/g, ' ')).filter(x => x.length >= 2 && x.length <= 40))].slice(0, 30);
-  try { localStorage.setItem('kickMultiview.mentWords', JSON.stringify(mentWords)); } catch {}
+  settings.set('mentWords', mentWords);
   renderMentWords(); pushMyName(); renderMentions();
 }
 function renderMentWords(){
@@ -102,7 +103,7 @@ function pushMyName(){
 function setMyTwitch(n){
   bellVars.myTwitch = String(n || '').trim().replace(/^@/, '');
   if (myTwitch && !/^[A-Za-z0-9_]{2,30}$/.test(myTwitch)) bellVars.myTwitch = '';
-  try { localStorage.setItem('kickMultiview.myTwitch', myTwitch); } catch {}
+  settings.set('myTwitch', myTwitch);
   const f = $('#mentTwitch'); if (f) f.value = myTwitch;
   pushMyName(); renderMentions();
 }

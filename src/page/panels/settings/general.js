@@ -1,4 +1,5 @@
 import './settings.js';   // runs after it (see app.js)
+import { settings } from '../../shared/settings.js';
 import { $, wins } from '../../core.js';
 import { DESKTOP } from '../../shared/env.js';
 import { emoteAgent } from '../../in-site/emote-preview.js';
@@ -10,14 +11,14 @@ import { activePreset } from '../../layout/saved-layouts.js';
 import { keysOn, setKeysOn } from '../help/help.js';
 
 /* General: on and off switches, remembered */
-[['#muted', 'kickMultiview.startMuted'], ['#snap', 'kickMultiview.snap']].forEach(([sel, key]) => {
+[['#muted', 'startMuted'], ['#snap', 'snap']].forEach(([sel, name]) => {
   const c = $(sel);
-  try { const v = localStorage.getItem(key); if (v !== null) c.checked = v === '1'; } catch {}
-  c.addEventListener('change', () => { try { localStorage.setItem(key, c.checked ? '1' : '0'); } catch {} });
+  const v = settings.get(name); if (v !== null) c.checked = v === '1';
+  c.addEventListener('change', () => { settings.set(name, c.checked); });
 });
 $('#autoFit').checked = $('#lmAutoFit').checked = autoFit;
 $('#autoFit').addEventListener('change', e => setAutoFit(e.target.checked));
-$('#lyLinked').addEventListener('change', e => { try { localStorage.setItem('kickMultiview.linked', e.target.checked ? '1' : '0'); } catch {} if (!activePreset) liveLinked(e.target.checked); });
+$('#lyLinked').addEventListener('change', e => { settings.set('linked', e.target.checked); if (!activePreset) liveLinked(e.target.checked); });
 $('#keysSet').checked = keysOn;
 $('#keysSet').addEventListener('change', e => setKeysOn(e.target.checked));
 $('#trAllSet').checked = trAll;
@@ -26,7 +27,7 @@ $('#trAllSet').addEventListener('change', e => setTrAll(e.target.checked));
 $('#emoteSet').checked = emoteOn;
 $('#emoteSet').addEventListener('change', e => {
   viewVars.emoteOn = e.target.checked;
-  try { localStorage.setItem('kickMultiview.emotePreview', emoteOn ? '1' : '0'); } catch {}
+  settings.set('emotePreview', emoteOn);
   wins.forEach(w => { if (w.kind === 'chat' && w.ready) w.view.executeJavaScript(`window.__kmvEmote && window.__kmvEmote.on(${emoteOn})`).catch(() => {}); });
 });
 /* Settings > General: highlight new emotes (off by default) */
@@ -34,7 +35,7 @@ $('#newEmoteSet').checked = newEmotesOn;
 $('#newEmoteSet').closest('.st-row').hidden = !DESKTOP;   // it asks the sites from the app
 $('#newEmoteSet').addEventListener('change', e => {
   viewVars.newEmotesOn = e.target.checked;
-  try { localStorage.setItem('kickMultiview.newEmotes', newEmotesOn ? '1' : '0'); } catch {}
+  settings.set('newEmotes', newEmotesOn);
   wins.forEach(w => {
     if (w.kind !== 'chat' || !w.ready) return;
     if (newEmotesOn) markNewEmotes(w);

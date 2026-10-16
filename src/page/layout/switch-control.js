@@ -1,4 +1,5 @@
 import './switcher.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { icon } from '../shared/icons.js';
 import { DESKTOP } from '../shared/env.js';
@@ -25,7 +26,7 @@ function setSwitchMode(m){
   if (m === 'window' && !DESKTOP) m = 'float';
   const was = switchMode;
   layoutVars.switchMode = m;
-  try { localStorage.setItem('kickMultiview.switchMode', m); } catch {}
+  settings.set('switchMode', m);
   if (was === 'window' && m !== 'window') window.kmv.closeSwitcher();
   featSwitch.classList.toggle('floating', m === 'float');
   if (m !== 'float') fsResize.style.display = 'none';
@@ -41,7 +42,7 @@ function clampSwitchRect(){
   if (r.x == null || r.y == null){ r.x = W - r.w - 16; r.y = H - r.h - 16; }
   r.x = Math.max(4 - r.w + 120, Math.min(W - 120, r.x)); r.y = Math.max(0, Math.min(H - 40, r.y));
 }
-function saveSwitchRect(){ try { localStorage.setItem('kickMultiview.switchRect', JSON.stringify(switchRect)); } catch {} }
+function saveSwitchRect(){ settings.set('switchRect', switchRect); }
 function placeSwitcher(){
   if (ROLE !== 'main' || switchMode === 'dock') return;
   if (switchMode === 'window'){

@@ -3,9 +3,8 @@ const stage = $('#stage'), input = $('#savedInput'), modeSel = $('#mode'), muted
       snapChk = $('#snap'), msg = $('#msg'), empty = $('#empty'), sizehint = $('#sizehint');
 // This page runs as the main window, or (?role=streams) as the popped-out streams window.
 const ROLE = new URLSearchParams(location.search).get('role') === 'streams' ? 'streams' : 'main';
-const STREAMS_STORE = 'kickMultiview.streams.v1', POPPED_KEY = 'kickMultiview.popped';
 const BAR = 30, MIN_W = 220, MIN_H = 140, SNAP = 12, GAP = 6,
-      STORE = ROLE === 'streams' ? STREAMS_STORE : 'kickMultiview.v1';
+      STORE = ROLE === 'streams' ? 'streams.v1' : 'v1';   // this window's windows, as a saved setting (shared/settings.js)
 let popped = false;          // main window: are streams currently in their own window?
 let lastLayout = null, streamCols = 1;
 let colsMode = false, colWidth = 0, colCount = 0;   // Columns mode (scrolls sideways)
@@ -27,5 +26,4 @@ const coreVars = {
 };
 
 export { $, BAR, colCount, colsMode, colWidth, coreVars, empty, GAP, input, lastLayout, MIN_H, MIN_W, modeSel, msg,
-  mutedChk, popped, POPPED_KEY, refreshAccountsPane, ROLE, sizehint, SNAP, snapChk, stage, STORE, streamCols,
-  STREAMS_STORE, wins, zTop };
+  mutedChk, popped, refreshAccountsPane, ROLE, sizehint, SNAP, snapChk, stage, STORE, streamCols, wins, zTop };

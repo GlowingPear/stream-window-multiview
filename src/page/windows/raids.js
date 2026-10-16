@@ -1,4 +1,5 @@
 import '../chat/view-menu.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { ROLE, coreVars, lastLayout, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { chLabel, chatSrc, parseInput, platOf, ytVidOf } from '../platforms/platforms.js';
@@ -77,7 +78,7 @@ function followRaid(from, to, tell){
   });
   if (colOrder.includes(from)){
     layoutVars.colOrder = colOrder.includes(to) ? colOrder.filter(k => k !== from) : colOrder.map(k => k === from ? to : k);
-    try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
+    settings.set('colOrder', colOrder);
   }
   updateEmpty(); save();
 }

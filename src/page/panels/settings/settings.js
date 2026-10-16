@@ -1,4 +1,5 @@
 import './themes.js';   // runs after it (see app.js)
+import { settings } from '../../shared/settings.js';
 import { $, ROLE, refreshAccountsPane, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -18,7 +19,7 @@ import { renderExtPane } from '../extensions/extensions.js';
 /* ---------- Settings: one window for general options, accounts, alerts, themes and updates ---------- */
 const settingsDlg = $('#settingsDlg');
 let settingsTab = 'general';
-try { settingsTab = localStorage.getItem('kickMultiview.settingsTab') || 'general'; } catch {}
+settingsTab = settings.text('settingsTab', 'general');
 const MAIN_DESK = DESKTOP && ROLE === 'main';
 settingsDlg.querySelectorAll('.st-rail .desk-only').forEach(b => { b.hidden = !DESKTOP; });
 const ST_ICONS = { general: 'sliders', layouts: 'layout', accounts: 'user', youtube: 'ytPlay', notify: 'bell', mentions: 'at', spam: 'mod', extensions: 'ext', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys' };
@@ -34,7 +35,7 @@ settingsDlg.querySelectorAll('.st-rail-sec').forEach(h => {
 function openSettings(tab){
   const ok = t => { const b = settingsDlg.querySelector(`.st-rail [data-s="${t}"]`); return b && !b.hidden; };
   settingsTab = ok(tab) ? tab : ok(settingsTab) ? settingsTab : 'general';
-  try { localStorage.setItem('kickMultiview.settingsTab', settingsTab); } catch {}
+  settings.set('settingsTab', settingsTab);
   settingsDlg.hidden = false;
   settingsDlg.querySelectorAll('.st-rail button').forEach(b => b.classList.toggle('on', b.dataset.s === settingsTab));
   settingsDlg.querySelectorAll('.st-pane').forEach(p => { p.hidden = p.dataset.s !== settingsTab; });

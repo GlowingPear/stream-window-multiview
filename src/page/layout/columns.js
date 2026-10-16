@@ -1,4 +1,5 @@
 import '../windows/channel-picker.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { BAR, GAP, ROLE, colCount, colWidth, colsMode, coreVars, wins } from '../core.js';
 import { chLabelP } from '../platforms/platforms.js';
 import { SH, SW, setRect } from './geometry.js';
@@ -39,13 +40,13 @@ let sideCols = 0;                                     // highlight view: side co
 const columnVars = {
   get sideCols(){ return sideCols; }, set sideCols(v){ sideCols = v; },
 };
-try { sideCols = Math.max(0, Math.min(5, +localStorage.getItem('kickMultiview.sideCols') || 0)); } catch {}
+sideCols = Math.max(0, Math.min(5, settings.num('sideCols')));
 function columnsLayout(preview){
   if (!colsMode) setColsMode(true);
   const all = buildCols();
   if (!preview){
     layoutVars.colOrder = all.map(c => c.key);
-    try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
+    settings.set('colOrder', colOrder);
   }
   const feat = featuredCh ? all.find(c => c.key === featuredCh && isVid(c.top)) : null;
   if (featuredCh && !feat) setFeatured(null);

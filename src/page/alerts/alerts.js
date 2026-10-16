@@ -1,4 +1,5 @@
 import '../panels/bell/all-notifications.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { wins } from '../core.js';
 import { dndOn, readChat } from '../panels/bell/bell.js';
 
@@ -16,25 +17,25 @@ const ALERT_DEFAULTS = {
 };
 const ALERT_KINDS = Object.keys(ALERT_DEFAULTS);
 var alerts = (() => {
-  let a = {}; try { a = JSON.parse(localStorage.getItem('kickMultiview.alerts') || '{}') || {}; } catch {}
+  const a = settings.json('alerts', {}) || {};
   // From before mentions had a chat bot list: the one you made for spam alerts becomes the shared one.
   const m = a.mention = a.mention || {}, s = a.spam || {};
   if (!('bots' in m) && Array.isArray(s.ignore)){ m.bots = s.ignore.slice(); m.botsOffered = s.botsOffered || null; }
   // From before Settings > Notifications had a row for each kind: "Saved channels going live" and how the app's
   // messages showed (Settings > Notifications > Messages).
-  if (!a.live) try { a.live = { notify: localStorage.getItem('kickMultiview.notifyAll') === '0' ? 'never' : 'always' }; } catch {}
-  if (!a.app){ let g = {}; try { g = JSON.parse(localStorage.getItem('kickMultiview.msg') || '{}') || {}; } catch {}
+  if (!a.live) a.live = { notify: settings.get('notifyAll') === '0' ? 'never' : 'always' };
+  if (!a.app){ const g = settings.json('msg', {}) || {};
                a.app = { popup: g.on !== false, notify: g.via === 'desktop' ? 'always' : 'never' }; }
   return Object.fromEntries(ALERT_KINDS.map(k => [k, { ...ALERT_DEFAULTS[k], ...(a[k] || {}) }]));
 })();
-const saveAlerts = () => { try { localStorage.setItem('kickMultiview.alerts', JSON.stringify(alerts)); } catch {} };
+const saveAlerts = () => { settings.set('alerts', alerts); };
 // Chat bots added to the built-in list since: added to a list you changed, once (one you removed stays removed).
 [[alerts.spam, 'ignore'], [alerts.mention, 'bots']].forEach(([a, k]) => {
   const r = SmvSpam.withNewBots(a[k], a.botsOffered);
   if (r.list === a[k] && JSON.stringify(r.offered) === JSON.stringify(a.botsOffered)) return;
   a[k] = r.list; a.botsOffered = r.offered; saveAlerts();
 });
-const SOUND_KEY = kind => 'kickMultiview.alertSound.' + kind;      // your own sound file, as a data: URL
+const SOUND_KEY = kind => 'alertSound.' + kind;      // your own sound file, as a data: URL (a saved setting)
 
 // The built-in sounds are made on the fly, so there are no sound files to ship.
 let audioCtx = null;
@@ -56,7 +57,7 @@ function playSound(kind, test){
   if (!test && dndOn()) return;                                 // Do not disturb (the ▶ buttons still play)
   if (!a || a.sound === 'none' || !(a.vol > 0)) return;
   if (a.sound === 'custom'){
-    let src = ''; try { src = localStorage.getItem(SOUND_KEY(kind)) || ''; } catch {}
+    const src = settings.text(SOUND_KEY(kind));
     if (src){ const el = new Audio(src); el.volume = a.vol; el.play().catch(() => {}); }
     return;
   }

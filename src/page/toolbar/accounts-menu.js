@@ -1,5 +1,6 @@
 import './layout-menu.js';   // runs after it (see app.js)
-import { $, POPPED_KEY, ROLE, coreVars, msg, popped, wins } from '../core.js';
+import { settings } from '../shared/settings.js';
+import { $, ROLE, coreVars, msg, popped, wins } from '../core.js';
 import { icon } from '../shared/icons.js';
 import { DESKTOP } from '../shared/env.js';
 import { PLAT_NAME, checkMod, modOk, platOf, rememberNames, setWatchSignedIn, watchSignedIn } from '../platforms/platforms.js';
@@ -23,9 +24,9 @@ if (DESKTOP){
   // Accounts menu (log in and out) and Settings > Accounts (that, and everything else about logins)
   const am = $('#accountMenu'), sa = $('#settingsDlg .st-pane[data-s=accounts]'), sy = $('#settingsDlg .st-pane[data-s=youtube]');
   let acct = { kick: '', twitch: '', youtube: false };
-  try { acct = Object.assign(acct, JSON.parse(localStorage.getItem('kickMultiview.accounts') || '{}')); acct.kick = acct.kick || localStorage.getItem('kickMultiview.account') || ''; } catch {}
+  acct = Object.assign(acct, settings.json('accounts', {})); acct.kick = acct.kick || settings.text('account');
   const showAccounts = () => {
-    try { localStorage.setItem('kickMultiview.accounts', JSON.stringify(acct)); } catch {}
+    settings.set('accounts', acct);
     const n = [acct.kick, acct.twitch, acct.youtube].filter(Boolean).length;
     lb.classList.toggle('has-acct', !!n);
     lb.title = n ? 'Logged in: ' + [acct.kick && `Kick (${acct.kick})`, acct.twitch && `Twitch (${acct.twitch})`, acct.youtube && 'YouTube'].filter(Boolean).join(', ') : 'Log in to Kick, Twitch or YouTube';
@@ -173,8 +174,8 @@ if (DESKTOP){
         : `${PLAT_NAME[p]} streams will play signed in once you log in to ${PLAT_NAME[p]}`);
     });
   });
-  window.addEventListener('storage', e => {
-    if (e.key === 'kickMultiview.watchSignedIn') sa.querySelectorAll('.am-watch input').forEach(i => { i.checked = !!watchSignedIn[i.dataset.w]; });
+  settings.onChange('watchSignedIn', () => {
+    sa.querySelectorAll('.am-watch input').forEach(i => { i.checked = !!watchSignedIn[i.dataset.w]; });
   });
 
   /* ---- Import follows: read the channels you follow (with your login) and pick which to save ---- */
@@ -346,8 +347,8 @@ if (DESKTOP){
     pb.onclick = () => popped ? window.kmv.closeStreams() : popOutStreams();
     window.kmv.onStreamsState(open => {
       coreVars.popped = open; updatePopBtn();
-      if (!open){ popoutVars.popPartial = false; try { localStorage.removeItem('kickMultiview.popPartial'); } catch {} }
-      try { open ? localStorage.setItem(POPPED_KEY, '1') : localStorage.removeItem(POPPED_KEY); } catch {}
+      if (!open){ popoutVars.popPartial = false; settings.remove('popPartial'); }
+      settings.set('popped', open ? '1' : null);
     });
     window.kmv.onStreamsReturned(streamsCameBack);
     window.kmv.onChatAdd(receiveChat);
