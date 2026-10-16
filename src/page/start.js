@@ -1,8 +1,8 @@
 import './panels/settings/alerts.js';   // runs after it (see app.js)
 import { settings } from './shared/settings.js';
+import { store } from './shared/store.js';
 import { ROLE, coreVars, wins } from './core.js';
 import { DESKTOP } from './shared/env.js';
-import { updateEmpty } from './layout/lock.js';
 import { chatFocusLayout, featSwitch, switchMode } from './layout/layouts.js';
 import { columnsLayout } from './layout/columns.js';
 import { placeSwitcher, setSwitchMode } from './layout/switch-control.js';
@@ -34,4 +34,4 @@ if (DESKTOP && ROLE === 'main'){
   wasPopped = settings.flag('popped');
   if (wasPopped){ coreVars.popped = true; updatePopBtn(); window.kmv.openStreams([]); }   // reopen it like last time
 }
-updateEmpty();
+store.changed('wins');

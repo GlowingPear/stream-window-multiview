@@ -1,11 +1,11 @@
 import './translate.js';   // runs after it (see app.js)
+import { store } from '../shared/store.js';
 import { runIn, zoomOf } from '../windows/view.js';
 import { coreVars, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { chLabel, rememberName } from '../platforms/platforms.js';
 import { mountView, ytCache } from '../windows/views.js';
 import { winOfView } from './translate.js';
-import { updateEmpty } from '../layout/lock.js';
 import { addNote, noteActs } from '../panels/bell/bell.js';
 import { forgetChat } from '../alerts/spam-alerts.js';
 import { flash } from '../shared/flash.js';
@@ -155,7 +155,7 @@ function releaseWin(w){
 }
 function closeWin(w){
   releaseWin(w);
-  coreVars.wins = wins.filter(o => o !== w); updateEmpty(); save();
+  coreVars.wins = wins.filter(o => o !== w); store.changed('wins'); save();
   if (w.kind === 'chat') forgetChat(w.channel);
 }
 

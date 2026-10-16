@@ -1,6 +1,7 @@
 import './header.js';   // runs after it (see app.js)
 import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { setTb } from '../shared/icons.js';
 import { DESKTOP } from '../shared/env.js';
@@ -9,7 +10,7 @@ import { SH, SW, clampPos, setRect } from '../layout/geometry.js';
 import { channelVars, gotLive, liveNote, liveNow, loadSavedProfiles, notifyAll, persistSaved, renderSaved, saved,
   savedTab, sendWatch } from '../panels/channels/channels.js';
 import { follows, followsApi, loadFollows } from '../panels/channels/follow-suggestions.js';
-import { addPlat, openBoxVars, openFromBox, renderAddRow } from '../panels/channels/open-box.js';
+import { addPlat, openBoxVars, openFromBox } from '../panels/channels/open-box.js';
 import { bellVars, mentOn, myName, myTwitch, renderBell, seeBell, setMyName } from '../panels/bell/bell.js';
 import { pushMyName, renderMentions, setMyTwitch } from '../panels/bell/all-notifications.js';
 import { alerts, saveAlerts } from '../alerts/alerts.js';
@@ -147,7 +148,7 @@ const panel = $('#savedPanel'), savedBtn = $('#savedBtn');
 savedBtn.onclick = () => {
   panel.hidden = !panel.hidden;
   if (!panel.hidden){
-    renderSaved(); renderAddRow(); loadSavedProfiles(); loadFollows();
+    store.changed('channelsBox'); loadSavedProfiles(); loadFollows();
     placeMenu(panel, savedBtn);
     $('#savedInput').focus();
     if (DESKTOP && ROLE === 'main' && window.kmv.checkLiveNow) window.kmv.checkLiveNow();
@@ -164,12 +165,12 @@ if (followsApi()){
   loadFollows();
   $('#followsOn').onclick = () => { if (window.kmv.followsSetOn) window.kmv.followsSetOn(!follows.on).then(loadFollows).catch(() => {}); };
 }
-$('#savedInput').addEventListener('input', e => { if (!e.target.value.trim()) openBoxVars.addPlat = null; renderAddRow(); renderSaved(); });
+$('#savedInput').addEventListener('input', e => { if (!e.target.value.trim()) openBoxVars.addPlat = null; store.changed('channelsBox'); });
 $('#spOpen').onclick = () => openFromBox(false);
 $('#spOpenSave').onclick = () => openFromBox(true);
 $('#spPlat').addEventListener('click', e => {
   const b = e.target.closest('button[data-p]'); if (!b || b.disabled) return;
-  openBoxVars.addPlat = b.dataset.p; renderAddRow(); renderSaved();
+  openBoxVars.addPlat = b.dataset.p; store.changed('channelsBox');
   $(`#spPlat [data-p=${addPlat}]`).focus();
 });
 $('#spPlat').addEventListener('keydown', e => {      // arrow keys move along the sites
@@ -185,7 +186,7 @@ $('#savedInput').addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   // Esc steps back: the ⋯ menu, then the search, then the panel (the page-wide Esc closes that one)
   if (!spMenu.hidden){ showSpMenu(false); e.stopPropagation(); }
-  else if (e.target.value){ e.target.value = ''; openBoxVars.addPlat = null; renderAddRow(); renderSaved(); e.stopPropagation(); }
+  else if (e.target.value){ e.target.value = ''; openBoxVars.addPlat = null; store.changed('channelsBox'); e.stopPropagation(); }
   else panel.hidden = true;
 });
 $('#savedTabs').addEventListener('click', e => {
@@ -193,7 +194,7 @@ $('#savedTabs').addEventListener('click', e => {
   channelVars.savedTab = b.dataset.t;
   settings.set('savedTab', savedTab);
   $('#savedInput').placeholder = savedTab === 'all' ? 'Search, or type a channel name or link to open it' : `Search, or type a ${PLAT_NAME[savedTab]} channel to open it`;
-  renderAddRow(); renderSaved();
+  store.changed('channelsBox');
 });
 if (DESKTOP && ROLE === 'main' && window.kmv.watchLive){
   $('#spLive').hidden = false; $('#openLive').hidden = false;

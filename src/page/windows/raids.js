@@ -1,11 +1,11 @@
 import '../chat/view-menu.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { ROLE, coreVars, lastLayout, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { chLabel, chatSrc, platOf, platform, ytVidOf } from '../platforms/platforms.js';
 import { createWin } from './windows.js';
 import { closeWin } from '../chat/view-menu.js';
-import { updateEmpty } from '../layout/lock.js';
 import { fitOn } from '../panels/channels/channels.js';
 import { addNote } from '../panels/bell/bell.js';
 import { flash } from '../shared/flash.js';
@@ -59,7 +59,7 @@ function followRaid(from, to, tell){
     layoutVars.colOrder = colOrder.includes(to) ? colOrder.filter(k => k !== from) : colOrder.map(k => k === from ? to : k);
     settings.set('colOrder', colOrder);
   }
-  updateEmpty(); save();
+  store.changed('wins'); save();
 }
 
 // You moved or resized a window yourself: don't auto-refit on window resize. Fitting in channels that open

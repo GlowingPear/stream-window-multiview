@@ -1,10 +1,10 @@
 import '../../persistence.js';   // runs after it (see app.js)
 import { settings } from '../../shared/settings.js';
+import { store } from '../../shared/store.js';
 import { $, ROLE, STORE, modeSel, stage, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { DESKTOP } from '../../shared/env.js';
 import { PLAT_NAME, chLabel, parseInput, platIcon, platOf } from '../../platforms/platforms.js';
-import { updateEmpty } from '../../layout/lock.js';
 import { fmtViewers, infoFor, liveNow, saved, svHue, svInitials, svProf } from '../channels/channels.js';
 import { addParsed } from '../../layout/placement.js';
 import { flash } from '../../shared/flash.js';
@@ -174,10 +174,11 @@ function lastSession(){ const d = settings.json('lastSession', []); return Array
 function reopenSession(){
   const d = lastSession(); if (!d.length) return;
   settings.set(STORE, d);
-  restore(); updateEmpty(); save();
+  restore(); store.changed('wins'); save();
   flash(`Reopened ${d.length} window${d.length > 1 ? 's' : ''}`);
 }
 // Called whenever the windows change (updateEmpty): keep the session, switch screens, show the window tips once.
+store.watch('wins', () => esWinsChanged());
 function esWinsChanged(){
   if (ROLE !== 'main' || !esReady) return;
   if (!wins.length && esPrevWins){ const cur = settings.get(STORE); if (cur && cur !== '[]') settings.set('lastSession', cur); }
@@ -256,4 +257,4 @@ addEventListener('resize', () => { if (tour) showTourStep(); });
 esReady = true; esPrevWins = wins.length;
 if (!wins.length) esRefresh();
 
-export { esRefresh, esWinsChanged };
+export { esRefresh };

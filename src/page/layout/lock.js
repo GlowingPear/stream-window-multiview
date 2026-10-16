@@ -1,16 +1,14 @@
 import '../windows/raids.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { $, ROLE, colsMode, empty, lastLayout, wins } from '../core.js';
 import { setTb } from '../shared/icons.js';
 import { SH, SW, focusWin, setRect } from './geometry.js';
-import { refreshStars, renderSaved } from '../panels/channels/channels.js';
 import { flash } from '../shared/flash.js';
 import { autoLayout, chatFocusLayout, tile } from './layouts.js';
-import { schedulePicks } from '../windows/channel-picker.js';
 import { columnsLayout } from './columns.js';
 import { updateLayoutMenu } from './column-drag.js';
 import { save } from '../persistence.js';
-import { esWinsChanged } from '../panels/empty-stage/empty-stage.js';
 import { gameLayout, isGame } from './game-focus.js';
 
 /* Lock layout (Layout menu padlock, Shift+L): windows keep their size and place. Dragging one onto another swaps
@@ -46,13 +44,14 @@ function toggleMax(w){
   save();
 }
 let colsT;
-function updateEmpty(){
-  empty.style.display = wins.length ? 'none' : ''; renderSaved(); refreshStars(); schedulePicks();
-  esWinsChanged();
-  // "+ Chat" only when that channel's chat isn't open (frees room for the name)
+// Windows opened or closed: the empty stage's message, each "+ Chat" (only when that channel's chat isn't open,
+// which frees room for the name), and the layout fitting them in. (The Channels list, the stars, the name
+// dropdowns and the empty stage watch it too.)
+store.watch('wins', () => {
+  empty.style.display = wins.length ? 'none' : '';
   wins.forEach(w => { const b = w.el.querySelector('[data-a=chat]'); if (b) b.hidden = wins.some(o => o.kind === 'chat' && o.channel === w.channel); });
   if (colsMode){ clearTimeout(colsT); colsT = setTimeout(columnsLayout, 30); }
   else if (typeof isGame === 'function' && isGame()){ clearTimeout(colsT); colsT = setTimeout(gameLayout, 30); }
-}
+});
 
-export { layoutLocked, locked, refitLocked, setLayoutLocked, toggleMax, updateEmpty };
+export { layoutLocked, locked, refitLocked, setLayoutLocked, toggleMax };
