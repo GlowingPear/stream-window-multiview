@@ -1,5 +1,6 @@
 import '../platforms/youtube-options.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { pauseEvents, pauseWhy } from '../windows/pause-state.js';
 import { wins } from '../core.js';
 import { icon } from '../shared/icons.js';
 import { featBase, featSwitch, featuredCh, vidByKey } from './layouts.js';
@@ -12,9 +13,10 @@ function applyFocusOnly(){
   const featOn = featBase.length > 0 && !!featuredCh;
   wins.forEach(w => {
     if (w.kind !== 'stream') return;
-    const should = focusOnly && featOn && w.channel !== featuredCh && !w.focusExempt;
-    if (should !== !!w.pausedByFocus){ w.pausedByFocus = should; applyPlay(w); }
-    if (w.channel === featuredCh) w.focusExempt = false;
+    const should = focusOnly && featOn && w.channel !== featuredCh && !w.pause.focusExempt;
+    const next = pauseEvents.focusPause(w.pause, should);
+    if (next !== w.pause){ w.pause = next; applyPlay(w); }
+    if (w.channel === featuredCh) w.pause = pauseEvents.focusReset(w.pause);
   });
   syncSwitcher(); updateFocusOnlyBtn();
 }
@@ -27,7 +29,7 @@ function updateFocusOnlyBtn(){
 function toggleFocusOnly(){
   focusOnly = !focusOnly;
   settings.set('focusOnly', focusOnly);
-  wins.forEach(w => { w.focusExempt = false; });
+  wins.forEach(w => { w.pause = pauseEvents.focusReset(w.pause); });
   applyFocusOnly();
 }
 // Update the switcher's volume controls in place (never rebuild while you're dragging a slider).
@@ -51,12 +53,12 @@ function syncSwitcher(){
     const pl = it.querySelector('.fs-play');
     const ps = isPaused(s);
     pl.innerHTML = ps ? icon.play : icon.pause;
-    pl.title = !ps ? 'Pause' : s.paused ? 'Play (jumps back to live)'
-      : s.pausedByFocus ? 'Paused by "Pause all except focus". Click to play it anyway'
+    pl.title = !ps ? 'Pause' : s.pause.you ? 'Play (jumps back to live)'
+      : s.pause.focus ? 'Paused by "Pause all except focus". Click to play it anyway'
       : 'Auto-paused while hidden. Click to play it anyway';
     pl.classList.toggle('paused', ps);
     it.classList.toggle('paused', ps);
-    it.classList.toggle('autopaused', ps && !s.paused && !s.pausedByFocus);
+    it.classList.toggle('autopaused', pauseWhy(s.pause) === 'auto');
     if (s.mini) s.mini.wrap.classList.toggle('paused', miniPaused(s));
   });
 }

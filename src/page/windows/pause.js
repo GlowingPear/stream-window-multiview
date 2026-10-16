@@ -1,5 +1,6 @@
 import '../layout/switch-control.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { isPausedBy, miniPausedBy, pauseEvents } from './pause-state.js';
 import { runIn } from './view.js';
 import { $, GAP, colsMode, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
@@ -9,9 +10,9 @@ import { featW } from '../layout/layouts.js';
 import { syncSwitcher } from '../layout/focus-only.js';
 
 /* A stream can be paused for three separate reasons: you paused it, "Pause all except focus",
-   or auto-pause while hidden. Each option only ever undoes its own pauses. */
-const isPaused = w => !!(w.paused || w.pausedByFocus || w.autoPaused);
-const miniPaused = w => !!(w.paused || w.pausedByFocus);          // mini previews keep playing while their stream is hidden
+   or auto-pause while hidden (w.pause, see pause-state.js). This sends it to the player. */
+const isPaused = w => isPausedBy(w.pause);
+const miniPaused = w => miniPausedBy(w.pause);          // mini previews keep playing while their stream is hidden
 function applyPlay(w){
   const want = isPaused(w);
   if (w.ready && w.sentPause !== want){
@@ -25,10 +26,7 @@ function applyPlay(w){
   }
 }
 function togglePause(s){
-  if (isPaused(s)){            // you want it playing: clear every reason, and keep the options from re-pausing it
-    s.paused = s.pausedByFocus = s.autoPaused = false;
-    s.focusExempt = true; s.noAuto = true;
-  } else s.paused = true;
+  s.pause = isPaused(s) ? pauseEvents.youPlay(s.pause) : pauseEvents.youPause(s.pause);
   applyPlay(s); syncSwitcher();
 }
 
@@ -55,12 +53,16 @@ function autoPauseTick(){
     const audible = !w.muted && w.vol > 0.001;
     const hidden = autoChk.checked && !audible && streamHidden(w);
     if (!hidden){
-      w.hiddenSince = 0; w.noAuto = false;
-      if (w.autoPaused){ w.autoPaused = false; applyPlay(w); syncSwitcher(); }
+      w.hiddenSince = 0;
+      const was = w.pause.auto;
+      w.pause = pauseEvents.shown(w.pause);
+      if (was){ applyPlay(w); syncSwitcher(); }
       return;
     }
     if (!w.hiddenSince) w.hiddenSince = now;
-    if (!w.autoPaused && !w.noAuto && now - w.hiddenSince >= 2000){ w.autoPaused = true; applyPlay(w); syncSwitcher(); }
+    if (now - w.hiddenSince < 2000) return;
+    const next = pauseEvents.hiddenLong(w.pause);
+    if (next !== w.pause){ w.pause = next; applyPlay(w); syncSwitcher(); }
   });
 }
 if (DESKTOP) setInterval(autoPauseTick, 400);
