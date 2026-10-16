@@ -53,23 +53,38 @@ function mentionAgent(){
     }
     return out;
   }
+  // The chat's lines: [{ l: line, row }]. Kick puts each message in a row of its own (div[data-index]), so each
+  // row is read on its own: a message that's only emotes can't be joined to the next row's text, or to what
+  // is below the chat (the chat box, a pop-up). Other chats: the whole page's text, with no rows.
+  function chatLines(){
+    const rows = [...document.querySelectorAll('[data-index]')].filter(r => !r.parentElement || !r.parentElement.closest('[data-index]'));
+    const out = [];
+    for (const row of rows) for (const l of textLines(row.innerText)) out.push({ l, row });
+    return out.some(x => lineOf(x.l)) ? out : textLines(document.body.innerText).map(l => ({ l }));
+  }
   function scan(){
     if ((!me && !wordRe && !watch) || !document.body) return;
-    const all = textLines(document.body.innerText);
+    const all = chatLines();
     const replyRe = me && new RegExp('^Replying to\\s+@?' + esc(me) + '(?![A-Za-z0-9_])', 'i');
     const atRe = me && new RegExp('(^|[^A-Za-z0-9_])@' + esc(me) + '(?![A-Za-z0-9_])', 'i');
     let reply = '';
-    for (const l of all){
+    for (const { l, row } of all){
       if (/^Replying to\s/i.test(l)){ reply = l; continue; }
       const m = lineOf(l);
       const r = reply; reply = '';
       if (!m) continue;
-      if (window.__kmvTr && window.__kmvTr.has(m[2])){ seen.add(l); continue; }   // shown translated: its original was read already
+      const nameRe = () => new RegExp('(^|[^A-Za-z0-9_])' + esc(m[1]) + '\\s?:\\s*', 'i');
+      // In a row, its emotes are read from the row (a message that's only emotes has no text to find it by),
+      // and they're part of the message: two messages with the same text but other emotes aren't the same line.
+      let rowParts = null;
+      if (row && row.querySelector('img')) try { rowParts = partsFor(l, nameRe(), m[2], row); } catch {}
+      const id = rowParts ? l + '\u0002' + rowParts.filter(x => x.e).map(x => x.e).join(' ') : l;
+      if (window.__kmvTr && window.__kmvTr.has(m[2])){ seen.add(id); continue; }   // shown translated: its original was read already
       // A message line is only ever judged once, even if its "Replying to" line later scrolls away or re-draws.
-      const lineNew = !seen.has(l), key = r ? r + '\u0001' + l : '';
+      const lineNew = !seen.has(id), key = r ? r + '\u0001' + id : '';
       const replyNew = key && !seen.has(key);
       if (!lineNew && !replyNew) continue;
-      seen.add(l); if (key) seen.add(key);
+      seen.add(id); if (key) seen.add(key);
       const mod = watch && lineNew && modChange(m[1], m[2]);
       if (!armed){ if (watch && known.size < 2000) known.add(m[1].toLowerCase()); continue; }   // people already chatting before we started
       const sender = m[1], body = m[2];
@@ -80,9 +95,8 @@ function mentionAgent(){
       const word = !toMe && !at && lineNew && wordRe ? body.match(wordRe) : null;
       if (queue.length >= 100) continue;                    // the app takes them every few seconds; more means it isn't asking
       if (!toMe && !at && !word) continue;
-      const nameRe = new RegExp('(^|[^A-Za-z0-9_])' + esc(sender) + '\\s?:\\s*', 'i');
-      let parts = null, qparts = null;
-      try { parts = partsFor(l, nameRe, body); } catch {}
+      let parts = rowParts, qparts = null;
+      if (!row) try { parts = partsFor(l, nameRe(), body); } catch {}
       const quoted = toMe ? r.replace(/^Replying to\s+@?[A-Za-z0-9_]+:?\s*/i, '') : '';
       if (toMe && quoted) try { qparts = partsFor(r, /^\s*Replying to\s+@?[A-Za-z0-9_]+:?\s*/i, quoted); } catch {}
       const item = toMe || at ? { sender, body, kind: toMe ? 'reply' : 'mention', quoted, t: Date.now() }
@@ -116,8 +130,8 @@ function mentionAgent(){
     if (u.hostname === 'files.kick.com' && !/^\/emotes\//.test(u.pathname)) return null;
     return { e: name, src: u.href.slice(0, 300) };
   }
-  function partsFor(line, prefix, text){
-    const el = elFor(line, text, true); if (!el) return null;
+  function partsFor(line, prefix, text, row){
+    const el = row || elFor(line, text, true); if (!el) return null;
     const all = [], walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
     for (let n = walk.nextNode(); n; n = walk.nextNode()){
       if (n.nodeType === 3){
@@ -194,7 +208,7 @@ function mentionAgent(){
       on = !!on; if (on === watch) return;
       watch = on; lines = [];
       if (on && !armed) arm();
-      else if (on && document.body) textLines(document.body.innerText).forEach(l => { const m = lineOf(l); if (m && known.size < 2000) known.add(m[1].toLowerCase()); });
+      else if (on && document.body) chatLines().forEach(({ l }) => { const m = lineOf(l); if (m && known.size < 2000) known.add(m[1].toLowerCase()); });
     },
     mark(line, why, color){
       if (marks.has(line)) return;

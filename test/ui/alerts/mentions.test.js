@@ -277,3 +277,38 @@ test('Kick, with the name, ":" and the message on lines of their own: replies an
   assert.match(by('nightowl').body, /^gg @mod_me\s+nice$/, '(the emote is in parts)');
   assert.deepEqual(by('nightowl').parts, [{ t: 'gg @mod_me ' }, { e: 'pearHype', src: KICK(1) }, { t: ' nice' }]);
 });
+
+// #119: a Kick message that's only an emote, as the last one in the chat: whatever is on the page below the
+// list (the chat box, a pop-up) used to be read as its text, and sent a new alert each time it changed.
+test('Kick: an emote-only reply is one alert with its emote, whatever text follows the chat; another one is a new alert (#119)', async t => {
+  const page = await openApp(t);
+  await page.evaluate(h => {
+    const c = document.createElement('div'); c.id = 'chat'; c.innerHTML = h; document.body.append(c);
+    const below = document.createElement('div'); below.id = 'below'; document.body.append(below);
+    window.mentionAgent();
+  }, kickRow('regular', 'hello'));
+  await page.evaluate(() => window.__kmvMention.setMe('mod_me', []));
+  await page.waitForTimeout(2800);
+  const add = h => page.evaluate(h => document.getElementById('chat').insertAdjacentHTML('beforeend', h), h);
+  const below = s => page.evaluate(s => { document.getElementById('below').innerText = s; }, s);
+  const take = () => page.evaluate(() => window.__kmvMention.take());
+  const emoteOnly = n => `<span data-emote-name="${n}">${em(KICK(n === 'pearHype' ? 4 : 5), n)}</span>`;
+  const quote = ['mod_me', 'its all in the fanclub lol'];
+  await add(kickRow('pixelpear', emoteOnly('pearHype'), quote));
+  let q = await take();
+  assert.deepEqual(q.m.map(m => [m.sender, m.kind, m.body, m.quoted]), [['pixelpear', 'reply', '', quote[1]]]);
+  assert.deepEqual(q.m[0].parts, [{ e: 'pearHype', src: KICK(4) }], 'the emote they sent');
+  assert.deepEqual(q.l.map(l => l.body), [], '(spam alerts are off)');
+  // text below the chat appears and changes: never part of the message, so no new alerts
+  for (const s of ['SO', 'Chat Rules\nAgree', '']){ await below(s); q = await take(); assert.deepEqual(q.m, [], `nothing new with "${s}" below`); }
+  // the same person sends another emote-only reply to the same message
+  await add(kickRow('pixelpear', emoteOnly('lulBlob'), quote));
+  q = await take();
+  assert.deepEqual(q.m.map(m => [m.sender, m.kind, m.body]), [['pixelpear', 'reply', '']]);
+  assert.deepEqual(q.m[0].parts, [{ e: 'lulBlob', src: KICK(5) }]);
+  // a watched word below the chat isn't blamed on them either
+  await page.evaluate(() => window.__kmvMention.setMe('mod_me', ['rules']));
+  await page.waitForTimeout(2800);
+  await below('Chat Rules');
+  assert.deepEqual((await take()).m, []);
+});
