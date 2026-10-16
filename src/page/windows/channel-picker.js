@@ -1,5 +1,6 @@
 import '../layout/sideways-scroll.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { GAP, ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { chLabel, chLabelP, platIcon, platOf } from '../platforms/platforms.js';
@@ -16,6 +17,7 @@ import { save } from '../persistence.js';
 /* Every stream / chat window's name is a dropdown: pick another one of the same kind to swap them.
    Columns, highlight and Chat focus swap whole stream + chat pairs; any other arrangement swaps the two windows. */
 let picksT = 0;
+store.watch(['wins', 'names'], () => schedulePicks());
 function schedulePicks(){ clearTimeout(picksT); picksT = setTimeout(() => { refreshPicks(); if (switchMode !== 'dock') placeSwitcher(); }, 30); }
 function refreshPicks(){
   const order = buildCols().map(c => c.key);
@@ -55,6 +57,7 @@ function chAvatar(ch){
   a.dataset.k = [a.className, pic, a.firstChild.textContent].join('|');
   return a;
 }
+store.watch('live', () => paintBarAvatars());
 function paintBarAvatars(){
   wins.forEach(w => {
     const old = w.el.querySelector('.bar-av'); if (!old) return;
@@ -105,4 +108,4 @@ hbar.addEventListener('pointerdown', e => {
   th.addEventListener('pointermove', move); th.addEventListener('pointerup', up);
 });
 
-export { chAvatar, loadBarAvatars, paintBarAvatars, refreshPicks, schedulePicks, swapWindows, updateHbar };
+export { chAvatar, loadBarAvatars, refreshPicks, schedulePicks, swapWindows, updateHbar };

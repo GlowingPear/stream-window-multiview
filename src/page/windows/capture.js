@@ -1,9 +1,9 @@
 import '../layout/undo.js';   // runs after it (see app.js)
+import { store } from '../shared/store.js';
 import { $, BAR, ROLE, colsMode, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { createWin } from './windows.js';
 import { setWait } from '../chat/view-menu.js';
-import { updateEmpty } from '../layout/lock.js';
 import { defaultStreamRect } from '../layout/placement.js';
 import { flash } from '../shared/flash.js';
 import { colKey } from '../layout/layouts.js';
@@ -81,7 +81,7 @@ async function fillCapturePicker(){
       if (capTarget){ capTarget.srcId = s.id; capTarget.capName = s.name; capTarget.el.querySelector('.title').textContent = s.name; mountCapture(capTarget); return; }
       const r = defaultStreamRect();
       const w = createWin({ kind: 'capture', srcId: s.id, capName: s.name }, { x: r.x + 40, y: r.y + 40, w: Math.min(r.w, 560), h: Math.min(r.h, 560 * 9 / 16 + BAR) });
-      updateEmpty();
+      store.changed('wins');
       if (capForGame && isGame()){ gameVars.capForGame = false; gameVars.gameMode = 'window'; gameVars.gameKey = colKey(w); saveGame(); gameLayout(); return; }
       gameVars.capForGame = false;
       if (colsMode) columnsLayout(); else if (isGame()) gameLayout();

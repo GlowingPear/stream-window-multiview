@@ -1,11 +1,12 @@
 import '../../start.js';   // runs after it (see app.js)
 import { settings } from '../../shared/settings.js';
+import { store } from '../../shared/store.js';
 import { $, ROLE } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { DESKTOP } from '../../shared/env.js';
 import { PLAT_NAME, chLabel, modUrl, normCh, platOf, platform, rememberName, rememberNames } from '../../platforms/platforms.js';
-import { channelVars, infoFor, liveNow, loadSavedProfiles, notifyAll, notifyOff, persistSaved, renderSaved, saved,
-  sendWatch, toggleSaved } from '../channels/channels.js';
+import { channelVars, infoFor, liveNow, loadSavedProfiles, notifyAll, notifyOff, persistSaved, saved, sendWatch,
+  toggleSaved } from '../channels/channels.js';
 import { bell } from '../bell/bell.js';
 import { addParsed } from '../../layout/placement.js';
 import { flash } from '../../shared/flash.js';
@@ -279,7 +280,7 @@ function pfRenderProf(){
     const on = notifyAll && !notifyOff.includes(ch);
     const bell = pfE('button', 'btn' + (on ? ' on' : '')); bell.innerHTML = (on ? icon.bell : icon.bellOff) + (on ? 'Live alerts on' : 'Live alerts off');
     bell.disabled = !notifyAll; bell.title = !notifyAll ? 'Live notifications are off for every channel (Channels panel)' : on ? 'Notify me when they go live (click to turn off)' : 'No notification for this channel (click to turn on)';
-    bell.onclick = () => { channelVars.notifyOff = notifyOff.includes(ch) ? notifyOff.filter(c => c !== ch) : [...notifyOff, ch]; settings.set('notifyOff', notifyOff); sendWatch(); renderSaved(); pfRenderProf(); };
+    bell.onclick = () => { channelVars.notifyOff = notifyOff.includes(ch) ? notifyOff.filter(c => c !== ch) : [...notifyOff, ch]; settings.set('notifyOff', notifyOff); sendWatch(); store.changed('liveAlerts'); pfRenderProf(); };
     acts.appendChild(bell);
   }
   if (plat === 'kick' && s && s.loggedIn && s.following !== false){

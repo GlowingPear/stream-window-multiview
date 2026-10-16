@@ -1,12 +1,12 @@
 import '../layout/spotlight.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { $, GAP, colWidth, colsMode, coreVars, lastLayout, mutedChk, popped, wins } from '../core.js';
 import { setTb } from '../shared/icons.js';
 import { chLabel } from '../platforms/platforms.js';
 import { SW, focusWin } from '../layout/geometry.js';
 import { createWin } from './windows.js';
 import { releaseWin } from '../chat/view-menu.js';
-import { updateEmpty } from '../layout/lock.js';
 import { defaultStreamRect } from '../layout/placement.js';
 import { flash } from '../shared/flash.js';
 import { chatFocusLayout, featBase, featSwitch, featW, featuredCh, layoutChatsOnly, scrollX, tile } from '../layout/layouts.js';
@@ -50,7 +50,7 @@ function popOutHidden(){
   coreVars.popped = true;
   window.kmv.openStreams(list.map(w => ({ channel: w.channel, vol: w.vol, muted: w.muted })));
   list.forEach(releaseWin);
-  coreVars.wins = wins.filter(w => !list.includes(w)); updatePopBtn(); updateEmpty();
+  coreVars.wins = wins.filter(w => !list.includes(w)); updatePopBtn(); store.changed('wins');
   settings.set('popped', '1');
   columnsLayout();
   flash(`${list.length} stream${list.length > 1 ? 's' : ''} sent to the Streams window`);
@@ -61,7 +61,7 @@ function popOutStreams(){
   window.kmv.openStreams(specs);
   wins.filter(w => w.kind === 'stream').forEach(releaseWin);
   coreVars.wins = wins.filter(w => w.kind !== 'stream');
-  coreVars.popped = true; updatePopBtn(); updateEmpty();
+  coreVars.popped = true; updatePopBtn(); store.changed('wins');
   settings.set('popped', '1');
   layoutChatsOnly();
 }

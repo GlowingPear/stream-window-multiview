@@ -1,4 +1,5 @@
 import './window-bar.js';   // runs after it (see app.js)
+import { store } from '../shared/store.js';
 import { PLAYING, pauseEvents } from './pause-state.js';
 import { askIn, runIn, setMuted } from './view.js';
 import { BAR, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, mutedChk, sizehint, snapChk, stage, wins } from '../core.js';
@@ -11,7 +12,7 @@ import { openBarMenu, watchBar } from './window-bar.js';
 import { mountView, reloadWin, ytCache } from './views.js';
 import { closeWin, resolveYt } from '../chat/view-menu.js';
 import { arrangedByHand } from './raids.js';
-import { locked, refitLocked, toggleMax, updateEmpty } from '../layout/lock.js';
+import { locked, refitLocked, toggleMax } from '../layout/lock.js';
 import { toggleSaved } from '../panels/channels/channels.js';
 import { nh, syncAtBtn, toggleChatMentions } from '../panels/bell/bell.js';
 import { addChatBeside } from '../layout/placement.js';
@@ -226,7 +227,7 @@ function createWin(spec, rect){
   }));
 
   focusWin(w);
-  updateEmpty();
+  store.changed('wins');
   return w;
 }
 

@@ -1,5 +1,6 @@
 import '../../layout/lock.js';   // runs after it (see app.js)
 import { settings } from '../../shared/settings.js';
+import { store } from '../../shared/store.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -11,7 +12,6 @@ import { alerts } from '../../alerts/alerts.js';
 import { addParsed } from '../../layout/placement.js';
 import { flash } from '../../shared/flash.js';
 import { autoLayout, chatFocusLayout } from '../../layout/layouts.js';
-import { paintBarAvatars } from '../../windows/channel-picker.js';
 import { columnsLayout } from '../../layout/columns.js';
 import { activeP } from '../../layout/saved-layouts.js';
 import { esRefresh } from '../empty-stage/empty-stage.js';
@@ -24,7 +24,7 @@ const abc = list => [...new Set(list)].sort((x, y) => x.localeCompare(y, undefin
 let saved = [];
 try { saved = abc(settings.json(SAVED, [])); } catch {}
 let liveInfo = {};                                  // channel -> { live, title, viewers, category, name, checked }
-function gotLive(snap){ liveInfo = snap || {}; rememberNames(infoNames(liveInfo)); renderSaved(); paintBarAvatars(); checkAutoOpen(); if (!wins.length) esRefresh(); }
+function gotLive(snap){ liveInfo = snap || {}; rememberNames(infoNames(liveInfo)); store.changed('live'); checkAutoOpen(); if (!wins.length) esRefresh(); }
 let notifyAll = true, notifyOff = [];
 notifyAll = settings.flag('notifyAll', true); notifyOff = settings.json('notifyOff', []);
 function sendWatch(){
@@ -33,15 +33,16 @@ function sendWatch(){
 function persistSaved(){
   saved = abc(saved);
   settings.set(SAVED, saved);
-  renderSaved(); refreshStars(); sendWatch();
+  store.changed('saved'); sendWatch();
 }
 function toggleSaved(ch){
   saved = saved.includes(ch) ? saved.filter(c => c !== ch) : [...saved, ch];
   persistSaved();
 }
 settings.onChange(SAVED, (_, v) => {            // a star clicked in the other window
-  try { saved = abc(JSON.parse(v || '[]')); } catch {} renderSaved(); refreshStars(); sendWatch();
+  try { saved = abc(JSON.parse(v || '[]')); } catch {} store.changed('saved'); sendWatch();
 });
+store.watch(['saved', 'wins'], () => refreshStars());
 function refreshStars(){
   wins.forEach(w => {
     const b = w.el.querySelector('[data-a=star]'); if (!b) return;
@@ -79,7 +80,7 @@ function toggleAutoOpen(ch){
   autoOpen = autoOpen.includes(ch) ? autoOpen.filter(c => c !== ch) : [...autoOpen, ch];
   settings.set('autoOpen', autoOpen);
   if (autoOpen.includes(ch)) checkAutoOpen(); else autoDone.delete(ch);
-  renderSaved();
+  store.changed('autoOpen');
 }
 /* A saved channel went live: kept under the bell (Live). Opening by itself (checkAutoOpen) and the went-live
    message can come in either order, so they share one notification. */
@@ -130,6 +131,9 @@ function loadSavedProfiles(){
 const svInitials = n => { const w = String(n).replace(/^@/, '').split(/[\s_.\-]+/).filter(Boolean); return ((w.length > 1 ? w[0][0] + w[1][0] : String(n).slice(0, 2)) || '?').toUpperCase(); };
 const svHue = ch => { let h = 0; for (const c of String(ch)) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 35% 36%)`; };
 const savedQuery = () => { const q = ($('#savedInput') || {}).value || ''; return /[/:]/.test(q) ? '' : q.trim().replace(/^@/, '').toLowerCase(); };
+// The Channels list shows the saved channels, their live status and names, which are open, the Channels box's
+// search and tab, and each one's auto-open and live alert.
+store.watch(['saved', 'live', 'wins', 'names', 'channelsBox', 'autoOpen', 'liveAlerts'], () => renderSaved());
 function renderSaved(){
   updateSavedBadge();
   const list = $('#savedList'); if (!list) return;
@@ -199,7 +203,7 @@ function renderSaved(){
         e.stopPropagation();
         notifyOff = notifyOff.includes(ch) ? notifyOff.filter(c => c !== ch) : [...notifyOff, ch];
         settings.set('notifyOff', notifyOff);
-        sendWatch(); renderSaved();
+        sendWatch(); store.changed('liveAlerts');
       };
       acts.appendChild(bell);
     }
@@ -220,5 +224,5 @@ function renderSaved(){
 }
 
 export { autoFit, channelVars, fitOn, fmtViewers, gotLive, infoFor, liveInfo, liveNote, liveNow, loadSavedProfiles,
-  notifyAll, notifyOff, persistSaved, refreshStars, renderSaved, saved, savedTab, sendWatch, setAutoFit, svHue,
-  svInitials, svProf, tabPlat, toggleSaved };
+  notifyAll, notifyOff, persistSaved, renderSaved, saved, savedTab, sendWatch, setAutoFit, svHue, svInitials, svProf,
+  tabPlat, toggleSaved };

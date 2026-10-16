@@ -3,12 +3,11 @@ import { kick } from './kick.js';
 import { twitch } from './twitch.js';
 import { youtube } from './youtube.js';
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { addCss, runIn } from '../windows/view.js';
 import { wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { mountView } from '../windows/views.js';
-import { renderSaved } from '../panels/channels/channels.js';
-import { schedulePicks } from '../windows/channel-picker.js';
 import { syncLike } from './youtube-options.js';
 
 /* ---------- URL parsing ---------- */
@@ -52,8 +51,7 @@ function rememberNames(names){
 const rememberName = (ch, name) => rememberNames({ [ch]: name });
 function namesChanged(chs){
   wins.forEach(w => { if (chs.includes(w.channel)) w.el.querySelector('.title').textContent = chLabel(w.channel); });
-  schedulePicks();
-  renderSaved();
+  store.changed('names');
 }
 settings.onChange(NAMES, (_, v) => {          // learned in the other window
   let got = {}; try { got = JSON.parse(v || '{}') || {}; } catch {}

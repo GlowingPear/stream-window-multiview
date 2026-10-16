@@ -1,8 +1,8 @@
 import '../panels/empty-stage/empty-stage.js';   // runs after it (see app.js)
+import { store } from '../shared/store.js';
 import { $, coreVars, wins } from '../core.js';
 import { setTb } from '../shared/icons.js';
 import { releaseWin } from '../chat/view-menu.js';
-import { updateEmpty } from '../layout/lock.js';
 import { spamFirst } from '../alerts/spam-alerts.js';
 import { autoLayout, chatFocusLayout, tile } from '../layout/layouts.js';
 import { save } from '../persistence.js';
@@ -12,7 +12,7 @@ import { ask } from '../shared/ask.js';
 $('#auto').onclick = () => { coreVars.lastLayout = 'auto'; autoLayout(); };
 $('#chatFocus').onclick = () => chatFocusLayout();
 $('#tile').onclick = tile;
-$('#clear').onclick = async () => { if (wins.length && await ask('Close all windows?', 'Every stream, chat and other window closes. Undo brings them back.', { ok: 'Close all', danger: true })) { [...wins].forEach(releaseWin); coreVars.wins = []; spamFirst.clear(); updateEmpty(); save(); } };
+$('#clear').onclick = async () => { if (wins.length && await ask('Close all windows?', 'Every stream, chat and other window closes. Undo brings them back.', { ok: 'Close all', danger: true })) { [...wins].forEach(releaseWin); coreVars.wins = []; spamFirst.clear(); store.changed('wins'); save(); } };
 // Hide bar: the toolbar slides away (it peeks out when the mouse touches the top edge). The same button,
 // Esc and H bring it back.
 // On macOS the traffic lights go with it: away as soon as it starts sliding off, back once it has slid in.

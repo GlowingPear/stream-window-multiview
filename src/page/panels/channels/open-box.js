@@ -1,7 +1,8 @@
 import './follow-suggestions.js';   // runs after it (see app.js)
+import { store } from '../../shared/store.js';
 import { $, input } from '../../core.js';
 import { PLAT_NAME, chLabel, parseInput, platOf } from '../../platforms/platforms.js';
-import { loadSavedProfiles, persistSaved, renderSaved, saved, tabPlat } from './channels.js';
+import { loadSavedProfiles, persistSaved, saved, tabPlat } from './channels.js';
 import { addParsed } from '../../layout/placement.js';
 import { flash } from '../../shared/flash.js';
 
@@ -22,6 +23,7 @@ function addTarget(){
   if (!p) return null;
   return { raw, p, bare, plat: p.channel ? platOf(p.channel) : '', name: p.channel ? chLabel(p.channel) : (p.url || raw).replace(/^https?:\/\//, '') };
 }
+store.watch('channelsBox', () => renderAddRow());
 function renderAddRow(){
   const t = addTarget(), row = $('#spAddRow');
   $('#spErr').hidden = true;
@@ -60,8 +62,8 @@ async function openFromBox(saveToo){
   }
   if (saveToo && ch && !saved.includes(ch)){ saved.push(ch); persistSaved(); loadSavedProfiles(); }
   input.value = ''; addPlat = null;
-  renderAddRow(); renderSaved();
+  store.changed('channelsBox');
   addParsed(t.p);
 }
 
-export { addPlat, openBoxVars, openFromBox, renderAddRow };
+export { addPlat, openBoxVars, openFromBox };

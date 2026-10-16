@@ -1,9 +1,10 @@
 import '../../shared/flash.js';   // runs after it (see app.js)
 import { settings } from '../../shared/settings.js';
+import { store } from '../../shared/store.js';
 import { $, ROLE, msg } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { DESKTOP } from '../../shared/env.js';
-import { channelVars, notifyAll, renderSaved, sendWatch } from '../channels/channels.js';
+import { channelVars, notifyAll, sendWatch } from '../channels/channels.js';
 import { bellCount, bellVars, dndOn, dndT, dndUntil, updateBellBtn } from '../bell/bell.js';
 import { ALERT_KINDS, alerts } from '../../alerts/alerts.js';
 import { desktopNotify, flash, flashVars } from '../../shared/flash.js';
@@ -46,7 +47,7 @@ function syncLiveAlerts(){
   channelVars.notifyAll = alerts.live.notify !== 'never';
   settings.set('notifyAll', notifyAll);
   const na = $('#notifyAll'); if (na) na.checked = notifyAll;
-  sendWatch(); renderSaved();
+  sendWatch(); store.changed('liveAlerts');
 }
 // Do not disturb: still collected under the bell, but quiet. The desktop notifications stop in the app itself too.
 const dndOnEl = $('#dndOn'), dndFor = $('#dndFor');
