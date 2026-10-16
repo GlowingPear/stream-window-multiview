@@ -1,5 +1,5 @@
 import '../../layout/game-focus.js';   // runs after it (see app.js)
-import { esc } from '../../shared/element.js';
+import { element, esc } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
 import { $ } from '../../core.js';
 import { icon } from '../../shared/icons.js';
@@ -84,10 +84,9 @@ function renderThemeList(){
   const list = themeDlg.querySelector('.th-list');
   list.innerHTML = '';
   const row = (t, mine) => {
-    const b = document.createElement('div'); b.className = 'th-item' + (!theme.edited && theme.name === t.name ? ' on' : ''); b.tabIndex = 0;
-    b.innerHTML = swatch(t.vars) + `<span class="th-txt"><b></b>${t.note ? '<small></small>' : ''}</span>` + (mine ? `<button class="th-del" title="Delete this theme">${icon.close}</button>` : '');
-    b.querySelector('b').textContent = t.name;
-    if (t.note) b.querySelector('small').textContent = t.note;
+    const b = element('div', { class: 'th-item' + (!theme.edited && theme.name === t.name ? ' on' : ''), tabIndex: 0, html: swatch(t.vars) },
+      element('span', 'th-txt', element('b', null, t.name), t.note && element('small', null, t.note)),
+      mine && element('button', { class: 'th-del', title: 'Delete this theme', html: icon.close }));
     b.onclick = async e => {
       if (e.target.closest('.th-del')){
         if (!await ask(`Delete the theme “${t.name}”?`, 'This can\'t be undone.', { ok: 'Delete', danger: true })) return;
