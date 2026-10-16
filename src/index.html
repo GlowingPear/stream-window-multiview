@@ -5852,7 +5852,10 @@ function pushSwitcherState(force){
   const core = switcherCore(), sig = JSON.stringify(core);
   if (!force && sig === swLastSig) return;
   swLastSig = sig;
-  if (!swCss) swCss = [...document.querySelectorAll('style')].map(x => x.textContent).join('\n');
+  if (!swCss) swCss = {   // this window's look: its CSS files (the switcher loads them too, from the same folder) and <style> text
+    files: [...document.querySelectorAll('link[rel=stylesheet]')].map(l => l.getAttribute('href')),
+    text: [...document.querySelectorAll('style')].map(x => x.textContent).join('\n')
+  };
   window.kmv.sendSwitcherState({ ...core, css: swCss, icons: icon, scripts: { vol: VOL_JS, ytcss: YT_CSS, ytfit: YT_FIT_JS } });
 }
 if (DESKTOP && ROLE === 'main' && window.kmv.onSwitcherCmd){
