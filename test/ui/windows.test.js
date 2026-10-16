@@ -13,9 +13,10 @@ async function twoStreams(t) {
   await page.waitForTimeout(400);
   return page;
 }
-const grab = b => ({ x: b.x + 13, y: b.y + 12 });                  // the dot at the start of the title bar
 const corner = b => ({ x: b.x + b.w - 3, y: b.y + b.h - 3 });
-async function moveBy(page, loc, dx, dy) { const p = grab(await box(loc)); await drag(page, p, { x: p.x + dx, y: p.y + dy }); }
+// the empty part of the title bar (the picture at its start opens the channel list)
+const grab = async loc => { const g = await box(loc.locator('.bar .grab')); return { x: g.x + g.w / 2, y: g.y + g.h / 2 }; };
+async function moveBy(page, loc, dx, dy) { const p = await grab(loc); await drag(page, p, { x: p.x + dx, y: p.y + dy }); }
 async function sizeTo(page, loc, w, h) { const b = await box(loc); await drag(page, corner(b), { x: b.x + w - 3, y: b.y + h - 3 }); }
 
 test('drag a window by its title bar; it snaps to another window\'s edge, unless Snap is off', async t => {
@@ -323,7 +324,8 @@ test('Lock layout, Auto layout: no resizing or moving; drag a stream onto a stre
 
   // dragging alpha over charlie: charlie lights up with "Swap alpha ⇄ charlie", an outline where charlie will land
   const ab = await box(a), cb = await box(win(page, 'charlie'));
-  await page.mouse.move(ab.x + 13, ab.y + 12); await page.mouse.down();
+  const ag = await grab(a);
+  await page.mouse.move(ag.x, ag.y); await page.mouse.down();
   await page.mouse.move(cb.x + cb.w / 2, cb.y + cb.h / 2, { steps: 10 });
   const during = await page.evaluate(() => {
     const lit = [...document.querySelectorAll('#stage .win.swap-target')].map(e => e.className.split(' ')[1] + ':' + e.querySelector('.title').textContent);
@@ -351,7 +353,7 @@ test('Lock layout, Auto layout: no resizing or moving; drag a stream onto a stre
 
   // a chat onto a chat swaps those two
   const ach = await box(win(page, 'alpha', 'chat')), bch = await box(win(page, 'bravo', 'chat'));
-  await drag(page, { x: ach.x + 13, y: ach.y + 12 }, { x: bch.x + bch.w / 2, y: bch.y + bch.h / 2 }, { steps: 10 }); await settle();
+  await drag(page, await grab(win(page, 'alpha', 'chat')), { x: bch.x + bch.w / 2, y: bch.y + bch.h / 2 }, { steps: 10 }); await settle();
   assert.deepEqual([await box(win(page, 'alpha', 'chat')), await box(win(page, 'bravo', 'chat'))], [bch, ach]);
 
   // closing bravo: Auto layout refits around what's left, keeping the swapped order
@@ -401,4 +403,35 @@ test('Chat focus: while dragging, the stream and its chat light up, with the swa
   assert.equal(await page.$eval('#stage .win.stream.swap-target .shield', e => e.dataset.swap), 'Swap alpha ⇄ bravo');
   await page.mouse.up(); await page.waitForTimeout(400);
   assert.deepEqual(await page.$$eval('#stage .win.swap-target', l => l.length), 0);
+});
+
+test('a channel window\'s name dropdown starts with the channel\'s picture: its site, live or offline; other windows keep the dot', async t => {
+  const page = await openApp(t);
+  await page.evaluate(() => localStorage.setItem('kickMultiview.saved', JSON.stringify(['alpha', 'tw:bravo'])));
+  await page.reload();
+  await mode(page, 'stream');
+  await add(page, 'alpha', 'twitch:bravo', 'charlie', 'https://example.com/page');
+  await page.waitForSelector('#stage .win.web');
+  const bars = () => page.$$eval('#stage .win', l => l.map(e => {
+    const a = e.querySelector('.bar .bar-av');
+    return a ? [e.querySelector('.col-pick').value, a.firstChild.textContent, a.querySelector('.pi').textContent, a.classList.contains('live') ? 'live' : a.classList.contains('off') ? 'off' : '?', !!e.querySelector('.bar .dot')]
+      : ['web', !!e.querySelector('.bar .dot')];
+  }));
+  await page.waitForFunction(() => document.querySelectorAll('#stage .bar .ch-av').length === 3);
+  assert.deepEqual(await bars(), [['alpha', 'AL', 'K', '?', false], ['tw:bravo', 'BR', 'T', '?', false], ['charlie', 'CH', 'K', '?', false], ['web', true]],
+    'initials until there\'s a picture; nothing known about live yet');
+  // the live check: a red ring while live, greyed out when offline (channels it doesn't check stay as they are)
+  await page.evaluate(() => smvNotes.liveStatus({ alpha: { live: true, checked: Date.now() }, 'tw:bravo': { live: false, checked: Date.now() } }));
+  assert.deepEqual((await bars()).map(b => b[3]), ['live', 'off', '?', undefined]);
+  // unchanged: the same picture stays (not drawn again)
+  await page.evaluate(() => { window.__av = document.querySelector('#stage .bar .bar-av'); });
+  await page.evaluate(() => smvNotes.liveStatus({ alpha: { live: true, checked: Date.now() }, 'tw:bravo': { live: false, checked: Date.now() } }));
+  assert.equal(await page.evaluate(() => window.__av === document.querySelector('#stage .bar .bar-av')), true);
+  // it's part of the dropdown: the name starts after it, and clicking it opens the list, with a picture on each row
+  const [av, pick] = await Promise.all([win(page, 'alpha').locator('.bar-av').boundingBox(), win(page, 'alpha').locator('.col-pick').boundingBox()]);
+  assert.ok(av.x > pick.x && av.x + av.width < pick.x + 25, 'inside the dropdown\'s left end');
+  await page.mouse.click(av.x + av.width / 2, av.y + av.height / 2);
+  await page.waitForSelector('.dd-list');
+  assert.deepEqual(await page.$$eval('.dd-list button .ch-av', l => l.map(a => a.className)), ['ch-av live', 'ch-av off', 'ch-av']);
+  await page.keyboard.press('Escape');
 });
