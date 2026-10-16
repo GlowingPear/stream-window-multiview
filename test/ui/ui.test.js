@@ -477,9 +477,9 @@ test('everything else with a title gets the app\'s tooltip too, never the browse
   await page.hover('#savedBtn');   // a button with words
   await page.waitForFunction(() => document.querySelector('#tip.on') && document.querySelector('#tip').textContent === "Your channels: open one, add a new one, see who's live");
   assert.equal(await titled('#savedBtn'), null);
-  await page.hover('#stage .win.stream.plat-kick .bar .dot');   // the window bar's title: which channel and window this is
+  await page.hover('#stage .win.stream.plat-kick .bar .grab');   // the window bar's title: which channel and window this is
   await page.waitForFunction(() => document.querySelector('#tip.on') && /alpha/.test(document.querySelector('#tip').textContent));
-  assert.equal(await titled('#stage .win.stream.plat-kick .bar .dot'), null);
+  assert.equal(await titled('#stage .win.stream.plat-kick .bar .grab'), null);
   await page.mouse.move(800, 600);
   assert.equal(await page.getAttribute('#savedBtn', 'title'), "Your channels: open one, add a new one, see who's live", 'titles are put back');
 });

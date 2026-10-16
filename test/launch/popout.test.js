@@ -52,8 +52,8 @@ test('Pop out streams: streams move to their own window with Tile, Spotlight and
   assert.ok(sizes.bravo > sizes.alpha * 2, 'Spotlight: the one you clicked is big');
 
   // drag one stream onto another: they swap spots
-  const al = await box(sw, winSel('alpha')), br = await box(sw, winSel('bravo'));
-  await sw.mouse.move(al.x + 6, al.y + 12); await sw.mouse.down();      // the bar's left edge (its middle can be the channel dropdown)
+  const al = await box(sw, `${winSel('alpha')} .bar .grab`), br = await box(sw, winSel('bravo'));
+  await sw.mouse.move(al.x + al.w / 2, al.y + al.h / 2); await sw.mouse.down();      // the bar's empty part, not its channel dropdown
   await sw.mouse.move(br.x + br.w / 2, br.y + br.h / 2, { steps: 10 }); await sw.mouse.up();
   await sw.waitForFunction(() => {                      // the swap animates: wait for it (longer on a busy machine)
     const w = Object.fromEntries([...document.querySelectorAll('#stage .win.stream')].map(e => [e.querySelector('.title').textContent, e.offsetWidth]));

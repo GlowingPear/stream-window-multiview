@@ -6,7 +6,9 @@ const { setup, add, mode, win } = require('./app');
 
 const { openApp } = setup();
 const list = '.dd-list';
-const items = page => page.$$eval(`${list} button`, l => l.map(b => (b.classList.contains('on') ? '*' : '') + (b.classList.contains('hl') ? '>' : '') + b.textContent));
+// each row's words (a window's channel list also has the channel's picture in front)
+const items = page => page.$$eval(`${list} button`, l => l.map(b => (b.classList.contains('on') ? '*' : '') + (b.classList.contains('hl') ? '>' : '')
+  + [...b.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('')));
 
 test('a click opens the list instead of the system menu; picking sets the value and tells the page', async t => {
   const page = await openApp(t);
@@ -98,7 +100,8 @@ test('a window\'s channel dropdown swaps it with another window', async t => {
   const before = await where();
   await pick.click();
   assert.deepEqual(await items(page), ['*>alpha', 'bravo']);
-  await page.click(`${list} button:text-is("bravo")`);
+  assert.equal(await page.locator(`${list} button .ch-av`).count(), 2, 'with their pictures');
+  await page.click(`${list} button:has-text("bravo")`);
   await page.waitForFunction(b => document.querySelector('#stage .win.stream').offsetLeft !== b, before.alpha).catch(() => {});
   await page.waitForTimeout(400);                    // windows animate to their new places
   const after = await where();
