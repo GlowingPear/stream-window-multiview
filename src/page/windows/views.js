@@ -1,4 +1,5 @@
 import { clearAlert } from '../alerts/alerts.js';
+import { blowOn, blowUp, blownWin } from '../chat/blow-up.js';
 import { chatZoom } from '../chat/chat-zoom.js';
 import { autoTrFor } from '../chat/translate.js';
 import { resolveYt } from '../chat/view-menu.js';
@@ -71,6 +72,7 @@ function mountView(w){
     frame.addEventListener('focus', () => {                                     // you clicked into it
       if (Date.now() - (frame.skipAt || 0) < 1000) return;                       // Skip YouTube ads did
       focusWin(w); clearAlert(w); readChat(w.channel);
+      if (w.kind === 'chat' && blowOn) blowUp(w);                                // Blow up chat on click (switch control)
     });
     // a raid moves the chat (or player) to another channel: follow it with every window of this channel
     const nav = e => { if (e.isMainFrame !== false && w.view === frame){ watchRaid(w, e.url); watchStuck(w); } };
@@ -94,6 +96,7 @@ function mountView(w){
       else setMuted(frame, false);
       if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); watchStuck(w); }
       if (w.kind === 'chat') setZoom(frame, chatZoom());
+      if (w.kind === 'chat' && w === blownWin()) blowUp(w, true);
       if (w.kind === 'chat') { const css = platform(w.channel).chatCss; if (css) addCss(frame, css); }
       if (w.kind === 'chat' && ROLE === 'main') injectMention(w);
       if (w.kind === 'chat') runIn(frame, `${EMOTE_JS};window.__kmvEmote.on(${emoteOn})`);

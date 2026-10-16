@@ -16,7 +16,11 @@ function askIn(view, js){
 function addCss(view, css){
   try { return Promise.resolve(view.insertCSS(css)).catch(() => {}); } catch { return Promise.resolve(); }
 }
+// The page's zoom. Chromium shares it between every page of the same site (all Kick chats get the same one).
 function setZoom(view, factor){ try { view.setZoomFactor(factor); } catch {} }
+// This view only, on top of setZoom: the view is drawn this many times bigger, its page laid out to fit (sharp, and
+// the page still fits the window). For making one chat bigger than the others of its site.
+function setViewScale(view, factor){ if (view && view.style) view.style.zoom = factor === 1 ? '' : String(factor); }
 function zoomOf(view){ try { return view && view.getZoomFactor ? view.getZoomFactor() || 1 : 1; } catch { return 1; } }
 function setMuted(view, on){ try { view.setAudioMuted(on); } catch {} }
 function reloadView(view){ try { view.reload(); } catch {} }
@@ -28,4 +32,4 @@ function loadView(view, url){
 // The view's id in the desktop app (the main process names views by it), or null
 function viewId(view){ try { return view && view.getWebContentsId ? view.getWebContentsId() : null; } catch { return null; } }
 
-export { addCss, askIn, loadView, reloadView, runIn, setMuted, setZoom, viewId, zoomOf };
+export { addCss, askIn, loadView, reloadView, runIn, setMuted, setViewScale, setZoom, viewId, zoomOf };

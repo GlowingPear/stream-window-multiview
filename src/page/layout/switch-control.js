@@ -1,3 +1,4 @@
+import { blowOn, toggleBlowMode } from '../chat/blow-up.js';
 import { ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { VOL_JS } from '../in-site/volume.js';
 import { backToChatFocus } from './chat-focus.js';
@@ -95,7 +96,7 @@ const switchVars = {
 function switcherCore(){
   const featOn = isFocusView();
   return {
-    featOn, sideCols, focusOnly, chatFocus: !colsMode && lastLayout === 'chatfocus', plainCols: colsMode && !featOn,
+    featOn, sideCols, focusOnly, blowOn, chatFocus: !colsMode && lastLayout === 'chatfocus', plainCols: colsMode && !featOn,
     hidden: featOn ? hiddenStreams().length : 0,
     items: buildCols().filter(c => isVid(c.top)).map(c => {
       const s = c.top;
@@ -216,6 +217,7 @@ function init(){
         case 'tocf': backToChatFocus(); break;
         case 'pophid': popOutHidden(); break;
         case 'focusonly': toggleFocusOnly(); break;
+        case 'blowup': toggleBlowMode(); break;
         case 'dock': setSwitchMode('dock'); break;
         case 'float': setSwitchMode('float'); break;
       }

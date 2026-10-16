@@ -1,4 +1,5 @@
 import { forgetChat } from '../alerts/spam-alerts.js';
+import { blownWin, putBack } from './blow-up.js';
 import { winOfView } from './translate.js';
 import { coreVars, wins } from '../core.js';
 import { dropMini } from '../layout/switch-control.js';
@@ -144,6 +145,7 @@ async function resolveYt(w){
 
 // Everything a window holds besides its element: timers, a screen capture, its mini preview.
 function releaseWin(w){
+  if (w === blownWin()) putBack();
   stopWinTimers(w);
   stopCapture(w);
   if (typeof dropMini === 'function') dropMini(w);
