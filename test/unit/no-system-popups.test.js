@@ -9,7 +9,7 @@ const path = require('path');
 
 const SRC = path.join(__dirname, '..', '..', 'src');
 const BANNED = [
-  [/(?<![\w.$])(?:window\.)?(alert|confirm|prompt)\s*\(/g, 'the browser\'s $1(): use ask() or flash() in index.html'],
+  [/(?<![\w.$])(?:window\.)?(alert|confirm|prompt)\s*\(/g, 'the browser\'s $1(): use ask() or flash() (src/page/shared/)'],
   [/<datalist\b|<input\b[^>]*\slist=/g, 'a <datalist> suggestion list'],
   [/\bMenu\.popup\b|\.popup\s*\(\s*\{/g, 'a system menu (Menu.popup)'],
   [/\bdialog\.show(MessageBox|MessageBoxSync|ErrorBox)\b/g, 'a system message box (dialog.show$1): use the app\'s own dialog'],
@@ -34,8 +34,8 @@ function findPopups(file, text) {
 }
 
 test('nothing in src/ opens a system pop-up', () => {
-  const files = fs.readdirSync(SRC).filter(f => /\.(html|js)$/.test(f));
-  assert.ok(files.includes('index.html') && files.includes('main.js'));
+  const files = fs.readdirSync(SRC, { recursive: true }).map(f => f.split(path.sep).join('/')).filter(f => /\.(html|js)$/.test(f));
+  assert.ok(files.includes('index.html') && files.includes('main.js') && files.includes('page/shared/ask.js'));
   const found = files.flatMap(f => findPopups('src/' + f, fs.readFileSync(path.join(SRC, f), 'utf8')));
   assert.deepEqual(found, [], 'system pop-ups found:\n' + found.join('\n'));
 });
@@ -57,9 +57,9 @@ test('the check finds each kind, and leaves comments and the file\'s own functio
   ].join('\n');
   const found = findPopups('x.js', sample).map(l => l.replace(/:.*?: /, ': '));
   assert.deepEqual(found, [
-    "x.js: the browser's confirm(): use ask() or flash() in index.html",
-    "x.js: the browser's alert(): use ask() or flash() in index.html",
-    "x.js: the browser's prompt(): use ask() or flash() in index.html",
+    "x.js: the browser's confirm(): use ask() or flash() (src/page/shared/)",
+    "x.js: the browser's alert(): use ask() or flash() (src/page/shared/)",
+    "x.js: the browser's prompt(): use ask() or flash() (src/page/shared/)",
     'x.js: a <datalist> suggestion list',
     'x.js: a <datalist> suggestion list',
     'x.js: a system menu (Menu.popup)',
