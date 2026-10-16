@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <title>Stream Multiview – Switch control</title>
 <link rel="icon" href="icon.png">
-<!-- The main window's look arrives with the first update (so both always match). -->
+<!-- The main window's look arrives with the first update (so both always match): its CSS files go in
+     before this, its <style> text in it. -->
 <style id="appCss"></style>
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#0a0c0d;color:#e9eef0;font:13px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -32,13 +33,24 @@ const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 
 api.onSwitcherPinned(on => { pinned = !!on; const b = fsw.querySelector('.fs-pin'); if (b) b.classList.toggle('on', pinned); });
 api.onSwitcherState(s => {
-  if (s.css && document.getElementById('appCss').textContent !== s.css) document.getElementById('appCss').textContent = s.css;
+  if (s.css) applyCss(s.css);
   if (s.icons) icon = s.icons;
   if (s.scripts) scripts = s.scripts;
   st = s;
   const sig = JSON.stringify([s.featOn, s.chatFocus, s.plainCols, s.items.map(i => [i.ch, i.label, i.plat, i.on, i.preview, i.mini])]);
   if (sig !== structSig){ structSig = sig; render(); } else update();
 });
+
+let cssFiles = '';
+function applyCss(css){
+  const at = document.getElementById('appCss'), files = css.files || [];
+  if (files.join('\n') !== cssFiles){
+    cssFiles = files.join('\n');
+    document.querySelectorAll('link.app-css').forEach(l => l.remove());
+    for (const href of files){ const l = document.createElement('link'); l.rel = 'stylesheet'; l.className = 'app-css'; l.href = href; at.before(l); }
+  }
+  if (at.textContent !== (css.text || '')) at.textContent = css.text || '';
+}
 
 let lastW = 0;
 new ResizeObserver(() => { if (st && Math.abs(fsw.clientWidth - lastW) > 2){ render(); } else placeMinis(); }).observe(fsw);
