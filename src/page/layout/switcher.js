@@ -1,4 +1,5 @@
 import './columns.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { icon } from '../shared/icons.js';
 import { DESKTOP, keyName } from '../shared/env.js';
@@ -237,7 +238,7 @@ function fsMute(s, solo){
 }
 function setSideCols(n){
   columnVars.sideCols = Math.max(0, Math.min(5, +n || 0));
-  try { localStorage.setItem('kickMultiview.sideCols', String(sideCols)); } catch {}
+  settings.set('sideCols', sideCols);
   layoutVars.scrollX = 0; columnsLayout();
 }
 // Swap two streams' places (and their chats) from the switch control, in any layout.
@@ -250,7 +251,7 @@ function swapStreams(a, b){
   } else if (lastLayout === 'chatfocus'){
     const order = buildCols().map(c => c.key), i = order.indexOf(a), j = order.indexOf(b);
     if (i >= 0 && j >= 0){ [order[i], order[j]] = [order[j], order[i]]; layoutVars.colOrder = order; }
-    try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
+    settings.set('colOrder', colOrder);
     chatFocusLayout();
   } else {
     const wa = vidByKey(a), wb = vidByKey(b);

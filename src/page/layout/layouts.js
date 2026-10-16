@@ -1,4 +1,5 @@
 import '../panels/settings/notifications.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { $, BAR, GAP, ROLE, colWidth, colsMode, coreVars, stage, streamCols, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { chLabel } from '../platforms/platforms.js';
@@ -149,9 +150,9 @@ let colX0 = GAP / 2, featW = 0, featBase = [];
 let colOrder = [], linked = true, featuredCh = null;
 let scrollX = 0, maxScroll = 0, snapT = 0, scrollRaf = 0;
 const HBAR = 14, SWITCH_MIN = 54;
-try { colOrder = JSON.parse(localStorage.getItem('kickMultiview.colOrder') || '[]'); } catch {}
-try { linked = localStorage.getItem('kickMultiview.linked') !== '0'; } catch {}
-try { featuredCh = localStorage.getItem('kickMultiview.featured') || null; } catch {}
+colOrder = settings.json('colOrder', []);
+linked = settings.flag('linked', true);
+featuredCh = settings.text('featured', null);
 const colKey = w => w.kind === 'web' ? 'web:' + w.id : w.kind === 'capture' ? 'cap:' + w.id : w.channel;
 // "Videos": streams and other apps' windows. Both can be in the switch control and be the big one.
 const isVid = w => !!w && (w.kind === 'stream' || w.kind === 'capture');
@@ -165,11 +166,11 @@ fsResize.title = 'Drag to resize';
 // Where the switch control lives: 'dock' (under the big stream in Focus view), 'float' (a panel you
 // can drag anywhere in this window, in any layout) or 'window' (its own window, e.g. on another monitor).
 let switchMode = 'dock', switchRect = { x: null, y: null, w: 680, h: 380 };
-try {
-  const m = localStorage.getItem('kickMultiview.switchMode');
+{
+  const m = settings.get('switchMode');
   if (ROLE === 'main' && (m === 'float' || (m === 'window' && DESKTOP))) switchMode = m;
-  Object.assign(switchRect, JSON.parse(localStorage.getItem('kickMultiview.switchRect') || '{}'));
-} catch {}
+  Object.assign(switchRect, settings.json('switchRect', {}));
+}
 const hbar = mkDiv('hscroll', '<div class="thumb"></div>');       // our own sideways scrollbar
 // Strip just above the columns: ‹ [which stream ▾] › to step or jump between them.
 const colStrip = mkDiv('colStrip', '<button class="cs-btn" data-d="-1" title="Previous stream" aria-label="Previous stream">‹</button>' +
@@ -195,7 +196,7 @@ const layoutVars = {
 };
 colStrip.addEventListener('click', e => {
   const b = e.target.closest('.cs-btn'); if (b) scrollCols(+b.dataset.d);
-  if (e.target.closest('.cs-mode')){ scrollVars.pageStep = !pageStep; try { localStorage.setItem('kickMultiview.pageStep', pageStep ? '1' : '0'); } catch {} updatePageBtn(); }
+  if (e.target.closest('.cs-mode')){ scrollVars.pageStep = !pageStep; settings.set('pageStep', pageStep); updatePageBtn(); }
 });
 // Mouse wheel over the strip steps like the arrows (one notch = one click).
 let stripWheelAt = 0;
@@ -218,16 +219,16 @@ function setColsMode(on){
     clearFeaturedLook();
     wins.forEach(w => w.el.classList.remove('link-top', 'link-bot'));
   }
-  try { if (ROLE === 'main') on ? localStorage.setItem('kickMultiview.cols', '1') : localStorage.removeItem('kickMultiview.cols'); } catch {}
+  if (ROLE === 'main') settings.set('cols', on ? '1' : null);
   updateLayoutMenu(); updateLinkBtn();
   if (typeof updateModeClass === 'function') updateModeClass();
 }
-const builtinLinked = () => { try { return localStorage.getItem('kickMultiview.linked') !== '0'; } catch { return true; } };
+const builtinLinked = () => settings.flag('linked', true);
 // From the Layout menu: changes the layout in use (a saved layout keeps its own)
 function setLinked(on){
   const ap = activeP();
   if (ap) setPresetOpt(ap, 'linked', on);
-  else { try { localStorage.setItem('kickMultiview.linked', on ? '1' : '0'); } catch {} liveLinked(on); }
+  else { settings.set('linked', on); liveLinked(on); }
 }
 function liveLinked(on){
   linked = on;
@@ -238,7 +239,7 @@ function liveLinked(on){
 function updateLinkBtn(){ $('#lmLinked').checked = linked; $('#lyLinked').checked = builtinLinked(); }
 function setFeatured(ch){
   featuredCh = ch;
-  try { ch ? localStorage.setItem('kickMultiview.featured', ch) : localStorage.removeItem('kickMultiview.featured'); } catch {}
+  settings.set('featured', ch || null);
   refreshFeatButtons();
 }
 function toggleFeatured(ch){

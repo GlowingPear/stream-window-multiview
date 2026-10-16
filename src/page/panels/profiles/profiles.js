@@ -1,4 +1,5 @@
 import '../../start.js';   // runs after it (see app.js)
+import { settings } from '../../shared/settings.js';
 import { $, ROLE } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -20,7 +21,7 @@ import { ask, askChecked } from '../../shared/ask.js';
    number says where it comes from, because the app only sees streams while it's open. */
 const profDlg = $('#profDlg');
 const pf = { list: {}, plat: 'all', flags: new Set(), sort: 'live', cur: null, data: null, req: 0, look: null, histAll: false, mod: {} };
-try { const o = JSON.parse(localStorage.getItem('kickMultiview.profView') || '{}'); if (o.sort) pf.sort = o.sort; } catch {}
+{ const o = settings.json('profView', {}); if (o.sort) pf.sort = o.sort; }
 const pfHue = ch => { let h = 0; for (const c of String(ch)) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 35% 36%)`; };
 // "NovaKit" -> NK, "ember_and_oak" -> EA, "quietcartographer" -> QU
 function pfInitials(n){
@@ -278,7 +279,7 @@ function pfRenderProf(){
     const on = notifyAll && !notifyOff.includes(ch);
     const bell = pfE('button', 'btn' + (on ? ' on' : '')); bell.innerHTML = (on ? icon.bell : icon.bellOff) + (on ? 'Live alerts on' : 'Live alerts off');
     bell.disabled = !notifyAll; bell.title = !notifyAll ? 'Live notifications are off for every channel (Channels panel)' : on ? 'Notify me when they go live (click to turn off)' : 'No notification for this channel (click to turn on)';
-    bell.onclick = () => { channelVars.notifyOff = notifyOff.includes(ch) ? notifyOff.filter(c => c !== ch) : [...notifyOff, ch]; try { localStorage.setItem('kickMultiview.notifyOff', JSON.stringify(notifyOff)); } catch {} sendWatch(); renderSaved(); pfRenderProf(); };
+    bell.onclick = () => { channelVars.notifyOff = notifyOff.includes(ch) ? notifyOff.filter(c => c !== ch) : [...notifyOff, ch]; settings.set('notifyOff', notifyOff); sendWatch(); renderSaved(); pfRenderProf(); };
     acts.appendChild(bell);
   }
   if (plat === 'kick' && s && s.loggedIn && s.following !== false){
@@ -513,7 +514,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.profileGet){
     else pf.flags.has(b.dataset.v) ? pf.flags.delete(b.dataset.v) : pf.flags.add(b.dataset.v);
     pfRenderDir();
   }));
-  $('#pfSort').addEventListener('change', () => { pf.sort = $('#pfSort').value; try { localStorage.setItem('kickMultiview.profView', JSON.stringify({ sort: pf.sort })); } catch {} pfRenderDir(); });
+  $('#pfSort').addEventListener('change', () => { pf.sort = $('#pfSort').value; settings.set('profView', { sort: pf.sort }); pfRenderDir(); });
   // a picture fetched in the background (src/profile-queue.js): show it in the Saved list and the Profiles cards
   let pfInfoT = null;
   if (window.kmv.onProfileInfo) window.kmv.onProfileInfo(() => {

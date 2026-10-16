@@ -1,4 +1,5 @@
 import '../layout/sideways-scroll.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { GAP, ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { chLabel, chLabelP, platIcon, platOf } from '../platforms/platforms.js';
@@ -68,7 +69,7 @@ function swapWindows(w, otherCh){
     const a = colKey(w), b = colKey(o);
     const order = buildCols().map(c => c.key), i = order.indexOf(a), j = order.indexOf(b);
     if (i >= 0 && j >= 0){ [order[i], order[j]] = [order[j], order[i]]; layoutVars.colOrder = order; }
-    try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
+    settings.set('colOrder', colOrder);
     if (colsMode){
       if (featBase.length && featuredCh === a) setFeatured(b);          // picking on the big one puts the other one big
       else if (featBase.length && featuredCh === b) setFeatured(a);

@@ -1,4 +1,5 @@
 import './saved-layouts.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { ROLE, colsMode, coreVars, lastLayout, stage, wins } from '../core.js';
 import { clampPos, focusWin, setRect } from './geometry.js';
 import { chatFocusLayout, colKey, colOrder, layoutVars, setColsMode, setFeatured } from './layouts.js';
@@ -102,7 +103,7 @@ function startSwapDrag(e, w, bar){
 function swapColOrder(a, b){
   const order = buildCols().map(c => c.key), i = order.indexOf(a), j = order.indexOf(b);
   if (i >= 0 && j >= 0){ [order[i], order[j]] = [order[j], order[i]]; layoutVars.colOrder = order; }
-  try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
+  settings.set('colOrder', colOrder);
 }
 
 export { backToChatFocus, startSwapDrag, updateModeClass };

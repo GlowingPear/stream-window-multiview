@@ -1,4 +1,5 @@
 import '../../layout/game-focus.js';   // runs after it (see app.js)
+import { settings } from '../../shared/settings.js';
 import { $ } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { notes } from '../bell/bell.js';
@@ -42,9 +43,9 @@ const HEX_RE = /^#[0-9a-f]{6}$/i;
 const cleanVars = v => { const o = {}; THEME_VARS.forEach(([k]) => { if (v && HEX_RE.test(v[k] || '')) o[k] = v[k].toLowerCase(); }); return o; };
 const isLight = v => { const h = (v['--bg'] || '#000000').slice(1); const [r, g, b] = [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16) / 255); return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5; };
 let myThemes = [];
-try { myThemes = (JSON.parse(localStorage.getItem('kickMultiview.themes') || '[]') || []).filter(t => t && t.name && t.vars).map(t => ({ name: String(t.name).slice(0, 30), vars: cleanVars(t.vars) })); } catch {}
+try { myThemes = [].concat(settings.json('themes', [])).filter(t => t && t.name && t.vars).map(t => ({ name: String(t.name).slice(0, 30), vars: cleanVars(t.vars) })); } catch {}
 let theme = { name: 'Pear', vars: { ...BUILTIN_THEMES[0].vars }, edited: false };
-try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'); if (t && t.vars) theme = { name: t.name || 'Custom', vars: { ...BUILTIN_THEMES[0].vars, ...cleanVars(t.vars) }, edited: !!t.edited }; } catch {}
+try { const t = settings.json('theme'); if (t && t.vars) theme = { name: t.name || 'Custom', vars: { ...BUILTIN_THEMES[0].vars, ...cleanVars(t.vars) }, edited: !!t.edited }; } catch {}
 // Contrast between two colours (1 = the same, 21 = black on white), as in the accessibility guidelines.
 const lum = hex => { const [r, g, b] = [1, 3, 5].map(i => { const c = parseInt(hex.substr(i, 2), 16) / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
 const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
@@ -70,12 +71,12 @@ function applyTheme(persist){
   const warn = $('#themePane .th-warn');
   if (warn){ warn.textContent = fx.notes.join(' '); warn.hidden = !fx.notes.length; }
   document.body.classList.toggle('theme-light', light);
-  if (persist){ try { localStorage.setItem('kickMultiview.theme', JSON.stringify({ name: theme.name, vars: v, light, edited: theme.edited })); } catch {} }
+  if (persist){ settings.set('theme', { name: theme.name, vars: v, light, edited: theme.edited }); }
   if (typeof swCss !== 'undefined'){ switchVars.swCss = null; switchVars.swLastSig = ''; if (typeof pushSwitcherState === 'function') pushSwitcherState(true); }
 }
 applyTheme(false);
-window.addEventListener('storage', e => {          // the other window changed the theme
-  if (e.key === 'kickMultiview.theme'){ try { const t = JSON.parse(e.newValue || 'null'); if (t && t.vars){ theme = { name: t.name, vars: { ...BUILTIN_THEMES[0].vars, ...cleanVars(t.vars) }, edited: !!t.edited }; applyTheme(false); } } catch {} }
+settings.onChange('theme', (_, v) => {          // the other window changed the theme
+  try { const t = JSON.parse(v || 'null'); if (t && t.vars){ theme = { name: t.name, vars: { ...BUILTIN_THEMES[0].vars, ...cleanVars(t.vars) }, edited: !!t.edited }; applyTheme(false); } } catch {}
 });
 const themeDlg = $('#themePane');   // the Themes tab in Settings
 const swatch = v => `<span class="sw">${['--bg', '--panel2', '--text', '--accent', '--danger'].map(k => `<i style="background:${v[k]}"></i>`).join('')}</span>`;
@@ -100,7 +101,7 @@ function renderThemeList(){
   BUILTIN_THEMES.forEach(t => row(t, false));
   if (myThemes.length){ const h = document.createElement('div'); h.className = 'th-sec'; h.style.marginTop = '10px'; h.textContent = 'Your themes'; list.appendChild(h); myThemes.forEach(t => row(t, true)); }
 }
-const saveMyThemes = () => { try { localStorage.setItem('kickMultiview.themes', JSON.stringify(myThemes)); } catch {} };
+const saveMyThemes = () => { settings.set('themes', myThemes); };
 function renderThemeVars(){
   const box = themeDlg.querySelector('.th-vars');
   box.innerHTML = '';

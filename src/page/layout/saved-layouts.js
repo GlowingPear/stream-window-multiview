@@ -1,4 +1,5 @@
 import './column-drag.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { $, MIN_H, MIN_W, colsMode, coreVars, lastLayout, streamCols, wins } from '../core.js';
 import { SH, SW, setRect } from './geometry.js';
 import { createWin, pushVol } from '../windows/windows.js';
@@ -21,7 +22,7 @@ import { ask } from '../shared/ask.js';
 
 /* ---- Your layouts: save the current arrangement under a name and bring it back from the Layout menu ---- */
 let presets = [], activePreset = '';
-try { presets = JSON.parse(localStorage.getItem('kickMultiview.presets') || '[]'); } catch {}
+presets = settings.json('presets', []);
 function activeP(){ try { return activePreset ? presets.find(p => p.name === activePreset) || null : null; } catch { return null; } }   // (hoisted: used before the presets load)
 const presetBase = p => p.mode === 'columns' && p.featured ? 'focus' : p.mode;   // the layout it was made from
 function leavePreset(){
@@ -39,7 +40,7 @@ function setPresetOpt(p, key, val){
   }
   updateLayoutMenu();
 }
-const savePresets = () => { try { localStorage.setItem('kickMultiview.presets', JSON.stringify(presets)); } catch {} };
+const savePresets = () => { settings.set('presets', presets); };
 const MODE_NAMES = { focus: 'Focus view', game: 'Game focus', columns: 'Columns', chatfocus: 'Chat focus', auto: 'Auto layout', tile: 'Tile', free: 'Free arrangement' };
 function capturePreset(name){
   return {
@@ -175,11 +176,11 @@ function applyPreset(p, opt = {}){
   });
   coreVars.wins = [...made, ...wins.filter(w => !made.includes(w))];      // same window order as when saved
   layoutVars.colOrder = (p.order || []).slice();
-  try { localStorage.setItem('kickMultiview.colOrder', JSON.stringify(colOrder)); } catch {}
-  if (typeof p.linked === 'boolean' && p.linked !== linked){ layoutVars.linked = p.linked; if (opt.quiet) try { localStorage.setItem('kickMultiview.linked', linked ? '1' : '0'); } catch {} updateLinkBtn(); }   // a saved layout's own; undo's are the built-in's
-  columnVars.sideCols = p.sideCols || 0; try { localStorage.setItem('kickMultiview.sideCols', String(sideCols)); } catch {}
+  settings.set('colOrder', colOrder);
+  if (typeof p.linked === 'boolean' && p.linked !== linked){ layoutVars.linked = p.linked; if (opt.quiet) settings.set('linked', linked); updateLinkBtn(); }   // a saved layout's own; undo's are the built-in's
+  columnVars.sideCols = p.sideCols || 0; settings.set('sideCols', sideCols);
   coreVars.streamCols = p.streamCols || 1;      // the same default its options show
-  if (typeof p.pageStep === 'boolean'){ scrollVars.pageStep = p.pageStep; try { localStorage.setItem('kickMultiview.pageStep', pageStep ? '1' : '0'); } catch {} }
+  if (typeof p.pageStep === 'boolean'){ scrollVars.pageStep = p.pageStep; settings.set('pageStep', pageStep); }
   if (p.mode === 'columns'){
     setFeatured(p.featured || null); layoutVars.scrollX = 0; columnsLayout();
     document.body.classList.toggle('linked', linked);

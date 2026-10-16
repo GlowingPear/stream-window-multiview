@@ -1,4 +1,5 @@
 import './layouts.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { GAP, colWidth, wins } from '../core.js';
 import { SW } from './geometry.js';
 import { colStrip, featW, layoutVars, maxScroll, scrollRaf, scrollX, snapT } from './layouts.js';
@@ -38,7 +39,7 @@ let pageStep = false;                 // false: one column per click; true: a wh
 const scrollVars = {
   get pageStep(){ return pageStep; }, set pageStep(v){ pageStep = v; },
 };
-try { pageStep = localStorage.getItem('kickMultiview.pageStep') === '1'; } catch {}
+pageStep = settings.flag('pageStep');
 function scrollCols(dir){   // steps one column (or one page); past the last it wraps to the first (and back)
   if (!colWidth || maxScroll <= 0) return;
   const lastIdx = Math.ceil(maxScroll / colWidth - 0.01);

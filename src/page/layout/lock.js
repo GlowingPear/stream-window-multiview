@@ -1,4 +1,5 @@
 import '../windows/raids.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { $, ROLE, colsMode, empty, lastLayout, wins } from '../core.js';
 import { setTb } from '../shared/icons.js';
 import { SH, SW, focusWin, setRect } from './geometry.js';
@@ -15,11 +16,11 @@ import { gameLayout, isGame } from './game-focus.js';
 /* Lock layout (Layout menu padlock, Shift+L): windows keep their size and place. Dragging one onto another swaps
    them, and the layout fits around windows that close or open. The main window's. */
 let layoutLocked = false;
-try { layoutLocked = localStorage.getItem('kickMultiview.layoutLocked') === '1'; } catch {}
+layoutLocked = settings.flag('layoutLocked');
 const locked = () => layoutLocked && ROLE === 'main';
 function setLayoutLocked(on, quiet){
   layoutLocked = !!on;
-  try { localStorage.setItem('kickMultiview.layoutLocked', on ? '1' : '0'); } catch {}
+  settings.set('layoutLocked', on);
   document.body.classList.toggle('layout-locked', locked());
   const b = $('#layoutLock'), t = on ? 'Unlock layout' : 'Lock layout';
   b.classList.toggle('on', !!on); b.setAttribute('aria-pressed', !!on); b.setAttribute('aria-label', t); b.title = t + ' (Shift+L)';

@@ -1,4 +1,5 @@
 import '../channels/open-box.js';   // runs after it (see app.js)
+import { settings } from '../../shared/settings.js';
 import { $, ROLE, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -16,25 +17,22 @@ import { ignoreSender, renderSpamHist } from '../settings/alerts.js';
    Chat mentions, likely spam, saved channels going live, raids and the app's own messages, in one list
    (src/notifications.js) kept in localStorage. Only the main window keeps it. */
 const NOTE_SHOWN = 30;    // the latest in each tab of the bell (the rest in All notifications)
-const NOTES_KEY = 'kickMultiview.notifications';
+const NOTES_KEY = 'notifications';   // (a saved setting: shared/settings.js)
 let myName = '', myTwitch = '', mentOn = true, mentMuted = new Set(), mentWords = [];
-try {
-  myName = localStorage.getItem('kickMultiview.myName') || '';
-  myTwitch = localStorage.getItem('kickMultiview.myTwitch') || '';
-  mentOn = localStorage.getItem('kickMultiview.mentOn') !== '0';
-  mentMuted = new Set(JSON.parse(localStorage.getItem('kickMultiview.mentMuted') || '[]'));
-  mentWords = JSON.parse(localStorage.getItem('kickMultiview.mentWords') || '[]').filter(x => typeof x === 'string');
-} catch {}
-const readJson = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
-let notes = readJson(NOTES_KEY);
+myName = settings.text('myName');
+myTwitch = settings.text('myTwitch');
+mentOn = settings.flag('mentOn', true);
+mentMuted = new Set([].concat(settings.json('mentMuted', [])));
+mentWords = [].concat(settings.json('mentWords', [])).filter(x => typeof x === 'string');
+let notes = settings.json(NOTES_KEY);
 if (Array.isArray(notes)) notes = notes.filter(n => n && typeof n === 'object');
 else {
   // The first start with the bell: the mentions history and spam alerts' history move in. The old ones are
   // left as they were, so an older version still has them.
-  notes = SmvNotes.migrate(readJson('kickMultiview.mentions'), readJson('kickMultiview.spamHistory'));
+  notes = SmvNotes.migrate(settings.json('mentions'), settings.json('spamHistory'));
   if (ROLE === 'main') saveNotes();
 }
-function saveNotes(){ try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch {} }
+function saveNotes(){ settings.set(NOTES_KEY, notes); }
 // What each one can still do this session: Undo (a closed channel), Show in folder (a saved emote).
 const noteActs = new Map();
 // Settings > Notifications: the red number, and Do not disturb (until when; -1: until it's turned off).
@@ -48,7 +46,7 @@ const bellVars = {
   get dndT(){ return dndT; }, set dndT(v){ dndT = v; },
   get bellCount(){ return bellCount; }, set bellCount(v){ bellCount = v; },
 };
-try { bellCount = localStorage.getItem('kickMultiview.bellCount') || 'ms'; dndUntil = +localStorage.getItem('kickMultiview.dnd') || 0; } catch {}
+bellCount = settings.text('bellCount', 'ms'); dndUntil = settings.num('dnd');
 const dndOn = () => dndUntil < 0 || dndUntil > Date.now();
 // The kind of alert settings a notification uses.
 const alertKind = n => SmvNotes.tabOf(n) === 'mentions' ? 'mention' : n.kind;
@@ -82,7 +80,7 @@ const mentCovered = ch => /^(kick|twitch)$/.test(platOf(ch)) && !!(mentNameFor(c
 const mentAny = () => !!(myName || myTwitch || mentWords.length);
 function toggleChatMentions(w){
   if (mentMuted.has(w.channel)) mentMuted.delete(w.channel); else mentMuted.add(w.channel);
-  try { localStorage.setItem('kickMultiview.mentMuted', JSON.stringify([...mentMuted])); } catch {}
+  settings.set('mentMuted', [...mentMuted]);
   wins.forEach(x => { if (x.kind === 'chat' && x.channel === w.channel){ syncAtBtn(x); if (x.ready) injectMention(x); } });
   flash(mentMuted.has(w.channel) ? `Mentions off for ${chLabel(w.channel)}'s chat` : `Mentions on for ${chLabel(w.channel)}'s chat`);
 }
@@ -250,7 +248,7 @@ const spamWhy = r => `Likely spam (${r.score} points, ${r.need} needed):\n` + (r
 function setMyName(n){
   myName = String(n || '').trim().replace(/^@/, '');
   if (myName && !/^[A-Za-z0-9_]{2,30}$/.test(myName)) myName = '';
-  try { localStorage.setItem('kickMultiview.myName', myName); } catch {}
+  settings.set('myName', myName);
   $('#mentUser').value = myName;
   pushMyName(); renderMentions();
 }

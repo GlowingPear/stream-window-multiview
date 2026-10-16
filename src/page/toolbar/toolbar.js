@@ -1,4 +1,5 @@
 import './header.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { setTb } from '../shared/icons.js';
 import { DESKTOP } from '../shared/env.js';
@@ -26,7 +27,7 @@ import { syncAlertControls } from '../panels/settings/alerts.js';
    On the left, Labels is a column of named rows, Icons only a slim column of icons, each with its name in its tooltip.
    On a Mac the slim column has no room for the lights: they show while the pointer is on the pear (body.bar-lights). */
 let barPos = 'top', barLabels = true;
-try { const t = JSON.parse(localStorage.getItem('kickMultiview.toolbar') || '{}'); if (t.pos === 'left') barPos = 'left'; if (t.labels === false) barLabels = false; } catch {}
+{ const t = settings.json('toolbar', {}); if (t.pos === 'left') barPos = 'left'; if (t.labels === false) barLabels = false; }
 const hdrEl = document.querySelector('header');
 const iconsLeft = () => document.body.classList.contains('bar-icons');
 let barLightsT = 0;
@@ -88,7 +89,7 @@ function applyToolbar(start){
 }
 function setToolbar(pos, labels){
   barPos = pos === 'left' ? 'left' : 'top'; barLabels = !!labels;
-  try { localStorage.setItem('kickMultiview.toolbar', JSON.stringify({ pos: barPos, labels: barLabels })); } catch {}
+  settings.set('toolbar', { pos: barPos, labels: barLabels });
   ['#accountMenu', '#savedPanel', '#bellPanel', '#moreMenu'].forEach(sel => { $(sel).hidden = true; });   // they were placed for the old toolbar
   applyToolbar();
   // the Layout menu stays open (its Toolbar tab is where you chose it), beside the new toolbar
@@ -191,7 +192,7 @@ $('#savedInput').addEventListener('keydown', e => {
 $('#savedTabs').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   channelVars.savedTab = b.dataset.t;
-  try { localStorage.setItem('kickMultiview.savedTab', savedTab); } catch {}
+  settings.set('savedTab', savedTab);
   $('#savedInput').placeholder = savedTab === 'all' ? 'Search, or type a channel name or link to open it' : `Search, or type a ${PLAT_NAME[savedTab]} channel to open it`;
   renderAddRow(); renderSaved();
 });
@@ -231,7 +232,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.notifyMention){
   $('#mentTwitch').addEventListener('keydown', e => { if (e.key === 'Enter') setMyTwitch(e.target.value); });
   $('#mentOn').addEventListener('change', e => {
     bellVars.mentOn = e.target.checked;
-    try { localStorage.setItem('kickMultiview.mentOn', mentOn ? '1' : '0'); } catch {}
+    settings.set('mentOn', mentOn);
     pushMyName(); renderMentions(); syncAlertControls();
   });
   $('#mentUser').addEventListener('change', e => setMyName(e.target.value));

@@ -1,4 +1,5 @@
 import '../help/help.js';   // runs after it (see app.js)
+import { settings } from '../../shared/settings.js';
 import { $, ROLE, msg } from '../../core.js';
 import { DESKTOP } from '../../shared/env.js';
 import { notes } from '../bell/bell.js';
@@ -131,8 +132,8 @@ if (DESKTOP && ROLE === 'main' && window.kmv.updateStatus){
   $('#updBanner .ub-later').onclick = () => { $('#updBanner').hidden = true; try { sessionStorage.setItem('smvUpdLater' + (updSt && updSt.installed), '1'); } catch {} };
   // First start after an update: show what's new.
   window.kmv.appVersion().then(v => {
-    let seen = null; try { seen = localStorage.getItem('kickMultiview.seenVersion'); } catch {}
-    try { localStorage.setItem('kickMultiview.seenVersion', v); } catch {}
+    const seen = settings.get('seenVersion');
+    settings.set('seenVersion', v);
     if (seen && seen !== v) setTimeout(() => { showHelp('news'); flash(`Updated to version ${v}`, { subject: 'updates', act: { t: 'news' } }); }, 1500);
   }).catch(() => {});
 }

@@ -1,4 +1,5 @@
 import './general.js';   // runs after it (see app.js)
+import { settings } from '../../shared/settings.js';
 import { $, ROLE, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { chLabelP } from '../../platforms/platforms.js';
@@ -36,7 +37,7 @@ function pickSound(kind){
       if (!file) return resolve(false);
       if (file.size > 1.5e6){ flash('That sound file is too big. Pick one under 1.5 MB.'); return resolve(false); }
       const r = new FileReader();
-      r.onload = () => { try { localStorage.setItem(SOUND_KEY(kind), r.result); resolve(true); } catch { flash('Couldn\'t keep that sound file. Try a smaller one.'); resolve(false); } };
+      r.onload = () => { if (settings.set(SOUND_KEY(kind), r.result)) resolve(true); else { flash('Couldn\'t keep that sound file. Try a smaller one.'); resolve(false); } };
       r.onerror = () => resolve(false);
       r.readAsDataURL(file);
     };

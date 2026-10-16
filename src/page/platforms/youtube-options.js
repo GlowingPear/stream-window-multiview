@@ -1,4 +1,5 @@
 import '../windows/pause.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { $, ROLE, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { platOf, watchSignedIn, ytVidOf } from './platforms.js';
@@ -31,19 +32,19 @@ function ytAgent(skip, answer){
 }
 const skipChk = $('#ytSkip'), consentChk = $('#ytConsent'), consentPick = $('#ytConsentPick');
 function loadYtSettings(){
-  let c = 'reject';
-  try { skipChk.checked = localStorage.getItem('kickMultiview.ytSkip') !== '0'; c = localStorage.getItem('kickMultiview.ytConsent') || 'reject'; } catch {}
+  skipChk.checked = settings.flag('ytSkip', true);
+  const c = settings.text('ytConsent', 'reject');
   consentChk.checked = c !== 'off';
   consentPick.value = c === 'accept' ? 'accept' : 'reject';
   consentPick.disabled = !consentChk.checked;
 }
 loadYtSettings();
-skipChk.addEventListener('change', () => { try { localStorage.setItem('kickMultiview.ytSkip', skipChk.checked ? '1' : '0'); } catch {} });
+skipChk.addEventListener('change', () => { settings.set('ytSkip', skipChk.checked); });
 [consentChk, consentPick].forEach(el => el.addEventListener('change', () => {
   consentPick.disabled = !consentChk.checked;
-  try { localStorage.setItem('kickMultiview.ytConsent', consentChk.checked ? consentPick.value : 'off'); } catch {}
+  settings.set('ytConsent', consentChk.checked ? consentPick.value : 'off');
 }));
-window.addEventListener('storage', e => { if (/^kickMultiview\.yt(Skip|Consent)$/.test(e.key || '')) loadYtSettings(); });   // main and streams windows
+settings.onChange(['ytSkip', 'ytConsent'], loadYtSettings);   // main and streams windows
 function ytTick(view, skip, answer){
   view.executeJavaScript(`(${ytAgent})(${skip}, ${JSON.stringify(answer)})`).then(r => {
     if (!r) return;
@@ -124,14 +125,14 @@ function readLike(w, click){
    the cookie question and any ads), it's liked. Each video once: one you've liked, or removed the like from,
    isn't touched again (remembered between launches). */
 const autoLikeChk = $('#ytAutoLike');
-const loadAutoLike = () => { try { autoLikeChk.checked = localStorage.getItem('kickMultiview.ytAutoLike') === '1'; } catch {} };
+const loadAutoLike = () => { autoLikeChk.checked = settings.flag('ytAutoLike'); };
 loadAutoLike();
-autoLikeChk.addEventListener('change', () => { try { localStorage.setItem('kickMultiview.ytAutoLike', autoLikeChk.checked ? '1' : '0'); } catch {} });
-window.addEventListener('storage', e => { if (e.key === 'kickMultiview.ytAutoLike') loadAutoLike(); });   // main and streams windows
-const likedVids = () => { try { return JSON.parse(localStorage.getItem('kickMultiview.ytAutoLiked') || '[]'); } catch { return []; } };
+autoLikeChk.addEventListener('change', () => { settings.set('ytAutoLike', autoLikeChk.checked); });
+settings.onChange('ytAutoLike', loadAutoLike);   // main and streams windows
+const likedVids = () => { const l = settings.json('ytAutoLiked', []); return Array.isArray(l) ? l : []; };
 function markLiked(vid){
   const l = likedVids().filter(v => v !== vid); l.push(vid);
-  try { localStorage.setItem('kickMultiview.ytAutoLiked', JSON.stringify(l.slice(-500))); } catch {}
+  settings.set('ytAutoLiked', l.slice(-500));
 }
 function autoLike(w, r){
   if (!autoLikeChk.checked || !r.signedIn || r.liked === null || !r.vid) return;
@@ -204,7 +205,7 @@ function ytChatAgent(want, force){
   return { view: view(menu()), mine: s.mine };
 }
 const chatViewPick = $('#ytChatView');
-const loadChatView = () => { try { chatViewPick.value = localStorage.getItem('kickMultiview.ytChatView') === 'live' ? 'live' : 'top'; } catch {} };
+const loadChatView = () => { chatViewPick.value = settings.get('ytChatView') === 'live' ? 'live' : 'top'; };
 loadChatView();
 // One YouTube chat window: on load, or with force when the setting changes.
 function applyChatView(w, force){
@@ -213,10 +214,10 @@ function applyChatView(w, force){
 }
 const applyChatViews = () => wins.forEach(w => applyChatView(w, true));
 chatViewPick.addEventListener('change', () => {
-  try { localStorage.setItem('kickMultiview.ytChatView', chatViewPick.value); } catch {}
+  settings.set('ytChatView', chatViewPick.value);
   applyChatViews();
 });
-window.addEventListener('storage', e => { if (e.key === 'kickMultiview.ytChatView'){ loadChatView(); applyChatViews(); } });   // main and streams windows
+settings.onChange('ytChatView', () => { loadChatView(); applyChatViews(); });   // main and streams windows
 window.ytChatAgent = ytChatAgent;   // for the tests
 
 export { applyChatView, syncLike, toggleLike };

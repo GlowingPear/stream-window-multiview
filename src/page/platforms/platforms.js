@@ -1,4 +1,5 @@
 import '../in-site/volume.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { mountView } from '../windows/views.js';
@@ -16,9 +17,9 @@ const platOf = ch => !ch ? '' : /^tw:/i.test(ch) ? 'twitch' : /^yt:/i.test(ch) ?
 // Display names learned from the sites (live checks, follows imports, profiles, YouTube pages), so channels show as
 // "PixelBandit" rather than their id "pixelbandit". Kick and Twitch: only the same handle in other capitals (Twitch
 // names in another script would hide which channel it is). YouTube: the name of a channel or video id ("@handles" stay).
-const NAMES = 'kickMultiview.chNames';
+const NAMES = 'chNames';   // (a saved setting: shared/settings.js)
 const chNames = {};
-try { Object.assign(chNames, JSON.parse(localStorage.getItem('kickMultiview.ytNames') || '{}'), JSON.parse(localStorage.getItem(NAMES) || '{}')); } catch {}
+Object.assign(chNames, settings.json('ytNames', {}), settings.json(NAMES, {}));
 const handleKey = s => String(s).toLowerCase().replace(/[-_]/g, '');   // Kick turns "Retro_Rally" into retro-rally
 function nameFits(ch, name){
   if (name === ch) return false;
@@ -35,7 +36,7 @@ function rememberNames(names){
     chNames[ch] = name; changed.push(ch);
   }
   if (!changed.length) return;
-  try { localStorage.setItem(NAMES, JSON.stringify(chNames)); } catch {}
+  settings.set(NAMES, chNames);
   namesChanged(changed);
 }
 const rememberName = (ch, name) => rememberNames({ [ch]: name });
@@ -44,9 +45,8 @@ function namesChanged(chs){
   schedulePicks();
   renderSaved();
 }
-window.addEventListener('storage', e => {          // learned in the other window
-  if (e.key !== NAMES) return;
-  let got = {}; try { got = JSON.parse(e.newValue || '{}') || {}; } catch {}
+settings.onChange(NAMES, (_, v) => {          // learned in the other window
+  let got = {}; try { got = JSON.parse(v || '{}') || {}; } catch {}
   const changed = Object.keys(got).filter(ch => typeof got[ch] === 'string' && chNames[ch] !== got[ch]);
   changed.forEach(ch => { chNames[ch] = got[ch]; });
   if (changed.length) namesChanged(changed);
@@ -199,7 +199,7 @@ const chatPartition = ch => ({ twitch: 'persist:twitch', youtube: 'persist:youtu
 // "Watch signed in" (account menu, per site): that site's stream players use your login too,
 // so you watch as your account. Off: each stream player gets its own logged-out storage.
 var watchSignedIn = { kick: false, twitch: false, youtube: false };
-try { const ws = JSON.parse(localStorage.getItem('kickMultiview.watchSignedIn') || '{}'); for (const p in watchSignedIn) watchSignedIn[p] = ws[p] === true; } catch {}
+{ const ws = settings.json('watchSignedIn', {}); for (const p in watchSignedIn) watchSignedIn[p] = ws[p] === true; }
 const streamPartition = ch => watchSignedIn[platOf(ch)] ? chatPartition(ch) : 'persist:kmv-stream-' + String(ch).replace(/[^a-z0-9_-]/gi, '_');
 let extCount = null;                    // Chrome extensions installed (null: not known yet)
 // Other files change these through platformVars: a variable imported from another file can't be assigned to.
@@ -219,12 +219,11 @@ function remountStreams(p){
 function setWatchSignedIn(p, on){
   if (!(p in watchSignedIn) || watchSignedIn[p] === !!on) return;
   watchSignedIn[p] = !!on;
-  try { localStorage.setItem('kickMultiview.watchSignedIn', JSON.stringify(watchSignedIn)); } catch {}
+  settings.set('watchSignedIn', watchSignedIn);
   remountStreams(p);
 }
-window.addEventListener('storage', e => {          // changed in the other window
-  if (e.key !== 'kickMultiview.watchSignedIn') return;
-  let ws = {}; try { ws = JSON.parse(e.newValue || '{}') || {}; } catch {}
+settings.onChange('watchSignedIn', (_, v) => {          // changed in the other window
+  let ws = {}; try { ws = JSON.parse(v || '{}') || {}; } catch {}
   for (const p in watchSignedIn) if (watchSignedIn[p] !== (ws[p] === true)){ watchSignedIn[p] = ws[p] === true; remountStreams(p); }
 });
 

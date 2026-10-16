@@ -1,4 +1,5 @@
 import '../shortcuts.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { BAR, GAP, ROLE, colsMode, coreVars, lastLayout, wins } from '../core.js';
 import { icon } from '../shared/icons.js';
 import { DESKTOP } from '../shared/env.js';
@@ -30,13 +31,13 @@ const gameVars = {
   get gameKey(){ return gameKey; }, set gameKey(v){ gameKey = v; },
   get attachForGame(){ return attachForGame; }, set attachForGame(v){ attachForGame = v; },
 };
-try { const g = JSON.parse(localStorage.getItem('kickMultiview.game') || '{}');
+{ const g = settings.json('game', {});
   if (g.mode === 'see' || g.mode === 'window') gameMode = g.mode;
   if (['s', 'm', 'l'].includes(g.size)) gameSize = g.size;
   if (g.side === 'left' || g.side === 'right') gameSide = g.side;
   if (typeof g.onTop === 'boolean') gameOnTop = g.onTop;
-  if (typeof g.strip === 'boolean') gameStrip = g.strip; } catch {}
-const saveGame = () => { try { localStorage.setItem('kickMultiview.game', JSON.stringify({ mode: gameMode, size: gameSize, side: gameSide, onTop: gameOnTop, strip: gameStrip })); } catch {} };
+  if (typeof g.strip === 'boolean') gameStrip = g.strip; }
+const saveGame = () => { settings.set('game', { mode: gameMode, size: gameSize, side: gameSide, onTop: gameOnTop, strip: gameStrip }); };
 const shapeOK = DESKTOP && ROLE === 'main' && !!(window.kmv && window.kmv.gameShape) && window.kmv.platform !== 'darwin';
 const attachOK = shapeOK && window.kmv.platform === 'win32' && !!window.kmv.gameAttach;
 if (!shapeOK) gameMode = 'window';

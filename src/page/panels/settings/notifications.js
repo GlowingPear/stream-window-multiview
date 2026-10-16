@@ -1,4 +1,5 @@
 import '../../shared/flash.js';   // runs after it (see app.js)
+import { settings } from '../../shared/settings.js';
 import { $, ROLE, msg } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -11,22 +12,22 @@ import { syncAlertControls } from './alerts.js';
 /* Settings > Notifications: where pop-ups show */
 const msgPos = $('#msgPos');
 function loadMsgSettings(){
-  let m = {}; try { m = JSON.parse(localStorage.getItem('kickMultiview.msg') || '{}') || {}; } catch {}
+  const m = settings.json('msg', {}) || {};
   msgPos.value = [...msgPos.options].some(o => o.value === m.pos) ? m.pos : 'tc';
   msg.dataset.pos = msgPos.value;
 }
 loadMsgSettings();
 msgPos.addEventListener('change', () => {
-  let m = {}; try { m = JSON.parse(localStorage.getItem('kickMultiview.msg') || '{}') || {}; } catch {}
-  try { localStorage.setItem('kickMultiview.msg', JSON.stringify({ ...m, pos: msgPos.value })); } catch {}
+  const m = settings.json('msg', {}) || {};
+  settings.set('msg', { ...m, pos: msgPos.value });
   loadMsgSettings();
   flash('Pop-ups show here');
 });
-window.addEventListener('storage', e => {          // main and streams windows
-  if (e.key === 'kickMultiview.desktopNotify') flashVars.desktopNotify = e.newValue !== '0';
-  if (e.key === 'kickMultiview.msg') loadMsgSettings();
-  if (e.key === 'kickMultiview.alerts') try { const a = JSON.parse(e.newValue || '{}'); ALERT_KINDS.forEach(k => Object.assign(alerts[k], a[k] || {})); } catch {}
-  if (e.key === 'kickMultiview.dnd'){ bellVars.dndUntil = +e.newValue || 0; syncDnd(); }
+settings.onChange(['desktopNotify', 'msg', 'alerts', 'dnd'], (name, v) => {          // main and streams windows
+  if (name === 'desktopNotify') flashVars.desktopNotify = v !== '0';
+  if (name === 'msg') loadMsgSettings();
+  if (name === 'alerts') try { const a = JSON.parse(v || '{}'); ALERT_KINDS.forEach(k => Object.assign(alerts[k], a[k] || {})); } catch {}
+  if (name === 'dnd'){ bellVars.dndUntil = +v || 0; syncDnd(); }
 });
 /* Settings > Notifications: for each kind, a row with its pop-up, desktop notification and sound. Mentions and
    spam alerts' are the same settings as on their own pages (the same data-al). */
@@ -43,7 +44,7 @@ NT_ROWS.forEach(([k, name, go, more]) => {
 // Live alerts: off (Never) also turns off the bell in Channels, and Away is checked by the app itself.
 function syncLiveAlerts(){
   channelVars.notifyAll = alerts.live.notify !== 'never';
-  try { localStorage.setItem('kickMultiview.notifyAll', notifyAll ? '1' : '0'); } catch {}
+  settings.set('notifyAll', notifyAll);
   const na = $('#notifyAll'); if (na) na.checked = notifyAll;
   sendWatch(); renderSaved();
 }
@@ -52,7 +53,7 @@ const dndOnEl = $('#dndOn'), dndFor = $('#dndFor');
 function syncDnd(){
   clearTimeout(dndT);
   const on = dndOn();
-  if (!on && dndUntil > 0){ bellVars.dndUntil = 0; try { localStorage.setItem('kickMultiview.dnd', '0'); } catch {} }
+  if (!on && dndUntil > 0){ bellVars.dndUntil = 0; settings.set('dnd', '0'); }
   if (on && dndUntil > 0) bellVars.dndT = setTimeout(syncDnd, Math.min(dndUntil - Date.now() + 50, 2 ** 31 - 1));
   dndOnEl.checked = on;
   $('#dndSt').textContent = !on ? 'Still collected under the bell, but no pop-ups, sounds or desktop notifications.'
@@ -69,20 +70,20 @@ function syncDnd(){
 }
 function setDnd(on){
   bellVars.dndUntil = !on ? 0 : +dndFor.value ? Date.now() + +dndFor.value * 60000 : -1;
-  try { localStorage.setItem('kickMultiview.dnd', String(dndUntil)); localStorage.setItem('kickMultiview.dndFor', dndFor.value); } catch {}
+  settings.set('dnd', dndUntil) && settings.set('dndFor', dndFor.value);
   syncDnd();
 }
-try { const f = localStorage.getItem('kickMultiview.dndFor'); if ([...dndFor.options].some(o => o.value === f)) dndFor.value = f; } catch {}
+{ const f = settings.get('dndFor'); if ([...dndFor.options].some(o => o.value === f)) dndFor.value = f; }
 dndOnEl.addEventListener('change', () => setDnd(dndOnEl.checked));
 document.querySelectorAll('.nc-dnd').forEach(b => b.addEventListener('click', () => {
   setDnd(!dndOn());
   flash(dndOn() ? (dndUntil < 0 ? 'Do not disturb on' : `Do not disturb until ${new Date(dndUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`) : 'Do not disturb off');
 }));
-dndFor.addEventListener('change', () => { if (dndOn()) setDnd(true); else { try { localStorage.setItem('kickMultiview.dndFor', dndFor.value); } catch {} syncDnd(); } });
+dndFor.addEventListener('change', () => { if (dndOn()) setDnd(true); else { settings.set('dndFor', dndFor.value); syncDnd(); } });
 // The red number on the bell.
 const bellCountEl = $('#bellCount');
 bellCountEl.value = ['ms', 'all', 'off'].includes(bellCount) ? bellCount : 'ms';
-bellCountEl.addEventListener('change', () => { bellVars.bellCount = bellCountEl.value; try { localStorage.setItem('kickMultiview.bellCount', bellCount); } catch {} updateBellBtn(); });
+bellCountEl.addEventListener('change', () => { bellVars.bellCount = bellCountEl.value; settings.set('bellCount', bellCount); updateBellBtn(); });
 document.querySelectorAll('#settingsDlg .nt-desk').forEach(el => { el.hidden = !(DESKTOP && ROLE === 'main'); });
 /* Settings > Notifications: desktop notifications (the main window's: live alerts, mentions, spam) */
 const dnOn = $('#dnOn'), dnSt = document.querySelector('#settingsDlg .dn-st');
@@ -91,7 +92,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled){
   dnOn.checked = desktopNotify;
   dnOn.addEventListener('change', () => {
     flashVars.desktopNotify = dnOn.checked;
-    try { localStorage.setItem('kickMultiview.desktopNotify', desktopNotify ? '1' : '0'); } catch {}
+    settings.set('desktopNotify', desktopNotify);
     syncDnd();
   });
   const sys = document.querySelector('#settingsDlg .dn-sys');

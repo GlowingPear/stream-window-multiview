@@ -1,4 +1,5 @@
 import '../../layout/lock.js';   // runs after it (see app.js)
+import { settings } from '../../shared/settings.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -18,28 +19,28 @@ import { panel } from '../../toolbar/toolbar.js';
 import { openProfile } from '../profiles/profiles.js';
 
 /* ---------- saved channels (always A–Z) + live status ---------- */
-const SAVED = 'kickMultiview.saved';
+const SAVED = 'saved';   // (a saved setting: shared/settings.js)
 const abc = list => [...new Set(list)].sort((x, y) => x.localeCompare(y, undefined, { sensitivity: 'base', numeric: true }));
 let saved = [];
-try { saved = abc(JSON.parse(localStorage.getItem(SAVED) || '[]')); } catch {}
+try { saved = abc(settings.json(SAVED, [])); } catch {}
 let liveInfo = {};                                  // channel -> { live, title, viewers, category, name, checked }
 function gotLive(snap){ liveInfo = snap || {}; rememberNames(infoNames(liveInfo)); renderSaved(); paintBarAvatars(); checkAutoOpen(); if (!wins.length) esRefresh(); }
 let notifyAll = true, notifyOff = [];
-try { notifyAll = localStorage.getItem('kickMultiview.notifyAll') !== '0'; notifyOff = JSON.parse(localStorage.getItem('kickMultiview.notifyOff') || '[]'); } catch {}
+notifyAll = settings.flag('notifyAll', true); notifyOff = settings.json('notifyOff', []);
 function sendWatch(){
   if (DESKTOP && ROLE === 'main' && window.kmv.watchLive) window.kmv.watchLive({ channels: saved, notifyAll, away: !!alerts && alerts.live.notify === 'unfocused', off: notifyOff.map(c => String(c).toLowerCase()) });
 }
 function persistSaved(){
   saved = abc(saved);
-  try { localStorage.setItem(SAVED, JSON.stringify(saved)); } catch {}
+  settings.set(SAVED, saved);
   renderSaved(); refreshStars(); sendWatch();
 }
 function toggleSaved(ch){
   saved = saved.includes(ch) ? saved.filter(c => c !== ch) : [...saved, ch];
   persistSaved();
 }
-window.addEventListener('storage', e => {            // a star clicked in the other window
-  if (e.key === SAVED){ try { saved = abc(JSON.parse(e.newValue || '[]')); } catch {} renderSaved(); refreshStars(); sendWatch(); }
+settings.onChange(SAVED, (_, v) => {            // a star clicked in the other window
+  try { saved = abc(JSON.parse(v || '[]')); } catch {} renderSaved(); refreshStars(); sendWatch();
 });
 function refreshStars(){
   wins.forEach(w => {
@@ -60,23 +61,23 @@ const channelVars = {
   get notifyOff(){ return notifyOff; }, set notifyOff(v){ notifyOff = v; },
   get savedTab(){ return savedTab; }, set savedTab(v){ savedTab = v; },
 };
-try { savedTab = localStorage.getItem('kickMultiview.savedTab') || 'all'; } catch {}
+savedTab = settings.text('savedTab', 'all');
 const tabPlat = () => savedTab === 'all' ? 'kick' : savedTab;
 // Channels that open by themselves when they go live
 let autoOpen = [];
-try { autoOpen = JSON.parse(localStorage.getItem('kickMultiview.autoOpen') || '[]'); } catch {}
+autoOpen = settings.json('autoOpen', []);
 let autoFit = false;                  // Settings > Layouts: in Auto layout, fit them in as the last streams
-try { autoFit = localStorage.getItem('kickMultiview.autoFit') === '1'; } catch {}
+autoFit = settings.flag('autoFit');
 function setAutoFit(on){         // Auto layout's own (Settings); the menu changes the layout in use
   autoFit = on;
-  try { localStorage.setItem('kickMultiview.autoFit', on ? '1' : '0'); } catch {}
+  settings.set('autoFit', on);
   $('#autoFit').checked = on; $('#lmAutoFit').checked = fitOn();
 }
 const fitOn = () => { const ap = activeP(); return ap ? !!ap.autoFit : autoFit; };
 const autoDone = new Set();            // opened during this live session (closing it won't make it reopen until the next time it goes live)
 function toggleAutoOpen(ch){
   autoOpen = autoOpen.includes(ch) ? autoOpen.filter(c => c !== ch) : [...autoOpen, ch];
-  try { localStorage.setItem('kickMultiview.autoOpen', JSON.stringify(autoOpen)); } catch {}
+  settings.set('autoOpen', autoOpen);
   if (autoOpen.includes(ch)) checkAutoOpen(); else autoDone.delete(ch);
   renderSaved();
 }
@@ -197,7 +198,7 @@ function renderSaved(){
       bell.onclick = e => {
         e.stopPropagation();
         notifyOff = notifyOff.includes(ch) ? notifyOff.filter(c => c !== ch) : [...notifyOff, ch];
-        try { localStorage.setItem('kickMultiview.notifyOff', JSON.stringify(notifyOff)); } catch {}
+        settings.set('notifyOff', notifyOff);
         sendWatch(); renderSaved();
       };
       acts.appendChild(bell);

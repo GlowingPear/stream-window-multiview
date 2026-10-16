@@ -1,4 +1,5 @@
 import '../layout/switch-control.js';   // runs after it (see app.js)
+import { settings } from '../shared/settings.js';
 import { $, GAP, colsMode, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { VOL_JS } from '../in-site/volume.js';
@@ -32,13 +33,13 @@ function togglePause(s){
 
 /* Auto-pause hidden streams (toolbar checkbox) */
 const autoChk = $('#autoPause');
-try { autoChk.checked = localStorage.getItem('kickMultiview.autoPause') === '1'; } catch {}
+autoChk.checked = settings.flag('autoPause');
 autoChk.addEventListener('change', () => {
-  try { localStorage.setItem('kickMultiview.autoPause', autoChk.checked ? '1' : '0'); } catch {}
+  settings.set('autoPause', autoChk.checked);
   autoPauseTick();
 });
-window.addEventListener('storage', e => {          // keep the main and streams windows in step
-  if (e.key === 'kickMultiview.autoPause'){ autoChk.checked = e.newValue === '1'; autoPauseTick(); }
+settings.onChange('autoPause', (_, v) => {          // keep the main and streams windows in step
+  autoChk.checked = v === '1'; autoPauseTick();
 });
 function streamHidden(w){
   const W = SW(), H = SH();
