@@ -17,9 +17,12 @@
       const b = document.createElement('button');
       b.type = 'button'; b.tabIndex = -1;
       b.setAttribute('role', 'option');
-      b.textContent = o.textContent;
       const ic = sel.ddIcon && sel.ddIcon(o);   // a picture before the text, from the page (a window's channel list)
-      if (ic) b.prepend(ic);
+      if (ic) {                                 // side by side, centred on each other (.dd-list button.ic)
+        const t = document.createElement('span');
+        t.className = 'dd-t'; t.textContent = o.textContent;
+        b.classList.add('ic'); b.append(ic, t);
+      } else b.textContent = o.textContent;
       b.disabled = o.disabled;
       if (i === sel.selectedIndex) { b.classList.add('on'); b.setAttribute('aria-selected', 'true'); }
       b.addEventListener('click', () => pick(i));
