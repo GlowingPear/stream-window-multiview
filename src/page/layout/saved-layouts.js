@@ -1,4 +1,5 @@
 import './column-drag.js';   // runs after it (see app.js)
+import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { $, MIN_H, MIN_W, colsMode, coreVars, lastLayout, streamCols, wins } from '../core.js';
@@ -79,35 +80,30 @@ function renderPresetsPane(){
   list.querySelector('.ly-add').onclick = () => { selectLayoutPane('+new'); $('#lyPresetName').focus(); };
   presets.forEach((p, i) => {
     const k = 'p:' + p.name, base = presetBase(p), pic = document.querySelector(`#layoutMenu [data-l="${base}"] .lm-pic`);
-    const item = document.createElement('button'); item.className = 'ly-item'; item.dataset.k = k; item.setAttribute('role', 'option');
-    item.innerHTML = '<span></span><em></em>';
-    item.prepend(pic ? pic.cloneNode(true) : Object.assign(document.createElement('i'), { className: 'ly-free' }));
-    item.querySelector('span').textContent = p.name;
-    list.appendChild(item);
-    const panel = document.createElement('div'); panel.className = 'ly-panel'; panel.dataset.k = k; panel.hidden = true;
-    panel.innerHTML = '<div class="ly-head"><b></b><button class="btn ly-use">Use</button></div><p class="ly-desc"></p>'
-      + '<div class="ly-acts"><button class="btn pr-ren">Rename</button><button class="btn pr-up" title="Save what\'s on screen now over this one">Update to what\'s on screen</button><button class="btn pr-x">Delete</button></div>';
-    if (pic) panel.prepend(pic.cloneNode(true));
-    panel.querySelector('b').textContent = p.name;
-    panel.querySelector('.ly-desc').textContent = presetSummary(p) + (pic ? ` · Made from ${MODE_NAMES[base]}, with its own options.` : '');
-    panel.querySelector('.ly-use').onclick = () => { closeSettings(); applyPreset(p); };
-    panel.querySelector('.pr-ren').onclick = () => renamePreset(panel.querySelector('.ly-head b'), p);
-    panel.querySelector('.pr-up').onclick = async () => {
+    list.appendChild(element('button', { class: 'ly-item', dataset: { k }, role: 'option' },
+      pic ? pic.cloneNode(true) : element('i', 'ly-free'), element('span', null, p.name), element('em')));
+    const name = element('b', null, p.name);
+    const update = async () => {
       if (!await ask(`Update “${p.name}”?`, `Replace this saved layout with what's on screen now.`, { ok: 'Update' })) return;
       presets[i] = capturePreset(p.name); savePresets(); activePreset = p.name; store.changed('layout'); flash(`Updated layout “${p.name}”`, { subject: 'layouts' });
     };
-    panel.querySelector('.pr-x').onclick = async () => {
+    const remove = async () => {
       if (!await ask(`Delete the layout “${p.name}”?`, 'This can\'t be undone.', { ok: 'Delete', danger: true })) return;
       presets.splice(i, 1); savePresets(); if (activePreset === p.name) leavePreset(); store.changed('layout');
     };
+    const panel = element('div', { class: 'ly-panel', dataset: { k }, hidden: true },
+      pic && pic.cloneNode(true),
+      element('div', 'ly-head', name, element('button', { class: 'btn ly-use', onclick: () => { closeSettings(); applyPreset(p); } }, 'Use')),
+      element('p', 'ly-desc', presetSummary(p) + (pic ? ` · Made from ${MODE_NAMES[base]}, with its own options.` : '')),
+      element('div', 'ly-acts',
+        element('button', { class: 'btn pr-ren', onclick: () => renamePreset(name, p) }, 'Rename'),
+        element('button', { class: 'btn pr-up', title: 'Save what\'s on screen now over this one', onclick: update }, 'Update to what\'s on screen'),
+        element('button', { class: 'btn pr-x', onclick: remove }, 'Delete')));
     // the options of the layout it was made from, its own values
     const sw = (key, on, small) => {
-      const o = document.createElement('label'); o.className = 'st-opt';
-      o.innerHTML = `<span class="st-t"><span></span><small>${small}</small></span><input type="checkbox" class="st-sw">`;
-      o.querySelector('.st-t > span').textContent = OPT_NAMES[key];
-      const c = o.querySelector('input'); c.checked = on; c.dataset.opt = key;
+      const c = element('input', { type: 'checkbox', class: 'st-sw', dataset: { opt: key } }); c.checked = on;
       c.addEventListener('change', () => setPresetOpt(p, key, c.checked));
-      panel.appendChild(o);
+      panel.appendChild(element('label', 'st-opt', element('span', 'st-t', element('span', null, OPT_NAMES[key]), element('small', null, small)), c));
     };
     if (base === 'columns' || base === 'focus') sw('linked', p.linked !== false, 'Each stream and its chat move together. Off: move and resize windows freely.');
     else if (base === 'auto') sw('autoFit', !!p.autoFit, 'A saved channel that opens because it went live goes last (its chat too), and the others keep their order.');
