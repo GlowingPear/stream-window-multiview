@@ -1,0 +1,124 @@
+import './alerts.js';   // runs after it (see app.js)
+import { GAP, colWidth, colsMode, msg, wins } from '../core.js';
+import { DESKTOP } from '../shared/env.js';
+import { chLabel, chLabelP, modOk, platOf } from '../platforms/platforms.js';
+import { SW, focusWin } from '../layout/geometry.js';
+import { addNote, cleanParts, mentAny, mentOn, partsText, readChat, spamWhy } from '../panels/bell/bell.js';
+import { injectMention } from '../panels/bell/all-notifications.js';
+import { alerts, clearAlert, raiseAlert, wantNotify } from './alerts.js';
+import { addParsed } from '../layout/placement.js';
+import { colKey, featBase, featW, featuredCh, scrollX } from '../layout/layouts.js';
+import { smoothScrollTo } from '../layout/sideways-scroll.js';
+import { buildCols } from '../layout/columns.js';
+
+/* ---------- spam alerts: chats you moderate ---------- */
+const spamRecent = [], spamFirst = new Map();   // messages from the last few minutes (every chat), when each sender first spoke
+const FIRST_MAX = 20000;   // senders remembered: busy chats bring thousands an hour, so the ones seen first go
+function firstSpoke(k, t){
+  if (spamFirst.has(k)) return;
+  spamFirst.set(k, t);
+  if (spamFirst.size > FIRST_MAX) spamFirst.delete(spamFirst.keys().next().value);
+}
+// A chat with no window left: who spoke there isn't needed (opened again, it learns who's chatting again).
+function forgetChat(ch){
+  if (wins.some(w => w.kind === 'chat' && w.channel === ch)) return;
+  const pre = ch + '\n';
+  for (const k of spamFirst.keys()) if (k.startsWith(pre)) spamFirst.delete(k);
+}
+window.spamFirst = spamFirst; window.firstSpoke = firstSpoke;   // for the tests
+window.spamCheck = (ch, lines) => spamCheck(wins.find(w => w.kind === 'chat' && w.channel === ch), lines);   // for the tests
+window.openWins = () => wins;   // for the tests
+// Whether you moderate that chat's channel (the same answer as its mod view button).
+async function modChat(w){
+  if (!DESKTOP || !window.kmv.modCheck || !/^(kick|twitch)$/.test(platOf(w.channel))) return false;
+  if (!modOk.has(w.channel)) modOk.set(w.channel, window.kmv.modCheck(w.channel).catch(() => null));
+  return (await modOk.get(w.channel)) === true;
+}
+// The chat bots never counted as a mention ('mention') or flagged as spam ('spam'): the list in Mentions, unless
+// spam alerts have their own.
+const botsFor = kind => kind === 'spam' && !alerts.spam.sharedBots ? alerts.spam.ignore || SmvSpam.BOTS : alerts.mention.bots || SmvSpam.BOTS;
+const spamOpts = () => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS, ignore: botsFor('spam') });
+// seenAt: when you last clicked or typed in that chat; messages from before then don't need a lasting alert.
+async function spamCheck(w, lines, seenAt){
+  const mod = await modChat(w);
+  const now = Date.now(), opts = spamOpts();
+  while (spamRecent.length && now - spamRecent[0].t > 5 * 60000) spamRecent.shift();
+  lines.forEach(l => {
+    if (l.mod) return;                                         // a moderator removed it: not a new message
+    if (SmvSpam.ignored(l.sender, opts.ignore)) return;        // chat bots: not checked, and their repeats don't count against anyone
+    const msg = { sender: l.sender, body: l.body, chat: w.channel, t: l.t || now };
+    const k = w.channel + '\n' + String(l.sender).toLowerCase();
+    firstSpoke(k, msg.t);
+    if (mod){
+      const r = SmvSpam.score(msg, { recent: spamRecent, firstSeen: spamFirst }, opts);
+      if (r.spam) flagSpam(w, l, r, !!seenAt && (l.t || now) <= seenAt);
+    }
+    spamRecent.push(msg);
+  });
+  if (spamRecent.length > 3000) spamRecent.splice(0, spamRecent.length - 3000);
+}
+function flagSpam(w, l, r, seen){
+  const a = alerts.spam;
+  if (a.tag){
+    const why = spamWhy(r);
+    w.view.executeJavaScript(`window.__kmvMention && window.__kmvMention.mark(${JSON.stringify(l.line)}, ${JSON.stringify(why)}, ${JSON.stringify(a.color)})`).catch(() => {});
+  }
+  raiseAlert(w, 'spam', seen);
+  addNote({ kind: 'spam', channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body, score: r.score, need: r.need, signs: r.signs,
+            unread: !seen }, `Likely spam in ${chLabel(w.channel)}'s chat`);
+  if (wantNotify('spam')) window.kmv.notifyMention({ kind: 'spam', channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body });
+}
+// Bring a chat into view (and flash it).
+function revealChat(ch){
+  let c = wins.find(w => w.kind === 'chat' && w.channel === ch);
+  if (!c){ addParsed({ channel: ch, only: 'chat' }); c = wins.find(w => w.kind === 'chat' && w.channel === ch); if (!c) return; }
+  if (colsMode && !c.el.classList.contains('featured')){
+    const keys = buildCols().filter(k => !(featBase.length && k.key === featuredCh)).map(k => k.key);
+    const i = keys.indexOf(colKey(c));
+    if (i >= 0){
+      const shown = Math.max(1, Math.round((SW() - GAP - featW) / colWidth));
+      const first = Math.round(scrollX / colWidth);
+      if (i < first || i >= first + shown) smoothScrollTo(i * colWidth);
+    }
+  } else focusWin(c);
+  c.el.classList.remove('ping'); void c.el.offsetWidth; c.el.classList.add('ping');
+  setTimeout(() => c.el.classList.remove('ping'), 2600);
+}
+let polling = false;
+async function pollMentions(){
+  const ment = mentOn && mentAny(), spam = !!alerts.spam.on;
+  if ((!ment && !spam) || polling) return;
+  polling = true;
+  try { await pollChats(ment, spam); } finally { polling = false; }
+}
+async function pollChats(ment, spam){
+  for (const w of wins){
+    if (w.kind !== 'chat' || !w.ready || !w.view) continue;
+    let q;
+    try { q = await w.view.executeJavaScript('window.__kmvMention && window.__kmvMention.setWatch ? window.__kmvMention.take() : null'); } catch { continue; }
+    if (q === null){ injectMention(w); continue; }          // chat reloaded: set it up again
+    if (!q) continue;
+    (q.k || []).forEach(n => firstSpoke(w.channel + '\n' + n, 0));
+    if (spam && q.l && q.l.length) await spamCheck(w, q.l, q.c);
+    if (q.c){                                                 // you clicked or typed in the chat: what came before is seen
+      if (w.alert && w.alert.since <= q.c) clearAlert(w);
+      readChat(w.channel);
+    }
+    const bots = botsFor('mention');
+    (q.m || []).filter(m => !SmvSpam.ignored(m.sender, bots)).forEach(m => {
+      const looking = (document.hasFocus() && document.activeElement === w.view) || (q.c && (m.t || 0) <= q.c);   // you're in that chat right now
+      const item = { channel: w.channel, label: chLabelP(w.channel), sender: m.sender, body: m.body, kind: m.kind, quoted: m.quoted || '', t: m.t || Date.now(),
+                     unread: !looking };
+      if (m.kind === 'word') item.word = m.word;
+      // emotes in the message (and the message it replies to): kept with it, their names in its text
+      const parts = cleanParts(m.parts), qparts = cleanParts(m.qparts);
+      if (parts){ item.parts = parts; item.body = partsText(parts); }
+      if (qparts){ item.qparts = qparts; item.quoted = partsText(qparts); }
+      if (wantNotify('mention')) window.kmv.notifyMention(item);
+      addNote(item, `${item.sender} ${item.kind === 'reply' ? 'replied to you' : item.kind === 'word' ? `said “${item.word}”` : 'mentioned you'} in ${chLabel(item.channel)}`);
+      raiseAlert(w, 'mention', looking);
+    });
+  }
+}
+
+export { forgetChat, pollMentions, revealChat, spamFirst, spamOpts };
