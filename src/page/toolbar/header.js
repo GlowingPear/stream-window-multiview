@@ -1,4 +1,5 @@
 import '../panels/empty-stage/empty-stage.js';   // runs after it (see app.js)
+import { fromApp } from '../shared/incoming.js';
 import { store } from '../shared/store.js';
 import { $, coreVars, wins } from '../core.js';
 import { setTb } from '../shared/icons.js';
@@ -29,8 +30,8 @@ function showLights(on){
   else window.kmv.setLights(false);
 }
 if (MAC_BAR){
-  window.kmv.onTop(() => peekBar());   // the mouse reached the top edge (see win:watchTop in main.js)
-  window.kmv.onFullscreen(on => {
+  fromApp('onTop', () => peekBar());   // the mouse reached the top edge (see win:watchTop in main.js)
+  fromApp('onFullscreen', on => {
     document.body.classList.toggle('fullscreen', on);
     clearTimeout(lightsT);
     const cls = document.body.classList;

@@ -1,4 +1,5 @@
 import '../../start.js';   // runs after it (see app.js)
+import { fromApp } from '../../shared/incoming.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
 import { $, ROLE } from '../../core.js';
@@ -517,11 +518,11 @@ if (DESKTOP && ROLE === 'main' && window.kmv.profileGet){
   $('#pfSort').addEventListener('change', () => { pf.sort = $('#pfSort').value; settings.set('profView', { sort: pf.sort }); pfRenderDir(); });
   // a picture fetched in the background (src/profile-queue.js): show it in the Saved list and the Profiles cards
   let pfInfoT = null;
-  if (window.kmv.onProfileInfo) window.kmv.onProfileInfo(() => {
+  fromApp('onProfileInfo', () => {
     clearTimeout(pfInfoT);
     pfInfoT = setTimeout(() => { loadSavedProfiles(); loadBarAvatars(true); if (!profDlg.hidden && !pf.cur) pfLoadList(); }, 400);
   });
-  window.kmv.onLiveStatus(() => { if (!profDlg.hidden){ if (pf.cur) { if (!document.activeElement || !profDlg.contains(document.activeElement) || !/^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName)) pfRenderProf(); } else pfRenderDir(); } });
+  fromApp('onLiveStatus', () => { if (!profDlg.hidden){ if (pf.cur) { if (!document.activeElement || !profDlg.contains(document.activeElement) || !/^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName)) pfRenderProf(); } else pfRenderDir(); } });
   window.openProfile = openProfile;   // for the tests
 }
 

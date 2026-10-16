@@ -1,4 +1,5 @@
 import '../windows/views.js';   // runs after it (see app.js)
+import { fromApp, fromSite } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { runIn, viewId } from '../windows/view.js';
 import { wins } from '../core.js';
@@ -25,6 +26,7 @@ function setTrAll(on){
     runIn(w.view, `${TRANSLATE_JS};${js}`);
   });
 }
+fromSite('tr', (w, json, view) => { if (w.view === view) translateFor(view, json); });
 async function translateFor(frame, json){
   let d; try { d = JSON.parse(json); } catch { return; }
   const texts = d && Array.isArray(d.texts) ? d.texts.filter(t => typeof t === 'string').slice(0, 25) : [];
@@ -45,6 +47,6 @@ function translateChat(w, a){
   runIn(w.view, `${TRANSLATE_JS};${js}`);
 }
 const winOfView = id => wins.find(w => w.view && viewId(w.view) === id);
-if (window.kmv && window.kmv.onViewTranslate) window.kmv.onViewTranslate((id, a) => translateChat(winOfView(id), a));
+fromApp('onViewTranslate', (id, a) => translateChat(winOfView(id), a));
 
-export { autoTrFor, setTrAll, trAll, translateFor, winOfView };
+export { autoTrFor, setTrAll, trAll, winOfView };
