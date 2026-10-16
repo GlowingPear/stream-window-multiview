@@ -49,6 +49,8 @@
       "!*.bat",
       "!*.sh",
       "!README*",
+      "!CLAUDE.md",
+      "!src/page/README.md",
       "!.needs-install",
       "!*.log"
     ],
