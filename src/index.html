@@ -731,10 +731,19 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 .col-pick:hover{border-color:var(--line2);background:var(--panel)}
 .col-pick option{background:var(--panel);color:var(--text)}
 .win:has(.col-pick) .title{display:none}
+/* the channel's picture (chAvatar), as in the Channels list: on the name dropdown's left end, so clicking it opens the list */
+.ch-av{--c:#3a5a7a;--gap:var(--panel2);position:relative;flex:none;width:16px;height:16px;border-radius:50%;background:var(--c);display:grid;place-items:center;
+  font-size:6.5px;font-weight:800;color:#fff;letter-spacing:0}
+.ch-av img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover}
+.ch-av.live{box-shadow:0 0 0 1.5px var(--gap),0 0 0 3px #e5262a}
+.ch-av.off img{filter:grayscale(.6);opacity:.75}
+.ch-av .pi{position:absolute;right:-3px;bottom:-2px;z-index:1;width:8px;height:8px;font-size:5.5px;border-radius:2px;box-shadow:0 0 0 1.5px var(--gap)}
+.bar .bar-av{z-index:1;margin:0 -26px 0 1px;pointer-events:none}     /* the bar's left edge still drags the window */
+.bar .bar-av ~ .col-pick{padding-left:25px}
+.dd-list .ch-av{--gap:var(--panel);display:inline-grid;vertical-align:-4px;margin-right:8px}
 /* platform colours: Kick green, Twitch purple, YouTube red */
-.win.plat-twitch .dot,.fs-item.plat-twitch .fs-name .dot{background:#a970ff}
-.win.plat-youtube .dot,.fs-item.plat-youtube .fs-name .dot{background:#ff3d3d}
-.win.chat.plat-kick .dot{background:#7aa7ff}
+.fs-item.plat-twitch .fs-name .dot{background:#a970ff}
+.fs-item.plat-youtube .fs-name .dot{background:#ff3d3d}
 .waitmsg{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;
   text-align:center;color:var(--muted);background:#000;font-size:13px}
 .waitmsg[hidden]{display:none}
@@ -2896,7 +2905,7 @@ function fitBar(bar){
     more.hidden = !bar.querySelector('.btns .ovf:not([hidden])');
   }
   name.style.minWidth = ''; name.style.flex = 'none';
-  name.style.minWidth = Math.min(name.offsetWidth, 64) + 'px'; name.style.flex = '';
+  name.style.minWidth = Math.min(name.offsetWidth, 64 + (bar.querySelector('.bar-av') ? 21 : 0)) + 'px'; name.style.flex = '';   // (+ the picture on it)
   for (const c of BAR_LEVELS){ if (fits()) break; bar.classList.add(c); }
   if (!fits() && more){
     more.hidden = false;
@@ -2958,7 +2967,7 @@ function createWin(spec, rect){
   el.className = 'win ' + w.kind + (w.channel ? ' plat-' + platOf(w.channel) : '');
   el.innerHTML = `
     <div class="bar">
-      <span class="dot"></span><span class="title"></span>${w.channel ? '<select class="col-pick" title="Swap this window with another one"></select>' : ''}<span class="tag"></span><span class="grab"></span>
+      ${w.channel ? '<span class="bar-av"></span>' : '<span class="dot"></span>'}<span class="title"></span>${w.channel ? '<select class="col-pick" title="Swap this window with another one"></select>' : ''}<span class="tag"></span><span class="grab"></span>
       ${hasVol ? `<div class="vol" title="Volume (scroll to adjust)"><button data-v="mute" title="Mute / unmute"></button><input type="range" min="0" max="100" step="1" aria-label="Volume"><span class="pct"></span></div>` : ''}
       <div class="btns">
         ${w.kind === 'stream' ? '<button class="txt" data-a="chat" title="Add this channel\'s chat next to it">+ Chat</button>' : ''}
@@ -3057,7 +3066,7 @@ function createWin(spec, rect){
   watchBar(bar);
   bar.addEventListener('dblclick', e => { if (!e.target.closest('button, .vol, select')) toggleMax(w); });
   const pick = el.querySelector('.col-pick');
-  if (pick) pick.addEventListener('change', () => swapWindows(w, pick.value));
+  if (pick){ pick.addEventListener('change', () => swapWindows(w, pick.value)); pick.ddIcon = o => chAvatar(o.value); }
   bar.addEventListener('pointerdown', e => {
     if (e.button !== 0 || e.target.closest('button, .vol, select')) return;
     if (colsMode && linked && ROLE === 'main'){
@@ -3621,7 +3630,7 @@ const abc = list => [...new Set(list)].sort((x, y) => x.localeCompare(y, undefin
 let saved = [];
 try { saved = abc(JSON.parse(localStorage.getItem(SAVED) || '[]')); } catch {}
 let liveInfo = {};                                  // channel -> { live, title, viewers, category, name, checked }
-function gotLive(snap){ liveInfo = snap || {}; rememberNames(infoNames(liveInfo)); renderSaved(); checkAutoOpen(); }
+function gotLive(snap){ liveInfo = snap || {}; rememberNames(infoNames(liveInfo)); renderSaved(); paintBarAvatars(); checkAutoOpen(); }
 let notifyAll = true, notifyOff = [];
 try { notifyAll = localStorage.getItem('kickMultiview.notifyAll') !== '0'; notifyOff = JSON.parse(localStorage.getItem('kickMultiview.notifyOff') || '[]'); } catch {}
 function sendWatch(){
@@ -5051,6 +5060,34 @@ function refreshPicks(){
       if (sel.value !== w.channel) sel.value = w.channel;
       sel.title = list.length > 1 ? `Swap this ${kind} with another one` : chLabelP(w.channel);
     });
+  });
+  paintBarAvatars(); loadBarAvatars();
+}
+/* The channel's picture on each window's name dropdown and on the rows of its list, as in the Channels list: the
+   picture (or initials), the site's badge, a red ring while live, greyed out when offline (saved channels are checked). */
+let barProf = {}, barProfSig = '';
+function loadBarAvatars(again){
+  if (!DESKTOP || !window.kmv.profileList) return;
+  const chs = [...new Set(wins.filter(w => w.channel).map(w => w.channel))], sig = chs.join('|');
+  if (!chs.length || (!again && sig === barProfSig)) return;
+  barProfSig = sig;
+  window.kmv.profileList(chs).then(l => { barProf = l || {}; paintBarAvatars(); }).catch(() => {});
+}
+function chAvatar(ch){
+  const info = infoFor(ch), p = barProf[ch] || svProf[ch], pic = p && p.info && p.info.avatar;
+  const a = document.createElement('span');
+  a.className = 'ch-av' + (info ? (info.live ? ' live' : ' off') : '');
+  a.style.setProperty('--c', svHue(ch)); a.textContent = svInitials(chLabel(ch));
+  a.insertAdjacentHTML('beforeend', platIcon(platOf(ch)));
+  if (pic){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = pic; a.appendChild(im); }
+  a.dataset.k = [a.className, pic, a.firstChild.textContent].join('|');
+  return a;
+}
+function paintBarAvatars(){
+  wins.forEach(w => {
+    const old = w.el.querySelector('.bar-av'); if (!old) return;
+    const a = chAvatar(w.channel); a.classList.add('bar-av');
+    if (old.dataset.k !== a.dataset.k) old.replaceWith(a);       // unchanged: keep it (no picture reloading)
   });
 }
 function swapWindows(w, otherCh){
@@ -8852,7 +8889,7 @@ if (DESKTOP && ROLE === 'main' && window.kmv.profileGet){
   let pfInfoT = null;
   if (window.kmv.onProfileInfo) window.kmv.onProfileInfo(() => {
     clearTimeout(pfInfoT);
-    pfInfoT = setTimeout(() => { loadSavedProfiles(); if (!profDlg.hidden && !pf.cur) pfLoadList(); }, 400);
+    pfInfoT = setTimeout(() => { loadSavedProfiles(); loadBarAvatars(true); if (!profDlg.hidden && !pf.cur) pfLoadList(); }, 400);
   });
   window.kmv.onLiveStatus(() => { if (!profDlg.hidden){ if (pf.cur) { if (!document.activeElement || !profDlg.contains(document.activeElement) || !/^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName)) pfRenderProf(); } else pfRenderDir(); } });
   window.openProfile = openProfile;   // for the tests

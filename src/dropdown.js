@@ -18,6 +18,8 @@
       b.type = 'button'; b.tabIndex = -1;
       b.setAttribute('role', 'option');
       b.textContent = o.textContent;
+      const ic = sel.ddIcon && sel.ddIcon(o);   // a picture before the text, from the page (a window's channel list)
+      if (ic) b.prepend(ic);
       b.disabled = o.disabled;
       if (i === sel.selectedIndex) { b.classList.add('on'); b.setAttribute('aria-selected', 'true'); }
       b.addEventListener('click', () => pick(i));
