@@ -1,4 +1,5 @@
 import { $, ROLE, colsMode, coreVars, stage } from '../core.js';
+import { chatStageLayout } from '../layout/chat-stage.js';
 import { curLayout, updateLayoutMenu, updateSwBtn } from '../layout/column-drag.js';
 import { columnsLayout } from '../layout/columns.js';
 import { gameLayout } from '../layout/game-focus.js';
@@ -81,6 +82,7 @@ function init(){
       if (l === 'columns'){ setFeatured(null); layoutVars.scrollX = 0; columnsLayout(); return; }
       setColsMode(false);
       if (l === 'chatfocus') chatFocusLayout();
+      else if (l === 'stage') chatStageLayout();
       else if (l === 'auto'){ coreVars.lastLayout = 'auto'; autoLayout(); }   // first, so its save() stores it
       else tile();
       store.changed('layout');

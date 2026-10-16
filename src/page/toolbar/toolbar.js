@@ -1,6 +1,7 @@
 import { alerts, saveAlerts } from '../alerts/alerts.js';
 import { pollMentions, revealChat } from '../alerts/spam-alerts.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../core.js';
+import { chatStageLayout } from '../layout/chat-stage.js';
 import { columnsLayout } from '../layout/columns.js';
 import { gameLayout } from '../layout/game-focus.js';
 import { SH, SW, clampPos, setRect } from '../layout/geometry.js';
@@ -143,6 +144,7 @@ function init(){
     clearTimeout(refitT);
     refitT = setTimeout(() => {
       if (lastLayout === 'chatfocus') chatFocusLayout();
+      else if (lastLayout === 'stage') chatStageLayout();
       else if (lastLayout === 'tile') tile();
       else if (lastLayout === 'spot') spotlight();
       else if (lastLayout === 'auto') autoLayout();
@@ -215,7 +217,7 @@ function init(){
     window.kmv.liveSnapshot().then(gotLive).catch(() => {});
     $('#openLive').onclick = () => {
       liveNow().forEach(ch => { if (!wins.some(w => w.kind === 'stream' && w.channel === ch)) addParsed({ channel: ch, only: null }); });
-      if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(); else autoLayout();
+      if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(); else if (lastLayout === 'stage') chatStageLayout(); else autoLayout();
     };
     setInterval(() => { if (!$('#savedPanel').hidden) renderSaved(); }, 30000);   // keep "checked x min ago" fresh
     sendWatch();

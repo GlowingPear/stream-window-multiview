@@ -92,7 +92,7 @@ function updateColNav(){
 const curLayout = () => colsMode ? (featBase.length && featuredCh ? 'focus' : 'columns') : lastLayout;
 function updateLayoutMenu(){
   const b = $('#layoutBtn'); if (!b) return;
-  const names = { focus: 'Focus view', game: 'Game focus', columns: 'Columns', chatfocus: 'Chat focus', auto: 'Auto layout', tile: 'Tile' };
+  const names = { focus: 'Focus view', game: 'Game focus', columns: 'Columns', chatfocus: 'Chat focus', stage: 'Chat Stage', auto: 'Auto layout', tile: 'Tile' };
   const cur = curLayout();
   // its name stays "Layout" (when there's room); the layout in use is in its tooltip
   b.title = (activePreset ? 'Layout: ' + activePreset : names[cur] ? 'Layout: ' + names[cur] : 'Layout') + (locked() ? ' (locked)' : '') + '. Arrange the windows';

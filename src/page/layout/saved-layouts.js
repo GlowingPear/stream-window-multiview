@@ -1,5 +1,6 @@
 import { closeWin } from '../chat/view-menu.js';
 import { $, MIN_H, MIN_W, colsMode, coreVars, lastLayout, streamCols, wins } from '../core.js';
+import { chatStageLayout } from './chat-stage.js';
 import { buildCols, columnVars, columnsLayout, sideCols } from './columns.js';
 import { gameLayout } from './game-focus.js';
 import { SH, SW, setRect } from './geometry.js';
@@ -43,7 +44,7 @@ const MODE_NAMES = { focus: 'Focus view', game: 'Game focus', columns: 'Columns'
 function capturePreset(name){
   return {
     name, savedAt: Date.now(), sw: SW(), sh: SH(),
-    mode: colsMode ? 'columns' : (['chatfocus', 'auto', 'tile', 'game'].includes(lastLayout) ? lastLayout : 'free'),
+    mode: colsMode ? 'columns' : (['chatfocus', 'stage', 'auto', 'tile', 'game'].includes(lastLayout) ? lastLayout : 'free'),
     featured: colsMode && featBase.length ? featuredCh : null,
     sideCols, linked, streamCols, pageStep, autoFit: fitOn(),
     order: buildCols().map(c => c.key),
@@ -180,6 +181,7 @@ function applyPreset(p, opt = {}){
   } else {
     setFeatured(null);
     if (p.mode === 'chatfocus') chatFocusLayout();
+    else if (p.mode === 'stage') chatStageLayout();
     else if (p.mode === 'tile') tile();
     else if (p.mode === 'auto'){ coreVars.lastLayout = 'auto'; autoLayout(); }
     else if (p.mode === 'game') gameLayout();

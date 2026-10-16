@@ -2,6 +2,7 @@ import { blowOn, toggleBlowMode } from '../chat/blow-up.js';
 import { ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { VOL_JS } from '../in-site/volume.js';
 import { backToChatFocus } from './chat-focus.js';
+import { isStage, putOnStage } from './chat-stage.js';
 import { updateSwBtn } from './column-drag.js';
 import { buildCols, columnsLayout, sideCols } from './columns.js';
 import { focusOnly, syncSwitcher, toggleFocusOnly } from './focus-only.js';
@@ -129,7 +130,7 @@ function openFocusView(){
   setFeatured(streams.includes(featuredCh) ? featuredCh : streams[0]);
   layoutVars.scrollX = 0; columnsLayout();
 }
-function focusChannel(ch){ if (ch === featuredCh) toggleFeatured(ch); else { setFeatured(ch); columnsLayout(); } }
+function focusChannel(ch){ if (isStage()) putOnStage(ch); else if (ch === featuredCh) toggleFeatured(ch); else { setFeatured(ch); columnsLayout(); } }
 function ensureMini(s){
   if (s.mini) return s.mini;
   const miniSrc = streamSrc(s.channel, true, ytVidOf(s));
