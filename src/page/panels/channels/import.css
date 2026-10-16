@@ -1,0 +1,25 @@
+/* import follows / browser login dialogs */
+.dlg-bg{position:fixed;inset:0;z-index:100020;background:rgba(0,0,0,.55);display:grid;place-items:center}
+#importDlg,#ffDlg,#capDlg{z-index:100030}   /* over Settings when opened from it */
+.dlg-bg[hidden]{display:none}
+.dlg{width:min(520px,calc(100vw - 32px));max-height:min(82vh,760px);display:flex;flex-direction:column;gap:10px;padding:16px;
+  background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.dlg h3{margin:0;font-size:15px;display:flex;align-items:center;gap:8px}
+.dlg h3 .pdot{width:10px;height:10px;border-radius:50%}
+.dlg .dlg-sub{font-size:12px;color:var(--muted);line-height:1.45}
+.dlg .dlg-sub ol{margin:6px 0 0;padding-left:18px}.dlg .dlg-sub li{margin:3px 0}
+.dlg .dlg-sub p{margin:0 0 8px}
+.dlg .dlg-tools{display:flex;gap:6px;align-items:center}
+.dlg .dlg-tools[hidden]{display:none}
+.dlg .dlg-tools input{flex:1;min-width:0;height:30px}
+.dlg .dlg-tools .btn{height:30px;padding:0 10px;font-size:12px}
+.dlg .dlg-list{flex:1;min-height:60px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:4px}
+.dlg .dlg-list label{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:13px}
+.dlg .dlg-list label:hover{background:var(--panel2)}
+.dlg .dlg-list label .id{margin-left:auto;font-size:11px;color:var(--muted)}
+.dlg .dlg-list label.have{opacity:.55;cursor:default}
+.dlg .dlg-list .empty{padding:18px;text-align:center;color:var(--muted);font-size:12px}
+.dlg .dlg-foot{display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.dlg .dlg-foot .dlg-note{margin-right:auto;font-size:11px;color:var(--muted)}
+.dlg .dlg-foot .btn{height:32px;padding:0 14px}
+#askDlg{z-index:100040}   /* above any dialog that asks */

@@ -1,0 +1,5 @@
+/* Chrome extensions: Settings > Extensions, the install dialog and each window's extensions menu */
+#extDlg{z-index:100035}
+.ex-acts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.ex-acts .btn{height:28px;padding:0 10px;font-size:12px}
+.st-add.ex-linkrow{margin:0 0 12px}

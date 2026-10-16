@@ -1,0 +1,28 @@
+/* Import follows: the pear fills up while the channels are read (theme colours only) */
+.dlg .dlg-list .empty.loading{display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px 18px}
+.pear-load{width:40px;height:40px}
+.pear-load .body{fill:var(--line2)}
+.pear-load .juice{fill:var(--accent);animation:pear-fill 2.6s ease-in-out infinite}
+.pear-load .leaf{fill:var(--accent);transform-origin:36px 9px;animation:pear-leaf 1.3s ease-in-out infinite alternate}
+.pear-load .stem{fill:none;stroke:var(--muted);stroke-width:3.2;stroke-linecap:round}
+@keyframes pear-fill{0%{transform:translate(-32px,62px)}85%,100%{transform:translate(0,6px)}}
+@keyframes pear-leaf{to{transform:rotate(-16deg)}}
+@media (prefers-reduced-motion:reduce){.pear-load .juice,.pear-load .leaf{animation-duration:8s}}
+#accountMenu .am-row,#settingsDlg .am-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px}
+#accountMenu .am-row:hover,#settingsDlg .am-row:hover{background:var(--panel2)}
+.am-row .pdot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--line2)}
+.am-row[data-p=kick].on .pdot{background:#53fc18}.am-row[data-p=twitch].on .pdot{background:#a970ff}.am-row[data-p=youtube].on .pdot{background:#ff3d3d}
+.am-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.am-txt b{font-size:13px}
+.am-st{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#accountMenu .am-row .btn,#settingsDlg .am-row .btn{display:inline-flex;flex-direction:row;align-items:center;justify-content:center;height:26px;padding:0 9px;font-size:11px;font-weight:600;flex:none;
+  border:1px solid var(--line2);background:var(--panel2)}
+#accountMenu .am-row .btn:hover,#settingsDlg .am-row .btn:hover{border-color:var(--muted)}
+#accountMenu .am-row .btn[hidden],#settingsDlg .am-row .btn[hidden]{display:none}
+.am-note{padding:6px 10px 4px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);margin-top:4px}
+.fs-pophid em{font-style:normal;font-size:10px;font-weight:800;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.fs-pophid em:empty{display:none}
+.fs-pophid:disabled{opacity:.45;cursor:default}
+.fs-pophid:disabled:hover{border-color:var(--line2);color:inherit}
+
+#loginBtn[hidden]{display:none}

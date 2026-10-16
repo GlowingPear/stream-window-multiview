@@ -1,0 +1,16 @@
+/* The toolbar fits itself to the window (fitHeader): first the brand's name goes and the gaps get tighter (c1),
+   then Layout's name (c2), then the least-used buttons move into the ⋯ More menu, and last the names of
+   Logins, Channels and Profiles (c3). */
+header.c1{gap:4px;padding-right:8px} header.c1 .brand{display:none}
+header.c3 :is(#loginBtn,#savedBtn,#profBtn) .tb-l{display:none}
+#moreBtn{font-size:16px;letter-spacing:1px;line-height:1}
+#moreBtn[hidden]{display:none}
+#moreMenu{width:240px;right:12px}
+#moreMenu > *{width:100%}
+#moreMenu .btn{display:flex;flex-direction:row;align-items:center;gap:10px;justify-content:flex-start;border-color:transparent;background:transparent;padding:0 10px;height:34px;text-align:left;box-shadow:none}
+#moreMenu .btn:hover{background:var(--panel2)}
+#moreMenu .btn.danger,#moreMenu #clear{color:var(--danger)}
+#moreMenu .btn span{font-size:inherit;color:inherit;line-height:inherit}
+#moreMenu .ibtn{width:100%}
+#moreMenu .tb .tb-l{display:inline}
+#moreMenu .sep{display:none}

@@ -1,0 +1,54 @@
+/* ---------- volume control (always visible, any window size) ---------- */
+.win{container-type:inline-size}
+.vol{display:flex;align-items:center;gap:4px;flex:none;margin-left:auto;padding:0 4px;height:24px;border-radius:5px}
+.vol:hover{background:var(--line)}
+.vol button{width:24px;height:22px;border:0;border-radius:4px;background:transparent;color:var(--text);cursor:pointer;
+  display:grid;place-items:center;padding:0}
+.vol button.muted{color:var(--danger)}
+.vol svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.vol input{width:80px;height:4px;accent-color:var(--accent);cursor:pointer}
+.vol .pct{font-size:10px;color:var(--muted);width:26px;text-align:right;font-variant-numeric:tabular-nums}
+.vol + .btns{margin-left:0}
+/* a title bar that doesn't fit drops the tag and volume %, narrows the slider, then moves buttons into its ⋯ menu (fitBar) */
+.bar.b1 .tag,.bar.b1 .vol .pct{display:none}
+.bar.b2 .vol input{width:48px}
+.bar.b4 .title{display:none}
+.bar .grab{flex:1 0 36px;align-self:stretch}            /* always some empty bar to drag the window by */
+.btns button.ovf{display:none}
+.btns button.more-b{font-size:15px;line-height:1}
+#barMenu{width:210px}
+#barMenu button{flex-direction:row;align-items:center;gap:9px;padding:7px 10px;font-size:12.5px;color:var(--text)}
+#barMenu .bm-ico{width:16px;display:grid;place-items:center;flex:none;color:var(--muted);font-size:14px;line-height:1}
+#barMenu .bm-ico svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#barMenu .on .bm-ico{color:var(--accent)}
+#barMenu .bm-t{font-size:12.5px;color:var(--text);line-height:1.3}
+#barMenu .bm-n{margin-left:auto;font:700 10px/1 system-ui;background:var(--line2);color:var(--text);border-radius:4px;padding:2px 4px}
+.shield{position:absolute;inset:0;display:none}
+body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:block}   /* streams and chats under the pointer mustn't swallow the drag */
+
+.rz{position:absolute;z-index:2;touch-action:none}
+.rz-n,.rz-s{left:10px;right:10px;height:8px;cursor:ns-resize}
+.rz-n{top:-4px}.rz-s{bottom:-4px}
+.rz-e,.rz-w{top:10px;bottom:10px;width:8px;cursor:ew-resize}
+.rz-e{right:-4px}.rz-w{left:-4px}
+.rz-ne,.rz-nw,.rz-se,.rz-sw{width:14px;height:14px}
+.rz-ne{top:-4px;right:-4px;cursor:nesw-resize}.rz-sw{bottom:-4px;left:-4px;cursor:nesw-resize}
+.rz-nw{top:-4px;left:-4px;cursor:nwse-resize}.rz-se{bottom:-4px;right:-4px;cursor:nwse-resize}
+.rz-se::after{content:"";position:absolute;right:6px;bottom:6px;width:7px;height:7px;
+  border-right:2px solid var(--line2);border-bottom:2px solid var(--line2)}
+
+#sizehint{position:fixed;z-index:100002;padding:3px 7px;border-radius:5px;background:var(--panel);border:1px solid var(--line2);
+  font-size:11px;color:var(--muted);pointer-events:none;display:none}
+
+.zoom{display:flex;align-items:center;gap:2px;height:34px;padding:0 4px 0 10px;border:1px solid var(--line2);
+  border-radius:7px;background:var(--panel2);color:var(--muted);white-space:nowrap}
+.zoom[hidden]{display:none}
+.zoom button{border:0;background:transparent;width:24px;height:26px;border-radius:5px;cursor:pointer;color:var(--text);font-size:15px;padding:0}
+.zoom button:hover{background:var(--line)}
+.zoomPct{min-width:38px;text-align:center;color:var(--text);font-variant-numeric:tabular-nums}
+.zoom{padding:0 4px}
+.btns button.star{font-size:15px;line-height:1}
+.btns button.star.on{color:var(--accent)}
+.btns button.like.on{color:var(--accent)}
+.btns button.like.on svg path{fill:currentColor}
+.btns button.like.dim{opacity:.4}
