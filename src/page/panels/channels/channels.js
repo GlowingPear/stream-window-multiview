@@ -1,4 +1,5 @@
 import '../../layout/lock.js';   // runs after it (see app.js)
+import { element } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../../core.js';
@@ -130,6 +131,23 @@ function loadSavedProfiles(){
 // "nightowl" -> NI, "ember_and_oak" -> EA (as on profiles)
 const svInitials = n => { const w = String(n).replace(/^@/, '').split(/[\s_.\-]+/).filter(Boolean); return ((w.length > 1 ? w[0][0] + w[1][0] : String(n).slice(0, 2)) || '?').toUpperCase(); };
 const svHue = ch => { let h = 0; for (const c of String(ch)) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 35% 36%)`; };
+// One row of the Channels list (a saved channel, or a suggestion from your follows): its picture (initials on its
+// colour, its site's badge, its photo when known), its name, "open" when it's open here, what it's streaming,
+// and room for numbers (meta) and buttons (acts) on the right.
+function channelRow({ ch, name, site, live, photo, sub, subTitle, cls = '', title, picTitle }){
+  const pic = element('span', { class: 'sv-av', title: picTitle, style: { '--c': svHue(ch) } },
+    live ? svInitials(name) : name.replace(/^@/, '').slice(0, 1).toUpperCase());
+  pic.insertAdjacentHTML('beforeend', platIcon(site));
+  if (photo){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = photo; pic.appendChild(im); }
+  const meta = element('div', 'sv-meta'), acts = element('div', 'sv-acts');
+  const row = element('div', { class: `sv ${cls}${live ? 'live' : 'off'}`, title },
+    pic,
+    element('div', 'sv-txt',
+      element('div', 'sv-line', element('span', 'nm', name), wins.some(w => w.channel === ch) && element('span', 'open', 'open')),
+      element('div', { class: 'sv-sub', hidden: !sub, title: sub ? subTitle : null }, sub)),
+    meta, acts);
+  return { row, meta, acts };
+}
 const savedQuery = () => { const q = ($('#savedInput') || {}).value || ''; return /[/:]/.test(q) ? '' : q.trim().replace(/^@/, '').toLowerCase(); };
 // The Channels list shows the saved channels, their live status and names, which are open, the Channels box's
 // search and tab, and each one's auto-open and live alert.
@@ -174,18 +192,10 @@ function renderSaved(){
     if (liveList.length && i === 0) head(`Live now · ${liveList.length}`, true);
     if (offList.length && i === liveList.length) head(`Offline · ${offList.length}`);
     const info = infoFor(ch), live = !!(info && info.live), prof = (svProf[ch] && svProf[ch].info) || {};
-    const row = document.createElement('div'); row.className = 'sv ' + (live ? 'live' : 'off');
-    row.title = 'Add it (as set in the Stream / Chat dropdown)';
-    row.innerHTML = `<span class="sv-av" title="${live ? 'Live now' : info ? (info.missing ? 'Channel not found' : 'Offline') : 'Checking…'}"></span>
-      <div class="sv-txt"><div class="sv-line"><span class="nm"></span></div><div class="sv-sub" hidden></div></div><div class="sv-meta"></div><div class="sv-acts"></div>`;
-    const av = row.querySelector('.sv-av');
-    av.style.setProperty('--c', svHue(ch)); av.textContent = live ? svInitials(chLabel(ch)) : chLabel(ch).replace(/^@/, '').slice(0, 1).toUpperCase(); av.insertAdjacentHTML('beforeend', platIcon(platOf(ch)));
-    if (prof.avatar){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = prof.avatar; av.appendChild(im); }
-    row.querySelector('.nm').textContent = chLabel(ch);
-    if (wins.some(w => w.channel === ch)){ const o = document.createElement('span'); o.className = 'open'; o.textContent = 'open'; row.querySelector('.sv-line').appendChild(o); }
-    const sub = row.querySelector('.sv-sub'), subText = live ? [...new Set([info.category, info.title].filter(Boolean))].join(' · ') : info && info.missing ? 'Channel not found' : '';
-    if (subText){ sub.hidden = false; sub.textContent = subText; sub.title = live ? info.title || '' : ''; }
-    const meta = row.querySelector('.sv-meta'), acts = row.querySelector('.sv-acts');
+    const { row, meta, acts } = channelRow({ ch, name: chLabel(ch), site: platOf(ch), live, photo: prof.avatar,
+      sub: live ? [...new Set([info.category, info.title].filter(Boolean))].join(' · ') : info && info.missing ? 'Channel not found' : '',
+      subTitle: live ? info.title || '' : '', title: 'Add it (as set in the Stream / Chat dropdown)',
+      picTitle: live ? 'Live now' : info ? (info.missing ? 'Channel not found' : 'Offline') : 'Checking…' });
     if (DESKTOP && ROLE === 'main'){
       const aon = autoOpen.includes(ch), on = notifyAll && !notifyOff.includes(ch);
       if (aon) meta.insertAdjacentHTML('beforeend', `<span class="bolt" title="Opens by itself when it goes live">${icon.bolt}</span>`);
@@ -223,6 +233,6 @@ function renderSaved(){
   appendFollowSugs(list, q);
 }
 
-export { autoFit, channelVars, fitOn, fmtViewers, gotLive, infoFor, liveInfo, liveNote, liveNow, loadSavedProfiles,
-  notifyAll, notifyOff, persistSaved, renderSaved, saved, savedTab, sendWatch, setAutoFit, svHue, svInitials, svProf,
-  tabPlat, toggleSaved };
+export { autoFit, channelRow, channelVars, fitOn, fmtViewers, gotLive, infoFor, liveInfo, liveNote, liveNow,
+  loadSavedProfiles, notifyAll, notifyOff, persistSaved, renderSaved, saved, savedTab, sendWatch, setAutoFit, svHue,
+  svInitials, svProf, tabPlat, toggleSaved };

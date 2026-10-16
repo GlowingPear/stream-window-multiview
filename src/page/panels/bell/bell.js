@@ -1,5 +1,5 @@
 import '../channels/open-box.js';   // runs after it (see app.js)
-import { esc } from '../../shared/element.js';
+import { element, esc } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
 import { $, ROLE, wins } from '../../core.js';
@@ -166,20 +166,18 @@ function mentBodyHtml(m){
 const NOTE_ICO = { mention: 'at', reply: 'reply', spam: 'mod', live: 'live', raid: 'raid', accounts: 'user', layouts: 'tile', windows: 'popwin', downloads: 'download', updates: 'update' };
 function noteRow(n, o = {}){
   const kind = n.kind || 'mention', tab = SmvNotes.tabOf(n);
-  const row = document.createElement('div');
-  row.className = `mp-row nc-row k-${kind} plat-${platOf(n.channel || '')}` + (n.unread ? ' unread' : '');
-  row.dataset.id = n.id || '';
-  row.innerHTML = `<span class="nc-ico"></span><div class="mp-top"><b></b><span class="mp-kind"></span><span class="mp-time"></span></div><div class="mp-where"><span class="dot"></span><span></span></div><div class="mp-q" hidden></div><div class="mp-body"></div>`;
   const ico = NOTE_ICO[kind === 'app' ? n.subject : kind];
-  row.querySelector('.nc-ico').innerHTML = ico && icon[ico] ? icon[ico] : '<span class="nc-t">T</span>';
-  const top = row.querySelector('.mp-top b'), k = row.querySelector('.mp-kind'), where = row.querySelector('.mp-where span:last-child'), body = row.querySelector('.mp-body');
-  const tm = row.querySelector('.mp-time');
-  tm.textContent = o.clock ? new Date(n.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : timeAgo(n.t);
-  tm.title = new Date(n.t).toLocaleString();
-  const acts = document.createElement('div'); acts.className = 'nc-acts';
+  const top = element('b'), k = element('span', 'mp-kind'), where = element('span'), q = element('div', { class: 'mp-q', hidden: true }), body = element('div', 'mp-body');
+  const tm = element('span', { class: 'mp-time', title: new Date(n.t).toLocaleString() },
+    o.clock ? new Date(n.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : timeAgo(n.t));
+  const row = element('div', { class: `mp-row nc-row k-${kind} plat-${platOf(n.channel || '')}` + (n.unread ? ' unread' : ''), dataset: { id: n.id || '' } },
+    element('span', { class: 'nc-ico', html: ico && icon[ico] ? icon[ico] : '<span class="nc-t">T</span>' }),
+    element('div', 'mp-top', top, k, tm),
+    element('div', 'mp-where', element('span', 'dot'), where),
+    q, body);
+  const acts = element('div', 'nc-acts');
   const act = (label, fn, cls = '') => {
-    const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = label;
-    b.onclick = e => { e.stopPropagation(); fn(b); };
+    const b = element('button', { class: 'btn ' + cls, onclick: e => { e.stopPropagation(); fn(b); } }, label);
     acts.appendChild(b); return b;
   };
   const close = () => { if (o.close) o.close(); };
@@ -188,7 +186,7 @@ function noteRow(n, o = {}){
     k.textContent = kind === 'word' ? `Word: ${n.word}` : MENT_KIND[kind] || 'Mention';
     k.classList.add(kind);
     where.textContent = chLabelP(n.channel);
-    const q = row.querySelector('.mp-q'), qp = cleanParts(n.qparts), bp = cleanParts(n.parts);
+    const qp = cleanParts(n.qparts), bp = cleanParts(n.parts);
     q.hidden = !n.quoted;
     if (qp) q.append(mentBodyNodes(n, qp, false)); else q.textContent = n.quoted || '';
     if (bp) body.append(mentBodyNodes(n, bp, true)); else body.innerHTML = mentBodyHtml(n);
@@ -204,8 +202,7 @@ function noteRow(n, o = {}){
     act('Not spam', () => dropNotes(x => x === n)).title = 'Take it off this list';
     if (SmvSpam.ignored(n.sender, spamOpts().ignore)) acts.insertAdjacentHTML('beforeend', '<span class="nc-note">On the chat bot list</span>');
     else act('Add to bots', () => { ignoreSender(n.sender); renderBell(); }, 'danger').title = `Add ${n.sender} to the chat bot list, so its messages are never flagged`;
-    const why = document.createElement('div'); why.className = 'nc-why'; why.hidden = true;
-    why.textContent = spamWhy(n);
+    const why = element('div', { class: 'nc-why', hidden: true }, spamWhy(n));
     act('Why?', () => { why.hidden = !why.hidden; }, 'linkish');
     row.append(acts, why);
     row.title = 'Show this chat';
