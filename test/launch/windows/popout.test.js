@@ -28,6 +28,15 @@ async function windowFor(re) {
   }
   throw new Error('window did not open: ' + re);
 }
+// Waits until no window has moved for 200 ms (at most 4 s).
+async function settled(page) {
+  let prev = '';
+  for (let i = 0; i < 40; i++) {
+    const now = JSON.stringify(await page.$$eval('#stage .win', l => l.map(e => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map(Math.round); })));
+    if (now === prev) return;
+    prev = now; await page.waitForTimeout(200);
+  }
+}
 const box = async (page, sel) => { const b = await page.locator(sel).boundingBox(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) }; };
 
 test('Pop out streams: streams move to their own window with Tile, Spotlight and swaps; chats stay; Bring streams back', T, async () => {
@@ -51,7 +60,9 @@ test('Pop out streams: streams move to their own window with Tile, Spotlight and
   const sizes = await sw.$$eval('#stage .win.stream', l => Object.fromEntries(l.map(e => [e.querySelector('.title').textContent, e.offsetWidth])));
   assert.ok(sizes.bravo > sizes.alpha * 2, 'Spotlight: the one you clicked is big');
 
-  // drag one stream onto another: they swap spots
+  // drag one stream onto another: they swap spots (measured once Spotlight has finished moving them; on a busy
+  // machine that takes longer than the wait above)
+  await settled(sw);
   const al = await box(sw, `${winSel('alpha')} .bar .grab`), br = await box(sw, winSel('bravo'));
   await sw.mouse.move(al.x + al.w / 2, al.y + al.h / 2); await sw.mouse.down();      // the bar's empty part, not its channel dropdown
   await sw.mouse.move(br.x + br.w / 2, br.y + br.h / 2, { steps: 10 }); await sw.mouse.up();
