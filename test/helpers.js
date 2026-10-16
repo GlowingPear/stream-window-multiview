@@ -49,7 +49,7 @@ async function saveCoverage(page) {
   if (!COVERAGE) return;
   let list = [];
   try { list = await page.coverage.stopJSCoverage(); } catch { return; }
-  list = list.filter(c => /\/src\/[^/?#]+\.(html|js)(\?|#|$)/.test(c.url));
+  list = list.filter(c => /\/src\/(?:[^/?#]+\/)*[^/?#]+\.(html|js)(\?|#|$)/.test(c.url));
   if (!list.length) return;
   const dir = path.join(COVERAGE, 'page');
   fs.mkdirSync(dir, { recursive: true });
@@ -86,7 +86,7 @@ function serve() {
     const srv = http.createServer((req, res) => {
       const file = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname));
       if (!file.startsWith(ROOT + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end(); }
-      const type = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.png': 'image/png' }[path.extname(file)] || 'text/plain; charset=utf-8';
+      const type = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png' }[path.extname(file)] || 'text/plain; charset=utf-8';
       res.writeHead(200, { 'Content-Type': type });
       res.end(fs.readFileSync(file));
     });
