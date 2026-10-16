@@ -1,4 +1,5 @@
 import '../layout/geometry.js';   // runs after it (see app.js)
+import { closeOnOutside } from '../shared/popover.js';
 import { $ } from '../core.js';
 import { tipName } from '../shared/tooltips.js';
 
@@ -71,8 +72,6 @@ function openBarMenu(more){
   barMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
   barMenu.style.top = Math.min(innerHeight - barMenu.offsetHeight - 8, r.bottom + 4) + 'px';
 }
-document.addEventListener('pointerdown', e => {
-  if (!barMenu.hidden && !barMenu.contains(e.target) && !(barMenuFor && barMenuFor.contains(e.target))) barMenu.hidden = true;
-}, true);
+closeOnOutside(barMenu, { button: () => barMenuFor, capture: true });
 
 export { openBarMenu, watchBar };
