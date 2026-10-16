@@ -503,10 +503,8 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <div class="dlg-foot"><span class="dlg-note ff-note"></span><button class="btn dlg-cancel">Close</button><button class="btn primary ff-copy">Copy my login from Firefox</button></div>
 </div></div>
 
-<script src="spam.js"></script>
-<script src="notifications.js"></script>
-<script src="follows.js"></script>
-<script src="dropdown.js"></script>
+<script src="shared/follows.js"></script>
+<script type="module" src="page/shared/dropdown.js"></script>
 <script type="module" src="page/app.js"></script>
 </body>
 </html>

@@ -91,6 +91,17 @@ function localNames(text) {
     for (const m of part.matchAll(/([A-Za-z_$][\w$]*)\s*(:)?/g)) if (!m[2] && m[1] !== 'async') out.add(m[1]);
   });
   for (const m of text.matchAll(/\b(?:let|const|var|function|class)\s+([A-Za-z_$][\w$]*)/g)) out.add(m[1]);
+  // let a = 1, b = [] …: the names after the first, up to the end of the statement (commas inside brackets aren't theirs)
+  for (const m of text.matchAll(/\b(?:let|const|var)\s+/g)) {
+    let depth = 0, i = m.index + m[0].length;
+    for (; i < text.length; i++) {
+      const c = text[i];
+      if ('([{'.includes(c)) depth++;
+      else if (')]}'.includes(c)) { if (!depth) break; depth--; }
+      else if (!depth && (c === ';' || c === '\n')) break;
+      else if (!depth && c === ',') { const n = text.slice(i + 1).match(/^\s*([A-Za-z_$][\w$]*)\s*(=|,|;|$)/m); if (n) out.add(n[1]); }
+    }
+  }
   for (const m of text.matchAll(/\b(?:let|const|var)\s*[{[]([^}\]]*)[}\]]\s*=/g)) fromList(m[1]);
   for (const m of text.matchAll(/\bfunction\s*\*?\s*[\w$]*\s*\(([^()]*)\)/g)) fromList(m[1]);
   for (const m of text.matchAll(/\(([^()]*)\)\s*=>/g)) fromList(m[1]);

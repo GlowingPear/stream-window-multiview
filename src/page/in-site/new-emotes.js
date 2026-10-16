@@ -1,7 +1,7 @@
 import './emote-preview.js';   // runs after it (see app.js)
 
 /* ---- New emotes: emotes a channel added since you last opened its chat glow until you point at one (#new-emotes).
-   The app works out which are new (src/emote-lists.js, asked when the chat opens); this marks them in the chat page,
+   The app works out which are new (src/main/emote-lists.js, asked when the chat opens); this marks them in the chat page,
    also in messages that come in later, and tells the app when you've pointed at one. */
 function newEmoteAgent(){
   if (window.__kmvNew) return true;

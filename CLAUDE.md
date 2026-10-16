@@ -1,6 +1,6 @@
 # Stream Multiview
 
-An Electron app for watching several Kick, Twitch and YouTube streams and chats at once. `src/main.js` is the Electron side; `src/index.html` with `src/page/` is the app's page. `README.md` has the project structure, the test commands and how changes and releases work (*Contributing and releases*, *Project structure*).
+An Electron app for watching several Kick, Twitch and YouTube streams and chats at once. `src/main/` is the Electron side (`src/main.js` only loads it), `src/preload/` the bridge to the page, `src/index.html` with `src/page/` the app's page, and `src/shared/` code both sides load. `README.md` has the project structure, the test commands and how changes and releases work (*Contributing and releases*, *Project structure*).
 
 ## Working on a change
 

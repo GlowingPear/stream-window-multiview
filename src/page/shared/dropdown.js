@@ -1,7 +1,8 @@
 // In-app dropdowns: every <select> opens this list instead of the system's own menu. On a Mac the system menu
 // sits above every app and takes the keyboard, even from a window you can't see (the launch tests' hidden
 // windows), and it never matches the app's theme. The <select> stays where it is and keeps its value, so
-// code that reads .value or listens for 'change' doesn't notice the difference.
+// code that reads .value or listens for 'change' doesn't notice the difference. It needs nothing else from the page,
+// and runs as it loads (index.html and switcher.html load it).
 (() => {
   'use strict';
   let open = null;   // { sel, list, items, at }

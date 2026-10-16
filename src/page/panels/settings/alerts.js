@@ -1,4 +1,5 @@
 import './general.js';   // runs after it (see app.js)
+import { SmvSpam } from '../../alerts/spam.js';
 import { esc } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
 import { $, ROLE, wins } from '../../core.js';

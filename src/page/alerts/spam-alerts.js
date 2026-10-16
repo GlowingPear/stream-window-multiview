@@ -1,4 +1,5 @@
 import './alerts.js';   // runs after it (see app.js)
+import { SmvSpam } from './spam.js';
 import { askIn, runIn } from '../windows/view.js';
 import { GAP, colWidth, colsMode, msg, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';

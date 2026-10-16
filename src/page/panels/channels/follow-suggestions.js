@@ -6,7 +6,7 @@ import { addParsed } from '../../layout/placement.js';
 import { flash } from '../../shared/flash.js';
 import { panel } from '../../toolbar/toolbar.js';
 
-/* Suggestions from the channels you follow (src/follows.js): under the saved matches while you type ("From your
+/* Suggestions from the channels you follow (src/shared/follows.js): under the saved matches while you type ("From your
    follows"), or the live ones when the box is empty ("Live now from your follows"). Only channels you haven't
    saved, at most 5, on the tab's site. The main process keeps the lists (Kick from the live checks, Twitch and
    YouTube from Import follows); a site you aren't signed in to has none. Click or Enter opens it as the Stream /

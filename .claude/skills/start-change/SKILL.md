@@ -53,7 +53,7 @@ The new worktree is still identical to `main`, so capture "before" now, before e
 - Make the change. Match the surrounding code's style.
 - No system pop-ups (`alert`/`confirm`/`prompt`, `<datalist>`, date pickers, system menus or message boxes): use the app's own dropdown list, `ask()` and `flash()`. See *No system pop-ups* in `README.md`; `npm test` checks it.
 - Add or update tests next to similar ones in `test/`: for every new code path, not only the parts that are easy to test. Coverage can't go down; `open-pr` checks it, so don't run the coverage check here as well.
-- Run the dev copy (`run-dev` skill) and check the change in the real app. `src/main.js` and `src/live.js` need a restart, the page (`src/index.html`, `src/page/`) only Ctrl/Cmd+R.
+- Run the dev copy (`run-dev` skill) and check the change in the real app. the Electron side (`src/main/`, `src/preload/`) needs a restart, the page (`src/index.html`, `src/page/`) only Ctrl/Cmd+R.
 - Capture "after" with exactly the same steps as "before".
 - Commit in small, clear commits. Don't change the version or `CHANGELOG.md`.
 
