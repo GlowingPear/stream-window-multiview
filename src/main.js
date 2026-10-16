@@ -4,6 +4,7 @@ const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parse
   validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink,
   parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, normCh, toTime, withTimeout, keepLatest } = require('./live');
 const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel } = require('./profiles');
+const { parseKickEmotes, parseTwitchEmotes, parse7tv, parseBttv, parseFfz, createEmoteStore } = require('./emote-lists');
 const { menuFor, translateTarget } = require('./context-menu');
 const { makeTranslator } = require('./translate');
 const { createProfileQueue } = require('./profile-queue');
@@ -1002,6 +1003,75 @@ async function fetchEmote(url) {
 // "Show in folder" on a saved emote under the bell: only files this app saved (this session), by their id.
 const savedEmotes = new Map();
 let savedEmoteId = 0;
+/* ---------- new emotes (src/emote-lists.js): which emotes a channel added since you last opened its chat ----------
+   Asked only when a chat opens with Settings > General > Highlight new emotes on, at most every 10 minutes per channel. */
+const emoteFile = () => stateFile('emotes');
+let emoteStore = null, emoteT = null;
+function emotes() {
+  if (!emoteStore) { let d = null; try { d = JSON.parse(fs.readFileSync(emoteFile(), 'utf8')); } catch {} emoteStore = createEmoteStore(d); }
+  return emoteStore;
+}
+function saveEmotesSoon() {
+  clearTimeout(emoteT);
+  emoteT = setTimeout(() => {
+    if (!emoteStore || !emoteStore.takeChanged()) return;
+    try { const f = emoteFile(); fs.writeFileSync(f + '.tmp', JSON.stringify(emoteStore.data())); fs.renameSync(f + '.tmp', f); } catch {}
+  }, 2000);
+}
+app.on('will-quit', () => { clearTimeout(emoteT); if (emoteStore && emoteStore.takeChanged()) try { fs.writeFileSync(emoteFile(), JSON.stringify(emoteStore.data())); } catch {} });
+const EMOTE_APIS = { stv: process.env.SMV_7TV_API || 'https://7tv.io/v3', bttv: process.env.SMV_BTTV_API || 'https://api.betterttv.net/3', ffz: process.env.SMV_FFZ_API || 'https://api.frankerfacez.com/v1' };
+async function getJson(url, opts = {}) {
+  try {
+    const r = await Promise.race([net.fetch(url, { ...opts, headers: { Accept: 'application/json', ...BROWSER_HEADERS(), ...(opts.headers || {}) } }), sleep(10000).then(() => null)]);
+    return r && r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+// { [source]: [names] } for the sources that answered (a source that didn't is left out, not emptied)
+async function emoteLists(ch) {
+  const out = {};
+  let platform = 'kick', id = null;
+  if (/^tw:/.test(ch)) {
+    platform = 'twitch';
+    const d = await getJson('https://gql.twitch.tv/gql', { method: 'POST', headers: { 'Client-Id': TWITCH_CID, 'Content-Type': 'text/plain;charset=UTF-8' },
+      body: JSON.stringify({ query: 'query($l:String!){user(login:$l){id subscriptionProducts{emotes{token}}}}', variables: { l: ch.slice(3) } }) });
+    const t = parseTwitchEmotes(d);
+    if (t) { out.twitch = t.names; id = t.userId; }
+  } else if (!/^yt:/.test(ch)) {
+    const r = await kickApi(`/emotes/${encodeURIComponent(ch)}`).catch(() => null);
+    const k = r && r.status === 200 ? parseKickEmotes(r.d, ch) : null;
+    if (k) { out.kick = k.names; id = k.userId; }
+  } else return out;                                     // YouTube: no channel emote lists to ask
+  if (id) {
+    const [stv, bttv, ffz] = await Promise.all([
+      getJson(`${EMOTE_APIS.stv}/users/${platform}/${encodeURIComponent(id)}`).then(parse7tv),
+      platform === 'twitch' ? getJson(`${EMOTE_APIS.bttv}/cached/users/twitch/${encodeURIComponent(id)}`).then(parseBttv) : null,
+      platform === 'twitch' ? getJson(`${EMOTE_APIS.ffz}/room/id/${encodeURIComponent(id)}`).then(parseFfz) : null
+    ]);
+    if (stv) out['7tv'] = stv;
+    if (bttv) out.bttv = bttv;
+    if (ffz) out.ffz = ffz;
+  }
+  return out;
+}
+const emoteAsked = new Map();     // channel -> when its lists were last asked (10 minutes apart at most)
+ipcMain.handle('emotes:open', async (_e, ch) => {
+  if (!okCh(ch)) return null;
+  ch = normCh(ch);
+  const st = emotes();
+  let added = [];
+  if (!emoteAsked.has(ch) || Date.now() - emoteAsked.get(ch) > (+process.env.SMV_EMOTE_RECHECK_MS || 10 * 60e3)) {
+    emoteAsked.set(ch, Date.now());
+    const lists = await emoteLists(ch);
+    if (Object.keys(lists).length) { added = st.update(ch, lists); saveEmotesSoon(); }
+  }
+  return { fresh: st.fresh(ch), added };
+});
+ipcMain.handle('emotes:seen', (_e, ch, name) => {
+  if (!okCh(ch) || typeof name !== 'string') return false;
+  const ok = emotes().seen(normCh(ch), name);
+  if (ok) saveEmotesSoon();
+  return ok;
+});
 ipcMain.handle('emote:download', async (e, url, name, small) => {
   if (!emoteUrlOk(url)) return { error: 'bad' };
   let got = await fetchEmote(url).catch(() => null);
