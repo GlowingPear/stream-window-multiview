@@ -1,4 +1,5 @@
 import '../../windows/capture.js';   // runs after it (see app.js)
+import { esc } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
 import { $ } from '../../core.js';
 import { DESKTOP, keyName } from '../../shared/env.js';
@@ -52,10 +53,9 @@ function setKeysOn(on){
   flash(keysOn ? 'Keyboard shortcuts on' : 'Keyboard shortcuts off');
 }
 let appVersion = '';
-const escH = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // Plain-text help files -> simple HTML (# title, ## section, ### subsection, - bullets, blank lines).
 function helpHtml(text){
-  const inline = t => escH(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  const inline = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
   let out = '', inList = false;
   const close = () => { if (inList){ out += '</ul>'; inList = false; } };
   String(text).replace(/^\uFEFF/, '').replace(/\r/g, '').split('\n').forEach(line => {
@@ -75,11 +75,11 @@ function helpHtml(text){
   close();
   return out;
 }
-const kbdHtml = k => keyName(k).split(' or ').map(x => x.split(/(?<=\S)\+(?=\S)/).map(p => `<kbd>${escH(p)}</kbd>`).join('+')).join(' or ');
+const kbdHtml = k => keyName(k).split(' or ').map(x => x.split(/(?<=\S)\+(?=\S)/).map(p => `<kbd>${esc(p)}</kbd>`).join('+')).join(' or ');
 function shortcutsHtml(){
   return `<label class="chk sc-toggle"><input type="checkbox" id="keysOn"${keysOn ? ' checked' : ''}><b>Use keyboard shortcuts</b><span>Untick to switch them all off (Esc still closes menus).</span></label>` +
     '<p>Shortcuts work when the app itself has your keyboard. If you just clicked inside a stream or chat, click a title bar or an empty spot first. They are ignored while you type in a text box.</p><div class="sc-grid">' +
-    SHORTCUTS.map(([g, rows]) => `<h4>${escH(g)}</h4>` + rows.map(([k, d]) => `<div class="sc-row"><span>${escH(d)}</span>${kbdHtml(k)}</div>`).join('')).join('') + '</div>';
+    SHORTCUTS.map(([g, rows]) => `<h4>${esc(g)}</h4>` + rows.map(([k, d]) => `<div class="sc-row"><span>${esc(d)}</span>${kbdHtml(k)}</div>`).join('')).join('') + '</div>';
 }
 // Help is part of Settings: Instructions and Keyboard shortcuts are tabs there, What's new is in Updates.
 const HELP_TAB = { guide: 'guide', keys: 'keys', news: 'updates', upd: 'updates' };
@@ -113,4 +113,4 @@ async function renderDoc(tab){
   }
 }
 
-export { appVersion, escH, keysOn, renderDoc, setKeysOn, showHelp };
+export { appVersion, keysOn, renderDoc, setKeysOn, showHelp };

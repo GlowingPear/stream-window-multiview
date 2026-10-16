@@ -1,4 +1,5 @@
 import '../../start.js';   // runs after it (see app.js)
+import { element, esc } from '../../shared/element.js';
 import { fromApp } from '../../shared/incoming.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
@@ -13,7 +14,6 @@ import { addParsed } from '../../layout/placement.js';
 import { flash } from '../../shared/flash.js';
 import { tile } from '../../layout/layouts.js';
 import { loadBarAvatars } from '../../windows/channel-picker.js';
-import { escH } from '../help/help.js';
 import { closeOverlays } from '../../shortcuts.js';
 import { ask, askChecked } from '../../shared/ask.js';
 
@@ -197,7 +197,6 @@ async function openProfile(ch){
   if (full && full.site) rememberName(ch, full.site.name);
   pfRenderProf();
 }
-const pfE = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const pfIco = {
   star: '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg>',
   unf: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11h5"/></svg>',
@@ -242,107 +241,107 @@ function pfRenderProf(){
   box.innerHTML = '';
 
   /* hero */
-  const hero = pfE('div', 'pf-hero');
-  const banner = pfE('div', 'pf-banner');
+  const hero = element('div', 'pf-hero');
+  const banner = element('div', 'pf-banner');
   hero.style.setProperty('--pc', { kick: '#53fc18', twitch: '#9146ff', youtube: '#ff3030' }[plat]);
   if (s && s.banner) banner.style.backgroundImage = `url("${s.banner.replace(/"/g, '%22')}")`; else banner.classList.add('none');
   hero.appendChild(banner);
-  const main = pfE('div', 'pf-hero-main'), avw = pfE('div', 'pf-avwrap');
+  const main = element('div', 'pf-hero-main'), avw = element('div', 'pf-avwrap');
   avw.appendChild(pfAvatar(ch, realName, (s && s.avatar) || inf.avatar, isLive));
-  if (isLive) avw.appendChild(pfE('span', 'pf-livetag', 'LIVE'));
+  if (isLive) avw.appendChild(element('span', 'pf-livetag', 'LIVE'));
   main.appendChild(avw);
-  const id = pfE('div', 'pf-id'), h2 = pfE('h2');
+  const id = element('div', 'pf-id'), h2 = element('h2');
   h2.appendChild(document.createTextNode(shown));
-  if (m.nick && m.nick !== realName) h2.appendChild(pfE('small', '', realName));
-  h2.appendChild(pfE('span', 'pf-plat ' + plat, P));
-  if (s && s.verified) h2.appendChild(pfE('span', 'pf-badge ok', 'Verified'));
-  if (s && s.partner) h2.appendChild(pfE('span', 'pf-badge', 'Partner'));
-  else if (s && s.affiliate) h2.appendChild(pfE('span', 'pf-badge', 'Affiliate'));
-  if (pf.mod[ch]) h2.appendChild(pfE('span', 'pf-badge mod', 'You moderate'));
+  if (m.nick && m.nick !== realName) h2.appendChild(element('small', '', realName));
+  h2.appendChild(element('span', 'pf-plat ' + plat, P));
+  if (s && s.verified) h2.appendChild(element('span', 'pf-badge ok', 'Verified'));
+  if (s && s.partner) h2.appendChild(element('span', 'pf-badge', 'Partner'));
+  else if (s && s.affiliate) h2.appendChild(element('span', 'pf-badge', 'Affiliate'));
+  if (pf.mod[ch]) h2.appendChild(element('span', 'pf-badge mod', 'You moderate'));
   id.appendChild(h2);
   const metaBits = [chLabel(ch) !== shown ? chLabel(ch) : '', s && s.created ? `On ${P} since ${new Date(s.created).toLocaleDateString([], { year: 'numeric', month: 'long' })}` : '',
     followers != null ? `${fmtN(followers)} followers` : s && s.followersText ? s.followersText : ''].filter(Boolean);
-  if (metaBits.length) id.appendChild(pfE('div', 'pf-meta', metaBits.join(' · ')));
-  if (s && s.bio) id.appendChild(pfE('p', 'pf-bio', s.bio));
-  if (d.loading && !s) { const l = pfE('div', 'pf-load'); l.innerHTML = `<span class="spin"></span> Asking ${P}…`; id.appendChild(l); }
-  else if (!s && (d.failed || d.missing || d.video)) id.appendChild(pfE('div', 'pf-meta', d.missing ? `${P} says this channel doesn't exist (any more).` : `Couldn't reach ${P} right now, so this shows what the app has recorded.`));
+  if (metaBits.length) id.appendChild(element('div', 'pf-meta', metaBits.join(' · ')));
+  if (s && s.bio) id.appendChild(element('p', 'pf-bio', s.bio));
+  if (d.loading && !s) { const l = element('div', 'pf-load'); l.innerHTML = `<span class="spin"></span> Asking ${P}…`; id.appendChild(l); }
+  else if (!s && (d.failed || d.missing || d.video)) id.appendChild(element('div', 'pf-meta', d.missing ? `${P} says this channel doesn't exist (any more).` : `Couldn't reach ${P} right now, so this shows what the app has recorded.`));
   if (s && s.socials && s.socials.length){
-    const so = pfE('div', 'pf-socials');
-    s.socials.forEach(x => { const b = pfE('button'); b.innerHTML = `<b></b><span></span>`; b.querySelector('b').textContent = x.site; b.querySelector('span').textContent = x.label; b.title = x.url; b.onclick = () => window.kmv.openExternal(x.url); so.appendChild(b); });
+    const so = element('div', 'pf-socials');
+    s.socials.forEach(x => { const b = element('button'); b.innerHTML = `<b></b><span></span>`; b.querySelector('b').textContent = x.site; b.querySelector('span').textContent = x.label; b.title = x.url; b.onclick = () => window.kmv.openExternal(x.url); so.appendChild(b); });
     id.appendChild(so);
   }
   main.appendChild(id);
-  const acts = pfE('div', 'pf-acts');
-  const fav = pfE('button', 'btn fav' + (m.fav ? ' on' : '')); fav.innerHTML = pfIco.star + (m.fav ? 'Favourite' : 'Favourite');
+  const acts = element('div', 'pf-acts');
+  const fav = element('button', 'btn fav' + (m.fav ? ' on' : '')); fav.innerHTML = pfIco.star + (m.fav ? 'Favourite' : 'Favourite');
   fav.title = m.fav ? 'Remove from favourites' : 'Mark as a favourite (sorts first in Profiles)';
   fav.onclick = () => { pfSaveMeta(ch, { fav: !m.fav }); pfRenderProf(); };
   acts.appendChild(fav);
   if (isSaved && DESKTOP){
     const on = notifyAll && !notifyOff.includes(ch);
-    const bell = pfE('button', 'btn' + (on ? ' on' : '')); bell.innerHTML = (on ? icon.bell : icon.bellOff) + (on ? 'Live alerts on' : 'Live alerts off');
+    const bell = element('button', 'btn' + (on ? ' on' : '')); bell.innerHTML = (on ? icon.bell : icon.bellOff) + (on ? 'Live alerts on' : 'Live alerts off');
     bell.disabled = !notifyAll; bell.title = !notifyAll ? 'Live notifications are off for every channel (Channels panel)' : on ? 'Notify me when they go live (click to turn off)' : 'No notification for this channel (click to turn on)';
     bell.onclick = () => { channelVars.notifyOff = notifyOff.includes(ch) ? notifyOff.filter(c => c !== ch) : [...notifyOff, ch]; settings.set('notifyOff', notifyOff); sendWatch(); store.changed('liveAlerts'); pfRenderProf(); };
     acts.appendChild(bell);
   }
   if (plat === 'kick' && s && s.loggedIn && s.following !== false){
-    const u = pfE('button', 'btn unf'); u.innerHTML = pfIco.unf + 'Unfollow on Kick';
+    const u = element('button', 'btn unf'); u.innerHTML = pfIco.unf + 'Unfollow on Kick';
     u.title = 'Unfollow them on kick.com itself (asks first)';
     u.onclick = async () => { u.disabled = true; const r = await unfollowKick(ch, (pf.data.meta && pf.data.meta.nick) || realName); u.disabled = false; if (r && r.ok && pf.cur === ch && pf.data.site){ pf.data.site.following = false; pfRenderProf(); } };
     acts.appendChild(u);
   }
-  const sv = pfE('button', 'btn', isSaved ? 'Remove from saved' : '★ Save');
+  const sv = element('button', 'btn', isSaved ? 'Remove from saved' : '★ Save');
   sv.title = isSaved ? 'Remove from your saved streamers (keeps this profile\'s notes and history)' : 'Save: check when they go live and keep a history';
   sv.onclick = () => { toggleSaved(ch); pfLoadList(); pfRenderProf(); };
   acts.appendChild(sv);
   const url = (s && s.url) || platform(ch).profileUrl(ch);
-  const ext = pfE('button', 'btn'); ext.innerHTML = pfIco.ext + 'Open on ' + P; ext.onclick = () => window.kmv.openExternal(url);
+  const ext = element('button', 'btn'); ext.innerHTML = pfIco.ext + 'Open on ' + P; ext.onclick = () => window.kmv.openExternal(url);
   acts.appendChild(ext);
   main.appendChild(acts);
   hero.appendChild(main);
   box.appendChild(hero);
 
   /* now: live, or the last stream */
-  const now = pfE('div', 'pf-now' + (isLive ? ' live' : ''));
-  const thumb = pfE('div', 'pf-thumb');
+  const now = element('div', 'pf-now' + (isLive ? ' live' : ''));
+  const thumb = element('div', 'pf-thumb');
   if (isLive && sl && sl.thumb) thumb.style.backgroundImage = `url("${sl.thumb.replace(/"/g, '%22')}")`;
-  const txt = pfE('div', 'pf-now-txt'), btns = pfE('div', 'pf-now-btns');
-  const watch = pfE('button', 'btn primary', isLive ? 'Watch now' : 'Open anyway');
+  const txt = element('div', 'pf-now-txt'), btns = element('div', 'pf-now-btns');
+  const watch = element('button', 'btn primary', isLive ? 'Watch now' : 'Open anyway');
   watch.onclick = () => { profDlg.hidden = true; addParsed({ channel: ch, only: null }); };
-  const chat = pfE('button', 'btn', 'Chat only');
+  const chat = element('button', 'btn', 'Chat only');
   chat.onclick = () => { profDlg.hidden = true; addParsed({ channel: ch, only: 'chat' }); };
-  btns.appendChild(watch); const row2 = pfE('div'); row2.appendChild(chat); btns.appendChild(row2);
+  btns.appendChild(watch); const row2 = element('div'); row2.appendChild(chat); btns.appendChild(row2);
   if (isLive){
     const title = (liveI && liveI.title) || (sl && sl.title) || (sm.live && sm.live.title) || '';
     const cat = (liveI && liveI.category) || (sl && sl.category) || (sm.live && sm.live.cat) || '';
     const viewers = liveI && liveI.viewers != null ? liveI.viewers : sl ? sl.viewers : null;
-    txt.appendChild(pfE('div', 'pf-now-k', ['Live now', started ? `started ${fmtClock(started)}` : '', started ? `up ${fmtDur(Date.now() - started)}` : ''].filter(Boolean).join(' · ')));
-    txt.appendChild(pfE('div', 'pf-now-t', title || 'Live'));
+    txt.appendChild(element('div', 'pf-now-k', ['Live now', started ? `started ${fmtClock(started)}` : '', started ? `up ${fmtDur(Date.now() - started)}` : ''].filter(Boolean).join(' · ')));
+    txt.appendChild(element('div', 'pf-now-t', title || 'Live'));
     const bits = [cat, viewers != null ? `${viewers.toLocaleString()} watching` : '', sm.live && sm.live.peak ? `peak ${sm.live.peak.toLocaleString()} (seen by the app)` : ''];
     if (s && s.chat) bits.push(pfChatRules(s.chat));
-    txt.appendChild(pfE('div', 'pf-now-s', bits.filter(Boolean).join(' · ')));
+    txt.appendChild(element('div', 'pf-now-s', bits.filter(Boolean).join(' · ')));
     if (sl && sl.thumb) now.appendChild(thumb);
   } else {
     const rc = sm.recap, lb = s && s.lastBroadcast;
     if (rc){
-      txt.appendChild(pfE('div', 'pf-now-k', `Offline · last live ${pfAgo(rc.end)}`));
-      txt.appendChild(pfE('div', 'pf-now-t', rc.title || 'Untitled stream'));
-      txt.appendChild(pfE('div', 'pf-now-s', [rc.cat, `${fmtDay(rc.start)}, ${fmtClock(rc.start)} for ${fmtDur(rc.end - rc.start)}`, rc.peak ? `peak ${rc.peak.toLocaleString()} (seen by the app)` : ''].filter(Boolean).join(' · ')));
+      txt.appendChild(element('div', 'pf-now-k', `Offline · last live ${pfAgo(rc.end)}`));
+      txt.appendChild(element('div', 'pf-now-t', rc.title || 'Untitled stream'));
+      txt.appendChild(element('div', 'pf-now-s', [rc.cat, `${fmtDay(rc.start)}, ${fmtClock(rc.start)} for ${fmtDur(rc.end - rc.start)}`, rc.peak ? `peak ${rc.peak.toLocaleString()} (seen by the app)` : ''].filter(Boolean).join(' · ')));
     } else if (lb && lb.start){
-      txt.appendChild(pfE('div', 'pf-now-k', `Offline · last live ${pfAgo(lb.start)} (started)`));
-      txt.appendChild(pfE('div', 'pf-now-t', lb.title || 'Untitled stream'));
-      txt.appendChild(pfE('div', 'pf-now-s', [lb.category, `${fmtDay(lb.start)}, ${fmtClock(lb.start)}`, `from ${P}`].filter(Boolean).join(' · ')));
+      txt.appendChild(element('div', 'pf-now-k', `Offline · last live ${pfAgo(lb.start)} (started)`));
+      txt.appendChild(element('div', 'pf-now-t', lb.title || 'Untitled stream'));
+      txt.appendChild(element('div', 'pf-now-s', [lb.category, `${fmtDay(lb.start)}, ${fmtClock(lb.start)}`, `from ${P}`].filter(Boolean).join(' · ')));
     } else {
-      txt.appendChild(pfE('div', 'pf-now-k', li && li.missing ? 'Channel not found' : 'Offline'));
-      txt.appendChild(pfE('div', 'pf-now-t', 'No streams seen yet'));
-      txt.appendChild(pfE('div', 'pf-now-s', isSaved ? 'The app records each stream it sees while it\'s open.' : 'Save them to have the app record their streams.'));
+      txt.appendChild(element('div', 'pf-now-k', li && li.missing ? 'Channel not found' : 'Offline'));
+      txt.appendChild(element('div', 'pf-now-t', 'No streams seen yet'));
+      txt.appendChild(element('div', 'pf-now-s', isSaved ? 'The app records each stream it sees while it\'s open.' : 'Save them to have the app record their streams.'));
     }
   }
   now.append(txt, btns);
   box.appendChild(now);
 
   /* stat tiles */
-  const tiles = pfE('div', 'pf-stats');
-  const tile = (k, v, sub, cls) => { const t = pfE('div', 'pf-tile'); t.append(pfE('span', 'k', k), pfE('span', 'v' + (v == null ? ' na' : ''), v == null ? 'Not enough data yet' : v), pfE('span', 's' + (cls ? ' ' + cls : ''), sub || '')); tiles.appendChild(t); };
+  const tiles = element('div', 'pf-stats');
+  const tile = (k, v, sub, cls) => { const t = element('div', 'pf-tile'); t.append(element('span', 'k', k), element('span', 'v' + (v == null ? ' na' : ''), v == null ? 'Not enough data yet' : v), element('span', 's' + (cls ? ' ' + cls : ''), sub || '')); tiles.appendChild(t); };
   const fch = sm.followers && sm.followers.change != null ? sm.followers : null;
   tile('Followers', followers != null ? fmtN(followers) : s && s.followersText ? s.followersText.replace(/ subscribers$/, '') : null,
     fch ? `${fch.change >= 0 ? '+' : ''}${fch.change.toLocaleString()} since ${fmtDay(keyDate(fch.since))}` : followers != null ? `from ${P} · growth shows after a few days` : plat === 'youtube' ? 'from YouTube (rounded)' : `from ${P}`, fch && fch.change > 0 ? 'up' : '');
@@ -354,7 +353,7 @@ function pfRenderProf(){
   tile('Live streak', st && sm.sessions ? `${st.streak.current} day${st.streak.current === 1 ? '' : 's'}` : null, st && sm.sessions ? `best ${st.streak.best} day${st.streak.best === 1 ? '' : 's'} in a row` : '');
   box.appendChild(tiles);
   const cov = sm.coverage;
-  const covL = pfE('div', 'pf-cov');
+  const covL = element('div', 'pf-cov');
   covL.innerHTML = '<i></i><span></span>';
   covL.querySelector('span').textContent = cov && cov.since
     ? `Tracking since ${fmtDate(cov.since)} · last 30 days: ${cov.appSeen30} stream${cov.appSeen30 === 1 ? '' : 's'} seen by the app${cov.vod30 ? `, ${cov.vod30} more from ${P}'s past broadcasts` : ''}. The app only sees streams while it's open.`
@@ -362,26 +361,26 @@ function pfRenderProf(){
   box.appendChild(covL);
 
   /* columns */
-  const cols = pfE('div', 'pf-cols'), left = pfE('div', 'pf-main'), right = pfE('div', 'pf-side');
+  const cols = element('div', 'pf-cols'), left = element('div', 'pf-main'), right = element('div', 'pf-side');
   // viewer graph
   if (sm.viewers && sm.viewers.length >= 3){
-    const g = pfE('div', 'pf-box pf-graph');
+    const g = element('div', 'pf-box pf-graph');
     g.innerHTML = `<h4>${isLive ? 'Viewers this stream' : 'Viewers last stream'} <span>as the app checked, about once a minute</span></h4>`;
     g.insertAdjacentHTML('beforeend', pfGraph(sm.viewers));
     left.appendChild(g);
   }
   // heatmap
-  const hb = pfE('div', 'pf-box');
+  const hb = element('div', 'pf-box');
   hb.innerHTML = `<h4>When they usually stream <span>${sm.heat ? `last ${sm.heat.weeks} week${sm.heat.weeks === 1 ? '' : 's'}, your time` : ''}</span></h4>`;
-  if (sm.heat) hb.appendChild(pfHeat(sm.heat, st)); else hb.appendChild(pfE('div', 'pf-none', 'Not enough streams yet: this fills in as the app sees them stream (and from past broadcasts on Kick and Twitch).'));
+  if (sm.heat) hb.appendChild(pfHeat(sm.heat, st)); else hb.appendChild(element('div', 'pf-none', 'Not enough streams yet: this fills in as the app sees them stream (and from past broadcasts on Kick and Twitch).'));
   left.appendChild(hb);
   // history
-  const hist = pfE('div', 'pf-box');
+  const hist = element('div', 'pf-box');
   const list = sm.history || [];
   hist.innerHTML = `<h4>Live history <span>${list.length ? `${sm.sessions} stream${sm.sessions === 1 ? '' : 's'} known` : ''}</span></h4>`;
-  if (!list.length) hist.appendChild(pfE('div', 'pf-none', 'No streams known yet. The app records each stream it sees while it\'s open; Kick and Twitch past broadcasts are added when the streamer keeps them.'));
+  if (!list.length) hist.appendChild(element('div', 'pf-none', 'No streams known yet. The app records each stream it sees while it\'s open; Kick and Twitch past broadcasts are added when the streamer keeps them.'));
   else {
-    const wrap = pfE('div', 'pf-hist'), tb = document.createElement('table');
+    const wrap = element('div', 'pf-hist'), tb = document.createElement('table');
     tb.innerHTML = '<thead><tr><th>Date</th><th>Time · length</th><th>Title</th><th>Category</th><th class="n" title="Highest viewer count the app saw (or the broadcast\'s views)">Peak</th></tr></thead><tbody></tbody>';
     const body = tb.querySelector('tbody');
     const rows = pf.histAll ? list : list.slice(0, 20);
@@ -392,32 +391,32 @@ function pfRenderProf(){
       tr.innerHTML = '<td></td><td></td><td class="t"></td><td></td><td class="n"></td>';
       const c = tr.children;
       c[0].textContent = r.end ? fmtDay(r.start) : 'Live now';
-      if (r.src === 'vod'){ const b = pfE('span', 'pf-src', 'VOD'); b.title = `From ${P}'s past broadcasts (the app wasn't open)`; c[0].appendChild(b); }
+      if (r.src === 'vod'){ const b = element('span', 'pf-src', 'VOD'); b.title = `From ${P}'s past broadcasts (the app wasn't open)`; c[0].appendChild(b); }
       c[1].textContent = `${r.exact ? '' : '~'}${fmtClock(r.start)} · ${fmtDur(len)}${r.end ? '' : '+'}`;
       if (!r.exact) c[1].title = 'Start time as first seen by the app';
-      const bar = pfE('span', 'bar'), bi = pfE('i'); bi.style.width = Math.round(len / maxLen * 100) + '%'; bar.appendChild(bi); c[1].appendChild(bar);
+      const bar = element('span', 'bar'), bi = element('i'); bi.style.width = Math.round(len / maxLen * 100) + '%'; bar.appendChild(bi); c[1].appendChild(bar);
       c[2].textContent = r.title || '–'; c[2].title = r.title || '';
       c[3].textContent = r.cat || '–';
       c[4].textContent = r.peak ? r.peak.toLocaleString() : r.views != null ? `${fmtN(r.views)} views` : '–';
       body.appendChild(tr);
     });
     wrap.appendChild(tb); hist.appendChild(wrap);
-    if (list.length > 20){ const more = pfE('button', 'btn', pf.histAll ? 'Show fewer' : `Show all ${list.length}`); more.style.alignSelf = 'flex-start'; more.onclick = () => { pf.histAll = !pf.histAll; pfRenderProf(); }; hist.appendChild(more); }
+    if (list.length > 20){ const more = element('button', 'btn', pf.histAll ? 'Show fewer' : `Show all ${list.length}`); more.style.alignSelf = 'flex-start'; more.onclick = () => { pf.histAll = !pf.histAll; pfRenderProf(); }; hist.appendChild(more); }
   }
   left.appendChild(hist);
 
   // notes, tags, nickname
-  const nb = pfE('div', 'pf-box pf-notes');
+  const nb = element('div', 'pf-box pf-notes');
   nb.innerHTML = '<h4>Your notes <span>kept on this computer</span></h4>';
   const ta = document.createElement('textarea'); ta.dataset.k = 'notes'; ta.placeholder = `Anything to remember about ${shown}`; ta.setAttribute('aria-label', 'Your notes'); ta.value = m.notes || '';
   ta.oninput = () => pfSaveMeta(ch, { notes: ta.value });
   nb.appendChild(ta);
-  const tr = pfE('div', 'pf-row'); tr.appendChild(pfE('label', '', 'Tags'));
-  (m.tags || []).forEach(t => { const x = pfE('span', 'pf-tagx', t); const b = pfE('button', '', '×'); b.title = 'Remove tag'; b.setAttribute('aria-label', `Remove tag ${t}`); b.onclick = () => { pfSaveMeta(ch, { tags: (m.tags || []).filter(y => y !== t) }); pfRenderProf(); }; x.appendChild(b); tr.appendChild(x); });
+  const tr = element('div', 'pf-row'); tr.appendChild(element('label', '', 'Tags'));
+  (m.tags || []).forEach(t => { const x = element('span', 'pf-tagx', t); const b = element('button', '', '×'); b.title = 'Remove tag'; b.setAttribute('aria-label', `Remove tag ${t}`); b.onclick = () => { pfSaveMeta(ch, { tags: (m.tags || []).filter(y => y !== t) }); pfRenderProf(); }; x.appendChild(b); tr.appendChild(x); });
   const ti = document.createElement('input'); ti.dataset.k = 'tag'; ti.placeholder = 'Add a tag, press Enter'; ti.maxLength = 24; ti.setAttribute('aria-label', 'Add a tag');
   ti.onkeydown = e => { if (e.key === 'Enter' && ti.value.trim()){ e.preventDefault(); pfSaveMeta(ch, { tags: [...(m.tags || []), ti.value.trim()] }); pfRenderProf(); const n = box.querySelector('[data-k=tag]'); if (n) n.focus(); } };
   tr.appendChild(ti); nb.appendChild(tr);
-  const nr = pfE('div', 'pf-row'); nr.appendChild(pfE('label', '', 'Nickname'));
+  const nr = element('div', 'pf-row'); nr.appendChild(element('label', '', 'Nickname'));
   const ni = document.createElement('input'); ni.dataset.k = 'nick'; ni.placeholder = `Shown instead of ${realName} in Profiles`; ni.maxLength = 40; ni.value = m.nick || ''; ni.setAttribute('aria-label', 'Nickname');
   // (no redraw here: a redraw when the box loses focus would swallow the click that moved the focus)
   ni.oninput = () => { pfSaveMeta(ch, { nick: ni.value }); h2.firstChild.textContent = ni.value.trim() || realName; };
@@ -425,16 +424,16 @@ function pfRenderProf(){
   right.appendChild(nb);
   // categories
   if (sm.categories && sm.categories.length){
-    const cb = pfE('div', 'pf-box');
+    const cb = element('div', 'pf-box');
     cb.innerHTML = '<h4>Top categories <span>hours streamed, 90 days</span></h4>';
     const top = sm.categories[0].hours || 1;
-    sm.categories.forEach(c => { const e = pfE('div', 'pf-cat'); e.innerHTML = '<div><b></b><span></span></div><i><b></b></i>'; e.querySelector('div b').textContent = c.name; e.querySelector('div span').textContent = c.hours < 1 ? `${Math.round(c.hours * 60)} min` : `${Math.round(c.hours)} h`; e.querySelector('i b').style.width = Math.max(3, Math.round(c.hours / top * 100)) + '%'; cb.appendChild(e); });
+    sm.categories.forEach(c => { const e = element('div', 'pf-cat'); e.innerHTML = '<div><b></b><span></span></div><i><b></b></i>'; e.querySelector('div b').textContent = c.name; e.querySelector('div span').textContent = c.hours < 1 ? `${Math.round(c.hours * 60)} min` : `${Math.round(c.hours)} h`; e.querySelector('i b').style.width = Math.max(3, Math.round(c.hours / top * 100)) + '%'; cb.appendChild(e); });
     right.appendChild(cb);
   }
   // you and them
-  const yb = pfE('div', 'pf-box'); yb.appendChild(pfE('h4', '', `You and ${shown}`));
-  const kv = pfE('div', 'pf-kv');
-  const row = (k, v) => { if (v == null || v === '') return; const r = pfE('div'); r.append(pfE('span', '', k), pfE('b', '', v)); kv.appendChild(r); };
+  const yb = element('div', 'pf-box'); yb.appendChild(element('h4', '', `You and ${shown}`));
+  const kv = element('div', 'pf-kv');
+  const row = (k, v) => { if (v == null || v === '') return; const r = element('div'); r.append(element('span', '', k), element('b', '', v)); kv.appendChild(r); };
   if (plat !== 'youtube') row(`Following on ${P}`, !s ? null : s.following === false ? 'No' : s.following && s.following.since ? `Since ${fmtDate(s.following.since)}` : s.following ? 'Yes' : s.loggedIn === false ? `Log in to ${P} to see` : null);
   if (s && s.sub) row('Subscription', [s.sub.tier ? `Tier ${s.sub.tier}` : 'Subscribed', s.sub.prime ? 'Prime' : '', s.sub.months ? `${s.sub.months} months` : ''].filter(Boolean).join(' · '));
   if (pf.mod[ch] != null) row('Moderator', pf.mod[ch] ? 'Yes' : 'No');
@@ -444,8 +443,8 @@ function pfRenderProf(){
   right.appendChild(yb);
   // chat rules and sub badges
   if (s && s.badges && s.badges.length){
-    const bb = pfE('div', 'pf-box'); bb.innerHTML = '<h4>Subscriber badges</h4>';
-    const w = pfE('div', 'pf-badges');
+    const bb = element('div', 'pf-box'); bb.innerHTML = '<h4>Subscriber badges</h4>';
+    const w = element('div', 'pf-badges');
     s.badges.forEach(b => { const i = new Image(); i.src = b.src; i.alt = b.months ? `${b.months} months` : 'badge'; i.title = i.alt; i.referrerPolicy = 'no-referrer'; i.onerror = () => i.remove(); w.appendChild(i); });
     bb.appendChild(w); right.appendChild(bb);
   }
@@ -473,16 +472,16 @@ function pfGraph(samples){
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Viewers from ${min.toLocaleString()} to ${max.toLocaleString()}">
     <path d="${area}" fill="var(--accent)" opacity=".14"/><polyline points="${pts.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>
     <circle cx="${X(samples[peakI][0]).toFixed(1)}" cy="${Y(max).toFixed(1)}" r="3" fill="var(--accent)"/>
-  </svg><div class="pf-heat-k"><span>${escH(fmtClock(t0))}</span><span style="margin-left:auto">peak ${max.toLocaleString()} · low ${min.toLocaleString()}</span><span style="margin-left:auto">${escH(fmtClock(t1))}</span></div>`;
+  </svg><div class="pf-heat-k"><span>${esc(fmtClock(t0))}</span><span style="margin-left:auto">peak ${max.toLocaleString()} · low ${min.toLocaleString()}</span><span style="margin-left:auto">${esc(fmtClock(t1))}</span></div>`;
 }
 function pfHeat(heat, st){
-  const wrap = pfE('div');
-  const g = pfE('div', 'pf-heat'), grid = pfE('div', 'pf-heat-g');
-  grid.appendChild(pfE('span'));
-  for (let h = 0; h < 24; h++) grid.appendChild(pfE('span', '', h % 3 ? '' : (h === 0 ? '12a' : h === 12 ? '12p' : h < 12 ? h + 'a' : (h - 12) + 'p')));
+  const wrap = element('div');
+  const g = element('div', 'pf-heat'), grid = element('div', 'pf-heat-g');
+  grid.appendChild(element('span'));
+  for (let h = 0; h < 24; h++) grid.appendChild(element('span', '', h % 3 ? '' : (h === 0 ? '12a' : h === 12 ? '12p' : h < 12 ? h + 'a' : (h - 12) + 'p')));
   heat.cells.forEach((row, d) => {
-    grid.appendChild(pfE('span', '', DAYS[d]));
-    row.forEach((v, h) => { const i = pfE('i'); if (v > 0) i.style.background = `color-mix(in srgb, var(--accent) ${Math.round(25 + v * 75)}%, var(--line))`; i.title = `${DAYS[d]} ${minClock(h * 60)}: live ${Math.round(v * 100)}% of weeks`; grid.appendChild(i); });
+    grid.appendChild(element('span', '', DAYS[d]));
+    row.forEach((v, h) => { const i = element('i'); if (v > 0) i.style.background = `color-mix(in srgb, var(--accent) ${Math.round(25 + v * 75)}%, var(--line))`; i.title = `${DAYS[d]} ${minClock(h * 60)}: live ${Math.round(v * 100)}% of weeks`; grid.appendChild(i); });
   });
   g.appendChild(grid); wrap.appendChild(g);
   // the hours they're most often live
@@ -490,9 +489,9 @@ function pfHeat(heat, st){
   const hot = byHour.map(v => top > 0 && v >= top * 0.5);
   let a = hot.indexOf(true), b = a;
   if (a >= 0){ while (b + 1 < 24 && hot[b + 1]) b++; if (a === 0 && hot[23]){ let s = 23; while (s > b && hot[s - 1]) s--; a = s; } }
-  const k = pfE('div', 'pf-heat-k');
+  const k = element('div', 'pf-heat-k');
   k.innerHTML = '<span>Less</span><i style="background:var(--line)"></i><i style="background:color-mix(in srgb, var(--accent) 45%, var(--line))"></i><i style="background:color-mix(in srgb, var(--accent) 75%, var(--line))"></i><i style="background:var(--accent)"></i><span>More</span>';
-  if (a >= 0){ const days = st ? pfTopDays(st.dayCounts) : ''; k.appendChild(pfE('b', '', `Most often live: ${days ? days + ', ' : ''}${minClock(a * 60)} – ${minClock(((b + 1) % 24) * 60)}`)); }
+  if (a >= 0){ const days = st ? pfTopDays(st.dayCounts) : ''; k.appendChild(element('b', '', `Most often live: ${days ? days + ', ' : ''}${minClock(a * 60)} – ${minClock(((b + 1) % 24) * 60)}`)); }
   wrap.appendChild(k);
   return wrap;
 }

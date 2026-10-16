@@ -1,4 +1,5 @@
 import '../channels/open-box.js';   // runs after it (see app.js)
+import { esc } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
 import { $, ROLE, wins } from '../../core.js';
@@ -105,8 +106,6 @@ function updateBellBtn(){
     : 'Notifications: mentions, spam alerts, channels going live and the app\'s messages';
 }
 function timeAgo(t){ const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 48 * 60 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; }
-// (escH is defined further down, after this can first run)
-function escM(t){ return String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 const MENT_KIND = { mention: 'Mention', reply: 'Reply', word: 'Word' };
 // Emotes in a mention: [{ t: text } | { e: name, src }], from the chat helper (and saved), so checked here.
 const EMOTE_SRC = /^https:\/\/(files\.kick\.com\/emotes\/|static-cdn\.jtvnw\.net\/|([\w-]+\.)?7tv\.app\/|cdn\.betterttv\.net\/|cdn\.frankerfacez\.com\/)/;
@@ -152,15 +151,15 @@ function mentBodyNodes(m, parts, mark){
 function mentBodyHtml(m){
   const term = m.kind === 'word' ? m.word : m.kind === 'mention' ? '@' + (mentNameFor(m.channel) || '') : '';
   const body = String(m.body || '');
-  if (!term || term === '@') return escM(body);
+  if (!term || term === '@') return esc(body);
   const re = new RegExp('(^|[^\\p{L}\\p{N}_])(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?![\\p{L}\\p{N}_])', 'giu');
   let out = '', last = 0;
   for (const x of body.matchAll(re)){
     const at = x.index + x[1].length;
-    out += escM(body.slice(last, at)) + '<mark>' + escM(x[2]) + '</mark>';
+    out += esc(body.slice(last, at)) + '<mark>' + esc(x[2]) + '</mark>';
     last = at + x[2].length;
   }
-  return out + escM(body.slice(last));
+  return out + esc(body.slice(last));
 }
 /* One row of the bell or All notifications. o: { clock (the time, not "x min ago"), onDelete, close (what's
    open: the bell or the history) } */
@@ -283,7 +282,7 @@ function drawNotes(root, v, { limit, q = '', onTab } = {}){
   if (by === 'chan'){
     const per = SmvNotes.chats(inTab);
     if (v.pick && !per.some(([c]) => c === v.pick)) v.pick = '';
-    sel.innerHTML = '<option value="">All chats</option>' + per.map(([ch, n]) => `<option value="${escM(ch)}">${escM(chLabelP(ch))} (${n})</option>`).join('');
+    sel.innerHTML = '<option value="">All chats</option>' + per.map(([ch, n]) => `<option value="${esc(ch)}">${esc(chLabelP(ch))} (${n})</option>`).join('');
     sel.setAttribute('aria-label', 'Which chat');
   } else if (by === 'site'){
     sel.innerHTML = '<option value="">All sites</option>' + Object.keys(PLAT_NAME).map(p => `<option value="${p}">${PLAT_NAME[p]}</option>`).join('');
@@ -342,7 +341,7 @@ function seeBell(){
   if (n){ saveNotes(); updateBellBtn(); renderNoteHistory(); }
 }
 
-export { addNote, bell, bellCount, bellVars, cleanParts, dndOn, dndT, dndUntil, drawNotes, dropNotes, EMPTY, escM,
-  mentAny, mentMuted, mentNameFor, mentOn, mentWords, myName, myTwitch, nh, noteActs, noteRow, notes, partsText,
-  readChat, readNotes, renderBell, saveNotes, seeBell, setMyName, spamWhy, syncAtBtn, TAB_NAME, timeAgo,
-  toggleChatMentions, updateBellBtn };
+export { addNote, bell, bellCount, bellVars, cleanParts, dndOn, dndT, dndUntil, drawNotes, dropNotes, EMPTY, mentAny,
+  mentMuted, mentNameFor, mentOn, mentWords, myName, myTwitch, nh, noteActs, noteRow, notes, partsText, readChat,
+  readNotes, renderBell, saveNotes, seeBell, setMyName, spamWhy, syncAtBtn, TAB_NAME, timeAgo, toggleChatMentions,
+  updateBellBtn };

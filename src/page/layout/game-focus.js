@@ -1,4 +1,5 @@
 import '../shortcuts.js';   // runs after it (see app.js)
+import { esc } from '../shared/element.js';
 import { fromApp } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
@@ -15,7 +16,6 @@ import { placeSwitcher } from './switch-control.js';
 import { save } from '../persistence.js';
 import { panel } from '../toolbar/toolbar.js';
 import { openCapturePicker } from '../windows/capture.js';
-import { escH } from '../panels/help/help.js';
 
 /* ===================== 2.3: Game focus layout ===================== */
 // The game gets the big area; streams, chats and other windows stack up on the side.
@@ -90,10 +90,10 @@ function renderGameBar(){
   gameBar.innerHTML =
     `<span class="gb-title">${icon.game}<b>Game area</b></span>` +
     (shapeOK ? `<span class="gb-seg"><button data-gm="see" class="${gameMode === 'see' ? 'on' : ''}" title="The real game behind Stream Multiview shows here and you can play it">See-through (play)</button><button data-gm="window" class="${gameMode === 'window' ? 'on' : ''}" title="Show a stream or another app's window here instead">Show a window</button></span>` : '') +
-    (gameMode === 'window' ? `<select class="gb-pick" title="What to show in the game area"><option value="">Choose</option>${vids.map(w => `<option value="${escH(colKey(w))}"${colKey(w) === gameKey ? ' selected' : ''}>${escH(w.kind === 'capture' ? (w.capName || 'Window') + ' (window)' : chLabelP(w.channel))}</option>`).join('')}</select>` +
+    (gameMode === 'window' ? `<select class="gb-pick" title="What to show in the game area"><option value="">Choose</option>${vids.map(w => `<option value="${esc(colKey(w))}"${colKey(w) === gameKey ? ' selected' : ''}>${esc(w.kind === 'capture' ? (w.capName || 'Window') + ' (window)' : chLabelP(w.channel))}</option>`).join('')}</select>` +
       (DESKTOP && window.kmv.captureSources ? `<button class="gb-btn gb-cap" title="Pick another app's window (e.g. your game) to show here">${icon.capture}<span>Pick window</span></button>` : '') : '') +
     (gameMode === 'see' && attachOK ? (gameAttached
-      ? `<span class="gb-game" title="${escH(gameAttached)}">${icon.game}<span>${escH(gameAttached)}</span></span><button class="gb-btn gb-play" title="Click into the game">Play</button><label class="chk gb-strip" title="Hide the game's own title bar and border so it fills the area"><input type="checkbox"${gameStrip ? ' checked' : ''}>No border</label><button class="gb-btn gb-rel" title="Give the game its own window back">Release</button>`
+      ? `<span class="gb-game" title="${esc(gameAttached)}">${icon.game}<span>${esc(gameAttached)}</span></span><button class="gb-btn gb-play" title="Click into the game">Play</button><label class="chk gb-strip" title="Hide the game's own title bar and border so it fills the area"><input type="checkbox"${gameStrip ? ' checked' : ''}>No border</label><button class="gb-btn gb-rel" title="Give the game its own window back">Release</button>`
       : `<button class="gb-btn gb-attach primary-ish" title="Pick your game's window: it moves into this area and stays here">${icon.game}<span>Put a game here</span></button>`) : '') +
     `<span class="gb-grow"></span>` +
     (gameMode === 'see' ? `<label class="chk gb-top" title="Keep Stream Multiview above the game, so clicking the game doesn't hide your streams"><input type="checkbox"${gameOnTop ? ' checked' : ''}>Keep on top</label>` : '') +

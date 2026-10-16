@@ -1,15 +1,15 @@
 import './general.js';   // runs after it (see app.js)
+import { esc } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
 import { $, ROLE, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { chLabelP } from '../../platforms/platforms.js';
-import { dropNotes, escM, mentOn, notes, timeAgo } from '../bell/bell.js';
+import { dropNotes, mentOn, notes, timeAgo } from '../bell/bell.js';
 import { pushMyName } from '../bell/all-notifications.js';
 import { SOUND_KEY, alerts, playSound, saveAlerts } from '../../alerts/alerts.js';
 import { revealChat, spamOpts } from '../../alerts/spam-alerts.js';
 import { flash } from '../../shared/flash.js';
 import { syncLiveAlerts } from './notifications.js';
-import { escH } from '../help/help.js';
 import { closeSettings, settingsDlg } from './settings.js';
 
 /* Mentions and spam alert options: every control with data-al="kind.option" */
@@ -149,7 +149,7 @@ function trySpam(){
   out.hidden = false; out.classList.toggle('bad', r.spam);
   if (r.ignored){ out.innerHTML = `Not checked: <b></b> is on the chat bot list, so it's never flagged.`; out.querySelector('b').textContent = sender; return; }
   const head = r.spam ? `<b>Would be flagged</b> (${r.need} points needed)` : r.score >= r.need ? `Not flagged: it has ${r.score} points but no link to promote` : `Not flagged (${r.score} of the ${r.need} points needed)`;
-  out.innerHTML = head + (r.signs.length ? '<table>' + r.signs.map(s => `<tr><td>${escH(s.text)}</td><td>+${s.points}</td></tr>`).join('') + `<tr class="tot"><td>Total</td><td>${r.score}</td></tr></table>` : '<div>No signs of spam.</div>');
+  out.innerHTML = head + (r.signs.length ? '<table>' + r.signs.map(s => `<tr><td>${esc(s.text)}</td><td>+${s.points}</td></tr>`).join('') + `<tr class="tot"><td>Total</td><td>${r.score}</td></tr></table>` : '<div>No signs of spam.</div>');
 }
 $('#spamTryBtn').onclick = trySpam;
 
@@ -169,7 +169,7 @@ function renderSpamHist(){
     row.querySelector('.mp-where').textContent = chLabelP(h.channel);
     row.querySelector('.mp-time').textContent = timeAgo(h.t);
     row.querySelector('.mp-body').textContent = h.body;
-    row.querySelector('.sh-signs').innerHTML = (h.signs || []).map(x => `<span>${escM(x.text)} <i>+${x.points}</i></span>`).join('');
+    row.querySelector('.sh-signs').innerHTML = (h.signs || []).map(x => `<span>${esc(x.text)} <i>+${x.points}</i></span>`).join('');
     const acts = document.createElement('div'); acts.className = 'sh-acts';
     if (SmvSpam.ignored(h.sender, spamOpts().ignore)) acts.innerHTML = '<span>On the chat bot list: no longer flagged</span>';
     else {
