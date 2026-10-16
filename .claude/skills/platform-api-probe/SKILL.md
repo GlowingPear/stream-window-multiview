@@ -18,7 +18,7 @@ The app talks to undocumented Kick, Twitch and YouTube APIs, which change withou
 
 1. Start a dev copy with a lasting profile and the debugging port: `npm run dev -- --profile <name> --debug <port>`. Sign in to the platform in the app if needed.
 2. Connect with the `drive-app` helper and run requests **inside the app's own pages**, so they carry the same login as the app's code:
-   - **Kick:** the hidden `kick.com` page (`pages().find(p => p.url().startsWith('https://kick.com/'))`). Use the same headers as `kickFollows()` in `src/main.js`: `Authorization: Bearer <session_token cookie>` and `X-XSRF-TOKEN`.
+   - **Kick:** the hidden `kick.com` page (`pages().find(p => p.url().startsWith('https://kick.com/'))`). Use the same headers as `kickFollows()` in `src/main/main.js`: `Authorization: Bearer <session_token cookie>` and `X-XSRF-TOKEN`.
    - **Twitch:** GraphQL at `https://gql.twitch.tv/gql`, as in `twitchFollows()`. It needs the app's Twitch `auth-token` cookie and `Client-Id`.
    - **YouTube:** the app reads pages rather than an API (`scrapeFollowPage`). Inspect them in a YouTube page of the dev copy.
 3. Copy the code's request first, so you can see what the app sees. Then vary one thing at a time: endpoint, page size, cursor.

@@ -1,0 +1,15 @@
+/* messages ("Logged out of Twitch"): a toast where Settings > General puts it */
+#msg{position:fixed;z-index:100030;max-width:min(460px,calc(100vw - 32px));padding:8px 14px;border-radius:10px;font-size:13px;line-height:1.35;
+  background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--accent);box-shadow:0 14px 34px rgba(0,0,0,.55);cursor:pointer;
+  animation:msgIn .15s ease-out}
+#msg:empty,#msg.off{display:none}
+#msg[data-pos^=t]{top:calc(var(--head) + 10px)} #msg[data-pos^=b]{bottom:22px}
+#msg[data-pos$=l]{left:16px} #msg[data-pos$=r]{right:16px} #msg[data-pos$=c]{left:50%;transform:translateX(-50%)}
+body:has(#toast:not([hidden])) #msg[data-pos=bc],body:has(#updBanner:not([hidden])) #msg[data-pos=br]{bottom:80px}   /* clear of Undo and the update banner */
+@keyframes msgIn{from{opacity:0}}
+
+body.focus header{transform:translateY(-100%)}
+#reveal{position:fixed;top:0;left:0;right:0;height:6px;z-index:100001;display:none}
+body.focus #reveal{display:block}
+body.focus.peek #reveal{display:none}   /* out of the bar's way while it's out, so moving up over it doesn't count as leaving */
+body.focus.peek header{transform:none}

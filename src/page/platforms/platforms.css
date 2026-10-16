@@ -1,0 +1,7 @@
+/* platform colours: Kick green, Twitch purple, YouTube red */
+.fs-item.plat-twitch .fs-name .dot{background:#a970ff}
+.fs-item.plat-youtube .fs-name .dot{background:#ff3d3d}
+.waitmsg{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;
+  text-align:center;color:var(--muted);background:#000;font-size:13px}
+.waitmsg[hidden]{display:none}
+.waitmsg button[hidden]{display:none}

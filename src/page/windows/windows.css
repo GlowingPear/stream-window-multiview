@@ -1,0 +1,55 @@
+/* ---------- windows ---------- */
+.win{position:absolute;display:flex;flex-direction:column;background:#000;border:1px solid var(--line2);
+  border-radius:8px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.45);min-width:0}
+.win.active{border-color:var(--frame)}
+.win.anim{transition:left .22s ease,top .22s ease,width .22s ease,height .22s ease}
+.bar{height:30px;flex:none;display:flex;align-items:center;gap:7px;padding:0 4px 0 10px;background:var(--panel2);
+  cursor:grab;user-select:none;touch-action:none}
+body.dragging .bar{cursor:grabbing}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+.win.chat .dot{background:#7aa7ff}
+.win.web .dot{background:var(--muted)}
+.title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);flex:none}
+.btns{margin-left:auto;display:flex;gap:2px;flex:none}
+.btns button{width:26px;height:24px;border:0;border-radius:5px;background:transparent;color:var(--muted);cursor:pointer;
+  display:grid;place-items:center;padding:0}
+.btns button:hover{background:var(--line);color:var(--text)}
+.btns button.x:hover{background:var(--danger);color:#fff}
+.btns button.txt{width:auto;padding:0 7px;font-size:11px;font-weight:600}
+.btns button[hidden]{display:none !important}
+.btns svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.body{position:relative;flex:1;min-height:0}
+.body iframe,.body webview{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;display:flex}
+.body video.cap{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;display:block}
+.win.capture .dot{background:#f0b232}
+#gameArea{position:absolute;display:none;z-index:4;border:2px dashed var(--accent);border-radius:10px;background:transparent;pointer-events:none}
+#gameArea .ga-hole{position:absolute;left:0;right:0;bottom:0;top:30px;display:grid;place-items:center}
+#gameArea .ga-tip{max-width:460px;text-align:center;font-size:13px;line-height:1.6;color:var(--muted);padding:16px}
+#gameArea .ga-tip b{color:var(--text)}
+#gameBar{position:absolute;display:none;z-index:89989;align-items:center;gap:8px;padding:0 8px;background:var(--panel);border:1px solid var(--line2);border-radius:9px 9px 0 0;font-size:12px;overflow:hidden}
+#gameBar .gb-title{display:flex;align-items:center;gap:6px;white-space:nowrap}
+#gameBar .gb-title svg,#gameBar .gb-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:var(--accent)}
+#gameBar .gb-seg{display:flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden;flex:none}
+#gameBar .gb-seg button{height:24px;padding:0 10px;border:0;background:var(--panel2);color:var(--muted);cursor:pointer;font-size:11.5px;font-weight:600}
+#gameBar .gb-seg button + button{border-left:1px solid var(--line2)}
+#gameBar .gb-seg button.on{background:var(--accent);color:var(--accent-ink)}
+#gameBar .gb-btn{display:flex;align-items:center;gap:5px;height:24px;padding:0 9px;border:1px solid var(--line2);border-radius:7px;background:var(--panel2);color:var(--text);cursor:pointer;font-size:11.5px;font-weight:600;white-space:nowrap;flex:none}
+#gameBar .gb-btn:hover{border-color:var(--accent)}
+#gameBar .gb-pick{height:24px;max-width:240px;font-size:12px;border-radius:6px}
+#gameBar .gb-grow{flex:1}
+#gameBar .gb-attach{border-color:var(--accent);color:var(--accent)}
+#gameBar .gb-game{display:flex;align-items:center;gap:5px;min-width:0;max-width:220px;font-weight:600}
+#gameBar .gb-game span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#gameBar .gb-game svg{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:2;color:var(--accent)}
+#gameBar .chk{font-size:11.5px;white-space:nowrap}
+.fs-item.cap .fs-name .dot{background:#f0b232}
+.fs-kind{font-style:normal;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border:1px solid var(--line2);border-radius:4px;padding:0 4px;flex:none}
+.fs-rl{flex:none;width:24px;height:26px;border:0;border-radius:5px;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center;padding:0}
+.fs-rl:hover{background:var(--line);color:var(--text)}
+.fs-rl svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.fs-rl.spin svg{animation:spin .7s linear}
+.ibtn{display:grid;place-items:center;width:34px;padding:0}
+.ibtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ibtn:disabled{opacity:.35;cursor:default}
+.ibtn[hidden]{display:none}

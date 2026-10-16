@@ -3,7 +3,7 @@
 // so saved logins in the installed app are encrypted.
 const path = require('path');
 const fs = require('fs');
-const { harden } = require('../src/harden');
+const { harden } = require('../src/main/harden');
 
 exports.default = async function afterPack(context) {
   const name = context.packager.appInfo.productFilename;

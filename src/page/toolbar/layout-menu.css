@@ -1,0 +1,82 @@
+/* A menu's settings: the gear at the top right opens its tab in Settings */
+.menu-head{display:flex;align-items:center;gap:6px}
+.menu-head > :first-child{flex:1;min-width:0}
+.menu .menu-set,.menu-set{flex:none;width:26px;height:26px;padding:0;display:grid;place-items:center;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer}
+.menu .menu-set:hover,.menu-set:hover{color:var(--text);background:var(--line)}
+.menu-set svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.menu-set > i{display:grid;place-items:center}
+#layoutLock.on{color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.lm-head{padding:2px 2px 4px 10px;font-size:13px;font-weight:700}
+/* Its tabs: Settings' tabs as they are (the menu's own button style doesn't apply), only spaced for the menu */
+.menu .lm-tabs{margin:0 4px 6px}
+.menu .lm-tabs button{display:block;flex:none;padding:7px 11px;border:0;border-bottom:2px solid transparent;border-radius:0;background:none;white-space:nowrap}
+.menu .lm-tabs button:hover{background:none}
+.menu .lm-tabs button.on{border-bottom-color:var(--accent)}
+/* every tab as tall as the tallest (Layouts): they share one cell, and only the open one shows */
+.lm-panes{display:grid}
+.lm-pane{grid-area:1/1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.lm-pane:not(.on){visibility:hidden}
+.lm-intro{margin:0 0 8px;padding:0 6px;font-size:11.5px;line-height:1.4;color:var(--muted)}
+/* Cards, one per row: Switch control (an icon) and Toolbar (a picture of the window), a tick on the one in use */
+.ly-cards{display:flex;flex-direction:column;gap:8px}
+.ly-cards button,.menu .ly-cards button{display:flex;flex-direction:row;align-items:center;gap:12px;padding:12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel2);color:var(--text);text-align:left;cursor:pointer}
+.ly-cards button:hover,.menu .ly-cards button:hover{border-color:var(--muted);background:var(--panel2)}
+.ly-cards button.on,.menu .ly-cards button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--panel2))}
+.ly-cards .lc-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.ly-cards .lc-t b,.menu .ly-cards .lc-t b{font-size:13px;color:var(--text)}
+.ly-cards button.on .lc-t b{color:var(--accent)}
+.ly-cards .lc-t span,.menu .ly-cards .lc-t span{font-size:11.5px;line-height:1.4;color:var(--muted)}
+.ly-cards .lc-ico{flex:none;width:34px;height:34px;display:grid;place-items:center;border-radius:8px;background:var(--panel);color:var(--muted)}
+.ly-cards button.on .lc-ico{color:var(--accent)}
+.ly-cards .lc-ico svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ly-cards .lc-tick{flex:none;width:18px;height:18px;box-sizing:border-box;border:2px solid var(--line2);border-radius:50%}
+.ly-cards button.on .lc-tick{border:5px solid var(--accent);background:var(--bg)}
+.tb-pic{flex:none;width:58px;height:36px}
+.tb-cards.big .tb-pic{width:80px;height:50px}
+.tb-cards.big button{padding:14px 18px;gap:16px}
+.tb-pic rect.o{fill:none;stroke:currentColor;stroke-width:1.2;opacity:.6}
+.tb-pic rect.b{opacity:.85}
+.tb-pic rect.l{fill:var(--panel2);opacity:1}
+.ly-cards button.on .tb-pic{color:var(--accent)}
+.lm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.menu .lm-grid button{align-items:center;gap:5px;padding:8px 4px 7px;border:1px solid transparent}
+.menu .lm-grid button > span{display:none}
+.menu .lm-grid button b{font-size:11.5px;font-weight:600;text-align:center;white-space:nowrap}
+.menu .lm-grid button.on{border-color:var(--accent);background:var(--panel2)}
+.lm-pic{width:48px;height:30px;color:var(--muted)}
+.lm-pic rect{fill:currentColor;opacity:.55}
+.lm-pic rect.c{opacity:.22}
+.lm-pic rect.g{fill:none;stroke:currentColor;stroke-dasharray:3 2;opacity:.8}
+.lm-grid button:hover .lm-pic,.lm-grid button:focus-visible .lm-pic{color:var(--text)}
+.lm-grid button.on .lm-pic{color:var(--accent)}
+.lm-hint{min-height:calc(3 * 1.35em + 6px);padding:4px 8px 2px;font-size:11px;line-height:1.35;color:var(--muted)}   /* room for the longest description (3 lines), so the menu doesn't jump */
+.lm-opts[hidden],.lm-opt[hidden]{display:none}
+.lm-opt{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 10px;font-size:12.5px;font-weight:600}
+.lm-opt > span{flex:1;min-width:0}
+.lm-opt small{display:block;font-size:11px;font-weight:400;color:var(--muted);line-height:1.35}
+.lm-opt .lm-sw{padding:0}
+.lm-opt .lm-sw button{flex:none;width:32px}
+.lm-sw button:disabled{opacity:.4;cursor:default}
+.ly-zoom .zoom{padding:0;flex:none}
+.ly-zoom{margin-top:14px;border-top:1px solid var(--line);border-bottom:0}
+.menu .zoom button{display:grid;place-items:center;padding:0;font-size:15px;color:var(--text)}
+.menu .zoom button:hover{background:var(--line)}
+.zoom-row .zoom{flex:none}
+.desk-only[hidden]{display:none}
+.lm-sw{display:flex;gap:4px;padding:2px 6px 6px}
+.lm-sw button{flex:1;height:28px;justify-content:center;align-items:center;text-align:center;border:1px solid var(--line2);border-radius:6px;background:var(--panel2);color:var(--text);cursor:pointer;font-size:12px;font-weight:600;padding:0 4px}
+.lm-sw button:hover{border-color:var(--muted)}
+.lm-sw button.on{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+#swBtn.on{color:var(--accent)}
+#swBtn[hidden]{display:none}
+.lm-sec{margin:6px 4px 2px;padding-top:8px;border-top:1px solid var(--line);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.pr-empty{padding:4px 10px 6px;font-size:11px;color:var(--muted)}
+.pr-row{display:flex;align-items:center;gap:2px;border-radius:7px}
+.pr-row:hover{background:var(--panel2)}
+.pr-row .pr-load{flex:1;min-width:0}
+.pr-row .pr-load b,.pr-row .pr-load span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr-row.on .pr-load b{color:var(--accent)}
+.lm-save{display:flex;gap:6px;padding:6px 4px 4px}
+.lm-save input{flex:1;min-width:0;height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);outline:none}
+.lm-save input:focus{border-color:var(--accent)}
+.lm-save .btn{height:30px}

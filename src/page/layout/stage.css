@@ -1,0 +1,6 @@
+/* ---------- stage ---------- */
+#stage{position:absolute;top:var(--head);left:0;right:0;bottom:0;transition:top .2s ease}
+body.focus #stage{top:0}
+
+#empty{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;overflow:auto}
+#empty .es,#empty .card{pointer-events:auto}

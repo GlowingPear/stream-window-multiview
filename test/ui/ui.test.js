@@ -411,7 +411,7 @@ test('Close all lets go of what each window held: its timers and screen capture'
   await page.evaluate(() => {
     window.__held = { fired: 0, stopped: 0 };
     window.openWins().forEach(w => {
-      w.ytT = setTimeout(() => window.__held.fired++, 300);
+      w.timers = { ...w.timers, held: setTimeout(() => window.__held.fired++, 300) };   // one of the window's own timers
       w.capStream = { getTracks: () => [{ stop: () => window.__held.stopped++ }] };
     });
   });

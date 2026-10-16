@@ -97,7 +97,7 @@ Requires [Node.js](https://nodejs.org/) (LTS).
 
 Keep the folder where it is after setup: the app runs from it. Coming from Kick Multiview? Your logins, saved channels and layouts carry over; copy the old folder's `node_modules` into the new one first to skip the engine install.
 
-> When running from source, always start the app with the launcher, the shortcut or `npm start`. They run `src/harden.js`, which keeps saved-login encryption switched on. (The installers have it built in.)
+> When running from source, always start the app with the launcher, the shortcut or `npm start`. They run `src/main/harden.js`, which keeps saved-login encryption switched on. (The installers have it built in.)
 
 ### Building the installers yourself
 ```sh
@@ -152,7 +152,7 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 | `npm run test:all` | All of the above | |
 | `npm run test:coverage` | All of the above, recording which code they run. Prints how much of each file the tests run and writes `coverage/report.md` with the bigger functions no test runs. In CI (which runs it on every pull request and puts the report on the run's summary page) it fails if a file drops below its minimum in `test/coverage-min.json`; on your computer that's only a warning, because some code only runs on Linux, or on Node 22 or newer. | ~2 min |
 
-**No system pop-ups in the app's pages.** They ignore the theme, and on a Mac they sit above every app and take the keyboard, even from the launch tests' invisible windows. Dropdowns (`<select>`) open the app's own list by themselves (`src/dropdown.js`). For questions and messages, use the app's own `ask()` and `flash()` in `src/index.html`, not `alert()`, `confirm()` or `prompt()`. Also no `<datalist>`, date or time inputs, system menus (`Menu.popup`) or message boxes (`dialog.showMessageBox`). File pickers are the exception, and so are the colour pickers for now. `npm test` fails if one of these slips in (`test/unit/no-system-popups.test.js`).
+**No system pop-ups in the app's pages.** They ignore the theme, and on a Mac they sit above every app and take the keyboard, even from the launch tests' invisible windows. Dropdowns (`<select>`) open the app's own list by themselves (`src/page/shared/dropdown.js`). For questions and messages, use the app's own `ask()` (`src/page/shared/ask.js`) and `flash()` (`src/page/shared/flash.js`), not `alert()`, `confirm()` or `prompt()`. Also no `<datalist>`, date or time inputs, system menus (`Menu.popup`) or message boxes (`dialog.showMessageBox`). File pickers are the exception, and so are the colour pickers for now. `npm test` fails if one of these slips in (`test/unit/no-system-popups.test.js`).
 
 The tests are in `test/`. When you add a feature, add a test next to the similar ones. Coverage doesn't have to be 100%, but it can't go down: if `npm run test:coverage` says a file is below its minimum, test what you changed. When coverage goes up, raise the minimums in `test/coverage-min.json` to the numbers on the CI run's summary page.
 
@@ -172,8 +172,10 @@ What the tests deliberately don't do, because it needs the real outside world:
 | `npm run dev` | Runs the app from the folder you're in as a separate copy with its own data folder, so it never touches your installed copy's logins and runs next to it. The window title shows the branch. |
 | `npm run dev -- --profile <name>` | The same, but keeps its logins and saved channels between runs |
 | `npm run dev -- --debug` | Also opens a debugging port on `127.0.0.1`, for test scripts (Playwright) |
+| `npm run page-imports` | Updates the import and export lines of the page's modules (`src/page/`) to what their code uses. `npm test` fails when they're out of step |
+| `npm run visual-diff` | For a change that shouldn't change how anything looks: captures the page in this folder and in `main` through its panels, menus and layouts, and compares them (pictures, and every element's box and styles). Local only |
 
-Both work on Windows, Mac and Linux, and download the app engine if `npm install` skipped it. Changes to `src/main.js` need a restart of the app; changes to `src/index.html` only **View › Reload everything**.
+Both work on Windows, Mac and Linux, and download the app engine if `npm install` skipped it. Changes to the Electron side (`src/main/`, `src/preload/`) need a restart of the app; changes to the page (`src/index.html` and `src/page/`) only **View › Reload everything**.
 
 Pull requests follow the template in `.github/pull_request_template.md`. For anything you can see in the app, add before/after screenshots or a short video, but don't commit them.
 
@@ -205,26 +207,20 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 
 | File | What it is |
 |---|---|
-| `src/main.js` | Electron main process: windows, logins, live checks, notifications, game window placement |
-| `src/preload.js` | Safe bridge between the app pages and the main process |
-| `src/index.html` | The main app UI: windows, layouts, switch control, menus and themes |
+| `src/main.js` | The app's start file: it only loads `src/main/main.js` (it stays here, with `src/index.html`, for copies that update themselves) |
+| `src/main/main.js` | Electron main process: windows, logins, live checks, notifications, game window placement |
+| `src/main/` | The rest of the Electron side: `live.js` (live-status, link and follow import parsing), `profiles.js` (streamer profiles: the streams the live checks see, the profile's numbers, what the sites say), `profile-queue.js` (fetching saved channels' profiles in the background), `extensions.js` (Chrome extensions, with `electron-chrome-extensions` and `electron-chrome-web-store`), `emote-lists.js` (new emotes), `context-menu.js` and `translate.js` (the right-click menu, translating chats), `firefox-login.js` (the YouTube login from Firefox), `updater.js` (updates from GitHub), `harden.js` (Electron's cookie-encryption fuse, so saved logins are encrypted) |
+| `src/preload/` | `preload.js`, the safe bridge between the app's pages and the main process (`window.kmv`), and `signin-preload.js`, which makes Google's sign-in page accept the app |
+| `src/index.html` | The main app page (also the streams window): its markup, and the CSS and code it loads from `src/page/` |
+| `src/page/` | The page's code and CSS, by part of the app: `windows/`, `layout/` (layouts, columns, switch control), `toolbar/`, `panels/` (Channels, the bell, Settings, profiles, help, …), `chat/`, `alerts/`, `platforms/`, `in-site/` (scripts that run inside the Kick, Twitch and YouTube pages), `shared/` (saved settings, icons, messages, the confirm dialog, tooltips) and `styles/base.css`. `app.js` loads them and runs each part's start-up code (its `init()`) in order. How the code there is written: `src/page/README.md` |
 | `src/switcher.html` | The switch control when it's popped out into its own window |
-| `src/extensions.js` | Chrome extensions: the installed list, which sessions get which extension, installing and updating (with `electron-chrome-extensions` and `electron-chrome-web-store`) |
-| `src/live.js` | Live-status parsing, link parsing and follow import helpers |
-| `src/profiles.js` | Streamer profiles: records the streams the live checks see, works out the profile's numbers, reads what the sites say |
-| `src/profile-queue.js` | Fetches saved channels' profiles in the background (just saved or imported, just went live, or never looked at), one at a time |
-| `src/spam.js` | Scores chat messages for spam alerts (used by the app page and the tests) |
-| `src/notifications.js` | The notification centre's list (the toolbar bell): kept per kind, the red number, filters, days, and moving the old mention and spam histories in |
-| `src/firefox-login.js` | Copies the YouTube/Google login from Firefox for YouTube sign-in |
-| `src/updater.js` | Checks GitHub for a newer version, downloads it and installs it safely |
-| `src/harden.js` | Turns on Electron's cookie-encryption fuse so saved logins are encrypted |
-| `src/signin-preload.js` | Makes Google's sign-in page accept the app |
+| `src/shared/` | Code both the main process and the page load: `follows.js` (suggestions from the channels you follow) |
 | `src/icon.ico`, `src/icon.png` | App icons |
 | `build/` | Installer setup: the large Mac icon and the hook that turns on login encryption in the installers |
 | `scripts/prepare-release.js` | Sets the version from the release tag and adds the release notes to `CHANGELOG.md` |
 | `scripts/release-notes.js` | Turns a version's section of `CHANGELOG.md` into release notes |
 | `scripts/dev.js`, `scripts/worktree.js`, `scripts/dev-tools.js` | `npm run dev` and `npm run worktree` for developers |
-| `.claude/skills/` | Claude Code skills for making a change, running and driving the app, and opening a pull request |
+| `.claude/skills/`, `CLAUDE.md` | Claude Code skills for making a change, running and driving the app, and opening a pull request; what Claude Code reads first in this repository |
 | `.github/pull_request_template.md` | What a pull request description should cover |
 | `.github/assets/` | The README's hero image (`hero.jpg`) and the page it's drawn from (`hero.html`) |
 | `test/` | Quick tests (`unit/`), UI tests (`ui/`) and the desktop-app launch test (`launch/`) |
