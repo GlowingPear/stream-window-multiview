@@ -2,7 +2,15 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.4 (current)
+## 0.3.5 (current)
+- Spam alerts: flag bots that ask to be added on Discord, Telegram and the like
+- Show channels' real display names instead of lowercase ids
+- Window bars show the channel's avatar on the channel dropdown instead of the dot
+- Channel list: avatars line up with the channel names, without the chosen-one dot
+- Empty stage: a Welcome screen for first-time users, then a Launchpad
+- Highlight new emotes: emotes a channel added since you last opened its chat glow until you point at one
+
+## 0.3.4
 - Emote right-click menu with preview and Copy emote text; translate a whole chat
 - Layout menu: Layouts, Switch control and Toolbar tabs; the toolbar as one choice of three
 - Kick: replies and @mentions keep their message (name, ":" and text on lines of their own)
