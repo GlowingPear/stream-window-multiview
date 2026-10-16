@@ -172,6 +172,8 @@ What the tests deliberately don't do, because it needs the real outside world:
 | `npm run dev` | Runs the app from the folder you're in as a separate copy with its own data folder, so it never touches your installed copy's logins and runs next to it. The window title shows the branch. |
 | `npm run dev -- --profile <name>` | The same, but keeps its logins and saved channels between runs |
 | `npm run dev -- --debug` | Also opens a debugging port on `127.0.0.1`, for test scripts (Playwright) |
+| `npm run page-imports` | Updates the import and export lines of the page's modules (`src/page/`) to what their code uses. `npm test` fails when they're out of step |
+| `npm run visual-diff` | For a change that shouldn't change how anything looks: captures the page in this folder and in `main` through its panels, menus and layouts, and compares them (pictures, and every element's box and styles). Local only |
 
 Both work on Windows, Mac and Linux, and download the app engine if `npm install` skipped it. Changes to `src/main.js` need a restart of the app; changes to the page (`src/index.html` and `src/page/`) only **View › Reload everything**.
 
@@ -208,7 +210,7 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 | `src/main.js` | Electron main process: windows, logins, live checks, notifications, game window placement |
 | `src/preload.js` | Safe bridge between the app pages and the main process |
 | `src/index.html` | The main app page (also the streams window): its markup, and the CSS and code it loads from `src/page/` |
-| `src/page/` | The page's code and CSS, by part of the app: `windows/`, `layout/` (layouts, columns, switch control), `toolbar/`, `panels/` (Channels, the bell, Settings, profiles, help, …), `chat/`, `alerts/`, `platforms/`, `in-site/` (scripts that run inside the Kick, Twitch and YouTube pages), `shared/` (icons, messages, the confirm dialog, tooltips) and `styles/base.css`. `app.js` loads them, in the order it lists |
+| `src/page/` | The page's code and CSS, by part of the app: `windows/`, `layout/` (layouts, columns, switch control), `toolbar/`, `panels/` (Channels, the bell, Settings, profiles, help, …), `chat/`, `alerts/`, `platforms/`, `in-site/` (scripts that run inside the Kick, Twitch and YouTube pages), `shared/` (saved settings, icons, messages, the confirm dialog, tooltips) and `styles/base.css`. `app.js` loads them, in the order it lists. How the code there is written: `src/page/README.md` |
 | `src/switcher.html` | The switch control when it's popped out into its own window |
 | `src/extensions.js` | Chrome extensions: the installed list, which sessions get which extension, installing and updating (with `electron-chrome-extensions` and `electron-chrome-web-store`) |
 | `src/live.js` | Live-status parsing, link parsing and follow import helpers |
@@ -225,7 +227,7 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 | `scripts/prepare-release.js` | Sets the version from the release tag and adds the release notes to `CHANGELOG.md` |
 | `scripts/release-notes.js` | Turns a version's section of `CHANGELOG.md` into release notes |
 | `scripts/dev.js`, `scripts/worktree.js`, `scripts/dev-tools.js` | `npm run dev` and `npm run worktree` for developers |
-| `.claude/skills/` | Claude Code skills for making a change, running and driving the app, and opening a pull request |
+| `.claude/skills/`, `CLAUDE.md` | Claude Code skills for making a change, running and driving the app, and opening a pull request; what Claude Code reads first in this repository |
 | `.github/pull_request_template.md` | What a pull request description should cover |
 | `.github/assets/` | The README's hero image (`hero.jpg`) and the page it's drawn from (`hero.html`) |
 | `test/` | Quick tests (`unit/`), UI tests (`ui/`) and the desktop-app launch test (`launch/`) |
