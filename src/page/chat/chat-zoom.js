@@ -1,3 +1,4 @@
+import { chatZoomFor, showBlowSize } from './blow-up.js';
 import { wins } from '../core.js';
 import { settings } from '../shared/settings.js';
 import { setZoom } from '../windows/view.js';
@@ -13,7 +14,8 @@ function chatZoom(){ return ZOOMS[zoomIdx]; }
 function applyChatZoom(){
   document.querySelectorAll('.zoomPct').forEach(e => { e.textContent = Math.round(chatZoom() * 100) + '%'; });
   document.querySelectorAll('.zoom [data-z]').forEach(b => { b.disabled = +b.dataset.z < 0 ? zoomIdx === 0 : zoomIdx === ZOOMS.length - 1; });
-  wins.forEach(w => { if (w.kind === 'chat' && w.ready) setZoom(w.view, chatZoom()); });
+  wins.forEach(w => { if (w.kind === 'chat' && w.ready) setZoom(w.view, chatZoomFor(w)); });
+  showBlowSize();
   settings.set('chatZoom', zoomIdx);
 }
 

@@ -1,0 +1,28 @@
+/* Blow up chat on click (chat/blow-up.js): the chat lifted big into the middle, over a dimmed layout */
+:root{--blow-w:min(820px,calc(100vw - 48px));--blow-top:72px;--blow-bottom:24px}
+#blowBg{position:fixed;inset:0;z-index:100100;background:rgba(0,0,0,.62);backdrop-filter:blur(2px);cursor:zoom-out}
+#blowBg[hidden],#blowBar[hidden]{display:none}
+.win.blown{position:fixed !important;z-index:100101 !important;left:calc((100vw - var(--blow-w)) / 2) !important;width:var(--blow-w) !important;
+  top:var(--blow-top) !important;height:calc(100vh - var(--blow-top) - var(--blow-bottom)) !important;transition:none !important;
+  border-color:var(--accent) !important;border-top-left-radius:0;border-top-right-radius:0;box-shadow:0 24px 80px rgba(0,0,0,.7)}
+.win.blown .rz{display:none}
+.win.blown .bar{cursor:default}
+#blowBar{position:fixed;z-index:100102;left:calc((100vw - var(--blow-w)) / 2);width:var(--blow-w);top:calc(var(--blow-top) - 40px);height:40px;
+  box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:0 8px 0 12px;background:var(--accent);color:var(--accent-ink);
+  border-radius:10px 10px 0 0;font-size:13px;font-weight:600}
+#blowBar .bb-icon svg{width:16px;height:16px;display:block;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+#blowBar .bb-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#blowBar .bb-size{display:flex;align-items:center;gap:4px;font-size:12px}
+#blowBar .bb-t{margin-right:4px;opacity:.85}
+#blowBar .bb-pct{min-width:42px;text-align:center;font-variant-numeric:tabular-nums}
+#blowBar button{height:26px;min-width:26px;border-radius:6px;border:0;background:rgba(0,0,0,.18);color:inherit;font:inherit;font-weight:700;cursor:pointer}
+#blowBar button:hover:not(:disabled){background:rgba(0,0,0,.3)}
+#blowBar button:disabled{opacity:.4;cursor:default}
+#blowBar .bb-back{display:flex;align-items:center;gap:6px;padding:0 10px;margin-left:6px}
+#blowBar kbd{font:inherit;font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(0,0,0,.2)}
+/* the switch control's switch */
+.fs-blow{display:flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:6px;border:1px solid var(--line2);background:var(--panel2);
+  cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap}
+.fs-blow:hover{border-color:var(--muted)}
+.fs-blow svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round}
+.fs-blow.on{border-color:var(--accent);color:var(--accent-ink);background:var(--accent)}

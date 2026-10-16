@@ -72,6 +72,7 @@ function render(){
     (!st.chatFocus ? `<button class="fs-back fs-tocf" title="The Chat focus layout">${icon.chatview || ''}<span>Chat focus view</span></button>` : '') +
     (st.featOn ? `<button class="fs-back fs-pophid">${icon.popwin || ''}<span>Pop out hidden</span><em></em></button>` : '') +
     (st.featOn ? '<button class="fs-only"></button>' : '') +
+    '<button class="fs-blow"></button>' +
     '<span class="fs-modes">' +
       `<button class="fs-mbtn fs-pin${pinned ? ' on' : ''}" title="Keep this window on top of other windows">${icon.pin || ''}</button>` +
       `<button class="fs-mbtn fs-mfloat" title="Put it back in the main window as a floating panel">${icon.float || ''}</button>` +
@@ -84,6 +85,7 @@ function render(){
   on('.fs-tocf', () => send('tocf'));
   on('.fs-pophid', () => send('pophid'));
   on('.fs-only', () => send('focusonly'));
+  on('.fs-blow', () => send('blowup'));
   on('.fs-mfloat', () => send('float'));
   on('.fs-mdock', () => send('dock'));
   on('.fs-pin', async () => { pinned = await api.switcherPin(!pinned); head.querySelector('.fs-pin').classList.toggle('on', pinned); });
@@ -168,6 +170,12 @@ function update(){
       fo.classList.toggle('on', st.focusOnly);
       fo.innerHTML = st.focusOnly ? `${icon.play}<span>Resume others</span>` : `${icon.pause}<span>Pause all except focus</span>`;
       fo.title = st.focusOnly ? 'Resume the streams this paused' : 'Pause every stream except the big one (and their previews) to save bandwidth';
+    }
+    const fb = head.querySelector('.fs-blow');
+    if (fb){
+      fb.classList.toggle('on', !!st.blowOn); fb.setAttribute('aria-pressed', String(!!st.blowOn));
+      fb.innerHTML = `${icon.zoomin || ''}<span>Blow up chat on click</span>`;
+      fb.title = st.blowOn ? 'On: click into a chat window to make it big and easy to read (Esc puts it back). Click to switch off.' : 'Click into a chat window to make it big and easy to read';
     }
     const ph = head.querySelector('.fs-pophid');
     if (ph){
