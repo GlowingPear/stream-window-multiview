@@ -45,7 +45,7 @@ window.card=s=>{let c=document.getElementById('user-identity');if(c)c.remove();c
 c.innerHTML='<button class=x>×</button><div class=hd><div class=av style="background:'+col(s)+'">'+s[0].toUpperCase()+'</div><div><div class=nm style="color:'+col(s)+'">'+s+'</div><div class=sub>Following since March 2025</div></div></div><div class=badges><i>Subscriber · 8 months</i><i>Chatted 214 times</i></div><div class=acts><button class=p>Follow</button><button>Reply</button><button>Mention</button></div>';
 c.querySelector('.x').onclick=()=>c.remove();document.body.appendChild(c);};
 document.addEventListener('click',e=>{const b=e.target.closest('.row b');if(b)card(b.textContent);});
-window.say=(s,t)=>{const d=document.createElement('div');d.className='row';d.innerHTML='<b></b>: <span></span>';const b=d.querySelector('b');b.textContent=s;b.style.color=col(s);d.querySelector('span').textContent=t;chat.appendChild(d);while(chat.children.length>60)chat.firstChild.remove();};
+let idx=0;window.say=(s,t)=>{const d=document.createElement('div');d.className='row';d.dataset.index=idx++;d.innerHTML='<b></b>: <span></span>';const b=d.querySelector('b');b.textContent=s;b.style.color=col(s);d.querySelector('span').textContent=t;chat.appendChild(d);while(chat.children.length>60)chat.firstChild.remove();};
 for(let i=0;i<14;i++)say(NAMES[(i*3+${ch.length})%NAMES.length],LINES[(i*7+${ch.length})%LINES.length]);
 let n=${ch.length};setInterval(()=>{n++;say(NAMES[(n*3)%NAMES.length],LINES[(n*7+3)%LINES.length]);},1400+${ch.length}*150);
 </script></body>`;
@@ -56,6 +56,14 @@ const EMOJI = { pixelpear: '🍐', nightowl: '🦉', arcadia: '👾', lofilane: 
 const picSvg = ch => { const h = HUES[ch] ?? 200; return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">`
   + `<stop offset="0" stop-color="hsl(${h},80%,72%)"/><stop offset="1" stop-color="hsl(${h + 50},70%,38%)"/></linearGradient></defs><rect width="96" height="96" fill="url(#g)"/>`
   + `<text x="48" y="66" font-size="52" text-anchor="middle">${EMOJI[ch] || '⭐'}</text></svg>`; };
+
+// Made-up chat emotes, served at Kick's emote address by name (https://files.kick.com/emotes/<name>/fullsize):
+// an emoji on a rounded square. Names, not Kick's numbers, so no real emote is ever asked for.
+const EMOTE = 'https://files.kick.com/emotes/';
+const EMOTES = { pearHype: ['🍐', 95], owlWave: ['🦉', 250], arcadeGG: ['👾', 320], tideLUL: ['🌊', 190] };
+const emoteSvg = n => { const [e, h] = EMOTES[n] || ['⭐', 50]; return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">`
+  + `<rect width="64" height="64" rx="14" fill="hsl(${h},70%,45%)"/><text x="32" y="45" font-size="38" text-anchor="middle">${e}</text></svg>`; };
+const emoteHtml = n => `<span data-emote-name="${n}"><img src="${EMOTE}${n}/fullsize" alt="${n}" width="28" height="28" style="vertical-align:middle"></span>`;
 
 // Kick's /api/v2/channels/<slug> for a made-up channel: live for a while, with viewers and a bio
 const kickTime = t => new Date(t).toISOString().replace('T', ' ').slice(0, 19);
@@ -72,19 +80,24 @@ function kickChannel(ch, i) {
 async function install(app, { mod = 'nightowl', kick = {} } = {}) {
   const api = Object.fromEntries(CHANNELS.map((c, i) => [c, kickChannel(c, i)]));
   Object.assign(api, kick);
-  await app.evaluate(({ session, ipcMain, net }, { pages, api, mod, pics, PIC }) => {
+  await app.evaluate(({ session, ipcMain, net }, { pages, api, mod, pics, PIC, emotes, EMOTE }) => {
+    const svg = s => new Response(s, { headers: { 'content-type': 'image/svg+xml' } });
+    const emote = url => url.startsWith(EMOTE) && emotes[url.slice(EMOTE.length).split('/')[0]];
     const html = s => new Response(s, { headers: { 'content-type': 'text/html' } });
     // profile pictures (shown in the main window's own session); everything else there goes out as normal
     try { session.defaultSession.protocol.unhandle('https'); } catch {}
     session.defaultSession.protocol.handle('https', req => {
       const p = req.url.startsWith(PIC) && pics[req.url.slice(PIC.length).replace(/\.svg$/, '')];
-      return p ? new Response(p, { headers: { 'content-type': 'image/svg+xml' } }) : net.fetch(req, { bypassCustomProtocolHandlers: true });
+      if (p) return svg(p);
+      if (req.url.startsWith(EMOTE)) { const e = emote(req.url); return e ? svg(e) : new Response('', { status: 404 }); }   // never a real emote
+      return net.fetch(req, { bypassCustomProtocolHandlers: true });
     });
     const json = (d, st = 200) => new Response(JSON.stringify(d), { status: st, headers: { 'content-type': 'application/json' } });
     const s = session.fromPartition('persist:kick');
     try { s.protocol.unhandle('https'); } catch {}
     s.protocol.handle('https', req => {
       const u = new URL(req.url);
+      if (req.url.startsWith(EMOTE)) { const e = emote(req.url); return e ? svg(e) : new Response('', { status: 404 }); }
       const chat = /^\/popout\/([^/]+)\/chat/.exec(u.pathname);
       if (chat) { const p = pages.chat[decodeURIComponent(chat[1])]; return p ? html(p) : new Response('', { status: 404 }); }
       const m = /^\/api\/v[12]\/channels\/([\w-]+)(\/[\w-]+)?$/.exec(u.pathname);
@@ -104,9 +117,9 @@ async function install(app, { mod = 'nightowl', kick = {} } = {}) {
     ipcMain.removeHandler('mod:check');
     ipcMain.handle('mod:check', (_e, ch) => ch === mod);
     return s.cookies.set({ url: 'https://kick.com', name: 'session_token', value: 'stand-in' });   // "logged in" to Kick
-  }, { mod, api, PIC, pics: Object.fromEntries(CHANNELS.map(c => [c, picSvg(c)])), pages: {
+  }, { mod, api, PIC, EMOTE, emotes: Object.fromEntries(Object.keys(EMOTES).map(n => [n, emoteSvg(n)])), pics: Object.fromEntries(CHANNELS.map(c => [c, picSvg(c)])), pages: {
     chat: Object.fromEntries(CHANNELS.map(c => [c, chatPage(c)])),
     stream: Object.fromEntries(CHANNELS.map(c => [c, streamPage(c)])) } });
 }
 
-module.exports = { CHANNELS, install, kickTime };
+module.exports = { CHANNELS, EMOTES, install, kickTime, emoteHtml };
