@@ -2,7 +2,7 @@
 // Channels box suggests.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normStore, setSite, allFollows, suggest, siteOf } = require('../../src/follows');
+const { normStore, setSite, allFollows, suggest, siteOf } = require('../../../src/shared/follows');
 
 test('the kept lists: only valid channels on their own site, once each, with a name', () => {
   const s = normStore({ v: 1, kick: { at: 5, items: [{ ch: 'Alpha', name: 'Alpha' }, { ch: 'alpha' }, { ch: 'tw:wrong' }, { ch: 'bad name!' }, null, 'x'] },

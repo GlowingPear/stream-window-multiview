@@ -1,7 +1,7 @@
 // The notification centre's list: kept per tab, the red number, filters, days and moving the old histories over.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const N = require('../../src/notifications');
+const N = require('../../../../../src/page/panels/bell/notifications.js').SmvNotes;
 
 const T = new Date(2026, 5, 10, 15, 0).getTime(), MIN = 60e3, DAY = 864e5;
 const m = o => ({ channel: 'alpha', sender: 'ann', body: 'hi', kind: 'mention', t: T, unread: true, ...o });

@@ -2,9 +2,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const dev = require('../../scripts/dev');
-const worktree = require('../../scripts/worktree');
-const { slug } = require('../../scripts/dev-tools');
+const dev = require('../../../scripts/dev');
+const worktree = require('../../../scripts/worktree');
+const { slug } = require('../../../scripts/dev-tools');
 
 test('npm run dev options', () => {
   assert.deepEqual(dev.parseArgs([]), { profile: '', debug: false, port: 0 });
@@ -18,7 +18,7 @@ test('dev profiles are kept outside the project, one folder each', () => {
   const dir = dev.profileDir('work');
   assert.equal(path.basename(dir), 'work');
   assert.equal(path.basename(path.dirname(dir)), 'Stream Multiview Dev');
-  assert.ok(!dir.startsWith(path.join(__dirname, '..', '..')));
+  assert.ok(!dir.startsWith(path.join(__dirname, '..', '..', '..')));
 });
 
 test('npm run worktree options', () => {

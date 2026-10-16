@@ -1,7 +1,7 @@
 // The right-click menu in chat and stream windows (src/context-menu.js): which items show for what was clicked.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { menuFor, translateTarget, languageName, translateUrl } = require('../../src/context-menu');
+const { menuFor, translateTarget, languageName, translateUrl } = require('../../../src/main/context-menu');
 
 const labels = items => items.map(x => x.type === 'separator' ? '—' : x.label);
 const find = (items, label) => items.find(x => x.label === label);

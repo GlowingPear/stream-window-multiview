@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { plan } = require('../../scripts/page-imports');
+const { plan } = require('../../../scripts/page-imports');
 
 test('every module in src/page/ imports and exports what its code needs (if not: npm run page-imports)', () => {
   const { changes } = plan();
@@ -38,7 +38,7 @@ test('it adds what\'s missing, drops what isn\'t used, keeps the load order line
 });
 
 test('names a module declares inside itself: declarations, parameters and catch, never a use', () => {
-  const { localNames } = require('../../scripts/page-imports');
+  const { localNames } = require('../../../scripts/page-imports');
   const t = 'function draw(a, { b, c: d }, e = wins){ return f(wins, g); } const opts = { wins: 1, helper(x){ return 2; } };\n' +
     'if (wins) { go(); } items.forEach(it => use(it)); const [p, q] = arr; let { r, s: t2 } = o; try {} catch (err) {} for (const k of list) {}';
   assert.deepEqual([...localNames(t)].sort(), ['a', 'b', 'd', 'draw', 'e', 'err', 'it', 'k', 'opts', 'p', 'q', 'r', 't2', 'x']);

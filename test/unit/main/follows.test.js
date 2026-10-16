@@ -2,7 +2,7 @@
 // and turning them into channels (kickFollowsFrom). Kick is replaced by a fake, so this runs offline.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { readKickFollowPages, kickFollowsFrom, canModerate, KICK_FOLLOW_APIS } = require('../../src/live');
+const { readKickFollowPages, kickFollowsFrom, canModerate, KICK_FOLLOW_APIS } = require('../../../src/main/live');
 
 const [FOLLOWED_PAGE, FOLLOWED, V1] = KICK_FOLLOW_APIS;
 const channel = i => ({ channel_slug: `streamer${i}`, user_username: `Streamer${i}`, is_live: i < 10 });

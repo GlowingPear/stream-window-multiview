@@ -8,7 +8,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const ROOT = path.join(__dirname, '..', '..');
+const ROOT = path.join(__dirname, '..', '..', '..');
 const CHANGELOG = `# What's new in Stream Multiview
 
 Intro text.

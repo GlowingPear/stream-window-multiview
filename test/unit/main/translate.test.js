@@ -1,7 +1,7 @@
 // Translating chat messages (src/translate.js): Google Translate's answers, what's kept, and resting after a refusal.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { makeTranslator, parseAnswer } = require('../../src/translate');
+const { makeTranslator, parseAnswer } = require('../../../src/main/translate');
 
 // a stand-in Google Translate: "hola" and friends are Spanish; anything with "hello" is English already
 const DICT = { hola: 'hello', 'buenas noches': 'good night', 'hola amigos': 'hello friends' };
