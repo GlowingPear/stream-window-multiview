@@ -1,4 +1,5 @@
 import './focus-only.js';   // runs after it (see app.js)
+import { store } from '../shared/store.js';
 import { $, GAP, colCount, colWidth, colsMode, coreVars, lastLayout, stage, streamCols, wins } from '../core.js';
 import { SW, setRect } from './geometry.js';
 import { locked } from './lock.js';
@@ -90,6 +91,8 @@ function updateColNav(){
   }
 }
 const curLayout = () => colsMode ? (featBase.length && featuredCh ? 'focus' : 'columns') : lastLayout;
+// The Layout menu shows the layout in use and its options.
+store.watch('layout', () => updateLayoutMenu());
 function updateLayoutMenu(){
   const b = $('#layoutBtn'); if (!b) return;
   const names = { focus: 'Focus view', game: 'Game focus', columns: 'Columns', chatfocus: 'Chat focus', auto: 'Auto layout', tile: 'Tile' };

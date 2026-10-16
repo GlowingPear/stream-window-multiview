@@ -1,5 +1,6 @@
 import '../panels/settings/notifications.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { $, BAR, GAP, ROLE, colWidth, colsMode, coreVars, stage, streamCols, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { chLabel } from '../platforms/platforms.js';
@@ -10,7 +11,6 @@ import { schedulePicks } from '../windows/channel-picker.js';
 import { buildCols, columnsLayout } from './columns.js';
 import { placeMinis, placeSwitcher } from './switch-control.js';
 import { applyFocusOnly } from './focus-only.js';
-import { updateLayoutMenu } from './column-drag.js';
 import { activeP, setPresetOpt } from './saved-layouts.js';
 import { updateModeClass } from './chat-focus.js';
 import { save } from '../persistence.js';
@@ -220,7 +220,7 @@ function setColsMode(on){
     wins.forEach(w => w.el.classList.remove('link-top', 'link-bot'));
   }
   if (ROLE === 'main') settings.set('cols', on ? '1' : null);
-  updateLayoutMenu(); updateLinkBtn();
+  store.changed('layout'); updateLinkBtn();
   if (typeof updateModeClass === 'function') updateModeClass();
 }
 const builtinLinked = () => settings.flag('linked', true);

@@ -7,7 +7,6 @@ import { SH, SW, focusWin, setRect } from './geometry.js';
 import { flash } from '../shared/flash.js';
 import { autoLayout, chatFocusLayout, tile } from './layouts.js';
 import { columnsLayout } from './columns.js';
-import { updateLayoutMenu } from './column-drag.js';
 import { save } from '../persistence.js';
 import { gameLayout, isGame } from './game-focus.js';
 
@@ -24,7 +23,7 @@ function setLayoutLocked(on, quiet){
   b.classList.toggle('on', !!on); b.setAttribute('aria-pressed', !!on); b.setAttribute('aria-label', t); b.title = t + ' (Shift+L)';
   setTb($('#layoutBtn'), 'Layout', locked() ? 'lock' : 'layout');
   if (quiet) return;      // (at start-up the menu isn't set up yet; it shows this when it is)
-  updateLayoutMenu();
+  store.changed('layout');
   flash(on ? 'Layout locked: drag a window onto another to swap them' : 'Layout unlocked');
 }
 setLayoutLocked(layoutLocked, true);

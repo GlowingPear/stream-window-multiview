@@ -10,7 +10,6 @@ import { fitOn } from '../panels/channels/channels.js';
 import { addNote } from '../panels/bell/bell.js';
 import { flash } from '../shared/flash.js';
 import { colOrder, featuredCh, layoutVars, setFeatured } from '../layout/layouts.js';
-import { updateLayoutMenu } from '../layout/column-drag.js';
 import { save } from '../persistence.js';
 
 /* ---- Raids: when a chat or player moves to another channel, every window of the old channel follows ----
@@ -66,7 +65,7 @@ function followRaid(from, to, tell){
 // by themselves only works in Auto layout, so say so when it stops.
 function arrangedByHand(){
   if (lastLayout === 'auto' && ROLE === 'main' && fitOn()) flash('Auto layout is off because you moved a window. Pick it again to fit in channels that go live.', { subject: 'layouts' });
-  coreVars.lastLayout = null; updateLayoutMenu();
+  coreVars.lastLayout = null; store.changed('layout');
 }
 
 export { arrangedByHand, watchRaid };

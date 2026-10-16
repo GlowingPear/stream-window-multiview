@@ -1,4 +1,5 @@
 import './toolbar.js';   // runs after it (see app.js)
+import { store } from '../shared/store.js';
 import { $, ROLE, colsMode, coreVars, stage } from '../core.js';
 import { icon } from '../shared/icons.js';
 import { DESKTOP } from '../shared/env.js';
@@ -37,7 +38,7 @@ if (ROLE === 'main'){
     layoutMenu.hidden = !layoutMenu.hidden;
     if (!layoutMenu.hidden){
       layoutMenu.querySelector('.lm-tabs').selectTab('layouts');
-      updateLayoutMenu();
+      store.changed('layout');
       placeMenu(layoutMenu, layoutBtn);
     }
   };
@@ -53,7 +54,7 @@ if (ROLE === 'main'){
     if (l === 'chatfocus') chatFocusLayout();
     else if (l === 'auto'){ coreVars.lastLayout = 'auto'; autoLayout(); }   // first, so its save() stores it
     else tile();
-    updateLayoutMenu();
+    store.changed('layout');
   });
   document.addEventListener('pointerdown', e => {
     if (!layoutMenu.hidden && !layoutMenu.contains(e.target) && e.target !== layoutBtn) layoutMenu.hidden = true;
@@ -70,7 +71,7 @@ if (ROLE === 'main'){
   $('#lmAutoFit').addEventListener('change', e => { const ap = activeP(); if (ap) setPresetOpt(ap, 'autoFit', e.target.checked); else setAutoFit(e.target.checked); });
   $('#lmCols').addEventListener('click', e => {
     const b = e.target.closest('button[data-n]'); if (!b || b.disabled) return;
-    const ap = activeP(); if (ap) setPresetOpt(ap, 'streamCols', +b.dataset.n); else { coreVars.streamCols = +b.dataset.n; chatFocusLayout(); updateLayoutMenu(); }
+    const ap = activeP(); if (ap) setPresetOpt(ap, 'streamCols', +b.dataset.n); else { coreVars.streamCols = +b.dataset.n; chatFocusLayout(); store.changed('layout'); }
   });
   // Settings > Layouts: each layout from the menu, with its options under it
   const lyList = $('#lyList');

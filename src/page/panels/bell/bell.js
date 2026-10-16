@@ -1,5 +1,6 @@
 import '../channels/open-box.js';   // runs after it (see app.js)
 import { settings } from '../../shared/settings.js';
+import { store } from '../../shared/store.js';
 import { $, ROLE, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -59,19 +60,19 @@ function addNote(n, text, desk = text){
   if (ROLE !== 'main') return null;
   if (!quiet && (kind === 'live' || kind === 'raid' || kind === 'app')) playSound(kind);
   if (desk && (kind === 'raid' || kind === 'app') && wantNotify(kind) && DESKTOP && window.kmv.notifyMessage) window.kmv.notifyMessage(desk);
-  notes = SmvNotes.add(notes, n); saveNotes(); renderBell();
+  notes = SmvNotes.add(notes, n); saveNotes(); store.changed('notes');
   return notes[0];
 }
 function dropNotes(test){
   const before = notes.length;
   notes = notes.filter(n => !test(n));
-  if (notes.length !== before){ saveNotes(); renderBell(); }
+  if (notes.length !== before){ saveNotes(); store.changed('notes'); }
 }
 // Seen: one chat's mentions and spam (clicking into that chat), a given list, or all of them.
 function readNotes(test){
   let n = 0;
   notes.forEach(x => { if (x.unread && (!test || test(x))){ x.unread = false; n++; } });
-  if (n){ saveNotes(); renderBell(); }
+  if (n){ saveNotes(); store.changed('notes'); }
 }
 const readChat = ch => readNotes(n => n.channel === ch && (SmvNotes.tabOf(n) === 'mentions' || n.kind === 'spam'));
 // Mentions for one chat can be turned off with the @ button on its bar.
@@ -317,6 +318,8 @@ const EMPTY = {
   live: 'Nobody has gone live yet. Saved channels show here when they go live, and raids the app followed.',
   app: 'No messages from the app.'
 };
+// The bell's button, its panel and All notifications show the notifications.
+store.watch('notes', () => renderBell());
 function renderBell(){
   updateBellBtn();
   renderNoteHistory();

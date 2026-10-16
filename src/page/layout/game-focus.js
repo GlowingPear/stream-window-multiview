@@ -1,5 +1,6 @@
 import '../shortcuts.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { BAR, GAP, ROLE, colsMode, coreVars, lastLayout, wins } from '../core.js';
 import { icon } from '../shared/icons.js';
 import { DESKTOP } from '../shared/env.js';
@@ -10,8 +11,6 @@ import { applyRects, chatRects, colKey, gridRects, mkDiv, setColsMode, switchMod
 import { refreshPicks } from '../windows/channel-picker.js';
 import { buildCols } from './columns.js';
 import { placeSwitcher } from './switch-control.js';
-import { updateLayoutMenu } from './column-drag.js';
-import { updateModeClass } from './chat-focus.js';
 import { save } from '../persistence.js';
 import { panel } from '../toolbar/toolbar.js';
 import { openCapturePicker } from '../windows/capture.js';
@@ -82,7 +81,7 @@ function gameLayout(){
     if (vids.length * one <= vh) vh = vids.length * one;
   }
   if (chats.length) applyRects(chats, chatRects(chats.length, X, GAP / 2 + vh, PW, Hh - vh));
-  save(); updateLayoutMenu(); updateModeClass(); refreshPicks();
+  save(); store.changed('layout'); refreshPicks();
   if (switchMode !== 'dock') placeSwitcher();
 }
 function renderGameBar(){

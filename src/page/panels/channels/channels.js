@@ -7,7 +7,7 @@ import { DESKTOP } from '../../shared/env.js';
 import { PLAT_NAME, chLabel, infoNames, normCh, platIcon, platOf, rememberNames } from '../../platforms/platforms.js';
 import { locked } from '../../layout/lock.js';
 import { appendFollowSugs } from './follow-suggestions.js';
-import { addNote, bell, dndOn, notes, renderBell, saveNotes } from '../bell/bell.js';
+import { addNote, bell, dndOn, notes, saveNotes } from '../bell/bell.js';
 import { alerts } from '../../alerts/alerts.js';
 import { addParsed } from '../../layout/placement.js';
 import { flash } from '../../shared/flash.js';
@@ -90,7 +90,7 @@ function liveNote(ch, info, auto){
   const data = { label: info.name || '', title: info.title || '', category: info.category || '', ...(info.viewers != null ? { viewers: info.viewers } : {}) };
   if (recent){
     Object.assign(recent, Object.fromEntries(Object.entries(data).filter(([, v]) => v !== '')), auto ? { auto: true } : {});
-    saveNotes(); renderBell();
+    saveNotes(); store.changed('notes');
     return recent;
   }
   return addNote({ kind: 'live', channel: ch, ...data, label: data.label || chLabel(ch), ...(auto ? { auto: true } : {}) },
