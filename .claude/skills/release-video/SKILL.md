@@ -13,7 +13,7 @@ Files next to this one:
 |---|---|
 | `changes.js` | Lists what to cover: PRs merged since the newest tag (or a range), with their descriptions |
 | `video.js` | Records a scenes file and makes the MP4, always under 10 MB (`node video.js <scenes.js>`) |
-| `stage.js` | Stand-in kick.com: six made-up channels (`pixelpear`, `nightowl`, `arcadia`, `lofilane`, `tidepool`, `emberfox`) with moving pictures, chats with a chat box and user cards, and Kick's channel API |
+| `stage.js` | Stand-in kick.com: six made-up channels (`pixelpear`, `nightowl`, `arcadia`, `lofilane`, `tidepool`, `emberfox`) with moving pictures, chats with a chat box and user cards (each message in a row of its own, as on Kick), made-up emotes (`EMOTES`; `emoteHtml(name)` for a message, served at Kick's emote address so no real emote is ever asked for), and Kick's channel API |
 | `capture.js` | Smooth capture of every frame the window paints |
 | `music.js` | Generated upbeat backing track (no samples, nothing to license) |
 | `sounds.js` | Records the app's own sounds (alert chimes and the like) so the music can pause for them |
