@@ -1,4 +1,5 @@
 import './window-bar.js';   // runs after it (see app.js)
+import { askIn, runIn, setMuted } from './view.js';
 import { BAR, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, mutedChk, sizehint, snapChk, stage, wins } from '../core.js';
 import { icon } from '../shared/icons.js';
 import { DESKTOP } from '../shared/env.js';
@@ -25,7 +26,6 @@ import { startSwapDrag } from '../layout/chat-focus.js';
 import { save } from '../persistence.js';
 import { openProfile } from '../panels/profiles/profiles.js';
 import { openExtMenu } from '../panels/extensions/extensions.js';
-import { ask } from '../shared/ask.js';
 
 /* ---------- window creation ---------- */
 function createWin(spec, rect){
@@ -242,15 +242,14 @@ function renderVol(w){
 function pushVol(w){
   renderVol(w);
   if (!w.ready) return;
-  w.view.executeJavaScript(`${VOL_JS};window.__kmv.set(${w.vol},${w.muted})`).catch(() => {});
+  runIn(w.view, `${VOL_JS};window.__kmv.set(${w.vol},${w.muted})`);
 }
 // A stream's sound is turned on once the app's volume / mute has reached its player (see mountView).
 function liftAudio(w){
   const v = w.view;
   if (!w.audioHeld || !w.ready || w.audioLoading || !v) return Promise.resolve(false);   // not the page that's leaving
-  let ask; try { ask = v.executeJavaScript('!!(window.__kmv && window.__kmv.applied())'); } catch { return Promise.resolve(false); }   // moved / closed meanwhile
-  return ask.then(ok => {
-    if (ok && w.view === v && w.audioHeld){ w.audioHeld = false; try { v.setAudioMuted(false); } catch {} }
+  return askIn(v, '!!(window.__kmv && window.__kmv.applied())').then(ok => {   // (false when it moved or closed meanwhile)
+    if (ok && w.view === v && w.audioHeld){ w.audioHeld = false; setMuted(v, false); }
     return ok;
   }, () => false);
 }
@@ -265,7 +264,7 @@ if (DESKTOP) setInterval(() => {
     if (w.audioHeld) liftAudio(w);
     if (w.adjusting) return;
     if (Date.now() < (w.enforceUntil || 0)){ pushVol(w); return; }
-    w.view.executeJavaScript('window.__kmv ? window.__kmv.get() : null').then(r => {
+    askIn(w.view, 'window.__kmv ? window.__kmv.get() : null').then(r => {
       if (r && (Math.abs(r.v - w.vol) > 0.005 || r.m !== w.muted)){ w.vol = r.v; w.muted = r.m; renderVol(w); saveSoon(); }
       if (r && r.p !== isPaused(w)){
         if (r.p) w.paused = true; else { w.paused = w.pausedByFocus = w.autoPaused = false; w.focusExempt = true; w.noAuto = true; }

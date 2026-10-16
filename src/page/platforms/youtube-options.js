@@ -1,5 +1,6 @@
 import '../windows/pause.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { askIn, reloadView, runIn } from '../windows/view.js';
 import { $, ROLE, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { platOf, watchSignedIn, ytVidOf } from './platforms.js';
@@ -46,14 +47,14 @@ skipChk.addEventListener('change', () => { settings.set('ytSkip', skipChk.checke
 }));
 settings.onChange(['ytSkip', 'ytConsent'], loadYtSettings);   // main and streams windows
 function ytTick(view, skip, answer){
-  view.executeJavaScript(`(${ytAgent})(${skip}, ${JSON.stringify(answer)})`).then(r => {
+  askIn(view, `(${ytAgent})(${skip}, ${JSON.stringify(answer)})`).then(r => {
     if (!r) return;
     // The question is still open 3 s after clicking (or its button wasn't found, e.g. YouTube changed it):
     // save "Reject all" in that player's storage the way YouTube does, and load the stream again.
     view.consentTries = r.consent ? (view.consentTries || 0) + 1 : 0;
     if (view.consentTries >= 3 && !view.consentFellBack && window.kmv.ytConsentFallback){
       view.consentFellBack = true;
-      window.kmv.ytConsentFallback(view.getAttribute('partition')).then(() => view.reload()).catch(() => {});
+      window.kmv.ytConsentFallback(view.getAttribute('partition')).then(() => reloadView(view)).catch(() => {});
     }
     if (!r.skip || !skipChk.checked) return;
     // The click moves the keyboard to the player: give it straight back to where you were typing.
@@ -114,7 +115,7 @@ function likeHelp(w){
 }
 function readLike(w, click){
   const view = w.view;
-  return view.executeJavaScript(`(${ytLikeAgent})(${!!click})`).then(r => {
+  return askIn(view, `(${ytLikeAgent})(${!!click})`).then(r => {
     if (!r || w.view !== view || r.vid !== ytVidOf(w)) return;   // an old page's answer
     w.like = { signedIn: r.signedIn, liked: r.liked };
     syncLike(w);
@@ -210,7 +211,7 @@ loadChatView();
 // One YouTube chat window: on load, or with force when the setting changes.
 function applyChatView(w, force){
   if (!DESKTOP || w.kind !== 'chat' || !w.ready || platOf(w.channel) !== 'youtube') return;
-  w.view.executeJavaScript(`(${ytChatAgent})(${chatViewPick.value === 'live'}, ${!!force})`).catch(() => {});
+  runIn(w.view, `(${ytChatAgent})(${chatViewPick.value === 'live'}, ${!!force})`);
 }
 const applyChatViews = () => wins.forEach(w => applyChatView(w, true));
 chatViewPick.addEventListener('change', () => {

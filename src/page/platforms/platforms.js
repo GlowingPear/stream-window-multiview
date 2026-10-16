@@ -3,6 +3,7 @@ import { kick } from './kick.js';
 import { twitch } from './twitch.js';
 import { youtube } from './youtube.js';
 import { settings } from '../shared/settings.js';
+import { addCss, runIn } from '../windows/view.js';
 import { wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { mountView } from '../windows/views.js';
@@ -93,8 +94,8 @@ function parseInput(raw, plat = 'kick'){
 function trimPlayerPage(view, ch){
   const p = ch && platform(ch);
   if (!p || !p.playerCss) return;
-  try { view.insertCSS(p.playerCss); } catch {}
-  view.executeJavaScript(p.playerFitJs).catch(() => {});
+  addCss(view, p.playerCss);
+  runIn(view, p.playerFitJs);
 }
 
 // Addresses for each platform's player and chat. YouTube needs the live video's id (looked up when needed).

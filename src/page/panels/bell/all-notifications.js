@@ -1,5 +1,6 @@
 import './bell.js';   // runs after it (see app.js)
 import { settings } from '../../shared/settings.js';
+import { runIn } from '../../windows/view.js';
 import { $, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { MENTION_JS } from '../../in-site/mentions.js';
@@ -112,7 +113,7 @@ function injectMention(w){
   const off = !mentOn || mentMuted.has(w.channel) || !site.mentions;
   const who = off ? '' : mentNameFor(w.channel), words = off ? [] : mentWords;
   const watch = !!alerts.spam.on && site.spamAlerts;
-  w.view.executeJavaScript(`${MENTION_JS};window.__kmvMention.setMe(${JSON.stringify(who)},${JSON.stringify(words)});window.__kmvMention.setWatch(${watch})`).catch(() => {});
+  runIn(w.view, `${MENTION_JS};window.__kmvMention.setMe(${JSON.stringify(who)},${JSON.stringify(words)});window.__kmvMention.setWatch(${watch})`);
 }
 
 export { closeNoteHistory, injectMention, pushMyName, renderMentions, renderNoteHistory, setMyTwitch };

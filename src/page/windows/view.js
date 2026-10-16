@@ -1,0 +1,26 @@
+// What the page does to a stream's or chat's view (the desktop app's <webview>): run a script in its page, add
+// CSS, zoom, mute, reload, its id. Every call goes through here, so a view that has gone away (closed, moved to
+// another window, or a plain frame in a browser) is ignored the same way everywhere, and a browser version of
+// the app would only need to replace this file. Nothing here touches the rest of the page.
+
+// Runs a script in the view's page, for its effect: never fails.
+function runIn(view, js){
+  if (!view || !view.executeJavaScript) return Promise.resolve();
+  try { return view.executeJavaScript(js).catch(() => {}); } catch { return Promise.resolve(); }
+}
+// Runs a script in the view's page for its result: fails when the page can't run it (the caller decides).
+function askIn(view, js){
+  if (!view || !view.executeJavaScript) return Promise.reject(new Error('no view'));
+  try { return view.executeJavaScript(js); } catch (e) { return Promise.reject(e); }
+}
+function addCss(view, css){
+  try { return Promise.resolve(view.insertCSS(css)).catch(() => {}); } catch { return Promise.resolve(); }
+}
+function setZoom(view, factor){ try { view.setZoomFactor(factor); } catch {} }
+function zoomOf(view){ try { return view && view.getZoomFactor ? view.getZoomFactor() || 1 : 1; } catch { return 1; } }
+function setMuted(view, on){ try { view.setAudioMuted(on); } catch {} }
+function reloadView(view){ try { view.reload(); } catch {} }
+// The view's id in the desktop app (the main process names views by it), or null
+function viewId(view){ try { return view && view.getWebContentsId ? view.getWebContentsId() : null; } catch { return null; } }
+
+export { addCss, askIn, reloadView, runIn, setMuted, setZoom, viewId, zoomOf };

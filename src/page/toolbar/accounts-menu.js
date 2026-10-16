@@ -1,5 +1,6 @@
 import './layout-menu.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { reloadView } from '../windows/view.js';
 import { $, ROLE, coreVars, msg, popped, wins } from '../core.js';
 import { icon } from '../shared/icons.js';
 import { DESKTOP } from '../shared/env.js';
@@ -86,7 +87,7 @@ if (DESKTOP){
   });
   if (window.kmv.onAccountChanged) window.kmv.onAccountChanged(async info => {
     const p = info.platform || 'kick';
-    wins.forEach(w => { if ((w.kind === 'chat' || (w.kind === 'stream' && watchSignedIn[p])) && w.ready && platOf(w.channel) === p) w.view.reload(); });   // that platform's chats (and signed-in streams) pick up the new login
+    wins.forEach(w => { if ((w.kind === 'chat' || (w.kind === 'stream' && watchSignedIn[p])) && w.ready && platOf(w.channel) === p) reloadView(w.view); });   // that platform's chats (and signed-in streams) pick up the new login
     modOk.clear(); wins.forEach(w => { if (platOf(w.channel) === p) checkMod(w); });
     if (info.loggedOut){ acct[p] = p === 'youtube' ? false : ''; showAccounts(); return; }
     await refreshAccount();
@@ -339,7 +340,7 @@ if (DESKTOP){
     applyChatZoom();
   }));
   applyChatZoom();
-  window.kmv.onReloadAll(() => wins.forEach(w => { if (w.ready) w.view.reload(); }));
+  window.kmv.onReloadAll(() => wins.forEach(w => { if (w.ready) reloadView(w.view); }));
 
   if (ROLE === 'main'){
     const pb = $('#popBtn');
