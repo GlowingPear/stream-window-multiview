@@ -236,6 +236,9 @@ test('a newly saved channel gets its picture in the background, without opening 
   // asked for once, soon after saving, and the row swaps its letter for the picture by itself
   await w.waitForSelector('#savedList .sv:has-text("echo") .sv-av img', { timeout: 30000 });
   assert.equal(await w.$eval('#savedList .sv:has-text("echo") .sv-av img', i => i.src), 'https://files.kick.com/images/echo.png');
+  // and so does the start of its window's name dropdown (it opened when saved)
+  const barPic = () => w.evaluate(() => { const s = [...document.querySelectorAll('#stage .win .col-pick')].find(s => s.value === 'echo'); const i = s && s.closest('.bar').querySelector('.bar-av img'); return i && i.src; });
+  assert.equal(await until(barPic), 'https://files.kick.com/images/echo.png');
   const info = (await w.evaluate(() => window.kmv.profileList(['echo']))).echo.info;
   assert.equal(info.name, 'Echo');
   assert.equal(info.followers, 77);
