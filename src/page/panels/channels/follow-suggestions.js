@@ -1,7 +1,7 @@
 import './channels.js';   // runs after it (see app.js)
-import { $, ROLE, input, wins } from '../../core.js';
-import { PLAT_NAME, platIcon } from '../../platforms/platforms.js';
-import { fmtViewers, loadSavedProfiles, persistSaved, renderSaved, saved, savedTab, svHue, svInitials } from './channels.js';
+import { $, ROLE, input } from '../../core.js';
+import { PLAT_NAME } from '../../platforms/platforms.js';
+import { channelRow, fmtViewers, loadSavedProfiles, persistSaved, renderSaved, saved, savedTab } from './channels.js';
 import { addParsed } from '../../layout/placement.js';
 import { flash } from '../../shared/flash.js';
 import { panel } from '../../toolbar/toolbar.js';
@@ -36,22 +36,14 @@ function appendFollowSugs(list, q){
   list.appendChild(h);
   rows.forEach(f => {
     const info = follows.live[f.ch] || {}, live = f.live, prof = (fsProf[f.ch] && fsProf[f.ch].info) || {};
-    const row = document.createElement('div'); row.className = 'sv fsug ' + (live ? 'live' : 'off'); row.dataset.ch = f.ch;
-    row.tabIndex = 0; row.setAttribute('role', 'button');
-    row.title = `Open it (as set in the Stream / Chat dropdown). You follow ${f.name} on ${PLAT_NAME[f.site]}`;
-    row.innerHTML = `<span class="sv-av"></span><div class="sv-txt"><div class="sv-line"><span class="nm"></span></div><div class="sv-sub" hidden></div></div><div class="sv-meta"></div><div class="sv-acts"></div>`;
-    const av = row.querySelector('.sv-av');
-    av.style.setProperty('--c', svHue(f.ch)); av.textContent = live ? svInitials(f.name) : f.name.replace(/^@/, '').slice(0, 1).toUpperCase(); av.insertAdjacentHTML('beforeend', platIcon(f.site));
-    const pic = prof.avatar;
-    if (pic){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = pic; av.appendChild(im); }
-    row.querySelector('.nm').textContent = f.name;
-    if (wins.some(w => w.channel === f.ch)){ const o = document.createElement('span'); o.className = 'open'; o.textContent = 'open'; row.querySelector('.sv-line').appendChild(o); }
-    const sub = row.querySelector('.sv-sub'), subText = live ? [...new Set([info.category, info.title].filter(Boolean))].join(' · ') : '';
-    if (subText){ sub.hidden = false; sub.textContent = subText; sub.title = info.title || ''; }
-    if (live && info.viewers != null) row.querySelector('.sv-meta').insertAdjacentHTML('beforeend', `<span class="sv-view" title="Watching now">${fmtViewers(info.viewers)}</span>`);
+    const { row, meta, acts } = channelRow({ ch: f.ch, name: f.name, site: f.site, live, photo: prof.avatar, cls: 'fsug ',
+      sub: live ? [...new Set([info.category, info.title].filter(Boolean))].join(' · ') : '', subTitle: info.title || '',
+      title: `Open it (as set in the Stream / Chat dropdown). You follow ${f.name} on ${PLAT_NAME[f.site]}` });
+    row.dataset.ch = f.ch; row.tabIndex = 0; row.setAttribute('role', 'button');
+    if (live && info.viewers != null) meta.insertAdjacentHTML('beforeend', `<span class="sv-view" title="Watching now">${fmtViewers(info.viewers)}</span>`);
     const st = document.createElement('button'); st.className = 'fsave'; st.textContent = '☆'; st.title = 'Save it to your channels';
     st.onclick = e => { e.stopPropagation(); if (!saved.includes(f.ch)){ saved.push(f.ch); persistSaved(); loadSavedProfiles(); flash(`Saved ${f.name}`); } };
-    row.querySelector('.sv-acts').appendChild(st);
+    acts.appendChild(st);
     const open = () => addParsed({ channel: f.ch, only: null });
     row.onclick = open;
     row.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === row){ e.preventDefault(); e.stopPropagation(); open(); } });
