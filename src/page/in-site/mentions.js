@@ -3,7 +3,7 @@
 // It reads the chat's visible text, so it keeps working if Kick or Twitch change their page code.
 function mentionAgent(){
   if (window.__kmvMention) return true;
-  const seen = new Set(), marks = new Map(), known = new Set(), said = new Map();
+  const seen = new Set(), marks = new Map(), known = new Set(), said = new Map(), rowSaid = new WeakMap();
   let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0;
   // Clicks and typing in the chat: the window may already have focus, so the app sees no new focus to mark it seen.
   // Every kind of click counts, on the window before the page's own handlers: Kick's mod shortcuts on a
@@ -53,13 +53,25 @@ function mentionAgent(){
     }
     return out;
   }
+  // A Kick message's actions (Reply, Pin), which only show while the pointer is over it. Kick's own are icons, but
+  // an extension can add one with text ("SO"): never part of the message.
+  const BAR = '[class*="group-hover:flex"]';
+  // A row's text without its actions: they're hidden for a moment while it's read (nothing is drawn in between).
+  function rowText(row){
+    const bars = [...row.querySelectorAll(BAR)].filter(b => b.querySelector('button') && (!b.checkVisibility || b.checkVisibility()));
+    if (!bars.length) return row.innerText;
+    const was = bars.map(b => b.getAttribute('style'));
+    bars.forEach(b => b.style.setProperty('display', 'none', 'important'));
+    try { return row.innerText; }
+    finally { bars.forEach((b, i) => was[i] == null ? b.removeAttribute('style') : b.setAttribute('style', was[i])); }
+  }
   // The chat's lines: [{ l: line, row }]. Kick puts each message in a row of its own (div[data-index]), so each
   // row is read on its own: a message that's only emotes can't be joined to the next row's text, or to what
   // is below the chat (the chat box, a pop-up). Other chats: the whole page's text, with no rows.
   function chatLines(){
     const rows = [...document.querySelectorAll('[data-index]')].filter(r => !r.parentElement || !r.parentElement.closest('[data-index]'));
     const out = [];
-    for (const row of rows) for (const l of textLines(row.innerText)) out.push({ l, row });
+    for (const row of rows) for (const l of textLines(rowText(row))) out.push({ l, row });
     return out.some(x => lineOf(x.l)) ? out : textLines(document.body.innerText).map(l => ({ l }));
   }
   function scan(){
@@ -84,7 +96,12 @@ function mentionAgent(){
       const lineNew = !seen.has(id), key = r ? r + '\u0001' + id : '';
       const replyNew = key && !seen.has(key);
       if (!lineNew && !replyNew) continue;
+      // A row already read, now with more text after its message, or its emotes no longer read (an extension added
+      // something): the same message. Kick re-uses rows for other messages, so its data-index has to match too.
+      const was = row && rowSaid.get(row), idx = row && row.getAttribute('data-index');
+      if (lineNew && was && was.i === idx && was.s === m[1].toLowerCase() && flat(m[2]).startsWith(was.b)){ seen.add(id); if (key) seen.add(key); continue; }
       seen.add(id); if (key) seen.add(key);
+      if (row && lineNew) rowSaid.set(row, { i: idx, s: m[1].toLowerCase(), b: flat(m[2]) });
       const mod = watch && lineNew && modChange(m[1], m[2]);
       if (!armed){ if (watch && known.size < 2000) known.add(m[1].toLowerCase()); continue; }   // people already chatting before we started
       const sender = m[1], body = m[2];
@@ -136,9 +153,9 @@ function mentionAgent(){
     for (let n = walk.nextNode(); n; n = walk.nextNode()){
       if (n.nodeType === 3){
         const p = n.parentElement;
-        if (p && p.checkVisibility && !p.checkVisibility()) continue;
+        if (p && ((p.checkVisibility && !p.checkVisibility()) || p.closest(BAR))) continue;
         if (n.nodeValue) all.push({ t: n.nodeValue.replace(/\s+/g, ' ') });
-      } else if (n.tagName === 'IMG'){ const e = emoteIn(n); if (e) all.push(e); }
+      } else if (n.tagName === 'IMG' && !n.closest(BAR)){ const e = emoteIn(n); if (e) all.push(e); }
     }
     // cut off what comes before the message: the time, badges, the name and its colon
     const full = all.map(x => x.t || '').join(''), cut = full.match(prefix);
