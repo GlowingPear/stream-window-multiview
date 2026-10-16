@@ -443,7 +443,8 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 .dd-list button.on{color:var(--accent);font-weight:600}
 .dd-list button.on::before{content:"";position:absolute;left:9px;top:50%;width:5px;height:5px;margin-top:-3px;border-radius:50%;background:var(--accent)}
 .dd-list button:disabled{color:var(--muted);cursor:default}
-.dd-list button.ic{display:flex;align-items:center;gap:8px}   /* a picture before the words (ddIcon) */
+.dd-list button.ic{display:flex;align-items:center;gap:8px;padding-left:8px}   /* a picture before the words (ddIcon): it and the bold name show the chosen one, no dot */
+.dd-list button.ic.on::before{display:none}
 .dd-list button.ic .dd-t{min-width:0;overflow:hidden;text-overflow:ellipsis}
 select.dd-open{border-color:var(--accent)}
 .menu button{display:flex;flex-direction:column;gap:2px;text-align:left;padding:8px 10px;border:0;border-radius:7px;background:transparent;cursor:pointer}
