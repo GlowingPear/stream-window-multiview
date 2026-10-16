@@ -1,4 +1,5 @@
 import './translate.js';   // runs after it (see app.js)
+import { runIn, zoomOf } from '../windows/view.js';
 import { coreVars, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { chLabel, rememberName } from '../platforms/platforms.js';
@@ -25,7 +26,7 @@ function closeViewMenu(chosen){
   m.el.remove();
   removeEventListener('blur', m.off); removeEventListener('resize', m.off);
   document.removeEventListener('pointerdown', m.out, true);
-  if (m.view && m.view.executeJavaScript) m.view.executeJavaScript('window.__kmvEmote && window.__kmvEmote.menuClosed()').catch(() => {});
+  runIn(m.view, 'window.__kmvEmote && window.__kmvEmote.menuClosed()');
   if (chosen == null && window.kmv && window.kmv.viewMenuClose) window.kmv.viewMenuClose(m.id);
 }
 // d: { emote: { name, site, big, small, animated, x, y }, items: [{ label, enabled, checked } | { sep }] }; x, y: in the chat page
@@ -88,7 +89,7 @@ function showViewMenu(view, id, d, pick){
   document.body.append(el);
   // where you right-clicked (the chat may be zoomed), kept inside this window: flipped up or left near an edge
   const r = view ? view.getBoundingClientRect() : { left: 0, top: 0 };
-  let z = 1; try { z = view && view.getZoomFactor ? view.getZoomFactor() || 1 : 1; } catch {}
+  const z = zoomOf(view);
   const px = r.left + (+e.x || 0) * z, py = r.top + (+e.y || 0) * z, W = el.offsetWidth, H = el.offsetHeight, M = 4;
   let left = px + W + M > innerWidth ? px - W : px, top = py + H + M > innerHeight ? py - H : py;
   left = Math.max(M, Math.min(innerWidth - W - M, left)); top = Math.max(M, Math.min(innerHeight - H - M, top));

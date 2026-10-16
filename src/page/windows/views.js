@@ -1,5 +1,6 @@
 import './windows.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { addCss, reloadView, runIn, setMuted, setZoom } from './view.js';
 import { ROLE, msg, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { EMOTE_JS } from '../in-site/emote-preview.js';
@@ -27,8 +28,8 @@ const ytCache = {};
 function reloadWin(w){
   if (w.kind === 'capture'){ openCapturePicker(w); return; }
   checkMod(w, true);
-  if (!w.view) resolveYt(w); else if (DESKTOP && w.ready) w.view.reload(); else w.view.src = srcFor(w);
-  if (w.mini && w.mini.wv){ try { w.mini.wv.reload(); } catch {} }
+  if (!w.view) resolveYt(w); else if (DESKTOP && w.ready) reloadView(w.view); else w.view.src = srcFor(w);
+  if (w.mini && w.mini.wv){ reloadView(w.mini.wv); }
 }
 function mountView(w){
   if (w.kind === 'capture'){ mountCapture(w); return; }
@@ -72,7 +73,7 @@ function mountView(w){
     // Every web view starts with its sound off (main.js); a stream's stays off, also while it loads again,
     // until its volume / mute is on the player, so one that should be muted never plays a moment of sound.
     if (hasVol) frame.addEventListener('did-start-navigation', e => {
-      if (e.isMainFrame && !e.isInPlace && w.view === frame && w.ready){ w.audioHeld = w.audioLoading = true; try { frame.setAudioMuted(true); } catch {} }
+      if (e.isMainFrame && !e.isInPlace && w.view === frame && w.ready){ w.audioHeld = w.audioLoading = true; setMuted(frame, true); }
     });
     // a new page (another video, or loaded again): its like state is read again (see readLike)
     if (w.kind === 'stream' && platOf(w.channel) === 'youtube') frame.addEventListener('did-start-navigation', e => {
@@ -97,15 +98,15 @@ function mountView(w){
       w.ready = true;
       if (w.kind === 'stream') trimPlayerPage(frame, w.channel);
       if (hasVol){ w.enforceUntil = Date.now() + 8000; pushVol(w); w.audioHeld = true; w.audioLoading = false; liftAudioSoon(w); }
-      else try { frame.setAudioMuted(false); } catch {}
+      else setMuted(frame, false);
       if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); }
-      if (w.kind === 'chat') try { frame.setZoomFactor(chatZoom()); } catch {}
-      if (w.kind === 'chat') { const css = platform(w.channel).chatCss; if (css) try { frame.insertCSS(css); } catch {} }
+      if (w.kind === 'chat') setZoom(frame, chatZoom());
+      if (w.kind === 'chat') { const css = platform(w.channel).chatCss; if (css) addCss(frame, css); }
       if (w.kind === 'chat' && ROLE === 'main') injectMention(w);
-      if (w.kind === 'chat') frame.executeJavaScript(`${EMOTE_JS};window.__kmvEmote.on(${emoteOn})`).catch(() => {});
+      if (w.kind === 'chat') runIn(frame, `${EMOTE_JS};window.__kmvEmote.on(${emoteOn})`);
       if (w.kind === 'chat' && newEmotesOn) markNewEmotes(w);
-      if (w.kind === 'chat') frame.executeJavaScript(`${TRANSLATE_JS};${autoTrFor(w.channel) ? 'window.__kmvTr.start(true)' : ''}`).catch(() => {});
-      if (w.kind === 'chat' && platform(w.channel).pageCommands) frame.executeJavaScript(KICK_CMD_JS).catch(() => {});
+      if (w.kind === 'chat') runIn(frame, `${TRANSLATE_JS};${autoTrFor(w.channel) ? 'window.__kmvTr.start(true)' : ''}`);
+      if (w.kind === 'chat' && platform(w.channel).pageCommands) runIn(frame, KICK_CMD_JS);
       applyChatView(w);
     });
   }
@@ -119,8 +120,8 @@ async function markNewEmotes(w){
   const frame = w.view;
   const r = await window.kmv.emotesOpen(w.channel).catch(() => null);
   if (!r || w.view !== frame || !newEmotesOn) return;
-  try { await frame.insertCSS(NEW_EMOTE_CSS()); } catch {}
-  frame.executeJavaScript(`${NEW_EMOTE_JS};window.__kmvNew.set(${JSON.stringify(r.fresh || [])})`).catch(() => {});
+  await addCss(frame, NEW_EMOTE_CSS());
+  runIn(frame, `${NEW_EMOTE_JS};window.__kmvNew.set(${JSON.stringify(r.fresh || [])})`);
   const a = r.added || [];
   if (a.length) flash(`${chLabel(w.channel)} has ${a.length === 1 ? 'a new emote' : a.length + ' new emotes'}: ${a.slice(0, 5).join(', ')}${a.length > 5 ? ` and ${a.length - 5} more` : ''}`);
 }
@@ -129,7 +130,7 @@ function newEmoteSeen(w, json){
   if (!d || typeof d.name !== 'string' || !window.kmv.emotesSeen) return;
   window.kmv.emotesSeen(w.channel, d.name).catch(() => {});
   // the same channel's other chat windows: not new there either
-  wins.forEach(o => { if (o !== w && o.kind === 'chat' && o.channel === w.channel && o.ready) o.view.executeJavaScript(`window.__kmvNew && window.__kmvNew.set(window.__kmvNew.list().filter(n => n !== ${JSON.stringify(d.name)}))`).catch(() => {}); });
+  wins.forEach(o => { if (o !== w && o.kind === 'chat' && o.channel === w.channel && o.ready) runIn(o.view, `window.__kmvNew && window.__kmvNew.set(window.__kmvNew.list().filter(n => n !== ${JSON.stringify(d.name)}))`); });
 }
 // The hover card is off unless switched on (the same preview is always in the right-click menu on an emote)
 var emoteOn = false;

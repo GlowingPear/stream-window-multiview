@@ -1,5 +1,6 @@
 import '../layout/switch-control.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { runIn } from './view.js';
 import { $, GAP, colsMode, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { VOL_JS } from '../in-site/volume.js';
@@ -15,12 +16,12 @@ function applyPlay(w){
   const want = isPaused(w);
   if (w.ready && w.sentPause !== want){
     w.sentPause = want;
-    w.view.executeJavaScript(`${VOL_JS};window.__kmv.${want ? 'pause' : 'play'}()`).catch(() => {});
+    runIn(w.view, `${VOL_JS};window.__kmv.${want ? 'pause' : 'play'}()`);
   }
   const mw = miniPaused(w);
   if (w.mini && w.mini.ready && w.mini.sentPause !== mw){
     w.mini.sentPause = mw;
-    w.mini.wv.executeJavaScript(`window.__kmv && window.__kmv.${mw ? 'pause' : 'play'}()`).catch(() => {});
+    runIn(w.mini.wv, `window.__kmv && window.__kmv.${mw ? 'pause' : 'play'}()`);
   }
 }
 function togglePause(s){

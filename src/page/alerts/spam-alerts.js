@@ -1,4 +1,5 @@
 import './alerts.js';   // runs after it (see app.js)
+import { askIn, runIn } from '../windows/view.js';
 import { GAP, colWidth, colsMode, msg, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { chLabel, chLabelP, modOk, platOf } from '../platforms/platforms.js';
@@ -61,7 +62,7 @@ function flagSpam(w, l, r, seen){
   const a = alerts.spam;
   if (a.tag){
     const why = spamWhy(r);
-    w.view.executeJavaScript(`window.__kmvMention && window.__kmvMention.mark(${JSON.stringify(l.line)}, ${JSON.stringify(why)}, ${JSON.stringify(a.color)})`).catch(() => {});
+    runIn(w.view, `window.__kmvMention && window.__kmvMention.mark(${JSON.stringify(l.line)}, ${JSON.stringify(why)}, ${JSON.stringify(a.color)})`);
   }
   raiseAlert(w, 'spam', seen);
   addNote({ kind: 'spam', channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body, score: r.score, need: r.need, signs: r.signs,
@@ -95,7 +96,7 @@ async function pollChats(ment, spam){
   for (const w of wins){
     if (w.kind !== 'chat' || !w.ready || !w.view) continue;
     let q;
-    try { q = await w.view.executeJavaScript('window.__kmvMention && window.__kmvMention.setWatch ? window.__kmvMention.take() : null'); } catch { continue; }
+    try { q = await askIn(w.view, 'window.__kmvMention && window.__kmvMention.setWatch ? window.__kmvMention.take() : null'); } catch { continue; }
     if (q === null){ injectMention(w); continue; }          // chat reloaded: set it up again
     if (!q) continue;
     (q.k || []).forEach(n => firstSpoke(w.channel + '\n' + n, 0));

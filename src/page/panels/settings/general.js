@@ -1,5 +1,6 @@
 import './settings.js';   // runs after it (see app.js)
 import { settings } from '../../shared/settings.js';
+import { runIn } from '../../windows/view.js';
 import { $, wins } from '../../core.js';
 import { DESKTOP } from '../../shared/env.js';
 import { emoteAgent } from '../../in-site/emote-preview.js';
@@ -28,7 +29,7 @@ $('#emoteSet').checked = emoteOn;
 $('#emoteSet').addEventListener('change', e => {
   viewVars.emoteOn = e.target.checked;
   settings.set('emotePreview', emoteOn);
-  wins.forEach(w => { if (w.kind === 'chat' && w.ready) w.view.executeJavaScript(`window.__kmvEmote && window.__kmvEmote.on(${emoteOn})`).catch(() => {}); });
+  wins.forEach(w => { if (w.kind === 'chat' && w.ready) runIn(w.view, `window.__kmvEmote && window.__kmvEmote.on(${emoteOn})`); });
 });
 /* Settings > General: highlight new emotes (off by default) */
 $('#newEmoteSet').checked = newEmotesOn;
@@ -39,7 +40,7 @@ $('#newEmoteSet').addEventListener('change', e => {
   wins.forEach(w => {
     if (w.kind !== 'chat' || !w.ready) return;
     if (newEmotesOn) markNewEmotes(w);
-    else w.view.executeJavaScript('window.__kmvNew && window.__kmvNew.set([])').catch(() => {});
+    else runIn(w.view, 'window.__kmvNew && window.__kmvNew.set([])');
   });
 });
 // Its example: a made-up emote drawn here (nothing is fetched), shown with the same card a chat gets.

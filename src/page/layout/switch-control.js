@@ -1,6 +1,7 @@
 import './switcher.js';   // runs after it (see app.js)
 import { youtube } from '../platforms/youtube.js';
 import { settings } from '../shared/settings.js';
+import { runIn } from '../windows/view.js';
 import { ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { icon } from '../shared/icons.js';
 import { DESKTOP } from '../shared/env.js';
@@ -194,7 +195,7 @@ function ensureMini(s){
   wv.addEventListener('dom-ready', () => {
     trimPlayerPage(wv, s.channel);
     if (s.mini){ s.mini.ready = true; s.mini.sentPause = miniPaused(s); }
-    wv.executeJavaScript(`${VOL_JS};window.__kmv.set(0,true);${miniPaused(s) ? 'window.__kmv.pause();' : ''}`).catch(() => {});
+    runIn(wv, `${VOL_JS};window.__kmv.set(0,true);${miniPaused(s) ? 'window.__kmv.pause();' : ''}`);
   });
   s.mini = { wrap, wv };
   return s.mini;

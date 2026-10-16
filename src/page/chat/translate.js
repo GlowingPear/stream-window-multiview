@@ -1,5 +1,6 @@
 import '../windows/views.js';   // runs after it (see app.js)
 import { settings } from '../shared/settings.js';
+import { runIn, viewId } from '../windows/view.js';
 import { wins } from '../core.js';
 import { TRANSLATE_JS } from '../in-site/translate.js';
 
@@ -21,7 +22,7 @@ function setTrAll(on){
   wins.forEach(w => {
     if (w.kind !== 'chat' || !w.view || !w.ready) return;
     const js = autoTrFor(w.channel) ? 'window.__kmvTr.start(true)' : 'window.__kmvTr.state().auto && window.__kmvTr.stop()';
-    w.view.executeJavaScript(`${TRANSLATE_JS};${js}`).catch(() => {});
+    runIn(w.view, `${TRANSLATE_JS};${js}`);
   });
 }
 async function translateFor(frame, json){
@@ -30,7 +31,7 @@ async function translateFor(frame, json){
   if (!texts.length || !window.kmv || !window.kmv.translate) return;
   const got = await window.kmv.translate(texts).catch(() => null);
   const list = texts.map((_, i) => (Array.isArray(got) && got[i]) || null);
-  frame.executeJavaScript(`window.__kmvTr && window.__kmvTr.got(${JSON.stringify(texts)}, ${JSON.stringify(list)})`).catch(() => {});
+  runIn(frame, `window.__kmvTr && window.__kmvTr.got(${JSON.stringify(texts)}, ${JSON.stringify(list)})`);
 }
 function translateChat(w, a){
   if (!w || w.kind !== 'chat' || !w.view) return;
@@ -41,9 +42,9 @@ function translateChat(w, a){
     else { autoTr.delete(w.channel); if (trAll) noTr.add(w.channel); }   // with the setting on: off in this chat only
     saveAutoTr();
   }
-  w.view.executeJavaScript(`${TRANSLATE_JS};${js}`).catch(() => {});
+  runIn(w.view, `${TRANSLATE_JS};${js}`);
 }
-const winOfView = id => wins.find(w => w.view && w.view.getWebContentsId && (() => { try { return w.view.getWebContentsId() === id; } catch { return false; } })());
+const winOfView = id => wins.find(w => w.view && viewId(w.view) === id);
 if (window.kmv && window.kmv.onViewTranslate) window.kmv.onViewTranslate((id, a) => translateChat(winOfView(id), a));
 
 export { autoTrFor, setTrAll, trAll, translateFor, winOfView };

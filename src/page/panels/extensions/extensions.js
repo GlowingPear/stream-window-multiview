@@ -1,4 +1,5 @@
 import '../../toolbar/toolbar-fit.js';   // runs after it (see app.js)
+import { reloadView, viewId } from '../../windows/view.js';
 import { $, wins } from '../../core.js';
 import { icon } from '../../shared/icons.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -165,7 +166,7 @@ async function openExtMenu(w, btn){
   let xs = [];
   try { xs = await window.kmv.extWindow(part, plat, w.kind); } catch {}
   let tabId = -1;
-  try { if (w.view && w.ready) tabId = w.view.getWebContentsId(); } catch {}
+  if (w.view && w.ready) tabId = viewId(w.view) ?? -1;
   let state = null;
   if (tabId >= 0) try { state = await window.kmv.extActionState(part); } catch {}
   const badge = id => { const a = state && state.actions && state.actions.find(a => a.id === id); return a ? String((a.tabs && a.tabs[tabId] && a.tabs[tabId].text) ?? a.text ?? '') : ''; };
@@ -226,7 +227,7 @@ if (DESKTOP && window.kmv.extList){
   window.kmv.onExtConfirm(showExtDlg);
   // An extension was switched on or off somewhere: reload the windows it changed, and show the new state.
   window.kmv.onExtChanged(parts => {
-    wins.forEach(w => { if (w.view && w.ready && parts.includes(viewPartition(w))) w.view.reload(); });
+    wins.forEach(w => { if (w.view && w.ready && parts.includes(viewPartition(w))) reloadView(w.view); });
     extMenu.hidden = true;
     if (!settingsDlg.hidden && settingsTab === 'extensions') renderExtPane();
     else window.kmv.extList().then(xs => { platformVars.extCount = xs.length; refreshExtButtons(); }).catch(() => {});
