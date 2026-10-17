@@ -174,7 +174,7 @@ test('Translate new messages in every chat: on in open and new chats, off in one
   const until = async (fn, want) => { for (let i = 0; i < 80 && JSON.stringify(await fn().catch(() => null)) !== JSON.stringify(want); i++) await new Promise(r => setTimeout(r, 100)); assert.deepEqual(await fn(), want); };
   await until(() => st('alpha'), { on: false, auto: false });
   // switched on: the open chat starts straight away
-  await w.evaluate(() => window.openSettings('general'));
+  await w.evaluate(() => window.openSettings('chat'));
   await w.locator('label:has(#trAllSet)').click();
   await w.keyboard.press('Escape');
   await until(() => st('alpha'), { on: true, auto: true });
@@ -197,7 +197,7 @@ test('Translate new messages in every chat: on in open and new chats, off in one
   await new Promise(r => setTimeout(r, 1500));
   await until(() => st('alpha'), { on: false, auto: false });
   // switched off: back to each chat's own choice (neither chose it)
-  await w.evaluate(() => window.openSettings('general'));
+  await w.evaluate(() => window.openSettings('chat'));
   await w.locator('label:has(#trAllSet)').click();
   await w.keyboard.press('Escape');
   await until(() => st('bravo'), { on: false, auto: false });

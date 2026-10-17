@@ -147,10 +147,11 @@ test('off by default: pointing at an emote shows nothing until the setting is on
   assert.equal(await page.isChecked('#emoteSet'), false);
 });
 
-test('Settings > General: the example emote shows the same card, with the setting on or off', async t => {
+test('Settings > Chat: the example emote, in Emote preview\'s own row, shows the same card, with the setting on or off', async t => {
   const page = await openApp(t, { width: 1200, height: 800 });
-  await page.click('#settingsBtn');
-  assert.match(await page.textContent('label:has(#emoteSet)'), /The same preview is always in the right-click menu on an emote/);
+  await page.evaluate(() => window.openSettings('chat'));
+  assert.match(await page.textContent('#settingsDlg .st-row:has(#emoteSet)'), /Always in the right-click menu on an emote too/);
+  assert.equal(await page.locator('#settingsDlg .st-row:has(#emoteSet) #emoteSample').count(), 1, 'the example is in the setting\'s row');
   assert.equal(await page.isChecked('#emoteSet'), false);
   await page.hover('#emoteSample');
   await card(page).waitFor({ state: 'visible' });
@@ -165,7 +166,7 @@ test('Settings > General: the example emote shows the same card, with the settin
   await page.mouse.move(5, 5); await page.waitForTimeout(400);
   assert.equal(await card(page).isVisible(), false);
   // switched on, and from the button too
-  await page.locator('label:has(#emoteSet)').click();
+  await page.locator('label[for=emoteSet]').click();                   // its name switches it, like the other rows
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.emotePreview')), '1');
   await page.click('#emoteExample');
   await card(page).waitFor({ state: 'visible' });
