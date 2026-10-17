@@ -51,7 +51,7 @@ test('off by default: nothing is asked', T, async () => {
 test('on: the first open remembers, the next marks and names what was added, pointing at one is kept', T, async () => {
   const w = a.win;
   await w.evaluate(() => { document.getElementById('settingsBtn').click(); });
-  await w.click('#settingsDlg .st-rail [data-s=general]');
+  await w.click('#settingsDlg .st-rail [data-s=chat]');
   await w.locator('label:has(#newEmoteSet)').click();
   await w.keyboard.press('Escape');
   assert.equal(await w.evaluate(() => localStorage.getItem('kickMultiview.newEmotes')), '1');

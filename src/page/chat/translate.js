@@ -7,7 +7,7 @@ import { runIn, viewId } from '../windows/view.js';
 /* Translating a chat (see translateAgent): the chat asks through console messages, the main process translates.
    "Translate new messages too" is remembered for each chat. */
 const autoTr = new Set();
-// Settings > General > Translate new messages in every chat (off unless switched on); the chats it's switched off in
+// Settings > Chat > Translate new messages in every chat (off unless switched on); the chats it's switched off in
 let trAll = settings.flag('translateAll');
 const noTr = new Set();
 const saveAutoTr = () => { settings.set('autoTranslate', [...autoTr].slice(-200)) && settings.set('noTranslate', [...noTr].slice(-200)); };

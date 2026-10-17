@@ -8,7 +8,7 @@ import { store } from '../shared/store.js';
 import { soon } from '../shared/timers.js';
 import { runIn } from '../windows/view.js';
 
-/* ---- Channel name in chat boxes (Settings > General, off unless switched on): each chat box says which channel
+/* ---- Channel name in chat boxes (Settings > Chat, off unless switched on): each chat box says which channel
    it sends to instead of the site's "Send a message", with your own text around the name if you like
    (chat-name-text.js). The script inside each chat (in-site/chat-name.js) keeps it there. */
 const SAMPLE_NAME = 'Pixel_Bandit';      // the sample chat box's made-up channel

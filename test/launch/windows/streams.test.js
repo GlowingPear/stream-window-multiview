@@ -245,7 +245,7 @@ test('"Pause all except focus", and auto-pause for streams scrolled out of sight
   await clear();
 });
 
-test('chat text size: − and + in the Layout menu (and Settings > Layouts) change every chat and are remembered', T, async () => {
+test('chat text size: − and + in the Layout menu (and Settings > Chat) change every chat and are remembered', T, async () => {
   await add('alpha');
   await viewLoaded(a.win, 'alpha', 'chat', /chat/);
   await a.win.waitForTimeout(500);
@@ -260,8 +260,8 @@ test('chat text size: − and + in the Layout menu (and Settings > Layouts) chan
   await a.win.click('#chatZoom [data-z="1"]');
   assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.chatZoom')), '4');
   await a.win.keyboard.press('Escape');
-  await a.win.evaluate(() => window.openSettings('layouts'));
-  assert.equal(await a.win.textContent('#lyZoom .zoomPct'), '90%', 'Settings > Layouts shows the same size');
+  await a.win.evaluate(() => window.openSettings('chat'));
+  assert.equal(await a.win.textContent('#lyZoom .zoomPct'), '90%', 'Settings > Chat shows the same size');
   await a.win.click('#lyZoom [data-z="1"]');
   assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.chatZoom')), '5', 'and changes it');
   assert.equal(await a.win.textContent('#zoomPct'), '100%', 'the Layout menu follows');

@@ -46,7 +46,7 @@ const kick = {
   // the window's left edge here. Keep it inside the window.
   chatCss: `#user-identity { left: 0 !important; right: auto !important; width: min(356px, 100vw) !important;
   max-height: 100vh !important; overflow-y: auto !important; }`,
-  // Its chat box's empty text (Settings > General > Channel name in chat boxes, in-site/chat-name.js): the box, the
+  // Its chat box's empty text (Settings > Chat > Channel name in chat boxes, in-site/chat-name.js): the box, the
   // element showing the text, the box's attributes with the same text, and the site's usual text (only that one
   // changes: a box that says something else, like followers-only or slow mode, says why you can't chat).
   chatBox: { box: '[data-testid="chat-input"]', hint: '[data-testid="chat-input"] ~ div', attrs: [], says: '^send a message$' },

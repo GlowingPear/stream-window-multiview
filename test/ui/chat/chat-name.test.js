@@ -10,7 +10,7 @@ const saved = (page, k) => page.evaluate(k => localStorage.getItem('kickMultivie
 
 test('Channel name in chat boxes: off at first; on, a text field with suggestions and a sample box, saved', async t => {
   const page = await openApp(t);
-  await page.evaluate(() => window.openSettings('general'));
+  await page.evaluate(() => window.openSettings('chat'));
   assert.equal(await page.isChecked('#chatNameSet'), false, 'off at first');
   assert.equal(await page.isVisible('#chatNameRow'), false, 'the text only while it\'s on');
   await page.check('#chatNameSet');
@@ -31,7 +31,7 @@ test('Channel name in chat boxes: off at first; on, a text field with suggestion
   assert.equal(await saved(page, 'chatNameText'), 'Chat in {channel}');
   // after a restart, as you left it
   await page.reload();
-  await page.evaluate(() => window.openSettings('general'));
+  await page.evaluate(() => window.openSettings('chat'));
   assert.equal(await page.isChecked('#chatNameSet'), true);
   assert.equal(await page.inputValue('#chatNameText'), 'Chat in {channel}');
   // just the name again: nothing saved

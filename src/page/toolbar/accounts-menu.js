@@ -338,7 +338,7 @@ function init(){
       else note.textContent = 'Copied the login, but YouTube still looks signed out. Sign out and back in to YouTube in Firefox, then try again.';
     };
 
-    // Chat text size: in the Layout menu and in Settings > Layouts, both the same setting
+    // Chat text size: in the Layout menu and in Settings > Chat, both the same setting
     document.querySelectorAll('#chatZoom, #lyZoom').forEach(zc => zc.addEventListener('click', e => {
       const b = e.target.closest('button[data-z]'); if (!b) return;
       zoomVars.zoomIdx = Math.min(ZOOMS.length - 1, Math.max(0, zoomIdx + +b.dataset.z));

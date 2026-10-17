@@ -33,14 +33,14 @@ function init(){
   $('#keysSet').addEventListener('change', e => setKeysOn(e.target.checked));
   $('#trAllSet').checked = trAll;
   $('#trAllSet').addEventListener('change', e => setTrAll(e.target.checked));
-  /* Settings > General: emote preview in chats (see emoteAgent) */
+  /* Settings > Chat: emote preview in chats (see emoteAgent) */
   $('#emoteSet').checked = emoteOn;
   $('#emoteSet').addEventListener('change', e => {
     viewVars.emoteOn = e.target.checked;
     settings.set('emotePreview', emoteOn);
     wins.forEach(w => { if (w.kind === 'chat' && w.ready) runIn(w.view, `window.__kmvEmote && window.__kmvEmote.on(${emoteOn})`); });
   });
-  /* Settings > General: highlight new emotes (off by default) */
+  /* Settings > Chat: highlight new emotes (off by default) */
   $('#newEmoteSet').checked = newEmotesOn;
   $('#newEmoteSet').closest('.st-row').hidden = !DESKTOP;   // it asks the sites from the app
   $('#newEmoteSet').addEventListener('change', e => {

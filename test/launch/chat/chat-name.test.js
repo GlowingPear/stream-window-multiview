@@ -24,7 +24,7 @@ async function until(want, what) {
 test('Channel name in chat boxes: on, the box says the channel; your text as you type it; off, the site\'s text', { timeout: 60000 }, async () => {
   await addBox();
   assert.equal(await says(), 'Send a message', 'off at first: the site\'s text');
-  await a.win.evaluate(() => window.openSettings('general'));
+  await a.win.evaluate(() => window.openSettings('chat'));
   await a.win.check('#chatNameSet');
   await until('alpha', 'switched on: the channel\'s name');
   await a.win.fill('#chatNameText', 'Chat in {channel}');

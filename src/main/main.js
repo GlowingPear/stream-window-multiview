@@ -1087,7 +1087,7 @@ async function fetchEmote(url) {
 const savedEmotes = new Map();
 let savedEmoteId = 0;
 /* ---------- new emotes (emote-lists.js): which emotes a channel added since you last opened its chat ----------
-   Asked only when a chat opens with Settings > General > Highlight new emotes on, at most every 10 minutes per channel. */
+   Asked only when a chat opens with Settings > Chat > Highlight new emotes on, at most every 10 minutes per channel. */
 const emoteFile = () => stateFile('emotes');
 let emoteStore = null, emoteT = null;
 function emotes() {

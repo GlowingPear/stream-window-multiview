@@ -118,10 +118,10 @@ test('the mention reader skips a message shown translated (it read the original)
   assert.equal(await page.evaluate(() => window.translateAgent()), true, 'loading it twice is fine');
 });
 
-test('Settings > General: Translate new messages in every chat is off by default', async t => {
+test('Settings > Chat: Translate new messages in every chat is off by default', async t => {
   const page = await openApp(t);
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.translateAll')), null);
-  await page.click('#settingsBtn');
+  await page.evaluate(() => window.openSettings('chat'));
   assert.equal(await page.isChecked('#trAllSet'), false);
   assert.match(await page.textContent('label:has(#trAllSet)'), /sent to Google Translate; nothing is sent until you switch this on/);
   await page.locator('label:has(#trAllSet)').click();

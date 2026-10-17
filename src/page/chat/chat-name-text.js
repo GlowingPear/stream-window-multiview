@@ -1,4 +1,4 @@
-/* ---- What a chat box says instead of the site's "Send a message" (Settings > General > Channel name in chat boxes):
+/* ---- What a chat box says instead of the site's "Send a message" (Settings > Chat > Channel name in chat boxes):
    your text with {channel} replaced by the channel's name. Empty: just the name. Without {channel}: the name goes
    at the end, so the box always says which channel it is. Plain text: it goes into the site's page as text. */
 const CHAT_NAME_MAX = 60;           // what you type in the setting, at most
