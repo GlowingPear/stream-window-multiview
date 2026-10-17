@@ -52,6 +52,7 @@ test('Chat Stage: the strip shows how many new messages a chat out of sight has 
   await a.win.waitForSelector('#stage .win.stg-thumb .stg-pick');
   const off = await a.win.$eval('#stage .win.stg-thumb .title', e => e.textContent);
   const onStage = await a.win.$eval('#stage .win.stg-on .title', e => e.textContent);
+  await a.win.evaluate(() => { const s = document.getElementById('chatCountsSet'); s.checked = true; s.dispatchEvent(new Event('change')); });   // Settings › Chat
   const say = (ch, sender, text) => inView(a.win, ch, 'chat', ([s, t]) => {
     const d = document.createElement('div'); d.className = 'row';
     d.innerHTML = '<b></b>: <span></span>'; d.querySelector('b').textContent = s; d.querySelector('span').textContent = t;

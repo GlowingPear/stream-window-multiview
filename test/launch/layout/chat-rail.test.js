@@ -1,6 +1,6 @@
 // Chat Rail in the real app: the chat in the rail is drawn bigger than the others (its own view is scaled, as
 // Chromium shares a page's zoom between every page of the same site), a tab moves the big text to another chat, and
-// a chat out of sight counts its new messages on its tab.
+// a chat out of sight counts its new messages on its tab (Settings › Chat).
 const test = require('node:test');
 const { launchApp, viewLoaded, assert, openChannel, inView } = require('../app');
 
@@ -42,6 +42,7 @@ test('Chat Rail: a tab shows how many new messages a chat out of sight has had',
   await a.win.waitForSelector('#railTabs .rl-tab.on');
   const off = await a.win.$eval('#railTabs .rl-tab:not(.on)', b => b.dataset.ch);
   const shown = await a.win.$eval('#railTabs .rl-tab.on', b => b.dataset.ch);
+  await a.win.evaluate(() => { const s = document.getElementById('chatCountsSet'); s.checked = true; s.dispatchEvent(new Event('change')); });   // Settings › Chat
   const say = (ch, sender, text) => inView(a.win, ch, 'chat', ([s, t]) => {
     const d = document.createElement('div'); d.className = 'row';
     d.innerHTML = '<b></b>: <span></span>'; d.querySelector('b').textContent = s; d.querySelector('span').textContent = t;

@@ -142,6 +142,7 @@ test('Chat Stage: without chats it tiles the streams instead', async t => {
 
 test('Chat Stage: a picture in the strip counts its chat\'s new messages since it was on the stage', async t => {
   const page = await stageOf(t, ['alpha', 'bravo', 'charlie']);
+  await page.evaluate(() => { const s = document.getElementById('chatCountsSet'); s.checked = true; s.dispatchEvent(new Event('change')); });   // Settings › Chat
   const badge = name => page.locator(`#stage .win.stg-thumb:has(.title:text-is("${name}")) .stg-pick`).evaluate(p => p.classList.contains('new') ? p.querySelector('.stg-n').textContent : '');
   assert.equal(await badge('bravo'), '');
   await page.evaluate(() => { window.chatNew('bravo', 3); window.chatNew('bravo', 2); window.chatNew('charlie', 0); });
@@ -157,11 +158,13 @@ test('Chat Stage: a picture in the strip counts its chat\'s new messages since i
   assert.equal(await badge('charlie'), '99+');
   await page.click('#stage .win.stg-thumb:has(.title:text-is("alpha")) .stg-pick');
   assert.equal(await badge('bravo'), '', 'counted from when it left the stage');
-  // another layout forgets the counts
+  // the counts carry over to another layout until you can see the chat
+  await press(page, 'Shift+K');
+  assert.equal(await page.$eval('#railTabs .rl-tab[data-ch="charlie"] .rl-n', e => e.textContent), '99+');
   await press(page, 't');
-  await page.evaluate(() => window.chatNew('bravo', 1));    // not in Chat Stage: not counted
+  await page.evaluate(() => { window.chatNew('charlie', 0); window.chatNew('bravo', 1); });   // in Tile every chat is in sight
   await press(page, 'k');
-  assert.equal(await badge('charlie'), '');
+  assert.equal(await badge('charlie'), '', 'seen in Tile');
   assert.equal(await badge('bravo'), '');
 });
 

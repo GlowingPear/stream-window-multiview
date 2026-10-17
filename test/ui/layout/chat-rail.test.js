@@ -102,6 +102,7 @@ test('Chat Rail: the rail chat has its own text size, only its own view is scale
 
 test('Chat Rail: tabs count new messages since a chat was shown, and show @ when it mentions you', async t => {
   const page = await railOf(t, ['alpha', 'bravo', 'charlie']);
+  await page.evaluate(() => { const s = document.getElementById('chatCountsSet'); s.checked = true; s.dispatchEvent(new Event('change')); });   // Settings › Chat
   const badge = async name => tab(page, name).evaluate(b => [b.classList.contains('new') ? b.querySelector('.rl-n').textContent : '', b.classList.contains('at') ? '@' : ''].join(''));
   assert.equal(await badge('bravo'), '');
   await page.evaluate(() => { window.chatNew('bravo', 3); window.chatNew('bravo', 5); window.chatNew('charlie', 0); window.chatNew('alpha', 4); });
@@ -119,11 +120,11 @@ test('Chat Rail: tabs count new messages since a chat was shown, and show @ when
   await tab(page, 'bravo').click();
   assert.equal(await badge('bravo'), '');
   assert.equal(await badge('alpha'), '');
-  // another layout forgets the counts
+  // another layout keeps the counts until you can see the chat
   await press(page, 't');
-  await page.evaluate(() => window.chatNew('alpha', 2));      // not in Chat Rail: not counted
+  await page.evaluate(() => { window.chatNew('charlie', 0); window.chatNew('alpha', 2); });   // in Tile every chat is in sight
   await press(page, 'Shift+K');
-  assert.equal((await badge('charlie')).replace('@', ''), '', 'charlie\'s 99+ is forgotten (its @ is the alert\'s, not ours)');
+  assert.equal((await badge('charlie')).replace('@', ''), '', 'charlie\'s 99+ was seen in Tile (its @ is the alert\'s, not ours)');
   assert.equal(await badge('alpha'), '');
 });
 
