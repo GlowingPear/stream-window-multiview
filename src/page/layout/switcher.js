@@ -2,6 +2,7 @@ import { toggleBlowMode, updateBlowBtn } from '../chat/blow-up.js';
 import { closeWin } from '../chat/view-menu.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { backToChatFocus } from './chat-focus.js';
+import { chatStageLayout, isStage, putOnStage } from './chat-stage.js';
 import { buildCols, columnVars, columnsLayout, sideCols } from './columns.js';
 import { syncSwitcher, toggleFocusOnly, updateFocusOnlyBtn } from './focus-only.js';
 import { gameKey, gameLayout, setGameKey } from './game-focus.js';
@@ -63,7 +64,7 @@ function removeChannel(ch){
     specs.forEach(sp => createWin(sp, sp.rect));
     if (idx >= 0){ layoutVars.colOrder = colOrder.filter(k => k !== ch); colOrder.splice(Math.min(idx, colOrder.length), 0, ch); }
     if (wasBig) setFeatured(ch);
-    if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout();
+    if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(); else if (lastLayout === 'stage') chatStageLayout();
     save();
   }, () => !wins.some(w => w.channel === ch));
 }
@@ -160,7 +161,7 @@ function renderSwitcher(){
       (s.preview ? `<div class="fs-thumb" style="height:${thumbH}px"><span class="fs-nopv">Loading preview…</span></div>` : '');
     it.querySelector('.fs-name span').textContent = chLabel(s.channel);
     it.classList.add('plat-' + platOf(s.channel));
-    const focusIt = () => { if (s.channel === featuredCh) toggleFeatured(s.channel); else { setFeatured(s.channel); columnsLayout(); } };
+    const focusIt = () => { if (isStage()) putOnStage(s.channel); else if (s.channel === featuredCh) toggleFeatured(s.channel); else { setFeatured(s.channel); columnsLayout(); } };
     it.querySelector('.fs-x').onclick = e => { e.stopPropagation(); removeChannel(s.channel); };
     it.querySelector('.fs-rl').onclick = e => { e.stopPropagation(); refreshFromSwitcher(s, e.currentTarget); };
     const nameBtn = it.querySelector('.fs-name');
@@ -221,6 +222,7 @@ const isFocusView = () => colsMode && featBase.length > 0 && !!featuredCh;
 function relayout(){
   if (colsMode) columnsLayout();
   else if (lastLayout === 'chatfocus') chatFocusLayout();
+  else if (lastLayout === 'stage') chatStageLayout();
   else if (lastLayout === 'game') gameLayout();
 }
 function fsMute(s, solo){

@@ -22,6 +22,7 @@ const SHORTCUTS = [
   ['Layouts', [
     ['F', 'Focus view (press again for plain Columns)'],
     ['G', 'Game focus'],
+    ['K', 'Chat Stage'],
     ['C', 'Columns'],
     ['Shift+C', 'Chat focus'],
     ['T', 'Tile'],

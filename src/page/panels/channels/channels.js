@@ -1,5 +1,6 @@
 import { alerts } from '../../alerts/alerts.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../../core.js';
+import { chatStageLayout } from '../../layout/chat-stage.js';
 import { columnsLayout } from '../../layout/columns.js';
 import { autoLayout, chatFocusLayout } from '../../layout/layouts.js';
 import { locked } from '../../layout/lock.js';
@@ -100,7 +101,7 @@ function checkAutoOpen(){
     addParsed({ channel: ch, only: null }); opened.push(ch);
   });
   if (!opened.length) return;
-  if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout();
+  if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(); else if (lastLayout === 'stage') chatStageLayout();
   else if (lastLayout === 'auto' && (fitOn() || locked())) autoLayout();     // new windows are last in the list, so they go last
   opened.forEach(ch => liveNote(ch, null, true));
   if (alerts.live.popup !== false && !dndOn()) flash(`Opened ${opened.map(chLabel).join(', ')} (just went live)`, true);

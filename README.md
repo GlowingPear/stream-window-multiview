@@ -13,7 +13,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 **Watch everything at once**
 - Kick, Twitch and YouTube streams and chats, plus regular YouTube videos
 - Drag, resize and snap windows anywhere, or let a layout arrange them
-- Layouts: **Focus view**, **Game focus**, **Columns**, **Chat focus**, **Auto** and **Tile**
+- Layouts: **Focus view**, **Game focus**, **Columns**, **Chat Stage**, **Chat focus**, **Auto** and **Tile**
 - Save your own named layouts and switch between them from a dropdown
 - Every window's name is a dropdown, so you can swap any two streams or chats
 - The toolbar across the top or down the left side (with names, or a slim column of icons that shows the names when you point at it)
@@ -125,7 +125,7 @@ Open **Channels** (top left, or press `N`), paste or type any of these into its 
 |---|---|
 | `F1` / `?` | Help and the full shortcut list |
 | `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
-| `F` / `G` / `C` / `T` | Focus view / Game focus / Columns / Tile |
+| `F` / `G` / `C` / `K` / `T` | Focus view / Game focus / Columns / Chat Stage / Tile |
 | `1`–`9` | Make that stream the big one |
 | `←` `→` | Previous / next stream big |
 | `M` / `Space` / `R` | Mute / pause / refresh the big stream |

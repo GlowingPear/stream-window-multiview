@@ -262,7 +262,7 @@ test('Settings > Layouts: each layout with its options, Use, Linked, the switch 
   await add(page, 'alpha', 'bravo');
   await press(page, 'a');
   await page.evaluate(() => openSettings('layouts'));
-  assert.deepEqual(await page.$$eval('#lyList > .ly-item', l => l.map(e => e.dataset.l)), ['focus', 'game', 'columns', 'chatfocus', 'auto', 'tile'], 'the layouts on the left');
+  assert.deepEqual(await page.$$eval('#lyList > .ly-item', l => l.map(e => e.dataset.l)), ['focus', 'game', 'columns', 'chatfocus', 'stage', 'auto', 'tile'], 'the layouts on the left');
   const shown = () => page.$eval('#lyDetail .ly-panel:not([hidden])', e => e.dataset.l);
   assert.equal(await page.$eval('#lyList .sel', e => e.dataset.l), 'auto', 'the one in use is picked');
   assert.equal(await shown(), 'auto', 'and shown on the right');
