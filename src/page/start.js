@@ -1,4 +1,5 @@
 import { ROLE, coreVars, wins } from './core.js';
+import { chatRailLayout } from './layout/chat-rail.js';
 import { chatStageLayout } from './layout/chat-stage.js';
 import { columnsLayout } from './layout/columns.js';
 import { chatFocusLayout, featSwitch, switchMode } from './layout/layouts.js';
@@ -20,6 +21,7 @@ function init(){
     else { const ll = settings.text('lastLayout');
            if (ll === 'chatfocus' && wins.length) chatFocusLayout();
            else if (ll === 'stage' && wins.length) chatStageLayout();
+           else if (ll === 'rail' && wins.length) chatRailLayout();
            else if (ll === 'auto') coreVars.lastLayout = 'auto'; }   // the windows are already where it left them
     store.changed('layout');
     setTimeout(() => { undoVars.histCur = histSnap(); undoVars.histSig = histSigOf(histCur); undoStack.length = redoStack.length = 0; updateUndoBtns(); }, 800);   // history starts here

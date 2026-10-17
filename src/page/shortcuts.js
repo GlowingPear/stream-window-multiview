@@ -72,7 +72,7 @@ function init(){
       case 'f': if (isFocusView()) layoutPick('columns'); else layoutPick('focus'); break;
       case 'c': layoutPick(e.shiftKey ? 'chatfocus' : 'columns'); break;
       case 'g': layoutPick('game'); break;
-      case 'k': layoutPick('stage'); break;
+      case 'k': layoutPick(e.shiftKey ? 'rail' : 'stage'); break;
       case 't': layoutPick('tile'); break;
       case 'a': layoutPick('auto'); break;
       case 'l': if (e.shiftKey) setLayoutLocked(!layoutLocked); else $('#layoutBtn').click(); break;

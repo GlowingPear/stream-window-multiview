@@ -1,4 +1,5 @@
 import { wins } from '../core.js';
+import { chatRailLayout, isRail } from '../layout/chat-rail.js';
 import { chatStageLayout, isStage } from '../layout/chat-stage.js';
 import { featSwitch } from '../layout/layouts.js';
 import { pushSwitcherState } from '../layout/switch-control.js';
@@ -39,6 +40,7 @@ function putBack(){
   blowBg.hidden = true; blowBar.hidden = true;
   setViewScale(w.view, 1);
   if (isStage()) chatStageLayout();      // the chat on the Chat Stage gets its own size back
+  if (isRail()) chatRailLayout();        // and the one in the Chat Rail
   // let go of the keyboard, so a click into this chat blows it up again
   if (document.activeElement === w.view) w.view.blur();
 }

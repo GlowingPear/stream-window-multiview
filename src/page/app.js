@@ -42,6 +42,7 @@ import { init as layoutSavedLayouts } from './layout/saved-layouts.js';
 import { init as layoutChatFocus } from './layout/chat-focus.js';
 import { init as chatNewMessages } from './chat/new-messages.js';
 import { init as layoutChatStage } from './layout/chat-stage.js';
+import { init as layoutChatRail } from './layout/chat-rail.js';
 import { init as windowsPopout } from './windows/popout.js';
 import { init as chatChatZoom } from './chat/chat-zoom.js';
 import { init as chatBlowUp } from './chat/blow-up.js';
@@ -108,6 +109,7 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   layoutChatFocus,
   chatNewMessages,
   layoutChatStage,
+  layoutChatRail,
   windowsPopout,
   chatChatZoom,
   chatBlowUp,
