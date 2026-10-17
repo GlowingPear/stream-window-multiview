@@ -50,8 +50,11 @@ async function refreshMonitors(){
   return monList;
 }
 
-// Puts the layout in use on its monitors (when it, or what's set for it, changed)
-async function applyMonitors(force){
+// Puts the layout in use on its monitors (when it, or what's set for it, changed), one at a time: two pickers changed
+// quickly mustn't move the windows at the same time
+let applying = null;
+function applyMonitors(force){ return (applying = (applying || Promise.resolve()).then(() => placeNow(force), () => placeNow(force))); }
+async function placeNow(force){
   if (!canMonitors()) return;
   const l = layoutNow(), parts = partsFor(l), sig = l + JSON.stringify(parts) + keepTogether();
   if (!force && sig === appliedSig) return;

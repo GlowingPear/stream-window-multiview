@@ -46,10 +46,14 @@ async function until(fn, what, ms = 15000) {
   assert.fail(`${what} (last: ${JSON.stringify(last)})`);
 }
 const placed = want => until(async () => { const w = await where(); return ['main', 'streams', 'switch'].every(k => JSON.stringify(w[k] || []) === JSON.stringify(want[k] || [])) || w; }, `windows on ${JSON.stringify(want)}`);
-const key = async () => { await a.win.evaluate(() => document.activeElement && document.activeElement.blur()); };
+// a layout from the Layout menu, and wait until it's the one in use
+async function layout(l) {
+  await a.win.click('#layoutBtn'); await a.win.click(`#layoutMenu button[data-l=${l}]`);
+  await a.win.waitForFunction(l => document.querySelector(`#layoutMenu button[data-l=${l}]`).classList.contains('on'), l, { timeout: 10000 });
+}
 
 test('Monitors: Tile\'s streams on the right monitor and its switch control on the left, and back for another layout', { timeout: 90000 }, async () => {
-  await key(); await a.win.keyboard.press('t');
+  await layout('tile');
   await a.win.evaluate(() => window.openSettings('layouts'));
   await a.win.click('#lyTabs [data-t=monitors]');
   await a.win.waitForSelector('#moMap .mo-mon');
@@ -62,11 +66,11 @@ test('Monitors: Tile\'s streams on the right monitor and its switch control on t
   await a.win.waitForFunction(() => !document.querySelector('#stage .win.stream'), null, { timeout: 15000 });   // the streams left this window
   // Columns has nothing set: the streams come back, and the switch control goes back the way it was
   await a.win.keyboard.press('Escape');
-  await key(); await a.win.keyboard.press('c');
+  await layout('columns');
   await placed({ main: [101] });
   await a.win.waitForFunction(() => document.querySelectorAll('#stage .win.stream').length === 2, null, { timeout: 15000 });
   // Tile again: out to their monitors again
-  await key(); await a.win.keyboard.press('t');
+  await layout('tile');
   await placed({ main: [101], streams: [102], switch: [103] });
 });
 
@@ -74,7 +78,8 @@ test('Monitors: the chats\' monitor moves this window there', { timeout: 60000 }
   await a.win.evaluate(() => window.openSettings('layouts'));
   await a.win.click('#lyTabs [data-t=monitors]');
   await a.win.selectOption('#moTable .mo-row[data-l=tile] select[data-part=chats]', '103');
-  await placed({ main: [103], streams: [102], switch: [103] });   // the switch control is on the chats' monitor: back in this window
+  await placed({ main: [103], streams: [102] });                  // the switch control is on the chats' monitor: back in this window
+  assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.switchMode')), 'dock', 'the way it was before');
   await a.win.selectOption('#moTable .mo-row[data-l=tile] select[data-part=chats]', '101');
   await a.win.selectOption('#moTable .mo-row[data-l=tile] select[data-part=switch]', '103');
   await placed({ main: [101], streams: [102], switch: [103] });
@@ -82,15 +87,27 @@ test('Monitors: the chats\' monitor moves this window there', { timeout: 60000 }
 });
 
 test('Monitors: unplugging one puts everything on one monitor, and plugging it back puts them on their monitors again', { timeout: 90000 }, async () => {
-  await a.app.evaluate(({ screen }) => { const gone = global.fakeDisplays.find(d => d.id === 102); global.fakeDisplays = global.fakeDisplays.filter(d => d !== gone); global.gone = gone; screen.emit('display-removed', {}, gone); });
-  await placed({ main: [101] });
-  await a.win.waitForFunction(() => document.querySelectorAll('#stage .win.stream').length === 2, null, { timeout: 15000 });
-  await a.app.evaluate(({ screen }) => { global.fakeDisplays = [...global.fakeDisplays, global.gone]; screen.emit('display-added', {}, global.gone); });
-  await placed({ main: [101], streams: [102], switch: [103] });
+  const plugBack = () => a.app.evaluate(({ screen }) => {
+    if (!global.gone || global.fakeDisplays.includes(global.gone)) return;
+    global.fakeDisplays = [...global.fakeDisplays, global.gone]; screen.emit('display-added', {}, global.gone);
+  });
+  try {
+    await a.app.evaluate(({ screen }) => { const gone = global.fakeDisplays.find(d => d.id === 102); global.fakeDisplays = global.fakeDisplays.filter(d => d !== gone); global.gone = gone; screen.emit('display-removed', {}, gone); });
+    await placed({ main: [101] });
+    await a.win.waitForFunction(() => document.querySelectorAll('#stage .win.stream').length === 2, null, { timeout: 15000 });
+    await plugBack();
+    await placed({ main: [101], streams: [102], switch: [103] });
+  } finally { await plugBack(); }                                 // (the next test needs all three, even when this one fails)
 });
 
 test('Monitors: Identify shows a number on each monitor for a moment', { timeout: 30000 }, async () => {
+  const ids = JSON.stringify(await a.app.evaluate(({ screen }) => screen.getAllDisplays().map(d => d.id).sort()));
+  let most = [];                                                  // the most numbers seen at once (they go after 2.5 s)
   await a.win.evaluate(() => window.kmv.identifyMonitors());
-  await until(async () => { const w = await where(); return JSON.stringify((w.identify || []).sort()) === '[101,102,103]' || w; }, 'a number on each monitor');
+  await until(async () => {
+    const seen = ((await where()).identify || []).sort();
+    if (seen.length > most.length) most = seen;
+    return JSON.stringify(seen) === ids || { want: ids, most };
+  }, 'a number on each monitor');
   await until(async () => !(await where()).identify || 'still there', 'gone again', 6000);
 });
