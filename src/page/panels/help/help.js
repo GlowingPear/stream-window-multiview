@@ -30,6 +30,10 @@ const SHORTCUTS = [
     ['Shift+L', 'Lock or unlock the layout'],
     ['S', 'Switch control on / off (floating)']
   ]],
+  ['Chats', [
+    ['Z', 'Blow up chat on click on / off'],
+    ['Shift+Z', 'Blow up the chat you last clicked now (again, or Esc, puts it back)']
+  ]],
   ['The big stream (Focus view; otherwise the first stream)', [
     ['1 – 9', 'Make stream 1–9 big'],
     ['← / →', 'Previous / next stream big (in Columns: scroll)'],
