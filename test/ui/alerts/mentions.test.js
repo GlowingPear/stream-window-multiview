@@ -154,6 +154,26 @@ test('when each sender first spoke: kept per open chat, forgotten when its chat 
   assert.equal(await page.evaluate(() => spamFirst.get('bravo\nbob')), 2, 'the first time stays');
 });
 
+test('the chat helper counts new messages from others for Chat Stage, also with mentions off', async t => {
+  // (run in the app's own page, on a stand-in chat added to it, so its code counts for coverage)
+  const page = await openApp(t);
+  await page.evaluate(h => { const c = document.createElement('div'); c.id = 'chat'; c.innerHTML = h; document.body.append(c); window.mentionAgent(); }, row('regular', 'hello'));
+  const ask = () => page.evaluate(() => window.__kmvMention.count());
+  const say = (n, b) => page.evaluate(h => document.getElementById('chat').insertAdjacentHTML('beforeend', h), row(n, b));
+  const armed = () => page.waitForFunction(() => window.__kmvMention.ready(), null, { timeout: 5000 });
+  assert.equal(await page.evaluate(() => window.__kmvMention.ready()), false, 'nothing has armed it: no name, words or spam alerts');
+  assert.equal(await ask(), 0, 'the first time, what is there is old');
+  await armed();
+  await say('ann', 'hi'); await say('bob', 'yo');
+  assert.equal(await ask(), 2);
+  assert.equal(await ask(), 0, 'counted once');
+  // your own messages don't count
+  await page.evaluate(() => window.__kmvMention.setMe('mod_me', []));
+  await armed();
+  await say('mod_me', 'my own'); await say('cat', 'not mine');
+  assert.equal(await ask(), 1);
+});
+
 // #44: emotes in mentions
 const PIC = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 const em = (src, alt) => `<img src="${src}" alt="${alt}" width="28" height="28">`;
