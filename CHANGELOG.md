@@ -2,7 +2,17 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.8 (current)
+## 0.3.9 (current)
+- Chat Stage layout: one stream big with its chat in big text, the other streams in a strip
+- Chat Stage: the strip's pictures show how many new messages each chat out of sight has had
+- Chat Stage: dragging the line right after a layout change follows the pointer at once
+- Chat Rail layout: every stream in a grid, one chat in big text in a rail beside them, with tabs
+- Blow up chat shortcuts: Z switches the mode, Shift+Z blows up the chat you last clicked now
+- Several monitors: put each layout's streams, chats and switch control on the monitor you like
+- Channel name in chat boxes: each chat box says which channel you're typing in
+- Settings › Chat: every chat setting in one tab
+
+## 0.3.8
 - Kick: alerts keep a reply's emotes and the whole message when it has an emote in the middle
 - Blow up chat on click: a switch control mode that lifts a chat big and easy to read
 
