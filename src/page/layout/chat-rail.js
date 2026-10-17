@@ -87,14 +87,15 @@ function updateRailLook(){
   const c = railChatOf(); if (c) setViewScale(c.view, RAIL_SIZES[railIdx]);   // another layout's look was just put away
 }
 
-// On a stream that has a chat: Show chat, or that its chat is the one shown
+// On a stream that has a chat, in its title bar (the corners of the picture are the player's): Show chat, or that its
+// chat is the one shown
 function addShow(w){
   let b = w.el.querySelector('.rl-show');
   if (!wins.some(c => c.kind === 'chat' && c.channel === w.channel)){ b?.remove(); return; }
   if (!b){
     b = element('button', { class: 'rl-show', onclick: e => { e.stopPropagation(); showRailChat(w.channel); } });
     b.addEventListener('pointerdown', e => e.stopPropagation());      // not a drag of the window
-    w.el.querySelector('.body').append(b);
+    w.el.querySelector('.bar .grab').after(b);
   }
   const shown = w.el.classList.contains('rl-shown');
   b.textContent = shown ? 'Chat shown' : 'Show chat';
