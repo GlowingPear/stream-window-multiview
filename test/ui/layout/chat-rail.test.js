@@ -173,6 +173,19 @@ test('Chat Rail: opening and closing windows arranges it again, and other layout
   assert.equal((await look(page)).chat.length, 1, 'the saved layout is a Chat Rail');
 });
 
+test('Chat Rail: with the layout locked, closing a stream arranges the rail again', async t => {
+  const page = await railOf(t, ['alpha', 'bravo', 'charlie']);
+  await press(page, 'Shift+L');
+  assert.ok(await page.evaluate(() => document.body.classList.contains('layout-locked')));
+  const before = await box(win(page, 'charlie'));
+  await page.click('#stage .win.stream:has(.title:text-is("bravo")) .bar [data-a=close]');
+  await page.waitForTimeout(400);                                // (the windows glide into place)
+  const after = await box(win(page, 'charlie')), chat = await box(win(page, 'alpha', 'chat'));
+  assert.ok(after.w * after.h > before.w * before.h, `charlie takes bravo's room (${JSON.stringify(before)} → ${JSON.stringify(after)})`);
+  assert.ok(after.x + after.w < chat.x, 'still left of the rail');
+  assert.deepEqual((await look(page)).chat, ['alpha']);
+});
+
 test('Chat Rail: without chats it tiles the streams instead', async t => {
   const page = await openApp(t, { width: 1400, height: 800 });
   await page.click('#savedBtn'); await page.selectOption('#mode', 'stream'); await page.click('#savedBtn');
