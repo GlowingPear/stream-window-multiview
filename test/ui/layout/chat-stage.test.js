@@ -73,6 +73,11 @@ test('Chat Stage: the stage chat has its own text size, and the line between the
   await page.click('.stg-size [data-s="1"]');
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.stageZoom')), '1');
   assert.deepEqual(await scales(), ['alpha:1.15', 'bravo:']);
+  // blowing up the stage chat (Blow up chat on click) and putting it back gives it its stage size again
+  await page.evaluate(() => window.blowUpChat('alpha'));
+  assert.deepEqual(await scales(), ['alpha:1.75', 'bravo:']);
+  await page.click('#blowBar .bb-back');
+  assert.deepEqual(await scales(), ['alpha:1.15', 'bravo:']);
   // drag the line: the chat gets wider, the stream narrower, and it stays that way
   const chat0 = await box(win(page, 'alpha', 'chat'));
   const sp = await box(page.locator('#stgSplit'));
