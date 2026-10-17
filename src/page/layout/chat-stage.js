@@ -4,19 +4,23 @@ import { applyRects, colKey, featuredCh, inColOrder, layoutChatsOnly, setColsMod
   vidLabel } from './layouts.js';
 import { save } from '../persistence.js';
 import { element } from '../shared/element.js';
+import { DESKTOP } from '../shared/env.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { schedulePicks } from '../windows/channel-picker.js';
-import { setViewScale } from '../windows/view.js';
+import { askIn, setViewScale } from '../windows/view.js';
 
 /* ---- Chat Stage: one stream big with its chat beside it in big, easy-to-read text, and every other stream in a
    strip of small live pictures under the big one. Click one in the strip (or its name in the switch control) to put
-   it and its chat on the stage. The other chats stay open out of sight, so mentions, alerts and raids still work,
-   and a picture in the strip shows @ when its chat mentions you. */
+   it and its chat on the stage. The other chats stay open out of sight, so mentions, alerts and raids still work.
+   A picture in the strip shows how many new messages its chat has had since it was on the stage, and @ when its
+   chat mentions you. */
 const STAGE_SIZES = [1, 1.15, 1.3, 1.5, 1.75, 2];   // the stage chat, times the size of the other chats
 const SPLIT_MIN = 0.22, SPLIT_MAX = 0.6, CHAT_MIN = 300, THUMB_MIN = 170;
 let stageKey = null, stageSplit = 0.36, stageIdx = 2;
 let splitEl = null, alertObs = null, splitting = false;
+// New messages in the chats out of sight since they were last on the stage (by chat window)
+let unread = new WeakMap(), counting = false;
 // Place windows: gliding there, except while you drag the split (they follow the pointer)
 const place = (list, rects) => splitting ? list.forEach((w, i) => { w.max = null; setRect(w, rects[i]); }) : applyRects(list, rects);
 
@@ -80,6 +84,7 @@ function showStageLook(on, chat, others, r){
     if (w === chat) addSize(w); else dropSize(w);
     if (w.kind === 'chat') setViewScale(w.view, w === chat ? STAGE_SIZES[stageIdx] : 1);   // (this chat only: the site's zoom is shared)
   });
+  unread.delete(chat);                                       // on the stage: read
   Object.assign(splitEl.style, { display: 'block', left: (GAP / 2 + r.lw - 4) + 'px' });
   watchAlerts();
 }
@@ -90,6 +95,7 @@ function clearStageLook(){
   wins.forEach(w => { w.el.classList.remove('stg-on', 'stg-chat', 'stg-off', 'stg-thumb'); dropPick(w); dropSize(w); });
   if (chat) setViewScale(chat.view, 1);
   splitEl.style.display = 'none';
+  unread = new WeakMap();
   if (alertObs) alertObs.disconnect();
 }
 function updateStageLook(){ if (!isStage()) clearStageLook(); }
@@ -98,7 +104,7 @@ function updateStageLook(){ if (!isStage()) clearStageLook(); }
 function addPick(w){
   if (w.el.querySelector('.stg-pick')) return syncAt(w);
   const p = element('button', { class: 'stg-pick', title: `Put ${vidLabel(w)} on the stage`, onclick: () => putOnStage(colKey(w)) },
-    element('span', 'stg-at', '@'), element('span', 'stg-go', 'Put on stage'));
+    element('span', 'stg-badges', element('span', 'stg-n'), element('span', 'stg-at', '@')), element('span', 'stg-go', 'Put on stage'));
   w.el.querySelector('.body').append(p);
   syncAt(w);
 }
@@ -109,6 +115,29 @@ function syncAt(w){
   const at = !!(c && c.alertLvl);
   p.classList.toggle('at', at);
   p.querySelector('.stg-at').title = at ? `${vidLabel(w)}'s chat has something for you` : '';
+  const n = (c && unread.get(c)) || 0, nb = p.querySelector('.stg-n');
+  nb.textContent = n > 99 ? '99+' : String(n);
+  nb.title = n ? `${n} new message${n === 1 ? '' : 's'} in ${vidLabel(w)}'s chat` : '';
+  p.classList.toggle('new', n > 0);
+}
+// Ask each chat how many new messages came in since the last time; the ones out of sight add them up.
+async function countNew(){
+  if (!isStage() || counting) return;
+  counting = true;
+  try {
+    for (const w of [...wins]){
+      if (w.kind !== 'chat' || !w.ready || !w.view) continue;
+      let n;
+      try { n = await askIn(w.view, 'window.__kmvMention && window.__kmvMention.count ? window.__kmvMention.count() : 0'); } catch { continue; }
+      addNew(w, +n || 0);
+    }
+  } finally { counting = false; }
+}
+function addNew(w, n){
+  if (!isStage()) return;
+  if (w === stageChatOf()) unread.delete(w);                // you can see it
+  else if (n) unread.set(w, (unread.get(w) || 0) + n);
+  wins.forEach(o => { if (o.el.classList.contains('stg-thumb') && o.channel === w.channel) syncAt(o); });
 }
 function watchAlerts(){
   if (!alertObs) alertObs = new MutationObserver(() => wins.forEach(w => { if (w.el.classList.contains('stg-thumb')) syncAt(w); }));
@@ -177,7 +206,9 @@ function init(){
   store.watch('layout', updateStageLook);
   // a window opened or closed: arrange the stage again
   store.watch('wins', () => { if (isStage()) chatStageLayout(); });
+  if (DESKTOP && ROLE === 'main') setInterval(countNew, 3000);
   window.putOnStage = putOnStage;   // for the tests
+  window.stageNew = (ch, n) => addNew(wins.find(w => w.kind === 'chat' && w.channel === ch), n);   // for the tests
 }
 
 export { chatStageLayout, init, isStage, putOnStage };
