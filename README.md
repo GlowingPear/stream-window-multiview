@@ -41,6 +41,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - **Import follows** from Kick, Twitch and YouTube (and unfollow Kick channels right from that list)
 - **Streamer profiles**: search your saved streamers and open a profile for each one: what the site says (picture, about, followers, links, the live stream), plus a live history, a "when they usually stream" chart, usual start time, average length and viewers that the app records from its live checks, with Kick and Twitch past broadcasts filling the gaps. Notes, tags, nicknames, favourites, and **Unfollow on Kick**
 - **Emote preview**: point at an emote in chat to see it bigger with its name, then copy the name or download it
+- **New-message counts** (off by default): a chat out of sight in any layout counts the messages you haven't seen, on its stream's title bar, its row in the switch control, and Chat Stage's strip or Chat Rail's tabs
 - **Channel name in chat boxes** (off by default): each chat box says which channel you're typing in, in your own words if you like, instead of "Send a message"
 - **Like YouTube streams** from their title bar with your YouTube login, or have them liked automatically once they're playing
 - **Right-click menu** in chats and streams: copy, paste, open or copy links, translate selected text to your language, open or save emotes and images
