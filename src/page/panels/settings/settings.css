@@ -92,3 +92,13 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .st-docfoot .btn{margin-left:auto;height:28px;font-size:12px}
 #settingsDlg .am-yk{padding:2px 0 6px}
 #settingsDlg .am-sec,#settingsDlg .am-alt{border-top:0;margin-top:0;padding:4px 0}
+/* Settings > General > Channel name in chat boxes (chat/chat-name.js): its text, suggestions and a sample chat box */
+.cn-row{align-items:flex-start}
+.cn-edit{display:flex;flex-direction:column;gap:6px;flex:none;width:250px}
+.cn-edit .st-in{width:100%;box-sizing:border-box}
+.cn-ideas{display:flex;flex-wrap:wrap;gap:4px}
+.cn-ideas button{height:22px;padding:0 7px;border:1px solid var(--line2);border-radius:11px;background:var(--panel2);color:var(--muted);font:inherit;font-size:11px;cursor:pointer}
+.cn-ideas button:hover,.cn-ideas button.on{border-color:var(--accent);color:var(--text)}
+.cn-sample{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);font-size:13px;color:var(--muted)}
+.cn-sample span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cn-sample i{font-style:normal;opacity:.6}

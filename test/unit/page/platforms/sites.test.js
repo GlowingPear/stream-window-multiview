@@ -105,3 +105,19 @@ test('a stuck player (#120): Kick\'s error page and offline screen; Twitch and Y
   assert.equal(new Function('document', 'location', `return ${kick.stuckJs}`)({ body: null }, { pathname: '/owl/offline/' }), 'offline', 'no page yet');
   assert.deepEqual([twitch.stuckJs, youtube.stuckJs], [null, null]);
 });
+
+test('each site says where its chat box\'s empty text is, and only its usual text gets the channel\'s name', () => {
+  for (const p of [kick, twitch, youtube]) {
+    assert.deepEqual(Object.keys(p.chatBox).sort(), ['attrs', 'box', 'hint', 'says'], p.id);
+    assert.ok(typeof p.chatBox.box === 'string' && typeof p.chatBox.hint === 'string' && Array.isArray(p.chatBox.attrs), p.id);
+    assert.doesNotThrow(() => JSON.parse(JSON.stringify(p.chatBox)), 'it goes into the site\'s page as text');
+  }
+  const says = p => new RegExp(p.chatBox.says, 'i');
+  assert.ok(says(kick).test('Send a message') && says(twitch).test('Send a message'));
+  assert.ok(says(youtube).test('Chat…') && says(youtube).test('Chat...') && says(youtube).test('Say something...'));
+  // a box that says why you can't chat keeps it
+  for (const t of ['Followers-only mode', 'Subscribers-only chat', 'Slow mode: 30s', 'Sign in to chat', 'You are banned', 'Send a message (slow mode)'])
+    assert.ok(![kick, twitch, youtube].some(p => says(p).test(t)), t);
+  assert.ok(!says(youtube).test('Chatxyz'), 'the dots are dots');
+  assert.deepEqual(twitch.chatBox.attrs, ['aria-label', 'data-placeholder'], 'Twitch also says it to screen readers');
+});
