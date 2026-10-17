@@ -1,8 +1,10 @@
 import { blowUpNow, blownWin, putBack, toggleBlowMode } from './chat/blow-up.js';
 import { $, ROLE, colsMode, input, wins } from './core.js';
+import { isRail, showRailChat } from './layout/chat-rail.js';
+import { isStage, putOnStage } from './layout/chat-stage.js';
 import { buildCols, columnsLayout } from './layout/columns.js';
 import { syncSwitcher } from './layout/focus-only.js';
-import { colKey, featuredCh, isVid, layoutVars, setFeatured } from './layout/layouts.js';
+import { colKey, featuredCh, isVid, layoutVars, setFeatured, sortedChats, vidLabel } from './layout/layouts.js';
 import { layoutLocked, setLayoutLocked } from './layout/lock.js';
 import { scrollCols } from './layout/sideways-scroll.js';
 import { fsMute, isFocusView } from './layout/switcher.js';
@@ -13,6 +15,7 @@ import { keysOn, showHelp } from './panels/help/help.js';
 import { save } from './persistence.js';
 import { chLabel } from './platforms/platforms.js';
 import { flash } from './shared/flash.js';
+import { settings } from './shared/settings.js';
 import { setBarHidden } from './toolbar/header.js';
 import { panel, savedBtn } from './toolbar/toolbar.js';
 import { openCapturePicker } from './windows/capture.js';
@@ -21,10 +24,48 @@ import { reloadWin } from './windows/views.js';
 import { pushVol, saveSoon } from './windows/windows.js';
 
 /* ---- Keyboard shortcuts ---- */
+// The stream picked with ← / → in the layouts that don't make one big (Tile, Auto, Chat focus, Game focus, free)
+let selKey = null;
+const stageOn = () => wins.find(w => w.el.classList.contains('stg-on')) || null;
+const railStream = () => { const c = wins.find(w => w.kind === 'chat' && w.el.classList.contains('rl-chat')); return c && wins.find(w => w.kind === 'stream' && w.channel === c.channel) || null; };
+// The stream the keys act on (M, Space, R, ↑ / ↓, Shift+Z): the big one, the one on the stage, the one whose chat is
+// in the rail, or the one picked with ← / →
 function bigStream(){
   const vids = buildCols().filter(c => isVid(c.top)).map(c => c.top);
+  if (isStage() && stageOn()) return stageOn();
+  if (isRail() && railStream()) return railStream();
+  if (!isFocusView() && !colsMode && selKey){ const s = vids.find(v => colKey(v) === selKey); if (s) return s; }
   return (isFocusView() && vids.find(s => colKey(s) === featuredCh)) || vids.find(s => s.kind === 'stream') || null;
 }
+// ← / →: the previous or next stream, round the ends. What that does depends on the layout; with Settings > Layouts >
+// Sound follows the arrow keys on, the stream you move to is the one you hear.
+function stepStream(d){
+  const l = buildCols().filter(c => isVid(c.top)).map(c => c.top);
+  if (!l.length) return false;
+  const next = i => l[(i + d + l.length) % l.length];
+  let to;
+  if (isFocusView()){ to = next(l.findIndex(s => colKey(s) === featuredCh)); makeBig(to); }
+  else if (colsMode){ scrollCols(d); return true; }
+  else if (isStage()){ to = next(l.indexOf(stageOn())); putOnStage(colKey(to)); }
+  else if (isRail()){
+    // the rail's tabs are its chats: the next chat, in their order
+    const chats = sortedChats(), cur = chats.findIndex(c => c.el.classList.contains('rl-chat'));
+    if (!chats.length) return false;
+    const c = chats[(cur + d + chats.length) % chats.length];
+    showRailChat(c.channel);
+    to = l.find(s => s.channel === c.channel) || null;
+    flash(`${chLabel(c.channel)}'s chat`);
+  } else {
+    to = next(l.findIndex(s => colKey(s) === selKey));
+    selKey = colKey(to);
+    wins.forEach(w => w.el.classList.toggle('kb-sel', w === to));
+    void to.el.offsetWidth; to.el.classList.remove('kb-sel'); void to.el.offsetWidth; to.el.classList.add('kb-sel');   // (the outline shows again)
+  }
+  if (to && to.kind === 'stream' && soundFollows()) fsMute(to, true);
+  if (to && !isRail()) flash(vidLabel(to) + (to.kind === 'stream' && soundFollows() ? ' · sound on' : ''));
+  return true;
+}
+const soundFollows = () => settings.flag('arrowSound', false);
 function makeBig(s){ if (!s) return; setFeatured(colKey(s)); layoutVars.scrollX = 0; columnsLayout(); }
 function closeOverlays(){
   let any = false;
@@ -43,6 +84,15 @@ const layoutPick = l => { const b = document.querySelector(`#layoutMenu [data-l=
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
+  // Settings > Layouts > Sound follows the arrow keys (off unless switched on)
+  const snd = $('#arrowSound');
+  if (snd){
+    snd.checked = soundFollows();
+    snd.addEventListener('change', () => settings.set('arrowSound', snd.checked));
+    settings.onChange(['arrowSound'], () => { snd.checked = soundFollows(); });
+  }
+  window.stepStream = stepStream; window.bigStream = () => { const s = bigStream(); return s && s.channel; };   // for the tests
+  window.mutedStreams = () => wins.filter(w => w.kind === 'stream' && w.muted).map(w => w.channel).sort();   // for the tests
   document.addEventListener('keydown', e => {
     const t = e.target, typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
     const k = e.key, ctrl = e.ctrlKey || e.metaKey;
@@ -95,10 +145,7 @@ function init(){
         }
         break;
       case 'ArrowLeft': case 'ArrowRight': {
-        const d = k === 'ArrowRight' ? 1 : -1;
-        if (isFocusView()){ const l = streams(), i = l.findIndex(s => colKey(s) === featuredCh); if (l.length) makeBig(l[(i + d + l.length) % l.length]); }
-        else if (colsMode) scrollCols(d);
-        else handled = false;
+        if (!stepStream(k === 'ArrowRight' ? 1 : -1)) handled = false;
         break;
       }
       default: handled = false;

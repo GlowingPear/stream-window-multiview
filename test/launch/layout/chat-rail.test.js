@@ -58,3 +58,20 @@ test('Chat Rail: a tab shows how many new messages a chat out of sight has had',
   await a.win.waitForFunction(ch => document.querySelector(`#railTabs .rl-tab.new[data-ch="${ch}"] .rl-n`)?.textContent === '3', off, { timeout: 15000 });
   assert.equal(await a.win.$eval('#railTabs .rl-tab.on', b => b.classList.contains('new')), false);
 });
+
+test('Chat Rail: → shows the next chat in the rail, in big text, and ← goes back', { timeout: 60000 }, async () => {
+  await a.win.evaluate(() => document.activeElement && document.activeElement.blur());
+  await a.win.keyboard.press('Shift+K');
+  await a.win.waitForSelector('#stage .win.rl-chat');
+  const shown = () => a.win.$eval('#stage .win.rl-chat .title', e => e.textContent);
+  const first = await shown(), other = first === 'alpha' ? 'bravo' : 'alpha';
+  await a.win.evaluate(() => document.activeElement && document.activeElement.blur());
+  await a.win.keyboard.press('ArrowRight');
+  await a.win.waitForFunction(ch => document.querySelector('#stage .win.rl-chat .title')?.textContent === ch, other);
+  await near(other, 1.5, 'the next chat, in the rail\'s big text');
+  await near(first, 1, 'the one before, back to normal');
+  await a.win.evaluate(() => document.activeElement && document.activeElement.blur());
+  await a.win.keyboard.press('ArrowLeft');
+  await a.win.waitForFunction(ch => document.querySelector('#stage .win.rl-chat .title')?.textContent === ch, first);
+  assert.equal(await shown(), first);
+});

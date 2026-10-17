@@ -130,7 +130,7 @@ Open **Channels** (top left, or press `N`), paste or type any of these into its 
 | `F` / `G` / `C` / `K` / `T` | Focus view / Game focus / Columns / Chat Stage / Tile |
 | `Shift+K` / `Shift+C` | Chat Rail / Chat focus |
 | `1`–`9` | Make that stream the big one |
-| `←` `→` | Previous / next stream big |
+| `←` `→` | Previous / next stream: big in Focus view, on the stage in Chat Stage, its chat in Chat Rail, picked in other layouts (sound can follow) |
 | `M` / `Space` / `R` | Mute / pause / refresh the big stream |
 | `S` | Switch control on / off |
 | `Z` / `Shift+Z` | Blow up chat on click on / off / blow up the last chat you clicked now |
