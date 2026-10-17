@@ -17,8 +17,11 @@ const STAGE_SIZES = [1, 1.15, 1.3, 1.5, 1.75, 2];   // the stage chat, times the
 const SPLIT_MIN = 0.22, SPLIT_MAX = 0.6, CHAT_MIN = 300, THUMB_MIN = 170;
 let stageKey = null, stageSplit = 0.36, stageIdx = 2;
 let splitEl = null, alertObs = null, splitting = false;
-// Place windows: gliding there, except while you drag the split (they follow the pointer)
-const place = (list, rects) => splitting ? list.forEach((w, i) => { w.max = null; setRect(w, rects[i]); }) : applyRects(list, rects);
+// Place windows: gliding there, except while you drag the split (they follow the pointer, so a glide still
+// running from just before stops)
+const place = (list, rects) => splitting
+  ? list.forEach((w, i) => { w.max = null; w.el.classList.remove('anim'); setRect(w, rects[i]); })
+  : applyRects(list, rects);
 
 const isStage = () => ROLE === 'main' && !colsMode && lastLayout === 'stage';
 const stageChatOf = () => wins.find(w => w.kind === 'chat' && w.el.classList.contains('stg-chat')) || null;
