@@ -57,7 +57,12 @@ test('Chat Stage: the strip shows how many new messages a chat out of sight has 
     d.innerHTML = '<b></b>: <span></span>'; d.querySelector('b').textContent = s; d.querySelector('span').textContent = t;
     document.getElementById('chat').appendChild(d);
   }, [sender, text]);
-  await new Promise(r => setTimeout(r, 3000));              // the chat helper starts counting a moment after it's in
+  // the chat out of sight counts once Chat Stage has asked it once and its helper is armed (2.5 s later)
+  const armed = () => inView(a.win, off, 'chat', () => !!(window.__kmvMention && window.__kmvMention.ready && window.__kmvMention.ready()));
+  for (const end = Date.now() + 15000; !(await armed()); ) {
+    assert.ok(Date.now() < end, 'the chat helper never started counting');
+    await new Promise(r => setTimeout(r, 250));
+  }
   await say(off, 'quietkoala', 'first'); await say(off, 'tinycomet', 'second');
   await say(onStage, 'glowmoth', 'on the stage: you can see it');
   await a.win.waitForFunction(() => document.querySelector('#stage .win.stg-thumb .stg-pick.new .stg-n')?.textContent === '2', null, { timeout: 15000 });

@@ -271,8 +271,15 @@ function mentionAgent(){
       if (marks.size > 200) marks.delete(marks.keys().next().value);
     },
     look(){ scan(); },
-    // how many new messages others wrote since it was last asked (Chat Stage counts them for the chats out of sight)
-    count(){ const first = !counting; counting = true; scan(); const n = first ? 0 : fresh; fresh = 0; return n; },   // the first time: what's there is old
+    // how many new messages others wrote since it was last asked (Chat Stage counts them for the chats out of sight).
+    // The first time, what's there is old. With mentions and spam alerts off nothing has armed it yet, and
+    // messages only count once it's armed, so the first ask arms it.
+    count(){
+      const first = !counting; counting = true;
+      if (first && !armed) arm(); else scan();
+      const n = first ? 0 : fresh; fresh = 0; return n;
+    },
+    ready(){ return armed; },                                // for the tests: new messages count from now on
     take(){ scan(); const q = { m: queue, l: lines, k: [...known], c: seenAt }; queue = []; lines = []; known.clear(); seenAt = 0; return q; }
   };
   return true;
