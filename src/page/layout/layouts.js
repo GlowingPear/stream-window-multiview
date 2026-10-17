@@ -273,6 +273,6 @@ function init(){
 
 export { applyRects, autoLayout, builtinLinked, chatFocusLayout, chatRects, colKey, colOrder, colStrip, colTopOff,
   colX0, featBase, featBg, featSwitch, featuredCh, featW, fsResize, gridRects, hbar, HBAR, inColOrder, init, isVid,
-  layoutChatsOnly, layoutVars, linked, liveLinked, maxScroll, mkDiv, refreshFeatButtons, scrollRaf, scrollX,
-  setColsMode, setFeatured, setLinked, snapT, sortedChats, STRIP_H, SWITCH_MIN, switchMode, switchRect, tile,
-  toggleFeatured, updateLinkBtn, vidByKey, vidLabel };
+  layoutChatsOnly, layoutVars, linked, liveLinked, maxScroll, mkDiv, refreshFeatButtons, rowRects, scrollRaf,
+  scrollX, setColsMode, setFeatured, setLinked, snapT, sortedChats, STRIP_H, SWITCH_MIN, switchMode, switchRect,
+  tile, toggleFeatured, updateLinkBtn, vidByKey, vidLabel };
