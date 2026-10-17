@@ -46,3 +46,19 @@ test('Chat Stage: only the stage chat is bigger, the normal text size still coun
   await a.win.click('#layoutBtn'); await a.win.click('#layoutMenu button[data-l=tile]');
   await near('bravo', 0.9, 'Tile');
 });
+
+test('Chat Stage: the strip shows how many new messages a chat out of sight has had', { timeout: 60000 }, async () => {
+  await a.win.click('#layoutBtn'); await a.win.click('#layoutMenu button[data-l=stage]');
+  await a.win.waitForSelector('#stage .win.stg-thumb .stg-pick');
+  const off = await a.win.$eval('#stage .win.stg-thumb .title', e => e.textContent);
+  const onStage = await a.win.$eval('#stage .win.stg-on .title', e => e.textContent);
+  const say = (ch, sender, text) => inView(a.win, ch, 'chat', ([s, t]) => {
+    const d = document.createElement('div'); d.className = 'row';
+    d.innerHTML = '<b></b>: <span></span>'; d.querySelector('b').textContent = s; d.querySelector('span').textContent = t;
+    document.getElementById('chat').appendChild(d);
+  }, [sender, text]);
+  await new Promise(r => setTimeout(r, 3000));              // the chat helper starts counting a moment after it's in
+  await say(off, 'quietkoala', 'first'); await say(off, 'tinycomet', 'second');
+  await say(onStage, 'glowmoth', 'on the stage: you can see it');
+  await a.win.waitForFunction(() => document.querySelector('#stage .win.stg-thumb .stg-pick.new .stg-n')?.textContent === '2', null, { timeout: 15000 });
+});

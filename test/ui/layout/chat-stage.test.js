@@ -139,3 +139,48 @@ test('Chat Stage: without chats it tiles the streams instead', async t => {
   assert.deepEqual(await look(page), { on: [], chat: [], strip: [], off: [] });
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.lastLayout')), 'tile');
 });
+
+test('Chat Stage: a picture in the strip counts its chat\'s new messages since it was on the stage', async t => {
+  const page = await stageOf(t, ['alpha', 'bravo', 'charlie']);
+  const badge = name => page.locator(`#stage .win.stg-thumb:has(.title:text-is("${name}")) .stg-pick`).evaluate(p => p.classList.contains('new') ? p.querySelector('.stg-n').textContent : '');
+  assert.equal(await badge('bravo'), '');
+  await page.evaluate(() => { window.stageNew('bravo', 3); window.stageNew('bravo', 2); window.stageNew('charlie', 0); });
+  assert.equal(await badge('bravo'), '5');
+  assert.equal(await badge('charlie'), '', 'nothing new: no number');
+  assert.match(await page.locator('#stage .win.stg-thumb:has(.title:text-is("bravo")) .stg-n').getAttribute('title'), /5 new messages in bravo's chat/);
+  await page.evaluate(() => window.stageNew('charlie', 140));
+  assert.equal(await badge('charlie'), '99+');
+  await page.evaluate(() => window.stageNew('alpha', 4));        // the stage chat: you can see those
+  // bravo on the stage: its count is read; alpha in the strip starts from nothing
+  await page.click('#stage .win.stg-thumb:has(.title:text-is("bravo")) .stg-pick');
+  assert.equal(await badge('alpha'), '');
+  assert.equal(await badge('charlie'), '99+');
+  await page.click('#stage .win.stg-thumb:has(.title:text-is("alpha")) .stg-pick');
+  assert.equal(await badge('bravo'), '', 'counted from when it left the stage');
+  // another layout forgets the counts
+  await press(page, 't');
+  await page.evaluate(() => window.stageNew('bravo', 1));    // not in Chat Stage: not counted
+  await press(page, 'k');
+  assert.equal(await badge('charlie'), '');
+  assert.equal(await badge('bravo'), '');
+});
+
+test('the chat helper counts new messages from others for Chat Stage, and starts again each time it\'s asked', async t => {
+  const app = await openApp(t);
+  const js = await app.evaluate(() => window.chatAgentJs);
+  const page = await app.context().newPage();
+  await page.setContent('<div id="chat"><div class="row"><b>regular</b>: <span>hello there</span></div></div>');
+  await page.evaluate(js);
+  await page.evaluate(() => window.__kmvMention.setMe('', []));   // mentions off: it only reads the chat for the count
+  await page.waitForTimeout(2800);
+  await page.evaluate(() => document.getElementById('chat').insertAdjacentHTML('beforeend', '<div class="row"><b>early</b>: <span>before it was asked</span></div>'));
+  assert.equal(await page.evaluate(() => window.__kmvMention.count()), 0, 'the first time: what is there is old');
+  await page.evaluate(() => window.__kmvMention.setMe('pearfan', []));
+  await page.waitForTimeout(2800);
+  const say = (s, t) => page.evaluate(([s, t]) => document.getElementById('chat').insertAdjacentHTML('beforeend', `<div class="row"><b>${s}</b>: <span>${t}</span></div>`), [s, t]);
+  await say('newacct', 'first'); await say('regular', 'second'); await say('pearfan', 'mine, not counted');
+  assert.equal(await page.evaluate(() => window.__kmvMention.count()), 2);
+  assert.equal(await page.evaluate(() => window.__kmvMention.count()), 0, 'asked again: nothing new');
+  await say('newacct', 'third');
+  assert.equal(await page.evaluate(() => window.__kmvMention.count()), 1);
+});
