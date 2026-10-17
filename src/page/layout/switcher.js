@@ -1,4 +1,5 @@
 import { toggleBlowMode, updateBlowBtn } from '../chat/blow-up.js';
+import { newFor } from '../chat/new-messages.js';
 import { closeWin } from '../chat/view-menu.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { backToChatFocus } from './chat-focus.js';
@@ -18,6 +19,7 @@ import { chLabel, platOf } from '../platforms/platforms.js';
 import { DESKTOP, keyName } from '../shared/env.js';
 import { icon } from '../shared/icons.js';
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { refreshPicks } from '../windows/channel-picker.js';
 import { togglePause } from '../windows/pause.js';
 import { popOutHidden, updatePopHiddenBtn } from '../windows/popout.js';
@@ -153,7 +155,7 @@ function renderSwitcher(){
     it.innerHTML =
       `<div class="fs-row">` +
       (DESKTOP ? `<button class="fs-play" title="Pause / play"></button>` : '') +
-      `<button class="fs-name"><i class="dot"></i><span></span></button>` +
+      `<button class="fs-name"><i class="dot"></i><span></span><em class="fs-n" hidden></em></button>` +
       (DESKTOP ? `<span class="fs-volw"><button class="fs-mute" title="Mute / unmute (Shift-click: hear only this one)"></button><input type="range" min="0" max="100" step="1" aria-label="Volume"><span class="fs-pct"></span></span>` : '') +
       `<button class="fs-rl" title="Refresh ${chLabel(s.channel)}">${icon.reload}</button>` +
       (DESKTOP ? `<button class="fs-pv" title="${s.preview ? 'Hide' : 'Show'} small live preview">${s.preview ? icon.chevUp : icon.chevDown}</button>` : '') +
@@ -192,7 +194,17 @@ function renderSwitcher(){
   });
   if (!featSwitch.querySelector('.fs-item')) featSwitch.insertAdjacentHTML('beforeend', '<div class="fs-empty">No streams open in this window.</div>');
   syncSwitcher();
+  syncSwitcherCounts();
   placeMinis();
+}
+// New messages in each stream's chat while it's out of sight (chat/new-messages.js), next to its name
+function syncSwitcherCounts(){
+  featSwitch.querySelectorAll('.fs-item:not(.cap)').forEach(it => {
+    const n = newFor(it.dataset.ch), b = it.querySelector('.fs-n'); if (!b) return;
+    b.hidden = !n;
+    b.textContent = n > 99 ? '99+' : String(n);
+    b.title = n ? `${n} new message${n === 1 ? '' : 's'} in ${chLabel(it.dataset.ch)}'s chat` : '';
+  });
 }
 // A switch control entry for another app's window: pause (freeze the picture), name, refresh, ×.
 function captureItem(s){
@@ -275,6 +287,7 @@ function swapRects(p, q){
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
+  store.watch('unread', syncSwitcherCounts);
   $('#toast button').onclick = () => {
     const f = undoFn; $('#toast').hidden = true; undoFn = null;
     if (undoNote){ noteActs.delete(undoNote); undoNote = null; renderBell(); }

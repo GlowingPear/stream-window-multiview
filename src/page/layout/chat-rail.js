@@ -1,4 +1,4 @@
-import { clearNew, countFor, forgetNew, newCount } from '../chat/new-messages.js';
+import { clearNew, newCount } from '../chat/new-messages.js';
 import { GAP, ROLE, colsMode, coreVars, lastLayout, stage, wins } from '../core.js';
 import { SH, SW } from './geometry.js';
 import { applyRects, featuredCh, inColOrder, layoutChatsOnly, rowRects, setColsMode, sortedChats, tile, vidLabel } from './layouts.js';
@@ -79,7 +79,6 @@ function clearRailLook(){
   // (going to Chat Stage, the chat there has its own size already)
   if (chat && !document.body.classList.contains('chatstage')) setViewScale(chat.view, 1);
   tabsEl.style.display = 'none';
-  forgetNew();
   if (alertObs) alertObs.disconnect();
 }
 function updateRailLook(){
@@ -162,7 +161,8 @@ function init(){
   store.watch('layout', updateRailLook);
   // a window opened or closed: arrange the rail again
   store.watch('wins', () => { if (isRail()) chatRailLayout(); });
-  countFor({ on: isRail, seen: w => w === railChatOf(), changed: syncTab });
+  // new messages counted for a chat out of sight (chat/new-messages.js): on its tab
+  store.watch('unread', () => { if (isRail()) wins.forEach(w => { if (w.kind === 'chat') syncTab(w); }); });
   window.showRailChat = showRailChat;   // for the tests
 }
 

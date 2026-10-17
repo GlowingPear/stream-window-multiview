@@ -1,4 +1,4 @@
-import { clearNew, countFor, forgetNew, newCount } from '../chat/new-messages.js';
+import { clearNew, newCount } from '../chat/new-messages.js';
 import { BAR, GAP, ROLE, colsMode, coreVars, lastLayout, stage, wins } from '../core.js';
 import { SH, SW, setRect } from './geometry.js';
 import { applyRects, colKey, featuredCh, inColOrder, layoutChatsOnly, setColsMode, sortedChats, tile, vidByKey,
@@ -96,7 +96,6 @@ function clearStageLook(){
   wins.forEach(w => { w.el.classList.remove('stg-on', 'stg-chat', 'stg-off', 'stg-thumb'); dropPick(w); dropSize(w); });
   if (chat) setViewScale(chat.view, 1);
   splitEl.style.display = 'none';
-  forgetNew();
   if (alertObs) alertObs.disconnect();
 }
 function updateStageLook(){ if (!isStage()) clearStageLook(); }
@@ -121,8 +120,6 @@ function syncAt(w){
   nb.title = n ? `${n} new message${n === 1 ? '' : 's'} in ${vidLabel(w)}'s chat` : '';
   p.classList.toggle('new', n > 0);
 }
-// New messages counted for a chat (chat/new-messages.js): show them on its stream's picture in the strip
-function syncNew(w){ wins.forEach(o => { if (o.el.classList.contains('stg-thumb') && o.channel === w.channel) syncAt(o); }); }
 function watchAlerts(){
   if (!alertObs) alertObs = new MutationObserver(() => wins.forEach(w => { if (w.el.classList.contains('stg-thumb')) syncAt(w); }));
   alertObs.disconnect();
@@ -190,7 +187,8 @@ function init(){
   store.watch('layout', updateStageLook);
   // a window opened or closed: arrange the stage again
   store.watch('wins', () => { if (isStage()) chatStageLayout(); });
-  countFor({ on: isStage, seen: w => w === stageChatOf(), changed: syncNew });
+  // new messages counted for a chat out of sight (chat/new-messages.js): on its stream's picture in the strip
+  store.watch('unread', () => wins.forEach(o => { if (o.el.classList.contains('stg-thumb')) syncAt(o); }));
   window.putOnStage = putOnStage;   // for the tests
 }
 
