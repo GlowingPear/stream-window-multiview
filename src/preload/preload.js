@@ -78,6 +78,11 @@ contextBridge.exposeInMainWorld('kmv', {
   onSwitcherState: cb => ipcRenderer.on('switcher:state', (_e, st) => cb(st)),
   onSwitcherPinned: cb => ipcRenderer.on('switcher:pinned', (_e, on) => cb(on)),
   switcherPin: on => ipcRenderer.invoke('switcher:pin', on),
+  // monitors (Settings > Layouts > Monitors): the list, a layout's parts on them, Identify, and plugged in or out
+  monitors: () => ipcRenderer.invoke('monitors:list'),
+  applyMonitors: (parts, together) => ipcRenderer.invoke('monitors:apply', parts, together),
+  identifyMonitors: () => ipcRenderer.invoke('monitors:identify'),
+  onMonitorsChanged: cb => ipcRenderer.on('monitors:changed', (_e, info) => cb(info)),
 
   // Live alerts for saved channels
   watchLive: data => ipcRenderer.send('live:watch', data),
