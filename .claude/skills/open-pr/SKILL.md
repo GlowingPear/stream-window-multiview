@@ -50,7 +50,15 @@ gh pr create --base main --title "<title>" --body-file <body.md> --attach <file>
 - Open the PR (`gh pr view --json body`) and check that every reference became a GitHub URL. Fix it with `gh pr edit --body-file ... --attach ...` if not.
 - Use the developer's own git and gh accounts. Don't change them.
 
-## 6. After merging
+## 6. Updating an open PR
+
+When new commits change something visible (a fix after review, a follow-up), the screenshots in the description have to show the new state too:
+
+- Capture again with the same steps (`drive-app`), and update **Before / after** in the body, plus **What changed** and **Tests** if they moved.
+- Show the new body and attachments, and wait for approval as in step 4.
+- Push, then `gh pr edit <n> --body-file <body.md> --attach <file> [--attach <file> ...]`, and check the references as in step 5.
+
+## 7. After merging
 
 Remove the worktree and branch (from the main checkout or another worktree, not the one being removed):
 
