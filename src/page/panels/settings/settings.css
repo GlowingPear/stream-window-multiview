@@ -92,7 +92,7 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .st-docfoot .btn{margin-left:auto;height:28px;font-size:12px}
 #settingsDlg .am-yk{padding:2px 0 6px}
 #settingsDlg .am-sec,#settingsDlg .am-alt{border-top:0;margin-top:0;padding:4px 0}
-/* Settings > General > Channel name in chat boxes (chat/chat-name.js): its text, suggestions and a sample chat box */
+/* Settings > Chat > Channel name in chat boxes (chat/chat-name.js): its text, suggestions and a sample chat box */
 .cn-row{align-items:flex-start}
 .cn-edit{display:flex;flex-direction:column;gap:6px;flex:none;width:250px}
 .cn-edit .st-in{width:100%;box-sizing:border-box}
@@ -102,3 +102,9 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .cn-sample{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);font-size:13px;color:var(--muted)}
 .cn-sample span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cn-sample i{font-style:normal;opacity:.6}
+/* Settings > Chat: its groups' headings, and Emote preview's example in its own row */
+.st-group{margin:16px 0 2px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.st-group:first-of-type{margin-top:6px}
+.st-group[hidden]{display:none}
+.st-t small .st-ex{display:flex;align-items:center;gap:8px;margin-top:6px}
+.st-t label{cursor:pointer}

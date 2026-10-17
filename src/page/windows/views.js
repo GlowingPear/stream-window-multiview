@@ -109,7 +109,7 @@ function mountView(w){
     });
   }
 }
-// New emotes (Settings > General, off unless switched on): ask the app which are new for this channel, mark them,
+// New emotes (Settings > Chat, off unless switched on): ask the app which are new for this channel, mark them,
 // and say so once when there are newly added ones.
 var newEmotesOn = false;
 async function markNewEmotes(w){

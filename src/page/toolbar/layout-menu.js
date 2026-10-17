@@ -54,7 +54,7 @@ function init(){
     const swBtn = $('#swBtn');
     swBtn.hidden = false;
     swBtn.onclick = () => setSwitchMode(switchMode === 'dock' ? 'float' : 'dock');
-    if (!DESKTOP) document.querySelectorAll('#swModes .desk-only, #layoutMenu .zoom-row, #settingsDlg .ly-zoom').forEach(b => b.remove());
+    if (!DESKTOP) document.querySelectorAll('#swModes .desk-only, #layoutMenu .zoom-row, #settingsDlg .st-zoom').forEach(b => b.remove());
     $('#swModes').querySelectorAll('i[data-ico]').forEach(i => { i.innerHTML = icon[i.dataset.ico]; });
     $('#swModes').addEventListener('click', e => {
       const b = e.target.closest('button[data-sw]'); if (!b) return;
