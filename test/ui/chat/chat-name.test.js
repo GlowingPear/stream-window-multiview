@@ -50,7 +50,7 @@ test('Channel name in chat boxes: off at first; on, a text field with suggestion
 // A stand-in chat box in the app's own page (so the script's code counts for coverage), with the site's settings
 const BOXES = {
   kick: '<div class="relative w-full"><div data-testid="chat-input" contenteditable="true" class="editor-input"><p class="editor-paragraph"><br></p></div><div class="pointer-events-none absolute">Send a message</div></div>',
-  twitch: '<div class="glFavL"><p class="chat-wysiwyg-input__p" aria-hidden="true" title="Send a message">Send a message</p><div role="textbox" data-a-target="chat-input" aria-label="Send a message" data-placeholder="Send a message" contenteditable="true"><div><span>​</span></div></div></div>',
+  twitch: '<div class="glFavL"><p class="chat-wysiwyg-input__placeholder" aria-hidden="true" title="Send a message">Send a message</p><div role="textbox" data-a-target="chat-input" aria-label="Send a message" data-placeholder="Send a message" contenteditable="true"><div><span>​</span></div></div></div>',
   youtube: '<yt-live-chat-text-input-field-renderer><div id="label"><span>Chat…</span></div><div id="input" contenteditable="true" aria-label="Chat…"></div></yt-live-chat-text-input-field-renderer>'
 };
 async function boxOf(t, site) {
@@ -101,7 +101,7 @@ test('the chat box on Twitch: its text, title, label and placeholder all say the
   await setText(page, 'Corgicam');
   assert.equal(await hint(page), 'Corgicam');
   assert.deepEqual(await boxAttrs(page), ['Corgicam', 'Corgicam'], 'aria-label and data-placeholder, for screen readers too');
-  assert.equal(await page.getAttribute('.chat-wysiwyg-input__p', 'title'), 'Corgicam');
+  assert.equal(await page.getAttribute('.chat-wysiwyg-input__placeholder', 'title'), 'Corgicam');
   // the site sets its own attributes again: the name again
   await page.evaluate(() => document.querySelector(window.boxCfg.box).setAttribute('aria-label', 'Send a message'));
   await until(page, () => document.querySelector(window.boxCfg.box).getAttribute('aria-label') === 'Corgicam');
@@ -109,7 +109,7 @@ test('the chat box on Twitch: its text, title, label and placeholder all say the
   await page.evaluate(() => { const p = document.querySelector(window.boxCfg.hint); p.firstChild.nodeValue = 'Followers-only mode'; p.title = 'Followers-only mode'; });
   await page.waitForTimeout(250);
   assert.equal(await hint(page), 'Followers-only mode');
-  assert.equal(await page.getAttribute('.chat-wysiwyg-input__p', 'title'), 'Followers-only mode');
+  assert.equal(await page.getAttribute('.chat-wysiwyg-input__placeholder', 'title'), 'Followers-only mode');
   // off: the site's own words back where it still showed the name, followers-only untouched
   await setText(page, '');
   assert.equal(await hint(page), 'Followers-only mode');

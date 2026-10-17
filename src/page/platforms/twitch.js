@@ -36,7 +36,7 @@ const twitch = {
   // Its chat box's empty text (Settings > General > Channel name in chat boxes, in-site/chat-name.js): the box, the
   // element showing the text, the box's attributes with the same text, and the site's usual text (only that one
   // changes: a box that says something else, like followers-only or slow mode, says why you can't chat).
-  chatBox: { box: '[data-a-target="chat-input"]', hint: '.chat-wysiwyg-input__p', attrs: ['aria-label', 'data-placeholder'], says: '^send a message$' },
+  chatBox: { box: '[data-a-target="chat-input"]', hint: '.chat-wysiwyg-input__placeholder', attrs: ['aria-label', 'data-placeholder'], says: '^send a message$' },
   raidTarget(kind, u){
     const host = u.hostname.replace(/^(www|m)\./, ''), parts = u.pathname.split('/').filter(Boolean);
     const one = twitch.fromUrl(host, parts, u);
