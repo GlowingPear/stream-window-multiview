@@ -46,6 +46,7 @@ import { init as layoutChatRail } from './layout/chat-rail.js';
 import { init as windowsPopout } from './windows/popout.js';
 import { init as chatChatZoom } from './chat/chat-zoom.js';
 import { init as chatBlowUp } from './chat/blow-up.js';
+import { init as chatChatName } from './chat/chat-name.js';
 import { init as panelsEmptyStageEmptyStage } from './panels/empty-stage/empty-stage.js';
 import { init as toolbarHeader } from './toolbar/header.js';
 import { init as toolbarToolbar } from './toolbar/toolbar.js';
@@ -115,6 +116,7 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   windowsPopout,
   chatChatZoom,
   chatBlowUp,
+  chatChatName,
   panelsEmptyStageEmptyStage,
   toolbarHeader,
   toolbarToolbar,
