@@ -1,0 +1,16 @@
+/* Settings > Layouts > Monitors (panels/settings/monitors.js): the monitors to scale, Identify, the table of layouts */
+.mo-top{display:flex;align-items:flex-end;gap:16px;margin:4px 0 14px;flex-wrap:wrap}
+.mo-map{position:relative;flex:none;min-height:60px}
+.mo-none{margin:0;color:var(--muted);font-size:12px}
+.mo-mon{position:absolute;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  border:1px solid var(--line2);border-radius:5px;background:var(--panel2);color:var(--muted);overflow:hidden}
+.mo-mon b{font-size:18px;line-height:1;color:var(--text)}
+.mo-mon span{font-size:10px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mo-mon em{font-style:normal;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.mo-mon.here{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mo-mon.here b{color:var(--accent)}
+.mo-table{display:grid;gap:2px;margin-bottom:12px}
+.mo-row{display:grid;grid-template-columns:minmax(90px,1fr) repeat(3,minmax(120px,1.3fr));gap:8px;align-items:center;padding:3px 0}
+.mo-head{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.mo-l{font-weight:600;font-size:13px}
+.mo-row select{width:100%;min-width:0}

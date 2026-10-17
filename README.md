@@ -15,6 +15,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - Drag, resize and snap windows anywhere, or let a layout arrange them
 - Layouts: **Focus view**, **Game focus**, **Columns**, **Chat Stage**, **Chat Rail**, **Chat focus**, **Auto** and **Tile**
 - Save your own named layouts and switch between them from a dropdown
+- Several monitors: for each layout, put its streams, chats and switch control on the monitor you like, with Identify monitors; everything comes back to one monitor when one is unplugged
 - Every window's name is a dropdown, so you can swap any two streams or chats
 - The toolbar across the top or down the left side (with names, or a slim column of icons that shows the names when you point at it)
 

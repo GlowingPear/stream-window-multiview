@@ -8,6 +8,7 @@ const { parseKickEmotes, parseTwitchEmotes, parse7tv, parseBttv, parseFfz, creat
 const { menuFor, translateTarget } = require('./context-menu');
 const { makeTranslator } = require('./translate');
 const { createProfileQueue } = require('./profile-queue');
+const { centre, describe, fill, placeParts } = require('./monitors');
 const SmvFollows = require('../shared/follows');
 const path = require('path');
 const fs = require('fs');
@@ -129,11 +130,14 @@ function openStreamsWindow(specs = []) {
     streamsWin.show(); streamsWin.focus();
     return;
   }
-  const st = loadState('streams-window-state');
+  // The monitor the layout puts the streams on (Settings > Layouts > Monitors) comes first, then where you left it.
+  const target = monitorById(monitorTargets.streams);
+  const st = target ? null : loadState('streams-window-state');
   // Default: put it on a second monitor if there is one.
   let def = { width: 1280, height: 760 };
   const others = screen.getAllDisplays().filter(d => mainWin && d.id !== screen.getDisplayMatching(mainWin.getBounds()).id);
-  if (!st && others[0]) { const b = others[0].workArea; def = { x: b.x + 40, y: b.y + 40, width: b.width - 80, height: b.height - 80 }; }
+  if (target) def = fill(target, 40);
+  else if (!st && others[0]) { const b = others[0].workArea; def = { x: b.x + 40, y: b.y + 40, width: b.width - 80, height: b.height - 80 }; }
   streamsReady = false;
   streamsWin = new BrowserWindow({
     ...(st ? { width: st.width || 1280, height: st.height || 760, x: st.x, y: st.y } : def),
@@ -141,7 +145,7 @@ function openStreamsWindow(specs = []) {
     ...macBar(), webPreferences: appWebPrefs()
   });
   trackFullscreen(streamsWin);
-  if (st?.maximized || (!st && others[0])) streamsWin.maximize();
+  if (target || st?.maximized || (!st && others[0])) streamsWin.maximize();
   if (st?.fullscreen) streamsWin.setFullScreen(true);
   streamsWin.loadFile(path.join(SRC, 'index.html'), { query: { role: 'streams' } });
   streamsWin.webContents.on('will-navigate', e => e.preventDefault());
@@ -168,9 +172,11 @@ function switcherPrefs() { try { return JSON.parse(fs.readFileSync(stateFile('sw
 function openSwitcherWindow() {
   if (switcherWin) { switcherWin.show(); switcherWin.focus(); return; }
   const st = loadState('switcher-window-state'), pref = switcherPrefs();
+  const target = monitorById(monitorTargets.switch);       // the monitor the layout puts it on, at the size you left it
   switcherReady = false;
   switcherWin = new BrowserWindow({
-    ...(st && st.width ? { width: st.width, height: st.height, x: st.x, y: st.y } : { width: 620, height: 520 }),
+    ...(target ? centre(target, st?.width || 620, st?.height || 520)
+      : st && st.width ? { width: st.width, height: st.height, x: st.x, y: st.y } : { width: 620, height: 520 }),
     minWidth: 320, minHeight: 160, backgroundColor: '#0a0c0d', title: 'Stream Multiview – Switch control', autoHideMenuBar: true, icon: ICON,
     alwaysOnTop: pref.onTop !== false,
     webPreferences: appWebPrefs()
@@ -203,6 +209,82 @@ ipcMain.handle('switcher:pin', (_e, on) => {
   if (!switcherWin) return false;
   switcherWin.setAlwaysOnTop(!!on);
   return switcherWin.isAlwaysOnTop();
+});
+
+/* ---------- monitors: each part of a layout on a monitor of its own (Settings > Layouts > Monitors) ----------
+   The chats stay in the main window, which goes on the chats' monitor. Streams on another monitor go in the Streams
+   window there, and the switch control in its own window (the page opens and closes those, as it does for Pop out). */
+let monitorsTogether = true;                              // put everything back on one monitor when one is unplugged
+const monitorTargets = { streams: null, switch: null };   // the monitor the Streams window / switch control window go on
+const allMonitors = () => describe(screen.getAllDisplays(), screen.getPrimaryDisplay().id);
+const monitorById = id => (id == null ? null : allMonitors().find(m => m.id === id) || null);
+const monitorOf = win => (win && !win.isDestroyed() ? screen.getDisplayMatching(win.getBounds()).id : screen.getPrimaryDisplay().id);
+// Puts a window on a monitor at the size it has, in the middle, maximized or fullscreen again if it was
+function moveWin(win, m, { maximize } = {}) {
+  if (!win || win.isDestroyed() || !m || monitorOf(win) === m.id) return;
+  const full = win.isFullScreen(), max = maximize ?? win.isMaximized();
+  const go = () => {
+    if (win.isDestroyed()) return;
+    if (win.isMaximized()) win.unmaximize();
+    const b = win.getNormalBounds();
+    win.setBounds(centre(m, b.width, b.height));
+    if (max) win.maximize();
+    if (full) win.setFullScreen(true);
+  };
+  if (full) { win.once('leave-full-screen', go); win.setFullScreen(false); } else go();
+}
+ipcMain.handle('monitors:list', () => ({ monitors: allMonitors(), main: monitorOf(mainWin) }));
+// The layout's parts ({ chats, streams, switch }: saved monitors or empty): moves the main window and any Streams or
+// switch control window that's open, and says where each part goes so the page can pop the streams out or back.
+ipcMain.handle('monitors:apply', (_e, parts, together) => {
+  monitorsTogether = together !== false;
+  const p = placeParts(parts, allMonitors(), monitorOf(mainWin));
+  moveWin(mainWin, monitorById(p.chats));
+  monitorTargets.streams = p.streams !== p.chats ? p.streams : null;
+  monitorTargets.switch = p.switch !== p.chats ? p.switch : null;
+  if (monitorTargets.streams != null) moveWin(streamsWin, monitorById(monitorTargets.streams), { maximize: true });
+  if (monitorTargets.switch != null) moveWin(switcherWin, monitorById(monitorTargets.switch), { maximize: false });
+  return p;
+});
+// Identify monitors: a big number in the middle of each one for a moment (it can't be clicked or take the focus)
+ipcMain.handle('monitors:identify', () => {
+  for (const m of allMonitors()) {
+    const side = Math.max(160, Math.min(360, Math.round(Math.min(m.work.width, m.work.height) * 0.45)));
+    const win = new BrowserWindow({
+      ...centre(m, side, side), frame: false, transparent: true, resizable: false, movable: false, focusable: false,
+      skipTaskbar: true, alwaysOnTop: true, hasShadow: false, show: false,
+      webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
+    });
+    win.setIgnoreMouseEvents(true);
+    const html = `<!doctype html><meta charset="utf-8"><body style="margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:rgba(10,12,13,.88);border:4px solid #53fc18;border-radius:28px;box-sizing:border-box;font-family:system-ui,sans-serif;color:#fff;user-select:none">
+      <div style="font-size:${Math.round(side * 0.55)}px;font-weight:800;line-height:1;color:#53fc18">${m.n}</div>
+      <div style="margin-top:8px;font-size:${Math.round(side * 0.075)}px;opacity:.85">${m.w} × ${m.h}${m.primary ? ' · main' : ''}</div></body>`;
+    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+    win.once('ready-to-show', () => { if (!win.isDestroyed()) win.showInactive(); });
+    setTimeout(() => { if (!win.isDestroyed()) win.destroy(); }, 2500);
+  }
+});
+// A monitor was plugged in, unplugged or changed (moved, resized, turned) in the system's settings
+function monitorsChanged(kind) {
+  if (kind === 'removed' && monitorsTogether) {
+    monitorTargets.streams = monitorTargets.switch = null;
+    streamsWin?.close();                                   // its streams come back to the main window
+    switcherWin?.close();                                  // the switch control goes back into the main window
+  }
+  // the main window on a monitor that's there (Windows moves it by itself; macOS may leave it off screen)
+  if (mainWin && !mainWin.isDestroyed()) {
+    const b = mainWin.getBounds();
+    const seen = screen.getAllDisplays().some(d => b.x < d.bounds.x + d.bounds.width - 100 && b.x + b.width > d.bounds.x + 100 &&
+      b.y < d.bounds.y + d.bounds.height - 50 && b.y + 40 > d.bounds.y);
+    if (!seen) moveWin(mainWin, monitorById(screen.getPrimaryDisplay().id));
+    mainWin.webContents.send('monitors:changed', { kind, monitors: allMonitors(), main: monitorOf(mainWin) });
+  }
+}
+app.whenReady().then(() => {
+  screen.on('display-removed', () => monitorsChanged('removed'));
+  screen.on('display-added', () => monitorsChanged('added'));
+  screen.on('display-metrics-changed', () => monitorsChanged('changed'));
 });
 
 function partitionFor(url) {

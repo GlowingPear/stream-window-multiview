@@ -10,7 +10,7 @@ const SETTING_NAMES = new Set([
   'streams.v1',            // the streams window's windows
   'popped', 'popPartial',  // the streams window is open; only the streams you can't see went to it
   'lastLayout', 'streams.lastLayout', 'cols', 'colOrder', 'linked', 'featured', 'sideCols', 'pageStep',
-  'switchMode', 'switchRect', 'layoutLocked', 'focusOnly', 'autoFit', 'autoPause', 'presets', 'game', 'toolbar',
+  'switchMode', 'monitors', 'switchRect', 'layoutLocked', 'focusOnly', 'autoFit', 'autoPause', 'presets', 'game', 'toolbar',
   'chatZoom', 'chatBlowup', 'chatBlowSize', 'stageCh', 'stageSplit', 'stageZoom', 'railCh', 'railZoom', 'lastSession', 'startMuted', 'snap',
   // channels
   'saved', 'savedTab', 'autoOpen', 'notifyAll', 'notifyOff', 'chNames', 'ytNames', 'watchSignedIn',
