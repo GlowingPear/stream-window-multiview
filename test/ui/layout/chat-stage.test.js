@@ -144,13 +144,13 @@ test('Chat Stage: a picture in the strip counts its chat\'s new messages since i
   const page = await stageOf(t, ['alpha', 'bravo', 'charlie']);
   const badge = name => page.locator(`#stage .win.stg-thumb:has(.title:text-is("${name}")) .stg-pick`).evaluate(p => p.classList.contains('new') ? p.querySelector('.stg-n').textContent : '');
   assert.equal(await badge('bravo'), '');
-  await page.evaluate(() => { window.stageNew('bravo', 3); window.stageNew('bravo', 2); window.stageNew('charlie', 0); });
+  await page.evaluate(() => { window.chatNew('bravo', 3); window.chatNew('bravo', 2); window.chatNew('charlie', 0); });
   assert.equal(await badge('bravo'), '5');
   assert.equal(await badge('charlie'), '', 'nothing new: no number');
   assert.match(await page.locator('#stage .win.stg-thumb:has(.title:text-is("bravo")) .stg-n').getAttribute('title'), /5 new messages in bravo's chat/);
-  await page.evaluate(() => window.stageNew('charlie', 140));
+  await page.evaluate(() => window.chatNew('charlie', 140));
   assert.equal(await badge('charlie'), '99+');
-  await page.evaluate(() => window.stageNew('alpha', 4));        // the stage chat: you can see those
+  await page.evaluate(() => window.chatNew('alpha', 4));        // the stage chat: you can see those
   // bravo on the stage: its count is read; alpha in the strip starts from nothing
   await page.click('#stage .win.stg-thumb:has(.title:text-is("bravo")) .stg-pick');
   assert.equal(await badge('alpha'), '');
@@ -159,7 +159,7 @@ test('Chat Stage: a picture in the strip counts its chat\'s new messages since i
   assert.equal(await badge('bravo'), '', 'counted from when it left the stage');
   // another layout forgets the counts
   await press(page, 't');
-  await page.evaluate(() => window.stageNew('bravo', 1));    // not in Chat Stage: not counted
+  await page.evaluate(() => window.chatNew('bravo', 1));    // not in Chat Stage: not counted
   await press(page, 'k');
   assert.equal(await badge('charlie'), '');
   assert.equal(await badge('bravo'), '');
