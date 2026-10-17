@@ -1,4 +1,5 @@
 import { $, ROLE, colsMode, coreVars, stage } from '../core.js';
+import { chatRailLayout } from '../layout/chat-rail.js';
 import { chatStageLayout } from '../layout/chat-stage.js';
 import { curLayout, updateLayoutMenu, updateSwBtn } from '../layout/column-drag.js';
 import { columnsLayout } from '../layout/columns.js';
@@ -83,6 +84,7 @@ function init(){
       setColsMode(false);
       if (l === 'chatfocus') chatFocusLayout();
       else if (l === 'stage') chatStageLayout();
+      else if (l === 'rail') chatRailLayout();
       else if (l === 'auto'){ coreVars.lastLayout = 'auto'; autoLayout(); }   // first, so its save() stores it
       else tile();
       store.changed('layout');

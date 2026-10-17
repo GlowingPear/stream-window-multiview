@@ -1,4 +1,5 @@
 import { BAR, GAP, colsMode, lastLayout, modeSel, mutedChk, popped, wins } from '../core.js';
+import { chatRailLayout } from './chat-rail.js';
 import { chatStageLayout } from './chat-stage.js';
 import { columnsLayout } from './columns.js';
 import { SH, SW, focusWin } from './geometry.js';
@@ -79,7 +80,7 @@ async function addChatIfLive(ch, r){
   if (info && info.name) rememberName(ch, info.name);
   if (!info || !info.live || wins.some(o => o.kind === 'chat' && o.channel === ch) || !wins.some(o => o.channel === ch)) return;
   createWin({ kind: 'chat', channel: ch }, chatRectBeside(r));
-  if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(); else if (lastLayout === 'stage') chatStageLayout();
+  if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(); else if (lastLayout === 'stage') chatStageLayout(); else if (lastLayout === 'rail') chatRailLayout();
   save();
 }
 

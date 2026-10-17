@@ -5,6 +5,7 @@ function mentionAgent(){
   if (window.__kmvMention) return true;
   const seen = new Set(), marks = new Map(), known = new Set(), said = new Map(), rowSaid = new WeakMap();
   let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0;
+  let fresh = 0, counting = false;                           // new messages from others since the app last asked (count())
   // Clicks and typing in the chat: the window may already have focus, so the app sees no new focus to mark it seen.
   // Every kind of click counts, on the window before the page's own handlers: Kick's mod shortcuts on a
   // name (Shift, Cmd/Ctrl, Cmd/Ctrl + Shift + Click: delete, timeout, ban) may stop some of them.
@@ -100,7 +101,7 @@ function mentionAgent(){
     return out.some(x => lineOf(x.l)) ? out : textLines(document.body.innerText).map(l => ({ l }));
   }
   function scan(){
-    if ((!me && !wordRe && !watch) || !document.body) return;
+    if ((!me && !wordRe && !watch && !counting) || !document.body) return;
     const all = chatLines();
     const replyRe = me && new RegExp('^Replying to\\s+@?' + esc(me) + '(?![A-Za-z0-9_])', 'i');
     const atRe = me && new RegExp('(^|[^A-Za-z0-9_])@' + esc(me) + '(?![A-Za-z0-9_])', 'i');
@@ -131,6 +132,7 @@ function mentionAgent(){
       if (!armed){ if (watch && known.size < 2000) known.add(m[1].toLowerCase()); continue; }   // people already chatting before we started
       const sender = m[1], body = m[2];
       if ((me && sender.toLowerCase() === me) || mine(l)) continue;      // your own messages
+      if (lineNew) fresh++;
       if (watch && lineNew && lines.length < 300) lines.push({ sender, body, line: l, t: Date.now(), mod });
       if (!me && !wordRe) continue;
       const toMe = !!me && replyNew && replyRe.test(r), at = !!me && lineNew && atRe.test(body);
@@ -269,6 +271,15 @@ function mentionAgent(){
       if (marks.size > 200) marks.delete(marks.keys().next().value);
     },
     look(){ scan(); },
+    // how many new messages others wrote since it was last asked (Chat Stage counts them for the chats out of sight).
+    // The first time, what's there is old. With mentions and spam alerts off nothing has armed it yet, and
+    // messages only count once it's armed, so the first ask arms it.
+    count(){
+      const first = !counting; counting = true;
+      if (first && !armed) arm(); else scan();
+      const n = first ? 0 : fresh; fresh = 0; return n;
+    },
+    ready(){ return armed; },                                // for the tests: new messages count from now on
     take(){ scan(); const q = { m: queue, l: lines, k: [...known], c: seenAt }; queue = []; lines = []; known.clear(); seenAt = 0; return q; }
   };
   return true;

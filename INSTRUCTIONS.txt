@@ -50,6 +50,9 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
 - **Chat Stage** (K): one stream big with its chat beside it in big, easy-to-read text. The other streams wait in a strip under the big one: click one (or its name in the switch control) to put it and its chat on the stage. The other chats stay open out of sight, so mentions and alerts still work, and a picture in the strip shows **@** when its chat mentions you.
   - **A− / A+** in the stage chat's title bar make it bigger than the other chats (100% to 200%, remembered). The normal chat text size still counts too.
   - Drag the line between the stream and the chat to make the chat wider or narrower (remembered).
+- **Chat Rail** (Shift+K): every stream in a grid, and one chat in big, easy-to-read text in a rail on the right. The stream whose chat is shown has a green outline.
+  - **Tabs** across the rail's top show each chat: click one to show that chat. A tab shows how many new messages its chat has had since it was shown, and **@** when it mentions you. **Show chat** on a stream (or its name in the switch control) does the same. The other chats stay open out of sight, so mentions and alerts still work.
+  - **A− / A+** at the end of the tabs make the rail chat bigger than the other chats (100% to 200%, remembered). The normal chat text size still counts too.
 - **Chat focus**: streams down the side at exact video size, chats get the rest. Pick 1, 2 or 3 stream columns under Options in the Layout menu (or pick Chat focus again). Drag a stream onto another to swap them (their chats swap too).
 - **Auto layout** and **Tile**: arrange everything to fit the screen. With "Fit in channels that open by themselves" on (Settings > Layouts), a saved channel that opens because it went live is added as the last stream and Auto layout is redone, keeping the other streams in order.
 - **Lock layout** (the padlock at the top of the Layout menu, or Shift+L): windows keep their size and place, so you can't move or resize one by accident. You can still drag a window onto another to swap them (a stream onto a stream, a chat onto a chat; in Chat focus and Game focus a stream's chat goes with it), pick another channel from a title bar, close, maximise, mute and pause. Windows you close or open (also channels that open by themselves when they go live) are fitted into the layout. While it's locked the Layout button shows a padlock.
@@ -257,6 +260,7 @@ Shortcuts work when the app has your keyboard. If you just clicked inside a stre
 - F : Focus view (again for Columns)
 - G : Game focus
 - K : Chat Stage
+- Shift+K : Chat Rail
 - C : Columns
 - Shift+C : Chat focus
 - T : Tile

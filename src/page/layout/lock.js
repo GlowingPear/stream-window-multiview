@@ -1,4 +1,5 @@
 import { $, ROLE, colsMode, empty, lastLayout, wins } from '../core.js';
+import { chatRailLayout } from './chat-rail.js';
 import { chatStageLayout } from './chat-stage.js';
 import { columnsLayout } from './columns.js';
 import { gameLayout, isGame } from './game-focus.js';
@@ -33,6 +34,7 @@ function refitLocked(){
   else if (lastLayout === 'tile') tile();
   else if (lastLayout === 'chatfocus') chatFocusLayout();
   else if (lastLayout === 'stage') chatStageLayout();
+  else if (lastLayout === 'rail') chatRailLayout();
   else if (lastLayout === 'game') gameLayout();
 }
 function toggleMax(w){

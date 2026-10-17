@@ -2,6 +2,7 @@ import { closeWin, resolveYt } from '../chat/view-menu.js';
 import { BAR, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, mutedChk, sizehint, snapChk, stage, wins } from '../core.js';
 import { VOL_JS } from '../in-site/volume.js';
 import { startSwapDrag } from '../layout/chat-focus.js';
+import { isRail } from '../layout/chat-rail.js';
 import { isStage } from '../layout/chat-stage.js';
 import { startColDrag } from '../layout/column-drag.js';
 import { columnsLayout } from '../layout/columns.js';
@@ -146,7 +147,7 @@ function createWin(spec, rect){
       return;
     }
     if (ROLE === 'streams' && w.kind === 'stream'){ e.preventDefault(); startSwapDrag(e, w, bar); return; }
-    if (isStage()){ e.preventDefault(); return; }    // Chat Stage places every window itself (a picture in the strip: click it)
+    if (isStage() || isRail()){ e.preventDefault(); return; }    // Chat Stage and Chat Rail place every window themselves
     if (!colsMode && lastLayout === 'chatfocus' && w.kind !== 'chat' && ROLE === 'main'){
       e.preventDefault(); startSwapDrag(e, w, bar); return;
     }

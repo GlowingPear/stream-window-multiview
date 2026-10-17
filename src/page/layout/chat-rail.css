@@ -1,0 +1,33 @@
+/* Chat Rail (layout/chat-rail.js): the streams in a grid, one chat in big text in the rail, tabs across its top */
+.win.rl-off{visibility:hidden;pointer-events:none}
+.win.rl-chat{border-color:color-mix(in srgb,var(--accent) 55%,var(--line2));border-top-left-radius:0;border-top-right-radius:0}
+.win.rl-shown{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+body.chatrail .win .bar{cursor:default}
+body.chatrail .win .rz{display:none}
+/* the tabs, sitting on top of the rail chat */
+#railTabs{position:absolute;z-index:40;display:none;align-items:center;gap:6px;padding:0 6px;box-sizing:border-box;
+  border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line2));border-bottom:0;border-radius:8px 8px 0 0;background:var(--panel)}
+body:not(.chatrail) #railTabs{display:none !important}
+.rl-list{position:relative;flex:1;min-width:0;display:flex;align-items:center;gap:2px;overflow-x:auto;scrollbar-width:none}
+.rl-list::-webkit-scrollbar{display:none}
+.rl-tab{flex:none;display:flex;align-items:center;gap:5px;max-width:150px;height:28px;padding:0 9px;box-sizing:border-box;border:0;
+  border-bottom:2px solid transparent;border-radius:6px 6px 0 0;background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.rl-tab:hover{background:var(--panel2);color:var(--text)}
+.rl-tab.on{background:var(--bg);color:var(--text);border-bottom-color:var(--accent);cursor:default}
+.rl-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rl-n,.rl-at{display:none;flex:none;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;font-size:11px;font-weight:800;
+  line-height:18px;text-align:center;font-variant-numeric:tabular-nums}
+.rl-n{background:var(--line2);color:var(--text)}
+.rl-at{background:var(--al,#f5b041);color:#1a1a1a}
+.rl-tab.new .rl-n,.rl-tab.at .rl-at{display:inline-block}
+/* the rail chat's text size */
+.rl-size{display:flex;align-items:center;gap:2px;flex:none;padding:0 2px;border-radius:6px;background:var(--bg)}
+.rl-size button{height:22px;min-width:26px;padding:0 4px;border:0;border-radius:5px;background:transparent;color:var(--text);font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.rl-size button:hover:not(:disabled){background:var(--panel2)}
+.rl-size button:disabled{opacity:.35;cursor:default}
+.rl-size em{min-width:36px;text-align:center;font-style:normal;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+/* Show chat in a stream's title bar, or Chat shown on the outlined one */
+.rl-show{flex:none;height:22px;padding:0 8px;border:0;border-radius:6px;background:var(--bg);color:var(--text);
+  font:inherit;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer}
+.rl-show:hover{background:var(--accent);color:var(--accent-ink)}
+.win.rl-shown .rl-show{background:var(--accent);color:var(--accent-ink);cursor:default;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
