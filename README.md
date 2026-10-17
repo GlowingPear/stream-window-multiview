@@ -130,6 +130,7 @@ Open **Channels** (top left, or press `N`), paste or type any of these into its 
 | `←` `→` | Previous / next stream big |
 | `M` / `Space` / `R` | Mute / pause / refresh the big stream |
 | `S` | Switch control on / off |
+| `Z` / `Shift+Z` | Blow up chat on click on / off / blow up the last chat you clicked now |
 | `W` | Show another app's window |
 
 All shortcuts can be switched off in **Help › Keyboard shortcuts**.

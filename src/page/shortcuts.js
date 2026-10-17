@@ -1,4 +1,4 @@
-import { blownWin, putBack } from './chat/blow-up.js';
+import { blowUpNow, blownWin, putBack, toggleBlowMode } from './chat/blow-up.js';
 import { $, ROLE, colsMode, input, wins } from './core.js';
 import { buildCols, columnsLayout } from './layout/columns.js';
 import { syncSwitcher } from './layout/focus-only.js';
@@ -77,6 +77,7 @@ function init(){
       case 'a': layoutPick('auto'); break;
       case 'l': if (e.shiftKey) setLayoutLocked(!layoutLocked); else $('#layoutBtn').click(); break;
       case 's': $('#swBtn').click(); break;
+      case 'z': if (e.shiftKey) blowUpNow(big); else toggleBlowMode(); break;   // Blow up chat
       case 'm':
         if (e.shiftKey){ wins.filter(o => o.kind === 'stream').forEach(o => { o.muted = true; pushVol(o); }); save(); syncSwitcher(); flash('All streams muted'); }
         else if (big && big.kind === 'stream'){ fsMute(big, false); flash(`${chLabel(big.channel)} ${big.muted ? 'muted' : 'unmuted'}`); }

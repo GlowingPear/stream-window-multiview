@@ -66,7 +66,8 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
   - Floating: a panel you can drag and resize anywhere, in every layout.
   - Own window: its own window, even on another monitor. The pin keeps it on top.
 - "Pause all except focus" pauses every stream except the big one.
-- **Blow up chat on click**: while it's on, clicking into a chat window lifts it into the middle of the screen, big and with bigger text, so it's easy to read. − and + in its bar set how big its text is (remembered). Esc, **Put back** or a click outside it puts it back.
+- **Blow up chat on click** (Z): while it's on, clicking into a chat window lifts it into the middle of the screen, big and with bigger text, so it's easy to read. − and + in its bar set how big its text is (remembered). Esc, **Put back** or a click outside it puts it back.
+  - **Shift+Z** blows up the chat you last clicked right away, even with the mode off; Shift+Z again puts it back.
 
 ## Playing a game (Game focus)
 - Pick Layout > Game focus (or press G). The big area on the left is for your game, everything else goes in the side panel.
@@ -263,6 +264,10 @@ Shortcuts work when the app has your keyboard. If you just clicked inside a stre
 - L : Layout menu
 - Shift+L : lock or unlock the layout
 - S : switch control on or off
+
+### Chats
+- Z : Blow up chat on click on or off
+- Shift+Z : blow up the chat you last clicked now (again, or Esc, puts it back)
 
 ### The big stream (in Focus view; otherwise the first stream)
 - 1 to 9 : make that stream big

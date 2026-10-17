@@ -70,6 +70,15 @@ function toggleBlowMode(){
   setBlowMode(!blowOn);
   flash(blowOn ? 'Blow up chat is on: click into a chat to make it big. Esc puts it back.' : 'Blow up chat is off');
 }
+// Shift+Z: blow up a chat now, whether or not the mode is on: the one you last clicked, else the big stream's chat,
+// else the first. Pressed again, it puts it back.
+function blowUpNow(big){
+  if (blown){ putBack(); return; }
+  const chats = wins.filter(w => w.kind === 'chat');
+  const w = chats.find(c => c.el.classList.contains('active')) || (big && chats.find(c => c.channel === big.channel)) || chats[0];
+  if (!w){ flash('Open a chat first'); return; }
+  blowUp(w);
+}
 function updateBlowBtn(){
   const b = featSwitch.querySelector('.fs-blow'); if (!b) return;
   b.classList.toggle('on', blowOn);
@@ -105,4 +114,4 @@ function init(){
   window.blownWin = () => blown && blown.channel;   // for the tests
 }
 
-export { blownWin, blowOn, blowUp, init, putBack, toggleBlowMode, updateBlowBtn };
+export { blownWin, blowOn, blowUp, blowUpNow, init, putBack, toggleBlowMode, updateBlowBtn };

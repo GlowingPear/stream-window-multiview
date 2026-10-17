@@ -86,3 +86,30 @@ test('Blow up chat: Put back, a click on the dimmed part, switching it off and c
   assert.equal(await blown(page), null, 'closing the chat');
   assert.ok(!(await page.isVisible('#blowBg')));
 });
+
+test('Blow up chat: Z switches the mode, Shift+Z blows up the chat you last clicked now and puts it back', async t => {
+  const page = await focusView(t);
+  const btnOn = () => page.locator('#featSwitch .fs-blow').getAttribute('aria-pressed');
+  await press(page, 'z');
+  assert.equal(await btnOn(), 'true', 'Z: on');
+  assert.match(await page.textContent('#flash, .flash, body'), /Blow up chat is on/);
+  await press(page, 'z');
+  assert.equal(await btnOn(), 'false', 'Z again: off');
+  // Shift+Z with the mode off: the chat you last clicked (its title bar), else the big stream's
+  await page.click('#stage .win.chat:has(.title:text-is("bravo")) .bar .grab');
+  await press(page, 'Shift+Z');
+  assert.equal(await blown(page), 'bravo', 'the one you clicked');
+  await press(page, 'Shift+Z');
+  assert.equal(await blown(page), null, 'again: put back');
+  await page.evaluate(() => document.querySelectorAll('#stage .win.active').forEach(e => e.classList.remove('active')));
+  await press(page, 'Shift+Z');
+  assert.equal(await blown(page), 'alpha', "no chat clicked: the big stream's chat");
+  await press(page, 'Escape');
+  assert.equal(await blown(page), null);
+  assert.equal(await btnOn(), 'false', 'the mode stayed off');
+  // no chats: says so
+  await page.evaluate(() => document.querySelectorAll('#stage .win.chat .bar [data-a=close]').forEach(b => b.click()));
+  await press(page, 'Shift+Z');
+  assert.equal(await blown(page), null);
+  assert.match(await page.textContent('body'), /Open a chat first/);
+});
