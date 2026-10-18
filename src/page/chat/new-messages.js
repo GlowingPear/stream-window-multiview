@@ -61,6 +61,8 @@ function init(){
   if (DESKTOP && ROLE === 'main') setInterval(askChats, 3000);
   const sw = document.getElementById('chatCountsSet');
   if (sw){
+    const row = sw.closest('.st-row');
+    row.hidden = row.previousElementSibling.hidden = !DESKTOP;   // its group too: the chats are asked from the app
     sw.checked = countsOn;
     sw.addEventListener('change', () => setCountsOn(sw.checked));
   }
