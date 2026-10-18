@@ -3,7 +3,7 @@
 // opening and closing windows, and leaving for another layout.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { setup, add, win, box, drag, press } = require('../app');
+const { setup, add, win, box, drag, press, settled } = require('../app');
 const { openApp } = setup();
 
 async function railOf(t, names = ['alpha', 'bravo', 'charlie', 'delta'], size = { width: 1600, height: 900 }) {
@@ -122,6 +122,7 @@ test('Chat Rail: tabs count new messages since a chat was shown, and show @ when
   assert.equal(await badge('alpha'), '');
   // another layout keeps the counts until you can see the chat
   await press(page, 't');
+  await settled(page);
   await page.evaluate(() => { window.chatNew('charlie', 0); window.chatNew('alpha', 2); });   // in Tile every chat is in sight
   await press(page, 'Shift+K');
   assert.equal((await badge('charlie')).replace('@', ''), '', 'charlie\'s 99+ was seen in Tile (its @ is the alert\'s, not ours)');
