@@ -24,9 +24,9 @@ const restartLabel = u => (u.installed_app ? (u.platform === 'darwin' && !u.swap
 // to do, 'bad' for a problem) and the pear's badge ('spin', 'drop' or an icon's name).
 function updMsg(u){
   if (u.git){   // checking still works (to see the latest release and its notes), installing doesn't
-    const now = u.state === 'checking' ? ' Checking…' : u.state === 'error' ? ' The check didn\'t work.'
-      : u.latest ? [' The newest version is ', ver(u.latest), '.'] : '';
-    return { tone: '', badge: u.state === 'checking' ? 'spin' : 'lock', say: ['This copy is a git checkout, so it isn\'t updated automatically. Use ', element('code', null, 'git pull'), ' to update it.', now] };
+    const now = u.state === 'checking' ? [' Checking…'] : u.state === 'error' ? [' The check didn\'t work.']
+      : u.latest ? [' The newest version is ', ver(u.latest), '.'] : [];
+    return { tone: '', badge: u.state === 'checking' ? 'spin' : 'lock', say: ['This copy is a git checkout, so it isn\'t updated automatically. Use ', element('code', null, 'git pull'), ' to update it.', ...now] };
   }
   switch (u.state){
     case 'norepo': return { tone: 'bad', badge: 'alert', say: ['No GitHub page is set yet. Enter the project\'s GitHub name below (owner/repository).'] };
@@ -182,7 +182,7 @@ function renderUpdates(){
   shownKey = key;
   const keep = body.querySelector('.upd-repo input'), typed = keep && document.activeElement === keep ? keep.value : null;
   body.replaceChildren(heroCard(u), waiting(u) ? releaseCard(u) : '', settingRows(u, typed));
-  settingsDlg.querySelector('.upd-foot.st-end').hidden = false;
+  settingsDlg.querySelector('.upd-foot.st-end').hidden = ROLE !== 'main';   // (like the card above, only in the main window)
   if (typed != null) body.querySelector('.upd-repo input').focus();
 }
 async function restartForUpdate(){
