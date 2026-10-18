@@ -51,9 +51,9 @@ const actAgo = t => { const s = Math.max(0, Math.round((Date.now() - t) / 1000))
 const actNames = list => (Array.isArray(list) && list.length ? list.join(', ') : 'nothing');
 const actPlural = (n, one) => n + ' ' + one + (n === 1 ? '' : 's');
 
-// drops.farming's state, in words.
+// drops.farming's state, in words (null with no state: its fields say it).
 function farmingWords(f){
-  if (!f || typeof f !== 'object') return "What's being farmed";
+  if (!f.state) return null;
   if (f.state === 'farming' && f.drop){
     const where = f.channel && (f.channel.name || f.channel.slug), p = f.drop.progress;
     return 'Farming ' + (f.drop.campaign || f.drop.category || 'a drop') + (where ? ' on ' + where : '') + (p ? ' · ' + Math.floor(p.done) + ' of ' + p.total + ' min' : '');
