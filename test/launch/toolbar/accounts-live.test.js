@@ -182,9 +182,11 @@ test('mention and spam desktop notifications, and clicking one shows that chat',
   await a.win.evaluate(() => window.kmv.notifyMention({ kind: 'mention', channel: 'alpha', label: 'alpha', sender: 'viewer3', body: 'are you on later?' }));
   await a.win.evaluate(() => window.kmv.notifyMention({ kind: 'reply', channel: 'alpha', label: 'alpha', sender: 'viewer4', body: 'yes', quoted: 'what time' }));
   await a.win.evaluate(() => window.kmv.notifyMention({ kind: 'spam', channel: 'alpha', label: 'alpha', sender: 'newacct', body: 'cheap viewers at x com' }));
+  await a.win.evaluate(() => window.kmv.notifyMention({ kind: 'spam', abuse: true, channel: 'alpha', label: 'alpha', sender: 'troll', body: 'kys' }));
   await a.win.waitForTimeout(300);
   const notes = (await st()).notes;
-  assert.deepEqual(notes.map(n => n.title), ['viewer3 mentioned you in alpha\'s chat', 'viewer4 replied to you in alpha\'s chat', 'Likely spam in alpha\'s chat']);
+  assert.deepEqual(notes.map(n => n.title), ['viewer3 mentioned you in alpha\'s chat', 'viewer4 replied to you in alpha\'s chat', 'Likely spam in alpha\'s chat',
+    'Abusive message in alpha\'s chat']);
   assert.match(notes[1].body, /"what time"\s+→\s+yes/);
   assert.equal(notes[2].body, 'newacct: cheap viewers at x com');
   await a.app.evaluate(() => globalThis.__lastNote.emit('click'));

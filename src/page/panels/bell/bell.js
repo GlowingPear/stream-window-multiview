@@ -182,12 +182,12 @@ function noteRow(n, o = {}){
     row.onclick = () => { close(); revealChat(n.channel); };
   } else if (kind === 'spam'){
     top.textContent = n.sender;
-    k.textContent = `${n.score} / ${n.need}`; k.classList.add('spam');
+    k.textContent = `${n.abuse ? 'Abusive · ' : ''}${n.score} / ${n.need}`; k.classList.add('spam');
     k.title = `${n.score} points; ${n.need} needed to be flagged`;
     where.textContent = chLabelP(n.channel);
     body.textContent = n.body || '';
     act('Show chat', () => { close(); revealChat(n.channel); });
-    act('Not spam', () => dropNotes(x => x === n)).title = 'Take it off this list';
+    act(n.abuse ? 'Not abuse' : 'Not spam', () => dropNotes(x => x === n)).title = 'Take it off this list';
     if (SmvSpam.ignored(n.sender, spamOpts().ignore)) acts.insertAdjacentHTML('beforeend', '<span class="nc-note">On the chat bot list</span>');
     else act('Add to bots', () => { ignoreSender(n.sender); renderBell(); }, 'danger').title = `Add ${n.sender} to the chat bot list, so its messages are never flagged`;
     const why = element('div', { class: 'nc-why', hidden: true }, spamWhy(n));
@@ -228,8 +228,8 @@ function noteRow(n, o = {}){
   }
   return row;
 }
-// The same text as the "LIKELY SPAM" tag in the chat.
-const spamWhy = r => `Likely spam (${r.score} points, ${r.need} needed):\n` + (r.signs || []).map(s => `• ${s.text} (+${s.points})`).join('\n');
+// The same text as the "LIKELY SPAM" (or "ABUSIVE") tag in the chat.
+const spamWhy = r => `${r.abuse ? 'Abusive' : 'Likely spam'} (${r.score} points, ${r.need} needed):\n` + (r.signs || []).map(s => `• ${s.text} (+${s.points})`).join('\n');
 function setMyName(n){
   myName = String(n || '').trim().replace(/^@/, '');
   if (myName && !/^[A-Za-z0-9_]{2,30}$/.test(myName)) myName = '';

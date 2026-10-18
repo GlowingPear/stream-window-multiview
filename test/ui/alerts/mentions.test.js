@@ -441,3 +441,29 @@ test('Kick, read from its real markup: emote-only replies, text after an emote, 
     assert.deepEqual((await take()).m, [], `no new alert with message ${i}'s actions showing`);
   }
 });
+
+test('an abusive message is tagged ABUSIVE, and the same message with "(Banned)" after it is not read again', async t => {
+  const app = await openApp(t);
+  const js = await app.evaluate(() => window.chatAgentJs);
+  const page = await app.context().newPage();
+  await page.setContent(`<div id="chat">${row('regular', 'hello there')}</div>`);
+  await page.evaluate(js);
+  await page.evaluate(() => window.__kmvMention.setWatch(true));
+  await page.waitForTimeout(2800);                         // what's already in the chat counts as old
+  const say = h => page.evaluate(x => document.getElementById('chat').insertAdjacentHTML('beforeend', x), h);
+  await say(row('troll', 'ur a whore').replace('<div class="row">', '<div class="row" id="ab">'));
+  const q = await page.evaluate(() => window.__kmvMention.take());
+  assert.deepEqual(q.l.map(l => [l.sender, l.body, l.mod]), [['troll', 'ur a whore', false]]);
+  await page.evaluate(l => window.__kmvMention.mark(l, 'Abusive: test', '#ff5f5f', 'abuse'), q.l[0].line);
+  assert.equal(await page.$eval('#ab > [data-kmv-spam]', e => e.title), 'Abusive: test');
+  assert.equal(await page.$eval('#ab', e => getComputedStyle(e.lastElementChild, '::after').content), '"ABUSIVE"');
+
+  // a moderator bans them: the chat redraws the message with a note after it
+  await page.evaluate(() => document.getElementById('ab').remove());
+  await say(row('troll', 'ur a whore (Banned)'));
+  assert.deepEqual((await page.evaluate(() => window.__kmvMention.take())).l.map(l => [l.body, l.mod]), [['ur a whore (Banned)', true]], 'a moderator\'s change');
+  // typed by someone: a new message, checked like any other
+  await say(row('other', 'gg (Banned)'));
+  await say(row('troll', 'u r a c u n t (timed out)'));
+  assert.deepEqual((await page.evaluate(() => window.__kmvMention.take())).l.map(l => [l.body, l.mod]), [['gg (Banned)', false], ['u r a c u n t (timed out)', false]]);
+});

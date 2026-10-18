@@ -35,7 +35,9 @@ async function modChat(w){
 // The chat bots never counted as a mention ('mention') or flagged as spam ('spam'): the list in Mentions, unless
 // spam alerts have their own.
 const botsFor = kind => kind === 'spam' && !alerts.spam.sharedBots ? alerts.spam.ignore || SmvSpam.BOTS : alerts.mention.bots || SmvSpam.BOTS;
-const spamOpts = () => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS, ignore: botsFor('spam') });
+const spamOpts = () => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS, ignore: botsFor('spam'),
+  abuse: alerts.spam.abuse !== false, abuseWords: alerts.spam.abuseWords || SmvSpam.ABUSE, slurs: alerts.spam.slurs || SmvSpam.SLURS, swears: alerts.spam.swears || SmvSpam.SWEARS,
+  points: alerts.spam.points });
 // seenAt: when you last clicked or typed in that chat; messages from before then don't need a lasting alert.
 async function spamCheck(w, lines, seenAt){
   const mod = await modChat(w);
@@ -59,12 +61,12 @@ function flagSpam(w, l, r, seen){
   const a = alerts.spam;
   if (a.tag){
     const why = spamWhy(r);
-    runIn(w.view, `window.__kmvMention && window.__kmvMention.mark(${JSON.stringify(l.line)}, ${JSON.stringify(why)}, ${JSON.stringify(a.color)})`);
+    runIn(w.view, `window.__kmvMention && window.__kmvMention.mark(${JSON.stringify(l.line)}, ${JSON.stringify(why)}, ${JSON.stringify(a.color)}, ${JSON.stringify(r.abuse ? 'abuse' : 'spam')})`);
   }
   raiseAlert(w, 'spam', seen);
   addNote({ kind: 'spam', channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body, score: r.score, need: r.need, signs: r.signs,
-            unread: !seen }, `Likely spam in ${chLabel(w.channel)}'s chat`);
-  if (wantNotify('spam')) window.kmv.notifyMention({ kind: 'spam', channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body });
+            abuse: r.abuse, unread: !seen }, `${r.abuse ? 'Abusive message' : 'Likely spam'} in ${chLabel(w.channel)}'s chat`);
+  if (wantNotify('spam')) window.kmv.notifyMention({ kind: 'spam', abuse: r.abuse, channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body });
 }
 // Bring a chat into view (and flash it).
 function revealChat(ch){
