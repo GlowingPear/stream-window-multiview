@@ -1458,7 +1458,10 @@ async function scrapeFollowPage(plat, url, { maxRounds = 70 } = {}) {
         const t = (card.querySelector('#channel-title #text, #text.ytd-channel-name, h3, h4, p[title], [data-a-target="preview-card-channel-link"]') || a);
         out.push({ href: a.getAttribute('href'), name: (t.getAttribute && t.getAttribute('title')) || (t.textContent || '').trim() || (a.querySelector('img') && a.querySelector('img').alt) || '' });
       });
-      return { links: out, signedOut: ${JSON.stringify(plat)} === 'youtube' && !!document.querySelector('ytd-masthead a[href*="ServiceLogin"], ytd-masthead ytd-button-renderer a[href*="accounts.google.com"]') };
+      // YouTube signed out: its page says so (ytcfg), or shows a Sign in button
+      const ytOut = !!(window.ytcfg && window.ytcfg.get && window.ytcfg.get('LOGGED_IN') === false)
+        || !!document.querySelector('ytd-masthead a[href*="ServiceLogin"], ytd-masthead ytd-button-renderer a[href*="accounts.google.com"]');
+      return { links: out, signedOut: ${JSON.stringify(plat)} === 'youtube' && ytOut };
     })()`;
     const scrollJs = `(() => {
       window.scrollTo(0, document.documentElement.scrollHeight);

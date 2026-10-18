@@ -224,6 +224,24 @@ test('signed out of YouTube: the button opens the Firefox sign-in steps', T, asy
   await win.click('#ffDlg .dlg-cancel');
 });
 
+test('signed out by YouTube, though the app had the login: says so, and how to copy it again', T, async () => {
+  await app.evaluate(({ ipcMain, BrowserWindow }) => {
+    ipcMain.removeHandler('accounts:status');
+    ipcMain.handle('accounts:status', () => ({ kick: null, twitch: null, youtube: true }));
+    BrowserWindow.getAllWindows().forEach(w => w.webContents.send('account:changed', { platform: 'youtube' }));
+  });
+  await win.waitForFunction(() => /^Logged in:.*YouTube/.test(document.getElementById('loginBtn').title));
+  await openImport('youtube');
+  await answer({ error: 'login' });
+  await win.waitForSelector('#importDlg .imp-login');
+  assert.equal(await text('#importDlg .dlg-sub'), 'YouTube has signed this app out. In Firefox, open youtube.com (choose your account if it asks), then copy your login again.');
+  await win.click('#importDlg .imp-login');
+  assert.ok(await shown('#ffDlg'));
+  assert.match(await text('#ffDlg .dlg-sub'), /asks Firefox to choose your account/);
+  await win.click('#ffDlg .dlg-cancel');
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().forEach(w => w.webContents.send('account:changed', { platform: 'youtube', loggedOut: true })));
+});
+
 test('other outcomes: busy, failed, and nothing followed', T, async () => {
   for (const [result, sub] of [
     [{ error: 'busy' }, 'Another import is still running. Try again in a moment.'],
