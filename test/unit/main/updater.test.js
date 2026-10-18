@@ -214,6 +214,34 @@ test('latestInfo reads the newest release and its installers', async () => {
   assert.deepEqual(info.assets.map(a => a.name), ['Stream-Multiview-Setup-0.2.11.exe'], 'only https downloads are kept');
 });
 
+test('updates come from GitHub; only a copy run from source (or the tests) can point them at a stand-in', () => {
+  const { endpoints } = require('../../../src/main/updater');
+  const env = { SMV_UPDATE_API: 'http://127.0.0.1:9', SMV_UPDATE_RAW: 'http://127.0.0.1:8' };
+  const gh = { api: 'https://api.github.com', raw: 'https://raw.githubusercontent.com', standIn: false };
+  assert.deepEqual(endpoints({ electron: '44.9.0', defaultApp: undefined, env }), gh, 'installed: the variables do nothing');
+  assert.deepEqual(endpoints({ electron: '44.9.0', defaultApp: true, env }), { api: env.SMV_UPDATE_API, raw: env.SMV_UPDATE_RAW, standIn: true }, 'run with electron .');
+  assert.deepEqual(endpoints({ electron: undefined, env }), { api: env.SMV_UPDATE_API, raw: env.SMV_UPDATE_RAW, standIn: true }, 'the unit tests');
+  assert.deepEqual(endpoints({ electron: '44.9.0', defaultApp: true, env: {} }), gh);
+});
+
+test('a download from this computer (http://127.0.0.1) only counts with a stand-in update server', async () => {
+  const load = env => {
+    const keep = { ...process.env };
+    delete require.cache[require.resolve('../../../src/main/updater')];
+    delete process.env.SMV_UPDATE_API; Object.assign(process.env, env);
+    try { return require('../../../src/main/updater'); } finally {
+      for (const k of Object.keys(process.env)) if (!(k in keep)) delete process.env[k];
+      Object.assign(process.env, keep);
+      delete require.cache[require.resolve('../../../src/main/updater')];
+    }
+  };
+  const release = () => fakeFetch([['/releases/latest', reply(200, { tag_name: 'v9.0.0', assets: [
+    { name: 'Stream-Multiview-Setup-9.0.0.exe', browser_download_url: 'http://127.0.0.1:9/a.exe', size: 5 },
+    { name: 'other.exe', browser_download_url: 'http://127.0.0.1.evil.example/a.exe', size: 5 }] })]]);
+  assert.deepEqual((await load({}).latestInfo('o/r', release())).assets, [], 'from GitHub: https only');
+  assert.deepEqual((await load({ SMV_UPDATE_API: 'http://127.0.0.1:9' }).latestInfo('o/r', release())).assets.map(a => a.name), ['Stream-Multiview-Setup-9.0.0.exe']);
+});
+
 test('latestInfo also gets the release notes as GitHub renders them (HTML)', async () => {
   let accept = '';
   const f = async (url, opt) => {
