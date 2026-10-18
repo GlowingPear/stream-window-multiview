@@ -157,12 +157,14 @@ function renderSwitcher(){
       (DESKTOP ? `<button class="fs-play" title="Pause / play"></button>` : '') +
       `<button class="fs-name"><i class="dot"></i><span></span><em class="fs-n" hidden></em></button>` +
       (DESKTOP ? `<span class="fs-volw"><button class="fs-mute" title="Mute / unmute (Shift-click: hear only this one)"></button><input type="range" min="0" max="100" step="1" aria-label="Volume"><span class="fs-pct"></span></span>` : '') +
-      `<button class="fs-rl" title="Refresh ${chLabel(s.channel)}">${icon.reload}</button>` +
+      `<button class="fs-rl">${icon.reload}</button>` +
       (DESKTOP ? `<button class="fs-pv" title="${s.preview ? 'Hide' : 'Show'} small live preview">${s.preview ? icon.chevUp : icon.chevDown}</button>` : '') +
-      `<button class="fs-x" title="Remove ${chLabel(s.channel)} (stream and chat)">${icon.close}</button>` +
+      `<button class="fs-x">${icon.close}</button>` +
       `</div>` +
       (s.preview ? `<div class="fs-thumb" style="height:${thumbH}px"><span class="fs-nopv">Loading preview…</span></div>` : '');
     it.querySelector('.fs-name span').textContent = chLabel(s.channel);
+    it.querySelector('.fs-rl').title = `Refresh ${chLabel(s.channel)}`;
+    it.querySelector('.fs-x').title = `Remove ${chLabel(s.channel)} (stream and chat)`;
     it.classList.add('plat-' + platOf(s.channel));
     const focusIt = () => { if (isStage()) putOnStage(s.channel); else if (isRail()) showRailChat(s.channel); else if (s.channel === featuredCh) toggleFeatured(s.channel); else { setFeatured(s.channel); columnsLayout(); } };
     it.querySelector('.fs-x').onclick = e => { e.stopPropagation(); removeChannel(s.channel); };

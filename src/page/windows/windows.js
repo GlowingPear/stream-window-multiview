@@ -247,7 +247,7 @@ function renderVol(w){
 function pushVol(w){
   renderVol(w);
   if (!w.ready) return;
-  runIn(w.view, `${VOL_JS};window.__kmv.set(${w.vol},${w.muted})`);
+  runIn(w.view, `${VOL_JS};window.__kmv.set(${Number(w.vol) || 0},${!!w.muted})`);
 }
 // A stream's sound is turned on once the app's volume / mute has reached its player (see mountView).
 function liftAudio(w){
@@ -274,7 +274,7 @@ function init(){
       if (w.adjusting) return;
       if (Date.now() < (w.enforceUntil || 0)){ pushVol(w); return; }
       askIn(w.view, 'window.__kmv ? window.__kmv.get() : null').then(r => {
-        if (r && (Math.abs(r.v - w.vol) > 0.005 || r.m !== w.muted)){ w.vol = r.v; w.muted = r.m; renderVol(w); saveSoon(); }
+        if (r && typeof r.v === 'number' && isFinite(r.v) && (Math.abs(r.v - w.vol) > 0.005 || !!r.m !== w.muted)){ w.vol = Math.max(0, Math.min(1, r.v)); w.muted = !!r.m; renderVol(w); saveSoon(); }
         if (r && r.p !== isPaused(w)){
           w.pause = r.p ? pauseEvents.youPause(w.pause) : pauseEvents.youPlay(w.pause);   // its own player paused or played
           w.sentPause = r.p; syncSwitcher();

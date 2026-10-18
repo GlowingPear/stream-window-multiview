@@ -17,7 +17,7 @@ test('element(): text stays text, props become classes, data, styles, handlers a
     const box = element('input', { type: 'checkbox', disabled: true });
     const attrs = Object.fromEntries([...row.attributes].map(a => [a.name, a.value]));
     return { html: row.innerHTML, attrs, clicked, text: row.querySelector('.nm').textContent, imgs: row.querySelectorAll('img').length,
-      box: [box.type, box.disabled], esc: esc('<a href="x">&</a>') };
+      box: [box.type, box.disabled], esc: esc('<a href="x">&</a>'), esc1: esc("it's") };
   });
   assert.equal(r.imgs, 0, 'a name with markup in it is only text');
   assert.equal(r.text, '<img src=x onerror=alert(1)>');
@@ -27,4 +27,5 @@ test('element(): text stays text, props become classes, data, styles, handlers a
   assert.equal(r.html, '<span class="nm">&lt;img src=x onerror=alert(1)&gt;</span> live<i><b>icon</b></i>', 'null, false and empty text left out');
   assert.deepEqual(r.box, ['checkbox', true]);
   assert.equal(r.esc, '&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;');
+  assert.equal(r.esc1, 'it&#39;s', 'single quotes too (an attribute in \'…\')');
 });

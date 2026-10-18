@@ -1,6 +1,7 @@
 import { newFor } from '../chat/new-messages.js';
 import { $, wins } from '../core.js';
 import { chLabel } from '../platforms/platforms.js';
+import { element } from '../shared/element.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { store } from '../shared/store.js';
 import { tipName } from '../shared/tooltips.js';
@@ -61,7 +62,7 @@ function openBarMenu(more){
     item.querySelector('.bm-ico').innerHTML = b.dataset.a === 'chat' ? '+' : b.querySelector('svg')?.outerHTML || b.textContent;
     item.querySelector('.bm-t').textContent = b.dataset.a === 'chat' ? 'Add chat' : tipName(b) || b.title;
     const n = b.querySelector('.ext-n')?.textContent;
-    if (n) item.insertAdjacentHTML('beforeend', `<span class="bm-n">${n}</span>`);
+    if (n) item.append(element('span', 'bm-n', n));
     item.title = b.title;
     item.onclick = () => { barMenu.hidden = true; if (b.isConnected) b.click(); };
     barMenu.appendChild(item);
