@@ -46,22 +46,23 @@ const SmvSpam = (() => {
   const SWEARS = ['fuck', 'fuk', 'fck', 'shit', 'cunt', 'bitch', 'dick', 'cock', 'pussy', 'ass', 'asshole', 'arsehole', 'bastard', 'twat',
     'wanker', 'prick', 'piss', 'bollocks', 'bullshit', 'motherfucker', 'dumbass', 'jackass', 'whore', 'slut', 'stfu', 'gtfo'];
   // Each sign's points (0: off, up to POINT_MAX). flags: a message needs one of these to be flagged at all (without
-  // one there's nothing to promote and no one abused). words is per promo word, up to two of them.
+  // one there's nothing to promote and no one abused). words is per promo word, up to two of them. short: its name in
+  // Settings › Spam alerts › Scoring, on one line (label is there as its tooltip).
   const POINT_MAX = 8;
   const SIGNS = [
-    { key: 'hidden', group: 'spam', points: 3, flags: true, label: 'Disguised link' },
-    { key: 'plain', group: 'spam', points: 1, flags: true, label: 'Link to a site not on the allowed list' },
-    { key: 'contact', group: 'spam', points: 4, flags: true, label: 'Asks to be added off-site' },
-    { key: 'elsewhere', group: 'spam', points: 3, flags: true, label: 'Same message in another open chat' },
-    { key: 'flood', group: 'spam', points: 6, flags: true, label: 'The same word over and over' },
-    { key: 'opener', group: 'spam', points: 6, flags: true, label: 'Known bot opening line' },
-    { key: 'words', group: 'spam', points: 1, label: 'Promo words', note: 'For each one, up to 2' },
-    { key: 'junk', group: 'spam', points: 1, label: 'Emotes breaking up the words' },
-    { key: 'newbie', group: 'spam', points: 1, label: 'New chatter' },
-    { key: 'insult', group: 'abuse', points: 4, flags: true, label: 'Insult aimed at someone' },
-    { key: 'slur', group: 'abuse', points: 5, flags: true, label: 'Slur or threat' },
-    { key: 'swearing', group: 'abuse', points: 5, flags: true, label: 'Swearing over and over' },
-    { key: 'again', group: 'abuse', points: 3, label: 'Keeps at it' }
+    { key: 'hidden', group: 'spam', points: 3, flags: true, label: 'Disguised link', short: 'Disguised link' },
+    { key: 'plain', group: 'spam', points: 1, flags: true, label: 'Link to a site not on the allowed list', short: 'Unlisted link' },
+    { key: 'contact', group: 'spam', points: 4, flags: true, label: 'Asks to be added off-site', short: 'Asks to add off-site' },
+    { key: 'elsewhere', group: 'spam', points: 3, flags: true, label: 'Same message in another open chat', short: 'Same in another chat' },
+    { key: 'flood', group: 'spam', points: 6, flags: true, label: 'The same word over and over', short: 'Word flood' },
+    { key: 'opener', group: 'spam', points: 6, flags: true, label: 'Known bot opening line', short: 'Bot opening line' },
+    { key: 'words', group: 'spam', points: 1, label: 'Promo words', short: 'Promo words, each', note: 'For each one, up to 2' },
+    { key: 'junk', group: 'spam', points: 1, label: 'Emotes breaking up the words', short: 'Emotes between words' },
+    { key: 'newbie', group: 'spam', points: 1, label: 'New chatter', short: 'New chatter' },
+    { key: 'insult', group: 'abuse', points: 4, flags: true, label: 'Insult aimed at someone', short: 'Insult at someone' },
+    { key: 'slur', group: 'abuse', points: 5, flags: true, label: 'Slur or threat', short: 'Slur or threat' },
+    { key: 'swearing', group: 'abuse', points: 5, flags: true, label: 'Swearing over and over', short: 'Swearing again and again' },
+    { key: 'again', group: 'abuse', points: 3, label: 'Keeps at it', short: 'Keeps at it' }
   ];
   const POINTS = Object.fromEntries(SIGNS.map(s => [s.key, s.points]));
   const FLAGS = new Set(SIGNS.filter(s => s.flags).map(s => s.key));

@@ -9,8 +9,8 @@ async function show(page, tab){
   await page.evaluate(() => { document.querySelector('.st-rail [data-s=spam]').hidden = false; openSettings('spam'); });   // (the desktop app's page)
   await page.click(`#spamTabs [data-t=${tab}]`);
 }
-async function openSpam(t, tab){
-  const page = await openApp(t);
+async function openSpam(t, tab, size){
+  const page = await openApp(t, size);
   await show(page, tab);
   return page;
 }
@@ -24,8 +24,9 @@ test('Scoring: every sign has a slider from 0 (Off) to 8 at its built-in points,
   const rows = await page.$$eval('#spamPoints .sc-group', g => g.map(x => [x.dataset.g, [...x.querySelectorAll('.sc-row')].map(r => r.dataset.pt)]));
   assert.deepEqual(rows, [['spam', ['hidden', 'plain', 'contact', 'elsewhere', 'flood', 'opener', 'words', 'junk', 'newbie']], ['abuse', ['insult', 'slur', 'swearing', 'again']]]);
   assert.deepEqual(await page.$eval('.sc-row[data-pt=hidden] input', e => [e.min, e.max, e.value]), ['0', '8', '3']);
-  assert.equal(await page.textContent('.sc-row[data-pt=hidden] .sc-flags'), 'Can flag');
-  assert.equal(await page.textContent('.sc-row[data-pt=newbie] .sc-flags'), '', 'only adds points');
+  assert.equal(await page.textContent('.sc-row[data-pt=hidden] .sc-flag'), '⚑', 'can flag a message');
+  assert.equal(await page.textContent('.sc-row[data-pt=newbie] .sc-flag'), '', 'only adds points');
+  assert.deepEqual(await page.$eval('.sc-row[data-pt=plain] .sc-name', e => [e.textContent, e.title]), ['Unlisted link', 'Link to a site not on the allowed list'], 'a short name, the full one as its tooltip');
   assert.deepEqual(await warnings(page), [], 'the built-in points: no warnings');
   assert.ok(await page.isDisabled('#spamPointsReset'), 'nothing to reset');
 
@@ -122,4 +123,15 @@ test('Lists: abuse words, slurs and threats, and swear words can be added to, em
   await page.fill('[data-add=swears]', '!!');
   await page.click('[data-addbtn=swears]');
   assert.match(await page.textContent('#msg'), /Type a word or phrase/);
+});
+
+test('Scoring fits without scrolling in a 1280 × 800 window, with warnings showing, and every name on one line', async t => {
+  const page = await openSpam(t, 'scoring', { width: 1280, height: 800 });
+  await slide(page, 'plain', 5);
+  await slide(page, 'newbie', 4);
+  assert.equal((await warnings(page)).length, 2);
+  const { scroll, view } = await page.$eval('#settingsDlg .st-body', e => ({ scroll: e.scrollHeight, view: e.clientHeight }));
+  assert.ok(scroll <= view, `no vertical scrolling: ${scroll} > ${view}`);
+  const cut = await page.$$eval('.sc-name', e => e.filter(n => n.scrollWidth > n.clientWidth).map(n => n.textContent));
+  assert.deepEqual(cut, [], 'no name cut short');
 });

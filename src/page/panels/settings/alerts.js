@@ -106,20 +106,19 @@ function scoreRow(s){
   const range = element('input', { type: 'range', min: 0, max: SmvSpam.POINT_MAX, step: 1, 'aria-label': s.label,
     oninput: () => setPoints(s.key, +range.value), ondblclick: () => setPoints(s.key, s.points) });
   return element('div', { class: 'sc-row', dataset: { pt: s.key } },
-    element('span', 'sc-name', s.label, s.note ? element('small', null, s.note) : null),
+    element('span', { class: 'sc-name', title: s.label + (s.note ? ` (${s.note.toLowerCase()})` : '') }, s.short),
+    element('span', { class: 'sc-flag', title: s.flags ? 'This sign can flag a message' : '' }, s.flags ? '⚑' : ''),
     element('span', { class: 'sc-slider', title: `Built-in: ${s.points}. Double-click to put it back.` }, range,
       element('i', { class: 'sc-def', style: { '--at': s.points / SmvSpam.POINT_MAX } })),
-    element('b', 'sc-val'),
-    element('span', { class: 'sc-flags', title: s.flags ? 'This sign can flag a message' : 'Only adds points: a message also needs a sign that can flag it' },
-      s.flags ? 'Can flag' : ''));
+    element('b', 'sc-val'));
 }
+// Spam's signs on the left; abuse's on the right, with the warnings and Reset under them.
 function buildScoring(){
-  const groups = [['spam', 'Spam'], ['abuse', 'Abuse']];
-  $('#spamPoints').replaceChildren(...groups.map(([g, name]) => element('div', { class: 'sc-group', dataset: { g } },
+  [['spam', 'Spam'], ['abuse', 'Abuse']].forEach(([g, name]) => $(`#spamPoints [data-col=${g}]`).replaceChildren(element('div', { class: 'sc-group', dataset: { g } },
     element('div', 'sc-head', name), ...SmvSpam.SIGNS.filter(s => s.group === g).map(scoreRow))));
 }
 function syncScoring(){
-  const box = $('#spamPoints'); if (!box || !box.children.length) return;
+  const box = $('#spamPoints'); if (!box || !box.querySelector('.sc-row')) return;
   const now = SmvSpam.pointsOf(alerts.spam.points), abuseOn = alerts.spam.abuse !== false;
   SmvSpam.SIGNS.forEach(s => {
     const row = box.querySelector(`.sc-row[data-pt="${s.key}"]`), v = now[s.key];
