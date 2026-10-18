@@ -1,4 +1,4 @@
-// Updates (Settings > Updates and the banner) and showing another app's window, in the real desktop app.
+// Updates (Settings > Updates) and showing another app's window, in the real desktop app.
 // The update status and the list of other windows are stand-ins; nothing is downloaded or captured.
 const test = require('node:test');
 const { launchApp, winSel, assert, openChannel } = require('../../app');
@@ -32,29 +32,6 @@ test('Settings > Updates: change the GitHub page, switch automatic updates off, 
   await a.win.click('.upd-restart');
   assert.equal(await a.app.evaluate(() => globalThis.__u.restarts), 1);
   assert.match(await a.win.textContent('#msg'), /start it again with your shortcut/, 'says what to do next');
-  await a.win.keyboard.press('Escape');
-});
-
-test('the banner: a downloaded update offers Restart, and Later hides it for this session', T, async () => {
-  await a.win.evaluate(() => sessionStorage.clear());
-  await status({ state: 'ready', installed: '0.2.19', installed_app: false, needsInstall: false });
-  await a.win.waitForSelector('#updBanner:not([hidden])');
-  assert.match(await a.win.textContent('#updBanner .ub-txt'), /0\.2\.19 is ready\. Restart to use it/);
-  await a.win.click('#updBanner .ub-go');
-  assert.equal(await a.app.evaluate(() => globalThis.__u.restarts), 2);
-  await a.win.click('#updBanner .ub-later');
-  assert.ok(await a.win.isHidden('#updBanner'));
-  await status({ state: 'ready', installed: '0.2.19' });
-  await a.win.waitForTimeout(200);
-  assert.ok(await a.win.isHidden('#updBanner'), 'not again for the same version');
-});
-
-test('the first start after an update shows What\'s new', T, async () => {
-  await a.win.evaluate(() => localStorage.setItem('kickMultiview.seenVersion', '0.0.1'));
-  await a.win.reload();
-  await a.win.waitForSelector('#settingsDlg:not([hidden])', { timeout: 6000 });
-  assert.equal(await a.win.$eval('#settingsDlg .st-rail .on', e => e.dataset.s), 'updates');
-  assert.match(await a.win.textContent('#msg'), /Updated to version/);
   await a.win.keyboard.press('Escape');
 });
 

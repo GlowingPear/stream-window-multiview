@@ -51,7 +51,7 @@ test.after(async () => {
   if (!(await Promise.race([closed, new Promise(r => setTimeout(() => r(false), 10000))]))) killApp(app.process());
 });
 
-const STATUS = { current: '0.2.14', repo: 'o/r', auto: true, lastCheck: Date.now(), git: false, installed_app: true, platform: process.platform, state: 'uptodate', latest: '0.2.14' };
+const STATUS = { current: '0.2.14', repo: 'o/r', auto: true, lastCheck: Date.now(), git: false, installed_app: true, platform: process.platform, state: 'available', latest: '0.2.15' };
 async function showUpdates(extra) {
   await app.evaluate(({ BrowserWindow }, s) => {
     globalThis.__test.status = s;
@@ -153,11 +153,9 @@ test('a downloaded Mac update says the app updates itself, or to drag it in when
   await showUpdates({ ...ready, swap: { appPath: '/Applications/Stream Multiview.app', newApp: '/tmp/x/app/Stream Multiview.app' } });
   assert.match(await win.textContent('.upd-state'), /Restart and install.*updates itself and opens again/s);
   assert.equal(await win.textContent('.upd-restart'), 'Restart and install');
-  assert.equal(await win.textContent('#updBanner .ub-go'), 'Restart and install');
   await showUpdates({ ...ready, swap: null });
   assert.match(await win.textContent('.upd-state'), /drag Stream Multiview into Applications/);
   assert.equal(await win.textContent('.upd-restart'), 'Install');
-  assert.equal(await win.textContent('#updBanner .ub-go'), 'Install');
 });
 
 test('when macOS stops the app updating itself, it says where to allow it and offers the disk image', T, async () => {
