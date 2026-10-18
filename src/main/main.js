@@ -1332,8 +1332,7 @@ async function logout(plat = 'kick') {
     if (w === mainWin || w === streamsWin || w === liveWin || w === switcherWin) return;
     try { if (w.webContents.session === session.fromPartition(part)) w.close(); } catch {}
   });
-  await session.fromPartition(part).clearStorageData();
-  await session.fromPartition(part).clearCache().catch(() => {});
+  await wipeSession(session.fromPartition(part));
   if (plat === 'kick' && liveWin && !liveWin.isDestroyed()) liveWin.destroy();   // the Kick checker starts fresh, logged out
   mainWin?.webContents.send('account:changed', { platform: plat, loggedOut: true });
 }
@@ -1621,13 +1620,16 @@ async function encryptOldLogins() {
   }
   sec.migrated = true; saveSec(sec);
 }
+// Everything a site's session kept: cookies and storage, the cache, passwords typed into the site's sign-in
+// prompts (the auth cache), and the cookie file on disk straight away.
+async function wipeSession(ses) {
+  await ses.clearStorageData().catch(() => {});
+  await ses.clearCache().catch(() => {});
+  await ses.clearAuthCache().catch(() => {});
+  await ses.cookies.flushStore().catch(() => {});
+}
 async function forgetLogins(which) {
-  for (const p of which) {
-    const ses = session.fromPartition(PARTS[p]);
-    await ses.clearStorageData().catch(() => {});
-    await ses.clearCache().catch(() => {});
-    await ses.cookies.flushStore().catch(() => {});
-  }
+  for (const p of which) await wipeSession(session.fromPartition(PARTS[p]));
 }
 const forgetList = () => Object.keys(PARTS).filter(p => sec && sec.forget[p]);
 appIpc.handle('security:get', () => ({ encryption: encryptionState(), forget: { ...sec.forget } }));
