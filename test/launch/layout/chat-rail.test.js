@@ -58,4 +58,6 @@ test('Chat Rail: a tab shows how many new messages a chat out of sight has had',
   await say(shown, 'glowmoth', 'in the rail: you can see it');
   await a.win.waitForFunction(ch => document.querySelector(`#railTabs .rl-tab.new[data-ch="${ch}"] .rl-n`)?.textContent === '3', off, { timeout: 15000 });
   assert.equal(await a.win.$eval('#railTabs .rl-tab.on', b => b.classList.contains('new')), false);
+  // and on its stream's title bar, after its name, where it can be seen (not under the channel's picture)
+  await a.win.waitForFunction(ch => { const b = [...document.querySelectorAll('#stage .win.stream')].find(w => w.querySelector('.title').textContent.toLowerCase() === ch)?.querySelector('.bar-n'); if (!b || b.hidden) return false; const pick = b.parentNode.querySelector('.col-pick').getBoundingClientRect(); return b.textContent === '3' && b.getBoundingClientRect().left >= pick.right - 1; }, off, { timeout: 5000 });
 });
