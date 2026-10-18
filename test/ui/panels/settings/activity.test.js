@@ -164,7 +164,8 @@ test('Activity: the button opens it in place of the card, with the header, the t
   assert.match(v.who, new RegExp(`^Pear DropsEvery message between the two since ${CLOCK}, kept until Stream Multiview quits\\.$`));
   assert.equal(v.chip, 'Connected · 0.1.6');
   assert.equal(await page.getAttribute('#caActivity .act-logo', 'src'), PNG);
-  assert.deepEqual(v.tiles, ['Sent 5 2.0 KB', 'Received 7 146 KB', 'Heartbeat 12s ago last heard', 'Problems 2']);
+  assert.deepEqual([v.tiles[0], v.tiles[1], v.tiles[3]], ['Sent 5 2.0 KB', 'Received 7 146 KB', 'Problems 2']);
+  assert.match(v.tiles[2], /^Heartbeat 1\ds ago last heard$/, 'heard 12 s before the page opened');
   assert.ok(v.bad, 'Problems is red when there are any');
   // the chart: a bar a minute, sent under received, a red dot for a problem, and each one's tooltip
   const chart = await page.$$eval('#caActivity .act-col', cols => cols.map(c => ({ tip: c.title, out: !!c.querySelector('.act-seg.out'), in: !!c.querySelector('.act-seg.in'), bad: !!c.querySelector('.act-bad'), h: [...c.querySelectorAll('.act-seg')].map(s => s.style.height) })));
