@@ -67,7 +67,7 @@ jobs:
             || fail "GitHub doesn't accept the release key (fingerprint $FP): $out. Add its public key (release_key.pub) under Settings > Deploy keys, with Allow write access."
           echo "GIT_SSH_COMMAND=ssh -i $HOME/.ssh/release_key -o IdentitiesOnly=yes -o BatchMode=yes" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
@@ -139,7 +139,7 @@ jobs:
               dist/*-mac.zip
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.sha || github.sha }}
 
@@ -216,7 +216,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.prepare.outputs.sha || github.sha }}
 
