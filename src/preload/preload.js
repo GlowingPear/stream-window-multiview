@@ -93,6 +93,17 @@ contextBridge.exposeInMainWorld('kmv', {
   onWentLive: cb => ipcRenderer.on('live:went-live', (_e, slug, info) => cb(slug, info)),
   onOpenChannel: cb => ipcRenderer.on('open-channel', (_e, slug) => cb(slug)),
 
+  // Connected apps: the link with Pear Drops (Settings › Connected apps)
+  linkSet: on => ipcRenderer.invoke('link:set', !!on),
+  linkState: () => ipcRenderer.invoke('link:state'),
+  linkDisconnect: () => ipcRenderer.invoke('link:disconnect'),
+  linkPairAgain: () => ipcRenderer.invoke('link:pair-again'),
+  linkIcon: () => ipcRenderer.invoke('link:icon'),
+  linkShowPearDrops: () => ipcRenderer.invoke('link:show'),
+  linkTest: () => ipcRenderer.invoke('link:test'),
+  playersReport: state => ipcRenderer.send('link:players', state),
+  onLinkState: cb => ipcRenderer.on('link:state', (_e, st) => cb(st)),
+
   // Streamer profiles
   profileGet: (ch, opt) => ipcRenderer.invoke('profile:get', ch, opt || {}),
   profileList: chs => ipcRenderer.invoke('profile:list', chs),

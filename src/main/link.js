@@ -1,0 +1,111 @@
+// Connected apps (Settings › Connected apps): the link with Pear Drops, through Grapevine
+// (@streamorchard/grapevine). Pear Drops says what it's farming (drops.farming); this app says whether its
+// Kick players are signed in (players), so they can leave the drop credit to Pear Drops while it farms.
+// Pear Drops connects (its slug sorts first); this app only listens. The page decides who's signed in:
+// this only passes things on. Nothing here needs Electron, so the unit tests run it as it is.
+const path = require('path');
+const { createLink, fileKeyStore, KNOWN_APPS, iconDataUrl, paths } = require('@streamorchard/grapevine');
+const { grapevine } = require('../../package.json');
+
+const PEAR_DROPS = 'com.streamorchard.peardrops';
+
+// opts: version (this app's), userData and appData (Electron's folders), dev (a developer copy or a test),
+// env, safeStorage (to encrypt the pairing keys, when it can), send(state) (to both windows), and for the
+// tests timing, log and strict (a message that doesn't fit its schema throws).
+function createPearLink({ version, userData, appData, dev = false, env = process.env, safeStorage = null, send = () => {}, timing, log, strict } = {}) {
+  const self = KNOWN_APPS.find(a => a.id === grapevine.app);
+  const peerApp = KNOWN_APPS.find(a => a.id === PEAR_DROPS);
+  // Where apps find each other: GRAPEVINE_DIR if set; a developer copy or a test uses a folder of its own, so it
+  // never pairs with the apps you really use. Likewise "Not installed" looks in a folder of its own there.
+  const place = env.GRAPEVINE_DIR ? { env } : dev ? { env: { ...env, GRAPEVINE_DIR: path.join(userData, 'grapevine') } } : undefined;
+  const crypt = safeStorage && safeStorage.isEncryptionAvailable() ? {
+    encrypt: t => safeStorage.encryptString(t).toString('base64'),
+    decrypt: t => safeStorage.decryptString(Buffer.from(t, 'base64'))
+  } : {};
+  let on = false;              // the page's link.peardrops setting
+  let farming = null;          // the last drops.farming.changed from Pear Drops
+  let running = false;
+  const link = createLink({
+    app: { id: self.id, formerIds: [], slug: self.slug, name: self.name, version, summary: self.summary, homepage: self.homepage, download: self.download, icon: self.icon },
+    provides: grapevine.provides,
+    uses: grapevine.uses,
+    allowed: id => id === PEAR_DROPS && on,
+    keys: fileKeyStore(path.join(userData, 'grapevine.json'), crypt),
+    appDataDir: dev ? path.join(userData, 'demo-apps') : appData,
+    ...(place ? { place } : {}),
+    ...(timing ? { timing } : {}),
+    ...(log ? { log } : {}),
+    ...(strict !== undefined ? { strict } : {})
+  });
+
+  // What the page shows: the switch, Pear Drops' card (without its logo, sent once by icon()), what it's farming
+  // while connected, and whether it's open at all (its socket is there), for holding Kick players at start-up.
+  function state() {
+    const { icon, ...peer } = link.peers().find(p => p.id === PEAR_DROPS) || {};
+    const connected = link.isConnected(PEAR_DROPS);
+    return { on, peer, farming: connected ? farming : null, open: paths.listSlugs(place).includes(peerApp.slug), wait: +env.SMV_LINK_SIGN_BACK_IN_MS || null };
+  }
+  const push = () => send(state());
+  link.on('change', push);
+  link.on('connected', push);
+  link.on('disconnected', () => { farming = null; push(); });
+  link.on('event', (from, name, params) => {
+    if (from !== PEAR_DROPS || name !== 'drops.farming.changed') return;
+    farming = params;
+    push();
+  });
+
+  // The players each window reported (the main one and the streams window): merged into one players.changed,
+  // sent only when it differs from the last one. players.get answers with the last one by itself.
+  const reports = { main: null, streams: null };
+  let lastSent = '';
+  function playersReport(role, report) {
+    reports[role === 'streams' ? 'streams' : 'main'] = report && report.platforms ? report : null;
+    const merged = mergePlayers(reports.main, reports.streams);
+    if (!merged) return null;
+    const text = JSON.stringify(merged);
+    if (text === lastSent) return null;
+    lastSent = text;
+    return link.publish('players.changed', merged);
+  }
+  // The streams window closed: its players are gone.
+  const streamsClosed = () => playersReport('streams', null);
+
+  async function setOn(v) {
+    on = !!v;
+    if (on && !running) { running = true; try { await link.start(); } catch (e) { running = false; if (log) log('error', String(e && e.message || e)); } }
+    else if (!on && running) { running = false; await link.stop(); farming = null; }
+    link.refresh();
+    push();
+    return state();
+  }
+  async function disconnect() {
+    await link.disconnect(PEAR_DROPS);
+    return setOn(false);
+  }
+  function pairAgain() { link.pairAgain(PEAR_DROPS); return state(); }
+  const icon = () => iconDataUrl(peerApp.icon);
+  const showPearDrops = () => link.request(PEAR_DROPS, 'drops.farming.show').catch(() => ({ shown: false }));
+  const test = () => link.test(PEAR_DROPS);
+  async function stop() { if (running) { running = false; await link.stop(); } }
+
+  return { link, state, setOn, disconnect, pairAgain, icon, showPearDrops, test, playersReport, streamsClosed, stop };
+}
+
+// Two windows' players.changed fields as one: a site is signed in or out the same in both (the main window's
+// word wins, the streams window may not have heard yet), and its open streams are both windows' together.
+function mergePlayers(a, b) {
+  if (!a && !b) return null;
+  if (!a || !b) return { platforms: { ...(a || b).platforms } };
+  const platforms = {};
+  for (const p of new Set([...Object.keys(a.platforms), ...Object.keys(b.platforms)])) {
+    const x = a.platforms[p], y = b.platforms[p];
+    if (!x || !y) { platforms[p] = x || y; continue; }
+    const seen = new Set(), open = [];
+    for (const ch of [...x.open, ...y.open]) { const k = ch.platform + ':' + ch.slug; if (!seen.has(k)) { seen.add(k); open.push(ch); } }
+    platforms[p] = { ...x, open };
+  }
+  return { platforms };
+}
+
+module.exports = { createPearLink, mergePlayers, PEAR_DROPS };

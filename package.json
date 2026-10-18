@@ -7,6 +7,15 @@
   "author": "GlowingPear",
   "license": "GPL-3.0-only",
   "homepage": "https://github.com/GlowingPear/stream-window-multiview",
+  "grapevine": {
+    "app": "com.glowingpear.streammultiview",
+    "provides": {
+      "players": "1.0"
+    },
+    "uses": {
+      "drops.farming": "1.0"
+    }
+  },
   "main": "src/main.js",
   "private": true,
   "scripts": {
@@ -24,7 +33,8 @@
     "visual-diff": "node scripts/visual-diff.js",
     "page-imports": "node scripts/page-imports.js",
     "dist:win": "npx --yes electron-builder@25.1.8 --win --publish never",
-    "dist:mac": "npx --yes electron-builder@25.1.8 --mac --publish never"
+    "dist:mac": "npx --yes electron-builder@25.1.8 --mac --publish never",
+    "grapevine:check": "grapevine-check"
   },
   "devDependencies": {
     "electron": "^38.0.0"
@@ -110,6 +120,7 @@
     "publish": null
   },
   "dependencies": {
+    "@streamorchard/grapevine": "^0.7.2",
     "electron-chrome-extensions": "4.9.0",
     "electron-chrome-web-store": "0.13.0"
   }
