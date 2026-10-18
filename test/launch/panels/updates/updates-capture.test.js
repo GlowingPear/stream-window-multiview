@@ -59,9 +59,11 @@ test('show another app\'s window: pick it, it plays as a live picture, pause it,
   await openChannel(a.win, 'alpha');   // the switch control shows when there's a stream
   await a.win.keyboard.press('s');                     // the switch control lists it
   await a.win.waitForSelector('#featSwitch .fs-item.cap .fs-play');
-  await a.win.waitForTimeout(500);                    // the switch control settles after the new stream
-  await a.win.click('#featSwitch .fs-item.cap .fs-play');
-  await a.win.waitForFunction(() => document.querySelector('#stage .win.capture video').srcObject.getVideoTracks()[0].enabled === false, null, { timeout: 3000 });   // paused: the picture freezes
+  // paused: the picture freezes. The switch control is drawn again when the new stream's name comes in, and a
+  // press that spans a redraw is lost, so press until it takes (pausing is at once).
+  const capPaused = () => a.win.evaluate(() => document.querySelector('#stage .win.capture video').srcObject.getVideoTracks()[0].enabled === false);
+  for (let i = 0; i < 5 && !(await capPaused()); i++) await a.win.click('#featSwitch .fs-item.cap .fs-play');
+  assert.ok(await capPaused(), 'paused');
   await a.win.click('#featSwitch .fs-item.cap .fs-play');
   await a.win.click('#featSwitch .fs-item.cap .fs-rl');
   await a.win.waitForFunction(() => document.querySelector('#stage .win.capture video').readyState >= 2);
