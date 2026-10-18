@@ -202,7 +202,7 @@ jobs:
           tail -n 40 "$RUNNER_TEMP/build.log" | sed -e 's/%/%25/g' -e 's/\r//g' | awk '{printf "%s%%0A", $0}' > tail.txt
           echo "::error title=Build log::$(cat tail.txt)"
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: installer-${{ matrix.os }}
           path: ${{ matrix.files }}
