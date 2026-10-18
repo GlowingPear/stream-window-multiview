@@ -101,8 +101,10 @@ contextBridge.exposeInMainWorld('kmv', {
   linkIcon: () => ipcRenderer.invoke('link:icon'),
   linkShowPearDrops: () => ipcRenderer.invoke('link:show'),
   linkTest: () => ipcRenderer.invoke('link:test'),
+  linkActivity: opts => ipcRenderer.invoke('link:activity', opts),
   playersReport: state => ipcRenderer.send('link:players', state),
   onLinkState: cb => ipcRenderer.on('link:state', (_e, st) => cb(st)),
+  onLinkActivity: cb => ipcRenderer.on('link:activity', () => cb()),
 
   // Streamer profiles
   profileGet: (ch, opt) => ipcRenderer.invoke('profile:get', ch, opt || {}),

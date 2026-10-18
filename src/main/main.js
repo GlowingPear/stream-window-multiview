@@ -14,6 +14,7 @@ const path = require('path');
 const fs = require('fs');
 const { youtubeLoginFromFirefox } = require('./firefox-login');
 const extensions = require('./extensions');
+const { pageOptions } = require('./activity');
 
 // Each platform's chats + login window share one saved session per platform, so you log in once.
 const PARTITION = 'persist:kick';
@@ -471,7 +472,12 @@ ipcMain.on('streams:report', (_e, list) => { lastStreams = cleanSpecs(list); });
 /* ---------- Connected apps: the link with Pear Drops (link.js) ---------- */
 // Made the first time the page asks (after the app is ready, for safeStorage). The page sends its Connect
 // switch (the link.peardrops setting) at start and when it changes: this process can't read the page's settings.
-let pearLink;
+let pearLink, activityTimer = null;
+// The Activity view fetches its page again when there's something new: told at most every 300 ms.
+function activityChanged() {
+  if (activityTimer) return;
+  activityTimer = setTimeout(() => { activityTimer = null; if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('link:activity'); }, 300);
+}
 function getPearLink() {
   if (pearLink !== undefined) return pearLink;
   try {
@@ -481,6 +487,7 @@ function getPearLink() {
       version: app.getVersion(), userData: app.getPath('userData'), appData: app.getPath('appData'),
       dev: !app.isPackaged && !!process.env.SMV_DEV_DATA, safeStorage,
       send: st => appWins().forEach(w => w.webContents.send('link:state', st)),
+      activity: activityChanged,
       log: (level, text) => { if (level !== 'info') console.warn('[grapevine]', text); }
     });
   } catch (e) { console.warn('Connected apps are unavailable:', e.message); pearLink = null; }   // e.g. its package not installed yet
@@ -494,6 +501,7 @@ ipcMain.handle('link:pair-again', () => getPearLink()?.pairAgain() ?? null);
 ipcMain.handle('link:icon', () => getPearLink()?.icon() ?? '');
 ipcMain.handle('link:show', () => getPearLink()?.showPearDrops() ?? { shown: false });
 ipcMain.handle('link:test', () => getPearLink()?.test() ?? { ok: false, reason: 'unknown', text: "Connected apps aren't available in this copy" });
+ipcMain.handle('link:activity', (_e, opts) => getPearLink()?.activityPage(pageOptions(opts)) ?? null);
 ipcMain.on('link:players', (e, report) => { try { getPearLink()?.playersReport(fromStreams(e) ? 'streams' : 'main', report); } catch (err) { console.warn('[grapevine]', err.message); } });
 app.on('before-quit', () => { pearLink?.stop(); });
 // A raid one window followed: the other window (main or streams pop-out) follows it too.

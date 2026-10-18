@@ -9,10 +9,12 @@ const { grapevine } = require('../../package.json');
 const PEAR_DROPS = 'com.streamorchard.peardrops';
 
 // opts: version (this app's), userData and appData (Electron's folders), dev (a developer copy or a test),
-// env, safeStorage (to encrypt the pairing keys, when it can), send(state) (to both windows), and for the
-// tests timing, log and strict (a message that doesn't fit its schema throws).
-function createPearLink({ version, userData, appData, dev = false, env = process.env, safeStorage = null, send = () => {}, timing, log, strict } = {}) {
+// env, safeStorage (to encrypt the pairing keys, when it can), send(state) (to both windows), activity() (the
+// Activity log has something new), and for the tests timing, log and strict (a message that doesn't fit its
+// schema throws).
+function createPearLink({ version, userData, appData, dev = false, env = process.env, safeStorage = null, send = () => {}, activity: changed = () => {}, timing, log, strict } = {}) {
   const { createLink, fileKeyStore, KNOWN_APPS, iconDataUrl, paths } = require('@streamorchard/grapevine');   // (loaded when used)
+  const { createActivity } = require('./activity');
   const self = KNOWN_APPS.find(a => a.id === grapevine.app);
   const peerApp = KNOWN_APPS.find(a => a.id === PEAR_DROPS);
   // Where apps find each other: GRAPEVINE_DIR if set; a developer copy or a test uses a folder of its own, so it
@@ -49,6 +51,21 @@ function createPearLink({ version, userData, appData, dev = false, env = process
   link.on('change', push);
   link.on('connected', push);
   link.on('disconnected', () => { farming = null; push(); });
+
+  // Settings › Connected apps › Activity: every message each way this run, and what happened to the link
+  // (activity.js). Grapevine's warnings and errors go in too: a message it dropped is a problem.
+  const activity = createActivity();
+  const noted = (o) => { activity.note(PEAR_DROPS, o); changed(); };
+  link.on('message', m => { if (activity.add(m)) changed(); });
+  link.on('connected', id => { if (id === PEAR_DROPS) noted({ tone: 'ok', text: 'Connected to ' + peerApp.name }); });
+  link.on('disconnected', (id, reason) => {
+    if (id !== PEAR_DROPS) return;
+    activity.ended(id);
+    noted({ text: 'Disconnected from ' + peerApp.name + (reason ? ': ' + reason : '') });
+  });
+  link.on('unpaired', id => { if (id === PEAR_DROPS) noted({ tone: 'warn', text: peerApp.name + ' disconnected: both apps forgot the pairing' }); });
+  link.on('log', (level, text) => { if (level === 'warn' || level === 'error') noted({ kind: 'note', tone: level === 'error' ? 'bad' : 'warn', text }); });
+  const activityPage = opts => activity.page(PEAR_DROPS, opts);
   link.on('event', (from, name, params) => {
     if (from !== PEAR_DROPS || name !== 'drops.farming.changed') return;
     farming = params;
@@ -86,10 +103,14 @@ function createPearLink({ version, userData, appData, dev = false, env = process
   function pairAgain() { link.pairAgain(PEAR_DROPS); return state(); }
   const icon = () => iconDataUrl(peerApp.icon);
   const showPearDrops = () => link.request(PEAR_DROPS, 'drops.farming.show').catch(() => ({ shown: false }));
-  const test = () => link.test(PEAR_DROPS);
+  async function test() {
+    const r = await link.test(PEAR_DROPS);
+    noted({ tone: r.ok ? 'ok' : 'warn', text: 'Test: ' + r.text });
+    return r;
+  }
   async function stop() { if (running) { running = false; await link.stop(); } }
 
-  return { link, state, setOn, disconnect, pairAgain, icon, showPearDrops, test, playersReport, streamsClosed, stop };
+  return { link, state, setOn, disconnect, pairAgain, icon, showPearDrops, test, activityPage, playersReport, streamsClosed, stop };
 }
 
 // Two windows' players.changed fields as one: a site is signed in or out the same in both (the main window's
