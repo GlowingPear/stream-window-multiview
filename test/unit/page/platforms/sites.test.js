@@ -51,6 +51,22 @@ test('reading a channel from a link: its own site\'s only; a page that isn\'t a 
   assert.equal(from(youtube, 'https://www.youtube.com/feed/subscriptions'), null);
 });
 
+test('a link with something in it that isn\'t a name the site allows gives no channel (it would end up in the page)', () => {
+  const from = (p, s) => p.fromUrl(...link(s));
+  const bad = '%22%3E%3Cimg%20src%3Dx%20onerror%3Dalert(1)%3E';
+  assert.equal(from(twitch, `https://player.twitch.tv/?channel=${bad}&parent=x`), null);
+  assert.equal(from(twitch, 'https://player.twitch.tv/?channel=a%20b'), null);
+  assert.equal(from(twitch, `https://www.twitch.tv/popout/${bad}/chat`), null);
+  assert.equal(from(twitch, `https://www.twitch.tv/embed/${'x'.repeat(26)}/chat`), null, 'too long for Twitch');
+  assert.equal(from(kick, `https://kick.com/${bad}`), null);
+  assert.equal(from(kick, `https://kick.com/popout/${bad}/chat`), null);
+  assert.equal(from(kick, `https://kick.com/${bad}/chatroom`), null);
+  assert.equal(from(youtube, `https://www.youtube.com/live_chat?v=${bad}`), null);
+  assert.equal(from(youtube, 'https://www.youtube.com/live_chat?v=short'), null);
+  assert.equal(from(youtube, `https://www.youtube.com/@${bad}`), null);
+  assert.equal(from(youtube, 'https://www.youtube.com/@'), null);
+});
+
 test('player, chat, page, profile and mod view addresses', () => {
   assert.equal(kick.streamUrl('owl', true), 'https://player.kick.com/owl?autoplay=true&muted=true');
   assert.equal(kick.chatUrl('owl'), 'https://kick.com/popout/owl/chat');

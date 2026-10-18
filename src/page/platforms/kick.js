@@ -26,9 +26,10 @@ const kick = {
   // undefined for another site. host has no "www." or "m.", parts are the path's parts.
   fromUrl(host, parts){
     if (host !== 'kick.com' && !host.endsWith('.kick.com')) return undefined;
-    if (parts[0] === 'popout' && parts[1]) return { channel: parts[1].toLowerCase(), only: 'chat' };
-    if (parts[0] && parts[1] === 'chatroom') return { channel: parts[0].toLowerCase(), only: 'chat' };
-    if (parts[0]) return { channel: parts[0].toLowerCase(), only: null };
+    const name = s => /^[A-Za-z0-9_-]{1,40}$/.test(s || '') ? s.toLowerCase() : null;   // anything else isn't a channel's name
+    if (parts[0] === 'popout' && parts[1]) return name(parts[1]) ? { channel: name(parts[1]), only: 'chat' } : null;
+    if (parts[0] && parts[1] === 'chatroom') return name(parts[0]) ? { channel: name(parts[0]), only: 'chat' } : null;
+    if (parts[0]) return name(parts[0]) ? { channel: name(parts[0]), only: null } : null;
     return null;
   },
   streamUrl: (ch, muted) => `https://player.kick.com/${encodeURIComponent(ch)}?autoplay=true&muted=${muted ? 'true' : 'false'}`,

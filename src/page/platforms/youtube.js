@@ -53,10 +53,10 @@ const youtube = {
     if (host === 'youtu.be' && /^[\w-]{11}$/.test(parts[0] || '')) return { channel: 'yt:v:' + parts[0], only: null };
     if (host !== 'youtube.com' && !host.endsWith('.youtube.com')) return undefined;
     const v = u.searchParams.get('v');
-    if (parts[0] === 'live_chat' && v) return { channel: 'yt:v:' + v, only: 'chat' };
+    if (parts[0] === 'live_chat' && v) return /^[\w-]{11}$/.test(v) ? { channel: 'yt:v:' + v, only: 'chat' } : null;
     if (parts[0] === 'watch' && /^[\w-]{11}$/.test(v || '')) return { channel: 'yt:v:' + v, only: null };
     if (['live', 'shorts', 'embed', 'v'].includes(parts[0]) && /^[\w-]{11}$/.test(parts[1] || '')) return { channel: 'yt:v:' + parts[1], only: null };
-    if (parts[0] && parts[0].startsWith('@')) return { channel: 'yt:' + parts[0].toLowerCase(), only: null };
+    if (parts[0] && parts[0].startsWith('@')) return /^@[\w.\-]{1,100}$/.test(parts[0]) ? { channel: 'yt:' + parts[0].toLowerCase(), only: null } : null;
     if (parts[0] === 'channel' && /^UC[\w-]{10,40}$/.test(parts[1] || '')) return { channel: 'yt:c:' + parts[1], only: null };
     return null;
   },
