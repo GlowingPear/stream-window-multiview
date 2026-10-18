@@ -58,7 +58,8 @@ const icon = {
   showbarL:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 3v18"/><path d="M13 9l3 3-3 3"/></svg>',
   tile:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>',
   fold:'<svg viewBox="0 0 24 24"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg>',
-  unfold:'<svg viewBox="0 0 24 24"><path d="M6 17l5-5-5-5M13 17l5-5-5-5"/></svg>'
+  unfold:'<svg viewBox="0 0 24 24"><path d="M6 17l5-5-5-5M13 17l5-5-5-5"/></svg>',
+  eye:'<svg viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>'
 };
 // Icons in the page's own markup: <i data-ico="name"></i>
 const fillIcons = root => root.querySelectorAll('i[data-ico]').forEach(i => { i.innerHTML = icon[i.dataset.ico] || ''; });

@@ -63,6 +63,23 @@ const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS, op
 const listKey = which => which === 'ignore' && alerts.spam.sharedBots ? 'mbots' : which;
 const listStore = which => which === 'mbots' ? [alerts.mention, 'bots'] : [alerts.spam, which];
 const listOf = which => { const [a, k] = listStore(listKey(which)); return (a[k] || SPAM_LIST[which]()).slice(); };
+// The abuse lists are offensive to read, so they stay blurred under a cover until you choose to show them, each time
+// Settings opens.
+const shownLists = new Set();
+function veilList(which, n){
+  const veil = settingsDlg.querySelector(`[data-list="${which}"]`).parentNode;
+  if (!veil.classList.contains('st-veil')) return;
+  const hide = !shownLists.has(which) && n > 0;
+  veil.classList.toggle('veiled', hide);
+  veil.firstChild.inert = hide;   // (nor read out, or tabbed to)
+  veil.querySelector('.st-reveal small').textContent = `Click to show ${n === 1 ? 'it' : `all ${n}`}`;
+  settingsDlg.querySelector(`[data-hide="${which}"]`).hidden = hide || !n;
+}
+function showList(which, on){
+  if (on) shownLists.add(which); else shownLists.delete(which);
+  veilList(which, listOf(which).length);
+}
+function veilLists(){ shownLists.clear(); renderSpamLists(); }
 function renderSpamLists(){
   const shared = !!alerts.spam.sharedBots;
   settingsDlg.querySelectorAll('[data-s=spam] .ly-panel[data-l=ignore] [data-own]').forEach(el => { el.hidden = shared; });
@@ -78,6 +95,7 @@ function renderSpamLists(){
       if (!ro) c.querySelector('button').onclick = () => setSpamList(which, listOf(which).filter(x => x !== item));
       box.appendChild(c);
     });
+    veilList(which, listOf(which).length);
   });
 }
 function setSpamList(which, list){
@@ -242,6 +260,8 @@ function init(){
   settingsDlg.querySelectorAll('[data-addbtn]').forEach(b => { b.onclick = () => addSpamItem(b.dataset.addbtn); });
   settingsDlg.querySelectorAll('[data-add]').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') addSpamItem(i.dataset.add); }));
   settingsDlg.querySelectorAll('[data-reset]').forEach(b => { b.onclick = () => setSpamList(b.dataset.reset, null); });
+  settingsDlg.querySelectorAll('[data-reveal]').forEach(b => { b.onclick = () => showList(b.dataset.reveal, true); });
+  settingsDlg.querySelectorAll('[data-hide]').forEach(b => { b.onclick = () => showList(b.dataset.hide, false); });
 
   $('#spamTryBtn').onclick = trySpam;
   buildScoring();
@@ -252,4 +272,4 @@ function init(){
   syncAlertControls(); renderSpamLists(); renderSpamHist();
 }
 
-export { ignoreSender, init, renderSpamHist, syncAlertControls };
+export { ignoreSender, init, renderSpamHist, syncAlertControls, veilLists };

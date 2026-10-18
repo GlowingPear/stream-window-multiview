@@ -136,6 +136,39 @@ test('Lists: abuse words, slurs and threats, and swear words can be added to, em
   assert.match(await page.textContent('#msg'), /Type a word or phrase/);
 });
 
+test('Lists: the abuse lists are blurred under a cover until you click it, and hidden again when Settings reopens', async t => {
+  const page = await openSpam(t, 'lists');
+  const veiled = which => page.$eval(`[data-list=${which}]`, b => b.parentNode.classList.contains('veiled') && b.inert);
+  assert.equal(await page.$eval('[data-list=allow]', b => b.parentNode.classList.contains('st-veil')), false, 'the other lists have no cover');
+  await page.click('#spamListPick [data-l=slurs]');
+  assert.ok(await veiled('slurs'));
+  assert.equal(await page.textContent('[data-reveal=slurs] small'), `Click to show all ${await page.textContent('[data-lcount=slurs]')}`);
+  assert.equal(await page.isVisible('[data-hide=slurs]'), false);
+  const blur = await page.$eval('[data-list=slurs]', b => getComputedStyle(b).filter);
+  assert.match(blur, /blur/);
+  await page.click('[data-reveal=slurs]');
+  assert.equal(await veiled('slurs'), false);
+  await page.waitForSelector('[data-reveal=slurs]', { state: 'hidden' });   // (once it's faded out)
+  await page.click('[data-list=slurs] .st-chip:has-text("kys") button');   // its words can be removed once shown
+  assert.equal((await saved(page)).slurs.includes('kys'), false);
+  await page.click('[data-hide=slurs]');
+  assert.ok(await veiled('slurs'), 'Hide puts the cover back');
+  await page.click('[data-reveal=slurs]');
+  await page.click('#spamListPick [data-l=swears]');
+  assert.ok(await veiled('swears'), 'each list has its own cover');
+  await page.click('#spamListPick [data-l=slurs]');
+  assert.equal(await veiled('slurs'), false, 'shown until Settings closes');
+  await show(page, 'lists');
+  assert.ok(await veiled('slurs'), 'hidden again when Settings opens');
+  await page.evaluate(() => document.querySelector('[data-add=abuseWords]').closest('.ly-panel').hidden = false);
+  for (const w of await page.$$eval('[data-list=abuseWords] .st-chip > span', s => s.map(x => x.textContent))) {
+    await page.evaluate(w => [...document.querySelectorAll('[data-list=abuseWords] .st-chip')].find(c => c.firstChild.textContent === w)?.querySelector('button').click(), w);
+  }
+  assert.deepEqual((await saved(page)).abuseWords, []);
+  assert.equal(await veiled('abuseWords'), false, 'nothing to hide in an empty list');
+  assert.equal(await page.isVisible('[data-hide=abuseWords]'), false);
+});
+
 test('Scoring fits without scrolling in a 1280 × 800 window, with warnings showing, every name on one line, and Reset beside the line above', async t => {
   const page = await openSpam(t, 'scoring', { width: 1280, height: 800 });
   await slide(page, 'plain', 5);

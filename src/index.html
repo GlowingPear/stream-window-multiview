@@ -468,15 +468,15 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
               <p class="ly-desc" data-shared>Shared with mentions, so it's changed there: <button class="linkish" data-go="mentions" data-sub="bots">Mentions › Chat bots</button></p>
               <div class="st-add" data-own><input class="st-in" data-add="ignore" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="ignore">Add</button></div>
               <div class="st-chips" data-list="ignore"></div></div>
-            <div class="ly-panel" data-l="abuseWords" hidden><div class="ly-head"><b>Abuse words</b><button class="btn" data-reset="abuseWords">Reset</button></div><p class="ly-desc">Insults that count after "you", "ur a" or "your a", like "ur a whore". Plurals and endings like "-ing" count too.</p>
+            <div class="ly-panel" data-l="abuseWords" hidden><div class="ly-head"><b>Abuse words</b><button class="btn" data-hide="abuseWords" hidden>Hide</button><button class="btn" data-reset="abuseWords">Reset</button></div><p class="ly-desc">Insults that count after "you", "ur a" or "your a", like "ur a whore". Plurals and endings like "-ing" count too.</p>
               <div class="st-add"><input class="st-in" data-add="abuseWords" placeholder="Add a word or phrase" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="abuseWords">Add</button></div>
-              <div class="st-chips" data-list="abuseWords"></div></div>
-            <div class="ly-panel" data-l="slurs" hidden><div class="ly-head"><b>Slurs and threats</b><button class="btn" data-reset="slurs">Reset</button></div><p class="ly-desc">Words and phrases that count anywhere in a message, with no "you" before them.</p>
+              <div class="st-veil veiled"><div class="st-chips" data-list="abuseWords"></div><button class="st-reveal" data-reveal="abuseWords"><i data-ico="eye"></i><b>Offensive words, hidden</b><small></small></button></div></div>
+            <div class="ly-panel" data-l="slurs" hidden><div class="ly-head"><b>Slurs and threats</b><button class="btn" data-hide="slurs" hidden>Hide</button><button class="btn" data-reset="slurs">Reset</button></div><p class="ly-desc">Words and phrases that count anywhere in a message, with no "you" before them.</p>
               <div class="st-add"><input class="st-in" data-add="slurs" placeholder="Add a word or phrase" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="slurs">Add</button></div>
-              <div class="st-chips" data-list="slurs"></div></div>
-            <div class="ly-panel" data-l="swears" hidden><div class="ly-head"><b>Swear words</b><button class="btn" data-reset="swears">Reset</button></div><p class="ly-desc">A message that's mostly these, sent again and again, is someone swearing at the chat.</p>
+              <div class="st-veil veiled"><div class="st-chips" data-list="slurs"></div><button class="st-reveal" data-reveal="slurs"><i data-ico="eye"></i><b>Offensive words, hidden</b><small></small></button></div></div>
+            <div class="ly-panel" data-l="swears" hidden><div class="ly-head"><b>Swear words</b><button class="btn" data-hide="swears" hidden>Hide</button><button class="btn" data-reset="swears">Reset</button></div><p class="ly-desc">A message that's mostly these, sent again and again, is someone swearing at the chat.</p>
               <div class="st-add"><input class="st-in" data-add="swears" placeholder="Add a word" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="swears">Add</button></div>
-              <div class="st-chips" data-list="swears"></div></div>
+              <div class="st-veil veiled"><div class="st-chips" data-list="swears"></div><button class="st-reveal" data-reveal="swears"><i data-ico="eye"></i><b>Offensive words, hidden</b><small></small></button></div></div>
           </div>
         </div></div>
         <div class="st-subpane" data-t="try" hidden>
