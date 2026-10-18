@@ -56,6 +56,12 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - Extensions that only change pages (like BetterTTV) work well. Some Chrome features aren't available in the app, so blockers that rely on them (like uBlock Origin Lite) won't block anything; the install dialog says when an extension needs one
 - Extensions can read and change the pages they're on, including while you're signed in, so only install ones you trust
 
+**Connected apps**
+- Links with [**Pear Drops**](https://github.com/Stream-Orchard/pear-drops), which collects your Kick drops, through [Grapevine](https://github.com/Stream-Orchard/grapevine). Switch it on in Settings › Connected apps, in both apps
+- Kick credits drop watch time to one stream per account, so while Pear Drops farms, Kick stream players here sign out (chats stay signed in) and sign back in 5 minutes after it stops
+- Pear Drops is told whether the Kick players are signed in, so it can say when they're taking its credit
+- Optional: what Pear Drops is farming in the toolbar, with the drop's progress and rewards; click it to open Pear Drops
+
 **Comfort**
 - Undo / redo for window changes (Ctrl+Z / Ctrl+Y)
 - Keyboard shortcuts (press **F1**), which you can switch off
@@ -73,6 +79,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - Optional "Forget my login when I close the app" for each platform
 - Each stream player gets its own storage, so volumes and settings don't leak between streams
 - Optional "Watch signed in" for each platform: streams play with your login so you watch as your account (uses more memory)
+- Connected apps talk only on this computer, through a private socket that web pages and other computers can't reach. The two apps pair once, with a key kept encrypted like the logins, and never share your login: only whether the Kick players are signed in, your Kick username and the Kick channels open
 
 ---
 
@@ -149,10 +156,10 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 
 | Command | What it checks | Time |
 |---|---|---|
-| `npm test` | Updates, the release scripts, login encryption, live checks, streamer profile history and the spam scoring. Needs nothing else installed. | seconds |
+| `npm test` | Updates, the release scripts, login encryption, live checks, streamer profile history, the spam scoring and the link with Pear Drops. Needs nothing else installed. | seconds |
 | `npm run test:setup` | Run once: installs the test browser (Playwright). It isn't saved as a dependency of the app. | once |
 | `npm run test:ui` | The app's page in a headless browser: adding streams, moving and resizing windows, layouts, Columns scrolling, the switch control, Saved channels, your layouts, Game focus, undo/redo, shortcuts, themes, Settings, alerts | ~1 min |
-| `npm run test:launch` | Starts the real desktop app with stand-in Kick, Twitch and YouTube pages: start-up, volume and pause, popping streams out, logins, live alerts and notifications, the Import follows dialog, streamer profiles, the menu bar, Settings, updates, showing another app's window, mention and spam alerts in chat windows, and Chrome extensions with a small test extension (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~1 min |
+| `npm run test:launch` | Starts the real desktop app with stand-in Kick, Twitch and YouTube pages: start-up, volume and pause, popping streams out, logins, live alerts and notifications, the Import follows dialog, streamer profiles, the menu bar, Settings, updates, showing another app's window, mention and spam alerts in chat windows, Chrome extensions with a small test extension, and Connected apps with Grapevine's stand-in Pear Drops (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~1 min |
 | `npm run test:launch:hidden` | The same, but the app's windows are invisible and never take your keyboard or focus, so you can keep working while it runs. There are no desktop notifications either. Clicks and typing still reach the app, because Playwright sends them straight to its pages. `npm run test:coverage:hidden` does the same for the coverage run. Linux can't make windows see-through, so use `xvfb-run -a` there. | ~1 min |
 | `npm run test:all` | All of the above | |
 | `npm run test:coverage` | All of the above, recording which code they run. Prints how much of each file the tests run and writes `coverage/report.md` with the bigger functions no test runs. In CI (which runs it on every pull request and puts the report on the run's summary page) it fails if a file drops below its minimum in `test/coverage-min.json`; on your computer that's only a warning, because some code only runs on Linux, or on Node 22 or newer. | ~2 min |
@@ -214,7 +221,7 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 |---|---|
 | `src/main.js` | The app's start file: it only loads `src/main/main.js` (it stays here, with `src/index.html`, for copies that update themselves) |
 | `src/main/main.js` | Electron main process: windows, logins, live checks, notifications, game window placement |
-| `src/main/` | The rest of the Electron side: `live.js` (live-status, link and follow import parsing), `profiles.js` (streamer profiles: the streams the live checks see, the profile's numbers, what the sites say), `profile-queue.js` (fetching saved channels' profiles in the background), `extensions.js` (Chrome extensions, with `electron-chrome-extensions` and `electron-chrome-web-store`), `emote-lists.js` (new emotes), `context-menu.js` and `translate.js` (the right-click menu, translating chats), `firefox-login.js` (the YouTube login from Firefox), `updater.js` (updates from GitHub), `harden.js` (Electron's cookie-encryption fuse, so saved logins are encrypted) |
+| `src/main/` | The rest of the Electron side: `live.js` (live-status, link and follow import parsing), `profiles.js` (streamer profiles: the streams the live checks see, the profile's numbers, what the sites say), `profile-queue.js` (fetching saved channels' profiles in the background), `extensions.js` (Chrome extensions, with `electron-chrome-extensions` and `electron-chrome-web-store`), `emote-lists.js` (new emotes), `context-menu.js` and `translate.js` (the right-click menu, translating chats), `firefox-login.js` (the YouTube login from Firefox), `link.js` (Connected apps: the link with Pear Drops, through `@streamorchard/grapevine`), `updater.js` (updates from GitHub), `harden.js` (Electron's cookie-encryption fuse, so saved logins are encrypted) |
 | `src/preload/` | `preload.js`, the safe bridge between the app's pages and the main process (`window.kmv`), and `signin-preload.js`, which makes Google's sign-in page accept the app |
 | `src/index.html` | The main app page (also the streams window): its markup, and the CSS and code it loads from `src/page/` |
 | `src/page/` | The page's code and CSS, by part of the app: `windows/`, `layout/` (layouts, columns, switch control), `toolbar/`, `panels/` (Channels, the bell, Settings, profiles, help, …), `chat/`, `alerts/`, `platforms/`, `in-site/` (scripts that run inside the Kick, Twitch and YouTube pages), `shared/` (saved settings, icons, messages, the confirm dialog, tooltips) and `styles/base.css`. `app.js` loads them and runs each part's start-up code (its `init()`) in order. How the code there is written: `src/page/README.md` |
