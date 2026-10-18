@@ -29,8 +29,8 @@ import { liftAudioSoon, pushVol } from './windows.js';
 
 /* The player / chat inside a window. YouTube channels first need their current live video looked up. */
 // You clicked into a window's view: it's the active window, its alert and new messages are seen, and a chat blows
-// up (Blow up chat, switch control). Heard from its focus event, and from the app (a press in it): from Electron 44
-// on, a <webview> has no focus event.
+// up (Blow up chat, switch control). Heard from its focus event, from the app (a press in it: from Electron 44 on, a
+// <webview> has no focus event), and from a press on the view that reaches this page instead of the chat's.
 function viewTouched(w, frame){
   if (!wins.includes(w) || w.view !== frame) return;
   if (Date.now() - (frame.skipAt || 0) < 1000) return;                         // Skip YouTube ads did
@@ -85,6 +85,7 @@ function mountView(w){
   if (DESKTOP){
     const hasVol = w.kind === 'stream';
     frame.addEventListener('focus', () => viewTouched(w, frame));
+    frame.addEventListener('pointerdown', () => viewTouched(w, frame));          // a press this page gets for the view (Linux, after it was scaled)
     // a raid moves the chat (or player) to another channel: follow it with every window of this channel
     const nav = e => { if (e.isMainFrame !== false && w.view === frame){ watchRaid(w, e.url); watchStuck(w); } };
     frame.addEventListener('did-navigate', nav);
