@@ -327,15 +327,22 @@ function createHost(deps) {
       beforeInstall: async d => {
         const ans = await confirm({ id: d.id, name: d.localizedName || d.manifest?.name, version: d.manifest?.version,
           icon: d.icon && !d.icon.isEmpty() ? d.icon.toDataURL() : '', manifest: d.manifest });
-        if (ans && ans.ok) { pending.set(d.id, ans.grid); return { action: 'allow' }; }
+        if (ans && ans.ok) { pending.set(d.id, { grid: ans.grid, manifest: d.manifest || {} }); return { action: 'allow' }; }
         return { action: 'deny' };
       }
     });
     // Installed from the Web Store window: add it once it has loaded.
-    store().extensions.on('extension-loaded', (_e, ext) => {
-      if (!pending.has(ext.id)) return;
-      add({ id: ext.id, source: 'store', grid: pending.get(ext.id) });
+    store().extensions.on('extension-loaded', async (_e, ext) => {
+      const p = pending.get(ext.id);
+      if (!p) return;
       pending.delete(ext.id);
+      // the dialog showed what the store's page said: if what came asks for more, ask again (Cancel: switched off)
+      let grid = p.grid, enabled = true;
+      if (addedAccess(p.manifest, ext.manifest).length) {
+        const ans = await confirm({ id: ext.id, name: ext.name, version: ext.version, icon: iconDataUrl(ext.path, ext.manifest), manifest: ext.manifest, grid, reload: true });
+        if (ans && ans.ok) grid = ans.grid; else enabled = false;
+      }
+      add({ id: ext.id, source: 'store', grid, enabled });
     });
     for (const e of list) if (e.source === 'folder' && !catalogue(e.id)) {
       try { await store().extensions.loadExtension(e.path); } catch (err) { console.error('extension folder', e.path, err.message); }
@@ -346,14 +353,26 @@ function createHost(deps) {
     setInterval(update, UPDATE_EVERY).unref?.();
   }
 
+  // Store updates. One that asks for more than the version you said yes to is switched off until you say yes
+  // again (as in Chrome: its new files are already in place).
   async function update() {
     if (!list.some(e => e.source === 'store')) return;
+    const before = new Map(list.filter(e => e.source === 'store').map(e => [e.id, catalogue(e.id)?.manifest]).filter(([, m]) => m));
     try { await cws.updateExtensions(store()); } catch (err) { console.error('extension updates', err.message); }
-    await syncAll();
+    let changed = false;
+    for (const e of list) {
+      const old = before.get(e.id), now = catalogue(e.id);
+      if (!old || !now || !e.enabled || !addedAccess(old, now.manifest).length) continue;
+      e.enabled = false; changed = true;
+      confirm({ id: e.id, name: now.name, version: now.version, icon: iconDataUrl(now.path, now.manifest), manifest: now.manifest, grid: e.grid, reload: true })
+        .then(ans => { if (ans && ans.ok) { e.enabled = true; e.grid = ans.grid; save(); syncAll(true); } });
+    }
+    if (changed) save();
+    await syncAll(changed);
   }
 
-  function add({ id, source, path: dir, grid }) {
-    const e = normalizeEntry({ id, source, path: dir, grid: grid || defaultGrid() });
+  function add({ id, source, path: dir, grid, enabled = true }) {
+    const e = normalizeEntry({ id, source, path: dir, grid: grid || defaultGrid(), enabled });
     if (!e) return;
     list = list.filter(x => x.id !== id).concat(e);
     save();
