@@ -190,7 +190,7 @@ test('Activity: the button opens it in place of the card, with the header, the t
     await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#caActivity .act-tile.beat b').textContent), s < 9 ? '^\\ds ago$' : '^\\d\\ds ago$');
     lefts.push(await heardAt());
   }
-  assert.equal(new Set(lefts).size, 1, 'last heard at ' + lefts.join(', '));
+  assert.ok(Math.max(...lefts) - Math.min(...lefts) < 0.5, 'last heard at ' + lefts.join(', '));   // (Linux fonts land a 64th of a pixel apart)
   await page.evaluate(() => { window.smvActivity.state.data.totals.heard = Date.now() - 75000; });
   await page.waitForFunction(() => document.querySelector('#caActivity .act-tile.beat b').textContent === '1m ago');
 
