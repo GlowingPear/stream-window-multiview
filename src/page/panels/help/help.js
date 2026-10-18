@@ -38,7 +38,7 @@ const SHORTCUTS = [
   ]],
   ['The big stream (Focus view; otherwise the first stream)', [
     ['1 – 9', 'Make stream 1–9 big'],
-    ['← / →', 'Previous / next stream big (in Columns: scroll)'],
+    ['← / →', 'Previous / next stream: big in Focus view, on the stage in Chat Stage, its chat in Chat Rail, picked in other layouts (in Columns: scroll)'],
     ['M', 'Mute / unmute it'],
     ['Shift+M', 'Mute every stream'],
     ['Space or P', 'Pause / play it'],

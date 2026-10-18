@@ -80,3 +80,4 @@
 .lm-save input{flex:1;min-width:0;height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);outline:none}
 .lm-save input:focus{border-color:var(--accent)}
 .lm-save .btn{height:30px}
+.ly-keys{margin-top:14px;border-top:1px solid var(--line);border-bottom:0}

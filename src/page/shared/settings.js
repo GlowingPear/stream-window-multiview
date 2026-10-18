@@ -24,7 +24,7 @@ const SETTING_NAMES = new Set([
   // YouTube
   'ytSkip', 'ytConsent', 'ytAutoLike', 'ytAutoLiked', 'ytChatView',
   // the app
-  'theme', 'themes', 'settingsTab', 'keys', 'intro', 'seenVersion'
+  'theme', 'themes', 'settingsTab', 'keys', 'arrowSound', 'intro', 'seenVersion'
 ]);
 // your own alert sound for a kind of alert, as a data: URL ('alertSound.mention', …)
 const isSetting = name => SETTING_NAMES.has(name) || /^alertSound\.\w+$/.test(name);

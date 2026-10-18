@@ -278,9 +278,9 @@ Shortcuts work when the app has your keyboard. If you just clicked inside a stre
 - Z : Blow up chat on click on or off
 - Shift+Z : blow up the chat you last clicked now (again, or Esc, puts it back)
 
-### The big stream (in Focus view; otherwise the first stream)
+### The stream you're on (the big one in Focus view, the one on the stage in Chat Stage, the one whose chat is in the rail in Chat Rail, the one picked with the arrows in other layouts; otherwise the first)
 - 1 to 9 : make that stream big
-- Left / Right arrows : previous or next stream big (in Columns: scroll)
+- Left / Right arrows : previous or next stream, round the ends: big in Focus view, on the stage in Chat Stage, its chat in the rail in Chat Rail, picked (a short outline) in the other layouts (in Columns: scroll). Settings > Layouts > **Sound follows the arrow keys** (off at first) makes the stream you move to the one you hear
 - M : mute or unmute
 - Shift+M : mute every stream
 - Space or P : pause or play

@@ -56,3 +56,6 @@ body.dragging .bar{cursor:grabbing}
 .ibtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .ibtn:disabled{opacity:.35;cursor:default}
 .ibtn[hidden]{display:none}
+/* ← / → picked this stream (shortcuts.js): an outline that fades, so you see where the keys act */
+.win.kb-sel{animation:kb-sel 1.6s ease-out forwards}
+@keyframes kb-sel{0%,55%{box-shadow:0 0 0 2px var(--accent),0 0 18px color-mix(in srgb,var(--accent) 45%,transparent)}100%{box-shadow:0 0 0 0 transparent}}

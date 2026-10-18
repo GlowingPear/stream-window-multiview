@@ -61,3 +61,20 @@ test('Chat Rail: a tab shows how many new messages a chat out of sight has had',
   // and on its stream's title bar, after its name, where it can be seen (not under the channel's picture)
   await a.win.waitForFunction(ch => { const b = [...document.querySelectorAll('#stage .win.stream')].find(w => w.querySelector('.title').textContent.toLowerCase() === ch)?.querySelector('.bar-n'); if (!b || b.hidden) return false; const pick = b.parentNode.querySelector('.col-pick').getBoundingClientRect(); return b.textContent === '3' && b.getBoundingClientRect().left >= pick.right - 1; }, off, { timeout: 5000 });
 });
+
+test('Chat Rail: → shows the next chat in the rail, in big text, and ← goes back', { timeout: 60000 }, async () => {
+  await a.win.evaluate(() => document.activeElement && document.activeElement.blur());
+  await a.win.keyboard.press('Shift+K');
+  await a.win.waitForSelector('#stage .win.rl-chat');
+  const shown = () => a.win.$eval('#stage .win.rl-chat .title', e => e.textContent);
+  const first = await shown(), other = first === 'alpha' ? 'bravo' : 'alpha';
+  await a.win.evaluate(() => document.activeElement && document.activeElement.blur());
+  await a.win.keyboard.press('ArrowRight');
+  await a.win.waitForFunction(ch => document.querySelector('#stage .win.rl-chat .title')?.textContent === ch, other);
+  await near(other, 1.5, 'the next chat, in the rail\'s big text');
+  await near(first, 1, 'the one before, back to normal');
+  await a.win.evaluate(() => document.activeElement && document.activeElement.blur());
+  await a.win.keyboard.press('ArrowLeft');
+  await a.win.waitForFunction(ch => document.querySelector('#stage .win.rl-chat .title')?.textContent === ch, first);
+  assert.equal(await shown(), first);
+});
