@@ -89,15 +89,19 @@ function shortcutsHtml(){
 const HELP_TAB = { guide: 'guide', keys: 'keys', news: 'updates', upd: 'updates' };
 async function showHelp(tab){
   await openSettings(HELP_TAB[tab] || 'guide');
-  if (tab === 'news'){ const h = $('#settingsDlg .st-news-sec'); if (h) h.scrollIntoView({ block: 'start' }); }
+  if (tab === 'news'){ const h = $('#settingsDlg .upd-news:not([hidden])'); if (h) h.scrollIntoView({ block: 'start' }); }
+}
+// A file from the app folder (INSTRUCTIONS.txt, CHANGELOG.md) as text, or null
+async function readDocText(file){
+  if (DESKTOP && window.kmv.readHelp){ try { return await window.kmv.readHelp(file); } catch { return null; } }
+  try { const r = await fetch('../' + file); if (r.ok) return await r.text(); } catch {}
+  return null;
 }
 async function readDoc(file){
-  let text = null;
-  if (DESKTOP && window.kmv.readHelp){ try { text = await window.kmv.readHelp(file); } catch {} }
-  else { try { const r = await fetch('../' + file); if (r.ok) text = await r.text(); } catch {} }
+  const text = await readDocText(file);
   return text ? helpHtml(text) : `<p>Open <code>${file}</code> in the app folder to read this.</p>`;
 }
-// Fills in the help text for a Settings tab (Instructions, Keyboard shortcuts, or What's new under Updates).
+// Fills in the help text for a Settings tab (Instructions or Keyboard shortcuts; What's new under Updates is updates.js's).
 async function renderDoc(tab){
   if (!appVersion && window.kmv && window.kmv.appVersion){ try { appVersion = await window.kmv.appVersion(); } catch {} }
   $('#settingsDlg .help-ver').textContent = appVersion ? 'v' + appVersion + (/^0\./.test(appVersion) ? ' beta' : '') : '';
@@ -111,9 +115,6 @@ async function renderDoc(tab){
     if (!body.childElementCount) body.innerHTML = await readDoc('INSTRUCTIONS.txt');
     open.hidden = !(DESKTOP && window.kmv.openHelp);
     open.onclick = () => window.kmv.openHelp('INSTRUCTIONS.txt');
-  } else if (tab === 'updates'){
-    const body = $('#settingsDlg [data-doc=news]');
-    if (!body.childElementCount) body.innerHTML = await readDoc('CHANGELOG.md');
   }
 }
 
@@ -122,4 +123,4 @@ function init(){
   keysOn = settings.flag('keys', true);
 }
 
-export { appVersion, init, keysOn, renderDoc, setKeysOn, showHelp };
+export { appVersion, init, keysOn, readDocText, renderDoc, setKeysOn, showHelp };

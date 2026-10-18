@@ -1,0 +1,150 @@
+/* Updates (panels/updates/updates.js): Settings › Updates, the toolbar's chip and the "Updated" card */
+.upd-host{display:flex;flex-direction:column;gap:14px;margin-top:12px}
+.upd-host svg,.upd-chip svg,.upd-wn svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.upd-host .btn svg{width:15px;height:15px;flex:none}
+.upd-host .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.upd-host .btn:disabled{opacity:.5;cursor:default}
+.upd-host .btn:disabled:hover{border-color:var(--line2)}
+
+/* the card at the top: the pear with the state's badge, what's happening, the buttons; glows when there's something to do */
+.upd-hero{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:6px 18px;padding:20px 22px;
+  border:1px solid var(--line2);border-radius:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 5%,var(--panel2)),var(--panel2) 55%)}
+.upd-hero.glow{border-color:color-mix(in srgb,var(--accent) 55%,transparent);background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 14%,var(--panel2)),var(--panel2) 60%);
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 12%,transparent),0 10px 34px color-mix(in srgb,var(--accent) 12%,transparent)}
+.upd-hero.bad{border-color:color-mix(in srgb,var(--danger) 55%,transparent);background:linear-gradient(135deg,color-mix(in srgb,var(--danger) 12%,var(--panel2)),var(--panel2) 60%)}
+.upd-pear{position:relative;width:64px;height:64px;flex:none}
+.upd-pear-ico svg.pear{width:64px;height:64px;fill:var(--accent);stroke:none;filter:drop-shadow(0 0 14px color-mix(in srgb,var(--accent) 35%,transparent))}
+.upd-pear-ico svg.pear path:first-child{fill:none;stroke:var(--accent)}
+.upd-badge{position:absolute;right:-6px;bottom:-4px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  background:var(--panel);border:2px solid var(--panel2);color:var(--accent);overflow:hidden}
+.upd-badge svg{width:14px;height:14px;stroke-width:2.4}
+.upd-badge.b-check,.upd-badge.b-gift{background:var(--accent);color:var(--accent-ink)}
+.upd-badge.b-alert{background:var(--danger);color:#fff}
+.upd-badge.b-lock{color:var(--muted)}
+.upd-badge .spin{width:13px;height:13px}
+.upd-badge.b-drop svg{animation:upd-drop 1.2s ease-in infinite}
+@keyframes upd-drop{0%{transform:translateY(-120%);opacity:0}30%{opacity:1}70%{transform:translateY(0);opacity:1}100%{transform:translateY(0);opacity:0}}
+.upd-main{min-width:0;display:flex;flex-direction:column;gap:5px}
+.upd-title{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.upd-title b{font-size:20px;font-weight:800;letter-spacing:-.01em}
+.upd-cur{font:600 12px ui-monospace,Menlo,Consolas,monospace;padding:2px 8px;border:1px solid var(--line2);border-radius:7px;color:var(--muted)}
+.upd-beta{font-size:12px;font-weight:600;color:var(--muted)}
+.upd-state{font-size:14px;line-height:1.45}
+.upd-state code{font:12.5px ui-monospace,Menlo,Consolas,monospace;padding:1px 5px;border-radius:5px;background:var(--bg)}
+.upd-v{color:var(--accent);font-weight:800}
+.upd-err{color:var(--danger);font-weight:700}
+.upd-when{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.upd-acts{display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:150px}
+.upd-acts .btn{height:36px;padding:0 16px}
+.upd-hero.glow .upd-acts .btn.primary{box-shadow:0 0 18px color-mix(in srgb,var(--accent) 35%,transparent)}
+/* the download's bar, across the bottom of the card */
+.upd-prog{grid-column:1/-1;display:flex;align-items:center;gap:14px;margin-top:10px}
+.upd-bar{position:relative;flex:1;height:6px;border-radius:3px;background:var(--line2);overflow:hidden}
+.upd-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--accent);transition:width .25s}
+.upd-prog.ind .upd-bar i{width:30%;animation:upd-ind 1.4s ease-in-out infinite;transition:none}
+@keyframes upd-ind{0%{left:-30%}100%{left:100%}}
+.upd-pct{flex:none;font:600 12px ui-monospace,Menlo,Consolas,monospace;color:var(--muted);white-space:nowrap}
+.upd-pct:empty{display:none}
+
+/* the new version: its number, date, release page and notes */
+.upd-rel{border:1px solid var(--line2);border-radius:14px;background:var(--panel2);overflow:hidden}
+.upd-rel-head{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.upd-rel-head > b{font-size:14px}
+.upd-new{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;color:var(--accent);
+  border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);background:color-mix(in srgb,var(--accent) 9%,transparent)}
+.upd-new svg{width:13px;height:13px}
+.upd-date{color:var(--muted);font-size:13px}
+.upd-page{margin-left:auto;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:4px 6px;border:0;border-radius:6px;background:none;color:var(--muted);font-size:12.5px;cursor:pointer}
+.upd-page:hover{color:var(--text);background:var(--panel)}
+.upd-page svg{width:14px;height:14px}
+.upd-rel .upd-notes{margin:0;padding:14px 18px 16px;border:0;max-height:320px;color:var(--text)}
+.upd-notes{white-space:pre-wrap;font-size:13px;overflow:auto}
+.upd-notes.html{white-space:normal}
+.upd-notes.html :is(h1,h2,h3,h4){font-size:13.5px;color:var(--text);margin:10px 0 4px}
+.upd-notes.html :is(h1,h2,h3,h4):first-child{margin-top:0}
+.upd-notes.html :is(p,ul,ol){margin:0 0 6px}
+.upd-notes.html :is(ul,ol){padding-left:18px}
+.upd-notes.html li::marker{color:var(--accent)}
+.upd-notes.html a{color:var(--accent)}
+.upd-notes.html :is(code,tt){font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.upd-notes.html img{max-width:100%;height:auto}
+.upd-notes.html:has(video){max-height:560px}
+.upd-notes.html video{display:block;max-width:100%;max-height:360px;margin:4px 0 6px;border-radius:6px;background:#000}
+
+/* Update automatically, and the GitHub repository */
+.upd-rows{display:flex;flex-direction:column}
+.upd-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--line)}
+label.upd-row{cursor:pointer}
+.upd-rt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.upd-rt b{font-size:13.5px}
+.upd-rt span{font-size:12.5px;color:var(--muted)}
+.upd-repo{display:flex;align-items:stretch;flex:0 1 auto;min-width:0;height:34px;border:1px solid var(--line2);border-radius:8px;background:var(--bg);overflow:hidden}
+.upd-repo:focus-within{border-color:var(--accent)}
+.upd-pre{display:flex;align-items:center;padding:0 0 0 10px;color:var(--muted);font:12.5px ui-monospace,Menlo,Consolas,monospace}
+.upd-repo input{flex:1 1 auto;width:37ch;min-width:0;padding:0 10px 0 1px;border:0;background:none;color:var(--text);outline:none;font:12.5px ui-monospace,Menlo,Consolas,monospace}
+.upd-repo .btn.upd-save{height:auto;border:0;border-left:1px solid var(--line2);border-radius:0;font-weight:700}
+.upd-foot{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+.upd-foot.st-end{margin-top:18px}
+.upd-foot[hidden]{display:none}
+
+/* What's new: the changelog as a timeline, this version marked */
+.upd-news{margin-top:22px}
+.upd-news[hidden]{display:none}
+.upd-news-h{margin:0 0 10px}
+.upd-tl{list-style:none;margin:0;padding:0}
+.upd-tv{position:relative;padding:0 0 14px 26px}
+.upd-tv::before{content:"";position:absolute;left:4px;top:5px;width:8px;height:8px;border-radius:50%;border:2px solid var(--line2);background:var(--panel)}
+.upd-tv:not(:last-child)::after{content:"";position:absolute;left:9px;top:19px;bottom:-3px;width:2px;background:var(--line2)}
+.upd-tv.this::before{border-color:var(--accent);background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 20%,transparent)}
+.upd-tv.this::after{background:color-mix(in srgb,var(--accent) 60%,var(--line2))}
+.upd-tv-h{display:flex;align-items:center;gap:10px;min-height:20px}
+.upd-tv-h code{font:700 13px ui-monospace,Menlo,Consolas,monospace}
+.upd-this{font:700 11px ui-monospace,Menlo,Consolas,monospace;padding:2px 8px;border-radius:999px;color:var(--accent);
+  border:1px solid color-mix(in srgb,var(--accent) 50%,transparent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.upd-tv ul{margin:6px 0 0;padding-left:16px;list-style:circle;font-size:13px;color:var(--muted)}
+.upd-tv li li{margin:3px 0}
+.upd-tv ul li::marker{color:var(--line2)}
+
+/* the toolbar's chip: a version is out, downloading, or ready (filled and glowing) */
+header .upd-chip{gap:7px;padding:0 12px 0 10px;border-radius:999px;color:var(--accent);font-weight:700;
+  border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);background:color-mix(in srgb,var(--accent) 9%,transparent)}
+header .upd-chip[hidden]{display:none}
+header .upd-chip:hover:not(:disabled){background:color-mix(in srgb,var(--accent) 16%,transparent)}
+header .upd-chip[data-st=dl] .tb-l{font-variant-numeric:tabular-nums}
+header .upd-chip[data-st=ready]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent-edge);box-shadow:0 0 16px color-mix(in srgb,var(--accent) 45%,transparent)}
+header .upd-chip[data-st=ready]:hover:not(:disabled){background:var(--accent);filter:brightness(1.08)}
+header.c3 .upd-chip .tb-l{display:none}   /* a tight toolbar on top: just the icon */
+header.c3 .upd-chip{padding:0 9px}
+body.bar-left header .upd-chip{border-radius:7px;justify-content:flex-start}
+body.bar-left.bar-icons header .upd-chip{justify-content:center;padding:0;border-radius:50%;width:34px;height:34px;margin:0 auto}
+
+/* the "Updated" card, on a new version's first start */
+.dlg.upd-wn{width:min(460px,calc(100vw - 32px));align-items:center;gap:12px;padding:30px 28px 24px;border-radius:20px;text-align:center;
+  background:radial-gradient(circle at 50% 0,color-mix(in srgb,var(--accent) 14%,var(--panel)),var(--panel) 55%)}
+.wn-art{position:relative;width:200px;height:96px;display:grid;place-items:center}
+.wn-art svg.pear{width:76px;height:76px;fill:var(--accent);stroke:none;filter:drop-shadow(0 0 22px color-mix(in srgb,var(--accent) 45%,transparent))}
+.wn-art svg.pear path:first-child{fill:none;stroke:var(--accent)}
+.wn-sp{position:absolute;color:var(--accent);display:grid}
+.wn-sp svg{width:100%;height:100%;fill:currentColor;stroke:none}
+.wn-sp.s1{left:22px;top:22px;width:20px;height:20px}
+.wn-sp.s2{right:20px;top:2px;width:14px;height:14px;opacity:.7}
+.wn-sp.s3{right:40px;top:46px;width:16px;height:16px;opacity:.85}
+.wn-from{font-size:11.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.dlg.upd-wn h3{display:block;font-size:24px;font-weight:800;letter-spacing:-.01em}
+.wn-to{color:var(--accent)}
+.wn-list{list-style:none;margin:4px 0 0;padding:0;width:100%;max-height:min(46vh,360px);overflow:auto;display:flex;flex-direction:column;gap:8px;text-align:left}
+.wn-list[hidden]{display:none}
+.wn-list li{display:flex;gap:12px;align-items:flex-start;padding:11px 14px;border:1px solid var(--line2);border-radius:12px;background:var(--panel2);font-size:13px;line-height:1.45}
+.wn-list li i{flex:none;display:grid;color:var(--accent);margin-top:1px}
+.wn-list li i svg{width:15px;height:15px;stroke-width:2.6}
+.wn-foot{display:flex;gap:14px;align-items:center;justify-content:center;margin-top:8px}
+.wn-foot .wn-all{border:0;background:none;font-weight:700}
+.wn-foot .wn-all:hover{color:var(--accent)}
+.wn-foot .btn:focus-visible{outline:2px solid color-mix(in srgb,var(--accent) 70%,var(--text));outline-offset:3px}
+.wn-foot .wn-ok{padding:0 24px;box-shadow:0 0 18px color-mix(in srgb,var(--accent) 35%,transparent)}
+
+/* nothing moves for those who'd rather it didn't */
+@media (prefers-reduced-motion:reduce){
+  .upd-badge .spin,.upd-badge.b-drop svg{animation:none}
+  .upd-prog.ind .upd-bar i{animation:none;left:0;width:100%;opacity:.45}
+}

@@ -70,7 +70,7 @@ function makeBig(s){ if (!s) return; setFeatured(colKey(s)); layoutVars.scrollX 
 function closeOverlays(){
   let any = false;
   // dialogs one at a time, the top one first (Import follows can sit over Settings); menus all at once
-  const top = ['#extDlg', '#importDlg', '#ffDlg', '#capDlg', '#settingsDlg', '#profDlg', '#noteDlg'].map(sel => $(sel)).find(e => e && !e.hidden);
+  const top = ['#updNewsDlg', '#extDlg', '#importDlg', '#ffDlg', '#capDlg', '#settingsDlg', '#profDlg', '#noteDlg'].map(sel => $(sel)).find(e => e && !e.hidden);
   if (top){ if (top.id === 'extDlg') extDlgDone(false); else if (top.id === 'noteDlg') closeNoteHistory(); else top.hidden = true; any = true; }
   else ['#layoutMenu', '#accountMenu', '#savedPanel', '#bellPanel', '#moreMenu', '#extMenu', '#barMenu'].forEach(sel => {
     const e = $(sel); if (e && !e.hidden){ e.hidden = true; any = true; }
