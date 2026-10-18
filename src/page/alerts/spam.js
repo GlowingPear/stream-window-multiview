@@ -1,7 +1,8 @@
-// Spam alerts: scores a chat message for the signs promo bots leave. Used by the app page (as
-// SmvSpam) and by the tests. One sign alone never flags a message: normal links,
-// clip links and someone saying "check kick com/..." stay unflagged. The exceptions are a word flood
-// and a known bot opening line. Asking to be added on Discord (or Telegram, ...) counts like a link.
+// Spam alerts: scores a chat message for the signs promo bots leave, and (with abuse on) for insults, slurs and
+// threats. Used by the app page (as SmvSpam) and by the tests. One sign alone never flags a message: normal links,
+// clip links and someone saying "check kick com/..." stay unflagged. The exceptions are a word flood, a known bot
+// opening line, a slur or threat and someone swearing over and over. Asking to be added on Discord (or Telegram,
+// ...) counts like a link. How many points each sign is worth can be changed (POINTS, 0 turns one off).
 const SmvSpam = (() => {
   const ALLOWED = ['kick.com', 'twitch.tv', 'youtube.com', 'youtu.be', 'discord.gg', 'discord.com', 'x.com', 'twitter.com',
     'instagram.com', 'tiktok.com', 'reddit.com', 'imgur.com', 'streamable.com', 'medal.tv', 'github.com', 'spotify.com'];
@@ -28,8 +29,46 @@ const SmvSpam = (() => {
     'griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream'];
   // The bots offered before the app remembered which ones it had offered.
   const FIRST_BOTS = BOTS.slice(0, 9);
+  // Abuse. The lists start from dsojevic/profanity-list (https://github.com/dsojevic/profanity-list, MIT, (c) Daniel
+  // Sojevic): its "general" words rated Strong or Severe, its racial and anti-LGBTQ slurs that have no everyday
+  // meaning, plus chat slang it doesn't have (bish, thot, kys). Matched as whole words, any case, also stretched
+  // ("whooore"), with digits or symbols for letters ("wh0re", "b!tch", "f*ck") or spelt out ("c u n t").
+  // Insults count after "you" ("ur a whore", "your a bish", "you stupid cunt"): on their own they're often banter.
+  const ABUSE = ['whore', 'hoe', 'slut', 'skank', 'thot', 'bitch', 'bish', 'biatch', 'bich', 'cunt', 'twat', 'wanker', 'tosser',
+    'bastard', 'prick', 'dick', 'dickhead', 'cock', 'cocksucker', 'asshole', 'arsehole', 'ass', 'dumbass', 'jackass', 'fatass',
+    'shithead', 'fuckhead', 'fucktard', 'fuckwit', 'motherfucker', 'retard', 'spastic', 'spaz', 'scumbag', 'piece of shit', 'pos'];
+  // Slurs and threats: anywhere in a message.
+  const SLURS = ['nigger', 'nigga', 'sand nigger', 'chink', 'gook', 'spic', 'wetback', 'beaner', 'kike', 'raghead', 'towelhead', 'paki',
+    'darkie', 'jigaboo', 'porch monkey', 'faggot', 'fag', 'dyke', 'tranny', 'shemale',
+    'kys', 'kill yourself', 'kill urself', 'kill ur self', 'kill your self', 'kill yo self', 'neck yourself', 'hang yourself',
+    'unalive yourself', 'hope you die', 'hope u die', 'drink bleach'];
+  // Swear words: a message of little else, several times in a row, is someone swearing at the chat.
+  const SWEARS = ['fuck', 'fuk', 'fck', 'shit', 'cunt', 'bitch', 'dick', 'cock', 'pussy', 'ass', 'asshole', 'arsehole', 'bastard', 'twat',
+    'wanker', 'prick', 'piss', 'bollocks', 'bullshit', 'motherfucker', 'dumbass', 'jackass', 'whore', 'slut', 'stfu', 'gtfo'];
+  // Each sign's points (0: off, up to POINT_MAX). flags: a message needs one of these to be flagged at all (without
+  // one there's nothing to promote and no one abused). words is per promo word, up to two of them.
+  const POINT_MAX = 8;
+  const SIGNS = [
+    { key: 'hidden', group: 'spam', points: 3, flags: true, label: 'Disguised link' },
+    { key: 'plain', group: 'spam', points: 1, flags: true, label: 'Link to a site not on the allowed list' },
+    { key: 'contact', group: 'spam', points: 4, flags: true, label: 'Asks to be added off-site' },
+    { key: 'elsewhere', group: 'spam', points: 3, flags: true, label: 'Same message in another open chat' },
+    { key: 'flood', group: 'spam', points: 6, flags: true, label: 'The same word over and over' },
+    { key: 'opener', group: 'spam', points: 6, flags: true, label: 'Known bot opening line' },
+    { key: 'words', group: 'spam', points: 1, label: 'Promo words', note: 'For each one, up to 2' },
+    { key: 'junk', group: 'spam', points: 1, label: 'Emotes breaking up the words' },
+    { key: 'newbie', group: 'spam', points: 1, label: 'New chatter' },
+    { key: 'insult', group: 'abuse', points: 4, flags: true, label: 'Insult aimed at someone' },
+    { key: 'slur', group: 'abuse', points: 5, flags: true, label: 'Slur or threat' },
+    { key: 'swearing', group: 'abuse', points: 5, flags: true, label: 'Swearing over and over' },
+    { key: 'again', group: 'abuse', points: 3, label: 'Keeps at it' }
+  ];
+  const POINTS = Object.fromEntries(SIGNS.map(s => [s.key, s.points]));
+  const FLAGS = new Set(SIGNS.filter(s => s.flags).map(s => s.key));
+  const GROUP = Object.fromEntries(SIGNS.map(s => [s.key, s.group]));
   const LEVELS = { relaxed: 6, balanced: 5, strict: 4 };
   const WINDOW_MS = 5 * 60 * 1000;
+  const SWEAR_MS = 2 * 60 * 1000;
 
   const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   const flat = s => norm(String(s || '').replace(/['’]/g, ''));   // "don't" and "dont" alike
@@ -82,6 +121,103 @@ const SmvSpam = (() => {
     return glued || words.length >= 25 ? { unit, times } : null;
   }
 
+  // A message as the abuse lists read it: lower case, "you're" as "youre", digits and symbols next to letters as the
+  // letters they stand for ("wh0re", "b!tch"), dots and dashes between letters as spaces, and letters spelt out one
+  // at a time joined back up ("c u n t"), apart from a "u r a" in front of them.
+  const LEET = { 0: 'o', 1: 'i', 3: 'e', 4: 'a', 5: 's', 7: 't', 8: 'b', '@': 'a', $: 's', '!': 'i' };
+  const PEEL = [['u', 'r', 'a'], ['u', 'r'], ['a'], ['u'], []];
+  function plainText(text) {
+    let t = String(text || '').toLowerCase().replace(/['’]/g, '');
+    for (let i = 0; i < 2; i++) t = t.replace(/(?<=[a-z])[0134578@$]|[0134578@$](?=[a-z])|(?<=[a-z])!(?=[a-z])/g, c => LEET[c]);
+    t = t.replace(/(?<=[a-z*])[._-](?=[a-z*])/g, ' ').replace(/[^a-z0-9* ]+/g, ' ');
+    const toks = t.split(' ').filter(Boolean), out = [];
+    for (let i = 0; i < toks.length;) {
+      if (toks[i].length > 1) { out.push(toks[i++]); continue; }
+      let j = i; while (j < toks.length && toks[j].length === 1) j++;
+      const run = toks.slice(i, j), peel = PEEL.find(p => p.every((x, k) => run[k] === x));
+      out.push(...(run.length - peel.length >= 3 ? [...peel, run.slice(peel.length).join('')] : run));
+      i = j;
+    }
+    return out.join(' ');
+  }
+  // "You" and the words that can come between it and the insult ("ur a", "you stupid little"). "your", "ur" and the like
+  // also mean "your" ("your dick joke"), so they need an "a" or "such" after them ("your a bish").
+  const YOU = '(?:(?:you\\s+are|you\\s+r|u\\s+r|u\\s+are|youre|ure|you|u)\\s+|(?:ur|your|yer|ya)\\s+(?=(?:a+|an|such)\\s))';
+  // A list word as a pattern: each letter may be stretched, and any but the first may be a "*".
+  const wordPat = w => w.split(' ').map(part => [...part].map((c, i) => i ? `(?:${c}+|\\*)` : `${c}+`).join('')).join('\\s+');
+  const FILL = ['a', 'an', 'such', 'so', 'fucking', 'fuckin', 'fking', 'fkn', 'stupid', 'dumb', 'little', 'lil', 'big', 'fat', 'ugly', 'dirty',
+    'filthy', 'worthless', 'pathetic', 'useless', 'absolute', 'total', 'complete', 'massive', 'huge', 'nasty', 'braindead', 'actual', 'real',
+    'cheap', 'lying', 'sad', 'crazy'];
+  const FILL_RE = `(?:(?:${FILL.map(wordPat).join('|')})\\s+){0,3}`;
+  const reCache = new Map();
+  function listRe(kind, list) {
+    const key = kind + '\n' + list.join('\n');
+    if (reCache.has(key)) return reCache.get(key);
+    const words = cleanList(list).map(w => w.replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean).sort((a, b) => b.length - a.length);
+    const any = words.length ? `(?:${words.map(wordPat).join('|')})(?:s|es|z|ing|in|ed|er|ers|y)?` : '';
+    const re = !any ? null : kind === 'insult' ? new RegExp(`(?<![a-z0-9*])${YOU}${FILL_RE}${any}(?![a-z0-9*])`)
+      : new RegExp(`(?<![a-z0-9*])${any}(?![a-z0-9*])`, 'g');
+    if (reCache.size > 30) reCache.clear();
+    reCache.set(key, re);
+    return re;
+  }
+  /**
+   * abuse(text, { abuse, slurs, swears }) -> { insult, slur, swearOnly }
+   * insult: the words that insult someone ("ur a whore"), slur: a slur or threat, or null. swearOnly: the message is
+   * mostly swear words (at least half of its 6 or fewer words). Lists left out are the built-in ones.
+   */
+  function abuse(text, lists = {}) {
+    const t = plainText(text), pick = (l, def) => Array.isArray(l) ? l : def;
+    const ins = listRe('insult', pick(lists.abuse, ABUSE)), sl = listRe('slur', pick(lists.slurs, SLURS)), sw = listRe('swear', pick(lists.swears, SWEARS));
+    const im = ins && ins.exec(t), sm = sl && t.match(sl), words = t.split(' ').filter(Boolean).length;
+    const swears = sw ? (t.match(sw) || []).length : 0;
+    return { insult: im ? im[0] : null, slur: sm ? sm[0] : null, swearOnly: swears > 0 && words <= 6 && swears * 2 >= words };
+  }
+
+  // Each sign's points: POINTS with yours over them, whole numbers from 0 to POINT_MAX.
+  function pointsOf(p) {
+    const out = { ...POINTS };
+    if (p && typeof p === 'object') for (const k of Object.keys(POINTS)) {
+      const v = Math.round(Number(p[k]));
+      if (k in p && Number.isFinite(v)) out[k] = Math.max(0, Math.min(POINT_MAX, v));
+    }
+    return out;
+  }
+
+  /**
+   * scoringWarnings(points, sensitivity, abuseOn) -> [text]
+   * What may go wrong with these points: signs that now flag a message on their own, ones that can't be flagged any
+   * more, small signs that now tip a message over with little else, nothing left that can flag, or most signs high.
+   * The built-in points have none.
+   */
+  function scoringWarnings(points, sensitivity, abuseOn = true) {
+    const need = LEVELS[sensitivity] || LEVELS.balanced, now = pointsOf(points), out = [];
+    const on = SIGNS.filter(s => abuseOn || s.group !== 'abuse');
+    const level = Object.keys(LEVELS).find(k => LEVELS[k] === need);
+    const lv = level[0].toUpperCase() + level.slice(1);
+    // The small signs that can come with a sign that flags: promo words (two of them) with spam, keeps at it with an
+    // insult or a slur, emotes and a new chatter with anything.
+    const goesWith = (small, big) => small.key === 'words' ? big.group === 'spam' : small.key === 'again' ? /^(insult|slur)$/.test(big.key) : true;
+    const times = s => s.key === 'words' ? 2 : 1;
+    const extra = (big, pts) => on.filter(s => !s.flags && goesWith(s, big)).reduce((a, s) => a + times(s) * pts[s.key], 0);
+    const groups = [['spam', 'promo spam'], ['abuse', 'abuse']].filter(([g]) => on.some(s => s.group === g));
+    for (const [g, what] of groups)
+      if (on.filter(s => s.flags && s.group === g).every(s => !now[s.key])) out.push(`Nothing can flag ${what}: every sign that can is off.`);
+    const alone = on.filter(s => s.flags && now[s.key] >= need && s.points < need);
+    if (alone.length) out.push(`${alone.map(s => `${s.label} (${now[s.key]})`).join(', ')} ${alone.length === 1 ? 'is' : 'are'} now enough on ${alone.length === 1 ? 'its' : 'their'} own on ${lv}: every message with ${alone.length === 1 ? 'it' : 'one'} is flagged.`);
+    const short = on.filter(s => s.flags && now[s.key] && s.points + extra(s, POINTS) >= need && now[s.key] + extra(s, now) < need);
+    if (short.length) out.push(`${short.map(s => `${s.label} (${now[s.key] + extra(s, now)} of ${need})`).join(', ')} can't be flagged on ${lv} any more without another strong sign, even with every small sign.`);
+    for (const s of on.filter(x => !x.flags && now[x.key])) {
+      const big = on.filter(b => b.flags && now[b.key] && goesWith(s, b)).sort((a, b) => now[a.key] - now[b.key])[0];
+      if (!big || now[big.key] >= need) continue;
+      if (times(s) * now[s.key] + now[big.key] >= need && times(s) * s.points + big.points < need)
+        out.push(`${s.label} (${now[s.key]}) with just ${big.label.toLowerCase()} (${now[big.key]}) is now enough to flag a message on ${lv}.`);
+    }
+    if (on.filter(s => now[s.key] >= 4).length >= on.length * 0.7)
+      out.push('Most signs are worth 4 or more: almost any message with one of them will be flagged. Expect false alarms.');
+    return out;
+  }
+
   // Whether a sender is on the chat bot list (default BOTS): the whole name, ignoring case.
   function ignored(sender, list) {
     const name = String(sender || '').trim().toLowerCase();
@@ -102,69 +238,87 @@ const SmvSpam = (() => {
   }
 
   /**
-   * score(msg, ctx, opts) -> { score, need, spam, signs: [{ text, points }] }
+   * score(msg, ctx, opts) -> { score, need, spam, abuse, signs: [{ key, text, points }] }
    * msg:  { sender, body, chat, t }
    * ctx:  { recent: [{ sender, body, chat, t }], firstSeen: { [chat + '\n' + sender]: time } }
    *       recent holds the other messages seen lately (any chat, including this one).
    *       firstSeen can also be a Map with the same keys.
-   * opts: { sensitivity, allowed, words, openers, ignore }   (openers, ignore: an empty list matches nothing)
+   * opts: { sensitivity, allowed, words, openers, ignore, abuse, abuseWords, slurs, swears, points }
+   *       (openers, ignore, abuseWords, slurs, swears: an empty list matches nothing)
    *       ignore: senders never flagged (exact name, any case); the result then has ignored: true.
+   *       abuse: false leaves out insults, slurs and swearing. points: { [sign key]: 0 to POINT_MAX } (see SIGNS).
+   * abuse: it was flagged, or would be, for abuse rather than spam (its tag says so).
    */
   function score(msg, ctx = {}, opts = {}) {
     const allowed = cleanList(opts.allowed && opts.allowed.length ? opts.allowed : ALLOWED);
     const words = cleanList(opts.words && opts.words.length ? opts.words : WORDS);
     const openers = (Array.isArray(opts.openers) ? opts.openers : OPENERS).map(x => String(x).trim()).filter(x => flat(x));
-    const need = LEVELS[opts.sensitivity] || LEVELS.balanced;
-    if (ignored(msg.sender, opts.ignore)) return { score: 0, need, spam: false, signs: [], ignored: true };
+    const need = LEVELS[opts.sensitivity] || LEVELS.balanced, pts = pointsOf(opts.points);
+    if (ignored(msg.sender, opts.ignore)) return { score: 0, need, spam: false, abuse: false, signs: [], ignored: true };
     const body = String(msg.body || ''), low = body.toLowerCase(), t = msg.t || Date.now();
     const signs = [];
-    const sign = (text, points) => signs.push({ text, points });
+    const sign = (key, text, points) => { if (points > 0) signs.push({ key, text, points }); };   // 0: that sign is off
 
     const s = sites(body);
     const hidden = [...new Set(s.hidden.filter(d => !domainOk(d, allowed)))];
     const plain = [...new Set(s.plain.filter(d => !domainOk(d, allowed)))];
-    if (hidden.length) sign(`Disguised link: ${hidden.join(', ').replace(/\./g, ' ')}`, 3);
-    else if (plain.length) sign(`Link to a site not on the allowed list: ${plain.join(', ')}`, 1);
+    if (hidden.length) sign('hidden', `Disguised link: ${hidden.join(', ').replace(/\./g, ' ')}`, pts.hidden);
+    else if (plain.length) sign('plain', `Link to a site not on the allowed list: ${plain.join(', ')}`, pts.plain);
 
     const asks = contact(body);
-    if (asks) sign(`Asks to be added off-site: ${asks}`, 4);
+    if (asks) sign('contact', `Asks to be added off-site: ${asks}`, pts.contact);
 
     const found = words.filter(w => new RegExp(`(^|[^a-z0-9])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i').test(low));
-    if (found.length) sign(`Promo words: ${found.join(', ')}`, Math.min(2, found.length));
+    if (found.length) sign('words', `Promo words: ${found.join(', ')}`, Math.min(2, found.length) * pts.words);
 
-    if (junkCount(body) >= 2 && norm(body).split(' ').length >= 4) sign('Emotes breaking up the words', 1);
+    if (junkCount(body) >= 2 && norm(body).split(' ').length >= 4) sign('junk', 'Emotes breaking up the words', pts.junk);
 
     const fl = flood(body);
-    if (fl) sign(`The same word over and over: "${fl.unit}" ×${fl.times}`, 6);
+    if (fl) sign('flood', `The same word over and over: "${fl.unit}" ×${fl.times}`, pts.flood);
 
     const opener = openers.find(o => ` ${flat(body)} `.includes(` ${flat(o)} `));
-    if (opener) sign(`Known bot opening line: "${opener}"`, 6);
+    if (opener) sign('opener', `Known bot opening line: "${opener}"`, pts.opener);
 
     const recent = (ctx.recent || []).filter(r => t - (r.t || 0) < WINDOW_MS && r !== msg);
+    const theirs = recent.filter(r => r.chat === msg.chat && String(r.sender).toLowerCase() === String(msg.sender).toLowerCase() && (r.t || 0) <= t);
+    if (opts.abuse !== false) {
+      const lists = { abuse: opts.abuseWords, slurs: opts.slurs, swears: opts.swears }, a = abuse(body, lists);
+      if (a.insult) sign('insult', `Insult aimed at someone: "${a.insult}"`, pts.insult);
+      if (a.slur) sign('slur', `Slur or threat: "${a.slur}"`, pts.slur);
+      if (a.swearOnly) {
+        const n = theirs.filter(r => t - (r.t || 0) < SWEAR_MS && abuse(r.body, lists).swearOnly).length;
+        if (n >= 2) sign('swearing', `Swearing over and over: ${n + 1} messages in 2 minutes`, pts.swearing);
+      }
+      if (a.insult || a.slur) {
+        const n = theirs.filter(r => { const b = abuse(r.body, lists); return b.insult || b.slur; }).length;
+        if (n) sign('again', `Keeps at it: ${n} more abusive ${n === 1 ? 'message' : 'messages'} in the last 5 minutes`, pts.again);
+      }
+    }
+
     const key = norm(body);
     if (key.length >= 12) {
       const elsewhere = new Set(recent.filter(r => r.chat !== msg.chat && norm(r.body) === key).map(r => r.chat));
-      if (elsewhere.size) sign(`Same message in ${elsewhere.size === 1 ? 'another open chat' : elsewhere.size + ' other open chats'}`, 3);
+      if (elsewhere.size) sign('elsewhere', `Same message in ${elsewhere.size === 1 ? 'another open chat' : elsewhere.size + ' other open chats'}`, pts.elsewhere);
     }
 
     const seenKey = `${msg.chat}\n${String(msg.sender || '').toLowerCase()}`;
     const first = ctx.firstSeen instanceof Map ? ctx.firstSeen.get(seenKey) : (ctx.firstSeen || {})[seenKey];
     const isNew = first && t - first < WINDOW_MS;
     if (isNew) {
-      const before = recent.filter(r => r.chat === msg.chat && String(r.sender).toLowerCase() === String(msg.sender).toLowerCase() && (r.t || 0) <= t);
-      const filler = before.filter(r => !/@|https?:|\.\w{2,4}\b/.test(r.body) && norm(r.body).split(' ').length >= 3);
-      if (filler.length >= 2) sign('Friendly filler lines just before', 1);
-      else sign('Started chatting in the last few minutes', 1);
+      const filler = theirs.filter(r => !/@|https?:|\.\w{2,4}\b/.test(r.body) && norm(r.body).split(' ').length >= 3);
+      if (filler.length >= 2) sign('newbie', 'Friendly filler lines just before', pts.newbie);
+      else sign('newbie', 'Started chatting in the last few minutes', pts.newbie);
     }
 
     const total = signs.reduce((a, x) => a + x.points, 0);
-    // A link (disguised or not) or an off-site name is needed: without one there's nothing to promote. A word
-    // flood and a known bot opening line are spam on their own.
-    const spam = total >= need && (hidden.length > 0 || plain.length > 0 || !!asks || !!fl || !!opener || signs.some(x => /^Same message/.test(x.text)));
-    return { score: total, need, spam, signs };
+    // A sign that flags is needed (a link, an off-site name, ..., an insult): without one there's nothing to promote
+    // and no one abused.
+    const spam = total >= need && signs.some(x => FLAGS.has(x.key));
+    return { score: total, need, spam, abuse: signs.some(x => FLAGS.has(x.key) && GROUP[x.key] === 'abuse'), signs };
   }
 
-  return { score, sites, contact, ignored, withNewBots, ALLOWED, WORDS, OPENERS, BOTS, LEVELS };
+  return { score, sites, contact, ignored, withNewBots, abuse, pointsOf, scoringWarnings, ALLOWED, WORDS, OPENERS, BOTS, LEVELS,
+    ABUSE, SLURS, SWEARS, SIGNS, POINTS, POINT_MAX };
 })();
 
 export { SmvSpam };
