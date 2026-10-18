@@ -107,15 +107,24 @@ function scoreRow(s){
     oninput: () => setPoints(s.key, +range.value), ondblclick: () => setPoints(s.key, s.points) });
   return element('div', { class: 'sc-row', dataset: { pt: s.key } },
     element('span', { class: 'sc-name', title: s.label + (s.note ? ` (${s.note.toLowerCase()})` : '') }, s.short),
+    warnIcon(),
     element('span', { class: 'sc-flag', title: s.flags ? 'This sign can flag a message' : '' }, s.flags ? '⚑' : ''),
     element('span', { class: 'sc-slider', title: `Built-in: ${s.points}. Double-click to put it back.` }, range,
       element('i', { class: 'sc-def', style: { '--at': s.points / SmvSpam.POINT_MAX } })),
     element('b', 'sc-val'));
 }
-// Spam's signs on the left; abuse's on the right, with the warnings and Reset under them.
+// A warning about the points, where it applies (a sign's row, a group's heading, or the line above them): its
+// message shows on hover.
+const warnIcon = () => element('span', { class: 'sc-warn-ico', role: 'img', hidden: true }, '⚠');
+function showWarn(ico, list){
+  ico.hidden = !list.length;
+  ico.title = list.map(w => w.text).join('\n');
+  ico.setAttribute('aria-label', ico.title);
+}
+// Spam's signs on the left, abuse's on the right.
 function buildScoring(){
   [['spam', 'Spam'], ['abuse', 'Abuse']].forEach(([g, name]) => $(`#spamPoints [data-col=${g}]`).replaceChildren(element('div', { class: 'sc-group', dataset: { g } },
-    element('div', 'sc-head', name), ...SmvSpam.SIGNS.filter(s => s.group === g).map(scoreRow))));
+    element('div', 'sc-head', name, warnIcon()), ...SmvSpam.SIGNS.filter(s => s.group === g).map(scoreRow))));
 }
 function syncScoring(){
   const box = $('#spamPoints'); if (!box || !box.querySelector('.sc-row')) return;
@@ -130,9 +139,10 @@ function syncScoring(){
   box.querySelector('.sc-group[data-g=abuse]').classList.toggle('st-dim', !abuseOn);
   box.querySelector('.sc-group[data-g=abuse]').title = abuseOn ? '' : 'Abuse is off (Alerts › Also flag abuse)';
   $('#spamPointsReset').disabled = !alerts.spam.points;
-  const warn = SmvSpam.scoringWarnings(now, alerts.spam.sens, abuseOn), w = $('#spamWarn');
-  w.hidden = !warn.length;
-  w.replaceChildren(...warn.map(t => element('div', null, t)));
+  const warn = SmvSpam.scoringWarnings(now, alerts.spam.sens, abuseOn);
+  SmvSpam.SIGNS.forEach(s => showWarn(box.querySelector(`.sc-row[data-pt="${s.key}"] .sc-warn-ico`), warn.filter(w => w.sign === s.key)));
+  box.querySelectorAll('.sc-group').forEach(g => showWarn(g.querySelector('.sc-head .sc-warn-ico'), warn.filter(w => w.group === g.dataset.g)));
+  showWarn($('#spamWarnAll'), warn.filter(w => !w.sign && !w.group));
 }
 // Only the points that differ from the built-in ones are kept (null: all built-in).
 function setPoints(key, v){

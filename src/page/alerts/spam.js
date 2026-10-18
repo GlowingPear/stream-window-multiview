@@ -186,10 +186,10 @@ const SmvSpam = (() => {
   }
 
   /**
-   * scoringWarnings(points, sensitivity, abuseOn) -> [text]
-   * What may go wrong with these points: signs that now flag a message on their own, ones that can't be flagged any
-   * more, small signs that now tip a message over with little else, nothing left that can flag, or most signs high.
-   * The built-in points have none.
+   * scoringWarnings(points, sensitivity, abuseOn) -> [{ text, sign } | { text, group } | { text }]
+   * What may go wrong with these points, and where: on a sign (its key), one that now flags a message on its own,
+   * can't be flagged any more, or (a small one) now tips a message over with little else; on a group ('spam',
+   * 'abuse'), nothing left in it that can flag; on neither, most signs high. The built-in points have none.
    */
   function scoringWarnings(points, sensitivity, abuseOn = true) {
     const need = LEVELS[sensitivity] || LEVELS.balanced, now = pointsOf(points), out = [];
@@ -201,21 +201,22 @@ const SmvSpam = (() => {
     const goesWith = (small, big) => small.key === 'words' ? big.group === 'spam' : small.key === 'again' ? /^(insult|slur)$/.test(big.key) : true;
     const times = s => s.key === 'words' ? 2 : 1;
     const extra = (big, pts) => on.filter(s => !s.flags && goesWith(s, big)).reduce((a, s) => a + times(s) * pts[s.key], 0);
-    const groups = [['spam', 'promo spam'], ['abuse', 'abuse']].filter(([g]) => on.some(s => s.group === g));
-    for (const [g, what] of groups)
-      if (on.filter(s => s.flags && s.group === g).every(s => !now[s.key])) out.push(`Nothing can flag ${what}: every sign that can is off.`);
-    const alone = on.filter(s => s.flags && now[s.key] >= need && s.points < need);
-    if (alone.length) out.push(`${alone.map(s => `${s.label} (${now[s.key]})`).join(', ')} ${alone.length === 1 ? 'is' : 'are'} now enough on ${alone.length === 1 ? 'its' : 'their'} own on ${lv}: every message with ${alone.length === 1 ? 'it' : 'one'} is flagged.`);
-    const short = on.filter(s => s.flags && now[s.key] && s.points + extra(s, POINTS) >= need && now[s.key] + extra(s, now) < need);
-    if (short.length) out.push(`${short.map(s => `${s.label} (${now[s.key] + extra(s, now)} of ${need})`).join(', ')} can't be flagged on ${lv} any more without another strong sign, even with every small sign.`);
+    for (const [g, what] of [['spam', 'promo spam'], ['abuse', 'abuse']].filter(([g]) => on.some(s => s.group === g)))
+      if (on.filter(s => s.flags && s.group === g).every(s => !now[s.key])) out.push({ text: `Nothing can flag ${what}: every sign that can is off.`, group: g });
+    for (const s of on.filter(x => x.flags && now[x.key])) {
+      if (now[s.key] >= need && s.points < need)
+        out.push({ text: `${s.label} (${now[s.key]}) is now enough on its own on ${lv}: every message with it is flagged.`, sign: s.key });
+      else if (s.points + extra(s, POINTS) >= need && now[s.key] + extra(s, now) < need)
+        out.push({ text: `${s.label} can't be flagged on ${lv} any more without another strong sign: with every small sign it reaches ${now[s.key] + extra(s, now)} of ${need}.`, sign: s.key });
+    }
     for (const s of on.filter(x => !x.flags && now[x.key])) {
       const big = on.filter(b => b.flags && now[b.key] && goesWith(s, b)).sort((a, b) => now[a.key] - now[b.key])[0];
       if (!big || now[big.key] >= need) continue;
       if (times(s) * now[s.key] + now[big.key] >= need && times(s) * s.points + big.points < need)
-        out.push(`${s.label} (${now[s.key]}) with just ${big.label.toLowerCase()} (${now[big.key]}) is now enough to flag a message on ${lv}.`);
+        out.push({ text: `${s.label} (${now[s.key]}) with just ${big.label.toLowerCase()} (${now[big.key]}) is now enough to flag a message on ${lv}.`, sign: s.key });
     }
     if (on.filter(s => now[s.key] >= 4).length >= on.length * 0.7)
-      out.push('Most signs are worth 4 or more: almost any message with one of them will be flagged. Expect false alarms.');
+      out.push({ text: 'Most signs are worth 4 or more: almost any message with one of them will be flagged. Expect false alarms.' });
     return out;
   }
 

@@ -314,29 +314,27 @@ test('the built-in points give no warnings, on any sensitivity', () => {
   }
 });
 
-test('warnings: signs now enough on their own, small signs tipping a message over, and most signs high', () => {
+test('warnings: signs now enough on their own, small signs tipping a message over, and most signs high, each where it belongs', () => {
   assert.deepEqual(scoringWarnings({ plain: 5 }, 'balanced'),
-    ['Link to a site not on the allowed list (5) is now enough on its own on Balanced: every message with it is flagged.']);
-  assert.deepEqual(scoringWarnings({ plain: 5, insult: 6 }, 'balanced'),
-    ['Link to a site not on the allowed list (5), Insult aimed at someone (6) are now enough on their own on Balanced: every message with one is flagged.']);
+    [{ text: 'Link to a site not on the allowed list (5) is now enough on its own on Balanced: every message with it is flagged.', sign: 'plain' }]);
+  assert.deepEqual(scoringWarnings({ plain: 5, insult: 6 }, 'balanced').map(w => w.sign), ['plain', 'insult'], 'one for each');
   assert.deepEqual(scoringWarnings({ newbie: 4 }, 'balanced'),
-    ['New chatter (4) with just link to a site not on the allowed list (1) is now enough to flag a message on Balanced.']);
+    [{ text: 'New chatter (4) with just link to a site not on the allowed list (1) is now enough to flag a message on Balanced.', sign: 'newbie' }]);
   assert.deepEqual(scoringWarnings({ words: 2 }, 'balanced'),
-    ['Promo words (2) with just link to a site not on the allowed list (1) is now enough to flag a message on Balanced.'], 'two promo words');
+    [{ text: 'Promo words (2) with just link to a site not on the allowed list (1) is now enough to flag a message on Balanced.', sign: 'words' }], 'two promo words');
   const all8 = Object.fromEntries(Object.keys(POINTS).map(k => [k, 8]));
   const w = scoringWarnings(all8, 'strict');
-  assert.equal(w[w.length - 1], 'Most signs are worth 4 or more: almost any message with one of them will be flagged. Expect false alarms.');
-  assert.match(w[0], /^Disguised link \(8\), .* are now enough on their own on Strict/);
+  assert.deepEqual(w[w.length - 1], { text: 'Most signs are worth 4 or more: almost any message with one of them will be flagged. Expect false alarms.' }, 'about every sign');
+  assert.deepEqual(w.slice(0, -1).map(x => x.sign), ['hidden', 'plain', 'elsewhere'], 'the ones below Strict before');
 });
 
-test('warnings: nothing left that can flag, and signs that can no longer be flagged', () => {
+test('warnings: nothing left that can flag (on its group), and signs that can no longer be flagged', () => {
   const noSpam = { hidden: 0, plain: 0, contact: 0, elsewhere: 0, flood: 0, opener: 0 };
-  assert.deepEqual(scoringWarnings(noSpam, 'balanced'), ['Nothing can flag promo spam: every sign that can is off.']);
-  assert.deepEqual(scoringWarnings({ insult: 0, slur: 0, swearing: 0 }, 'balanced'), ['Nothing can flag abuse: every sign that can is off.']);
+  assert.deepEqual(scoringWarnings(noSpam, 'balanced'), [{ text: 'Nothing can flag promo spam: every sign that can is off.', group: 'spam' }]);
+  assert.deepEqual(scoringWarnings({ insult: 0, slur: 0, swearing: 0 }, 'balanced'), [{ text: 'Nothing can flag abuse: every sign that can is off.', group: 'abuse' }]);
   assert.deepEqual(scoringWarnings({ insult: 0, slur: 0, swearing: 0 }, 'balanced', false), [], 'abuse off: nothing to warn about');
-  assert.deepEqual(scoringWarnings({ hidden: 1, words: 0, junk: 0, newbie: 0 }, 'balanced'), [
-    'Disguised link (1 of 5), Link to a site not on the allowed list (1 of 5), Asks to be added off-site (4 of 5), Same message in another open chat (3 of 5) ' +
-    'can\'t be flagged on Balanced any more without another strong sign, even with every small sign.'
-  ]);
+  const short = scoringWarnings({ hidden: 1, words: 0, junk: 0, newbie: 0 }, 'balanced');
+  assert.deepEqual(short.map(x => x.sign), ['hidden', 'plain', 'contact', 'elsewhere']);
+  assert.equal(short[0].text, 'Disguised link can\'t be flagged on Balanced any more without another strong sign: with every small sign it reaches 1 of 5.');
   assert.deepEqual(scoringWarnings({ insult: 1 }, 'relaxed'), [], 'still reaches 6 with the small signs (1 + 1 + 1 + 3)');
 });

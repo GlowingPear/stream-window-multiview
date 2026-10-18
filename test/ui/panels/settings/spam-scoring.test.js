@@ -17,7 +17,9 @@ async function openSpam(t, tab, size){
 const saved = page => page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts') || '{}').spam || {});
 const slide = (page, key, v) => page.fill(`.sc-row[data-pt="${key}"] input`, String(v));
 const val = (page, key) => page.textContent(`.sc-row[data-pt="${key}"] .sc-val`);
-const warnings = page => page.$$eval('#spamWarn:not([hidden]) div', e => e.map(d => d.textContent));
+// The warnings' messages (on hover), in the order their ⚠ icons show
+const warnings = page => page.$$eval('[data-s=spam] [data-t=scoring] .sc-warn-ico:not([hidden])', e => e.map(i => i.title));
+const warnedAt = page => page.$$eval('[data-s=spam] [data-t=scoring] .sc-warn-ico:not([hidden])', e => e.map(i => i.id || i.closest('[data-pt]')?.dataset.pt || i.closest('[data-g]').dataset.g));
 
 test('Scoring: every sign has a slider from 0 (Off) to 8 at its built-in points, and only changed points are kept', async t => {
   const page = await openSpam(t, 'scoring');
@@ -52,11 +54,14 @@ test('Scoring: warnings follow the points and the sensitivity, and Reset to defa
   const page = await openSpam(t, 'scoring');
   await slide(page, 'plain', 5);
   assert.deepEqual(await warnings(page), ['Link to a site not on the allowed list (5) is now enough on its own on Balanced: every message with it is flagged.']);
+  assert.deepEqual(await warnedAt(page), ['plain'], 'a ⚠ on its row, with the message on hover');
+  assert.equal(await page.getAttribute('.sc-row[data-pt=plain] .sc-warn-ico', 'aria-label'), (await warnings(page))[0]);
   await page.selectOption('[data-s=spam] .st-subpane[data-t=scoring] [data-al="spam.sens"]', 'relaxed');
   assert.deepEqual(await warnings(page), [], 'Relaxed needs 6');
   await page.selectOption('[data-s=spam] .st-subpane[data-t=scoring] [data-al="spam.sens"]', 'balanced');
   for (const k of ['hidden', 'plain', 'contact', 'elsewhere', 'flood', 'opener']) await slide(page, k, 0);
   assert.deepEqual(await warnings(page), ['Nothing can flag promo spam: every sign that can is off.']);
+  assert.deepEqual(await warnedAt(page), ['spam'], 'on the Spam heading');
 
   await page.click('#spamPointsReset');
   await page.click('#askDlg .ask-no');
@@ -67,6 +72,11 @@ test('Scoring: warnings follow the points and the sensitivity, and Reset to defa
   assert.equal(await page.inputValue('.sc-row[data-pt=hidden] input'), '3');
   assert.deepEqual(await warnings(page), []);
   assert.ok(await page.isDisabled('#spamPointsReset'));
+
+  // every sign at 8: most signs high goes on the line above them, and each that's now enough on its own on its row
+  for (const k of ['hidden', 'plain', 'contact', 'elsewhere', 'flood', 'opener', 'words', 'junk', 'newbie', 'insult', 'slur', 'swearing', 'again']) await slide(page, k, 8);
+  assert.deepEqual(await warnedAt(page), ['spamWarnAll', 'hidden', 'plain', 'contact', 'elsewhere', 'insult']);
+  assert.match(await page.getAttribute('#spamWarnAll', 'title'), /^Most signs are worth 4 or more/);
 });
 
 test('abuse: the toggle dims its signs and silences its warnings; Try it uses your points and says when it\'s abuse', async t => {
@@ -87,6 +97,7 @@ test('abuse: the toggle dims its signs and silences its warnings; Try it uses yo
   await page.click('#spamTabs [data-t=scoring]');
   for (const k of ['insult', 'slur', 'swearing']) await slide(page, k, 0);
   assert.deepEqual(await warnings(page), ['Nothing can flag abuse: every sign that can is off.']);
+  assert.deepEqual(await warnedAt(page), ['abuse']);
   await page.click('#spamTabs [data-t=alerts]');
   await page.click('[data-s=spam] [data-al="spam.abuse"]');
   assert.equal((await saved(page)).abuse, false);
@@ -125,7 +136,7 @@ test('Lists: abuse words, slurs and threats, and swear words can be added to, em
   assert.match(await page.textContent('#msg'), /Type a word or phrase/);
 });
 
-test('Scoring fits without scrolling in a 1280 × 800 window, with warnings showing, and every name on one line', async t => {
+test('Scoring fits without scrolling in a 1280 × 800 window, with warnings showing, every name on one line, and Reset beside the line above', async t => {
   const page = await openSpam(t, 'scoring', { width: 1280, height: 800 });
   await slide(page, 'plain', 5);
   await slide(page, 'newbie', 4);
@@ -134,4 +145,8 @@ test('Scoring fits without scrolling in a 1280 × 800 window, with warnings show
   assert.ok(scroll <= view, `no vertical scrolling: ${scroll} > ${view}`);
   const cut = await page.$$eval('.sc-name', e => e.filter(n => n.scrollWidth > n.clientWidth).map(n => n.textContent));
   assert.deepEqual(cut, [], 'no name cut short');
+  const widths = await page.$$eval('.sc-row .sc-slider', e => [...new Set(e.map(x => Math.round(x.getBoundingClientRect().width)))]);
+  assert.deepEqual(widths, [96], 'every slider the same width, with or without a ⚠ in its row');
+  const [desc, reset] = [await page.locator('.sc-top .st-sub').boundingBox(), await page.locator('#spamPointsReset').boundingBox()];
+  assert.ok(reset.x >= desc.x + desc.width && Math.abs((reset.y + reset.height / 2) - (desc.y + desc.height / 2)) < 12, 'Reset to defaults right of the text');
 });
