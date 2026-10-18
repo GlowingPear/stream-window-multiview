@@ -90,6 +90,9 @@ test('farming stops: signed back in after the wait; another Kick account is left
   assert.equal(await partition('stream'), 'persist:kmv-stream-pixelpear', 'not at once');
   await until(async () => (await partition('stream')) === 'persist:kick', 5000);
   await until(() => heard.at(-1).signedIn === true);
+  const notes = (await a.win.evaluate(() => window.kmv.linkActivity({ limit: 50 }))).entries.filter(e => e.about === 'players');
+  assert.equal(notes.length, 1, 'once, though both windows wait');
+  assert.match(notes[0].text, /^Farming stopped · Kick players sign back in at .* \(in 1 s\)$/, 'the wait is in the Activity log');
   farm('otherfan');
   await a.win.waitForTimeout(1500);
   assert.equal(await partition('stream'), 'persist:kick', 'farming with another account: no conflict');

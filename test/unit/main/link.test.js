@@ -234,6 +234,19 @@ test('the Activity log notes Pear Drops forgetting the pairing, and a Test that 
   assert.ok(all().some(e => e.kind === 'status' && e.tone === 'warn' && /^Test: .*isn't open/.test(e.text)), 'a failed Test is a warning');
 });
 
+test('the Activity log takes the page\'s notes about its Kick players: text only, and not too much of it', NEEDS, async t => {
+  let told = 0;
+  const { pl } = await setup(t, { peer: false, activity: () => told++ });
+  const all = () => pl.activityPage({ limit: 50 }).entries;
+  pl.playersNote('  Farming stopped · Kick players sign back in at 17:05:00 (in 5 min) ');
+  assert.deepEqual(all().map(e => [e.kind, e.tone, e.about, e.text]), [['status', '', 'players', 'Farming stopped · Kick players sign back in at 17:05:00 (in 5 min)']]);
+  assert.equal(told, 1, 'the page is told');
+  for (const bad of [null, 42, { text: 'x' }, '', '   ']) pl.playersNote(bad);
+  assert.equal(all().length, 1, 'anything else is ignored');
+  pl.playersNote('x'.repeat(500));
+  assert.equal(all()[0].text.length, 200);
+});
+
 test('mergePlayers: both windows\' players as one', () => {
   const a = { platforms: { kick: { signedIn: true, mode: 'auto', account: null, open: [{ platform: 'kick', slug: 'a' }] } } };
   const b = { platforms: { kick: { signedIn: false, mode: 'auto', account: null, open: [{ platform: 'kick', slug: 'a' }, { platform: 'kick', slug: 'b' }] }, twitch: { signedIn: false, mode: 'signed-out', account: null, open: [] } } };

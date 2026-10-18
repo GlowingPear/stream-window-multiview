@@ -502,6 +502,7 @@ ipcMain.handle('link:icon', () => getPearLink()?.icon() ?? '');
 ipcMain.handle('link:show', () => getPearLink()?.showPearDrops() ?? { shown: false });
 ipcMain.handle('link:test', () => getPearLink()?.test() ?? { ok: false, reason: 'unknown', text: "Connected apps aren't available in this copy" });
 ipcMain.handle('link:activity', (_e, opts) => getPearLink()?.activityPage(pageOptions(opts)) ?? null);
+ipcMain.on('link:note', (_e, text) => getPearLink()?.playersNote(text));
 ipcMain.on('link:players', (e, report) => { try { getPearLink()?.playersReport(fromStreams(e) ? 'streams' : 'main', report); } catch (err) { console.warn('[grapevine]', err.message); } });
 app.on('before-quit', () => { pearLink?.stop(); });
 // A raid one window followed: the other window (main or streams pop-out) follows it too.

@@ -31,17 +31,29 @@ const kickStreams = () => wins.filter(w => w.kind === 'stream' && w.channel && p
 
 // Apply the rule: out at once when Pear Drops starts farming, back in once it hasn't farmed for 5 minutes.
 function applyLink(){
+  const waited = backAt, wait = (linkState && linkState.wait) || SIGN_BACK_IN_MS;
   if (!kickAuto()){ kickOut = false; backAt = null; }
   else {
-    const wait = (linkState && linkState.wait) || SIGN_BACK_IN_MS;
     const r = nextKickOut({ out: kickOut, backAt }, needOut({ auto: true, farming: linkFarming(), mine: kickUser() }), Date.now(), wait);
     kickOut = r.out; backAt = r.backAt;
   }
+  noteWait(waited, wait);
   clearTimeout(backTimer); backTimer = null;
   if (backAt != null) backTimer = setTimeout(applyLink, Math.max(0, backAt - Date.now()));
   syncStreams('kick');
   reportPlayers();
   store.changed('link');
+}
+
+// The wait to sign back in, in the Activity log: when it starts, and when Pear Drops farms again before it ends
+// (signing back in is the players.changed that follows). The main window's: both windows wait alike.
+const waitSpan = ms => (ms >= 60000 ? Math.round(ms / 60000) + ' min' : Math.round(ms / 1000) + ' s');
+function noteWait(waited, wait){
+  if (ROLE !== 'main' || !appCall('linkNote')) return;
+  if (waited == null && backAt != null)
+    window.kmv.linkNote('Farming stopped · Kick players sign back in at '
+      + new Date(backAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' (in ' + waitSpan(wait) + ')');
+  else if (waited != null && backAt == null && kickOut) window.kmv.linkNote('Farming again · Kick players stay signed out');
 }
 
 // What this window's Kick players are, for Pear Drops (players.changed). The main process merges both windows'.

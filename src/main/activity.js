@@ -63,8 +63,10 @@ function createActivity({ max = MAX, now = Date.now } = {}) {
   const ended = app => { if (totals.has(app)) totals.get(app).heard = null; };
 
   // Something link.js noticed: kind 'status' (connected, disconnected, a Test) or 'note' (a dropped message),
-  // tone 'ok', '', 'warn' or 'bad'.
-  const note = (app, { kind = 'status', tone = '', text, at = now() }) => push({ at, app: app || null, dir: null, kind, method: null, tone, text });
+  // tone 'ok', '', 'warn' or 'bad', and what it's about when that's not the link itself ('players': the page's
+  // Kick players, e.g. the wait to sign them back in).
+  const note = (app, { kind = 'status', tone = '', text, about, at = now() }) =>
+    push({ at, app: app || null, dir: null, kind, method: null, tone, text, ...(about ? { about } : {}) });
 
   // Messages a minute over the last 30 minutes, oldest first: { out, in, bad }.
   function chart(app, at = now()) {

@@ -103,6 +103,7 @@ contextBridge.exposeInMainWorld('kmv', {
   linkTest: () => ipcRenderer.invoke('link:test'),
   linkActivity: opts => ipcRenderer.invoke('link:activity', opts),
   playersReport: state => ipcRenderer.send('link:players', state),
+  linkNote: text => ipcRenderer.send('link:note', String(text)),
   onLinkState: cb => ipcRenderer.on('link:state', (_e, st) => cb(st)),
   onLinkActivity: cb => ipcRenderer.on('link:activity', () => cb()),
 

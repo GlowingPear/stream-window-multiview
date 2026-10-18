@@ -66,6 +66,12 @@ function createPearLink({ version, userData, appData, dev = false, env = process
   link.on('unpaired', id => { if (id === PEAR_DROPS) noted({ tone: 'warn', text: peerApp.name + ' disconnected: both apps forgot the pairing' }); });
   link.on('log', (level, text) => { if (level === 'warn' || level === 'error') noted({ kind: 'note', tone: level === 'error' ? 'bad' : 'warn', text }); });
   const activityPage = opts => activity.page(PEAR_DROPS, opts);
+  // What the page noticed about its Kick players (Pear Drops stopped farming: the wait to sign them back in), as
+  // a note. Only text, and not too much of it.
+  function playersNote(text) {
+    if (typeof text !== 'string' || !text.trim()) return;
+    noted({ text: text.trim().slice(0, 200), about: 'players' });
+  }
   link.on('event', (from, name, params) => {
     if (from !== PEAR_DROPS || name !== 'drops.farming.changed') return;
     farming = params;
@@ -110,7 +116,7 @@ function createPearLink({ version, userData, appData, dev = false, env = process
   }
   async function stop() { if (running) { running = false; await link.stop(); } }
 
-  return { link, state, setOn, disconnect, pairAgain, icon, showPearDrops, test, activityPage, playersReport, streamsClosed, stop };
+  return { link, state, setOn, disconnect, pairAgain, icon, showPearDrops, test, activityPage, playersNote, playersReport, streamsClosed, stop };
 }
 
 // Two windows' players.changed fields as one: a site is signed in or out the same in both (the main window's
