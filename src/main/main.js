@@ -469,7 +469,13 @@ app.on('web-contents-created', (_e, wc) => {
   // Web views: no preload or Node, sandboxed, https only, and only the app's own storage (guard.js).
   wc.on('will-attach-webview', (ev, webPreferences, params) => { if (!guard.lockWebview(webPreferences, params)) ev.preventDefault(); });
   // When you last clicked or typed in this page: a page opens links in your browser only just after that.
-  wc.on('input-event', (_ev, input) => { if (/^(mouseDown|rawKeyDown|keyDown|gestureTap|touchStart)$/.test(input.type)) lastInput.set(wc.id, Date.now()); });
+  wc.on('input-event', (_ev, input) => {
+    if (!/^(mouseDown|rawKeyDown|keyDown|gestureTap|touchStart)$/.test(input.type)) return;
+    lastInput.set(wc.id, Date.now());
+    // a press in a stream or chat: the page makes it the active window (from Electron 44 on, a <webview> has no focus event)
+    const host = wc.getType() === 'webview' && /^(mouseDown|gestureTap|touchStart)$/.test(input.type) ? wc.hostWebContents : null;
+    if (host && !host.isDestroyed() && appContents(host)) host.send('view:pressed', wc.id);
+  });
   wc.on('destroyed', () => lastInput.delete(wc.id));
   wc.setWindowOpenHandler(({ url }) => {
     const fromApp = appContents(wc), recent = Date.now() - (lastInput.get(wc.id) || 0) < 5000;

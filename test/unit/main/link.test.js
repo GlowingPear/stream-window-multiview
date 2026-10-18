@@ -242,7 +242,8 @@ test('the Activity log notes Pear Drops forgetting the pairing, and a Test that 
   await stand.link.disconnect('com.glowingpear.streammultiview');
   // (the stand-in asks to pair again straight away, and keeps asking every 50 ms until Allow: a bigger page)
   const all = () => pl.activityPage({ limit: 500 }).entries;
-  await until(() => all().some(e => e.kind === 'status' && e.tone === 'warn' && e.text === 'Pear Drops disconnected: both apps forgot the pairing'));
+  // (among the problems: the stand-in keeps asking to pair again, and its hellos fill the newest entries)
+  await until(() => pl.activityPage({ filter: 'problems', limit: 50 }).entries.some(e => e.kind === 'status' && e.tone === 'warn' && e.text === 'Pear Drops disconnected: both apps forgot the pairing'));
   await stand.stop();
   await until(() => !connected(pl));
   await pl.test();

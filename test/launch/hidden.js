@@ -1,5 +1,6 @@
 // npm run test:launch:hidden: loaded into the desktop app's main process (with -r, see app.js) so the
-// launch tests can run while you work. The app's windows never go on the screen, nothing takes your keyboard
+// launch tests can run while you work. The app's windows never go on the screen (on a Mac; elsewhere they're
+// see-through, except on Linux, which can't do that; CI runs under xvfb-run), nothing takes your keyboard
 // focus, and there are no desktop notifications or fullscreen Spaces. Playwright doesn't need the windows to
 // be seen or focused: it sends clicks and typing straight to the page.
 // On a Mac the app is never allowed to become the active app ('prohibited'): with 'accessory' it still
@@ -19,13 +20,15 @@ Module._load = function (req) {
 function wrap(electron) {
   const { app, BrowserWindow, Notification } = electron;
   const proto = BrowserWindow.prototype;
-  const setOpacity = proto.setOpacity, realHide = proto.hide, onScreen = proto.isVisible;
+  const setOpacity = proto.setOpacity, realHide = proto.hide, onScreen = proto.isVisible, realShowInactive = proto.showInactive;
   const hide = w => { setOpacity.call(w, 0); w.setHasShadow(false); w.setIgnoreMouseEvents(true); };
-  // The app's own windows stay off the screen, but answer isVisible() as if they were shown. (Shown see-through,
-  // a Mac draws them about once a second a few seconds in, from Electron 42 on, and Playwright waits for a drawn
-  // frame before every click.)
+  // On a Mac the app's own windows stay off the screen, but answer isVisible() as if they were shown: shown
+  // see-through, a Mac draws them about once a second a few seconds in, from Electron 42 on, and Playwright waits
+  // for a drawn frame before every click. Elsewhere they're shown see-through (Linux draws a window that's never
+  // shown that slowly instead).
+  const OFF_SCREEN = process.platform === 'darwin';
   const shown = new WeakSet();
-  const showInactive = function () { hide(this); shown.add(this); };
+  const showInactive = function () { hide(this); shown.add(this); if (!OFF_SCREEN) realShowInactive.call(this); };
   proto.show = proto.showInactive = showInactive;
   proto.hide = function () { shown.delete(this); return realHide.call(this); };
   proto.isVisible = function () { return shown.has(this) || onScreen.call(this); };

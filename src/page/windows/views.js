@@ -18,16 +18,27 @@ import { chLabel, checkMod, extCount, platOf, platform, srcFor, streamSrc, trimP
 import { applyChatView, syncLike } from '../platforms/youtube-options.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
-import { fromSite, siteMessage } from '../shared/incoming.js';
+import { fromApp, fromSite, siteMessage } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { mountCapture, openCapturePicker } from './capture.js';
 import { applyPlay } from './pause.js';
 import { watchRaid } from './raids.js';
 import { watchStuck } from './stuck.js';
-import { addCss, loadView, reloadView, runIn, setMuted, setZoom } from './view.js';
+import { addCss, loadView, reloadView, runIn, setMuted, setZoom, viewId } from './view.js';
 import { liftAudioSoon, pushVol } from './windows.js';
 
 /* The player / chat inside a window. YouTube channels first need their current live video looked up. */
+// You clicked into a window's view: it's the active window, its alert and new messages are seen, and a chat blows
+// up (Blow up chat, switch control). Heard from its focus event, and from the app (a press in it): from Electron 44
+// on, a <webview> has no focus event.
+function viewTouched(w, frame){
+  if (!wins.includes(w) || w.view !== frame) return;
+  if (Date.now() - (frame.skipAt || 0) < 1000) return;                         // Skip YouTube ads did
+  if (Date.now() - (frame.touchedAt || 0) < 300) return;                       // its focus and the press: one click
+  frame.touchedAt = Date.now();
+  focusWin(w); clearAlert(w); readChat(w.channel);
+  if (w.kind === 'chat' && blowOn) blowUp(w);
+}
 const ytCache = {};
 function reloadWin(w){
   if (w.kind === 'capture'){ openCapturePicker(w); return; }
@@ -73,11 +84,7 @@ function mountView(w){
   else frame.src = src;
   if (DESKTOP){
     const hasVol = w.kind === 'stream';
-    frame.addEventListener('focus', () => {                                     // you clicked into it
-      if (Date.now() - (frame.skipAt || 0) < 1000) return;                       // Skip YouTube ads did
-      focusWin(w); clearAlert(w); readChat(w.channel);
-      if (w.kind === 'chat' && blowOn) blowUp(w);                                // Blow up chat on click (switch control)
-    });
+    frame.addEventListener('focus', () => viewTouched(w, frame));
     // a raid moves the chat (or player) to another channel: follow it with every window of this channel
     const nav = e => { if (e.isMainFrame !== false && w.view === frame){ watchRaid(w, e.url); watchStuck(w); } };
     frame.addEventListener('did-navigate', nav);
@@ -164,6 +171,7 @@ function init(){
   emoteOn = settings.flag('emotePreview');
   // "Copy image" on an emote card: the app fetches the picture (only from the emote sites) and copies a still of it
   fromSite('emote-copy', (w, json) => copyEmote(json));
+  if (DESKTOP) fromApp('onViewPressed', id => { const w = wins.find(x => x.view && viewId(x.view) === id); if (w) viewTouched(w, w.view); });
 }
 
 export { emoteOn, init, markNewEmotes, mountView, newEmotesOn, pngOf, reloadPage, reloadWin, viewVars, ytCache };

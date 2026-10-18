@@ -57,7 +57,7 @@ test('Settings is in the app menu on a Mac, and in File on Windows and Linux', T
   const items = await menu(where);
   assert.ok(items.includes('Settings… [CmdOrCtrl+,]'), items.join(', '));
   if (process.platform === 'darwin') assert.ok(items.includes('Check for Updates…'));
-  else assert.ok(items.includes('Exit'));
+  else assert.ok(items.some(i => /^Exit( \[|$)/.test(i)), items.join(', '));   // (Electron 44 gives it a shortcut)
   await clickMenu(where, 'Settings');
   await win.waitForSelector('#settingsDlg:not([hidden])');
   await win.keyboard.press('Escape');

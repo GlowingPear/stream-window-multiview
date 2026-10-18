@@ -16,7 +16,7 @@ test('hidden: the windows stay off the screen, nothing takes focus, and the app 
     });
     let s = await state();
     assert.equal(s.hidden, true, 'the hidden mode is loaded');
-    assert.equal(s.shown, false, 'its window is not on the screen');
+    if (MAC) assert.equal(s.shown, false, 'its window is not on the screen');
     assert.equal(s.visible, true, 'but the app is told it is');
     if (SEE_THROUGH) assert.equal(s.opacity, 0, 'and see-through, if it ever is');
     if (MAC) assert.equal(s.focused, false, 'and has no focus');
@@ -29,7 +29,7 @@ test('hidden: the windows stay off the screen, nothing takes focus, and the app 
     });
     await a.win.waitForTimeout(300);
     s = await state();
-    assert.equal(s.shown, false, 'still not on the screen');
+    if (MAC) assert.equal(s.shown, false, 'still not on the screen');
     if (SEE_THROUGH) assert.equal(s.opacity, 0, 'still see-through');
     if (MAC) assert.equal(s.focused, false, 'still no focus');
     assert.equal(s.full, false, 'no fullscreen Space');
