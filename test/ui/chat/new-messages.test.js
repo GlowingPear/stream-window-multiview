@@ -20,17 +20,14 @@ async function three(t){
 // alpha's stream maximized, over every other window
 const coverAll = async page => { await win(page, 'alpha').locator('[data-a=max]').click(); await page.waitForTimeout(400); };   // it grows over 0.3 s
 
-test('new-message counts are off at first, and Settings › Chat switches them on, saved, also from the other window', async t => {
+test('new-message counts are off at first, and switching them on is saved, also from the other window', async t => {
   const page = await three(t);
   await coverAll(page);
   assert.equal(await page.isChecked('#chatCountsSet'), false);
   await page.evaluate(() => window.chatNew('bravo', 3));
   assert.equal(await bar(page, 'bravo'), '', 'off: nothing counted');
-  await page.evaluate(() => window.openSettings());
-  await page.click('#settingsDlg .st-rail [data-s="chat"]');
-  await page.click('#settingsDlg label:has(#chatCountsSet)');
+  await countsOn(page);                                       // (Settings › Chat only shows it in the desktop app: the launch test clicks it)
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.chatCounts')), '1');
-  await page.keyboard.press('Escape');
   await page.evaluate(() => window.chatNew('bravo', 3));
   assert.equal(await bar(page, 'bravo'), '3');
   assert.equal(await bar(page, 'alpha'), '', 'a stream with nothing new has no number');
