@@ -37,14 +37,18 @@ const SmvSpam = (() => {
   // Abuse. The lists start from dsojevic/profanity-list (https://github.com/dsojevic/profanity-list, MIT, (c) Daniel
   // Sojevic): its "general" words rated Strong or Severe, its racial and anti-LGBTQ slurs that have no everyday
   // meaning, plus chat slang it doesn't have (bish, thot, kys). Matched as whole words, any case, also stretched
-  // ("whooore"), with digits or symbols for letters ("wh0re", "b!tch", "f*ck") or spelt out ("c u n t").
-  // Insults count after "you" ("ur a whore", "your a bish", "you stupid cunt"): on their own they're often banter.
+  // ("whooore"), with digits or symbols for letters ("wh0re", "b!tch", "f*ck") or spelt out ("c u n t"). Insults and
+  // slurs also as plurals ("whores"), swear words with any ending ("fucking", "pissed"): other endings make everyday
+  // words ("spiced", "cocky").
+  // Insults count after "you" ("ur a whore", "your a bish", "you stupid cunt"): on their own they're often banter, and
+  // so are the slurs that are everyday words too (chink of light, a fag for a cigarette, a dyke for a dike).
   const ABUSE = ['whore', 'hoe', 'slut', 'skank', 'thot', 'bitch', 'bish', 'biatch', 'bich', 'cunt', 'twat', 'wanker', 'tosser',
     'bastard', 'prick', 'dick', 'dickhead', 'cock', 'cocksucker', 'asshole', 'arsehole', 'ass', 'dumbass', 'jackass', 'fatass',
-    'shithead', 'fuckhead', 'fucktard', 'fuckwit', 'motherfucker', 'retard', 'spastic', 'spaz', 'scumbag', 'piece of shit', 'pos'];
+    'shithead', 'fuckhead', 'fucktard', 'fuckwit', 'motherfucker', 'retard', 'spastic', 'spaz', 'scumbag', 'piece of shit', 'pos',
+    'chink', 'fag', 'dyke'];
   // Slurs and threats: anywhere in a message.
-  const SLURS = ['nigger', 'nigga', 'sand nigger', 'chink', 'gook', 'spic', 'wetback', 'beaner', 'kike', 'raghead', 'towelhead', 'paki',
-    'darkie', 'jigaboo', 'porch monkey', 'faggot', 'fag', 'dyke', 'tranny', 'shemale',
+  const SLURS = ['nigger', 'nigga', 'sand nigger', 'gook', 'spic', 'wetback', 'beaner', 'kike', 'raghead', 'towelhead', 'paki',
+    'darkie', 'jigaboo', 'porch monkey', 'faggot', 'tranny', 'shemale',
     'kys', 'kill yourself', 'kill urself', 'kill ur self', 'kill your self', 'kill yo self', 'neck yourself', 'hang yourself',
     'unalive yourself', 'hope you die', 'hope u die', 'drink bleach'];
   // Swear words: a message of little else, several times in a row, is someone swearing at the chat.
@@ -160,7 +164,9 @@ const SmvSpam = (() => {
     const key = kind + '\n' + list.join('\n');
     if (reCache.has(key)) return reCache.get(key);
     const words = cleanList(list).map(w => w.replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean).sort((a, b) => b.length - a.length);
-    const any = words.length ? `(?:${words.map(wordPat).join('|')})(?:s|es|z|ing|in|ed|er|ers|y)?` : '';
+    // a plural's "es" only after the letters that take it ("bitches", not "spices")
+    const ends = w => kind === 'swear' ? '(?:s|es|z|ing|in|ed|er|ers|y)?' : /(?:s|x|z|ch|sh)$/.test(w) ? '(?:es|z)?' : '(?:s|z)?';
+    const any = words.length ? `(?:${words.map(w => wordPat(w) + ends(w)).join('|')})` : '';
     const re = !any ? null : kind === 'insult' ? new RegExp(`(?<![a-z0-9*])${YOU}${FILL_RE}${any}(?![a-z0-9*])`)
       : new RegExp(`(?<![a-z0-9*])${any}(?![a-z0-9*])`, 'g');
     if (reCache.size > 30) reCache.clear();
