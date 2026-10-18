@@ -81,10 +81,14 @@ test('the card\'s Copy image puts the emote\'s picture on the clipboard; only pi
   const w = a.win;
   // What the app copies: the test files run side by side and share the computer's clipboard, so another one may
   // copy something in between. (It still goes on the clipboard.)
-  await a.app.evaluate(({ clipboard }) => {
+  await a.app.evaluate(({ clipboard, nativeImage }) => {
     globalThis.__copiedImage = null;
-    const writeImage = clipboard.writeImage.bind(clipboard);
-    clipboard.writeImage = (img, ...rest) => { globalThis.__copiedImage = img.getSize(); return writeImage(img, ...rest); };
+    const write = clipboard.write.bind(clipboard);
+    clipboard.write = async (items, ...rest) => {
+      const png = await items[0].getType('image/png');
+      globalThis.__copiedImage = nativeImage.createFromBuffer(Buffer.from(await png.arrayBuffer())).getSize();
+      return write(items, ...rest);
+    };
   });
   await inView(w, 'alpha', 'chat', () => console.log('__kmv:emote-copy ' + JSON.stringify({ url: 'https://files.kick.com/emotes/1/fullsize', small: '', name: 'pearHype' })));
   for (let i = 0; i < 50 && !(await a.app.evaluate(() => globalThis.__copiedImage)); i++) await new Promise(r => setTimeout(r, 100));

@@ -1,5 +1,5 @@
 // Stream Multiview — desktop app (Electron main process)
-const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage, powerMonitor, clipboard, nativeImage, webContents } = require('electron');
+const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage, powerMonitor, clipboard, ClipboardItem, nativeImage, webContents } = require('electron');
 const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
   validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink,
   parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, normCh, toTime, withTimeout, keepLatest } = require('./live');
@@ -1220,11 +1220,11 @@ ipcMain.handle('emote:fetch', async (_e, url, small) => {
   const type = Object.keys(EMOTE_TYPES).find(k => EMOTE_TYPES[k] === got.ext);
   return { type, data: got.buf.toString('base64') };
 });
-ipcMain.handle('clipboard:png', (_e, dataUrl) => {
+ipcMain.handle('clipboard:png', async (_e, dataUrl) => {
   if (typeof dataUrl !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(dataUrl) || dataUrl.length > 20 * 1024 * 1024) return false;
   const img = nativeImage.createFromDataURL(dataUrl);
   if (img.isEmpty()) return false;
-  clipboard.writeImage(img);
+  try { await clipboard.write([new ClipboardItem({ 'image/png': new Blob([img.toPNG()], { type: 'image/png' }) })]); } catch { return false; }
   return true;
 });
 ipcMain.handle('emote:show', (_e, id) => {
