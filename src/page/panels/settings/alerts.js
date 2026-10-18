@@ -56,7 +56,7 @@ async function setAlert(kind, k, v){
   if (k === 'color') wins.forEach(w => { if (w.alert && w.alert.kind === kind) w.el.style.setProperty('--al', v); });
   if (kind === 'live' && k === 'notify') syncLiveAlerts();
 }
-/* Spam alerts: allowed sites, promo words, bot opening lines, chat bots to ignore, and the abuse lists. Mentions: chat
+/* Spam alerts: allowed sites, promo words, known bot lines, chat bots to ignore, and the abuse lists. Mentions: chat
    bots to ignore ('mbots'), which spam alerts show (read-only) and use instead of their own while they share it. */
 const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS, openers: () => SmvSpam.OPENERS, ignore: () => SmvSpam.BOTS, mbots: () => SmvSpam.BOTS,
   abuseWords: () => SmvSpam.ABUSE, slurs: () => SmvSpam.SLURS, swears: () => SmvSpam.SWEARS };
@@ -112,10 +112,10 @@ function ignoreSender(name){
 function addSpamItem(which){
   const inp = settingsDlg.querySelector(`[data-add="${which}"]`);
   let v = inp.value.trim().replace(/\s+/g, ' ');
-  if (which !== 'openers') v = v.toLowerCase();   // opening lines keep their capitals: they're shown as typed
+  if (which !== 'openers') v = v.toLowerCase();   // bot lines keep their capitals: they're shown as typed
   if (which === 'ignore' || which === 'mbots') v = v.replace(/^@/, '');
   if (which === 'allow') v = v.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '').replace(/\s+(?=[a-z]{2,6}$)/, '.');
-  if (!/[a-z0-9]/i.test(v) || (which === 'allow' && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v))){ inp.focus(); flash(which === 'allow' ? 'Type a site like example.com' : which === 'openers' ? 'Type a line a bot opens with' : which === 'ignore' || which === 'mbots' ? "Type a chat bot's name" : 'Type a word or phrase'); return; }
+  if (!/[a-z0-9]/i.test(v) || (which === 'allow' && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v))){ inp.focus(); flash(which === 'allow' ? 'Type a site like example.com' : which === 'openers' ? 'Type a line a bot posts' : which === 'ignore' || which === 'mbots' ? "Type a chat bot's name" : 'Type a word or phrase'); return; }
   const l = listOf(which); if (!l.some(x => x.toLowerCase() === v.toLowerCase())) l.push(v);
   setSpamList(which, l); inp.value = '';
 }

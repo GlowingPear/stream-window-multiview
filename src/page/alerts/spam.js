@@ -1,14 +1,17 @@
 // Spam alerts: scores a chat message for the signs promo bots leave, and (with abuse on) for insults, slurs and
 // threats. Used by the app page (as SmvSpam) and by the tests. One sign alone never flags a message: normal links,
 // clip links and someone saying "check kick com/..." stay unflagged. The exceptions are a word flood, a known bot
-// opening line, a slur or threat and someone swearing over and over. Asking to be added on Discord (or Telegram,
+// line, a slur or threat and someone swearing over and over. Asking to be added on Discord (or Telegram,
 // ...) counts like a link. How many points each sign is worth can be changed (POINTS, 0 turns one off).
 const SmvSpam = (() => {
   const ALLOWED = ['kick.com', 'twitch.tv', 'youtube.com', 'youtu.be', 'discord.gg', 'discord.com', 'x.com', 'twitter.com',
     'instagram.com', 'tiktok.com', 'reddit.com', 'imgur.com', 'streamable.com', 'medal.tv', 'github.com', 'spotify.com'];
-  const WORDS = ['upgrade', 'viewers', 'followers', 'boost', 'promo', 'promote', 'zero cost', 'cheap', 'free followers', 'grow your'];
-  // Greetings promo bots open with, a few lines before the link. Matched whole, ignoring case and punctuation.
-  const OPENERS = ['Hey stranger, still running the show?', 'Your stream’s got something special, friend'];
+  const WORDS = ['upgrade', 'viewers', 'followers', 'boost', 'promo', 'promote', 'zero cost', 'cheap', 'free followers', 'grow your',
+    'chatbot', 'make your stream', 'stays active'];
+  // Lines promo bots post: greetings they open with, a few lines before the link, and the opt-out line under their
+  // ads. Matched whole, ignoring case and punctuation.
+  const OPENERS = ['Hey stranger, still running the show?', 'Your stream’s got something special, friend',
+    'If you do not wish to receive any more messages', 'type !noads'];
   // Apps a bot asks to be added on ("add me up on discord bram209"), to take the scam out of the chat.
   const APPS = 'discord|telegram|tele|whatsapp|snapchat|snap|signal|skype|instagram|insta|ig';
   // Words after the app that aren't a name ("add me on discord later").
@@ -27,8 +30,10 @@ const SmvSpam = (() => {
   // names back ("thanks for the follow, @you"). Never flagged as spam, and never a mention.
   const BOTS = ['botrix', 'nightbot', 'streamelements', 'fossabot', 'moobot', 'streamlabs', 'wizebot', 'sery_bot', 'kickbot',
     'griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream'];
-  // The bots offered before the app remembered which ones it had offered.
-  const FIRST_BOTS = BOTS.slice(0, 9);
+  // The bots offered before the app remembered which ones it had offered, and the promo words and bot lines before
+  // it remembered those.
+  const FIRST_BOTS = BOTS.slice(0, 9), FIRST_WORDS = WORDS.slice(0, 10), FIRST_OPENERS = OPENERS.slice(0, 2);
+  const BUILT_IN = { bots: [BOTS, FIRST_BOTS], words: [WORDS, FIRST_WORDS], openers: [OPENERS, FIRST_OPENERS] };
   // Abuse. The lists start from dsojevic/profanity-list (https://github.com/dsojevic/profanity-list, MIT, (c) Daniel
   // Sojevic): its "general" words rated Strong or Severe, its racial and anti-LGBTQ slurs that have no everyday
   // meaning, plus chat slang it doesn't have (bish, thot, kys). Matched as whole words, any case, also stretched
@@ -55,7 +60,7 @@ const SmvSpam = (() => {
     { key: 'contact', group: 'spam', points: 4, flags: true, label: 'Asks to be added off-site', short: 'Asks to add off-site' },
     { key: 'elsewhere', group: 'spam', points: 3, flags: true, label: 'Same message in another open chat', short: 'Same in another chat' },
     { key: 'flood', group: 'spam', points: 6, flags: true, label: 'The same word over and over', short: 'Word flood' },
-    { key: 'opener', group: 'spam', points: 6, flags: true, label: 'Known bot opening line', short: 'Bot opening line' },
+    { key: 'opener', group: 'spam', points: 6, flags: true, label: 'Known bot line', short: 'Known bot line' },
     { key: 'words', group: 'spam', points: 1, label: 'Promo words', short: 'Promo words, each', note: 'For each one, up to 2' },
     { key: 'junk', group: 'spam', points: 1, label: 'Emotes breaking up the words', short: 'Emotes between words' },
     { key: 'newbie', group: 'spam', points: 1, label: 'New chatter', short: 'New chatter' },
@@ -227,17 +232,20 @@ const SmvSpam = (() => {
   }
 
   /**
-   * withNewBots(list, offered) -> { list, offered }
-   * A chat bot list you changed is saved whole, so bots added to BOTS later would never reach it. This adds
-   * the ones not offered before, once: a bot you removed stays removed. list: your saved list (null: the
-   * built-in one, nothing to add). offered: the built-in bots already offered (null: FIRST_BOTS).
+   * withNew(kind, list, offered) -> { list, offered }
+   * A list you changed ('bots', 'words' or 'openers') is saved whole, so what's added to the built-in one later
+   * (BOTS, WORDS, OPENERS) would never reach it. This adds what wasn't offered before, once: one you removed stays
+   * removed. list: your saved list (null: the built-in one, nothing to add). offered: the built-in ones already
+   * offered (null: the first ones, FIRST_BOTS and so on).
    */
-  function withNewBots(list, offered) {
-    if (!Array.isArray(list)) return { list: null, offered: BOTS.slice() };
-    const before = new Set(cleanList(Array.isArray(offered) ? offered : FIRST_BOTS)), have = cleanList(list);
-    const add = BOTS.filter(b => !before.has(b) && !have.includes(b));
-    return { list: add.length ? [...list, ...add] : list, offered: BOTS.slice() };
+  function withNew(kind, list, offered) {
+    const [all, first] = BUILT_IN[kind];
+    if (!Array.isArray(list)) return { list: null, offered: all.slice() };
+    const before = new Set(cleanList(Array.isArray(offered) ? offered : first)), have = cleanList(list);
+    const add = all.filter(b => !before.has(b.toLowerCase()) && !have.includes(b.toLowerCase()));
+    return { list: add.length ? [...list, ...add] : list, offered: all.slice() };
   }
+  const withNewBots = (list, offered) => withNew('bots', list, offered);
 
   /**
    * score(msg, ctx, opts) -> { score, need, spam, abuse, signs: [{ key, text, points }] }
@@ -279,7 +287,7 @@ const SmvSpam = (() => {
     if (fl) sign('flood', `The same word over and over: "${fl.unit}" ×${fl.times}`, pts.flood);
 
     const opener = openers.find(o => ` ${flat(body)} `.includes(` ${flat(o)} `));
-    if (opener) sign('opener', `Known bot opening line: "${opener}"`, pts.opener);
+    if (opener) sign('opener', `Known bot line: "${opener}"`, pts.opener);
 
     const recent = (ctx.recent || []).filter(r => t - (r.t || 0) < WINDOW_MS && r !== msg);
     const theirs = recent.filter(r => r.chat === msg.chat && String(r.sender).toLowerCase() === String(msg.sender).toLowerCase() && (r.t || 0) <= t);
@@ -319,7 +327,7 @@ const SmvSpam = (() => {
     return { score: total, need, spam, abuse: signs.some(x => FLAGS.has(x.key) && GROUP[x.key] === 'abuse'), signs };
   }
 
-  return { score, sites, contact, ignored, withNewBots, abuse, pointsOf, scoringWarnings, ALLOWED, WORDS, OPENERS, BOTS, LEVELS,
+  return { score, sites, contact, ignored, withNew, withNewBots, abuse, pointsOf, scoringWarnings, ALLOWED, WORDS, OPENERS, BOTS, LEVELS,
     ABUSE, SLURS, SWEARS, SIGNS, POINTS, POINT_MAX };
 })();
 

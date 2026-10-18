@@ -8,7 +8,8 @@ const ALERT_DEFAULTS = {
   mention: { popup: true, hl: 'until', color: '#e8b84a', esc: 20, max: 'pulse', sound: 'chime', vol: 0.5, repeat: false, notify: 'unfocused',
              bots: null, botsOffered: null },   // bots: the chat bot list (null: built-in), spam alerts' too while they share it
   spam: { popup: true, on: false, hl: 'until', color: '#ff5f5f', esc: 0, max: 'pulse', tag: true, sound: 'knock', vol: 0.4, repeat: false, notify: 'never',
-          sens: 'balanced', allow: null, words: null, openers: null, ignore: null, botsOffered: null,   // null: the built-in lists
+          sens: 'balanced', allow: null, words: null, openers: null, ignore: null,   // null: the built-in lists
+          botsOffered: null, wordsOffered: null, openersOffered: null,   // the built-in ones already added to yours
           sharedBots: true,    // the chat bot list from Mentions instead of ignore
           abuse: true, abuseWords: null, slurs: null, swears: null,   // insults, slurs and threats, swearing over and over
           points: null },      // each sign's points ({ hidden: 3, ... }; null: the built-in ones)
@@ -107,11 +108,12 @@ function init(){
                  a.app = { popup: g.on !== false, notify: g.via === 'desktop' ? 'always' : 'never' }; }
     return Object.fromEntries(ALERT_KINDS.map(k => [k, { ...ALERT_DEFAULTS[k], ...(a[k] || {}) }]));
   })();
-  // Chat bots added to the built-in list since: added to a list you changed, once (one you removed stays removed).
-  [[alerts.spam, 'ignore'], [alerts.mention, 'bots']].forEach(([a, k]) => {
-    const r = SmvSpam.withNewBots(a[k], a.botsOffered);
-    if (r.list === a[k] && JSON.stringify(r.offered) === JSON.stringify(a.botsOffered)) return;
-    a[k] = r.list; a.botsOffered = r.offered; saveAlerts();
+  // Chat bots, promo words and bot lines added to the built-in lists since: added to a list you changed, once (one
+  // you removed stays removed).
+  [[alerts.spam, 'ignore', 'bots'], [alerts.mention, 'bots', 'bots'], [alerts.spam, 'words', 'words'], [alerts.spam, 'openers', 'openers']].forEach(([a, k, kind]) => {
+    const was = kind + 'Offered', r = SmvSpam.withNew(kind, a[k], a[was]);
+    if (r.list === a[k] && JSON.stringify(r.offered) === JSON.stringify(a[was])) return;
+    a[k] = r.list; a[was] = r.offered; saveAlerts();
   });
   SOUNDS = {
     chime: (c, o, t) => { tone(c, o, t, 880, 0.35, 'sine', 0.5); tone(c, o, t + 0.12, 1318.5, 0.5, 'sine', 0.4); },
