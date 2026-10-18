@@ -8,6 +8,13 @@ const { createLiveWatcher, parseTwitchUsers, readKickLive, parseYtFeed, parseYtV
 
 const info = (live, extra = {}) => ({ live, title: live ? 'title' : '', viewers: live ? 5 : null, category: '', name: 'n', checked: 1, ...extra });
 
+test('a channel id: each site\'s own form, and never a name every object already has', () => {
+  const { validCh } = require('../../../src/main/live');
+  for (const c of ['nightowl', 'night-owl_2', 'tw:owl', 'yt:@owl.tv', 'yt:c:UCabcdefghijklmnop', 'yt:v:abcdefghijk']) assert.equal(validCh(c), true, c);
+  for (const c of ['__proto__', 'constructor', 'prototype', 'tw:__proto__', 'yt:@constructor', 'tw:"><b>', 'yt:v:short', 'a b', '', 'x'.repeat(41)])
+    assert.equal(validCh(c), false, c);
+});
+
 /* ---------- Twitch: many channels in one question ---------- */
 test('Twitch: one answer for many channels, and channels that don\'t exist', () => {
   const d = { data: { users: [

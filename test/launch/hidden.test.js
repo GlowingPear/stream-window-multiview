@@ -2,7 +2,7 @@
 // can still click and type in them. Windows Electron opens itself are see-through (Linux can't do that; CI
 // runs it under xvfb-run anyway).
 const test = require('node:test');
-const { launchApp, assert, openChannel } = require('./app');
+const { launchApp, assert, openChannel, viewLoaded, inView } = require('./app');
 
 const T = { timeout: 90000 };
 const MAC = process.platform === 'darwin', SEE_THROUGH = process.platform !== 'linux';
@@ -34,8 +34,10 @@ test('hidden: the windows stay off the screen, nothing takes focus, and the app 
     if (MAC) assert.equal(s.focused, false, 'still no focus');
     assert.equal(s.full, false, 'no fullscreen Space');
 
-    // a window it opens itself (and one made hidden, then shown) is see-through too
-    await a.win.evaluate(() => window.open('https://kick.com/someone', '_blank'));
+    // a window it opens itself (a site's pop-up, and one made hidden, then shown) is see-through too
+    await openChannel(a.win, 'alpha', 'chat');
+    await viewLoaded(a.win, 'alpha', 'chat', /chat/);
+    await inView(a.win, 'alpha', 'chat', () => { window.open('https://kick.com/someone', '_blank'); });
     await a.app.evaluate(({ BrowserWindow }) => { const w = new BrowserWindow({ show: false }); w.loadURL('about:blank'); w.show(); });
     let others = [];
     for (let i = 0; i < 50 && others.length < 2; i++) {     // they take a moment to open on a busy computer
@@ -50,7 +52,7 @@ test('hidden: the windows stay off the screen, nothing takes focus, and the app 
     await a.app.evaluate(({ Notification }) => new Notification({ title: 'test', body: 'hidden' }).show());
 
     // the tests still click and type in it
-    await openChannel(a.win, 'alpha');
+    await openChannel(a.win, 'bravo', 'both');
     await a.win.waitForSelector('#stage .win.stream');
     // and it keeps drawing (Playwright waits for a drawn frame before every click): a see-through window on the
     // screen drew about once a second after a few seconds (a Mac, Electron 42 on)

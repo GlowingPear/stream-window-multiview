@@ -120,7 +120,8 @@ let extCount = null;                    // Chrome extensions installed (null: no
 const platformVars = {
   get extCount(){ return extCount; }, set extCount(v){ extCount = v; },
 };
-const viewPartition = w => w.kind === 'stream' ? streamPartition(w.channel) : w.kind === 'chat' ? chatPartition(w.channel) : 'persist:kick';
+// a web page that isn't a stream or a chat gets storage of its own, without your logins
+const viewPartition = w => w.kind === 'stream' ? streamPartition(w.channel) : w.kind === 'chat' ? chatPartition(w.channel) : 'persist:kmv-web';
 // A player can't move to other storage, so that site's open streams start again in a new player.
 function remountStreams(p){
   if (!DESKTOP) return;

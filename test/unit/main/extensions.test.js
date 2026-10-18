@@ -10,6 +10,18 @@ const x = require('../../../src/main/extensions');
 const ID = 'abcdefghijklmnopabcdefghijklmnop';
 const entry = over => x.normalizeEntry({ id: ID, ...over });
 
+test('an extension opens web pages and its own pages; the store window stays on the store', () => {
+  const { extOpenable, storeNavOk } = require('../../../src/main/extensions');
+  for (const u of ['https://example.com/welcome', 'http://example.com/', 'chrome-extension://abcdefghijklmnopabcdefghijklmnop/options.html'])
+    assert.equal(extOpenable(u), true, u);
+  for (const u of ['file:///etc/passwd', 'chrome://settings', 'javascript:alert(1)', 'data:text/html,x', 'chrome-extension://short/x', 'devtools://x', '', null])
+    assert.equal(extOpenable(u), false, String(u));
+  for (const u of ['https://chromewebstore.google.com/detail/x', 'https://accounts.google.com/ServiceLogin', 'https://consent.google.com/m'])
+    assert.equal(storeNavOk(u), true, u);
+  for (const u of ['https://chromewebstore.google.com.evil.example/', 'http://chromewebstore.google.com/', 'https://example.com/', 'https://www.google.com/search', 'nonsense'])
+    assert.equal(storeNavOk(u), false, u);
+});
+
 test('a site\'s own session is its chats; a stream\'s own session is that stream', () => {
   assert.deepEqual(x.targetOf('persist:twitch'), { plat: 'twitch', kind: 'chat', perWindow: false });
   assert.deepEqual(x.targetOf('persist:kick', 'kick', 'stream'), { plat: 'kick', kind: 'chat', perWindow: false }, 'signed-in streams follow the chats');

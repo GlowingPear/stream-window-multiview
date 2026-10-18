@@ -41,14 +41,23 @@ test('links in a chat: Kick pages open in the app with the same login, anything 
     await a.app.evaluate(({ shell }) => { globalThis.__ext = []; shell.openExternal = url => { globalThis.__ext.push(url); return Promise.resolve(); }; });
     await openChannel(a.win, 'alpha', 'chat');
     await viewLoaded(a.win, 'alpha', 'chat', /chat/);
-    await inView(a.win, 'alpha', 'chat', () => { window.open('https://kick.com/someone'); window.open('https://example.com/clip'); });
+    await inView(a.win, 'alpha', 'chat', () => { window.open('https://kick.com/someone'); window.open('https://example.com/by-itself'); });
+    // a link you click in the chat (a real click: the page opens links in your browser only just after one)
+    await inView(a.win, 'alpha', 'chat', () => {
+      const l = Object.assign(document.createElement('a'), { href: 'https://example.com/clip', target: '_blank', textContent: 'clip' });
+      l.style.cssText = 'position:fixed;left:0;top:0;width:120px;height:40px;display:block;z-index:9999;background:#fff';
+      document.body.append(l);
+    });
+    const v = await a.win.$eval('#stage .win.chat webview', e => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y }; });
+    await a.win.mouse.click(v.x + 30, v.y + 20);
+    for (let i = 0; i < 30 && !(await a.app.evaluate(() => globalThis.__ext.length)); i++) await new Promise(r => setTimeout(r, 100));
     let wins = [];
     for (let i = 0; i < 50 && !wins.length; i++) {
       wins = await a.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map(w => w.webContents.getURL()).filter(u => /kick\.com\/someone/.test(u)));
       await new Promise(r => setTimeout(r, 100));
     }
     assert.deepEqual(wins, ['https://kick.com/someone'], 'a Kick link opens in an app window');
-    assert.deepEqual(await a.app.evaluate(() => globalThis.__ext), ['https://example.com/clip'], 'other links open in the browser');
+    assert.deepEqual(await a.app.evaluate(() => globalThis.__ext), ['https://example.com/clip'], 'other links open in the browser, when you click them (not a page opening them by itself)');
     await a.win.evaluate(() => window.kmv.openExternal('javascript:alert(1)'));
     assert.deepEqual(await a.app.evaluate(() => globalThis.__ext), ['https://example.com/clip'], 'only web links');
     assert.deepEqual(a.errors, []);

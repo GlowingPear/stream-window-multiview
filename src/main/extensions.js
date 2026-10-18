@@ -156,9 +156,19 @@ function addedAccess(before, after) {
 
 /* ---------- Electron side ---------- */
 // deps: { electron, userData, appWindows: () => BrowserWindow[], rejectCookies: Google's "Reject all" cookie value }
+// An address an extension may open in a window of its own: a web page, or one of its own pages.
+const extOpenable = u => { try { const x = new URL(String(u)); return x.protocol === 'https:' || x.protocol === 'http:' || /^chrome-extension:\/\/[a-p]{32}\//.test(x.href); } catch { return false; } };
+// The store window stays on the store (and Google's sign-in); anything else opens in your browser.
+const STORE_HOST = /^(chromewebstore|accounts|consent)\.google\.com$/;
+const storeNavOk = u => { try { const x = new URL(String(u)); return x.protocol === 'https:' && STORE_HOST.test(x.hostname); } catch { return false; } };
+const EXT_ID = /^[a-p]{32}$/;
+const EXT_PARTITION = /^persist:(kick|twitch|youtube|kmv-stream-[\w-]{1,120})$/;
+
 function createHost(deps) {
   const { electron, userData } = deps;
   const { app, session, BrowserWindow, webContents, ipcMain, dialog } = electron;
+  // its messages answer only the app's windows (main.js); the ones that change what's installed, the main window only
+  const ipc = deps.ipc || { app: ipcMain, main: ipcMain };
   const { ElectronChromeExtensions } = require('electron-chrome-extensions');
   const cws = require('electron-chrome-web-store');
   const listFile = path.join(userData, 'extensions.json');
@@ -188,7 +198,7 @@ function createHost(deps) {
         const win = new BrowserWindow({ width: 1000, height: 760, autoHideMenuBar: true, backgroundColor: '#0a0c0d',
           webPreferences: { session: ses, contextIsolation: true, nodeIntegration: false, sandbox: true } });
         opened.add(win);
-        if (details.url) win.loadURL(details.url);
+        if (details.url && extOpenable(details.url)) win.loadURL(details.url);
         return [win.webContents, win];
       },
       createWindow: async details => {
@@ -196,7 +206,7 @@ function createHost(deps) {
           webPreferences: { session: ses, contextIsolation: true, nodeIntegration: false, sandbox: true } });
         opened.add(win);
         const url = Array.isArray(details.url) ? details.url[0] : details.url;
-        if (url) win.loadURL(url);
+        if (url && extOpenable(url)) win.loadURL(url);
         return win;
       },
       // Also called whenever any of its pages goes away (a window closing, the app's windows reloading),
@@ -322,7 +332,7 @@ function createHost(deps) {
     win.focus();
     return new Promise(res => confirmWaits.set(reqId, res));
   }
-  ipcMain.handle('ext:confirmReply', (_e, reqId, ans) => {
+  ipc.main.handle('ext:confirmReply', (_e, reqId, ans) => {
     const res = confirmWaits.get(reqId);
     confirmWaits.delete(reqId);
     if (res) res({ ok: !!ans?.ok, grid: normalizeEntry({ id: 'a'.repeat(32), grid: ans?.grid })?.grid });
@@ -338,8 +348,8 @@ function createHost(deps) {
       options: !!(m.options_page || m.options_ui?.page) };
   }
 
-  ipcMain.handle('ext:list', async () => { await ready; return list.map(describe); });
-  ipcMain.handle('ext:set', async (_e, id, change) => {
+  ipc.app.handle('ext:list', async () => { await ready; return list.map(describe); });
+  ipc.main.handle('ext:set', async (_e, id, change) => {
     await ready;
     const e = list.find(x => x.id === id);
     if (!e || !change || typeof change !== 'object') return null;
@@ -355,7 +365,7 @@ function createHost(deps) {
     await syncAll(true);
     return describe(e);
   });
-  ipcMain.handle('ext:remove', async (_e, id) => {
+  ipc.main.handle('ext:remove', async (_e, id) => {
     await ready;
     const e = list.find(x => x.id === id);
     if (!e) return false;
@@ -368,7 +378,7 @@ function createHost(deps) {
   });
 
   // Before a window's page loads: get its session ready, so the extensions are there from the start.
-  ipcMain.handle('ext:prepare', async (_e, partition, plat, kind) => {
+  ipc.app.handle('ext:prepare', async (_e, partition, plat, kind) => {
     await ready;
     if (typeof partition !== 'string' || !targetOf(partition, plat, kind)) return false;
     if (!SITE_PARTS[partition]) tracked.set(partition, { plat, kind });
@@ -377,7 +387,7 @@ function createHost(deps) {
   });
 
   // The extensions in one window, for its extensions menu.
-  ipcMain.handle('ext:window', async (_e, partition, plat, kind) => {
+  ipc.app.handle('ext:window', async (_e, partition, plat, kind) => {
     await ready;
     const t = targetOf(partition, plat, kind);
     if (!t) return [];
@@ -385,8 +395,9 @@ function createHost(deps) {
       perWindow: t.perWindow, own: t.perWindow && typeof e.win[partition] === 'boolean' }));
   });
 
-  ipcMain.handle('ext:options', async (_e, id, partition) => {
+  ipc.app.handle('ext:options', async (_e, id, partition) => {
     await ready;
+    if (typeof id !== 'string' || !EXT_ID.test(id) || typeof partition !== 'string' || !EXT_PARTITION.test(partition)) return false;
     const ext = session.fromPartition(partition).extensions.getExtension(id) || null;
     const page = ext && (ext.manifest.options_ui?.page || ext.manifest.options_page);
     if (!page) return false;
@@ -396,7 +407,7 @@ function createHost(deps) {
     return true;
   });
 
-  ipcMain.handle('ext:installLink', async (_e, input) => {
+  ipc.main.handle('ext:installLink', async (_e, input) => {
     await ready;
     const id = idFromInput(input);
     if (!id) return { error: 'That isn\'t a Chrome Web Store link or extension ID.' };
@@ -410,7 +421,7 @@ function createHost(deps) {
     return { id };
   });
 
-  ipcMain.handle('ext:loadFolder', async () => {
+  ipc.main.handle('ext:loadFolder', async () => {
     await ready;
     const r = await dialog.showOpenDialog(deps.appWindows()[0], { title: 'Choose an unpacked extension folder', properties: ['openDirectory'] });
     if (r.canceled || !r.filePaths[0]) return { cancelled: true };
@@ -428,7 +439,7 @@ function createHost(deps) {
   });
 
   // Read an extension loaded from a folder again (after its files were edited), keeping its settings.
-  ipcMain.handle('ext:reload', async (_e, id) => {
+  ipc.main.handle('ext:reload', async (_e, id) => {
     await ready;
     const e = list.find(x => x.id === id);
     if (!e || e.source !== 'folder') return { error: 'Only extensions loaded from a folder can be reloaded.' };
@@ -463,7 +474,7 @@ function createHost(deps) {
   });
 
   let storeWin = null;
-  ipcMain.handle('ext:openStore', async () => {
+  ipc.main.handle('ext:openStore', async () => {
     await ready;
     if (storeWin && !storeWin.isDestroyed()) { storeWin.focus(); return true; }
     // Google's cookie question, answered "Reject all" (as the app does for YouTube), so the store opens straight away
@@ -471,6 +482,9 @@ function createHost(deps) {
       value: deps.rejectCookies, secure: true, sameSite: 'lax', expirationDate: Math.floor(Date.now() / 1000) + 390 * 86400 }).catch(() => {});
     storeWin = new BrowserWindow({ width: 1180, height: 820, autoHideMenuBar: true, title: 'Chrome Web Store', backgroundColor: '#ffffff',
       webPreferences: { session: store(), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+    const keep = (e, url) => { if (storeNavOk(url)) return; e.preventDefault(); if (/^https?:\/\//i.test(url)) electron.shell.openExternal(url); };
+    storeWin.webContents.on('will-navigate', keep);
+    storeWin.webContents.on('will-redirect', keep);
     storeWin.loadURL(STORE_URL);
     storeWin.on('closed', () => { storeWin = null; });
     return true;
@@ -480,4 +494,4 @@ function createHost(deps) {
   return { ready: () => ready, list: () => list, sync, syncAll, update };
 }
 
-module.exports = { PLATS, KINDS, STREAM_PREFIX, STORE_PART, defaultGrid, targetOf, normalizeList, normalizeEntry, isOn, wantedIds, idFromInput, compat, blocksNothing, sitesOf, permissionLines, addedAccess, iconDataUrl, readManifest, checkFolder, createHost };
+module.exports = { extOpenable, storeNavOk, PLATS, KINDS, STREAM_PREFIX, STORE_PART, defaultGrid, targetOf, normalizeList, normalizeEntry, isOn, wantedIds, idFromInput, compat, blocksNothing, sitesOf, permissionLines, addedAccess, iconDataUrl, readManifest, checkFolder, createHost };
