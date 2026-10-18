@@ -373,9 +373,10 @@ test('Help is part of Settings: the instructions, the shortcuts, and this versio
   assert.ok((await page.$$('#settingsDlg [data-doc=guide] h3')).length > 3, 'the instructions are shown');
 
   await page.click('#settingsDlg .st-rail [data-s=updates]');
-  await page.waitForFunction(() => /\(current\)/.test(document.querySelector('#settingsDlg [data-doc=news]').textContent));
-  assert.equal(await page.$eval('#settingsDlg [data-doc=news] h3', e => e.textContent), `${version} (current)`);
-  assert.ok((await page.$$('#settingsDlg [data-doc=news] li')).length > 0);
+  await page.waitForSelector('#settingsDlg .upd-news .upd-tv.this');
+  assert.equal(await page.$eval('#settingsDlg .upd-tv.this', e => e.dataset.v), version, 'this version is marked in What\'s new');
+  assert.equal(await page.$eval('#settingsDlg .upd-tv.this .upd-this', e => e.textContent), 'This version');
+  assert.ok((await page.$$('#settingsDlg .upd-tv.this li')).length > 0);
 
   await page.click('#settingsDlg .st-rail [data-s=keys]');
   assert.ok((await page.$$('#settingsDlg .sc-row')).length >= 20, 'the shortcuts are listed');

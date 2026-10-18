@@ -46,6 +46,7 @@
 <link rel="stylesheet" href="page/panels/bell/all-notifications.css">
 <link rel="stylesheet" href="page/panels/settings/connected.css">
 <link rel="stylesheet" href="page/toolbar/farming.css">
+<link rel="stylesheet" href="page/panels/updates/updates.css">
 <style id="themeVars"></style>
 <script>
 // Apply the saved colour theme before anything is drawn (no flash of the default colours).
@@ -73,6 +74,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <button class="btn tb ibtn" id="undoBtn" hidden disabled data-label="Undo" aria-label="Undo" title="Undo (Ctrl+Z)"><i data-ico="undo"></i><span class="tb-l">Undo</span></button>
   <button class="btn tb ibtn" id="redoBtn" hidden disabled data-label="Redo" aria-label="Redo" title="Redo (Ctrl+Y)"><i data-ico="redo"></i><span class="tb-l">Redo</span></button>
   <i class="sep"></i>
+  <button class="btn tb upd-chip" id="updChip" hidden data-label="Update" aria-label="Update"><i data-ico="sparkle"></i><span class="tb-l">Update</span></button>
   <button class="btn tb ibtn" id="bellBtn" hidden data-label="Notifications" aria-label="Notifications" title="Notifications: mentions, spam alerts, channels going live and the app's messages"><span class="mb-ico"></span><span class="tb-l">Notifications</span><span class="mb-count" hidden></span></button>
   <button class="btn tb ibtn" id="settingsBtn" data-label="Settings" aria-label="Settings" title="Settings: general, accounts, alerts, themes and updates"><i data-ico="gear"></i><span class="tb-l">Settings</span></button>
   <button class="btn tb ibtn" id="focusBtn" data-label="Hide bar" aria-label="Hide bar" title="Hide this toolbar (move mouse to top edge or press Esc to bring it back)"><i data-ico="hidebar"></i><span class="tb-l">Hide bar</span></button>
@@ -213,7 +215,13 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
 <div id="sizehint"></div>
 <div id="msg" data-pos="tc" role="status" title="Click to close"></div>
 <div id="toast" hidden><span></span><button class="btn">Undo</button></div>
-<div id="updBanner" hidden><span class="ub-txt"></span><button class="btn primary ub-go">Restart now</button><button class="btn ub-later">Later</button></div>
+<div class="dlg-bg" id="updNewsDlg" hidden><div class="dlg upd-wn" role="dialog" aria-modal="true" aria-labelledby="updNewsTitle">
+  <div class="wn-art" aria-hidden="true"><svg class="pear" viewBox="0 0 64 64" aria-hidden="true"><path d="M33.2 15.5C33 11.5 34.2 8 36.6 4.8" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M36.2 9.6C40 4.2 47.5 3.2 52.5 5.4 49.6 10.8 42.4 12.8 36.2 9.6Z"/><path d="M32 14.2C25.6 14.2 23.4 19.4 23.4 24.6 23.4 29.6 20.4 31.6 17.2 35.6 13.2 40.6 12 46.8 14.2 52 17.2 58.8 24.4 62 32 62 39.6 62 46.8 58.8 49.8 52 52 46.8 50.8 40.6 46.8 35.6 43.6 31.6 40.6 29.6 40.6 24.6 40.6 19.4 38.4 14.2 32 14.2Z"/></svg><i class="wn-sp s1" data-ico="sparkle"></i><i class="wn-sp s2" data-ico="sparkle"></i><i class="wn-sp s3" data-ico="sparkle"></i></div>
+  <div class="wn-from"></div>
+  <h3 id="updNewsTitle">Stream Multiview <b class="wn-to"></b></h3>
+  <ul class="wn-list"></ul>
+  <div class="wn-foot"><button class="btn wn-all">See every version</button><button class="btn primary wn-ok">Nice</button></div>
+</div></div>
 <div class="dlg-bg" id="extDlg" hidden><div class="dlg ext-dlg" role="dialog" aria-modal="true" aria-labelledby="extDlgTitle">
   <div class="ex-head"><img class="ex-ico" alt=""><div><h3 id="extDlgTitle"></h3><small class="ex-src"></small></div></div>
   <div class="ex-sec">It can</div>
@@ -536,8 +544,8 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       <section class="st-pane" data-s="updates" hidden>
         <h4>Updates</h4>
         <div class="upd-host"></div>
-        <div class="st-sec st-news-sec">What's new</div>
-        <div class="help-body st-doc" data-doc="news"></div>
+        <div class="upd-news"></div>
+        <p class="upd-foot st-end" hidden>Updating replaces the app, keeping the old version as a backup. Your logins, saved channels, layouts and themes aren't touched.</p>
       </section>
       <section class="st-pane" data-s="guide" hidden>
         <div class="help-body st-doc" data-doc="guide"></div>
