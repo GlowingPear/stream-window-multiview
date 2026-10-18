@@ -5,7 +5,7 @@ import { bellCount, bellVars, dndOn, dndUntil, notes } from '../bell/bell.js';
 import { gotLive, liveInfo, liveNote } from '../channels/channels.js';
 import { renderExtPane } from '../extensions/extensions.js';
 import { keysOn, renderDoc, showHelp } from '../help/help.js';
-import { renderSpamHist } from './alerts.js';
+import { renderSpamHist, veilLists } from './alerts.js';
 import { syncDnd, syncNotifyPane } from './notifications.js';
 import { renderThemeDlg } from './themes.js';
 import { renderUpdates } from '../updates/updates.js';
@@ -35,6 +35,7 @@ function openSettings(tab){
   if (settingsTab === 'general') $('#keysSet').checked = keysOn;
   if (settingsTab === 'notify') syncNotifyPane();
   renderSpamHist();   // (only drawn while Settings is open)
+  veilLists();
   if (settingsTab === 'extensions') renderExtPane();
   if (settingsTab === 'layouts') renderLayoutsPane(true);
   return renderDoc(settingsTab);

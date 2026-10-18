@@ -7,7 +7,8 @@ import { dropNotes, mentOn, notes, timeAgo } from '../bell/bell.js';
 import { syncLiveAlerts } from './notifications.js';
 import { closeSettings, settingsDlg } from './settings.js';
 import { chLabelP } from '../../platforms/platforms.js';
-import { esc } from '../../shared/element.js';
+import { ask } from '../../shared/ask.js';
+import { element, esc } from '../../shared/element.js';
 import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
@@ -28,6 +29,7 @@ function syncAlertControls(){
   if ($('#mentOn')) $('#mentOn').checked = mentOn;
   const pill = settingsDlg.querySelector('.st-rail [data-s=spam] .st-pill');
   if (pill) pill.textContent = alerts.spam.on ? 'On' : 'Mod';
+  syncScoring();
 }
 function pickSound(kind){
   return new Promise(resolve => {
@@ -54,12 +56,30 @@ async function setAlert(kind, k, v){
   if (k === 'color') wins.forEach(w => { if (w.alert && w.alert.kind === kind) w.el.style.setProperty('--al', v); });
   if (kind === 'live' && k === 'notify') syncLiveAlerts();
 }
-/* Spam alerts: allowed sites, promo words, bot opening lines and chat bots to ignore. Mentions: chat bots to ignore
-   ('mbots'), which spam alerts show (read-only) and use instead of their own while they share it. */
-const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS, openers: () => SmvSpam.OPENERS, ignore: () => SmvSpam.BOTS, mbots: () => SmvSpam.BOTS };
+/* Spam alerts: allowed sites, promo words, bot opening lines, chat bots to ignore, and the abuse lists. Mentions: chat
+   bots to ignore ('mbots'), which spam alerts show (read-only) and use instead of their own while they share it. */
+const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS, openers: () => SmvSpam.OPENERS, ignore: () => SmvSpam.BOTS, mbots: () => SmvSpam.BOTS,
+  abuseWords: () => SmvSpam.ABUSE, slurs: () => SmvSpam.SLURS, swears: () => SmvSpam.SWEARS };
 const listKey = which => which === 'ignore' && alerts.spam.sharedBots ? 'mbots' : which;
 const listStore = which => which === 'mbots' ? [alerts.mention, 'bots'] : [alerts.spam, which];
 const listOf = which => { const [a, k] = listStore(listKey(which)); return (a[k] || SPAM_LIST[which]()).slice(); };
+// The abuse lists are offensive to read, so they stay blurred under a cover until you choose to show them, each time
+// Settings opens.
+const shownLists = new Set();
+function veilList(which, n){
+  const veil = settingsDlg.querySelector(`[data-list="${which}"]`).parentNode;
+  if (!veil.classList.contains('st-veil')) return;
+  const hide = !shownLists.has(which) && n > 0;
+  veil.classList.toggle('veiled', hide);
+  veil.firstChild.inert = hide;   // (nor read out, or tabbed to)
+  veil.querySelector('.st-reveal small').textContent = `Click to show ${n === 1 ? 'it' : `all ${n}`}`;
+  settingsDlg.querySelector(`[data-hide="${which}"]`).hidden = hide || !n;
+}
+function showList(which, on){
+  if (on) shownLists.add(which); else shownLists.delete(which);
+  veilList(which, listOf(which).length);
+}
+function veilLists(){ shownLists.clear(); renderSpamLists(); }
 function renderSpamLists(){
   const shared = !!alerts.spam.sharedBots;
   settingsDlg.querySelectorAll('[data-s=spam] .ly-panel[data-l=ignore] [data-own]').forEach(el => { el.hidden = shared; });
@@ -75,6 +95,7 @@ function renderSpamLists(){
       if (!ro) c.querySelector('button').onclick = () => setSpamList(which, listOf(which).filter(x => x !== item));
       box.appendChild(c);
     });
+    veilList(which, listOf(which).length);
   });
 }
 function setSpamList(which, list){
@@ -98,6 +119,63 @@ function addSpamItem(which){
   const l = listOf(which); if (!l.some(x => x.toLowerCase() === v.toLowerCase())) l.push(v);
   setSpamList(which, l); inp.value = '';
 }
+/* Spam alerts > Scoring: each sign's points on a slider (0 to 8), and what may go wrong with them */
+function scoreRow(s){
+  const range = element('input', { type: 'range', min: 0, max: SmvSpam.POINT_MAX, step: 1, 'aria-label': s.label,
+    oninput: () => setPoints(s.key, +range.value), ondblclick: () => setPoints(s.key, s.points) });
+  return element('div', { class: 'sc-row', dataset: { pt: s.key } },
+    element('span', { class: 'sc-name', title: s.label + (s.note ? ` (${s.note.toLowerCase()})` : '') }, s.short),
+    warnIcon(),
+    element('span', { class: 'sc-flag', title: s.flags ? 'This sign can flag a message' : '' }, s.flags ? '⚑' : ''),
+    element('span', { class: 'sc-slider', title: `Built-in: ${s.points}. Double-click to put it back.` }, range,
+      element('i', { class: 'sc-def', style: { '--at': s.points / SmvSpam.POINT_MAX } })),
+    element('b', 'sc-val'));
+}
+// A warning about the points, where it applies (a sign's row, a group's heading, or the line above them): its
+// message shows on hover.
+const warnIcon = () => element('span', { class: 'sc-warn-ico', role: 'img', hidden: true }, '⚠');
+function showWarn(ico, list){
+  ico.hidden = !list.length;
+  ico.title = list.map(w => w.text).join('\n');
+  ico.setAttribute('aria-label', ico.title);
+}
+// Spam's signs on the left, abuse's on the right.
+function buildScoring(){
+  [['spam', 'Spam'], ['abuse', 'Abuse']].forEach(([g, name]) => $(`#spamPoints [data-col=${g}]`).replaceChildren(element('div', { class: 'sc-group', dataset: { g } },
+    element('div', 'sc-head', name, warnIcon()), ...SmvSpam.SIGNS.filter(s => s.group === g).map(scoreRow))));
+}
+function syncScoring(){
+  const box = $('#spamPoints'); if (!box || !box.querySelector('.sc-row')) return;
+  const now = SmvSpam.pointsOf(alerts.spam.points), abuseOn = alerts.spam.abuse !== false;
+  SmvSpam.SIGNS.forEach(s => {
+    const row = box.querySelector(`.sc-row[data-pt="${s.key}"]`), v = now[s.key];
+    if (+row.querySelector('input').value !== v) row.querySelector('input').value = v;
+    row.querySelector('.sc-val').textContent = v ? String(v) : 'Off';
+    row.classList.toggle('off', !v);
+    row.classList.toggle('changed', v !== s.points);
+  });
+  box.querySelector('.sc-group[data-g=abuse]').classList.toggle('st-dim', !abuseOn);
+  box.querySelector('.sc-group[data-g=abuse]').title = abuseOn ? '' : 'Abuse is off (Alerts › Also flag abuse)';
+  $('#spamPointsReset').disabled = !alerts.spam.points;
+  const warn = SmvSpam.scoringWarnings(now, alerts.spam.sens, abuseOn);
+  SmvSpam.SIGNS.forEach(s => showWarn(box.querySelector(`.sc-row[data-pt="${s.key}"] .sc-warn-ico`), warn.filter(w => w.sign === s.key)));
+  box.querySelectorAll('.sc-group').forEach(g => showWarn(g.querySelector('.sc-head .sc-warn-ico'), warn.filter(w => w.group === g.dataset.g)));
+  showWarn($('#spamWarnAll'), warn.filter(w => !w.sign && !w.group));
+}
+// Only the points that differ from the built-in ones are kept (null: all built-in).
+function setPoints(key, v){
+  const p = { ...(alerts.spam.points || {}), [key]: v };
+  SmvSpam.SIGNS.forEach(s => { if (p[s.key] === s.points) delete p[s.key]; });
+  alerts.spam.points = Object.keys(p).length ? p : null;
+  saveAlerts(); syncScoring();
+  if (!$('#spamRes').hidden) trySpam();   // Try it: with the new points
+}
+async function resetPoints(){
+  if (!alerts.spam.points || !await ask('Reset the points?', 'Every sign goes back to its built-in points.', { ok: 'Reset' })) return;
+  alerts.spam.points = null; saveAlerts(); syncScoring();
+  if (!$('#spamRes').hidden) trySpam();
+  flash('Points back to the built-in ones');
+}
 /* Spam alerts: try a message */
 function trySpam(){
   const text = $('#spamTry').value.trim(), out = $('#spamRes');
@@ -106,7 +184,7 @@ function trySpam(){
   const r = SmvSpam.score({ sender: sender || 'someone', body: text, chat: '', t: Date.now() }, {}, spamOpts());
   out.hidden = false; out.classList.toggle('bad', r.spam);
   if (r.ignored){ out.innerHTML = `Not checked: <b></b> is on the chat bot list, so it's never flagged.`; out.querySelector('b').textContent = sender; return; }
-  const head = r.spam ? `<b>Would be flagged</b> (${r.need} points needed)` : r.score >= r.need ? `Not flagged: it has ${r.score} points but no link to promote` : `Not flagged (${r.score} of the ${r.need} points needed)`;
+  const head = r.spam ? `<b>Would be flagged${r.abuse ? ' as abusive' : ''}</b> (${r.need} points needed)` : r.score >= r.need ? `Not flagged: it has ${r.score} points but no sign that can flag it (like a link or an insult)` : `Not flagged (${r.score} of the ${r.need} points needed)`;
   out.innerHTML = head + (r.signs.length ? '<table>' + r.signs.map(s => `<tr><td>${esc(s.text)}</td><td>+${s.points}</td></tr>`).join('') + `<tr class="tot"><td>Total</td><td>${r.score}</td></tr></table>` : '<div>No signs of spam.</div>');
 }
 /* Spam alerts: history of flagged messages */
@@ -120,7 +198,7 @@ function renderSpamHist(){
     const row = document.createElement('div'); row.className = 'sh-row';
     row.innerHTML = `<div class="mp-top"><b></b><span class="sh-score"></span><span class="mp-time"></span></div><div class="mp-where"></div><div class="mp-body"></div><div class="sh-signs"></div>`;
     row.querySelector('b').textContent = h.sender;
-    row.querySelector('.sh-score').textContent = `${h.score} / ${h.need} points`;
+    row.querySelector('.sh-score').textContent = `${h.abuse ? 'Abusive · ' : ''}${h.score} / ${h.need} points`;
     row.querySelector('.sh-score').title = `${h.score} points; ${h.need} needed to be flagged`;
     row.querySelector('.mp-where').textContent = chLabelP(h.channel);
     row.querySelector('.mp-time').textContent = timeAgo(h.t);
@@ -182,12 +260,16 @@ function init(){
   settingsDlg.querySelectorAll('[data-addbtn]').forEach(b => { b.onclick = () => addSpamItem(b.dataset.addbtn); });
   settingsDlg.querySelectorAll('[data-add]').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') addSpamItem(i.dataset.add); }));
   settingsDlg.querySelectorAll('[data-reset]').forEach(b => { b.onclick = () => setSpamList(b.dataset.reset, null); });
+  settingsDlg.querySelectorAll('[data-reveal]').forEach(b => { b.onclick = () => showList(b.dataset.reveal, true); });
+  settingsDlg.querySelectorAll('[data-hide]').forEach(b => { b.onclick = () => showList(b.dataset.hide, false); });
 
   $('#spamTryBtn').onclick = trySpam;
+  buildScoring();
+  $('#spamPointsReset').onclick = resetPoints;
 
   $('#spamHistClear').onclick = () => dropNotes(n => n.kind === 'spam');
   ['#spamTry', '#spamTrySender'].forEach(s => $(s).addEventListener('keydown', e => { if (e.key === 'Enter') trySpam(); }));
   syncAlertControls(); renderSpamLists(); renderSpamHist();
 }
 
-export { ignoreSender, init, renderSpamHist, syncAlertControls };
+export { ignoreSender, init, renderSpamHist, syncAlertControls, veilLists };

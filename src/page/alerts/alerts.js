@@ -9,7 +9,9 @@ const ALERT_DEFAULTS = {
              bots: null, botsOffered: null },   // bots: the chat bot list (null: built-in), spam alerts' too while they share it
   spam: { popup: true, on: false, hl: 'until', color: '#ff5f5f', esc: 0, max: 'pulse', tag: true, sound: 'knock', vol: 0.4, repeat: false, notify: 'never',
           sens: 'balanced', allow: null, words: null, openers: null, ignore: null, botsOffered: null,   // null: the built-in lists
-          sharedBots: true },  // the chat bot list from Mentions instead of ignore
+          sharedBots: true,    // the chat bot list from Mentions instead of ignore
+          abuse: true, abuseWords: null, slurs: null, swears: null,   // insults, slurs and threats, swearing over and over
+          points: null },      // each sign's points ({ hidden: 3, ... }; null: the built-in ones)
   // Settings > Notifications only: a saved channel went live, a raid was followed, the app's own messages
   live: { popup: true, notify: 'always', sound: 'none', vol: 0.5 },
   raid: { popup: true, notify: 'never', sound: 'none', vol: 0.5 },

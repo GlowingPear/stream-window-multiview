@@ -448,3 +448,20 @@ test('settings changed in the other window apply here too: Do not disturb, where
   await change('dnd', '0');
   assert.equal(await page.evaluate(() => smvNotes.dndOn()), false, 'and off again');
 });
+
+test('an abusive message in the bell and in Spam alerts › History says so', async t => {
+  const now = Date.now();
+  const page = await open(t, [{ id: 'x1', kind: 'spam', abuse: true, channel: 'alpha', label: 'alpha', sender: 'troll', body: 'ur a whore', score: 5, need: 5,
+    signs: [{ key: 'insult', text: 'Insult aimed at someone: "ur a whore"', points: 4 }, { key: 'newbie', text: 'Started chatting in the last few minutes', points: 1 }], t: now - MIN, unread: true }]);
+  await page.click('#bellBtn');
+  await tab(page, 'spam');
+  const row = page.locator('#bellList .nc-row[data-id=x1]');
+  assert.equal(await row.locator('.mp-kind').textContent(), 'Abusive · 5 / 5');
+  await row.locator('.nc-acts button:text-is("Why?")').click();
+  assert.equal(await row.locator('.nc-why').textContent(), 'Abusive (5 points, 5 needed):\n• Insult aimed at someone: "ur a whore" (+4)\n• Started chatting in the last few minutes (+1)');
+  assert.equal(await row.locator('.nc-acts button:text-is("Not abuse")').count(), 1);
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => { document.querySelector('.st-rail [data-s=spam]').hidden = false; openSettings('spam'); });   // (the desktop app's page)
+  await page.click('#spamTabs [data-t=history]');
+  assert.equal(await page.textContent('#spamHist .sh-score'), 'Abusive · 5 / 5 points');
+});

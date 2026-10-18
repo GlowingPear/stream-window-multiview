@@ -321,6 +321,29 @@ test('a ban in the same moment the spam arrives still counts as seeing it', T, a
   assert.equal((await alertOf('alpha')).level, '', 'but the window isn\'t left lit');
 });
 
+test('abuse: insults in a chat you moderate are tagged ABUSIVE, and a ban shown after them isn\'t a new message', T, async () => {
+  await clickBar('alpha');
+  const flagged = await spamCount();
+  await say('alpha', 'troll', 'ur a whore');
+  await say('alpha', 'troll', 'your a bish');
+  await win.waitForFunction(n => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').filter(h => h.kind === 'spam').length >= n + 2, flagged);
+  assert.match(await tagOf('alpha', 'ur a whore'), /^Abusive \(5 points, 5 needed\):\n• Insult aimed at someone: "ur a whore" \(\+4\)\n• Started chatting/);
+  assert.match(await tagOf('alpha', 'your a bish'), /Keeps at it: 1 more abusive message/);
+  assert.equal(await inChat('alpha', () => {
+    const row = [...document.querySelectorAll('.row')].find(r => r.textContent.includes('ur a whore'));
+    return getComputedStyle(row.querySelector('[data-kmv-spam]'), '::after').content;
+  }), '"ABUSIVE"');
+  assert.match(await win.textContent('#msg'), /Abusive message in alpha's chat/);
+  const notes = await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.notifications')).filter(n => n.kind === 'spam' && n.sender === 'troll'));
+  assert.deepEqual(notes.map(n => n.abuse), [true, true]);
+  // a moderator bans them: the chat adds a note after their messages
+  await inChat('alpha', () => [...document.querySelectorAll('.row')].filter(r => r.querySelector('b').textContent === 'troll')
+    .forEach(r => { r.querySelector('span').textContent += ' (Banned)'; }));
+  await win.waitForTimeout(3000);
+  assert.equal(await spamCount(), flagged + 2, 'nothing new flagged');
+  await clickBar('alpha');
+});
+
 test('spam alerts: chat bots on the list are skipped, and History can add an account to it', T, async () => {
   await clickBar('alpha'); await clickBar('bravo');
   const timer = 'cheap viewers at promo-site com, zero cost boost';

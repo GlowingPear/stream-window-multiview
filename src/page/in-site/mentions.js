@@ -17,9 +17,12 @@ function mentionAgent(){
   const NAME_RE = /^(?:\d{1,2}:\d{2}(?:\s?[AP]M)?\s+)?[A-Za-z0-9_]{2,30}$/i;
   // A message a moderator removed: the chat shows a notice in its place, or the old text with a note added.
   const MOD_RE = /^[(<[]?\s*(?:message\s+)?(?:deleted|removed)\b|\b(?:deleted|removed)\s+by\s+(?:a\s+)?mod/i;
+  // Or a note after it once its sender is banned or timed out ("ur a whore (Banned)"): only with the same message before it.
+  const NOTE_RE = /\s*\((?:banned|timed\s*out|deleted|removed)\)\s*$/i;
   function modChange(sender, body){
     const k = sender.toLowerCase(), before = said.get(k) || [];
-    const mod = MOD_RE.test(body) || before.some(b => b !== body && b.length >= 12 && (body.includes(b) || (body.length >= 12 && b.includes(body))));
+    const noted = NOTE_RE.test(body) && before.includes(body.replace(NOTE_RE, ''));
+    const mod = noted || MOD_RE.test(body) || before.some(b => b !== body && b.length >= 12 && (body.includes(b) || (body.length >= 12 && b.includes(body))));
     if (!mod){ before.push(body); if (before.length > 20) before.shift(); said.set(k, before); }
     if (said.size > 2000) said.delete(said.keys().next().value);
     return mod;
@@ -238,14 +241,15 @@ function mentionAgent(){
     if (!document.getElementById('kmv-spam-css')){
       const st = document.createElement('style'); st.id = 'kmv-spam-css';
       // The tag's words come from CSS, so they never become part of the message's text.
-      st.textContent = '[data-kmv-spam]::after{content:"LIKELY SPAM";display:inline-block;margin-left:6px;padding:0 4px;border-radius:3px;font:700 9.5px/1.6 system-ui,sans-serif;letter-spacing:.03em;color:#fff;background:var(--kmv-spam);vertical-align:1px;cursor:help}';
+      st.textContent = '[data-kmv-spam]::after{content:"LIKELY SPAM";display:inline-block;margin-left:6px;padding:0 4px;border-radius:3px;font:700 9.5px/1.6 system-ui,sans-serif;letter-spacing:.03em;color:#fff;background:var(--kmv-spam);vertical-align:1px;cursor:help}' +
+        '[data-kmv-spam="abuse"]::after{content:"ABUSIVE"}';
       document.head.appendChild(st);
     }
     row.style.setProperty('--kmv-spam', m.color);
     row.style.boxShadow = `inset 3px 0 0 ${m.color}`;
     row.style.background = m.color + '24';
     const t = document.createElement('span');
-    t.setAttribute('data-kmv-spam', ''); t.title = m.why;
+    t.setAttribute('data-kmv-spam', m.kind === 'abuse' ? 'abuse' : ''); t.title = m.why;
     row.appendChild(t);
   }
   window.__kmvMention = {
@@ -265,9 +269,10 @@ function mentionAgent(){
       if (on && !armed) arm();
       else if (on && document.body) chatLines().forEach(({ l }) => { const m = lineOf(l); if (m && known.size < 2000) known.add(m[1].toLowerCase()); });
     },
-    mark(line, why, color){
+    // kind: 'abuse' tags it "ABUSIVE" rather than "LIKELY SPAM"
+    mark(line, why, color, kind){
       if (marks.has(line)) return;
-      marks.set(line, { why, color }); tag(marks.get(line), line);
+      marks.set(line, { why, color, kind }); tag(marks.get(line), line);
       if (marks.size > 200) marks.delete(marks.keys().next().value);
     },
     look(){ scan(); },
