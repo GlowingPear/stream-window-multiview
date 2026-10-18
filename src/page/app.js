@@ -11,6 +11,7 @@ import { init as inSiteTranslate } from './in-site/translate.js';
 import { init as inSiteKickCommands } from './in-site/kick-commands.js';
 import { init as inSiteVolume } from './in-site/volume.js';
 import { init as platformsPlatforms } from './platforms/platforms.js';
+import { init as platformsPearDrops } from './platforms/pear-drops.js';
 import { init as layoutGeometry } from './layout/geometry.js';
 import { init as windowsWindowBar } from './windows/window-bar.js';
 import { init as windowsWindows } from './windows/windows.js';
@@ -52,6 +53,7 @@ import { init as toolbarHeader } from './toolbar/header.js';
 import { init as toolbarToolbar } from './toolbar/toolbar.js';
 import { init as toolbarLayoutMenu } from './toolbar/layout-menu.js';
 import { init as toolbarAccountsMenu } from './toolbar/accounts-menu.js';
+import { init as toolbarFarming } from './toolbar/farming.js';
 import { init as layoutUndo } from './layout/undo.js';
 import { init as windowsCapture } from './windows/capture.js';
 import { init as panelsHelpHelp } from './panels/help/help.js';
@@ -62,6 +64,7 @@ import { init as panelsSettingsThemes } from './panels/settings/themes.js';
 import { init as panelsSettingsSettings } from './panels/settings/settings.js';
 import { init as panelsSettingsGeneral } from './panels/settings/general.js';
 import { init as panelsSettingsAlerts } from './panels/settings/alerts.js';
+import { init as panelsSettingsConnected } from './panels/settings/connected.js';
 import { init as start } from './start.js';
 import { init as layoutMonitors } from './layout/monitors.js';
 import { init as panelsSettingsMonitors } from './panels/settings/monitors.js';
@@ -81,6 +84,7 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   inSiteKickCommands,
   inSiteVolume,
   platformsPlatforms,
+  platformsPearDrops,
   layoutGeometry,
   windowsWindowBar,
   windowsWindows,
@@ -122,6 +126,7 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   toolbarToolbar,
   toolbarLayoutMenu,
   toolbarAccountsMenu,
+  toolbarFarming,
   layoutUndo,
   windowsCapture,
   panelsHelpHelp,
@@ -132,6 +137,7 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   panelsSettingsSettings,
   panelsSettingsGeneral,
   panelsSettingsAlerts,
+  panelsSettingsConnected,
   start,
   layoutMonitors,
   panelsSettingsMonitors,

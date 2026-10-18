@@ -44,6 +44,8 @@
 <link rel="stylesheet" href="page/toolbar/toolbar-fit.css">
 <link rel="stylesheet" href="page/panels/profiles/profiles.css">
 <link rel="stylesheet" href="page/panels/bell/all-notifications.css">
+<link rel="stylesheet" href="page/panels/settings/connected.css">
+<link rel="stylesheet" href="page/toolbar/farming.css">
 <style id="themeVars"></style>
 <script>
 // Apply the saved colour theme before anything is drawn (no flash of the default colours).
@@ -70,6 +72,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <button class="btn tb ibtn" id="undoBtn" hidden disabled data-label="Undo" aria-label="Undo" title="Undo (Ctrl+Z)"><i data-ico="undo"></i><span class="tb-l">Undo</span></button>
   <button class="btn tb ibtn" id="redoBtn" hidden disabled data-label="Redo" aria-label="Redo" title="Redo (Ctrl+Y)"><i data-ico="redo"></i><span class="tb-l">Redo</span></button>
   <i class="sep"></i>
+  <button class="btn tb fw-chip" id="farmBtn" hidden aria-label="Pear Drops is farming: open Pear Drops"><img class="fw-av" alt="" width="24" height="24"><span class="fw-name"></span><span class="fw-bar"><i></i></span><span class="fw-next"></span></button>
   <button class="btn tb ibtn" id="bellBtn" hidden data-label="Notifications" aria-label="Notifications" title="Notifications: mentions, spam alerts, channels going live and the app's messages"><span class="mb-ico"></span><span class="tb-l">Notifications</span><span class="mb-count" hidden></span></button>
   <button class="btn tb ibtn" id="settingsBtn" data-label="Settings" aria-label="Settings" title="Settings: general, accounts, alerts, themes and updates"><i data-ico="gear"></i><span class="tb-l">Settings</span></button>
   <button class="btn tb ibtn" id="focusBtn" data-label="Hide bar" aria-label="Hide bar" title="Hide this toolbar (move mouse to top edge or press Esc to bring it back)"><i data-ico="hidebar"></i><span class="tb-l">Hide bar</span></button>
@@ -80,6 +83,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <button class="btn tb ibtn" id="barFold" data-label="Collapse" aria-label="Collapse" title="Show icons only"><i data-ico="fold"></i><span class="tb-l">Collapse</span></button>
 </header>
 <div id="moreMenu" class="menu" hidden></div>
+<div id="farmCard" class="fw-card" role="tooltip" hidden></div>
 <div id="reveal"></div>
 
 <div id="accountMenu" class="menu" hidden>
@@ -244,6 +248,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
       <button data-s="themes">Themes</button>
       <div class="st-rail-sec">Sites</div>
       <button data-s="accounts" class="desk-only">Accounts</button>
+      <button data-s="apps" class="desk-only">Connected apps</button>
       <button data-s="youtube" class="desk-only">YouTube</button>
       <button data-s="extensions" class="desk-only">Extensions</button>
       <div class="st-rail-sec">Alerts</div>
@@ -321,10 +326,25 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <div class="am-forget"><span>Forget my login when I close the app:</span>
             <label class="chk"><input type="checkbox" data-f="kick">Kick</label><label class="chk"><input type="checkbox" data-f="twitch">Twitch</label><label class="chk"><input type="checkbox" data-f="youtube">YouTube</label></div>
           <div class="am-watch"><span>Watch signed in: streams play with your login too, so you watch as your account, not as a logged-out viewer. Uses more memory.</span>
-            <label class="chk"><input type="checkbox" data-w="kick">Kick</label><label class="chk"><input type="checkbox" data-w="twitch">Twitch</label><label class="chk"><input type="checkbox" data-w="youtube">YouTube</label></div>
+            <label class="chk"><input type="checkbox" data-w="kick">Kick</label><em class="am-auto" title="Set by Pear Drops (Settings › Connected apps)" hidden><i class="am-auto-lock"></i>Kick<b>Auto</b></em><label class="chk"><input type="checkbox" data-w="twitch">Twitch</label><label class="chk"><input type="checkbox" data-w="youtube">YouTube</label>
+            <div class="am-auto-note" hidden><img class="am-auto-ic" alt="" width="28" height="28"><p><b>Kick is set by Pear Drops.</b> Players are signed in, except while Pear Drops is farming, so they never take its drop credit. <button class="linkish" data-go="apps">Change in Connected apps</button></p></div></div>
         </div>
         <div class="am-alt">YouTube sign-in currently only works through Firefox. <button class="linkish am-ff">Sign in to YouTube with Firefox</button><br>You don't need to sign in to watch YouTube.</div>
         <p class="st-sub" style="margin:8px 0 0">Skipping ads, YouTube's cookie question and the API key: <button class="linkish" data-go="youtube">YouTube settings</button></p>
+      </section>
+      <section class="st-pane" data-s="apps" hidden>
+        <h4>Connected apps</h4><p class="st-sub">Apps that work with Stream Multiview, directly on this computer. Nothing goes online.</p>
+        <div class="ca-card" id="caPearDrops">
+          <div class="ca-head">
+            <img class="ca-logo" alt="" width="56" height="56">
+            <div class="ca-who"><b>Pear Drops</b><p class="ca-sum">Collects your Kick emote and badge drops for you, watching with Kick's own player.</p><button type="button" class="linkish ca-page"><i class="ca-arrow"></i>Download page</button></div>
+            <span class="ca-chip"></span>
+          </div>
+          <label class="ca-row"><span class="st-t">Connect with Pear Drops<small>Both apps need this switched on.</small></span><input type="checkbox" class="st-sw" id="caConnect"></label>
+          <label class="ca-row"><span class="st-t">Sign Kick players out while Pear Drops is farming <em class="ca-def">On by default</em><small>Kick credits drops to one stream per account, so a signed-in player here would take Pear Drops' credit. Chats stay signed in.</small></span><input type="checkbox" class="st-sw" id="caKickAuto"></label>
+          <label class="ca-row"><span class="st-t">Show what Pear Drops is farming in the toolbar<small>The channel and the drop's progress. Click it to open Pear Drops.</small></span><input type="checkbox" class="st-sw" id="caWidget"></label>
+          <div class="ca-foot"><i class="ca-dot"></i><span class="ca-line"></span><span class="ca-paired"></span><button type="button" class="btn ca-test"><i class="ca-test-ic"></i><span>Test</span></button><button type="button" class="btn ca-act"></button></div>
+        </div>
       </section>
       <section class="st-pane" data-s="youtube" hidden>
         <h4>YouTube</h4><p class="st-sub">Your YouTube login, and how YouTube streams play.</p>

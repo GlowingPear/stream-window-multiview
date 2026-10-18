@@ -13,6 +13,7 @@ import { focusWin } from '../layout/geometry.js';
 import { injectMention } from '../panels/bell/all-notifications.js';
 import { readChat } from '../panels/bell/bell.js';
 import { extButton } from '../panels/extensions/extensions.js';
+import { kickHold } from '../platforms/pear-drops.js';
 import { chLabel, checkMod, extCount, platOf, platform, srcFor, streamSrc, trimPlayerPage, viewPartition, ytVidOf } from '../platforms/platforms.js';
 import { applyChatView, syncLike } from '../platforms/youtube-options.js';
 import { DESKTOP } from '../shared/env.js';
@@ -41,6 +42,8 @@ function reloadPage(w){
 }
 function mountView(w){
   if (w.kind === 'capture'){ mountCapture(w); return; }
+  // At start-up a Kick player waits (up to 2 s) for whether a linked Pear Drops is farming (platforms/pear-drops.js)
+  if (kickHold && w.kind === 'stream' && !w.view && platOf(w.channel) === 'kick'){ kickHold.then(() => { if (!w.view && wins.includes(w)) mountView(w); }); return; }
   const src = srcFor(w);
   const wait = w.el.querySelector('.waitmsg');
   if (!src){ if (w.channel && platOf(w.channel) === 'youtube') resolveYt(w); return; }

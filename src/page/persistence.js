@@ -1,6 +1,7 @@
 import { ROLE, STORE, lastLayout, wins } from './core.js';
 import { clampPos } from './layout/geometry.js';
 import { histRecord } from './layout/undo.js';
+import { reportPlayers } from './platforms/pear-drops.js';
 import { DESKTOP } from './shared/env.js';
 import { settings } from './shared/settings.js';
 import { streamSpecs } from './windows/popout.js';
@@ -13,6 +14,7 @@ function save(){
     x: w.x, y: w.y, w: w.w, h: w.h, z: +w.el.style.zIndex, ord: wins.indexOf(w)
   })));
   if (DESKTOP && ROLE === 'streams') window.kmv.reportStreams(streamSpecs());
+  reportPlayers();   // the Kick streams open, for a linked Pear Drops
   settings.set(ROLE === 'main' ? 'lastLayout' : 'streams.lastLayout', lastLayout || '');
   histRecord();
 }

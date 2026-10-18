@@ -1,5 +1,7 @@
 import { wins } from '../core.js';
 import { kick } from './kick.js';
+import { kickAuto, kickOut, reportPlayers } from './pear-drops.js';
+import { effectiveSignedIn } from './players-link.js';
 import { twitch } from './twitch.js';
 import { syncLike } from './youtube-options.js';
 import { youtube } from './youtube.js';
@@ -108,8 +110,11 @@ const externalFor = w => w.channel ? platform(w.channel).pageUrl(w.channel, w.ki
 const chatPartition = ch => (platform(ch) || DEFAULT_SITE).partition;
 // "Watch signed in" (account menu, per site): that site's stream players use your login too,
 // so you watch as your account. Off: each stream player gets its own logged-out storage.
+// Kick's players sign out while a linked Pear Drops is farming (Settings › Connected apps, pear-drops.js).
 var watchSignedIn = { kick: false, twitch: false, youtube: false };
-const streamPartition = ch => watchSignedIn[platOf(ch)] ? chatPartition(ch) : 'persist:kmv-stream-' + String(ch).replace(/[^a-z0-9_-]/gi, '_');
+const streamSignedIn = p => effectiveSignedIn(p, { auto: kickAuto(), out: kickOut, watch: watchSignedIn });
+const streamPartition = ch => streamSignedIn(platOf(ch)) ? chatPartition(ch) : 'persist:kmv-stream-' + String(ch).replace(/[^a-z0-9_-]/gi, '_');
+const mountedSignedIn = {};             // whether each site's open players were made signed in
 let extCount = null;                    // Chrome extensions installed (null: not known yet)
 // Other files change these through platformVars: a variable imported from another file can't be assigned to.
 const platformVars = {
@@ -125,11 +130,19 @@ function remountStreams(p){
     mountView(w);
   });
 }
+// A site's players start again in other storage when whether they're signed in changed.
+function syncStreams(p){
+  const now = streamSignedIn(p);
+  if (mountedSignedIn[p] === now) return;
+  mountedSignedIn[p] = now;
+  remountStreams(p);
+}
 function setWatchSignedIn(p, on){
   if (!(p in watchSignedIn) || watchSignedIn[p] === !!on) return;
   watchSignedIn[p] = !!on;
   settings.set('watchSignedIn', watchSignedIn);
-  remountStreams(p);
+  syncStreams(p);
+  reportPlayers();
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
@@ -143,12 +156,14 @@ function init(){
     if (changed.length) namesChanged(changed);
   });
   { const ws = settings.json('watchSignedIn', {}); for (const p in watchSignedIn) watchSignedIn[p] = ws[p] === true; }
+  for (const p in watchSignedIn) mountedSignedIn[p] = streamSignedIn(p);
   settings.onChange('watchSignedIn', (_, v) => {          // changed in the other window
     let ws = {}; try { ws = JSON.parse(v || '{}') || {}; } catch {}
-    for (const p in watchSignedIn) if (watchSignedIn[p] !== (ws[p] === true)){ watchSignedIn[p] = ws[p] === true; remountStreams(p); }
+    for (const p in watchSignedIn) if (watchSignedIn[p] !== (ws[p] === true)){ watchSignedIn[p] = ws[p] === true; syncStreams(p); }
+    reportPlayers();
   });
 }
 
 export { chatSrc, checkMod, chLabel, chLabelP, extCount, externalFor, infoNames, init, modOk, modUrl, normCh,
   parseInput, PLAT_NAME, platform, platformVars, platIcon, platOf, rememberName, rememberNames, setWatchSignedIn,
-  srcFor, streamSrc, trimPlayerPage, viewPartition, watchSignedIn, ytVidOf };
+  srcFor, streamSignedIn, streamSrc, syncStreams, trimPlayerPage, viewPartition, watchSignedIn, ytVidOf };
