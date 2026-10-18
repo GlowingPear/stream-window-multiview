@@ -6,8 +6,8 @@ import { store } from '../shared/store.js';
 import { placeMenu } from './toolbar.js';
 
 /* ---- The toolbar's farming widget (Settings › Connected apps, "Show what Pear Drops is farming in the toolbar"):
-   while a linked Pear Drops farms, the channel's picture and name, the drop's progress and the next reward. Its hover
-   card has the whole reward track. A click brings Pear Drops to the front. ---- */
+   while a linked Pear Drops farms, the channel's picture and name and the drop's progress, next to Profiles. Its hover
+   card has the next reward and the whole reward track. A click brings Pear Drops to the front. ---- */
 let btn, card, tick = null, hideT = null, logo = '';
 
 const farmingNow = () => {
@@ -34,15 +34,13 @@ function setPic(img, src, fallback = logo){
 const pic = (src, cls, fallback) => { const img = element('img', { class: cls, alt: '', referrerpolicy: 'no-referrer' }); setPic(img, src, fallback); return img; };
 
 function renderChip(f){
-  const ch = f.channel || {}, drop = f.drop || {}, prog = drop.progress || {}, next = drop.next;
+  const ch = f.channel || {}, drop = f.drop || {}, prog = drop.progress || {};
   const name = ch.name || ch.slug || 'Pear Drops';
   const av = btn.querySelector('.fw-av');
   if (av.dataset.src !== (ch.avatar || '') || !av.getAttribute('src')){ av.dataset.src = ch.avatar || ''; setPic(av, ch.avatar); }
   btn.querySelector('.fw-name').textContent = name;
   btn.querySelector('.fw-bar').hidden = !prog.total;
   btn.querySelector('.fw-bar i').style.width = pct(prog.done, prog.total) + '%';
-  const left = next && until(next.unlocksAt);
-  btn.querySelector('.fw-next').textContent = next && next.name ? next.name + (left ? ' in ' + left : '') : '';
   btn.setAttribute('aria-label', `Pear Drops is farming on ${name}` + (drop.campaign ? ` (${drop.campaign})` : '') + '. Open Pear Drops');   // (the hover card says it: no tooltip)
 }
 
@@ -81,7 +79,7 @@ function render(){
   btn.hidden = !f;
   if (!f){ card.hidden = true; clearInterval(tick); tick = null; return; }
   renderChip(f);
-  if (!card.hidden){ renderCard(f); placeMenu(card, btn, true); }
+  if (!card.hidden){ renderCard(f); placeMenu(card, btn); }
   if (!tick) tick = setInterval(render, 30000);    // the times count down
 }
 function showCard(){
@@ -90,7 +88,7 @@ function showCard(){
   if (!f) return;
   card.hidden = false;
   renderCard(f);
-  placeMenu(card, btn, true);
+  placeMenu(card, btn);
 }
 const hideSoon = () => { clearTimeout(hideT); hideT = setTimeout(() => { card.hidden = true; }, 250); };
 

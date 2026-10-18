@@ -9,12 +9,9 @@ header .fw-chip:hover:not(:disabled){background:color-mix(in srgb,var(--accent) 
 .fw-bar{flex:none;width:64px;height:4px;border-radius:2px;background:var(--line2);overflow:hidden}
 .fw-bar[hidden]{display:none}
 .fw-bar i{display:block;height:100%;background:var(--accent);border-radius:2px}
-.fw-next{font-size:11.5px;font-weight:500;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.fw-next:empty{display:none}
-header.c3 .fw-next,header.c2 .fw-next{display:none}
-/* on the left: a row like the others, with the bar under the name; icons only: just the picture */
+/* on the left: a row like the others; icons only: just the picture */
+header.c3 .fw-name{display:none}   /* a tight toolbar on top: the picture and the bar */
 body.bar-left header .fw-chip{border-radius:7px;padding:0 9px 0 3px;max-width:none}
-body.bar-left header .fw-next{display:none}
 body.bar-left header .fw-name{flex:1;max-width:none;text-align:left}
 body.bar-left header .fw-bar{width:28px}
 body.bar-left.bar-icons header .fw-chip{justify-content:center;padding:0;border-radius:50%;width:34px;height:34px;margin:0 auto}

@@ -193,7 +193,7 @@ test('Connected apps: Test checks the link, says "Testing…" while it runs, and
 const widget = page => page.evaluate(() => {
   const b = document.getElementById('farmBtn');
   if (b.hidden) return null;
-  return { name: b.querySelector('.fw-name').textContent, next: b.querySelector('.fw-next').textContent, bar: b.querySelector('.fw-bar i').style.width, avatar: b.querySelector('.fw-av').getAttribute('src') };
+  return { name: b.querySelector('.fw-name').textContent, text: b.textContent, bar: b.querySelector('.fw-bar i').style.width, avatar: b.querySelector('.fw-av').getAttribute('src') };
 });
 
 for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', labels: false }]) {
@@ -205,7 +205,8 @@ for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', label
     const w = await widget(page);
     assert.equal(w.name, 'PixelPear');
     assert.equal(w.bar, '40%', '48 of 120 minutes');
-    assert.match(w.next, /^Hype Rocket Emote in 1[12]m$/);
+    assert.equal(w.text, 'PixelPear', 'just the name and the bar (the next reward is in the hover card)');
+    assert.equal(await page.evaluate(() => document.getElementById('farmBtn').previousElementSibling.id), 'profBtn', 'next to Profiles');
     await page.waitForFunction(png => document.querySelector('#farmBtn .fw-av').getAttribute('src') === png, PNG);   // Kick's picture failed: the logo
     const hb = await page.locator('header').boundingBox(), bb = await page.locator('#farmBtn').boundingBox();
     assert.ok(bb.width > 20 && bb.x >= hb.x - 1 && bb.x + bb.width <= hb.x + hb.width + 1 && bb.y >= hb.y - 1 && bb.y + bb.height <= hb.y + hb.height + 1, 'in the toolbar');
@@ -239,7 +240,7 @@ test('The farming widget copes with a drop that has little to say', async t => {
   await push(page, { on: true, peer: peer(), farming: { state: 'farming', account: null, channel: { platform: 'kick', slug: 'pixelpear' }, drop: null }, open: true });
   await page.waitForFunction(() => !document.getElementById('farmBtn').hidden);
   const w = await widget(page);
-  assert.deepEqual([w.name, w.next], ['pixelpear', '']);
+  assert.equal(w.name, 'pixelpear');
   assert.ok(await page.$eval('#farmBtn .fw-bar', e => e.hidden), 'no progress: no bar');
   await page.hover('#farmBtn');
   await page.waitForSelector('#farmCard:not([hidden])');

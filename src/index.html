@@ -59,6 +59,7 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <button class="btn tb" id="loginBtn" hidden data-label="Logins" aria-label="Logins" title="Log in to Kick, Twitch or YouTube"><i data-ico="signin"></i><span class="tb-l">Logins</span><span class="car"></span></button>
   <button class="btn tb" id="savedBtn" data-label="Channels" aria-label="Channels" title="Your channels: open one, add a new one, see who's live"><i data-ico="star"></i><span class="tb-l">Channels</span><span class="sv-badge" hidden><i></i><b></b></span><span class="car"></span></button>
   <button class="btn tb" id="profBtn" hidden data-label="Profiles" aria-label="Profiles" title="Streamer profiles: search your saved streamers, see when they stream, keep notes"><i data-ico="user"></i><span class="tb-l">Profiles</span></button>
+  <button class="btn tb fw-chip" id="farmBtn" hidden aria-label="Pear Drops is farming: open Pear Drops"><img class="fw-av" alt="" width="24" height="24"><span class="fw-name"></span><span class="fw-bar"><i></i></span></button>
   <div class="spacer"></div>
   <button class="btn tb ibtn" id="layoutBtn" hidden data-label="Layout" aria-label="Layout" title="Arrange the windows"><i data-ico="layout"></i><span class="tb-l">Layout</span><span class="car"></span></button>
   <button class="btn tb ibtn" id="swBtn" hidden data-label="Switch control" aria-label="Switch control" title="Switch control: show it as a panel you can move and resize, in any layout (click again to put it away)"><i data-ico="float"></i><span class="tb-l">Switch control</span></button>
@@ -72,7 +73,6 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
   <button class="btn tb ibtn" id="undoBtn" hidden disabled data-label="Undo" aria-label="Undo" title="Undo (Ctrl+Z)"><i data-ico="undo"></i><span class="tb-l">Undo</span></button>
   <button class="btn tb ibtn" id="redoBtn" hidden disabled data-label="Redo" aria-label="Redo" title="Redo (Ctrl+Y)"><i data-ico="redo"></i><span class="tb-l">Redo</span></button>
   <i class="sep"></i>
-  <button class="btn tb fw-chip" id="farmBtn" hidden aria-label="Pear Drops is farming: open Pear Drops"><img class="fw-av" alt="" width="24" height="24"><span class="fw-name"></span><span class="fw-bar"><i></i></span><span class="fw-next"></span></button>
   <button class="btn tb ibtn" id="bellBtn" hidden data-label="Notifications" aria-label="Notifications" title="Notifications: mentions, spam alerts, channels going live and the app's messages"><span class="mb-ico"></span><span class="tb-l">Notifications</span><span class="mb-count" hidden></span></button>
   <button class="btn tb ibtn" id="settingsBtn" data-label="Settings" aria-label="Settings" title="Settings: general, accounts, alerts, themes and updates"><i data-ico="gear"></i><span class="tb-l">Settings</span></button>
   <button class="btn tb ibtn" id="focusBtn" data-label="Hide bar" aria-label="Hide bar" title="Hide this toolbar (move mouse to top edge or press Esc to bring it back)"><i data-ico="hidebar"></i><span class="tb-l">Hide bar</span></button>
