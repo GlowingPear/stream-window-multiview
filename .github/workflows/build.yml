@@ -220,7 +220,7 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.sha || github.sha }}
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           path: installers
           merge-multiple: true
