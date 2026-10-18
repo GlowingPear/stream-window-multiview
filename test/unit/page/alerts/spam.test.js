@@ -1,7 +1,7 @@
 // Spam alerts: which chat messages get flagged, and why.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { score, sites, contact, ignored, withNewBots, abuse, pointsOf, scoringWarnings, BOTS, POINTS, POINT_MAX, SIGNS } = require('../../../../src/page/alerts/spam.js').SmvSpam;
+const { score, sites, contact, ignored, withNew, withNewBots, abuse, pointsOf, scoringWarnings, BOTS, WORDS, OPENERS, POINTS, POINT_MAX, SIGNS } = require('../../../../src/page/alerts/spam.js').SmvSpam;
 
 const T = 1_700_000_000_000;
 const msg = (body, extra = {}) => ({ sender: 'newacct', body, chat: 'alpha', t: T, ...extra });
@@ -89,10 +89,10 @@ test('a wall of one word is spam on its own, with no link needed', () => {
   assert.equal(flagged(Array(25).fill('Fuck').join(' ')), true, 'spaced out, 25 times');
 });
 
-test('a known bot opening line is spam on its own, with no link needed', () => {
+test('a known bot line is spam on its own, with no link needed', () => {
   const r = score(msg('Hey stranger, still running the show?'), {}, { sensitivity: 'relaxed' });
   assert.equal(r.spam, true);
-  assert.deepEqual(r.signs, [{ key: 'opener', text: 'Known bot opening line: "Hey stranger, still running the show?"', points: 6 }]);
+  assert.deepEqual(r.signs, [{ key: 'opener', text: 'Known bot line: "Hey stranger, still running the show?"', points: 6 }]);
   assert.equal(flagged('hey   STRANGER still running the show!!'), true, 'case, spacing and punctuation ignored');
   assert.equal(flagged('lol hey stranger, still running the show? haha'), true, 'inside a longer message');
 });
@@ -102,7 +102,7 @@ test('the "something special, friend" bot: its opening line, then asking to be a
   const hello = { sender: 'newacct', body: 'Your stream’s got something special, friend.I’m busy at the moment but I’ll be back with my squad.', chat: 'alpha', t: T - 3_000 };
   const r1 = score(msg(hello.body, { t: hello.t }), { recent: [hello], firstSeen }, { sensitivity: 'relaxed' });
   assert.equal(r1.spam, true);
-  assert.equal(r1.signs[0].text, 'Known bot opening line: "Your stream’s got something special, friend"');
+  assert.equal(r1.signs[0].text, 'Known bot line: "Your stream’s got something special, friend"');
   assert.equal(flagged("your stream's got something special friend"), true, 'straight apostrophe, no comma');
   const r2 = score(msg('Add me up on discord bram209'), { recent: [hello], firstSeen });
   assert.equal(r2.spam, true);
@@ -111,6 +111,31 @@ test('the "something special, friend" bot: its opening line, then asking to be a
   // from someone who's been chatting a while it's only enough on Strict
   assert.equal(flagged('Add me up on discord bram209'), false);
   assert.equal(flagged('Add me up on discord bram209', {}, { sensitivity: 'strict' }), true);
+});
+
+test('the chatbot ad bot: compliments, a disguised link, then an ad with an opt-out line', () => {
+  const firstSeen = { 'alpha\nnewacct': T - 60_000 };
+  const lines = [
+    'Yo king, hope today treated you well. The world needs more people with your vibe 🔥',
+    '@someone Make your stream fire with "Bot Liva com" @ddc8c9',
+    'With AI-powered chatbots, your chat stays active around the clock. (If you do not wish to receive any more messages, type !noads in the chat)',
+    'Keep shining, you’re doing great! ✨'
+  ].map((body, i) => ({ sender: 'newacct', body, chat: 'alpha', t: T - 60_000 + i * 5_000 }));
+  const at = i => score(msg(lines[i].body, { t: lines[i].t }), { recent: lines.slice(0, i), firstSeen });
+  // the compliments have nothing to promote: never flagged on their own
+  assert.equal(at(0).spam, false);
+  assert.equal(at(3).spam, false);
+  // the disguised link, its promo words and a new chatter add up
+  const link = at(1);
+  assert.equal(link.spam, true);
+  assert.deepEqual(link.signs.map(x => x.text), ['Disguised link: liva com', 'Promo words: make your stream', 'Started chatting in the last few minutes']);
+  // the opt-out line is a known bot line, flagged on its own, from anyone
+  const ad = score(msg(lines[2].body));
+  assert.equal(ad.spam, true);
+  assert.deepEqual(ad.signs.map(x => x.text), ['Promo words: chatbot, stays active', 'Known bot line: "If you do not wish to receive any more messages"']);
+  assert.equal(flagged('Grow your channel today! Type !NoAds to stop these messages'), true, 'just the "type !noads"');
+  for (const body of ['no ads please', 'type !commands for the list', 'I do not wish to receive spoilers'])
+    assert.equal(flagged(body), false, body);
 });
 
 test('asking to be added off-site: the app and the name, however it\'s written', () => {
@@ -132,15 +157,15 @@ test('asking to be added off-site: the app and the name, however it\'s written',
   assert.equal(score(msg('add me on telegram @promo_king for cheap viewers'), {}).spam, true);
 });
 
-test('normal greetings are not bot opening lines', () => {
+test('normal greetings are not known bot lines', () => {
   for (const body of ['hey everyone', 'Hey stranger!', 'still running the show?', 'hey strangers, still running the shows?'])
     assert.equal(flagged(body), false, body);
 });
 
-test('your own bot opening lines, and an empty list matches nothing', () => {
+test('your own bot lines, and an empty list matches nothing', () => {
   assert.equal(flagged("Don't work too hard, leave some success for the rest of us."), false);
   const r = score(msg("don't work too hard, leave some success for the rest of us"), {}, { openers: ["Don't work too hard, leave some success for the rest of us.", ' ', '?!'] });
-  assert.deepEqual(r.signs, [{ key: 'opener', text: 'Known bot opening line: "Don\'t work too hard, leave some success for the rest of us."', points: 6 }]);
+  assert.deepEqual(r.signs, [{ key: 'opener', text: 'Known bot line: "Don\'t work too hard, leave some success for the rest of us."', points: 6 }]);
   assert.equal(r.spam, true);
   assert.equal(flagged('dont work too hard, leave some success for the rest of us', {}, { openers: ["Don’t work too hard, leave some success for the rest of us"] }), true, 'apostrophes ignored');
   assert.equal(flagged('Hey stranger, still running the show?', {}, { openers: [] }), false, 'emptied list');
@@ -215,6 +240,21 @@ test('bots added to the built-in list reach a list you changed, once', () => {
   assert.equal(withNewBots(removed, r.offered).list, removed, 'the same list when nothing is added');
   // already on your list (any case): not added twice
   assert.deepEqual(withNewBots(['GriddleBot'], first).list, ['GriddleBot', 'kickpulsebot', 'kicklet', 'lumiastream']);
+});
+
+test('promo words and bot lines added to the built-in lists reach a list you changed, once', () => {
+  const firstWords = WORDS.slice(0, 10), firstOpeners = ['Hey stranger, still running the show?', 'Your stream’s got something special, friend'];
+  assert.deepEqual(withNew('words', null, null), { list: null, offered: WORDS });
+  // changed before the app remembered what it offered: the ones added since are added, as written
+  const words = withNew('words', [...firstWords, 'subs'], null);
+  assert.deepEqual(words.list, [...firstWords, 'subs', 'chatbot', 'make your stream', 'stays active']);
+  assert.deepEqual(words.offered, WORDS);
+  const lines = withNew('openers', ['Hey stranger, still running the show?'], null);
+  assert.deepEqual(lines.list, ['Hey stranger, still running the show?', ...OPENERS.slice(2)]);
+  // removed afterwards: stays removed; already there in another case: not added twice
+  const fewer = lines.list.filter(l => l !== 'type !noads');
+  assert.equal(withNew('openers', fewer, lines.offered).list, fewer);
+  assert.deepEqual(withNew('openers', ['TYPE !NOADS'], firstOpeners).list, ['TYPE !NOADS', 'If you do not wish to receive any more messages']);
 });
 
 test('a bot timer message repeated in several open chats is not flagged', () => {

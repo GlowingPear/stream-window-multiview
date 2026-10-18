@@ -313,11 +313,13 @@ test('chat bots: the list is in Mentions, spam alerts show it until they get the
   await win.click('[data-reset=mbots]');
   await win.keyboard.press('Escape');
 
-  // from before mentions had a list: the one made for spam alerts is the shared one, with the bots built in since added once
+  // from before mentions had a list: the one made for spam alerts is the shared one, with the bots built in since added
+  // once. Promo words and bot lines you changed get the ones built in since too.
   await win.evaluate(() => {
     const a = JSON.parse(localStorage.getItem('kickMultiview.alerts') || '{}');
     delete a.mention.bots; delete a.mention.botsOffered;
-    a.spam = { ...a.spam, ignore: ['botrix', 'mytimerbot'], botsOffered: null };
+    a.spam = { ...a.spam, ignore: ['botrix', 'mytimerbot'], botsOffered: null, words: ['upgrade', 'subs'], wordsOffered: null,
+               openers: ['Hey stranger, still running the show?'], openersOffered: null };
     localStorage.setItem('kickMultiview.alerts', JSON.stringify(a));
   });
   await win.reload();
@@ -326,6 +328,8 @@ test('chat bots: the list is in Mentions, spam alerts show it until they get the
   const added = ['botrix', 'mytimerbot', 'griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream'];
   assert.deepEqual((await saved()).mention.bots, added);
   assert.deepEqual((await saved()).spam.ignore, added, 'and to the spam alerts\' own list');
+  assert.deepEqual((await saved()).spam.words, ['upgrade', 'subs', 'chatbot', 'make your stream', 'stays active'], 'new promo words');
+  assert.deepEqual((await saved()).spam.openers, ['Hey stranger, still running the show?', 'If you do not wish to receive any more messages', 'type !noads'], 'new bot lines');
   await win.evaluate(() => window.openSettings('mentions'));
   await win.click('#mentTabs [data-t=bots]');
   await win.click('[data-list=mbots] .st-chip:has-text("kicklet") button');
@@ -339,6 +343,7 @@ test('chat bots: the list is in Mentions, spam alerts show it until they get the
   await win.evaluate(() => window.openSettings('spam'));
   await win.click('#spamTabs [data-t=lists]'); await win.click('#spamListPick [data-l=ignore]');
   await win.uncheck('[data-al="spam.sharedBots"]'); await win.click('[data-reset=ignore]'); await win.check('[data-al="spam.sharedBots"]');
+  for (const l of ['words', 'openers']){ await win.click(`#spamListPick [data-l=${l}]`); await win.click(`[data-reset=${l}]`); }
   await win.keyboard.press('Escape');
 });
 
