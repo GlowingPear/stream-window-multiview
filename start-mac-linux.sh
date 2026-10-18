@@ -8,6 +8,7 @@ fi
 if [ ! -d node_modules/electron ] || [ -f .needs-install ]; then
   echo "First launch: installing the app engine (one time, about a minute)..."
   npm install --no-audit --no-fund || exit 1
+  node node_modules/electron/install.js || exit 1   # the engine itself (npm install no longer fetches it)
   rm -f .needs-install
 fi
 node src/main/harden.js >/dev/null 2>&1   # keep saved logins encrypted

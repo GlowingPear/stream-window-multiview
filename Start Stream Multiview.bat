@@ -15,6 +15,9 @@ echo  This takes about a minute...
 echo.
 call npm install --no-audit --no-fund
 if errorlevel 1 goto installfail
+rem The engine itself downloads separately (npm install no longer fetches it).
+if not exist "node_modules\electron\dist\electron.exe" call node node_modules\electron\install.js
+if errorlevel 1 goto installfail
 if exist ".needs-install" del ".needs-install"
 
 :run

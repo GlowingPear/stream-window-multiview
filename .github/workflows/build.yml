@@ -189,7 +189,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npx --yes electron-builder@25.1.8 ${{ matrix.target }} --publish never 2>&1 | tee "$RUNNER_TEMP/build.log"
+          npx --yes electron-builder@26.15.3 ${{ matrix.target }} --publish never 2>&1 | tee "$RUNNER_TEMP/build.log"
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 

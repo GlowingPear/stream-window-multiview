@@ -24,8 +24,8 @@ function git(dir, args) {
   return r.status === 0 ? r.stdout.trim() : '';
 }
 
-// The app engine (Electron) downloads itself during npm install. With npm's ignore-scripts
-// setting on, that step is skipped and the app can't start, so download it here if it's missing.
+// The app engine (Electron) isn't downloaded by npm install (from Electron 42 on it fetches itself the first
+// time it starts): download it here if it's missing, so the app starts straight away.
 function ensureElectron(dir) {
   const has = () => spawnSync(process.execPath, ['-e', 'require("electron")'], { cwd: dir, stdio: 'ignore' }).status === 0;
   if (has()) return;
