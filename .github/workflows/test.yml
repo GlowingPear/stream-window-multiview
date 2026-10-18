@@ -2,6 +2,7 @@
 #   Quick tests: updates, release scripts and login encryption (Windows, Mac and Linux).
 #   App tests:   the page in a headless browser, then the real desktop app on a virtual screen, recording
 #                which code the tests run (coverage report on the run's summary page).
+#   Dependencies: npm audit, for known holes in the packages the app installs (also every Monday).
 # Run them yourself with: npm test   (and npm run test:setup once, then npm run test:all or npm run test:coverage)
 name: Tests
 
@@ -9,6 +10,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -19,7 +22,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  audit:
+    name: Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: npm audit
+        run: |
+          npm install --no-fund --ignore-scripts
+          npm audit --audit-level=moderate
+
   quick:
+    if: github.event_name != 'schedule'
     name: Quick tests (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -40,6 +57,7 @@ jobs:
             echo "::error title=Failed tests::$(cat fails.txt)"; exit 1; }
 
   app:
+    if: github.event_name != 'schedule'
     name: App tests
     runs-on: ubuntu-latest
     timeout-minutes: 20            # a normal run takes about 3 minutes; don't let a stuck one sit for 6 hours

@@ -24,8 +24,9 @@ on:
     types: [published]
   workflow_dispatch:
 
+# Read-only unless a job says otherwise (only the release's own jobs write).
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: build-${{ github.ref }}
@@ -35,6 +36,8 @@ jobs:
   prepare:
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       sha: ${{ steps.commit.outputs.sha }}
     steps:
@@ -77,9 +80,12 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      # (the release's values go in through env, never pasted into the script: a tag name could hold shell code)
       - name: Check the release was made from the latest main
+        env:
+          TAG: ${{ github.event.release.tag_name }}
         run: |
-          TAG_SHA=$(git rev-list -n 1 "${{ github.event.release.tag_name }}")
+          TAG_SHA=$(git rev-list -n 1 "$TAG")
           MAIN_SHA=$(git rev-parse HEAD)
           if [ "$TAG_SHA" != "$MAIN_SHA" ]; then
             echo "::error::The release tag points at $TAG_SHA but main is at $MAIN_SHA. Create the release from the latest main."
@@ -89,25 +95,30 @@ jobs:
       - name: Set the version and update CHANGELOG.md
         env:
           NOTES: ${{ github.event.release.body }}
+          TAG: ${{ github.event.release.tag_name }}
         run: |
           printf '%s' "$NOTES" > "$RUNNER_TEMP/notes.md"
-          node scripts/prepare-release.js "${{ github.event.release.tag_name }}" "$RUNNER_TEMP/notes.md"
+          node scripts/prepare-release.js "$TAG" "$RUNNER_TEMP/notes.md"
 
       - name: Run the quick tests on the release
         run: npm test
 
       - name: Commit to main and move the tag
         id: commit
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          AUTHOR: ${{ github.event.release.author.login }}
+          AUTHOR_ID: ${{ github.event.release.author.id }}
         run: |
           if git diff --quiet; then
             echo "Nothing to change."
           else
-            git config user.name "${{ github.event.release.author.login }}"
-            git config user.email "${{ github.event.release.author.id }}+${{ github.event.release.author.login }}@users.noreply.github.com"
-            git commit -am "Release ${{ github.event.release.tag_name }}"
+            git config user.name "$AUTHOR"
+            git config user.email "$AUTHOR_ID+$AUTHOR@users.noreply.github.com"
+            git commit -am "Release $TAG"
             git push origin HEAD:main || { echo "::error title=Couldn't save the version to main::The push was refused. Check that the release deploy key has write access and is on the Protect main ruleset's bypass list."; exit 1; }
-            git tag -f "${{ github.event.release.tag_name }}"
-            git push -f origin "refs/tags/${{ github.event.release.tag_name }}"
+            git tag -f "$TAG"
+            git push -f origin "refs/tags/$TAG"
           fi
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
@@ -202,6 +213,8 @@ jobs:
     needs: [prepare, build]
     if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
         with:
