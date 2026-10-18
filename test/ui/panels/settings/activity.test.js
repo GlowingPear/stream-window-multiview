@@ -99,6 +99,7 @@ test('Activity: the words for each message, from this app\'s side', async t => {
       d('drops.farming.get', 'out', 'request', {}), d('drops.farming.get', 'in', 'request', {}), d('drops.farming.get', 'in', 'reply', FARMING), d('drops.farming.get', 'in', 'reply', null),
       d('drops.farming.show', 'out', 'request', {}), d('drops.farming.show', 'in', 'request', {}), d('drops.farming.show', 'in', 'reply', { shown: true }), d('drops.farming.show', 'in', 'reply', { shown: false }),
       d('players.changed', 'out', 'event', PLAYERS),
+      d('players.changed', 'out', 'event', { platforms: { kick: { ...PLAYERS.platforms.kick, signedIn: true } } }),
       d('players.changed', 'out', 'event', { platforms: { kick: { ...PLAYERS.platforms.kick, signedIn: true, mode: 'signed-in', open: [{}] } } }),
       d('players.changed', 'out', 'event', { platforms: { kick: { ...PLAYERS.platforms.kick, mode: 'signed-out' } } }),
       d('players.changed', 'out', 'event', { platforms: { kick: { ...PLAYERS.platforms.kick, mode: 'new-mode' } } }),
@@ -126,13 +127,14 @@ test('Activity: the words for each message, from this app\'s side', async t => {
     'drops.farming.get | reply | Farming Neon Rush Launch Week on PixelPear · 48 of 120 min', 'drops.farming.get | reply | No fields',
     'drops.farming.show | request | Asked Pear Drops to come to the front', 'drops.farming.show | request | Pear Drops asked to be shown',
     'drops.farming.show | reply | Shown', 'drops.farming.show | reply | Not shown',
-    'players.changed | event | 2 Kick players open, signed out · signed out while you farm',
-    'players.changed | event | 1 Kick player open, signed in · always signed in',
-    'players.changed | event | 2 Kick players open, signed out · always signed out',
+    'players.changed | event | 2 Kick players open, signed out while Pear Drops farms',
+    'players.changed | event | 2 Kick players open, signed in (Auto)',
+    'players.changed | event | 1 Kick player open, signed in (always)',
+    'players.changed | event | 2 Kick players open, signed out (always)',
     'players.changed | event | 2 Kick players open, signed out · new-mode',
     'players.changed | event | No Kick players open',
     'players.get | request | Pear Drops asked about the players', 'players.get | request | Asked Pear Drops about its players',
-    'players.get | reply | 2 Kick players open, signed out · signed out while you farm',
+    'players.get | reply | 2 Kick players open, signed out while Pear Drops farms',
     'link.hello | request | Pear Drops said hello', 'link.hello | reply | Hello back to Pear Drops', 'link.hello | request | Said hello to Pear Drops', 'link.hello | reply | Pear Drops said hello back',
     'link.auth | request | The pairing proof', 'link.auth | reply | Pairing proof accepted',
     'link.subscribe | request | Pear Drops asked for players.changed', 'link.subscribe | reply | Will send players.changed',
@@ -180,7 +182,15 @@ test('Activity: the button opens it in place of the card, with the header, the t
   const order = await page.$eval('#caActivity .act-col:last-child', c => [...c.children].map(e => e.className));
   assert.deepEqual(order, ['act-seg out', 'act-seg in', 'act-bad'], 'sent at the bottom (the column runs upwards)');
   assert.ok(await fits(page), 'Settings doesn\'t scroll');
-  // the heartbeat's "ago" keeps up
+  // the heartbeat's "ago" keeps up, and "last heard" stays put as it counts
+  const heardAt = () => page.$eval('#caActivity .act-tile.beat em', e => e.getBoundingClientRect().left);
+  const lefts = [];
+  for (const s of [1, 6, 14, 51]){   // (it counts on as it's read: one or two digits is what matters)
+    await page.evaluate(s => { window.smvActivity.state.data.totals.heard = Date.now() - s * 1000; }, s);
+    await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#caActivity .act-tile.beat b').textContent), s < 9 ? '^\\ds ago$' : '^\\d\\ds ago$');
+    lefts.push(await heardAt());
+  }
+  assert.equal(new Set(lefts).size, 1, 'last heard at ' + lefts.join(', '));
   await page.evaluate(() => { window.smvActivity.state.data.totals.heard = Date.now() - 75000; });
   await page.waitForFunction(() => document.querySelector('#caActivity .act-tile.beat b').textContent === '1m ago');
 
@@ -218,7 +228,7 @@ test('Activity: as many rows as fit, newest first, and paging with Older, Newer 
   assert.equal(v.range, `1–${n} of 30`);
   assert.deepEqual([v.newest, v.newer, v.older], [false, false, true]);
   assert.equal(v.rows[0], 'drops.farming.changed · Farming Neon Rush Launch Week on PixelPear · 48 of 120 min');
-  assert.equal(v.rows[1], 'players.changed · 2 Kick players open, signed out · signed out while you farm');
+  assert.equal(v.rows[1], 'players.changed · 2 Kick players open, signed out while Pear Drops farms');
   assert.ok(await fits(page), 'the rows fit: nothing scrolls');
   await page.click('#caActivity .act-older');
   await settle(page);
@@ -284,6 +294,20 @@ test('Activity: the filters, with the problems counted; notes are pills across t
   // a status note in the list
   while (!(await page.$('#caActivity .act-marker.tone-ok'))){ await page.click('#caActivity .act-older'); await settle(page); }
   assert.equal(await page.textContent('#caActivity .act-marker.tone-ok .act-pill'), 'Connected to Pear Drops');
+  assert.ok(await page.$('#caActivity .act-marker.tone-ok .act-pill svg path'), 'with the link icon');
+});
+
+test('Activity: the wait to sign Kick players back in is a pill with a clock', async t => {
+  const at = new Date(2026, 9, 18, 17, 0, 0).getTime(), PD = 'com.streamorchard.peardrops';
+  const page = await openActivity(t, { problems: 0, entries: [
+    { n: 1, at, app: PD, dir: 'in', kind: 'event', method: 'drops.farming.changed', bytes: 90, data: { state: 'waiting' } },
+    { n: 2, at: at + 50, app: PD, dir: null, kind: 'status', method: null, tone: '', about: 'players', text: 'Farming stopped · Kick players sign back in at 17:05:00 (in 5 min)' }
+  ] });
+  await page.click('#caPearDrops .ca-activity');
+  await settle(page);
+  assert.deepEqual((await view(page)).rows, ['— Farming stopped · Kick players sign back in at 17:05:00 (in 5 min)', 'drops.farming.changed · Waiting for a stream with drops']);
+  assert.ok(await page.$('#caActivity .act-marker.tone-plain .act-pill svg circle'), 'a clock, not the link');
+  assert.equal(await page.evaluate(() => document.querySelector('#caActivity .act-filter[data-f=problems]').textContent), 'Problems', 'not a problem');
 });
 
 test('Activity: a click opens a message\'s fields, with Copy JSON; the hello\'s are never shown', async t => {

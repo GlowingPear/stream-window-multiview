@@ -23,6 +23,7 @@ const fakeApp = png => {
     linkShowPearDrops: () => { log('show'); return Promise.resolve({ shown: true }); },
     linkTest: () => new Promise(r => { window.finishTest = r; }),
     playersReport: st => log('players', st),
+    linkNote: text => log('note', text),
     onLinkState: cb => { push = cb; },
     openExternal: url => log('open', url)
   };
@@ -45,11 +46,11 @@ const FARMING = () => ({
 const peer = (o = {}) => ({ id: 'com.streamorchard.peardrops', status: 'connected', installed: true, version: '0.1.6', report: { state: 'works', text: 'Works' },
   pairedAt: '2026-10-18T09:00:00Z', summary: 'Collects your Kick emote and badge drops for you.', download: 'https://example.com/pear-drops', ...o });
 
-async function openCard(t, { storage = {}, size, toolbar } = {}){
+async function openCard(t, { storage = {}, size, toolbar, query } = {}){
   const store = { 'link.peardrops': '1', ...storage };
   const init = `(${fakeApp})(${JSON.stringify(PNG)});` + Object.entries(store).map(([k, v]) => `localStorage.setItem('kickMultiview.${k}', ${JSON.stringify(v)});`).join('')
     + (toolbar ? `localStorage.setItem('kickMultiview.toolbar', ${JSON.stringify(JSON.stringify(toolbar))});` : '');
-  const page = await openApp(t, { ...size, init: { content: init } });
+  const page = await openApp(t, { ...size, query, init: { content: init } });
   await page.waitForFunction(() => window.pearLink && window.pearLink.state);
   return page;
 }
@@ -143,6 +144,27 @@ test('Connected apps: farming signs Kick players out at once, the line says so, 
   assert.equal(await page.evaluate(() => window.pearLink.kickOut), false);
   report = (await calls(page, 'players')).pop()[1].platforms.kick;
   assert.deepEqual([report.mode, report.signedIn], ['signed-in', true], 'your own choice again');
+  // the Activity log hears of the wait: when it starts, and when farming again calls it off (signing back in is
+  // the players.changed that follows)
+  const notes = (await calls(page, 'note')).map(c => c[1]);
+  assert.equal(notes.length, 3, notes.join('\n'));
+  assert.match(notes[0], /^Farming stopped · Kick players sign back in at \d{2}:\d{2}:\d{2}( [AP]M)? \(in 1 s\)$/);
+  assert.equal(notes[1], 'Farming again · Kick players stay signed out');
+  assert.match(notes[2], /^Farming stopped · /);
+});
+
+test('Connected apps: the wait in the Activity log says its minutes, and only the main window tells it', async t => {
+  const stopped = { on: true, peer: peer(), farming: { ...FARMING(), state: 'waiting', channel: null, drop: null }, open: true, wait: null };
+  for (const query of ['', '?role=streams']){
+    const page = await openCard(t, { query, storage: { accounts: JSON.stringify({ kick: 'pearfan' }) } });
+    await push(page, { on: true, peer: peer(), farming: FARMING(), open: true, wait: null });
+    await push(page, stopped);
+    assert.ok(await page.evaluate(() => window.pearLink.backAt - Date.now() > 290000), 'the usual 5 minutes');
+    const notes = (await calls(page, 'note')).map(c => c[1]);
+    if (query) assert.deepEqual(notes, [], 'the streams window waits too, but says nothing');
+    else assert.match(notes.join('\n'), /^Farming stopped · Kick players sign back in at .* \(in 5 min\)$/);
+    await page.close();
+  }
 });
 
 test('Connected apps: Auto keeps your own Kick choice and gives it back; Disconnect switches the link off', async t => {

@@ -88,6 +88,7 @@ test('notes: in their app\'s log, with the time they happened; one with no app s
   assert.deepEqual(log.page(PD).entries.map(x => x.text), ['Not sent: players.changed doesn\'t fit players 1', 'Connected to Pear Drops']);
   assert.equal(log.page(PD).totals.problems, 0, 'a note with no app is nobody\'s problem in the totals');
   assert.equal(log.page(PD).problems, 1, 'but it shows under Problems');
+  assert.equal(log.note(PD, { text: 'Farming stopped', about: 'players' }).about, 'players', 'what it\'s about, when it isn\'t the link');
 });
 
 test('a hello before Pear Drops says who it is (no app yet) is listed, but not in the totals', () => {
