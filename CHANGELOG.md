@@ -2,7 +2,12 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.9 (current)
+## 0.3.10 (current)
+- Flag abuse in chats you moderate, and choose how many points each spam sign is worth
+- New-message counts as a setting, in every layout: title bars and the switch control too
+- Arrow keys between streams in every layout; in Chat Stage and Chat Rail they change the chat shown
+
+## 0.3.9
 - Chat Stage layout: one stream big with its chat in big text, the other streams in a strip
 - Chat Stage: the strip's pictures show how many new messages each chat out of sight has had
 - Chat Stage: dragging the line right after a layout change follows the pointer at once
