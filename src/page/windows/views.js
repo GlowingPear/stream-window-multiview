@@ -30,12 +30,11 @@ import { liftAudioSoon, pushVol } from './windows.js';
 /* The player / chat inside a window. YouTube channels first need their current live video looked up. */
 // You clicked into a window's view: it's the active window, its alert and new messages are seen, and a chat blows
 // up (Blow up chat, switch control). Heard from its focus event, from the app (a press in it: from Electron 44 on, a
-// <webview> has no focus event), and from a press on the view that reaches this page instead of the chat's.
+// <webview> has no focus event), and from a press on the view that reaches this page instead of the chat's. One
+// click can be heard twice: all of it is the same the second time.
 function viewTouched(w, frame){
   if (!wins.includes(w) || w.view !== frame) return;
   if (Date.now() - (frame.skipAt || 0) < 1000) return;                         // Skip YouTube ads did
-  if (Date.now() - (frame.touchedAt || 0) < 300) return;                       // its focus and the press: one click
-  frame.touchedAt = Date.now();
   focusWin(w); clearAlert(w); readChat(w.channel);
   if (w.kind === 'chat' && blowOn) blowUp(w);
 }
