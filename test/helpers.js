@@ -64,7 +64,13 @@ function recordElectron(pw) {
     const env = { ...(opts.env || process.env), NODE_V8_COVERAGE: path.join(COVERAGE, 'node') };
     const app = await launch({ ...opts, env });
     const pages = [];
-    const watch = p => { pages.push(p); startCoverage(p); };
+    // A reload drops the page's scripts, and what they ran, before the end (Electron 42 on): what a page ran
+    // so far is saved before a test reloads it, and recording starts again.
+    const watch = p => {
+      pages.push(p); startCoverage(p);
+      const reload = p.reload.bind(p);
+      p.reload = async (...a) => { await saveCoverage(p); await startCoverage(p); return reload(...a); };
+    };
     app.windows().forEach(watch);
     app.on('window', watch);
     const close = app.close.bind(app);
