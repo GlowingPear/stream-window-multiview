@@ -23,8 +23,11 @@ async function near(ch, want, what){
 }
 const blown = () => a.win.evaluate(() => !!document.querySelector('#stage .win.chat.blown'));
 // a real click into alpha's chat page (from Electron 44 on, a <webview> has no focus event: the app hears the press)
+// (where it is once it has stopped moving: it slides back after being blown up)
 const clickIntoChat = async () => {
-  const p = await a.win.evaluate(() => { const b = [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent === 'alpha').querySelector('webview').getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; });
+  const at = () => a.win.evaluate(() => { const b = [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent === 'alpha').querySelector('webview').getBoundingClientRect(); return { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2) }; });
+  let p = await at();
+  for (let i = 0; i < 30; i++) { await a.win.waitForTimeout(100); const q = await at(); if (q.x === p.x && q.y === p.y) break; p = q; }
   await a.win.mouse.click(p.x, p.y);
 };
 
