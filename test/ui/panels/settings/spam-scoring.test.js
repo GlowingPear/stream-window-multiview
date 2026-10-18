@@ -179,7 +179,7 @@ test('Scoring fits without scrolling in a 1280 × 800 window, with warnings show
   const cut = await page.$$eval('.sc-name', e => e.filter(n => n.scrollWidth > n.clientWidth).map(n => n.textContent));
   assert.deepEqual(cut, [], 'no name cut short');
   const widths = await page.$$eval('.sc-row .sc-slider', e => [...new Set(e.map(x => Math.round(x.getBoundingClientRect().width)))]);
-  assert.deepEqual(widths, [96], 'every slider the same width, with or without a ⚠ in its row');
+  assert.deepEqual(widths, [84], 'every slider the same width, with or without a ⚠ in its row');
   const [desc, reset] = [await page.locator('.sc-top .st-sub').boundingBox(), await page.locator('#spamPointsReset').boundingBox()];
   assert.ok(reset.x >= desc.x + desc.width && Math.abs((reset.y + reset.height / 2) - (desc.y + desc.height / 2)) < 12, 'Reset to defaults right of the text');
 });

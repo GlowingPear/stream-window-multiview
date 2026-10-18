@@ -61,7 +61,7 @@ const SmvSpam = (() => {
     { key: 'newbie', group: 'spam', points: 1, label: 'New chatter', short: 'New chatter' },
     { key: 'insult', group: 'abuse', points: 4, flags: true, label: 'Insult aimed at someone', short: 'Insult at someone' },
     { key: 'slur', group: 'abuse', points: 5, flags: true, label: 'Slur or threat', short: 'Slur or threat' },
-    { key: 'swearing', group: 'abuse', points: 5, flags: true, label: 'Swearing over and over', short: 'Swearing again and again' },
+    { key: 'swearing', group: 'abuse', points: 5, flags: true, label: 'Swearing over and over', short: 'Swearing on repeat' },
     { key: 'again', group: 'abuse', points: 3, label: 'Keeps at it', short: 'Keeps at it' }
   ];
   const POINTS = Object.fromEntries(SIGNS.map(s => [s.key, s.points]));

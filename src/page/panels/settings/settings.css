@@ -121,7 +121,7 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .sc-col{min-width:0}
 .sc-head{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:2px 0 3px;border-bottom:1px solid var(--line)}
 .sc-head .sc-warn-ico{font-size:11px;letter-spacing:0}
-.sc-row{display:grid;grid-template-columns:minmax(0,1fr) 14px 12px 96px 26px;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--line);font-size:12px}
+.sc-row{display:grid;grid-template-columns:minmax(0,1fr) 14px 12px 84px 26px;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid var(--line);font-size:12px}
 .sc-row:last-child{border-bottom:0}
 .sc-name{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sc-slider{position:relative;display:flex;align-items:center}
