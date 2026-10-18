@@ -181,6 +181,13 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 
 **No system pop-ups in the app's pages.** They ignore the theme, and on a Mac they sit above every app and take the keyboard, even from the launch tests' invisible windows. Dropdowns (`<select>`) open the app's own list by themselves (`src/page/shared/dropdown.js`). For questions and messages, use the app's own `ask()` (`src/page/shared/ask.js`) and `flash()` (`src/page/shared/flash.js`), not `alert()`, `confirm()` or `prompt()`. Also no `<datalist>`, date or time inputs, system menus (`Menu.popup`) or message boxes (`dialog.showMessageBox`). File pickers are the exception, and so are the colour pickers for now. `npm test` fails if one of these slips in (`test/unit/no-system-popups.test.js`).
 
+**What the app lets in** (`src/main/guard.js`, issue #45). The app shows pages from other sites and holds your logins, so:
+- A message handler for the page goes through `appIpc` (the main and streams windows), `mainIpc` (the main window only: anything that changes updates, logins, extensions or what the app trusts) or `switcherIpc`, never `ipcMain` directly: they only answer the app's own windows. Check every argument.
+- What pages may ask for (camera, notifications, opening other apps…) is refused unless it's in `guard.js`'s lists; add to them only what a feature needs.
+- Links go to the browser through `openExternal` in `main.js` (http and https only); a window with a login stays on the sites (`keepOnSites`).
+- The app's pages have a Content-Security-Policy: no `<script>` in the HTML and no `onclick="…"`-style attributes; code goes in files, handlers in code.
+- `SMV_` variables that point the app somewhere else only work in copies run from source.
+
 The tests are in `test/`. When you add a feature, add a test next to the similar ones. Coverage doesn't have to be 100%, but it can't go down: if `npm run test:coverage` says a file is below its minimum, test what you changed. When coverage goes up, raise the minimums in `test/coverage-min.json` to the numbers on the CI run's summary page.
 
 What the tests deliberately don't do, because it needs the real outside world:
