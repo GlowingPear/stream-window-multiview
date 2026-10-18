@@ -25,7 +25,8 @@ const ACT_IC = {
   next: actSvg('<path d="M9 6l6 6-6 6"/>'),
   top: actSvg('<path d="M6 15l6-6 6 6"/>'),
   copy: actSvg('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>'),
-  check: actSvg('<path d="M5 12l5 5 9-10"/>')
+  check: actSvg('<path d="M5 12l5 5 9-10"/>'),
+  clock: actSvg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')
 };
 const act = {
   open: false,
@@ -48,6 +49,8 @@ const actMs = ms => (ms < 1 ? '<1 ms' : Math.round(ms) + ' ms');
 const actClock = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const actTime = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const actAgo = t => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 60 ? s + 's ago' : Math.round(s / 60) + 'm ago'; };
+// "12s ago" with its number in a box two digits wide (activity.css .act-num): what follows stays put as it counts.
+const actAgoParts = t => { const [, n, rest] = actAgo(t).match(/^(\d+)(.*)$/); return [element('span', 'act-num', n), rest]; };
 const actNames = list => (Array.isArray(list) && list.length ? list.join(', ') : 'nothing');
 const actPlural = (n, one) => n + ' ' + one + (n === 1 ? '' : 's');
 
@@ -61,12 +64,13 @@ function farmingWords(f){
   return { farming: 'Farming', paused: 'Paused', done: 'Every drop is done', 'signed-out': 'Signed out of Kick', waiting: 'Waiting for a stream with drops' }[f.state] || 'State: ' + f.state;
 }
 
-// players' state (what this app sends), in words.
+// players' state (what this app sends), in words: signed in or out, and why (Auto: out while Pear Drops farms).
 function playersWords(p){
   const k = p && p.platforms && p.platforms.kick;
   if (!k || !k.open || !k.open.length) return 'No Kick players open';
-  const mode = { 'signed-in': 'always signed in', 'signed-out': 'always signed out', auto: 'signed out while you farm' }[k.mode] || k.mode;
-  return actPlural(k.open.length, 'Kick player') + ' open, ' + (k.signedIn ? 'signed in' : 'signed out') + (mode ? ' · ' + mode : '');
+  const state = k.signedIn ? 'signed in' : 'signed out';
+  const how = { auto: k.signedIn ? 'signed in (Auto)' : 'signed out while Pear Drops farms', 'signed-in': 'signed in (always)', 'signed-out': 'signed out (always)' }[k.mode];
+  return actPlural(k.open.length, 'Kick player') + ' open, ' + (how || state + (k.mode ? ' · ' + k.mode : ''));
 }
 
 // One entry in plain words, from this app's side: { title (the method, or what happened), kind, text }.
@@ -159,11 +163,11 @@ function actTiles(d){
   const t = (d && d.totals) || { sent: 0, received: 0, bytesOut: 0, bytesIn: 0, heard: null };
   const tile = (cls, ic, label, value, sub) => element('div', 'act-tile ' + cls,
     element('span', { class: 'act-tile-label', html: ACT_IC[ic] }, label),
-    element('span', 'act-tile-value', element('b', null, String(value)), sub ? element('em', null, sub) : null));
+    element('span', 'act-tile-value', element('b', null, ...(Array.isArray(value) ? value : [String(value)])), sub ? element('em', null, sub) : null));
   return element('div', 'act-tiles',
     tile('out', 'out', 'Sent', t.sent, actSize(t.bytesOut)),
     tile('in', 'in', 'Received', t.received, actSize(t.bytesIn)),
-    tile('beat', 'pulse', 'Heartbeat', t.heard ? actAgo(t.heard) : '—', t.heard ? 'last heard' : ''),
+    tile('beat', 'pulse', 'Heartbeat', t.heard ? actAgoParts(t.heard) : '—', t.heard ? 'last heard' : ''),
     tile(d && d.problems ? 'bad' : 'calm', 'alert', 'Problems', (d && d.problems) || 0, ''));
 }
 
@@ -204,7 +208,7 @@ function actRow(e, now){
   const time = element('span', 'act-time', actTime(e.at));
   if (e.kind === 'status' || e.kind === 'note')
     return element('div', { class: 'act-row act-marker tone-' + (e.tone || 'plain') + (lit ? ' fresh' : ''), dataset: { n: e.n }, style: lit },
-      time, element('span', 'act-rule'), element('span', { class: 'act-pill', html: ACT_IC[e.kind === 'note' ? 'alert' : 'link'] }, element('span', null, w.text)), element('span', 'act-rule'));
+      time, element('span', 'act-rule'), element('span', { class: 'act-pill', html: ACT_IC[e.about === 'players' ? 'clock' : e.kind === 'note' ? 'alert' : 'link'] }, element('span', null, w.text)), element('span', 'act-rule'));
   const cap = (e.method || '').startsWith('link.') ? 'link' : (e.method || '').startsWith('players.') ? 'players' : 'drops';
   const open = act.shown === e.n;
   const head = element('button', { type: 'button', class: 'act-row ' + e.dir + ' k-' + e.kind + (open ? ' open' : '') + (lit ? ' fresh' : ''), dataset: { n: e.n }, style: lit,
@@ -289,7 +293,7 @@ function init(){
   new ResizeObserver(() => { const list = actView.querySelector('.act-list'); if (act.open && list) fitActivity(list); }).observe(actView);
   // new messages: the open log follows them (on its newest page; older pages stay put), and the heartbeat's "ago"
   fromApp('onLinkActivity', () => { if (act.open) loadActivity(); });
-  setInterval(() => { if (act.open && act.data && act.data.totals.heard){ const v = actView.querySelector('.act-tile.beat b'); if (v) v.textContent = actAgo(act.data.totals.heard); } }, 1000);
+  setInterval(() => { if (act.open && act.data && act.data.totals.heard){ const v = actView.querySelector('.act-tile.beat b'); if (v) v.replaceChildren(...actAgoParts(act.data.totals.heard)); } }, 1000);
   store.watch('link', renderActivity);
   window.smvActivity = { describeActivity, activityFields, open: openActivity, close: closeActivity, get state(){ return act; } };   // for the tests
 }
