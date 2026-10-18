@@ -164,6 +164,48 @@ const storeNavOk = u => { try { const x = new URL(String(u)); return x.protocol 
 const EXT_ID = /^[a-p]{32}$/;
 const EXT_PARTITION = /^persist:(kick|twitch|youtube|kmv-stream-[\w-]{1,120})$/;
 
+// chrome.cookies as Chrome has it: only with the "cookies" permission, and only the cookies of sites the extension
+// may reach (its host permissions). electron-chrome-extensions gives every extension every cookie of its session
+// (a chat's: your login), so its handlers are wrapped (scopeCookies).
+function cookieHosts(manifest) {
+  const m = manifest || {};
+  return [...(Array.isArray(m.host_permissions) ? m.host_permissions : []), ...(Array.isArray(m.permissions) ? m.permissions : [])]
+    .filter(p => typeof p === 'string')
+    .map(p => p === '<all_urls>' ? '*' : ((p.match(/^(?:\*|https?|wss?):\/\/([^/]+)\//) || [])[1] || '').toLowerCase()).filter(Boolean);
+}
+// May an extension (its manifest) touch the cookies of `host` (a cookie's domain, or an address's host)?
+function mayTouchCookie(manifest, host) {
+  const h = String(host || '').toLowerCase().replace(/^\./, '');
+  if (!h || !manifest || !Array.isArray(manifest.permissions) || !manifest.permissions.includes('cookies')) return false;
+  return cookieHosts(manifest).some(p => p === '*' || p === h || p.endsWith('.' + h)            // the site, or a page of it (a parent's cookie)
+    || (p.startsWith('*.') && (h === p.slice(2) || h.endsWith(p.slice(1)))));
+}
+const hostOfUrl = u => { try { return new URL(String(u)).hostname; } catch { return ''; } };
+function scopeCookies(router) {
+  const handlers = router && router.handlers;
+  if (!handlers || typeof handlers.get !== 'function') return false;
+  const wrap = (name, fn) => { const h = handlers.get(name); if (h) handlers.set(name, { ...h, permission: 'cookies', callback: (event, ...a) => fn(h.callback, event, ...a) }); };
+  const may = (event, host) => mayTouchCookie(event && event.extension && event.extension.manifest, host);
+  const refuse = () => { throw new Error('The extension may not use the cookies of this site'); };
+  for (const name of ['cookies.get', 'cookies.set', 'cookies.remove'])
+    wrap(name, (cb, event, details = {}, ...a) => may(event, hostOfUrl(details.url) || details.domain) ? cb(event, details, ...a) : refuse());
+  wrap('cookies.getAll', async (cb, event, details = {}, ...a) => {
+    if ((details.url || details.domain) && !may(event, hostOfUrl(details.url) || details.domain)) refuse();
+    const all = await cb(event, details, ...a);
+    return (Array.isArray(all) ? all : []).filter(c => may(event, c && c.domain));
+  });
+  // a change: told only to the extensions that may see that cookie
+  const send = router.sendEvent.bind(router), broadcast = router.broadcastEvent.bind(router);
+  router.broadcastEvent = (eventName, ...args) => {
+    if (eventName !== 'cookies.onChanged') return broadcast(eventName, ...args);
+    const domain = args[0] && args[0].cookie && args[0].cookie.domain;
+    const ids = new Set(((router.listeners && router.listeners.get(eventName)) || []).map(l => l.extensionId));
+    const exts = router.session && (router.session.extensions || router.session);
+    for (const id of ids) { const ext = exts && exts.getExtension && exts.getExtension(id); if (ext && mayTouchCookie(ext.manifest, domain)) send(id, eventName, ...args); }
+  };
+  return true;
+}
+
 function createHost(deps) {
   const { electron, userData } = deps;
   const { app, session, BrowserWindow, webContents, ipcMain, dialog } = electron;
@@ -213,6 +255,7 @@ function createHost(deps) {
       // so only windows an extension opened itself are closed.
       removeTab: (_wc, win) => { if (win && opened.has(win) && !win.isDestroyed()) win.close(); }
     });
+    if (!scopeCookies(s.ctx && s.ctx.router)) console.warn('extensions: could not limit chrome.cookies');
     // A popup waits for its page to report its size, which Electron doesn't always do for a hidden window
     // (or reports the smallest size): then measure the page's natural size, and show it next to the button.
     s.on('browser-action-popup-created', popup => {
@@ -494,4 +537,4 @@ function createHost(deps) {
   return { ready: () => ready, list: () => list, sync, syncAll, update };
 }
 
-module.exports = { extOpenable, storeNavOk, PLATS, KINDS, STREAM_PREFIX, STORE_PART, defaultGrid, targetOf, normalizeList, normalizeEntry, isOn, wantedIds, idFromInput, compat, blocksNothing, sitesOf, permissionLines, addedAccess, iconDataUrl, readManifest, checkFolder, createHost };
+module.exports = { mayTouchCookie, scopeCookies, extOpenable, storeNavOk, PLATS, KINDS, STREAM_PREFIX, STORE_PART, defaultGrid, targetOf, normalizeList, normalizeEntry, isOn, wantedIds, idFromInput, compat, blocksNothing, sitesOf, permissionLines, addedAccess, iconDataUrl, readManifest, checkFolder, createHost };
