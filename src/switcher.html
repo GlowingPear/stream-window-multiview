@@ -126,7 +126,7 @@ function render(){
     it.dataset.ch = s.ch;
     it.innerHTML =
       `<div class="fs-row"><button class="fs-play"></button>` +
-      `<button class="fs-name" title="${s.on ? 'In focus. Click to put it back in its column' : 'Put ' + esc(s.label) + ' in the big spot'}"><i class="dot"></i><span>${esc(s.label)}</span></button>` +
+      `<button class="fs-name" title="${s.on ? 'In focus. Click to put it back in its column' : 'Put ' + esc(s.label) + ' in the big spot'}"><i class="dot"></i><span>${esc(s.label)}</span><em class="fs-n" hidden></em></button>` +
       `<span class="fs-volw"><button class="fs-mute" title="Mute / unmute (Shift-click: hear only this one)"></button><input type="range" min="0" max="100" step="1" aria-label="Volume"><span class="fs-pct"></span></span>` +
       `<button class="fs-rl" title="Refresh ${esc(s.label)}">${icon.reload}</button>` +
       `<button class="fs-pv" title="${s.preview ? 'Hide' : 'Show'} small live preview">${s.preview ? icon.chevUp : icon.chevDown}</button>` +
@@ -190,6 +190,9 @@ function update(){
       pl.innerHTML = s.paused ? icon.play : icon.pause; pl.classList.toggle('paused', s.paused); it.classList.toggle('paused', s.paused);
       return;
     }
+    const nb = it.querySelector('.fs-n'), n = s.n || 0;   // new messages in its chat while it's out of sight
+    nb.hidden = !n; nb.textContent = n > 99 ? '99+' : String(n);
+    nb.title = n ? `${n} new message${n === 1 ? '' : 's'} in ${s.label}'s chat` : '';
     const pct = Math.round(s.vol * 100), off = s.muted || pct === 0;
     const slider = it.querySelector('input');
     if (!it.dataset.adj) slider.value = pct;

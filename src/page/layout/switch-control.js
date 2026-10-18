@@ -1,4 +1,5 @@
 import { blowOn, toggleBlowMode } from '../chat/blow-up.js';
+import { newFor } from '../chat/new-messages.js';
 import { ROLE, colsMode, lastLayout, wins } from '../core.js';
 import { VOL_JS } from '../in-site/volume.js';
 import { backToChatFocus } from './chat-focus.js';
@@ -107,7 +108,7 @@ function switcherCore(){
       return { ch: s.channel, label: chLabel(s.channel), plat: platOf(s.channel), vol: s.vol, muted: !!s.muted,
         paused: isPaused(s), why: pauseWhy(s.pause),
         on: featOn && s.channel === featuredCh, preview: !!s.preview,
-        mini: s.preview ? streamSrc(s.channel, true, ytVidOf(s)) : null, miniPaused: miniPaused(s) };
+        mini: s.preview ? streamSrc(s.channel, true, ytVidOf(s)) : null, miniPaused: miniPaused(s), n: newFor(s.channel) };
     })
   };
 }

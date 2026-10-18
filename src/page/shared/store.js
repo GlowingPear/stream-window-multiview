@@ -9,6 +9,7 @@
 // What can change (the names watch() and changed() take):
 const TOPICS = new Set([
   'wins',        // windows opened or closed (core.js wins)
+  'unread',      // new messages counted in the chats out of sight (chat/new-messages.js)
   'monitors',    // the monitors there now, and which layout part goes on which (layout/monitors.js)
   'saved',       // the saved channels
   'live',        // what the live checks last said about them

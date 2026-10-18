@@ -128,6 +128,19 @@ test('the switch control in its own window controls the main window', T, async (
   assert.equal(await onTop(), !was, 'the pin keeps it on top of other windows, or not');
   await sc.click('.fs-side select'); await sc.click('.dd-list button:text-is("2")');   // its own window has the app's dropdown list too
   assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.sideCols')), '2');
+  // new messages in a chat you can't see (Settings › Chat): next to its name here, and on its stream's title bar
+  await a.win.evaluate(() => window.openSettings());
+  await a.win.click('#settingsDlg .st-rail [data-s="chat"]');
+  await a.win.click('#settingsDlg label:has(#chatCountsSet)');
+  assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.chatCounts')), '1');
+  await a.win.evaluate(() => window.chatNew('bravo', 4));    // under Settings: out of sight
+  await sc.waitForFunction(() => { const n = document.querySelector('.fs-item[data-ch=bravo] .fs-n'); return n && !n.hidden && n.textContent === '4'; });
+  assert.equal(await a.win.$eval('#stage .win.stream:has(.title:text-is("bravo")) .bar-n', b => b.hidden ? '' : b.textContent), '4');
+  await a.win.keyboard.press('Escape');
+  await sc.waitForFunction(() => document.querySelector('.fs-item[data-ch=bravo] .fs-n').hidden, null, { timeout: 10000 });   // seen when next asked (every 3 s)
+  await a.win.evaluate(() => window.openSettings());
+  await a.win.click('#settingsDlg label:has(#chatCountsSet)');   // off again
+  await a.win.keyboard.press('Escape');
   await keep(sc);
   // the button closes this window, sometimes before the click has finished
   await Promise.all([sc.waitForEvent('close'), sc.click('.fs-mfloat').catch(e => { if (!/closed/i.test(e.message)) throw e; })]);

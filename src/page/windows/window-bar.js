@@ -1,5 +1,8 @@
-import { $ } from '../core.js';
+import { newFor } from '../chat/new-messages.js';
+import { $, wins } from '../core.js';
+import { chLabel } from '../platforms/platforms.js';
 import { closeOnOutside } from '../shared/popover.js';
+import { store } from '../shared/store.js';
 import { tipName } from '../shared/tooltips.js';
 
 /* ---------- title bars fit any window size ----------
@@ -70,6 +73,17 @@ function openBarMenu(more){
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
+// New messages in a stream's chat while it's out of sight (chat/new-messages.js), next to the stream's name
+function syncBarCounts(){
+  wins.forEach(w => {
+    const b = w.kind === 'stream' && w.el.querySelector('.bar-n'); if (!b) return;
+    const n = newFor(w.channel);
+    b.hidden = !n;
+    b.textContent = n > 99 ? '99+' : String(n);
+    b.title = n ? `${n} new message${n === 1 ? '' : 's'} in ${chLabel(w.channel)}'s chat` : '';
+  });
+}
+
 function init(){
   barSizes = new ResizeObserver(es => es.forEach(e => fitBar(e.target)));
   if (document.fonts) document.fonts.ready.then(() => document.querySelectorAll('#stage .bar').forEach(fitBar));
@@ -77,6 +91,7 @@ function init(){
   // The ⋯ menu: the buttons that didn't fit, each doing what its button does.
   barMenu = $('#barMenu');
   closeOnOutside(barMenu, { button: () => barMenuFor, capture: true });
+  store.watch('unread', syncBarCounts);
 }
 
 export { init, openBarMenu, watchBar };

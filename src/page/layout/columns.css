@@ -63,6 +63,9 @@
 .fs-name .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
 .fs-item.muted .fs-name .dot{background:var(--muted)}
 .fs-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* new messages in its chat while it's out of sight (Settings › Chat) */
+.fs-n{flex:none;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:var(--line2);color:var(--text);font-size:11px;font-weight:800;line-height:18px;font-style:normal;text-align:center}
+.fs-n[hidden]{display:none}
 .fs-play{flex:none;width:28px;height:28px;border:0;border-radius:6px;background:var(--line);color:var(--text);cursor:pointer;display:grid;place-items:center;padding:0}
 .fs-play:hover{background:var(--line2)}
 .fs-play svg{width:13px;height:13px}

@@ -40,7 +40,7 @@ function createWin(spec, rect){
   el.className = 'win ' + w.kind + (w.channel ? ' plat-' + platOf(w.channel) : '');
   el.innerHTML = `
     <div class="bar">
-      ${w.channel ? '<span class="bar-av"></span>' : '<span class="dot"></span>'}<span class="title"></span>${w.channel ? '<select class="col-pick" title="Swap this window with another one"></select>' : ''}<span class="tag"></span><span class="grab"></span>
+      ${w.channel ? '<span class="bar-av"></span>' : '<span class="dot"></span>'}<span class="title"></span>${w.channel ? '<select class="col-pick" title="Swap this window with another one"></select>' : ''}${w.kind === 'stream' ? '<span class="bar-n" hidden></span>' : ''}<span class="tag"></span><span class="grab"></span>
       ${hasVol ? `<div class="vol" title="Volume (scroll to adjust)"><button data-v="mute" title="Mute / unmute"></button><input type="range" min="0" max="100" step="1" aria-label="Volume"><span class="pct"></span></div>` : ''}
       <div class="btns">
         ${w.kind === 'stream' ? '<button class="txt" data-a="chat" title="Add this channel\'s chat next to it">+ Chat</button>' : ''}

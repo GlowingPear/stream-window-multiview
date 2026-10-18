@@ -20,7 +20,7 @@ const SETTING_NAMES = new Set([
   'mentOn', 'mentMuted', 'mentWords', 'myName', 'myTwitch', 'bellCount', 'dnd',
   'dndFor', 'desktopNotify',
   // chats
-  'autoTranslate', 'noTranslate', 'translateAll', 'emotePreview', 'newEmotes', 'chatName', 'chatNameText',
+  'autoTranslate', 'noTranslate', 'translateAll', 'emotePreview', 'newEmotes', 'chatName', 'chatNameText', 'chatCounts',
   // YouTube
   'ytSkip', 'ytConsent', 'ytAutoLike', 'ytAutoLiked', 'ytChatView',
   // the app
