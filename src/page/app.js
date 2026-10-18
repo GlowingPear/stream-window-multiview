@@ -65,6 +65,7 @@ import { init as panelsSettingsSettings } from './panels/settings/settings.js';
 import { init as panelsSettingsGeneral } from './panels/settings/general.js';
 import { init as panelsSettingsAlerts } from './panels/settings/alerts.js';
 import { init as panelsSettingsConnected } from './panels/settings/connected.js';
+import { init as panelsSettingsActivity } from './panels/settings/activity.js';
 import { init as start } from './start.js';
 import { init as layoutMonitors } from './layout/monitors.js';
 import { init as panelsSettingsMonitors } from './panels/settings/monitors.js';
@@ -138,6 +139,7 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   panelsSettingsGeneral,
   panelsSettingsAlerts,
   panelsSettingsConnected,
+  panelsSettingsActivity,
   start,
   layoutMonitors,
   panelsSettingsMonitors,

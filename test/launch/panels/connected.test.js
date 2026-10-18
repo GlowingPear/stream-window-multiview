@@ -1,6 +1,6 @@
 // Connected apps in the real desktop app, with Grapevine's stand-in Pear Drops in a folder of the test's own (never
 // the real one): Kick stream players sign out while it farms and back in after the wait, chats stay signed in,
-// Pear Drops hears it, Test, the widget, the locked Kick chip in Logins, and Disconnect.
+// Pear Drops hears it, Test, the widget, the locked Kick chip in Logins, the Activity log, and Disconnect.
 const test = require('node:test');
 const fs = require('fs');
 const os = require('os');
@@ -107,6 +107,41 @@ test('the app started again while Pear Drops farms: Kick players wait for it and
   await a.win.waitForSelector(`${winSel('pixelpear')} webview`);
   await a.win.waitForSelector(`${winSel('pixelpear', 'chat')} webview`);
   assert.deepEqual((await a.win.evaluate(() => window.__parts)).sort(), ['persist:kick', 'persist:kmv-stream-pixelpear'], 'the chat, and the stream signed out: never signed in first');
+});
+
+test('Activity: every message with Pear Drops this run, filtered, opened; it fits without scrolling, and Esc or the back arrow go back', T, async () => {
+  await a.win.evaluate(() => openSettings('apps'));
+  await a.win.click('#caPearDrops .ca-activity');
+  await a.win.waitForSelector('#caActivity .act-list > .act-row');
+  assert.ok(await a.win.isHidden('#caPearDrops'), 'in place of the card');
+  const rows = () => a.win.$$eval('#caActivity .act-list > .act-row', r => r.map(e => (e.classList.contains('act-marker') ? 'note ' : e.classList.contains('out') ? 'out ' : 'in ') + e.textContent));
+  const all = await rows();
+  assert.ok(all.some(r => /^in .*drops\.farming\.changed.*Farming Neon Rush Launch Week on PixelPear · 48 of 120 min/.test(r)), 'what Pear Drops farms');
+  assert.match(await a.win.textContent('#caActivity .act-range'), /^1–\d+ of \d+$/);
+  assert.match(await a.win.textContent('#caActivity .act-tile.out'), /^Sent[1-9]\d*/);
+  // as many rows as fit, and nothing scrolls
+  await a.win.waitForFunction(() => { const l = document.querySelector('#caActivity .act-list'); return l.querySelectorAll('.act-row').length === Math.floor(l.clientHeight / 46); }).catch(() => {});
+  const fit = await a.win.$eval('#caActivity .act-list', l => ({ rows: l.querySelectorAll('.act-row').length, room: Math.floor(l.clientHeight / 46), over: l.scrollHeight > l.clientHeight + 1 }));
+  assert.equal(fit.rows, fit.room, 'the rows fill the list');
+  assert.equal(fit.over, false, 'and fit in it');
+  assert.ok(await a.win.$eval('#settingsDlg .st-body', b => b.scrollHeight <= b.clientHeight + 1), 'Settings doesn\'t scroll');
+  await a.win.click('#caActivity .act-filter[data-f=in]');
+  await a.win.waitForFunction(() => [...document.querySelectorAll('#caActivity .act-list > .act-row')].every(r => r.classList.contains('in')));
+  await a.win.click('#caActivity .act-filter[data-f=out]');
+  await a.win.waitForFunction(() => [...document.querySelectorAll('#caActivity .act-list > .act-row')].every(r => r.classList.contains('out')));
+  assert.ok((await rows()).some(r => /players\.changed.*Kick player.* open, signed (in|out)/.test(r)), 'what this app sends');
+  await a.win.click('#caActivity .act-list > .act-row.k-event');
+  await a.win.waitForSelector('#caActivity .act-fields');
+  assert.ok(await a.win.$$eval('#caActivity .act-fields dt', d => d.some(e => e.textContent.startsWith('platforms.kick.'))), 'its fields');
+  assert.ok(await a.win.$eval('#settingsDlg .st-body', b => b.scrollHeight <= b.clientHeight + 1), 'still no scrolling');
+  await a.win.keyboard.press('Escape');
+  assert.ok(await a.win.isVisible('#caPearDrops'), 'Esc: the card again');
+  assert.ok(await a.win.isVisible('#settingsDlg'), 'with Settings still open');
+  await a.win.click('#caPearDrops .ca-activity');
+  await a.win.waitForSelector('#caActivity .act-list > .act-row');
+  await a.win.click('#caActivity .act-back');
+  assert.ok(await a.win.isVisible('#caPearDrops'), 'the back arrow too');
+  await a.win.keyboard.press('Escape');
 });
 
 test('Pear Drops quits: signed back in after the wait, and Test says it isn\'t open', T, async () => {

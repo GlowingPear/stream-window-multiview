@@ -55,6 +55,9 @@ const windows = page => page.$$eval('#stage .win', els => els.map(e => ({
 const win = (page, title, kind = 'stream') => page.locator(`#stage .win.${kind}:has(.title:text-is("${title}"))`);
 const box = async loc => { const b = await loc.boundingBox(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) }; };
 const press = async (page, key) => { await page.keyboard.press(key); await page.waitForTimeout(350); };
+// Waits until no window is still gliding to its new place (geometry.js: .anim, for 260 ms after a move). What sits
+// under a point mid-glide is whatever is passing, e.g. for a chat asked whether you can see it.
+const settled = page => page.waitForFunction(() => !document.querySelector('#stage .win.anim'));
 // Drags with the mouse from one point to another in a few steps.
 async function drag(page, from, to, { steps = 8, shift = false } = {}) {
   await page.mouse.move(from.x, from.y);
@@ -65,4 +68,4 @@ async function drag(page, from, to, { steps = 8, shift = false } = {}) {
   await page.mouse.up();
 }
 
-module.exports = { setup, add, mode, windows, win, box, press, drag };
+module.exports = { setup, add, mode, windows, win, box, press, settled, drag };

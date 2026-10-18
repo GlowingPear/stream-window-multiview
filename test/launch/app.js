@@ -17,6 +17,8 @@ function electronPath() {
 // opts.storage: localStorage values to start with (the page is reloaded once with them).
 // opts.data: the data folder of an earlier launch, to start the app again with what it saved.
 // opts.hidden: invisible windows that never take focus, or not, whatever the command (see test/helpers.js).
+// --use-mock-keychain: what the app encrypts (cookies, the Pear Drops pairing) uses a stand-in keychain, so a Mac
+// never asks for the developer's Keychain password. Other systems ignore it.
 async function launchApp(opts = {}) {
   const data = opts.data || fs.mkdtempSync(path.join(os.tmpdir(), 'smv-test-'));
   fs.mkdirSync(path.join(data, 'Stream Multiview'), { recursive: true });
@@ -24,7 +26,7 @@ async function launchApp(opts = {}) {
   const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' };
   delete env.ELECTRON_RUN_AS_NODE;
   let app;
-  try { app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', ROOT], env, timeout: 60000, hidden: opts.hidden }); }
+  try { app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', '--use-mock-keychain', ROOT], env, timeout: 60000, hidden: opts.hidden }); }
   catch (e) { return retry(e); }
   const proc = app.process();
   process.once('exit', () => killApp(proc));   // never leave the app open if the tests die

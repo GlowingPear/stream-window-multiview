@@ -25,12 +25,12 @@ const farmingFixture = () => { const { seq, at, ...data } = fixtures('drops.farm
 
 // A multiview link and (optionally) a stand-in Pear Drops sharing a temporary Grapevine folder. Everything is
 // stopped before the folder goes: a link still running could make it again while it's removed.
-async function setup(t, { peer = true, ...o } = {}) {
+async function setup(t, { peer = true, peerTiming = {}, ...o } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-link-'));
   const dir = path.join(root, 'gv');
   const sent = [];
   const pl = createPearLink({ version: '0.4.0', userData: path.join(root, 'data'), appData: root, dev: true, env: { GRAPEVINE_DIR: dir }, send: st => sent.push(st), timing: FAST, strict: true, ...o });
-  const stand = peer ? await standInPeer({ as: PEAR_DROPS, dir, version: '0.1.6', provides: { 'drops.farming': '1.0' }, uses: { players: '1.0' }, timing: FAST }) : null;
+  const stand = peer ? await standInPeer({ as: PEAR_DROPS, dir, version: '0.1.6', provides: { 'drops.farming': '1.0' }, uses: { players: '1.0' }, timing: { ...FAST, ...peerTiming } }) : null;
   const heard = [];
   stand?.link.on('event', (from, name, params) => heard.push({ name, params }));
   const alive = setInterval(() => {}, 1000);    // a request's timeout timer doesn't keep the process alive by itself
@@ -172,6 +172,66 @@ test('a link that can\'t start (another copy is using Grapevine) says why', NEED
   assert.equal(st.wait, 500, 'the tests\' shorter wait to sign back in');
   assert.ok(logs.some(([level, text]) => level === 'error' && /already using Grapevine/.test(text)), 'the error is logged');
   await second.setOn(false);
+});
+
+test('the Activity log: the hello without its data, what each side sends, the widget\'s round trip, a Test and a Grapevine error as notes, the heartbeat, the disconnect', NEEDS, async t => {
+  let told = 0;
+  const { pl, stand } = await setup(t, { strict: false, peerTiming: { pingMs: 100 }, activity: () => told++ });
+  stand.link.handle('drops.farming.show', () => ({ shown: true }));
+  await pl.setOn(true);
+  await until(() => connected(pl));
+  const all = (filter = 'all') => pl.activityPage({ filter, limit: 50 }).entries;
+  await until(() => all().some(e => e.kind === 'status' && e.text === 'Connected to Pear Drops' && e.tone === 'ok'));
+  const hello = all().filter(e => e.method === 'link.hello');
+  assert.deepEqual(hello.map(e => [e.dir, e.kind]).reverse(), [['in', 'request'], ['out', 'reply']], 'Pear Drops says hello, this side answers');
+  assert.ok(hello.every(e => e.data === undefined && e.bytes > 0), 'without the pairing\'s secrets');
+  assert.ok(all().filter(e => e.method === 'link.auth').every(e => e.data === undefined));
+  // received and sent
+  stand.link.publish('drops.farming.changed', farmingFixture());
+  await until(() => all('in').some(e => e.method === 'drops.farming.changed'));
+  assert.equal(all('in').find(e => e.method === 'drops.farming.changed').data.channel.slug, 'pixelpear');
+  pl.playersReport('main', { platforms: { kick: { signedIn: false, mode: 'auto', account: { platform: 'kick', user: 'pearfan' }, open: [{ platform: 'kick', slug: 'pixelpear' }] } } });
+  const out = all('out').find(e => e.method === 'players.changed');
+  assert.equal(out.kind, 'event');
+  assert.equal(out.data.platforms.kick.signedIn, false);
+  // the widget's click: a request, and its reply with how long it took
+  await pl.showPearDrops();
+  const show = all().filter(e => e.method === 'drops.farming.show');
+  assert.deepEqual(show.map(e => [e.dir, e.kind]), [['in', 'reply'], ['out', 'request']]);
+  assert.equal(typeof show[0].ms, 'number');
+  assert.deepEqual(show[0].data, { shown: true });
+  // a Test is a note, not a message
+  await pl.test();
+  assert.match(all().find(e => e.kind === 'status' && /^Test: /.test(e.text)).text, /^Test: Pear Drops 0\.1\.6 answered in \d+ ms$/);
+  // a message Grapevine wouldn't send lands under Problems
+  assert.equal(pl.activityPage().problems, 0);
+  pl.playersReport('main', { platforms: { kick: { signedIn: 'yes', mode: 'auto', account: null, open: [] } } });
+  const bad = all('problems');
+  assert.ok(bad.length && bad.every(e => e.kind === 'note' && e.tone === 'bad'), 'Grapevine\'s errors, as notes');
+  assert.match(bad[0].text, /^Not sent: players\.changed doesn't fit/);
+  // the heartbeat: Pear Drops asks, this side answers; counted, never listed
+  await until(() => pl.activityPage().totals.pings > 0);
+  assert.ok(Date.now() - pl.activityPage().totals.heard < 2000, 'heard just now');
+  assert.ok(!all().some(e => e.method === 'link.ping'));
+  assert.ok(told > 0, 'the page is told there\'s something new');
+  // the disconnect: a note, and the heartbeat forgotten
+  await stand.stop();
+  await until(() => all().some(e => e.kind === 'status' && /^Disconnected from Pear Drops/.test(e.text)));
+  assert.equal(pl.activityPage().totals.heard, null);
+  assert.equal(pl.activityPage({ before: 2, limit: 50 }).entries.length, 1, 'paged by before');
+});
+
+test('the Activity log notes Pear Drops forgetting the pairing, and a Test that fails', NEEDS, async t => {
+  const { pl, stand } = await setup(t);
+  await pl.setOn(true);
+  await until(() => connected(pl));
+  await stand.link.disconnect('com.glowingpear.streammultiview');
+  const all = () => pl.activityPage({ limit: 50 }).entries;
+  await until(() => all().some(e => e.kind === 'status' && e.tone === 'warn' && e.text === 'Pear Drops disconnected: both apps forgot the pairing'));
+  await stand.stop();
+  await until(() => !connected(pl));
+  await pl.test();
+  assert.ok(all().some(e => e.kind === 'status' && e.tone === 'warn' && /^Test: .*isn't open/.test(e.text)), 'a failed Test is a warning');
 });
 
 test('mergePlayers: both windows\' players as one', () => {

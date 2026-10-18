@@ -3,7 +3,7 @@
 // opening and closing windows, and leaving for another layout.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { setup, add, win, box, drag, press } = require('../app');
+const { setup, add, win, box, drag, press, settled } = require('../app');
 const { openApp } = setup();
 
 async function stageOf(t, names = ['alpha', 'bravo', 'charlie', 'delta']) {
@@ -162,6 +162,7 @@ test('Chat Stage: a picture in the strip counts its chat\'s new messages since i
   await press(page, 'Shift+K');
   assert.equal(await page.$eval('#railTabs .rl-tab[data-ch="charlie"] .rl-n', e => e.textContent), '99+');
   await press(page, 't');
+  await settled(page);
   await page.evaluate(() => { window.chatNew('charlie', 0); window.chatNew('bravo', 1); });   // in Tile every chat is in sight
   await press(page, 'k');
   assert.equal(await badge('charlie'), '', 'seen in Tile');

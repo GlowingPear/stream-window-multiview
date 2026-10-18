@@ -3,7 +3,7 @@
 // control, until you can see it again. Chat Stage's strip and Chat Rail's tabs are in their own tests.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { setup, add, win, press } = require('../app');
+const { setup, add, win, press, settled } = require('../app');
 const { openApp } = setup();
 
 // the number on a stream's title bar, and on its row in the switch control ('' when there's none)
@@ -72,6 +72,10 @@ test('the switch control shows each stream\'s count next to its name', async t =
   // a redraw of the switch control keeps them
   await page.click('#featSwitch .fs-item[data-ch=charlie] .fs-name');
   assert.equal(await row(page, 'bravo'), '4');
+  // bravo in the big spot: its chat is in sight once the windows have stopped moving, and read the next time it's asked
+  await page.click('#featSwitch .fs-item[data-ch=bravo] .fs-name');
+  await settled(page);
+  assert.equal(await row(page, 'bravo'), '4', 'until it\'s asked');
   await page.evaluate(() => window.chatNew('bravo', 0));
   assert.equal(await row(page, 'bravo'), '', 'seen');
 });

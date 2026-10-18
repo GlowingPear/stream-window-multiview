@@ -45,6 +45,7 @@
 <link rel="stylesheet" href="page/panels/profiles/profiles.css">
 <link rel="stylesheet" href="page/panels/bell/all-notifications.css">
 <link rel="stylesheet" href="page/panels/settings/connected.css">
+<link rel="stylesheet" href="page/panels/settings/activity.css">
 <link rel="stylesheet" href="page/toolbar/farming.css">
 <link rel="stylesheet" href="page/panels/updates/updates.css">
 <style id="themeVars"></style>
@@ -351,8 +352,9 @@ try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null'
           <label class="ca-row"><span class="st-t">Connect with Pear Drops<small>Both apps need this switched on.</small></span><input type="checkbox" class="st-sw" id="caConnect"></label>
           <label class="ca-row"><span class="st-t">Sign Kick players out while Pear Drops is farming <em class="ca-def">On by default</em><small>Kick credits drops to one stream per account, so a signed-in player here would take Pear Drops' credit. Chats stay signed in.</small></span><input type="checkbox" class="st-sw" id="caKickAuto"></label>
           <label class="ca-row"><span class="st-t">Show what Pear Drops is farming in the toolbar<small>The channel and the drop's progress. Click it to open Pear Drops.</small></span><input type="checkbox" class="st-sw" id="caWidget"></label>
-          <div class="ca-foot"><i class="ca-dot"></i><span class="ca-line"></span><span class="ca-paired"></span><button type="button" class="btn ca-test"><i class="ca-test-ic"></i><span>Test</span></button><button type="button" class="btn ca-act"></button></div>
+          <div class="ca-foot"><i class="ca-dot"></i><span class="ca-line"></span><span class="ca-paired"></span><button type="button" class="btn ca-activity"><i class="ca-activity-ic"></i><span>Activity</span></button><button type="button" class="btn ca-test"><i class="ca-test-ic"></i><span>Test</span></button><button type="button" class="btn ca-act"></button></div>
         </div>
+        <div class="act" id="caActivity" hidden></div>
       </section>
       <section class="st-pane" data-s="youtube" hidden>
         <h4>YouTube</h4><p class="st-sub">Your YouTube login, and how YouTube streams play.</p>
