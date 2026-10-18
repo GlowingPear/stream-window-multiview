@@ -4,7 +4,6 @@
 // Pear Drops connects (its slug sorts first); this app only listens. The page decides who's signed in:
 // this only passes things on. Nothing here needs Electron, so the unit tests run it as it is.
 const path = require('path');
-const { createLink, fileKeyStore, KNOWN_APPS, iconDataUrl, paths } = require('@streamorchard/grapevine');
 const { grapevine } = require('../../package.json');
 
 const PEAR_DROPS = 'com.streamorchard.peardrops';
@@ -13,6 +12,7 @@ const PEAR_DROPS = 'com.streamorchard.peardrops';
 // env, safeStorage (to encrypt the pairing keys, when it can), send(state) (to both windows), and for the
 // tests timing, log and strict (a message that doesn't fit its schema throws).
 function createPearLink({ version, userData, appData, dev = false, env = process.env, safeStorage = null, send = () => {}, timing, log, strict } = {}) {
+  const { createLink, fileKeyStore, KNOWN_APPS, iconDataUrl, paths } = require('@streamorchard/grapevine');   // (loaded when used)
   const self = KNOWN_APPS.find(a => a.id === grapevine.app);
   const peerApp = KNOWN_APPS.find(a => a.id === PEAR_DROPS);
   // Where apps find each other: GRAPEVINE_DIR if set; a developer copy or a test uses a folder of its own, so it

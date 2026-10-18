@@ -7,9 +7,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { createPearLink, mergePlayers, PEAR_DROPS } = require('../../../src/main/link');
-const { standInPeer } = require('@streamorchard/grapevine/stand-in-peer');
-const { fixtures } = require('@streamorchard/grapevine/fixtures');
-const { paths } = require('@streamorchard/grapevine');
+// Grapevine is a dependency of the app: the quick tests (npm test with nothing installed) skip what needs it,
+// and the app tests, after npm install, run everything.
+const HAVE = (() => { try { require.resolve('@streamorchard/grapevine'); return true; } catch { return false; } })();
+const NEEDS = { skip: !HAVE && 'needs @streamorchard/grapevine (npm install)' };
+const { standInPeer } = HAVE ? require('@streamorchard/grapevine/stand-in-peer') : {};
+const { fixtures } = HAVE ? require('@streamorchard/grapevine/fixtures') : {};
+const { paths } = HAVE ? require('@streamorchard/grapevine') : {};
 
 const FAST = { pollMs: 50, backoffMs: [50] };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -40,7 +44,7 @@ async function setup(t, { peer = true, ...o } = {}) {
 }
 const connected = pl => pl.state().peer.status === 'connected';
 
-test('the switch starts and stops the link: off, no socket; on, Pear Drops connects', async t => {
+test('the switch starts and stops the link: off, no socket; on, Pear Drops connects', NEEDS, async t => {
   const { pl, dir } = await setup(t);
   const slugs = () => paths.listSlugs({ env: { GRAPEVINE_DIR: dir } });
   assert.deepEqual(slugs(), ['pear-drops'], 'off: only Pear Drops listens');
@@ -61,7 +65,7 @@ test('the switch starts and stops the link: off, no socket; on, Pear Drops conne
   assert.equal(pl.state().peer.status, 'off');
 });
 
-test('what Pear Drops farms reaches the page (both windows), and goes when it disconnects', async t => {
+test('what Pear Drops farms reaches the page (both windows), and goes when it disconnects', NEEDS, async t => {
   const { pl, stand, sent } = await setup(t);
   await pl.setOn(true);
   await until(() => connected(pl));
@@ -75,7 +79,7 @@ test('what Pear Drops farms reaches the page (both windows), and goes when it di
   assert.equal(pl.state().farming, null, 'disconnected: not farming any more');
 });
 
-test('players.changed goes out only when it changes, merged from both windows, in the schema\'s shape', async t => {
+test('players.changed goes out only when it changes, merged from both windows, in the schema\'s shape', NEEDS, async t => {
   const { pl, heard } = await setup(t);
   await pl.setOn(true);
   await until(() => connected(pl));
@@ -94,7 +98,7 @@ test('players.changed goes out only when it changes, merged from both windows, i
   assert.throws(() => pl.playersReport('main', { platforms: { kick: { signedIn: 'yes', mode: 'auto', account: null, open: [] } } }), /schema/, 'a wrong shape is caught (strict in tests)');
 });
 
-test('Test: a round trip when connected; why not when Pear Drops isn\'t open', async t => {
+test('Test: a round trip when connected; why not when Pear Drops isn\'t open', NEEDS, async t => {
   const { pl, stand } = await setup(t);
   assert.equal((await pl.test()).reason, 'off', 'switched off here');
   await pl.setOn(true);
@@ -109,7 +113,7 @@ test('Test: a round trip when connected; why not when Pear Drops isn\'t open', a
   assert.match(no.text, /isn't open/);
 });
 
-test('Open Pear Drops asks it to come to the front; the logo; Pair again and Disconnect forget the pairing', async t => {
+test('Open Pear Drops asks it to come to the front; the logo; Pair again and Disconnect forget the pairing', NEEDS, async t => {
   const { pl, stand, root } = await setup(t);
   let shown = 0;
   stand.link.handle('drops.farming.show', () => { shown++; return { shown: true }; });
@@ -129,7 +133,7 @@ test('Open Pear Drops asks it to come to the front; the logo; Pair again and Dis
   assert.equal(keys()[PEAR_DROPS], undefined, 'and forgets the pairing');
 });
 
-test('with safeStorage, the pairing keys are stored encrypted', async t => {
+test('with safeStorage, the pairing keys are stored encrypted', NEEDS, async t => {
   const safeStorage = { isEncryptionAvailable: () => true, encryptString: s => Buffer.from('enc:' + s), decryptString: b => b.toString().slice(4) };
   const { pl, root } = await setup(t, { safeStorage });
   await pl.setOn(true);
@@ -140,7 +144,7 @@ test('with safeStorage, the pairing keys are stored encrypted', async t => {
   assert.match(Buffer.from(kept.key, 'base64').toString(), /^enc:/);
 });
 
-test('where it looks for apps: GRAPEVINE_DIR, else a developer copy\'s own folder, else the system\'s', async t => {
+test('where it looks for apps: GRAPEVINE_DIR, else a developer copy\'s own folder, else the system\'s', NEEDS, async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-link-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const dev = createPearLink({ version: '0.4.0', userData: root, appData: root, dev: true, env: {} });
@@ -155,7 +159,7 @@ test('where it looks for apps: GRAPEVINE_DIR, else a developer copy\'s own folde
   assert.equal(real.state().wait, null);
 });
 
-test('a link that can\'t start (another copy is using Grapevine) says why', async t => {
+test('a link that can\'t start (another copy is using Grapevine) says why', NEEDS, async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-link-'));
   const env = { GRAPEVINE_DIR: path.join(root, 'gv'), SMV_LINK_SIGN_BACK_IN_MS: '500' };
   const first = createPearLink({ version: '0.4.0', userData: path.join(root, 'a'), appData: root, env });
