@@ -32,7 +32,7 @@ const signedIn = [
 ];
 const tmpRoot = () => fs.mkdtempSync(path.join(os.tmpdir(), 'smv-fftest-'));
 
-test('reads only the YouTube and Google login, nothing from other sites', () => {
+test('reads only what the YouTube login needs: nothing from other sites, nor Google\'s other cookies', () => {
   const root = tmpRoot();
   const dir = profile(root, 'Profiles/abc.default-release', [
     ...signedIn,
@@ -41,7 +41,12 @@ test('reads only the YouTube and Google login, nothing from other sites', () => 
     { host: '.notyoutube.com', name: 'SAPISID', value: 'SECRET' },          // looks similar, isn't YouTube
     { host: '.youtube.com.evil.example', name: 'SAPISID', value: 'SECRET' },
     { host: '.youtube.com', name: 'CONTAINER', value: 'SECRET', oa: '^userContextId=2' },   // a container tab
-    { host: '.youtube.com', name: 'OLD', value: 'SECRET', expiry: PAST }
+    { host: '.youtube.com', name: 'OLD', value: 'SECRET', expiry: PAST },
+    { host: '.google.com', name: 'NID', value: 'SECRET' },                   // Google search's, not the sign-in
+    { host: '.google.com', name: 'AEC', value: 'SECRET' },
+    { host: 'www.google.com', name: '_GRECAPTCHA', value: 'SECRET' },
+    { host: 'mail.google.com', name: 'COMPASS', value: 'SECRET' },           // another Google site's
+    { host: 'gds.google.com', name: 'OTZ', value: 'SECRET' }
   ]);
   const got = readYouTubeCookies(dir);
   assert.deepEqual(got.map(c => c.name).sort(), ['LOGIN_INFO', 'SAPISID', '__Host-GAPS', '__Secure-3PSID']);

@@ -129,6 +129,7 @@ test('YouTube sign-in copies the login from Firefox', async () => {
   ins.run('LOGIN_INFO', 'yt-login', '.youtube.com', exp);
   ins.run('SAPISID', 'sapisid', '.google.com', exp);
   ins.run('user_session', 'github-secret', '.github.com', exp);
+  ins.run('NID', 'search-secret', '.google.com', exp);
   db.close();
 
   const app = await playwright()._electron.launch({ executablePath: electronPath(), args: ARGS, env, timeout: 60000 });
@@ -151,7 +152,7 @@ test('YouTube sign-in copies the login from Firefox', async () => {
     const cookies = await app.evaluate(({ session }) => session.fromPartition('persist:youtube').cookies.get({}).then(l => l.map(c => `${c.domain} ${c.name}=${c.value}`)));
     assert.ok(cookies.includes('.youtube.com LOGIN_INFO=yt-login'), cookies.join(', '));
     assert.ok(cookies.includes('.google.com SAPISID=sapisid'));
-    assert.ok(!cookies.some(c => /github/.test(c)), 'only the YouTube/Google login was copied');
+    assert.ok(!cookies.some(c => /github|search-secret/.test(c)), 'only the YouTube login was copied, not another site\'s or Google\'s other cookies');
     await win.click('#loginBtn');
     await win.waitForFunction(() => /Logged in/.test(document.querySelector('#accountMenu .am-row[data-p=youtube] .am-st').textContent));
     assert.deepEqual(fs.readdirSync(prof), ['cookies.sqlite'], 'Firefox\'s profile is untouched');
