@@ -32,6 +32,7 @@ function createPearLink({ version, userData, appData, dev = false, env = process
     provides: grapevine.provides,
     uses: grapevine.uses,
     allowed: id => id === PEAR_DROPS && on,
+    confirmPairing: true,        // a first pairing waits for Allow on the card: another program can't pair as Pear Drops by itself
     keys: fileKeyStore(path.join(userData, 'grapevine.json'), crypt),
     appDataDir: dev ? path.join(userData, 'demo-apps') : appData,
     ...(place ? { place } : {}),
@@ -56,7 +57,12 @@ function createPearLink({ version, userData, appData, dev = false, env = process
   // (activity.js). Grapevine's warnings and errors go in too: a message it dropped is a problem.
   const activity = createActivity();
   const noted = (o) => { activity.note(PEAR_DROPS, o); changed(); };
-  link.on('message', m => { if (activity.add(m)) changed(); });
+  // (the hello's refusal while Pear Drops waits for Allow carries nothing to say so: the card does)
+  const waiting = () => (link.peers().find(p => p.id === PEAR_DROPS) || {}).status === 'confirm';
+  link.on('message', m => {
+    const allow = m.method === 'link.hello' && m.kind === 'error' && m.dir === 'out' && waiting();
+    if (activity.add(allow ? { ...m, waitsForAllow: true } : m)) changed();
+  });
   link.on('connected', id => { if (id === PEAR_DROPS) noted({ tone: 'ok', text: 'Connected to ' + peerApp.name }); });
   link.on('disconnected', (id, reason) => {
     if (id !== PEAR_DROPS) return;
@@ -107,6 +113,8 @@ function createPearLink({ version, userData, appData, dev = false, env = process
     return setOn(false);
   }
   function pairAgain() { link.pairAgain(PEAR_DROPS); return state(); }
+  // Allow on the card: Pear Drops (the app asking) may pair, for the next two minutes.
+  function allowPairing() { link.allowPairing(PEAR_DROPS); noted({ tone: 'ok', text: 'Allowed ' + peerApp.name + ' to pair' }); return state(); }
   const icon = () => iconDataUrl(peerApp.icon);
   const showPearDrops = () => link.request(PEAR_DROPS, 'drops.farming.show').catch(() => ({ shown: false }));
   async function test() {
@@ -116,7 +124,7 @@ function createPearLink({ version, userData, appData, dev = false, env = process
   }
   async function stop() { if (running) { running = false; await link.stop(); } }
 
-  return { link, state, setOn, disconnect, pairAgain, icon, showPearDrops, test, activityPage, playersNote, playersReport, streamsClosed, stop };
+  return { link, state, setOn, disconnect, pairAgain, allowPairing, icon, showPearDrops, test, activityPage, playersNote, playersReport, streamsClosed, stop };
 }
 
 // Two windows' players.changed fields as one: a site is signed in or out the same in both (the main window's

@@ -17,7 +17,7 @@ const fakeApp = ({ png, entries, problems }) => {
   window.calls = [];
   window.linkNow = { on: true, peer: { id: 'com.streamorchard.peardrops', status: 'connected', installed: true, version: '0.1.6', report: { state: 'works', text: 'Works' }, pairedAt: '2026-10-18T09:00:00Z' }, farming: null, open: true, wait: null };
   window.actLog = { entries, totals: { sent: 5, received: 7, bytesOut: 2048, bytesIn: 150000, problems, pings: 3, heard: Date.now() - 12000, since: null }, started: new Date(2026, 9, 18, 16, 55).getTime() };
-  const isProblem = e => e.kind === 'error' || e.tone === 'bad' || e.tone === 'warn';
+  const isProblem = e => (e.kind === 'error' && !e.waitsForAllow) || e.tone === 'bad' || e.tone === 'warn';
   const pass = { all: () => true, out: e => e.dir === 'out', in: e => e.dir === 'in', problems: isProblem };
   const minutes = Array.from({ length: 30 }, (_, i) => (i === 29 ? { out: 2, in: 3, bad: 1 } : i === 20 ? { out: 4, in: 0, bad: 0 } : { out: 0, in: 0, bad: 0 }));
   let push = null, pushAct = null;
@@ -354,6 +354,32 @@ test('Activity: text from the messages is only ever text', async t => {
   const long = await page.$eval('#caActivity .act-fields dd[title]', d => [d.textContent.length, d.title.length]);
   assert.deepEqual(long, [81, evil.length + 5 * 20], 'a long value is cut, and whole in its tooltip');
   assert.equal((await view(page)).bad, false, 'no problems: Problems isn\'t red');
+});
+
+test('Activity: why a message shows nothing (the hello\'s secrets, before the pairing was proven, too big), and the wait for Allow', async t => {
+  const now = Date.now();
+  const entries = [
+    { n: 1, at: now, app: null, dir: 'in', kind: 'request', method: null, bytes: 50 },
+    { n: 2, at: now, app: PD, dir: 'in', kind: 'event', method: 'drops.farming.changed', bytes: 20000, truncated: true },
+    { n: 3, at: now, app: PD, dir: 'out', kind: 'error', method: 'link.hello', bytes: 120, waitsForAllow: true }
+  ];
+  const page = await openActivity(t, { entries, problems: 0 });
+  await page.click('#caPearDrops .ca-activity');
+  await settle(page);
+  const why = async n => {
+    await page.click(`#caActivity .act-row[data-n="${n}"]`);
+    await page.waitForSelector('#caActivity .act-hidden');
+    const text = await page.textContent('#caActivity .act-hidden');
+    await page.click(`#caActivity .act-row[data-n="${n}"]`);
+    return text;
+  };
+  assert.equal(await why(1), 'Not shown: it came before the other app proved the pairing.');
+  assert.equal(await why(2), 'Not shown: it was over 16 KB.');
+  assert.equal(await why(3), "Not shown: the hello and the pairing proof hold the pairing's secrets.");
+  assert.equal(await page.textContent('#caActivity .act-row[data-n="3"] .act-text'), 'Waits until you allow Pear Drops to pair');
+  assert.equal(await page.evaluate(() => window.smvActivity.describeActivity({ method: 'link.hello', dir: 'in', kind: 'error', waitsForAllow: true }).text),
+    'Pear Drops waits until you allow the pairing there');
+  assert.equal((await view(page)).bad, false, 'waiting for Allow isn\'t a problem');
 });
 
 test('Activity: empty, with nothing under a filter, and with Connect off', async t => {

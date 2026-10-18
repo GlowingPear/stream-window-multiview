@@ -17,9 +17,10 @@ const twitch = {
   label: ch => ch.slice(3),
   fromUrl(host, parts, u){
     if (host !== 'twitch.tv' && !host.endsWith('.twitch.tv')) return undefined;
-    const q = u.searchParams.get('channel');
-    if (host.startsWith('player.') && q) return { channel: 'tw:' + q.toLowerCase(), only: null };
-    if ((parts[0] === 'popout' || parts[0] === 'embed') && parts[1]) return { channel: 'tw:' + parts[1].toLowerCase(), only: parts[2] === 'chat' ? 'chat' : null };
+    const q = u.searchParams.get('channel'), name = s => /^[A-Za-z0-9_]{1,25}$/.test(s || '');   // a Twitch name
+    if (host.startsWith('player.') && q) return name(q) ? { channel: 'tw:' + q.toLowerCase(), only: null } : null;
+    if ((parts[0] === 'popout' || parts[0] === 'embed') && parts[1])
+      return name(parts[1]) ? { channel: 'tw:' + parts[1].toLowerCase(), only: parts[2] === 'chat' ? 'chat' : null } : null;
     if (parts[0] && /^[A-Za-z0-9_]{1,25}$/.test(parts[0]) && !NOT_CHANNELS.includes(parts[0].toLowerCase()))
       return { channel: 'tw:' + parts[0].toLowerCase(), only: parts[1] === 'chat' ? 'chat' : null };
     return null;

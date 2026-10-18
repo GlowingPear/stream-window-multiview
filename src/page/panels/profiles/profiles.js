@@ -37,7 +37,7 @@ const pfMeta = ch => (pf.list[ch] && pf.list[ch].meta) || {};
 const pfInfo = ch => (pf.list[ch] && pf.list[ch].info) || {};
 const pfName = ch => pfMeta(ch).nick || pfInfo(ch).name || chLabel(ch);
 const pfLive = ch => !!(infoFor(ch) && infoFor(ch).live);
-const fmtN = n => n == null ? '–' : n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'K' : n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(n);
+const fmtN = n => n == null ? '–' : (n = Number(n) || 0) >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'K' : n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(n);
 let fmtDur;
 const fmtClock = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 const fmtDay = t => new Date(t).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });

@@ -10,6 +10,58 @@ const x = require('../../../src/main/extensions');
 const ID = 'abcdefghijklmnopabcdefghijklmnop';
 const entry = over => x.normalizeEntry({ id: ID, ...over });
 
+test('chrome.cookies: only with the cookies permission, and only for the sites the extension may reach', () => {
+  const { mayTouchCookie } = require('../../../src/main/extensions');
+  const mv3 = { permissions: ['cookies', 'storage'], host_permissions: ['https://*.twitch.tv/*', '*://kick.com/*'] };
+  for (const h of ['twitch.tv', '.twitch.tv', 'www.twitch.tv', 'gql.twitch.tv', 'kick.com', '.kick.com']) assert.equal(mayTouchCookie(mv3, h), true, h);
+  for (const h of ['youtube.com', '.google.com', 'files.kick.com', 'eviltwitch.tv', '', null]) assert.equal(mayTouchCookie(mv3, h), false, String(h));
+  assert.equal(mayTouchCookie({ permissions: ['cookies', '<all_urls>'] }, 'google.com'), true, 'MV2: hosts in permissions');
+  assert.equal(mayTouchCookie({ permissions: ['cookies'], host_permissions: ['*://*/*'] }, 'youtube.com'), true);
+  assert.equal(mayTouchCookie({ permissions: ['storage'], host_permissions: ['<all_urls>'] }, 'kick.com'), false, 'no cookies permission');
+  assert.equal(mayTouchCookie({ permissions: ['cookies'] }, 'kick.com'), false, 'no sites');
+  assert.equal(mayTouchCookie({ permissions: ['cookies'], host_permissions: ['https://www.twitch.tv/*'] }, '.twitch.tv'), true, 'a cookie its pages get');
+  assert.equal(mayTouchCookie(null, 'kick.com'), false);
+});
+
+test('chrome.cookies: the library\'s handlers are wrapped, and a change is only told to extensions that may see it', async () => {
+  const { scopeCookies } = require('../../../src/main/extensions');
+  const all = [{ name: 'session_token', domain: '.kick.com' }, { name: 'SID', domain: '.google.com' }, { name: 'auth', domain: '.twitch.tv' }];
+  const calls = [], sent = [];
+  const handlers = new Map(['cookies.get', 'cookies.getAll', 'cookies.set', 'cookies.remove', 'cookies.getAllCookieStores'].map(n => [n, {
+    callback: async (_e, d) => { calls.push(n); return n === 'cookies.getAll' ? all : d; }, extensionContext: true }]));
+  const exts = { a: { manifest: { permissions: ['cookies'], host_permissions: ['*://kick.com/*'] } }, b: { manifest: { permissions: [] } } };
+  const router = { handlers, listeners: new Map([['cookies.onChanged', [{ extensionId: 'a' }, { extensionId: 'b' }]]]),
+    session: { extensions: { getExtension: id => exts[id] } },
+    sendEvent: (id, ev, info) => sent.push([id, ev, info.cookie.domain]), broadcastEvent: (ev, ...x) => sent.push(['all', ev]) };
+  assert.equal(scopeCookies(router), true);
+  assert.equal(scopeCookies(null), false);
+  assert.equal(handlers.get('cookies.getAll').permission, 'cookies', 'the library checks the permission first');
+  assert.equal(handlers.get('cookies.getAllCookieStores').permission, undefined);
+  const ev = id => ({ extension: exts[id] });
+  assert.deepEqual((await handlers.get('cookies.getAll').callback(ev('a'), {})).map(c => c.name), ['session_token'], 'only its sites\' cookies');
+  await assert.rejects(handlers.get('cookies.getAll').callback(ev('a'), { domain: 'google.com' }), /may not/);
+  assert.deepEqual(await handlers.get('cookies.get').callback(ev('a'), { url: 'https://kick.com/', name: 'x' }), { url: 'https://kick.com/', name: 'x' });
+  assert.throws(() => handlers.get('cookies.get').callback(ev('a'), { url: 'https://www.twitch.tv/', name: 'auth' }), /may not/);
+  assert.throws(() => handlers.get('cookies.set').callback(ev('a'), { url: 'not a url' }), /may not/);
+  assert.throws(() => handlers.get('cookies.remove').callback({}, { url: 'https://kick.com/' }), /may not/, 'not from an extension');
+  router.broadcastEvent('cookies.onChanged', { cookie: { domain: '.kick.com' } });
+  router.broadcastEvent('cookies.onChanged', { cookie: { domain: '.google.com' } });
+  router.broadcastEvent('tabs.onUpdated', 1);
+  assert.deepEqual(sent, [['a', 'cookies.onChanged', '.kick.com'], ['all', 'tabs.onUpdated']]);
+});
+
+test('an extension opens web pages and its own pages; the store window stays on the store', () => {
+  const { extOpenable, storeNavOk } = require('../../../src/main/extensions');
+  for (const u of ['https://example.com/welcome', 'http://example.com/', 'chrome-extension://abcdefghijklmnopabcdefghijklmnop/options.html'])
+    assert.equal(extOpenable(u), true, u);
+  for (const u of ['file:///etc/passwd', 'chrome://settings', 'javascript:alert(1)', 'data:text/html,x', 'chrome-extension://short/x', 'devtools://x', '', null])
+    assert.equal(extOpenable(u), false, String(u));
+  for (const u of ['https://chromewebstore.google.com/detail/x', 'https://accounts.google.com/ServiceLogin', 'https://consent.google.com/m'])
+    assert.equal(storeNavOk(u), true, u);
+  for (const u of ['https://chromewebstore.google.com.evil.example/', 'http://chromewebstore.google.com/', 'https://example.com/', 'https://www.google.com/search', 'nonsense'])
+    assert.equal(storeNavOk(u), false, u);
+});
+
 test('a site\'s own session is its chats; a stream\'s own session is that stream', () => {
   assert.deepEqual(x.targetOf('persist:twitch'), { plat: 'twitch', kind: 'chat', perWindow: false });
   assert.deepEqual(x.targetOf('persist:kick', 'kick', 'stream'), { plat: 'kick', kind: 'chat', perWindow: false }, 'signed-in streams follow the chats');

@@ -1,5 +1,5 @@
 // Stream Multiview — desktop app (Electron main process)
-const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage, powerMonitor, clipboard, nativeImage, webContents } = require('electron');
+const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage, powerMonitor, clipboard, ClipboardItem, nativeImage, webContents } = require('electron');
 const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
   validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink,
   parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, normCh, toTime, withTimeout, keepLatest } = require('./live');
@@ -14,10 +14,12 @@ const path = require('path');
 const fs = require('fs');
 const { youtubeLoginFromFirefox } = require('./firefox-login');
 const extensions = require('./extensions');
+const guard = require('./guard');
 const { pageOptions } = require('./activity');
 
 // Each platform's chats + login window share one saved session per platform, so you log in once.
 const PARTITION = 'persist:kick';
+const WEB_PARTITION = 'persist:kmv-web';      // other web pages: storage of their own, none of your logins
 const PARTS = { kick: 'persist:kick', twitch: 'persist:twitch', youtube: 'persist:youtube' };
 const LOGIN_URL = {
   kick: 'https://kick.com',
@@ -28,6 +30,8 @@ const LOGIN_URL = {
 // The app used to be called "Kick Multiview": keep using that data folder (your logins, saved channels, layouts).
 app.setName('Stream Multiview');
 // npm run dev (scripts/dev.js): a developer copy with its own data folder, and its branch in the window titles.
+// Addresses the tests (and developer copies) point at stand-ins: an installed copy only uses the real ones.
+const devEnv = k => app.isPackaged ? '' : process.env[k] || '';
 const DEV = !app.isPackaged && process.env.SMV_DEV_DATA ? { data: process.env.SMV_DEV_DATA, label: process.env.SMV_DEV_LABEL || 'dev' } : null;
 if (DEV) {
   app.setPath('appData', DEV.data);
@@ -56,8 +60,11 @@ const chromeUA = () => {
   return `Mozilla/5.0 (${os}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`;
 };
 
-const isKick = url => { try { const h = new URL(url).hostname; return /(^|\.)(kick\.com|twitch\.tv|youtube\.com|youtu\.be)$/.test(h); } catch { return false; } };
-const isLoginProvider = url => /^https:\/\/([a-z0-9-]+\.)*(google\.com|apple\.com|accounts\.youtube\.com)\//i.test(url);
+// What any page may ask for (camera, microphone, notifications, opening other apps, devices…): only what the app
+// needs, on every session as it's made (guard.js). The app's own pages are known by their window.
+app.on('session-created', ses => guard.lockSession(ses, wc => appContents(wc)));
+// An installed copy doesn't take the switches that let another program look inside it (and read its logins).
+if (app.isPackaged && ['remote-debugging-port', 'remote-debugging-pipe', 'inspect', 'inspect-brk', 'inspect-port', 'js-flags'].some(k => app.commandLine.hasSwitch(k))) app.exit(1);
 
 /* ---------- main window position memory ---------- */
 const stateFile = (name = 'window-state') => path.join(app.getPath('userData'), name + '.json');
@@ -82,6 +89,18 @@ let pendingStreams = [];        // streams waiting for the streams window to fin
 let lastStreams = [];           // latest list of streams in the streams window (for bringing them back)
 let quitting = false;
 
+// Messages from the app's pages: each handler answers only the windows it's for (guard.js), so a web view, a
+// pop-up or an extension's page can't reach them. appIpc: the main and streams windows; mainIpc: the main window
+// only (updates, logins, extensions, settings that change what the app trusts); switcherIpc: the switch control.
+const roleOf = guard.senderRole({
+  files: { main: path.join(SRC, 'index.html'), streams: path.join(SRC, 'index.html'), switcher: path.join(SRC, 'switcher.html') },
+  windows: () => ({ main: mainWin, streams: streamsWin, switcher: switcherWin })
+});
+const refused = (ch, e) => console.warn(`Refused "${ch}" from ${(e && e.senderFrame && e.senderFrame.url) || 'a page that has gone'}`);
+const appIpc = guard.guardedIpc(ipcMain, roleOf, ['main', 'streams'], refused);
+const mainIpc = guard.guardedIpc(ipcMain, roleOf, ['main'], refused);
+const switcherIpc = guard.guardedIpc(ipcMain, roleOf, ['switcher'], refused);
+
 const appWebPrefs = () => ({
   preload: path.join(SRC, 'preload', 'preload.js'),
   contextIsolation: true, nodeIntegration: false, sandbox: true, webviewTag: true
@@ -98,7 +117,7 @@ function trackFullscreen(win) {
   win.webContents.on('did-finish-load', send);
 }
 // Hide bar: the lights go away with the toolbar and come back when it peeks out.
-ipcMain.on('win:lights', (e, on) => {
+appIpc.on('win:lights', (e, on) => {
   const win = BrowserWindow.fromWebContents(e.sender);
   if (!win || process.platform !== 'darwin') return;
   win.setWindowButtonVisibility(!!on);
@@ -108,7 +127,7 @@ ipcMain.on('win:lights', (e, on) => {
 // hears the mouse arrive there. While the bar is hidden, the mouse is watched from here and the page told when it's up
 // there. With the toolbar on the left it's the left edge (also a resize edge).
 const topWatch = new Map();   // window id -> timer
-ipcMain.on('win:watchTop', (e, on, edge) => {
+appIpc.on('win:watchTop', (e, on, edge) => {
   const win = BrowserWindow.fromWebContents(e.sender);
   if (!win) return;
   clearInterval(topWatch.get(win.id));
@@ -200,14 +219,14 @@ function openSwitcherWindow() {
     switcherQuiet = false;
   });
 }
-ipcMain.handle('switcher:open', () => openSwitcherWindow());
-ipcMain.handle('switcher:close', () => { if (switcherWin) { switcherQuiet = true; switcherWin.close(); } });
-ipcMain.on('switcher:state', (_e, st) => {
+mainIpc.handle('switcher:open', () => openSwitcherWindow());
+mainIpc.handle('switcher:close', () => { if (switcherWin) { switcherQuiet = true; switcherWin.close(); } });
+mainIpc.on('switcher:state', (_e, st) => {
   switcherLast = st;
   if (switcherWin && switcherReady) switcherWin.webContents.send('switcher:state', st);
 });
-ipcMain.on('switcher:cmd', (_e, cmd) => { if (cmd && typeof cmd.type === 'string') mainWin?.webContents.send('switcher:cmd', cmd); });
-ipcMain.handle('switcher:pin', (_e, on) => {
+switcherIpc.on('switcher:cmd', (_e, cmd) => { if (cmd && typeof cmd.type === 'string') mainWin?.webContents.send('switcher:cmd', cmd); });
+switcherIpc.handle('switcher:pin', (_e, on) => {
   if (!switcherWin) return false;
   switcherWin.setAlwaysOnTop(!!on);
   return switcherWin.isAlwaysOnTop();
@@ -235,10 +254,10 @@ function moveWin(win, m, { maximize } = {}) {
   };
   if (full) { win.once('leave-full-screen', go); win.setFullScreen(false); } else go();
 }
-ipcMain.handle('monitors:list', () => ({ monitors: allMonitors(), main: monitorOf(mainWin) }));
+appIpc.handle('monitors:list', () => ({ monitors: allMonitors(), main: monitorOf(mainWin) }));
 // The layout's parts ({ chats, streams, switch }: saved monitors or empty): moves the main window and any Streams or
 // switch control window that's open, and says where each part goes so the page can pop the streams out or back.
-ipcMain.handle('monitors:apply', (_e, parts, together) => {
+mainIpc.handle('monitors:apply', (_e, parts, together) => {
   monitorsTogether = together !== false;
   const p = placeParts(parts, allMonitors(), monitorOf(mainWin));
   moveWin(mainWin, monitorById(p.chats));
@@ -249,7 +268,7 @@ ipcMain.handle('monitors:apply', (_e, parts, together) => {
   return p;
 });
 // Identify monitors: a big number in the middle of each one for a moment (it can't be clicked or take the focus)
-ipcMain.handle('monitors:identify', () => {
+mainIpc.handle('monitors:identify', () => {
   for (const m of allMonitors()) {
     const side = Math.max(160, Math.min(360, Math.round(Math.min(m.work.width, m.work.height) * 0.45)));
     const win = new BrowserWindow({
@@ -289,22 +308,40 @@ app.whenReady().then(() => {
   screen.on('display-metrics-changed', () => monitorsChanged('changed'));
 });
 
+// A site's own pages use its login; any other page gets storage of its own, without your logins.
 function partitionFor(url) {
   try { const h = new URL(url).hostname;
+    if (/(^|\.)kick\.com$/.test(h)) return PARTITION;
     if (/(^|\.)twitch\.tv$/.test(h)) return PARTS.twitch;
     if (/(^|\.)(youtube\.com|youtu\.be|google\.com)$/.test(h)) return PARTS.youtube;
   } catch {}
-  return PARTITION;
+  return WEB_PARTITION;
 }
 function openSiteWindow(url, width = 1100, height = 780, partition) {
   if (!/^https:\/\//.test(url)) return;
+  const part = partition || partitionFor(url);
+  const clamp = (n, d) => Math.round(Math.min(4000, Math.max(200, Number(n) || d)));
   const win = new BrowserWindow({
-    width, height, backgroundColor: '#0a0c0d', autoHideMenuBar: true, title: 'Stream Multiview', icon: ICON,
-    webPreferences: { partition: partition || partitionFor(url), contextIsolation: true, nodeIntegration: false, sandbox: true }
+    width: clamp(width, 1100), height: clamp(height, 780), backgroundColor: '#0a0c0d', autoHideMenuBar: true, title: 'Stream Multiview', icon: ICON,
+    webPreferences: { partition: part, contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
+  if (part !== WEB_PARTITION) keepOnSites(win.webContents);   // a window with a login stays on the sites
   win.loadURL(url);
   return win;
 }
+// A window that has your login: it stays on the sites and their sign-in pages; any other page opens in your browser.
+function keepOnSites(wc) {
+  const keep = (e, url, isMain = true) => {
+    const main = e && 'isMainFrame' in e ? e.isMainFrame : isMain;
+    if (!main || guard.mayNavigate(url)) return;
+    e.preventDefault();
+    openExternal(url);
+  };
+  wc.on('will-navigate', keep);
+  wc.on('will-redirect', (e, url, _inPlace, isMain) => keep(e, url, isMain));
+}
+// Opens an address in your browser: http and https only.
+const openExternal = url => { const u = guard.webUrl(url); if (u) shell.openExternal(u).catch(() => {}); };
 
 function createMain() {
   const st = loadState();
@@ -349,9 +386,9 @@ function hookSaveAs(ses) {
 function runMenuAct(wc, a) {
   if (!a || wc.isDestroyed()) return;
   switch (a.do) {
-    case 'external': if (/^https?:\/\//i.test(a.url)) shell.openExternal(a.url); break;
-    case 'copyText': clipboard.writeText(String(a.text || '')); break;
-    case 'openImage': openSiteWindow(a.url, 520, 520); break;
+    case 'external': openExternal(a.url); break;
+    case 'copyText': clipboard.writeText(String(a.text || '')).catch(() => {}); break;
+    case 'openImage': openSiteWindow(a.url, 520, 520, WEB_PARTITION); break;   // a picture from chat: none of your logins
     case 'saveImage': if (/^https?:\/\//i.test(a.url)) { hookSaveAs(wc.session); savingAs.set(a.url, a.name); wc.downloadURL(a.url); } break;
     case 'copyImage': wc.copyImageAt(a.x, a.y); break;
     case 'replaceMisspelling': wc.replaceMisspelling(a.word); break;
@@ -396,14 +433,14 @@ async function showViewMenu(wc, params) {
   const win = host && BrowserWindow.fromWebContents(host);
   Menu.buildFromTemplate(tmpl).popup(win ? { window: win } : {});
 }
-ipcMain.on('view:menu-act', (e, id, i) => {
+appIpc.on('view:menu-act', (e, id, i) => {
   const items = drawnMenus.get(id); drawnMenus.delete(id);
   const wc = items && webContents.fromId(id);
   const x = items && items[i];
   if (!wc || !x || x.type || x.enabled === false || wc.hostWebContents !== e.sender) return;   // only the page that drew it
   runMenuAct(wc, x.act);
 });
-ipcMain.on('view:menu-close', (_e, id) => drawnMenus.delete(id));
+appIpc.on('view:menu-close', (_e, id) => drawnMenus.delete(id));
 // Translating chat messages for the app's page (see translateAgent in index.html)
 const translateTexts = makeTranslator(async url => {
   const r = await Promise.race([net.fetch(url, { headers: BROWSER_HEADERS() }), sleep(8000).then(() => null)]);
@@ -411,7 +448,7 @@ const translateTexts = makeTranslator(async url => {
   if (!r.ok) { const err = new Error('refused'); err.status = r.status; throw err; }
   return r.json();
 });
-ipcMain.handle('translate:texts', (_e, texts, tl) => translateTexts(texts, tl || translateTarget((app.getPreferredSystemLanguages && app.getPreferredSystemLanguages()) || [app.getLocale()])));
+appIpc.handle('translate:texts', (_e, texts, tl) => translateTexts(texts, tl || translateTarget((app.getPreferredSystemLanguages && app.getPreferredSystemLanguages()) || [app.getLocale()])));
 
 app.on('web-contents-created', (_e, wc) => {
   // the streams' and chats' own pages (not the app's page, which has its own right-click)
@@ -429,17 +466,22 @@ app.on('web-contents-created', (_e, wc) => {
   wc.on('did-start-navigation', (d, url, _inPlace, isMain) => syncUA(d && d.url ? d.url : url, d && 'isMainFrame' in d ? d.isMainFrame : isMain));
   wc.on('will-redirect', (d, url, _inPlace, isMain) => syncUA(d && d.url ? d.url : url, d && 'isMainFrame' in d ? d.isMainFrame : isMain));
   wc.on('destroyed', () => signinWcs.delete(wc.id));
-  // Lock down embedded views: no Node access, https only.
-  wc.on('will-attach-webview', (ev, webPreferences, params) => {
-    delete webPreferences.preload;
-    webPreferences.nodeIntegration = false;
-    webPreferences.contextIsolation = true;
-    if (!/^https:\/\//.test(params.src || '')) ev.preventDefault();
+  // Web views: no preload or Node, sandboxed, https only, and only the app's own storage (guard.js).
+  wc.on('will-attach-webview', (ev, webPreferences, params) => { if (!guard.lockWebview(webPreferences, params)) ev.preventDefault(); });
+  // When you last clicked or typed in this page: a page opens links in your browser only just after that.
+  wc.on('input-event', (_ev, input) => {
+    if (!/^(mouseDown|rawKeyDown|keyDown|gestureTap|touchStart)$/.test(input.type)) return;
+    lastInput.set(wc.id, Date.now());
+    // a press in a stream or chat: the page makes it the active window (from Electron 44 on, a <webview> has no focus event)
+    const host = wc.getType() === 'webview' && /^(mouseDown|gestureTap|touchStart)$/.test(input.type) ? wc.hostWebContents : null;
+    if (host && !host.isDestroyed() && appContents(host)) host.send('view:pressed', wc.id);
   });
-
+  wc.on('destroyed', () => lastInput.delete(wc.id));
   wc.setWindowOpenHandler(({ url }) => {
-    // Kick pages and login providers open inside the app so they share the login.
-    if (isKick(url) || isLoginProvider(url)) {
+    const fromApp = appContents(wc), recent = Date.now() - (lastInput.get(wc.id) || 0) < 5000;
+    const how = guard.popupFor(url, { fromApp, recent });
+    // The sites and their sign-in pages open inside the app, with the login of the page that opened them.
+    if (how === 'app') {
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {
@@ -449,25 +491,29 @@ app.on('web-contents-created', (_e, wc) => {
       };
     }
     // Anything else (links posted in chat, etc.) opens in your normal browser.
-    if (/^https?:\/\//.test(url)) shell.openExternal(url);
+    if (how === 'external') openExternal(url);
     return { action: 'deny' };
   });
+  wc.on('did-create-window', win => keepOnSites(win.webContents));
 });
+const lastInput = new Map();       // web contents id -> when you last clicked or typed in it
+// The app's own windows (not a web view in them, a pop-up or an extension's page)
+const appContents = wc => [mainWin, streamsWin, switcherWin].some(w => w && !w.isDestroyed() && w.webContents === wc);
 
 /* ---------- messages from the multiview page ---------- */
-ipcMain.handle('open-window', (_e, url, w, h, opts) => {
+appIpc.handle('open-window', (_e, url, w, h, opts) => {
   const win = openSiteWindow(url, w, h);
   if (win && opts && opts.muted) win.webContents.setAudioMuted(true);   // e.g. a channel page opened for its popups, not to watch
 });
-ipcMain.handle('open-external', (_e, url) => { if (/^https?:\/\//.test(url)) shell.openExternal(url); });
+appIpc.handle('open-external', (_e, url) => { openExternal(url); });
 
 // Streams pop-out window
-const cleanSpecs = list => (Array.isArray(list) ? list : []).filter(s => s && typeof s.channel === 'string')
+const cleanSpecs = list => (Array.isArray(list) ? list : []).filter(s => s && typeof s.channel === 'string' && validCh(normCh(s.channel)))
   .map(s => ({ channel: s.channel, vol: +s.vol || 0, muted: !!s.muted }));
-ipcMain.handle('streams:open', (_e, specs) => { openStreamsWindow(cleanSpecs(specs)); });
-ipcMain.handle('streams:close', () => { streamsWin?.close(); });
-ipcMain.handle('streams:isOpen', () => !!streamsWin);
-ipcMain.on('streams:report', (_e, list) => { lastStreams = cleanSpecs(list); });
+mainIpc.handle('streams:open', (_e, specs) => { openStreamsWindow(cleanSpecs(specs)); });
+appIpc.handle('streams:close', () => { streamsWin?.close(); });
+appIpc.handle('streams:isOpen', () => !!streamsWin);
+appIpc.on('streams:report', (_e, list) => { lastStreams = cleanSpecs(list); });
 
 /* ---------- Connected apps: the link with Pear Drops (link.js) ---------- */
 // Made the first time the page asks (after the app is ready, for safeStorage). The page sends its Connect
@@ -494,24 +540,25 @@ function getPearLink() {
   return pearLink;
 }
 const fromStreams = e => !!streamsWin && e.sender === streamsWin.webContents;
-ipcMain.handle('link:set', (_e, on) => getPearLink()?.setOn(on) ?? null);
-ipcMain.handle('link:state', () => getPearLink()?.state() ?? null);
-ipcMain.handle('link:disconnect', () => getPearLink()?.disconnect() ?? null);
-ipcMain.handle('link:pair-again', () => getPearLink()?.pairAgain() ?? null);
-ipcMain.handle('link:icon', () => getPearLink()?.icon() ?? '');
-ipcMain.handle('link:show', () => getPearLink()?.showPearDrops() ?? { shown: false });
-ipcMain.handle('link:test', () => getPearLink()?.test() ?? { ok: false, reason: 'unknown', text: "Connected apps aren't available in this copy" });
-ipcMain.handle('link:activity', (_e, opts) => getPearLink()?.activityPage(pageOptions(opts)) ?? null);
-ipcMain.on('link:note', (_e, text) => getPearLink()?.playersNote(text));
-ipcMain.on('link:players', (e, report) => { try { getPearLink()?.playersReport(fromStreams(e) ? 'streams' : 'main', report); } catch (err) { console.warn('[grapevine]', err.message); } });
+mainIpc.handle('link:set', (_e, on) => getPearLink()?.setOn(on) ?? null);
+appIpc.handle('link:state', () => getPearLink()?.state() ?? null);
+mainIpc.handle('link:disconnect', () => getPearLink()?.disconnect() ?? null);
+mainIpc.handle('link:pair-again', () => getPearLink()?.pairAgain() ?? null);
+mainIpc.handle('link:allow', () => getPearLink()?.allowPairing() ?? null);
+appIpc.handle('link:icon', () => getPearLink()?.icon() ?? '');
+appIpc.handle('link:show', () => getPearLink()?.showPearDrops() ?? { shown: false });
+appIpc.handle('link:test', () => getPearLink()?.test() ?? { ok: false, reason: 'unknown', text: "Connected apps aren't available in this copy" });
+appIpc.handle('link:activity', (_e, opts) => getPearLink()?.activityPage(pageOptions(opts)) ?? null);
+appIpc.on('link:note', (_e, text) => getPearLink()?.playersNote(text));
+appIpc.on('link:players', (e, report) => { try { getPearLink()?.playersReport(fromStreams(e) ? 'streams' : 'main', report); } catch (err) { console.warn('[grapevine]', err.message); } });
 app.on('before-quit', () => { pearLink?.stop(); });
 // A raid one window followed: the other window (main or streams pop-out) follows it too.
-ipcMain.on('raid:followed', (e, from, to) => {
-  if (typeof from !== 'string' || typeof to !== 'string' || from.length > 120 || to.length > 120) return;
+appIpc.on('raid:followed', (e, from, to) => {
+  if (typeof from !== 'string' || typeof to !== 'string' || !validCh(normCh(from)) || !validCh(normCh(to))) return;
   [mainWin, streamsWin].forEach(w => { if (w && !w.isDestroyed() && w.webContents !== e.sender) w.webContents.send('raid:follow', from, to); });
 });
-ipcMain.handle('chat:add', (_e, channel) => {
-  if (typeof channel === 'string' && mainWin) { mainWin.webContents.send('chat:add', channel); mainWin.focus(); }
+appIpc.handle('chat:add', (_e, channel) => {
+  if (typeof channel === 'string' && validCh(normCh(channel)) && mainWin) { mainWin.webContents.send('chat:add', channel); mainWin.focus(); }
 });
 
 /* ---------- live alerts for saved channels ---------- */
@@ -573,9 +620,9 @@ function keepNote(n) {
 }
 let notifyPrefs = { all: true, away: false, off: [] };   // away: only while the app isn't in front
 let desktopNotify = true;             // Settings > Notifications: off means no desktop notifications at all
-ipcMain.on('notify:enabled', (_e, on) => { desktopNotify = on !== false; });
+mainIpc.on('notify:enabled', (_e, on) => { desktopNotify = on !== false; });
 // "Send a test": 'shown', 'failed' (the system refused it) or 'sent' (no answer: macOS doesn't say if it's blocked)
-ipcMain.handle('notify:test', () => new Promise(res => {
+appIpc.handle('notify:test', () => new Promise(res => {
   if (!Notification.isSupported()) return res('unsupported');
   const n = new Notification({ title: 'Stream Multiview', body: 'Desktop notifications work.', icon: ICON });
   keepNote(n);
@@ -587,7 +634,7 @@ ipcMain.handle('notify:test', () => new Promise(res => {
 // The app's messages ("Logged out of Twitch") as desktop notifications (Settings > Notifications > Show them as).
 // The same message again within 3 seconds isn't sent twice.
 let lastMessage = { text: '', t: 0 };
-ipcMain.on('notify:message', (_e, text) => {
+appIpc.on('notify:message', (_e, text) => {
   text = String(text || '').slice(0, 200);
   if (!text || !desktopNotify || !Notification.isSupported()) return;
   if (text === lastMessage.text && Date.now() - lastMessage.t < 3000) return;
@@ -597,7 +644,7 @@ ipcMain.on('notify:message', (_e, text) => {
   n.on('click', () => { if (mainWin) { if (mainWin.isMinimized()) mainWin.restore(); mainWin.show(); mainWin.focus(); } });
   n.show();
 });
-ipcMain.handle('notify:settings', () => {
+appIpc.handle('notify:settings', () => {
   const url = process.platform === 'darwin' ? 'x-apple.systempreferences:com.apple.Notifications-Settings.extension'
     : process.platform === 'win32' ? 'ms-settings:notifications' : null;
   if (url) shell.openExternal(url);
@@ -639,7 +686,7 @@ async function fetchYouTube(ch) {
   return null;
 }
 const fetchAny = ch => /^tw:/.test(ch) ? fetchTwitch(ch.slice(3)) : /^yt:/.test(ch) ? fetchYouTube(ch) : fetchChannel(ch);
-ipcMain.handle('yt:resolve', async (_e, ch) => (typeof ch === 'string' && /^yt:/.test(ch) ? fetchYouTube(ch) : null));
+appIpc.handle('yt:resolve', async (_e, ch) => (typeof ch === 'string' && /^yt:/.test(ch) ? fetchYouTube(ch) : null));
 
 /* ---------- checking many channels at once ----------
    Twitch: one question for up to 100 channels. Kick (logged in): the live channels you follow, from your
@@ -706,8 +753,8 @@ function ytKeyChanged() {
   const st = ytGate.status().state;
   if (st !== lastYtState) { lastYtState = st; mainWin?.webContents.send('ytkey:status', ytKeyStatus()); }
 }
-const YT_API = process.env.SMV_YT_API || 'https://www.googleapis.com/youtube/v3';   // tests point this at a stand-in
-const YT_FEED = process.env.SMV_YT_FEED || 'https://www.youtube.com/feeds/videos.xml';   // and this
+const YT_API = devEnv('SMV_YT_API') || 'https://www.googleapis.com/youtube/v3';   // tests point this at a stand-in
+const YT_FEED = devEnv('SMV_YT_FEED') || 'https://www.youtube.com/feeds/videos.xml';   // and this
 // One YouTube Data API call. Error answers go to the gate (which decides when to use the key again) and throw.
 async function ytApi(pathAndQuery, key = ytKey) {
   const r = await fetch(`${YT_API}/${pathAndQuery}&key=${encodeURIComponent(key)}`, { headers: { Accept: 'application/json' }, signal: netSignal() });
@@ -795,8 +842,8 @@ async function liveBatch(list) {
   const parts = await Promise.all([safe(kickBatch, kick), safe(twitchBatch, tw), safe(ytBatch, yt)]);
   return { results: parts.flatMap(p => p.results), rest: parts.flatMap(p => p.rest) };
 }
-ipcMain.handle('ytkey:status', () => ytKeyStatus());
-ipcMain.handle('ytkey:set', async (_e, key) => {
+appIpc.handle('ytkey:status', () => ytKeyStatus());
+mainIpc.handle('ytkey:set', async (_e, key) => {
   key = String(key || '').trim();
   if (!/^[\w-]{20,100}$/.test(key)) return { ...ytKeyStatus(), error: 'format' };
   try { await ytApi('videos?part=id&id=dQw4w9WgXcQ', key); }   // one test question (1 quota unit)
@@ -811,7 +858,7 @@ ipcMain.handle('ytkey:set', async (_e, key) => {
   storeYtKey(key); ytKeyChanged(); watcher.checkSoon();
   return ytKeyStatus();
 });
-ipcMain.handle('ytkey:remove', () => { storeYtKey(''); ytKeyChanged(); return ytKeyStatus(); });
+mainIpc.handle('ytkey:remove', () => { storeYtKey(''); ytKeyChanged(); return ytKeyStatus(); });
 
 const watcher = createLiveWatcher({
   fetchChannel: fetchAny,
@@ -820,13 +867,13 @@ const watcher = createLiveWatcher({
   onStatus: snap => { recordLive(snap); profQueue.sawLive(snap); mainWin?.webContents.send('live:status', snap); },
   onWentLive: notifyLive
 });
-ipcMain.on('live:watch', (_e, data) => {
+mainIpc.on('live:watch', (_e, data) => {
   const d = data || {};
   notifyPrefs = { all: d.notifyAll !== false, away: d.away === true, off: Array.isArray(d.off) ? d.off.map(String) : [] };
   watcher.setChannels(Array.isArray(d.channels) ? d.channels : []);
   profQueue.setSaved((Array.isArray(d.channels) ? d.channels : []).filter(okCh).map(normCh));
 });
-ipcMain.on('live:check-now', () => watcher.checkSoon());
+appIpc.on('live:check-now', () => watcher.checkSoon());
 app.whenReady().then(() => powerMonitor.on('resume', () => watcher.checkSoon()));   // after sleep: who's live now, not hours ago
 
 /* ---------- suggestions from the channels you follow (the Channels box) ----------
@@ -920,7 +967,7 @@ app.whenReady().then(() => {
   setInterval(followsTick, 60e3).unref?.();
 });
 // The followed channels from the sites you're signed in to, and who's live among them (the page picks suggestions)
-ipcMain.handle('follows:get', async () => {
+appIpc.handle('follows:get', async () => {
   if (!followsOn()) return { on: false, items: [], live: {} };
   const [k, tw, yt] = await Promise.all([kickSignedIn(), twitchToken().then(Boolean), youtubeSignedIn()]);
   const sites = SmvFollows.SITES.filter((s, i) => [k, tw, yt][i]);
@@ -928,7 +975,7 @@ ipcMain.handle('follows:get', async () => {
   for (const s of ['kick', 'twitch']) if (sites.includes(s)) followLive[s].forEach((x, ch) => { live[ch] = { live: true, viewers: x.viewers, title: x.title || '', category: x.category || '' }; });
   return { on: true, items: SmvFollows.allFollows(followStore(), sites), live };
 });
-ipcMain.handle('follows:set-on', (_e, on) => {
+mainIpc.handle('follows:set-on', (_e, on) => {
   if (on) { if (!followsOn()) { saveFollows({ v: 1 }); Object.keys(followTried).forEach(k => { followTried[k] = 0; }); setTimeout(followsTick, 500); } }
   else { followLive.kick = new Map(); followLive.twitch = new Map(); saveFollows({ v: 1, off: true }); }
   return followsOn();
@@ -1071,14 +1118,14 @@ const profileFor = (ch, site) => {
   return { ch, site: s, missing: !!(site && site.missing), video: !!(site && site.video), failed: !site, summary: profileSummary(h.entry(ch)), meta: h.getMeta(ch), info: h.info(ch) };
 };
 const okCh = ch => typeof ch === 'string' && validCh(normCh(ch));
-ipcMain.handle('profile:get', async (_e, ch, opt) => {
+appIpc.handle('profile:get', async (_e, ch, opt) => {
   if (!okCh(ch)) return { error: 'bad' };
   ch = normCh(ch);
   const o = opt || {};
   return profileFor(ch, o.local ? (siteCache.get(ch) || {}).data || null : await siteProfile(ch, !!o.refresh));
 });
 // The directory: what's known about many channels, without asking the sites.
-ipcMain.handle('profile:list', (_e, chs) => {
+appIpc.handle('profile:list', (_e, chs) => {
   const h = hist(), out = {};
   (Array.isArray(chs) ? chs : []).slice(0, 2000).forEach(ch => {
     if (!okCh(ch)) return;
@@ -1089,20 +1136,20 @@ ipcMain.handle('profile:list', (_e, chs) => {
 });
 // Opening a channel from the Channels box: does it exist on that site? 'yes', 'missing' (the site says there's no
 // such channel) or 'unknown' (the site couldn't be asked: offline, rate-limited, slow), which doesn't stop it opening.
-ipcMain.handle('channel:exists', async (_e, ch) => {
+appIpc.handle('channel:exists', async (_e, ch) => {
   if (!okCh(ch)) return 'unknown';
   const p = await Promise.race([siteProfile(normCh(ch)).catch(() => null), sleep(8000).then(() => null)]);
   return !p ? 'unknown' : p.missing ? 'missing' : 'yes';
 });
 // Looking up a name that isn't saved: the same name on Kick, Twitch and YouTube.
-ipcMain.handle('profile:lookup', async (_e, q) => {
+appIpc.handle('profile:lookup', async (_e, q) => {
   const name = String(q || '').trim().replace(/^@/, '').toLowerCase();
   if (!/^[a-z0-9_.\-]{2,40}$/.test(name)) return [];
   const cands = [name, 'tw:' + name, 'yt:@' + name].filter(c => validCh(c));
   const found = await Promise.all(cands.map(async ch => { const p = await siteProfile(ch); return p && !p.missing ? { ch, name: p.name, avatar: p.avatar, followers: p.followers, followersText: p.followersText || '', live: p.live ? { title: p.live.title, viewers: p.live.viewers } : null } : null; }));
   return found.filter(Boolean);
 });
-ipcMain.handle('profile:meta', (_e, ch, patch) => {
+appIpc.handle('profile:meta', (_e, ch, patch) => {
   if (!okCh(ch) || !patch || typeof patch !== 'object') return null;
   const m = hist().setMeta(normCh(ch), patch);
   saveHistorySoon(2000);
@@ -1141,7 +1188,7 @@ function saveEmotesSoon() {
   }, 2000);
 }
 app.on('will-quit', () => { clearTimeout(emoteT); if (emoteStore && emoteStore.takeChanged()) try { fs.writeFileSync(emoteFile(), JSON.stringify(emoteStore.data())); } catch {} });
-const EMOTE_APIS = { stv: process.env.SMV_7TV_API || 'https://7tv.io/v3', bttv: process.env.SMV_BTTV_API || 'https://api.betterttv.net/3', ffz: process.env.SMV_FFZ_API || 'https://api.frankerfacez.com/v1' };
+const EMOTE_APIS = { stv: devEnv('SMV_7TV_API') || 'https://7tv.io/v3', bttv: devEnv('SMV_BTTV_API') || 'https://api.betterttv.net/3', ffz: devEnv('SMV_FFZ_API') || 'https://api.frankerfacez.com/v1' };
 async function getJson(url, opts = {}) {
   try {
     const r = await Promise.race([net.fetch(url, { ...opts, headers: { Accept: 'application/json', ...BROWSER_HEADERS(), ...(opts.headers || {}) } }), sleep(10000).then(() => null)]);
@@ -1176,25 +1223,25 @@ async function emoteLists(ch) {
   return out;
 }
 const emoteAsked = new Map();     // channel -> when its lists were last asked (10 minutes apart at most)
-ipcMain.handle('emotes:open', async (_e, ch) => {
+appIpc.handle('emotes:open', async (_e, ch) => {
   if (!okCh(ch)) return null;
   ch = normCh(ch);
   const st = emotes();
   let added = [];
-  if (!emoteAsked.has(ch) || Date.now() - emoteAsked.get(ch) > (+process.env.SMV_EMOTE_RECHECK_MS || 10 * 60e3)) {
+  if (!emoteAsked.has(ch) || Date.now() - emoteAsked.get(ch) > (+devEnv('SMV_EMOTE_RECHECK_MS') || 10 * 60e3)) {
     emoteAsked.set(ch, Date.now());
     const lists = await emoteLists(ch);
     if (Object.keys(lists).length) { added = st.update(ch, lists); saveEmotesSoon(); }
   }
   return { fresh: st.fresh(ch), added };
 });
-ipcMain.handle('emotes:seen', (_e, ch, name) => {
+appIpc.handle('emotes:seen', (_e, ch, name) => {
   if (!okCh(ch) || typeof name !== 'string') return false;
   const ok = emotes().seen(normCh(ch), name);
   if (ok) saveEmotesSoon();
   return ok;
 });
-ipcMain.handle('emote:download', async (e, url, name, small) => {
+appIpc.handle('emote:download', async (e, url, name, small) => {
   if (!emoteUrlOk(url)) return { error: 'bad' };
   let got = await fetchEmote(url).catch(() => null);
   if (!got && small && small !== url && emoteUrlOk(small)) got = await fetchEmote(small).catch(() => null);   // the big one isn't there: the one in chat
@@ -1212,7 +1259,7 @@ ipcMain.handle('emote:download', async (e, url, name, small) => {
 });
 // "Copy image" on an emote card: the picture, fetched like Download. The app's page turns it into a still
 // PNG (the clipboard has no moving pictures, and not every kind of picture can be read here) and puts it on the clipboard.
-ipcMain.handle('emote:fetch', async (_e, url, small) => {
+appIpc.handle('emote:fetch', async (_e, url, small) => {
   if (!emoteUrlOk(url)) return { error: 'bad' };
   let got = await fetchEmote(url).catch(() => null);
   if (!got && small && small !== url && emoteUrlOk(small)) got = await fetchEmote(small).catch(() => null);
@@ -1220,20 +1267,20 @@ ipcMain.handle('emote:fetch', async (_e, url, small) => {
   const type = Object.keys(EMOTE_TYPES).find(k => EMOTE_TYPES[k] === got.ext);
   return { type, data: got.buf.toString('base64') };
 });
-ipcMain.handle('clipboard:png', (_e, dataUrl) => {
+appIpc.handle('clipboard:png', async (_e, dataUrl) => {
   if (typeof dataUrl !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(dataUrl) || dataUrl.length > 20 * 1024 * 1024) return false;
   const img = nativeImage.createFromDataURL(dataUrl);
   if (img.isEmpty()) return false;
-  clipboard.writeImage(img);
+  try { await clipboard.write([new ClipboardItem({ 'image/png': new Blob([img.toPNG()], { type: 'image/png' }) })]); } catch { return false; }
   return true;
 });
-ipcMain.handle('emote:show', (_e, id) => {
+appIpc.handle('emote:show', (_e, id) => {
   const f = savedEmotes.get(String(id));
   if (!f || !fs.existsSync(f)) return false;
   shell.showItemInFolder(f);
   return true;
 });
-ipcMain.handle('kick:unfollow', async (_e, slug) => {
+appIpc.handle('kick:unfollow', async (_e, slug) => {
   slug = String(slug || '').toLowerCase();
   if (!SLUG_RE.test(slug)) return { error: 'bad' };
   const r = await kickApi(`/api/v2/channels/${encodeURIComponent(slug)}/follow`, 'DELETE');
@@ -1248,7 +1295,7 @@ ipcMain.handle('kick:unfollow', async (_e, slug) => {
 });
 
 /* ---------- chat mentions / replies ---------- */
-ipcMain.on('mention:notify', (_e, m) => {
+appIpc.on('mention:notify', (_e, m) => {
   if (!desktopNotify || !m || typeof m.channel !== 'string' || !Notification.isSupported()) return;
   const who = String(m.sender || 'Someone').slice(0, 40), where = String(m.label || m.channel).slice(0, 40);
   const title = m.kind === 'spam' ? `${m.abuse ? 'Abusive message' : 'Likely spam'} in ${where}'s chat` : m.kind === 'reply' ? `${who} replied to you in ${where}'s chat`
@@ -1262,7 +1309,7 @@ ipcMain.on('mention:notify', (_e, m) => {
   n.show();
 });
 // Best guess at your Kick username from your logged-in session (you can also type it in).
-ipcMain.handle('me:detect', async () => {
+appIpc.handle('me:detect', async () => {
   await ensureLiveWin();
   if (!liveWin) return null;
   const r = await liveWin.webContents.executeJavaScript(`(async () => {
@@ -1277,9 +1324,9 @@ ipcMain.handle('me:detect', async () => {
     return null; })()`, true).catch(() => null);
   return typeof r === 'string' && /^[A-Za-z0-9_]{2,30}$/.test(r) ? r : null;
 });
-ipcMain.handle('live:snapshot', () => watcher.snapshot());
+appIpc.handle('live:snapshot', () => watcher.snapshot());
 // Is one channel live (saved or not)? Asked by a stream window whose player is stuck on its offline screen.
-ipcMain.handle('live:one', async (_e, ch) => {
+appIpc.handle('live:one', async (_e, ch) => {
   if (!okCh(ch)) return null;
   const i = await withTimeout(fetchAny(normCh(ch)), NET_TIMEOUT, null).catch(() => null);
   return i && !i.missing ? { live: !!i.live } : null;
@@ -1292,8 +1339,7 @@ async function logout(plat = 'kick') {
     if (w === mainWin || w === streamsWin || w === liveWin || w === switcherWin) return;
     try { if (w.webContents.session === session.fromPartition(part)) w.close(); } catch {}
   });
-  await session.fromPartition(part).clearStorageData();
-  await session.fromPartition(part).clearCache().catch(() => {});
+  await wipeSession(session.fromPartition(part));
   if (plat === 'kick' && liveWin && !liveWin.isDestroyed()) liveWin.destroy();   // the Kick checker starts fresh, logged out
   mainWin?.webContents.send('account:changed', { platform: plat, loggedOut: true });
 }
@@ -1304,11 +1350,11 @@ function openLogin(plat = 'kick') {
   const w = openSiteWindow(LOGIN_URL[plat], 1100, 800, PARTS[plat]);
   w?.on('closed', () => mainWin?.webContents.send('account:changed', { platform: plat, loggedOut: false }));
 }
-ipcMain.handle('account:logout', async (_e, plat) => { await logout(PARTS[plat] ? plat : 'kick'); return true; });
-ipcMain.handle('account:login', (_e, plat) => { openLogin(PARTS[plat] ? plat : 'kick'); });
+mainIpc.handle('account:logout', async (_e, plat) => { await logout(PARTS[plat] ? plat : 'kick'); return true; });
+mainIpc.handle('account:login', (_e, plat) => { openLogin(PARTS[plat] ? plat : 'kick'); });
 // Who is logged in where (Twitch keeps your name in a cookie; YouTube only tells us that you're signed in).
 const youtubeSignedIn = () => session.fromPartition(PARTS.youtube).cookies.get({}).then(c => c.some(x => /(youtube|google)\.com$/.test(x.domain) && /^(SAPISID|__Secure-3PSID|LOGIN_INFO)$/.test(x.name)), () => false);
-ipcMain.handle('accounts:status', async () => {
+appIpc.handle('accounts:status', async () => {
   const out = { kick: null, twitch: null, youtube: false };
   try {
     const c = await session.fromPartition(PARTS.twitch).cookies.get({ name: 'login' });
@@ -1348,8 +1394,8 @@ function setupGoogleSignin(ses) {
    The stream page clicks the answer chosen in Settings > YouTube; if that doesn't work (YouTube changed
    the question), it asks for this: "Reject all" saved in that player's storage, as YouTube saves it. */
 const YT_REJECT_ALL = 'CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg';
-ipcMain.handle('youtube:consentFallback', async (_e, part) => {
-  if (typeof part !== 'string' || !/^persist:(kmv-[\w-]+|youtube)$/.test(part)) return false;
+appIpc.handle('youtube:consentFallback', async (_e, part) => {
+  if (typeof part !== 'string' || !/^persist:(kmv-stream-[\w-]{1,120}|youtube)$/.test(part)) return false;
   try {
     await session.fromPartition(part).cookies.set({ url: 'https://www.youtube.com', domain: '.youtube.com', name: 'SOCS', value: YT_REJECT_ALL,
       secure: true, sameSite: 'lax', expirationDate: Math.floor(Date.now() / 1000) + 390 * 86400 });
@@ -1380,7 +1426,7 @@ async function setLoginCookies(plat, list) {
   await ses.cookies.flushStore().catch(() => {});
   return n;
 }
-ipcMain.handle('youtube:fromFirefox', async () => {
+mainIpc.handle('youtube:fromFirefox', async () => {
   let r;
   try { r = youtubeLoginFromFirefox(); } catch { return { error: 'read' }; }
   if (r.error) return r;
@@ -1418,7 +1464,10 @@ async function scrapeFollowPage(plat, url, { maxRounds = 70 } = {}) {
         const t = (card.querySelector('#channel-title #text, #text.ytd-channel-name, h3, h4, p[title], [data-a-target="preview-card-channel-link"]') || a);
         out.push({ href: a.getAttribute('href'), name: (t.getAttribute && t.getAttribute('title')) || (t.textContent || '').trim() || (a.querySelector('img') && a.querySelector('img').alt) || '' });
       });
-      return { links: out, signedOut: ${JSON.stringify(plat)} === 'youtube' && !!document.querySelector('ytd-masthead a[href*="ServiceLogin"], ytd-masthead ytd-button-renderer a[href*="accounts.google.com"]') };
+      // YouTube signed out: its page says so (ytcfg), or shows a Sign in button
+      const ytOut = !!(window.ytcfg && window.ytcfg.get && window.ytcfg.get('LOGGED_IN') === false)
+        || !!document.querySelector('ytd-masthead a[href*="ServiceLogin"], ytd-masthead ytd-button-renderer a[href*="accounts.google.com"]');
+      return { links: out, signedOut: ${JSON.stringify(plat)} === 'youtube' && ytOut };
     })()`;
     const scrollJs = `(() => {
       window.scrollTo(0, document.documentElement.scrollHeight);
@@ -1505,7 +1554,7 @@ async function twitchFollows({ scrape = true } = {}) {
 }
 // Whether you can moderate a channel (its moderator, or your own channel): true, false, or null when
 // it can't be told (signed out, offline). Windows only show their mod view button when it's true.
-ipcMain.handle('mod:check', async (_e, ch) => {
+appIpc.handle('mod:check', async (_e, ch) => {
   if (typeof ch !== 'string' || !validCh(ch) || /^yt:/.test(ch)) return null;
   try {
     if (/^tw:/.test(ch)) {
@@ -1521,7 +1570,7 @@ ipcMain.handle('mod:check', async (_e, ch) => {
 });
 const youtubeFollows = () => scrapeFollowPage('youtube', 'https://www.youtube.com/feed/channels');
 let importing = null;
-ipcMain.handle('follows:import', async (_e, plat) => {
+mainIpc.handle('follows:import', async (_e, plat) => {
   if (!PARTS[plat]) return { error: 'bad' };
   if (importing) return { error: 'busy' };
   importing = plat;
@@ -1581,17 +1630,20 @@ async function encryptOldLogins() {
   }
   sec.migrated = true; saveSec(sec);
 }
+// Everything a site's session kept: cookies and storage, the cache, passwords typed into the site's sign-in
+// prompts (the auth cache), and the cookie file on disk straight away.
+async function wipeSession(ses) {
+  await ses.clearStorageData().catch(() => {});
+  await ses.clearCache().catch(() => {});
+  await ses.clearAuthCache().catch(() => {});
+  await ses.cookies.flushStore().catch(() => {});
+}
 async function forgetLogins(which) {
-  for (const p of which) {
-    const ses = session.fromPartition(PARTS[p]);
-    await ses.clearStorageData().catch(() => {});
-    await ses.clearCache().catch(() => {});
-    await ses.cookies.flushStore().catch(() => {});
-  }
+  for (const p of which) await wipeSession(session.fromPartition(PARTS[p]));
 }
 const forgetList = () => Object.keys(PARTS).filter(p => sec && sec.forget[p]);
-ipcMain.handle('security:get', () => ({ encryption: encryptionState(), forget: { ...sec.forget } }));
-ipcMain.handle('security:setForget', (_e, plat, on) => {
+appIpc.handle('security:get', () => ({ encryption: encryptionState(), forget: { ...sec.forget } }));
+mainIpc.handle('security:setForget', (_e, plat, on) => {
   if (!PARTS[plat]) return null;
   sec.forget[plat] = !!on; saveSec(sec);
   return { ...sec.forget };
@@ -1612,7 +1664,7 @@ app.on('will-quit', e => {            // every window is closed by now
 
 /* ---------- showing another app's window (e.g. a Discord pop-out) ---------- */
 let pendingCapture = null;
-ipcMain.handle('capture:sources', async () => {
+appIpc.handle('capture:sources', async () => {
   const own = new Set(BrowserWindow.getAllWindows().map(w => { try { return w.getMediaSourceId(); } catch { return ''; } }));
   let list = [];
   try { list = await desktopCapturer.getSources({ types: ['window', 'screen'], thumbnailSize: { width: 384, height: 216 }, fetchWindowIcons: true }); } catch { return []; }
@@ -1622,12 +1674,15 @@ ipcMain.handle('capture:sources', async () => {
     icon: s.appIcon && !s.appIcon.isEmpty() ? s.appIcon.toDataURL() : ''
   }));
 });
-ipcMain.handle('capture:choose', (_e, id) => { pendingCapture = typeof id === 'string' ? id : null; return true; });
+let pendingAt = 0;
+appIpc.handle('capture:choose', (_e, id) => { pendingCapture = typeof id === 'string' && /^(window|screen):[\w:-]{1,60}$/.test(id) ? id : null; pendingAt = Date.now(); return true; });
 function setupCapture() {
   // The page asks for "screen sharing"; answer with the window you picked (no system picker).
-  session.defaultSession.setDisplayMediaRequestHandler((_req, cb) => {
+  session.defaultSession.setDisplayMediaRequestHandler((req, cb) => {
     const id = pendingCapture; pendingCapture = null;
-    if (!id) return cb({});
+    // only the app's own page, for the window you picked in it a moment ago
+    const frame = req && req.frame, fromApp = !!frame && !frame.parent && /^file:/i.test(frame.url || '') && [mainWin, streamsWin].some(w => { const m = w && !w.isDestroyed() && w.webContents.mainFrame; return !!m && m.processId === frame.processId && m.routingId === frame.routingId; });
+    if (!id || !fromApp || Date.now() - pendingAt > 10000) return cb({});
     desktopCapturer.getSources({ types: ['window', 'screen'] })
       .then(list => { const s = list.find(x => x.id === id); s ? cb({ video: s }) : cb({}); })
       .catch(() => cb({}));
@@ -1662,7 +1717,11 @@ function applyGameShape() {
   mainWin.setShape(rects);
   shapeState = 'hole';
 }
-ipcMain.on('game:shape', (_e, d) => { gameShape = d && d.hole ? d : null; applyGameShape(); placeGameSoon(); });
+const rectOk = r => !!r && ['x', 'y', 'w', 'h'].every(k => Number.isFinite(r[k]) && Math.abs(r[k]) < 1e5);
+mainIpc.on('game:shape', (_e, d) => {
+  gameShape = d && rectOk(d.hole) ? { ...d, keep: (Array.isArray(d.keep) ? d.keep : []).filter(rectOk).slice(0, 16) } : null;
+  applyGameShape(); placeGameSoon();
+});
 
 /* ---- Put a game here (Windows): move the game's own window into the see-through area and keep it
    there, optionally without its border. A small PowerShell helper calls the Windows window APIs. ---- */
@@ -1797,7 +1856,7 @@ async function releaseGame() {
   const o = g.orig;
   await gh('restore', g.hwnd, o.x, o.y, o.w, o.h, o.style);
 }
-ipcMain.handle('game:attach', async (_e, d) => {
+mainIpc.handle('game:attach', async (_e, d) => {
   if (process.platform !== 'win32') return { error: 'platform' };
   if (!d || typeof d.srcId !== 'string') return { error: 'bad' };
   if (!(await startGameHelper())) return { error: 'helper' };
@@ -1817,10 +1876,10 @@ ipcMain.handle('game:attach', async (_e, d) => {
   await placeGame();
   return { ok: true, name: gameWin ? gameWin.name : d.name };
 });
-ipcMain.handle('game:release', async () => { await releaseGame(); return true; });
-ipcMain.handle('game:strip', async (_e, on) => { if (gameWin) { gameWin.strip = !!on; if (!on) { const o = gameWin.orig; await gh('restore', gameWin.hwnd, o.x, o.y, o.w, o.h, o.style); } lastPlaced = ''; await placeGame(); } return true; });
-ipcMain.handle('game:focus', async () => { if (gameWin) { focusNext = true; lastPlaced = ''; await placeGame(); } return !!gameWin; });
-ipcMain.on('game:onTop', (_e, on) => { if (mainWin && !mainWin.isDestroyed()) mainWin.setAlwaysOnTop(!!on, on ? 'floating' : 'normal'); });
+mainIpc.handle('game:release', async () => { await releaseGame(); return true; });
+mainIpc.handle('game:strip', async (_e, on) => { if (gameWin) { gameWin.strip = !!on; if (!on) { const o = gameWin.orig; await gh('restore', gameWin.hwnd, o.x, o.y, o.w, o.h, o.style); } lastPlaced = ''; await placeGame(); } return true; });
+mainIpc.handle('game:focus', async () => { if (gameWin) { focusNext = true; lastPlaced = ''; await placeGame(); } return !!gameWin; });
+mainIpc.on('game:onTop', (_e, on) => { if (mainWin && !mainWin.isDestroyed()) mainWin.setAlwaysOnTop(!!on, on ? 'floating' : 'normal'); });
 
 /* ---------- updates from GitHub ---------- */
 const updater = require('./updater');
@@ -1893,7 +1952,7 @@ async function downloadMacApp() {
   }
 }
 async function installInstaller() {
-  if (updState.manual || !updState.asset) { shell.openExternal(updState.page || `https://github.com/${upd.repo}/releases/latest`); return updStatus(); }
+  if (updState.manual || !updState.asset) { openExternal(updState.page || `https://github.com/${upd.repo}/releases/latest`); return updStatus(); }
   updProgress = null; updState = { ...updState, state: 'downloading', error: '' }; sendUpd();
   if (updState.macZip) {
     try {
@@ -1963,10 +2022,10 @@ async function installUpdate() {
   sendUpd();
   return updStatus();
 }
-ipcMain.handle('update:status', () => updStatus());
-ipcMain.handle('update:check', () => checkForUpdate({ manual: true }));
-ipcMain.handle('update:install', () => installUpdate());
-ipcMain.handle('update:settings', (_e, d) => {
+appIpc.handle('update:status', () => updStatus());
+mainIpc.handle('update:check', () => checkForUpdate({ manual: true }));
+mainIpc.handle('update:install', () => installUpdate());
+mainIpc.handle('update:settings', (_e, d) => {
   if (d && typeof d.auto === 'boolean') upd.auto = d.auto;
   if (d && typeof d.repo === 'string') {
     const r = d.repo.trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/\/+$/, '');
@@ -1976,15 +2035,15 @@ ipcMain.handle('update:settings', (_e, d) => {
   return updStatus();
 });
 // Mac: System Settings > Privacy & Security > App Management, where the app is allowed to update itself
-ipcMain.handle('update:privacy-settings', () => { shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles'); return true; });
+mainIpc.handle('update:privacy-settings', () => { shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles'); return true; });
 // Mac: don't swap the app in after all, download the disk image to drag in instead
-ipcMain.handle('update:use-dmg', () => {
+mainIpc.handle('update:use-dmg', () => {
   if (updState.swap) fs.rmSync(path.dirname(path.dirname(updState.swap.newApp)), { recursive: true, force: true });
   updState = { ...updState, macZip: null, swap: null, blocked: false };
   return installInstaller();
 });
-ipcMain.handle('update:open-page', () => { shell.openExternal(updState.page || `https://github.com/${upd.repo}/releases/latest`); return true; });
-ipcMain.handle('update:restart', () => {
+mainIpc.handle('update:open-page', () => { openExternal(updState.page || `https://github.com/${upd.repo}/releases/latest`); return true; });
+mainIpc.handle('update:restart', () => {
   if (INSTALLED) { const installer = runInstaller(); return { installer, mac: process.platform === 'darwin' && !updState.swap, blocked: !!updState.blocked }; }
   if (updState.needsInstall) return { needsInstall: true };      // the launcher has to reinstall the engine first
   app.relaunch(); app.exit(0);
@@ -2001,18 +2060,18 @@ function scheduleUpdates() {
 const HELP_FILES = ['INSTRUCTIONS.txt', 'CHANGELOG.md'];
 // Installed builds keep the help files next to the packed app (app.asar.unpacked) so other programs can open them.
 const helpPath = name => app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked', name) : path.join(APP_ROOT, name);
-ipcMain.handle('help:read', (_e, name) => {
+appIpc.handle('help:read', (_e, name) => {
   if (!HELP_FILES.includes(name)) return null;
   try { return fs.readFileSync(helpPath(name), 'utf8'); } catch {}
   try { return fs.readFileSync(path.join(APP_ROOT, name), 'utf8'); } catch { return null; }
 });
-ipcMain.handle('help:open', (_e, name) => { if (HELP_FILES.includes(name)) shell.openPath(helpPath(name)); });
-ipcMain.handle('app:version', () => app.getVersion());
+appIpc.handle('help:open', (_e, name) => { if (HELP_FILES.includes(name)) shell.openPath(helpPath(name)); });
+appIpc.handle('app:version', () => app.getVersion());
 
 /* ---------- menu ---------- */
 // Who is logged in where, as the page last told us (it checks on start and after every log in or out).
 let menuAccounts = { kick: '', twitch: '', youtube: false };
-ipcMain.on('accounts:state', (_e, a) => {
+appIpc.on('accounts:state', (_e, a) => {
   const clean = v => (typeof v === 'string' && /^[A-Za-z0-9_]{1,30}$/.test(v) ? v : '');
   const next = { kick: clean(a && a.kick), twitch: clean(a && a.twitch), youtube: !!(a && a.youtube) };
   if (JSON.stringify(next) === JSON.stringify(menuAccounts)) return;
@@ -2088,6 +2147,7 @@ app.on('second-instance', () => { if (mainWin) { if (mainWin.isMinimized()) main
 if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'com.glowingpear.streammultiview' : process.execPath);
 
 app.whenReady().then(async () => {
+  guard.lockSession(session.defaultSession, wc => appContents(wc));
   sec = loadSec();
   loadYtKey();
   if (forgetList().length && sec.wiped !== true) await forgetLogins(forgetList());     // the app didn't get to wipe them last time
@@ -2099,7 +2159,7 @@ app.whenReady().then(async () => {
   setupGoogleSignin(session.fromPartition(PARTS.youtube));
   setupCapture();
   extensions.createHost({ electron: require('electron'), userData: app.getPath('userData'),
-    appWindows: () => [mainWin, streamsWin].filter(w => w && !w.isDestroyed()), rejectCookies: YT_REJECT_ALL });
+    appWindows: () => [mainWin, streamsWin].filter(w => w && !w.isDestroyed()), rejectCookies: YT_REJECT_ALL, ipc: { app: appIpc, main: mainIpc } });
   scheduleUpdates();
   buildMenu();
   createMain();

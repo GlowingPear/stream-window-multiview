@@ -7,8 +7,14 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 
-const API = process.env.SMV_UPDATE_API || 'https://api.github.com';
-const RAW = process.env.SMV_UPDATE_RAW || 'https://raw.githubusercontent.com';
+// Where updates come from. Tests and developer copies can point these at a stand-in (SMV_UPDATE_API / _RAW);
+// an installed copy always asks GitHub. defaultApp: run with `electron .`, not installed; no Electron: the unit tests.
+function endpoints({ electron = process.versions.electron, defaultApp = process.defaultApp, env = process.env } = {}) {
+  const may = !electron || !!defaultApp;
+  const api = (may && env.SMV_UPDATE_API) || 'https://api.github.com';
+  return { api, raw: (may && env.SMV_UPDATE_RAW) || 'https://raw.githubusercontent.com', standIn: api !== 'https://api.github.com' };
+}
+const { api: API, raw: RAW, standIn: STAND_IN } = endpoints();
 const REPO_RE = /^[A-Za-z0-9-]{1,39}\/[A-Za-z0-9._-]{1,100}$/;
 
 // "2.10.1" vs "2.9" -> 1 / 0 / -1
@@ -37,7 +43,7 @@ async function latestInfo(repo, fetchFn) {
         notes: String(d.body || '').slice(0, 4000), notesHtml: String(d.body_html || '').slice(0, 20000), name: d.name || d.tag_name, source: 'release',
         published: String(d.published_at || ''),
         page: d.html_url || `https://github.com/${repo}/releases/latest`,
-        assets: (Array.isArray(d.assets) ? d.assets : []).map(x => ({ name: String(x.name || ''), url: String(x.browser_download_url || ''), size: +x.size || 0 })).filter(x => /^https:\/\//.test(x.url) || /^http:\/\/127\.0\.0\.1/.test(x.url)) };
+        assets: (Array.isArray(d.assets) ? d.assets : []).map(x => ({ name: String(x.name || ''), url: String(x.browser_download_url || ''), size: +x.size || 0 })).filter(x => /^https:\/\//.test(x.url) || (STAND_IN && /^http:\/\/127\.0\.0\.1[:/]/.test(x.url))) };
     }
   } else if (r.status !== 404) throw new Error('http ' + r.status);
   // No releases: use the version in package.json on the default branch.
@@ -296,4 +302,4 @@ xattr -dr com.apple.quarantine "$app" 2>/dev/null
 `;
 }
 
-module.exports = { readBody, downloadTo, downloadBuffer, pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript, compareVersions, latestInfo, readZip, appFiles, applyUpdate, REPO_RE };
+module.exports = { endpoints, readBody, downloadTo, downloadBuffer, pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript, compareVersions, latestInfo, readZip, appFiles, applyUpdate, REPO_RE };

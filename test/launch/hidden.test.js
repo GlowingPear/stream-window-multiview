@@ -1,21 +1,24 @@
-// npm run test:launch:hidden: the app's windows are invisible and never take focus, while the tests can
-// still click and type in them. Linux can't make a window see-through (CI runs it under xvfb-run anyway).
+// npm run test:launch:hidden: the app's windows never go on the screen and never take focus, while the tests
+// can still click and type in them. Windows Electron opens itself are see-through (Linux can't do that; CI
+// runs it under xvfb-run anyway).
 const test = require('node:test');
-const { launchApp, assert, openChannel } = require('./app');
+const { launchApp, assert, openChannel, viewLoaded, inView } = require('./app');
 
 const T = { timeout: 90000 };
 const MAC = process.platform === 'darwin', SEE_THROUGH = process.platform !== 'linux';
 
-test('hidden: the windows are invisible and click-through, nothing takes focus, and the app still works', T, async () => {
+test('hidden: the windows stay off the screen, nothing takes focus, and the app still works (and draws)', T, async () => {
   const a = await launchApp({ hidden: true });
   try {
     const state = () => a.app.evaluate(({ BrowserWindow }) => {
       const w = BrowserWindow.getAllWindows().find(w => /index\.html$/.test(w.webContents.getURL()));
-      return { hidden: !!globalThis.__smvHidden, opacity: w.getOpacity(), focused: !!BrowserWindow.getFocusedWindow(), full: w.isFullScreen() };
+      return { hidden: !!globalThis.__smvHidden, shown: globalThis.__smvOnScreen(w), visible: w.isVisible(), opacity: w.getOpacity(), focused: !!BrowserWindow.getFocusedWindow(), full: w.isFullScreen() };
     });
     let s = await state();
     assert.equal(s.hidden, true, 'the hidden mode is loaded');
-    if (SEE_THROUGH) assert.equal(s.opacity, 0, 'but it is see-through');
+    if (MAC) assert.equal(s.shown, false, 'its window is not on the screen');
+    assert.equal(s.visible, true, 'but the app is told it is');
+    if (SEE_THROUGH) assert.equal(s.opacity, 0, 'and see-through, if it ever is');
     if (MAC) assert.equal(s.focused, false, 'and has no focus');
     assert.equal(await a.win.evaluate(() => document.visibilityState), 'visible', 'its page still counts as seen, so it draws');
 
@@ -26,12 +29,15 @@ test('hidden: the windows are invisible and click-through, nothing takes focus, 
     });
     await a.win.waitForTimeout(300);
     s = await state();
+    if (MAC) assert.equal(s.shown, false, 'still not on the screen');
     if (SEE_THROUGH) assert.equal(s.opacity, 0, 'still see-through');
     if (MAC) assert.equal(s.focused, false, 'still no focus');
     assert.equal(s.full, false, 'no fullscreen Space');
 
-    // a window it opens itself (and one made hidden, then shown) is see-through too
-    await a.win.evaluate(() => window.open('https://kick.com/someone', '_blank'));
+    // a window it opens itself (a site's pop-up, and one made hidden, then shown) is see-through too
+    await openChannel(a.win, 'alpha', 'chat');
+    await viewLoaded(a.win, 'alpha', 'chat', /chat/);
+    await inView(a.win, 'alpha', 'chat', () => { window.open('https://kick.com/someone', '_blank'); });
     await a.app.evaluate(({ BrowserWindow }) => { const w = new BrowserWindow({ show: false }); w.loadURL('about:blank'); w.show(); });
     let others = [];
     for (let i = 0; i < 50 && others.length < 2; i++) {     // they take a moment to open on a busy computer
@@ -46,8 +52,13 @@ test('hidden: the windows are invisible and click-through, nothing takes focus, 
     await a.app.evaluate(({ Notification }) => new Notification({ title: 'test', body: 'hidden' }).show());
 
     // the tests still click and type in it
-    await openChannel(a.win, 'alpha');
+    await openChannel(a.win, 'bravo', 'both');
     await a.win.waitForSelector('#stage .win.stream');
+    // and it keeps drawing (Playwright waits for a drawn frame before every click): a see-through window on the
+    // screen drew about once a second after a few seconds (a Mac, Electron 42 on)
+    await a.win.waitForTimeout(6000);
+    const frames = await a.win.evaluate(() => new Promise(r => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 < 1000) requestAnimationFrame(f); else r(n); }; requestAnimationFrame(f); }));
+    if (MAC) assert.ok(frames >= 20, `it draws (${frames} frames in a second)`);   // (Linux under xvfb draws a hidden window slowly either way; CI runs the other tests shown)
   } finally { await a.close(); }
 });
 

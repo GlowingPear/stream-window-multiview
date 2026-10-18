@@ -29,15 +29,15 @@
     "test:all": "npm test && npm run test:ui && npm run test:launch",
     "test:coverage": "node scripts/coverage.js",
     "test:coverage:hidden": "node scripts/coverage.js",
-    "test:setup": "npm install --no-save playwright@1.56.1 && npx playwright install chromium",
+    "test:setup": "npm install --no-save playwright@1.56.1 && npx playwright install chromium && node node_modules/electron/install.js",
     "visual-diff": "node scripts/visual-diff.js",
     "page-imports": "node scripts/page-imports.js",
-    "dist:win": "npx --yes electron-builder@25.1.8 --win --publish never",
-    "dist:mac": "npx --yes electron-builder@25.1.8 --mac --publish never",
+    "dist:win": "npx --yes electron-builder@26.15.3 --win --publish never",
+    "dist:mac": "npx --yes electron-builder@26.15.3 --mac --publish never",
     "grapevine:check": "grapevine-check"
   },
   "devDependencies": {
-    "electron": "^38.0.0"
+    "electron": "^44.9.0"
   },
   "build": {
     "appId": "com.glowingpear.streammultiview",
@@ -70,6 +70,14 @@
     ],
     "afterPack": "build/after-pack.js",
     "afterSign": "build/after-sign.js",
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
+    },
     "win": {
       "target": [
         {
@@ -120,8 +128,11 @@
     "publish": null
   },
   "dependencies": {
-    "@streamorchard/grapevine": "^0.8.0",
+    "@streamorchard/grapevine": "^0.9.0",
     "electron-chrome-extensions": "4.9.0",
     "electron-chrome-web-store": "0.13.0"
+  },
+  "overrides": {
+    "adm-zip": "^0.6.1"
   }
 }

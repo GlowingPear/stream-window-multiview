@@ -141,6 +141,13 @@ test('Its popup and its options page open from the window\'s menu, in that windo
     const o = webContents.getAllWebContents().find(w => /options\.html$/.test(w.getURL()));
     return o.session.storagePath || '';
   });
+  // it has no "cookies" permission: chrome.cookies gives it nothing, not the session's login
+  const cookies = await a.app.evaluate(async ({ webContents }) => {
+    const o = webContents.getAllWebContents().find(w => /options\.html$/.test(w.getURL()));
+    await o.session.cookies.set({ url: 'https://kick.com', name: 'session_token', value: 'secret', secure: true });
+    return o.executeJavaScript('chrome.cookies.getAll({}).then(l => JSON.stringify(l || []), () => "[]")');
+  });
+  assert.deepEqual(JSON.parse(cookies), []);
   await a.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter(w => /options\.html$/.test(w.webContents.getURL())).forEach(w => w.close()));
   assert.match(s, /kmv-stream-delta/, 'the stream\'s own session');
 });

@@ -152,9 +152,10 @@ function esRefresh(){
       box.innerHTML = `<div class="es-live-h"><b><i></i>Live now · ${live.length}</b><span class="es-gap"></span><button class="btn" data-all="open">Open all ${live.length}</button><button class="btn" data-all="focus">Open as Focus view</button></div>
         <div class="es-cards">${live.slice(0, 12).map(ch => {
           const i = infoFor(ch) || {}, prof = (svProf[ch] && svProf[ch].info) || {}, sub = [i.category, i.title].filter(Boolean).join(' · ');
-          return `<button class="es-lc" data-ch="${esc(ch)}" title="Open ${esc(chLabel(ch))}"><span class="es-av" style="--c:${svHue(ch)}">${esc(svInitials(chLabel(ch)))}${prof.avatar ? `<img alt="" referrerpolicy="no-referrer" src="${esc(prof.avatar)}" onerror="this.remove()">` : ''}</span>
+          return `<button class="es-lc" data-ch="${esc(ch)}" title="Open ${esc(chLabel(ch))}"><span class="es-av" style="--c:${svHue(ch)}">${esc(svInitials(chLabel(ch)))}${prof.avatar ? `<img alt="" referrerpolicy="no-referrer" src="${esc(prof.avatar)}">` : ''}</span>
             <span class="es-lt"><span class="es-ln">${platIcon(platOf(ch))}<span>${esc(chLabel(ch))}</span></span><span class="es-ls">${esc(sub)}</span></span>${i.viewers != null ? `<span class="es-lv">${fmtViewers(i.viewers)}</span>` : ''}</button>`;
         }).join('')}</div>`;
+      box.querySelectorAll('.es-av img').forEach(img => { img.onerror = () => img.remove(); });   // a picture that doesn't load: the initials
     } else if (!saved.length){
       box.innerHTML = `<div class="es-none">You haven’t saved any channels yet.${DESKTOP ? ' <button class="btn" data-imp-any>Import the channels you follow</button>' : ''}</div>`;
       const b = box.querySelector('[data-imp-any]'); if (b) b.onclick = () => pad.querySelector('.es-impbtn').click();

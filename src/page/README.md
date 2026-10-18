@@ -50,6 +50,8 @@ Don't call `window.kmv.on…` directly.
 
 **Timers.** A debounce is `const saveSoon = soon(() => save(), 600)`. A timer that belongs to a window is `winTimer(w, name, fn, ms)`, and closing the window stops it (`releaseWin` calls `stopWinTimers`). Both are in `shared/timers.js`.
 
+**No script in the markup.** The page has a Content-Security-Policy that only runs its own script files: no `<script>` with code in `index.html`, no `onclick="…"`, `onerror="…"` or `javascript:` in markup strings. Set handlers in code (`el.onerror = …`). The one plain script that has to run before the first paint is `page/boot.js`.
+
 **No system pop-ups.** Use `ask()` (`shared/ask.js`) and `flash()` (`shared/flash.js`), not `alert()`, `confirm()` or `prompt()`. See *No system pop-ups* in the main README.
 
 **For the tests.** What a test needs to call is put on `window` where it's defined, marked `// for the tests` (e.g. `window.openSettings = openSettings;`).

@@ -107,7 +107,7 @@ function checkAutoOpen(){
   opened.forEach(ch => liveNote(ch, null, true));
   if (alerts.live.popup !== false && !dndOn()) flash(`Opened ${opened.map(chLabel).join(', ')} (just went live)`, true);
 }
-function fmtViewers(n){ return n == null ? '' : n >= 1000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '') + 'K' : String(n); }
+function fmtViewers(n){ if (n == null) return ''; n = Number(n) || 0; return n >= 1000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '') + 'K' : String(n); }
 function updateSavedBadge(){
   const b = $('#savedBtn'); if (!b) return;
   const n = liveNow().length, badge = b.querySelector('.sv-badge');

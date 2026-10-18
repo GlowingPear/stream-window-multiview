@@ -83,25 +83,40 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 
 ---
 
-## Getting started
+## Install
 
-### Download (recommended)
-Get the latest installer from the [**Releases**](https://github.com/GlowingPear/stream-window-multiview/releases/latest) page:
+Download the installer for your computer from the [latest release](https://github.com/GlowingPear/stream-window-multiview/releases/latest), under **Assets**:
 
-| System | File | How |
-|---|---|---|
-| Windows 10/11 | `Stream-Multiview-Setup-<version>.exe` | Run it and follow the steps |
-| macOS (Intel and Apple Silicon) | `Stream-Multiview-<version>-mac.dmg` | Open it and drag the app into Applications |
+| Computer | File |
+|---|---|
+| **Windows** 10 or 11, 64-bit | `Stream-Multiview-Setup-<version>.exe` |
+| **Mac** (Apple silicon or Intel), macOS 13 or newer | `Stream-Multiview-<version>-mac.dmg` |
 
-The app isn't code-signed yet, so the first launch shows a warning:
-- **Windows** ("Windows protected your PC"): click **More info → Run anyway**.
-- **Mac** ("can't be opened" / "Apple could not verify"): open **System Settings → Privacy & Security** and click **Open Anyway**.
+Linux: run it from source (below).
 
-Installed copies update themselves from new releases: the app closes, updates and opens again. (On a Mac this needs the app in a folder you can write to, like Applications; otherwise it opens the new disk image to drag in.)
+The app is free, and it isn't signed with a paid Apple or Microsoft certificate yet, so your computer warns you the first time. That's expected:
+
+**Windows**
+1. Open the `.exe` you downloaded.
+2. If a blue *Windows protected your PC* box appears, click **More info**, then **Run anyway**.
+3. Follow the installer. Stream Multiview opens when it's done, and gets a Start menu and desktop shortcut.
+
+**Mac**
+1. Open the `.dmg` and drag **Stream Multiview** into **Applications**.
+2. Open Stream Multiview from Applications. macOS says it can't check it for malware: click **Done**.
+3. Open **System Settings › Privacy & Security**, scroll down to *"Stream Multiview" was blocked* and click **Open Anyway** (and again in the box that follows), then enter your password. You only do this once.
+4. If macOS asks to use *Stream Multiview Safe Storage* in your keychain (it can after an update), enter your password and click **Always Allow**. That key encrypts your saved logins.
+
+**Then:**
+1. Open **Channels** (top left, or press `N`), type a channel's name or paste a link, and press **Open** (see *Adding streams* below).
+2. To chat, log in to Kick, Twitch or YouTube with **Logins** in the toolbar. You log in once per site.
+
+Stream Multiview updates itself: Settings › Updates shows when there's a new version. Installing it closes the app, updates it and opens it again. (On a Mac this needs the app in a folder you can write to, like Applications; otherwise it opens the new disk image to drag in.)
 
 ### Run from source
-Requires [Node.js](https://nodejs.org/) (LTS).
-- **Windows:** double-click **`Start Stream Multiview.bat`** (first launch installs the engine, about a minute). Optional: **`Create Desktop Shortcut.bat`**.
+
+For Linux, or to work on the app. Needs [Node.js](https://nodejs.org) 22.12 or newer (24 recommended).
+- **Windows:** double-click **`Start Stream Multiview.bat`** (the first launch installs the app engine, about a minute). Optional: **`Create Desktop Shortcut.bat`**.
 - **macOS / Linux:** `./start-mac-linux.sh` (on a Mac the first time: right-click it › Open With › Terminal)
 - **Any platform:** `npm install` then `npm start`
 
@@ -165,6 +180,13 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 | `npm run test:coverage` | All of the above, recording which code they run. Prints how much of each file the tests run and writes `coverage/report.md` with the bigger functions no test runs. In CI (which runs it on every pull request and puts the report on the run's summary page) it fails if a file drops below its minimum in `test/coverage-min.json`; on your computer that's only a warning, because some code only runs on Linux, or on Node 22 or newer. | ~2 min |
 
 **No system pop-ups in the app's pages.** They ignore the theme, and on a Mac they sit above every app and take the keyboard, even from the launch tests' invisible windows. Dropdowns (`<select>`) open the app's own list by themselves (`src/page/shared/dropdown.js`). For questions and messages, use the app's own `ask()` (`src/page/shared/ask.js`) and `flash()` (`src/page/shared/flash.js`), not `alert()`, `confirm()` or `prompt()`. Also no `<datalist>`, date or time inputs, system menus (`Menu.popup`) or message boxes (`dialog.showMessageBox`). File pickers are the exception, and so are the colour pickers for now. `npm test` fails if one of these slips in (`test/unit/no-system-popups.test.js`).
+
+**What the app lets in** (`src/main/guard.js`, issue #45). The app shows pages from other sites and holds your logins, so:
+- A message handler for the page goes through `appIpc` (the main and streams windows), `mainIpc` (the main window only: anything that changes updates, logins, extensions or what the app trusts) or `switcherIpc`, never `ipcMain` directly: they only answer the app's own windows. Check every argument.
+- What pages may ask for (camera, notifications, opening other apps…) is refused unless it's in `guard.js`'s lists; add to them only what a feature needs.
+- Links go to the browser through `openExternal` in `main.js` (http and https only); a window with a login stays on the sites (`keepOnSites`).
+- The app's pages have a Content-Security-Policy: no `<script>` in the HTML and no `onclick="…"`-style attributes; code goes in files, handlers in code.
+- `SMV_` variables that point the app somewhere else only work in copies run from source.
 
 The tests are in `test/`. When you add a feature, add a test next to the similar ones. Coverage doesn't have to be 100%, but it can't go down: if `npm run test:coverage` says a file is below its minimum, test what you changed. When coverage goes up, raise the minimums in `test/coverage-min.json` to the numbers on the CI run's summary page.
 

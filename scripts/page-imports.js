@@ -199,9 +199,16 @@ function readyAtLoad(text, names, own, fromLeaf) {
   }
   return !/\)\s*\(|\]\s*\(/.test(text);
 }
+// The page's modules: every .js file except app.js, and except the plain scripts a page loads itself
+// (<script src="page/…"> without type="module", e.g. boot.js): they aren't modules, so they have no imports.
+function moduleFiles(dir = PAGE) {
+  const html = fs.readdirSync(path.join(dir, '..')).filter(f => f.endsWith('.html')).map(f => fs.readFileSync(path.join(dir, '..', f), 'utf8')).join('\n');
+  const plain = new Set([...html.matchAll(/<script(?![^>]*type="module")[^>]*src="page\/([^"]+)"/g)].map(m => m[1]));
+  return fs.readdirSync(dir, { recursive: true }).map(f => f.split(path.sep).join('/')).filter(f => f.endsWith('.js') && f !== 'app.js' && !plain.has(f)).sort();
+}
 // ['file:line: what'] for code at a module's top that should be in its init()
 function startupProblems(dir = PAGE) {
-  const files = fs.readdirSync(dir, { recursive: true }).map(f => f.split(path.sep).join('/')).filter(f => f.endsWith('.js') && f !== 'app.js').sort();
+  const files = moduleFiles(dir);
   // scripts a page loads itself (<script src="page/…">) run as they load, on purpose
   const html = fs.readdirSync(path.join(dir, '..')).filter(f => f.endsWith('.html')).map(f => fs.readFileSync(path.join(dir, '..', f), 'utf8')).join('\n');
   const own = f => [...html.matchAll(/<script[^>]*src="page\/([^"]+)"/g)].some(m => m[1] === f && f !== 'app.js');
@@ -236,7 +243,7 @@ function startupProblems(dir = PAGE) {
 
 // { file: new text } for the modules whose imports or exports aren't what their code needs, and notes to check.
 function plan(dir = PAGE) {
-  const files = fs.readdirSync(dir, { recursive: true }).map(f => f.split(path.sep).join('/')).filter(f => f.endsWith('.js') && f !== 'app.js').sort();
+  const files = moduleFiles(dir);
   const mods = Object.fromEntries(files.map(f => [f, readModule(path.join(dir, f))]));
   const declared = Object.fromEntries(files.map(f => [f, topLevelNames(mods[f].body)]));
   const owner = {}, ambiguous = new Set();     // a name several modules declare (each its own) is never imported
@@ -294,4 +301,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { localNames, plan, scan, startupProblems, topLevelNames };
+module.exports = { localNames, moduleFiles, plan, scan, startupProblems, topLevelNames };

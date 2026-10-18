@@ -1,8 +1,10 @@
 // "Copy my YouTube login from Firefox".
 // Google blocks signing in to YouTube inside apps like this one, and Chrome / Edge lock their logins
 // to the browser (they can't be copied). Firefox keeps its logins in a cookies.sqlite file in your
-// Firefox profile, so the app reads the YouTube / Google login straight from there:
-//   - only cookies for youtube.com and google.com are read (the database query asks for nothing else),
+// Firefox profile, so the app reads the YouTube login straight from there:
+//   - only what signing in to YouTube needs (the database query asks for nothing else): youtube.com's cookies,
+//     Google's sign-in page's (accounts.google.com) and the sign-in cookies YouTube checks on google.com.
+//     Google's others (search, other Google sites) stay in Firefox. (YouTube signs you out without the google.com ones.)
 //   - the database is read from a temporary copy (Firefox may have it open), deleted straight after,
 //   - nothing is written to your Downloads or anywhere else, and no browser extension is needed.
 const fs = require('fs');
@@ -10,6 +12,15 @@ const os = require('os');
 const path = require('path');
 
 const DOMAINS = ['youtube.com', 'google.com'];
+// google.com's sign-in cookies (SID, its secure copies, and the ones that keep it fresh)
+const GOOGLE_SIGNIN = /^(SID|HSID|SSID|APISID|SAPISID|SIDCC|__Secure-[13]P(SID|APISID|SIDTS|SIDCC))$/;
+// Is this cookie one the YouTube login needs? youtube.com's all, accounts.google.com's all, google.com's sign-in ones.
+function needed(c) {
+  const d = String(c.domain).toLowerCase();
+  if (/(^|\.)youtube\.com$/.test(d)) return true;
+  if (d === 'accounts.google.com') return true;
+  return d === '.google.com' && GOOGLE_SIGNIN.test(c.name);
+}
 const LOGIN_COOKIE = /^(SAPISID|__Secure-3PSID|LOGIN_INFO)$/;
 
 // Folders that can hold Firefox's profiles.ini, for this computer.
@@ -73,7 +84,7 @@ function findProfiles(roots = firefoxRoots()) {
 // Firefox's sameSite numbers -> the names Electron uses.
 const SAMESITE = { 0: 'no_restriction', 1: 'lax', 2: 'strict' };
 
-// The YouTube / Google cookies in one profile, in the form the app stores them.
+// The YouTube cookies in one profile, in the form the app stores them.
 function readYouTubeCookies(profileDir, { now = Date.now() / 1000 } = {}) {
   const { DatabaseSync } = require('node:sqlite');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-ff-'));
@@ -99,7 +110,7 @@ function readYouTubeCookies(profileDir, { now = Date.now() / 1000 } = {}) {
         name: String(r.name), value: String(r.value), secure: !!r.isSecure, httpOnly: !!r.isHttpOnly,
         expirationDate: exp > 0 ? Math.floor(exp) : undefined, sameSite: SAMESITE[r.sameSite] || 'unspecified'
       };
-    }).filter(c => !c.expirationDate || c.expirationDate > now);
+    }).filter(c => (!c.expirationDate || c.expirationDate > now) && needed(c));
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -127,4 +138,4 @@ function youtubeLoginFromFirefox({ roots } = {}) {
   return { cookies: found[0].cookies, profile: found[0].p.name };
 }
 
-module.exports = { firefoxRoots, parseProfilesIni, findProfiles, readYouTubeCookies, youtubeLoginFromFirefox, LOGIN_COOKIE };
+module.exports = { needed, firefoxRoots, parseProfilesIni, findProfiles, readYouTubeCookies, youtubeLoginFromFirefox, LOGIN_COOKIE };

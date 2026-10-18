@@ -10,7 +10,10 @@ function normCh(c) {
   if (/^yt:(v|c):/i.test(c)) return 'yt:' + c.slice(3, 5).toLowerCase() + c.slice(5);   // video / channel ids are case-sensitive
   return c.toLowerCase();
 }
+// (names an object already has, like __proto__, never: channels are keys in the saved lists)
+const OBJECT_NAMES = new Set(['__proto__', 'constructor', 'prototype', 'tostring', 'valueof', 'hasownproperty']);
 function validCh(c) {
+  if (OBJECT_NAMES.has(String(c).replace(/^(tw:|yt:@)/, ''))) return false;
   return SLUG_RE.test(c) || /^tw:[a-z0-9_]{1,25}$/.test(c) || /^yt:@[\w.\-]{1,100}$/.test(c) ||
          /^yt:c:UC[\w-]{10,40}$/.test(c) || /^yt:v:[\w-]{11}$/.test(c);
 }

@@ -52,6 +52,12 @@ test('switched off: no socket; on, Pear Drops connects; farming signs the Kick s
   assert.equal(await partition('stream'), 'persist:kick', 'Watch signed in');
   await a.win.evaluate(() => openSettings('apps'));
   await a.win.click('#caConnect');
+  // the first pairing waits for Allow on the card: who asks, and nothing pairs by itself
+  await until(async () => (await status()) === 'confirm', 15000);
+  assert.match(await a.win.textContent('#caPearDrops .ca-chip'), /^Asks to pair$/);
+  assert.match(await a.win.textContent('#caPearDrops .ca-line'), /^Pear Drops \(stand-in\) 0\.1\.6 asks to pair\. Allow it only if you just switched on Connect in Pear Drops\.$/);
+  assert.equal(await a.win.textContent('#caPearDrops .ca-act'), 'Allow');
+  await a.win.click('#caPearDrops .ca-act');
   await until(async () => (await status()) === 'connected', 15000);
   assert.ok(slugs().includes('stream-multiview'), 'on: it listens');
   assert.match(await a.win.textContent('#caPearDrops .ca-chip'), /^Connected · 0\.1\.6$/);

@@ -22,7 +22,14 @@ async function near(ch, want, what){
   assert.equal((await drawn(ch)).toFixed(2), want.toFixed(2), what);
 }
 const blown = () => a.win.evaluate(() => !!document.querySelector('#stage .win.chat.blown'));
-const clickIntoChat = () => a.win.evaluate(() => { const v = [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent === 'alpha').querySelector('webview'); v.blur(); v.focus(); });
+// a real click into alpha's chat page (from Electron 44 on, a <webview> has no focus event: the app hears the press)
+// (where it is once it has stopped moving: it slides back after being blown up)
+const clickIntoChat = async () => {
+  const at = () => a.win.evaluate(() => { const b = [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent === 'alpha').querySelector('webview').getBoundingClientRect(); return { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2) }; });
+  let p = await at();
+  for (let i = 0; i < 30; i++) { await a.win.waitForTimeout(100); const q = await at(); if (q.x === p.x && q.y === p.y) break; p = q; }
+  await a.win.mouse.click(p.x, p.y);
+};
 
 test('Blow up chat: clicking into a chat blows it up only with the switch on, and Esc in the chat puts it back', { timeout: 60000 }, async () => {
   await a.win.waitForFunction(() => document.querySelector('#stage .win.chat') && document.querySelector('#stage .win.chat webview'));

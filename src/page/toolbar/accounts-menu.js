@@ -294,7 +294,9 @@ function init(){
       if (!r || r.error){
         const sub = dlg.querySelector('.dlg-sub');
         if (r && r.error === 'login'){
-          sub.textContent = `You need to be logged in to ${PLAT_NAME[p]} in this app first.` + (p === 'youtube' ? ' YouTube sign-in currently only works through Firefox.' : '');
+          sub.textContent = p === 'youtube' && acct.youtube
+            ? 'YouTube has signed this app out. In Firefox, open youtube.com (choose your account if it asks), then copy your login again.'
+            : `You need to be logged in to ${PLAT_NAME[p]} in this app first.` + (p === 'youtube' ? ' YouTube sign-in currently only works through Firefox.' : '');
           list.innerHTML = `<div class="empty"><button class="btn imp-login">${p === 'youtube' ? 'Sign in to YouTube with Firefox' : 'Log in to ' + PLAT_NAME[p]}</button></div>`;
           list.querySelector('.imp-login').onclick = () => {
             closeImport();

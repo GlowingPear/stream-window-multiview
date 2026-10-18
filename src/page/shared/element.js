@@ -25,6 +25,6 @@ function element(tag, props, ...children){
 }
 
 // Text for markup that has to be a string (innerHTML of fixed markup with a value in it, a title="…")
-const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export { element, esc };

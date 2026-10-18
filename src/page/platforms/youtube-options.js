@@ -54,6 +54,8 @@ function ytTick(view, skip, answer){
     if (keep !== view){
       const back = () => { if (keep && keep !== document.body && keep.isConnected) keep.focus(); else view.blur(); };
       view.addEventListener('focus', back, { once: true });
+      // the view doesn't always say it took the keyboard (Electron 44): look again a few times
+      [50, 200, 500].forEach(ms => setTimeout(() => { if (document.activeElement === view) back(); }, ms));
       setTimeout(() => view.removeEventListener('focus', back), 1000);
     }
     view.skipAt = Date.now();                       // not you clicking into the stream (see mountView)
