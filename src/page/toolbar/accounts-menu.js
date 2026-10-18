@@ -9,7 +9,8 @@ import { esRefresh } from '../panels/empty-stage/empty-stage.js';
 import { showHelp } from '../panels/help/help.js';
 import { unfollowKick } from '../panels/profiles/profiles.js';
 import { openSettings } from '../panels/settings/settings.js';
-import { PLAT_NAME, checkMod, modOk, platOf, rememberNames, setWatchSignedIn, watchSignedIn } from '../platforms/platforms.js';
+import { applyLink, kickAuto, linkIcon } from '../platforms/pear-drops.js';
+import { PLAT_NAME, checkMod, modOk, platOf, rememberNames, setWatchSignedIn, streamSignedIn, watchSignedIn } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { esc } from '../shared/element.js';
 import { DESKTOP } from '../shared/env.js';
@@ -18,6 +19,7 @@ import { icon } from '../shared/icons.js';
 import { fromApp } from '../shared/incoming.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { placeMenu, showSpMenu } from './toolbar.js';
 import { popOutStreams, popoutVars, receiveChat, receiveStreams, streamsCameBack, updatePopBtn } from '../windows/popout.js';
 import { reloadPage } from '../windows/views.js';
@@ -44,6 +46,7 @@ function init(){
         row.classList.toggle('on', !!v);
       });
       if (window.kmv.accountsState) window.kmv.accountsState({ ...acct });    // the menu bar's Account menu follows
+      applyLink();                                                            // a linked Pear Drops on another Kick account isn't in the way
       if (!wins.length) esRefresh();                                         // the welcome screen's logins
     };
     const refreshAccount = async () => {
@@ -92,7 +95,7 @@ function init(){
     });
     fromApp('onAccountChanged', async info => {
       const p = info.platform || 'kick';
-      wins.forEach(w => { if ((w.kind === 'chat' || (w.kind === 'stream' && watchSignedIn[p])) && w.ready && platOf(w.channel) === p) reloadPage(w); });   // that platform's chats (and signed-in streams) pick up the new login
+      wins.forEach(w => { if ((w.kind === 'chat' || (w.kind === 'stream' && streamSignedIn(p))) && w.ready && platOf(w.channel) === p) reloadPage(w); });   // that platform's chats (and signed-in streams) pick up the new login
       modOk.clear(); wins.forEach(w => { if (platOf(w.channel) === p) checkMod(w); });
       if (info.loggedOut){ acct[p] = p === 'youtube' ? false : ''; showAccounts(); return; }
       await refreshAccount();
@@ -183,6 +186,18 @@ function init(){
     settings.onChange('watchSignedIn', () => {
       sa.querySelectorAll('.am-watch input').forEach(i => { i.checked = !!watchSignedIn[i.dataset.w]; });
     });
+    // While a linked Pear Drops sets Kick (Settings › Connected apps), Kick's box is a locked "Kick · Auto" chip
+    const autoChip = sa.querySelector('.am-auto'), autoNote = sa.querySelector('.am-auto-note');
+    autoChip.querySelector('.am-auto-lock').innerHTML = icon.lock;
+    const showKickAuto = () => {
+      const on = kickAuto();
+      sa.querySelector('.am-watch input[data-w=kick]').closest('label').hidden = on;
+      autoChip.hidden = autoNote.hidden = !on;
+      sa.querySelectorAll('.am-watch input').forEach(i => { i.checked = !!watchSignedIn[i.dataset.w]; });
+      if (on) linkIcon().then(src => { if (src) autoNote.querySelector('img').src = src; });
+    };
+    store.watch('link', showKickAuto);
+    showKickAuto();
 
     /* ---- Import follows: read the channels you follow (with your login) and pick which to save ---- */
     const dlg = $('#importDlg');

@@ -156,6 +156,7 @@ function openStreamsWindow(specs = []) {
     // Closing the streams window on its own sends its streams back to the main window.
     if (!quitting && mainWin) { mainWin.webContents.send('streams:returned', lastStreams); }
     lastStreams = [];
+    pearLink?.streamsClosed();   // its players are gone (Connected apps)
     if (!quitting) mainWin?.webContents.send('streams:state', false);
   });
   mainWin?.webContents.send('streams:state', true);
@@ -466,6 +467,35 @@ ipcMain.handle('streams:open', (_e, specs) => { openStreamsWindow(cleanSpecs(spe
 ipcMain.handle('streams:close', () => { streamsWin?.close(); });
 ipcMain.handle('streams:isOpen', () => !!streamsWin);
 ipcMain.on('streams:report', (_e, list) => { lastStreams = cleanSpecs(list); });
+
+/* ---------- Connected apps: the link with Pear Drops (link.js) ---------- */
+// Made the first time the page asks (after the app is ready, for safeStorage). The page sends its Connect
+// switch (the link.peardrops setting) at start and when it changes: this process can't read the page's settings.
+let pearLink;
+function getPearLink() {
+  if (pearLink !== undefined) return pearLink;
+  try {
+    const { createPearLink } = require('./link');
+    const appWins = () => [mainWin, streamsWin].filter(w => w && !w.isDestroyed());
+    pearLink = createPearLink({
+      version: app.getVersion(), userData: app.getPath('userData'), appData: app.getPath('appData'),
+      dev: !app.isPackaged && !!process.env.SMV_DEV_DATA, safeStorage,
+      send: st => appWins().forEach(w => w.webContents.send('link:state', st)),
+      log: (level, text) => { if (level !== 'info') console.warn('[grapevine]', text); }
+    });
+  } catch (e) { console.warn('Connected apps are unavailable:', e.message); pearLink = null; }   // e.g. its package not installed yet
+  return pearLink;
+}
+const fromStreams = e => !!streamsWin && e.sender === streamsWin.webContents;
+ipcMain.handle('link:set', (_e, on) => getPearLink()?.setOn(on) ?? null);
+ipcMain.handle('link:state', () => getPearLink()?.state() ?? null);
+ipcMain.handle('link:disconnect', () => getPearLink()?.disconnect() ?? null);
+ipcMain.handle('link:pair-again', () => getPearLink()?.pairAgain() ?? null);
+ipcMain.handle('link:icon', () => getPearLink()?.icon() ?? '');
+ipcMain.handle('link:show', () => getPearLink()?.showPearDrops() ?? { shown: false });
+ipcMain.handle('link:test', () => getPearLink()?.test() ?? { ok: false, reason: 'unknown', text: "Connected apps aren't available in this copy" });
+ipcMain.on('link:players', (e, report) => { try { getPearLink()?.playersReport(fromStreams(e) ? 'streams' : 'main', report); } catch (err) { console.warn('[grapevine]', err.message); } });
+app.on('before-quit', () => { pearLink?.stop(); });
 // A raid one window followed: the other window (main or streams pop-out) follows it too.
 ipcMain.on('raid:followed', (e, from, to) => {
   if (typeof from !== 'string' || typeof to !== 'string' || from.length > 120 || to.length > 120) return;

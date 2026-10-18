@@ -89,6 +89,7 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
 - Click the gear in the toolbar, or press Ctrl+, (Mac: ⌘,). It's also in the menu bar: on a Mac in the Stream Multiview menu, on Windows and Linux in File.
 - **General**: start new streams muted, snap windows while you drag, auto-pause hidden streams, and keyboard shortcuts on or off.
 - **Accounts**: logins, Import follows, "Forget my login" and "Watch signed in".
+- **Connected apps**: link with Pear Drops (see below).
 - **Notifications**: Do not disturb at the top, then three tabs. **Alerts**, for each kind (mentions, likely spam, a saved channel going live, raids, the app's own messages): a pop-up in the app, a desktop notification (never, when the app isn't in front, or always) and a sound. **Bell & pop-ups**: what the red number on the bell counts and where pop-ups show. **Desktop**: desktop notifications on or off for everything, and a test to check your computer lets them through.
 - **YouTube**: your YouTube login, skipping ads, YouTube's cookie question, liking streams automatically and the YouTube API key (see below).
 - **Mentions**: your Kick and Twitch usernames, other words that mean you (nicknames), and how a chat window gets your attention when someone mentions you (see Alerts below).
@@ -152,6 +153,16 @@ The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and
 - "Watch signed in" (Settings > Accounts): tick a site and its streams play with your login too, so you watch as your account instead of as a logged-out viewer. It's off at first and uses more memory. Open streams of that site restart when you change it. Without it, Twitch Turbo and YouTube Premium don't remove ads from the video.
 - The green lock means saved logins are encrypted on this computer and locked to your user account.
 - Mac: the first time a new version opens, macOS may ask if Stream Multiview can use "Stream Multiview Safe Storage" in your Keychain. Type your Mac password and click **Always Allow**. That's the key your saved logins are encrypted with; if you click Deny, the app can't read them and you'll have to log in again.
+
+## Connected apps (Pear Drops)
+- Pear Drops is a separate free app that collects your Kick emote and badge drops by watching with Kick's own player. Stream Multiview can link with it, on this computer only: nothing goes online.
+- Settings > Connected apps: switch on **Connect with Pear Drops**, and the same switch in Pear Drops. The first time, the two apps pair; after that they find each other whenever both are open. The card says how the link is: Connected, Waiting (Pear Drops isn't open, or its switch is off), Pair again, Can't connect (one of them needs updating) or Not installed (with a Download button).
+- Why: Kick credits drop watch time to one stream per account. A Kick stream here that plays signed in to the same account takes the credit away from Pear Drops.
+- **Sign Kick players out while Pear Drops is farming** (on by default): while Pear Drops farms, every Kick stream here plays signed out, and comes back signed in 5 minutes after it stops (it often waits a moment between streams, and every change restarts the players). Chats always stay signed in. If Pear Drops farms with a different Kick account than yours, nothing changes.
+- While this is on, Settings > Accounts shows Kick's "Watch signed in" as a locked **Kick · Auto** chip: Pear Drops sets it. Switching it off (or Connect, or Disconnect) gives back your own Kick choice.
+- **Show what Pear Drops is farming in the toolbar**: a chip next to Profiles with the channel and the drop's progress. Point at it for the next reward, every reward and when they unlock; click it to bring Pear Drops to the front.
+- **Test** checks the link right now and says how it went ("Pear Drops 0.1.6 answered in 2 ms", or why not). **Disconnect** unpairs the two apps and switches the link off.
+- Pear Drops is told whether the Kick players here are signed in, your Kick username and which Kick streams are open, so it can warn when they would take its credit. Never your login.
 
 ## Notifications (the bell)
 - The bell in the toolbar keeps everything the app tells you about: mentions, likely spam, saved channels going live, raids it followed, and the app's own messages ("Logged out of Twitch", "Saved layout", a saved emote, an update, a closed channel you can still undo).

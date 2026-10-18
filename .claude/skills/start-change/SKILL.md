@@ -7,6 +7,17 @@ description: Start a change to Stream Multiview (bug fix, feature, issue) - plan
 
 Every change goes on its own branch in its own worktree and ends as a pull request. Never commit to `main`.
 
+## 0. Check Grapevine knows what multiview's releases shipped
+
+```sh
+npm run grapevine:check
+```
+
+Never `npx grapevine-check`: without Grapevine installed, `npx` would fetch a package of that name from npm. It reads the `grapevine` field of `package.json` from every release tag and compares it with Grapevine's record.
+
+- If it lists releases, record them in Grapevine (its `app-shipped` skill): in a Grapevine checkout, run each command it printed (e.g. `npm run released -- com.glowingpear.streammultiview 0.4.0 players@1.0 drops.farming@1.0`), then open a pull request and a patch release there. Tell the developer if you can't.
+- Until a release is recorded, the capability versions it shipped could still be changed in place, and Pear Drops' card can't say which multiview release to update to.
+
 ## 1. What's the change?
 
 - If the request already has a description or an issue (`#12`, an issue URL), use it. Don't ask again.
