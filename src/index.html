@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Only the app's own scripts run here: no script in the page itself, none from anywhere else (pictures and video
+     from the sites, and the sites themselves in their web views, still load). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' data: blob:; font-src 'self' data:; frame-src https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Stream Multiview</title>
 <link rel="icon" href="icon.png">
-<!-- macOS: marked before the first paint, so the toolbar never shows without room for the traffic lights -->
-<script>if (window.kmv && window.kmv.platform === 'darwin' && window.kmv.setLights) document.documentElement.classList.add('mac-bar');</script>
 <!-- The page's look, by part of the app (src/page/). Later files win over earlier ones, so keep the order. -->
 <link rel="stylesheet" href="page/styles/base.css">
 <link rel="stylesheet" href="page/toolbar/toolbar.css">
@@ -49,11 +50,8 @@
 <link rel="stylesheet" href="page/toolbar/farming.css">
 <link rel="stylesheet" href="page/panels/updates/updates.css">
 <style id="themeVars"></style>
-<script>
-// Apply the saved colour theme before anything is drawn (no flash of the default colours).
-try { const t = JSON.parse(localStorage.getItem('kickMultiview.theme') || 'null');
-  if (t && t.vars) document.getElementById('themeVars').textContent = ':root{' + Object.entries(t.vars).filter(([k, v]) => /^--[a-z0-9-]+$/.test(k) && /^#[0-9a-f]{6}$/i.test(v)).map(([k, v]) => k + ':' + v).join(';') + (t.light ? ';color-scheme:light' : ';color-scheme:dark') + '}'; } catch (e) {}
-</script>
+<!-- before the first paint: the macOS toolbar's room for the traffic lights, and the saved colour theme -->
+<script src="page/boot.js"></script>
 </head>
 <body>
 <header>

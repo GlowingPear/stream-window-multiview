@@ -84,3 +84,15 @@ test('files checked out with \\r\\n line ends (git on Windows) are read the same
   put('b.js', "import { wins } from './a.js';\n\nfunction init(){ return wins; }\n\nexport { init };\n");
   assert.deepEqual(Object.keys(plan(dir).changes), [], 'nothing out of step');
 });
+
+test('a plain script a page loads itself (not a module) is left alone', () => {
+  const { moduleFiles } = require('../../../scripts/page-imports');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-imports-')), dir = path.join(root, 'page');
+  const put = (f, t) => { fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true }); fs.writeFileSync(path.join(root, f), t); };
+  put('page/app.js', ''); put('page/core.js', 'const icon = {};\n'); put('page/boot.js', 'const icon = 1;\n');
+  put('page/layout/own-window.js', 'let icon = {};\n'); put('page/shared/dropdown.js', '');
+  put('index.html', '<script src="page/boot.js"></script><script type="module" src="page/shared/dropdown.js"></script><script type="module" src="page/app.js"></script>');
+  put('other.html', '<script src="page/layout/own-window.js"></script>');
+  assert.deepEqual(moduleFiles(dir), ['core.js', 'shared/dropdown.js']);
+  assert.doesNotThrow(() => plan(dir), 'the scripts\' own names don\'t clash with the modules\'');
+});
