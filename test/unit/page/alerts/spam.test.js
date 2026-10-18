@@ -307,6 +307,24 @@ test('a slur or threat is flagged on its own, wherever it is in the message', ()
   assert.equal(abuse('skys the limit').slur, null, 'not inside other words');
 });
 
+test('insults and slurs count as plurals, swear words with any ending, and everyday words that only start like them are not abuse', () => {
+  for (const body of ['just pumpkin spiced', 'that ramen is spicy', 'add more spices', 'you are cocky', 'you dicking around', 'ur a cocker spaniel fan',
+    'a chink in the armour', 'pass me the fags', 'what a fag that was', 'walked along the dyke'])
+    assert.deepEqual(abuse(body), { insult: null, slur: null, swearOnly: false }, body);
+  assert.equal(abuse('dirty spics').slur, 'spics');
+  assert.equal(abuse('the niggaz').slur, 'niggaz');
+  assert.equal(abuse('ur all whores').insult, null, 'not aimed at one person');
+  assert.equal(abuse('you whores').insult, 'you whores');
+  assert.equal(abuse('you bitches').insult, 'you bitches');
+  // the slurs that are everyday words too count when they're aimed at someone
+  for (const body of ['ur a fag', 'you chink', 'your a dyke', 'you fags'])
+    assert.ok(abuse(body).insult, body);
+  assert.equal(score(msg('ur a fag'), { firstSeen: { 'alpha\nnewacct': T - 60_000 } }).abuse, true);
+  // swear words keep their endings
+  for (const body of ['fucking', 'fucker', 'pissed', 'shitty', 'fuckin shit'])
+    assert.equal(abuse(body).swearOnly, true, body);
+});
+
 test('swearing over and over: the third swear-only message in two minutes is flagged', () => {
   const recent = [before('fuck', 50_000), before('FUCK SHIT', 20_000)];
   const r = score(msg('fuuuck'), { recent });
