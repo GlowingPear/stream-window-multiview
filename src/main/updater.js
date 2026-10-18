@@ -35,6 +35,7 @@ async function latestInfo(repo, fetchFn) {
     if (d && d.tag_name && !d.draft) {
       return { version: String(d.tag_name).replace(/^v/i, ''), zip: d.zipball_url || `${API}/repos/${repo}/zipball/${encodeURIComponent(d.tag_name)}`,
         notes: String(d.body || '').slice(0, 4000), notesHtml: String(d.body_html || '').slice(0, 20000), name: d.name || d.tag_name, source: 'release',
+        published: String(d.published_at || ''),
         page: d.html_url || `https://github.com/${repo}/releases/latest`,
         assets: (Array.isArray(d.assets) ? d.assets : []).map(x => ({ name: String(x.name || ''), url: String(x.browser_download_url || ''), size: +x.size || 0 })).filter(x => /^https:\/\//.test(x.url) || /^http:\/\/127\.0\.0\.1/.test(x.url)) };
     }
@@ -47,8 +48,49 @@ async function latestInfo(repo, fetchFn) {
   r = await fetchFn(`${RAW}/${repo}/${encodeURIComponent(branch)}/package.json`, { headers: { 'User-Agent': HDRS['User-Agent'] } });
   if (!r.ok) throw new Error('http ' + r.status);
   const pkg = JSON.parse(await r.text());
-  return { version: String(pkg.version || '0'), zip: `${API}/repos/${repo}/zipball/${encodeURIComponent(branch)}`, notes: '', notesHtml: '', name: 'v' + pkg.version, source: 'branch',
+  return { version: String(pkg.version || '0'), zip: `${API}/repos/${repo}/zipball/${encodeURIComponent(branch)}`, notes: '', notesHtml: '', name: 'v' + pkg.version, source: 'branch', published: '',
     page: `https://github.com/${repo}/releases`, assets: [] };
+}
+
+// Read a download as it arrives: write(chunk) gets each piece (it can return a promise, e.g. to wait for the disk),
+// and onProgress({ progress, received, total }) hears how far it got: at the start, at most every `every` ms, and
+// at the end. progress is 0-1, or null (and total null) when the server doesn't say how big it is. -> bytes read
+async function readBody(r, write, onProgress, { every = 250, now = Date.now } = {}) {
+  const total = Math.max(0, parseInt(r.headers && r.headers.get('content-length'), 10) || 0) || null;
+  let received = 0, last = now();
+  const tell = () => { if (onProgress) onProgress({ progress: total ? Math.min(1, received / total) : null, received, total }); };
+  tell();
+  const reader = r.body.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.length;
+    await write(value);
+    if (now() - last >= every) { last = now(); tell(); }
+  }
+  tell();
+  return received;
+}
+const DL_HDRS = { 'User-Agent': 'Stream-Multiview-Updater' };
+// Save a download to disk without holding it all in memory (as file.part, renamed once it's complete). -> file
+async function downloadTo(url, file, { fetch: fetchFn, onProgress, every, now } = {}) {
+  const r = await fetchFn(url, { headers: DL_HDRS });
+  if (!r.ok || !r.body) throw new Error('download ' + r.status);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = file + '.part', out = fs.createWriteStream(tmp);
+  try {
+    await readBody(r, value => { if (!out.write(Buffer.from(value))) return new Promise(res => out.once('drain', res)); }, onProgress, { every, now });
+  } finally { await new Promise(res => out.end(res)); }
+  fs.renameSync(tmp, file);
+  return file;
+}
+// A download in memory (the source copy's zip), reporting progress like downloadTo. -> Buffer
+async function downloadBuffer(url, { fetch: fetchFn, onProgress, every, now } = {}) {
+  const r = await fetchFn(url, { headers: DL_HDRS });
+  if (!r.ok || !r.body) throw new Error('download ' + r.status);
+  const parts = [];
+  await readBody(r, value => { parts.push(Buffer.from(value)); }, onProgress, { every, now });
+  return Buffer.concat(parts);
 }
 
 // Minimal .zip reader (stored + deflate), enough for GitHub's source downloads.
@@ -254,4 +296,4 @@ xattr -dr com.apple.quarantine "$app" 2>/dev/null
 `;
 }
 
-module.exports = { pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript, compareVersions, latestInfo, readZip, appFiles, applyUpdate, REPO_RE };
+module.exports = { readBody, downloadTo, downloadBuffer, pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript, compareVersions, latestInfo, readZip, appFiles, applyUpdate, REPO_RE };

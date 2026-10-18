@@ -6,7 +6,7 @@ const os = require('os');
 const path = require('path');
 const zlib = require('zlib');
 const { execFile, execFileSync, spawn, spawnSync } = require('child_process');
-const { compareVersions, pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript,
+const { readBody, downloadTo, downloadBuffer, compareVersions, pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript,
   latestInfo, readZip, appFiles, applyUpdate, REPO_RE } = require('../../../src/main/updater');
 
 /* ---------- version numbers ---------- */
@@ -198,7 +198,7 @@ function fakeFetch(routes) {
 
 test('latestInfo reads the newest release and its installers', async () => {
   const f = fakeFetch([['/releases/latest', reply(200, {
-    tag_name: 'v0.2.11', name: 'v0.2.11', body: '- New thing', html_url: 'https://github.com/o/r/releases/tag/v0.2.11',
+    tag_name: 'v0.2.11', name: 'v0.2.11', body: '- New thing', published_at: '2026-10-18T12:00:00Z', html_url: 'https://github.com/o/r/releases/tag/v0.2.11',
     zipball_url: 'https://api.github.com/repos/o/r/zipball/v0.2.11',
     assets: [
       { name: 'Stream-Multiview-Setup-0.2.11.exe', browser_download_url: 'https://github.com/o/r/a.exe', size: 5 },
@@ -210,6 +210,7 @@ test('latestInfo reads the newest release and its installers', async () => {
   assert.equal(info.source, 'release');
   assert.equal(info.notes, '- New thing');
   assert.equal(info.page, 'https://github.com/o/r/releases/tag/v0.2.11');
+  assert.equal(info.published, '2026-10-18T12:00:00Z', 'when it came out, for the release card');
   assert.deepEqual(info.assets.map(a => a.name), ['Stream-Multiview-Setup-0.2.11.exe'], 'only https downloads are kept');
 });
 
@@ -239,6 +240,7 @@ test('latestInfo falls back to package.json on the main branch when there are no
   assert.equal(info.source, 'branch');
   assert.deepEqual(info.assets, []);
   assert.equal(info.notesHtml, '', 'no notes without a release');
+  assert.equal(info.published, '', 'and no date');
 });
 
 test('latestInfo reports a missing repository and rejects bad names', async () => {
@@ -247,6 +249,60 @@ test('latestInfo reports a missing repository and rejects bad names', async () =
   await assert.rejects(latestInfo('../../etc', fakeFetch([])), /repo/);
   await assert.rejects(latestInfo('o/r', fakeFetch([['/releases/latest', reply(500, {})]])), /http 500/);
   assert.ok(REPO_RE.test('GlowingPear/stream-window-multiview'));
+});
+
+/* ---------- downloading, with progress ---------- */
+// A download that arrives in pieces, with or without its size; the clock moves 100 ms per piece
+function download(pieces, { size = true, status = 200 } = {}) {
+  const body = new ReadableStream({ start(c) { pieces.forEach(p => c.enqueue(Buffer.from(p))); c.close(); } });
+  const len = pieces.reduce((n, p) => n + p.length, 0);
+  return new Response(status === 200 ? body : null, { status, headers: size ? { 'content-length': String(len) } : {} });
+}
+const clock = () => { let t = 0; return () => (t += 100); };
+
+test('readBody reports progress, received and total as a download arrives', async () => {
+  const seen = [], got = [];
+  const n = await readBody(download(['aaaa', 'bbbb', 'cc']), v => { got.push(Buffer.from(v).toString()); }, p => seen.push(p), { every: 0, now: clock() });
+  assert.equal(n, 10);
+  assert.deepEqual(got, ['aaaa', 'bbbb', 'cc']);
+  assert.deepEqual(seen[0], { progress: 0, received: 0, total: 10 }, 'it says 0% straight away');
+  assert.deepEqual(seen.at(-1), { progress: 1, received: 10, total: 10 }, 'and 100% at the end');
+  assert.deepEqual(seen.map(p => p.received), [0, 4, 8, 10, 10]);
+});
+
+test('readBody reports null progress when the download\'s size isn\'t known', async () => {
+  const seen = [];
+  await readBody(download(['aaaa', 'bb'], { size: false }), () => {}, p => seen.push(p), { every: 0, now: clock() });
+  assert.ok(seen.every(p => p.progress === null && p.total === null));
+  assert.equal(seen.at(-1).received, 6);
+});
+
+test('readBody tells at most every so often, and always at the start and the end', async () => {
+  const seen = [];
+  await readBody(download(['a', 'b', 'c', 'd', 'e', 'f']), () => {}, p => seen.push(p.received), { every: 250, now: clock() });
+  assert.deepEqual(seen, [0, 3, 6, 6], 'one in the middle (300 ms in), not one per piece');
+  assert.equal(await readBody(download(['a']), () => {}, null), 1, 'without a listener it just reads');
+});
+
+test('downloadTo saves the download (via a .part file) and reports its progress', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-dl-')), file = path.join(dir, 'sub', 'app.dmg');
+  const seen = [], asked = [];
+  const fetchFn = async (url, opt) => { asked.push([url, opt.headers['User-Agent']]); return download(['hello ', 'world']); };
+  assert.equal(await downloadTo('https://x/app.dmg', file, { fetch: fetchFn, onProgress: p => seen.push(p), every: 0, now: clock() }), file);
+  assert.equal(fs.readFileSync(file, 'utf8'), 'hello world');
+  assert.ok(!fs.existsSync(file + '.part'));
+  assert.deepEqual(asked, [['https://x/app.dmg', 'Stream-Multiview-Updater']]);
+  assert.deepEqual(seen.at(-1), { progress: 1, received: 11, total: 11 });
+  await assert.rejects(downloadTo('https://x/gone', file, { fetch: async () => download([], { status: 404 }) }), /download 404/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('downloadBuffer reads a download into memory, reporting its progress', async () => {
+  const seen = [];
+  const buf = await downloadBuffer('https://x/src.zip', { fetch: async () => download(['PK', '..']), onProgress: p => seen.push(p.progress), every: 0, now: clock() });
+  assert.equal(buf.toString(), 'PK..');
+  assert.deepEqual(seen, [0, 0.5, 1, 1]);
+  await assert.rejects(downloadBuffer('https://x/gone', { fetch: async () => download([], { status: 500 }) }), /download 500/);
 });
 
 /* ---------- reading the downloaded zip ---------- */

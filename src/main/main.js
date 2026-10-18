@@ -1830,7 +1830,7 @@ const isGitCopy = () => !app.isPackaged && fs.existsSync(path.join(APP_ROOT, '.g
 // Installed with the .exe / .dmg: updates come as the new installer. Run from the source folder: the files are replaced.
 const INSTALLED = app.isPackaged;
 const updStatus = () => ({ current: app.getVersion(), repo: upd.repo, auto: upd.auto, lastCheck: upd.lastCheck, git: isGitCopy(),
-  installed_app: INSTALLED, platform: process.platform, ...updState });
+  installed_app: INSTALLED, platform: process.platform, ...updState, ...(updState.state === 'downloading' ? updProgress : null) });
 const sendUpd = () => mainWin?.webContents.send('update:status', updStatus());
 const netFetch = (url, opt) => net.fetch(url, opt);
 async function checkForUpdate({ install = upd.auto, manual = false } = {}) {
@@ -1843,7 +1843,7 @@ async function checkForUpdate({ install = upd.auto, manual = false } = {}) {
     const ahead = updater.compareVersions(info.version, updState.installed || app.getVersion()) > 0;
     const inst = INSTALLED ? updater.pickInstaller(info.assets, process.platform) : null;
     const macZip = INSTALLED && process.platform === 'darwin' ? updater.pickMacZip(info.assets) : null;
-    updState = { ...updState, latest: info.version, notes: info.notes, notesHtml: info.notesHtml, zip: info.zip, page: info.page, asset: inst, macZip,
+    updState = { ...updState, latest: info.version, notes: info.notes, notesHtml: info.notesHtml, published: info.published, zip: info.zip, page: info.page, asset: inst, macZip,
       manual: INSTALLED && !inst,                       // no installer for this system in that release: download it from the page
       state: ahead ? 'available' : (updState.installed ? 'ready' : 'uptodate') };
     sendUpd();
@@ -1854,23 +1854,10 @@ async function checkForUpdate({ install = upd.auto, manual = false } = {}) {
   }
   return updStatus();
 }
-// Save a download to disk without holding it all in memory.
-async function downloadTo(url, file) {
-  const r = await net.fetch(url, { headers: { 'User-Agent': 'Stream-Multiview-Updater' } });
-  if (!r.ok || !r.body) throw new Error('download ' + r.status);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = file + '.part', out = fs.createWriteStream(tmp);
-  const reader = r.body.getReader();
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!out.write(Buffer.from(value))) await new Promise(res => out.once('drain', res));
-    }
-  } finally { await new Promise(res => out.end(res)); }
-  fs.renameSync(tmp, file);
-  return file;
-}
+// How far the download has got ({ progress, received, total }), sent to the page at most a few times a second
+let updProgress = null;
+const dlOpts = () => ({ fetch: netFetch, onProgress: p => { updProgress = p; sendUpd(); } });
+const downloadTo = (url, file) => updater.downloadTo(url, file, dlOpts());
 // Mac: can this copy replace itself? '' if so, otherwise why not (see updater.macSwapBlocker).
 const { execFile } = require('child_process');
 const runTool = (cmd, args) => new Promise((res, rej) => execFile(cmd, args, { maxBuffer: 1 << 20 }, (e, stdout, stderr) => e ? rej(e) : res(`${stdout}\n${stderr}`)));
@@ -1898,7 +1885,7 @@ async function downloadMacApp() {
 }
 async function installInstaller() {
   if (updState.manual || !updState.asset) { shell.openExternal(updState.page || `https://github.com/${upd.repo}/releases/latest`); return updStatus(); }
-  updState = { ...updState, state: 'downloading', error: '' }; sendUpd();
+  updProgress = null; updState = { ...updState, state: 'downloading', error: '' }; sendUpd();
   if (updState.macZip) {
     try {
       const swap = await downloadMacApp();
@@ -1947,11 +1934,9 @@ function runInstaller() {
 async function installUpdate() {
   if (INSTALLED) return installInstaller();
   if (!updState.zip || isGitCopy()) return updStatus();
-  updState = { ...updState, state: 'downloading', error: '' }; sendUpd();
+  updProgress = null; updState = { ...updState, state: 'downloading', error: '' }; sendUpd();
   try {
-    const r = await net.fetch(updState.zip, { headers: { 'User-Agent': 'Stream-Multiview-Updater' } });
-    if (!r.ok) throw new Error('download ' + r.status);
-    const buf = Buffer.from(await r.arrayBuffer());
+    const buf = await updater.downloadBuffer(updState.zip, dlOpts());
     const files = updater.appFiles(updater.readZip(buf));
     // A brand-new release may still carry the previous version number for a minute or two
     // (until the release workflow has stamped it): use the release's own version.
