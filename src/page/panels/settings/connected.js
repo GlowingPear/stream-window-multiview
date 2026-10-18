@@ -84,6 +84,7 @@ function renderCard(){
   const act = card.querySelector('.ca-act');
   act.hidden = !v.act; act.textContent = ACTS[v.act] || ''; act.dataset.act = v.act || '';
   act.classList.toggle('primary', v.act === 'download');
+  card.querySelector('.ca-activity').hidden = !on;
   const test = card.querySelector('.ca-test');
   test.hidden = !on;
   test.disabled = testing;
@@ -126,4 +127,4 @@ function init(){
   renderCard();
 }
 
-export { init };
+export { chipFor, init };

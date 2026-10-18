@@ -86,6 +86,8 @@ async function pairAgainLink(){
 }
 const linkIcon = () => (iconUrl ??= appCall('linkIcon') ? window.kmv.linkIcon().catch(() => '') : Promise.resolve(''));
 const showPearDrops = () => (appCall('linkShowPearDrops') ? window.kmv.linkShowPearDrops().catch(() => null) : Promise.resolve(null));
+// A page of the Activity log (src/main/activity.js): { entries, total, newer, problems, totals, minutes, … } or null.
+const linkActivity = opts => (appCall('linkActivity') ? window.kmv.linkActivity(opts).catch(() => null) : Promise.resolve(null));
 const testLink = () => (appCall('linkTest') ? window.kmv.linkTest().catch(() => null) : Promise.resolve(null))
   .then(r => (r && r.text ? r : { ok: false, reason: 'unknown', text: "Couldn't test the link" }));
 
@@ -111,5 +113,5 @@ function init(){
   settings.onChange(['link.peardrops', 'link.kickAuto', 'link.widget', 'accounts', 'account'], () => applyLink());   // changed in the other window
 }
 
-export { applyLink, backAt, disconnectLink, init, kickAuto, kickHold, kickOut, linkConnected, linkIcon, linkOn,
-  linkState, pairAgainLink, reportPlayers, setKickAuto, setLinkOn, showPearDrops, testLink };
+export { applyLink, backAt, disconnectLink, init, kickAuto, kickHold, kickOut, linkActivity, linkConnected, linkIcon,
+  linkOn, linkState, pairAgainLink, reportPlayers, setKickAuto, setLinkOn, showPearDrops, testLink };
