@@ -93,6 +93,9 @@ async function disconnectLink(){
   switchLink(() => settings.set('link.peardrops', false));
   gotLinkState(st);
 }
+async function allowLink(){
+  if (appCall('linkAllow')) gotLinkState(await window.kmv.linkAllow().catch(() => null));
+}
 async function pairAgainLink(){
   if (appCall('linkPairAgain')) gotLinkState(await window.kmv.linkPairAgain().catch(() => null));
 }
@@ -125,5 +128,6 @@ function init(){
   settings.onChange(['link.peardrops', 'link.kickAuto', 'link.widget', 'accounts', 'account'], () => applyLink());   // changed in the other window
 }
 
-export { applyLink, backAt, disconnectLink, init, kickAuto, kickHold, kickOut, linkActivity, linkConnected, linkIcon,
-  linkOn, linkState, pairAgainLink, reportPlayers, setKickAuto, setLinkOn, showPearDrops, testLink };
+export { allowLink, applyLink, backAt, disconnectLink, init, kickAuto, kickHold, kickOut, linkActivity,
+  linkConnected, linkIcon, linkOn, linkState, pairAgainLink, reportPlayers, setKickAuto, setLinkOn, showPearDrops,
+  testLink };

@@ -1,6 +1,6 @@
 import { $ } from '../../core.js';
-import { backAt, disconnectLink, kickAuto, kickOut, linkIcon, linkOn, linkState, pairAgainLink, setKickAuto,
-  setLinkOn, testLink } from '../../platforms/pear-drops.js';
+import { allowLink, backAt, disconnectLink, kickAuto, kickOut, linkIcon, linkOn, linkState, pairAgainLink,
+  setKickAuto, setLinkOn, testLink } from '../../platforms/pear-drops.js';
 import { watchSignedIn } from '../../platforms/platforms.js';
 import { effectiveSignedIn } from '../../platforms/players-link.js';
 import { element } from '../../shared/element.js';
@@ -20,6 +20,7 @@ const clock = ms => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minut
 function chipFor(peer){
   if (!peer || !peer.status) return { text: 'Off', tone: 'off' };
   if (peer.status === 'connected') return { text: 'Connected' + (peer.version ? ' · ' + peer.version : ''), tone: 'ok' };
+  if (peer.status === 'confirm') return { text: 'Asks to pair', tone: 'wait' };          // (it's running, whatever "installed" says)
   if (peer.installed === false) return { text: 'Not installed', tone: 'off' };
   if (peer.status === 'waiting') return { text: 'Waiting', tone: 'wait' };
   if (peer.status === 'pair-again') return { text: 'Pair again', tone: 'wait' };
@@ -27,10 +28,15 @@ function chipFor(peer){
   return { text: 'Off', tone: 'off' };
 }
 
-// The status line: { line: [text or elements], tone, act: 'disconnect' | 'pair' | 'download' | null, paired }.
+// The status line: { line: [text or elements], tone, act: 'disconnect' | 'pair' | 'allow' | 'download' | null, paired }.
 function lineFor(st, ctx){
   const peer = st && st.peer, farming = st && st.farming;
   if (!peer || !peer.status) return { line: [], tone: 'off', act: null };
+  // a first pairing waits for Allow here (another program could claim to be Pear Drops)
+  if (peer.status === 'confirm'){
+    const who = peer.asking ? [peer.asking.name, peer.asking.version].filter(Boolean).join(' ') : 'Pear Drops';
+    return { line: [element('b', null, who), ' asks to pair. Allow it only if you just switched on Connect in Pear Drops.'], tone: 'wait', act: 'allow' };
+  }
   if (peer.status !== 'connected' && peer.installed === false) return { line: ['Free for Windows, macOS and Linux.'], tone: 'off', act: 'download' };
   if (peer.status === 'connected'){
     const paired = peer.pairedAt ? 'Paired ' + pairedDay(peer.pairedAt) : '';
@@ -48,6 +54,7 @@ function lineFor(st, ctx){
     return { line: ["Pear Drops isn't farming · " + signed], tone: 'ok', act: 'disconnect', paired };
   }
   if (peer.status === 'waiting'){
+    if (peer.reason === 'confirm-there') return { line: ['Press ', element('b', null, 'Allow'), " in Pear Drops' Connected apps to pair."], tone: 'wait', act: null };
     if (peer.reason === 'switched-off') return { line: ['Pear Drops is open, but its own Connect switch is off.'], tone: 'wait', act: null };
     if (peer.reason === 'disconnected-there') return { line: ['Disconnected in Pear Drops. Switch it on there to link again.'], tone: 'wait', act: null };
     return { line: ["Pear Drops isn't open, or its Connect switch is off."], tone: 'wait', act: null };
@@ -60,7 +67,7 @@ function lineFor(st, ctx){
   return { line: [], tone: 'off', act: null };
 }
 
-const ACTS = { disconnect: 'Disconnect', pair: 'Pair again', download: 'Download' };
+const ACTS = { disconnect: 'Disconnect', pair: 'Pair again', allow: 'Allow', download: 'Download' };
 
 function renderCard(){
   if (!card) return;
@@ -83,7 +90,7 @@ function renderCard(){
   card.querySelector('.ca-paired').textContent = v.paired || '';
   const act = card.querySelector('.ca-act');
   act.hidden = !v.act; act.textContent = ACTS[v.act] || ''; act.dataset.act = v.act || '';
-  act.classList.toggle('primary', v.act === 'download');
+  act.classList.toggle('primary', v.act === 'download' || v.act === 'allow');
   card.querySelector('.ca-activity').hidden = !on;
   const test = card.querySelector('.ca-test');
   test.hidden = !on;
@@ -120,6 +127,7 @@ function init(){
     const act = e.currentTarget.dataset.act;
     if (act === 'disconnect') disconnectLink();
     else if (act === 'pair') pairAgainLink();
+    else if (act === 'allow') allowLink();
     else if (act === 'download') download();
   };
   linkIcon().then(src => { if (src) card.querySelector('.ca-logo').src = src; });

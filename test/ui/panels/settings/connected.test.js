@@ -19,6 +19,7 @@ const fakeApp = png => {
     linkState: ret,
     linkDisconnect: () => { log('disconnect'); window.linkNow.on = false; window.linkNow.peer.status = 'off'; window.linkNow.farming = null; return ret(); },
     linkPairAgain: () => { log('pair'); return ret(); },
+    linkAllow: () => { log('allow'); return ret(); },
     linkIcon: () => Promise.resolve(png),
     linkShowPearDrops: () => { log('show'); return Promise.resolve({ shown: true }); },
     linkTest: () => new Promise(r => { window.finishTest = r; }),
@@ -89,6 +90,9 @@ test('Connected apps: Pear Drops\' card, for each state of the link: its chip, o
     [{ status: 'waiting', reason: 'switched-off' }, 'Waiting', 'Pear Drops is open, but its own Connect switch is off.', null],
     [{ status: 'waiting', reason: 'disconnected-there' }, 'Waiting', 'Disconnected in Pear Drops. Switch it on there to link again.', null],
     [{ status: 'waiting', installed: false }, 'Not installed', 'Free for Windows, macOS and Linux.', 'Download'],
+    [{ status: 'confirm', asking: { name: 'Pear Drops', version: '0.1.9' }, installed: false }, 'Asks to pair', 'Pear Drops 0.1.9 asks to pair. Allow it only if you just switched on Connect in Pear Drops.', 'Allow'],
+    [{ status: 'confirm' }, 'Asks to pair', 'Pear Drops asks to pair. Allow it only if you just switched on Connect in Pear Drops.', 'Allow'],
+    [{ status: 'waiting', reason: 'confirm-there' }, 'Waiting', "Press Allow in Pear Drops' Connected apps to pair.", null],
     [{ status: 'pair-again', keyHeldBy: 'us' }, 'Pair again', "The pairing doesn't match Pear Drops' any more. Pair again to start afresh.", 'Pair again'],
     [{ status: 'pair-again', keyHeldBy: 'them' }, 'Pair again', "Press Pair again in Pear Drops' Connected apps.", null],
     [{ status: 'incompatible', report: { state: 'incompatible', text: "Can't connect: update Stream Multiview to 0.4.0 or later" } }, "Can't connect", "Can't connect: update Stream Multiview to 0.4.0 or later", null],
@@ -106,6 +110,13 @@ test('Connected apps: Pear Drops\' card, for each state of the link: its chip, o
   await push(page, { on: true, peer: peer({ status: 'pair-again', keyHeldBy: 'us', version: null }), farming: null, open: true });
   await page.click('#caPearDrops .ca-act');
   await page.waitForFunction(() => window.calls.some(c => c[0] === 'pair'));
+  // Allow: a green button; the name the asking app gives is only ever text
+  await push(page, { on: true, peer: peer({ status: 'confirm', version: null, asking: { name: '<img src=x onerror="window.pwned=1">', version: '1' } }), farming: null, open: true });
+  assert.ok(await page.$eval('#caPearDrops .ca-act', b => b.classList.contains('primary')), 'a green Allow');
+  assert.equal(await page.$('#caPearDrops img[src=x]'), null);
+  assert.equal(await page.evaluate(() => window.pwned), undefined);
+  await page.click('#caPearDrops .ca-act');
+  await page.waitForFunction(() => window.calls.some(c => c[0] === 'allow'));
   // fits without scrolling
   assert.ok(await page.$eval('#settingsDlg .st-body', b => b.scrollHeight <= b.clientHeight + 1), 'the tab fits');
 });

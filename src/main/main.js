@@ -538,6 +538,7 @@ mainIpc.handle('link:set', (_e, on) => getPearLink()?.setOn(on) ?? null);
 appIpc.handle('link:state', () => getPearLink()?.state() ?? null);
 mainIpc.handle('link:disconnect', () => getPearLink()?.disconnect() ?? null);
 mainIpc.handle('link:pair-again', () => getPearLink()?.pairAgain() ?? null);
+mainIpc.handle('link:allow', () => getPearLink()?.allowPairing() ?? null);
 appIpc.handle('link:icon', () => getPearLink()?.icon() ?? '');
 appIpc.handle('link:show', () => getPearLink()?.showPearDrops() ?? { shown: false });
 appIpc.handle('link:test', () => getPearLink()?.test() ?? { ok: false, reason: 'unknown', text: "Connected apps aren't available in this copy" });

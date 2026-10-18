@@ -77,6 +77,8 @@ function playersWords(p){
 function describeActivity(e){
   if (e.kind === 'status' || e.kind === 'note') return { title: e.kind === 'note' ? 'Noticed' : 'Link', kind: e.kind, text: e.text || '' };
   const d = e.data && typeof e.data === 'object' ? e.data : {}, mine = e.dir === 'out';
+  if (e.kind === 'error' && e.waitsForAllow)
+    return { title: e.method || 'Error', kind: 'error', text: mine ? 'Waits until you allow ' + PD + ' to pair' : PD + ' waits until you allow the pairing there' };
   if (e.kind === 'error') return { title: e.method || 'Error', kind: 'error', text: (d.message || 'Failed') + (Number.isInteger(d.code) ? ' (' + d.code + ')' : '') };
   const words = {
     'link.hello': { request: mine ? 'Said hello to ' + PD : PD + ' said hello', reply: mine ? 'Hello back to ' + PD : PD + ' said hello back' },
@@ -222,8 +224,11 @@ function actRow(e, now){
   if (!open) return head;
   const hidden = e.data === undefined;
   const { fields, more } = activityFields(e.data);
+  const why = e.truncated ? 'Not shown: it was over 16 KB.'
+    : /^link\.(hello|auth)$/.test(e.method || '') ? "Not shown: the hello and the pairing proof hold the pairing's secrets."
+      : 'Not shown: it came before the other app proved the pairing.';
   const body = hidden
-    ? element('p', 'act-hidden', "Not shown: the hello and the pairing proof hold the pairing's secrets.")
+    ? element('p', 'act-hidden', why)
     : element('dl', 'act-fields', fields.map(([k, v]) => element('div', null, element('dt', null, k), element('dd', { title: v.length > 80 ? v : null }, v.length > 80 ? v.slice(0, 80) + '…' : v))));
   const foot = element('div', 'act-detail-foot',
     element('span', null, [e.id != null ? 'id ' + e.id : '', more ? '+' + actPlural(more, 'more field') : ''].filter(Boolean).join(' · ')),

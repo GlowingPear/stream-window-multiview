@@ -98,6 +98,7 @@ contextBridge.exposeInMainWorld('kmv', {
   linkState: () => ipcRenderer.invoke('link:state'),
   linkDisconnect: () => ipcRenderer.invoke('link:disconnect'),
   linkPairAgain: () => ipcRenderer.invoke('link:pair-again'),
+  linkAllow: () => ipcRenderer.invoke('link:allow'),
   linkIcon: () => ipcRenderer.invoke('link:icon'),
   linkShowPearDrops: () => ipcRenderer.invoke('link:show'),
   linkTest: () => ipcRenderer.invoke('link:test'),

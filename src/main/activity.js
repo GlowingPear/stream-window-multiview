@@ -12,7 +12,8 @@ const PING = 'link.ping';
 const FILTER_NAMES = ['all', 'out', 'in', 'problems'];
 
 const blank = () => ({ sent: 0, received: 0, bytesOut: 0, bytesIn: 0, problems: 0, pings: 0, heard: null, since: null });
-const isProblem = e => e.kind === 'error' || e.tone === 'bad' || e.tone === 'warn';
+// (a first pairing waiting for Allow is answered with an error, but it's how pairing works, not a problem)
+const isProblem = e => (e.kind === 'error' && !e.waitsForAllow) || e.tone === 'bad' || e.tone === 'warn';
 const FILTERS = { all: () => true, out: e => e.dir === 'out', in: e => e.dir === 'in', problems: isProblem };
 
 // opts: max (entries kept), now (the clock, for the tests).
@@ -55,8 +56,8 @@ function createActivity({ max = MAX, now = Date.now } = {}) {
       return null;
     }
     if (app) count(app, m.at, m.dir === 'out' ? 'out' : 'in');
-    const { at, dir, kind, method = null, id, ms, bytes, data } = m;
-    return push({ at, app, dir, kind, method, id, ms, bytes, data });
+    const { at, dir, kind, method = null, id, ms, bytes, data, truncated, waitsForAllow } = m;
+    return push({ at, app, dir, kind, method, id, ms, bytes, data, ...(truncated ? { truncated: true } : {}), ...(waitsForAllow ? { waitsForAllow: true } : {}) });
   }
 
   // The link to an app ended: its heartbeat starts again with the next connection.
