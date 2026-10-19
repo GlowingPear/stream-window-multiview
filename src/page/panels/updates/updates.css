@@ -22,8 +22,10 @@
 .upd-badge.b-alert{background:var(--danger);color:#fff}
 .upd-badge.b-lock{color:var(--muted)}
 .upd-badge .spin{width:13px;height:13px}
-.upd-badge.b-drop svg{animation:upd-drop 1.2s ease-in infinite}
-@keyframes upd-drop{0%{transform:translateY(-120%);opacity:0}30%{opacity:1}70%{transform:translateY(0);opacity:1}100%{transform:translateY(0);opacity:0}}
+/* downloading: an arrow that keeps dropping in, as into a tray (the line stays still; also on the toolbar's chip) */
+.dl-arrow{display:inline-grid;place-items:center;overflow:hidden;border-bottom:1.5px solid currentColor;border-radius:1px}
+.dl-arrow svg{animation:dl-drop 1.2s cubic-bezier(.5,0,.6,1) infinite}
+@keyframes dl-drop{0%{transform:translateY(-110%);opacity:0}25%{opacity:1}70%{transform:translateY(0);opacity:1}100%{transform:translateY(0);opacity:0}}
 .upd-main{min-width:0;display:flex;flex-direction:column;gap:5px}
 .upd-title{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
 .upd-title b{font-size:20px;font-weight:800;letter-spacing:-.01em}
@@ -145,6 +147,6 @@ body.bar-left.bar-icons header .upd-chip{justify-content:center;padding:0;border
 
 /* nothing moves for those who'd rather it didn't */
 @media (prefers-reduced-motion:reduce){
-  .upd-badge .spin,.upd-badge.b-drop svg{animation:none}
+  .upd-badge .spin,.dl-arrow svg{animation:none}
   .upd-prog.ind .upd-bar i{animation:none;left:0;width:100%;opacity:.45}
 }
