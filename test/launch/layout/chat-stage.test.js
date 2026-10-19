@@ -78,16 +78,22 @@ const fillChat = ch => inView(a.win, ch, 'chat', () => {
   c.scrollTop = c.scrollHeight;
 });
 const fromBottom = ch => inView(a.win, ch, 'chat', () => { const c = document.getElementById('chat'); return Math.round(c.scrollHeight - c.clientHeight - c.scrollTop); });
+// Messages come in while it's out of sight, and the site doesn't keep it at the bottom (Kick and Twitch stop when their
+// chat can't be seen). How far above it that leaves the chat is read in the same step: the chat's own script puts a chat
+// back at the bottom on a timer (in-site/stick-bottom.js)
+const addWhileHidden = ch => inView(a.win, ch, 'chat', () => {
+  const c = document.getElementById('chat');
+  for (let i = 0; i < 25; i++) { const d = document.createElement('div'); d.className = 'row'; d.textContent = 'while hidden ' + i; c.appendChild(d); }
+  return Math.round(c.scrollHeight - c.clientHeight - c.scrollTop);
+});
 
 test('Chat Stage: a chat put on the stage shows its newest messages, even ones that came while it was out of sight', { timeout: 60000 }, async () => {
   await a.win.click('#layoutBtn'); await a.win.click('#layoutMenu button[data-l=stage]');
   await a.win.waitForSelector('#stage .win.stg-thumb .stg-pick');
   const off = await a.win.$eval('#stage .win.stg-thumb .title', e => e.textContent);
   await fillChat(off);
-  assert.equal(await fromBottom(off), 0, 'at the bottom while out of sight');
-  // messages come in while it's out of sight, and the site doesn't keep it at the bottom (Kick and Twitch stop when their chat can't be seen)
-  await inView(a.win, off, 'chat', () => { const c = document.getElementById('chat'); for (let i = 0; i < 25; i++) { const d = document.createElement('div'); d.className = 'row'; d.textContent = 'while hidden ' + i; c.appendChild(d); } });
-  assert.ok(await fromBottom(off) > 100, 'left behind');
+  assert.ok(await fromBottom(off) <= 2, 'at the bottom while out of sight');
+  assert.ok(await addWhileHidden(off) > 100, 'left behind');
   await a.win.click('#stage .win.stg-thumb .stg-pick');      // on the stage: its chat drawn bigger
   await a.win.waitForFunction(ch => document.querySelector('#stage .win.stg-chat .title')?.textContent === ch, off);
   for (let i = 0; i < 30 && await fromBottom(off) > 2; i++) await new Promise(r => setTimeout(r, 100));
