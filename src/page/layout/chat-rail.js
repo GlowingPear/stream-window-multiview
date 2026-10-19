@@ -1,4 +1,5 @@
 import { clearNew, newCount } from '../chat/new-messages.js';
+import { toNewest } from '../chat/stick-bottom.js';
 import { GAP, ROLE, colsMode, coreVars, lastLayout, stage, wins } from '../core.js';
 import { SH, SW } from './geometry.js';
 import { applyRects, featuredCh, inColOrder, layoutChatsOnly, rowRects, setColsMode, sortedChats, tile, vidLabel } from './layouts.js';
@@ -17,7 +18,7 @@ import { setViewScale } from '../windows/view.js';
 const RAIL_SIZES = [1, 1.15, 1.3, 1.5, 1.75, 2];   // the rail chat, times the size of the other chats
 const RAIL_W = 440, RAIL_MAX = 0.4, TABS_H = 38;
 let railCh = null, railIdx = 2;
-let tabsEl = null, alertObs = null;
+let tabsEl = null, alertObs = null, lastRailChat = null;
 
 const isRail = () => ROLE === 'main' && !colsMode && lastLayout === 'rail';
 const railChatOf = () => wins.find(w => w.kind === 'chat' && w.el.classList.contains('rl-chat')) || null;
@@ -67,6 +68,7 @@ function showRailLook(chat, chats, r){
     else addShow(w);
   });
   clearNew(chat);                                            // in the rail: read
+  if (chat !== lastRailChat){ lastRailChat = chat; toNewest(chat); }     // switched to: its newest messages
   Object.assign(tabsEl.style, { display: 'flex', left: r.tabs.x + 'px', top: r.tabs.y + 'px', width: r.tabs.w + 'px', height: r.tabs.h + 'px' });
   renderTabs(chats, chat);
   watchAlerts();
@@ -74,6 +76,7 @@ function showRailLook(chat, chats, r){
 function clearRailLook(){
   if (!document.body.classList.contains('chatrail')) return;
   document.body.classList.remove('chatrail');
+  lastRailChat = null;
   const chat = railChatOf();
   wins.forEach(w => { w.el.classList.remove('rl-chat', 'rl-off', 'rl-shown'); w.el.querySelector('.rl-show')?.remove(); });
   // (going to Chat Stage, the chat there has its own size already)

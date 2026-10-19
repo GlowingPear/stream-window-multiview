@@ -50,6 +50,9 @@ const kick = {
   // Its chat box's empty text (Settings > Chat > Channel name in chat boxes, in-site/chat-name.js): the box, the
   // element showing the text, the box's attributes with the same text, and the site's usual text (only that one
   // changes: a box that says something else, like followers-only or slow mode, says why you can't chat).
+  // Its chat's message list and its own "back to the newest messages" button (in-site/stick-bottom.js keeps the chat at
+  // its newest messages; with no list here it uses the biggest box that scrolls).
+  chatScroll: { list: '#chatroom-messages', resume: null },   // scrolling down is enough: Kick follows again by itself
   chatBox: { box: '[data-testid="chat-input"]', hint: '[data-testid="chat-input"] ~ div', attrs: [], says: '^send a message$' },
   // A raid: the channel a stream or chat window's new address (a URL) is for, or null when it isn't a channel's
   // player, chat or page.

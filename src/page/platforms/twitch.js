@@ -37,6 +37,9 @@ const twitch = {
   // Its chat box's empty text (Settings > Chat > Channel name in chat boxes, in-site/chat-name.js): the box, the
   // element showing the text, the box's attributes with the same text, and the site's usual text (only that one
   // changes: a box that says something else, like followers-only or slow mode, says why you can't chat).
+  // Its chat's message list and its own "back to the newest messages" button (in-site/stick-bottom.js keeps the chat at
+  // its newest messages; with no list here it uses the biggest box that scrolls).
+  chatScroll: { list: '[data-a-target="chat-scroller"] .simplebar-scroll-content', resume: '.chat-paused-footer button, [data-a-target="chat-paused-footer"] button' },
   chatBox: { box: '[data-a-target="chat-input"]', hint: '.chat-wysiwyg-input__placeholder', attrs: ['aria-label', 'data-placeholder'], says: '^send a message$' },
   raidTarget(kind, u){
     const host = u.hostname.replace(/^(www|m)\./, ''), parts = u.pathname.split('/').filter(Boolean);
