@@ -220,6 +220,8 @@ Pull requests follow the template in `.github/pull_request_template.md`. For any
 2. **Choose a tag:** type the new version, e.g. `v0.2.11`, and pick *Create new tag on publish*, target **main**. While in beta, raise the last number for each update (`v0.2.10` → `v0.2.11`); raise the middle one only for a big milestone (`v0.3.0`). `v1.0.0` is the first finished release.
 3. Click **Generate release notes** (lists the merged pull requests), tidy them if you like, and **Publish release** (leave "pre-release" unticked).
 
+Dependabot opens weekly pull requests for the npm packages and the GitHub Actions (`.github/dependabot.yml`). Patch and minor updates, and new major versions of Actions, merge themselves once the required checks pass (`.github/workflows/dependabot-automerge.yml`); other majors, and Grapevine past a patch, wait for review. Generated release notes leave them out (`.github/release.yml`).
+
 The **Build installers** workflow then sets the version from the tag, adds the notes to `CHANGELOG.md`, commits that to `main`, builds the installers and attaches them to the release. Everyone's app updates itself from there: installed copies download the new installer, copies run from source download the new files.
 
 Notes:
