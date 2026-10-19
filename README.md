@@ -57,7 +57,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - Extensions can read and change the pages they're on, including while you're signed in, so only install ones you trust
 
 **Connected apps**
-- Links with [**Pear Drops**](https://github.com/Stream-Orchard/pear-drops), which collects your Kick drops, through [Grapevine](https://github.com/Stream-Orchard/grapevine). Switch it on in Settings › Connected apps, in both apps
+- Links with [**Pear Drops**](https://github.com/StreamOrchard/pear-drops), which collects your Kick drops, through [Grapevine](https://github.com/StreamOrchard/grapevine). Switch it on in Settings › Connected apps, in both apps
 - Kick credits drop watch time to one stream per account, so while Pear Drops farms, Kick stream players here sign out (chats stay signed in) and sign back in 5 minutes after it stops
 - Pear Drops is told whether the Kick players are signed in, so it can say when they're taking its credit
 - Optional: what Pear Drops is farming in the toolbar, with the drop's progress and rewards; click it to open Pear Drops
