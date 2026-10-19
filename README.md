@@ -1,4 +1,4 @@
-<p align="center"><img src=".github/assets/hero.jpg" alt="Stream Multiview: Kick, Twitch and YouTube streams and chats side by side" width="100%"></p>
+<p align="center"><img src=".github/assets/hero.svg" alt="Stream Multiview: Kick, Twitch and YouTube streams and chats side by side, moving between the Focus view, Tile and Columns layouts" width="100%"></p>
 
 # 🍐 Stream Multiview
 
@@ -258,7 +258,7 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 | `scripts/dev.js`, `scripts/worktree.js`, `scripts/dev-tools.js` | `npm run dev` and `npm run worktree` for developers |
 | `.claude/skills/`, `CLAUDE.md` | Claude Code skills for making a change, running and driving the app, and opening a pull request; what Claude Code reads first in this repository |
 | `.github/pull_request_template.md` | What a pull request description should cover |
-| `.github/assets/` | The README's hero image (`hero.jpg`) and the page it's drawn from (`hero.html`) |
+| `.github/assets/` | The README's animated hero image (`hero.svg`), drawn by `scripts/build.py` in [StreamOrchard/.github](https://github.com/StreamOrchard/.github) |
 | `test/` | Quick tests (`unit/`), UI tests (`ui/`) and the desktop-app launch test (`launch/`) |
 | `.github/workflows/build.yml` | On each release: stamps the version and changelog, runs the quick tests, builds the .exe and .dmg installers, attaches them |
 | `.github/workflows/test.yml` | Runs the tests on every pull request and every change to `main` |
