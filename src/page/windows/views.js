@@ -2,6 +2,7 @@ import { clearAlert } from '../alerts/alerts.js';
 import { blowOn, blowUp, blownWin } from '../chat/blow-up.js';
 import { syncChatName } from '../chat/chat-name.js';
 import { chatZoom } from '../chat/chat-zoom.js';
+import { startStick } from '../chat/stick-bottom.js';
 import { autoTrFor } from '../chat/translate.js';
 import { resolveYt } from '../chat/view-menu.js';
 import { ROLE, wins } from '../core.js';
@@ -115,6 +116,7 @@ function mountView(w){
       if (w.kind === 'chat') runIn(frame, `${TRANSLATE_JS};${autoTrFor(w.channel) ? 'window.__kmvTr.start(true)' : ''}`);
       if (w.kind === 'chat' && platform(w.channel).pageCommands) runIn(frame, KICK_CMD_JS);
       if (w.kind === 'chat') syncChatName(w);                // Channel name in chat boxes (chat/chat-name.js)
+      if (w.kind === 'chat') startStick(w);                  // stays at its newest messages (chat/stick-bottom.js)
       applyChatView(w);
     });
   }

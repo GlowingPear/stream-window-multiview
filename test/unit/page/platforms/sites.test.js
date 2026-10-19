@@ -137,3 +137,12 @@ test('each site says where its chat box\'s empty text is, and only its usual tex
   assert.ok(!says(youtube).test('Chatxyz'), 'the dots are dots');
   assert.deepEqual(twitch.chatBox.attrs, ['aria-label', 'data-placeholder'], 'Twitch also says it to screen readers');
 });
+
+test("each site says where its chat's messages scroll, and which of its buttons goes back to the newest (if it needs one)", () => {
+  for (const p of [kick, twitch, youtube]) {
+    assert.deepEqual(Object.keys(p.chatScroll).sort(), ['list', 'resume'], p.id);
+    assert.ok(typeof p.chatScroll.list === 'string' && (p.chatScroll.resume === null || typeof p.chatScroll.resume === 'string'), p.id);
+    assert.doesNotThrow(() => JSON.parse(JSON.stringify(p.chatScroll)), "it goes into the site's page as text");
+  }
+  assert.equal(kick.chatScroll.resume, null, 'Kick follows again once scrolled down');
+});

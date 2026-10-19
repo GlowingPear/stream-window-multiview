@@ -1,4 +1,5 @@
 import { clearNew, newCount } from '../chat/new-messages.js';
+import { toNewest } from '../chat/stick-bottom.js';
 import { BAR, GAP, ROLE, colsMode, coreVars, lastLayout, stage, wins } from '../core.js';
 import { SH, SW, setRect } from './geometry.js';
 import { applyRects, colKey, featuredCh, inColOrder, layoutChatsOnly, setColsMode, sortedChats, tile, vidByKey,
@@ -18,7 +19,7 @@ import { setViewScale } from '../windows/view.js';
 const STAGE_SIZES = [1, 1.15, 1.3, 1.5, 1.75, 2];   // the stage chat, times the size of the other chats
 const SPLIT_MIN = 0.22, SPLIT_MAX = 0.6, CHAT_MIN = 300, THUMB_MIN = 170;
 let stageKey = null, stageSplit = 0.36, stageIdx = 2;
-let splitEl = null, alertObs = null, splitting = false;
+let splitEl = null, alertObs = null, splitting = false, lastStageChat = null;
 // Place windows: gliding there, except while you drag the split (they follow the pointer, so a glide still
 // running from just before stops)
 const place = (list, rects) => splitting
@@ -86,12 +87,14 @@ function showStageLook(on, chat, others, r){
     if (w.kind === 'chat') setViewScale(w.view, w === chat ? STAGE_SIZES[stageIdx] : 1);   // (this chat only: the site's zoom is shared)
   });
   clearNew(chat);                                            // on the stage: read
+  if (chat !== lastStageChat){ lastStageChat = chat; toNewest(chat); }   // switched to: its newest messages
   Object.assign(splitEl.style, { display: 'block', left: (GAP / 2 + r.lw - 4) + 'px' });
   watchAlerts();
 }
 function clearStageLook(){
   if (!document.body.classList.contains('chatstage')) return;
   document.body.classList.remove('chatstage');
+  lastStageChat = null;
   const chat = stageChatOf();
   wins.forEach(w => { w.el.classList.remove('stg-on', 'stg-chat', 'stg-off', 'stg-thumb'); dropPick(w); dropSize(w); });
   if (chat) setViewScale(chat.view, 1);

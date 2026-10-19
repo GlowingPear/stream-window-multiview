@@ -76,6 +76,9 @@ const youtube = {
   // element showing the text, the box's attributes with the same text, and the site's usual text (only that one
   // changes: a box that says something else, like followers-only or slow mode, says why you can't chat).
   // (Signed out there's no box, only "Sign in to chat".)
+  // Its chat's message list and its own "back to the newest messages" button (in-site/stick-bottom.js keeps the chat at
+  // its newest messages; with no list here it uses the biggest box that scrolls).
+  chatScroll: { list: 'yt-live-chat-item-list-renderer #item-scroller', resume: 'yt-live-chat-item-list-renderer #show-more' },
   chatBox: { box: 'yt-live-chat-text-input-field-renderer #input', hint: 'yt-live-chat-text-input-field-renderer #label', attrs: ['aria-label'], says: '^(chat|say something)(\u2026|\\.\\.\\.)?$' },
   stuckJs: null,   // a stream that comes back is a new video, which resolveYt finds (see kick.js)
   // For its stream windows: the watch page trimmed to the player

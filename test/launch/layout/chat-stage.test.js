@@ -68,3 +68,46 @@ test('Chat Stage: the strip shows how many new messages a chat out of sight has 
   await say(onStage, 'glowmoth', 'on the stage: you can see it');
   await a.win.waitForFunction(() => document.querySelector('#stage .win.stg-thumb .stg-pick.new .stg-n')?.textContent === '2', null, { timeout: 15000 });
 });
+
+// A chat like the sites': its messages in a box of their own that scrolls, filled and scrolled to the newest
+const fillChat = ch => inView(a.win, ch, 'chat', () => {
+  const c = document.getElementById('chat');
+  Object.assign(c.style, { height: '100vh', overflowY: 'auto', boxSizing: 'border-box' });
+  document.body.style.margin = '0';
+  for (let i = 0; i < 150; i++) { const d = document.createElement('div'); d.className = 'row'; d.textContent = 'message ' + i; c.appendChild(d); }
+  c.scrollTop = c.scrollHeight;
+});
+const fromBottom = ch => inView(a.win, ch, 'chat', () => { const c = document.getElementById('chat'); return Math.round(c.scrollHeight - c.clientHeight - c.scrollTop); });
+// Messages come in while it's out of sight, and the site doesn't keep it at the bottom (Kick and Twitch stop when their
+// chat can't be seen). How far above it that leaves the chat is read in the same step: the chat's own script puts a chat
+// back at the bottom on a timer (in-site/stick-bottom.js)
+const addWhileHidden = ch => inView(a.win, ch, 'chat', () => {
+  const c = document.getElementById('chat');
+  for (let i = 0; i < 25; i++) { const d = document.createElement('div'); d.className = 'row'; d.textContent = 'while hidden ' + i; c.appendChild(d); }
+  return Math.round(c.scrollHeight - c.clientHeight - c.scrollTop);
+});
+
+test('Chat Stage: a chat put on the stage shows its newest messages, even ones that came while it was out of sight', { timeout: 60000 }, async () => {
+  await a.win.click('#layoutBtn'); await a.win.click('#layoutMenu button[data-l=stage]');
+  await a.win.waitForSelector('#stage .win.stg-thumb .stg-pick');
+  const off = await a.win.$eval('#stage .win.stg-thumb .title', e => e.textContent);
+  await fillChat(off);
+  assert.ok(await fromBottom(off) <= 2, 'at the bottom while out of sight');
+  assert.ok(await addWhileHidden(off) > 100, 'left behind');
+  await a.win.click('#stage .win.stg-thumb .stg-pick');      // on the stage: its chat drawn bigger
+  await a.win.waitForFunction(ch => document.querySelector('#stage .win.stg-chat .title')?.textContent === ch, off);
+  for (let i = 0; i < 30 && await fromBottom(off) > 2; i++) await new Promise(r => setTimeout(r, 100));
+  assert.ok(await fromBottom(off) <= 2, `still at the bottom (${await fromBottom(off)} px above it)`);
+});
+
+test('Chat Stage: the stage chat you scrolled up to read stays there when its text size changes', { timeout: 60000 }, async () => {
+  const on = await a.win.$eval('#stage .win.stg-chat .title', e => e.textContent);
+  for (let i = 0; i < 30 && await fromBottom(on) > 2; i++) await new Promise(r => setTimeout(r, 100));
+  // you scroll up with the wheel to read
+  await inView(a.win, on, 'chat', () => { const c = document.getElementById('chat'); c.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: -600 })); c.scrollTop -= 600; });
+  const up = await fromBottom(on);
+  assert.ok(up > 300, `scrolled up (${up} px)`);
+  await a.win.click('.stg-size [data-s="-1"]');               // A−: the page inside is resized
+  await new Promise(r => setTimeout(r, 2000));
+  assert.ok(await fromBottom(on) > 200, `still up where you were reading (${await fromBottom(on)} px)`);
+});

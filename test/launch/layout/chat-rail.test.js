@@ -78,3 +78,31 @@ test('Chat Rail: → shows the next chat in the rail, in big text, and ← goes 
   await a.win.waitForFunction(ch => document.querySelector('#stage .win.rl-chat .title')?.textContent === ch, first);
   assert.equal(await shown(), first);
 });
+
+// A chat like the sites': its messages in a box of their own that scrolls, filled and scrolled to the newest
+const fillChat = ch => inView(a.win, ch, 'chat', () => {
+  const c = document.getElementById('chat');
+  Object.assign(c.style, { height: '100vh', overflowY: 'auto', boxSizing: 'border-box' });
+  document.body.style.margin = '0';
+  for (let i = 0; i < 150; i++) { const d = document.createElement('div'); d.className = 'row'; d.textContent = 'message ' + i; c.appendChild(d); }
+  c.scrollTop = c.scrollHeight;
+});
+const fromBottom = ch => inView(a.win, ch, 'chat', () => { const c = document.getElementById('chat'); return Math.round(c.scrollHeight - c.clientHeight - c.scrollTop); });
+// Messages come in while it's out of sight, and the site doesn't keep it at the bottom. How far above it that leaves the
+// chat is read in the same step: the chat's own script puts a chat back at the bottom on a timer (in-site/stick-bottom.js)
+const addWhileHidden = ch => inView(a.win, ch, 'chat', () => {
+  const c = document.getElementById('chat');
+  for (let i = 0; i < 25; i++) { const d = document.createElement('div'); d.className = 'row'; d.textContent = 'while hidden ' + i; c.appendChild(d); }
+  return Math.round(c.scrollHeight - c.clientHeight - c.scrollTop);
+});
+
+test('Chat Rail: a tab shows its chat at the newest messages, even ones that came while it was out of sight', { timeout: 60000 }, async () => {
+  await a.win.click('#layoutBtn'); await a.win.click('#layoutMenu button[data-l=rail]');
+  await a.win.waitForSelector('#railTabs .rl-tab:not(.on)');
+  const off = await a.win.$eval('#railTabs .rl-tab:not(.on)', b => b.dataset.ch);
+  await fillChat(off);
+  assert.ok(await addWhileHidden(off) > 100, 'left behind');
+  await a.win.click(`#railTabs .rl-tab[data-ch="${off}"]`);
+  for (let i = 0; i < 30 && await fromBottom(off) > 2; i++) await new Promise(r => setTimeout(r, 100));
+  assert.ok(await fromBottom(off) <= 2, `at the bottom (${await fromBottom(off)} px above it)`);
+});
