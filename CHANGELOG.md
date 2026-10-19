@@ -2,7 +2,14 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.11 (current)
+## 0.3.12 (current)
+- Spam alerts: everyday words like "spiced" or "spicy" aren't flagged as abusive
+- Activity log: clearer Kick player wording, the wait to sign them back in, and a steady heartbeat
+- Security update: Electron 44, and sites, extensions and links limited to what they need
+- Fix two tests that failed now and then: just after midnight, and Pear Drops forgetting the pairing
+- Fix the Pop out streams test that failed now and then on a busy machine
+
+## 0.3.11
 - Link with Pear Drops: sign Kick players out while it farms, and a farming widget
 - Spam alerts: catch chatbot ad bots by their opt-out line
 - Updates: download progress, a toolbar chip and an Updated card
