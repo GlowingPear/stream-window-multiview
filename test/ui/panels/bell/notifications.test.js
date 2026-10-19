@@ -1,13 +1,12 @@
 // The notification centre: the toolbar bell, its tabs and rows, All notifications, and Settings > Notifications.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { setup, add } = require('../../app');
+const { setup, add, midday } = require('../../app');
 
 const { openApp } = setup();
 const MIN = 60e3;
 // Made-up notifications of every kind, newest first.
-const seed = () => {
-  const now = Date.now();
+const seed = (now = Date.now()) => {
   return [
     { id: 'm1', kind: 'mention', channel: 'alpha', label: 'alpha', sender: 'ann', body: '@me hi', quoted: '', t: now - MIN, unread: true },
     { id: 's1', kind: 'spam', channel: 'tw:bravo', label: 'bravo · Twitch', sender: 'cheapbot', body: 'cheap viewers → site . net', score: 7, need: 6,
@@ -200,7 +199,8 @@ test('Do not disturb from the bell and All notifications: on for the chosen time
 });
 
 test('All notifications: search, Unread only, Mark all read, delete, clear a tab, grouped by day; opens on the bell\'s tab', async t => {
-  const page = await open(t);
+  const at = midday();
+  const page = await open(t, seed(at), {}, { clock: at });
   await page.evaluate(() => openNoteHistory('all'));
   assert.equal(await page.textContent('#noteDlg .mh-count'), '8 kept · 6 new');
   assert.deepEqual(await page.$$eval('#noteDlg .nc-chips button', e => e.map(b => b.textContent)), ['All 8', 'Mentions 3', 'Spam 1', 'Live 2', 'App 2'], 'the kind chips');
@@ -247,11 +247,11 @@ test('All notifications: search, Unread only, Mark all read, delete, clear a tab
 });
 
 test('All notifications: a long list scrolls, and a small day isn\'t squashed to a sliver (#85)', async t => {
-  const now = Date.now(), y = new Date(now - 864e5); y.setHours(23, 0, 0, 0);
+  const now = midday(), y = new Date(now - 864e5); y.setHours(23, 0, 0, 0);
   const list = [];
   for (let i = 0; i < 4; i++) list.push({ id: 'a' + i, kind: 'app', subject: 'updates', text: `Note ${i}`, t: now - i * MIN, unread: false });
   for (let i = 0; i < 60; i++) list.push({ id: 'm' + i, kind: 'mention', channel: 'alpha', label: 'alpha', sender: 'ann', body: `@me ${i}`, quoted: '', t: +y - i * MIN, unread: false });
-  const page = await open(t, list);
+  const page = await open(t, list, {}, { clock: now });
   await page.evaluate(() => openNoteHistory('all'));
   assert.deepEqual(await page.$$eval('#nhList .mh-day b', e => e.map(d => d.textContent)), ['Today', 'Yesterday']);
   const groups = await page.$$eval('#nhList .mh-group', e => e.map(g => [g.clientHeight, g.scrollHeight]));

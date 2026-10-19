@@ -12,10 +12,12 @@ function setup() {
   });
   test.after(async () => { await browser?.close(); server?.close(); });
 
-  // A fresh copy of the app (empty saved settings). Fails the test on any page error.
-  async function openApp(t, { width = 1600, height = 900, query = '', init } = {}) {
+  // A fresh copy of the app (empty saved settings). Fails the test on any page error. `clock`: a time the page's
+  // Date.now() and new Date() always say (its timers still run), for a test that mustn't depend on the time of day.
+  async function openApp(t, { width = 1600, height = 900, query = '', init, clock } = {}) {
     const context = await browser.newContext({ viewport: { width, height } });
     const page = await context.newPage();
+    if (clock != null) await page.clock.setFixedTime(clock);
     if (init) await page.addInitScript(init);   // runs before the app's own script
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -31,6 +33,9 @@ function setup() {
   }
   return { openApp, url: () => server.url };
 }
+
+// Midday today: for openApp's clock, so lists grouped by day don't split when a test runs just after midnight.
+const midday = () => new Date().setHours(12, 0, 0, 0);
 
 // Opens each link or name from the Channels box, as typing it there and pressing Open does (the panel closes after)
 const add = async (page, ...links) => {
@@ -68,4 +73,4 @@ async function drag(page, from, to, { steps = 8, shift = false } = {}) {
   await page.mouse.up();
 }
 
-module.exports = { setup, add, mode, windows, win, box, press, settled, drag };
+module.exports = { setup, add, mode, windows, win, box, press, settled, drag, midday };
