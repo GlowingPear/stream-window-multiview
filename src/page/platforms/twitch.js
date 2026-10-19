@@ -31,9 +31,16 @@ const twitch = {
   pageUrl: (ch, kind) => kind === 'chat' ? twitch.chatUrl(ch) : `https://www.twitch.tv/${ch.slice(3)}`,
   profileUrl: ch => 'https://twitch.tv/' + ch.slice(3),
   modUrl: ch => `https://www.twitch.tv/moderator/${encodeURIComponent(ch.slice(3))}`,
-  // Its user card is 340px wide, so in a narrower chat its right side (with the close button) is cut off.
+  // Its user card is 340px wide, its rewards pop-up (the channel points button: rewards, Watch Streak, …) 324px and its
+  // emote picker 320px, so in a narrower chat their right side (with the close button) is cut off. Those two use the
+  // chat's whole width instead (their frame would stop them at 90% of it), with the pictures in the rewards inside it.
   chatCss: `.viewer-card-layer__draggable { max-width: 100vw !important; left: 0 !important; }
-.viewer-card-layer__draggable .viewer-card { width: auto !important; max-width: 100vw !important; min-width: 0 !important; }`,
+.viewer-card-layer__draggable .viewer-card { width: auto !important; max-width: 100vw !important; min-width: 0 !important; }
+[role="dialog"]:has(.reward-center__content, .emote-picker), [role="dialog"] div:has(.reward-center__content, .emote-picker) { max-width: none !important; }
+.reward-center__content { width: min(32.4rem, 100vw - 1.6rem) !important; }
+.emote-picker { width: min(32rem, 100vw - 1.6rem) !important; }
+.reward-center__content :is(div, img) { max-width: 100% !important; }
+.reward-center__content img { height: auto !important; }`,
   // Its chat box's empty text (Settings > Chat > Channel name in chat boxes, in-site/chat-name.js): the box, the
   // element showing the text, the box's attributes with the same text, and the site's usual text (only that one
   // changes: a box that says something else, like followers-only or slow mode, says why you can't chat).
