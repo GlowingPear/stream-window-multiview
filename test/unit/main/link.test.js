@@ -16,6 +16,7 @@ const { fixtures } = HAVE ? require('@streamorchard/grapevine/fixtures') : {};
 const { paths } = HAVE ? require('@streamorchard/grapevine') : {};
 
 const FAST = { pollMs: 50, backoffMs: [50] };
+const MULTIVIEW = require('../../../package.json').grapevine.app;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function until(fn, ms = 5000) {
   for (const end = Date.now() + ms; Date.now() < end; await sleep(20)) if (await fn()) return true;
@@ -43,11 +44,12 @@ async function setup(t, { peer = true, peerTiming = {}, ...o } = {}) {
   return { pl, stand, sent, heard, dir, root };
 }
 const connected = pl => pl.state().peer.status === 'connected';
-// A first pairing waits for Allow on the card (confirmPairing): it asks, Allow pairs.
-async function allowed(pl) {
+// A first pairing waits for Allow on the card (confirmPairing): it asks, Allow pairs. This side is connected one
+// message before the stand-in is: wait for both, or what the stand-in does next (e.g. Disconnect) finds no link.
+async function allowed(pl, stand) {
   await until(() => pl.state().peer.status === 'confirm' || connected(pl));
   if (!connected(pl)) pl.allowPairing();
-  await until(() => connected(pl));
+  await until(() => connected(pl) && stand.link.isConnected(MULTIVIEW));
 }
 
 test('the switch starts and stops the link: off, no socket; on, Pear Drops connects', NEEDS, async t => {
@@ -80,7 +82,7 @@ test('the switch starts and stops the link: off, no socket; on, Pear Drops conne
 test('what Pear Drops farms reaches the page (both windows), and goes when it disconnects', NEEDS, async t => {
   const { pl, stand, sent } = await setup(t);
   await pl.setOn(true);
-  await allowed(pl);
+  await allowed(pl, stand);
   stand.link.publish('drops.farming.changed', farmingFixture());
   await until(() => pl.state().farming);
   assert.equal(pl.state().farming.state, 'farming');
@@ -92,9 +94,9 @@ test('what Pear Drops farms reaches the page (both windows), and goes when it di
 });
 
 test('players.changed goes out only when it changes, merged from both windows, in the schema\'s shape', NEEDS, async t => {
-  const { pl, heard } = await setup(t);
+  const { pl, stand, heard } = await setup(t);
   await pl.setOn(true);
-  await allowed(pl);
+  await allowed(pl, stand);
   const site = (signedIn, open) => ({ platforms: { kick: { signedIn, mode: 'auto', account: { platform: 'kick', user: 'pearfan' }, open: open.map(slug => ({ platform: 'kick', slug })) } } });
   const sent = pl.playersReport('main', site(true, ['pixelpear']));
   assert.ok(sent && sent.seq >= 1 && sent.at, 'published, with seq and at');
@@ -114,7 +116,7 @@ test('Test: a round trip when connected; why not when Pear Drops isn\'t open', N
   const { pl, stand } = await setup(t);
   assert.equal((await pl.test()).reason, 'off', 'switched off here');
   await pl.setOn(true);
-  await allowed(pl);
+  await allowed(pl, stand);
   const ok = await pl.test();
   assert.equal(ok.ok, true);
   assert.match(ok.text, /^Pear Drops 0\.1\.6 answered in \d+ ms$/);
@@ -131,7 +133,7 @@ test('Open Pear Drops asks it to come to the front; the logo; Pair again and Dis
   stand.link.handle('drops.farming.show', () => { shown++; return { shown: true }; });
   assert.deepEqual(await pl.showPearDrops(), { shown: false }, 'not connected: nothing to ask');
   await pl.setOn(true);
-  await allowed(pl);
+  await allowed(pl, stand);
   assert.deepEqual(await pl.showPearDrops(), { shown: true });
   assert.equal(shown, 1);
   assert.match(pl.icon(), /^data:image\/png;base64,/);
@@ -147,9 +149,9 @@ test('Open Pear Drops asks it to come to the front; the logo; Pair again and Dis
 
 test('with safeStorage, the pairing keys are stored encrypted', NEEDS, async t => {
   const safeStorage = { isEncryptionAvailable: () => true, encryptString: s => Buffer.from('enc:' + s), decryptString: b => b.toString().slice(4) };
-  const { pl, root } = await setup(t, { safeStorage });
+  const { pl, stand, root } = await setup(t, { safeStorage });
   await pl.setOn(true);
-  await allowed(pl);
+  await allowed(pl, stand);
   assert.equal(pl.state().peer.keysEncrypted, true);
   const kept = JSON.parse(fs.readFileSync(path.join(root, 'data', 'grapevine.json'), 'utf8')).peers[PEAR_DROPS];
   assert.equal(kept.encrypted, true);
@@ -191,7 +193,7 @@ test('the Activity log: the hello without its data, what each side sends, the wi
   const { pl, stand } = await setup(t, { strict: false, peerTiming: { pingMs: 100 }, activity: () => told++ });
   stand.link.handle('drops.farming.show', () => ({ shown: true }));
   await pl.setOn(true);
-  await allowed(pl);
+  await allowed(pl, stand);
   const all = (filter = 'all') => pl.activityPage({ filter, limit: 50 }).entries;
   await until(() => all().some(e => e.kind === 'status' && e.text === 'Connected to Pear Drops' && e.tone === 'ok'));
   const hello = all().filter(e => e.method === 'link.hello');
@@ -238,8 +240,8 @@ test('the Activity log: the hello without its data, what each side sends, the wi
 test('the Activity log notes Pear Drops forgetting the pairing, and a Test that fails', NEEDS, async t => {
   const { pl, stand } = await setup(t);
   await pl.setOn(true);
-  await allowed(pl);
-  await stand.link.disconnect('com.glowingpear.streammultiview');
+  await allowed(pl, stand);
+  await stand.link.disconnect(MULTIVIEW);
   // (the stand-in asks to pair again straight away, and keeps asking every 50 ms until Allow: a bigger page)
   const all = () => pl.activityPage({ limit: 500 }).entries;
   // (among the problems: the stand-in keeps asking to pair again, and its hellos fill the newest entries)

@@ -2,7 +2,7 @@
 // (search, filters, grouped by day). The chat helper runs on a small stand-in chat page.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { setup, add, mode, win } = require('../app');
+const { setup, add, mode, win, midday } = require('../app');
 const { openApp } = setup();
 
 // (names need 2+ letters, like real ones)
@@ -65,8 +65,8 @@ test('a clock with no name after it is not a sender, and what you send yourself 
 });
 
 test('mentions in All notifications (moved over from the old history): grouped by day, search, filters, unread, delete and clear', async t => {
-  const page = await openApp(t);
-  const now = Date.now(), day = 864e5;
+  const now = midday(), day = 864e5;
+  const page = await openApp(t, { clock: now });
   const m = (o) => ({ label: '', quoted: '', unread: false, ...o });
   await page.evaluate(list => { localStorage.setItem('kickMultiview.mentions', JSON.stringify(list)); localStorage.removeItem('kickMultiview.notifications'); }, [
     m({ channel: 'alpha', sender: 'ann', body: 'hey @me look', kind: 'mention', t: now - 60e3, unread: true }),
