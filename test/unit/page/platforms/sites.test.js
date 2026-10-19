@@ -103,11 +103,14 @@ test('raids: the channel a window\'s new address is for, only for its own kind o
   assert.equal(to(youtube, 'chat', 'https://www.youtube.com/@raided'), null, 'YouTube has no raids');
 });
 
-test('YouTube trims its watch page to the player; Kick and Twitch keep their user cards inside the chat', () => {
+test('YouTube trims its watch page to the player; Kick and Twitch keep their user cards (and Twitch its rewards and emote picker) inside the chat', () => {
   assert.match(youtube.playerCss, /#movie_player/);
   assert.match(youtube.playerFitJs, /dispatchEvent\(new Event\('resize'\)\)/);
   assert.match(kick.chatCss, /#user-identity/);
   assert.match(twitch.chatCss, /viewer-card/);
+  assert.match(twitch.chatCss, /\.reward-center__content \{ width: min\(32\.4rem, 100vw - 1\.6rem\)/, 'its rewards pop-up fits the chat');
+  assert.match(twitch.chatCss, /\.emote-picker \{ width: min\(32rem, 100vw - 1\.6rem\)/, 'and its emote picker');
+  assert.match(twitch.chatCss, /\[role="dialog"\]:has\(\.reward-center__content, \.emote-picker\)[^{]*\{ max-width: none/, 'their frame lets them use the whole width');
   assert.equal(youtube.chatCss, null);
 });
 
