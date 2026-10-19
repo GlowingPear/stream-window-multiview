@@ -76,7 +76,7 @@ jobs:
       - name: Push with the release key
         run: git remote set-url --push origin "git@github.com:${{ github.repository }}.git"
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
 
@@ -143,7 +143,7 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.sha || github.sha }}
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
 
