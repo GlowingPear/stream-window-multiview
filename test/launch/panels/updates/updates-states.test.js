@@ -168,7 +168,7 @@ for (const bar of [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left',
     await status({ state: 'available', latest: '9.0.0' });
     assert.deepEqual(await chip(), { st: 'out', label: 'v9.0.0', ico: 'sparkle', title: 'Version 9.0.0 is out: see what\'s new' });
     await status({ state: 'downloading', latest: '9.0.0', progress: 0.42, received: 38e6, total: 91e6 });
-    assert.deepEqual(await chip(), { st: 'dl', label: '42%', ico: 'download', title: 'Downloading version 9.0.0 (42%)' });
+    assert.deepEqual(await chip(), { st: 'dl', label: '42%', ico: 'down', title: 'Downloading version 9.0.0 (42%)' });
     await status({ state: 'downloading', latest: '9.0.0', progress: null, received: 1e6, total: null });
     assert.equal((await chip()).label, 'Downloading');
     await status({ state: 'ready', latest: '9.0.0', installed: '9.0.0' });

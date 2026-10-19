@@ -79,7 +79,8 @@ const openLink = url => { if (/^https:\/\//i.test(url || '') && window.kmv.openE
 // The pear with the state's badge
 function pearArt(badge){
   const b = badge === 'spin' ? element('span', 'upd-badge', element('span', 'spin'))
-    : badge ? element('span', { class: 'upd-badge b-' + badge, html: icon[badge === 'drop' ? 'download' : badge] || '' }) : null;
+    : badge === 'drop' ? element('span', 'upd-badge b-drop', element('span', { class: 'dl-arrow', html: icon.down }))
+    : badge ? element('span', { class: 'upd-badge b-' + badge, html: icon[badge] || '' }) : null;
   return element('div', 'upd-pear', element('span', { class: 'upd-pear-ico', html: PEAR }), b);
 }
 const checkedText = u => [u.lastCheck ? 'Checked ' + ago(u.lastCheck) : '', u.repo ? 'github.com/' + u.repo : ''].filter(Boolean).join(' · ');
@@ -200,8 +201,9 @@ function renderChip(u){
   b.dataset.st = st;
   const pct = percent(u.progress);
   if (st === 'out') setTb(b, 'v' + u.latest, 'sparkle');
-  else if (st === 'dl') setTb(b, pct || 'Downloading', 'download');
+  else if (st === 'dl') setTb(b, pct || 'Downloading', 'down');
   else setTb(b, 'Update ready', 'gift');
+  b.querySelector('i[data-ico]').classList.toggle('dl-arrow', st === 'dl');   // the arrow drops onto a line that stays still
   b.title = st === 'out' ? `Version ${u.latest} is out: see what's new` : st === 'dl' ? `Downloading version ${u.latest}${pct ? ' (' + pct + ')' : ''}` : `Version ${u.installed || u.latest} is ready to install`;
 }
 // The "Updated" card, on the first start of a newer version: what changed in it
