@@ -28,13 +28,15 @@ async function windowFor(re) {
   }
   throw new Error('window did not open: ' + re);
 }
-// Waits until no window has moved for 200 ms (at most 4 s).
+// Waits until neither the window's size nor any stream or chat in it has changed for 300 ms (at most 6 s). Longer
+// than the 250 ms the page waits after a resize before it lays the windows out again: a window that reaches its
+// size late (the Streams window, on a busy machine) moves them all once more after that.
 async function settled(page) {
   let prev = '';
-  for (let i = 0; i < 40; i++) {
-    const now = JSON.stringify(await page.$$eval('#stage .win', l => l.map(e => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map(Math.round); })));
+  for (let i = 0; i < 20; i++) {
+    const now = JSON.stringify(await page.evaluate(() => [innerWidth, innerHeight, ...[...document.querySelectorAll('#stage .win')].map(e => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map(Math.round); })]));
     if (now === prev) return;
-    prev = now; await page.waitForTimeout(200);
+    prev = now; await page.waitForTimeout(300);
   }
 }
 const box = async (page, sel) => { const b = await page.locator(sel).boundingBox(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) }; };
