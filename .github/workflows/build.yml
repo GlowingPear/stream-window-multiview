@@ -148,7 +148,7 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Install the app engine
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       # Mac: sign with the project's own certificate (secrets MAC_CERT_P12 + MAC_CERT_PASSWORD) so every
       # version is recognised as the same app and macOS keeps letting it read its saved logins.

@@ -32,7 +32,7 @@ jobs:
           node-version-file: .nvmrc
       - name: npm audit
         run: |
-          npm install --no-fund --ignore-scripts
+          npm ci --no-fund --ignore-scripts
           npm audit --audit-level=moderate
 
   quick:
@@ -69,7 +69,7 @@ jobs:
 
       - name: Install the app engine and the test browser
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           node node_modules/electron/install.js   # the engine now, not as the first test starts it (tests run side by side)
           npm install --no-save --no-audit --no-fund playwright@1.56.1
           npx playwright install --with-deps chromium
