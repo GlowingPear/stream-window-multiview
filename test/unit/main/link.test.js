@@ -26,12 +26,12 @@ const farmingFixture = () => { const { seq, at, ...data } = fixtures('drops.farm
 
 // A multiview link and (optionally) a stand-in Pear Drops sharing a temporary Grapevine folder. Everything is
 // stopped before the folder goes: a link still running could make it again while it's removed.
-async function setup(t, { peer = true, peerTiming = {}, ...o } = {}) {
+async function setup(t, { peer = true, peerTiming = {}, provides = { 'drops.farming': '1.0' }, ...o } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-link-'));
   const dir = path.join(root, 'gv');
   const sent = [];
   const pl = createPearLink({ version: '0.4.0', userData: path.join(root, 'data'), appData: root, dev: true, env: { GRAPEVINE_DIR: dir }, send: st => sent.push(st), timing: FAST, strict: true, ...o });
-  const stand = peer ? await standInPeer({ as: PEAR_DROPS, dir, version: '0.1.6', provides: { 'drops.farming': '1.0' }, uses: { players: '1.0' }, timing: { ...FAST, ...peerTiming } }) : null;
+  const stand = peer ? await standInPeer({ as: PEAR_DROPS, dir, version: '0.1.6', provides, uses: { players: '1.0' }, timing: { ...FAST, ...peerTiming } }) : null;
   const heard = [];
   stand?.link.on('event', (from, name, params) => heard.push({ name, params }));
   const alive = setInterval(() => {}, 1000);    // a request's timeout timer doesn't keep the process alive by itself
@@ -91,6 +91,45 @@ test('what Pear Drops farms reaches the page (both windows), and goes when it di
   await stand.stop();
   await until(() => !connected(pl));
   assert.equal(pl.state().farming, null, 'disconnected: not farming any more');
+});
+
+test('Pear Drops\' daily reward reaches the page, is gone when it disconnects or is switched off, and the chest asks it to show it', NEEDS, async t => {
+  const { pl, stand, sent } = await setup(t, { provides: { 'drops.farming': '1.0', 'rewards.daily': '1.0' } });
+  let shown = 0;
+  stand.link.handle('rewards.daily.show', () => { shown++; return { shown: true }; });
+  assert.deepEqual(await pl.showReward(), { shown: false }, 'not connected: nothing to ask');
+  await pl.setOn(true);
+  await allowed(pl, stand);
+  assert.equal(pl.state().reward, null, 'nothing said yet');
+  assert.deepEqual(pl.state().peer.shares.in, ['drops.farming', 'rewards.daily']);
+  const ready = fixtures('rewards.daily', 1).valid.find(f => f.name === 'ready').params;
+  const { seq, at, ...data } = ready;
+  stand.link.publish('rewards.daily.changed', data);
+  await until(() => pl.state().reward);
+  assert.equal(pl.state().reward.state, 'ready');
+  assert.equal(sent.at(-1).reward.state, 'ready', 'pushed to the page');
+  stand.link.publish('drops.farming.changed', farmingFixture());
+  await until(() => pl.state().farming);
+  assert.equal(pl.state().reward.state, 'ready', 'farming doesn\'t touch it');
+  assert.deepEqual(await pl.showReward(), { shown: true });
+  assert.equal(shown, 1);
+  await pl.setOn(false);
+  assert.equal(pl.state().reward, null, 'switched off: gone');
+  await pl.setOn(true);
+  await allowed(pl, stand);
+  await until(() => pl.state().reward, 5000);    // a subscriber gets the last one at once
+  await stand.stop();
+  await until(() => !connected(pl));
+  assert.equal(pl.state().reward, null, 'disconnected: gone');
+});
+
+test('an older Pear Drops, without rewards.daily: no reward, and Show asks nothing', NEEDS, async t => {
+  const { pl, stand } = await setup(t);
+  await pl.setOn(true);
+  await allowed(pl, stand);
+  assert.deepEqual(pl.state().peer.shares.in, ['drops.farming']);
+  assert.equal(pl.state().reward, null);
+  assert.deepEqual(await pl.showReward(), { shown: false });
 });
 
 test('players.changed goes out only when it changes, merged from both windows, in the schema\'s shape', NEEDS, async t => {

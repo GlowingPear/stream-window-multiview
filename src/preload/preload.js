@@ -102,6 +102,7 @@ contextBridge.exposeInMainWorld('kmv', {
   onViewPressed: cb => ipcRenderer.on('view:pressed', (_e, id) => cb(id)),
   linkIcon: () => ipcRenderer.invoke('link:icon'),
   linkShowPearDrops: () => ipcRenderer.invoke('link:show'),
+  linkShowReward: () => ipcRenderer.invoke('link:showReward'),
   linkTest: () => ipcRenderer.invoke('link:test'),
   linkActivity: opts => ipcRenderer.invoke('link:activity', opts),
   playersReport: state => ipcRenderer.send('link:players', state),
