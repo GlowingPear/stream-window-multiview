@@ -40,8 +40,35 @@ async function settled(page) {
   }
 }
 const box = async (page, sel) => { const b = await page.locator(sel).boundingBox(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) }; };
+// Drags one stream by its title bar onto another, a step at a time, waiting for the window to show each step as a
+// person would see it: the press lifts the window (body.dragging), and the one under it lights up as the drop target
+// before the mouse lets go. On a busy machine the page can fall behind the mouse, so each step waits for it. A press
+// that didn't start a drag (the windows moved after they were measured) is tried once more, measured again. Returns
+// what went wrong, for the assertion's message.
+async function dragOnto(page, from, to) {
+  const grip = async () => { const g = await box(page, `${winSel(from)} .bar .grab`); return { x: g.x + g.w / 2, y: g.y + g.h / 2 }; };   // the bar's empty part, not its channel dropdown
+  const under = p => page.evaluate(([x, y]) => {
+    const e = document.elementFromPoint(x, y);
+    return e ? `${(e.className.baseVal ?? e.className) || e.tagName.toLowerCase()} in ${e.closest('.win')?.querySelector('.title').textContent || 'no window'}` : 'nothing';
+  }, [p.x, p.y]);
+  const waitFor = (fn, arg) => page.waitForFunction(fn, arg, { timeout: 3000 }).then(() => true, () => false);
+  const notes = [];
+  let p = await grip(), lifted = false;
+  for (let i = 0; i < 2 && !lifted; i++) {
+    if (i) { await page.mouse.up(); await settled(page); p = await grip(); }
+    await page.mouse.move(p.x, p.y); await page.mouse.down();
+    lifted = await waitFor(() => document.body.classList.contains('dragging'));
+    if (!lifted) notes.push(`the press at ${p.x},${p.y} (${await under(p)}) didn't lift ${from}`);
+  }
+  const t = await box(page, winSel(to));
+  await page.mouse.move(t.x + t.w / 2, t.y + t.h / 2, { steps: 10 });
+  if (lifted && !await waitFor(n => [...document.querySelectorAll('#stage .win.swap-target')].some(e => e.querySelector('.title').textContent === n), to))
+    notes.push(`${to} didn't light up as the drop target`);
+  await page.mouse.up();
+  return notes;
+}
 
-test('Pop out streams: streams move to their own window with Tile, Spotlight and swaps; chats stay; Bring streams back', T, async () => {
+test('Pop out streams: streams move to their own window with Tile, Spotlight and swaps; chats stay; Bring streams back', T, async ctx => {
   await add('alpha', 'bravo', 'charlie');
   await a.win.click('#popBtn');
   const sw = await windowFor(/role=streams/);
@@ -65,15 +92,14 @@ test('Pop out streams: streams move to their own window with Tile, Spotlight and
   // drag one stream onto another: they swap spots (measured once Spotlight has finished moving them; on a busy
   // machine that takes longer than the wait above)
   await settled(sw);
-  const al = await box(sw, `${winSel('alpha')} .bar .grab`), br = await box(sw, winSel('bravo'));
-  await sw.mouse.move(al.x + al.w / 2, al.y + al.h / 2); await sw.mouse.down();      // the bar's empty part, not its channel dropdown
-  await sw.mouse.move(br.x + br.w / 2, br.y + br.h / 2, { steps: 10 }); await sw.mouse.up();
+  const notes = await dragOnto(sw, 'alpha', 'bravo');
+  if (notes.length) ctx.diagnostic('swap drag: ' + notes.join('; '));      // in the log even when the second press worked
   await sw.waitForFunction(() => {                      // the swap animates: wait for it (longer on a busy machine)
     const w = Object.fromEntries([...document.querySelectorAll('#stage .win.stream')].map(e => [e.querySelector('.title').textContent, e.offsetWidth]));
     return w.alpha > w.bravo * 2;
   }, null, { timeout: 5000 }).catch(() => {});
   const after = await sw.$$eval('#stage .win.stream', l => Object.fromEntries(l.map(e => [e.querySelector('.title').textContent, e.offsetWidth])));
-  assert.ok(after.alpha > after.bravo * 2, `dropped on the big one, alpha takes its place (${JSON.stringify(after)})`);
+  assert.ok(after.alpha > after.bravo * 2, `dropped on the big one, alpha takes its place (${JSON.stringify(after)}${notes.length ? '; ' + notes.join('; ') : ''})`);
 
   // + Chat in the Streams window opens that chat in the main window
   await a.win.click(`${winSel('charlie', 'chat')} [data-a=close]`);
