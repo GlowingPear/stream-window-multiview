@@ -76,6 +76,7 @@ button.act-row:hover,.act-row.open{background:var(--panel2)}
 .act-method.cap-drops::before{background:var(--accent)}
 .act-method.cap-players::before{background:var(--act-in)}
 .act-method.cap-link::before{background:#e8b84a}
+.act-method.cap-rewards::before{background:#2ee6c5}
 .act-kind{flex:none;padding:0 5px;border:1px solid var(--line2);border-radius:4px;color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .act-row.k-error .act-kind{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 50%,transparent)}
 .act-text{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

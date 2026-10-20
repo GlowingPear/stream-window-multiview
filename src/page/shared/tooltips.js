@@ -60,7 +60,8 @@ function init(){
       if (name){
         tip.append(name);
         const norm = t => t.toLowerCase().replace(/[^a-z]/g, '');
-        if (text && norm(text) !== norm(name)){ const sm = document.createElement('small'); sm.textContent = text; tip.appendChild(sm); }
+        const more = text.startsWith(name + '\n') ? text.slice(name.length + 1) : text;   // a title whose first line is the name: the rest
+        if (more && norm(more) !== norm(name)){ const sm = document.createElement('small'); sm.textContent = more; tip.appendChild(sm); }
       } else tip.append(text);
       const r = el.getBoundingClientRect(), tr = tip.getBoundingClientRect();
       if (document.body.classList.contains('bar-left') && el.closest('header')){     // beside the left toolbar

@@ -16,8 +16,8 @@ const SETTING_NAMES = new Set([
   'saved', 'savedTab', 'autoOpen', 'notifyAll', 'notifyOff', 'chNames', 'ytNames', 'watchSignedIn',
   'accounts', 'account', 'profView',
   // Connected apps: Connect with Pear Drops, sign Kick players out while it farms, your Kick choice from
-  // before that took over, the toolbar's farming widget
-  'link.peardrops', 'link.kickAuto', 'link.kickBefore', 'link.widget',
+  // before that took over, the toolbar's farming widget and its daily reward chest
+  'link.peardrops', 'link.kickAuto', 'link.kickBefore', 'link.widget', 'link.dailyReward',
   // the bell, mentions and alerts
   'notifications', 'alerts', 'msg', 'mentions', 'spamHistory',   // (the last two: from before the bell, read once)
   'mentOn', 'mentMuted', 'mentWords', 'myName', 'myTwitch', 'bellCount', 'dnd',

@@ -200,6 +200,15 @@ test('Connected apps: Auto keeps your own Kick choice and gives it back; Disconn
   assert.equal((await card(page)).chip, 'Off');
   await page.click('#caWidget');
   assert.equal(await ls('link.widget'), '0');
+  // the daily reward chest: on by default; off hides it
+  await page.evaluate(() => { localStorage.setItem('kickMultiview.accounts', '{"kick":"pearfan"}'); window.pearLink.applyLink(); });
+  assert.equal(await page.isChecked('#caReward'), true, 'on by default');
+  assert.equal(await page.$eval('#rewardBtn', b => b.hidden), false, 'the chest shows');
+  await page.click('#caReward');
+  assert.equal(await ls('link.dailyReward'), '0');
+  assert.equal(await page.$eval('#rewardBtn', b => b.hidden), true, 'switched off: no chest');
+  await page.click('#caReward');
+  assert.equal(await page.$eval('#rewardBtn', b => b.hidden), false);
 });
 
 test('Connected apps: Test checks the link, says "Testing…" while it runs, and shows the answer in place of the line', async t => {

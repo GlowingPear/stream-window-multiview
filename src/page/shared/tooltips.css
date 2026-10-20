@@ -4,6 +4,7 @@
 #tip.on{opacity:1}
 #tip small{display:block;margin-top:2px;font-size:11px;font-weight:400;color:var(--muted)}
 #tip.plain{font-weight:400}
+#tip,#tip small{white-space:pre-line}   /* a title's lines */
 .help-x{width:30px;height:28px;border:0;border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center}
 .help-x:hover{background:var(--line);color:var(--text)}
 .help-x svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
