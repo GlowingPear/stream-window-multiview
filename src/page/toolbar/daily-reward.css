@@ -33,9 +33,9 @@ body:not(.bar-left) header .dr-chest.state-ready:hover{background:color-mix(in s
 body:not(.bar-left) header:not(.c3) .dr-chest.state-ready{padding:0 14px 0 6px}
 body:not(.bar-left) header:not(.c3) .dr-chest.state-ready .tb-l{display:inline;font-weight:650}
 /* on the left: a row like the others (the label turns green when it's ready); icons only: just the chest */
-body.bar-left header .dr-chest{padding:0 9px 0 3px;gap:6px}
+body.bar-left header .dr-chest{padding:0 9px;gap:10px}
 body.bar-left header .dr-chest .tb-l{display:inline}
-body.bar-left header .dr-ic{width:24px;height:24px}
+body.bar-left header .dr-ic{width:24px;height:24px;margin:0 -3.5px}   /* centred on the other icons' 17 px column, its label in line with theirs */
 body.bar-left header .dr-ring{width:24px;height:24px}
 body.bar-left header .dr-chest.state-ready .tb-l{font-weight:650}
 body.bar-left.bar-icons header .dr-chest{padding:0}
