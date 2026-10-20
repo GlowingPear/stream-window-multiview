@@ -12,9 +12,9 @@ An Electron app for watching several Kick, Twitch and YouTube streams and chats 
 
 ## Connected apps (Grapevine)
 
-Multiview links with Pear Drops through [`@streamorchard/grapevine`](https://github.com/StreamOrchard/grapevine): `src/main/link.js` (the link), `src/page/platforms/pear-drops.js` and `players-link.js` (signing Kick players out while it farms), `panels/settings/connected.js` (the card) and `toolbar/farming.js` (the widget).
+Multiview links with Pear Drops through [`@streamorchard/grapevine`](https://github.com/StreamOrchard/grapevine): `src/main/link.js` (the link), `src/page/platforms/pear-drops.js` and `players-link.js` (signing Kick players out while it farms), `panels/settings/connected.js` (the card) `toolbar/farming.js` (the widget) and `toolbar/daily-reward.js` (the daily reward chest).
 
-- What multiview speaks is in `package.json` (`"grapevine"`: it provides `players` 1.0 and uses `drops.farming` 1.0), and `link.js` reads it from there. Capabilities live in Grapevine: change one there (its `change-capability` skill), release it, then bump the dependency here. A new app goes in Grapevine's known-apps list.
+- What multiview speaks is in `package.json` (`"grapevine"`: it provides `players` 1.0 and uses `drops.farming` 1.0 and `rewards.daily` 1.0), and `link.js` reads it from there. Capabilities live in Grapevine: change one there (its `change-capability` skill), release it, then bump the dependency here. A new app goes in Grapevine's known-apps list.
 - Tests use Grapevine's stand-in Pear Drops (`@streamorchard/grapevine/stand-in-peer`, by its installed path, never `npx`) in a folder of their own, never the real Pear Drops or the real Grapevine folder. Developer copies use their own folder too.
 - At the start of every change, `npm run grapevine:check` (see the `start-change` skill). After a multiview release that adds or changes what it sends, record it in Grapevine: `npm run released -- com.glowingpear.streammultiview <version> …` there (its `app-shipped` skill).
 

@@ -46,6 +46,24 @@ const GENERATED = `## What's Changed
 **Full Changelog**: https://github.com/GlowingPear/stream-window-multiview/compare/v0.2.10...v0.2.11
 `;
 
+test('prepare-release sets the version in the lock file too, so npm ci still matches', () => {
+  const dir = project();
+  const lock = { name: 'stream-multiview', version: '0.2.10', lockfileVersion: 3, requires: true,
+    packages: { '': { name: 'stream-multiview', version: '0.2.10', dependencies: { left: '^1.0.0' } }, 'node_modules/left': { version: '1.0.0' } } };
+  fs.writeFileSync(path.join(dir, 'package-lock.json'), JSON.stringify(lock, null, 2) + '\n');
+  const r = prepare(dir, 'v0.2.11', GENERATED);
+  assert.equal(r.status, 0, r.stderr);
+  const after = JSON.parse(read(dir, 'package-lock.json'));
+  assert.equal(after.version, '0.2.11');
+  assert.equal(after.packages[''].version, '0.2.11');
+  assert.deepEqual(after.packages['node_modules/left'], { version: '1.0.0' }, 'the rest as it was');
+  assert.ok(read(dir, 'package-lock.json').endsWith('}\n'));
+  // a lock without a root entry: only its top-level version
+  fs.writeFileSync(path.join(dir, 'package-lock.json'), JSON.stringify({ name: 'stream-multiview', version: '0.2.11', lockfileVersion: 1 }) + '\n');
+  assert.equal(prepare(dir, 'v0.2.12', '').status, 0);
+  assert.equal(JSON.parse(read(dir, 'package-lock.json')).version, '0.2.12');
+});
+
 test('prepare-release turns GitHub\'s generated notes into a new changelog section', () => {
   const dir = project();
   const r = prepare(dir, 'v0.2.11', GENERATED);
