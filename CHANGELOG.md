@@ -2,7 +2,17 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.12 (current)
+## 0.3.13 (current)
+- Links point at the renamed StreamOrchard GitHub org
+- Dependency updates from Dependabot merge themselves once their checks pass
+- Dependabot's GitHub Actions updates come as one pull request, so they merge themselves
+- Chats stay at their newest messages, also after being out of sight in Chat Stage or Chat Rail
+- The README has an animated picture at the top
+- While an update downloads, only the arrow moves, not the line under it
+- Twitch chats: the rewards pop-up and the emote picker fit a narrow chat, with their close button
+- Kick's daily reward chest in the toolbar, from Pear Drops
+
+## 0.3.12
 - Spam alerts: everyday words like "spiced" or "spicy" aren't flagged as abusive
 - Activity log: clearer Kick player wording, the wait to sign them back in, and a steady heartbeat
 - Security update: Electron 44, and sites, extensions and links limited to what they need
