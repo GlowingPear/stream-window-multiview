@@ -88,7 +88,8 @@ for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', label
     assert.deepEqual([c.state, c.ring, c.hop], ['ready', null, 'dr-hop']);
     assert.equal(c.label, !toolbar ? 'Claim reward' : toolbar.labels ? 'Reward ready' : null);
     const ends = await page.evaluate(() => new Date('2026-10-21T00:00:00Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    assert.equal(c.title, `Daily reward is ready. Claim before ${ends}\nOpen Pear Drops to claim it`);
+    assert.equal(c.title, `Daily reward is ready\nClaim before ${ends}\nOpen Pear Drops to claim it`);
+    assert.equal(c.name, 'Daily reward is ready', 'short lines: the time never wraps');
     assert.equal(c.aria, `Daily reward is ready. Claim before ${ends}. Open Pear Drops to claim it`);
     if (!toolbar) assert.ok(c.width > earningWidth + 40, 'the chip is wider than the chest');
     assert.ok(c.inBar);
@@ -96,10 +97,10 @@ for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', label
     const accent = await page.evaluate(() => { const e = document.createElement('i'); e.style.color = 'var(--accent)'; document.body.append(e); const v = getComputedStyle(e).color; e.remove(); return v; });
     if (!toolbar || toolbar.labels) assert.equal(label2, accent, 'its words are green');
 
-    // claimed: a full ring, and when the next one is
+    // claimed: the chest alone (no ring), and when the next one is
     await push(page, linked(REWARD({ state: 'claimed', minutes: 60, endsAt: hours(6.2) })));
     c = await chest(page);
-    assert.deepEqual([c.state, c.ring, c.hop], ['claimed', 0, 'none']);
+    assert.deepEqual([c.state, c.ring, c.hop], ['claimed', null, 'none']);
     assert.match(c.title, /^Daily reward claimed\nNext one in 6h 1[12]m$/);
     await push(page, linked(REWARD({ state: 'claimed', endsAt: null })));
     assert.equal((await chest(page)).title, 'Daily reward claimed', 'no time: no countdown');

@@ -1,5 +1,5 @@
 /* The toolbar's chest (toolbar/daily-reward.js): Kick's daily reward, from a linked Pear Drops. The same chest as
-   Pear Drops' title bar: a ring that fills over the hour, Kick's hop when it's ready, a full ring once claimed.
+   Pear Drops' title bar: a ring that fills over the hour, Kick's hop when it's ready, the chest alone once claimed.
    The keyframes' names are this file's own: another stylesheet's of the same name would play instead. */
 header .dr-chest{gap:8px;padding:0 3px}
 header .dr-chest[hidden]{display:none}
@@ -16,8 +16,8 @@ header .dr-chest .tb-l{display:none}
 .dr-chest-ic .chest-burst .t{fill:color-mix(in srgb,var(--accent) 35%,#2ee6c5)}
 .dr-chest-ic :is(.chest-box,.chest-burst){transform-box:view-box;transform-origin:12px 19.5px}
 
-/* no ring when it's ready, or without Pear Drops; dimmed when Kick isn't answering */
-.dr-chest:is(.state-ready,.state-plain) .dr-ring{display:none}
+/* no ring when it's ready, claimed, or without Pear Drops; dimmed when Kick isn't answering */
+.dr-chest:is(.state-ready,.state-claimed,.state-plain) .dr-ring{display:none}
 .dr-chest.state-unavailable .dr-ic{opacity:.5}
 .dr-chest.state-unavailable .dr-ring{display:none}
 

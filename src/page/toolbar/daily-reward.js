@@ -5,8 +5,8 @@ import { store } from '../shared/store.js';
 
 /* ---- The toolbar's chest: Kick's daily reward (watch an hour signed in, then open a crate), as a linked Pear Drops
    tells it (rewards.daily). A ring fills over the hour; when it's ready the chest hops, as a "Claim reward" chip where
-   there's room; claimed, the ring is full. A click brings Pear Drops to the front with the reward's card open, where
-   it's claimed: this app never calls Kick for it. Without Pear Drops (or one too old to send it), it's a plain chest
+   there's room; claimed, it's the chest alone again. A click brings Pear Drops to the front with the reward's card
+   open, where it's claimed: this app never calls Kick for it. Without Pear Drops (or one too old to send it), it's a plain chest
    that opens Kick's own dialog. Settings › Connected apps, "Show Kick's daily reward in the toolbar". ---- */
 let btn, ring, tick = null;
 
@@ -36,7 +36,7 @@ function timeLeft(iso){
 }
 const whole = v => (Number.isFinite(v) && v >= 0 ? Math.floor(v) : null);
 
-// What the chest shows, or null when it's hidden: { state, frac (the ring, 0–1), tip: [line, line?] }.
+// What the chest shows, or null when it's hidden: { state, frac (the ring, 0–1), tip: [the name, lines under it] }.
 // Hidden when switched off, with no Kick account here, signed out of Kick in Pear Drops, or when Pear Drops
 // watches with another Kick account than this app's.
 function chestView(){
@@ -55,10 +55,10 @@ function chestView(){
     return { state, frac: has ? Math.min(1, minutes / threshold) : 0,
       tip: has ? ['Daily reward · ' + minutes + ' of ' + threshold + ' min', Math.max(0, threshold - minutes) + ' min to go'] : ['Daily reward'] };
   }
-  if (state === 'ready') return { state, frac: 0, tip: ['Daily reward is ready' + (ends ? '. Claim before ' + ends : ''), 'Open Pear Drops to claim it'] };
+  if (state === 'ready') return { state, frac: 0, tip: ['Daily reward is ready', ends ? 'Claim before ' + ends : '', 'Open Pear Drops to claim it'].filter(Boolean) };
   if (state === 'claimed'){
     const next = r.endsAt ? timeLeft(r.endsAt) : '';
-    return { state, frac: 1, tip: next ? ['Daily reward claimed', 'Next one in ' + next] : ['Daily reward claimed'] };
+    return { state, frac: 0, tip: next ? ['Daily reward claimed', 'Next one in ' + next] : ['Daily reward claimed'] };
   }
   return { state, frac: 0, tip: ["Kick's daily reward isn't answering"] };
 }
