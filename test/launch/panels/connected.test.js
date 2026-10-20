@@ -17,7 +17,7 @@ const peerKeys = memoryKeyStore();          // the stand-in's pairing, kept when
 let a, peer, heard = [], shown = 0;
 
 async function startPeer() {
-  peer = await standInPeer({ as: PD, dir: GV, version: '0.1.6', provides: { 'drops.farming': '1.0' }, uses: { players: '1.0' }, keys: peerKeys, timing: FAST });
+  peer = await standInPeer({ as: PD, dir: GV, version: '0.1.12', provides: { 'drops.farming': '1.0', 'rewards.daily': '1.0' }, uses: { players: '1.0' }, keys: peerKeys, timing: FAST });
   peer.link.on('event', (from, name, params) => { if (name === 'players.changed') heard.push(params.platforms.kick); });
   peer.link.handle('drops.farming.show', () => { shown++; return { shown: true }; });
 }
@@ -55,12 +55,12 @@ test('switched off: no socket; on, Pear Drops connects; farming signs the Kick s
   // the first pairing waits for Allow on the card: who asks, and nothing pairs by itself
   await until(async () => (await status()) === 'confirm', 15000);
   assert.match(await a.win.textContent('#caPearDrops .ca-chip'), /^Asks to pair$/);
-  assert.match(await a.win.textContent('#caPearDrops .ca-line'), /^Pear Drops \(stand-in\) 0\.1\.6 asks to pair\. Allow it only if you just switched on Connect in Pear Drops\.$/);
+  assert.match(await a.win.textContent('#caPearDrops .ca-line'), /^Pear Drops \(stand-in\) 0\.1\.12 asks to pair\. Allow it only if you just switched on Connect in Pear Drops\.$/);
   assert.equal(await a.win.textContent('#caPearDrops .ca-act'), 'Allow');
   await a.win.click('#caPearDrops .ca-act');
   await until(async () => (await status()) === 'connected', 15000);
   assert.ok(slugs().includes('stream-multiview'), 'on: it listens');
-  assert.match(await a.win.textContent('#caPearDrops .ca-chip'), /^Connected · 0\.1\.6$/);
+  assert.match(await a.win.textContent('#caPearDrops .ca-chip'), /^Connected · 0\.1\.12$/);
   const at = Date.now();
   farm();
   await until(async () => (await partition('stream')) === 'persist:kmv-stream-pixelpear', 2000);

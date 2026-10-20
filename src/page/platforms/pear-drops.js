@@ -7,9 +7,10 @@ import { store } from '../shared/store.js';
 
 // Connected apps: the link with Pear Drops (Settings › Connected apps, panels/settings/connected.js). The main
 // process keeps the link (src/main/link.js) and sends what Pear Drops is farming; this signs the Kick stream
-// players out while it farms (the rule is in players-link.js), and tells it whether they're signed in.
+// players out while it farms (the rule is in players-link.js), and tells it whether they're signed in. It also
+// passes on Kick's daily reward (rewards.daily) for the toolbar's chest (toolbar/daily-reward.js).
 // Chats always stay signed in: only stream players change.
-let linkState = null;          // { on, peer, farming, open, wait } from the main process; null until it says
+let linkState = null;          // { on, peer, farming, reward, open, wait } from the main process; null until it says
 let kickOut = false;           // whether Kick players are signed out for Pear Drops
 let backAt = null;             // when they sign back in (Pear Drops stopped farming), or null
 let backTimer = null;
@@ -17,6 +18,7 @@ let kickHold = null;           // at start-up: Kick stream players wait for what
 let releaseHold = null;
 let lastReport = '';
 let iconUrl = null;            // Pear Drops' logo (asked once)
+let lastChest = '';            // what the chest last showed from, so it redraws only when that changes
 const HOLD_MS = 2000;
 // One of the desktop app's calls (window.kmv), or null: the UI tests give the page a stand-in with only some.
 const appCall = name => (window.kmv && typeof window.kmv[name] === 'function' ? window.kmv[name] : null);
@@ -27,6 +29,9 @@ const kickAuto = () => linkOn() && settings.flag('link.kickAuto', true);
 const kickUser = () => (settings.json('accounts', {}) || {}).kick || settings.text('account');
 const linkFarming = () => (linkState && linkState.farming) || null;
 const linkConnected = () => !!(linkState && linkState.peer && linkState.peer.status === 'connected');
+// Pear Drops sends its daily reward: connected, and new enough to have rewards.daily (0.1.12 or later).
+const rewardShared = () => linkOn() && linkConnected() && !!(linkState.peer.shares && (linkState.peer.shares.in || []).includes('rewards.daily'));
+const linkReward = () => (rewardShared() && linkState.reward) || null;
 const kickStreams = () => wins.filter(w => w.kind === 'stream' && w.channel && platOf(w.channel) === 'kick');
 
 // Apply the rule: out at once when Pear Drops starts farming, back in once it hasn't farmed for 5 minutes.
@@ -43,6 +48,8 @@ function applyLink(){
   syncStreams('kick');
   reportPlayers();
   store.changed('link');
+  const chest = JSON.stringify([linkReward(), rewardShared(), kickUser(), settings.flag('link.dailyReward', true)]);
+  if (chest !== lastChest){ lastChest = chest; store.changed('reward'); }
 }
 
 // The wait to sign back in, in the Activity log: when it starts, and when Pear Drops farms again before it ends
@@ -101,6 +108,8 @@ async function pairAgainLink(){
 }
 const linkIcon = () => (iconUrl ??= appCall('linkIcon') ? window.kmv.linkIcon().catch(() => '') : Promise.resolve(''));
 const showPearDrops = () => (appCall('linkShowPearDrops') ? window.kmv.linkShowPearDrops().catch(() => null) : Promise.resolve(null));
+// Pear Drops to the front with the daily reward's card open: { shown } or null.
+const showReward = () => (appCall('linkShowReward') ? window.kmv.linkShowReward().catch(() => null) : Promise.resolve(null));
 // A page of the Activity log (src/main/activity.js): { entries, total, newer, problems, totals, minutes, … } or null.
 const linkActivity = opts => (appCall('linkActivity') ? window.kmv.linkActivity(opts).catch(() => null) : Promise.resolve(null));
 const testLink = () => (appCall('linkTest') ? window.kmv.linkTest().catch(() => null) : Promise.resolve(null))
@@ -125,9 +134,9 @@ function init(){
   }
   first.then(gotLinkState);
   fromApp('onLinkState', gotLinkState);
-  settings.onChange(['link.peardrops', 'link.kickAuto', 'link.widget', 'accounts', 'account'], () => applyLink());   // changed in the other window
+  settings.onChange(['link.peardrops', 'link.kickAuto', 'link.widget', 'link.dailyReward', 'accounts', 'account'], () => applyLink());   // changed in the other window
 }
 
-export { allowLink, applyLink, backAt, disconnectLink, init, kickAuto, kickHold, kickOut, linkActivity,
-  linkConnected, linkIcon, linkOn, linkState, pairAgainLink, reportPlayers, setKickAuto, setLinkOn, showPearDrops,
-  testLink };
+export { allowLink, applyLink, backAt, disconnectLink, init, kickAuto, kickHold, kickOut, kickUser, linkActivity,
+  linkConnected, linkIcon, linkOn, linkReward, linkState, pairAgainLink, reportPlayers, rewardShared, setKickAuto,
+  setLinkOn, showPearDrops, showReward, testLink };

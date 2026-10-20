@@ -48,6 +48,7 @@
 <link rel="stylesheet" href="page/panels/settings/connected.css">
 <link rel="stylesheet" href="page/panels/settings/activity.css">
 <link rel="stylesheet" href="page/toolbar/farming.css">
+<link rel="stylesheet" href="page/toolbar/daily-reward.css">
 <link rel="stylesheet" href="page/panels/updates/updates.css">
 <style id="themeVars"></style>
 <!-- before the first paint: the macOS toolbar's room for the traffic lights, and the saved colour theme -->
@@ -60,6 +61,7 @@
   <button class="btn tb" id="savedBtn" data-label="Channels" aria-label="Channels" title="Your channels: open one, add a new one, see who's live"><i data-ico="star"></i><span class="tb-l">Channels</span><span class="sv-badge" hidden><i></i><b></b></span><span class="car"></span></button>
   <button class="btn tb" id="profBtn" hidden data-label="Profiles" aria-label="Profiles" title="Streamer profiles: search your saved streamers, see when they stream, keep notes"><i data-ico="user"></i><span class="tb-l">Profiles</span></button>
   <button class="btn tb fw-chip" id="farmBtn" hidden aria-label="Pear Drops is farming: open Pear Drops"><img class="fw-av" alt="" width="24" height="24"><span class="fw-name"></span><span class="fw-bar"><i></i></span></button>
+  <button class="btn tb dr-chest" id="rewardBtn" hidden data-label="Daily reward" aria-label="Daily reward"><span class="dr-ic"></span><span class="tb-l">Daily reward</span></button>
   <div class="spacer"></div>
   <button class="btn tb ibtn" id="layoutBtn" hidden data-label="Layout" aria-label="Layout" title="Arrange the windows"><i data-ico="layout"></i><span class="tb-l">Layout</span><span class="car"></span></button>
   <button class="btn tb ibtn" id="swBtn" hidden data-label="Switch control" aria-label="Switch control" title="Switch control: show it as a panel you can move and resize, in any layout (click again to put it away)"><i data-ico="float"></i><span class="tb-l">Switch control</span></button>
@@ -350,6 +352,7 @@
           <label class="ca-row"><span class="st-t">Connect with Pear Drops<small>Both apps need this switched on.</small></span><input type="checkbox" class="st-sw" id="caConnect"></label>
           <label class="ca-row"><span class="st-t">Sign Kick players out while Pear Drops is farming <em class="ca-def">On by default</em><small>Kick credits drops to one stream per account, so a signed-in player here would take Pear Drops' credit. Chats stay signed in.</small></span><input type="checkbox" class="st-sw" id="caKickAuto"></label>
           <label class="ca-row"><span class="st-t">Show what Pear Drops is farming in the toolbar<small>The channel and the drop's progress. Click it to open Pear Drops.</small></span><input type="checkbox" class="st-sw" id="caWidget"></label>
+          <label class="ca-row"><span class="st-t">Show Kick's daily reward in the toolbar<small>The chest fills as you watch. Click it to claim in Pear Drops.</small></span><input type="checkbox" class="st-sw" id="caReward"></label>
           <div class="ca-foot"><i class="ca-dot"></i><span class="ca-line"></span><span class="ca-paired"></span><button type="button" class="btn ca-activity"><i class="ca-activity-ic"></i><span>Activity</span></button><button type="button" class="btn ca-test"><i class="ca-test-ic"></i><span>Test</span></button><button type="button" class="btn ca-act"></button></div>
         </div>
         <div class="act" id="caActivity" hidden></div>

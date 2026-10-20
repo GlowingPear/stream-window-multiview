@@ -55,6 +55,7 @@ import { init as toolbarToolbar } from './toolbar/toolbar.js';
 import { init as toolbarLayoutMenu } from './toolbar/layout-menu.js';
 import { init as toolbarAccountsMenu } from './toolbar/accounts-menu.js';
 import { init as toolbarFarming } from './toolbar/farming.js';
+import { init as toolbarDailyReward } from './toolbar/daily-reward.js';
 import { init as layoutUndo } from './layout/undo.js';
 import { init as windowsCapture } from './windows/capture.js';
 import { init as panelsHelpHelp } from './panels/help/help.js';
@@ -130,6 +131,7 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   toolbarLayoutMenu,
   toolbarAccountsMenu,
   toolbarFarming,
+  toolbarDailyReward,
   layoutUndo,
   windowsCapture,
   panelsHelpHelp,

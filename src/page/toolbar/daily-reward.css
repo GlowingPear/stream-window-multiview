@@ -1,0 +1,81 @@
+/* The toolbar's chest (toolbar/daily-reward.js): Kick's daily reward, from a linked Pear Drops. The same chest as
+   Pear Drops' title bar: a ring that fills over the hour, Kick's hop when it's ready, the chest alone once claimed.
+   The keyframes' names are this file's own: another stylesheet's of the same name would play instead. */
+header .dr-chest{gap:8px;padding:0 3px}
+header .dr-chest[hidden]{display:none}
+header .dr-chest .tb-l{display:none}
+.dr-ic{flex:none;display:grid;place-items:center;width:28px;height:28px}
+.dr-ic > svg{grid-area:1/1;overflow:visible}
+.dr-ring{width:28px;height:28px;fill:none;stroke-width:2}
+.dr-ring-track{stroke:var(--line2)}
+.dr-ring-value{stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+.dr-chest-ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dr-chest-ic .chest-latch{fill:var(--chest-bg,var(--panel))}
+.dr-chest-ic .chest-burst{opacity:0;stroke:none}
+.dr-chest-ic .chest-burst .g{fill:var(--accent)}
+.dr-chest-ic .chest-burst .t{fill:color-mix(in srgb,var(--accent) 35%,#2ee6c5)}
+.dr-chest-ic :is(.chest-box,.chest-burst){transform-box:view-box;transform-origin:12px 19.5px}
+
+/* no ring when it's ready, claimed, or without Pear Drops; dimmed when Kick isn't answering */
+.dr-chest:is(.state-ready,.state-claimed,.state-plain) .dr-ring{display:none}
+.dr-chest.state-unavailable .dr-ic{opacity:.5}
+.dr-chest.state-unavailable .dr-ring{display:none}
+
+/* Ready: the chest hops (Kick's own 1.29 s loop), and on top it's a glowing "Claim reward" chip */
+header .dr-chest.state-ready{color:var(--accent);--chest-bg:color-mix(in srgb,var(--accent) 8%,var(--panel))}
+.dr-chest.state-ready .chest-body{fill:color-mix(in srgb,var(--accent) 14%,transparent)}
+.dr-chest.state-ready .dr-chest-ic{width:21px;height:21px}
+.dr-chest.state-ready .chest-box{animation:dr-hop 1.292s linear infinite}
+.dr-chest.state-ready .chest-burst{animation:dr-burst 1.292s linear infinite}
+body:not(.bar-left) header .dr-chest.state-ready{border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:999px;
+  background:color-mix(in srgb,var(--accent) 8%,transparent);animation:dr-glow 2.4s ease-in-out infinite}
+body:not(.bar-left) header .dr-chest.state-ready:hover{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+body:not(.bar-left) header:not(.c3) .dr-chest.state-ready{padding:0 14px 0 6px}
+body:not(.bar-left) header:not(.c3) .dr-chest.state-ready .tb-l{display:inline;font-weight:650}
+/* on the left: a row like the others (the label turns green when it's ready); icons only: just the chest */
+body.bar-left header .dr-chest{padding:0 9px;gap:10px}
+body.bar-left header .dr-chest .tb-l{display:inline}
+body.bar-left header .dr-ic{width:24px;height:24px;margin:0 -3.5px}   /* centred on the other icons' 17 px column, its label in line with theirs */
+body.bar-left header .dr-ring{width:24px;height:24px}
+body.bar-left header .dr-chest.state-ready .tb-l{font-weight:650}
+body.bar-left.bar-icons header .dr-chest{padding:0}
+body.bar-left.bar-icons header .dr-chest .tb-l{display:none}
+#moreMenu .dr-chest .tb-l{display:inline}
+
+/* Kick's hop, timed from its own loop: a crouch, a leap that stretches, a rattle in the air, a squashed landing,
+   and a burst of pixels from under it */
+@keyframes dr-hop{
+  0%{transform:none}
+  16%{transform:scale(1.04,.77)}
+  19.4%{transform:translateY(-.9px) scale(1.02,.86)}
+  22.6%{transform:translateY(-3.6px) scale(.98,1.08)}
+  25.8%{transform:translateY(-5px) scale(.97,1.15)}
+  29%{transform:translateY(-5.4px) scale(.97,1.18)}
+  32.3%{transform:translateY(-5.9px) scale(1,1.08) rotate(-2.5deg)}
+  38.7%{transform:translateY(-6.1px) scale(1,1.05) rotate(3deg)}
+  45.2%{transform:translateY(-6.2px) rotate(-1deg)}
+  48.4%{transform:translateY(-6px) rotate(-2.5deg)}
+  51.6%{transform:translateY(-6.4px) rotate(0)}
+  54.8%{transform:translateY(-6.2px) rotate(3deg)}
+  58%{transform:translateY(-6.1px) scale(1,1.12) rotate(3deg)}
+  61.3%{transform:translateY(-5.9px) scale(.97,1.23) rotate(1.5deg)}
+  64.5%{transform:translateY(-4.4px) scale(1,.95) rotate(.5deg)}
+  67.7%{transform:scale(1.06,.82)}
+  71%{transform:scale(1.03,.92)}
+  77.4%{transform:scale(.99,1.04)}
+  87%{transform:scale(1.01,.99)}
+  100%{transform:none}
+}
+@keyframes dr-burst{
+  0%,68%{opacity:0;transform:scale(.5)}
+  71%{opacity:1;transform:scale(.75)}
+  82%{opacity:1;transform:scale(1.05)}
+  97%{opacity:0;transform:scale(1.3)}
+  100%{opacity:0}
+}
+@keyframes dr-glow{
+  50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 10%,transparent),0 0 20px color-mix(in srgb,var(--accent) 35%,transparent)}
+}
+@media (prefers-reduced-motion:reduce){
+  .dr-chest.state-ready,.dr-chest.state-ready :is(.chest-box,.chest-burst){animation:none !important}   /* (over the chip's glow) */
+}

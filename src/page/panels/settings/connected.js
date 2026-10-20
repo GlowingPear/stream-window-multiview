@@ -1,5 +1,5 @@
 import { $ } from '../../core.js';
-import { allowLink, backAt, disconnectLink, kickAuto, kickOut, linkIcon, linkOn, linkState, pairAgainLink,
+import { allowLink, applyLink, backAt, disconnectLink, kickAuto, kickOut, linkIcon, linkOn, linkState, pairAgainLink,
   setKickAuto, setLinkOn, testLink } from '../../platforms/pear-drops.js';
 import { watchSignedIn } from '../../platforms/platforms.js';
 import { effectiveSignedIn } from '../../platforms/players-link.js';
@@ -76,6 +76,7 @@ function renderCard(){
   card.querySelector('#caConnect').checked = on;
   card.querySelector('#caKickAuto').checked = settings.flag('link.kickAuto', true);
   card.querySelector('#caWidget').checked = settings.flag('link.widget', true);
+  card.querySelector('#caReward').checked = settings.flag('link.dailyReward', true);
   if (peer && peer.summary) card.querySelector('.ca-sum').textContent = peer.summary;
   const chip = chipFor(on ? peer : (peer && { ...peer, status: 'off' }));
   const ch = card.querySelector('.ca-chip');
@@ -121,6 +122,7 @@ function init(){
   card.querySelector('#caConnect').addEventListener('change', e => setLinkOn(e.target.checked));
   card.querySelector('#caKickAuto').addEventListener('change', e => setKickAuto(e.target.checked));
   card.querySelector('#caWidget').addEventListener('change', e => { settings.set('link.widget', e.target.checked); store.changed('link'); });
+  card.querySelector('#caReward').addEventListener('change', e => { settings.set('link.dailyReward', e.target.checked); applyLink(); });
   card.querySelector('.ca-page').onclick = download;
   card.querySelector('.ca-test').onclick = runTest;
   card.querySelector('.ca-act').onclick = e => {

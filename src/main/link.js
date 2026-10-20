@@ -1,6 +1,7 @@
 // Connected apps (Settings › Connected apps): the link with Pear Drops, through Grapevine
 // (@streamorchard/grapevine). Pear Drops says what it's farming (drops.farming); this app says whether its
-// Kick players are signed in (players), so they can leave the drop credit to Pear Drops while it farms.
+// Kick players are signed in (players), so they can leave the drop credit to Pear Drops while it farms. It
+// also says how Kick's daily reward is coming along (rewards.daily), for the toolbar's chest: claiming is there.
 // Pear Drops connects (its slug sorts first); this app only listens. The page decides who's signed in:
 // this only passes things on. Nothing here needs Electron, so the unit tests run it as it is.
 const path = require('path');
@@ -26,6 +27,7 @@ function createPearLink({ version, userData, appData, dev = false, env = process
   } : {};
   let on = false;              // the page's link.peardrops setting
   let farming = null;          // the last drops.farming.changed from Pear Drops
+  let reward = null;           // the last rewards.daily.changed from Pear Drops
   let running = false;
   const link = createLink({
     app: { id: self.id, formerIds: [], slug: self.slug, name: self.name, version, summary: self.summary, homepage: self.homepage, download: self.download, icon: self.icon },
@@ -42,16 +44,16 @@ function createPearLink({ version, userData, appData, dev = false, env = process
   });
 
   // What the page shows: the switch, Pear Drops' card (without its logo, sent once by icon()), what it's farming
-  // while connected, and whether it's open at all (its socket is there), for holding Kick players at start-up.
+  // and its daily reward while connected, and whether it's open at all (its socket is there), for holding Kick players at start-up.
   function state() {
     const { icon, ...peer } = link.peers().find(p => p.id === PEAR_DROPS) || {};
     const connected = link.isConnected(PEAR_DROPS);
-    return { on, peer, farming: connected ? farming : null, open: paths.listSlugs(place).includes(peerApp.slug), wait: +env.SMV_LINK_SIGN_BACK_IN_MS || null };
+    return { on, peer, farming: connected ? farming : null, reward: connected ? reward : null, open: paths.listSlugs(place).includes(peerApp.slug), wait: +env.SMV_LINK_SIGN_BACK_IN_MS || null };
   }
   const push = () => send(state());
   link.on('change', push);
   link.on('connected', push);
-  link.on('disconnected', () => { farming = null; push(); });
+  link.on('disconnected', () => { farming = null; reward = null; push(); });
 
   // Settings › Connected apps › Activity: every message each way this run, and what happened to the link
   // (activity.js). Grapevine's warnings and errors go in too: a message it dropped is a problem.
@@ -79,8 +81,10 @@ function createPearLink({ version, userData, appData, dev = false, env = process
     noted({ text: text.trim().slice(0, 200), about: 'players' });
   }
   link.on('event', (from, name, params) => {
-    if (from !== PEAR_DROPS || name !== 'drops.farming.changed') return;
-    farming = params;
+    if (from !== PEAR_DROPS) return;
+    if (name === 'drops.farming.changed') farming = params;
+    else if (name === 'rewards.daily.changed') reward = params;
+    else return;
     push();
   });
 
@@ -103,7 +107,7 @@ function createPearLink({ version, userData, appData, dev = false, env = process
   async function setOn(v) {
     on = !!v;
     if (on && !running) { running = true; try { await link.start(); } catch (e) { running = false; if (log) log('error', String(e && e.message || e)); } }
-    else if (!on && running) { running = false; await link.stop(); farming = null; }
+    else if (!on && running) { running = false; await link.stop(); farming = null; reward = null; }
     link.refresh();
     push();
     return state();
@@ -117,6 +121,8 @@ function createPearLink({ version, userData, appData, dev = false, env = process
   function allowPairing() { link.allowPairing(PEAR_DROPS); noted({ tone: 'ok', text: 'Allowed ' + peerApp.name + ' to pair' }); return state(); }
   const icon = () => iconDataUrl(peerApp.icon);
   const showPearDrops = () => link.request(PEAR_DROPS, 'drops.farming.show').catch(() => ({ shown: false }));
+  // The toolbar's chest: Pear Drops comes to the front with the daily reward's card open.
+  const showReward = () => link.request(PEAR_DROPS, 'rewards.daily.show', {}).catch(() => ({ shown: false }));
   async function test() {
     const r = await link.test(PEAR_DROPS);
     noted({ tone: r.ok ? 'ok' : 'warn', text: 'Test: ' + r.text });
@@ -124,7 +130,7 @@ function createPearLink({ version, userData, appData, dev = false, env = process
   }
   async function stop() { if (running) { running = false; await link.stop(); } }
 
-  return { link, state, setOn, disconnect, pairAgain, allowPairing, icon, showPearDrops, test, activityPage, playersNote, playersReport, streamsClosed, stop };
+  return { link, state, setOn, disconnect, pairAgain, allowPairing, icon, showPearDrops, showReward, test, activityPage, playersNote, playersReport, streamsClosed, stop };
 }
 
 // Two windows' players.changed fields as one: a site is signed in or out the same in both (the main window's

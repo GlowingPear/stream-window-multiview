@@ -64,6 +64,13 @@ function farmingWords(f){
   return { farming: 'Farming', paused: 'Paused', done: 'Every drop is done', 'signed-out': 'Signed out of Kick', waiting: 'Waiting for a stream with drops' }[f.state] || 'State: ' + f.state;
 }
 
+// rewards.daily's state, in words.
+function rewardWords(r){
+  if (r.state === 'earning') return 'Daily reward' + (Number.isFinite(r.minutes) && r.threshold ? ' · ' + r.minutes + ' of ' + r.threshold + ' min watched' : '');
+  return { ready: 'Daily reward is ready to claim', claimed: 'Daily reward claimed for today', unavailable: "Kick's daily reward isn't answering", 'signed-out': 'Signed out of Kick' }[r.state]
+    || 'Daily reward: ' + (r.state || 'no state');
+}
+
 // players' state (what this app sends), in words: signed in or out, and why (Auto: out while Pear Drops farms).
 function playersWords(p){
   const k = p && p.platforms && p.platforms.kick;
@@ -92,6 +99,9 @@ function describeActivity(e){
     'drops.farming.changed': { event: farmingWords(d) },
     'drops.farming.get': { request: mine ? 'Asked ' + PD + " what's being farmed" : PD + " asked what's being farmed", reply: farmingWords(d) },
     'drops.farming.show': { request: mine ? 'Asked ' + PD + ' to come to the front' : PD + ' asked to be shown', reply: d.shown ? 'Shown' : 'Not shown' },
+    'rewards.daily.changed': { event: rewardWords(d) },
+    'rewards.daily.get': { request: mine ? 'Asked ' + PD + ' about the daily reward' : PD + ' asked about the daily reward', reply: rewardWords(d) },
+    'rewards.daily.show': { request: mine ? 'Asked ' + PD + ' to show the daily reward' : PD + ' asked to show the daily reward', reply: d.shown ? 'Shown' : 'Not shown' },
     'players.changed': { event: playersWords(d) },
     'players.get': { request: mine ? 'Asked ' + PD + ' about its players' : PD + ' asked about the players', reply: playersWords(d) }
   }[e.method];
@@ -211,14 +221,15 @@ function actRow(e, now){
   if (e.kind === 'status' || e.kind === 'note')
     return element('div', { class: 'act-row act-marker tone-' + (e.tone || 'plain') + (lit ? ' fresh' : ''), dataset: { n: e.n }, style: lit },
       time, element('span', 'act-rule'), element('span', { class: 'act-pill', html: ACT_IC[e.about === 'players' ? 'clock' : e.kind === 'note' ? 'alert' : 'link'] }, element('span', null, w.text)), element('span', 'act-rule'));
-  const cap = (e.method || '').startsWith('link.') ? 'link' : (e.method || '').startsWith('players.') ? 'players' : 'drops';
+  const cap = (e.method || '').split('.')[0];
+  const capCls = { link: 'link', players: 'players', rewards: 'rewards' }[cap] || 'drops';
   const open = act.shown === e.n;
   const head = element('button', { type: 'button', class: 'act-row ' + e.dir + ' k-' + e.kind + (open ? ' open' : '') + (lit ? ' fresh' : ''), dataset: { n: e.n }, style: lit,
     onclick: () => { act.shown = open ? null : e.n; renderActivity(); } },
     time,
     element('span', { class: 'act-dir', title: e.dir === 'out' ? ME + ' → ' + PD : PD + ' → ' + ME, html: ACT_IC[e.kind === 'error' ? 'alert' : e.dir === 'out' ? 'out' : 'in'] }),
     element('span', 'act-body',
-      element('span', 'act-title', element('span', 'act-method cap-' + cap, w.title), element('span', 'act-kind', w.kind)),
+      element('span', 'act-title', element('span', 'act-method cap-' + capCls, w.title), element('span', 'act-kind', w.kind)),
       element('span', 'act-text', w.text)),
     element('span', 'act-meta', e.ms != null ? element('span', null, actMs(e.ms)) : null, e.bytes ? element('span', null, actSize(e.bytes)) : null));
   if (!open) return head;

@@ -154,6 +154,38 @@ test('Activity: the words for each message, from this app\'s side', async t => {
   assert.deepEqual(f[2], { fields: [['(empty)', '{}']], more: 0 });
 });
 
+test('Activity: the words for the daily reward (rewards.daily), from this app\'s side', async t => {
+  const page = await openActivity(t);
+  const words = await page.evaluate(() => {
+    const d = (method, dir, kind, data) => { const w = window.smvActivity.describeActivity({ method, dir, kind, data }); return [w.title, w.kind, w.text].join(' | '); };
+    const R = { state: 'earning', account: { platform: 'kick', user: 'pearfan' }, minutes: 37, threshold: 60, endsAt: '2026-10-21T00:00:00Z' };
+    return [
+      d('rewards.daily.changed', 'in', 'event', R),
+      d('rewards.daily.changed', 'in', 'event', { ...R, minutes: undefined }),
+      ...['ready', 'claimed', 'unavailable', 'signed-out', 'event-crate', undefined].map(state => d('rewards.daily.changed', 'in', 'event', { ...R, state })),
+      d('rewards.daily.get', 'out', 'request', {}), d('rewards.daily.get', 'in', 'request', {}), d('rewards.daily.get', 'in', 'reply', { ...R, state: 'ready' }),
+      d('rewards.daily.show', 'out', 'request', {}), d('rewards.daily.show', 'in', 'request', {}), d('rewards.daily.show', 'in', 'reply', { shown: true }), d('rewards.daily.show', 'in', 'reply', { shown: false })
+    ];
+  });
+  assert.deepEqual(words, [
+    'rewards.daily.changed | event | Daily reward · 37 of 60 min watched',
+    'rewards.daily.changed | event | Daily reward',
+    'rewards.daily.changed | event | Daily reward is ready to claim',
+    'rewards.daily.changed | event | Daily reward claimed for today',
+    "rewards.daily.changed | event | Kick's daily reward isn't answering",
+    'rewards.daily.changed | event | Signed out of Kick',
+    'rewards.daily.changed | event | Daily reward: event-crate',
+    'rewards.daily.changed | event | Daily reward: no state',
+    'rewards.daily.get | request | Asked Pear Drops about the daily reward',
+    'rewards.daily.get | request | Pear Drops asked about the daily reward',
+    'rewards.daily.get | reply | Daily reward is ready to claim',
+    'rewards.daily.show | request | Asked Pear Drops to show the daily reward',
+    'rewards.daily.show | request | Pear Drops asked to show the daily reward',
+    'rewards.daily.show | reply | Shown',
+    'rewards.daily.show | reply | Not shown'
+  ]);
+});
+
 test('Activity: the button opens it in place of the card, with the header, the tiles and the chart; Esc and the back arrow go back', async t => {
   const page = await openActivity(t);
   assert.ok(await page.isVisible('#caPearDrops .ca-activity'), 'next to Test while Connect is on');
