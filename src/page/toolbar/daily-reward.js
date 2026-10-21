@@ -1,13 +1,14 @@
 import { $ } from '../core.js';
-import { kickUser, linkReward, rewardShared, showReward } from '../platforms/pear-drops.js';
+import { kickUser, linkConnected, linkOn, linkReward, rewardShared, showReward } from '../platforms/pear-drops.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 
 /* ---- The toolbar's chest: Kick's daily reward (watch an hour signed in, then open a crate), as a linked Pear Drops
    tells it (rewards.daily). A ring fills over the hour; when it's ready the chest hops, as a "Claim reward" chip where
    there's room; claimed, it's the chest alone again. A click brings Pear Drops to the front with the reward's card
-   open, where it's claimed: this app never calls Kick for it. Without Pear Drops (or one too old to send it), it's a plain chest
-   that opens Kick's own dialog. Settings › Connected apps, "Show Kick's daily reward in the toolbar". ---- */
+   open, where it's claimed: this app never calls Kick for it. Hidden while Pear Drops isn't connected; connected but too old
+   to send it, it's a plain chest that opens Kick's own dialog. Settings › Connected apps, "Show Kick's daily reward in the
+   toolbar". ---- */
 let btn, ring, tick = null;
 
 const KICK_DIALOG = 'https://kick.com/?daily-reward=open';
@@ -37,10 +38,10 @@ function timeLeft(iso){
 const whole = v => (Number.isFinite(v) && v >= 0 ? Math.floor(v) : null);
 
 // What the chest shows, or null when it's hidden: { state, frac (the ring, 0–1), tip: [the name, lines under it] }.
-// Hidden when switched off, with no Kick account here, signed out of Kick in Pear Drops, or when Pear Drops
-// watches with another Kick account than this app's.
+// Hidden when switched off, while Pear Drops isn't connected, with no Kick account here, signed out of Kick in
+// Pear Drops, or when Pear Drops watches with another Kick account than this app's.
 function chestView(){
-  if (!settings.flag('link.dailyReward', true)) return null;
+  if (!settings.flag('link.dailyReward', true) || !linkOn() || !linkConnected()) return null;
   const mine = kickUser();
   if (!mine) return null;
   const r = linkReward();

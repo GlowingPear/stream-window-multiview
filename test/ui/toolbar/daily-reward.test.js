@@ -67,7 +67,11 @@ for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', label
     const page = await openPage(t, { toolbar });
     const label = name => (toolbar && toolbar.labels ? name : null);
 
-    // not linked yet: a plain chest, next to the farming widget
+    // Pear Drops not connected yet: no chest
+    assert.equal(await chest(page), null, 'not connected');
+
+    // connected, but too old to send the reward: a plain chest, next to the farming widget
+    await push(page, linked(null, ['drops.farming']));
     let c = await chest(page);
     assert.deepEqual([c.state, c.ring, c.title, c.label], ['plain', null, 'Daily reward on Kick', label('Daily reward')]);
     assert.ok(c.inBar, 'in the toolbar');
@@ -127,6 +131,11 @@ for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', label
     assert.equal(await chest(page), null, 'no Kick account here');
     await page.evaluate(() => { localStorage.setItem('kickMultiview.accounts', '{"kick":"pearfan"}'); localStorage.setItem('kickMultiview.link.dailyReward', '0'); window.pearLink.applyLink(); });
     assert.equal(await chest(page), null, 'switched off');
+    await page.evaluate(() => { localStorage.setItem('kickMultiview.link.dailyReward', '1'); window.pearLink.applyLink(); });
+    assert.ok(await chest(page), 'on again');
+    // Pear Drops gone again: no chest
+    await push(page, { ...linked(REWARD()), peer: { ...peer(), status: 'waiting' } });
+    assert.equal(await chest(page), null, 'Pear Drops closed');
   });
 }
 
@@ -166,10 +175,11 @@ test('The daily reward chip shrinks to the chest in a tight toolbar, and grows b
   assert.ok(room);
 });
 
-test('The daily reward chest: a click asks Pear Drops to show it; without Pear Drops, or one too old, Kick\'s own dialog', async t => {
+test('The daily reward chest: a click asks Pear Drops to show it; with one too old, or if it couldn\'t, Kick\'s own dialog', async t => {
   const page = await openPage(t);
   const KICK = 'https://kick.com/?daily-reward=open';
-  // not linked: Kick's dialog, in an app window (with the Kick login)
+  // an older Pear Drops (before 0.1.12: no rewards.daily): Kick's dialog, in an app window (with the Kick login)
+  await push(page, linked(null, ['drops.farming']));
   await page.click('#rewardBtn');
   assert.deepEqual(await calls(page, 'window'), [[KICK, 1100, 820]]);
   assert.equal((await calls(page, 'showReward')).length, 0);
@@ -189,11 +199,13 @@ test('The daily reward chest: a click asks Pear Drops to show it; without Pear D
   await page.click('#rewardBtn');
   await page.waitForFunction(() => window.calls.filter(c => c[0] === 'window').length === 3);
   assert.equal((await calls(page, 'showReward')).length, 2, 'not asked');
-  // Connect switched off: the plain chest too
+  // Connect switched off: no chest
   await page.evaluate(() => { localStorage.setItem('kickMultiview.link.peardrops', '0'); window.pearLink.applyLink(); });
   await push(page, linked(REWARD({ state: 'ready' })));
-  assert.equal((await chest(page)).state, 'plain');
+  assert.equal(await chest(page), null);
   // no desktop app to open a window: a browser window
+  await page.evaluate(() => { localStorage.setItem('kickMultiview.link.peardrops', '1'); window.pearLink.applyLink(); });
+  await push(page, linked(REWARD({ state: 'ready' }), ['drops.farming']));
   await page.evaluate(() => { delete window.kmv.openWindow; });
   await page.click('#rewardBtn');
   assert.deepEqual(await calls(page, 'open'), [[KICK, 'kmv_daily_reward']]);

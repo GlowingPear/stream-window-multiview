@@ -48,7 +48,7 @@ function applyLink(){
   syncStreams('kick');
   reportPlayers();
   store.changed('link');
-  const chest = JSON.stringify([linkReward(), rewardShared(), kickUser(), settings.flag('link.dailyReward', true)]);
+  const chest = JSON.stringify([linkReward(), rewardShared(), linkOn() && linkConnected(), kickUser(), settings.flag('link.dailyReward', true)]);
   if (chest !== lastChest){ lastChest = chest; store.changed('reward'); }
 }
 

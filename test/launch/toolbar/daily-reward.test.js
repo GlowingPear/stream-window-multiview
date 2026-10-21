@@ -1,6 +1,6 @@
 // The toolbar's daily reward chest in the real desktop app, with Grapevine's stand-in Pear Drops in a folder of the
-// test's own (never the real one, and nothing here calls Kick): an older Pear Drops without rewards.daily gets the
-// plain chest and the card says which version to update to; one that sends it fills the ring, shows the "Claim
+// test's own (never the real one, and nothing here calls Kick): no chest until Pear Drops is connected; an older
+// Pear Drops without rewards.daily gets the plain chest and the card says which version to update to; one that sends it fills the ring, shows the "Claim
 // reward" chip when it's ready, and a click asks it to show the reward.
 const test = require('node:test');
 const fs = require('fs');
@@ -44,8 +44,8 @@ test.after(async () => {
 });
 
 test('an older Pear Drops (no rewards.daily): the plain chest, and the card says to update it', T, async () => {
-  await a.win.waitForSelector('#rewardBtn:not([hidden])');
-  assert.deepEqual(await chest(), { state: 'plain', title: 'Daily reward on Kick', label: null }, 'not linked: the plain chest');
+  await a.win.waitForFunction(() => window.pearLink && window.pearLink.state);
+  assert.equal(await chest(), null, 'not linked: no chest');
   await a.win.evaluate(() => openSettings('apps'));
   assert.ok(await a.win.isChecked('#caReward'), 'on by default');
   await a.win.click('#caConnect');
@@ -54,7 +54,8 @@ test('an older Pear Drops (no rewards.daily): the plain chest, and the card says
   await until(async () => (await status()) === 'connected', 15000);
   assert.match(await a.win.textContent('#caPearDrops .ca-line'), /^Works, with a feature missing: update Pear Drops( \(stand-in\))? to 0\.1\.12 or later$/);
   assert.deepEqual(await a.win.evaluate(() => window.pearLink.state.peer.shares.in), ['drops.farming']);
-  assert.equal((await chest()).state, 'plain', 'still the plain chest');
+  await a.win.waitForSelector('#rewardBtn:not([hidden])');
+  assert.deepEqual(await chest(), { state: 'plain', title: 'Daily reward on Kick', label: null }, 'connected: the plain chest');
   assert.ok(await a.win.$eval('#settingsDlg .st-body', b => b.scrollHeight <= b.clientHeight + 1), 'the card fits without scrolling');
   await a.win.keyboard.press('Escape');
 });
