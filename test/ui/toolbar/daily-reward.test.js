@@ -75,7 +75,7 @@ for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', label
     let c = await chest(page);
     assert.deepEqual([c.state, c.ring, c.title, c.label], ['plain', null, 'Daily reward on Kick', label('Daily reward')]);
     assert.ok(c.inBar, 'in the toolbar');
-    assert.equal(await page.evaluate(() => document.getElementById('rewardBtn').previousElementSibling.id), 'farmBtn');
+    assert.equal(await page.evaluate(() => document.getElementById('rewardBtn').nextElementSibling.id), 'farmBtn', 'the farming widget on its right');
 
     // earning: the ring fills to minutes ÷ threshold
     await push(page, linked(REWARD()));

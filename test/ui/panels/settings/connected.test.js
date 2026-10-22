@@ -252,7 +252,7 @@ for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', label
     assert.equal(w.name, 'PixelPear');
     assert.equal(w.bar, '40%', '48 of 120 minutes');
     assert.equal(w.text, 'PixelPear', 'just the name and the bar (the next reward is in the hover card)');
-    assert.equal(await page.evaluate(() => document.getElementById('farmBtn').previousElementSibling.id), 'profBtn', 'next to Profiles');
+    assert.equal(await page.evaluate(() => document.getElementById('farmBtn').previousElementSibling.id), 'rewardBtn', 'right of the daily reward chest');
     await page.waitForFunction(png => document.querySelector('#farmBtn .fw-av').getAttribute('src') === png, PNG);   // Kick's picture failed: the logo
     const hb = await page.locator('header').boundingBox(), bb = await page.locator('#farmBtn').boundingBox();
     assert.ok(bb.width > 20 && bb.x >= hb.x - 1 && bb.x + bb.width <= hb.x + hb.width + 1 && bb.y >= hb.y - 1 && bb.y + bb.height <= hb.y + hb.height + 1, 'in the toolbar');
