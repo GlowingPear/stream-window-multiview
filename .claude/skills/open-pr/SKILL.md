@@ -58,13 +58,29 @@ When new commits change something visible (a fix after review, a follow-up), the
 - Show the new body and attachments, and wait for approval as in step 4.
 - Push, then `gh pr edit <n> --body-file <body.md> --attach <file> [--attach <file> ...]`, and check the references as in step 5.
 
-## 7. After merging
+## 7. Merging
 
-Remove the worktree and branch (from the main checkout or another worktree, not the one being removed):
+When the developer wants the PR merged once its checks pass, turn on auto-merge rather than waiting on the checks yourself:
+
+```sh
+gh pr merge <n> --auto --merge
+gh pr view <n> --json autoMergeRequest,state   # autoMergeRequest set: GitHub merges it when every required check passes
+```
+
+- GitHub merges it as soon as the required checks pass and it's up to date, and does nothing if a check fails. Then fix it on the branch and push: auto-merge stays on.
+- If `gh` says the PR is already mergeable (`clean status`), it merges straight away.
+- Only merge without `--auto` when the developer asks to. Then first wait until `gh pr checks <n>` shows nothing pending and `gh pr view <n> --json mergeStateStatus` is `CLEAN`: `gh pr checks --watch` can stop before every check has started.
+
+## 8. After merging
+
+Once `gh pr view <n> --json state` says `MERGED`, remove the worktree and its branch (from the main checkout or another worktree, not the one being removed), then the branch on GitHub, which the repository doesn't delete itself:
 
 ```sh
 npm run worktree -- --clean
+git push origin --delete <branch>
 ```
+
+Never delete the branch on GitHub before the merge: that closes the PR.
 
 `start-change` also runs this before each new change, so merged worktrees don't pile up.
 
