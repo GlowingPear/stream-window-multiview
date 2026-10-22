@@ -265,6 +265,7 @@ for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', label
     assert.deepEqual(await page.$$eval('#farmCard .fw-item', l => l.map(e => [e.style.left, e.classList.contains('claimed')])), [['25%', true], ['50%', false], ['100%', false]], 'each reward at its minutes, ticked when claimed');
     const cb = await page.locator('#farmCard').boundingBox(), vp = page.viewportSize();
     assert.ok(cb.x >= 0 && cb.y >= 0 && cb.x + cb.width <= vp.width && cb.y + cb.height <= vp.height, 'the card is on screen');
+    assert.ok(await page.$eval('#farmCard', e => +getComputedStyle(e).zIndex > 89995), 'over the windows, even a featured one (89995)');
     await page.hover('#farmCard');
     await page.click('#farmCard .fw-open');
     await page.click('#farmBtn');
