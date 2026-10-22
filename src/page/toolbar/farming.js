@@ -6,8 +6,8 @@ import { store } from '../shared/store.js';
 import { placeMenu } from './toolbar.js';
 
 /* ---- The toolbar's farming widget (Settings › Connected apps, "Show what Pear Drops is farming in the toolbar"):
-   while a linked Pear Drops farms, the channel's picture and name and the drop's progress, next to Profiles. Its hover
-   card has the next reward and the whole reward track. A click brings Pear Drops to the front. ---- */
+   while a linked Pear Drops farms, the channel's picture and name and the drop's progress, right of the daily reward
+   chest. Its hover card has the next reward and the whole reward track. A click brings Pear Drops to the front. ---- */
 let btn, card, tick = null, hideT = null, logo = '';
 
 const farmingNow = () => {

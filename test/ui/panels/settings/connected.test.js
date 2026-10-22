@@ -252,7 +252,7 @@ for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', label
     assert.equal(w.name, 'PixelPear');
     assert.equal(w.bar, '40%', '48 of 120 minutes');
     assert.equal(w.text, 'PixelPear', 'just the name and the bar (the next reward is in the hover card)');
-    assert.equal(await page.evaluate(() => document.getElementById('farmBtn').previousElementSibling.id), 'profBtn', 'next to Profiles');
+    assert.equal(await page.evaluate(() => document.getElementById('farmBtn').previousElementSibling.id), 'rewardBtn', 'right of the daily reward chest');
     await page.waitForFunction(png => document.querySelector('#farmBtn .fw-av').getAttribute('src') === png, PNG);   // Kick's picture failed: the logo
     const hb = await page.locator('header').boundingBox(), bb = await page.locator('#farmBtn').boundingBox();
     assert.ok(bb.width > 20 && bb.x >= hb.x - 1 && bb.x + bb.width <= hb.x + hb.width + 1 && bb.y >= hb.y - 1 && bb.y + bb.height <= hb.y + hb.height + 1, 'in the toolbar');
@@ -265,6 +265,7 @@ for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', label
     assert.deepEqual(await page.$$eval('#farmCard .fw-item', l => l.map(e => [e.style.left, e.classList.contains('claimed')])), [['25%', true], ['50%', false], ['100%', false]], 'each reward at its minutes, ticked when claimed');
     const cb = await page.locator('#farmCard').boundingBox(), vp = page.viewportSize();
     assert.ok(cb.x >= 0 && cb.y >= 0 && cb.x + cb.width <= vp.width && cb.y + cb.height <= vp.height, 'the card is on screen');
+    assert.ok(await page.$eval('#farmCard', e => +getComputedStyle(e).zIndex > 89995), 'over the windows, even a featured one (89995)');
     await page.hover('#farmCard');
     await page.click('#farmCard .fw-open');
     await page.click('#farmBtn');
