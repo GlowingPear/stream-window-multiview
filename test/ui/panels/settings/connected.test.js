@@ -261,7 +261,7 @@ for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', label
     const cardText = await page.textContent('#farmCard');
     for (const s of ['Neon Rush Launch Week', 'Pear Drops is farming on PixelPear · 48 / 120 min', '1 of 3 claimed', 'Ends in 3 days', 'Open Pear Drops →']) assert.ok(cardText.includes(s), s);
     assert.match(cardText, /Hype Rocket Emote unlocks in 1[12] min/);
-    assert.match(cardText, /All rewards by \d{1,2}:\d{2}/);
+    assert.match(cardText, /All rewards by (\p{L}+\.? )?\d{1,2}:\d{2}/u, 'the time (and tomorrow\'s weekday, just before midnight)');
     assert.deepEqual(await page.$$eval('#farmCard .fw-item', l => l.map(e => [e.style.left, e.classList.contains('claimed')])), [['25%', true], ['50%', false], ['100%', false]], 'each reward at its minutes, ticked when claimed');
     const cb = await page.locator('#farmCard').boundingBox(), vp = page.viewportSize();
     assert.ok(cb.x >= 0 && cb.y >= 0 && cb.x + cb.width <= vp.width && cb.y + cb.height <= vp.height, 'the card is on screen');
