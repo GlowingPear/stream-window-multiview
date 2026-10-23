@@ -13,6 +13,7 @@
     close();
     const list = document.createElement('div');
     list.className = 'dd-list';
+    if (sel.dataset.ddClass) list.classList.add(...sel.dataset.ddClass.split(' '));   // its own look (a Kick-style list: chat/kick-poll.css)
     list.setAttribute('role', 'listbox');
     const items = [...sel.options].map((o, i) => {
       const b = document.createElement('button');
