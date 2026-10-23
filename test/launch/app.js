@@ -59,6 +59,12 @@ async function launchApp(opts = {}) {
             if (/player\.kick\.com|player\.twitch\.tv|youtube\.com\/embed/.test(u)) return page(player);
             if (/\/popout\/|live_chat|\/chat\?/.test(u)) return page(chat);
             if (/^https:\/\/www\.youtube\.com\/watch\?/.test(u)) return page(ytWatch);
+            // Kick's polls: what was sent is kept in __polls; the answer is __pollAnswer ({ status, body }), or Kick's OK
+            if (/^https:\/\/kick\.com\/api\/v2\/channels\/[^/]+\/polls$/.test(u)) return req.text().then(body => {
+              (globalThis.__polls = globalThis.__polls || []).push({ url: u, method: req.method, auth: req.headers.get('authorization'), type: req.headers.get('content-type'), body });
+              const a = globalThis.__pollAnswer || { status: 200, body: { status: { error: false, code: 200, message: 'OK' }, data: {} } };
+              return new Response(JSON.stringify(a.body), { status: a.status, headers: { 'content-type': 'application/json' } });
+            });
             if (/^https:\/\/(www\.)?(kick\.com|twitch\.tv|youtube\.com)\//.test(u)) return page('<!doctype html><title>site</title>');
             return new Response('', { status: 404 });
           });
