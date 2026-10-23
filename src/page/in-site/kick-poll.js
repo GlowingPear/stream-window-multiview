@@ -1,5 +1,4 @@
-// Run inside a Kick chat page (turned into text, given what they need): the poll form's request and tidying up after it
-// (chat/kick-poll.js).
+// Run inside a Kick chat page (turned into text, given what it needs): the poll form's request (chat/kick-poll.js).
 
 // Starts a poll the way Kick's own "Create a new poll" form does (on the channel page), with the chat's login.
 // Answers { ok, status, message }: status 0 when the request didn't get an answer, message Kick's own when it gave one.
@@ -20,15 +19,4 @@ async function kickPollPost(slug, poll){
   } catch { return { ok: false, status: 0, message: '' }; }
 }
 
-// Empties Kick's chat box (it still says "/poll …"), as Kick's channel page does once the form opens. The box is a Lexical
-// editor: changing its text directly would leave the editor out of step, so it's given an empty state instead.
-function kickClearBox(){
-  const b = document.querySelector('[data-testid="chat-input"]'), ed = b && b.__lexicalEditor;
-  if (!ed) return false;
-  try {
-    ed.setEditorState(ed.parseEditorState('{"root":{"children":[{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'));
-    return true;
-  } catch { return false; }
-}
-
-export { kickClearBox, kickPollPost };
+export { kickPollPost };

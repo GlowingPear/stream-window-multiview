@@ -1,0 +1,35 @@
+/* Kick's /clip in a chat window (chat/kick-clip.js): the slide-up panel of kick-commands.css, the chat's full width, with the
+   look of Kick's Share Clip (its colours, sizes and corners) */
+.kclip{gap:0;max-height:100%;overflow-y:auto;overscroll-behavior:contain;padding:16px 14px 14px;background:#181b1f}
+.kclip h3{font-size:16px;font-weight:700;line-height:24px}
+.kclip .kcmd-c{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.kclip .ki{display:inline-flex;flex:none}.kclip .ki svg{width:100%;height:100%}
+.kcl-making{display:flex;align-items:center;justify-content:center;aspect-ratio:16/9;background:#000;font-size:14px;animation:kclPulse 1.4s ease-in-out infinite}
+@keyframes kclPulse{50%{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.kcl-making{animation:none}}
+.kcl-done{display:flex;align-items:center;gap:8px;padding:10px 8px;border-radius:4px;background:#24272c;font-size:12px;line-height:16px;color:#a9adb5}
+.kcl-done .ki{width:24px;height:24px;color:#53fc18}
+.kcl-card{display:flex;flex-direction:column;gap:8px;padding:8px;border-radius:4px;background:#24272c}
+.kcl-thumb{aspect-ratio:16/9;background:#000}
+.kcl-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.kcl-title{min-width:0;overflow:hidden;font-size:14px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.kcl-url{position:relative}
+.kcl-url input{box-sizing:border-box;width:100%;height:40px;padding:0 40px 0 12px;border:1px solid rgba(255,255,255,.4);border-radius:4px;background:#090b0f;
+  color:#a9adb5;font:inherit;font-size:16px;opacity:1}
+.kcl-copy{position:absolute;right:6px;top:6px;display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;border-radius:4px;
+  background:none;color:#fff;cursor:pointer}
+.kcl-copy:hover{background:rgba(255,255,255,.08)}
+.kcl-copy .ki{width:16px;height:16px}
+.kcl-tiles{display:flex;justify-content:space-evenly;font-weight:600}   /* (one row, whatever the chat's width: the four share it) */
+.kcl-t{display:flex;flex:0 1 80px;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;padding:12px 2px 8px;border:0;border-radius:6px;
+  background:none;color:#fff;font:inherit;cursor:pointer}
+.kcl-t:hover{background:#2a2d33}
+.kcl-t .ki{width:28px;height:24px}
+.kcl-t span{max-width:100%;padding-top:12px;overflow:hidden;font-size:12px;line-height:16px;text-overflow:ellipsis;white-space:nowrap}
+.kcl-err{display:flex;align-items:flex-start;gap:8px;margin:0;font-size:14px;line-height:20px;color:#ff596e}
+.kcl-err .ki{width:16px;height:16px;margin-top:2px}
+.kcl-d{margin:0;font-size:14px;line-height:20px;color:#a9adb5}
+.kcl-foot{display:flex;justify-content:flex-end;gap:8px}
+.kcl-b{height:32px;padding:0 12px;border:0;border-radius:4px;background:rgba(255,255,255,.1);color:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.kcl-b:hover{background:rgba(255,255,255,.16)}
+.kcl-b.danger{background:#e51147}.kcl-b.danger:hover{background:#f0285a}

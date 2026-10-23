@@ -1,0 +1,108 @@
+/* Kick's /prediction window in a chat window (chat/kick-prediction.js): the slide-up panel of kick-commands.css, the chat's
+   full width, with Kick's own look (its colours, sizes and corners); it scrolls when the chat is shorter than it */
+.kpred{gap:0;max-height:100%;overflow-y:auto;overscroll-behavior:contain;padding:16px 14px 14px;background:#181b1f}
+.kpred h3{font-size:18px;font-weight:700;line-height:28px}
+.kpred h3:empty{display:none}
+.kpred .kcmd-c{display:flex;flex-direction:column;gap:24px;margin-top:14px}
+.kpred .kcmd-c > .kpr-skel:first-child{margin-top:12px}
+.kpred .ki{display:inline-flex;flex:none}.kpred .ki svg{width:100%;height:100%}
+.kpr-d{margin:0;font-size:14px;line-height:20px;color:#a9adb5}
+.kpr-d b{color:#fff;font-weight:700}
+.kpr-d.red,.kpr-red{color:#fe6862}
+.kpr-warn{color:#fd7272}
+.kpr-link{padding:0;border:0;background:none;color:#b6bbc2;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+.kpr-link:hover{color:#fff}
+/* the form */
+.kpr-form{display:flex;flex-direction:column;gap:16px;margin:0}
+.kpr-hr{width:100%;height:1px;margin:8px 0;border:0;background:rgba(255,255,255,.16)}
+.kpr-f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpr-l{font-size:14px;font-weight:600;line-height:14px;margin-bottom:4px}
+.kpr-l.sub{color:#a9adb5;line-height:20px}
+.kpred input{box-sizing:border-box;width:100%;height:40px;padding:0 12px;border:1px solid rgba(255,255,255,.4);border-radius:4px;background:#090b0f;
+  color:#fff;font:inherit;font-size:16px;outline:0}
+.kpred input::placeholder{color:#a0a6b1}
+.kpred input:focus{border-color:#fff}
+.kpr-f.bad > .kpr-l{color:#ff596e}
+.kpr-f.bad > input{border-color:#e51147}
+.kpr-o{position:relative;display:block}
+.kpr-o ~ .kpr-o{margin-top:12px}
+.kpr-o input{padding-left:40px}
+.kpr-o .ki{position:absolute;left:12px;top:10px;width:20px;height:20px}
+.kpr-err{display:inline-flex;align-items:center;gap:4px;margin:0;font-size:12px;font-weight:500;line-height:16px;color:#ff596e}
+.kpr-err[hidden]{display:none}
+.kpr-err .ki{width:12px;height:12px}
+/* the lists (Prediction lasts for, the past ones): in-app dropdowns (shared/dropdown.js) dressed as Kick's */
+.kpred .kpr-selw{position:relative;display:block}
+.kpred .kpr-selw::after{content:"";position:absolute;right:16px;top:50%;width:8px;height:8px;margin-top:-6px;border:solid rgba(255,255,255,.75);
+  border-width:0 1.5px 1.5px 0;transform:rotate(45deg);pointer-events:none}
+.kpr-sel{appearance:none;box-sizing:border-box;width:100%;height:40px;padding:0 40px 0 12px;border:0;border-radius:4px;
+  background:oklab(.359 -.001 -.011 / .2);color:#fff;font:inherit;font-size:16px;cursor:pointer;outline:0}
+.kpr-sel:focus-visible,.kpr-sel.dd-open{box-shadow:0 0 0 1px #fff}
+.kpr-past{background:rgba(255,255,255,.08)}
+.kpr-past:has(option[value=""]:checked){color:#a0a6b1}
+.kpr-selw + .kpr-d{margin-top:4px}
+.dd-list.kick.kick-lg{gap:0;padding:0;font-size:16px}
+.dd-list.kick.kick-lg button{padding:8px 40px 8px 12px;font-weight:400;line-height:24px}
+.dd-list.kick.kick-lg button:disabled{color:#a0a6b1}
+/* the buttons, on the right as on Kick (in a narrow chat, one per line, as on Kick's phone layout) */
+.kpr-foot{display:flex;justify-content:flex-end;gap:8px}
+.kpr-b{height:40px;padding:0 12px;border:0;border-radius:4px;font:inherit;font-size:16px;font-weight:600;cursor:pointer;white-space:nowrap}
+.kpr-b.text{background:none;color:#fff}.kpr-b.text:hover{background:rgba(255,255,255,.08)}
+.kpr-form .kpr-b.text{font-size:14px}
+.kpr-b.green{background:#53fc18;color:#090b0f}.kpr-b.green:hover{background:#75fd46}
+.kpr-b.grey{background:rgba(255,255,255,.1);color:#fff}.kpr-b.grey:hover{background:rgba(255,255,255,.16)}
+.kpr-b.danger{background:#e51147;color:#fff}.kpr-b.danger:hover{background:#f0285a}
+.kpr-b:disabled{opacity:.6;cursor:default}
+.kpred[aria-busy] .kpr-b{cursor:progress}
+@container (max-width:300px){.kpr-foot{flex-direction:column-reverse}.kpr-b{width:100%}}
+/* Kick's notes: the error and the "you predicted" ones, and why it said no */
+.kpr-alert{display:flex;gap:10px;padding:12px;border-radius:4px;font-size:14px;line-height:20px}
+.kpr-alert .ki{width:16px;height:16px;margin-top:2px}
+.kpr-alert div{display:flex;flex-direction:column;gap:2px}
+.kpr-alert span{color:#a9adb5}
+.kpr-alert.error{background:rgba(229,17,71,.14)}.kpr-alert.error .ki{color:#ff596e}
+.kpr-alert.info{background:rgba(255,255,255,.06)}
+.kpr-fail{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:4px;background:rgba(255,95,95,.12);
+  color:#fff;font-size:13px;line-height:1.4}
+.kpr-fail[hidden]{display:none}
+.kpr-page{height:28px;padding:0 10px;border:0;border-radius:4px;background:#2a2d33;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.kpr-page:hover{background:#373a41}
+/* a running or finished prediction: the question, points and shares, then its two options */
+.kpr-sum{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.kpr-q{margin:0;font-size:14px;font-weight:700;overflow-wrap:anywhere}
+.kpr-pts{margin:0;font-size:14px;color:#a9adb5}
+.kpr-pit{display:flex;align-items:center;justify-content:center;width:100%;height:122px;border:1px solid rgba(255,255,255,.12);border-radius:2px}
+.kpr-vs{display:flex;align-items:center;gap:4px}
+.kpr-vs .kpr-v{font-size:16px;font-weight:700}
+.kpr-p1,.kpr-p2{font-size:30px;font-weight:700;line-height:36px}
+.kpr-p1{color:#18fbb0}.kpr-p2{color:#fea0a0}
+.kpr-won{display:flex;flex-direction:column;align-items:center}
+.kpr-wl{display:inline-flex;align-items:center;gap:4px;font-size:14px;font-weight:700}
+.kpr-wl .ki,.kpr-ot .ki,.kpr-pick .ki{width:16px;height:16px}
+.kpr-outs{display:flex;flex-direction:column;gap:16px}
+@container (min-width:360px){.kpr-outs{flex-direction:row}}
+.kpr-out{display:flex;flex:1;flex-direction:column;gap:8px;min-width:0}
+.kpr-out.lost{opacity:.5}
+.kpr-ot,.kpr-pick{display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;background:#24272c;font-size:14px}
+.kpr-ot b,.kpr-pick b{flex:1;min-width:0;overflow-wrap:anywhere;text-align:left}
+.kpr-win{font-weight:700}
+.kpr-st{display:flex;gap:8px}
+.kpr-st span{display:inline-flex;align-items:center;gap:4px;font-size:14px;color:#a9adb5}
+.kpr-st .ki{width:12px;height:12px}
+.kpr-st.c1 .ki{color:#18fbb0}.kpr-st.c2 .ki{color:#fea0a0}
+.kpr-time{display:flex;flex-direction:column;gap:10px;text-align:center}
+.kpr-time p{margin:0;font-size:14px;font-weight:700;color:#a9adb5}
+.kpr-bar{height:8px;border-radius:8px;background:rgba(255,255,255,.12);overflow:hidden}
+.kpr-bar i{display:block;height:100%;border-radius:8px;background:#53fc18;transform-origin:left}
+.kpr-left{display:inline-block;width:48px;font-variant-numeric:tabular-nums}
+/* Choose outcome: the two options to pick from */
+.kpr-picks{display:flex;flex-direction:column;gap:8px}
+.kpr-pick{width:100%;border:0;color:#fff;font:inherit;font-size:14px;cursor:pointer}
+.kpr-pick .tick{visibility:hidden}.kpr-pick[aria-pressed="true"] .tick{visibility:visible}
+.kpr-pick:disabled:not([aria-pressed="true"]){opacity:.6;cursor:default}
+/* while Kick finds out what to show */
+.kpr-skel{display:flex;flex-direction:column;gap:12px}
+.kpr-skel i{display:block;height:40px;border-radius:4px;background:rgba(255,255,255,.08);animation:kprPulse 1.4s ease-in-out infinite}
+.kpr-skel i:first-child{width:60%;height:20px}
+@keyframes kprPulse{50%{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.kpr-skel i{animation:none}}
