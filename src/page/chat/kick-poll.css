@@ -1,0 +1,43 @@
+/* Kick's /poll form in a chat window (chat/kick-poll.js): the slide-up panel of kick-commands.css, the chat's full width,
+   with Kick's own "Create a new poll" look (its colours, sizes and corners); it scrolls when the chat is shorter than it */
+.kpoll{gap:0;max-height:100%;overflow-y:auto;overscroll-behavior:contain;padding:16px 14px 14px}
+.kpoll h3{font-size:16px;margin-bottom:14px}
+.kpoll .kp-form{display:flex;flex-direction:column;gap:16px;margin:0}
+.kpoll .kp-f{display:flex;flex-direction:column;gap:8px;min-width:0}
+.kpoll .kp-l{font-size:14px;font-weight:600}
+.kpoll input{box-sizing:border-box;width:100%;height:36px;padding:0 12px;border:1px solid rgba(255,255,255,.4);border-radius:4px;background:#090b0f;
+  color:#fff;font:inherit;font-size:14px;outline:0}
+.kpoll input::placeholder{color:#a0a6b1}
+.kpoll input:focus{border-color:#fff}
+.kpoll .kp-opts{display:flex;flex-direction:column;gap:6px}
+.kpoll .kp-o{display:flex;flex-direction:column;gap:4px}
+.kpoll .kp-o.new{animation:kpIn .3s ease-out}   /* a new option slides in, as on Kick */
+@keyframes kpIn{from{opacity:0;max-height:0;transform:translateY(-10px)}to{opacity:1;max-height:63px}}
+@media (prefers-reduced-motion:reduce){.kpoll .kp-o.new{animation:none}}
+.kpoll .kp-err{font-size:12px;line-height:1.4;color:var(--danger)}
+/* the duration lists: an in-app dropdown (shared/dropdown.js) dressed as Kick's */
+.kpoll .kp-selw{position:relative;display:block}
+.kpoll .kp-selw::after{content:"";position:absolute;right:14px;top:50%;width:7px;height:7px;margin-top:-6px;border:solid #fff;border-width:0 1.5px 1.5px 0;
+  transform:rotate(45deg);pointer-events:none}
+.kpoll .kp-sel{appearance:none;box-sizing:border-box;width:100%;height:32px;padding:0 36px 0 12px;border:0;border-radius:4px;background:#26292e;color:#fff;
+  font:inherit;font-size:14px;font-weight:600;cursor:pointer;outline:0}
+.kpoll .kp-sel:focus-visible,.kpoll .kp-sel.dd-open{box-shadow:0 0 0 1px #fff}
+.dd-list.kick{gap:2px;padding:4px;border:0;border-radius:4px;background:#23272b;font-size:14px}
+.dd-list.kick button{padding:6px 32px 6px 12px;border-radius:4px;color:#fff;font-weight:600;line-height:20px}
+.dd-list.kick button.hl{background:rgba(255,255,255,.08)}
+.dd-list.kick button.on{color:#fff}
+.dd-list.kick button.on::before{left:auto;right:14px;width:9px;height:5px;margin-top:-4px;border:solid #fff;border-width:0 0 1.5px 1.5px;border-radius:0;
+  background:none;transform:rotate(-45deg)}   /* a tick on the right, as on Kick */
+/* when Kick didn't start it: why, and the channel page instead */
+.kpoll .kp-fail{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:4px;background:rgba(255,95,95,.12);
+  color:#fff;font-size:13px;line-height:1.4}
+.kpoll .kp-fail[hidden]{display:none}
+.kpoll .kp-page{height:28px;padding:0 10px;border:0;border-radius:4px;background:#2a2d33;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.kpoll .kp-page:hover{background:#373a41}
+/* Cancel and Create on the right, as on Kick */
+.kpoll .kp-foot{display:flex;justify-content:flex-end;gap:8px}
+.kpoll .kp-foot button{height:40px;padding:0 12px;border:0;border-radius:4px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.kpoll .kp-cancel{background:none;color:#fff}.kpoll .kp-cancel:hover{background:#2a2d33}
+.kpoll .kp-create{min-width:96px;background:#53fc18;color:#090b0f;font-size:16px}.kpoll .kp-create:hover{background:#75fd46}
+.kpoll .kp-create:disabled{opacity:.6;cursor:default}
+.kpoll[aria-busy="true"] .kp-create{cursor:progress}
