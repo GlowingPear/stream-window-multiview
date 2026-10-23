@@ -105,7 +105,7 @@ function openPredictionForm(w, title = ''){
     const fresh = name !== step;
     step = name;
     p.title.textContent = heading; p.card.setAttribute('aria-label', heading || PRED_TEXT.start);
-    p.body.replaceChildren(...children.flat());
+    p.body.replaceChildren(...children.flat().filter(Boolean));   // (a part that isn't there is null)
     if (fresh) (p.body.querySelector('input:not([disabled])') || p.card).focus({ preventScroll: true });
   }
   const btn = (label, kind, onclick) => element('button', { type: onclick ? 'button' : 'submit', class: 'kpr-b ' + kind, onclick }, label);

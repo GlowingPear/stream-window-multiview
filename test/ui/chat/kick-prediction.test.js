@@ -234,6 +234,7 @@ test('a running prediction: how it’s going and the time left; End Submissions,
   assert.deepEqual({ ...a, time: '', bar: '' }, { title: 'Manage Prediction', q: 'Will we win?', pts: '1,000 points contributed', pit: '75% vs 25%',
     options: ['Yes 750 1:1.3 *', 'No 250 1:4 *'], time: '', bar: '', buttons: ['Delete', 'End Submissions'] });
   assert.equal(await page.evaluate(P => document.activeElement === document.querySelector(P), P), true, 'no button is focused');
+  assert.equal(await page.evaluate(P => document.querySelector(`${P} .kcmd-c`).childNodes[0].nodeType, P), 1, 'no Limited Access, and nothing in its place');
 
   await routes({ [`PATCH ${API}/predictions/p1`]: OK({}), [`GET ${API}/predictions/latest`]: OK({ prediction: running({ state: 'LOCKED' }) }) });
   await page.click(`${P} .kpr-foot button:text-is("End Submissions")`);

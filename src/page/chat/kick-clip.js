@@ -48,7 +48,7 @@ function makeClip(w, text = ''){
   const show = (heading, ...children) => {
     if (asking){ asking.next = [heading, children]; return; }
     p.title.textContent = heading; p.card.setAttribute('aria-label', heading);
-    p.body.replaceChildren(...children.flat());
+    p.body.replaceChildren(...children.flat().filter(Boolean));   // (a part that isn't there is null)
     (p.body.querySelector('.kcl-b') || p.card).focus({ preventScroll: true });   // (Close or Keep editing, else the panel, for Esc)
   };
   const closeBtn = () => element('div', 'kcl-foot', element('button', { type: 'button', class: 'kcl-b', onclick: p.close }, CLIP_TEXT.close));
