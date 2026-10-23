@@ -2,7 +2,10 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.17 (current)
+## 0.3.18 (current)
+- Start a Kick prediction or make a clip from the chat window
+
+## 0.3.17
 - Start a Kick poll from the chat window
 
 ## 0.3.16
