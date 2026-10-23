@@ -20,7 +20,7 @@
   background:none;color:#fff;cursor:pointer}
 .kcl-copy:hover{background:rgba(255,255,255,.08)}
 .kcl-copy .ki{width:16px;height:16px}
-.kcl-tiles{display:flex;justify-content:space-evenly;gap:4px;font-weight:600}   /* (one row, whatever the chat's width: the four share it) */
+.kcl-tiles{display:flex;justify-content:space-evenly;font-weight:600}   /* (one row, whatever the chat's width: the four share it) */
 .kcl-t{display:flex;flex:0 1 80px;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;padding:12px 2px 8px;border:0;border-radius:6px;
   background:none;color:#fff;font:inherit;cursor:pointer}
 .kcl-t:hover{background:#2a2d33}

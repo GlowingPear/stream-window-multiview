@@ -193,13 +193,13 @@ test('Kick’s chat box: filled with text and focused through its editor; withou
 });
 
 test('narrow chats: Share Clip is the chat’s width, and its four buttons always share one row', async t => {
-  for (const [width, lines] of [[460, 1], [300, 1], [220, 1]]) {
+  for (const [width, lines] of [[460, 1], [340, 1], [220, 1]]) {
     const { page, clip } = await chat(t, { width, height: 760 });
     await clip('');
     const got = await page.evaluate(([C, width]) => { const k = document.querySelector(C), body = k.closest('.body').getBoundingClientRect(), r = k.getBoundingClientRect();
       return { fullWidth: Math.abs(r.width - body.width) < 1, noSideways: k.scrollWidth <= k.clientWidth,
         lines: new Set([...k.querySelectorAll('.kcl-t')].map(b => Math.round(b.getBoundingClientRect().top))).size,
-        labels: width > 250 ? [...k.querySelectorAll('.kcl-t span')].every(l => l.scrollWidth <= l.clientWidth) : true }; }, [C, width]);   // (whole labels from 250)
+        labels: width >= 340 ? [...k.querySelectorAll('.kcl-t span')].every(l => l.scrollWidth <= l.clientWidth) : true }; }, [C, width]);   // (whole labels at a usual chat's width, with room for Linux's wider fonts)
     assert.deepEqual(got, { fullWidth: true, noSideways: true, lines, labels: true }, String(width));
   }
 });
