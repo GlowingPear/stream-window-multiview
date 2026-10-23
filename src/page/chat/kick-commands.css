@@ -1,24 +1,16 @@
 /* Kick's /clip, /poll, /prediction: a panel that slides up over the bottom of the chat, full width, in the style
-   of Kick's own chat panels (channel points, command list) */
+   of Kick's own chat panels (channel points, command list): chat/kick-panel.js, with each one's own look in
+   kick-poll.css, kick-prediction.css and kick-clip.css */
 .kcmd{position:absolute;left:0;right:0;bottom:0;z-index:3;display:flex;flex-direction:column;gap:6px;padding:14px 14px 12px;
   background:#191b1f;border-top:1px solid #2a2d33;border-radius:10px 10px 0 0;box-shadow:0 -10px 28px rgba(0,0,0,.5);
   color:#fff;animation:kcmdIn .22s cubic-bezier(.2,.8,.3,1)}
 @keyframes kcmdIn{from{transform:translateY(100%)}}
 @media (prefers-reduced-motion:reduce){.kcmd{animation:msgIn .15s}}
 .kcmd h3{margin:0;padding-right:26px;font-size:14px;font-weight:600}
-.kcmd .kcmd-sub{font-size:12px;color:#a0a6b1;line-height:1.45}
 .kcmd .kcmd-x{position:absolute;top:8px;right:8px;width:26px;height:26px;padding:0;border:0;border-radius:4px;background:none;color:#a0a6b1;cursor:pointer;font-size:18px;line-height:26px}
 .kcmd .kcmd-x:hover{background:#2a2d33;color:#fff}
 .kcmd{container-type:inline-size}
-.kcmd .kcmd-foot{display:flex;gap:8px;margin-top:6px}
-.kcmd .kcmd-foot button{flex:1;height:32px;padding:0 12px;border:0;border-radius:4px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
-.kcmd .kcmd-no{background:#2a2d33;color:#fff}.kcmd .kcmd-no:hover{background:#373a41}
-.kcmd .kcmd-yes{background:#53fc18;color:#090b0f}.kcmd .kcmd-yes:hover{background:#75fd46}
-/* narrower chats: "Open channel page", then "Open channel", then "Open"; the narrowest stacks the buttons */
-.kcmd .kcmd-yes span{display:none}.kcmd .kcmd-yes .l3{display:inline}
-@container (max-width:290px){.kcmd .kcmd-yes .l3{display:none}.kcmd .kcmd-yes .l2{display:inline}}
-@container (max-width:230px){.kcmd .kcmd-yes .l2{display:none}.kcmd .kcmd-yes .l1{display:inline}}
-@container (max-width:170px){.kcmd .kcmd-foot{flex-direction:column-reverse}}
+.kcmd:focus{outline:0}   /* (focused itself when a step has no box, for Esc) */
 .cs-mode{flex:none;height:22px;padding:0 8px;border:1px solid var(--line2);border-radius:6px;background:var(--panel2);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
 .cs-mode:hover{border-color:var(--muted)}
 .cs-mode.on{border-color:var(--accent);color:var(--accent)}

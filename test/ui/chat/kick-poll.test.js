@@ -23,7 +23,7 @@ async function chat(t, { width = 340, height = 640 } = {}) {
     const view = { executeJavaScript: js => {
       window.__ran.push(js);
       const args = JSON.parse('[' + /\)\((.*)\)$/s.exec(js)[1] + ']');
-      const fn = /kickPollPost/.test(js) ? window.kickPollPost : /kickClearBox/.test(js) ? window.kickClearBox : null;
+      const fn = /kickPollPost/.test(js) ? window.kickPollPost : /kickClearBox/.test(js) ? window.kickClearBox : /kickApi/.test(js) ? window.kickApi : null;
       return Promise.resolve(fn(...args));
     } };
     window.__win = (ch = 'xqc', v = view) => {
@@ -210,8 +210,8 @@ test('closing it, and /poll again while it’s open', async t => {
 
   await open('First');
   await page.locator(`${F} .kp-o input`).nth(0).fill('Kept');
-  await page.evaluate(() => { window.kickPageCmd(window.__w, 'clip'); });
-  assert.equal(await page.locator('.win[data-ch] .kcmd').count(), 1, 'the /clip card takes its place');
+  await page.evaluate(() => { window.openPredictionForm(window.__w, ''); });
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('.win[data-ch] .kcmd')].map(e => e.className)), ['kcmd kpred'], '/prediction takes its place');
   await page.evaluate(() => { window.openPollForm(window.__w, 'Again'); });
   await page.locator(`${F} .kp-o input`).nth(0).fill('Kept');
   await page.evaluate(() => window.__w.el.querySelector('.kp-cancel').focus());

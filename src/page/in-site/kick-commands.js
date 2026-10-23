@@ -1,4 +1,6 @@
-import { openChannelPage, openPollForm } from '../chat/kick-poll.js';
+import { makeClip } from '../chat/kick-clip.js';
+import { openPollForm } from '../chat/kick-poll.js';
+import { openPredictionForm } from '../chat/kick-prediction.js';
 import { emoteAgent } from './emote-preview.js';
 import { MENTION_JS, mentionAgent } from './mentions.js';
 import { newEmoteAgent } from './new-emotes.js';
@@ -6,10 +8,11 @@ import { translateAgent } from './translate.js';
 import { platOf } from '../platforms/platforms.js';
 import { fromSite } from '../shared/incoming.js';
 
-// Kick chat commands that only work on the channel page: the popout chat (what the app shows) knows them
-// but has nowhere to show their popup, so they do nothing there. /poll gets a copy of Kick's form in the chat window
-// (chat/kick-poll.js); for the others the app offers to open the channel page.
-const KICK_PAGE_CMDS = { clip: 'make a clip', poll: 'start a poll', prediction: 'start a prediction' };
+// Kick chat commands that only work on the channel page: the popout chat (what the app shows) knows them but has nowhere to
+// show their popup, so they do nothing there. The chat window gets a copy of what Kick shows instead: /poll its poll form
+// (chat/kick-poll.js), /prediction its prediction window (chat/kick-prediction.js), /clip its clip and Share Clip
+// (chat/kick-clip.js).
+const KICK_PAGE_CMDS = ['clip', 'poll', 'prediction'];
 // Runs inside each Kick chat page: a message that is one of these commands isn't sent (Enter or the send
 // button); the app is told through a console message instead, with what followed the command.
 function kickCmdAgent(names){
@@ -34,37 +37,24 @@ function kickCmdAgent(names){
   return true;
 }
 let KICK_CMD_JS;
-function kickPageCmd(w, cmd){
-  if (!KICK_PAGE_CMDS[cmd] || platOf(w.channel) !== 'kick' || !w.el) return;
-  const body = w.el.querySelector('.body');
-  body.querySelector('.kcmd')?.remove();
-  const card = document.createElement('div');
-  card.className = 'kcmd'; card.setAttribute('role', 'alertdialog');
-  card.innerHTML = '<button class="kcmd-x" title="Close" aria-label="Close">×</button><h3></h3><div class="kcmd-sub"></div>'
-    + '<div class="kcmd-foot"><button class="kcmd-no">Cancel</button><button class="kcmd-yes" aria-label="Open channel page"><span class="l3">Open channel page</span><span class="l2">Open channel</span><span class="l1">Open</span></button></div>';
-  card.querySelector('h3').textContent = `/${cmd} doesn’t work in this chat`;
-  card.querySelector('.kcmd-sub').textContent = `Kick only lets you ${KICK_PAGE_CMDS[cmd]} on the channel page. Open ${w.channel}’s page (muted) to do it there?`;
-  card.querySelector('.kcmd-no').onclick = card.querySelector('.kcmd-x').onclick = () => card.remove();
-  card.querySelector('.kcmd-yes').onclick = () => { card.remove(); openChannelPage(w.channel); };
-  body.append(card);   // (not focused: another Enter in the chat mustn't open the page)
-}
 
-// A command the chat page stopped: /poll opens the poll form; the others say so in the chat window itself, over its chat
-// box, with Cancel / Open channel page (muted, your login).
+// A command the chat page stopped: the chat window shows Kick's copy of it, given what followed the command
 function kickCmdHeard(w, data, view){
   if (w.view !== view) return;
   let m; try { m = JSON.parse(data); } catch { return; }
-  if (!m || typeof m.cmd !== 'string') return;
-  if (m.cmd === 'poll' && platOf(w.channel) === 'kick') openPollForm(w, typeof m.text === 'string' ? m.text : '');
-  else kickPageCmd(w, m.cmd);
+  if (!m || !KICK_PAGE_CMDS.includes(m.cmd) || platOf(w.channel) !== 'kick') return;
+  const text = typeof m.text === 'string' ? m.text : '';
+  if (m.cmd === 'poll') openPollForm(w, text);
+  else if (m.cmd === 'prediction') openPredictionForm(w, text);
+  else makeClip(w, text);
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
-  KICK_CMD_JS = `(${kickCmdAgent.toString()})(${JSON.stringify(Object.keys(KICK_PAGE_CMDS))})`;
+  KICK_CMD_JS = `(${kickCmdAgent.toString()})(${JSON.stringify(KICK_PAGE_CMDS)})`;
   fromSite('kick-cmd', kickCmdHeard);   // see kickCmdAgent
   window.chatAgentJs = MENTION_JS; window.newEmoteAgent = newEmoteAgent; window.mentionAgent = mentionAgent; window.emoteAgent = emoteAgent; window.translateAgent = translateAgent;   // for the tests
-  window.kickCmdAgent = kickCmdAgent; window.kickPageCmd = kickPageCmd; window.kickCmdHeard = kickCmdHeard; window.KICK_PAGE_CMDS = KICK_PAGE_CMDS;
+  window.kickCmdAgent = kickCmdAgent; window.kickCmdHeard = kickCmdHeard; window.KICK_PAGE_CMDS = KICK_PAGE_CMDS;
 }
 
 export { init, KICK_CMD_JS };

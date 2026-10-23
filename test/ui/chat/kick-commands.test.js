@@ -1,6 +1,6 @@
 // Kick's /clip, /poll and /prediction: the popout chat can't show their popups, so the chat helper stops them being sent
-// and the app offers to open the channel page instead (/poll gets its own form: kick-poll.test.js). The helper runs on a
-// small stand-in Kick chat here.
+// and the chat window shows its copy of Kick's instead (kick-poll.test.js, kick-prediction.test.js, kick-clip.test.js). The
+// helper runs on a small stand-in Kick chat here.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { setup } = require('../app');
@@ -21,7 +21,7 @@ async function chat(t) {
     const box = c.querySelector('[data-testid="chat-input"]');
     box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) window.__sent.push(box.innerText); });
     c.querySelector('button').addEventListener('click', () => window.__sent.push(box.innerText));
-    window.kickCmdAgent(Object.keys(window.KICK_PAGE_CMDS));
+    window.kickCmdAgent(window.KICK_PAGE_CMDS);
   });
   const type = async (text, how = 'Enter') => {
     await page.evaluate(t => { document.querySelector('#kchat [data-testid="chat-input"]').innerText = t; }, text);
@@ -63,65 +63,7 @@ test('other messages and other commands are sent as usual', async t => {
   assert.equal(logs.filter(l => l.startsWith('__kmv:kick-cmd')).length, 0);
 });
 
-test('the chat window offers to open the channel page; Cancel leaves nothing open', async t => {
-  const page = await openApp(t);
-  await page.evaluate(() => {
-    window.__opened = []; window.open = (...a) => { window.__opened.push(a.slice(0, 2)); return null; };
-    window.__win = ch => { const had = document.querySelector(`.win[data-ch="${ch}"]`); if (had) return { channel: ch, el: had };
-      const el = document.createElement('div'); el.className = 'win chat'; el.dataset.ch = ch;
-      el.style.cssText = 'position:fixed;left:10px;top:60px;width:340px;height:500px;display:flex'; el.innerHTML = '<div class="body"></div>';
-      document.body.append(el); return { channel: ch, el }; };
-  });
-  const run = (ch, cmd) => page.evaluate(([ch, cmd]) => window.kickPageCmd(window.__win(ch), cmd), [ch, cmd]);
-  const card = '.win[data-ch="xqc"] .kcmd';
-
-  await run('xqc', 'clip');
-  assert.equal(await page.textContent(`${card} h3`), '/clip doesn’t work in this chat');
-  assert.match(await page.textContent(`${card} .kcmd-sub`), /make a clip on the channel page.*xqc.*muted/);
-  assert.equal(await page.isHidden('#askDlg'), true, 'in the chat window, not the app dialog');
-  await page.click(`${card} .kcmd-no`);
-  assert.equal(await page.locator(card).count(), 0, 'Cancel: it goes away');
-  assert.deepEqual(await page.evaluate(() => window.__opened), [], 'Cancel: nothing opens');
-
-  await page.evaluate(() => document.querySelectorAll('.win[data-ch]').forEach(e => e.remove()));
-  await run('xqc', 'prediction');
-  assert.match(await page.textContent(`${card} .kcmd-sub`), /start a prediction/);
-  await page.click(`${card} .kcmd-x`);
-  assert.equal(await page.locator(card).count(), 0, '× closes it too');
-  await run('xqc', 'prediction');
-  await page.evaluate(() => window.kickPageCmd({ channel: 'xqc', el: document.querySelector('.win[data-ch="xqc"]') }, 'clip'));
-  assert.equal(await page.locator(card).count(), 1, 'one at a time: the newest');
-  assert.match(await page.textContent(`${card} .kcmd-sub`), /make a clip/);
-  await page.click(`${card} .kcmd-yes`);
-  assert.equal(await page.locator(card).count(), 0);
-  assert.deepEqual(await page.evaluate(() => window.__opened), [['https://kick.com/xqc', 'kmv_page_xqc']]);
-
-  // only Kick, and only the known commands
-  await run('tw:someone', 'clip');
-  await run('xqc', 'raid');
-  await page.evaluate(() => window.kickPageCmd({ channel: 'xqc' }, 'poll'));   // a window that's gone
-  assert.equal(await page.locator('.kcmd').count(), 0, 'not shown');
-});
-
-test('narrower chats: the Open button gets a shorter name, and the narrowest stacks the buttons', async t => {
-  const page = await openApp(t);
-  const at = width => page.evaluate(width => {
-    document.querySelectorAll('.win[data-ch]').forEach(e => e.remove());
-    const el = document.createElement('div'); el.className = 'win chat'; el.dataset.ch = 'xqc';
-    el.style.cssText = `position:fixed;left:10px;top:60px;width:${width}px;height:500px;display:flex`; el.innerHTML = '<div class="body"></div>';
-    document.body.append(el);
-    window.kickPageCmd({ channel: 'xqc', el }, 'poll');
-    const yes = el.querySelector('.kcmd-yes'), no = el.querySelector('.kcmd-no');
-    return { label: yes.innerText.trim(), stacked: yes.getBoundingClientRect().top !== no.getBoundingClientRect().top,
-      fits: yes.scrollWidth <= yes.clientWidth };
-  }, width);
-  assert.deepEqual(await at(400), { label: 'Open channel page', stacked: false, fits: true });
-  assert.deepEqual(await at(270), { label: 'Open channel', stacked: false, fits: true });
-  assert.deepEqual(await at(210), { label: 'Open', stacked: false, fits: true });
-  assert.deepEqual(await at(150), { label: 'Open', stacked: true, fits: true });
-});
-
-test('what the chat page says: /poll opens the poll form, the others the card; anything else is ignored', async t => {
+test('what the chat page says: each command opens its own panel, with what followed it; anything else is ignored', async t => {
   const page = await openApp(t);
   const got = await page.evaluate(() => {
     const view = {};
@@ -130,17 +72,20 @@ test('what the chat page says: /poll opens the poll form, the others the card; a
       el.style.cssText = 'position:fixed;left:10px;top:60px;width:340px;height:600px;display:flex'; el.innerHTML = '<div class="body"></div>';
       document.body.append(el); return { channel: ch, el, view }; };
     const after = (ch, data, from = view) => { const w = win(ch); window.kickCmdHeard(w, data, from);
-      const f = w.el.querySelector('.kpoll'), c = w.el.querySelector('.kcmd:not(.kpoll)');
-      return f ? 'form:' + f.querySelector('[name="subject"]').value : c ? 'card:' + c.querySelector('h3').textContent : 'nothing'; };
+      const k = w.el.querySelector('.kcmd');
+      return !k ? 'nothing' : k.matches('.kpoll') ? 'poll:' + k.querySelector('[name="subject"]').value : k.matches('.kpred') ? 'prediction' : k.matches('.kclip') ? 'clip' : 'other'; };
     return [
       after('xqc', '{"cmd":"poll","text":"Pizza or tacos?"}'),
       after('xqc', '{"cmd":"poll"}'),
+      after('xqc', '{"cmd":"prediction","text":"Win?"}'),
       after('xqc', '{"cmd":"clip","text":"30"}'),
       after('xqc', '{"cmd":"poll","text":"x"}', {}),     // from another page of the window (an old one)
+      after('xqc', '{"cmd":"raid"}'),
       after('xqc', 'not json'),
       after('xqc', '{"text":"no command"}'),
-      after('tw:someone', '{"cmd":"poll"}')
+      after('tw:someone', '{"cmd":"poll"}'),
+      after('tw:someone', '{"cmd":"clip"}')
     ];
   });
-  assert.deepEqual(got, ['form:Pizza or tacos?', 'form:', 'card:/clip doesn’t work in this chat', 'nothing', 'nothing', 'nothing', 'nothing']);
+  assert.deepEqual(got, ['poll:Pizza or tacos?', 'poll:', 'prediction', 'clip', 'nothing', 'nothing', 'nothing', 'nothing', 'nothing', 'nothing']);
 });

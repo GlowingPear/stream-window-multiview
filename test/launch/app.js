@@ -65,6 +65,19 @@ async function launchApp(opts = {}) {
               const a = globalThis.__pollAnswer || { status: 200, body: { status: { error: false, code: 200, message: 'OK' }, data: {} } };
               return new Response(JSON.stringify(a.body), { status: a.status, headers: { 'content-type': 'application/json' } });
             });
+            // Kick's other API requests (/prediction, /clip): a test sets the answers in __kickApi ({ 'METHOD url': { status, body } })
+            // and finds what was asked in __kickCalls. web.kick.com (the clips) answers kick.com's pages as Kick does: across
+            // sites, with the login.
+            const cors = /^https:\/\/web\.kick\.com\//.test(u) ? { 'access-control-allow-origin': 'https://kick.com', 'access-control-allow-credentials': 'true',
+              'access-control-allow-headers': 'accept, authorization, content-type, x-app-platform', 'access-control-allow-methods': 'GET, POST, PATCH' } : null;
+            if (cors && req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+            const answer = (globalThis.__kickApi || {})[req.method + ' ' + u];
+            if (answer || cors) return req.text().then(body => {
+              (globalThis.__kickCalls = globalThis.__kickCalls || []).push({ key: req.method + ' ' + u, auth: req.headers.get('authorization'),
+                xsrf: req.headers.get('x-xsrf-token'), body: body ? JSON.parse(body) : null });
+              const a = answer || { status: 404, body: { message: 'Not Found' } };
+              return new Response(JSON.stringify(a.body), { status: a.status, headers: { 'content-type': 'application/json', ...cors } });
+            });
             if (/^https:\/\/(www\.)?(kick\.com|twitch\.tv|youtube\.com)\//.test(u)) return page('<!doctype html><title>site</title>');
             return new Response('', { status: 404 });
           });

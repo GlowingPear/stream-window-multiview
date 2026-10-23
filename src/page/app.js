@@ -9,7 +9,9 @@ import { init as inSiteEmotePreview } from './in-site/emote-preview.js';
 import { init as inSiteNewEmotes } from './in-site/new-emotes.js';
 import { init as inSiteTranslate } from './in-site/translate.js';
 import { init as inSiteKickCommands } from './in-site/kick-commands.js';
+import { init as chatKickClip } from './chat/kick-clip.js';
 import { init as chatKickPoll } from './chat/kick-poll.js';
+import { init as chatKickPrediction } from './chat/kick-prediction.js';
 import { init as inSiteVolume } from './in-site/volume.js';
 import { init as platformsPlatforms } from './platforms/platforms.js';
 import { init as platformsPearDrops } from './platforms/pear-drops.js';
@@ -87,6 +89,8 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   inSiteTranslate,
   inSiteKickCommands,
   chatKickPoll,
+  chatKickPrediction,
+  chatKickClip,
   inSiteVolume,
   platformsPlatforms,
   platformsPearDrops,

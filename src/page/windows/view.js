@@ -30,6 +30,7 @@ function loadView(view, url){
   try { if (view.loadURL) view.loadURL(url).catch(() => {}); else view.src = url; } catch {}
 }
 // The view's id in the desktop app (the main process names views by it), or null
+function focusView(view){ try { view.focus(); } catch {} }   // the keyboard goes to the page in it
 function viewId(view){ try { return view && view.getWebContentsId ? view.getWebContentsId() : null; } catch { return null; } }
 
-export { addCss, askIn, loadView, reloadView, runIn, setMuted, setViewScale, setZoom, viewId, zoomOf };
+export { addCss, askIn, focusView, loadView, reloadView, runIn, setMuted, setViewScale, setZoom, viewId, zoomOf };

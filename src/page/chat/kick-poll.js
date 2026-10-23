@@ -1,6 +1,7 @@
-import { kickClearBox, kickPollPost } from '../in-site/kick-poll.js';
+import { openChannelPage } from './kick-panel.js';
+import { kickClearBox } from '../in-site/kick-box.js';
+import { kickPollPost } from '../in-site/kick-poll.js';
 import { element } from '../shared/element.js';
-import { DESKTOP } from '../shared/env.js';
 import { askIn, runIn } from '../windows/view.js';
 
 // Kick's /poll in a chat window. Kick only opens its "Create a new poll" form on the channel page: the popout chat the app
@@ -40,14 +41,6 @@ function pollFailText(r){
   if (r && r.status === 401) return POLL_TEXT.signIn;
   if (r && r.status === 403) return POLL_TEXT.notMod;
   return (r && r.message) || POLL_TEXT.failed;
-}
-
-// The channel's page on kick.com, in its own window with its sound off and your login (also the /clip and /prediction
-// card's Open channel page: in-site/kick-commands.js)
-function openChannelPage(ch){
-  const url = `https://kick.com/${encodeURIComponent(ch)}`;
-  if (DESKTOP) window.kmv.openWindow(url, 1280, 800, { muted: true });
-  else window.open(url, 'kmv_page_' + ch, 'width=1280,height=800');
 }
 
 // One of the two duration lists (the app's own dropdown, looking like Kick's)
@@ -140,4 +133,4 @@ function init(){
   window.openPollForm = openPollForm; window.kickPollPost = kickPollPost; window.kickClearBox = kickClearBox;   // for the tests
 }
 
-export { init, openChannelPage, openPollForm };
+export { init, openPollForm };
