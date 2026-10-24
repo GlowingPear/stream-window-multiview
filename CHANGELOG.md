@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.19 (current)
+## 0.3.20 (current)
+- Support alerts: an alert when someone gifts subs, sends KICKs, bits or a Super Chat, or subscribes
+- Raid alerts: an alert when someone raids into a stream you have open (Settings › Mentions › Support)
+
+## 0.3.19
 - Farming card: "All rewards by" says the day when it isn't today
 
 ## 0.3.18
