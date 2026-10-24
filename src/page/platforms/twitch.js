@@ -49,9 +49,11 @@ const twitch = {
   chatScroll: { list: '[data-a-target="chat-scroller"] .simplebar-scroll-content', resume: '.chat-paused-footer button, [data-a-target="chat-paused-footer"] button' },
   // Someone supporting the stream (Settings > Mentions > Support, in-site/mentions.js): how its chat shows it. { kind, re }
   // reads a row of the site's own (not someone's message) by its text, with the name (who), the number (n) and who
-  // got a gift (to); { kind, row, who, n } an element it draws for it; { kind, re, msg: true } words in a message.
-  // kind: kicks, bits, gifts (to the community), gift (to someone), sub, superchat, member.
+  // got a gift (to); { kind, row, who, n } an element it draws for it; { kind, re, msg: true } words in a message;
+  // { kind, re, page: true } a banner over the chat. kind: kicks, bits, gifts (to the community), gift (to someone),
+  // sub, superchat, member, raid (n: the viewers it brought).
   support: { finds: [
+    { kind: 'raid', re: '^(?<n>\\d[\\d,]*) raiders? from (?<who>[A-Za-z0-9_]{2,30}) (?:have|has) joined' },
     { kind: 'gifts', re: '^(?<who>[A-Za-z0-9_]{2,30}) is gifting (?<n>\\d[\\d,]*) (?:tier \\d )?subs? to ' },
     { kind: 'gift', re: '^(?<who>[A-Za-z0-9_]{2,30}) gifted a (?:tier \\d )?sub to (?<to>[A-Za-z0-9_]{2,30})' },
     { kind: 'sub', re: '^(?<who>[A-Za-z0-9_]{2,30}) subscribed (?:at tier \\d|with prime)(?:.*?subscribed for (?<n>\\d+) months)?' },

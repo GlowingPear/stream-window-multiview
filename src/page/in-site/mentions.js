@@ -162,7 +162,8 @@ function mentionAgent(){
   /* Support: someone sent KICKs or bits, gifted subs, subscribed, or sent a Super Chat. The site shows it in a row of
      its own (not "name: message"), read by its text with the site's wording (sup.finds, from its site module):
      { kind, re } for such a row's text, { kind, row, who, n } for an element the site draws for it (its name and
-     amount inside), { kind, re, msg: true } for words in a normal message (Twitch's cheer100). Each one once; what
+     amount inside), { kind, re, msg: true } for words in a normal message (Twitch's cheer100), { kind, re, page: true }
+     for a banner over the chat, outside its rows (Kick's raids). Each one once; what
      was there before it started is old. A community gift is followed by a row for each sub it gave: those are
      part of it. */
   // a number as the site writes it: "1,000", "$5.00", "€10,50"
@@ -202,8 +203,22 @@ function mentionAgent(){
         }
       }
     }
+    // a banner the site shows over its chat (Kick's raids): a line of the page's text that isn't in a row or a message
+    const onPage = finds.filter(f => f.page).map(f => [f, new RegExp(f.re, 'i')]);
+    if (onPage.length) {
+      for (const l of textLines(document.body.innerText)) {
+        if (lineOf(l)) continue;
+        const t = flat(l);
+        for (const [f, re] of onPage) {
+          const m = t.match(re); if (!m) continue;
+          const g = m.groups || {};
+          supFound(f, 'p' + t, g.who, g.n ? num(g.n) : 1, {});
+          break;
+        }
+      }
+    }
     // the site's own rows, in the chat's order: each by the first wording it matches
-    const byText = finds.filter(f => !f.row && !f.msg).map(f => [f, new RegExp(f.re, 'i')]);
+    const byText = finds.filter(f => !f.row && !f.msg && !f.page).map(f => [f, new RegExp(f.re, 'i')]);
     for (const x of texts) {
       for (const [f, re] of byText) {
         const m = x.t.match(re); if (!m) continue;
