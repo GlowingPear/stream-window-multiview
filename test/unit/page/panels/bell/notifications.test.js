@@ -70,15 +70,15 @@ test('tabs and their sub-filters, the chat and site pickers, unread only and sea
   assert.deepEqual(who({ tab: 'live', q: 'delta' }), ['delta', 'echo'], 'and who raided');
   assert.deepEqual(who({ q: '  ' }).length, l.length);
   // the numbers on the chips, with the other filters applied
-  assert.deepEqual(N.subCounts(l, { tab: 'mentions' }), { all: 3, mention: 1, reply: 1, word: 1 });
-  assert.deepEqual(N.subCounts(l, { tab: 'mentions', unread: true }), { all: 2, mention: 1, reply: 0, word: 1 });
+  assert.deepEqual(N.subCounts(l, { tab: 'mentions' }), { all: 3, mention: 1, reply: 1, word: 1, support: 0 });
+  assert.deepEqual(N.subCounts(l, { tab: 'mentions', unread: true }), { all: 2, mention: 1, reply: 0, word: 1, support: 0 });
   assert.deepEqual(N.subCounts(l), { all: 9, mentions: 3, spam: 1, live: 3, app: 2 });
   assert.deepEqual(N.subCounts(l, { tab: 'live' }), { all: 3, live: 2, raid: 1, auto: 1 });
   assert.deepEqual(N.subCounts(l, { tab: 'app' }), { all: 2, accounts: 1, layouts: 1, windows: 0, downloads: 0, updates: 0 });
   assert.deepEqual(N.subCounts(l, { tab: 'spam' }), { all: 1 });
   assert.deepEqual(N.filter(l, { tab: 'nope', sub: 'x' }), [], 'a tab that doesn\'t exist has nothing');
   assert.deepEqual(N.chats(l), [['alpha', 2], ['tw:bravo', 2], ['yt:@charlie', 1], ['delta', 1], ['echo', 1]]);
-  assert.deepEqual([N.tabOf({ kind: 'raid' }), N.tabOf({}), N.tabOf(null)], ['live', 'mentions', 'mentions']);
+  assert.deepEqual([N.tabOf({ kind: 'raid' }), N.tabOf({ kind: 'support' }), N.tabOf({}), N.tabOf(null)], ['live', 'mentions', 'mentions', 'mentions']);
 });
 
 test('grouped by day: Today, Yesterday, then the date', () => {

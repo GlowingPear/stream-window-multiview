@@ -397,3 +397,22 @@ test('spam alerts off: chats stop handing over their messages', T, async () => {
   assert.equal(await tagOf('alpha', 'promo-site'), null);
   assert.deepEqual(pageErrors, []);
 });
+
+test('support alerts: a community gift in a chat glows its window and is listed once in the bell; under the smallest set, nothing', T, async () => {
+  await win.evaluate(() => window.openSettings('mentions'));
+  await win.click('#mentTabs [data-t=support]');
+  await win.click('label:has(#supportOn)');
+  await win.keyboard.press('Escape');
+  await ready();
+  const notice = (ch, text) => inChat(ch, t => { const d = document.createElement('div'); d.className = 'row'; d.textContent = t; document.getElementById('chat').appendChild(d); }, text);
+  await notice('bravo', 'quietkoala sent 50');                                   // under 100 KICKs
+  await notice('bravo', 'giftfox88 gifted 5 subscriptions to the community!');
+  await notice('bravo', 'giftfox88 gifted a sub to tinycomet');               // one of those five
+  await win.waitForFunction(() => document.querySelector('#stage .win.chat.al-brief'), null, { timeout: 10000 });
+  await win.click('#bellBtn');
+  await win.waitForSelector('#bellList .nc-row.k-support');
+  assert.deepEqual(await win.$$eval('#bellList .nc-row.k-support', l => l.map(r => r.querySelector('.mp-top b').textContent + ' ' + r.querySelector('.mp-body').textContent)),
+    ['giftfox88 gifted 5 subs']);
+  await win.keyboard.press('Escape');
+  assert.deepEqual(pageErrors, []);
+});

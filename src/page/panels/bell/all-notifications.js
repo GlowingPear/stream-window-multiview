@@ -88,7 +88,9 @@ function injectMention(w){
   const off = !mentOn || mentMuted.has(w.channel) || !site.mentions;
   const who = off ? '' : mentNameFor(w.channel), words = off ? [] : mentWords;
   const watch = !!alerts.spam.on && site.spamAlerts;
-  runIn(w.view, `${MENTION_JS};window.__kmvMention.setMe(${JSON.stringify(who)},${JSON.stringify(words)});window.__kmvMention.setWatch(${watch})`);
+  const sup = alerts.support.on && site.support ? site.support : null;   // Settings > Mentions > Support (your own never counts)
+  runIn(w.view, `${MENTION_JS};window.__kmvMention.setMe(${JSON.stringify(who)},${JSON.stringify(words)});window.__kmvMention.setWatch(${watch});` +
+    `window.__kmvMention.setSupport(${JSON.stringify(sup)},${JSON.stringify(mentNameFor(w.channel))})`);
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
