@@ -149,3 +149,37 @@ test("each site says where its chat's messages scroll, and which of its buttons 
   }
   assert.equal(kick.chatScroll.resume, null, 'Kick follows again once scrolled down');
 });
+
+test("each site says how its chat shows someone supporting the stream, in words that read Kick's real notices", () => {
+  const KINDS = ['kicks', 'bits', 'gifts', 'gift', 'sub', 'superchat', 'member'];
+  for (const p of [kick, twitch, youtube]) {
+    assert.ok(Array.isArray(p.support.finds) && p.support.finds.length, p.id);
+    for (const f of p.support.finds) {
+      assert.ok(KINDS.includes(f.kind), `${p.id}: ${f.kind}`);
+      assert.ok(f.row ? typeof f.row === 'string' : typeof f.re === 'string', `${p.id}: a row or words`);
+      if (f.re) assert.doesNotThrow(() => new RegExp(f.re, 'i'), `${p.id}: ${f.re}`);
+    }
+    assert.doesNotThrow(() => JSON.parse(JSON.stringify(p.support)), "it goes into the site's page as text");
+  }
+  // the first wording a notice matches, with what it read
+  const read = (p, text) => {
+    for (const f of p.support.finds) {
+      if (f.row || f.msg) continue;
+      const m = text.match(new RegExp(f.re, 'i'));
+      if (m) return [f.kind, { ...m.groups }];
+    }
+    return null;
+  };
+  // Kick's notices as its chat shows them (from screenshots of a real chat), each read as one line
+  assert.deepEqual(read(kick, "giftfox88 Gifted 1 subscription to the community! They've gifted 1 subscription in the channel. 7 / 10"),
+    ['gifts', { who: 'giftfox88', n: '1' }]);
+  assert.deepEqual(read(kick, 'giftfox88 gifted a sub to mossy_rock'), ['gift', { who: 'giftfox88', n: undefined, to: 'mossy_rock' }]);
+  assert.deepEqual(read(kick, 'GlowingPear sent 100 688 / 10K'), ['kicks', { who: 'GlowingPear', n: '100' }]);
+  assert.equal(read(kick, 'BotRix: Thanks @GlowingPear for the 100 KICKs!'), null, "a bot's thanks isn't a notice");
+  assert.equal(read(kick, 'someone sent me a clip'), null);
+  assert.deepEqual(read(twitch, "giftfox88 is gifting 5 Tier 1 Subs to pear's community! They've gifted a total of 20 in the channel!"),
+    ['gifts', { who: 'giftfox88', n: '5' }]);
+  assert.deepEqual(read(twitch, 'bob subscribed with Prime.'), ['sub', { who: 'bob', n: undefined }]);
+  const cheers = new RegExp(twitch.support.finds.find(f => f.msg).re, 'gi');
+  assert.deepEqual([...'Cheer100 great run cheer50 cheering'.matchAll(cheers)].map(x => x.groups.n), ['100', '50']);
+});

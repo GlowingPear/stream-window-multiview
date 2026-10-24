@@ -79,7 +79,7 @@ test('the bell\'s tabs and sub-filters, the new ones marked once, and the rows o
   assert.deepEqual(await rows(page), ['l1', 'r1']);
 
   await tab(page, 'mentions');
-  assert.deepEqual(await page.$$eval('#bellPanel .nc-chips button', e => e.map(b => b.textContent)), ['All 3', '@ Mentions 1', 'Replies 1', 'Words 1']);
+  assert.deepEqual(await page.$$eval('#bellPanel .nc-chips button', e => e.map(b => b.textContent)), ['All 3', '@ Mentions 1', 'Replies 1', 'Words 1', 'Support']);
   assert.deepEqual(await page.$$eval('#bellList .nc-row .mp-kind', e => e.map(b => b.textContent)), ['Mention', 'Reply', 'Word: pear']);
   await page.selectOption('#bellPanel .nc-pick', 'tw:bravo');
   assert.deepEqual(await rows(page), ['m2'], 'one chat');
