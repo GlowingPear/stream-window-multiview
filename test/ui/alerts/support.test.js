@@ -103,3 +103,41 @@ test('Settings › Mentions › Support: off at first, switched on and saved; an
   assert.deepEqual(rows, ['Pear Lover sent a Super Chat: €10,50', 'Big_Gifter gifted 10 subs', 'tinycomet sent 500 KICKs']);
   assert.equal(await page.$eval('#bellList .nc-row.k-support .mp-kind', e => e.textContent), 'Support');
 });
+
+test('raids: Kick\'s banner over the chat once (not again as its viewers go up, nor one that was already there), Twitch\'s line, and the smallest raid that alerts', async t => {
+  // Kick: the banner is above the chat, not one of its rows
+  const banner = (page, text) => page.evaluate(t => {
+    let b = document.getElementById('sup-banner');
+    if (!b){ b = document.createElement('div'); b.id = 'sup-banner'; document.getElementById('sup-chat').before(b); }
+    b.textContent = t;
+  }, text);
+  let page = await chatPage(t, 'kick', kickRow(1, 'regular', 'evening all'));
+  await banner(page, 'oldraider is hosting your channel with 40 viewers');
+  await page.evaluate(() => window.__kmvMention.setSupport(null));      // the banner already there when it starts is old
+  await page.evaluate(async () => window.__kmvMention.setSupport((await import('./page/platforms/kick.js')).kick.support, ''));
+  await page.waitForTimeout(2800);
+  await banner(page, 'oldraider is hosting your channel with 44 viewers');
+  assert.deepEqual(await found(page), [], 'the same raid, its viewers counted up');
+  await banner(page, 'pixelpear is hosting your channel with 120 viewers');
+  assert.deepEqual(await found(page), [['raid', 'pixelpear', 120, '']]);
+  await banner(page, 'pixelpear is hosting your channel with 131 viewers');
+  assert.deepEqual(await found(page), [], 'once, as its viewers go up');
+  // Twitch: a line in its chat
+  page = await chatPage(t, 'twitch', '<div class="row"><b>regular</b>: <span>hi</span></div>');
+  await put(page, '<div class="row">25 raiders from nightowl have joined!</div>');
+  assert.deepEqual(await found(page), [['raid', 'nightowl', 25, '']]);
+
+  // the smallest raid that alerts (Settings › Mentions › Support › Raids), and what the bell says
+  page = await openApp(t);
+  await add(page, 'alpha');
+  await page.evaluate(() => { document.querySelector('.st-rail [data-s=mentions]').hidden = false; window.openSettings('mentions'); });   // (the desktop app's pages)
+  await page.click('#mentTabs [data-t=support]');
+  await page.click('label:has(#supportOn)');
+  assert.equal(await page.inputValue('[data-al="support.minRaid"]'), '1', 'any raid at first');
+  await page.selectOption('[data-al="support.minRaid"]', '50');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.supportFrom('alpha', [{ kind: 'raid', who: 'tinyraid', n: 12 }, { kind: 'raid', who: 'pixelpear', n: 120 }]));
+  await page.click('#bellBtn');
+  assert.deepEqual(await page.$$eval('#bellList .nc-row.k-support', l => l.map(r => r.querySelector('.mp-top b').textContent + ' ' + r.querySelector('.mp-body').textContent)),
+    ['pixelpear raided with 120 viewers']);
+});
