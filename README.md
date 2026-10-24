@@ -47,7 +47,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - **Right-click menu** in chats and streams: copy, paste, open or copy links, translate selected text to your language, open or save emotes and images
 - **Follows raids**: when a Kick or Twitch channel raids another, its stream and chat switch to the raided channel in the same spot
 - Alerts when someone @mentions you, replies to you, or writes one of your own words (nicknames) in Kick or Twitch chat, with a searchable history of the last 500: that chat window lights up (and can get stronger until you look), with a sound and desktop notification of your choice
-- **Support alerts** (off by default): an alert when someone sends KICKs, bits or a Super Chat, gifts subs, or subscribes, with the smallest amount that alerts for each
+- **Support alerts** (off by default): an alert when someone sends KICKs, bits or a Super Chat, gifts subs, subscribes or raids in, with the smallest amount that alerts for each
 - **Spam alerts for moderators** (off by default): in chats you moderate, promo-bot messages are tagged "likely spam" and the chat window lights up. Nothing is hidden or removed.
 
 **Chrome extensions**
