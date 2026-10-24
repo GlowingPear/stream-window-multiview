@@ -7,7 +7,7 @@ function mentionAgent(){
   let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0;
   let fresh = 0, counting = false;                           // new messages from others since the app last asked (count())
   let sup = null, supQueue = [], supMe = '';                          // support (Settings > Mentions > Support): the site's wording, and what was found
-  const supSeen = new Set(), giftsBy = new Map();
+  const supSeen = new Set(), giftsBy = new Map(), raidsBy = new Map();
   // Clicks and typing in the chat: the window may already have focus, so the app sees no new focus to mark it seen.
   // Every kind of click counts, on the window before the page's own handlers: Kick's mod shortcuts on a
   // name (Shift, Cmd/Ctrl, Cmd/Ctrl + Shift + Click: delete, timeout, ban) may stop some of them.
@@ -171,8 +171,15 @@ function mentionAgent(){
   function supFound(f, key, who, n, extra){
     if (supSeen.has(key)) return;
     supSeen.add(key);
-    if (!armed || !who) return;
+    if (!who) return;
     who = flat(who);
+    // a raid banner keeps counting its viewers ("with 120 viewers", then 125): the same raider is one raid for 30 minutes
+    if (f.kind === 'raid'){
+      const r = raidsBy.get(who.toLowerCase());
+      raidsBy.set(who.toLowerCase(), Date.now());
+      if (r && Date.now() - r < 1800000) return;
+    }
+    if (!armed) return;
     if (supMe && who.toLowerCase() === supMe) return;        // your own
     const k = who.toLowerCase();
     if (f.kind === 'gifts') giftsBy.set(k, Date.now());
