@@ -82,7 +82,7 @@ const youtube = {
   // Someone supporting the stream (Settings > Mentions > Support, in-site/mentions.js): how its chat shows it. { kind, re }
   // reads a row of the site's own (not someone's message) by its text, with the name (who), the number (n) and who
   // got a gift (to); { kind, row, who, n } an element it draws for it; { kind, re, msg: true } words in a message.
-  // kind: kicks, bits, gifts (to the community), gift (to someone), sub, superchat, member.
+  // kind: kicks, bits, gifts (to the community), gift (to someone), sub, superchat, member. (YouTube has no raids.)
   support: { finds: [
     { kind: 'superchat', row: 'yt-live-chat-paid-message-renderer, yt-live-chat-paid-sticker-renderer', who: '#author-name', n: '#purchase-amount, #purchase-amount-chip' },
     { kind: 'gifts', unit: 'memberships', row: 'ytd-sponsorships-live-chat-gift-purchase-announcement-renderer', who: '#author-name', re: 'gifted (?<n>\\d+)' },

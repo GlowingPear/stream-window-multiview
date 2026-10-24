@@ -151,7 +151,7 @@ test("each site says where its chat's messages scroll, and which of its buttons 
 });
 
 test("each site says how its chat shows someone supporting the stream, in words that read Kick's real notices", () => {
-  const KINDS = ['kicks', 'bits', 'gifts', 'gift', 'sub', 'superchat', 'member'];
+  const KINDS = ['kicks', 'bits', 'gifts', 'gift', 'sub', 'superchat', 'member', 'raid'];
   for (const p of [kick, twitch, youtube]) {
     assert.ok(Array.isArray(p.support.finds) && p.support.finds.length, p.id);
     for (const f of p.support.finds) {
@@ -180,6 +180,13 @@ test("each site says how its chat shows someone supporting the stream, in words 
   assert.deepEqual(read(twitch, "giftfox88 is gifting 5 Tier 1 Subs to pear's community! They've gifted a total of 20 in the channel!"),
     ['gifts', { who: 'giftfox88', n: '5' }]);
   assert.deepEqual(read(twitch, 'bob subscribed with Prime.'), ['sub', { who: 'bob', n: undefined }]);
+  // raids: Kick's banner over the chat (it says hosting), Twitch's line in its chat; YouTube has none
+  const raid = (p, text) => { const f = p.support.finds.find(x => x.kind === 'raid'); const m = f && text.match(new RegExp(f.re, 'i')); return m ? { ...m.groups } : null; };
+  assert.deepEqual(raid(kick, 'pixelpear is hosting your channel with 120 viewers'), { who: 'pixelpear', n: '120' });
+  assert.deepEqual(raid(kick, 'pixelpear is raiding with 1,250 viewers'), { who: 'pixelpear', n: '1,250' });
+  assert.ok(kick.support.finds.find(x => x.kind === 'raid').page, 'read from the page: a banner, not a row');
+  assert.deepEqual(raid(twitch, '25 raiders from nightowl have joined!'), { n: '25', who: 'nightowl' });
+  assert.equal(raid(youtube, 'anything'), null);
   const cheers = new RegExp(twitch.support.finds.find(f => f.msg).re, 'gi');
   assert.deepEqual([...'Cheer100 great run cheer50 cheering'.matchAll(cheers)].map(x => x.groups.n), ['100', '50']);
 });

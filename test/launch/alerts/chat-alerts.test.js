@@ -416,3 +416,27 @@ test('support alerts: a community gift in a chat glows its window and is listed 
   await win.keyboard.press('Escape');
   assert.deepEqual(pageErrors, []);
 });
+
+test('support alerts: a raid banner over a chat glows its window and is listed once, also as its viewers count up', T, async () => {
+  await win.evaluate(() => window.openSettings('mentions'));
+  await win.click('#mentTabs [data-t=support]');
+  if (!(await win.isChecked('#supportOn'))) await win.click('label:has(#supportOn)');
+  await win.keyboard.press('Escape');
+  await ready();
+  // Kick's raid banner: above the chat's messages
+  const banner = (ch, text) => inChat(ch, t => {
+    let b = document.getElementById('raid-banner');
+    if (!b){ b = document.createElement('div'); b.id = 'raid-banner'; document.body.prepend(b); }
+    b.textContent = t;
+  }, text);
+  const raids = () => win.$$eval('#bellList .nc-row.k-support', l => l.map(r => r.querySelector('.mp-top b').textContent + ' ' + r.querySelector('.mp-body').textContent).filter(t => /raided/.test(t)));
+  await banner('alpha', 'pixelpear is hosting your channel with 120 viewers');
+  await win.waitForFunction(() => document.querySelector('#stage .win.chat.al-brief'), null, { timeout: 10000 });
+  await banner('alpha', 'pixelpear is hosting your channel with 126 viewers');
+  await win.waitForTimeout(4000);                                                // the app asks the chats every few seconds
+  await win.click('#bellBtn');
+  await win.waitForSelector('#bellList .nc-row.k-support');
+  assert.deepEqual(await raids(), ['pixelpear raided with 120 viewers']);
+  await win.keyboard.press('Escape');
+  assert.deepEqual(pageErrors, []);
+});

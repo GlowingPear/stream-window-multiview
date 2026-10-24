@@ -7,7 +7,7 @@ function mentionAgent(){
   let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0;
   let fresh = 0, counting = false;                           // new messages from others since the app last asked (count())
   let sup = null, supQueue = [], supMe = '';                          // support (Settings > Mentions > Support): the site's wording, and what was found
-  const supSeen = new Set(), giftsBy = new Map();
+  const supSeen = new Set(), giftsBy = new Map(), raidsBy = new Map();
   // Clicks and typing in the chat: the window may already have focus, so the app sees no new focus to mark it seen.
   // Every kind of click counts, on the window before the page's own handlers: Kick's mod shortcuts on a
   // name (Shift, Cmd/Ctrl, Cmd/Ctrl + Shift + Click: delete, timeout, ban) may stop some of them.
@@ -162,7 +162,8 @@ function mentionAgent(){
   /* Support: someone sent KICKs or bits, gifted subs, subscribed, or sent a Super Chat. The site shows it in a row of
      its own (not "name: message"), read by its text with the site's wording (sup.finds, from its site module):
      { kind, re } for such a row's text, { kind, row, who, n } for an element the site draws for it (its name and
-     amount inside), { kind, re, msg: true } for words in a normal message (Twitch's cheer100). Each one once; what
+     amount inside), { kind, re, msg: true } for words in a normal message (Twitch's cheer100), { kind, re, page: true }
+     for a banner over the chat, outside its rows (Kick's raids). Each one once; what
      was there before it started is old. A community gift is followed by a row for each sub it gave: those are
      part of it. */
   // a number as the site writes it: "1,000", "$5.00", "€10,50"
@@ -170,8 +171,15 @@ function mentionAgent(){
   function supFound(f, key, who, n, extra){
     if (supSeen.has(key)) return;
     supSeen.add(key);
-    if (!armed || !who) return;
+    if (!who) return;
     who = flat(who);
+    // a raid banner keeps counting its viewers ("with 120 viewers", then 125): the same raider is one raid for 30 minutes
+    if (f.kind === 'raid'){
+      const r = raidsBy.get(who.toLowerCase());
+      raidsBy.set(who.toLowerCase(), Date.now());
+      if (r && Date.now() - r < 1800000) return;
+    }
+    if (!armed) return;
     if (supMe && who.toLowerCase() === supMe) return;        // your own
     const k = who.toLowerCase();
     if (f.kind === 'gifts') giftsBy.set(k, Date.now());
@@ -202,8 +210,22 @@ function mentionAgent(){
         }
       }
     }
+    // a banner the site shows over its chat (Kick's raids): a line of the page's text that isn't in a row or a message
+    const onPage = finds.filter(f => f.page).map(f => [f, new RegExp(f.re, 'i')]);
+    if (onPage.length) {
+      for (const l of textLines(document.body.innerText)) {
+        if (lineOf(l)) continue;
+        const t = flat(l);
+        for (const [f, re] of onPage) {
+          const m = t.match(re); if (!m) continue;
+          const g = m.groups || {};
+          supFound(f, 'p' + t, g.who, g.n ? num(g.n) : 1, {});
+          break;
+        }
+      }
+    }
     // the site's own rows, in the chat's order: each by the first wording it matches
-    const byText = finds.filter(f => !f.row && !f.msg).map(f => [f, new RegExp(f.re, 'i')]);
+    const byText = finds.filter(f => !f.row && !f.msg && !f.page).map(f => [f, new RegExp(f.re, 'i')]);
     for (const x of texts) {
       for (const [f, re] of byText) {
         const m = x.t.match(re); if (!m) continue;

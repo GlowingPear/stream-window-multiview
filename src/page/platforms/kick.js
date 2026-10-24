@@ -55,9 +55,12 @@ const kick = {
   chatScroll: { list: '#chatroom-messages', resume: null },   // scrolling down is enough: Kick follows again by itself
   // Someone supporting the stream (Settings > Mentions > Support, in-site/mentions.js): how its chat shows it. { kind, re }
   // reads a row of the site's own (not someone's message) by its text, with the name (who), the number (n) and who
-  // got a gift (to); { kind, row, who, n } an element it draws for it; { kind, re, msg: true } words in a message.
-  // kind: kicks, bits, gifts (to the community), gift (to someone), sub, superchat, member.
+  // got a gift (to); { kind, row, who, n } an element it draws for it; { kind, re, msg: true } words in a message;
+  // { kind, re, page: true } a banner over the chat. kind: kicks, bits, gifts (to the community), gift (to someone),
+  // sub, superchat, member, raid (n: the viewers it brought).
   support: { finds: [
+    // a raid (Kick calls it hosting) shows as a banner at the top of the chat
+    { kind: 'raid', page: true, re: '^(?<who>[A-Za-z0-9_]{2,30}) is (?:hosting|raiding)(?: your channel| the channel)? with (?<n>\\d[\\d,]*) viewers?' },
     { kind: 'gifts', re: '^(?<who>[A-Za-z0-9_]{2,30}) gifted (?<n>\\d[\\d,]*) subscriptions? to the community' },
     { kind: 'gift', re: '^(?<who>[A-Za-z0-9_]{2,30}) gifted (?:a|(?<n>\\d+)) subs? to (?<to>[A-Za-z0-9_]{2,30})' },
     { kind: 'kicks', re: '^(?<who>[A-Za-z0-9_]{2,30}) sent (?<n>\\d[\\d,]*)(?: |$)' },

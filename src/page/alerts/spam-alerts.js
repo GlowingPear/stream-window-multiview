@@ -102,6 +102,7 @@ function supportText(s){
     case 'superchat': return n >= a.minMoney ? `sent a Super Chat${s.amt ? ': ' + s.amt : ''}` : '';
     case 'sub': return a.subs ? (n > 1 ? `subscribed for ${n} months` : 'subscribed') : '';
     case 'member': return a.subs ? 'became a member' : '';
+    case 'raid': return n >= (a.minRaid || 1) ? `raided with ${many('viewer', 'viewers')}` : '';
     default: return '';
   }
 }
@@ -110,6 +111,7 @@ function supportFrom(w, list){
     const what = supportText(s);
     if (!what || !s.who) continue;
     const item = { channel: w.channel, label: chLabelP(w.channel), sender: String(s.who).slice(0, 40), body: what, kind: 'support', quoted: '', t: s.t || Date.now(), unread: true };
+    if (s.kind === 'raid') item.raid = true;                   // (the desktop notification says "raided")
     if (wantNotify('support')) window.kmv.notifyMention(item);
     addNote(item, `${item.sender} ${what} in ${chLabel(w.channel)}`);
     raiseAlert(w, 'support', false);
