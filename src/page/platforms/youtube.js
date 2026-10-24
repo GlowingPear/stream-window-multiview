@@ -79,6 +79,15 @@ const youtube = {
   // Its chat's message list and its own "back to the newest messages" button (in-site/stick-bottom.js keeps the chat at
   // its newest messages; with no list here it uses the biggest box that scrolls).
   chatScroll: { list: 'yt-live-chat-item-list-renderer #item-scroller', resume: 'yt-live-chat-item-list-renderer #show-more' },
+  // Someone supporting the stream (Settings > Mentions > Support, in-site/mentions.js): how its chat shows it. { kind, re }
+  // reads a row of the site's own (not someone's message) by its text, with the name (who), the number (n) and who
+  // got a gift (to); { kind, row, who, n } an element it draws for it; { kind, re, msg: true } words in a message.
+  // kind: kicks, bits, gifts (to the community), gift (to someone), sub, superchat, member.
+  support: { finds: [
+    { kind: 'superchat', row: 'yt-live-chat-paid-message-renderer, yt-live-chat-paid-sticker-renderer', who: '#author-name', n: '#purchase-amount, #purchase-amount-chip' },
+    { kind: 'gifts', unit: 'memberships', row: 'ytd-sponsorships-live-chat-gift-purchase-announcement-renderer', who: '#author-name', re: 'gifted (?<n>\\d+)' },
+    { kind: 'member', row: 'yt-live-chat-membership-item-renderer', who: '#author-name' }
+  ] },
   chatBox: { box: 'yt-live-chat-text-input-field-renderer #input', hint: 'yt-live-chat-text-input-field-renderer #label', attrs: ['aria-label'], says: '^(chat|say something)(\u2026|\\.\\.\\.)?$' },
   stuckJs: null,   // a stream that comes back is a new video, which resolveYt finds (see kick.js)
   // For its stream windows: the watch page trimmed to the player

@@ -86,10 +86,34 @@ function revealChat(ch){
 }
 let polling = false;
 async function pollMentions(){
-  const ment = mentOn && mentAny(), spam = !!alerts.spam.on;
-  if ((!ment && !spam) || polling) return;
+  const ment = mentOn && mentAny(), spam = !!alerts.spam.on, sup = !!alerts.support.on;
+  if ((!ment && !spam && !sup) || polling) return;
   polling = true;
   try { await pollChats(ment, spam); } finally { polling = false; }
+}
+// Support (Settings > Mentions > Support): whether it's at least the smallest that alerts, and what it says
+function supportText(s){
+  const a = alerts.support, n = Math.max(1, +s.n || 1), many = (one, more) => `${n.toLocaleString()} ${n === 1 ? one : more}`;
+  switch (s.kind){
+    case 'kicks': return n >= a.minKicks ? `sent ${many('KICK', 'KICKs')}` : '';
+    case 'bits': return n >= a.minBits ? `cheered ${many('bit', 'bits')}` : '';
+    case 'gifts': return n >= a.minGifts ? `gifted ${s.unit === 'memberships' ? many('membership', 'memberships') : many('sub', 'subs')}` : '';
+    case 'gift': return n >= a.minGifts ? `gifted ${n === 1 ? 'a sub' : many('sub', 'subs')}${s.to ? ' to ' + s.to : ''}` : '';
+    case 'superchat': return n >= a.minMoney ? `sent a Super Chat${s.amt ? ': ' + s.amt : ''}` : '';
+    case 'sub': return a.subs ? (n > 1 ? `subscribed for ${n} months` : 'subscribed') : '';
+    case 'member': return a.subs ? 'became a member' : '';
+    default: return '';
+  }
+}
+function supportFrom(w, list){
+  for (const s of list || []){
+    const what = supportText(s);
+    if (!what || !s.who) continue;
+    const item = { channel: w.channel, label: chLabelP(w.channel), sender: String(s.who).slice(0, 40), body: what, kind: 'support', quoted: '', t: s.t || Date.now(), unread: true };
+    if (wantNotify('support')) window.kmv.notifyMention(item);
+    addNote(item, `${item.sender} ${what} in ${chLabel(w.channel)}`);
+    raiseAlert(w, 'support', false);
+  }
 }
 async function pollChats(ment, spam){
   for (const w of wins){
@@ -100,6 +124,7 @@ async function pollChats(ment, spam){
     if (!q) continue;
     (q.k || []).forEach(n => firstSpoke(w.channel + '\n' + n, 0));
     if (spam && q.l && q.l.length) await spamCheck(w, q.l, q.c);
+    if (alerts.support.on && q.s && q.s.length) supportFrom(w, q.s);
     if (q.c){                                                 // you clicked or typed in the chat: what came before is seen
       if (w.alert && w.alert.since <= q.c) clearAlert(w);
       readChat(w.channel);
@@ -126,6 +151,7 @@ function init(){
   window.spamFirst = spamFirst; window.firstSpoke = firstSpoke;   // for the tests
   window.spamCheck = (ch, lines) => spamCheck(wins.find(w => w.kind === 'chat' && w.channel === ch), lines);   // for the tests
   window.openWins = () => wins;   // for the tests
+  window.supportFrom = (ch, list) => supportFrom(wins.find(w => w.kind === 'chat' && w.channel === ch), list);   // for the tests
 }
 
 export { forgetChat, init, pollMentions, revealChat, spamFirst, spamOpts };

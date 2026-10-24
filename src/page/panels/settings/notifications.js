@@ -17,7 +17,7 @@ function loadMsgSettings(){
 }
 /* Settings > Notifications: for each kind, a row with its pop-up, desktop notification and sound. Mentions and
    spam alerts' are the same settings as on their own pages (the same data-al). */
-const NT_ROWS = [['mention', 'Mentions &amp; replies', 'mentions', 'More on Mentions ›'], ['spam', 'Likely spam', 'spam', 'More on Spam alerts ›'],
+const NT_ROWS = [['mention', 'Mentions &amp; replies', 'mentions', 'More on Mentions ›'], ['spam', 'Likely spam', 'spam', 'More on Spam alerts ›'], ['support', 'Support', 'mentions', 'More on Mentions ›'],
   ['live', 'Saved channel went live'], ['raid', 'Raids'], ['app', 'App messages']];
 const SOUND_OPTS = '<option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound</option>';
 // Live alerts: off (Never) also turns off the bell in Channels, and Away is checked by the app itself.

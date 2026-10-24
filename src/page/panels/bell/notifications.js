@@ -1,19 +1,19 @@
 // The notification centre (the toolbar bell): one list for everything the app tells you about, newest first.
 // Used by the app page (as SmvNotes) and by the tests. It only works on plain arrays:
 // the page keeps the list in localStorage (kickMultiview.notifications) and draws it.
-//   kind: mention / reply / word (chat mentions), spam (likely spam), live (a saved channel went live),
+//   kind: mention / reply / word (chat mentions), support (someone supported the stream), spam (likely spam), live (a saved channel went live),
 //         raid (a raid was followed), app (the app's own messages, with a subject)
 const SmvNotes = (() => {
   // The bell's tabs, and which tab each kind is in. Each tab keeps its own latest MAX, so a busy spam day
   // can't push your mentions out.
   const TABS = ['all', 'mentions', 'spam', 'live', 'app'];
-  const TAB_OF = { mention: 'mentions', reply: 'mentions', word: 'mentions', spam: 'spam', live: 'live', raid: 'live', app: 'app' };
+  const TAB_OF = { mention: 'mentions', reply: 'mentions', word: 'mentions', support: 'mentions', spam: 'spam', live: 'live', raid: 'live', app: 'app' };
   const MAX = 500;
   const SUBJECTS = ['accounts', 'layouts', 'windows', 'downloads', 'updates'];
   // The sub-filters each tab has ('all' first).
   const SUBS = {
     all: ['all', 'mentions', 'spam', 'live', 'app'],
-    mentions: ['all', 'mention', 'reply', 'word'],
+    mentions: ['all', 'mention', 'reply', 'word', 'support'],
     spam: ['all'],
     live: ['all', 'live', 'raid', 'auto'],
     app: ['all', ...SUBJECTS]

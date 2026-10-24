@@ -403,7 +403,7 @@
       <section class="st-pane" data-s="mentions" hidden>
         <h4>Mentions &amp; replies</h4><p class="st-sub">When someone writes @you or replies to you in an open Kick or Twitch chat. The chat already highlights the message itself; these make the <b>window</b> stand out so you can see which chat it's in.</p>
         <label class="st-lead"><span class="st-t"><b>Alert me</b><small>When someone mentions or replies to the usernames below, or writes one of your words.</small></span><input type="checkbox" class="st-sw" id="mentOn"></label>
-        <div class="st-tabs" id="mentTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="names">Names &amp; words</button><button data-t="bots">Chat bots</button></div>
+        <div class="st-tabs" id="mentTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="names">Names &amp; words</button><button data-t="bots">Chat bots</button><button data-t="support">Support</button></div>
         <div class="st-subpane" data-t="names" hidden>
         <div class="st-sec">Your usernames</div>
         <p class="st-sub" style="margin:2px 0 0">Used to spot mentions and replies to you. Kick and Twitch chats are covered; YouTube chat isn't.</p>
@@ -436,6 +436,32 @@
         <div class="st-row" data-dep="mention.until"><span class="st-t">Repeat the sound while unseen</span><input type="checkbox" class="st-sw" data-al="mention.repeat"></div>
         <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="mention.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
+        </div>
+        <div class="st-subpane" data-t="support" hidden>
+        <label class="st-row"><span class="st-t"><b>Alert me when someone supports the stream</b><small>In any open chat: KICKs, bits and Super Chats, gifted subs, and new subs and members. Read from the chat's own notices, so it works without logging in. Your own never alert you.</small></span><input type="checkbox" class="st-sw" data-al="support.on" id="supportOn"></label>
+        <div class="st-opts" data-for="support">
+        <div class="st-sec">The smallest that alerts</div>
+        <div class="st-row"><span class="st-t">KICKs<small>Kick</small></span>
+          <select data-al="support.minKicks"><option value="1">Any</option><option value="100">100 or more</option><option value="500">500 or more</option><option value="1000">1,000 or more</option><option value="5000">5,000 or more</option><option value="10000">10,000 or more</option></select></div>
+        <div class="st-row"><span class="st-t">Bits<small>Twitch</small></span>
+          <select data-al="support.minBits"><option value="1">Any</option><option value="100">100 or more</option><option value="500">500 or more</option><option value="1000">1,000 or more</option><option value="5000">5,000 or more</option><option value="10000">10,000 or more</option></select></div>
+        <div class="st-row"><span class="st-t">Gifted subs<small>Kick and Twitch subs, YouTube memberships</small></span>
+          <select data-al="support.minGifts"><option value="1">Any</option><option value="5">5 or more</option><option value="10">10 or more</option><option value="25">25 or more</option><option value="50">50 or more</option><option value="100">100 or more</option></select></div>
+        <div class="st-row"><span class="st-t">Super Chats<small>YouTube, in any currency</small></span>
+          <select data-al="support.minMoney"><option value="1">Any</option><option value="5">5 or more</option><option value="10">10 or more</option><option value="20">20 or more</option><option value="50">50 or more</option><option value="100">100 or more</option></select></div>
+        <div class="st-row"><span class="st-t">New subs and members<small>New subs, resubs and new YouTube members</small></span><input type="checkbox" class="st-sw" data-al="support.subs"></div>
+        <div class="st-sec">How it gets your attention</div>
+        <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up.</small></span>
+          <select data-al="support.hl"><option value="off">Off</option><option value="brief">Brief glow</option><option value="until">Until I click the chat</option></select>
+          <input type="color" data-al="support.color" title="Colour"></div>
+        <div class="st-row nt-shared"><span class="st-t">Pop-up in the app<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button><small>A short message saying who and what.</small></span><input type="checkbox" class="st-sw" data-al="support.popup"></div>
+        <div class="st-row nt-shared"><span class="st-t">Sound<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
+          <select data-al="support.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound</option></select>
+          <button class="btn st-play" data-play="support" title="Play it">▶</button>
+          <input type="range" min="0" max="1" step="0.05" data-al="support.vol" title="Volume"></div>
+        <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
+          <select data-al="support.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
+        </div>
         </div>
       </section>
       <section class="st-pane" data-s="spam" hidden>
