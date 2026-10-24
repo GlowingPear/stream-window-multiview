@@ -47,11 +47,11 @@ const FARMING = () => ({
 const peer = (o = {}) => ({ id: 'com.streamorchard.peardrops', status: 'connected', installed: true, version: '0.1.6', report: { state: 'works', text: 'Works' },
   pairedAt: '2026-10-18T09:00:00Z', summary: 'Collects your Kick emote and badge drops for you.', download: 'https://example.com/pear-drops', ...o });
 
-async function openCard(t, { storage = {}, size, toolbar, query } = {}){
+async function openCard(t, { storage = {}, size, toolbar, query, clock } = {}){
   const store = { 'link.peardrops': '1', ...storage };
   const init = `(${fakeApp})(${JSON.stringify(PNG)});` + Object.entries(store).map(([k, v]) => `localStorage.setItem('kickMultiview.${k}', ${JSON.stringify(v)});`).join('')
     + (toolbar ? `localStorage.setItem('kickMultiview.toolbar', ${JSON.stringify(JSON.stringify(toolbar))});` : '');
-  const page = await openApp(t, { ...size, query, init: { content: init } });
+  const page = await openApp(t, { ...size, query, clock, init: { content: init } });
   await page.waitForFunction(() => window.pearLink && window.pearLink.state);
   return page;
 }
@@ -261,7 +261,7 @@ for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', label
     const cardText = await page.textContent('#farmCard');
     for (const s of ['Neon Rush Launch Week', 'Pear Drops is farming on PixelPear · 48 / 120 min', '1 of 3 claimed', 'Ends in 3 days', 'Open Pear Drops →']) assert.ok(cardText.includes(s), s);
     assert.match(cardText, /Hype Rocket Emote unlocks in 1[12] min/);
-    assert.match(cardText, /All rewards by \d{1,2}:\d{2}/);
+    assert.match(cardText, /All rewards by (\p{L}+\.? )?\d{1,2}:\d{2}/u, 'the time (and tomorrow\'s weekday, just before midnight)');
     assert.deepEqual(await page.$$eval('#farmCard .fw-item', l => l.map(e => [e.style.left, e.classList.contains('claimed')])), [['25%', true], ['50%', false], ['100%', false]], 'each reward at its minutes, ticked when claimed');
     const cb = await page.locator('#farmCard').boundingBox(), vp = page.viewportSize();
     assert.ok(cb.x >= 0 && cb.y >= 0 && cb.x + cb.width <= vp.width && cb.y + cb.height <= vp.height, 'the card is on screen');
@@ -281,6 +281,28 @@ for (const toolbar of [null, { pos: 'left', labels: true }, { pos: 'left', label
     assert.equal(await widget(page), null, 'switched off in Connected apps');
   });
 }
+
+test('The farming widget\'s card: when all the rewards are in says the time today, the weekday in the next six days, the date after that', async t => {
+  const now = new Date(2026, 9, 24, 12, 0);                            // a Saturday, midday
+  const page = await openCard(t, { clock: now.getTime() });
+  const at = (days, h, m) => new Date(2026, 9, 24 + days, h, m).toISOString();
+  const done = async doneAt => {                                       // (the open card redraws as the state comes in)
+    const f = FARMING(); f.drop.doneAt = doneAt;
+    await push(page, { on: true, peer: peer(), farming: f, open: true });
+    return page.$eval('#farmCard .fw-dim span', e => e.textContent);
+  };
+  await push(page, { on: true, peer: peer(), farming: FARMING(), open: true });
+  await page.hover('#farmBtn');
+  await page.waitForSelector('#farmCard:not([hidden])');
+  assert.equal(await done(at(0, 13, 12)), 'All rewards by 01:12 PM', 'today: the time');
+  assert.equal(await done(at(3, 1, 36)), 'All rewards by Tue 01:36 AM', 'this week: the weekday and the time');
+  assert.equal(await done(at(6, 23, 0)), 'All rewards by Fri 11:00 PM', 'six days away');
+  assert.equal(await done(at(7, 9, 0)), 'All rewards by Sat, Oct 31', 'a week away: the date, not "Sat" (which would be today too)');
+  assert.equal(await done(at(20, 9, 0)), 'All rewards by Fri, Nov 13', 'further away: the date');
+  assert.equal(await done(at(73, 9, 0)), 'All rewards by Tue, Jan 5, 2027', 'next year: with the year');
+  assert.equal(await done(at(-1, 9, 0)), 'All rewards by Fri, Oct 23', 'already past: the date');
+  assert.equal(await done('soon'), '', 'not a time: nothing');
+});
 
 test('The farming widget copes with a drop that has little to say', async t => {
   const page = await openCard(t);

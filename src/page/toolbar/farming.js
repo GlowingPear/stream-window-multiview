@@ -23,7 +23,17 @@ function until(iso, long){
   if (min >= 60) return Math.floor(min / 60) + 'h' + (min % 60 ? ' ' + (min % 60) + 'm' : '');
   return min + (long ? ' min' : 'm');
 }
-const clock = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
+// When a time is, in the computer's locale: "01:36" today, "Sat 01:36" in the next six days, "Sat 31 Oct" after that
+// (or before today), with the year when it isn't this one
+function when(iso){
+  const d = new Date(iso), now = new Date();
+  if (isNaN(d)) return '';
+  const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  const days = Math.round((day(d) - day(now)) / 86400000), time = { hour: '2-digit', minute: '2-digit' };
+  if (days === 0) return d.toLocaleTimeString([], time);
+  if (days > 0 && days < 7) return d.toLocaleString([], { weekday: 'short', ...time });
+  return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', ...(d.getFullYear() !== now.getFullYear() && { year: 'numeric' }) });
+}
 const pct = (n, total) => (total > 0 ? Math.max(0, Math.min(100, (n / total) * 100)) : 0);
 // A picture from Kick: its https address, with Pear Drops' logo (or nothing) in its place if it fails.
 function setPic(img, src, fallback = logo){
@@ -67,7 +77,7 @@ function renderCard(f){
     rewards && rewards.total ? element('span', null, `${rewards.claimed || 0} of ${rewards.total} claimed`) : null);
   const ends = drop.endsAt && until(drop.endsAt);
   const row2 = element('div', 'fw-row fw-dim',
-    drop.doneAt && clock(drop.doneAt) ? element('span', null, 'All rewards by ' + clock(drop.doneAt)) : element('span'),
+    drop.doneAt && when(drop.doneAt) ? element('span', null, 'All rewards by ' + when(drop.doneAt)) : element('span'),
     ends ? element('span', null, 'Ends in ' + ends) : null);
   parts.push(row1, row2, element('button', { type: 'button', class: 'linkish fw-open', onclick: () => showPearDrops() }, 'Open Pear Drops →'));
   card.replaceChildren(...parts);
