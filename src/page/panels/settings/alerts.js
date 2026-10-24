@@ -20,11 +20,12 @@ function syncAlertControls(){
     if (c.classList.contains('seg')) c.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.v === v); b.setAttribute('aria-checked', String(b.dataset.v === v)); });
     else if (c.type === 'checkbox') c.checked = !!v; else c.value = String(v);
   });
-  ['mention', 'spam'].forEach(kind => {
+  ['mention', 'spam', 'support'].forEach(kind => {
     settingsDlg.querySelectorAll(`[data-dep="${kind}.until"]`).forEach(r => r.classList.toggle('st-dim', alerts[kind].hl !== 'until'));
   });
   settingsDlg.querySelectorAll('.st-opts[data-for=mention]').forEach(el => el.classList.toggle('st-dim', !mentOn));
   settingsDlg.querySelectorAll('.st-opts[data-for=spam]').forEach(el => el.classList.toggle('st-dim', !alerts.spam.on));
+  settingsDlg.querySelectorAll('.st-opts[data-for=support]').forEach(el => el.classList.toggle('st-dim', !alerts.support.on));
   $('#spamOn').checked = !!alerts.spam.on;
   if ($('#mentOn')) $('#mentOn').checked = mentOn;
   const pill = settingsDlg.querySelector('.st-rail [data-s=spam] .st-pill');
@@ -55,6 +56,10 @@ async function setAlert(kind, k, v){
   if (k === 'sound' || k === 'vol') playSound(kind, true);
   if (k === 'color') wins.forEach(w => { if (w.alert && w.alert.kind === kind) w.el.style.setProperty('--al', v); });
   if (kind === 'live' && k === 'notify') syncLiveAlerts();
+  if (kind === 'support' && k === 'on'){                     // the chats start or stop looking for it
+    if (typeof pushMyName === 'function') pushMyName();
+    flash(v ? 'Support alerts on' : 'Support alerts off');
+  }
 }
 /* Spam alerts: allowed sites, promo words, known bot lines, chat bots to ignore, and the abuse lists. Mentions: chat
    bots to ignore ('mbots'), which spam alerts show (read-only) and use instead of their own while they share it. */
@@ -222,7 +227,7 @@ function init(){
   settingsDlg.addEventListener('change', e => {
     const c = e.target.closest('[data-al]'); if (!c || c.classList.contains('seg')) return;
     const [kind, k] = c.dataset.al.split('.');
-    setAlert(kind, k, c.type === 'checkbox' ? c.checked : c.type === 'range' || k === 'esc' ? +c.value : c.value);
+    setAlert(kind, k, c.type === 'checkbox' ? c.checked : c.type === 'range' || k === 'esc' || /^min[A-Z]/.test(k) ? +c.value : c.value);
   });
   settingsDlg.addEventListener('click', e => {
     const b = e.target.closest('[data-play]'); if (b) playSound(b.dataset.play, true);

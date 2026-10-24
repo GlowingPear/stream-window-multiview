@@ -6,6 +6,8 @@ function mentionAgent(){
   const seen = new Set(), marks = new Map(), known = new Set(), said = new Map(), rowSaid = new WeakMap();
   let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0;
   let fresh = 0, counting = false;                           // new messages from others since the app last asked (count())
+  let sup = null, supQueue = [], supMe = '';                          // support (Settings > Mentions > Support): the site's wording, and what was found
+  const supSeen = new Set(), giftsBy = new Map();
   // Clicks and typing in the chat: the window may already have focus, so the app sees no new focus to mark it seen.
   // Every kind of click counts, on the window before the page's own handlers: Kick's mod shortcuts on a
   // name (Shift, Cmd/Ctrl, Cmd/Ctrl + Shift + Click: delete, timeout, ban) may stop some of them.
@@ -104,7 +106,8 @@ function mentionAgent(){
     return out.some(x => lineOf(x.l)) ? out : textLines(document.body.innerText).map(l => ({ l }));
   }
   function scan(){
-    if ((!me && !wordRe && !watch && !counting) || !document.body) return;
+    if ((!me && !wordRe && !watch && !counting && !sup) || !document.body) return;
+    if (sup) supScan();
     const all = chatLines();
     const replyRe = me && new RegExp('^Replying to\\s+@?' + esc(me) + '(?![A-Za-z0-9_])', 'i');
     const atRe = me && new RegExp('(^|[^A-Za-z0-9_])@' + esc(me) + '(?![A-Za-z0-9_])', 'i');
@@ -155,6 +158,61 @@ function mentionAgent(){
     }
     if (seen.size > 6000){ const keep = [...seen].slice(-3000); seen.clear(); keep.forEach(k => seen.add(k)); }
     marks.forEach(tag);                                      // the chat re-draws messages as it scrolls
+  }
+  /* Support: someone sent KICKs or bits, gifted subs, subscribed, or sent a Super Chat. The site shows it in a row of
+     its own (not "name: message"), read by its text with the site's wording (sup.finds, from its site module):
+     { kind, re } for such a row's text, { kind, row, who, n } for an element the site draws for it (its name and
+     amount inside), { kind, re, msg: true } for words in a normal message (Twitch's cheer100). Each one once; what
+     was there before it started is old. A community gift is followed by a row for each sub it gave: those are
+     part of it. */
+  // a number as the site writes it: "1,000", "$5.00", "€10,50"
+  const num = t => { const c = String(t || '').replace(/[^\d.,]/g, ''); return +(/,\d{2}$/.test(c) ? c.replace(/\./g, '').replace(',', '.') : c.replace(/,/g, '')) || 0; };
+  function supFound(f, key, who, n, extra){
+    if (supSeen.has(key)) return;
+    supSeen.add(key);
+    if (!armed || !who) return;
+    who = flat(who);
+    if (supMe && who.toLowerCase() === supMe) return;        // your own
+    const k = who.toLowerCase();
+    if (f.kind === 'gifts') giftsBy.set(k, Date.now());
+    if (f.kind === 'gift' && Date.now() - (giftsBy.get(k) || 0) < 60000) return;   // one of a community gift's
+    if (supQueue.length < 50) supQueue.push({ kind: f.kind, who, n, unit: f.unit || '', t: Date.now(), ...extra });
+  }
+  function supScan(){
+    const finds = sup.finds || [];
+    const rows = [...document.querySelectorAll('[data-index]')].filter(r => !r.parentElement || !r.parentElement.closest('[data-index]'));
+    // the site's own rows: a Kick row that isn't someone's message, or a line of the page's text that isn't
+    const texts = rows.length ? rows.filter(r => !readRow(r)).map(r => ({ t: flat(rowText(r)), k: r.getAttribute('data-index') }))
+      : textLines(document.body.innerText).filter(l => !lineOf(l)).map(l => ({ t: flat(l), k: '' }));
+    for (const f of finds) {
+      if (f.row) {
+        document.querySelectorAll(f.row).forEach(el => {
+          const t = flat(el.innerText), m = f.re ? t.match(new RegExp(f.re, 'i')) : null;
+          if (f.re && !m) return;
+          const w = f.who && el.querySelector(f.who), a = f.n && el.querySelector(f.n);
+          const amt = a ? flat(a.innerText) : m && m.groups && m.groups.n || '';
+          supFound(f, 'r' + t, w ? w.innerText : m && m.groups && m.groups.who, num(amt) || 1, amt && /\D/.test(amt) ? { amt } : {});   // money keeps its currency
+        });
+      } else if (f.msg) {
+        const re = new RegExp(f.re, 'gi');
+        for (const { l } of chatLines()) {
+          const m = lineOf(l); if (!m) continue;
+          const n = [...m[2].matchAll(re)].reduce((s, x) => s + num(x.groups && x.groups.n), 0);
+          if (n) supFound(f, 'm' + l, m[1], n);
+        }
+      }
+    }
+    // the site's own rows, in the chat's order: each by the first wording it matches
+    const byText = finds.filter(f => !f.row && !f.msg).map(f => [f, new RegExp(f.re, 'i')]);
+    for (const x of texts) {
+      for (const [f, re] of byText) {
+        const m = x.t.match(re); if (!m) continue;
+        const g = m.groups || {};
+        supFound(f, 't' + x.k + x.t, g.who, g.n ? num(g.n) : 1, g.to ? { to: g.to } : {});
+        break;
+      }
+    }
+    if (supSeen.size > 3000){ const keep = [...supSeen].slice(-1500); supSeen.clear(); keep.forEach(k => supSeen.add(k)); }
   }
   function arm(){
     seen.clear(); said.clear(); armed = false; queue = []; lines = [];
@@ -263,6 +321,14 @@ function mentionAgent(){
       wordRe = words.length ? new RegExp('(^|[^\\p{L}\\p{N}_])(' + [...words].sort((a, b) => b.length - a.length).map(esc).join('|') + ')(?![\\p{L}\\p{N}_])', 'iu') : null;
       arm();
     },
+    // support: the site's wording (its module's support), or null when Settings > Mentions > Support is off
+    setSupport(cfg, you){
+      sup = cfg && Array.isArray(cfg.finds) ? cfg : null; supQueue = [];
+      supMe = String(you || '').trim().replace(/^@/, '').toLowerCase();
+      if (!sup || !document.body) return;
+      const was = armed; armed = false; supScan(); armed = was;   // what's there already is old
+      if (!armed) arm();
+    },
     setWatch(on){
       on = !!on; if (on === watch) return;
       watch = on; lines = [];
@@ -285,7 +351,7 @@ function mentionAgent(){
       const n = first ? 0 : fresh; fresh = 0; return n;
     },
     ready(){ return armed; },                                // for the tests: new messages count from now on
-    take(){ scan(); const q = { m: queue, l: lines, k: [...known], c: seenAt }; queue = []; lines = []; known.clear(); seenAt = 0; return q; }
+    take(){ scan(); const q = { m: queue, l: lines, k: [...known], c: seenAt, s: supQueue }; queue = []; lines = []; supQueue = []; known.clear(); seenAt = 0; return q; }
   };
   return true;
 }

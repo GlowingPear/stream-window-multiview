@@ -2,6 +2,7 @@
 .mp-all{margin:2px 0 -2px;height:30px;font-size:12px}
 .mp-all[hidden]{display:none}
 .mp-kind.word{color:#e8b84a;border-color:#6b5524}
+.mp-kind.support{color:#53fc18;border-color:#2f6b1a}
 .mp-emote{height:1.6em;width:auto;max-width:4.5em;vertical-align:-.45em;margin:0 1px;object-fit:contain}
 .mp-body mark{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--text);border-radius:3px;padding:0 2px}
 .dlg.menthist{width:min(860px,calc(100vw - 32px));height:min(86vh,900px);max-height:none;padding:0;gap:0;overflow:hidden}

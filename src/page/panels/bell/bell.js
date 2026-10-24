@@ -39,7 +39,7 @@ const bellVars = {
 };
 const dndOn = () => dndUntil < 0 || dndUntil > Date.now();
 // The kind of alert settings a notification uses.
-const alertKind = n => SmvNotes.tabOf(n) === 'mentions' ? 'mention' : n.kind;
+const alertKind = n => n.kind === 'support' ? 'support' : SmvNotes.tabOf(n) === 'mentions' ? 'mention' : n.kind;
 // Keeps a notification (the main window only) and shows its pop-up, plays its sound and sends its desktop
 // notification, as Settings > Notifications says. Mentions and spam make their own sound and desktop
 // notification (with the chat window's alert); went live's desktop notification comes from the app itself.
@@ -94,7 +94,7 @@ function updateBellBtn(){
     : 'Notifications: mentions, spam alerts, channels going live and the app\'s messages';
 }
 function timeAgo(t){ const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 48 * 60 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; }
-const MENT_KIND = { mention: 'Mention', reply: 'Reply', word: 'Word' };
+const MENT_KIND = { mention: 'Mention', reply: 'Reply', word: 'Word', support: 'Support' };
 // Emotes in a mention: [{ t: text } | { e: name, src }], from the chat helper (and saved), so checked here.
 const EMOTE_SRC = /^https:\/\/(files\.kick\.com\/emotes\/|static-cdn\.jtvnw\.net\/|([\w-]+\.)?7tv\.app\/|cdn\.betterttv\.net\/|cdn\.frankerfacez\.com\/)/;
 function cleanParts(p){
@@ -151,7 +151,7 @@ function mentBodyHtml(m){
 }
 /* One row of the bell or All notifications. o: { clock (the time, not "x min ago"), onDelete, close (what's
    open: the bell or the history) } */
-const NOTE_ICO = { mention: 'at', reply: 'reply', spam: 'mod', live: 'live', raid: 'raid', accounts: 'user', layouts: 'tile', windows: 'popwin', downloads: 'download', updates: 'update' };
+const NOTE_ICO = { mention: 'at', reply: 'reply', support: 'gift', spam: 'mod', live: 'live', raid: 'raid', accounts: 'user', layouts: 'tile', windows: 'popwin', downloads: 'download', updates: 'update' };
 function noteRow(n, o = {}){
   const kind = n.kind || 'mention', tab = SmvNotes.tabOf(n);
   const ico = NOTE_ICO[kind === 'app' ? n.subject : kind];
@@ -243,7 +243,7 @@ function setMyName(n){
 const bell = { tab: 'all', sub: 'all', pick: '' }, nh = { tab: 'all', sub: 'all', pick: '', unread: false };
 const TAB_NAME = { all: 'All', mentions: 'Mentions', spam: 'Spam', live: 'Live', app: 'App' };
 const subName = (tab, s) => tab === 'live' && s === 'live' ? 'Went live' : ({ all: 'All', mentions: 'Mentions', spam: 'Spam', live: 'Live', app: 'App',
-  mention: '@ Mentions', reply: 'Replies', word: 'Words', raid: 'Raids', auto: 'Opened by itself',
+  mention: '@ Mentions', reply: 'Replies', word: 'Words', support: 'Support', raid: 'Raids', auto: 'Opened by itself',
   accounts: 'Accounts', layouts: 'Layouts', windows: 'Windows', downloads: 'Downloads', updates: 'Updates' })[s];
 const pickBy = tab => tab === 'live' ? 'site' : tab === 'app' ? '' : 'chan';
 function noteFilter(v, q){

@@ -53,6 +53,16 @@ const kick = {
   // Its chat's message list and its own "back to the newest messages" button (in-site/stick-bottom.js keeps the chat at
   // its newest messages; with no list here it uses the biggest box that scrolls).
   chatScroll: { list: '#chatroom-messages', resume: null },   // scrolling down is enough: Kick follows again by itself
+  // Someone supporting the stream (Settings > Mentions > Support, in-site/mentions.js): how its chat shows it. { kind, re }
+  // reads a row of the site's own (not someone's message) by its text, with the name (who), the number (n) and who
+  // got a gift (to); { kind, row, who, n } an element it draws for it; { kind, re, msg: true } words in a message.
+  // kind: kicks, bits, gifts (to the community), gift (to someone), sub, superchat, member.
+  support: { finds: [
+    { kind: 'gifts', re: '^(?<who>[A-Za-z0-9_]{2,30}) gifted (?<n>\\d[\\d,]*) subscriptions? to the community' },
+    { kind: 'gift', re: '^(?<who>[A-Za-z0-9_]{2,30}) gifted (?:a|(?<n>\\d+)) subs? to (?<to>[A-Za-z0-9_]{2,30})' },
+    { kind: 'kicks', re: '^(?<who>[A-Za-z0-9_]{2,30}) sent (?<n>\\d[\\d,]*)(?: |$)' },
+    { kind: 'sub', re: '^(?<who>[A-Za-z0-9_]{2,30}) (?:just )?(?:re)?subscribed(?: for (?<n>\\d+) months?)?' }
+  ] },
   chatBox: { box: '[data-testid="chat-input"]', hint: '[data-testid="chat-input"] ~ div', attrs: [], says: '^send a message$' },
   // A raid: the channel a stream or chat window's new address (a URL) is for, or null when it isn't a channel's
   // player, chat or page.
