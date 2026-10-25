@@ -6,7 +6,7 @@ lede: Spots promo-bot messages in chats you moderate, tags them and lights up th
 settings: spam
 words: [spam, bot, promo, scam, mod, moderator, flag, abusive]
 related: [mentions, bell]
-order: 19
+order: 20
 ---
 
 - Settings > Spam alerts. Off until you turn it on.

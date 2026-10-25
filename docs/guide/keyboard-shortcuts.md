@@ -7,7 +7,7 @@ settings: keys
 keys: true
 words: [keyboard, shortcut, keys, hotkey, f1]
 related: [layouts, switch-control]
-order: 28
+order: 29
 ---
 
 To switch every shortcut off, use Settings > General (or "Use keyboard shortcuts" in Settings > Keyboard shortcuts).
