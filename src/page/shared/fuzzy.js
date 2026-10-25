@@ -4,7 +4,7 @@
 //    70  the starts of its words, in order    "cs"      → Chat Stage
 //    55  the start of any word                "stage"   → Chat Stage
 //    35  inside a word                        "tag"     → Chat Stage
-//  10–30 its letters in order (the fewer gaps, the more)   "chtsg" → Chat Stage
+//  10–30 its letters in order (2 fewer for each letter between them)   "chtsg" → Chat Stage
 // Several words typed ("mute every") each have to match on their own; the name scores the average of theirs,
 // a little under a match of the whole. Capitals and accents don't count ("cafe" finds "Café").
 // match() also says which letters matched, for drawing them in the accent colour. Nothing here touches the page.
@@ -17,7 +17,8 @@ const fuzzy = (() => {
     let from = 0;
     for (const ch of String(s)){
       const base = ch.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
-      for (const c of base){ low += c; at.push(from); }
+      low += base;
+    for (let k = 0; k < base.length; k++) at.push(from);   // (one for each unit of the text: an emoji is two)
       from += ch.length;
     }
     return { low, at };
@@ -43,7 +44,7 @@ const fuzzy = (() => {
     if (!q) return null;
     if (low === q) return { score: 100, hits: span(0, q.length) };
     if (low.startsWith(q)) return { score: 80, hits: span(0, q.length) };
-    const starts = [...low].map((_, i) => i).filter(i => isWordStart(low, i) && /[\p{L}\p{N}]/u.test(low[i]));
+    const starts = Array.from({ length: low.length }, (_, i) => i).filter(i => isWordStart(low, i) && /[\p{L}\p{N}]/u.test(low[i]));
     // the starts of its words, in order: what's typed is the first letters of two or more words ("cs", "chst")
     if (!/\s/.test(q) && q.length > 1 && q.length <= 24){
       const hits = byWordStarts(q, low, starts, 0, 0);
@@ -58,7 +59,7 @@ const fuzzy = (() => {
     let from = 0;
     for (const c of q){ const i = low.indexOf(c, from); if (i < 0) return null; hits.push(i); from = i + 1; }
     const gaps = hits[hits.length - 1] - hits[0] + 1 - hits.length;
-    return { score: Math.max(10, Math.round(30 - gaps * 20 / Math.max(1, low.length - q.length))), hits };
+    return { score: Math.max(10, 30 - gaps * 2), hits };
   }
 
   // What's typed against a name → { score, marks: [indexes into the name] } or null when it doesn't match

@@ -6,7 +6,7 @@ lede: What each streamer's site says, when they usually stream, their past strea
 show: "#profBtn"
 words: [profile, history, notes, tags, nickname, unfollow, vod, followers]
 related: [channels]
-order: 4
+order: 5
 ---
 
 - Profiles lists your saved streamers. Search by name, nickname or tag, filter (Kick / Twitch / YouTube, Live now, Favourites, Has notes, Tagged) and sort.

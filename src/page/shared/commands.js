@@ -118,7 +118,10 @@ function searchCommands(text, { scope = '', only = null, keep = false, now = Dat
     const score = s.score + (p.scope || only ? 0 : (CMD_RANK[it.kind] || 0)) + (+cmdVal(it.boost) || 0) + (only ? 0 : cmdFrecency(it.id, now, m));
     scored.push({ item: it, score, match: s.score, marks: s.marks });
   }
-  if (!only || p.q) scored.sort((a, b) => b.score - a.score || a.item.title.length - b.item.title.length || a.item.title.localeCompare(b.item.title));
+  // ties: the shorter title first; with nothing typed (a prefix on its own), by group, then A–Z
+  const tie = p.q ? (a, b) => a.item.title.length - b.item.title.length || a.item.title.localeCompare(b.item.title)
+    : (a, b) => String(a.item.group).localeCompare(String(b.item.group)) || a.item.title.localeCompare(b.item.title, undefined, { numeric: true });
+  if (!only || p.q) scored.sort((a, b) => b.score - a.score || tie(a, b));
   // when something matches well, letters scattered through other names don't count
   const best = Math.max(0, ...scored.map(r => r.match));
   const per = new Map(), out = [];

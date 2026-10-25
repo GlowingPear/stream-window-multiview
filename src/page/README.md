@@ -5,13 +5,14 @@
 | Folder | What's in it |
 |---|---|
 | `core.js` | The page's shared state and constants: the windows (`wins`), the layout, the role (`ROLE`) |
-| `shared/` | Building blocks: saved settings (`settings.js`), what several parts show (`store.js`), messages from outside the page (`incoming.js`), building elements (`element.js`), timers (`timers.js`), icons, pop-up messages (`flash.js`), the confirm dialog (`ask.js`), menus that close on an outside press (`popover.js`), tooltips |
+| `shared/` | Building blocks: saved settings (`settings.js`), what several parts show (`store.js`), messages from outside the page (`incoming.js`), building elements (`element.js`), timers (`timers.js`), icons, pop-up messages (`flash.js`), the confirm dialog (`ask.js`), menus that close on an outside press (`popover.js`), tooltips, what the search box can find and do (`commands.js`, `fuzzy.js`) |
 | `platforms/` | One module per site (`kick.js`, `twitch.js`, `youtube.js`), `platforms.js` (channel ids and links), the YouTube-only settings, the link with Pear Drops (`pear-drops.js`, `players-link.js`) |
 | `in-site/` | Scripts that run inside the Kick, Twitch and YouTube pages (see below) |
 | `windows/` | Stream, chat and other windows: creating them, their views (`view.js`), title bars, pausing (`pause.js`, `pause-state.js`), pop-out, raids, window capture |
 | `layout/` | Placement, layouts, columns, the switch control, saved layouts, chat focus, undo |
 | `toolbar/` | The toolbar, its menus (Layout, accounts), and fitting it to the window |
 | `panels/<name>/` | The Channels panel, the bell, Settings, streamer profiles, the empty stage, help, updates, extensions |
+| `palette/` | The search box (Ctrl/⌘+K): drawing it and its keys. What it lists comes from each part (`commands.js`) |
 | `chat/`, `alerts/` | Chat windows' extras (translate, the right-click menu, zoom); mention and spam alerts |
 | `styles/base.css` | The theme's colours, page basics and shared controls |
 
@@ -43,6 +44,8 @@ Don't call `window.kmv.on…` directly.
 **Scripts that run inside the sites** (`in-site/`) are turned into text (`fn.toString()`) and run in the Kick, Twitch or YouTube page. They can't use anything else from the page (no imports, no outside variables), only their own code and what they're given. They talk back with `console.log('__kmv:…')` messages, which `windows/views.js` reads.
 
 **Pausing streams.** `w.pause` holds why a stream is paused. It only changes through the events in `windows/pause-state.js` (`w.pause = pauseEvents.youPlay(w.pause)`, and so on), then `applyPlay(w)` tells the player. Don't set its fields directly.
+
+**Commands (the search box, Ctrl/⌘+K).** A button that does something gets a command, so anything you can click you can also type. A new action is `commands.add({ id, title, … })` in its part's `init()`, a list that changes is `commands.provide(name, q => [...])`, and a part whose controls only show sometimes (Game focus's bar) is `commands.fromControls(sel, { group })`. A command for a button in the markup is `button: '#theButton'`: it runs that button's click, so the two can't do different things, and it marks the button (`data-cmd`). A button made in code carries `data-cmd="<its command's id>"`. `test/ui/palette/coverage.test.js` fails on a visible button without one. See the top of `shared/commands.js`.
 
 **Menus and panels** that close when you press outside them use `closeOnOutside(el, { button })` from `shared/popover.js`.
 

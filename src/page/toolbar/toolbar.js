@@ -273,8 +273,8 @@ function init(){
   const openChannelsAt = t => { $(`#savedTabs [data-t="${t}"]`).click(); if (panel.hidden) savedBtn.click(); };
   commands.add([
     { id: 'channels.openLive', group: 'Channels', title: 'Open live channels', sub: 'Every saved channel that is live right now', icon: 'live', button: '#openLive', offWhy: 'Nobody is live' },
-    { id: 'channels.openAll', group: 'Channels', title: 'Open all saved channels', sub: 'Every saved channel, auto-arranged', icon: 'star', button: '#openAll', disabled: () => !saved.length && 'Nothing saved yet' },
-    { id: 'channels.saveOpen', group: 'Channels', title: 'Save all open', sub: 'Every channel open now, into your channels', icon: 'star', button: '#saveOpen', offWhy: 'They\'re all saved' },
+    { id: 'channels.openAll', group: 'Channels', title: 'Open all saved channels', sub: 'Every saved channel, auto-arranged', icon: 'star', button: '#openAll', when: () => ROLE === 'main', disabled: () => !saved.length && 'Nothing saved yet' },
+    { id: 'channels.saveOpen', group: 'Channels', title: 'Save all open', sub: 'Every channel open now, into your channels', icon: 'star', button: '#saveOpen', when: () => ROLE === 'main', offWhy: 'They\'re all saved' },
     { id: 'channels.follows', group: 'Channels', title: 'Suggest channels you follow', sub: 'While you type in Channels, the channels you follow and haven\'t saved', icon: 'star', button: '#followsOn',
       toggle: { get: () => follows.on, set: on => { if (window.kmv.followsSetOn) window.kmv.followsSetOn(on).then(loadFollows).catch(() => {}); } } },
     { id: 'channels.notifyAll', group: 'Channels', title: 'Notify me when they go live', sub: 'For every saved channel', words: ['live alerts'], icon: 'bell',

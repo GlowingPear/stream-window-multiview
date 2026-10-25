@@ -5,7 +5,7 @@ icon: max
 lede: Drag, resize and swap windows, and what the buttons on a window's title bar do.
 words: [drag, resize, swap, title bar, buttons, move]
 related: [layouts, undo]
-order: 5
+order: 6
 ---
 
 - Drag a window by its title bar. Resize it from any edge or corner.

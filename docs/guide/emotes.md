@@ -6,7 +6,7 @@ lede: Emote preview, new emotes, chat over the streams, counting messages you ca
 settings: chat
 words: [emote, overlay, chat over streams, bubbles, 7tv, bttv, ffz, preview, new emotes, count, channel name, chat box]
 related: [right-click]
-order: 14
+order: 15
 ---
 
 - Right-click an emote in any chat: the menu shows it bigger, with its name and where it's from (Kick, Twitch, YouTube, or an add-on like 7TV, BetterTTV or FrankerFaceZ).

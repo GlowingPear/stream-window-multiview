@@ -10,6 +10,7 @@ import { settings } from '../../shared/settings.js';
 /* ---- Help: the guide (guide.js), keyboard shortcuts, what's new ---- */
 const SHORTCUTS = [
   ['General', [
+    ['Ctrl+K', 'Search and actions: find and do anything'],
     ['F1 or ?', 'Show these keyboard shortcuts'],
     ['Ctrl+,', 'Settings'],
     ['Ctrl+Z', 'Undo the last change to your windows'],

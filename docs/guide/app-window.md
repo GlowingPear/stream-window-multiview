@@ -6,7 +6,7 @@ lede: Show Discord or any other window right inside the multiview.
 show: "#capBtn"
 words: [discord, capture, window, screen, call]
 related: [game-focus]
-order: 9
+order: 10
 ---
 
 - Click the screen button (App window) in the toolbar (or press W) and pick a window, like a Discord pop-out call or stream.

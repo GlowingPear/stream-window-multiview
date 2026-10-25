@@ -5,7 +5,7 @@ icon: game
 lede: Game focus: your game big, streams and chats beside it.
 words: [game, play, see-through, windowed, border]
 related: [layouts, app-window]
-order: 8
+order: 9
 ---
 
 - Pick Layout > Game focus (or press G). The big area on the left is for your game, everything else goes in the side panel.

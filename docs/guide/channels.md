@@ -6,7 +6,7 @@ lede: Save the channels you watch, see who's live, and get them opened or announ
 show: "#savedBtn"
 words: [saved, save, favourite, live, follows, import, auto-open, lightning, suggestions]
 related: [adding-streams, profiles, bell]
-order: 3
+order: 4
 ---
 
 - Click ☆ on any window to save its channel, or use **☆ Open & save** in the Channels box. Click a saved channel to open it.

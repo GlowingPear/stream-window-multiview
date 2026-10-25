@@ -6,7 +6,7 @@ lede: Link with Pear Drops, which collects your Kick drops.
 settings: apps
 words: [pear drops, drops, farming, connect, pair, grapevine]
 related: [logging-in]
-order: 20
+order: 21
 ---
 
 - Pear Drops is a separate free app that collects your Kick emote and badge drops by watching with Kick's own player. Stream Multiview can link with it, on this computer only: nothing goes online.
