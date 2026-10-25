@@ -11,12 +11,15 @@ import { store } from '../shared/store.js';
    It finds and runs anything the parts registered with commands.add / commands.provide (shared/commands.js):
    channels, windows, layouts, actions, Settings options, the guide, notifications. A channel named in full (or by
    the start of its name, 3 letters or more) comes first, drawn big with its own row of buttons.
-   Keys: ↑ ↓ (Ctrl+N / P) move · ← → a channel's buttons (in Tab's two columns: the other column) · Enter runs ·
-   ⇧Enter the second choice · Tab everything for the row (a name typed: the next site), ⇧Tab back · Ctrl/⌘+1–9 a
-   button or row · Esc steps back (Tab's list, the words, then the box).
+   A channel a site found by the name typed is only drawn big when no channel you know is.
+   Keys: ↑ ↓ (Ctrl+N / P) move · ← → a channel's buttons (in a row's list's two columns: the other column) ·
+   Tab / ⇧Tab forward and back: the big row's next / previous button, a name typed's next / previous site, the other
+   column, else the next / previous row (Tab on a row with a list of its own opens it; so do More… and Enter) ·
+   Enter runs · ⇧Enter the second choice · Ctrl/⌘+1–9 a button or row · Esc steps back (a row's list, the words,
+   then the box). As Pear Drops' box.
    Prefixes: > actions · @ channels and windows · # Settings · ? help.
    How a row is drawn comes from its item: sub (text, or parts: 'text', { b: 'bold', t: ' after' }, nodes), live and
-   viewers, tags and pills, chip, keys, side (a hint that always shows), sites (K / T / Y chips: pickSite, nextSite),
+   viewers, tags and pills, chip, keys, side (a hint that always shows), sites (K / T / Y chips: pickSite, nextSite, prevSite),
    and on the big row heroSub and buttons ({ label, icon, run, on, more }). */
 let palBg, palBox, palQ, palChip, palCount, palList, palFoot, palLive, palHead, palMag, palK, palEsc;
 let palScope = '';                // '>', '@', '#', '?' or ''
@@ -66,10 +69,14 @@ function palPrefix(){
 }
 
 /* ---- what's listed ---- */
-// A channel's big row: the best channel the words name in full, or by the start of its name (3 letters or more)
+// A channel's big row: the best channel the words name in full, or by the start of its name (3 letters or more).
+// One you know (saved, open, followed, seen) before one a site found by the name typed, so it doesn't jump when the
+// sites answer: that one is a row of its own below
 function palHeroOf(found, text){
-  const c = found.find(r => r.item.kind === 'channel' && r.item.buttons && !r.item.openAs);
-  return c && (c.match >= 100 || (text.length >= 3 && c.match >= 80)) ? c : null;
+  const chan = r => r.item.kind === 'channel' && r.item.buttons && !r.item.openAs;
+  const named = c => c && (c.match >= 100 || (text.length >= 3 && c.match >= 80));
+  const known = found.find(r => chan(r) && !r.item.found), typed = found.find(r => chan(r) && r.item.found);
+  return named(known) ? known : named(typed) ? typed : null;
 }
 function palCollect(){
   const text = palQ.value.trim();
@@ -171,22 +178,22 @@ function palRowEl(r, i){
   el.onpointermove = () => { if (palSel !== i){ palSel = i; palBtnAt = 0; palPaintSel(); } };
   el.onclick = e => { if (!e.target.closest('.pal-btn, .pal-site')){ palSel = i; palRun(i, e.shiftKey ? 'alt' : 'run'); } };
   if (hero && it.buttons){
-    // the first runs with Enter; the others with Ctrl/⌘+1–9; More… is Tab
+    // the first runs with Enter; the others with Ctrl/⌘+1–9; Tab / ⇧Tab and ← → move along them
     const bs = element('div', { class: 'pal-btns', role: 'group', 'aria-label': 'Actions for ' + it.title });
     it.buttons.forEach((b, k) => bs.append(element('button', { type: 'button', tabIndex: -1, dataset: { k },
       class: 'pal-btn' + (k === 0 ? ' first' : '') + (b.on ? ' pal-act' : '') + (k === palBtnAt && i === palSel ? ' on' : ''),
-      title: b.more ? 'Everything for it (Tab)' : k === 0 ? `${b.label} (Enter)` : k <= 9 ? `${b.label} (${PAL_MOD}${k})` : b.label,
+      title: b.more ? 'Everything for it' : k === 0 ? `${b.label} (Enter)` : k <= 9 ? `${b.label} (${PAL_MOD}${k})` : b.label,
       onclick: () => { palSel = i; palBtnAt = k; palRun(i, k); } },
       b.icon && element('i', { html: icon[b.icon] || '' }), b.label,
-      b.more ? element('kbd', null, 'Tab') : k === 0 ? element('kbd', null, '↵') : k <= 9 ? element('kbd', null, PAL_MOD.replace('+', '') + k) : null)));
+      b.more ? null : k === 0 ? element('kbd', null, '↵') : k <= 9 ? element('kbd', null, PAL_MOD.replace('+', '') + k) : null)));
     el.querySelector('.pal-txt').append(bs);
   }
   return el;
 }
-// Tab's list: what it's for, in the words box's place
+// A row's list: what it's for, in the words box's place
 function palHeadFor(it){
   palHead.replaceChildren(
-    element('button', { type: 'button', class: 'pal-backb', tabIndex: -1, title: 'Back (⇧Tab)', 'aria-label': 'Back', html: icon.arrowL, onclick: () => palPop() }),
+    element('button', { type: 'button', class: 'pal-backb', tabIndex: -1, title: 'Back (Esc)', 'aria-label': 'Back', html: icon.arrowL, onclick: () => palPop() }),
     (it.avatar !== undefined || it.site) ? palAvatar(it, 'pal-av sm') : element('span', { class: 'pal-ico sm', html: icon[it.icon] || icon.point }),
     element('b', 'pal-ht', it.title), it.live && palLivePill(), element('i', 'pal-hsep'));
 }
@@ -239,12 +246,15 @@ function palPaintSel(){
 }
 function palPaintFoot(){
   const r = palRows[palSel], it = r && r.item, k = (keys, b) => element('span', 'pal-fk', ...[].concat(keys).map(x => element('kbd', null, x)), ' ' + b);
-  palFoot.replaceChildren(element('span', 'pal-keyhelp', k(['↑', '↓'], 'move'), k('↵', 'run'), k('Tab', 'more'), k('Esc', 'close')));
+  palFoot.replaceChildren(element('span', 'pal-keyhelp', k(['↑', '↓'], 'move'), k('↵', 'run'), k('Esc', palStack.length ? 'back' : 'close')));
   let right;
   if (palWhy) right = element('span', 'pal-why', palWhy);
+  else if (palStack.length && palList.classList.contains('split')) right = element('span', 'pal-fks', k(['Tab', '⇧Tab'], 'other column'), element('i', 'pal-dot', '·'), k('Esc', 'back to results'));
   else if (palStack.length) right = k('Esc', 'back to results');
-  else if (r && r.hero && it.buttons) right = k(['←', '→'], 'pick an action');
-  else if (it && it.sites) right = k('Tab', 'next site');
+  else if (r && r.hero && it.buttons && it.sites) right = element('span', 'pal-fks', k(['←', '→'], 'pick an action'), element('i', 'pal-dot', '·'), k(['Tab', '⇧Tab'], 'next / previous site'));
+  else if (r && r.hero && it.buttons) right = element('span', 'pal-fks', k(['←', '→'], 'or'), k(['Tab', '⇧Tab'], 'pick an action'));
+  else if (it && it.sites) right = k(['Tab', '⇧Tab'], 'next / previous site');
+  else if (it && it.more && !it.toggle) right = k('Tab', 'everything for it');
   else if (it && it.toggle && it.alt) right = element('span', 'pal-fks', k('↵', 'flips a switch'), element('i', 'pal-dot', '·'), k(['⇧', '↵'], 'opens its page'));
   else right = element('span', 'pal-fks pal-pre', ...['>', '@', '#', '?'].flatMap((p, i) => [i ? element('i', 'pal-dot', '·') : '', k(p, commands.SCOPES[p].name.toLowerCase())]));
   palFoot.append(right);
@@ -257,7 +267,6 @@ function palRun(i, how){
   if (how === 'run' && r.hero && it.buttons) how = palBtnAt;
   if (typeof how === 'number' && it.buttons && it.buttons[how] && it.buttons[how].more){ if (it.more) palPush(it); return; }
   if (how === 'more'){
-    if (it.nextSite){ it.nextSite(); renderPalette(); return; }       // a name typed: Tab picks the next site
     if (it.more) palPush(it);
     return;
   }
@@ -312,7 +321,16 @@ function palKey(e){
   }
   else if ((k === 'ArrowLeft' || k === 'ArrowRight') && palList.classList.contains('cols') && !palQ.value){ e.preventDefault(); palAcross(k === 'ArrowRight' ? 1 : -1); }
   else if (k === 'Enter'){ e.preventDefault(); palRun(palSel, e.shiftKey ? 'alt' : 'run'); }
-  else if (k === 'Tab'){ e.preventDefault(); if (e.shiftKey) palPop(); else if (r) palRun(palSel, 'more'); }
+  else if (k === 'Tab'){
+    // forward with Tab, back with ⇧Tab: a name typed's sites, the big row's buttons, a row's list's two columns, else the rows
+    e.preventDefault();
+    const d = e.shiftKey ? -1 : 1, it = r && r.item;
+    if (it && it.sites){ (d > 0 ? it.nextSite : it.prevSite)(); renderPalette(); }
+    else if (r && r.hero && it.buttons){ const n = it.buttons.length; palBtnAt = (palBtnAt + d + n) % n; palWhy = ''; palPaintSel(); }
+    else if (palList.classList.contains('split')) palAcross(d);
+    else if (d > 0 && it && it.more && !palStack.length) palRun(palSel, 'more');
+    else palMove(d);
+  }
   else if (mod && /^[1-9]$/.test(k)){
     e.preventDefault();
     const n = +k;

@@ -32,8 +32,8 @@ test('a saved channel that isn\'t open: big, first, with Stream + chat (as the C
   assert.equal(await page.textContent('#palList .pal-row.hero .pal-livep'), 'LIVE');
   assert.match(await page.textContent('#palList .pal-row.hero .pal-line'), /Saved/);
   assert.deepEqual(await heroButtons(page), ['Stream + chat', 'Stream only', 'Chat only', 'Saved', 'More…']);
-  assert.deepEqual(await heroKeys(page), ['↵', '1', '2', '3', 'Tab'].map(k => /^\d$/.test(k) ? (process.platform === 'darwin' ? '⌘' : 'Ctrl') + k : k), 'Enter, Ctrl/⌘+1–9, Tab');
-  assert.match(await page.textContent('#palBg .pal-foot'), /←→\s*pick an action/);
+  assert.deepEqual(await heroKeys(page), ['↵', '1', '2', '3', ''].map(k => /^\d$/.test(k) ? (process.platform === 'darwin' ? '⌘' : 'Ctrl') + k : k), 'Enter, Ctrl/⌘+1–9 (More…: none)');
+  assert.match(await page.textContent('#palBg .pal-foot'), /←→\s*or\s*Tab⇧Tab\s*pick an action/);
   // → Stream only, Enter: just the stream
   await page.keyboard.press('ArrowRight');
   assert.match(await page.textContent('#palList .pal-btn.on'), /^Stream only/);
@@ -99,6 +99,60 @@ test('the same name on two sites: the best one big (saved before open), the othe
   assert.equal(sites.length, 2);
 });
 
+test('a saved channel named by the start of its name stays big when a site finds the name typed; the found one is a row under it', async t => {
+  const page = await openApp(t, { init: () => {
+    try { localStorage.setItem('kickMultiview.saved', JSON.stringify(['sampleplays'])); } catch {}
+    window.kmv = { profileLookup: q => new Promise(r => setTimeout(() => r(q === 'sample' ? [{ ch: 'tw:sample', name: 'sample' }] : []), 100)) };
+  } });
+  await find(page, 'sample');
+  let r = await rows(page);
+  assert.deepEqual([r[0].id, r[0].hero], ['ch:sampleplays', true], 'before the sites answer');
+  await page.waitForFunction(() => !!document.querySelector('#palList .pal-row[data-id="open:tw:sample"]'));
+  r = await rows(page);
+  assert.deepEqual([r[0].id, r[0].hero], ['ch:sampleplays', true], 'and after: it doesn\'t jump');
+  const found = r.find(x => x.id === 'open:tw:sample');
+  assert.deepEqual([found.hero, found.group], [false, 'Channels'], 'the one found: a row of its own');
+  assert.deepEqual(await page.$$eval('#palList .pal-row[data-id="open:tw:sample"] .pal-site', bs => bs.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['K', 'T*', 'Y'], 'with its sites');
+  // Enter: still the saved one's first button
+  assert.match(await page.textContent('#palList .pal-btn.on'), /^Stream \+ chat/);
+  // on its row, Tab / ⇧Tab pick its site
+  while (await page.getAttribute('#palList .pal-row.on', 'data-id') !== 'open:tw:sample') await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Tab');
+  assert.deepEqual(await page.$$eval('#palList .pal-row.on .pal-site.on', bs => bs.map(b => b.textContent)), ['Y']);
+});
+
+test('Tab / ⇧Tab: along the big row\'s buttons and round; Enter on More… lists everything, Tab / ⇧Tab its columns, Esc back', async t => {
+  const page = await openApp(t, { init: saved(['charlie']) });
+  await find(page, 'charlie');
+  const on = () => page.textContent('#palList .pal-btn.on');
+  await page.keyboard.press('Tab');
+  assert.match(await on(), /^Stream only/, 'Tab: the next button');
+  await page.keyboard.press('Tab');
+  assert.match(await on(), /^Chat only/);
+  await page.keyboard.press('Shift+Tab');
+  assert.match(await on(), /^Stream only/, '⇧Tab: the one before');
+  await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Shift+Tab');
+  assert.match(await on(), /^More…/, 'from the first, round to the last');
+  assert.equal(await page.isVisible('#palBg .pal-head'), false, 'Tab and ⇧Tab don\'t open its list');
+  await page.keyboard.press('Tab');
+  assert.match(await on(), /^Stream \+ chat/, 'and Tab round to the first');
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Enter');
+  assert.equal(await page.isVisible('#palBg .pal-head'), true, 'Enter on More…: everything for it');
+  assert.equal(await page.getAttribute('#palBg .pal-backb', 'title'), 'Back (Esc)');
+  assert.equal(await page.locator('#palList.split .pal-col').count(), 2, 'in two columns');
+  assert.match(await page.textContent('#palBg .pal-foot'), /Esc back.*Tab⇧Tab\s*other column·Esc\s*back to results/);
+  const column = () => page.evaluate(() => [...document.querySelectorAll('#palList .pal-col')].findIndex(c => c.querySelector('.pal-row.on')));
+  assert.equal(await column(), 0);
+  await page.keyboard.press('Tab');
+  assert.equal(await column(), 1, 'Tab: the right column');
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(await column(), 0, '⇧Tab: back to the left');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.isVisible('#palBg .pal-head'), false, 'Esc: back to the results');
+  assert.equal(await page.inputValue('#palQ'), 'charlie');
+});
+
 test('a pasted link: that channel first, to open; a YouTube channel that isn\'t live: Check now, Open its page…', async t => {
   const page = await openApp(t);
   await find(page, 'https://www.twitch.tv/somebodynew');
@@ -123,9 +177,16 @@ test('a name nobody saved: “Open … as a channel” with K / T / Y (Tab: the 
   assert.equal(r[0].id, 'open:as');
   assert.match(await page.textContent('#palList .pal-row.on'), /Open “qvbrandy” as a channel.*Checking Kick, Twitch and YouTube…/);
   assert.deepEqual(await page.$$eval('#palList .pal-row.on .pal-site', bs => bs.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['K*', 'T', 'Y']);
-  assert.match(await page.textContent('#palBg .pal-foot'), /Tab\s*next site/);
+  assert.match(await page.textContent('#palBg .pal-foot'), /Tab⇧Tab\s*next \/ previous site/);
+  const site = () => page.$$eval('#palList .pal-row.on .pal-site.on', bs => bs.map(b => b.textContent));
   await page.keyboard.press('Tab');
-  assert.deepEqual(await page.$$eval('#palList .pal-row.on .pal-site.on', bs => bs.map(b => b.textContent)), ['T'], 'Tab: the next site');
+  assert.deepEqual(await site(), ['T'], 'Tab: the next site');
+  await page.keyboard.press('Shift+Tab');
+  assert.deepEqual(await site(), ['K'], '⇧Tab: the one before');
+  await page.keyboard.press('Shift+Tab');
+  assert.deepEqual(await site(), ['Y'], 'from the first, round to the last');
+  await page.keyboard.press('Tab'); await page.keyboard.press('Tab');
+  assert.deepEqual(await site(), ['T'], 'and Tab round again');
   // found on Twitch: its big row, on Twitch, with what each site said
   await page.waitForFunction(() => !!document.querySelector('#palList .pal-row.hero'));
   assert.deepEqual(await page.evaluate(() => window.asked), ['qvbrandy'], 'asked once, 400 ms after the last key');
@@ -134,6 +195,13 @@ test('a name nobody saved: “Open … as a channel” with K / T / Y (Tab: the 
   assert.match(await page.textContent('#palList .pal-row.hero .pal-sub'), /✓ Found on Twitch·live·Hello·214 watching·not on Kick·not on YouTube/);
   assert.deepEqual(await heroButtons(page), ['Open', 'Open & save', 'Stream only', 'Chat only']);
   assert.deepEqual(await page.$$eval('#palList .pal-row.hero .pal-site', bs => bs.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['K Kick', 'T Twitch*', 'Y YouTube']);
+  // its big row: ← → its buttons, Tab / ⇧Tab its sites
+  const heroSite = () => page.$$eval('#palList .pal-row.hero .pal-site.on', bs => bs.map(b => b.textContent));
+  assert.match(await page.textContent('#palBg .pal-foot'), /←→\s*pick an action·Tab⇧Tab\s*next \/ previous site/);
+  await page.keyboard.press('Shift+Tab');
+  assert.deepEqual(await heroSite(), ['K Kick'], '⇧Tab: the site before');
+  await page.keyboard.press('Tab');
+  assert.deepEqual(await heroSite(), ['T Twitch']);
   // another site picked: what it said there
   await page.click('#palList .pal-row.hero .pal-site:has-text("Kick")');
   assert.match(await page.textContent('#palList .pal-row.hero .pal-sub'), /No Kick channel called “qvbrandy”/);
