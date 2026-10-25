@@ -119,7 +119,7 @@ function settingsRows(){
     p.querySelectorAll('.st-row .st-t').forEach(t => {
       const title = [...t.childNodes].filter(n => n.nodeType === 3 || (n.nodeType === 1 && n.tagName !== 'SMALL')).map(n => n.textContent).join('').trim();
       const small = (t.querySelector('small') || {}).textContent || '';
-      if (title) rows.push({ title, small: small.trim(), pane: p.dataset.s, paneName: btn.textContent.trim(), el: t.closest('.st-row'), low: (title + ' ' + small).toLowerCase() });
+      if (title) rows.push({ title, small: small.trim(), pane: p.dataset.s, paneName: paneLabel(btn), el: t.closest('.st-row'), low: (title + ' ' + small).toLowerCase() });
     });
   });
   return rows;
@@ -192,10 +192,12 @@ function renderHome(){
   b.scrollTop = 0;
 }
 const paneShown = p => { const btn = settingsDlg.querySelector(`.st-rail [data-s="${p}"]`); return !!btn && !btn.hidden; };
+// a Settings page's name as its button says it (without its badge, like Spam alerts' Mod)
+const paneLabel = btn => [...btn.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
 const showable = sel => { try { const e = sel && document.querySelector(sel); return !!e && !e.hidden && ROLE === 'main'; } catch { return false; } };
 function renderTopic(t, q){
   const i = topics.indexOf(t), prev = topics[i - 1], next = topics[i + 1], b = body();
-  const paneName = t.settings && paneShown(t.settings) ? settingsDlg.querySelector(`.st-rail [data-s="${t.settings}"]`).textContent.trim() : '';
+  const paneName = t.settings && paneShown(t.settings) ? paneLabel(settingsDlg.querySelector(`.st-rail [data-s="${t.settings}"]`)) : '';
   const art = element('article', 'gd-art',
     element('div', 'gd-crumb', groupName(t.group), ' › ', t.title),
     element('div', 'gd-hero', gdTile(t.icon), element('div', null, element('h2', null, t.title), t.lede ? element('p', 'gd-lede', t.lede) : null)),

@@ -98,3 +98,5 @@ mark,.gd-hit{background:color-mix(in srgb,#ffd54a 30%,transparent);color:inherit
 .gd-pt .gd-ico{width:28px;height:28px;border-radius:8px}
 .gd-pt .gd-ico svg{width:15px;height:15px}
 .gd-pop p{margin:6px 0 10px;color:var(--muted);line-height:1.45}
+.gd-rk{flex:none;white-space:nowrap;font-weight:600}
+.gd-rw{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
