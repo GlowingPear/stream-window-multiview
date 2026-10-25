@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.23 (current)
+## 0.3.24 (current)
+- Search and actions: Ctrl/⌘+K finds and does anything in the app
+- Settings fit without scrolling: Chat in tabs, Support as its own page
+
+## 0.3.23
 - Chat over streams: keep messages on screen, how long each stays, and how many at once
 
 ## 0.3.22
