@@ -177,6 +177,10 @@ test("each site says how its chat shows someone supporting the stream, in words 
   assert.deepEqual(read(kick, 'GlowingPear sent 100 688 / 10K'), ['kicks', { who: 'GlowingPear', n: '100' }]);
   assert.equal(read(kick, 'BotRix: Thanks @GlowingPear for the 100 KICKs!'), null, "a bot's thanks isn't a notice");
   assert.deepEqual(read(kick, '07:55 PM zestyplum sent KICK 100 688 / 10K'), ['kicks', { who: 'zestyplum', n: '100' }], 'with the time, and the icon\'s words before the number');
+  // a sub celebrated (its box also holds the person's message): read at the row's start only
+  const party = kick.support.finds.find(f => f.anyRow);
+  assert.deepEqual({ ...'mossy_rock celebrates their subscription for 7 months! mossy_rock : Scrib doooooon'.match(new RegExp(party.re, 'i')).groups }, { who: 'mossy_rock', n: '7' });
+  assert.equal('chatter : mossy_rock celebrates their subscription for 7 months!'.match(new RegExp(party.re, 'i')), null, 'typed in a message: not a sub');
   // KickBot's message for each KICKs gift (as in a real Kick chat), only from KickBot
   const bot = kick.support.finds.find(f => f.msg && f.from);
   assert.deepEqual({ ...'@TrongatesLegacy just gifted 100 KICKs!'.match(new RegExp(bot.re, 'i')).groups }, { who: 'TrongatesLegacy', n: '100' });

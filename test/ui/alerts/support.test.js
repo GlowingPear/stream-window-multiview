@@ -65,6 +65,16 @@ test('Kick KICKs: KickBot\'s "@name just gifted 100 KICKs!" (Kick\'s real messag
   assert.deepEqual(await found(page), [], 'within a minute of the same one: taken as the same gift');
 });
 
+test('Kick sub celebrations: the box with the person\'s own message is a sub; the same words typed in a message aren\'t', async t => {
+  // the celebration as Kick draws it: who and what, then their message (a real message row) in the same box
+  const celebration = (i, name, months, words) => `<div data-index="${i}"><div class="flex"><span>${name}</span></div>`
+    + `<div>celebrates their subscription for ${months} months!</div>${kickRow(i, name, words).replace(/^<div data-index="\d+"/, '<div')}</div>`;
+  const page = await chatPage(t, 'kick', celebration(1, 'oldfan', 3, 'still here'));
+  await put(page, celebration(2, 'mossy_rock', 7, 'Scrib doooooon'));
+  await put(page, kickRow(3, 'chatter', 'mossy_rock celebrates their subscription for 7 months!'));   // someone typing it
+  assert.deepEqual(await found(page), [['sub', 'mossy_rock', 7, '']]);
+});
+
 test('Twitch: a community gift, a sub with its months, and cheers in a message added up; YouTube: Super Chats with their money, gifts and members', async t => {
   const line = t => `<div class="row">${t}</div>`;
   let page = await chatPage(t, 'twitch', line('<b>regular</b>: <span>hi all</span>'));
