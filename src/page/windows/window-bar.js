@@ -13,7 +13,7 @@ import { tipName } from '../shared/tooltips.js';
    Some buttons are always in the ⋯ menu (BAR_MENU). */
 const BAR_LEVELS = ['b1', 'b2'];
 const BAR_MENU = ['ext'];
-const BAR_ORDER = ['chat', 'mod', 'reload', 'pop', 'profile', 'at', 'feat', 'like', 'star', 'max'];
+const BAR_ORDER = ['chat', 'mod', 'reload', 'pop', 'profile', 'overlay', 'at', 'feat', 'like', 'star', 'max'];
 function fitBar(bar){
   if (!bar.isConnected || !bar.clientWidth) return;     // not on screen: fitted when it shows (it resizes then)
   const name = bar.querySelector('.col-pick') || bar.querySelector('.title'), more = bar.querySelector('[data-a=more]');

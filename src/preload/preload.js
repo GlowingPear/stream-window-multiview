@@ -64,6 +64,9 @@ contextBridge.exposeInMainWorld('kmv', {
   onStreamsAdd: cb => ipcRenderer.on('streams:add', (_e, specs) => cb(specs)),
   onStreamsReturned: cb => ipcRenderer.on('streams:returned', (_e, specs) => cb(specs)),
   onStreamsState: cb => ipcRenderer.on('streams:state', (_e, open) => cb(open)),
+  // chat over the stream: the main window passes new chat lines on to the Streams window
+  relayChat: p => ipcRenderer.send('streams:chat', p),
+  onStreamsChat: cb => ipcRenderer.on('streams:chat', (_e, p) => cb(p)),
   onChatAdd: cb => ipcRenderer.on('chat:add', (_e, channel) => cb(channel)),
   raidFollowed: (from, to) => ipcRenderer.send('raid:followed', from, to),
   onRaid: cb => ipcRenderer.on('raid:follow', (_e, from, to) => cb(from, to)),

@@ -52,6 +52,7 @@ import { init as windowsPopout } from './windows/popout.js';
 import { init as chatChatZoom } from './chat/chat-zoom.js';
 import { init as chatBlowUp } from './chat/blow-up.js';
 import { init as chatChatName } from './chat/chat-name.js';
+import { init as chatChatOverlay } from './chat/chat-overlay.js';
 import { init as chatStickBottom } from './chat/stick-bottom.js';
 import { init as alertsSupportBanner } from './alerts/support-banner.js';
 import { init as panelsEmptyStageEmptyStage } from './panels/empty-stage/empty-stage.js';
@@ -133,6 +134,7 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   chatChatZoom,
   chatBlowUp,
   chatChatName,
+  chatChatOverlay,
   chatStickBottom,
   alertsSupportBanner,
   panelsEmptyStageEmptyStage,

@@ -1,6 +1,7 @@
 import { alerts, clearAlert, raiseAlert, wantNotify } from './alerts.js';
 import { SmvSpam } from './spam.js';
 import { supportBanner } from './support-banner.js';
+import { chatOverlay, overlayIsOn } from '../chat/chat-overlay.js';
 import { GAP, colWidth, colsMode, msg, wins } from '../core.js';
 import { buildCols } from '../layout/columns.js';
 import { SW, focusWin } from '../layout/geometry.js';
@@ -87,8 +88,8 @@ function revealChat(ch){
 }
 let polling = false;
 async function pollMentions(){
-  const ment = mentOn && mentAny(), spam = !!alerts.spam.on, sup = !!alerts.support.on;
-  if ((!ment && !spam && !sup) || polling) return;
+  const ment = mentOn && mentAny(), spam = !!alerts.spam.on, sup = !!alerts.support.on, feed = overlayIsOn();
+  if ((!ment && !spam && !sup && !feed) || polling) return;
   polling = true;
   try { await pollChats(ment, spam); } finally { polling = false; }
 }
@@ -129,6 +130,7 @@ async function pollChats(ment, spam){
     (q.k || []).forEach(n => firstSpoke(w.channel + '\n' + n, 0));
     if (spam && q.l && q.l.length) await spamCheck(w, q.l, q.c);
     if (alerts.support.on && q.s && q.s.length) supportFrom(w, q.s);
+    if (q.f && q.f.length) chatOverlay(w, q.f);                // chat over the stream (chat/chat-overlay.js)
     if (q.c){                                                 // you clicked or typed in the chat: what came before is seen
       if (w.alert && w.alert.since <= q.c) clearAlert(w);
       readChat(w.channel);

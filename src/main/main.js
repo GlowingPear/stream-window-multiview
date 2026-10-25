@@ -516,6 +516,11 @@ mainIpc.handle('streams:open', (_e, specs) => { openStreamsWindow(cleanSpecs(spe
 appIpc.handle('streams:close', () => { streamsWin?.close(); });
 appIpc.handle('streams:isOpen', () => !!streamsWin);
 appIpc.on('streams:report', (_e, list) => { lastStreams = cleanSpecs(list); });
+// Chat over the stream: new chat lines from the main window, for its channel's streams popped out into the Streams window
+mainIpc.on('streams:chat', (_e, p) => {
+  if (!streamsWin || streamsWin.isDestroyed() || !streamsReady || !p || typeof p.ch !== 'string' || p.ch.length > 120 || !Array.isArray(p.msgs)) return;
+  streamsWin.webContents.send('streams:chat', { ch: p.ch, msgs: p.msgs.slice(-5) });
+});
 
 /* ---------- Connected apps: the link with Pear Drops (link.js) ---------- */
 // Made the first time the page asks (after the app is ready, for safeStorage). The page sends its Connect
