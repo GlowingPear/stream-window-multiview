@@ -11,6 +11,7 @@
   "src/main/updater.js": 95,
   "src/page/alerts/alerts.js": 98,
   "src/page/alerts/spam-alerts.js": 91,
+  "src/page/alerts/support-banner.js": 98,
   "src/page/alerts/spam.js": 99,
   "src/page/app.js": 98,
   "src/page/chat/chat-zoom.js": 98,

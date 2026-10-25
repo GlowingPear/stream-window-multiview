@@ -17,7 +17,7 @@ const ALERT_DEFAULTS = {
   // smallest that alerts: KICKs, bits, gifted subs, a Super Chat's money (any currency), a raid's viewers; subs: new
   // subs, resubs and members too.
   support: { popup: true, on: false, hl: 'brief', color: '#53fc18', esc: 0, max: 'pulse', sound: 'pop', vol: 0.5, repeat: false, notify: 'unfocused',
-             minKicks: 100, minBits: 100, minGifts: 1, minMoney: 1, minRaid: 1, subs: true },
+             minKicks: 100, minBits: 100, minGifts: 1, minMoney: 1, minRaid: 1, subs: true, banner: true },   // banner: who and what on the stream's picture (support-banner.js)
   // Settings > Notifications only: a saved channel went live, a raid was followed, the app's own messages
   live: { popup: true, notify: 'always', sound: 'none', vol: 0.5 },
   raid: { popup: true, notify: 'never', sound: 'none', vol: 0.5 },

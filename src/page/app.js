@@ -53,6 +53,7 @@ import { init as chatChatZoom } from './chat/chat-zoom.js';
 import { init as chatBlowUp } from './chat/blow-up.js';
 import { init as chatChatName } from './chat/chat-name.js';
 import { init as chatStickBottom } from './chat/stick-bottom.js';
+import { init as alertsSupportBanner } from './alerts/support-banner.js';
 import { init as panelsEmptyStageEmptyStage } from './panels/empty-stage/empty-stage.js';
 import { init as toolbarHeader } from './toolbar/header.js';
 import { init as toolbarToolbar } from './toolbar/toolbar.js';
@@ -133,6 +134,7 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   chatBlowUp,
   chatChatName,
   chatStickBottom,
+  alertsSupportBanner,
   panelsEmptyStageEmptyStage,
   toolbarHeader,
   toolbarToolbar,
