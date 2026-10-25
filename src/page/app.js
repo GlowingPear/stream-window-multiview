@@ -8,6 +8,7 @@ import { init as inSiteMentions } from './in-site/mentions.js';
 import { init as inSiteEmotePreview } from './in-site/emote-preview.js';
 import { init as inSiteNewEmotes } from './in-site/new-emotes.js';
 import { init as inSiteTranslate } from './in-site/translate.js';
+import { init as inSiteChatMessage } from './in-site/chat-message.js';
 import { init as inSiteKickCommands } from './in-site/kick-commands.js';
 import { init as chatKickClip } from './chat/kick-clip.js';
 import { init as chatKickPoll } from './chat/kick-poll.js';
@@ -87,6 +88,7 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   inSiteEmotePreview,
   inSiteNewEmotes,
   inSiteTranslate,
+  inSiteChatMessage,
   inSiteKickCommands,
   chatKickPoll,
   chatKickPrediction,

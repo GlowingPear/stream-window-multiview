@@ -27,11 +27,12 @@ function languageIn(code, inLang) {
   try { const n = new Intl.DisplayNames([inLang], { type: 'language' }).of(code); return n && n !== code ? n.charAt(0).toLocaleUpperCase(inLang) + n.slice(1) : code; } catch { return code; }
 }
 
-// params: Electron's context-menu params. opts: { langs, dev, emote, chat }
+// params: Electron's context-menu params. opts: { langs, dev, emote, chat, message }
 //   emote: the emote under the pointer (see emoteAgent in index.html): { name, text } where text is what to paste in that chat
 //   chat: a chat window's translation state (see translateAgent): { on, auto }; null: not a chat
+//   message: the chat message under the pointer (see messageAgent): { text, withEmotes, html }; null: not a message
 // -> [{ label, act, enabled?, checked? } | { type: 'separator' }]
-function menuFor(params, { langs = ['en'], dev = false, emote = null, chat = null } = {}) {
+function menuFor(params, { langs = ['en'], dev = false, emote = null, chat = null, message = null } = {}) {
   const p = params || {}, f = p.editFlags || {}, out = [];
   const group = items => { const list = items.filter(Boolean); if (!list.length) return; if (out.length) out.push({ type: 'separator' }); out.push(...list); };
   const sel = String(p.selectionText || '').trim();
@@ -67,6 +68,13 @@ function menuFor(params, { langs = ['en'], dev = false, emote = null, chat = nul
     p.isEditable ? null : { label: 'Copy', act: { do: 'copy' }, enabled: f.canCopy !== false },
     { label: `Translate ${quoteShort(sel)} to ${languageName(tl)}`, act: { do: 'external', url: translateUrl(sel, tl) } },
     { label: `Search Google for ${quoteShort(sel)}`, act: { do: 'external', url: searchUrl(sel) } }
+  ]);
+  // a chat message: its text without who sent it (emotes left out, or as their text), or all of its HTML
+  const msg = message && typeof message.html === 'string' && message.html ? message : null;
+  if (msg && !p.isEditable) group([
+    { label: 'Copy message', act: { do: 'copyText', text: msg.text || '' }, enabled: !!msg.text },
+    { label: 'Copy message with emotes', act: { do: 'copyText', text: msg.withEmotes || '' }, enabled: !!msg.withEmotes },
+    { label: 'Copy message HTML', act: { do: 'copyText', text: msg.html } }
   ]);
   // a chat: translate all of it (like Chrome's "Translate to English"), and its new messages as they come
   if (chat && !p.isEditable && !webUrl(p.linkURL)) group([

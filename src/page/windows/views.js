@@ -6,6 +6,7 @@ import { startStick } from '../chat/stick-bottom.js';
 import { autoTrFor } from '../chat/translate.js';
 import { resolveYt } from '../chat/view-menu.js';
 import { ROLE, wins } from '../core.js';
+import { MESSAGE_JS } from '../in-site/chat-message.js';
 import { EMOTE_JS } from '../in-site/emote-preview.js';
 import { KICK_CMD_JS } from '../in-site/kick-commands.js';
 import { NEW_EMOTE_CSS, NEW_EMOTE_JS } from '../in-site/new-emotes.js';
@@ -113,6 +114,7 @@ function mountView(w){
       if (w.kind === 'chat' && ROLE === 'main') injectMention(w);
       if (w.kind === 'chat') runIn(frame, `${EMOTE_JS};window.__kmvEmote.on(${emoteOn})`);
       if (w.kind === 'chat' && newEmotesOn) markNewEmotes(w);
+      if (w.kind === 'chat') runIn(frame, MESSAGE_JS);       // the message you right-click (Copy message)
       if (w.kind === 'chat') runIn(frame, `${TRANSLATE_JS};${autoTrFor(w.channel) ? 'window.__kmvTr.start(true)' : ''}`);
       if (w.kind === 'chat' && platform(w.channel).pageCommands) runIn(frame, KICK_CMD_JS);
       if (w.kind === 'chat') syncChatName(w);                // Channel name in chat boxes (chat/chat-name.js)
