@@ -6,7 +6,7 @@ lede: Tools for finding out why something isn't working, and for reporting it.
 settings: developer
 words: [developer, debug, diagnostics, error, log, html, inspect, devtools, report, bug, why, alert]
 related: [reporting-a-problem, right-click, mentions]
-order: 29
+order: 30
 ---
 
 - Settings › Developer › **Developer tools** (off at first) adds a few tools for looking into a problem. The first time, it says what Inspect can see.

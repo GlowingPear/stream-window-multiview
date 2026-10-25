@@ -6,7 +6,7 @@ lede: Add Chrome extensions to chats and streams.
 settings: extensions
 words: [extension, chrome, web store, ublock, add-on, 7tv]
 related: [emotes]
-order: 22
+order: 23
 ---
 
 - Install one three ways: **Browse Chrome Web Store** (find it and click **Add to Stream Multiview**), **Install from link** (paste its Web Store link), or **Load folder** (an unpacked extension). The app asks first, and shows what it can do.

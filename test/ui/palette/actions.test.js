@@ -99,6 +99,26 @@ test('Settings\' pages and tabs; the Channels panel at a site; the toolbar on th
   assert.equal(await page.getAttribute('#layoutMenu .lm-tabs .on', 'data-t'), 'toolbar');
 });
 
+// #189: an option is in the box wherever it is in Settings: a page's main switch (.st-lead), a row that names itself
+// (data-st: Spam alerts › Scoring's points), and the tabs inside a page (Chat's, Support's)
+test('Settings\' options: a page\'s main switch flips from the box, rows named in data-st are found, and Chat\'s and Support\'s tabs open', async t => {
+  const page = await openApp(t);
+  await page.evaluate(() => { ['support', 'spam'].forEach(s => { document.querySelector(`.st-rail [data-s=${s}]`).hidden = false; }); window.readSettingsCommands(); });   // (the desktop app's pages)
+  await run(page, 'chat › emotes');
+  assert.equal(await page.isVisible('#settingsDlg .st-pane[data-s=chat] .st-subpane[data-t=emotes]'), true, 'Chat at its Emotes tab');
+  await page.keyboard.press('Escape');
+  await run(page, 'support › how it alerts');
+  assert.equal(await page.isVisible('#settingsDlg .st-pane[data-s=support] .st-subpane[data-t=how]'), true, 'Support at How it alerts');
+  await page.keyboard.press('Escape');
+  const sup = (await first(page, 'alert me when someone supports the stream'))[0];
+  assert.equal(sup.title, 'Alert me when someone supports the stream', 'Support\'s main switch');
+  await run(page, 'alert me when someone supports the stream');
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts') || '{}').support?.on), true, 'flipped from the box');
+  await page.evaluate(() => window.palette.close());   // (a switch flips with the box still open)
+  assert.equal((await first(page, 'points for disguised link'))[0].title, 'Points for Disguised link', 'a row named in data-st');
+  assert.equal(await page.evaluate(() => document.querySelector('[data-s=spam] .sc-row[data-st="Points for Disguised link"] input').dataset.cmd), 'setting.spam.Points for Disguised link', 'its control carries its command');
+});
+
 test('Close every window asks first, as its button does; a greyed one (nothing open) says why', async t => {
   const page = await openApp(t);
   await run(page, 'close every window');

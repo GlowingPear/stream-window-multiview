@@ -25,7 +25,7 @@ function renderMap(){
   if (!list.length){ map.replaceChildren(element('p', 'mo-none', 'Looking for your monitors…')); return; }
   const x0 = Math.min(...list.map(m => m.x)), y0 = Math.min(...list.map(m => m.y));
   const W = Math.max(...list.map(m => m.x + m.w)) - x0, H = Math.max(...list.map(m => m.y + m.h)) - y0;
-  const k = Math.min(360 / W, 150 / H);
+  const k = Math.min(360 / W, 96 / H);
   map.style.width = Math.round(W * k) + 'px'; map.style.height = Math.round(H * k) + 'px';
   map.replaceChildren(...list.map(m => element('div', {
     class: 'mo-mon' + (m.primary ? ' main' : '') + (m.id === monitorsVars.mainId ? ' here' : '') + (m.portrait ? ' tall' : ''),
@@ -40,7 +40,7 @@ function renderTable(){
     ...PARTS.map(([, label]) => element('span', { role: 'columnheader' }, label)));
   const rows = [...document.querySelectorAll('#layoutMenu .lm-grid button[data-l]')].map(b => {
     const l = b.dataset.l, parts = partsFor(l);
-    return element('div', { class: 'mo-row', role: 'row', 'data-l': l }, element('span', { class: 'mo-l', role: 'rowheader' }, b.querySelector('b').textContent),
+    return element('div', { class: 'mo-row', role: 'row', 'data-l': l, 'data-st': `Monitors for ${b.querySelector('b').textContent}`, 'data-st-sub': 'Its streams, chats and switch control' }, element('span', { class: 'mo-l', role: 'rowheader' }, b.querySelector('b').textContent),
       ...PARTS.map(([part, label, none]) => {
         const key = parts[part], m = findMon(key, list);
         const sel = element('select', { 'data-part': part, 'aria-label': `${b.querySelector('b').textContent}: ${label}`, onchange: e => {

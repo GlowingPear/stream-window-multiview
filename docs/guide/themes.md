@@ -6,7 +6,7 @@ lede: Pick a theme or make your own.
 settings: themes
 words: [theme, colour, color, dark, light, accent]
 related: [settings]
-order: 25
+order: 26
 ---
 
 - Open Settings > Themes.

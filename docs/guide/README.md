@@ -26,7 +26,8 @@ How to use every part of the app. The same pages are in the app: Settings › Gu
 
 ## Alerts
 - [Notifications (the bell)](bell.md): Everything the app tells you about, kept under the bell.
-- [Mentions and support alerts](mentions.md): Know when someone mentions you, replies to you, or sends support in an open chat.
+- [Mentions](mentions.md): Know when someone mentions you or replies to you in an open chat.
+- [Support alerts](support-alerts.md): Know when someone sends KICKs, bits or a Super Chat, gifts subs, subscribes or raids in an open chat.
 - [Spam alerts](spam-alerts.md): Spots promo-bot messages in chats you moderate, tags them and lights up the window. It never hides, deletes or reports anything.
 
 ## Sites & apps

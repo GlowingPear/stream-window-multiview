@@ -149,7 +149,7 @@ test('off by default: pointing at an emote shows nothing until the setting is on
 
 test('Settings > Chat: the example emote, in Emote preview\'s own row, shows the same card, with the setting on or off', async t => {
   const page = await openApp(t, { width: 1200, height: 800 });
-  await page.evaluate(() => window.openSettings('chat'));
+  await page.evaluate(() => window.openSettings('chat', { sub: 'emotes' }));
   assert.match(await page.textContent('#settingsDlg .st-row:has(#emoteSet)'), /Always in the right-click menu on an emote too/);
   assert.equal(await page.locator('#settingsDlg .st-row:has(#emoteSet) #emoteSample').count(), 1, 'the example is in the setting\'s row');
   assert.equal(await page.isChecked('#emoteSet'), false);

@@ -13,7 +13,7 @@ const ALERT_DEFAULTS = {
           sharedBots: true,    // the chat bot list from Mentions instead of ignore
           abuse: true, abuseWords: null, slurs: null, swears: null,   // insults, slurs and threats, swearing over and over
           points: null },      // each sign's points ({ hidden: 3, ... }; null: the built-in ones)
-  // Settings > Mentions > Support: someone sent KICKs, bits or a Super Chat, gifted subs, subscribed, or raided. The
+  // Settings > Support: someone sent KICKs, bits or a Super Chat, gifted subs, subscribed, or raided. The
   // smallest that alerts: KICKs, bits, gifted subs, a Super Chat's money (any currency), a raid's viewers; subs: new
   // subs, resubs and members too.
   support: { popup: true, on: false, hl: 'brief', color: '#53fc18', esc: 0, max: 'pulse', sound: 'pop', vol: 0.5, repeat: false, notify: 'unfocused',

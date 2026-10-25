@@ -1,5 +1,5 @@
 /* Settings > Layouts > Monitors (panels/settings/monitors.js): the monitors to scale, Identify, the table of layouts */
-.mo-top{display:flex;align-items:flex-end;gap:16px;margin:4px 0 14px;flex-wrap:wrap}
+.mo-top{display:flex;align-items:flex-end;gap:16px;margin:4px 0 10px;flex-wrap:wrap}
 .mo-map{position:relative;flex:none;min-height:60px}
 .mo-none{margin:0;color:var(--muted);font-size:12px}
 .mo-mon{position:absolute;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;

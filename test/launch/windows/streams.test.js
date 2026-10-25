@@ -260,7 +260,7 @@ test('chat text size: − and + in the Layout menu (and Settings > Chat) change 
   await a.win.click('#chatZoom [data-z="1"]');
   assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.chatZoom')), '4');
   await a.win.keyboard.press('Escape');
-  await a.win.evaluate(() => window.openSettings('chat'));
+  await a.win.evaluate(() => window.openSettings('chat', { sub: 'messages' }));
   assert.equal(await a.win.textContent('#lyZoom .zoomPct'), '90%', 'Settings > Chat shows the same size');
   await a.win.click('#lyZoom [data-z="1"]');
   assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.chatZoom')), '5', 'and changes it');

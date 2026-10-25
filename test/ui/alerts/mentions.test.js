@@ -258,7 +258,7 @@ test('Settings › Mentions opens on Alerts, its first tab, as Notifications and
   await page.evaluate(() => { ['mentions', 'spam'].forEach(s => { document.querySelector(`.st-rail [data-s=${s}]`).hidden = false; }); openSettings('mentions'); });   // (the desktop app's pages)
   const tabs = () => page.$$eval('#mentTabs button', e => e.map(b => b.textContent + (b.classList.contains('on') ? ' *' : '')));
   const shown = () => page.$$eval('[data-s=mentions] .st-subpane', e => e.filter(p => !p.hidden).map(p => p.dataset.t));
-  assert.deepEqual(await tabs(), ['Alerts *', 'Names & words', 'Chat bots', 'Support']);
+  assert.deepEqual(await tabs(), ['Alerts *', 'Names & words', 'Chat bots']);
   assert.deepEqual(await shown(), ['alerts']);
   assert.ok(await page.isVisible('[data-s=mentions] [data-al="mention.popup"]'), 'its settings show');
   for (const p of ['notify', 'spam']) assert.equal(await page.$eval(`[data-s=${p}] .st-tabs button`, b => b.textContent), 'Alerts', `the same first tab as ${p}`);
@@ -270,7 +270,7 @@ test('Settings › Mentions opens on Alerts, its first tab, as Notifications and
   await page.click('#spamTabs [data-t=lists]');
   await page.click('#spamListPick [data-l=ignore]');
   await page.click('[data-s=spam] [data-go=mentions][data-sub=bots]');
-  assert.deepEqual(await tabs(), ['Alerts', 'Names & words', 'Chat bots *', 'Support']);
+  assert.deepEqual(await tabs(), ['Alerts', 'Names & words', 'Chat bots *']);
   assert.deepEqual(await shown(), ['bots']);
 });
 

@@ -1,4 +1,4 @@
-// Every button the desktop app shows has a command in the search box too (#184): the parts a browser doesn't have,
+// Every button, tab and control (a Settings option) the desktop app shows has a command in the search box too (#184): the parts a browser doesn't have,
 // opened in the real app: the Logins menu, Streamer profiles, All notifications at each tab, every Settings page and
 // tab (Accounts, Connected apps, YouTube, Extensions, Mentions, Spam alerts, Updates, Developer…), and a window's ⋯
 // menu. The same check and short list as test/ui/palette/coverage.test.js.

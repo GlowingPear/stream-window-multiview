@@ -6,7 +6,7 @@ lede: Skipping ads, YouTube's cookie question, liking streams and the optional A
 settings: youtube
 words: [youtube, ads, skip, cookie, consent, like, api key, quota, google]
 related: [logging-in]
-order: 23
+order: 24
 ---
 
 ## YouTube ads and the cookie question (Settings > YouTube)

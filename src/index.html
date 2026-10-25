@@ -272,6 +272,7 @@
       <div class="st-rail-sec">Alerts</div>
       <button data-s="notify">Notifications</button>
       <button data-s="mentions" class="main-desk">Mentions</button>
+      <button data-s="support" class="main-desk">Support</button>
       <button data-s="spam" class="main-desk">Spam alerts<span class="st-pill">Mod</span></button>
       <div class="st-rail-sec">Help</div>
       <button data-s="guide">Guide</button>
@@ -306,7 +307,7 @@
           <p class="st-sub ly-intro">Put a layout's streams, chats and switch control on different monitors. The chats stay in this window, which moves to their monitor. Streams on another monitor go in the Streams window there, and the switch control in its own window.</p>
           <div class="mo-top"><div class="mo-map" id="moMap" role="img" aria-label="Your monitors, as the system arranges them"></div><button class="btn" id="moIdentify" title="Show each monitor's number on it for a moment">Identify monitors</button></div>
           <div class="mo-table" id="moTable" role="table" aria-label="The monitor for each part of each layout"></div>
-          <label class="st-opt mo-opt"><span class="st-t">Put everything back on one monitor when one is unplugged<small>When it's plugged in again, the windows go back to their monitors.</small></span><input type="checkbox" class="st-sw" id="moTogether"></label>
+          <label class="st-row mo-opt"><span class="st-t">Put everything back on one monitor when one is unplugged<small>When it's plugged in again, the windows go back to their monitors.</small></span><input type="checkbox" class="st-sw" id="moTogether"></label>
         </div>
         <div class="st-subpane" data-t="toolbar" hidden>
           <p class="st-sub ly-intro">Where the toolbar sits, in every layout. On the left it leaves more height for the streams.</p>
@@ -317,23 +318,28 @@
       </section>
       <section class="st-pane" data-s="chat" hidden>
         <h4>Chat</h4><p class="st-sub">How chat windows look and behave.</p>
-        <div class="st-group">Typing</div>
+        <div class="st-tabs" id="chatTabs"><button data-t="box" class="on">Chat box</button><button data-t="messages" class="desk-only">Messages</button><button data-t="emotes">Emotes</button><button data-t="translate">Translation</button></div>
+        <div class="st-subpane" data-t="box">
         <label class="st-row"><span class="st-t">Channel name in chat boxes<small>Chat boxes show the channel you're typing in instead of the site's &quot;Send a message&quot;, so you don't post in the wrong chat. A box that says why you can't chat (followers-only, slow mode, sign in) keeps the site's words. Kick, Twitch and YouTube.</small></span><input type="checkbox" class="st-sw" id="chatNameSet"></label>
         <div class="st-row cn-row" id="chatNameRow" hidden><span class="st-t">Text in the box<small><b>{channel}</b> is the channel's name. Empty: just the name.</small></span>
-          <div class="cn-edit"><input class="st-in" id="chatNameText" maxlength="60" placeholder="{channel}" autocomplete="off" spellcheck="false" aria-label="Text in the chat box"><div class="cn-ideas" id="chatNameIdeas" aria-label="Suggestions"></div><div class="cn-sample" aria-label="How a chat box looks"><span id="chatNameSample"></span><i aria-hidden="true">☺</i></div></div></div>
-        <div class="st-group st-zoom desk-only">Looks</div>
+          <div class="cn-edit"><input class="st-in" id="chatNameText" maxlength="60" placeholder="{channel}" autocomplete="off" spellcheck="false" aria-label="Text in the chat box"><span class="cn-arrow" aria-hidden="true">→</span><div class="cn-sample" aria-label="How a chat box looks"><span id="chatNameSample"></span><i aria-hidden="true">☺</i></div>
+            <div class="cn-ideas" id="chatNameIdeas" aria-label="Suggestions"></div></div></div>
+        </div>
+        <div class="st-subpane" data-t="messages" hidden>
         <div class="st-row st-zoom desk-only"><span class="st-t">Chat text size<small>For every chat window. Smaller fits more messages and emotes. Also in <b>Layout ▾</b>.</small></span><div class="zoom" id="lyZoom" title="Chat text size: smaller fits more messages and emotes"><button data-z="-1" aria-label="Smaller chat text">−</button><span class="zoomPct">100%</span><button data-z="1" aria-label="Bigger chat text">+</button></div></div>
-        <div class="st-group desk-only">New messages</div>
         <label class="st-row desk-only"><span class="st-t">Count new messages in chats you can't see<small>A chat that's out of sight (hidden by Chat Stage or Chat Rail, scrolled out of the window, or covered by another window) counts the messages written since you last saw it. The number shows on its stream's picture in Chat Stage, its tab in Chat Rail, its row in the switch control and its stream's title bar, and goes when you can see the chat again.</small></span><input type="checkbox" class="st-sw" id="chatCountsSet"></label>
         <label class="st-row desk-only"><span class="st-t">Show new chat messages over the streams<small>Each stream's new chat messages show over it, at the bottom left, for a few seconds, also over streams popped out into their own window, so you don't miss anything with chats hidden or small. Also the <b>Chat over streams</b> button in the toolbar. Turn it off for one stream with the chat button on its bar.</small></span><input type="checkbox" class="st-sw" id="chatOverlaySet"></label>
         <label class="st-row co-opt"><span class="st-t">Keep messages on screen<small>They stay instead of fading; newer ones push the oldest out.</small></span><input type="checkbox" class="st-sw" id="chatOverlayKeep"></label>
         <div class="st-row co-opt"><span class="st-t">How long each message stays</span><select id="chatOverlaySecs" aria-label="How long each message stays"><option value="4">4 seconds</option><option value="6">6 seconds</option><option value="10">10 seconds</option><option value="15">15 seconds</option><option value="30">30 seconds</option></select></div>
         <div class="st-row co-opt"><span class="st-t">Messages at once</span><select id="chatOverlayLines" aria-label="Messages at once"><option value="3">3</option><option value="5">5</option><option value="8">8</option><option value="10">10</option><option value="15">15</option></select></div>
-        <div class="st-group">Emotes</div>
+        </div>
+        <div class="st-subpane" data-t="emotes" hidden>
         <div class="st-row"><span class="st-t"><label for="emoteSet">Emote preview in chats</label><small>Point at an emote in a chat to see it bigger, with its name. Always in the right-click menu on an emote too.<span class="st-ex"><img id="emoteSample" alt="pearWave" width="28" height="28"><button type="button" class="linkish" id="emoteExample">Show example</button></span></small></span><input type="checkbox" class="st-sw" id="emoteSet"></div>
         <label class="st-row desk-only"><span class="st-t">Highlight new emotes<small>Emotes a channel added since you last opened its chat glow in that chat until you point at one, and a message names them when the chat opens. Kick and Twitch, with 7TV, BetterTTV and FrankerFaceZ. The first time you open a channel there's nothing to compare with yet.</small></span><input type="checkbox" class="st-sw" id="newEmoteSet"></label>
-        <div class="st-group">Translation</div>
+        </div>
+        <div class="st-subpane" data-t="translate" hidden>
         <label class="st-row"><span class="st-t">Translate new messages in every chat<small>Every chat translates new messages into your language, each with a TRANSLATED · &lt;language&gt; badge. Right-click a chat to stop it there. Off: right-click a chat and choose Translate this chat, or Translate new messages too. The messages are sent to Google Translate; nothing is sent until you switch this on or choose it in a chat.</small></span><input type="checkbox" class="st-sw" id="trAllSet"></label>
+        </div>
       </section>
       <section class="st-pane" data-s="accounts" hidden>
         <h4>Accounts</h4><p class="st-sub">Each platform's chats use its login.</p>
@@ -346,9 +352,9 @@
         <div class="st-sec">Logins</div>
         <div class="am-sec">
           <div class="am-enc"><span class="am-lock"></span><span class="am-enc-txt">Checking how logins are stored…</span></div>
-          <div class="am-forget"><span>Forget my login when I close the app:</span>
+          <div class="am-forget" data-st="Forget my login when I close the app" data-st-sub="Kick, Twitch, YouTube"><span>Forget my login when I close the app:</span>
             <label class="chk"><input type="checkbox" data-f="kick">Kick</label><label class="chk"><input type="checkbox" data-f="twitch">Twitch</label><label class="chk"><input type="checkbox" data-f="youtube">YouTube</label></div>
-          <div class="am-watch"><span>Watch signed in: streams play with your login too, so you watch as your account, not as a logged-out viewer. Uses more memory.</span>
+          <div class="am-watch" data-st="Watch signed in" data-st-sub="Streams play with your login too"><span>Watch signed in: streams play with your login too, so you watch as your account, not as a logged-out viewer. Uses more memory.</span>
             <label class="chk"><input type="checkbox" data-w="kick">Kick</label><em class="am-auto" title="Set by Pear Drops (Settings › Connected apps)" hidden><i class="am-auto-lock"></i>Kick<b>Auto</b></em><label class="chk"><input type="checkbox" data-w="twitch">Twitch</label><label class="chk"><input type="checkbox" data-w="youtube">YouTube</label>
             <div class="am-auto-note" hidden><img class="am-auto-ic" alt="" width="28" height="28"><p><b>Kick is set by Pear Drops.</b> Players are signed in, except while Pear Drops is farming, so they never take its drop credit. <button class="linkish" data-go="apps">Change in Connected apps</button></p></div></div>
         </div>
@@ -414,7 +420,7 @@
       <section class="st-pane" data-s="mentions" hidden>
         <h4>Mentions &amp; replies</h4><p class="st-sub">When someone writes @you or replies to you in an open Kick or Twitch chat. The chat already highlights the message itself; these make the <b>window</b> stand out so you can see which chat it's in.</p>
         <label class="st-lead"><span class="st-t"><b>Alert me</b><small>When someone mentions or replies to the usernames below, or writes one of your words.</small></span><input type="checkbox" class="st-sw" id="mentOn"></label>
-        <div class="st-tabs" id="mentTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="names">Names &amp; words</button><button data-t="bots">Chat bots</button><button data-t="support">Support</button></div>
+        <div class="st-tabs" id="mentTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="names">Names &amp; words</button><button data-t="bots">Chat bots</button></div>
         <div class="st-subpane" data-t="names" hidden>
         <div class="st-sec">Your usernames</div>
         <p class="st-sub" style="margin:2px 0 0">Used to spot mentions and replies to you. Kick and Twitch chats are covered; YouTube chat isn't.</p>
@@ -448,9 +454,12 @@
         <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="mention.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
         </div>
-        <div class="st-subpane" data-t="support" hidden>
-        <label class="st-row"><span class="st-t"><b>Alert me when someone supports the stream</b><small>In any open chat: KICKs, bits and Super Chats, gifted subs, raids, and new subs and members. Read from the chat's own notices, so it works without logging in. Your own never alert you.</small></span><input type="checkbox" class="st-sw" data-al="support.on" id="supportOn"></label>
-        <div class="st-opts" data-for="support">
+      </section>
+      <section class="st-pane" data-s="support" hidden>
+        <h4>Support alerts</h4><p class="st-sub">When someone supports a stream in an open chat: KICKs, bits and Super Chats, gifted subs, raids, and new subs and members. Read from the chat's own notices, so it works without logging in. Your own never alert you.</p>
+        <label class="st-lead"><span class="st-t"><b>Alert me when someone supports the stream</b><small>In any open Kick, Twitch or YouTube chat.</small></span><input type="checkbox" class="st-sw" data-al="support.on" id="supportOn"></label>
+        <div class="st-tabs" id="supportTabs"><button data-t="what" class="on">What alerts</button><button data-t="how">How it alerts</button></div>
+        <div class="st-subpane st-opts" data-t="what" data-for="support">
         <div class="st-sec">The smallest that alerts</div>
         <div class="st-row"><span class="st-t">KICKs<small>Kick</small></span>
           <select data-al="support.minKicks"><option value="1">Any</option><option value="100">100 or more</option><option value="500">500 or more</option><option value="1000">1,000 or more</option><option value="5000">5,000 or more</option><option value="10000">10,000 or more</option></select></div>
@@ -463,8 +472,9 @@
         <div class="st-row"><span class="st-t">Raids<small>Kick and Twitch: someone bringing their viewers over</small></span>
           <select data-al="support.minRaid"><option value="1">Any</option><option value="10">10 viewers or more</option><option value="50">50 or more</option><option value="100">100 or more</option><option value="500">500 or more</option><option value="1000">1,000 or more</option></select></div>
         <div class="st-row"><span class="st-t">New subs and members<small>New subs, resubs and new YouTube members</small></span><input type="checkbox" class="st-sw" data-al="support.subs"></div>
+        </div>
+        <div class="st-subpane st-opts" data-t="how" data-for="support" hidden>
         <div class="st-row"><span class="st-t">Show it on the stream's picture<small>Who and what, along the bottom of that channel's stream for about 10 seconds, in any layout (Chat Stage's strip too).</small></span><input type="checkbox" class="st-sw" data-al="support.banner"></div>
-        <div class="st-sec">How it gets your attention</div>
         <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up.</small></span>
           <select data-al="support.hl"><option value="off">Off</option><option value="brief">Brief glow</option><option value="until">Until I click the chat</option></select>
           <input type="color" data-al="support.color" title="Colour"></div>
@@ -475,7 +485,6 @@
           <input type="range" min="0" max="1" step="0.05" data-al="support.vol" title="Volume"></div>
         <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
           <select data-al="support.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
-        </div>
         </div>
       </section>
       <section class="st-pane" data-s="spam" hidden>

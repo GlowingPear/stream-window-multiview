@@ -47,7 +47,7 @@ const twitch = {
   // Its chat's message list and its own "back to the newest messages" button (in-site/stick-bottom.js keeps the chat at
   // its newest messages; with no list here it uses the biggest box that scrolls).
   chatScroll: { list: '[data-a-target="chat-scroller"] .simplebar-scroll-content', resume: '.chat-paused-footer button, [data-a-target="chat-paused-footer"] button' },
-  // Someone supporting the stream (Settings > Mentions > Support, in-site/mentions.js): how its chat shows it. { kind, re }
+  // Someone supporting the stream (Settings > Support, in-site/mentions.js): how its chat shows it. { kind, re }
   // reads a row of the site's own (not someone's message) by its text, with the name (who), the number (n) and who
   // got a gift (to); { kind, row, who, n } an element it draws for it; { kind, re, msg: true } words in a message;
   // { kind, re, page: true } a banner over the chat. kind: kicks, bits, gifts (to the community), gift (to someone),
