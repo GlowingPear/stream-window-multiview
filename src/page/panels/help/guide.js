@@ -20,7 +20,7 @@ const GD_GROUPS = [['start', 'Start', 'sparkle'], ['watching', 'Watching', 'layo
   ['sites', 'Sites & apps', 'link'], ['app', 'The app', 'gear'], ['help', 'Help', 'book']];
 // the Settings pages by the names the text uses ("Settings › Spam alerts", "Settings > Chat")
 const GD_PANES = { 'connected apps': 'apps', 'spam alerts': 'spam', 'keyboard shortcuts': 'keys', notifications: 'notify', general: 'general', layouts: 'layouts',
-  chat: 'chat', themes: 'themes', accounts: 'accounts', youtube: 'youtube', extensions: 'extensions', mentions: 'mentions', updates: 'updates', guide: 'guide', developer: 'developer' };
+  chat: 'chat', themes: 'themes', accounts: 'accounts', youtube: 'youtube', extensions: 'extensions', mentions: 'mentions', support: 'support', updates: 'updates', guide: 'guide', developer: 'developer' };
 let GD_PANE_RE;
 const GD_REPO = 'https://github.com/GlowingPear/stream-window-multiview/blob/main/docs/guide/README.md';
 let topics = [], bySlug = new Map(), loading = null;

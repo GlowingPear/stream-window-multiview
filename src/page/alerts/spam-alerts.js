@@ -98,7 +98,7 @@ async function pollMentions(){
   polling = true;
   try { await pollChats(ment, spam); } finally { polling = false; }
 }
-// Support (Settings > Mentions > Support): whether it's at least the smallest that alerts, and what it says
+// Support (Settings > Support): whether it's at least the smallest that alerts, and what it says
 function supportText(s){
   const a = alerts.support, n = Math.max(1, +s.n || 1), many = (one, more) => `${n.toLocaleString()} ${n === 1 ? one : more}`;
   switch (s.kind){

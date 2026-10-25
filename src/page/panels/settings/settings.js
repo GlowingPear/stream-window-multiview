@@ -21,7 +21,7 @@ import { renderLayoutsPane } from '../../toolbar/layout-menu.js';
 let settingsDlg;
 let settingsTab = 'general';
 let MAIN_DESK;
-const ST_ICONS = { general: 'sliders', layouts: 'layout', chat: 'chat', accounts: 'user', apps: 'link', youtube: 'ytPlay', notify: 'bell', mentions: 'at', spam: 'mod', extensions: 'ext', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys', developer: 'code' };
+const ST_ICONS = { general: 'sliders', layouts: 'layout', chat: 'chat', accounts: 'user', apps: 'link', youtube: 'ytPlay', notify: 'bell', mentions: 'at', support: 'gift', spam: 'mod', extensions: 'ext', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys', developer: 'code' };
 // tab: a page (its data-s), sub: a tab inside it (Spam alerts › Scoring)
 function openSettings(tab, { sub } = {}){
   const ok = t => { const b = settingsDlg.querySelector(`.st-rail [data-s="${t}"]`); return b && !b.hidden; };
@@ -58,6 +58,7 @@ function init(){
   settingsDlg.querySelectorAll('.st-rail button[data-s]').forEach(b => { if (icon[ST_ICONS[b.dataset.s]]) b.insertAdjacentHTML('afterbegin', icon[ST_ICONS[b.dataset.s]]); });
   settingsDlg.querySelectorAll('.st-rail .main-desk').forEach(b => { b.hidden = !MAIN_DESK; });
   settingsDlg.querySelectorAll('.st-rail .main-only').forEach(b => { b.hidden = ROLE !== 'main'; });
+  settingsDlg.querySelectorAll('.st-tabs .desk-only').forEach(b => { b.hidden = !DESKTOP; });   // a tab inside a page that's all desktop-only (Chat › Messages)
   // a heading goes when none of its tabs work here (Sites in a browser)
   settingsDlg.querySelectorAll('.st-rail-sec').forEach(h => {
     let n = h.nextElementSibling, any = false;
@@ -73,6 +74,11 @@ function init(){
   settingsDlg.querySelector('.help-x').innerHTML = icon.close;
   settingsDlg.querySelector('.help-x').onclick = closeSettings;
   settingsDlg.addEventListener('pointerdown', e => { if (e.target === settingsDlg) closeSettings(); });
+  $('#chatTabs').addEventListener('click', e => {
+    const b = e.target.closest('button[data-t]'); if (!b) return;
+    $('#chatTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    settingsDlg.querySelectorAll('[data-s=chat] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
+  });
   settingsDlg.querySelector('.st-rail').addEventListener('click', e => { const b = e.target.closest('button[data-s]'); if (b) openSettings(b.dataset.s); });
   settingsDlg.addEventListener('click', e => {
     const go = e.target.closest('[data-go]');

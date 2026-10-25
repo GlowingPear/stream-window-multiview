@@ -53,7 +53,7 @@ const kick = {
   // Its chat's message list and its own "back to the newest messages" button (in-site/stick-bottom.js keeps the chat at
   // its newest messages; with no list here it uses the biggest box that scrolls).
   chatScroll: { list: '#chatroom-messages', resume: null },   // scrolling down is enough: Kick follows again by itself
-  // Someone supporting the stream (Settings > Mentions > Support, in-site/mentions.js): how its chat shows it. { kind, re }
+  // Someone supporting the stream (Settings > Support, in-site/mentions.js): how its chat shows it. { kind, re }
   // reads a row of the site's own (not someone's message) by its text, with the name (who), the number (n) and who
   // got a gift (to); { kind, row, who, n } an element it draws for it; { kind, re, msg: true, from? } words in a
   // message (from: only that sender's); { kind, re, page: true } a banner over the chat; anyRow: also a row that holds

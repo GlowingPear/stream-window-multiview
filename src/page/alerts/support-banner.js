@@ -4,7 +4,7 @@ import { element } from '../shared/element.js';
 import { icon } from '../shared/icons.js';
 import { winTimer } from '../shared/timers.js';
 
-/* ---- Support on the stream's picture (Settings > Mentions > Support > Show it on the stream's picture, on unless
+/* ---- Support on the stream's picture (Settings > Support > Show it on the stream's picture, on unless
    switched off): when a support or raid alert comes (alerts/spam-alerts.js), that channel's stream window shows who and
    what along its bottom edge, in any layout (Chat Stage's strip, Chat Rail's grid, Focus view, Tile…), for about 10 s.
    Several in a row wait their turn (the newest five). The bell keeps the list. */

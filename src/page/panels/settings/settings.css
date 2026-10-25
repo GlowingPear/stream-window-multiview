@@ -91,19 +91,17 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #settingsDlg .am-yk{padding:2px 0 6px}
 #settingsDlg .am-sec,#settingsDlg .am-alt{border-top:0;margin-top:0;padding:4px 0}
 /* Settings > Chat > Channel name in chat boxes (chat/chat-name.js): its text, suggestions and a sample chat box */
-.cn-row{align-items:flex-start}
-.cn-edit{display:flex;flex-direction:column;gap:6px;flex:none;width:250px}
-.cn-edit .st-in{width:100%;box-sizing:border-box}
-.cn-ideas{display:flex;flex-wrap:wrap;gap:4px}
-.cn-ideas button{height:22px;padding:0 7px;border:1px solid var(--line2);border-radius:11px;background:var(--panel2);color:var(--muted);font:inherit;font-size:11px;cursor:pointer}
-.cn-ideas button:hover,.cn-ideas button.on{border-color:var(--accent);color:var(--text)}
-.cn-sample{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border:1px solid var(--line2);border-radius:6px;background:var(--bg);font-size:13px;color:var(--muted)}
+.cn-row{flex-wrap:wrap;row-gap:8px;padding-bottom:12px}
+.cn-edit{flex:1 0 100%;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px 10px}
+.cn-edit .st-in{width:100%;height:32px;box-sizing:border-box;font-size:13px}
+.cn-arrow{color:var(--muted);font-size:13px}
+.cn-ideas{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:4px}
+.cn-ideas button{height:20px;padding:0 8px;border:1px solid var(--line2);border-radius:10px;background:none;color:var(--muted);font:inherit;font-size:11px;white-space:nowrap;cursor:pointer}
+.cn-ideas button:hover,.cn-ideas button.on{border-color:var(--accent);color:var(--text);background:var(--panel2)}
+.cn-sample{display:flex;align-items:center;gap:8px;height:32px;box-sizing:border-box;padding:0 10px;border:1px solid var(--line2);border-radius:8px;background:var(--panel2);font-size:13px;color:var(--muted)}
 .cn-sample span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cn-sample i{font-style:normal;opacity:.6}
-/* Settings > Chat: its groups' headings, and Emote preview's example in its own row */
-.st-group{margin:16px 0 2px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.st-group:first-of-type{margin-top:6px}
-.st-group[hidden]{display:none}
+/* Settings > Chat: Emote preview's example in its own row */
 .st-t small .st-ex{display:flex;align-items:center;gap:8px;margin-top:6px}
 .st-t label{cursor:pointer}
 /* Spam alerts > Scoring: a slider for each sign's points, two columns that fit without scrolling. A warning about the

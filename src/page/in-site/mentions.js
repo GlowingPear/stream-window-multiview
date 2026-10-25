@@ -7,7 +7,7 @@ function mentionAgent(){
   let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0;
   let feed = false, feedQ = [];                              // new messages for the chat over the stream (setFeed)
   let fresh = 0, counting = false;                           // new messages from others since the app last asked (count())
-  let sup = null, supQueue = [], supMe = '';                          // support (Settings > Mentions > Support): the site's wording, and what was found
+  let sup = null, supQueue = [], supMe = '';                          // support (Settings > Support): the site's wording, and what was found
   const supSeen = new Map(), giftsBy = new Map(), raidsBy = new Map(), recentSup = new Map();
   // what was decided about each line (Why didn't this alert?, Developer tools): line -> { v: why, t }
   const decided = new Map();
@@ -370,7 +370,7 @@ function mentionAgent(){
       wordRe = words.length ? new RegExp('(^|[^\\p{L}\\p{N}_])(' + [...words].sort((a, b) => b.length - a.length).map(esc).join('|') + ')(?![\\p{L}\\p{N}_])', 'iu') : null;
       arm();
     },
-    // support: the site's wording (its module's support), or null when Settings > Mentions > Support is off
+    // support: the site's wording (its module's support), or null when Settings > Support is off
     setSupport(cfg, you){
       sup = cfg && Array.isArray(cfg.finds) ? cfg : null; supQueue = [];
       supMe = String(you || '').trim().replace(/^@/, '').toLowerCase();
