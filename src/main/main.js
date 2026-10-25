@@ -603,7 +603,7 @@ appIpc.on('streams:report', (_e, list) => { lastStreams = cleanSpecs(list); });
 // Chat over the stream: new chat lines from the main window, for its channel's streams popped out into the Streams window
 mainIpc.on('streams:chat', (_e, p) => {
   if (!streamsWin || streamsWin.isDestroyed() || !streamsReady || !p || typeof p.ch !== 'string' || p.ch.length > 120 || !Array.isArray(p.msgs)) return;
-  streamsWin.webContents.send('streams:chat', { ch: p.ch, msgs: p.msgs.slice(-5) });
+  streamsWin.webContents.send('streams:chat', { ch: p.ch, msgs: p.msgs.slice(-15) });   // (at most what Settings > Chat lets show at once)
 });
 
 /* ---------- Connected apps: the link with Pear Drops (link.js) ---------- */

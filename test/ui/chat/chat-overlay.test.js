@@ -73,3 +73,40 @@ test('each line fades after about 6 seconds; the Streams window draws the lines 
   await page.evaluate(() => window.drawChatLines('alpha', [{ sender: 'tinycomet', body: 'from the main window' }]));
   assert.deepEqual(await lines(page, 'alpha'), ['tinycomet: from the main window']);
 });
+
+// Settings › Chat's rows under the switch (shown in the desktop app): changed as you would, by their own controls
+const choose = (page, id, value) => page.evaluate(([id, value]) => {
+  const c = document.getElementById(id);
+  if (c.type === 'checkbox') c.checked = value; else c.value = String(value);
+  c.dispatchEvent(new Event('change', { bubbles: true }));
+}, [id, value]);
+
+test('Settings › Chat: how many messages at once, how long each stays, and keeping them on screen, saved', async t => {
+  const page = await appWith(t, ['alpha']);
+  await page.evaluate(() => window.setChatOverlay(true));
+  assert.deepEqual(await page.evaluate(() => [document.getElementById('chatOverlayKeep').checked, document.getElementById('chatOverlaySecs').value, document.getElementById('chatOverlayLines').value]), [false, '6', '5'], 'as before at first');
+  // 3 at once: the lines on screen are cut to 3 too
+  await say(page, 'alpha', Array.from({ length: 5 }, (_, i) => ({ sender: 'chatter' + i, body: 'message ' + i })));
+  await choose(page, 'chatOverlayLines', 3);
+  assert.deepEqual(await lines(page, 'alpha'), ['chatter2: message 2', 'chatter3: message 3', 'chatter4: message 4']);
+  await say(page, 'alpha', [{ sender: 'sundew', body: 'one more' }]);
+  assert.equal((await lines(page, 'alpha')).length, 3);
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.chatOverlayLines')), '3');
+  // 4 seconds each
+  await choose(page, 'chatOverlaySecs', 4);
+  await page.evaluate(() => document.querySelectorAll('.co-line').forEach(l => l.remove()));
+  await say(page, 'alpha', [{ sender: 'mossyrock', body: 'quick' }]);
+  const t0 = Date.now();
+  await page.waitForFunction(() => !document.querySelector('.co-line'), null, { timeout: 7000 });
+  assert.ok(Date.now() - t0 < 5600, `gone after about 4 s (${Date.now() - t0} ms)`);
+  // kept on screen: still there after the time; the time row is dimmed while they're kept
+  await choose(page, 'chatOverlayKeep', true);
+  assert.ok(await page.$eval('#chatOverlaySecs', s => s.closest('.st-row').classList.contains('st-dim')));
+  await say(page, 'alpha', [{ sender: 'paperboat', body: 'I stay' }]);
+  await page.waitForTimeout(5000);
+  assert.deepEqual(await lines(page, 'alpha'), ['paperboat: I stay'], 'kept');
+  // kept off again (e.g. from the other window): the kept line fades after the time set
+  await page.evaluate(() => { localStorage.setItem('kickMultiview.chatOverlayKeep', '0'); window.dispatchEvent(new StorageEvent('storage', { key: 'kickMultiview.chatOverlayKeep', newValue: '0' })); });
+  await page.waitForFunction(() => !document.querySelector('.co-line'), null, { timeout: 7000 });
+  assert.equal(await page.isChecked('#chatOverlayKeep'), false);
+});
