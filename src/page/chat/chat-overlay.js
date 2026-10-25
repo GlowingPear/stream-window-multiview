@@ -20,7 +20,7 @@ import { winTimer } from '../shared/timers.js';
    (setFeed, in-site/mentions.js); the alerts' poll in the main window brings them here (alerts/spam-alerts.js), and the
    main process passes them on to the Streams window. */
 // how long each line stays (s), how many at once, and whether they stay until newer ones push them out (Settings > Chat)
-const SECS = [4, 6, 10, 15, 30], LINES = [3, 5, 8, 10, 15];
+const SECS = [4, 6, 10, 15, 30], LINES = [1, 3, 5, 8, 10, 15];   // (1, kept on screen: only the latest message)
 let showSecs = 6, maxLines = 5, keepLines = false;
 let overlayOn = false, overlayOff = new Set(), lineId = 0;
 

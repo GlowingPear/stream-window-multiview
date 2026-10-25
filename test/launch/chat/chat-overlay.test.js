@@ -45,3 +45,16 @@ test('popped out into the Streams window, the stream still shows its chat\'s new
   await sw.waitForFunction(() => [...document.querySelectorAll('#stage .win.stream .co-line')].some(l => l.textContent === 'tinycomet: seen in the Streams window'), null, { timeout: 10000 });
   await a.win.evaluate(() => window.kmv.closeStreams());
 });
+
+test('your own messages show over the stream too (mentions still skip them)', { timeout: 60000 }, async () => {
+  await a.win.evaluate(() => window.openSettings('mentions'));
+  await a.win.click('#mentTabs [data-t=names]');
+  await a.win.fill('#mentUser', 'mename');
+  await a.win.press('#mentUser', 'Enter');
+  await a.win.keyboard.press('Escape');
+  if ((await a.win.getAttribute('#overlayBtn', 'aria-pressed')) !== 'true') await a.win.click('#overlayBtn');
+  await waitArmed();
+  await new Promise(r => setTimeout(r, 3000));                 // (a new username starts the helper over: what's there is old)
+  await say('mename', 'my own message');
+  await a.win.waitForFunction(() => [...document.querySelectorAll('#stage .win.stream .co-line')].some(l => l.textContent === 'mename: my own message'), null, { timeout: 10000 });
+});

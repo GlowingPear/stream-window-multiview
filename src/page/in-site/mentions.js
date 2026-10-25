@@ -141,15 +141,15 @@ function mentionAgent(){
       const mod = watch && lineNew && modChange(m[1], m[2]);
       if (!armed){ if (watch && known.size < 2000) known.add(m[1].toLowerCase()); decide(l, 'before'); continue; }   // people already chatting before we started
       const sender = m[1], body = m[2];
-      if ((me && sender.toLowerCase() === me) || mine(l)){ decide(l, 'own'); continue; }      // your own messages
-      if (lineNew) fresh++;
-      if (watch && lineNew && lines.length < 300) lines.push({ sender, body, line: l, t: Date.now(), mod });
-      // Chat over the stream (chat/chat-overlay.js): every new message from others, with its emotes
+      // Chat over the stream (chat/chat-overlay.js): every new message, yours too, with its emotes
       if (feed && lineNew && feedQ.length < 40){
         let fparts = rowParts;
         if (!fparts && !row) try { fparts = partsFor(l, nameRe(), body); } catch {}
         feedQ.push(fparts ? { sender, body, parts: fparts } : { sender, body });
       }
+      if ((me && sender.toLowerCase() === me) || mine(l)){ decide(l, 'own'); continue; }      // your own messages
+      if (lineNew) fresh++;
+      if (watch && lineNew && lines.length < 300) lines.push({ sender, body, line: l, t: Date.now(), mod });
       if (!me && !wordRe){ decide(l, 'off'); continue; }
       const toMe = !!me && replyNew && replyRe.test(r), at = !!me && lineNew && atRe.test(body);
       const word = !toMe && !at && lineNew && wordRe ? body.match(wordRe) : null;

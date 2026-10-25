@@ -11,6 +11,14 @@ test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had n
 
 const add = async (...links) => { for (const l of links) await openChannel(a.win, l); };
 const titles = (page, kind) => page.$$eval(`#stage .win.${kind}`, l => l.map(e => e.querySelector('.title').textContent).sort());
+// Wait until a window's view is on a new page (one without window.__before) whose address matches.
+const reloaded = async (page, title, kind, re) => {
+  for (let i = 0; i < 150; i++) {
+    try { if (await inView(page, title, kind, () => !window.__before && location.href).then(u => u && re.test(u))) return; } catch {}
+    await page.waitForTimeout(100);
+  }
+  throw new Error(`${title}'s ${kind} did not load ${re} again`);
+};
 const src = (page, title, kind) => page.$eval(`${winSel(title, kind)} webview`, v => v.getAttribute('src'));
 
 test('a raid in the chat moves the stream and chat to the raided channel; its own page goes back to the chat', T, async () => {
@@ -35,8 +43,10 @@ test('a raid in the chat moves the stream and chat to the raided channel; its ow
 
   // its own channel's page: back to the pop-out chat; a page that isn't a channel: left alone
   await viewLoaded(w, 'charlie', 'chat', /popout\/charlie\/chat/);
-  await inView(w, 'charlie', 'chat', () => { location.href = 'https://kick.com/charlie'; });
-  await viewLoaded(w, 'charlie', 'chat', /^https:\/\/kick\.com\/popout\/charlie\/chat$/);
+  // the chat is on the pop-out already, so wait for the app to load it again (a new page, without the mark),
+  // or its going back can land after the next step
+  await inView(w, 'charlie', 'chat', () => { window.__before = true; location.href = 'https://kick.com/charlie'; });
+  await reloaded(w, 'charlie', 'chat', /^https:\/\/kick\.com\/popout\/charlie\/chat$/);
   await inView(w, 'charlie', 'chat', () => { location.href = 'https://kick.com/login'; });
   await viewLoaded(w, 'charlie', 'chat', /kick\.com\/login/);
   await w.waitForTimeout(500);
