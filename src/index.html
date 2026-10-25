@@ -54,6 +54,8 @@
 <link rel="stylesheet" href="page/toolbar/farming.css">
 <link rel="stylesheet" href="page/toolbar/daily-reward.css">
 <link rel="stylesheet" href="page/panels/updates/updates.css">
+<link rel="stylesheet" href="page/panels/help/guide.css">
+<link rel="stylesheet" href="page/panels/developer/developer.css">
 <style id="themeVars"></style>
 <!-- before the first paint: the macOS toolbar's room for the traffic lights, and the saved colour theme -->
 <script src="page/boot.js"></script>
@@ -270,9 +272,10 @@
       <button data-s="mentions" class="main-desk">Mentions</button>
       <button data-s="spam" class="main-desk">Spam alerts<span class="st-pill">Mod</span></button>
       <div class="st-rail-sec">Help</div>
-      <button data-s="guide">Instructions</button>
+      <button data-s="guide">Guide</button>
       <button data-s="keys">Keyboard shortcuts</button>
       <button data-s="updates">Updates</button>
+      <button data-s="developer" class="desk-only">Developer</button>
     </nav>
     <div class="st-body">
       <section class="st-pane" data-s="general" hidden>
@@ -585,9 +588,22 @@
         <div class="upd-news"></div>
         <p class="upd-foot st-end" hidden>Updating replaces the app, keeping the old version as a backup. Your logins, saved channels, layouts and themes aren't touched.</p>
       </section>
-      <section class="st-pane" data-s="guide" hidden>
-        <div class="help-body st-doc" data-doc="guide"></div>
-        <div class="st-docfoot"><span class="help-file">INSTRUCTIONS.txt in the app folder</span><button class="btn help-open" hidden>Open as a file</button></div>
+      <section class="st-pane gd-pane" data-s="guide" hidden>
+        <div class="gd">
+          <nav class="gd-toc" aria-label="Guide contents"></nav>
+          <div class="gd-main">
+            <div class="gd-search"><i class="gd-s-ico" data-ico="search"></i><input id="gdSearch" type="search" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off" spellcheck="false"><span class="gd-count"></span><kbd class="gd-key">/</kbd></div>
+            <div class="gd-body" tabindex="-1"></div>
+          </div>
+        </div>
+      </section>
+      <section class="st-pane" data-s="developer" hidden>
+        <h4>Developer</h4><p class="st-sub">Tools for finding out why something isn't working, and for reporting it.</p>
+        <label class="st-row"><span class="st-t">Developer tools<small>Adds Copy message HTML, Copy chat HTML, Why didn't this alert? and Inspect to the chats' right-click menu, and Copy window state and Inspect to each window's ⋯ menu.</small></span><input type="checkbox" class="st-sw" id="devOn"></label>
+        <div class="st-row"><span class="st-t">Report a problem<small>Copies the app's version, your system, the open windows, settings, recent errors and the last requests to the sites. Logins, cookies and keys are left out. Channel and chat names can be in it.</small></span><button class="btn primary" id="devCopy">Copy diagnostics</button><button class="btn" id="devSave">Save as file…</button></div>
+        <div class="st-tabs" id="devTabs" role="tablist" aria-label="Developer"><button role="tab" data-t="errors" class="on" aria-selected="true">Errors <span class="dv-n"></span></button><button role="tab" data-t="responses" aria-selected="false" tabindex="-1">Requests <span class="dv-n"></span></button></div>
+        <div class="dv-list" id="devList" role="tabpanel"></div>
+        <div class="st-row dv-keep"><span class="st-t">Kept on this computer<small>The last 200 errors, from this run and the one before, and the last 40 requests to the sites. They only go anywhere when you copy them.</small></span><button class="btn" id="devClear">Clear</button></div>
       </section>
       <section class="st-pane" data-s="keys" hidden>
         <h4>Keyboard shortcuts</h4>

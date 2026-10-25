@@ -168,7 +168,7 @@ test('right-clicking an emote the chat shows: the app draws the menu with its pr
   await inView(a.win, 'alpha', 'chat', () => { document.querySelectorAll('img[alt=pearHype]').forEach(e => e.remove()); return true; });
 });
 
-test('a chat message: Copy message, Copy message with emotes and Copy message HTML copy it, also from the emote menu', T, async () => {
+test('a chat message: Copy message and Copy message with emotes copy it, also from the emote menu; with Developer tools on, Copy message HTML', T, async () => {
   const pic = '<img src="https://files.kick.com/emotes/1/fullsize" alt="pearHype" style="display:inline-block;width:28px;height:28px">';
   await inView(a.win, 'alpha', 'chat', h => { document.body.insertAdjacentHTML('beforeend', h); return true; }, kickMsg('quietkoala', `gg ${pic} well played`));
   // right-clicked in the page (it notes the message), then Electron's event
@@ -176,13 +176,19 @@ test('a chat message: Copy message, Copy message with emotes and Copy message HT
     e.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: r.left + 2, clientY: r.top + 2 })); return [r.left + 2, r.top + 2]; }, sel);
   const copied = async want => { for (let i = 0; i < 50 && (await a.app.evaluate(() => globalThis.__m.copied)) !== want; i++) await new Promise(r => setTimeout(r, 100)); return a.app.evaluate(() => globalThis.__m.copied); };
   const html = await inView(a.win, 'alpha', 'chat', () => document.querySelector('[data-index]').outerHTML);
-  for (const [label, want] of [['Copy message', 'gg well played'], ['Copy message with emotes', 'gg pearHype well played'], ['Copy message HTML', html]]) {
+  for (const [label, want] of [['Copy message', 'gg well played'], ['Copy message with emotes', 'gg pearHype well played']]) {
     await press('[data-index] button');
     const m = await rightClick(CHAT, {});
-    assert.deepEqual(m.labels.slice(0, 4), ['Copy message', 'Copy message with emotes', 'Copy message HTML', '—']);
+    assert.deepEqual(m.labels.slice(0, 3), ['Copy message', 'Copy message with emotes', '—']);
+    assert.ok(!m.labels.includes('Copy message HTML'), 'the HTML only with Developer tools on');
     await m.pick(label);
     assert.equal(await copied(want), want, label);
   }
+  await a.win.evaluate(() => window.devTools.setDev(true));
+  await press('[data-index] button');
+  await (await rightClick(CHAT, {})).pick('Copy message HTML');
+  assert.equal(await copied(html), html, 'Copy message HTML');
+  await a.win.evaluate(() => window.devTools.setDev(false));
   // on the emote in it: the app's drawn menu has them too
   const [x, y] = await press('[data-index] img');
   await a.app.evaluate(({ webContents }, [re, x, y]) => {
@@ -191,7 +197,7 @@ test('a chat message: Copy message, Copy message with emotes and Copy message HT
   }, [CHAT.source, x, y]);
   await a.win.waitForSelector('.vmenu');
   const items = await a.win.$$eval('.vmenu [role^=menuitem]', els => els.map(e => e.textContent));
-  assert.deepEqual(items.slice(0, 8), ['Copy emote text', 'Open image in new window', 'Save image as…', 'Copy image', 'Copy image address', 'Copy message', 'Copy message with emotes', 'Copy message HTML']);
+  assert.deepEqual(items.slice(0, 7), ['Copy emote text', 'Open image in new window', 'Save image as…', 'Copy image', 'Copy image address', 'Copy message', 'Copy message with emotes']);
   await a.win.click('.vmenu [role=menuitem]:text-is("Copy message")');
   assert.equal(await copied('gg well played'), 'gg well played');
   await inView(a.win, 'alpha', 'chat', () => { document.querySelectorAll('[data-index]').forEach(e => e.remove()); return true; });

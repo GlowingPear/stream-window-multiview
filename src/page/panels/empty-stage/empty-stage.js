@@ -261,4 +261,4 @@ function init(){
   if (!wins.length) esRefresh();
 }
 
-export { esRefresh, init };
+export { esRefresh, init, startTour };

@@ -52,3 +52,5 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 .btns button.like.on{color:var(--accent)}
 .btns button.like.on svg path{fill:currentColor}
 .btns button.like.dim{opacity:.4}
+#barMenu .bm-head{margin:4px 6px 0;padding:8px 4px 3px;border-top:1px solid var(--line);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+#barMenu .bm-head:first-child{margin-top:0;padding-top:4px;border-top:0}

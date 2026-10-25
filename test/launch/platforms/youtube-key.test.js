@@ -156,10 +156,11 @@ test('a key that\'s over today\'s quota is kept, and says when it\'s used again'
 test('"How to get one" opens the guide at the YouTube API key section', T, async () => {
   await openMenu();
   await win.click('#settingsDlg .am-yk-how');
-  await win.waitForSelector('#settingsDlg [data-doc=guide] h3');
-  const h = win.locator('#settingsDlg [data-doc=guide] h3', { hasText: 'YouTube API key' });
+  await win.waitForSelector('#settingsDlg .gd-art h2:text-is("YouTube")');
+  const h = win.locator('#settingsDlg .gd-text h3', { hasText: 'YouTube API key' });
   assert.equal(await h.count(), 1);
-  const top = await h.evaluate(el => el.getBoundingClientRect().top - el.closest('.st-body').getBoundingClientRect().top);
-  assert.ok(top >= -2 && top < 60, 'scrolled to the section');
+  assert.ok(await h.locator('mark.gd-hit').count() >= 1, 'its words marked');
+  const [top, bottom] = await h.evaluate(el => { const b = el.closest('.gd-body').getBoundingClientRect(), r = el.getBoundingClientRect(); return [r.top - b.top, b.bottom - r.bottom]; });
+  assert.ok(top >= 0 && bottom >= 0, 'scrolled to the section');
   assert.deepEqual(pageErrors, []);
 });

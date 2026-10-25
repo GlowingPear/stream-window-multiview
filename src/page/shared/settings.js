@@ -27,7 +27,9 @@ const SETTING_NAMES = new Set([
   // YouTube
   'ytSkip', 'ytConsent', 'ytAutoLike', 'ytAutoLiked', 'ytChatView',
   // the app
-  'theme', 'themes', 'settingsTab', 'keys', 'arrowSound', 'intro', 'seenVersion'
+  'theme', 'themes', 'settingsTab', 'keys', 'arrowSound', 'intro', 'seenVersion',
+  // Settings › Developer: Developer tools on, and that you were told what Inspect can see
+  'dev', 'devWarned'
 ]);
 // your own alert sound for a kind of alert, as a data: URL ('alertSound.mention', …)
 const isSetting = name => SETTING_NAMES.has(name) || /^alertSound\.\w+$/.test(name);

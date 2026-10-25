@@ -1,0 +1,23 @@
+name: Something isn't working
+description: A bug, or something that stopped working
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead. A screenshot or a short video helps.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: In the app, open Settings › Developer and press Copy diagnostics, then paste them here. Logins, cookies and keys are left out; channel and chat names can be in it, so look it over first.
+      render: text
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: "For a chat that looks wrong or a message that didn't alert: turn on Developer tools, right-click the message and paste Copy message HTML, Copy chat HTML or Why didn't this alert? here. For a stuck or silent stream: Copy window state, from its window's ⋯ menu. See docs/guide/reporting-a-problem.md."
+      render: text

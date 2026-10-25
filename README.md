@@ -69,7 +69,8 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - Keyboard shortcuts (press **F1**), which you can switch off
 - **Colors and themes**: 12 built-in themes, full color customization, and saved custom themes
 - Auto-pause streams you can't see, and "pause all except focus" to save bandwidth
-- One **Settings** window (gear button, Ctrl+, / ⌘,, or the menu bar) for general options, accounts, alerts, extensions, themes, updates, and the built-in instructions and keyboard shortcuts (**F1**)
+- One **Settings** window (gear button, Ctrl+, / ⌘,, or the menu bar) for general options, accounts, alerts, extensions, themes, updates, and the built-in **Guide** (searchable, with a **?** on every Settings page) and keyboard shortcuts (**F1**)
+- **Developer tools** (Settings › Developer): Copy diagnostics for a bug report, an error log, the last requests to the sites, and in the chats' right-click menu Copy message HTML, Copy chat HTML and *Why didn't this alert?*
 
 **Automatic updates**
 - Checks this GitHub repository for new versions, installs them in the background, then asks you to restart
@@ -165,6 +166,10 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 
 ---
 
+## Reporting a problem
+
+Open an issue with **Something isn't working**. In the app, Settings › Developer › **Copy diagnostics** copies what's needed (the version, your system, the open windows, recent errors; logins, cookies and keys are left out): paste it in the issue's **Diagnostics** box. See [Reporting a problem](docs/guide/reporting-a-problem.md) for a chat that looks wrong, a message that didn't alert, or a stuck stream.
+
 ## Contributing and releases
 
 **Making a change:** open a pull request against `main`. Don't change the version number or `CHANGELOG.md` in it. Write the pull request title as one line a user would understand (for example *"Add Hikari theme"*), because titles become the app's "What's new" entries. Every pull request runs the tests, and builds the Windows and Mac installers as a test if it changes anything that goes into them (they appear under the run's **Artifacts**). A red ✗ on the pull request means something broke: open **Details** to see which test.
@@ -180,6 +185,8 @@ All shortcuts can be switched off in **Help › Keyboard shortcuts**.
 | `npm run test:launch:hidden` | The same, but the app's windows are invisible and never take your keyboard or focus, so you can keep working while it runs. There are no desktop notifications either. Clicks and typing still reach the app, because Playwright sends them straight to its pages. `npm run test:coverage:hidden` does the same for the coverage run. Linux can't make windows see-through, so use `xvfb-run -a` there. | ~1 min |
 | `npm run test:all` | All of the above | |
 | `npm run test:coverage` | All of the above, recording which code they run. Prints how much of each file the tests run and writes `coverage/report.md` with the bigger functions no test runs. In CI (which runs it on every pull request and puts the report on the run's summary page) it fails if a file drops below its minimum in `test/coverage-min.json`; on your computer that's only a warning, because some code only runs on Linux, or on Node 22 or newer. | ~2 min |
+
+**The guide** (`docs/guide/`, shown in the app as Settings › Guide): one Markdown page per topic. When a change adds or changes something people use, update its page (or add one) in the same pull request. Each page starts with a short header: `title`, `group` (start, watching, chat, alerts, sites, app, help), `icon` (a name from `src/page/shared/icons.js`), `lede` (one line), `settings` (the Settings page it belongs to: its **?** opens this page), `show` (what **Show me** points at), `words` (to find it by), `related` and `order`. In the text, "Settings › Chat" becomes a button to that page and `[a page](other.md)` a link to it. `docs/guide/README.md` lists every page, in order, for GitHub; `npm test` checks the two agree.
 
 **No system pop-ups in the app's pages.** They ignore the theme, and on a Mac they sit above every app and take the keyboard, even from the launch tests' invisible windows. Dropdowns (`<select>`) open the app's own list by themselves (`src/page/shared/dropdown.js`). For questions and messages, use the app's own `ask()` (`src/page/shared/ask.js`) and `flash()` (`src/page/shared/flash.js`), not `alert()`, `confirm()` or `prompt()`. Also no `<datalist>`, date or time inputs, system menus (`Menu.popup`) or message boxes (`dialog.showMessageBox`). File pickers are the exception, and so are the colour pickers for now. `npm test` fails if one of these slips in (`test/unit/no-system-popups.test.js`).
 
@@ -267,7 +274,8 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 | `.github/workflows/build.yml` | On each release: stamps the version and changelog, runs the quick tests, builds the .exe and .dmg installers, attaches them |
 | `.github/workflows/test.yml` | Runs the tests on every pull request and every change to `main` |
 | `Start Stream Multiview.bat`, `start-mac-linux.sh`, `Create Desktop Shortcut.bat` | Launchers for running from source |
-| `INSTRUCTIONS.txt` | How to use every feature (also shown in the app) |
+| `docs/guide/` | The guide: how to use every feature, a page per topic (shown in the app as Settings › Guide) |
+| `.github/ISSUE_TEMPLATE/bug.yml` | The "Something isn't working" issue form, with a box for Copy diagnostics |
 | `CHANGELOG.md` | Version history (also shown in the app) |
 
 ---

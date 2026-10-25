@@ -14,6 +14,7 @@ import { locked, refitLocked, toggleMax } from '../layout/lock.js';
 import { addChatBeside } from '../layout/placement.js';
 import { nh, syncAtBtn, toggleChatMentions } from '../panels/bell/bell.js';
 import { toggleSaved } from '../panels/channels/channels.js';
+import { copyWinState, devOn, inspectWin } from '../panels/developer/developer.js';
 import { openExtMenu } from '../panels/extensions/extensions.js';
 import { openProfile } from '../panels/profiles/profiles.js';
 import { save } from '../persistence.js';
@@ -52,6 +53,7 @@ function createWin(spec, rect){
         ${w.channel ? '<button class="star" data-a="star"></button>' : ''}
         ${w.channel && DESKTOP && ROLE === 'main' && !/^yt:v:/.test(w.channel) ? `<button data-a="profile" title="Profile: when they stream, past streams, your notes">${icon.user}</button>` : ''}
         ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="ext" class="ext-b" title="Extensions in this window" hidden>${icon.ext}<b class="ext-n"></b></button>` : ''}
+        ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="state" class="dev-b" title="Copy what the app knows about this window, for a report"${devOn ? '' : ' hidden'}>${icon.copy}</button><button data-a="inspect" class="dev-b" title="Chrome's developer tools for this window's page"${devOn ? '' : ' hidden'}>${icon.code}</button>` : ''}
         <button data-a="reload" title="Reload">${icon.reload}</button>
         ${modUrl(w.channel) ? `<button data-a="mod" title="Open the mod view for this channel"${DESKTOP ? ' hidden' : ''}>${icon.mod}</button>` : ''}
         <button data-a="pop" title="Open in its own browser window">${icon.pop}</button>
@@ -122,6 +124,8 @@ function createWin(spec, rect){
     else if (a === 'max') toggleMax(w);
     else if (a === 'ext') openExtMenu(w, b.classList.contains('ovf') ? el.querySelector('[data-a=more]') : b);   // from the ⋯ menu (always): open under ⋯
     else if (a === 'more') openBarMenu(b);
+    else if (a === 'state') copyWinState(w);
+    else if (a === 'inspect') inspectWin(w);
     else if (a === 'chat'){
       if (ROLE === 'streams'){ window.kmv.addChat(w.channel); flash(`${chLabel(w.channel)}'s chat added to the main window`); }
       else addChatBeside(w);

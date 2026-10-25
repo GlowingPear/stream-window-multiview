@@ -16,6 +16,7 @@ const { youtubeLoginFromFirefox } = require('./firefox-login');
 const extensions = require('./extensions');
 const guard = require('./guard');
 const { pageOptions } = require('./activity');
+const { createErrorLog, createSiteLog, describeRequest, diagnostics } = require('./devlog');
 
 // Each platform's chats + login window share one saved session per platform, so you log in once.
 const PARTITION = 'persist:kick';
@@ -100,6 +101,75 @@ const refused = (ch, e) => console.warn(`Refused "${ch}" from ${(e && e.senderFr
 const appIpc = guard.guardedIpc(ipcMain, roleOf, ['main', 'streams'], refused);
 const mainIpc = guard.guardedIpc(ipcMain, roleOf, ['main'], refused);
 const switcherIpc = guard.guardedIpc(ipcMain, roleOf, ['switcher'], refused);
+
+/* ---------- Settings › Developer: the error log and the sites' last answers (devlog.js) ----------
+   This side's warnings and errors, the page's and the chat helpers' go in the error log, kept for the next run too.
+   Every request to Kick, Twitch and YouTube about channels goes in Requests, with its answer's text while
+   Developer tools are on. Copy diagnostics puts them in a report with the app's version and the system. */
+let devOn = false;                     // Settings › Developer › Developer tools (the page says)
+const errorLog = createErrorLog({ saved: (() => { try { return JSON.parse(fs.readFileSync(stateFile('error-log'), 'utf8')); } catch { return []; } })() });
+const siteLog = createSiteLog();
+let errorSaveT = null;
+const saveErrors = () => { clearTimeout(errorSaveT); errorSaveT = null; try { fs.writeFileSync(stateFile('error-log'), JSON.stringify(errorLog.toSave())); } catch {} };
+function devError(src, where, msg) {
+  if (!errorLog.add(src, where, msg)) return;
+  if (!errorSaveT) errorSaveT = setTimeout(saveErrors, 5000);
+  for (const w of [mainWin, streamsWin]) if (w && !w.isDestroyed()) w.webContents.send('dev:changed');
+}
+const errText = x => x instanceof Error ? String(x.stack || x.message).split('\n').slice(0, 3).join(' ') : typeof x === 'string' ? x : (() => { try { return JSON.stringify(x); } catch { return String(x); } })();
+for (const level of ['warn', 'error']) {
+  const was = console[level].bind(console);
+  console[level] = (...args) => { was(...args); try { devError('main', '', args.map(errText).join(' ')); } catch {} };
+}
+process.on('uncaughtExceptionMonitor', e => devError('main', 'crash', errText(e)));
+app.on('will-quit', saveErrors);
+// Requests to the sites (Node's fetch: live checks, follows, profiles), each noted as it's answered.
+const nodeFetch = globalThis.fetch;
+globalThis.fetch = async (url, opts = {}) => {
+  const href = typeof url === 'string' ? url : url && (url.href || url.url), d = describeRequest(href, opts && opts.body);
+  if (!d) return nodeFetch(url, opts);
+  const t0 = Date.now(), method = (opts && opts.method) || 'GET';
+  try {
+    const r = await nodeFetch(url, opts);
+    siteLog.record({ ...d, method, url: href, status: r.status, ms: Date.now() - t0, request: devOn && typeof opts.body === 'string' ? opts.body : undefined,
+      body: devOn ? await r.clone().text().catch(() => null) : undefined });
+    return r;
+  } catch (e) { siteLog.record({ ...d, method, url: href, status: 0, ms: Date.now() - t0, request: devOn && typeof opts.body === 'string' ? opts.body : undefined, error: e && e.message }); throw e; }
+};
+// a request made from inside a site's page (Kick's, with your login): what it got
+const notePageRequest = (url, t0, r) => { const d = describeRequest(url); if (d) siteLog.record({ ...d, url, status: r ? r.status : 0, ms: Date.now() - t0, body: devOn && r && typeof r.body === 'string' ? r.body : undefined }); };
+appIpc.on('dev:set', (_e, on) => { devOn = !!on; });
+appIpc.on('dev:log', (_e, src, where, msg) => { if (['page', 'chat', 'stream'].includes(src)) devError(src, String(where || ''), String(msg || '')); });
+appIpc.handle('dev:info', () => ({ errors: errorLog.list(), responses: siteLog.list() }));
+appIpc.handle('dev:clear', () => { errorLog.clear(); siteLog.clear(); saveErrors(); return true; });
+// The report: the page's part (its windows and settings, as lines) with this side's.
+appIpc.handle('dev:report', (_e, pageLines) => {
+  const ds = screen.getAllDisplays(), prim = screen.getPrimaryDisplay();
+  return diagnostics({
+    app: { version: app.getVersion(), packaged: app.isPackaged, electron: process.versions.electron, chrome: process.versions.chrome },
+    sys: { os: { darwin: 'macOS', win32: 'Windows', linux: 'Linux' }[process.platform] || process.platform, release: process.getSystemVersion ? process.getSystemVersion() : '',
+      arch: process.arch, displays: ds.length, scale: prim && prim.scaleFactor, locale: app.getLocale() },
+    page: Array.isArray(pageLines) ? pageLines.map(l => String(l).slice(0, 300)).slice(0, 80) : [],
+    errors: errorLog.list(), responses: siteLog.list()
+  });
+});
+appIpc.handle('dev:save', async (e, text) => {
+  const d = new Date(), two = n => String(n).padStart(2, '0');
+  const name = `stream-multiview-diagnostics-${d.getFullYear()}${two(d.getMonth() + 1)}${two(d.getDate())}-${two(d.getHours())}${two(d.getMinutes())}.txt`;
+  const win = BrowserWindow.fromWebContents(e.sender);
+  const r = await dialog.showSaveDialog(win, { title: 'Save diagnostics', defaultPath: path.join(app.getPath('downloads'), name), filters: [{ name: 'Text', extensions: ['txt'] }] }).catch(() => null);
+  if (!r || r.canceled || !r.filePath) return { saved: false };
+  try { fs.writeFileSync(r.filePath, String(text || '')); return { saved: true, file: r.filePath }; } catch { return { saved: false, error: true }; }
+});
+// Inspect: Chrome's developer tools for a stream's or chat's page in this window (they can read its logins, so only
+// with Developer tools on, or in a developer copy).
+const inspectView = (sender, id) => {
+  const wc = webContents.fromId(+id);
+  if (!wc || wc.isDestroyed() || wc.hostWebContents !== sender || (!devOn && !DEV)) return false;
+  wc.openDevTools({ mode: 'detach' });
+  return true;
+};
+appIpc.handle('dev:inspect', (e, id) => inspectView(e.sender, id));
 
 const appWebPrefs = () => ({
   preload: path.join(SRC, 'preload', 'preload.js'),
@@ -399,7 +469,21 @@ function runMenuAct(wc, a) {
     case 'translateChat': case 'translateAuto': case 'translateStop':
       if (wc.hostWebContents && !wc.hostWebContents.isDestroyed()) wc.hostWebContents.send('view:translate', wc.id, { do: a.do, tl: a.tl, on: !!a.on });
       break;
+    // Developer tools: the chat's last messages and the list around them; how the message was read for alerts (the page shows it)
+    case 'copyChatHtml': copyChatHtml(wc); break;
+    case 'whyAlert':
+      if (wc.hostWebContents && !wc.hostWebContents.isDestroyed()) wc.hostWebContents.send('view:why', wc.id);
+      break;
   }
+}
+async function copyChatHtml(wc) {
+  const r = await withTimeout(wc.executeJavaScript('window.__kmvMsg && window.__kmvMsg.chatHtml ? window.__kmvMsg.chatHtml(30) : null', true).catch(() => null), 3000, null);
+  const host = wc.hostWebContents, tell = d => { if (host && !host.isDestroyed()) host.send('dev:copied', d); };
+  if (!r || typeof r.html !== 'string') { tell({ what: 'chat', failed: true }); return; }
+  let where = ''; try { const u = new URL(wc.getURL()); where = u.host + u.pathname; } catch {}
+  const text = `<!-- Stream Multiview ${app.getVersion()} · ${where} · the last ${r.n} of ${r.total} messages · ${new Date().toISOString()} -->\n${r.html}`;
+  clipboard.writeText(text);
+  tell({ what: 'chat', n: r.n, bytes: Buffer.byteLength(text) });
 }
 // What the page under the pointer says about it: the emote there (emoteAgent), the chat message there (messageAgent)
 // and whether it's a chat being translated (translateAgent). Only from chat windows the app loaded its helpers into; quick, or nothing.
@@ -419,18 +503,18 @@ async function showViewMenu(wc, params) {
   const chat = ctx.chat && typeof ctx.chat === 'object' ? { on: !!ctx.chat.on, auto: !!ctx.chat.auto } : null;
   const m = ctx.message && typeof ctx.message === 'object' ? ctx.message : null;
   const message = m && chat ? { text: String(m.text || ''), withEmotes: String(m.withEmotes || ''), html: String(m.html || '') } : null;
-  const items = menuFor(params, { langs, dev: !!DEV, emote, chat, message });
+  const items = menuFor(params, { langs, dev: !!DEV, devTools: devOn, emote, chat, message });
   if (!items.length) return;
   const host = wc.hostWebContents;
   if (emote && appPage(host)) {
     drawnMenus.set(wc.id, items);
     host.send('view:menu', wc.id, {
       emote: { name: String(emote.name || '').slice(0, 60), site: String(emote.site || ''), big: String(emote.big || ''), small: String(emote.small || ''), animated: !!emote.animated, x: +emote.x || 0, y: +emote.y || 0 },
-      items: items.map(x => x.type ? { sep: true } : { label: x.label, enabled: x.enabled !== false, checked: !!x.checked })
+      items: items.map(x => x.type ? { sep: true } : x.head ? { head: x.label } : { label: x.label, enabled: x.enabled !== false, checked: !!x.checked })
     });
     return;
   }
-  const tmpl = items.map(x => x.type ? x : { label: x.label, enabled: x.enabled !== false, click: () => runMenuAct(wc, x.act),
+  const tmpl = items.map(x => x.type ? x : x.head ? { label: x.label, enabled: false } : { label: x.label, enabled: x.enabled !== false, click: () => runMenuAct(wc, x.act),
     ...('checked' in x ? { type: 'checkbox', checked: !!x.checked } : {}) });
   const win = host && BrowserWindow.fromWebContents(host);
   Menu.buildFromTemplate(tmpl).popup(win ? { window: win } : {});
@@ -596,11 +680,12 @@ async function fetchChannel(slug) {
   await ensureLiveWin();
   if (!liveWin) return null;
   for (const ver of ['v2', 'v1']) {
-    const url = `/api/${ver}/channels/${slug}`;
+    const url = `/api/${ver}/channels/${slug}`, t0 = Date.now();
     const r = await liveJs(
       `fetch(${JSON.stringify(url)},{credentials:'include',headers:{Accept:'application/json'}})` +
       `.then(async r=>({status:r.status,body:r.ok?await r.text():''})).catch(()=>({status:0,body:''}))`
     ).catch(() => null) || { status: 0, body: '' };
+    notePageRequest('https://kick.com' + url, t0, r);
     if (r.status === 200){ const info = parseChannel(r.body, slug); if (info) return info; }
     if (r.status === 404) return { missing: true };
   }
@@ -1503,6 +1588,7 @@ async function scrapeFollowPage(plat, url, { maxRounds = 70 } = {}) {
 // One API call from the kick.com page, so your login goes with it.
 async function kickGet(u) {
   if (!liveWin || liveWin.isDestroyed()) return null;
+  const t0 = Date.now();
   return liveJs(`(async () => {
     const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
     const t = ck('session_token'), x = ck('XSRF-TOKEN');
@@ -1511,7 +1597,7 @@ async function kickGet(u) {
     if (x) h['X-XSRF-TOKEN'] = x;
     try { const r = await fetch(${JSON.stringify(u)}, { credentials: 'include', headers: h }); return { status: r.status, d: r.ok ? await r.json() : null }; }
     catch (e) { return { status: 0, d: null }; }
-  })()`).catch(() => null);
+  })()`).catch(() => null).then(r => { if (!r || !r.login) notePageRequest(new URL(u, 'https://kick.com').href, t0, r && { status: r.status, body: r.d ? JSON.stringify(r.d) : '' }); return r; });
 }
 async function twitchToken() {
   try {
@@ -2066,15 +2152,22 @@ function scheduleUpdates() {
 }
 
 /* ---------- help files ---------- */
-const HELP_FILES = ['INSTRUCTIONS.txt', 'CHANGELOG.md'];
-// Installed builds keep the help files next to the packed app (app.asar.unpacked) so other programs can open them.
+const HELP_FILES = ['CHANGELOG.md'];
+// Installed builds keep the changelog next to the packed app (app.asar.unpacked), as before.
 const helpPath = name => app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked', name) : path.join(APP_ROOT, name);
 appIpc.handle('help:read', (_e, name) => {
   if (!HELP_FILES.includes(name)) return null;
   try { return fs.readFileSync(helpPath(name), 'utf8'); } catch {}
   try { return fs.readFileSync(path.join(APP_ROOT, name), 'utf8'); } catch { return null; }
 });
-appIpc.handle('help:open', (_e, name) => { if (HELP_FILES.includes(name)) shell.openPath(helpPath(name)); });
+// The guide (Settings › Guide): every page in docs/guide, as text. Its README.md is the contents for GitHub.
+appIpc.handle('help:guide', () => {
+  const dir = path.join(APP_ROOT, 'docs', 'guide');
+  try {
+    return fs.readdirSync(dir).filter(f => /^[\w-]+\.md$/.test(f) && f !== 'README.md')
+      .map(f => ({ name: f.slice(0, -3), text: fs.readFileSync(path.join(dir, f), 'utf8') }));
+  } catch { return []; }
+});
 appIpc.handle('app:version', () => app.getVersion());
 
 /* ---------- menu ---------- */
@@ -2141,7 +2234,7 @@ function buildMenu() {
       { role: 'front' }
     ]}] : []),
     { label: 'Help', submenu: [
-      { label: 'Instructions', click: () => showMain()?.webContents.send('help:show', 'guide') },
+      { label: 'Guide', click: () => showMain()?.webContents.send('help:show', 'guide') },
       { label: 'Keyboard shortcuts', click: () => showMain()?.webContents.send('help:show', 'keys') },
       { label: 'What\'s new', click: () => showMain()?.webContents.send('help:show', 'news') },
       { type: 'separator' },

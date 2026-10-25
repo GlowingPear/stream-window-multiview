@@ -65,6 +65,7 @@ import { init as toolbarDailyReward } from './toolbar/daily-reward.js';
 import { init as layoutUndo } from './layout/undo.js';
 import { init as windowsCapture } from './windows/capture.js';
 import { init as panelsHelpHelp } from './panels/help/help.js';
+import { init as panelsHelpGuide } from './panels/help/guide.js';
 import { init as panelsUpdatesUpdates } from './panels/updates/updates.js';
 import { init as shortcuts } from './shortcuts.js';
 import { init as layoutGameFocus } from './layout/game-focus.js';
@@ -74,6 +75,8 @@ import { init as panelsSettingsGeneral } from './panels/settings/general.js';
 import { init as panelsSettingsAlerts } from './panels/settings/alerts.js';
 import { init as panelsSettingsConnected } from './panels/settings/connected.js';
 import { init as panelsSettingsActivity } from './panels/settings/activity.js';
+import { init as panelsDeveloperDeveloper } from './panels/developer/developer.js';
+import { init as chatWhyAlert } from './chat/why-alert.js';
 import { init as start } from './start.js';
 import { init as layoutMonitors } from './layout/monitors.js';
 import { init as panelsSettingsMonitors } from './panels/settings/monitors.js';
@@ -152,10 +155,13 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   layoutGameFocus,
   panelsSettingsThemes,
   panelsSettingsSettings,
+  panelsHelpGuide,
   panelsSettingsGeneral,
   panelsSettingsAlerts,
   panelsSettingsConnected,
   panelsSettingsActivity,
+  panelsDeveloperDeveloper,
+  chatWhyAlert,
   start,
   layoutMonitors,
   panelsSettingsMonitors,

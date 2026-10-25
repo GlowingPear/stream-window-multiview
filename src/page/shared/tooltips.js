@@ -32,6 +32,7 @@ function init(){
     ['[data-a=profile]', 'Profile'], ['#profBtn', 'Profiles'], ['.sv .prof', 'Profile'],
     ['[data-a=pop]', 'Pop out'], ['[data-a=max]', 'Maximize'], ['[data-a=mod]', 'Mod view'], ['[data-a=close]', 'Close'],
     ['[data-a=ext]', 'Extensions'], ['[data-a=at]', 'Mentions'], ['[data-a=more]', 'More'],
+    ['[data-a=state]', 'Copy window state'], ['[data-a=inspect]', 'Inspect'],
     ['[data-v=mute], .fs-mute', 'Mute'],
     ['[data-z="-1"]', 'Smaller text'], ['[data-z="1"]', 'Bigger text'],
     ['#colNav [data-d="-1"]', 'Scroll left'], ['#colNav [data-d="1"]', 'Scroll right'],
