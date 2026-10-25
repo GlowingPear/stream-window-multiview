@@ -136,7 +136,7 @@ function presetItems(q){
       { id: `preset:${p.name}:delete`, group: p.name, title: 'Delete', icon: 'bin', run: () => deletePreset(p) }
     ] }));
   const name = q.trim().slice(0, 40);
-  if (name && ROLE === 'main') out.push({ id: 'preset.save', kind: 'layout', group: 'Nothing found', title: `Save layout as “${name}”`, sub: 'What\'s on screen now, as a layout of your own', icon: 'layout',
+  if (name && ROLE === 'main') out.push({ id: 'preset.save', kind: 'layout', group: 'Nothing found', title: `Save layout as “${name}”`, sub: 'What\'s on screen now, as a layout of your own', icon: 'layout', verb: 'Save',
     fallback: true, disabled: () => !wins.length && 'Open some streams first', run: () => { const inp = $('#presetName'); inp.value = name; savePresetFromInput(inp); } });
   return out;
 }

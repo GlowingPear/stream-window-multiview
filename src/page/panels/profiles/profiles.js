@@ -547,6 +547,9 @@ function init(){
     commands.provide('profiles.lookup', q => /^@?[a-z0-9_.\-]{2,40}$/i.test(q.trim()) ? [{ id: 'profiles.lookup', kind: 'profile', fallback: true, group: 'Nothing found',
       title: `Look up “${q.trim()}” in Profiles`, sub: 'On Kick, Twitch and YouTube', icon: 'user', run: () => openProfilesAt({ q: q.trim() }) }] : []);
     profDlg.querySelectorAll('.pf-chips button').forEach(b => { b.dataset.cmd = 'profiles.' + b.dataset.v; });
+    // an open profile's buttons (Favourite, Live alerts, Unfollow on Kick, Watch now…), while it shows
+    commands.fromControls('#profDlg .pf-prof', { group: 'Streamer profile', prefix: 'Profile: ', icon: 'user' });
+    profDlg.querySelector('.pf-back').dataset.cmd = 'profiles.all';
     window.openProfile = openProfile;   // for the tests
   }
 }

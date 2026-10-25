@@ -75,10 +75,12 @@ function palCollect(){
     return commands.search(text, { scope: '', only: all });
   }
   if (!text && !palScope) return palEmptyRows();
-  const found = commands.search(text, { scope: palScope });
+  let found = commands.search(text, { scope: palScope });
   if (found.length){
-    if (palHeroOf(found, text)) found[0] = { ...found[0], hero: true };
-    return found;
+    const hero = palHeroOf(found, text) ? { ...found[0], hero: true } : null;
+    // each group together, where its best row is (the big row first)
+    found = commands.grouped(hero ? found.slice(1) : found).flatMap(g => g.rows);
+    return hero ? [hero, ...found] : found;
   }
   return commands.fallbacks(text).map(item => ({ item, marks: [] }));
 }
@@ -103,7 +105,9 @@ const palTile = it => {
 };
 function palAvatar(it, cls){
   const name = String(it.title || '?').replace(/^@/, '');
-  const a = element('span', { class: cls, style: { '--c': it.hue || 'var(--line2)' } }, it.initials || name.slice(0, 1).toUpperCase());
+  // two letters on the big row, one on a small one
+  const letters = it.hero && it.initials ? it.initials : (it.initials || name).slice(0, 1).toUpperCase();
+  const a = element('span', { class: cls, style: { '--c': it.hue || 'var(--line2)' } }, letters);
   if (it.site) a.insertAdjacentHTML('beforeend', platIcon(it.site));
   if (it.avatar){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = it.avatar; a.appendChild(im); }
   return a;

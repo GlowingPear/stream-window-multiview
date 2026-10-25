@@ -368,7 +368,7 @@ function init(){
     { id: 'help.news', kind: 'help', group: 'Help', title: 'What\'s new', sub: 'The changes in each version', words: ['changelog', 'release notes', 'updates'], icon: 'sparkle', run: () => showHelp('news') }
   ]);
   commands.provide('guide', guideItems);
-  commands.provide('guide.fallback', q => q ? [{ id: 'help.search', kind: 'help', fallback: true, group: 'Nothing found', title: `Search the guide for “${q}”`, sub: 'Settings › Guide', icon: 'book', run: () => searchGuide(q) }] : []);
+  commands.provide('guide.fallback', q => q ? [{ id: 'help.search', kind: 'help', fallback: true, group: 'Nothing found', title: `Search the guide for “${q}”`, sub: 'Settings › Guide', icon: 'book', verb: 'Search', run: () => searchGuide(q) }] : []);
   window.guide = { load: loadGuide, search, show: showGuide, topics: () => topics, frontMatter, pageHtml };   // for the tests
 }
 

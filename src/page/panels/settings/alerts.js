@@ -286,7 +286,7 @@ function init(){
   });
   // the search box's (when nothing else is found): the words typed, checked as Spam alerts › Try it does
   commands.provide('spam.try', q => q && DESKTOP && ROLE === 'main' ? [{ id: 'spam.try', kind: 'setting', fallback: true, group: 'Nothing found', title: `Check “${q}” for spam`,
-    sub: 'Settings › Spam alerts › Try it', icon: 'mod', run: async () => { await openSettings('spam', { sub: 'try' }); $('#spamTry').value = q; trySpam(); } }] : []);
+    sub: 'Settings › Spam alerts › Try it', icon: 'mod', verb: 'Check', run: async () => { await openSettings('spam', { sub: 'try' }); $('#spamTry').value = q; trySpam(); } }] : []);
   buildScoring();
   $('#spamPointsReset').onclick = resetPoints;
 

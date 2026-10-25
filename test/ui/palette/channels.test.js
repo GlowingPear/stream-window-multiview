@@ -19,13 +19,13 @@ async function find(page, text){
 
 test('a saved channel that isn\'t open: big, first, with Stream + chat (as the Channels box says), Stream only, Chat only, Save…', async t => {
   const page = await openApp(t, { init: saved(['quietkoala', 'quieter']) });
-  await page.evaluate(() => window.smvNotes.setInfo('quietkoala', { live: true, viewers: 2140, title: 'Late night', category: 'Just Chatting' }));
+  await page.evaluate(() => window.smvNotes.setInfo('quietkoala', { live: true, viewers: 2140, title: 'Late night', category: 'Just Chatting', startedAt: Date.now() - 130 * 60000 }));
   await find(page, 'quietkoala');
   const r = await rows(page);
   assert.equal(r[0].hero, true);
   assert.equal(r[0].title, 'quietkoala');
   assert.ok(await hero(page));
-  assert.match(await heroText(page), /Just Chatting · Late night/);
+  assert.match(await heroText(page), /Just Chatting · Late night · for 2h 10m/);
   assert.match(await heroText(page), /LIVE\s*2\.1K/);
   assert.match(await heroText(page), /Saved/);
   assert.deepEqual(await heroButtons(page), ['Stream + chat', 'Stream only', 'Chat only', 'Saved', 'More…']);

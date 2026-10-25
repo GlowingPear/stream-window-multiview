@@ -92,7 +92,7 @@ function themeItems(q){
   const out = [...BUILTIN_THEMES, ...myThemes].map(t => ({ id: 'theme:' + t.name, kind: 'theme', group: 'Themes', title: 'Theme: ' + t.name, sub: t.note || 'Your theme',
     words: [t.name, 'colours', 'colors', isLight(t.vars) ? 'light mode' : 'dark mode'], icon: 'palette', tags: cur(t) ? ['In use'] : [], verb: 'Use',
     run: () => { setTheme(t); flash(`Theme: ${t.name}`); } }));
-  if (q && q.length <= 30) out.push({ id: 'theme.save', kind: 'theme', group: 'Nothing found', title: `Save theme as “${q}”`, sub: 'The colours in use, as a theme of your own', icon: 'palette',
+  if (q && q.length <= 30) out.push({ id: 'theme.save', kind: 'theme', group: 'Nothing found', title: `Save theme as “${q}”`, sub: 'The colours in use, as a theme of your own', icon: 'palette', verb: 'Save',
     fallback: true, run: () => { themeDlg.querySelector('.th-name').value = q; saveThemeFromInput(); } });
   return out;
 }

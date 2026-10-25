@@ -113,7 +113,7 @@ function addShortcutCommands(){
     { id: 'app.fullscreen', title: 'Full screen', sub: 'The whole screen for the app (again to leave it)', words: ['fullscreen', 'maximise', 'maximize'], icon: 'feat', keys: 'F11',
       when: () => DESKTOP && !!window.kmv.toggleFullscreen, run: () => window.kmv.toggleFullscreen() },
     { id: 'capture.pick', title: 'Show another app\'s window', sub: 'e.g. a Discord pop-out, inside Stream Multiview', words: ['capture', 'discord', 'app window', 'screen'], icon: 'capture', keys: 'W',
-      when: main, run: () => openCapturePicker(null) },
+      when: () => main() && DESKTOP, run: () => openCapturePicker(null) },
     { id: 'streams.next', title: 'Next stream', sub: 'Big in Focus view, on the stage in Chat Stage, its chat in Chat Rail (Columns: scroll)', words: ['previous', 'step'], icon: 'arrowR', keys: '→',
       when: main, disabled: noStreams, run: () => stepStream(1) },
     { id: 'streams.prev', title: 'Previous stream', sub: 'Big in Focus view, on the stage in Chat Stage, its chat in Chat Rail (Columns: scroll)', words: ['back', 'step'], icon: 'arrowL', keys: '←',

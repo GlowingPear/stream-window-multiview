@@ -26,6 +26,8 @@ const isOpen = ch => wins.some(w => w.channel === ch);
 const canLook = () => !!(window.kmv && window.kmv.profileLookup);
 const isFollowed = ch => follows.items.some(f => f.ch === ch);
 const liveOf = ch => { const i = infoFor(ch) || (follows.live || {})[ch]; return i && i.live ? i : null; };
+// how long it's been live: "for 2h 10m", "for 25m"
+const liveFor = t => { const m = Math.max(0, Math.round((Date.now() - t) / 60000)), h = Math.floor(m / 60); return t ? 'for ' + (h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`) : ''; };
 const modeName = { both: 'Stream + chat', stream: 'Stream only', chat: 'Chat only' };
 function openCh(ch, mode){
   lastSite = platOf(ch);
@@ -111,10 +113,10 @@ function channelMore(ch){
 // One channel's item; known: saved, open, followed or named by a site
 function channelItem(ch, { known = true, found = null } = {}){
   const name = chLabel(ch), live = liveOf(ch), sv = saved.includes(ch), open = isOpen(ch), fol = isFollowed(ch), info = infoFor(ch) || {};
-  const state = live ? [live.category, live.title].filter(Boolean).join(' · ') : !known ? (found || '') : info.missing ? 'Channel not found' : open ? 'Open here' : sv ? 'Offline' : fol ? 'You follow them · offline' : '';
+  const state = live ? [live.category, live.title, liveFor(live.startedAt)].filter(Boolean).join(' · ') : !known ? (found || '') : info.missing ? 'Channel not found' : open ? 'Open here' : sv ? 'Offline' : fol ? 'You follow them · offline' : '';
   return { id: (known ? 'ch:' : 'open:') + ch, kind: 'channel', group: 'Channels', title: name, sub: [PLAT_NAME[platOf(ch)], state].filter(Boolean).join(' · '),
     heroSub: state || PLAT_NAME[platOf(ch)], words: [ch.replace(/^(tw:|yt:@?|yt:[vc]:)/, ''), PLAT_NAME[platOf(ch)]],
-    avatar: chPhoto(ch), site: platOf(ch), hue: svHue(ch), initials: svInitials(name), live: !!live, viewers: live && live.viewers != null ? fmtViewers(live.viewers) : null,
+    avatar: chPhoto(ch), site: platOf(ch), hue: svHue(ch), initials: svInitials(name.replace(/^@/, '')), live: !!live, viewers: live && live.viewers != null ? fmtViewers(live.viewers) : null,
     tags: [sv && 'Saved', open && 'Open', !sv && fol && 'Following'].filter(Boolean),
     boost: (live ? 8 : 0) + (open ? 6 : 0) + (sv ? 5 : 0) + (fol ? 2 : 0),
     buttons: buttonsFor(ch, known), run: () => { const b = buttonsFor(ch, known)[0]; if (b) b.run(); }, verb: open ? 'Go to it' : 'Open',

@@ -67,7 +67,7 @@ function noteItems(q){
     sub: [timeAgo(n.t), n.body || (Array.isArray(n.parts) ? partsText(n.parts) : '') || n.title || n.detail || ''].filter(Boolean).join(' · '), icon: { mentions: 'at', spam: 'mod', live: 'live', app: 'bell' }[SmvNotes.tabOf(n)] || 'bell',
     verb: n.channel ? 'Show chat' : 'Show', run: () => { if (n.channel && SmvNotes.tabOf(n) !== 'live') revealChat(n.channel); else openNoteHistory(SmvNotes.tabOf(n), { q: '' }); },
     more: () => noteButtons(n) }));
-  if (q && DESKTOP && window.kmv.notifyEnabled) list.push({ id: 'notes.search', kind: 'note', group: 'Nothing found', title: `Search all notifications for “${q}”`, sub: 'All notifications', icon: 'search', fallback: true,
+  if (q && DESKTOP && window.kmv.notifyEnabled) list.push({ id: 'notes.search', kind: 'note', group: 'Nothing found', title: `Search all notifications for “${q}”`, sub: 'All notifications', icon: 'search', verb: 'Search', fallback: true,
     run: () => openNoteHistory('all', { sub: 'all', q }) });
   return list;
 }

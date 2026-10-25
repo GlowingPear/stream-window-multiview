@@ -82,7 +82,7 @@ function winItem(w, active){
   const name = winName(w), kind = winKind(w);
   return { id: 'win:' + w.id, kind: 'window', group: active ? 'For this window' : 'Windows', groupNote: active ? `${name} · ${kind}` : '',
     title: `${name} · ${kind}`, sub: winState(w) || (w.kind === 'chat' ? 'Chat' : kind === 'page' ? w.url : ''), words: [name],
-    avatar: w.channel ? chPhoto(w.channel) : undefined, site: w.channel ? platOf(w.channel) : '', hue: w.channel ? svHue(w.channel) : '', initials: w.channel ? svInitials(name) : '',
+    avatar: w.channel ? chPhoto(w.channel) : undefined, site: w.channel ? platOf(w.channel) : '', hue: w.channel ? svHue(w.channel) : '', initials: w.channel ? svInitials(name.replace(/^@/, '')) : '',
     icon: w.kind === 'capture' ? 'capture' : 'pop', verb: 'Go to it',
     boost: active ? 15 : 0, run: () => goToWin(w), alt: w.kind === 'stream' && ROLE === 'main' ? () => makeBig(w) : null, altLabel: 'make big',
     more: () => winActions(w) };

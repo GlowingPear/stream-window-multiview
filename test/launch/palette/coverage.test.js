@@ -19,7 +19,9 @@ test('every visible button and tab in the desktop app\'s own parts has a command
   await check(w, 'two channels open', seen);
   await w.click('#loginBtn'); await w.waitForTimeout(200); await check(w, 'Logins', seen); await w.keyboard.press('Escape');
   await w.click('#savedBtn'); await w.click('#spMore'); await check(w, 'Channels ⋯', seen); await w.keyboard.press('Escape'); await w.keyboard.press('Escape');
-  await w.click('#profBtn'); await w.waitForTimeout(300); await check(w, 'Streamer profiles', seen); await w.keyboard.press('Escape');
+  await w.click('#profBtn'); await w.waitForTimeout(300); await check(w, 'Streamer profiles', seen);
+  await w.evaluate(() => window.openProfile('alpha')); await w.waitForTimeout(500); await check(w, 'a streamer\'s profile', seen);
+  await w.keyboard.press('Escape');
   await w.evaluate(() => window.openNoteHistory('all'));
   for (const t of ['all', 'mentions', 'spam', 'live', 'app']){ await w.click(`#noteDlg .nc-tabs [data-tab=${t}]`); await check(w, 'All notifications › ' + t, seen); }
   await w.keyboard.press('Escape');
