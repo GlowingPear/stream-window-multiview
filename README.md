@@ -70,7 +70,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - **Colors and themes**: 12 built-in themes, full color customization, and saved custom themes
 - Auto-pause streams you can't see, and "pause all except focus" to save bandwidth
 - One **Settings** window (gear button, Ctrl+, / ⌘,, or the menu bar) for general options, accounts, alerts, extensions, themes, updates, and the built-in **Guide** (searchable, with a **?** on every Settings page) and keyboard shortcuts (**F1**)
-- **Developer tools** (Settings › Developer): Copy diagnostics for a bug report, an error log, the sites' last answers, and in the chats' right-click menu Copy message HTML, Copy chat HTML and *Why didn't this alert?*
+- **Developer tools** (Settings › Developer): Copy diagnostics for a bug report, an error log, the last requests to the sites, and in the chats' right-click menu Copy message HTML, Copy chat HTML and *Why didn't this alert?*
 
 **Automatic updates**
 - Checks this GitHub repository for new versions, installs them in the background, then asks you to restart

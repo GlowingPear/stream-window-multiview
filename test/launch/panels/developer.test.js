@@ -159,7 +159,7 @@ test('the error log and the sites\' answers: from the main process, the page and
   assert.match(report, /\nwindows   main window · layout \w+ · 0 streams, 1 chat\n {2}Kick {6}alpha +chat +loaded/);
   assert.match(report, /\ndeveloper tools on\n/);
   assert.match(report, /## Errors \(\d+, newest first\)\n[\s\S]*main went wrong/);
-  assert.match(report, /## Site responses \(\d+, newest first\)\n.*kick +channel +failed/);
+  assert.match(report, /## Requests \(\d+, newest first\)\n.*kick +channel +failed/);
   assert.ok(!/SECRET/.test(report), 'nothing private');
   // Save as file: in Downloads by default, with the date in its name
   await a.win.click('#devSave');

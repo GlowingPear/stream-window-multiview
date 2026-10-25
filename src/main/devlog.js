@@ -1,4 +1,4 @@
-// Settings › Developer: what goes wrong (the error log) and what the sites last answered (site responses), for
+// Settings › Developer: what goes wrong (the error log) and the last requests to the sites (Requests), for
 // finding out why something isn't working and for Copy diagnostics. Plain data, so it can be tested: main.js feeds
 // it (its own warnings and errors, the page's, the chat helpers') and stores the error log.
 //
@@ -114,7 +114,7 @@ function diagnostics({ app = {}, sys = {}, page = [], errors = [], responses = [
   if (!errors.length) out.push('none');
   for (const e of errors.slice(0, 50)) out.push(`${clock(e.t)} ${pad(e.src, 6)} ${e.where ? e.where + ': ' : ''}${e.msg}${e.n > 1 ? ` (×${e.n})` : ''}${e.before ? ' [last run]' : ''}`);
   if (errors.length > 50) out.push(`… and ${errors.length - 50} older`);
-  out.push('', `## Site responses (${responses.length}${responses.length ? ', newest first' : ''})`);
+  out.push('', `## Requests (${responses.length}${responses.length ? ', newest first' : ''})`);
   if (!responses.length) out.push('none');
   for (const r of responses.slice(0, 20)) out.push(`${clock(r.t)} ${pad(r.site, 8)} ${pad(r.what, 26)} ${r.status || (r.error ? 'failed' : 'no answer')} ${r.ms} ms${r.error ? ' · ' + r.error : ''}`);
   out.push('', '(Logins, cookies and keys are left out. Channel and chat names can be in it.)');

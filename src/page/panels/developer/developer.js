@@ -21,7 +21,7 @@ import { askIn, viewId, zoomOf } from '../../windows/view.js';
    right-click menu gets a Developer group (src/main/context-menu.js) and the windows' ⋯ menu gets its own items.
    Errors on this page and in the app's scripts inside the chats go to the error log whether the switch is on or not. */
 var devOn = false;
-const dev = { tab: 'errors', data: null, problems: false };   // problems: Site responses shows only the ones that went wrong
+const dev = { tab: 'errors', data: null, problems: false };   // problems: Requests shows only the ones that went wrong
 // a site's answer that went wrong: no answer, or not a 2xx
 const badAnswer = r => !(r.status >= 200 && r.status < 300);
 const DV_WHEN = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -86,7 +86,7 @@ async function renderDev(){
       element('span', 'dv-cnt', r.ms + ' ms')));
   }
 }
-// One site response as text: what was asked and what came back (JSON laid out to read; long answers are cut off).
+// One request as text: what was asked and what came back (JSON laid out to read; long answers are cut off).
 const tidyJson = t => { try { return JSON.stringify(JSON.parse(t), null, 2); } catch { return t; } };
 const exchangeText = r => [
   `${r.method} ${r.url}`,

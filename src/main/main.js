@@ -104,7 +104,7 @@ const switcherIpc = guard.guardedIpc(ipcMain, roleOf, ['switcher'], refused);
 
 /* ---------- Settings › Developer: the error log and the sites' last answers (devlog.js) ----------
    This side's warnings and errors, the page's and the chat helpers' go in the error log, kept for the next run too.
-   Every request to Kick, Twitch and YouTube about channels goes in the site responses, with its answer's text while
+   Every request to Kick, Twitch and YouTube about channels goes in Requests, with its answer's text while
    Developer tools are on. Copy diagnostics puts them in a report with the app's version and the system. */
 let devOn = false;                     // Settings › Developer › Developer tools (the page says)
 const errorLog = createErrorLog({ saved: (() => { try { return JSON.parse(fs.readFileSync(stateFile('error-log'), 'utf8')); } catch { return []; } })() });

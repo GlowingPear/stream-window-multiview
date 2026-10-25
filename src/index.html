@@ -600,10 +600,10 @@
       <section class="st-pane" data-s="developer" hidden>
         <h4>Developer</h4><p class="st-sub">Tools for finding out why something isn't working, and for reporting it.</p>
         <label class="st-row"><span class="st-t">Developer tools<small>Adds Copy message HTML, Copy chat HTML, Why didn't this alert? and Inspect to the chats' right-click menu, and Copy window state and Inspect to each window's ⋯ menu.</small></span><input type="checkbox" class="st-sw" id="devOn"></label>
-        <div class="st-row"><span class="st-t">Report a problem<small>Copies the app's version, your system, the open windows, settings, recent errors and the sites' last answers. Logins, cookies and keys are left out. Channel and chat names can be in it.</small></span><button class="btn primary" id="devCopy">Copy diagnostics</button><button class="btn" id="devSave">Save as file…</button></div>
-        <div class="st-tabs" id="devTabs" role="tablist" aria-label="Developer"><button role="tab" data-t="errors" class="on" aria-selected="true">Errors <span class="dv-n"></span></button><button role="tab" data-t="responses" aria-selected="false" tabindex="-1">Site responses <span class="dv-n"></span></button></div>
+        <div class="st-row"><span class="st-t">Report a problem<small>Copies the app's version, your system, the open windows, settings, recent errors and the last requests to the sites. Logins, cookies and keys are left out. Channel and chat names can be in it.</small></span><button class="btn primary" id="devCopy">Copy diagnostics</button><button class="btn" id="devSave">Save as file…</button></div>
+        <div class="st-tabs" id="devTabs" role="tablist" aria-label="Developer"><button role="tab" data-t="errors" class="on" aria-selected="true">Errors <span class="dv-n"></span></button><button role="tab" data-t="responses" aria-selected="false" tabindex="-1">Requests <span class="dv-n"></span></button></div>
         <div class="dv-list" id="devList" role="tabpanel"></div>
-        <div class="st-row dv-keep"><span class="st-t">Kept on this computer<small>The last 200 errors, from this run and the one before, and the sites' last 40 answers. They only go anywhere when you copy them.</small></span><button class="btn" id="devClear">Clear</button></div>
+        <div class="st-row dv-keep"><span class="st-t">Kept on this computer<small>The last 200 errors, from this run and the one before, and the last 40 requests to the sites. They only go anywhere when you copy them.</small></span><button class="btn" id="devClear">Clear</button></div>
       </section>
       <section class="st-pane" data-s="keys" hidden>
         <h4>Keyboard shortcuts</h4>

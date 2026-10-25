@@ -57,7 +57,7 @@ test('requests to the sites, in words; other addresses aren\'t noted', () => {
   assert.equal(describeRequest('not an address'), null);
 });
 
-test('site responses: the last 40, newest first, with what could be private left out', () => {
+test('Requests: the last 40, newest first, with what could be private left out', () => {
   let t = 0;
   const log = createSiteLog({ now: () => ++t, max: 2 });
   log.record({ site: 'kick', what: 'channel', url: 'https://kick.com/api/v2/channels/a', status: 200, ms: 12.4, body: '{"token":"x","id":1}' });
@@ -71,7 +71,7 @@ test('site responses: the last 40, newest first, with what could be private left
   assert.equal(createSiteLog().record().site, '');
 });
 
-test('the report: app, system, the page\'s part, errors and site responses, with nothing private', () => {
+test('the report: app, system, the page\'s part, errors and requests, with nothing private', () => {
   const at = new Date(2026, 9, 25, 21, 4, 12).getTime();
   const text = diagnostics({
     app: { version: '0.3.20', packaged: true, electron: '39.2.0', chrome: '142' },
@@ -83,10 +83,10 @@ test('the report: app, system, the page\'s part, errors and site responses, with
   assert.match(text, /^## Stream Multiview diagnostics\n\nversion   0\.3\.20 \(installed\) · Electron 39\.2\.0 · Chrome 142\nsystem    macOS 26\.1 arm64 · 2 monitors · scale 2 · en-GB\n/);
   assert.match(text, /windows   4 streams, 3 chats\ntoken=abc\n/, 'the page\'s lines as they are (only address parts are taken out)');
   assert.match(text, /## Errors \(2, newest first\)\n21:04:12 chat   pixelpear: no rows \(×6\)\n21:04:12 main   old one \[last run\]/);
-  assert.match(text, /## Site responses \(2, newest first\)\n21:04:12 twitch   live check {17}429 95 ms\n21:04:12 kick     channel {20}failed 3 ms · offline/);
+  assert.match(text, /## Requests \(2, newest first\)\n21:04:12 twitch   live check {17}429 95 ms\n21:04:12 kick     channel {20}failed 3 ms · offline/);
   const none = diagnostics();
   assert.match(none, /version   \? \(from source\)/);
-  assert.match(none, /## Errors \(0\)\nnone\n\n## Site responses \(0\)\nnone/);
+  assert.match(none, /## Errors \(0\)\nnone\n\n## Requests \(0\)\nnone/);
   assert.match(diagnostics({ sys: { displays: 1 } }), /1 monitor\b/);
   const many = diagnostics({ errors: Array.from({ length: 60 }, (_, i) => ({ t: at, src: 'page', msg: 'e' + i, n: 1 })) });
   assert.match(many, /… and 10 older/);

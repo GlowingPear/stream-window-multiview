@@ -135,7 +135,7 @@ contextBridge.exposeInMainWorld('kmv', {
   viewMenuAct: (id, i) => ipcRenderer.send('view:menu-act', id, i),
   viewMenuClose: id => ipcRenderer.send('view:menu-close', id),
   onViewTranslate: cb => ipcRenderer.on('view:translate', (_e, id, a) => cb(id, a || {})),
-  // Settings › Developer: the switch, the error log and site responses, the report, Inspect
+  // Settings › Developer: the switch, the error log and Requests, the report, Inspect
   devSet: on => ipcRenderer.send('dev:set', !!on),
   devLog: (src, where, msg) => ipcRenderer.send('dev:log', String(src), String(where || '').slice(0, 200), String(msg || '').slice(0, 2000)),
   devInfo: () => ipcRenderer.invoke('dev:info'),
