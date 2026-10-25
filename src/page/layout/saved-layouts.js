@@ -1,5 +1,5 @@
 import { closeWin } from '../chat/view-menu.js';
-import { $, MIN_H, MIN_W, colsMode, coreVars, lastLayout, streamCols, wins } from '../core.js';
+import { $, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, streamCols, wins } from '../core.js';
 import { chatRailLayout } from './chat-rail.js';
 import { chatStageLayout } from './chat-stage.js';
 import { buildCols, columnVars, columnsLayout, sideCols } from './columns.js';
@@ -9,9 +9,10 @@ import { autoLayout, builtinLinked, chatFocusLayout, colOrder, featBase, feature
   setColsMode, setFeatured, tile, updateLinkBtn } from './layouts.js';
 import { pageStep, scrollVars } from './sideways-scroll.js';
 import { fitOn } from '../panels/channels/channels.js';
-import { closeSettings } from '../panels/settings/settings.js';
+import { closeSettings, openSettings } from '../panels/settings/settings.js';
 import { save } from '../persistence.js';
 import { ask } from '../shared/ask.js';
+import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
 import { flash } from '../shared/flash.js';
 import { settings } from '../shared/settings.js';
@@ -52,6 +53,16 @@ function capturePreset(name){
     windows: wins.filter(w => w.kind !== 'capture').map(w => ({ kind: w.kind, channel: w.channel, url: w.url, vol: w.vol, muted: w.muted, preview: !!w.preview, x: w.x, y: w.y, w: w.w, h: w.h }))
   };
 }
+// "Saved 3 days ago", "4 streams, 2 chats" (the search box's line for it)
+function savedAgo(t){
+  if (!t) return '';
+  const d = Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(t).setHours(0, 0, 0, 0)) / 864e5);
+  return 'Saved ' + (d <= 0 ? 'today' : d === 1 ? 'yesterday' : d < 30 ? `${d} days ago` : new Date(t).toLocaleDateString());
+}
+function presetCounts(p){
+  const n = p.windows.filter(w => w.kind === 'stream').length, c = p.windows.filter(w => w.kind === 'chat').length;
+  return `${n} stream${n === 1 ? '' : 's'}, ${c} chat${c === 1 ? '' : 's'}`;
+}
 function presetSummary(p){
   const n = p.windows.filter(w => w.kind === 'stream').length, c = p.windows.filter(w => w.kind === 'chat').length;
   return `${MODE_NAMES[p.mode] || 'Layout'}${p.featured ? ' + highlight' : ''} · ${n} stream${n === 1 ? '' : 's'}, ${c} chat${c === 1 ? '' : 's'}`;
@@ -66,6 +77,7 @@ function renderPresets(){
     row.querySelector('b').textContent = p.name;
     row.querySelector('span').textContent = presetSummary(p);
     row.querySelector('.pr-load').onclick = () => { $('#layoutMenu').hidden = true; applyPreset(p); };
+    row.querySelector('.pr-load').dataset.cmd = 'preset:' + p.name;
     box.appendChild(row);
   });
   renderPresetsPane();
@@ -78,27 +90,21 @@ function renderPresetsPane(){
     + (presets.length ? '' : '<div class="ly-empty">Arrange the windows how you like, then save them here.</div>');
   detail.innerHTML = '';
   list.querySelector('.ly-add').onclick = () => { selectLayoutPane('+new'); $('#lyPresetName').focus(); };
+  list.querySelector('.ly-add').dataset.cmd = 'preset.save';
   presets.forEach((p, i) => {
     const k = 'p:' + p.name, base = presetBase(p), pic = document.querySelector(`#layoutMenu [data-l="${base}"] .lm-pic`);
     list.appendChild(element('button', { class: 'ly-item', dataset: { k }, role: 'option' },
       pic ? pic.cloneNode(true) : element('i', 'ly-free'), element('span', null, p.name), element('em')));
     const name = element('b', null, p.name);
-    const update = async () => {
-      if (!await ask(`Update “${p.name}”?`, `Replace this saved layout with what's on screen now.`, { ok: 'Update' })) return;
-      presets[i] = capturePreset(p.name); savePresets(); activePreset = p.name; store.changed('layout'); flash(`Updated layout “${p.name}”`, { subject: 'layouts' });
-    };
-    const remove = async () => {
-      if (!await ask(`Delete the layout “${p.name}”?`, 'This can\'t be undone.', { ok: 'Delete', danger: true })) return;
-      presets.splice(i, 1); savePresets(); if (activePreset === p.name) leavePreset(); store.changed('layout');
-    };
+    const update = () => updatePreset(p), remove = () => deletePreset(p);
     const panel = element('div', { class: 'ly-panel', dataset: { k }, hidden: true },
       pic && pic.cloneNode(true),
       element('div', 'ly-head', name, element('button', { class: 'btn ly-use', onclick: () => { closeSettings(); applyPreset(p); } }, 'Use')),
       element('p', 'ly-desc', presetSummary(p) + (pic ? ` · Made from ${MODE_NAMES[base]}, with its own options.` : '')),
       element('div', 'ly-acts',
-        element('button', { class: 'btn pr-ren', onclick: () => renamePreset(name, p) }, 'Rename'),
-        element('button', { class: 'btn pr-up', title: 'Save what\'s on screen now over this one', onclick: update }, 'Update to what\'s on screen'),
-        element('button', { class: 'btn pr-x', onclick: remove }, 'Delete')));
+        element('button', { class: 'btn pr-ren', onclick: () => renamePreset(name, p), dataset: { cmd: 'preset:' + p.name } }, 'Rename'),
+        element('button', { class: 'btn pr-up', title: 'Save what\'s on screen now over this one', onclick: update, dataset: { cmd: 'preset:' + p.name } }, 'Update to what\'s on screen'),
+        element('button', { class: 'btn pr-x', onclick: remove, dataset: { cmd: 'preset:' + p.name } }, 'Delete')));
     // the options of the layout it was made from, its own values
     const sw = (key, on, small) => {
       const c = element('input', { type: 'checkbox', class: 'st-sw', dataset: { opt: key } }); c.checked = on;
@@ -116,6 +122,39 @@ function renderPresetsPane(){
     detail.appendChild(panel);
   });
   if (lySel) selectLayoutPane(lySel);      // rebuilt: keep the one that's picked
+}
+// Update one of your layouts to what's on screen, or delete it (asking first)
+async function updatePreset(p){
+  if (!await ask(`Update “${p.name}”?`, `Replace this saved layout with what's on screen now.`, { ok: 'Update' })) return;
+  const i = presets.indexOf(p); if (i < 0) return;
+  presets[i] = capturePreset(p.name); savePresets(); activePreset = p.name; store.changed('layout'); flash(`Updated layout “${p.name}”`, { subject: 'layouts' });
+}
+async function deletePreset(p){
+  if (!await ask(`Delete the layout “${p.name}”?`, 'This can\'t be undone.', { ok: 'Delete', danger: true })) return;
+  const i = presets.indexOf(p); if (i < 0) return;
+  presets.splice(i, 1); savePresets(); if (activePreset === p.name) leavePreset(); store.changed('layout');
+}
+// The search box's (Ctrl/⌘+K) layouts of your own: each one (Enter uses it; Tab: rename, update, delete), and (when
+// nothing else is found) saving what's on screen under the words typed
+function presetItems(q){
+  const out = presets.map(p => ({ id: 'preset:' + p.name, kind: 'layout', group: 'Your layouts', title: p.name, sub: [savedAgo(p.savedAt), presetCounts(p)], pic: presetBase(p), verb: 'Use',
+    words: ['layout', 'preset'], tags: p.name === activePreset ? ['In use'] : [], when: () => ROLE === 'main', run: () => applyPreset(p),
+    more: () => [
+      { id: `preset:${p.name}:use`, group: p.name, title: 'Use it', icon: 'layout', run: () => applyPreset(p) },
+      { id: `preset:${p.name}:rename`, group: p.name, title: 'Rename', icon: 'gear', run: () => renamePresetInSettings(p) },
+      { id: `preset:${p.name}:update`, group: p.name, title: 'Update to what\'s on screen', icon: 'reload', disabled: () => !wins.length && 'Nothing open', run: () => updatePreset(p) },
+      { id: `preset:${p.name}:delete`, group: p.name, title: 'Delete', icon: 'bin', run: () => deletePreset(p) }
+    ] }));
+  const name = q.trim().slice(0, 40);
+  if (name && ROLE === 'main') out.push({ id: 'preset.save', kind: 'layout', group: 'Nothing found', title: `Save layout as “${name}”`, sub: 'What\'s on screen now, as a layout of your own', icon: 'layout', verb: 'Save',
+    fallback: true, disabled: () => !wins.length && 'Open some streams first', run: () => { const inp = $('#presetName'); inp.value = name; savePresetFromInput(inp); } });
+  return out;
+}
+// Rename from the search box: Settings › Layouts, at that layout, its name ready to type over
+async function renamePresetInSettings(p){
+  await openSettings('layouts', { sub: 'layouts' });
+  selectLayoutPane('p:' + p.name);
+  document.querySelector(`#lyDetail .ly-panel[data-k="${CSS.escape('p:' + p.name)}"] .pr-ren`)?.click();
 }
 function renamePreset(t, p){
   const inp = document.createElement('input');
@@ -197,6 +236,7 @@ function applyPreset(p, opt = {}){
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   presets = settings.json('presets', []);
+  commands.provide('presets', presetItems);
 }
 
 export { activeP, activePreset, applyPreset, capturePreset, init, leavePreset, renderPresets, renderPresetsPane,

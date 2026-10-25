@@ -2,6 +2,7 @@ import { $, wins } from '../../core.js';
 import { openSettings, settingsDlg, settingsTab } from '../settings/settings.js';
 import { PLAT_NAME, extCount, platOf, platformVars, viewPartition, watchSignedIn } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
+import { commands } from '../../shared/commands.js';
 import { DESKTOP } from '../../shared/env.js';
 import { icon } from '../../shared/icons.js';
 import { fromApp } from '../../shared/incoming.js';
@@ -156,6 +157,7 @@ async function openExtMenu(w, btn){
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
+  if (DESKTOP) commands.fromControls('#settingsDlg .ex-acts', { group: 'Extensions', prefix: 'Extensions: ', icon: 'ext', inSettings: true });   // (in the search box)
   /* ---------- Chrome extensions (desktop app) ----------
      Settings > Extensions lists them, each with a grid: on or off per site and per window type. Each stream
      and chat window has an extensions button: the extensions in that window, their popups and options, and

@@ -39,6 +39,12 @@ function toggleSaved(ch){
   saved = saved.includes(ch) ? saved.filter(c => c !== ch) : [...saved, ch];
   persistSaved();
 }
+// A saved channel's live notification on or off (its bell in the Channels list, and the search box)
+function setNotify(ch, on){
+  notifyOff = on ? notifyOff.filter(c => c !== ch) : [...new Set([...notifyOff, ch])];
+  settings.set('notifyOff', notifyOff);
+  sendWatch(); store.changed('liveAlerts');
+}
 function refreshStars(){
   wins.forEach(w => {
     const b = w.el.querySelector('[data-a=star]'); if (!b) return;
@@ -198,12 +204,7 @@ function renderSaved(){
       bell.innerHTML = on ? icon.bell : icon.bellOff; bell.classList.toggle('on', on);
       bell.title = !notifyAll ? 'Live notifications are off (turn them on above)' : on ? 'Notify me when this channel goes live (click to turn off)' : 'No notification for this channel (click to turn on)';
       bell.disabled = !notifyAll;
-      bell.onclick = e => {
-        e.stopPropagation();
-        notifyOff = notifyOff.includes(ch) ? notifyOff.filter(c => c !== ch) : [...notifyOff, ch];
-        settings.set('notifyOff', notifyOff);
-        sendWatch(); store.changed('liveAlerts');
-      };
+      bell.onclick = e => { e.stopPropagation(); setNotify(ch, !on); };
       acts.appendChild(bell);
     }
     if (live && info.viewers != null) meta.insertAdjacentHTML('beforeend', `<span class="sv-view" title="Watching now">${fmtViewers(info.viewers)}</span>`);
@@ -238,6 +239,6 @@ function init(){
   store.watch(['saved', 'live', 'wins', 'names', 'channelsBox', 'autoOpen', 'liveAlerts'], () => renderSaved());
 }
 
-export { autoFit, channelRow, channelVars, fitOn, fmtViewers, gotLive, infoFor, init, liveInfo, liveNote, liveNow,
-  loadSavedProfiles, notifyAll, notifyOff, persistSaved, renderSaved, saved, savedTab, sendWatch, setAutoFit, svHue,
-  svInitials, svProf, tabPlat, toggleSaved };
+export { autoFit, autoOpen, channelRow, channelVars, fitOn, fmtViewers, gotLive, infoFor, init, liveInfo, liveNote,
+  liveNow, loadSavedProfiles, notifyAll, notifyOff, persistSaved, renderSaved, saved, savedTab, sendWatch,
+  setAutoFit, setNotify, svHue, svInitials, svProf, tabPlat, toggleAutoOpen, toggleSaved };

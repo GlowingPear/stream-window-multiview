@@ -6,7 +6,7 @@ lede: Open a channel by name or link, from Kick, Twitch or YouTube.
 show: "#savedBtn"
 words: [open, add, link, url, channel, raid, video]
 related: [channels, moving-windows]
-order: 2
+order: 3
 ---
 
 - Open **Channels** (top left, or press N), type a name or paste a link into its box, and press Enter (or click **Open**).

@@ -2,6 +2,7 @@ import { $ } from '../../core.js';
 import { pushSwitcherState, swCss, switchVars } from '../../layout/switch-control.js';
 import { notes } from '../bell/bell.js';
 import { ask } from '../../shared/ask.js';
+import { commands } from '../../shared/commands.js';
 import { element, esc } from '../../shared/element.js';
 import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
@@ -72,8 +73,7 @@ function renderThemeList(){
         if (!await ask(`Delete the theme “${t.name}”?`, 'This can\'t be undone.', { ok: 'Delete', danger: true })) return;
         myThemes = myThemes.filter(x => x !== t); saveMyThemes(); renderThemeList(); return;
       }
-      theme = { name: t.name, vars: { ...BUILTIN_THEMES[0].vars, ...t.vars }, edited: false };
-      applyTheme(true); renderThemeDlg();
+      setTheme(t);
     };
     list.appendChild(b);
   };
@@ -81,6 +81,21 @@ function renderThemeList(){
   if (myThemes.length){ const h = document.createElement('div'); h.className = 'th-sec'; h.style.marginTop = '10px'; h.textContent = 'Your themes'; list.appendChild(h); myThemes.forEach(t => row(t, true)); }
 }
 const saveMyThemes = () => { settings.set('themes', myThemes); };
+// A theme from the list (Settings › Themes, and the search box)
+function setTheme(t){
+  theme = { name: t.name, vars: { ...BUILTIN_THEMES[0].vars, ...t.vars }, edited: false };
+  applyTheme(true); renderThemeDlg();
+}
+// the search box's (Ctrl/⌘+K): each theme, and (when nothing else is found) saving the one in use under the words typed
+function themeItems(q){
+  const cur = t => !theme.edited && theme.name === t.name;
+  const out = [...BUILTIN_THEMES, ...myThemes].map(t => ({ id: 'theme:' + t.name, kind: 'theme', group: 'Themes', title: 'Theme: ' + t.name, sub: t.note || 'Your theme',
+    words: [t.name, 'colours', 'colors', isLight(t.vars) ? 'light mode' : 'dark mode'], icon: 'palette', tags: cur(t) ? ['In use'] : [], verb: 'Use',
+    run: () => { setTheme(t); flash(`Theme: ${t.name}`); } }));
+  if (q && q.length <= 30) out.push({ id: 'theme.save', kind: 'theme', group: 'Nothing found', title: `Save theme as “${q}”`, sub: 'The colours in use, as a theme of your own', icon: 'palette', verb: 'Save',
+    fallback: true, run: () => { themeDlg.querySelector('.th-name').value = q; saveThemeFromInput(); } });
+  return out;
+}
 function renderThemeVars(){
   const box = themeDlg.querySelector('.th-vars');
   box.innerHTML = '';
@@ -152,6 +167,8 @@ function init(){
   themeDlg.querySelector('.th-reset').onclick = () => { theme = { name: 'Pear', vars: { ...BUILTIN_THEMES[0].vars }, edited: false }; applyTheme(true); renderThemeDlg(); };
   themeDlg.querySelector('.th-savebtn').onclick = saveThemeFromInput;
   themeDlg.querySelector('.th-name').addEventListener('keydown', e => { if (e.key === 'Enter') saveThemeFromInput(); });
+  commands.add({ id: 'theme.reset', kind: 'theme', group: 'Themes', title: 'Back to Pear', sub: 'The original colours', words: ['reset theme', 'default colours'], icon: 'palette', button: '#themePane .th-reset', when: () => true });
+  commands.provide('themes', themeItems);
 }
 
 export { init, renderThemeDlg };

@@ -7,7 +7,7 @@ settings: layouts
 show: "#layoutBtn"
 words: [focus, columns, stage, rail, tile, auto, lock, linked, highlight, arrange]
 related: [switch-control, game-focus, moving-windows]
-order: 6
+order: 7
 ---
 
 - **Focus view**: one stream (or another app's window) big with its chat, the rest in columns beside it.

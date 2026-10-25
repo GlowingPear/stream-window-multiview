@@ -16,6 +16,7 @@ import { refreshFromSwitcher } from './undo.js';
 import { save } from '../persistence.js';
 import { chLabel, platOf, streamSrc, trimPlayerPage, ytVidOf } from '../platforms/platforms.js';
 import { youtube } from '../platforms/youtube.js';
+import { commands } from '../shared/commands.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { icon } from '../shared/icons.js';
@@ -179,6 +180,7 @@ function placeMinis(){
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
+  commands.fromControls('#featSwitch .fs-head', { group: 'Switch control', words: ['switcher'] });   // (the search box's, while it shows)
   fsResize.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
     e.preventDefault(); fsResize.setPointerCapture(e.pointerId);

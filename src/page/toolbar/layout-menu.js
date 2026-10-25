@@ -11,6 +11,7 @@ import { scrollCols, setScrollX, snapSoon } from '../layout/sideways-scroll.js';
 import { openFocusView, setSwitchMode } from '../layout/switch-control.js';
 import { setAutoFit } from '../panels/channels/channels.js';
 import { closeSettings, openSettings } from '../panels/settings/settings.js';
+import { commands } from '../shared/commands.js';
 import { DESKTOP } from '../shared/env.js';
 import { icon } from '../shared/icons.js';
 import { store } from '../shared/store.js';
@@ -42,6 +43,46 @@ function renderLayoutsPane(fresh){
   else selectLayoutPane(lySel);
   $('#lyLinked').checked = linked;
   syncLySw();
+}
+
+// The search box's (Ctrl/⌘+K): each layout, and everything in the Layout menu
+const LAYOUT_KEYS = { focus: 'F', game: 'G', columns: 'C', chatfocus: 'Shift+C', stage: 'K', rail: 'Shift+K', auto: 'A', tile: 'T' };
+const LAYOUT_SHORT = { focus: 'One stream big with its chat, the rest beside it', game: 'Your game big, streams and chats beside it', columns: 'Every stream above its chat',
+  chatfocus: 'Streams down the side, chats get the rest', stage: 'One stream and its chat in big text', rail: 'Every stream, one chat in a rail', auto: 'Streams in a grid, chats on the right',
+  tile: 'Everything fits the screen' };
+const LAYOUT_WORDS = { focus: ['big stream', 'spotlight'], game: ['play', 'gaming'], columns: ['side by side'], chatfocus: ['chats'],
+  stage: ['big chat', 'read chat'], rail: ['grid', 'chat tabs'], auto: ['grid'], tile: ['even', 'grid', 'equal'] };
+function openLayoutMenuAt(t){
+  if (layoutMenu.hidden) layoutBtn.click();
+  layoutMenu.querySelector('.lm-tabs').selectTab(t);
+}
+function addLayoutCommands(){
+  layoutMenu.querySelectorAll('.lm-tabs [data-t]').forEach(b => { b.dataset.cmd = 'layoutMenu.' + b.dataset.t; });
+  layoutMenu.querySelectorAll('button[data-l]').forEach(b => {
+    const l = b.dataset.l;
+    commands.add({ id: 'layout.' + l, kind: 'layout', group: 'Layouts', title: b.querySelector('b').textContent, sub: LAYOUT_SHORT[l] || b.querySelector('span').textContent,
+      words: [...(LAYOUT_WORDS[l] || []), 'layout'], pic: l, keys: LAYOUT_KEYS[l], verb: 'Use', button: `#layoutMenu button[data-l="${l}"]`, when: () => true,
+      boost: () => curLayout() === l ? -20 : 0, tags: () => curLayout() === l ? ['In use'] : [] });
+  });
+  commands.add([
+    { id: 'switch.toggle', group: 'Switch control', title: 'Switch control', sub: 'Show it as a panel you can move and resize, in any layout (again to put it away)', words: ['switcher'], icon: 'float', keys: 'S', button: '#swBtn' },
+    { id: 'layout.menu', group: 'More', title: 'Layout menu', sub: 'The layouts, your saved layouts and their options', icon: 'layout', keys: 'L', button: '#layoutBtn' },
+    { id: 'layout.settings', group: 'More', title: 'Layout settings', sub: 'Settings › Layouts', icon: 'gear', button: '#layoutSet', when: () => true },
+    { id: 'layout.linked', kind: 'action', group: 'Layout options', title: 'Linked', sub: 'Each stream and its chat move together (Columns, Focus view)', words: ['move together', 'link chat'],
+      icon: 'link', toggle: { get: () => linked, set: on => setLinked(on) } },
+    { id: 'layout.autofit', group: 'Layout options', title: 'Fit in channels that open by themselves', sub: 'Auto layout: added as the last stream when they go live',
+      icon: 'bolt', when: () => curLayout() === 'auto', toggle: { get: () => $('#lmAutoFit').checked, set: on => { $('#lmAutoFit').checked = on; $('#lmAutoFit').dispatchEvent(new Event('change')); } } },
+    ...[1, 2, 3].map(n => ({ id: 'layout.cols' + n, group: 'Layout options', title: `Stream columns: ${n}`, sub: 'Chat focus: streams down the side in ' + n + (n > 1 ? ' columns' : ' column'),
+      words: ['chat focus columns'], icon: 'colsview', button: `#lmCols button[data-n="${n}"]`, when: () => curLayout() === 'chatfocus' })),
+    ...[['dock', 'Docked', 'Under the big stream, in Focus view only'], ['float', 'Floating', 'A panel you can move and resize, in every layout'], ['window', 'Own window', 'Put it anywhere, even on another monitor']]
+      .map(([k, t, d]) => ({ id: 'switch.' + k, group: 'Switch control', title: 'Switch control: ' + t, sub: d, words: ['switcher'], icon: k === 'window' ? 'popwin' : k,
+        button: `button[data-sw="${k}"]`, when: () => !!$(`#swModes button[data-sw="${k}"]`), tags: () => switchMode === k ? ['In use'] : [] })),
+    ...[['top', 'Top', 'A bar across the top of the window'], ['left', 'Left', 'A column down the side, each button with its name'], ['icons', 'Left, icons only', 'A slim column: the most room for the streams']]
+      .map(([k, t, d]) => ({ id: 'toolbar.' + k, group: 'Toolbar', title: 'Toolbar: ' + t, sub: d, words: ['bar position', 'sidebar'], icon: 'hidebar',
+        button: `#layoutMenu button[data-tbv="${k}"]`, when: () => true, tags: () => document.querySelector(`#layoutMenu button[data-tbv="${k}"]`)?.classList.contains('on') ? ['In use'] : [] })),
+    ...[['layouts', 'Layouts'], ['switch', 'Switch control'], ['toolbar', 'Toolbar']].map(([t, n]) => ({ id: 'layoutMenu.' + t, kind: 'tab', group: 'Layout menu',
+      title: 'Layout menu: ' + n, sub: 'The Layout menu, on its ' + n + ' tab', icon: 'layout', run: () => openLayoutMenuAt(t) }))
+  ]);
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
@@ -143,6 +184,7 @@ function init(){
     $('#lyPresetSave').onclick = saveFromPane;
     $('#lyPresetName').addEventListener('keydown', e => { if (e.key === 'Enter') saveFromPane(); });
     $('#presetName').addEventListener('keydown', e => { if (e.key === 'Enter') savePresetFromInput(); });
+    addLayoutCommands();
   }
   $('#colNav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) scrollCols(+b.dataset.d); });
   // In Columns mode, scrolling the mouse wheel over title bars or empty space moves sideways.

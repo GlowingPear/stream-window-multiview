@@ -22,7 +22,8 @@ let settingsDlg;
 let settingsTab = 'general';
 let MAIN_DESK;
 const ST_ICONS = { general: 'sliders', layouts: 'layout', chat: 'chat', accounts: 'user', apps: 'link', youtube: 'ytPlay', notify: 'bell', mentions: 'at', spam: 'mod', extensions: 'ext', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys', developer: 'code' };
-function openSettings(tab){
+// tab: a page (its data-s), sub: a tab inside it (Spam alerts › Scoring)
+function openSettings(tab, { sub } = {}){
   const ok = t => { const b = settingsDlg.querySelector(`.st-rail [data-s="${t}"]`); return b && !b.hidden; };
   settingsTab = ok(tab) ? tab : ok(settingsTab) ? settingsTab : 'general';
   settings.set('settingsTab', settingsTab);
@@ -42,6 +43,7 @@ function openSettings(tab){
   if (settingsTab === 'extensions') renderExtPane();
   if (settingsTab === 'layouts') renderLayoutsPane(true);
   if (settingsTab === 'developer') renderDev();
+  if (sub) settingsDlg.querySelector(`.st-pane[data-s="${settingsTab}"] .st-tabs button[data-t="${sub}"]`)?.click();
   return renderDoc(settingsTab);
 }
 const closeSettings = () => { settingsDlg.hidden = true; };
@@ -75,8 +77,7 @@ function init(){
   settingsDlg.addEventListener('click', e => {
     const go = e.target.closest('[data-go]');
     if (go){
-      e.preventDefault(); openSettings(go.dataset.go);
-      if (go.dataset.sub) settingsDlg.querySelector(`.st-pane[data-s="${go.dataset.go}"] .st-tabs button[data-t="${go.dataset.sub}"]`)?.click();   // and its sub-tab
+      e.preventDefault(); openSettings(go.dataset.go, { sub: go.dataset.sub });   // and its sub-tab
       return;
     }
     const h = e.target.closest('[data-help]'); if (h){ e.preventDefault(); showHelp(h.dataset.help); }
@@ -89,4 +90,4 @@ function init(){
   });
 }
 
-export { closeSettings, init, openSettings, settingsDlg, settingsTab };
+export { closeSettings, init, openSettings, settingsDlg, settingsTab, ST_ICONS };

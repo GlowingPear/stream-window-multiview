@@ -6,7 +6,7 @@ lede: Where everything in Settings is.
 show: "#settingsBtn"
 words: [settings, options, preferences, gear]
 related: [themes]
-order: 23
+order: 24
 ---
 
 - Click the gear in the toolbar, or press Ctrl+, (Mac: ⌘,). It's also in the menu bar: on a Mac in the Stream Multiview menu, on Windows and Linux in File.

@@ -65,6 +65,7 @@ function createWin(spec, rect){
     <div class="body"><div class="waitmsg" hidden><span></span><button class="btn">Check now</button></div><div class="shield"></div></div>
     ${['n','e','s','w','ne','nw','se','sw'].map(d => `<div class="rz rz-${d}" data-d="${d}"></div>`).join('')}`;
   w.el = el;
+  el.querySelectorAll('.btns [data-a], .vol [data-v]').forEach(b => { b.dataset.cmd = 'win.' + (b.dataset.a || b.dataset.v); });   // (the search box's Tab list for the window: window-commands.js)
   if (w.kind === 'capture'){ w.srcId = spec.srcId; w.capName = spec.capName || 'Window'; }
   el.querySelector('.title').textContent = w.channel ? chLabel(w.channel) : w.kind === 'capture' ? w.capName : new URL(w.url).hostname;
   el.querySelector('.bar').title = (w.channel ? chLabelP(w.channel) : w.kind === 'capture' ? w.capName + ' (live picture of that window)' : w.url) + ' · ' + w.kind;
@@ -133,7 +134,7 @@ function createWin(spec, rect){
     else if (a === 'star') toggleSaved(w.channel);
     else if (a === 'like') toggleLike(w);
     else if (a === 'profile') openProfile(w.channel);
-    else if (a === 'at') toggleChatMentions(w);
+    else if (a === 'at') toggleChatMentions(w.channel);
     else if (a === 'overlay') toggleStreamOverlay(w);
     else if (a === 'feat'){
       if (!colsMode){ setFeatured(colKey(w)); layoutVars.scrollX = 0; columnsLayout(); }   // from Chat focus: open the highlight view

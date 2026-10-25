@@ -1,6 +1,8 @@
 import { $ } from '../../core.js';
 import { monitorsVars, partsFor, refreshMonitors, setPart, setTogether } from '../../layout/monitors.js';
+import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
+import { DESKTOP } from '../../shared/env.js';
 import { store } from '../../shared/store.js';
 
 /* ---- Settings > Layouts > Monitors: a picture of your monitors as the system arranges them, Identify monitors, and
@@ -67,6 +69,8 @@ function init(){
     return;
   }
   $('#moIdentify').onclick = () => window.kmv.identifyMonitors && window.kmv.identifyMonitors();
+  commands.add({ id: 'monitors.identify', group: 'Settings', title: 'Identify monitors', sub: 'Each monitor\'s number on it for a moment (Settings › Layouts › Monitors)', words: ['screens', 'displays'],
+    icon: 'capture', button: '#moIdentify', when: () => DESKTOP && !!window.kmv.identifyMonitors });
   $('#moTogether').addEventListener('change', e => setTogether(e.target.checked));
   // drawn when the tab opens (the monitors may have changed since) and whenever they change
   document.querySelector('#lyTabs [data-t=monitors]').addEventListener('click', () => refreshMonitors());

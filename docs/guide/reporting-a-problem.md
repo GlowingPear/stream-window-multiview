@@ -6,7 +6,7 @@ lede: What to send so a problem can be found and fixed.
 settings: developer
 words: [bug, report, issue, problem, broken, not working, github, diagnostics, help]
 related: [developer-tools]
-order: 29
+order: 30
 ---
 
 1. Open Settings › Developer and press **Copy diagnostics**.

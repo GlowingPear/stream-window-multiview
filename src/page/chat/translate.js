@@ -52,4 +52,4 @@ function init(){
   fromApp('onViewTranslate', (id, a) => translateChat(winOfView(id), a));
 }
 
-export { autoTrFor, init, setTrAll, trAll, winOfView };
+export { autoTrFor, init, setTrAll, trAll, translateChat, winOfView };

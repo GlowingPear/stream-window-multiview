@@ -4,6 +4,7 @@ How to use every part of the app. The same pages are in the app: Settings › Gu
 
 ## Start
 - [Getting started](getting-started.md): Install the app, open it the first time, and find your way around.
+- [Search and actions](search.md): One box that finds and does anything in the app: press Ctrl+K anywhere and type a few letters.
 - [Adding streams](adding-streams.md): Open a channel by name or link, from Kick, Twitch or YouTube.
 - [Channels](channels.md): Save the channels you watch, see who's live, and get them opened or announced when they go live.
 - [Streamer profiles](profiles.md): What each streamer's site says, when they usually stream, their past streams and your own notes.

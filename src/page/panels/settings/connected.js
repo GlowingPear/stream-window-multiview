@@ -3,6 +3,7 @@ import { allowLink, applyLink, backAt, disconnectLink, kickAuto, kickOut, linkIc
   setKickAuto, setLinkOn, testLink } from '../../platforms/pear-drops.js';
 import { watchSignedIn } from '../../platforms/platforms.js';
 import { effectiveSignedIn } from '../../platforms/players-link.js';
+import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
@@ -114,6 +115,7 @@ async function runTest(){
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
+  commands.fromControls('#caPearDrops', { group: 'Pear Drops', prefix: 'Pear Drops: ', icon: 'link', inSettings: true, buttonsOnly: true });   // (its card's buttons, in the search box)
   card = $('#caPearDrops');
   if (!card) return;
   card.querySelector('.ca-arrow').innerHTML = '<svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>';

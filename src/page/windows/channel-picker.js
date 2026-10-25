@@ -42,6 +42,8 @@ function loadBarAvatars(again){
   barProfSig = sig;
   window.kmv.profileList(chs).then(l => { barProf = l || {}; paintBarAvatars(); }).catch(() => {});
 }
+// A channel's picture, when the app knows it
+const chPhoto = ch => { const p = barProf[ch] || svProf[ch]; return (p && p.info && p.info.avatar) || ''; };
 function chAvatar(ch){
   const info = infoFor(ch), p = barProf[ch] || svProf[ch], pic = p && p.info && p.info.avatar;
   const a = document.createElement('span');
@@ -112,4 +114,4 @@ function init(){
   });
 }
 
-export { chAvatar, init, loadBarAvatars, refreshPicks, schedulePicks, swapWindows, updateHbar };
+export { chAvatar, chPhoto, init, loadBarAvatars, refreshPicks, schedulePicks, swapWindows, updateHbar };

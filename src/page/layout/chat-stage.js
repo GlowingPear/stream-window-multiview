@@ -5,6 +5,7 @@ import { SH, SW, setRect } from './geometry.js';
 import { applyRects, colKey, featuredCh, inColOrder, layoutChatsOnly, setColsMode, sortedChats, tile, vidByKey,
   vidLabel } from './layouts.js';
 import { save } from '../persistence.js';
+import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
@@ -106,7 +107,7 @@ function updateStageLook(){ if (!isStage()) clearStageLook(); }
 // A picture in the strip: a click puts it on the stage; @ when its chat mentions you
 function addPick(w){
   if (w.el.querySelector('.stg-pick')) return syncAt(w);
-  const p = element('button', { class: 'stg-pick', title: `Put ${vidLabel(w)} on the stage`, onclick: () => putOnStage(colKey(w)) },
+  const p = element('button', { class: 'stg-pick', title: `Put ${vidLabel(w)} on the stage`, onclick: () => putOnStage(colKey(w)), dataset: { cmd: 'win.go' } },
     element('span', 'stg-badges', element('span', 'stg-n'), element('span', 'stg-at', '@')), element('span', 'stg-go', 'Put on stage'));
   w.el.querySelector('.body').append(p);
   syncAt(w);
@@ -132,7 +133,7 @@ function watchAlerts(){
 // The stage chat's text size, in its title bar
 function addSize(w){
   if (!w.el.querySelector('.stg-size')){
-    const s = element('span', { class: 'stg-size', title: 'Size of the chat on the stage, compared with the other chats' },
+    const s = element('span', { class: 'stg-size', title: 'Size of the chat on the stage, compared with the other chats', dataset: { cmds: 'Chat Stage' } },
       element('button', { 'data-s': '-1', 'aria-label': 'Smaller stage chat text', onclick: e => { e.stopPropagation(); stageSize(-1); } }, 'A−'),
       element('em', 'stg-pct'),
       element('button', { 'data-s': '1', 'aria-label': 'Bigger stage chat text', onclick: e => { e.stopPropagation(); stageSize(1); } }, 'A+'));
@@ -181,6 +182,7 @@ function splitDrag(e){
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
+  commands.fromControls('.stg-size', { group: 'Chat Stage', icon: 'chat', words: ['stage chat text size'] });   // (the search box's, while Chat Stage is on)
   stageKey = settings.text('stageCh') || null;
   { const s = +settings.get('stageSplit'); if (s >= SPLIT_MIN && s <= SPLIT_MAX) stageSplit = s; }
   { const s = settings.get('stageZoom'); if (s !== null && STAGE_SIZES[+s]) stageIdx = +s; }

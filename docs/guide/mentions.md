@@ -6,7 +6,7 @@ lede: Know when someone mentions you, replies to you, or sends support in an ope
 settings: mentions
 words: [mention, reply, @, username, nickname, word, support, bits, kicks, subs, gift, raid, super chat]
 related: [bell, spam-alerts, developer-tools]
-order: 17
+order: 18
 ---
 
 - Mentions: when someone writes @you or replies to you in a Kick or Twitch chat, that chat window lights up and it's listed under the bell. Set your usernames in Settings > Mentions, or click Detect.

@@ -4,6 +4,7 @@ import { chatStageLayout, isStage } from '../layout/chat-stage.js';
 import { featSwitch } from '../layout/layouts.js';
 import { pushSwitcherState } from '../layout/switch-control.js';
 import { chLabel } from '../platforms/platforms.js';
+import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
 import { flash } from '../shared/flash.js';
 import { icon } from '../shared/icons.js';
@@ -102,7 +103,7 @@ function init(){
   blowOn = settings.flag('chatBlowup');
   { const s = settings.get('chatBlowSize'); if (s !== null && BLOW_SIZES[+s]) blowIdx = +s; }
   blowBg = element('div', { id: 'blowBg', hidden: true, onclick: putBack });
-  blowBar = element('div', { id: 'blowBar', hidden: true },
+  blowBar = element('div', { id: 'blowBar', hidden: true, dataset: { cmds: 'Blow up chat' } },
     element('span', 'bb-icon', ''), element('span', 'bb-name'),
     element('span', 'bb-size', element('span', 'bb-t', 'Text size'),
       element('button', { 'data-b': '-1', 'aria-label': 'Smaller text', onclick: () => blowSize(-1) }, '−'),
@@ -111,6 +112,7 @@ function init(){
     element('button', { class: 'bb-back', title: 'Put this chat back where it was (Esc)', onclick: putBack }, 'Put back', element('kbd', '', 'Esc')));
   blowBar.querySelector('.bb-icon').innerHTML = icon.zoomin;
   document.body.append(blowBg, blowBar);
+  commands.fromControls('#blowBar', { group: 'Blow up chat', prefix: 'Blown-up chat: ', icon: 'zoomin' });   // (the search box's, while a chat is blown up)
   fromSite('blow-esc', w => { if (w === blown) putBack(); });
   window.blowUpChat = ch => blowUp(wins.find(w => w.kind === 'chat' && w.channel === ch));   // for the tests
   window.blownWin = () => blown && blown.channel;   // for the tests

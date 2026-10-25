@@ -1,11 +1,13 @@
 import { $, ROLE } from '../../core.js';
 import { startTour } from '../empty-stage/empty-stage.js';
-import { SHORTCUTS, shortcutsGrid } from './help.js';
+import { SHORTCUTS, shortcutsGrid, showHelp } from './help.js';
 import { closeSettings, openSettings, settingsDlg } from '../settings/settings.js';
+import { commands } from '../../shared/commands.js';
 import { element, esc } from '../../shared/element.js';
 import { DESKTOP, keyName } from '../../shared/env.js';
 import { icon } from '../../shared/icons.js';
 import { closeOnOutside } from '../../shared/popover.js';
+import { store } from '../../shared/store.js';
 
 /* ---- Settings › Guide: how to use the app, from the pages in docs/guide (one Markdown file per topic, each with a
    short header: its title, group, icon, a line about it, the Settings page it belongs to, what "Show me" points at,
@@ -280,6 +282,24 @@ async function showGuide(slug, q){
   await loadGuide();
   openTopic(slug || '', q);
 }
+// Settings › Guide searching for the words (the search box's "Search the guide for …")
+async function searchGuide(q){
+  await openSettings('guide');
+  await loadGuide();
+  openTopic('');
+  const box = $('#gdSearch'); if (box){ box.value = q; box.focus(); }
+  setQuery(q);
+}
+// The search box's (Ctrl/⌘+K) guide pages: by their name and other names, or anything they say (a weaker match).
+// The pages load the first time something's typed in it.
+function guideItems(q){
+  if (!topics.length){ if (q && !loading) loadGuide().then(() => store.changed('palette')); return []; }
+  const said = q ? new Set(search(q).filter(r => r.kind === 'topic').map(r => r.t.slug)) : null, terms = termsOf(q);
+  // a page that says the words: the bit around them, the words marked
+  return topics.map(t => ({ id: 'guide:' + t.slug, kind: 'help', group: 'Guide', title: t.title, sub: t.lede, words: t.words, icon: t.icon || 'book', chip: 'Guide',
+    matched: said && said.has(t.slug) ? 30 : 0, run: () => showGuide(t.slug, q || undefined),
+    ...(said && said.has(t.slug) && !t.low.slice(0, t.title.length + t.lede.length + 1).includes(terms[0]) ? { sub: [snippet(t.text, terms, 110)] } : {}) }));
+}
 // Called when Settings shows the Guide (help.js renderDoc)
 async function renderGuide(){
   await loadGuide();
@@ -345,7 +365,13 @@ function init(){
   closeOnOutside(gd.pop, { button: () => gd.popFor, capture: true });
   settingsDlg.addEventListener('click', e => { const q = e.target.closest('.gd-q'); if (q){ e.preventDefault(); e.stopPropagation(); openPop(q); } });
   settingsDlg.querySelector('.st-body').addEventListener('scroll', () => { if (gd.pop) gd.pop.hidden = true; }, { passive: true });
+  commands.add([
+    { id: 'help.guide', kind: 'help', group: 'Help', title: 'Guide', sub: 'How everything in the app works', words: ['help', 'manual', 'docs', 'how to'], icon: 'book', run: () => showGuide() },
+    { id: 'help.news', kind: 'help', group: 'Help', title: 'What\'s new', sub: 'The changes in each version', words: ['changelog', 'release notes', 'updates'], icon: 'sparkle', run: () => showHelp('news') }
+  ]);
+  commands.provide('guide', guideItems);
+  commands.provide('guide.fallback', q => q ? [{ id: 'help.search', kind: 'help', fallback: true, order: 1, group: 'Nothing found', title: `Search the guide for “${q}”`, sub: () => topics.length ? `${topics.length} topics` : 'Settings › Guide', icon: 'book', verb: 'Search', run: () => searchGuide(q) }] : []);
   window.guide = { load: loadGuide, search, show: showGuide, topics: () => topics, frontMatter, pageHtml };   // for the tests
 }
 
-export { init, loadGuide, renderGuide, showGuide };
+export { init, loadGuide, openResult, renderGuide, showGuide };

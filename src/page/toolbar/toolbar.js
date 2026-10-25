@@ -18,6 +18,7 @@ import { addPlat, openBoxVars, openFromBox } from '../panels/channels/open-box.j
 import { syncAlertControls } from '../panels/settings/alerts.js';
 import { syncLiveAlerts } from '../panels/settings/notifications.js';
 import { PLAT_NAME } from '../platforms/platforms.js';
+import { commands } from '../shared/commands.js';
 import { DESKTOP } from '../shared/env.js';
 import { setTb } from '../shared/icons.js';
 import { fromApp } from '../shared/incoming.js';
@@ -133,6 +134,8 @@ function init(){
     setToolbar(v === 'top' ? 'top' : 'left', v === 'top' ? barLabels : v === 'left');
   });
   $('#barFold').onclick = () => setToolbar(barPos, !barLabels);
+  commands.add({ id: 'toolbar.fold', group: 'Toolbar', title: 'Collapse the left toolbar', sub: 'Icons only: the most room for the streams', words: ['icons only', 'names'], icon: 'fold',
+    button: '#barFold', when: () => document.body.classList.contains('bar-left'), toggle: { get: () => !barLabels, set: on => setToolbar(barPos, !on) } });
   applyToolbar(true);
 
   openObs = new MutationObserver(syncOpen);
@@ -266,6 +269,22 @@ function init(){
     saved.forEach(ch => { if (!wins.some(w => w.kind === 'stream' && w.channel === ch)) addParsed({ channel: ch, only: null }); });
     autoLayout();
   };
+  // the search box's (Ctrl/⌘+K): the Channels panel's buttons and tabs
+  const openChannelsAt = t => { $(`#savedTabs [data-t="${t}"]`).click(); if (panel.hidden) savedBtn.click(); };
+  commands.add([
+    { id: 'channels.openLive', group: 'Channels', title: 'Open live channels', sub: 'Every saved channel that is live right now', icon: 'live', button: '#openLive', offWhy: 'Nobody is live' },
+    { id: 'channels.openAll', group: 'Channels', title: 'Open all saved channels', sub: 'Every saved channel, auto-arranged', icon: 'star', button: '#openAll', when: () => ROLE === 'main', disabled: () => !saved.length && 'Nothing saved yet' },
+    { id: 'channels.saveOpen', group: 'Channels', title: 'Save all open', sub: 'Every channel open now, into your channels', icon: 'star', button: '#saveOpen', when: () => ROLE === 'main', offWhy: 'They\'re all saved' },
+    { id: 'channels.follows', group: 'Channels', title: 'Suggest channels you follow', sub: 'While you type in Channels, the channels you follow and haven\'t saved', icon: 'star', button: '#followsOn',
+      toggle: { get: () => follows.on, set: on => { if (window.kmv.followsSetOn) window.kmv.followsSetOn(on).then(loadFollows).catch(() => {}); } } },
+    { id: 'channels.notifyAll', group: 'Channels', title: 'Notify me when they go live', sub: 'For every saved channel', words: ['live alerts'], icon: 'bell',
+      when: () => DESKTOP && ROLE === 'main' && !!window.kmv.watchLive, toggle: { get: () => $('#notifyAll').checked, set: () => $('#notifyAll').click() } },
+    ...['all', 'kick', 'twitch', 'youtube'].map(t => ({ id: 'channels.tab.' + t, kind: 'tab', group: 'Channels', title: 'Channels: ' + (t === 'all' ? 'All' : PLAT_NAME[t]),
+      sub: t === 'all' ? 'Your channels' : `Your ${PLAT_NAME[t]} channels only`, icon: 'star', when: () => ROLE === 'main', run: () => openChannelsAt(t) }))
+  ]);
+  document.querySelectorAll('#savedTabs [data-t]').forEach(b => { b.dataset.cmd = 'channels.tab.' + b.dataset.t; });
+  document.querySelectorAll('#importRow [data-imp]').forEach(b => { b.dataset.cmd = `account.${b.dataset.imp}.import`; });
+  $('#notifyAll').dataset.cmd = 'channels.notifyAll';
   $('#saveOpen').onclick = () => {
     wins.forEach(w => { if (w.channel && !saved.includes(w.channel)) saved.push(w.channel); });
     persistSaved();

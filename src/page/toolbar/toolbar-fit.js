@@ -10,7 +10,7 @@ function init(){
      too short. Logins, Channels, Layout, Notifications and Settings never go into ⋯. ---- */
   (() => {
     const hdr = document.querySelector('header'), moreBtn = $('#moreBtn'), moreMenu = $('#moreMenu');
-    const ORDER = ['#clear', '#popBtn', '#capBtn', '#swBtn', '#redoBtn', '#undoBtn', '#focusBtn', '#profBtn', '#tile', '#spotBtn'];
+    const ORDER = ['#clear', '#popBtn', '#capBtn', '#swBtn', '#redoBtn', '#undoBtn', '#focusBtn', '#profBtn', '#palBtn', '#tile', '#spotBtn'];
     const items = ORDER.map(sel => $(sel)).filter(Boolean).map(el => {
       const mark = document.createComment(' ' + el.id + ' ');        // where it goes back in the toolbar
       el.before(mark);

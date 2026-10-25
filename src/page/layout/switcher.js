@@ -195,6 +195,10 @@ function renderSwitcher(){
     featSwitch.appendChild(it);
   });
   if (!featSwitch.querySelector('.fs-item')) featSwitch.insertAdjacentHTML('beforeend', '<div class="fs-empty">No streams open in this window.</div>');
+  // each stream's buttons are its window's commands in the search box (window-commands.js); the head's are its own
+  featSwitch.dataset.cmds = 'Switch control';
+  const FS_CMD = { 'fs-play': 'win.pause', 'fs-name': 'win.go', 'fs-mute': 'win.mute', 'fs-rl': 'win.bar.reload', 'fs-pv': 'win.preview', 'fs-x': 'win.remove' };
+  featSwitch.querySelectorAll('.fs-item button').forEach(b => { const k = Object.keys(FS_CMD).find(c => b.classList.contains(c)); if (k) b.dataset.cmd = FS_CMD[k]; });
   syncSwitcher();
   syncSwitcherCounts();
   placeMinis();

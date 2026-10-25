@@ -5,6 +5,7 @@ import { SH, SW } from './geometry.js';
 import { applyRects, featuredCh, inColOrder, layoutChatsOnly, rowRects, setColsMode, sortedChats, tile, vidLabel } from './layouts.js';
 import { save } from '../persistence.js';
 import { chLabel } from '../platforms/platforms.js';
+import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
@@ -95,7 +96,7 @@ function addShow(w){
   let b = w.el.querySelector('.rl-show');
   if (!wins.some(c => c.kind === 'chat' && c.channel === w.channel)){ b?.remove(); return; }
   if (!b){
-    b = element('button', { class: 'rl-show', onclick: e => { e.stopPropagation(); showRailChat(w.channel); } });
+    b = element('button', { class: 'rl-show', onclick: e => { e.stopPropagation(); showRailChat(w.channel); }, dataset: { cmd: 'win.go' } });
     b.addEventListener('pointerdown', e => e.stopPropagation());      // not a drag of the window
     w.el.querySelector('.bar .grab').after(b);
   }
@@ -109,7 +110,7 @@ function addShow(w){
 function renderTabs(chats, chat){
   const list = tabsEl.querySelector('.rl-list');
   list.replaceChildren(...chats.map(c => element('button', {
-    class: 'rl-tab' + (c === chat ? ' on' : ''), role: 'tab', 'aria-selected': String(c === chat), 'data-ch': c.channel,
+    class: 'rl-tab' + (c === chat ? ' on' : ''), role: 'tab', 'aria-selected': String(c === chat), 'data-ch': c.channel, dataset: { name: chLabel(c.channel) },
     onclick: () => showRailChat(c.channel)
   }, element('span', 'rl-nm', chLabel(c.channel)), element('span', 'rl-n'), element('span', 'rl-at', '@'))));
   chats.forEach(syncTab);
@@ -161,6 +162,9 @@ function init(){
       element('em', 'rl-pct'),
       element('button', { 'data-s': '1', 'aria-label': 'Bigger rail chat text', onclick: () => railSize(1) }, 'A+')));
   stage.append(tabsEl);
+  // the search box's, while Chat Rail is on: its text size, and each chat's tab
+  commands.fromControls('#railTabs .rl-size', { group: 'Chat Rail', icon: 'chat', words: ['rail chat text size'] });
+  commands.fromControls('#railTabs .rl-list', { group: 'Chat Rail', prefix: 'Show in the rail: ', icon: 'chat' });
   store.watch('layout', updateRailLook);
   // a window opened or closed: arrange the rail again
   store.watch('wins', () => { if (isRail()) chatRailLayout(); });

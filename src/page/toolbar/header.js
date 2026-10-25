@@ -1,9 +1,10 @@
 import { spamFirst } from '../alerts/spam-alerts.js';
 import { releaseWin } from '../chat/view-menu.js';
-import { $, coreVars, wins } from '../core.js';
+import { $, ROLE, coreVars, wins } from '../core.js';
 import { autoLayout, chatFocusLayout, tile } from '../layout/layouts.js';
 import { save } from '../persistence.js';
 import { ask } from '../shared/ask.js';
+import { commands } from '../shared/commands.js';
 import { setTb } from '../shared/icons.js';
 import { fromApp } from '../shared/incoming.js';
 import { store } from '../shared/store.js';
@@ -60,6 +61,13 @@ function init(){
     });
   }
   $('#focusBtn').onclick = () => setBarHidden(!document.body.classList.contains('focus'));
+  $('#focusBtn').dataset.cmd = 'toolbar.hide';   // (the search box's Hide the toolbar / Show the toolbar: shortcuts.js)
+  commands.add([
+    { id: 'windows.closeAll', title: 'Close every window', sub: 'Every stream, chat and other window (Undo brings them back)', words: ['clear', 'close all'], icon: 'bin', button: '#clear',
+      disabled: () => !wins.length && 'Nothing open' },
+    { id: 'streams.tile', group: 'Layouts', kind: 'layout', title: 'Tile', sub: 'Every window gets equal space', words: ['grid', 'even'], icon: 'tile', button: '#tile', when: () => ROLE === 'streams' },
+    { id: 'streams.spotlight', group: 'Layouts', kind: 'layout', title: 'Spotlight', sub: 'The stream you last clicked big, the others beside it', icon: 'feat', button: '#spotBtn' }
+  ]);
   $('#reveal').addEventListener('mouseenter', peekBar);
   $('#reveal').addEventListener('mousemove', peekBar);   // the mouse may already be up there when the bar slides away
   document.querySelector('header').addEventListener('mouseleave', e => {

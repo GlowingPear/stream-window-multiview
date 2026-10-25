@@ -2,6 +2,7 @@ import { $, ROLE } from '../../core.js';
 import { appVersion, readDocText, showHelp } from '../help/help.js';
 import { openSettings, settingsDlg, settingsTab } from '../settings/settings.js';
 import { ago, downloadText, newerVersion, parseChangelog, percent, releaseDate } from './update-text.js';
+import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
@@ -99,7 +100,7 @@ function heroCard(u){
   if (u.state === 'ready' && u.blocked) acts.push(element('button', { class: 'btn primary upd-privacy', onclick: () => window.kmv.updatePrivacySettings() }, 'Open System Settings'));
   if (u.state === 'ready' && !u.needsInstall) acts.push(element('button', { class: 'btn upd-restart' + (u.blocked ? '' : ' primary'), html: icon.reload, onclick: restartForUpdate }, restartLabel(u)));
   if (u.state === 'ready' && u.blocked) acts.push(element('button', { class: 'btn upd-dmg', onclick: () => window.kmv.updateUseDmg() }, 'Use the disk image instead'));
-  acts.push(element('button', { class: 'btn upd-check', html: icon.reload, disabled: !u.repo || u.state === 'checking' || u.state === 'downloading', onclick: () => window.kmv.updateCheck() }, 'Check now'));
+  acts.push(element('button', { class: 'btn upd-check', html: icon.reload, dataset: { cmd: 'update.check' }, disabled: !u.repo || u.state === 'checking' || u.state === 'downloading', onclick: () => window.kmv.updateCheck() }, 'Check now'));
   let prog = null;
   if (u.state === 'downloading'){
     prog = element('div', 'upd-prog', element('div', 'upd-bar', element('i')), element('span', 'upd-pct'));
@@ -229,6 +230,16 @@ function init(){
     fromApp('onUpdateShow', () => openSettings('updates'));
     fromApp('onHelpShow', tab => showHelp(tab));
     $('#updChip').onclick = () => openSettings('updates');
+    // the search box's (Ctrl/⌘+K): what the Updates card's buttons do
+    commands.add([
+      { id: 'update.check', group: 'Updates', title: 'Check for updates', sub: () => updSt ? checkedText(updSt) : '', words: ['update', 'new version'], icon: 'reload',
+        disabled: () => (!updSt || !updSt.repo) ? 'Not available in this copy' : (updSt.state === 'checking' || updSt.state === 'downloading') && 'Checking already',
+        run: () => { window.kmv.updateCheck(); openSettings('updates'); } },
+      { id: 'update.install', group: 'Updates', title: 'Install the update', sub: () => updSt && updSt.latest ? 'Version ' + updSt.latest : '', words: ['download update'], icon: 'download',
+        when: () => !!updSt && updSt.state === 'available' && !updSt.git, run: () => window.kmv.updateInstall() },
+      { id: 'update.restart', group: 'Updates', title: 'Restart to update', icon: 'reload', when: () => !!updSt && updSt.state === 'ready' && !updSt.needsInstall, run: restartForUpdate },
+      { id: 'update.chip', group: 'Updates', title: 'Update', sub: 'Settings › Updates', icon: 'sparkle', button: '#updChip' }
+    ]);
     setInterval(() => { const w = settingsDlg.querySelector('.upd-host .upd-when'); if (w && updSt && !settingsDlg.hidden) w.textContent = checkedText(updSt); }, 30000);   // "Checked 4m ago" keeps up
     const dlg = $('#updNewsDlg');
     dlg.querySelector('.wn-ok').onclick = closeUpdated;

@@ -1,5 +1,6 @@
 import { $ } from '../core.js';
 import { kickUser, linkConnected, linkOn, linkReward, rewardShared, showReward } from '../platforms/pear-drops.js';
+import { commands } from '../shared/commands.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 
@@ -97,6 +98,7 @@ function init(){
   btn.querySelector('.dr-ic').innerHTML = chestSvg();
   ring = btn.querySelector('.dr-ring-value');
   btn.onclick = openReward;
+  commands.add({ id: 'peardrops.reward', group: 'Pear Drops', title: 'Daily reward: claim', sub: 'Kick\'s daily reward, in Pear Drops', words: ['chest', 'kick reward', 'pear drops'], icon: 'gift', button: '#rewardBtn' });
   store.watch('reward', render);
   // the left toolbar's words for a ready reward differ from the chip's on top
   new MutationObserver(render).observe(document.body, { attributes: true, attributeFilter: ['class'] });

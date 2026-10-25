@@ -4,9 +4,11 @@ import { $, ROLE, colsMode, lastLayout, wins } from '../../core.js';
 import { featBase, featuredCh } from '../../layout/layouts.js';
 import { mentMuted, mentOn } from '../bell/bell.js';
 import { infoFor } from '../channels/channels.js';
+import { openSettings } from '../settings/settings.js';
 import { linkConnected } from '../../platforms/pear-drops.js';
 import { PLAT_NAME, chLabel, platOf } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
+import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
@@ -74,7 +76,7 @@ async function renderDev(){
       element('span', 'dv-msg', (e.where ? e.where + ': ' : '') + e.msg), element('span', 'dv-cnt', e.n > 1 ? '×' + e.n : '')));
   } else {
     const bad = d.responses.filter(badAnswer), shown = dev.problems ? bad : d.responses;
-    const pick = (only, label) => element('button', { type: 'button', class: 'dv-f' + (dev.problems === only ? ' on' : ''), 'aria-pressed': String(dev.problems === only),
+    const pick = (only, label) => element('button', { type: 'button', class: 'dv-f' + (dev.problems === only ? ' on' : ''), 'aria-pressed': String(dev.problems === only), dataset: { cmd: only ? 'dev.problems' : 'dev.requests' },
       onclick: () => { dev.problems = only; renderDev(); } }, label);
     list.append(element('div', 'dv-filter', pick(false, `All (${d.responses.length})`), pick(true, `Errors only (${bad.length})`)));
     if (!d.responses.length) list.append(element('div', 'dv-empty', 'Nothing asked yet. Live checks, follows and profiles show here.'));
@@ -185,6 +187,15 @@ function init(){
   if (sw){
     sw.checked = devOn;
     sw.onchange = () => toggleDev(sw.checked);
+    // the search box's (Ctrl/⌘+K): Developer tools on or off is its Settings row (settings-commands.js); these are its buttons
+    commands.add([
+      { id: 'dev.copy', group: 'Developer', title: 'Copy diagnostics', sub: 'For a problem report: the version, your system, windows, settings, errors', words: ['report a problem', 'debug', 'bug'], icon: 'copy', button: '#devCopy', when: () => DESKTOP },
+      { id: 'dev.save', group: 'Developer', title: 'Save diagnostics as a file', words: ['report a problem', 'debug'], icon: 'download', button: '#devSave', when: () => DESKTOP },
+      ...[[false, 'dev.requests', 'Requests: all'], [true, 'dev.problems', 'Requests: errors only']].map(([only, id, title]) => ({ id, kind: 'tab', group: 'Developer', title,
+        sub: 'Settings › Developer › Requests', words: ['developer', 'responses'], icon: 'code', when: () => DESKTOP,
+        run: async () => { dev.problems = only; await openSettings('developer', { sub: 'responses' }); renderDev(); } })),
+      { id: 'dev.clear', group: 'Developer', title: 'Clear the errors and requests kept', icon: 'bin', button: '#devClear', when: () => DESKTOP }
+    ]);
     $('#devCopy').onclick = copyDiagnostics;
     $('#devSave').onclick = saveDiagnostics;
     $('#devClear').onclick = async () => { if (window.kmv.devClear) await window.kmv.devClear().catch(() => {}); renderDev(); flash('Cleared'); };
