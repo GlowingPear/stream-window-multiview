@@ -54,7 +54,7 @@ test('Recent\'s heading: Clear all asks first, in its place (Keep, Esc keep them
   assert.match(await heading(), /Recent\s*Clear all\s*Manage/);
   await page.click('#palList .pal-gbtn:text-is("Clear all")');
   assert.match(await heading(), /Forget all 4\?\s*Keep\s*Clear all/);
-  assert.match(await page.textContent('#palBg .pal-foot'), /↵\s*clear all\s*Esc\s*keep them/);
+  assert.match(await page.textContent('#palBg .pal-foot'), /↵\s*clear all\s*·\s*Esc\s*keep them/);
   assert.equal(await page.evaluate(() => document.activeElement.id), 'palQ', 'the keyboard stays in the box');
   await page.keyboard.press('Escape');
   assert.deepEqual(await recent(page), IDS, 'Esc keeps them');
