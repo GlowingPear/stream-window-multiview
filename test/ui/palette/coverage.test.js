@@ -11,7 +11,8 @@ const { openApp } = setup();
 const { check } = require('./coverage');
 
 test('every visible button and tab has a command in the search box, in every part of the app', async t => {
-  const page = await openApp(t);
+  // something remembered, so Settings › Search box lists it (each row with its ×) and the box shows Recent
+  const page = await openApp(t, { init: () => { try { localStorage.setItem('kickMultiview.palette', JSON.stringify({ recent: ['settings.general', 'settings.themes'], used: {} })); } catch {} } });
   const seen = new Map();
   await check(page, 'the welcome screen', seen);
   // the toolbar on top, its menus and panels

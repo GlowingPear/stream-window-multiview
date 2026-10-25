@@ -43,6 +43,7 @@
 <link rel="stylesheet" href="page/panels/channels/import.css">
 <link rel="stylesheet" href="page/panels/extensions/extensions.css">
 <link rel="stylesheet" href="page/panels/settings/layouts.css">
+<link rel="stylesheet" href="page/panels/settings/search-box.css">
 <link rel="stylesheet" href="page/panels/settings/monitors.css">
 <link rel="stylesheet" href="page/panels/channels/import-progress.css">
 <link rel="stylesheet" href="page/panels/channels/channels.css">
@@ -264,6 +265,7 @@
       <button data-s="layouts" class="main-only">Layouts</button>
       <button data-s="chat">Chat</button>
       <button data-s="themes">Themes</button>
+      <button data-s="search">Search box</button>
       <div class="st-rail-sec">Sites</div>
       <button data-s="accounts" class="desk-only">Accounts</button>
       <button data-s="apps" class="desk-only">Connected apps</button>
@@ -594,6 +596,16 @@
             <div class="th-warn" hidden></div>
             <div class="th-save"><input class="th-name" placeholder="Name your theme" maxlength="30" autocomplete="off" spellcheck="false"><button class="btn th-savebtn">Save theme</button></div>
           </div>
+        </div>
+      </section>
+      <section class="st-pane" data-s="search" hidden>
+        <h4>Search box</h4><p class="st-sub">Find and do anything from the keyboard: channels, windows, layouts, actions and settings. Open it with <b class="sb-k">Ctrl+K</b> or the toolbar's <b>Search</b> button.</p>
+        <label class="st-lead"><span class="st-t"><b>Search box</b><small>Off: no Search button in the toolbar, and <span class="sb-k">Ctrl+K</span> only tells you where to turn it back on.</small></span><input type="checkbox" class="st-sw" id="palOnSet" checked></label>
+        <div class="sb-rest">
+          <label class="st-row"><span class="st-t">Recent<small>What you ran lately comes first when the box is empty, and what you use most ranks higher.</small></span><input type="checkbox" class="st-sw" id="palRecentSet" checked></label>
+          <div class="sb-head"><span class="st-sec">Recent</span><span class="sb-n" id="sbCount"></span><span class="sb-acts" id="sbActs"></span></div>
+          <div class="sb-list" id="sbList" role="list" aria-label="Recent"></div>
+          <p class="sb-tip">In the search box, <span class="sb-keys"></span> removes the Recent row you're on.</p>
         </div>
       </section>
       <section class="st-pane" data-s="updates" hidden>

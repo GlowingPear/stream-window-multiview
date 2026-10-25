@@ -200,3 +200,53 @@ test('frecency: 12 × log2(1 + times run), halved for every 7 days since it was 
   commands.ran(g + 'b'); commands.ran(g + 'b');
   assert.equal(titles(commands.search('gnu'))[0], 'Gnu two');
 });
+
+test('forget: one out of Recent and how often it was run; forgetAll: all of it; each says so (the store\'s recent)', async () => {
+  const { store: topics } = await import('../../../../src/page/shared/store.js');
+  let told = 0; topics.watch('recent', () => told++);
+  commands.ran('a', 1); commands.ran('b', 2); commands.ran('c', 3);
+  assert.equal(told, 3, 'running one says so');
+  commands.forget('b');
+  assert.deepEqual(commands.recent(), ['c', 'a']);
+  assert.ok(!('b' in settings.json('palette').used), 'and how often it was run');
+  assert.ok('a' in settings.json('palette').used);
+  assert.equal(told, 4);
+  commands.forget('never there');
+  assert.deepEqual(commands.recent(), ['c', 'a']);
+  commands.forgetAll();
+  assert.deepEqual(commands.recent(), []);
+  assert.equal(commands.frecency('a'), 0);
+  assert.equal(store.has('kickMultiview.palette'), false);
+  assert.equal(told, 6);
+  commands.forget('a');   // nothing remembered: fine
+  assert.deepEqual(commands.recent(), []);
+});
+
+test('Recent off (Settings › Search box): nothing new is remembered and nothing counts; what was is kept for when it\'s on', () => {
+  const g = uid('off');
+  commands.provide(g, () => [{ id: g + 'a', title: 'Quagga one' }, { id: g + 'b', title: 'Quagga two' }]);
+  commands.ran(g + 'b'); commands.ran(g + 'b');
+  assert.equal(titles(commands.search('quagga'))[0], 'Quagga two');
+  settings.set('paletteRecent', false);
+  assert.deepEqual(commands.recent(), [], 'no Recent');
+  assert.deepEqual(commands.remembered(), [g + 'b'], 'still there for Settings');
+  assert.equal(commands.frecency(g + 'b'), 0);
+  assert.equal(titles(commands.search('quagga'))[0], 'Quagga one', 'what you used doesn\'t rank higher');
+  commands.ran(g + 'a');
+  assert.deepEqual(commands.remembered(), [g + 'b'], 'nothing new');
+  settings.set('paletteRecent', true);
+  assert.deepEqual(commands.recent(), [g + 'b'], 'back when it\'s on');
+  assert.equal(titles(commands.search('quagga'))[0], 'Quagga two');
+});
+
+test('noRecent: running it isn\'t remembered (Clear Recent); remembered() reads a damaged setting as empty', () => {
+  const id = uid('nr');
+  commands.add({ id, title: 'Forgetful', noRecent: true, run: () => {} });
+  assert.equal(commands.run(id), '');
+  assert.deepEqual(commands.recent(), []);
+  store.set('kickMultiview.palette', '{"recent":5}');
+  assert.deepEqual(commands.remembered(), []);
+  store.set('kickMultiview.palette', 'null');
+  assert.deepEqual(commands.remembered(), []);
+  commands.forget(id);
+});

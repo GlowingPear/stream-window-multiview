@@ -1,5 +1,6 @@
 import { fuzzy } from './fuzzy.js';
 import { settings } from './settings.js';
+import { store } from './store.js';
 
 // Everything the search box (Ctrl/⌘+K, palette/palette.js) can find and do. Each part of the app registers its own
 // in its init(), so the box never needs to know the parts:
@@ -17,8 +18,10 @@ import { settings } from './settings.js';
 // boost (a number added to its score: the window you last clicked, live, open…), keep (shown even when nothing
 // is typed: the empty box's lists), matched (a provider's own score, for an item that matched in ways the name
 // doesn't show: a guide page that mentions the words), fallback (only when nothing else is found), text (more words
-// to find it by, as its second line counts), onlyScope (only with that prefix: the keyboard shortcuts with ?).
-// What you run is remembered (the 'palette' setting): the empty box's Recent, and used items rank higher (frecency).
+// to find it by, as its second line counts), onlyScope (only with that prefix: the keyboard shortcuts with ?),
+// stay (the box stays open after it runs: Clear Recent asks there), noRecent (not remembered when it runs).
+// What you run is remembered (the 'palette' setting): the empty box's Recent, and used items rank higher (frecency),
+// unless Settings › Search box › Recent is off (the 'paletteRecent' setting). forget(id) and forgetAll() take it back.
 // Nothing here touches the page, except a command's button: add() marks it (data-cmd="<id>", for the test that every
 // button has a command) and run() clicks it.
 
@@ -72,12 +75,15 @@ function findCommand(id){
 }
 
 /* ---- what you ran: Recent, and how often (frecency) ---- */
+// Settings › Search box › Recent: off, nothing is remembered and nothing remembered counts (it's kept, for when it's on)
+const cmdRemembers = () => settings.flag('paletteRecent', true);
 function cmdMemory(){
+  if (!cmdRemembers()) return { recent: [], used: {} };
   const m = settings.json('palette', {});
   return { recent: Array.isArray(m.recent) ? m.recent.filter(x => typeof x === 'string') : [], used: m.used && typeof m.used === 'object' ? m.used : {} };
 }
 function cmdRan(id, now = Date.now()){
-  if (!id) return;
+  if (!id || !cmdRemembers()) return;
   const m = cmdMemory();
   m.recent = [id, ...m.recent.filter(x => x !== id)].slice(0, CMD_RECENT);
   const u = m.used[id] || { n: 0, t: 0 };
@@ -85,6 +91,20 @@ function cmdRan(id, now = Date.now()){
   const keep = Object.entries(m.used).sort((a, b) => b[1].t - a[1].t).slice(0, CMD_USED);
   m.used = Object.fromEntries(keep);
   settings.set('palette', m);
+  store.changed('recent');
+}
+// Removing one from what you ran (Recent, and how often), and all of it: Settings › Search box and the empty box
+function cmdForget(id){
+  const m = settings.json('palette', {});
+  if (!m || typeof m !== 'object') return;
+  if (Array.isArray(m.recent)) m.recent = m.recent.filter(x => x !== id);
+  if (m.used && typeof m.used === 'object') delete m.used[id];
+  settings.set('palette', m);
+  store.changed('recent');
+}
+function cmdForgetAll(){
+  settings.remove('palette');
+  store.changed('recent');
 }
 // 12 × log2(1 + times run), halved for every 7 days since it was last run
 function cmdFrecency(id, now = Date.now(), m = cmdMemory()){
@@ -93,6 +113,11 @@ function cmdFrecency(id, now = Date.now(), m = cmdMemory()){
   return 12 * Math.log2(1 + u.n) * Math.pow(0.5, Math.max(0, now - (+u.t || 0)) / (7 * CMD_DAY));
 }
 const cmdRecent = () => cmdMemory().recent;
+// Everything remembered, newest first, also while Recent is off (Settings › Search box lists it, for when it's back on)
+function cmdRemembered(){
+  const m = settings.json('palette', {});
+  return m && Array.isArray(m.recent) ? m.recent.filter(x => typeof x === 'string') : [];
+}
 
 /* ---- searching ---- */
 // What's typed, split into its prefix (>, @, # or ?) and the words: { scope, q }
@@ -206,9 +231,9 @@ function runCommand(itemOrId, how = 'run'){
   if (typeof how === 'number'){
     const b = (cmdVal(it.buttons) || [])[how];
     if (!b) return 'Not available here';
-    cmdRan(it.id); b.run(); return '';
+    if (!it.noRecent) cmdRan(it.id); b.run(); return '';
   }
-  cmdRan(it.id);
+  if (!it.noRecent) cmdRan(it.id);
   if (how === 'alt' && it.alt){ it.alt(); return ''; }
   if (it.toggle){ it.toggle.set(!it.toggle.get()); return ''; }
   if (it.button){ const b = typeof it.button === 'string' ? document.querySelector(it.button) : cmdVal(it.button); if (!b) return 'Not available here'; b.click(); return ''; }
@@ -216,7 +241,7 @@ function runCommand(itemOrId, how = 'run'){
   return '';
 }
 
-const commands = { add: addCommands, remove: removeCommand, provide: provideCommands, fromControls, markControls, all: allCommands, find: findCommand, ran: cmdRan, recent: cmdRecent,
+const commands = { add: addCommands, remove: removeCommand, provide: provideCommands, fromControls, markControls, all: allCommands, find: findCommand, ran: cmdRan, recent: cmdRecent, remembered: cmdRemembered, forget: cmdForget, forgetAll: cmdForgetAll,
   frecency: cmdFrecency, search: searchCommands, fallbacks: cmdFallbacks, grouped: cmdGrouped, run: runCommand, parse: parseQuery, disabledWhy: cmdWhy, SCOPES: CMD_SCOPES };
 
 export { commands };

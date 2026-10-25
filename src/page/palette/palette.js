@@ -1,10 +1,12 @@
+import { openSettings } from '../panels/settings/settings.js';
 import { platIcon } from '../platforms/platforms.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
 import { IS_MAC, keyName } from '../shared/env.js';
-import { flashKeys } from '../shared/flash.js';
+import { flash, flashKeys } from '../shared/flash.js';
 import { icon } from '../shared/icons.js';
 import { fromApp } from '../shared/incoming.js';
+import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 
 /* ---- The search box: Ctrl/⌘+K anywhere (in a chat or stream too: main.js sends it), type a few letters, Enter ----
@@ -16,7 +18,8 @@ import { store } from '../shared/store.js';
    Tab / ⇧Tab forward and back: the big row's next / previous button, a name typed's next / previous site, the other
    column, else the next / previous row (Tab on a row with a list of its own opens it; so do More… and Enter) ·
    Enter runs · ⇧Enter the second choice · Ctrl/⌘+1–9 a button or row · Esc steps back (a row's list, the words,
-   then the box). As Pear Drops' box.
+   then the box) · Del or ⌘⌫ / Ctrl+⌫ removes the Recent row you're on (plain ⌫ never does). As Pear Drops' box.
+   Settings › Search box (panels/settings/search-box.js) turns the box off (palOn) and lists what it remembers.
    Prefixes: > actions · @ channels and windows · # Settings · ? help.
    How a row is drawn comes from its item: sub (text, or parts: 'text', { b: 'bold', t: ' after' }, nodes), live and
    viewers, tags and pills, chip, keys, side (a hint that always shows), sites (K / T / Y chips: pickSite, nextSite, prevSite),
@@ -28,7 +31,9 @@ let palSel = 0, palBtnAt = 0;          // the selected row, and the selected but
 let palStack = [];                // Tab: [{ item, text, sel }] — the rows the list was showing before
 let palBack = null;               // where the keyboard was before the box opened
 let palWhy = '';                  // why the last thing couldn't run (shown in the footer)
+let palForgetting = false;        // Recent's Clear all asking first, in its heading: Enter clears, Esc keeps them
 const PAL_MOD = IS_MAC ? '⌘' : 'Ctrl+';
+const PAL_FORGET_KEY = IS_MAC ? '⌘⌫' : 'Del';
 const PAL_NOUN = { '>': 'action', '@': 'channel', '#': 'setting' };   // the count says "9 actions" with a prefix
 const palOpen = () => !!palBg && !palBg.hidden;
 const palVal = v => { try { return typeof v === 'function' ? v() : v; } catch { return null; } };
@@ -37,7 +42,7 @@ function openPalette(text = ''){
   if (!palBg) return;
   if (!palOpen()) palBack = document.activeElement;
   palBg.hidden = false;
-  palStack = []; palWhy = '';
+  palStack = []; palWhy = ''; palForgetting = false;
   setPalScope('');
   palQ.value = text;
   palPrefix();
@@ -53,7 +58,13 @@ function closePalette(restore){
   else if (palBox.contains(document.activeElement)) document.activeElement.blur();
   palBack = null;
 }
-const togglePalette = () => { if (palOpen()) closePalette(true); else openPalette(); };
+// Settings › Search box: off, there's no Search button and Ctrl/⌘+K only says where to turn it back on
+const palOn = () => settings.flag('paletteOn', true);
+const togglePalette = () => {
+  if (palOpen()) closePalette(true);
+  else if (palOn()) openPalette();
+  else flash('The search box is off. Turn it on in Settings › Search box');
+};
 function setPalScope(s){
   palScope = s;
   palChip.hidden = !s;
@@ -101,7 +112,7 @@ function palEmptyRows(){
   for (const id of commands.recent()){
     if (out.length >= 5) break;
     const it = commands.find(id);
-    if (it && !commands.disabledWhy(it)) out.push({ item: { ...it, group: 'Recent', groupNote: '' }, marks: [] });
+    if (it && !commands.disabledWhy(it)) out.push({ item: { ...it, group: 'Recent', groupNote: '' }, marks: [], recent: true });
   }
   const order = ['For this window', 'Live now'], at = r => (order.indexOf(r.item.group) + 1) || order.length + 1;
   for (const r of commands.search('', { keep: true }).sort((a, b) => at(a) - at(b))) if (!out.some(o => o.item.id === r.item.id)) out.push(r);
@@ -165,6 +176,11 @@ function palRight(it, sel){
   if (it.side) return element('span', 'pal-go always', element('kbd', null, '↵'), ' ' + it.side);
   return element('span', 'pal-go' + (sel ? ' on' : ''), element('kbd', null, '↵'), ' ' + (it.verb || 'Open'));
 }
+// A row's picture and its name and second line, as the box draws them (Settings › Search box lists Recent with them)
+function palItemFace(it){
+  const sub = palParts(palVal(it.sub));
+  return [palTile(it, false), element('span', 'pal-txt', element('span', 'pal-line', element('span', 'pal-t', it.title)), sub.length ? element('span', 'pal-sub', ...sub) : null)];
+}
 function palRowEl(r, i){
   const it = r.item, off = commands.disabledWhy(it), hero = !!r.hero;
   const sub = palParts(palVal(hero && it.heroSub ? it.heroSub : it.sub));
@@ -174,7 +190,9 @@ function palRowEl(r, i){
   const subEl = (sub.length || (it.live && !hero)) && element('span', 'pal-sub', !hero && it.live && palLivePill(), ...sub);
   const el = element('div', { class: 'pal-row' + (hero ? ' hero' : '') + (off ? ' off' : '') + (i === palSel ? ' on' : ''), id: 'palRow' + i,
     role: 'option', 'aria-selected': String(i === palSel), 'aria-disabled': off ? 'true' : null, title: off || null, dataset: { id: it.id } },
-    palTile(it, hero), element('span', 'pal-txt', line, subEl), !hero && palRight(it, i === palSel));
+    palTile(it, hero), element('span', 'pal-txt', line, subEl), !hero && palRight(it, i === palSel),
+    r.recent && element('button', { type: 'button', tabIndex: -1, class: 'pal-forget', title: `Remove from Recent (${PAL_FORGET_KEY})`, 'aria-label': 'Remove from Recent',
+      html: icon.close, onclick: e => { e.stopPropagation(); palForget(i); } }));
   el.onpointermove = () => { if (palSel !== i){ palSel = i; palBtnAt = 0; palPaintSel(); } };
   el.onclick = e => { if (!e.target.closest('.pal-btn, .pal-site')){ palSel = i; palRun(i, e.shiftKey ? 'alt' : 'run'); } };
   if (hero && it.buttons){
@@ -220,7 +238,8 @@ function renderPalette(){
       group = r.item.group;
       block = element('div', { class: 'pal-grp', role: 'presentation' });
       const n = palRows.filter(x => !x.hero && x.item.group === group).length;
-      if (!none) block.append(element('div', { class: 'pal-g', role: 'presentation' }, element('span', null, group), r.item.groupNote ? element('em', null, r.item.groupNote) : n > 1 && !top && element('em', null, String(n))));
+      if (!none) block.append(element('div', { class: 'pal-g', role: 'presentation' }, element('span', null, group),
+        r.recent ? palRecentHead() : r.item.groupNote ? element('em', null, r.item.groupNote) : n > 1 && !top && element('em', null, String(n))));
       if (n > 8) block.classList.add('long');
       (split ? cols[r.item.col ? 1 : 0] : palList).append(block);
     }
@@ -249,6 +268,8 @@ function palPaintFoot(){
   palFoot.replaceChildren(element('span', 'pal-keyhelp', k(['↑', '↓'], 'move'), k('↵', 'run'), k('Esc', palStack.length ? 'back' : 'close')));
   let right;
   if (palWhy) right = element('span', 'pal-why', palWhy);
+  else if (palForgetting) right = element('span', 'pal-fks', k('↵', 'clear all'), element('i', 'pal-dot', '·'), k('Esc', 'keep them'));
+  else if (r && r.recent) right = k(IS_MAC ? ['⌘', '⌫'] : 'Del', 'remove from Recent');
   else if (palStack.length && palList.classList.contains('split')) right = element('span', 'pal-fks', k(['Tab', '⇧Tab'], 'other column'), element('i', 'pal-dot', '·'), k('Esc', 'back to results'));
   else if (palStack.length) right = k('Esc', 'back to results');
   else if (r && r.hero && it.buttons && it.sites) right = element('span', 'pal-fks', k(['←', '→'], 'pick an action'), element('i', 'pal-dot', '·'), k(['Tab', '⇧Tab'], 'next / previous site'));
@@ -273,7 +294,7 @@ function palRun(i, how){
   if (how === 'alt' && !it.alt){ if (it.more) return palPush(it); how = 'run'; }
   palWhy = commands.run(it, how);
   if (palWhy){ palPaintFoot(); return; }
-  if (it.toggle && how === 'run'){ renderPalette(); return; }    // a switch flips where it is
+  if ((it.toggle && how === 'run') || it.stay){ renderPalette(); return; }    // a switch flips where it is (and Clear Recent asks there)
   closePalette(false);
   // a layout: what happened, and how to undo it or come back
   if (it.kind === 'layout' && how === 'run' && !it.fallback) flashKeys(`Switched to ${it.title}`, [[PAL_MOD.replace('+', '') + 'Z', 'undo'], [PAL_MOD.replace('+', '') + 'K', 'again']]);
@@ -282,6 +303,31 @@ function palPush(it){
   palStack.push({ item: it, text: palQ.value, sel: palSel });
   palQ.value = ''; palSel = 0; palBtnAt = 0; palWhy = '';
   renderPalette();
+}
+// A Recent row taken out of what's remembered (its ×, Del, ⌘⌫): the next row takes its place
+function palForget(i){
+  const r = palRows[i]; if (!r || !r.recent) return;
+  commands.forget(r.item.id);
+  palSel = i; palBtnAt = 0; palWhy = '';
+  renderPalette();
+}
+// Recent's heading: Clear all (asking first, here) and Manage (Settings › Search box)
+function palRecentHead(){
+  if (palForgetting){
+    const n = commands.recent().length;
+    return element('span', 'pal-gacts', element('b', 'pal-gask', `Forget all ${n}?`),
+      element('button', { type: 'button', tabIndex: -1, class: 'pal-gbtn', onclick: () => { palForgetting = false; renderPalette(); palQ.focus(); } }, 'Keep'),
+      element('button', { type: 'button', tabIndex: -1, class: 'pal-gbtn danger', onclick: () => { commands.forgetAll(); palForgetting = false; renderPalette(); palQ.focus(); } },
+        element('i', { html: icon.bin }), 'Clear all'));
+  }
+  return element('span', 'pal-gacts',
+    element('button', { type: 'button', tabIndex: -1, class: 'pal-gbtn', dataset: { cmd: 'palette.clearRecent' }, onclick: () => { palForgetting = true; renderPalette(); palQ.focus(); } }, 'Clear all'),
+    element('button', { type: 'button', tabIndex: -1, class: 'pal-gbtn acc', dataset: { cmd: 'settings.search' }, onclick: () => { closePalette(false); openSettings('search'); } }, 'Manage'));
+}
+// The toolbar's Search button, there while the box is on
+function palShowButton(){
+  const pb = document.querySelector('#palBtn');
+  if (pb) pb.hidden = !palOn();
 }
 function palPop(){
   const top = palStack.pop(); if (!top) return false;
@@ -311,6 +357,14 @@ function palAcross(d){
 }
 function palKey(e){
   const k = e.key, mod = e.metaKey || e.ctrlKey, r = palRows[palSel];
+  // Recent's Clear all asking: Enter clears, Esc (or anything else but moving) keeps them
+  if (palForgetting && (k === 'Enter' || k === 'Escape')){
+    e.preventDefault(); e.stopPropagation();
+    if (k === 'Enter') commands.forgetAll();
+    palForgetting = false; renderPalette(); return;
+  }
+  // a Recent row: Del, or ⌘⌫ / Ctrl+⌫ (a Mac has no Del without fn), removes it; plain ⌫ never does
+  if (r && r.recent && (k === 'Delete' || (k === 'Backspace' && mod && !e.altKey))){ e.preventDefault(); e.stopPropagation(); palForget(palSel); return; }
   if (k === 'ArrowDown' || (e.ctrlKey && !e.metaKey && k.toLowerCase() === 'n')){ e.preventDefault(); palMove(1); }
   else if (k === 'ArrowUp' || (e.ctrlKey && !e.metaKey && k.toLowerCase() === 'p')){ e.preventDefault(); palMove(-1); }
   else if ((k === 'ArrowLeft' || k === 'ArrowRight') && r && r.hero && r.item.buttons){
@@ -370,7 +424,7 @@ function init(){
   palBg = element('div', { id: 'palBg', class: 'pal-bg', hidden: true }, palBox);
   document.body.append(palBg);
   palBg.addEventListener('pointerdown', e => { if (e.target === palBg) closePalette(true); });
-  palQ.addEventListener('input', () => { palWhy = ''; palSel = 0; palBtnAt = 0; palPrefix(); renderPalette(); });
+  palQ.addEventListener('input', () => { palWhy = ''; palForgetting = false; palSel = 0; palBtnAt = 0; palPrefix(); renderPalette(); });
   palQ.addEventListener('keydown', palKey);
   palBox.addEventListener('keydown', e => { if (e.target !== palQ && (e.key === 'Escape' || e.key === 'Tab')){ palQ.focus(); palKey(e); } });
   // focus stays in the box: a click on its rows or headings leaves the keyboard in the words box
@@ -384,15 +438,23 @@ function init(){
   fromApp('onPaletteOpen', () => togglePalette());
   const pb = document.querySelector('#palBtn');
   if (pb){
-    pb.hidden = false;
+    palShowButton();
     pb.querySelector('.pal-kk').textContent = IS_MAC ? '⌘K' : 'Ctrl K';
     pb.title = 'Find and do anything: channels, windows, actions and settings';
     pb.dataset.keys = IS_MAC ? '⌘K' : 'Ctrl K';      // (its tooltip shows them as a key)
     pb.onclick = () => togglePalette();
   }
+  // Settings › Search box: the box on or off, and what it remembers (also from the other window)
+  store.watch('recent', () => { palShowButton(); if (palOpen() && !palOn()) closePalette(false); });
+  settings.onChange(['palette', 'paletteOn', 'paletteRecent'], () => store.changed('recent'));
+  // Clear Recent: asks in the empty box (Enter clears, Esc keeps them); it isn't remembered itself
+  commands.add({ id: 'palette.clearRecent', kind: 'action', group: 'Search box', title: 'Clear Recent', icon: 'bin', stay: true, noRecent: true,
+    sub: 'Forget what the search box remembers you ran, and how often', words: ['clear recent', 'search history', 'forget', 'clear all'],
+    disabled: () => !commands.recent().length && 'Nothing to clear',
+    run: () => { palQ.value = ''; setPalScope(''); palStack = []; palSel = 0; palForgetting = true; } });
   // an open box keeps up with what it lists
-  store.watch(['wins', 'saved', 'live', 'names', 'notes', 'layout', 'autoOpen', 'liveAlerts', 'dev', 'link', 'reward', 'palette'], () => { if (palOpen() && !palStack.length) renderPalette(); });
+  store.watch(['wins', 'saved', 'live', 'names', 'notes', 'layout', 'autoOpen', 'liveAlerts', 'dev', 'link', 'reward', 'palette', 'recent'], () => { if (palOpen() && !palStack.length) renderPalette(); });
   window.palette = { open: openPalette, close: closePalette, toggle: togglePalette, isOpen: palOpen, rows: () => palRows.map(r => ({ id: r.item.id, title: r.item.title, group: r.item.group, hero: !!r.hero })) };   // for the tests
 }
 
-export { init };
+export { init, palItemFace };
