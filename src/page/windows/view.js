@@ -3,15 +3,34 @@
 // another window, or a plain frame in a browser) is ignored the same way everywhere, and a browser version of
 // the app would only need to replace this file. Nothing here touches the rest of the page.
 
+// A page still loading: a script waits until it has loaded. Electron's executeJavaScript would wait by itself, but
+// with a listener of its own for every call, and a chat asked every second or two while it loads piles them up
+// (Node's "MaxListenersExceededWarning: 11 did-stop-loading listeners"). So every call waits on one listener per
+// load, and then runs on a loaded page. null: it has loaded, run now.
+const loading = new WeakMap();   // view -> the promise of its current load
+function whenLoaded(view){
+  let busy = false;
+  try { busy = !view.getURL() || (view.isLoadingMainFrame ? view.isLoadingMainFrame() : view.isLoading()); } catch { return null; }
+  if (!busy || !view.addEventListener) return null;
+  let p = loading.get(view);
+  if (!p){
+    p = new Promise(done => view.addEventListener('did-stop-loading', () => { loading.delete(view); done(); }, { once: true }));
+    loading.set(view, p);
+  }
+  return p;
+}
+const runNow = (view, js) => { try { return view.executeJavaScript(js); } catch (e) { return Promise.reject(e); } };
 // Runs a script in the view's page, for its effect: never fails.
 function runIn(view, js){
   if (!view || !view.executeJavaScript) return Promise.resolve();
-  try { return view.executeJavaScript(js).catch(() => {}); } catch { return Promise.resolve(); }
+  const w = whenLoaded(view);
+  return (w ? w.then(() => runNow(view, js)) : runNow(view, js)).catch(() => {});
 }
 // Runs a script in the view's page for its result: fails when the page can't run it (the caller decides).
 function askIn(view, js){
   if (!view || !view.executeJavaScript) return Promise.reject(new Error('no view'));
-  try { return view.executeJavaScript(js); } catch (e) { return Promise.reject(e); }
+  const w = whenLoaded(view);
+  return w ? w.then(() => runNow(view, js)) : runNow(view, js);
 }
 function addCss(view, css){
   try { return Promise.resolve(view.insertCSS(css)).catch(() => {}); } catch { return Promise.resolve(); }
