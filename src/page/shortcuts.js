@@ -134,7 +134,7 @@ function init(){
     settings.onChange(['arrowSound'], () => { snd.checked = soundFollows(); });
   }
   addShortcutCommands();
-  $('#savedBtn').dataset.cmd = 'channels.open'; $('#layoutLock').dataset.cmd = 'layout.lock';
+  $('#savedBtn').dataset.cmd = 'channels.open'; $('#layoutLock').dataset.cmd = 'layout.lock'; $('#capBtn').dataset.cmd = 'capture.pick';
   document.querySelectorAll('#colNav [data-d]').forEach(b => { b.dataset.cmd = +b.dataset.d > 0 ? 'streams.next' : 'streams.prev'; });
   window.stepStream = stepStream; window.bigStream = () => { const s = bigStream(); return s && s.channel; };   // for the tests
   window.mutedStreams = () => wins.filter(w => w.kind === 'stream' && w.muted).map(w => w.channel).sort();   // for the tests

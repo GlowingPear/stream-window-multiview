@@ -1,39 +1,13 @@
 // Every button in the app that does something is also in the search box (Ctrl/⌘+K, #184): it carries the id of
 // its command (data-cmd), or sits in a part whose controls are all commands as they show (data-cmds: Game focus's
 // bar, the switch control's head…). Each part of the app is opened in turn, and any visible button or tab without
-// one fails, unless it's on the short list below, each with why.
+// one fails, unless it's on the short list in coverage.js, each with why. (The desktop app's own parts: in
+// test/launch/palette/coverage.test.js.)
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { setup, add } = require('../app');
 const { openApp } = setup();
-
-const ALLOWED = [
-  ['#palBg button, #palBtn', 'the search box itself, and its own button'],
-  ['.help-x, .dlg-cancel, .dlg-ok, #askDlg button, .tip-ok', 'closing or answering a dialog'],
-  ['#moreBtn, #spMore, [data-a=more], #barMenu button', 'a "more" menu: what\'s in it are commands of their own'],
-  ['.st-chips button, .pf-tag button', 'a chip\'s ×: removing one word, bot or tag from a list'],
-  ['.sv, .sv button, .pf-card, .ly-item, .mp-row, .mp-row button, .th-item button, .es-live button, .lm-grid button', 'rows of a list: the channels, layouts and notifications are results of their own'],
-  ['.gd-toc button, .gd-r, [data-topic], .gd-q, [data-help], [data-go], .gd-chip', 'a link to a page of Settings or the guide (each page is a command)'],
-  ['#tourLayer button', 'the tour\'s Next, Back and End'],
-  ['.es-go, #spOpen, #spOpenSave, #spPlat button, .es-plat button', 'a box\'s own Open, for what\'s typed in it (the search box opens anything typed too)'],
-  ['.st-play, .st-reveal, [data-play], #emoteExample', 'playing a sound, an example or showing hidden words, right where the option is'],
-  ['.es-show', 'the welcome screen\'s "Show me": pointing at where a feature is (each feature is a command, and its guide page)'],
-  ['.ly-use, #presetSave, #lyPresetSave', 'Use and Save in the layouts\' own lists'],
-  ['.th-savebtn', 'Save theme: the search box\'s Save theme as "…" takes the name typed'],
-  ['.lm-sw button, .ly-cards button, .seg button', 'a choice inside an option whose own row is a command']
-];
-
-// The visible buttons and tabs without a command, by what they say
-const uncovered = page => page.evaluate(allowed => {
-  const ok = b => !!b.closest('[data-cmd], [data-cmds]') || allowed.some(([sel]) => b.matches(sel));
-  return [...document.querySelectorAll('button, [role=tab]')]
-    .filter(b => b.checkVisibility() && !b.disabled && !ok(b))
-    .map(b => `${b.id ? '#' + b.id : ''}.${[...b.classList].join('.')} “${(b.getAttribute('aria-label') || b.textContent || b.title || '').trim().slice(0, 40)}” in ${(b.closest('[id]') || {}).id || '?'}`);
-}, ALLOWED);
-// each one once, with the first part it showed in
-async function check(page, part, seen){
-  for (const u of await uncovered(page)) if (!seen.has(u)) seen.set(u, part);
-}
+const { check } = require('./coverage');
 
 test('every visible button and tab has a command in the search box, in every part of the app', async t => {
   const page = await openApp(t);

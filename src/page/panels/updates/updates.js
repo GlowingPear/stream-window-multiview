@@ -100,7 +100,7 @@ function heroCard(u){
   if (u.state === 'ready' && u.blocked) acts.push(element('button', { class: 'btn primary upd-privacy', onclick: () => window.kmv.updatePrivacySettings() }, 'Open System Settings'));
   if (u.state === 'ready' && !u.needsInstall) acts.push(element('button', { class: 'btn upd-restart' + (u.blocked ? '' : ' primary'), html: icon.reload, onclick: restartForUpdate }, restartLabel(u)));
   if (u.state === 'ready' && u.blocked) acts.push(element('button', { class: 'btn upd-dmg', onclick: () => window.kmv.updateUseDmg() }, 'Use the disk image instead'));
-  acts.push(element('button', { class: 'btn upd-check', html: icon.reload, disabled: !u.repo || u.state === 'checking' || u.state === 'downloading', onclick: () => window.kmv.updateCheck() }, 'Check now'));
+  acts.push(element('button', { class: 'btn upd-check', html: icon.reload, dataset: { cmd: 'update.check' }, disabled: !u.repo || u.state === 'checking' || u.state === 'downloading', onclick: () => window.kmv.updateCheck() }, 'Check now'));
   let prog = null;
   if (u.state === 'downloading'){
     prog = element('div', 'upd-prog', element('div', 'upd-bar', element('i')), element('span', 'upd-pct'));

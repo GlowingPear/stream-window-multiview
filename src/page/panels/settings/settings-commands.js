@@ -37,8 +37,8 @@ function stItems(){
         icon: 'gear', run: () => openSettings(s, { sub: t.dataset.t }) });
     });
     if (s === 'guide' || s === 'keys') continue;
-    pane.querySelectorAll('.st-row, .ca-row').forEach((row, i) => {
-      const t = row.querySelector('.st-t'); if (!t || stRowOff(row, pane)) return;
+    pane.querySelectorAll('.st-row, .ca-row, .st-head').forEach(row => {
+      const t = row.classList.contains('st-head') ? row : row.querySelector('.st-t'); if (!t || stRowOff(row, pane)) return;
       const title = textOf(t); if (!title) return;
       const small = (t.querySelector('small') || {}).textContent || '', sub = subOf(row);
       const where = `Settings › ${name}` + (sub ? ' › ' + (pane.querySelector(`.st-tabs button[data-t="${sub.dataset.t}"]`)?.textContent.replace(/\s+\d+$/, '').trim() || '') : '');
@@ -49,8 +49,18 @@ function stItems(){
       const it = { id: `setting.${s}.${row.id || sw?.id || title}`, kind: 'setting', group: 'Settings', title, sub: where + (small ? ' · ' + small.trim() : ''), words: [name],
         icon: 'sliders', alt: show, altLabel: 'its page', disabled: () => (sw && sw.disabled && 'Not available right now') || '' };
       if (sw) it.toggle = { get: () => sw.checked, set: () => { sw.click(); } };
-      else if (!inputs.length && buttons.length === 1){ it.run = () => { closeSettings(); buttons[0].click(); }; it.verb = buttons[0].textContent.trim() || 'Run'; it.alt = show; buttons[0].dataset.cmd ||= it.id; }
-      else { it.run = show; it.verb = 'Show'; delete it.alt; }
+      else if (!inputs.length && buttons.length === 1 && !row.classList.contains('st-head')){ it.run = () => { closeSettings(); buttons[0].click(); }; it.verb = buttons[0].textContent.trim() || 'Run'; it.alt = show; buttons[0].dataset.cmd ||= it.id; }
+      else {
+        it.run = show; it.verb = 'Show'; delete it.alt;
+        // each of its buttons (a row with a box, or more than one button: Send a test, Open system settings)
+        for (const b of buttons) if (!b.matches('.st-play, [data-play], [data-addbtn]')){
+          const bt = (b.textContent || b.title).replace(/\s+/g, ' ').trim(), bid = `${it.id}:${b.className || bt}`;
+          b.dataset.cmd ||= bid;
+          out.push({ id: bid, kind: 'setting', group: 'Settings', title: `${title}: ${bt}`, sub: where + (b.title ? ' · ' + b.title : ''), words: [name], icon: 'sliders',
+            disabled: () => b.disabled && 'Not available right now', run: () => b.click(), alt: show, altLabel: 'its page' });
+        }
+      }
+      if (row.classList.contains('st-head') && !buttons.length) return;     // (a heading: only for its buttons)
       out.push(it);
     });
   }

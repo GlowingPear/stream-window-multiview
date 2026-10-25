@@ -5,10 +5,12 @@ import { $, ROLE, wins } from '../../core.js';
 import { pushMyName } from '../bell/all-notifications.js';
 import { dropNotes, mentOn, notes, timeAgo } from '../bell/bell.js';
 import { syncLiveAlerts } from './notifications.js';
-import { closeSettings, settingsDlg } from './settings.js';
+import { closeSettings, openSettings, settingsDlg } from './settings.js';
 import { chLabelP } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
+import { commands } from '../../shared/commands.js';
 import { element, esc } from '../../shared/element.js';
+import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
@@ -269,6 +271,22 @@ function init(){
   settingsDlg.querySelectorAll('[data-hide]').forEach(b => { b.onclick = () => showList(b.dataset.hide, false); });
 
   $('#spamTryBtn').onclick = trySpam;
+  // the search box's: each of Spam alerts' lists (opened on it), and its Reset
+  const listsPane = async l => { await openSettings('spam', { sub: 'lists' }); $(`#spamListPick [data-l="${l}"]`)?.click(); };
+  document.querySelectorAll('#spamListPick .ly-item[data-l]').forEach(b => {
+    const l = b.dataset.l, name = b.querySelector('span').textContent.trim(), reset = $(`#settingsDlg .ly-panel[data-l="${l}"] [data-reset]`);
+    b.dataset.cmd = 'spam.list.' + l;
+    commands.add({ id: 'spam.list.' + l, kind: 'tab', group: 'Settings', title: name, sub: 'Settings › Spam alerts › Lists', words: ['spam list'], icon: 'mod',
+      when: () => DESKTOP && ROLE === 'main', run: () => listsPane(l) });
+    if (reset){
+      reset.dataset.cmd = 'spam.reset.' + l;
+      commands.add({ id: 'spam.reset.' + l, kind: 'setting', group: 'Settings', title: `${name}: Reset`, sub: 'Back to the list the app came with (Settings › Spam alerts › Lists)', icon: 'mod',
+        when: () => DESKTOP && ROLE === 'main', run: async () => { await listsPane(l); reset.click(); } });
+    }
+  });
+  // the search box's (when nothing else is found): the words typed, checked as Spam alerts › Try it does
+  commands.provide('spam.try', q => q && DESKTOP && ROLE === 'main' ? [{ id: 'spam.try', kind: 'setting', fallback: true, group: 'Nothing found', title: `Check “${q}” for spam`,
+    sub: 'Settings › Spam alerts › Try it', icon: 'mod', run: async () => { await openSettings('spam', { sub: 'try' }); $('#spamTry').value = q; trySpam(); } }] : []);
   buildScoring();
   $('#spamPointsReset').onclick = resetPoints;
 

@@ -149,7 +149,8 @@ function cmdGrouped(results){
 
 /* ---- a part's controls, as they are on screen ----
    fromControls('#gameBar', { group: 'Game focus' }): every button, switch and dropdown choice showing in it is a
-   command that does what clicking it does, there only while it shows (Game focus's bar, only in Game focus). The
+   command that does what clicking it does, there only while it shows (Game focus's bar, only in Game focus); with
+   inSettings, while it's in its Settings page, even with Settings closed (buttonsOnly: its buttons only). The
    container is marked data-cmds, for the test that every button has a command. A container made later marks itself
    with markControls(el, group). */
 const ctlVisible = el => !!el && el.isConnected && !el.closest('[hidden]') && (typeof el.checkVisibility !== 'function' || el.checkVisibility());
@@ -157,16 +158,23 @@ const ctlVisible = el => !!el && el.isConnected && !el.closest('[hidden]') && (t
 const ctlWords = el => [...el.childNodes].filter(n => n.nodeType === 3 || (n.nodeType === 1 && !/^(KBD|SVG|svg|SELECT|INPUT)$/.test(n.tagName))).map(n => n.textContent).join('');
 const ctlText = el => String(el.dataset.name || el.getAttribute('aria-label') || ctlWords(el).trim() || el.title || '').replace(/\s+/g, ' ').trim();
 const ctlLabel = el => { const l = el.closest('label'); return l ? ctlText(l) : (el.getAttribute('aria-label') || el.title || '').trim(); };
-function ctlItems(root, { group, prefix = '', icon = 'point', words = [] }){
+// shown: there now (inSettings: there in its page, even while Settings is closed: hidden by nothing up to the part)
+const ctlThere = (el, root, inSettings) => {
+  if (!inSettings) return ctlVisible(el);
+  for (let e = el; e && e !== root.parentElement; e = e.parentElement) if (e.hidden) return false;
+  return true;
+};
+function ctlItems(root, { group, prefix = '', icon = 'point', words = [], inSettings = false, buttonsOnly = false }){
   const out = [], seenTitles = new Set();
   const push = (title, x) => { if (!title || seenTitles.has(title)) return; seenTitles.add(title); out.push({ id: `ctl:${group}:${title}`, group, title: prefix + title, icon, words, ...x }); };
   for (const b of root.querySelectorAll('button')){
-    if (!ctlVisible(b) || b.dataset.cmd) continue;
+    if (!ctlThere(b, root, inSettings) || b.dataset.cmd) continue;
     let t = ctlText(b);
     const seg = b.parentElement && b.parentElement.title;
     if (t.length <= 2 && seg) t = `${seg}: ${t}`;
     push(t, { sub: b.title && b.title !== t ? b.title : '', disabled: () => b.disabled && 'Not available right now', tags: () => b.classList.contains('on') ? ['On'] : [], run: () => b.click() });
   }
+  if (buttonsOnly) return out;
   for (const c of root.querySelectorAll('input[type=checkbox]')){
     if (!ctlVisible(c)) continue;
     push(ctlLabel(c), { toggle: { get: () => c.checked, set: () => c.click() } });
@@ -182,7 +190,7 @@ function ctlItems(root, { group, prefix = '', icon = 'point', words = [] }){
 function markControls(el, group){ if (el) el.dataset.cmds = group; }
 function fromControls(sel, opts){
   if (typeof document !== 'undefined') document.querySelectorAll(sel).forEach(el => markControls(el, opts.group));
-  provideCommands('controls:' + sel, () => [...document.querySelectorAll(sel)].filter(ctlVisible).flatMap(el => ctlItems(el, opts)));
+  provideCommands('controls:' + sel, () => [...document.querySelectorAll(sel)].filter(el => ctlThere(el, el, opts.inSettings)).flatMap(el => ctlItems(el, opts)));
 }
 
 /* ---- running ---- */
