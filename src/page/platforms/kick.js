@@ -55,16 +55,21 @@ const kick = {
   chatScroll: { list: '#chatroom-messages', resume: null },   // scrolling down is enough: Kick follows again by itself
   // Someone supporting the stream (Settings > Mentions > Support, in-site/mentions.js): how its chat shows it. { kind, re }
   // reads a row of the site's own (not someone's message) by its text, with the name (who), the number (n) and who
-  // got a gift (to); { kind, row, who, n } an element it draws for it; { kind, re, msg: true } words in a message;
-  // { kind, re, page: true } a banner over the chat. kind: kicks, bits, gifts (to the community), gift (to someone),
-  // sub, superchat, member, raid (n: the viewers it brought).
+  // got a gift (to); { kind, row, who, n } an element it draws for it; { kind, re, msg: true, from? } words in a
+  // message (from: only that sender's); { kind, re, page: true } a banner over the chat. kind: kicks, bits, gifts (to
+  // the community), gift (to someone), sub, superchat, member, raid (n: the viewers it brought).
+  // A notice can start with the time (when the chat shows times), and the KICK icon between "sent" and the number can
+  // carry words of its own.
   support: { finds: [
     // a raid (Kick calls it hosting) shows as a banner at the top of the chat
     { kind: 'raid', page: true, re: '^(?<who>[A-Za-z0-9_]{2,30}) is (?:hosting|raiding)(?: your channel| the channel)? with (?<n>\\d[\\d,]*) viewers?' },
-    { kind: 'gifts', re: '^(?<who>[A-Za-z0-9_]{2,30}) gifted (?<n>\\d[\\d,]*) subscriptions? to the community' },
-    { kind: 'gift', re: '^(?<who>[A-Za-z0-9_]{2,30}) gifted (?:a|(?<n>\\d+)) subs? to (?<to>[A-Za-z0-9_]{2,30})' },
-    { kind: 'kicks', re: '^(?<who>[A-Za-z0-9_]{2,30}) sent (?<n>\\d[\\d,]*)(?: |$)' },
-    { kind: 'sub', re: '^(?<who>[A-Za-z0-9_]{2,30}) (?:just )?(?:re)?subscribed(?: for (?<n>\\d+) months?)?' }
+    { kind: 'gifts', re: '(?:^|\\s)(?<who>[A-Za-z0-9_]{2,30}) gifted (?<n>\\d[\\d,]*) subscriptions? to the community' },
+    { kind: 'gift', re: '(?:^|\\s)(?<who>[A-Za-z0-9_]{2,30}) gifted (?:a|(?<n>\\d+)) subs? to (?<to>[A-Za-z0-9_]{2,30})' },
+    { kind: 'kicks', re: '(?:^|\\s)(?<who>[A-Za-z0-9_]{2,30}) sent\\D{0,30}?(?<n>\\d[\\d,]*)(?!\\d)' },
+    // KickBot, Kick's own bot, says each KICKs gift in the chat: "@name just gifted 100 KICKs!" (a message, read even
+    // when the "sent" box isn't drawn; the two are one gift)
+    { kind: 'kicks', msg: true, from: 'KickBot', re: '^@?(?<who>[A-Za-z0-9_]{2,30}) just gifted (?<n>\\d[\\d,]*) KICKs?\\b' },
+    { kind: 'sub', re: '(?:^|\\s)(?<who>[A-Za-z0-9_]{2,30}) (?:just )?(?:re)?subscribed(?: for (?<n>\\d+) months?)?' }
   ] },
   chatBox: { box: '[data-testid="chat-input"]', hint: '[data-testid="chat-input"] ~ div', attrs: [], says: '^send a message$' },
   // A raid: the channel a stream or chat window's new address (a URL) is for, or null when it isn't a channel's

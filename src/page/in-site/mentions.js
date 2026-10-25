@@ -7,7 +7,7 @@ function mentionAgent(){
   let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0;
   let fresh = 0, counting = false;                           // new messages from others since the app last asked (count())
   let sup = null, supQueue = [], supMe = '';                          // support (Settings > Mentions > Support): the site's wording, and what was found
-  const supSeen = new Set(), giftsBy = new Map(), raidsBy = new Map();
+  const supSeen = new Set(), giftsBy = new Map(), raidsBy = new Map(), recentSup = new Map();
   // Clicks and typing in the chat: the window may already have focus, so the app sees no new focus to mark it seen.
   // Every kind of click counts, on the window before the page's own handlers: Kick's mod shortcuts on a
   // name (Shift, Cmd/Ctrl, Cmd/Ctrl + Shift + Click: delete, timeout, ban) may stop some of them.
@@ -162,7 +162,8 @@ function mentionAgent(){
   /* Support: someone sent KICKs or bits, gifted subs, subscribed, or sent a Super Chat. The site shows it in a row of
      its own (not "name: message"), read by its text with the site's wording (sup.finds, from its site module):
      { kind, re } for such a row's text, { kind, row, who, n } for an element the site draws for it (its name and
-     amount inside), { kind, re, msg: true } for words in a normal message (Twitch's cheer100), { kind, re, page: true }
+     amount inside), { kind, re, msg: true, from? } for words in a normal message (Twitch's cheer100; from: only one
+     sender's, naming who gave, as Kick's KickBot does), { kind, re, page: true }
      for a banner over the chat, outside its rows (Kick's raids). Each one once; what
      was there before it started is old. A community gift is followed by a row for each sub it gave: those are
      part of it. */
@@ -182,6 +183,11 @@ function mentionAgent(){
     if (!armed) return;
     if (supMe && who.toLowerCase() === supMe) return;        // your own
     const k = who.toLowerCase();
+    // the same gift shown twice (Kick's "sent 100" box and KickBot's "just gifted 100 KICKs!"): once
+    const same = f.kind + ' ' + k + ' ' + n;
+    if (Date.now() - (recentSup.get(same) || 0) < 60000) return;
+    recentSup.set(same, Date.now());
+    if (recentSup.size > 200) recentSup.delete(recentSup.keys().next().value);
     if (f.kind === 'gifts') giftsBy.set(k, Date.now());
     if (f.kind === 'gift' && Date.now() - (giftsBy.get(k) || 0) < 60000) return;   // one of a community gift's
     if (supQueue.length < 50) supQueue.push({ kind: f.kind, who, n, unit: f.unit || '', t: Date.now(), ...extra });
@@ -202,11 +208,13 @@ function mentionAgent(){
           supFound(f, 'r' + t, w ? w.innerText : m && m.groups && m.groups.who, num(amt) || 1, amt && /\D/.test(amt) ? { amt } : {});   // money keeps its currency
         });
       } else if (f.msg) {
-        const re = new RegExp(f.re, 'gi');
-        for (const { l } of chatLines()) {
-          const m = lineOf(l); if (!m) continue;
-          const n = [...m[2].matchAll(re)].reduce((s, x) => s + num(x.groups && x.groups.n), 0);
-          if (n) supFound(f, 'm' + l, m[1], n);
+        // from: only that sender's messages (Kick's own KickBot saying "@name just gifted 100 KICKs!"), naming who gave
+        const re = new RegExp(f.re, 'gi'), from = f.from && new RegExp('^(?:' + f.from + ')$', 'i');
+        for (const { l, row } of chatLines()) {
+          const m = lineOf(l); if (!m || (from && !from.test(m[1]))) continue;
+          const all = [...m[2].matchAll(re)], n = all.reduce((s, x) => s + num(x.groups && x.groups.n), 0);
+          const who = (all[0] && all[0].groups && all[0].groups.who) || m[1];
+          if (n) supFound(f, 'm' + (row ? row.getAttribute('data-index') : '') + l, who, n);   // (the same words later are another gift)
         }
       }
     }
