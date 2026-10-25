@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.24 (current)
+## 0.3.25 (current)
+- Search box: a saved channel stays on top, Tab and ⇧Tab go both ways; menus close on a press in a stream
+- Settings › Search box: turn the search box or its Recent off, and see, remove and clear what it remembers
+
+## 0.3.24
 - Search and actions: Ctrl/⌘+K finds and does anything in the app
 - Settings fit without scrolling: Chat in tabs, Support as its own page
 
