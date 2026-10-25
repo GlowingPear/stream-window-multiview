@@ -2,7 +2,14 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.20 (current)
+## 0.3.21 (current)
+- Copy a chat message's text, with or without emotes, or its HTML
+- Support and raids on the stream's picture: who and what along its bottom edge, in any layout
+- Support alerts on Kick: one alert per gift, and KICKs and sub celebrations alert again
+- Chat over streams: each stream's new chat messages over it for a few seconds, also when popped out
+- Settings › Guide (searchable, a ? on every page) and Developer tools for reporting problems
+
+## 0.3.20
 - Support alerts: an alert when someone gifts subs, sends KICKs, bits or a Super Chat, or subscribes
 - Raid alerts: an alert when someone raids into a stream you have open (Settings › Mentions › Support)
 
