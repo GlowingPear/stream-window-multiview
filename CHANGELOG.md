@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.25 (current)
+## 0.3.26 (current)
+- Mac: pressing the toolbar's empty space closes an open menu
+- Chat over streams: your own messages show too, and 1 message at once (the latest)
+
+## 0.3.25
 - Search box: a saved channel stays on top, Tab and ⇧Tab go both ways; menus close on a press in a stream
 - Settings › Search box: turn the search box or its Recent off, and see, remove and clear what it remembers
 
