@@ -75,6 +75,26 @@ test('Kick sub celebrations: the box with the person\'s own message is a sub; th
   assert.deepEqual(await found(page), [['sub', 'mossy_rock', 7, '']]);
 });
 
+test('Kick renumbering its rows as old messages drop off the top doesn\'t make the same gift alert again', async t => {
+  const page = await chatPage(t, 'kick', kickRow(1, 'regular', 'evening all'));
+  await put(page, kickNote(2, 'giftfox88', "Gifted 1 subscription to the community! They've gifted 1 subscription in the channel.", '7 / 10'));
+  await put(page, kickRow(3, 'KickBot', '@zestyplum just gifted 100 KICKs!'));
+  assert.deepEqual((await found(page)).sort(), [['gifts', 'giftfox88', 1, ''], ['kicks', 'zestyplum', 100, '']]);
+  // the oldest message drops off and every row's number moves down, again and again
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('#sup-chat > [data-index]')];
+      rows[0].remove();
+      rows.slice(1).forEach(r => r.setAttribute('data-index', String(+r.getAttribute('data-index') - 1)));
+      const d = document.createElement('div'); d.innerHTML = rows[0].outerHTML; document.getElementById('sup-chat').append(d.firstChild);   // more chat comes in
+    });
+    assert.deepEqual(await found(page), [], `still the same gifts (${i + 1})`);
+  }
+  // a new gift with its own words still alerts
+  await put(page, kickNote(9, 'giftfox88', "Gifted 1 subscription to the community! They've gifted 2 subscriptions in the channel.", '8 / 10'));
+  assert.deepEqual(await found(page), [['gifts', 'giftfox88', 1, '']]);
+});
+
 test('Twitch: a community gift, a sub with its months, and cheers in a message added up; YouTube: Super Chats with their money, gifts and members', async t => {
   const line = t => `<div class="row">${t}</div>`;
   let page = await chatPage(t, 'twitch', line('<b>regular</b>: <span>hi all</span>'));
