@@ -3,8 +3,10 @@
 // buttons); close: how it closes (hiding it, unless given); capture: before the page's own handlers see the press.
 // A press in a stream or chat never reaches the page (it's another page, in a <webview>), nor one on the Mac
 // toolbar's drag area or in another window: viewPressed() (windows/views.js, when you press in a view) and the
-// window losing the focus close it too.
+// window losing the focus close it too. The Mac toolbar stops being a drag area while one is open (data-outside,
+// toolbar/mac-bar.css), so a press on its empty space closes it.
 function closeOnOutside(el, { button = null, close = () => { el.hidden = true; }, capture = false } = {}){
+  el.dataset.outside = '';
   document.addEventListener('pointerdown', e => {
     const b = typeof button === 'function' ? button() : button;
     if (!el.hidden && !el.contains(e.target) && !(b && b.contains(e.target))) close();
