@@ -13,17 +13,20 @@ import { winTimer } from '../shared/timers.js';
 
 /* ---- Chat over the stream (the toolbar's Chat over streams button, or Settings > Chat > Show new chat messages over
    the streams; off unless switched on): a channel's new chat messages show over its stream window, at the bottom left,
-   each for about 6 s, at most 5 at once, also over streams popped out into the Streams window. The button on a stream's
+   each for a few seconds (6 at first) or kept on screen, at most 5 at once (both settings), also over streams popped out
+   into the Streams window. The button on a stream's
    title bar turns it off for that channel only (remembered). The chat helper inside each chat hands the messages over
    (setFeed, in-site/mentions.js); the alerts' poll in the main window brings them here (alerts/spam-alerts.js), and the
    main process passes them on to the Streams window. */
-const SHOW_MS = 6000, MAX_LINES = 5;
+// how long each line stays (s), how many at once, and whether they stay until newer ones push them out (Settings > Chat)
+const SECS = [4, 6, 10, 15, 30], LINES = [3, 5, 8, 10, 15];
+let showSecs = 6, maxLines = 5, keepLines = false;
 let overlayOn = false, overlayOff = new Set(), lineId = 0;
 
 // New messages from chat window c (the main window): over its channel's streams here and in the Streams window
 function chatOverlay(c, msgs){
   if (!overlayOn || !c || overlayOff.has(c.channel) || !msgs || !msgs.length) return;
-  const list = msgs.slice(-MAX_LINES).map(m => ({ sender: String(m.sender || '').slice(0, 30), body: String(m.body || '').slice(0, 300), parts: cleanParts(m.parts) }));
+  const list = msgs.slice(-maxLines).map(m => ({ sender: String(m.sender || '').slice(0, 30), body: String(m.body || '').slice(0, 300), parts: cleanParts(m.parts) }));
   drawLines(c.channel, list);
   if (DESKTOP && ROLE === 'main' && window.kmv.relayChat) window.kmv.relayChat({ ch: c.channel, msgs: list });
 }
@@ -38,11 +41,25 @@ function drawLines(ch, list){
       const parts = cleanParts(m.parts), id = ++lineId;
       const line = element('div', 'co-line', element('b', null, String(m.sender || '').slice(0, 30)), ': ',
         parts ? mentBodyNodes({}, parts, false) : String(m.body || '').slice(0, 300));
+      line.dataset.id = id;
       box.append(line);
-      while (box.children.length > MAX_LINES) box.firstElementChild.remove();
-      winTimer(w, 'co' + id, () => { line.classList.add('out'); winTimer(w, 'co' + id, () => line.remove(), 400); }, SHOW_MS);
+      while (box.children.length > maxLines) box.firstElementChild.remove();
+      if (!keepLines) fadeLater(w, line);
     }
   }
+}
+// A line fades after the time set, then goes
+function fadeLater(w, line, ms = showSecs * 1000){
+  const t = 'co' + line.dataset.id;
+  winTimer(w, t, () => { line.classList.add('out'); winTimer(w, t, () => line.remove(), 400); }, ms);
+}
+// The lines on screen after the settings changed: no more than the number set, and kept ones start to fade once kept is off
+function refitLines(){
+  wins.forEach(w => {
+    const box = w.el.querySelector('.co-box'); if (!box) return;
+    while (box.children.length > maxLines) box.firstElementChild.remove();
+    if (!keepLines) box.querySelectorAll('.co-line:not(.out)').forEach(l => { if (!(w.timers && w.timers['co' + l.dataset.id])) fadeLater(w, l); });
+  });
 }
 // The button on a stream's title bar: on or off for that channel
 function syncOverlayBtn(w){
@@ -68,10 +85,18 @@ function setOverlay(on){
 function readOverlay(){
   overlayOn = settings.flag('chatOverlay', false);
   overlayOff = new Set([].concat(settings.json('chatOverlayOff', [])));
+  keepLines = settings.flag('chatOverlayKeep', false);
+  showSecs = SECS.includes(settings.num('chatOverlaySecs', 6)) ? settings.num('chatOverlaySecs', 6) : 6;
+  maxLines = LINES.includes(settings.num('chatOverlayLines', 5)) ? settings.num('chatOverlayLines', 5) : 5;
+  const keep = document.getElementById('chatOverlayKeep'), secs = document.getElementById('chatOverlaySecs'), lines = document.getElementById('chatOverlayLines');
+  if (keep) keep.checked = keepLines;
+  if (secs){ secs.value = String(showSecs); secs.closest('.st-row').classList.toggle('st-dim', keepLines); }
+  if (lines) lines.value = String(maxLines);
   const sw = document.getElementById('chatOverlaySet'); if (sw) sw.checked = overlayOn;
   const tb = document.getElementById('overlayBtn');
   if (tb){ tb.classList.toggle('on', overlayOn); tb.setAttribute('aria-pressed', String(overlayOn)); }
   wins.forEach(w => { syncOverlayBtn(w); if (!overlayOn) w.el.querySelector('.co-box')?.remove(); });
+  refitLines();
 }
 const overlayIsOn = () => overlayOn;
 
@@ -83,13 +108,19 @@ function init(){
     sw.closest('.st-row').hidden = !DESKTOP;                  // the chats are read from the app
     sw.addEventListener('change', () => setOverlay(sw.checked));
   }
+  // how long, kept, how many (the rows under it)
+  document.querySelectorAll('.co-opt').forEach(r => { r.hidden = !DESKTOP; });
+  const keep = document.getElementById('chatOverlayKeep'), secs = document.getElementById('chatOverlaySecs'), lines = document.getElementById('chatOverlayLines');
+  if (keep) keep.addEventListener('change', () => { settings.set('chatOverlayKeep', keep.checked); readOverlay(); });
+  if (secs) secs.addEventListener('change', () => { settings.set('chatOverlaySecs', +secs.value); readOverlay(); });
+  if (lines) lines.addEventListener('change', () => { settings.set('chatOverlayLines', +lines.value); readOverlay(); });
   const tb = document.getElementById('overlayBtn');
   if (tb && DESKTOP) { tb.hidden = false; tb.onclick = () => setOverlay(!overlayOn); }
-  settings.onChange(['chatOverlay', 'chatOverlayOff'], () => { readOverlay(); if (ROLE === 'main') pushMyName(); });
+  settings.onChange(['chatOverlay', 'chatOverlayOff', 'chatOverlayKeep', 'chatOverlaySecs', 'chatOverlayLines'], () => { readOverlay(); if (ROLE === 'main') pushMyName(); });
   store.watch('wins', () => wins.forEach(syncOverlayBtn));
   // the Streams window: the lines the main window passes on
   if (DESKTOP && ROLE === 'streams') fromApp('onStreamsChat', p => {
-    if (overlayOn && p && typeof p.ch === 'string' && Array.isArray(p.msgs) && !overlayOff.has(p.ch)) drawLines(p.ch, p.msgs.slice(-MAX_LINES));
+    if (overlayOn && p && typeof p.ch === 'string' && Array.isArray(p.msgs) && !overlayOff.has(p.ch)) drawLines(p.ch, p.msgs.slice(-maxLines));
   });
   window.chatOverlay = (ch, msgs) => chatOverlay(wins.find(w => w.kind === 'chat' && w.channel === ch), msgs);   // for the tests
   window.drawChatLines = drawLines;   // for the tests
