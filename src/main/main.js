@@ -827,17 +827,25 @@ async function twitchBatch(chs) {
 let ytKey = '', ytKeySaved = false;
 const ytGate = createKeyGate();
 const ytKeyFile = () => stateFile('youtube-key');
-function loadYtKey() {
+// (safeStorage's async calls, once the app is ready: the sync ones are gone in Electron 46, and what they saved reads the same)
+async function loadYtKey() {
   try {
     const d = JSON.parse(fs.readFileSync(ytKeyFile(), 'utf8'));
-    if (d && d.enc && safeStorage.isEncryptionAvailable()) { ytKey = safeStorage.decryptString(Buffer.from(d.enc, 'base64')); ytKeySaved = true; }
+    if (!d || !d.enc || !(await safeStorage.isAsyncEncryptionAvailable())) return;
+    const { result, shouldReEncrypt } = await safeStorage.decryptStringAsync(Buffer.from(d.enc, 'base64'));
+    ytKey = result; ytKeySaved = true;
+    if (shouldReEncrypt) await storeYtKey(result);       // the system's key changed: saved again with the new one
   } catch {}
 }
-function storeYtKey(key) {
+async function storeYtKey(key) {
   ytKey = key; ytKeySaved = false; ytGate.reset();
   try {
     if (!key) fs.rmSync(ytKeyFile(), { force: true });
-    else if (safeStorage.isEncryptionAvailable()) { fs.writeFileSync(ytKeyFile(), JSON.stringify({ enc: safeStorage.encryptString(key).toString('base64') })); ytKeySaved = true; }
+    else if (await safeStorage.isAsyncEncryptionAvailable()) {
+      const enc = await safeStorage.encryptStringAsync(key);
+      if (ytKey !== key) return;                          // changed again meanwhile: that one is saved instead
+      fs.writeFileSync(ytKeyFile(), JSON.stringify({ enc: enc.toString('base64') })); ytKeySaved = true;
+    }
   } catch {}
 }
 const ytKeyStatus = () => ({ set: !!ytKey, saved: ytKeySaved, ...ytGate.status() });
@@ -945,13 +953,13 @@ mainIpc.handle('ytkey:set', async (_e, key) => {
     const g = createKeyGate(); const st = g.fail(e);
     if (st === 'badkey') return { ...ytKeyStatus(), error: 'badkey', reason: e.reason };
     // over quota or too fast: the key itself is fine, so keep it
-    storeYtKey(key); ytGate.fail(e); ytKeyChanged(); watcher.checkSoon();
+    await storeYtKey(key); ytGate.fail(e); ytKeyChanged(); watcher.checkSoon();
     return ytKeyStatus();
   }
-  storeYtKey(key); ytKeyChanged(); watcher.checkSoon();
+  await storeYtKey(key); ytKeyChanged(); watcher.checkSoon();
   return ytKeyStatus();
 });
-mainIpc.handle('ytkey:remove', () => { storeYtKey(''); ytKeyChanged(); return ytKeyStatus(); });
+mainIpc.handle('ytkey:remove', async () => { await storeYtKey(''); ytKeyChanged(); return ytKeyStatus(); });
 
 const watcher = createLiveWatcher({
   fetchChannel: fetchAny,
@@ -2251,7 +2259,7 @@ if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'com.gl
 app.whenReady().then(async () => {
   guard.lockSession(session.defaultSession, wc => appContents(wc));
   sec = loadSec();
-  loadYtKey();
+  await loadYtKey();
   if (forgetList().length && sec.wiped !== true) await forgetLogins(forgetList());     // the app didn't get to wipe them last time
   if (sec.wiped !== false) { sec.wiped = false; saveSec(sec); }     // logins saved from now on are wiped when it closes
   encryptOldLogins();

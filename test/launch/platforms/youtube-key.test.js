@@ -48,9 +48,10 @@ function fakeGoogle() {
   });
 }
 
+let data;
 test.before(async () => {
   server = await fakeGoogle();
-  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-ytkey-'));
+  data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-ytkey-'));
   fs.mkdirSync(path.join(data, 'Stream Multiview'), { recursive: true });
   fs.writeFileSync(path.join(data, 'Stream Multiview', 'updates.json'), JSON.stringify({ auto: false }));
   const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', SMV_YT_API: `http://127.0.0.1:${server.address().port}`, SMV_YT_FEED: `http://127.0.0.1:${server.address().port}/feeds`, ELECTRON_ENABLE_LOGGING: '0' };
@@ -63,7 +64,7 @@ test.before(async () => {
   win.on('pageerror', e => pageErrors.push(e.message));
   await win.waitForSelector('#loginBtn:not([hidden])');
   // No system key store in the test (on a Mac it would ask for the Keychain): the key is kept for this run only.
-  await app.evaluate(({ safeStorage }) => { safeStorage.isEncryptionAvailable = () => false; });
+  await app.evaluate(({ safeStorage }) => { safeStorage.isAsyncEncryptionAvailable = async () => false; });
 });
 test.after(async () => {
   server?.close();
@@ -106,13 +107,19 @@ test('a working key is kept, and the page only hears that one is set', T, async 
   await addKey(KEYS.good);
   assert.deepEqual(asked, ['/videos'], 'tested with one question');
   assert.match(await status(), /Key added/);
-  assert.match(await status(), /until you close the app/, 'no key store here: kept for this run only');
   assert.ok(await win.isVisible('#settingsDlg .am-yk-rm'));
   assert.ok(await win.isHidden('#settingsDlg .am-yk-in'));
   assert.equal(await win.inputValue('#settingsDlg .am-yk-in'), '', 'the box is emptied');
   const st = await win.evaluate(() => window.kmv.ytKeyStatus());
   assert.equal(st.set, true);
   assert.ok(!JSON.stringify(st).includes(KEYS.good), 'the key itself never comes back to the page');
+  // kept encrypted where the system can (the tests' stand-in keychain can), else only until the app closes
+  const file = path.join(data, 'Stream Multiview', 'youtube-key.json');
+  if (st.saved){
+    assert.ok(fs.existsSync(file));
+    assert.ok(!fs.readFileSync(file, 'utf8').includes(KEYS.good), 'never written as it is');
+    assert.doesNotMatch(await status(), /until you close the app/);
+  } else assert.match(await status(), /until you close the app/);
 });
 
 test('with the key, a live channel stays live while YouTube\'s feeds are down (they answer 404)', T, async () => {

@@ -186,15 +186,76 @@ test('Open Pear Drops asks it to come to the front; the logo; Pair again and Dis
   assert.equal(keys()[PEAR_DROPS], undefined, 'and forgets the pairing');
 });
 
+// a stand-in for Electron's safeStorage (its async calls; the sync ones are gone in Electron 46)
+const fakeSafe = (o = {}) => ({
+  isAsyncEncryptionAvailable: async () => o.available !== false,
+  encryptStringAsync: async s => Buffer.from('enc:' + s),
+  decryptStringAsync: async b => { const t = b.toString(); if (!t.startsWith('enc:')) throw new Error('not ours'); return { result: t.slice(4), shouldReEncrypt: !!o.rotate }; }
+});
 test('with safeStorage, the pairing keys are stored encrypted', NEEDS, async t => {
-  const safeStorage = { isEncryptionAvailable: () => true, encryptString: s => Buffer.from('enc:' + s), decryptString: b => b.toString().slice(4) };
-  const { pl, stand, root } = await setup(t, { safeStorage });
+  const { pl, stand, root } = await setup(t, { safeStorage: fakeSafe() });
   await pl.setOn(true);
   await allowed(pl, stand);
   assert.equal(pl.state().peer.keysEncrypted, true);
-  const kept = JSON.parse(fs.readFileSync(path.join(root, 'data', 'grapevine.json'), 'utf8')).peers[PEAR_DROPS];
+  const file = path.join(root, 'data', 'grapevine.json');
+  await until(() => JSON.parse(fs.readFileSync(file, 'utf8')).peers[PEAR_DROPS]);
+  const kept = JSON.parse(fs.readFileSync(file, 'utf8')).peers[PEAR_DROPS];
   assert.equal(kept.encrypted, true);
   assert.match(Buffer.from(kept.key, 'base64').toString(), /^enc:/);
+});
+
+test('the key store: keys saved before (by the sync calls) still read, a rotated key is saved again, one that can\'t be read is not paired', async t => {
+  const { safeKeyStore } = require('../../../src/main/link');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-keys-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const file = path.join(root, 'grapevine.json');
+  const enc = k => Buffer.from('enc:' + k).toString('base64');
+  fs.writeFileSync(file, JSON.stringify({ peers: {
+    a: { key: enc('KEY-A'), encrypted: true, pairedAt: '2026-10-01T00:00:00.000Z' },       // as fileKeyStore wrote it with encryptString
+    b: { key: 'PLAIN-B', pairedAt: '2026-10-02T00:00:00.000Z' },                          // from before encryption
+    c: { key: Buffer.from('other keychain').toString('base64'), encrypted: true, pairedAt: 'x' },
+    d: null
+  } }));
+  const read = () => JSON.parse(fs.readFileSync(file, 'utf8')).peers;
+  const ks = safeKeyStore(file, fakeSafe({ rotate: true }));
+  assert.equal(ks.get('a'), null, 'nothing until read');
+  await ks.load();
+  assert.equal(ks.load(), ks.load(), 'read once');
+  assert.equal(ks.encrypted, true);
+  assert.deepEqual(ks.get('a'), { key: 'KEY-A', pairedAt: '2026-10-01T00:00:00.000Z' });
+  assert.deepEqual(ks.get('b'), { key: 'PLAIN-B', pairedAt: '2026-10-02T00:00:00.000Z' });
+  assert.equal(ks.get('c'), null, 'can\'t be read: as good as not paired');
+  assert.equal(read().a.encrypted, true, 'rotated: saved again, still encrypted');
+  // a new key: kept at once, written once encrypted, never unencrypted
+  ks.set('e', 'KEY-E');
+  assert.equal(ks.get('e').key, 'KEY-E');
+  await new Promise(r => setTimeout(r, 10));
+  assert.equal(Buffer.from(read().e.key, 'base64').toString(), 'enc:KEY-E');
+  assert.ok(!JSON.stringify(read()).includes('KEY-E'));
+  // paired again before the first one was encrypted: only the newest is written; forgotten meanwhile: not written
+  ks.set('f', 'OLD'); ks.set('f', 'NEW'); ks.set('g', 'GONE'); ks.delete('g');
+  await new Promise(r => setTimeout(r, 10));
+  assert.equal(Buffer.from(read().f.key, 'base64').toString(), 'enc:NEW');
+  assert.equal(read().g, undefined);
+  ks.delete('a'); ks.delete('nobody');
+  assert.equal(read().a, undefined);
+  assert.equal(ks.get('a'), null);
+  // no encryption here: kept as they are, and the card says so
+  const plain = safeKeyStore(path.join(root, 'plain.json'), fakeSafe({ available: false }));
+  await plain.load();
+  assert.equal(plain.encrypted, false);
+  plain.set('p', 'KEY-P');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'plain.json'), 'utf8')).peers.p.key, 'KEY-P');
+  const broken = safeKeyStore(file, { isAsyncEncryptionAvailable: () => Promise.reject(new Error('no keychain')) });
+  await broken.load();
+  assert.equal(broken.encrypted, false);
+  assert.equal(broken.get('e'), null, 'encrypted keys can\'t be read without it');
+  const failing = safeKeyStore(path.join(root, 'f.json'), { ...fakeSafe(), encryptStringAsync: () => Promise.reject(new Error('locked')) });
+  await failing.load();
+  failing.set('x', 'KEY-X');
+  await new Promise(r => setTimeout(r, 10));
+  assert.equal(fs.existsSync(path.join(root, 'f.json')), false, 'couldn\'t encrypt: not written unencrypted');
+  assert.equal(safeKeyStore(path.join(root, 'none.json'), null).get('x'), null);
 });
 
 test('where it looks for apps: GRAPEVINE_DIR, else a developer copy\'s own folder, else the system\'s', NEEDS, async t => {
