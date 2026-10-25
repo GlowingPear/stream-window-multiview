@@ -91,6 +91,7 @@ mark,.gd-hit{background:color-mix(in srgb,#ffd54a 30%,transparent);color:inherit
 /* the ? on each Settings page */
 .st-pane > h4 .gd-q{all:unset;display:inline-grid;place-items:center;width:18px;height:18px;margin-left:8px;border-radius:50%;border:1px solid var(--line2);color:var(--muted);
   font-size:11px;font-weight:800;vertical-align:1px;cursor:pointer}
+.st-pane > h4 .gd-q::before{content:"?"}
 .st-pane > h4 .gd-q:hover,.st-pane > h4 .gd-q:focus-visible{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent)}
 .gd-pop{position:fixed;z-index:100040;width:290px;box-sizing:border-box;padding:12px 14px;border-radius:11px;background:var(--panel2);border:1px solid var(--line2);box-shadow:0 14px 40px rgba(0,0,0,.5);font-size:12.5px}
 .gd-pop[hidden]{display:none}

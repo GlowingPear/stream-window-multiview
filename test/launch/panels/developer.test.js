@@ -63,7 +63,8 @@ async function pressMessage() {
 
 test('the switch: asked about the first time, then the chats\' menu has a Developer group and the windows\' ⋯ menu Copy window state and Inspect', T, async () => {
   await a.win.evaluate(() => window.openSettings('developer'));
-  assert.equal(await pane('h4').textContent(), 'Developer?', 'with its ?');
+  assert.equal(await pane('h4').textContent(), 'Developer');
+  assert.equal(await pane('h4 .gd-q').getAttribute('aria-label'), 'Help: Developer tools', 'with its ?');
   assert.equal(await a.win.isChecked('#devOn'), false, 'off at first');
   await pressMessage();
   assert.ok(!(await rightClick()).labels.some(l => /Developer|HTML|alert/.test(l)), 'off: no Developer group');

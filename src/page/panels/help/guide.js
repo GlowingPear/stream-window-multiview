@@ -297,7 +297,7 @@ function addPaneHelp(){
   settingsDlg.querySelectorAll('.st-pane[data-s] > h4').forEach(h => {
     const pane = h.closest('.st-pane').dataset.s, t = topics.find(x => x.settings === pane);
     if (!t || h.querySelector('.gd-q')) return;
-    h.append(element('button', { type: 'button', class: 'gd-q', title: 'Help: ' + t.title, 'aria-label': 'Help: ' + t.title, dataset: { helpTopic: t.slug } }, '?'));
+    h.append(element('button', { type: 'button', class: 'gd-q', title: 'Help: ' + t.title, 'aria-label': 'Help: ' + t.title, dataset: { helpTopic: t.slug } }));   // (its ? is drawn by CSS: the heading's text stays its name)
   });
 }
 function openPop(btn){
