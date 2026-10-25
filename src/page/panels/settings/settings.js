@@ -5,6 +5,7 @@ import { bellCount, bellVars, dndOn, dndUntil, notes } from '../bell/bell.js';
 import { gotLive, liveInfo, liveNote } from '../channels/channels.js';
 import { renderDev } from '../developer/developer.js';
 import { renderExtPane } from '../extensions/extensions.js';
+import { loadGuide } from '../help/guide.js';
 import { keysOn, renderDoc, showHelp } from '../help/help.js';
 import { renderSpamHist, veilLists } from './alerts.js';
 import { syncDnd, syncNotifyPane } from './notifications.js';
@@ -26,6 +27,7 @@ function openSettings(tab){
   settingsTab = ok(tab) ? tab : ok(settingsTab) ? settingsTab : 'general';
   settings.set('settingsTab', settingsTab);
   settingsDlg.hidden = false;
+  loadGuide();                                   // the guide's pages, once: its ? on each page, and its search
   settingsDlg.querySelectorAll('.st-rail button').forEach(b => b.classList.toggle('on', b.dataset.s === settingsTab));
   settingsDlg.querySelectorAll('.st-pane').forEach(p => { p.hidden = p.dataset.s !== settingsTab; });
   settingsDlg.querySelector('.st-body').scrollTop = 0;

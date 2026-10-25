@@ -345,8 +345,7 @@ function init(){
   closeOnOutside(gd.pop, { button: () => gd.popFor, capture: true });
   settingsDlg.addEventListener('click', e => { const q = e.target.closest('.gd-q'); if (q){ e.preventDefault(); e.stopPropagation(); openPop(q); } });
   settingsDlg.querySelector('.st-body').addEventListener('scroll', () => { if (gd.pop) gd.pop.hidden = true; }, { passive: true });
-  loadGuide();
   window.guide = { load: loadGuide, search, show: showGuide, topics: () => topics, frontMatter, pageHtml };   // for the tests
 }
 
-export { init, renderGuide, showGuide };
+export { init, loadGuide, renderGuide, showGuide };
