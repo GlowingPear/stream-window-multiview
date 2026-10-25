@@ -27,10 +27,14 @@ test('off at first; on, a channel\'s new messages show over its stream (its chat
   assert.deepEqual(await lines(page, 'alpha'), ['chatter2: message 2', 'chatter3: message 3', 'chatter4: message 4', 'chatter5: message 5', 'chatter6: message 6']);
   assert.deepEqual(await lines(page, 'bravo'), [], 'only that channel\'s stream');
   // emotes from a known emote site as pictures; anything else in a message stays text
-  await say(page, 'bravo', [{ sender: 'sundew', body: '<img src=x onerror=alert(1)> hi pearWave', parts: [{ t: '<img src=x onerror=alert(1)> hi ' }, { e: 'pearWave', src: KICK_EMOTE }] }]);
-  assert.deepEqual(await lines(page, 'bravo'), ['sundew: <img src=x onerror=alert(1)> hi ']);
-  assert.equal(await win(page, 'bravo').locator('.co-line img').getAttribute('src'), KICK_EMOTE);
-  assert.equal(await win(page, 'bravo').locator('.co-line img').getAttribute('alt'), 'pearWave');
+  // (read as it's drawn: the tests can't load the emote's picture, so it soon turns into its name)
+  const drawn = await page.evaluate(src => {
+    window.chatOverlay('bravo', [{ sender: 'sundew', body: '<img src=x onerror=alert(1)> hi pearWave', parts: [{ t: '<img src=x onerror=alert(1)> hi ' }, { e: 'pearWave', src }] }]);
+    const line = [...document.querySelectorAll('#stage .win.stream')].find(w => w.querySelector('.title').textContent === 'bravo').querySelector('.co-line');
+    const img = line.querySelector('img');
+    return { text: line.textContent, imgs: line.querySelectorAll('img').length, src: img && img.getAttribute('src'), alt: img && img.alt };
+  }, KICK_EMOTE);
+  assert.deepEqual(drawn, { text: 'sundew: <img src=x onerror=alert(1)> hi ', imgs: 1, src: KICK_EMOTE, alt: 'pearWave' });
   // at the bottom left, letting clicks through to the stream
   const box = await win(page, 'alpha').locator('.co-box').evaluate(b => { const r = b.getBoundingClientRect(), p = b.parentElement.getBoundingClientRect(); return { left: Math.round(r.left - p.left), bottom: Math.round(p.bottom - r.bottom), events: getComputedStyle(b).pointerEvents }; });
   assert.deepEqual(box, { left: 8, bottom: 8, events: 'none' });
