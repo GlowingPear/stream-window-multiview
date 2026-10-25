@@ -40,7 +40,7 @@ function renderTable(){
     ...PARTS.map(([, label]) => element('span', { role: 'columnheader' }, label)));
   const rows = [...document.querySelectorAll('#layoutMenu .lm-grid button[data-l]')].map(b => {
     const l = b.dataset.l, parts = partsFor(l);
-    return element('div', { class: 'mo-row', role: 'row', 'data-l': l }, element('span', { class: 'mo-l', role: 'rowheader' }, b.querySelector('b').textContent),
+    return element('div', { class: 'mo-row', role: 'row', 'data-l': l, 'data-st': `Monitors for ${b.querySelector('b').textContent}`, 'data-st-sub': 'Its streams, chats and switch control' }, element('span', { class: 'mo-l', role: 'rowheader' }, b.querySelector('b').textContent),
       ...PARTS.map(([part, label, none]) => {
         const key = parts[part], m = findMon(key, list);
         const sel = element('select', { 'data-part': part, 'aria-label': `${b.querySelector('b').textContent}: ${label}`, onchange: e => {

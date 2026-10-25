@@ -4,7 +4,8 @@ import { ST_ICONS, closeSettings, openSettings, settingsDlg } from './settings.j
 import { commands } from '../../shared/commands.js';
 import { DESKTOP } from '../../shared/env.js';
 
-/* ---- The search box's (Ctrl/⌘+K) Settings: each page, each tab inside a page, and each option ----
+/* ---- The search box's (Ctrl/⌘+K) Settings: each page, each tab inside a page, and each option (a .st-row, .st-lead,
+   .st-opt, .ca-row or .st-head with an .st-t name, or anything with its name in data-st and its line in data-st-sub) ----
    An option with a switch flips right there (⇧Enter opens its page instead); an option with one button runs it;
    anything else opens its page with the option lit, as the guide's search does. Found by reading the Settings
    window itself, so a new option is found without anything added here. */
@@ -37,10 +38,10 @@ function stItems(){
         icon: ST_ICONS[s] || 'gear', run: () => openSettings(s, { sub: t.dataset.t }) });
     });
     if (s === 'guide' || s === 'keys') continue;
-    pane.querySelectorAll('.st-row, .ca-row, .st-head').forEach(row => {
-      const t = row.classList.contains('st-head') ? row : row.querySelector('.st-t'); if (!t || stRowOff(row, pane)) return;
-      const title = textOf(t); if (!title) return;
-      const small = (t.querySelector('small') || {}).textContent || '', sub = subOf(row);
+    pane.querySelectorAll('.st-row, .ca-row, .st-head, .st-lead, .st-opt, [data-st]').forEach(row => {
+      const t = row.classList.contains('st-head') ? row : row.querySelector('.st-t'); if ((!t && !row.dataset.st) || stRowOff(row, pane)) return;
+      const title = row.dataset.st || textOf(t); if (!title) return;
+      const small = (t && t.querySelector('small') || {}).textContent || row.dataset.stSub || '', sub = subOf(row);
       const where = `Settings › ${name}` + (sub ? ' › ' + (pane.querySelector(`.st-tabs button[data-t="${sub.dataset.t}"]`)?.textContent.replace(/\s+\d+$/, '').trim() || '') : '');
       const inputs = [...row.querySelectorAll('input, select, textarea')].filter(x => x.type !== 'hidden');
       const buttons = [...row.querySelectorAll(':scope > button, :scope > .btn')].filter(b => !b.hidden);
@@ -50,6 +51,7 @@ function stItems(){
       const gist = small.trim().split(/(?<=[a-z0-9)])[.:](?:\s|$)/i)[0].replace(/^./, c => c.toLowerCase());
       const it = { id: `setting.${s}.${row.id || sw?.id || title}`, kind: 'setting', group: 'Settings', title, sub: [where, gist], words: [name], text: small,
         icon: ST_ICONS[s] || 'sliders', alt: show, altLabel: 'its page', disabled: () => (sw && sw.disabled && 'Not available right now') || '' };
+      inputs.forEach(x => { x.dataset.cmd ||= it.id; });      // (for the test that every control has a command)
       if (sw) it.toggle = { get: () => sw.checked, set: () => { sw.click(); } };
       else if (!inputs.length && buttons.length === 1 && !row.classList.contains('st-head')){ it.run = () => { closeSettings(); buttons[0].click(); }; it.verb = buttons[0].textContent.trim() || 'Run'; it.alt = show; buttons[0].dataset.cmd ||= it.id; }
       else {
@@ -82,6 +84,7 @@ function init(){
     if (!stCache || Date.now() - stAt > 2000){ stCache = stItems(); stAt = Date.now(); }
     return stCache;
   });
+  window.readSettingsCommands = () => { stCache = stItems(); stAt = Date.now(); };   // for the tests (rows drawn as a page opens)
 }
 
 export { init };

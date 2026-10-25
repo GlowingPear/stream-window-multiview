@@ -143,10 +143,10 @@ function settingRows(u, typed){
   const save = element('button', { class: 'btn upd-save', onclick: async () => { updSt = await window.kmv.updateSettings({ repo: inp.value }); shownKey = ''; renderUpdates(); if (updSt.repo) window.kmv.updateCheck(); } }, 'Save');
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') save.click(); });
   return element('div', 'upd-rows',
-    element('label', 'upd-row',
+    element('label', { class: 'upd-row', dataset: { st: 'Update automatically' } },
       element('div', 'upd-rt', element('b', null, 'Update automatically'), element('span', null, 'Downloads new versions in the background; they install when you restart.')),
       element('input', { type: 'checkbox', class: 'st-sw upd-auto', checked: !!u.auto, onchange: async e => { updSt = await window.kmv.updateSettings({ auto: e.target.checked }); } })),
-    element('div', 'upd-row',
+    element('div', { class: 'upd-row', dataset: { st: 'GitHub repository for updates' } },
       element('div', 'upd-rt', element('b', null, 'GitHub repository'), element('span', null, 'Where new versions come from. It must be public.')),
       element('div', 'upd-repo', element('span', 'upd-pre', 'github.com/'), inp, save)));
 }

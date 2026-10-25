@@ -130,7 +130,7 @@ function addSpamItem(which){
 function scoreRow(s){
   const range = element('input', { type: 'range', min: 0, max: SmvSpam.POINT_MAX, step: 1, 'aria-label': s.label,
     oninput: () => setPoints(s.key, +range.value), ondblclick: () => setPoints(s.key, s.points) });
-  return element('div', { class: 'sc-row', dataset: { pt: s.key } },
+  return element('div', { class: 'sc-row', dataset: { pt: s.key, st: `Points for ${s.label}`, stSub: s.note || '' } },
     element('span', { class: 'sc-name', title: s.label + (s.note ? ` (${s.note.toLowerCase()})` : '') }, s.short),
     warnIcon(),
     element('span', { class: 'sc-flag', title: s.flags ? 'This sign can flag a message' : '' }, s.flags ? '⚑' : ''),
