@@ -135,6 +135,17 @@ contextBridge.exposeInMainWorld('kmv', {
   viewMenuAct: (id, i) => ipcRenderer.send('view:menu-act', id, i),
   viewMenuClose: id => ipcRenderer.send('view:menu-close', id),
   onViewTranslate: cb => ipcRenderer.on('view:translate', (_e, id, a) => cb(id, a || {})),
+  // Settings › Developer: the switch, the error log and site responses, the report, Inspect
+  devSet: on => ipcRenderer.send('dev:set', !!on),
+  devLog: (src, where, msg) => ipcRenderer.send('dev:log', String(src), String(where || '').slice(0, 200), String(msg || '').slice(0, 2000)),
+  devInfo: () => ipcRenderer.invoke('dev:info'),
+  devClear: () => ipcRenderer.invoke('dev:clear'),
+  devReport: lines => ipcRenderer.invoke('dev:report', lines),
+  devSave: text => ipcRenderer.invoke('dev:save', String(text || '')),
+  devInspect: id => ipcRenderer.invoke('dev:inspect', id),
+  onDevChanged: cb => ipcRenderer.on('dev:changed', () => cb()),
+  onDevCopied: cb => ipcRenderer.on('dev:copied', (_e, d) => cb(d || {})),
+  onViewWhy: cb => ipcRenderer.on('view:why', (_e, id) => cb(id)),
 
   // Chrome extensions
   extList: () => ipcRenderer.invoke('ext:list'),

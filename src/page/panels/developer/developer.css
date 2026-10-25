@@ -1,0 +1,32 @@
+/* Settings › Developer: the error log and the sites' last answers */
+.dv-list{border:1px solid var(--line2);border-radius:8px;overflow:hidden;margin:8px 0 6px;max-height:330px;overflow-y:auto}
+.dv-empty{padding:12px;color:var(--muted);font-size:12px}
+.dv-row{display:grid;grid-template-columns:62px auto minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;box-sizing:border-box;padding:6px 10px;border:0;border-bottom:1px solid var(--line);
+  background:none;color:var(--text);font:12px/1.35 inherit;text-align:left}
+.dv-row:last-child{border-bottom:0}
+.dv-resp{grid-template-columns:62px auto minmax(0,1fr) auto auto;cursor:pointer}
+.dv-resp:hover{background:var(--panel2)}
+.dv-before{opacity:.6}
+.dv-t,.dv-cnt{color:var(--muted);font-variant-numeric:tabular-nums;font-size:11px}
+.dv-msg{font:11.5px/1.35 ui-monospace,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dv-row:not(.dv-resp) .dv-msg{white-space:normal;word-break:break-word}
+.dv-src,.dv-site{font-size:9.5px;font-weight:800;letter-spacing:.05em;border-radius:4px;padding:1px 5px;text-align:center;text-transform:uppercase;background:var(--line2);color:var(--text)}
+.dv-page{background:color-mix(in srgb,#5b8cff 25%,transparent);color:#bcd2ff}
+.dv-main{background:color-mix(in srgb,#a678ff 25%,transparent);color:#dac8ff}
+.dv-chat,.dv-stream{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--text)}
+.dv-kick{background:#53fc18;color:#0a0c0d}.dv-twitch{background:#8a4fff;color:#fff}.dv-youtube{background:#ff3d3d;color:#fff}
+.dv-st{font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.dv-st.ok{color:var(--accent)}.dv-st.bad{color:var(--danger)}
+.dv-n{color:var(--muted);font-weight:600}
+/* Why didn't this alert? */
+#whyDlg{z-index:100030}
+.dlg.why{width:min(480px,calc(100vw - 32px))}
+.why-line{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;word-break:break-word}
+.why-line b{color:var(--accent)}
+.why-checks{display:flex;flex-direction:column;gap:5px;overflow:auto}
+.why-row{display:grid;grid-template-columns:16px minmax(0,1fr);gap:6px;font-size:12.5px;line-height:1.4}
+.why-row small{display:block;color:var(--muted);font-size:11.5px}
+.why-m{font-weight:800;text-align:center}
+.why-y{color:var(--accent)}.why-x{color:var(--danger)}.why-n{color:var(--muted)}
+.why-verdict{border-left:3px solid #e8b84a;background:color-mix(in srgb,#e8b84a 9%,transparent);padding:8px 10px;border-radius:0 8px 8px 0;font-size:12.5px}
+.why-verdict.ok{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}

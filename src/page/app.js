@@ -74,6 +74,8 @@ import { init as panelsSettingsGeneral } from './panels/settings/general.js';
 import { init as panelsSettingsAlerts } from './panels/settings/alerts.js';
 import { init as panelsSettingsConnected } from './panels/settings/connected.js';
 import { init as panelsSettingsActivity } from './panels/settings/activity.js';
+import { init as panelsDeveloperDeveloper } from './panels/developer/developer.js';
+import { init as chatWhyAlert } from './chat/why-alert.js';
 import { init as start } from './start.js';
 import { init as layoutMonitors } from './layout/monitors.js';
 import { init as panelsSettingsMonitors } from './panels/settings/monitors.js';
@@ -156,6 +158,8 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   panelsSettingsAlerts,
   panelsSettingsConnected,
   panelsSettingsActivity,
+  panelsDeveloperDeveloper,
+  chatWhyAlert,
   start,
   layoutMonitors,
   panelsSettingsMonitors,

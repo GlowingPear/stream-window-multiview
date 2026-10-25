@@ -12,7 +12,7 @@ import { tipName } from '../shared/tooltips.js';
    title shrink. Close, mute and ⋯ always stay. Re-fits when the window resizes or a button shows or hides.
    Some buttons are always in the ⋯ menu (BAR_MENU). */
 const BAR_LEVELS = ['b1', 'b2'];
-const BAR_MENU = ['ext'];
+const BAR_MENU = ['ext', 'state', 'inspect'];
 const BAR_ORDER = ['chat', 'mod', 'reload', 'pop', 'profile', 'overlay', 'at', 'feat', 'like', 'star', 'max'];
 function fitBar(bar){
   if (!bar.isConnected || !bar.clientWidth) return;     // not on screen: fitted when it shows (it resizes then)
@@ -54,23 +54,34 @@ function openBarMenu(more){
   if (!barMenu.hidden && barMenuFor === more){ barMenu.hidden = true; return; }
   barMenuFor = more;
   barMenu.innerHTML = '';
+  let devHead = false;
   for (const b of more.closest('.btns').querySelectorAll('.ovf:not([hidden])')){
-    const item = document.createElement('button');
-    item.setAttribute('role', 'menuitem');
-    item.className = b.classList.contains('on') ? 'on' : '';
-    item.innerHTML = '<span class="bm-ico"></span><span class="bm-t"></span>';
-    item.querySelector('.bm-ico').innerHTML = b.dataset.a === 'chat' ? '+' : b.querySelector('svg')?.outerHTML || b.textContent;
-    item.querySelector('.bm-t').textContent = b.dataset.a === 'chat' ? 'Add chat' : tipName(b) || b.title;
-    const n = b.querySelector('.ext-n')?.textContent;
-    if (n) item.append(element('span', 'bm-n', n));
-    item.title = b.title;
-    item.onclick = () => { barMenu.hidden = true; if (b.isConnected) b.click(); };
-    barMenu.appendChild(item);
+    // Developer tools' items (Settings › Developer) go last, under a heading of their own
+    if (b.classList.contains('dev-b')){ devHead = true; continue; }
+    barMenu.appendChild(barItem(b));
+  }
+  if (devHead){
+    barMenu.appendChild(element('div', { class: 'bm-head', role: 'presentation' }, 'Developer'));
+    for (const b of more.closest('.btns').querySelectorAll('.ovf.dev-b:not([hidden])')) barMenu.appendChild(barItem(b));
   }
   barMenu.hidden = false;
   const r = more.getBoundingClientRect(), mw = barMenu.offsetWidth;
   barMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
   barMenu.style.top = Math.min(innerHeight - barMenu.offsetHeight - 8, r.bottom + 4) + 'px';
+}
+// One item of the ⋯ menu: what its button does.
+function barItem(b){
+  const item = document.createElement('button');
+  item.setAttribute('role', 'menuitem');
+  item.className = b.classList.contains('on') ? 'on' : '';
+  item.innerHTML = '<span class="bm-ico"></span><span class="bm-t"></span>';
+  item.querySelector('.bm-ico').innerHTML = b.dataset.a === 'chat' ? '+' : b.querySelector('svg')?.outerHTML || b.textContent;
+  item.querySelector('.bm-t').textContent = b.dataset.a === 'chat' ? 'Add chat' : tipName(b) || b.title;
+  const n = b.querySelector('.ext-n')?.textContent;
+  if (n) item.append(element('span', 'bm-n', n));
+  item.title = b.title;
+  item.onclick = () => { barMenu.hidden = true; if (b.isConnected) b.click(); };
+  return item;
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).

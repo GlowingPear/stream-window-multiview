@@ -27,12 +27,13 @@ function languageIn(code, inLang) {
   try { const n = new Intl.DisplayNames([inLang], { type: 'language' }).of(code); return n && n !== code ? n.charAt(0).toLocaleUpperCase(inLang) + n.slice(1) : code; } catch { return code; }
 }
 
-// params: Electron's context-menu params. opts: { langs, dev, emote, chat, message }
+// params: Electron's context-menu params. opts: { langs, dev, devTools, emote, chat, message }
+//   dev: a developer copy (Inspect); devTools: Settings › Developer › Developer tools is on (a Developer group, with Inspect)
 //   emote: the emote under the pointer (see emoteAgent in index.html): { name, text } where text is what to paste in that chat
 //   chat: a chat window's translation state (see translateAgent): { on, auto }; null: not a chat
 //   message: the chat message under the pointer (see messageAgent): { text, withEmotes, html }; null: not a message
-// -> [{ label, act, enabled?, checked? } | { type: 'separator' }]
-function menuFor(params, { langs = ['en'], dev = false, emote = null, chat = null, message = null } = {}) {
+// -> [{ label, act, enabled?, checked? } | { label, head: true } | { type: 'separator' }]
+function menuFor(params, { langs = ['en'], dev = false, devTools = false, emote = null, chat = null, message = null } = {}) {
   const p = params || {}, f = p.editFlags || {}, out = [];
   const group = items => { const list = items.filter(Boolean); if (!list.length) return; if (out.length) out.push({ type: 'separator' }); out.push(...list); };
   const sel = String(p.selectionText || '').trim();
@@ -69,12 +70,11 @@ function menuFor(params, { langs = ['en'], dev = false, emote = null, chat = nul
     { label: `Translate ${quoteShort(sel)} to ${languageName(tl)}`, act: { do: 'external', url: translateUrl(sel, tl) } },
     { label: `Search Google for ${quoteShort(sel)}`, act: { do: 'external', url: searchUrl(sel) } }
   ]);
-  // a chat message: its text without who sent it (emotes left out, or as their text), or all of its HTML
-  const msg = message && typeof message.html === 'string' && message.html ? message : null;
-  if (msg && !p.isEditable) group([
+  // a chat message: its text without who sent it (emotes left out, or as their text)
+  const msg = message && typeof message.html === 'string' && message.html && !p.isEditable ? message : null;
+  if (msg) group([
     { label: 'Copy message', act: { do: 'copyText', text: msg.text || '' }, enabled: !!msg.text },
-    { label: 'Copy message with emotes', act: { do: 'copyText', text: msg.withEmotes || '' }, enabled: !!msg.withEmotes },
-    { label: 'Copy message HTML', act: { do: 'copyText', text: msg.html } }
+    { label: 'Copy message with emotes', act: { do: 'copyText', text: msg.withEmotes || '' }, enabled: !!msg.withEmotes }
   ]);
   // a chat: translate all of it (like Chrome's "Translate to English"), and its new messages as they come
   if (chat && !p.isEditable && !webUrl(p.linkURL)) group([
@@ -84,7 +84,15 @@ function menuFor(params, { langs = ['en'], dev = false, emote = null, chat = nul
   ]);
   // nothing in particular: the page itself
   if (!out.length || (chat && !sel && !em && !webUrl(p.linkURL) && !p.isEditable && p.mediaType !== 'image')) group([{ label: 'Reload', act: { do: 'reload' } }]);
-  if (dev) group([{ label: 'Inspect', act: { do: 'inspect', x: p.x, y: p.y } }]);
+  // Developer tools: the message's and the chat's HTML, how the message was read for alerts, and Inspect
+  if (devTools) group([
+    { label: 'Developer', head: true },
+    msg ? { label: 'Copy message HTML', act: { do: 'copyText', text: msg.html } } : null,
+    chat && !p.isEditable ? { label: 'Copy chat HTML', act: { do: 'copyChatHtml' } } : null,
+    msg ? { label: 'Why didn\'t this alert?', act: { do: 'whyAlert' } } : null,
+    { label: 'Inspect', act: { do: 'inspect', x: p.x, y: p.y } }
+  ]);
+  else if (dev) group([{ label: 'Inspect', act: { do: 'inspect', x: p.x, y: p.y } }]);
   return out;
 }
 

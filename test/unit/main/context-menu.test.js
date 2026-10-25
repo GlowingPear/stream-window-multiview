@@ -119,20 +119,38 @@ test('a chat: Translate this chat, Translate new messages too and (while transla
   assert.deepEqual(labels(menuFor({})), ['Reload']);
 });
 
-test('a chat message: Copy message (without emotes), Copy message with emotes and Copy message HTML', () => {
+test('a chat message: Copy message (without emotes) and Copy message with emotes', () => {
   const chat = { on: false, auto: false }, message = { text: 'hi there', withEmotes: 'hi pearHype there', html: '<div data-index="1">…</div>' };
   const m = menuFor({}, { chat, message });
-  assert.deepEqual(labels(m), ['Copy message', 'Copy message with emotes', 'Copy message HTML', '—', 'Translate this chat to English', 'Translate new messages too', '—', 'Reload']);
-  assert.deepEqual(m.slice(0, 3).map(x => [x.act, x.enabled]), [
-    [{ do: 'copyText', text: 'hi there' }, true], [{ do: 'copyText', text: 'hi pearHype there' }, true], [{ do: 'copyText', text: '<div data-index="1">…</div>' }, undefined]]);
+  assert.deepEqual(labels(m), ['Copy message', 'Copy message with emotes', '—', 'Translate this chat to English', 'Translate new messages too', '—', 'Reload']);
+  assert.deepEqual(m.slice(0, 2).map(x => [x.act, x.enabled]), [[{ do: 'copyText', text: 'hi there' }, true], [{ do: 'copyText', text: 'hi pearHype there' }, true]]);
   // only emotes: nothing to copy without them
   const em = menuFor({}, { chat, message: { text: '', withEmotes: 'pearHype', html: '<div></div>' } });
-  assert.deepEqual(em.slice(0, 3).map(x => x.enabled !== false), [false, true, true]);
+  assert.deepEqual(em.slice(0, 2).map(x => x.enabled !== false), [false, true]);
   // after the emote's and the selection's items; not in the chat box, and not without a message
   const p = { mediaType: 'image', srcURL: 'https://files.kick.com/emotes/1/fullsize', selectionText: 'hi' };
-  assert.deepEqual(labels(menuFor(p, { chat, message, emote: { name: 'pearHype', text: 'pearHype' } })).slice(0, 14), ['Copy emote text', '—',
+  assert.deepEqual(labels(menuFor(p, { chat, message, emote: { name: 'pearHype', text: 'pearHype' } })).slice(0, 13), ['Copy emote text', '—',
     'Open image in new window', 'Save image as…', 'Copy image', 'Copy image address', '—', 'Copy', 'Translate “hi” to English', 'Search Google for “hi”', '—',
-    'Copy message', 'Copy message with emotes', 'Copy message HTML']);
+    'Copy message', 'Copy message with emotes']);
   assert.ok(!labels(menuFor({ isEditable: true }, { chat, message })).includes('Copy message'));
   assert.ok(!labels(menuFor({}, { chat, message: { text: 'x', withEmotes: 'x', html: '' } })).includes('Copy message'), 'no message there');
+});
+
+test('Developer tools on: a Developer group last, with the message\'s and the chat\'s HTML, Why didn\'t this alert? and Inspect', () => {
+  const chat = { on: false, auto: false }, message = { text: 'hi', withEmotes: 'hi', html: '<div data-index="1">hi</div>' };
+  const m = menuFor({ x: 4, y: 5 }, { chat, message, devTools: true });
+  assert.deepEqual(labels(m).slice(-6), ['—', 'Developer', 'Copy message HTML', 'Copy chat HTML', 'Why didn\'t this alert?', 'Inspect']);
+  assert.equal(find(m, 'Developer').head, true, 'a heading, not an item');
+  assert.deepEqual(find(m, 'Copy message HTML').act, { do: 'copyText', text: '<div data-index="1">hi</div>' });
+  assert.deepEqual(find(m, 'Copy chat HTML').act, { do: 'copyChatHtml' });
+  assert.deepEqual(find(m, 'Why didn\'t this alert?').act, { do: 'whyAlert' });
+  assert.deepEqual(find(m, 'Inspect').act, { do: 'inspect', x: 4, y: 5 });
+  // a chat but not on a message: the chat's HTML only; a stream: Inspect only; the chat box: no chat items
+  assert.deepEqual(labels(menuFor({}, { chat, devTools: true })).slice(-3), ['Developer', 'Copy chat HTML', 'Inspect']);
+  assert.deepEqual(labels(menuFor({}, { devTools: true })), ['Reload', '—', 'Developer', 'Inspect']);
+  assert.deepEqual(labels(menuFor({ isEditable: true }, { chat, message, devTools: true })).slice(-2), ['Developer', 'Inspect']);
+  // off: none of it (a developer copy still has Inspect, on its own)
+  assert.ok(!labels(menuFor({}, { chat, message })).some(l => /HTML|Developer|alert|Inspect/.test(l)));
+  assert.deepEqual(labels(menuFor({}, { chat, message, dev: true })).slice(-2), ['—', 'Inspect']);
+  assert.equal(labels(menuFor({}, { dev: true, devTools: true })).filter(l => l === 'Inspect').length, 1, 'Inspect once');
 });

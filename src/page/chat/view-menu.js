@@ -31,7 +31,7 @@ function closeViewMenu(chosen){
   runIn(m.view, 'window.__kmvEmote && window.__kmvEmote.menuClosed()');
   if (chosen == null && window.kmv && window.kmv.viewMenuClose) window.kmv.viewMenuClose(m.id);
 }
-// d: { emote: { name, site, big, small, animated, x, y }, items: [{ label, enabled, checked } | { sep }] }; x, y: in the chat page
+// d: { emote: { name, site, big, small, animated, x, y }, items: [{ label, enabled, checked } | { sep } | { head }] }; x, y: in the chat page
 function showViewMenu(view, id, d, pick){
   closeViewMenu();
   const e = d.emote || {}, el = document.createElement('div');
@@ -53,6 +53,7 @@ function showViewMenu(view, id, d, pick){
   const rows = [];
   (d.items || []).forEach((x, i) => {
     if (x.sep){ const r = document.createElement('div'); r.setAttribute('role', 'separator'); el.append(r); return; }
+    if (x.head){ const h = document.createElement('div'); h.className = 'vm-head'; h.setAttribute('role', 'presentation'); h.textContent = x.head; el.append(h); return; }   // (Developer)
     const b = document.createElement('div');
     b.setAttribute('role', 'checked' in x && x.checked ? 'menuitemcheckbox' : 'menuitem');
     if (x.checked) b.setAttribute('aria-checked', 'true');

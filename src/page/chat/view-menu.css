@@ -16,6 +16,7 @@
 .vmenu [role^=menuitem]:focus{outline:none}
 .vmenu [role^=menuitem][aria-disabled=true]{color:var(--muted)}
 .vmenu [role=separator]{height:1px;margin:4px 6px;background:var(--line)}
+.vmenu .vm-head{padding:5px 10px 2px 24px;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
 .menu{position:fixed;top:calc(var(--head) + 6px);z-index:100003;width:300px;display:flex;flex-direction:column;gap:2px;padding:6px;
   background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.55)}
 .menu[hidden]{display:none}

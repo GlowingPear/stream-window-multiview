@@ -1,7 +1,10 @@
 /* ---- The chat message you right-clicked: runs inside each chat page (Kick, Twitch, YouTube), for the right-click
    menu's Copy message, Copy message with emotes and Copy message HTML (src/main/context-menu.js). The main process asks
    it with ctx() before it builds the menu: the message's own text (not who sent it), the same with each emote as what
-   you'd type for it, and the whole message's HTML. What the app adds to a message (the translate badge, marks) is left out. */
+   you'd type for it, and the whole message's HTML. What the app adds to a message (the translate badge, marks) is left out.
+   With Developer tools on, the menu also has Copy chat HTML (chatHtml(): the last messages and the list around them)
+   and Why didn't this alert? (the mention helper reads last(), the message right-clicked). Errors in the app's own
+   scripts in this page (not the site's) go to Settings › Developer's error log as "__kmv:dev-err" messages. */
 function messageAgent(){
   if (window.__kmvMsg) return true;
   // each site's message text: Twitch, YouTube, Kick (the part after the name and its colon), as the translator finds it
@@ -33,8 +36,8 @@ function messageAgent(){
     [c, ...c.querySelectorAll('*')].forEach(e => [...e.attributes].forEach(a => { if (/^data-kmv-/.test(a.name)) e.removeAttribute(a.name); }));
     return c.outerHTML;
   }
-  // the message an element is in: { text, withEmotes, html } | null (not a message)
-  function messageOf(el){
+  // the message an element is in: { line, body } | null (not a message)
+  function partsOf(el){
     if (el && el.nodeType !== 1) el = el.parentElement;
     if (!el || !el.closest) return null;
     let line = el.closest(LINE);
@@ -42,15 +45,54 @@ function messageAgent(){
     const body = el.closest(BODY) || (line && line.querySelector(BODY));
     if (!body) return null;
     if (!line || !line.contains(body)) line = body.closest(LINE) || body.parentElement || body;
-    return { text: textOf(body, false), withEmotes: textOf(body, true), html: htmlOf(line).slice(0, 100000) };
+    return { line, body };
   }
+  // the message an element is in: { text, withEmotes, html } | null (not a message)
+  const read = m => m && { text: textOf(m.body, false), withEmotes: textOf(m.body, true), html: htmlOf(m.line).slice(0, 100000) };
+  const messageOf = el => read(partsOf(el));
+  // The chat's last n messages and what's around them (its list, banners, the pinned message), as HTML for an issue:
+  // { html, n, total } | null (no messages). The other messages are left out, and so are scripts, styles, icons'
+  // drawings and very long attributes.
+  function chatHtml(n){
+    const all = [...document.querySelectorAll(LINE)].filter(l => !l.parentElement || !l.parentElement.closest(LINE));
+    if (!all.length) return null;
+    const keep = all.slice(-Math.max(1, n || 30));
+    let box = keep[0].parentElement;
+    while (box && !keep.every(l => box.contains(l))) box = box.parentElement;
+    for (let b = box; b && b !== document.body && b !== document.documentElement; b = b.parentElement)
+      if (/(auto|scroll)/.test(getComputedStyle(b).overflowY)){ box = b; break; }
+    if (!box) return null;
+    keep.forEach(l => l.setAttribute('data-kmv-keep', ''));
+    const c = box.cloneNode(true);
+    keep.forEach(l => l.removeAttribute('data-kmv-keep'));
+    c.querySelectorAll(LINE).forEach(l => { if (!l.hasAttribute('data-kmv-keep') && !l.closest('[data-kmv-keep]')) l.remove(); });
+    c.querySelectorAll(OURS + ', script, style, noscript, template, link').forEach(e => e.remove());
+    c.querySelectorAll('svg').forEach(e => { e.innerHTML = ''; });
+    [c, ...c.querySelectorAll('*')].forEach(e => [...e.attributes].forEach(a => {
+      if (/^data-kmv-/.test(a.name)) e.removeAttribute(a.name);
+      else if (a.value.length > 300) e.setAttribute(a.name, a.value.slice(0, 300) + '…');
+    }));
+    return { html: c.outerHTML.slice(0, 400000), n: keep.length, total: all.length };
+  }
+  let lastLine = null;
   document.addEventListener('contextmenu', ev => { ctxAt = { target: ev.target, t: Date.now() }; }, true);
+  // errors in the app's scripts here: they have no file of their own (the site's do)
+  let errs = 0;
+  window.addEventListener('error', ev => {
+    if (ev.filename || errs >= 20) return;
+    errs++;
+    console.log('__kmv:dev-err ' + JSON.stringify({ msg: String(ev.message || ev.error || 'error').slice(0, 400), at: ev.lineno ? ev.lineno + ':' + ev.colno : '' }));
+  });
   window.__kmvMsg = {
-    messageOf,
+    messageOf, chatHtml,
     ctx(){
       const c = ctxAt; ctxAt = null;
-      return c && Date.now() - c.t < 3000 ? messageOf(c.target) : null;
-    }
+      const m = c && Date.now() - c.t < 3000 ? partsOf(c.target) : null;
+      lastLine = m ? m.line : null;
+      return read(m);
+    },
+    // the message last right-clicked (its whole line), while it's still in the chat
+    last: () => lastLine && lastLine.isConnected ? lastLine : null
   };
   return true;
 }

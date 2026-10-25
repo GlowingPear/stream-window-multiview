@@ -9,6 +9,9 @@ function mentionAgent(){
   let fresh = 0, counting = false;                           // new messages from others since the app last asked (count())
   let sup = null, supQueue = [], supMe = '';                          // support (Settings > Mentions > Support): the site's wording, and what was found
   const supSeen = new Map(), giftsBy = new Map(), raidsBy = new Map(), recentSup = new Map();
+  // what was decided about each line (Why didn't this alert?, Developer tools): line -> { v: why, t }
+  const decided = new Map();
+  const decide = (l, v, extra) => { decided.set(l, { v, t: Date.now(), ...extra }); if (decided.size > 1500) decided.delete(decided.keys().next().value); };
   // Clicks and typing in the chat: the window may already have focus, so the app sees no new focus to mark it seen.
   // Every kind of click counts, on the window before the page's own handlers: Kick's mod shortcuts on a
   // name (Shift, Cmd/Ctrl, Cmd/Ctrl + Shift + Click: delete, timeout, ban) may stop some of them.
@@ -124,7 +127,7 @@ function mentionAgent(){
       let rowParts = read === undefined ? null : read;
       if (read === undefined && row && row.querySelector('img')) try { rowParts = partsFor(l, nameRe(), m[2], row); } catch {}
       const id = rowParts ? l + '\u0002' + rowParts.filter(x => x.e).map(x => x.e).join(' ') : l;
-      if (window.__kmvTr && window.__kmvTr.has(m[2])){ seen.add(id); continue; }   // shown translated: its original was read already
+      if (window.__kmvTr && window.__kmvTr.has(m[2])){ seen.add(id); decide(l, 'translated'); continue; }   // shown translated: its original was read already
       // A message line is only ever judged once, even if its "Replying to" line later scrolls away or re-draws.
       const lineNew = !seen.has(id), key = r ? r + '\u0001' + id : '';
       const replyNew = key && !seen.has(key);
@@ -132,13 +135,13 @@ function mentionAgent(){
       // A row already read, now with more text after its message, or its emotes no longer read (an extension added
       // something): the same message. Kick re-uses rows for other messages, so its data-index has to match too.
       const was = row && rowSaid.get(row), idx = row && row.getAttribute('data-index');
-      if (lineNew && was && was.i === idx && was.s === m[1].toLowerCase() && flat(m[2]).startsWith(was.b)){ seen.add(id); if (key) seen.add(key); continue; }
+      if (lineNew && was && was.i === idx && was.s === m[1].toLowerCase() && flat(m[2]).startsWith(was.b)){ seen.add(id); if (key) seen.add(key); decide(l, 'redrawn'); continue; }
       seen.add(id); if (key) seen.add(key);
       if (row && lineNew) rowSaid.set(row, { i: idx, s: m[1].toLowerCase(), b: flat(m[2]) });
       const mod = watch && lineNew && modChange(m[1], m[2]);
-      if (!armed){ if (watch && known.size < 2000) known.add(m[1].toLowerCase()); continue; }   // people already chatting before we started
+      if (!armed){ if (watch && known.size < 2000) known.add(m[1].toLowerCase()); decide(l, 'before'); continue; }   // people already chatting before we started
       const sender = m[1], body = m[2];
-      if ((me && sender.toLowerCase() === me) || mine(l)) continue;      // your own messages
+      if ((me && sender.toLowerCase() === me) || mine(l)){ decide(l, 'own'); continue; }      // your own messages
       if (lineNew) fresh++;
       if (watch && lineNew && lines.length < 300) lines.push({ sender, body, line: l, t: Date.now(), mod });
       // Chat over the stream (chat/chat-overlay.js): every new message from others, with its emotes
@@ -147,11 +150,12 @@ function mentionAgent(){
         if (!fparts && !row) try { fparts = partsFor(l, nameRe(), body); } catch {}
         feedQ.push(fparts ? { sender, body, parts: fparts } : { sender, body });
       }
-      if (!me && !wordRe) continue;
+      if (!me && !wordRe){ decide(l, 'off'); continue; }
       const toMe = !!me && replyNew && replyRe.test(r), at = !!me && lineNew && atRe.test(body);
       const word = !toMe && !at && lineNew && wordRe ? body.match(wordRe) : null;
-      if (queue.length >= 100) continue;                    // the app takes them every few seconds; more means it isn't asking
-      if (!toMe && !at && !word) continue;
+      if (queue.length >= 100){ decide(l, 'busy'); continue; }   // the app takes them every few seconds; more means it isn't asking
+      if (!toMe && !at && !word){ decide(l, 'nomatch'); continue; }
+      decide(l, 'alerted', { kind: toMe ? 'reply' : at ? 'mention' : 'word' });
       let parts = rowParts, qparts = null;
       if (!row) try { parts = partsFor(l, nameRe(), body); } catch {}
       const quoted = toMe ? r.replace(/^Replying to\s+@?[A-Za-z0-9_]+:?\s*/i, '') : '';
@@ -393,6 +397,20 @@ function mentionAgent(){
       if (marks.size > 200) marks.delete(marks.keys().next().value);
     },
     look(){ scan(); },
+    // How a message line was read (Why didn't this alert?): el is the message's element (messageAgent's last()).
+    // { found, line, sender, body, me, words, armed, watch, decided: { v, kind?, t } | null, at, word, own }
+    explain(el){
+      if (!el || !document.body) return { found: false };
+      scan();
+      const text = flat(el.innerText), lines = chatLines().filter(x => lineOf(x.l));
+      const hit = [...lines].reverse().find(x => x.row && (x.row === el || x.row.contains(el) || el.contains(x.row)))
+        || [...lines].reverse().find(x => { const f = flat(x.l); return f === text || text.endsWith(f) || f.endsWith(text); });
+      if (!hit) return { found: false, text: text.slice(0, 300), me, words, armed };
+      const m = lineOf(hit.l), body = m[2];
+      const atRe = me && new RegExp('(^|[^A-Za-z0-9_])@' + esc(me) + '(?![A-Za-z0-9_])', 'i'), w = wordRe ? body.match(wordRe) : null;
+      return { found: true, line: hit.l, sender: m[1], body, me, words, armed, watch, decided: decided.get(hit.l) || null,
+        at: !!(atRe && atRe.test(body)), word: w ? w[2] : '', own: !!me && m[1].toLowerCase() === me };
+    },
     // how many new messages others wrote since it was last asked (Chat Stage counts them for the chats out of sight).
     // The first time, what's there is old. With mentions and spam alerts off nothing has armed it yet, and
     // messages only count once it's armed, so the first ask arms it.
