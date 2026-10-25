@@ -110,3 +110,15 @@ test('Settings › Chat: how many messages at once, how long each stays, and kee
   await page.waitForFunction(() => !document.querySelector('.co-line'), null, { timeout: 7000 });
   assert.equal(await page.isChecked('#chatOverlayKeep'), false);
 });
+
+test('1 message at once, kept on screen: only the latest message stays over the stream', async t => {
+  const page = await appWith(t, ['alpha']);
+  await page.evaluate(() => window.setChatOverlay(true));
+  await choose(page, 'chatOverlayKeep', true);
+  await choose(page, 'chatOverlayLines', 1);
+  await say(page, 'alpha', [{ sender: 'mossyrock', body: 'first' }, { sender: 'sundew', body: 'second' }]);
+  assert.deepEqual(await lines(page, 'alpha'), ['sundew: second']);
+  await say(page, 'alpha', [{ sender: 'tinycomet', body: 'third' }]);
+  await page.waitForTimeout(7000);
+  assert.deepEqual(await lines(page, 'alpha'), ['tinycomet: third'], 'the latest, kept');
+});
