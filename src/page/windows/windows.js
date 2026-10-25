@@ -273,6 +273,7 @@ let saveSoon;
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
+  window.viewCalls = { runIn, askIn };   // for the tests
   // Keep the slider in step if you change volume with the player's own controls.
   if (DESKTOP) setInterval(() => {
     wins.forEach(w => {

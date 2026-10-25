@@ -88,6 +88,10 @@ test('Installed: on where the grid says (streams by default, plus Twitch chats h
   assert.equal(await a.win.textContent('#barMenu button:has(.bm-t:text-is("Extensions")) .bm-n'), '1', 'how many are on, in the menu');
   await a.win.keyboard.press('Escape');
   await a.win.waitForSelector('#barMenu', { state: 'hidden' });
+  // each session it's on in listens for new pages on the app (the extensions library): the app's limit grows with
+  // them, so Node never warns "11 web-contents-created listeners" with many channels open
+  const [n, max] = await a.app.evaluate(({ app }) => [app.listenerCount('web-contents-created'), app.getMaxListeners()]);
+  assert.ok(max > 10 && n <= max, `${n} listeners, limit ${max}`);
 });
 
 test('A stream window can switch it off for itself only; chats follow Settings', T, async () => {
