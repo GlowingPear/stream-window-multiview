@@ -23,6 +23,7 @@ let lastSite = '';                       // the site of the channel you last ope
 const looked = new Map();                // a bare name -> { busy } or { items: what profile:lookup found } (kept for the session)
 let lookFor = '';
 const isOpen = ch => wins.some(w => w.channel === ch);
+const canLook = () => !!(window.kmv && window.kmv.profileLookup);
 const isFollowed = ch => follows.items.some(f => f.ch === ch);
 const liveOf = ch => { const i = infoFor(ch) || (follows.live || {})[ch]; return i && i.live ? i : null; };
 const modeName = { both: 'Stream + chat', stream: 'Stream only', chat: 'Chat only' };
@@ -128,7 +129,7 @@ function knownChannels(){
 // Asking the sites about a bare name (400 ms after the last key, once per name)
 let lookSoon;
 function lookUpName(){
-  const q = lookFor; if (!q || looked.has(q) || !DESKTOP || !window.kmv.profileLookup) return;
+  const q = lookFor; if (!q || looked.has(q) || !canLook()) return;
   looked.set(q, { busy: true });
   window.kmv.profileLookup(q).then(items => { looked.set(q, { items: items || [] }); store.changed('palette'); }, () => { looked.set(q, { items: null }); store.changed('palette'); });
 }
@@ -139,6 +140,7 @@ function typedItems(q){
   const site = lastSite || tabPlat();
   const p = parseInput(raw, site);
   if (!p) return [];
+  if (p.only === 'web' && !/^[\w-]+(\.[\w-]+)+/.test(new URL(p.url).hostname)) return [];      // (not a real address: "!!!")
   if (p.only === 'web') return [{ id: 'open:web', kind: 'channel', group: 'Open', title: `Open ${p.url.replace(/^https?:\/\//, '')}`, sub: 'As a web page in a window', icon: 'pop', matched: 100,
     run: () => addParsed(p) }];
   const known = new Set(knownChannels());
@@ -153,7 +155,7 @@ function typedItems(q){
     const ch = normCh(PLATFORMS[s].idFor(name));
     if (known.has(ch)) continue;
     const hit = look && look.items && look.items.find(x => x.ch === ch);
-    const found = !look || look.busy ? (DESKTOP && window.kmv.profileLookup ? `Checking ${PLAT_NAME[s]}…` : '')
+    const found = !look || look.busy ? (canLook() ? `Checking ${PLAT_NAME[s]}…` : '')
       : !look.items ? '' : hit ? `✓ Found on ${PLAT_NAME[s]}${hit.live ? ' · live' + (hit.live.viewers != null ? ' · ' + fmtViewers(hit.live.viewers) + ' watching' : '') : ''}`
       : `No ${PLAT_NAME[s]} channel called “${name}”`;
     if (look && look.items && !hit && s !== site) continue;           // the other sites only where it was found

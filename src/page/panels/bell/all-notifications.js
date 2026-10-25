@@ -67,7 +67,7 @@ function noteItems(q){
     sub: [timeAgo(n.t), n.body || (Array.isArray(n.parts) ? partsText(n.parts) : '') || n.title || n.detail || ''].filter(Boolean).join(' · '), icon: { mentions: 'at', spam: 'mod', live: 'live', app: 'bell' }[SmvNotes.tabOf(n)] || 'bell',
     verb: n.channel ? 'Show chat' : 'Show', run: () => { if (n.channel && SmvNotes.tabOf(n) !== 'live') revealChat(n.channel); else openNoteHistory(SmvNotes.tabOf(n), { q: '' }); },
     more: () => noteButtons(n) }));
-  if (q) list.push({ id: 'notes.search', kind: 'note', group: 'Notifications', title: `Search all notifications for “${q}”`, sub: 'All notifications', icon: 'search', matched: 20, boost: -10,
+  if (q && DESKTOP && window.kmv.notifyEnabled) list.push({ id: 'notes.search', kind: 'note', group: 'Nothing found', title: `Search all notifications for “${q}”`, sub: 'All notifications', icon: 'search', fallback: true,
     run: () => openNoteHistory('all', { sub: 'all', q }) });
   return list;
 }
@@ -172,7 +172,6 @@ function init(){
   }
   if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled){
     commands.add(noteHistoryCommands());
-    commands.provide('notes', noteItems);
     [['#nhRead', 'bell.read'], ['#nhClear', 'bell.clear']].forEach(([sel, id]) => { $(sel).dataset.cmd = id; });
   }
   // the bell (the main window's): the search box's, and what its buttons are (for the test that every button has one)
@@ -186,6 +185,7 @@ function init(){
       { id: 'notes.all', kind: 'tab', group: 'Notifications', title: 'All notifications', sub: 'Every notification kept, with search and filters', words: ['history'], icon: 'bell', button: '#bellAll', when: () => DESKTOP && !!window.kmv.notifyEnabled }
     ]);
     $('#bellRead').dataset.cmd = 'bell.read';
+    commands.provide('notes', noteItems);
   }
   window.openNoteHistory = openNoteHistory;   // for the tests
 }

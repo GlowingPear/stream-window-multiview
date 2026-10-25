@@ -90,7 +90,8 @@ function palEmptyRows(){
     const it = commands.find(id);
     if (it && !commands.disabledWhy(it)) out.push({ item: { ...it, group: 'Recent' }, marks: [] });
   }
-  for (const r of commands.search('', { keep: true })) if (!out.some(o => o.item.id === r.item.id)) out.push(r);
+  const order = ['For this window', 'Live now'], at = r => (order.indexOf(r.item.group) + 1) || order.length + 1;
+  for (const r of commands.search('', { keep: true }).sort((a, b) => at(a) - at(b))) if (!out.some(o => o.item.id === r.item.id)) out.push(r);
   return out;
 }
 
@@ -157,8 +158,9 @@ function renderPalette(){
   palCrumb.hidden = !top;
   if (top) palCrumb.replaceChildren(element('button', { type: 'button', class: 'pal-backb', title: 'Back (⇧Tab)', 'aria-label': 'Back', html: icon.arrowL, onclick: () => palPop() }), element('span', null, top.item.title), element('em', null, 'every action'));
   const text = palQ.value.trim();
-  if (!palRows.length) palList.append(element('div', 'pal-none', text ? `Nothing found for “${text}”` : 'Nothing here yet'));
-  let group = null;
+  const none = !palRows.length || palRows.every(r => r.item.fallback);
+  if (none) palList.append(element('div', 'pal-none', text ? `Nothing found for “${text}”` : 'Nothing here yet'));
+  let group = none ? 'Nothing found' : null;      // (what's still offered: no heading of its own)
   palRows.forEach((r, i) => {
     if (!r.hero && r.item.group !== group){
       group = r.item.group;
@@ -268,7 +270,8 @@ function init(){
   palQ.addEventListener('input', () => { palWhy = ''; palSel = 0; palBtnAt = 0; palPrefix(); renderPalette(); });
   palQ.addEventListener('keydown', palKey);
   palBox.addEventListener('keydown', e => { if (e.target !== palQ && (e.key === 'Escape' || e.key === 'Tab')){ palQ.focus(); palKey(e); } });
-  // focus stays in the box
+  // focus stays in the box: a click on its rows or headings leaves the keyboard in the words box
+  palBox.addEventListener('mousedown', e => { if (!e.target.closest('input, button, select, textarea')) e.preventDefault(); });
   palBox.addEventListener('focusout', e => { if (palOpen() && !palBox.contains(e.relatedTarget)) setTimeout(() => { if (palOpen() && !palBox.contains(document.activeElement)) palQ.focus(); }); });
   // Ctrl/⌘+K anywhere on the page, ahead of everything else (also with keyboard shortcuts switched off: it's how
   // you'd find the switch to turn them back on). In a chat or stream the web view keeps its keys: main.js sends it.

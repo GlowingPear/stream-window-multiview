@@ -86,14 +86,14 @@ function setTheme(t){
   theme = { name: t.name, vars: { ...BUILTIN_THEMES[0].vars, ...t.vars }, edited: false };
   applyTheme(true); renderThemeDlg();
 }
-// the search box's (Ctrl/⌘+K): each theme, and saving the one in use under the words typed
+// the search box's (Ctrl/⌘+K): each theme, and (when nothing else is found) saving the one in use under the words typed
 function themeItems(q){
   const cur = t => !theme.edited && theme.name === t.name;
   const out = [...BUILTIN_THEMES, ...myThemes].map(t => ({ id: 'theme:' + t.name, kind: 'theme', group: 'Themes', title: 'Theme: ' + t.name, sub: t.note || 'Your theme',
     words: [t.name, 'colours', 'colors', isLight(t.vars) ? 'light mode' : 'dark mode'], icon: 'palette', tags: cur(t) ? ['In use'] : [], verb: 'Use',
     run: () => { setTheme(t); flash(`Theme: ${t.name}`); } }));
-  if (q && q.length <= 30) out.push({ id: 'theme.save', kind: 'theme', group: 'Themes', title: `Save theme as “${q}”`, sub: 'The colours in use, as a theme of your own', icon: 'palette',
-    matched: 15, boost: -10, run: () => { themeDlg.querySelector('.th-name').value = q; saveThemeFromInput(); } });
+  if (q && q.length <= 30) out.push({ id: 'theme.save', kind: 'theme', group: 'Nothing found', title: `Save theme as “${q}”`, sub: 'The colours in use, as a theme of your own', icon: 'palette',
+    fallback: true, run: () => { themeDlg.querySelector('.th-name').value = q; saveThemeFromInput(); } });
   return out;
 }
 function renderThemeVars(){

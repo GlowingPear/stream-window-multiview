@@ -124,8 +124,8 @@ async function deletePreset(p){
   const i = presets.indexOf(p); if (i < 0) return;
   presets.splice(i, 1); savePresets(); if (activePreset === p.name) leavePreset(); store.changed('layout');
 }
-// The search box's (Ctrl/⌘+K) layouts of your own: each one (Enter uses it; Tab: rename, update, delete), and saving
-// what's on screen under the words typed
+// The search box's (Ctrl/⌘+K) layouts of your own: each one (Enter uses it; Tab: rename, update, delete), and (when
+// nothing else is found) saving what's on screen under the words typed
 function presetItems(q){
   const out = presets.map(p => ({ id: 'preset:' + p.name, kind: 'layout', group: 'Your layouts', title: p.name, sub: presetSummary(p), pic: presetBase(p), verb: 'Use',
     words: ['layout', 'preset'], tags: p.name === activePreset ? ['In use'] : [], when: () => ROLE === 'main', run: () => applyPreset(p),
@@ -136,8 +136,8 @@ function presetItems(q){
       { id: `preset:${p.name}:delete`, group: p.name, title: 'Delete', icon: 'bin', run: () => deletePreset(p) }
     ] }));
   const name = q.trim().slice(0, 40);
-  if (name && ROLE === 'main') out.push({ id: 'preset.save', kind: 'layout', group: 'Your layouts', title: `Save layout as “${name}”`, sub: 'What\'s on screen now, as a layout of your own', icon: 'layout',
-    matched: 15, boost: -10, disabled: () => !wins.length && 'Open some streams first', run: () => { const inp = $('#presetName'); inp.value = name; savePresetFromInput(inp); } });
+  if (name && ROLE === 'main') out.push({ id: 'preset.save', kind: 'layout', group: 'Nothing found', title: `Save layout as “${name}”`, sub: 'What\'s on screen now, as a layout of your own', icon: 'layout',
+    fallback: true, disabled: () => !wins.length && 'Open some streams first', run: () => { const inp = $('#presetName'); inp.value = name; savePresetFromInput(inp); } });
   return out;
 }
 // Rename from the search box: Settings › Layouts, at that layout, its name ready to type over
