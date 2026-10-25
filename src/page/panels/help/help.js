@@ -1,6 +1,7 @@
 import { $ } from '../../core.js';
 import { renderGuide, showGuide } from './guide.js';
 import { openSettings } from '../settings/settings.js';
+import { commands } from '../../shared/commands.js';
 import { esc } from '../../shared/element.js';
 import { DESKTOP, keyName } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
@@ -95,6 +96,9 @@ async function renderDoc(tab){
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   keysOn = settings.flag('keys', true);
+  // the search box's (Ctrl/⌘+K): every shortcut, with its keys (Enter shows the list)
+  commands.add(SHORTCUTS.flatMap(([g, rows]) => rows.map(([k, d]) => ({ id: 'keys:' + k, kind: 'help', group: 'Keyboard shortcuts', title: d, sub: g, keys: k.split(' or ')[0],
+    words: ['shortcut', 'key ' + k], icon: 'keys', verb: 'Show', run: () => showHelp('keys') }))));
 }
 
 export { appVersion, init, keysOn, readDocText, renderDoc, setKeysOn, SHORTCUTS, shortcutsGrid, showHelp };

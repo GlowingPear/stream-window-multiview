@@ -102,7 +102,7 @@ const palTile = it => {
 };
 function palAvatar(it, cls){
   const name = String(it.title || '?').replace(/^@/, '');
-  const a = element('span', { class: cls, style: { '--c': it.hue || 'var(--line2)' } }, name.slice(0, 1).toUpperCase());
+  const a = element('span', { class: cls, style: { '--c': it.hue || 'var(--line2)' } }, it.initials || name.slice(0, 1).toUpperCase());
   if (it.site) a.insertAdjacentHTML('beforeend', platIcon(it.site));
   if (it.avatar){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = it.avatar; a.appendChild(im); }
   return a;
@@ -196,6 +196,7 @@ function palRun(i, how){
   const r = palRows[i]; if (!r) return;
   const it = r.item;
   if (how === 'run' && r.hero && it.buttons) how = palBtnAt;
+  if (typeof how === 'number' && it.buttons && it.buttons[how] && it.buttons[how].more){ if (it.more) palPush(it); return; }
   if (how === 'more'){ if (it.more) palPush(it); return; }
   if (how === 'alt' && !it.alt){ if (it.more) return palPush(it); how = 'run'; }
   palWhy = commands.run(it, how);
@@ -283,7 +284,7 @@ function init(){
     pb.onclick = () => togglePalette();
   }
   // an open box keeps up with what it lists
-  store.watch(['wins', 'saved', 'live', 'names', 'notes', 'layout', 'autoOpen', 'liveAlerts', 'dev', 'link', 'reward'], () => { if (palOpen() && !palStack.length) renderPalette(); });
+  store.watch(['wins', 'saved', 'live', 'names', 'notes', 'layout', 'autoOpen', 'liveAlerts', 'dev', 'link', 'reward', 'palette'], () => { if (palOpen() && !palStack.length) renderPalette(); });
   window.palette = { open: openPalette, close: closePalette, toggle: togglePalette, isOpen: palOpen, rows: () => palRows.map(r => ({ id: r.item.id, title: r.item.title, group: r.item.group, hero: !!r.hero })) };   // for the tests
 }
 

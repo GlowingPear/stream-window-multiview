@@ -33,8 +33,9 @@ function addChatBeside(sw){
   createWin({ kind: 'chat', channel: sw.channel }, chatRectBeside(sw)); save();
 }
 
+// p: { channel, only } from parseInput (or { url, only: 'web' }); p.mode overrides the Stream / Chat dropdown
 function addParsed(p){
-  const mode = modeSel.value;
+  const mode = p.mode || modeSel.value;
   // Streams are popped out: send the stream to the streams window, keep its chat here.
   if (popped && !popPartial && p.channel && p.only !== 'chat' && mode !== 'chat'){
     window.kmv.openStreams([{ channel: p.channel, vol: 0.8, muted: mutedChk.checked }]);

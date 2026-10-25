@@ -74,6 +74,11 @@ function flagSpam(w, l, r, seen){
 function revealChat(ch){
   let c = wins.find(w => w.kind === 'chat' && w.channel === ch);
   if (!c){ addParsed({ channel: ch, only: 'chat' }); c = wins.find(w => w.kind === 'chat' && w.channel === ch); if (!c) return; }
+  revealWin(c);
+}
+// Bring a window into view (and flash it): scrolled to in Columns, else on top.
+function revealWin(c){
+  if (!c || !wins.includes(c)) return;
   if (colsMode && !c.el.classList.contains('featured')){
     const keys = buildCols().filter(k => !(featBase.length && k.key === featuredCh)).map(k => k.key);
     const i = keys.indexOf(colKey(c));
@@ -160,4 +165,4 @@ function init(){
   window.supportFrom = (ch, list) => supportFrom(wins.find(w => w.kind === 'chat' && w.channel === ch), list);   // for the tests
 }
 
-export { forgetChat, init, pollMentions, revealChat, spamFirst, spamOpts };
+export { forgetChat, init, pollMentions, revealChat, revealWin, spamFirst, spamOpts };

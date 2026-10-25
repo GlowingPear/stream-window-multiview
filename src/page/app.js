@@ -85,6 +85,9 @@ import { init as toolbarToolbarFit } from './toolbar/toolbar-fit.js';
 import { init as panelsExtensionsExtensions } from './panels/extensions/extensions.js';
 import { init as sharedAsk } from './shared/ask.js';
 import { init as sharedTooltips } from './shared/tooltips.js';
+import { init as windowsWindowCommands } from './windows/window-commands.js';
+import { init as panelsChannelsChannelCommands } from './panels/channels/channel-commands.js';
+import { init as panelsSettingsSettingsCommands } from './panels/settings/settings-commands.js';
 import { init as palettePalette } from './palette/palette.js';
 
 [
@@ -171,5 +174,8 @@ import { init as palettePalette } from './palette/palette.js';
   panelsExtensionsExtensions,
   sharedAsk,
   sharedTooltips,
+  windowsWindowCommands,
+  panelsChannelsChannelCommands,
+  panelsSettingsSettingsCommands,
   palettePalette
 ].forEach(init => init());

@@ -15,7 +15,8 @@ import { settings } from './settings.js';
 // An item can also have: alt (⇧Enter's second choice, with altLabel), more () => [items] (Tab: everything for it),
 // buttons [{ label, icon, run }] (a channel's row of actions), avatar / site / live / viewers (how it's drawn),
 // boost (a number added to its score: the window you last clicked, live, open…), keep (shown even when nothing
-// is typed: the empty box's lists).
+// is typed: the empty box's lists), matched (a provider's own score, for an item that matched in ways the name
+// doesn't show: a guide page that mentions the words), fallback (only when nothing else is found).
 // What you run is remembered (the 'palette' setting): the empty box's Recent, and used items rank higher (frecency).
 // Nothing here touches the page, except a command's button: add() marks it (data-cmd="<id>", for the test that every
 // button has a command) and run() clicks it.
@@ -96,7 +97,7 @@ function parseQuery(text){
   const t = String(text || '').replace(/^\s+/, '');
   return CMD_SCOPES[t[0]] ? { scope: t[0], q: t.slice(1).trim() } : { scope: '', q: t.trim() };
 }
-// -> [{ item, score, match, marks }], best first: at most 7 a group and 40 in all. With nothing typed: everything a
+// -> [{ item, score, match, marks }], best first: at most 7 a group (any number with a prefix) and 40 in all. With nothing typed: everything a
 // scope lists, or (keep) the items for the empty box. only: search these items instead (Tab's list for a row).
 // Items marked fallback are left out: they're for when nothing else is found (fallbacks()).
 function searchCommands(text, { scope = '', only = null, keep = false, now = Date.now() } = {}){
@@ -107,7 +108,11 @@ function searchCommands(text, { scope = '', only = null, keep = false, now = Dat
   for (const it of only ? only.filter(cmdOn) : allCommands(p.q)){
     if ((kinds && !kinds.includes(it.kind)) || (it.fallback && !only)) continue;
     let s;
-    if (p.q){ s = fuzzy.scoreItem(p.q, { title: it.title, words: cmdVal(it.words) || [], sub: cmdVal(it.sub) || '' }); if (!s) continue; }
+    if (p.q){
+      s = fuzzy.scoreItem(p.q, { title: it.title, words: cmdVal(it.words) || [], sub: cmdVal(it.sub) || '' })
+        || (it.matched ? { score: it.matched, marks: [] } : null);       // (a provider that searched for itself: the guide's pages)
+      if (!s) continue;
+    }
     else if (only || p.scope || (keep && it.keep)) s = { score: 0, marks: [] };
     else continue;
     const score = s.score + (p.scope || only ? 0 : (CMD_RANK[it.kind] || 0)) + (+cmdVal(it.boost) || 0) + (only ? 0 : cmdFrecency(it.id, now, m));
@@ -118,9 +123,9 @@ function searchCommands(text, { scope = '', only = null, keep = false, now = Dat
   const best = Math.max(0, ...scored.map(r => r.match));
   const per = new Map(), out = [];
   for (const r of scored){
-    if (p.q && best >= 55 && r.match < 25) continue;
+    if (p.q && best >= 55 && r.match < 35) continue;
     const g = r.item.group, n = per.get(g) || 0;
-    if (!only && n >= CMD_PER_GROUP) continue;
+    if (!only && !p.scope && n >= CMD_PER_GROUP) continue;
     per.set(g, n + 1); out.push(r);
     if (!only && out.length >= CMD_MAX) break;
   }

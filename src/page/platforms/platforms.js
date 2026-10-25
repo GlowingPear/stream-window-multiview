@@ -165,6 +165,7 @@ function init(){
   });
 }
 
-export { chatSrc, checkMod, chLabel, chLabelP, extCount, externalFor, infoNames, init, modOk, modUrl, normCh,
-  parseInput, PLAT_NAME, platform, platformVars, platIcon, platOf, rememberName, rememberNames, setWatchSignedIn,
-  srcFor, streamSignedIn, streamSrc, syncStreams, trimPlayerPage, viewPartition, watchSignedIn, ytVidOf };
+export { chatSrc, checkMod, chLabel, chLabelP, chNames, extCount, externalFor, infoNames, init, modOk, modUrl,
+  normCh, parseInput, PLAT_NAME, platform, PLATFORMS, platformVars, platIcon, platOf, rememberName, rememberNames,
+  setWatchSignedIn, srcFor, streamSignedIn, streamSrc, syncStreams, trimPlayerPage, viewPartition, watchSignedIn,
+  ytVidOf };

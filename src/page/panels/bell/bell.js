@@ -68,11 +68,11 @@ const readChat = ch => readNotes(n => n.channel === ch && (SmvNotes.tabOf(n) ===
 const mentNameFor = ch => { const p = platOf(ch); return p === 'kick' ? myName : p === 'twitch' ? myTwitch : ''; };   // YouTube chat isn't covered
 const mentCovered = ch => /^(kick|twitch)$/.test(platOf(ch)) && !!(mentNameFor(ch) || mentWords.length);
 const mentAny = () => !!(myName || myTwitch || mentWords.length);
-function toggleChatMentions(w){
-  if (mentMuted.has(w.channel)) mentMuted.delete(w.channel); else mentMuted.add(w.channel);
+function toggleChatMentions(ch){
+  if (mentMuted.has(ch)) mentMuted.delete(ch); else mentMuted.add(ch);
   settings.set('mentMuted', [...mentMuted]);
-  wins.forEach(x => { if (x.kind === 'chat' && x.channel === w.channel){ syncAtBtn(x); if (x.ready) injectMention(x); } });
-  flash(mentMuted.has(w.channel) ? `Mentions off for ${chLabel(w.channel)}'s chat` : `Mentions on for ${chLabel(w.channel)}'s chat`);
+  wins.forEach(x => { if (x.kind === 'chat' && x.channel === ch){ syncAtBtn(x); if (x.ready) injectMention(x); } });
+  flash(mentMuted.has(ch) ? `Mentions off for ${chLabel(ch)}'s chat` : `Mentions on for ${chLabel(ch)}'s chat`);
 }
 function syncAtBtn(w){
   const b = w.el && w.el.querySelector('[data-a=at]'); if (!b) return;
@@ -344,6 +344,6 @@ function init(){
 }
 
 export { addNote, bell, bellCount, bellVars, cleanParts, dndOn, dndT, dndUntil, drawNotes, dropNotes, EMPTY, init,
-  mentAny, mentBodyNodes, mentMuted, mentNameFor, mentOn, mentWords, myName, myTwitch, nh, noteActs, noteRow, notes,
-  partsText, readChat, readNotes, renderBell, saveNotes, seeBell, setMyName, spamWhy, syncAtBtn, TAB_NAME, timeAgo,
-  toggleChatMentions, updateBellBtn };
+  mentAny, mentBodyNodes, mentCovered, mentMuted, mentNameFor, mentOn, mentWords, myName, myTwitch, nh, noteActs,
+  noteRow, notes, partsText, readChat, readNotes, renderBell, saveNotes, seeBell, setMyName, spamWhy, syncAtBtn,
+  TAB_NAME, timeAgo, toggleChatMentions, updateBellBtn };

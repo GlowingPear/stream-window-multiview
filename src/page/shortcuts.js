@@ -193,4 +193,4 @@ function init(){
   });
 }
 
-export { closeOverlays, init, layoutPick };
+export { closeOverlays, init, layoutPick, makeBig };

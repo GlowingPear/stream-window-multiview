@@ -21,7 +21,8 @@ const TOPICS = new Set([
   'layout',      // the layout in use and its options
   'link',        // the link with Pear Drops: its state, what it's farming, Kick players signed out (platforms/pear-drops.js)
   'reward',      // Kick's daily reward from Pear Drops, and whether the toolbar's chest shows (platforms/pear-drops.js)
-  'dev'          // Settings › Developer › Developer tools on or off (panels/developer/developer.js)
+  'dev',         // Settings › Developer › Developer tools on or off (panels/developer/developer.js)
+  'palette'      // something the search box lists changed on its own (an answer from a site: panels/channels/channel-commands.js)
 ]);
 const watchers = [];          // { topics, fn }, in the order they started watching
 const checkTopic = t => { if (!TOPICS.has(t)) throw new Error(`Not something the store knows about: ${t} (see src/page/shared/store.js)`); };
