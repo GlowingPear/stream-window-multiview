@@ -1,5 +1,6 @@
 import { alerts, clearAlert, raiseAlert, wantNotify } from './alerts.js';
 import { SmvSpam } from './spam.js';
+import { supportBanner } from './support-banner.js';
 import { GAP, colWidth, colsMode, msg, wins } from '../core.js';
 import { buildCols } from '../layout/columns.js';
 import { SW, focusWin } from '../layout/geometry.js';
@@ -115,6 +116,7 @@ function supportFrom(w, list){
     if (wantNotify('support')) window.kmv.notifyMention(item);
     addNote(item, `${item.sender} ${what} in ${chLabel(w.channel)}`);
     raiseAlert(w, 'support', false);
+    supportBanner(w.channel, item.sender, what, s.kind);          // on its stream's picture too
   }
 }
 async function pollChats(ment, spam){
