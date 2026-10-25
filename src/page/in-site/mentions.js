@@ -5,6 +5,7 @@ function mentionAgent(){
   if (window.__kmvMention) return true;
   const seen = new Set(), marks = new Map(), known = new Set(), said = new Map(), rowSaid = new WeakMap();
   let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0;
+  let feed = false, feedQ = [];                              // new messages for the chat over the stream (setFeed)
   let fresh = 0, counting = false;                           // new messages from others since the app last asked (count())
   let sup = null, supQueue = [], supMe = '';                          // support (Settings > Mentions > Support): the site's wording, and what was found
   const supSeen = new Map(), giftsBy = new Map(), raidsBy = new Map(), recentSup = new Map();
@@ -106,7 +107,7 @@ function mentionAgent(){
     return out.some(x => lineOf(x.l)) ? out : textLines(document.body.innerText).map(l => ({ l }));
   }
   function scan(){
-    if ((!me && !wordRe && !watch && !counting && !sup) || !document.body) return;
+    if ((!me && !wordRe && !watch && !counting && !sup && !feed) || !document.body) return;
     if (sup) supScan();
     const all = chatLines();
     const replyRe = me && new RegExp('^Replying to\\s+@?' + esc(me) + '(?![A-Za-z0-9_])', 'i');
@@ -140,6 +141,12 @@ function mentionAgent(){
       if ((me && sender.toLowerCase() === me) || mine(l)) continue;      // your own messages
       if (lineNew) fresh++;
       if (watch && lineNew && lines.length < 300) lines.push({ sender, body, line: l, t: Date.now(), mod });
+      // Chat over the stream (chat/chat-overlay.js): every new message from others, with its emotes
+      if (feed && lineNew && feedQ.length < 40){
+        let fparts = rowParts;
+        if (!fparts && !row) try { fparts = partsFor(l, nameRe(), body); } catch {}
+        feedQ.push(fparts ? { sender, body, parts: fparts } : { sender, body });
+      }
       if (!me && !wordRe) continue;
       const toMe = !!me && replyNew && replyRe.test(r), at = !!me && lineNew && atRe.test(body);
       const word = !toMe && !at && lineNew && wordRe ? body.match(wordRe) : null;
@@ -367,6 +374,12 @@ function mentionAgent(){
       const was = armed; armed = false; supScan(); armed = was;   // what's there already is old
       if (!armed) arm();
     },
+    // new messages from others, handed over with take() (Settings > Chat > Show new chat messages over the stream)
+    setFeed(on){
+      on = !!on; if (on === feed) return;
+      feed = on; feedQ = [];
+      if (on && !armed) arm();
+    },
     setWatch(on){
       on = !!on; if (on === watch) return;
       watch = on; lines = [];
@@ -389,7 +402,7 @@ function mentionAgent(){
       const n = first ? 0 : fresh; fresh = 0; return n;
     },
     ready(){ return armed; },                                // for the tests: new messages count from now on
-    take(){ scan(); const q = { m: queue, l: lines, k: [...known], c: seenAt, s: supQueue }; queue = []; lines = []; supQueue = []; known.clear(); seenAt = 0; return q; }
+    take(){ scan(); const q = { m: queue, l: lines, k: [...known], c: seenAt, s: supQueue, f: feedQ }; queue = []; lines = []; supQueue = []; feedQ = []; known.clear(); seenAt = 0; return q; }
   };
   return true;
 }

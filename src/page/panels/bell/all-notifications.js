@@ -1,4 +1,5 @@
 import { alerts } from '../../alerts/alerts.js';
+import { overlayIsOn } from '../../chat/chat-overlay.js';
 import { $, wins } from '../../core.js';
 import { MENTION_JS } from '../../in-site/mentions.js';
 import { EMPTY, TAB_NAME, bell, bellVars, drawNotes, dropNotes, mentMuted, mentNameFor, mentOn, mentWords, myName,
@@ -89,7 +90,7 @@ function injectMention(w){
   const who = off ? '' : mentNameFor(w.channel), words = off ? [] : mentWords;
   const watch = !!alerts.spam.on && site.spamAlerts;
   const sup = alerts.support.on && site.support ? site.support : null;   // Settings > Mentions > Support (your own never counts)
-  runIn(w.view, `${MENTION_JS};window.__kmvMention.setMe(${JSON.stringify(who)},${JSON.stringify(words)});window.__kmvMention.setWatch(${watch});` +
+  runIn(w.view, `${MENTION_JS};window.__kmvMention.setMe(${JSON.stringify(who)},${JSON.stringify(words)});window.__kmvMention.setWatch(${watch});window.__kmvMention.setFeed(${overlayIsOn()});` +
     `window.__kmvMention.setSupport(${JSON.stringify(sup)},${JSON.stringify(mentNameFor(w.channel))})`);
 }
 

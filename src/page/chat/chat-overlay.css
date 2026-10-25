@@ -1,0 +1,11 @@
+/* chat over the stream (chat/chat-overlay.js): new messages at the bottom left of a stream window, each fading after a few seconds */
+.co-box{position:absolute;left:8px;bottom:8px;z-index:4;max-width:min(420px,calc(100% - 16px));display:flex;flex-direction:column;align-items:flex-start;gap:3px;pointer-events:none}
+.co-line{max-width:100%;padding:3px 8px;border-radius:6px;background:rgba(10,10,12,.72);color:#fff;font-size:13px;line-height:1.35;
+  text-shadow:0 1px 2px #000;overflow-wrap:anywhere;animation:coIn .25s ease;transition:opacity .4s}
+.co-line b{color:var(--accent)}
+.co-line .mp-emote{height:1.5em;vertical-align:-.4em}
+.co-line.out{opacity:0}
+@keyframes coIn{from{opacity:0;transform:translateY(6px)}}
+.win.stg-thumb .co-line{font-size:11px;padding:2px 6px}   /* the small pictures in Chat Stage's strip */
+.win.stg-thumb .co-box{bottom:30px}
+.btns button.co-b.off{opacity:.55}
