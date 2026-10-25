@@ -1,4 +1,4 @@
-// Support alerts (Settings > Mentions > Support): the chat helper spots someone supporting the stream in the site's
+// Support alerts (Settings > Support): the chat helper spots someone supporting the stream in the site's
 // own notices (Kick's rows as in its chat: a community gift with its goal, the subs it gave, KICKs sent; Twitch's
 // notice lines and cheers; YouTube's Super Chat, gift and member items), and the app turns them into an alert and a
 // line in the bell, with the smallest amount that alerts for each kind.
@@ -119,11 +119,23 @@ test('Twitch: a community gift, a sub with its months, and cheers in a message a
   ]);
 });
 
-test('Settings › Mentions › Support: off at first, switched on and saved; an alert and a Support line in the bell, only from the smallest amount set', async t => {
+test('Settings › Support: off at first, switched on and saved; an alert and a Support line in the bell, only from the smallest amount set', async t => {
   const page = await openApp(t);
   await add(page, 'alpha');
-  await page.evaluate(() => { document.querySelector('.st-rail [data-s=mentions]').hidden = false; window.openSettings('mentions'); });   // (the desktop app's pages)
-  await page.click('#mentTabs [data-t=support]');
+  await page.evaluate(() => { document.querySelector('.st-rail [data-s=support]').hidden = false; window.openSettings('support'); });   // (the desktop app's pages)
+  // its own page (#189), after Mentions, with two tabs: what alerts, and how
+  assert.deepEqual(await page.$$eval('#settingsDlg .st-rail button', l => l.map(b => b.dataset.s).filter(s => ['mentions', 'support', 'spam'].includes(s))), ['mentions', 'support', 'spam']);
+  assert.ok(await page.$eval('#settingsDlg .st-rail [data-s=support] svg', s => !!s), 'with its icon');
+  assert.equal(await page.locator('#mentTabs [data-t=support], [data-s=mentions] [data-al^="support."]').count(), 0, 'no longer in Mentions');
+  const tabs = () => page.$$eval('#supportTabs button', l => l.map(b => b.textContent + (b.classList.contains('on') ? ' *' : '')));
+  assert.deepEqual(await tabs(), ['What alerts *', 'How it alerts']);
+  assert.ok(await page.isVisible('[data-s=support] [data-al="support.minKicks"]'));
+  assert.ok(await page.isHidden('[data-s=support] [data-al="support.banner"]'));
+  await page.click('#supportTabs [data-t=how]');
+  assert.deepEqual(await tabs(), ['What alerts', 'How it alerts *']);
+  assert.ok(await page.isVisible('[data-s=support] [data-al="support.banner"]') && await page.isVisible('[data-s=support] [data-al="support.sound"]'));
+  assert.ok(await page.isHidden('[data-s=support] [data-al="support.minKicks"]'));
+  await page.click('#supportTabs [data-t=what]');
   assert.equal(await page.isChecked('#supportOn'), false, 'off at first');
   assert.ok(await page.$eval('.st-opts[data-for=support]', e => e.classList.contains('st-dim')), 'its options dimmed while off');
   await page.click('label:has(#supportOn)');
@@ -173,11 +185,10 @@ test('raids: Kick\'s banner over the chat once (not again as its viewers go up, 
   await put(page, '<div class="row">25 raiders from nightowl have joined!</div>');
   assert.deepEqual(await found(page), [['raid', 'nightowl', 25, '']]);
 
-  // the smallest raid that alerts (Settings › Mentions › Support › Raids), and what the bell says
+  // the smallest raid that alerts (Settings › Support › What alerts › Raids), and what the bell says
   page = await openApp(t);
   await add(page, 'alpha');
-  await page.evaluate(() => { document.querySelector('.st-rail [data-s=mentions]').hidden = false; window.openSettings('mentions'); });   // (the desktop app's pages)
-  await page.click('#mentTabs [data-t=support]');
+  await page.evaluate(() => { document.querySelector('.st-rail [data-s=support]').hidden = false; window.openSettings('support'); });   // (the desktop app's pages)
   await page.click('label:has(#supportOn)');
   assert.equal(await page.inputValue('[data-al="support.minRaid"]'), '1', 'any raid at first');
   await page.selectOption('[data-al="support.minRaid"]', '50');

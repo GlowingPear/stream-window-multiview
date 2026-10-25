@@ -159,6 +159,7 @@ test('the switch control in its own window controls the main window', T, async (
   // new messages in a chat you can't see (Settings › Chat): next to its name here, and on its stream's title bar
   await a.win.evaluate(() => window.openSettings());
   await a.win.click('#settingsDlg .st-rail [data-s="chat"]');
+  await a.win.click('#chatTabs [data-t=messages]');
   await a.win.click('#settingsDlg label:has(#chatCountsSet)');
   assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.chatCounts')), '1');
   await a.win.evaluate(() => window.chatNew('bravo', 4));    // under Settings: out of sight

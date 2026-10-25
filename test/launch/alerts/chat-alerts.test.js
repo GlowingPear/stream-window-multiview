@@ -399,8 +399,7 @@ test('spam alerts off: chats stop handing over their messages', T, async () => {
 });
 
 test('support alerts: a community gift in a chat glows its window and is listed once in the bell; under the smallest set, nothing', T, async () => {
-  await win.evaluate(() => window.openSettings('mentions'));
-  await win.click('#mentTabs [data-t=support]');
+  await win.evaluate(() => window.openSettings('support'));
   await win.click('label:has(#supportOn)');
   await win.keyboard.press('Escape');
   await ready();
@@ -418,8 +417,7 @@ test('support alerts: a community gift in a chat glows its window and is listed 
 });
 
 test('support alerts: a raid banner over a chat glows its window and is listed once, also as its viewers count up', T, async () => {
-  await win.evaluate(() => window.openSettings('mentions'));
-  await win.click('#mentTabs [data-t=support]');
+  await win.evaluate(() => window.openSettings('support'));
   if (!(await win.isChecked('#supportOn'))) await win.click('label:has(#supportOn)');
   await win.keyboard.press('Escape');
   await ready();

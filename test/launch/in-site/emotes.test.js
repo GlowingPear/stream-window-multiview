@@ -67,6 +67,7 @@ test('Settings > General switches the emote preview off and on in open chats', T
   await on();
   await w.evaluate(() => { document.getElementById('settingsBtn').click(); });
   await w.click('#settingsDlg [data-s=chat]').catch(() => {});
+  await w.click('#chatTabs [data-t=emotes]');
   assert.equal(await w.isChecked('#emoteSet'), false, 'off by default');
   assert.equal(await inView(w, 'alpha', 'chat', () => { const i = document.querySelector('img[alt=e]'); i.dispatchEvent(new PointerEvent('pointerover', { bubbles: true })); return new Promise(r => setTimeout(() => r(!!document.querySelector('kmv-emote-card')), 400)); }), false, 'no card');
   await w.locator('label[for=emoteSet]').click();

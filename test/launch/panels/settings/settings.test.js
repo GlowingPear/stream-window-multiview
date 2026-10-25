@@ -104,6 +104,9 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   await win.click('#ntGrid .seg[data-al="mention.notify"] [data-v=always]');
   await win.click('#ntGrid .k-spam [data-go]');
   assert.ok(await win.isVisible('[data-s=spam] .st-subpane[data-t=alerts]'), 'More on Spam alerts');
+  await win.click('#settingsDlg .st-rail [data-s=notify]');
+  await win.click('#ntGrid .k-support [data-go]');
+  assert.equal(await settingsTab(), 'support', 'More on Support: its own page (#189)');
   await win.click('#settingsDlg .st-rail [data-s=mentions]');
   assert.equal(await win.inputValue('[data-s=mentions] [data-al="mention.notify"]'), 'always', 'the grid\'s Desktop is the page\'s Desktop notification');
   await win.selectOption('[data-s=mentions] [data-al="mention.notify"]', 'unfocused');
@@ -117,7 +120,7 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   assert.equal(await settingsTab(), 'accounts');
   assert.ok(await win.isHidden('#accountMenu'), 'the menu closes');
   const tabs = await win.$$eval('#settingsDlg .st-rail button', b => b.filter(x => !x.hidden).map(x => x.dataset.s));
-  assert.deepEqual(tabs, ['general', 'layouts', 'chat', 'themes', 'accounts', 'apps', 'youtube', 'extensions', 'notify', 'mentions', 'spam', 'guide', 'keys', 'updates', 'developer']);
+  assert.deepEqual(tabs, ['general', 'layouts', 'chat', 'themes', 'accounts', 'apps', 'youtube', 'extensions', 'notify', 'mentions', 'support', 'spam', 'guide', 'keys', 'updates', 'developer']);
   assert.ok(await win.isVisible('#settingsDlg .am-watch'), 'Watch signed in moved here');
   assert.ok(await win.isHidden('#mentUser'), 'your usernames are under Mentions');
   await win.click('#settingsDlg .st-rail [data-s=mentions]');
@@ -138,6 +141,38 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   await win.click('#loginBtn');
   assert.equal(await win.$$eval('#accountMenu .am-imp', b => b.length), 3, 'Import follows is in the Accounts menu too');
   await win.keyboard.press('Escape');
+});
+
+// #189: at 1600×900 (and bigger) every page and tab fits without scrolling, with the options that show more switched on.
+// Keyboard shortcuts, Spam alerts › How it works, the Guide and Updates are pages to read, so they may scroll.
+test('no Settings page or tab scrolls at 1600×900', T, async () => {
+  const size = await app.evaluate(({ BrowserWindow }) => {
+    const w = BrowserWindow.getAllWindows().find(x => /index\.html$/.test(x.webContents.getURL()));
+    const was = w.getContentSize(); w.setContentSize(1600, 900); return was;
+  });
+  try {
+    await win.waitForFunction(() => innerWidth === 1600 && innerHeight === 900);
+    const over = await win.evaluate(async () => {
+      const wait = () => new Promise(r => setTimeout(r, 120));
+      for (const id of ['chatNameSet', 'chatOverlaySet']) if (!document.getElementById(id).checked) document.getElementById(id).click();
+      window.openSettings('general'); await wait();
+      const dlg = document.getElementById('settingsDlg'), body = dlg.querySelector('.st-body'), out = [];
+      for (const b of [...dlg.querySelectorAll('.st-rail button[data-s]')].filter(x => !x.hidden && !['keys', 'guide', 'updates'].includes(x.dataset.s))){
+        window.openSettings(b.dataset.s); await wait();
+        const tabs = [...dlg.querySelectorAll(`.st-pane[data-s="${b.dataset.s}"] > .st-tabs button[data-t]`)].filter(t => !t.hidden);
+        for (const t of tabs.length ? tabs : [null]){
+          if (t){ if (b.dataset.s === 'spam' && t.dataset.t === 'how') continue; t.click(); await wait(); }
+          if (body.scrollHeight > body.clientHeight) out.push(`${b.dataset.s}${t ? ' › ' + t.dataset.t : ''} +${body.scrollHeight - body.clientHeight}px`);
+        }
+      }
+      for (const id of ['chatNameSet', 'chatOverlaySet']) document.getElementById(id).click();
+      return out;
+    });
+    assert.deepEqual(over, []);
+  } finally {
+    await win.keyboard.press('Escape');
+    await app.evaluate(({ BrowserWindow }, s) => BrowserWindow.getAllWindows().find(x => /index\.html$/.test(x.webContents.getURL())).setContentSize(...s), size);
+  }
 });
 
 test('Settings > YouTube: the YouTube login, Skip ads and the cookie question (on to start with), Chat to show, and the API key', T, async () => {

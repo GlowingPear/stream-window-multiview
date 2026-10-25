@@ -1,4 +1,4 @@
-// Support and raids on the stream's picture (Settings › Mentions › Support › Show it on the stream's picture): who and
+// Support and raids on the stream's picture (Settings › Support › Show it on the stream's picture): who and
 // what along the bottom of that channel's stream window for about 10 s, in any layout, one after another.
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,7 +30,7 @@ test('a support alert shows on its stream\'s picture, one after another, in the 
   assert.ok(await win(page, 'alpha').locator('.sup-banner .sup-ico svg').count(), 'with its icon');
 });
 
-test('on Chat Stage\'s strip too, over the picture; switched off in Settings › Mentions › Support, nothing on the picture', async t => {
+test('on Chat Stage\'s strip too, over the picture; switched off in Settings › Support, nothing on the picture', async t => {
   const page = await appWith(t, ['alpha', 'bravo', 'charlie']);
   await press(page, 'k');
   await support(page, 'bravo', [{ kind: 'kicks', who: 'zestyplum', n: 500 }]);
@@ -38,8 +38,7 @@ test('on Chat Stage\'s strip too, over the picture; switched off in Settings ›
   assert.equal(await strip.textContent(), 'zestyplum sent 500 KICKs');
   assert.equal(await strip.evaluate(b => getComputedStyle(b).pointerEvents), 'none', 'clicks go through to the picture');
   // off
-  await page.evaluate(() => { document.querySelector('.st-rail [data-s=mentions]').hidden = false; window.openSettings('mentions'); });   // (the desktop app's pages)
-  await page.click('#mentTabs [data-t=support]');
+  await page.evaluate(() => { document.querySelector('.st-rail [data-s=support]').hidden = false; window.openSettings('support', { sub: 'how' }); });   // (the desktop app's pages)
   assert.equal(await page.isChecked('[data-al="support.banner"]'), true, 'on at first');
   await page.uncheck('[data-al="support.banner"]');
   await page.keyboard.press('Escape');
