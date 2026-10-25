@@ -401,10 +401,10 @@ function runMenuAct(wc, a) {
       break;
   }
 }
-// What the page under the pointer says about it: the emote there (emoteAgent) and whether it's a chat being
-// translated (translateAgent). Only from chat windows the app loaded its helpers into; quick, or nothing.
+// What the page under the pointer says about it: the emote there (emoteAgent), the chat message there (messageAgent)
+// and whether it's a chat being translated (translateAgent). Only from chat windows the app loaded its helpers into; quick, or nothing.
 async function viewContext(wc) {
-  const js = '({ emote: window.__kmvEmote && window.__kmvEmote.ctx ? window.__kmvEmote.ctx() : null, chat: window.__kmvTr ? window.__kmvTr.state() : null })';
+  const js = '({ emote: window.__kmvEmote && window.__kmvEmote.ctx ? window.__kmvEmote.ctx() : null, chat: window.__kmvTr ? window.__kmvTr.state() : null, message: window.__kmvMsg ? window.__kmvMsg.ctx() : null })';
   const got = await Promise.race([wc.executeJavaScript(js).catch(() => null), sleep(400).then(() => null)]);
   return got && typeof got === 'object' ? got : {};
 }
@@ -417,7 +417,9 @@ async function showViewMenu(wc, params) {
   if (wc.isDestroyed()) return;
   const emote = ctx.emote && typeof ctx.emote === 'object' && typeof ctx.emote.text === 'string' && params.mediaType === 'image' ? ctx.emote : null;
   const chat = ctx.chat && typeof ctx.chat === 'object' ? { on: !!ctx.chat.on, auto: !!ctx.chat.auto } : null;
-  const items = menuFor(params, { langs, dev: !!DEV, emote, chat });
+  const m = ctx.message && typeof ctx.message === 'object' ? ctx.message : null;
+  const message = m && chat ? { text: String(m.text || ''), withEmotes: String(m.withEmotes || ''), html: String(m.html || '') } : null;
+  const items = menuFor(params, { langs, dev: !!DEV, emote, chat, message });
   if (!items.length) return;
   const host = wc.hostWebContents;
   if (emote && appPage(host)) {

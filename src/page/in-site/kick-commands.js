@@ -1,6 +1,7 @@
 import { makeClip } from '../chat/kick-clip.js';
 import { openPollForm } from '../chat/kick-poll.js';
 import { openPredictionForm } from '../chat/kick-prediction.js';
+import { messageAgent } from './chat-message.js';
 import { emoteAgent } from './emote-preview.js';
 import { MENTION_JS, mentionAgent } from './mentions.js';
 import { newEmoteAgent } from './new-emotes.js';
@@ -53,7 +54,7 @@ function kickCmdHeard(w, data, view){
 function init(){
   KICK_CMD_JS = `(${kickCmdAgent.toString()})(${JSON.stringify(KICK_PAGE_CMDS)})`;
   fromSite('kick-cmd', kickCmdHeard);   // see kickCmdAgent
-  window.chatAgentJs = MENTION_JS; window.newEmoteAgent = newEmoteAgent; window.mentionAgent = mentionAgent; window.emoteAgent = emoteAgent; window.translateAgent = translateAgent;   // for the tests
+  window.chatAgentJs = MENTION_JS; window.newEmoteAgent = newEmoteAgent; window.mentionAgent = mentionAgent; window.emoteAgent = emoteAgent; window.translateAgent = translateAgent; window.messageAgent = messageAgent;   // for the tests
   window.kickCmdAgent = kickCmdAgent; window.kickCmdHeard = kickCmdHeard; window.KICK_PAGE_CMDS = KICK_PAGE_CMDS;
 }
 
