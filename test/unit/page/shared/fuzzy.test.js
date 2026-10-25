@@ -84,6 +84,7 @@ test('an item: its title in full, its other names at 0.6, its second line at 0.3
   assert.equal(fuzzy.scoreItem('mute', { title: 'Mute' }).score, 100);
   assert.equal(fuzzy.scoreItem('volume', { title: 'Mute', words: ['volume'] }).score, 60);
   assert.equal(fuzzy.scoreItem('popped', { title: 'Mute', sub: 'popped out' }).score, 24);
+  assert.equal(fuzzy.scoreItem('popped', { title: 'Mute', sub: 'popped out' }).level, 80, 'how well, where it matched (before its weight)');
   assert.deepEqual(fuzzy.scoreItem('volume', { title: 'Mute', words: ['volume'] }).marks, [], 'no letters of the title to mark');
   assert.equal(fuzzy.scoreItem('mute', { title: 'Mute', words: ['mute'] }).score, 100, 'the best of them');
   assert.equal(fuzzy.scoreItem('zzz', { title: 'Mute', words: ['volume'], sub: 'popped out' }), null);

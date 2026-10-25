@@ -10,7 +10,9 @@ const K = 'ControlOrMeta+k';
 const saved = list => `try { localStorage.setItem('kickMultiview.saved', ${JSON.stringify(JSON.stringify(list))}) } catch {}`;
 const rows = page => page.evaluate(() => window.palette.rows());
 const hero = page => page.$('#palList .pal-row.hero');
-const heroButtons = page => page.$$eval('#palList .pal-row.hero .pal-btn', bs => bs.map(b => b.textContent.trim()));
+// each button's name (without the keys it shows)
+const heroButtons = page => page.$$eval('#palList .pal-row.hero .pal-btn', bs => bs.map(b => [...b.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim()));
+const heroKeys = page => page.$$eval('#palList .pal-row.hero .pal-btn', bs => bs.map(b => (b.querySelector('kbd') || {}).textContent || ''));
 const heroText = page => page.textContent('#palList .pal-row.hero');
 async function find(page, text){
   if (!(await page.evaluate(() => window.palette.isOpen()))) await page.keyboard.press(K);
@@ -25,24 +27,27 @@ test('a saved channel that isn\'t open: big, first, with Stream + chat (as the C
   assert.equal(r[0].hero, true);
   assert.equal(r[0].title, 'quietkoala');
   assert.ok(await hero(page));
-  assert.match(await heroText(page), /Just Chatting · Late night · for 2h 10m/);
-  assert.match(await heroText(page), /LIVE\s*2\.1K/);
-  assert.match(await heroText(page), /Saved/);
+  // its line: site · title · game · how many watching · for how long; LIVE and Saved beside its name
+  assert.equal(await page.textContent('#palList .pal-row.hero .pal-sub'), 'Kick·Late night·Just Chatting·2.1K watching·live 2h 10m');
+  assert.equal(await page.textContent('#palList .pal-row.hero .pal-livep'), 'LIVE');
+  assert.match(await page.textContent('#palList .pal-row.hero .pal-line'), /Saved/);
   assert.deepEqual(await heroButtons(page), ['Stream + chat', 'Stream only', 'Chat only', 'Saved', 'More…']);
-  assert.match(await page.textContent('#palBg .pal-foot'), /← →\s*pick an action/);
+  assert.deepEqual(await heroKeys(page), ['↵', '1', '2', '3', 'Tab'].map(k => /^\d$/.test(k) ? (process.platform === 'darwin' ? '⌘' : 'Ctrl') + k : k), 'Enter, Ctrl/⌘+1–9, Tab');
+  assert.match(await page.textContent('#palBg .pal-foot'), /←→\s*pick an action/);
   // → Stream only, Enter: just the stream
   await page.keyboard.press('ArrowRight');
-  assert.equal(await page.textContent('#palList .pal-btn.on'), 'Stream only');
+  assert.match(await page.textContent('#palList .pal-btn.on'), /^Stream only/);
   await page.keyboard.press('Enter');
   assert.deepEqual((await windows(page)).map(w => w.kind), ['stream']);
   // the Channels box set to Chat only: that's the first button
   await page.click('#savedBtn'); await page.selectOption('#mode', 'chat'); await page.click('#savedBtn');
   await find(page, 'quieter');
-  assert.deepEqual((await heroButtons(page)).slice(0, 3), ['Chat only', 'Stream only', 'Stream + chat']);
+  assert.deepEqual((await heroButtons(page)).slice(0, 3), ['Chat only', 'Stream + chat', 'Stream only']);
   // 3 letters or more of the start, when nothing else comes close
+  await find(page, 'qu');
+  assert.equal((await rows(page))[0].hero, false, 'under 3 letters: no big row');
   await find(page, 'qui');
-  assert.equal((await rows(page))[0].hero, false, 'two channels start that way: no big row');
-  await find(page, 'quietk');
+  assert.equal((await rows(page))[0].hero, true, 'the best of the channels that start that way');
   assert.equal((await rows(page))[0].hero, true);
 });
 
@@ -50,20 +55,21 @@ test('an open channel: Go to it, Make big, Mute, Reload, Pop out, Close, + Chat 
   const page = await openApp(t);
   await add(page, 'alpha');
   await find(page, 'alpha');
-  assert.match(await heroText(page), /Open/);
-  assert.deepEqual(await heroButtons(page), ['Go to it', 'Make big', 'Unmute', 'Reload', 'Pop out', 'Close', 'More…']);
-  // Ctrl/⌘+2: Make big
-  await page.keyboard.press('ControlOrMeta+2');
+  assert.match(await page.textContent('#palList .pal-row.hero .pal-tag.on'), /Open · stream \+ chat/);
+  assert.match(await page.textContent('#palList .pal-row.hero .pal-sub'), /offline·stream muted/);
+  assert.deepEqual(await heroButtons(page), ['Go to it', 'Make big', 'Unmute', 'Reload', 'Pop out', 'Close both', 'More…']);
+  // Ctrl/⌘+1: the second button, Make big
+  await page.keyboard.press('ControlOrMeta+1');
   assert.equal((await windows(page)).find(w => w.kind === 'stream').featured, true, 'big');
   // close both, then only the stream: + Chat
   await find(page, 'alpha');
-  await page.click('#palList .pal-btn:text-is("Close")');
+  await page.click('#palList .pal-btn:has-text("Close both")');
   assert.deepEqual(await windows(page), []);
   await page.click('#savedBtn'); await page.selectOption('#mode', 'stream'); await page.click('#savedBtn');
   await add(page, 'alpha');
   await find(page, 'alpha');
   assert.ok((await heroButtons(page)).includes('+ Chat'));
-  await page.click('#palList .pal-btn:text-is("+ Chat")');
+  await page.click('#palList .pal-btn:has-text("+ Chat")');
   assert.deepEqual((await windows(page)).map(w => w.kind).sort(), ['chat', 'stream']);
 });
 
@@ -71,7 +77,7 @@ test('More… and Tab: everything for a channel: open it each way, save it, copy
   const page = await openApp(t, { init: saved(['charlie']) });
   await add(page, 'charlie');
   await find(page, 'charlie');
-  await page.click('#palList .pal-btn:text-is("More…")');
+  await page.click('#palList .pal-btn:has-text("More…")');
   const all = (await rows(page)).map(r => `${r.group}: ${r.title}`);
   for (const want of ['Open: Stream + chat', 'Open: Stream only', 'Open: Chat only', 'Open: On kick.com', 'Channel: Saved', 'Share: Copy link', 'charlie · stream: Make big', 'charlie · chat: Blow it up'])
     assert.ok(all.includes(want), `${want} in ${all.join(', ')}`);
@@ -107,25 +113,41 @@ test('a pasted link: that channel first, to open; a YouTube channel that isn\'t 
   assert.deepEqual((await heroButtons(page)).slice(0, 2), ['Check now', 'Open its page']);
 });
 
-test('a name nobody saved: Open, Open & save…, after asking the sites; where it was found, and where it wasn\'t', async t => {
+test('a name nobody saved: “Open … as a channel” with K / T / Y (Tab: the next site) while the sites are asked; found, its big row', async t => {
   const page = await openApp(t, { init: () => {
     window.asked = [];
-    window.kmv = { profileLookup: q => { window.asked.push(q); return new Promise(r => setTimeout(() => r(q === 'brandnew' ? [{ ch: 'tw:brandnew', name: 'BrandNew', live: { viewers: 214 } }] : []), 100)); } };
+    window.kmv = { profileLookup: q => { window.asked.push(q); return new Promise(r => setTimeout(() => r(q === 'qvbrandy' ? [{ ch: 'tw:qvbrandy', name: 'Qvbrandy', live: { viewers: 214, title: 'Hello' } }] : []), 100)); } };
   } });
-  await find(page, 'brandnew');
-  assert.equal((await rows(page))[0].hero, true);
-  assert.deepEqual(await heroButtons(page), ['Open', 'Open & save', 'Stream only', 'Chat only', 'More…']);
-  assert.match(await heroText(page), /Checking Kick…/);
-  await page.waitForFunction(() => /No Kick channel called “brandnew”/.test(document.querySelector('#palList').textContent));
-  assert.deepEqual(await page.evaluate(() => window.asked), ['brandnew'], 'asked once, 400 ms after the last key');
-  assert.match(await page.textContent('#palList'), /✓ Found on Twitch · live · 214 watching/);
-  assert.ok(!(await rows(page)).some(r => /YouTube/.test(r.title)), 'not where it wasn\'t found');
-  // found on Twitch only: that one is the big row now; Open & save
-  assert.equal((await rows(page))[0].id, 'open:tw:brandnew');
-  await page.click('#palList .pal-btn:text-is("Open & save")');
-  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.saved'))), ['tw:brandnew']);
+  await find(page, 'qvbrandy');
+  let r = await rows(page);
+  assert.equal(r[0].id, 'open:as');
+  assert.match(await page.textContent('#palList .pal-row.on'), /Open “qvbrandy” as a channel.*Checking Kick, Twitch and YouTube…/);
+  assert.deepEqual(await page.$$eval('#palList .pal-row.on .pal-site', bs => bs.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['K*', 'T', 'Y']);
+  assert.match(await page.textContent('#palBg .pal-foot'), /Tab\s*next site/);
+  await page.keyboard.press('Tab');
+  assert.deepEqual(await page.$$eval('#palList .pal-row.on .pal-site.on', bs => bs.map(b => b.textContent)), ['T'], 'Tab: the next site');
+  // found on Twitch: its big row, on Twitch, with what each site said
+  await page.waitForFunction(() => !!document.querySelector('#palList .pal-row.hero'));
+  assert.deepEqual(await page.evaluate(() => window.asked), ['qvbrandy'], 'asked once, 400 ms after the last key');
+  r = await rows(page);
+  assert.equal(r[0].id, 'open:tw:qvbrandy');
+  assert.match(await page.textContent('#palList .pal-row.hero .pal-sub'), /✓ Found on Twitch·live·Hello·214 watching·not on Kick·not on YouTube/);
+  assert.deepEqual(await heroButtons(page), ['Open', 'Open & save', 'Stream only', 'Chat only']);
+  assert.deepEqual(await page.$$eval('#palList .pal-row.hero .pal-site', bs => bs.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['K Kick', 'T Twitch*', 'Y YouTube']);
+  // another site picked: what it said there
+  await page.click('#palList .pal-row.hero .pal-site:has-text("Kick")');
+  assert.match(await page.textContent('#palList .pal-row.hero .pal-sub'), /No Kick channel called “qvbrandy”/);
+  await page.click('#palList .pal-row.hero .pal-site:has-text("Twitch")');
+  await page.click('#palList .pal-btn:has-text("Open & save")');
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.saved'))), ['tw:qvbrandy']);
   // asked again: kept for the session
-  await find(page, 'brandnew');
+  await find(page, 'qvbrandy');
   await page.waitForTimeout(500);
-  assert.deepEqual(await page.evaluate(() => window.asked), ['brandnew']);
+  assert.deepEqual(await page.evaluate(() => window.asked), ['qvbrandy']);
+  // a name not found anywhere: nothing called it, still offered as a channel on the site picked
+  await find(page, 'zzunknown');
+  await page.waitForFunction(() => /Not found on Kick, Twitch or YouTube/.test(document.querySelector('#palList').textContent));
+  assert.match(await page.textContent('#palList .pal-none'), /Nothing called “zzunknown”/);
+  await page.keyboard.press('Enter');
+  assert.deepEqual((await windows(page)).map(w => w.title).filter(t => t === 'zzunknown'), ['zzunknown', 'zzunknown'], 'opened on Kick');
 });

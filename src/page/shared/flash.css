@@ -13,3 +13,9 @@ body.focus header{transform:translateY(-100%)}
 body.focus #reveal{display:block}
 body.focus.peek #reveal{display:none}   /* out of the bar's way while it's out, so moving up over it doesn't count as leaving */
 body.focus.peek header{transform:none}
+
+/* a message with the keys for what comes next (flashKeys): "Switched to Chat Stage  ⌘Z undo · ⌘K again" */
+#msg.keys{display:flex;align-items:center;gap:6px;border-left-width:1px;padding:9px 16px}
+#msg.keys::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:4px;flex:none}
+#msg.keys kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:5px;background:var(--panel2);color:var(--text);font:600 11px/1 ui-sans-serif,system-ui,sans-serif;vertical-align:middle;margin-left:6px}
+#msg.keys .pal-dot{font-style:normal;margin:0 2px;opacity:.6}

@@ -50,7 +50,7 @@ test('Mute / Unmute every stream, Refresh every stream, Lock layout, Pause all e
 
 test('Do not disturb for a while and off; a theme; hiding and showing the toolbar; undo', async t => {
   const page = await openApp(t);
-  await run(page, 'do not disturb: 30');
+  await run(page, 'do not disturb for 30');
   assert.equal(await page.evaluate(() => window.smvNotes.dndOn()), true);
   assert.ok(await page.evaluate(() => window.smvNotes.dndUntil - Date.now() > 29 * 60000));
   await run(page, 'turn off do not');
@@ -125,25 +125,26 @@ test('Pear Drops\' daily reward and farming are there only while their toolbar b
 test('your layouts: Save layout as “…” (the words typed), found by name, and its Tab list: rename, update, delete', async t => {
   const page = await openApp(t);
   await add(page, 'alpha');
-  await run(page, 'Qwzy night');
-  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.presets')).map(p => p.name)), ['Qwzy night'], 'nothing else found: saved under the words');
+  await page.keyboard.press(K); await page.fill('#palQ', 'Qwzy zork'); await page.waitForTimeout(60);
+  await page.click('#palList .pal-row:has-text("Save layout as")');
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.presets')).map(p => p.name)), ['Qwzy zork'], 'nothing else found: saved under the words');
   const found = await first(page, 'qwzy');
-  assert.equal(found[0].title, 'Qwzy night');
+  assert.equal(found[0].title, 'Qwzy zork');
   assert.equal(found[0].group, 'Your layouts');
   // Tab: rename opens Settings › Layouts on it, its name ready to type over
-  await page.keyboard.press(K); await page.fill('#palQ', 'qwzy night'); await page.waitForTimeout(60);
+  await page.keyboard.press(K); await page.fill('#palQ', 'qwzy zork'); await page.waitForTimeout(60);
   await page.keyboard.press('Tab');
   assert.deepEqual((await page.evaluate(() => window.palette.rows())).map(r => r.title), ['Use it', 'Rename', 'Update to what\'s on screen', 'Delete']);
   await page.fill('#palQ', 'rename'); await page.keyboard.press('Enter');
   await page.waitForSelector('#lyDetail .ly-panel:not([hidden]) input.st-in');
   await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
   // update (asks first)
-  await page.keyboard.press(K); await page.fill('#palQ', 'qwzy night'); await page.waitForTimeout(60); await page.keyboard.press('Tab');
+  await page.keyboard.press(K); await page.fill('#palQ', 'qwzy zork'); await page.waitForTimeout(60); await page.keyboard.press('Tab');
   await page.fill('#palQ', 'update'); await page.keyboard.press('Enter');
   await page.waitForSelector('#askDlg:not([hidden])'); await page.click('#askDlg .ask-yes');
-  assert.match(await page.textContent('#msg'), /Updated layout “Qwzy night”/);
+  assert.match(await page.textContent('#msg'), /Updated layout “Qwzy zork”/);
   // delete (asks first)
-  await page.keyboard.press(K); await page.fill('#palQ', 'qwzy night'); await page.waitForTimeout(60); await page.keyboard.press('Tab');
+  await page.keyboard.press(K); await page.fill('#palQ', 'qwzy zork'); await page.waitForTimeout(60); await page.keyboard.press('Tab');
   await page.fill('#palQ', 'delete'); await page.keyboard.press('Enter');
   await page.waitForSelector('#askDlg:not([hidden])'); await page.click('#askDlg .ask-yes');
   assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.presets'))), []);

@@ -100,7 +100,7 @@ function addShortcutCommands(){
       when: main, disabled: noStreams, run: () => muteAll(true) },
     { id: 'streams.unmuteAll', title: 'Unmute every stream', sub: 'Every stream at its own volume', words: ['sound on', 'volume'], icon: 'volOn', when: main, disabled: noStreams, run: () => muteAll(false) },
     { id: 'streams.refreshAll', title: 'Refresh every stream', sub: 'Reload each stream\'s player', words: ['reload', 'fix'], icon: 'reload', keys: 'Shift+R', when: main, disabled: noStreams, run: refreshAll },
-    { id: 'layout.lock', title: 'Lock layout', sub: 'Windows keep their places: new ones fit in, nothing moves by itself', words: ['unlock', 'freeze', 'pin'], icon: 'lock', keys: 'Shift+L',
+    { id: 'layout.lock', kind: 'layout', group: 'More', title: 'Lock layout', sub: 'Windows keep their places: new ones fit in, nothing moves by itself', words: ['unlock', 'freeze', 'pin'], icon: 'lock', keys: 'Shift+L',
       when: main, toggle: { get: () => layoutLocked, set: on => setLayoutLocked(on) } },
     { id: 'chat.blowMode', title: 'Blow up chat on click', sub: 'Click a chat to show it big in the middle', words: ['zoom chat', 'enlarge'], icon: 'zoomin', keys: 'Z',
       when: main, toggle: { get: () => blowOn, set: on => { if (on !== blowOn) toggleBlowMode(); } } },

@@ -47,6 +47,9 @@ function renderLayoutsPane(fresh){
 
 // The search box's (Ctrl/⌘+K): each layout, and everything in the Layout menu
 const LAYOUT_KEYS = { focus: 'F', game: 'G', columns: 'C', chatfocus: 'Shift+C', stage: 'K', rail: 'Shift+K', auto: 'A', tile: 'T' };
+const LAYOUT_SHORT = { focus: 'One stream big with its chat, the rest beside it', game: 'Your game big, streams and chats beside it', columns: 'Every stream above its chat',
+  chatfocus: 'Streams down the side, chats get the rest', stage: 'One stream and its chat in big text', rail: 'Every stream, one chat in a rail', auto: 'Streams in a grid, chats on the right',
+  tile: 'Everything fits the screen' };
 const LAYOUT_WORDS = { focus: ['big stream', 'spotlight'], game: ['play', 'gaming'], columns: ['side by side'], chatfocus: ['chats'],
   stage: ['big chat', 'read chat'], rail: ['grid', 'chat tabs'], auto: ['grid'], tile: ['even', 'grid', 'equal'] };
 function openLayoutMenuAt(t){
@@ -57,14 +60,14 @@ function addLayoutCommands(){
   layoutMenu.querySelectorAll('.lm-tabs [data-t]').forEach(b => { b.dataset.cmd = 'layoutMenu.' + b.dataset.t; });
   layoutMenu.querySelectorAll('button[data-l]').forEach(b => {
     const l = b.dataset.l;
-    commands.add({ id: 'layout.' + l, kind: 'layout', group: 'Layouts', title: b.querySelector('b').textContent, sub: b.querySelector('span').textContent,
-      words: LAYOUT_WORDS[l] || [], pic: l, keys: LAYOUT_KEYS[l], verb: 'Use', button: `#layoutMenu button[data-l="${l}"]`, when: () => true,
+    commands.add({ id: 'layout.' + l, kind: 'layout', group: 'Layouts', title: b.querySelector('b').textContent, sub: LAYOUT_SHORT[l] || b.querySelector('span').textContent,
+      words: [...(LAYOUT_WORDS[l] || []), 'layout'], pic: l, keys: LAYOUT_KEYS[l], verb: 'Use', button: `#layoutMenu button[data-l="${l}"]`, when: () => true,
       boost: () => curLayout() === l ? -20 : 0, tags: () => curLayout() === l ? ['In use'] : [] });
   });
   commands.add([
     { id: 'switch.toggle', group: 'Switch control', title: 'Switch control', sub: 'Show it as a panel you can move and resize, in any layout (again to put it away)', words: ['switcher'], icon: 'float', keys: 'S', button: '#swBtn' },
-    { id: 'layout.menu', group: 'Layouts', title: 'Layout menu', sub: 'The layouts, your saved layouts and their options', icon: 'layout', keys: 'L', button: '#layoutBtn' },
-    { id: 'layout.settings', group: 'Layouts', title: 'Layout settings', sub: 'Settings › Layouts', icon: 'gear', button: '#layoutSet', when: () => true },
+    { id: 'layout.menu', group: 'More', title: 'Layout menu', sub: 'The layouts, your saved layouts and their options', icon: 'layout', keys: 'L', button: '#layoutBtn' },
+    { id: 'layout.settings', group: 'More', title: 'Layout settings', sub: 'Settings › Layouts', icon: 'gear', button: '#layoutSet', when: () => true },
     { id: 'layout.linked', kind: 'action', group: 'Layout options', title: 'Linked', sub: 'Each stream and its chat move together (Columns, Focus view)', words: ['move together', 'link chat'],
       icon: 'link', toggle: { get: () => linked, set: on => setLinked(on) } },
     { id: 'layout.autofit', group: 'Layout options', title: 'Fit in channels that open by themselves', sub: 'Auto layout: added as the last stream when they go live',

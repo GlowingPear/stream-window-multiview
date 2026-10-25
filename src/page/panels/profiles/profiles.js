@@ -544,7 +544,7 @@ function init(){
         .map(([plat, flag, n]) => ({ id: `profiles.${flag || plat}`, kind: 'tab', group: 'Profiles', title: 'Profiles: ' + n, sub: 'Streamer profiles, ' + (flag || plat !== 'all' ? 'only ' + n.toLowerCase() : 'everyone'),
           words: ['favorites'], icon: 'user', run: () => openProfilesAt({ plat, flag }) }))
     ]);
-    commands.provide('profiles.lookup', q => /^@?[a-z0-9_.\-]{2,40}$/i.test(q.trim()) ? [{ id: 'profiles.lookup', kind: 'profile', fallback: true, group: 'Nothing found',
+    commands.provide('profiles.lookup', q => /^@?[a-z0-9_.\-]{2,40}$/i.test(q.trim()) ? [{ id: 'profiles.lookup', kind: 'profile', fallback: true, order: 2, group: 'Nothing found',
       title: `Look up “${q.trim()}” in Profiles`, sub: 'On Kick, Twitch and YouTube', icon: 'user', run: () => openProfilesAt({ q: q.trim() }) }] : []);
     profDlg.querySelectorAll('.pf-chips button').forEach(b => { b.dataset.cmd = 'profiles.' + b.dataset.v; });
     // an open profile's buttons (Favourite, Live alerts, Unfollow on Kick, Watch now…), while it shows

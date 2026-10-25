@@ -16,14 +16,15 @@ import { settings } from './settings.js';
 // buttons [{ label, icon, run }] (a channel's row of actions), avatar / site / live / viewers (how it's drawn),
 // boost (a number added to its score: the window you last clicked, live, open…), keep (shown even when nothing
 // is typed: the empty box's lists), matched (a provider's own score, for an item that matched in ways the name
-// doesn't show: a guide page that mentions the words), fallback (only when nothing else is found).
+// doesn't show: a guide page that mentions the words), fallback (only when nothing else is found), text (more words
+// to find it by, as its second line counts), onlyScope (only with that prefix: the keyboard shortcuts with ?).
 // What you run is remembered (the 'palette' setting): the empty box's Recent, and used items rank higher (frecency).
 // Nothing here touches the page, except a command's button: add() marks it (data-cmd="<id>", for the test that every
 // button has a command) and run() clicks it.
 
 // Kinds of item, how a prefix picks them, and which come first when they score the same
 const CMD_SCOPES = { '>': { name: 'Actions', kinds: ['action', 'layout', 'theme', 'tab'] }, '@': { name: 'Channels', kinds: ['channel', 'window', 'profile'] },
-  '#': { name: 'Settings', kinds: ['setting', 'tab'] }, '?': { name: 'Help', kinds: ['help'] } };
+  '#': { name: 'Settings', kinds: ['setting', 'tab'] }, '?': { name: 'Help', kinds: ['help', 'setting'] } };
 const CMD_RANK = { window: 6, action: 5, layout: 5, tab: 4, channel: 4, theme: 3, setting: 3, profile: 2, help: 2, note: 1 };
 const CMD_PER_GROUP = 7, CMD_MAX = 40, CMD_RECENT = 20, CMD_USED = 300;
 const CMD_DAY = 86400000;
@@ -35,6 +36,8 @@ const cmdSeen = new Map();         // id -> the last item a provider gave with t
 const cmdOn = it => { try { return !it.when || !!it.when(); } catch { return false; } };
 const cmdWhy = it => { try { return (it.disabled && it.disabled()) || ''; } catch { return ''; } };
 const cmdVal = (v, ...a) => typeof v === 'function' ? v(...a) : v;
+// a second line's words, from its text or its parts ('text', { b: 'bold', t: ' after' }; the rest isn't searched)
+const cmdText = sub => [].concat(sub || []).map(x => typeof x === 'string' ? x : x && x.b ? x.b + (x.t || '') : '').filter(Boolean).join(' · ');
 
 function addCommands(list){
   for (const it of [].concat(list)){
@@ -106,27 +109,27 @@ function searchCommands(text, { scope = '', only = null, keep = false, now = Dat
   const m = cmdMemory();
   const scored = [];
   for (const it of only ? only.filter(cmdOn) : allCommands(p.q)){
-    if ((kinds && !kinds.includes(it.kind)) || (it.fallback && !only)) continue;
+    if ((kinds && !kinds.includes(it.kind)) || (it.fallback && !only) || (it.onlyScope && it.onlyScope !== p.scope)) continue;
     let s;
     if (p.q){
-      s = fuzzy.scoreItem(p.q, { title: it.title, words: cmdVal(it.words) || [], sub: cmdVal(it.sub) || '' })
+      s = fuzzy.scoreItem(p.q, { title: it.title, words: cmdVal(it.words) || [], sub: [cmdText(cmdVal(it.sub)), it.text].filter(Boolean).join(' · ') })
         || (it.matched ? { score: it.matched, marks: [] } : null);       // (a provider that searched for itself: the guide's pages)
       if (!s) continue;
     }
     else if (only || p.scope || (keep && it.keep)) s = { score: 0, marks: [] };
     else continue;
     const score = s.score + (p.scope || only ? 0 : (CMD_RANK[it.kind] || 0)) + (+cmdVal(it.boost) || 0) + (only ? 0 : cmdFrecency(it.id, now, m));
-    scored.push({ item: it, score, match: s.score, marks: s.marks });
+    scored.push({ item: it, score, match: s.score, level: s.level ?? s.score, marks: s.marks });
   }
   // ties: the shorter title first; with nothing typed (a prefix on its own), by group, then A–Z
   const tie = p.q ? (a, b) => a.item.title.length - b.item.title.length || a.item.title.localeCompare(b.item.title)
     : (a, b) => String(a.item.group).localeCompare(String(b.item.group)) || a.item.title.localeCompare(b.item.title, undefined, { numeric: true });
   if (!only || p.q) scored.sort((a, b) => b.score - a.score || tie(a, b));
-  // when something matches well, letters scattered through other names don't count
+  // when something matches well, letters scattered through other names (or second lines) don't count
   const best = Math.max(0, ...scored.map(r => r.match));
   const per = new Map(), out = [];
   for (const r of scored){
-    if (p.q && best >= 55 && r.match < 35) continue;
+    if (p.q && best >= 55 && r.level < 35) continue;
     const g = r.item.group, n = per.get(g) || 0;
     if (!only && !p.scope && n >= CMD_PER_GROUP) continue;
     per.set(g, n + 1); out.push(r);
@@ -135,7 +138,7 @@ function searchCommands(text, { scope = '', only = null, keep = false, now = Dat
   return out;
 }
 // When nothing is found: what's still worth offering for the words (Open "xyz" as a channel, search the guide…)
-const cmdFallbacks = text => allCommands(String(text || '').trim()).filter(it => it.fallback);
+const cmdFallbacks = text => allCommands(String(text || '').trim()).filter(it => it.fallback).sort((a, b) => (a.order || 9) - (b.order || 9));   // (order: which first)
 // The results in groups, each group where its best result is: [{ group, rows: [...] }]
 function cmdGrouped(results){
   const gs = [];

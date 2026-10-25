@@ -1,6 +1,6 @@
 import { ROLE } from '../../core.js';
 import { openResult } from '../help/guide.js';
-import { closeSettings, openSettings, settingsDlg } from './settings.js';
+import { ST_ICONS, closeSettings, openSettings, settingsDlg } from './settings.js';
 import { commands } from '../../shared/commands.js';
 import { DESKTOP } from '../../shared/env.js';
 
@@ -28,13 +28,13 @@ const subOf = row => row.closest('.st-subpane[data-t]');
 function stItems(){
   const out = [];
   for (const { s, name, pane } of stPanes()){
-    out.push({ id: 'settings.' + s, kind: 'tab', group: 'Settings', title: 'Settings › ' + name, sub: (pane.querySelector('.st-sub') || {}).textContent || '', words: [name],
-      icon: 'gear', run: () => openSettings(s) });
+    out.push({ id: 'settings.' + s, kind: 'setting', group: 'Settings', title: 'Settings › ' + name, sub: (pane.querySelector('.st-sub') || {}).textContent || '', words: [name],
+      icon: ST_ICONS[s] || 'gear', run: () => openSettings(s) });
     pane.querySelectorAll('.st-tabs button[data-t]').forEach(t => {
       if (t.hidden) return;
       const tn = t.textContent.replace(/\s+\d+$/, '').trim();
-      out.push({ id: `settings.${s}.${t.dataset.t}`, kind: 'tab', group: 'Settings', title: tn, sub: `Settings › ${name} › ${tn}`, words: [`${name} › ${tn}`, `${name} ${tn}`],
-        icon: 'gear', run: () => openSettings(s, { sub: t.dataset.t }) });
+      out.push({ id: `settings.${s}.${t.dataset.t}`, kind: 'setting', group: 'Settings', title: tn, sub: `Settings › ${name} › ${tn}`, words: [`${name} › ${tn}`, `${name} ${tn}`],
+        icon: ST_ICONS[s] || 'gear', run: () => openSettings(s, { sub: t.dataset.t }) });
     });
     if (s === 'guide' || s === 'keys') continue;
     pane.querySelectorAll('.st-row, .ca-row, .st-head').forEach(row => {
@@ -46,17 +46,19 @@ function stItems(){
       const buttons = [...row.querySelectorAll(':scope > button, :scope > .btn')].filter(b => !b.hidden);
       const sw = inputs.length === 1 && inputs[0].type === 'checkbox' ? inputs[0] : null;
       const show = () => openResult({ kind: 'setting', pane: s, el: row });
-      const it = { id: `setting.${s}.${row.id || sw?.id || title}`, kind: 'setting', group: 'Settings', title, sub: where + (small ? ' · ' + small.trim() : ''), words: [name],
-        icon: 'sliders', alt: show, altLabel: 'its page', disabled: () => (sw && sw.disabled && 'Not available right now') || '' };
+      // its second line: where it is, and the start of what it says ("Settings › General · browsers block sound…")
+      const gist = small.trim().split(/(?<=[a-z0-9)])[.:](?:\s|$)/i)[0].replace(/^./, c => c.toLowerCase());
+      const it = { id: `setting.${s}.${row.id || sw?.id || title}`, kind: 'setting', group: 'Settings', title, sub: [where, gist], words: [name], text: small,
+        icon: ST_ICONS[s] || 'sliders', alt: show, altLabel: 'its page', disabled: () => (sw && sw.disabled && 'Not available right now') || '' };
       if (sw) it.toggle = { get: () => sw.checked, set: () => { sw.click(); } };
       else if (!inputs.length && buttons.length === 1 && !row.classList.contains('st-head')){ it.run = () => { closeSettings(); buttons[0].click(); }; it.verb = buttons[0].textContent.trim() || 'Run'; it.alt = show; buttons[0].dataset.cmd ||= it.id; }
       else {
-        it.run = show; it.verb = 'Show'; delete it.alt;
+        it.run = show; it.side = 'Open page'; delete it.alt;
         // each of its buttons (a row with a box, or more than one button: Send a test, Open system settings)
         for (const b of buttons) if (!b.matches('.st-play, [data-play], [data-addbtn]')){
           const bt = (b.textContent || b.title).replace(/\s+/g, ' ').trim(), bid = `${it.id}:${b.className || bt}`;
           b.dataset.cmd ||= bid;
-          out.push({ id: bid, kind: 'setting', group: 'Settings', title: `${title}: ${bt}`, sub: where + (b.title ? ' · ' + b.title : ''), words: [name], icon: 'sliders',
+          out.push({ id: bid, kind: 'setting', group: 'Settings', title: `${title}: ${bt}`, sub: [where, b.title], words: [name], icon: ST_ICONS[s] || 'sliders',
             disabled: () => b.disabled && 'Not available right now', run: () => b.click(), alt: show, altLabel: 'its page' });
         }
       }

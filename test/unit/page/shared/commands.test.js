@@ -104,7 +104,7 @@ test('provide: lists asked for on every key; one that fails is left out; what it
   assert.equal(commands.find(p + ':y'), null);
 });
 
-test('prefixes: > actions, @ channels and windows, # Settings, ? help; on its own a prefix lists everything of its kind', () => {
+test('prefixes: > actions, @ channels and windows, # Settings, ? help (and Settings); on its own a prefix lists everything of its kind', () => {
   const k = uid('kind');
   commands.provide(k, () => [
     { id: k + 'a', kind: 'action', title: 'Narwhal action' }, { id: k + 'l', kind: 'layout', title: 'Narwhal layout' },
@@ -115,9 +115,9 @@ test('prefixes: > actions, @ channels and windows, # Settings, ? help; on its ow
   assert.deepEqual(kinds('>narwhal'), ['action', 'layout']);
   assert.deepEqual(kinds('@narwhal'), ['channel', 'window']);
   assert.deepEqual(kinds('#narwhal'), ['setting']);
-  assert.deepEqual(kinds('?narwhal'), ['help']);
+  assert.deepEqual(kinds('?narwhal'), ['help', 'setting'], 'help: the guide, and the options it explains');
   assert.deepEqual(kinds('narwhal', { scope: '>' }), ['action', 'layout'], 'the scope chip');
-  assert.deepEqual(kinds('?'), ['help'], 'a prefix on its own');
+  assert.deepEqual(kinds('#'), ['setting'], 'a prefix on its own');
   assert.deepEqual(kinds(''), [], 'nothing typed, no prefix: nothing (the empty box has its own lists)');
   assert.deepEqual(commands.parse('  @ nightowl '), { scope: '@', q: 'nightowl' });
   assert.deepEqual(commands.parse('tile'), { scope: '', q: 'tile' });

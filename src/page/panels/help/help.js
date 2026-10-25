@@ -99,7 +99,7 @@ function init(){
   keysOn = settings.flag('keys', true);
   // the search box's (Ctrl/⌘+K): every shortcut, with its keys (Enter shows the list)
   commands.add(SHORTCUTS.flatMap(([g, rows]) => rows.map(([k, d]) => ({ id: 'keys:' + k, kind: 'help', group: 'Keyboard shortcuts', title: d, sub: g, keys: k.split(' or ')[0],
-    words: ['shortcut', 'key ' + k], icon: 'keys', verb: 'Show', run: () => showHelp('keys') }))));
+    words: ['shortcut', 'key ' + k], icon: 'keys', verb: 'Show', onlyScope: '?', run: () => showHelp('keys') }))));
 }
 
 export { appVersion, init, keysOn, readDocText, renderDoc, setKeysOn, SHORTCUTS, shortcutsGrid, showHelp };

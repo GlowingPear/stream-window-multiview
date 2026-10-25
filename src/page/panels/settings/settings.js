@@ -90,4 +90,4 @@ function init(){
   });
 }
 
-export { closeSettings, init, openSettings, settingsDlg, settingsTab };
+export { closeSettings, init, openSettings, settingsDlg, settingsTab, ST_ICONS };

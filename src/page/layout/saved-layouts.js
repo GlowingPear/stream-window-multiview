@@ -53,6 +53,16 @@ function capturePreset(name){
     windows: wins.filter(w => w.kind !== 'capture').map(w => ({ kind: w.kind, channel: w.channel, url: w.url, vol: w.vol, muted: w.muted, preview: !!w.preview, x: w.x, y: w.y, w: w.w, h: w.h }))
   };
 }
+// "Saved 3 days ago", "4 streams, 2 chats" (the search box's line for it)
+function savedAgo(t){
+  if (!t) return '';
+  const d = Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(t).setHours(0, 0, 0, 0)) / 864e5);
+  return 'Saved ' + (d <= 0 ? 'today' : d === 1 ? 'yesterday' : d < 30 ? `${d} days ago` : new Date(t).toLocaleDateString());
+}
+function presetCounts(p){
+  const n = p.windows.filter(w => w.kind === 'stream').length, c = p.windows.filter(w => w.kind === 'chat').length;
+  return `${n} stream${n === 1 ? '' : 's'}, ${c} chat${c === 1 ? '' : 's'}`;
+}
 function presetSummary(p){
   const n = p.windows.filter(w => w.kind === 'stream').length, c = p.windows.filter(w => w.kind === 'chat').length;
   return `${MODE_NAMES[p.mode] || 'Layout'}${p.featured ? ' + highlight' : ''} · ${n} stream${n === 1 ? '' : 's'}, ${c} chat${c === 1 ? '' : 's'}`;
@@ -127,7 +137,7 @@ async function deletePreset(p){
 // The search box's (Ctrl/⌘+K) layouts of your own: each one (Enter uses it; Tab: rename, update, delete), and (when
 // nothing else is found) saving what's on screen under the words typed
 function presetItems(q){
-  const out = presets.map(p => ({ id: 'preset:' + p.name, kind: 'layout', group: 'Your layouts', title: p.name, sub: presetSummary(p), pic: presetBase(p), verb: 'Use',
+  const out = presets.map(p => ({ id: 'preset:' + p.name, kind: 'layout', group: 'Your layouts', title: p.name, sub: [savedAgo(p.savedAt), presetCounts(p)], pic: presetBase(p), verb: 'Use',
     words: ['layout', 'preset'], tags: p.name === activePreset ? ['In use'] : [], when: () => ROLE === 'main', run: () => applyPreset(p),
     more: () => [
       { id: `preset:${p.name}:use`, group: p.name, title: 'Use it', icon: 'layout', run: () => applyPreset(p) },

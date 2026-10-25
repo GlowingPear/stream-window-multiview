@@ -32,7 +32,8 @@ test('Ctrl/⌘+K opens it from anywhere and again closes it; the toolbar\'s butt
   assert.equal(await isOpen(page), true);
   await page.mouse.click(10, 790);
   assert.equal(await isOpen(page), false, 'a click outside closes it');
-  assert.match(await page.getAttribute('#palBtn', 'title'), /Search and actions \((Ctrl|⌘)\+K\)/);
+  assert.equal(await page.getAttribute('#palBtn', 'title'), 'Search and actions');
+  assert.match(await page.getAttribute('#palBtn', 'data-keys'), /^(⌘K|Ctrl K)$/, 'its keys, drawn as a key in its tooltip');
 });
 
 test('the empty box: what you ran lately, the window you last clicked, and saved channels that are live', async t => {
@@ -71,7 +72,7 @@ test('prefixes: > actions, @ channels and windows, # Settings, ? help, as a chip
     void kinds;
   }
   await type(page, '#snap');
-  assert.deepEqual(await titles(page), ['Snap windows']);
+  assert.equal((await titles(page))[0], 'Snap windows');
   await page.click('#palBg .pal-scope button');
   assert.equal(await page.isVisible('#palBg .pal-scope'), false, 'the chip\'s ×');
 });
@@ -117,17 +118,18 @@ test('Tab: everything for the row, its words searched; ⇧Tab and Esc go back; E
   await page.keyboard.press(K);
   await type(page, 'alpha · stream');
   await page.keyboard.press('Tab');
-  assert.equal(await page.isVisible('#palBg .pal-crumb'), true);
-  assert.match(await page.textContent('#palBg .pal-crumb'), /alpha · stream/);
+  assert.equal(await page.isVisible('#palBg .pal-head'), true, 'what it\'s for, where the words were');
+  assert.match(await page.textContent('#palBg .pal-head'), /alpha · stream/);
+  assert.equal(await page.getAttribute('#palQ', 'placeholder'), 'Filter actions…');
   const all = await titles(page);
   for (const want of ['Go to it', 'Make big', 'Pause', 'Reload', 'Close']) assert.ok(all.includes(want), `${want} in ${all}`);
   await type(page, 'relo');
   assert.deepEqual(await titles(page), ['Reload']);
   await page.keyboard.press('Shift+Tab');
-  assert.equal(await page.isVisible('#palBg .pal-crumb'), false);
+  assert.equal(await page.isVisible('#palBg .pal-head'), false);
   assert.equal(await page.inputValue('#palQ'), 'alpha · stream', 'the words from before');
   await page.keyboard.press('Tab'); await page.keyboard.press('Escape');
-  assert.equal(await page.isVisible('#palBg .pal-crumb'), false, 'Esc: out of Tab\'s list first');
+  assert.equal(await page.isVisible('#palBg .pal-head'), false, 'Esc: out of Tab\'s list first');
   await page.keyboard.press('Escape');
   assert.equal(await page.inputValue('#palQ'), '', 'then the words');
   assert.equal(await isOpen(page), true);
@@ -164,14 +166,15 @@ test('nothing found still offers next steps: open the words as a channel, search
   const page = await openApp(t);
   await page.keyboard.press(K);
   await type(page, 'qzxv qzxv');
-  assert.match(await page.textContent('#palList'), /Nothing found for “qzxv qzxv”/);
-  assert.deepEqual((await titles(page)).sort(), ['Save layout as “qzxv qzxv”', 'Save theme as “qzxv qzxv”', 'Search the guide for “qzxv qzxv”']);
+  assert.match(await page.textContent('#palList .pal-none'), /Nothing called “qzxv qzxv”\s*Not a channel, window, action or setting the app knows/);
+  assert.deepEqual(await titles(page), ['Search the guide for “qzxv qzxv”', 'Save layout as “qzxv qzxv”', 'Save theme as “qzxv qzxv”'], 'the guide first');
+  assert.equal(await page.textContent('#palBg .pal-count'), 'No results');
   await type(page, '!!!');
   assert.ok(!(await titles(page)).some(x => /^Open/.test(x)), 'not a channel, not an address: nothing to open');
   await type(page, 'example.com/page');
   assert.ok((await titles(page)).includes('Open example.com/page'), 'an address: as a web page');
   await type(page, 'zebrafinchsong');
-  assert.ok((await titles(page)).includes('zebrafinchsong'), 'a name: open it as a channel');
+  assert.equal((await titles(page))[0], 'Open “zebrafinchsong” as a channel', 'a name: open it as a channel, first');
   await type(page, 'qzxv qzxv');
   await page.click('#palList .pal-row:has-text("Search the guide")');
   await page.waitForSelector('#settingsDlg .st-pane[data-s=guide]:not([hidden])');

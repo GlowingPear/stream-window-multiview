@@ -82,14 +82,15 @@ const fuzzy = (() => {
   }
 
   // An item of the search box against what's typed: its title counts in full, its other names (words: "volume" for
-  // Mute) at 0.6 and its second line at 0.3. → { score, marks (in the title) } or null
+  // Mute) at 0.6 and its second line at 0.3. → { score, level (before the weight), marks (in the title) } or null
   function scoreItem(query, { title, words = [], sub = '' }){
     const t = match(query, title);
-    let best = t ? t.score : 0;
-    for (const w of words){ const m = match(query, w); if (m) best = Math.max(best, m.score * 0.6); }
+    // best: the score; level: how well it matched where it matched, before its weight (scattered letters are under 35)
+    let best = t ? t.score : 0, level = best;
+    for (const w of words){ const m = match(query, w); if (m && m.score * 0.6 > best){ best = m.score * 0.6; level = m.score; } }
     const s = sub && match(query, sub);
-    if (s) best = Math.max(best, s.score * 0.3);
-    return best ? { score: best, marks: t ? t.marks : [] } : null;
+    if (s && s.score * 0.3 > best){ best = s.score * 0.3; level = s.score; }
+    return best ? { score: best, level, marks: t ? t.marks : [] } : null;
   }
 
   return { match, scoreItem };

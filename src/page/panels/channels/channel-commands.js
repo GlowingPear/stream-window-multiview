@@ -1,4 +1,6 @@
-import { ROLE, modeSel, popped, wins } from '../../core.js';
+import { ROLE, colsMode, modeSel, popped, wins } from '../../core.js';
+import { buildCols } from '../../layout/columns.js';
+import { colKey } from '../../layout/layouts.js';
 import { addParsed } from '../../layout/placement.js';
 import { mentCovered, mentMuted, mentOn, toggleChatMentions } from '../bell/bell.js';
 import { autoOpen, fmtViewers, infoFor, notifyAll, notifyOff, saved, setNotify, svHue, svInitials, tabPlat,
@@ -12,6 +14,7 @@ import { flash } from '../../shared/flash.js';
 import { store } from '../../shared/store.js';
 import { soon } from '../../shared/timers.js';
 import { chPhoto } from '../../windows/channel-picker.js';
+import { isPaused } from '../../windows/pause.js';
 import { goToWin, winActions } from '../../windows/window-commands.js';
 
 /* ---- The search box's (Ctrl/⌘+K) channels: saved (live first), open here, from your follows, names the app has
@@ -19,7 +22,9 @@ import { goToWin, winActions } from '../../windows/window-commands.js';
    row of buttons, which depend on the channel: not open (Stream + chat, Stream only, Chat only, Profile, Save…),
    open (Go to it, Make big, Mute, Reload…), unknown (Open, Open & save… after asking the sites whether it exists),
    or a YouTube channel that isn't live. Tab lists everything for it. */
-let lastSite = '';                       // the site of the channel you last opened from the box (for a bare name)
+let lastSite = '';
+let typed = { name: '', site: '', picked: false };   // a bare name typed, and the site picked for it (K / T / Y)
+const SITES = ['kick', 'twitch', 'youtube'];                       // the site of the channel you last opened from the box (for a bare name)
 const looked = new Map();                // a bare name -> { busy } or { items: what profile:lookup found } (kept for the session)
 let lookFor = '';
 const isOpen = ch => wins.some(w => w.channel === ch);
@@ -48,77 +53,88 @@ const streamOf = ch => wins.find(w => w.kind === 'stream' && w.channel === ch);
 const canProfile = ch => DESKTOP && ROLE === 'main' && !!window.kmv.profileGet && !/^yt:v:/.test(ch);
 const isMod = ch => wins.some(w => w.channel === ch && w.el.querySelector('[data-a=mod]:not([hidden])'));
 
-// The big row's buttons: Enter runs the first, ← → pick one, Ctrl/⌘+1–9 run one
+// The big row's buttons: Enter runs the first, ← → pick one, Ctrl/⌘+1–9 run the others, More… (Tab) everything
 function buttonsFor(ch, known){
-  const name = chLabel(ch), mode = modeSel ? modeSel.value : 'both', more = { label: 'More…', more: true };
+  const name = chLabel(ch), more = { label: 'More…', more: true }, sv = saved.includes(ch);
   if (isOpen(ch)){
     const s = streamOf(ch), acts = winActions(s || winsOf(ch)[0]), act = k => acts.find(a => a.id.endsWith(':' + k));
     return [
       { label: 'Go to it', icon: 'arrowR', run: () => goToWin(s || winsOf(ch)[0]) },
       ...['big', 'mute', 'bar.reload', 'bar.pop'].map(act).filter(Boolean).map(a => ({ label: a.title, icon: a.icon, run: a.run })),
-      { label: 'Close', icon: 'close', run: () => winsOf(ch).forEach(w => w.el.querySelector('[data-a=close]')?.click()) },
+      { label: winsOf(ch).length > 1 ? 'Close both' : 'Close', icon: 'close', run: () => winsOf(ch).forEach(w => w.el.querySelector('[data-a=close]')?.click()) },
       s && !wins.some(w => w.kind === 'chat' && w.channel === ch) && { label: '+ Chat', icon: 'chat', run: () => s.el.querySelector('[data-a=chat]')?.click() },
       more
     ].filter(Boolean);
   }
   if (!known) return [
-    { label: 'Open', icon: 'arrowR', run: () => openCh(ch) },
+    { label: 'Open', icon: 'colsview', run: () => openCh(ch) },
     { label: 'Open & save', icon: 'star', run: () => { saveCh(ch); openCh(ch); } },
-    { label: 'Stream only', icon: 'pop', run: () => openCh(ch, 'stream') },
+    { label: 'Stream only', icon: 'ytPlay', run: () => openCh(ch, 'stream') },
     { label: 'Chat only', icon: 'chat', run: () => openCh(ch, 'chat') },
-    canProfile(ch) && { label: 'Look up profile', icon: 'user', run: () => openProfile(ch) },
-    more
+    canProfile(ch) && { label: 'Look up profile', icon: 'user', run: () => openProfile(ch) }
   ].filter(Boolean);
   if (platOf(ch) === 'youtube' && !liveOf(ch) && !/^yt:v:/.test(ch)) return [
     { label: 'Check now', icon: 'reload', run: () => { if (DESKTOP && window.kmv.checkLiveNow) window.kmv.checkLiveNow(); flash(`Checking whether ${name} is live…`); } },
     { label: 'Open its page', icon: 'pop', run: () => inBrowser(ch) },
     canProfile(ch) && { label: 'Profile', icon: 'user', run: () => openProfile(ch) },
-    { label: saved.includes(ch) ? 'Saved' : 'Save', icon: 'star', run: () => toggleSaved(ch) },
+    { label: sv ? 'Saved' : 'Save', icon: 'star', on: sv, run: () => toggleSaved(ch) },
     more
   ].filter(Boolean);
-  return [
-    { label: modeName[mode] || 'Stream + chat', icon: 'arrowR', run: () => openCh(ch) },
-    mode !== 'stream' && { label: 'Stream only', icon: 'pop', run: () => openCh(ch, 'stream') },
-    mode !== 'chat' && { label: 'Chat only', icon: 'chat', run: () => openCh(ch, 'chat') },
-    mode !== 'both' && { label: 'Stream + chat', icon: 'colsview', run: () => openCh(ch, 'both') },
+  return [...openButtons(ch).map(o => ({ label: o.title, icon: o.icon, run: o.run })),
     canProfile(ch) && { label: 'Profile', icon: 'user', run: () => openProfile(ch) },
-    { label: saved.includes(ch) ? 'Saved' : 'Save', icon: 'star', run: () => toggleSaved(ch) },
-    saved.includes(ch) && DESKTOP && ROLE === 'main' && { label: autoOpen.includes(ch) ? 'Opens by itself' : 'Auto-open', icon: 'bolt', run: () => toggleAutoOpen(ch) },
+    { label: sv ? 'Saved' : 'Save', icon: 'star', on: sv, run: () => toggleSaved(ch) },
+    sv && DESKTOP && ROLE === 'main' && { label: 'Auto-open', icon: 'bolt', on: autoOpen.includes(ch), run: () => toggleAutoOpen(ch) },
     more
   ].filter(Boolean);
 }
-// Tab: everything for a channel
+// Stream + chat, Stream only, Chat only: the Channels box's choice first
+function openButtons(ch){
+  const mode = modeSel ? modeSel.value : 'both';
+  const all = { both: { title: 'Stream + chat', icon: 'colsview' }, stream: { title: 'Stream only', icon: 'ytPlay' }, chat: { title: 'Chat only', icon: 'chat' } };
+  return [mode, ...['both', 'stream', 'chat'].filter(m => m !== mode)].map(m => ({ mode: m, ...all[m], run: () => openCh(ch, m) }));
+}
+const siteHost = ch => ({ Kick: 'kick.com', Twitch: 'twitch.tv', YouTube: 'youtube.com' })[platform(ch).name];
+// Tab: everything for a channel (the big row's buttons with the same keys)
 function channelMore(ch){
-  const name = chLabel(ch), g = name, out = [];
-  const add = (id, title, x) => out.push({ id: `ch:${ch}:${id}`, group: x.group || g, title, icon: 'point', ...x });
-  add('both', 'Stream + chat', { group: 'Open', icon: 'colsview', run: () => openCh(ch, 'both') });
-  add('stream', 'Stream only', { group: 'Open', icon: 'pop', run: () => openCh(ch, 'stream') });
-  add('chat', 'Chat only', { group: 'Open', icon: 'chat', run: () => openCh(ch, 'chat') });
-  if (popped && DESKTOP) add('streamsWin', 'In the streams window', { group: 'Open', icon: 'popwin', run: () => window.kmv.openStreams([{ channel: ch, vol: 0.8, muted: false }]) });
-  add('site', `On ${platform(ch).name === 'Kick' ? 'kick.com' : platform(ch).name === 'Twitch' ? 'twitch.tv' : 'youtube.com'}`, { group: 'Open', icon: 'pop', sub: 'In a window of its own', run: () => inBrowser(ch) });
-  if (canProfile(ch)) add('profile', 'Profile', { group: 'Channel', icon: 'user', sub: 'When they stream, past streams, your notes', run: () => openProfile(ch) });
-  add('saved', 'Saved', { group: 'Channel', icon: 'star', sub: 'In your channels', toggle: { get: () => saved.includes(ch), set: () => toggleSaved(ch) } });
+  const name = chLabel(ch), g = name, out = [], keyOf = {};
+  buttonsFor(ch, true).forEach((b, i) => { if (i && i <= 9 && !b.more) keyOf[b.label] = 'Ctrl+' + i; });
+  const add = (id, title, x) => out.push({ id: `ch:${ch}:${id}`, group: x.group || g, title, icon: 'point', keys: keyOf[title], ...x });
+  openButtons(ch).forEach((o, i) => add(o.mode, o.title, { group: 'Open', icon: o.icon, sub: i === 0 ? 'As the Channels box is set' : '', run: o.run }));
+  if (popped && DESKTOP) add('streamsWin', 'In the streams window', { group: 'Open', icon: 'popwin', sub: 'On your second monitor', run: () => window.kmv.openStreams([{ channel: ch, vol: 0.8, muted: false }]) });
+  add('site', `On ${siteHost(ch)}`, { group: 'Open', icon: 'link', sub: 'In a window of its own', run: () => inBrowser(ch) });
+  add('copy', 'Copy link', { group: 'Share', icon: 'copy', sub: platform(ch).pageUrl(ch, 'stream').replace(/^https?:\/\/(www\.)?/, ''), run: () => copyLink(ch) });
+  if (canProfile(ch)) add('profile', 'Profile', { group: 'Channel', col: 1, icon: 'user', sub: 'When they stream, past streams, notes', run: () => openProfile(ch) });
+  add('saved', 'Saved', { group: 'Channel', col: 1, icon: 'star', sub: () => saved.includes(ch) ? 'Remove from your channels' : 'Add to your channels', toggle: { get: () => saved.includes(ch), set: () => toggleSaved(ch) } });
   if (DESKTOP && ROLE === 'main' && saved.includes(ch)){
-    add('auto', 'Opens by itself when live', { group: 'Channel', icon: 'bolt', toggle: { get: () => autoOpen.includes(ch), set: () => toggleAutoOpen(ch) } });
-    add('notify', 'Notify me when live', { group: 'Channel', icon: 'bell', disabled: () => !notifyAll && 'Live notifications are off (Channels › the bell)',
+    add('auto', 'Opens by itself when live', { group: 'Channel', col: 1, icon: 'bolt', sub: 'Once per stream', toggle: { get: () => autoOpen.includes(ch), set: () => toggleAutoOpen(ch) } });
+    add('notify', 'Notify me when live', { group: 'Channel', col: 1, icon: 'bell', disabled: () => !notifyAll && 'Live notifications are off (Channels › the bell)',
       toggle: { get: () => notifyAll && !notifyOff.includes(ch), set: on => setNotify(ch, on) } });
   }
-  if (DESKTOP && ROLE === 'main' && mentOn && mentCovered(ch)) add('mentions', 'Mentions in its chat', { group: 'Channel', icon: 'at', toggle: { get: () => !mentMuted.has(ch), set: () => toggleChatMentions(ch) } });
-  if (modUrl(ch) && isMod(ch)) add('mod', 'Mod view', { group: 'Channel', icon: 'mod', run: () => { const u = modUrl(ch); if (DESKTOP) window.kmv.openWindow(u, 1400, 900); else window.open(u, '_blank'); } });
-  add('copy', 'Copy link', { group: 'Share', icon: 'copy', sub: platform(ch).pageUrl(ch, 'stream'), run: () => copyLink(ch) });
-  for (const w of winsOf(ch)) out.push(...winActions(w));
+  if (DESKTOP && ROLE === 'main' && mentOn && mentCovered(ch)) add('mentions', 'Mentions in its chat', { group: 'Channel', col: 1, icon: 'at', sub: 'Kick and Twitch', toggle: { get: () => !mentMuted.has(ch), set: () => toggleChatMentions(ch) } });
+  if (modUrl(ch) && isMod(ch)) add('mod', 'Mod view', { group: 'Channel', col: 1, icon: 'mod', sub: 'You moderate this channel', run: () => { const u = modUrl(ch); if (DESKTOP) window.kmv.openWindow(u, 1400, 900); else window.open(u, '_blank'); } });
+  for (const w of winsOf(ch)) out.push(...winActions(w).map(x => ({ ...x, col: 1 })));
   return out;
 }
 
+// what its open windows are: "stream + chat", and how the stream is ("stream muted · column 3")
+function openKinds(ch){ const k = winsOf(ch).map(w => w.kind); return k.includes('stream') && k.includes('chat') ? 'stream + chat' : k.join(' + '); }
+function openState(ch){
+  const s = streamOf(ch); if (!s) return [];
+  const col = colsMode ? buildCols().findIndex(c => c.key === colKey(s)) + 1 : 0;
+  return [s.muted ? 'stream muted' : '', isPaused(s) ? 'paused' : '', col > 0 ? 'column ' + col : ''];
+}
 // One channel's item; known: saved, open, followed or named by a site
-function channelItem(ch, { known = true, found = null } = {}){
+function channelItem(ch, { known = true } = {}){
   const name = chLabel(ch), live = liveOf(ch), sv = saved.includes(ch), open = isOpen(ch), fol = isFollowed(ch), info = infoFor(ch) || {};
-  const state = live ? [live.category, live.title, liveFor(live.startedAt)].filter(Boolean).join(' · ') : !known ? (found || '') : info.missing ? 'Channel not found' : open ? 'Open here' : sv ? 'Offline' : fol ? 'You follow them · offline' : '';
-  return { id: (known ? 'ch:' : 'open:') + ch, kind: 'channel', group: 'Channels', title: name, sub: [PLAT_NAME[platOf(ch)], state].filter(Boolean).join(' · '),
-    heroSub: state || PLAT_NAME[platOf(ch)], words: [ch.replace(/^(tw:|yt:@?|yt:[vc]:)/, ''), PLAT_NAME[platOf(ch)]],
-    avatar: chPhoto(ch), site: platOf(ch), hue: svHue(ch), initials: svInitials(name.replace(/^@/, '')), live: !!live, viewers: live && live.viewers != null ? fmtViewers(live.viewers) : null,
-    tags: [sv && 'Saved', open && 'Open', !sv && fol && 'Following'].filter(Boolean),
-    boost: (live ? 8 : 0) + (open ? 6 : 0) + (sv ? 5 : 0) + (fol ? 2 : 0),
+  const site = PLAT_NAME[platOf(ch)], views = live && live.viewers != null ? fmtViewers(live.viewers) : null;
+  const sub = live ? [site, sv ? 'Saved' : fol ? 'from your follows' : '', live.title || live.category]
+    : [site, info.missing ? 'Channel not found' : '', sv ? 'Saved' : fol ? 'from your follows' : '', open ? 'open here' : known ? 'offline' : ''];
+  const heroSub = live ? [site, live.title && { b: live.title }, live.category, views && { b: views, t: ' watching' }, live.startedAt && liveFor(live.startedAt).replace(/^for /, 'live ')]
+    : [site, { b: info.missing ? 'not found' : 'offline' }, ...(open ? openState(ch) : [sv ? 'Saved' : fol ? 'You follow them' : ''])];
+  return { id: (known ? 'ch:' : 'open:') + ch, kind: 'channel', group: 'Channels', title: name.replace(/^@/, ''), sub, heroSub, words: [ch.replace(/^(tw:|yt:@?|yt:[vc]:)/, ''), site],
+    avatar: chPhoto(ch), site: platOf(ch), hue: svHue(ch), initials: svInitials(name.replace(/^@/, '')), live: !!live, viewers: views,
+    pills: open ? [{ text: 'Open · ' + openKinds(ch), accent: true }] : sv ? [{ text: 'Saved' }] : [],
+    boost: (live ? 8 + Math.min(4, Math.log10(1 + (+live.viewers || 0))) : 0) + (open ? 6 : 0) + (sv ? 5 : 0) + (fol ? 2 : 0),   // (live: more watching, a little higher)
     buttons: buttonsFor(ch, known), run: () => { const b = buttonsFor(ch, known)[0]; if (b) b.run(); }, verb: open ? 'Go to it' : 'Open',
     alt: () => openCh(ch, 'stream'), altLabel: 'stream only', more: () => channelMore(ch) };
 }
@@ -148,24 +164,30 @@ function typedItems(q){
   const known = new Set(knownChannels());
   const bare = /^[A-Za-z0-9_-]+$/.test(raw);
   // a link or @handle: that channel, first
-  if (!bare) return [{ ...channelItem(p.channel, known.has(p.channel) ? {} : { known: false, found: 'From the link' }), matched: 100, boost: 50 }];
+  if (!bare) return [{ ...channelItem(p.channel, known.has(p.channel) ? {} : { known: false }), heroSub: known.has(p.channel) ? undefined : [PLAT_NAME[platOf(p.channel)], 'from the link'], matched: 100, boost: 50 }];
+  // a bare name: the sites are asked whether it exists (400 ms after the last key); found, it's a channel of its
+  // own (its big row, K / T / Y to pick the site); until then, or not found, "Open “x” as a channel"
   const name = raw.toLowerCase();
+  if (typed.name !== name) typed = { name, site, picked: false };
   lookFor = name; if (!looked.has(name)) lookSoon();
-  const look = looked.get(name), out = [];
-  const sites = [site, ...Object.keys(PLATFORMS).filter(s => s !== site)];
-  for (const s of sites){
-    const ch = normCh(PLATFORMS[s].idFor(name));
-    if (known.has(ch)) continue;
-    const hit = look && look.items && look.items.find(x => x.ch === ch);
-    const found = !look || look.busy ? (canLook() ? `Checking ${PLAT_NAME[s]}…` : '')
-      : !look.items ? '' : hit ? `✓ Found on ${PLAT_NAME[s]}${hit.live ? ' · live' + (hit.live.viewers != null ? ' · ' + fmtViewers(hit.live.viewers) + ' watching' : '') : ''}`
-      : `No ${PLAT_NAME[s]} channel called “${name}”`;
-    if (look && look.items && !hit && s !== site) continue;           // the other sites only where it was found
-    const it = channelItem(ch, { known: false, found });
-    out.push({ ...it, title: s === site || hit ? name : `${name} on ${PLAT_NAME[s]}`, avatar: hit ? hit.avatar || '' : '', live: !!(hit && hit.live),
-      viewers: hit && hit.live && hit.live.viewers != null ? fmtViewers(hit.live.viewers) : null, boost: (s === site ? 0 : -3) - (hit ? 0 : 40) });   // (below anything the words really name)
+  const look = looked.get(name), hits = (look && look.items) || [];
+  const chOf = s => normCh(PLATFORMS[s].idFor(name)), hitOf = s => hits.find(x => x.ch === chOf(s));
+  const found = SITES.filter(s => hitOf(s) && !known.has(chOf(s)));
+  if (!typed.picked && found.length && !hitOf(typed.site)) typed.site = found[0];
+  const sites = () => SITES.map(s => ({ p: s, letter: PLATFORMS[s].letter, name: PLAT_NAME[s], on: s === typed.site }));
+  const pick = { pickSite: s => { typed.site = s; typed.picked = true; }, nextSite: () => { typed.site = SITES[(SITES.indexOf(typed.site) + 1) % SITES.length]; typed.picked = true; } };
+  const ch = chOf(typed.site), hit = hitOf(typed.site);
+  if (known.has(ch)) return [];
+  const stateOf = s => !look || look.busy ? `${PLAT_NAME[s]}: checking…` : !look.items ? '' : hitOf(s) ? `${PLAT_NAME[s]}: found` : `not on ${PLAT_NAME[s]}`;
+  if (found.length){
+    const it = channelItem(ch, { known: false }), live = hit && hit.live;
+    return [{ ...it, title: name, sites, ...pick, avatar: hit ? hit.avatar || '' : '', live: !!live, viewers: live && live.viewers != null ? fmtViewers(live.viewers) : null, pills: [],
+      heroSub: [hit ? { ok: `✓ Found on ${PLAT_NAME[typed.site]}` } : `No ${PLAT_NAME[typed.site]} channel called “${name}”`, live && 'live', live && live.title,
+        live && live.viewers != null && `${fmtViewers(live.viewers)} watching`, ...SITES.filter(s => s !== typed.site).map(stateOf)] }];
   }
-  return out;
+  return [{ id: 'open:as', kind: 'channel', openAs: true, group: 'Open as a channel', title: `Open “${name}” as a channel`, icon: 'plus', matched: 30, boost: -40,
+    sub: !look || look.busy ? (canLook() ? 'Checking Kick, Twitch and YouTube…' : 'Kick, Twitch or YouTube') : look.items ? 'Not found on Kick, Twitch or YouTube' : 'Kick, Twitch or YouTube',
+    sites, ...pick, run: () => openCh(chOf(typed.site)) }];
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
@@ -174,15 +196,12 @@ function init(){
   commands.provide('channels', q => {
     const items = knownChannels().map(ch => channelItem(ch));
     // the empty box: saved channels that are live, by viewers
-    if (!q) return items.filter(it => it.live && saved.includes(it.id.slice(3)))
-      .sort((a, b) => (+(liveOf(b.id.slice(3)) || {}).viewers || 0) - (+(liveOf(a.id.slice(3)) || {}).viewers || 0)).slice(0, 5)
-      .map(it => ({ ...it, group: 'Live now', keep: true }));
+    if (!q){
+      const live = items.filter(it => it.live && saved.includes(it.id.slice(3)));
+      return live.sort((a, b) => (+(liveOf(b.id.slice(3)) || {}).viewers || 0) - (+(liveOf(a.id.slice(3)) || {}).viewers || 0)).slice(0, 5)
+        .map(it => ({ ...it, group: 'Live now', groupNote: `${live.length} of your channels`, keep: true }));
+    }
     return [...items, ...typedItems(q)];
-  });
-  // nothing found: open the words as a channel anyway
-  commands.provide('channels.fallback', q => {
-    const p = q && parseInput(q.trim(), lastSite || tabPlat());
-    return p && p.channel ? [{ id: 'open:any', fallback: true, group: 'Nothing found', title: `Open “${q.trim()}” as a channel`, sub: `On ${PLAT_NAME[platOf(p.channel)]}`, icon: 'arrowR', run: () => openCh(p.channel) }] : [];
   });
 }
 

@@ -294,9 +294,11 @@ async function searchGuide(q){
 // The pages load the first time something's typed in it.
 function guideItems(q){
   if (!topics.length){ if (q && !loading) loadGuide().then(() => store.changed('palette')); return []; }
-  const said = q ? new Set(search(q).filter(r => r.kind === 'topic').map(r => r.t.slug)) : null;
-  return topics.map(t => ({ id: 'guide:' + t.slug, kind: 'help', group: 'Guide', title: t.title, sub: t.lede, words: t.words, icon: t.icon || 'book', verb: 'Read',
-    matched: said && said.has(t.slug) ? 30 : 0, run: () => showGuide(t.slug, q || undefined) }));
+  const said = q ? new Set(search(q).filter(r => r.kind === 'topic').map(r => r.t.slug)) : null, terms = termsOf(q);
+  // a page that says the words: the bit around them, the words marked
+  return topics.map(t => ({ id: 'guide:' + t.slug, kind: 'help', group: 'Guide', title: t.title, sub: t.lede, words: t.words, icon: t.icon || 'book', chip: 'Guide',
+    matched: said && said.has(t.slug) ? 30 : 0, run: () => showGuide(t.slug, q || undefined),
+    ...(said && said.has(t.slug) && !t.low.slice(0, t.title.length + t.lede.length + 1).includes(terms[0]) ? { sub: [snippet(t.text, terms, 110)] } : {}) }));
 }
 // Called when Settings shows the Guide (help.js renderDoc)
 async function renderGuide(){
@@ -368,7 +370,7 @@ function init(){
     { id: 'help.news', kind: 'help', group: 'Help', title: 'What\'s new', sub: 'The changes in each version', words: ['changelog', 'release notes', 'updates'], icon: 'sparkle', run: () => showHelp('news') }
   ]);
   commands.provide('guide', guideItems);
-  commands.provide('guide.fallback', q => q ? [{ id: 'help.search', kind: 'help', fallback: true, group: 'Nothing found', title: `Search the guide for “${q}”`, sub: 'Settings › Guide', icon: 'book', verb: 'Search', run: () => searchGuide(q) }] : []);
+  commands.provide('guide.fallback', q => q ? [{ id: 'help.search', kind: 'help', fallback: true, order: 1, group: 'Nothing found', title: `Search the guide for “${q}”`, sub: () => topics.length ? `${topics.length} topics` : 'Settings › Guide', icon: 'book', verb: 'Search', run: () => searchGuide(q) }] : []);
   window.guide = { load: loadGuide, search, show: showGuide, topics: () => topics, frontMatter, pageHtml };   // for the tests
 }
 

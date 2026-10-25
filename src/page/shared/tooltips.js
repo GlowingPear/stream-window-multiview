@@ -1,3 +1,5 @@
+import { element } from './element.js';
+
 /* ---------- tooltips ----------
    The app shows its own tooltips instead of the browser's (on a Mac those are separate system windows
    that pop up over everything, including these). Buttons that show only an icon (or whose words are
@@ -29,7 +31,7 @@ function init(){
     ['[data-a=star]', b => b.classList.contains('on') ? 'Unsave' : 'Save'],
     ['[data-a=like]', b => b.classList.contains('on') ? 'Remove like' : 'Like'],
     ['[data-a=reload]', b => /different window/i.test(ttl(b)) ? 'Pick window' : 'Reload'],
-    ['[data-a=profile]', 'Profile'], ['#profBtn', 'Profiles'], ['.sv .prof', 'Profile'],
+    ['[data-a=profile]', 'Profile'], ['#profBtn', 'Profiles'], ['#palBtn', 'Search and actions'], ['.sv .prof', 'Profile'],
     ['[data-a=pop]', 'Pop out'], ['[data-a=max]', 'Maximize'], ['[data-a=mod]', 'Mod view'], ['[data-a=close]', 'Close'],
     ['[data-a=ext]', 'Extensions'], ['[data-a=at]', 'Mentions'], ['[data-a=more]', 'More'],
     ['[data-a=state]', 'Copy window state'], ['[data-a=inspect]', 'Inspect'],
@@ -64,6 +66,7 @@ function init(){
         const more = text.startsWith(name + '\n') ? text.slice(name.length + 1) : text;   // a title whose first line is the name: the rest
         if (more && norm(more) !== norm(name)){ const sm = document.createElement('small'); sm.textContent = more; tip.appendChild(sm); }
       } else tip.append(text);
+      if (el.dataset.keys) tip.append(' ', element('kbd', null, el.dataset.keys));   // its keys, drawn as a key
       const r = el.getBoundingClientRect(), tr = tip.getBoundingClientRect();
       if (document.body.classList.contains('bar-left') && el.closest('header')){     // beside the left toolbar
         tip.style.left = Math.round(el.closest('header').getBoundingClientRect().right + 8) + 'px';

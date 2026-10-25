@@ -91,8 +91,8 @@ function init(){
   // the search box's (Ctrl/⌘+K): Do not disturb for a while, until you turn it off, or off
   const dndFlash = () => flash(dndOn() ? (dndUntil < 0 ? 'Do not disturb on' : `Do not disturb until ${new Date(dndUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`) : 'Do not disturb off');
   commands.add([
-    ...[['30', '30 minutes'], ['60', '1 hour'], ['0', 'until I turn it off']].map(([v, t]) => ({ id: 'dnd.' + v, group: 'Notifications', title: 'Do not disturb: ' + t,
-      sub: 'No pop-ups, sounds or desktop notifications. Still collected under the bell', words: ['quiet', 'mute notifications', 'dnd'], icon: 'bellOff',
+    ...[['30', 'for 30 minutes'], ['60', 'for 1 hour'], ['0', 'until I turn it off']].map(([v, t]) => ({ id: 'dnd.' + v, group: 'Notifications', title: 'Do not disturb ' + t,
+      sub: 'Notifications · no pop-ups or sounds', words: ['quiet', 'mute notifications', 'dnd'], icon: 'bellOff',
       run: () => { dndFor.value = v; setDnd(true); dndFlash(); } })),
     { id: 'dnd.off', group: 'Notifications', title: 'Turn off Do not disturb', words: ['dnd'], icon: 'bell', when: dndOn, run: () => { setDnd(false); dndFlash(); } },
     { id: 'dnd', group: 'Notifications', title: 'Do not disturb', sub: () => 'For ' + dndFor.selectedOptions[0].textContent.replace(/^For /, '').toLowerCase() + ', as Settings › Notifications says', words: ['dnd', 'quiet'],
