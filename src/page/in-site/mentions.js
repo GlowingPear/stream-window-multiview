@@ -7,7 +7,7 @@ function mentionAgent(){
   let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0;
   let fresh = 0, counting = false;                           // new messages from others since the app last asked (count())
   let sup = null, supQueue = [], supMe = '';                          // support (Settings > Mentions > Support): the site's wording, and what was found
-  const supSeen = new Set(), giftsBy = new Map(), raidsBy = new Map(), recentSup = new Map();
+  const supSeen = new Map(), giftsBy = new Map(), raidsBy = new Map(), recentSup = new Map();
   // Clicks and typing in the chat: the window may already have focus, so the app sees no new focus to mark it seen.
   // Every kind of click counts, on the window before the page's own handlers: Kick's mod shortcuts on a
   // name (Shift, Cmd/Ctrl, Cmd/Ctrl + Shift + Click: delete, timeout, ban) may stop some of them.
@@ -169,9 +169,13 @@ function mentionAgent(){
      part of it. */
   // a number as the site writes it: "1,000", "$5.00", "€10,50"
   const num = t => { const c = String(t || '').replace(/[^\d.,]/g, ''); return +(/,\d{2}$/.test(c) ? c.replace(/\./g, '').replace(',', '.') : c.replace(/,/g, '')) || 0; };
+  // key: what it says. Kick numbers its rows by their place (data-index), and the numbers shift as old messages drop
+  // off the top, so a row's number can't tell one apart. While the same notice is still in the chat it stays seen;
+  // the same words count again only after 10 minutes without them.
   function supFound(f, key, who, n, extra){
-    if (supSeen.has(key)) return;
-    supSeen.add(key);
+    const last = supSeen.get(key);
+    supSeen.set(key, Date.now());
+    if (last && Date.now() - last < 600000) return;
     if (!who) return;
     who = flat(who);
     // a raid banner keeps counting its viewers ("with 120 viewers", then 125): the same raider is one raid for 30 minutes
@@ -197,8 +201,8 @@ function mentionAgent(){
     const rows = [...document.querySelectorAll('[data-index]')].filter(r => !r.parentElement || !r.parentElement.closest('[data-index]'));
     // the site's own rows: a Kick row that isn't someone's message, or a line of the page's text that isn't. A row that
     // also holds a message (Kick's sub celebration carries the person's words) is kept for wordings marked anyRow.
-    const texts = rows.length ? rows.map(r => ({ t: flat(rowText(r)), k: r.getAttribute('data-index'), msg: !!readRow(r) }))
-      : textLines(document.body.innerText).filter(l => !lineOf(l)).map(l => ({ t: flat(l), k: '' }));
+    const texts = rows.length ? rows.map(r => ({ t: flat(rowText(r)), msg: !!readRow(r) }))
+      : textLines(document.body.innerText).filter(l => !lineOf(l)).map(l => ({ t: flat(l) }));
     for (const f of finds) {
       if (f.row) {
         document.querySelectorAll(f.row).forEach(el => {
@@ -211,11 +215,11 @@ function mentionAgent(){
       } else if (f.msg) {
         // from: only that sender's messages (Kick's own KickBot saying "@name just gifted 100 KICKs!"), naming who gave
         const re = new RegExp(f.re, 'gi'), from = f.from && new RegExp('^(?:' + f.from + ')$', 'i');
-        for (const { l, row } of chatLines()) {
+        for (const { l } of chatLines()) {
           const m = lineOf(l); if (!m || (from && !from.test(m[1]))) continue;
           const all = [...m[2].matchAll(re)], n = all.reduce((s, x) => s + num(x.groups && x.groups.n), 0);
           const who = (all[0] && all[0].groups && all[0].groups.who) || m[1];
-          if (n) supFound(f, 'm' + (row ? row.getAttribute('data-index') : '') + l, who, n);   // (the same words later are another gift)
+          if (n) supFound(f, 'm' + l, who, n);
         }
       }
     }
@@ -240,11 +244,11 @@ function mentionAgent(){
         if (x.msg && !f.anyRow) continue;
         const m = x.t.match(re); if (!m) continue;
         const g = m.groups || {};
-        supFound(f, 't' + x.k + x.t, g.who, g.n ? num(g.n) : 1, g.to ? { to: g.to } : {});
+        supFound(f, 't' + x.t, g.who, g.n ? num(g.n) : 1, g.to ? { to: g.to } : {});
         break;
       }
     }
-    if (supSeen.size > 3000){ const keep = [...supSeen].slice(-1500); supSeen.clear(); keep.forEach(k => supSeen.add(k)); }
+    if (supSeen.size > 3000) supSeen.forEach((t, k) => { if (Date.now() - t > 600000) supSeen.delete(k); });
   }
   function arm(){
     seen.clear(); said.clear(); armed = false; queue = []; lines = [];
