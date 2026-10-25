@@ -121,3 +121,46 @@ test('Pear Drops\' daily reward and farming are there only while their toolbar b
   await run(page, 'daily reward');
   assert.equal(await page.evaluate(() => window.claimed), 1, 'it does what the chest does');
 });
+
+test('your layouts: Save layout as “…” (the words typed), found by name, and its Tab list: rename, update, delete', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha');
+  await run(page, 'Qwzy night');
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.presets')).map(p => p.name)), ['Qwzy night'], 'nothing else found: saved under the words');
+  const found = await first(page, 'qwzy');
+  assert.equal(found[0].title, 'Qwzy night');
+  assert.equal(found[0].group, 'Your layouts');
+  // Tab: rename opens Settings › Layouts on it, its name ready to type over
+  await page.keyboard.press(K); await page.fill('#palQ', 'qwzy night'); await page.waitForTimeout(60);
+  await page.keyboard.press('Tab');
+  assert.deepEqual((await page.evaluate(() => window.palette.rows())).map(r => r.title), ['Use it', 'Rename', 'Update to what\'s on screen', 'Delete']);
+  await page.fill('#palQ', 'rename'); await page.keyboard.press('Enter');
+  await page.waitForSelector('#lyDetail .ly-panel:not([hidden]) input.st-in');
+  await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+  // update (asks first)
+  await page.keyboard.press(K); await page.fill('#palQ', 'qwzy night'); await page.waitForTimeout(60); await page.keyboard.press('Tab');
+  await page.fill('#palQ', 'update'); await page.keyboard.press('Enter');
+  await page.waitForSelector('#askDlg:not([hidden])'); await page.click('#askDlg .ask-yes');
+  assert.match(await page.textContent('#msg'), /Updated layout “Qwzy night”/);
+  // delete (asks first)
+  await page.keyboard.press(K); await page.fill('#palQ', 'qwzy night'); await page.waitForTimeout(60); await page.keyboard.press('Tab');
+  await page.fill('#palQ', 'delete'); await page.keyboard.press('Enter');
+  await page.waitForSelector('#askDlg:not([hidden])'); await page.click('#askDlg .ask-yes');
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.presets'))), []);
+});
+
+test('notifications: found by what they say; Enter shows them; Tab: the buttons on them, each doing what it does', async t => {
+  const page = await openApp(t);
+  await page.evaluate(() => window.smvNotes.liveNote('wanderer', { name: 'Wanderer', title: 'Hiking at dawn' }));
+  const r = await first(page, 'wanderer went live');
+  assert.equal(r[0].title, 'Wanderer went live');
+  await page.keyboard.press(K); await page.fill('#palQ', 'wanderer went live'); await page.waitForTimeout(60);
+  await page.keyboard.press('Tab');
+  assert.deepEqual((await page.evaluate(() => window.palette.rows())).map(x => x.title), ['Watch', 'Chat only']);
+  await page.fill('#palQ', 'chat only'); await page.keyboard.press('Enter');
+  assert.deepEqual((await windows(page)).map(w => w.kind), ['chat'], 'its Chat only');
+  // an app message: Enter opens All notifications on its tab
+  await page.evaluate(() => window.smvNotes.flash('Saved layout “Night”', { subject: 'layouts' }));
+  await run(page, 'saved layout “night”');
+  assert.equal(await page.isVisible('#noteDlg'), true);
+});
