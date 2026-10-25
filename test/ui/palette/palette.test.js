@@ -32,7 +32,7 @@ test('Ctrl/⌘+K opens it from anywhere and again closes it; the toolbar\'s butt
   assert.equal(await isOpen(page), true);
   await page.mouse.click(10, 790);
   assert.equal(await isOpen(page), false, 'a click outside closes it');
-  assert.equal(await page.getAttribute('#palBtn', 'title'), 'Search and actions');
+  assert.equal(await page.evaluate(() => window.tipFor(document.querySelector('#palBtn'))), 'Search', 'its tooltip: Search ⌘K, what it does under it');
   assert.match(await page.getAttribute('#palBtn', 'data-keys'), /^(⌘K|Ctrl K)$/, 'its keys, drawn as a key in its tooltip');
 });
 

@@ -368,7 +368,7 @@ function init(){
   if (pb){
     pb.hidden = false;
     pb.querySelector('.pal-kk').textContent = IS_MAC ? '⌘K' : 'Ctrl K';
-    pb.title = 'Search and actions';
+    pb.title = 'Find and do anything: channels, windows, actions and settings';
     pb.dataset.keys = IS_MAC ? '⌘K' : 'Ctrl K';      // (its tooltip shows them as a key)
     pb.onclick = () => togglePalette();
   }
