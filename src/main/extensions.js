@@ -232,6 +232,9 @@ function createHost(deps) {
   function shellFor(ses) {
     let s = shells.get(ses);
     if (s) return s;
+    // Each one listens for new pages on the app (its 'web-contents-created'): one listener per session with an
+    // extension on, and every stream channel has a session of its own, so the limit of 10 grows with them.
+    app.setMaxListeners(app.getMaxListeners() + 1);
     s = new ElectronChromeExtensions({
       license: 'GPL-3.0',
       session: ses,
