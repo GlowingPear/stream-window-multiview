@@ -25,7 +25,7 @@ for (const bar of BARS){
     assert.equal(order.indexOf('palBtn'), order.indexOf('savedBtn') + 1);
     if (bar.pos === 'top'){
       const w = await page.$eval('#palBtn', e => e.offsetWidth);
-      assert.ok(w >= 50 && w <= 80, `about 64 px wide: ${w}`);
+      assert.ok(w >= 50 && w <= 100, `about 64 px wide (more for Ctrl K): ${w}`);
     }
     await page.click('#palBtn');
     assert.equal(await page.evaluate(() => window.palette.isOpen()), true);
@@ -45,4 +45,16 @@ test('a narrow window: the Search button goes into ⋯ (after the least-used one
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.waitForTimeout(200);
   assert.equal(await page.$eval('#palBtn', e => e.parentElement.tagName), 'HEADER', 'back in the toolbar');
+});
+
+test('on Windows and Linux: Ctrl K on the button, and its tooltip still names it (the keys aren\'t words it shows)', async t => {
+  const page = await openApp(t, { init: () => Object.defineProperty(navigator, 'platform', { get: () => 'Linux x86_64' }) });
+  assert.equal(await page.textContent('#palBtn .pal-kk'), 'Ctrl K');
+  assert.equal(await page.getAttribute('#palBtn', 'data-keys'), 'Ctrl K');
+  assert.equal(await page.evaluate(() => window.tipFor(document.querySelector('#palBtn'))), 'Search');
+  const w = await page.$eval('#palBtn', e => e.offsetWidth);
+  assert.ok(w >= 50 && w <= 100, `${w}`);
+  await page.keyboard.press('Control+k');
+  assert.equal(await page.evaluate(() => window.palette.isOpen()), true);
+  assert.deepEqual(await page.$$eval('#palBg .pal-k kbd', ks => ks.map(k => k.textContent)), ['Ctrl', 'K']);
 });

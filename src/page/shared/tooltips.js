@@ -8,7 +8,8 @@ import { element } from './element.js';
    title and its parents' titles are put aside so the browser has none to show, and put back after. */
 const ttl = b => b.title || b.dataset.tipTitle || '';   // its title (put aside while the pointer is on it)
 let TIPS;
-const hasWords = el => /[A-Za-z]{2,}/.test(el.innerText || '');
+// words it shows (not the keys it shows: "Ctrl K" on the Search button)
+const hasWords = el => /[A-Za-z]{2,}/.test([...el.querySelectorAll('kbd')].reduce((t, k) => t.replace(k.innerText, ''), el.innerText || ''));
 // The short name for a control that shows no words, or '' when it doesn't need one (its words are showing).
 // A control's short name from TIPS, or ''.
 function tipName(el){
