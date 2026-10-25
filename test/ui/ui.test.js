@@ -753,6 +753,30 @@ test('macOS, toolbar on the left: the lights sit at the top of the column; with 
   assert.ok((await lights()).every(Boolean), 'and stay showing');
 });
 
+test('macOS: with a menu open the toolbar isn\'t a drag area, so a press on its empty space closes the menu', async t => {
+  for (const bar of [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left', labels: false }]){
+    const page = await openApp(t, { init: { content: `localStorage.setItem('kickMultiview.toolbar', ${JSON.stringify(JSON.stringify(bar))});
+      window.kmv = { platform: 'darwin', setLights: () => {}, onFullscreen: () => {}, watchTop: () => {}, onTop: () => {} };` } });
+    const region = () => page.$eval('header', e => getComputedStyle(e).getPropertyValue('-webkit-app-region'));
+    // a spot on the toolbar with nothing on it
+    const empty = await page.$eval('header', h => {
+      const r = h.getBoundingClientRect();
+      for (let y = r.bottom - 3; y > r.top; y -= 4) for (let x = r.right - 3; x > r.left; x -= 4)
+        if (document.elementFromPoint(x, y) === h) return [x, y];
+    });
+    assert.ok(empty, `${JSON.stringify(bar)}: the toolbar has empty space`);
+    assert.equal(await region(), 'drag', `${JSON.stringify(bar)}: empty toolbar space moves the window`);
+    for (const [btn, menu] of [['#savedBtn', '#savedPanel'], ['#layoutBtn', '#layoutMenu']]){
+      await page.click(btn);
+      assert.ok(await page.isVisible(menu), `${JSON.stringify(bar)}: ${menu} opens`);
+      assert.equal(await region(), 'no-drag', `${JSON.stringify(bar)}: not while ${menu} is open, so the page hears a press on it`);
+      await page.mouse.click(...empty);
+      assert.equal(await page.isVisible(menu), false, `${JSON.stringify(bar)}: a press on empty toolbar space closes ${menu}`);
+      assert.equal(await region(), 'drag', `${JSON.stringify(bar)}: and it moves the window again`);
+    }
+  }
+});
+
 test('macOS: the toolbar is the title bar, and the traffic lights hide and come back with Hide bar', async t => {
   // The Mac parts of the desktop bridge: records what the page asks of the lights, and lets the test go fullscreen.
   const page = await openApp(t, { init: () => {

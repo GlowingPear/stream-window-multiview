@@ -2,6 +2,9 @@
    traffic lights sit at its left (not in fullscreen, where macOS hides them), and the pear stands in for the name. */
 html.mac-bar header{-webkit-app-region:drag;padding-left:86px}
 html.mac-bar header :is(button,input,select,label,a){-webkit-app-region:no-drag}
+/* not while a menu that closes on an outside press is open (shared/popover.js): the page never hears a press on a
+   drag area, so the first press there closes the menu instead of moving the window */
+html.mac-bar:has([data-outside]:not([hidden])) header{-webkit-app-region:no-drag}
 html.mac-bar body.fullscreen header{padding-left:12px}
 html.mac-bar #reveal{height:12px}   /* the window's top few pixels are its resize edge, which the page never hears about */
 html.mac-bar body:not(.role-streams) .brand-txt{display:none}
