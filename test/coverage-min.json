@@ -14,6 +14,7 @@
   "src/page/alerts/support-banner.js": 98,
   "src/page/alerts/spam.js": 99,
   "src/page/app.js": 98,
+  "src/page/chat/chat-overlay.js": 98,
   "src/page/chat/chat-zoom.js": 98,
   "src/page/chat/stick-bottom.js": 98,
   "src/page/chat/translate.js": 98,
