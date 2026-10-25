@@ -49,6 +49,52 @@ test('Kick: a community gift once (not once per sub it gave), KICKs, a gift to s
   assert.deepEqual(await found(page), []);
 });
 
+test('Kick KICKs: KickBot\'s "@name just gifted 100 KICKs!" (Kick\'s real message rows), only from KickBot, and once with the "sent" box', async t => {
+  const page = await chatPage(t, 'kick', kickRow(1, 'KickBot', '@oldfan just gifted 100 KICKs!'), 'GlowingPear');
+  await put(page, kickRow(2, 'KickBot', '@quietkoala just gifted 500 KICKs!'));
+  await put(page, kickRow(3, 'BotRix', 'Thanks @quietkoala for the 500 KICKs!'));               // another bot thanking: not counted
+  await put(page, kickRow(4, 'someone', '@tinycomet just gifted 1000 KICKs!'));                 // a viewer saying it: not counted
+  await put(page, kickRow(5, 'KickBot', '@GlowingPear just gifted 50 KICKs!'));                 // your own
+  assert.deepEqual(await found(page), [['kicks', 'quietkoala', 500, '']]);
+  // the box (with the time and the KICK icon's words around the number) and KickBot's message: one gift
+  await put(page, kickNote(6, '07:55 PM zestyplum', 'sent KICK 100', '688 / 10K'));
+  await put(page, kickRow(7, 'KickBot', '@zestyplum just gifted 100 KICKs!'));
+  assert.deepEqual(await found(page), [['kicks', 'zestyplum', 100, '']]);
+  // the same words again in another row within a minute: taken as the same gift
+  await put(page, kickRow(8, 'KickBot', '@quietkoala just gifted 500 KICKs!'));
+  assert.deepEqual(await found(page), [], 'within a minute of the same one: taken as the same gift');
+});
+
+test('Kick sub celebrations: the box with the person\'s own message is a sub; the same words typed in a message aren\'t', async t => {
+  // the celebration as Kick draws it: who and what, then their message (a real message row) in the same box
+  const celebration = (i, name, months, words) => `<div data-index="${i}"><div class="flex"><span>${name}</span></div>`
+    + `<div>celebrates their subscription for ${months} months!</div>${kickRow(i, name, words).replace(/^<div data-index="\d+"/, '<div')}</div>`;
+  const page = await chatPage(t, 'kick', celebration(1, 'oldfan', 3, 'still here'));
+  await put(page, celebration(2, 'mossy_rock', 7, 'Scrib doooooon'));
+  await put(page, kickRow(3, 'chatter', 'mossy_rock celebrates their subscription for 7 months!'));   // someone typing it
+  assert.deepEqual(await found(page), [['sub', 'mossy_rock', 7, '']]);
+});
+
+test('Kick renumbering its rows as old messages drop off the top doesn\'t make the same gift alert again', async t => {
+  const page = await chatPage(t, 'kick', kickRow(1, 'regular', 'evening all'));
+  await put(page, kickNote(2, 'giftfox88', "Gifted 1 subscription to the community! They've gifted 1 subscription in the channel.", '7 / 10'));
+  await put(page, kickRow(3, 'KickBot', '@zestyplum just gifted 100 KICKs!'));
+  assert.deepEqual((await found(page)).sort(), [['gifts', 'giftfox88', 1, ''], ['kicks', 'zestyplum', 100, '']]);
+  // the oldest message drops off and every row's number moves down, again and again
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('#sup-chat > [data-index]')];
+      rows[0].remove();
+      rows.slice(1).forEach(r => r.setAttribute('data-index', String(+r.getAttribute('data-index') - 1)));
+      const d = document.createElement('div'); d.innerHTML = rows[0].outerHTML; document.getElementById('sup-chat').append(d.firstChild);   // more chat comes in
+    });
+    assert.deepEqual(await found(page), [], `still the same gifts (${i + 1})`);
+  }
+  // a new gift with its own words still alerts
+  await put(page, kickNote(9, 'giftfox88', "Gifted 1 subscription to the community! They've gifted 2 subscriptions in the channel.", '8 / 10'));
+  assert.deepEqual(await found(page), [['gifts', 'giftfox88', 1, '']]);
+});
+
 test('Twitch: a community gift, a sub with its months, and cheers in a message added up; YouTube: Super Chats with their money, gifts and members', async t => {
   const line = t => `<div class="row">${t}</div>`;
   let page = await chatPage(t, 'twitch', line('<b>regular</b>: <span>hi all</span>'));
