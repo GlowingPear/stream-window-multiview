@@ -1,7 +1,8 @@
 // Every button in the app that does something is also in the search box (Ctrl/⌘+K, #184): it carries the id of
 // its command (data-cmd), or sits in a part whose controls are all commands as they show (data-cmds: Game focus's
-// bar, the switch control's head…). Each part of the app is opened in turn, and any visible button or tab without
-// one fails, unless it's on the short list in coverage.js, each with why. (The desktop app's own parts: in
+// bar, the switch control's head…). Each part of the app is opened in turn, and any visible button, tab or control
+// (a switch, slider, list or box: a Settings option) without one fails, unless it's on the short list in coverage.js,
+// each with why. (The desktop app's own parts: in
 // test/launch/palette/coverage.test.js.)
 const test = require('node:test');
 const assert = require('node:assert/strict');
