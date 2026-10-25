@@ -259,6 +259,7 @@ function drawNotes(root, v, { limit, q = '', onTab } = {}){
     b.className = t === v.tab ? 'on' : ''; b.setAttribute('aria-selected', String(t === v.tab));
     b.innerHTML = `<span></span>${n ? `<i>${n}</i>` : ''}`; b.firstChild.textContent = TAB_NAME[t];
     b.onclick = () => { if (v.tab === t) return; v.tab = t; v.sub = 'all'; v.pick = ''; if (onTab) onTab(); };
+    b.dataset.cmd = (v === bell ? 'bell.' : 'notes.') + t;   // (the search box's)
     tabs.appendChild(b);
   });
   // the picker: chats (sites in Live), not in App
@@ -285,6 +286,7 @@ function drawNotes(root, v, { limit, q = '', onTab } = {}){
     const b = document.createElement('button'); b.dataset.v = s; b.className = s === v.sub ? 'on' : '';
     b.textContent = subName(v.tab, s) + (n ? ' ' + n : '');
     b.onclick = () => { v.sub = s; if (onTab) onTab(); };
+    b.dataset.cmd = s === 'all' ? 'notes.' + v.tab : `notes.${v.tab}.${s}`;
     chips.appendChild(b);
   });
   sum.hidden = v.tab !== 'spam';

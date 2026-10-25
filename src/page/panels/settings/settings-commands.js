@@ -49,7 +49,7 @@ function stItems(){
       const it = { id: `setting.${s}.${row.id || sw?.id || title}`, kind: 'setting', group: 'Settings', title, sub: where + (small ? ' · ' + small.trim() : ''), words: [name],
         icon: 'sliders', alt: show, altLabel: 'its page', disabled: () => (sw && sw.disabled && 'Not available right now') || '' };
       if (sw) it.toggle = { get: () => sw.checked, set: () => { sw.click(); } };
-      else if (!inputs.length && buttons.length === 1){ it.run = () => { closeSettings(); buttons[0].click(); }; it.verb = buttons[0].textContent.trim() || 'Run'; it.alt = show; }
+      else if (!inputs.length && buttons.length === 1){ it.run = () => { closeSettings(); buttons[0].click(); }; it.verb = buttons[0].textContent.trim() || 'Run'; it.alt = show; buttons[0].dataset.cmd ||= it.id; }
       else { it.run = show; it.verb = 'Show'; delete it.alt; }
       out.push(it);
     });
@@ -60,8 +60,12 @@ let stCache = null, stAt = 0;
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
+  // its pages and tabs are marked with their commands (for the test that every button has one)
+  settingsDlg.querySelectorAll('.st-rail button[data-s]').forEach(b => { b.dataset.cmd = 'settings.' + b.dataset.s; });
+  settingsDlg.querySelectorAll('.st-pane[data-s] .st-tabs button[data-t]').forEach(b => { b.dataset.cmd = `settings.${b.closest('.st-pane').dataset.s}.${b.dataset.t}`; });
   commands.add({ id: 'settings', group: 'Settings', title: 'Settings', sub: 'General, accounts, alerts, themes and updates', words: ['preferences', 'options'], icon: 'gear', keys: 'Ctrl+,', button: '#settingsBtn' });
   // read again at most every 2 s (rows come and go with the desktop app, accounts and Developer tools)
+  stCache = stItems(); stAt = Date.now();      // (and marks the buttons that are an option's command)
   commands.provide('settings', () => {
     if (!stCache || Date.now() - stAt > 2000){ stCache = stItems(); stAt = Date.now(); }
     return stCache;

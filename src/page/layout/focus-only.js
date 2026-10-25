@@ -1,5 +1,6 @@
-import { wins } from '../core.js';
+import { ROLE, wins } from '../core.js';
 import { featBase, featSwitch, featuredCh, vidByKey } from './layouts.js';
+import { commands } from '../shared/commands.js';
 import { icon } from '../shared/icons.js';
 import { settings } from '../shared/settings.js';
 import { pauseEvents, pauseWhy } from '../windows/pause-state.js';
@@ -64,6 +65,8 @@ function syncSwitcher(){
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   focusOnly = settings.flag('focusOnly');
+  commands.add({ id: 'layout.focusOnly', group: 'Layout options', title: 'Pause all except focus', sub: 'Every stream except the big one pauses, to save bandwidth (Focus view)', words: ['bandwidth', 'pause others'],
+    icon: 'pause', when: () => ROLE === 'main', toggle: { get: () => focusOnly, set: () => toggleFocusOnly() } });
 }
 
 export { applyFocusOnly, focusOnly, init, syncSwitcher, toggleFocusOnly, updateFocusOnlyBtn };

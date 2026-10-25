@@ -35,11 +35,10 @@ const NH_SUB = { mention: 'All @ mentions', reply: 'All replies', word: 'All wor
 function noteHistoryCommands(){
   const out = [];
   for (const t of SmvNotes.TABS){
-    out.push({ id: 'notes.' + t, kind: 'tab', group: 'Notifications', title: NH_TITLE[t], sub: 'All notifications › ' + TAB_NAME[t], words: ['history', 'notifications'], icon: 'bell', run: () => openNoteHistory(t, { sub: 'all' }) });
+    if (t !== 'all') out.push({ id: 'notes.' + t, kind: 'tab', group: 'Notifications', title: NH_TITLE[t], sub: 'All notifications › ' + TAB_NAME[t], words: ['history', 'notifications'], icon: 'bell', run: () => openNoteHistory(t, { sub: 'all' }) });
     if (t !== 'all') for (const s of SmvNotes.SUBS[t]) if (s !== 'all')
       out.push({ id: `notes.${t}.${s}`, kind: 'tab', group: 'Notifications', title: NH_SUB[s] || `App messages: ${subName(t, s)}`, sub: `All notifications › ${TAB_NAME[t]} › ${subName(t, s)}`,
         words: ['notifications'], icon: 'bell', run: () => openNoteHistory(t, { sub: s }) });
-    out.push({ id: 'bell.' + t, kind: 'tab', group: 'Notifications', title: 'Bell: ' + TAB_NAME[t], sub: 'The bell, on its ' + TAB_NAME[t] + ' tab', words: ['notifications'], icon: 'bell', run: () => openBellAt(t) });
   }
   out.push({ id: 'notes.unread', kind: 'tab', group: 'Notifications', title: 'Unread notifications only', sub: 'All notifications, only the new ones', words: ['new'], icon: 'bell', run: () => openNoteHistory('all', { sub: 'all', unread: true }) });
   return out;
@@ -172,16 +171,21 @@ function init(){
     $('#bellSettings').onclick = () => { p.hidden = true; openSettings('notify'); };
   }
   if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled){
+    commands.add(noteHistoryCommands());
+    commands.provide('notes', noteItems);
+    [['#nhRead', 'bell.read'], ['#nhClear', 'bell.clear']].forEach(([sel, id]) => { $(sel).dataset.cmd = id; });
+  }
+  // the bell (the main window's): the search box's, and what its buttons are (for the test that every button has one)
+  if (ROLE === 'main'){
     commands.add([
-      ...noteHistoryCommands(),
       { id: 'bell.open', group: 'Notifications', title: 'Notifications', sub: 'The bell: mentions, spam alerts, channels going live and the app\'s messages', words: ['bell'], icon: 'bell', button: '#bellBtn' },
+      ...SmvNotes.TABS.map(t => ({ id: 'bell.' + t, kind: 'tab', group: 'Notifications', title: 'Bell: ' + TAB_NAME[t], sub: 'The bell, on its ' + TAB_NAME[t] + ' tab', words: ['notifications'], icon: 'bell', run: () => openBellAt(t) })),
       { id: 'bell.read', group: 'Notifications', title: 'Mark all notifications read', icon: 'check', disabled: () => !notes.some(n => n.unread) && 'Nothing new', run: () => readNotes() },
       { id: 'bell.clear', group: 'Notifications', title: 'Clear the bell\'s tab', sub: () => 'The notifications in its ' + TAB_NAME[bell.tab] + ' tab', icon: 'bin', button: '#bellClear', when: () => SmvNotes.filter(notes, { tab: bell.tab }).length > 0 },
-      { id: 'bell.settings', group: 'Notifications', title: 'Notification settings', sub: 'Settings › Notifications', icon: 'gear', button: '#bellSettings', when: () => true }
+      { id: 'bell.settings', group: 'Notifications', title: 'Notification settings', sub: 'Settings › Notifications', icon: 'gear', button: '#bellSettings', when: () => true },
+      { id: 'notes.all', kind: 'tab', group: 'Notifications', title: 'All notifications', sub: 'Every notification kept, with search and filters', words: ['history'], icon: 'bell', button: '#bellAll', when: () => DESKTOP && !!window.kmv.notifyEnabled }
     ]);
-    commands.provide('notes', noteItems);
-    // the rest of the bell's and All notifications' buttons are those above (marked, for the test that every button has one)
-    [['#nhRead', 'bell.read'], ['#nhClear', 'bell.clear'], ['#bellRead', 'bell.read'], ['#bellAll', 'notes.all']].forEach(([sel, id]) => { const b = $(sel); if (b) b.dataset.cmd = id; });
+    $('#bellRead').dataset.cmd = 'bell.read';
   }
   window.openNoteHistory = openNoteHistory;   // for the tests
 }

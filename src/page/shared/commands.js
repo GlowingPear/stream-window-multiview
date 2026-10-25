@@ -144,6 +144,44 @@ function cmdGrouped(results){
   return gs;
 }
 
+/* ---- a part's controls, as they are on screen ----
+   fromControls('#gameBar', { group: 'Game focus' }): every button, switch and dropdown choice showing in it is a
+   command that does what clicking it does, there only while it shows (Game focus's bar, only in Game focus). The
+   container is marked data-cmds, for the test that every button has a command. A container made later marks itself
+   with markControls(el, group). */
+const ctlVisible = el => !!el && el.isConnected && !el.closest('[hidden]') && (typeof el.checkVisibility !== 'function' || el.checkVisibility());
+// a control's name: its data-name, its label, or its words (without the keys it shows), or its tooltip
+const ctlWords = el => [...el.childNodes].filter(n => n.nodeType === 3 || (n.nodeType === 1 && !/^(KBD|SVG|svg|SELECT|INPUT)$/.test(n.tagName))).map(n => n.textContent).join('');
+const ctlText = el => String(el.dataset.name || el.getAttribute('aria-label') || ctlWords(el).trim() || el.title || '').replace(/\s+/g, ' ').trim();
+const ctlLabel = el => { const l = el.closest('label'); return l ? ctlText(l) : (el.getAttribute('aria-label') || el.title || '').trim(); };
+function ctlItems(root, { group, prefix = '', icon = 'point', words = [] }){
+  const out = [], seenTitles = new Set();
+  const push = (title, x) => { if (!title || seenTitles.has(title)) return; seenTitles.add(title); out.push({ id: `ctl:${group}:${title}`, group, title: prefix + title, icon, words, ...x }); };
+  for (const b of root.querySelectorAll('button')){
+    if (!ctlVisible(b) || b.dataset.cmd) continue;
+    let t = ctlText(b);
+    const seg = b.parentElement && b.parentElement.title;
+    if (t.length <= 2 && seg) t = `${seg}: ${t}`;
+    push(t, { sub: b.title && b.title !== t ? b.title : '', disabled: () => b.disabled && 'Not available right now', tags: () => b.classList.contains('on') ? ['On'] : [], run: () => b.click() });
+  }
+  for (const c of root.querySelectorAll('input[type=checkbox]')){
+    if (!ctlVisible(c)) continue;
+    push(ctlLabel(c), { toggle: { get: () => c.checked, set: () => c.click() } });
+  }
+  for (const s of root.querySelectorAll('select')){
+    if (!ctlVisible(s)) continue;
+    const name = ctlLabel(s);
+    for (const o of s.options) if (o.value !== '' || s.options.length < 3)
+      push(`${name}: ${o.textContent.trim()}`, { tags: () => s.value === o.value ? ['In use'] : [], run: () => { s.value = o.value; s.dispatchEvent(new Event('change', { bubbles: true })); } });
+  }
+  return out;
+}
+function markControls(el, group){ if (el) el.dataset.cmds = group; }
+function fromControls(sel, opts){
+  if (typeof document !== 'undefined') document.querySelectorAll(sel).forEach(el => markControls(el, opts.group));
+  provideCommands('controls:' + sel, () => [...document.querySelectorAll(sel)].filter(ctlVisible).flatMap(el => ctlItems(el, opts)));
+}
+
 /* ---- running ---- */
 // how: 'run' (Enter), 'alt' (⇧Enter), or a button's index. -> '' when it ran, else why it didn't
 function runCommand(itemOrId, how = 'run'){
@@ -164,7 +202,7 @@ function runCommand(itemOrId, how = 'run'){
   return '';
 }
 
-const commands = { add: addCommands, remove: removeCommand, provide: provideCommands, all: allCommands, find: findCommand, ran: cmdRan, recent: cmdRecent,
+const commands = { add: addCommands, remove: removeCommand, provide: provideCommands, fromControls, markControls, all: allCommands, find: findCommand, ran: cmdRan, recent: cmdRecent,
   frecency: cmdFrecency, search: searchCommands, fallbacks: cmdFallbacks, grouped: cmdGrouped, run: runCommand, parse: parseQuery, disabledWhy: cmdWhy, SCOPES: CMD_SCOPES };
 
 export { commands };

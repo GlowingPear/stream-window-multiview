@@ -314,9 +314,9 @@ test('the toolbar fits any window width: Layout keeps its name while there is ro
   const page = await openApp(t);
   await add(page, 'alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel');
   await press(page, 'c');
-  // the order: Channels on the left; Layout leads the right side, Clear is last
+  // the order: Channels and Search on the left; Layout leads the right side, Clear is last
   const order = await page.$$eval('header > .btn', els => els.filter(e => !e.hidden && getComputedStyle(e).display !== 'none').map(e => e.id));
-  assert.deepEqual(order, ['savedBtn', 'layoutBtn', 'swBtn', 'undoBtn', 'redoBtn', 'bellBtn', 'settingsBtn', 'focusBtn', 'clear']);
+  assert.deepEqual(order, ['savedBtn', 'palBtn', 'layoutBtn', 'swBtn', 'undoBtn', 'redoBtn', 'bellBtn', 'settingsBtn', 'focusBtn', 'clear']);
   const check = () => page.evaluate(() => {
     const h = document.querySelector('header'), hr = h.getBoundingClientRect();
     const cut = [...h.children].filter(e => !e.hidden && getComputedStyle(e).display !== 'none')

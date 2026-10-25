@@ -94,8 +94,11 @@ function init(){
     ...[['30', '30 minutes'], ['60', '1 hour'], ['0', 'until I turn it off']].map(([v, t]) => ({ id: 'dnd.' + v, group: 'Notifications', title: 'Do not disturb: ' + t,
       sub: 'No pop-ups, sounds or desktop notifications. Still collected under the bell', words: ['quiet', 'mute notifications', 'dnd'], icon: 'bellOff',
       run: () => { dndFor.value = v; setDnd(true); dndFlash(); } })),
-    { id: 'dnd.off', group: 'Notifications', title: 'Turn off Do not disturb', words: ['dnd'], icon: 'bell', when: dndOn, run: () => { setDnd(false); dndFlash(); } }
+    { id: 'dnd.off', group: 'Notifications', title: 'Turn off Do not disturb', words: ['dnd'], icon: 'bell', when: dndOn, run: () => { setDnd(false); dndFlash(); } },
+    { id: 'dnd', group: 'Notifications', title: 'Do not disturb', sub: () => 'For ' + dndFor.selectedOptions[0].textContent.replace(/^For /, '').toLowerCase() + ', as Settings › Notifications says', words: ['dnd', 'quiet'],
+      icon: 'bellOff', toggle: { get: dndOn, set: on => { setDnd(on); dndFlash(); } } }
   ]);
+  document.querySelectorAll('.nc-dnd').forEach(b => { b.dataset.cmd = 'dnd'; });
   dndFor.addEventListener('change', () => { if (dndOn()) setDnd(true); else { settings.set('dndFor', dndFor.value); syncDnd(); } });
   // The red number on the bell.
   bellCountEl = $('#bellCount');

@@ -54,6 +54,7 @@ function openLayoutMenuAt(t){
   layoutMenu.querySelector('.lm-tabs').selectTab(t);
 }
 function addLayoutCommands(){
+  layoutMenu.querySelectorAll('.lm-tabs [data-t]').forEach(b => { b.dataset.cmd = 'layoutMenu.' + b.dataset.t; });
   layoutMenu.querySelectorAll('button[data-l]').forEach(b => {
     const l = b.dataset.l;
     commands.add({ id: 'layout.' + l, kind: 'layout', group: 'Layouts', title: b.querySelector('b').textContent, sub: b.querySelector('span').textContent,
@@ -61,6 +62,7 @@ function addLayoutCommands(){
       boost: () => curLayout() === l ? -20 : 0, tags: () => curLayout() === l ? ['In use'] : [] });
   });
   commands.add([
+    { id: 'switch.toggle', group: 'Switch control', title: 'Switch control', sub: 'Show it as a panel you can move and resize, in any layout (again to put it away)', words: ['switcher'], icon: 'float', keys: 'S', button: '#swBtn' },
     { id: 'layout.menu', group: 'Layouts', title: 'Layout menu', sub: 'The layouts, your saved layouts and their options', icon: 'layout', keys: 'L', button: '#layoutBtn' },
     { id: 'layout.settings', group: 'Layouts', title: 'Layout settings', sub: 'Settings › Layouts', icon: 'gear', button: '#layoutSet', when: () => true },
     { id: 'layout.linked', kind: 'action', group: 'Layout options', title: 'Linked', sub: 'Each stream and its chat move together (Columns, Focus view)', words: ['move together', 'link chat'],
@@ -71,7 +73,7 @@ function addLayoutCommands(){
       words: ['chat focus columns'], icon: 'colsview', button: `#lmCols button[data-n="${n}"]`, when: () => curLayout() === 'chatfocus' })),
     ...[['dock', 'Docked', 'Under the big stream, in Focus view only'], ['float', 'Floating', 'A panel you can move and resize, in every layout'], ['window', 'Own window', 'Put it anywhere, even on another monitor']]
       .map(([k, t, d]) => ({ id: 'switch.' + k, group: 'Switch control', title: 'Switch control: ' + t, sub: d, words: ['switcher'], icon: k === 'window' ? 'popwin' : k,
-        button: `#swModes button[data-sw="${k}"]`, when: () => !!$(`#swModes button[data-sw="${k}"]`), tags: () => switchMode === k ? ['In use'] : [] })),
+        button: `button[data-sw="${k}"]`, when: () => !!$(`#swModes button[data-sw="${k}"]`), tags: () => switchMode === k ? ['In use'] : [] })),
     ...[['top', 'Top', 'A bar across the top of the window'], ['left', 'Left', 'A column down the side, each button with its name'], ['icons', 'Left, icons only', 'A slim column: the most room for the streams']]
       .map(([k, t, d]) => ({ id: 'toolbar.' + k, group: 'Toolbar', title: 'Toolbar: ' + t, sub: d, words: ['bar position', 'sidebar'], icon: 'hidebar',
         button: `#layoutMenu button[data-tbv="${k}"]`, when: () => true, tags: () => document.querySelector(`#layoutMenu button[data-tbv="${k}"]`)?.classList.contains('on') ? ['In use'] : [] })),

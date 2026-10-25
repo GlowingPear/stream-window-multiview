@@ -8,8 +8,9 @@ import { ROLE, wins } from '../core.js';
 import { isRail, showRailChat } from '../layout/chat-rail.js';
 import { isStage, putOnStage } from '../layout/chat-stage.js';
 import { colKey } from '../layout/layouts.js';
-import { fsMute } from '../layout/switcher.js';
+import { fsMute, removeChannel, renderSwitcher } from '../layout/switcher.js';
 import { svHue, svInitials } from '../panels/channels/channels.js';
+import { save } from '../persistence.js';
 import { chLabel, platOf } from '../platforms/platforms.js';
 import { commands } from '../shared/commands.js';
 import { DESKTOP } from '../shared/env.js';
@@ -53,7 +54,9 @@ function winActions(w){
     add('volUp', 'Volume up', () => volBy(w, 0.1), { icon: 'volOn' });
     add('volDown', 'Volume down', () => volBy(w, -0.1), { icon: 'volOff' });
     add('pause', isPaused(w) ? 'Play' : 'Pause', () => { togglePause(w); flash(`${chLabel(w.channel)} ${isPaused(w) ? 'paused' : 'playing'}`); }, { icon: isPaused(w) ? 'play' : 'pause' });
+    if (DESKTOP && ROLE === 'main') add('preview', w.preview ? 'Hide its preview' : 'Show its preview', () => { w.preview = !w.preview; save(); renderSwitcher(); }, { icon: w.preview ? 'chevUp' : 'chevDown', sub: 'A small live picture in the switch control' });
   }
+  if (w.kind === 'stream' || w.kind === 'capture') add('remove', 'Remove', () => removeChannel(colKey(w)), { icon: 'close', sub: w.kind === 'stream' ? 'The stream and its chat' : 'This window' });
   if (w.kind === 'chat'){
     if (ROLE === 'main') add('blow', w === blownWin() ? 'Put it back' : 'Blow it up', () => { if (w === blownWin()) putBack(); else blowUp(w); }, { icon: 'zoomin', sub: 'Big in the middle of the screen, with bigger text' });
     add('translate', 'Translate this chat', () => translateChat(w, { do: 'translate' }), { icon: 'chat', sub: 'New messages in your language', words: ['language'] });

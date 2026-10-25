@@ -5,6 +5,7 @@ import { applyRects, chatRects, colKey, gridRects, mkDiv, setColsMode, switchMod
 import { placeSwitcher } from './switch-control.js';
 import { save } from '../persistence.js';
 import { chLabelP } from '../platforms/platforms.js';
+import { commands } from '../shared/commands.js';
 import { esc } from '../shared/element.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
@@ -155,6 +156,7 @@ function init(){
   if (!shapeOK) gameMode = 'window';
   gameArea = mkDiv('gameArea', '<div class="ga-hole"><div class="ga-tip"></div></div>');
   gameBar = mkDiv('gameBar');
+  commands.fromControls('#gameBar', { group: 'Game focus', icon: 'game', words: ['game'] });   // (the search box's, while Game focus is on)
   gameBar.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.gm){ gameMode = b.dataset.gm; saveGame(); gameLayout(); }

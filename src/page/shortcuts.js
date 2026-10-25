@@ -114,6 +114,10 @@ function addShortcutCommands(){
       when: () => DESKTOP && !!window.kmv.toggleFullscreen, run: () => window.kmv.toggleFullscreen() },
     { id: 'capture.pick', title: 'Show another app\'s window', sub: 'e.g. a Discord pop-out, inside Stream Multiview', words: ['capture', 'discord', 'app window', 'screen'], icon: 'capture', keys: 'W',
       when: main, run: () => openCapturePicker(null) },
+    { id: 'streams.next', title: 'Next stream', sub: 'Big in Focus view, on the stage in Chat Stage, its chat in Chat Rail (Columns: scroll)', words: ['previous', 'step'], icon: 'arrowR', keys: '→',
+      when: main, disabled: noStreams, run: () => stepStream(1) },
+    { id: 'streams.prev', title: 'Previous stream', sub: 'Big in Focus view, on the stage in Chat Stage, its chat in Chat Rail (Columns: scroll)', words: ['back', 'step'], icon: 'arrowL', keys: '←',
+      when: main, disabled: noStreams, run: () => stepStream(-1) },
     { id: 'help.keys', group: 'Help', kind: 'help', title: 'Keyboard shortcuts', sub: 'Every key, by what it does', words: ['keys', 'hotkeys'], icon: 'keys', keys: 'F1', run: () => showHelp('keys') },
     { id: 'channels.open', title: 'Channels', sub: 'Your channels: open one, add a new one, see who\'s live', words: ['saved', 'favourites', 'favorites', 'follows'], icon: 'star', keys: 'B',
       when: main, run: () => { if (panel.hidden) savedBtn.click(); input.focus(); } }
@@ -130,6 +134,8 @@ function init(){
     settings.onChange(['arrowSound'], () => { snd.checked = soundFollows(); });
   }
   addShortcutCommands();
+  $('#savedBtn').dataset.cmd = 'channels.open'; $('#layoutLock').dataset.cmd = 'layout.lock';
+  document.querySelectorAll('#colNav [data-d]').forEach(b => { b.dataset.cmd = +b.dataset.d > 0 ? 'streams.next' : 'streams.prev'; });
   window.stepStream = stepStream; window.bigStream = () => { const s = bigStream(); return s && s.channel; };   // for the tests
   window.mutedStreams = () => wins.filter(w => w.kind === 'stream' && w.muted).map(w => w.channel).sort();   // for the tests
   document.addEventListener('keydown', e => {
