@@ -100,6 +100,9 @@
   document.addEventListener('pointerdown', e => {
     if (open && !open.list.contains(e.target) && e.target !== open.sel) close();
   }, true);
+  // a press in a stream or chat, or in another window (see shared/popover.js)
+  document.addEventListener('kmv-viewpress', () => { if (open) close(); });
+  window.addEventListener('blur', () => { if (open && !/^(WEBVIEW|IFRAME)$/.test((document.activeElement || {}).tagName)) close(); });
 
   document.addEventListener('keydown', e => {
     const sel = e.target;

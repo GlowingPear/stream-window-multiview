@@ -21,7 +21,7 @@ import { goToWin, winActions } from '../../windows/window-commands.js';
    seen, and whatever's typed or pasted ("Open “xyz”"). A channel named in full comes first, drawn big with its own
    row of buttons, which depend on the channel: not open (Stream + chat, Stream only, Chat only, Profile, Save…),
    open (Go to it, Make big, Mute, Reload…), unknown (Open, Open & save… after asking the sites whether it exists),
-   or a YouTube channel that isn't live. Tab lists everything for it. */
+   or a YouTube channel that isn't live. More… lists everything for it (Tab, on its row when it isn't big). */
 let lastSite = '';
 let typed = { name: '', site: '', picked: false };   // a bare name typed, and the site picked for it (K / T / Y)
 const SITES = ['kick', 'twitch', 'youtube'];                       // the site of the channel you last opened from the box (for a bare name)
@@ -53,7 +53,7 @@ const streamOf = ch => wins.find(w => w.kind === 'stream' && w.channel === ch);
 const canProfile = ch => DESKTOP && ROLE === 'main' && !!window.kmv.profileGet && !/^yt:v:/.test(ch);
 const isMod = ch => wins.some(w => w.channel === ch && w.el.querySelector('[data-a=mod]:not([hidden])'));
 
-// The big row's buttons: Enter runs the first, ← → pick one, Ctrl/⌘+1–9 run the others, More… (Tab) everything
+// The big row's buttons: Enter runs the first, ← → or Tab / ⇧Tab pick one, Ctrl/⌘+1–9 run the others, More… everything
 function buttonsFor(ch, known){
   const name = chLabel(ch), more = { label: 'More…', more: true }, sv = saved.includes(ch);
   if (isOpen(ch)){
@@ -94,7 +94,7 @@ function openButtons(ch){
   return [mode, ...['both', 'stream', 'chat'].filter(m => m !== mode)].map(m => ({ mode: m, ...all[m], run: () => openCh(ch, m) }));
 }
 const siteHost = ch => ({ Kick: 'kick.com', Twitch: 'twitch.tv', YouTube: 'youtube.com' })[platform(ch).name];
-// Tab: everything for a channel (the big row's buttons with the same keys)
+// More… (or Tab on its row): everything for a channel (the big row's buttons with the same keys)
 function channelMore(ch){
   const name = chLabel(ch), g = name, out = [], keyOf = {};
   buttonsFor(ch, true).forEach((b, i) => { if (i && i <= 9 && !b.more) keyOf[b.label] = 'Ctrl+' + i; });
@@ -166,7 +166,7 @@ function typedItems(q){
   // a link or @handle: that channel, first
   if (!bare) return [{ ...channelItem(p.channel, known.has(p.channel) ? {} : { known: false }), heroSub: known.has(p.channel) ? undefined : [PLAT_NAME[platOf(p.channel)], 'from the link'], matched: 100, boost: 50 }];
   // a bare name: the sites are asked whether it exists (400 ms after the last key); found, it's a channel of its
-  // own (its big row, K / T / Y to pick the site); until then, or not found, "Open “x” as a channel"
+  // own (its big row unless a known channel is, K / T / Y to pick the site); until then, or not found, "Open “x” as a channel"
   const name = raw.toLowerCase();
   if (typed.name !== name) typed = { name, site, picked: false };
   lookFor = name; if (!looked.has(name)) lookSoon();
@@ -175,13 +175,14 @@ function typedItems(q){
   const found = SITES.filter(s => hitOf(s) && !known.has(chOf(s)));
   if (!typed.picked && found.length && !hitOf(typed.site)) typed.site = found[0];
   const sites = () => SITES.map(s => ({ p: s, letter: PLATFORMS[s].letter, name: PLAT_NAME[s], on: s === typed.site }));
-  const pick = { pickSite: s => { typed.site = s; typed.picked = true; }, nextSite: () => { typed.site = SITES[(SITES.indexOf(typed.site) + 1) % SITES.length]; typed.picked = true; } };
+  const step = d => { typed.site = SITES[(SITES.indexOf(typed.site) + d + SITES.length) % SITES.length]; typed.picked = true; };
+  const pick = { pickSite: s => { typed.site = s; typed.picked = true; }, nextSite: () => step(1), prevSite: () => step(-1) };
   const ch = chOf(typed.site), hit = hitOf(typed.site);
   if (known.has(ch)) return [];
   const stateOf = s => !look || look.busy ? `${PLAT_NAME[s]}: checking…` : !look.items ? '' : hitOf(s) ? `${PLAT_NAME[s]}: found` : `not on ${PLAT_NAME[s]}`;
   if (found.length){
     const it = channelItem(ch, { known: false }), live = hit && hit.live;
-    return [{ ...it, title: name, sites, ...pick, avatar: hit ? hit.avatar || '' : '', live: !!live, viewers: live && live.viewers != null ? fmtViewers(live.viewers) : null, pills: [],
+    return [{ ...it, title: name, found: true, sites, ...pick, avatar: hit ? hit.avatar || '' : '', live: !!live, viewers: live && live.viewers != null ? fmtViewers(live.viewers) : null, pills: [],
       heroSub: [hit ? { ok: `✓ Found on ${PLAT_NAME[typed.site]}` } : `No ${PLAT_NAME[typed.site]} channel called “${name}”`, live && 'live', live && live.title,
         live && live.viewers != null && `${fmtViewers(live.viewers)} watching`, ...SITES.filter(s => s !== typed.site).map(stateOf)] }];
   }

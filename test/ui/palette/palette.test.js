@@ -112,20 +112,30 @@ test('keys: ↑ ↓ and Ctrl+N / P move, Enter runs, ⇧Enter the second choice,
   assert.equal(second2.id.startsWith('toolbar.'), true);
 });
 
-test('Tab: everything for the row, its words searched; ⇧Tab and Esc go back; Esc then clears the words, then closes', async t => {
+test('Tab: everything for the row, its words searched; Esc goes back (⇧Tab moves in it); Esc then clears the words, then closes', async t => {
   const page = await openApp(t);
   await add(page, 'alpha');
   await page.keyboard.press(K);
   await type(page, 'alpha · stream');
+  assert.match(await page.textContent('#palBg .pal-foot'), /Esc close.*Tab\s*everything for it/);
   await page.keyboard.press('Tab');
   assert.equal(await page.isVisible('#palBg .pal-head'), true, 'what it\'s for, where the words were');
   assert.match(await page.textContent('#palBg .pal-head'), /alpha · stream/);
   assert.equal(await page.getAttribute('#palQ', 'placeholder'), 'Filter actions…');
   const all = await titles(page);
   for (const want of ['Go to it', 'Make big', 'Pause', 'Reload', 'Close']) assert.ok(all.includes(want), `${want} in ${all}`);
+  assert.match(await page.textContent('#palBg .pal-foot'), /Esc back/);
+  // in it, Tab / ⇧Tab move along it (as ↓ ↑), and don't leave it
+  const sel = () => page.getAttribute('#palList .pal-row.on', 'data-id');
+  const first = await sel();
+  await page.keyboard.press('Tab');
+  assert.notEqual(await sel(), first, 'Tab: the next one');
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(await sel(), first, '⇧Tab: back');
+  assert.equal(await page.isVisible('#palBg .pal-head'), true, 'still in its list');
   await type(page, 'relo');
   assert.deepEqual(await titles(page), ['Reload']);
-  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Escape');
   assert.equal(await page.isVisible('#palBg .pal-head'), false);
   assert.equal(await page.inputValue('#palQ'), 'alpha · stream', 'the words from before');
   await page.keyboard.press('Tab'); await page.keyboard.press('Escape');
@@ -140,6 +150,22 @@ test('Tab: everything for the row, its words searched; ⇧Tab and Esc go back; E
   await type(page, 'alpha · chat'); await page.keyboard.press('Tab');
   await type(page, 'close'); await page.keyboard.press('Enter');
   assert.equal(await page.locator('#stage .win.chat').count(), 0, 'the chat closed');
+});
+
+test('Tab / ⇧Tab on rows with nothing more to list: the next / previous row, round both ways', async t => {
+  const page = await openApp(t);
+  await page.keyboard.press(K);
+  await type(page, '>toolbar:');
+  const ids = (await rows(page)).map(r => r.id), sel = () => page.getAttribute('#palList .pal-row.on', 'data-id');
+  assert.ok(ids.length >= 3, ids.join(', '));
+  assert.doesNotMatch(await page.textContent('#palBg .pal-foot'), /Tab/, 'no Tab to show');
+  await page.keyboard.press('Tab');
+  assert.equal(await sel(), ids[1], 'Tab: the next row');
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(await sel(), ids[0], '⇧Tab: the one before');
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(await sel(), ids[ids.length - 1], 'from the first, round to the last');
+  assert.equal(await page.isVisible('#palBg .pal-head'), false);
 });
 
 test('a switch flips where it is (the box stays open); a greyed one says why; Enter on a page of Settings opens it', async t => {
