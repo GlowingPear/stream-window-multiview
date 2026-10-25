@@ -42,8 +42,10 @@ const fuzzy = (() => {
   // One word (or the whole of what's typed) against the folded name: { score, hits: [indexes in low] } or null
   function matchFolded(q, low){
     if (!q) return null;
-    if (low === q) return { score: 100, hits: span(0, q.length) };
-    if (low.startsWith(q)) return { score: 80, hits: span(0, q.length) };
+    // a name that starts with a symbol (a YouTube @handle) counts from its first letter, unless that's typed too
+    const lead = /^[\p{L}\p{N}]/u.test(q) ? (/^[^\p{L}\p{N}]*/u.exec(low) || [''])[0].length : 0, name = low.slice(lead);
+    if (name === q) return { score: 100, hits: span(lead, q.length) };
+    if (name.startsWith(q)) return { score: 80, hits: span(lead, q.length) };
     const starts = Array.from({ length: low.length }, (_, i) => i).filter(i => isWordStart(low, i) && /[\p{L}\p{N}]/u.test(low[i]));
     // the starts of its words, in order: what's typed is the first letters of two or more words ("cs", "chst")
     if (!/\s/.test(q) && q.length > 1 && q.length <= 24){

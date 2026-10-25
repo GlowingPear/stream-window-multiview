@@ -61,6 +61,14 @@ test('words start after anything that isn\'t a letter or a digit, and where digi
   assert.equal(score('c2', 'cols2'), 70, 'the digits are a word of their own');
 });
 
+test('a name that starts with a symbol (a YouTube @handle) counts from its first letter, unless the symbol is typed too', () => {
+  assert.equal(score('sleepy', '@sleepy'), 100);
+  assert.equal(score('sle', '@sleepy'), 80);
+  assert.deepEqual(marks('sle', '@sleepy'), [1, 2, 3]);
+  assert.equal(score('@sle', '@sleepy'), 80);
+  assert.deepEqual(marks('@sle', '@sleepy'), [0, 1, 2, 3]);
+});
+
 test('odd input: nothing typed, nothing to match, and a very long query', () => {
   assert.equal(fuzzy.match('', 'Tile'), null);
   assert.equal(fuzzy.match('   ', 'Tile'), null);

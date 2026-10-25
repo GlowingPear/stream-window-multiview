@@ -64,7 +64,7 @@ function palHeroOf(found, text){
   const top = found[0];
   if (!top || top.item.kind !== 'channel' || !top.item.buttons) return false;
   if (top.match >= 100) return true;
-  const next = found.find(r => r !== top && r.item.kind === 'channel');
+  const next = found.find(r => r !== top && r.item.kind === 'channel' && !r.item.id.startsWith('open:'));   // (not the words as a new name)
   return text.length >= 3 && top.match >= 80 && (!next || next.match < 80 || next.item.title.toLowerCase() === top.item.title.toLowerCase());
 }
 function palCollect(){
