@@ -467,3 +467,31 @@ test('an abusive message is tagged ABUSIVE, and the same message with "(Banned)"
   await say(row('troll', 'u r a c u n t (timed out)'));
   assert.deepEqual((await page.evaluate(() => window.__kmvMention.take())).l.map(l => [l.body, l.mod]), [['gg (Banned)', false], ['u r a c u n t (timed out)', false]]);
 });
+
+test('Why didn\'t this alert? (explain): how the helper read each line when it came in, and what it finds in it now', async t => {
+  const app = await openApp(t);
+  const js = await app.evaluate(() => window.chatAgentJs);
+  const page = await app.context().newPage();
+  await page.setContent(`<div id="chat">${row('early', 'pear before it started')}</div>`);
+  await page.evaluate(js);
+  await page.evaluate(() => window.__kmvMention.setMe('Mod_Me', ['pear']));
+  await page.waitForTimeout(2800);
+  const say = (n, b) => page.evaluate(h => document.getElementById('chat').insertAdjacentHTML('beforeend', h), row(n, b));
+  await say('dan', '@mod_me look'); await say('eve', 'hello all'); await say('mod_me', 'pear from me'); await say('fay', 'pear pie');
+  await page.evaluate(() => window.__kmvMention.take());
+  const why = i => page.evaluate(i => { const r = window.__kmvMention.explain(document.querySelectorAll('#chat .row')[i]); return r.found ? [r.sender, r.decided && r.decided.v, r.decided && r.decided.kind, r.at, r.word, r.own, r.me] : r; }, i);
+  assert.deepEqual(await why(0), ['early', 'before', undefined, false, 'pear', false, 'mod_me'], 'there before alerts started');
+  assert.deepEqual(await why(1), ['dan', 'alerted', 'mention', true, '', false, 'mod_me']);
+  assert.deepEqual(await why(2), ['eve', 'nomatch', undefined, false, '', false, 'mod_me']);
+  assert.deepEqual(await why(3), ['mod_me', 'own', undefined, false, 'pear', true, 'mod_me']);
+  assert.deepEqual(await why(4), ['fay', 'alerted', 'word', false, 'pear', false, 'mod_me']);
+  assert.deepEqual(await page.evaluate(() => window.__kmvMention.explain(null)), { found: false });
+  await page.evaluate(() => document.body.insertAdjacentHTML('beforeend', '<p id="x">not a message line</p>'));
+  assert.deepEqual(await page.evaluate(() => { const r = window.__kmvMention.explain(document.getElementById('x')); return [r.found, r.text]; }), [false, 'not a message line']);
+  // nothing to look for (spam alerts reading the chat): "off"
+  await page.evaluate(() => { window.__kmvMention.setMe('', []); window.__kmvMention.setWatch(true); });
+  await page.waitForTimeout(2800);
+  await say('gus', 'hi mod_me');
+  await page.evaluate(() => window.__kmvMention.take());
+  assert.deepEqual((await why(5)).slice(0, 2), ['gus', 'off']);
+});

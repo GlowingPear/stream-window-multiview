@@ -62,3 +62,28 @@ test('right-click: ctx() is that message, once and only just after; not a messag
   assert.equal(await page.evaluate(() => window.__kmvMsg.messageOf(document.querySelector('[data-index="4"] .font-normal').firstChild).text), 'gg well played', 'from a text node too');
   assert.equal(await page.evaluate(() => window.messageAgent()), true, 'loading it twice is fine');
 });
+
+test('Copy chat HTML (Developer tools): the last messages and the list around them, cleaned up; last() is the message right-clicked', async t => {
+  const many = Array.from({ length: 5 }, (_, i) => KICK.replace('data-index="4"', `data-index="${10 + i}"`).replace('quietkoala', 'user' + i)).join('');
+  const page = await chat(t, `<div class="list" style="overflow-y:auto;height:300px"><div class="pinned">Pinned: be nice</div>${many}<script>1</script><style>.x{}</style>`
+    + `<svg class="ic"><path d="M0 0"/></svg><span title="${'x'.repeat(400)}">long</span></div>`);
+  const r = await page.evaluate(() => window.__kmvMsg.chatHtml(3));
+  assert.deepEqual([r.n, r.total], [3, 5]);
+  assert.match(r.html, /^<div class="list"/, 'the scrolling list around them');
+  assert.ok(!/user0|user1/.test(r.html) && /user2[\s\S]*user3[\s\S]*user4/.test(r.html), 'only the last 3');
+  assert.match(r.html, /Pinned: be nice/);
+  assert.ok(!/<script|<style|<path|data-kmv/.test(r.html), 'no scripts, styles, drawings or the app\'s marks');
+  assert.match(r.html, /title="x{300}…"/, 'long attributes cut');
+  assert.equal(await page.evaluate(() => document.querySelectorAll('[data-kmv-keep]').length), 0, 'the chat itself is left as it was');
+  assert.equal(await page.evaluate(() => window.__kmvMsg.chatHtml()).then(x => x.n), 5);
+  // right-clicked: last() is that message's line, while it's there
+  assert.equal(await page.evaluate(() => window.__kmvMsg.last()), null);
+  await page.click('[data-index="12"] button', { button: 'right' });
+  await page.evaluate(() => window.__kmvMsg.ctx());
+  assert.equal(await page.evaluate(() => window.__kmvMsg.last().getAttribute('data-index')), '12');
+  await page.evaluate(() => document.querySelector('[data-index="12"]').remove());
+  assert.equal(await page.evaluate(() => window.__kmvMsg.last()), null, 'gone from the chat: nothing');
+  // no messages at all
+  await page.evaluate(() => document.querySelectorAll('[data-index]').forEach(e => e.remove()));
+  assert.equal(await page.evaluate(() => window.__kmvMsg.chatHtml(30)), null);
+});
