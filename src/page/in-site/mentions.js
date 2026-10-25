@@ -188,10 +188,12 @@ function mentionAgent(){
     if (supMe && who.toLowerCase() === supMe) return;        // your own
     const k = who.toLowerCase();
     // the same gift shown twice (Kick's "sent 100" box and KickBot's "just gifted 100 KICKs!"): once
-    const same = f.kind + ' ' + k + ' ' + n;
-    if (Date.now() - (recentSup.get(same) || 0) < 60000) return;
-    recentSup.set(same, Date.now());
-    if (recentSup.size > 200) recentSup.delete(recentSup.keys().next().value);
+    if (f.kind === 'kicks'){
+      const same = k + ' ' + n;
+      if (Date.now() - (recentSup.get(same) || 0) < 60000) return;
+      recentSup.set(same, Date.now());
+      if (recentSup.size > 200) recentSup.delete(recentSup.keys().next().value);
+    }
     if (f.kind === 'gifts') giftsBy.set(k, Date.now());
     if (f.kind === 'gift' && Date.now() - (giftsBy.get(k) || 0) < 60000) return;   // one of a community gift's
     if (supQueue.length < 50) supQueue.push({ kind: f.kind, who, n, unit: f.unit || '', t: Date.now(), ...extra });
