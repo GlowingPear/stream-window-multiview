@@ -14,6 +14,7 @@ import { closeSettings, openSettings } from '../panels/settings/settings.js';
 import { commands } from '../shared/commands.js';
 import { DESKTOP } from '../shared/env.js';
 import { icon } from '../shared/icons.js';
+import { closeOnOutside } from '../shared/popover.js';
 import { store } from '../shared/store.js';
 import { panel, placeMenu, wireTabs } from './toolbar.js';
 
@@ -130,9 +131,7 @@ function init(){
       else tile();
       store.changed('layout');
     });
-    document.addEventListener('pointerdown', e => {
-      if (!layoutMenu.hidden && !layoutMenu.contains(e.target) && e.target !== layoutBtn) layoutMenu.hidden = true;
-    });
+    closeOnOutside(layoutMenu, { button: layoutBtn });
     $('#presetSave').onclick = () => savePresetFromInput();
     $('#layoutSet').onclick = () => {                     // Settings > Layouts, on the menu's tab
       const t = layoutMenu.querySelector('.lm-tabs button.on').dataset.t;
