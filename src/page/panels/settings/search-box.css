@@ -1,0 +1,25 @@
+/* Settings › Search box: its two switches, and what it remembers, drawn as the box draws it, each with a × */
+.st-pane[data-s="search"].sb-off .sb-rest,.st-pane[data-s="search"].sb-norecent .sb-head,.st-pane[data-s="search"].sb-norecent .sb-list,.st-pane[data-s="search"].sb-norecent .sb-tip{opacity:.42;filter:saturate(.6);pointer-events:none}
+.sb-head{display:flex;align-items:center;gap:10px;min-height:30px;margin:16px 0 8px}
+.sb-head .st-sec{margin:0}
+.sb-n{color:var(--muted);font-size:12px}
+.sb-acts{display:flex;align-items:center;gap:8px;margin-left:auto}
+.sb-ask{font-size:12.5px;font-weight:600}
+.sb-keep{height:28px;padding:0 12px;font-size:12px}
+.sb-clear{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:8px;border:1px solid color-mix(in srgb,var(--danger) 45%,var(--line2));background:transparent;color:var(--danger);font-family:inherit;font-size:12px;font-weight:600;line-height:1;cursor:pointer}
+.sb-clear:hover{background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.sb-clear svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sb-list{max-height:332px;overflow:auto;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.sb-row{display:flex;align-items:center;gap:12px;min-height:50px;padding:6px 10px;border-radius:9px}
+.sb-row + .sb-row{margin-top:2px}
+.sb-row:hover{background:var(--panel2)}
+.sb-row svg{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sb-row .pal-ico svg{width:16px;height:16px}
+.sb-row .pal-pic svg{stroke:none}
+.sb-x{display:grid;place-items:center;flex:none;width:28px;height:28px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer}
+.sb-x svg{width:14px;height:14px;stroke-width:2.2}
+.sb-row:hover .sb-x{border-color:color-mix(in srgb,var(--danger) 40%,var(--line2));background:color-mix(in srgb,var(--danger) 12%,var(--panel2));color:var(--danger)}
+.sb-none{padding:18px 12px;color:var(--muted);text-align:center}
+.sb-tip{margin:10px 0 0;color:var(--muted);font-size:11.5px}
+.sb-tip kbd{display:inline-block;min-width:18px;padding:1px 5px;border:1px solid var(--line2);border-radius:4px;background:var(--panel2);color:var(--text);font-family:inherit;font-size:10.5px;font-weight:600;line-height:1.4;text-align:center}
+.sb-tip kbd + kbd{margin-left:3px}

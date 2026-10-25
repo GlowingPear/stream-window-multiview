@@ -1,6 +1,6 @@
 // The search box (Ctrl/⌘+K, #184) in the real app: the keys from inside a chat's or a stream's page (a web view keeps
 // its keys, so main.js passes them on), the menu bar's View › Search and actions…, an action run from it (Pop out
-// streams), and the box in the Streams window.
+// streams), the box in the Streams window, and Settings › Search box switching it off.
 const test = require('node:test');
 const { launchApp, viewLoaded, assert, openChannel } = require('../app');
 
@@ -54,6 +54,31 @@ test('the menu bar: View › Search and actions… (Ctrl/⌘+K) opens it', { tim
     return { accel: it.accelerator, first: view.submenu.items[0] === it };
   });
   assert.deepEqual(item, { accel: 'CmdOrCtrl+K', first: true });
+  await a.win.waitForFunction(() => window.palette.isOpen());
+  await close(a.win);
+});
+
+test('Settings › Search box off: Ctrl/⌘+K inside a stream and the menu bar\'s Search and actions… only say where to turn it on', { timeout: 60000 }, async () => {
+  await close(a.win);
+  const lead = '#settingsDlg .st-pane[data-s=search] .st-lead';
+  await a.win.evaluate(() => window.openSettings('search'));
+  await a.win.click(lead);
+  await a.win.keyboard.press('Escape');
+  assert.equal(await a.win.isVisible('#palBtn'), false, 'no Search button');
+  const said = () => a.win.waitForFunction(() => document.querySelector('#msg').textContent === 'The search box is off. Turn it on in Settings › Search box');
+  assert.equal(await keysInView('stream', [MOD]), true);
+  await said();
+  await a.win.evaluate(() => { document.querySelector('#msg').textContent = ''; });
+  await a.app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find(i => i.label === 'View').submenu.items.find(i => i.label === 'Search and actions…').click());
+  await said();
+  await a.win.waitForTimeout(300);
+  assert.equal(await isOpen(a.win), false, 'it never opened');
+  // on again
+  await a.win.evaluate(() => window.openSettings('search'));
+  await a.win.click(lead);
+  await a.win.keyboard.press('Escape');
+  assert.equal(await a.win.isVisible('#palBtn'), true);
+  assert.equal(await keysInView('stream', [MOD]), true);
   await a.win.waitForFunction(() => window.palette.isOpen());
   await close(a.win);
 });

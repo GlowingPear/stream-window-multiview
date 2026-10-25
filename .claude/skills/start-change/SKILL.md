@@ -22,6 +22,7 @@ Never `npx grapevine-check`: without Grapevine installed, `npx` would fetch a pa
 
 - If the request already has a description or an issue (`#12`, an issue URL), use it. Don't ask again.
 - For an issue, read it: `gh issue view <n> --comments`.
+- **Mockups and screenshots in the issue or its comments are the design.** Download every image (and video) and look at each one before planning, also ones you made yourself: the copies on the issue are what was agreed. They're `https://github.com/user-attachments/assets/<id>` links, which need your GitHub login: `curl -sL -H "Authorization: token $(gh auth token)" -o <file> <url>`, into the temp folder (never the repo).
 - If nothing was given, ask once: "What's the change? A short description or an issue number/URL."
 - If it's too vague to plan, look at the code first and only ask if it's still unclear.
 
@@ -34,6 +35,7 @@ Look at the relevant code (see the project structure table in `README.md`), then
 - **Testing:** which of `npm test`, `npm run test:ui`, `npm run test:launch:hidden` and what to try in the app. Run the launch tests with the `:hidden` command, so their windows stay invisible and don't take the developer's focus.
 - **Before / after:** what to capture, or N/A (rules below), and whether it needs a login (then use a lasting profile)
 - **Branch:** e.g. `fix/12-kick-follow-limit` or `feat/hikari-theme`. Pick it yourself; don't ask.
+- **Mockups** (when the issue has them): what each one shows, the wording in them, and anything in the plan that differs from them, and why.
 
 For large or risky changes, use plan mode.
 
@@ -66,6 +68,7 @@ The new worktree is still identical to `main`, so capture "before" now, before e
 - Add or update tests next to similar ones in `test/`: for every new code path, not only the parts that are easy to test. Coverage can't go down; `open-pr` checks it, so don't run the coverage check here as well.
 - Run the dev copy (`run-dev` skill) and check the change in the real app. the Electron side (`src/main/`, `src/preload/`) needs a restart, the page (`src/index.html`, `src/page/`) only Ctrl/Cmd+R.
 - Capture "after" with exactly the same steps as "before".
+- If the issue has mockups, put the "after" captures side by side with them and fix what doesn't match (layout, wording, states, where things sit) before handing over. Say in the PR where it differs on purpose.
 - Commit in small, clear commits. Don't change the version or `CHANGELOG.md`.
 
 ## 6. Hand over

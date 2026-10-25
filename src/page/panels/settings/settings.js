@@ -21,7 +21,7 @@ import { renderLayoutsPane } from '../../toolbar/layout-menu.js';
 let settingsDlg;
 let settingsTab = 'general';
 let MAIN_DESK;
-const ST_ICONS = { general: 'sliders', layouts: 'layout', chat: 'chat', accounts: 'user', apps: 'link', youtube: 'ytPlay', notify: 'bell', mentions: 'at', support: 'gift', spam: 'mod', extensions: 'ext', themes: 'palette', updates: 'update', guide: 'book', keys: 'keys', developer: 'code' };
+const ST_ICONS = { general: 'sliders', layouts: 'layout', chat: 'chat', accounts: 'user', apps: 'link', youtube: 'ytPlay', notify: 'bell', mentions: 'at', support: 'gift', spam: 'mod', extensions: 'ext', themes: 'palette', search: 'search', updates: 'update', guide: 'book', keys: 'keys', developer: 'code' };
 // tab: a page (its data-s), sub: a tab inside it (Spam alerts › Scoring)
 function openSettings(tab, { sub } = {}){
   const ok = t => { const b = settingsDlg.querySelector(`.st-rail [data-s="${t}"]`); return b && !b.hidden; };

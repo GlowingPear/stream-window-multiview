@@ -89,6 +89,7 @@ import { init as windowsWindowCommands } from './windows/window-commands.js';
 import { init as panelsChannelsChannelCommands } from './panels/channels/channel-commands.js';
 import { init as panelsSettingsSettingsCommands } from './panels/settings/settings-commands.js';
 import { init as palettePalette } from './palette/palette.js';
+import { init as panelsSettingsSearchBox } from './panels/settings/search-box.js';
 
 [
   core,
@@ -177,5 +178,6 @@ import { init as palettePalette } from './palette/palette.js';
   windowsWindowCommands,
   panelsChannelsChannelCommands,
   panelsSettingsSettingsCommands,
-  palettePalette
+  palettePalette,
+  panelsSettingsSearchBox
 ].forEach(init => init());

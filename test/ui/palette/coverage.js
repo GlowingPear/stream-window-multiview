@@ -6,6 +6,7 @@ const ALLOWED = [
   ['.help-x, .dlg-cancel, .dlg-ok, #askDlg button, .tip-ok', 'closing or answering a dialog'],
   ['#moreBtn, #spMore, [data-a=more], #barMenu button', 'a "more" menu: what\'s in it are commands of their own'],
   ['.st-chips button, .pf-tag button', 'a chip\'s ×: removing one word, bot or tag from a list'],
+  ['.sb-x, .sb-keep, .sb-acts .sb-clear:not([data-cmd])', 'Settings › Search box: one Recent row\'s × (in the box, Del on the row), and the answers to Clear all\'s question (Clear Recent is a command)'],
   ['.sv, .sv button, .pf-card, .ly-item, .mp-row, .mp-row button, .th-item button, .es-live button, .lm-grid button', 'rows of a list: the channels, layouts and notifications are results of their own'],
   ['.gd-toc button, .gd-r, [data-topic], .gd-q, [data-help], [data-go], .gd-chip, .am-yk-how', 'a link to a page of Settings or the guide (each page is a command)'],
   ['#tourLayer button', 'the tour\'s Next, Back and End'],
