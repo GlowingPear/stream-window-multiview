@@ -7,6 +7,7 @@ import { infoFor } from '../channels/channels.js';
 import { linkConnected } from '../../platforms/pear-drops.js';
 import { PLAT_NAME, chLabel, platOf } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
+import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
@@ -185,6 +186,12 @@ function init(){
   if (sw){
     sw.checked = devOn;
     sw.onchange = () => toggleDev(sw.checked);
+    // the search box's (Ctrl/⌘+K): Developer tools on or off is its Settings row (settings-commands.js); these are its buttons
+    commands.add([
+      { id: 'dev.copy', group: 'Developer', title: 'Copy diagnostics', sub: 'For a problem report: the version, your system, windows, settings, errors', words: ['report a problem', 'debug', 'bug'], icon: 'copy', button: '#devCopy', when: () => DESKTOP },
+      { id: 'dev.save', group: 'Developer', title: 'Save diagnostics as a file', words: ['report a problem', 'debug'], icon: 'download', button: '#devSave', when: () => DESKTOP },
+      { id: 'dev.clear', group: 'Developer', title: 'Clear the errors and requests kept', icon: 'bin', button: '#devClear', when: () => DESKTOP }
+    ]);
     $('#devCopy').onclick = copyDiagnostics;
     $('#devSave').onclick = saveDiagnostics;
     $('#devClear').onclick = async () => { if (window.kmv.devClear) await window.kmv.devClear().catch(() => {}); renderDev(); flash('Cleared'); };

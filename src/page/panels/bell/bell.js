@@ -345,5 +345,5 @@ function init(){
 
 export { addNote, bell, bellCount, bellVars, cleanParts, dndOn, dndT, dndUntil, drawNotes, dropNotes, EMPTY, init,
   mentAny, mentBodyNodes, mentCovered, mentMuted, mentNameFor, mentOn, mentWords, myName, myTwitch, nh, noteActs,
-  noteRow, notes, partsText, readChat, readNotes, renderBell, saveNotes, seeBell, setMyName, spamWhy, syncAtBtn,
-  TAB_NAME, timeAgo, toggleChatMentions, updateBellBtn };
+  noteRow, notes, partsText, readChat, readNotes, renderBell, saveNotes, seeBell, setMyName, spamWhy, subName,
+  syncAtBtn, TAB_NAME, timeAgo, toggleChatMentions, updateBellBtn };

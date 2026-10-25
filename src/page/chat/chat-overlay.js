@@ -2,6 +2,7 @@ import { ROLE, wins } from '../core.js';
 import { pushMyName } from '../panels/bell/all-notifications.js';
 import { cleanParts, mentBodyNodes } from '../panels/bell/bell.js';
 import { chLabel } from '../platforms/platforms.js';
+import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
@@ -116,6 +117,8 @@ function init(){
   if (lines) lines.addEventListener('change', () => { settings.set('chatOverlayLines', +lines.value); readOverlay(); });
   const tb = document.getElementById('overlayBtn');
   if (tb && DESKTOP) { tb.hidden = false; tb.onclick = () => setOverlay(!overlayOn); }
+  commands.add({ id: 'chat.overlay', title: 'Chat over streams', sub: 'Each stream\'s new chat messages over it for a few seconds', words: ['overlay', 'messages on stream'], icon: 'chat',
+    button: '#overlayBtn', toggle: { get: () => overlayOn, set: on => setOverlay(on) } });
   settings.onChange(['chatOverlay', 'chatOverlayOff', 'chatOverlayKeep', 'chatOverlaySecs', 'chatOverlayLines'], () => { readOverlay(); if (ROLE === 'main') pushMyName(); });
   store.watch('wins', () => wins.forEach(syncOverlayBtn));
   // the Streams window: the lines the main window passes on

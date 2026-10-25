@@ -1,5 +1,6 @@
 import { $ } from '../core.js';
 import { linkConnected, linkIcon, linkState, showPearDrops } from '../platforms/pear-drops.js';
+import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
@@ -107,6 +108,7 @@ function init(){
   btn = $('#farmBtn'); card = $('#farmCard');
   if (!btn || !card) return;
   btn.onclick = () => showPearDrops();
+  commands.add({ id: 'peardrops.farming', group: 'Pear Drops', title: 'Farming: show Pear Drops', sub: 'What Pear Drops is farming, and its drop\'s progress', words: ['drops', 'pear drops'], icon: 'gift', button: '#farmBtn' });
   btn.addEventListener('pointerenter', showCard);
   btn.addEventListener('pointerleave', hideSoon);
   btn.addEventListener('focus', showCard);

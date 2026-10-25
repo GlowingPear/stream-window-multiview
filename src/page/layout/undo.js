@@ -1,6 +1,7 @@
 import { $, ROLE } from '../core.js';
 import { vidLabel } from './layouts.js';
 import { applyPreset, capturePreset } from './saved-layouts.js';
+import { commands } from '../shared/commands.js';
 import { IS_MAC, keyName } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { mountCapture } from '../windows/capture.js';
@@ -73,6 +74,10 @@ function init(){
     u.title = `Undo (${keyName('Ctrl+Z')})`; r.title = `Redo (${keyName(IS_MAC ? 'Ctrl+Shift+Z' : 'Ctrl+Y')})`;
     u.hidden = r.hidden = false;
     u.onclick = histUndo; r.onclick = histRedo;
+    commands.add([
+      { id: 'undo', title: 'Undo', sub: 'The last change to your windows', words: ['back'], icon: 'undo', keys: 'Ctrl+Z', button: '#undoBtn', offWhy: 'Nothing to undo' },
+      { id: 'redo', title: 'Redo', icon: 'redo', keys: IS_MAC ? 'Ctrl+Shift+Z' : 'Ctrl+Y', button: '#redoBtn', offWhy: 'Nothing to redo' }
+    ]);
   }
 }
 

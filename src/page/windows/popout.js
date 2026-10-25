@@ -1,5 +1,5 @@
 import { releaseWin } from '../chat/view-menu.js';
-import { $, GAP, colWidth, colsMode, coreVars, lastLayout, mutedChk, popped, wins } from '../core.js';
+import { $, GAP, ROLE, colWidth, colsMode, coreVars, lastLayout, mutedChk, popped, wins } from '../core.js';
 import { buildCols, columnsLayout } from '../layout/columns.js';
 import { SW, focusWin } from '../layout/geometry.js';
 import { chatFocusLayout, featBase, featSwitch, featW, featuredCh, layoutChatsOnly, scrollX, tile } from '../layout/layouts.js';
@@ -7,6 +7,8 @@ import { defaultStreamRect } from '../layout/placement.js';
 import { spotlight } from '../layout/spotlight.js';
 import { save } from '../persistence.js';
 import { chLabel } from '../platforms/platforms.js';
+import { commands } from '../shared/commands.js';
+import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { setTb } from '../shared/icons.js';
 import { settings } from '../shared/settings.js';
@@ -88,6 +90,15 @@ function receiveChat(channel){             // main window, "+ Chat" pressed in t
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
+  // the search box's (Ctrl/⌘+K): to the Streams window and back
+  commands.add([
+    { id: 'streams.popout', title: 'Pop out streams', sub: 'Every stream into its own window (drag it to another monitor). Chats fill this one', words: ['second monitor', 'streams window'], icon: 'popwin',
+      when: () => DESKTOP && ROLE === 'main' && !popped, disabled: () => !streamSpecs().length && 'No streams open', run: popOutStreams, button: '#popBtn' },
+    { id: 'streams.popHidden', title: 'Pop out hidden streams', sub: 'The streams you can\'t see right now into the Streams window (Columns)', words: ['streams window'], icon: 'popwin',
+      when: () => DESKTOP && ROLE === 'main' && colsMode, disabled: () => !hiddenStreams().length && 'Every stream is already on screen', run: popOutHidden },
+    { id: 'streams.back', title: 'Bring streams back', sub: 'Close the Streams window and put the streams back here', words: ['streams window', 'dock'], icon: 'dock',
+      when: () => DESKTOP && (ROLE === 'streams' || popped), run: () => window.kmv.closeStreams() }
+  ]);
   popPartial = settings.flag('popPartial');
 }
 

@@ -3,6 +3,7 @@ import { $, ROLE, msg } from '../../core.js';
 import { bellCount, bellVars, dndOn, dndT, dndUntil, updateBellBtn } from '../bell/bell.js';
 import { channelVars, notifyAll, sendWatch } from '../channels/channels.js';
 import { syncAlertControls } from './alerts.js';
+import { commands } from '../../shared/commands.js';
 import { DESKTOP } from '../../shared/env.js';
 import { desktopNotify, flash, flashVars } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
@@ -87,6 +88,14 @@ function init(){
     setDnd(!dndOn());
     flash(dndOn() ? (dndUntil < 0 ? 'Do not disturb on' : `Do not disturb until ${new Date(dndUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`) : 'Do not disturb off');
   }));
+  // the search box's (Ctrl/⌘+K): Do not disturb for a while, until you turn it off, or off
+  const dndFlash = () => flash(dndOn() ? (dndUntil < 0 ? 'Do not disturb on' : `Do not disturb until ${new Date(dndUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`) : 'Do not disturb off');
+  commands.add([
+    ...[['30', '30 minutes'], ['60', '1 hour'], ['0', 'until I turn it off']].map(([v, t]) => ({ id: 'dnd.' + v, group: 'Notifications', title: 'Do not disturb: ' + t,
+      sub: 'No pop-ups, sounds or desktop notifications. Still collected under the bell', words: ['quiet', 'mute notifications', 'dnd'], icon: 'bellOff',
+      run: () => { dndFor.value = v; setDnd(true); dndFlash(); } })),
+    { id: 'dnd.off', group: 'Notifications', title: 'Turn off Do not disturb', words: ['dnd'], icon: 'bell', when: dndOn, run: () => { setDnd(false); dndFlash(); } }
+  ]);
   dndFor.addEventListener('change', () => { if (dndOn()) setDnd(true); else { settings.set('dndFor', dndFor.value); syncDnd(); } });
   // The red number on the bell.
   bellCountEl = $('#bellCount');

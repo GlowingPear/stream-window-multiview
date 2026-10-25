@@ -5,6 +5,7 @@ import { fmtViewers, infoFor, liveNow, saved, svHue, svInitials, svProf } from '
 import { openSettings } from '../settings/settings.js';
 import { restore, save } from '../../persistence.js';
 import { PLAT_NAME, chLabel, parseInput, platIcon, platOf } from '../../platforms/platforms.js';
+import { commands } from '../../shared/commands.js';
 import { esc } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
@@ -12,7 +13,7 @@ import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
 import { closeOverlays, layoutPick } from '../../shortcuts.js';
-import { panel, savedBtn } from '../../toolbar/toolbar.js';
+import { panel, savedBtn, showSpMenu } from '../../toolbar/toolbar.js';
 
 /* ---------- the empty stage: Welcome for a first run, then the Launchpad (#53) ----------
    Welcome: a paste box, logins, Import follows and handy keys; feature cards with "Show me" (seen ones are
@@ -117,6 +118,10 @@ function esBuild(){
   first.querySelector('.es-imp').addEventListener('click', e => { const b = e.target.closest('[data-imp]'); if (b) esImport(b.dataset.imp); });
   pad.querySelector('.es-impbtn').onclick = () => { savedBtn.click(); const r = $('#importRow'); if (r){ r.hidden = false; r.scrollIntoView({ block: 'nearest' }); } };
   pad.querySelector('.es-reopen').onclick = reopenSession;
+  // (the search box's commands for them: init())
+  [['.es-tour', 'welcome.tour'], ['.es-skip', 'welcome.skip'], ['.es-learnbtn', 'welcome.learn'], ['.es-reopen', 'welcome.reopen'], ['.es-impbtn', 'channels.import']]
+    .forEach(([sel, id]) => [first, pad].forEach(r => r.querySelectorAll(sel).forEach(b => { b.dataset.cmd = id; })));
+  first.querySelectorAll('[data-imp]').forEach(b => { b.dataset.cmd = `account.${b.dataset.imp}.import`; });
   first.querySelector('.es-accts').addEventListener('click', e => { const b = e.target.closest('[data-login]'); if (b && window.kmv && window.kmv.openLogin) window.kmv.openLogin(b.dataset.login); });
   first.querySelector('.es-learn').addEventListener('click', e => { const b = e.target.closest('.es-show'); if (b) showMe(b.dataset.id); });
   pad.querySelector('.es-live').addEventListener('click', e => {
@@ -247,6 +252,16 @@ function init(){
   store.watch('wins', () => esWinsChanged());
   $('#tipCard .tip-ok').onclick = () => { clearTimeout(tipT); $('#tipCard').hidden = true; };
   $('#introReset').onclick = () => { intro = {}; saveIntro(); esRefresh(); flash('The welcome screen shows again when no windows are open'); };
+  // the search box's (Ctrl/⌘+K): the welcome screen's and launchpad's buttons
+  const empty = () => ROLE === 'main' && !wins.length;
+  commands.add([
+    { id: 'welcome.tour', group: 'Help', kind: 'help', title: 'Take the tour', sub: 'A quick look at the toolbar, one button at a time', words: ['tutorial', 'intro'], icon: 'sparkle', when: () => ROLE === 'main', run: () => startTour(TOUR, true) },
+    { id: 'welcome.learn', group: 'Help', kind: 'help', title: 'Learn the app', sub: 'The welcome screen and its feature cards (with nothing open)', words: ['welcome'], icon: 'book', when: empty, run: () => { intro.done = false; saveIntro(); esRefresh(); } },
+    { id: 'welcome.skip', group: 'Help', kind: 'help', title: 'Skip to the launchpad', icon: 'arrowR', when: () => empty() && !intro.done, run: () => { intro.done = true; saveIntro(); esRefresh(); } },
+    { id: 'welcome.reopen', title: 'Reopen last session', sub: 'The windows you had open last time', words: ['restore'], icon: 'undo', when: () => empty() && lastSession().length > 0, run: reopenSession },
+    { id: 'channels.import', group: 'Channels', title: 'Import follows', sub: 'The channels you follow on Kick, Twitch or YouTube, into your channels', icon: 'download', when: () => DESKTOP && ROLE === 'main',
+      run: () => { if (panel.hidden) savedBtn.click(); showSpMenu(true); const r = $('#importRow'); if (r){ r.hidden = false; r.scrollIntoView({ block: 'nearest' }); } } }
+  ]);
   $('#tourLayer .tour-next').onclick = () => { if (!tour) return; if (tour.i < tour.steps.length - 1){ tour.i++; showTourStep(); } else endTour(); };
   $('#tourLayer .tour-back').onclick = () => { if (tour && tour.i > 0){ tour.i--; showTourStep(); } };
   $('#tourLayer .tour-end').onclick = endTour;

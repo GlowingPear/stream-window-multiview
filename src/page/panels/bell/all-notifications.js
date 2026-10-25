@@ -1,25 +1,76 @@
 import { alerts } from '../../alerts/alerts.js';
+import { revealChat } from '../../alerts/spam-alerts.js';
 import { overlayIsOn } from '../../chat/chat-overlay.js';
-import { $, wins } from '../../core.js';
+import { $, ROLE, wins } from '../../core.js';
 import { MENTION_JS } from '../../in-site/mentions.js';
 import { EMPTY, TAB_NAME, bell, bellVars, drawNotes, dropNotes, mentMuted, mentNameFor, mentOn, mentWords, myName,
-  myTwitch, nh, noteRow, notes, readNotes, renderBell, seeBell } from './bell.js';
+  myTwitch, nh, noteRow, notes, partsText, readNotes, renderBell, seeBell, subName, timeAgo } from './bell.js';
 import { SmvNotes } from './notifications.js';
 import { openSettings } from '../settings/settings.js';
-import { platform } from '../../platforms/platforms.js';
+import { chLabel, platform } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
+import { commands } from '../../shared/commands.js';
+import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
 import { runIn } from '../../windows/view.js';
 
 /* All notifications: every one kept, with search and filters, grouped by day. */
-function openNoteHistory(tab){
+// tab: one of its tabs; sub: a filter in it (Replies), q: words in its search box, pick: one chat, unread: only new ones
+function openNoteHistory(tab, { sub, q, pick, unread } = {}){
   const d = $('#noteDlg'); if (!d) return;
-  if (tab){ nh.tab = tab; nh.sub = bell.tab === tab ? bell.sub : 'all'; nh.pick = ''; }
+  if (tab){ nh.tab = tab; nh.sub = sub || (bell.tab === tab ? bell.sub : 'all'); nh.pick = pick || ''; }
+  if (unread !== undefined){ nh.unread = !!unread; $('#nhUnread').checked = nh.unread; }
+  if (q !== undefined) $('#nhQ').value = q;
   d.hidden = false;
   renderNoteHistory();
   $('#nhQ').focus();
+}
+/* ---- the search box's (Ctrl/⌘+K) notifications ----
+   All notifications at each tab and filter, the bell at each tab, the notifications themselves (Enter shows that
+   chat; Tab: the buttons on it, each doing what that button does), and the words searched for in All notifications. */
+const NH_TITLE = { all: 'All notifications', mentions: 'All mentions', spam: 'All spam alerts', live: 'All live alerts', app: 'All app messages' };
+const NH_SUB = { mention: 'All @ mentions', reply: 'All replies', word: 'All words', support: 'All support alerts', live: 'All went live', raid: 'All raids', auto: 'All opened by itself' };
+function noteHistoryCommands(){
+  const out = [];
+  for (const t of SmvNotes.TABS){
+    out.push({ id: 'notes.' + t, kind: 'tab', group: 'Notifications', title: NH_TITLE[t], sub: 'All notifications › ' + TAB_NAME[t], words: ['history', 'notifications'], icon: 'bell', run: () => openNoteHistory(t, { sub: 'all' }) });
+    if (t !== 'all') for (const s of SmvNotes.SUBS[t]) if (s !== 'all')
+      out.push({ id: `notes.${t}.${s}`, kind: 'tab', group: 'Notifications', title: NH_SUB[s] || `App messages: ${subName(t, s)}`, sub: `All notifications › ${TAB_NAME[t]} › ${subName(t, s)}`,
+        words: ['notifications'], icon: 'bell', run: () => openNoteHistory(t, { sub: s }) });
+    out.push({ id: 'bell.' + t, kind: 'tab', group: 'Notifications', title: 'Bell: ' + TAB_NAME[t], sub: 'The bell, on its ' + TAB_NAME[t] + ' tab', words: ['notifications'], icon: 'bell', run: () => openBellAt(t) });
+  }
+  out.push({ id: 'notes.unread', kind: 'tab', group: 'Notifications', title: 'Unread notifications only', sub: 'All notifications, only the new ones', words: ['new'], icon: 'bell', run: () => openNoteHistory('all', { sub: 'all', unread: true }) });
+  return out;
+}
+function openBellAt(t){
+  bell.tab = t; bell.sub = 'all'; bell.pick = '';
+  const p = $('#bellPanel');
+  if (p.hidden) $('#bellBtn').click(); else { renderBell(); seeBell(); }
+}
+// what a notification says, in a line
+function noteTitle(n){
+  const tab = SmvNotes.tabOf(n);
+  if (tab === 'mentions') return `${n.sender} in ${chLabel(n.channel)}'s chat`;
+  if (n.kind === 'spam') return `${n.abuse ? 'Abusive' : 'Spam'}: ${n.sender} in ${chLabel(n.channel)}'s chat`;
+  if (n.kind === 'live') return `${n.label || chLabel(n.channel)} went live`;
+  if (n.kind === 'raid') return `${n.label || chLabel(n.channel)} raided by ${n.from ? chLabel(n.from) : 'someone'}`;
+  return n.text || 'App message';
+}
+// its buttons (Show chat, Not spam, Watch, Undo…), as on its row
+function noteButtons(n){
+  const row = noteRow(n, {});
+  return [...row.querySelectorAll('.nc-acts button')].map((b, i) => ({ id: `note:${n.id}:${i}`, group: noteTitle(n), title: b.textContent.trim(), sub: b.title || '', icon: 'point', run: () => b.click() }));
+}
+function noteItems(q){
+  const list = notes.slice(0, 60).map(n => ({ id: 'note:' + n.id, kind: 'note', group: 'Notifications', title: noteTitle(n),
+    sub: [timeAgo(n.t), n.body || (Array.isArray(n.parts) ? partsText(n.parts) : '') || n.title || n.detail || ''].filter(Boolean).join(' · '), icon: { mentions: 'at', spam: 'mod', live: 'live', app: 'bell' }[SmvNotes.tabOf(n)] || 'bell',
+    verb: n.channel ? 'Show chat' : 'Show', run: () => { if (n.channel && SmvNotes.tabOf(n) !== 'live') revealChat(n.channel); else openNoteHistory(SmvNotes.tabOf(n), { q: '' }); },
+    more: () => noteButtons(n) }));
+  if (q) list.push({ id: 'notes.search', kind: 'note', group: 'Notifications', title: `Search all notifications for “${q}”`, sub: 'All notifications', icon: 'search', matched: 20, boost: -10,
+    run: () => openNoteHistory('all', { sub: 'all', q }) });
+  return list;
 }
 // Closing it counts as having seen them all.
 function closeNoteHistory(){
@@ -119,6 +170,18 @@ function init(){
     $('#bellClear').onclick = () => { const gone = new Set(SmvNotes.filter(notes, { tab: bell.tab })); dropNotes(n => gone.has(n)); };
     $('#bellAll').onclick = () => { p.hidden = true; openNoteHistory(bell.tab); };
     $('#bellSettings').onclick = () => { p.hidden = true; openSettings('notify'); };
+  }
+  if (DESKTOP && ROLE === 'main' && window.kmv.notifyEnabled){
+    commands.add([
+      ...noteHistoryCommands(),
+      { id: 'bell.open', group: 'Notifications', title: 'Notifications', sub: 'The bell: mentions, spam alerts, channels going live and the app\'s messages', words: ['bell'], icon: 'bell', button: '#bellBtn' },
+      { id: 'bell.read', group: 'Notifications', title: 'Mark all notifications read', icon: 'check', disabled: () => !notes.some(n => n.unread) && 'Nothing new', run: () => readNotes() },
+      { id: 'bell.clear', group: 'Notifications', title: 'Clear the bell\'s tab', sub: () => 'The notifications in its ' + TAB_NAME[bell.tab] + ' tab', icon: 'bin', button: '#bellClear', when: () => SmvNotes.filter(notes, { tab: bell.tab }).length > 0 },
+      { id: 'bell.settings', group: 'Notifications', title: 'Notification settings', sub: 'Settings › Notifications', icon: 'gear', button: '#bellSettings', when: () => true }
+    ]);
+    commands.provide('notes', noteItems);
+    // the rest of the bell's and All notifications' buttons are those above (marked, for the test that every button has one)
+    [['#nhRead', 'bell.read'], ['#nhClear', 'bell.clear'], ['#bellRead', 'bell.read'], ['#bellAll', 'notes.all']].forEach(([sel, id]) => { const b = $(sel); if (b) b.dataset.cmd = id; });
   }
   window.openNoteHistory = openNoteHistory;   // for the tests
 }

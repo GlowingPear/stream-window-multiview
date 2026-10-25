@@ -12,6 +12,7 @@ import { openSettings } from '../panels/settings/settings.js';
 import { applyLink, kickAuto, linkIcon } from '../platforms/pear-drops.js';
 import { PLAT_NAME, checkMod, modOk, platOf, rememberNames, setWatchSignedIn, streamSignedIn, watchSignedIn } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
+import { commands } from '../shared/commands.js';
 import { esc } from '../shared/element.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
@@ -86,6 +87,21 @@ function init(){
       else if (b.classList.contains('am-sw')){ if (await ask(`Switch ${name} account?`, `This logs out, then opens the ${name} login so someone else can sign in.`, { ok: 'Switch' })){ await doLogout(p); window.kmv.openLogin(p); } }
     };
     am.addEventListener('click', onAccountClick);
+    // the search box's (Ctrl/⌘+K): each site's buttons, as in the menu (each one is there while its button is)
+    for (const p of ['kick', 'twitch', 'youtube']){
+      const n = PLAT_NAME[p], row = `.am-row[data-p="${p}"]`;
+      commands.add([
+        { id: `account.${p}.login`, group: 'Accounts', title: `Log in to ${n}`, icon: 'signin', words: ['sign in', 'account'], button: `${row} .am-in` },
+        { id: `account.${p}.logout`, group: 'Accounts', title: `Log out of ${n}`, icon: 'signin', words: ['sign out', 'account'], button: `${row} .am-out` },
+        { id: `account.${p}.switch`, group: 'Accounts', title: `Switch ${n} account`, icon: 'user', words: ['account'], button: `${row} .am-sw` },
+        { id: `account.${p}.import`, group: 'Accounts', title: `Import follows from ${n}`, sub: 'The channels you follow, into your saved channels', icon: 'download', words: ['follows', 'import'], button: `${row} .am-imp` }
+      ]);
+    }
+    commands.add([
+      { id: 'account.menu', group: 'Accounts', title: 'Logins', sub: 'Log in to Kick, Twitch or YouTube', icon: 'signin', words: ['accounts'], button: '#loginBtn' },
+      { id: 'account.firefox', group: 'Accounts', title: 'Sign in to YouTube with Firefox', sub: 'Copies your YouTube login from Firefox', icon: 'signin', button: '.am-ff', when: () => true },
+      { id: 'account.settings', group: 'Accounts', title: 'Account settings', sub: 'Settings › Accounts', icon: 'gear', button: '#accountMenu .am-more', when: () => true }
+    ]);
     sa.addEventListener('click', onAccountClick);
     sy.addEventListener('click', onAccountClick);
     fromApp('onMenuAccount', async ({ platform: p, action }) => {      // the menu bar's Account menu

@@ -97,7 +97,7 @@ function parseQuery(text){
   const t = String(text || '').replace(/^\s+/, '');
   return CMD_SCOPES[t[0]] ? { scope: t[0], q: t.slice(1).trim() } : { scope: '', q: t.trim() };
 }
-// -> [{ item, score, match, marks }], best first: at most 7 a group (any number with a prefix) and 40 in all. With nothing typed: everything a
+// -> [{ item, score, match, marks }], best first: at most 7 a group and 40 in all (with a prefix: all of that kind). With nothing typed: everything a
 // scope lists, or (keep) the items for the empty box. only: search these items instead (Tab's list for a row).
 // Items marked fallback are left out: they're for when nothing else is found (fallbacks()).
 function searchCommands(text, { scope = '', only = null, keep = false, now = Date.now() } = {}){
@@ -127,7 +127,7 @@ function searchCommands(text, { scope = '', only = null, keep = false, now = Dat
     const g = r.item.group, n = per.get(g) || 0;
     if (!only && !p.scope && n >= CMD_PER_GROUP) continue;
     per.set(g, n + 1); out.push(r);
-    if (!only && out.length >= CMD_MAX) break;
+    if (!only && !p.scope && out.length >= CMD_MAX) break;
   }
   return out;
 }

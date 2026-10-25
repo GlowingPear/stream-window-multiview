@@ -6,6 +6,7 @@ import { channelVars, infoFor, liveNow, loadSavedProfiles, notifyAll, notifyOff,
   toggleSaved } from '../channels/channels.js';
 import { PLAT_NAME, chLabel, modUrl, normCh, platOf, platform, rememberName, rememberNames } from '../../platforms/platforms.js';
 import { ask, askChecked } from '../../shared/ask.js';
+import { commands } from '../../shared/commands.js';
 import { element, esc } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
@@ -160,6 +161,16 @@ function pfRenderLook(q){
     row.append(view, sv);
     box.appendChild(row);
   });
+}
+// Profiles at a filter (a site, or Live now / Favourites / Has notes / Tagged), or looking up a name
+async function openProfilesAt({ plat = 'all', flag = '', q = '' } = {}){
+  if (profDlg.hidden || pf.cur) openProfiles();
+  pfShow('dir');
+  pf.plat = plat; pf.flags = new Set(flag ? [flag] : []);
+  $('#pfQ').value = q;
+  await pfLoadList();
+  const name = q.trim().toLowerCase().replace(/^@/, '');
+  if (name && !profDlg.querySelector('.pf-look').hidden) pfLookup(name);
 }
 async function pfLookup(q){
   pf.look = { q, busy: true, items: [] };
@@ -526,6 +537,16 @@ function init(){
       pfInfoT = setTimeout(() => { loadSavedProfiles(); loadBarAvatars(true); if (!profDlg.hidden && !pf.cur) pfLoadList(); }, 400);
     });
     fromApp('onLiveStatus', () => { if (!profDlg.hidden){ if (pf.cur) { if (!document.activeElement || !profDlg.contains(document.activeElement) || !/^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName)) pfRenderProf(); } else pfRenderDir(); } });
+    // the search box's (Ctrl/⌘+K): Profiles at each filter, and looking a name up (a channel's own profile is on its Tab list)
+    commands.add([
+      { id: 'profiles', group: 'Profiles', title: 'Streamer profiles', sub: 'Your saved streamers: when they stream, past streams, your notes', words: ['profiles'], icon: 'user', button: '#profBtn' },
+      ...[['all', '', 'All'], ['kick', '', 'Kick'], ['twitch', '', 'Twitch'], ['youtube', '', 'YouTube'], ['all', 'live', 'Live now'], ['all', 'fav', 'Favourites'], ['all', 'notes', 'Has notes'], ['all', 'tagged', 'Tagged']]
+        .map(([plat, flag, n]) => ({ id: `profiles.${flag || plat}`, kind: 'tab', group: 'Profiles', title: 'Profiles: ' + n, sub: 'Streamer profiles, ' + (flag || plat !== 'all' ? 'only ' + n.toLowerCase() : 'everyone'),
+          words: ['favorites'], icon: 'user', run: () => openProfilesAt({ plat, flag }) }))
+    ]);
+    commands.provide('profiles.lookup', q => /^@?[a-z0-9_.\-]{2,40}$/i.test(q.trim()) ? [{ id: 'profiles.lookup', kind: 'profile', fallback: true, group: 'Nothing found',
+      title: `Look up “${q.trim()}” in Profiles`, sub: 'On Kick, Twitch and YouTube', icon: 'user', run: () => openProfilesAt({ q: q.trim() }) }] : []);
+    profDlg.querySelectorAll('.pf-chips button').forEach(b => { b.dataset.cmd = 'profiles.' + b.dataset.v; });
     window.openProfile = openProfile;   // for the tests
   }
 }
