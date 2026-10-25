@@ -14,7 +14,7 @@ const panes = [...html.matchAll(/class="st-pane[^"]*" data-s="([\w-]+)"/g)].map(
 
 // the header the same way the app reads it (src/page/panels/help/guide.js frontMatter)
 function read(name) {
-  const text = fs.readFileSync(path.join(DIR, name), 'utf8');
+  const text = fs.readFileSync(path.join(DIR, name), 'utf8').replace(/\r/g, '');   // (Windows checks them out with \r\n)
   const m = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   assert.ok(m, `${name} starts with its header between --- lines`);
   const fm = {};
@@ -66,7 +66,7 @@ test('what a page points at is there: its Settings page, Show me\'s button, rela
 });
 
 test('README.md lists every page, by group, in the app\'s order', () => {
-  const readme = fs.readFileSync(path.join(DIR, 'README.md'), 'utf8');
+  const readme = fs.readFileSync(path.join(DIR, 'README.md'), 'utf8').replace(/\r/g, '');
   const listed = [...readme.matchAll(/^- \[([^\]]+)\]\(([\w-]+)\.md\): (.*)$/gm)].map(m => ({ title: m[1], slug: m[2], lede: m[3] }));
   const want = pages.slice().sort((a, b) => GROUPS.indexOf(a.fm.group) - GROUPS.indexOf(b.fm.group) || a.fm.order - b.fm.order);
   assert.deepEqual(listed.map(x => x.slug), want.map(p => p.slug), 'the same pages, in the same order');
