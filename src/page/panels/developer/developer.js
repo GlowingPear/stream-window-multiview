@@ -21,10 +21,13 @@ import { askIn, viewId, zoomOf } from '../../windows/view.js';
    right-click menu gets a Developer group (src/main/context-menu.js) and the windows' ⋯ menu gets its own items.
    Errors on this page and in the app's scripts inside the chats go to the error log whether the switch is on or not. */
 var devOn = false;
-const dev = { tab: 'errors', data: null };
+const dev = { tab: 'errors', data: null, problems: false };   // problems: Site responses shows only the ones that went wrong
+// a site's answer that went wrong: no answer, or not a 2xx
+const badAnswer = r => !(r.status >= 200 && r.status < 300);
 const DV_WHEN = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const DV_SITE = { kick: 'Kick', twitch: 'Twitch', youtube: 'YouTube' };
 const tick = on => (on ? '✓' : '–');
+const plural = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
 function setDev(on){
   devOn = !!on;
@@ -70,11 +73,16 @@ async function renderDev(){
       element('span', 'dv-t', DV_WHEN(e.t)), element('span', 'dv-src dv-' + e.src, e.src.toUpperCase()),
       element('span', 'dv-msg', (e.where ? e.where + ': ' : '') + e.msg), element('span', 'dv-cnt', e.n > 1 ? '×' + e.n : '')));
   } else {
+    const bad = d.responses.filter(badAnswer), shown = dev.problems ? bad : d.responses;
+    const pick = (only, label) => element('button', { type: 'button', class: 'dv-f' + (dev.problems === only ? ' on' : ''), 'aria-pressed': String(dev.problems === only),
+      onclick: () => { dev.problems = only; renderDev(); } }, label);
+    list.append(element('div', 'dv-filter', pick(false, `All (${d.responses.length})`), pick(true, `Errors only (${bad.length})`)));
     if (!d.responses.length) list.append(element('div', 'dv-empty', 'Nothing asked yet. Live checks, follows and profiles show here.'));
-    for (const r of d.responses) list.append(element('button', { class: 'dv-row dv-resp', type: 'button', title: 'Click to copy the request and the answer', onclick: () => copyText(exchangeText(r), 'Copied the request and the answer') },
+    else if (!shown.length) list.append(element('div', 'dv-empty', 'No errors: every answer was OK.'));
+    for (const r of shown) list.append(element('button', { class: 'dv-row dv-resp', type: 'button', title: 'Click to copy the request and the answer', onclick: () => copyText(exchangeText(r), 'Copied the request and the answer') },
       element('span', 'dv-t', DV_WHEN(r.t)), element('span', 'dv-site dv-' + r.site, DV_SITE[r.site] || r.site),
       element('span', 'dv-msg', `${r.what} · ${r.method} ${r.url}`),
-      element('span', 'dv-st ' + (r.status >= 200 && r.status < 300 ? 'ok' : 'bad'), r.status ? String(r.status) : r.error ? 'failed' : 'no answer'),
+      element('span', 'dv-st ' + (badAnswer(r) ? 'bad' : 'ok'), r.status ? String(r.status) : r.error ? 'failed' : 'no answer'),
       element('span', 'dv-cnt', r.ms + ' ms')));
   }
 }
@@ -103,7 +111,7 @@ async function pageLines(){
   const n = k => wins.filter(w => w.kind === k).length;
   const acc = DESKTOP && window.kmv.accountsStatus ? await window.kmv.accountsStatus().catch(() => null) : null;
   return [
-    'windows   ' + [ROLE === 'main' ? 'main window' : 'streams window', 'layout ' + layoutName(), `${n('stream')} streams, ${n('chat')} chats` + (n('capture') ? `, ${n('capture')} captured` : '')].join(' · '),
+    'windows   ' + [ROLE === 'main' ? 'main window' : 'streams window', 'layout ' + layoutName(), [plural(n('stream'), 'stream'), plural(n('chat'), 'chat')].join(', ') + (n('capture') ? `, ${n('capture')} captured` : '')].join(' · '),
     ...wins.map(winLine),
     acc ? 'signed in ' + `Kick ${tick(acc.kick)}  Twitch ${tick(acc.twitch)}  YouTube ${tick(acc.youtube)}` : '',
     'settings  ' + [`start muted ${tick($('#muted') && $('#muted').checked)}`, `auto-pause ${tick(settings.flag('autoPause'))}`,
@@ -190,4 +198,4 @@ function init(){
   window.devTools = { setDev, pageLines, winState, renderDev, exchangeText };   // for the tests
 }
 
-export { copyWinState, devOn, init, inspectWin };
+export { copyWinState, devOn, init, inspectWin, renderDev };

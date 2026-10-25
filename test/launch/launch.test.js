@@ -71,7 +71,7 @@ test('the desktop app starts, adds a stream and quits cleanly', async () => {
     // the app's help files are found
     const changelog = await win.evaluate(() => window.kmv.readHelp('CHANGELOG.md'));
     assert.ok(changelog && changelog.includes(`## ${pkg.version} (current)`), 'What\'s new is readable');
-    assert.ok(await win.evaluate(() => window.kmv.readHelp('INSTRUCTIONS.txt')), 'Instructions are readable');
+    assert.ok((await win.evaluate(() => window.kmv.readGuide())).length >= 25, 'the guide\'s pages are readable');
     assert.equal(await win.evaluate(() => window.kmv.readHelp('../package.json')), null, 'other files are refused');
 
     // adding a channel opens a stream and its chat, each in a web view

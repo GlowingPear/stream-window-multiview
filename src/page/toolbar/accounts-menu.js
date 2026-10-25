@@ -146,11 +146,7 @@ function init(){
         if (!await ask('Remove the YouTube API key?', 'YouTube live checks go back to reading each channel\'s page.', { ok: 'Remove', danger: true })) return;
         showYtKey(await window.kmv.ytKeyRemove().catch(() => null));
       };
-      yk.querySelector('.am-yk-how').onclick = async () => {
-        await showHelp('guide');
-        const h = [...document.querySelectorAll('#settingsDlg [data-doc=guide] h3')].find(x => /YouTube API key/i.test(x.textContent));
-        if (h) h.scrollIntoView({ block: 'start' });
-      };
+      yk.querySelector('.am-yk-how').onclick = () => showHelp('guide', 'youtube', 'API key');
     }
 
     /* ---- How logins are kept: encryption status + "forget my login when I close the app" ---- */

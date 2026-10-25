@@ -81,8 +81,8 @@ test('the Account menu has one item per site that follows your login', T, async 
 });
 
 test('Help opens the matching Settings tab, and Check for updates opens Updates', T, async () => {
-  assert.deepEqual(await menu('Help'), ['Instructions', 'Keyboard shortcuts', 'What\'s new', 'Check for updates…']);
-  for (const [label, tab] of [['Instructions', 'guide'], ['Keyboard shortcuts', 'keys'], ['What\'s new', 'updates'], ['Check for updates', 'updates']]) {
+  assert.deepEqual(await menu('Help'), ['Guide', 'Keyboard shortcuts', 'What\'s new', 'Check for updates…']);
+  for (const [label, tab] of [['Guide', 'guide'], ['Keyboard shortcuts', 'keys'], ['What\'s new', 'updates'], ['Check for updates', 'updates']]) {
     await clickMenu('Help', label);
     await win.waitForSelector('#settingsDlg:not([hidden])');
     assert.equal(await settingsTab(), tab, label);
@@ -117,7 +117,7 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   assert.equal(await settingsTab(), 'accounts');
   assert.ok(await win.isHidden('#accountMenu'), 'the menu closes');
   const tabs = await win.$$eval('#settingsDlg .st-rail button', b => b.filter(x => !x.hidden).map(x => x.dataset.s));
-  assert.deepEqual(tabs, ['general', 'layouts', 'chat', 'themes', 'accounts', 'apps', 'youtube', 'extensions', 'notify', 'mentions', 'spam', 'guide', 'keys', 'updates']);
+  assert.deepEqual(tabs, ['general', 'layouts', 'chat', 'themes', 'accounts', 'apps', 'youtube', 'extensions', 'notify', 'mentions', 'spam', 'guide', 'keys', 'updates', 'developer']);
   assert.ok(await win.isVisible('#settingsDlg .am-watch'), 'Watch signed in moved here');
   assert.ok(await win.isHidden('#mentUser'), 'your usernames are under Mentions');
   await win.click('#settingsDlg .st-rail [data-s=mentions]');

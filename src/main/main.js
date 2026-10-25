@@ -2152,15 +2152,22 @@ function scheduleUpdates() {
 }
 
 /* ---------- help files ---------- */
-const HELP_FILES = ['INSTRUCTIONS.txt', 'CHANGELOG.md'];
-// Installed builds keep the help files next to the packed app (app.asar.unpacked) so other programs can open them.
+const HELP_FILES = ['CHANGELOG.md'];
+// Installed builds keep the changelog next to the packed app (app.asar.unpacked), as before.
 const helpPath = name => app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked', name) : path.join(APP_ROOT, name);
 appIpc.handle('help:read', (_e, name) => {
   if (!HELP_FILES.includes(name)) return null;
   try { return fs.readFileSync(helpPath(name), 'utf8'); } catch {}
   try { return fs.readFileSync(path.join(APP_ROOT, name), 'utf8'); } catch { return null; }
 });
-appIpc.handle('help:open', (_e, name) => { if (HELP_FILES.includes(name)) shell.openPath(helpPath(name)); });
+// The guide (Settings › Guide): every page in docs/guide, as text. Its README.md is the contents for GitHub.
+appIpc.handle('help:guide', () => {
+  const dir = path.join(APP_ROOT, 'docs', 'guide');
+  try {
+    return fs.readdirSync(dir).filter(f => /^[\w-]+\.md$/.test(f) && f !== 'README.md')
+      .map(f => ({ name: f.slice(0, -3), text: fs.readFileSync(path.join(dir, f), 'utf8') }));
+  } catch { return []; }
+});
 appIpc.handle('app:version', () => app.getVersion());
 
 /* ---------- menu ---------- */
@@ -2227,7 +2234,7 @@ function buildMenu() {
       { role: 'front' }
     ]}] : []),
     { label: 'Help', submenu: [
-      { label: 'Instructions', click: () => showMain()?.webContents.send('help:show', 'guide') },
+      { label: 'Guide', click: () => showMain()?.webContents.send('help:show', 'guide') },
       { label: 'Keyboard shortcuts', click: () => showMain()?.webContents.send('help:show', 'keys') },
       { label: 'What\'s new', click: () => showMain()?.webContents.send('help:show', 'news') },
       { type: 'separator' },

@@ -3,6 +3,7 @@ import { $, ROLE, refreshAccountsPane, wins } from '../../core.js';
 import { removeChannel } from '../../layout/switcher.js';
 import { bellCount, bellVars, dndOn, dndUntil, notes } from '../bell/bell.js';
 import { gotLive, liveInfo, liveNote } from '../channels/channels.js';
+import { renderDev } from '../developer/developer.js';
 import { renderExtPane } from '../extensions/extensions.js';
 import { keysOn, renderDoc, showHelp } from '../help/help.js';
 import { renderSpamHist, veilLists } from './alerts.js';
@@ -38,6 +39,7 @@ function openSettings(tab){
   veilLists();
   if (settingsTab === 'extensions') renderExtPane();
   if (settingsTab === 'layouts') renderLayoutsPane(true);
+  if (settingsTab === 'developer') renderDev();
   return renderDoc(settingsTab);
 }
 const closeSettings = () => { settingsDlg.hidden = true; };

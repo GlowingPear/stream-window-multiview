@@ -364,13 +364,13 @@ test('the toolbar fits any window width: Layout keeps its name while there is ro
   assert.equal(await page.isVisible('#moreBtn'), false);
 });
 
-test('Help is part of Settings: the instructions, the shortcuts, and this version\'s changelog under Updates', async t => {
+test('Help is part of Settings: the guide, the shortcuts, and this version\'s changelog under Updates', async t => {
   const page = await openApp(t);
   const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
   await page.click('#settingsBtn');
   await page.click('#settingsDlg .st-rail [data-s=guide]');
-  await page.waitForSelector('#settingsDlg [data-doc=guide] h3');
-  assert.ok((await page.$$('#settingsDlg [data-doc=guide] h3')).length > 3, 'the instructions are shown');
+  await page.waitForSelector('#settingsDlg .gd-card');
+  assert.ok((await page.$$('#settingsDlg .gd-toc .gd-ti')).length > 20, 'the guide\'s topics are listed');
 
   await page.click('#settingsDlg .st-rail [data-s=updates]');
   await page.waitForSelector('#settingsDlg .upd-news .upd-tv.this');

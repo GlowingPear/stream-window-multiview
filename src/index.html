@@ -54,6 +54,7 @@
 <link rel="stylesheet" href="page/toolbar/farming.css">
 <link rel="stylesheet" href="page/toolbar/daily-reward.css">
 <link rel="stylesheet" href="page/panels/updates/updates.css">
+<link rel="stylesheet" href="page/panels/help/guide.css">
 <link rel="stylesheet" href="page/panels/developer/developer.css">
 <style id="themeVars"></style>
 <!-- before the first paint: the macOS toolbar's room for the traffic lights, and the saved colour theme -->
@@ -271,7 +272,7 @@
       <button data-s="mentions" class="main-desk">Mentions</button>
       <button data-s="spam" class="main-desk">Spam alerts<span class="st-pill">Mod</span></button>
       <div class="st-rail-sec">Help</div>
-      <button data-s="guide">Instructions</button>
+      <button data-s="guide">Guide</button>
       <button data-s="keys">Keyboard shortcuts</button>
       <button data-s="updates">Updates</button>
       <button data-s="developer" class="desk-only">Developer</button>
@@ -587,9 +588,14 @@
         <div class="upd-news"></div>
         <p class="upd-foot st-end" hidden>Updating replaces the app, keeping the old version as a backup. Your logins, saved channels, layouts and themes aren't touched.</p>
       </section>
-      <section class="st-pane" data-s="guide" hidden>
-        <div class="help-body st-doc" data-doc="guide"></div>
-        <div class="st-docfoot"><span class="help-file">INSTRUCTIONS.txt in the app folder</span><button class="btn help-open" hidden>Open as a file</button></div>
+      <section class="st-pane gd-pane" data-s="guide" hidden>
+        <div class="gd">
+          <nav class="gd-toc" aria-label="Guide contents"></nav>
+          <div class="gd-main">
+            <div class="gd-search"><i class="gd-s-ico" data-ico="search"></i><input id="gdSearch" type="search" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off" spellcheck="false"><span class="gd-count"></span><kbd class="gd-key">/</kbd></div>
+            <div class="gd-body" tabindex="-1"></div>
+          </div>
+        </div>
       </section>
       <section class="st-pane" data-s="developer" hidden>
         <h4>Developer</h4><p class="st-sub">Tools for finding out why something isn't working, and for reporting it.</p>

@@ -65,6 +65,7 @@ import { init as toolbarDailyReward } from './toolbar/daily-reward.js';
 import { init as layoutUndo } from './layout/undo.js';
 import { init as windowsCapture } from './windows/capture.js';
 import { init as panelsHelpHelp } from './panels/help/help.js';
+import { init as panelsHelpGuide } from './panels/help/guide.js';
 import { init as panelsUpdatesUpdates } from './panels/updates/updates.js';
 import { init as shortcuts } from './shortcuts.js';
 import { init as layoutGameFocus } from './layout/game-focus.js';
@@ -154,6 +155,7 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   layoutGameFocus,
   panelsSettingsThemes,
   panelsSettingsSettings,
+  panelsHelpGuide,
   panelsSettingsGeneral,
   panelsSettingsAlerts,
   panelsSettingsConnected,

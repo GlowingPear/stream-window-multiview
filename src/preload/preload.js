@@ -33,7 +33,7 @@ contextBridge.exposeInMainWorld('kmv', {
   captureSources: () => ipcRenderer.invoke('capture:sources'),
   captureChoose: id => ipcRenderer.invoke('capture:choose', id),
   readHelp: name => ipcRenderer.invoke('help:read', name),
-  openHelp: name => ipcRenderer.invoke('help:open', name),
+  readGuide: () => ipcRenderer.invoke('help:guide'),
   appVersion: () => ipcRenderer.invoke('app:version'),
   updateStatus: () => ipcRenderer.invoke('update:status'),
   updateCheck: () => ipcRenderer.invoke('update:check'),
