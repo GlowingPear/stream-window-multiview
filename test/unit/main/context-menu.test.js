@@ -118,3 +118,21 @@ test('a chat: Translate this chat, Translate new messages too and (while transla
   assert.ok(!labels(menuFor({ linkURL: 'https://a/' }, { chat: {} })).some(l => /Translate/.test(l)));
   assert.deepEqual(labels(menuFor({})), ['Reload']);
 });
+
+test('a chat message: Copy message (without emotes), Copy message with emotes and Copy message HTML', () => {
+  const chat = { on: false, auto: false }, message = { text: 'hi there', withEmotes: 'hi pearHype there', html: '<div data-index="1">…</div>' };
+  const m = menuFor({}, { chat, message });
+  assert.deepEqual(labels(m), ['Copy message', 'Copy message with emotes', 'Copy message HTML', '—', 'Translate this chat to English', 'Translate new messages too', '—', 'Reload']);
+  assert.deepEqual(m.slice(0, 3).map(x => [x.act, x.enabled]), [
+    [{ do: 'copyText', text: 'hi there' }, true], [{ do: 'copyText', text: 'hi pearHype there' }, true], [{ do: 'copyText', text: '<div data-index="1">…</div>' }, undefined]]);
+  // only emotes: nothing to copy without them
+  const em = menuFor({}, { chat, message: { text: '', withEmotes: 'pearHype', html: '<div></div>' } });
+  assert.deepEqual(em.slice(0, 3).map(x => x.enabled !== false), [false, true, true]);
+  // after the emote's and the selection's items; not in the chat box, and not without a message
+  const p = { mediaType: 'image', srcURL: 'https://files.kick.com/emotes/1/fullsize', selectionText: 'hi' };
+  assert.deepEqual(labels(menuFor(p, { chat, message, emote: { name: 'pearHype', text: 'pearHype' } })).slice(0, 14), ['Copy emote text', '—',
+    'Open image in new window', 'Save image as…', 'Copy image', 'Copy image address', '—', 'Copy', 'Translate “hi” to English', 'Search Google for “hi”', '—',
+    'Copy message', 'Copy message with emotes', 'Copy message HTML']);
+  assert.ok(!labels(menuFor({ isEditable: true }, { chat, message })).includes('Copy message'));
+  assert.ok(!labels(menuFor({}, { chat, message: { text: 'x', withEmotes: 'x', html: '' } })).includes('Copy message'), 'no message there');
+});
