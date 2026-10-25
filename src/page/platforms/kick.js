@@ -56,7 +56,8 @@ const kick = {
   // Someone supporting the stream (Settings > Mentions > Support, in-site/mentions.js): how its chat shows it. { kind, re }
   // reads a row of the site's own (not someone's message) by its text, with the name (who), the number (n) and who
   // got a gift (to); { kind, row, who, n } an element it draws for it; { kind, re, msg: true, from? } words in a
-  // message (from: only that sender's); { kind, re, page: true } a banner over the chat. kind: kicks, bits, gifts (to
+  // message (from: only that sender's); { kind, re, page: true } a banner over the chat; anyRow: also a row that holds
+  // a message (otherwise those are messages, never notices). kind: kicks, bits, gifts (to
   // the community), gift (to someone), sub, superchat, member, raid (n: the viewers it brought).
   // A notice can start with the time (when the chat shows times), and the KICK icon between "sent" and the number can
   // carry words of its own.
@@ -69,7 +70,10 @@ const kick = {
     // KickBot, Kick's own bot, says each KICKs gift in the chat: "@name just gifted 100 KICKs!" (a message, read even
     // when the "sent" box isn't drawn; the two are one gift)
     { kind: 'kicks', msg: true, from: 'KickBot', re: '^@?(?<who>[A-Za-z0-9_]{2,30}) just gifted (?<n>\\d[\\d,]*) KICKs?\\b' },
-    { kind: 'sub', re: '(?:^|\\s)(?<who>[A-Za-z0-9_]{2,30}) (?:just )?(?:re)?subscribed(?: for (?<n>\\d+) months?)?' }
+    { kind: 'sub', re: '(?:^|\\s)(?<who>[A-Za-z0-9_]{2,30}) (?:just )?(?:re)?subscribed(?: for (?<n>\\d+) months?)?' },
+    // a sub celebrated ("mossy_rock celebrates their subscription for 7 months!"): its box also holds their message, so
+    // it's read in rows with a message too (anyRow), and only at the row's start, never from words in a message
+    { kind: 'sub', anyRow: true, re: '^(?:\\d{1,2}:\\d{2}(?:\\s?[AP]M)?\\s+)?(?<who>[A-Za-z0-9_]{2,30}) celebrates? their subscription(?: for (?<n>\\d+) months?)?' }
   ] },
   chatBox: { box: '[data-testid="chat-input"]', hint: '[data-testid="chat-input"] ~ div', attrs: [], says: '^send a message$' },
   // A raid: the channel a stream or chat window's new address (a URL) is for, or null when it isn't a channel's

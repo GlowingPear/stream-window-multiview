@@ -195,8 +195,9 @@ function mentionAgent(){
   function supScan(){
     const finds = sup.finds || [];
     const rows = [...document.querySelectorAll('[data-index]')].filter(r => !r.parentElement || !r.parentElement.closest('[data-index]'));
-    // the site's own rows: a Kick row that isn't someone's message, or a line of the page's text that isn't
-    const texts = rows.length ? rows.filter(r => !readRow(r)).map(r => ({ t: flat(rowText(r)), k: r.getAttribute('data-index') }))
+    // the site's own rows: a Kick row that isn't someone's message, or a line of the page's text that isn't. A row that
+    // also holds a message (Kick's sub celebration carries the person's words) is kept for wordings marked anyRow.
+    const texts = rows.length ? rows.map(r => ({ t: flat(rowText(r)), k: r.getAttribute('data-index'), msg: !!readRow(r) }))
       : textLines(document.body.innerText).filter(l => !lineOf(l)).map(l => ({ t: flat(l), k: '' }));
     for (const f of finds) {
       if (f.row) {
@@ -236,6 +237,7 @@ function mentionAgent(){
     const byText = finds.filter(f => !f.row && !f.msg && !f.page).map(f => [f, new RegExp(f.re, 'i')]);
     for (const x of texts) {
       for (const [f, re] of byText) {
+        if (x.msg && !f.anyRow) continue;
         const m = x.t.match(re); if (!m) continue;
         const g = m.groups || {};
         supFound(f, 't' + x.k + x.t, g.who, g.n ? num(g.n) : 1, g.to ? { to: g.to } : {});
