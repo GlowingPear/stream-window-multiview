@@ -176,6 +176,11 @@ test("each site says how its chat shows someone supporting the stream, in words 
   assert.deepEqual(read(kick, 'giftfox88 gifted a sub to mossy_rock'), ['gift', { who: 'giftfox88', n: undefined, to: 'mossy_rock' }]);
   assert.deepEqual(read(kick, 'GlowingPear sent 100 688 / 10K'), ['kicks', { who: 'GlowingPear', n: '100' }]);
   assert.equal(read(kick, 'BotRix: Thanks @GlowingPear for the 100 KICKs!'), null, "a bot's thanks isn't a notice");
+  assert.deepEqual(read(kick, '07:55 PM zestyplum sent KICK 100 688 / 10K'), ['kicks', { who: 'zestyplum', n: '100' }], 'with the time, and the icon\'s words before the number');
+  // KickBot's message for each KICKs gift (as in a real Kick chat), only from KickBot
+  const bot = kick.support.finds.find(f => f.msg && f.from);
+  assert.deepEqual({ ...'@TrongatesLegacy just gifted 100 KICKs!'.match(new RegExp(bot.re, 'i')).groups }, { who: 'TrongatesLegacy', n: '100' });
+  assert.ok(new RegExp(`^(?:${bot.from})$`, 'i').test('KickBot') && !new RegExp(`^(?:${bot.from})$`, 'i').test('BotRix'));
   assert.equal(read(kick, 'someone sent me a clip'), null);
   assert.deepEqual(read(twitch, "giftfox88 is gifting 5 Tier 1 Subs to pear's community! They've gifted a total of 20 in the channel!"),
     ['gifts', { who: 'giftfox88', n: '5' }]);

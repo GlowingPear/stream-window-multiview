@@ -49,6 +49,22 @@ test('Kick: a community gift once (not once per sub it gave), KICKs, a gift to s
   assert.deepEqual(await found(page), []);
 });
 
+test('Kick KICKs: KickBot\'s "@name just gifted 100 KICKs!" (Kick\'s real message rows), only from KickBot, and once with the "sent" box', async t => {
+  const page = await chatPage(t, 'kick', kickRow(1, 'KickBot', '@oldfan just gifted 100 KICKs!'), 'GlowingPear');
+  await put(page, kickRow(2, 'KickBot', '@quietkoala just gifted 500 KICKs!'));
+  await put(page, kickRow(3, 'BotRix', 'Thanks @quietkoala for the 500 KICKs!'));               // another bot thanking: not counted
+  await put(page, kickRow(4, 'someone', '@tinycomet just gifted 1000 KICKs!'));                 // a viewer saying it: not counted
+  await put(page, kickRow(5, 'KickBot', '@GlowingPear just gifted 50 KICKs!'));                 // your own
+  assert.deepEqual(await found(page), [['kicks', 'quietkoala', 500, '']]);
+  // the box (with the time and the KICK icon's words around the number) and KickBot's message: one gift
+  await put(page, kickNote(6, '07:55 PM zestyplum', 'sent KICK 100', '688 / 10K'));
+  await put(page, kickRow(7, 'KickBot', '@zestyplum just gifted 100 KICKs!'));
+  assert.deepEqual(await found(page), [['kicks', 'zestyplum', 100, '']]);
+  // the same words again in another row within a minute: taken as the same gift
+  await put(page, kickRow(8, 'KickBot', '@quietkoala just gifted 500 KICKs!'));
+  assert.deepEqual(await found(page), [], 'within a minute of the same one: taken as the same gift');
+});
+
 test('Twitch: a community gift, a sub with its months, and cheers in a message added up; YouTube: Super Chats with their money, gifts and members', async t => {
   const line = t => `<div class="row">${t}</div>`;
   let page = await chatPage(t, 'twitch', line('<b>regular</b>: <span>hi all</span>'));
