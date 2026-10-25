@@ -33,7 +33,7 @@ function stItems(){
     pane.querySelectorAll('.st-tabs button[data-t]').forEach(t => {
       if (t.hidden) return;
       const tn = t.textContent.replace(/\s+\d+$/, '').trim();
-      out.push({ id: `settings.${s}.${t.dataset.t}`, kind: 'tab', group: 'Settings', title: tn, sub: `Settings › ${name} › ${tn}`, words: [name + ' ' + tn],
+      out.push({ id: `settings.${s}.${t.dataset.t}`, kind: 'tab', group: 'Settings', title: tn, sub: `Settings › ${name} › ${tn}`, words: [`${name} › ${tn}`, `${name} ${tn}`],
         icon: 'gear', run: () => openSettings(s, { sub: t.dataset.t }) });
     });
     if (s === 'guide' || s === 'keys') continue;
