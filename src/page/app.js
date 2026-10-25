@@ -85,6 +85,7 @@ import { init as toolbarToolbarFit } from './toolbar/toolbar-fit.js';
 import { init as panelsExtensionsExtensions } from './panels/extensions/extensions.js';
 import { init as sharedAsk } from './shared/ask.js';
 import { init as sharedTooltips } from './shared/tooltips.js';
+import { init as palettePalette } from './palette/palette.js';
 
 [
   core,
@@ -169,5 +170,6 @@ import { init as sharedTooltips } from './shared/tooltips.js';
   toolbarToolbarFit,
   panelsExtensionsExtensions,
   sharedAsk,
-  sharedTooltips
+  sharedTooltips,
+  palettePalette
 ].forEach(init => init());

@@ -1,4 +1,4 @@
-import { blowUpNow, blownWin, putBack, toggleBlowMode } from './chat/blow-up.js';
+import { blowOn, blowUpNow, blownWin, putBack, toggleBlowMode } from './chat/blow-up.js';
 import { $, ROLE, colsMode, input, wins } from './core.js';
 import { isRail, showRailChat } from './layout/chat-rail.js';
 import { isStage, putOnStage } from './layout/chat-stage.js';
@@ -14,6 +14,8 @@ import { extDlgDone } from './panels/extensions/extensions.js';
 import { keysOn, showHelp } from './panels/help/help.js';
 import { save } from './persistence.js';
 import { chLabel } from './platforms/platforms.js';
+import { commands } from './shared/commands.js';
+import { DESKTOP } from './shared/env.js';
 import { flash } from './shared/flash.js';
 import { settings } from './shared/settings.js';
 import { setBarHidden } from './toolbar/header.js';
@@ -81,6 +83,42 @@ function closeOverlays(){
   return any;
 }
 const layoutPick = l => { const b = document.querySelector(`#layoutMenu [data-l=${l}]`); if (b) b.click(); };
+const streamWins = () => wins.filter(o => o.kind === 'stream');
+// Shift+M, and the search box's Mute every stream / Unmute every stream
+function muteAll(on){
+  streamWins().forEach(o => { o.muted = on; pushVol(o); }); save(); syncSwitcher();
+  flash(on ? 'All streams muted' : 'All streams unmuted');
+}
+// Shift+R
+function refreshAll(){ streamWins().forEach(reloadWin); flash('Refreshing every stream…'); }
+const noStreams = () => !streamWins().length && 'Open a stream first';
+// The search box's (Ctrl/⌘+K) actions for the whole app, with their keys
+function addShortcutCommands(){
+  const main = () => ROLE === 'main';
+  commands.add([
+    { id: 'streams.muteAll', title: 'Mute every stream', sub: 'Every stream, here and popped out', words: ['silence', 'sound off', 'volume'], icon: 'volOff', keys: 'Shift+M',
+      when: main, disabled: noStreams, run: () => muteAll(true) },
+    { id: 'streams.unmuteAll', title: 'Unmute every stream', sub: 'Every stream at its own volume', words: ['sound on', 'volume'], icon: 'volOn', when: main, disabled: noStreams, run: () => muteAll(false) },
+    { id: 'streams.refreshAll', title: 'Refresh every stream', sub: 'Reload each stream\'s player', words: ['reload', 'fix'], icon: 'reload', keys: 'Shift+R', when: main, disabled: noStreams, run: refreshAll },
+    { id: 'layout.lock', title: 'Lock layout', sub: 'Windows keep their places: new ones fit in, nothing moves by itself', words: ['unlock', 'freeze', 'pin'], icon: 'lock', keys: 'Shift+L',
+      when: main, toggle: { get: () => layoutLocked, set: on => setLayoutLocked(on) } },
+    { id: 'chat.blowMode', title: 'Blow up chat on click', sub: 'Click a chat to show it big in the middle', words: ['zoom chat', 'enlarge'], icon: 'zoomin', keys: 'Z',
+      when: main, toggle: { get: () => blowOn, set: on => { if (on !== blowOn) toggleBlowMode(); } } },
+    { id: 'chat.blowNow', title: 'Blow up the chat now', sub: 'The chat you last clicked, big in the middle (again, or Esc, puts it back)', words: ['zoom chat'], icon: 'zoomin', keys: 'Shift+Z',
+      when: main, disabled: () => !wins.some(w => w.kind === 'chat') && 'Open a chat first', run: () => blowUpNow(bigStream()) },
+    { id: 'chat.putBack', title: 'Put the chat back', sub: 'The blown-up chat goes back to its place', icon: 'close', when: () => main() && !!blownWin(), run: putBack },
+    { id: 'toolbar.hide', title: 'Hide the toolbar', sub: 'Move the mouse to the edge, or press Esc, to bring it back', words: ['focus', 'more room'], icon: 'hidebar', keys: 'H',
+      when: () => main() && !document.body.classList.contains('focus'), run: () => setBarHidden(true) },
+    { id: 'toolbar.show', title: 'Show the toolbar', icon: 'showbar', keys: 'H', when: () => main() && document.body.classList.contains('focus'), run: () => setBarHidden(false) },
+    { id: 'app.fullscreen', title: 'Full screen', sub: 'The whole screen for the app (again to leave it)', words: ['fullscreen', 'maximise', 'maximize'], icon: 'feat', keys: 'F11',
+      when: () => DESKTOP && !!window.kmv.toggleFullscreen, run: () => window.kmv.toggleFullscreen() },
+    { id: 'capture.pick', title: 'Show another app\'s window', sub: 'e.g. a Discord pop-out, inside Stream Multiview', words: ['capture', 'discord', 'app window', 'screen'], icon: 'capture', keys: 'W',
+      when: main, run: () => openCapturePicker(null) },
+    { id: 'help.keys', group: 'Help', kind: 'help', title: 'Keyboard shortcuts', sub: 'Every key, by what it does', words: ['keys', 'hotkeys'], icon: 'keys', keys: 'F1', run: () => showHelp('keys') },
+    { id: 'channels.open', title: 'Channels', sub: 'Your channels: open one, add a new one, see who\'s live', words: ['saved', 'favourites', 'favorites', 'follows'], icon: 'star', keys: 'B',
+      when: main, run: () => { if (panel.hidden) savedBtn.click(); input.focus(); } }
+  ]);
+}
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
@@ -91,6 +129,7 @@ function init(){
     snd.addEventListener('change', () => settings.set('arrowSound', snd.checked));
     settings.onChange(['arrowSound'], () => { snd.checked = soundFollows(); });
   }
+  addShortcutCommands();
   window.stepStream = stepStream; window.bigStream = () => { const s = bigStream(); return s && s.channel; };   // for the tests
   window.mutedStreams = () => wins.filter(w => w.kind === 'stream' && w.muted).map(w => w.channel).sort();   // for the tests
   document.addEventListener('keydown', e => {
@@ -129,12 +168,12 @@ function init(){
       case 's': $('#swBtn').click(); break;
       case 'z': if (e.shiftKey) blowUpNow(big); else toggleBlowMode(); break;   // Blow up chat
       case 'm':
-        if (e.shiftKey){ wins.filter(o => o.kind === 'stream').forEach(o => { o.muted = true; pushVol(o); }); save(); syncSwitcher(); flash('All streams muted'); }
+        if (e.shiftKey) muteAll(true);
         else if (big && big.kind === 'stream'){ fsMute(big, false); flash(`${chLabel(big.channel)} ${big.muted ? 'muted' : 'unmuted'}`); }
         break;
       case ' ': case 'p': if (big && big.kind === 'stream'){ togglePause(big); flash(`${chLabel(big.channel)} ${isPaused(big) ? 'paused' : 'playing'}`); } break;
       case 'r':
-        if (e.shiftKey){ wins.filter(o => o.kind === 'stream').forEach(reloadWin); flash('Refreshing every stream…'); }
+        if (e.shiftKey) refreshAll();
         else if (big && big.kind === 'stream'){ reloadWin(big); flash(`Refreshing ${chLabel(big.channel)}…`); }
         break;
       case 'ArrowUp': case 'ArrowDown':

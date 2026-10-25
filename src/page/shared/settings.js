@@ -28,6 +28,7 @@ const SETTING_NAMES = new Set([
   'ytSkip', 'ytConsent', 'ytAutoLike', 'ytAutoLiked', 'ytChatView',
   // the app
   'theme', 'themes', 'settingsTab', 'keys', 'arrowSound', 'intro', 'seenVersion',
+  'palette',               // the search box (Ctrl/⌘+K): what you ran last, and how often (shared/commands.js)
   // Settings › Developer: Developer tools on, and that you were told what Inspect can see
   'dev', 'devWarned'
 ]);

@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld('kmv', {
   platform: process.platform,
   setLights: on => ipcRenderer.send('win:lights', !!on),
   onFullscreen: cb => ipcRenderer.on('win:fullscreen', (_e, on) => cb(!!on)),
+  toggleFullscreen: () => ipcRenderer.invoke('win:toggleFullscreen'),
+  onPaletteOpen: cb => ipcRenderer.on('palette:open', () => cb()),
   watchTop: (on, edge) => ipcRenderer.send('win:watchTop', !!on, edge === 'left' ? 'left' : 'top'),
   onTop: cb => ipcRenderer.on('win:top', () => cb()),
   gameShape: d => ipcRenderer.send('game:shape', d),

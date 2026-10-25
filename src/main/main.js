@@ -187,6 +187,11 @@ function trackFullscreen(win) {
   win.webContents.on('did-finish-load', send);
 }
 // Hide bar: the lights go away with the toolbar and come back when it peeks out.
+// Full screen from the page (the search box's Full screen: the same as View › Toggle Full Screen)
+appIpc.handle('win:toggleFullscreen', e => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (win && !win.isDestroyed()) win.setFullScreen(!win.isFullScreen());
+});
 appIpc.on('win:lights', (e, on) => {
   const win = BrowserWindow.fromWebContents(e.sender);
   if (!win || process.platform !== 'darwin') return;
@@ -563,6 +568,15 @@ app.on('web-contents-created', (_e, wc) => {
     if (host && !host.isDestroyed() && appContents(host)) host.send('view:pressed', wc.id);
   });
   wc.on('destroyed', () => lastInput.delete(wc.id));
+  // Ctrl+K (⌘K on a Mac) in a stream or chat: a web view keeps its keys, so the search box of the window holding it opens
+  if (wc.getType() === 'webview') wc.on('before-input-event', (ev, input) => {
+    const mod = process.platform === 'darwin' ? input.meta && !input.control : input.control && !input.meta;
+    if (input.type !== 'keyDown' || !mod || input.alt || input.shift || String(input.key).toLowerCase() !== 'k') return;
+    const host = wc.hostWebContents;
+    if (!host || host.isDestroyed() || !appContents(host)) return;
+    ev.preventDefault();
+    host.send('palette:open');
+  });
   wc.setWindowOpenHandler(({ url }) => {
     const fromApp = appContents(wc), recent = Date.now() - (lastInput.get(wc.id) || 0) < 5000;
     const how = guard.popupFor(url, { fromApp, recent });
@@ -2201,6 +2215,11 @@ function accountItem(plat, name) {
   if (!who) return { label: `Log in to ${name}…`, click: () => (plat === 'youtube' ? openLogin('youtube') : showMain()?.webContents.send('menu:account', { platform: plat, action: 'login' })) };
   return { label: `Log out of ${name}${typeof who === 'string' ? ` (${who})` : ''}`, click: () => showMain()?.webContents.send('menu:account', { platform: plat, action: 'logout' }) };
 }
+// The app window to open the search box in: the one you're in (the streams window too), else the main window
+function paletteWin() {
+  const f = BrowserWindow.getFocusedWindow();
+  return f && !f.isDestroyed() && appContents(f.webContents) && f !== switcherWin ? f : showMain();
+}
 function buildMenu() {
   const isMac = process.platform === 'darwin';
   const settingsItem = { label: 'Settings…', accelerator: 'CmdOrCtrl+,', click: () => showSettings() };
@@ -2227,6 +2246,9 @@ function buildMenu() {
     ]},
     { role: 'editMenu' },
     { label: 'View', submenu: [
+      // (the page and the web views handle the keys themselves: the menu shows them, and only a click comes from here)
+      { label: 'Search and actions…', accelerator: 'CmdOrCtrl+K', registerAccelerator: false, click: (_i, _w, ev) => { if (!(ev && ev.triggeredByAccelerator)) paletteWin()?.webContents.send('palette:open'); } },
+      { type: 'separator' },
       { role: 'reload', label: 'Reload everything' },
       { role: 'togglefullscreen' },
       { type: 'separator' },
