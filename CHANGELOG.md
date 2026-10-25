@@ -2,7 +2,10 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.21 (current)
+## 0.3.22 (current)
+- Fix the listener warnings in the error log, and move to safeStorage's async calls before Electron 46
+
+## 0.3.21
 - Copy a chat message's text, with or without emotes, or its HTML
 - Support and raids on the stream's picture: who and what along its bottom edge, in any layout
 - Support alerts on Kick: one alert per gift, and KICKs and sub celebrations alert again
