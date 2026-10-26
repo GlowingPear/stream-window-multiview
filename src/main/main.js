@@ -251,7 +251,7 @@ function openStreamsWindow(specs = []) {
     // Closing the streams window on its own sends its streams back to the main window.
     if (!quitting && mainWin) { mainWin.webContents.send('streams:returned', lastStreams); }
     lastStreams = [];
-    pearLink?.streamsClosed();   // its players are gone (Connected apps)
+    pearLink?.then(l => l?.streamsClosed());   // its players are gone (Connected apps)
     if (!quitting) mainWin?.webContents.send('streams:state', false);
   });
   mainWin?.webContents.send('streams:state', true);
@@ -629,35 +629,35 @@ function activityChanged() {
   if (activityTimer) return;
   activityTimer = setTimeout(() => { activityTimer = null; if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('link:activity'); }, 300);
 }
+// The link, once made (a promise: it asks safeStorage whether it can encrypt first), or null when it can't be.
 function getPearLink() {
   if (pearLink !== undefined) return pearLink;
-  try {
-    const { createPearLink } = require('./link');
-    const appWins = () => [mainWin, streamsWin].filter(w => w && !w.isDestroyed());
-    pearLink = createPearLink({
-      version: app.getVersion(), userData: app.getPath('userData'), appData: app.getPath('appData'),
-      dev: !app.isPackaged && !!process.env.SMV_DEV_DATA, safeStorage,
-      send: st => appWins().forEach(w => w.webContents.send('link:state', st)),
-      activity: activityChanged,
-      log: (level, text) => { if (level !== 'info') console.warn('[grapevine]', text); }
-    });
-  } catch (e) { console.warn('Connected apps are unavailable:', e.message); pearLink = null; }   // e.g. its package not installed yet
+  const appWins = () => [mainWin, streamsWin].filter(w => w && !w.isDestroyed());
+  pearLink = Promise.resolve().then(() => require('./link').createPearLink({
+    version: app.getVersion(), userData: app.getPath('userData'), appData: app.getPath('appData'),
+    dev: !app.isPackaged && !!process.env.SMV_DEV_DATA, safeStorage,
+    send: st => appWins().forEach(w => w.webContents.send('link:state', st)),
+    activity: activityChanged,
+    log: (level, text) => { if (level !== 'info') console.warn('[grapevine]', text); }
+  })).catch(e => { console.warn('Connected apps are unavailable:', e.message); return null; });   // e.g. its package not installed yet
   return pearLink;
 }
+// Runs fn with the link, or gives `none` without one.
+const withLink = (fn, none = null) => getPearLink().then(l => l ? fn(l) : none);
 const fromStreams = e => !!streamsWin && e.sender === streamsWin.webContents;
-mainIpc.handle('link:set', (_e, on) => getPearLink()?.setOn(on) ?? null);
-appIpc.handle('link:state', () => getPearLink()?.state() ?? null);
-mainIpc.handle('link:disconnect', () => getPearLink()?.disconnect() ?? null);
-mainIpc.handle('link:pair-again', () => getPearLink()?.pairAgain() ?? null);
-mainIpc.handle('link:allow', () => getPearLink()?.allowPairing() ?? null);
-appIpc.handle('link:icon', () => getPearLink()?.icon() ?? '');
-appIpc.handle('link:show', () => getPearLink()?.showPearDrops() ?? { shown: false });
-appIpc.handle('link:showReward', () => getPearLink()?.showReward() ?? { shown: false });
-appIpc.handle('link:test', () => getPearLink()?.test() ?? { ok: false, reason: 'unknown', text: "Connected apps aren't available in this copy" });
-appIpc.handle('link:activity', (_e, opts) => getPearLink()?.activityPage(pageOptions(opts)) ?? null);
-appIpc.on('link:note', (_e, text) => getPearLink()?.playersNote(text));
-appIpc.on('link:players', (e, report) => { try { getPearLink()?.playersReport(fromStreams(e) ? 'streams' : 'main', report); } catch (err) { console.warn('[grapevine]', err.message); } });
-app.on('before-quit', () => { pearLink?.stop(); });
+mainIpc.handle('link:set', (_e, on) => withLink(l => l.setOn(on)));
+appIpc.handle('link:state', () => withLink(l => l.state()));
+mainIpc.handle('link:disconnect', () => withLink(l => l.disconnect()));
+mainIpc.handle('link:pair-again', () => withLink(l => l.pairAgain()));
+mainIpc.handle('link:allow', () => withLink(l => l.allowPairing()));
+appIpc.handle('link:icon', () => withLink(l => l.icon(), ''));
+appIpc.handle('link:show', () => withLink(l => l.showPearDrops(), { shown: false }));
+appIpc.handle('link:showReward', () => withLink(l => l.showReward(), { shown: false }));
+appIpc.handle('link:test', () => withLink(l => l.test(), { ok: false, reason: 'unknown', text: "Connected apps aren't available in this copy" }));
+appIpc.handle('link:activity', (_e, opts) => withLink(l => l.activityPage(pageOptions(opts))));
+appIpc.on('link:note', (_e, text) => withLink(l => l.playersNote(text)));
+appIpc.on('link:players', (e, report) => { const role = fromStreams(e) ? 'streams' : 'main'; withLink(l => l.playersReport(role, report)).catch(err => console.warn('[grapevine]', err.message)); });
+app.on('before-quit', () => { pearLink?.then(l => l?.stop()); });
 // A raid one window followed: the other window (main or streams pop-out) follows it too.
 appIpc.on('raid:followed', (e, from, to) => {
   if (typeof from !== 'string' || typeof to !== 'string' || !validCh(normCh(from)) || !validCh(normCh(to))) return;
