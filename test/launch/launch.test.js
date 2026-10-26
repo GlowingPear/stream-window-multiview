@@ -41,7 +41,9 @@ test('the desktop app starts, adds a stream and quits cleanly', async () => {
   });
   await stubExists(app);
   const mainErrors = [];
-  app.process().stderr.on('data', d => { const s = String(d); if (/Uncaught|TypeError|ReferenceError|SyntaxError|Error: /.test(s) && !/(GPU|gpu|dbus|DBus|libva|viz|vaapi|ALSA|pulse)/.test(s)) mainErrors.push(s.trim()); });
+  // (Electron logs a call into a web view whose page went away mid-call, as the page reloads or a player is replaced:
+  // the page's side of it fails quietly, windows/view.js)
+  app.process().stderr.on('data', d => { const s = String(d); if (/Uncaught|TypeError|ReferenceError|SyntaxError|Error: /.test(s) && !/(GPU|gpu|dbus|DBus|libva|viz|vaapi|ALSA|pulse|Render frame was disposed before the request completed)/.test(s)) mainErrors.push(s.trim()); });
 
   try {
     const win = await app.firstWindow();
