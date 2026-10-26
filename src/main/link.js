@@ -4,7 +4,6 @@
 // also says how Kick's daily reward is coming along (rewards.daily), for the toolbar's chest: claiming is there.
 // Pear Drops connects (its slug sorts first); this app only listens. The page decides who's signed in:
 // this only passes things on. Nothing here needs Electron, so the unit tests run it as it is.
-const fs = require('fs');
 const path = require('path');
 const { grapevine } = require('../../package.json');
 
@@ -13,16 +12,17 @@ const PEAR_DROPS = 'com.streamorchard.peardrops';
 // opts: version (this app's), userData and appData (Electron's folders), dev (a developer copy or a test),
 // env, safeStorage (to encrypt the pairing keys, when it can), send(state) (to both windows), activity() (the
 // Activity log has something new), and for the tests timing, log and strict (a message that doesn't fit its
-// schema throws).
-function createPearLink({ version, userData, appData, dev = false, env = process.env, safeStorage = null, send = () => {}, activity: changed = () => {}, timing, log, strict } = {}) {
-  const { createLink, KNOWN_APPS, iconDataUrl, paths } = require('@streamorchard/grapevine');   // (loaded when used)
+// schema throws). Async: it asks safeStorage whether it can encrypt before it reads the pairing keys.
+async function createPearLink({ version, userData, appData, dev = false, env = process.env, safeStorage = null, send = () => {}, activity: changed = () => {}, timing, log, strict } = {}) {
+  const { createLink, fileKeyStore, KNOWN_APPS, iconDataUrl, paths } = require('@streamorchard/grapevine');   // (loaded when used)
   const { createActivity } = require('./activity');
   const self = KNOWN_APPS.find(a => a.id === grapevine.app);
   const peerApp = KNOWN_APPS.find(a => a.id === PEAR_DROPS);
   // Where apps find each other: GRAPEVINE_DIR if set; a developer copy or a test uses a folder of its own, so it
   // never pairs with the apps you really use. Likewise "Not installed" looks in a folder of its own there.
   const place = env.GRAPEVINE_DIR ? { env } : dev ? { env: { ...env, GRAPEVINE_DIR: path.join(userData, 'grapevine') } } : undefined;
-  const keys = safeKeyStore(path.join(userData, 'grapevine.json'), safeStorage);
+  // The pairing keys (<userData>/grapevine.json): read up front, and link.start() waits for them (keys.ready)
+  const keys = fileKeyStore(path.join(userData, 'grapevine.json'), await safeCrypt(safeStorage));
   let on = false;              // the page's link.peardrops setting
   let farming = null;          // the last drops.farming.changed from Pear Drops
   let reward = null;           // the last rewards.daily.changed from Pear Drops
@@ -49,7 +49,7 @@ function createPearLink({ version, userData, appData, dev = false, env = process
     return { on, peer, farming: connected ? farming : null, reward: connected ? reward : null, open: paths.listSlugs(place).includes(peerApp.slug), wait: +env.SMV_LINK_SIGN_BACK_IN_MS || null };
   }
   const push = () => send(state());
-  keys.load().then(push);              // read the pairing keys now: the card says whether they're encrypted
+  keys.ready.then(push);               // the saved keys are read: the card says when it was paired
   link.on('change', push);
   link.on('connected', push);
   link.on('disconnected', () => { farming = null; reward = null; push(); });
@@ -105,7 +105,7 @@ function createPearLink({ version, userData, appData, dev = false, env = process
 
   async function setOn(v) {
     on = !!v;
-    if (on && !running) { running = true; try { await keys.load(); await link.start(); } catch (e) { running = false; if (log) log('error', String(e && e.message || e)); } }
+    if (on && !running) { running = true; try { await link.start(); } catch (e) { running = false; if (log) log('error', String(e && e.message || e)); } }
     else if (!on && running) { running = false; await link.stop(); farming = null; reward = null; }
     link.refresh();
     push();
@@ -132,62 +132,20 @@ function createPearLink({ version, userData, appData, dev = false, env = process
   return { link, state, setOn, disconnect, pairAgain, allowPairing, icon, showPearDrops, showReward, test, activityPage, playersNote, playersReport, streamsClosed, stop };
 }
 
-// The pairing keys, in the same file and form as Grapevine's own fileKeyStore (<userData>/grapevine.json), encrypted
-// with safeStorage's async calls: the sync ones Grapevine's store uses are gone in Electron 46 (what they saved reads
-// the same). Grapevine asks for a key while it connects and can't wait, so every key is read once, before the link
-// starts (load()), and kept in memory; a new one is written as soon as it's encrypted, and never unencrypted when it
-// can be. A key that can't be read (another user, a new keychain) is as good as not paired.
-function safeKeyStore(file, safeStorage) {
-  let peers = {};                    // what's in the file: id -> { key, pairedAt, encrypted? }
-  try { peers = JSON.parse(fs.readFileSync(file, 'utf8')).peers || {}; } catch {}
-  const plain = new Map(), when = new Map();   // id -> the key, read; id -> when it was paired
-  let can = false, ready = null;
-  const save = () => {
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    const tmp = `${file}.${process.pid}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify({ peers }, null, 2), { mode: 0o600 });
-    fs.renameSync(tmp, file);          // all at once: a crash never leaves half a file
-  };
-  async function write(id, key, pairedAt) {
-    if (!can) { peers[id] = { key, pairedAt }; save(); return; }
-    let enc; try { enc = await safeStorage.encryptStringAsync(key); } catch { return; }
-    if (plain.get(id) !== key) return;   // forgotten or paired again meanwhile
-    peers[id] = { key: enc.toString('base64'), encrypted: true, pairedAt };
-    save();
-  }
-  const store = {
-    encrypted: false,                    // (the card says when they aren't)
-    load() {
-      return ready || (ready = (async () => {
-        try { can = !!(safeStorage && await safeStorage.isAsyncEncryptionAvailable()); } catch { can = false; }
-        store.encrypted = can;
-        for (const [id, p] of Object.entries(peers)) {
-          if (!p || typeof p.key !== 'string') continue;
-          when.set(id, p.pairedAt);
-          if (!p.encrypted) { plain.set(id, p.key); continue; }
-          if (!can) continue;
-          try {
-            const { result, shouldReEncrypt } = await safeStorage.decryptStringAsync(Buffer.from(p.key, 'base64'));
-            plain.set(id, result);
-            if (shouldReEncrypt) await write(id, result, p.pairedAt);   // the system's key changed: saved again with the new one
-          } catch {}
-        }
-      })());
-    },
-    get: id => plain.has(id) ? { key: plain.get(id), pairedAt: when.get(id) } : null,
-    set(id, key) {
-      const at = new Date().toISOString();
-      plain.set(id, key); when.set(id, at);
-      write(id, key, at);
-    },
-    delete(id) {
-      plain.delete(id); when.delete(id);
-      if (!(id in peers)) return;
-      delete peers[id];
-      save();
+// How Grapevine's key store encrypts the pairing keys: safeStorage's async calls (the sync ones are gone in Electron
+// 46; what they saved reads the same). A key the system re-keyed is saved again with the new key. Without
+// encryption ({}), keys are stored as they are, and the card says so.
+async function safeCrypt(safeStorage) {
+  let can = false;
+  try { can = !!(safeStorage && await safeStorage.isAsyncEncryptionAvailable()); } catch {}
+  if (!can) return {};
+  return {
+    encrypt: async (t) => (await safeStorage.encryptStringAsync(t)).toString('base64'),
+    decrypt: async (t) => {
+      const { result, shouldReEncrypt } = await safeStorage.decryptStringAsync(Buffer.from(t, 'base64'));
+      return { text: result, reEncrypt: shouldReEncrypt };
     }
   };
-  return store;
 }
 
 // Two windows' players.changed fields as one: a site is signed in or out the same in both (the main window's
@@ -206,4 +164,4 @@ function mergePlayers(a, b) {
   return { platforms };
 }
 
-module.exports = { createPearLink, mergePlayers, safeKeyStore, PEAR_DROPS };
+module.exports = { createPearLink, mergePlayers, safeCrypt, PEAR_DROPS };
