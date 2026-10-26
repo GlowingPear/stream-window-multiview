@@ -1,6 +1,7 @@
 // Connected apps in the real desktop app, with Grapevine's stand-in Pear Drops in a folder of the test's own (never
 // the real one): Kick stream players sign out while it farms and back in after the wait, chats stay signed in,
-// Pear Drops hears it, Test, the widget, the locked Kick chip in Logins, the Activity log, and Disconnect.
+// Pear Drops hears it, Test, the widget, the locked Kick chip in Logins, the Activity log, the pairing kept when
+// the app starts again, and Disconnect.
 const test = require('node:test');
 const fs = require('fs');
 const os = require('os');
@@ -162,6 +163,25 @@ test('Pear Drops quits: signed back in after the wait, and Test says it isn\'t o
   await a.win.waitForFunction(() => /^Pear Drops isn't open$/.test(document.querySelector('#caPearDrops .ca-line').textContent)).catch(async e => {
     e.message += ' (the line: ' + await a.win.textContent('#caPearDrops .ca-line') + ')'; throw e;
   });
+});
+
+test('the app started again: it connects with the key it kept, encrypted, without asking to pair again', T, async () => {
+  const keys = () => JSON.parse(fs.readFileSync(path.join(a.data, 'Stream Multiview', 'grapevine.json'), 'utf8')).peers;
+  assert.equal(keys()[PD].encrypted, true, 'kept encrypted (the system\'s key store)');
+  assert.ok(!JSON.stringify(keys()).includes(peerKeys.get('com.glowingpear.streammultiview').key), 'never as it is');
+  const { data, errors } = a;
+  await a.close();
+  assert.deepEqual(errors, [], 'the page had no errors');
+  a = await launchApp({ data });
+  await a.app.evaluate(({ ipcMain }) => { ipcMain.removeHandler('me:detect'); ipcMain.handle('me:detect', () => 'pearfan'); });
+  const seen = new Set();
+  await startPeer();
+  await until(async () => { const s = await status(); seen.add(s); return s === 'connected'; }, 15000);
+  assert.ok(!seen.has('confirm'), 'no Allow to press: still paired');
+  await a.win.evaluate(() => openSettings('apps'));
+  assert.match(await a.win.textContent('#caPearDrops .ca-chip'), /^Connected · 0\.1\.12$/);
+  await peer.stop();
+  await until(async () => (await status()) !== 'connected', 15000);
 });
 
 test('Disconnect forgets the pairing and switches the link off', T, async () => {

@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { createPearLink, mergePlayers, PEAR_DROPS } = require('../../../src/main/link');
+const { createPearLink, mergePlayers, safeCrypt, PEAR_DROPS } = require('../../../src/main/link');
 // Grapevine is a dependency of the app: the quick tests (npm test with nothing installed) skip what needs it,
 // and the app tests, after npm install, run everything.
 const HAVE = (() => { try { require.resolve('@streamorchard/grapevine'); return true; } catch { return false; } })();
@@ -30,7 +30,7 @@ async function setup(t, { peer = true, peerTiming = {}, provides = { 'drops.farm
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-link-'));
   const dir = path.join(root, 'gv');
   const sent = [];
-  const pl = createPearLink({ version: '0.4.0', userData: path.join(root, 'data'), appData: root, dev: true, env: { GRAPEVINE_DIR: dir }, send: st => sent.push(st), timing: FAST, strict: true, ...o });
+  const pl = await createPearLink({ version: '0.4.0', userData: path.join(root, 'data'), appData: root, dev: true, env: { GRAPEVINE_DIR: dir }, send: st => sent.push(st), timing: FAST, strict: true, ...o });
   const stand = peer ? await standInPeer({ as: PEAR_DROPS, dir, version: '0.1.6', provides, uses: { players: '1.0' }, timing: { ...FAST, ...peerTiming } }) : null;
   const heard = [];
   stand?.link.on('event', (from, name, params) => heard.push({ name, params }));
@@ -204,8 +204,26 @@ test('with safeStorage, the pairing keys are stored encrypted', NEEDS, async t =
   assert.match(Buffer.from(kept.key, 'base64').toString(), /^enc:/);
 });
 
-test('the key store: keys saved before (by the sync calls) still read, a rotated key is saved again, one that can\'t be read is not paired', async t => {
-  const { safeKeyStore } = require('../../../src/main/link');
+test('the pairing kept: the app started again connects with its key, without asking to pair again', NEEDS, async t => {
+  const safe = fakeSafe();
+  const { pl, stand, root, dir } = await setup(t, { safeStorage: safe });
+  await pl.setOn(true);
+  await allowed(pl, stand);
+  const file = path.join(root, 'data', 'grapevine.json');
+  await until(() => JSON.parse(fs.readFileSync(file, 'utf8')).peers[PEAR_DROPS]);
+  await pl.stop();
+  const again = await createPearLink({ version: '0.4.0', userData: path.join(root, 'data'), appData: root, dev: true, env: { GRAPEVINE_DIR: dir }, safeStorage: safe, timing: FAST, strict: true });
+  t.after(() => again.stop());
+  await until(() => again.state().peer.pairedAt);
+  const seen = new Set();
+  await again.setOn(true);
+  await until(() => { seen.add(again.state().peer.status); return connected(again); });
+  assert.ok(!seen.has('confirm'), 'no Allow: still paired');
+  await again.stop();
+});
+
+test('the key store: keys saved before (by the sync calls, or unencrypted) still read, a rotated key is saved again, one that can\'t be read is not paired', NEEDS, async t => {
+  const { fileKeyStore } = require('@streamorchard/grapevine');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-keys-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const file = path.join(root, 'grapevine.json');
@@ -213,62 +231,48 @@ test('the key store: keys saved before (by the sync calls) still read, a rotated
   fs.writeFileSync(file, JSON.stringify({ peers: {
     a: { key: enc('KEY-A'), encrypted: true, pairedAt: '2026-10-01T00:00:00.000Z' },       // as fileKeyStore wrote it with encryptString
     b: { key: 'PLAIN-B', pairedAt: '2026-10-02T00:00:00.000Z' },                          // from before encryption
-    c: { key: Buffer.from('other keychain').toString('base64'), encrypted: true, pairedAt: 'x' },
-    d: null
+    c: { key: Buffer.from('other keychain').toString('base64'), encrypted: true, pairedAt: 'x' }
   } }));
   const read = () => JSON.parse(fs.readFileSync(file, 'utf8')).peers;
-  const ks = safeKeyStore(file, fakeSafe({ rotate: true }));
-  assert.equal(ks.get('a'), null, 'nothing until read');
-  await ks.load();
-  assert.equal(ks.load(), ks.load(), 'read once');
+  let rotated = 0;
+  const ks = fileKeyStore(file, await safeCrypt({ ...fakeSafe({ rotate: true }), encryptStringAsync: async s => { rotated++; return Buffer.from('enc:' + s); } }));
+  await ks.ready;
   assert.equal(ks.encrypted, true);
   assert.deepEqual(ks.get('a'), { key: 'KEY-A', pairedAt: '2026-10-01T00:00:00.000Z' });
   assert.deepEqual(ks.get('b'), { key: 'PLAIN-B', pairedAt: '2026-10-02T00:00:00.000Z' });
   assert.equal(ks.get('c'), null, 'can\'t be read: as good as not paired');
+  await until(() => rotated === 1);
   assert.equal(read().a.encrypted, true, 'rotated: saved again, still encrypted');
-  // a new key: kept at once, written once encrypted, never unencrypted
+  // a new key: written encrypted, never as it is
   ks.set('e', 'KEY-E');
-  assert.equal(ks.get('e').key, 'KEY-E');
-  await new Promise(r => setTimeout(r, 10));
+  await until(() => read().e);
   assert.equal(Buffer.from(read().e.key, 'base64').toString(), 'enc:KEY-E');
   assert.ok(!JSON.stringify(read()).includes('KEY-E'));
-  // paired again before the first one was encrypted: only the newest is written; forgotten meanwhile: not written
-  ks.set('f', 'OLD'); ks.set('f', 'NEW'); ks.set('g', 'GONE'); ks.delete('g');
-  await new Promise(r => setTimeout(r, 10));
-  assert.equal(Buffer.from(read().f.key, 'base64').toString(), 'enc:NEW');
-  assert.equal(read().g, undefined);
-  ks.delete('a'); ks.delete('nobody');
-  assert.equal(read().a, undefined);
-  assert.equal(ks.get('a'), null);
-  // no encryption here: kept as they are, and the card says so
-  const plain = safeKeyStore(path.join(root, 'plain.json'), fakeSafe({ available: false }));
-  await plain.load();
-  assert.equal(plain.encrypted, false);
-  plain.set('p', 'KEY-P');
-  assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'plain.json'), 'utf8')).peers.p.key, 'KEY-P');
-  const broken = safeKeyStore(file, { isAsyncEncryptionAvailable: () => Promise.reject(new Error('no keychain')) });
-  await broken.load();
-  assert.equal(broken.encrypted, false);
-  assert.equal(broken.get('e'), null, 'encrypted keys can\'t be read without it');
-  const failing = safeKeyStore(path.join(root, 'f.json'), { ...fakeSafe(), encryptStringAsync: () => Promise.reject(new Error('locked')) });
-  await failing.load();
-  failing.set('x', 'KEY-X');
-  await new Promise(r => setTimeout(r, 10));
-  assert.equal(fs.existsSync(path.join(root, 'f.json')), false, 'couldn\'t encrypt: not written unencrypted');
-  assert.equal(safeKeyStore(path.join(root, 'none.json'), null).get('x'), null);
+});
+
+test('safeCrypt: safeStorage\'s async calls, or none (keys as they are) when it can\'t encrypt', async () => {
+  const c = await safeCrypt(fakeSafe({ rotate: true }));
+  const stored = await c.encrypt('KEY');
+  assert.equal(Buffer.from(stored, 'base64').toString(), 'enc:KEY', 'base64, as Grapevine stores it');
+  assert.deepEqual(await c.decrypt(stored), { text: 'KEY', reEncrypt: true });
+  assert.deepEqual(await (await safeCrypt(fakeSafe())).decrypt(stored), { text: 'KEY', reEncrypt: false });
+  await assert.rejects(c.decrypt(Buffer.from('other keychain').toString('base64')));
+  assert.deepEqual(await safeCrypt(fakeSafe({ available: false })), {});
+  assert.deepEqual(await safeCrypt({ isAsyncEncryptionAvailable: () => Promise.reject(new Error('no keychain')) }), {});
+  assert.deepEqual(await safeCrypt(null), {});
 });
 
 test('where it looks for apps: GRAPEVINE_DIR, else a developer copy\'s own folder, else the system\'s', NEEDS, async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-link-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const dev = createPearLink({ version: '0.4.0', userData: root, appData: root, dev: true, env: {} });
+  const dev = await createPearLink({ version: '0.4.0', userData: root, appData: root, dev: true, env: {} });
   fs.mkdirSync(path.join(root, 'demo-apps', 'Pear Drops'), { recursive: true });
   assert.equal(dev.state().peer.installed, true, 'a developer copy: "installed" in its own folder');
   assert.equal(dev.state().open, false);
   await dev.setOn(true);
   assert.ok(fs.existsSync(path.join(root, 'grapevine')) || paths.listSlugs({ env: { GRAPEVINE_DIR: path.join(root, 'grapevine') } }).includes('stream-multiview'), 'its own folder');
   await dev.stop();
-  const real = createPearLink({ version: '0.4.0', userData: root, appData: path.join(root, 'nowhere'), env: {} });
+  const real = await createPearLink({ version: '0.4.0', userData: root, appData: path.join(root, 'nowhere'), env: {} });
   assert.equal(real.state().peer.installed, false, 'the installed app looks in the system\'s app data folder');
   assert.equal(real.state().wait, null);
 });
@@ -276,9 +280,9 @@ test('where it looks for apps: GRAPEVINE_DIR, else a developer copy\'s own folde
 test('a link that can\'t start (another copy is using Grapevine) says why', NEEDS, async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-link-'));
   const env = { GRAPEVINE_DIR: path.join(root, 'gv'), SMV_LINK_SIGN_BACK_IN_MS: '500' };
-  const first = createPearLink({ version: '0.4.0', userData: path.join(root, 'a'), appData: root, env });
+  const first = await createPearLink({ version: '0.4.0', userData: path.join(root, 'a'), appData: root, env });
   const logs = [];
-  const second = createPearLink({ version: '0.4.0', userData: path.join(root, 'b'), appData: root, env, log: (level, text) => logs.push([level, text]) });
+  const second = await createPearLink({ version: '0.4.0', userData: path.join(root, 'b'), appData: root, env, log: (level, text) => logs.push([level, text]) });
   t.after(async () => { await first.stop(); await second.stop(); fs.rmSync(root, { recursive: true, force: true }); });
   await first.setOn(true);
   const st = await second.setOn(true);
