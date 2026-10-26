@@ -41,6 +41,7 @@ test('a chat at its newest messages follows new ones the site left below, within
 test('scrolling up to read is left alone; scrolling back down follows again; now() goes to the newest at once', async t => {
   const page = await chatOf(t);
   await wheelBy(page, -400);
+  await until(page, () => !window.__kmvStick.state().follow);
   const at = await page.$eval('#sb-list', b => b.scrollTop);
   await say(page, 20);
   await page.waitForTimeout(1500);
@@ -48,6 +49,7 @@ test('scrolling up to read is left alone; scrolling back down follows again; now
   assert.equal((await page.evaluate(() => window.__kmvStick.state())).follow, false);
   // back down by yourself: it follows again
   await wheelBy(page, 5000);
+  await until(page, () => window.__kmvStick.state().follow);   // its scroll seen before more messages come
   await say(page, 10);
   await until(page, () => { const b = document.getElementById('sb-list'); return b.scrollHeight - b.clientHeight - b.scrollTop <= 2; });
   // switched to it (Chat Stage, Chat Rail): the newest at once, even when you were reading further up

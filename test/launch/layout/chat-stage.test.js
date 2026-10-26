@@ -103,8 +103,13 @@ test('Chat Stage: a chat put on the stage shows its newest messages, even ones t
 test('Chat Stage: the stage chat you scrolled up to read stays there when its text size changes', { timeout: 60000 }, async () => {
   const on = await a.win.$eval('#stage .win.stg-chat .title', e => e.textContent);
   for (let i = 0; i < 30 && await fromBottom(on) > 2; i++) await new Promise(r => setTimeout(r, 100));
-  // you scroll up with the wheel to read
-  await inView(a.win, on, 'chat', () => { const c = document.getElementById('chat'); c.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: -600 })); c.scrollTop -= 600; });
+  // you scroll up with the wheel to read (again if the chat put itself back at the bottom before it saw that scroll:
+  // a hidden window's scroll events can come late)
+  const readingUp = () => inView(a.win, on, 'chat', () => window.__kmvStick && !window.__kmvStick.state().follow);
+  for (let i = 0; i < 3 && !(await readingUp()); i++) {
+    await inView(a.win, on, 'chat', () => { const c = document.getElementById('chat'); c.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: -600 })); c.scrollTop -= 600; });
+    for (let j = 0; j < 10 && !(await readingUp()); j++) await new Promise(r => setTimeout(r, 100));
+  }
   const up = await fromBottom(on);
   assert.ok(up > 300, `scrolled up (${up} px)`);
   await a.win.click('.stg-size [data-s="-1"]');               // A−: the page inside is resized

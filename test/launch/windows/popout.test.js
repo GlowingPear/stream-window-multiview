@@ -92,12 +92,20 @@ test('Pop out streams: streams move to their own window with Tile, Spotlight and
   // drag one stream onto another: they swap spots (measured once Spotlight has finished moving them; on a busy
   // machine that takes longer than the wait above)
   await settled(sw);
-  const notes = await dragOnto(sw, 'alpha', 'bravo');
-  if (notes.length) ctx.diagnostic('swap drag: ' + notes.join('; '));      // in the log even when the second press worked
-  await sw.waitForFunction(() => {                      // the swap animates: wait for it (longer on a busy machine)
+  const swapped = () => sw.waitForFunction(() => {      // the swap animates: wait for it (longer on a busy machine)
     const w = Object.fromEntries([...document.querySelectorAll('#stage .win.stream')].map(e => [e.querySelector('.title').textContent, e.offsetWidth]));
     return w.alpha > w.bravo * 2;
-  }, null, { timeout: 5000 }).catch(() => {});
+  }, null, { timeout: 5000 }).then(() => true, () => false);
+  const notes = await dragOnto(sw, 'alpha', 'bravo');
+  // a drop the page didn't get (on a busy machine the let-go can go missing): say what the page was left showing,
+  // and drag once more
+  if (!await swapped()) {
+    notes.push('no swap after the drop: ' + await sw.evaluate(() => `dragging ${document.body.classList.contains('dragging')}, lifted ${[...document.querySelectorAll('#stage .win.lifted .title')].map(e => e.textContent).join(', ') || 'none'}`));
+    await settled(sw);
+    notes.push(...await dragOnto(sw, 'alpha', 'bravo'));
+    await swapped();
+  }
+  if (notes.length) ctx.diagnostic('swap drag: ' + notes.join('; '));      // in the log even when the second try worked
   const after = await sw.$$eval('#stage .win.stream', l => Object.fromEntries(l.map(e => [e.querySelector('.title').textContent, e.offsetWidth])));
   assert.ok(after.alpha > after.bravo * 2, `dropped on the big one, alpha takes its place (${JSON.stringify(after)}${notes.length ? '; ' + notes.join('; ') : ''})`);
 
