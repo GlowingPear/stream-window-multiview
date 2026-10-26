@@ -2,7 +2,12 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.26 (current)
+## 0.3.27 (current)
+- Tests: four that failed now and then on CI wait for what they depend on
+- Pairing keys: Grapevine's own key store instead of a copy
+- Contributing: fix gaps in Grapevine's library there, not with a copy here
+
+## 0.3.26
 - Mac: pressing the toolbar's empty space closes an open menu
 - Chat over streams: your own messages show too, and 1 message at once (the latest)
 
