@@ -24,6 +24,7 @@ import { fromApp, fromSite, siteMessage } from '../shared/incoming.js';
 import { viewPressed } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { mountCapture, openCapturePicker } from './capture.js';
+import { playQuality, tabKeyAgent, tabKeyJs } from './frames.js';
 import { applyPlay } from './pause.js';
 import { watchRaid } from './raids.js';
 import { watchStuck } from './stuck.js';
@@ -110,12 +111,14 @@ function mountView(w){
       else setMuted(frame, false);
       if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); watchStuck(w); }
       if (w.kind === 'chat') setZoom(frame, chatZoom());
+      if (w.kind === 'stream' && w.hiddenTab) setTimeout(() => playQuality(w), 4000);   // a tab you're not watching (windows/frames.js)
       if (w.kind === 'chat' && w === blownWin()) blowUp(w, true);
       if (w.kind === 'chat') { const css = platform(w.channel).chatCss; if (css) addCss(frame, css); }
       if (w.kind === 'chat' && ROLE === 'main') injectMention(w);
       if (w.kind === 'chat') runIn(frame, `${EMOTE_JS};window.__kmvEmote.on(${emoteOn})`);
       if (w.kind === 'chat' && newEmotesOn) markNewEmotes(w);
       if (w.kind === 'chat') runIn(frame, MESSAGE_JS);       // the message you right-click (Copy message)
+      if (w.kind === 'chat') runIn(frame, `(${tabKeyAgent})();${tabKeyJs(w)}`);   // Tab in an empty chat box: the next site's tab (windows/frames.js)
       if (w.kind === 'chat') runIn(frame, `${TRANSLATE_JS};${autoTrFor(w.channel) ? 'window.__kmvTr.start(true)' : ''}`);
       if (w.kind === 'chat' && platform(w.channel).pageCommands) runIn(frame, KICK_CMD_JS);
       if (w.kind === 'chat') syncChatName(w);                // Channel name in chat boxes (chat/chat-name.js)

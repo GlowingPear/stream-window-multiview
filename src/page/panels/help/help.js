@@ -35,6 +35,12 @@ const SHORTCUTS = [
     ['Shift+L', 'Lock or unlock the layout'],
     ['S', 'Switch control on / off (floating)']
   ]],
+  ['Linked accounts (a window with a tab per site)', [
+    ['Alt+1 – Alt+3', 'Switch the window you last clicked to its 1st–3rd site'],
+    ['Alt+← / Alt+→', 'Previous / next site'],
+    ['Tab / Shift+Tab', 'In an empty chat box: next / previous site (while you type, the site completes names)'],
+    ['Middle-click a tab', 'Close that tab (+ brings it back)']
+  ]],
   ['Chats', [
     ['Z', 'Blow up chat on click on / off'],
     ['Shift+Z', 'Blow up the chat you last clicked now (again, or Esc, puts it back)']

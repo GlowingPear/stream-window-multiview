@@ -1,4 +1,4 @@
-import { BAR, GAP, ROLE, colsMode, coreVars, lastLayout, wins } from '../core.js';
+import { BAR, GAP, ROLE, colsMode, coreVars, lastLayout, shownWins } from '../core.js';
 import { buildCols } from './columns.js';
 import { SH, SW, setRect } from './geometry.js';
 import { applyRects, chatRects, colKey, gridRects, mkDiv, setColsMode, switchMode } from './layouts.js';
@@ -50,7 +50,7 @@ function gameLayout(){
   if (colsMode) setColsMode(false);
   coreVars.lastLayout = 'game';
   const { game, panel } = gameRects();
-  const occ = gameMode === 'window' && gameKey ? wins.find(w => colKey(w) === gameKey && w.kind !== 'chat') : null;
+  const occ = gameMode === 'window' && gameKey ? shownWins().find(w => colKey(w) === gameKey && w.kind !== 'chat') : null;
   if (gameMode === 'window' && gameKey && !occ) gameKey = null;
   Object.assign(gameArea.style, { display: 'block', left: game.x + 'px', top: game.y + 'px', width: game.w + 'px', height: game.h + 'px' });
   Object.assign(gameBar.style, { display: 'flex', left: game.x + 'px', top: game.y + 'px', width: game.w + 'px', height: (GBAR - 4) + 'px' });
@@ -131,7 +131,7 @@ function gameTick(){
       if (r.right <= hole.x || r.left >= hole.x + hole.w || r.bottom <= hole.y || r.top >= hole.y + hole.h) return;
       keep.push({ x: r.left, y: r.top, w: r.width, h: r.height });
     };
-    wins.forEach(w => add(w.el));       // windows you put over the game stay visible on top of it
+    shownWins().forEach(w => add(w.el));       // windows you put over the game stay visible on top of it
     document.querySelectorAll('#featSwitch.floating, #fsResize, #miniClip, #toast:not([hidden]), .menu:not([hidden]), #savedPanel:not([hidden]), .popover:not([hidden]), #msg').forEach(el => {
       if (getComputedStyle(el).display !== 'none') add(el);
     });

@@ -1,0 +1,316 @@
+// Linked accounts (Settings › Linked accounts, issue #202): a streamer's Kick, Twitch and YouTube accounts as one,
+// with their windows as one window with a tab per site. Off by default: then everything is as before.
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { setup, add, press } = require('../app');
+const { openApp } = setup();
+
+const now = Date.now();
+const LIVE = {
+  quietkoala: { live: true, viewers: 1240, title: 'Ranked', category: 'Valorant', checked: now },
+  'tw:quietkoala': { live: true, viewers: 640, title: 'Ranked', category: 'VALORANT', checked: now },
+  'yt:@quietkoala': { live: false, checked: now },
+  novalynx: { live: true, viewers: 312, title: 'cozy', checked: now },
+  'tw:novalynx': { live: false, checked: now }
+};
+const STREAMER = { id: 's1', name: '', main: 'quietkoala', accounts: ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala'] };
+// saved channels, a linked streamer, and the switch (on or off); then who's live
+async function linkedApp(t, { on = true, streamers = [STREAMER], saved = ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala', 'novalynx'], extra = {} } = {}){
+  const set = { saved: JSON.stringify(saved), intro: JSON.stringify({ done: true, tips: true }), linkedTip: '1', ...(streamers ? { streamers: JSON.stringify(streamers) } : {}), ...(on ? { linkedOn: '1' } : {}), ...extra };
+  // (only the first time the page loads: a reload keeps what the test changed)
+  const page = await openApp(t, { init: `if (window === top && !sessionStorage.getItem('set')){ sessionStorage.setItem('set', '1'); for (const [k, v] of Object.entries(${JSON.stringify(set)})) localStorage.setItem('kickMultiview.' + k, v); }` });
+  await page.evaluate(live => window.smvNotes.liveStatus(live), LIVE);
+  return page;
+}
+// every window, the tabs you can't see too: kind, channel, its window (frame), whether it's hidden
+const all = page => page.evaluate(() => window.openWins().map(w => ({ kind: w.kind, ch: w.channel, frame: w.frame || null, hidden: !!w.hiddenTab, split: !!w.split, sbs: !!w.sbs, muted: w.muted, x: w.x, y: w.y, w: w.w, h: w.h })));
+const shown = async (page, kind) => (await all(page)).filter(w => !w.hidden && (!kind || w.kind === kind));
+const tabs = (page, kind = 'stream') => page.$$eval(`#stage .win.${kind}:not(.tab-hidden) .ptab`, bs => bs.map(b => b.className.replace(/\s+/g, ' ').trim()));
+
+test('off by default: one row and one window per account, each window with its own site icon and no suffix or tag', async t => {
+  const page = await linkedApp(t, { on: false });
+  await page.click('#savedBtn');
+  assert.equal(await page.locator('#savedList .sv:not(.sv-acc)').count(), 4, 'every account its own row');
+  assert.equal(await page.locator('#savedList .sv-sug').count(), 0, 'no suggestions');
+  await page.click('#savedBtn');
+  await add(page, 'quietkoala', 'twitch.tv/quietkoala');
+  const w = await all(page);
+  assert.equal(w.length, 4, 'two streams and two chats');
+  assert.ok(w.every(x => !x.frame && !x.hidden), 'no tabs');
+  assert.deepEqual(await page.$$eval('#stage .win.stream .ptab', bs => bs.map(b => b.textContent + ':' + b.classList.contains('solo'))), ['K:true', 'T:true']);
+  assert.equal(await page.locator('#stage .win .tag').count(), 0, 'no STREAM / CHAT tag');
+  assert.deepEqual(await page.$$eval('#stage .win.stream .col-pick option', os => [...new Set(os.map(o => o.textContent))]), ['quietkoala'], 'no "· Twitch" after the name');
+  assert.equal(await page.locator('#stage .win [data-a=link]:not([hidden])').count(), 0, 'no Link accounts… in ⋯');
+  assert.equal(await page.evaluate(() => window.linkedApi.suggestions().length), 0);
+});
+
+test('on: one Channels row for the streamer, its accounts under ▾, and the counts are of streamers', async t => {
+  const page = await linkedApp(t);
+  await page.click('#savedBtn');
+  const rows = page.locator('#savedList > .sv');
+  assert.equal(await rows.count(), 2, 'quietkoala once, and novalynx');
+  const q = page.locator('#savedList .sv-multi');
+  assert.deepEqual(await q.locator('.sv-sites .pi').evaluateAll(is => is.map(i => i.textContent + (i.classList.contains('dim') ? '-' : '+'))), ['K+', 'T+', 'Y-']);
+  assert.match(await q.locator('.sv-meta').textContent(), /1\.2K.*640/);
+  assert.equal(await page.textContent('#openLive'), 'Open 2 live');
+  await q.locator('.exp').click();
+  assert.equal(await page.locator('#savedList .sv-acc').count(), 3);
+  assert.match(await page.locator('#savedList .sv-acc').first().textContent(), /quietkoala.*Main/);
+  // search matches any of their accounts
+  await page.fill('#savedInput', 'quietkoa');
+  assert.equal(await page.locator('#savedList .sv-multi').count(), 1);
+});
+
+test('opening them: one stream window and one chat window, a tab per site; switching swaps the sound and the bar', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'both'));
+  const w = await all(page);
+  assert.equal(w.length, 4, 'Kick and Twitch, each a stream and a chat (YouTube is offline: no window until you open it)');
+  assert.equal((await shown(page)).length, 2, 'one window each for streams and chats');
+  assert.deepEqual((await shown(page)).map(x => x.ch), ['quietkoala', 'quietkoala'], 'the main account shows');
+  const hidden = w.find(x => x.kind === 'stream' && x.hidden), lead = w.find(x => x.kind === 'stream' && !x.hidden);
+  assert.deepEqual([hidden.x, hidden.y, hidden.w, hidden.h], [lead.x, lead.y, lead.w, lead.h], 'the hidden tab sits under it, the same size');
+  assert.equal(hidden.muted, true, 'and is muted');
+  assert.deepEqual(await tabs(page), ['ptab kick on live', 'ptab twitch live', 'ptab youtube off']);
+  // the bar's buttons are the site's: Twitch's window has no Like (only YouTube's does) — and switching keeps place and sound
+  await page.evaluate(() => { const w = window.openWins().find(x => x.kind === 'stream' && !x.hiddenTab); w.muted = false; w.vol = 0.5; });
+  await page.click('#stage .win.stream:not(.tab-hidden) .ptab.twitch');
+  const after = await all(page), tw = after.find(x => x.kind === 'stream' && x.ch === 'tw:quietkoala'), k = after.find(x => x.kind === 'stream' && x.ch === 'quietkoala');
+  assert.equal(tw.hidden, false); assert.equal(k.hidden, true);
+  assert.deepEqual([tw.x, tw.y, tw.w, tw.h], [lead.x, lead.y, lead.w, lead.h], 'in the same place');
+  assert.equal(tw.muted, false, 'the sound moves to the tab you watch'); assert.equal(k.muted, true);
+  assert.equal(after.find(x => x.kind === 'chat' && !x.hidden).ch, 'tw:quietkoala', 'the chat follows the stream\'s tab');
+  // ⌥1 goes back (the window you last clicked)
+  await page.click('#stage .win.stream:not(.tab-hidden) .bar .grab');
+  await press(page, 'Alt+Digit1');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'quietkoala');
+});
+
+test('closing one tab leaves the others; + brings it back; the window\'s ✕ closes them all', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'stream'));
+  await page.click('#stage .win.stream:not(.tab-hidden) .ptab.twitch', { button: 'middle' });
+  let w = await all(page);
+  assert.deepEqual(w.map(x => x.ch), ['quietkoala'], 'Twitch\'s tab closed');
+  assert.equal(await page.locator('#stage .win.stream .ptab.twitch').count(), 0, 'and isn\'t a tab any more');
+  await page.click('#stage .win.stream .ptab-add');
+  await page.click('#tabMenu button:has-text("Twitch")');
+  w = await all(page);
+  assert.equal(w.length, 2); assert.equal(w.find(x => !x.hidden).ch, 'tw:quietkoala', 'back, and shown');
+  assert.match(await page.getAttribute('#stage .win.stream:not(.tab-hidden) [data-a=close]', 'title'), /Close quietkoala \(Twitch, Kick\)|Close quietkoala \(Kick, Twitch\)/);
+  await page.click('#stage .win.stream:not(.tab-hidden) [data-a=close]');
+  assert.equal((await all(page)).length, 0);
+});
+
+test('a tab out into its own window and Join; chats side by side', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'both'));
+  await page.evaluate(() => window.frames_.splitTab(window.openWins().find(w => w.kind === 'chat' && w.channel === 'tw:quietkoala')));
+  let chats = (await all(page)).filter(x => x.kind === 'chat');
+  assert.deepEqual(chats.map(x => [x.ch, x.hidden, x.split]), [['quietkoala', false, false], ['tw:quietkoala', false, true]], 'two chat windows');
+  assert.equal(await page.locator('#stage .win.chat .ptab-join').count(), 1, 'the split one has Join');
+  await page.click('#stage .win.chat .ptab-join');
+  chats = (await all(page)).filter(x => x.kind === 'chat');
+  assert.equal(chats.filter(x => !x.hidden).length, 1, 'one chat window again');
+  await page.evaluate(() => window.frames_.setSideBySide(window.openWins().find(w => w.kind === 'chat' && !w.hiddenTab), true));
+  const lead = await page.$eval('#stage .win.chat.sbs-lead', e => getComputedStyle(e).getPropertyValue('--sbs-n').trim());
+  assert.equal(lead, '2');
+  assert.equal(await page.locator('#stage .win.chat.sbs-col').count(), 1, 'the other chat is a column beside it');
+  assert.equal(await page.$eval('#stage .win.chat.sbs-col', e => getComputedStyle(e).opacity), '1');
+});
+
+test('their tabs are kept when the app starts again', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'stream'));
+  await page.click('#stage .win.stream:not(.tab-hidden) .ptab.twitch');
+  await page.waitForTimeout(700);
+  await page.reload();
+  await page.waitForTimeout(500);
+  const w = await all(page);
+  assert.equal(w.length, 2);
+  assert.ok(w[0].frame && w[0].frame === w[1].frame, 'one window');
+  assert.equal(w.find(x => !x.hidden).ch, 'tw:quietkoala', 'the tab you watched');
+});
+
+test('turning it off splits their window into one per site and keeps the streamers; on puts them back together, with Undo', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'stream'));
+  await page.evaluate(() => window.linkedApi.setOn(false));
+  let w = await all(page);
+  assert.ok(w.every(x => !x.frame && !x.hidden), 'every site its own window');
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.streamers')).length), 1, 'the streamer is kept');
+  await page.evaluate(() => window.linkedApi.setOn(true));
+  w = await all(page);
+  assert.equal(w.filter(x => !x.hidden).length, 1, 'together again');
+  assert.match(await page.textContent('#stage .tab-note'), /quietkoala's Kick and Twitch windows are together now/);
+  await page.click('#stage .tab-note button:has-text("Undo")');
+  assert.equal((await all(page)).filter(x => !x.hidden).length, 2);
+});
+
+test('linking with their windows open puts them together; unlinking one account takes its tab out', async t => {
+  const page = await linkedApp(t, { streamers: [] });
+  await add(page, 'novalynx');
+  await page.evaluate(() => window.openWins());
+  await page.click('#savedBtn'); await page.selectOption('#mode', 'stream'); await page.click('#savedBtn');
+  await add(page, 'twitch.tv/novalynx');
+  assert.equal((await shown(page, 'stream')).length, 2);
+  await page.evaluate(() => window.linkedApi.link('novalynx', 'tw:novalynx'));
+  assert.equal((await shown(page, 'stream')).length, 1, 'one stream window');
+  await page.evaluate(() => window.linkedApi.unlink('tw:novalynx'));
+  assert.equal((await shown(page, 'stream')).length, 2, 'apart again');
+});
+
+test('raids: a tab you don\'t watch, or while another site is live, is only a note; the last live one is followed, with Back to', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'stream'));
+  // the Twitch tab (hidden) raids: nothing moves
+  await page.evaluate(() => window.followRaid('tw:quietkoala', 'tw:pixelmoth', true));
+  let w = await all(page);
+  assert.deepEqual(w.map(x => x.ch).sort(), ['quietkoala', 'tw:quietkoala']);
+  // the Kick tab you watch raids while Twitch is live: it switches to Twitch and offers the raid
+  await page.evaluate(() => window.followRaid('quietkoala', 'novalynx', true));
+  w = await all(page);
+  assert.equal(w.find(x => !x.hidden).ch, 'tw:quietkoala');
+  assert.match(await page.textContent('#stage .tab-note'), /quietkoala raided novalynx on Kick/);
+  // now nobody else is live: Twitch's raid is followed, and Back to rebuilds their window
+  await page.evaluate(() => { window.smvNotes.setInfo('quietkoala', { live: false }); window.smvNotes.setInfo('tw:quietkoala', { live: true }); });
+  await page.evaluate(() => window.followRaid('tw:quietkoala', 'tw:emberandoak', true));
+  w = await all(page);
+  assert.deepEqual(w.map(x => x.ch), ['tw:emberandoak'], 'the raided channel took the window');
+  await page.click('#stage .tab-note button:has-text("Back to quietkoala")');
+  w = await all(page);
+  assert.deepEqual(w.map(x => x.ch).sort(), ['quietkoala', 'tw:quietkoala']);
+});
+
+test('another of their accounts going live adds its tab, with one message', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'stream'));
+  await page.evaluate(live => window.smvNotes.liveStatus({ ...live, 'yt:@quietkoala': { live: true, viewers: 90, checked: Date.now() } }), LIVE);
+  const w = await all(page);
+  assert.ok(w.some(x => x.ch === 'yt:@quietkoala' && x.hidden), 'YouTube is a tab now');
+  assert.match(await page.textContent('#msg'), /quietkoala is now live on YouTube too/);
+});
+
+test('suggestions: the same name on another site, Not the same is never suggested again, and Undo in Settings brings it back', async t => {
+  const page = await linkedApp(t, { streamers: [], saved: ['mossbyte', 'yt:@mossbyte'] });
+  await page.click('#savedBtn');
+  assert.match(await page.textContent('#savedList .sv-sug'), /mossbyte on Kick and on YouTube: the same streamer\?/);
+  await page.click('#savedList .sv-sug button:has-text("Not the same")');
+  assert.equal(await page.locator('#savedList .sv-sug').count(), 0);
+  await page.evaluate(() => window.openSettings('linked', { sub: 'sugs' }));
+  assert.match(await page.textContent('#laSugs'), /Dismissed · 1/);
+  await page.click('#laSugs button:has-text("Undo")');
+  assert.match(await page.textContent('#laSugs'), /Suggested · 1/);
+  await page.click('#laSugs button:has-text("Link")');
+  assert.equal(await page.evaluate(() => window.linkedApi.listStreamers().length), 1);
+});
+
+test('the Link accounts card: add an account by name, make one main, the streamer\'s choices', async t => {
+  const page = await linkedApp(t, { streamers: [], saved: ['novalynx'] });
+  await page.evaluate(() => window.openLinkCard('novalynx'));
+  await page.click('#linkDlg .lc-plat button[data-p=twitch]');
+  await page.fill('#lcIn', 'novalynx');
+  await page.click('#linkDlg button:has-text("Link")');
+  assert.deepEqual(await page.evaluate(() => window.linkedApi.listStreamers().map(s => s.accounts)), [['novalynx', 'tw:novalynx']]);
+  assert.ok(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.saved')).includes('tw:novalynx')), 'the new account is saved too');
+  await page.click('#linkDlg .lc-mk');
+  assert.equal(await page.evaluate(() => window.linkedApi.listStreamers()[0].main), 'tw:novalynx');
+  await page.selectOption('#linkDlg select[data-cmd="link.streams"]', 'separate');
+  assert.equal(await page.evaluate(() => window.linkedApi.listStreamers()[0].streams), 'separate');
+  await page.click('#linkDlg button:has-text("Done")');
+  assert.equal(await page.isVisible('#linkDlg'), false);
+});
+
+test('Settings › Linked accounts: off, the page only says what it does; on, its five tabs', async t => {
+  const page = await linkedApp(t, { on: false });
+  await page.evaluate(() => window.openSettings('linked'));
+  assert.equal(await page.isVisible('#laOff'), true); assert.equal(await page.isVisible('#laTabs'), false);
+  await page.click('#linkedOnSet');
+  assert.equal(await page.isVisible('#laTabs'), true);
+  assert.deepEqual(await page.$$eval('#laTabs [role=tab]', bs => bs.map(b => b.textContent.trim().replace(/\s+\d+$/, ''))), ['Tabs', 'Playing', 'Live & raids', 'Suggestions', 'Linked streamers']);
+  await page.selectOption('[data-lo=streams]', 'separate');
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.linkedOpts')).streams), 'separate');
+  // it sits under Accounts, with its own icon
+  assert.equal(await page.$eval('.st-rail [data-s=linked]', b => b.previousElementSibling.dataset.s), 'accounts');
+});
+
+test('Settings › Windows: names off, Always / Never in ⋯ and the order of the buttons', async t => {
+  const page = await linkedApp(t, { on: false });
+  await add(page, 'novalynx');
+  await page.evaluate(() => window.openSettings('windows'));
+  await page.click('#barNameStream');
+  assert.equal(await page.locator('#stage .win.stream .bar.nm-off').count(), 1, 'the stream\'s name is off');
+  // Never in ⋯: Reload, right next to ⋯; then Pop out instead (Reload back to When out of room)
+  await page.click('#wbList [data-k=reload] button:has-text("Never in ⋯")');
+  const order = () => page.$$eval('#stage .win.stream .btns > button', bs => bs.map(b => b.dataset.a));
+  let o = await order();
+  assert.equal(o[o.indexOf('more') - 1], 'reload');
+  await page.click('#wbList [data-k=pop] button:has-text("Never in ⋯")');
+  o = await order();
+  assert.equal(o[o.indexOf('more') - 1], 'pop');
+  assert.equal(await page.evaluate(() => window.barButtons().never), 'pop', 'only one');
+  // Always in ⋯: off the bar, in the ⋯ menu
+  await page.click('#wbList [data-k=star] button:has-text("Always in ⋯")');
+  assert.equal(await page.$eval('#stage .win.stream [data-a=star]', b => b.classList.contains('ovf')), true);
+  await page.click('#wbReset');
+  assert.equal(await page.evaluate(() => window.barButtons().never), null);
+});
+
+test('the search box: a linked streamer is one result with its sites; "link" finds the linking actions', async t => {
+  const page = await linkedApp(t, { saved: ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala', 'mossbyte', 'yt:@mossbyte'] });
+  await page.keyboard.press('Control+k');
+  await page.keyboard.type('quietkoala');
+  await page.waitForTimeout(300);
+  assert.match(await page.textContent('#palList .pal-row.hero'), /quietkoala.*Watch: Kick \+ Twitch as tabs/);
+  assert.equal(await page.locator('#palList .pal-row.hero .pal-sic .pi').count(), 3);
+  await page.fill('#palQ', 'link');
+  await page.waitForTimeout(300);
+  const text = await page.textContent('#palList');
+  for (const s of ['Link mossbyte on Kick with @mossbyte on YouTube', 'Link accounts…', 'Find streamers on several sites', 'Show linked streamers']) assert.ok(text.includes(s), s);
+});
+
+test('Channels: drag one row onto another links them; Later hides a suggestion until the app starts again', async t => {
+  const page = await linkedApp(t, { streamers: [], saved: ['mossbyte', 'yt:@mossbyte', 'novalynx', 'tw:pixelmoth'] });
+  await page.click('#savedBtn');
+  await page.click('#savedList .sv-sug button:has-text("Later")');
+  assert.equal(await page.locator('#savedList .sv-sug').count(), 0, 'Later hides it');
+  const row = name => page.locator('#savedList > .sv', { has: page.locator(`.nm:text-is("${name}")`) });
+  await row('tw:pixelmoth').count();
+  await row('pixelmoth').dragTo(row('novalynx'));
+  assert.deepEqual(await page.evaluate(() => window.linkedApi.listStreamers().map(s => s.accounts.sort())), [['novalynx', 'tw:pixelmoth']]);
+  assert.match(await page.textContent('#msg'), /Linked: novalynx/);
+});
+
+test('Channels: an account\'s own row opens that site; the streamer\'s ✕ removes every account', async t => {
+  const page = await linkedApp(t, { saved: ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala'] });
+  await page.click('#savedBtn');
+  await page.click('#savedList .sv-multi .exp');
+  await page.click('#savedList .sv-acc:has-text("@quietkoala")');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'yt:@quietkoala');
+  if (!(await page.isVisible('#savedPanel'))) await page.click('#savedBtn');
+  await page.evaluate(() => document.querySelector('#savedList .sv-multi .rm').click());
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.saved'))), []);
+});
+
+test('went live on two sites: one note under the bell, "is live on Kick and Twitch", with Watch as tabs', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => { window.smvNotes.liveNote('quietkoala', { viewers: 1240, title: 'Ranked' }); window.smvNotes.liveNote('tw:quietkoala', { viewers: 640 }); });
+  const notes = await page.evaluate(() => window.smvNotes.notes.filter(n => n.kind === 'live'));
+  assert.equal(notes.length, 1);
+  assert.deepEqual(notes[0].sites, ['quietkoala', 'tw:quietkoala']);
+  await page.click('#bellBtn');
+  assert.match(await page.textContent('#bellPanel, .mp-list, body'), /is live on Kick and Twitch/);
+  await page.click('button:has-text("Watch as tabs")');
+  assert.equal((await shown(page, 'stream')).length, 1);
+  assert.equal((await all(page)).filter(w => w.kind === 'stream').length, 2, 'Kick and Twitch as tabs');
+});
+
+test('opening by themselves: together as tabs when any account goes live, and not twice', async t => {
+  const page = await linkedApp(t, { extra: { autoOpen: '["quietkoala"]' } });
+  await page.evaluate(live => window.smvNotes.liveStatus(live), LIVE);
+  const w = await all(page);
+  assert.equal(w.filter(x => x.kind === 'stream').length, 2, 'Kick and Twitch, one window');
+  assert.equal(w.filter(x => x.kind === 'stream' && !x.hidden).length, 1);
+  await page.evaluate(live => window.smvNotes.liveStatus(live), LIVE);
+  assert.equal((await all(page)).filter(x => x.kind === 'stream').length, 2, 'not opened again');
+});

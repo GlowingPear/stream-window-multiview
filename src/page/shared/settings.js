@@ -15,6 +15,11 @@ const SETTING_NAMES = new Set([
   // channels
   'saved', 'savedTab', 'autoOpen', 'notifyAll', 'notifyOff', 'chNames', 'ytNames', 'watchSignedIn',
   'accounts', 'account', 'profView',
+  // Settings › Linked accounts: the switch, the linked streamers, pairs answered "Not the same", the page's options,
+  // the first-time tip, and tabs closed or split out for each streamer
+  'linkedOn', 'streamers', 'linkedNot', 'linkedOpts', 'linkedTip', 'linkedTabs',
+  // Settings › Windows: the channel's name on stream / chat windows' title bars, and each button's place and ⋯ choice
+  'barNameStream', 'barNameChat', 'barButtons',
   // Connected apps: Connect with Pear Drops, sign Kick players out while it farms, your Kick choice from
   // before that took over, the toolbar's farming widget and its daily reward chest
   'link.peardrops', 'link.kickAuto', 'link.kickBefore', 'link.widget', 'link.dailyReward',

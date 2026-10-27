@@ -11,6 +11,7 @@ const twitch = {
   emoteLists: true,
   pageCommands: false,
   likes: false,
+  lowQualityJs: null,
   partition: 'persist:twitch',
   idFor: name => 'tw:' + name,
   handle: ch => ch.slice(3),

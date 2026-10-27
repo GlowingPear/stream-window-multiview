@@ -7,7 +7,7 @@ settings: accounts
 show: "#loginBtn"
 words: [login, log in, sign in, account, firefox, keychain, watch signed in, forget]
 related: [logins-safe, youtube]
-order: 21
+order: 22
 ---
 
 - Log in once to Kick and Twitch (for Kick, enter the email code once). Every chat for that site uses the login, and it's kept when you restart the app.

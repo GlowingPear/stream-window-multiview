@@ -1,5 +1,7 @@
 import { newFor } from '../chat/new-messages.js';
 import { $, wins } from '../core.js';
+import { barButtons } from '../panels/settings/windows-pane.js';
+import { streamerOf } from '../platforms/linked.js';
 import { chLabel } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
 import { closeOnOutside } from '../shared/popover.js';
@@ -7,12 +9,12 @@ import { store } from '../shared/store.js';
 import { tipName } from '../shared/tooltips.js';
 
 /* ---------- title bars fit any window size ----------
-   When a window's title bar is too narrow for everything, it first drops the tag and the volume %, then narrows
-   the volume slider, then moves the least-used buttons into its ⋯ menu (in BAR_ORDER), and only then lets the
-   title shrink. Close, mute and ⋯ always stay. Re-fits when the window resizes or a button shows or hides.
-   Some buttons are always in the ⋯ menu (BAR_MENU). */
+   When a window's title bar is too narrow for everything, it first drops the volume %, then narrows the volume
+   slider, then moves buttons into its ⋯ menu, and only then lets the title shrink. Close, mute, ⋯ and the button
+   that's Never in ⋯ always stay. Re-fits when the window resizes or a button shows or hides.
+   Settings › Windows says which buttons are always in the ⋯ menu, and the order: out of room, the leftmost go
+   first. Until you change it there, the least-used go first (BAR_ORDER). */
 const BAR_LEVELS = ['b1', 'b2'];
-const BAR_MENU = ['ext', 'state', 'inspect'];
 const BAR_ORDER = ['chat', 'mod', 'reload', 'pop', 'profile', 'overlay', 'at', 'feat', 'like', 'star', 'max'];
 function fitBar(bar){
   if (!bar.isConnected || !bar.clientWidth) return;     // not on screen: fitted when it shows (it resizes then)
@@ -21,8 +23,9 @@ function fitBar(bar){
   // start from everything showing, with the name keeping a few letters
   bar.classList.remove(...BAR_LEVELS, 'b3', 'b4');
   bar.querySelectorAll('.btns .ovf').forEach(b => b.classList.remove('ovf'));
+  const cfg = barButtons();
   if (more){
-    for (const a of BAR_MENU){ const b = bar.querySelector(`.btns [data-a=${a}]`); if (b) b.classList.add('ovf'); }
+    for (const a of [...cfg.always, 'link']){ const b = bar.querySelector(`.btns [data-a=${a}]`); if (b) b.classList.add('ovf'); }   // (Link accounts… only in ⋯)
     more.hidden = !bar.querySelector('.btns .ovf:not([hidden])');
   }
   name.style.minWidth = ''; name.style.flex = 'none';
@@ -30,7 +33,7 @@ function fitBar(bar){
   for (const c of BAR_LEVELS){ if (fits()) break; bar.classList.add(c); }
   if (!fits() && more){
     more.hidden = false;
-    for (const a of BAR_ORDER){
+    for (const a of (cfg.custom ? cfg.order : BAR_ORDER).filter(k => k !== cfg.never)){
       if (fits()) break;
       const b = bar.querySelector(`.btns [data-a=${a}]`);
       if (b && !b.hidden) b.classList.add('ovf');
@@ -76,7 +79,7 @@ function barItem(b){
   item.className = b.classList.contains('on') ? 'on' : '';
   item.innerHTML = '<span class="bm-ico"></span><span class="bm-t"></span>';
   item.querySelector('.bm-ico').innerHTML = b.dataset.a === 'chat' ? '+' : b.querySelector('svg')?.outerHTML || b.textContent;
-  item.querySelector('.bm-t').textContent = b.dataset.a === 'chat' ? 'Add chat' : tipName(b) || b.title;
+  item.querySelector('.bm-t').textContent = b.dataset.a === 'chat' ? 'Add chat' : b.dataset.a === 'link' ? (streamerOf(b.closest('.win') && wins.find(w => w.el === b.closest('.win'))?.channel) ? 'Linked accounts…' : 'Link accounts…') : tipName(b) || b.title;
   const n = b.querySelector('.ext-n')?.textContent;
   if (n) item.append(element('span', 'bm-n', n));
   item.title = b.title;

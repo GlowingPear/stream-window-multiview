@@ -1,5 +1,6 @@
 import { wins } from '../core.js';
 import { kick } from './kick.js';
+import { nameOf } from './linked.js';
 import { kickAuto, kickOut, reportPlayers } from './pear-drops.js';
 import { effectiveSignedIn } from './players-link.js';
 import { twitch } from './twitch.js';
@@ -50,7 +51,7 @@ function rememberNames(names){
 }
 const rememberName = (ch, name) => rememberNames({ [ch]: name });
 function namesChanged(chs){
-  wins.forEach(w => { if (chs.includes(w.channel)) w.el.querySelector('.title').textContent = chLabel(w.channel); });
+  wins.forEach(w => { if (chs.includes(w.channel)) w.el.querySelector('.title').textContent = nameOf(w.channel); });
   store.changed('names');
 }
 const infoNames = snap => Object.fromEntries(Object.entries(snap || {}).filter(([, i]) => i && !i.missing).map(([ch, i]) => [ch, i.name]));

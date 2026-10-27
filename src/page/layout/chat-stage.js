@@ -1,10 +1,11 @@
 import { clearNew, newCount } from '../chat/new-messages.js';
 import { toNewest } from '../chat/stick-bottom.js';
-import { BAR, GAP, ROLE, colsMode, coreVars, lastLayout, stage, wins } from '../core.js';
+import { BAR, GAP, ROLE, colsMode, coreVars, lastLayout, shownWins, stage } from '../core.js';
 import { SH, SW, setRect } from './geometry.js';
 import { applyRects, colKey, featuredCh, inColOrder, layoutChatsOnly, setColsMode, sortedChats, tile, vidByKey,
   vidLabel } from './layouts.js';
 import { save } from '../persistence.js';
+import { sameStreamer } from '../platforms/linked.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
@@ -28,7 +29,7 @@ const place = (list, rects) => splitting
   : applyRects(list, rects);
 
 const isStage = () => ROLE === 'main' && !colsMode && lastLayout === 'stage';
-const stageChatOf = () => wins.find(w => w.kind === 'chat' && w.el.classList.contains('stg-chat')) || null;
+const stageChatOf = () => shownWins().find(w => w.kind === 'chat' && w.el.classList.contains('stg-chat')) || null;
 
 // Where everything goes in the area: the big stream, the chat, the pictures in the strip, and where the split is
 function stageRects(nThumbs, X, Y, W, H){
@@ -56,7 +57,7 @@ function chatStageLayout(){
   coreVars.lastLayout = 'stage';
   const on = vids.find(v => colKey(v) === stageKey) || vids.find(v => colKey(v) === featuredCh) || vids[0];
   stageKey = colKey(on);
-  const chat = chats.find(c => c.channel === on.channel) || chats[0];
+  const chat = chats.find(c => sameStreamer(c.channel, on.channel)) || chats[0];
   const others = vids.filter(v => v !== on);
   const W = SW() - GAP, H = SH() - GAP, X = GAP / 2, Y = GAP / 2;
   const r = stageRects(others.length, X, Y, W, H);
@@ -78,7 +79,7 @@ function putOnStage(key){
 
 function showStageLook(on, chat, others, r){
   document.body.classList.add('chatstage');
-  wins.forEach(w => {
+  shownWins().forEach(w => {
     w.el.classList.toggle('stg-on', w === on);
     w.el.classList.toggle('stg-chat', w === chat);
     w.el.classList.toggle('stg-off', w.kind === 'chat' && w !== chat);
@@ -97,7 +98,7 @@ function clearStageLook(){
   document.body.classList.remove('chatstage');
   lastStageChat = null;
   const chat = stageChatOf();
-  wins.forEach(w => { w.el.classList.remove('stg-on', 'stg-chat', 'stg-off', 'stg-thumb'); dropPick(w); dropSize(w); });
+  shownWins().forEach(w => { w.el.classList.remove('stg-on', 'stg-chat', 'stg-off', 'stg-thumb'); dropPick(w); dropSize(w); });
   if (chat) setViewScale(chat.view, 1);
   splitEl.style.display = 'none';
   if (alertObs) alertObs.disconnect();
@@ -115,7 +116,7 @@ function addPick(w){
 function dropPick(w){ w.el.querySelector('.stg-pick')?.remove(); }
 function syncAt(w){
   const p = w.el.querySelector('.stg-pick'); if (!p) return;
-  const c = wins.find(o => o.kind === 'chat' && o.channel === w.channel);
+  const c = shownWins().find(o => o.kind === 'chat' && sameStreamer(o.channel, w.channel));
   const at = !!(c && c.alertLvl);
   p.classList.toggle('at', at);
   p.querySelector('.stg-at').title = at ? `${vidLabel(w)}'s chat has something for you` : '';
@@ -125,9 +126,9 @@ function syncAt(w){
   p.classList.toggle('new', n > 0);
 }
 function watchAlerts(){
-  if (!alertObs) alertObs = new MutationObserver(() => wins.forEach(w => { if (w.el.classList.contains('stg-thumb')) syncAt(w); }));
+  if (!alertObs) alertObs = new MutationObserver(() => shownWins().forEach(w => { if (w.el.classList.contains('stg-thumb')) syncAt(w); }));
   alertObs.disconnect();
-  wins.forEach(w => { if (w.kind === 'chat') alertObs.observe(w.el, { attributes: true, attributeFilter: ['class'] }); });
+  shownWins().forEach(w => { if (w.kind === 'chat') alertObs.observe(w.el, { attributes: true, attributeFilter: ['class'] }); });
 }
 
 // The stage chat's text size, in its title bar
@@ -193,7 +194,7 @@ function init(){
   // a window opened or closed: arrange the stage again
   store.watch('wins', () => { if (isStage()) chatStageLayout(); });
   // new messages counted for a chat out of sight (chat/new-messages.js): on its stream's picture in the strip
-  store.watch('unread', () => wins.forEach(o => { if (o.el.classList.contains('stg-thumb')) syncAt(o); }));
+  store.watch('unread', () => shownWins().forEach(o => { if (o.el.classList.contains('stg-thumb')) syncAt(o); }));
   window.putOnStage = putOnStage;   // for the tests
 }
 

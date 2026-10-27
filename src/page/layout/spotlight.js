@@ -1,11 +1,11 @@
-import { BAR, GAP, coreVars, wins } from '../core.js';
+import { BAR, GAP, coreVars, shownWins } from '../core.js';
 import { SH, SW } from './geometry.js';
 import { applyRects } from './layouts.js';
 import { save } from '../persistence.js';
 
 /* Spotlight (streams window): the selected stream big, the others stacked beside it. */
 function spotlight(){
-  const vids = wins.filter(w => w.kind !== 'chat'); if (!vids.length) return;
+  const vids = shownWins().filter(w => w.kind !== 'chat'); if (!vids.length) return;
   const act = vids.find(w => w.el.classList.contains('active')) || vids[0];
   const others = vids.filter(w => w !== act);
   const W = SW() - GAP, H = SH() - GAP, X = GAP / 2, Y = GAP / 2;

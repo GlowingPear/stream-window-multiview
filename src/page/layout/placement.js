@@ -1,4 +1,4 @@
-import { BAR, GAP, colsMode, lastLayout, modeSel, mutedChk, popped, wins } from '../core.js';
+import { BAR, GAP, colsMode, lastLayout, modeSel, mutedChk, popped, shownWins, wins } from '../core.js';
 import { chatRailLayout } from './chat-rail.js';
 import { chatStageLayout } from './chat-stage.js';
 import { columnsLayout } from './columns.js';
@@ -6,15 +6,17 @@ import { SH, SW, focusWin } from './geometry.js';
 import { chatFocusLayout, layoutChatsOnly } from './layouts.js';
 import { refitLocked } from './lock.js';
 import { save } from '../persistence.js';
+import { streamerOf } from '../platforms/linked.js';
 import { chLabel, rememberName } from '../platforms/platforms.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
+import { openStreamer } from '../windows/frames.js';
 import { popPartial } from '../windows/popout.js';
 import { createWin } from '../windows/windows.js';
 
 /* ---------- placement ---------- */
 function defaultStreamRect(){
-  const n = wins.length, off = (n % 8) * 28;
+  const n = shownWins().length, off = (n % 8) * 28;
   let vw = Math.min(640, SW() * 0.6);
   let h = vw * 9 / 16 + BAR;
   if (h > SH() - 40){ h = SH() - 40; vw = (h - BAR) * 16 / 9; }
@@ -36,6 +38,10 @@ function addChatBeside(sw){
 // p: { channel, only } from parseInput (or { url, only: 'web' }); p.mode overrides the Stream / Chat dropdown
 function addParsed(p){
   const mode = p.mode || modeSel.value;
+  // a linked streamer's account: their window, showing this site (others as tabs: windows/frames.js)
+  if (p.channel && !p.separate && streamerOf(p.channel) && !(popped && !popPartial)){
+    openStreamer(p.channel, p.only === 'chat' ? 'chat' : mode, [p.channel]); flash(''); refitLocked(); return;
+  }
   // Streams are popped out: send the stream to the streams window, keep its chat here.
   if (popped && !popPartial && p.channel && p.only !== 'chat' && mode !== 'chat'){
     window.kmv.openStreams([{ channel: p.channel, vol: 0.8, muted: mutedChk.checked }]);

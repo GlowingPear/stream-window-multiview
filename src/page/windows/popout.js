@@ -13,10 +13,12 @@ import { flash } from '../shared/flash.js';
 import { setTb } from '../shared/icons.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
+import { frameOf, restoreFrames } from './frames.js';
 import { createWin } from './windows.js';
 
 /* ---------- streams pop-out ---------- */
-function streamSpecs(){ return wins.filter(w => w.kind === 'stream').map(w => ({ channel: w.channel, vol: w.vol, muted: w.muted })); }
+// (a tab of a window with several sites keeps its window: windows/frames.js)
+function streamSpecs(){ return wins.filter(w => w.kind === 'stream').map(w => ({ channel: w.channel, vol: w.vol, muted: w.muted, ...(w.frame ? { frame: w.frame, hiddenTab: !!w.hiddenTab } : {}) })); }
 function updatePopBtn(){
   const b = $('#popBtn'); if (!b) return;
   setTb(b, popped ? 'Bring streams back' : 'Pop out streams', popped ? 'dock' : 'popwin');
@@ -48,9 +50,10 @@ function popOutHidden(){
   if (!list.length){ flash('No hidden streams to pop out'); return; }
   if (!popped){ popPartial = true; settings.set('popPartial', true); }   // decide before the window opens
   coreVars.popped = true;
-  window.kmv.openStreams(list.map(w => ({ channel: w.channel, vol: w.vol, muted: w.muted })));
-  list.forEach(releaseWin);
-  coreVars.wins = wins.filter(w => !list.includes(w)); updatePopBtn(); store.changed('wins');
+  const all = list.flatMap(w => frameOf(w));                 // a window's other tabs go with it
+  window.kmv.openStreams(all.map(w => ({ channel: w.channel, vol: w.vol, muted: w.muted, ...(w.frame ? { frame: w.frame, hiddenTab: !!w.hiddenTab } : {}) })));
+  all.forEach(releaseWin);
+  coreVars.wins = wins.filter(w => !all.includes(w)); updatePopBtn(); store.changed('wins');
   settings.set('popped', '1');
   columnsLayout();
   flash(`${list.length} stream${list.length > 1 ? 's' : ''} sent to the Streams window`);
@@ -69,16 +72,18 @@ function streamsCameBack(specs){
   settings.remove('streams.v1');
   (specs || []).forEach(s => {
     if (!wins.some(w => w.kind === 'stream' && w.channel === s.channel))
-      createWin({ kind: 'stream', channel: s.channel, vol: s.vol, muted: s.muted }, defaultStreamRect());
+      createWin({ kind: 'stream', channel: s.channel, vol: s.vol, muted: s.muted, frame: s.frame, hiddenTab: s.hiddenTab }, defaultStreamRect());
   });
+  restoreFrames([]);
   if ((specs || []).length) chatFocusLayout();
 }
 function receiveStreams(specs){            // streams window
   (specs || []).forEach(s => {
     const ex = wins.find(w => w.kind === 'stream' && w.channel === s.channel);
     if (ex){ focusWin(ex); flash(`${chLabel(s.channel)} is already here`); return; }
-    createWin({ kind: 'stream', channel: s.channel, vol: s.vol ?? 0.8, muted: s.muted ?? mutedChk.checked }, defaultStreamRect());
+    createWin({ kind: 'stream', channel: s.channel, vol: s.vol ?? 0.8, muted: s.muted ?? mutedChk.checked, frame: s.frame, hiddenTab: s.hiddenTab }, defaultStreamRect());
   });
+  restoreFrames([]);                                        // a window's tabs together again
   if (lastLayout === 'spot') spotlight(); else tile();
 }
 function receiveChat(channel){             // main window, "+ Chat" pressed in the streams window

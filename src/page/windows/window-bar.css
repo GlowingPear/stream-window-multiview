@@ -9,8 +9,8 @@
 .vol input{width:80px;height:4px;accent-color:var(--accent);cursor:pointer}
 .vol .pct{font-size:10px;color:var(--muted);width:26px;text-align:right;font-variant-numeric:tabular-nums}
 .vol + .btns{margin-left:0}
-/* a title bar that doesn't fit drops the tag and volume %, narrows the slider, then moves buttons into its ⋯ menu (fitBar) */
-.bar.b1 .tag,.bar.b1 .vol .pct{display:none}
+/* a title bar that doesn't fit drops the volume %, narrows the slider, then moves buttons into its ⋯ menu (fitBar) */
+.bar.b1 .vol .pct{display:none}
 .bar.b2 .vol input{width:48px}
 .bar.b4 .title{display:none}
 .bar .grab{flex:1 0 36px;align-self:stretch}            /* always some empty bar to drag the window by */

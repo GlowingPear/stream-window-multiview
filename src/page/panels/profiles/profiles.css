@@ -152,3 +152,35 @@
 .dlg .dlg-list label .unf:disabled{opacity:.5;cursor:default}
 .ask-chk{display:flex;gap:8px;align-items:flex-start;font-size:12px;padding:10px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);cursor:pointer}
 .ask-chk[hidden]{display:none}
+
+/* ---------- a linked streamer (platforms/linked.js): one card, one profile, every site ---------- */
+.pf-sites{display:inline-flex;gap:3px;flex:none;vertical-align:middle}
+.pf-sites .pi{width:16px;height:16px;font-size:9px;border-radius:4px}
+h2 .pf-sites{margin-left:4px}
+h2 .pf-sites .pi{width:20px;height:20px;font-size:11px;border-radius:5px}
+.pi.dim{filter:grayscale(1) brightness(.6)}
+.pf-card.pf-multi .pf-st{white-space:normal}
+.pf-view{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:2px 0 14px}
+.pf-view-k{font-size:12.5px;color:var(--muted)}
+.pf-view .pf-chips button{display:inline-flex;align-items:center;gap:6px;height:28px}
+.pf-view .pf-chips button .pi{width:15px;height:15px;font-size:8.5px;border-radius:4px}
+.pf-view .pf-chips button.dim:not(.on){color:var(--muted)}
+.pf-view .pf-chips button.dim:not(.on) .pi{filter:grayscale(1) brightness(.6)}
+.pf-now-s .pi{width:15px;height:15px;font-size:8.5px;border-radius:4px;vertical-align:-3px;margin-right:2px}
+.pf-now-sites{display:flex;gap:6px}
+.pf-now-sites .btn{flex:1;display:grid;place-items:center}
+.pf-now-sites .pi{width:16px;height:16px;font-size:9px;border-radius:4px}
+.pf-hist .pf-hs{white-space:nowrap}
+.pf-hist .pf-hs .pi{width:15px;height:15px;font-size:8.5px;border-radius:4px;margin-right:2px}
+.pf-openon .pf-caret{font-size:10px;color:var(--muted)}
+.pf-prof{position:relative}
+.pf-menu{position:absolute;z-index:20;min-width:260px;background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:5px;box-shadow:0 14px 40px rgba(0,0,0,.55)}
+.pf-menu[hidden]{display:none}
+.pf-menu button{display:flex;align-items:center;gap:9px;width:100%;border:0;background:transparent;padding:7px 9px;border-radius:6px;font-size:12.5px;text-align:left;color:var(--text);cursor:pointer}
+.pf-menu button:hover{background:var(--panel2)}
+.pf-menu button small{margin-left:auto;color:var(--muted);font-size:11px}
+.pf-menu .pi{width:16px;height:16px;font-size:9px;border-radius:4px}
+.pf-menu .pf-unf{color:#ff9b9b;padding-left:34px}
+.pf-menu .pf-mi{display:grid}.pf-menu .pf-mi svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pf-acts .btn > svg{width:15px;height:15px}
+.pf-openon .pf-caret{font-size:11px}

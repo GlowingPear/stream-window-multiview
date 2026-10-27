@@ -31,6 +31,7 @@ function togglePause(s){
 
 let autoChk;
 function streamHidden(w){
+  if (w.hiddenTab) return true;                                  // a tab you're not watching (windows/frames.js)
   const W = SW(), H = SH();
   if (w.x + w.w <= 4 || w.x >= W - 4 || w.y + w.h <= 4 || w.y >= H - 4) return true;              // off-screen
   if (colsMode && featW && !w.el.classList.contains('featured') && w.x + w.w <= featW + GAP) return true;   // behind the big stream

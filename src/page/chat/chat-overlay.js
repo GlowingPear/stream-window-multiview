@@ -1,7 +1,8 @@
 import { ROLE, wins } from '../core.js';
 import { pushMyName } from '../panels/bell/all-notifications.js';
 import { cleanParts, mentBodyNodes } from '../panels/bell/bell.js';
-import { chLabel } from '../platforms/platforms.js';
+import { linkOpt, linkedOn, sameStreamer, streamerOf } from '../platforms/linked.js';
+import { PLAT_NAME, chLabel, platOf } from '../platforms/platforms.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
 import { DESKTOP } from '../shared/env.js';
@@ -33,14 +34,17 @@ function chatOverlay(c, msgs){
 }
 // Draws them over this window's streams of that channel
 function drawLines(ch, list){
+  // a linked streamer's window (windows/frames.js): over the tab you watch, from its site, or from every live site
+  // with each line's site icon (Settings › Linked accounts › Chat over the stream shows)
+  const every = linkedOn() && !!streamerOf(ch) && linkOpt('overlay') === 'all';
   for (const w of wins) {
-    if (w.kind !== 'stream' || w.channel !== ch) continue;
+    if (w.kind !== 'stream' || w.hiddenTab || !(w.channel === ch || (every && sameStreamer(w.channel, ch)))) continue;
     const body = w.el.querySelector('.body'); if (!body) continue;
     let box = body.querySelector('.co-box');
     if (!box) { box = element('div', { class: 'co-box', 'aria-live': 'polite' }); body.append(box); }
     for (const m of list) {
       const parts = cleanParts(m.parts), id = ++lineId;
-      const line = element('div', 'co-line', element('b', null, String(m.sender || '').slice(0, 30)), ': ',
+      const line = element('div', 'co-line', every && element('i', { class: 'pi pi-' + platOf(ch), title: PLAT_NAME[platOf(ch)] }, PLAT_NAME[platOf(ch)][0]), element('b', null, String(m.sender || '').slice(0, 30)), ': ',
         parts ? mentBodyNodes({}, parts, false) : String(m.body || '').slice(0, 300));
       line.dataset.id = id;
       box.append(line);

@@ -1,5 +1,5 @@
-import { ROLE, wins } from '../core.js';
-import { featBase, featSwitch, featuredCh, vidByKey } from './layouts.js';
+import { ROLE, shownWins } from '../core.js';
+import { colKey, featBase, featSwitch, featuredCh, vidByKey } from './layouts.js';
 import { commands } from '../shared/commands.js';
 import { icon } from '../shared/icons.js';
 import { settings } from '../shared/settings.js';
@@ -10,12 +10,12 @@ import { applyPlay, isPaused, miniPaused } from '../windows/pause.js';
 let focusOnly = false;
 function applyFocusOnly(){
   const featOn = featBase.length > 0 && !!featuredCh;
-  wins.forEach(w => {
+  shownWins().forEach(w => {
     if (w.kind !== 'stream') return;
-    const should = focusOnly && featOn && w.channel !== featuredCh && !w.pause.focusExempt;
+    const should = focusOnly && featOn && colKey(w) !== featuredCh && !w.pause.focusExempt;
     const next = pauseEvents.focusPause(w.pause, should);
     if (next !== w.pause){ w.pause = next; applyPlay(w); }
-    if (w.channel === featuredCh) w.pause = pauseEvents.focusReset(w.pause);
+    if (colKey(w) === featuredCh) w.pause = pauseEvents.focusReset(w.pause);
   });
   syncSwitcher(); updateFocusOnlyBtn();
 }
@@ -28,7 +28,7 @@ function updateFocusOnlyBtn(){
 function toggleFocusOnly(){
   focusOnly = !focusOnly;
   settings.set('focusOnly', focusOnly);
-  wins.forEach(w => { w.pause = pauseEvents.focusReset(w.pause); });
+  shownWins().forEach(w => { w.pause = pauseEvents.focusReset(w.pause); });
   applyFocusOnly();
 }
 // Update the switcher's volume controls in place (never rebuild while you're dragging a slider).

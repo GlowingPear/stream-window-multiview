@@ -2,6 +2,7 @@ import { SmvSpam } from './spam.js';
 import { wins } from '../core.js';
 import { dndOn, readChat } from '../panels/bell/bell.js';
 import { settings } from '../shared/settings.js';
+import { syncFrameAlert } from '../windows/frames.js';
 
 /* ---------- alerts: how a chat window gets your attention (Settings > Mentions, Spam alerts) ---------- */
 const ALERT_DEFAULTS = {
@@ -78,6 +79,7 @@ function alertLevel(w, n){
   w.el.classList.remove('al-1', 'al-2', 'al-3');
   if (n) w.el.classList.add('al-' + n);
   w.alertLvl = n;
+  if (w.frame) syncFrameAlert(w);     // a tab you can't see: its window shows it, and its tab (windows/frames.js)
 }
 function clearAlert(w){
   if (!w || !w.alert) return;

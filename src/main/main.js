@@ -609,7 +609,9 @@ appIpc.handle('open-external', (_e, url) => { openExternal(url); });
 
 // Streams pop-out window
 const cleanSpecs = list => (Array.isArray(list) ? list : []).filter(s => s && typeof s.channel === 'string' && validCh(normCh(s.channel)))
-  .map(s => ({ channel: s.channel, vol: +s.vol || 0, muted: !!s.muted }));
+  .map(s => ({ channel: s.channel, vol: +s.vol || 0, muted: !!s.muted,
+    // a tab of a window with several sites (the page's windows/frames.js): which window, and whether it's the one shown
+    ...(typeof s.frame === 'string' && /^f[a-z0-9]{1,20}$/.test(s.frame) ? { frame: s.frame, hiddenTab: !!s.hiddenTab } : {}) }));
 mainIpc.handle('streams:open', (_e, specs) => { openStreamsWindow(cleanSpecs(specs)); });
 appIpc.handle('streams:close', () => { streamsWin?.close(); });
 appIpc.handle('streams:isOpen', () => !!streamsWin);
@@ -757,12 +759,25 @@ appIpc.handle('notify:settings', () => {
   if (url) shell.openExternal(url);
   return !!url;
 });
+// A linked streamer (the page's Settings › Linked accounts) going live on several sites within 10 minutes: one
+// notification, replaced as more sites go live ("quietkoala is live on Kick and Twitch")
+const groupNotes = new Map();   // group name -> { n, sites, at }
 function notifyLive(slug, info) {
   mainWin?.webContents.send('live:went-live', slug, info);
   if (!desktopNotify || !notifyPrefs.all || notifyPrefs.off.includes(slug) || !Notification.isSupported()) return;
   if (notifyPrefs.away && BrowserWindow.getFocusedWindow()) return;
   const body = [info.title, info.category, info.viewers != null ? `${info.viewers.toLocaleString()} watching` : ''].filter(Boolean).join(' · ');
-  const n = new Notification({ title: `${info.name || slug} is live on ${platformOf(slug)}`, body: body || 'Click to watch', icon: ICON });
+  const group = (notifyPrefs.groups || []).find(g => g.accounts.includes(String(slug).toLowerCase()));
+  let title = `${info.name || slug} is live on ${platformOf(slug)}`;
+  if (group) {
+    const prev = groupNotes.get(group.name), recent = prev && Date.now() - prev.at < 10 * 60000;
+    const sites = [...new Set([...(recent ? prev.sites : []), platformOf(slug)])];
+    if (recent) { try { prev.n.close(); } catch {} }
+    title = `${group.name} is live on ${sites.length > 1 ? sites.slice(0, -1).join(', ') + ' and ' + sites[sites.length - 1] : sites[0]}`;
+    groupNotes.set(group.name, { n: null, sites, at: recent ? prev.at : Date.now() });
+  }
+  const n = new Notification({ title, body: body || 'Click to watch', icon: ICON });
+  if (group) groupNotes.get(group.name).n = n;
   keepNote(n);
   n.on('click', () => {
     if (mainWin) { if (mainWin.isMinimized()) mainWin.restore(); mainWin.show(); mainWin.focus(); mainWin.webContents.send('open-channel', slug); }
@@ -984,7 +999,8 @@ const watcher = createLiveWatcher({
 });
 mainIpc.on('live:watch', (_e, data) => {
   const d = data || {};
-  notifyPrefs = { all: d.notifyAll !== false, away: d.away === true, off: Array.isArray(d.off) ? d.off.map(String) : [] };
+  notifyPrefs = { all: d.notifyAll !== false, away: d.away === true, off: Array.isArray(d.off) ? d.off.map(String) : [],
+    groups: (Array.isArray(d.groups) ? d.groups : []).filter(g => g && typeof g.name === 'string' && Array.isArray(g.accounts)).map(g => ({ name: g.name.slice(0, 100), accounts: g.accounts.map(a => String(a).toLowerCase()) })) };
   watcher.setChannels(Array.isArray(d.channels) ? d.channels : []);
   profQueue.setSaved((Array.isArray(d.channels) ? d.channels : []).filter(okCh).map(normCh));
 });

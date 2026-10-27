@@ -27,7 +27,7 @@ const undoVars = {
 };
 const histSnap = () => capturePreset('');
 const histSigOf = p => JSON.stringify([p.mode, p.featured, p.sideCols, p.linked, p.streamCols, p.order,
-  p.windows.map(w => [w.kind, w.channel || w.url, Math.round(w.x), Math.round(w.y), Math.round(w.w), Math.round(w.h)])]);
+  p.windows.map(w => [w.kind, w.channel || w.url, Math.round(w.x), Math.round(w.y), Math.round(w.w), Math.round(w.h), w.frame || '', !!w.hiddenTab, !!w.sbs, !!w.split])]);
 function histRecord(){
   if (ROLE !== 'main' || typeof capturePreset !== 'function') return;
   clearTimeout(histT);

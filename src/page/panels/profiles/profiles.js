@@ -2,9 +2,10 @@ import { $, ROLE } from '../../core.js';
 import { tile } from '../../layout/layouts.js';
 import { addParsed } from '../../layout/placement.js';
 import { bell } from '../bell/bell.js';
-import { channelVars, infoFor, liveNow, loadSavedProfiles, notifyAll, notifyOff, persistSaved, saved, sendWatch,
-  toggleSaved } from '../channels/channels.js';
-import { PLAT_NAME, chLabel, modUrl, normCh, platOf, platform, rememberName, rememberNames } from '../../platforms/platforms.js';
+import { channelVars, infoFor, loadSavedProfiles, notifyAll, notifyOff, persistSaved, saved, sendWatch, toggleSaved } from '../channels/channels.js';
+import { openLinkCard } from '../linked/link-card.js';
+import { linkedOn, nameOf, ordered, streamerOf } from '../../platforms/linked.js';
+import { PLAT_NAME, chLabel, modUrl, normCh, parseInput, platOf, platform, rememberName, rememberNames } from '../../platforms/platforms.js';
 import { ask, askChecked } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
 import { element, esc } from '../../shared/element.js';
@@ -12,13 +13,16 @@ import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
 import { fromApp } from '../../shared/incoming.js';
+import { closeOnOutside } from '../../shared/popover.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
 import { closeOverlays } from '../../shortcuts.js';
 import { loadBarAvatars } from '../../windows/channel-picker.js';
+import { openStreamer } from '../../windows/frames.js';
 
 let profDlg;
-const pf = { list: {}, plat: 'all', flags: new Set(), sort: 'live', cur: null, data: null, req: 0, look: null, histAll: false, mod: {} };
+const pf = { list: {}, plat: 'all', flags: new Set(), sort: 'live', cur: null, data: null, req: 0, look: null, histAll: false, mod: {},
+  group: null, main: null, view: null, accs: {}, gmeta: null };   // a linked streamer's profile: its accounts, All sites or one site, each one's data
 const pfHue = ch => { let h = 0; for (const c of String(ch)) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 35% 36%)`; };
 // "NovaKit" -> NK, "ember_and_oak" -> EA, "quietcartographer" -> QU
 function pfInitials(n){
@@ -38,6 +42,30 @@ const pfMeta = ch => (pf.list[ch] && pf.list[ch].meta) || {};
 const pfInfo = ch => (pf.list[ch] && pf.list[ch].info) || {};
 const pfName = ch => pfMeta(ch).nick || pfInfo(ch).name || chLabel(ch);
 const pfLive = ch => !!(infoFor(ch) && infoFor(ch).live);
+/* ---- linked accounts (platforms/linked.js): a streamer is one card and one profile; notes, tags, nickname and
+   favourite are one set for them, written to every account (so unlinking leaves each a copy) ---- */
+const SITE_LETTER = { kick: 'K', twitch: 'T', youtube: 'Y' };
+const pfSiteIco = (ch, dim) => element('i', { class: `pi pi-${platOf(ch)}${dim ? ' dim' : ''}`, title: PLAT_NAME[platOf(ch)] }, SITE_LETTER[platOf(ch)] || '?');
+const andList = l => l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1];
+function mergeMeta(metas, first = 0){
+  const notes = [...new Set(metas.map(x => (x.notes || '').trim()).filter(Boolean))];
+  const nick = (metas[first] || {}).nick || (metas.find(x => x.nick) || {}).nick || '';
+  return { ...(metas[first] || {}), notes: notes.join('\n\n'), tags: [...new Set(metas.flatMap(x => x.tags || []))], fav: metas.some(x => x.fav), nick };
+}
+// The Profiles list: a linked streamer once (with every saved account), the others one each
+function pfEntries(){
+  const seen = new Map();
+  for (const ch of saved){
+    if (/^yt:v:/.test(ch)) continue;
+    const st = linkedOn() ? streamerOf(ch) : null, key = st ? 's:' + st.id : ch;
+    if (!seen.has(key)) seen.set(key, st ? { key, main: st.main, chs: ordered(st), st } : { key, main: ch, chs: [ch], st: null });
+  }
+  return [...seen.values()];
+}
+const eMeta = e => e.st ? mergeMeta(e.chs.map(pfMeta), Math.max(0, e.chs.indexOf(e.main))) : pfMeta(e.main);
+const eLive = e => e.chs.filter(pfLive);
+const eName = e => e.st ? eMeta(e).nick || nameOf(e.main) : pfName(e.main);
+const eFollowers = e => { const f = e.chs.map(c => pfInfo(c).followers).filter(x => x != null); return f.length ? f.reduce((a, b) => a + b, 0) : null; };
 const fmtN = n => n == null ? '–' : (n = Number(n) || 0) >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M' : n >= 1e4 ? Math.round(n / 1e3) + 'K' : n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(n);
 let fmtDur;
 const fmtClock = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -79,7 +107,8 @@ function pfShow(view){
   profDlg.querySelector('.pf-prof').hidden = view !== 'prof';
   profDlg.querySelector('.pf-back').hidden = view !== 'prof';
   profDlg.querySelector('#profTitle').textContent = view === 'prof' ? 'Profile' : 'Streamer Profiles';
-  profDlg.querySelector('.pf-count').textContent = view === 'dir' ? `${saved.length} saved · ${liveNow().length} live now` : '';
+  const es = view === 'dir' ? pfEntries() : [];
+  profDlg.querySelector('.pf-count').textContent = view === 'dir' ? `${es.length} saved · ${es.filter(e => eLive(e).length).length} live now` : '';
   if (view === 'dir'){ pf.cur = null; pf.req++; }
 }
 function pfRenderDir(){
@@ -88,43 +117,53 @@ function pfRenderDir(){
   profDlg.querySelectorAll('.pf-chips[data-g=plat] button').forEach(b => b.classList.toggle('on', b.dataset.v === pf.plat));
   profDlg.querySelectorAll('.pf-chips[data-g=flag] button').forEach(b => b.classList.toggle('on', pf.flags.has(b.dataset.v)));
   $('#pfSort').value = pf.sort;
-  const match = ch => !q || [ch, chLabel(ch), pfMeta(ch).nick, pfInfo(ch).name, ...(pfMeta(ch).tags || [])].some(x => x && String(x).toLowerCase().includes(q));
-  const all = saved.filter(ch => !/^yt:v:/.test(ch));
-  const chs = all.filter(ch => (pf.plat === 'all' || platOf(ch) === pf.plat) && match(ch)
-    && (!pf.flags.has('live') || pfLive(ch)) && (!pf.flags.has('fav') || pfMeta(ch).fav)
-    && (!pf.flags.has('notes') || pfMeta(ch).notes) && (!pf.flags.has('tagged') || (pfMeta(ch).tags || []).length));
-  const last = ch => pfLive(ch) ? Date.now() : (pf.list[ch] && pf.list[ch].last) || 0;
-  const byName = (a, b) => pfName(a).localeCompare(pfName(b), undefined, { sensitivity: 'base' });
+  // (a linked streamer is one entry: any of its accounts can match a filter or the search)
+  const match = e => !q || e.chs.some(ch => [ch, chLabel(ch), pfInfo(ch).name].some(x => x && String(x).toLowerCase().includes(q)))
+    || [eMeta(e).nick, ...(eMeta(e).tags || [])].some(x => x && String(x).toLowerCase().includes(q));
+  const all = pfEntries();
+  const ents = all.filter(e => (pf.plat === 'all' || e.chs.some(ch => platOf(ch) === pf.plat)) && match(e)
+    && (!pf.flags.has('live') || eLive(e).length) && (!pf.flags.has('fav') || eMeta(e).fav)
+    && (!pf.flags.has('notes') || eMeta(e).notes) && (!pf.flags.has('tagged') || (eMeta(e).tags || []).length));
+  const isLive = e => eLive(e).length > 0 ? 1 : 0;
+  const last = e => isLive(e) ? Date.now() : Math.max(0, ...e.chs.map(ch => (pf.list[ch] && pf.list[ch].last) || 0));
+  const byName = (a, b) => eName(a).localeCompare(eName(b), undefined, { sensitivity: 'base' });
   const cmp = {
-    live: (a, b) => pfLive(b) - pfLive(a),
-    fav: (a, b) => (!!pfMeta(b).fav - !!pfMeta(a).fav) || (pfLive(b) - pfLive(a)),
+    live: (a, b) => isLive(b) - isLive(a),
+    fav: (a, b) => (!!eMeta(b).fav - !!eMeta(a).fav) || (isLive(b) - isLive(a)),
     recent: (a, b) => last(b) - last(a),
-    followers: (a, b) => (pfInfo(b).followers || 0) - (pfInfo(a).followers || 0),
+    followers: (a, b) => (eFollowers(b) || 0) - (eFollowers(a) || 0),
     name: () => 0
   }[pf.sort] || (() => 0);
-  chs.sort((a, b) => cmp(a, b) || byName(a, b));
-  profDlg.querySelector('.pf-shown').textContent = chs.length === all.length ? `${all.length}` : `${chs.length} of ${all.length}`;
+  ents.sort((a, b) => cmp(a, b) || byName(a, b));
+  profDlg.querySelector('.pf-shown').textContent = ents.length === all.length ? `${all.length}` : `${ents.length} of ${all.length}`;
   const grid = profDlg.querySelector('.pf-grid');
   grid.innerHTML = '';
   if (!all.length) grid.innerHTML = '<div class="pf-empty">Nothing saved yet. Type a name above to find a streamer, or click ☆ on any window.</div>';
-  else if (!chs.length) grid.innerHTML = '<div class="pf-empty">No saved streamers match.</div>';
-  chs.forEach(ch => {
-    const live = pfLive(ch), li = infoFor(ch) || {}, m = pfMeta(ch), inf = pfInfo(ch), rec = pf.list[ch] || {};
-    const c = document.createElement('button'); c.className = 'pf-card'; c.dataset.ch = ch;
+  else if (!ents.length) grid.innerHTML = '<div class="pf-empty">No saved streamers match.</div>';
+  ents.forEach(e => {
+    const ch = e.main, liveChs = eLive(e), live = liveChs.length > 0, m = eMeta(e), inf = pfInfo(ch);
+    const li = infoFor(liveChs.includes(ch) ? ch : liveChs[0] || ch) || {};
+    const c = document.createElement('button'); c.className = 'pf-card' + (e.st ? ' pf-multi' : ''); c.dataset.ch = ch;
     c.innerHTML = `<div class="pf-top"></div><div class="pf-line"></div><div class="pf-foot"></div>`;
     const top = c.querySelector('.pf-top');
-    top.appendChild(pfAvatar(ch, inf.name || chLabel(ch), inf.avatar, live));
+    top.appendChild(pfAvatar(ch, inf.name || nameOf(ch), inf.avatar, live));
     const who = document.createElement('div'); who.className = 'pf-who';
-    who.innerHTML = `<div class="pf-nm">${m.fav ? '<span class="pf-fav" title="Favourite">★</span>' : ''}<b></b><span class="pf-plat ${platOf(ch)}">${PLAT_NAME[platOf(ch)]}</span></div><div class="pf-st${live ? ' live' : ''}"></div>`;
-    who.querySelector('b').textContent = pfName(ch);
-    who.querySelector('.pf-st').textContent = live ? `LIVE${li.viewers != null ? ' · ' + fmtN(li.viewers) + ' watching' : ''}` : rec.last ? `Last live ${pfAgo(rec.last)}` : li.missing ? 'Channel not found' : 'Offline';
+    who.innerHTML = `<div class="pf-nm">${m.fav ? '<span class="pf-fav" title="Favourite">★</span>' : ''}<b></b>${e.st ? '<span class="pf-sites"></span>' : `<span class="pf-plat ${platOf(ch)}">${PLAT_NAME[platOf(ch)]}</span>`}</div><div class="pf-st${live ? ' live' : ''}"></div>`;
+    who.querySelector('b').textContent = eName(e);
+    if (e.st) who.querySelector('.pf-sites').append(...e.chs.map(x => pfSiteIco(x, !pfLive(x))));
+    const viewers = liveChs.reduce((t, x) => t + (+(infoFor(x) || {}).viewers || 0), 0);
+    const lastLive = Math.max(0, ...e.chs.map(x => (pf.list[x] && pf.list[x].last) || 0));
+    who.querySelector('.pf-st').textContent = live
+      ? `LIVE${e.st ? ' on ' + andList(liveChs.map(x => PLAT_NAME[platOf(x)])) : ''}${viewers || li.viewers != null ? ' · ' + fmtN(viewers || li.viewers) + ' watching' : ''}`
+      : lastLive ? `Last live ${pfAgo(lastLive)}` : li.missing ? 'Channel not found' : 'Offline';
     top.appendChild(who);
     const line = c.querySelector('.pf-line');
-    line.textContent = live ? [li.category, li.title].filter(Boolean).join(' · ') : rec.streams30 ? `${rec.streams30} stream${rec.streams30 === 1 ? '' : 's'} in the last 30 days` : m.nick ? chLabel(ch) : '';
+    const s30 = e.chs.reduce((t, x) => t + ((pf.list[x] || {}).streams30 || 0), 0);
+    line.textContent = live ? [li.category, li.title].filter(Boolean).join(' · ') : s30 ? `${s30} stream${s30 === 1 ? '' : 's'} in the last 30 days` : m.nick ? chLabel(ch) : '';
     line.title = line.textContent;
-    const foot = c.querySelector('.pf-foot');
-    foot.innerHTML = inf.followers != null ? `<span><b>${fmtN(inf.followers)}</b> followers</span>` : '<span>Open for details</span>';
-    if ((m.tags || []).length){ const t = document.createElement('span'); t.className = 'pf-tags'; m.tags.slice(0, 3).forEach(x => { const e = document.createElement('span'); e.className = 'pf-tag'; e.textContent = x; t.appendChild(e); }); foot.appendChild(t); }
+    const foot = c.querySelector('.pf-foot'), fol = eFollowers(e);
+    foot.innerHTML = fol != null ? `<span><b>${fmtN(fol)}</b> followers${e.st ? ` · ${e.chs.length} sites` : ''}</span>` : '<span>Open for details</span>';
+    if ((m.tags || []).length){ const t = document.createElement('span'); t.className = 'pf-tags'; m.tags.slice(0, 3).forEach(x => { const el = document.createElement('span'); el.className = 'pf-tag'; el.textContent = x; t.appendChild(el); }); foot.appendChild(t); }
     c.onclick = () => openProfile(ch);
     grid.appendChild(c);
   });
@@ -185,23 +224,76 @@ async function openProfile(ch){
   if (!window.kmv || !window.kmv.profileGet || !ch) return;
   ch = normCh(ch);
   if (profDlg.hidden){ closeOverlays(); profDlg.hidden = false; }
+  // a linked streamer: every account loads; All sites first, or the site it was opened from (a tab's profile button)
+  const st = linkedOn() ? streamerOf(ch) : null;
+  pf.group = st ? ordered(st) : null; pf.main = st ? st.main : null; pf.accs = {}; pf.gmeta = null;
+  pf.view = st ? (ch === st.main ? 'all' : ch) : null;
   pf.cur = ch; pf.histAll = false;
   const req = ++pf.req;
   pfShow('prof');
   pf.data = { ch, loading: true, meta: (pf.list[ch] || {}).meta, info: (pf.list[ch] || {}).info };
+  if (st) pfLoadAccs(st, req);
   pfRenderProf();
   profDlg.querySelector('.pf-body').scrollTop = 0;
   const local = await window.kmv.profileGet(ch, { local: true }).catch(() => null);
   if (req !== pf.req) return;
-  if (local) { pf.data = { ...local, loading: true }; pfRenderProf(); }
+  if (local) { pf.data = { ...local, loading: true }; if (pf.group) pf.accs[ch] = pf.data; pfRenderProf(); }
   if (modUrl(ch) && window.kmv.modCheck && pf.mod[ch] === undefined)
     window.kmv.modCheck(ch).then(v => { pf.mod[ch] = v; if (req === pf.req) pfRenderProf(); }).catch(() => {});
   const full = await window.kmv.profileGet(ch).catch(() => null);
   if (req !== pf.req) return;
   pf.data = full ? { ...full, meta: pf.data.meta || full.meta } : { ...pf.data, loading: false, failed: true };
   if (full && full.site) rememberName(ch, full.site.name);
+  if (pf.group) pf.accs[ch] = pf.data;
   pfRenderProf();
 }
+// A linked streamer's other accounts, each as the app and its site know it
+function pfLoadAccs(st, req){
+  for (const c of ordered(st)){
+    if (c === pf.cur) continue;
+    pf.accs[c] = { ch: c, loading: true, meta: (pf.list[c] || {}).meta, info: (pf.list[c] || {}).info };
+    window.kmv.profileGet(c, { local: true }).catch(() => null).then(local => {
+      if (req !== pf.req) return;
+      if (local) pf.accs[c] = { ...local, loading: true };
+      return window.kmv.profileGet(c).catch(() => null).then(full => {
+        if (req !== pf.req) return;
+        pf.accs[c] = full ? full : { ...pf.accs[c], loading: false, failed: true };
+        if (pf.cur === c) pf.data = pf.accs[c];
+        pfRenderProfSoon();
+      });
+    });
+  }
+}
+let pfSoonT = 0;
+const pfRenderProfSoon = () => { clearTimeout(pfSoonT); pfSoonT = setTimeout(() => { if (!profDlg.hidden && pf.cur && !pfTyping()) pfRenderProf(); }, 80); };
+const pfTyping = () => document.activeElement && profDlg.contains(document.activeElement) && /^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName);
+// All sites, or one site's numbers and history
+function pfSetView(v){
+  pf.view = v; pf.histAll = false;
+  pf.cur = v === 'all' ? pf.main : v;
+  pf.data = pf.accs[pf.cur] || { ch: pf.cur, loading: true, meta: (pf.list[pf.cur] || {}).meta, info: (pf.list[pf.cur] || {}).info };
+  pfRenderProf();
+}
+// The streamer's one set of notes, tags, nickname and favourite (merged from its accounts until it's changed here)
+function pfGroupMeta(){
+  if (pf.gmeta) return pf.gmeta;
+  const has = x => x && Object.keys(x).length;
+  const metas = pf.group.map(c => (has(pf.accs[c] && pf.accs[c].meta) ? pf.accs[c].meta : pf.list[c] && pf.list[c].meta) || {});
+  return mergeMeta(metas, Math.max(0, pf.group.indexOf(pf.main)));
+}
+const pfMetaOf = d => pf.group ? pfGroupMeta() : d.meta || {};
+// "Numbers and history for: All sites · Kick · Twitch · YouTube"
+function pfViewChips(){
+  const row = element('div', 'pf-view', element('span', 'pf-view-k', 'Numbers and history for'));
+  const chips = element('div', 'pf-chips');
+  const chip = (v, label, ico, dim) => { const b = element('button', { type: 'button', class: (pf.view === v ? 'on' : '') + (dim ? ' dim' : ''), onclick: () => pfSetView(v) }, ico || '', label); chips.appendChild(b); };
+  chip('all', 'All sites');
+  pf.group.forEach(c => chip(c, PLAT_NAME[platOf(c)], pfSiteIco(c), !pfLive(c)));
+  row.appendChild(chips);
+  return row;
+}
+// Their site's links to the streamer's other accounts aren't shown: those are the accounts now
+const pfSocialsOf = s => !pf.group ? s.socials : s.socials.filter(x => { const r = parseInput(x.url); return !(r && r.channel && pf.group.includes(r.channel)); });
 const pfIco = {
   star: '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg>',
   unf: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11h5"/></svg>',
@@ -209,10 +301,14 @@ const pfIco = {
 };
 let pfNotesT = null;
 function pfSaveMeta(ch, patch){
-  pf.data.meta = { ...(pf.data.meta || {}), ...patch };
-  if (pf.list[ch]) pf.list[ch].meta = pf.data.meta;
+  // a linked streamer's one set goes to every account (the main process keeps meta per channel)
+  const chs = pf.group && pf.group.includes(ch) ? pf.group : [ch];
+  const meta = { ...(pf.group ? pfGroupMeta() : pf.data.meta || {}), ...patch };
+  if (pf.group) pf.gmeta = meta;
+  pf.data.meta = meta;
+  chs.forEach(c => { if (pf.list[c]) pf.list[c].meta = meta; if (pf.accs[c]) pf.accs[c].meta = meta; });
   clearTimeout(pfNotesT);
-  const send = () => window.kmv.profileMeta(ch, pf.data.meta).catch(() => {});
+  const send = () => chs.forEach(c => window.kmv.profileMeta(c, meta).catch(() => {}));
   if ('notes' in patch || 'nick' in patch) pfNotesT = setTimeout(send, 500); else send();
 }
 async function unfollowKick(ch, name){
@@ -232,9 +328,10 @@ async function unfollowKick(ch, name){
 
 function pfRenderProf(){
   const d = pf.data || {}, ch = pf.cur; if (!ch) return;
+  if (pf.group && pf.view === 'all') return pfRenderLinked();
   const box = profDlg.querySelector('.pf-prof'), scroller = profDlg.querySelector('.pf-body'), keepY = scroller.scrollTop;
   const focused = document.activeElement && box.contains(document.activeElement) ? document.activeElement.dataset.k : null;
-  const s = d.site || null, sm = d.summary || {}, st = sm.stats || null, m = d.meta || {}, inf = d.info || {};
+  const s = d.site || null, sm = d.summary || {}, st = sm.stats || null, m = pfMetaOf(d), inf = d.info || {};
   const plat = platOf(ch), P = PLAT_NAME[plat], li = infoFor(ch) || null;
   const realName = (s && s.name) || inf.name || (li && li.name) || chLabel(ch);
   const shown = m.nick || realName;
@@ -270,9 +367,9 @@ function pfRenderProf(){
   if (s && s.bio) id.appendChild(element('p', 'pf-bio', s.bio));
   if (d.loading && !s) { const l = element('div', 'pf-load'); l.innerHTML = `<span class="spin"></span> Asking ${P}…`; id.appendChild(l); }
   else if (!s && (d.failed || d.missing || d.video)) id.appendChild(element('div', 'pf-meta', d.missing ? `${P} says this channel doesn't exist (any more).` : `Couldn't reach ${P} right now, so this shows what the app has recorded.`));
-  if (s && s.socials && s.socials.length){
+  if (s && s.socials && pfSocialsOf(s).length){
     const so = element('div', 'pf-socials');
-    s.socials.forEach(x => { const b = element('button'); b.innerHTML = `<b></b><span></span>`; b.querySelector('b').textContent = x.site; b.querySelector('span').textContent = x.label; b.title = x.url; b.onclick = () => window.kmv.openExternal(x.url); so.appendChild(b); });
+    pfSocialsOf(s).forEach(x => { const b = element('button'); b.innerHTML = `<b></b><span></span>`; b.querySelector('b').textContent = x.site; b.querySelector('span').textContent = x.label; b.title = x.url; b.onclick = () => window.kmv.openExternal(x.url); so.appendChild(b); });
     id.appendChild(so);
   }
   main.appendChild(id);
@@ -301,9 +398,11 @@ function pfRenderProf(){
   const url = (s && s.url) || platform(ch).profileUrl(ch);
   const ext = element('button', 'btn'); ext.innerHTML = pfIco.ext + 'Open on ' + P; ext.onclick = () => window.kmv.openExternal(url);
   acts.appendChild(ext);
+  if (pf.group){ const la = element('button', 'btn'); la.innerHTML = icon.layers + 'Linked accounts'; la.title = 'Their accounts, the main one, and their choices'; la.onclick = () => openLinkCard(pf.main); acts.appendChild(la); }
   main.appendChild(acts);
   hero.appendChild(main);
   box.appendChild(hero);
+  if (pf.group) box.appendChild(pfViewChips());
 
   /* now: live, or the last stream */
   const now = element('div', 'pf-now' + (isLive ? ' live' : ''));
@@ -411,22 +510,7 @@ function pfRenderProf(){
   left.appendChild(hist);
 
   // notes, tags, nickname
-  const nb = element('div', 'pf-box pf-notes');
-  nb.innerHTML = '<h4>Your notes <span>kept on this computer</span></h4>';
-  const ta = document.createElement('textarea'); ta.dataset.k = 'notes'; ta.placeholder = `Anything to remember about ${shown}`; ta.setAttribute('aria-label', 'Your notes'); ta.value = m.notes || '';
-  ta.oninput = () => pfSaveMeta(ch, { notes: ta.value });
-  nb.appendChild(ta);
-  const tr = element('div', 'pf-row'); tr.appendChild(element('label', '', 'Tags'));
-  (m.tags || []).forEach(t => { const x = element('span', 'pf-tagx', t); const b = element('button', '', '×'); b.title = 'Remove tag'; b.setAttribute('aria-label', `Remove tag ${t}`); b.onclick = () => { pfSaveMeta(ch, { tags: (m.tags || []).filter(y => y !== t) }); pfRenderProf(); }; x.appendChild(b); tr.appendChild(x); });
-  const ti = document.createElement('input'); ti.dataset.k = 'tag'; ti.placeholder = 'Add a tag, press Enter'; ti.maxLength = 24; ti.setAttribute('aria-label', 'Add a tag');
-  ti.onkeydown = e => { if (e.key === 'Enter' && ti.value.trim()){ e.preventDefault(); pfSaveMeta(ch, { tags: [...(m.tags || []), ti.value.trim()] }); pfRenderProf(); const n = box.querySelector('[data-k=tag]'); if (n) n.focus(); } };
-  tr.appendChild(ti); nb.appendChild(tr);
-  const nr = element('div', 'pf-row'); nr.appendChild(element('label', '', 'Nickname'));
-  const ni = document.createElement('input'); ni.dataset.k = 'nick'; ni.placeholder = `Shown instead of ${realName} in Profiles`; ni.maxLength = 40; ni.value = m.nick || ''; ni.setAttribute('aria-label', 'Nickname');
-  // (no redraw here: a redraw when the box loses focus would swallow the click that moved the focus)
-  ni.oninput = () => { pfSaveMeta(ch, { nick: ni.value }); h2.firstChild.textContent = ni.value.trim() || realName; };
-  nr.appendChild(ni); nb.appendChild(nr);
-  right.appendChild(nb);
+  right.appendChild(pfNotesBox(ch, m, shown, realName, box, h2));
   // categories
   if (sm.categories && sm.categories.length){
     const cb = element('div', 'pf-box');
@@ -457,6 +541,261 @@ function pfRenderProf(){
   box.appendChild(cols);
   scroller.scrollTop = keepY;
   if (focused){ const f = box.querySelector(`[data-k="${focused}"]`); if (f){ f.focus(); if (f.value != null) { const n = f.value.length; try { f.setSelectionRange(n, n); } catch {} } } }
+}
+/* ---- A linked streamer's profile, All sites: every account's numbers added up, streams on several sites at once
+   counted once (they overlap in time), its history merged into one row each with the sites it was on ---- */
+const DAY = 864e5;
+// Every account's streams, one row for the same stream on several sites: { start, end, title, cat, sites, peaks, views }
+function pfMergedHistory(){
+  const rows = pf.group.flatMap(c => ((pf.accs[c] || {}).summary || {}).history || []).length ? pf.group.flatMap(c =>
+    (((pf.accs[c] || {}).summary || {}).history || []).map(r => ({ ...r, site: c }))) : [];
+  rows.sort((a, b) => a.start - b.start);
+  const out = [];
+  for (const r of rows){
+    const cur = out[out.length - 1], curEnd = cur ? (cur.end || Date.now()) : 0;
+    if (cur && r.start <= curEnd + 5 * 60000){
+      cur.end = cur.end && r.end ? Math.max(cur.end, r.end) : null;
+      if (!cur.sites.includes(r.site)) cur.sites.push(r.site);
+      if (r.peak) cur.peaks[r.site] = Math.max(cur.peaks[r.site] || 0, r.peak);
+      if (r.site === pf.main){ cur.title = r.title || cur.title; cur.cat = r.cat || cur.cat; }
+      cur.exact = cur.exact && r.exact; if (r.src !== 'vod') cur.src = r.src;
+    } else out.push({ start: r.start, end: r.end || null, title: r.title, cat: r.cat, exact: r.exact, src: r.src, sites: [r.site], peaks: r.peak ? { [r.site]: r.peak } : {}, views: r.views });
+  }
+  out.forEach(r => { r.sites.sort((a, b) => pf.group.indexOf(a) - pf.group.indexOf(b)); r.peak = Object.values(r.peaks).reduce((a, b) => a + b, 0); });
+  return out.reverse();     // newest first
+}
+// Days in a row with a stream: now, and the best
+function pfStreak(rows){
+  const day = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const days = [...new Set(rows.map(r => day(r.start)))].sort((a, b) => a - b);
+  let best = 0, run = 0, prev = null;
+  days.forEach(d => { run = prev != null && Math.round((d - prev) / DAY) === 1 ? run + 1 : 1; best = Math.max(best, run); prev = d; });
+  const today = day(Date.now()), last = days[days.length - 1];
+  const current = last != null && (today - last) <= DAY ? run : 0;
+  return { current, best };
+}
+function pfRenderLinked(){
+  const box = profDlg.querySelector('.pf-prof'), scroller = profDlg.querySelector('.pf-body'), keepY = scroller.scrollTop;
+  const focused = document.activeElement && box.contains(document.activeElement) ? document.activeElement.dataset.k : null;
+  const chs = pf.group, main = pf.main, acc = c => pf.accs[c] || {}, siteOf = c => acc(c).site || null;
+  const md = acc(main), ms = siteOf(main), m = pfGroupMeta(), minf = md.info || pfInfo(main);
+  const realName = nameOf(main), shown = m.nick || realName;
+  const live = chs.filter(pfLive), isLive = live.length > 0;
+  const folOf = c => { const s = siteOf(c); return s && s.followers != null ? s.followers : (acc(c).info || pfInfo(c)).followers ?? null; };
+  const fols = chs.map(c => [c, folOf(c)]).filter(([, f]) => f != null), total = fols.reduce((t, [, f]) => t + f, 0);
+  const isSaved = chs.some(c => saved.includes(c));
+  box.innerHTML = '';
+
+  /* hero: the name with every account's site, the followers added up, the main account's bio */
+  const hero = element('div', 'pf-hero'), banner = element('div', 'pf-banner');
+  hero.style.setProperty('--pc', { kick: '#53fc18', twitch: '#9146ff', youtube: '#ff3030' }[platOf(main)]);
+  const bn = chs.map(siteOf).find(s => s && s.banner);
+  if (bn) banner.style.backgroundImage = `url("${bn.banner.replace(/"/g, '%22')}")`; else banner.classList.add('none');
+  hero.appendChild(banner);
+  const hm = element('div', 'pf-hero-main'), avw = element('div', 'pf-avwrap');
+  avw.appendChild(pfAvatar(main, realName, (ms && ms.avatar) || minf.avatar, isLive));
+  if (isLive) avw.appendChild(element('span', 'pf-livetag', 'LIVE'));
+  hm.appendChild(avw);
+  const id = element('div', 'pf-id'), h2 = element('h2');
+  h2.appendChild(document.createTextNode(shown));
+  if (m.nick && m.nick !== realName) h2.appendChild(element('small', '', realName));
+  h2.appendChild(element('span', 'pf-sites', ...chs.map(c => pfSiteIco(c, !pfLive(c)))));
+  id.appendChild(h2);
+  if (fols.length) id.appendChild(element('div', 'pf-meta', [`${fmtN(total)} followers across ${chs.length} sites`, ...fols.map(([c, f]) => `${PLAT_NAME[platOf(c)]} ${fmtN(f)}`)].join(' · ')));
+  if (ms && ms.bio) id.appendChild(element('p', 'pf-bio', ms.bio));
+  if (!chs.some(c => siteOf(c)) && chs.some(c => acc(c).loading)){ const l = element('div', 'pf-load'); l.innerHTML = '<span class="spin"></span> Asking the sites…'; id.appendChild(l); }
+  if (ms && ms.socials && pfSocialsOf(ms).length){
+    const so = element('div', 'pf-socials');
+    pfSocialsOf(ms).forEach(x => so.appendChild(element('button', { title: x.url, onclick: () => window.kmv.openExternal(x.url) }, element('b', null, x.site), element('span', null, x.label))));
+    id.appendChild(so);
+  }
+  hm.appendChild(id);
+  const acts = element('div', 'pf-acts');
+  const fav = element('button', 'btn fav' + (m.fav ? ' on' : '')); fav.innerHTML = pfIco.star + 'Favourite';
+  fav.title = m.fav ? 'Remove from favourites' : 'Mark as a favourite (sorts first in Profiles)';
+  fav.onclick = () => { pfSaveMeta(main, { fav: !m.fav }); pfRenderProf(); };
+  acts.appendChild(fav);
+  if (isSaved && DESKTOP){
+    const on = notifyAll && chs.every(c => !notifyOff.includes(c));
+    const bell = element('button', 'btn' + (on ? ' on' : '')); bell.innerHTML = (on ? icon.bell : icon.bellOff) + (on ? 'Live alerts on' : 'Live alerts off');
+    bell.disabled = !notifyAll; bell.title = !notifyAll ? 'Live notifications are off for every channel (Channels panel)' : on ? 'Notify me when any of their accounts goes live (click to turn off)' : 'No notification for them (click to turn on)';
+    bell.onclick = () => { channelVars.notifyOff = on ? [...new Set([...notifyOff, ...chs])] : notifyOff.filter(c => !chs.includes(c)); settings.set('notifyOff', notifyOff); sendWatch(); store.changed('liveAlerts'); pfRenderProf(); };
+    acts.appendChild(bell);
+  }
+  const sv = element('button', 'btn', isSaved ? 'Remove from saved' : '★ Save');
+  sv.title = isSaved ? 'Remove every account from your saved streamers (keeps notes and history)' : 'Save every account: check when they go live and keep a history';
+  sv.onclick = () => { channelVars.saved = isSaved ? saved.filter(c => !chs.includes(c)) : [...new Set([...saved, ...chs])]; persistSaved(); pfLoadList(); pfRenderProf(); };
+  acts.appendChild(sv);
+  // Open on… ▾: each site's page (and Kick's Unfollow, next to Kick)
+  const openOn = element('button', 'btn pf-openon', ''); openOn.innerHTML = pfIco.ext + 'Open on… <span class="pf-caret">▾</span>';
+  openOn.setAttribute('aria-haspopup', 'true');
+  openOn.onclick = () => pfOpenOnMenu(openOn);
+  acts.appendChild(openOn);
+  const la = element('button', 'btn'); la.innerHTML = icon.layers + 'Linked accounts'; la.title = 'Their accounts, the main one, and their choices';
+  la.onclick = () => openLinkCard(main);
+  acts.appendChild(la);
+  hm.appendChild(acts);
+  hero.appendChild(hm);
+  box.appendChild(hero);
+  box.appendChild(pfViewChips());
+
+  /* now: the sites live together, or the last stream */
+  const now = element('div', 'pf-now' + (isLive ? ' live' : '')), txt = element('div', 'pf-now-txt'), btns = element('div', 'pf-now-btns');
+  if (isLive){
+    const lead = live.includes(main) ? main : live[0], li = infoFor(lead) || {}, sl = (siteOf(lead) || {}).live;
+    const starts = live.map(c => (infoFor(c) || {}).startedAt || ((siteOf(c) || {}).live || {}).startedAt).filter(Boolean), started = starts.length ? Math.min(...starts) : null;
+    const together = live.reduce((t, c) => t + (+(infoFor(c) || {}).viewers || 0), 0);
+    txt.appendChild(element('div', 'pf-now-k', [`Live now on ${andList(live.map(c => PLAT_NAME[platOf(c)]))}`, started ? `up ${fmtDur(Date.now() - started)}` : ''].filter(Boolean).join(' · ')));
+    txt.appendChild(element('div', 'pf-now-t', li.title || (sl && sl.title) || 'Live'));
+    const sub = element('div', 'pf-now-s');
+    const cat = li.category || (sl && sl.category); if (cat) sub.append(cat);
+    live.forEach(c => { const v = (infoFor(c) || {}).viewers; if (v == null) return; if (sub.childNodes.length) sub.append(' · '); sub.append(pfSiteIco(c), ` ${Number(v).toLocaleString()} watching`); });
+    if (live.length > 1 && together) sub.append(` · ${together.toLocaleString()} together`);
+    txt.appendChild(sub);
+    const w = element('button', 'btn primary', live.length > 1 ? `Watch (tabs: ${live.map(c => SITE_LETTER[platOf(c)]).join(', ')})` : 'Watch now');
+    w.onclick = () => { profDlg.hidden = true; openStreamer(main, 'both', live); };
+    const c2 = element('button', 'btn', 'Chat only'); c2.onclick = () => { profDlg.hidden = true; openStreamer(main, 'chat', live); };
+    btns.append(w, c2);
+    if (live.length > 1){
+      const one = element('div', 'pf-now-sites');
+      live.forEach(c => { const b = element('button', { class: 'btn', title: `Watch on ${PLAT_NAME[platOf(c)]} only`, 'aria-label': `Watch on ${PLAT_NAME[platOf(c)]} only` }, pfSiteIco(c)); b.onclick = () => { profDlg.hidden = true; openStreamer(main, 'both', [c]); }; one.appendChild(b); });
+      btns.appendChild(one);
+    }
+  } else {
+    const recaps = chs.map(c => ({ c, rc: ((acc(c).summary || {}).recap) })).filter(x => x.rc).sort((a, b) => b.rc.end - a.rc.end), rc = recaps[0] && recaps[0].rc;
+    if (rc){
+      txt.appendChild(element('div', 'pf-now-k', `Offline · last live ${pfAgo(rc.end)}`));
+      txt.appendChild(element('div', 'pf-now-t', rc.title || 'Untitled stream'));
+      txt.appendChild(element('div', 'pf-now-s', [rc.cat, `${fmtDay(rc.start)}, ${fmtClock(rc.start)} for ${fmtDur(rc.end - rc.start)}`].filter(Boolean).join(' · ')));
+    } else {
+      txt.appendChild(element('div', 'pf-now-k', 'Offline'));
+      txt.appendChild(element('div', 'pf-now-t', 'No streams seen yet'));
+      txt.appendChild(element('div', 'pf-now-s', isSaved ? 'The app records each stream it sees while it\'s open.' : 'Save them to have the app record their streams.'));
+    }
+    const w = element('button', 'btn primary', 'Open anyway'); w.onclick = () => { profDlg.hidden = true; openStreamer(main, 'both'); };
+    const c2 = element('button', 'btn', 'Chat only'); c2.onclick = () => { profDlg.hidden = true; openStreamer(main, 'chat'); };
+    btns.append(w, c2);
+  }
+  now.append(txt, btns);
+  box.appendChild(now);
+
+  /* stat tiles, for All sites */
+  const hist = pfMergedHistory(), nowT = Date.now();
+  const in30 = hist.filter(r => r.start >= nowT - 30 * DAY), in90 = hist.filter(r => r.start >= nowT - 90 * DAY && r.end);
+  const stats = chs.map(c => ((acc(c).summary || {}).stats) || null);
+  const tiles = element('div', 'pf-stats');
+  const tile = (k, v, sub) => { const t = element('div', 'pf-tile'); t.append(element('span', 'k', k), element('span', 'v' + (v == null ? ' na' : ''), v == null ? 'Not enough data yet' : v), element('span', 's', sub || '')); tiles.appendChild(t); };
+  tile('Followers', fols.length ? fmtN(total) : null, fols.map(([c, f]) => `${PLAT_NAME[platOf(c)]} ${fmtN(f)}`).join(' · '));
+  const avgs = stats.map((x, i) => x && x.avgViewers != null ? [chs[i], x.avgViewers] : null).filter(Boolean);
+  tile('Avg viewers', avgs.length ? fmtN(avgs.reduce((t, [, v]) => t + v, 0)) : null, avgs.length > 1 ? `${andList(avgs.map(([c]) => PLAT_NAME[platOf(c)]))} added up, while live together` : avgs.length ? `seen by the app on ${PLAT_NAME[platOf(avgs[0][0])]}` : 'counted by the app while it\'s open');
+  const multi = in30.filter(r => r.sites.length > 1).length, most = Math.max(0, ...in30.map(r => r.sites.length)), hours = in30.reduce((t, r) => t + ((r.end || nowT) - r.start), 0) / 36e5;
+  tile('Streams', hist.length ? String(in30.length) : null, `last 30 days · ${Math.round(hours)} h live${multi ? ` · on ${most} sites at once in ${multi}` : ''}`);
+  const lens = in90.map(r => r.end - r.start);
+  tile('Avg length', lens.length ? fmtDur(lens.reduce((a, b) => a + b, 0) / lens.length) : null, lens.length ? `longest ${fmtDur(Math.max(...lens))} (90 days)` : '');
+  const us = stats[chs.indexOf(main)] && stats[chs.indexOf(main)].usual ? stats[chs.indexOf(main)] : stats.find(x => x && x.usual);
+  const dayCounts = [0, 0, 0, 0, 0, 0, 0]; in90.forEach(r => { dayCounts[(new Date(r.start).getDay() + 6) % 7]++; });
+  tile('Usually starts', us ? minClock(us.usual.minute) : null, us ? [pfTopDays(dayCounts), `±${us.usual.spread < 60 ? us.usual.spread + ' min' : Math.round(us.usual.spread / 60) + ' h'}`].filter(Boolean).join(' · ') : 'needs a few streams');
+  const sk = pfStreak(hist);
+  tile('Live streak', hist.length ? `${sk.current} day${sk.current === 1 ? '' : 's'}` : null, hist.length ? `best ${sk.best} day${sk.best === 1 ? '' : 's'} in a row` : '');
+  box.appendChild(tiles);
+  const covs = chs.map(c => ((acc(c).summary || {}).coverage) || null).filter(x => x && x.since);
+  const covL = element('div', 'pf-cov'); covL.innerHTML = '<i></i><span></span>';
+  covL.querySelector('span').textContent = covs.length
+    ? `Tracking since ${fmtDate(Math.min(...covs.map(x => x.since)))} · last 30 days: ${in30.length} stream${in30.length === 1 ? '' : 's'} across ${chs.length} sites, the same stream on two sites counted once. The app only sees streams while it's open.`
+    : isSaved ? 'Tracking starts now: the app records each stream it sees while it\'s open.' : 'Not saved, so the app isn\'t recording their streams.';
+  box.appendChild(covL);
+
+  /* columns: when they stream, the merged history, notes, categories */
+  const cols = element('div', 'pf-cols'), left = element('div', 'pf-main'), right = element('div', 'pf-side');
+  const heats = chs.map(c => ((acc(c).summary || {}).heat) || null).filter(Boolean);
+  const hb = element('div', 'pf-box');
+  hb.innerHTML = '<h4>When they usually stream <span></span></h4>';
+  if (heats.length){
+    const heat = { weeks: Math.max(...heats.map(h => h.weeks)), cells: heats[0].cells.map((row, d) => row.map((_, h) => Math.max(...heats.map(x => (x.cells[d] || [])[h] || 0)))) };
+    hb.querySelector('h4 span').textContent = `last ${heat.weeks} week${heat.weeks === 1 ? '' : 's'}, every site, your time`;
+    hb.appendChild(pfHeat(heat, { dayCounts }));
+  } else hb.appendChild(element('div', 'pf-none', 'Not enough streams yet: this fills in as the app sees them stream (and from past broadcasts on Kick and Twitch).'));
+  left.appendChild(hb);
+  const hbox = element('div', 'pf-box');
+  hbox.innerHTML = '<h4>Live history <span></span></h4>';
+  if (hist.length) hbox.querySelector('h4 span').textContent = `${hist.length} stream${hist.length === 1 ? '' : 's'} known`;
+  if (!hist.length) hbox.appendChild(element('div', 'pf-none', 'No streams known yet. The app records each stream it sees while it\'s open; Kick and Twitch past broadcasts are added when the streamer keeps them.'));
+  else {
+    const wrap = element('div', 'pf-hist'), tb = document.createElement('table');
+    tb.innerHTML = '<thead><tr><th>Sites</th><th>Date</th><th>Time · length</th><th>Title</th><th>Category</th><th class="n" title="Highest viewer count the app saw, every site added up">Peak</th></tr></thead><tbody></tbody>';
+    const body = tb.querySelector('tbody'), rows = pf.histAll ? hist : hist.slice(0, 20);
+    const maxLen = Math.max(...hist.map(r => (r.end || nowT) - r.start), 1);
+    rows.forEach(r => {
+      const tr = document.createElement('tr'); if (!r.end) tr.className = 'live';
+      const len = (r.end || nowT) - r.start;
+      tr.innerHTML = '<td class="pf-hs"></td><td></td><td></td><td class="t"></td><td></td><td class="n"></td>';
+      const c = tr.children;
+      c[0].append(...r.sites.map(x => pfSiteIco(x)));
+      c[1].textContent = r.end ? fmtDay(r.start) : 'Live now';
+      c[2].textContent = `${r.exact ? '' : '~'}${fmtClock(r.start)} · ${fmtDur(len)}${r.end ? '' : '+'}`;
+      const bar = element('span', 'bar'), bi = element('i'); bi.style.width = Math.round(len / maxLen * 100) + '%'; bar.appendChild(bi); c[2].appendChild(bar);
+      c[3].textContent = r.title || '–'; c[3].title = r.title || '';
+      c[4].textContent = r.cat || '–';
+      c[5].textContent = r.peak ? r.peak.toLocaleString() : r.views != null ? `${fmtN(r.views)} views` : '–';
+      if (Object.keys(r.peaks).length > 1) c[5].title = Object.entries(r.peaks).map(([x, v]) => `${PLAT_NAME[platOf(x)]} ${v.toLocaleString()}`).join(' · ');
+      body.appendChild(tr);
+    });
+    wrap.appendChild(tb); hbox.appendChild(wrap);
+    if (hist.length > 20){ const more = element('button', 'btn', pf.histAll ? 'Show fewer' : `Show all ${hist.length}`); more.style.alignSelf = 'flex-start'; more.onclick = () => { pf.histAll = !pf.histAll; pfRenderProf(); }; hbox.appendChild(more); }
+  }
+  left.appendChild(hbox);
+  right.appendChild(pfNotesBox(main, m, shown, realName, box, h2));
+  const cats = new Map();
+  chs.forEach(c => (((acc(c).summary || {}).categories) || []).forEach(x => cats.set(x.name, (cats.get(x.name) || 0) + (x.hours || 0))));
+  if (cats.size){
+    const list = [...cats].sort((a, b) => b[1] - a[1]).slice(0, 5), top = list[0][1] || 1;
+    const cb = element('div', 'pf-box'); cb.innerHTML = '<h4>Top categories <span>hours streamed, 90 days, every site</span></h4>';
+    list.forEach(([name, h]) => { const e = element('div', 'pf-cat'); e.innerHTML = '<div><b></b><span></span></div><i><b></b></i>'; e.querySelector('div b').textContent = name; e.querySelector('div span').textContent = h < 1 ? `${Math.round(h * 60)} min` : `${Math.round(h)} h`; e.querySelector('i b').style.width = Math.max(3, Math.round(h / top * 100)) + '%'; cb.appendChild(e); });
+    right.appendChild(cb);
+  }
+  cols.append(left, right);
+  box.appendChild(cols);
+  scroller.scrollTop = keepY;
+  if (focused){ const f = box.querySelector(`[data-k="${focused}"]`); if (f){ f.focus(); if (f.value != null) { const n = f.value.length; try { f.setSelectionRange(n, n); } catch {} } } }
+}
+// Open on… ▾: each site's page, and Kick's Unfollow next to Kick
+let pfMenu = null;
+function pfOpenOnMenu(btn){
+  if (!pfMenu){ pfMenu = element('div', { class: 'pf-menu', role: 'menu', hidden: true }); profDlg.querySelector('.pf-prof').appendChild(pfMenu); closeOnOutside(pfMenu, { button: () => btn }); }
+  if (!pfMenu.isConnected) profDlg.querySelector('.pf-prof').appendChild(pfMenu);   // (the profile was drawn again)
+  if (!pfMenu.hidden){ pfMenu.hidden = true; return; }
+  const items = [];
+  pf.group.forEach(c => {
+    const s = (pf.accs[c] || {}).site, url = (s && s.url) || platform(c).profileUrl(c);
+    items.push(element('button', { type: 'button', role: 'menuitem', onclick: () => { pfMenu.hidden = true; window.kmv.openExternal(url); } }, pfSiteIco(c), element('span', null, PLAT_NAME[platOf(c)]), element('small', null, url.replace(/^https?:\/\/(www\.)?/, ''))));
+    if (platOf(c) === 'kick' && s && s.loggedIn && s.following !== false)
+      items.push(element('button', { type: 'button', role: 'menuitem', class: 'pf-unf', onclick: async () => { pfMenu.hidden = true; const r = await unfollowKick(c, nameOf(c)); if (r && r.ok && pf.accs[c] && pf.accs[c].site){ pf.accs[c].site.following = false; pfRenderProf(); } } }, element('span', { class: 'pf-mi', html: pfIco.unf }), element('span', null, 'Unfollow on Kick')));
+  });
+  pfMenu.replaceChildren(...items);
+  pfMenu.hidden = false;
+  const r = btn.getBoundingClientRect(), host = pfMenu.offsetParent ? pfMenu.offsetParent.getBoundingClientRect() : { left: 0, top: 0 };
+  pfMenu.style.left = (r.left - host.left) + 'px'; pfMenu.style.top = (r.bottom - host.top + 4) + 'px';
+}
+
+// Your notes, tags and nickname (a linked streamer's one set: pfSaveMeta writes it to every account)
+function pfNotesBox(ch, m, shown, realName, box, h2){
+  const nb = element('div', 'pf-box pf-notes');
+  nb.innerHTML = '<h4>Your notes <span></span></h4>';
+  nb.querySelector('h4 span').textContent = pf.group ? `one set for ${nameOf(pf.main)}, on every site` : 'kept on this computer';
+  const ta = document.createElement('textarea'); ta.dataset.k = 'notes'; ta.placeholder = `Anything to remember about ${shown}`; ta.setAttribute('aria-label', 'Your notes'); ta.value = m.notes || '';
+  ta.oninput = () => pfSaveMeta(ch, { notes: ta.value });
+  nb.appendChild(ta);
+  const tr = element('div', 'pf-row'); tr.appendChild(element('label', '', 'Tags'));
+  (m.tags || []).forEach(t => { const x = element('span', 'pf-tagx', t); const b = element('button', '', '×'); b.title = 'Remove tag'; b.setAttribute('aria-label', `Remove tag ${t}`); b.onclick = () => { pfSaveMeta(ch, { tags: (m.tags || []).filter(y => y !== t) }); pfRenderProf(); }; x.appendChild(b); tr.appendChild(x); });
+  const ti = document.createElement('input'); ti.dataset.k = 'tag'; ti.placeholder = 'Add a tag, press Enter'; ti.maxLength = 24; ti.setAttribute('aria-label', 'Add a tag');
+  ti.onkeydown = e => { if (e.key === 'Enter' && ti.value.trim()){ e.preventDefault(); pfSaveMeta(ch, { tags: [...(m.tags || []), ti.value.trim()] }); pfRenderProf(); const n = box.querySelector('[data-k=tag]'); if (n) n.focus(); } };
+  tr.appendChild(ti); nb.appendChild(tr);
+  const nr = element('div', 'pf-row'); nr.appendChild(element('label', '', 'Nickname'));
+  const ni = document.createElement('input'); ni.dataset.k = 'nick'; ni.placeholder = `Shown instead of ${realName} in Profiles`; ni.maxLength = 40; ni.value = m.nick || ''; ni.setAttribute('aria-label', 'Nickname');
+  // (no redraw here: a redraw when the box loses focus would swallow the click that moved the focus)
+  ni.oninput = () => { pfSaveMeta(ch, { nick: ni.value }); h2.firstChild.textContent = ni.value.trim() || realName; };
+  nr.appendChild(ni); nb.appendChild(nr);
+  return nb;
 }
 function pfChatRules(c){
   const r = [];

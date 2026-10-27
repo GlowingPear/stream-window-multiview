@@ -1,4 +1,4 @@
-import { GAP, ROLE, colsMode, lastLayout, wins } from '../core.js';
+import { GAP, ROLE, colsMode, lastLayout, shownWins, wins } from '../core.js';
 import { buildCols, columnsLayout } from '../layout/columns.js';
 import { SW, focusWin, setRect } from '../layout/geometry.js';
 import { chatFocusLayout, colKey, colOrder, colX0, featBase, featuredCh, hbar, layoutVars, maxScroll, scrollRaf,
@@ -6,8 +6,10 @@ import { chatFocusLayout, colKey, colOrder, colX0, featBase, featuredCh, hbar, l
 import { scrollCols, setScrollX, snapSoon } from '../layout/sideways-scroll.js';
 import { placeSwitcher } from '../layout/switch-control.js';
 import { infoFor, svHue, svInitials, svProf } from '../panels/channels/channels.js';
+import { nameShown } from '../panels/settings/windows-pane.js';
 import { save } from '../persistence.js';
-import { chLabel, chLabelP, platIcon, platOf } from '../platforms/platforms.js';
+import { nameOf } from '../platforms/linked.js';
+import { chLabel, platIcon, platOf } from '../platforms/platforms.js';
 import { DESKTOP } from '../shared/env.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
@@ -17,17 +19,20 @@ let schedulePicks;
 function refreshPicks(){
   const order = buildCols().map(c => c.key);
   ['stream', 'chat'].forEach(kind => {
-    const list = wins.filter(w => w.kind === kind && w.channel)
+    // the windows on screen (a window with several sites once), by name: the site icon beside it tells them apart
+    const list = shownWins().filter(w => w.kind === kind && w.channel)
       .sort((a, b) => order.indexOf(colKey(a)) - order.indexOf(colKey(b)));
-    const sig = list.map(o => o.channel + '=' + chLabelP(o.channel)).join('|');
-    list.forEach(w => {
+    const sig = list.map(o => o.channel + '=' + nameOf(o.channel)).join('|');
+    wins.filter(w => w.kind === kind && w.channel).forEach(w => {
       const sel = w.el.querySelector('.col-pick'); if (!sel) return;
-      if (sel.dataset.sig !== sig){
-        sel.dataset.sig = sig; sel.innerHTML = '';
-        list.forEach(o => { const op = document.createElement('option'); op.value = o.channel; op.textContent = chLabelP(o.channel); sel.appendChild(op); });
+      const mine = list.includes(w) ? list : [w, ...list];
+      const sg = list.includes(w) ? sig : w.channel + '|' + sig;
+      if (sel.dataset.sig !== sg){
+        sel.dataset.sig = sg; sel.innerHTML = '';
+        mine.forEach(o => { const op = document.createElement('option'); op.value = o.channel; op.textContent = nameOf(o.channel); sel.appendChild(op); });
       }
       if (sel.value !== w.channel) sel.value = w.channel;
-      sel.title = list.length > 1 ? `Swap this ${kind} with another one` : chLabelP(w.channel);
+      sel.title = (list.length > 1 ? `Swap this ${kind} with another one` : nameOf(w.channel)) + (nameShown(w) ? '' : ` · ${nameOf(w.channel)} · ${kind}`);
     });
   });
   paintBarAvatars(); loadBarAvatars();
@@ -37,7 +42,7 @@ function refreshPicks(){
 let barProf = {}, barProfSig = '';
 function loadBarAvatars(again){
   if (!DESKTOP || !window.kmv.profileList) return;
-  const chs = [...new Set(wins.filter(w => w.channel).map(w => w.channel))], sig = chs.join('|');
+  const chs = [...new Set(wins.filter(w => w.channel).map(w => w.channel))], sig = chs.join('|');   // (tabs you can't see too)
   if (!chs.length || (!again && sig === barProfSig)) return;
   barProfSig = sig;
   window.kmv.profileList(chs).then(l => { barProf = l || {}; paintBarAvatars(); }).catch(() => {});
@@ -62,7 +67,7 @@ function paintBarAvatars(){
   });
 }
 function swapWindows(w, otherCh){
-  const o = wins.find(x => x.kind === w.kind && x.channel === otherCh);
+  const o = shownWins().find(x => x.kind === w.kind && x.channel === otherCh);
   if (!o || o === w){ refreshPicks(); return; }
   if (ROLE === 'main' && (colsMode || lastLayout === 'chatfocus')){
     const a = colKey(w), b = colKey(o);
@@ -98,7 +103,7 @@ function init(){
   /* Highlight / Columns: the channel name on each side chat is a dropdown to pick which stream that column shows. */
   /* Every stream / chat window's name is a dropdown: pick another one of the same kind to swap them.
      Columns, highlight and Chat focus swap whole stream + chat pairs; any other arrangement swaps the two windows. */
-  store.watch(['wins', 'names'], () => schedulePicks());
+  store.watch(['wins', 'names', 'streamers', 'tabs'], () => schedulePicks());
   schedulePicks = soon(() => { refreshPicks(); if (switchMode !== 'dock') placeSwitcher(); }, 30);
   store.watch('live', () => paintBarAvatars());
   hbar.addEventListener('pointerdown', e => {

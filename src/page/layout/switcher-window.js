@@ -15,7 +15,7 @@ api.onSwitcherState(s => {
   if (s.icons) icon = s.icons;
   if (s.scripts) scripts = s.scripts;
   st = s;
-  const sig = JSON.stringify([s.featOn, s.chatFocus, s.plainCols, s.items.map(i => [i.ch, i.label, i.plat, i.on, i.preview, i.mini])]);
+  const sig = JSON.stringify([s.featOn, s.chatFocus, s.plainCols, s.items.map(i => [i.ch, i.label, i.plat, i.on, i.preview, i.mini, i.more])]);
   if (sig !== structSig){ structSig = sig; render(); } else update();
 });
 
@@ -104,7 +104,7 @@ function render(){
     it.dataset.ch = s.ch;
     it.innerHTML =
       `<div class="fs-row"><button class="fs-play"></button>` +
-      `<button class="fs-name" title="${s.on ? 'In focus. Click to put it back in its column' : 'Put ' + esc(s.label) + ' in the big spot'}"><i class="dot"></i><span>${esc(s.label)}</span><em class="fs-n" hidden></em></button>` +
+      `<button class="fs-name" title="${s.on ? 'In focus. Click to put it back in its column' : 'Put ' + esc(s.label) + ' in the big spot'}"><i class="dot"></i>${s.more ? `<b class="fs-more" title="${esc(s.moreTip)}">+${s.more}</b>` : ''}<span>${esc(s.label)}</span><em class="fs-n" hidden></em></button>` +
       `<span class="fs-volw"><button class="fs-mute" title="Mute / unmute (Shift-click: hear only this one)"></button><input type="range" min="0" max="100" step="1" aria-label="Volume"><span class="fs-pct"></span></span>` +
       `<button class="fs-rl" title="Refresh ${esc(s.label)}">${icon.reload}</button>` +
       `<button class="fs-pv" title="${s.preview ? 'Hide' : 'Show'} small live preview">${s.preview ? icon.chevUp : icon.chevDown}</button>` +

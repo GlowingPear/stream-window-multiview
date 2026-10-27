@@ -15,6 +15,7 @@ import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
+import { openStreamer } from '../../windows/frames.js';
 
 /* ---------- the notification centre: the toolbar bell ----------
    Chat mentions, likely spam, saved channels going live, raids and the app's own messages, in one list
@@ -151,6 +152,7 @@ function mentBodyHtml(m){
 }
 /* One row of the bell or All notifications. o: { clock (the time, not "x min ago"), onDelete, close (what's
    open: the bell or the history) } */
+const andList = l => l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1];
 const NOTE_ICO = { mention: 'at', reply: 'reply', support: 'gift', spam: 'mod', live: 'live', raid: 'raid', accounts: 'user', layouts: 'tile', windows: 'popwin', downloads: 'download', updates: 'update' };
 function noteRow(n, o = {}){
   const kind = n.kind || 'mention', tab = SmvNotes.tabOf(n);
@@ -196,15 +198,21 @@ function noteRow(n, o = {}){
     row.title = 'Show this chat';
     row.onclick = () => { close(); revealChat(n.channel); };
   } else if (kind === 'live' || kind === 'raid'){
-    if (kind === 'live'){ top.textContent = n.label || chLabel(n.channel); k.textContent = 'went live'; }
+    const sites = kind === 'live' && Array.isArray(n.sites) && n.sites.length > 1 ? n.sites : null;   // a linked streamer, live on several
+    if (kind === 'live'){ top.textContent = n.label || chLabel(n.channel); k.textContent = sites ? 'is live on ' + andList(sites.map(c => PLAT_NAME[platOf(c)])) : 'went live'; }
     else { top.textContent = n.label || chLabel(n.channel); k.textContent = `raided by ${n.from ? chLabel(n.from) : 'someone'}`; }
     k.classList.add('plain');
-    where.textContent = PLAT_NAME[platOf(n.channel)] || '';
+    where.textContent = sites ? '' : PLAT_NAME[platOf(n.channel)] || '';
+    if (sites) where.append(...sites.map((c, i) => element('span', 'nc-site', element('i', { class: 'pi pi-' + platOf(c) }, PLAT_NAME[platOf(c)][0]),
+      ` ${PLAT_NAME[platOf(c)]}` + (n.viewersBy && n.viewersBy[c] != null ? ` · ${Number(n.viewersBy[c]).toLocaleString()}` : '') + (i && n.at && n.at[c] && n.at[sites[0]] ? ` · ${Math.max(1, Math.round((n.at[c] - n.at[sites[0]]) / 60000))} min later` : ''))));
     if (n.auto) where.insertAdjacentHTML('afterend', '<span class="nc-auto">opened by itself</span>');
-    body.textContent = [n.title, n.category, n.viewers != null ? `${Number(n.viewers).toLocaleString()} watching` : ''].filter(Boolean).join(' · ');
-    const open = wins.some(w => (w.kind === 'stream' || w.kind === 'chat') && w.channel === n.channel), info = infoFor(n.channel);
+    const together = sites && n.viewersBy ? sites.reduce((t, c) => t + (+n.viewersBy[c] || 0), 0) : null;
+    body.textContent = [n.title, n.category, together ? `${together.toLocaleString()} watching together` : n.viewers != null ? `${Number(n.viewers).toLocaleString()} watching` : ''].filter(Boolean).join(' · ');
+    const chs = sites || [n.channel];
+    const open = wins.some(w => (w.kind === 'stream' || w.kind === 'chat') && chs.includes(w.channel)), info = infoFor(n.channel);
     if (open) acts.insertAdjacentHTML('beforeend', '<span class="nc-note">Already open</span>');
-    else if (info && info.live === false) acts.insertAdjacentHTML('beforeend', '<span class="nc-note">Offline</span>');
+    else if (!sites && info && info.live === false) acts.insertAdjacentHTML('beforeend', '<span class="nc-note">Offline</span>');
+    else if (sites) act('Watch as tabs', () => { close(); openStreamer(n.channel, 'both', sites.filter(c => infoFor(c)?.live)); }, 'primary');
     else {
       act('Watch', () => { close(); addParsed({ channel: n.channel, only: null }); }, 'primary');
       act('Chat only', () => { close(); addParsed({ channel: n.channel, only: 'chat' }); });

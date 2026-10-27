@@ -1,6 +1,6 @@
 import { alerts, saveAlerts } from '../alerts/alerts.js';
 import { pollMentions, revealChat } from '../alerts/spam-alerts.js';
-import { $, ROLE, colsMode, lastLayout, wins } from '../core.js';
+import { $, ROLE, colsMode, lastLayout, modeSel, wins } from '../core.js';
 import { chatRailLayout } from '../layout/chat-rail.js';
 import { chatStageLayout } from '../layout/chat-stage.js';
 import { columnsLayout } from '../layout/columns.js';
@@ -17,6 +17,7 @@ import { follows, followsApi, loadFollows } from '../panels/channels/follow-sugg
 import { addPlat, openBoxVars, openFromBox } from '../panels/channels/open-box.js';
 import { syncAlertControls } from '../panels/settings/alerts.js';
 import { syncLiveAlerts } from '../panels/settings/notifications.js';
+import { groupKey, sameStreamer, streamerOf } from '../platforms/linked.js';
 import { PLAT_NAME } from '../platforms/platforms.js';
 import { commands } from '../shared/commands.js';
 import { DESKTOP } from '../shared/env.js';
@@ -27,6 +28,7 @@ import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { MAC_BAR, showLights, updateFocusBtn } from './header.js';
 import { layoutBtn, layoutMenu } from './layout-menu.js';
+import { openStreamer } from '../windows/frames.js';
 
 /* ---- The toolbar on top or on the left (Layout menu and Settings > Layouts > Toolbar), main window only ----
    On the left, Labels is a column of named rows, Icons only a slim column of icons, each with its name in its tooltip.
@@ -46,6 +48,15 @@ function setBarLights(on){
 // On the pear: they show. Over them the page doesn't hear the pointer at all, so they stay while it was last in the
 // corner they sit in (LIGHTS_AT in main.js, three buttons to x 70); anywhere else they go after a moment.
 const LIGHTS_CORNER = { x: 80, y: 44 };
+// Open each of these channels that isn't open yet: a linked streamer once, as its window with tabs
+function openEach(chs){
+  const done = new Set();
+  chs.forEach(ch => {
+    const k = groupKey(ch); if (done.has(k)) return; done.add(k);
+    if (wins.some(w => w.kind === 'stream' && sameStreamer(w.channel, ch))) return;
+    if (streamerOf(ch)) openStreamer(ch, modeSel.value); else addParsed({ channel: ch, only: null });
+  });
+}
 // A row of tabs (role="tablist"): click one, or the arrow keys, Home and End. onPick(name) shows its part.
 // list.selectTab(name) picks one from code.
 function wireTabs(list, onPick){
@@ -221,7 +232,7 @@ function init(){
     fromApp('onOpenChannel', ch => addParsed({ channel: ch, only: null }));
     window.kmv.liveSnapshot().then(gotLive).catch(() => {});
     $('#openLive').onclick = () => {
-      liveNow().forEach(ch => { if (!wins.some(w => w.kind === 'stream' && w.channel === ch)) addParsed({ channel: ch, only: null }); });
+      openEach(liveNow());
       if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(); else if (lastLayout === 'stage') chatStageLayout(); else if (lastLayout === 'rail') chatRailLayout(); else autoLayout();
     };
     setInterval(() => { if (!$('#savedPanel').hidden) renderSaved(); }, 30000);   // keep "checked x min ago" fresh
@@ -266,7 +277,7 @@ function init(){
     renderMentions();
   }
   $('#openAll').onclick = () => {
-    saved.forEach(ch => { if (!wins.some(w => w.kind === 'stream' && w.channel === ch)) addParsed({ channel: ch, only: null }); });
+    openEach(saved);
     autoLayout();
   };
   // the search box's (Ctrl/⌘+K): the Channels panel's buttons and tabs

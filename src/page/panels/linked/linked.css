@@ -1,0 +1,102 @@
+/* ---------- Settings › Linked accounts (panels/linked/linked-pane.js) ---------- */
+.la-off{margin-top:14px;padding:12px 14px;border:1px dashed var(--line2);border-radius:10px;color:var(--muted);font-size:12.5px}
+.la-off b{color:var(--text);font-size:13px}.la-off ul{margin:6px 0 8px;padding-left:18px;line-height:1.6}.la-off i{font-style:normal;color:var(--text)}
+.la-off[hidden],.la-rest[hidden]{display:none}
+.la-n{font-style:normal;font-size:10.5px;font-weight:800;background:var(--accent);color:var(--accent-ink);border-radius:9px;padding:0 6px;margin-left:5px}
+.la-n[hidden]{display:none}
+.la-sh{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.la-sh span{text-transform:none;letter-spacing:0;font-weight:400}
+.la-head{display:flex;align-items:center;gap:10px;margin:12px 0 6px;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.la-head span{flex:1}
+.la-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;background:var(--bg)}
+.la-row.dim{opacity:.65;background:transparent}
+.la-row .btn{height:28px;font-size:12px;flex:none}
+.la-av,.lc-av{position:relative;flex:none;width:30px;height:30px;border-radius:50%;background:var(--c);display:grid;place-items:center;font:800 10.5px system-ui;color:#fff;overflow:hidden}
+.la-av img,.lc-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.la-t{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:13px}
+.la-t b{margin-right:4px}
+.la-t small{flex-basis:100%;color:var(--muted);font-size:11.5px}
+.la-t .pi{width:16px;height:16px;font-size:9px}
+.pi.dim{filter:grayscale(1) brightness(.6)}
+.la-none{padding:14px;color:var(--muted);font-size:12.5px;border:1px dashed var(--line2);border-radius:9px}
+.st-sel{max-width:250px}
+
+/* ---------- the Link accounts card (panels/linked/link-card.js) ---------- */
+.dlg.link-card{width:480px;max-width:calc(100vw - 32px);max-height:calc(100vh - 40px);overflow:auto;padding:18px 18px 14px}
+.lc-head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.lc-head .lc-av{width:44px;height:44px;font-size:14px}
+.lc-head h3{margin:0;font-size:16px}.lc-head p{margin:2px 0 0;color:var(--muted);font-size:12.5px}
+.lc-sec{margin:14px 0 6px;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.lc-acc{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);margin-bottom:6px}
+.lc-acc.lc-sug{border-style:dashed;background:transparent}
+.lc-acc-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;font-size:13px}
+.lc-st{color:var(--muted);font-size:12px}.lc-live{color:#ff7070}.lc-live::before{content:"● ";}.lc-bad{color:var(--danger)}
+.lc-main{flex:none;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 60%,transparent);border-radius:5px;padding:1px 6px;text-transform:uppercase}
+.lc-acc .btn{height:28px;font-size:12px;flex:none}
+.lc-x,.lc-no{flex:none;width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
+.lc-no{border:1px solid var(--line2)}
+.lc-x:hover,.lc-no:hover{background:var(--line);color:var(--text)}
+.lc-x svg,.lc-no svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.lc-add{display:flex;gap:6px;align-items:center}
+.lc-add .lc-in{flex:1;min-width:0;height:32px}
+.lc-add .btn{height:32px}
+.lc-plat button{height:30px;padding:0 8px}.lc-plat button .pi{width:16px;height:16px;font-size:9px}
+.lc-plat button.on{background:var(--line2)}
+.lc-err{margin-top:6px;color:var(--danger);font-size:12px}.lc-err[hidden]{display:none}
+.lc-opt{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.lc-opt .st-t{flex:1}
+.lc-opt small{display:block;color:var(--muted);font-size:11.5px}
+.lc-foot{display:flex;align-items:center;gap:10px;margin-top:14px}
+.lc-gap{flex:1}
+.lc-unlink{color:var(--danger) !important}
+
+/* ---------- Settings › Windows (panels/settings/windows-pane.js) ---------- */
+.wb-head{border-bottom:0;padding-bottom:4px}
+.wb-head .st-t{flex:1}
+.wb-preview{display:flex;align-items:center;gap:7px;height:32px;padding:0 8px;margin:2px 0 6px;border:1px solid var(--line2);border-radius:9px;background:var(--panel2);font-size:12.5px}
+.wb-av{width:20px;height:20px;border-radius:50%;background:#3d7a52;display:grid;place-items:center;font:800 7px system-ui;color:#fff}
+.wb-preview .pi{width:18px;height:18px;font-size:10px}
+.wb-gap{flex:1}
+.wb-b{width:24px;height:24px;display:grid;place-items:center;color:var(--muted);border-radius:5px}
+.wb-b svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.wb-b.pinned{color:var(--text);box-shadow:0 0 0 1.5px var(--accent)}
+.wb-list{border:1px solid var(--line2);border-radius:10px;overflow:hidden}
+.wb-row{display:flex;align-items:center;gap:9px;padding:2px 8px;border-top:1px solid var(--line);background:var(--bg)}
+.wb-row:first-child{border-top:0}
+.wb-row.pinned{background:color-mix(in srgb,var(--accent) 7%,var(--bg))}
+.wb-row.dragging{opacity:.4}
+.wb-row.drop-before{box-shadow:inset 0 2px 0 var(--accent)}.wb-row.drop-after{box-shadow:inset 0 -2px 0 var(--accent)}
+.wb-grip{width:14px;color:var(--muted);cursor:grab;display:grid}
+.wb-grip svg{width:14px;height:14px;fill:currentColor;stroke:none}
+.wb-ico{width:22px;height:22px;border-radius:6px;background:var(--panel2);display:grid;place-items:center;color:var(--text)}
+.wb-ico svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.wb-name{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;font-size:13px;white-space:nowrap;overflow:hidden}
+.wb-name small{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis}
+.wb-seg button{height:22px;font-size:11px;padding:0 8px}
+
+/* ---------- Channels: a linked streamer's row, its accounts, the suggestion, drag to link (panels/channels/channels.js) ---------- */
+.sv-sites{display:inline-flex;gap:3px;margin-left:6px;flex:none}
+.sv-sites .pi,.sv-pv .pi,.sv-acc .pi,.sv-sug .pi{width:15px;height:15px;font-size:8.5px;border-radius:4px}
+.sv-pv{display:inline-flex;align-items:center;gap:4px;margin-left:8px}
+.sv .exp svg{transition:transform .15s}.sv .exp.on svg{transform:rotate(180deg)}
+.sv-accs{margin:0 6px 6px 48px;padding-left:10px;border-left:2px solid var(--line2)}
+.sv.sv-acc{gap:8px;padding:5px 6px;font-size:12.5px}
+.sv-acc .nm{font-weight:600}
+.sv-acc-live{color:#ff7070;font-size:12px}.sv-acc-live::before{content:"● ";font-size:9px}
+.sv-acc-off{color:var(--muted);font-size:11.5px}
+.sv-main{font-size:9.5px;font-weight:800;letter-spacing:.06em;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 60%,transparent);border-radius:4px;padding:0 5px;text-transform:uppercase}
+.sv-acc .sv-acts{margin-left:auto}
+.sv-addacc{display:block;border:0;background:transparent;color:var(--muted);padding:6px;font-size:12.5px;cursor:pointer;text-align:left}
+.sv-addacc:hover{color:var(--text)}
+.sv-sug{margin:8px 4px 4px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--accent) 55%,transparent);border-radius:10px;background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
+.sv-sug-h{display:flex;align-items:center;gap:5px;font-size:13px}
+.sv-sug-h b{margin-left:4px}
+.sv-sug p{margin:5px 0 9px;color:var(--muted);font-size:12px;line-height:1.45}
+.sv-sug-acts{display:flex;gap:6px}.sv-sug-gap{flex:1}
+.sv-sug .btn{height:28px;font-size:12px}
+.sv.drag-src{opacity:.45}
+.sv.drop-link{outline:2px dashed var(--accent);outline-offset:-2px;background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.sv.drop-link::after{content:attr(data-drop);position:absolute;right:10px;top:-11px;background:var(--accent);color:var(--accent-ink);font-size:11px;font-weight:800;border-radius:6px;padding:2px 8px}
+.nc-site{display:inline-flex;align-items:center;gap:4px;margin-right:10px}
+.nc-site .pi{width:14px;height:14px;font-size:8px;border-radius:4px}
+.sv-pv::before{display:none}

@@ -4,20 +4,25 @@ import { makeClip } from '../chat/kick-clip.js';
 import { openPollForm } from '../chat/kick-poll.js';
 import { openPredictionForm } from '../chat/kick-prediction.js';
 import { translateChat } from '../chat/translate.js';
-import { ROLE, colsMode, wins } from '../core.js';
+import { ROLE, colsMode, shownWins, wins } from '../core.js';
 import { isRail, showRailChat } from '../layout/chat-rail.js';
 import { isStage, putOnStage } from '../layout/chat-stage.js';
 import { buildCols } from '../layout/columns.js';
 import { colKey } from '../layout/layouts.js';
 import { fsMute, removeChannel, renderSwitcher } from '../layout/switcher.js';
+import { infoFor } from '../panels/channels/channels.js';
+import { openLinkCard } from '../panels/linked/link-card.js';
 import { save } from '../persistence.js';
-import { chLabel, platOf } from '../platforms/platforms.js';
+import { linkedOn, nameOf, streamerOf } from '../platforms/linked.js';
+import { PLAT_NAME, chLabel, platOf } from '../platforms/platforms.js';
 import { commands } from '../shared/commands.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { tipName } from '../shared/tooltips.js';
 import { makeBig } from '../shortcuts.js';
 import { swapWindows } from './channel-picker.js';
+import { addTab, closeTab, closedTabs, frameOf, joinTab, leaderOf, setSideBySide, showTab, splitTab, stepTab,
+  switchTo, tabChannels, unlinkTab } from './frames.js';
 import { isPaused, togglePause } from './pause.js';
 import { pushVol, saveSoon } from './windows.js';
 
@@ -25,9 +30,9 @@ import { pushVol, saveSoon } from './windows.js';
    Enter goes to it (scrolled to, or on top), ⇧Enter makes a stream big, Tab lists everything for it: what its
    title bar's buttons do (each one runs that button, so the two can't differ), and the rest you'd do to it from
    the keyboard or its right-click. The window you last clicked comes first ("For this window" in the empty box). */
-const winName = w => w.channel ? chLabel(w.channel).replace(/^@/, '') : w.kind === 'capture' ? (w.capName || 'Window') : (() => { try { return new URL(w.url).hostname; } catch { return 'Page'; } })();
+const winName = w => w.channel ? nameOf(w.channel).replace(/^@/, '') : w.kind === 'capture' ? (w.capName || 'Window') : (() => { try { return new URL(w.url).hostname; } catch { return 'Page'; } })();
 const winKind = w => w.kind === 'capture' ? 'window' : w.kind === 'web' ? 'page' : w.kind;
-const activeWin = () => wins.find(w => w.el.classList.contains('active')) || null;
+const activeWin = () => shownWins().find(w => w.el.classList.contains('active')) || null;
 const isKickMod = w => DESKTOP && platOf(w.channel) === 'kick' && wins.some(o => o.channel === w.channel && o.el.querySelector('[data-a=mod]:not([hidden])'));
 // where it is and how it is: "Column 3 · muted · 100% volume"
 function winState(w){
@@ -50,6 +55,27 @@ function winActions(w){
   const name = winName(w), id = a => `win:${w.id}:${a}`, out = [];
   const add = (a, title, run, more = {}) => out.push({ id: id(a), group: `${name} · ${winKind(w)}`, title, run, icon: more.icon || 'point', ...more });
   add('go', 'Go to it', () => goToWin(w), { icon: 'arrowR', sub: 'Scrolled to, or brought to the front' });
+  // a window with several sites: its tabs (windows/frames.js)
+  const lead = leaderOf(w), chs = w.channel ? tabChannels(w) : [], members = frameOf(w);
+  if (chs.length > 1){
+    chs.forEach((ch, i) => { if (ch !== lead.channel) add('tab:' + ch, `Switch to ${PLAT_NAME[platOf(ch)]}`, () => switchTo(w, i + 1), { icon: 'arrowR', keys: 'Alt+' + (i + 1), sub: infoFor(ch)?.live ? 'live' : 'offline', words: ['tab', 'site'] }); });
+    add('nextTab', 'Next site', () => stepTab(w, 1), { icon: 'arrowR', keys: 'Alt+ArrowRight', words: ['tab'] });
+    add('prevTab', 'Previous site', () => stepTab(w, -1), { icon: 'arrowL', keys: 'Alt+ArrowLeft', words: ['tab'] });
+  }
+  if (members.length > 1){
+    add('closeTab', 'Close this tab', () => closeTab(lead), { icon: 'close', sub: `${PLAT_NAME[platOf(lead.channel)]}: the other tabs stay` });
+    add('splitTab', 'Open this tab in its own window', () => splitTab(lead), { icon: 'pop', sub: 'Next to this one; Join puts it back', words: ['split'] });
+    if (w.kind === 'chat') add('sbs', lead.sbs ? 'Back to tabs' : 'Chats side by side', () => setSideBySide(lead, !lead.sbs), { icon: 'columns', sub: 'A column each, in this window' });
+    const at = members.find(o => o !== lead && o.alert);
+    if (at) add('alertTab', 'Go to the tab with a mention', () => showTab(at), { icon: 'at', sub: PLAT_NAME[platOf(at.channel)] });
+  }
+  const closed = w.frame ? (closedTabs[w.frame] || []).filter(ch => !members.some(o => o.channel === ch)) : [];
+  closed.forEach(ch => add('reopen:' + ch, `Reopen ${PLAT_NAME[platOf(ch)]}`, () => addTab(lead, ch, true), { icon: 'plus', sub: 'A tab you closed', words: ['reopen', 'closed tab'] }));
+  if (w.split && streamerOf(w.channel)) add('join', 'Join back', () => joinTab(w), { icon: 'link', sub: `Back as a tab in ${nameOf(w.channel)}'s window` });
+  if (w.channel && linkedOn() && !/^yt:v:/.test(w.channel)){
+    add('link', streamerOf(w.channel) ? 'Linked accounts…' : 'Link this window\'s channel with…', () => openLinkCard(w.channel, { add: !streamerOf(w.channel) }), { icon: 'layers', sub: 'The same streamer on other sites' });
+    if (streamerOf(w.channel)) add('unlink', `Unlink ${PLAT_NAME[platOf(lead.channel)]} from ${nameOf(lead.channel)}`, () => unlinkTab(lead.channel), { icon: 'unlink', sub: 'It becomes its own channel again' });
+  }
   if (w.kind === 'stream'){
     if (ROLE === 'main') add('big', 'Make big', () => makeBig(w), { icon: 'feat', sub: 'Focus view, with this stream big' });
     add('mute', w.muted ? 'Unmute' : 'Mute', () => { fsMute(w, false); flash(`${chLabel(w.channel)} ${w.muted ? 'muted' : 'unmuted'}`); }, { icon: w.muted ? 'volOn' : 'volOff', words: ['sound', 'volume'] });
@@ -93,7 +119,7 @@ function winItem(w, active){
 function init(){
   commands.provide('windows', q => {
     const act = activeWin();
-    const out = wins.map(w => winItem(w, w === act));
+    const out = shownWins().map(w => winItem(w, w === act));
     // the empty box: the window you last clicked, and its first few actions
     if (!q && act){
       const of = `${winName(act)} · ${winKind(act)}`;

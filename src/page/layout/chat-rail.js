@@ -1,15 +1,18 @@
 import { clearNew, newCount } from '../chat/new-messages.js';
 import { toNewest } from '../chat/stick-bottom.js';
-import { GAP, ROLE, colsMode, coreVars, lastLayout, stage, wins } from '../core.js';
+import { GAP, ROLE, colsMode, coreVars, lastLayout, shownWins, stage } from '../core.js';
 import { SH, SW } from './geometry.js';
-import { applyRects, featuredCh, inColOrder, layoutChatsOnly, rowRects, setColsMode, sortedChats, tile, vidLabel } from './layouts.js';
+import { applyRects, colKey, featuredCh, inColOrder, layoutChatsOnly, rowRects, setColsMode, sortedChats, tile,
+  vidLabel } from './layouts.js';
 import { save } from '../persistence.js';
-import { chLabel } from '../platforms/platforms.js';
+import { nameOf, sameStreamer } from '../platforms/linked.js';
+import { PLAT_NAME, chLabel, platOf } from '../platforms/platforms.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { schedulePicks } from '../windows/channel-picker.js';
+import { frameOf, switchTo, tabChannels } from '../windows/frames.js';
 import { setViewScale } from '../windows/view.js';
 
 /* ---- Chat Rail: every stream in a grid on the left, and a rail on the right with one chat in big, easy-to-read
@@ -22,7 +25,7 @@ let railCh = null, railIdx = 2;
 let tabsEl = null, alertObs = null, lastRailChat = null;
 
 const isRail = () => ROLE === 'main' && !colsMode && lastLayout === 'rail';
-const railChatOf = () => wins.find(w => w.kind === 'chat' && w.el.classList.contains('rl-chat')) || null;
+const railChatOf = () => shownWins().find(w => w.kind === 'chat' && w.el.classList.contains('rl-chat')) || null;
 
 // Where everything goes in the area: the streams in rows, the tabs and the chat in the rail
 function railRects(nVids, X, Y, W, H){
@@ -40,7 +43,7 @@ function chatRailLayout(){
   const vids = inColOrder(w => w.kind !== 'chat'), chats = sortedChats();
   if (!vids.length || !chats.length){ clearRailLook(); if (vids.length) tile(); else layoutChatsOnly(); return; }
   coreVars.lastLayout = 'rail';
-  const chat = chats.find(c => c.channel === railCh) || chats.find(c => c.channel === featuredCh) || chats[0];
+  const chat = chats.find(c => c.channel === railCh) || chats.find(c => colKey(c) === featuredCh) || chats[0];
   railCh = chat.channel;
   const W = SW() - GAP, H = SH() - GAP, X = GAP / 2, Y = GAP / 2;
   const r = railRects(vids.length, X, Y, W, H);
@@ -52,7 +55,7 @@ function chatRailLayout(){
 }
 // Show a channel's chat in the rail (remembered)
 function showRailChat(ch){
-  if (!wins.some(w => w.kind === 'chat' && w.channel === ch)) return;
+  if (!shownWins().some(w => w.kind === 'chat' && w.channel === ch)) return;
   railCh = ch;
   settings.set('railCh', ch);
   chatRailLayout();
@@ -61,10 +64,10 @@ function showRailChat(ch){
 
 function showRailLook(chat, chats, r){
   document.body.classList.add('chatrail');
-  wins.forEach(w => {
+  shownWins().forEach(w => {
     w.el.classList.toggle('rl-chat', w === chat);
     w.el.classList.toggle('rl-off', w.kind === 'chat' && w !== chat);
-    w.el.classList.toggle('rl-shown', w.kind !== 'chat' && !!w.channel && w.channel === chat.channel);
+    w.el.classList.toggle('rl-shown', w.kind !== 'chat' && !!w.channel && sameStreamer(w.channel, chat.channel));
     if (w.kind === 'chat') setViewScale(w.view, w === chat ? RAIL_SIZES[railIdx] : 1);   // (this chat only: the site's zoom is shared)
     else addShow(w);
   });
@@ -79,7 +82,7 @@ function clearRailLook(){
   document.body.classList.remove('chatrail');
   lastRailChat = null;
   const chat = railChatOf();
-  wins.forEach(w => { w.el.classList.remove('rl-chat', 'rl-off', 'rl-shown'); w.el.querySelector('.rl-show')?.remove(); });
+  shownWins().forEach(w => { w.el.classList.remove('rl-chat', 'rl-off', 'rl-shown'); w.el.querySelector('.rl-show')?.remove(); });
   // (going to Chat Stage, the chat there has its own size already)
   if (chat && !document.body.classList.contains('chatstage')) setViewScale(chat.view, 1);
   tabsEl.style.display = 'none';
@@ -94,7 +97,7 @@ function updateRailLook(){
 // chat is the one shown
 function addShow(w){
   let b = w.el.querySelector('.rl-show');
-  if (!wins.some(c => c.kind === 'chat' && c.channel === w.channel)){ b?.remove(); return; }
+  if (!shownWins().some(c => c.kind === 'chat' && sameStreamer(c.channel, w.channel))){ b?.remove(); return; }
   if (!b){
     b = element('button', { class: 'rl-show', onclick: e => { e.stopPropagation(); showRailChat(w.channel); }, dataset: { cmd: 'win.go' } });
     b.addEventListener('pointerdown', e => e.stopPropagation());      // not a drag of the window
@@ -112,16 +115,22 @@ function renderTabs(chats, chat){
   list.replaceChildren(...chats.map(c => element('button', {
     class: 'rl-tab' + (c === chat ? ' on' : ''), role: 'tab', 'aria-selected': String(c === chat), 'data-ch': c.channel, dataset: { name: chLabel(c.channel) },
     onclick: () => showRailChat(c.channel)
-  }, element('span', 'rl-nm', chLabel(c.channel)), element('span', 'rl-n'), element('span', 'rl-at', '@'))));
+  }, element('span', 'rl-nm', nameOf(c.channel)), railSites(c), element('span', 'rl-n'), element('span', 'rl-at', '@'))));
   chats.forEach(syncTab);
   const on = list.querySelector('.rl-tab.on');
   if (on && (on.offsetLeft < list.scrollLeft || on.offsetLeft + on.offsetWidth > list.scrollLeft + list.clientWidth))
     list.scrollLeft = on.offsetLeft - 6;
   showSize();
 }
+// A linked streamer's rail tab: an icon per site, clicking one switches the rail chat to it (windows/frames.js)
+function railSites(c){
+  const chs = tabChannels(c); if (chs.length < 2) return null;
+  return element('span', 'rl-sites', ...chs.map((ch, i) => element('i', { class: `pi pi-${platOf(ch)}${ch === c.channel ? ' on' : ''}`, title: `${PLAT_NAME[platOf(ch)]} chat`,
+    onclick: e => { e.stopPropagation(); showRailChat(c.channel); switchTo(c, i + 1); } }, PLAT_NAME[platOf(ch)][0])));
+}
 function syncTab(c){
   const t = [...tabsEl.querySelectorAll('.rl-tab')].find(t => t.dataset.ch === c.channel); if (!t) return;
-  const n = newCount(c), at = !!c.alertLvl, name = chLabel(c.channel);
+  const n = frameOf(c).reduce((t, o) => t + newCount(o), 0), at = frameOf(c).some(o => o.alertLvl), name = nameOf(c.channel);   // any of its sites
   t.querySelector('.rl-n').textContent = n > 99 ? '99+' : String(n);
   t.classList.toggle('new', n > 0);
   t.classList.toggle('at', at);
@@ -129,9 +138,9 @@ function syncTab(c){
     n ? `${n} new message${n === 1 ? '' : 's'}` : '', at ? 'something for you' : ''].filter(Boolean).join(' · ');
 }
 function watchAlerts(){
-  if (!alertObs) alertObs = new MutationObserver(() => wins.forEach(w => { if (w.kind === 'chat') syncTab(w); }));
+  if (!alertObs) alertObs = new MutationObserver(() => shownWins().forEach(w => { if (w.kind === 'chat') syncTab(w); }));
   alertObs.disconnect();
-  wins.forEach(w => { if (w.kind === 'chat') alertObs.observe(w.el, { attributes: true, attributeFilter: ['class'] }); });
+  shownWins().forEach(w => { if (w.kind === 'chat') alertObs.observe(w.el, { attributes: true, attributeFilter: ['class'] }); });
 }
 
 // The rail chat's text size, at the end of the tabs
@@ -169,7 +178,7 @@ function init(){
   // a window opened or closed: arrange the rail again
   store.watch('wins', () => { if (isRail()) chatRailLayout(); });
   // new messages counted for a chat out of sight (chat/new-messages.js): on its tab
-  store.watch('unread', () => { if (isRail()) wins.forEach(w => { if (w.kind === 'chat') syncTab(w); }); });
+  store.watch('unread', () => { if (isRail()) shownWins().forEach(w => { if (w.kind === 'chat') syncTab(w); }); });
   window.showRailChat = showRailChat;   // for the tests
 }
 

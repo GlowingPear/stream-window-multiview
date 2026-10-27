@@ -12,6 +12,9 @@ const TOPICS = new Set([
   'unread',      // new messages counted in the chats out of sight (chat/new-messages.js)
   'monitors',    // the monitors there now, and which layout part goes on which (layout/monitors.js)
   'saved',       // the saved channels
+  'streamers',   // linked accounts: the streamers, their accounts, and the switch (platforms/linked.js)
+  'tabs',        // which tab a window with several sites shows, and its tabs (windows/frames.js)
+  'barButtons',  // Settings › Windows: the title bars' names and buttons (panels/settings/windows-pane.js)
   'live',        // what the live checks last said about them
   'names',       // channel names learned from the sites
   'channelsBox', // the Channels box: its text, site tab and picked site

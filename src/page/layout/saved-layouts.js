@@ -20,6 +20,7 @@ import { store } from '../shared/store.js';
 import { layoutMenuVars, lySel, renderLayoutsPane, selectLayoutPane } from '../toolbar/layout-menu.js';
 import { panel } from '../toolbar/toolbar.js';
 import { refreshPicks } from '../windows/channel-picker.js';
+import { applyFrames, frameFields, mergeOpen } from '../windows/frames.js';
 import { createWin, pushVol } from '../windows/windows.js';
 
 /* ---- Your layouts: save the current arrangement under a name and bring it back from the Layout menu ---- */
@@ -50,7 +51,7 @@ function capturePreset(name){
     featured: colsMode && featBase.length ? featuredCh : null,
     sideCols, linked, streamCols, pageStep, autoFit: fitOn(),
     order: buildCols().map(c => c.key),
-    windows: wins.filter(w => w.kind !== 'capture').map(w => ({ kind: w.kind, channel: w.channel, url: w.url, vol: w.vol, muted: w.muted, preview: !!w.preview, x: w.x, y: w.y, w: w.w, h: w.h }))
+    windows: wins.filter(w => w.kind !== 'capture').map(w => ({ kind: w.kind, channel: w.channel, url: w.url, vol: w.vol, muted: w.muted, preview: !!w.preview, x: w.x, y: w.y, w: w.w, h: w.h, ...frameFields(w) }))
   };
 }
 // "Saved 3 days ago", "4 streams, 2 chats" (the search box's line for it)
@@ -83,7 +84,7 @@ function renderPresets(){
   renderPresetsPane();
 }
 // Settings > Layouts: your layouts listed under the built-in ones, each with its base layout's options
-const OPT_NAMES = { linked: 'Linked', autoFit: 'Fit in channels that open by themselves' };
+const OPT_NAMES = { linked: 'Stream and chat together', autoFit: 'Fit in channels that open by themselves' };
 function renderPresetsPane(){
   const list = $('#lyPresetList'), detail = $('#lyPresetDetail'); if (!list) return;
   list.innerHTML = '<div class="ly-list-sec"><span>Your layouts</span><button class="ly-add" title="Save what\'s on screen as a layout">+ Save</button></div>'
@@ -209,6 +210,7 @@ function applyPreset(p, opt = {}){
     return createWin({ kind: x.kind, channel: x.channel, url: x.url, vol: x.vol, muted: x.muted, preview: x.preview }, scaled(x));
   });
   coreVars.wins = [...made, ...wins.filter(w => !made.includes(w))];      // same window order as when saved
+  applyFrames(made.map((w, i) => [w, want[i]]));                          // windows with several sites: their tabs
   layoutVars.colOrder = (p.order || []).slice();
   settings.set('colOrder', colOrder);
   if (typeof p.linked === 'boolean' && p.linked !== linked){ layoutVars.linked = p.linked; if (opt.quiet) settings.set('linked', linked); updateLinkBtn(); }   // a saved layout's own; undo's are the built-in's
@@ -228,7 +230,7 @@ function applyPreset(p, opt = {}){
     else if (p.mode === 'game') gameLayout();
     else coreVars.lastLayout = null;
   }
-  if (!opt.quiet) activePreset = p.name;
+  if (!opt.quiet){ activePreset = p.name; mergeOpen(); }    // (one saved before linking: a linked streamer's windows together)
   store.changed('layout'); refreshPicks(); save();
   if (!opt.quiet) flash(`Layout “${p.name}” loaded`);
 }

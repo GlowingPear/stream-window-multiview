@@ -5,7 +5,7 @@ icon: sparkle
 lede: Chat text size, where the toolbar sits, hiding it, full screen and more.
 words: [toolbar, left, hide, full screen, text size, zoom, clear, scroll]
 related: [layouts]
-order: 13
+order: 14
 ---
 
 - Chats stay at their newest messages, also one that was out of sight (behind Chat Stage's stage chat or Chat Rail's rail) or that changed size. Switching to a chat in Chat Stage or Chat Rail shows its newest messages. Scroll up in a chat to read, and it stays there until you scroll back down.

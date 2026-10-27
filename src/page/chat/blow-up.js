@@ -1,4 +1,4 @@
-import { wins } from '../core.js';
+import { shownWins } from '../core.js';
 import { chatRailLayout, isRail } from '../layout/chat-rail.js';
 import { chatStageLayout, isStage } from '../layout/chat-stage.js';
 import { featSwitch } from '../layout/layouts.js';
@@ -20,7 +20,7 @@ let blowOn = false, blowIdx = 2, blown = null, blowBg = null, blowBar = null;
 
 // again: the blown-up chat's page loaded again (Esc in it is set up anew; its size stays)
 function blowUp(w, again = false){
-  if (!w || w.kind !== 'chat' || !wins.includes(w) || (w === blown) !== again) return;
+  if (!w || w.kind !== 'chat' || !shownWins().includes(w) || (w === blown) !== again) return;
   if (!again){
     if (blown) putBack();
     blown = w;
@@ -77,7 +77,7 @@ function toggleBlowMode(){
 // else the first. Pressed again, it puts it back.
 function blowUpNow(big){
   if (blown){ putBack(); return; }
-  const chats = wins.filter(w => w.kind === 'chat');
+  const chats = shownWins().filter(w => w.kind === 'chat');
   const w = chats.find(c => c.el.classList.contains('active')) || (big && chats.find(c => c.channel === big.channel)) || chats[0];
   if (!w){ flash('Open a chat first'); return; }
   blowUp(w);
@@ -114,7 +114,7 @@ function init(){
   document.body.append(blowBg, blowBar);
   commands.fromControls('#blowBar', { group: 'Blow up chat', prefix: 'Blown-up chat: ', icon: 'zoomin' });   // (the search box's, while a chat is blown up)
   fromSite('blow-esc', w => { if (w === blown) putBack(); });
-  window.blowUpChat = ch => blowUp(wins.find(w => w.kind === 'chat' && w.channel === ch));   // for the tests
+  window.blowUpChat = ch => blowUp(shownWins().find(w => w.kind === 'chat' && w.channel === ch));   // for the tests
   window.blownWin = () => blown && blown.channel;   // for the tests
 }
 

@@ -166,3 +166,8 @@ body.bar-left.bar-icons #palBtn .pal-kk{display:none}
 .pal-forget svg{width:14px;height:14px;stroke-width:2.2}
 .pal-row.on .pal-forget,.pal-row:hover .pal-forget{display:grid}
 .pal-forget:hover{background:color-mix(in srgb,var(--danger) 22%,var(--panel2))}
+
+/* a linked streamer's sites, after its name (panels/linked/linked-commands.js) */
+.pal-sic{display:inline-flex;gap:3px;margin:0 2px;vertical-align:middle}
+.pal-sic .pi{width:16px;height:16px;font-size:9px;border-radius:4px}
+.pal-row.hero .pal-sic .pi{width:20px;height:20px;font-size:11px;border-radius:5px}

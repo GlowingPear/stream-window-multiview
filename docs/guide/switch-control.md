@@ -6,7 +6,7 @@ lede: One panel for every stream: pick the big one, mute, pause, preview and swa
 show: "#swBtn"
 words: [switch, mute, pause, volume, preview, blow up, big]
 related: [layouts]
-order: 8
+order: 9
 ---
 
 - A list of every open stream with pause / play, mute, volume, refresh, a small live preview (the arrow) and remove (×).
