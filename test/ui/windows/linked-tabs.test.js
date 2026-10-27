@@ -71,7 +71,7 @@ test('opening them: one stream window and one chat window, a tab per site; switc
   const hidden = w.find(x => x.kind === 'stream' && x.hidden), lead = w.find(x => x.kind === 'stream' && !x.hidden);
   assert.deepEqual([hidden.x, hidden.y, hidden.w, hidden.h], [lead.x, lead.y, lead.w, lead.h], 'the hidden tab sits under it, the same size');
   assert.equal(hidden.muted, true, 'and is muted');
-  assert.deepEqual(await tabs(page), ['ptab kick on live', 'ptab twitch live', 'ptab youtube off']);
+  assert.deepEqual(await tabs(page), ['ptab kick on live', 'ptab twitch live', 'ptab youtube off locked']);
   // the bar's buttons are the site's: Twitch's window has no Like (only YouTube's does) — and switching keeps place and sound
   await page.evaluate(() => { const w = window.openWins().find(x => x.kind === 'stream' && !x.hiddenTab); w.muted = false; w.vol = 0.5; });
   await page.click('#stage .win.stream:not(.tab-hidden) .ptab.twitch');
@@ -84,6 +84,52 @@ test('opening them: one stream window and one chat window, a tab per site; switc
   await page.click('#stage .win.stream:not(.tab-hidden) .bar .grab');
   await press(page, 'Alt+Digit1');
   assert.equal((await shown(page, 'stream'))[0].ch, 'quietkoala');
+});
+
+test('an offline site\'s tab can\'t be clicked, dragged out or switched to, and its menu has nothing that loads it', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'stream'));
+  const yt = '#stage .win.stream:not(.tab-hidden) .ptab.youtube';
+  assert.equal(await page.getAttribute(yt, 'aria-disabled'), 'true');
+  assert.match(await page.getAttribute(yt, 'title'), /YouTube · offline\nIt opens here when it goes live\./);
+  await page.click(yt, { force: true });   // (Playwright won't click it by itself: it's marked disabled)
+  assert.equal((await all(page)).length, 2, 'clicking it opens nothing');
+  await page.dragAndDrop(yt, '#stage', { force: true, targetPosition: { x: 400, y: 400 } });
+  assert.equal((await all(page)).length, 2, 'nor does dragging it out');
+  // ⌥3 does nothing; ⌥→ goes past it
+  await page.click('#stage .win.stream:not(.tab-hidden) .bar .grab');
+  await press(page, 'Alt+Digit3');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'quietkoala');
+  await press(page, 'Alt+ArrowRight');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'tw:quietkoala');
+  await press(page, 'Alt+ArrowRight');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'quietkoala', 'round to Kick, past YouTube');
+  await page.focus('#stage .win.stream:not(.tab-hidden) .ptab.kick');
+  await press(page, 'Alt+ArrowRight');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'tw:quietkoala', 'a focused tab: one step, not two');
+  await press(page, 'Alt+ArrowLeft');
+  assert.equal((await all(page)).length, 2);
+  // its menu: no Watch here, own window or side by side
+  await page.click(yt, { button: 'right', force: true });
+  const text = await page.textContent('#tabMenu');
+  assert.match(text, /quietkoala on YouTube · offline/);
+  for (const s of ['Watch here', 'Open in its own window', 'side by side']) assert.ok(!text.includes(s), s);
+  assert.ok(text.includes('Unlink from quietkoala'));
+  await page.keyboard.press('Escape');
+});
+
+test('a tab you aren\'t watching that goes offline is closed (not loaded), and comes back when it\'s live again', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'both'));
+  assert.equal((await all(page)).length, 4);
+  await page.evaluate(live => window.smvNotes.liveStatus({ ...live, 'tw:quietkoala': { live: false, checked: Date.now() } }), LIVE);
+  let w = await all(page);
+  assert.deepEqual(w.map(x => x.kind + ' ' + x.ch).sort(), ['chat quietkoala', 'stream quietkoala'], 'Twitch\'s stream and chat tabs are closed');
+  assert.deepEqual(await tabs(page), ['ptab kick on live', 'ptab twitch off locked', 'ptab youtube off locked'], 'its tab stays, offline');
+  assert.equal(await page.locator('#stage .win.stream .ptab-add').count(), 0, 'not as closed by you (no +)');
+  await page.evaluate(live => window.smvNotes.liveStatus(live), LIVE);
+  w = await all(page);
+  assert.ok(w.some(x => x.kind === 'stream' && x.ch === 'tw:quietkoala' && x.hidden), 'live again: its tab is back');
 });
 
 test('closing one tab leaves the others; + brings it back; the window\'s ✕ closes them all', async t => {
@@ -100,6 +146,19 @@ test('closing one tab leaves the others; + brings it back; the window\'s ✕ clo
   assert.match(await page.getAttribute('#stage .win.stream:not(.tab-hidden) [data-a=close]', 'title'), /Close quietkoala \(Twitch, Kick\)|Close quietkoala \(Kick, Twitch\)/);
   await page.click('#stage .win.stream:not(.tab-hidden) [data-a=close]');
   assert.equal((await all(page)).length, 0);
+});
+
+test('a tab\'s menu (right-click) lists only what applies: no "undefined" or "false" lines', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'stream'));
+  await page.click('#stage .win.stream:not(.tab-hidden) .ptab.twitch', { button: 'right' });
+  await page.waitForSelector('#tabMenu:not([hidden])');
+  const lines = await page.$$eval('#tabMenu > *', es => es.map(e => e.tagName === 'HR' ? '—' : e.textContent.trim()));
+  assert.match(lines[0], /quietkoala on Twitch · live/i);
+  assert.ok(!lines.some(l => /^(undefined|false|null)$/.test(l)), lines.join(' | '));
+  assert.equal(await page.$eval('#tabMenu', m => [...m.childNodes].filter(n => n.nodeType === 3).length), 0, 'no loose text');
+  assert.ok(lines.some(l => l.startsWith('Make Twitch the main channel')));
+  await page.keyboard.press('Escape');
 });
 
 test('a tab out into its own window and Join; chats side by side', async t => {
@@ -195,6 +254,10 @@ test('suggestions: the same name on another site, Not the same is never suggeste
   const page = await linkedApp(t, { streamers: [], saved: ['mossbyte', 'yt:@mossbyte'] });
   await page.click('#savedBtn');
   assert.match(await page.textContent('#savedList .sv-sug'), /mossbyte on Kick and on YouTube: the same streamer\?/);
+  await page.evaluate(() => window.openSettings('linked', { sub: 'sugs' }));
+  assert.doesNotMatch(await page.textContent('#laSugs'), /null|undefined/, 'nothing dismissed yet: no stray text under the list');
+  await page.keyboard.press('Escape');
+  if (!(await page.isVisible('#savedPanel'))) await page.click('#savedBtn');
   await page.click('#savedList .sv-sug button:has-text("Not the same")');
   assert.equal(await page.locator('#savedList .sv-sug').count(), 0);
   await page.evaluate(() => window.openSettings('linked', { sub: 'sugs' }));
@@ -240,6 +303,7 @@ test('Settings › Windows: names off, Always / Never in ⋯ and the order of th
   await page.evaluate(() => window.openSettings('windows'));
   await page.click('#barNameStream');
   assert.equal(await page.locator('#stage .win.stream .bar.nm-off').count(), 1, 'the stream\'s name is off');
+  assert.notEqual(await page.$eval('#stage .win.stream .bar.nm-off .col-pick', s => getComputedStyle(s).color), 'rgba(0, 0, 0, 0)', 'its ▾ still shows (drawn in the text\'s colour)');
   // Never in ⋯: Reload, right next to ⋯; then Pop out instead (Reload back to When out of room)
   await page.click('#wbList [data-k=reload] button:has-text("Never in ⋯")');
   const order = () => page.$$eval('#stage .win.stream .btns > button', bs => bs.map(b => b.dataset.a));

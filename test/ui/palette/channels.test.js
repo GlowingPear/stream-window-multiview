@@ -140,6 +140,7 @@ test('Tab / ⇧Tab: along the big row\'s buttons and round; Enter on More… lis
   await page.keyboard.press('Enter');
   assert.equal(await page.isVisible('#palBg .pal-head'), true, 'Enter on More…: everything for it');
   assert.equal(await page.getAttribute('#palBg .pal-backb', 'title'), 'Back (Esc)');
+  assert.doesNotMatch(await page.textContent('#palBg .pal-head'), /undefined|false|null/, 'only what applies (no live pill: no stray text)');
   assert.equal(await page.locator('#palList.split .pal-col').count(), 2, 'in two columns');
   assert.match(await page.textContent('#palBg .pal-foot'), /Esc back.*Tab⇧Tab\s*other column·Esc\s*back to results/);
   const column = () => page.evaluate(() => [...document.querySelectorAll('#palList .pal-col')].findIndex(c => c.querySelector('.pal-row.on')));

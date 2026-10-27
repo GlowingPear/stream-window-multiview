@@ -9,6 +9,7 @@
 .ptab.solo{cursor:inherit;pointer-events:none}
 .ptab.off:not(.on){opacity:.38}
 .ptab.off.on{filter:saturate(.45) brightness(.85)}
+.ptab.locked{cursor:default}.ptab.locked:hover{background:none}   /* offline: opens by itself when it goes live */
 .ptab:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 /* what a tab you're not watching has: live, new messages, a mention, likely spam */
 .ptab.live:not(.on)::after{content:"";position:absolute;right:-2px;top:-2px;width:6px;height:6px;border-radius:50%;background:#ff4545;box-shadow:0 0 0 2px var(--panel2)}
@@ -33,7 +34,7 @@
 .bar.b1 .ptabs.solo{display:none}
 .bar.b1:has(.ptabs.solo) .bar-av .pi{display:grid}
 /* Settings › Windows: the bar's name off (the picture, a small ▾ and the tabs) */
-.bar.nm-off .col-pick{width:42px;min-width:42px !important;max-width:42px;flex:none;color:transparent}
+.bar.nm-off .col-pick{width:42px;min-width:42px !important;max-width:42px;flex:none;text-indent:200px;text-overflow:clip}   /* the name pushed out, not made transparent: the ▾ is drawn in the text's colour */
 .bar.nm-off .title{display:none}
 
 /* ---------- tabs you're not watching sit under the one you watch: invisible, playing, muted ---------- */
