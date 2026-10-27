@@ -77,7 +77,8 @@ function init(){
       play() {
         st.p = false;
         document.querySelectorAll('video').forEach(v => {
-          try { const s = v.seekable; if (s && s.length){ const end = s.end(s.length - 1); if (end - v.currentTime > 8) v.currentTime = end - 2; } } catch (e) {}
+          // catch up to the newest part it has loaded: a live player's seekable end can be far past it (Twitch's is 2^30 s) and seeking there stalls it
+          try { const b = v.buffered; if (b && b.length){ const end = b.end(b.length - 1); if (end - v.currentTime > 8) v.currentTime = end - 2; } } catch (e) {}
           const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
         });
       }
