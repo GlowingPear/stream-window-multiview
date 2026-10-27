@@ -109,6 +109,10 @@ function linkingItems(){
     out.push({ id: `link.unlink:${s.id}`, group: g, title: `Unlink ${streamerName(s)}…`, sub: `Back to ${s.accounts.length} separate channels`, icon: 'unlink', words: ['link', 'unlink'], run: () => askUnlinkAll(s) });
     s.accounts.filter(c => c !== s.main).forEach(c => out.push({ id: `link.main:${c}`, group: g, title: `Make ${site(c)} ${streamerName(s)}'s main account`, sub: 'First tab, picture and name', icon: 'star', words: ['link', 'main'], run: () => setMain(c) }));
   });
+  // who's live on several sites right now
+  const multi = list.filter(s => liveIn(s).length > 1);
+  if (multi.length) out.push({ id: 'link.multiLive', group: g, title: 'Live on more than one site', sub: multi.map(s => `${streamerName(s)} (${liveIn(s).map(site).join(' + ')})`).join(' · '),
+    icon: 'live', words: ['live', 'several sites', 'simulcast'], verb: 'Watch them', run: () => multi.forEach(s => openStreamer(s.main, modeSel ? modeSel.value : 'both')) });
   // a site everywhere: every linked window that has it live switches to it
   ['kick', 'twitch', 'youtube'].forEach(p => out.push({ id: `link.prefer:${p}`, group: g, title: `Switch every linked window to ${PLAT_NAME[p]}`, sub: 'Windows where it isn\'t live stay as they are', icon: 'arrowR', words: ['tabs', 'site'],
     disabled: () => !wins.some(w => w.frame && platOf(w.channel) === p && w.hiddenTab) && 'No linked window has it as a tab', run: () => preferSite(p) }));

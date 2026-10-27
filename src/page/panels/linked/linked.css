@@ -53,7 +53,7 @@
 /* ---------- Settings › Windows (panels/settings/windows-pane.js) ---------- */
 .wb-head{border-bottom:0;padding-bottom:4px}
 .wb-head .st-t{flex:1}
-.wb-preview{display:flex;align-items:center;gap:7px;height:34px;padding:0 8px;margin:4px 0 8px;border:1px solid var(--line2);border-radius:9px;background:var(--panel2);font-size:12.5px}
+.wb-preview{display:flex;align-items:center;gap:7px;height:32px;padding:0 8px;margin:2px 0 6px;border:1px solid var(--line2);border-radius:9px;background:var(--panel2);font-size:12.5px}
 .wb-av{width:20px;height:20px;border-radius:50%;background:#3d7a52;display:grid;place-items:center;font:800 7px system-ui;color:#fff}
 .wb-preview .pi{width:18px;height:18px;font-size:10px}
 .wb-gap{flex:1}
@@ -61,18 +61,18 @@
 .wb-b svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .wb-b.pinned{color:var(--text);box-shadow:0 0 0 1.5px var(--accent)}
 .wb-list{border:1px solid var(--line2);border-radius:10px;overflow:hidden}
-.wb-row{display:flex;align-items:center;gap:9px;padding:5px 8px;border-top:1px solid var(--line);background:var(--bg)}
+.wb-row{display:flex;align-items:center;gap:9px;padding:2px 8px;border-top:1px solid var(--line);background:var(--bg)}
 .wb-row:first-child{border-top:0}
 .wb-row.pinned{background:color-mix(in srgb,var(--accent) 7%,var(--bg))}
 .wb-row.dragging{opacity:.4}
 .wb-row.drop-before{box-shadow:inset 0 2px 0 var(--accent)}.wb-row.drop-after{box-shadow:inset 0 -2px 0 var(--accent)}
 .wb-grip{width:14px;color:var(--muted);cursor:grab;display:grid}
 .wb-grip svg{width:14px;height:14px;fill:currentColor;stroke:none}
-.wb-ico{width:24px;height:24px;border-radius:6px;background:var(--panel2);display:grid;place-items:center;color:var(--text)}
+.wb-ico{width:22px;height:22px;border-radius:6px;background:var(--panel2);display:grid;place-items:center;color:var(--text)}
 .wb-ico svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .wb-name{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;font-size:13px;white-space:nowrap;overflow:hidden}
 .wb-name small{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis}
-.wb-seg button{height:24px;font-size:11px;padding:0 8px}
+.wb-seg button{height:22px;font-size:11px;padding:0 8px}
 
 /* ---------- Channels: a linked streamer's row, its accounts, the suggestion, drag to link (panels/channels/channels.js) ---------- */
 .sv-sites{display:inline-flex;gap:3px;margin-left:6px;flex:none}

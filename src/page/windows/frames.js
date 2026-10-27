@@ -91,7 +91,7 @@ function renderSiteTabs(w){
   if (box.dataset.sig === sig) return;
   box.dataset.sig = sig;
   box.replaceChildren(...parts);
-  box.classList.toggle('solo', solo);
+  box.classList.toggle('solo', parts.length === 1 && solo);    // just its own site's icon (a bar out of room drops it first)
   const x = w.el.querySelector('[data-a=close]');
   if (x && w === lead) x.title = frameOf(w).length > 1 ? `Close ${nameOf(w.channel)} (${frameOf(w).map(o => PLAT_NAME[platOf(o.channel)]).join(', ')})` : 'Close';
 }
