@@ -28,8 +28,10 @@
 .ptab-join{flex:none;display:flex;align-items:center;gap:5px;height:22px;padding:0 8px;border:0;border-radius:6px;background:var(--line);color:var(--text);font-size:11.5px;font-weight:600;cursor:pointer}
 .ptab-join:hover{background:var(--line2)}
 .ptab-join i{display:grid}
-/* the picture on the bar: the tab next to it says the site */
+/* the picture on the bar: the tab next to it says the site (a bar out of room drops a lone tab first: the picture's badge says it) */
 .bar .bar-av .pi{display:none}
+.bar.b1 .ptab.solo{display:none}
+.bar.b1:has(.ptab.solo) .bar-av .pi{display:grid}
 /* Settings › Windows: the bar's name off (the picture, a small ▾ and the tabs) */
 .bar.nm-off .col-pick{width:42px;min-width:42px !important;max-width:42px;flex:none;color:transparent}
 .bar.nm-off .title{display:none}
@@ -74,3 +76,5 @@
 #tabTip[hidden]{display:none}
 #tabTip b{color:var(--text)} #tabTip ul{margin:8px 0 10px;padding-left:18px;line-height:1.7}
 #tabTip kbd{font:600 11px ui-monospace,monospace;padding:1px 5px;border-radius:5px;border:1px solid var(--line2);background:var(--panel2);color:var(--text)}
+.ptab.gone{box-shadow:0 0 0 2px #f5b041}
+.ptab.gone::after{content:"!";position:absolute;right:-6px;top:-4px;width:12px;height:12px;border-radius:50%;background:#f5b041;color:#1a1a1a;font:900 8px/12px system-ui;text-align:center;box-shadow:0 0 0 2px var(--panel2)}

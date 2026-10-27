@@ -255,6 +255,7 @@ function init(){
   if (intro.done === undefined){ const had = saved.length > 0 || settings.json(STORE, []).length > 0; if (had){ intro.done = true; intro.tips = true; saveIntro(); } }
   // Called whenever the windows change (updateEmpty): keep the session, switch screens, show the window tips once.
   store.watch('wins', () => esWinsChanged());
+  store.watch('streamers', () => { if (!wins.length) esRefresh(); });   // a linked streamer's live card
   $('#tipCard .tip-ok').onclick = () => { clearTimeout(tipT); $('#tipCard').hidden = true; };
   $('#introReset').onclick = () => { intro = {}; saveIntro(); esRefresh(); flash('The welcome screen shows again when no windows are open'); };
   // the search box's (Ctrl/⌘+K): the welcome screen's and launchpad's buttons

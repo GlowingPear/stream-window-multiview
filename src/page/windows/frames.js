@@ -11,8 +11,9 @@ import { SH, SW, focusWin, setRect } from '../layout/geometry.js';
 import { autoLayout, chatFocusLayout, tile } from '../layout/layouts.js';
 import { readChat } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
+import { openLinkCard } from '../panels/linked/link-card.js';
 import { save } from '../persistence.js';
-import { accountsOf, linkOpt, linkedOn, nameOf, optFor, setMain, streamerOf, unlink } from '../platforms/linked.js';
+import { accountsOf, linkOpt, linkedOn, listStreamers, nameOf, optFor, setMain, streamerOf, unlink } from '../platforms/linked.js';
 import { PLAT_NAME, chLabel, externalFor, platOf, platform, srcFor } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
 import { DESKTOP, keyName } from '../shared/env.js';
@@ -63,7 +64,7 @@ const memberFor = (w, ch) => frameOf(w).find(o => o.channel === ch) || null;
 const tabNo = (w, ch) => tabChannels(w).indexOf(ch) + 1;
 function tabTip(w, ch){
   const info = infoFor(ch), p = platOf(ch), m = memberFor(w, ch);
-  const state = info ? (info.live ? 'live' + (info.viewers ? ` · ${Number(info.viewers).toLocaleString()} watching` : '') : 'offline') : '';
+  const state = info ? (info.missing ? 'channel not found: it may have been renamed (right-click to fix or unlink it)' : info.live ? 'live' + (info.viewers ? ` · ${Number(info.viewers).toLocaleString()} watching` : '') : 'offline') : '';
   const alert = m && m.alert ? (m.alert.kind === 'spam' ? ' · likely spam' : ' · a message mentions you') : (m && newFor(ch) && m.kind === 'chat' ? ` · ${newFor(ch)} new` : '');
   const solo = tabChannels(w).length < 2;
   return `${PLAT_NAME[p]}${w.kind === 'chat' ? ' chat' : ''}${state ? ' · ' + state : ''}${alert}` + (solo ? '' : `\nClick to watch it here (${keyName('Alt+' + tabNo(w, ch))}). Middle-click closes it. Drag it out for its own window.`);
@@ -76,7 +77,8 @@ function renderSiteTabs(w){
   const parts = chs.map(ch => {
     const m = memberFor(w, ch), info = infoFor(ch), p = platOf(ch), on = m && (m === lead || (lead.sbs && m.kind === lead.kind));
     const cls = ['ptab', p, on ? 'on' : '', info && info.live ? 'live' : info ? 'off' : '', m && m.alert ? (m.alert.kind === 'spam' ? 'spam' : 'at') : '',
-      m && m !== lead && m.kind === 'chat' && newFor(ch) ? 'new' : '', m && m.glowUntil > Date.now() ? 'newsite' : '', solo ? 'solo' : ''].filter(Boolean).join(' ');
+      m && m !== lead && m.kind === 'chat' && newFor(ch) ? 'new' : '', m && m.glowUntil > Date.now() ? 'newsite' : '', solo ? 'solo' : '',
+      info && info.missing && streamerOf(ch) ? 'gone' : ''].filter(Boolean).join(' ');   // a renamed or deleted channel: Fix or Unlink in its menu
     const name = tabTip(w, ch);
     const b = element('button', { class: cls, type: 'button', role: 'tab', 'aria-selected': String(!!on), tabindex: on ? '0' : '-1',
       'aria-label': name.split('\n')[0], dataset: { ch, cmd: 'win.tab' } }, (PLAT_NAME[p] || '?')[0]);
@@ -258,7 +260,8 @@ function openTabMenu(w, ch, at){
   const item = (ico, label, run, { key, danger, cmd } = {}) => element('button', { type: 'button', role: 'menuitem', class: danger ? 'danger' : '', dataset: { cmd: cmd || 'win.tab' },
     onclick: () => { tabMenu.hidden = true; run(); } }, element('span', { class: 'tm-ico', html: icon[ico] || '' }), element('span', 'tm-t', label), key && element('small', null, key));
   tabMenu.replaceChildren(
-    element('div', { class: 'tm-head', role: 'presentation' }, `${name} on ${PLAT_NAME[p]}` + (info ? info.live ? ' · live' : ' · offline' : '')),
+    element('div', { class: 'tm-head', role: 'presentation' }, `${name} on ${PLAT_NAME[p]}` + (info ? info.missing ? ' · not found' : info.live ? ' · live' : ' · offline' : '')),
+    info && info.missing && item('link', 'Fix: pick its new name', () => { unlink(ch); openLinkCard(streamerOf(lead.channel) ? lead.channel : accountsOf(lead.channel)[0], { add: true }); }),
     item('play', 'Watch here', () => m ? showTab(m) : addTab(lead, ch, true), { key: keyName('Alt+' + tabNo(w, ch)) }),
     item('pop', 'Open in its own window', () => splitTab(m || addTab(lead, ch, false))),
     frameOf(lead).length + (m ? 0 : 1) > 1 && item('columns', lead.sbs ? 'Back to tabs' : 'Both side by side in this window', () => { if (!m) addTab(lead, ch, false); setSideBySide(lead, !lead.sbs); }),
@@ -311,7 +314,7 @@ let prevLive = {};
 function onLive(){
   if (!linkedOn()){ prevLive = {}; return; }
   const now = {};
-  wins.forEach(o => { if (o.channel) accountsOf(o.channel).forEach(ch => { now[ch] = !!infoFor(ch)?.live; }); });
+  listStreamers().forEach(s => s.accounts.forEach(ch => { const i = infoFor(ch); if (i) now[ch] = !!i.live; }));
   const told = new Set();
   shownWins().filter(o => (o.kind === 'stream' || o.kind === 'chat') && o.channel && streamerOf(o.channel) && !o.split).forEach(lead => {
     const s = streamerOf(lead.channel);

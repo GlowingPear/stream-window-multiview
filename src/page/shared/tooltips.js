@@ -44,7 +44,10 @@ function init(){
     ['.fs-play', b => /^play/i.test(ttl(b)) ? 'Play' : 'Pause'], ['.fs-rl', b => /reconnect/i.test(ttl(b)) ? 'Reconnect' : 'Refresh'],
     ['.fs-pv', b => /^hide/i.test(ttl(b)) ? 'Hide preview' : 'Show preview'], ['.fs-x', 'Remove'], ['.fs-grip', 'Move'],
     ['.help-x', 'Close'], ['.pr-up', 'Update'], ['.pr-x', 'Delete'], ['.th-del', 'Delete'],
-    ['#savedList .auto', 'Auto-open'], ['#savedList .bell', 'Notify'], ['#savedList .rm', 'Remove']
+    ['#savedList .auto', 'Auto-open'], ['#savedList .bell', 'Notify'], ['#savedList .rm', 'Remove'],
+    // linked accounts: a site's tab on a title bar, + after them, the ⋯ menu's Link accounts, a Channels row's ▾
+    ['.ptab', b => (b.getAttribute('aria-label') || '').split(' · ')[0]], ['.ptab-add', 'Open again'], ['[data-a=link]', 'Link accounts'],
+    ['#savedList .exp', 'Accounts'], ['.lc-x', 'Remove'], ['.lc-no', 'Not the same']
   ];
   window.tipFor = tipFor;   // for the tests
   (function(){

@@ -609,7 +609,9 @@ appIpc.handle('open-external', (_e, url) => { openExternal(url); });
 
 // Streams pop-out window
 const cleanSpecs = list => (Array.isArray(list) ? list : []).filter(s => s && typeof s.channel === 'string' && validCh(normCh(s.channel)))
-  .map(s => ({ channel: s.channel, vol: +s.vol || 0, muted: !!s.muted }));
+  .map(s => ({ channel: s.channel, vol: +s.vol || 0, muted: !!s.muted,
+    // a tab of a window with several sites (the page's windows/frames.js): which window, and whether it's the one shown
+    ...(typeof s.frame === 'string' && /^f[a-z0-9]{1,20}$/.test(s.frame) ? { frame: s.frame, hiddenTab: !!s.hiddenTab } : {}) }));
 mainIpc.handle('streams:open', (_e, specs) => { openStreamsWindow(cleanSpecs(specs)); });
 appIpc.handle('streams:close', () => { streamsWin?.close(); });
 appIpc.handle('streams:isOpen', () => !!streamsWin);

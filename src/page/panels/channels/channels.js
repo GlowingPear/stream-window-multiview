@@ -365,7 +365,7 @@ function init(){
   autoFit = settings.flag('autoFit');
   // The Channels list shows the saved channels, their live status and names, which are open, the Channels box's
   // search and tab, and each one's auto-open and live alert.
-  store.watch(['saved', 'live', 'wins', 'names', 'channelsBox', 'autoOpen', 'liveAlerts'], () => renderSaved());
+  store.watch(['saved', 'live', 'wins', 'names', 'channelsBox', 'autoOpen', 'liveAlerts', 'streamers'], () => renderSaved());
 }
 
 export { autoFit, autoOpen, channelRow, channelVars, fitOn, fmtViewers, gotLive, infoFor, init, linkPair, liveInfo,

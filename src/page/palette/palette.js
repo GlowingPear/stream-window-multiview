@@ -455,7 +455,7 @@ function init(){
     disabled: () => !commands.recent().length && 'Nothing to clear',
     run: () => { palQ.value = ''; setPalScope(''); palStack = []; palSel = 0; palForgetting = true; } });
   // an open box keeps up with what it lists
-  store.watch(['wins', 'saved', 'live', 'names', 'notes', 'layout', 'autoOpen', 'liveAlerts', 'dev', 'link', 'reward', 'palette', 'recent'], () => { if (palOpen() && !palStack.length) renderPalette(); });
+  store.watch(['wins', 'saved', 'live', 'names', 'notes', 'layout', 'autoOpen', 'liveAlerts', 'dev', 'link', 'reward', 'palette', 'recent', 'streamers', 'tabs'], () => { if (palOpen() && !palStack.length) renderPalette(); });
   window.palette = { open: openPalette, close: closePalette, toggle: togglePalette, isOpen: palOpen, rows: () => palRows.map(r => ({ id: r.item.id, title: r.item.title, group: r.item.group, hero: !!r.hero })) };   // for the tests
 }
 
