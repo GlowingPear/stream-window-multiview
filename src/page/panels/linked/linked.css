@@ -1,4 +1,4 @@
-/* ---------- Settings › Linked accounts (panels/linked/linked-pane.js) ---------- */
+/* ---------- Settings › Linked channels (panels/linked/linked-pane.js) ---------- */
 .la-off{margin-top:14px;padding:12px 14px;border:1px dashed var(--line2);border-radius:10px;color:var(--muted);font-size:12.5px}
 .la-off b{color:var(--text);font-size:13px}.la-off ul{margin:6px 0 8px;padding-left:18px;line-height:1.6}.la-off i{font-style:normal;color:var(--text)}
 .la-off[hidden],.la-rest[hidden]{display:none}
@@ -21,7 +21,7 @@
 .la-none{padding:14px;color:var(--muted);font-size:12.5px;border:1px dashed var(--line2);border-radius:9px}
 .st-sel{max-width:250px}
 
-/* ---------- the Link accounts card (panels/linked/link-card.js) ---------- */
+/* ---------- the Link channels card (panels/linked/link-card.js) ---------- */
 .dlg.link-card{width:480px;max-width:calc(100vw - 32px);max-height:calc(100vh - 40px);overflow:auto;padding:18px 18px 14px}
 .lc-head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
 .lc-head .lc-av{width:44px;height:44px;font-size:14px}

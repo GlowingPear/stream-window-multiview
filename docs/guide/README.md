@@ -8,7 +8,7 @@ How to use every part of the app. The same pages are in the app: Settings › Gu
 - [Adding streams](adding-streams.md): Open a channel by name or link, from Kick, Twitch or YouTube.
 - [Channels](channels.md): Save the channels you watch, see who's live, and get them opened or announced when they go live.
 - [Streamer profiles](profiles.md): What each streamer's site says, when they usually stream, their past streams and your own notes.
-- [Linked accounts](linked-accounts.md): One streamer on Kick, Twitch and YouTube as one: one row in Channels, one window for their streams and one for their chats, a tab per site.
+- [Linked channels](linked-channels.md): One streamer on Kick, Twitch and YouTube as one: one row in Channels, one window for their streams and one for their chats, a tab per site.
 
 ## Watching
 - [Moving windows](moving-windows.md): Drag, resize and swap windows, and what the buttons on a window's title bar do.

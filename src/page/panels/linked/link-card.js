@@ -9,12 +9,12 @@ import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
 import { store } from '../../shared/store.js';
 
-/* ---- The Link accounts card: one streamer's accounts (live or not), the main one, suggestions, adding an account
+/* ---- The Link channels card: one streamer's accounts (live or not), the main one, suggestions, adding an account
    by site and name, @handle or link, and this streamer's own choices. Opened from Channels (▾ › Link another
-   account…), a window's ⋯, a profile, Settings › Linked accounts and the search box. ---- */
+   account…), a window's ⋯, a profile, Settings › Linked channels and the search box. ---- */
 let dlg, card, cur = [], curPlat = 'kick', addFocus = false;
 function openLinkCard(ch, { add } = {}){
-  if (!linkedOn()){ setOn(true); flash('Linked accounts turned on (Settings › Linked accounts)'); }
+  if (!linkedOn()){ setOn(true); flash('Linked channels turned on (Settings › Linked channels)'); }
   cur = ch ? accountsOf(ch) : [];
   addFocus = !!add || !ch;
   dlg.hidden = false;
@@ -38,13 +38,13 @@ const lcSite = ch => element('i', { class: 'pi pi-' + platOf(ch) }, PLAT_NAME[pl
 function renderCard(){
   if (dlg.hidden) return;
   const { s, chs } = accounts();
-  const name = s ? streamerName(s) : chs[0] ? chLabel(chs[0]) : 'Link accounts';
+  const name = s ? streamerName(s) : chs[0] ? chLabel(chs[0]) : 'Link channels';
   const prof = chs[0] && svProf[chs[0]] && svProf[chs[0]].info;
   const av = element('span', { class: 'lc-av', style: { '--c': svHue(chs[0] || 'x') } }, svInitials(name));
   if (prof && prof.avatar){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = prof.avatar; av.appendChild(im); }
   const parts = [element('div', 'lc-head', av, element('div', null, element('h3', { id: 'lcName' }, name), element('p', null, chs.length ? 'One streamer, on several sites' : 'Start with one of their channels, then add their other sites')))];
   if (chs.length){
-    parts.push(element('div', 'lc-sec', 'Accounts'), ...chs.map(ch => element('div', 'lc-acc', lcSite(ch), element('div', 'lc-acc-t', element('b', null, chLabel(ch)), liveText(ch)),
+    parts.push(element('div', 'lc-sec', 'Channels'), ...chs.map(ch => element('div', 'lc-acc', lcSite(ch), element('div', 'lc-acc-t', element('b', null, chLabel(ch)), liveText(ch)),
       s && ch === s.main ? element('span', 'lc-main', 'Main') : s ? element('button', { type: 'button', class: 'btn lc-mk', dataset: { cmd: 'link.main' }, onclick: () => { setMain(ch); renderCard(); } }, 'Make main') : null,
       element('button', { type: 'button', class: 'lc-x', title: s ? `Unlink ${chLabel(ch)} on ${PLAT_NAME[platOf(ch)]}` : 'Remove', 'aria-label': 'Remove', html: icon.close, dataset: { cmd: 'link.unlink' },
         onclick: () => { if (s) unlinkOne(ch); else { cur = cur.filter(c => c !== ch); renderCard(); } } }))));
@@ -70,7 +70,7 @@ function renderCard(){
       const r = parseInput(inp.value, curPlat), ch = r && r.channel;
       if (!ch){ err.textContent = 'Couldn’t read that link or name'; err.hidden = false; return; }
       if (/^yt:v:/.test(ch)){ err.textContent = 'A video isn’t a channel: paste their channel’s link or @handle'; err.hidden = false; return; }
-      if (chs.some(c => platOf(c) === platOf(ch))){ err.textContent = `They already have a ${PLAT_NAME[platOf(ch)]} account here`; err.hidden = false; return; }
+      if (chs.some(c => platOf(c) === platOf(ch))){ err.textContent = `They already have a ${PLAT_NAME[platOf(ch)]} channel here`; err.hidden = false; return; }
       if (window.kmv && window.kmv.channelExists){
         go.classList.add('busy');
         const ok = await window.kmv.channelExists(ch).catch(() => 'unknown');
@@ -84,7 +84,7 @@ function renderCard(){
     inp.addEventListener('input', () => { err.hidden = true; const r = parseInput(inp.value, curPlat); if (r && r.channel && /[/.:]/.test(inp.value) && free.includes(platOf(r.channel))){ curPlat = platOf(r.channel); segs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.p === curPlat)); } });
     const segs = element('div', { class: 'seg lc-plat', role: 'radiogroup', 'aria-label': 'Site' }, ...free.map(p => element('button', { type: 'button', class: p === curPlat ? 'on' : '', role: 'radio', 'aria-checked': String(p === curPlat), title: PLAT_NAME[p], dataset: { p },
       onclick: () => { curPlat = p; segs.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.p === p); b.setAttribute('aria-checked', String(b.dataset.p === p)); }); inp.focus(); } }, element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]))));
-    parts.push(element('div', 'lc-sec', chs.length ? 'Add an account' : 'Their first channel'), element('div', 'lc-add', segs, inp, go), err);
+    parts.push(element('div', 'lc-sec', chs.length ? 'Add a channel' : 'Their first channel'), element('div', 'lc-add', segs, inp, go), err);
     if (addFocus) setTimeout(() => inp.focus(), 0);
   }
   // this streamer's own choices
@@ -96,9 +96,9 @@ function renderCard(){
     };
     const ao = s.accounts.some(c => autoOpen.includes(c));
     parts.push(element('div', 'lc-sec', 'This streamer'),
-      sel('Their streams', 'Settings › Linked accounts says: ' + ({ tabs: 'tabs in one window', separate: 'separate windows' })[linkOpt('streams')],
+      sel('Their streams', 'Settings › Linked channels says: ' + ({ tabs: 'tabs in one window', separate: 'separate windows' })[linkOpt('streams')],
         [['', 'As in Settings'], ['tabs', 'Tabs in one window'], ['separate', 'Separate windows']], s.streams || '', v => setStreamerOpt(s.id, 'streams', v), 'link.streams'),
-      sel('Opens by itself when live ⚡', 'Any of their accounts going live opens them', [['off', 'No'], ['together', 'Together, as tabs'], ['separate', 'Separate windows']],
+      sel('Opens by itself when live ⚡', 'Any of their channels going live opens them', [['off', 'No'], ['together', 'Together, as tabs'], ['separate', 'Separate windows']],
         ao ? s.autoOpen || 'together' : 'off', v => setAutoOpenFor(s, v), 'link.autoOpen'),
       sel('Name shown', 'In the Channels list, title bars and the bell', [...new Set(s.accounts.map(chLabel))].map(n => [n, n]), streamerName(s), v => setStreamerOpt(s.id, 'name', v === chLabel(s.main) ? '' : v), 'link.name'));
   }
@@ -109,10 +109,10 @@ function renderCard(){
   card.replaceChildren(...parts.filter(Boolean));
   addFocus = false;
 }
-// Add an account to the streamer (or link the first two). The new one is saved too, so its live status is watched.
+// Add a channel to the streamer (or link the first two). The new one is saved too, so its live status is watched.
 function addAccount(ch, to){
   if (!to){ cur = [ch]; renderCard(); return; }
-  if (!canLink(to, ch)){ flash(`${chLabel(ch)} can't join: one account per site, and a channel belongs to one streamer`); return; }
+  if (!canLink(to, ch)){ flash(`${chLabel(ch)} can't join: one channel per site, and a channel belongs to one streamer`); return; }
   const s = link(to, ch); if (!s) return;
   if (s.accounts.some(c => saved.includes(c))){ channelVars.saved = [...new Set([...saved, ...s.accounts])]; persistSaved(); }
   cur = s.accounts; renderCard();
@@ -129,7 +129,7 @@ async function unlinkOne(ch){
   unlink(ch); renderCard();
 }
 async function unlinkEvery(s){
-  if (!await ask(`Unlink ${streamerName(s)}?`, `Back to ${s.accounts.length} separate channels. Notes and tags stay with each account.`, { ok: 'Unlink all', danger: true })) return;
+  if (!await ask(`Unlink ${streamerName(s)}?`, `Back to ${s.accounts.length} separate channels. Notes and tags stay with each channel.`, { ok: 'Unlink all', danger: true })) return;
   unlinkAll(s.id); closeLinkCard();
 }
 

@@ -13,7 +13,7 @@ order: 26
 - **General**: start new streams muted, snap windows while you drag, auto-pause hidden streams, and keyboard shortcuts on or off.
 - **Windows**: stream and chat windows' title bars: the channel's name on or off, and each button's place and whether it's always in the ⋯ menu, only when out of room, or never (one button, always next to ⋯). Drag the rows to order the buttons.
 - **Accounts**: logins, Import follows, "Forget my login" and "Watch signed in".
-- **Linked accounts**: a streamer on several sites as one ([Linked accounts](linked-accounts.md)): the switch (off until you turn it on), then Tabs, Playing, Live & raids, Suggestions and Linked streamers.
+- **Linked channels**: a streamer on several sites as one ([Linked channels](linked-channels.md)): the switch (off until you turn it on), then Tabs, Playing, Live & raids, Suggestions and Linked streamers.
 - **Connected apps**: link with Pear Drops (see below).
 - **Notifications**: Do not disturb at the top, then three tabs. **Alerts**, for each kind (mentions, likely spam, a saved channel going live, raids, the app's own messages): a pop-up in the app, a desktop notification (never, when the app isn't in front, or always) and a sound. **Bell & pop-ups**: what the red number on the bell counts and where pop-ups show. **Desktop**: desktop notifications on or off for everything, and a test to check your computer lets them through.
 - **YouTube**: your YouTube login, skipping ads, YouTube's cookie question, liking streams automatically and the YouTube API key (see below).

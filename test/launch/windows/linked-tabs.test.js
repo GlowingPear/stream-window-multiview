@@ -1,4 +1,4 @@
-// Linked accounts in the real app: a streamer's window with a tab per site. The tab you're not watching keeps its
+// Linked channels in the real app: a streamer's window with a tab per site. The tab you're not watching keeps its
 // player loaded and playing, muted, under the one you watch; switching moves the sound. Players are stand-in pages
 // (see app.js).
 const test = require('node:test');

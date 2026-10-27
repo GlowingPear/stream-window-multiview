@@ -42,7 +42,7 @@ const pfMeta = ch => (pf.list[ch] && pf.list[ch].meta) || {};
 const pfInfo = ch => (pf.list[ch] && pf.list[ch].info) || {};
 const pfName = ch => pfMeta(ch).nick || pfInfo(ch).name || chLabel(ch);
 const pfLive = ch => !!(infoFor(ch) && infoFor(ch).live);
-/* ---- linked accounts (platforms/linked.js): a streamer is one card and one profile; notes, tags, nickname and
+/* ---- linked channels (platforms/linked.js): a streamer is one card and one profile; notes, tags, nickname and
    favourite are one set for them, written to every account (so unlinking leaves each a copy) ---- */
 const SITE_LETTER = { kick: 'K', twitch: 'T', youtube: 'Y' };
 const pfSiteIco = (ch, dim) => element('i', { class: `pi pi-${platOf(ch)}${dim ? ' dim' : ''}`, title: PLAT_NAME[platOf(ch)] }, SITE_LETTER[platOf(ch)] || '?');
@@ -398,7 +398,7 @@ function pfRenderProf(){
   const url = (s && s.url) || platform(ch).profileUrl(ch);
   const ext = element('button', 'btn'); ext.innerHTML = pfIco.ext + 'Open on ' + P; ext.onclick = () => window.kmv.openExternal(url);
   acts.appendChild(ext);
-  if (pf.group){ const la = element('button', 'btn'); la.innerHTML = icon.layers + 'Linked accounts'; la.title = 'Their accounts, the main one, and their choices'; la.onclick = () => openLinkCard(pf.main); acts.appendChild(la); }
+  if (pf.group){ const la = element('button', 'btn'); la.innerHTML = icon.layers + 'Linked channels'; la.title = 'Their channels, the main one, and their choices'; la.onclick = () => openLinkCard(pf.main); acts.appendChild(la); }
   main.appendChild(acts);
   hero.appendChild(main);
   box.appendChild(hero);
@@ -586,7 +586,7 @@ function pfRenderLinked(){
   const isSaved = chs.some(c => saved.includes(c));
   box.innerHTML = '';
 
-  /* hero: the name with every account's site, the followers added up, the main account's bio */
+  /* hero: the name with every account's site, the followers added up, the main channel's bio */
   const hero = element('div', 'pf-hero'), banner = element('div', 'pf-banner');
   hero.style.setProperty('--pc', { kick: '#53fc18', twitch: '#9146ff', youtube: '#ff3030' }[platOf(main)]);
   const bn = chs.map(siteOf).find(s => s && s.banner);
@@ -618,12 +618,12 @@ function pfRenderLinked(){
   if (isSaved && DESKTOP){
     const on = notifyAll && chs.every(c => !notifyOff.includes(c));
     const bell = element('button', 'btn' + (on ? ' on' : '')); bell.innerHTML = (on ? icon.bell : icon.bellOff) + (on ? 'Live alerts on' : 'Live alerts off');
-    bell.disabled = !notifyAll; bell.title = !notifyAll ? 'Live notifications are off for every channel (Channels panel)' : on ? 'Notify me when any of their accounts goes live (click to turn off)' : 'No notification for them (click to turn on)';
+    bell.disabled = !notifyAll; bell.title = !notifyAll ? 'Live notifications are off for every channel (Channels panel)' : on ? 'Notify me when any of their channels goes live (click to turn off)' : 'No notification for them (click to turn on)';
     bell.onclick = () => { channelVars.notifyOff = on ? [...new Set([...notifyOff, ...chs])] : notifyOff.filter(c => !chs.includes(c)); settings.set('notifyOff', notifyOff); sendWatch(); store.changed('liveAlerts'); pfRenderProf(); };
     acts.appendChild(bell);
   }
   const sv = element('button', 'btn', isSaved ? 'Remove from saved' : '★ Save');
-  sv.title = isSaved ? 'Remove every account from your saved streamers (keeps notes and history)' : 'Save every account: check when they go live and keep a history';
+  sv.title = isSaved ? 'Remove every channel from your saved streamers (keeps notes and history)' : 'Save every channel: check when they go live and keep a history';
   sv.onclick = () => { channelVars.saved = isSaved ? saved.filter(c => !chs.includes(c)) : [...new Set([...saved, ...chs])]; persistSaved(); pfLoadList(); pfRenderProf(); };
   acts.appendChild(sv);
   // Open on… ▾: each site's page (and Kick's Unfollow, next to Kick)
@@ -631,7 +631,7 @@ function pfRenderLinked(){
   openOn.setAttribute('aria-haspopup', 'true');
   openOn.onclick = () => pfOpenOnMenu(openOn);
   acts.appendChild(openOn);
-  const la = element('button', 'btn'); la.innerHTML = icon.layers + 'Linked accounts'; la.title = 'Their accounts, the main one, and their choices';
+  const la = element('button', 'btn'); la.innerHTML = icon.layers + 'Linked channels'; la.title = 'Their channels, the main one, and their choices';
   la.onclick = () => openLinkCard(main);
   acts.appendChild(la);
   hm.appendChild(acts);

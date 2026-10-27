@@ -65,7 +65,7 @@ function createWin(spec, rect){
         ${modUrl(w.channel) ? `<button data-a="mod" title="Open the mod view for this channel"${DESKTOP ? ' hidden' : ''}>${icon.mod}</button>` : ''}
         <button data-a="pop" title="Open in its own browser window">${icon.pop}</button>
         <button data-a="max" title="Maximize / restore (or double-click the bar)">${icon.max}</button>
-        ${w.channel && !/^yt:v:/.test(w.channel) ? `<button data-a="link" class="link-b" title="Link accounts: this streamer on other sites"${linkedOn() ? '' : ' hidden'}>${icon.layers}</button>` : ''}
+        ${w.channel && !/^yt:v:/.test(w.channel) ? `<button data-a="link" class="link-b" title="Link channels: this streamer on other sites"${linkedOn() ? '' : ' hidden'}>${icon.layers}</button>` : ''}
         <button data-a="more" class="more-b" title="More: the buttons that don't fit" aria-label="More" aria-haspopup="true" hidden>⋯</button>
         <button data-a="close" class="x" title="Close">${icon.close}</button>
       </div>

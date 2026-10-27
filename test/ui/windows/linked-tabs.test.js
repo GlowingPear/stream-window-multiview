@@ -1,4 +1,4 @@
-// Linked accounts (Settings › Linked accounts, issue #202): a streamer's Kick, Twitch and YouTube accounts as one,
+// Linked channels (Settings › Linked channels, issue #202): a streamer's Kick, Twitch and YouTube accounts as one,
 // with their windows as one window with a tab per site. Off by default: then everything is as before.
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -40,7 +40,7 @@ test('off by default: one row and one window per account, each window with its o
   assert.deepEqual(await page.$$eval('#stage .win.stream .ptab', bs => bs.map(b => b.textContent + ':' + b.classList.contains('solo'))), ['K:true', 'T:true']);
   assert.equal(await page.locator('#stage .win .tag').count(), 0, 'no STREAM / CHAT tag');
   assert.deepEqual(await page.$$eval('#stage .win.stream .col-pick option', os => [...new Set(os.map(o => o.textContent))]), ['quietkoala'], 'no "· Twitch" after the name');
-  assert.equal(await page.locator('#stage .win [data-a=link]:not([hidden])').count(), 0, 'no Link accounts… in ⋯');
+  assert.equal(await page.locator('#stage .win [data-a=link]:not([hidden])').count(), 0, 'no Link channels… in ⋯');
   assert.equal(await page.evaluate(() => window.linkedApi.suggestions().length), 0);
 });
 
@@ -205,7 +205,7 @@ test('suggestions: the same name on another site, Not the same is never suggeste
   assert.equal(await page.evaluate(() => window.linkedApi.listStreamers().length), 1);
 });
 
-test('the Link accounts card: add an account by name, make one main, the streamer\'s choices', async t => {
+test('the Link channels card: add an account by name, make one main, the streamer\'s choices', async t => {
   const page = await linkedApp(t, { streamers: [], saved: ['novalynx'] });
   await page.evaluate(() => window.openLinkCard('novalynx'));
   await page.click('#linkDlg .lc-plat button[data-p=twitch]');
@@ -221,7 +221,7 @@ test('the Link accounts card: add an account by name, make one main, the streame
   assert.equal(await page.isVisible('#linkDlg'), false);
 });
 
-test('Settings › Linked accounts: off, the page only says what it does; on, its five tabs', async t => {
+test('Settings › Linked channels: off, the page only says what it does; on, its five tabs', async t => {
   const page = await linkedApp(t, { on: false });
   await page.evaluate(() => window.openSettings('linked'));
   assert.equal(await page.isVisible('#laOff'), true); assert.equal(await page.isVisible('#laTabs'), false);
@@ -266,7 +266,7 @@ test('the search box: a linked streamer is one result with its sites; "link" fin
   await page.fill('#palQ', 'link');
   await page.waitForTimeout(300);
   const text = await page.textContent('#palList');
-  for (const s of ['Link mossbyte on Kick with @mossbyte on YouTube', 'Link accounts…', 'Find streamers on several sites', 'Show linked streamers']) assert.ok(text.includes(s), s);
+  for (const s of ['Link mossbyte on Kick with @mossbyte on YouTube', 'Link channels…', 'Find streamers on several sites', 'Show linked streamers']) assert.ok(text.includes(s), s);
 });
 
 test('Channels: drag one row onto another links them; Later hides a suggestion until the app starts again', async t => {

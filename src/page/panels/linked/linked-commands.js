@@ -15,9 +15,9 @@ import { flash } from '../../shared/flash.js';
 import { chPhoto } from '../../windows/channel-picker.js';
 import { openStreamer, setSideBySide, showTab } from '../../windows/frames.js';
 
-/* ---- The search box (Ctrl/⌘+K) for linked accounts: a linked streamer as one result (its sites, each site's
-   viewers, Watch as tabs, one site only, Profile, Saved, Linked accounts, and everything else under More…), and
-   every linking action ("link" finds them, suggestions first). Nothing here while Linked accounts is off. ---- */
+/* ---- The search box (Ctrl/⌘+K) for linked channels: a linked streamer as one result (its sites, each site's
+   viewers, Watch as tabs, one site only, Profile, Saved, Linked channels, and everything else under More…), and
+   every linking action ("link" finds them, suggestions first). Nothing here while Linked channels is off. ---- */
 const site = c => PLAT_NAME[platOf(c)];
 const liveIn = s => s.accounts.filter(c => infoFor(c) && infoFor(c).live);
 const isOpenS = s => wins.some(w => s.accounts.includes(w.channel));
@@ -44,7 +44,7 @@ function streamerButtons(s){
     ...(live.length > 1 ? live.map(c => ({ label: `${site(c)} only`, icon: 'ytPlay', run: () => openStreamer(s.main, modeSel ? modeSel.value : 'both', [c]) })) : []),
     DESKTOP && { label: 'Profile', icon: 'user', run: () => openProfile(s.main) },
     { label: sv ? 'Saved' : 'Save', icon: 'star', on: sv, run: () => saveAll(s, !sv) },
-    { label: 'Linked accounts', icon: 'layers', run: () => openLinkCard(s.main) },
+    { label: 'Linked channels', icon: 'layers', run: () => openLinkCard(s.main) },
     { label: 'More…', more: true }
   ].filter(Boolean);
 }
@@ -54,7 +54,7 @@ function streamerMore(s){
   const name = streamerName(s), g = name, out = [], live = liveIn(s);
   const add = (id, title, x) => out.push({ id: `st:${s.id}:${id}`, group: x.group || g, title, icon: 'point', ...x });
   const mode = modeSel ? modeSel.value : 'both';
-  add('watch', 'Watch: live sites as tabs', { group: 'Watch', icon: 'colsview', sub: live.length ? andList(live.map(site)) : 'Nobody live: the main account', run: () => openStreamer(s.main, mode) });
+  add('watch', 'Watch: live sites as tabs', { group: 'Watch', icon: 'colsview', sub: live.length ? andList(live.map(site)) : 'Nobody live: the main channel', run: () => openStreamer(s.main, mode) });
   s.accounts.forEach(c => add('on:' + c, `Watch on ${site(c)}`, { group: 'Watch', icon: 'ytPlay', sub: infoFor(c) && infoFor(c).live ? 'live' : 'offline', run: () => openStreamer(s.main, mode, [c]) }));
   add('chats', 'Chats only, as tabs', { group: 'Watch', icon: 'chat', run: () => openStreamer(s.main, 'chat', live.length ? live : [s.main]) });
   add('chatsSide', 'Chats side by side', { group: 'Watch', icon: 'columns', run: () => {
@@ -67,9 +67,9 @@ function streamerMore(s){
   if (DESKTOP) add('alerts', 'Live alerts', { icon: 'bell', disabled: () => !notifyAll && 'Live notifications are off (Channels › the bell)',
     toggle: { get: () => notifyAll && s.accounts.every(c => !notifyOff.includes(c)), set: on => s.accounts.forEach(c => setNotify(c, on)) } });
   add('auto', 'Opens by itself (⚡)', { icon: 'bolt', toggle: { get: () => s.accounts.some(c => autoOpen.includes(c)), set: () => openLinkCard(s.main) }, sub: 'Choose together or separate in the card' });
-  add('card', 'Linked accounts…', { group: 'Linking', icon: 'layers', run: () => openLinkCard(s.main) });
-  add('addAcc', 'Link another account…', { group: 'Linking', icon: 'plus', run: () => openLinkCard(s.main, { add: true }) });
-  s.accounts.filter(c => c !== s.main).forEach(c => add('main:' + c, `Make ${site(c)} the main account`, { group: 'Linking', icon: 'star', sub: 'First tab, picture and name', run: () => setMain(c) }));
+  add('card', 'Linked channels…', { group: 'Linking', icon: 'layers', run: () => openLinkCard(s.main) });
+  add('addAcc', 'Link another channel…', { group: 'Linking', icon: 'plus', run: () => openLinkCard(s.main, { add: true }) });
+  s.accounts.filter(c => c !== s.main).forEach(c => add('main:' + c, `Make ${site(c)} the main channel`, { group: 'Linking', icon: 'star', sub: 'First tab, picture and name', run: () => setMain(c) }));
   s.accounts.forEach(c => add('unlink:' + c, `Unlink ${site(c)}`, { group: 'Linking', icon: 'unlink', sub: `${chLabel(c)} becomes its own channel`, run: () => askUnlink(c) }));
   add('unlinkAll', 'Unlink all', { group: 'Linking', icon: 'unlink', sub: `Back to ${s.accounts.length} separate channels`, run: () => askUnlinkAll(s) });
   add('name', 'Name shown…', { group: 'Their choices', icon: 'user', sub: name, run: () => openLinkCard(s.main) });
@@ -93,21 +93,21 @@ async function askUnlinkAll(s){
 }
 // Everything about linking: the suggestions first, then the actions
 function linkingItems(){
-  const out = [], g = 'Linked accounts', act = shownWins().find(w => w.el.classList.contains('active') && w.channel && !/^yt:v:/.test(w.channel));
+  const out = [], g = 'Linked channels', act = shownWins().find(w => w.el.classList.contains('active') && w.channel && !/^yt:v:/.test(w.channel));
   suggestions().forEach(x => out.push({ id: `link.sug:${x.a}|${x.b}`, group: 'Suggested links', title: `Link ${chLabel(x.a)} on ${site(x.a)} with ${chLabel(x.b)} on ${site(x.b)}`,
     sub: x.why, words: ['link', 'same streamer'], siteIcons: [{ p: platOf(x.a) }, { p: platOf(x.b) }], icon: 'layers', run: () => linkPair(x.a, x.b),
     alt: () => notSame(x.a, x.b), altLabel: 'not the same' }));
-  out.push({ id: 'link.accounts', group: g, title: 'Link accounts…', sub: 'Pick a streamer, then add their other sites', icon: 'layers', words: ['link', 'same streamer', 'several sites'], run: () => openLinkCard(null) });
+  out.push({ id: 'link.accounts', group: g, title: 'Link channels…', sub: 'Pick a streamer, then add their other sites', icon: 'layers', words: ['link', 'same streamer', 'several sites'], run: () => openLinkCard(null) });
   if (act) out.push({ id: 'link.window', group: g, title: 'Link this window\'s channel with…', sub: [chLabel(act.channel), 'the window you\'re on'], icon: 'layers', words: ['link'], run: () => openLinkCard(act.channel, { add: true }) });
   out.push({ id: 'link.find', group: g, title: 'Find streamers on several sites', sub: 'Checks your saved and followed channels for the same streamer elsewhere', icon: 'search', words: ['link', 'suggest'],
-    run: () => { const n = suggestions({ all: true }).length; flash(n ? `${n} streamer${n === 1 ? ' is' : 's are'} on several sites · Settings › Linked accounts › Suggestions` : 'No streamers found on several sites'); openSettings('linked', { sub: 'sugs' }); } });
+    run: () => { const n = suggestions({ all: true }).length; flash(n ? `${n} streamer${n === 1 ? ' is' : 's are'} on several sites · Settings › Linked channels › Suggestions` : 'No streamers found on several sites'); openSettings('linked', { sub: 'sugs' }); } });
   const list = listStreamers();
-  out.push({ id: 'link.list', group: g, title: 'Show linked streamers', sub: `${list.length} streamer${list.length === 1 ? '' : 's'}, ${list.reduce((t, s) => t + s.accounts.length, 0)} accounts`, icon: 'list', words: ['linked'], run: () => openSettings('linked', { sub: 'linked' }) });
+  out.push({ id: 'link.list', group: g, title: 'Show linked streamers', sub: `${list.length} streamer${list.length === 1 ? '' : 's'}, ${list.reduce((t, s) => t + s.accounts.length, 0)} channels`, icon: 'list', words: ['linked'], run: () => openSettings('linked', { sub: 'linked' }) });
   const sugs = suggestions({ all: true });
   if (sugs.length > 1) out.push({ id: 'link.all', group: g, title: 'Link every suggestion', sub: `${sugs.length} pairs`, icon: 'layers', words: ['link'], run: () => linkEvery() });
   list.forEach(s => {
     out.push({ id: `link.unlink:${s.id}`, group: g, title: `Unlink ${streamerName(s)}…`, sub: `Back to ${s.accounts.length} separate channels`, icon: 'unlink', words: ['link', 'unlink'], run: () => askUnlinkAll(s) });
-    s.accounts.filter(c => c !== s.main).forEach(c => out.push({ id: `link.main:${c}`, group: g, title: `Make ${site(c)} ${streamerName(s)}'s main account`, sub: 'First tab, picture and name', icon: 'star', words: ['link', 'main'], run: () => setMain(c) }));
+    s.accounts.filter(c => c !== s.main).forEach(c => out.push({ id: `link.main:${c}`, group: g, title: `Make ${site(c)} ${streamerName(s)}'s main channel`, sub: 'First tab, picture and name', icon: 'star', words: ['link', 'main'], run: () => setMain(c) }));
   });
   // who's live on several sites right now
   const multi = list.filter(s => liveIn(s).length > 1);
