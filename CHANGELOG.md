@@ -2,7 +2,15 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.28 (current)
+## 0.3.29 (current)
+- Fix linked channel tabs freezing when you switch to them
+- Linked channels: offline sites' tabs can't be opened and aren't loaded; YouTube windows follow a channel's new stream
+- Fix stray "undefined" / "null" text in menus and lists, and the missing ▾ with names off
+- A channel's stream and chat show its site the same way: the badge on its picture
+- Settings › Windows: buttons glide to their new place when you move them
+- Fix the linked streamer's card (and other dialogs) opening behind Settings
+
+## 0.3.28
 - Link a streamer's Kick, Twitch and YouTube accounts: one row, one window with a tab per site
 - Linked accounts is now Linked channels
 
