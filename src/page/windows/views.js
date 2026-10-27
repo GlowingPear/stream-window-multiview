@@ -26,7 +26,7 @@ import { viewPressed } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { mountCapture, openCapturePicker } from './capture.js';
-import { playQuality, tabKeyAgent, tabKeyJs } from './frames.js';
+import { focusChatBox, playQuality, tabKeyAgent, tabKeyJs } from './frames.js';
 import { applyPlay } from './pause.js';
 import { watchRaid } from './raids.js';
 import { watchStuck } from './stuck.js';
@@ -154,6 +154,7 @@ function mountView(w){
       if (w.kind === 'chat' && platform(w.channel).pageCommands) runIn(frame, KICK_CMD_JS);
       if (w.kind === 'chat') syncChatName(w);                // Channel name in chat boxes (chat/chat-name.js)
       if (w.kind === 'chat') startStick(w);                  // stays at its newest messages (chat/stick-bottom.js)
+      if (w.kind === 'chat' && w.focusBox) focusChatBox(w);  // Tab switched to it while it loaded (windows/frames.js)
       applyChatView(w);
     });
   }

@@ -61,3 +61,38 @@ test('Channels: a linked streamer\'s ⚡, bell and profile act on every account'
   await a.win.waitForSelector('#profDlg:not([hidden])');
   await a.win.keyboard.press('Escape');
 });
+
+// Runs fn(arg) in the page of a chat window, by its channel (also a tab you can't see)
+const inChat = (ch, fn, arg) => a.win.evaluate(([ch, src, arg]) => window.openWins().find(w => w.kind === 'chat' && w.channel === ch).view.executeJavaScript(`(${src})(${JSON.stringify(arg)})`), [ch, fn.toString(), arg]);
+const chatReady = ch => a.win.waitForFunction(ch => { const w = window.openWins().find(o => o.kind === 'chat' && o.channel === ch); try { return !!(w && w.ready && /chat/.test(w.view.getURL())); } catch { return false; } }, ch, { timeout: 30000 });
+// the site's chat box (contenteditable, as Kick's and Twitch's are)
+const addBox = (ch, attr) => inChat(ch, attr => { const b = document.createElement('div'); b.setAttribute(attr[0], attr[1]); b.contentEditable = 'true'; document.body.append(b); }, attr);
+const KICK = ['data-testid', 'chat-input'], TWITCH = ['data-a-target', 'chat-input'];
+// both sites live (the app's own check, after a test before loaded the page again, says offline: an offline tab is locked)
+const bothLive = () => a.win.evaluate(() => window.smvNotes.liveStatus({ alpha: { live: true, checked: Date.now() }, 'tw:alpha': { live: true, checked: Date.now() } }));
+// Tab (⇧Tab) in the chat's empty box
+const tabIn = async (ch, back) => { await bothLive(); await a.win.waitForSelector('#stage .win.chat:not(.tab-hidden) .ptab:not(.on):not(.locked)'); await inChat(ch, back => { const b = document.querySelector('[contenteditable]'); b.focus(); b.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: back, bubbles: true, cancelable: true })); }, back); };
+const boxFocused = ch => a.win.waitForFunction(async ch => {
+  const w = window.openWins().find(o => o.kind === 'chat' && o.channel === ch);
+  try { return !w.hiddenTab && await w.view.executeJavaScript('document.activeElement?.getAttribute("contenteditable") === "true"'); } catch { return false; }
+}, ch, { timeout: 15000 });
+
+test('Tab in an empty chat box switches site and the keyboard is in the new chat\'s box, also one still loading', T, async () => {
+  await a.win.evaluate(() => {
+    window.linkedApi.setOn(true);
+    window.linkedApi.link('alpha', 'tw:alpha');
+    window.frames_.openStreamer('alpha', 'chat', ['alpha']);
+  });
+  await chatReady('alpha');
+  await addBox('alpha', KICK);
+  // Twitch's chat isn't open yet: its tab opens, and once its page and box are there, the box has the keyboard
+  await tabIn('alpha', false);
+  await chatReady('tw:alpha');
+  await addBox('tw:alpha', TWITCH);
+  await boxFocused('tw:alpha');
+  // ⇧Tab back: Kick's chat is loaded, its box gets the keyboard at once (it doesn't have it from before)
+  await inChat('alpha', () => document.activeElement.blur());
+  await tabIn('tw:alpha', true);
+  await boxFocused('alpha');
+  await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
+});
