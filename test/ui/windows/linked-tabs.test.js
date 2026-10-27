@@ -102,6 +102,19 @@ test('closing one tab leaves the others; + brings it back; the window\'s ✕ clo
   assert.equal((await all(page)).length, 0);
 });
 
+test('a tab\'s menu (right-click) lists only what applies: no "undefined" or "false" lines', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'stream'));
+  await page.click('#stage .win.stream:not(.tab-hidden) .ptab.twitch', { button: 'right' });
+  await page.waitForSelector('#tabMenu:not([hidden])');
+  const lines = await page.$$eval('#tabMenu > *', es => es.map(e => e.tagName === 'HR' ? '—' : e.textContent.trim()));
+  assert.match(lines[0], /quietkoala on Twitch · live/i);
+  assert.ok(!lines.some(l => /^(undefined|false|null)$/.test(l)), lines.join(' | '));
+  assert.equal(await page.$eval('#tabMenu', m => [...m.childNodes].filter(n => n.nodeType === 3).length), 0, 'no loose text');
+  assert.ok(lines.some(l => l.startsWith('Make Twitch the main channel')));
+  await page.keyboard.press('Escape');
+});
+
 test('a tab out into its own window and Join; chats side by side', async t => {
   const page = await linkedApp(t);
   await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'both'));

@@ -259,7 +259,7 @@ function openTabMenu(w, ch, at){
   const lead = leaderOf(w), m = memberFor(w, ch), p = platOf(ch), name = nameOf(ch), info = infoFor(ch);
   const item = (ico, label, run, { key, danger, cmd } = {}) => element('button', { type: 'button', role: 'menuitem', class: danger ? 'danger' : '', dataset: { cmd: cmd || 'win.tab' },
     onclick: () => { tabMenu.hidden = true; run(); } }, element('span', { class: 'tm-ico', html: icon[ico] || '' }), element('span', 'tm-t', label), key && element('small', null, key));
-  tabMenu.replaceChildren(
+  tabMenu.replaceChildren(...[   // (the items that don't apply are false or undefined: left out, not shown as text)
     element('div', { class: 'tm-head', role: 'presentation' }, `${name} on ${PLAT_NAME[p]}` + (info ? info.missing ? ' · not found' : info.live ? ' · live' : ' · offline' : '')),
     info && info.missing && item('link', 'Fix: pick its new name', () => { unlink(ch); openLinkCard(streamerOf(lead.channel) ? lead.channel : accountsOf(lead.channel)[0], { add: true }); }),
     item('play', 'Watch here', () => m ? showTab(m) : addTab(lead, ch, true), { key: keyName('Alt+' + tabNo(w, ch)) }),
@@ -273,7 +273,7 @@ function openTabMenu(w, ch, at){
       if (DESKTOP && window.kmv.openExternal) window.kmv.openExternal(u); else window.open(u, '_blank');
     }),
     element('hr'),
-    item('unlink', `Unlink from ${name}`, () => unlinkTab(ch), { danger: true }));
+    item('unlink', `Unlink from ${name}`, () => unlinkTab(ch), { danger: true })].filter(Boolean));
   tabMenu.hidden = false; tabMenuFor = at;
   const r = at.getBoundingClientRect();
   tabMenu.style.left = Math.max(8, Math.min(innerWidth - tabMenu.offsetWidth - 8, r.left)) + 'px';
