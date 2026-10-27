@@ -12,7 +12,8 @@ import { appendFollowSugs } from './follow-suggestions.js';
 import { esRefresh } from '../empty-stage/empty-stage.js';
 import { openLinkCard } from '../linked/link-card.js';
 import { openProfile } from '../profiles/profiles.js';
-import { accountsOf, canLink, laterPair, link, linkedOn, nameOf, notSame, optFor, streamerOf, suggestions } from '../../platforms/linked.js';
+import { accountsOf, canLink, laterPair, link, linkedOn, listStreamers, nameOf, notSame, optFor, streamerName,
+  streamerOf, suggestions } from '../../platforms/linked.js';
 import { PLAT_NAME, chLabel, infoNames, normCh, platIcon, platOf, rememberNames } from '../../platforms/platforms.js';
 import { element } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -31,7 +32,8 @@ let liveInfo = {};                                  // channel -> { live, title,
 function gotLive(snap){ liveInfo = snap || {}; rememberNames(infoNames(liveInfo)); store.changed('live'); checkAutoOpen(); if (!wins.length) esRefresh(); }
 let notifyAll = true, notifyOff = [];
 function sendWatch(){
-  if (DESKTOP && ROLE === 'main' && window.kmv.watchLive) window.kmv.watchLive({ channels: saved, notifyAll, away: !!alerts && alerts.live.notify === 'unfocused', off: notifyOff.map(c => String(c).toLowerCase()) });
+  if (DESKTOP && ROLE === 'main' && window.kmv.watchLive) window.kmv.watchLive({ channels: saved, notifyAll, away: !!alerts && alerts.live.notify === 'unfocused', off: notifyOff.map(c => String(c).toLowerCase()),
+    groups: listStreamers().map(s => ({ name: streamerName(s), accounts: s.accounts })) });   // one notification for a linked streamer
 }
 function persistSaved(){
   saved = abc(saved);

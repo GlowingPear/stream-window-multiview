@@ -6,7 +6,7 @@ lede: Pause what you can't see, pop streams out to another window, and put each 
 settings: layouts
 words: [bandwidth, pause, auto-pause, pop out, monitor, second screen, streams window]
 related: [layouts]
-order: 11
+order: 12
 ---
 
 - Auto-pause hidden streams (Settings > General): streams you can't see pause after 2 seconds and jump back to live when you can.

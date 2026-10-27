@@ -43,6 +43,8 @@ const youtube = {
   emoteLists: false,
   pageCommands: false,
   likes: true,
+  // a tab you're not watching (windows/frames.js): its lowest quality, or back to automatic
+  lowQualityJs: low => `(() => { const p = document.getElementById('movie_player'); const q = ${low ? "'tiny'" : "'auto'"}; if (p && p.setPlaybackQualityRange) p.setPlaybackQualityRange(q, q); })()`,
   partition: 'persist:youtube',
   idFor: name => 'yt:@' + name,
   handle: ch => ch.slice(3),

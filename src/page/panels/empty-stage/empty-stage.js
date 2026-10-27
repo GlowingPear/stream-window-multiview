@@ -4,7 +4,8 @@ import { addParsed } from '../../layout/placement.js';
 import { fmtViewers, infoFor, liveNow, saved, svHue, svInitials, svProf } from '../channels/channels.js';
 import { openSettings } from '../settings/settings.js';
 import { restore, save } from '../../persistence.js';
-import { PLAT_NAME, chLabel, parseInput, platIcon, platOf } from '../../platforms/platforms.js';
+import { accountsOf, groupKey, nameOf, sameStreamer, streamerOf } from '../../platforms/linked.js';
+import { PLAT_NAME, parseInput, platIcon, platOf } from '../../platforms/platforms.js';
 import { commands } from '../../shared/commands.js';
 import { esc } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -14,6 +15,7 @@ import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
 import { closeOverlays, layoutPick } from '../../shortcuts.js';
 import { panel, savedBtn, showSpMenu } from '../../toolbar/toolbar.js';
+import { openStreamer } from '../../windows/frames.js';
 
 /* ---------- the empty stage: Welcome for a first run, then the Launchpad (#53) ----------
    Welcome: a paste box, logins, Import follows and handy keys; feature cards with "Show me" (seen ones are
@@ -126,9 +128,9 @@ function esBuild(){
   first.querySelector('.es-learn').addEventListener('click', e => { const b = e.target.closest('.es-show'); if (b) showMe(b.dataset.id); });
   pad.querySelector('.es-live').addEventListener('click', e => {
     const b = e.target.closest('[data-ch], [data-all]'); if (!b) return;
-    if (b.dataset.ch){ addParsed({ channel: b.dataset.ch, only: null }); return; }
+    if (b.dataset.ch){ if (streamerOf(b.dataset.ch)) openStreamer(b.dataset.ch, 'both'); else addParsed({ channel: b.dataset.ch, only: null }); return; }
     const list = liveNow();
-    list.forEach(ch => { if (!wins.some(w => w.kind === 'stream' && w.channel === ch)) addParsed({ channel: ch, only: null }); });
+    list.forEach(ch => { if (!wins.some(w => w.kind === 'stream' && sameStreamer(w.channel, ch))) addParsed({ channel: ch, only: null }); });
     if (b.dataset.all === 'focus') layoutPick('focus'); else autoLayout();
   });
 }
@@ -152,13 +154,16 @@ function esRefresh(){
     first.querySelector('.es-learn').innerHTML = list.map(c => `<div class="es-card${seen.has(c.id) ? ' seen' : ''}" data-id="${c.id}"><div class="es-ct">${icon[c.ico] || ''}${c.t}</div><p>${c.d}</p><button class="btn es-show" data-id="${c.id}">Show me</button>${seen.has(c.id) ? '<span class="es-tick" title="Seen">✓</span>' : ''}</div>`).join('');
     first.querySelector('.es-tour').textContent = intro.tour ? 'Take the tour again' : 'Take the tour';
   } else {
-    const live = DESKTOP ? liveNow() : [], box = pad.querySelector('.es-live');
+    // a linked streamer once, with each live site's icon and their viewers added up
+    const live = DESKTOP ? [...new Map(liveNow().map(ch => [groupKey(ch), ch])).values()] : [], box = pad.querySelector('.es-live');
+    const sitesOf = ch => streamerOf(ch) ? accountsOf(ch).filter(c => infoFor(c) && infoFor(c).live) : [ch];
+    const viewersOf = ch => sitesOf(ch).reduce((t, c) => t + (+(infoFor(c) || {}).viewers || 0), 0);
     if (live.length){
       box.innerHTML = `<div class="es-live-h"><b><i></i>Live now · ${live.length}</b><span class="es-gap"></span><button class="btn" data-all="open">Open all ${live.length}</button><button class="btn" data-all="focus">Open as Focus view</button></div>
         <div class="es-cards">${live.slice(0, 12).map(ch => {
-          const i = infoFor(ch) || {}, prof = (svProf[ch] && svProf[ch].info) || {}, sub = [i.category, i.title].filter(Boolean).join(' · ');
-          return `<button class="es-lc" data-ch="${esc(ch)}" title="Open ${esc(chLabel(ch))}"><span class="es-av" style="--c:${svHue(ch)}">${esc(svInitials(chLabel(ch)))}${prof.avatar ? `<img alt="" referrerpolicy="no-referrer" src="${esc(prof.avatar)}">` : ''}</span>
-            <span class="es-lt"><span class="es-ln">${platIcon(platOf(ch))}<span>${esc(chLabel(ch))}</span></span><span class="es-ls">${esc(sub)}</span></span>${i.viewers != null ? `<span class="es-lv">${fmtViewers(i.viewers)}</span>` : ''}</button>`;
+          const i = infoFor(ch) || {}, prof = (svProf[ch] && svProf[ch].info) || {}, sub = [i.category, i.title].filter(Boolean).join(' · '), name = nameOf(ch);
+          return `<button class="es-lc" data-ch="${esc(ch)}" title="Open ${esc(name)}"><span class="es-av" style="--c:${svHue(ch)}">${esc(svInitials(name))}${prof.avatar ? `<img alt="" referrerpolicy="no-referrer" src="${esc(prof.avatar)}">` : ''}</span>
+            <span class="es-lt"><span class="es-ln">${sitesOf(ch).map(c => platIcon(platOf(c))).join('')}<span>${esc(name)}</span></span><span class="es-ls">${esc(sub)}</span></span>${i.viewers != null ? `<span class="es-lv">${fmtViewers(viewersOf(ch))}</span>` : ''}</button>`;
         }).join('')}</div>`;
       box.querySelectorAll('.es-av img').forEach(img => { img.onerror = () => img.remove(); });   // a picture that doesn't load: the initials
     } else if (!saved.length){

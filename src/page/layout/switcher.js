@@ -15,12 +15,15 @@ import { focusChannel, fsMoveStart, fsScrolledAt, openFocusView, placeMinis, set
 import { refreshFromSwitcher } from './undo.js';
 import { addNote, noteActs, renderBell } from '../panels/bell/bell.js';
 import { save } from '../persistence.js';
-import { chLabel, platOf } from '../platforms/platforms.js';
+import { nameOf } from '../platforms/linked.js';
+import { PLAT_NAME, chLabel, platOf } from '../platforms/platforms.js';
+import { element } from '../shared/element.js';
 import { DESKTOP, keyName } from '../shared/env.js';
 import { icon } from '../shared/icons.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { refreshPicks } from '../windows/channel-picker.js';
+import { frameOf } from '../windows/frames.js';
 import { togglePause } from '../windows/pause.js';
 import { popOutHidden, updatePopHiddenBtn } from '../windows/popout.js';
 import { createWin, pushVol, saveSoon } from '../windows/windows.js';
@@ -52,7 +55,8 @@ function removeChannel(ch){
     toast(`Removed “${cap.capName}” (${keyName('Ctrl+Z')} brings it back)`);
     return;
   }
-  const ws = wins.filter(w => w.channel === ch); if (!ws.length) return;
+  const ws = wins.filter(w => colKey(w) === ch); if (!ws.length) return;   // (a linked streamer's: every tab)
+  const name = nameOf(ws[0].channel);
   const specs = ws.map(w => ({ kind: w.kind, channel: w.channel, muted: w.muted, vol: w.vol, preview: w.preview, rect: { x: w.x, y: w.y, w: w.w, h: w.h } }));
   const order = buildCols().map(c => c.key), idx = order.indexOf(ch);
   const wasBig = featuredCh === ch && featBase.length > 0;
@@ -62,14 +66,14 @@ function removeChannel(ch){
     setFeatured(next ? next.key : null);
   }
   if (colsMode) columnsLayout(); else relayout();
-  toast(`Removed ${chLabel(ch)}`, () => {
-    if (wins.some(w => w.channel === ch)) return;
+  toast(`Removed ${name}`, () => {
+    if (wins.some(w => colKey(w) === ch)) return;
     specs.forEach(sp => createWin(sp, sp.rect));
     if (idx >= 0){ layoutVars.colOrder = colOrder.filter(k => k !== ch); colOrder.splice(Math.min(idx, colOrder.length), 0, ch); }
     if (wasBig) setFeatured(ch);
     if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(); else if (lastLayout === 'stage') chatStageLayout(); else if (lastLayout === 'rail') chatRailLayout();
     save();
-  }, () => !wins.some(w => w.channel === ch));
+  }, () => !wins.some(w => colKey(w) === ch));
 }
 
 /* Drag a switcher button onto another to swap them (also swaps their columns). */
@@ -150,7 +154,7 @@ function renderSwitcher(){
   buildCols().filter(c => isVid(c.top)).forEach(c => {
     const s = c.top, it = document.createElement('div');
     if (s.kind === 'capture'){ featSwitch.appendChild(captureItem(s)); return; }
-    it.className = 'fs-item' + (s.channel === featuredCh ? ' on' : '') + (s.preview ? ' pv' : '');
+    it.className = 'fs-item' + (colKey(s) === featuredCh ? ' on' : '') + (s.preview ? ' pv' : '');
     it.dataset.ch = s.channel;
     it.innerHTML =
       `<div class="fs-row">` +
@@ -162,15 +166,17 @@ function renderSwitcher(){
       `<button class="fs-x">${icon.close}</button>` +
       `</div>` +
       (s.preview ? `<div class="fs-thumb" style="height:${thumbH}px"><span class="fs-nopv">Loading preview…</span></div>` : '');
-    it.querySelector('.fs-name span').textContent = chLabel(s.channel);
+    it.querySelector('.fs-name span').textContent = nameOf(s.channel);
+    const others = frameOf(s).filter(o => o !== s);   // its other tabs: +1, which ones on hover (windows/frames.js)
+    if (others.length) it.querySelector('.fs-name .dot').after(element('b', { class: 'fs-more', title: 'Also open: ' + others.map(o => PLAT_NAME[platOf(o.channel)]).join(', ') }, '+' + others.length));
     it.querySelector('.fs-rl').title = `Refresh ${chLabel(s.channel)}`;
     it.querySelector('.fs-x').title = `Remove ${chLabel(s.channel)} (stream and chat)`;
     it.classList.add('plat-' + platOf(s.channel));
-    const focusIt = () => { if (isStage()) putOnStage(s.channel); else if (isRail()) showRailChat(s.channel); else if (s.channel === featuredCh) toggleFeatured(s.channel); else { setFeatured(s.channel); columnsLayout(); } };
-    it.querySelector('.fs-x').onclick = e => { e.stopPropagation(); removeChannel(s.channel); };
+    const focusIt = () => { if (isStage()) putOnStage(colKey(s)); else if (isRail()) showRailChat(s.channel); else if (colKey(s) === featuredCh) toggleFeatured(colKey(s)); else { setFeatured(colKey(s)); columnsLayout(); } };
+    it.querySelector('.fs-x').onclick = e => { e.stopPropagation(); removeChannel(colKey(s)); };
     it.querySelector('.fs-rl').onclick = e => { e.stopPropagation(); refreshFromSwitcher(s, e.currentTarget); };
     const nameBtn = it.querySelector('.fs-name');
-    nameBtn.title = s.channel === featuredCh ? 'In focus. Click to put it back in its column' : `Put ${chLabel(s.channel)} in the big spot`;
+    nameBtn.title = colKey(s) === featuredCh ? 'In focus. Click to put it back in its column' : `Put ${chLabel(s.channel)} in the big spot`;
     nameBtn.onclick = () => { if (fsJustDragged) return; focusIt(); };
     it.addEventListener('pointerdown', e => fsDragStart(e, it));
 

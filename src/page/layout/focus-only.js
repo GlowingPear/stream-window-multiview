@@ -1,5 +1,5 @@
 import { ROLE, shownWins } from '../core.js';
-import { featBase, featSwitch, featuredCh, vidByKey } from './layouts.js';
+import { colKey, featBase, featSwitch, featuredCh, vidByKey } from './layouts.js';
 import { commands } from '../shared/commands.js';
 import { icon } from '../shared/icons.js';
 import { settings } from '../shared/settings.js';
@@ -12,10 +12,10 @@ function applyFocusOnly(){
   const featOn = featBase.length > 0 && !!featuredCh;
   shownWins().forEach(w => {
     if (w.kind !== 'stream') return;
-    const should = focusOnly && featOn && w.channel !== featuredCh && !w.pause.focusExempt;
+    const should = focusOnly && featOn && colKey(w) !== featuredCh && !w.pause.focusExempt;
     const next = pauseEvents.focusPause(w.pause, should);
     if (next !== w.pause){ w.pause = next; applyPlay(w); }
-    if (w.channel === featuredCh) w.pause = pauseEvents.focusReset(w.pause);
+    if (colKey(w) === featuredCh) w.pause = pauseEvents.focusReset(w.pause);
   });
   syncSwitcher(); updateFocusOnlyBtn();
 }

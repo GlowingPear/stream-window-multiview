@@ -6,7 +6,7 @@ lede: How the app updates itself.
 settings: updates
 words: [update, version, new, install, changelog, what's new]
 related: [settings]
-order: 27
+order: 28
 ---
 
 - The app checks the project's GitHub page for new versions a few seconds after it starts, then every few hours.

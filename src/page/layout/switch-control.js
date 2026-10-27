@@ -14,7 +14,8 @@ import { colKey, featSwitch, featuredCh, fsResize, isVid, layoutVars, mkDiv, set
 import { fsMute, isFocusView, removeChannel, renderSwitcher, setSideCols, swapStreams, toggleCapPause } from './switcher.js';
 import { refreshFromSwitcher } from './undo.js';
 import { save } from '../persistence.js';
-import { chLabel, platOf, streamSrc, trimPlayerPage, ytVidOf } from '../platforms/platforms.js';
+import { nameOf } from '../platforms/linked.js';
+import { PLAT_NAME, chLabel, platOf, streamSrc, trimPlayerPage, ytVidOf } from '../platforms/platforms.js';
 import { youtube } from '../platforms/youtube.js';
 import { commands } from '../shared/commands.js';
 import { DESKTOP } from '../shared/env.js';
@@ -23,6 +24,7 @@ import { icon } from '../shared/icons.js';
 import { fromApp } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
+import { frameOf } from '../windows/frames.js';
 import { pauseWhy } from '../windows/pause-state.js';
 import { isPaused, miniPaused, togglePause } from '../windows/pause.js';
 import { hiddenStreams, popOutHidden } from '../windows/popout.js';
@@ -106,9 +108,10 @@ function switcherCore(){
       const s = c.top;
       if (s.kind === 'capture') return { ch: colKey(s), cap: true, label: s.capName || 'Window', plat: 'capture', vol: 0, muted: true,
         paused: !!s.capPaused, why: s.capPaused ? 'you' : '', on: featOn && colKey(s) === featuredCh, preview: false, mini: null, miniPaused: false };
-      return { ch: s.channel, label: chLabel(s.channel), plat: platOf(s.channel), vol: s.vol, muted: !!s.muted,
+      const others = frameOf(s).filter(o => o !== s).map(o => PLAT_NAME[platOf(o.channel)]);   // its other tabs (windows/frames.js)
+      return { ch: s.channel, label: nameOf(s.channel), plat: platOf(s.channel), more: others.length, moreTip: others.length ? 'Also open: ' + others.join(', ') : '', vol: s.vol, muted: !!s.muted,
         paused: isPaused(s), why: pauseWhy(s.pause),
-        on: featOn && s.channel === featuredCh, preview: !!s.preview,
+        on: featOn && colKey(s) === featuredCh, preview: !!s.preview,
         mini: s.preview ? streamSrc(s.channel, true, ytVidOf(s)) : null, miniPaused: miniPaused(s), n: newFor(s.channel) };
     })
   };

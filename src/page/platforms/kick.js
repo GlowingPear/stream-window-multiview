@@ -16,6 +16,7 @@ const kick = {
   emoteLists: true,      // the app asks it for a channel's emotes (new emotes glow)
   pageCommands: true,    // /clip, /poll and /prediction in its chat (in-site/kick-commands.js)
   likes: false,          // a like button on its streams
+  lowQualityJs: null,     // a tab you're not watching: its lowest quality (windows/frames.js). Its embedded player has none to set from outside
   partition: 'persist:kick',   // its chats' storage (and a signed-in player's)
   // A bare name typed in the Channels box, and the name on the site
   idFor: name => name,

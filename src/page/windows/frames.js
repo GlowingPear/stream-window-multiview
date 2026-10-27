@@ -2,6 +2,7 @@ import { clearAlert } from '../alerts/alerts.js';
 import { newFor } from '../chat/new-messages.js';
 import { closeWin } from '../chat/view-menu.js';
 import { $, BAR, GAP, ROLE, colsMode, lastLayout, shownWins, wins } from '../core.js';
+import { VOL_JS } from '../in-site/volume.js';
 import { chatRailLayout } from '../layout/chat-rail.js';
 import { chatStageLayout } from '../layout/chat-stage.js';
 import { columnsLayout } from '../layout/columns.js';
@@ -12,16 +13,18 @@ import { readChat } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
 import { save } from '../persistence.js';
 import { accountsOf, linkOpt, linkedOn, nameOf, optFor, setMain, streamerOf, unlink } from '../platforms/linked.js';
-import { PLAT_NAME, chLabel, externalFor, platOf, srcFor } from '../platforms/platforms.js';
+import { PLAT_NAME, chLabel, externalFor, platOf, platform, srcFor } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
 import { DESKTOP, keyName } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { icon } from '../shared/icons.js';
+import { fromSite } from '../shared/incoming.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { winTimer } from '../shared/timers.js';
-import { loadView } from './view.js';
+import { isPaused } from './pause.js';
+import { loadView, runIn } from './view.js';
 import { createWin, pushVol } from './windows.js';
 
 /* ---- Tabs: one window for a linked streamer's sites (Settings › Linked accounts) ----
@@ -137,6 +140,8 @@ function showTab(w, { follow = true } = {}){
   if (w.kind === 'stream'){
     w.vol = lead.vol; w.muted = lead.muted; lead.muted = true;
     pushVol(lead); pushVol(w);
+    playQuality(lead); playQuality(w);
+    if (linkOpt('jumpLive') && w.ready && !isPaused(w)) runIn(w.view, `${VOL_JS};window.__kmv.play()`);   // the sites are seconds apart: catch up to live
   }
   setRect(w, { x: lead.x, y: lead.y, w: lead.w, h: lead.h });
   clearAlert(w); syncFrameAlert(w);
@@ -148,6 +153,11 @@ function showTab(w, { follow = true } = {}){
     if (c && !c.typing) showTab(c, { follow: false });
   }
   store.changed('wins', 'tabs'); save();
+}
+// Tabs you're not watching play at the site's lowest quality (Settings › Linked accounts › Playing), where it has one
+function playQuality(w){
+  const js = w.kind === 'stream' && w.ready && w.view && platform(w.channel).lowQualityJs;
+  if (js) runIn(w.view, js(!!w.hiddenTab && linkOpt('quality') === 'low'));
 }
 // Open a site of the streamer as a tab of this window (hidden, or the one you watch)
 function addTab(w, ch, show){
@@ -464,6 +474,27 @@ function maybeTip(w){
   setTimeout(() => { c.hidden = true; }, 30000);
 }
 
+/* ---- Tab in an empty chat box switches site (⇧Tab back): the site uses Tab to complete names while you type ---- */
+// Runs inside the chat page: says when Tab is pressed in an empty chat box, and whether you're typing (the chat
+// follows the stream's tab only once its box is empty)
+function tabKeyAgent(){
+  if (window.__kmvTabKey) return;
+  window.__kmvTabKey = { on: false };
+  const box = t => t && (t.isContentEditable || /^(TEXTAREA|INPUT)$/.test(t.tagName));
+  const empty = t => !(t.isContentEditable ? t.textContent : t.value).trim();
+  window.addEventListener('keydown', e => {
+    if (e.key !== 'Tab' || e.ctrlKey || e.altKey || e.metaKey || !window.__kmvTabKey.on || !box(e.target) || !empty(e.target)) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    console.log('__kmv:tab-key ' + JSON.stringify({ back: e.shiftKey }));
+  }, true);
+  let was = false;
+  window.addEventListener('input', e => { if (!box(e.target)) return; const now = !empty(e.target); if (now !== was){ was = now; console.log('__kmv:typing ' + JSON.stringify({ on: now })); } }, true);
+  window.addEventListener('focusout', e => { if (box(e.target) && was){ was = false; console.log('__kmv:typing {"on":false}'); } }, true);
+}
+// Tab only switches where it would: a chat of a linked streamer, with the setting on
+const tabKeyJs = w => `window.__kmvTabKey && (window.__kmvTabKey.on = ${!!(streamerOf(w.channel) && linkOpt('tabKey') && tabChannels(w).length > 1)})`;
+function syncTabKeys(){ wins.forEach(w => { if (w.kind === 'chat' && w.ready && w.view) runIn(w.view, tabKeyJs(w)); }); }
+
 /* ---- saving and restoring: the app's windows (persistence.js), saved layouts and undo (saved-layouts.js) ---- */
 const frameFields = w => w.frame ? { frame: w.frame, hiddenTab: !!w.hiddenTab, sbs: !!w.sbs, ...(closedTabs[w.frame] ? { closed: closedTabs[w.frame] } : {}) } : w.split ? { split: true } : {};
 function restoreFrames(data){
@@ -550,10 +581,13 @@ function init(){
   if ($('#tabTip')){ $('#tabTip .tt-k1').textContent = keyName('Alt+1'); $('#tabTip .tt-k3').textContent = keyName('Alt+3'); }
   store.watch(['live', 'unread', 'names'], () => { onLive(); renderAllSiteTabs(); });
   store.watch('streamers', () => streamersChanged());
+  store.watch(['streamers', 'tabs', 'wins'], () => syncTabKeys());
+  fromSite('tab-key', (w, json) => { let d = {}; try { d = JSON.parse(json); } catch {} if (stepTab(w, d.back ? -1 : 1)) leaderOf(w).view?.focus(); });
+  fromSite('typing', (w, json) => { let d = {}; try { d = JSON.parse(json); } catch {} w.typing = !!d.on; });
   lastStreamers = linkedOn() ? JSON.stringify(settings.json('streamers', [])) : '';
   window.frames_ = { showTab, addTab, closeTab, splitTab, joinTab, setSideBySide, openStreamer, mergeOpen, splitAll, frameOf, stepTab, switchTo };   // for the tests
 }
 
 export { addTab, applyFrames, closedTabs, closeFrame, closeTab, frameFields, frameNote, frameOf, init, joinTab,
-  leaderOf, mergeOpen, openStreamer, putTabBack, renderSiteTabs, restoreFrames, setSideBySide, showTab, splitTab,
-  stepTab, switchTo, syncFrameAlert, syncFrameRects, tabChannels, unlinkTab };
+  leaderOf, mergeOpen, openStreamer, playQuality, putTabBack, renderSiteTabs, restoreFrames, setSideBySide, showTab,
+  splitTab, stepTab, switchTo, syncFrameAlert, syncFrameRects, tabChannels, tabKeyAgent, tabKeyJs, unlinkTab };

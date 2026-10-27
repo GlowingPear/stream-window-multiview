@@ -2,15 +2,17 @@ import { clearNew, newCount } from '../chat/new-messages.js';
 import { toNewest } from '../chat/stick-bottom.js';
 import { GAP, ROLE, colsMode, coreVars, lastLayout, shownWins, stage } from '../core.js';
 import { SH, SW } from './geometry.js';
-import { applyRects, featuredCh, inColOrder, layoutChatsOnly, rowRects, setColsMode, sortedChats, tile, vidLabel } from './layouts.js';
+import { applyRects, colKey, featuredCh, inColOrder, layoutChatsOnly, rowRects, setColsMode, sortedChats, tile,
+  vidLabel } from './layouts.js';
 import { save } from '../persistence.js';
-import { sameStreamer } from '../platforms/linked.js';
-import { chLabel } from '../platforms/platforms.js';
+import { nameOf, sameStreamer } from '../platforms/linked.js';
+import { PLAT_NAME, chLabel, platOf } from '../platforms/platforms.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { schedulePicks } from '../windows/channel-picker.js';
+import { frameOf, switchTo, tabChannels } from '../windows/frames.js';
 import { setViewScale } from '../windows/view.js';
 
 /* ---- Chat Rail: every stream in a grid on the left, and a rail on the right with one chat in big, easy-to-read
@@ -41,7 +43,7 @@ function chatRailLayout(){
   const vids = inColOrder(w => w.kind !== 'chat'), chats = sortedChats();
   if (!vids.length || !chats.length){ clearRailLook(); if (vids.length) tile(); else layoutChatsOnly(); return; }
   coreVars.lastLayout = 'rail';
-  const chat = chats.find(c => c.channel === railCh) || chats.find(c => c.channel === featuredCh) || chats[0];
+  const chat = chats.find(c => c.channel === railCh) || chats.find(c => colKey(c) === featuredCh) || chats[0];
   railCh = chat.channel;
   const W = SW() - GAP, H = SH() - GAP, X = GAP / 2, Y = GAP / 2;
   const r = railRects(vids.length, X, Y, W, H);
@@ -113,16 +115,22 @@ function renderTabs(chats, chat){
   list.replaceChildren(...chats.map(c => element('button', {
     class: 'rl-tab' + (c === chat ? ' on' : ''), role: 'tab', 'aria-selected': String(c === chat), 'data-ch': c.channel, dataset: { name: chLabel(c.channel) },
     onclick: () => showRailChat(c.channel)
-  }, element('span', 'rl-nm', chLabel(c.channel)), element('span', 'rl-n'), element('span', 'rl-at', '@'))));
+  }, element('span', 'rl-nm', nameOf(c.channel)), railSites(c), element('span', 'rl-n'), element('span', 'rl-at', '@'))));
   chats.forEach(syncTab);
   const on = list.querySelector('.rl-tab.on');
   if (on && (on.offsetLeft < list.scrollLeft || on.offsetLeft + on.offsetWidth > list.scrollLeft + list.clientWidth))
     list.scrollLeft = on.offsetLeft - 6;
   showSize();
 }
+// A linked streamer's rail tab: an icon per site, clicking one switches the rail chat to it (windows/frames.js)
+function railSites(c){
+  const chs = tabChannels(c); if (chs.length < 2) return null;
+  return element('span', 'rl-sites', ...chs.map((ch, i) => element('i', { class: `pi pi-${platOf(ch)}${ch === c.channel ? ' on' : ''}`, title: `${PLAT_NAME[platOf(ch)]} chat`,
+    onclick: e => { e.stopPropagation(); showRailChat(c.channel); switchTo(c, i + 1); } }, PLAT_NAME[platOf(ch)][0])));
+}
 function syncTab(c){
   const t = [...tabsEl.querySelectorAll('.rl-tab')].find(t => t.dataset.ch === c.channel); if (!t) return;
-  const n = newCount(c), at = !!c.alertLvl, name = chLabel(c.channel);
+  const n = frameOf(c).reduce((t, o) => t + newCount(o), 0), at = frameOf(c).some(o => o.alertLvl), name = nameOf(c.channel);   // any of its sites
   t.querySelector('.rl-n').textContent = n > 99 ? '99+' : String(n);
   t.classList.toggle('new', n > 0);
   t.classList.toggle('at', at);

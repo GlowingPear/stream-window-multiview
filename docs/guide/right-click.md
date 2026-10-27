@@ -5,7 +5,7 @@ icon: chat
 lede: Copy, translate, search, save emotes and copy a message from the right-click menu.
 words: [right-click, menu, copy, translate, message, search, emote, reload]
 related: [emotes, developer-tools]
-order: 14
+order: 15
 ---
 
 - **Selected text:** Copy, **Translate to <your language>** (opens Google Translate in your browser with the text) and Search Google.

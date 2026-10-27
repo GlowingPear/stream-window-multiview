@@ -29,3 +29,6 @@ body.fs-moving,body.fs-moving *{cursor:grabbing !important;user-select:none}
 .fs-chip.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb, var(--accent) 8%, transparent)}
 .fs-chip em{display:grid;color:var(--danger)}
 .fs-chip em svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* a window with several sites: +1 for each other tab (windows/frames.js) */
+.fs-name .fs-more{flex:none;font-size:11px;font-weight:800;color:var(--muted);margin:0 2px 0 -2px}

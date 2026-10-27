@@ -1,5 +1,5 @@
 import { wins } from '../core.js';
-import { saved, svProf } from '../panels/channels/channels.js';
+import { saved, sendWatch, svProf } from '../panels/channels/channels.js';
 import { follows } from '../panels/channels/follow-suggestions.js';
 import { PLATFORMS, chLabel, chNames, parseInput, platOf, platform } from './platforms.js';
 import { settings } from '../shared/settings.js';
@@ -63,7 +63,7 @@ function setOpt(k, v){
   settings.set('linkedOpts', o); store.changed('streamers');
 }
 
-function saveStreamers(){ settings.set('streamers', streamers); store.changed('streamers'); }
+function saveStreamers(){ settings.set('streamers', streamers); store.changed('streamers'); sendWatch(); }   // (the main process: one went-live notification each)
 const newId = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 // Can b join a's streamer? One account per site, and a channel is in one streamer at most. A video isn't a channel.
 function canLink(a, b){
@@ -108,7 +108,7 @@ function setStreamerOpt(id, k, v){
   if (v === null || v === undefined || v === '') delete s[k]; else s[k] = v;
   saveStreamers();
 }
-function setOn(on){ settings.set('linkedOn', !!on); store.changed('streamers'); }
+function setOn(on){ settings.set('linkedOn', !!on); store.changed('streamers'); sendWatch(); }
 
 /* ---- Suggestions: the same name on another site, or a link on the channel's own page ---- */
 const nots = () => { const n = settings.json('linkedNot', []); return Array.isArray(n) ? n.filter(x => x && x.a && x.b) : []; };

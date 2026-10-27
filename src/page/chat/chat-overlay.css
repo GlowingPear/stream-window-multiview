@@ -9,3 +9,6 @@
 .win.stg-thumb .co-line{font-size:11px;padding:2px 6px}   /* the small pictures in Chat Stage's strip */
 .win.stg-thumb .co-box{bottom:30px}
 .btns button.co-b.off{opacity:.55}
+
+/* every live site of a linked streamer: each line's site (platforms/linked.js) */
+.co-line .pi{width:15px;height:15px;font-size:8.5px;border-radius:4px;margin-right:5px;vertical-align:-2px}
