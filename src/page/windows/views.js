@@ -14,6 +14,7 @@ import { TRANSLATE_JS } from '../in-site/translate.js';
 import { focusWin } from '../layout/geometry.js';
 import { injectMention } from '../panels/bell/all-notifications.js';
 import { readChat } from '../panels/bell/bell.js';
+import { infoFor } from '../panels/channels/channels.js';
 import { extButton } from '../panels/extensions/extensions.js';
 import { kickHold } from '../platforms/pear-drops.js';
 import { chLabel, checkMod, extCount, platOf, platform, srcFor, streamSrc, trimPlayerPage, viewPartition, ytVidOf } from '../platforms/platforms.js';
@@ -23,6 +24,7 @@ import { flash } from '../shared/flash.js';
 import { fromApp, fromSite, siteMessage } from '../shared/incoming.js';
 import { viewPressed } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { mountCapture, openCapturePicker } from './capture.js';
 import { playQuality, tabKeyAgent, tabKeyJs } from './frames.js';
 import { applyPlay } from './pause.js';
@@ -46,8 +48,37 @@ const ytCache = {};
 function reloadWin(w){
   if (w.kind === 'capture'){ openCapturePicker(w); return; }
   checkMod(w, true);
+  if (w.view && ytChannelWin(w) && DESKTOP && window.kmv.ytResolve){ reloadYt(w); return; }
   if (!w.view) resolveYt(w); else if (DESKTOP && w.ready) reloadPage(w); else w.view.src = srcFor(w);
   if (w.mini && w.mini.wv) loadView(w.mini.wv, streamSrc(w.channel, true, ytVidOf(w)));
+}
+// A YouTube channel's live stream is a video of its own, so when the channel goes live again (a new stream) its
+// windows still have the old one. The live check says which video is live now (they follow it), and Reload asks
+// YouTube again.
+const ytChannelWin = w => (w.kind === 'stream' || w.kind === 'chat') && !!w.channel && platOf(w.channel) === 'youtube' && !/^yt:v:/.test(w.channel);
+function ytFollow(ch, vid){
+  delete ytCache[ch];
+  wins.filter(o => ytChannelWin(o) && o.channel === ch && o.ytVid !== vid).forEach(o => {
+    o.ytVid = vid;
+    if (o.view) loadView(o.view, srcFor(o)); else mountView(o);
+    if (o.mini && o.mini.wv) loadView(o.mini.wv, streamSrc(o.channel, true, vid));
+  });
+}
+async function reloadYt(w){
+  let r = null;
+  try { r = await window.kmv.ytResolve(w.channel); } catch {}
+  ytCache[w.channel] = { r, t: Date.now() };
+  if (!wins.includes(w) || !w.view) return;
+  if (r && r.live && r.videoId && r.videoId !== w.ytVid){ ytFollow(w.channel, r.videoId); return; }
+  if (w.ready) reloadPage(w); else w.view.src = srcFor(w);
+  if (w.mini && w.mini.wv) loadView(w.mini.wv, streamSrc(w.channel, true, ytVidOf(w)));
+}
+function followYtStreams(){
+  wins.forEach(w => {
+    if (!ytChannelWin(w) || !w.ytVid) return;
+    const i = infoFor(w.channel);
+    if (i && i.live && i.videoId && i.videoId !== w.ytVid) ytFollow(w.channel, i.videoId);
+  });
 }
 // A loaded window's page again. A stream loads its channel's address: its player may have moved to a page that
 // can't be loaded again (Kick's /<name>/offline shows its error page then, see stuck.js).
@@ -180,6 +211,8 @@ function init(){
   // "Copy image" on an emote card: the app fetches the picture (only from the emote sites) and copies a still of it
   fromSite('emote-copy', (w, json) => copyEmote(json));
   if (DESKTOP) fromApp('onViewPressed', id => { const w = wins.find(x => x.view && viewId(x.view) === id); if (w) viewTouched(w, w.view); });
+  store.watch('live', () => followYtStreams());
+  window.ytFollow_ = { reloadWin, followYtStreams };   // for the tests
 }
 
 export { emoteOn, init, markNewEmotes, mountView, newEmotesOn, pngOf, reloadPage, reloadWin, viewVars, ytCache };

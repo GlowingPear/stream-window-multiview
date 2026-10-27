@@ -287,3 +287,32 @@ test('a YouTube channel that isn\'t live waits, says so, and opens when it goes 
   assert.ok(await a.win.isHidden(wait));
   await clear();
 });
+
+test('a YouTube channel live again with a new stream: its window follows it, and Reload asks YouTube again', T, async () => {
+  await a.app.evaluate(({ ipcMain }) => {
+    globalThis.__yt = { vid: 'firstStrm01', n: 0 };
+    ipcMain.removeHandler('yt:resolve');
+    ipcMain.handle('yt:resolve', () => { globalThis.__yt.n++; return { live: true, videoId: globalThis.__yt.vid, name: 'Some Channel' }; });
+  });
+  await setMode(a.win, 'stream');
+  await add('https://www.youtube.com/@restartchan');
+  await a.win.waitForSelector('#stage .win.stream webview');
+  const url = () => a.win.$eval('#stage .win.stream webview', v => { try { return v.getURL() || v.getAttribute('src'); } catch { return v.getAttribute('src'); } });
+  await until(async () => /firstStrm01/.test(await url()));
+  const ch = await a.win.evaluate(() => window.openWins()[0].channel);
+  // the live check says another video is live now: the channel started again
+  await a.win.evaluate(ch => window.smvNotes.liveStatus({ [ch]: { live: true, videoId: 'secondStr02', checked: Date.now() } }), ch);
+  await until(async () => /secondStr02/.test(await url()));
+  // Reload asks YouTube which video is live, and loads it
+  await a.app.evaluate(() => { globalThis.__yt.vid = 'thirdStrm03'; });
+  const reload = () => a.win.evaluate(() => document.querySelector('#stage .win.stream [data-a=reload]').click());
+  await reload();
+  await until(async () => /thirdStrm03/.test(await url()));
+  // the same one: an ordinary reload, still that video
+  const asked = await a.app.evaluate(() => globalThis.__yt.n);
+  await reload();
+  await until(() => a.app.evaluate((_e, n) => globalThis.__yt.n > n, asked));
+  await new Promise(r => setTimeout(r, 600));
+  assert.match(await url(), /thirdStrm03/);
+  await clear();
+});
