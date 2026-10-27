@@ -273,7 +273,7 @@
       <button data-s="search">Search box</button>
       <div class="st-rail-sec">Sites</div>
       <button data-s="accounts" class="desk-only">Accounts</button>
-      <button data-s="linked">Linked accounts</button>
+      <button data-s="linked">Linked channels</button>
       <button data-s="apps" class="desk-only">Connected apps</button>
       <button data-s="youtube" class="desk-only">YouTube</button>
       <button data-s="extensions" class="desk-only">Extensions</button>
@@ -378,13 +378,13 @@
         <p class="st-sub" style="margin:8px 0 0">Skipping ads, YouTube's cookie question and the API key: <button class="linkish" data-go="youtube">YouTube settings</button></p>
       </section>
       <section class="st-pane" data-s="linked" hidden>
-        <h4>Linked accounts</h4><p class="st-sub">A streamer on several sites, linked into one: one row in Channels, one window for their streams and one for their chats.</p>
-        <label class="st-row la-on"><span class="st-t">Link accounts across sites<small id="laOnSub">Off: every account is its own channel. Turn on to link a streamer's Kick, Twitch and YouTube accounts.</small></span><input type="checkbox" class="st-sw" id="linkedOnSet"></label>
-        <div class="la-off" id="laOff"><b>While it's off</b><ul><li>Channels, the empty stage and the search box show one row per account</li><li>No tabs: each site's stream and chat opens in its own window</li><li>No suggestions, and no <i>Link accounts…</i> in menus, profiles or the search box</li></ul><span>Title bars still show the site's icon, without the suffix.</span></div>
+        <h4>Linked channels</h4><p class="st-sub">A streamer on several sites, linked into one: one row in Channels, one window for their streams and one for their chats.</p>
+        <label class="st-row la-on"><span class="st-t">Link channels across sites<small id="laOnSub">Off: every channel stands alone. Turn on to link a streamer's Kick, Twitch and YouTube channels.</small></span><input type="checkbox" class="st-sw" id="linkedOnSet"></label>
+        <div class="la-off" id="laOff"><b>While it's off</b><ul><li>Channels, the empty stage and the search box show one row per channel</li><li>No tabs: each site's stream and chat opens in its own window</li><li>No suggestions, and no <i>Link channels…</i> in menus, profiles or the search box</li></ul><span>Title bars still show the site's icon, without the suffix.</span></div>
         <div class="la-rest" id="laRest" hidden>
-        <div class="st-tabs" id="laTabs" role="tablist" aria-label="Linked accounts"><button role="tab" data-t="tabs" class="on" aria-selected="true">Tabs</button><button role="tab" data-t="playing" aria-selected="false" tabindex="-1">Playing</button><button role="tab" data-t="live" aria-selected="false" tabindex="-1">Live &amp; raids</button><button role="tab" data-t="sugs" aria-selected="false" tabindex="-1">Suggestions <em class="la-n" id="laSugN" hidden></em></button><button role="tab" data-t="linked" aria-selected="false" tabindex="-1">Linked streamers</button></div>
+        <div class="st-tabs" id="laTabs" role="tablist" aria-label="Linked channels"><button role="tab" data-t="tabs" class="on" aria-selected="true">Tabs</button><button role="tab" data-t="playing" aria-selected="false" tabindex="-1">Playing</button><button role="tab" data-t="live" aria-selected="false" tabindex="-1">Live &amp; raids</button><button role="tab" data-t="sugs" aria-selected="false" tabindex="-1">Suggestions <em class="la-n" id="laSugN" hidden></em></button><button role="tab" data-t="linked" aria-selected="false" tabindex="-1">Linked streamers</button></div>
         <div class="st-subpane" data-t="tabs">
-          <label class="st-row"><span class="st-t">Their streams<small>Tabs: one window, a small K / T / Y tab per site, the main account first. Separate: a window per site, as before.</small></span><select class="st-sel" data-lo="streams"><option value="tabs">Tabs in one window</option><option value="separate">Separate windows</option></select></label>
+          <label class="st-row"><span class="st-t">Their streams<small>Tabs: one window, a small K / T / Y tab per site, the main channel first. Separate: a window per site, as before.</small></span><select class="st-sel" data-lo="streams"><option value="tabs">Tabs in one window</option><option value="separate">Separate windows</option></select></label>
           <label class="st-row"><span class="st-t">Their chats<small>Side by side shows two or three chats in one window, a column each.</small></span><select class="st-sel" data-lo="chats"><option value="tabs">Tabs in one window</option><option value="side">Side by side in one window</option><option value="separate">Separate windows</option></select></label>
           <label class="st-row"><span class="st-t">The chat follows the stream's tab<small>Switching the stream to Twitch switches the chat to Twitch too.</small></span><input type="checkbox" class="st-sw" data-lo="chatFollows"></label>
           <label class="st-row"><span class="st-t">Tab switches site in an empty chat box<small>⇧Tab goes back. While you type, Tab completes names and emotes as the site does.</small></span><input type="checkbox" class="st-sw" data-lo="tabKey"></label>
@@ -396,16 +396,16 @@
         </div>
         <div class="st-subpane" data-t="live" hidden>
           <label class="st-row"><span class="st-t">When they open by themselves<small>For streamers set to open when they go live (⚡). Together: their live sites as tabs in one window.</small></span><select class="st-sel" data-lo="autoOpen"><option value="together">Together, as tabs</option><option value="separate">Separate windows</option></select></label>
-          <label class="st-row"><span class="st-t">When another of their accounts goes live<small>While their window is open.</small></span><select class="st-sel" data-lo="alsoLive"><option value="add">Add its tab</option><option value="switch">Add its tab and switch to it</option><option value="none">Nothing</option></select></label>
-          <label class="st-row"><span class="st-t">When the stream you're watching ends<small>While another of their accounts is live. Waits 60 s first, so a short drop just reconnects.</small></span><select class="st-sel" data-lo="ended"><option value="switch">Switch to a live one</option><option value="stay">Stay on it</option></select></label>
-          <label class="st-row"><span class="st-t">When they raid<small>Follows only once none of their accounts is live, and only the raid from the site you were watching. Other raids go under the bell.</small></span><select class="st-sel" data-lo="raid"><option value="follow">Follow the one I was watching</option><option value="tell">Just tell me</option></select></label>
+          <label class="st-row"><span class="st-t">When another of their channels goes live<small>While their window is open.</small></span><select class="st-sel" data-lo="alsoLive"><option value="add">Add its tab</option><option value="switch">Add its tab and switch to it</option><option value="none">Nothing</option></select></label>
+          <label class="st-row"><span class="st-t">When the stream you're watching ends<small>While another of their channels is live. Waits 60 s first, so a short drop just reconnects.</small></span><select class="st-sel" data-lo="ended"><option value="switch">Switch to a live one</option><option value="stay">Stay on it</option></select></label>
+          <label class="st-row"><span class="st-t">When they raid<small>Follows only once none of their channels is live, and only the raid from the site you were watching. Other raids go under the bell.</small></span><select class="st-sel" data-lo="raid"><option value="follow">Follow the one I was watching</option><option value="tell">Just tell me</option></select></label>
         </div>
         <div class="st-subpane" data-t="sugs" hidden>
-          <label class="st-row"><span class="st-t">Suggest accounts to link<small>The same name on another site, or a link on their channel page. You always choose; nothing is linked by itself.</small></span><input type="checkbox" class="st-sw" data-lo="suggest"></label>
+          <label class="st-row"><span class="st-t">Suggest channels to link<small>The same name on another site, or a link on their channel page. You always choose; nothing is linked by itself.</small></span><input type="checkbox" class="st-sw" data-lo="suggest"></label>
           <div id="laSugs" class="la-list"></div>
         </div>
         <div class="st-subpane" data-t="linked" hidden>
-          <div class="la-head"><span id="laCount"></span><button class="btn" id="laAdd" data-cmd="link.accounts" title="Pick a streamer, then add their other sites">Link accounts…</button></div>
+          <div class="la-head"><span id="laCount"></span><button class="btn" id="laAdd" data-cmd="link.accounts" title="Pick a streamer, then add their other sites">Link channels…</button></div>
           <div id="laLinked" class="la-list"></div>
         </div>
         </div>

@@ -5,14 +5,14 @@ import { PLATFORMS, chLabel, chNames, parseInput, platOf, platform } from './pla
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 
-/* ---- Linked accounts: one streamer on several sites (Settings › Linked accounts) ----
+/* ---- Linked channels: one streamer on several sites (Settings › Linked channels) ----
    A streamer is a name and its accounts, one per site: { id, name, main, accounts: ['quietkoala', 'tw:quietkoala'],
    streams?, autoOpen? } (saved as "streamers"). Nothing is linked by itself: the app suggests, and you choose.
    The switch ("linkedOn", off unless set) is the one gate: while it's off streamerOf() finds nobody and there are no
    suggestions, so everything that groups by streamer shows one row and one window per account, as it did before.
    Turning it off keeps the streamers, the answers and the options. */
 const SITE_ORDER = ['kick', 'twitch', 'youtube'];
-// The page's options and what they are until you change them (Settings › Linked accounts)
+// The page's options and what they are until you change them (Settings › Linked channels)
 const OPT_DEFAULTS = {
   streams: 'tabs',        // their streams: 'tabs' in one window, or 'separate' windows
   chats: 'tabs',          // their chats: 'tabs', 'side' (side by side in one window) or 'separate'

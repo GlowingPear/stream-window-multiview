@@ -61,7 +61,7 @@ function refreshStars(){
 const infoFor = ch => liveInfo[normCh(ch)] || liveInfo[ch];
 const liveNow = () => saved.filter(ch => infoFor(ch) && infoFor(ch).live);
 // The saved channels as the Channels list shows them: a linked streamer once (with every account, saved or not),
-// the others one each. [{ key, ch (the main account), chs, s (the streamer or null) }], A–Z by name.
+// the others one each. [{ key, ch (the main channel), chs, s (the streamer or null) }], A–Z by name.
 function savedEntries(){
   const seen = new Map();
   for (const ch of saved){
@@ -133,7 +133,7 @@ function checkAutoOpen(){
   const opened = [];
   autoOpen.forEach(ch => {
     if (!saved.includes(ch)) return;
-    // a linked streamer: any of their accounts going live opens them (together as tabs, or each on its own)
+    // a linked streamer: any of their channels going live opens them (together as tabs, or each on its own)
     const s = streamerOf(ch);
     if (s && optFor(ch, 'autoOpen') === 'together'){
       const live = s.accounts.filter(c => infoFor(c) && infoFor(c).live);
@@ -281,7 +281,7 @@ function savedRow(ch){
   dragToLink(row, ch);
   return row;
 }
-/* ---- a linked streamer's row: its name, a tiny K / T / Y for each account (dimmed offline), each live site's
+/* ---- a linked streamer's row: its name, a tiny K / T / Y for each channel (dimmed offline), each live site's
    viewers; ▾ shows the accounts under it, each with its own ⚡ / 🔔 / ✕ ---- */
 const svExpanded = new Set();
 function streamerRow(e){
@@ -289,20 +289,20 @@ function streamerRow(e){
   const lead = live.includes(s.main) ? s.main : live[0] || s.main, info = infoFor(lead) || {}, prof = (svProf[s.main] && svProf[s.main].info) || {};
   const { row, meta, acts } = channelRow({ ch: s.main, name: nameOf(s.main), site: null, live: !!live.length, photo: prof.avatar, cls: 'sv-multi ',
     sub: live.length ? [...new Set([info.category, info.title].filter(Boolean))].join(' · ') : '', subTitle: info.title || '',
-    title: 'Open them (as set in the Stream / Chat dropdown and Settings › Linked accounts)', picTitle: live.length ? 'Live now' : 'Offline' });
+    title: 'Open them (as set in the Stream / Chat dropdown and Settings › Linked channels)', picTitle: live.length ? 'Live now' : 'Offline' });
   row.querySelector('.sv-av .pi')?.remove();
   row.querySelector('.sv-line .nm').after(element('span', 'sv-sites', ...chs.map(c => siteIcon(c))));
   live.forEach(c => { const i = infoFor(c); if (i.viewers != null) meta.append(element('span', { class: 'sv-view sv-pv', title: `${PLAT_NAME[platOf(c)]}: watching now` }, siteIcon(c, true), fmtViewers(i.viewers))); });
   if (DESKTOP && ROLE === 'main' && chs.some(c => autoOpen.includes(c))) meta.insertAdjacentHTML('beforeend', `<span class="bolt" title="Opens by itself when any of them goes live">${icon.bolt}</span>`);
   const open = svExpanded.has(s.id);
-  acts.prepend(element('button', { class: 'exp' + (open ? ' on' : ''), html: icon.chevDown, title: open ? 'Hide their accounts' : 'Their accounts', 'aria-expanded': String(open),
+  acts.prepend(element('button', { class: 'exp' + (open ? ' on' : ''), html: icon.chevDown, title: open ? 'Hide their channels' : 'Their channels', 'aria-expanded': String(open),
     onclick: ev => { ev.stopPropagation(); if (open) svExpanded.delete(s.id); else svExpanded.add(s.id); renderSaved(); } }));
   rowButtons(acts, [s.main, ...chs.filter(c => c !== s.main)]);
   row.onclick = () => openStreamer(s.main, modeSel.value);
   dragToLink(row, s.main);
   return row;
 }
-// A site's tiny icon, dimmed when that account is offline
+// A site's tiny icon, dimmed when that channel is offline
 function siteIcon(ch, plain){
   const p = platOf(ch), info = infoFor(ch);
   return element('i', { class: `pi pi-${p}${!plain && !(info && info.live) ? ' dim' : ''}`, title: PLAT_NAME[p] + (plain ? '' : info ? info.live ? ' · live' : ' · offline' : ''), 'aria-label': PLAT_NAME[p] }, PLAT_NAME[p][0]);
@@ -318,7 +318,7 @@ function accountRows(e){
       live ? element('span', 'sv-acc-live', fmtViewers(info.viewers)) : element('span', 'sv-acc-off', info && info.missing ? 'Channel not found' : 'offline'),
       ch === e.s.main && element('span', 'sv-main', 'Main'), acts));
   });
-  box.appendChild(element('button', { class: 'sv-addacc', type: 'button', dataset: { cmd: 'link.card' }, onclick: () => { openLinkCard(e.s.main, { add: true }); } }, '+ Link another account…'));
+  box.appendChild(element('button', { class: 'sv-addacc', type: 'button', dataset: { cmd: 'link.card' }, onclick: () => { openLinkCard(e.s.main, { add: true }); } }, '+ Link another channel…'));
   return box;
 }
 /* ---- linking from the list: the top suggestion, and dragging one row onto another ---- */

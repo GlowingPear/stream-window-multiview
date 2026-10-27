@@ -25,7 +25,7 @@ function fitBar(bar){
   bar.querySelectorAll('.btns .ovf').forEach(b => b.classList.remove('ovf'));
   const cfg = barButtons();
   if (more){
-    for (const a of [...cfg.always, 'link']){ const b = bar.querySelector(`.btns [data-a=${a}]`); if (b) b.classList.add('ovf'); }   // (Link accounts… only in ⋯)
+    for (const a of [...cfg.always, 'link']){ const b = bar.querySelector(`.btns [data-a=${a}]`); if (b) b.classList.add('ovf'); }   // (Link channels… only in ⋯)
     more.hidden = !bar.querySelector('.btns .ovf:not([hidden])');
   }
   name.style.minWidth = ''; name.style.flex = 'none';
@@ -79,7 +79,7 @@ function barItem(b){
   item.className = b.classList.contains('on') ? 'on' : '';
   item.innerHTML = '<span class="bm-ico"></span><span class="bm-t"></span>';
   item.querySelector('.bm-ico').innerHTML = b.dataset.a === 'chat' ? '+' : b.querySelector('svg')?.outerHTML || b.textContent;
-  item.querySelector('.bm-t').textContent = b.dataset.a === 'chat' ? 'Add chat' : b.dataset.a === 'link' ? (streamerOf(b.closest('.win') && wins.find(w => w.el === b.closest('.win'))?.channel) ? 'Linked accounts…' : 'Link accounts…') : tipName(b) || b.title;
+  item.querySelector('.bm-t').textContent = b.dataset.a === 'chat' ? 'Add chat' : b.dataset.a === 'link' ? (streamerOf(b.closest('.win') && wins.find(w => w.el === b.closest('.win'))?.channel) ? 'Linked channels…' : 'Link channels…') : tipName(b) || b.title;
   const n = b.querySelector('.ext-n')?.textContent;
   if (n) item.append(element('span', 'bm-n', n));
   item.title = b.title;

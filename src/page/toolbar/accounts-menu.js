@@ -278,9 +278,9 @@ function init(){
       persistSaved();
       closeImport();
       flash(`Added ${add.length} ${PLAT_NAME[impPlat]} channel${add.length === 1 ? '' : 's'} to Saved`, { subject: 'accounts' });
-      // linked accounts: the new channels that look like streamers you have on another site (Settings › Linked accounts)
+      // linked channels: the new channels that look like streamers you have on another site (Settings › Linked channels)
       const found = suggestions().filter(x => add.includes(x.a) || add.includes(x.b));
-      if (found.length) setTimeout(() => flash(`${found.length} streamer${found.length === 1 ? ' is' : 's are'} on several sites: Review in Settings › Linked accounts › Suggestions`), 3600);
+      if (found.length) setTimeout(() => flash(`${found.length} streamer${found.length === 1 ? ' is' : 's are'} on several sites: Review in Settings › Linked channels › Suggestions`), 3600);
     };
     const PEAR = 'M32 14.2C25.6 14.2 23.4 19.4 23.4 24.6 23.4 29.6 20.4 31.6 17.2 35.6 13.2 40.6 12 46.8 14.2 52 17.2 58.8 24.4 62 32 62 39.6 62 46.8 58.8 49.8 52 52 46.8 50.8 40.6 46.8 35.6 43.6 31.6 40.6 29.6 40.6 24.6 40.6 19.4 38.4 14.2 32 14.2Z';
     const impLoading = text => '<div class="empty loading"><svg class="pear-load" viewBox="0 0 64 64" aria-hidden="true">'

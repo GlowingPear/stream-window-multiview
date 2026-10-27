@@ -1,4 +1,4 @@
-// Streamer profiles with Linked accounts on: a linked streamer is one card and one profile (All sites, or one site),
+// Streamer profiles with Linked channels on: a linked streamer is one card and one profile (All sites, or one site),
 // with one set of notes for every account. Off: one card per account, as before.
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -81,7 +81,7 @@ test('Profiles: a linked streamer\'s profile adds every site up, merges the same
   assert.equal(await page.textContent('.pf-view .pf-chips .on'), 'TTwitch');
 });
 
-test('Profiles: with Linked accounts off, every account is its own card', async t => {
+test('Profiles: with Linked channels off, every account is its own card', async t => {
   const page = await openApp(t, { init: `(${init})(${JSON.stringify([false, H, D])})` });
   await live(page);
   await page.click('#profBtn');

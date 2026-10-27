@@ -15,7 +15,7 @@ const SETTING_NAMES = new Set([
   // channels
   'saved', 'savedTab', 'autoOpen', 'notifyAll', 'notifyOff', 'chNames', 'ytNames', 'watchSignedIn',
   'accounts', 'account', 'profView',
-  // Settings › Linked accounts: the switch, the linked streamers, pairs answered "Not the same", the page's options,
+  // Settings › Linked channels: the switch, the linked streamers, pairs answered "Not the same", the page's options,
   // the first-time tip, and tabs closed or split out for each streamer
   'linkedOn', 'streamers', 'linkedNot', 'linkedOpts', 'linkedTip', 'linkedTabs',
   // Settings › Windows: the channel's name on stream / chat windows' title bars, and each button's place and ⋯ choice

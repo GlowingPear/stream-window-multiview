@@ -35,7 +35,7 @@ function chatOverlay(c, msgs){
 // Draws them over this window's streams of that channel
 function drawLines(ch, list){
   // a linked streamer's window (windows/frames.js): over the tab you watch, from its site, or from every live site
-  // with each line's site icon (Settings › Linked accounts › Chat over the stream shows)
+  // with each line's site icon (Settings › Linked channels › Chat over the stream shows)
   const every = linkedOn() && !!streamerOf(ch) && linkOpt('overlay') === 'all';
   for (const w of wins) {
     if (w.kind !== 'stream' || w.hiddenTab || !(w.channel === ch || (every && sameStreamer(w.channel, ch)))) continue;

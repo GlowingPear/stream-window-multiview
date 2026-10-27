@@ -73,7 +73,7 @@ function winActions(w){
   closed.forEach(ch => add('reopen:' + ch, `Reopen ${PLAT_NAME[platOf(ch)]}`, () => addTab(lead, ch, true), { icon: 'plus', sub: 'A tab you closed', words: ['reopen', 'closed tab'] }));
   if (w.split && streamerOf(w.channel)) add('join', 'Join back', () => joinTab(w), { icon: 'link', sub: `Back as a tab in ${nameOf(w.channel)}'s window` });
   if (w.channel && linkedOn() && !/^yt:v:/.test(w.channel)){
-    add('link', streamerOf(w.channel) ? 'Linked accounts…' : 'Link this window\'s channel with…', () => openLinkCard(w.channel, { add: !streamerOf(w.channel) }), { icon: 'layers', sub: 'The same streamer on other sites' });
+    add('link', streamerOf(w.channel) ? 'Linked channels…' : 'Link this window\'s channel with…', () => openLinkCard(w.channel, { add: !streamerOf(w.channel) }), { icon: 'layers', sub: 'The same streamer on other sites' });
     if (streamerOf(w.channel)) add('unlink', `Unlink ${PLAT_NAME[platOf(lead.channel)]} from ${nameOf(lead.channel)}`, () => unlinkTab(lead.channel), { icon: 'unlink', sub: 'It becomes its own channel again' });
   }
   if (w.kind === 'stream'){

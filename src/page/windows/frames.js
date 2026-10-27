@@ -28,7 +28,7 @@ import { isPaused } from './pause.js';
 import { loadView, runIn } from './view.js';
 import { createWin, pushVol } from './windows.js';
 
-/* ---- Tabs: one window for a linked streamer's sites (Settings › Linked accounts) ----
+/* ---- Tabs: one window for a linked streamer's sites (Settings › Linked channels) ----
    Each site stays a window of its own in wins (its view, timers, pause, likes), so everything that goes over the
    windows (YouTube's ad skip and auto-like, mentions and spam checks, raids, stuck players, Pear Drops' sign-out of
    Kick players) reaches the tabs you can't see without knowing about tabs. The windows of one frame share w.frame:
@@ -36,7 +36,7 @@ import { createWin, pushVol } from './windows.js';
    playing, muted. Layouts only see the windows that show (shownWins in core.js).
    Side by side (a frame's w.sbs): every tab shows, a column each, under the title bar of the one you watch.
    A site taken out into its own window (w.split) keeps one icon and a Join button. Every window's bar has its
-   site's icon (one tab), even without linked accounts. */
+   site's icon (one tab), even without linked channels. */
 const newFrameId = () => 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 const membersOf = id => id ? wins.filter(o => o.frame === id) : [];
 const frameOf = w => w.frame ? membersOf(w.frame) : [w];
@@ -156,7 +156,7 @@ function showTab(w, { follow = true } = {}){
   }
   store.changed('wins', 'tabs'); save();
 }
-// Tabs you're not watching play at the site's lowest quality (Settings › Linked accounts › Playing), where it has one
+// Tabs you're not watching play at the site's lowest quality (Settings › Linked channels › Playing), where it has one
 function playQuality(w){
   const js = w.kind === 'stream' && w.ready && w.view && platform(w.channel).lowQualityJs;
   if (js) runIn(w.view, js(!!w.hiddenTab && linkOpt('quality') === 'low'));
@@ -267,7 +267,7 @@ function openTabMenu(w, ch, at){
     frameOf(lead).length + (m ? 0 : 1) > 1 && item('columns', lead.sbs ? 'Back to tabs' : 'Both side by side in this window', () => { if (!m) addTab(lead, ch, false); setSideBySide(lead, !lead.sbs); }),
     m && item('close', 'Close this tab', () => closeTab(m), { key: 'Middle-click' }),
     element('hr'),
-    streamerOf(ch)?.main !== ch && item('star', `Make ${PLAT_NAME[p]} the main account`, () => setMain(ch)),
+    streamerOf(ch)?.main !== ch && item('star', `Make ${PLAT_NAME[p]} the main channel`, () => setMain(ch)),
     item('link', `Open in a browser on ${new URL(externalFor({ kind: w.kind, channel: ch })).hostname.replace(/^www\./, '')}`, () => {
       const u = externalFor(m || { kind: w.kind, channel: ch });
       if (DESKTOP && window.kmv.openExternal) window.kmv.openExternal(u); else window.open(u, '_blank');
@@ -318,7 +318,7 @@ function onLive(){
   const told = new Set();
   shownWins().filter(o => (o.kind === 'stream' || o.kind === 'chat') && o.channel && streamerOf(o.channel) && !o.split).forEach(lead => {
     const s = streamerOf(lead.channel);
-    // another of their accounts went live
+    // another of their channels went live
     accountsOf(lead.channel).forEach(ch => {
       if (!now[ch] || prevLive[ch] !== false || memberFor(lead, ch) || splitOut(lead, ch) || (closedTabs[lead.frame] || []).includes(ch)) return;
       const how = optFor(ch, 'alsoLive'); if (how === 'none') return;
@@ -345,7 +345,7 @@ function tabEnded(w){
 }
 
 /* ---- opening a linked streamer: their sites as tabs in one window (or as Settings says) ---- */
-// chs: the sites to open (default: the live ones, or the main account). Returns the stream frame's window or null.
+// chs: the sites to open (default: the live ones, or the main channel). Returns the stream frame's window or null.
 function openStreamer(ch, mode = 'both', chs){
   const s = streamerOf(ch); if (!s) return null;
   const all = accountsOf(ch).filter(c => !/^yt:v:/.test(c));
@@ -444,7 +444,7 @@ function splitAll(test = () => true){
 }
 let lastStreamers = '';
 function streamersChanged(){
-  wins.forEach(w => { const b = w.el.querySelector('[data-a=link]'); if (b) b.hidden = !linkedOn(); });   // the ⋯ menu's Link accounts…
+  wins.forEach(w => { const b = w.el.querySelector('[data-a=link]'); if (b) b.hidden = !linkedOn(); });   // the ⋯ menu's Link channels…
   const sig = linkedOn() ? JSON.stringify(settings.json('streamers', [])) : '';
   wins.forEach(w => { if (w.channel) w.el.querySelector('.title').textContent = nameOf(w.channel); });   // the name shown
   if (sig === lastStreamers){ renderAllSiteTabs(); return; }

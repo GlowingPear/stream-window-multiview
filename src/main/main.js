@@ -759,7 +759,7 @@ appIpc.handle('notify:settings', () => {
   if (url) shell.openExternal(url);
   return !!url;
 });
-// A linked streamer (the page's Settings › Linked accounts) going live on several sites within 10 minutes: one
+// A linked streamer (the page's Settings › Linked channels) going live on several sites within 10 minutes: one
 // notification, replaced as more sites go live ("quietkoala is live on Kick and Twitch")
 const groupNotes = new Map();   // group name -> { n, sites, at }
 function notifyLive(slug, info) {
