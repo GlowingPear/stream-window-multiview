@@ -1,4 +1,4 @@
-import { ROLE, colsMode, coreVars, lastLayout, stage, wins } from '../core.js';
+import { ROLE, colsMode, coreVars, lastLayout, shownWins, stage, wins } from '../core.js';
 import { buildCols, columnsLayout } from './columns.js';
 import { gameKey, gameLayout, setGameKey } from './game-focus.js';
 import { clampPos, focusWin, setRect } from './geometry.js';
@@ -11,7 +11,7 @@ import { refreshPicks } from '../windows/channel-picker.js';
 function updateModeClass(){
   const on = ROLE === 'main' && !colsMode && lastLayout === 'chatfocus';
   document.body.classList.toggle('chatfocus', on);
-  if (on) wins.forEach(w => { const b = w.el.querySelector('[data-a=feat]'); if (b){ b.classList.remove('on'); b.title = 'Show this stream big (switches to the highlight view)'; } });
+  if (on) shownWins().forEach(w => { const b = w.el.querySelector('[data-a=feat]'); if (b){ b.classList.remove('on'); b.title = 'Show this stream big (switches to the highlight view)'; } });
 }
 function backToChatFocus(){
   setFeatured(null);
@@ -31,11 +31,11 @@ function startSwapDrag(e, w, bar){
   const pairs = ROLE === 'main' && (colsMode || lastLayout === 'chatfocus' || lastLayout === 'game');
   const snaps = ROLE === 'main' || lastLayout === 'tile' || lastLayout === 'spot';   // dropped elsewhere it goes back (a free streams window leaves it there)
   let moved = false, target = null, lit = [];
-  const others = () => wins.filter(o => o !== w && (o.kind === 'chat') === (w.kind === 'chat'));
+  const others = () => shownWins().filter(o => o !== w && (o.kind === 'chat') === (w.kind === 'chat'));
   if (!swapGhost){ swapGhost = document.createElement('div'); swapGhost.id = 'swapGhost'; stage.appendChild(swapGhost); }
   const light = t => {
     lit.forEach(o => { o.el.classList.remove('swap-target'); delete o.el.querySelector('.shield')?.dataset.swap; });
-    lit = !t ? [] : pairs ? wins.filter(o => o === t || (o !== w && colKey(o) === colKey(t))) : [t];
+    lit = !t ? [] : pairs ? shownWins().filter(o => o === t || (o !== w && colKey(o) === colKey(t))) : [t];
     lit.forEach(o => o.el.classList.add('swap-target'));
     const sh = t?.el.querySelector('.shield'); if (sh) sh.dataset.swap = `Swap ${winName(w)} ⇄ ${winName(t)}`;
     swapGhost.classList.toggle('back', !t); swapGhost.style.visibility = t || snaps ? '' : 'hidden';
@@ -72,7 +72,7 @@ function startSwapDrag(e, w, bar){
         setRect(target, mine, true); setRect(w, theirs, true);
       } else if (lastLayout === 'tile' || lastLayout === 'spot') setRect(w, { x: x0, y: y0, w: w.w, h: w.h }, true);   // snap back
       else clampPos(w);                                                                                                  // free layout: leave it there
-      if (lastLayout === 'spot') focusWin(wins.reduce((a, b) => (b.w * b.h > a.w * a.h ? b : a)));   // the big one stays the spotlight one
+      if (lastLayout === 'spot') focusWin(shownWins().reduce((a, b) => (b.w * b.h > a.w * a.h ? b : a)));   // the big one stays the spotlight one
       save();
       return;
     }

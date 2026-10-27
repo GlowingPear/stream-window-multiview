@@ -1,4 +1,4 @@
-import { BAR, GAP, ROLE, colCount, colWidth, colsMode, coreVars, wins } from '../core.js';
+import { BAR, GAP, ROLE, colCount, colWidth, colsMode, coreVars, shownWins } from '../core.js';
 import { updateColNav } from './column-drag.js';
 import { applyFocusOnly } from './focus-only.js';
 import { SH, SW, setRect } from './geometry.js';
@@ -16,7 +16,7 @@ import { refreshPicks, updateHbar } from '../windows/channel-picker.js';
 /* Columns, in the saved order. Each column: { key, top (stream or web page), chat }. */
 function buildCols(){
   const map = new Map(), first = new Map();
-  wins.forEach((w, i) => {
+  shownWins().forEach((w, i) => {
     const k = colKey(w);
     if (!map.has(k)){ map.set(k, { key: k }); first.set(k, i); }
     const c = map.get(k);

@@ -1,5 +1,5 @@
 import { blowOn, blowUpNow, blownWin, putBack, toggleBlowMode } from './chat/blow-up.js';
-import { $, ROLE, colsMode, input, wins } from './core.js';
+import { $, ROLE, colsMode, input, shownWins } from './core.js';
 import { isRail, showRailChat } from './layout/chat-rail.js';
 import { isStage, putOnStage } from './layout/chat-stage.js';
 import { buildCols, columnsLayout } from './layout/columns.js';
@@ -13,6 +13,7 @@ import { closeNoteHistory } from './panels/bell/all-notifications.js';
 import { extDlgDone } from './panels/extensions/extensions.js';
 import { keysOn, showHelp } from './panels/help/help.js';
 import { save } from './persistence.js';
+import { sameStreamer } from './platforms/linked.js';
 import { chLabel } from './platforms/platforms.js';
 import { commands } from './shared/commands.js';
 import { DESKTOP } from './shared/env.js';
@@ -28,8 +29,8 @@ import { pushVol, saveSoon } from './windows/windows.js';
 /* ---- Keyboard shortcuts ---- */
 // The stream picked with ← / → in the layouts that don't make one big (Tile, Auto, Chat focus, Game focus, free)
 let selKey = null;
-const stageOn = () => wins.find(w => w.el.classList.contains('stg-on')) || null;
-const railStream = () => { const c = wins.find(w => w.kind === 'chat' && w.el.classList.contains('rl-chat')); return c && wins.find(w => w.kind === 'stream' && w.channel === c.channel) || null; };
+const stageOn = () => shownWins().find(w => w.el.classList.contains('stg-on')) || null;
+const railStream = () => { const c = shownWins().find(w => w.kind === 'chat' && w.el.classList.contains('rl-chat')); return c && shownWins().find(w => w.kind === 'stream' && sameStreamer(w.channel, c.channel)) || null; };
 // The stream the keys act on (M, Space, R, ↑ / ↓, Shift+Z): the big one, the one on the stage, the one whose chat is
 // in the rail, or the one picked with ← / →
 function bigStream(){
@@ -55,12 +56,12 @@ function stepStream(d){
     if (!chats.length) return false;
     const c = chats[(cur + d + chats.length) % chats.length];
     showRailChat(c.channel);
-    to = l.find(s => s.channel === c.channel) || null;
+    to = l.find(s => sameStreamer(s.channel, c.channel)) || null;
     flash(`${chLabel(c.channel)}'s chat`);
   } else {
     to = next(l.findIndex(s => colKey(s) === selKey));
     selKey = colKey(to);
-    wins.forEach(w => w.el.classList.toggle('kb-sel', w === to));
+    shownWins().forEach(w => w.el.classList.toggle('kb-sel', w === to));
     void to.el.offsetWidth; to.el.classList.remove('kb-sel'); void to.el.offsetWidth; to.el.classList.add('kb-sel');   // (the outline shows again)
   }
   if (to && to.kind === 'stream' && soundFollows()) fsMute(to, true);
@@ -83,7 +84,7 @@ function closeOverlays(){
   return any;
 }
 const layoutPick = l => { const b = document.querySelector(`#layoutMenu [data-l=${l}]`); if (b) b.click(); };
-const streamWins = () => wins.filter(o => o.kind === 'stream');
+const streamWins = () => shownWins().filter(o => o.kind === 'stream');
 // Shift+M, and the search box's Mute every stream / Unmute every stream
 function muteAll(on){
   streamWins().forEach(o => { o.muted = on; pushVol(o); }); save(); syncSwitcher();
@@ -105,7 +106,7 @@ function addShortcutCommands(){
     { id: 'chat.blowMode', title: 'Blow up chat on click', sub: 'Click a chat to show it big in the middle', words: ['zoom chat', 'enlarge'], icon: 'zoomin', keys: 'Z',
       when: main, toggle: { get: () => blowOn, set: on => { if (on !== blowOn) toggleBlowMode(); } } },
     { id: 'chat.blowNow', title: 'Blow up the chat now', sub: 'The chat you last clicked, big in the middle (again, or Esc, puts it back)', words: ['zoom chat'], icon: 'zoomin', keys: 'Shift+Z',
-      when: main, disabled: () => !wins.some(w => w.kind === 'chat') && 'Open a chat first', run: () => blowUpNow(bigStream()) },
+      when: main, disabled: () => !shownWins().some(w => w.kind === 'chat') && 'Open a chat first', run: () => blowUpNow(bigStream()) },
     { id: 'chat.putBack', title: 'Put the chat back', sub: 'The blown-up chat goes back to its place', icon: 'close', when: () => main() && !!blownWin(), run: putBack },
     { id: 'toolbar.hide', title: 'Hide the toolbar', sub: 'Move the mouse to the edge, or press Esc, to bring it back', words: ['focus', 'more room'], icon: 'hidebar', keys: 'H',
       when: () => main() && !document.body.classList.contains('focus'), run: () => setBarHidden(true) },
@@ -137,7 +138,7 @@ function init(){
   $('#savedBtn').dataset.cmd = 'channels.open'; $('#layoutLock').dataset.cmd = 'layout.lock'; $('#capBtn').dataset.cmd = 'capture.pick';
   document.querySelectorAll('#colNav [data-d]').forEach(b => { b.dataset.cmd = +b.dataset.d > 0 ? 'streams.next' : 'streams.prev'; });
   window.stepStream = stepStream; window.bigStream = () => { const s = bigStream(); return s && s.channel; };   // for the tests
-  window.mutedStreams = () => wins.filter(w => w.kind === 'stream' && w.muted).map(w => w.channel).sort();   // for the tests
+  window.mutedStreams = () => shownWins().filter(w => w.kind === 'stream' && w.muted).map(w => w.channel).sort();   // for the tests
   document.addEventListener('keydown', e => {
     const t = e.target, typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
     const k = e.key, ctrl = e.ctrlKey || e.metaKey;

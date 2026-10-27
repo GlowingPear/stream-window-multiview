@@ -13,7 +13,6 @@ body.dragging .bar{cursor:grabbing}
 /* new messages in the stream's chat while it's out of sight (Settings › Chat) */
 .bar-n{flex:none;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:var(--line2);color:var(--text);font-size:11px;font-weight:800;line-height:18px;text-align:center}
 .bar-n[hidden]{display:none}
-.tag{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);flex:none}
 .btns{margin-left:auto;display:flex;gap:2px;flex:none}
 .btns button{width:26px;height:24px;border:0;border-radius:5px;background:transparent;color:var(--muted);cursor:pointer;
   display:grid;place-items:center;padding:0}

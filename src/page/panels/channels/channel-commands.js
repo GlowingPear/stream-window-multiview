@@ -7,6 +7,7 @@ import { autoOpen, fmtViewers, infoFor, notifyAll, notifyOff, saved, setNotify, 
   toggleAutoOpen, toggleSaved } from './channels.js';
 import { follows } from './follow-suggestions.js';
 import { openProfile } from '../profiles/profiles.js';
+import { streamerName, streamerOf } from '../../platforms/linked.js';
 import { PLATFORMS, PLAT_NAME, chLabel, chNames, externalFor, modUrl, normCh, parseInput, platOf, platform } from '../../platforms/platforms.js';
 import { commands } from '../../shared/commands.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -131,10 +132,11 @@ function channelItem(ch, { known = true } = {}){
     : [site, info.missing ? 'Channel not found' : '', sv ? 'Saved' : fol ? 'from your follows' : '', open ? 'open here' : known ? 'offline' : ''];
   const heroSub = live ? [site, live.title && { b: live.title }, live.category, views && { b: views, t: ' watching' }, live.startedAt && liveFor(live.startedAt).replace(/^for /, 'live ')]
     : [site, { b: info.missing ? 'not found' : 'offline' }, ...(open ? openState(ch) : [sv ? 'Saved' : fol ? 'You follow them' : ''])];
-  return { id: (known ? 'ch:' : 'open:') + ch, kind: 'channel', group: 'Channels', title: name.replace(/^@/, ''), sub, heroSub, words: [ch.replace(/^(tw:|yt:@?|yt:[vc]:)/, ''), site],
+  const st = streamerOf(ch);   // a linked streamer's account: listed under the streamer (panels/linked/linked-commands.js)
+  return { id: (known ? 'ch:' : 'open:') + ch, kind: 'channel', group: st ? `${streamerName(st)}'s accounts` : 'Channels', title: name.replace(/^@/, ''), sub, heroSub, words: [ch.replace(/^(tw:|yt:@?|yt:[vc]:)/, ''), site],
     avatar: chPhoto(ch), site: platOf(ch), hue: svHue(ch), initials: svInitials(name.replace(/^@/, '')), live: !!live, viewers: views,
     pills: open ? [{ text: 'Open · ' + openKinds(ch), accent: true }] : sv ? [{ text: 'Saved' }] : [],
-    boost: (live ? 8 + Math.min(4, Math.log10(1 + (+live.viewers || 0))) : 0) + (open ? 6 : 0) + (sv ? 5 : 0) + (fol ? 2 : 0),   // (live: more watching, a little higher)
+    boost: (live ? 8 + Math.min(4, Math.log10(1 + (+live.viewers || 0))) : 0) + (open ? 6 : 0) + (sv ? 5 : 0) + (fol ? 2 : 0) - (st ? 6 : 0),   // (live: more watching, a little higher; under its streamer)
     buttons: buttonsFor(ch, known), run: () => { const b = buttonsFor(ch, known)[0]; if (b) b.run(); }, verb: open ? 'Go to it' : 'Open',
     alt: () => openCh(ch, 'stream'), altLabel: 'stream only', more: () => channelMore(ch) };
 }

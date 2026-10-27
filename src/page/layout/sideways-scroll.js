@@ -1,4 +1,4 @@
-import { GAP, colWidth, wins } from '../core.js';
+import { GAP, colWidth, shownWins } from '../core.js';
 import { updateColNav } from './column-drag.js';
 import { SW } from './geometry.js';
 import { colStrip, featW, layoutVars, maxScroll, scrollRaf, scrollX, snapT } from './layouts.js';
@@ -11,7 +11,7 @@ function setScrollX(x){
   const d = x - scrollX;
   if (!d) return;
   layoutVars.scrollX = x;
-  wins.forEach(w => {
+  shownWins().forEach(w => {
     if (w.dragging || w.el.classList.contains('featured')) return;
     w.el.classList.remove('anim');
     w.x -= d; w.el.style.left = w.x + 'px';

@@ -16,9 +16,11 @@ import { init as chatKickPrediction } from './chat/kick-prediction.js';
 import { init as inSiteVolume } from './in-site/volume.js';
 import { init as platformsPlatforms } from './platforms/platforms.js';
 import { init as platformsPearDrops } from './platforms/pear-drops.js';
+import { init as platformsLinked } from './platforms/linked.js';
 import { init as layoutGeometry } from './layout/geometry.js';
 import { init as windowsWindowBar } from './windows/window-bar.js';
 import { init as windowsWindows } from './windows/windows.js';
+import { init as windowsFrames } from './windows/frames.js';
 import { init as windowsViews } from './windows/views.js';
 import { init as chatTranslate } from './chat/translate.js';
 import { init as chatViewMenu } from './chat/view-menu.js';
@@ -72,6 +74,9 @@ import { init as layoutGameFocus } from './layout/game-focus.js';
 import { init as panelsSettingsThemes } from './panels/settings/themes.js';
 import { init as panelsSettingsSettings } from './panels/settings/settings.js';
 import { init as panelsSettingsGeneral } from './panels/settings/general.js';
+import { init as panelsSettingsWindowsPane } from './panels/settings/windows-pane.js';
+import { init as panelsLinkedLinkCard } from './panels/linked/link-card.js';
+import { init as panelsLinkedLinkedPane } from './panels/linked/linked-pane.js';
 import { init as panelsSettingsAlerts } from './panels/settings/alerts.js';
 import { init as panelsSettingsConnected } from './panels/settings/connected.js';
 import { init as panelsSettingsActivity } from './panels/settings/activity.js';
@@ -87,6 +92,7 @@ import { init as sharedAsk } from './shared/ask.js';
 import { init as sharedTooltips } from './shared/tooltips.js';
 import { init as windowsWindowCommands } from './windows/window-commands.js';
 import { init as panelsChannelsChannelCommands } from './panels/channels/channel-commands.js';
+import { init as panelsLinkedLinkedCommands } from './panels/linked/linked-commands.js';
 import { init as panelsSettingsSettingsCommands } from './panels/settings/settings-commands.js';
 import { init as palettePalette } from './palette/palette.js';
 import { init as panelsSettingsSearchBox } from './panels/settings/search-box.js';
@@ -106,9 +112,11 @@ import { init as panelsSettingsSearchBox } from './panels/settings/search-box.js
   inSiteVolume,
   platformsPlatforms,
   platformsPearDrops,
+  platformsLinked,
   layoutGeometry,
   windowsWindowBar,
   windowsWindows,
+  windowsFrames,
   windowsViews,
   chatTranslate,
   chatViewMenu,
@@ -162,6 +170,9 @@ import { init as panelsSettingsSearchBox } from './panels/settings/search-box.js
   panelsSettingsSettings,
   panelsHelpGuide,
   panelsSettingsGeneral,
+  panelsSettingsWindowsPane,
+  panelsLinkedLinkCard,
+  panelsLinkedLinkedPane,
   panelsSettingsAlerts,
   panelsSettingsConnected,
   panelsSettingsActivity,
@@ -177,6 +188,7 @@ import { init as panelsSettingsSearchBox } from './panels/settings/search-box.js
   sharedTooltips,
   windowsWindowCommands,
   panelsChannelsChannelCommands,
+  panelsLinkedLinkedCommands,
   panelsSettingsSettingsCommands,
   palettePalette,
   panelsSettingsSearchBox

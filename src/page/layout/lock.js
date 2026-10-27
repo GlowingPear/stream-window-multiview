@@ -6,6 +6,7 @@ import { gameLayout, isGame } from './game-focus.js';
 import { SH, SW, focusWin, setRect } from './geometry.js';
 import { autoLayout, chatFocusLayout, tile } from './layouts.js';
 import { save } from '../persistence.js';
+import { sameStreamer } from '../platforms/linked.js';
 import { flash } from '../shared/flash.js';
 import { setTb } from '../shared/icons.js';
 import { settings } from '../shared/settings.js';
@@ -54,7 +55,7 @@ function init(){
   // dropdowns and the empty stage watch it too.)
   store.watch('wins', () => {
     empty.style.display = wins.length ? 'none' : '';
-    wins.forEach(w => { const b = w.el.querySelector('[data-a=chat]'); if (b) b.hidden = wins.some(o => o.kind === 'chat' && o.channel === w.channel); });
+    wins.forEach(w => { const b = w.el.querySelector('[data-a=chat]'); if (b) b.hidden = wins.some(o => o.kind === 'chat' && sameStreamer(o.channel, w.channel)); });
     if (colsMode){ clearTimeout(colsT); colsT = setTimeout(columnsLayout, 30); }
     else if (typeof isGame === 'function' && isGame()){ clearTimeout(colsT); colsT = setTimeout(gameLayout, 30); }
   });

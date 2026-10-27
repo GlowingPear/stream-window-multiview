@@ -8,6 +8,10 @@ let lastLayout = null, streamCols = 1;
 let colsMode = false, colWidth = 0, colCount = 0;   // Columns mode (scrolls sideways)
 let wins = [], zTop = 10, uid = 0;
 var refreshAccountsPane = null;   // Settings > Accounts (desktop app)
+// The windows on screen: a window with several sites (windows/frames.js) counts once, as the tab you're watching.
+// Layouts, placement and the window lists use these; what each site does by itself (ad skips, mentions, raids)
+// goes over every window in wins, the tabs you can't see too.
+const shownWins = () => wins.filter(w => !w.hiddenTab);
 
 // Other files change these through coreVars: a variable imported from another file can't be assigned to.
 const coreVars = {
@@ -33,4 +37,5 @@ function init(){
 }
 
 export { $, BAR, colCount, colsMode, colWidth, coreVars, empty, GAP, init, input, lastLayout, MIN_H, MIN_W, modeSel,
-  msg, mutedChk, popped, refreshAccountsPane, ROLE, sizehint, SNAP, snapChk, stage, STORE, streamCols, wins, zTop };
+  msg, mutedChk, popped, refreshAccountsPane, ROLE, shownWins, sizehint, SNAP, snapChk, stage, STORE, streamCols,
+  wins, zTop };

@@ -1,5 +1,5 @@
 import { toggleStreamOverlay } from '../chat/chat-overlay.js';
-import { closeWin, resolveYt } from '../chat/view-menu.js';
+import { resolveYt } from '../chat/view-menu.js';
 import { BAR, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, mutedChk, sizehint, snapChk, stage, wins } from '../core.js';
 import { VOL_JS } from '../in-site/volume.js';
 import { startSwapDrag } from '../layout/chat-focus.js';
@@ -16,8 +16,11 @@ import { nh, syncAtBtn, toggleChatMentions } from '../panels/bell/bell.js';
 import { toggleSaved } from '../panels/channels/channels.js';
 import { copyWinState, devOn, inspectWin } from '../panels/developer/developer.js';
 import { openExtMenu } from '../panels/extensions/extensions.js';
+import { openLinkCard } from '../panels/linked/link-card.js';
 import { openProfile } from '../panels/profiles/profiles.js';
+import { arrangeButtons, syncBarName } from '../panels/settings/windows-pane.js';
 import { save } from '../persistence.js';
+import { linkedOn, nameOf } from '../platforms/linked.js';
 import { chLabel, chLabelP, checkMod, externalFor, modUrl, platOf, platform } from '../platforms/platforms.js';
 import { syncLike, toggleLike } from '../platforms/youtube-options.js';
 import { DESKTOP } from '../shared/env.js';
@@ -26,6 +29,7 @@ import { icon } from '../shared/icons.js';
 import { store } from '../shared/store.js';
 import { soon } from '../shared/timers.js';
 import { chAvatar, swapWindows } from './channel-picker.js';
+import { closeFrame, renderSiteTabs } from './frames.js';
 import { PLAYING, pauseEvents } from './pause-state.js';
 import { isPaused } from './pause.js';
 import { arrangedByHand } from './raids.js';
@@ -37,12 +41,15 @@ import { openBarMenu, watchBar } from './window-bar.js';
 function createWin(spec, rect){
   const w = { id: ++coreVars.uid, kind: spec.kind, channel: spec.channel, url: spec.url, pause: PLAYING,
               muted: spec.muted ?? mutedChk.checked, vol: spec.vol ?? 0.8, preview: !!spec.preview, max: null, ready: false };
+  // a tab of a window with several sites (windows/frames.js): hidden under the one you watch, or a site taken out
+  if (spec.frame){ w.frame = spec.frame; w.hiddenTab = !!spec.hiddenTab; w.sbs = !!spec.sbs && !w.hiddenTab; }
+  if (spec.split) w.split = true;
   const hasVol = DESKTOP && w.kind === 'stream';
   const el = document.createElement('div');
   el.className = 'win ' + w.kind + (w.channel ? ' plat-' + platOf(w.channel) : '');
   el.innerHTML = `
     <div class="bar">
-      ${w.channel ? '<span class="bar-av"></span>' : '<span class="dot"></span>'}<span class="title"></span>${w.channel ? '<select class="col-pick" title="Swap this window with another one"></select>' : ''}${w.kind === 'stream' ? '<span class="bar-n" hidden></span>' : ''}<span class="tag"></span><span class="grab"></span>
+      ${w.channel ? '<span class="bar-av"></span>' : '<span class="dot"></span>'}<span class="title"></span>${w.channel ? '<select class="col-pick" title="Swap this window with another one"></select><span class="ptabs" role="tablist" aria-label="Sites"></span>' : ''}${w.kind === 'stream' ? '<span class="bar-n" hidden></span>' : ''}<span class="grab"></span>
       ${hasVol ? `<div class="vol" title="Volume (scroll to adjust)"><button data-v="mute" title="Mute / unmute"></button><input type="range" min="0" max="100" step="1" aria-label="Volume"><span class="pct"></span></div>` : ''}
       <div class="btns">
         ${w.kind === 'stream' ? '<button class="txt" data-a="chat" title="Add this channel\'s chat next to it">+ Chat</button>' : ''}
@@ -58,6 +65,7 @@ function createWin(spec, rect){
         ${modUrl(w.channel) ? `<button data-a="mod" title="Open the mod view for this channel"${DESKTOP ? ' hidden' : ''}>${icon.mod}</button>` : ''}
         <button data-a="pop" title="Open in its own browser window">${icon.pop}</button>
         <button data-a="max" title="Maximize / restore (or double-click the bar)">${icon.max}</button>
+        ${w.channel && !/^yt:v:/.test(w.channel) ? `<button data-a="link" class="link-b" title="Link accounts: this streamer on other sites"${linkedOn() ? '' : ' hidden'}>${icon.layers}</button>` : ''}
         <button data-a="more" class="more-b" title="More: the buttons that don't fit" aria-label="More" aria-haspopup="true" hidden>⋯</button>
         <button data-a="close" class="x" title="Close">${icon.close}</button>
       </div>
@@ -67,17 +75,19 @@ function createWin(spec, rect){
   w.el = el;
   el.querySelectorAll('.btns [data-a], .vol [data-v]').forEach(b => { b.dataset.cmd = 'win.' + (b.dataset.a || b.dataset.v); });   // (the search box's Tab list for the window: window-commands.js)
   if (w.kind === 'capture'){ w.srcId = spec.srcId; w.capName = spec.capName || 'Window'; }
-  el.querySelector('.title').textContent = w.channel ? chLabel(w.channel) : w.kind === 'capture' ? w.capName : new URL(w.url).hostname;
+  el.querySelector('.title').textContent = w.channel ? nameOf(w.channel) : w.kind === 'capture' ? w.capName : new URL(w.url).hostname;
   el.querySelector('.bar').title = (w.channel ? chLabelP(w.channel) : w.kind === 'capture' ? w.capName + ' (live picture of that window)' : w.url) + ' · ' + w.kind;
-  if (w.kind === 'capture'){ el.querySelector('[data-a=pop]').remove(); el.querySelector('[data-a=reload]').title = 'Pick a different window'; el.querySelector('.tag').textContent = 'window'; }
+  if (w.kind === 'capture'){ el.querySelector('[data-a=pop]').remove(); el.querySelector('[data-a=reload]').title = 'Pick a different window'; }
   el.querySelector('.waitmsg button').onclick = () => { ytCache[w.channel] = null; resolveYt(w); };
-  if (w.kind !== 'capture') el.querySelector('.tag').textContent = w.kind;
   w.view = null;
+  if (w.hiddenTab){ el.classList.add('tab-hidden'); el.setAttribute('aria-hidden', 'true'); }
+  arrangeButtons(w); syncBarName(w);
   stage.appendChild(el);
-  setRect(w, rect);
-  el.style.zIndex = ++coreVars.zTop;
+  el.style.zIndex = w.hiddenTab ? '1' : ++coreVars.zTop;
   wins.push(w);
+  setRect(w, rect);
   el.addEventListener('pointerdown', () => focusWin(w), true);
+  renderSiteTabs(w);
   mountView(w);
   checkMod(w);
   syncAtBtn(w);
@@ -107,7 +117,7 @@ function createWin(spec, rect){
   el.querySelector('.btns').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     const a = b.dataset.a;
-    if (a === 'close'){ closeWin(w); refitLocked(); }
+    if (a === 'close'){ closeFrame(w); refitLocked(); }
     else if (a === 'reload') reloadWin(w);
     else if (a === 'pop') {
       if (DESKTOP){
@@ -126,6 +136,7 @@ function createWin(spec, rect){
     else if (a === 'ext') openExtMenu(w, b.classList.contains('ovf') ? el.querySelector('[data-a=more]') : b);   // from the ⋯ menu (always): open under ⋯
     else if (a === 'more') openBarMenu(b);
     else if (a === 'state') copyWinState(w);
+    else if (a === 'link') openLinkCard(w.channel);
     else if (a === 'inspect') inspectWin(w);
     else if (a === 'chat'){
       if (ROLE === 'streams'){ window.kmv.addChat(w.channel); flash(`${chLabel(w.channel)}'s chat added to the main window`); }
@@ -237,7 +248,7 @@ function createWin(spec, rect){
     h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
   }));
 
-  focusWin(w);
+  if (!w.hiddenTab) focusWin(w);
   store.changed('wins');
   return w;
 }

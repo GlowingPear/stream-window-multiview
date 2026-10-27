@@ -1,5 +1,5 @@
 import { openSettings } from '../panels/settings/settings.js';
-import { platIcon } from '../platforms/platforms.js';
+import { PLAT_NAME, platIcon } from '../platforms/platforms.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
 import { IS_MAC, keyName } from '../shared/env.js';
@@ -23,6 +23,7 @@ import { store } from '../shared/store.js';
    Prefixes: > actions · @ channels and windows · # Settings · ? help.
    How a row is drawn comes from its item: sub (text, or parts: 'text', { b: 'bold', t: ' after' }, nodes), live and
    viewers, tags and pills, chip, keys, side (a hint that always shows), sites (K / T / Y chips: pickSite, nextSite, prevSite),
+   siteIcons (a linked streamer's sites after its name: [{ p, dim }]),
    and on the big row heroSub and buttons ({ label, icon, run, on, more }). */
 let palBg, palBox, palQ, palChip, palCount, palList, palFoot, palLive, palHead, palMag, palK, palEsc;
 let palScope = '';                // '>', '@', '#', '?' or ''
@@ -185,6 +186,7 @@ function palRowEl(r, i){
   const it = r.item, off = commands.disabledWhy(it), hero = !!r.hero;
   const sub = palParts(palVal(hero && it.heroSub ? it.heroSub : it.sub));
   const line = element('span', 'pal-line', palMarked(it.title, r.marks),
+    it.siteIcons && element('span', 'pal-sic', ...it.siteIcons.map(x => element('i', { class: `pi pi-${x.p}${x.dim ? ' dim' : ''}`, title: PLAT_NAME[x.p] }, PLAT_NAME[x.p][0]))),   // a linked streamer's sites
     hero && it.live && palLivePill(), ...(hero ? palVal(it.pills) || [] : []).map(p => palPill(p.text, p.accent)),
     ...(palVal(it.tags) || []).map(t => palPill(t)), hero && palSites(it, true));
   const subEl = (sub.length || (it.live && !hero)) && element('span', 'pal-sub', !hero && it.live && palLivePill(), ...sub);

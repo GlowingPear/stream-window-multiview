@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="page/panels/settings/settings.css">
 <link rel="stylesheet" href="page/windows/capture.css">
 <link rel="stylesheet" href="page/windows/window-bar.css">
+<link rel="stylesheet" href="page/windows/frames.css">
 <link rel="stylesheet" href="page/chat/view-menu.css">
 <link rel="stylesheet" href="page/shared/dropdown.css">
 <link rel="stylesheet" href="page/toolbar/layout-menu.css">
@@ -57,6 +58,7 @@
 <link rel="stylesheet" href="page/panels/updates/updates.css">
 <link rel="stylesheet" href="page/panels/help/guide.css">
 <link rel="stylesheet" href="page/panels/developer/developer.css">
+<link rel="stylesheet" href="page/panels/linked/linked.css">
 <link rel="stylesheet" href="page/palette/palette.css">
 <style id="themeVars"></style>
 <!-- before the first paint: the macOS toolbar's room for the traffic lights, and the saved colour theme -->
@@ -222,6 +224,7 @@
   </div>
 </main>
 <div id="tourLayer" hidden><div class="tour-ring"></div><div class="tour-tip" role="dialog" aria-labelledby="tourTitle"><div class="tour-step"></div><h4 id="tourTitle"></h4><p></p><div class="tour-acts"><button class="btn tour-back">Back</button><span class="tour-gap"></span><button class="btn tour-end">End tour</button><button class="btn primary tour-next">Next</button></div></div></div>
+<div id="tabTip" class="tip-card" hidden role="status"><b><span class="tt-name"></span> is one window now</b><ul><li>K / T / Y switch site. <kbd class="tt-k1"></kbd>–<kbd class="tt-k3"></kbd> too.</li><li>Middle-click a tab to close it; <b>+</b> brings it back.</li><li>Drag a tab out for its own window.</li><li>In an empty chat box, <kbd>Tab</kbd> switches site.</li></ul><button class="btn tip-ok">Got it</button></div>
 <div id="tipCard" hidden role="status"><b>Tips for your windows</b><ul><li>Drag a window by its title bar; resize from any edge or corner.</li><li>Hold <kbd>Shift</kbd> while resizing a stream to keep it 16:9.</li><li>Double-click a title bar to maximize or restore it.</li><li>Scroll over a stream's volume slider to change its volume.</li></ul><button class="btn tip-ok">Got it</button></div>
 <div id="sizehint"></div>
 <div id="msg" data-pos="tc" role="status" title="Click to close"></div>
@@ -244,6 +247,7 @@
 </div></div>
 <div id="extMenu" class="menu" hidden></div>
 <div id="barMenu" class="menu" role="menu" hidden></div>
+<div class="dlg-bg" id="linkDlg" hidden><div class="dlg link-card" role="dialog" aria-modal="true" aria-labelledby="lcName"></div></div>
 <div class="dlg-bg" id="askDlg" hidden><div class="dlg ask" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askMsg">
   <h3 id="askTitle"></h3>
   <div class="dlg-sub" id="askMsg"></div>
@@ -262,12 +266,14 @@
   <div class="st-wrap">
     <nav class="st-rail">
       <button data-s="general">General</button>
+      <button data-s="windows">Windows</button>
       <button data-s="layouts" class="main-only">Layouts</button>
       <button data-s="chat">Chat</button>
       <button data-s="themes">Themes</button>
       <button data-s="search">Search box</button>
       <div class="st-rail-sec">Sites</div>
       <button data-s="accounts" class="desk-only">Accounts</button>
+      <button data-s="linked">Linked accounts</button>
       <button data-s="apps" class="desk-only">Connected apps</button>
       <button data-s="youtube" class="desk-only">YouTube</button>
       <button data-s="extensions" class="desk-only">Extensions</button>
@@ -290,6 +296,14 @@
         <label class="st-row"><span class="st-t">Auto-pause hidden streams<small>Pauses streams that are off-screen or behind the big stream after 2 seconds, to save bandwidth. They jump back to live when you can see them again. Streams you can hear never pause.</small></span><input type="checkbox" class="st-sw" id="autoPause"></label>
         <div class="st-row main-only"><span class="st-t">Welcome screen<small>The getting-started screen, its feature cards and the tour show again on an empty stage.</small></span><button class="btn" id="introReset">Show it again</button></div>
         <label class="st-row"><span class="st-t">Keyboard shortcuts<small>Esc still closes menus when they're off. <button class="linkish" data-help="keys">See the list</button></small></span><input type="checkbox" class="st-sw" id="keysSet"></label>
+      </section>
+      <section class="st-pane" data-s="windows" hidden>
+        <h4>Windows</h4><p class="st-sub">Stream and chat windows' title bars: names, buttons and the ⋯ menu.</p>
+        <label class="st-row"><span class="st-t">Show the channel's name on stream windows<small>Off: just the picture and the K / T / Y tabs. Click the picture for the window list; hover it for the name.</small></span><input type="checkbox" class="st-sw" id="barNameStream" checked></label>
+        <label class="st-row"><span class="st-t">Show the channel's name on chat windows<small>Off: just the picture and the K / T / Y tabs, leaving more room for the chat's buttons.</small></span><input type="checkbox" class="st-sw" id="barNameChat" checked></label>
+        <div class="st-row wb-head"><span class="st-t">Buttons and the ⋯ menu</span><button class="btn" id="wbReset" title="Back to the bar's own order, with Extensions, Copy window state and Inspect always in ⋯">Reset</button></div>
+        <div class="wb-preview" id="wbPreview" aria-label="How a title bar looks"></div>
+        <div class="wb-list" id="wbList" role="list" aria-label="Title bar buttons"></div>
       </section>
       <section class="st-pane" data-s="layouts" hidden>
         <h4>Layouts</h4><p class="st-sub">How the windows are arranged. Switch with <b>Layout ▾</b> in the toolbar, or here.</p>
@@ -362,6 +376,39 @@
         </div>
         <div class="am-alt">YouTube sign-in currently only works through Firefox. <button class="linkish am-ff">Sign in to YouTube with Firefox</button><br>You don't need to sign in to watch YouTube.</div>
         <p class="st-sub" style="margin:8px 0 0">Skipping ads, YouTube's cookie question and the API key: <button class="linkish" data-go="youtube">YouTube settings</button></p>
+      </section>
+      <section class="st-pane" data-s="linked" hidden>
+        <h4>Linked accounts</h4><p class="st-sub">A streamer on several sites, linked into one: one row in Channels, one window for their streams and one for their chats.</p>
+        <label class="st-row la-on"><span class="st-t">Link accounts across sites<small id="laOnSub">Off: every account is its own channel. Turn on to link a streamer's Kick, Twitch and YouTube accounts.</small></span><input type="checkbox" class="st-sw" id="linkedOnSet"></label>
+        <div class="la-off" id="laOff"><b>While it's off</b><ul><li>Channels, the empty stage and the search box show one row per account</li><li>No tabs: each site's stream and chat opens in its own window</li><li>No suggestions, and no <i>Link accounts…</i> in menus, profiles or the search box</li></ul><span>Title bars still show the site's icon, without the suffix.</span></div>
+        <div class="la-rest" id="laRest" hidden>
+        <div class="st-tabs" id="laTabs" role="tablist" aria-label="Linked accounts"><button role="tab" data-t="tabs" class="on" aria-selected="true">Tabs</button><button role="tab" data-t="playing" aria-selected="false" tabindex="-1">Playing</button><button role="tab" data-t="live" aria-selected="false" tabindex="-1">Live &amp; raids</button><button role="tab" data-t="sugs" aria-selected="false" tabindex="-1">Suggestions <em class="la-n" id="laSugN" hidden></em></button><button role="tab" data-t="linked" aria-selected="false" tabindex="-1">Linked streamers</button></div>
+        <div class="st-subpane" data-t="tabs">
+          <label class="st-row"><span class="st-t">Their streams<small>Tabs: one window, a small K / T / Y tab per site, the main account first. Separate: a window per site, as before.</small></span><select class="st-sel" data-lo="streams"><option value="tabs">Tabs in one window</option><option value="separate">Separate windows</option></select></label>
+          <label class="st-row"><span class="st-t">Their chats<small>Side by side shows two or three chats in one window, a column each.</small></span><select class="st-sel" data-lo="chats"><option value="tabs">Tabs in one window</option><option value="side">Side by side in one window</option><option value="separate">Separate windows</option></select></label>
+          <label class="st-row"><span class="st-t">The chat follows the stream's tab<small>Switching the stream to Twitch switches the chat to Twitch too.</small></span><input type="checkbox" class="st-sw" data-lo="chatFollows"></label>
+          <label class="st-row"><span class="st-t">Tab switches site in an empty chat box<small>⇧Tab goes back. While you type, Tab completes names and emotes as the site does.</small></span><input type="checkbox" class="st-sw" data-lo="tabKey"></label>
+          <label class="st-row"><span class="st-t">Chat over the stream shows<small>Every live site: each line with its site's icon.</small></span><select class="st-sel" data-lo="overlay"><option value="one">The site you're watching</option><option value="all">Every live site</option></select></label>
+        </div>
+        <div class="st-subpane" data-t="playing" hidden>
+          <label class="st-row"><span class="st-t">Tabs you're not watching play at<small><span id="laPlaying">Lower quality saves bandwidth: a streamer live on three sites is three streams.</span></small></span><select class="st-sel" data-lo="quality"><option value="low">Lowest quality</option><option value="yours">Your quality</option></select></label>
+          <label class="st-row"><span class="st-t">Jump to live when switching<small>The sites are a few seconds apart: switching tab catches the new one up to live.</small></span><input type="checkbox" class="st-sw" data-lo="jumpLive"></label>
+        </div>
+        <div class="st-subpane" data-t="live" hidden>
+          <label class="st-row"><span class="st-t">When they open by themselves<small>For streamers set to open when they go live (⚡). Together: their live sites as tabs in one window.</small></span><select class="st-sel" data-lo="autoOpen"><option value="together">Together, as tabs</option><option value="separate">Separate windows</option></select></label>
+          <label class="st-row"><span class="st-t">When another of their accounts goes live<small>While their window is open.</small></span><select class="st-sel" data-lo="alsoLive"><option value="add">Add its tab</option><option value="switch">Add its tab and switch to it</option><option value="none">Nothing</option></select></label>
+          <label class="st-row"><span class="st-t">When the stream you're watching ends<small>While another of their accounts is live. Waits 60 s first, so a short drop just reconnects.</small></span><select class="st-sel" data-lo="ended"><option value="switch">Switch to a live one</option><option value="stay">Stay on it</option></select></label>
+          <label class="st-row"><span class="st-t">When they raid<small>Follows only once none of their accounts is live, and only the raid from the site you were watching. Other raids go under the bell.</small></span><select class="st-sel" data-lo="raid"><option value="follow">Follow the one I was watching</option><option value="tell">Just tell me</option></select></label>
+        </div>
+        <div class="st-subpane" data-t="sugs" hidden>
+          <label class="st-row"><span class="st-t">Suggest accounts to link<small>The same name on another site, or a link on their channel page. You always choose; nothing is linked by itself.</small></span><input type="checkbox" class="st-sw" data-lo="suggest"></label>
+          <div id="laSugs" class="la-list"></div>
+        </div>
+        <div class="st-subpane" data-t="linked" hidden>
+          <div class="la-head"><span id="laCount"></span><button class="btn" id="laAdd" title="Pick a streamer, then add their other sites">Link accounts…</button></div>
+          <div id="laLinked" class="la-list"></div>
+        </div>
+        </div>
       </section>
       <section class="st-pane" data-s="apps" hidden>
         <h4>Connected apps</h4><p class="st-sub">Apps that work with Stream Multiview, directly on this computer. Nothing goes online.</p>

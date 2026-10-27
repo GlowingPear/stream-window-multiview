@@ -1,4 +1,4 @@
-import { $, GAP, colCount, colWidth, colsMode, coreVars, lastLayout, stage, streamCols, wins } from '../core.js';
+import { $, GAP, colCount, colWidth, colsMode, coreVars, lastLayout, shownWins, stage, streamCols } from '../core.js';
 import { buildCols, columnsLayout } from './columns.js';
 import { SW, setRect } from './geometry.js';
 import { colKey, colOrder, colStrip, colX0, featBase, featW, featuredCh, layoutVars, linked, maxScroll, scrollX,
@@ -14,7 +14,7 @@ import { updatePopHiddenBtn } from '../windows/popout.js';
 /* Drag a linked column by either title bar; the others slide aside to show where it lands. */
 function startColDrag(e, w, bar){
   const key = colKey(w);
-  const members = wins.filter(o => colKey(o) === key && !o.el.classList.contains('featured'));
+  const members = shownWins().filter(o => colKey(o) === key && !o.el.classList.contains('featured'));
   if (!members.length) return;
   const order = buildCols().filter(c => !(featBase.length && c.key === featuredCh)).map(c => c.key);
   let slot = order.indexOf(key);
@@ -103,7 +103,7 @@ function updateLayoutMenu(){
   let any = false;
   document.querySelectorAll('#lmOpts .lm-opt').forEach(o => { o.hidden = !(o.dataset.for === '*' || o.dataset.for.split(' ').includes(cur)); any ||= !o.hidden; });
   $('#lmOpts').hidden = !any;
-  const nVids = wins.filter(w => w.kind !== 'chat').length;
+  const nVids = shownWins().filter(w => w.kind !== 'chat').length;
   const maxCols = Math.max(1, Math.min(3, nVids));      // the count in use: fewer streams than columns use fewer
   document.querySelectorAll('#lmCols button').forEach(b => { b.classList.toggle('on', +b.dataset.n === Math.min(streamCols, maxCols)); b.disabled = +b.dataset.n > maxCols; });
   if (typeof renderPresets === 'function') renderPresets();

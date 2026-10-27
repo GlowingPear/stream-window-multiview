@@ -1,12 +1,15 @@
-import { BAR, GAP, SNAP, colsMode, coreVars, sizehint, snapChk, stage, wins, zTop } from '../core.js';
+import { BAR, GAP, SNAP, colsMode, coreVars, shownWins, sizehint, snapChk, stage, wins, zTop } from '../core.js';
 import { linked } from './layouts.js';
+import { sameStreamer } from '../platforms/linked.js';
 import { winTimer } from '../shared/timers.js';
+import { syncFrameRects } from '../windows/frames.js';
 
 let SW, SH;
 function setRect(w, r, animate){
   w.x = Math.round(r.x); w.y = Math.round(r.y); w.w = Math.round(r.w); w.h = Math.round(r.h);
   if (animate){ w.el.classList.add('anim'); winTimer(w, 'anim', () => w.el.classList.remove('anim'), 260); }
   Object.assign(w.el.style, { left: w.x + 'px', top: w.y + 'px', width: w.w + 'px', height: w.h + 'px' });
+  if (w.frame) syncFrameRects(w);       // its other tabs stay under it (windows/frames.js)
 }
 function clampPos(w){
   if (colsMode) return;   // columns can sit off-screen while scrolled
@@ -16,7 +19,7 @@ function clampPos(w){
 }
 function edges(self){
   const xs = [GAP, SW() - GAP], ys = [GAP, SH() - GAP];
-  for (const o of wins) if (o !== self){ xs.push(o.x - GAP, o.x + o.w + GAP, o.x, o.x + o.w); ys.push(o.y - GAP, o.y + o.h + GAP, o.y, o.y + o.h); }
+  for (const o of shownWins()) if (o !== self){ xs.push(o.x - GAP, o.x + o.w + GAP, o.x, o.x + o.w); ys.push(o.y - GAP, o.y + o.h + GAP, o.y, o.y + o.h); }
   return { xs, ys };
 }
 function near(v, arr){
@@ -27,7 +30,7 @@ function near(v, arr){
 const snapE = (v, arr) => snapChk.checked ? (near(v, arr) ?? v) : v;
 
 function focusWin(w){
-  const partner = colsMode && linked && w.channel ? wins.find(o => o !== w && o.channel === w.channel && o.kind !== w.kind) : null;
+  const partner = colsMode && linked && w.channel ? shownWins().find(o => o !== w && sameStreamer(o.channel, w.channel) && o.kind !== w.kind) : null;
   [partner, w].forEach(o => { if (o && !o.el.classList.contains('featured') && +o.el.style.zIndex !== zTop) o.el.style.zIndex = ++coreVars.zTop; });
   wins.forEach(o => o.el.classList.toggle('active', o === w || o === partner));
 }

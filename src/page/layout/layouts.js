@@ -1,4 +1,4 @@
-import { $, BAR, GAP, ROLE, colWidth, colsMode, coreVars, stage, streamCols, wins } from '../core.js';
+import { $, BAR, GAP, ROLE, colWidth, colsMode, coreVars, shownWins, stage, streamCols, wins } from '../core.js';
 import { updateModeClass } from './chat-focus.js';
 import { buildCols, columnsLayout } from './columns.js';
 import { applyFocusOnly } from './focus-only.js';
@@ -8,6 +8,7 @@ import { activeP, setPresetOpt } from './saved-layouts.js';
 import { pageStep, scrollCols, scrollVars, smoothScrollTo, updatePageBtn } from './sideways-scroll.js';
 import { placeMinis, placeSwitcher } from './switch-control.js';
 import { save } from '../persistence.js';
+import { groupKey } from '../platforms/linked.js';
 import { chLabel } from '../platforms/platforms.js';
 import { DESKTOP } from '../shared/env.js';
 import { settings } from '../shared/settings.js';
@@ -62,9 +63,9 @@ function applyRects(list, rects){ list.forEach((w, i) => { w.max = null; setRect
 function autoLayout(){
   if (colsMode) return columnsLayout();
   const W = SW() - GAP, H = SH() - GAP, X = GAP / 2, Y = GAP / 2;
-  const vids = wins.filter(w => w.kind !== 'chat');
+  const vids = shownWins().filter(w => w.kind !== 'chat');
   const order = vids.map(v => v.channel);
-  const chats = wins.filter(w => w.kind === 'chat');
+  const chats = shownWins().filter(w => w.kind === 'chat');
   if (!locked()) chats.sort((a, b) => (order.indexOf(a.channel) + 1 || 999) - (order.indexOf(b.channel) + 1 || 999));   // locked: where they were swapped to
   if (!vids.length){ layoutChatsOnly(); return; }
   const chatW = Math.min(340, W * 0.24);
@@ -77,7 +78,7 @@ function autoLayout(){
 function tile(){
   if (colsMode) return columnsLayout();
   coreVars.lastLayout = 'tile';
-  applyRects(wins, gridRects(wins.length, GAP / 2, GAP / 2, SW() - GAP, SH() - GAP, 16 / 9)); save();
+  applyRects(wins, gridRects(shownWins().length, GAP / 2, GAP / 2, SW() - GAP, SH() - GAP, 16 / 9)); save();
 }
 
 /* Chats split a rectangle: as many rows as needed so each chat stays >= ~320px wide,
@@ -102,13 +103,13 @@ function chatRects(m, X, Y, CW, H){
 // A channel's extra windows (e.g. a second copy of its chat) come straight after its first one.
 function inColOrder(test){
   const rank = new Map(buildCols().map((c, i) => [c.key, i]));
-  return wins.filter(test).sort((a, b) => rank.get(colKey(a)) - rank.get(colKey(b)));
+  return shownWins().filter(test).sort((a, b) => rank.get(colKey(a)) - rank.get(colKey(b)));
 }
 const sortedChats = () => inColOrder(w => w.kind === 'chat');
 function layoutChatsOnly(){
   if (colsMode) return columnsLayout();
   const W = SW() - GAP, H = SH() - GAP, X = GAP / 2, Y = GAP / 2;
-  const others = wins.filter(w => w.kind !== 'chat'), chats = sortedChats();
+  const others = shownWins().filter(w => w.kind !== 'chat'), chats = sortedChats();
   if (others.length){ chatFocusLayout(); return; }
   applyRects(chats, chatRects(chats.length, X, Y, W, H));
   coreVars.lastLayout = 'chatfocus';
@@ -149,10 +150,11 @@ let colX0 = GAP / 2, featW = 0, featBase = [];
 let colOrder = [], linked = true, featuredCh = null;
 let scrollX = 0, maxScroll = 0, snapT = 0, scrollRaf = 0;
 const HBAR = 14, SWITCH_MIN = 54;
-const colKey = w => w.kind === 'web' ? 'web:' + w.id : w.kind === 'capture' ? 'cap:' + w.id : w.channel;
+// (a linked streamer's windows share theirs, whichever site they show: platforms/linked.js)
+const colKey = w => w.kind === 'web' ? 'web:' + w.id : w.kind === 'capture' ? 'cap:' + w.id : groupKey(w.channel);
 // "Videos": streams and other apps' windows. Both can be in the switch control and be the big one.
 const isVid = w => !!w && (w.kind === 'stream' || w.kind === 'capture');
-const vidByKey = k => wins.find(w => isVid(w) && colKey(w) === k);
+const vidByKey = k => shownWins().find(w => isVid(w) && colKey(w) === k);
 const vidLabel = w => w.kind === 'capture' ? (w.capName || 'Window') : chLabel(w.channel);
 const mkDiv = (id, html) => { const d = document.createElement('div'); d.id = id; if (html) d.innerHTML = html; stage.appendChild(d); return d; };
 let featBg;
@@ -191,7 +193,7 @@ function setColsMode(on){
     scrollX = 0; maxScroll = 0;
     $('#colNav').hidden = true; hbar.style.display = 'none'; colStrip.style.display = 'none'; colTopOff = 0;
     clearFeaturedLook();
-    wins.forEach(w => w.el.classList.remove('link-top', 'link-bot'));
+    shownWins().forEach(w => w.el.classList.remove('link-top', 'link-bot'));
   }
   if (ROLE === 'main') settings.set('cols', on ? '1' : null);
   store.changed('layout'); updateLinkBtn();
@@ -222,7 +224,7 @@ function toggleFeatured(ch){
   columnsLayout();
 }
 function refreshFeatButtons(){
-  wins.forEach(w => {
+  shownWins().forEach(w => {
     const b = w.el.querySelector('[data-a=feat]'); if (!b) return;
     const on = featuredCh === colKey(w) && w.el.classList.contains('featured');
     b.classList.toggle('on', on);

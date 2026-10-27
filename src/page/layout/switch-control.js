@@ -1,6 +1,6 @@
 import { blowOn, toggleBlowMode } from '../chat/blow-up.js';
 import { newFor } from '../chat/new-messages.js';
-import { ROLE, colsMode, lastLayout, wins } from '../core.js';
+import { ROLE, colsMode, lastLayout, shownWins } from '../core.js';
 import { VOL_JS } from '../in-site/volume.js';
 import { backToChatFocus } from './chat-focus.js';
 import { isRail, showRailChat } from './chat-rail.js';
@@ -59,7 +59,7 @@ function placeSwitcher(){
     placeMinis(); pushSwitcherState();
     return;
   }
-  if (!wins.some(w => w.kind === 'stream')){
+  if (!shownWins().some(w => w.kind === 'stream')){
     featSwitch.style.display = 'none'; fsResize.style.display = 'none'; placeMinis(); return;
   }
   clampSwitchRect();
@@ -161,7 +161,7 @@ function dropMini(s){ if (s && s.mini){ s.mini.wrap.remove(); s.mini = null; } }
 function placeMinis(){
   if (!DESKTOP) return;
   const show = featSwitch.style.display === 'grid';
-  wins.forEach(o => { if (o.kind === 'stream' && (!show || !o.preview)) dropMini(o); });
+  shownWins().forEach(o => { if (o.kind === 'stream' && (!show || !o.preview)) dropMini(o); });
   if (!show){ miniClip.style.display = 'none'; return; }
   const headH = featSwitch.classList.contains('floating') ? (featSwitch.querySelector('.fs-head')?.offsetHeight || 0) - 2 : 0;   // floating: the top bar stays put over the list
   Object.assign(miniClip.style, {
