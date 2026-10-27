@@ -33,7 +33,7 @@
 .bar.b1 .ptabs.solo{display:none}
 .bar.b1:has(.ptabs.solo) .bar-av .pi{display:grid}
 /* Settings › Windows: the bar's name off (the picture, a small ▾ and the tabs) */
-.bar.nm-off .col-pick{width:42px;min-width:42px !important;max-width:42px;flex:none;color:transparent}
+.bar.nm-off .col-pick{width:42px;min-width:42px !important;max-width:42px;flex:none;text-indent:200px;text-overflow:clip}   /* the name pushed out, not made transparent: the ▾ is drawn in the text's colour */
 .bar.nm-off .title{display:none}
 
 /* ---------- tabs you're not watching sit under the one you watch: invisible, playing, muted ---------- */

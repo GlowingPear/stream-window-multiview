@@ -257,6 +257,7 @@ test('Settings › Windows: names off, Always / Never in ⋯ and the order of th
   await page.evaluate(() => window.openSettings('windows'));
   await page.click('#barNameStream');
   assert.equal(await page.locator('#stage .win.stream .bar.nm-off').count(), 1, 'the stream\'s name is off');
+  assert.notEqual(await page.$eval('#stage .win.stream .bar.nm-off .col-pick', s => getComputedStyle(s).color), 'rgba(0, 0, 0, 0)', 'its ▾ still shows (drawn in the text\'s colour)');
   // Never in ⋯: Reload, right next to ⋯; then Pop out instead (Reload back to When out of room)
   await page.click('#wbList [data-k=reload] button:has-text("Never in ⋯")');
   const order = () => page.$$eval('#stage .win.stream .btns > button', bs => bs.map(b => b.dataset.a));
