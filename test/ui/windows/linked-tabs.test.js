@@ -71,7 +71,7 @@ test('opening them: one stream window and one chat window, a tab per site; switc
   const hidden = w.find(x => x.kind === 'stream' && x.hidden), lead = w.find(x => x.kind === 'stream' && !x.hidden);
   assert.deepEqual([hidden.x, hidden.y, hidden.w, hidden.h], [lead.x, lead.y, lead.w, lead.h], 'the hidden tab sits under it, the same size');
   assert.equal(hidden.muted, true, 'and is muted');
-  assert.deepEqual(await tabs(page), ['ptab kick on live', 'ptab twitch live', 'ptab youtube off']);
+  assert.deepEqual(await tabs(page), ['ptab kick on live', 'ptab twitch live', 'ptab youtube off locked']);
   // the bar's buttons are the site's: Twitch's window has no Like (only YouTube's does) — and switching keeps place and sound
   await page.evaluate(() => { const w = window.openWins().find(x => x.kind === 'stream' && !x.hiddenTab); w.muted = false; w.vol = 0.5; });
   await page.click('#stage .win.stream:not(.tab-hidden) .ptab.twitch');
@@ -84,6 +84,52 @@ test('opening them: one stream window and one chat window, a tab per site; switc
   await page.click('#stage .win.stream:not(.tab-hidden) .bar .grab');
   await press(page, 'Alt+Digit1');
   assert.equal((await shown(page, 'stream'))[0].ch, 'quietkoala');
+});
+
+test('an offline site\'s tab can\'t be clicked, dragged out or switched to, and its menu has nothing that loads it', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'stream'));
+  const yt = '#stage .win.stream:not(.tab-hidden) .ptab.youtube';
+  assert.equal(await page.getAttribute(yt, 'aria-disabled'), 'true');
+  assert.match(await page.getAttribute(yt, 'title'), /YouTube · offline\nIt opens here when it goes live\./);
+  await page.click(yt, { force: true });   // (Playwright won't click it by itself: it's marked disabled)
+  assert.equal((await all(page)).length, 2, 'clicking it opens nothing');
+  await page.dragAndDrop(yt, '#stage', { force: true, targetPosition: { x: 400, y: 400 } });
+  assert.equal((await all(page)).length, 2, 'nor does dragging it out');
+  // ⌥3 does nothing; ⌥→ goes past it
+  await page.click('#stage .win.stream:not(.tab-hidden) .bar .grab');
+  await press(page, 'Alt+Digit3');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'quietkoala');
+  await press(page, 'Alt+ArrowRight');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'tw:quietkoala');
+  await press(page, 'Alt+ArrowRight');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'quietkoala', 'round to Kick, past YouTube');
+  await page.focus('#stage .win.stream:not(.tab-hidden) .ptab.kick');
+  await press(page, 'Alt+ArrowRight');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'tw:quietkoala', 'a focused tab: one step, not two');
+  await press(page, 'Alt+ArrowLeft');
+  assert.equal((await all(page)).length, 2);
+  // its menu: no Watch here, own window or side by side
+  await page.click(yt, { button: 'right', force: true });
+  const text = await page.textContent('#tabMenu');
+  assert.match(text, /quietkoala on YouTube · offline/);
+  for (const s of ['Watch here', 'Open in its own window', 'side by side']) assert.ok(!text.includes(s), s);
+  assert.ok(text.includes('Unlink from quietkoala'));
+  await page.keyboard.press('Escape');
+});
+
+test('a tab you aren\'t watching that goes offline is closed (not loaded), and comes back when it\'s live again', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'both'));
+  assert.equal((await all(page)).length, 4);
+  await page.evaluate(live => window.smvNotes.liveStatus({ ...live, 'tw:quietkoala': { live: false, checked: Date.now() } }), LIVE);
+  let w = await all(page);
+  assert.deepEqual(w.map(x => x.kind + ' ' + x.ch).sort(), ['chat quietkoala', 'stream quietkoala'], 'Twitch\'s stream and chat tabs are closed');
+  assert.deepEqual(await tabs(page), ['ptab kick on live', 'ptab twitch off locked', 'ptab youtube off locked'], 'its tab stays, offline');
+  assert.equal(await page.locator('#stage .win.stream .ptab-add').count(), 0, 'not as closed by you (no +)');
+  await page.evaluate(live => window.smvNotes.liveStatus(live), LIVE);
+  w = await all(page);
+  assert.ok(w.some(x => x.kind === 'stream' && x.ch === 'tw:quietkoala' && x.hidden), 'live again: its tab is back');
 });
 
 test('closing one tab leaves the others; + brings it back; the window\'s ✕ closes them all', async t => {

@@ -61,13 +61,18 @@ function tabChannels(w){
 // A site of this streamer that's in a window of its own right now
 const splitOut = (lead, ch) => wins.some(o => o.split && o.kind === lead.kind && o.channel === ch && o !== lead);
 const memberFor = (w, ch) => frameOf(w).find(o => o.channel === ch) || null;
+// A site known to be offline: its tab can't be clicked and isn't loaded (it opens by itself when it goes live).
+// Not known yet (no live check so far) counts as watchable.
+const siteOffline = ch => { const i = infoFor(ch); return !!i && !i.live && !i.missing; };
+const tabLocked = (w, ch) => siteOffline(ch) && leaderOf(w).channel !== ch;
 const tabNo = (w, ch) => tabChannels(w).indexOf(ch) + 1;
 function tabTip(w, ch){
   const info = infoFor(ch), p = platOf(ch), m = memberFor(w, ch);
   const state = info ? (info.missing ? 'channel not found: it may have been renamed (right-click to fix or unlink it)' : info.live ? 'live' + (info.viewers ? ` · ${Number(info.viewers).toLocaleString()} watching` : '') : 'offline') : '';
   const alert = m && m.alert ? (m.alert.kind === 'spam' ? ' · likely spam' : ' · a message mentions you') : (m && newFor(ch) && m.kind === 'chat' ? ` · ${newFor(ch)} new` : '');
   const solo = tabChannels(w).length < 2;
-  return `${PLAT_NAME[p]}${w.kind === 'chat' ? ' chat' : ''}${state ? ' · ' + state : ''}${alert}` + (solo ? '' : `\nClick to watch it here (${keyName('Alt+' + tabNo(w, ch))}). Middle-click closes it. Drag it out for its own window.`);
+  const how = tabLocked(w, ch) ? '\nIt opens here when it goes live.' : `\nClick to watch it here (${keyName('Alt+' + tabNo(w, ch))}). Middle-click closes it. Drag it out for its own window.`;
+  return `${PLAT_NAME[p]}${w.kind === 'chat' ? ' chat' : ''}${state ? ' · ' + state : ''}${alert}` + (solo ? '' : how);
 }
 // The tabs (K / T / Y) on one window's bar
 function renderSiteTabs(w){
@@ -78,9 +83,9 @@ function renderSiteTabs(w){
     const m = memberFor(w, ch), info = infoFor(ch), p = platOf(ch), on = m && (m === lead || (lead.sbs && m.kind === lead.kind));
     const cls = ['ptab', p, on ? 'on' : '', info && info.live ? 'live' : info ? 'off' : '', m && m.alert ? (m.alert.kind === 'spam' ? 'spam' : 'at') : '',
       m && m !== lead && m.kind === 'chat' && newFor(ch) ? 'new' : '', m && m.glowUntil > Date.now() ? 'newsite' : '', solo ? 'solo' : '',
-      info && info.missing && streamerOf(ch) ? 'gone' : ''].filter(Boolean).join(' ');   // a renamed or deleted channel: Fix or Unlink in its menu
+      info && info.missing && streamerOf(ch) ? 'gone' : '', !solo && tabLocked(w, ch) ? 'locked' : ''].filter(Boolean).join(' ');   // gone: a renamed or deleted channel (Fix or Unlink in its menu)
     const name = tabTip(w, ch);
-    const b = element('button', { class: cls, type: 'button', role: 'tab', 'aria-selected': String(!!on), tabindex: on ? '0' : '-1',
+    const b = element('button', { class: cls, type: 'button', role: 'tab', 'aria-selected': String(!!on), tabindex: on ? '0' : '-1', 'aria-disabled': !solo && tabLocked(w, ch) && 'true',
       'aria-label': name.split('\n')[0], dataset: { ch, cmd: 'win.tab' } }, (PLAT_NAME[p] || '?')[0]);
     b.title = name;
     return b;
@@ -102,7 +107,7 @@ const renderAllSiteTabs = () => wins.forEach(renderSiteTabs);
 function syncFrameRects(w){
   if (!w.frame || w.hiddenTab) return;
   const members = membersOf(w.frame).filter(o => o !== w);
-  if (!members.length) return;
+  if (!members.length){ w.el.style.setProperty('--sbs-n', 1); w.el.classList.remove('sbs-lead'); return; }
   const cols = w.sbs ? [w, ...members.filter(o => o.kind === w.kind)] : [];
   w.el.style.setProperty('--sbs-n', cols.length || 1);
   w.el.classList.toggle('sbs-lead', cols.length > 1);
@@ -154,7 +159,18 @@ function showTab(w, { follow = true } = {}){
     const c = wins.find(o => o.kind === 'chat' && o.channel === w.channel && o.frame && o.hiddenTab && !sbsOn(o));
     if (c && !c.typing) showTab(c, { follow: false });
   }
+  dropOfflineTabs();
   store.changed('wins', 'tabs'); save();
+}
+// Tabs you're not watching whose site is offline are closed (not loaded, and not counted as closed by you: the
+// tab comes back when that site goes live). The one you watch stays, also offline.
+function dropOfflineTabs(){
+  const gone = wins.filter(o => o.frame && o.hiddenTab && siteOffline(o.channel) && membersOf(o.frame).length > 1);
+  if (!gone.length) return;
+  const leads = new Set(gone.map(o => leaderOf(o)));
+  gone.forEach(o => closeWin(o));
+  leads.forEach(l => { if (wins.includes(l)){ syncFrameRects(l); renderFrame(l); } });
+  store.changed('tabs'); save();
 }
 // Tabs you're not watching play at the site's lowest quality (Settings › Linked channels › Playing), where it has one
 function playQuality(w){
@@ -242,29 +258,29 @@ function rememberSplit(w, on){
 }
 // Switch by number (⌥1–3) or next / previous (⌥← ⌥→, Tab in an empty chat box)
 function switchTo(w, n){
-  const chs = tabChannels(w), ch = chs[n - 1]; if (!ch) return false;
+  const chs = tabChannels(w), ch = chs[n - 1]; if (!ch || tabLocked(w, ch)) return false;
   const m = memberFor(w, ch);
   if (m) showTab(m); else addTab(w, ch, true);
   return true;
 }
 function stepTab(w, d){
-  const chs = tabChannels(w); if (chs.length < 2) return false;
+  const all = tabChannels(w), chs = all.filter(ch => !tabLocked(w, ch)); if (chs.length < 2) return false;   // (past the offline ones)
   const i = chs.indexOf(leaderOf(w).channel);
-  return switchTo(w, ((i + d + chs.length) % chs.length) + 1);
+  return switchTo(w, all.indexOf(chs[(i + d + chs.length) % chs.length]) + 1);
 }
 
 /* ---- the tab menu (right-click a tab) ---- */
 let tabMenu, tabMenuFor = null;
 function openTabMenu(w, ch, at){
-  const lead = leaderOf(w), m = memberFor(w, ch), p = platOf(ch), name = nameOf(ch), info = infoFor(ch);
+  const lead = leaderOf(w), m = memberFor(w, ch), p = platOf(ch), name = nameOf(ch), info = infoFor(ch), locked = tabLocked(w, ch);   // offline: nothing that loads it
   const item = (ico, label, run, { key, danger, cmd } = {}) => element('button', { type: 'button', role: 'menuitem', class: danger ? 'danger' : '', dataset: { cmd: cmd || 'win.tab' },
     onclick: () => { tabMenu.hidden = true; run(); } }, element('span', { class: 'tm-ico', html: icon[ico] || '' }), element('span', 'tm-t', label), key && element('small', null, key));
   tabMenu.replaceChildren(...[   // (the items that don't apply are false or undefined: left out, not shown as text)
     element('div', { class: 'tm-head', role: 'presentation' }, `${name} on ${PLAT_NAME[p]}` + (info ? info.missing ? ' · not found' : info.live ? ' · live' : ' · offline' : '')),
     info && info.missing && item('link', 'Fix: pick its new name', () => { unlink(ch); openLinkCard(streamerOf(lead.channel) ? lead.channel : accountsOf(lead.channel)[0], { add: true }); }),
-    item('play', 'Watch here', () => m ? showTab(m) : addTab(lead, ch, true), { key: keyName('Alt+' + tabNo(w, ch)) }),
-    item('pop', 'Open in its own window', () => splitTab(m || addTab(lead, ch, false))),
-    frameOf(lead).length + (m ? 0 : 1) > 1 && item('columns', lead.sbs ? 'Back to tabs' : 'Both side by side in this window', () => { if (!m) addTab(lead, ch, false); setSideBySide(lead, !lead.sbs); }),
+    !locked && item('play', 'Watch here', () => m ? showTab(m) : addTab(lead, ch, true), { key: keyName('Alt+' + tabNo(w, ch)) }),
+    !locked && item('pop', 'Open in its own window', () => splitTab(m || addTab(lead, ch, false))),
+    !locked && frameOf(lead).length + (m ? 0 : 1) > 1 && item('columns', lead.sbs ? 'Back to tabs' : 'Both side by side in this window', () => { if (!m) addTab(lead, ch, false); setSideBySide(lead, !lead.sbs); }),
     m && item('close', 'Close this tab', () => closeTab(m), { key: 'Middle-click' }),
     element('hr'),
     streamerOf(ch)?.main !== ch && item('star', `Make ${PLAT_NAME[p]} the main channel`, () => setMain(ch)),
@@ -290,8 +306,9 @@ function unlinkTab(ch){
 function openAddMenu(w, at){
   const lead = leaderOf(w), closed = (closedTabs[lead.frame] || []).filter(ch => !memberFor(lead, ch));
   tabMenu.replaceChildren(element('div', { class: 'tm-head', role: 'presentation' }, 'Open again'),
-    ...closed.map(ch => element('button', { type: 'button', role: 'menuitem', dataset: { cmd: 'win.tabAdd' }, onclick: () => { tabMenu.hidden = true; addTab(lead, ch, true); } },
-      element('span', { class: 'tm-ico', html: `<i class="pi pi-${platOf(ch)}">${PLAT_NAME[platOf(ch)][0]}</i>` }), element('span', 'tm-t', `${PLAT_NAME[platOf(ch)]} · ${chLabel(ch)}`))));
+    ...closed.map(ch => element('button', { type: 'button', role: 'menuitem', disabled: siteOffline(ch), dataset: { cmd: 'win.tabAdd' }, onclick: () => { tabMenu.hidden = true; addTab(lead, ch, true); } },
+      element('span', { class: 'tm-ico', html: `<i class="pi pi-${platOf(ch)}">${PLAT_NAME[platOf(ch)][0]}</i>` }), element('span', 'tm-t', `${PLAT_NAME[platOf(ch)]} · ${chLabel(ch)}`),
+      siteOffline(ch) && element('small', null, 'offline'))));
   tabMenu.hidden = false; tabMenuFor = at;
   const r = at.getBoundingClientRect();
   tabMenu.style.left = Math.max(8, Math.min(innerWidth - tabMenu.offsetWidth - 8, r.left)) + 'px';
@@ -331,6 +348,7 @@ function onLive(){
     winTimer(lead, 'tabEnd', () => tabEnded(lead), lead.raided ? 0 : 60000);
   });
   prevLive = now;
+  dropOfflineTabs();
 }
 function tabEnded(w){
   if (!wins.includes(w) || w.hiddenTab || infoFor(w.channel)?.live || optFor(w.channel, 'ended') === 'stay') return;
@@ -338,10 +356,11 @@ function tabEnded(w){
   const live = accountsOf(w.channel).filter(ch => ch !== w.channel && infoFor(ch)?.live && !splitOut(w, ch));
   if (!live.length) return;
   const to = live.includes(s.main) ? s.main : live[0], m = members.find(o => o.channel === to);
-  const was = w.channel;
+  const was = w.channel, id = w.frame || null;
   if (m) showTab(m); else addTab(w, to, true);
-  frameNote(leaderOf(w), [element('b', null, nameOf(was)), `'s ${PLAT_NAME[platOf(was)]} stream ended: watching ${PLAT_NAME[platOf(to)]} now`],
-    [[`Stay on ${PLAT_NAME[platOf(was)]}`, () => { const back = memberFor(leaderOf(w), was); if (back) showTab(back); }, true]]);
+  const leadNow = () => (id && membersOf(id).find(o => !o.hiddenTab)) || leaderOf(w);
+  frameNote(leadNow(), [element('b', null, nameOf(was)), `'s ${PLAT_NAME[platOf(was)]} stream ended: watching ${PLAT_NAME[platOf(to)]} now`],
+    [[`Stay on ${PLAT_NAME[platOf(was)]}`, () => { const l = leadNow(), back = memberFor(l, was); if (back) showTab(back); else addTab(l, was, true); }, true]]);   // (its tab was closed as offline: open again)
 }
 
 /* ---- opening a linked streamer: their sites as tabs in one window (or as Settings says) ---- */
@@ -352,7 +371,7 @@ function openStreamer(ch, mode = 'both', chs){
   const live = all.filter(c => infoFor(c)?.live);
   let want = chs && chs.length ? chs : live.length ? live : [s.main];
   const first = want.includes(s.main) ? s.main : want[0];
-  want = [first, ...want.filter(c => c !== first)];
+  want = [first, ...want.filter(c => c !== first && !siteOffline(c))];   // an offline site only when it's the one asked for
   const tabs = optFor(ch, 'streams') !== 'separate', chats = linkOpt('chats');
   let streamLead = null;
   const open = (kind, list, together, rectOf) => {
@@ -538,7 +557,7 @@ function init(){
     e.stopPropagation();
     if (t.b.classList.contains('ptab-add')) return openAddMenu(t.w, t.b);
     if (t.b.classList.contains('ptab-join')) return joinTab(t.w);
-    if (t.b.classList.contains('solo') || t.b.dragged) return;
+    if (t.b.classList.contains('solo') || t.b.classList.contains('locked') || t.b.dragged) return;
     const ch = t.b.dataset.ch, m = memberFor(t.w, ch);
     if (m) showTab(m); else addTab(t.w, ch, true);
   });
@@ -546,7 +565,7 @@ function init(){
     const t = tabOf(e); if (!t || e.button !== 1 || t.b.classList.contains('solo')) return;
     e.preventDefault(); const m = memberFor(t.w, t.b.dataset.ch); if (m) closeTab(m);
   });
-  stage.addEventListener('mousedown', e => { if (e.button === 1 && tabOf(e)) e.preventDefault(); });   // (no autoscroll)
+  stage.addEventListener('mousedown', e => { const t = tabOf(e); if (t && (e.button === 1 || t.b.classList.contains('locked'))) e.preventDefault(); });   // (no autoscroll; an offline tab doesn't take the focus)
   stage.addEventListener('contextmenu', e => {
     const t = tabOf(e); if (!t || !t.b.dataset.ch || !streamerOf(t.b.dataset.ch)) return;
     e.preventDefault(); openTabMenu(t.w, t.b.dataset.ch, t.b);
@@ -554,7 +573,7 @@ function init(){
   stage.addEventListener('pointerdown', e => {
     const t = tabOf(e); if (!t || e.button !== 0) return;
     e.stopPropagation();                         // (the bar doesn't drag the window from a tab)
-    if (t.b.classList.contains('solo') || !t.b.dataset.ch) return;
+    if (t.b.classList.contains('solo') || t.b.classList.contains('locked') || !t.b.dataset.ch) return;
     const sx = e.clientX, sy = e.clientY, b = t.b; b.dragged = false;
     const move = ev => { if (Math.abs(ev.clientY - sy) > 40 || Math.abs(ev.clientX - sx) > 80){ b.dragged = true; b.classList.add('dragging-out'); } };
     const up = ev => {
@@ -569,7 +588,7 @@ function init(){
     addEventListener('pointermove', move); addEventListener('pointerup', up);
   }, true);
   stage.addEventListener('keydown', e => {
-    const t = tabOf(e); if (!t || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    const t = tabOf(e); if (!t || e.altKey || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;   // (⌥← ⌥→ are the window's, below: not twice)
     e.preventDefault(); stepTab(t.w, e.key === 'ArrowRight' ? 1 : -1);
     leaderOf(t.w).el.querySelector('.ptab.on')?.focus();
   });
