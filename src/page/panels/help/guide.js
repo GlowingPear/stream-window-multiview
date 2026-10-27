@@ -324,7 +324,7 @@ function openPop(btn){
   const t = bySlug.get(btn.dataset.helpTopic); if (!t) return;
   if (gd.pop && !gd.pop.hidden && gd.popFor === btn){ gd.pop.hidden = true; return; }
   gd.popFor = btn;
-  gd.pop.replaceChildren(element('div', 'gd-pt', gdTile(t.icon), element('b', null, t.title)), t.lede ? element('p', null, t.lede) : null,
+  gd.pop.replaceChildren(element('div', 'gd-pt', gdTile(t.icon), element('b', null, t.title)), t.lede ? element('p', null, t.lede) : '',
     element('button', { type: 'button', class: 'gd-chip pri', onclick: () => { gd.pop.hidden = true; showGuide(t.slug); } }, 'Read the guide ›'));
   gd.pop.hidden = false;
   const r = btn.getBoundingClientRect(), w = gd.pop.offsetWidth;

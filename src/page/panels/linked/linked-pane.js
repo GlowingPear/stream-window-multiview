@@ -34,7 +34,7 @@ function renderLinkedPane(){
   const sugs = on ? suggestions({ all: true }) : [], n = $('#laSugN');
   n.hidden = !sugs.length || !linkOpt('suggest'); n.textContent = sugs.length;
   const dis = dismissed();
-  $('#laSugs').replaceChildren(
+  $('#laSugs').replaceChildren(...[   // (without dismissed ones, their heading is null: left out, not shown as text)
     element('div', 'la-sh', `Suggested · ${sugs.length}`),
     ...(sugs.length ? sugs.map(x => element('div', 'la-row', laPic(x.a, chLabel(x.a)), element('span', 'la-t', element('b', null, chLabel(x.a)), laSite(x.a), laSite(x.b), element('small', null, x.why)),
       element('button', { type: 'button', class: 'btn primary', dataset: { cmd: `link.sug:${x.a}|${x.b}` }, onclick: () => linkPair(x.a, x.b) }, 'Link'),
@@ -42,7 +42,7 @@ function renderLinkedPane(){
       : [element('div', 'la-none', linkOpt('suggest') ? 'Nothing to suggest right now. Save or follow a streamer on another site, or use Link channels… on Linked streamers.' : 'Suggestions are off.')]),
     dis.length ? element('div', 'la-sh', `Dismissed · ${dis.length}`, element('span', null, ': never suggested again, unless you undo it')) : null,
     ...dis.map(x => element('div', 'la-row dim', laPic(x.a, chLabel(x.a)), element('span', 'la-t', element('b', null, chLabel(x.a)), laSite(x.a), laSite(x.b), element('small', null, `Not the same · ${laAgo(x.at)}`)),
-      element('button', { type: 'button', class: 'btn', dataset: { cmd: `link.undoNot:${x.a}|${x.b}` }, title: 'Suggest them again (doesn\'t link them)', onclick: () => forgetNot(x.a, x.b) }, 'Undo'))));
+      element('button', { type: 'button', class: 'btn', dataset: { cmd: `link.undoNot:${x.a}|${x.b}` }, title: 'Suggest them again (doesn\'t link them)', onclick: () => forgetNot(x.a, x.b) }, 'Undo')))].filter(Boolean));
   // Linked streamers, each with its own choices
   const list = listStreamers(), n2 = list.reduce((t, s) => t + s.accounts.length, 0);
   $('#laCount').textContent = list.length ? `${list.length} streamer${list.length === 1 ? '' : 's'} · ${n2} channels` : '';

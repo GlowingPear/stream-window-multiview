@@ -208,6 +208,10 @@ test('suggestions: the same name on another site, Not the same is never suggeste
   const page = await linkedApp(t, { streamers: [], saved: ['mossbyte', 'yt:@mossbyte'] });
   await page.click('#savedBtn');
   assert.match(await page.textContent('#savedList .sv-sug'), /mossbyte on Kick and on YouTube: the same streamer\?/);
+  await page.evaluate(() => window.openSettings('linked', { sub: 'sugs' }));
+  assert.doesNotMatch(await page.textContent('#laSugs'), /null|undefined/, 'nothing dismissed yet: no stray text under the list');
+  await page.keyboard.press('Escape');
+  if (!(await page.isVisible('#savedPanel'))) await page.click('#savedBtn');
   await page.click('#savedList .sv-sug button:has-text("Not the same")');
   assert.equal(await page.locator('#savedList .sv-sug').count(), 0);
   await page.evaluate(() => window.openSettings('linked', { sub: 'sugs' }));

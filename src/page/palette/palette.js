@@ -215,7 +215,7 @@ function palHeadFor(it){
   palHead.replaceChildren(
     element('button', { type: 'button', class: 'pal-backb', tabIndex: -1, title: 'Back (Esc)', 'aria-label': 'Back', html: icon.arrowL, onclick: () => palPop() }),
     (it.avatar !== undefined || it.site) ? palAvatar(it, 'pal-av sm') : element('span', { class: 'pal-ico sm', html: icon[it.icon] || icon.point }),
-    element('b', 'pal-ht', it.title), it.live && palLivePill(), element('i', 'pal-hsep'));
+    element('b', 'pal-ht', it.title), it.live ? palLivePill() : '', element('i', 'pal-hsep'));
 }
 function renderPalette(){
   if (!palOpen()) return;
