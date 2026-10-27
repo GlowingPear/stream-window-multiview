@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.27 (current)
+## 0.3.28 (current)
+- Link a streamer's Kick, Twitch and YouTube accounts: one row, one window with a tab per site
+- Linked accounts is now Linked channels
+
+## 0.3.27
 - Tests: four that failed now and then on CI wait for what they depend on
 - Pairing keys: Grapevine's own key store instead of a copy
 - Contributing: fix gaps in Grapevine's library there, not with a copy here
