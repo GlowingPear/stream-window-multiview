@@ -69,14 +69,21 @@ const chatReady = ch => a.win.waitForFunction(ch => { const w = window.openWins(
 const addBox = (ch, attr) => inChat(ch, attr => { const b = document.createElement('div'); b.setAttribute(attr[0], attr[1]); b.contentEditable = 'true'; document.body.append(b); }, attr);
 const KICK = ['data-testid', 'chat-input'], TWITCH = ['data-a-target', 'chat-input'];
 // both sites live (the app's own check, after a test before loaded the page again, says offline: an offline tab is locked)
-const bothLive = () => a.win.evaluate(() => window.smvNotes.liveStatus({ alpha: { live: true, checked: Date.now() }, 'tw:alpha': { live: true, checked: Date.now() } }));
+const bothLive = ch => a.win.evaluate(ch => window.smvNotes.liveStatus({ [ch]: { live: true, checked: Date.now() }, ['tw:' + ch]: { live: true, checked: Date.now() } }), ch.replace(/^tw:/, ''));
 // Tab (⇧Tab) in the chat's empty box
-const tabIn = async (ch, back) => { await bothLive(); await a.win.waitForSelector('#stage .win.chat:not(.tab-hidden) .ptab:not(.on):not(.locked)'); await inChat(ch, back => { const b = document.querySelector('[contenteditable]'); b.focus(); b.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: back, bubbles: true, cancelable: true })); }, back); };
+const tabIn = async (ch, back) => { await bothLive(ch); await a.win.waitForSelector('#stage .win.chat:not(.tab-hidden) .ptab:not(.on):not(.locked)'); await inChat(ch, back => { const b = document.querySelector('[contenteditable]'); b.focus(); b.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: back, bubbles: true, cancelable: true })); }, back); };
 // asks the chat's page until it says yes (waitForFunction would take its promise for a yes)
 async function untilIn(ch, fn, what, ms = 15000){
   for (const end = Date.now() + ms; Date.now() < end; await new Promise(r => setTimeout(r, 150)))
     if (await inChat(ch, fn).catch(() => false)) return;
   assert.fail(what);
+}
+// it loads another page (as Kick's Cloudflare check does), after the first had loaded
+async function loadAgain(ch){
+  await a.win.waitForFunction(ch => !window.openWins().find(o => o.channel === ch).view.isLoading(), ch);
+  await new Promise(r => setTimeout(r, 500));
+  await inChat(ch, () => { window.__first = true; location.reload(); });
+  await untilIn(ch, () => !window.__first && document.readyState === 'complete', 'the other page loaded');
 }
 const boxFocused = ch => untilIn(ch, () => document.activeElement?.getAttribute('contenteditable') === 'true', `${ch}'s chat box has the keyboard`);
 
@@ -93,11 +100,8 @@ test('Tab in an empty chat box switches site and the keyboard is in the new chat
   assert.equal(await a.win.evaluate(() => window.openWins().some(w => w.channel === 'tw:alpha')), false, 'not open yet');
   await tabIn('alpha', false);
   await chatReady('tw:alpha');
-  // and it loads another page first (as Kick's Cloudflare check does), after the first had loaded: the box is on that one
-  await a.win.waitForFunction(() => !window.openWins().find(o => o.channel === 'tw:alpha').view.isLoading());
-  await new Promise(r => setTimeout(r, 500));
-  await inChat('tw:alpha', () => { window.__first = true; location.reload(); });
-  await untilIn('tw:alpha', () => !window.__first && document.readyState === 'complete', 'the other page loaded');
+  // and it loads another page first: the box is on that one
+  await loadAgain('tw:alpha');
   await addBox('tw:alpha', TWITCH);
   await boxFocused('tw:alpha');
   assert.equal(await a.win.evaluate(() => document.activeElement.tagName), 'WEBVIEW', 'the app\'s keyboard is in the chat, not on its tab');
@@ -105,6 +109,27 @@ test('Tab in an empty chat box switches site and the keyboard is in the new chat
   await inChat('alpha', () => document.activeElement.blur());
   await tabIn('tw:alpha', true);
   await boxFocused('alpha');
+  await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
+  await a.win.evaluate(() => localStorage.removeItem('kickMultiview.linkedOpts'));
+});
+
+test('the keyboard went somewhere else in the app while the chat loaded: it stays there', T, async () => {
+  await a.win.evaluate(() => {
+    localStorage.setItem('kickMultiview.linkedOpts', JSON.stringify({ alsoLive: 'none' }));
+    window.linkedApi.setOn(true);
+    window.linkedApi.link('beta', 'tw:beta');
+    window.frames_.openStreamer('beta', 'chat', ['beta']);
+  });
+  await chatReady('beta');
+  await addBox('beta', KICK);
+  await tabIn('beta', false);
+  await chatReady('tw:beta');
+  await a.win.focus('#savedBtn');
+  await loadAgain('tw:beta');
+  await addBox('tw:beta', TWITCH);
+  await new Promise(r => setTimeout(r, 1000));
+  assert.equal(await inChat('tw:beta', () => document.activeElement?.getAttribute('contenteditable')), null, 'not in the chat box');
+  assert.equal(await a.win.evaluate(() => document.activeElement.id), 'savedBtn', 'still on the button');
   await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
   await a.win.evaluate(() => localStorage.removeItem('kickMultiview.linkedOpts'));
 });

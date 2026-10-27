@@ -18,7 +18,7 @@ test('a chat box that\'s there gets the keyboard at once', async t => {
   const page = await openApp(t);
   await addBox(page);
   await page.waitForSelector('#cbf-box');
-  assert.equal(await focusBox(page), true);
+  assert.equal(await focusBox(page), 'focused');
   assert.equal(await inBox(page), true);
 });
 
@@ -26,7 +26,7 @@ test('a chat still loading: it waits for the site to draw its box', async t => {
   const page = await openApp(t);
   const done = focusBox(page, 4000);
   await addBox(page, 600);
-  assert.equal(await done, true);
+  assert.equal(await done, 'focused');
   assert.equal(await inBox(page), true);
 });
 
@@ -35,15 +35,15 @@ test('pressed or typed somewhere in the chat first, or no box in time: the focus
   const pressed = focusBox(page, 4000);
   await page.evaluate(() => window.dispatchEvent(new Event('pointerdown')));
   await addBox(page, 300);
-  assert.equal(await pressed, false);
+  assert.equal(await pressed, 'left');
   await page.waitForSelector('#cbf-box');
   assert.equal(await inBox(page), false);
   await page.evaluate(() => document.getElementById('cbf-box').remove());
   const typed = focusBox(page, 4000);
   await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' })));
   await addBox(page, 300);
-  assert.equal(await typed, false);
+  assert.equal(await typed, 'left');
   await page.waitForSelector('#cbf-box');
   await page.evaluate(() => document.getElementById('cbf-box').remove());
-  assert.equal(await focusBox(page, 300), false, 'no box: it gives up');
+  assert.equal(await focusBox(page, 300), 'none', 'no box: it gives up');
 });

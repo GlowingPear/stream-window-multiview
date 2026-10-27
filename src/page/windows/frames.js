@@ -519,16 +519,19 @@ const tabKeyJs = w => `window.__kmvTabKey && (window.__kmvTabKey.on = ${!!(strea
 function syncTabKeys(){ wins.forEach(w => { if (w.kind === 'chat' && w.ready && w.view) runIn(w.view, tabKeyJs(w)); }); }
 // The chat Tab switched to: the keyboard goes to its chat box, so you can type straight away. in-site/chat-box-focus.js
 // waits for the site to draw its box; a chat still loading gets it once it has, and one that loads another page first
-// (Kick's Cloudflare check) on that page too (windows/views.js, for 20 s). Done once the script answers.
+// (Kick's Cloudflare check) on that page too (windows/views.js, for 30 s). Done once it has the box, or you pressed first.
 function focusChatBox(w){
   if (w.hiddenTab || !platform(w.channel).chatBox?.box) return;
-  w.focusBoxUntil = Date.now() + 20000;
+  w.focusBoxUntil = Date.now() + 30000;
   focusBoxNow(w);
 }
 function focusBoxNow(w){
   if (!w.view || w.hiddenTab || !(w.focusBoxUntil > Date.now())) return;
+  // (not when the keyboard went somewhere else in the app meanwhile)
+  const a = document.activeElement;
+  if (a && a !== document.body && !frameOf(w).some(o => o.view === a)){ w.focusBoxUntil = 0; return; }
   focusView(w.view);
-  if (w.ready) askIn(w.view, `(${focusBoxAgent})(${JSON.stringify(platform(w.channel).chatBox.box)})`).then(() => { w.focusBoxUntil = 0; }, () => {});
+  if (w.ready) askIn(w.view, `(${focusBoxAgent})(${JSON.stringify(platform(w.channel).chatBox.box)})`).then(r => { if (r !== 'none') w.focusBoxUntil = 0; }, () => {});
 }
 
 /* ---- saving and restoring: the app's windows (persistence.js), saved layouts and undo (saved-layouts.js) ---- */
