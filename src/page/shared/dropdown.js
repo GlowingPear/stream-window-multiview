@@ -93,6 +93,7 @@
     if (e.button !== 0 || !usable(sel)) return;
     e.preventDefault();                       // no system menu
     const again = open && open.sel === sel;
+    sel.dataset.ddMouse = '';                 // focused by script it would get the keyboard's focus ring: not after a click (dropdown.css)
     sel.focus({ preventScroll: true });
     if (again) close(); else show(sel);
   }, true);
@@ -106,6 +107,7 @@
 
   document.addEventListener('keydown', e => {
     const sel = e.target;
+    if (sel instanceof HTMLSelectElement) delete sel.dataset.ddMouse;   // the keyboard: its focus ring again
     if (open && sel === open.sel) {
       const k = e.key;
       if (k === 'ArrowDown') mark(step(open.at, 1), true);
@@ -127,7 +129,10 @@
     }
   }, true);
 
-  document.addEventListener('focusout', e => { if (open && e.target === open.sel) setTimeout(() => { if (open && document.activeElement !== open.sel) close(); }); });
+  document.addEventListener('focusout', e => {
+    if (e.target instanceof HTMLSelectElement) delete e.target.dataset.ddMouse;
+    if (open && e.target === open.sel) setTimeout(() => { if (open && document.activeElement !== open.sel) close(); });
+  });
   document.addEventListener('scroll', e => { if (open && !open.list.contains(e.target)) close(); }, true);
   addEventListener('resize', close);
   addEventListener('blur', close);

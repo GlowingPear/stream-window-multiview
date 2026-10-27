@@ -165,3 +165,23 @@ test('the list: above when there\'s no room below, disabled options skipped, and
   await page.keyboard.press('Escape');
   assert.equal(await page.isVisible('#settingsDlg'), true, 'Escape closes only the list');
 });
+
+test('a dropdown used with the mouse has no focus ring afterwards; used with the keyboard it keeps it', async t => {
+  const page = await openApp(t);
+  await mode(page, 'stream');
+  await add(page, 'alpha', 'bravo');
+  const pick = '#stage .win.stream .col-pick';
+  const ring = () => page.$eval(pick, s => s === document.activeElement && getComputedStyle(s).outlineStyle !== 'none');
+  await page.click(pick);
+  await page.waitForSelector(list);
+  assert.equal(await ring(), false, 'open, from a click');
+  await page.click(pick);                             // closed again by a click
+  assert.equal(await ring(), false, 'closed, from a click');
+  await page.click(pick);
+  await page.click(`${list} button:not(.on)`);
+  assert.equal(await page.$eval(pick, s => s === document.activeElement), true, 'it keeps the focus');
+  assert.equal(await ring(), false, 'picked with the mouse');
+  await page.keyboard.press('ArrowDown');           // the keyboard: the ring shows
+  await page.keyboard.press('Enter');
+  assert.equal(await ring(), true, 'picked with the keyboard');
+});
