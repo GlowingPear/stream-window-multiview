@@ -27,6 +27,21 @@ const all = page => page.evaluate(() => window.openWins().map(w => ({ kind: w.ki
 const shown = async (page, kind) => (await all(page)).filter(w => !w.hidden && (!kind || w.kind === kind));
 const tabs = (page, kind = 'stream') => page.$$eval(`#stage .win.${kind}:not(.tab-hidden) .ptab`, bs => bs.map(b => b.className.replace(/\s+/g, ' ').trim()));
 
+// what each window's bar shows for its sites: the tabs you can see, and whether the badge on its picture shows
+const siteMarks = page => page.$$eval('#stage .win:not(.tab-hidden)', l => l.map(e => {
+  const seen = el => !!el && getComputedStyle(el).display !== 'none' && !!el.getClientRects().length;
+  return [e.classList.contains('chat') ? 'chat' : 'stream', [...e.querySelectorAll('.bar .ptab')].filter(seen).map(b => b.textContent).join(''), seen(e.querySelector('.bar .bar-av .pi'))];
+}));
+test('a window with one site, stream or chat, has no tab: the badge on its picture says the site; a linked one has its tabs instead', async t => {
+  const page = await linkedApp(t);
+  await add(page, 'novalynx');                       // not linked to anything (as a channel a raid opens)
+  await page.waitForSelector('#stage .win.chat .bar .bar-av');
+  assert.deepEqual(await siteMarks(page), [['stream', '', true], ['chat', '', true]], 'the chat too, though its bar has room for a tab');
+  await page.evaluate(() => window.openWins().forEach(w => w.el.querySelector('[data-a=close]')?.click()));
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'both'));
+  await page.waitForSelector('#stage .win.chat:not(.tab-hidden) .bar .bar-av');
+  assert.deepEqual(await siteMarks(page), [['stream', 'KTY', false], ['chat', 'KTY', false]]);
+});
 test('off by default: one row and one window per account, each window with its own site icon and no suffix or tag', async t => {
   const page = await linkedApp(t, { on: false });
   await page.click('#savedBtn');

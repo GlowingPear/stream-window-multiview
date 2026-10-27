@@ -29,10 +29,10 @@
 .ptab-join{flex:none;display:flex;align-items:center;gap:5px;height:22px;padding:0 8px;border:0;border-radius:6px;background:var(--line);color:var(--text);font-size:11.5px;font-weight:600;cursor:pointer}
 .ptab-join:hover{background:var(--line2)}
 .ptab-join i{display:grid}
-/* the picture on the bar: the tab next to it says the site (a bar out of room drops a lone tab first: the picture's badge says it) */
+/* the picture on the bar: the tabs next to it say the sites; a window with just one site has no tab, the picture's badge says it */
 .bar .bar-av .pi{display:none}
-.bar.b1 .ptabs.solo{display:none}
-.bar.b1:has(.ptabs.solo) .bar-av .pi{display:grid}
+.bar:has(.bar-av) .ptabs.solo{display:none}
+.bar:has(.ptabs.solo) .bar-av .pi{display:grid}
 /* Settings › Windows: the bar's name off (the picture, a small ▾ and the tabs) */
 .bar.nm-off .col-pick{width:42px;min-width:42px !important;max-width:42px;flex:none;text-indent:200px;text-overflow:clip}   /* the name pushed out, not made transparent: the ▾ is drawn in the text's colour */
 .bar.nm-off .title{display:none}

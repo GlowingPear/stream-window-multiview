@@ -36,7 +36,7 @@ import { createWin, pushVol } from './windows.js';
    playing, muted. Layouts only see the windows that show (shownWins in core.js).
    Side by side (a frame's w.sbs): every tab shows, a column each, under the title bar of the one you watch.
    A site taken out into its own window (w.split) keeps one icon and a Join button. Every window's bar has its
-   site's icon (one tab), even without linked channels. */
+   site's icon: tabs, or for one site the badge on its picture. */
 const newFrameId = () => 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 const membersOf = id => id ? wins.filter(o => o.frame === id) : [];
 const frameOf = w => w.frame ? membersOf(w.frame) : [w];
@@ -96,7 +96,7 @@ function renderSiteTabs(w){
   if (box.dataset.sig === sig) return;
   box.dataset.sig = sig;
   box.replaceChildren(...parts);
-  box.classList.toggle('solo', parts.length === 1 && solo);    // just its own site's icon (a bar out of room drops it first)
+  box.classList.toggle('solo', parts.length === 1 && solo);    // just its own site: no tab, the badge on the bar's picture says it (frames.css)
   const x = w.el.querySelector('[data-a=close]');
   if (x && w === lead) x.title = frameOf(w).length > 1 ? `Close ${nameOf(w.channel)} (${frameOf(w).map(o => PLAT_NAME[platOf(o.channel)]).join(', ')})` : 'Close';
 }
