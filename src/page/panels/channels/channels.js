@@ -295,7 +295,7 @@ function streamerRow(e){
   live.forEach(c => { const i = infoFor(c); if (i.viewers != null) meta.append(element('span', { class: 'sv-view sv-pv', title: `${PLAT_NAME[platOf(c)]}: watching now` }, siteIcon(c, true), fmtViewers(i.viewers))); });
   if (DESKTOP && ROLE === 'main' && chs.some(c => autoOpen.includes(c))) meta.insertAdjacentHTML('beforeend', `<span class="bolt" title="Opens by itself when any of them goes live">${icon.bolt}</span>`);
   const open = svExpanded.has(s.id);
-  acts.prepend(element('button', { class: 'exp' + (open ? ' on' : ''), html: icon.down, title: open ? 'Hide their accounts' : 'Their accounts', 'aria-expanded': String(open),
+  acts.prepend(element('button', { class: 'exp' + (open ? ' on' : ''), html: icon.chevDown, title: open ? 'Hide their accounts' : 'Their accounts', 'aria-expanded': String(open),
     onclick: ev => { ev.stopPropagation(); if (open) svExpanded.delete(s.id); else svExpanded.add(s.id); renderSaved(); } }));
   rowButtons(acts, [s.main, ...chs.filter(c => c !== s.main)]);
   row.onclick = () => openStreamer(s.main, modeSel.value);

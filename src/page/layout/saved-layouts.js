@@ -84,7 +84,7 @@ function renderPresets(){
   renderPresetsPane();
 }
 // Settings > Layouts: your layouts listed under the built-in ones, each with its base layout's options
-const OPT_NAMES = { linked: 'Linked', autoFit: 'Fit in channels that open by themselves' };
+const OPT_NAMES = { linked: 'Stream and chat together', autoFit: 'Fit in channels that open by themselves' };
 function renderPresetsPane(){
   const list = $('#lyPresetList'), detail = $('#lyPresetDetail'); if (!list) return;
   list.innerHTML = '<div class="ly-list-sec"><span>Your layouts</span><button class="ly-add" title="Save what\'s on screen as a layout">+ Save</button></div>'

@@ -63,7 +63,7 @@ function renderCard(){
   const free = Object.keys(PLATFORMS).filter(p => !chs.some(c => platOf(c) === p));
   if (!free.includes(curPlat)) curPlat = free[0] || 'kick';
   if (free.length){
-    const inp = element('input', { class: 'st-in lc-in', id: 'lcIn', placeholder: 'Name, @handle or link', autocomplete: 'off', spellcheck: false, 'aria-label': 'Their name, @handle or link' });
+    const inp = element('input', { class: 'st-in lc-in', id: 'lcIn', dataset: { cmd: 'link.card' }, placeholder: 'Name, @handle or link', autocomplete: 'off', spellcheck: false, 'aria-label': 'Their name, @handle or link' });
     const err = element('div', { class: 'lc-err', hidden: true });
     const go = element('button', { type: 'button', class: 'btn', dataset: { cmd: 'link.add' } }, 'Link');
     const submit = async () => {

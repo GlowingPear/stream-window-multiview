@@ -69,7 +69,7 @@ function addLayoutCommands(){
     { id: 'switch.toggle', group: 'Switch control', title: 'Switch control', sub: 'Show it as a panel you can move and resize, in any layout (again to put it away)', words: ['switcher'], icon: 'float', keys: 'S', button: '#swBtn' },
     { id: 'layout.menu', group: 'More', title: 'Layout menu', sub: 'The layouts, your saved layouts and their options', icon: 'layout', keys: 'L', button: '#layoutBtn' },
     { id: 'layout.settings', group: 'More', title: 'Layout settings', sub: 'Settings › Layouts', icon: 'gear', button: '#layoutSet', when: () => true },
-    { id: 'layout.linked', kind: 'action', group: 'Layout options', title: 'Linked', sub: 'Each stream and its chat move together (Columns, Focus view)', words: ['move together', 'link chat'],
+    { id: 'layout.linked', kind: 'action', group: 'Layout options', title: 'Stream and chat together', sub: 'Each stream and its chat move together (Columns, Focus view)', words: ['linked', 'move together', 'link chat'],
       icon: 'link', toggle: { get: () => linked, set: on => setLinked(on) } },
     { id: 'layout.autofit', group: 'Layout options', title: 'Fit in channels that open by themselves', sub: 'Auto layout: added as the last stream when they go live',
       icon: 'bolt', when: () => curLayout() === 'auto', toggle: { get: () => $('#lmAutoFit').checked, set: on => { $('#lmAutoFit').checked = on; $('#lmAutoFit').dispatchEvent(new Event('change')); } } },

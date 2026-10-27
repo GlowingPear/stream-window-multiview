@@ -130,7 +130,7 @@
   <div class="lm-opts" id="lmOpts">
     <div class="lm-sec">Options</div>
     <div class="lm-opt zoom-row desk-only" data-for="*"><span>Chat text size<small>Smaller fits more messages and emotes.</small></span><div class="zoom" id="chatZoom" title="Chat text size: smaller fits more messages and emotes"><button data-z="-1" aria-label="Smaller chat text">−</button><span class="zoomPct" id="zoomPct">100%</span><button data-z="1" aria-label="Bigger chat text">+</button></div></div>
-    <label class="lm-opt" data-for="columns focus"><span>Linked<small>Each stream and its chat move together. Off: move and resize windows freely.</small></span><input type="checkbox" class="st-sw" id="lmLinked"></label>
+    <label class="lm-opt" data-for="columns focus"><span>Stream and chat together<small>Each stream and its chat move together. Off: move and resize windows freely.</small></span><input type="checkbox" class="st-sw" id="lmLinked"></label>
     <div class="lm-opt" data-for="chatfocus"><span>Stream columns</span><div class="lm-sw" id="lmCols"><button data-n="1">1</button><button data-n="2">2</button><button data-n="3">3</button></div></div>
     <label class="lm-opt" data-for="auto"><span>Fit in channels that open by themselves<small>Added as the last stream when they go live.</small></span><input type="checkbox" class="st-sw" id="lmAutoFit"></label>
   </div>
@@ -329,7 +329,7 @@
           <p class="st-sub ly-intro">Where the toolbar sits, in every layout. On the left it leaves more height for the streams.</p>
           <div class="ly-cards tb-cards big" role="radiogroup" aria-label="Toolbar"><button data-tbv="top" role="radio" aria-checked="false"><svg class="lm-pic tb-pic" viewBox="0 0 48 30" aria-hidden="true"><rect class="o" x="1" y="1" width="46" height="28" rx="2"/><rect class="b" x="1" y="1" width="46" height="5"/><rect x="3" y="8" width="20.5" height="19"/><rect class="c" x="25.5" y="8" width="19.5" height="19"/></svg><span class="lc-t"><b>Top</b><span>A bar across the top of the window.</span></span><i class="lc-tick" aria-hidden="true"></i></button><button data-tbv="left" role="radio" aria-checked="false"><svg class="lm-pic tb-pic" viewBox="0 0 48 30" aria-hidden="true"><rect class="o" x="1" y="1" width="46" height="28" rx="2"/><rect class="b" x="1" y="1" width="11" height="28"/><rect class="l" x="3" y="5" width="7" height="1.6"/><rect class="l" x="3" y="9" width="7" height="1.6"/><rect class="l" x="3" y="13" width="7" height="1.6"/><rect x="14" y="3" width="15" height="24"/><rect class="c" x="31" y="3" width="14" height="24"/></svg><span class="lc-t"><b>Left</b><span>A column down the side, each button with its name. More height for the streams.</span></span><i class="lc-tick" aria-hidden="true"></i></button><button data-tbv="icons" role="radio" aria-checked="false"><svg class="lm-pic tb-pic" viewBox="0 0 48 30" aria-hidden="true"><rect class="o" x="1" y="1" width="46" height="28" rx="2"/><rect class="b" x="1" y="1" width="5" height="28"/><rect class="l" x="2.5" y="5" width="2" height="2"/><rect class="l" x="2.5" y="9" width="2" height="2"/><rect class="l" x="2.5" y="13" width="2" height="2"/><rect x="8" y="3" width="18.5" height="24"/><rect class="c" x="28.5" y="3" width="16.5" height="24"/></svg><span class="lc-t"><b>Left, icons only</b><span>A slim column: the most room for the streams. Point at a button to see its name.</span></span><i class="lc-tick" aria-hidden="true"></i></button></div>
         </div>
-        <label class="st-opt" data-opt="columns"><span class="st-t">Linked<small>Each stream and its chat move together. Off: move and resize windows freely.</small></span><input type="checkbox" class="st-sw" id="lyLinked"></label>
+        <label class="st-opt" data-opt="columns"><span class="st-t">Stream and chat together<small>Each stream and its chat move together. Off: move and resize windows freely.</small></span><input type="checkbox" class="st-sw" id="lyLinked"></label>
         <label class="st-opt" data-opt="auto"><span class="st-t">Fit in channels that open by themselves<small>A saved channel that opens because it went live goes last (its chat too), and the others keep their order. Not once you've moved or resized a window yourself.</small></span><input type="checkbox" class="st-sw" id="autoFit"></label>
       </section>
       <section class="st-pane" data-s="chat" hidden>
@@ -405,7 +405,7 @@
           <div id="laSugs" class="la-list"></div>
         </div>
         <div class="st-subpane" data-t="linked" hidden>
-          <div class="la-head"><span id="laCount"></span><button class="btn" id="laAdd" title="Pick a streamer, then add their other sites">Link accounts…</button></div>
+          <div class="la-head"><span id="laCount"></span><button class="btn" id="laAdd" data-cmd="link.accounts" title="Pick a streamer, then add their other sites">Link accounts…</button></div>
           <div id="laLinked" class="la-list"></div>
         </div>
         </div>

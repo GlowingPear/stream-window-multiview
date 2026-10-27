@@ -53,5 +53,18 @@ test('every visible button and tab has a command in the search box, in every par
   await page.click('#layoutBtn'); await page.click('#layoutMenu .lm-tabs [data-t=toolbar]'); await page.click('#layoutMenu [data-tbv=left]');
   await page.keyboard.press('Escape');
   await check(page, 'the toolbar on the left', seen);
+  // Linked accounts on: a window with a tab per site, its tab menu and +, the Channels row and its accounts,
+  // Settings › Linked accounts' tabs and the Link accounts card
+  await page.evaluate(() => { window.linkedApi.setOn(true); window.linkedApi.link('alpha', 'tw:alpha'); window.smvNotes.liveStatus({ alpha: { live: true, checked: Date.now() }, 'tw:alpha': { live: true, checked: Date.now() } }); });
+  await page.evaluate(() => { localStorage.setItem('kickMultiview.saved', JSON.stringify(['alpha', 'tw:alpha'])); window.frames_.openStreamer('alpha', 'both'); });
+  await page.waitForTimeout(300);
+  await check(page, 'a window with tabs', seen);
+  await page.click('#stage .win.stream:not(.tab-hidden) .ptab.twitch', { button: 'right' }); await check(page, 'the tab menu', seen);
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.openSettings('linked'));
+  for (const sub of ['tabs', 'playing', 'live', 'sugs', 'linked']){ await page.click(`#laTabs [data-t=${sub}]`); await check(page, 'Settings › Linked accounts › ' + sub, seen); }
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.openLinkCard('alpha')); await check(page, 'the Link accounts card', seen);
+  await page.keyboard.press('Escape');
   assert.deepEqual([...seen].map(([u, part]) => `${u} (${part})`), [], 'buttons without a command');
 });
