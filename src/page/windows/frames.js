@@ -26,7 +26,7 @@ import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { winTimer } from '../shared/timers.js';
 import { isPaused } from './pause.js';
-import { focusView, loadView, runIn } from './view.js';
+import { askIn, focusView, loadView, runIn } from './view.js';
 import { createWin, pushVol } from './windows.js';
 
 /* ---- Tabs: one window for a linked streamer's sites (Settings › Linked channels) ----
@@ -517,14 +517,18 @@ function tabKeyAgent(){
 // Tab only switches where it would: a chat of a linked streamer, with the setting on
 const tabKeyJs = w => `window.__kmvTabKey && (window.__kmvTabKey.on = ${!!(streamerOf(w.channel) && linkOpt('tabKey') && tabChannels(w).length > 1)})`;
 function syncTabKeys(){ wins.forEach(w => { if (w.kind === 'chat' && w.ready && w.view) runIn(w.view, tabKeyJs(w)); }); }
-// The chat Tab switched to: the keyboard goes to its chat box, so you can type straight away (a chat still loading:
-// once it has, windows/views.js; in-site/chat-box-focus.js waits for the site to draw its box)
+// The chat Tab switched to: the keyboard goes to its chat box, so you can type straight away. in-site/chat-box-focus.js
+// waits for the site to draw its box; a chat still loading gets it once it has, and one that loads another page first
+// (Kick's Cloudflare check) on that page too (windows/views.js, for 20 s). Done once the script answers.
 function focusChatBox(w){
-  const sel = platform(w.channel).chatBox?.box;
-  if (!sel || w.hiddenTab) return;
+  if (w.hiddenTab || !platform(w.channel).chatBox?.box) return;
+  w.focusBoxUntil = Date.now() + 20000;
+  focusBoxNow(w);
+}
+function focusBoxNow(w){
+  if (!w.view || w.hiddenTab || !(w.focusBoxUntil > Date.now())) return;
   focusView(w.view);
-  if (w.ready && w.view){ w.focusBox = false; runIn(w.view, `(${focusBoxAgent})(${JSON.stringify(sel)})`); }
-  else w.focusBox = true;
+  if (w.ready) askIn(w.view, `(${focusBoxAgent})(${JSON.stringify(platform(w.channel).chatBox.box)})`).then(() => { w.focusBoxUntil = 0; }, () => {});
 }
 
 /* ---- saving and restoring: the app's windows (persistence.js), saved layouts and undo (saved-layouts.js) ---- */
@@ -621,7 +625,7 @@ function init(){
   window.frames_ = { showTab, addTab, closeTab, splitTab, joinTab, setSideBySide, openStreamer, mergeOpen, splitAll, frameOf, stepTab, switchTo };   // for the tests
 }
 
-export { addTab, applyFrames, closedTabs, closeFrame, closeTab, focusChatBox, frameFields, frameNote, frameOf, init,
+export { addTab, applyFrames, closedTabs, closeFrame, closeTab, focusBoxNow, frameFields, frameNote, frameOf, init,
   joinTab, leaderOf, mergeOpen, openStreamer, playQuality, putTabBack, renderSiteTabs, restoreFrames, setSideBySide,
   showTab, splitTab, stepTab, switchTo, syncFrameAlert, syncFrameRects, tabChannels, tabKeyAgent, tabKeyJs,
   unlinkTab };
