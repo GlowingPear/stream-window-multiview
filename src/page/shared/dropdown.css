@@ -11,6 +11,7 @@
 .dd-list button.ic.on::before{display:none}
 .dd-list button.ic .dd-t{min-width:0;overflow:hidden;text-overflow:ellipsis}
 select.dd-open{border-color:var(--accent)}
+select[data-dd-mouse]:focus-visible{outline:none}   /* opened with the mouse: no keyboard focus ring (dropdown.js) */
 .menu button{display:flex;flex-direction:column;gap:2px;text-align:left;padding:8px 10px;border:0;border-radius:7px;background:transparent;cursor:pointer}
 .menu button:hover{background:var(--panel2)}
 .menu button b{font-size:13px}
