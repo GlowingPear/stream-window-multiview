@@ -5,7 +5,7 @@
 | Folder | What's in it |
 |---|---|
 | `core.js` | The page's shared state and constants: the windows (`wins`), the layout, the role (`ROLE`) |
-| `shared/` | Building blocks: saved settings (`settings.js`), what several parts show (`store.js`), messages from outside the page (`incoming.js`), building elements (`element.js`), timers (`timers.js`), icons, pop-up messages (`flash.js`), the confirm dialog (`ask.js`), menus that close on an outside press (`popover.js`), tooltips, what the search box can find and do (`commands.js`, `fuzzy.js`) |
+| `shared/` | Building blocks: saved settings (`settings.js`), what several parts show (`store.js`), messages from outside the page (`incoming.js`), building elements (`element.js`), timers (`timers.js`), icons, pop-up messages (`flash.js`), the confirm dialog (`ask.js`), menus that close on an outside press (`popover.js`), dialogs and menus over another dialog (`layers.js`), tooltips, what the search box can find and do (`commands.js`, `fuzzy.js`) |
 | `platforms/` | One module per site (`kick.js`, `twitch.js`, `youtube.js`), `platforms.js` (channel ids and links), the YouTube-only settings, the link with Pear Drops (`pear-drops.js`, `players-link.js`) |
 | `in-site/` | Scripts that run inside the Kick, Twitch and YouTube pages (see below) |
 | `windows/` | Stream, chat and other windows: creating them, their views (`view.js`), title bars, pausing (`pause.js`, `pause-state.js`), pop-out, raids, window capture |
