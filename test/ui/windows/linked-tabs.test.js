@@ -335,6 +335,31 @@ test('Settings › Windows: names off, Always / Never in ⋯ and the order of th
   assert.equal(await page.evaluate(() => window.barButtons().never), null);
 });
 
+test('Settings › Windows: a button you move glides to its place, lifted, and glows there; the others and the preview\'s buttons glide too; not with reduced motion', async t => {
+  const page = await linkedApp(t, { on: false });
+  await page.evaluate(() => window.openSettings('windows'));
+  const moving = () => page.evaluate(() => ({
+    reload: document.querySelector('#wbList [data-k=reload]').getAnimations().length,
+    lifted: document.querySelector('#wbList [data-k=reload]').classList.contains('wb-lift'),
+    others: [...document.querySelectorAll('#wbList .wb-row:not([data-k=reload])')].filter(r => r.getAnimations().length).map(r => r.dataset.k),
+    preview: document.querySelector('#wbPreview [data-k=reload]').getAnimations().length }));
+  await page.click('#wbList [data-k=reload] button:has-text("Never in ⋯")');
+  const m = await moving();
+  assert.ok(m.reload && m.lifted && m.preview, JSON.stringify(m));
+  assert.deepEqual(m.others, ['mod', 'pop', 'max'], 'the rows below it move up');
+  await page.waitForFunction(() => document.querySelector('#wbList [data-k=reload]').classList.contains('wb-glow'), null, { timeout: 3000 });
+  assert.equal(await page.$eval('#wbList .wb-row:last-child', r => r.dataset.k), 'reload', 'at the bottom, next to ⋯');
+  assert.equal(await page.$eval('#wbList [data-k=reload]', r => r.classList.contains('wb-lift')), false, 'put down');
+  // dragging a row: it lifts too
+  await page.locator('#wbList [data-k=max]').dragTo(page.locator('#wbList [data-k=chat]'), { targetPosition: { x: 40, y: 2 } });
+  assert.equal(await page.$eval('#wbList .wb-row:first-child', r => r.dataset.k), 'max');
+  // reduced motion: it just moves
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.click('#wbList [data-k=pop] button:has-text("Never in ⋯")');
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('#wbList .wb-row, #wbPreview .wb-b')].some(e => e.getAnimations().length)), false);
+  assert.equal(await page.$eval('#wbList .wb-row:last-child', r => r.dataset.k), 'pop');
+});
+
 test('the search box: a linked streamer is one result with its sites; "link" finds the linking actions', async t => {
   const page = await linkedApp(t, { saved: ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala', 'mossbyte', 'yt:@mossbyte'] });
   await page.keyboard.press('Control+k');

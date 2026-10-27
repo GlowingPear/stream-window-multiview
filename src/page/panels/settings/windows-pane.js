@@ -42,6 +42,7 @@ const choiceOf = (cfg, k) => cfg.never === k ? 'never' : cfg.always.includes(k) 
 function saveBar(cfg){ settings.set('barButtons', { order: cfg.order, always: cfg.always, never: cfg.never }); store.changed('barButtons'); }
 function setChoice(k, c){
   const cfg = barButtons();
+  movedK = k;
   cfg.always = cfg.always.filter(x => x !== k);
   if (cfg.never === k) cfg.never = null;
   if (c === 'always') cfg.always.push(k);
@@ -65,10 +66,30 @@ function syncBarName(w){
   bar.classList.toggle('nm-off', !!w.channel && !nameShown(w));
 }
 
-let list, preview, dragK = null;
+let list, preview, dragK = null, movedK = null;
+// The rows and the preview's buttons glide to their new places, and the one you moved lifts off the list on its way
+// there, then glows where it lands (a row's place before and after the change: FLIP)
+const EASE = 'cubic-bezier(.2,.8,.2,1)';
+const placesOf = box => new Map([...box.querySelectorAll('[data-k]')].map(e => [e.dataset.k, e.getBoundingClientRect()]));
+function glide(box, before, axis){
+  box.querySelectorAll('[data-k]').forEach(e => {
+    const was = before.get(e.dataset.k), now = e.getBoundingClientRect(); if (!was) return;
+    const d = axis === 'y' ? was.top - now.top : was.left - now.left, mine = e.dataset.k === movedK;
+    const at = f => axis === 'y' ? `translateY(${d * f}px)` : `translateX(${d * f}px)`;
+    if (mine && axis === 'y'){
+      e.classList.add('wb-lift');
+      const lifted = '0 14px 30px rgba(0,0,0,.55)';
+      e.animate([{ transform: at(1) }, { transform: `${at(.82)} scale(1.035)`, boxShadow: lifted, offset: .22 }, { transform: 'scale(1.035)', boxShadow: lifted, offset: .8 }, { transform: 'none' }],
+        { duration: d ? 760 : 420, easing: EASE }).finished.then(() => { e.classList.remove('wb-lift'); if (e.classList.contains('pinned')) e.classList.add('wb-glow'); }, () => {});
+    } else if (mine) e.animate([{ transform: at(1) }, { transform: `${at(.4)} scale(1.25)`, offset: .5 }, { transform: 'none' }], { duration: 620, easing: EASE });
+    else if (d) e.animate([{ transform: at(1) }, { transform: 'none' }], { duration: 420, easing: EASE });
+  });
+}
 function renderWindowsPane(){
   if (!list) return;
   const cfg = barButtons();
+  const anim = !!list.offsetParent && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rows = anim && placesOf(list), btns = anim && placesOf(preview);
   $('#barNameStream').checked = settings.flag('barNameStream', true);
   $('#barNameChat').checked = settings.flag('barNameChat', true);
   const row = k => {
@@ -100,14 +121,16 @@ function renderWindowsPane(){
   // the preview: a title bar with the buttons in this order, the ones always in ⋯ left out
   const shown = keys.filter(k => !cfg.always.includes(k) && !['state', 'inspect'].includes(k));
   preview.replaceChildren(element('span', { class: 'wb-av' }, 'QU'), element('b', 'wb-nm', 'quietkoala ▾'), element('i', { class: 'pi pi-kick' }, 'K'), element('span', 'wb-gap'),
-    ...shown.map(k => element('span', { class: 'wb-b' + (k === cfg.never ? ' pinned' : ''), title: BAR_BUTTONS[k][0], html: k === 'chat' ? icon.plus : icon[BAR_BUTTONS[k][2]] || '' })),
+    ...shown.map(k => element('span', { class: 'wb-b' + (k === cfg.never ? ' pinned' : ''), title: BAR_BUTTONS[k][0], dataset: { k }, html: k === 'chat' ? icon.plus : icon[BAR_BUTTONS[k][2]] || '' })),
     element('span', { class: 'wb-b', title: 'More' }, '⋯'), element('span', { class: 'wb-b', html: icon.close }));
+  if (anim){ glide(list, rows, 'y'); glide(preview, btns, 'x'); }
+  movedK = null;
 }
 // Drag a row: it goes before (or after) another one
 function moveButton(k, to, after){
   const cfg = barButtons(), order = cfg.order.filter(x => x !== k);
   order.splice(order.indexOf(to) + (after ? 1 : 0), 0, k);
-  cfg.order = order; saveBar(cfg);
+  cfg.order = order; movedK = k; saveBar(cfg);
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).

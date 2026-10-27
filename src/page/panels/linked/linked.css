@@ -65,6 +65,10 @@
 .wb-row:first-child{border-top:0}
 .wb-row.pinned{background:color-mix(in srgb,var(--accent) 7%,var(--bg))}
 .wb-row.dragging{opacity:.4}
+.wb-row.wb-lift{position:relative;z-index:2}   /* the row you moved, on its way to its new place (windows-pane.js) */
+.wb-row.wb-glow{animation:wbGlow .9s ease-out}
+@keyframes wbGlow{0%{background:color-mix(in srgb,var(--accent) 22%,var(--bg));box-shadow:0 0 0 0 transparent}30%{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent)}}
+@media (prefers-reduced-motion: reduce){ .wb-row.wb-glow{animation:none} }
 .wb-row.drop-before{box-shadow:inset 0 2px 0 var(--accent)}.wb-row.drop-after{box-shadow:inset 0 -2px 0 var(--accent)}
 .wb-grip{width:14px;color:var(--muted);cursor:grab;display:grid}
 .wb-grip svg{width:14px;height:14px;fill:currentColor;stroke:none}
