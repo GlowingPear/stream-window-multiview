@@ -41,3 +41,23 @@ test('a tab you can\'t see keeps its player loaded and playing, muted; switching
   await a.win.click('#stage .win.stream:not(.tab-hidden) [data-a=close]');
   assert.equal((await streams()).length, 0);
 });
+
+test('Channels: a linked streamer\'s ⚡, bell and profile act on every account', T, async () => {
+  await a.win.evaluate(() => {
+    localStorage.setItem('kickMultiview.saved', JSON.stringify(['alpha', 'tw:alpha']));
+    window.linkedApi.setOn(true); window.linkedApi.link('alpha', 'tw:alpha');
+    window.smvNotes.liveStatus({ alpha: { live: false, checked: Date.now() }, 'tw:alpha': { live: false, checked: Date.now() } });
+  });
+  await a.win.reload(); await a.win.waitForSelector('#savedBtn');
+  await a.win.click('#savedBtn');
+  await a.win.click('#savedList .sv-multi .auto');
+  assert.deepEqual(await a.win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.autoOpen'))), ['alpha'], '⚡ on: the main account opens them');
+  await a.win.click('#savedList .sv-multi .auto');
+  assert.deepEqual(await a.win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.autoOpen'))), [], 'and off');
+  await a.win.click('#savedList .sv-multi .bell');
+  assert.deepEqual((await a.win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.notifyOff')))).sort(), ['alpha', 'tw:alpha'], 'no live notification from any of them');
+  await a.win.click('#savedList .sv-multi .bell');
+  await a.win.click('#savedList .sv-multi .prof');
+  await a.win.waitForSelector('#profDlg:not([hidden])');
+  await a.win.keyboard.press('Escape');
+});

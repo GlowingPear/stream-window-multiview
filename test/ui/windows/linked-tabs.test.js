@@ -268,3 +268,49 @@ test('the search box: a linked streamer is one result with its sites; "link" fin
   const text = await page.textContent('#palList');
   for (const s of ['Link mossbyte on Kick with @mossbyte on YouTube', 'Link accounts…', 'Find streamers on several sites', 'Show linked streamers']) assert.ok(text.includes(s), s);
 });
+
+test('Channels: drag one row onto another links them; Later hides a suggestion until the app starts again', async t => {
+  const page = await linkedApp(t, { streamers: [], saved: ['mossbyte', 'yt:@mossbyte', 'novalynx', 'tw:pixelmoth'] });
+  await page.click('#savedBtn');
+  await page.click('#savedList .sv-sug button:has-text("Later")');
+  assert.equal(await page.locator('#savedList .sv-sug').count(), 0, 'Later hides it');
+  const row = name => page.locator('#savedList > .sv', { has: page.locator(`.nm:text-is("${name}")`) });
+  await row('tw:pixelmoth').count();
+  await row('pixelmoth').dragTo(row('novalynx'));
+  assert.deepEqual(await page.evaluate(() => window.linkedApi.listStreamers().map(s => s.accounts.sort())), [['novalynx', 'tw:pixelmoth']]);
+  assert.match(await page.textContent('#msg'), /Linked: novalynx/);
+});
+
+test('Channels: an account\'s own row opens that site; the streamer\'s ✕ removes every account', async t => {
+  const page = await linkedApp(t, { saved: ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala'] });
+  await page.click('#savedBtn');
+  await page.click('#savedList .sv-multi .exp');
+  await page.click('#savedList .sv-acc:has-text("@quietkoala")');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'yt:@quietkoala');
+  if (!(await page.isVisible('#savedPanel'))) await page.click('#savedBtn');
+  await page.evaluate(() => document.querySelector('#savedList .sv-multi .rm').click());
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.saved'))), []);
+});
+
+test('went live on two sites: one note under the bell, "is live on Kick and Twitch", with Watch as tabs', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => { window.smvNotes.liveNote('quietkoala', { viewers: 1240, title: 'Ranked' }); window.smvNotes.liveNote('tw:quietkoala', { viewers: 640 }); });
+  const notes = await page.evaluate(() => window.smvNotes.notes.filter(n => n.kind === 'live'));
+  assert.equal(notes.length, 1);
+  assert.deepEqual(notes[0].sites, ['quietkoala', 'tw:quietkoala']);
+  await page.click('#bellBtn');
+  assert.match(await page.textContent('#bellPanel, .mp-list, body'), /is live on Kick and Twitch/);
+  await page.click('button:has-text("Watch as tabs")');
+  assert.equal((await shown(page, 'stream')).length, 1);
+  assert.equal((await all(page)).filter(w => w.kind === 'stream').length, 2, 'Kick and Twitch as tabs');
+});
+
+test('opening by themselves: together as tabs when any account goes live, and not twice', async t => {
+  const page = await linkedApp(t, { extra: { autoOpen: '["quietkoala"]' } });
+  await page.evaluate(live => window.smvNotes.liveStatus(live), LIVE);
+  const w = await all(page);
+  assert.equal(w.filter(x => x.kind === 'stream').length, 2, 'Kick and Twitch, one window');
+  assert.equal(w.filter(x => x.kind === 'stream' && !x.hidden).length, 1);
+  await page.evaluate(live => window.smvNotes.liveStatus(live), LIVE);
+  assert.equal((await all(page)).filter(x => x.kind === 'stream').length, 2, 'not opened again');
+});
