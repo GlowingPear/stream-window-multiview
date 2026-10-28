@@ -52,6 +52,7 @@ test('an ALL tab before the sites: it shows their chats as one list, and a site\
 test('ALL: messages to you, bots hidden one by one, deletions with who or AI moderation, timeouts', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
+  await page.evaluate(() => { window.allChat.modKnown.set('quietkoala', true); window.allChat.modKnown.set('tw:quietkoala', true); });   // (a mod: what was removed stays)
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [
     TW({ 'display-name': 'lowtide', id: 'a' }, ':lowtide!l@l PRIVMSG #quietkoala :@MeTwitch what crosshair?'),
     TW({ 'display-name': 'quill', id: 'b', 'reply-parent-msg-id': 'x', 'reply-parent-user-login': 'metwitch', 'reply-parent-display-name': 'MeTwitch', 'reply-parent-msg-body': 'is\\sit\\sdefault?' }, ':quill!q@q PRIVMSG #quietkoala :yeah'),
@@ -83,13 +84,28 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.allBots')), 'shown');
   assert.match((await lines(page))[3], /koala_helper: you have 4,200 pointsTO YOU$/);
   await page.click('.all-chip');
-  // deleted: kept, struck, with why; a timeout marks their lines
+  // deleted: kept, struck, with why; a timeout or ban marks their lines, and a line says what was done (and by whom, where the site says)
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('MessageDeletedEvent', { id: 'z', message: { id: 'k9' }, aiModerated: true, violatedRules: ['bullying'] })] });
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'ban-duration': '600' }, ':tmi.twitch.tv CLEARCHAT #quietkoala :loudmouth99'), TW({ 'target-msg-id': 'a' }, ':tmi.twitch.tv CLEARMSG #quietkoala :x')] });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('UserBannedEvent', { user: { slug: 'ratchetkid', username: 'ratchetkid' }, banned_by: { username: 'nightowl_mod' }, permanent: true })] });
   const after = await lines(page);
-  assert.equal(after[7], 'al-m al-del | Kratchetkid: nobody likes youDeleted · AI moderation · bullying');
-  assert.equal(after[4], 'al-m al-del | Tloudmouth99: trash lolTimed out');
+  assert.equal(after[7], 'al-m al-del | Kratchetkid: nobody likes youBanned');
+  assert.equal(after[4], 'al-m al-del | Tloudmouth99: trash lolTimed out · 10m');
   assert.equal(after[0], 'al-m al-me al-del | Tlowtide: @MeTwitch what crosshair?@YOUDeleted');
+  assert.deepEqual(after.slice(8), ['al-ev | Tloudmouth99 was timed out · 10m', 'al-ev | Knightowl_mod banned ratchetkid'], 'Twitch doesn\'t say which moderator; Kick does');
+});
+
+test('ALL: where you aren\'t a mod, what a moderator removes goes from ALL (as the site doesn\'t show it to you either); a cleared chat says so', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(() => { window.allChat.modKnown.set('quietkoala', false); window.allChat.modKnown.set('tw:quietkoala', false); });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'loudmouth99', id: 'e' }, ':loudmouth99!l@l PRIVMSG #quietkoala :trash lol'),
+    TW({ 'display-name': 'calm', id: 'f' }, ':calm!c@c PRIVMSG #quietkoala :hello'), TW({ 'display-name': 'rude', id: 'g' }, ':rude!r@r PRIVMSG #quietkoala :ugh')] });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatMessageEvent', { id: 'k1', content: 'hi from kick', type: 'message', sender: { id: 2, username: 'driftwood', slug: 'driftwood', identity: {} } })] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'ban-duration': '600' }, ':tmi.twitch.tv CLEARCHAT #quietkoala :loudmouth99'), TW({ 'target-msg-id': 'g' }, ':tmi.twitch.tv CLEARMSG #quietkoala :ugh')] });
+  assert.deepEqual(await lines(page), ['al-m | Tcalm: hello', 'al-m | Kdriftwood: hi from kick'], 'gone, and no line about it');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'tmi-sent-ts': String(Date.now()) }, ':tmi.twitch.tv CLEARCHAT #quietkoala')] });
+  assert.deepEqual(await lines(page), ['al-m | Kdriftwood: hi from kick', 'al-ev | TA moderator cleared Twitch\'s chat'], 'Twitch\'s lines go; Kick\'s stay');
 });
 
 test('ALL: off in Settings › Linked channels, no tab; and a new message while scrolled up offers to jump down', async t => {
