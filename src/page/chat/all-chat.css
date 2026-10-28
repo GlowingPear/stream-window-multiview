@@ -68,3 +68,20 @@
 .al-ev.al-k{background:linear-gradient(90deg,rgba(83,252,24,.14),rgba(83,252,24,.04));border:1px solid rgba(83,252,24,.35)}
 .al-ev.al-y{background:linear-gradient(90deg,rgba(255,42,42,.2),rgba(255,42,42,.05));border:1px solid rgba(255,90,90,.45)}
 .al-evm{color:var(--muted)}
+
+/* events: the short line, its amount, See it on …; full: the site's own words; announcements */
+.al-ev .al-evt{flex:1;min-width:0;display:flex;gap:6px;align-items:baseline;overflow:hidden}
+.al-evw{flex:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.al-evw b{font-weight:750}
+.al-evw b.al-amt{color:#ffd166}
+.al-evm{flex:1;min-width:0;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.al-evm:not(:empty)::before{content:"· "}
+.al-ev.al-full .al-evt{flex-direction:column;gap:1px}
+.al-ev.al-full .al-evw,.al-ev.al-full .al-evm{white-space:normal}
+.al-ev.al-full .al-evm::before{content:none}
+.al-go{flex:none;margin-left:auto;border:0;background:none;padding:0 0 0 6px;font:inherit;font-size:11.5px;font-weight:700;color:var(--accent);cursor:pointer;white-space:nowrap;opacity:.9}
+.al-go:hover{opacity:1;text-decoration:underline}
+.al-evchip{border-color:var(--line2);background:var(--panel2)}
+.al-ann{box-shadow:inset 3px 0 0 var(--ann,#9146ff);background:linear-gradient(90deg,color-mix(in srgb,var(--ann,#9146ff) 16%,transparent),transparent 75%)}
+.al-ann-blue{--ann:#3c8cff}.al-ann-green{--ann:#00c46a}.al-ann-orange{--ann:#ff8a1f}.al-ann-purple,.al-ann-primary{--ann:#9146ff}
+.al-tag-ann{background:color-mix(in srgb,var(--ann,#9146ff) 25%,transparent);color:#fff}
