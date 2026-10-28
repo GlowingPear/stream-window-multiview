@@ -640,7 +640,7 @@ function init(){
   window.frames_ = { showTab, addTab, closeTab, splitTab, joinTab, setSideBySide, openStreamer, mergeOpen, splitAll, frameOf, stepTab, switchTo };   // for the tests
 }
 
-export { addTab, applyFrames, closedTabs, closeFrame, closeTab, focusBoxNow, frameFields, frameNote, frameOf, init,
-  joinTab, leaderOf, mergeOpen, openStreamer, playQuality, putTabBack, renderSiteTabs, restoreFrames, setSideBySide,
-  showTab, splitTab, stepTab, switchTo, syncFrameAlert, syncFrameRects, tabChannels, tabKeyAgent, tabKeyJs,
-  unlinkTab };
+export { addTab, applyFrames, closedTabs, closeFrame, closeTab, focusBoxNow, focusChatBox, frameFields, frameNote,
+  frameOf, init, joinTab, leaderOf, mergeOpen, openStreamer, playQuality, putTabBack, renderSiteTabs, restoreFrames,
+  setSideBySide, showTab, splitTab, stepTab, switchTo, syncFrameAlert, syncFrameRects, tabChannels, tabKeyAgent,
+  tabKeyJs, unlinkTab };

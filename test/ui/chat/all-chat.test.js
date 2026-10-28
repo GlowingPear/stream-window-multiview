@@ -69,7 +69,7 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
     'al-m al-rep al-bot | ↩ replying to youTkoala_helper: bot message hiddenTO YOUShow',
     'al-m | Tloudmouth99: trash lol',
     'al-m al-hl | Thappy: HAPPY BIRTHDAYHighlighted100 bits',
-    'al-ev | TJean subscribed for 38 months! · love it',
+    'al-ev | TJean subscribedlove itSee it on Twitch ›',
     'al-m | Kratchetkid: nobody likes you']);
   // Show opens one bot's message, Hide closes it
   await page.click('.all-list .al-bot >> nth=0 >> .al-show');
@@ -106,4 +106,89 @@ test('ALL: off in Settings › Linked channels, no tab; and a new message while 
   await page.evaluate(() => { const c = document.querySelector('[data-lo=allTab]'); c.checked = false; c.dispatchEvent(new Event('change', { bubbles: true })); });
   assert.deepEqual(await tabs(page), ['K*', 'T', 'Y']);
   assert.equal(await page.locator('.all-view').count(), 0);
+});
+
+test('ALL: events are a short line with See it on …; Events: short, full or hidden; an announcement is a message', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [
+    TW({ 'display-name': 'brightwick', login: 'brightwick', 'msg-id': 'submysterygift', 'msg-param-mass-gift-count': '5', id: 'g1', 'system-msg': 'brightwick\\sis\\sgifting\\s5\\sTier\\s1\\sSubs!' }, ':tmi.twitch.tv USERNOTICE #quietkoala'),
+    TW({ 'display-name': 'quietkoala', 'msg-id': 'announcement', 'msg-param-color': 'GREEN', id: 'a1' }, ':tmi.twitch.tv USERNOTICE #quietkoala :scrims at 8pm')] });
+  assert.deepEqual(await lines(page), ['al-ev | Tbrightwick gifted 5 subsSee it on Twitch ›', 'al-m | Tquietkoala: scrims at 8pmAnnouncement']);
+  assert.equal(await page.textContent('.al-ev .al-amt'), '5 subs', 'the amount picked out');
+  assert.ok(await page.$eval('.all-list .al-m', l => l.classList.contains('al-ann-green')));
+  const chip = '.all-evchip';
+  assert.equal(await page.textContent(chip), 'Events: short');
+  await page.click(chip);
+  assert.equal(await page.textContent(chip), 'Events: full');
+  assert.equal((await lines(page))[0], 'al-ev | Tbrightwick is gifting 5 Tier 1 Subs!See it on Twitch ›', 'the site\'s own words');
+  await page.click(chip);
+  assert.equal(await page.textContent(chip), 'Events: hidden');
+  assert.deepEqual(await lines(page), ['al-m | Tquietkoala: scrims at 8pmAnnouncement']);
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.allEvents')), 'hidden');
+  await page.click(chip);
+  // See it on Twitch: Twitch's own chat
+  await page.click('.al-ev .al-go');
+  assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
+  assert.equal(await page.locator('.all-view').count(), 0);
+});
+
+test('ALL: Send on [K ▾]: the main site first, Tab steps the sites you can send on (YouTube only with a live chat), Enter sends there; ⇧Tab its own tab', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  // (the chats' pages "loaded": in the browser they never do)
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); }, LIVE);
+  const placeholder = () => page.getAttribute('.all-in', 'placeholder');
+  assert.equal(await placeholder(), 'Send a message on Kick', 'their main site');
+  assert.equal(await page.textContent('.all-pick .pi'), 'K');
+  await page.focus('.all-in');
+  await page.keyboard.press('Tab');
+  assert.equal(await placeholder(), 'Send a message on Twitch');
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.allSend'))), { s1: 'tw:quietkoala' }, 'remembered');
+  await page.keyboard.press('Tab');
+  assert.equal(await placeholder(), 'Send a message on Kick', 'YouTube skipped: no live chat');
+  // the picker: each site, the ones you can't send on with why
+  await page.click('.all-pick');
+  assert.deepEqual(await page.$$eval('.all-menu .all-mi', l => l.map(b => b.textContent + (b.disabled ? ' (off)' : '') + (b.classList.contains('on') ? ' *' : ''))),
+    ['KKickMain *', 'TTwitch', 'YYouTube · no live chat found (off)']);
+  await page.click('.all-menu .all-mi >> nth=1');
+  assert.equal(await page.isVisible('.all-menu'), false);
+  assert.equal(await placeholder(), 'Send a message on Twitch');
+  // Enter: sent on that site's chat (here a stand-in), the box empties; a refusal says why and keeps the text
+  await page.evaluate(() => { window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push([m.channel, text]); return window.__answer || 'sent'; }; });
+  await page.fill('.all-in', '  gg everyone ');
+  await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => window.__sends.length === 1);
+  assert.deepEqual(await page.evaluate(() => window.__sends), [['tw:quietkoala', 'gg everyone']]);
+  assert.equal(await page.inputValue('.all-in'), '');
+  await page.evaluate(() => { window.__answer = 'disabled'; });
+  await page.fill('.all-in', 'hello?');
+  await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => /isn't letting you chat/.test(document.querySelector('#msg')?.textContent || ''));
+  assert.equal(await page.inputValue('.all-in'), 'hello?', 'kept, to try again');
+  for (const [r, want] of [['no-box', /you may need to sign in to Twitch/], ['not-filled', /Couldn't type into Twitch's chat box/], ['oops', /Twitch's chat didn't answer/]]){
+    await page.evaluate(r => { window.__answer = r; }, r);
+    await page.press('.all-in', 'Enter');
+    await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#msg')?.textContent || ''), want.source);
+  }
+  await page.evaluate(() => { window.allChat.sender.send = async () => { throw new Error('gone'); }; });
+  await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => /didn't answer/.test(document.querySelector('#msg')?.textContent || ''));
+  // ⇧Tab: the site you send on, its own chat
+  await page.focus('.all-in');
+  await page.keyboard.press('Shift+Tab');
+  assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
+  assert.equal(await page.locator('.all-view').count(), 0);
+});
+
+test('ALL: with one site to send on, Tab says so; with none, the box says so', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = w.channel === 'quietkoala'; }); window.smvNotes.liveStatus(live); }, LIVE);
+  await page.focus('.all-in');
+  await page.keyboard.press('Tab');
+  assert.match(await page.textContent('#msg'), /Only Kick can be sent on right now/);
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = false; }); window.smvNotes.liveStatus(live); }, LIVE);
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'No chat to send on right now');
+  assert.equal(await page.isDisabled('.all-in'), true);
 });
