@@ -59,8 +59,33 @@ function parseTwitch(line){
   if (+g.bits) msg.bits = +g.bits;
   if (g['first-msg'] === '1') msg.first = true;
   if (g['reply-parent-msg-id']) msg.reply = { id: g['reply-parent-msg-id'], sender: g['reply-parent-display-name'] || g['reply-parent-user-login'] || '', login: (g['reply-parent-user-login'] || '').toLowerCase(), body: g['reply-parent-msg-body'] || '' };
-  if (msg.kind === 'event'){ msg.event = g['msg-id'] || ''; msg.text = g['system-msg'] || ''; }
+  if (msg.kind === 'event'){
+    msg.event = g['msg-id'] || ''; msg.text = g['system-msg'] || '';
+    const prm = {}; Object.keys(g).forEach(k => { if (k.startsWith('msg-param-')) prm[k.slice(10)] = g[k]; });
+    // an announcement is a message the streamer or a mod highlighted, not an event
+    if (msg.event === 'announcement'){ msg.kind = 'message'; msg.announce = (prm.color || 'PRIMARY').toLowerCase(); delete msg.event; delete msg.text; }
+    else msg.summary = twitchSummary(msg.event, msg.sender, prm, msg.text);
+  }
   return msg;
+}
+
+// A Twitch event in a few words, the amount picked out: [{ text }, { strong }]
+function twitchSummary(ev, name, p, system){
+  const n = v => Number(v || 0).toLocaleString('en-US'), plural = (v, one, many) => `${n(v)} ${+v === 1 ? one : many}`;
+  const months = +p['cumulative-months'] > 1 ? [{ text: ' · ' }, { strong: plural(p['cumulative-months'], 'month', 'months') }] : [];
+  const prime = p['sub-plan'] === 'Prime' ? [{ text: ' with Prime' }] : [];
+  const need = { submysterygift: 'mass-gift-count', raid: 'viewerCount', viewermilestone: 'value', bitsbadgetier: 'threshold' }[ev];
+  if (need && !(+p[need] > 0)) return system ? [{ text: system }] : [{ strong: name }];   // (without its number: the site's own words)
+  switch (ev){
+    case 'sub': case 'resub': return [{ strong: name }, { text: ' subscribed' }, ...prime, ...months];
+    case 'subgift': return [{ strong: name }, { text: ' gifted a sub to ' }, { strong: p['recipient-display-name'] || p['recipient-user-name'] || 'someone' }];
+    case 'submysterygift': return [{ strong: name }, { text: ' gifted ' }, { strong: plural(p['mass-gift-count'], 'sub', 'subs') }];
+    case 'raid': return [{ strong: p.displayName || name }, { text: ' raided with ' }, { strong: plural(p.viewerCount, 'viewer', 'viewers') }];
+    case 'viewermilestone': return [{ strong: name }, { text: ' watched ' }, { strong: plural(p.value, 'stream', 'streams') }, { text: ' in a row' }];
+    case 'giftpaidupgrade': case 'anongiftpaidupgrade': case 'primepaidupgrade': return [{ strong: name }, { text: ' kept their sub going' }];
+    case 'bitsbadgetier': return [{ strong: name }, { text: ' earned a ' }, { strong: plural(p.threshold, 'bit', 'bits') }, { text: ' badge' }];
+    default: return system ? [{ text: system }] : [{ strong: name }];
+  }
 }
 
 /* Kick: one frame of its live connection: {"push":{"channel":…,"pub":{"data":{"event":"App\\Events\\…","data":"<json>"}}}} */
@@ -128,9 +153,14 @@ function parseYouTube(action){
   if (type === 'liveChatTextMessageRenderer') return { ...base, kind: 'message', parts: ytParts(r.message && r.message.runs) };
   if (type === 'liveChatPaidMessageRenderer' || type === 'liveChatPaidStickerRenderer'){
     const amount = (r.purchaseAmountText && r.purchaseAmountText.simpleText) || '';
-    return { ...base, kind: 'event', event: type === 'liveChatPaidMessageRenderer' ? 'superchat' : 'supersticker', amount, text: `${base.sender} sent a Super ${type === 'liveChatPaidMessageRenderer' ? 'Chat' : 'Sticker'}${amount ? ' · ' + amount : ''}`, parts: ytParts(r.message && r.message.runs) };
+    const what = type === 'liveChatPaidMessageRenderer' ? 'Chat' : 'Sticker';
+    return { ...base, kind: 'event', event: type === 'liveChatPaidMessageRenderer' ? 'superchat' : 'supersticker', amount, text: `${base.sender} sent a Super ${what}${amount ? ' · ' + amount : ''}`,
+      summary: [{ strong: base.sender }, { text: ` Super ${what}` }, ...(amount ? [{ text: ' ' }, { strong: amount }] : [])], parts: ytParts(r.message && r.message.runs) };
   }
-  if (type === 'liveChatMembershipItemRenderer') return { ...base, kind: 'event', event: 'membership', text: ytText((r.headerSubtext || {}).runs) || (r.headerSubtext && r.headerSubtext.simpleText) || `${base.sender} became a member`, parts: ytParts(r.message && r.message.runs) };
+  if (type === 'liveChatMembershipItemRenderer'){
+    const text = ytText((r.headerSubtext || {}).runs) || (r.headerSubtext && r.headerSubtext.simpleText) || `${base.sender} became a member`;
+    return { ...base, kind: 'event', event: 'membership', text, summary: [{ strong: base.sender }, { text: ' ' + (/^welcome/i.test(text) ? 'became a member' : text.replace(base.sender, '').trim() || 'became a member') }], parts: ytParts(r.message && r.message.runs) };
+  }
   return null;
 }
 
@@ -141,6 +171,6 @@ function parseFeed(batch){
 }
 
 // (one object, so the tests can reach each site's reader)
-const feedParse = { parseFeed, parseTwitch, parseKick, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds };
+const feedParse = { parseFeed, parseTwitch, twitchSummary, parseKick, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds };
 
 export { feedParse };

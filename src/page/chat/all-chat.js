@@ -2,7 +2,7 @@ import { alerts } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { feedParse } from './feed-parse.js';
 import { wins } from '../core.js';
-import { feedAgent } from '../in-site/feed.js';
+import { feedAgent, seekAgent } from '../in-site/feed.js';
 import { bellVars, myName } from '../panels/bell/bell.js';
 import { linkOpt, nameOf, streamerBots, streamerOf } from '../platforms/linked.js';
 import { PLAT_NAME, platOf } from '../platforms/platforms.js';
@@ -11,7 +11,7 @@ import { icon } from '../shared/icons.js';
 import { fromSite } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
-import { frameOf, leaderOf, renderSiteTabs, tabChannels } from '../windows/frames.js';
+import { frameOf, leaderOf, renderSiteTabs, showTab, tabChannels } from '../windows/frames.js';
 import { runIn } from '../windows/view.js';
 
 /* ---- ALL: a linked streamer's Kick, Twitch and YouTube chats as one list (issue #203) ----
@@ -25,6 +25,7 @@ import { runIn } from '../windows/view.js';
 const MAX = 400;                       // lines kept for each streamer
 const feeds = new Map();               // streamer id -> { msgs: [], byId: Map }
 let botsShown = false;                 // "Bots: shown" (the chip; a saved setting)
+let eventsMode = 'short';              // subs, gifts, raids, Super Chats: 'short' (one line), 'full' (the site's words) or 'hidden'
 
 // Whether a window has an ALL tab: a chat window of a linked streamer with tabs for more than one site
 function allTabFor(w){
@@ -103,10 +104,16 @@ function lineEl(m){
   const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]),
     ...m.badges.map(b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' })));
   const name = element('b', { class: 'al-n', style: { color: nameColor(m) } }, m.sender);
-  if (m.kind === 'event')
-    return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}`, dataset: { key: m.site + ':' + m.id } }, element('i', { class: 'pi pi-' + m.site }, site[0]),
-      element('span', 'al-evt', m.text || `${m.sender}`, m.parts.length ? element('span', 'al-evm', ' · ', ...partsEl(m.parts)) : ''));
-  const cls = ['al-m', m.toMe === 'reply' ? 'al-rep' : m.toMe === 'at' ? 'al-me' : '', m.bot ? 'al-bot' : '', m.deleted ? 'al-del' : '', m.highlight ? 'al-hl' : ''].filter(Boolean).join(' ');
+  if (m.kind === 'event'){
+    if (eventsMode === 'hidden') return null;
+    const full = eventsMode === 'full' || !m.summary;
+    const words = full ? [m.text || m.sender] : m.summary.map((x, i) => x.strong ? element('b', i ? 'al-amt' : null, x.strong) : x.text);
+    return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}`, dataset: { key: m.site + ':' + m.id } }, element('i', { class: 'pi pi-' + m.site }, site[0]),
+      element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts)) : ''),
+      element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.seeIt' }, title: `Show it in ${site}'s own chat`, onclick: () => seeIt(m) }, `See it on ${site} ›`));
+  }
+  const cls = ['al-m', m.toMe === 'reply' ? 'al-rep' : m.toMe === 'at' ? 'al-me' : '', m.bot ? 'al-bot' : '', m.deleted ? 'al-del' : '', m.highlight ? 'al-hl' : '',
+    m.announce ? 'al-ann al-ann-' + m.announce : ''].filter(Boolean).join(' ');
   const hideBot = m.bot && !botsShown && !m.open;
   const body = hideBot ? element('span', 'al-hid', 'bot message hidden') : element('span', 'al-txt', ...partsEl(m.parts));
   const tags = [
@@ -114,6 +121,7 @@ function lineEl(m){
     m.toMe === 'reply' && element('span', { class: 'al-tag al-tag-rp' + (m.bot ? ' soft' : '') }, m.bot ? 'TO YOU' : 'REPLY'),
     m.toMe === 'at' && m.bot && element('span', 'al-tag al-tag-rp soft', 'TO YOU'),
     m.highlight && element('span', 'al-tag al-tag-hl', 'Highlighted'),
+    m.announce && element('span', 'al-tag al-tag-ann', 'Announcement'),
     m.bits && element('span', 'al-tag al-tag-bits', `${m.bits} bits`),
     m.deleted && element('span', { class: 'al-tag al-tag-del' + (m.deleted.ai ? ' ai' : '') },
       m.deleted.ai ? ['Deleted', 'AI moderation', ...m.deleted.rules].join(' · ') : m.deleted.by === 'ban' ? 'Banned' : m.deleted.by === 'timeout' ? 'Timed out' : 'Deleted'),
@@ -126,8 +134,9 @@ function lineEl(m){
 }
 function addLine(view, m){
   const list = view.list, stick = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+  const el = lineEl(m); if (!el) return;
   view.empty.hidden = true;
-  list.append(lineEl(m));
+  list.append(el);
   while (list.children.length > MAX) list.firstChild.remove();
   if (stick) list.scrollTop = list.scrollHeight; else view.more.hidden = false;
 }
@@ -138,10 +147,12 @@ function buildView(w){
   const more = element('button', { type: 'button', class: 'all-more', hidden: true, dataset: { cmd: 'all.latest' }, onclick: () => { list.scrollTop = list.scrollHeight; more.hidden = true; } }, 'New messages ↓');
   list.addEventListener('scroll', () => { if (list.scrollHeight - list.scrollTop - list.clientHeight < 60) more.hidden = true; });
   const chip = element('button', { type: 'button', class: 'all-chip', dataset: { cmd: 'all.bots' }, 'aria-pressed': String(!botsShown), onclick: () => setBotsShown(!botsShown) });
-  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), chip), list, more, empty,
+  const evChip = element('button', { type: 'button', class: 'all-chip all-evchip', dataset: { cmd: 'all.events' }, title: 'Subs, gifts, raids and Super Chats: one short line, the site\'s own words, or hidden',
+    onclick: () => setEventsMode({ short: 'full', full: 'hidden', hidden: 'short' }[eventsMode]) });
+  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), chip, evChip), list, more, empty,
     element('div', 'all-foot', element('span', 'all-foot-t', 'Read-only for now: to chat, pick a site\'s tab above')));
-  const view = { el, list, empty, more, chip, s };
-  f.msgs.forEach(m => list.append(lineEl(m)));
+  const view = { el, list, empty, more, chip, evChip, s };
+  list.append(...f.msgs.map(lineEl).filter(Boolean));
   return view;
 }
 // The sites it hears, the bots chip, and what it says while it has nothing yet
@@ -150,14 +161,22 @@ function renderTop(view, w){
   view.el.querySelector('.all-sites').replaceChildren(...chs.map(ch => element('i', { class: 'pi pi-' + platOf(ch) + (heard.includes(ch) ? '' : ' dim'), title: `${PLAT_NAME[platOf(ch)]}${heard.includes(ch) ? '' : ': offline'}` }, PLAT_NAME[platOf(ch)][0])));
   view.chip.replaceChildren(element('i', { html: botsShown ? icon.eye : EYE_OFF }), `Bots: ${botsShown ? 'shown' : 'hidden'}`);
   view.chip.setAttribute('aria-pressed', String(!botsShown));
+  view.evChip.textContent = `Events: ${eventsMode}`;
+  view.evChip.setAttribute('aria-pressed', String(eventsMode !== 'full'));
   const names = heard.map(ch => PLAT_NAME[platOf(ch)]), off = chs.filter(ch => !heard.includes(ch)).map(ch => PLAT_NAME[platOf(ch)]);
   view.empty.replaceChildren(element('b', null, names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.slice(-1)} chats together` : `${names[0] || 'Their'} chat`),
     off.length ? element('span', null, `${off.join(' and ')} ${off.length > 1 ? 'are' : 'is'} offline`) : '', element('small', null, 'New messages show here as they arrive.'));
   view.empty.hidden = !!view.list.children.length;
 }
-function setBotsShown(on){
-  botsShown = !!on; settings.set('allBots', botsShown ? 'shown' : 'hidden');
-  wins.forEach(w => { if (w.allView){ const v = w.allView; v.list.replaceChildren(...feedOf(v.s).msgs.map(lineEl)); renderTop(v, w); v.list.scrollTop = v.list.scrollHeight; } });
+function setBotsShown(on){ botsShown = !!on; settings.set('allBots', botsShown ? 'shown' : 'hidden'); redrawAll(); }
+function setEventsMode(mode){ eventsMode = mode; settings.set('allEvents', mode); redrawAll(); }
+const redrawAll = () => wins.forEach(w => { if (w.allView){ const v = w.allView; v.list.replaceChildren(...feedOf(v.s).msgs.map(lineEl).filter(Boolean)); renderTop(v, w); v.list.scrollTop = v.list.scrollHeight; } });
+// "See it on …": that site's chat, scrolled to it (and flashed), where it has its full look and controls
+function seeIt(m){
+  const c = wins.find(o => o.kind === 'chat' && o.channel === m.ch); if (!c) return;
+  setAll(c, false);
+  showTab(c);
+  if (c.view && m.id) runIn(c.view, `(${seekAgent})(${JSON.stringify(m.id)})`);
 }
 
 // ALL shows over the chat of each window that has it on; each chat hands over its messages only while it does
@@ -195,6 +214,7 @@ const BADGE_SVG = {
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   botsShown = settings.text('allBots') === 'shown';
+  eventsMode = ['short', 'full', 'hidden'].includes(settings.text('allEvents')) ? settings.text('allEvents') : 'short';
   fromSite('feed', (w, json) => { if (allOn(w)) ingest(w, json); });
   store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncAll());
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });

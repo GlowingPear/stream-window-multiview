@@ -69,7 +69,7 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
     'al-m al-rep al-bot | ↩ replying to youTkoala_helper: bot message hiddenTO YOUShow',
     'al-m | Tloudmouth99: trash lol',
     'al-m al-hl | Thappy: HAPPY BIRTHDAYHighlighted100 bits',
-    'al-ev | TJean subscribed for 38 months! · love it',
+    'al-ev | TJean subscribedlove itSee it on Twitch ›',
     'al-m | Kratchetkid: nobody likes you']);
   // Show opens one bot's message, Hide closes it
   await page.click('.all-list .al-bot >> nth=0 >> .al-show');
@@ -105,5 +105,30 @@ test('ALL: off in Settings › Linked channels, no tab; and a new message while 
   await page.evaluate(() => { localStorage.setItem('kickMultiview.linkedOpts', JSON.stringify({ allTab: false })); window.openSettings('linked'); });
   await page.evaluate(() => { const c = document.querySelector('[data-lo=allTab]'); c.checked = false; c.dispatchEvent(new Event('change', { bubbles: true })); });
   assert.deepEqual(await tabs(page), ['K*', 'T', 'Y']);
+  assert.equal(await page.locator('.all-view').count(), 0);
+});
+
+test('ALL: events are a short line with See it on …; Events: short, full or hidden; an announcement is a message', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [
+    TW({ 'display-name': 'brightwick', login: 'brightwick', 'msg-id': 'submysterygift', 'msg-param-mass-gift-count': '5', id: 'g1', 'system-msg': 'brightwick\\sis\\sgifting\\s5\\sTier\\s1\\sSubs!' }, ':tmi.twitch.tv USERNOTICE #quietkoala'),
+    TW({ 'display-name': 'quietkoala', 'msg-id': 'announcement', 'msg-param-color': 'GREEN', id: 'a1' }, ':tmi.twitch.tv USERNOTICE #quietkoala :scrims at 8pm')] });
+  assert.deepEqual(await lines(page), ['al-ev | Tbrightwick gifted 5 subsSee it on Twitch ›', 'al-m | Tquietkoala: scrims at 8pmAnnouncement']);
+  assert.equal(await page.textContent('.al-ev .al-amt'), '5 subs', 'the amount picked out');
+  assert.ok(await page.$eval('.all-list .al-m', l => l.classList.contains('al-ann-green')));
+  const chip = '.all-evchip';
+  assert.equal(await page.textContent(chip), 'Events: short');
+  await page.click(chip);
+  assert.equal(await page.textContent(chip), 'Events: full');
+  assert.equal((await lines(page))[0], 'al-ev | Tbrightwick is gifting 5 Tier 1 Subs!See it on Twitch ›', 'the site\'s own words');
+  await page.click(chip);
+  assert.equal(await page.textContent(chip), 'Events: hidden');
+  assert.deepEqual(await lines(page), ['al-m | Tquietkoala: scrims at 8pmAnnouncement']);
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.allEvents')), 'hidden');
+  await page.click(chip);
+  // See it on Twitch: Twitch's own chat
+  await page.click('.al-ev .al-go');
+  assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
   assert.equal(await page.locator('.all-view').count(), 0);
 });
