@@ -523,6 +523,7 @@ function syncTabKeys(){ wins.forEach(w => { if (w.kind === 'chat' && w.ready && 
 function focusChatBox(w){
   if (w.hiddenTab || !platform(w.channel).chatBox?.box) return;
   w.focusBoxUntil = Date.now() + 30000;
+  focusView(w.view, { take: true });   // (the keyboard is still in the chat you pressed Tab in)
   focusBoxNow(w);
 }
 function focusBoxNow(w){

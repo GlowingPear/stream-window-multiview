@@ -98,7 +98,10 @@ test('Tab in an empty chat box switches site and the keyboard is in the new chat
   await addBox('alpha', KICK);
   // Twitch's chat isn't open yet: its tab opens, and once its page and box are there, the box has the keyboard
   assert.equal(await a.win.evaluate(() => window.openWins().some(w => w.channel === 'tw:alpha')), false, 'not open yet');
+  // (the window takes the keyboard back from the chat you pressed Tab in: a view's own focus() can't, while it has it)
+  await a.win.evaluate(() => { window.__took = 0; const f = window.focus; window.focus = () => { window.__took++; f.call(window); }; });
   await tabIn('alpha', false);
+  assert.equal(await a.win.evaluate(() => window.__took), 1, 'the window took the keyboard back');
   await chatReady('tw:alpha');
   // and it loads another page first: the box is on that one
   await loadAgain('tw:alpha');
