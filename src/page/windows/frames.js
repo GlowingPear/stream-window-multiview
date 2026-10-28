@@ -66,7 +66,10 @@ const memberFor = (w, ch) => frameOf(w).find(o => o.channel === ch) || null;
 // A site known to be offline: its tab can't be clicked and isn't loaded (it opens by itself when it goes live).
 // Not known yet (no live check so far) counts as watchable.
 const siteOffline = ch => { const i = infoFor(ch); return !!i && !i.live && !i.missing; };
-const tabLocked = (w, ch) => siteOffline(ch) && leaderOf(w).channel !== ch;
+// A chat window with ALL: their Kick and Twitch chats can be read, sent on and watched while offline too (YouTube's
+// offline channel has no live chat)
+const allKeeps = (w, ch) => w.kind === 'chat' && platOf(ch) !== 'youtube' && allTabFor(leaderOf(w));
+const tabLocked = (w, ch) => siteOffline(ch) && leaderOf(w).channel !== ch && !allKeeps(w, ch);
 // Where Tab, ⌥← and ⌥→ go: the one you watch, and the others known to be live (not ones offline, not found, or
 // not checked yet)
 const tabStep = (w, ch) => leaderOf(w).channel === ch || !!infoFor(ch)?.live;
@@ -172,9 +175,9 @@ function showTab(w, { follow = true } = {}){
   store.changed('wins', 'tabs'); save();
 }
 // Tabs you're not watching whose site is offline are closed (not loaded, and not counted as closed by you: the
-// tab comes back when that site goes live). The one you watch stays, also offline.
+// tab comes back when that site goes live). The one you watch stays, also offline, and so do the chats ALL reads.
 function dropOfflineTabs(){
-  const gone = wins.filter(o => o.frame && o.hiddenTab && siteOffline(o.channel) && membersOf(o.frame).length > 1);
+  const gone = wins.filter(o => o.frame && o.hiddenTab && siteOffline(o.channel) && membersOf(o.frame).length > 1 && !allKeeps(o, o.channel));
   if (!gone.length) return;
   const leads = new Set(gone.map(o => leaderOf(o)));
   gone.forEach(o => closeWin(o));

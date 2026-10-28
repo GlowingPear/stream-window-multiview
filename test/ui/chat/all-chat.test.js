@@ -154,7 +154,7 @@ test('ALL: Send on [K ▾]: the main site first, Tab steps the sites you can sen
   await page.click('.all-menu .all-mi >> nth=1');
   assert.equal(await page.isVisible('.all-menu'), false);
   assert.equal(await placeholder(), 'Send a message on Twitch');
-  // Enter: sent on that site's chat (here a stand-in), the box empties; a refusal says why and keeps the text
+  // Enter: sent on that site's chat (here a stand-in), the box empties; a refusal says why (on your line too)
   await page.evaluate(() => { window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push([m.channel, text]); return window.__answer || 'sent'; }; });
   await page.fill('.all-in', '  gg everyone ');
   await page.press('.all-in', 'Enter');
@@ -165,13 +165,15 @@ test('ALL: Send on [K ▾]: the main site first, Tab steps the sites you can sen
   await page.fill('.all-in', 'hello?');
   await page.press('.all-in', 'Enter');
   await page.waitForFunction(() => /isn't letting you chat/.test(document.querySelector('#msg')?.textContent || ''));
-  assert.equal(await page.inputValue('.all-in'), 'hello?', 'kept, to try again');
-  for (const [r, want] of [['no-box', /you may need to sign in to Twitch/], ['not-filled', /Couldn't type into Twitch's chat box/], ['oops', /Twitch's chat didn't answer/]]){
+  assert.match(await page.textContent('.al-mine-failed'), /hello\?Not sentTwitch isn't letting you chat/, 'your line says so, to try again');
+  for (const [r, want] of [['no-box', /you may need to sign in to Twitch/], ['not-filled', /Couldn't type into Twitch's chat box/], ['not-sent', /Twitch didn't send it/], ['oops', /Twitch's chat didn't answer/]]){
     await page.evaluate(r => { window.__answer = r; }, r);
+    await page.fill('.all-in', 'hello?');
     await page.press('.all-in', 'Enter');
     await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#msg')?.textContent || ''), want.source);
   }
   await page.evaluate(() => { window.allChat.sender.send = async () => { throw new Error('gone'); }; });
+  await page.fill('.all-in', 'hello?');
   await page.press('.all-in', 'Enter');
   await page.waitForFunction(() => /didn't answer/.test(document.querySelector('#msg')?.textContent || ''));
   // ⇧Tab: the site you send on, its own chat
@@ -225,13 +227,16 @@ test('ALL: reply from a line: the box locks to its site with a bar (Kick: its ow
   await page.press('.all-in', 'Enter');
   await page.waitForFunction(() => window.__sends.length === 2);
   assert.deepEqual(await page.evaluate(() => window.__sends[1]), ['reply', 'quietkoala', 'k1', 'default, 1.2 green']);
-  // the message has gone from Kick's chat: it says so and stays locked
+  // the message has gone from Kick's chat: it says so on your line; Edit: the reply again, to try once more
   await page.evaluate(() => { window.__replyAnswer = 'no-reply'; });
   await page.hover('.all-list .al-m >> nth=0');
   await page.click('.all-list .al-m >> nth=0 >> .al-hb button');
   await page.fill('.all-in', 'again');
   await page.press('.all-in', 'Enter');
   await page.waitForFunction(() => /Couldn't start a reply on Kick/.test(document.querySelector('#msg')?.textContent || ''));
+  assert.match(await page.textContent('.al-mine-failed'), /↩ replying to lowtide.*Not sent/);
+  await page.click('.al-mine-failed [data-cmd="all.edit"]');
+  assert.equal(await page.inputValue('.all-in'), 'again');
   assert.ok(await page.isVisible('.all-rb'));
   // Esc, and ✕: unlocked
   await page.focus('.all-in');
@@ -355,6 +360,68 @@ test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeo
     await page.click(`${line(0)} >> .al-n`, { modifiers: ['Shift'] });
     await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#msg')?.textContent || ''), want.source);
   }
+});
+
+test('ALL: what you send shows at once (sending, then sent) and the real line takes its place; Enter can\'t send twice; not sent: Retry or Edit', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); }, LIVE);
+  await page.evaluate(() => { window.__sends = []; window.allChat.sender.send = (m, text) => new Promise(r => { window.__sends.push(text); window.__done = r; }); });
+  const mine = () => page.$$eval('.all-list .al-mine', l => l.map(e => e.className.replace(/.*al-mine-/, '') + ' | ' + e.textContent.replace(/\s+/g, ' ').trim()));
+  await page.fill('.all-in', 'first one');
+  await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => window.__sends.length === 1);
+  assert.deepEqual(await mine(), ['sending | Kmekick: first oneSending']);
+  assert.equal(await page.inputValue('.all-in'), '', 'the box is free for the next one');
+  // Enter again while it's sending: nothing sent twice
+  await page.fill('.all-in', 'second one');
+  await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => /Still sending the last one/.test(document.querySelector('#msg')?.textContent || ''));
+  assert.deepEqual(await page.evaluate(() => window.__sends), ['first one']);
+  assert.equal(await page.inputValue('.all-in'), 'second one', 'kept');
+  await page.evaluate(() => window.__done('sent'));
+  await page.waitForFunction(() => document.querySelector('.al-mine-sent'));
+  // the chat brings it back: the real line, in its place
+  const KF = (data) => JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: 'App\\Events\\ChatMessageEvent', data: JSON.stringify(data) } } } });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF({ id: 'k9', content: 'first  one', type: 'message', sender: { id: 2, username: 'MeKick', slug: 'mekick', identity: { badges: [{ type: 'subscriber' }] } } })] });
+  assert.deepEqual(await mine(), []);
+  assert.deepEqual(await lines(page), ['al-m | Kmekick: first one'.replace('mekick', 'MeKick')]);
+  // not sent: red, with why; Retry sends it again; Edit puts it back in the box
+  await page.evaluate(() => { window.allChat.sender.send = async (m, text) => { window.__sends.push(text); return window.__answer; }; window.__answer = 'not-sent'; });
+  await page.fill('.all-in', 'try me');
+  await page.press('.all-in', 'Enter');
+  await page.waitForSelector('.al-mine-failed');
+  assert.match((await mine())[0], /^failed \| KMeKick: try meNot sentKick didn't send it: it's still in its chat box/, 'as in your last message there');
+  assert.deepEqual(await page.$eval('.al-mine .al-who', w => [...w.children].map(c => c.className)), ['pi pi-kick', 'al-b al-b-sub'], 'with your badges');
+  await page.evaluate(() => { window.__answer = 'sent'; });
+  await page.click('.al-mine-failed [data-cmd="all.retry"]');
+  await page.waitForSelector('.al-mine-sent');
+  assert.deepEqual(await page.evaluate(() => window.__sends.slice(-2)), ['try me', 'try me']);
+  await page.evaluate(() => { window.__answer = 'disabled'; });
+  await page.fill('.all-in', 'edit me');
+  await page.press('.all-in', 'Enter');
+  await page.waitForSelector('.al-mine-failed');
+  await page.fill('.all-in', '');
+  await page.click('.al-mine-failed [data-cmd="all.edit"]');
+  assert.equal(await page.inputValue('.all-in'), 'edit me');
+  assert.equal(await page.locator('.al-mine-failed').count(), 0, 'its line goes');
+});
+
+test('ALL with an offline Kick or Twitch: its chat is loaded (a hidden tab) to read and send on, and its tab can be watched; not YouTube\'s', async t => {
+  const page = await allApp(t);
+  const OFF = { ...LIVE, 'tw:quietkoala': { live: false, checked: now } };
+  await page.evaluate(off => window.smvNotes.liveStatus(off), OFF);
+  const chats = () => page.evaluate(() => window.openWins().filter(w => w.kind === 'chat').map(w => w.channel + (w.hiddenTab ? ' (hidden)' : '')).sort());
+  await page.click('#stage .win.chat:not(.tab-hidden) .ptab.all');
+  await page.waitForFunction(() => window.openWins().some(w => w.kind === 'chat' && w.channel === 'tw:quietkoala'));
+  assert.deepEqual(await chats(), ['quietkoala', 'tw:quietkoala (hidden)']);
+  await page.evaluate(off => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(off); }, OFF);
+  assert.deepEqual(await chats(), ['quietkoala', 'tw:quietkoala (hidden)'], 'kept while offline');
+  await page.click('.all-pick');
+  assert.deepEqual(await page.$$eval('.all-menu .all-mi', l => l.map(b => b.textContent + (b.disabled ? ' (off)' : ''))), ['KKickMain', 'TTwitch', 'YYouTube · no live chat found (off)']);
+  await page.keyboard.press('Escape');
+  await page.click('#stage .win.chat:not(.tab-hidden) .ptab.twitch');
+  assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y'], 'its tab: watched');
 });
 
 test('ALL: the title bar\'s mod button lists each site\'s mod view (where you\'re a mod) and Open all; a site\'s tab opens its own', async t => {

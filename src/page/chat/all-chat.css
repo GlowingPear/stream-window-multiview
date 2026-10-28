@@ -164,6 +164,17 @@
 .all-durs button.on{background:var(--accent);color:var(--accent-ink)}
 .all-durs button:hover:not(.on){background:var(--line2)}
 .al-m:has(.al-show:hover) .al-hb{display:none}   /* (it never covers a line's Show / Hide) */
+/* your own line until its chat brings it back: sending, sent, or not sent with Retry / Edit */
+.al-mine{opacity:.72}
+.al-mine-failed{opacity:1;background:linear-gradient(90deg,rgba(255,90,90,.12),transparent 75%);box-shadow:inset 3px 0 0 #ff6b6b}
+.al-tag-mine{display:inline-flex;align-items:center;gap:5px;color:var(--muted);background:var(--line);border-color:transparent}
+.al-spin{width:9px;height:9px;border-radius:50%;border:1.6px solid currentColor;border-right-color:transparent;animation:al-spin .8s linear infinite}
+@keyframes al-spin{to{transform:rotate(360deg)}}
+.al-mine-fail{display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px;margin:3px 0 1px 22px}
+.al-mine-fail .al-tag{margin-left:0}
+.al-tag-fail{color:#ffb3b3;background:rgba(255,90,90,.18);border-color:rgba(255,90,90,.45)}
+.al-why{color:#ffb3b3;font-size:11.5px}
+.al-mine-fail .linkish{font-size:11.5px;font-weight:700}
 /* the title bar's mod button in ALL: each site's mod view */
 .all-mv{min-width:240px}
 .all-mvh{padding:7px 8px 5px;color:var(--muted);font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}

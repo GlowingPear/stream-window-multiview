@@ -157,8 +157,9 @@ test('a tab you aren\'t watching that goes offline is closed (not loaded), and c
   assert.equal((await all(page)).length, 4);
   await page.evaluate(live => window.smvNotes.liveStatus({ ...live, 'tw:quietkoala': { live: false, checked: Date.now() } }), LIVE);
   let w = await all(page);
-  assert.deepEqual(w.map(x => x.kind + ' ' + x.ch).sort(), ['chat quietkoala', 'stream quietkoala'], 'Twitch\'s stream and chat tabs are closed');
+  assert.deepEqual(w.map(x => x.kind + ' ' + x.ch).sort(), ['chat quietkoala', 'chat tw:quietkoala', 'stream quietkoala'], 'Twitch\'s stream tab is closed; its chat stays (ALL reads it)');
   assert.deepEqual(await tabs(page), ['ptab kick on live', 'ptab twitch off locked', 'ptab youtube off locked'], 'its tab stays, offline');
+  assert.deepEqual(await page.$$eval('#stage .win.chat:not(.tab-hidden) .ptabs .ptab:not(.all)', l => l.map(b => b.className.replace(/\s+/g, ' '))), ['ptab kick on live', 'ptab twitch off', 'ptab youtube off locked'], 'the chat\'s Twitch tab can be watched');
   assert.equal(await page.locator('#stage .win.stream .ptab-add').count(), 0, 'not as closed by you (no +)');
   await page.evaluate(live => window.smvNotes.liveStatus(live), LIVE);
   w = await all(page);

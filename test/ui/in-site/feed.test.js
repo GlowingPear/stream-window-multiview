@@ -70,3 +70,23 @@ test('mod actions on a message: only the site\'s buttons labelled Delete or Pin 
   await page.evaluate(() => document.querySelector('#md-wrap [aria-label=Pin]').remove());
   assert.equal(await page.evaluate(() => window.modAgent('pin', 'k1')), 'no-button');
 });
+
+test('the reader passes on what the site\'s connection brings, as the page reads it: Kick\'s events (their names as Kick writes them), not its other news', async t => {
+  const page = await openApp(t);
+  const heard = [];
+  page.on('console', m => { if (m.text().startsWith('__kmv:feed ')) heard.push(JSON.parse(m.text().slice(11))); });
+  await page.evaluate(() => {
+    window.feedAgent('kick'); window.__kmvFeed.on = true;
+    const ws = new WebSocket('ws://127.0.0.1:9');   // (never connects: a stand-in for Kick's connection)
+    ws.addEventListener('message', e => e.data);    // (the page reads each message)
+    ws.onerror = () => {};
+    const frame = (ev, data) => JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: ev, data: JSON.stringify(data) } } } });
+    for (const f of [frame('App\\Events\\ChatMessageEvent', { id: 'k1', content: 'hi' }), frame('App\\Events\\MessageDeletedEvent', { message: { id: 'k1' } }), frame('GoalProgressUpdateEvent', {}), 'not json'])
+      ws.dispatchEvent(new MessageEvent('message', { data: f }));
+  });
+  await page.waitForFunction(() => true, null, { timeout: 100 }).catch(() => {});
+  for (let i = 0; i < 30 && !heard.length; i++) await new Promise(r => setTimeout(r, 50));
+  assert.equal(heard.length, 1, 'one batch');
+  assert.equal(heard[0].s, 'kick');
+  assert.deepEqual(heard[0].raw.map(r => JSON.parse(r).push.pub.data.event), ['App\\Events\\ChatMessageEvent', 'App\\Events\\MessageDeletedEvent']);
+});
