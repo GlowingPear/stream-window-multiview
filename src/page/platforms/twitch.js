@@ -8,6 +8,9 @@ const twitch = {
   id: 'twitch', name: 'Twitch', letter: 'T',
   mentions: true,
   threadedReplies: false,   // ALL replies with an @ (its Reply only shows for a real pointer over the line)
+  // ALL's timeout and ban: Twitch's chat commands
+  timeoutCmd: (login, secs) => `/timeout ${login} ${secs}`,
+  banCmd: login => `/ban ${login}`,
   spamAlerts: true,
   emoteLists: true,
   pageCommands: false,

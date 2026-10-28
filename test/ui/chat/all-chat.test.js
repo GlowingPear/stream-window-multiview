@@ -287,3 +287,72 @@ test('ALL: @ suggests names from their chats; picking one locks to its site, and
   await page.click('.all-list .al-m >> nth=2 >> .al-n');
   assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
 });
+
+test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeout lengths, ban asks first), keys on a name; not for mods, the streamer or where you aren\'t one', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.allChat.modKnown.set('quietkoala', true); window.allChat.modKnown.set('tw:quietkoala', false); window.smvNotes.liveStatus(live); }, LIVE);
+  await page.evaluate(() => { window.__acts = []; window.allChat.sender.mod = async (m, action, id) => { window.__acts.push([action, m.channel, id]); return window.__modAnswer || 'done'; };
+    window.allChat.sender.send = async (m, text) => { window.__acts.push(['send', m.channel, text]); return 'sent'; }; });
+  const ks = (id, name, badges = []) => KF('ChatMessageEvent', { id, content: 'trash lol', type: 'message', sender: { id: 1, username: name, slug: name, identity: { badges: badges.map(type => ({ type })) } } });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [ks('k1', 'loudmouth'), ks('k2', 'nightowl_mod', ['moderator']), ks('k3', 'quietkoala', ['broadcaster']), ks('k4', 'mekick')] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'twitchy', id: 't1' }, ':twitchy!t@t PRIVMSG #quietkoala :hi')] });
+  const acts = () => page.evaluate(() => window.__acts);
+  const line = n => `.all-list .al-m >> nth=${n}`;
+  // the hover: Delete only for someone you can moderate
+  assert.deepEqual(await page.$$eval('.all-list .al-m', l => l.map(e => !!e.querySelector('[data-cmd="all.delete"]'))), [true, false, false, false, false]);
+  await page.hover(line(0)); await page.click(`${line(0)} >> [data-cmd="all.delete"]`);
+  await page.waitForFunction(() => window.__acts.length === 1);
+  assert.deepEqual(await acts(), [['delete', 'quietkoala', 'k1']]);
+  assert.match(await page.textContent('#msg'), /Deleted loudmouth's message on Kick/);
+  // the menu: timeout lengths (remembered), pin, ban after asking
+  await page.click(line(0), { button: 'right' });
+  assert.deepEqual(await page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent.trim() + (b.disabled ? ' (off)' : ''))).then(x => x.map(s => s.replace(/\s+/g, ' '))),
+    ['Reply', 'Pin message', 'Open profile on Kick', /Delete message.*click name/.source && 'Delete message' + (process.platform === 'darwin' ? '⇧-click name' : 'Shift-click name'),
+     'Timeout' + (process.platform === 'darwin' ? '⌘-click name' : 'Ctrl-click name'), 'Ban' + (process.platform === 'darwin' ? '⌘+⇧-click name' : 'Ctrl+Shift-click name'), 'Copy message', 'Open Kick mod view'].map(x => x));
+  await page.click('.all-lm .all-durs button >> text=1h');
+  await page.waitForFunction(() => window.__acts.length === 2);
+  assert.deepEqual((await acts())[1], ['send', 'quietkoala', '/timeout loudmouth 60'], 'Kick counts minutes');
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.allTimeout')), '3600');
+  await page.click(line(0), { button: 'right' });
+  await page.click('.all-lm [data-cmd="all.menuPin"]');
+  await page.waitForFunction(() => window.__acts.length === 3);
+  assert.deepEqual((await acts())[2], ['pin', 'quietkoala', 'k1']);
+  await page.click(line(0), { button: 'right' });
+  await page.click('.all-lm [data-cmd="all.menuBan"]');
+  await page.waitForSelector('#askDlg:not([hidden])');
+  assert.match(await page.textContent('#askDlg'), /Ban loudmouth on Kick\?/);
+  await page.click('#askDlg .ask-yes');
+  await page.waitForFunction(() => window.__acts.length === 4);
+  assert.deepEqual((await acts())[3], ['send', 'quietkoala', '/ban loudmouth']);
+  // keys on the name: Ctrl/⌘ times out for the last length, Shift deletes, both ban (asked; No does nothing)
+  const mod = process.platform === 'darwin' ? 'Meta' : 'Control';
+  await page.click(`${line(0)} >> .al-n`, { modifiers: [mod] });
+  await page.waitForFunction(() => window.__acts.length === 5);
+  assert.deepEqual((await acts())[4], ['send', 'quietkoala', '/timeout loudmouth 60']);
+  await page.click(`${line(0)} >> .al-n`, { modifiers: ['Shift'] });
+  await page.waitForFunction(() => window.__acts.length === 6);
+  assert.deepEqual((await acts())[5], ['delete', 'quietkoala', 'k1']);
+  await page.click(`${line(0)} >> .al-n`, { modifiers: [mod, 'Shift'] });
+  await page.waitForSelector('#askDlg:not([hidden])');
+  await page.click('#askDlg .ask-no');
+  assert.equal((await acts()).length, 6, 'not banned');
+  // can't: a mod, the streamer, you; and a site where you aren't a mod
+  for (const [n, why] of [[1, /nightowl_mod is a mod on Kick/], [2, /quietkoala is the streamer/], [3, /That's you/], [4, /You're not a mod on Twitch/]]){
+    await page.click(`${line(n)} >> .al-n`, { modifiers: ['Shift'] });
+    await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#msg')?.textContent || ''), why.source);
+  }
+  await page.click(line(1), { button: 'right' });
+  assert.deepEqual(await page.$$eval('.all-lm .all-li:disabled', l => l.map(b => b.title)), ['nightowl_mod is a mod on Kick', 'nightowl_mod is a mod on Kick', 'nightowl_mod is a mod on Kick']);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.isVisible('.all-lm'), false, 'Esc closes it');
+  await page.click(line(4), { button: 'right' });
+  assert.deepEqual(await page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent.trim())), ['Reply', 'Open profile on Twitch', 'Copy message'], 'no mod part where you aren\'t a mod');
+  await page.mouse.click(5, 5);
+  // a message gone from the site's chat, and a site that won't take it
+  for (const [ans, want] of [['no-line', /That message has gone from Kick's chat/], ['no-button', /Kick doesn't offer that there/], ['nope', /Kick didn't take it/]]){
+    await page.evaluate(a => { window.__modAnswer = a; }, ans);
+    await page.click(`${line(0)} >> .al-n`, { modifiers: ['Shift'] });
+    await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#msg')?.textContent || ''), want.source);
+  }
+});

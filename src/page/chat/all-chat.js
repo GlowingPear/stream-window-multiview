@@ -3,12 +3,15 @@ import { SmvSpam } from '../alerts/spam.js';
 import { feedParse } from './feed-parse.js';
 import { wins } from '../core.js';
 import { feedAgent, profileAgent, replyAgent, seekAgent } from '../in-site/feed.js';
+import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
 import { bellVars, myName } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
 import { linkOpt, nameOf, streamerBots, streamerOf } from '../platforms/linked.js';
-import { PLAT_NAME, platOf, platform } from '../platforms/platforms.js';
+import { PLAT_NAME, modOk, modUrl, platOf, platform } from '../platforms/platforms.js';
+import { ask } from '../shared/ask.js';
 import { element } from '../shared/element.js';
+import { DESKTOP, keyName } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { icon } from '../shared/icons.js';
 import { fromSite } from '../shared/incoming.js';
@@ -107,7 +110,10 @@ function lineEl(m){
   const site = PLAT_NAME[m.site] || m.site;
   const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]),
     ...m.badges.map(b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' })));
-  const name = element('b', { class: 'al-n', style: { color: nameColor(m) }, role: 'button', tabindex: '-1', title: `${m.sender}'s card on ${site}`, dataset: { cmd: 'all.profile' }, onclick: () => openSiteCard(m) }, m.sender);
+  const can = m.kind === 'message' && canModerate(m);
+  const name = element('b', { class: 'al-n' + (can ? ' can' : ''), style: { color: nameColor(m) }, role: 'button', tabindex: '-1', dataset: { cmd: 'all.profile' },
+    title: `${m.sender}'s card on ${site}` + (can ? `\n${kShift()}-click: delete · ${kCtrl()}-click: time out (${durText(lastTimeout())}) · ${kCtrl()}+${kShift()}-click: ban` : ''),
+    onclick: e => nameClick(m, e) }, m.sender);
   if (m.kind === 'event'){
     if (eventsMode === 'hidden') return null;
     const full = eventsMode === 'full' || !m.summary;
@@ -132,8 +138,12 @@ function lineEl(m){
     m.bot && !botsShown && element('button', { type: 'button', class: 'al-show linkish', dataset: { cmd: 'all.showBot' }, onclick: e => { m.open = !m.open; e.target.closest('.al-m').replaceWith(lineEl(m)); } }, m.open ? 'Hide' : 'Show')
   ].filter(Boolean);
   if (m.toMe === 'at' && m.bot) tags.splice(0, 1);   // (a bot's @: marked as to you, softly)
-  const hover = !m.deleted && element('span', 'al-hb', element('button', { type: 'button', title: `Reply on ${site}`, 'aria-label': `Reply to ${m.sender} on ${site}`, html: icon.reply, dataset: { cmd: 'all.reply' }, onclick: () => startReply(m) }));
-  return element('div', { class: cls, dataset: { key: m.site + ':' + m.id } }, hover,
+  const hover = !m.deleted && element('span', 'al-hb',
+    element('button', { type: 'button', title: `Reply on ${site}`, 'aria-label': `Reply to ${m.sender} on ${site}`, html: icon.reply, dataset: { cmd: 'all.reply' }, onclick: () => startReply(m) }),
+    can && element('button', { type: 'button', title: `Delete on ${site} (${kShift()}-click the name)`, 'aria-label': `Delete ${m.sender}'s message on ${site}`, html: icon.bin, dataset: { cmd: 'all.delete' }, onclick: () => modAct(m, 'delete') }),
+    element('span', 'al-hb-div'),
+    element('button', { type: 'button', title: 'More', 'aria-label': 'More', html: DOTS, dataset: { cmd: 'all.more' }, onclick: e => openLineMenu(m, e.currentTarget) }));
+  return element('div', { class: cls, dataset: { key: m.site + ':' + m.id }, oncontextmenu: e => { e.preventDefault(); openLineMenu(m, e); } }, hover,
     m.reply && element('span', 'al-q', '↩ replying to ', element('b', null, m.reply.login && m.reply.login === meOn(m.site) ? 'you' : m.reply.sender), m.reply.body ? ': ' + m.reply.body : ''),
     element('div', 'al-line', who, name, m.action ? ' ' : ': ', body, ...tags));
 }
@@ -159,9 +169,11 @@ function buildView(w){
   const menu = element('div', { class: 'pop all-menu', role: 'menu', hidden: true });
   const bar = element('div', { class: 'all-rb', hidden: true });
   const at = element('div', { class: 'pop all-at', role: 'listbox', hidden: true });
+  const lm = element('div', { class: 'pop all-lm', role: 'menu', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), chip, evChip), list, more, empty,
-    element('div', 'all-cmp', bar, element('div', 'all-box', pick, input)), menu, at);
-  const view = { el, list, empty, more, chip, evChip, s, pick, input, menu, bar, at, w, lock: null, atList: [], atSel: 0 };
+    element('div', 'all-cmp', bar, element('div', 'all-box', pick, input)), menu, at, lm);
+  const view = { el, list, empty, more, chip, evChip, s, pick, input, menu, bar, at, lm, w, lock: null, atList: [], atSel: 0 };
+  closeOnOutside(lm);
   closeOnOutside(menu, { button: pick });
   pick.onclick = () => { if (view.lock) return flash('Locked to this site · Esc or ✕ unlocks'); if (menu.hidden) openPickMenu(view, w); else menu.hidden = true; };
   input.addEventListener('keydown', e => {
@@ -259,6 +271,7 @@ const SEND_FAIL = {
   'not-filled': p => `Couldn't type into ${p}'s chat box`
 };
 const sender = {
+  mod: (m, action, id) => askIn(m.view, `(${modAgent})(${JSON.stringify(action)}, ${JSON.stringify(id)})`),
   send: (m, text) => askIn(m.view, `(${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)})`),
   reply: (m, id, text) => askIn(m.view, `(async () => (await (${replyAgent})(${JSON.stringify(id)})) ? (${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)}) : 'no-reply')()`)
 };
@@ -323,6 +336,83 @@ function pickAt(view, w, m){
   if (!view.lock) setLock(view, w, { kind: 'at', ch: m.ch });
   v.focus();
 }
+/* ---- mod actions: the hover's Delete, ⋯ and the right-click menu, and a click on a name with keys held ---- */
+// the keys' names, as this computer shows them (⌘ and ⇧ on a Mac)
+const kCtrl = () => keyName('Ctrl+').slice(0, -1);
+const kShift = () => kCtrl() === 'Ctrl' ? 'Shift' : '⇧';
+const DOTS = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
+const modKnown = new Map();   // channel -> whether you moderate it (the answer behind its mod view button, platforms.js)
+function youMod(ch){
+  if (!modKnown.has(ch)){
+    modKnown.set(ch, false);
+    const p = modOk.get(ch); if (p) p.then(v => { if (v === true){ modKnown.set(ch, true); redrawAll(); } });
+  }
+  return modKnown.get(ch);
+}
+// Why you can't moderate them here (nothing: you can)
+function whyNot(m){
+  const site = PLAT_NAME[m.site];
+  if (!platform(m.ch).timeoutCmd) return `From ${site}'s own tab`;
+  if (!youMod(m.ch)) return `You're not a mod on ${site}`;
+  if (m.login && m.login === meOn(m.site)) return 'That\'s you';
+  if (m.badges.includes('host')) return `${m.sender} is the streamer`;
+  if (m.badges.includes('mod') || m.badges.includes('staff')) return `${m.sender} is a mod on ${site}`;
+  return '';
+}
+const canModerate = m => !whyNot(m);
+const TIMEOUTS = [60, 600, 3600, 86400];
+const durText = secs => secs >= 86400 ? `${secs / 86400}d` : secs >= 3600 ? `${secs / 3600}h` : `${Math.round(secs / 60)}m`;
+const lastTimeout = () => TIMEOUTS.includes(settings.num('allTimeout')) ? settings.num('allTimeout') : 600;
+const chatFor = m => wins.find(o => o.kind === 'chat' && o.channel === m.ch);
+async function modAct(m, action, secs){
+  const c = chatFor(m), site = PLAT_NAME[m.site], who = m.sender; if (!c) return;
+  const why = action === 'pin' ? (youMod(m.ch) && platform(m.ch).timeoutCmd ? '' : whyNot(m) || `You're not a mod on ${site}`) : whyNot(m);
+  if (why) return flash(why);
+  if (action === 'ban' && !await ask(`Ban ${who} on ${site}?`, `They can't chat on ${site} until they're unbanned. Done with ${site}'s own /ban.`, { ok: 'Ban', danger: true })) return;
+  if (action === 'timeout') settings.set('allTimeout', secs);
+  let r;
+  try {
+    if (action === 'delete' || action === 'pin') r = await sender.mod(c, action, m.id);
+    else r = (await sender.send(c, action === 'ban' ? platform(m.ch).banCmd(m.login) : platform(m.ch).timeoutCmd(m.login, secs))) === 'sent' ? 'done' : 'failed';
+  } catch { r = 'failed'; }
+  flash(r === 'done' ? { delete: `Deleted ${who}'s message on ${site}`, pin: `Pinned ${who}'s message on ${site}`, timeout: `Timed out ${who} on ${site} for ${durText(secs)}`, ban: `Banned ${who} on ${site}` }[action]
+    : r === 'no-line' ? `That message has gone from ${site}'s chat` : r === 'no-button' ? `${site} doesn't offer that there: try from its own tab` : `${site} didn't take it: try from its own tab`);
+}
+// A click on a name: their card; with Shift delete, Ctrl / ⌘ time out (the last length), both ban (as Kick's own chat does)
+function nameClick(m, e){
+  const ctrl = e.ctrlKey || e.metaKey;
+  if (!ctrl && !e.shiftKey) return openSiteCard(m);
+  e.preventDefault();
+  if (ctrl && e.shiftKey) modAct(m, 'ban'); else if (ctrl) modAct(m, 'timeout', lastTimeout()); else modAct(m, 'delete');
+}
+// ⋯ and the right-click: the line's menu (the mod part only where you're a mod)
+function openLineMenu(m, at){
+  const view = viewFor(streamerOf(m.ch)); if (!view) return;
+  const site = PLAT_NAME[m.site], why = whyNot(m), mod = youMod(m.ch) && !!platform(m.ch).timeoutCmd, lm = view.lm;
+  const item = (label, ic, run, more = {}) => element('button', { type: 'button', role: 'menuitem', class: 'all-li' + (more.red ? ' red' : ''), disabled: !!more.off, title: more.off || '', dataset: { cmd: more.cmd },
+    onclick: () => { lm.hidden = true; run(); } }, element('i', { html: ic }), element('span', null, label), more.kb ? element('small', null, more.kb) : '');
+  const text = m.parts.map(x => x.text || x.name).join('');
+  lm.replaceChildren(element('div', 'all-lh', element('i', { class: 'pi pi-' + m.site }, site[0]), element('b', null, m.sender), element('small', null, site)),
+    sendSites(view.w).includes(m.ch) && item('Reply', icon.reply, () => startReply(m), { cmd: 'all.menuReply' }),
+    mod && item('Pin message', icon.pin, () => modAct(m, 'pin'), { cmd: 'all.menuPin' }),
+    item(`Open profile on ${site}`, icon.user, () => openSiteCard(m), { cmd: 'all.menuProfile' }),
+    mod && element('hr'),
+    mod && item('Delete message', icon.bin, () => modAct(m, 'delete'), { kb: `${kShift()}-click name`, off: why, cmd: 'all.menuDelete' }),
+    mod && item('Timeout', TIMER, () => modAct(m, 'timeout', lastTimeout()), { kb: `${kCtrl()}-click name`, off: why, cmd: 'all.menuTimeout' }),
+    mod && !why && element('div', 'all-durs', ...TIMEOUTS.map(sec => element('button', { type: 'button', class: sec === lastTimeout() ? 'on' : '', dataset: { cmd: 'all.timeoutFor' }, onclick: () => { lm.hidden = true; modAct(m, 'timeout', sec); } }, durText(sec)))),
+    mod && item('Ban', BAN, () => modAct(m, 'ban'), { kb: `${kCtrl()}+${kShift()}-click name`, off: why, red: true, cmd: 'all.menuBan' }),
+    element('hr'),
+    item('Copy message', icon.copy, () => { navigator.clipboard?.writeText(text).then(() => flash('Copied'), () => flash('Couldn\'t copy it')); }, { cmd: 'all.menuCopy' }),
+    mod && modUrl(m.ch) && item(`Open ${site} mod view`, icon.mod, () => { const u = modUrl(m.ch); if (DESKTOP) window.kmv.openWindow(u, 1400, 900); else window.open(u, '_blank'); }, { cmd: 'all.menuModView' }));
+  lm.hidden = false;
+  const vr = view.el.getBoundingClientRect(), r = at.getBoundingClientRect ? at.getBoundingClientRect() : { left: at.clientX, right: at.clientX, top: at.clientY, bottom: at.clientY };
+  const w = lm.offsetWidth, h = lm.offsetHeight;
+  lm.style.left = Math.max(6, Math.min(vr.width - w - 6, r.right - vr.left - w)) + 'px';
+  lm.style.top = Math.max(6, Math.min(vr.height - h - 6, r.bottom - vr.top + 4)) + 'px';
+}
+const TIMER = '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>';
+const BAN = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>';
+
 // A name: their card on their own site (that site's tab, the site opens its card for them)
 function openSiteCard(m){
   const c = wins.find(o => o.kind === 'chat' && o.channel === m.ch); if (!c) return;
@@ -389,10 +479,15 @@ function init(){
   botsShown = settings.text('allBots') === 'shown';
   eventsMode = ['short', 'full', 'hidden'].includes(settings.text('allEvents')) ? settings.text('allEvents') : 'short';
   fromSite('feed', (w, json) => { if (allOn(w)) ingest(w, json); });
+  // Esc closes ALL's menus (the line's, Send on's)
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    wins.forEach(w => { const v = w.allView; if (!v) return; [v.lm, v.menu].forEach(m => { if (!m.hidden){ m.hidden = true; e.preventDefault(); } }); });
+  });
   store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncAll());
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.sendAgent = sendAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
-  window.allChat = { sender, ingest: (ch, batch) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch)); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
+  window.allChat = { sender, modKnown, ingest: (ch, batch) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch)); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
 export { allOn, allTabFor, feedReady, init, setAll };

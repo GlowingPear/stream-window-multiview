@@ -51,3 +51,22 @@ test('a name: the site\'s own name on that line is clicked (its card); a line th
   assert.deepEqual(await page.evaluate(() => window.__clicks), ['tw-name', 'yt-name']);
   assert.equal(await page.evaluate(() => window.profileAgent('gone')), false);
 });
+
+test('mod actions on a message: only the site\'s buttons labelled Delete or Pin are pressed; a line that\'s gone, or no such button: says so', async t => {
+  const page = await openApp(t);
+  await page.evaluate(() => {
+    document.getElementById('md-wrap')?.remove(); window.__clicks = [];
+    const row = document.createElement('div'); row.id = 'md-wrap'; row.setAttribute('data-index', '1');
+    const g = document.createElement('div'); g.className = 'group'; g['__reactFiber$m'] = { memoizedProps: { message: { id: 'k1' } } };
+    const add = (label, what) => { const b = document.createElement('button'); b.setAttribute('aria-label', label); b.onclick = () => window.__clicks.push(what); g.append(b); };
+    add('Ban', 'ban'); add('Delete', 'delete'); add('Pin', 'pin');
+    row.append(g); document.body.append(row);
+  });
+  assert.equal(await page.evaluate(() => window.modAgent('delete', 'k1')), 'done');
+  assert.equal(await page.evaluate(() => window.modAgent('pin', 'k1')), 'done');
+  assert.deepEqual(await page.evaluate(() => window.__clicks), ['delete', 'pin'], 'never Ban');
+  assert.equal(await page.evaluate(() => window.modAgent('delete', 'gone')), 'no-line');
+  assert.equal(await page.evaluate(() => window.modAgent('ban', 'k1')), 'no-button', 'bans are chat commands, not buttons');
+  await page.evaluate(() => document.querySelector('#md-wrap [aria-label=Pin]').remove());
+  assert.equal(await page.evaluate(() => window.modAgent('pin', 'k1')), 'no-button');
+});
