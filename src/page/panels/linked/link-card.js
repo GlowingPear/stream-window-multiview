@@ -1,7 +1,8 @@
 import { $ } from '../../core.js';
 import { autoOpen, channelVars, infoFor, persistSaved, saved, svHue, svInitials, svProf, toggleAutoOpen } from '../channels/channels.js';
-import { accountsOf, canLink, link, linkOpt, linkedOn, nameOf, notSame, ordered, setMain, setOn, setStreamerOpt,
-  streamerName, streamerOf, suggestions, unlink, unlinkAll } from '../../platforms/linked.js';
+import { openSettings } from '../settings/settings.js';
+import { accountsOf, botsOf, canLink, link, linkOpt, linkedOn, nameOf, notSame, ordered, setMain, setOn,
+  setStreamerOpt, streamerName, streamerOf, suggestions, unlink, unlinkAll } from '../../platforms/linked.js';
 import { PLATFORMS, PLAT_NAME, chLabel, parseInput, platOf } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
 import { element } from '../../shared/element.js';
@@ -12,7 +13,7 @@ import { store } from '../../shared/store.js';
 /* ---- The Link channels card: one streamer's accounts (live or not), the main one, suggestions, adding an account
    by site and name, @handle or link, and this streamer's own choices. Opened from Channels (▾ › Link another
    account…), a window's ⋯, a profile, Settings › Linked channels and the search box. ---- */
-let dlg, card, cur = [], curPlat = 'kick', addFocus = false;
+let dlg, card, cur = [], curPlat = 'kick', botPlat = 'kick', addFocus = false;
 function openLinkCard(ch, { add } = {}){
   if (!linkedOn()){ setOn(true); flash('Linked channels turned on (Settings › Linked channels)'); }
   cur = ch ? accountsOf(ch) : [];
@@ -34,7 +35,8 @@ function liveText(ch){
   if (i.missing) return element('span', 'lc-st lc-bad', 'Channel not found');
   return i.live ? element('span', 'lc-st lc-live', `Live · ${Number(i.viewers || 0).toLocaleString()} watching`) : element('span', 'lc-st', 'Offline');
 }
-const lcSite = ch => element('i', { class: 'pi pi-' + platOf(ch) }, PLAT_NAME[platOf(ch)][0]);
+const lcPlat = p => element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]);
+const lcSite = ch => lcPlat(platOf(ch));
 function renderCard(){
   if (dlg.hidden) return;
   const { s, chs } = accounts();
@@ -87,6 +89,7 @@ function renderCard(){
     parts.push(element('div', 'lc-sec', chs.length ? 'Add a channel' : 'Their first channel'), element('div', 'lc-add', segs, inp, go), err);
     if (addFocus) setTimeout(() => inp.focus(), 0);
   }
+  if (s) parts.push(...botsPart(s));
   // this streamer's own choices
   if (s){
     const sel = (label, sub, opts, val, onchange, cmd) => {
@@ -108,6 +111,37 @@ function renderCard(){
     element('button', { type: 'button', class: 'btn primary', dataset: { cmd: 'link.done' }, onclick: closeLinkCard }, 'Done')));
   card.replaceChildren(...parts.filter(Boolean));
   addFocus = false;
+}
+// Their own chat bots: a name on one of their sites, never a mention or spam in their chats there, on top of the app's
+// list (Chat › Chat bots). Many streamers run a bot as their own account: then their own messages there count as the bot's.
+function botsPart(s){
+  const bots = botsOf(s), sites = [...new Set(ordered(s).map(platOf))];
+  if (!sites.includes(botPlat)) botPlat = sites[0];
+  const own = b => s.accounts.some(c => platOf(c) === b.p && chLabel(c).replace(/^@/, '').toLowerCase() === b.name.toLowerCase());
+  const save = list => { setStreamerOpt(s.id, 'bots', list.length ? list : null); renderCard(); };
+  const inp = element('input', { class: 'st-in lc-in', id: 'lcBotIn', dataset: { cmd: 'link.botName' }, placeholder: `Bot's name on ${PLAT_NAME[botPlat]}`, maxlength: 40, autocomplete: 'off', spellcheck: false, 'aria-label': 'Their chat bot\'s name' });
+  const add = () => {
+    const name = inp.value.trim().replace(/^@/, '');
+    if (!/[a-z0-9]/i.test(name)){ inp.focus(); flash("Type a chat bot's name"); return; }
+    if (bots.some(b => b.p === botPlat && b.name.toLowerCase() === name.toLowerCase())){ inp.value = ''; return; }
+    save([...bots, { p: botPlat, name }]);
+    setTimeout(() => card.querySelector('#lcBotIn')?.focus(), 0);
+  };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); add(); } });
+  const segs = element('div', { class: 'seg lc-plat lc-botplat', role: 'radiogroup', 'aria-label': 'Their bot\'s site' }, ...sites.map(p => element('button', { type: 'button', class: p === botPlat ? 'on' : '', role: 'radio', 'aria-checked': String(p === botPlat), title: PLAT_NAME[p], dataset: { bp: p, cmd: 'link.botSite' },
+    onclick: () => { botPlat = p; segs.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.bp === p); b.setAttribute('aria-checked', String(b.dataset.bp === p)); }); inp.placeholder = `Bot's name on ${PLAT_NAME[p]}`; inp.focus(); } }, lcPlat(p))));
+  const mine = bots.filter(own);
+  return [
+    element('div', 'lc-sec', 'Their chat bots'),
+    element('p', 'lc-desc', `Never a mention or spam in ${streamerName(s)}'s chats on that site. Bots for every chat go in `,
+      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'link.botsApp' }, onclick: () => { closeLinkCard(); openSettings('chat', { sub: 'bots' }); } }, 'Chat › Chat bots'), '.'),
+    bots.length && element('div', 'st-chips lc-bots', ...bots.map(b => element('span', { class: 'st-chip lc-bot' + (own(b) ? ' lc-own' : '') }, lcPlat(b.p), element('span', null, b.name),
+      element('button', { type: 'button', title: `Remove ${b.name}`, 'aria-label': `Remove ${b.name}`, html: icon.close, dataset: { cmd: 'link.botRemove' }, onclick: () => save(bots.filter(x => x !== b)) })))),
+    element('div', 'lc-add', segs, inp, element('button', { type: 'button', class: 'btn', dataset: { cmd: 'link.botAdd' }, onclick: add }, 'Add')),
+    mine.length && element('div', 'lc-warn', element('span', { class: 'lc-warn-i', 'aria-hidden': 'true' }, '!'),
+      element('span', null, ...mine.flatMap((b, i) => [i ? ' ' : '', element('b', null, b.name), ` is their own name on ${PLAT_NAME[b.p]}: everything they type in ${PLAT_NAME[b.p]} chat counts as the bot's.`]),
+        ` Their messages on other sites aren't affected.`))
+  ].filter(Boolean);
 }
 // Add a channel to the streamer (or link the first two). The new one is saved too, so its live status is watched.
 function addAccount(ch, to){

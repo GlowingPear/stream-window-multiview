@@ -334,7 +334,7 @@
       </section>
       <section class="st-pane" data-s="chat" hidden>
         <h4>Chat</h4><p class="st-sub">How chat windows look and behave.</p>
-        <div class="st-tabs" id="chatTabs"><button data-t="box" class="on">Chat box</button><button data-t="messages" class="desk-only">Messages</button><button data-t="emotes">Emotes</button><button data-t="translate">Translation</button></div>
+        <div class="st-tabs" id="chatTabs"><button data-t="box" class="on">Chat box</button><button data-t="messages" class="desk-only">Messages</button><button data-t="emotes">Emotes</button><button data-t="translate">Translation</button><button data-t="bots" class="desk-only">Chat bots</button></div>
         <div class="st-subpane" data-t="box">
         <label class="st-row"><span class="st-t">Channel name in chat boxes<small>Chat boxes show the channel you're typing in instead of the site's &quot;Send a message&quot;, so you don't post in the wrong chat. A box that says why you can't chat (followers-only, slow mode, sign in) keeps the site's words. Kick, Twitch and YouTube.</small></span><input type="checkbox" class="st-sw" id="chatNameSet"></label>
         <div class="st-row cn-row" id="chatNameRow" hidden><span class="st-t">Text in the box<small><b>{channel}</b> is the channel's name. Empty: just the name.</small></span>
@@ -355,6 +355,15 @@
         </div>
         <div class="st-subpane" data-t="translate" hidden>
         <label class="st-row"><span class="st-t">Translate new messages in every chat<small>Every chat translates new messages into your language, each with a TRANSLATED · &lt;language&gt; badge. Right-click a chat to stop it there. Off: right-click a chat and choose Translate this chat, or Translate new messages too. The messages are sent to Google Translate; nothing is sent until you switch this on or choose it in a chat.</small></span><input type="checkbox" class="st-sw" id="trAllSet"></label>
+        </div>
+              <div class="st-subpane" data-t="bots" hidden>
+        <div class="st-sec st-head">Chat bots<button class="btn" data-reset="mbots">Reset</button></div>
+        <p class="st-sub" style="margin:2px 0 0">Accounts like Nightbot, StreamElements or BotRix that post rules and timers and repeat names back to chat ("thanks for the follow, @you"). Their messages are never a mention, reply or word, and never flagged as spam. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> still counts. A linked streamer's own bots go on their card in <button class="linkish" data-go="linked">Linked channels</button>.</p>
+        <div class="st-add"><input class="st-in" data-add="mbots" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="mbots">Add</button></div>
+        <div class="st-chips" data-list="mbots"></div>
+        <div class="st-sec">Used by</div>
+        <div class="st-row"><span class="st-t">Mentions<small>Messages from these names never alert you</small></span><div class="seg" data-al="mention.botsMode" role="radiogroup" aria-label="Chat bots for mentions"><button type="button" data-v="shared" role="radio">This list</button><button type="button" data-v="own" role="radio">Their own</button></div></div>
+        <div class="st-row"><span class="st-t">Spam alerts<small>Messages from these names are never flagged</small></span><div class="seg" data-al="spam.botsMode" role="radiogroup" aria-label="Chat bots for spam alerts"><button type="button" data-v="shared" role="radio">This list</button><button type="button" data-v="own" role="radio">Their own</button><button type="button" data-v="both" role="radio">This list + their own</button></div></div>
         </div>
       </section>
       <section class="st-pane" data-s="accounts" hidden>
@@ -482,10 +491,11 @@
         <div class="st-chips" id="mentWords"></div>
         </div>
         <div class="st-subpane" data-t="bots" hidden>
-        <div class="st-sec st-head">Chat bots to ignore<button class="btn" data-reset="mbots">Reset</button></div>
-        <p class="st-sub" style="margin:2px 0 0">Bots that repeat names back to chat ("thanks for the follow, @you"). Their messages never count as a mention, reply or word. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> still alerts. Spam alerts use this list too, unless you give them their own.</p>
-        <div class="st-add"><input class="st-in" data-add="mbots" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="mbots">Add</button></div>
-        <div class="st-chips" data-list="mbots"></div>
+        <div class="st-row"><span class="st-t">Chat bots to ignore<small>Bots that repeat names back to chat ("thanks for the follow, @you"): their messages never count as a mention, reply or word.</small></span><div class="seg" data-al="mention.botsMode" role="radiogroup" aria-label="Chat bots for mentions"><button type="button" data-v="shared" role="radio">Shared list</button><button type="button" data-v="own" role="radio">Own list</button></div></div>
+        <p class="st-sub" data-mshared>The app's list, also used by spam alerts: <button class="linkish" data-go="chat" data-sub="bots">Chat › Chat bots</button></p>
+        <div class="st-sec st-head" data-mown>Mentions' own list<button class="btn" data-reset="mownbots">Reset</button></div>
+        <div class="st-add" data-mown><input class="st-in" data-add="mownbots" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="mownbots">Add</button></div>
+        <div class="st-chips" data-list="mownbots" data-mown></div>
         </div>
         <div class="st-subpane st-opts" data-t="alerts" data-for="mention">
         <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up.</small></span>
@@ -599,8 +609,9 @@
               <div class="st-add"><input class="st-in" data-add="openers" placeholder="Add a line a bot posts" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="openers">Add</button></div>
               <div class="st-chips" data-list="openers"></div></div>
             <div class="ly-panel" data-l="ignore" hidden><div class="ly-head"><b>Chat bots to ignore</b><button class="btn" data-reset="ignore" data-own>Reset</button></div><p class="ly-desc">Messages from these accounts are never flagged as spam. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> is still checked.</p>
-              <div class="st-row"><span class="st-t">Same list as mentions<small>On: the chat bots from Mentions, so one list does both.</small></span><input type="checkbox" class="st-sw" data-al="spam.sharedBots"></div>
-              <p class="ly-desc" data-shared>Shared with mentions, so it's changed there: <button class="linkish" data-go="mentions" data-sub="bots">Mentions › Chat bots</button></p>
+              <div class="st-row"><span class="st-t">Which list</span><div class="seg" data-al="spam.botsMode" role="radiogroup" aria-label="Chat bots for spam alerts"><button type="button" data-v="shared" role="radio">Shared list</button><button type="button" data-v="own" role="radio">Own list</button><button type="button" data-v="both" role="radio">Both</button></div></div>
+              <p class="ly-desc" data-shared>The app's list, also used by mentions: <button class="linkish" data-go="chat" data-sub="bots">Chat › Chat bots</button></p>
+              <p class="ly-desc" data-both>Spam alerts also skip everyone on the app's list (<button class="linkish" data-go="chat" data-sub="bots">Chat › Chat bots</button>), as well as these:</p>
               <div class="st-add" data-own><input class="st-in" data-add="ignore" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="ignore">Add</button></div>
               <div class="st-chips" data-list="ignore"></div></div>
             <div class="ly-panel" data-l="abuseWords" hidden><div class="ly-head"><b>Abuse words</b><button class="btn" data-hide="abuseWords" hidden>Hide</button><button class="btn" data-reset="abuseWords">Reset</button></div><p class="ly-desc">Insults that count after "you", "ur a" or "your a", like "ur a whore". Plurals and endings like "-ing" count too.</p>

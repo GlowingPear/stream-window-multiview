@@ -54,7 +54,11 @@ function pickSound(kind){
 async function setAlert(kind, k, v){
   if (k === 'sound' && v === 'custom' && !await pickSound(kind)) v = alerts[kind].sound;
   alerts[kind][k] = v; saveAlerts(); syncAlertControls();
-  if (k === 'sharedBots'){ renderSpamLists(); renderSpamHist(); flash(v ? 'Spam alerts use the chat bot list from Mentions' : 'Spam alerts have their own chat bot list'); }
+  if (k === 'botsMode'){
+    renderSpamLists(); renderSpamHist();
+    const who = kind === 'spam' ? 'Spam alerts' : 'Mentions';
+    flash(v === 'own' ? `${who} have their own chat bot list` : v === 'both' ? `${who} use the app's chat bot list and their own` : `${who} use the app's chat bot list (Chat › Chat bots)`);
+  }
   if (k === 'sound' || k === 'vol') playSound(kind, true);
   if (k === 'color') wins.forEach(w => { if (w.alert && w.alert.kind === kind) w.el.style.setProperty('--al', v); });
   if (kind === 'live' && k === 'notify') syncLiveAlerts();
@@ -63,13 +67,15 @@ async function setAlert(kind, k, v){
     flash(v ? 'Support alerts on' : 'Support alerts off');
   }
 }
-/* Spam alerts: allowed sites, promo words, known bot lines, chat bots to ignore, and the abuse lists. Mentions: chat
-   bots to ignore ('mbots'), which spam alerts show (read-only) and use instead of their own while they share it. */
+/* Spam alerts: allowed sites, promo words, known bot lines, their own chat bots ('ignore'), and the abuse lists. The
+   app's chat bot list ('mbots', Chat › Chat bots), and Mentions' own ('mownbots'). */
 const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS, openers: () => SmvSpam.OPENERS, ignore: () => SmvSpam.BOTS, mbots: () => SmvSpam.BOTS,
-  abuseWords: () => SmvSpam.ABUSE, slurs: () => SmvSpam.SLURS, swears: () => SmvSpam.SWEARS };
-const listKey = which => which === 'ignore' && alerts.spam.sharedBots ? 'mbots' : which;
-const listStore = which => which === 'mbots' ? [alerts.mention, 'bots'] : [alerts.spam, which];
-const listOf = which => { const [a, k] = listStore(listKey(which)); return (a[k] || SPAM_LIST[which]()).slice(); };
+  mownbots: () => SmvSpam.BOTS, abuseWords: () => SmvSpam.ABUSE, slurs: () => SmvSpam.SLURS, swears: () => SmvSpam.SWEARS };
+const BOT_LISTS = ['ignore', 'mbots', 'mownbots'];
+const listStore = which => which === 'mbots' ? [alerts.mention, 'bots'] : which === 'mownbots' ? [alerts.mention, 'ownBots'] : [alerts.spam, which];
+const listOf = which => { const [a, k] = listStore(which); return (a[k] || SPAM_LIST[which]()).slice(); };
+// The chat bot list spam alerts add to ("Not spam: ignore this account"): their own, unless they only use the app's
+const spamBotList = () => alerts.spam.botsMode === 'own' || alerts.spam.botsMode === 'both' ? 'ignore' : 'mbots';
 // The abuse lists are offensive to read, so they stay blurred under a cover until you choose to show them, each time
 // Settings opens.
 const shownLists = new Set();
@@ -88,41 +94,47 @@ function showList(which, on){
 }
 function veilLists(){ shownLists.clear(); renderSpamLists(); }
 function renderSpamLists(){
-  const shared = !!alerts.spam.sharedBots;
-  settingsDlg.querySelectorAll('[data-s=spam] .ly-panel[data-l=ignore] [data-own]').forEach(el => { el.hidden = shared; });
-  settingsDlg.querySelectorAll('[data-s=spam] .ly-panel[data-l=ignore] [data-shared]').forEach(el => { el.hidden = !shared; });
+  // which parts show: the shared list's note, or the own list (spam alerts: also both)
+  const sm = alerts.spam.botsMode || 'shared', mm = alerts.mention.botsMode || 'shared';
+  const show = (sel, on) => settingsDlg.querySelectorAll(sel).forEach(el => { el.hidden = !on; });
+  show('[data-s=spam] .ly-panel[data-l=ignore] [data-own]', sm !== 'shared');
+  show('[data-s=spam] .ly-panel[data-l=ignore] [data-shared]', sm === 'shared');
+  show('[data-s=spam] .ly-panel[data-l=ignore] [data-both]', sm === 'both');
+  show('[data-s=mentions] [data-mown]', mm === 'own');
+  show('[data-s=mentions] [data-mshared]', mm !== 'own');
   Object.keys(SPAM_LIST).forEach(which => {
-    const ro = which === 'ignore' && shared;   // changed in Mentions
+    const ro = which === 'ignore' && sm === 'shared';   // the app's list, shown here and changed in Chat › Chat bots
+    const items = listOf(ro ? 'mbots' : which);
     const box = settingsDlg.querySelector(`[data-list="${which}"]`); box.innerHTML = '';
-    const n = settingsDlg.querySelector(`[data-lcount="${which}"]`); if (n) n.textContent = listOf(which).length;
-    listOf(which).forEach(item => {
+    const n = settingsDlg.querySelector(`[data-lcount="${which}"]`); if (n) n.textContent = items.length;
+    items.forEach(item => {
       const c = document.createElement('span'); c.className = ro ? 'st-chip ro' : 'st-chip';
       c.innerHTML = ro ? '<span></span>' : `<span></span><button title="Remove">${icon.close}</button>`;
       c.firstChild.textContent = item;
       if (!ro) c.querySelector('button').onclick = () => setSpamList(which, listOf(which).filter(x => x !== item));
       box.appendChild(c);
     });
-    veilList(which, listOf(which).length);
+    veilList(which, items.length);
   });
 }
 function setSpamList(which, list){
-  const def = SPAM_LIST[which](), [a, k] = listStore(listKey(which));
+  const def = SPAM_LIST[which](), [a, k] = listStore(which);
   a[k] = list && !(list.length === def.length && list.every((x, i) => x === def[i])) ? list : null;
   saveAlerts(); renderSpamLists(); renderSpamHist();
 }
 // "Not spam: ignore this account" in the History tab.
 function ignoreSender(name){
-  const l = listOf('ignore'), v = String(name).trim().toLowerCase();
-  if (!l.includes(v)) setSpamList('ignore', [...l, v]);
-  flash(`${name} added to the chat bot list: never flagged as spam${alerts.spam.sharedBots ? ' or counted as a mention' : ''}`);
+  const which = spamBotList(), l = listOf(which), v = String(name).trim().toLowerCase();
+  if (!l.includes(v)) setSpamList(which, [...l, v]);
+  flash(`${name} added to the chat bot list: never flagged as spam${which === 'mbots' ? ' or counted as a mention' : ''}`);
 }
 function addSpamItem(which){
   const inp = settingsDlg.querySelector(`[data-add="${which}"]`);
   let v = inp.value.trim().replace(/\s+/g, ' ');
   if (which !== 'openers') v = v.toLowerCase();   // bot lines keep their capitals: they're shown as typed
-  if (which === 'ignore' || which === 'mbots') v = v.replace(/^@/, '');
+  if (BOT_LISTS.includes(which)) v = v.replace(/^@/, '');
   if (which === 'allow') v = v.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '').replace(/\s+(?=[a-z]{2,6}$)/, '.');
-  if (!/[a-z0-9]/i.test(v) || (which === 'allow' && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v))){ inp.focus(); flash(which === 'allow' ? 'Type a site like example.com' : which === 'openers' ? 'Type a line a bot posts' : which === 'ignore' || which === 'mbots' ? "Type a chat bot's name" : 'Type a word or phrase'); return; }
+  if (!/[a-z0-9]/i.test(v) || (which === 'allow' && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v))){ inp.focus(); flash(which === 'allow' ? 'Type a site like example.com' : which === 'openers' ? 'Type a line a bot posts' : BOT_LISTS.includes(which) ? "Type a chat bot's name" : 'Type a word or phrase'); return; }
   const l = listOf(which); if (!l.some(x => x.toLowerCase() === v.toLowerCase())) l.push(v);
   setSpamList(which, l); inp.value = '';
 }
@@ -212,7 +224,7 @@ function renderSpamHist(){
     row.querySelector('.mp-body').textContent = h.body;
     row.querySelector('.sh-signs').innerHTML = (h.signs || []).map(x => `<span>${esc(x.text)} <i>+${x.points}</i></span>`).join('');
     const acts = document.createElement('div'); acts.className = 'sh-acts';
-    if (SmvSpam.ignored(h.sender, spamOpts().ignore)) acts.innerHTML = '<span>On the chat bot list: no longer flagged</span>';
+    if (SmvSpam.ignored(h.sender, spamOpts(h.channel).ignore)) acts.innerHTML = '<span>On the chat bot list: no longer flagged</span>';
     else {
       acts.innerHTML = '<button class="btn sh-ign">Not spam: ignore this account</button>';
       acts.firstChild.title = `Add ${h.sender} to the chat bot list (Lists tab), so its messages are never flagged`;

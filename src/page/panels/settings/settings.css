@@ -51,6 +51,8 @@ input.st-sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .st-chip button:hover{background:var(--line2);color:var(--text)}
 .st-chip svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round}
 .st-add,.st-try{display:flex;gap:6px;margin-top:8px}
+/* the chat bot lists' parts that show for one choice of list (Mentions, Spam alerts) */
+.st-pane :is([data-own],[data-shared],[data-both],[data-mown],[data-mshared])[hidden]{display:none}
 .st-add .st-in,.st-try .st-in{flex:1;width:auto}
 .st-res{margin-top:10px;border:1px solid var(--line2);border-radius:8px;padding:8px 10px;font-size:12px}
 .st-res[hidden]{display:none}

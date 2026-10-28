@@ -53,6 +53,10 @@ const nameOf = ch => { const s = streamerOf(ch); return s ? streamerName(s) : ch
 const groupKey = ch => { const s = streamerOf(ch); return s ? 's:' + s.id : ch; };
 const sameStreamer = (a, b) => a === b || (!!a && !!b && groupKey(a) === groupKey(b));
 const listStreamers = () => linkedOn() ? all().map(s => ({ ...s, accounts: ordered(s) })) : [];
+// A streamer's own chat bots (their card): names for one site each, { p: 'kick', name: 'quietkoala' }. Never a mention
+// or spam in their chats on that site, on top of the app's list.
+const botsOf = s => s && Array.isArray(s.bots) ? s.bots.filter(b => b && typeof b.name === 'string' && b.name && PLATFORMS[b.p]) : [];
+const streamerBots = ch => botsOf(streamerOf(ch)).filter(b => b.p === platOf(ch)).map(b => b.name);
 const optDefault = k => OPT_DEFAULTS[k];
 function linkOpt(k){ const o = settings.json('linkedOpts', {}) || {}; return k in o ? o[k] : OPT_DEFAULTS[k]; }
 // A streamer's own choice (their streams, opening by themselves), or the page's
@@ -164,9 +168,9 @@ function suggestions({ all: every } = {}){
 function init(){
   // changed in the other window
   settings.onChange(['streamers', 'linkedOn', 'linkedNot', 'linkedOpts'], name => { if (name === 'streamers') streamers = null; store.changed('streamers'); });
-  window.linkedApi = { link, unlink, unlinkAll, setOn, setMain, notSame, suggestions, listStreamers, streamerOf };   // for the tests
+  window.linkedApi = { link, unlink, unlinkAll, setOn, setMain, notSame, suggestions, listStreamers, streamerOf, setStreamerOpt, streamerBots };   // for the tests
 }
 
-export { accountsOf, canLink, dismissed, forgetNot, groupKey, init, laterPair, link, linkedOn, linkOpt,
+export { accountsOf, botsOf, canLink, dismissed, forgetNot, groupKey, init, laterPair, link, linkedOn, linkOpt,
   listStreamers, nameOf, notSame, optFor, ordered, sameStreamer, setMain, setOn, setOpt, setStreamerOpt,
-  streamerName, streamerOf, suggestions, unlink, unlinkAll };
+  streamerBots, streamerName, streamerOf, suggestions, unlink, unlinkAll };

@@ -295,7 +295,7 @@ test('spam alerts lists: remove an item, and Reset brings back the built-in list
   const builtIn = await bots();
   assert.ok(builtIn.includes('botrix') && builtIn.includes('nightbot'), 'filled with common chat bots');
   await win.click('#spamListPick [data-l=ignore]');
-  await win.uncheck('[data-al="spam.sharedBots"]');   // their own list
+  await win.click('[data-s=spam] [data-al="spam.botsMode"] [data-v=own]');   // their own list
   await win.fill('[data-add=ignore]', '@MyTimerBot'); await win.press('[data-add=ignore]', 'Enter');
   assert.deepEqual(await bots(), [...builtIn, 'mytimerbot'], 'kept lower case, without the @');
   await win.click('[data-list=ignore] .st-chip:has-text("nightbot") button');
@@ -304,7 +304,7 @@ test('spam alerts lists: remove an item, and Reset brings back the built-in list
   assert.match(await win.textContent('#msg'), /Type a chat bot's name/);
   await win.click('[data-reset=ignore]');
   assert.deepEqual(await bots(), builtIn, 'back to the built-in bots');
-  await win.check('[data-al="spam.sharedBots"]');
+  await win.click('[data-s=spam] [data-al="spam.botsMode"] [data-v=shared]');
   await win.click('#spamListPick [data-l=words]');
   await win.click('[data-reset=words]');
   assert.deepEqual(await words(), before, 'back to the built-in words');
@@ -312,39 +312,66 @@ test('spam alerts lists: remove an item, and Reset brings back the built-in list
   await win.keyboard.press('Escape');
 });
 
-test('chat bots: the list is in Mentions, spam alerts show it until they get their own, and new built-in bots reach a list you changed once', T, async () => {
+test('chat bots: one list in Chat › Chat bots for mentions and spam alerts, each can have their own, and new built-in bots reach a list you changed once', T, async () => {
   const chips = sel => win.$$eval(`${sel} .st-chip > span`, l => l.map(x => x.textContent));
-  await win.evaluate(() => window.openSettings('mentions'));
-  await win.click('#mentTabs [data-t=bots]');
+  const saved = () => win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')));
+  const tryIt = async sender => { await win.fill('#spamTrySender', sender); await win.fill('#spamTry', 'hq ai stream upgrades botkiva com zero cost upgrades'); await win.click('#spamTryBtn'); return win.textContent('#spamRes'); };
+  await win.evaluate(() => window.openSettings('chat', { sub: 'bots' }));
+  assert.ok((await chips('[data-list=mbots]')).includes('botrixofficial'), 'BotRix on Twitch is built in');
   await win.fill('[data-add=mbots]', '@Mention_Only_Bot'); await win.press('[data-add=mbots]', 'Enter');
   assert.ok((await chips('[data-list=mbots]')).includes('mention_only_bot'), 'kept lower case, without the @');
   await win.fill('[data-add=mbots]', ''); await win.click('[data-addbtn=mbots]');
   assert.match(await win.textContent('#msg'), /Type a chat bot's name/);
+  for (const k of ['mention', 'spam']) assert.equal(await win.getAttribute(`[data-s=chat] [data-al="${k}.botsMode"] [data-v=shared]`, 'aria-checked'), 'true', `${k}: this list to start with`);
 
   // spam alerts: the same list, read-only, with a way to it
   await win.evaluate(() => window.openSettings('spam'));
   await win.click('#spamTabs [data-t=lists]');
   await win.click('#spamListPick [data-l=ignore]');
-  assert.equal(await win.isChecked('[data-al="spam.sharedBots"]'), true, 'shared to start with');
   assert.deepEqual(await chips('[data-list=ignore]'), await chips('[data-list=mbots]'));
   assert.equal(await win.textContent('[data-lcount=ignore]'), String((await chips('[data-list=ignore]')).length), 'its count on the left');
   assert.equal(await win.$$eval('[data-list=ignore] .st-chip button', b => b.length), 0, 'nothing to remove here');
   assert.ok(await win.isHidden('[data-add=ignore]') && await win.isHidden('[data-reset=ignore]'), 'nothing to add or reset');
   assert.ok(await win.isHidden('[data-add=allow]'), 'one list at a time');
-  await win.click('[data-s=spam] [data-go=mentions][data-sub=bots]');
-  assert.ok(await win.isVisible('[data-add=mbots]'), 'the link opens Mentions > Chat bots');
+  await win.click('[data-s=spam] [data-shared] [data-go=chat][data-sub=bots]');
+  assert.ok(await win.isVisible('[data-add=mbots]'), 'the link opens Chat › Chat bots');
 
-  // their own list: editable, and apart from mentions
-  await win.evaluate(() => window.openSettings('spam'));
-  await win.uncheck('[data-al="spam.sharedBots"]');
+  // their own list: editable, and apart from the app's
+  await win.click('[data-s=chat] [data-al="spam.botsMode"] [data-v=own]');
   assert.match(await win.textContent('#msg'), /Spam alerts have their own chat bot list/);
-  assert.ok(await win.isHidden('[data-s=spam] [data-go=mentions]'));
+  assert.equal((await saved()).spam.botsMode, 'own');
+  await win.evaluate(() => window.openSettings('spam'));
+  assert.equal(await win.getAttribute('[data-s=spam] [data-al="spam.botsMode"] [data-v=own]', 'aria-checked'), 'true', 'the same choice in both places');
+  assert.ok(await win.isHidden('[data-s=spam] [data-shared]') && await win.isHidden('[data-s=spam] [data-both]'));
   assert.ok(!(await chips('[data-list=ignore]')).includes('mention_only_bot'), 'starts as the built-in list');
   await win.fill('[data-add=ignore]', 'spam_only_bot'); await win.click('[data-addbtn=ignore]');
-  assert.ok(!(await chips('[data-list=mbots]')).includes('spam_only_bot'), 'not in Mentions');
+  assert.ok(!(await chips('[data-list=mbots]')).includes('spam_only_bot'), 'not on the app\'s list');
+  await win.click('#spamTabs [data-t=try]');
+  assert.match(await tryIt('spam_only_bot'), /Not checked: spam_only_bot is on the chat bot list/);
+  assert.doesNotMatch(await tryIt('mention_only_bot'), /Not checked/, 'the app\'s list isn\'t used');
+  // both: the app's list and their own
+  await win.click('#spamTabs [data-t=lists]');
+  await win.click('[data-s=spam] [data-al="spam.botsMode"] [data-v=both]');
+  assert.match(await win.textContent('#msg'), /Spam alerts use the app's chat bot list and their own/);
+  assert.ok(await win.isVisible('[data-s=spam] [data-both]') && await win.isVisible('[data-add=ignore]'));
+  await win.click('#spamTabs [data-t=try]');
+  for (const n of ['spam_only_bot', 'mention_only_bot']) assert.match(await tryIt(n), /Not checked/, n);
+  await win.click('#spamTabs [data-t=lists]');
   await win.click('[data-reset=ignore]');
-  await win.check('[data-al="spam.sharedBots"]');
-  await win.evaluate(() => window.openSettings('mentions'));
+  await win.click('[data-s=spam] [data-al="spam.botsMode"] [data-v=shared]');
+  assert.match(await win.textContent('#msg'), /Spam alerts use the app's chat bot list \(Chat › Chat bots\)/);
+
+  // mentions: their own list, in Mentions › Chat bots
+  await win.evaluate(() => window.openSettings('mentions', { sub: 'bots' }));
+  assert.ok(await win.isVisible('[data-s=mentions] [data-mshared] [data-go=chat]') && await win.isHidden('[data-add=mownbots]'));
+  await win.click('[data-s=mentions] [data-al="mention.botsMode"] [data-v=own]');
+  assert.ok(await win.isHidden('[data-s=mentions] [data-mshared]') && await win.isVisible('[data-add=mownbots]'));
+  assert.ok(!(await chips('[data-list=mownbots]')).includes('mention_only_bot'), 'starts as the built-in list');
+  await win.fill('[data-add=mownbots]', '@OwnBot'); await win.click('[data-addbtn=mownbots]');
+  assert.deepEqual((await saved()).mention.ownBots.slice(-1), ['ownbot']);
+  await win.click('[data-reset=mownbots]');
+  await win.click('[data-s=mentions] [data-al="mention.botsMode"] [data-v=shared]');
+  await win.evaluate(() => window.openSettings('chat', { sub: 'bots' }));
   await win.click('[data-reset=mbots]');
   await win.keyboard.press('Escape');
 
@@ -359,25 +386,47 @@ test('chat bots: the list is in Mentions, spam alerts show it until they get the
   });
   await win.reload();
   await win.waitForSelector('#loginBtn:not([hidden])');
-  const saved = () => win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')));
-  const added = ['botrix', 'mytimerbot', 'griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream'];
+  const added = ['botrix', 'mytimerbot', 'griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream', 'botrixofficial'];
   assert.deepEqual((await saved()).mention.bots, added);
   assert.deepEqual((await saved()).spam.ignore, added, 'and to the spam alerts\' own list');
   assert.deepEqual((await saved()).spam.words, ['upgrade', 'subs', 'chatbot', 'make your stream', 'stays active'], 'new promo words');
   assert.deepEqual((await saved()).spam.openers, ['Hey stranger, still running the show?', 'If you do not wish to receive any more messages', 'type !noads'], 'new bot lines');
-  await win.evaluate(() => window.openSettings('mentions'));
-  await win.click('#mentTabs [data-t=bots]');
+  await win.evaluate(() => window.openSettings('chat', { sub: 'bots' }));
   await win.click('[data-list=mbots] .st-chip:has-text("kicklet") button');
   await win.keyboard.press('Escape');
   await win.reload();
   await win.waitForSelector('#loginBtn:not([hidden])');
   assert.ok(!(await saved()).mention.bots.includes('kicklet'), 'removed: stays removed');
-  await win.evaluate(() => window.openSettings('mentions'));
-  await win.click('#mentTabs [data-t=bots]');
+
+  // from before Chat › Chat bots: spam alerts with their own list. It joins the app's list, and they use that
+  await win.evaluate(() => {
+    const a = JSON.parse(localStorage.getItem('kickMultiview.alerts') || '{}');
+    a.mention.bots = ['botrix', 'nightbot']; a.mention.botsOffered = null;
+    a.spam = { ...a.spam, sharedBots: false, ignore: ['NightBot', 'promo_watch'] }; delete a.spam.botsMode;
+    localStorage.setItem('kickMultiview.alerts', JSON.stringify(a));
+  });
+  await win.reload();
+  await win.waitForSelector('#loginBtn:not([hidden])');
+  const now = await saved();
+  assert.deepEqual(now.mention.bots.slice(0, 3), ['botrix', 'nightbot', 'promo_watch'], 'merged, without NightBot twice');
+  assert.equal(now.spam.botsMode, 'shared');
+  assert.ok(!('sharedBots' in now.spam), 'the old switch is gone');
+  // and an app that shared the list keeps it as it was
+  await win.evaluate(() => {
+    const a = JSON.parse(localStorage.getItem('kickMultiview.alerts') || '{}');
+    a.mention.bots = ['botrix']; a.spam = { ...a.spam, sharedBots: true, ignore: ['ownonly'] }; delete a.spam.botsMode;
+    localStorage.setItem('kickMultiview.alerts', JSON.stringify(a));
+  });
+  await win.reload();
+  await win.waitForSelector('#loginBtn:not([hidden])');
+  assert.ok(!(await saved()).mention.bots.includes('ownonly'), 'its unused own list doesn\'t join');
+  assert.equal((await saved()).spam.botsMode, 'shared');
+
+  await win.evaluate(() => window.openSettings('chat', { sub: 'bots' }));
   await win.click('[data-reset=mbots]');
   await win.evaluate(() => window.openSettings('spam'));
   await win.click('#spamTabs [data-t=lists]'); await win.click('#spamListPick [data-l=ignore]');
-  await win.uncheck('[data-al="spam.sharedBots"]'); await win.click('[data-reset=ignore]'); await win.check('[data-al="spam.sharedBots"]');
+  await win.click('[data-s=spam] [data-al="spam.botsMode"] [data-v=own]'); await win.click('[data-reset=ignore]'); await win.click('[data-s=spam] [data-al="spam.botsMode"] [data-v=shared]');
   for (const l of ['words', 'openers']){ await win.click(`#spamListPick [data-l=${l}]`); await win.click(`[data-reset=${l}]`); }
   await win.keyboard.press('Escape');
 });
