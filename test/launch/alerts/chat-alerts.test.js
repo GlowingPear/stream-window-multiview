@@ -178,9 +178,8 @@ test('chat bots on the list never count as a mention, a name that only contains 
   assert.deepEqual(await stored(), ['botrix_fan'], 'the bots aren\'t in the mentions history');
   await clickBar('bravo');
 
-  // taken off the list in Mentions > Chat bots: it alerts again, the others still don't
-  await win.evaluate(() => window.openSettings('mentions'));
-  await win.click('#mentTabs [data-t=bots]');
+  // taken off the app's list in Chat > Chat bots: it alerts again, the others still don't
+  await win.evaluate(() => window.openSettings('chat', { sub: 'bots' }));
   await win.click('[data-list=mbots] .st-chip:has-text("botrix") button');
   await win.keyboard.press('Escape');
   const saved = await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).mention.bots);
@@ -192,7 +191,7 @@ test('chat bots on the list never count as a mention, a name that only contains 
   await clickBar('bravo');
 
   // Reset: the built-in list again
-  await win.evaluate(() => window.openSettings('mentions'));
+  await win.evaluate(() => window.openSettings('chat', { sub: 'bots' }));
   await win.click('[data-reset=mbots]');
   await win.keyboard.press('Escape');
   await say('bravo', 'BotRix', '@mename last one');
@@ -374,8 +373,7 @@ test('spam alerts: chat bots on the list are skipped, and History can add an acc
   await win.waitForTimeout(2500);
   assert.equal(await tagOf('alpha', 'again from timerbot'), null, 'any case');
   assert.equal((await alertOf('alpha')).level, '');
-  await win.evaluate(() => window.openSettings('mentions'));
-  await win.click('#mentTabs [data-t=bots]');
+  await win.evaluate(() => window.openSettings('chat', { sub: 'bots' }));
   await win.click('[data-reset=mbots]');
   assert.equal(await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).mention.bots), null);
   await win.evaluate(() => window.openSettings('spam'));

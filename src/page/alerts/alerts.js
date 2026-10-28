@@ -7,11 +7,12 @@ import { syncFrameAlert } from '../windows/frames.js';
 /* ---------- alerts: how a chat window gets your attention (Settings > Mentions, Spam alerts) ---------- */
 const ALERT_DEFAULTS = {
   mention: { popup: true, hl: 'until', color: '#e8b84a', esc: 20, max: 'pulse', sound: 'chime', vol: 0.5, repeat: false, notify: 'unfocused',
-             bots: null, botsOffered: null },   // bots: the chat bot list (null: built-in), spam alerts' too while they share it
+             bots: null, botsOffered: null,   // bots: the app's chat bot list (Settings › Chat › Chat bots; null: built-in)
+             botsMode: 'shared', ownBots: null, ownBotsOffered: null },   // mentions: that list ('shared') or their own ('own')
   spam: { popup: true, on: false, hl: 'until', color: '#ff5f5f', esc: 0, max: 'pulse', tag: true, sound: 'knock', vol: 0.4, repeat: false, notify: 'never',
           sens: 'balanced', allow: null, words: null, openers: null, ignore: null,   // null: the built-in lists
           botsOffered: null, wordsOffered: null, openersOffered: null,   // the built-in ones already added to yours
-          sharedBots: true,    // the chat bot list from Mentions instead of ignore
+          botsMode: 'shared',  // the app's chat bot list ('shared'), their own (ignore: 'own') or both ('both')
           abuse: true, abuseWords: null, slurs: null, swears: null,   // insults, slurs and threats, swearing over and over
           points: null },      // each sign's points ({ hidden: 3, ... }; null: the built-in ones)
   // Settings > Support: someone sent KICKs, bits or a Super Chat, gifted subs, subscribed, or raided. The
@@ -108,6 +109,15 @@ function init(){
     // From before mentions had a chat bot list: the one you made for spam alerts becomes the shared one.
     const m = a.mention = a.mention || {}, s = a.spam || {};
     if (!('bots' in m) && Array.isArray(s.ignore)){ m.bots = s.ignore.slice(); m.botsOffered = s.botsOffered || null; }
+    // From before the app had one chat bot list (Settings › Chat › Chat bots): spam alerts' own list joins it, and they
+    // use it like mentions do.
+    if ('sharedBots' in s){
+      if (s.sharedBots === false && Array.isArray(s.ignore)){
+        const have = m.bots || SmvSpam.BOTS, low = new Set(have.map(b => b.toLowerCase()));
+        m.bots = [...have, ...s.ignore.filter(b => !low.has(String(b).toLowerCase()))];
+      }
+      delete s.sharedBots; s.botsMode = 'shared'; a.spam = s; settings.set('alerts', a);
+    }
     // From before Settings > Notifications had a row for each kind: "Saved channels going live" and how the app's
     // messages showed (Settings > Notifications > Messages).
     if (!a.live) a.live = { notify: settings.get('notifyAll') === '0' ? 'never' : 'always' };
@@ -117,8 +127,9 @@ function init(){
   })();
   // Chat bots, promo words and bot lines added to the built-in lists since: added to a list you changed, once (one
   // you removed stays removed).
-  [[alerts.spam, 'ignore', 'bots'], [alerts.mention, 'bots', 'bots'], [alerts.spam, 'words', 'words'], [alerts.spam, 'openers', 'openers']].forEach(([a, k, kind]) => {
-    const was = kind + 'Offered', r = SmvSpam.withNew(kind, a[k], a[was]);
+  [[alerts.spam, 'ignore', 'bots'], [alerts.mention, 'bots', 'bots'], [alerts.mention, 'ownBots', 'bots', 'ownBotsOffered'], [alerts.spam, 'words', 'words'],
+   [alerts.spam, 'openers', 'openers']].forEach(([a, k, kind, was = kind + 'Offered']) => {
+    const r = SmvSpam.withNew(kind, a[k], a[was]);
     if (r.list === a[k] && JSON.stringify(r.offered) === JSON.stringify(a[was])) return;
     a[k] = r.list; a[was] = r.offered; saveAlerts();
   });

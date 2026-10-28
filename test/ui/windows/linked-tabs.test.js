@@ -283,6 +283,47 @@ test('suggestions: the same name on another site, Not the same is never suggeste
   assert.equal(await page.evaluate(() => window.linkedApi.listStreamers().length), 1);
 });
 
+test('the Link channels card: their own chat bots, a name on one site each; their own name warns; only in their chats on that site', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.openLinkCard('quietkoala'));
+  assert.equal(await page.getAttribute('#lcBotIn', 'placeholder'), 'Bot\'s name on Kick', 'their main site first');
+  await page.fill('#lcBotIn', '@QuietKoala'); await page.press('#lcBotIn', 'Enter');
+  await page.click('#linkDlg .lc-botplat button[data-bp=twitch]');
+  assert.equal(await page.getAttribute('#lcBotIn', 'placeholder'), 'Bot\'s name on Twitch');
+  await page.fill('#lcBotIn', 'koala_helper'); await page.click('#linkDlg [data-cmd="link.botAdd"]');
+  await page.fill('#lcBotIn', 'KOALA_HELPER'); await page.press('#lcBotIn', 'Enter');
+  await page.fill('#lcBotIn', ' '); await page.click('#linkDlg [data-cmd="link.botAdd"]');
+  assert.match(await page.textContent('#msg'), /Type a chat bot's name/);
+  const bots = () => page.evaluate(() => window.linkedApi.listStreamers()[0].bots);
+  assert.deepEqual(await bots(), [{ p: 'kick', name: 'QuietKoala' }, { p: 'twitch', name: 'koala_helper' }], 'without the @, and not twice');
+  assert.deepEqual(await page.$$eval('#linkDlg .lc-bot', l => l.map(c => c.textContent + (c.classList.contains('lc-own') ? '*' : ''))), ['KQuietKoala*', 'Tkoala_helper']);
+  assert.match(await page.textContent('#linkDlg .lc-warn'), /QuietKoala is their own name on Kick: everything they type in Kick chat counts as the bot's\. Their messages on other sites aren't affected\./);
+  // only in their chats, on that site, as well as the app's list
+  const lists = () => page.evaluate(() => ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala', 'novalynx'].map(ch => [window.linkedApi.streamerBots(ch), window.botsFor('mention', ch).slice(-1)[0], window.botsFor('spam', ch).includes('nightbot')]));
+  assert.deepEqual(await lists(), [[['QuietKoala'], 'QuietKoala', true], [['koala_helper'], 'koala_helper', true], [[], 'botrixofficial', true], [[], 'botrixofficial', true]]);
+  // removed: no warning
+  await page.click('#linkDlg .lc-bot.lc-own button');
+  assert.deepEqual(await bots(), [{ p: 'twitch', name: 'koala_helper' }]);
+  assert.equal(await page.locator('#linkDlg .lc-warn').count(), 0);
+  // the link to the app's list
+  await page.click('#linkDlg [data-cmd="link.botsApp"]');
+  assert.equal(await page.isVisible('#linkDlg'), false);
+  assert.deepEqual(await page.$$eval('[data-s=chat] .st-subpane', e => e.filter(p => !p.hidden).map(p => p.dataset.t)), ['bots']);
+  // the last one removed: nothing saved
+  await page.evaluate(() => window.openLinkCard('quietkoala'));
+  await page.click('#linkDlg .lc-bot button');
+  assert.equal(await bots(), undefined);
+});
+test('chat bots: which list mentions and spam alerts use (this list, their own, both for spam alerts)', async t => {
+  const page = await linkedApp(t);
+  const use = (kind, mode, own) => page.evaluate(([kind, mode, own]) => { const a = window.smvNotes.alerts[kind]; a.botsMode = mode; if (kind === 'spam') a.ignore = own; else a.ownBots = own; return window.botsFor(kind, 'novalynx'); }, [kind, mode, own]);
+  assert.ok((await use('mention', 'shared', ['ownbot'])).includes('nightbot'));
+  assert.deepEqual(await use('mention', 'own', ['ownbot']), ['ownbot']);
+  assert.deepEqual(await use('spam', 'own', ['spambot']), ['spambot']);
+  const both = await use('spam', 'both', ['spambot']);
+  assert.ok(both.includes('nightbot') && both.includes('spambot'));
+  assert.ok((await use('mention', 'both', ['ownbot'])).includes('nightbot'), 'mentions have no "both": the app\'s list');
+});
 test('the Link channels card: add an account by name, make one main, the streamer\'s choices', async t => {
   const page = await linkedApp(t, { streamers: [], saved: ['novalynx'] });
   await page.evaluate(() => window.openLinkCard('novalynx'));
