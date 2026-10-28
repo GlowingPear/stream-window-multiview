@@ -169,7 +169,7 @@ function suggestions({ all: every } = {}){
 function init(){
   // changed in the other window
   settings.onChange(['streamers', 'linkedOn', 'linkedNot', 'linkedOpts'], name => { if (name === 'streamers') streamers = null; store.changed('streamers'); });
-  window.linkedApi = { link, unlink, unlinkAll, setOn, setMain, notSame, suggestions, listStreamers, streamerOf, setStreamerOpt, streamerBots };   // for the tests
+  window.linkedApi = { link, unlink, unlinkAll, setOn, setOpt, setMain, notSame, suggestions, listStreamers, streamerOf, setStreamerOpt, streamerBots };   // for the tests
 }
 
 export { accountsOf, botsOf, canLink, dismissed, forgetNot, groupKey, init, laterPair, link, linkedOn, linkOpt,

@@ -18,7 +18,7 @@ import { fromSite } from '../shared/incoming.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
-import { addTab, focusChatBox, frameOf, leaderOf, renderSiteTabs, showTab, tabChannels } from '../windows/frames.js';
+import { addTab, cycleTabs, frameOf, leaderOf, renderSiteTabs, showTab, tabChannels } from '../windows/frames.js';
 import { askIn, runIn } from '../windows/view.js';
 import { syncModBtn } from '../windows/windows.js';
 
@@ -194,7 +194,7 @@ function buildView(w){
     else if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey){
       e.preventDefault();
       if (view.lock) flash(`Locked to ${PLAT_NAME[platOf(view.lock.ch)]} while ${view.lock.kind === 'reply' ? 'replying' : 'mentioning'} · Esc unlocks`);
-      else if (e.shiftKey) leaveAll(w); else stepSend(view, w, 1);
+      else if (e.shiftKey) cycleTabs(w); else stepSend(view, w, 1);
     }
   });
   input.addEventListener('input', () => { suggestAt(view, w); if (!input.value.trim() && view.lock && view.lock.kind === 'at') setLock(view, w, null); });
@@ -263,12 +263,6 @@ function openPickMenu(view, w){
         element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]), element('span', null, PLAT_NAME[p] + (can ? '' : ' · ' + why(ch))), ch === main ? element('small', null, 'Main') : ''); }),
     element('div', 'all-mh', element('kbd', null, 'Tab'), ' next site · ', element('kbd', null, '⇧Tab'), ' its own tab'));
   view.menu.hidden = false;
-}
-// Shift+Tab: from ALL to the site you send on, its own chat (and its box)
-function leaveAll(w){
-  const ch = sendSite(w) || leaderOf(w).channel, m = frameOf(w).find(o => o.kind === 'chat' && o.channel === ch);
-  setAll(w, false);
-  if (m){ showTab(m); focusChatBox(m); }
 }
 const SEND_FAIL = {
   'no-box': p => `Can't chat on ${p} from here: you may need to sign in to ${p} (Settings › Accounts)`,

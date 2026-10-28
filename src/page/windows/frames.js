@@ -275,6 +275,16 @@ function switchTo(w, n){
   if (m) showTab(m); else addTab(w, ch, true);
   return true;
 }
+// ⇧Tab in a chat with ALL: the window's tabs in order, ALL first, the offline Kick and Twitch ones too (ALL reads them)
+function cycleTabs(w){
+  const lead = leaderOf(w), order = ['ALL', ...tabChannels(w).filter(ch => !tabLocked(w, ch))];
+  const next = order[((allOn(lead) ? 0 : order.indexOf(lead.channel)) + 1) % order.length];
+  if (next === 'ALL'){ setAll(lead, true); leaderOf(w).allView?.input.focus(); return true; }
+  if (allOn(lead)) setAll(lead, false);
+  if (!switchTo(w, tabNo(w, next))) return false;
+  focusChatBox(leaderOf(w));
+  return true;
+}
 function stepTab(w, d){
   const all = tabChannels(w), chs = stepChannels(w); if (chs.length < 2) return false;   // (only to live ones)
   const i = chs.indexOf(leaderOf(w).channel);
@@ -527,7 +537,7 @@ function tabKeyAgent(){
 }
 // Tab only switches where it would: a chat of a linked streamer, with the setting on, and another of its sites live
 // (otherwise Tab is the site's own again)
-const tabKeyJs = w => `window.__kmvTabKey && (window.__kmvTabKey.on = ${!!(streamerOf(w.channel) && linkOpt('tabKey') && stepChannels(w).length > 1)})`;
+const tabKeyJs = w => `window.__kmvTabKey && (window.__kmvTabKey.on = ${!!(streamerOf(w.channel) && linkOpt('tabKey') && (stepChannels(w).length > 1 || allTabFor(w)))})`;
 function syncTabKeys(){ wins.forEach(w => { if (w.kind === 'chat' && w.ready && w.view) runIn(w.view, tabKeyJs(w)); }); }
 // The chat Tab switched to: the keyboard goes to its chat box, so you can type straight away. in-site/chat-box-focus.js
 // waits for the site to draw its box; a chat still loading gets it once it has, and one that loads another page first
@@ -636,14 +646,18 @@ function init(){
   store.watch(['live', 'unread', 'names'], () => { onLive(); renderAllSiteTabs(); });
   store.watch('streamers', () => streamersChanged());
   store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncTabKeys());
-  fromSite('tab-key', (w, json) => { let d = {}; try { d = JSON.parse(json); } catch {} if (stepTab(w, d.back ? -1 : 1)) focusChatBox(leaderOf(w)); });
+  fromSite('tab-key', (w, json) => {
+    let d = {}; try { d = JSON.parse(json); } catch {}
+    if (allTabFor(w) && (d.back || stepChannels(w).length < 2)){ cycleTabs(w); return; }   // (with ALL, ⇧Tab: the window's tabs)
+    if (stepTab(w, d.back ? -1 : 1)) focusChatBox(leaderOf(w));
+  });
   fromSite('typing', (w, json) => { let d = {}; try { d = JSON.parse(json); } catch {} w.typing = !!d.on; });
   lastStreamers = linkedOn() ? JSON.stringify(settings.json('streamers', [])) : '';
   window.focusBoxAgent = focusBoxAgent;   // for the tests
-  window.frames_ = { showTab, addTab, closeTab, splitTab, joinTab, setSideBySide, openStreamer, mergeOpen, splitAll, frameOf, stepTab, switchTo };   // for the tests
+  window.frames_ = { showTab, addTab, closeTab, splitTab, joinTab, setSideBySide, openStreamer, mergeOpen, splitAll, frameOf, stepTab, switchTo, cycleTabs };   // for the tests
 }
 
-export { addTab, applyFrames, closedTabs, closeFrame, closeTab, focusBoxNow, focusChatBox, frameFields, frameNote,
+export { addTab, applyFrames, closedTabs, closeFrame, closeTab, cycleTabs, focusBoxNow, frameFields, frameNote,
   frameOf, init, joinTab, leaderOf, mergeOpen, openStreamer, playQuality, putTabBack, renderSiteTabs, restoreFrames,
   setSideBySide, showTab, splitTab, stepTab, switchTo, syncFrameAlert, syncFrameRects, tabChannels, tabKeyAgent,
   tabKeyJs, unlinkTab };

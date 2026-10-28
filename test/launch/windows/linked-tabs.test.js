@@ -108,13 +108,21 @@ test('Tab in an empty chat box switches site and the keyboard is in the new chat
   await addBox('tw:alpha', TWITCH);
   await boxFocused('tw:alpha');
   assert.equal(await a.win.evaluate(() => document.activeElement.tagName), 'WEBVIEW', 'the app\'s keyboard is in the chat, not on its tab');
-  // ⇧Tab back: Kick's chat is loaded, its box gets the keyboard at once (it doesn't have it from before)
+  // ⇧Tab: the window's next tab, ALL (its box has the keyboard); ⇧Tab there: Kick's chat, loaded, its box gets the
+  // keyboard at once (it doesn't have it from before)
   await inChat('alpha', () => document.activeElement.blur());
   await tabIn('tw:alpha', true);
+  await a.win.waitForSelector('#stage .win.chat:not(.tab-hidden) .all-view');
+  assert.equal(await a.win.evaluate(() => document.activeElement.className), 'all-in');
+  await a.win.keyboard.press('Shift+Tab');
   await boxFocused('alpha');
-  // Twitch goes offline: Tab in Kick's chat is the site's own again (nothing to switch to)
+  // Twitch goes offline: with ALL, ⇧Tab still steps through the window's tabs (ALL reads the offline chat);
+  // without ALL, Tab in Kick's chat is the site's own again (nothing to switch to)
   await a.win.evaluate(() => window.smvNotes.liveStatus({ 'tw:alpha': { live: false, checked: Date.now() } }));
+  await untilIn('alpha', () => window.__kmvTabKey && window.__kmvTabKey.on, 'with ALL: still the app\'s');
+  await a.win.evaluate(() => window.linkedApi.setOpt('allTab', false));
   await untilIn('alpha', () => window.__kmvTabKey && !window.__kmvTabKey.on, 'Tab is Kick\'s own again');
+  await a.win.evaluate(() => window.linkedApi.setOpt('allTab', true));
   await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
   await a.win.evaluate(() => localStorage.removeItem('kickMultiview.linkedOpts'));
 });
