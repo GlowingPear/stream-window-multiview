@@ -578,3 +578,45 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   assert.deepEqual(await page.evaluate(() => window.__sends[1]), ['tw:quietkoala', 'Kappa KEKW']);
   assert.deepEqual(await page.evaluate(() => window.__asked), ['quietkoala', 'tw:quietkoala'], 'each site\'s asked once');
 });
+
+test('ALL: the send button: there once there\'s something to send, says where, sends like Enter, a spinner (and no second send) while sending', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
+    window.__sends = []; window.allChat.sender.send = (m, text) => new Promise(r => { window.__sends.push([m.channel, text]); window.__done = r; }); }, LIVE);
+  const b = () => page.$eval('.all-send-b', e => ({ off: e.disabled, busy: e.classList.contains('busy'), title: e.title || e.dataset.tipTitle || '' }));
+  assert.deepEqual(await b(), { off: true, busy: false, title: 'Send on Kick (Enter)' }, 'nothing to send yet');
+  await page.fill('.all-in', '   ');
+  assert.equal((await b()).off, true, 'only spaces');
+  await page.fill('.all-in', 'gg everyone');
+  assert.equal((await b()).off, false);
+  await page.click('.all-send-b');
+  await page.waitForFunction(() => window.__sends.length === 1);
+  assert.deepEqual(await page.evaluate(() => window.__sends[0]), ['quietkoala', 'gg everyone']);
+  assert.deepEqual(await b(), { off: true, busy: true, title: 'Sending…' });
+  assert.equal(await page.evaluate(() => document.activeElement.className), 'all-in', 'the keyboard back in the box');
+  await page.fill('.all-in', 'next one');
+  assert.equal((await b()).off, true, 'one at a time');
+  await page.evaluate(() => window.__done('sent'));
+  await page.waitForFunction(() => !document.querySelector('.all-send-b').disabled);
+  assert.deepEqual(await b(), { off: false, busy: false, title: 'Send on Kick (Enter)' });
+  await page.keyboard.press('Tab');
+  assert.equal((await b()).title, 'Send on Twitch (Enter)', 'the site it sends on');
+});
+
+test('ALL: with Settings › Chat › Channel name in chat boxes, its box says what the setting\'s text makes of the channel, as the sites\' boxes do', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); }, LIVE);
+  const ph = () => page.getAttribute('.all-in', 'placeholder');
+  assert.equal(await ph(), 'Send a message on Kick');
+  await page.evaluate(() => { const c = document.querySelector('#chatNameSet'); c.checked = true; c.dispatchEvent(new Event('change')); });
+  assert.equal(await ph(), 'quietkoala');
+  await page.evaluate(() => { const f = document.querySelector('#chatNameText'); f.value = 'Chat in {channel}'; f.dispatchEvent(new Event('input')); });
+  await page.waitForFunction(() => document.querySelector('.all-in').placeholder === 'Chat in quietkoala');
+  await page.focus('.all-in'); await page.keyboard.press('Tab');
+  assert.equal(await ph(), 'Chat in quietkoala', 'the same on Twitch (the picker says the site)');
+  assert.equal(await page.textContent('.all-pick .pi'), 'T');
+  await page.evaluate(() => { const c = document.querySelector('#chatNameSet'); c.checked = false; c.dispatchEvent(new Event('change')); });
+  assert.equal(await ph(), 'Send a message on Twitch', 'off: the usual words');
+});

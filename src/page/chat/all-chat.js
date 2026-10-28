@@ -1,6 +1,7 @@
 import { alerts } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { SMILEY, emoteCache, openEmotePicker, pickEmote, renderEmoteList, suggestEmote, withEmotes } from './all-emotes.js';
+import { chatBoxName } from './chat-name.js';
 import { feedParse } from './feed-parse.js';
 import { wins } from '../core.js';
 import { feedAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
@@ -236,6 +237,7 @@ function buildView(w){
   const bar = element('div', { class: 'all-rb', hidden: true });
   const at = element('div', { class: 'pop all-at', role: 'listbox', hidden: true });
   const lm = element('div', { class: 'pop all-lm', role: 'menu', hidden: true });
+  const sendB = element('button', { type: 'button', class: 'all-send-b', 'aria-label': 'Send', html: SEND, disabled: true, dataset: { cmd: 'all.send' } });
   const emo = element('button', { type: 'button', class: 'all-emo-b', title: 'Emotes', 'aria-label': 'Emotes', 'aria-haspopup': 'dialog', html: SMILEY, dataset: { cmd: 'all.emotes' } });
   const ep = element('div', { class: 'pop all-ep', role: 'dialog', 'aria-label': 'Emotes', hidden: true });
   const pins = element('div', { class: 'all-pins', hidden: true, role: 'region', 'aria-label': 'Pinned messages' });
@@ -243,11 +245,12 @@ function buildView(w){
     onclick: () => { feedOf(s).pins.forEach(p => { p.hidden = false; }); renderPins(view); } });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, chip, evChip), pins, list, more, empty,
-    element('div', 'all-cmp', bar, element('div', 'all-box', pick, input, emo)), menu, at, lm, mv, ep);
-  const view = { el, list, empty, more, chip, evChip, pins, pinChip, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, w, lock: null, atList: [], atSel: 0, atMode: '' };
+    element('div', 'all-cmp', bar, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep);
+  const view = { el, list, empty, more, chip, evChip, pins, pinChip, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
   closeOnOutside(ep, { button: emo });
   emo.onclick = () => openEmotePicker(view, w);
+  sendB.onclick = () => { sendNow(view, w); input.focus(); };
   closeOnOutside(mv, { button: w.el.querySelector('[data-a=mod]') });
   closeOnOutside(menu, { button: pick });
   pick.onclick = () => { if (view.lock) return flash('Locked to this site · Esc or ✕ unlocks'); if (menu.hidden) openPickMenu(view, w); else menu.hidden = true; };
@@ -267,7 +270,7 @@ function buildView(w){
       else if (e.shiftKey) cycleTabs(w); else stepSend(view, w, 1);
     }
   });
-  input.addEventListener('input', () => { suggestAt(view, w); if (view.at.hidden || view.atMode === 'emote') suggestEmote(view, w); if (!input.value.trim() && view.lock && (view.lock.kind === 'at' || view.lock.kind === 'emote')) setLock(view, w, null); });
+  input.addEventListener('input', () => { syncSendB(view, w); suggestAt(view, w); if (view.at.hidden || view.atMode === 'emote') suggestEmote(view, w); if (!input.value.trim() && view.lock && (view.lock.kind === 'at' || view.lock.kind === 'emote')) setLock(view, w, null); });
   list.append(...f.msgs.map(lineEl).filter(Boolean));
   return view;
 }
@@ -311,6 +314,13 @@ function stepSend(view, w, d){
   if (ok.length < 2) return flash(ok.length ? `Only ${PLAT_NAME[platOf(ok[0])]} can be sent on right now` : 'No chat to send on right now');
   setSendSite(view, w, ok[(ok.indexOf(cur) + d + ok.length) % ok.length]);
 }
+// The send button: in the send site's colour, there to press once there's something to send (a spinner while sending)
+function syncSendB(view, w){
+  const b = view.sendB, ch = sendSite(w), p = ch && PLAT_NAME[platOf(ch)];
+  b.disabled = !p || !view.input.value.trim() || !!view.sending;
+  b.classList.toggle('busy', !!view.sending);
+  b.title = view.sending ? 'Sending…' : p ? `Send on ${p} (Enter)` : 'No chat to send on right now';
+}
 function renderCmp(view, w){
   const ch = sendSite(w), p = ch && platOf(ch);
   view.pick.replaceChildren(p ? element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]) : element('i', { class: 'pi dim' }, '–'),
@@ -318,10 +328,12 @@ function renderCmp(view, w){
   view.pick.classList.toggle('locked', !!view.lock);
   renderLock(view, w);
   view.pick.title = view.lock ? `Locked to ${PLAT_NAME[p]} while ${LOCK_WHY[view.lock.kind]} (Esc unlocks)` : p ? `Sending on ${PLAT_NAME[p]} (Tab: the next site)` : 'No chat to send on right now';
-  view.input.placeholder = p ? `Send a message on ${PLAT_NAME[p]}` : 'No chat to send on right now';
+  // Settings › Chat › Channel name in chat boxes: its text, as the sites' boxes say it (the picker beside it shows the site)
+  view.input.placeholder = !p ? 'No chat to send on right now' : chatBoxName(ch) || `Send a message on ${PLAT_NAME[p]}`;
   view.input.disabled = !p;
   view.input.maxLength = p === 'youtube' ? 200 : 500;
   view.el.dataset.send = p || '';
+  syncSendB(view, w);
 }
 // The picker's menu: each of their sites, the ones you can't send on with why
 function openPickMenu(view, w){
@@ -335,6 +347,7 @@ function openPickMenu(view, w){
     element('div', 'all-mh', element('kbd', null, 'Tab'), ' next site · ', element('kbd', null, '⇧Tab'), ' its own tab'));
   view.menu.hidden = false;
 }
+const SEND = '<svg viewBox="0 0 24 24"><path d="M4.5 12 3.2 5.1a1 1 0 0 1 1.4-1.1l15.6 7.1a1 1 0 0 1 0 1.8L4.6 20a1 1 0 0 1-1.4-1.1z"/><path d="M4.5 12h7"/></svg>';
 const SEND_FAIL = {
   'no-box': p => `Can't chat on ${p} from here: you may need to sign in to ${p} (Settings › Accounts)`,
   disabled: p => `${p} isn't letting you chat right now (followers-only, slow mode or similar)`,
@@ -543,11 +556,11 @@ async function sendNow(view, w){
 }
 async function deliver(view, w, p){
   const m = frameOf(w).find(o => o.kind === 'chat' && o.channel === p.ch), site = PLAT_NAME[p.site];
-  view.sending = true; setMine(p, 'sending');
+  view.sending = true; setMine(p, 'sending'); syncSendB(view, w);
   let r;
   if (!m) r = 'gone';
   else try { r = p.threaded ? await sender.reply(m, p.lock.msg.id, p.send || p.text, p.lock.msg.sender) : await sender.send(m, p.send || p.text); } catch { r = 'error'; }
-  view.sending = false;
+  view.sending = false; syncSendB(view, w);
   if (p.state === 'seen') return;   // (its chat brought it back already)
   if (r === 'sent'){ setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
   p.why = r === 'no-reply' ? `Couldn't start a reply on ${site}: the message may have scrolled out of its chat` : r === 'gone' ? `${site}'s chat isn't open`
@@ -655,6 +668,7 @@ function init(){
     wins.forEach(w => { const v = w.allView; if (!v) return; [v.lm, v.menu, v.mv, v.ep].forEach(m => { if (!m.hidden){ m.hidden = true; e.preventDefault(); } }); });
   });
   store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncAll());
+  store.watch(['chatName', 'names'], () => wins.forEach(w => { if (w.allView) renderCmp(w.allView, w); }));
   store.watch(['mod'], () => { redrawAll(); wins.forEach(syncModBtn); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
   window.feedAgent = feedAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
