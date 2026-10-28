@@ -164,3 +164,9 @@
 .all-durs button.on{background:var(--accent);color:var(--accent-ink)}
 .all-durs button:hover:not(.on){background:var(--line2)}
 .al-m:has(.al-show:hover) .al-hb{display:none}   /* (it never covers a line's Show / Hide) */
+/* the title bar's mod button in ALL: each site's mod view */
+.all-mv{min-width:240px}
+.all-mvh{padding:7px 8px 5px;color:var(--muted);font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+.all-mvi .pi{width:18px;height:18px;font-size:10px;border-radius:5px;color:#fff}
+.all-mvi .all-mvx{margin-left:auto;opacity:.7}
+.all-mvi:hover:not(:disabled) .all-mvx{opacity:1;color:var(--text)}

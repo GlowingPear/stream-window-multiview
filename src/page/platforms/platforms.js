@@ -98,13 +98,23 @@ const chatSrc = (ch, vid) => (platform(ch) || DEFAULT_SITE).chatUrl(ch, vid);
 // Each platform's moderator dashboard for a channel (YouTube has none for each channel).
 const modUrl = ch => ch ? platform(ch).modUrl(ch) : null;
 // The mod view button only shows where you can moderate (in the desktop app, which can ask the site
-// with your login). Asked once per channel, and again on Reload or a new login.
-const modOk = new Map();
+// with your login). Asked once per channel, and again on Reload or a new login. modOk holds the question,
+// modIs the answer once it's in; the button follows it (windows.js syncModBtn, which also knows about ALL).
+const modOk = new Map(), modIs = new Map();
 function checkMod(w, fresh){
   const b = w.el.querySelector('[data-a=mod]');
-  if (!b || !DESKTOP || !window.kmv.modCheck) return;
+  if (!b || !DESKTOP || !window.kmv.modCheck || !modUrl(w.channel)) return;
   if (fresh || !modOk.has(w.channel)) modOk.set(w.channel, window.kmv.modCheck(w.channel).catch(() => null));
-  modOk.get(w.channel).then(ok => { b.hidden = ok !== true; });
+  const ch = w.channel;
+  modOk.get(ch).then(ok => { if (modIs.get(ch) !== (ok === true)){ modIs.set(ch, ok === true); store.changed('mod'); } });
+}
+// Whether you moderate it, as far as the app knows (in a browser, where it can't ask, the button is always there)
+const isModOf = ch => !!modUrl(ch) && (DESKTOP ? modIs.get(ch) === true : true);
+// Its mod view, in a window of its own
+function openModView(ch){
+  const u = modUrl(ch); if (!u) return;
+  if (DESKTOP) window.kmv.openWindow(u, 1400, 900);
+  else window.open(u, 'kmv_mod_' + ch, 'width=1400,height=900');
 }
 const srcFor = w => w.kind === 'stream' ? streamSrc(w.channel, w.muted, ytVidOf(w)) : w.kind === 'chat' ? chatSrc(w.channel, ytVidOf(w)) : w.url;
 const externalFor = w => w.channel ? platform(w.channel).pageUrl(w.channel, w.kind, ytVidOf(w)) : w.url;
@@ -166,7 +176,7 @@ function init(){
   });
 }
 
-export { chatSrc, checkMod, chLabel, chLabelP, chNames, extCount, externalFor, infoNames, init, modOk, modUrl,
-  normCh, parseInput, PLAT_NAME, platform, PLATFORMS, platformVars, platIcon, platOf, rememberName, rememberNames,
-  setWatchSignedIn, srcFor, streamSignedIn, streamSrc, syncStreams, trimPlayerPage, viewPartition, watchSignedIn,
-  ytVidOf };
+export { chatSrc, checkMod, chLabel, chLabelP, chNames, extCount, externalFor, infoNames, init, isModOf, modIs,
+  modOk, modUrl, normCh, openModView, parseInput, PLAT_NAME, platform, PLATFORMS, platformVars, platIcon, platOf,
+  rememberName, rememberNames, setWatchSignedIn, srcFor, streamSignedIn, streamSrc, syncStreams, trimPlayerPage,
+  viewPartition, watchSignedIn, ytVidOf };
