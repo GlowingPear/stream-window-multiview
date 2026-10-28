@@ -186,3 +186,7 @@
 .al-log .al-evt{display:grid;flex:none;color:#ff9a9a}
 .al-log .al-evt svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2}
 .al-log .al-evw b{color:var(--text)}
+/* a reward redeemed with text: the reward's name as a tag, a faint edge in the site's colour */
+.al-m.al-rw{box-shadow:inset 3px 0 0 rgba(145,70,255,.7);background:linear-gradient(90deg,rgba(145,70,255,.10),transparent 70%)}
+.al-m.al-rw:has(.pi-kick){box-shadow:inset 3px 0 0 rgba(83,252,24,.6);background:linear-gradient(90deg,rgba(83,252,24,.08),transparent 70%)}
+.al-tag-rw{color:#e6dcff;background:color-mix(in srgb,var(--rw,#9146ff) 30%,transparent);border:1px solid color-mix(in srgb,var(--rw,#9146ff) 60%,transparent);text-transform:none;letter-spacing:0}
