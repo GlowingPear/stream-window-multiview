@@ -5,6 +5,7 @@ const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parse
   parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, normCh, toTime, withTimeout, keepLatest } = require('./live');
 const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel } = require('./profiles');
 const { parseKickEmotes, parseTwitchEmotes, parse7tv, parseBttv, parseFfz, createEmoteStore } = require('./emote-lists');
+const { kickGroups, twitchGroups, stvGroup, bttvGroup, ffzGroup } = require('./emote-picker');
 const { menuFor, translateTarget } = require('./context-menu');
 const { makeTranslator } = require('./translate');
 const { createProfileQueue } = require('./profile-queue');
@@ -1365,6 +1366,41 @@ appIpc.handle('emotes:open', async (_e, ch) => {
     if (Object.keys(lists).length) { added = st.update(ch, lists); saveEmotesSoon(); }
   }
   return { fresh: st.fresh(ch), added };
+});
+// The emotes to pick from in ALL (emote-picker.js): [{ id, label, emotes: [{ name, url, send }] }], kept 10 minutes per
+// channel. Kick's channel and site emotes; on Twitch the ones your account can use (signed in); the add-ons' for both.
+const pickAsked = new Map();
+appIpc.handle('emotes:pick', async (_e, ch) => {
+  if (!okCh(ch)) return null;
+  ch = normCh(ch);
+  const was = pickAsked.get(ch);
+  if (was && Date.now() - was.at < 10 * 60e3) return was.groups;
+  let groups = [], id = null, platform = 'kick';
+  if (/^yt:/.test(ch)) return [];                            // YouTube: its own box's emoji only
+  if (/^tw:/.test(ch)) {
+    platform = 'twitch';
+    const token = await twitchToken();
+    const r = token ? await twitchGql(token, 'query($l:String!){currentUser{emoteSets{id owner{login} emotes{id token}}} user(login:$l){id}}', { l: ch.slice(3) }).catch(() => null) : null;
+    groups = twitchGroups(r && r.d, ch.slice(3)) || [];
+    id = r && r.d && r.d.data && r.d.data.user && r.d.data.user.id;
+  } else {
+    const r = await kickApi(`/emotes/${encodeURIComponent(ch)}`).catch(() => null);
+    if (r && r.status === 200) {
+      groups = kickGroups(r.d, ch) || [];
+      const own = Array.isArray(r.d) && r.d.find(s => s && String(s.slug || '').toLowerCase() === ch);
+      id = own && own.user_id;
+    }
+  }
+  if (id) {
+    const [stv, bttv, ffz] = await Promise.all([
+      getJson(`${EMOTE_APIS.stv}/users/${platform}/${encodeURIComponent(id)}`).then(stvGroup),
+      platform === 'twitch' ? getJson(`${EMOTE_APIS.bttv}/cached/users/twitch/${encodeURIComponent(id)}`).then(bttvGroup) : null,
+      platform === 'twitch' ? getJson(`${EMOTE_APIS.ffz}/room/id/${encodeURIComponent(id)}`).then(ffzGroup) : null
+    ]);
+    groups.push(...[stv, bttv, ffz].filter(Boolean));
+  }
+  if (groups.length) pickAsked.set(ch, { at: Date.now(), groups });
+  return groups;
 });
 appIpc.handle('emotes:seen', (_e, ch, name) => {
   if (!okCh(ch) || typeof name !== 'string') return false;
