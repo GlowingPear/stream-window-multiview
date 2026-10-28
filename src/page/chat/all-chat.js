@@ -18,7 +18,7 @@ import { fromSite } from '../shared/incoming.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
-import { focusChatBox, frameOf, leaderOf, renderSiteTabs, showTab, tabChannels } from '../windows/frames.js';
+import { addTab, focusChatBox, frameOf, leaderOf, renderSiteTabs, showTab, tabChannels } from '../windows/frames.js';
 import { askIn, runIn } from '../windows/view.js';
 
 /* ---- ALL: a linked streamer's Kick, Twitch and YouTube chats as one list (issue #203) ----
@@ -69,6 +69,7 @@ function ingest(w, json){
     if (me && m.reply && m.reply.login === me) m.toMe = 'reply';
     else if (me && m.parts.some(p => p.text && new RegExp(`(^|[^\\w])@${me.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(p.text))) m.toMe = 'at';
     if (m.kind === 'message' && SmvSpam.ignored(m.sender, appBots(w.channel))) m.bot = true;
+    if (m.kind === 'message') mineSeen(f, m);
     f.msgs.push(m); if (m.id) f.byId.set(m.site + ':' + m.id, m);
     if (f.msgs.length > MAX){ const old = f.msgs.shift(); if (old.id) f.byId.delete(old.site + ':' + old.id); }
     if (view) addLine(view, m);
@@ -107,6 +108,7 @@ function partsEl(parts){
   });
 }
 function lineEl(m){
+  if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' ? null : mineEl(m);
   const site = PLAT_NAME[m.site] || m.site;
   const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]),
     ...m.badges.map(b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' })));
@@ -268,7 +270,8 @@ function leaveAll(w){
 const SEND_FAIL = {
   'no-box': p => `Can't chat on ${p} from here: you may need to sign in to ${p} (Settings › Accounts)`,
   disabled: p => `${p} isn't letting you chat right now (followers-only, slow mode or similar)`,
-  'not-filled': p => `Couldn't type into ${p}'s chat box`
+  'not-filled': p => `Couldn't type into ${p}'s chat box`,
+  'not-sent': p => `${p} didn't send it: it's still in its chat box`
 };
 const sender = {
   mod: (m, action, id) => askIn(m.view, `(${modAgent})(${JSON.stringify(action)}, ${JSON.stringify(id)})`),
@@ -420,16 +423,66 @@ function openSiteCard(m){
   showTab(c);
   if (c.view && m.id) runIn(c.view, `(${profileAgent})(${JSON.stringify(m.id)})`);
 }
+/* ---- what you send: a line of yours straight away (sending…), replaced by the real one when the site's chat brings it
+   back; if it fails, it stays, red, with why, Retry and Edit. One message at a time, so Enter can't send it twice. ---- */
+let mineN = 0;
+const sameText = (a, b) => a.replace(/\s+/g, ' ').trim().toLowerCase() === b.replace(/\s+/g, ' ').trim().toLowerCase();
 async function sendNow(view, w){
   let text = view.input.value.trim(); const ch = sendSite(w); if (!text || !ch) return;
-  const m = frameOf(w).find(o => o.kind === 'chat' && o.channel === ch), p = PLAT_NAME[platOf(ch)], lock = view.lock;
-  const threaded = lock && lock.kind === 'reply' && platform(ch).threadedReplies;
+  if (view.sending) return flash('Still sending the last one');
+  const lock = view.lock, threaded = !!(lock && lock.kind === 'reply' && platform(ch).threadedReplies);
   // a reply where the site has none from here: an @ of them, in front
   if (lock && lock.kind === 'reply' && !threaded && !new RegExp(`^@${lock.msg.login}\\b`, 'i').test(text)) text = `@${lock.msg.sender.replace(/^@/, '')} ${text}`;
-  let r; try { r = threaded ? await sender.reply(m, lock.msg.id, text) : await sender.send(m, text); } catch { r = 'error'; }
-  if (r === 'sent'){ if (view.input.value.trim()) view.input.value = ''; if (lock) setLock(view, w, null); return; }
-  if (r === 'no-reply') return flash(`Couldn't start a reply on ${p}: the message may have scrolled out of its chat`);
-  flash((SEND_FAIL[r] || (x => `${x}'s chat didn't answer: try again, or send it from its tab`))(p));
+  const site = platOf(ch);
+  const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, parts: [{ text }], badges: [], sender: meOn(site) || 'You', lock, threaded, state: 'sending' };
+  view.input.value = ''; if (lock) setLock(view, w, null);
+  const f = feedOf(view.s); f.msgs.push(p); addLine(view, p);
+  await deliver(view, w, p);
+}
+async function deliver(view, w, p){
+  const m = frameOf(w).find(o => o.kind === 'chat' && o.channel === p.ch), site = PLAT_NAME[p.site];
+  view.sending = true; setMine(p, 'sending');
+  let r;
+  if (!m) r = 'gone';
+  else try { r = p.threaded ? await sender.reply(m, p.lock.msg.id, p.text) : await sender.send(m, p.text); } catch { r = 'error'; }
+  view.sending = false;
+  if (p.state === 'seen') return;   // (its chat brought it back already)
+  if (r === 'sent'){ setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
+  p.why = r === 'no-reply' ? `Couldn't start a reply on ${site}: the message may have scrolled out of its chat` : r === 'gone' ? `${site}'s chat isn't open`
+    : (SEND_FAIL[r] || (x => `${x}'s chat didn't answer`))(site);
+  setMine(p, 'failed');
+  flash(`Not sent: ${p.why}`);
+}
+// A line of yours changes state: drawn again where it is
+function setMine(p, state){
+  p.state = state;
+  document.querySelectorAll(`.all-list [data-key="${CSS.escape(p.site + ':' + p.id)}"]`).forEach(el => el.replaceWith(lineEl(p)));
+}
+// Your message came back from its chat: the real line takes the place of yours
+function mineSeen(f, m){
+  const me = meOn(m.site);
+  if (me && m.login !== me && m.sender.toLowerCase() !== me) return;
+  const p = f.msgs.find(x => x.kind === 'mine' && x.site === m.site && x.state !== 'failed' && x.state !== 'seen' && sameText(x.text, m.parts.map(y => y.text || y.name).join('')));
+  if (!p) return;
+  p.state = 'seen';
+  f.msgs.splice(f.msgs.indexOf(p), 1);
+  document.querySelectorAll(`.all-list [data-key="${CSS.escape(p.site + ':' + p.id)}"]`).forEach(el => el.remove());
+}
+function mineEl(p){
+  const site = PLAT_NAME[p.site], view = viewFor(streamerOf(p.ch));
+  const drop = () => { const f = feedOf(streamerOf(p.ch)); const i = f.msgs.indexOf(p); if (i >= 0) f.msgs.splice(i, 1); setMine(p, 'dropped'); document.querySelectorAll(`.all-list [data-key="${CSS.escape(p.site + ':' + p.id)}"]`).forEach(el => el.remove()); };
+  const state = {
+    sending: element('span', 'al-tag al-tag-mine', element('i', 'al-spin'), 'Sending'),
+    sent: element('span', 'al-tag al-tag-mine', 'Sent'),
+    unseen: element('span', { class: 'al-tag al-tag-mine', title: `${site} took it, but it hasn't shown in its chat yet` }, `Sent · not seen in ${site}'s chat yet`),
+    failed: element('span', 'al-mine-fail', element('span', 'al-tag al-tag-fail', 'Not sent'), element('span', 'al-why', p.why || ''),
+      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.retry' }, onclick: () => { if (view && !view.sending) deliver(view, view.w, p); else flash('Still sending the last one'); } }, 'Retry'),
+      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.edit' }, onclick: () => { if (!view) return; drop(); view.input.value = p.lock && p.lock.kind === 'reply' && !p.threaded ? p.text.replace(/^@\S+\s/, '') : p.text; if (p.lock) setLock(view, view.w, p.lock); view.input.focus(); } }, 'Edit'),
+      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.dismiss' }, title: 'Remove this line', onclick: drop }, '✕'))
+  }[p.state];
+  return element('div', { class: 'al-m al-mine al-mine-' + p.state, dataset: { key: p.site + ':' + p.id } },
+    p.threaded && element('span', 'al-q', '↩ replying to ', element('b', null, p.lock.msg.sender)),
+    element('div', 'al-line', element('span', 'al-who', element('i', { class: 'pi pi-' + p.site, title: site }, site[0])), element('b', 'al-n', p.sender), ': ', element('span', 'al-txt', p.text), state || ''));
 }
 function setBotsShown(on){ botsShown = !!on; settings.set('allBots', botsShown ? 'shown' : 'hidden'); redrawAll(); }
 function setEventsMode(mode){ eventsMode = mode; settings.set('allEvents', mode); redrawAll(); }
@@ -444,6 +497,10 @@ function seeIt(m){
 
 // ALL shows over the chat of each window that has it on; each chat hands over its messages only while it does
 function syncAll(){
+  // ALL reads (and sends on) their Kick and Twitch chats also while offline: each gets its hidden tab
+  wins.filter(w => w.kind === 'chat' && !w.hiddenTab && allOn(w)).forEach(w => {
+    tabChannels(w).forEach(ch => { if (platOf(ch) !== 'youtube' && !infoFor(ch)?.missing && !frameOf(w).some(o => o.channel === ch) && !wins.some(o => o.kind === 'chat' && o.channel === ch)) addTab(w, ch, false); });
+  });
   wins.forEach(w => {
     if (w.kind !== 'chat') return;
     const show = !w.hiddenTab && allOn(w);
@@ -486,7 +543,7 @@ function init(){
   });
   store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncAll());
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
   window.allChat = { sender, modKnown, ingest: (ch, batch) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch)); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 

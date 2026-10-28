@@ -6,16 +6,17 @@
    requests for new messages. A websocket message is seen when the page reads it (MessageEvent's data), so it works
    for a connection that was open before this ran; YouTube's answers through fetch. Only what the app uses is passed
    on, a batch at a time, while the app has it on (window.__kmvFeed.on): "__kmv:feed {"s":"twitch","raw":[...]}". */
-function feedAgent(){
+function feedAgent(as){
   if (window.__kmvFeed) return true;
-  const F = window.__kmvFeed = { on: false };
-  const site = /(^|\.)kick\.com$/.test(location.hostname) ? 'kick' : /(^|\.)twitch\.tv$/.test(location.hostname) ? 'twitch' : 'youtube';
+  const F = window.__kmvFeed = { on: false, recent: [] };   // recent: what the connection brought lately (in-site/send.js checks it before pressing again)
+  const site = as || (/(^|\.)kick\.com$/.test(location.hostname) ? 'kick' : /(^|\.)twitch\.tv$/.test(location.hostname) ? 'twitch' : 'youtube');   // (as: the tests')
   let batch = [], timer = 0;
   const send = () => { timer = 0; if (!batch.length) return; const raw = batch; batch = []; console.log('__kmv:feed ' + JSON.stringify({ s: site, raw })); };
   const push = x => { if (!F.on) return; batch.push(x); if (batch.length > 400) batch.splice(0, batch.length - 400); if (!timer) timer = setTimeout(send, 250); };
   // Twitch's chat lines that ALL shows; Kick's events
   const TW = / (PRIVMSG|USERNOTICE|CLEARMSG|CLEARCHAT) #/;
-  const KICK = /App\\Events\\(ChatMessageEvent|MessageDeletedEvent|UserBannedEvent|ChatroomClearEvent)/;
+  // (in the frame's text the event's name is JSON: App\\Events\\…, its backslashes doubled)
+  const KICK = /App\\+Events\\+(ChatMessageEvent|MessageDeletedEvent|UserBannedEvent|ChatroomClearEvent)/;
   function heard(data){
     if (typeof data !== 'string') return;
     if (site === 'twitch'){ if (data.includes(' #')) data.split('\r\n').forEach(l => { if (TW.test(l)) push(l); }); }
@@ -24,7 +25,7 @@ function feedAgent(){
   const seen = new WeakSet(), d = Object.getOwnPropertyDescriptor(MessageEvent.prototype, 'data');
   if (d && d.get) Object.defineProperty(MessageEvent.prototype, 'data', { configurable: true, enumerable: d.enumerable, get(){
     const v = d.get.call(this);
-    try { if (F.on && !seen.has(this) && this.target instanceof WebSocket){ seen.add(this); heard(v); } } catch (e) {}
+    try { if (F.on && !seen.has(this) && this.target instanceof WebSocket){ seen.add(this); heard(v); if (typeof v === 'string'){ F.recent.push({ t: Date.now(), v: v.slice(0, 4000) }); if (F.recent.length > 60) F.recent.shift(); } } } catch (e) {}
     return v;
   } });
   if (site === 'youtube'){
