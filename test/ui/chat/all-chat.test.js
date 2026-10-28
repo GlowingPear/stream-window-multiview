@@ -132,3 +132,63 @@ test('ALL: events are a short line with See it on …; Events: short, full or hi
   assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
   assert.equal(await page.locator('.all-view').count(), 0);
 });
+
+test('ALL: Send on [K ▾]: the main site first, Tab steps the sites you can send on (YouTube only with a live chat), Enter sends there; ⇧Tab its own tab', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  // (the chats' pages "loaded": in the browser they never do)
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); }, LIVE);
+  const placeholder = () => page.getAttribute('.all-in', 'placeholder');
+  assert.equal(await placeholder(), 'Send a message on Kick', 'their main site');
+  assert.equal(await page.textContent('.all-pick .pi'), 'K');
+  await page.focus('.all-in');
+  await page.keyboard.press('Tab');
+  assert.equal(await placeholder(), 'Send a message on Twitch');
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.allSend'))), { s1: 'tw:quietkoala' }, 'remembered');
+  await page.keyboard.press('Tab');
+  assert.equal(await placeholder(), 'Send a message on Kick', 'YouTube skipped: no live chat');
+  // the picker: each site, the ones you can't send on with why
+  await page.click('.all-pick');
+  assert.deepEqual(await page.$$eval('.all-menu .all-mi', l => l.map(b => b.textContent + (b.disabled ? ' (off)' : '') + (b.classList.contains('on') ? ' *' : ''))),
+    ['KKickMain *', 'TTwitch', 'YYouTube · no live chat found (off)']);
+  await page.click('.all-menu .all-mi >> nth=1');
+  assert.equal(await page.isVisible('.all-menu'), false);
+  assert.equal(await placeholder(), 'Send a message on Twitch');
+  // Enter: sent on that site's chat (here a stand-in), the box empties; a refusal says why and keeps the text
+  await page.evaluate(() => { window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push([m.channel, text]); return window.__answer || 'sent'; }; });
+  await page.fill('.all-in', '  gg everyone ');
+  await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => window.__sends.length === 1);
+  assert.deepEqual(await page.evaluate(() => window.__sends), [['tw:quietkoala', 'gg everyone']]);
+  assert.equal(await page.inputValue('.all-in'), '');
+  await page.evaluate(() => { window.__answer = 'disabled'; });
+  await page.fill('.all-in', 'hello?');
+  await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => /isn't letting you chat/.test(document.querySelector('#msg')?.textContent || ''));
+  assert.equal(await page.inputValue('.all-in'), 'hello?', 'kept, to try again');
+  for (const [r, want] of [['no-box', /you may need to sign in to Twitch/], ['not-filled', /Couldn't type into Twitch's chat box/], ['oops', /Twitch's chat didn't answer/]]){
+    await page.evaluate(r => { window.__answer = r; }, r);
+    await page.press('.all-in', 'Enter');
+    await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#msg')?.textContent || ''), want.source);
+  }
+  await page.evaluate(() => { window.allChat.sender.send = async () => { throw new Error('gone'); }; });
+  await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => /didn't answer/.test(document.querySelector('#msg')?.textContent || ''));
+  // ⇧Tab: the site you send on, its own chat
+  await page.focus('.all-in');
+  await page.keyboard.press('Shift+Tab');
+  assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
+  assert.equal(await page.locator('.all-view').count(), 0);
+});
+
+test('ALL: with one site to send on, Tab says so; with none, the box says so', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = w.channel === 'quietkoala'; }); window.smvNotes.liveStatus(live); }, LIVE);
+  await page.focus('.all-in');
+  await page.keyboard.press('Tab');
+  assert.match(await page.textContent('#msg'), /Only Kick can be sent on right now/);
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = false; }); window.smvNotes.liveStatus(live); }, LIVE);
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'No chat to send on right now');
+  assert.equal(await page.isDisabled('.all-in'), true);
+});

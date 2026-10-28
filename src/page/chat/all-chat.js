@@ -3,16 +3,20 @@ import { SmvSpam } from '../alerts/spam.js';
 import { feedParse } from './feed-parse.js';
 import { wins } from '../core.js';
 import { feedAgent, seekAgent } from '../in-site/feed.js';
+import { sendAgent } from '../in-site/send.js';
 import { bellVars, myName } from '../panels/bell/bell.js';
+import { infoFor } from '../panels/channels/channels.js';
 import { linkOpt, nameOf, streamerBots, streamerOf } from '../platforms/linked.js';
 import { PLAT_NAME, platOf } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
+import { flash } from '../shared/flash.js';
 import { icon } from '../shared/icons.js';
 import { fromSite } from '../shared/incoming.js';
+import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
-import { frameOf, leaderOf, renderSiteTabs, showTab, tabChannels } from '../windows/frames.js';
-import { runIn } from '../windows/view.js';
+import { focusChatBox, frameOf, leaderOf, renderSiteTabs, showTab, tabChannels } from '../windows/frames.js';
+import { askIn, runIn } from '../windows/view.js';
 
 /* ---- ALL: a linked streamer's Kick, Twitch and YouTube chats as one list (issue #203) ----
    An ALL tab before the site tabs of a linked streamer's chat window. It covers the chat you watched with the app's
@@ -149,9 +153,21 @@ function buildView(w){
   const chip = element('button', { type: 'button', class: 'all-chip', dataset: { cmd: 'all.bots' }, 'aria-pressed': String(!botsShown), onclick: () => setBotsShown(!botsShown) });
   const evChip = element('button', { type: 'button', class: 'all-chip all-evchip', dataset: { cmd: 'all.events' }, title: 'Subs, gifts, raids and Super Chats: one short line, the site\'s own words, or hidden',
     onclick: () => setEventsMode({ short: 'full', full: 'hidden', hidden: 'short' }[eventsMode]) });
+  const pick = element('button', { type: 'button', class: 'all-pick', dataset: { cmd: 'all.sendSite' }, 'aria-haspopup': 'menu' });
+  const input = element('input', { type: 'text', class: 'all-in', autocomplete: 'off', spellcheck: true, maxlength: 500, dataset: { cmd: 'all.message' } });
+  const menu = element('div', { class: 'pop all-menu', role: 'menu', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), chip, evChip), list, more, empty,
-    element('div', 'all-foot', element('span', 'all-foot-t', 'Read-only for now: to chat, pick a site\'s tab above')));
-  const view = { el, list, empty, more, chip, evChip, s };
+    element('div', 'all-cmp', element('div', 'all-box', pick, input)), menu);
+  const view = { el, list, empty, more, chip, evChip, s, pick, input, menu };
+  closeOnOutside(menu, { button: pick });
+  pick.onclick = () => { if (menu.hidden) openPickMenu(view, w); else menu.hidden = true; };
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.isComposing){ e.preventDefault(); sendNow(view, w); }
+    else if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey){
+      e.preventDefault();
+      if (e.shiftKey) leaveAll(w); else stepSend(view, w, 1);
+    }
+  });
   list.append(...f.msgs.map(lineEl).filter(Boolean));
   return view;
 }
@@ -164,9 +180,74 @@ function renderTop(view, w){
   view.evChip.textContent = `Events: ${eventsMode}`;
   view.evChip.setAttribute('aria-pressed', String(eventsMode !== 'full'));
   const names = heard.map(ch => PLAT_NAME[platOf(ch)]), off = chs.filter(ch => !heard.includes(ch)).map(ch => PLAT_NAME[platOf(ch)]);
+  renderCmp(view, w);
   view.empty.replaceChildren(element('b', null, names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.slice(-1)} chats together` : `${names[0] || 'Their'} chat`),
     off.length ? element('span', null, `${off.join(' and ')} ${off.length > 1 ? 'are' : 'is'} offline`) : '', element('small', null, 'New messages show here as they arrive.'));
   view.empty.hidden = !!view.list.children.length;
+}
+
+/* ---- sending: Send on [K ▾] (in-site/send.js types it into that site's own chat box) ---- */
+// The sites you can send on: their chat is open in this window and loaded; YouTube only once its live chat is found
+function sendSites(w){
+  return tabChannels(w).filter(ch => {
+    const m = frameOf(w).find(o => o.kind === 'chat' && o.channel === ch);
+    return !!m && !!m.ready && (platOf(ch) !== 'youtube' || !!infoFor(ch)?.live);
+  });
+}
+const sendSaved = () => { const o = settings.json('allSend', {}); return o && typeof o === 'object' ? o : {}; };
+// The site it sends on: the last one used for this streamer, else their main channel, else the first that can
+function sendSite(w){
+  const s = streamerOf(w.channel), ok = sendSites(w), was = sendSaved()[s.id];
+  return ok.includes(was) ? was : ok.includes(s.main) ? s.main : ok[0] || null;
+}
+function setSendSite(view, w, ch){
+  settings.set('allSend', { ...sendSaved(), [streamerOf(w.channel).id]: ch });
+  renderCmp(view, w);
+}
+function stepSend(view, w, d){
+  const ok = sendSites(w), cur = sendSite(w);
+  if (ok.length < 2) return flash(ok.length ? `Only ${PLAT_NAME[platOf(ok[0])]} can be sent on right now` : 'No chat to send on right now');
+  setSendSite(view, w, ok[(ok.indexOf(cur) + d + ok.length) % ok.length]);
+}
+function renderCmp(view, w){
+  const ch = sendSite(w), p = ch && platOf(ch);
+  view.pick.replaceChildren(p ? element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]) : element('i', { class: 'pi dim' }, '–'), element('span', 'all-caret', '▾'));
+  view.pick.title = p ? `Sending on ${PLAT_NAME[p]} (Tab: the next site)` : 'No chat to send on right now';
+  view.input.placeholder = p ? `Send a message on ${PLAT_NAME[p]}` : 'No chat to send on right now';
+  view.input.disabled = !p;
+  view.input.maxLength = p === 'youtube' ? 200 : 500;
+  view.el.dataset.send = p || '';
+}
+// The picker's menu: each of their sites, the ones you can't send on with why
+function openPickMenu(view, w){
+  const ok = sendSites(w), cur = sendSite(w), main = streamerOf(w.channel).main;
+  const why = ch => { const i = infoFor(ch); return platOf(ch) === 'youtube' && !(i && i.live) ? 'no live chat found' : i && !i.live ? 'offline' : 'not open'; };
+  view.menu.replaceChildren(
+    ...tabChannels(w).map(ch => { const p = platOf(ch), can = ok.includes(ch);
+      return element('button', { type: 'button', role: 'menuitemradio', class: 'all-mi' + (ch === cur ? ' on' : ''), disabled: !can, 'aria-checked': String(ch === cur), dataset: { cmd: 'all.sendOn' },
+        onclick: () => { setSendSite(view, w, ch); view.menu.hidden = true; view.input.focus(); } },
+        element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]), element('span', null, PLAT_NAME[p] + (can ? '' : ' · ' + why(ch))), ch === main ? element('small', null, 'Main') : ''); }),
+    element('div', 'all-mh', element('kbd', null, 'Tab'), ' next site · ', element('kbd', null, '⇧Tab'), ' its own tab'));
+  view.menu.hidden = false;
+}
+// Shift+Tab: from ALL to the site you send on, its own chat (and its box)
+function leaveAll(w){
+  const ch = sendSite(w) || leaderOf(w).channel, m = frameOf(w).find(o => o.kind === 'chat' && o.channel === ch);
+  setAll(w, false);
+  if (m){ showTab(m); focusChatBox(m); }
+}
+const SEND_FAIL = {
+  'no-box': p => `Can't chat on ${p} from here: you may need to sign in to ${p} (Settings › Accounts)`,
+  disabled: p => `${p} isn't letting you chat right now (followers-only, slow mode or similar)`,
+  'not-filled': p => `Couldn't type into ${p}'s chat box`
+};
+const sender = { send: (m, text) => askIn(m.view, `(${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)})`) };
+async function sendNow(view, w){
+  const text = view.input.value.trim(), ch = sendSite(w); if (!text || !ch) return;
+  const m = frameOf(w).find(o => o.kind === 'chat' && o.channel === ch), p = PLAT_NAME[platOf(ch)];
+  let r; try { r = await sender.send(m, text); } catch { r = 'error'; }
+  if (r === 'sent'){ if (view.input.value.trim() === text) view.input.value = ''; return; }
+  flash((SEND_FAIL[r] || (x => `${x}'s chat didn't answer: try again, or send it from its tab`))(p));
 }
 function setBotsShown(on){ botsShown = !!on; settings.set('allBots', botsShown ? 'shown' : 'hidden'); redrawAll(); }
 function setEventsMode(mode){ eventsMode = mode; settings.set('allEvents', mode); redrawAll(); }
@@ -218,7 +299,8 @@ function init(){
   fromSite('feed', (w, json) => { if (allOn(w)) ingest(w, json); });
   store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncAll());
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.allChat = { ingest: (ch, batch) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch)); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.sendAgent = sendAgent;   // for the tests
+  window.allChat = { sender, ingest: (ch, batch) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch)); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
 export { allOn, allTabFor, feedReady, init, setAll };
