@@ -2,6 +2,7 @@ import { clearAlert } from '../alerts/alerts.js';
 import { newFor } from '../chat/new-messages.js';
 import { closeWin } from '../chat/view-menu.js';
 import { $, BAR, GAP, ROLE, colsMode, lastLayout, shownWins, wins } from '../core.js';
+import { focusBoxAgent } from '../in-site/chat-box-focus.js';
 import { VOL_JS } from '../in-site/volume.js';
 import { chatRailLayout } from '../layout/chat-rail.js';
 import { chatStageLayout } from '../layout/chat-stage.js';
@@ -25,7 +26,7 @@ import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { winTimer } from '../shared/timers.js';
 import { isPaused } from './pause.js';
-import { loadView, runIn } from './view.js';
+import { askIn, focusView, loadView, runIn } from './view.js';
 import { createWin, pushVol } from './windows.js';
 
 /* ---- Tabs: one window for a linked streamer's sites (Settings › Linked channels) ----
@@ -516,6 +517,23 @@ function tabKeyAgent(){
 // Tab only switches where it would: a chat of a linked streamer, with the setting on
 const tabKeyJs = w => `window.__kmvTabKey && (window.__kmvTabKey.on = ${!!(streamerOf(w.channel) && linkOpt('tabKey') && tabChannels(w).length > 1)})`;
 function syncTabKeys(){ wins.forEach(w => { if (w.kind === 'chat' && w.ready && w.view) runIn(w.view, tabKeyJs(w)); }); }
+// The chat Tab switched to: the keyboard goes to its chat box, so you can type straight away. in-site/chat-box-focus.js
+// waits for the site to draw its box; a chat still loading gets it once it has, and one that loads another page first
+// (Kick's Cloudflare check) on that page too (windows/views.js, for 30 s). Done once it has the box, or you pressed first.
+function focusChatBox(w){
+  if (w.hiddenTab || !platform(w.channel).chatBox?.box) return;
+  w.focusBoxUntil = Date.now() + 30000;
+  focusView(w.view, { take: true });   // (the keyboard is still in the chat you pressed Tab in)
+  focusBoxNow(w);
+}
+function focusBoxNow(w){
+  if (!w.view || w.hiddenTab || !(w.focusBoxUntil > Date.now())) return;
+  // (not when the keyboard went somewhere else in the app meanwhile)
+  const a = document.activeElement;
+  if (a && a !== document.body && !frameOf(w).some(o => o.view === a)){ w.focusBoxUntil = 0; return; }
+  focusView(w.view);
+  if (w.ready) askIn(w.view, `(${focusBoxAgent})(${JSON.stringify(platform(w.channel).chatBox.box)})`).then(r => { if (r !== 'none') w.focusBoxUntil = 0; }, () => {});
+}
 
 /* ---- saving and restoring: the app's windows (persistence.js), saved layouts and undo (saved-layouts.js) ---- */
 const frameFields = w => w.frame ? { frame: w.frame, hiddenTab: !!w.hiddenTab, sbs: !!w.sbs, ...(closedTabs[w.frame] ? { closed: closedTabs[w.frame] } : {}) } : w.split ? { split: true } : {};
@@ -604,12 +622,14 @@ function init(){
   store.watch(['live', 'unread', 'names'], () => { onLive(); renderAllSiteTabs(); });
   store.watch('streamers', () => streamersChanged());
   store.watch(['streamers', 'tabs', 'wins'], () => syncTabKeys());
-  fromSite('tab-key', (w, json) => { let d = {}; try { d = JSON.parse(json); } catch {} if (stepTab(w, d.back ? -1 : 1)) leaderOf(w).view?.focus(); });
+  fromSite('tab-key', (w, json) => { let d = {}; try { d = JSON.parse(json); } catch {} if (stepTab(w, d.back ? -1 : 1)) focusChatBox(leaderOf(w)); });
   fromSite('typing', (w, json) => { let d = {}; try { d = JSON.parse(json); } catch {} w.typing = !!d.on; });
   lastStreamers = linkedOn() ? JSON.stringify(settings.json('streamers', [])) : '';
+  window.focusBoxAgent = focusBoxAgent;   // for the tests
   window.frames_ = { showTab, addTab, closeTab, splitTab, joinTab, setSideBySide, openStreamer, mergeOpen, splitAll, frameOf, stepTab, switchTo };   // for the tests
 }
 
-export { addTab, applyFrames, closedTabs, closeFrame, closeTab, frameFields, frameNote, frameOf, init, joinTab,
-  leaderOf, mergeOpen, openStreamer, playQuality, putTabBack, renderSiteTabs, restoreFrames, setSideBySide, showTab,
-  splitTab, stepTab, switchTo, syncFrameAlert, syncFrameRects, tabChannels, tabKeyAgent, tabKeyJs, unlinkTab };
+export { addTab, applyFrames, closedTabs, closeFrame, closeTab, focusBoxNow, frameFields, frameNote, frameOf, init,
+  joinTab, leaderOf, mergeOpen, openStreamer, playQuality, putTabBack, renderSiteTabs, restoreFrames, setSideBySide,
+  showTab, splitTab, stepTab, switchTo, syncFrameAlert, syncFrameRects, tabChannels, tabKeyAgent, tabKeyJs,
+  unlinkTab };

@@ -208,6 +208,15 @@ test('Chat focus: drag a stream onto another to swap them, and their chats swap 
   await drag(page, { x: b.x + b.w / 2, y: b.y + 12 }, { x: b.x + b.w / 2 + 600, y: b.y + 12 }, { steps: 10 });
   await page.waitForTimeout(400);
   assert.deepEqual(await box(win(page, 'bravo')), b, 'dropped elsewhere, it snaps back');
+  // the bar loses the pointer during the drag (on a busy machine): the drag still follows and ends on the let-go
+  const c2 = await box(win(page, 'charlie')), a2 = await box(win(page, 'alpha'));
+  await page.mouse.move(c2.x + c2.w / 2, c2.y + 12); await page.mouse.down();
+  await page.mouse.move(c2.x + c2.w / 2 + 20, c2.y + 30, { steps: 4 });
+  await page.evaluate(() => { const b = [...document.querySelectorAll('#stage .win.stream')].find(e => e.querySelector('.title').textContent === 'charlie').querySelector('.bar'); b.releasePointerCapture(1); });
+  await page.mouse.move(a2.x + a2.w / 2, a2.y + a2.h / 2, { steps: 6 }); await page.mouse.up();
+  await page.waitForTimeout(400);
+  assert.equal(await page.evaluate(() => document.body.classList.contains('dragging') || !!document.querySelector('#stage .win.lifted')), false, 'not left lifted');
+  assert.deepEqual(await order('stream'), ['alpha', 'bravo', 'charlie'], 'swapped back');
 });
 
 test('Auto layout with nothing open: choosing it and resizing the window lay out nothing, without an error', async t => {

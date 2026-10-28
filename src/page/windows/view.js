@@ -49,7 +49,12 @@ function loadView(view, url){
   try { if (view.loadURL) view.loadURL(url).catch(() => {}); else view.src = url; } catch {}
 }
 // The view's id in the desktop app (the main process names views by it), or null
-function focusView(view){ try { view.focus(); } catch {} }   // the keyboard goes to the page in it
+// The keyboard goes to the page in it. take: another view has it (you're typing there): the window takes it back first,
+// as the view's own focus() then only moves the page's focus. (Only when the window is in front: it would bring it there.)
+// A view focused before its page had loaded is focused again, or its page never gets the keyboard.
+function focusView(view, { take = false } = {}){
+  try { if (take) window.focus(); if (document.activeElement === view) view.blur(); view.focus(); } catch {}
+}
 function viewId(view){ try { return view && view.getWebContentsId ? view.getWebContentsId() : null; } catch { return null; } }
 
 export { addCss, askIn, focusView, loadView, reloadView, runIn, setMuted, setViewScale, setZoom, viewId, zoomOf };
