@@ -12,6 +12,7 @@ const kick = {
   id: 'kick', name: 'Kick', letter: 'K',
   // What it can do in the app
   mentions: true,        // mention and reply alerts read its chat
+  threadedReplies: true, // ALL replies with its own Reply on the message (chat/all-chat.js)
   spamAlerts: true,      // spam alerts read its chat
   emoteLists: true,      // the app asks it for a channel's emotes (new emotes glow)
   pageCommands: true,    // /clip, /poll and /prediction in its chat (in-site/kick-commands.js)

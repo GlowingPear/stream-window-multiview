@@ -60,4 +60,43 @@ function seekAgent(id){
   return true;
 }
 
-export { feedAgent, seekAgent };
+// Starts the site's own reply to the message with that id (Kick: its Reply button on the line, shown on hover), so what's
+// sent next goes as a reply. -> whether it did
+async function replyAgent(id){
+  const find = () => [...document.querySelectorAll('[data-index]')].reverse().find(el => {
+    const k = Object.keys(el.querySelector('.group') || el).find(x => x.startsWith('__reactFiber'));
+    for (let f = k && (el.querySelector('.group') || el)[k], i = 0; f && i < 8; f = f.return, i++){ const m = (f.memoizedProps || {}).message; if (m && m.id) return m.id === id; }
+    return false;
+  });
+  const row = find(); if (!row) return false;
+  (row.querySelector('.group') || row).dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 120));
+  // the hover bar's Reply (its arrow icon), not the line's other buttons called Reply
+  const all = [...row.querySelectorAll('button')].filter(x => /^reply$/i.test(x.getAttribute('aria-label') || ''));
+  const b = all.find(x => x.querySelector('svg[data-ds-icon="ArrowCurveLeft"]')) || all[all.length - 1];
+  if (!b) return false;
+  b.click();
+  await new Promise(r => setTimeout(r, 150));
+  return true;
+}
+// Clicks the sender's name on the message with that id, so the site opens its own card for them. Self-contained (it runs
+// in the page on its own). -> whether it did
+function profileAgent(id){
+  const rows = document.querySelectorAll('.chat-line__message, [data-index], yt-live-chat-text-message-renderer');
+  const idOf = el => {
+    if (el.id && el.id === id) return id;
+    for (const node of [el, el.querySelector('.group')].filter(Boolean)){
+      const k = Object.keys(node).find(x => x.startsWith('__reactFiber'));
+      for (let f = k && node[k], i = 0; f && i < 6; f = f.return, i++){ const m = (f.memoizedProps || {}).message; if (m && m.id) return m.id; }
+    }
+    return '';
+  };
+  const hit = [...rows].reverse().find(el => idOf(el) === id);
+  const name = hit && hit.querySelector('[data-a-target="chat-message-username"], .chat-author__display-name, #author-name, button[title], button');
+  if (!name) return false;
+  hit.scrollIntoView({ block: 'center' });
+  name.click();
+  return true;
+}
+
+export { feedAgent, profileAgent, replyAgent, seekAgent };
