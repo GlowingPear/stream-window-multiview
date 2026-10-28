@@ -1,4 +1,5 @@
 import { clearAlert } from '../alerts/alerts.js';
+import { feedReady } from '../chat/all-chat.js';
 import { blowOn, blowUp, blownWin } from '../chat/blow-up.js';
 import { syncChatName } from '../chat/chat-name.js';
 import { chatZoom } from '../chat/chat-zoom.js';
@@ -149,6 +150,7 @@ function mountView(w){
       if (w.kind === 'chat') runIn(frame, `${EMOTE_JS};window.__kmvEmote.on(${emoteOn})`);
       if (w.kind === 'chat' && newEmotesOn) markNewEmotes(w);
       if (w.kind === 'chat') runIn(frame, MESSAGE_JS);       // the message you right-click (Copy message)
+      if (w.kind === 'chat') feedReady(w, frame);            // its messages for the ALL tab, while it shows (chat/all-chat.js)
       if (w.kind === 'chat') runIn(frame, `(${tabKeyAgent})();${tabKeyJs(w)}`);   // Tab in an empty chat box: the next site's tab (windows/frames.js)
       if (w.kind === 'chat') runIn(frame, `${TRANSLATE_JS};${autoTrFor(w.channel) ? 'window.__kmvTr.start(true)' : ''}`);
       if (w.kind === 'chat' && platform(w.channel).pageCommands) runIn(frame, KICK_CMD_JS);

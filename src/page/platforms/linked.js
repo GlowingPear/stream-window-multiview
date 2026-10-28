@@ -18,6 +18,7 @@ const OPT_DEFAULTS = {
   chats: 'tabs',          // their chats: 'tabs', 'side' (side by side in one window) or 'separate'
   chatFollows: true,      // the chat follows the stream's tab
   tabKey: true,           // Tab in an empty chat box switches site
+  allTab: true,           // an ALL tab in their chat window: every site's chat as one list
   overlay: 'one',         // chat over the stream: 'one' (the site you're watching) or 'all' (every live site)
   quality: 'low',         // tabs you're not watching play at 'low' quality, or 'yours'
   jumpLive: true,         // jump to live when switching tab
