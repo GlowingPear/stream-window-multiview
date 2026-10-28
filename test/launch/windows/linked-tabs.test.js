@@ -71,7 +71,7 @@ const KICK = ['data-testid', 'chat-input'], TWITCH = ['data-a-target', 'chat-inp
 // both sites live (the app's own check, after a test before loaded the page again, says offline: an offline tab is locked)
 const bothLive = ch => a.win.evaluate(ch => window.smvNotes.liveStatus({ [ch]: { live: true, checked: Date.now() }, ['tw:' + ch]: { live: true, checked: Date.now() } }), ch.replace(/^tw:/, ''));
 // Tab (⇧Tab) in the chat's empty box
-const tabIn = async (ch, back) => { await bothLive(ch); await a.win.waitForSelector('#stage .win.chat:not(.tab-hidden) .ptab:not(.on):not(.locked)'); await inChat(ch, back => { const b = document.querySelector('[contenteditable]'); b.focus(); b.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: back, bubbles: true, cancelable: true })); }, back); };
+const tabIn = async (ch, back) => { await bothLive(ch); await a.win.waitForSelector('#stage .win.chat:not(.tab-hidden) .ptab:not(.on):not(.locked)'); await untilIn(ch, () => !!window.__kmvTabKey?.on, 'Tab switches site in ' + ch); await inChat(ch, back => { const b = document.querySelector('[contenteditable]'); b.focus(); b.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: back, bubbles: true, cancelable: true })); }, back); };
 // asks the chat's page until it says yes (waitForFunction would take its promise for a yes)
 async function untilIn(ch, fn, what, ms = 15000){
   for (const end = Date.now() + ms; Date.now() < end; await new Promise(r => setTimeout(r, 150)))
@@ -112,6 +112,9 @@ test('Tab in an empty chat box switches site and the keyboard is in the new chat
   await inChat('alpha', () => document.activeElement.blur());
   await tabIn('tw:alpha', true);
   await boxFocused('alpha');
+  // Twitch goes offline: Tab in Kick's chat is the site's own again (nothing to switch to)
+  await a.win.evaluate(() => window.smvNotes.liveStatus({ 'tw:alpha': { live: false, checked: Date.now() } }));
+  await untilIn('alpha', () => window.__kmvTabKey && !window.__kmvTabKey.on, 'Tab is Kick\'s own again');
   await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
   await a.win.evaluate(() => localStorage.removeItem('kickMultiview.linkedOpts'));
 });
