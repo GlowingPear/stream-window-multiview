@@ -181,3 +181,8 @@
 .all-mvi .pi{width:18px;height:18px;font-size:10px;border-radius:5px;color:#fff}
 .all-mvi .all-mvx{margin-left:auto;opacity:.7}
 .all-mvi:hover:not(:disabled) .all-mvx{opacity:1;color:var(--text)}
+/* what a moderator did (mods see it): a quiet line with a shield */
+.al-ev.al-log{background:rgba(255,120,120,.06);border:1px dashed rgba(255,120,120,.28);color:var(--muted);padding:4px 10px}
+.al-log .al-evt{display:grid;flex:none;color:#ff9a9a}
+.al-log .al-evt svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2}
+.al-log .al-evw b{color:var(--text)}

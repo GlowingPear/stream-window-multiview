@@ -42,8 +42,9 @@ function twitchParts(text, emotes){
 function parseTwitch(line){
   const l = ircLine(String(line || '')); if (!l) return null;
   const g = l.tags, t = +g['tmi-sent-ts'] || Date.now();
+  // (Twitch's chat says who and how long, not which moderator)
   if (l.cmd === 'CLEARMSG') return g['target-msg-id'] ? { site: 'twitch', kind: 'delete', target: g['target-msg-id'], t } : null;
-  if (l.cmd === 'CLEARCHAT') return l.text ? { site: 'twitch', kind: 'clear', login: l.text.toLowerCase(), t, until: g['ban-duration'] ? t + g['ban-duration'] * 1000 : 0 } : null;
+  if (l.cmd === 'CLEARCHAT') return l.text ? { site: 'twitch', kind: 'clear', login: l.text.toLowerCase(), t, until: g['ban-duration'] ? t + g['ban-duration'] * 1000 : 0 } : { site: 'twitch', kind: 'clearall', t };
   if (l.cmd !== 'PRIVMSG' && l.cmd !== 'USERNOTICE') return null;
   let text = l.text, action = false;
   const me = /^\u0001ACTION ([\s\S]*)\u0001$/.exec(text); if (me){ text = me[1]; action = true; }
@@ -111,7 +112,13 @@ function parseKick(frame){
     if (d.aiModerated){ out.ai = true; out.rules = Array.isArray(d.violatedRules) ? d.violatedRules.map(String) : []; }
     return out;
   }
-  if (ev === 'UserBannedEvent'){ const u = d.user && (d.user.slug || d.user.username); return u ? { site: 'kick', kind: 'clear', login: String(u).toLowerCase(), t: Date.now() } : null; }
+  // a ban, or a timeout (not permanent: its minutes), with the moderator who did it
+  if (ev === 'UserBannedEvent'){
+    const u = d.user && (d.user.slug || d.user.username); if (!u) return null;
+    const t = Date.now(), mins = +d.duration || 0, by = d.banned_by && (d.banned_by.username || d.banned_by.slug);
+    return { site: 'kick', kind: 'clear', login: String(u).toLowerCase(), t, until: d.permanent === false || mins ? t + mins * 60000 : 0, ...(by ? { by: String(by) } : {}) };
+  }
+  if (ev === 'ChatroomClearEvent') return { site: 'kick', kind: 'clearall', t: Date.now() };
   if (ev !== 'ChatMessageEvent' || !d.id) return null;
   const s = d.sender || {}, idy = s.identity || {};
   const msg = {

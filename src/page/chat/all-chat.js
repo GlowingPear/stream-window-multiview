@@ -64,7 +64,7 @@ function ingest(w, json){
   let batch; try { batch = JSON.parse(json); } catch { return; }
   const f = feedOf(s), view = viewFor(s);
   feedParse.parseFeed(batch).forEach(m => {
-    if (m.kind === 'delete' || m.kind === 'clear') return removed(f, view, m);
+    if (m.kind === 'delete' || m.kind === 'clear' || m.kind === 'clearall') return removed(f, view, m, w.channel);
     m.ch = w.channel;
     const me = meOn(m.site);
     if (me && m.reply && m.reply.login === me) m.toMe = 'reply';
@@ -76,17 +76,30 @@ function ingest(w, json){
     if (view) addLine(view, m);
   });
 }
-// A deleted message, or all of one person's (a timeout or ban): it stays, struck through, saying why
-function removed(f, view, d){
+// A deleted message, or all of one person's (a timeout or ban), or the whole chat cleared. Where you're a mod it stays,
+// struck through, saying why, and a line says what was done (who did it where the site says); otherwise it goes, as
+// the site doesn't show it to you either.
+let logN = 0;
+function removed(f, view, d, ch){
+  const mod = youMod(ch), site = PLAT_NAME[d.site];
   const hit = d.kind === 'delete' ? [f.byId.get(d.site + ':' + d.target)].filter(Boolean)
-    : f.msgs.filter(m => m.site === d.site && (d.login ? m.login === d.login : m.userId === d.userId) && m.kind === 'message');
-  hit.forEach(m => {
-    m.deleted = d.ai ? { ai: true, rules: d.rules || [] } : { by: d.kind === 'clear' ? (d.until ? 'timeout' : 'ban') : '' };
-    const line = view && view.list.querySelector(`.al-m[data-key="${CSS.escape(m.site + ':' + m.id)}"]`);
-    if (line) line.replaceWith(lineEl(m));
+    : f.msgs.filter(m => m.site === d.site && m.kind === 'message' && (d.kind === 'clearall' || (d.login ? m.login === d.login : m.userId === d.userId)));
+  const lineOf = m => view && view.list.querySelector(`.al-m[data-key="${CSS.escape(m.site + ':' + m.id)}"]`);
+  if (!mod) hit.forEach(m => { f.msgs.splice(f.msgs.indexOf(m), 1); f.byId.delete(m.site + ':' + m.id); lineOf(m)?.remove(); });
+  else hit.forEach(m => {
+    const secs = d.until ? Math.round((d.until - d.t) / 1000) : 0;
+    m.deleted = d.ai ? { ai: true, rules: d.rules || [] } : { by: d.kind === 'clear' ? (d.until ? 'timeout' : 'ban') : d.kind === 'clearall' ? 'clear' : '', secs };
+    lineOf(m)?.replaceWith(lineEl(m));
   });
+  // what was done, as a line: for mods, and a cleared chat for everyone
+  if (d.kind === 'delete' || (!mod && d.kind !== 'clearall')) return;
+  const who = hit[0] ? hit[0].sender : d.login, secs = d.until ? Math.round((d.until - d.t) / 1000) : 0;
+  const words = d.kind === 'clearall' ? [d.by ? element('b', null, d.by) : 'A moderator', ` cleared ${site}'s chat`]
+    : d.until ? [...(d.by ? [element('b', null, d.by), ' timed out '] : []), element('b', null, who), d.by ? '' : ' was timed out', element('span', 'al-amt', ` · ${durText(secs)}`)]
+    : [...(d.by ? [element('b', null, d.by), ' banned '] : []), element('b', null, who), d.by ? '' : ' was banned'];
+  const m = { kind: 'modlog', site: d.site, ch, id: 'log' + (++logN), t: d.t, words };
+  f.msgs.push(m); if (view) addLine(view, m);
 }
-
 /* ---- the view ---- */
 const viewFor = s => {
   const lead = wins.find(o => o.kind === 'chat' && !o.hiddenTab && streamerOf(o.channel) === s && allOn(o));
@@ -110,6 +123,8 @@ function partsEl(parts){
 }
 function lineEl(m){
   if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' ? null : mineEl(m);
+  if (m.kind === 'modlog') return element('div', { class: `al-ev al-log al-${SITE_CLASS[m.site]}`, dataset: { key: m.site + ':' + m.id } },
+    element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0]), element('span', { class: 'al-evt', html: SHIELD }), element('span', 'al-evw', ...m.words.map(x => x instanceof Node ? x.cloneNode(true) : x)));
   const site = PLAT_NAME[m.site] || m.site;
   const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]),
     ...m.badges.map(b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' })));
@@ -137,7 +152,7 @@ function lineEl(m){
     m.announce && element('span', 'al-tag al-tag-ann', 'Announcement'),
     m.bits && element('span', 'al-tag al-tag-bits', `${m.bits} bits`),
     m.deleted && element('span', { class: 'al-tag al-tag-del' + (m.deleted.ai ? ' ai' : '') },
-      m.deleted.ai ? ['Deleted', 'AI moderation', ...m.deleted.rules].join(' · ') : m.deleted.by === 'ban' ? 'Banned' : m.deleted.by === 'timeout' ? 'Timed out' : 'Deleted'),
+      m.deleted.ai ? ['Deleted', 'AI moderation', ...m.deleted.rules].join(' · ') : m.deleted.by === 'ban' ? 'Banned' : m.deleted.by === 'timeout' ? 'Timed out' + (m.deleted.secs ? ` · ${durText(m.deleted.secs)}` : '') : m.deleted.by === 'clear' ? 'Chat cleared' : 'Deleted'),
     m.bot && !botsShown && element('button', { type: 'button', class: 'al-show linkish', dataset: { cmd: 'all.showBot' }, onclick: e => { m.open = !m.open; e.target.closest('.al-m').replaceWith(lineEl(m)); } }, m.open ? 'Hide' : 'Show')
   ].filter(Boolean);
   if (m.toMe === 'at' && m.bot) tags.splice(0, 1);   // (a bot's @: marked as to you, softly)
@@ -426,6 +441,7 @@ function openModViews(w, at){
   mv.style.left = Math.max(6, Math.min(vr.width - mv.offsetWidth - 6, r.right - vr.left - mv.offsetWidth)) + 'px';
   mv.style.top = '6px';
 }
+const SHIELD = '<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V6z"/></svg>';
 const TIMER = '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>';
 const BAN = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>';
 
