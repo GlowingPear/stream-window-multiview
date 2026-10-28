@@ -150,10 +150,22 @@ function parseKick(frame){
     const t = Date.now(), mins = +d.duration || 0, by = d.banned_by && (d.banned_by.username || d.banned_by.slug);
     return { site: 'kick', kind: 'clear', login: String(u).toLowerCase(), t, until: d.permanent === false || mins ? t + mins * 60000 : 0, ...(by ? { by: String(by) } : {}) };
   }
+  if (ev === 'UserUnbannedEvent'){
+    const u = d.user && (d.user.slug || d.user.username), by = d.unbanned_by && (d.unbanned_by.username || d.unbanned_by.slug);
+    return u ? { site: 'kick', kind: 'unban', login: String(u).toLowerCase(), who: String(d.user.username || u), t: Date.now(), ...(by ? { by: String(by) } : {}) } : null;
+  }
   if (ev === 'ChatroomClearEvent') return { site: 'kick', kind: 'clearall', t: Date.now() };
   const kickEvent = kickEvents(ev, d);
   if (kickEvent) return kickEvent;
-  if (ev !== 'ChatMessageEvent' || !d.id) return null;
+  // a message pinned (the whole message comes with it), or the pin taken down
+  if (ev === 'PinnedMessageCreatedEvent'){ const m = d.message && kickMsg(d.message); return m ? { site: 'kick', kind: 'pin', id: m.id, msg: m, t: Date.now() } : null; }
+  if (ev === 'PinnedMessageDeletedEvent') return { site: 'kick', kind: 'unpin', t: Date.now() };
+  if (ev !== 'ChatMessageEvent') return null;
+  return kickMsg(d);
+}
+// A Kick chat message (ChatMessageEvent's, or the one in a pin)
+function kickMsg(d){
+  if (!d || !d.id) return null;
   const s = d.sender || {}, idy = s.identity || {};
   const msg = {
     site: 'kick', kind: 'message', id: d.id, t: Date.parse(d.created_at) || Date.now(),
@@ -185,6 +197,14 @@ function ytBadges(list){
 function parseYouTube(action){
   if (!action || typeof action !== 'object') return null;
   if (action.removeChatItemAction) return { site: 'youtube', kind: 'delete', target: action.removeChatItemAction.targetItemId, t: Date.now() };
+  // a message pinned at the top of the chat (a banner), or taken down
+  const banner = action.addBannerToLiveChatCommand && ((action.addBannerToLiveChatCommand.bannerRenderer || {}).liveChatBannerRenderer || {});
+  if (banner){
+    const r = banner.contents && banner.contents.liveChatTextMessageRenderer; if (!r || !banner.actionId) return null;
+    const m = parseYouTube({ addChatItemAction: { item: { liveChatTextMessageRenderer: r } } });
+    return m ? { site: 'youtube', kind: 'pin', id: banner.actionId, msg: m, t: Date.now() } : null;
+  }
+  if (action.removeBannerForLiveChatCommand) return { site: 'youtube', kind: 'unpin', id: action.removeBannerForLiveChatCommand.targetActionId || '', t: Date.now() };
   if (action.markChatItemsByAuthorAsDeletedAction) return { site: 'youtube', kind: 'clear', userId: action.markChatItemsByAuthorAsDeletedAction.externalChannelId, t: Date.now() };
   const item = action.addChatItemAction && action.addChatItemAction.item; if (!item) return null;
   const [type] = Object.keys(item), r = item[type] || {};

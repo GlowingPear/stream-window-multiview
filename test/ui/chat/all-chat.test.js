@@ -93,6 +93,8 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
   assert.equal(after[4], 'al-m al-del | Tloudmouth99: trash lolTimed out · 10m');
   assert.equal(after[0], 'al-m al-me al-del | Tlowtide: @MeTwitch what crosshair?@YOUDeleted');
   assert.deepEqual(after.slice(8), ['al-ev | Tloudmouth99 was timed out · 10m', 'al-ev | Knightowl_mod banned ratchetkid'], 'Twitch doesn\'t say which moderator; Kick does');
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('UserUnbannedEvent', { user: { slug: 'ratchetkid', username: 'ratchetkid' }, unbanned_by: { username: 'nightowl_mod' } })] });
+  assert.equal((await lines(page)).pop(), 'al-ev | Knightowl_mod lifted the ban on ratchetkid');
 });
 
 test('ALL: where you aren\'t a mod, what a moderator removes goes from ALL (as the site doesn\'t show it to you either); a cleared chat says so', async t => {
@@ -487,4 +489,33 @@ test('ALL: a reward redeemed with text reads as a message with the reward\'s nam
     'al-ev | Kbrightwick gifted 2 subsSee it on Kick ›', 'al-m | Ttinroof: play the new mapChannel points']);
   assert.equal(await page.$$eval('.all-list .al-rw', l => l.length), 2, 'redeems: their own edge');
   assert.equal(await page.$eval('.al-tag-rw', e => e.style.getPropertyValue('--rw')), '#00F1FF', 'in the reward\'s colour');
+});
+
+test('ALL: pins share one strip: the newest, K T Y switch, ▾ all of them; ✕ hides one here, all hidden: a chip brings them back; a pin taken down goes', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  assert.equal(await page.isVisible('.all-pins'), false, 'no pins: no strip');
+  const kpin = (id, text) => KF('PinnedMessageCreatedEvent', { message: { id, content: text, type: 'message', sender: { username: 'quietkoala', slug: 'quietkoala', identity: {} } } });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [kpin('k5', 'scrims at 8pm')] });
+  const strip = () => page.$eval('.all-pins', e => e.textContent.replace(/\s+/g, ' ').trim());
+  assert.equal(await strip(), 'Kquietkoala: scrims at 8pmPinned on Kick');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [] });
+  await page.evaluate(() => window.allChat.ingest('tw:quietkoala', { s: 'youtube', raw: [{ addBannerToLiveChatCommand: { bannerRenderer: { liveChatBannerRenderer: { actionId: 'b1', contents: { liveChatTextMessageRenderer: { id: 'y9', authorName: { simpleText: 'Mika R.' }, message: { runs: [{ text: 'clip of the ace' }] } } } } } } }] }));
+  assert.equal(await strip(), 'YMika R.: clip of the acePinned on YouTube · 1 of 2 · newestYK▾', 'the newest');
+  await page.click('.all-pin-sw .pi-kick');
+  assert.match(await strip(), /^Kquietkoala: scrims at 8pmPinned on Kick · 2 of 2/);
+  await page.click('.all-pin-open');
+  assert.deepEqual(await page.$$eval('.all-pins .all-pin-row', l => l.map(e => e.textContent.replace(/\s+/g, ' ').trim())), ['YMika R.: clip of the aceYouTube · just now', 'Kquietkoala: scrims at 8pmKick · just now']);
+  assert.match(await page.textContent('.all-pin-h'), /2 pinned/);
+  await page.click('.all-pin-h');
+  // ✕: hidden here; both hidden: the chip; it brings them back
+  await page.click('.all-pin-x'); await page.click('.all-pin-x');
+  assert.equal(await page.isVisible('.all-pins'), false);
+  assert.equal((await page.textContent('.all-pinchip')).trim(), '2');
+  await page.click('.all-pinchip');
+  assert.equal(await page.isVisible('.all-pins'), true);
+  assert.equal(await page.isVisible('.all-pinchip'), false);
+  // taken down on its site: gone from the strip
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('PinnedMessageDeletedEvent', {})] });
+  assert.equal(await strip(), 'YMika R.: clip of the acePinned on YouTube');
 });
