@@ -1,4 +1,5 @@
 import { revealWin } from '../alerts/spam-alerts.js';
+import { allOn, allTabFor, setAll } from '../chat/all-chat.js';
 import { blowUp, blownWin, putBack } from '../chat/blow-up.js';
 import { makeClip } from '../chat/kick-clip.js';
 import { openPollForm } from '../chat/kick-poll.js';
@@ -59,6 +60,8 @@ function winActions(w){
   const lead = leaderOf(w), chs = w.channel ? tabChannels(w) : [], members = frameOf(w);
   if (chs.length > 1){
     chs.forEach((ch, i) => { if (ch !== lead.channel) add('tab:' + ch, `Switch to ${PLAT_NAME[platOf(ch)]}`, () => switchTo(w, i + 1), { icon: 'arrowR', keys: 'Alt+' + (i + 1), sub: infoFor(ch)?.live ? 'live' : 'offline', words: ['tab', 'site'] }); });
+    if (allTabFor(w)) add('all', allOn(w) ? 'Back to one site\'s chat' : 'ALL: every site\'s chat together', () => allOn(w) ? setAll(w, false) : setAll(w, true),
+      { icon: 'chat', sub: allOn(w) ? `${PLAT_NAME[platOf(lead.channel)]}'s own chat` : 'Their chats as one list', words: ['all', 'merged', 'together', 'tab'] });
     add('nextTab', 'Next site', () => stepTab(w, 1), { icon: 'arrowR', keys: 'Alt+ArrowRight', words: ['tab'] });
     add('prevTab', 'Previous site', () => stepTab(w, -1), { icon: 'arrowL', keys: 'Alt+ArrowLeft', words: ['tab'] });
   }

@@ -1,4 +1,5 @@
 import { clearAlert } from '../alerts/alerts.js';
+import { allOn, allTabFor, setAll } from '../chat/all-chat.js';
 import { newFor } from '../chat/new-messages.js';
 import { closeWin } from '../chat/view-menu.js';
 import { $, BAR, GAP, ROLE, colsMode, lastLayout, shownWins, wins } from '../core.js';
@@ -82,10 +83,10 @@ function tabTip(w, ch){
 // The tabs (K / T / Y) on one window's bar
 function renderSiteTabs(w){
   const box = w.el.querySelector('.ptabs'); if (!box) return;
-  const lead = leaderOf(w), chs = tabChannels(w), solo = chs.length < 2;
+  const lead = leaderOf(w), chs = tabChannels(w), solo = chs.length < 2, all = allOn(w);
   const closed = (closedTabs[lead.frame] || []).filter(ch => accountsOf(w.channel).includes(ch) && !memberFor(w, ch));
   const parts = chs.map(ch => {
-    const m = memberFor(w, ch), info = infoFor(ch), p = platOf(ch), on = m && (m === lead || (lead.sbs && m.kind === lead.kind));
+    const m = memberFor(w, ch), info = infoFor(ch), p = platOf(ch), on = !all && m && (m === lead || (lead.sbs && m.kind === lead.kind));
     const cls = ['ptab', p, on ? 'on' : '', info && info.live ? 'live' : info ? 'off' : '', m && m.alert ? (m.alert.kind === 'spam' ? 'spam' : 'at') : '',
       m && m !== lead && m.kind === 'chat' && newFor(ch) ? 'new' : '', m && m.glowUntil > Date.now() ? 'newsite' : '', solo ? 'solo' : '',
       info && info.missing && streamerOf(ch) ? 'gone' : '', !solo && tabLocked(w, ch) ? 'locked' : ''].filter(Boolean).join(' ');   // gone: a renamed or deleted channel (Fix or Unlink in its menu)
@@ -95,6 +96,9 @@ function renderSiteTabs(w){
     b.title = name;
     return b;
   });
+  // ALL: the streamer's chats as one list (chat/all-chat.js), before the sites
+  if (allTabFor(w)) parts.unshift(element('button', { class: 'ptab all' + (all ? ' on' : ''), type: 'button', role: 'tab', 'aria-selected': String(all), tabindex: all ? '0' : '-1',
+    title: `Every site's chat together${all ? '' : ' (click to show)'}`, 'aria-label': 'All sites\' chats together', dataset: { all: '1', cmd: 'win.all' } }, 'ALL'));
   if (!lead.split && closed.length) parts.push(element('button', { class: 'ptab-add', type: 'button', title: 'Open a closed site again', 'aria-label': 'Open a closed site again', dataset: { cmd: 'win.tabAdd' }, html: icon.plus || '+' }));
   if (lead.split && streamerOf(w.channel)) parts.push(element('button', { class: 'ptab-join', type: 'button', title: 'Put it back as a tab in their window', dataset: { cmd: 'win.join' } }, element('i', { html: icon.link }), 'Join'));
   const sig = parts.map(b => b.outerHTML).join('');
@@ -580,7 +584,9 @@ function init(){
     e.stopPropagation();
     if (t.b.classList.contains('ptab-add')) return openAddMenu(t.w, t.b);
     if (t.b.classList.contains('ptab-join')) return joinTab(t.w);
+    if (t.b.dataset.all) return setAll(t.w, true);
     if (t.b.classList.contains('solo') || t.b.classList.contains('locked') || t.b.dragged) return;
+    if (allOn(t.w)) setAll(t.w, false);              // a site's tab: its own chat again
     const ch = t.b.dataset.ch, m = memberFor(t.w, ch);
     if (m) showTab(m); else addTab(t.w, ch, true);
   });

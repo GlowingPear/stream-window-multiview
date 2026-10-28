@@ -40,7 +40,7 @@ test('a window with one site, stream or chat, has no tab: the badge on its pictu
   await page.evaluate(() => window.openWins().forEach(w => w.el.querySelector('[data-a=close]')?.click()));
   await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'both'));
   await page.waitForSelector('#stage .win.chat:not(.tab-hidden) .bar .bar-av');
-  assert.deepEqual(await siteMarks(page), [['stream', 'KTY', false], ['chat', 'KTY', false]]);
+  assert.deepEqual(await siteMarks(page), [['stream', 'KTY', false], ['chat', 'ALLKTY', false]], 'a linked chat has ALL too (chat/all-chat.js)');
 });
 test('off by default: one row and one window per account, each window with its own site icon and no suffix or tag', async t => {
   const page = await linkedApp(t, { on: false });
