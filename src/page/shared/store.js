@@ -16,6 +16,7 @@ const TOPICS = new Set([
   'tabs',        // which tab a window with several sites shows, and its tabs (windows/frames.js)
   'barButtons',  // Settings › Windows: the title bars' names and buttons (panels/settings/windows-pane.js)
   'live',        // what the live checks last said about them
+  'mod',         // which channels you moderate, as the sites answered (platforms/platforms.js modIs)
   'names',       // channel names learned from the sites
   'channelsBox', // the Channels box: its text, site tab and picked site
   'autoOpen',    // channels that open by themselves when they go live
