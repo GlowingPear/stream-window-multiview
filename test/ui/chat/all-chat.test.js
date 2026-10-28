@@ -176,10 +176,10 @@ test('ALL: Send on [K ▾]: the main site first, Tab steps the sites you can sen
   await page.fill('.all-in', 'hello?');
   await page.press('.all-in', 'Enter');
   await page.waitForFunction(() => /didn't answer/.test(document.querySelector('#msg')?.textContent || ''));
-  // ⇧Tab: the site you send on, its own chat
+  // ⇧Tab: the window's next tab (ALL › K › T), its own chat
   await page.focus('.all-in');
   await page.keyboard.press('Shift+Tab');
-  assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
+  assert.deepEqual(await tabs(page), ['ALL', 'K*', 'T', 'Y']);
   assert.equal(await page.locator('.all-view').count(), 0);
 });
 
@@ -422,4 +422,11 @@ test('ALL with an offline Kick or Twitch: its chat is loaded (a hidden tab) to r
   await page.keyboard.press('Escape');
   await page.click('#stage .win.chat:not(.tab-hidden) .ptab.twitch');
   assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y'], 'its tab: watched');
+  // ⇧Tab in a chat box (the site's script says so): the window's tabs in order, the offline Twitch too, not YouTube's
+  const cycle = () => page.evaluate(() => window.frames_.cycleTabs(window.openWins().find(w => w.kind === 'chat' && !w.hiddenTab)));
+  await cycle(); assert.deepEqual(await tabs(page), ['ALL*', 'K', 'T', 'Y']);
+  assert.equal(await page.evaluate(() => document.activeElement?.className), 'all-in', 'the keyboard in ALL\'s box');
+  await cycle(); assert.deepEqual(await tabs(page), ['ALL', 'K*', 'T', 'Y']);
+  await cycle(); assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y'], 'offline Twitch');
+  await cycle(); assert.deepEqual(await tabs(page), ['ALL*', 'K', 'T', 'Y'], 'YouTube offline: skipped');
 });
