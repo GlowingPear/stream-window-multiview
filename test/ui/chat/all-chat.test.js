@@ -192,3 +192,98 @@ test('ALL: with one site to send on, Tab says so; with none, the box says so', a
   assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'No chat to send on right now');
   assert.equal(await page.isDisabled('.all-in'), true);
 });
+
+test('ALL: reply from a line: the box locks to its site with a bar (Kick: its own threaded reply; Twitch: an @); Esc unlocks', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); }, LIVE);
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatMessageEvent', { id: 'k1', content: 'what crosshair are you using?', type: 'message', sender: { id: 1, username: 'lowtide', identity: {} } })] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'tinroof', id: 't1' }, ':tinroof!t@t PRIVMSG #quietkoala :is this the same stream?')] });
+  await page.evaluate(() => { window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push(['send', m.channel, text]); return 'sent'; };
+    window.allChat.sender.reply = async (m, id, text) => { window.__sends.push(['reply', m.channel, id, text]); return window.__replyAnswer || 'sent'; }; });
+  // Twitch first (the send site was Kick): locked to Twitch
+  await page.hover('.all-list .al-m >> nth=1');
+  await page.click('.all-list .al-m >> nth=1 >> .al-hb button');
+  assert.match(await page.textContent('.all-rb'), /Replying to tinroof on Twitch, as an @mention· is this the same stream\?/);
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Send a message on Twitch');
+  assert.ok(await page.$eval('.all-pick', b => b.classList.contains('locked')));
+  await page.keyboard.press('Tab');
+  assert.match(await page.textContent('#msg'), /Locked to Twitch while replying · Esc unlocks/);
+  await page.click('.all-pick');
+  assert.match(await page.textContent('#msg'), /Locked to this site/);
+  await page.fill('.all-in', 'yeah same one');
+  await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => window.__sends.length === 1);
+  assert.deepEqual(await page.evaluate(() => window.__sends[0]), ['send', 'tw:quietkoala', '@tinroof yeah same one']);
+  assert.equal(await page.isVisible('.all-rb'), false, 'sent: unlocked');
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Send a message on Kick', 'back to the site it was on');
+  // Kick: its own threaded reply
+  await page.hover('.all-list .al-m >> nth=0');
+  await page.click('.all-list .al-m >> nth=0 >> .al-hb button');
+  assert.match(await page.textContent('.all-rb'), /^Replying to lowtide on Kick·/);
+  await page.fill('.all-in', 'default, 1.2 green');
+  await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => window.__sends.length === 2);
+  assert.deepEqual(await page.evaluate(() => window.__sends[1]), ['reply', 'quietkoala', 'k1', 'default, 1.2 green']);
+  // the message has gone from Kick's chat: it says so and stays locked
+  await page.evaluate(() => { window.__replyAnswer = 'no-reply'; });
+  await page.hover('.all-list .al-m >> nth=0');
+  await page.click('.all-list .al-m >> nth=0 >> .al-hb button');
+  await page.fill('.all-in', 'again');
+  await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => /Couldn't start a reply on Kick/.test(document.querySelector('#msg')?.textContent || ''));
+  assert.ok(await page.isVisible('.all-rb'));
+  // Esc, and ✕: unlocked
+  await page.focus('.all-in');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.isVisible('.all-rb'), false);
+  await page.hover('.all-list .al-m >> nth=0');
+  await page.click('.all-list .al-m >> nth=0 >> .al-hb button');
+  await page.click('.all-rb-x');
+  assert.equal(await page.isVisible('.all-rb'), false);
+  // a site you can't send on: no reply
+  await page.evaluate(() => { window.openWins().forEach(w => { if (w.channel === 'tw:quietkoala') w.ready = false; }); });
+  await page.hover('.all-list .al-m >> nth=1');
+  await page.click('.all-list .al-m >> nth=1 >> .al-hb button');
+  assert.match(await page.textContent('#msg'), /Can't send on Twitch right now/);
+});
+
+test('ALL: @ suggests names from their chats; picking one locks to its site, and then only its names; a name opens their card on its site', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); }, LIVE);
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatMessageEvent', { id: 'k1', content: 'hi', type: 'message', sender: { id: 1, username: 'lowtide', identity: {} } }),
+    KF('ChatMessageEvent', { id: 'k2', content: 'yo', type: 'message', sender: { id: 2, username: 'Lofi_Kick', identity: {} } })] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'lowkey_gg', id: 't1' }, ':lowkey_gg!l@l PRIVMSG #quietkoala :sup'), TW({ 'display-name': 'Nightbot', id: 't2' }, ':nightbot!n@n PRIVMSG #quietkoala :@lo follow!')] });
+  const list = () => page.$$eval('.all-at .all-ati', l => l.map(b => b.textContent + (b.classList.contains('on') ? '*' : '')));
+  await page.focus('.all-in');
+  await page.keyboard.type('nice one @lo');
+  assert.deepEqual(await list(), ['Tlowkey_ggTwitch*', 'KLofi_KickKick', 'KlowtideKick'], 'newest first, no bots');
+  assert.match(await page.textContent('.all-at'), /Names in chat/);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowUp');
+  assert.deepEqual(await list(), ['Tlowkey_ggTwitch', 'KLofi_KickKick*', 'KlowtideKick']);
+  await page.keyboard.press('Tab');
+  assert.equal(await page.inputValue('.all-in'), 'nice one @Lofi_Kick ');
+  assert.equal(await page.isVisible('.all-at'), false);
+  assert.match(await page.textContent('.all-rb'), /Mentioning on Kick · Kick names only/);
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Send a message on Kick');
+  await page.keyboard.type('and @lo');
+  assert.deepEqual(await list(), ['KLofi_KickKick*', 'KlowtideKick'], 'only Kick names now');
+  assert.match(await page.textContent('.all-at'), /Kick names/);
+  await page.click('.all-at .all-ati >> nth=1');
+  assert.equal(await page.inputValue('.all-in'), 'nice one @Lofi_Kick and @lowtide ');
+  await page.keyboard.type('@zz');
+  assert.equal(await page.isVisible('.all-at'), false, 'nobody by that name');
+  await page.keyboard.type(' @lo');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.isVisible('.all-at'), false, 'Esc closes the list first');
+  assert.ok(await page.isVisible('.all-rb'));
+  await page.fill('.all-in', '');
+  await page.dispatchEvent('.all-in', 'input');
+  assert.equal(await page.isVisible('.all-rb'), false, 'an empty box: unlocked');
+  // a name: their card, on its own site's tab
+  await page.click('.all-list .al-m >> nth=2 >> .al-n');
+  assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
+});

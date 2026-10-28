@@ -108,3 +108,36 @@
 .all-mi:disabled{opacity:.45;cursor:default}
 .all-mh{border-top:1px solid var(--line);margin-top:4px;padding:6px 8px 3px;font-size:10.5px;color:var(--muted)}
 .all-mh kbd{font:600 10px ui-monospace,Menlo,monospace;border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;padding:0 4px;color:var(--text)}
+
+/* a line's hover bar (Reply), its clickable name */
+.al-hb{position:absolute;right:10px;top:-12px;display:none;background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:2px;box-shadow:0 8px 20px rgba(0,0,0,.5);z-index:2}
+.al-m:hover .al-hb,.al-m:focus-within .al-hb{display:flex}
+.al-hb button{width:26px;height:24px;border:0;border-radius:6px;background:none;color:var(--text);display:grid;place-items:center;cursor:pointer;padding:0}
+.al-hb button:hover{background:var(--line2)}
+.al-hb svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+.al-n{cursor:pointer}.al-n:hover{text-decoration:underline;text-underline-offset:3px}
+.all-list .al-m:first-child .al-hb{top:2px}
+
+/* locked to one site: the bar over the box, the picker's lock */
+.all-rb{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 10px;margin:0 0 6px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);font-size:12px;min-width:0}
+.all-rb[hidden]{display:none}
+.all-rb-i{display:grid;color:#6fa8ff;flex:none}.all-rb-i svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.4}
+.all-rb-t{white-space:nowrap;flex:none}
+.all-rb-site{color:var(--site,var(--accent))}
+.all-rb-q{color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0;flex:1}
+.all-rb-x{margin-left:auto;flex:none;width:24px;height:24px;border:0;border-radius:6px;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
+.all-rb-x:hover{background:var(--line);color:var(--text)}
+.all-rb-x svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2}
+.all-pick.locked{border-color:var(--site,var(--accent));background:color-mix(in srgb,var(--site,var(--accent)) 10%,var(--panel2));color:var(--site,var(--accent))}
+.all-lock{display:grid}.all-lock svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.6}
+.all-view[data-send=twitch] .all-rb-site{color:#b28cff}
+
+/* @: names in chat */
+.all-at{position:absolute;left:10px;right:10px;bottom:58px;padding:5px;z-index:5;background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 36px rgba(0,0,0,.6)}
+.all-at[hidden]{display:none}
+.all-at-h{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:5px 8px 4px}
+.all-ati{display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border:0;border-radius:6px;background:none;color:var(--text);font:inherit;font-size:12.5px;cursor:pointer;text-align:left}
+.all-ati .pi{width:16px;height:16px;font-size:9.5px}
+.all-ati small{margin-left:auto;color:var(--muted);font-size:11px}
+.all-ati.on,.all-ati:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.all-ati.on{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent)}

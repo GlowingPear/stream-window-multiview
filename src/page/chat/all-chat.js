@@ -2,12 +2,12 @@ import { alerts } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { feedParse } from './feed-parse.js';
 import { wins } from '../core.js';
-import { feedAgent, seekAgent } from '../in-site/feed.js';
+import { feedAgent, profileAgent, replyAgent, seekAgent } from '../in-site/feed.js';
 import { sendAgent } from '../in-site/send.js';
 import { bellVars, myName } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
 import { linkOpt, nameOf, streamerBots, streamerOf } from '../platforms/linked.js';
-import { PLAT_NAME, platOf } from '../platforms/platforms.js';
+import { PLAT_NAME, platOf, platform } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
 import { flash } from '../shared/flash.js';
 import { icon } from '../shared/icons.js';
@@ -107,7 +107,7 @@ function lineEl(m){
   const site = PLAT_NAME[m.site] || m.site;
   const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]),
     ...m.badges.map(b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' })));
-  const name = element('b', { class: 'al-n', style: { color: nameColor(m) } }, m.sender);
+  const name = element('b', { class: 'al-n', style: { color: nameColor(m) }, role: 'button', tabindex: '-1', title: `${m.sender}'s card on ${site}`, dataset: { cmd: 'all.profile' }, onclick: () => openSiteCard(m) }, m.sender);
   if (m.kind === 'event'){
     if (eventsMode === 'hidden') return null;
     const full = eventsMode === 'full' || !m.summary;
@@ -132,7 +132,8 @@ function lineEl(m){
     m.bot && !botsShown && element('button', { type: 'button', class: 'al-show linkish', dataset: { cmd: 'all.showBot' }, onclick: e => { m.open = !m.open; e.target.closest('.al-m').replaceWith(lineEl(m)); } }, m.open ? 'Hide' : 'Show')
   ].filter(Boolean);
   if (m.toMe === 'at' && m.bot) tags.splice(0, 1);   // (a bot's @: marked as to you, softly)
-  return element('div', { class: cls, dataset: { key: m.site + ':' + m.id } },
+  const hover = !m.deleted && element('span', 'al-hb', element('button', { type: 'button', title: `Reply on ${site}`, 'aria-label': `Reply to ${m.sender} on ${site}`, html: icon.reply, dataset: { cmd: 'all.reply' }, onclick: () => startReply(m) }));
+  return element('div', { class: cls, dataset: { key: m.site + ':' + m.id } }, hover,
     m.reply && element('span', 'al-q', '↩ replying to ', element('b', null, m.reply.login && m.reply.login === meOn(m.site) ? 'you' : m.reply.sender), m.reply.body ? ': ' + m.reply.body : ''),
     element('div', 'al-line', who, name, m.action ? ' ' : ': ', body, ...tags));
 }
@@ -156,18 +157,30 @@ function buildView(w){
   const pick = element('button', { type: 'button', class: 'all-pick', dataset: { cmd: 'all.sendSite' }, 'aria-haspopup': 'menu' });
   const input = element('input', { type: 'text', class: 'all-in', autocomplete: 'off', spellcheck: true, maxlength: 500, dataset: { cmd: 'all.message' } });
   const menu = element('div', { class: 'pop all-menu', role: 'menu', hidden: true });
+  const bar = element('div', { class: 'all-rb', hidden: true });
+  const at = element('div', { class: 'pop all-at', role: 'listbox', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), chip, evChip), list, more, empty,
-    element('div', 'all-cmp', element('div', 'all-box', pick, input)), menu);
-  const view = { el, list, empty, more, chip, evChip, s, pick, input, menu };
+    element('div', 'all-cmp', bar, element('div', 'all-box', pick, input)), menu, at);
+  const view = { el, list, empty, more, chip, evChip, s, pick, input, menu, bar, at, w, lock: null, atList: [], atSel: 0 };
   closeOnOutside(menu, { button: pick });
-  pick.onclick = () => { if (menu.hidden) openPickMenu(view, w); else menu.hidden = true; };
+  pick.onclick = () => { if (view.lock) return flash('Locked to this site · Esc or ✕ unlocks'); if (menu.hidden) openPickMenu(view, w); else menu.hidden = true; };
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.isComposing){ e.preventDefault(); sendNow(view, w); }
+    if (!at.hidden && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)){
+      e.preventDefault();
+      if (e.key === 'Escape') at.hidden = true;
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){ view.atSel = (view.atSel + (e.key === 'ArrowDown' ? 1 : -1) + view.atList.length) % view.atList.length; renderAt(view); }
+      else pickAt(view, w, view.atList[view.atSel]);
+      return;
+    }
+    if (e.key === 'Escape' && view.lock){ e.preventDefault(); setLock(view, w, null); }
+    else if (e.key === 'Enter' && !e.isComposing){ e.preventDefault(); sendNow(view, w); }
     else if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey){
       e.preventDefault();
-      if (e.shiftKey) leaveAll(w); else stepSend(view, w, 1);
+      if (view.lock) flash(`Locked to ${PLAT_NAME[platOf(view.lock.ch)]} while ${view.lock.kind === 'reply' ? 'replying' : 'mentioning'} · Esc unlocks`);
+      else if (e.shiftKey) leaveAll(w); else stepSend(view, w, 1);
     }
   });
+  input.addEventListener('input', () => { suggestAt(view, w); if (!input.value.trim() && view.lock && view.lock.kind === 'at') setLock(view, w, null); });
   list.append(...f.msgs.map(lineEl).filter(Boolean));
   return view;
 }
@@ -197,6 +210,7 @@ function sendSites(w){
 const sendSaved = () => { const o = settings.json('allSend', {}); return o && typeof o === 'object' ? o : {}; };
 // The site it sends on: the last one used for this streamer, else their main channel, else the first that can
 function sendSite(w){
+  const lock = w.allView && w.allView.lock; if (lock) return lock.ch;
   const s = streamerOf(w.channel), ok = sendSites(w), was = sendSaved()[s.id];
   return ok.includes(was) ? was : ok.includes(s.main) ? s.main : ok[0] || null;
 }
@@ -211,8 +225,11 @@ function stepSend(view, w, d){
 }
 function renderCmp(view, w){
   const ch = sendSite(w), p = ch && platOf(ch);
-  view.pick.replaceChildren(p ? element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]) : element('i', { class: 'pi dim' }, '–'), element('span', 'all-caret', '▾'));
-  view.pick.title = p ? `Sending on ${PLAT_NAME[p]} (Tab: the next site)` : 'No chat to send on right now';
+  view.pick.replaceChildren(p ? element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]) : element('i', { class: 'pi dim' }, '–'),
+    view.lock ? element('i', { class: 'all-lock', html: icon.lock, title: 'Locked to this site' }) : element('span', 'all-caret', '▾'));
+  view.pick.classList.toggle('locked', !!view.lock);
+  renderLock(view, w);
+  view.pick.title = view.lock ? `Locked to ${PLAT_NAME[p]} while ${view.lock.kind === 'reply' ? 'replying' : 'mentioning'} (Esc unlocks)` : p ? `Sending on ${PLAT_NAME[p]} (Tab: the next site)` : 'No chat to send on right now';
   view.input.placeholder = p ? `Send a message on ${PLAT_NAME[p]}` : 'No chat to send on right now';
   view.input.disabled = !p;
   view.input.maxLength = p === 'youtube' ? 200 : 500;
@@ -241,12 +258,87 @@ const SEND_FAIL = {
   disabled: p => `${p} isn't letting you chat right now (followers-only, slow mode or similar)`,
   'not-filled': p => `Couldn't type into ${p}'s chat box`
 };
-const sender = { send: (m, text) => askIn(m.view, `(${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)})`) };
+const sender = {
+  send: (m, text) => askIn(m.view, `(${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)})`),
+  reply: (m, id, text) => askIn(m.view, `(async () => (await (${replyAgent})(${JSON.stringify(id)})) ? (${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)}) : 'no-reply')()`)
+};
+
+/* ---- replies, @ and names: the box locks to one site until it's sent or cancelled ---- */
+function startReply(m){
+  const view = viewFor(streamerOf(m.ch)); if (!view) return;
+  if (!sendSites(view.w).includes(m.ch)) return flash(`Can't send on ${PLAT_NAME[m.site]} right now`);
+  setLock(view, view.w, { kind: 'reply', ch: m.ch, msg: m });
+  view.input.focus();
+}
+function setLock(view, w, lock){
+  view.lock = lock;
+  view.at.hidden = true;
+  renderCmp(view, w);
+}
+// The bar over the box: what it's locked to, and ✕
+function renderLock(view, w){
+  const l = view.lock, bar = view.bar;
+  bar.hidden = !l; if (!l) return bar.replaceChildren();
+  const p = PLAT_NAME[platOf(l.ch)];
+  const words = l.kind === 'reply'
+    ? [element('span', 'all-rb-t', 'Replying to ', element('b', null, l.msg.sender), ' on ', element('b', { class: 'all-rb-site' }, p), platform(l.ch).threadedReplies ? '' : ', as an @mention'),
+       element('span', 'all-rb-q', '· ' + l.msg.parts.map(x => x.text || x.name).join(''))]
+    : [element('span', 'all-rb-t', 'Mentioning on ', element('b', { class: 'all-rb-site' }, p), ` · ${p} names only`)];
+  bar.replaceChildren(element('i', { class: 'all-rb-i', html: l.kind === 'reply' ? icon.reply : icon.at }), ...words,
+    element('button', { type: 'button', class: 'all-rb-x', title: 'Cancel (Esc)', 'aria-label': 'Cancel', html: icon.close, dataset: { cmd: 'all.unlock' }, onclick: () => { setLock(view, w, null); view.input.focus(); } }));
+}
+// @ in the box: names seen in their chats, newest first (only the locked site's while locked)
+function suggestAt(view, w){
+  const v = view.input, upto = v.value.slice(0, v.selectionStart ?? v.value.length), mm = /(^|\s)@([\w.]*)$/.exec(upto);
+  if (!mm){ view.at.hidden = true; return; }
+  const q = mm[2].toLowerCase(), lockSite = view.lock && platOf(view.lock.ch), seen = new Set(), list = [];
+  for (const m of [...feedOf(view.s).msgs].reverse()){
+    if (m.kind !== 'message' || m.bot || !m.sender) continue;
+    const key = m.site + ':' + m.login;
+    if (seen.has(key) || (lockSite && m.site !== lockSite) || !m.sender.toLowerCase().replace(/^@/, '').startsWith(q)) continue;
+    if (!sendSites(w).includes(m.ch)) continue;
+    seen.add(key); list.push(m);
+    if (list.length >= 6) break;
+  }
+  view.atList = list; view.atSel = 0; view.atQ = mm[2];
+  if (!list.length){ view.at.hidden = true; return; }
+  renderAt(view);
+  view.at.hidden = false;
+}
+function renderAt(view){
+  view.at.replaceChildren(element('div', 'all-at-h', view.lock ? `${PLAT_NAME[platOf(view.lock.ch)]} names` : 'Names in chat'),
+    ...view.atList.map((m, i) => element('button', { type: 'button', role: 'option', class: 'all-ati' + (i === view.atSel ? ' on' : ''), 'aria-selected': String(i === view.atSel), dataset: { cmd: 'all.atPick' },
+      onmousedown: e => e.preventDefault(), onclick: () => pickAt(view, view.w, m) },
+      element('i', { class: 'pi pi-' + m.site }, PLAT_NAME[m.site][0]), element('span', null, element('b', null, m.sender.slice(0, view.atQ.length + (m.sender.startsWith('@') ? 1 : 0))), m.sender.slice(view.atQ.length + (m.sender.startsWith('@') ? 1 : 0))),
+      element('small', null, PLAT_NAME[m.site]))),
+    element('div', 'all-mh', element('kbd', null, '↑'), element('kbd', null, '↓'), ' pick · ', element('kbd', null, 'Tab'), ' or ', element('kbd', null, 'Enter'), ' adds it and locks to its site'));
+}
+function pickAt(view, w, m){
+  if (!m) return;
+  const v = view.input, at = v.selectionStart ?? v.value.length, before = v.value.slice(0, at).replace(/@[\w.]*$/, ''), after = v.value.slice(at);
+  const name = '@' + m.sender.replace(/^@/, '') + ' ';
+  v.value = before + name + after.replace(/^\s+/, '');
+  v.selectionStart = v.selectionEnd = (before + name).length;
+  view.at.hidden = true;
+  if (!view.lock) setLock(view, w, { kind: 'at', ch: m.ch });
+  v.focus();
+}
+// A name: their card on their own site (that site's tab, the site opens its card for them)
+function openSiteCard(m){
+  const c = wins.find(o => o.kind === 'chat' && o.channel === m.ch); if (!c) return;
+  setAll(c, false);
+  showTab(c);
+  if (c.view && m.id) runIn(c.view, `(${profileAgent})(${JSON.stringify(m.id)})`);
+}
 async function sendNow(view, w){
-  const text = view.input.value.trim(), ch = sendSite(w); if (!text || !ch) return;
-  const m = frameOf(w).find(o => o.kind === 'chat' && o.channel === ch), p = PLAT_NAME[platOf(ch)];
-  let r; try { r = await sender.send(m, text); } catch { r = 'error'; }
-  if (r === 'sent'){ if (view.input.value.trim() === text) view.input.value = ''; return; }
+  let text = view.input.value.trim(); const ch = sendSite(w); if (!text || !ch) return;
+  const m = frameOf(w).find(o => o.kind === 'chat' && o.channel === ch), p = PLAT_NAME[platOf(ch)], lock = view.lock;
+  const threaded = lock && lock.kind === 'reply' && platform(ch).threadedReplies;
+  // a reply where the site has none from here: an @ of them, in front
+  if (lock && lock.kind === 'reply' && !threaded && !new RegExp(`^@${lock.msg.login}\\b`, 'i').test(text)) text = `@${lock.msg.sender.replace(/^@/, '')} ${text}`;
+  let r; try { r = threaded ? await sender.reply(m, lock.msg.id, text) : await sender.send(m, text); } catch { r = 'error'; }
+  if (r === 'sent'){ if (view.input.value.trim()) view.input.value = ''; if (lock) setLock(view, w, null); return; }
+  if (r === 'no-reply') return flash(`Couldn't start a reply on ${p}: the message may have scrolled out of its chat`);
   flash((SEND_FAIL[r] || (x => `${x}'s chat didn't answer: try again, or send it from its tab`))(p));
 }
 function setBotsShown(on){ botsShown = !!on; settings.set('allBots', botsShown ? 'shown' : 'hidden'); redrawAll(); }
@@ -299,7 +391,7 @@ function init(){
   fromSite('feed', (w, json) => { if (allOn(w)) ingest(w, json); });
   store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncAll());
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.sendAgent = sendAgent;   // for the tests
+  window.sendAgent = sendAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
   window.allChat = { sender, ingest: (ch, batch) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch)); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 

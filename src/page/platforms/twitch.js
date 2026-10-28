@@ -7,6 +7,7 @@ const NOT_CHANNELS = ['directory', 'videos', 'settings', 'search', 'downloads', 
 const twitch = {
   id: 'twitch', name: 'Twitch', letter: 'T',
   mentions: true,
+  threadedReplies: false,   // ALL replies with an @ (its Reply only shows for a real pointer over the line)
   spamAlerts: true,
   emoteLists: true,
   pageCommands: false,

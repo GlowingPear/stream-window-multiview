@@ -39,6 +39,7 @@ const YT_FIT_JS = `(function(){
 const youtube = {
   id: 'youtube', name: 'YouTube', letter: 'Y',
   mentions: false,       // (YouTube chat isn't read for mentions or spam)
+  threadedReplies: false,   // (no replies in its live chat: ALL replies with an @)
   spamAlerts: false,
   emoteLists: false,
   pageCommands: false,
