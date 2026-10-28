@@ -93,6 +93,8 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
   assert.equal(after[4], 'al-m al-del | Tloudmouth99: trash lolTimed out · 10m');
   assert.equal(after[0], 'al-m al-me al-del | Tlowtide: @MeTwitch what crosshair?@YOUDeleted');
   assert.deepEqual(after.slice(8), ['al-ev | Tloudmouth99 was timed out · 10m', 'al-ev | Knightowl_mod banned ratchetkid'], 'Twitch doesn\'t say which moderator; Kick does');
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('UserUnbannedEvent', { user: { slug: 'ratchetkid', username: 'ratchetkid' }, unbanned_by: { username: 'nightowl_mod' } })] });
+  assert.equal((await lines(page)).pop(), 'al-ev | Knightowl_mod lifted the ban on ratchetkid');
 });
 
 test('ALL: where you aren\'t a mod, what a moderator removes goes from ALL (as the site doesn\'t show it to you either); a cleared chat says so', async t => {

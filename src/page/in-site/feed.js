@@ -16,7 +16,7 @@ function feedAgent(as){
   // Twitch's chat lines that ALL shows; Kick's events
   const TW = / (PRIVMSG|USERNOTICE|CLEARMSG|CLEARCHAT) #/;
   // (in the frame's text the event's name is JSON: App\\Events\\…, its backslashes doubled; the newer ones have no App\\Events)
-  const KICK = /"event":"(App\\+Events\\+)?(ChatMessageEvent|MessageDeletedEvent|UserBannedEvent|ChatroomClearEvent|RewardRedeemedEvent|KicksGifted|GiftedSubscriptionsEvent|LuckyUsersWhoGotGiftSubscriptionsEvent|SubscriptionEvent|ChannelSubscriptionEvent|StreamHostEvent|PinnedMessageCreatedEvent|PinnedMessageDeletedEvent)"/;
+  const KICK = /"event":"(App\\+Events\\+)?(ChatMessageEvent|MessageDeletedEvent|UserBannedEvent|UserUnbannedEvent|ChatroomClearEvent|RewardRedeemedEvent|KicksGifted|GiftedSubscriptionsEvent|LuckyUsersWhoGotGiftSubscriptionsEvent|SubscriptionEvent|ChannelSubscriptionEvent|StreamHostEvent|PinnedMessageCreatedEvent|PinnedMessageDeletedEvent)"/;
   function heard(data){
     if (typeof data !== 'string') return;
     if (site === 'twitch'){ if (data.includes(' #')) data.split('\r\n').forEach(l => { if (TW.test(l)) push(l); }); }

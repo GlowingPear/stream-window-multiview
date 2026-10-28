@@ -158,3 +158,10 @@ test('pins: Kick\'s (the whole message comes with it) and YouTube\'s banner; eac
   assert.deepEqual(parseYouTube({ removeBannerForLiveChatCommand: { targetActionId: 'b1' } }).id, 'b1');
   assert.equal(parseYouTube({ addBannerToLiveChatCommand: { bannerRenderer: { liveChatBannerRenderer: { actionId: 'b2', contents: { pollRenderer: {} } } } } }), null, 'a poll banner: not a pin');
 });
+
+test('Kick: a ban or timeout lifted, and by whom', async () => {
+  const { parseKick } = await load();
+  const u = parseKick(KF('UserUnbannedEvent', { user: { username: 'SaifYones', slug: 'saifyones' }, unbanned_by: { username: 'NightOwl' }, permanent: false }));
+  assert.equal(u.kind, 'unban'); assert.equal(u.login, 'saifyones'); assert.equal(u.who, 'SaifYones'); assert.equal(u.by, 'NightOwl');
+  assert.equal(parseKick(KF('UserUnbannedEvent', {})), null);
+});

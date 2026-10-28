@@ -150,6 +150,10 @@ function parseKick(frame){
     const t = Date.now(), mins = +d.duration || 0, by = d.banned_by && (d.banned_by.username || d.banned_by.slug);
     return { site: 'kick', kind: 'clear', login: String(u).toLowerCase(), t, until: d.permanent === false || mins ? t + mins * 60000 : 0, ...(by ? { by: String(by) } : {}) };
   }
+  if (ev === 'UserUnbannedEvent'){
+    const u = d.user && (d.user.slug || d.user.username), by = d.unbanned_by && (d.unbanned_by.username || d.unbanned_by.slug);
+    return u ? { site: 'kick', kind: 'unban', login: String(u).toLowerCase(), who: String(d.user.username || u), t: Date.now(), ...(by ? { by: String(by) } : {}) } : null;
+  }
   if (ev === 'ChatroomClearEvent') return { site: 'kick', kind: 'clearall', t: Date.now() };
   const kickEvent = kickEvents(ev, d);
   if (kickEvent) return kickEvent;

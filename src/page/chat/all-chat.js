@@ -65,6 +65,7 @@ function ingest(w, json){
   const f = feedOf(s), view = viewFor(s);
   feedParse.parseFeed(batch).forEach(m => {
     if (m.kind === 'delete' || m.kind === 'clear' || m.kind === 'clearall') return removed(f, view, m, w.channel);
+    if (m.kind === 'unban') return unbanned(f, view, m, w.channel);
     if (m.kind === 'pin' || m.kind === 'unpin') return setPin(f, s, w.channel, m);
     m.ch = w.channel;
     const me = meOn(m.site);
@@ -101,6 +102,14 @@ function removed(f, view, d, ch){
   const m = { kind: 'modlog', site: d.site, ch, id: 'log' + (++logN), t: d.t, words };
   f.msgs.push(m); if (view) addLine(view, m);
 }
+// A ban or timeout lifted (Kick says so): for mods, a line says who lifted it; their struck lines stay as they were
+function unbanned(f, view, d, ch){
+  if (!youMod(ch)) return;
+  const words = [...(d.by ? [element('b', null, d.by), ' lifted the ban on '] : []), element('b', null, d.who), d.by ? '' : '\'s ban was lifted'];
+  const m = { kind: 'modlog', site: d.site, ch, id: 'log' + (++logN), t: d.t, words };
+  f.msgs.push(m); if (view) addLine(view, m);
+}
+
 /* ---- pins: one strip, however many sites have one ---- */
 // A site's pin (each site has one at a time), or its pin taken down. A new one shows, also if the others were hidden.
 function setPin(f, s, ch, d){
@@ -227,7 +236,7 @@ function buildView(w){
   const at = element('div', { class: 'pop all-at', role: 'listbox', hidden: true });
   const lm = element('div', { class: 'pop all-lm', role: 'menu', hidden: true });
   const pins = element('div', { class: 'all-pins', hidden: true, role: 'region', 'aria-label': 'Pinned messages' });
-  const pinChip = element('button', { type: 'button', class: 'all-chip all-pinchip', hidden: true, title: 'Show the pinned messages again', dataset: { cmd: 'all.pinsBack' },
+  const pinChip = element('button', { type: 'button', class: 'all-pinchip', hidden: true, title: 'Show the pinned messages again', dataset: { cmd: 'all.pinsBack' },
     onclick: () => { feedOf(s).pins.forEach(p => { p.hidden = false; }); renderPins(view); } });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, chip, evChip), pins, list, more, empty,
