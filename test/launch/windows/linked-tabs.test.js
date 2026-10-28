@@ -139,3 +139,31 @@ test('the keyboard went somewhere else in the app while the chat loaded: it stay
   await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
   await a.win.evaluate(() => localStorage.removeItem('kickMultiview.linkedOpts'));
 });
+
+test('the mod button: on a site\'s tab where you moderate it; in ALL where you moderate any of their sites, with a menu of them', T, async () => {
+  await a.app.evaluate(({ app: eapp, session, ipcMain }) => {
+    const fake = s => { try { s.protocol.handle('https', () => new Response('<!doctype html><title>stand-in</title>', { headers: { 'content-type': 'text/html' } })); } catch {} };
+    ['persist:kick', 'persist:twitch'].forEach(p => fake(session.fromPartition(p)));
+    eapp.on('session-created', fake);
+    ipcMain.removeHandler('mod:check'); ipcMain.handle('mod:check', (_e, ch) => ch === 'gamma');
+  });
+  await a.win.evaluate(() => {
+    window.linkedApi.setOn(true);
+    window.linkedApi.link('gamma', 'tw:gamma');
+    window.smvNotes.liveStatus({ gamma: { live: true, checked: Date.now() }, 'tw:gamma': { live: true, checked: Date.now() } });
+    window.frames_.openStreamer('gamma', 'chat', ['gamma', 'tw:gamma']);
+  });
+  const btn = '#stage .win.chat:not(.tab-hidden) [data-a=mod]';
+  const shown = () => a.win.$eval(btn, b => !b.hidden);
+  await a.win.waitForSelector(`${btn}:not([hidden])`, { state: 'attached' });   // Kick's tab: you moderate it
+  await a.win.click('#stage .win.chat:not(.tab-hidden) .ptab.twitch');
+  await a.win.waitForSelector(`${btn}[hidden]`, { state: 'attached' });
+  assert.equal(await shown(), false, 'Twitch\'s tab: you don\'t');
+  await a.win.click('#stage .win.chat:not(.tab-hidden) .ptab.all');
+  await a.win.waitForSelector(`${btn}:not([hidden])`, { state: 'attached' });
+  assert.equal(await a.win.$eval(btn, b => b.title), 'Mod views: each site where you moderate');
+  await a.win.$eval(btn, b => b.click());   // (in a narrow window it's under ⋯)
+  assert.deepEqual(await a.win.$$eval('.all-mv .all-li', l => l.map(b => b.textContent.trim() + (b.disabled ? ' (off)' : ''))), ['KKick mod view', 'TTwitch · you\'re not a mod (off)']);
+  await a.win.keyboard.press('Escape');
+  await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
+});

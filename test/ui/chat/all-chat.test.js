@@ -423,3 +423,31 @@ test('ALL with an offline Kick or Twitch: its chat is loaded (a hidden tab) to r
   await page.click('#stage .win.chat:not(.tab-hidden) .ptab.twitch');
   assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y'], 'its tab: watched');
 });
+
+test('ALL: the title bar\'s mod button lists each site\'s mod view (where you\'re a mod) and Open all; a site\'s tab opens its own', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.__opened = []; window.open = u => { window.__opened.push(u); }; window.allChat.modKnown.set('quietkoala', true); window.allChat.modKnown.set('tw:quietkoala', true); window.smvNotes.liveStatus(live); }, LIVE);
+  const btn = '#stage .win.chat:not(.tab-hidden) [data-a=mod]';
+  const rows = () => page.$$eval('.all-mv .all-li', l => l.map(b => b.textContent.replace(/\s+/g, ' ').trim() + (b.disabled ? ' (off)' : '')));
+  await page.$eval(btn, b => b.click());
+  assert.equal(await page.textContent('.all-mvh'), 'Mod views');
+  assert.deepEqual(await rows(), ['KKick mod view', 'TTwitch mod view', 'YYouTube · no mod view (off)', 'Open all2 windows']);
+  await page.click('.all-mv [data-cmd="all.modViewsAll"]');
+  assert.deepEqual(await page.evaluate(() => window.__opened), ['https://dashboard.kick.com/moderator/quietkoala', 'https://www.twitch.tv/moderator/quietkoala']);
+  assert.equal(await page.isVisible('.all-mv'), false, 'closed once picked');
+  // one site where you're a mod: no Open all; the other says why
+  await page.evaluate(() => { window.allChat.modKnown.set('tw:quietkoala', false); window.__opened = []; });
+  await page.$eval(btn, b => b.click());
+  assert.deepEqual(await rows(), ['KKick mod view', 'TTwitch · you\'re not a mod (off)', 'YYouTube · no mod view (off)']);
+  await page.click('.all-mv [data-cmd="all.modView"] >> nth=0');
+  assert.deepEqual(await page.evaluate(() => window.__opened), ['https://dashboard.kick.com/moderator/quietkoala']);
+  await page.$eval(btn, b => b.click());
+  await page.keyboard.press('Escape');
+  assert.equal(await page.isVisible('.all-mv'), false, 'Esc closes it');
+  // a site's own tab: its own mod view, straight away
+  await page.click('#stage .win.chat:not(.tab-hidden) .ptab.kick');
+  await page.evaluate(() => { window.__opened = []; });
+  await page.$eval(btn, b => b.click());
+  assert.deepEqual(await page.evaluate(() => window.__opened), ['https://dashboard.kick.com/moderator/quietkoala']);
+});

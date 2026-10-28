@@ -8,7 +8,8 @@ import { autoOpen, fmtViewers, infoFor, notifyAll, notifyOff, saved, setNotify, 
 import { follows } from './follow-suggestions.js';
 import { openProfile } from '../profiles/profiles.js';
 import { streamerName, streamerOf } from '../../platforms/linked.js';
-import { PLATFORMS, PLAT_NAME, chLabel, chNames, externalFor, modUrl, normCh, parseInput, platOf, platform } from '../../platforms/platforms.js';
+import { PLATFORMS, PLAT_NAME, chLabel, chNames, externalFor, isModOf, normCh, openModView, parseInput, platOf,
+  platform } from '../../platforms/platforms.js';
 import { commands } from '../../shared/commands.js';
 import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
@@ -52,7 +53,6 @@ const saveCh = ch => { if (!saved.includes(ch)) toggleSaved(ch); };
 const winsOf = ch => wins.filter(w => w.channel === ch);
 const streamOf = ch => wins.find(w => w.kind === 'stream' && w.channel === ch);
 const canProfile = ch => DESKTOP && ROLE === 'main' && !!window.kmv.profileGet && !/^yt:v:/.test(ch);
-const isMod = ch => wins.some(w => w.channel === ch && w.el.querySelector('[data-a=mod]:not([hidden])'));
 
 // The big row's buttons: Enter runs the first, ← → or Tab / ⇧Tab pick one, Ctrl/⌘+1–9 run the others, More… everything
 function buttonsFor(ch, known){
@@ -112,7 +112,7 @@ function channelMore(ch){
       toggle: { get: () => notifyAll && !notifyOff.includes(ch), set: on => setNotify(ch, on) } });
   }
   if (DESKTOP && ROLE === 'main' && mentOn && mentCovered(ch)) add('mentions', 'Mentions in its chat', { group: 'Channel', col: 1, icon: 'at', sub: 'Kick and Twitch', toggle: { get: () => !mentMuted.has(ch), set: () => toggleChatMentions(ch) } });
-  if (modUrl(ch) && isMod(ch)) add('mod', 'Mod view', { group: 'Channel', col: 1, icon: 'mod', sub: 'You moderate this channel', run: () => { const u = modUrl(ch); if (DESKTOP) window.kmv.openWindow(u, 1400, 900); else window.open(u, '_blank'); } });
+  if (isModOf(ch) && winsOf(ch).length) add('mod', 'Mod view', { group: 'Channel', col: 1, icon: 'mod', sub: 'You moderate this channel', run: () => openModView(ch) });
   for (const w of winsOf(ch)) out.push(...winActions(w).map(x => ({ ...x, col: 1 })));
   return out;
 }
