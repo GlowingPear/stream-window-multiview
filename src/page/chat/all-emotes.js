@@ -1,0 +1,97 @@
+import { sendSite, setLock } from './all-chat.js';
+import { PLAT_NAME, platOf } from '../platforms/platforms.js';
+import { element } from '../shared/element.js';
+
+/* ---- Emotes in ALL's box (chat/all-chat.js): :name suggests the send site's emotes, the smiley opens its picker ----
+   The desktop app gathers each channel's emotes with their pictures (main/emote-picker.js): Kick's channel, site and
+   emoji sets; on Twitch the ones your account can use; 7TV, BetterTTV and FrankerFaceZ. An emote is one site's, so
+   picking one locks the box to that site, as @ and replies do. What's sent is what that site expects: Kick's
+   [emote:<id>:<name>], elsewhere the name. */
+
+const emoteCache = new Map();   // channel -> a promise of its groups ([{ id, label, emotes: [{ name, url, send }] }])
+function emoteGroups(ch){
+  if (!emoteCache.has(ch)){
+    const ask = window.kmv && window.kmv.emotesPick;
+    const p = (ask ? Promise.resolve(ask(ch)).catch(() => null) : Promise.resolve(null)).then(g => Array.isArray(g) ? g : []);
+    emoteCache.set(ch, p);
+    p.then(g => { if (!g.length) emoteCache.delete(ch); });   // (nothing: ask again next time)
+  }
+  return emoteCache.get(ch);
+}
+const emoteImg = e => { const img = element('img', { src: e.url, alt: e.name, loading: 'lazy', referrerPolicy: 'no-referrer', draggable: false }); img.onerror = () => { img.style.visibility = 'hidden'; }; return img; };
+
+// :name in the box (two letters or more): the send site's emotes that match, the ones starting with it first
+async function suggestEmote(view, w){
+  const v = view.input, upto = v.value.slice(0, v.selectionStart ?? v.value.length), mm = /(^|\s):([\w]{2,})$/.exec(upto);
+  if (!mm){ if (view.atMode === 'emote') view.at.hidden = true; return; }
+  const ch = sendSite(w); if (!ch) return;
+  const q = mm[2].toLowerCase(), groups = await emoteGroups(ch);
+  if (v.value.slice(0, v.selectionStart ?? v.value.length) !== upto) return;   // (typed on since)
+  const all = groups.flatMap(g => g.emotes.map(e => ({ ...e, group: g.label })));
+  const starts = all.filter(e => e.name.toLowerCase().startsWith(q)), has = all.filter(e => !e.name.toLowerCase().startsWith(q) && e.name.toLowerCase().includes(q));
+  const seen = new Set(), list = [...starts, ...has].filter(e => !seen.has(e.name) && seen.add(e.name)).slice(0, 8);
+  view.atMode = 'emote'; view.atList = list.map(e => ({ ...e, ch })); view.atSel = 0; view.atQ = mm[2];
+  if (!list.length){ view.at.hidden = true; return; }
+  renderEmoteList(view);
+  view.at.hidden = false;
+}
+function renderEmoteList(view){
+  const p = PLAT_NAME[platOf(view.atList[0].ch)];
+  view.at.replaceChildren(element('div', 'all-at-h', `${p} emotes`),
+    ...view.atList.map((e, i) => element('button', { type: 'button', role: 'option', class: 'all-ati all-emi' + (i === view.atSel ? ' on' : ''), 'aria-selected': String(i === view.atSel), dataset: { cmd: 'all.emotePick' },
+      onmousedown: ev => ev.preventDefault(), onclick: () => pickEmote(view, view.w, e) }, emoteImg(e), element('span', null, e.name), element('small', null, e.group + (e.subs ? ' · subs' : '')))),
+    element('div', 'all-mh', element('kbd', null, '↑'), element('kbd', null, '↓'), ' pick · ', element('kbd', null, 'Tab'), ' or ', element('kbd', null, 'Enter'), ` adds it and locks to ${p}`));
+}
+// An emote into the box (in place of the :name typed, or at the caret), the box locked to its site
+function pickEmote(view, w, e){
+  if (!e) return;
+  const v = view.input, at = v.selectionStart ?? v.value.length;
+  const before = v.value.slice(0, at).replace(/(^|\s):[\w]*$/, '$1'), after = v.value.slice(at);
+  const pad = before && !/\s$/.test(before) ? ' ' : '';
+  v.value = before + pad + e.name + ' ' + after.replace(/^\s+/, '');
+  v.selectionStart = v.selectionEnd = (before + pad + e.name + ' ').length;
+  view.at.hidden = true; view.atMode = '';
+  (view.emoteSends || (view.emoteSends = new Map())).set(e.name, e.send);
+  if (!view.lock) setLock(view, w, { kind: 'emote', ch: e.ch });
+  v.focus();
+}
+// What's sent: each emote picked here as its site writes it (a word that only looks like one stays a word)
+function withEmotes(view, text){
+  const m = view.emoteSends; if (!m || !m.size) return text;
+  return text.split(/(\s+)/).map(word => m.has(word) ? m.get(word) : word).join('');
+}
+
+// The smiley: the send site's emotes, a tab for each group, a search box
+async function openEmotePicker(view, w){
+  const ep = view.ep;
+  if (!ep.hidden){ ep.hidden = true; return; }
+  const ch = (view.lock && view.lock.ch) || sendSite(w); if (!ch) return;
+  const p = PLAT_NAME[platOf(ch)];
+  ep.replaceChildren(element('div', 'all-ep-h', `${p} emotes`), element('div', 'all-ep-none', 'Loading…'));
+  ep.hidden = false;
+  const groups = await emoteGroups(ch);
+  if (ep.hidden) return;
+  if (!groups.length){
+    ep.replaceChildren(element('div', 'all-ep-h', `${p} emotes`), element('div', 'all-ep-none', platOf(ch) === 'youtube' ? 'YouTube\'s emoji are in its own chat box' : `No emotes found: you may need to sign in to ${p} (Settings › Accounts)`));
+    return;
+  }
+  let tab = view.epTab && groups.some(g => g.id === view.epTab) ? view.epTab : groups[0].id;
+  const search = element('input', { type: 'search', class: 'all-ep-q', placeholder: `Search ${p} emotes`, spellcheck: false, dataset: { cmd: 'all.emoteSearch' } });
+  const tabs = element('div', { class: 'all-ep-tabs', role: 'tablist' }), grid = element('div', { class: 'all-ep-grid', role: 'listbox' });
+  const draw = () => {
+    const q = search.value.trim().toLowerCase();
+    tabs.replaceChildren(...groups.map(g => element('button', { type: 'button', role: 'tab', class: g.id === tab && !q ? 'on' : '', 'aria-selected': String(g.id === tab && !q), dataset: { cmd: 'all.emoteTab' },
+      onclick: () => { tab = view.epTab = g.id; search.value = ''; draw(); } }, g.label)));
+    const list = q ? groups.flatMap(g => g.emotes).filter(e => e.name.toLowerCase().includes(q)).slice(0, 300) : (groups.find(g => g.id === tab) || groups[0]).emotes.slice(0, 600);
+    grid.replaceChildren(...(list.length ? list.map(e => element('button', { type: 'button', role: 'option', class: 'all-ep-e', title: e.name + (e.subs ? ' (subscribers)' : ''), 'aria-label': e.name, dataset: { cmd: 'all.emotePick' },
+      onclick: () => { pickEmote(view, w, { ...e, ch }); } }, emoteImg(e))) : [element('div', 'all-ep-none', `No ${p} emote matches “${search.value.trim()}”`)]));
+  };
+  search.addEventListener('input', draw);
+  search.addEventListener('keydown', e => { if (e.key === 'Escape'){ e.preventDefault(); ep.hidden = true; view.input.focus(); } });
+  ep.replaceChildren(element('div', 'all-ep-h', `${p} emotes`, element('small', null, 'Picking one locks the box to ' + p)), search, tabs, grid);
+  draw();
+  search.focus();
+}
+const SMILEY = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1 1.3 2.2 2 3.5 2s2.5-.7 3.5-2M9 9.5h.01M15 9.5h.01"/></svg>';
+
+export { emoteCache, openEmotePicker, pickEmote, renderEmoteList, SMILEY, suggestEmote, withEmotes };

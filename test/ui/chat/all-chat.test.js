@@ -519,3 +519,62 @@ test('ALL: pins share one strip: the newest, K T Y switch, ▾ all of them; ✕ 
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('PinnedMessageDeletedEvent', {})] });
   assert.equal(await strip(), 'YMika R.: clip of the acePinned on YouTube');
 });
+
+test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley opens its picker; picking one locks the box to that site and sends it as the site writes it', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => {
+    window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
+    const img = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+    window.__asked = [];
+    window.kmv = { ...(window.kmv || {}), emotesPick: async ch => { window.__asked.push(ch); return ch === 'quietkoala'
+      ? [{ id: 'kick-channel', label: 'Channel', emotes: [{ name: 'koalaHype', url: img, send: '[emote:1:koalaHype]', subs: true }, { name: 'koalaWave', url: img, send: '[emote:2:koalaWave]' }] },
+         { id: 'kick-global', label: 'Kick', emotes: [{ name: 'KEKW', url: img, send: '[emote:9:KEKW]' }] }]
+      : [{ id: 'twitch-global', label: 'Twitch', emotes: [{ name: 'Kappa', url: img, send: 'Kappa' }] }]; } };
+    window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push([m.channel, text]); return 'sent'; };
+  }, LIVE);
+  // :name
+  await page.focus('.all-in');
+  await page.keyboard.type('gg :ke');
+  await page.waitForSelector('.all-at:not([hidden]) .all-emi');
+  assert.deepEqual(await page.$$eval('.all-at .all-emi', l => l.map(b => b.textContent)), ['KEKWKick']);
+  assert.match(await page.textContent('.all-at-h'), /Kick emotes/);
+  await page.keyboard.press('Enter');
+  assert.equal(await page.inputValue('.all-in'), 'gg KEKW ');
+  assert.match(await page.textContent('.all-rb'), /Emotes from Kick · sends on Kick only/, 'locked to Kick');
+  await page.keyboard.press('Tab');
+  assert.match(await page.textContent('#msg'), /Locked to Kick while using its emotes/);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__sends.length === 1);
+  assert.deepEqual(await page.evaluate(() => window.__sends[0]), ['quietkoala', 'gg [emote:9:KEKW]'], 'as Kick writes it');
+  assert.match(await page.textContent('.al-mine'), /gg KEKW/, 'your line shows its name');
+  assert.equal(await page.isVisible('.all-rb'), false, 'sent: unlocked');
+  // the smiley: tabs, search, a pick
+  await page.click('.all-emo-b');
+  await page.waitForSelector('.all-ep .all-ep-e');
+  assert.deepEqual(await page.$$eval('.all-ep-tabs button', l => l.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['Channel*', 'Kick']);
+  assert.deepEqual(await page.$$eval('.all-ep-e', l => l.map(b => b.title)), ['koalaHype (subscribers)', 'koalaWave']);
+  await page.fill('.all-ep-q', 'wave');
+  assert.deepEqual(await page.$$eval('.all-ep-e', l => l.map(b => b.title)), ['koalaWave']);
+  await page.fill('.all-ep-q', 'zzz');
+  assert.match(await page.textContent('.all-ep-grid'), /No Kick emote matches “zzz”/);
+  await page.fill('.all-ep-q', '');
+  await page.click('.all-ep-tabs button >> text=Kick');
+  await page.click('.all-ep-e');
+  assert.equal(await page.inputValue('.all-in'), 'KEKW ');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.isVisible('.all-ep'), false, 'Esc closes it');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.isVisible('.all-rb'), false, 'Esc: unlocked');
+  // on Twitch an emote is its name; a word that only looks like an emote stays a word
+  await page.fill('.all-in', '');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type(':kap');
+  await page.waitForSelector('.all-at:not([hidden]) .all-emi');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('KEKW');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__sends.length === 2);
+  assert.deepEqual(await page.evaluate(() => window.__sends[1]), ['tw:quietkoala', 'Kappa KEKW']);
+  assert.deepEqual(await page.evaluate(() => window.__asked), ['quietkoala', 'tw:quietkoala'], 'each site\'s asked once');
+});

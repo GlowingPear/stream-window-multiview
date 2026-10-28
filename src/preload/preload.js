@@ -128,6 +128,7 @@ contextBridge.exposeInMainWorld('kmv', {
   kickUnfollow: slug => ipcRenderer.invoke('kick:unfollow', slug),
   emotesOpen: ch => ipcRenderer.invoke('emotes:open', ch),
   emotesSeen: (ch, name) => ipcRenderer.invoke('emotes:seen', ch, name),
+  emotesPick: ch => ipcRenderer.invoke('emotes:pick', ch),
   emoteDownload: (url, name, small) => ipcRenderer.invoke('emote:download', url, name, small),
   emoteShow: id => ipcRenderer.invoke('emote:show', id),
   emoteFetch: (url, small) => ipcRenderer.invoke('emote:fetch', url, small),

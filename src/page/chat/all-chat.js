@@ -1,5 +1,6 @@
 import { alerts } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
+import { SMILEY, emoteCache, openEmotePicker, pickEmote, renderEmoteList, suggestEmote, withEmotes } from './all-emotes.js';
 import { feedParse } from './feed-parse.js';
 import { wins } from '../core.js';
 import { feedAgent, profileAgent, replyAgent, seekAgent } from '../in-site/feed.js';
@@ -118,7 +119,7 @@ function setPin(f, s, ch, d){
   if (d.kind === 'pin'){ d.msg.ch = ch; f.pins.unshift({ site: d.site, ch, id: d.id, msg: d.msg, t: d.t, hidden: false }); }
   const view = viewFor(s); if (view){ if (d.kind === 'pin') view.pinAt = d.site; renderPins(view); }
 }
-const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
+const pinAgo = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
 function renderPins(view){
   const f = feedOf(view.s), shown = f.pins.filter(p => !p.hidden), n = shown.length;
   view.pinChip.hidden = !f.pins.length || !!n;
@@ -134,7 +135,7 @@ function renderPins(view){
   if (view.pinsOpen){
     view.pins.replaceChildren(element('button', { type: 'button', class: 'all-pin-h', dataset: { cmd: 'all.pinsOpen' }, 'aria-expanded': 'true', onclick: () => { view.pinsOpen = false; renderPins(view); } },
       `${n} pinned`, element('span', null, '▴')),
-      ...shown.map(p => element('div', 'all-pin-row', PIN_IC(), body(p, `${PLAT_NAME[p.site]} · ${ago(p.t)}`), hide(p))));
+      ...shown.map(p => element('div', 'all-pin-row', PIN_IC(), body(p, `${PLAT_NAME[p.site]} · ${pinAgo(p.t)}`), hide(p))));
     return;
   }
   const cur = shown.find(p => p.site === view.pinAt) || shown[0], i = shown.indexOf(cur);
@@ -235,14 +236,18 @@ function buildView(w){
   const bar = element('div', { class: 'all-rb', hidden: true });
   const at = element('div', { class: 'pop all-at', role: 'listbox', hidden: true });
   const lm = element('div', { class: 'pop all-lm', role: 'menu', hidden: true });
+  const emo = element('button', { type: 'button', class: 'all-emo-b', title: 'Emotes', 'aria-label': 'Emotes', 'aria-haspopup': 'dialog', html: SMILEY, dataset: { cmd: 'all.emotes' } });
+  const ep = element('div', { class: 'pop all-ep', role: 'dialog', 'aria-label': 'Emotes', hidden: true });
   const pins = element('div', { class: 'all-pins', hidden: true, role: 'region', 'aria-label': 'Pinned messages' });
   const pinChip = element('button', { type: 'button', class: 'all-pinchip', hidden: true, title: 'Show the pinned messages again', dataset: { cmd: 'all.pinsBack' },
     onclick: () => { feedOf(s).pins.forEach(p => { p.hidden = false; }); renderPins(view); } });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, chip, evChip), pins, list, more, empty,
-    element('div', 'all-cmp', bar, element('div', 'all-box', pick, input)), menu, at, lm, mv);
-  const view = { el, list, empty, more, chip, evChip, pins, pinChip, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, w, lock: null, atList: [], atSel: 0 };
+    element('div', 'all-cmp', bar, element('div', 'all-box', pick, input, emo)), menu, at, lm, mv, ep);
+  const view = { el, list, empty, more, chip, evChip, pins, pinChip, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, w, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
+  closeOnOutside(ep, { button: emo });
+  emo.onclick = () => openEmotePicker(view, w);
   closeOnOutside(mv, { button: w.el.querySelector('[data-a=mod]') });
   closeOnOutside(menu, { button: pick });
   pick.onclick = () => { if (view.lock) return flash('Locked to this site · Esc or ✕ unlocks'); if (menu.hidden) openPickMenu(view, w); else menu.hidden = true; };
@@ -250,19 +255,19 @@ function buildView(w){
     if (!at.hidden && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)){
       e.preventDefault();
       if (e.key === 'Escape') at.hidden = true;
-      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){ view.atSel = (view.atSel + (e.key === 'ArrowDown' ? 1 : -1) + view.atList.length) % view.atList.length; renderAt(view); }
-      else pickAt(view, w, view.atList[view.atSel]);
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){ view.atSel = (view.atSel + (e.key === 'ArrowDown' ? 1 : -1) + view.atList.length) % view.atList.length; (view.atMode === 'emote' ? renderEmoteList : renderAt)(view); }
+      else (view.atMode === 'emote' ? pickEmote : pickAt)(view, w, view.atList[view.atSel]);
       return;
     }
     if (e.key === 'Escape' && view.lock){ e.preventDefault(); setLock(view, w, null); }
     else if (e.key === 'Enter' && !e.isComposing){ e.preventDefault(); sendNow(view, w); }
     else if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey){
       e.preventDefault();
-      if (view.lock) flash(`Locked to ${PLAT_NAME[platOf(view.lock.ch)]} while ${view.lock.kind === 'reply' ? 'replying' : 'mentioning'} · Esc unlocks`);
+      if (view.lock) flash(`Locked to ${PLAT_NAME[platOf(view.lock.ch)]} while ${LOCK_WHY[view.lock.kind]} · Esc unlocks`);
       else if (e.shiftKey) cycleTabs(w); else stepSend(view, w, 1);
     }
   });
-  input.addEventListener('input', () => { suggestAt(view, w); if (!input.value.trim() && view.lock && view.lock.kind === 'at') setLock(view, w, null); });
+  input.addEventListener('input', () => { suggestAt(view, w); if (view.at.hidden || view.atMode === 'emote') suggestEmote(view, w); if (!input.value.trim() && view.lock && (view.lock.kind === 'at' || view.lock.kind === 'emote')) setLock(view, w, null); });
   list.append(...f.msgs.map(lineEl).filter(Boolean));
   return view;
 }
@@ -312,7 +317,7 @@ function renderCmp(view, w){
     view.lock ? element('i', { class: 'all-lock', html: icon.lock, title: 'Locked to this site' }) : element('span', 'all-caret', '▾'));
   view.pick.classList.toggle('locked', !!view.lock);
   renderLock(view, w);
-  view.pick.title = view.lock ? `Locked to ${PLAT_NAME[p]} while ${view.lock.kind === 'reply' ? 'replying' : 'mentioning'} (Esc unlocks)` : p ? `Sending on ${PLAT_NAME[p]} (Tab: the next site)` : 'No chat to send on right now';
+  view.pick.title = view.lock ? `Locked to ${PLAT_NAME[p]} while ${LOCK_WHY[view.lock.kind]} (Esc unlocks)` : p ? `Sending on ${PLAT_NAME[p]} (Tab: the next site)` : 'No chat to send on right now';
   view.input.placeholder = p ? `Send a message on ${PLAT_NAME[p]}` : 'No chat to send on right now';
   view.input.disabled = !p;
   view.input.maxLength = p === 'youtube' ? 200 : 500;
@@ -349,8 +354,10 @@ function startReply(m){
   setLock(view, view.w, { kind: 'reply', ch: m.ch, msg: m });
   view.input.focus();
 }
+const LOCK_WHY = { reply: 'replying', at: 'mentioning', emote: 'using its emotes' };
 function setLock(view, w, lock){
   view.lock = lock;
+  if (!lock) view.emoteSends = null;   // (emotes picked: words again)
   view.at.hidden = true;
   renderCmp(view, w);
 }
@@ -362,8 +369,9 @@ function renderLock(view, w){
   const words = l.kind === 'reply'
     ? [element('span', 'all-rb-t', 'Replying to ', element('b', null, l.msg.sender), ' on ', element('b', { class: 'all-rb-site' }, p), platform(l.ch).threadedReplies ? '' : ', as an @mention'),
        element('span', 'all-rb-q', '· ' + l.msg.parts.map(x => x.text || x.name).join(''))]
+    : l.kind === 'emote' ? [element('span', 'all-rb-t', 'Emotes from ', element('b', { class: 'all-rb-site' }, p), ` · sends on ${p} only`)]
     : [element('span', 'all-rb-t', 'Mentioning on ', element('b', { class: 'all-rb-site' }, p), ` · ${p} names only`)];
-  bar.replaceChildren(element('i', { class: 'all-rb-i', html: l.kind === 'reply' ? icon.reply : icon.at }), ...words,
+  bar.replaceChildren(element('i', { class: 'all-rb-i', html: l.kind === 'reply' ? icon.reply : l.kind === 'emote' ? SMILEY : icon.at }), ...words,
     element('button', { type: 'button', class: 'all-rb-x', title: 'Cancel (Esc)', 'aria-label': 'Cancel', html: icon.close, dataset: { cmd: 'all.unlock' }, onclick: () => { setLock(view, w, null); view.input.focus(); } }));
 }
 // @ in the box: names seen in their chats, newest first (only the locked site's while locked)
@@ -379,7 +387,7 @@ function suggestAt(view, w){
     seen.add(key); list.push(m);
     if (list.length >= 6) break;
   }
-  view.atList = list; view.atSel = 0; view.atQ = mm[2];
+  view.atList = list; view.atSel = 0; view.atQ = mm[2]; view.atMode = 'at';
   if (!list.length){ view.at.hidden = true; return; }
   renderAt(view);
   view.at.hidden = false;
@@ -514,7 +522,7 @@ async function sendNow(view, w){
   // a reply where the site has none from here: an @ of them, in front
   if (lock && lock.kind === 'reply' && !threaded && !new RegExp(`^@${lock.msg.login}\\b`, 'i').test(text)) text = `@${lock.msg.sender.replace(/^@/, '')} ${text}`;
   const site = platOf(ch), f = feedOf(view.s);
-  const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, parts: [{ text }], ...youOn(f, site, ch), lock, threaded, state: 'sending' };
+  const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, send: withEmotes(view, text), emotes: view.emoteSends && new Map(view.emoteSends), parts: [{ text }], ...youOn(f, site, ch), lock, threaded, state: 'sending' };
   view.input.value = ''; if (lock) setLock(view, w, null);
   f.msgs.push(p); addLine(view, p);
   await deliver(view, w, p);
@@ -524,7 +532,7 @@ async function deliver(view, w, p){
   view.sending = true; setMine(p, 'sending');
   let r;
   if (!m) r = 'gone';
-  else try { r = p.threaded ? await sender.reply(m, p.lock.msg.id, p.text) : await sender.send(m, p.text); } catch { r = 'error'; }
+  else try { r = p.threaded ? await sender.reply(m, p.lock.msg.id, p.send || p.text) : await sender.send(m, p.send || p.text); } catch { r = 'error'; }
   view.sending = false;
   if (p.state === 'seen') return;   // (its chat brought it back already)
   if (r === 'sent'){ setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
@@ -565,7 +573,7 @@ function mineEl(p){
     unseen: element('span', { class: 'al-tag al-tag-mine', title: `${site} took it, but it hasn't shown in its chat yet` }, `Sent · not seen in ${site}'s chat yet`),
     failed: element('div', 'al-mine-fail', element('span', 'al-tag al-tag-fail', 'Not sent'), element('span', 'al-why', p.why || ''),
       element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.retry' }, onclick: () => { if (view && !view.sending) deliver(view, view.w, p); else flash('Still sending the last one'); } }, 'Retry'),
-      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.edit' }, onclick: () => { if (!view) return; drop(); view.input.value = p.lock && p.lock.kind === 'reply' && !p.threaded ? p.text.replace(/^@\S+\s/, '') : p.text; if (p.lock) setLock(view, view.w, p.lock); view.input.focus(); } }, 'Edit'),
+      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.edit' }, onclick: () => { if (!view) return; drop(); view.input.value = p.lock && p.lock.kind === 'reply' && !p.threaded ? p.text.replace(/^@\S+\s/, '') : p.text; if (p.lock) setLock(view, view.w, p.lock); if (p.emotes) view.emoteSends = new Map(p.emotes); view.input.focus(); } }, 'Edit'),
       element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.dismiss' }, title: 'Remove this line', onclick: drop }, '✕'))
   }[p.state];
   return element('div', { class: 'al-m al-mine al-mine-' + p.state, dataset: { key: p.site + ':' + p.id } },
@@ -630,13 +638,14 @@ function init(){
   // Esc closes ALL's menus (the line's, Send on's)
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
-    wins.forEach(w => { const v = w.allView; if (!v) return; [v.lm, v.menu, v.mv].forEach(m => { if (!m.hidden){ m.hidden = true; e.preventDefault(); } }); });
+    wins.forEach(w => { const v = w.allView; if (!v) return; [v.lm, v.menu, v.mv, v.ep].forEach(m => { if (!m.hidden){ m.hidden = true; e.preventDefault(); } }); });
   });
   store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncAll());
   store.watch(['mod'], () => { redrawAll(); wins.forEach(syncModBtn); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
   window.feedAgent = feedAgent; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
+  window.allEmotes = { emoteCache, withEmotes };   // for the tests
   window.allChat = { sender, modKnown, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch)); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
-export { allOn, allTabFor, feedReady, init, modViewChs, openModViews, setAll };
+export { allOn, allTabFor, feedReady, init, modViewChs, openModViews, sendSite, setAll, setLock };
