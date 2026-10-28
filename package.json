@@ -1,7 +1,7 @@
 {
   "name": "stream-multiview",
   "productName": "Stream Multiview",
-  "version": "0.3.29",
+  "version": "0.3.30",
   "updateRepo": "GlowingPear/stream-window-multiview",
   "description": "Watch several Kick, Twitch and YouTube streams and chats at once.",
   "author": "GlowingPear",

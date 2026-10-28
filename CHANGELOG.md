@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.29 (current)
+## 0.3.30 (current)
+- Fix the focus ring left around a window's channel picker after a click
+- Tab to another site's chat puts the keyboard in its chat box
+
+## 0.3.29
 - Fix linked channel tabs freezing when you switch to them
 - Linked channels: offline sites' tabs can't be opened and aren't loaded; YouTube windows follow a channel's new stream
 - Fix stray "undefined" / "null" text in menus and lists, and the missing ▾ with names off
