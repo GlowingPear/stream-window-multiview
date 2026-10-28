@@ -53,7 +53,7 @@ function setAll(w, on){
   store.changed('tabs');
   if (on) leaderOf(w).el.querySelector('.all-list')?.focus({ preventScroll: true });
 }
-const feedOf = s => { let f = feeds.get(s.id); if (!f){ f = { msgs: [], byId: new Map() }; feeds.set(s.id, f); } return f; };
+const feedOf = s => { let f = feeds.get(s.id); if (!f){ f = { msgs: [], byId: new Map(), pins: [] }; feeds.set(s.id, f); } return f; };
 
 /* ---- what the chats hand over ---- */
 // Your name on that site: messages to it are marked
@@ -65,6 +65,7 @@ function ingest(w, json){
   const f = feedOf(s), view = viewFor(s);
   feedParse.parseFeed(batch).forEach(m => {
     if (m.kind === 'delete' || m.kind === 'clear' || m.kind === 'clearall') return removed(f, view, m, w.channel);
+    if (m.kind === 'pin' || m.kind === 'unpin') return setPin(f, s, w.channel, m);
     m.ch = w.channel;
     const me = meOn(m.site);
     if (me && m.reply && m.reply.login === me) m.toMe = 'reply';
@@ -100,6 +101,42 @@ function removed(f, view, d, ch){
   const m = { kind: 'modlog', site: d.site, ch, id: 'log' + (++logN), t: d.t, words };
   f.msgs.push(m); if (view) addLine(view, m);
 }
+/* ---- pins: one strip, however many sites have one ---- */
+// A site's pin (each site has one at a time), or its pin taken down. A new one shows, also if the others were hidden.
+function setPin(f, s, ch, d){
+  if (d.kind === 'unpin' && d.id && !f.pins.some(p => p.site === d.site && p.id === d.id)) return;   // (another pin's)
+  f.pins = f.pins.filter(p => p.site !== d.site);
+  if (d.kind === 'pin'){ d.msg.ch = ch; f.pins.unshift({ site: d.site, ch, id: d.id, msg: d.msg, t: d.t, hidden: false }); }
+  const view = viewFor(s); if (view){ if (d.kind === 'pin') view.pinAt = d.site; renderPins(view); }
+}
+const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
+function renderPins(view){
+  const f = feedOf(view.s), shown = f.pins.filter(p => !p.hidden), n = shown.length;
+  view.pinChip.hidden = !f.pins.length || !!n;
+  view.pinChip.replaceChildren(element('i', { html: icon.pin }), String(f.pins.length));
+  view.pins.hidden = !n;
+  if (!n){ view.pinsOpen = false; return; }
+  if (n < 2) view.pinsOpen = false;
+  const hide = p => element('button', { type: 'button', class: 'all-pin-x', title: 'Hide here (it stays pinned on the site)', 'aria-label': 'Hide this pin', html: icon.close, dataset: { cmd: 'all.pinHide' },
+    onclick: () => { p.hidden = true; renderPins(view); } });
+  const body = (p, sub) => element('div', 'all-pin-b', element('div', 'all-pin-t', element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0]),
+    element('b', { style: { color: nameColor(p.msg) } }, p.msg.sender), ': ', ...partsEl(p.msg.parts)), element('div', 'all-pin-s', sub));
+  const PIN_IC = () => element('i', { class: 'all-pin-ic', html: icon.pin });
+  if (view.pinsOpen){
+    view.pins.replaceChildren(element('button', { type: 'button', class: 'all-pin-h', dataset: { cmd: 'all.pinsOpen' }, 'aria-expanded': 'true', onclick: () => { view.pinsOpen = false; renderPins(view); } },
+      `${n} pinned`, element('span', null, '▴')),
+      ...shown.map(p => element('div', 'all-pin-row', PIN_IC(), body(p, `${PLAT_NAME[p.site]} · ${ago(p.t)}`), hide(p))));
+    return;
+  }
+  const cur = shown.find(p => p.site === view.pinAt) || shown[0], i = shown.indexOf(cur);
+  view.pins.replaceChildren(element('div', 'all-pin-row', PIN_IC(),
+    body(cur, `Pinned on ${PLAT_NAME[cur.site]}${n > 1 ? ` · ${i + 1} of ${n}` : ''}${n > 1 && !i ? ' · newest' : ''}`),
+    n > 1 && element('span', 'all-pin-sw', ...shown.map(p => element('button', { type: 'button', class: 'pi pi-' + p.site + (p === cur ? ' on' : ''), title: `${PLAT_NAME[p.site]}'s pin`, 'aria-pressed': String(p === cur), dataset: { cmd: 'all.pinSite' },
+      onclick: () => { view.pinAt = p.site; renderPins(view); } }, PLAT_NAME[p.site][0]))),
+    n > 1 && element('button', { type: 'button', class: 'all-pin-open', title: 'All of them', 'aria-expanded': 'false', dataset: { cmd: 'all.pinsOpen' }, onclick: () => { view.pinsOpen = true; renderPins(view); } }, '▾'),
+    hide(cur)));
+}
+
 /* ---- the view ---- */
 const viewFor = s => {
   const lead = wins.find(o => o.kind === 'chat' && !o.hiddenTab && streamerOf(o.channel) === s && allOn(o));
@@ -189,10 +226,13 @@ function buildView(w){
   const bar = element('div', { class: 'all-rb', hidden: true });
   const at = element('div', { class: 'pop all-at', role: 'listbox', hidden: true });
   const lm = element('div', { class: 'pop all-lm', role: 'menu', hidden: true });
+  const pins = element('div', { class: 'all-pins', hidden: true, role: 'region', 'aria-label': 'Pinned messages' });
+  const pinChip = element('button', { type: 'button', class: 'all-chip all-pinchip', hidden: true, title: 'Show the pinned messages again', dataset: { cmd: 'all.pinsBack' },
+    onclick: () => { feedOf(s).pins.forEach(p => { p.hidden = false; }); renderPins(view); } });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
-  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), chip, evChip), list, more, empty,
+  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, chip, evChip), pins, list, more, empty,
     element('div', 'all-cmp', bar, element('div', 'all-box', pick, input)), menu, at, lm, mv);
-  const view = { el, list, empty, more, chip, evChip, s, pick, input, menu, bar, at, lm, mv, w, lock: null, atList: [], atSel: 0 };
+  const view = { el, list, empty, more, chip, evChip, pins, pinChip, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, w, lock: null, atList: [], atSel: 0 };
   closeOnOutside(lm);
   closeOnOutside(mv, { button: w.el.querySelector('[data-a=mod]') });
   closeOnOutside(menu, { button: pick });
@@ -230,6 +270,7 @@ function renderTop(view, w){
   view.empty.replaceChildren(element('b', null, names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.slice(-1)} chats together` : `${names[0] || 'Their'} chat`),
     off.length ? element('span', null, `${off.join(' and ')} ${off.length > 1 ? 'are' : 'is'} offline`) : '', element('small', null, 'New messages show here as they arrive.'));
   view.empty.hidden = !!view.list.children.length;
+  renderPins(view);
 }
 
 /* ---- sending: Send on [K ▾] (in-site/send.js types it into that site's own chat box) ---- */
