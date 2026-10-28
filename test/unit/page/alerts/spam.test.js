@@ -239,7 +239,12 @@ test('bots added to the built-in list reach a list you changed, once', () => {
   assert.deepEqual(withNewBots(removed, r.offered).list, removed);
   assert.equal(withNewBots(removed, r.offered).list, removed, 'the same list when nothing is added');
   // already on your list (any case): not added twice
-  assert.deepEqual(withNewBots(['GriddleBot'], first).list, ['GriddleBot', 'kickpulsebot', 'kicklet', 'lumiastream']);
+  assert.deepEqual(withNewBots(['GriddleBot'], first).list, ['GriddleBot', 'kickpulsebot', 'kicklet', 'lumiastream', 'botrixofficial']);
+  // a list changed when the built-in one ended at lumiastream: botrixofficial (BotRix on Twitch) is added, once
+  const before = BOTS.slice(0, BOTS.indexOf('botrixofficial'));
+  const now = withNewBots(['botrix', 'MyTimerBot'], before);
+  assert.deepEqual(now.list, ['botrix', 'MyTimerBot', 'botrixofficial']);
+  assert.deepEqual(withNewBots(['botrix', 'MyTimerBot'], now.offered).list, ['botrix', 'MyTimerBot'], 'removed again: stays removed');
 });
 
 test('promo words and bot lines added to the built-in lists reach a list you changed, once', () => {

@@ -1,5 +1,5 @@
 import { alerts } from '../alerts/alerts.js';
-import { spamFirst, spamOpts } from '../alerts/spam-alerts.js';
+import { botsFor, spamFirst, spamOpts } from '../alerts/spam-alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { winOfView } from './translate.js';
 import { dndOn, mentMuted, mentNameFor, mentOn, mentWords, notes } from '../panels/bell/bell.js';
@@ -41,7 +41,7 @@ function whyChecks(w, r){
     add(mentOn, mentOn ? 'Mention alerts are on' : 'Mention alerts are off', mentOn ? '' : 'Settings › Mentions');
     add(!mentMuted.has(ch), mentMuted.has(ch) ? 'Mentions are off for this chat' : 'Mentions are on for this chat', mentMuted.has(ch) ? 'The @ button on its title bar' : '');
     if (r.own) add(false, 'It\'s your own message');
-    const bots = alerts.mention.bots || SmvSpam.BOTS;
+    const bots = botsFor('mention', ch);
     if (SmvSpam.ignored(r.sender, bots)) add(false, `${r.sender} is on the chat bot list`, 'Never a mention');
     if (!me) add(false, `No ${name} username to look for`, 'Settings › Mentions › Your usernames');
     else add(r.at, r.at ? `Mentions you (@${me})` : `Mentions you: looked for @${me}`);
@@ -54,7 +54,7 @@ function whyChecks(w, r){
   // spam alerts: its score now (the other chats' messages and who spoke first count too)
   if (!alerts.spam.on || !site.spamAlerts) out.push({ ok: null, text: `Spam alerts: ${!site.spamAlerts ? 'not for ' + name : 'off'}` });
   else {
-    const s = SmvSpam.score({ sender: r.sender, body: r.body, chat: ch, t: Date.now() }, { recent: [], firstSeen: spamFirst }, spamOpts());
+    const s = SmvSpam.score({ sender: r.sender, body: r.body, chat: ch, t: Date.now() }, { recent: [], firstSeen: spamFirst }, spamOpts(ch));
     out.push({ ok: s.spam ? true : null, text: s.ignored ? 'Spam alerts: on the chat bot list (never flagged)' : s.spam ? `Spam alerts: would flag it (${s.score} of ${s.need} points)` : `Spam alerts: ${s.score} of the ${s.need} points needed`,
       note: (s.signs || []).map(x => `${x.text} +${x.points}`).join(' · ') });
   }

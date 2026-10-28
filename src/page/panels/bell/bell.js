@@ -190,7 +190,7 @@ function noteRow(n, o = {}){
     body.textContent = n.body || '';
     act('Show chat', () => { close(); revealChat(n.channel); });
     act(n.abuse ? 'Not abuse' : 'Not spam', () => dropNotes(x => x === n)).title = 'Take it off this list';
-    if (SmvSpam.ignored(n.sender, spamOpts().ignore)) acts.insertAdjacentHTML('beforeend', '<span class="nc-note">On the chat bot list</span>');
+    if (SmvSpam.ignored(n.sender, spamOpts(n.channel).ignore)) acts.insertAdjacentHTML('beforeend', '<span class="nc-note">On the chat bot list</span>');
     else act('Add to bots', () => { ignoreSender(n.sender); renderBell(); }, 'danger').title = `Add ${n.sender} to the chat bot list, so its messages are never flagged`;
     const why = element('div', { class: 'nc-why', hidden: true }, spamWhy(n));
     act('Why?', () => { why.hidden = !why.hidden; }, 'linkish');

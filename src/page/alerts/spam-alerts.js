@@ -10,6 +10,7 @@ import { addParsed } from '../layout/placement.js';
 import { smoothScrollTo } from '../layout/sideways-scroll.js';
 import { injectMention } from '../panels/bell/all-notifications.js';
 import { addNote, cleanParts, mentAny, mentOn, partsText, readChat, spamWhy } from '../panels/bell/bell.js';
+import { streamerBots } from '../platforms/linked.js';
 import { chLabel, chLabelP, modOk, platOf } from '../platforms/platforms.js';
 import { DESKTOP } from '../shared/env.js';
 import { askIn, runIn } from '../windows/view.js';
@@ -34,16 +35,23 @@ async function modChat(w){
   if (!modOk.has(w.channel)) modOk.set(w.channel, window.kmv.modCheck(w.channel).catch(() => null));
   return (await modOk.get(w.channel)) === true;
 }
-// The chat bots never counted as a mention ('mention') or flagged as spam ('spam'): the list in Mentions, unless
-// spam alerts have their own.
-const botsFor = kind => kind === 'spam' && !alerts.spam.sharedBots ? alerts.spam.ignore || SmvSpam.BOTS : alerts.mention.bots || SmvSpam.BOTS;
-const spamOpts = () => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS, ignore: botsFor('spam'),
+// The chat bots never counted as a mention ('mention') or flagged as spam ('spam') in a channel's chat: the app's list
+// (Settings › Chat › Chat bots), Mentions' or spam alerts' own instead, or for spam alerts both; and the streamer's
+// own bots on that chat's site (their card in Linked channels).
+function botsFor(kind, ch){
+  const a = alerts[kind], shared = alerts.mention.bots || SmvSpam.BOTS;
+  const own = kind === 'spam' ? a.ignore || SmvSpam.BOTS : a.ownBots || SmvSpam.BOTS;
+  const list = a.botsMode === 'own' ? own : a.botsMode === 'both' && kind === 'spam' ? [...shared, ...own] : shared;
+  const theirs = ch ? streamerBots(ch) : [];
+  return theirs.length ? [...list, ...theirs] : list;
+}
+const spamOpts = ch => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS, ignore: botsFor('spam', ch),
   abuse: alerts.spam.abuse !== false, abuseWords: alerts.spam.abuseWords || SmvSpam.ABUSE, slurs: alerts.spam.slurs || SmvSpam.SLURS, swears: alerts.spam.swears || SmvSpam.SWEARS,
   points: alerts.spam.points });
 // seenAt: when you last clicked or typed in that chat; messages from before then don't need a lasting alert.
 async function spamCheck(w, lines, seenAt){
   const mod = await modChat(w);
-  const now = Date.now(), opts = spamOpts();
+  const now = Date.now(), opts = spamOpts(w.channel);
   while (spamRecent.length && now - spamRecent[0].t > 5 * 60000) spamRecent.shift();
   lines.forEach(l => {
     if (l.mod) return;                                         // a moderator removed it: not a new message
@@ -140,7 +148,7 @@ async function pollChats(ment, spam){
       if (w.alert && w.alert.since <= q.c) clearAlert(w);
       readChat(w.channel);
     }
-    const bots = botsFor('mention');
+    const bots = botsFor('mention', w.channel);
     (q.m || []).filter(m => !SmvSpam.ignored(m.sender, bots)).forEach(m => {
       const looking = (document.hasFocus() && document.activeElement === w.view) || (q.c && (m.t || 0) <= q.c);   // you're in that chat right now
       const item = { channel: w.channel, label: chLabelP(w.channel), sender: m.sender, body: m.body, kind: m.kind, quoted: m.quoted || '', t: m.t || Date.now(),
@@ -159,10 +167,10 @@ async function pollChats(ment, spam){
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
-  window.spamFirst = spamFirst; window.firstSpoke = firstSpoke;   // for the tests
+  window.spamFirst = spamFirst; window.firstSpoke = firstSpoke; window.botsFor = botsFor;   // for the tests
   window.spamCheck = (ch, lines) => spamCheck(wins.find(w => w.kind === 'chat' && w.channel === ch), lines);   // for the tests
   window.openWins = () => wins;   // for the tests
   window.supportFrom = (ch, list) => supportFrom(wins.find(w => w.kind === 'chat' && w.channel === ch), list);   // for the tests
 }
 
-export { forgetChat, init, pollMentions, revealChat, revealWin, spamFirst, spamOpts };
+export { botsFor, forgetChat, init, pollMentions, revealChat, revealWin, spamFirst, spamOpts };
