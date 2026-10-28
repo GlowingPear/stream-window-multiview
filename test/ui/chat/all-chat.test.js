@@ -518,6 +518,14 @@ test('ALL: pins share one strip: the newest, K T Y switch, ▾ all of them; ✕ 
   // taken down on its site: gone from the strip
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('PinnedMessageDeletedEvent', {})] });
   assert.equal(await strip(), 'YMika R.: clip of the acePinned on YouTube');
+  // Twitch's, from its other connection: the newest; taken down by its id
+  const hermes = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [hermes('pin-message', { id: 'tp1', pinned_by: { display_name: 'QuietKoala' }, message: { id: 'tm1', sender: { login: 'quietkoala', display_name: 'QuietKoala', chat_color: '#FF69B4' }, content: { text: 'giveaway at 500 subs' } } })] });
+  assert.match(await strip(), /^TQuietKoala: giveaway at 500 subsPinned on Twitch · 1 of 2 · newest/);
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [hermes('unpin-message', { id: 'other' })] });
+  assert.match(await strip(), /Pinned on Twitch/, 'another pin\'s id: stays');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [hermes('unpin-message', { id: 'tp1' })] });
+  assert.equal(await strip(), 'YMika R.: clip of the acePinned on YouTube');
 });
 
 test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley opens its picker; picking one locks the box to that site and sends it as the site writes it', async t => {

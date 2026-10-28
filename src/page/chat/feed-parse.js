@@ -40,6 +40,7 @@ function twitchParts(text, emotes){
   return parts;
 }
 function parseTwitch(line){
+  if (String(line || '').startsWith('{')) return twitchPin(line);
   const l = ircLine(String(line || '')); if (!l) return null;
   const g = l.tags, t = +g['tmi-sent-ts'] || Date.now();
   // (Twitch's chat says who and how long, not which moderator)
@@ -69,6 +70,22 @@ function parseTwitch(line){
     else msg.summary = twitchSummary(msg.event, msg.sender, prm, msg.text);
   }
   return msg;
+}
+
+// Twitch's other connection (hermes): a message pinned (the whole message with it) or taken down
+function twitchPin(frame){
+  let p;
+  try { p = JSON.parse(JSON.parse(frame).notification.pubsub); } catch { return null; }
+  const d = p && p.data; if (!d || !d.id) return null;
+  if (p.type === 'unpin-message') return { site: 'twitch', kind: 'unpin', id: String(d.id), t: Date.now() };
+  if (p.type !== 'pin-message' || !d.message || !d.message.id) return null;
+  const m = d.message, s = m.sender || {}, c = m.content || {};
+  const parts = Array.isArray(c.fragments) && c.fragments.length
+    ? c.fragments.map(f => f && f.emoticon && f.emoticon.emoticonID ? { emote: `https://static-cdn.jtvnw.net/emoticons/v2/${encodeURIComponent(f.emoticon.emoticonID)}/default/dark/1.0`, name: f.text || '' } : { text: String((f && f.text) || '') })
+    : [{ text: String(c.text || '') }];
+  const msg = { site: 'twitch', kind: 'message', id: String(m.id), t: (+m.sent_at || 0) * 1000 || Date.now(), sender: s.display_name || s.login || '', login: String(s.login || '').toLowerCase(),
+    color: s.chat_color || '', userId: s.id ? String(s.id) : '', badges: badgeKinds((s.badges || []).map(b => b && b.id)), parts };
+  return { site: 'twitch', kind: 'pin', id: String(d.id), msg, t: Date.now(), by: (d.pinned_by && d.pinned_by.display_name) || '' };
 }
 
 // A Twitch event in a few words, the amount picked out: [{ text }, { strong }]
@@ -232,6 +249,6 @@ function parseFeed(batch){
 }
 
 // (one object, so the tests can reach each site's reader)
-const feedParse = { parseFeed, parseTwitch, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds };
+const feedParse = { parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds };
 
 export { feedParse };

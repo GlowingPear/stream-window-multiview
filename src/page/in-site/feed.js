@@ -19,7 +19,10 @@ function feedAgent(as){
   const KICK = /"event":"(App\\+Events\\+)?(ChatMessageEvent|MessageDeletedEvent|UserBannedEvent|UserUnbannedEvent|ChatroomClearEvent|RewardRedeemedEvent|KicksGifted|GiftedSubscriptionsEvent|LuckyUsersWhoGotGiftSubscriptionsEvent|SubscriptionEvent|ChannelSubscriptionEvent|StreamHostEvent|PinnedMessageCreatedEvent|PinnedMessageDeletedEvent)"/;
   function heard(data){
     if (typeof data !== 'string') return;
-    if (site === 'twitch'){ if (data.includes(' #')) data.split('\r\n').forEach(l => { if (TW.test(l)) push(l); }); }
+    if (site === 'twitch'){
+      if (data.includes(' #')) data.split('\r\n').forEach(l => { if (TW.test(l)) push(l); });
+      else if (data.startsWith('{') && /\\"(un)?pin-message\\"/.test(data)) push(data);   // (its other connection: a message pinned or taken down)
+    }
     else if (site === 'kick' && data.startsWith('{"push"') && KICK.test(data)) push(data);
   }
   const seen = new WeakSet(), d = Object.getOwnPropertyDescriptor(MessageEvent.prototype, 'data');
