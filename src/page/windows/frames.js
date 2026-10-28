@@ -66,6 +66,10 @@ const memberFor = (w, ch) => frameOf(w).find(o => o.channel === ch) || null;
 // Not known yet (no live check so far) counts as watchable.
 const siteOffline = ch => { const i = infoFor(ch); return !!i && !i.live && !i.missing; };
 const tabLocked = (w, ch) => siteOffline(ch) && leaderOf(w).channel !== ch;
+// Where Tab, ⌥← and ⌥→ go: the one you watch, and the others known to be live (not ones offline, not found, or
+// not checked yet)
+const tabStep = (w, ch) => leaderOf(w).channel === ch || !!infoFor(ch)?.live;
+const stepChannels = w => tabChannels(w).filter(ch => tabStep(w, ch));
 const tabNo = (w, ch) => tabChannels(w).indexOf(ch) + 1;
 function tabTip(w, ch){
   const info = infoFor(ch), p = platOf(ch), m = memberFor(w, ch);
@@ -265,7 +269,7 @@ function switchTo(w, n){
   return true;
 }
 function stepTab(w, d){
-  const all = tabChannels(w), chs = all.filter(ch => !tabLocked(w, ch)); if (chs.length < 2) return false;   // (past the offline ones)
+  const all = tabChannels(w), chs = stepChannels(w); if (chs.length < 2) return false;   // (only to live ones)
   const i = chs.indexOf(leaderOf(w).channel);
   return switchTo(w, all.indexOf(chs[(i + d + chs.length) % chs.length]) + 1);
 }
@@ -514,8 +518,9 @@ function tabKeyAgent(){
   window.addEventListener('input', e => { if (!box(e.target)) return; const now = !empty(e.target); if (now !== was){ was = now; console.log('__kmv:typing ' + JSON.stringify({ on: now })); } }, true);
   window.addEventListener('focusout', e => { if (box(e.target) && was){ was = false; console.log('__kmv:typing {"on":false}'); } }, true);
 }
-// Tab only switches where it would: a chat of a linked streamer, with the setting on
-const tabKeyJs = w => `window.__kmvTabKey && (window.__kmvTabKey.on = ${!!(streamerOf(w.channel) && linkOpt('tabKey') && tabChannels(w).length > 1)})`;
+// Tab only switches where it would: a chat of a linked streamer, with the setting on, and another of its sites live
+// (otherwise Tab is the site's own again)
+const tabKeyJs = w => `window.__kmvTabKey && (window.__kmvTabKey.on = ${!!(streamerOf(w.channel) && linkOpt('tabKey') && stepChannels(w).length > 1)})`;
 function syncTabKeys(){ wins.forEach(w => { if (w.kind === 'chat' && w.ready && w.view) runIn(w.view, tabKeyJs(w)); }); }
 // The chat Tab switched to: the keyboard goes to its chat box, so you can type straight away. in-site/chat-box-focus.js
 // waits for the site to draw its box; a chat still loading gets it once it has, and one that loads another page first
@@ -621,7 +626,7 @@ function init(){
   if ($('#tabTip')){ $('#tabTip .tt-k1').textContent = keyName('Alt+1'); $('#tabTip .tt-k3').textContent = keyName('Alt+3'); }
   store.watch(['live', 'unread', 'names'], () => { onLive(); renderAllSiteTabs(); });
   store.watch('streamers', () => streamersChanged());
-  store.watch(['streamers', 'tabs', 'wins'], () => syncTabKeys());
+  store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncTabKeys());
   fromSite('tab-key', (w, json) => { let d = {}; try { d = JSON.parse(json); } catch {} if (stepTab(w, d.back ? -1 : 1)) focusChatBox(leaderOf(w)); });
   fromSite('typing', (w, json) => { let d = {}; try { d = JSON.parse(json); } catch {} w.typing = !!d.on; });
   lastStreamers = linkedOn() ? JSON.stringify(settings.json('streamers', [])) : '';

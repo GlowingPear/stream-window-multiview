@@ -133,6 +133,24 @@ test('an offline site\'s tab can\'t be clicked, dragged out or switched to, and 
   await page.keyboard.press('Escape');
 });
 
+test('⌥→ (and Tab in a chat) only goes to a site known to be live: not one not checked yet or not found', async t => {
+  // novalynx (live) and a Twitch account the live check hasn't answered for yet
+  const page = await linkedApp(t, { streamers: [STREAMER, { id: 's2', name: '', main: 'novalynx', accounts: ['novalynx', 'tw:novaquiet'] }], saved: ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala', 'novalynx', 'tw:novaquiet'] });
+  await page.evaluate(() => window.frames_.openStreamer('novalynx', 'stream', ['novalynx', 'tw:novaquiet']));
+  await page.click('#stage .win.stream:not(.tab-hidden) .bar .grab');
+  await press(page, 'Alt+ArrowRight');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'novalynx', 'Twitch not checked yet: stays on Kick');
+  await page.evaluate(() => window.smvNotes.setInfo('tw:novaquiet', { missing: true, checked: Date.now() }));
+  await press(page, 'Alt+ArrowLeft');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'novalynx', 'Twitch not found: stays on Kick');
+  await page.evaluate(() => window.smvNotes.liveStatus({ novalynx: { live: true, checked: Date.now() }, 'tw:novaquiet': { live: true, checked: Date.now() } }));
+  await press(page, 'Alt+ArrowRight');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'tw:novaquiet', 'live: ⌥→ goes to it');
+  // from the one you watch you can always step back, even when it has gone offline since
+  await page.evaluate(() => window.smvNotes.liveStatus({ novalynx: { live: true, checked: Date.now() }, 'tw:novaquiet': { live: false, checked: Date.now() } }));
+  await press(page, 'Alt+ArrowLeft');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'novalynx');
+});
 test('a tab you aren\'t watching that goes offline is closed (not loaded), and comes back when it\'s live again', async t => {
   const page = await linkedApp(t);
   await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'both'));
