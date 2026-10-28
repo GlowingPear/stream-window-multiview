@@ -8,10 +8,10 @@ import { sendAgent } from '../in-site/send.js';
 import { bellVars, myName } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
 import { linkOpt, nameOf, streamerBots, streamerOf } from '../platforms/linked.js';
-import { PLAT_NAME, modOk, modUrl, platOf, platform } from '../platforms/platforms.js';
+import { PLAT_NAME, modIs, modUrl, openModView, platOf, platform } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { element } from '../shared/element.js';
-import { DESKTOP, keyName } from '../shared/env.js';
+import { keyName } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { icon } from '../shared/icons.js';
 import { fromSite } from '../shared/incoming.js';
@@ -20,6 +20,7 @@ import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { focusChatBox, frameOf, leaderOf, renderSiteTabs, showTab, tabChannels } from '../windows/frames.js';
 import { askIn, runIn } from '../windows/view.js';
+import { syncModBtn } from '../windows/windows.js';
 
 /* ---- ALL: a linked streamer's Kick, Twitch and YouTube chats as one list (issue #203) ----
    An ALL tab before the site tabs of a linked streamer's chat window. It covers the chat you watched with the app's
@@ -170,10 +171,12 @@ function buildView(w){
   const bar = element('div', { class: 'all-rb', hidden: true });
   const at = element('div', { class: 'pop all-at', role: 'listbox', hidden: true });
   const lm = element('div', { class: 'pop all-lm', role: 'menu', hidden: true });
+  const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), chip, evChip), list, more, empty,
-    element('div', 'all-cmp', bar, element('div', 'all-box', pick, input)), menu, at, lm);
-  const view = { el, list, empty, more, chip, evChip, s, pick, input, menu, bar, at, lm, w, lock: null, atList: [], atSel: 0 };
+    element('div', 'all-cmp', bar, element('div', 'all-box', pick, input)), menu, at, lm, mv);
+  const view = { el, list, empty, more, chip, evChip, s, pick, input, menu, bar, at, lm, mv, w, lock: null, atList: [], atSel: 0 };
   closeOnOutside(lm);
+  closeOnOutside(mv, { button: w.el.querySelector('[data-a=mod]') });
   closeOnOutside(menu, { button: pick });
   pick.onclick = () => { if (view.lock) return flash('Locked to this site · Esc or ✕ unlocks'); if (menu.hidden) openPickMenu(view, w); else menu.hidden = true; };
   input.addEventListener('keydown', e => {
@@ -341,14 +344,10 @@ function pickAt(view, w, m){
 const kCtrl = () => keyName('Ctrl+').slice(0, -1);
 const kShift = () => kCtrl() === 'Ctrl' ? 'Shift' : '⇧';
 const DOTS = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
-const modKnown = new Map();   // channel -> whether you moderate it (the answer behind its mod view button, platforms.js)
-function youMod(ch){
-  if (!modKnown.has(ch)){
-    modKnown.set(ch, false);
-    const p = modOk.get(ch); if (p) p.then(v => { if (v === true){ modKnown.set(ch, true); redrawAll(); } });
-  }
-  return modKnown.get(ch);
-}
+const modKnown = new Map();   // channel -> whether you moderate it, set by the tests (else the sites' answer, platforms.js modIs)
+const youMod = ch => modKnown.has(ch) ? modKnown.get(ch) : modIs.get(ch) === true;
+// The sites of this window's streamer whose mod view you can open
+const modViewChs = w => tabChannels(w).filter(ch => modUrl(ch) && youMod(ch));
 // Why you can't moderate them here (nothing: you can)
 function whyNot(m){
   const site = PLAT_NAME[m.site];
@@ -403,12 +402,32 @@ function openLineMenu(m, at){
     mod && item('Ban', BAN, () => modAct(m, 'ban'), { kb: `${kCtrl()}+${kShift()}-click name`, off: why, red: true, cmd: 'all.menuBan' }),
     element('hr'),
     item('Copy message', icon.copy, () => { navigator.clipboard?.writeText(text).then(() => flash('Copied'), () => flash('Couldn\'t copy it')); }, { cmd: 'all.menuCopy' }),
-    mod && modUrl(m.ch) && item(`Open ${site} mod view`, icon.mod, () => { const u = modUrl(m.ch); if (DESKTOP) window.kmv.openWindow(u, 1400, 900); else window.open(u, '_blank'); }, { cmd: 'all.menuModView' }));
+    mod && modUrl(m.ch) && item(`Open ${site} mod view`, icon.mod, () => openModView(m.ch), { cmd: 'all.menuModView' }));
   lm.hidden = false;
   const vr = view.el.getBoundingClientRect(), r = at.getBoundingClientRect ? at.getBoundingClientRect() : { left: at.clientX, right: at.clientX, top: at.clientY, bottom: at.clientY };
   const w = lm.offsetWidth, h = lm.offsetHeight;
   lm.style.left = Math.max(6, Math.min(vr.width - w - 6, r.right - vr.left - w)) + 'px';
   lm.style.top = Math.max(6, Math.min(vr.height - h - 6, r.bottom - vr.top + 4)) + 'px';
+}
+// The title bar's mod button in ALL: each site's mod view (where you're a mod), or all of them at once
+function openModViews(w, at){
+  const view = w.allView; if (!view) return;
+  const mv = view.mv;
+  if (!mv.hidden){ mv.hidden = true; return; }
+  const chs = modViewChs(w);
+  const row = ch => {
+    const p = platOf(ch), site = PLAT_NAME[p], off = !modUrl(ch) ? `${site} · no mod view` : !youMod(ch) ? `${site} · you're not a mod` : '';
+    return element('button', { type: 'button', role: 'menuitem', class: 'all-li all-mvi', disabled: !!off, title: off ? (modUrl(ch) ? `You don't moderate their ${site} channel` : `${site} has no mod view for each channel`) : `Opens in a window of its own`, dataset: { cmd: 'all.modView' },
+      onclick: () => { mv.hidden = true; openModView(ch); } }, element('i', { class: 'pi pi-' + p }, site[0]), element('span', null, off || `${site} mod view`), off ? '' : element('i', { class: 'all-mvx', html: icon.pop }));
+  };
+  mv.replaceChildren(element('div', 'all-mvh', 'Mod views'), ...tabChannels(w).map(row),
+    chs.length > 1 && element('hr'),
+    chs.length > 1 && element('button', { type: 'button', role: 'menuitem', class: 'all-li', dataset: { cmd: 'all.modViewsAll' }, onclick: () => { mv.hidden = true; chs.forEach(openModView); } },
+      element('i', { html: icon.mod }), element('span', null, 'Open all'), element('small', null, `${chs.length} windows`)));
+  mv.hidden = false;
+  const vr = view.el.getBoundingClientRect(), r = at.getBoundingClientRect();
+  mv.style.left = Math.max(6, Math.min(vr.width - mv.offsetWidth - 6, r.right - vr.left - mv.offsetWidth)) + 'px';
+  mv.style.top = '6px';
 }
 const TIMER = '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>';
 const BAN = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>';
@@ -450,6 +469,7 @@ function syncAll(){
     if (show && !w.allView){ w.allView = buildView(w); w.el.querySelector('.body').append(w.allView.el); w.allView.list.scrollTop = w.allView.list.scrollHeight; }
     if (!show && w.allView){ w.allView.el.remove(); w.allView = null; }
     w.el.classList.toggle('all-on', show);
+    syncModBtn(w);
     if (show) renderTop(w.allView, w);
     feedOn(w, allOn(w));
   });
@@ -482,12 +502,13 @@ function init(){
   // Esc closes ALL's menus (the line's, Send on's)
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
-    wins.forEach(w => { const v = w.allView; if (!v) return; [v.lm, v.menu].forEach(m => { if (!m.hidden){ m.hidden = true; e.preventDefault(); } }); });
+    wins.forEach(w => { const v = w.allView; if (!v) return; [v.lm, v.menu, v.mv].forEach(m => { if (!m.hidden){ m.hidden = true; e.preventDefault(); } }); });
   });
   store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncAll());
+  store.watch(['mod'], () => { redrawAll(); wins.forEach(syncModBtn); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
   window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
-  window.allChat = { sender, modKnown, ingest: (ch, batch) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch)); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.allChat = { sender, modKnown, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch)); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
-export { allOn, allTabFor, feedReady, init, setAll };
+export { allOn, allTabFor, feedReady, init, modViewChs, openModViews, setAll };

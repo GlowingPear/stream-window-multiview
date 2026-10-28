@@ -1,3 +1,4 @@
+import { allOn, allTabFor, modViewChs, openModViews } from '../chat/all-chat.js';
 import { toggleStreamOverlay } from '../chat/chat-overlay.js';
 import { resolveYt } from '../chat/view-menu.js';
 import { BAR, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, mutedChk, sizehint, snapChk, stage, wins } from '../core.js';
@@ -21,7 +22,7 @@ import { openProfile } from '../panels/profiles/profiles.js';
 import { arrangeButtons, syncBarName } from '../panels/settings/windows-pane.js';
 import { save } from '../persistence.js';
 import { linkedOn, nameOf } from '../platforms/linked.js';
-import { chLabel, chLabelP, checkMod, externalFor, modUrl, platOf, platform } from '../platforms/platforms.js';
+import { chLabel, chLabelP, checkMod, externalFor, isModOf, modUrl, openModView, platOf, platform } from '../platforms/platforms.js';
 import { syncLike, toggleLike } from '../platforms/youtube-options.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
@@ -62,7 +63,7 @@ function createWin(spec, rect){
         ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="ext" class="ext-b" title="Extensions in this window" hidden>${icon.ext}<b class="ext-n"></b></button>` : ''}
         ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="state" class="dev-b" title="Copy what the app knows about this window, for a report"${devOn ? '' : ' hidden'}>${icon.copy}</button><button data-a="inspect" class="dev-b" title="Chrome's developer tools for this window's page"${devOn ? '' : ' hidden'}>${icon.code}</button>` : ''}
         <button data-a="reload" title="Reload">${icon.reload}</button>
-        ${modUrl(w.channel) ? `<button data-a="mod" title="Open the mod view for this channel"${DESKTOP ? ' hidden' : ''}>${icon.mod}</button>` : ''}
+        ${modUrl(w.channel) || (w.kind === 'chat' && allTabFor(w)) ? `<button data-a="mod" title="Open the mod view for this channel"${DESKTOP || !modUrl(w.channel) ? ' hidden' : ''}>${icon.mod}</button>` : ''}
         <button data-a="pop" title="Open in its own browser window">${icon.pop}</button>
         <button data-a="max" title="Maximize / restore (or double-click the bar)">${icon.max}</button>
         ${w.channel && !/^yt:v:/.test(w.channel) ? `<button data-a="link" class="link-b" title="Link channels: this streamer on other sites"${linkedOn() ? '' : ' hidden'}>${icon.layers}</button>` : ''}
@@ -128,10 +129,7 @@ function createWin(spec, rect){
         window.open(externalFor(w), 'kmv_' + w.kind + '_' + (w.channel || w.id), feat);
       }
     }
-    else if (a === 'mod') {
-      if (DESKTOP) window.kmv.openWindow(modUrl(w.channel), 1400, 900);
-      else window.open(modUrl(w.channel), 'kmv_mod_' + w.channel, 'width=1400,height=900');
-    }
+    else if (a === 'mod') { if (allOn(w)) openModViews(w, b.classList.contains('ovf') ? el.querySelector('[data-a=more]') : b); else openModView(w.channel); }
     else if (a === 'max') toggleMax(w);
     else if (a === 'ext') openExtMenu(w, b.classList.contains('ovf') ? el.querySelector('[data-a=more]') : b);   // from the ⋯ menu (always): open under ⋯
     else if (a === 'more') openBarMenu(b);
@@ -283,6 +281,14 @@ function liftAudioSoon(w, left = 75){
 }
 let saveSoon;
 
+// The mod view button: where you moderate its channel, or in ALL, any of the streamer's sites (it opens a menu of them)
+function syncModBtn(w){
+  const b = w.el && w.el.querySelector('[data-a=mod]'); if (!b || !DESKTOP) return;
+  const all = allOn(w) && !w.hiddenTab;
+  b.hidden = !(all ? modViewChs(w).length : isModOf(w.channel));
+  b.title = all ? 'Mod views: each site where you moderate' : 'Open the mod view for this channel';
+}
+
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   window.viewCalls = { runIn, askIn };   // for the tests
@@ -305,4 +311,4 @@ function init(){
   saveSoon = soon(() => save(), 600);
 }
 
-export { createWin, init, liftAudioSoon, pushVol, saveSoon };
+export { createWin, init, liftAudioSoon, pushVol, saveSoon, syncModBtn };
