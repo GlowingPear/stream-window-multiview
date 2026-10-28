@@ -391,7 +391,8 @@ test('ALL: what you send shows at once (sending, then sent) and the real line ta
   await page.fill('.all-in', 'try me');
   await page.press('.all-in', 'Enter');
   await page.waitForSelector('.al-mine-failed');
-  assert.match((await mine())[0], /^failed \| Kmekick: try meNot sentKick didn't send it: it's still in its chat box/);
+  assert.match((await mine())[0], /^failed \| KMeKick: try meNot sentKick didn't send it: it's still in its chat box/, 'as in your last message there');
+  assert.deepEqual(await page.$eval('.al-mine .al-who', w => [...w.children].map(c => c.className)), ['pi pi-kick', 'al-b al-b-sub'], 'with your badges');
   await page.evaluate(() => { window.__answer = 'sent'; });
   await page.click('.al-mine-failed [data-cmd="all.retry"]');
   await page.waitForSelector('.al-mine-sent');

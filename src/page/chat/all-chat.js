@@ -433,10 +433,10 @@ async function sendNow(view, w){
   const lock = view.lock, threaded = !!(lock && lock.kind === 'reply' && platform(ch).threadedReplies);
   // a reply where the site has none from here: an @ of them, in front
   if (lock && lock.kind === 'reply' && !threaded && !new RegExp(`^@${lock.msg.login}\\b`, 'i').test(text)) text = `@${lock.msg.sender.replace(/^@/, '')} ${text}`;
-  const site = platOf(ch);
-  const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, parts: [{ text }], badges: [], sender: meOn(site) || 'You', lock, threaded, state: 'sending' };
+  const site = platOf(ch), f = feedOf(view.s);
+  const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, parts: [{ text }], ...youOn(f, site, ch), lock, threaded, state: 'sending' };
   view.input.value = ''; if (lock) setLock(view, w, null);
-  const f = feedOf(view.s); f.msgs.push(p); addLine(view, p);
+  f.msgs.push(p); addLine(view, p);
   await deliver(view, w, p);
 }
 async function deliver(view, w, p){
@@ -452,6 +452,14 @@ async function deliver(view, w, p){
     : (SEND_FAIL[r] || (x => `${x}'s chat didn't answer`))(site);
   setMine(p, 'failed');
   flash(`Not sent: ${p.why}`);
+}
+// How you look in that chat: as in your last message there (name, colour, badges), else your name, the streamer's
+// badge in your own channel
+function youOn(f, site, ch){
+  const me = meOn(site), last = me && [...f.msgs].reverse().find(x => x.kind === 'message' && x.site === site && (x.login === me || x.sender.toLowerCase() === me));
+  if (last) return { sender: last.sender, login: last.login, color: last.color, badges: last.badges };
+  const name = site === 'kick' ? myName : site === 'twitch' ? bellVars.myTwitch : '';
+  return { sender: name || 'You', login: me, color: '', badges: me && ch.replace(/^tw:/, '').toLowerCase() === me ? ['host'] : [] };
 }
 // A line of yours changes state: drawn again where it is
 function setMine(p, state){
@@ -475,14 +483,16 @@ function mineEl(p){
     sending: element('span', 'al-tag al-tag-mine', element('i', 'al-spin'), 'Sending'),
     sent: element('span', 'al-tag al-tag-mine', 'Sent'),
     unseen: element('span', { class: 'al-tag al-tag-mine', title: `${site} took it, but it hasn't shown in its chat yet` }, `Sent · not seen in ${site}'s chat yet`),
-    failed: element('span', 'al-mine-fail', element('span', 'al-tag al-tag-fail', 'Not sent'), element('span', 'al-why', p.why || ''),
+    failed: element('div', 'al-mine-fail', element('span', 'al-tag al-tag-fail', 'Not sent'), element('span', 'al-why', p.why || ''),
       element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.retry' }, onclick: () => { if (view && !view.sending) deliver(view, view.w, p); else flash('Still sending the last one'); } }, 'Retry'),
       element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.edit' }, onclick: () => { if (!view) return; drop(); view.input.value = p.lock && p.lock.kind === 'reply' && !p.threaded ? p.text.replace(/^@\S+\s/, '') : p.text; if (p.lock) setLock(view, view.w, p.lock); view.input.focus(); } }, 'Edit'),
       element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.dismiss' }, title: 'Remove this line', onclick: drop }, '✕'))
   }[p.state];
   return element('div', { class: 'al-m al-mine al-mine-' + p.state, dataset: { key: p.site + ':' + p.id } },
     p.threaded && element('span', 'al-q', '↩ replying to ', element('b', null, p.lock.msg.sender)),
-    element('div', 'al-line', element('span', 'al-who', element('i', { class: 'pi pi-' + p.site, title: site }, site[0])), element('b', 'al-n', p.sender), ': ', element('span', 'al-txt', p.text), state || ''));
+    element('div', 'al-line', element('span', 'al-who', element('i', { class: 'pi pi-' + p.site, title: site }, site[0]),
+      ...p.badges.map(b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' }))), element('b', { class: 'al-n', style: { color: nameColor(p) } }, p.sender), ': ', element('span', 'al-txt', p.text), p.state === 'failed' ? '' : state || ''),
+    p.state === 'failed' && state);
 }
 function setBotsShown(on){ botsShown = !!on; settings.set('allBots', botsShown ? 'shown' : 'hidden'); redrawAll(); }
 function setEventsMode(mode){ eventsMode = mode; settings.set('allEvents', mode); redrawAll(); }
