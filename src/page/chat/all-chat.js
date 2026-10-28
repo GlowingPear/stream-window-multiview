@@ -118,7 +118,7 @@ function setPin(f, s, ch, d){
   if (d.kind === 'pin'){ d.msg.ch = ch; f.pins.unshift({ site: d.site, ch, id: d.id, msg: d.msg, t: d.t, hidden: false }); }
   const view = viewFor(s); if (view){ if (d.kind === 'pin') view.pinAt = d.site; renderPins(view); }
 }
-const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
+const pinAgo = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
 function renderPins(view){
   const f = feedOf(view.s), shown = f.pins.filter(p => !p.hidden), n = shown.length;
   view.pinChip.hidden = !f.pins.length || !!n;
@@ -134,7 +134,7 @@ function renderPins(view){
   if (view.pinsOpen){
     view.pins.replaceChildren(element('button', { type: 'button', class: 'all-pin-h', dataset: { cmd: 'all.pinsOpen' }, 'aria-expanded': 'true', onclick: () => { view.pinsOpen = false; renderPins(view); } },
       `${n} pinned`, element('span', null, '▴')),
-      ...shown.map(p => element('div', 'all-pin-row', PIN_IC(), body(p, `${PLAT_NAME[p.site]} · ${ago(p.t)}`), hide(p))));
+      ...shown.map(p => element('div', 'all-pin-row', PIN_IC(), body(p, `${PLAT_NAME[p.site]} · ${pinAgo(p.t)}`), hide(p))));
     return;
   }
   const cur = shown.find(p => p.site === view.pinAt) || shown[0], i = shown.indexOf(cur);
