@@ -15,8 +15,8 @@ function feedAgent(as){
   const push = x => { if (!F.on) return; batch.push(x); if (batch.length > 400) batch.splice(0, batch.length - 400); if (!timer) timer = setTimeout(send, 250); };
   // Twitch's chat lines that ALL shows; Kick's events
   const TW = / (PRIVMSG|USERNOTICE|CLEARMSG|CLEARCHAT) #/;
-  // (in the frame's text the event's name is JSON: App\\Events\\…, its backslashes doubled)
-  const KICK = /App\\+Events\\+(ChatMessageEvent|MessageDeletedEvent|UserBannedEvent|ChatroomClearEvent)/;
+  // (in the frame's text the event's name is JSON: App\\Events\\…, its backslashes doubled; the newer ones have no App\\Events)
+  const KICK = /"event":"(App\\+Events\\+)?(ChatMessageEvent|MessageDeletedEvent|UserBannedEvent|ChatroomClearEvent|RewardRedeemedEvent|KicksGifted|GiftedSubscriptionsEvent|LuckyUsersWhoGotGiftSubscriptionsEvent|SubscriptionEvent|ChannelSubscriptionEvent|StreamHostEvent)"/;
   function heard(data){
     if (typeof data !== 'string') return;
     if (site === 'twitch'){ if (data.includes(' #')) data.split('\r\n').forEach(l => { if (TW.test(l)) push(l); }); }

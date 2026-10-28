@@ -81,12 +81,12 @@ test('the reader passes on what the site\'s connection brings, as the page reads
     ws.addEventListener('message', e => e.data);    // (the page reads each message)
     ws.onerror = () => {};
     const frame = (ev, data) => JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: ev, data: JSON.stringify(data) } } } });
-    for (const f of [frame('App\\Events\\ChatMessageEvent', { id: 'k1', content: 'hi' }), frame('App\\Events\\MessageDeletedEvent', { message: { id: 'k1' } }), frame('GoalProgressUpdateEvent', {}), 'not json'])
+    for (const f of [frame('App\\Events\\ChatMessageEvent', { id: 'k1', content: 'hi' }), frame('App\\Events\\MessageDeletedEvent', { message: { id: 'k1' } }), frame('RewardRedeemedEvent', { reward_title: 'Hydrate' }), frame('GoalProgressUpdateEvent', {}), 'not json'])
       ws.dispatchEvent(new MessageEvent('message', { data: f }));
   });
   await page.waitForFunction(() => true, null, { timeout: 100 }).catch(() => {});
   for (let i = 0; i < 30 && !heard.length; i++) await new Promise(r => setTimeout(r, 50));
   assert.equal(heard.length, 1, 'one batch');
   assert.equal(heard[0].s, 'kick');
-  assert.deepEqual(heard[0].raw.map(r => JSON.parse(r).push.pub.data.event), ['App\\Events\\ChatMessageEvent', 'App\\Events\\MessageDeletedEvent']);
+  assert.deepEqual(heard[0].raw.map(r => JSON.parse(r).push.pub.data.event), ['App\\Events\\ChatMessageEvent', 'App\\Events\\MessageDeletedEvent', 'RewardRedeemedEvent'], 'Kick\'s newer events have no App\\Events');
 });

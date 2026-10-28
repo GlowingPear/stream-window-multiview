@@ -58,6 +58,7 @@ function parseTwitch(line){
   if (action) msg.action = true;
   if (g['msg-id'] === 'highlighted-message') msg.highlight = true;
   if (+g.bits) msg.bits = +g.bits;
+  if (g['custom-reward-id']) msg.redeem = { title: '', color: '' };   // (a channel points reward with text: Twitch's chat doesn't say which)
   if (g['first-msg'] === '1') msg.first = true;
   if (g['reply-parent-msg-id']) msg.reply = { id: g['reply-parent-msg-id'], sender: g['reply-parent-display-name'] || g['reply-parent-user-login'] || '', login: (g['reply-parent-user-login'] || '').toLowerCase(), body: g['reply-parent-msg-body'] || '' };
   if (msg.kind === 'event'){
@@ -87,6 +88,37 @@ function twitchSummary(ev, name, p, system){
     case 'bitsbadgetier': return [{ strong: name }, { text: ' earned a ' }, { strong: plural(p.threshold, 'bit', 'bits') }, { text: ' badge' }];
     default: return system ? [{ text: system }] : [{ strong: name }];
   }
+}
+
+// Kick's other news in chat: a reward redeemed (with its text: a message with the reward's name), Kicks sent, subs and
+// gifted subs, a raid (host). Heard on busy chats: RewardRedeemedEvent, KicksGifted; the others by Kick's long-used names.
+function kickEvents(ev, d){
+  const t = Date.now(), n = v => Number(v || 0).toLocaleString('en-US'), plural = (v, one, many) => `${n(v)} ${+v === 1 ? one : many}`;
+  const event = (id, who, summary, parts = []) => ({ site: 'kick', kind: 'event', event: ev, id: String(id), t, sender: who, login: who.toLowerCase(), color: '', userId: '', badges: [], parts,
+    summary, text: summary.map(x => x.text || x.strong).join('') });
+  if (ev === 'RewardRedeemedEvent'){
+    const who = String(d.username || 'Someone'), title = String(d.reward_title || 'a reward'), id = 'rw-' + (d.id || `${t}-${who}`);
+    if (String(d.user_input || '').trim()) return { site: 'kick', kind: 'message', id, t, sender: who, login: who.toLowerCase(), color: '', userId: d.user_id ? String(d.user_id) : '', badges: [],
+      parts: [{ text: String(d.user_input) }], redeem: { title, color: /^#[0-9a-f]{6}$/i.test(d.reward_background_color || '') ? d.reward_background_color : '' } };
+    return event(id, who, [{ strong: who }, { text: ' redeemed ' }, { strong: title }]);
+  }
+  if (ev === 'KicksGifted'){
+    const who = String((d.sender && d.sender.username) || 'Someone'), g = d.gift || {};
+    return event(d.gift_transaction_id || 'kg-' + t, who, [{ strong: who }, { text: ' sent ' }, { strong: String(g.name || 'a gift') }, { text: ' · ' }, { strong: `${n(g.amount)} Kicks` }], d.message ? [{ text: String(d.message) }] : []);
+  }
+  if (ev === 'GiftedSubscriptionsEvent' || ev === 'LuckyUsersWhoGotGiftSubscriptionsEvent'){
+    const who = String(d.gifter_username || 'Someone'), got = d.gifted_usernames || d.usernames || [];
+    return event('gs-' + t + '-' + who, who, [{ strong: who }, { text: ' gifted ' }, { strong: plural(got.length || 1, 'sub', 'subs') }]);
+  }
+  if (ev === 'SubscriptionEvent' || ev === 'ChannelSubscriptionEvent'){
+    const who = String(d.username || 'Someone');
+    return event('sub-' + t + '-' + who, who, [{ strong: who }, { text: ' subscribed' }, ...(+d.months > 1 ? [{ text: ' · ' }, { strong: plural(d.months, 'month', 'months') }] : [])]);
+  }
+  if (ev === 'StreamHostEvent'){
+    const who = String(d.host_username || 'Someone');
+    return event('host-' + t + '-' + who, who, [{ strong: who }, { text: ' raided with ' }, { strong: plural(d.number_viewers, 'viewer', 'viewers') }], d.optional_message ? [{ text: String(d.optional_message) }] : []);
+  }
+  return null;
 }
 
 /* Kick: one frame of its live connection: {"push":{"channel":…,"pub":{"data":{"event":"App\\Events\\…","data":"<json>"}}}} */
@@ -119,6 +151,8 @@ function parseKick(frame){
     return { site: 'kick', kind: 'clear', login: String(u).toLowerCase(), t, until: d.permanent === false || mins ? t + mins * 60000 : 0, ...(by ? { by: String(by) } : {}) };
   }
   if (ev === 'ChatroomClearEvent') return { site: 'kick', kind: 'clearall', t: Date.now() };
+  const kickEvent = kickEvents(ev, d);
+  if (kickEvent) return kickEvent;
   if (ev !== 'ChatMessageEvent' || !d.id) return null;
   const s = d.sender || {}, idy = s.identity || {};
   const msg = {
@@ -178,6 +212,6 @@ function parseFeed(batch){
 }
 
 // (one object, so the tests can reach each site's reader)
-const feedParse = { parseFeed, parseTwitch, twitchSummary, parseKick, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds };
+const feedParse = { parseFeed, parseTwitch, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds };
 
 export { feedParse };

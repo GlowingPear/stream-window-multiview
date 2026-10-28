@@ -474,3 +474,17 @@ test('ALL: the title bar\'s mod button lists each site\'s mod view (where you\'r
   await page.$eval(btn, b => b.click());
   assert.deepEqual(await page.evaluate(() => window.__opened), ['https://dashboard.kick.com/moderator/quietkoala']);
 });
+
+test('ALL: a reward redeemed with text reads as a message with the reward\'s name; without text, Kicks sent and Kick\'s subs are events', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const KE = (event, data) => JSON.stringify({ push: { channel: 'chatroom_1', pub: { data: { event, data: JSON.stringify(data) } } } });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KE('RewardRedeemedEvent', { reward_title: 'Shoutout', username: 'driftwood_7', user_input: 'say hi to sam', reward_background_color: '#00F1FF' }),
+    KE('RewardRedeemedEvent', { reward_title: 'Hydrate', username: 'oakmoss', user_input: '' }), KE('KicksGifted', { gift_transaction_id: 'g1', sender: { username: 'Jshoti' }, gift: { name: 'Full Send', amount: 100 } }),
+    KF('GiftedSubscriptionsEvent', { gifter_username: 'brightwick', gifted_usernames: ['a', 'b'] })] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'custom-reward-id': 'abc', id: 'r1', 'display-name': 'tinroof' }, ':tinroof!t@t PRIVMSG #quietkoala :play the new map')] });
+  assert.deepEqual(await lines(page), ['al-m | Kdriftwood_7: say hi to samShoutout', 'al-ev | Koakmoss redeemed HydrateSee it on Kick ›', 'al-ev | KJshoti sent Full Send · 100 KicksSee it on Kick ›',
+    'al-ev | Kbrightwick gifted 2 subsSee it on Kick ›', 'al-m | Ttinroof: play the new mapChannel points']);
+  assert.equal(await page.$$eval('.all-list .al-rw', l => l.length), 2, 'redeems: their own edge');
+  assert.equal(await page.$eval('.al-tag-rw', e => e.style.getPropertyValue('--rw')), '#00F1FF', 'in the reward\'s colour');
+});

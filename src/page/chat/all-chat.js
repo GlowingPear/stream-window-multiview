@@ -141,7 +141,7 @@ function lineEl(m){
       element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.seeIt' }, title: `Show it in ${site}'s own chat`, onclick: () => seeIt(m) }, `See it on ${site} ›`));
   }
   const cls = ['al-m', m.toMe === 'reply' ? 'al-rep' : m.toMe === 'at' ? 'al-me' : '', m.bot ? 'al-bot' : '', m.deleted ? 'al-del' : '', m.highlight ? 'al-hl' : '',
-    m.announce ? 'al-ann al-ann-' + m.announce : ''].filter(Boolean).join(' ');
+    m.announce ? 'al-ann al-ann-' + m.announce : '', m.redeem ? 'al-rw' : ''].filter(Boolean).join(' ');
   const hideBot = m.bot && !botsShown && !m.open;
   const body = hideBot ? element('span', 'al-hid', 'bot message hidden') : element('span', 'al-txt', ...partsEl(m.parts));
   const tags = [
@@ -151,6 +151,7 @@ function lineEl(m){
     m.highlight && element('span', 'al-tag al-tag-hl', 'Highlighted'),
     m.announce && element('span', 'al-tag al-tag-ann', 'Announcement'),
     m.bits && element('span', 'al-tag al-tag-bits', `${m.bits} bits`),
+    m.redeem && element('span', { class: 'al-tag al-tag-rw', title: 'A reward redeemed with channel points', style: m.redeem.color ? { '--rw': m.redeem.color } : {} }, m.redeem.title || 'Channel points'),
     m.deleted && element('span', { class: 'al-tag al-tag-del' + (m.deleted.ai ? ' ai' : '') },
       m.deleted.ai ? ['Deleted', 'AI moderation', ...m.deleted.rules].join(' · ') : m.deleted.by === 'ban' ? 'Banned' : m.deleted.by === 'timeout' ? 'Timed out' + (m.deleted.secs ? ` · ${durText(m.deleted.secs)}` : '') : m.deleted.by === 'clear' ? 'Chat cleared' : 'Deleted'),
     m.bot && !botsShown && element('button', { type: 'button', class: 'al-show linkish', dataset: { cmd: 'all.showBot' }, onclick: e => { m.open = !m.open; e.target.closest('.al-m').replaceWith(lineEl(m)); } }, m.open ? 'Hide' : 'Show')
