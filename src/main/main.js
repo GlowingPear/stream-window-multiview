@@ -666,6 +666,15 @@ appIpc.on('raid:followed', (e, from, to) => {
   if (typeof from !== 'string' || typeof to !== 'string' || !validCh(normCh(from)) || !validCh(normCh(to))) return;
   [mainWin, streamsWin].forEach(w => { if (w && !w.isDestroyed() && w.webContents !== e.sender) w.webContents.send('raid:follow', from, to); });
 });
+// The pointer over a point of one of this window's own chat or stream pages (ALL's Twitch replies: Twitch only shows
+// a line's Reply under a real pointer). Only a move: no click, no keys; only a page this window holds.
+appIpc.handle('view:hover', (e, id, x, y) => {
+  if (!Number.isInteger(id) || !Number.isFinite(x) || !Number.isFinite(y)) return false;
+  const wc = webContents.fromId(id);
+  if (!wc || wc.isDestroyed() || wc.getType() !== 'webview' || wc.hostWebContents !== e.sender) return false;
+  wc.sendInputEvent({ type: 'mouseMove', x: Math.round(x), y: Math.round(y) });
+  return true;
+});
 appIpc.handle('chat:add', (_e, channel) => {
   if (typeof channel === 'string' && validCh(normCh(channel)) && mainWin) { mainWin.webContents.send('chat:add', channel); mainWin.focus(); }
 });

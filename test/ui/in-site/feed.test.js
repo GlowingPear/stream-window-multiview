@@ -90,3 +90,24 @@ test('the reader passes on what the site\'s connection brings, as the page reads
   assert.equal(heard[0].s, 'kick');
   assert.deepEqual(heard[0].raw.map(r => JSON.parse(r).push.pub.data.event), ['App\\Events\\ChatMessageEvent', 'App\\Events\\MessageDeletedEvent', 'RewardRedeemedEvent'], 'Kick\'s newer events have no App\\Events');
 });
+
+test('a Twitch reply: the line found and scrolled to, where the pointer goes; then its Reply (not the thread\'s) pressed; a line that isn\'t there: no', async t => {
+  const page = await openApp(t);
+  await addLines(page);
+  await page.evaluate(() => {
+    const line = document.querySelector('.chat-line__message'), box = document.createElement('div'); box.className = 'chat-line__message-container';
+    line.replaceWith(box); box.append(line);
+    const thread = document.createElement('button'); thread.setAttribute('aria-label', 'Reply in thread'); thread.onclick = () => window.__clicks.push('thread');
+    const rep = document.createElement('button'); rep.setAttribute('aria-label', 'Click to reply to @tinroof'); rep.onclick = () => window.__clicks.push('tw-reply');
+    window.__rep = rep;
+    box.append(thread, rep);
+  });
+  const at = await page.evaluate(() => window.twReplyAt('tw1'));
+  assert.ok(at && at.x > 0 && at.y >= 0, 'a point over the line');
+  assert.equal(await page.evaluate(() => window.twReplyAt('nope')), null);
+  assert.equal(await page.evaluate(() => window.twReplyPress('tw1')), 'ok');
+  assert.deepEqual(await page.evaluate(() => window.__clicks), ['tw-reply']);
+  await page.evaluate(() => window.__rep.setAttribute('aria-label', 'You can\'t reply now due to Followers-Only Chat'));
+  assert.equal(await page.evaluate(() => window.twReplyPress('tw1')), 'cant', 'Twitch says you can\'t');
+  assert.equal(await page.evaluate(() => window.twReplyPress('nope')), '', 'no such line (or no Reply on it)');
+});

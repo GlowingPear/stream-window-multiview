@@ -80,6 +80,32 @@ async function replyAgent(id){
   await new Promise(r => setTimeout(r, 150));
   return true;
 }
+// Twitch's reply, step 1: the line with that id, scrolled into view -> where the pointer goes over it (CSS pixels from
+// the page's top left), or null. Twitch only shows a line's Reply under a real pointer: the app moves it there.
+function twReplyAt(id){
+  const idOf = el => { const k = Object.keys(el).find(x => x.startsWith('__reactFiber')); for (let f = k && el[k], i = 0; f && i < 8; f = f.return, i++){ const m = (f.memoizedProps || {}).message; if (m && m.id) return m.id; } return ''; };
+  const line = [...document.querySelectorAll('.chat-line__message')].reverse().find(el => idOf(el) === id);
+  if (!line) return null;
+  line.scrollIntoView({ block: 'center' });
+  const r = line.getBoundingClientRect();
+  return r.width ? { x: r.left + r.width * 0.6, y: r.top + r.height / 2 } : null;
+}
+// Twitch's reply, step 2 (the pointer is over the line): its Reply ("Click to reply to @…"), which opens Twitch's reply
+// above the box -> 'ok'; 'cant' (Twitch says you can't reply there now: followers-only and the like); '' (no Reply: your
+// own message, or the line's gone)
+async function twReplyPress(id){
+  const idOf = el => { const k = Object.keys(el).find(x => x.startsWith('__reactFiber')); for (let f = k && el[k], i = 0; f && i < 8; f = f.return, i++){ const m = (f.memoizedProps || {}).message; if (m && m.id) return m.id; } return ''; };
+  for (let t = 0; t < 10; t++){
+    const line = [...document.querySelectorAll('.chat-line__message')].reverse().find(el => idOf(el) === id);
+    const area = line && (line.closest('.chat-line__message-container') || line.parentElement || line);
+    const labels = area ? [...area.querySelectorAll('button')].map(x => [x, x.getAttribute('aria-label') || '']) : [];
+    const b = labels.find(([, l]) => /^click to reply\b/i.test(l));
+    if (b){ b[0].click(); await new Promise(r => setTimeout(r, 150)); return 'ok'; }
+    if (labels.some(([, l]) => /can.t reply/i.test(l))) return 'cant';
+    await new Promise(r => setTimeout(r, 80));
+  }
+  return '';
+}
 // Clicks the sender's name on the message with that id, so the site opens its own card for them. Self-contained (it runs
 // in the page on its own). -> whether it did
 function profileAgent(id){
@@ -100,4 +126,4 @@ function profileAgent(id){
   return true;
 }
 
-export { feedAgent, profileAgent, replyAgent, seekAgent };
+export { feedAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress };

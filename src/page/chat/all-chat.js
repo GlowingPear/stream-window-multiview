@@ -3,7 +3,7 @@ import { SmvSpam } from '../alerts/spam.js';
 import { SMILEY, emoteCache, openEmotePicker, pickEmote, renderEmoteList, suggestEmote, withEmotes } from './all-emotes.js';
 import { feedParse } from './feed-parse.js';
 import { wins } from '../core.js';
-import { feedAgent, profileAgent, replyAgent, seekAgent } from '../in-site/feed.js';
+import { feedAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
 import { bellVars, myName } from '../panels/bell/bell.js';
@@ -12,7 +12,7 @@ import { linkOpt, nameOf, streamerBots, streamerOf } from '../platforms/linked.j
 import { PLAT_NAME, modIs, modUrl, openModView, platOf, platform } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { element } from '../shared/element.js';
-import { keyName } from '../shared/env.js';
+import { DESKTOP, keyName } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { icon } from '../shared/icons.js';
 import { fromSite } from '../shared/incoming.js';
@@ -20,7 +20,7 @@ import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { addTab, cycleTabs, frameOf, leaderOf, renderSiteTabs, showTab, tabChannels } from '../windows/frames.js';
-import { askIn, runIn } from '../windows/view.js';
+import { askIn, runIn, viewId, zoomOf } from '../windows/view.js';
 import { syncModBtn } from '../windows/windows.js';
 
 /* ---- ALL: a linked streamer's Kick, Twitch and YouTube chats as one list (issue #203) ----
@@ -344,8 +344,22 @@ const SEND_FAIL = {
 const sender = {
   mod: (m, action, id) => askIn(m.view, `(${modAgent})(${JSON.stringify(action)}, ${JSON.stringify(id)})`),
   send: (m, text) => askIn(m.view, `(${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)})`),
-  reply: (m, id, text) => askIn(m.view, `(async () => (await (${replyAgent})(${JSON.stringify(id)})) ? (${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)}) : 'no-reply')()`)
+  reply: (m, id, text, who) => platform(m.channel).threadedReplies === 'pointer' ? pointerReply(m, id, text, who)
+    : askIn(m.view, `(async () => (await (${replyAgent})(${JSON.stringify(id)})) ? (${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)}) : 'no-reply')()`)
 };
+// Where the site's Reply only shows under a real pointer (Twitch): the line found and scrolled to, the pointer moved over
+// it in that (hidden) chat, its Reply pressed, then the text sent as the reply. No Reply on it (your own message): as an @.
+async function pointerReply(m, id, text, who){
+  const send = t => askIn(m.view, `(${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(t)})`);
+  const at = await askIn(m.view, `(${twReplyAt})(${JSON.stringify(id)})`);
+  if (!at) return 'no-reply';
+  const z = zoomOf(m.view);
+  if (!await window.kmv.viewHover(viewId(m.view), at.x * z, at.y * z)) return 'no-reply';
+  const r = await askIn(m.view, `(${twReplyPress})(${JSON.stringify(id)})`);
+  return r === 'ok' ? send(text) : r === 'cant' ? 'disabled' : who ? send(`@${who.replace(/^@/, '')} ${text}`) : 'no-reply';
+}
+// Whether a reply on that site threads (its own Reply), or is an @ of them
+const threads = ch => { const t = platform(ch).threadedReplies; return t === true || (t === 'pointer' && DESKTOP && !!window.kmv?.viewHover); };
 
 /* ---- replies, @ and names: the box locks to one site until it's sent or cancelled ---- */
 function startReply(m){
@@ -367,7 +381,7 @@ function renderLock(view, w){
   bar.hidden = !l; if (!l) return bar.replaceChildren();
   const p = PLAT_NAME[platOf(l.ch)];
   const words = l.kind === 'reply'
-    ? [element('span', 'all-rb-t', 'Replying to ', element('b', null, l.msg.sender), ' on ', element('b', { class: 'all-rb-site' }, p), platform(l.ch).threadedReplies ? '' : ', as an @mention'),
+    ? [element('span', 'all-rb-t', 'Replying to ', element('b', null, l.msg.sender), ' on ', element('b', { class: 'all-rb-site' }, p), threads(l.ch) ? '' : ', as an @mention'),
        element('span', 'all-rb-q', '· ' + l.msg.parts.map(x => x.text || x.name).join(''))]
     : l.kind === 'emote' ? [element('span', 'all-rb-t', 'Emotes from ', element('b', { class: 'all-rb-site' }, p), ` · sends on ${p} only`)]
     : [element('span', 'all-rb-t', 'Mentioning on ', element('b', { class: 'all-rb-site' }, p), ` · ${p} names only`)];
@@ -518,7 +532,7 @@ const sameText = (a, b) => a.replace(/\s+/g, ' ').trim().toLowerCase() === b.rep
 async function sendNow(view, w){
   let text = view.input.value.trim(); const ch = sendSite(w); if (!text || !ch) return;
   if (view.sending) return flash('Still sending the last one');
-  const lock = view.lock, threaded = !!(lock && lock.kind === 'reply' && platform(ch).threadedReplies);
+  const lock = view.lock, threaded = !!(lock && lock.kind === 'reply' && threads(ch));
   // a reply where the site has none from here: an @ of them, in front
   if (lock && lock.kind === 'reply' && !threaded && !new RegExp(`^@${lock.msg.login}\\b`, 'i').test(text)) text = `@${lock.msg.sender.replace(/^@/, '')} ${text}`;
   const site = platOf(ch), f = feedOf(view.s);
@@ -532,7 +546,7 @@ async function deliver(view, w, p){
   view.sending = true; setMine(p, 'sending');
   let r;
   if (!m) r = 'gone';
-  else try { r = p.threaded ? await sender.reply(m, p.lock.msg.id, p.send || p.text) : await sender.send(m, p.send || p.text); } catch { r = 'error'; }
+  else try { r = p.threaded ? await sender.reply(m, p.lock.msg.id, p.send || p.text, p.lock.msg.sender) : await sender.send(m, p.send || p.text); } catch { r = 'error'; }
   view.sending = false;
   if (p.state === 'seen') return;   // (its chat brought it back already)
   if (r === 'sent'){ setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
@@ -643,7 +657,7 @@ function init(){
   store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncAll());
   store.watch(['mod'], () => { redrawAll(); wins.forEach(syncModBtn); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
   window.allChat = { sender, modKnown, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch)); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
