@@ -175,3 +175,16 @@ test('the mod button: on a site\'s tab where you moderate it; in ALL where you m
   await a.win.keyboard.press('Escape');
   await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
 });
+
+test('the pointer moved over a chat page (ALL\'s Twitch replies): only a page this window holds; only a move', T, async () => {
+  await a.win.evaluate(() => { window.linkedApi.setOn(true); window.linkedApi.link('delta', 'tw:delta'); window.frames_.openStreamer('delta', 'chat', ['delta']); });
+  await chatReady('delta');
+  await inChat('delta', () => { window.__moves = []; document.addEventListener('mousemove', e => window.__moves.push([e.clientX, e.clientY])); document.addEventListener('click', () => window.__moves.push('click')); });
+  const id = await a.win.evaluate(() => window.openWins().find(w => w.kind === 'chat' && w.channel === 'delta').view.getWebContentsId());
+  assert.equal(await a.win.evaluate(id => window.kmv.viewHover(id, 40, 30), id), true);
+  await untilIn('delta', () => window.__moves.length > 0, 'the page saw the pointer');
+  assert.deepEqual(await inChat('delta', () => window.__moves), [[40, 30]], 'a move, no click');
+  for (const bad of [[999999, 1, 1], ['x', 1, 1], [id, NaN, 1]])
+    assert.equal(await a.win.evaluate(b => window.kmv.viewHover(...b), bad), false, JSON.stringify(bad));
+  await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
+});

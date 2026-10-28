@@ -7,7 +7,7 @@ const NOT_CHANNELS = ['directory', 'videos', 'settings', 'search', 'downloads', 
 const twitch = {
   id: 'twitch', name: 'Twitch', letter: 'T',
   mentions: true,
-  threadedReplies: false,   // ALL replies with an @ (its Reply only shows for a real pointer over the line)
+  threadedReplies: 'pointer',   // ALL replies with its own Reply, which only shows under a real pointer: the desktop app moves it (else an @)
   // ALL's timeout and ban: Twitch's chat commands
   timeoutCmd: (login, secs) => `/timeout ${login} ${secs}`,
   banCmd: login => `/ban ${login}`,
