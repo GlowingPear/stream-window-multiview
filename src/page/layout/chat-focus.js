@@ -42,6 +42,7 @@ function startSwapDrag(e, w, bar){
     swapGhost.textContent = t ? winName(t) + ' goes here' : 'Drop it on another window to swap';
   };
   const move = ev => {
+    if (ev.pointerId !== e.pointerId) return;
     const dx = ev.clientX - sx, dy = ev.clientY - sy;
     if (!moved){
       if (Math.hypot(dx, dy) < 5) return;
@@ -57,8 +58,9 @@ function startSwapDrag(e, w, bar){
       .reduce((a, o) => (!a || (+o.el.style.zIndex || 0) > (+a.el.style.zIndex || 0) ? o : a), null);   // the one on top
     if (t !== target){ target = t; light(t); }
   };
-  const up = () => {
-    bar.removeEventListener('pointermove', move); bar.removeEventListener('pointerup', up); bar.removeEventListener('pointercancel', up);
+  const up = ev => {
+    if (ev.pointerId !== e.pointerId) return;
+    removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
     document.body.classList.remove('dragging');
     if (!moved) return;
     w.el.classList.remove('lifted', 'shrunk'); w.el.style.transformOrigin = '';
@@ -95,7 +97,9 @@ function startSwapDrag(e, w, bar){
     }
     save(); refreshPicks();
   };
-  bar.addEventListener('pointermove', move); bar.addEventListener('pointerup', up); bar.addEventListener('pointercancel', up);
+  // (on the window, not the bar: the bar has the pointer while dragging, but can lose it, and then the let-go went
+  // elsewhere and the window stayed lifted)
+  addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', up);
 }
 function swapColOrder(a, b){
   const order = buildCols().map(c => c.key), i = order.indexOf(a), j = order.indexOf(b);
