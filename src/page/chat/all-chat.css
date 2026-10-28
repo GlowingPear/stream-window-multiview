@@ -163,3 +163,4 @@
 .all-durs button{flex:1;height:24px;border:0;border-radius:5px;background:var(--panel2);color:var(--text);font:inherit;font-size:11px;font-weight:650;cursor:pointer}
 .all-durs button.on{background:var(--accent);color:var(--accent-ink)}
 .all-durs button:hover:not(.on){background:var(--line2)}
+.al-m:has(.al-show:hover) .al-hb{display:none}   /* (it never covers a line's Show / Hide) */
