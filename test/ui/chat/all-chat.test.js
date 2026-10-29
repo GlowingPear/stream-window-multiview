@@ -495,7 +495,7 @@ test('ALL: a reward redeemed with text reads as a message with the reward\'s nam
     KF('GiftedSubscriptionsEvent', { gifter_username: 'brightwick', gifted_usernames: ['a', 'b'] })] });
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'custom-reward-id': 'abc', id: 'r1', 'display-name': 'tinroof' }, ':tinroof!t@t PRIVMSG #quietkoala :play the new map')] });
   assert.deepEqual(await lines(page), ['al-m | Kdriftwood_7: say hi to samShoutout', 'al-ev | Koakmoss redeemed HydrateSee it on Kick ›', 'al-ev | KJshoti sent Full Send · 100 KicksSee it on Kick ›',
-    'al-ev | Kbrightwick gifted 2 subsSee it on Kick ›', 'al-m | Ttinroof: play the new mapChannel points']);
+    'al-ev | Kbrightwick gifted 2 subsSee it on Kick ›2 recipients', 'al-m | Ttinroof: play the new mapChannel points']);
   assert.equal(await page.$$eval('.all-list .al-rw', l => l.length), 2, 'redeems: their own edge');
   assert.equal(await page.$eval('.al-tag-rw', e => e.style.getPropertyValue('--rw')), '#00F1FF', 'in the reward\'s colour');
 });
@@ -633,6 +633,44 @@ test('ALL honours the chats\' settings: 7TV, BetterTTV and FrankerFaceZ emotes i
   const data = JSON.parse(await page.evaluate(() => window.__copied));
   assert.equal(data.sender, 'zed'); assert.match(data.raw, /PRIVMSG #quietkoala :check this$/);
   await page.evaluate(() => window.devTools.setDev(false));
+});
+
+test('ALL: gifted subs say who got them: Twitch\'s line for each on its "gifted N subs" line (the same gift id), Kick\'s from its list; yours lit, and To you', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const N = (id, tags) => TW({ 'display-name': 'BrightWick', login: 'brightwick', id, ...tags }, ':tmi.twitch.tv USERNOTICE #quietkoala');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [N('g1', { 'msg-id': 'submysterygift', 'msg-param-mass-gift-count': '3', 'msg-param-community-gift-id': '777' }),
+    N('g2', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'LowTide', 'msg-param-recipient-user-name': 'lowtide', 'msg-param-community-gift-id': '777' }),
+    N('g3', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'Drift', 'msg-param-recipient-user-name': 'drift', 'msg-param-community-gift-id': '777' }),
+    N('g4', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'Sol', 'msg-param-recipient-user-name': 'sol' })] });
+  assert.deepEqual(await lines(page), ['al-ev | TBrightWick gifted 3 subsSee it on Twitch ›2 recipients', 'al-ev | TBrightWick gifted a sub to SolSee it on Twitch ›'], 'one line for the gift; a gift of its own stays a line');
+  await page.click('.al-gto');
+  assert.deepEqual(await page.$$eval('.al-gl .al-gc', l => l.map(e => e.textContent)), ['LowTide', 'Drift']);
+  assert.equal(await page.getAttribute('.al-gto', 'aria-expanded'), 'true');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [N('g5', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'MeTwitch', 'msg-param-recipient-user-name': 'metwitch', 'msg-param-community-gift-id': '777' })] });
+  assert.deepEqual(await page.$$eval('.al-gl .al-gc', l => l.map(e => e.textContent + (e.classList.contains('me') ? '*' : ''))), ['LowTide', 'Drift', 'MeTwitch*'], 'still open, yours lit');
+  assert.match(await page.textContent('.al-gift'), /To you/);
+  await page.click('.al-gto');
+  assert.equal(await page.locator('.al-gl .al-gc').count(), 0, 'closed: the names go, the button stays');
+  // Kick: its gift has the names
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('GiftedSubscriptionsEvent', { gifted_usernames: ['mekick', 'Koala2'], gifter_username: 'Yajeli', correlation_id: 'c1' })] });
+  assert.match((await lines(page)).pop(), /^al-ev \| KYajeli gifted 2 subsSee it on Kick ›2 recipientsTo you$/);
+});
+
+test('ALL: pressing or typing in it is seeing its chats: their alerts stop (the tabs\' and the window\'s glow); one that comes while you\'re in it only glows a moment', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const glow = () => page.$$eval('#stage .win.chat', l => l.map(e => ['al-1', 'al-2', 'al-3', 'al-brief'].filter(c => e.classList.contains(c)).join(' ')).filter(Boolean));
+  await page.evaluate(() => window.raiseAlert('tw:quietkoala', 'mention'));
+  assert.deepEqual(await glow(), ['al-1', 'al-1'], 'its hidden tab, and the window (its ALL) show it');
+  await page.click('.all-list');
+  assert.deepEqual(await glow(), [], 'seen in ALL');
+  assert.equal(await page.evaluate(() => window.openWins().find(o => o.channel === 'tw:quietkoala').alert), null);
+  // while you're in ALL (its box): a moment's glow, not one that stays
+  await page.focus('.all-in');
+  await page.evaluate(() => window.raiseAlert('quietkoala', 'mention'));
+  assert.deepEqual(await page.evaluate(() => window.openWins().filter(o => o.kind === 'chat').map(o => !!o.alert)), [false, false]);
+  await page.locator('.all-in').blur();
 });
 
 test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley opens its picker; picking one locks the box to that site and sends it as the site writes it', async t => {

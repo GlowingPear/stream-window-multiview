@@ -68,6 +68,9 @@ function parseTwitch(line){
     // an announcement is a message the streamer or a mod highlighted, not an event
     if (msg.event === 'announcement'){ msg.kind = 'message'; msg.announce = (prm.color || 'PRIMARY').toLowerCase(); delete msg.event; delete msg.text; }
     else msg.summary = twitchSummary(msg.event, msg.sender, prm, msg.text);
+    // gifted subs: who got them. Twitch sends the "gifted 5 subs" line, then one line for each sub, with the same gift id
+    if (msg.event === 'submysterygift') msg.gift = { id: prm['community-gift-id'] || '', count: +prm['mass-gift-count'] || 0, to: [] };
+    if (msg.event === 'subgift') msg.giftTo = { name: prm['recipient-display-name'] || prm['recipient-user-name'] || '', login: (prm['recipient-user-name'] || '').toLowerCase(), group: prm['community-gift-id'] || '' };
   }
   return msg;
 }
@@ -124,8 +127,9 @@ function kickEvents(ev, d){
     return event(d.gift_transaction_id || 'kg-' + t, who, [{ strong: who }, { text: ' sent ' }, { strong: String(g.name || 'a gift') }, { text: ' · ' }, { strong: `${n(g.amount)} Kicks` }], d.message ? [{ text: String(d.message) }] : []);
   }
   if (ev === 'GiftedSubscriptionsEvent' || ev === 'LuckyUsersWhoGotGiftSubscriptionsEvent'){
-    const who = String(d.gifter_username || 'Someone'), got = d.gifted_usernames || d.usernames || [];
-    return event('gs-' + t + '-' + who, who, [{ strong: who }, { text: ' gifted ' }, { strong: plural(got.length || 1, 'sub', 'subs') }]);
+    const who = String(d.gifter_username || 'Someone'), got = (Array.isArray(d.gifted_usernames) ? d.gifted_usernames : Array.isArray(d.usernames) ? d.usernames : []).map(String);
+    return { ...event('gs-' + t + '-' + who, who, [{ strong: who }, { text: ' gifted ' }, { strong: plural(got.length || 1, 'sub', 'subs') }]),
+      gift: { id: String(d.correlation_id || ''), count: got.length, to: got.map(u => ({ name: u, login: u.toLowerCase() })) } };
   }
   if (ev === 'SubscriptionEvent' || ev === 'ChannelSubscriptionEvent'){
     const who = String(d.username || 'Someone');

@@ -269,3 +269,15 @@
 .all-send-b:disabled svg path+path{stroke:var(--panel2)}
 .all-send-b.busy{background:color-mix(in srgb,var(--site,var(--accent)) 22%,var(--panel2));color:transparent}
 .all-send-b.busy::after{content:'';position:absolute;inset:10px;border-radius:50%;border:2px solid var(--site,var(--accent));border-right-color:transparent;animation:al-spin .8s linear infinite}
+/* gifted subs: who got them (the line's button opens their names; yours lit) */
+.al-ev.al-gift{flex-wrap:wrap}
+.al-gto{flex:none;display:inline-flex;align-items:center;gap:3px;height:20px;padding:0 7px;border:1px solid var(--line2);border-radius:999px;background:color-mix(in srgb,var(--text) 6%,transparent);
+  color:var(--text);font:inherit;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.al-gto:hover{border-color:color-mix(in srgb,var(--accent) 55%,transparent)}
+.al-gto i{display:grid}.al-gto svg{width:11px;height:11px;transition:transform .18s}
+.al-gto[aria-expanded=true] svg{transform:rotate(180deg)}
+.al-gl{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:0 0 1px 23px;max-height:132px;overflow-y:auto}
+.al-gl .al-tag{margin-left:0}
+.al-gc{padding:1px 7px;line-height:18px;border-radius:999px;background:color-mix(in srgb,var(--text) 8%,transparent);font-size:11px;font-weight:600}
+.al-gc.me{background:var(--accent);color:var(--accent-ink)}
+.al-ev.al-gift-me{box-shadow:inset 3px 0 0 var(--accent)}
