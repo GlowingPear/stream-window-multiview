@@ -41,6 +41,24 @@ function setZoom(view, factor){ try { view.setZoomFactor(factor); } catch {} }
 // the page still fits the window). For making one chat bigger than the others of its site.
 function setViewScale(view, factor){ if (view && view.style) view.style.zoom = factor === 1 ? '' : String(factor); }
 function zoomOf(view){ try { return view && view.getZoomFactor ? view.getZoomFactor() || 1 : 1; } catch { return 1; } }
+// A real click (as the pointer's, which a site can't tell from yours) at a point of the view's page, in its CSS pixels
+// (scaled by its zoom: the view takes the point in its own pixels; setViewScale doesn't change them): for a button a
+// site only takes from a real press (YouTube's Skip ad, its chat's Send). The keyboard stays where it was in this
+// page (the click moves it into the view), and the page isn't told you clicked into the view (appPressAt: see
+// windows/views.js). false: no view to click.
+function pressIn(view, x, y){
+  if (!view || !view.sendInputEvent) return false;
+  const keep = document.activeElement, z = zoomOf(view);
+  if (keep !== view){
+    const back = () => { if (keep && keep !== document.body && keep.isConnected) keep.focus(); else view.blur(); };
+    view.addEventListener('focus', back, { once: true });
+    // the view doesn't always say it took the keyboard (Electron 44): look again a few times
+    [50, 200, 500].forEach(ms => setTimeout(() => { if (document.activeElement === view) back(); }, ms));
+    setTimeout(() => view.removeEventListener('focus', back), 1000);
+  }
+  view.appPressAt = Date.now();
+  try { ['mouseDown', 'mouseUp'].forEach(type => view.sendInputEvent({ type, x: Math.round(x * z), y: Math.round(y * z), button: 'left', clickCount: 1 })); return true; } catch { return false; }
+}
 function setMuted(view, on){ try { view.setAudioMuted(on); } catch {} }
 function reloadView(view){ try { view.reload(); } catch {} }
 // Loads an address in the view (also the one it's already on, which setting src again may not do)
@@ -57,4 +75,5 @@ function focusView(view, { take = false } = {}){
 }
 function viewId(view){ try { return view && view.getWebContentsId ? view.getWebContentsId() : null; } catch { return null; } }
 
-export { addCss, askIn, focusView, loadView, reloadView, runIn, setMuted, setViewScale, setZoom, viewId, zoomOf };
+export { addCss, askIn, focusView, loadView, pressIn, reloadView, runIn, setMuted, setViewScale, setZoom, viewId,
+  zoomOf };

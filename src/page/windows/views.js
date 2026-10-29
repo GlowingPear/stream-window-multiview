@@ -42,7 +42,7 @@ import { liftAudioSoon, pushVol } from './windows.js';
 // click can be heard twice: all of it is the same the second time.
 function viewTouched(w, frame){
   if (!wins.includes(w) || w.view !== frame) return;
-  if (Date.now() - (frame.skipAt || 0) < 1000) return;                         // Skip YouTube ads did
+  if (Date.now() - (frame.appPressAt || 0) < 1000) return;                     // the app's own click (pressIn: Skip ad, ALL's send)
   focusWin(w); clearAlert(w); readChat(w.channel); viewPressed();
   if (w.kind === 'chat' && blowOn) blowUp(w);
 }
