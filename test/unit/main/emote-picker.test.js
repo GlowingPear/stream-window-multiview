@@ -32,9 +32,10 @@ test('Twitch: the channel\'s, your other sets, and Twitch\'s own', () => {
     { id: 's1', owner: { login: 'alpha' }, emotes: [{ id: 'e1', token: 'alphaHi' }] },
     { id: 's2', owner: { login: 'beta', displayName: 'Beta', profileImageURL: 'https://static-cdn.jtvnw.net/beta-300x300.png' }, emotes: [{ id: 'e2', token: 'betaWave' }] },
     { id: 's3', owner: { login: 'beta', displayName: 'Beta', profileImageURL: 'https://static-cdn.jtvnw.net/beta-300x300.png' }, emotes: [{ id: 'e3', token: 'betaHype' }] },
-    { id: '0', owner: null, emotes: [{ id: '25', token: 'Kappa' }, { token: 'noid' }] }
+    { id: '0', owner: null, emotes: [{ id: '25', token: 'Kappa' }, { token: 'noid' }] },
+    { id: 'ht', owner: { login: 'twitchhypetrain', displayName: 'TwitchHypeTrain' }, emotes: [{ id: 'h1', token: 'HypeChimp' }] }
   ] } } }, 'Alpha');
-  assert.deepEqual(g.map(x => [x.label, x.emotes.map(e => e.name)]), [['Channel', ['alphaHi']], ['Sub emotes', ['betaWave', 'betaHype']], ['Twitch', ['Kappa']]]);
+  assert.deepEqual(g.map(x => [x.label, x.emotes.map(e => e.name)]), [['Channel', ['alphaHi']], ['Sub emotes', ['betaWave', 'betaHype']], ['Twitch', ['Kappa']], ['Hype Train', ['HypeChimp']]], 'the hype train\'s rewards: Twitch\'s, not a channel\'s');
   assert.equal(g[1].emotes[0].from, 'Beta', 'each with its channel');
   assert.deepEqual(g[1].channels, [{ name: 'Beta', pic: 'https://static-cdn.jtvnw.net/beta-300x300.png' }], 'a channel with two sets (its tiers): once');
   assert.deepEqual(g[2].emotes[0], { name: 'Kappa', url: 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0', send: 'Kappa' });

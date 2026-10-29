@@ -1,6 +1,7 @@
 import { sendSite, setLock } from './all-chat.js';
 import { PLAT_NAME, platOf } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
+import { chAvatar } from '../windows/channel-picker.js';
 
 /* ---- Emotes in ALL's box (chat/all-chat.js): :name suggests the send site's emotes, the smiley opens its picker ----
    The desktop app gathers each channel's emotes with their pictures (main/emote-picker.js): Kick's channel, site and
@@ -120,7 +121,8 @@ async function openEmotePicker(view, w){
     element('option', { value: '' }, 'All emotes'),
     ...groups.flatMap(g => [element('option', { value: g.id }, g.label), ...secs.filter(x => x.chan && x.group === g.id).map(x => element('option', { value: x.key }, x.label))]));
   pick.value = show;
-  pick.ddIcon = o => { const x = secs.find(y => y.chan && y.key === o.value); return x ? chPic(x) : null; };   // (the channels' pictures in its list)
+  pick.ddBounds = () => ep.getBoundingClientRect();   // (its list stays inside the picker)
+  pick.ddIcon = o => { const x = secs.find(y => y.chan && y.key === o.value); return x ? chPic(x) : kindIcon(o.value, ch); };   // (each kind's icon, the channels' pictures)
   const grid = element('div', { class: 'all-ep-grid', role: 'listbox' });
   const draw = () => {
     const q = search.value.trim().toLowerCase();
@@ -130,7 +132,7 @@ async function openEmotePicker(view, w){
       const list = (q ? x.emotes.filter(e => e.name.toLowerCase().includes(q)) : x.emotes).slice(0, q ? Math.max(0, 300 - n) : Infinity);
       n += list.length;
       if (!list.length) return [];
-      return [element('div', { class: 'all-ep-sec' + (x.chan ? ' chan' : ''), role: 'presentation' }, x.chan && chPic(x), x.label, x.chan && element('small', null, 'Sub emotes')),
+      return [element('div', { class: 'all-ep-sec' + (x.chan ? ' chan' : ''), role: 'presentation' }, x.chan ? chPic(x) : kindIcon(x.group, ch), x.label, x.chan && element('small', null, 'Sub emotes')),
         ...list.map(e => element('button', { type: 'button', role: 'option', class: 'all-ep-e', title: e.name + (e.from ? ` · ${e.from}` : e.subs ? ' (subscribers)' : ''), 'aria-label': e.name, dataset: { cmd: 'all.emotePick' },
           onclick: () => { pickEmote(view, w, { ...e, ch }); } }, emoteImg(e)))];
     });
@@ -145,6 +147,23 @@ async function openEmotePicker(view, w){
   search.focus();
 }
 // A channel's picture (its first letter until there is one)
+// Each kind's icon, in the list beside the search and its heading: the channel's own picture, the sites' badges, the
+// add-ons' letters (as their emotes' cards show them), and a drawing for the rest
+const KIND_SVG = {
+  all: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg>',
+  yours: '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
+  collectibles: '<svg viewBox="0 0 24 24"><path d="M7 4h10l4 5-9 11L3 9z"/><path class="ln" d="M3 9h18M9 4l3 16 3-16"/></svg>',
+  hypetrain: '<svg viewBox="0 0 24 24"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3h9A2.5 2.5 0 0 1 19 5.5V16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path class="ln" d="M5 11h14M8 21l2-3M16 21l-2-3"/><circle class="hole" cx="8.5" cy="14.5" r="1.2"/><circle class="hole" cx="15.5" cy="14.5" r="1.2"/></svg>'
+};
+const ADDON_LETTER = { '7tv': '7', bttv: 'B', ffz: 'F' };
+function kindIcon(id, ch){
+  const kind = String(id || 'all').replace(/^(kick|twitch)-/, '');
+  if (kind === 'channel') return chAvatar(ch);
+  if (kind === 'global'){ const p = platOf(ch); return element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]); }
+  if (ADDON_LETTER[kind]) return element('span', 'all-ep-ic addon', ADDON_LETTER[kind]);
+  const svg = kind === 'emoji' ? SMILEY : KIND_SVG[kind];
+  return svg ? element('span', { class: 'all-ep-ic ' + kind, html: svg }) : null;
+}
 const chPic = c => element('span', 'all-ep-pic', c.pic ? element('img', { src: c.pic, alt: '', referrerPolicy: 'no-referrer', loading: 'lazy' }) : (c.label || c.name || '?')[0]);   // (a circle: in its heading, and in the list beside the search)
 const SMILEY = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1 1.3 2.2 2 3.5 2s2.5-.7 3.5-2M9 9.5h.01M15 9.5h.01"/></svg>';
 

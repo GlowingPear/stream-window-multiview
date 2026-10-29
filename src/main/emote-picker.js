@@ -43,6 +43,8 @@ function kickGroups(d, slug) {
   ].filter(Boolean);
 }
 // Twitch: currentUser { emoteSets { id owner { login displayName profileImageURL } emotes { id token } } }: what your account can use
+// Twitch's own sets under accounts of their own, not channels: its hype trains' rewards
+const TWITCH_OWN = new Set(['twitch', 'twitchhypetrain']);
 function twitchGroups(d, login) {
   const sets = d && d.data && d.data.currentUser && d.data.currentUser.emoteSets;
   if (!Array.isArray(sets)) return null;
@@ -51,9 +53,10 @@ function twitchGroups(d, login) {
   const of = test => sets.filter(s => s && Array.isArray(s.emotes) && test(s)).flatMap(s => s.emotes.map(emote));
   return [
     group('twitch-channel', 'Channel', of(s => owner(s) === String(login).toLowerCase())),
-    subGroup('twitch-yours', 'Sub emotes', sets.filter(s => s && Array.isArray(s.emotes) && owner(s) && owner(s) !== String(login).toLowerCase() && owner(s) !== 'twitch')
+    subGroup('twitch-yours', 'Sub emotes', sets.filter(s => s && Array.isArray(s.emotes) && owner(s) && owner(s) !== String(login).toLowerCase() && !TWITCH_OWN.has(owner(s)))
       .map(s => ({ name: String(s.owner.displayName || s.owner.login), pic: s.owner.profileImageURL, emotes: s.emotes.map(emote) }))),
-    group('twitch-global', 'Twitch', of(s => !owner(s) || owner(s) === 'twitch'))
+    group('twitch-global', 'Twitch', of(s => !owner(s) || owner(s) === 'twitch')),
+    group('twitch-hypetrain', 'Hype Train', of(s => owner(s) === 'twitchhypetrain'))
   ].filter(Boolean);
 }
 // 7TV: users/<platform>/<id> -> { emote_set: { emotes: [{ name, data: { host: { url } } }] } }
