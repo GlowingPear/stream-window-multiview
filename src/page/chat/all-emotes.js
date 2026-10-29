@@ -111,25 +111,33 @@ async function openEmotePicker(view, w){
   let tab = view.epTab && groups.some(g => g.id === view.epTab) ? view.epTab : groups[0].id;
   const search = element('input', { type: 'search', class: 'all-ep-q', placeholder: `Search ${p} emotes`, spellcheck: false, dataset: { cmd: 'all.emoteSearch' } });
   const tabs = element('div', { class: 'all-ep-tabs', role: 'tablist' }), grid = element('div', { class: 'all-ep-grid', role: 'listbox' });
+  const chs = element('div', 'all-ep-chs');   // (Sub emotes: a picture for each channel, as the sites' pickers have; a press goes to its emotes)
+  const chPic = c => c.pic ? element('img', { src: c.pic, alt: '', referrerPolicy: 'no-referrer', loading: 'lazy' }) : element('i', null, (c.name || '?')[0]);
   const draw = () => {
     const q = search.value.trim().toLowerCase();
     tabs.replaceChildren(...groups.map(g => element('button', { type: 'button', role: 'tab', class: g.id === tab && !q ? 'on' : '', 'aria-selected': String(g.id === tab && !q), dataset: { cmd: 'all.emoteTab' },
       onclick: () => { tab = view.epTab = g.id; search.value = ''; draw(); } }, g.label)));
-    const list = q ? groups.flatMap(g => g.emotes).filter(e => e.name.toLowerCase().includes(q)).slice(0, 300) : (groups.find(g => g.id === tab) || groups[0]).emotes;
-    // (Sub emotes: each channel's under its name, as the sites' pickers group them)
+    const g = groups.find(x => x.id === tab) || groups[0], list = q ? groups.flatMap(x => x.emotes).filter(e => e.name.toLowerCase().includes(q)).slice(0, 300) : g.emotes;
+    // (Sub emotes: each channel's under its picture and name, as the sites' pickers group them)
+    const sec = new Map(), byName = new Map((g.channels || []).map(c => [c.name, c]));
     let from = null;
     const cells = list.flatMap(e => {
       const b = element('button', { type: 'button', role: 'option', class: 'all-ep-e', title: e.name + (e.from ? ` · ${e.from}` : e.subs ? ' (subscribers)' : ''), 'aria-label': e.name, dataset: { cmd: 'all.emotePick' },
         onclick: () => { pickEmote(view, w, { ...e, ch }); } }, emoteImg(e));
       if (q || !e.from || e.from === from) return [b];
       from = e.from;
-      return [element('div', { class: 'all-ep-sec', role: 'presentation' }, e.from), b];
+      const h = element('div', { class: 'all-ep-sec', role: 'presentation' }, chPic(byName.get(e.from) || { name: e.from }), e.from);
+      sec.set(e.from, h);
+      return [h, b];
     });
+    chs.hidden = !!q || !g.channels || g.channels.length < 2;
+    chs.replaceChildren(...(chs.hidden ? [] : g.channels.map(c => element('button', { type: 'button', title: c.name, 'aria-label': `${c.name}'s emotes`, dataset: { cmd: 'all.emoteChannel' },
+      onclick: () => { const h = sec.get(c.name); if (h) grid.scrollTop = h.offsetTop; } }, chPic(c)))));
     grid.replaceChildren(...(list.length ? cells : [element('div', 'all-ep-none', `No ${p} emote matches “${search.value.trim()}”`)]));
   };
   search.addEventListener('input', draw);
   search.addEventListener('keydown', e => { if (e.key === 'Escape'){ e.preventDefault(); ep.hidden = true; view.input.focus(); } });
-  ep.replaceChildren(element('div', 'all-ep-h', `${p} emotes`, element('small', null, 'Picking one locks the box to ' + p)), search, tabs, grid);
+  ep.replaceChildren(element('div', 'all-ep-h', `${p} emotes`, element('small', null, 'Picking one locks the box to ' + p)), search, tabs, chs, grid);
   draw();
   search.focus();
 }

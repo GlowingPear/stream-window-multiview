@@ -1057,7 +1057,7 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
     window.__asked = [];
     window.kmv = { ...(window.kmv || {}), emotesPick: async ch => { window.__asked.push(ch); return ch === 'quietkoala'
       ? [{ id: 'kick-channel', label: 'Channel', emotes: [{ name: 'koalaHype', url: img, send: '[emote:1:koalaHype]', subs: true }, { name: 'koalaWave', url: img, send: '[emote:2:koalaWave]' }] },
-         { id: 'kick-yours', label: 'Sub emotes', emotes: [{ name: 'otterWave', url: img, send: '[emote:4:otterWave]', from: 'Otter' }, { name: 'otterLUL', url: img, send: '[emote:5:otterLUL]', from: 'Otter' }, { name: 'foxHi', url: img, send: '[emote:6:foxHi]', from: 'Fox' }] },
+         { id: 'kick-yours', label: 'Sub emotes', emotes: [{ name: 'otterWave', url: img, send: '[emote:4:otterWave]', from: 'Otter' }, { name: 'otterLUL', url: img, send: '[emote:5:otterLUL]', from: 'Otter' }, { name: 'foxHi', url: img, send: '[emote:6:foxHi]', from: 'Fox' }], channels: [{ name: 'Otter', pic: img }, { name: 'Fox' }] },
          { id: 'kick-global', label: 'Kick', emotes: [{ name: 'KEKW', url: img, send: '[emote:9:KEKW]' }] }]
       : [{ id: 'twitch-global', label: 'Twitch', emotes: [{ name: 'Kappa', url: img, send: 'Kappa' }] }]; } };
     window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push([m.channel, text]); return 'sent'; };
@@ -1087,6 +1087,7 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   await page.click('.all-emo-b');
   await page.waitForSelector('.all-ep .all-ep-e');
   assert.deepEqual(await page.$$eval('.all-ep-tabs button', l => l.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['Channel*', 'Sub emotes', 'Kick']);
+  assert.equal(await page.isVisible('.all-ep-chs'), false, 'a tab without channels: no row of them');
   assert.deepEqual(await page.$$eval('.all-ep-e', l => l.map(b => b.title)), ['koalaHype (subscribers)', 'koalaWave']);
   await page.fill('.all-ep-q', 'wave');
   assert.deepEqual(await page.$$eval('.all-ep-e', l => l.map(b => b.title)), ['koalaWave', 'otterWave · Otter'], 'every tab\'s');
@@ -1095,9 +1096,14 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   await page.fill('.all-ep-q', '');
   // Sub emotes: each channel's under its name
   await page.click('.all-ep-tabs button >> text=Sub emotes');
-  assert.deepEqual(await page.$$eval('.all-ep-grid > *', l => l.map(e => e.classList.contains('all-ep-sec') ? '# ' + e.textContent : e.title)), ['# Otter', 'otterWave · Otter', 'otterLUL · Otter', '# Fox', 'foxHi · Fox']);
+  assert.deepEqual(await page.$$eval('.all-ep-grid > *', l => l.map(e => e.classList.contains('all-ep-sec') ? `# ${e.querySelector('img') ? '[pic] ' : ''}${e.textContent}` : e.title)), ['# [pic] Otter', 'otterWave · Otter', 'otterLUL · Otter', '# FFox', 'foxHi · Fox'], 'its picture, or its first letter');
+  // a picture for each channel above them: a press goes to its emotes
+  assert.deepEqual(await page.$$eval('.all-ep-chs button', l => l.map(b => b.getAttribute('aria-label'))), ['Otter\'s emotes', 'Fox\'s emotes']);
+  await page.click('.all-ep-chs button >> nth=1');
+  assert.equal(await page.$eval('.all-ep-grid', g => g.scrollTop === [...g.querySelectorAll('.all-ep-sec')][1].offsetTop || g.scrollTop >= g.scrollHeight - g.clientHeight - 1), true, 'scrolled to Fox\'s (or as far as it goes)');
   await page.fill('.all-ep-q', 'o');
   assert.equal(await page.locator('.all-ep-sec').count(), 0, 'searching: no headings');
+  assert.equal(await page.isVisible('.all-ep-chs'), false, 'nor the channels');
   await page.fill('.all-ep-q', '');
   await page.click('.all-ep-tabs button >> text=Kick');
   await page.click('.all-ep-e');
