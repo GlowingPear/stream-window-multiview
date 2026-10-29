@@ -9,10 +9,11 @@ import { feedParse } from './feed-parse.js';
 import { autoTrFor } from './translate.js';
 import { wins } from '../core.js';
 import { feedAgent, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
+import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
 import { addParsed } from '../layout/placement.js';
-import { bellVars, mentMuted, mentOn, mentWords, myName, readChat } from '../panels/bell/bell.js';
+import { bellVars, mentMuted, mentOn, mentWords, myName, readChat, syncAtBtn } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
 import { devOn } from '../panels/developer/developer.js';
 import { linkOpt, nameOf, streamerBots, streamerOf } from '../platforms/linked.js';
@@ -817,6 +818,15 @@ const sameText = (a, b) => a.replace(/\s+/g, ' ').trim().toLowerCase() === b.rep
 async function sendNow(view, w){
   let text = view.input.value.trim(); const ch = sendSite(w); if (!text || !ch) return;
   if (view.sending) return flash('Still sending the last one');
+  // Kick's commands that open a panel (/poll, /prediction, /clip: chat/kick-commands.js): its own chat opens it, so it shows
+  const kcmd = platOf(ch) === 'kick' && new RegExp(`^\\s*/(${KICK_PAGE_CMDS.join('|')})(?:\\s|$)`, 'i').exec(text);
+  if (kcmd){
+    const k = frameOf(w).find(o => o.kind === 'chat' && o.channel === ch); if (!k) return;
+    view.input.value = ''; syncSendB(view, w);
+    setAll(k, false); showTab(k);
+    kickCmdHeard(k, JSON.stringify({ cmd: kcmd[1].toLowerCase(), text: text.slice(kcmd[0].length).trim() }), k.view);
+    return;
+  }
   const rules = chatRules(ch);
   if (rules.block) return flash(rules.block);
   if (rules.wait) return flash(`Slow mode on ${PLAT_NAME[platOf(ch)]}: you can send in ${rules.wait}s`);
@@ -909,7 +919,7 @@ function syncAll(){
     if (show && !w.allView){ w.allView = buildView(w); w.el.querySelector('.body').append(w.allView.el); w.allView.list.scrollTop = w.allView.list.scrollHeight; }
     if (!show && w.allView){ w.allView.sizeObs.disconnect(); w.allView.el.remove(); w.allView = null; }
     w.el.classList.toggle('all-on', show);
-    syncModBtn(w);
+    syncModBtn(w); syncAtBtn(w);
     if (show) renderTop(w.allView, w);
     feedOn(w, allOn(w));
   });

@@ -13,7 +13,7 @@ import { SH, SW, edges, focusWin, near, setRect, showHint, snapE } from '../layo
 import { colKey, layoutVars, linked, setFeatured, toggleFeatured } from '../layout/layouts.js';
 import { locked, refitLocked, toggleMax } from '../layout/lock.js';
 import { addChatBeside } from '../layout/placement.js';
-import { nh, syncAtBtn, toggleChatMentions } from '../panels/bell/bell.js';
+import { atChannels, nh, syncAtBtn, toggleChatMentions } from '../panels/bell/bell.js';
 import { toggleSaved } from '../panels/channels/channels.js';
 import { copyWinState, devOn, inspectWin } from '../panels/developer/developer.js';
 import { openExtMenu } from '../panels/extensions/extensions.js';
@@ -143,7 +143,7 @@ function createWin(spec, rect){
     else if (a === 'star') toggleSaved(w.channel);
     else if (a === 'like') toggleLike(w);
     else if (a === 'profile') openProfile(w.channel);
-    else if (a === 'at') toggleChatMentions(w.channel);
+    else if (a === 'at') toggleChatMentions(atChannels(w));   // (with ALL showing: every chat of theirs it reads)
     else if (a === 'overlay') toggleStreamOverlay(w);
     else if (a === 'feat'){
       if (!colsMode){ setFeatured(colKey(w)); layoutVars.scrollX = 0; columnsLayout(); }   // from Chat focus: open the highlight view
