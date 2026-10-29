@@ -104,8 +104,9 @@ async function openEmotePicker(view, w){
   const p = PLAT_NAME[platOf(ch)];
   ep.replaceChildren(element('div', 'all-ep-h', `${p} emotes`), element('div', 'all-ep-none', 'Loading…'));
   ep.hidden = false;
-  const groups = await emoteGroups(ch);
+  const all = await emoteGroups(ch);
   if (ep.hidden) return;
+  const groups = [...all.filter(g => !g.channels), ...all.filter(g => g.channels)];   // (Sub emotes and their channels last)
   if (!groups.length){
     ep.replaceChildren(element('div', 'all-ep-h', `${p} emotes`), element('div', 'all-ep-none', platOf(ch) === 'youtube' ? 'YouTube\'s emoji are in its own chat box' : `No emotes found: you may need to sign in to ${p} (Settings › Accounts)`));
     return;
@@ -122,7 +123,7 @@ async function openEmotePicker(view, w){
     ...groups.flatMap(g => [element('option', { value: g.id }, g.label), ...secs.filter(x => x.chan && x.group === g.id).map(x => element('option', { value: x.key }, x.label))]));
   pick.value = show;
   pick.ddBounds = () => ep.getBoundingClientRect();   // (its list stays inside the picker)
-  pick.ddIcon = o => { const x = secs.find(y => y.chan && y.key === o.value); return x ? chPic(x) : kindIcon(o.value, ch); };   // (each kind's icon, the channels' pictures)
+  pick.ddIcon = o => { const x = secs.find(y => y.chan && y.key === o.value); return x ? chPic(x) : kindIcon(o.value, ch, (groups.find(g => g.id === o.value) || {}).pic); };   // (each kind's icon, the channels' pictures)
   const grid = element('div', { class: 'all-ep-grid', role: 'listbox' });
   const draw = () => {
     const q = search.value.trim().toLowerCase();
@@ -132,7 +133,7 @@ async function openEmotePicker(view, w){
       const list = (q ? x.emotes.filter(e => e.name.toLowerCase().includes(q)) : x.emotes).slice(0, q ? Math.max(0, 300 - n) : Infinity);
       n += list.length;
       if (!list.length) return [];
-      return [element('div', { class: 'all-ep-sec' + (x.chan ? ' chan' : ''), role: 'presentation' }, x.chan ? chPic(x) : kindIcon(x.group, ch), x.label, x.chan && element('small', null, 'Sub emotes')),
+      return [element('div', { class: 'all-ep-sec' + (x.chan ? ' chan' : ''), role: 'presentation' }, x.chan ? chPic(x) : kindIcon(x.group, ch, (groups.find(g => g.id === x.group) || {}).pic), x.label, x.chan && element('small', null, 'Sub emotes')),
         ...list.map(e => element('button', { type: 'button', role: 'option', class: 'all-ep-e', title: e.name + (e.from ? ` · ${e.from}` : e.subs ? ' (subscribers)' : ''), 'aria-label': e.name, dataset: { cmd: 'all.emotePick' },
           onclick: () => { pickEmote(view, w, { ...e, ch }); } }, emoteImg(e)))];
     });
@@ -147,7 +148,7 @@ async function openEmotePicker(view, w){
   search.focus();
 }
 // A channel's picture (its first letter until there is one)
-// Each kind's icon, in the list beside the search and its heading: the channel's own picture, the sites' badges, the
+// Each kind's icon, in the list beside the search and its heading: the channel's own picture (pic; the app's for it until then), the sites' badges, the
 // add-ons' letters (as their emotes' cards show them), and a drawing for the rest
 const KIND_SVG = {
   all: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg>',
@@ -156,9 +157,9 @@ const KIND_SVG = {
   hypetrain: '<svg viewBox="0 0 24 24"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3h9A2.5 2.5 0 0 1 19 5.5V16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path class="ln" d="M5 11h14M8 21l2-3M16 21l-2-3"/><circle class="hole" cx="8.5" cy="14.5" r="1.2"/><circle class="hole" cx="15.5" cy="14.5" r="1.2"/></svg>'
 };
 const ADDON_LETTER = { '7tv': '7', bttv: 'B', ffz: 'F' };
-function kindIcon(id, ch){
+function kindIcon(id, ch, pic){
   const kind = String(id || 'all').replace(/^(kick|twitch)-/, '');
-  if (kind === 'channel') return chAvatar(ch);
+  if (kind === 'channel') return pic ? chPic({ pic }) : chAvatar(ch);   // (its picture, as the sites send it with the emotes)
   if (kind === 'global'){ const p = platOf(ch); return element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]); }
   if (ADDON_LETTER[kind]) return element('span', 'all-ep-ic addon', ADDON_LETTER[kind]);
   const svg = kind === 'emoji' ? SMILEY : KIND_SVG[kind];

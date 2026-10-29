@@ -10,6 +10,8 @@ const clean = list => {
   return (Array.isArray(list) ? list : []).filter(e => e && e.name && e.url && e.name.length <= 60 && !seen.has(e.name) && seen.add(e.name)).slice(0, MAX);
 };
 const group = (id, label, emotes) => { const e = clean(emotes); return e.length ? { id, label, emotes: e } : null; };
+// The channel's own group with its picture (pic), for the picker's list and heading
+const withPic = (g, pic) => { if (g && /^https:\/\//.test(pic || '')) g.pic = pic; return g; };
 // The emotes of other channels you're subscribed to: each with its channel (from), and the channels with their pictures
 // (channels: [{ name, pic }], once each, A to Z), for the picker's list and headings
 const PIC = /^https:\/\//;
@@ -33,7 +35,7 @@ function kickGroups(d, slug) {
   const yours = d.filter(s => s && Array.isArray(s.emotes) && s.slug && String(s.slug).toLowerCase() !== String(slug).toLowerCase());
   const other = id => d.filter(s => s && Array.isArray(s.emotes) && String(s.id) === id);
   return [
-    group('kick-channel', 'Channel', own.flatMap(s => s.emotes.map(emote))),
+    withPic(group('kick-channel', 'Channel', own.flatMap(s => s.emotes.map(emote))), own[0] && own[0].user && own[0].user.profile_pic),
     // (yours to use: not marked subs)
     subGroup('kick-yours', 'Sub emotes', yours.map(s => ({ name: String((s.user && s.user.username) || s.slug), pic: s.user && s.user.profile_pic,
       emotes: s.emotes.map(e => { const x = emote(e); if (x) delete x.subs; return x; }) }))),
@@ -52,7 +54,7 @@ function twitchGroups(d, login) {
   const owner = s => String((s.owner && (s.owner.login || s.owner.displayName)) || '').toLowerCase();
   const of = test => sets.filter(s => s && Array.isArray(s.emotes) && test(s)).flatMap(s => s.emotes.map(emote));
   return [
-    group('twitch-channel', 'Channel', of(s => owner(s) === String(login).toLowerCase())),
+    withPic(group('twitch-channel', 'Channel', of(s => owner(s) === String(login).toLowerCase())), d.data.user && d.data.user.profileImageURL),
     subGroup('twitch-yours', 'Sub emotes', sets.filter(s => s && Array.isArray(s.emotes) && owner(s) && owner(s) !== String(login).toLowerCase() && !TWITCH_OWN.has(owner(s)))
       .map(s => ({ name: String(s.owner.displayName || s.owner.login), pic: s.owner.profileImageURL, emotes: s.emotes.map(emote) }))),
     group('twitch-global', 'Twitch', of(s => !owner(s) || owner(s) === 'twitch')),

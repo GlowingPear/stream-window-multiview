@@ -1072,7 +1072,7 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
     const img = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
     window.__asked = [];
     window.kmv = { ...(window.kmv || {}), emotesPick: async ch => { window.__asked.push(ch); return ch === 'quietkoala'
-      ? [{ id: 'kick-channel', label: 'Channel', emotes: [{ name: 'koalaHype', url: img, send: '[emote:1:koalaHype]', subs: true }, { name: 'koalaWave', url: img, send: '[emote:2:koalaWave]' }] },
+      ? [{ id: 'kick-channel', label: 'Channel', pic: img, emotes: [{ name: 'koalaHype', url: img, send: '[emote:1:koalaHype]', subs: true }, { name: 'koalaWave', url: img, send: '[emote:2:koalaWave]' }] },
          { id: 'kick-yours', label: 'Sub emotes', emotes: [{ name: 'otterWave', url: img, send: '[emote:4:otterWave]', from: 'Otter' }, { name: 'otterLUL', url: img, send: '[emote:5:otterLUL]', from: 'Otter' }, { name: 'foxHi', url: img, send: '[emote:6:foxHi]', from: 'Fox' }], channels: [{ name: 'Otter', pic: img }, { name: 'Fox' }] },
          { id: 'kick-global', label: 'Kick', emotes: [{ name: 'KEKW', url: img, send: '[emote:9:KEKW]' }] }]
       : [{ id: 'twitch-global', label: 'Twitch', emotes: [{ name: 'Kappa', url: img, send: 'Kappa' }] }]; } };
@@ -1106,17 +1106,17 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   const icon = e => { const i = e.querySelector('.all-ep-pic, .all-ep-ic, .pi, .ch-av'); return !i ? '' : i.classList.contains('all-ep-pic') ? (i.querySelector('img') ? '[pic] ' : '[letter] ') : i.classList.contains('ch-av') ? '[channel] ' : i.classList.contains('pi') ? `[${i.textContent}] ` : `[${[...i.classList].pop()}] `; };
   const words = e => [...e.childNodes].filter(n => n.nodeType === 3 || n.tagName === 'SMALL').map(n => n.textContent).join(' ');
   const grid = () => page.$$eval('.all-ep-grid > *', (l, [icon, words]) => { const ic = eval(icon), w = eval(words); return l.map(e => e.classList.contains('all-ep-sec') ? `# ${ic(e)}${w(e)}` : e.title); }, [icon.toString(), words.toString()]);
-  assert.deepEqual(await grid(), ['# [channel] Channel', 'koalaHype (subscribers)', 'koalaWave', '# [pic] Otter Sub emotes', 'otterWave · Otter', 'otterLUL · Otter', '# [letter] Fox Sub emotes', 'foxHi · Fox', '# [K] Kick', 'KEKW'], 'the channel\'s picture; a sub channel without one: its first letter; the site\'s badge');
+  assert.deepEqual(await grid(), ['# [pic] Channel', 'koalaHype (subscribers)', 'koalaWave', '# [K] Kick', 'KEKW', '# [pic] Otter Sub emotes', 'otterWave · Otter', 'otterLUL · Otter', '# [letter] Fox Sub emotes', 'foxHi · Fox'], 'the channel\'s picture; the site\'s badge; Sub emotes last (a channel without a picture: its first letter)');
   // search: across them, under their headings
   await page.fill('.all-ep-q', 'wave');
-  assert.deepEqual(await grid(), ['# [channel] Channel', 'koalaWave', '# [pic] Otter Sub emotes', 'otterWave · Otter']);
+  assert.deepEqual(await grid(), ['# [pic] Channel', 'koalaWave', '# [pic] Otter Sub emotes', 'otterWave · Otter']);
   await page.fill('.all-ep-q', 'zzz');
   assert.match(await page.textContent('.all-ep-grid'), /No Kick emote matches “zzz”/);
   await page.fill('.all-ep-q', '');
   // beside the search: show one kind, or one channel (with their pictures in its list)
-  assert.deepEqual(await page.$$eval('.all-ep-f option', l => l.map(o => o.textContent)), ['All emotes', 'Channel', 'Sub emotes', 'Otter', 'Fox', 'Kick']);
+  assert.deepEqual(await page.$$eval('.all-ep-f option', l => l.map(o => o.textContent)), ['All emotes', 'Channel', 'Kick', 'Sub emotes', 'Otter', 'Fox']);
   await page.click('.all-ep-f');
-  assert.deepEqual(await page.$$eval('.dd-list button', (l, icon) => { const ic = eval(icon); return l.map(b => ic(b) + (b.querySelector('.dd-t') || b).textContent); }, icon.toString()), ['[all] All emotes', '[channel] Channel', '[yours] Sub emotes', '[pic] Otter', '[letter] Fox', '[K] Kick'], 'each with its icon');
+  assert.deepEqual(await page.$$eval('.dd-list button', (l, icon) => { const ic = eval(icon); return l.map(b => ic(b) + (b.querySelector('.dd-t') || b).textContent); }, icon.toString()), ['[all] All emotes', '[pic] Channel', '[K] Kick', '[yours] Sub emotes', '[pic] Otter', '[letter] Fox'], 'each with its icon');
   // its list stays inside the picker
   assert.equal(await page.evaluate(() => { const l = document.querySelector('.dd-list').getBoundingClientRect(), e = document.querySelector('.all-ep').getBoundingClientRect(); return l.bottom <= e.bottom + 0.5 && l.top >= e.top - 0.5 && l.right <= e.right + 0.5 && l.left >= e.left - 0.5; }), true);
   assert.deepEqual(await page.$eval('.dd-list .all-ep-pic', e => { const c = getComputedStyle(e); return [c.width, c.height, c.borderRadius]; }), ['16px', '16px', '50%'], 'small circles, as the window swap list\'s');
