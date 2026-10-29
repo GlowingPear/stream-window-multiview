@@ -275,6 +275,21 @@ test('raids: a tab you don\'t watch, or while another site is live, is only a no
   assert.deepEqual(w.map(x => x.ch).sort(), ['quietkoala', 'tw:quietkoala']);
 });
 
+test('raids: set to, a tab you don\'t watch that raids opens the raided channel in a window of its own beside them (once)', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'stream'));
+  await page.evaluate(() => window.linkedApi.setOpt('raidOther', 'open'));
+  await page.evaluate(() => window.followRaid('tw:quietkoala', 'tw:pixelmoth', true));
+  const w = await all(page);
+  assert.deepEqual(w.filter(x => !x.hidden).map(x => x.kind + ' ' + x.ch).sort(), ['chat tw:pixelmoth', 'stream quietkoala', 'stream tw:pixelmoth'], 'they stay; the raided channel opens beside them (its stream and chat)');
+  await page.evaluate(() => window.followRaid('tw:quietkoala', 'tw:pixelmoth', true));
+  assert.equal((await all(page)).filter(x => x.ch === 'tw:pixelmoth').length, (w.filter(x => x.ch === 'tw:pixelmoth')).length, 'not twice');
+  // the option, in Settings › Linked channels › Live & raids
+  await page.evaluate(() => window.openSettings('linked'));
+  await page.click('#laTabs [role=tab]:has-text("Live & raids")');
+  assert.equal(await page.$eval('[data-lo=raidOther]', e => e.value), 'open');
+});
+
 test('another of their accounts going live adds its tab, with one message', async t => {
   const page = await linkedApp(t);
   await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'stream'));
