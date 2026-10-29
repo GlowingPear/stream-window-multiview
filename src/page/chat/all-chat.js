@@ -34,7 +34,7 @@ import { fromSite } from '../shared/incoming.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
-import { soon } from '../shared/timers.js';
+import { soon, winTimer } from '../shared/timers.js';
 import { addTab, cycleTabs, frameOf, leaderOf, renderSiteTabs, showTab, syncFrameAlert, tabChannels } from '../windows/frames.js';
 import { askIn, runIn, viewId, zoomOf } from '../windows/view.js';
 import { copyEmote, emoteOn, freshEmotes, newEmotesOn } from '../windows/views.js';
@@ -114,6 +114,7 @@ function ingest(w, json, quiet = false, shown = false){
     if (m.kind === 'modaction') return modAction(f, view, m, w.channel);
     if (m.kind === 'pin' || m.kind === 'unpin') return setPin(f, s, w.channel, m, quiet);
     if (m.kind === 'modes') return setModes(w.channel, { modes: m.modes });
+    if (m.kind === 'raid') return raidNews(f, view, m, w);
     if (m.id && f.byId.has(m.site + ':' + m.id)) return;   // (one it has: YouTube sends its recent ones again when its chat is rebuilt or switches view)
     m.ch = w.channel;
     if (m.giftTo && giftTo(f, m)) return;   // (one of the gifted subs announced just before: its name goes on that line)
@@ -306,11 +307,42 @@ function logWords(d, who, site){
     : d.until ? [...(d.by ? [element('b', null, d.by), ' timed out '] : []), element('b', null, who), d.by ? '' : ' was timed out', element('span', 'al-amt', ` · ${durText(secs)}`)]
     : [...(d.by ? [element('b', null, d.by), ' banned '] : []), element('b', null, who), d.by ? '' : ' was banned'];
 }
-// They raided another channel (windows/raids.js): a line in their ALL, with Open (unless it's open already)
+// They raided another channel (windows/raids.js): a line in their ALL, with Open (unless it's open already). Twitch's
+// countdown for it (raidNews) already has its line: that one says it, so there's one line for one raid.
 function allRaid(from, to, opened){
   const s = ownerOf(from); if (!s) return;
-  const f = feedOf(s), view = viewFor(s), m = { kind: 'raidout', site: platOf(from), ch: from, id: 'raid' + (++logN), t: Date.now(), to, opened };
+  const f = feedOf(s), view = viewFor(s), same = sameRaid(f, from, to);
+  if (same){ if (same.soon) raided(same); same.opened = same.opened || opened; redrawLine(same); return; }
+  const m = { kind: 'raidout', site: platOf(from), ch: from, id: 'raid' + (++logN), t: Date.now(), to, opened };
   f.msgs.push(m); if (view) addLine(view, m);
+}
+// The line of their raid to that channel in the last few minutes (counting down, or raided), if there is one
+const sameRaid = (f, from, to) => [...f.msgs].reverse().find(x => x.kind === 'raidout' && x.ch === from && x.to === to && !x.off && Date.now() - (x.wentAt || x.t) < 300000);
+/* Twitch's raid countdown (its other connection, for the channel getting ready to raid): one line for each raid, the
+   same line kept up to date as Twitch sends it again (more viewers in it), counting down to when Twitch sends it on
+   its own: a timer of the chat's window, a tick a second (Twitch's own news comes only as viewers join). Going, it's
+   the raid's line (Open ›; the raid followed later, allRaid, finds it); called off, it says so. */
+function raidNews(f, view, r, w){
+  let m = f.byId.get('twitch:' + r.id);
+  if (!m){
+    if (r.state === 'cancel') return;
+    // (the raid followed first, windows/raids.js: its line is this one's; go says nothing new)
+    const same = sameRaid(f, w.channel, r.to); if (same && !same.soon && r.state === 'go'){ same.viewers = same.viewers || r.viewers; redrawLine(same); return; }
+    m = { kind: 'raidout', site: 'twitch', ch: w.channel, id: r.id, t: r.t, to: r.to, soon: true };
+    f.msgs.push(m); f.byId.set('twitch:' + r.id, m); if (view) addLine(view, m);
+  }
+  if (!m.soon) return;   // (gone or called off: what came after says nothing new)
+  m.viewers = r.viewers || m.viewers; m.at = r.at || m.at;
+  if (r.state === 'go'){ raided(m); m.opened = wins.some(o => o.channel === m.to); }
+  if (r.state === 'cancel'){ m.soon = false; m.off = true; }
+  redrawLine(m);
+  if (m.soon) raidTick(m, w);
+}
+function raided(m){ m.soon = false; m.wentAt = Date.now(); }
+const raidLeft = m => (m.at ? Math.max(0, Math.ceil((m.at - Date.now()) / 1000)) : -1);
+function raidTick(m, w){
+  const left = raidLeft(m);
+  if (left > 0) winTimer(w, 'raid:' + m.id, () => { if (!m.soon) return; redrawLine(m); raidTick(m, w); }, Math.min(1000, (m.at - Date.now()) % 1000 || 1000));
 }
 /* Twitch's moderation actions (to moderators): who timed out, banned, deleted or cleared, and who changed a mode. Its chat
    says what happened without who: the two meet whichever comes first (kept a little while for the other). */
@@ -551,11 +583,19 @@ function badgeEls(m){
 }
 function lineEl(m){
   if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' ? null : mineEl(m);
-  if (m.kind === 'raidout') return element('div', { class: `al-ev al-raidout al-${SITE_CLASS[m.site]}`, dataset: { key: m.site + ':' + m.id } },
-    element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0]), element('span', { class: 'al-evt', html: icon.raid }),
-    element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' raided ', element('b', null, chLabel(m.to)), element('span', 'al-amt', ` on ${PLAT_NAME[m.site]}`)),
-    m.opened ? element('span', 'al-tag al-tag-raid', 'Opened') : element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.raidOpen' }, title: `Open ${chLabel(m.to)} in a window of its own`,
-      onclick: () => { addParsed({ channel: m.to, only: null }); m.opened = true; redrawLine(m); } }, 'Open ›'));
+  if (m.kind === 'raidout'){
+    // (Twitch's countdown: getting ready, then raided; or called off)
+    const viewers = m.viewers ? ` · ${m.viewers.toLocaleString('en-US')} ${m.viewers === 1 ? 'viewer' : 'viewers'}` : '', left = m.soon ? raidLeft(m) : -1;
+    return element('div', { class: `al-ev al-raidout al-${SITE_CLASS[m.site]}${m.soon ? ' al-raidsoon' : ''}${m.off ? ' al-raidoff' : ''}`, dataset: { key: m.site + ':' + m.id } },
+      element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0]), element('span', { class: 'al-evt', html: icon.raid }),
+      m.soon ? element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' is raiding ', element('b', null, chLabel(m.to)), element('span', 'al-amt', viewers))
+        : m.off ? element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' called off the raid on ', element('b', null, chLabel(m.to)))
+        : element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' raided ', element('b', null, chLabel(m.to)), element('span', 'al-amt', ` on ${PLAT_NAME[m.site]}${viewers}`)),
+      m.soon ? left >= 0 && element('span', { class: 'al-tag al-tag-raid al-raidin', title: 'Twitch sends the raid by then, or sooner' }, left ? `in ${left >= 60 ? `${Math.floor(left / 60)}m ${left % 60}s` : `${left}s`}` : 'any moment')
+        : m.off ? ''
+        : m.opened ? element('span', 'al-tag al-tag-raid', 'Opened') : element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.raidOpen' }, title: `Open ${chLabel(m.to)} in a window of its own`,
+          onclick: () => { addParsed({ channel: m.to, only: null }); m.opened = true; redrawLine(m); } }, 'Open ›'));
+  }
   if (m.kind === 'modlog') return element('div', { class: `al-ev al-log al-${SITE_CLASS[m.site]}`, dataset: { key: m.site + ':' + m.id } },
     element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0]), element('span', { class: 'al-evt', html: SHIELD }), element('span', 'al-evw', ...m.words.map(x => x instanceof Node ? x.cloneNode(true) : x)));
   const site = PLAT_NAME[m.site] || m.site;

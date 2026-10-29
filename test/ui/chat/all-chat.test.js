@@ -1073,6 +1073,63 @@ test('ALL: they raid someone: a line with Open (Opened once it is)', async t => 
   assert.ok(await page.evaluate(() => window.openWins().some(w => w.channel === 'tw:pixelmoth')));
 });
 
+test('ALL: Twitch\'s raid countdown is one line, kept up to date and counting down; going, it\'s the raid\'s line (Open ›), also once the raid is followed, either way round; called off, it says so', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const pub = obj => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify(obj) } });
+  const sec = Math.floor(Date.now() / 1000);
+  const raid = (type, id, to, viewers, start = sec - 45) => pub({ type, raid: { id, source_display_name: 'Quietkoala', target_login: to, target_display_name: to, force_raid_now_seconds: 90, viewer_count: viewers, raid_created_at: start } });
+  const raids = async () => (await lines(page)).filter((l, i, all) => /rai/.test(l));
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [raid('raid_update_v2', 'r7', 'pixelmoth', 1)] });
+  assert.match((await raids()).join('\n'), /^al-ev \| Tquietkoala is raiding pixelmoth · 1 viewerin 4[4-6]s$/);
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [raid('raid_update_v2', 'r7', 'pixelmoth', 27)] });
+  const two = await raids();
+  assert.equal(two.length, 1, 'the same line, not another');
+  assert.match(two[0], /pixelmoth · 27 viewersin \d+s$/);
+  const left = () => page.$eval('.al-raidin', e => +e.textContent.replace(/\D/g, ''));
+  const was = await left();
+  await page.waitForFunction(n => +document.querySelector('.al-raidin').textContent.replace(/\D/g, '') < n, was, { timeout: 3000 });
+  // going: the raid's line, Open › (the raid followed afterwards finds it: no second line)
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [raid('raid_go_v2', 'r7', 'pixelmoth', 27)] });
+  assert.deepEqual(await raids(), ['al-ev | Tquietkoala raided pixelmoth on Twitch · 27 viewersOpen ›']);
+  assert.equal(await page.locator('.al-raidin').count(), 0);
+  await page.evaluate(() => window.followRaid('tw:quietkoala', 'tw:pixelmoth', true));
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [raid('raid_update_v2', 'r7', 'pixelmoth', 30)] });
+  assert.deepEqual(await raids(), ['al-ev | Tquietkoala raided pixelmoth on Twitch · 27 viewersOpen ›'], 'one line for one raid; late news changes nothing');
+  await page.click('[data-cmd="all.raidOpen"]');
+  assert.equal((await raids()).pop(), 'al-ev | Tquietkoala raided pixelmoth on Twitch · 27 viewersOpened');
+  // called off; news after that changes nothing, and a cancel for a raid it never saw adds nothing
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [raid('raid_update_v2', 'r8', 'novalynx', 12), raid('raid_cancel_v2', 'r8', 'novalynx', 12), raid('raid_go_v2', 'r8', 'novalynx', 12), raid('raid_cancel_v2', 'r0', 'tinroof', 3)] });
+  assert.equal((await raids()).pop(), 'al-ev | Tquietkoala called off the raid on novalynx');
+  assert.equal((await raids()).length, 2);
+  // the raid followed first (windows/raids.js), then Twitch's go: still one line, with its viewers
+  await page.evaluate(() => window.followRaid('tw:quietkoala', 'tw:brightwick', true));
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [raid('raid_go_v2', 'r9', 'brightwick', 8)] });
+  assert.equal((await raids()).pop(), 'al-ev | Tquietkoala raided brightwick on Twitch · 8 viewersOpen ›');
+  assert.equal((await raids()).length, 3);
+  // a countdown the raid followed ends too; one past its time says any moment, one without a start no time
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [raid('raid_update_v2', 'r10', 'tinroof', 5, sec - 200)] });
+  assert.equal((await raids()).pop(), 'al-ev | Tquietkoala is raiding tinroof · 5 viewersany moment');
+  await page.evaluate(() => window.followRaid('tw:quietkoala', 'tw:tinroof', true));
+  assert.equal((await raids()).pop(), 'al-ev | Tquietkoala raided tinroof on Twitch · 5 viewersOpen ›');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [raid('raid_update_v2', 'r11', 'pixelmoth', 0, 0)] });
+  assert.equal((await raids()).pop(), 'al-ev | Tquietkoala is raiding pixelmoth');
+  assert.equal((await raids()).length, 5);
+});
+
+test('ALL: a gift sub paid forward (from someone, or an anonymous gifter) and a goal reached are events', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const fwd = (id, prm) => TW({ 'display-name': 'Brightwick', login: 'brightwick', id, 'msg-id': 'communitypayforward', 'system-msg': 'Brightwick\\sis\\spaying\\sforward\\sthe\\sGift', ...prm }, ':tmi.twitch.tv USERNOTICE #quietkoala');
+  const goal = g => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'goal_achieved', data: { goal: { id: 'g1', state: 'ACTIVE', currentContributions: 230, targetContributions: 230, ...g } } }) } });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [fwd('p1', { 'msg-param-prior-gifter-anonymous': 'false', 'msg-param-prior-gifter-display-name': 'Tinroof' }),
+    fwd('p2', { 'msg-param-prior-gifter-anonymous': 'true', 'msg-param-prior-gifter-display-name': 'AnAnonymousGifter' }),
+    goal({ contributionType: 'FOLLOWERS', description: '' }), goal({ id: 'g2', contributionType: 'SUBS', currentContributions: 50, targetContributions: 50, description: 'Road to 50' })] });
+  assert.deepEqual(await lines(page), ['al-ev | TBrightwick paid forward the gift sub from TinroofSee it on Twitch ›', 'al-ev | TBrightwick paid forward the gift sub from an anonymous gifterSee it on Twitch ›',
+    'al-ev | TFollower goal reached · 230See it on Twitch ›', 'al-ev | TSub goal reached · 50Road to 50See it on Twitch ›']);
+  assert.deepEqual(await page.$$eval('.al-ev .al-amt', l => l.map(e => e.textContent)), ['Tinroof', '230', '50'], 'who gave it, and the count, picked out');
+});
+
 test('ALL\'s health: a site whose chat has new messages while ALL read none is loaded again once, then its badge turns amber with a line (See it on …, ✕); messages no reader understood, and sends failing twice, too; it clears itself', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
