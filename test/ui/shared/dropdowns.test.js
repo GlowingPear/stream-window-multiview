@@ -166,6 +166,22 @@ test('the list: above when there\'s no room below, disabled options skipped, and
   assert.equal(await page.isVisible('#settingsDlg'), true, 'Escape closes only the list');
 });
 
+test('a dropdown the page gives bounds (ddBounds: the emote picker it\'s in) keeps its list inside them: it scrolls, and it lines up with their right edge', async t => {
+  const page = await openApp(t);
+  await page.evaluate(() => {
+    const box = document.createElement('div'); box.id = 'ddBox'; box.style.cssText = 'position:fixed;left:100px;top:100px;width:240px;height:180px';
+    const s = document.createElement('select'); s.id = 'ddIn'; s.style.cssText = 'position:absolute;right:8px;top:8px;width:120px';
+    s.innerHTML = Array.from({ length: 40 }, (_, i) => `<option>a rather long name for choice ${i}</option>`).join('');
+    s.ddBounds = () => box.getBoundingClientRect();
+    box.append(s); document.body.append(box);
+  });
+  await page.click('#ddIn');
+  const [b, l] = await Promise.all([page.locator('#ddBox').boundingBox(), page.locator(list).boundingBox()]);
+  assert.ok(l.y + l.height <= b.y + b.height + 0.5 && l.y >= b.y - 0.5, 'within their height');
+  assert.ok(l.x >= b.x - 0.5 && l.x + l.width <= b.x + b.width + 0.5, 'and their width');
+  assert.equal(await page.$eval(list, e => e.scrollHeight > e.clientHeight), true, 'the rest by scrolling');
+});
+
 test('a dropdown used with the mouse has no focus ring afterwards; used with the keyboard it keeps it', async t => {
   const page = await openApp(t);
   await mode(page, 'stream');

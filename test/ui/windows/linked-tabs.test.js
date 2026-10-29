@@ -334,7 +334,7 @@ test('the Link channels card: their own chat bots, a name on one site each; thei
   assert.match(await page.textContent('#linkDlg .lc-warn'), /QuietKoala is their own name on Kick: everything they type in Kick chat counts as the bot's\. Their messages on other sites aren't affected\./);
   // only in their chats, on that site, as well as the app's list
   const lists = () => page.evaluate(() => ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala', 'novalynx'].map(ch => [window.linkedApi.streamerBots(ch), window.botsFor('mention', ch).slice(-1)[0], window.botsFor('spam', ch).includes('nightbot')]));
-  assert.deepEqual(await lists(), [[['QuietKoala'], 'QuietKoala', true], [['koala_helper'], 'koala_helper', true], [[], 'botrixofficial', true], [[], 'botrixofficial', true]]);
+  assert.deepEqual(await lists(), [[['QuietKoala'], 'QuietKoala', true], [['koala_helper'], 'koala_helper', true], [[], 'botrixoficial', true], [[], 'botrixoficial', true]]);
   // removed: no warning
   await page.click('#linkDlg .lc-bot.lc-own button');
   assert.deepEqual(await bots(), [{ p: 'twitch', name: 'koala_helper' }]);

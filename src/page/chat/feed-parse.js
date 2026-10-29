@@ -1,6 +1,8 @@
 /* ---- Each site's chat data (in-site/feed.js) as one kind of message, for the ALL tab (chat/all-chat.js) ----
    A message: { site, kind, id, t, sender, login, color, badges: ['moderator', …], parts: [{ text } | { emote, name }],
-   reply?: { id, sender, login, body }, action?, highlight?, bits?, text? (an event's own words), userId? }.
+   reply?: { id, sender, login, body }, action?, highlight?, bits?, text? (an event's own words), userId?, pics? }.
+   pics: its badges as the site shows them, in its order, for their pictures: [{ set, v } (the site's badge and version,
+   its picture asked for once: in-site/feed.js badgesAgent) | { url, title } (the picture came with it)].
    kind: 'message', 'event' (a sub, gift, raid, Super Chat…), 'delete' ({ target, ai?, rules? }) or 'clear' (all of
    one person's messages: { login } or { userId }). Anything it can't read is left out (null). */
 
@@ -10,6 +12,13 @@ const BADGES = {
   og: 'og', verified: 'verified', partner: 'verified', staff: 'staff', admin: 'staff', global_mod: 'staff', sub_gifter: 'gifter'
 };
 const badgeKinds = list => [...new Set(list.map(b => BADGES[String(b).toLowerCase()]).filter(Boolean))];
+// Twitch's badges as set/version (its chat's badges tag, or its other connection's); a sub's months (badge-info), for
+// its tooltip as Twitch's says it
+const twitchPics = (list, info = '') => list.map(([set, v]) => {
+  if (!set) return null;
+  const months = +((new RegExp('(?:^|,)' + set + '/(\\d+)').exec(info) || [])[1]) || 0;
+  return { set: String(set), v: String(v || '1'), ...(months ? { months } : {}) };
+}).filter(Boolean);
 
 /* Twitch: one line of its chat connection (IRC with tags) */
 const unescapeTag = v => v.replace(/\\(.)/g, (_, c) => ({ s: ' ', ':': ';', '\\': '\\', r: '\r', n: '\n' })[c] ?? c);
@@ -63,6 +72,7 @@ function parseTwitch(line){
     site: 'twitch', kind: l.cmd === 'USERNOTICE' ? 'event' : 'message', id: g.id || '', t,
     sender: g['display-name'] || login, login, color: g.color || '', userId: g['user-id'] || '',
     badges: badgeKinds((g.badges || '').split(',').map(b => b.split('/')[0]).filter(Boolean)),
+    pics: twitchPics((g.badges || '').split(',').filter(Boolean).map(b => b.split('/')), g['badge-info'] || ''),
     parts: twitchParts(text, g.emotes)
   };
   if (action) msg.action = true;
@@ -71,6 +81,11 @@ function parseTwitch(line){
   if (g['custom-reward-id']) msg.redeem = { title: '', color: '' };   // (a channel points reward with text: Twitch's chat doesn't say which)
   if (g['first-msg'] === '1') msg.first = true;
   if (g['reply-parent-msg-id']) msg.reply = { id: g['reply-parent-msg-id'], sender: g['reply-parent-display-name'] || g['reply-parent-user-login'] || '', login: (g['reply-parent-user-login'] || '').toLowerCase(), body: g['reply-parent-msg-body'] || '' };
+  // (a reply's text starts with "@<who it replies to> ": Twitch's chat leaves it out, the "replying to" line says it)
+  if (msg.reply && msg.parts[0] && msg.parts[0].text){
+    const at = /^@(\S+)\s*/.exec(msg.parts[0].text);
+    if (at && [msg.reply.login, msg.reply.sender.toLowerCase()].includes(at[1].toLowerCase())){ msg.parts[0] = { text: msg.parts[0].text.slice(at[0].length) }; if (!msg.parts[0].text) msg.parts.shift(); }
+  }
   if (msg.kind === 'event'){
     msg.event = g['msg-id'] || ''; msg.text = g['system-msg'] || '';
     const prm = {}; Object.keys(g).forEach(k => { if (k.startsWith('msg-param-')) prm[k.slice(10)] = g[k]; });
@@ -110,7 +125,7 @@ function twitchPin(frame){
     ? c.fragments.map(f => f && f.emoticon && f.emoticon.emoticonID ? { emote: `https://static-cdn.jtvnw.net/emoticons/v2/${encodeURIComponent(f.emoticon.emoticonID)}/default/dark/1.0`, name: f.text || '' } : { text: String((f && f.text) || '') })
     : [{ text: String(c.text || '') }];
   const msg = { site: 'twitch', kind: 'message', id: String(m.id), t: (+m.sent_at || 0) * 1000 || Date.now(), sender: s.display_name || s.login || '', login: String(s.login || '').toLowerCase(),
-    color: s.chat_color || '', userId: s.id ? String(s.id) : '', badges: badgeKinds((s.badges || []).map(b => b && b.id)), parts };
+    color: s.chat_color || '', userId: s.id ? String(s.id) : '', badges: badgeKinds((s.badges || []).map(b => b && b.id)), pics: twitchPics((s.badges || []).map(b => [b && b.id, b && b.version])), parts };
   return { site: 'twitch', kind: 'pin', id: String(d.id), msg, t: Date.now(), by: (d.pinned_by && d.pinned_by.display_name) || '' };
 }
 
@@ -213,6 +228,16 @@ function parseKick(frame){
   if (ev !== 'ChatMessageEvent') return null;
   return kickMsg(d);
 }
+// Kick's badges as its chat shows them, in its order (sort_order): its own (a role, founder, sub gifter: its icons, named
+// as Kick names them), the ones picked to show (badges_v2 selected, with their pictures: a level, a game's), and the
+// channel's sub badge (by months)
+function kickPics(idy){
+  const own = (idy.badges || []).filter(b => b && b.type && BADGES[String(b.type).toLowerCase()]).map(b => ({ o: +b.sort_order || 0,
+    p: { set: String(b.type), v: String(+b.count || 1), ...(b.type !== 'subscriber' && b.text ? { title: String(b.text) } : {}) } }));
+  const picked = (idy.badges_v2 || []).filter(b => b && b.selected && /^https:\/\//.test(b.image_url || '')).map(b => ({ o: +b.sort_order || 0,
+    p: { url: b.image_url, ...(b.name === 'level' && b.metadata && b.metadata.level ? { title: `Level ${b.metadata.level}`, icon: `Level${b.metadata.level}` } : { title: String(b.name) }) } }));   // (icon: Kick's own for it, if ALL has it)
+  return [...own, ...picked].sort((a, b) => a.o - b.o).map(x => x.p);
+}
 // A Kick chat message (ChatMessageEvent's, or the one in a pin)
 function kickMsg(d){
   if (!d || !d.id) return null;
@@ -220,7 +245,7 @@ function kickMsg(d){
   const msg = {
     site: 'kick', kind: 'message', id: d.id, t: Date.parse(d.created_at) || Date.now(),
     sender: s.username || '', login: String(s.slug || s.username || '').toLowerCase(), color: idy.color || '', userId: s.id ? String(s.id) : '',
-    badges: badgeKinds((idy.badges || []).map(b => b && b.type)), parts: kickParts(d.content)
+    badges: badgeKinds((idy.badges || []).map(b => b && b.type)), pics: kickPics(idy), parts: kickParts(d.content)
   };
   const md = d.metadata || {};
   if (d.type === 'reply' && md.original_message) msg.reply = { id: md.original_message.id || d.thread_parent_id || '', sender: (md.original_sender && md.original_sender.username) || '',
@@ -244,6 +269,15 @@ function ytBadges(list){
     return type ? type.toLowerCase() : r.customThumbnail ? 'member' : '';
   }));
 }
+// YouTube's: a member's badge is the channel's own picture; its others (owner, moderator, verified) are its icons
+function ytPics(list){
+  return (list || []).map(b => {
+    const r = b.liveChatAuthorBadgeRenderer || {}, type = r.icon && r.icon.iconType, th = r.customThumbnail && r.customThumbnail.thumbnails;
+    if (type) return { set: type.toLowerCase(), v: '1' };
+    const url = th && th.length && th[th.length - 1].url;
+    return url ? { url, title: (r.tooltip || r.accessibility && r.accessibility.accessibilityData && r.accessibility.accessibilityData.label || 'Member') } : null;
+  }).filter(Boolean);
+}
 function parseYouTube(action){
   if (!action || typeof action !== 'object') return null;
   if (action.removeChatItemAction) return { site: 'youtube', kind: 'delete', target: action.removeChatItemAction.targetItemId, t: Date.now() };
@@ -260,7 +294,7 @@ function parseYouTube(action){
   const [type] = Object.keys(item), r = item[type] || {};
   if (!r.id) return null;
   const base = { site: 'youtube', id: r.id, t: Math.round(+r.timestampUsec / 1000) || Date.now(), sender: (r.authorName && r.authorName.simpleText) || '',
-    login: ((r.authorName && r.authorName.simpleText) || '').replace(/^@/, '').toLowerCase(), color: '', userId: r.authorExternalChannelId || '', badges: ytBadges(r.authorBadges) };
+    login: ((r.authorName && r.authorName.simpleText) || '').replace(/^@/, '').toLowerCase(), color: '', userId: r.authorExternalChannelId || '', badges: ytBadges(r.authorBadges), pics: ytPics(r.authorBadges) };
   if (type === 'liveChatTextMessageRenderer') return { ...base, kind: 'message', parts: ytParts(r.message && r.message.runs) };
   if (type === 'liveChatPaidMessageRenderer' || type === 'liveChatPaidStickerRenderer'){
     const amount = (r.purchaseAmountText && r.purchaseAmountText.simpleText) || '';
@@ -321,6 +355,6 @@ const IGNORED = {
 const ignoredWhy = (site, kind) => (IGNORED[site] && IGNORED[site][kind]) || (site === 'twitch' && /^\d{3}$/.test(kind) ? 'the connection’s own' : site === 'kick' && /^pusher(_internal)?:/.test(kind) ? 'the connection’s own' : '');
 
 // (one object, so the tests can reach each site's reader)
-const feedParse = { KNOWN, IGNORED, ignoredWhy, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds };
+const feedParse = { KNOWN, IGNORED, ignoredWhy, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds, kickPics, ytPics, BADGES };
 
 export { feedParse };

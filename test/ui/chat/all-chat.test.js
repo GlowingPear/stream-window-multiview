@@ -45,8 +45,14 @@ test('an ALL tab before the sites: it shows their chats as one list, and a site\
   assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
   assert.equal(await page.locator('#stage .win.chat .all-view').count(), 0);
   assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.allOpen'))), []);
+  // the chats are still read while a site's tab shows (as its chat page says, __kmv:feed): back on ALL, nothing is missing
+  await page.evaluate(async ([ch, raw]) => {
+    const { siteMessage } = await import('./page/shared/incoming.js'), w = window.openWins().find(o => o.kind === 'chat' && o.channel === ch);
+    siteMessage(w, w.view, '__kmv:feed ' + JSON.stringify({ s: 'kick', raw: [raw] }));
+  }, ['quietkoala', KF('ChatMessageEvent', { id: 'k-while', content: 'said while Twitch showed', type: 'message', sender: { id: 3, username: 'tide', identity: {} } })]);
   await page.click('#stage .win.chat:not(.tab-hidden) .ptab.all');
-  assert.equal((await lines(page)).length, 2, 'what came before is still there');
+  assert.equal((await lines(page)).length, 3, 'what came before is still there, and what was said meanwhile');
+  assert.match((await lines(page))[2], /tide: said while Twitch showed/);
 });
 
 test('ALL: messages to you, bots hidden one by one, deletions with who or AI moderation, timeouts', async t => {
@@ -89,6 +95,24 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
   await page.click('.all-fm [aria-label="Bots"] >> text=Hidden');
   await page.keyboard.press('Escape');
   assert.equal(await page.isVisible('.all-fm'), false, 'Esc closes it');
+  // the chat bot lists changed: the messages already here checked again (Settings › Chat › Chat bots, the streamer's own bots)
+  await page.evaluate(async () => { const { alerts, saveAlerts } = await import('./page/alerts/alerts.js'), { SmvSpam } = await import('./page/alerts/spam.js'); alerts.mention.bots = [...(alerts.mention.bots || SmvSpam.BOTS), 'loudmouth99']; saveAlerts(); });
+  assert.equal((await lines(page))[4], 'al-m al-bot | Tloudmouth99: bot message hiddenShow');
+  await page.evaluate(async () => { const { alerts, saveAlerts } = await import('./page/alerts/alerts.js'); alerts.mention.bots = alerts.mention.bots.filter(b => b !== 'loudmouth99'); saveAlerts(); });
+  assert.equal((await lines(page))[4], 'al-m | Tloudmouth99: trash lol');
+  await page.evaluate(() => window.linkedApi.setStreamerOpt('s1', 'bots', [{ p: 'kick', name: 'ratchetkid' }]));
+  assert.equal((await lines(page))[7], 'al-m al-bot | Kratchetkid: bot message hiddenShow');
+  await page.evaluate(() => window.linkedApi.setStreamerOpt('s1', 'bots', [{ p: 'twitch', name: 'koala_helper' }]));
+  assert.equal((await lines(page))[7], 'al-m | Kratchetkid: nobody likes you');
+  // Bots and Events changed in the other window: here too
+  const fromOther = (k, v) => page.evaluate(([k, v]) => { localStorage.setItem('kickMultiview.' + k, v); window.dispatchEvent(new StorageEvent('storage', { key: 'kickMultiview.' + k, newValue: v })); }, [k, v]);
+  await fromOther('allBots', 'shown');
+  assert.match((await lines(page))[2], /Nightbot: Follow the socials!$/);
+  await fromOther('allEvents', 'hidden');
+  assert.ok(!(await lines(page)).some(l => l.startsWith('al-ev')), 'events hidden');
+  await fromOther('allBots', 'hidden'); await fromOther('allEvents', 'short');
+  assert.match((await lines(page))[2], /bot message hidden/);
+  assert.equal((await lines(page))[6], 'al-ev | TJean subscribedlove itSee it on Twitch ›');
   // deleted: kept, struck, with why; a timeout or ban marks their lines, and a line says what was done (and by whom, where the site says)
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('MessageDeletedEvent', { id: 'z', message: { id: 'k9' }, aiModerated: true, violatedRules: ['bullying'] })] });
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'ban-duration': '600' }, ':tmi.twitch.tv CLEARCHAT #quietkoala :loudmouth99'), TW({ 'target-msg-id': 'a' }, ':tmi.twitch.tv CLEARMSG #quietkoala :x')] });
@@ -169,6 +193,55 @@ test('ALL: the window\'s @ button (the desktop app\'s) turns mentions off and on
   assert.deepEqual(await at(), ['quietkoala'], 'ALL off: its own chat');
 });
 
+test('ALL: the sites\' own badges (a channel\'s sub badge for their months, Kick\'s picked ones), with the sites\' words; ALL\'s icons until the pictures come; a channel\'s badges and emotes go with its last chat, groups several chats have kept once', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const img = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  await page.evaluate(img => {
+    const set = (id, label, names) => ({ id, label, emotes: names.map(name => ({ name, url: img, send: name })) });
+    window.kmv = { ...(window.kmv || {}), emotesPick: async ch => (ch === 'tw:quietkoala' ? [set('twitch-global', 'Twitch', ['Kappa']), set('7tv', '7TV', ['catJAM'])] : [set('kick-global', 'Kick', ['KEKW']), set('7tv', '7TV', ['catJAM'])]) };
+  }, img);
+  await page.route('https://ext.cdn.kick.com/**', r => r.fulfill({ body: Buffer.from(img.split(',')[1], 'base64'), contentType: 'image/gif' }));   // (Kick's badge pictures: a stand-in)
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'drift', id: 'a', badges: 'subscriber/24,moderator/1,glhf-pledge/1', 'badge-info': 'subscriber/27' }, ':drift!d@d PRIVMSG #quietkoala :hi')] });
+  const kickSender = { id: 2, username: 'Lowtide', slug: 'lowtide', identity: { badges: [{ type: 'moderator', text: 'Moderator', sort_order: 3 }, { type: 'subscriber', count: 4, sort_order: 9 }, { type: 'founder', text: 'Founder', sort_order: 6 }], badges_v2: [{ name: 'GoldenK', image_url: 'https://ext.cdn.kick.com/chat/badges/k.png', selected: true, sort_order: 4 }, { name: 'level', image_url: 'https://ext.cdn.kick.com/chat/badges/lv.png', selected: false, sort_order: 1 }] } };
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatMessageEvent', { id: 'k1', content: 'yo', type: 'message', sender: kickSender })] });
+  const badges = () => page.$$eval('.all-list .al-m .al-who', l => l.map(w => [...w.querySelectorAll('.al-b, .al-bi')].map(b => b.tagName === 'IMG' ? `img ${b.getAttribute('src').replace(/^data:[^#]*|^https:\/\/ext\.cdn\.kick\.com\/chat\/badges\//, '')} ${b.title}` : b.className.replace('al-b al-b-', 'icon '))));
+  assert.deepEqual(await badges(), [['icon sub', 'icon mod'], ['icon mod', 'img k.png GoldenK', 'icon founder', 'icon sub']], 'before the pictures: ALL\'s icons, in Kick\'s order (its picked ones came with theirs; not a level it didn\'t pick)');
+  // the pictures come: Twitch's (the channel's sub badge, Twitch's own moderator), Kick's sub badges by months
+  await page.evaluate(img => {
+    window.allChat.gotBadges('tw:quietkoala', { twitch: { own: { 'subscriber/24': { url: img + '#sub24', title: '2-Year Subscriber' } }, global: { 'moderator/1': { url: img + '#mod', title: 'Moderator' } } } });
+    window.allChat.gotBadges('quietkoala', { kick: { subs: [{ months: 1, url: img + '#s1' }, { months: 3, url: img + '#s3' }, { months: 6, url: img + '#s6' }] } });
+  }, img);
+  assert.deepEqual(await badges(), [['img #sub24 27-Month Subscriber (2-Year Badge)', 'img #mod Moderator'], ['icon mod', 'img k.png GoldenK', 'icon founder', 'img #s3 4-Month Subscriber']], 'as the sites say them; one without a picture: left out');
+  assert.deepEqual(await page.$$eval('.all-list .al-m:last-child .al-b', l => l.map(b => b.title)), ['Moderator', 'Founder'], 'Kick\'s names for its own');
+  // Kick's own icons, once its chat has drawn them: cleaned to shapes and colours, a gift by how many (30: Gift25)
+  const kickLine = sender => KF('ChatMessageEvent', { id: 'k-' + sender.username, content: 'hi', type: 'message', sender });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [kickLine({ id: 4, username: 'Gifty', slug: 'gifty', identity: { badges: [{ type: 'sub_gifter', text: 'Sub Gifter', count: 30, sort_order: 8 }, { type: 'founder', text: 'Founder', sort_order: 6 }],
+    badges_v2: [{ name: 'level', image_url: 'https://ext.cdn.kick.com/chat/badges/lv.png', metadata: { level: 24 }, selected: true, sort_order: 1 }] } })] });
+  const giftyBadges = () => page.$$eval('.all-list [data-key="kick:k-Gifty"] .al-who > :not(.pi)', l => l.map(b => b.className + ' ' + (b.title || b.dataset.tipTitle || '')));
+  assert.deepEqual(await giftyBadges(), ['al-bi Level 24', 'al-b al-b-founder Founder', 'al-b al-b-gifter Sub Gifter'], 'before Kick\'s icons: its level\'s picture, ALL\'s icons');
+  const cleaned = await page.evaluate(() => {
+    window.__ran = 0;
+    window.allChat.gotKickIcons({ Gift25: '<svg data-ds-icon="Gift25" viewBox="0 0 20 20" width="20" class="x" onload="window.__ran++"><script>window.__ran++</script><path d="M1 1h18v18H1z" fill="#53fc18" style="fill:red" onclick="window.__ran++"/><a href="javascript:window.__ran++"><path d="M0 0"/></a><use href="https://evil/x.svg#a"/><path fill="url(https://evil/x)" d="M2 2"/></svg>',
+      founder: '<svg viewBox="0 0 20 20"><defs><linearGradient id="g1"><stop stop-color="#feb635"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#g1)"/></svg>', Level24: '<svg viewBox="0 0 20 20"><path d="M1 1h2v2H1z"/></svg>', 'bad key!': '<svg/>', moderator: 'not svg' });
+    return { gift: window.allChat.kickIcons.get('Gift25'), keys: [...window.allChat.kickIcons.keys()], ran: window.__ran };
+  });
+  assert.equal(cleaned.gift, '<svg viewBox="0 0 20 20"><path d="M1 1h18v18H1z" fill="#53fc18"/><path d="M2 2"/></svg>', 'only shapes and colours: no script, handler, style, link or outside address');
+  assert.deepEqual(cleaned.keys, ['Gift25', 'founder', 'Level24']);
+  assert.equal(cleaned.ran, 0);
+  assert.deepEqual(await giftyBadges(), ['al-bk Level 24', 'al-bk Founder', 'al-bk Sub Gifter'], 'Kick\'s own icons, in its order');
+  // Twitch's own kept once: a second Twitch chat's answer without them still finds them
+  await page.evaluate(() => window.allChat.gotBadges('tw:quietkoala', { twitch: { own: {} } }));
+  assert.deepEqual((await badges())[0], ['icon sub', 'img #mod Moderator']);
+  // the emotes several chats have (the streamer's 7TV set on both sites): one copy
+  const sharedSet = () => page.evaluate(async () => { const c = window.allEmotes.emoteCache; const a = await c.get('quietkoala'), b = await c.get('tw:quietkoala'); return a && b ? [a[1] === b[1], a[0] === b[0]] : null; });
+  assert.deepEqual(await sharedSet(), [true, false], 'the 7TV set once; each site\'s own set its own');
+  // the streamer's window closed: their badges and emotes go; Twitch's own too, with no Twitch chat open
+  await page.click('#stage .win.chat:not(.tab-hidden) button.x');
+  await page.waitForFunction(() => !document.querySelector('#stage .win.chat'));
+  assert.deepEqual(await page.evaluate(() => [window.allChat.badgePics.size, window.allEmotes.emoteCache.size, window.allChat.twBadges()]), [0, 0, null]);
+});
+
 test('ALL has the sites\' chats\' extras: links open in your browser; the line menu\'s link, emote and selected-text items, both copies, translating its site\'s chat; the emote card on hover; Copy message HTML; Blow up on a click', async t => {
   const page = await allApp(t, { allOpen: '["s1"]', emotePreview: '1', chatBlowup: '1' });
   await page.waitForSelector('.all-view');
@@ -184,6 +257,9 @@ test('ALL has the sites\' chats\' extras: links open in your browser; the line m
   assert.equal(await page.getAttribute('.all-list .al-link', 'href'), 'https://clips.twitch.tv/BraveOwl-abc');
   await page.click('.all-list .al-link');
   assert.deepEqual(await page.evaluate(() => window.__opened), ['https://clips.twitch.tv/BraveOwl-abc']);
+  // without https://: www.…, or a name with a usual ending (and its path), opened as https://; not an address or a number
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'drift', id: 'a2' }, ':drift!d@d PRIVMSG #quietkoala :socials: kick.com/quietkoala, www.koala.gg! mail me@koala.com v1.2.3')] });
+  assert.deepEqual(await page.$$eval('.all-list .al-m:last-child .al-link', l => l.map(a => [a.textContent, a.getAttribute('href')])), [['kick.com/quietkoala', 'https://kick.com/quietkoala'], ['www.koala.gg', 'https://www.koala.gg']]);
   // right-click the link: its items
   await page.click('.all-list .al-link', { button: 'right' });
   const items = () => page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent.trim()));
@@ -691,6 +767,18 @@ test('ALL: pins wait in the pill (how many), which shows and hides one compact s
   const strip = () => page.$eval('.all-pins', e => e.textContent.replace(/\s+/g, ' ').trim());
   assert.equal(await strip(), 'Kquietkoala scrims at 8pmjust now');
   assert.match(await page.getAttribute('.all-pin-row', 'title'), /^quietkoala: scrims at 8pm\nPinned by nightowl_mod$/, 'the whole message, and who pinned it');
+  // a press on the message: all of it, over several lines; again: one line. Its link opens without that
+  await feed(page, 'quietkoala', { s: 'kick', raw: [kpin('k6', 'scrims at 8pm, sign up at tilt.fyi/71JEms and read the rules first, all of them, twice over please')] });
+  assert.deepEqual(await page.$eval('.all-pin-t', e => [getComputedStyle(e).whiteSpace, e.getAttribute('aria-expanded'), e.dataset.cmd]), ['nowrap', 'false', 'all.pinFull']);
+  await page.click('.all-pin-t b');
+  assert.deepEqual(await page.$eval('.all-pin-t', e => [getComputedStyle(e).whiteSpace, e.getAttribute('aria-expanded')]), ['normal', 'true']);
+  await page.evaluate(() => { window.__opened = []; window.open = url => { window.__opened.push(url); return null; }; });
+  await page.click('.all-pin-t .al-link');
+  assert.deepEqual(await page.evaluate(() => window.__opened), ['https://tilt.fyi/71JEms']);
+  assert.equal(await page.getAttribute('.all-pin-t', 'aria-expanded'), 'true', 'the link: not a press on the message');
+  await page.click('.all-pin-t b');
+  assert.equal(await page.getAttribute('.all-pin-t', 'aria-expanded'), 'false');
+  await feed(page, 'quietkoala', { s: 'kick', raw: [kpin('k5', 'scrims at 8pm')] });
   await page.evaluate(() => window.allChat.ingest('tw:quietkoala', { s: 'youtube', raw: [{ addBannerToLiveChatCommand: { bannerRenderer: { liveChatBannerRenderer: { actionId: 'b1', contents: { liveChatTextMessageRenderer: { id: 'y9', authorName: { simpleText: 'Mika R.' }, message: { runs: [{ text: 'clip of the ace' }] } } } } } } }] }));
   assert.equal(await strip(), 'YMika R. clip of the acejust nowYK', 'the newest');
   await page.click('.all-pin-sw .pi-kick');
@@ -874,14 +962,17 @@ test('ALL: the send site\'s modes above the box; slow mode counts down after you
   // as it changes live: followers only for 10 minutes (Kick's event), and you only followed a minute ago
   await page.evaluate(() => window.allChat.setModes('quietkoala', { me: { signedIn: true, follower: true, followedAt: Date.now() - 60000 } }));
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatroomUpdatedEvent', { slow_mode: { enabled: false }, followers_mode: { enabled: true, min_duration: 10 }, subscribers_mode: { enabled: false }, emotes_mode: { enabled: false } })] });
-  assert.match(await page.getAttribute('.all-in', 'placeholder'), /^Followers only · you can chat in 9 min$/);
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Can’t send on Kick', 'the bar says why');
   assert.equal(await page.isDisabled('.all-in'), true);
-  assert.match(await bar(), /^Followers only · you can chat in 9 minFollowers 10 min$/);
+  assert.equal(await bar(), 'Followers onlyYou can chat in 9 min', 'said once: not its chip as well');
+  assert.deepEqual(await page.$eval('.all-mb', e => [e.querySelector('b').textContent, e.querySelector('small').textContent, e.title]), ['Followers only', 'You can chat in 9 min', 'Followers only · you can chat in 9 min'], 'two lines: what\'s in the way, what to do');
   // subscribers only, not subscribed; then a ban
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatroomUpdatedEvent', { followers_mode: { enabled: false }, subscribers_mode: { enabled: true } })] });
-  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Subscribers only · subscribe on Kick to chat');
+  assert.equal(await bar(), 'Subscribers onlySubscribe on Kick to chat');
   await page.evaluate(() => window.allChat.setModes('quietkoala', { me: { signedIn: true, banned: true } }));
-  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'You’re banned from this Kick chat');
+  assert.equal(await page.$eval('.all-mb', e => e.querySelectorAll('small').length), 0, 'one sentence: one line');
+  assert.equal(await bar(), 'You’re banned from this Kick chatSubscribers only', 'not the mode it\'s because of: its chip stays');
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Can’t send on Kick');
   // a moderator: the modes show, quieter, and don't apply
   await page.evaluate(() => window.allChat.setModes('quietkoala', { me: { signedIn: true, mod: true } }));
   assert.equal(await page.isDisabled('.all-in'), false);
@@ -890,8 +981,8 @@ test('ALL: the send site\'s modes above the box; slow mode counts down after you
   await page.evaluate(() => window.allChat.setModes('tw:quietkoala', { me: { signedIn: true, follower: false } }));
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'followers-only': '0', 'room-id': '1' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')] });
   await page.focus('.all-in'); await page.keyboard.press('Tab');
-  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Followers only · follow on Twitch to chat');
-  assert.equal(await bar(), 'Followers only · follow on Twitch to chatFollowers only');
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Can’t send on Twitch');
+  assert.equal(await bar(), 'Followers onlyFollow on Twitch to chat');
   await page.evaluate(() => window.allChat.setModes('yt:quietkoala', { blocked: 'Sign in to chat' }));
 });
 
@@ -981,9 +1072,10 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
     const img = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
     window.__asked = [];
     window.kmv = { ...(window.kmv || {}), emotesPick: async ch => { window.__asked.push(ch); return ch === 'quietkoala'
-      ? [{ id: 'kick-channel', label: 'Channel', emotes: [{ name: 'koalaHype', url: img, send: '[emote:1:koalaHype]', subs: true }, { name: 'koalaWave', url: img, send: '[emote:2:koalaWave]' }] },
+      ? [{ id: 'kick-channel', label: 'Channel', pic: img, emotes: [{ name: 'koalaHype', url: img, send: '[emote:1:koalaHype]', subs: true }, { name: 'koalaWave', url: img, send: '[emote:2:koalaWave]' }] },
+         { id: 'kick-yours', label: 'Sub emotes', emotes: [{ name: 'otterWave', url: img, send: '[emote:4:otterWave]', from: 'Otter' }, { name: 'otterLUL', url: img, send: '[emote:5:otterLUL]', from: 'Otter' }, { name: 'foxHi', url: img, send: '[emote:6:foxHi]', from: 'Fox' }], channels: [{ name: 'Otter', pic: img }, { name: 'Fox' }] },
          { id: 'kick-global', label: 'Kick', emotes: [{ name: 'KEKW', url: img, send: '[emote:9:KEKW]' }] }]
-      : [{ id: 'twitch-global', label: 'Twitch', emotes: [{ name: 'Kappa', url: img, send: 'Kappa' }] }]; } };
+      : [{ id: 'twitch-channel', label: 'Channel', emotes: [{ name: 'koalaTwHi', url: img, send: 'koalaTwHi' }] }, { id: 'twitch-global', label: 'Twitch', emotes: [{ name: 'Kappa', url: img, send: 'Kappa' }] }]; } };
     window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push([m.channel, text]); return 'sent'; };
   }, LIVE);
   // :name
@@ -1002,17 +1094,38 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   assert.deepEqual(await page.evaluate(() => window.__sends[0]), ['quietkoala', 'gg [emote:9:KEKW]'], 'as Kick writes it');
   assert.match(await page.textContent('.al-mine'), /gg KEKW/, 'your line shows its name');
   assert.equal(await page.isVisible('.all-rb'), false, 'sent: unlocked');
-  // the smiley: tabs, search, a pick
+  // a sub emote from another channel: its channel beside it
+  await page.focus('.all-in'); await page.keyboard.type(':otterl');
+  await page.waitForSelector('.all-at:not([hidden]) .all-emi');
+  assert.deepEqual(await page.$$eval('.all-at .all-emi', l => l.map(b => b.textContent)), ['otterLULOtter']);
+  await page.keyboard.press('Escape'); await page.fill('.all-in', '');
+  // the smiley: all of them, under a heading for each kind (each channel you're subscribed to with its picture)
   await page.click('.all-emo-b');
   await page.waitForSelector('.all-ep .all-ep-e');
-  assert.deepEqual(await page.$$eval('.all-ep-tabs button', l => l.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['Channel*', 'Kick']);
-  assert.deepEqual(await page.$$eval('.all-ep-e', l => l.map(b => b.title)), ['koalaHype (subscribers)', 'koalaWave']);
+  // (a heading: its icon's kind, then its words)
+  const icon = e => { const i = e.querySelector('.all-ep-pic, .all-ep-ic, .pi, .ch-av'); return !i ? '' : i.classList.contains('all-ep-pic') ? (i.querySelector('img') ? '[pic] ' : '[letter] ') : i.classList.contains('ch-av') ? '[channel] ' : i.classList.contains('pi') ? `[${i.textContent}] ` : `[${[...i.classList].pop()}] `; };
+  const words = e => [...e.childNodes].filter(n => n.nodeType === 3 || n.tagName === 'SMALL').map(n => n.textContent).join(' ');
+  const grid = () => page.$$eval('.all-ep-grid > *', (l, [icon, words]) => { const ic = eval(icon), w = eval(words); return l.map(e => e.classList.contains('all-ep-sec') ? `# ${ic(e)}${w(e)}` : e.title); }, [icon.toString(), words.toString()]);
+  assert.deepEqual(await grid(), ['# [pic] Channel', 'koalaHype (subscribers)', 'koalaWave', '# [K] Kick', 'KEKW', '# [pic] Otter Sub emotes', 'otterWave · Otter', 'otterLUL · Otter', '# [letter] Fox Sub emotes', 'foxHi · Fox'], 'the channel\'s picture; the site\'s badge; Sub emotes last (a channel without a picture: its first letter)');
+  // search: across them, under their headings
   await page.fill('.all-ep-q', 'wave');
-  assert.deepEqual(await page.$$eval('.all-ep-e', l => l.map(b => b.title)), ['koalaWave']);
+  assert.deepEqual(await grid(), ['# [pic] Channel', 'koalaWave', '# [pic] Otter Sub emotes', 'otterWave · Otter']);
   await page.fill('.all-ep-q', 'zzz');
   assert.match(await page.textContent('.all-ep-grid'), /No Kick emote matches “zzz”/);
   await page.fill('.all-ep-q', '');
-  await page.click('.all-ep-tabs button >> text=Kick');
+  // beside the search: show one kind, or one channel (with their pictures in its list)
+  assert.deepEqual(await page.$$eval('.all-ep-f option', l => l.map(o => o.textContent)), ['All emotes', 'Channel', 'Kick', 'Sub emotes', 'Otter', 'Fox']);
+  await page.click('.all-ep-f');
+  assert.deepEqual(await page.$$eval('.dd-list button', (l, icon) => { const ic = eval(icon); return l.map(b => ic(b) + (b.querySelector('.dd-t') || b).textContent); }, icon.toString()), ['[all] All emotes', '[pic] Channel', '[K] Kick', '[yours] Sub emotes', '[pic] Otter', '[letter] Fox'], 'each with its icon');
+  // its list stays inside the picker
+  assert.equal(await page.evaluate(() => { const l = document.querySelector('.dd-list').getBoundingClientRect(), e = document.querySelector('.all-ep').getBoundingClientRect(); return l.bottom <= e.bottom + 0.5 && l.top >= e.top - 0.5 && l.right <= e.right + 0.5 && l.left >= e.left - 0.5; }), true);
+  assert.deepEqual(await page.$eval('.dd-list .all-ep-pic', e => { const c = getComputedStyle(e); return [c.width, c.height, c.borderRadius]; }), ['16px', '16px', '50%'], 'small circles, as the window swap list\'s');
+  await page.keyboard.press('Escape');
+  await page.selectOption('.all-ep-f', 'kick-yours');
+  assert.deepEqual(await grid(), ['# [pic] Otter Sub emotes', 'otterWave · Otter', 'otterLUL · Otter', '# [letter] Fox Sub emotes', 'foxHi · Fox']);
+  await page.selectOption('.all-ep-f', 'kick-yours/Fox');
+  assert.deepEqual(await grid(), ['# [letter] Fox Sub emotes', 'foxHi · Fox']);
+  await page.selectOption('.all-ep-f', 'kick-global');
   await page.click('.all-ep-e');
   assert.equal(await page.inputValue('.all-in'), 'KEKW ');
   await page.keyboard.press('Escape');
@@ -1030,6 +1143,10 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   await page.waitForFunction(() => window.__sends.length === 2);
   assert.deepEqual(await page.evaluate(() => window.__sends[1]), ['tw:quietkoala', 'Kappa KEKW']);
   assert.deepEqual(await page.evaluate(() => window.__asked), ['quietkoala', 'tw:quietkoala'], 'each site\'s asked once');
+  // Twitch's picker: a channel group without its picture (the site didn't send one): the app's own for the channel
+  await page.click('.all-emo-b');
+  await page.waitForSelector('.all-ep .all-ep-e');
+  assert.deepEqual(await page.$$eval('.all-ep-sec', l => l.map(e => (e.querySelector('.ch-av') ? '[channel] ' : e.querySelector('.pi') ? `[${e.querySelector('.pi').textContent}] ` : '') + [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(''))), ['[channel] Channel', '[T] Twitch']);
 });
 
 test('ALL: the send button: there once there\'s something to send, says where, sends like Enter, a spinner (and no second send) while sending', async t => {

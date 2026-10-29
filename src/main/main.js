@@ -1435,7 +1435,8 @@ appIpc.handle('emotes:pick', async (_e, ch) => {
   if (/^tw:/.test(ch)) {
     platform = 'twitch';
     const token = await twitchToken();
-    const r = token ? await twitchGql(token, 'query($l:String!){currentUser{emoteSets{id owner{login} emotes{id token}}} user(login:$l){id}}', { l: ch.slice(3) }).catch(() => null) : null;
+    // (the owners' pictures at the profiles' size, TW_PROFILE: the same address, so one download for both)
+    const r = token ? await twitchGql(token, 'query($l:String!){currentUser{emoteSets{id owner{login displayName profileImageURL(width:300)} emotes{id token}}} user(login:$l){id profileImageURL(width:300)}}', { l: ch.slice(3) }).catch(() => null) : null;
     groups = twitchGroups(r && r.d, ch.slice(3)) || [];
     id = r && r.d && r.d.data && r.d.data.user && r.d.data.user.id;
   } else {

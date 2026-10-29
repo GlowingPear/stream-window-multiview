@@ -67,7 +67,8 @@ function feedAgent(as){
       if (data.includes(' #')) data.split('\r\n').forEach(l => { if (TW.test(l)) push(l); });
       else if (data.startsWith('{') && /\\"((un)?pin-message|updated_room|moderation_action)\\"/.test(data)) push(data);   // (its other connection: a message pinned or taken down, the chat's modes, what a moderator did)
     }
-    else if (site === 'kick' && data.startsWith('{"push"') && KICK.test(data)) push(data);
+    // (Kick's connection sends what comes together in one message, a line each: a busy chat's messages often do)
+    else if (site === 'kick') data.split('\n').forEach(l => { if (l.startsWith('{"push"') && KICK.test(l)) push(l); });
   }
   const seen = new WeakSet(), d = Object.getOwnPropertyDescriptor(MessageEvent.prototype, 'data');
   if (d && d.get) Object.defineProperty(MessageEvent.prototype, 'data', { configurable: true, enumerable: d.enumerable, get(){
@@ -121,6 +122,45 @@ async function pinAgent(as, nameAs){
     const pins = acts.filter(a => a && a.addBannerToLiveChatCommand);
     return pins.length ? { s: 'youtube', raw: pins } : null;
   } catch (e) { return null; }
+}
+
+// The pictures of the chat's badges, for ALL's lines (feed-parse.js keeps each message's badges as { set, v }): asked
+// once as ALL starts reading the chat. Kick: the channel's sub badges, by months (its other badges come with their
+// pictures, or are its own icons); Twitch: the channel's (subs, bits), and Twitch's own when asked for (global: the same
+// for every chat, so ALL keeps them once), by set and version. YouTube's come with their pictures.
+// -> { kick: { subs: [{ months, url }] } } or { twitch: { own: { '<set>/<version>': { url, title } }, global?: { … } } },
+// or null (none, or unreadable)
+async function badgesAgent(global, as, nameAs){
+  const site = as || (/(^|\.)kick\.com$/.test(location.hostname) ? 'kick' : /(^|\.)twitch\.tv$/.test(location.hostname) ? 'twitch' : 'youtube');
+  const name = nameAs || (location.pathname.match(/\/popout\/([^/]+)/) || [])[1];   // (as, nameAs: the tests')
+  if (!name || site === 'youtube') return null;
+  try {
+    if (site === 'kick'){
+      const ch = await (await fetch(`/api/v2/channels/${encodeURIComponent(name)}`, { credentials: 'include' })).json();
+      const subs = (ch && Array.isArray(ch.subscriber_badges) ? ch.subscriber_badges : []).map(b => ({ months: +b.months || 0, url: (b.badge_image && b.badge_image.src) || '' })).filter(b => /^https:\/\//.test(b.url));
+      return subs.length ? { kick: { subs: subs.sort((a, b) => a.months - b.months) } } : null;
+    }
+    const fields = '{ setID version title imageURL(size: DOUBLE) }';
+    const query = `query { ${global ? `badges ${fields} ` : ''}user(login: ${JSON.stringify(decodeURIComponent(name).toLowerCase())}) { broadcastBadges ${fields} } }`;
+    const r = await (await fetch('https://gql.twitch.tv/gql', { method: 'POST', headers: { 'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko', 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) })).json();
+    const d = (r && r.data) || {}, byKey = list => { const out = {}; (list || []).forEach(b => { if (b && b.setID && /^https:\/\//.test(b.imageURL || '')) out[b.setID + '/' + b.version] = { url: b.imageURL, title: b.title || '' }; }); return out; };
+    const own = byKey(d.user && d.user.broadcastBadges), all = global ? byKey(d.badges) : null;
+    return Object.keys(own).length || (all && Object.keys(all).length) ? { twitch: { own, ...(all ? { global: all } : {}) } } : null;
+  } catch (e) { return null; }
+}
+
+// Kick's own badges as its chat draws them (its icons, not pictures: founder, moderator, a sub gifter's gift for how many,
+// a level), for ALL's lines to look the same: the ones it has drawn that ALL doesn't have yet (known), by the badge's
+// type, a gift's icon name (Gift25) or a level's (Level24). -> { '<key>': '<svg>' } (chat/all-chat.js cleans them)
+function kickIconsAgent(known){
+  const out = {}, have = new Set(known || []);
+  const keep = (k, svg) => { if (k && svg && !have.has(k) && !out[k]) out[k] = svg.outerHTML.slice(0, 20000); };
+  document.querySelectorAll('[data-testid^="identity-badge-"]').forEach(b => {
+    const type = b.dataset.testid.slice('identity-badge-'.length), svg = b.querySelector('svg');
+    if (svg) keep(type === 'sub_gifter' ? svg.dataset.dsIcon : type, svg);
+  });
+  document.querySelectorAll('svg[data-ds-icon^="Level"]').forEach(svg => keep(svg.dataset.dsIcon, svg));
+  return out;
 }
 
 // The chat's modes and where you stand in it, for ALL's box (chat/all-chat.js): asked as ALL starts reading the chat;
@@ -285,5 +325,5 @@ function profileAgent(id){
   return true;
 }
 
-export { feedAgent, lineProbe, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt,
-  twReplyPress };
+export { badgesAgent, feedAgent, kickIconsAgent, lineProbe, messageHtml, modesAgent, pinAgent, profileAgent,
+  replyAgent, seekAgent, twReplyAt, twReplyPress };

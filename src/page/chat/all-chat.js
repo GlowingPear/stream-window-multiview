@@ -1,6 +1,7 @@
 import { alerts, clearAlert } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
-import { SMILEY, addonEmotes, emoteCache, openEmotePicker, pickEmote, renderEmoteList, suggestEmote, withEmotes } from './all-emotes.js';
+import { SMILEY, addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, renderEmoteList, suggestEmote,
+  withEmotes } from './all-emotes.js';
 import { healthState, noteRaw, noteSend, reportHealth } from './all-health.js';
 import { blowOn, blowUp } from './blow-up.js';
 import { chatBoxName } from './chat-name.js';
@@ -12,7 +13,8 @@ import { autoTrFor, translateChat } from './translate.js';
 import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
 import { wins } from '../core.js';
-import { feedAgent, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
+import { badgesAgent, feedAgent, kickIconsAgent, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent,
+  seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
@@ -41,7 +43,8 @@ import { syncModBtn } from '../windows/windows.js';
    An ALL tab before the site tabs of a linked streamer's chat window. It covers the chat you watched with the app's
    own list; the site tabs stay as they are (loaded, playing their part), and clicking one shows that site's chat
    again. The messages come from each site's own connection, heard inside its chat page (in-site/feed.js, read by
-   chat/feed-parse.js): only while ALL shows, and only from the tabs that are open (an offline site's isn't loaded).
+   chat/feed-parse.js): while the window has an ALL tab (also while a site's tab shows, so going back to ALL misses
+   nothing), and only from the tabs that are open (an offline site's isn't loaded).
    Each line has its site's icon and the sender's badges. Messages to you are marked (an @ green, a reply blue),
    bots on the app's chat bot list or the streamer's own are a line each with the text hidden (Show opens one),
    and a deleted message stays struck through with who or what deleted it (Kick's AI moderation and its rule). */
@@ -74,6 +77,13 @@ const feedOf = s => { let f = feeds.get(s.id); if (!f){ f = { msgs: [], byId: ne
 // Your name on that site: messages to it are marked
 const meOn = site => (site === 'kick' ? myName : site === 'twitch' ? bellVars.myTwitch : '').toLowerCase();
 const appBots = ch => [...(alerts.mention.bots || SmvSpam.BOTS), ...streamerBots(ch)];
+const isBot = m => SmvSpam.ignored(m.sender, appBots(m.ch));
+// The chat bot lists changed (Settings › Chat › Chat bots, a streamer's own): the messages already here checked again
+function botsChanged(){
+  let any = false;
+  feeds.forEach(f => f.msgs.forEach(m => { if (m.kind !== 'message') return; const b = isBot(m); if (b !== !!m.bot){ m.bot = b; any = true; } }));
+  if (any) redrawAll();
+}
 function ingest(w, json, quiet = false){
   const s = streamerOf(w.channel); if (!s) return;
   let batch; try { batch = JSON.parse(json); } catch { return; }
@@ -90,12 +100,13 @@ function ingest(w, json, quiet = false){
     if (m.giftTo && giftTo(f, m)) return;   // (one of the gifted subs announced just before: its name goes on that line)
     if (m.gift) m.gift.me = m.gift.to.some(r => r.login && r.login === meOn(m.site));
     mentionOf(m, w.channel);
-    if (m.kind === 'message' && SmvSpam.ignored(m.sender, appBots(w.channel))) m.bot = true;
+    if (m.kind === 'message' && isBot(m)) m.bot = true;
     if (m.kind === 'message') mineSeen(f, m);
     f.msgs.push(m); if (m.id) f.byId.set(m.site + ':' + m.id, m);
     if (f.msgs.length > MAX){ const old = f.msgs.shift(); if (old.id) f.byId.delete(old.site + ':' + old.id); }
     if (view) addLine(view, m);
     if (m.kind === 'message' && !m.bot && autoTrFor(w.channel)) translateSoon(m);
+    if (m.site === 'kick' && m.pics && m.pics.some(p => (!p.url || p.icon) && !kickIcons.has(kickIconKey(p)))) kickIconsSoon(w);
   }); });
 }
 const reEsc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -136,6 +147,9 @@ function giftTo(f, m){
   return true;
 }
 /* ---- the chats' modes: slow mode, followers only, subscribers only, … above the box, for the site it sends on ---- */
+const badgePics = new Map();   // channel -> its badges' pictures, as badgesAgent read them (in-site/feed.js), or null (none); while it has a chat open
+let twBadges = null;           // Twitch's own badges' pictures (the same in every chat: kept once)
+const kickIcons = new Map();   // Kick's own badge icons as its chat draws them (kickIconsAgent), cleaned: '<type>' | 'Gift25' | 'Level24' -> <svg>
 const modesOf = new Map();   // channel -> { modes: { slow, followers, subs, emotes, verified }, me: { … }, blocked, until (slow mode: when you can send again) }
 function setModes(ch, r){
   const was = modesOf.get(ch) || {};
@@ -156,16 +170,23 @@ function chatRules(ch){
     m.subs && { k: 'subs', t: 'Subscribers only', tip: 'Subscribers only' },
     m.emotes && { k: 'emotes', t: 'Emotes only', tip: 'Emotes only: messages of emotes alone' },
     m.verified && { k: 'verified', t: 'Verified only', tip: `Verified accounts only (${site} asks for a phone or email)` }].filter(Boolean);
-  let block = '';
+  let block = '', blockK = '';   // (blockK: the mode it's because of: its chip goes, the bar says it)
   if (me.banned) block = `You’re banned from this ${site} chat`;
   else if (!free && me.signedIn){
     const left = m.followers && me.followedAt ? m.followers * 60000 - (Date.now() - me.followedAt) : 0;
-    if (m.subs && !me.sub) block = `Subscribers only · subscribe on ${site} to chat`;
-    else if (m.followers != null && !me.follower) block = `Followers only · follow on ${site}${m.followers ? ` for ${modeDur(m.followers * 60)}` : ''} to chat`;
-    else if (left > 0) block = `Followers only · you can chat in ${modeDur(Math.ceil(left / 1000))}`;
+    if (m.subs && !me.sub){ block = `Subscribers only · subscribe on ${site} to chat`; blockK = 'subs'; }
+    else if (m.followers != null && !me.follower){ block = `Followers only · follow on ${site}${m.followers ? ` for ${modeDur(m.followers * 60)}` : ''} to chat`; blockK = 'followers'; }
+    else if (left > 0){ block = `Followers only · you can chat in ${modeDur(Math.ceil(left / 1000))}`; blockK = 'followers'; }
   }
   const wait = !free && st.until ? Math.max(0, Math.ceil((st.until - Date.now()) / 1000)) : 0;
-  return { chips, block, wait, free, slow: m.slow || 0, me };
+  return { chips, block, blockK, wait, free, slow: m.slow || 0, me };
+}
+// Why you can't chat, on every site in the same two lines: what's in the way, then what to do ("Followers only ·
+// follow on Twitch…"); a reason of one sentence is one line. Too long for the window: each line ends in …, all of it on hover.
+function blockEl(text){
+  const [what, ...todo] = text.split(' · '), rest = todo.join(' · ');
+  return element('span', { class: 'all-mb', title: text }, element('i', { html: icon.lock }),
+    element('span', 'all-mbt', element('b', null, what), rest && element('small', null, rest[0].toUpperCase() + rest.slice(1))));
 }
 // The bar above the box: the send site's modes (yours to ignore as a mod), slow mode's countdown, or why you can't chat
 function renderModes(view, w){
@@ -175,10 +196,10 @@ function renderModes(view, w){
   const why = r.free && (r.me && r.me.host ? 'Your chat: they don’t apply to you' : r.me && r.me.vip && !r.me.mod ? 'You’re a VIP: they don’t apply to you' : 'You’re a moderator: they don’t apply to you');
   bar.className = 'all-modes all-modes-' + p + (r.block ? ' blocked' : r.wait ? ' waiting' : '') + (r.free ? ' free' : '');
   bar.replaceChildren(...[
-    r.block ? element('span', 'all-mb', element('i', { html: icon.lock }), element('span', null, r.block))
+    r.block ? blockEl(r.block)
       : r.wait ? element('span', { class: 'all-mw', style: { '--p': String(r.wait / Math.max(1, r.slow)) } }, element('i', { html: TIMER }), element('span', null, 'Slow mode · you can send in ', element('b', null, `${r.wait}s`)))
       : '',
-    ...r.chips.filter(c => !(r.wait && c.k === 'slow')).map(c => element('span', { class: 'all-mc all-mc-' + c.k, title: c.tip }, c.t)),   // (counting down: that says it)
+    ...r.chips.filter(c => !(r.wait && c.k === 'slow') && c.k !== r.blockK).map(c => element('span', { class: 'all-mc all-mc-' + c.k, title: c.tip }, c.t)),   // (counting down, or why you can't chat: that says it)
     why && element('span', { class: 'all-mfree', title: why }, element('i', { html: icon.check }), r.me && r.me.host ? 'yours' : 'exempt')].filter(Boolean));
   if (r.wait){ clearTimeout(view.modeT); view.modeT = setTimeout(() => { if (view.el.isConnected){ renderModes(view, w); syncSendB(view, w); } }, 250); }
 }
@@ -329,11 +350,13 @@ function renderPins(view){
   view.pins.hidden = !n || !view.pinsShown;
   if (n < 2) view.pinsOpen = false;
   if (view.pins.hidden) return;
-  // one line each: site, name, the message (the rest in its tooltip), and when (or 1 of 2)
+  // one line each: site, name, the message, and when (or 1 of 2). A press on the message shows all of it (and again: one line)
   const row = (p, sub, ...end) => {
     const text = p.msg.parts.map(x => x.text || x.name).join('');
-    return element('div', { class: 'all-pin-row', title: `${p.msg.sender}: ${text}${p.by ? `\nPinned by ${p.by}` : ''}` }, element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0]),
-      element('div', 'all-pin-t', element('b', { style: { color: nameColor(p.msg) } }, p.msg.sender), ' ', ...partsEl(p.msg.parts, p.ch)), element('small', 'all-pin-s', sub), ...end);
+    return element('div', { class: 'all-pin-row' + (view.pinFull ? ' full' : ''), title: `${p.msg.sender}: ${text}${p.by ? `\nPinned by ${p.by}` : ''}` }, element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0]),
+      element('div', { class: 'all-pin-t', role: 'button', tabindex: '0', 'aria-expanded': String(!!view.pinFull), dataset: { cmd: 'all.pinFull' },
+        onclick: () => { view.pinFull = !view.pinFull; renderPins(view); }, onkeydown: e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.target.click(); } } },
+        element('b', { style: { color: nameColor(p.msg) } }, p.msg.sender), ' ', ...partsEl(p.msg.parts, p.ch)), element('small', 'all-pin-s', sub), ...end);
   };
   if (view.pinsOpen){
     view.pins.replaceChildren(...f.pins.map((p, i) => row(p, pinAgo(p.t), !i && element('button', { type: 'button', class: 'all-pin-open', title: 'Only the newest', 'aria-label': 'Only the newest', 'aria-expanded': 'true', html: CHEVRON, dataset: { cmd: 'all.pinsOpen' }, onclick: () => { view.pinsOpen = false; renderPins(view); } }))));
@@ -352,7 +375,7 @@ const viewFor = s => {
   return lead && lead.allView || null;
 };
 const SITE_CLASS = { kick: 'k', twitch: 't', youtube: 'y' };
-const BADGE_TIP = { host: 'Streamer', mod: 'Moderator', vip: 'VIP', sub: 'Subscriber', og: 'OG', verified: 'Verified', staff: 'Staff', gifter: 'Sub gifter' };
+const BADGE_TIP = { host: 'Streamer', mod: 'Moderator', vip: 'VIP', sub: 'Subscriber', og: 'OG', verified: 'Verified', staff: 'Staff', gifter: 'Sub gifter', founder: 'Founder' };
 // a readable colour for a name: the site's, or one from the name
 function nameColor(m){
   if (/^#[0-9a-f]{6}$/i.test(m.color)) return m.color;
@@ -371,16 +394,18 @@ function partsEl(parts, ch){
   });
   return out;
 }
-// Web links in a message: they open in your browser (right-click: copy it)
-const URL_RE = /\bhttps?:\/\/[^\s<>"]+[^\s<>".,!?:;)\]'"]/g;
+// Web links in a message: they open in your browser (right-click: copy it). Also without https:// (www.…, or a
+// name with a usual ending: kick.com/someone, youtu.be/…), opened as https://
+const LINK_TLDS = 'com|net|org|io|gg|tv|me|co|be|fyi|ly|to|app|dev|ai|xyz|live|link|shop|store|site|online|info|uk|de|fr|es|it|nl|eu|us|ca|au|jp|br';
+const URL_RE = new RegExp(`(?:\\bhttps?:\\/\\/|(?<![\\w@.-])www\\.|(?<![\\w@.\\/-])(?=(?:[a-z0-9-]+\\.)+(?:${LINK_TLDS})(?![\\w-])))[^\\s<>"]*[^\\s<>".,!?:;)\\]'"]`, 'gi');
 function linkify(t){
   const s = String(t || ''), out = []; let i = 0, x;
   URL_RE.lastIndex = 0;
   while ((x = URL_RE.exec(s))){
     if (x.index > i) out.push(s.slice(i, x.index));
-    const url = x[0];
-    out.push(element('a', { class: 'al-link', href: url, title: url, rel: 'noreferrer', onclick: e => { e.preventDefault(); openInBrowser(url); } }, url.length > 60 ? url.slice(0, 57) + '…' : url));
-    i = x.index + url.length;
+    const shown = x[0], url = /^https?:\/\//i.test(shown) ? shown : 'https://' + shown;
+    out.push(element('a', { class: 'al-link', href: url, title: url, rel: 'noreferrer', onclick: e => { e.preventDefault(); e.stopPropagation(); openInBrowser(url); } }, shown.length > 60 ? shown.slice(0, 57) + '…' : shown));
+    i = x.index + shown.length;
   }
   if (i < s.length) out.push(s.slice(i));
   return out;
@@ -437,6 +462,62 @@ function emoteSeen(ch, name){
   const view = viewFor(streamerOf(ch));
   if (view) view.el.querySelectorAll('img.al-new').forEach(i => { if (i.alt === name){ i.classList.remove('al-new'); i.title = name; } });
 }
+// A Twitch badge's tooltip as Twitch says it: a sub's months, and the badge they have if it's another ("27-Month
+// Subscriber (2-Year Badge)")
+function twitchTip(p, title){
+  if (p.set !== 'subscriber' || !p.months) return title;
+  const now = `${p.months}-Month Subscriber`, badge = /^(.+?) Subscriber$/.exec(title);
+  return badge && `${badge[1]} Subscriber` !== now ? `${now} (${badge[1]} Badge)` : now;
+}
+// A line's badges: the site's own pictures, in its order (the channel's sub badge for their months, the bits badge they
+// have…), or ALL's icon for one without a picture (Kick's roles, YouTube's, any before the pictures came)
+// Kick's icon for a badge: a gift by how many were gifted (its thresholds: Gift1 under 5, Gift5, Gift10, Gift25 … Gift5000),
+// a level's own, or its type's
+const GIFT_TIERS = [1, 5, 10, 25, 50, ...Array.from({ length: 18 }, (_, i) => 100 + i * 50), 1000, 2000, 3000, 4000, 5000];
+const kickIconKey = p => p.icon || (p.set === 'sub_gifter' ? 'Gift' + GIFT_TIERS.filter(n => n <= Math.max(1, +p.v || 1)).pop() : p.set);
+// A Kick icon kept as shapes and colours only: its drawing elements and their drawing attributes (no scripts, links, styles
+// or handlers), so nothing from the site's page runs here
+const SVG_TAGS = new Set(['svg', 'g', 'path', 'circle', 'ellipse', 'rect', 'polygon', 'polyline', 'line', 'defs', 'lineargradient', 'radialgradient', 'stop', 'clippath', 'mask']);
+const SVG_ATTRS = /^(viewbox|xmlns|d|fill|stroke|stroke-width|stroke-linecap|stroke-linejoin|stroke-miterlimit|fill-rule|clip-rule|fill-opacity|stroke-opacity|opacity|cx|cy|r|rx|ry|x|y|x1|x2|y1|y2|width|height|points|transform|id|offset|stop-color|stop-opacity|gradientunits|gradienttransform|clip-path|mask)$/;
+function cleanSvg(text){
+  const doc = new DOMParser().parseFromString(String(text || ''), 'image/svg+xml'), root = doc.documentElement;
+  if (!root || root.nodeName.toLowerCase() !== 'svg' || doc.querySelector('parsererror')) return '';
+  const walk = el => {
+    [...el.children].forEach(c => { if (SVG_TAGS.has(c.nodeName.toLowerCase())) walk(c); else c.remove(); });
+    [...el.attributes].forEach(a => { if (!SVG_ATTRS.test(a.name.toLowerCase()) || /^\s*(javascript|data):/i.test(a.value) || (/url\(/i.test(a.value) && !/^url\(#[\w-]+\)$/.test(a.value.trim()))) el.removeAttribute(a.name); });
+  };
+  walk(root);
+  ['width', 'height'].forEach(a => root.removeAttribute(a));   // (its size: ALL's)
+  return new XMLSerializer().serializeToString(root);
+}
+// The icons a Kick chat drew that ALL doesn't have yet, asked a moment after its messages (its chat has drawn them by then)
+function gotKickIcons(r){
+  let any = false;
+  Object.entries(r || {}).forEach(([k, svg]) => { const c = /^[\w-]{1,40}$/.test(k) && !kickIcons.has(k) && cleanSvg(svg); if (c){ kickIcons.set(k, c); any = true; } });
+  if (any) redrawAll();
+}
+const askKickIcons = new Map();   // Kick chat -> its debounced ask
+function kickIconsSoon(w){
+  if (!askKickIcons.has(w.channel)) askKickIcons.set(w.channel, soon(() => { if (w.view && w.ready) askIn(w.view, `(${kickIconsAgent})(${JSON.stringify([...kickIcons.keys()])})`).then(gotKickIcons).catch(() => {}); }, 800));
+  askKickIcons.get(w.channel)();
+}
+const OWN_ICON = { founder: 'founder' };   // (a badge with an icon of its own, not its kind's: Kick's founder coin)
+const badgeIcon = b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' });
+function badgeEls(m){
+  if (!m.pics) return m.badges.map(badgeIcon);
+  const got = badgePics.get(m.ch) || {}, kick = got.kick, own = got.twitch || {}, out = [], icons = new Set();
+  m.pics.forEach(p => {
+    let pic = p.url ? p : null;
+    if (!pic && m.site === 'twitch'){ const b = own[p.set + '/' + p.v] || (twBadges && twBadges[p.set + '/' + p.v]); if (b) pic = { url: b.url, title: twitchTip(p, b.title) }; }   // (the channel's sub and bits badges first)
+    const kickIcon = m.site === 'kick' && !(p.url && !p.icon) && kickIcons.get(kickIconKey(p));
+    if (kickIcon) return out.push(element('i', { class: 'al-bk', title: p.title || BADGE_TIP[feedParse.BADGES[String(p.set).toLowerCase()]] || '', html: kickIcon }));
+    if (!pic && kick && p.set === 'subscriber'){ const b = kick.subs.filter(x => x.months <= +p.v).pop() || kick.subs[0]; if (b) pic = { url: b.url, title: `${p.v}-Month Subscriber` }; }
+    if (pic) return out.push(element('img', { class: 'al-bi', src: pic.url, alt: '', title: pic.title || '', referrerPolicy: 'no-referrer', loading: 'lazy' }));
+    const k = OWN_ICON[p.set] || feedParse.BADGES[p.set.toLowerCase()];
+    if (k && !icons.has(k)){ icons.add(k); const i = badgeIcon(k); if (p.title) i.title = p.title; out.push(i); }
+  });
+  return out;
+}
 function lineEl(m){
   if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' ? null : mineEl(m);
   if (m.kind === 'raidout') return element('div', { class: `al-ev al-raidout al-${SITE_CLASS[m.site]}`, dataset: { key: m.site + ':' + m.id } },
@@ -447,8 +528,7 @@ function lineEl(m){
   if (m.kind === 'modlog') return element('div', { class: `al-ev al-log al-${SITE_CLASS[m.site]}`, dataset: { key: m.site + ':' + m.id } },
     element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0]), element('span', { class: 'al-evt', html: SHIELD }), element('span', 'al-evw', ...m.words.map(x => x instanceof Node ? x.cloneNode(true) : x)));
   const site = PLAT_NAME[m.site] || m.site;
-  const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]),
-    ...m.badges.map(b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' })));
+  const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]), ...badgeEls(m));
   const can = m.kind === 'message' && canModerate(m);
   const name = element('b', { class: 'al-n' + (can ? ' can' : ''), style: { color: nameColor(m) }, role: 'button', tabindex: '-1', dataset: { cmd: 'all.profile' },
     title: `${m.sender}'s card on ${site}` + (can ? `\n${kShift()}-click: delete · ${kCtrl()}-click: time out (${durText(lastTimeout())}) · ${kCtrl()}+${kShift()}-click: ban` : ''),
@@ -530,9 +610,9 @@ function buildView(w){
   const pinChip = element('button', { type: 'button', class: 'all-pinchip', hidden: true, dataset: { cmd: 'all.pins' },
     onclick: () => { view.pinsShown = !view.pinsShown; renderPins(view); } });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
-  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, filt), health, pins, list, more, empty,
+  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, filt), health, pins, element('div', 'all-lw', list, more), empty,
     element('div', 'all-cmp', bar, modes, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm, ecard);
-  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, pinChip, pinsShown: false, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
+  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, pinChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
   closeOnOutside(fm, { button: filt });
   el.addEventListener('pointerdown', () => allSeen(w));
@@ -648,7 +728,7 @@ function renderCmp(view, w){
   // Settings › Chat › Channel name in chat boxes: its text, as the sites' boxes say it (the picker beside it shows the site)
   // (its modes say why you can't chat there: that, instead of the name)
   const rules = ch ? chatRules(ch) : null;
-  view.input.placeholder = !p ? 'No chat to send on right now' : rules.block || chatBoxName(ch) || `Send a message on ${PLAT_NAME[p]}`;
+  view.input.placeholder = !p ? 'No chat to send on right now' : (rules.block ? `Can’t send on ${PLAT_NAME[p]}` : '') || chatBoxName(ch) || `Send a message on ${PLAT_NAME[p]}`;
   view.input.disabled = !p || !!rules.block;
   view.el.classList.toggle('all-blocked', !!(rules && rules.block));
   renderModes(view, w);
@@ -999,6 +1079,10 @@ function mineEl(p){
       ...p.badges.map(b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' }))), element('b', { class: 'al-n', style: { color: nameColor(p) } }, p.sender), ': ', element('span', 'al-txt', p.text), p.state === 'failed' ? '' : state || ''),
     p.state === 'failed' && state);
 }
+function readFilters(){
+  botsShown = settings.text('allBots') === 'shown';
+  eventsMode = ['short', 'full', 'hidden'].includes(settings.text('allEvents')) ? settings.text('allEvents') : 'short';
+}
 function setBotsShown(on){ botsShown = !!on; settings.set('allBots', botsShown ? 'shown' : 'hidden'); redrawAll(); }
 function setEventsMode(mode){ eventsMode = mode; settings.set('allEvents', mode); redrawAll(); }
 const redrawAll = () => wins.forEach(w => { if (w.allView){ const v = w.allView; v.list.replaceChildren(...feedOf(v.s).msgs.map(lineEl).filter(Boolean)); renderTop(v, w); v.list.scrollTop = v.list.scrollHeight; } });
@@ -1010,7 +1094,8 @@ function seeIt(m){
   if (c.view && m.id) runIn(c.view, `(${seekAgent})(${JSON.stringify(m.id)})`);
 }
 
-// ALL shows over the chat of each window that has it on; each chat hands over its messages only while it does
+// ALL shows over the chat of each window that has it on. Each chat hands over its messages while its window has an ALL
+// tab, also while one of the sites' tabs shows: back on ALL, nothing said meanwhile is missing
 function syncAll(){
   // ALL reads (and sends on) their Kick and Twitch chats also while offline: each gets its hidden tab
   wins.filter(w => w.kind === 'chat' && !w.hiddenTab && allOn(w)).forEach(w => {
@@ -1024,7 +1109,7 @@ function syncAll(){
     w.el.classList.toggle('all-on', show);
     syncModBtn(w); syncAtBtn(w);
     if (show) renderTop(w.allView, w);
-    feedOn(w, allOn(w));
+    feedOn(w, allTabFor(w));
   });
 }
 const FEED_ON = on => `window.__kmvFeed && (window.__kmvFeed.on = ${!!on})`;
@@ -1033,12 +1118,26 @@ function feedOn(w, on){
   w.feedOn = on; runIn(w.view, FEED_ON(on));
   if (on) pinsNow(w, w.view);
 }
-// A chat page loaded (again): its helper, on if ALL shows
-function feedReady(w, view){ runIn(view, `(${feedAgent})();${FEED_ON(allOn(w))}`); sampleIn(view); w.feedOn = allOn(w); if (w.feedOn) pinsNow(w, view); }
+// A chat page loaded (again): its helper, on if its window has an ALL tab
+function feedReady(w, view){ runIn(view, `(${feedAgent})();${FEED_ON(allTabFor(w))}`); sampleIn(view); w.feedOn = allTabFor(w); if (w.feedOn) pinsNow(w, view); }
 // A pin already up when ALL starts reading a chat: the sites send pins only as they're made, so it's asked for (quietly)
+// A chat's badges' pictures came (badgesAgent): Twitch's own kept once, for every chat
+function gotBadges(ch, r){
+  if (r && r.twitch && r.twitch.global) twBadges = r.twitch.global;
+  badgePics.set(ch, r ? (r.twitch ? { twitch: r.twitch.own } : r) : null);
+  if (r) redrawAll();
+}
+// A channel whose last chat closed: its badges' and emotes' pictures go (asked again if it opens again)
+function forgetClosed(){
+  const open = new Set(wins.filter(w => w.kind === 'chat').map(w => w.channel));
+  [...badgePics.keys()].forEach(ch => { if (!open.has(ch)) badgePics.delete(ch); });
+  [...emoteCache.keys()].forEach(ch => { if (!open.has(ch)) forgetEmotes(ch); });
+  if (!wins.some(w => w.kind === 'chat' && platOf(w.channel) === 'twitch')) twBadges = null;
+}
 function pinsNow(w, view){
-  askIn(view, `(${modesAgent})()`).then(r => { if (r && allOn(w)) setModes(w.channel, r); }).catch(() => {});
-  askIn(view, `(${pinAgent})()`).then(batch => { if (batch && allOn(w)) ingest(w, JSON.stringify(batch), true); }).catch(() => {});
+  if (!badgePics.has(w.channel)) askIn(view, `(${badgesAgent})(${!twBadges})`).then(r => gotBadges(w.channel, r)).catch(() => {});
+  askIn(view, `(${modesAgent})()`).then(r => { if (r && allTabFor(w)) setModes(w.channel, r); }).catch(() => {});
+  askIn(view, `(${pinAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true); }).catch(() => {});
 }
 
 const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
@@ -1052,29 +1151,33 @@ const BADGE_SVG = {
   og: '<svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6 .6-4.5 4 1.3 6L12 16.2 6.6 19.2l1.3-6-4.5-4 6-.6z"/></svg>',
   verified: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   staff: '<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V6z"/></svg>',
-  gifter: '<svg viewBox="0 0 24 24"><path d="M4 10h16v10H4zM3 7h18v3H3zM12 7v13M12 7c-2-4-6-3-5 0M12 7c2-4 6-3 5 0"/></svg>'
+  gifter: '<svg viewBox="0 0 24 24"><path d="M2.5 8.5h19v4.5h-19zM4 14.5h16V22H4z"/><path class="bow" d="M12 8.5C10.5 4 6.5 3.2 6.2 6c-.2 1.8 2.6 2.5 5.8 2.5zM12 8.5c1.5-4.5 5.5-5.3 5.8-2.5.2 1.8-2.6 2.5-5.8 2.5z"/><path class="rib" d="M12 8.5V22"/></svg>',
+  founder: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M10 8.6l2.6-1.8V17.2"/></svg>'
 };
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   trSoon = soon(() => translateNow(), 300);
-  botsShown = settings.text('allBots') === 'shown';
-  eventsMode = ['short', 'full', 'hidden'].includes(settings.text('allEvents')) ? settings.text('allEvents') : 'short';
-  fromSite('feed', (w, json) => { if (allOn(w)) ingest(w, json); });
+  readFilters();
+  fromSite('feed', (w, json) => { if (allTabFor(w)) ingest(w, json); });
   // Esc closes ALL's menus (the line's, Send on's)
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     wins.forEach(w => { const v = w.allView; if (!v) return; [v.lm, v.menu, v.mv, v.ep, v.fm].forEach(m => { if (!m.hidden){ m.hidden = true; e.preventDefault(); } }); });
   });
   store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncAll());
+  store.watch(['wins'], () => forgetClosed());
   store.watch(['chatName', 'names'], () => wins.forEach(w => { if (w.allView) renderCmp(w.allView, w); }));
   store.watch(['mod'], () => { redrawAll(); wins.forEach(syncModBtn); });
+  store.watch(['bots', 'streamers'], () => botsChanged());
   store.watch(['chatZoom'], () => wins.forEach(w => { if (w.allView) fitSize(w.allView); }));
   store.watch(['allHealth'], () => wins.forEach(w => { if (w.allView) renderTop(w.allView, w); }));
+  // What ALL shows, changed in the other window
+  settings.onChange(['allBots', 'allEvents'], () => { readFilters(); redrawAll(); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.pinAgent = pinAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.pinAgent = pinAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
-  window.allChat = { sender, modKnown, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.allChat = { sender, modKnown, gotBadges, gotKickIcons, kickIcons, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
 export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, init, modViewChs, openModViews, sendSite,

@@ -43,15 +43,18 @@
     mark(Math.max(0, sel.selectedIndex), true);
   }
 
-  // Below the <select>, or above it when there's more room there; at least as wide as it.
+  // Below the <select>, or above it when there's more room there; at least as wide as it. Inside the window, or inside
+  // what the page gives as its bounds (sel.ddBounds(): a rectangle, e.g. the emote picker the list is in).
   function place() {
     const { sel, list } = open, r = sel.getBoundingClientRect(), gap = 4, pad = 6;
-    list.style.minWidth = Math.round(r.width) + 'px';
-    const below = innerHeight - r.bottom - gap - pad, above = r.top - gap - pad;
+    const b = (sel.ddBounds && sel.ddBounds()) || { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
+    list.style.minWidth = Math.round(Math.min(r.width, b.right - b.left - 2 * pad)) + 'px';
+    if (sel.ddBounds) list.style.maxWidth = Math.round(b.right - b.left - 2 * pad) + 'px';
+    const below = b.bottom - r.bottom - gap - pad, above = r.top - b.top - gap - pad;
     const down = below >= Math.min(list.scrollHeight, 240) || below >= above;
     list.style.maxHeight = Math.max(80, Math.floor(down ? below : above)) + 'px';
     const h = list.offsetHeight, w = list.offsetWidth;
-    list.style.left = Math.round(Math.max(pad, Math.min(innerWidth - w - pad, r.left))) + 'px';
+    list.style.left = Math.round(Math.max(b.left + pad, Math.min(b.right - w - pad, r.left))) + 'px';
     list.style.top = Math.round(down ? r.bottom + gap : r.top - gap - h) + 'px';
   }
 

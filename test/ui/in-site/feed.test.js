@@ -81,14 +81,17 @@ test('the reader passes on what the site\'s connection brings, as the page reads
     ws.addEventListener('message', e => e.data);    // (the page reads each message)
     ws.onerror = () => {};
     const frame = (ev, data) => JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: ev, data: JSON.stringify(data) } } } });
-    for (const f of [frame('App\\Events\\ChatMessageEvent', { id: 'k1', content: 'hi' }), frame('App\\Events\\MessageDeletedEvent', { message: { id: 'k1' } }), frame('RewardRedeemedEvent', { reward_title: 'Hydrate' }), frame('GoalProgressUpdateEvent', {}), 'not json'])
+    for (const f of [frame('App\\Events\\ChatMessageEvent', { id: 'k1', content: 'hi' }), frame('App\\Events\\MessageDeletedEvent', { message: { id: 'k1' } }), frame('RewardRedeemedEvent', { reward_title: 'Hydrate' }), frame('GoalProgressUpdateEvent', {}), 'not json',
+      // what comes together in one message, a line each: each one passed on by itself
+      [frame('App\\Events\\ChatMessageEvent', { id: 'k2', content: 'gg' }), frame('PointsUpdated', {}), frame('App\\Events\\ChatMessageEvent', { id: 'k3', content: '[emote:1:KEKW]' })].join('\n')])
       ws.dispatchEvent(new MessageEvent('message', { data: f }));
   });
   await page.waitForFunction(() => true, null, { timeout: 100 }).catch(() => {});
   for (let i = 0; i < 30 && !heard.length; i++) await new Promise(r => setTimeout(r, 50));
   assert.equal(heard.length, 1, 'one batch');
   assert.equal(heard[0].s, 'kick');
-  assert.deepEqual(heard[0].raw.map(r => JSON.parse(r).push.pub.data.event), ['App\\Events\\ChatMessageEvent', 'App\\Events\\MessageDeletedEvent', 'RewardRedeemedEvent'], 'Kick\'s newer events have no App\\Events');
+  assert.deepEqual(heard[0].raw.map(r => JSON.parse(r).push.pub.data.event), ['App\\Events\\ChatMessageEvent', 'App\\Events\\MessageDeletedEvent', 'RewardRedeemedEvent', 'App\\Events\\ChatMessageEvent', 'App\\Events\\ChatMessageEvent'], 'Kick\'s newer events have no App\\Events');
+  assert.deepEqual(heard[0].raw.slice(3).map(r => JSON.parse(JSON.parse(r).push.pub.data.data).id), ['k2', 'k3'], 'the messages of one websocket message, a line each');
 });
 
 test('a Twitch reply: the line found and scrolled to, where the pointer goes; then its Reply (not the thread\'s) pressed; a line that isn\'t there: no', async t => {
@@ -125,6 +128,49 @@ test('the reader on Twitch: its chat lines, and a pin or its taking down from it
   for (let i = 0; i < 30 && !heard.length; i++) await new Promise(r => setTimeout(r, 50));
   assert.equal(heard[0].s, 'twitch');
   assert.deepEqual(heard[0].raw.map(r => r.startsWith('{') ? JSON.parse(JSON.parse(r).notification.pubsub).type : r), ['@id=a :x!x@x PRIVMSG #q :hi', 'pin-message', 'unpin-message']);
+});
+
+test('the badges\' pictures (badgesAgent): Kick\'s channel sub badges by months; Twitch\'s channel badges, and its own only when asked for; none for YouTube, or a site that won\'t answer', async t => {
+  const page = await openApp(t);
+  const got = await page.evaluate(async () => {
+    const asked = [];
+    const badge = (setID, version, title, imageURL = `https://static-cdn.jtvnw.net/badges/v1/${setID}${version}/2`) => ({ setID, version, title, imageURL });
+    window.fetch = async (url, o = {}) => ({ json: async () => {
+      url = String(url); asked.push(url + (o.body ? ' ' + JSON.parse(o.body).query.replace(/\s+/g, ' ').slice(0, 15) : ''));
+      if (/\/api\/v2\/channels\/quietkoala$/.test(url)) return { id: 77, subscriber_badges: [{ months: 6, badge_image: { src: 'https://files.kick.com/channel_subscriber_badges/6.png' } }, { months: 1, badge_image: { src: 'https://files.kick.com/channel_subscriber_badges/1.png' } }, { months: 3, badge_image: { src: 'http://not-https' } }] };
+      const all = /badges \{/.test(JSON.parse(o.body).query);
+      return { data: { ...(all ? { badges: [badge('moderator', '1', 'Moderator'), badge('premium', '1', 'Prime Gaming', '')] } : {}), user: { broadcastBadges: [badge('subscriber', '24', '2-Year Subscriber')] } } };
+    } });
+    const out = { kick: await window.badgesAgent(false, 'kick', 'quietkoala'), twitch: await window.badgesAgent(false, 'twitch', 'quietkoala'), twitchAll: await window.badgesAgent(true, 'twitch', 'quietkoala'),
+      youtube: await window.badgesAgent(true, 'youtube', 'quietkoala'), noName: await window.badgesAgent(true, 'kick', '') };
+    window.fetch = async () => { throw new Error('offline'); };
+    out.failed = [await window.badgesAgent(true, 'kick', 'quietkoala'), await window.badgesAgent(true, 'twitch', 'quietkoala')];
+    return { out, asked };
+  });
+  assert.deepEqual(got.out.kick, { kick: { subs: [{ months: 1, url: 'https://files.kick.com/channel_subscriber_badges/1.png' }, { months: 6, url: 'https://files.kick.com/channel_subscriber_badges/6.png' }] } }, 'by months; not a picture that isn\'t https');
+  const sub = { 'subscriber/24': { url: 'https://static-cdn.jtvnw.net/badges/v1/subscriber24/2', title: '2-Year Subscriber' } };
+  assert.deepEqual(got.out.twitch, { twitch: { own: sub } }, 'Twitch\'s own not asked for: ALL has them');
+  assert.deepEqual(got.out.twitchAll, { twitch: { own: sub, global: { 'moderator/1': { url: 'https://static-cdn.jtvnw.net/badges/v1/moderator1/2', title: 'Moderator' } } } });
+  assert.deepEqual([got.out.youtube, got.out.noName, ...got.out.failed], [null, null, null, null]);
+  assert.deepEqual(got.asked, ['/api/v2/channels/quietkoala', 'https://gql.twitch.tv/gql query { user(lo', 'https://gql.twitch.tv/gql query { badges ']);
+});
+
+test('Kick\'s own badge icons as its chat draws them (kickIconsAgent): by type, a gift by its icon name, a level\'s; not the ones ALL has, nor a picture', async t => {
+  const page = await openApp(t);
+  const got = await page.evaluate(() => {
+    const badge = (type, inner) => { const d = document.createElement('div'); d.dataset.testid = 'identity-badge-' + type; d.innerHTML = inner; return d; };
+    const box = document.createElement('div');
+    box.append(badge('founder', '<svg data-ds-icon="FounderBadge" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#feb635"/></svg>'),
+      badge('sub_gifter', '<svg data-ds-icon="Gift25" viewBox="0 0 20 20"><path d="M1 1h18v18H1z" fill="#53fc18"/></svg>'),
+      badge('moderator', '<svg data-ds-icon="ModeratorBadge" viewBox="0 0 20 20"><path d="M2 2h16v16H2z"/></svg>'),
+      badge('subscriber', '<img src="https://files.kick.com/channel_subscriber_badges/1.png" alt="1-Month Subscriber">'));
+    box.insertAdjacentHTML('beforeend', '<div><svg data-ds-icon="Level24" viewBox="0 0 20 20"><path d="M1 1h2v2H1z"/></svg></div>');
+    document.body.append(box);
+    const r = window.kickIconsAgent(['moderator']);
+    box.remove();
+    return Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v.match(/data-ds-icon="(\w+)"/)[1]]));
+  });
+  assert.deepEqual(got, { founder: 'FounderBadge', Gift25: 'Gift25', Level24: 'Level24' });
 });
 
 test('a pin already up (pinAgent): Kick\'s chat history, Twitch\'s pinnedChatMessages, YouTube\'s first data; each as the live pin, which the parser reads', async t => {
