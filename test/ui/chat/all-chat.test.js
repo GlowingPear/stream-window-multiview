@@ -927,7 +927,7 @@ test('ALL: a YouTube gift is an event (the gift picked out); YouTube\'s stand-in
   await feed(page, 'tw:quietkoala', { s: 'youtube', raw: [YT('liveChatPlaceholderItemRenderer', { id: 'p1', timestampUsec: '1' }), YT('liveChatViewerEngagementMessageRenderer', { id: 'n1', message: { runs: [{ text: 'Welcome to live chat!' }] } }),
     { addLiveChatTickerItemAction: { item: { liveChatTickerPaidMessageItemRenderer: { id: 't1' } } } },
     YT('giftMessageViewModel', { id: 'g1', text: { content: 'sent Pepero yummy!' }, authorName: { content: '@Mika ' } })] });
-  assert.deepEqual(await lines(page), ['al-ev | Y@Mika sent Pepero yummy!See it on YouTube ›']);
+  assert.deepEqual(await lines(page), ['al-ev | Y@Mika sent Pepero yummy!']);
   assert.equal(await page.$eval('.all-list .al-ev .al-amt', e => e.textContent), 'Pepero yummy!', 'the gift: picked out, as an amount is');
   assert.deepEqual(await page.evaluate(() => { const h = window.allHealth.healthOf.get('tw:quietkoala'); return [h.read, h.bad, h.badRaws.length]; }), [1, 0, 0], 'left out: neither read nor unreadable');
   await feed(page, 'tw:quietkoala', { s: 'youtube', raw: [YT('somethingNew', { id: 'x' })] });
@@ -1256,8 +1256,8 @@ test('ALL: a gift sub paid forward (from someone, or an anonymous one) and a goa
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [fwd('p1', { 'msg-param-prior-gifter-anonymous': 'false', 'msg-param-prior-gifter-display-name': 'Tinroof' }),
     fwd('p2', { 'msg-param-prior-gifter-anonymous': 'true', 'msg-param-prior-gifter-display-name': 'AnAnonymousGifter' }),
     goal({ contributionType: 'FOLLOWERS', description: '' }), goal({ id: 'g2', contributionType: 'SUBS', currentContributions: 50, targetContributions: 50, description: 'Road to 50' })] });
-  assert.deepEqual(await lines(page), ['al-ev | TBrightwick paid forward the gift sub from TinroofSee it on Twitch ›', 'al-ev | TBrightwick paid forward an anonymous gift subSee it on Twitch ›',
-    'al-ev | TFollower goal reached · 230See it on Twitch ›', 'al-ev | TSub goal reached · 50Road to 50See it on Twitch ›']);
+  assert.deepEqual(await lines(page), ['al-ev | TBrightwick paid forward the gift sub from Tinroof', 'al-ev | TBrightwick paid forward an anonymous gift sub',
+    'al-ev | TFollower goal reached · 230', 'al-ev | TSub goal reached · 50Road to 50']);
   assert.deepEqual(await page.$$eval('.al-ev .al-amt', l => l.map(e => e.textContent)), ['Tinroof', '230', '50'], 'who gave it, and the count, picked out');
 });
 
