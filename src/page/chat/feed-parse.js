@@ -245,15 +245,18 @@ function parseKick(frame){
   if (ev !== 'ChatMessageEvent') return null;
   return kickMsg(d);
 }
-// Kick's badges as its chat shows them, in its order (sort_order): its own (a role, founder, sub gifter: its icons, named
-// as Kick names them), the ones picked to show (badges_v2 selected, with their pictures: a level, a game's), and the
-// channel's sub badge (by months)
+// Kick's badges as its chat shows them, picked as its chat picks them: its own (a role, OG, founder, sub gifter, the
+// channel's sub badge by months: its icons, named as Kick names them) and badges_v2's (a level, a game's: their
+// pictures), less any taken off (active or selected false), in its order (sort_order; one without it last), and only the
+// first KICK_BADGE_MAX of them: a badge after those isn't shown in Kick's chat (a sub badge behind 4 others)
+const KICK_BADGE_MAX = 4;
 function kickPics(idy){
-  const own = (idy.badges || []).filter(b => b && b.type && BADGES[String(b.type).toLowerCase()]).map(b => ({ o: +b.sort_order || 0,
+  const order = b => (b.sort_order == null || !Number.isFinite(+b.sort_order) ? Infinity : +b.sort_order);
+  const own = (idy.badges || []).filter(b => b && b.type && b.active !== false).map(b => ({ o: order(b),
     p: { set: String(b.type), v: String(+b.count || 1), ...(b.type !== 'subscriber' && b.text ? { title: String(b.text) } : {}) } }));
-  const picked = (idy.badges_v2 || []).filter(b => b && b.selected && /^https:\/\//.test(b.image_url || '')).map(b => ({ o: +b.sort_order || 0,
-    p: { url: b.image_url, ...(b.name === 'level' && b.metadata && b.metadata.level ? { title: `Level ${b.metadata.level}`, icon: `Level${b.metadata.level}` } : { title: String(b.name) }) } }));   // (icon: Kick's own for it, if ALL has it)
-  return [...own, ...picked].sort((a, b) => a.o - b.o).map(x => x.p);
+  const picked = (idy.badges_v2 || []).filter(b => b && b.selected !== false).map(b => ({ o: order(b),
+    p: /^https:\/\//.test(b.image_url || '') ? { url: b.image_url, ...(b.name === 'level' && b.metadata && b.metadata.level ? { title: `Level ${b.metadata.level}`, icon: `Level${b.metadata.level}` } : { title: String(b.name) }) } : null }));   // (icon: Kick's own for it, if ALL has it)
+  return [...own, ...picked].sort((a, b) => (a.o === b.o ? 0 : a.o - b.o)).slice(0, KICK_BADGE_MAX).map(x => x.p).filter(Boolean);
 }
 // A Kick chat message (ChatMessageEvent's, or the one in a pin)
 function kickMsg(d){

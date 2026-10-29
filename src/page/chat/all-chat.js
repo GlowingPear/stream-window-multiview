@@ -1,5 +1,6 @@
 import { alerts, clearAlert } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
+import { emoteBox } from './all-box.js';
 import { SMILEY, addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, renderEmoteList, suggestEmote,
   withEmotes } from './all-emotes.js';
 import { chatLoaded, healthState, noteRaw, noteSend, reportHealth } from './all-health.js';
@@ -14,7 +15,7 @@ import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
 import { wins } from '../core.js';
 import { badgesAgent, feedAgent, kickIconsAgent, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent,
-  seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
+  seekAgent, shownAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
@@ -100,11 +101,13 @@ function botsChanged(){
   feeds.forEach(f => f.msgs.forEach(m => { if (m.kind !== 'message') return; const b = isBot(m); if (b !== !!m.bot){ m.bot = b; any = true; } }));
   if (any) redrawAll();
 }
-function ingest(w, json, quiet = false){
+// shown: the messages the chat already showed as ALL started reading it (shownAgent): put in among the others by time
+function ingest(w, json, quiet = false, shown = false){
   const s = ownerOf(w.channel); if (!s) return;
   let batch; try { batch = JSON.parse(json); } catch { return; }
-  const f = feedOf(s), view = viewFor(s);
-  (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => { const got = feedParse.parseFeed({ s: batch.s, raw: [raw] }); noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0); got.forEach(m => {
+  const f = feedOf(s), view = viewFor(s); let added = 0;
+  (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => { const got = feedParse.parseFeed({ s: batch.s, raw: [raw] }); if (!shown) noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0); got.forEach(m => {
+    if (shown && m.kind !== 'message' && m.kind !== 'event') return;
     if (devOn) m.raw = raw;   // (Developer tools: the line's Copy message data)
     if (m.kind === 'delete' || m.kind === 'clear' || m.kind === 'clearall') return removed(f, view, m, w.channel);
     if (m.kind === 'unban') return unbanned(f, view, m, w.channel);
@@ -119,11 +122,17 @@ function ingest(w, json, quiet = false){
     if (m.kind === 'message' && isBot(m)) m.bot = true;
     if (m.kind === 'message') mineSeen(f, m);
     f.msgs.push(m); if (m.id) f.byId.set(m.site + ':' + m.id, m);
+    if (shown){ added++; if (m.site === 'kick' && m.pics && m.pics.some(p => (!p.url || p.icon) && !kickIcons.has(kickIconKey(p)))) kickIconsSoon(w); return; }
     if (f.msgs.length > MAX){ const old = f.msgs.shift(); if (old.id) f.byId.delete(old.site + ':' + old.id); }
     if (view) addLine(view, m);
     if (m.kind === 'message' && !m.bot && autoTrFor(w.channel)) translateSoon(m);
     if (m.site === 'kick' && m.pics && m.pics.some(p => (!p.url || p.icon) && !kickIcons.has(kickIconKey(p)))) kickIconsSoon(w);
   }); });
+  if (!added) return;
+  // (in time order, the oldest past MAX let go; the list drawn again, at its newest)
+  f.msgs.sort((a, b) => a.t - b.t);
+  f.msgs.splice(0, Math.max(0, f.msgs.length - MAX)).forEach(old => { if (old.id) f.byId.delete(old.site + ':' + old.id); });
+  if (view){ view.list.replaceChildren(...f.msgs.map(lineEl).filter(Boolean)); view.empty.hidden = view.list.children.length > 0; view.list.scrollTop = view.list.scrollHeight; }
 }
 const reEsc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const textOf = m => m.parts.map(p => p.text || p.name || '').join('');
@@ -492,15 +501,21 @@ function twitchTip(p, title){
 const GIFT_TIERS = [1, 5, 10, 25, 50, ...Array.from({ length: 18 }, (_, i) => 100 + i * 50), 1000, 2000, 3000, 4000, 5000];
 const kickIconKey = p => p.icon || (p.set === 'sub_gifter' ? 'Gift' + GIFT_TIERS.filter(n => n <= Math.max(1, +p.v || 1)).pop() : p.set);
 // A Kick icon kept as shapes and colours only: its drawing elements and their drawing attributes (no scripts, links, styles
-// or handlers), so nothing from the site's page runs here
-const SVG_TAGS = new Set(['svg', 'g', 'path', 'circle', 'ellipse', 'rect', 'polygon', 'polyline', 'line', 'defs', 'lineargradient', 'radialgradient', 'stop', 'clippath', 'mask']);
+// or handlers), so nothing from the site's page runs here. A shape it draws again (<use>, as its OG and moderator badges
+// do) only from inside the icon (#id)
+const SVG_TAGS = new Set(['svg', 'g', 'path', 'circle', 'ellipse', 'rect', 'polygon', 'polyline', 'line', 'defs', 'lineargradient', 'radialgradient', 'stop', 'clippath', 'mask', 'use']);
+const SVG_HREF = /^(xlink:)?href$/;
+const ownRef = use => { const refs = [...use.attributes].filter(a => SVG_HREF.test(a.name.toLowerCase())); return refs.length > 0 && refs.every(a => /^#[\w-]+$/.test(a.value.trim())); };
 const SVG_ATTRS = /^(viewbox|xmlns|d|fill|stroke|stroke-width|stroke-linecap|stroke-linejoin|stroke-miterlimit|fill-rule|clip-rule|fill-opacity|stroke-opacity|opacity|cx|cy|r|rx|ry|x|y|x1|x2|y1|y2|width|height|points|transform|id|offset|stop-color|stop-opacity|gradientunits|gradienttransform|clip-path|mask)$/;
 function cleanSvg(text){
-  const doc = new DOMParser().parseFromString(String(text || ''), 'image/svg+xml'), root = doc.documentElement;
+  // (the site's page writes xlink:href without saying what xlink is, which an SVG file must)
+  const src = String(text || '').replace(/^(\s*<svg\b)(?![^>]*\sxmlns:xlink=)(?=[\s\S]*\sxlink:)/, '$1 xmlns:xlink="http://www.w3.org/1999/xlink"');
+  const doc = new DOMParser().parseFromString(src, 'image/svg+xml'), root = doc.documentElement;
   if (!root || root.nodeName.toLowerCase() !== 'svg' || doc.querySelector('parsererror')) return '';
   const walk = el => {
-    [...el.children].forEach(c => { if (SVG_TAGS.has(c.nodeName.toLowerCase())) walk(c); else c.remove(); });
-    [...el.attributes].forEach(a => { if (!SVG_ATTRS.test(a.name.toLowerCase()) || /^\s*(javascript|data):/i.test(a.value) || (/url\(/i.test(a.value) && !/^url\(#[\w-]+\)$/.test(a.value.trim()))) el.removeAttribute(a.name); });
+    [...el.children].forEach(c => { if (SVG_TAGS.has(c.nodeName.toLowerCase()) && (c.nodeName.toLowerCase() !== 'use' || ownRef(c))) walk(c); else c.remove(); });
+    [...el.attributes].forEach(a => { if (SVG_HREF.test(a.name.toLowerCase())){ if (!/^#[\w-]+$/.test(a.value.trim())) el.removeAttribute(a.name); return; }   // (from inside the icon only)
+      if (!SVG_ATTRS.test(a.name.toLowerCase()) || /^\s*(javascript|data):/i.test(a.value) || (/url\(/i.test(a.value) && !/^url\(#[\w-]+\)$/.test(a.value.trim()))) el.removeAttribute(a.name); });
   };
   walk(root);
   ['width', 'height'].forEach(a => root.removeAttribute(a));   // (its size: ALL's)
@@ -618,7 +633,7 @@ function buildView(w){
   const health = element('div', { class: 'all-health', hidden: true, role: 'alert' });
   const ecard = element('div', { class: 'pop all-ecard', hidden: true, role: 'tooltip' });
   const pick = element('button', { type: 'button', class: 'all-pick', dataset: { cmd: 'all.sendSite' }, 'aria-haspopup': 'menu' });
-  const input = element('input', { type: 'text', class: 'all-in', autocomplete: 'off', spellcheck: true, maxlength: 500, dataset: { cmd: 'all.message' } });
+  const input = emoteBox({ 'aria-label': 'Message', dataset: { cmd: 'all.message' } }, () => view.emotePics);
   const menu = element('div', { class: 'pop all-menu', role: 'menu', hidden: true });
   const bar = element('div', { class: 'all-rb', hidden: true });
   const at = element('div', { class: 'pop all-at', role: 'listbox', hidden: true });
@@ -636,7 +651,7 @@ function buildView(w){
   closeOnOutside(lm);
   closeOnOutside(fm, { button: filt });
   el.addEventListener('pointerdown', () => allSeen(w));
-  el.addEventListener('click', e => { if (blowOn && !e.target.closest('a, button, input, img, .al-n, .pop')) blowUp(w); });   // (Blow up chat: clicking into ALL, as into a site's chat; not on what you clicked to use)
+  el.addEventListener('click', e => { if (blowOn && !e.target.closest('a, button, input, img, .all-in, .al-n, .pop')) blowUp(w); });   // (Blow up chat: clicking into ALL, as into a site's chat; not on what you clicked to use)
   el.addEventListener('focusin', () => allSeen(w));
   filt.onclick = () => { if (fm.hidden) openFilters(view); else fm.hidden = true; };
   closeOnOutside(ep, { button: emo });
@@ -805,7 +820,10 @@ function startReply(m){
 const LOCK_WHY = { reply: 'replying', at: 'mentioning', emote: 'using its emotes' };
 function setLock(view, w, lock){
   view.lock = lock;
-  if (!lock) view.emoteSends = null;   // (emotes picked: words again)
+  if (!lock){   // (emotes picked: words again, in the box too)
+    const had = view.emotePics; view.emoteSends = view.emotePics = null;
+    if (had && view.input.value){ const at = view.input.selectionStart, v = view.input.value; view.input.value = v; if (document.activeElement === view.input) view.input.selectionStart = at; }
+  }
   view.at.hidden = true;
   renderCmp(view, w);
 }
@@ -1037,7 +1055,7 @@ async function sendNow(view, w){
   // a reply where the site has none from here: an @ of them, in front
   if (lock && lock.kind === 'reply' && !threaded && !new RegExp(`^@${lock.msg.login}\\b`, 'i').test(text)) text = `@${lock.msg.sender.replace(/^@/, '')} ${text}`;
   const site = platOf(ch), f = feedOf(view.s);
-  const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, send: withEmotes(view, text), emotes: view.emoteSends && new Map(view.emoteSends), parts: [{ text }], ...youOn(f, site, ch), lock, threaded, state: 'sending' };
+  const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, send: withEmotes(view, text), emotes: view.emoteSends && new Map(view.emoteSends), pics: view.emotePics && new Map(view.emotePics), parts: [{ text }], ...youOn(f, site, ch), lock, threaded, state: 'sending' };
   view.input.value = ''; if (lock) setLock(view, w, null);
   f.msgs.push(p); addLine(view, p);
   await deliver(view, w, p);
@@ -1090,7 +1108,7 @@ function mineEl(p){
     unseen: element('span', { class: 'al-tag al-tag-mine', title: `${site} took it, but it hasn't shown in its chat yet` }, `Sent · not seen in ${site}'s chat yet`),
     failed: element('div', 'al-mine-fail', element('span', 'al-tag al-tag-fail', 'Not sent'), element('span', 'al-why', p.why || ''),
       element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.retry' }, onclick: () => { if (view && !view.sending) deliver(view, view.w, p); else flash('Still sending the last one'); } }, 'Retry'),
-      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.edit' }, onclick: () => { if (!view) return; drop(); view.input.value = p.lock && p.lock.kind === 'reply' && !p.threaded ? p.text.replace(/^@\S+\s/, '') : p.text; if (p.lock) setLock(view, view.w, p.lock); if (p.emotes) view.emoteSends = new Map(p.emotes); view.input.focus(); } }, 'Edit'),
+      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.edit' }, onclick: () => { if (!view) return; drop(); if (p.emotes){ view.emoteSends = new Map(p.emotes); view.emotePics = new Map(p.pics || []); } view.input.value = p.lock && p.lock.kind === 'reply' && !p.threaded ? p.text.replace(/^@\S+\s/, '') : p.text; if (p.lock) setLock(view, view.w, p.lock); view.input.focus(); view.input.selectionStart = view.input.value.length; } }, 'Edit'),
       element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.dismiss' }, title: 'Remove this line', onclick: drop }, '✕'))
   }[p.state];
   return element('div', { class: 'al-m al-mine al-mine-' + p.state, dataset: { key: p.site + ':' + p.id } },
@@ -1158,6 +1176,7 @@ function pinsNow(w, view){
   if (!badgePics.has(w.channel)) askIn(view, `(${badgesAgent})(${!twBadges})`).then(r => gotBadges(w.channel, r)).catch(() => {});
   askIn(view, `(${modesAgent})()`).then(r => { if (r && allTabFor(w)) setModes(w.channel, r); }).catch(() => {});
   askIn(view, `(${pinAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true); }).catch(() => {});
+  askIn(view, `(${shownAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true, true); }).catch(() => {});   // (what it already shows)
 }
 
 const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
@@ -1195,9 +1214,9 @@ function init(){
   // What ALL shows, changed in the other window
   settings.onChange(['allBots', 'allEvents'], () => { readFilters(); redrawAll(); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.pinAgent = pinAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.pinAgent = pinAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
-  window.allChat = { sender, modKnown, gotBadges, gotKickIcons, kickIcons, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.allChat = { sender, modKnown, gotBadges, gotKickIcons, kickIcons, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
 export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, init, modViewChs, openModViews, sendSite,

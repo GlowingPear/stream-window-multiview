@@ -122,10 +122,14 @@
 .all-pick .pi{width:16px;height:16px;font-size:9.5px}
 .all-pick:hover{border-color:var(--muted)}
 .all-caret{font-size:10px}
-.all-in{flex:1;min-width:0;height:36px;border-radius:9px;border:1px solid transparent;background:var(--panel2);padding:0 12px;color:var(--text);font:inherit;font-size:13px;outline:none}
-.all-in::placeholder{color:var(--muted)}
+.all-in{flex:1;min-width:0;height:36px;box-sizing:border-box;border-radius:9px;border:1px solid transparent;background:var(--panel2);padding:0 12px;color:var(--text);font:inherit;font-size:13px;line-height:34px;outline:none;
+  white-space:pre;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;cursor:text}
+.all-in::-webkit-scrollbar{display:none}
+.all-in:empty::before{content:attr(placeholder);color:var(--muted);pointer-events:none}
 .all-in:focus{border-color:var(--site,var(--accent));box-shadow:0 0 0 3px color-mix(in srgb,var(--site,var(--accent)) 18%,transparent)}
-.all-in:disabled{opacity:.6}
+.all-in[aria-disabled="true"]{opacity:.6;cursor:default}
+/* an emote picked into the box: its picture, as in the lines */
+.all-in .all-ie{height:22px;width:auto;vertical-align:middle;margin:-3px 1px 0}
 .all-view[data-send=kick]{--site:#53fc18}.all-view[data-send=twitch]{--site:#9146ff}.all-view[data-send=youtube]{--site:#ff2a2a}
 .all-view[data-send] .all-pick{border-color:color-mix(in srgb,var(--site,var(--line2)) 55%,transparent)}
 .all-menu{position:absolute;left:10px;bottom:58px;min-width:240px;padding:5px;z-index:5;background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 36px rgba(0,0,0,.6)}
@@ -340,7 +344,7 @@
 .all-mbt b{font-weight:700}
 .all-mbt small{font-size:11px;font-weight:500;color:#ffc9c9;opacity:.8}
 .all-blocked .all-in{cursor:not-allowed;opacity:.75}
-.all-blocked .all-in::placeholder{color:#ffb1b1}
+.all-blocked .all-in:empty::before{color:#ffb1b1}
 .all-send-b.wait svg{opacity:0}
 .all-send-b.wait::after{content:attr(data-wait);position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)}
 /* they raided someone: a line with the raid's arrow, and Open (or Opened) */

@@ -58,6 +58,30 @@ test('an ALL tab before the sites: it shows their chats as one list, and a site\
   assert.match((await lines(page))[2], /tide: said while Twitch showed/);
 });
 
+test('ALL: what the chats already show as it starts reading them comes in too, among the others by time, once each; asked of each chat as ALL starts', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const at = s => new Date(Date.now() - s * 1000).toISOString();
+  const km = (id, content, secs, who = 'tide') => KF('ChatMessageEvent', { id, content, type: 'message', created_at: at(secs), sender: { id: 3, username: who, identity: {} } });
+  // a live one first, then what the chats showed before
+  await feed(page, 'quietkoala', { s: 'kick', raw: [km('k-live', 'just now', 1)] });
+  await page.evaluate(([k, tw]) => { window.allChat.ingest('quietkoala', k, true, true); window.allChat.ingest('tw:quietkoala', tw, true, true); }, [
+    { s: 'kick', raw: [km('k-old', 'a minute ago', 60), km('k-live', 'just now', 1), JSON.stringify({ push: { pub: { data: { event: 'App\\Events\\MessageDeletedEvent', data: '{"message":{"id":"k-live"}}' } } } })] },
+    { s: 'twitch', raw: [TW({ 'display-name': 'tinroof', id: 't-old', 'tmi-sent-ts': String(Date.now() - 30000) }, ':tinroof!t@t PRIVMSG #quietkoala :half a minute ago')] }]);
+  assert.deepEqual(await lines(page), ['al-m | Ktide: a minute ago', 'al-m | Ttinroof: half a minute ago', 'al-m | Ktide: just now'], 'by time; one it had: once; nothing but messages from them (not a deletion)');
+  assert.equal(await page.isVisible('.all-empty'), false);
+  assert.equal(await page.$eval('.all-list', l => l.scrollHeight - l.scrollTop - l.clientHeight < 2), true, 'at the newest');
+  // asked of each chat as ALL starts reading it (with the pin, badges and modes)
+  const asked = await page.evaluate(async () => {
+    const { feedReady } = await import('./page/chat/all-chat.js');
+    const w = window.openWins().find(o => o.channel === 'quietkoala'), js = [];
+    feedReady(w, { executeJavaScript: async code => { js.push(code); return null; }, getWebContentsId: () => 1 });
+    await new Promise(r => setTimeout(r, 50));
+    return js.some(c => c.startsWith('(async function shownAgent('));
+  });
+  assert.equal(asked, true);
+});
+
 test('ALL: messages to you, bots hidden one by one, deletions with who or AI moderation, timeouts', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
@@ -233,6 +257,13 @@ test('ALL: the sites\' own badges (a channel\'s sub badge for their months, Kick
   assert.deepEqual(cleaned.keys, ['Gift25', 'founder', 'Level24']);
   assert.equal(cleaned.ran, 0);
   assert.deepEqual(await giftyBadges(), ['al-bk Level 24', 'al-bk Founder', 'al-bk Sub Gifter'], 'Kick\'s own icons, in its order');
+  // Kick's OG icon draws its shapes twice (<use>), and its page writes xlink:href without saying what xlink is: kept, from
+  // inside the icon only
+  const og = await page.evaluate(() => {
+    window.allChat.gotKickIcons({ og: '<svg viewBox="0 0 20 20" data-ds-icon="OGBadge"><use xlink:href="#OGBadge__a" fill="url(#OGBadge__b)"/><use href="#x" xlink:href="https://evil/x.svg#a"/><defs><linearGradient id="OGBadge__b"><stop stop-color="#00fff2"/></linearGradient><path id="OGBadge__a" d="M1 1h4v4H1z"/></defs></svg>' });
+    return window.allChat.kickIcons.get('og');
+  });
+  assert.equal(og, '<svg viewBox="0 0 20 20"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#OGBadge__a" fill="url(#OGBadge__b)"/><defs><linearGradient id="OGBadge__b"><stop stop-color="#00fff2"/></linearGradient><path id="OGBadge__a" d="M1 1h4v4H1z"/></defs></svg>');
   // Twitch's own kept once: a second Twitch chat's answer without them still finds them
   await page.evaluate(() => window.allChat.gotBadges('tw:quietkoala', { twitch: { own: {} } }));
   assert.deepEqual((await badges())[0], ['icon sub', 'img #mod Moderator']);
@@ -459,7 +490,7 @@ test('ALL: Send on [K ▾]: the main site first, Tab steps the sites you can sen
   await page.press('.all-in', 'Enter');
   await page.waitForFunction(() => window.__sends.length === 1);
   assert.deepEqual(await page.evaluate(() => window.__sends), [['tw:quietkoala', 'gg everyone']]);
-  assert.equal(await page.inputValue('.all-in'), '');
+  assert.equal(await page.$eval('.all-in', b => b.value), '');
   await page.evaluate(() => { window.__answer = 'disabled'; });
   await page.fill('.all-in', 'hello?');
   await page.press('.all-in', 'Enter');
@@ -535,7 +566,7 @@ test('ALL: reply from a line: the box locks to its site with a bar (Kick: its ow
   await page.waitForFunction(() => /Couldn't start a reply on Kick/.test(document.querySelector('#msg')?.textContent || ''));
   assert.match(await page.textContent('.al-mine-failed'), /↩ replying to lowtide.*Not sent/);
   await page.click('.al-mine-failed [data-cmd="all.edit"]');
-  assert.equal(await page.inputValue('.all-in'), 'again');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'again');
   assert.ok(await page.isVisible('.all-rb'));
   // Esc, and ✕: unlocked
   await page.focus('.all-in');
@@ -569,7 +600,7 @@ test('ALL: @ suggests names from their chats; picking one locks to its site, and
   await page.keyboard.press('ArrowUp');
   assert.deepEqual(await list(), ['Tlowkey_ggTwitch', 'KLofi_KickKick*', 'KlowtideKick']);
   await page.keyboard.press('Tab');
-  assert.equal(await page.inputValue('.all-in'), 'nice one @Lofi_Kick ');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'nice one @Lofi_Kick ');
   assert.equal(await page.isVisible('.all-at'), false);
   assert.match(await page.textContent('.all-rb'), /Mentioning on Kick · Kick names only/);
   assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Send a message on Kick');
@@ -577,7 +608,7 @@ test('ALL: @ suggests names from their chats; picking one locks to its site, and
   assert.deepEqual(await list(), ['KLofi_KickKick*', 'KlowtideKick'], 'only Kick names now');
   assert.match(await page.textContent('.all-at'), /Kick names/);
   await page.click('.all-at .all-ati >> nth=1');
-  assert.equal(await page.inputValue('.all-in'), 'nice one @Lofi_Kick and @lowtide ');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'nice one @Lofi_Kick and @lowtide ');
   await page.keyboard.type('@zz');
   assert.equal(await page.isVisible('.all-at'), false, 'nobody by that name');
   await page.keyboard.type(' @lo');
@@ -671,13 +702,13 @@ test('ALL: what you send shows at once (sending, then sent) and the real line ta
   await page.press('.all-in', 'Enter');
   await page.waitForFunction(() => window.__sends.length === 1);
   assert.deepEqual(await mine(), ['sending | Kmekick: first oneSending']);
-  assert.equal(await page.inputValue('.all-in'), '', 'the box is free for the next one');
+  assert.equal(await page.$eval('.all-in', b => b.value), '', 'the box is free for the next one');
   // Enter again while it's sending: nothing sent twice
   await page.fill('.all-in', 'second one');
   await page.press('.all-in', 'Enter');
   await page.waitForFunction(() => /Still sending the last one/.test(document.querySelector('#msg')?.textContent || ''));
   assert.deepEqual(await page.evaluate(() => window.__sends), ['first one']);
-  assert.equal(await page.inputValue('.all-in'), 'second one', 'kept');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'second one', 'kept');
   await page.evaluate(() => window.__done('sent'));
   await page.waitForFunction(() => document.querySelector('.al-mine-sent'));
   // the chat brings it back: the real line, in its place
@@ -702,7 +733,7 @@ test('ALL: what you send shows at once (sending, then sent) and the real line ta
   await page.waitForSelector('.al-mine-failed');
   await page.fill('.all-in', '');
   await page.click('.al-mine-failed [data-cmd="all.edit"]');
-  assert.equal(await page.inputValue('.all-in'), 'edit me');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'edit me');
   assert.equal(await page.locator('.al-mine-failed').count(), 0, 'its line goes');
 });
 
@@ -1100,7 +1131,7 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   await page.waitForSelector('.all-view');
   await page.evaluate(live => {
     window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
-    const img = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+    const img = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
     window.__asked = [];
     window.kmv = { ...(window.kmv || {}), emotesPick: async ch => { window.__asked.push(ch); return ch === 'quietkoala'
       ? [{ id: 'kick-channel', label: 'Channel', pic: img, emotes: [{ name: 'koalaHype', url: img, send: '[emote:1:koalaHype]', subs: true }, { name: 'koalaWave', url: img, send: '[emote:2:koalaWave]' }] },
@@ -1116,7 +1147,18 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   assert.deepEqual(await page.$$eval('.all-at .all-emi', l => l.map(b => b.textContent)), ['KEKWKick']);
   assert.match(await page.textContent('.all-at-h'), /Kick emotes/);
   await page.keyboard.press('Enter');
-  assert.equal(await page.inputValue('.all-in'), 'gg KEKW ');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'gg KEKW ');
+  const boxShows = () => page.$eval('.all-in', b => [...b.childNodes].map(n => (n.nodeName === 'IMG' ? `[${n.alt}]` : n.textContent)).join(''));
+  assert.equal(await boxShows(), 'gg [KEKW] ', 'the emote picked: its picture in the box');
+  // the caret after it: typing goes on after the emote, Backspace takes it out whole
+  await page.keyboard.type('nice');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'gg KEKW nice');
+  for (let i = 0; i < 5; i++) await page.keyboard.press('Backspace');
+  assert.deepEqual(await page.$eval('.all-in', b => [b.value, b.selectionStart]), ['gg KEKW', 7]);
+  await page.keyboard.press('Backspace');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'gg ');
+  await page.keyboard.type(':ke'); await page.waitForSelector('.all-at:not([hidden]) .all-emi'); await page.keyboard.press('Enter');
+  assert.equal(await boxShows(), 'gg [KEKW] ');
   assert.match(await page.textContent('.all-rb'), /Emotes from Kick · sends on Kick only/, 'locked to Kick');
   await page.keyboard.press('Tab');
   assert.match(await page.textContent('#msg'), /Locked to Kick while using its emotes/);
@@ -1125,6 +1167,7 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   assert.deepEqual(await page.evaluate(() => window.__sends[0]), ['quietkoala', 'gg [emote:9:KEKW]'], 'as Kick writes it');
   assert.match(await page.textContent('.al-mine'), /gg KEKW/, 'your line shows its name');
   assert.equal(await page.isVisible('.all-rb'), false, 'sent: unlocked');
+  assert.deepEqual(await page.$eval('.all-in', b => [b.value, b.childNodes.length]), ['', 0], 'sent: the box empty (its placeholder shows)');
   // a sub emote from another channel: its channel beside it
   await page.focus('.all-in'); await page.keyboard.type(':otterl');
   await page.waitForSelector('.all-at:not([hidden]) .all-emi');
@@ -1158,11 +1201,13 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   assert.deepEqual(await grid(), ['# [letter] Fox Sub emotes', 'foxHi · Fox']);
   await page.selectOption('.all-ep-f', 'kick-global');
   await page.click('.all-ep-e');
-  assert.equal(await page.inputValue('.all-in'), 'KEKW ');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'KEKW ');
+  assert.equal(await boxShows(), '[KEKW] ', 'from the picker too: its picture');
   await page.keyboard.press('Escape');
   assert.equal(await page.isVisible('.all-ep'), false, 'Esc closes it');
   await page.keyboard.press('Escape');
   assert.equal(await page.isVisible('.all-rb'), false, 'Esc: unlocked');
+  assert.equal(await boxShows(), 'KEKW ', 'unlocked: a word again (sent as one)');
   // on Twitch an emote is its name; a word that only looks like an emote stays a word
   await page.fill('.all-in', '');
   await page.keyboard.press('Tab');
@@ -1178,6 +1223,26 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   await page.click('.all-emo-b');
   await page.waitForSelector('.all-ep .all-ep-e');
   assert.deepEqual(await page.$$eval('.all-ep-sec', l => l.map(e => (e.querySelector('.ch-av') ? '[channel] ' : e.querySelector('.pi') ? `[${e.querySelector('.pi').textContent}] ` : '') + [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(''))), ['[channel] Channel', '[T] Twitch']);
+});
+
+test('ALL\'s box: one line of text (pasted or dropped in: its text on one line), no longer than the site takes, its placeholder when emptied', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); }, LIVE);
+  await page.focus('.all-in');
+  const put = (type, text) => page.$eval('.all-in', (b, [type, text]) => { const dt = new DataTransfer(); dt.setData('text/plain', text); dt.setData('text/html', '<b>bold</b><img src=x>');
+    b.dispatchEvent(type === 'paste' ? new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }) : new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); }, [type, text]);
+  await put('paste', 'line one\nline two');
+  assert.deepEqual(await page.$eval('.all-in', b => [b.value, b.querySelectorAll('*').length]), ['line one line two', 0], 'its text, on one line');
+  await put('drop', ' and more');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'line one line two and more');
+  assert.equal(await page.$eval('.all-in', b => { const e = new InputEvent('beforeinput', { inputType: 'insertParagraph', bubbles: true, cancelable: true }); b.dispatchEvent(e); return e.defaultPrevented; }), true, 'no new line');
+  await page.$eval('.all-in', b => { b.maxLength = 10; });
+  await page.keyboard.type('x');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'line one l', 'no longer than it takes');
+  await page.keyboard.press('Control+A'); await page.keyboard.press('Meta+A'); await page.keyboard.press('Backspace');
+  assert.deepEqual(await page.$eval('.all-in', b => [b.value, b.childNodes.length, getComputedStyle(b, '::before').content]), ['', 0, '"Send a message on Kick"'], 'emptied: its placeholder');
+  assert.equal(await page.$eval('.all-in', b => b.selectionStart), 0);
 });
 
 test('ALL: the send button: there once there\'s something to send, says where, sends like Enter, a spinner (and no second send) while sending', async t => {

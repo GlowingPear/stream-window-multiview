@@ -82,12 +82,13 @@ function pickEmote(view, w, e){
   const v = view.input, at = v.selectionStart ?? v.value.length;
   const before = v.value.slice(0, at).replace(/(^|\s):[\w]*$/, '$1'), after = v.value.slice(at);
   const pad = before && !/\s$/.test(before) ? ' ' : '';
-  v.value = before + pad + e.name + ' ' + after.replace(/^\s+/, '');
-  v.selectionStart = v.selectionEnd = (before + pad + e.name + ' ').length;
-  view.at.hidden = true; view.atMode = '';
   (view.emoteSends || (view.emoteSends = new Map())).set(e.name, e.send);
+  if (e.url) (view.emotePics || (view.emotePics = new Map())).set(e.name, e.url);   // (shown as its picture in the box)
+  v.value = before + pad + e.name + ' ' + after.replace(/^\s+/, '');
+  view.at.hidden = true; view.atMode = '';
   if (!view.lock) setLock(view, w, { kind: 'emote', ch: e.ch });
   v.focus();
+  v.selectionStart = v.selectionEnd = (before + pad + e.name + ' ').length;
 }
 // What's sent: each emote picked here as its site writes it (a word that only looks like one stays a word)
 function withEmotes(view, text){

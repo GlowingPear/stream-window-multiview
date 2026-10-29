@@ -124,6 +124,68 @@ async function pinAgent(as, nameAs){
   } catch (e) { return null; }
 }
 
+// The messages the site's chat already shows, for ALL as it starts reading the chat (feedAgent only hears what comes
+// after), in feedAgent's batch shape, each as its live connection would have brought it: Kick's as its live events (the
+// lines it shows, and the history its chat loads with), Twitch's as its chat's lines (IRC, from what each line shows),
+// YouTube's as its actions. -> { s, raw: [...] }, or null (none, or unreadable)
+async function shownAgent(as, nameAs){
+  const site = as || (/(^|\.)kick\.com$/.test(location.hostname) ? 'kick' : /(^|\.)twitch\.tv$/.test(location.hostname) ? 'twitch' : 'youtube');
+  const name = nameAs || (location.pathname.match(/\/popout\/([^/]+)/) || [])[1];   // (as, nameAs: the tests')
+  const propsOf = (el, key) => {
+    for (const node of [el, el.querySelector('.group')].filter(Boolean)){
+      const k = Object.keys(node).find(x => x.startsWith('__reactFiber'));
+      for (let f = k && node[k], i = 0; f && i < 8; f = f.return, i++){ const m = (f.memoizedProps || {})[key]; if (m && m.id) return m; }
+    }
+    return null;
+  };
+  try {
+    if (site === 'kick'){
+      const frame = d => JSON.stringify({ push: { channel: 'chatrooms.0.v2', pub: { data: { event: 'App\\Events\\ChatMessageEvent', data: JSON.stringify(d) } } } });
+      const ok = d => d && d.id && d.sender && d.created_at && typeof d.content === 'string' && !d.deleted_at;
+      const meta = d => (typeof d.metadata === 'string' ? { ...d, metadata: (() => { try { return JSON.parse(d.metadata); } catch (e) { return null; } })() } : d);
+      let hist = [];
+      if (name) try {
+        const ch = await (await fetch(`/api/v2/channels/${encodeURIComponent(name)}`, { credentials: 'include' })).json();
+        const h = await (await fetch(`https://web.kick.com/api/v1/chat/${encodeURIComponent(ch.id)}/history`, { credentials: 'include' })).json();
+        hist = ((h && h.data && h.data.messages) || []).filter(ok).map(meta);
+      } catch (e) {}   // (then the lines it shows only)
+      const shown = [...document.querySelectorAll('[data-index]')].map(el => propsOf(el, 'message')).filter(ok).map(meta);
+      const raw = [...hist, ...shown].map(frame);
+      return raw.length ? { s: 'kick', raw } : null;
+    }
+    if (site === 'twitch'){
+      const room = decodeURIComponent(name || '').toLowerCase();
+      const tag = v => String(v).replace(/\\/g, '\\\\').replace(/;/g, '\\:').replace(/ /g, '\\s').replace(/\r/g, '\\r').replace(/\n/g, '\\n');
+      const line = m => {
+        const u = m.user || {}, login = String(u.userLogin || '').toLowerCase();
+        if (!login || m.deleted || m.banned || m.hidden) return null;
+        let text = '', at = 0; const emotes = {};
+        (m.messageParts || []).forEach(p => {
+          const c = p && p.content;
+          const t = typeof c === 'string' ? c : c && c.emoteID ? String(c.alt || '') : c && c.recipient ? '@' + c.recipient : c && c.url ? String(c.url) : String((c && (c.alt || c.text)) || '');
+          const n = Array.from(t).length;
+          if (c && c.emoteID && n) (emotes[c.emoteID] || (emotes[c.emoteID] = [])).push(`${at}-${at + n - 1}`);
+          text += t; at += n;
+        });
+        if (!text) text = String(m.messageBody || '');
+        if (!text.trim()) return null;
+        const months = m.badgeDynamicData && m.badgeDynamicData.subscriber, r = m.reply;
+        const tags = { 'badge-info': months ? `subscriber/${months}` : '', badges: Object.entries(m.badges || {}).map(([k, v]) => `${k}/${v}`).join(','), bits: +m.bits || '',
+          color: u.color || '', 'display-name': u.userDisplayName || login, emotes: Object.entries(emotes).map(([id, at]) => `${id}:${at.join(',')}`).join('/'),
+          'first-msg': m.isFirstMsg ? '1' : '', id: m.id, login, 'tmi-sent-ts': +m.timestamp || '', 'user-id': u.userID || '',
+          ...(r && r.parentMsgId ? { 'reply-parent-msg-id': r.parentMsgId, 'reply-parent-user-login': r.parentUserLogin || '', 'reply-parent-display-name': r.parentDisplayName || '', 'reply-parent-msg-body': r.parentMessageBody || '' } : {}) };
+        return '@' + Object.entries(tags).filter(([, v]) => v !== '').map(([k, v]) => `${k}=${tag(v)}`).join(';') + ` :${login}!${login}@${login}.tmi.twitch.tv PRIVMSG #${room} :${text.replace(/[\r\n]+/g, ' ')}`;
+      };
+      const raw = [...document.querySelectorAll('.chat-line__message')].map(el => propsOf(el, 'message')).filter(Boolean).map(line).filter(Boolean);
+      return raw.length ? { s: 'twitch', raw } : null;
+    }
+    const KIND = { 'yt-live-chat-text-message-renderer': 'liveChatTextMessageRenderer', 'yt-live-chat-paid-message-renderer': 'liveChatPaidMessageRenderer',
+      'yt-live-chat-paid-sticker-renderer': 'liveChatPaidStickerRenderer', 'yt-live-chat-membership-item-renderer': 'liveChatMembershipItemRenderer' };
+    const raw = [...document.querySelectorAll(Object.keys(KIND).join(','))].slice(-300).map(el => (el.data && el.data.id ? { addChatItemAction: { item: { [KIND[el.tagName.toLowerCase()]]: JSON.parse(JSON.stringify(el.data)) } } } : null)).filter(Boolean);
+    return raw.length ? { s: 'youtube', raw } : null;
+  } catch (e) { return null; }
+}
+
 // The pictures of the chat's badges, for ALL's lines (feed-parse.js keeps each message's badges as { set, v }): asked
 // once as ALL starts reading the chat. Kick: the channel's sub badges, by months (its other badges come with their
 // pictures, or are its own icons); Twitch: the channel's (subs, bits), and Twitch's own when asked for (global: the same
@@ -326,4 +388,4 @@ function profileAgent(id){
 }
 
 export { badgesAgent, feedAgent, kickIconsAgent, lineProbe, messageHtml, modesAgent, pinAgent, profileAgent,
-  replyAgent, seekAgent, twReplyAt, twReplyPress };
+  replyAgent, seekAgent, shownAgent, twReplyAt, twReplyPress };
