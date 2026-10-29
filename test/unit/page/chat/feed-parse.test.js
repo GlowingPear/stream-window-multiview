@@ -287,7 +287,8 @@ test('Twitch: a watch streak is their message, highlighted, with how many stream
   assert.deepEqual([so.kind, so.event, so.text, so.shoutout], ['event', 'shoutout', 'quietkoala shouted out Novalynx', 'tw:novalynx']);
   assert.deepEqual([KNOWN.twitch['hermes:reward-redeemed'], KNOWN.twitch['hermes:create']], ['a reward redeemed (without text)', 'a shoutout']);
   assert.equal(KNOWN.twitch['USERNOTICE:communitypayforward'], 'a gift sub paid forward');
-  for (const k of ['hermes:drop-progress', 'hermes:commercial', 'hermes:watch-streak', 'hermes:hype-train-start', 'hermes:mystery-gift-purchase', 'hermes:?']) assert.ok(ignoredWhy('twitch', k), k);
+  for (const k of ['hermes:drop-progress', 'hermes:commercial', 'hermes:watch-streak', 'hermes:hype-train-start', 'hermes:mystery-gift-purchase', 'hermes:?', 'hermes:update-message']) assert.ok(ignoredWhy('twitch', k), k);
+  assert.ok(ignoredWhy('kick', 'KicksBalanceUpdated'), 'your own Kicks balance');
 });
 
 
@@ -314,3 +315,12 @@ test('Twitch: a raid getting ready (its countdown), going and called off, from i
   assert.equal(parseTwitch(pub({ type: 'goal_achieved', data: { goal: {} } })), null);
   for (const k of ['hermes:raid_update_v2', 'hermes:raid_go_v2', 'hermes:raid_cancel_v2', 'hermes:goal_achieved']) assert.ok(KNOWN.twitch[k], k);
 });
+
+test('ignoredKinds: of the kinds heard, those ALL leaves out on purpose, with why, for each site (for the export and ALL\'s report)', async () => {
+  const { ignoredKinds } = await load();
+  assert.deepEqual(ignoredKinds({ kick: { PointsUpdated: {}, ChatMessageEvent: {}, MysteryEvent: {}, 'pusher:pong': {} }, twitch: { '001': {}, 'hermes:update-message': {}, PRIVMSG: {} } }), {
+    kick: { PointsUpdated: 'your channel points', 'pusher:pong': 'the connection’s own' },
+    twitch: { '001': 'the connection’s own', 'hermes:update-message': 'a message edited (it carries only the message’s id, not its new words)' }, youtube: {} });
+  assert.deepEqual(ignoredKinds(null), { kick: {}, twitch: {}, youtube: {} });
+});
+

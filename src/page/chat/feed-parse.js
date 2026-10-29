@@ -395,7 +395,8 @@ const IGNORED = {
   kick: { PointsUpdated: 'your channel points', GoalProgressUpdateEvent: 'the channel’s goal bar', GiftsLeaderboardUpdated: 'the gift leaderboard',
     KicksLeaderboardUpdated: 'the Kicks leaderboard', NewSubscriberUpdatedEvent: 'the sub count (ChannelSubscriptionEvent is the sub)',
     NewActivityFeedEvent: 'the activity feed (the same subs and follows)', StopStreamBroadcast: 'the stream ending', StreamerIsLive: 'the stream starting',
-    GamificationWatchTimeGoalReached: 'your watch-time goal', PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)', PollUpdateEvent: 'a poll (Kick’s own panel)' },
+    GamificationWatchTimeGoalReached: 'your watch-time goal', PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)', PollUpdateEvent: 'a poll (Kick’s own panel)',
+    KicksBalanceUpdated: 'your own Kicks balance (on your private channel)' },
   twitch: { CAP: 'the connection’s own', JOIN: 'the connection’s own', PART: 'the connection’s own', GLOBALUSERSTATE: 'the connection’s own (you)', USERSTATE: 'the connection’s own (you)',
     RECONNECT: 'the connection’s own', 'hermes:welcome': 'the connection’s own', 'hermes:authenticateResponse': 'the connection’s own',
     'hermes:subscribeResponse': 'the connection’s own', 'hermes:unsubscribeResponse': 'the connection’s own', 'hermes:reconnect': 'the connection’s own',
@@ -406,7 +407,8 @@ const IGNORED = {
     'hermes:send-private-callout': 'a note only for you (to share your streak)', 'hermes:goal_updated': 'the channel’s goal bar', 'hermes:custom-reward-updated': 'the channel’s rewards list',
     'hermes:active-multipliers-updated': 'your points multipliers', 'hermes:broadcast_settings_update': 'the stream’s title and category (on its window)',
     'hermes:hype-train-start': 'the hype train (Twitch’s own panel)', 'hermes:hype-train-end': 'the hype train (Twitch’s own panel)', 'hermes:hype-train-conductor-update': 'the hype train (Twitch’s own panel)',
-    'hermes:mystery-gift-purchase': 'gifted subs being bought (the gift is USERNOTICE:submysterygift)', 'hermes:?': 'the connection’s own (no type)',
+    'hermes:mystery-gift-purchase': 'gifted subs being bought (the gift is USERNOTICE:submysterygift)',
+    'hermes:update-message': 'a message edited (it carries only the message’s id, not its new words)', 'hermes:?': 'the connection’s own (no type)',
     ...Object.fromEntries(['slow_on', 'slow_off', 'followers_on', 'followers_on_zero', 'followers_off', 'subs_on', 'subs_off', 'emote_only_on', 'emote_only_off', 'r9k_on', 'r9k_off']
       .map(n => ['NOTICE:' + n, 'the chat’s modes (shown above the box)'])) },
   youtube: { 'addChatItemAction:liveChatPlaceholderItemRenderer': 'an empty stand-in for a message YouTube holds back (for review; let through, replaceChatItemAction brings it)',
@@ -420,8 +422,12 @@ const ytKind = a => { const k = Object.keys(a || {}).find(x => x !== 'clickTrack
 // Whether ALL leaves out something a chat handed over on purpose (not one it couldn't read): YouTube's reader passes on
 // every action, the ones ALL ignores too (the others' leave those out)
 const leftOut = (site, raw) => site === 'youtube' && !!raw && typeof raw === 'object' && !!ignoredWhy(site, ytKind(raw));
+// The kinds heard (samples: { site: { kind: … } }) that ALL leaves out on purpose: { site: { kind: why } }, for the
+// chat events' export and ALL's report
+const ignoredKinds = samples => Object.fromEntries(Object.keys(KNOWN).map(s => [s, Object.fromEntries(Object.keys((samples && samples[s]) || {})
+  .filter(k => !KNOWN[s][k] && ignoredWhy(s, k)).map(k => [k, ignoredWhy(s, k)]))]));
 
 // (one object, so the tests can reach each site's reader)
-const feedParse = { KNOWN, IGNORED, ignoredWhy, leftOut, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds, kickPics, ytPics, BADGES };
+const feedParse = { KNOWN, IGNORED, ignoredWhy, ignoredKinds, leftOut, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds, kickPics, ytPics, BADGES };
 
 export { feedParse };
