@@ -103,6 +103,8 @@ function renderCard(){
         [['', 'As in Settings'], ['tabs', 'Tabs in one window'], ['separate', 'Separate windows']], s.streams || '', v => setStreamerOpt(s.id, 'streams', v), 'link.streams'),
       sel('Opens by itself when live ⚡', 'Any of their channels going live opens them', [['off', 'No'], ['together', 'Together, as tabs'], ['separate', 'Separate windows']],
         ao ? s.autoOpen || 'together' : 'off', v => setAutoOpenFor(s, v), 'link.autoOpen'),
+      sel('ALL tab', 'Their chats as one list. Settings › Linked channels says: ' + (linkOpt('allTab') !== false ? 'on' : 'off'),
+        [['', 'As in Settings'], ['on', 'On'], ['off', 'Off']], s.allTab === true ? 'on' : s.allTab === false ? 'off' : '', v => setStreamerOpt(s.id, 'allTab', v === 'on' ? true : v === 'off' ? false : null), 'link.allTab'),
       sel('Name shown', 'In the Channels list, title bars and the bell', [...new Set(s.accounts.map(chLabel))].map(n => [n, n]), streamerName(s), v => setStreamerOpt(s.id, 'name', v === chLabel(s.main) ? '' : v), 'link.name'));
   }
   parts.push(element('div', 'lc-foot',
