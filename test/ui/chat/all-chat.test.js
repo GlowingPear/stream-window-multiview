@@ -31,6 +31,9 @@ test('an ALL tab before the sites: it shows their chats as one list, and a site\
   assert.ok(await page.isVisible('#stage .win.chat .all-view'));
   assert.match(await page.textContent('.all-empty'), /Kick and Twitch chats together.*YouTube is offline.*New messages show here/);
   assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.allOpen'))), ['s1'], 'remembered for the streamer');
+  // its corners still resize the window: the handles are over ALL, not under it
+  assert.deepEqual(await page.$eval('#stage .win.chat:not(.tab-hidden)', w => { const r = w.getBoundingClientRect(), at = (x, y) => document.elementFromPoint(x, y).className;
+    return [at(r.right - 3, r.bottom - 3), at(r.left + 3, r.bottom - 3)]; }), ['rz rz-se', 'rz rz-sw']);
   // messages from both sites, in the order they come
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatMessageEvent', { id: 'k1', content: 'that clutch [emote:1:KEKW]', type: 'message', created_at: new Date().toISOString(),
     sender: { id: 1, username: 'driftwood_7', slug: 'driftwood_7', identity: { color: '#7CFF4F', badges: [{ type: 'og' }] } } })] });
