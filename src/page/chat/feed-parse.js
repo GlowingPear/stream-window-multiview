@@ -68,6 +68,9 @@ function parseTwitch(line){
     // an announcement is a message the streamer or a mod highlighted, not an event
     if (msg.event === 'announcement'){ msg.kind = 'message'; msg.announce = (prm.color || 'PRIMARY').toLowerCase(); delete msg.event; delete msg.text; }
     else msg.summary = twitchSummary(msg.event, msg.sender, prm, msg.text);
+    // gifted subs: who got them. Twitch sends the "gifted 5 subs" line, then one line for each sub, with the same gift id
+    if (msg.event === 'submysterygift') msg.gift = { id: prm['community-gift-id'] || '', count: +prm['mass-gift-count'] || 0, to: [] };
+    if (msg.event === 'subgift') msg.giftTo = { name: prm['recipient-display-name'] || prm['recipient-user-name'] || '', login: (prm['recipient-user-name'] || '').toLowerCase(), group: prm['community-gift-id'] || '' };
   }
   return msg;
 }
@@ -124,8 +127,9 @@ function kickEvents(ev, d){
     return event(d.gift_transaction_id || 'kg-' + t, who, [{ strong: who }, { text: ' sent ' }, { strong: String(g.name || 'a gift') }, { text: ' · ' }, { strong: `${n(g.amount)} Kicks` }], d.message ? [{ text: String(d.message) }] : []);
   }
   if (ev === 'GiftedSubscriptionsEvent' || ev === 'LuckyUsersWhoGotGiftSubscriptionsEvent'){
-    const who = String(d.gifter_username || 'Someone'), got = d.gifted_usernames || d.usernames || [];
-    return event('gs-' + t + '-' + who, who, [{ strong: who }, { text: ' gifted ' }, { strong: plural(got.length || 1, 'sub', 'subs') }]);
+    const who = String(d.gifter_username || 'Someone'), got = (Array.isArray(d.gifted_usernames) ? d.gifted_usernames : Array.isArray(d.usernames) ? d.usernames : []).map(String);
+    return { ...event('gs-' + t + '-' + who, who, [{ strong: who }, { text: ' gifted ' }, { strong: plural(got.length || 1, 'sub', 'subs') }]),
+      gift: { id: String(d.correlation_id || ''), count: got.length, to: got.map(u => ({ name: u, login: u.toLowerCase() })) } };
   }
   if (ev === 'SubscriptionEvent' || ev === 'ChannelSubscriptionEvent'){
     const who = String(d.username || 'Someone');
@@ -248,7 +252,44 @@ function parseFeed(batch){
   return fn && Array.isArray(batch.raw) ? batch.raw.map(r => { try { return fn(r); } catch { return null; } }).filter(Boolean) : [];
 }
 
+// What ALL does with each kind of event, named as the chats' readers count them (in-site/feed.js), for Settings ›
+// Developer › Chat events: a kind here that hasn't come yet is one ALL still needs; one that came and isn't here, ALL
+// doesn't know. A new kind ALL reads goes here too.
+const KNOWN = {
+  kick: { ChatMessageEvent: 'a message', 'ChatMessageEvent:reply': 'a reply', MessageDeletedEvent: 'a message deleted', UserBannedEvent: 'a ban or timeout',
+    UserUnbannedEvent: 'a ban lifted', ChatroomClearEvent: 'the chat cleared', RewardRedeemedEvent: 'a reward redeemed', KicksGifted: 'Kicks sent',
+    GiftedSubscriptionsEvent: 'gifted subs', LuckyUsersWhoGotGiftSubscriptionsEvent: 'gifted subs', SubscriptionEvent: 'a sub', ChannelSubscriptionEvent: 'a sub',
+    StreamHostEvent: 'a raid', PinnedMessageCreatedEvent: 'a pin', PinnedMessageDeletedEvent: 'a pin taken down' },
+  twitch: { PRIVMSG: 'a message', 'PRIVMSG:reply': 'a reply', 'PRIVMSG:bits': 'a cheer', 'PRIVMSG:reward': 'a reward redeemed', 'PRIVMSG:highlighted-message': 'a highlighted message',
+    'USERNOTICE:sub': 'a sub', 'USERNOTICE:resub': 'a resub', 'USERNOTICE:subgift': 'a gifted sub', 'USERNOTICE:submysterygift': 'gifted subs', 'USERNOTICE:raid': 'a raid',
+    'USERNOTICE:announcement': 'an announcement', 'USERNOTICE:viewermilestone': 'a watch streak', 'USERNOTICE:giftpaidupgrade': 'a gifted sub kept going',
+    'USERNOTICE:primepaidupgrade': 'a Prime sub kept going', 'USERNOTICE:bitsbadgetier': 'a bits badge', CLEARMSG: 'a message deleted', 'CLEARCHAT:timeout': 'a timeout',
+    'CLEARCHAT:ban': 'a ban', 'CLEARCHAT:all': 'the chat cleared', 'hermes:pin-message': 'a pin', 'hermes:unpin-message': 'a pin taken down' },
+  youtube: { 'addChatItemAction:liveChatTextMessageRenderer': 'a message', 'addChatItemAction:liveChatPaidMessageRenderer': 'a Super Chat',
+    'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
+    removeChatItemAction: 'a message deleted', markChatItemsByAuthorAsDeletedAction: 'a ban or timeout',
+    'addBannerToLiveChatCommand:liveChatBannerRenderer': 'a pin', removeBannerForLiveChatCommand: 'a pin taken down' }
+};
+
+// Kinds ALL hears and leaves out on purpose, and why (Settings › Developer › Chat events lists them as Ignored, not
+// unknown): the connections' own housekeeping, news only for you (your points), and the sites' panels (goals,
+// leaderboards). One the sites start sending that ALL has no use for goes here.
+const IGNORED = {
+  kick: { PointsUpdated: 'your channel points', GoalProgressUpdateEvent: 'the channel’s goal bar', GiftsLeaderboardUpdated: 'the gift leaderboard',
+    KicksLeaderboardUpdated: 'the Kicks leaderboard', NewSubscriberUpdatedEvent: 'the sub count (ChannelSubscriptionEvent is the sub)',
+    NewActivityFeedEvent: 'the activity feed (the same subs and follows)', StopStreamBroadcast: 'the stream ending', StreamerIsLive: 'the stream starting',
+    PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)', PollUpdateEvent: 'a poll (Kick’s own panel)' },
+  twitch: { CAP: 'the connection’s own', JOIN: 'the connection’s own', PART: 'the connection’s own', GLOBALUSERSTATE: 'the connection’s own (you)', USERSTATE: 'the connection’s own (you)',
+    ROOMSTATE: 'the chat’s modes', RECONNECT: 'the connection’s own', 'hermes:welcome': 'the connection’s own', 'hermes:authenticateResponse': 'the connection’s own',
+    'hermes:subscribeResponse': 'the connection’s own', 'hermes:unsubscribeResponse': 'the connection’s own', 'hermes:reconnect': 'the connection’s own',
+    'hermes:points-earned': 'your channel points', 'hermes:claim-available': 'your bonus points', 'hermes:clips-leaderboard-update': 'the clips leaderboard',
+    'hermes:viewcount': 'the viewer count' },
+  youtube: {}
+};
+// Why ALL leaves a kind out, or '' (Twitch's numbered replies are the connection's own too)
+const ignoredWhy = (site, kind) => (IGNORED[site] && IGNORED[site][kind]) || (site === 'twitch' && /^\d{3}$/.test(kind) ? 'the connection’s own' : site === 'kick' && /^pusher(_internal)?:/.test(kind) ? 'the connection’s own' : '');
+
 // (one object, so the tests can reach each site's reader)
-const feedParse = { parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds };
+const feedParse = { KNOWN, IGNORED, ignoredWhy, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds };
 
 export { feedParse };

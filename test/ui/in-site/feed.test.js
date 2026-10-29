@@ -164,3 +164,43 @@ test('a pin already up (pinAgent): Kick\'s chat history, Twitch\'s pinnedChatMes
   assert.deepEqual(got.out.failed, [null, null, null]);
   assert.deepEqual(got.asked, ['/api/v2/channels/quietkoala', 'https://web.kick.com/api/v1/chat/77/history', 'https://gql.twitch.tv/gql query { user(login: "quietkoala") { channel']);
 });
+
+test('Chat events: the reader counts every kind its connection brings (named by kind, one sample a minute each) while sampling is on, also with ALL off', async t => {
+  const page = await openApp(t);
+  const sent = [];
+  page.on('console', m => { if (m.text().startsWith('__kmv:samples ')) sent.push(JSON.parse(m.text().slice(14))); });
+  const run = (site, frames) => page.evaluate(([site, frames]) => {
+    delete window.__kmvFeed; window.feedAgent(site); window.__kmvFeed.samp = true; window.__kmvFeed.sampMs = 60;
+    const ws = new WebSocket('ws://127.0.0.1:9'); ws.onerror = () => {}; ws.addEventListener('message', e => e.data);
+    for (const f of frames) ws.dispatchEvent(new MessageEvent('message', { data: f }));
+  }, [site, frames]);
+  const KF = (event, data) => JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: 'App\\Events\\' + event, data: JSON.stringify(data) } } } });
+  await run('kick', [KF('ChatMessageEvent', { type: 'message' }), KF('ChatMessageEvent', { type: 'reply' }), KF('ChatMessageEvent', { type: 'message' }),
+    JSON.stringify({ push: { channel: 'channel_9', pub: { data: { event: 'NewActivityFeedEvent', data: '{}' } } } }), '{"id":1,"connect":{}}', 'not json']);
+  for (let i = 0; i < 40 && !sent.length; i++) await new Promise(r => setTimeout(r, 50));
+  assert.equal(sent[0].s, 'kick');
+  assert.deepEqual(Object.fromEntries(Object.entries(sent[0].k).map(([k, v]) => [k, [v.n, !!v.x]])), { ChatMessageEvent: [2, true], 'ChatMessageEvent:reply': [1, true], NewActivityFeedEvent: [1, true] }, 'nothing about ALL: it\'s off');
+  // a kind sampled a moment ago: counted, no sample again for a minute
+  await page.evaluate(KF => { const ws = new WebSocket('ws://127.0.0.1:9'); ws.onerror = () => {}; ws.addEventListener('message', e => e.data); ws.dispatchEvent(new MessageEvent('message', { data: KF })); }, KF('ChatMessageEvent', { type: 'message' }));
+  for (let i = 0; i < 40 && sent.length < 2; i++) await new Promise(r => setTimeout(r, 50));
+  assert.deepEqual(sent[1].k, { ChatMessageEvent: { n: 1 } });
+  sent.length = 0;
+  const TW = (tags, rest) => '@' + tags + ' ' + rest;
+  const hermes = type => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data: {} }) } });
+  await run('twitch', [[TW('id=a', ':x!x@x PRIVMSG #q :hi'), TW('reply-parent-msg-id=z', ':x!x@x PRIVMSG #q :@y hi'), TW('bits=100', ':x!x@x PRIVMSG #q :cheer100'), TW('custom-reward-id=r', ':x!x@x PRIVMSG #q :hey'),
+    TW('msg-id=highlighted-message', ':x!x@x PRIVMSG #q :look'), TW('msg-id=raid', ':tmi.twitch.tv USERNOTICE #q'), TW('msg-id=slow_on', ':tmi.twitch.tv NOTICE #q :slow'), TW('ban-duration=60', ':tmi.twitch.tv CLEARCHAT #q :x'),
+    ':tmi.twitch.tv CLEARCHAT #q :x', ':tmi.twitch.tv CLEARCHAT #q', 'PING :tmi.twitch.tv', ':tmi.twitch.tv ROOMSTATE #q', ':tmi.twitch.tv NOTICE #q :odd', '???'].join('\r\n'), hermes('pin-message'), JSON.stringify({ type: 'keepalive' }), JSON.stringify({ type: 'welcome' }), '{oops']);
+  for (let i = 0; i < 40 && !sent.length; i++) await new Promise(r => setTimeout(r, 50));
+  assert.deepEqual(Object.keys(sent[0].k).sort(), ['CLEARCHAT:all', 'CLEARCHAT:ban', 'CLEARCHAT:timeout', 'NOTICE:?', 'NOTICE:slow_on', 'PRIVMSG', 'PRIVMSG:bits', 'PRIVMSG:highlighted-message', 'PRIVMSG:reply', 'PRIVMSG:reward', 'ROOMSTATE', 'USERNOTICE:raid', 'hermes:pin-message', 'hermes:welcome']);
+  // YouTube: each action of its chat's answers, by action and item; nothing while sampling is off
+  sent.length = 0;
+  await page.evaluate(() => {
+    delete window.__kmvFeed;
+    const acts = [{ addChatItemAction: { item: { liveChatTextMessageRenderer: {} } } }, { clickTrackingParams: 'x', addBannerToLiveChatCommand: { bannerRenderer: { liveChatBannerRenderer: {} } } }, { removeChatItemAction: {} }, { replaceChatItemAction: { replacementItem: { liveChatPaidMessageRenderer: {} } } }];
+    window.fetch = async () => new Response(JSON.stringify({ continuationContents: { liveChatContinuation: { actions: acts } } }));
+    window.feedAgent('youtube'); window.__kmvFeed.sampMs = 60;
+    return window.fetch('/youtubei/v1/live_chat/get_live_chat').then(() => { window.__kmvFeed.samp = true; return window.fetch('/youtubei/v1/live_chat/get_live_chat'); });
+  });
+  for (let i = 0; i < 40 && !sent.length; i++) await new Promise(r => setTimeout(r, 50));
+  assert.deepEqual(Object.fromEntries(Object.entries(sent[0].k).map(([k, v]) => [k, v.n])), { 'addChatItemAction:liveChatTextMessageRenderer': 1, 'addBannerToLiveChatCommand:liveChatBannerRenderer': 1, removeChatItemAction: 1, 'replaceChatItemAction:liveChatPaidMessageRenderer': 1 });
+});

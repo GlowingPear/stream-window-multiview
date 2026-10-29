@@ -1,4 +1,5 @@
 import { alerts } from '../../alerts/alerts.js';
+import { renderEvents } from '../../chat/event-samples.js';
 import { trAll } from '../../chat/translate.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../../core.js';
 import { featBase, featuredCh } from '../../layout/layouts.js';
@@ -24,6 +25,7 @@ import { askIn, viewId, zoomOf } from '../../windows/view.js';
    Errors on this page and in the app's scripts inside the chats go to the error log whether the switch is on or not. */
 var devOn = false;
 const dev = { tab: 'errors', data: null, problems: false };   // problems: Requests shows only the ones that went wrong
+const devTab = () => dev.tab;                  // (Chat events draws its own tab: chat/event-samples.js)
 // a site's answer that went wrong: no answer, or not a 2xx
 const badAnswer = r => !(r.status >= 200 && r.status < 300);
 const DV_WHEN = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -64,10 +66,14 @@ async function renderDev(){
   tabs.forEach(b => {
     const on = b.dataset.t === dev.tab;
     b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1;
+    if (b.dataset.t === 'events') return;
     const n = (b.dataset.t === 'errors' ? d.errors : d.responses).length;
     b.querySelector('.dv-n').textContent = n ? `(${n})` : '';
   });
   const list = $('#devList');
+  pane.querySelector('.dv-keep').hidden = dev.tab === 'events';   // (Chat events has its own Clear)
+  list.classList.toggle('dv-events', dev.tab === 'events');
+  if (dev.tab === 'events') return renderEvents();
   list.replaceChildren();
   if (dev.tab === 'errors'){
     if (!d.errors.length) list.append(element('div', 'dv-empty', 'No errors. They show here as they happen.'));
@@ -209,4 +215,4 @@ function init(){
   window.devTools = { setDev, pageLines, winState, renderDev, exchangeText };   // for the tests
 }
 
-export { copyWinState, devOn, init, inspectWin, renderDev };
+export { copyText, copyWinState, devOn, devTab, init, inspectWin, renderDev };

@@ -55,6 +55,7 @@ import { init as chatChatZoom } from './chat/chat-zoom.js';
 import { init as chatBlowUp } from './chat/blow-up.js';
 import { init as chatChatName } from './chat/chat-name.js';
 import { init as chatAllChat } from './chat/all-chat.js';
+import { init as chatEventSamples } from './chat/event-samples.js';
 import { init as chatChatOverlay } from './chat/chat-overlay.js';
 import { init as chatStickBottom } from './chat/stick-bottom.js';
 import { init as alertsSupportBanner } from './alerts/support-banner.js';
@@ -180,6 +181,7 @@ import { init as panelsSettingsSearchBox } from './panels/settings/search-box.js
   panelsSettingsConnected,
   panelsSettingsActivity,
   panelsDeveloperDeveloper,
+  chatEventSamples,
   chatWhyAlert,
   start,
   layoutMonitors,

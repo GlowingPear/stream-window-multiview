@@ -5,10 +5,13 @@
    timeouts). Kick: the events of its live connection (messages, deletions). YouTube: the answers to the page's
    requests for new messages. A websocket message is seen when the page reads it (MessageEvent's data), so it works
    for a connection that was open before this ran; YouTube's answers through fetch. Only what the app uses is passed
-   on, a batch at a time, while the app has it on (window.__kmvFeed.on): "__kmv:feed {"s":"twitch","raw":[...]}". */
+   on, a batch at a time, while the app has it on (window.__kmvFeed.on): "__kmv:feed {"s":"twitch","raw":[...]}".
+   Settings › Developer › Chat events (#233), while window.__kmvFeed.samp is on: every kind of thing the connection
+   brings, counted, with one of each now and then (at most once a minute a kind), every 10 seconds:
+   "__kmv:samples {"s":"kick","k":{"<kind>":{"n":3,"x":"<one of them>"}}}" (chat/event-samples.js). */
 function feedAgent(as){
   if (window.__kmvFeed) return true;
-  const F = window.__kmvFeed = { on: false, recent: [] };   // recent: what the connection brought lately (in-site/send.js checks it before pressing again)
+  const F = window.__kmvFeed = { on: false, samp: false, sampMs: 10000, recent: [] };   // (sampMs: the tests' shorter wait)   // recent: what the connection brought lately (in-site/send.js checks it before pressing again)
   const site = as || (/(^|\.)kick\.com$/.test(location.hostname) ? 'kick' : /(^|\.)twitch\.tv$/.test(location.hostname) ? 'twitch' : 'youtube');   // (as: the tests')
   let batch = [], timer = 0;
   const send = () => { timer = 0; if (!batch.length) return; const raw = batch; batch = []; console.log('__kmv:feed ' + JSON.stringify({ s: site, raw })); };
@@ -17,7 +20,48 @@ function feedAgent(as){
   const TW = / (PRIVMSG|USERNOTICE|CLEARMSG|CLEARCHAT) #/;
   // (in the frame's text the event's name is JSON: App\\Events\\…, its backslashes doubled; the newer ones have no App\\Events)
   const KICK = /"event":"(App\\+Events\\+)?(ChatMessageEvent|MessageDeletedEvent|UserBannedEvent|UserUnbannedEvent|ChatroomClearEvent|RewardRedeemedEvent|KicksGifted|GiftedSubscriptionsEvent|LuckyUsersWhoGotGiftSubscriptionsEvent|SubscriptionEvent|ChannelSubscriptionEvent|StreamHostEvent|PinnedMessageCreatedEvent|PinnedMessageDeletedEvent)"/;
+  // Chat events: what kind each thing is. Kick: its event's name (a chat message's type too); Twitch: the line's command
+  // (a message's kind, a notice's msg-id, a clear's), or its other connection's type; YouTube: the action (and its item)
+  const S = { k: {}, at: {}, timer: 0 };
+  function sample(kind, x){
+    if (!F.samp || !kind) return;
+    const e = S.k[kind] || (S.k[kind] = { n: 0 }); e.n++;
+    if (e.x === undefined && Date.now() - (S.at[kind] || 0) > 60000) e.x = String(x).slice(0, 8000);
+    if (!S.timer) S.timer = setTimeout(() => {
+      S.timer = 0; const k = S.k; S.k = {};
+      Object.keys(k).forEach(n => { if (k[n].x !== undefined) S.at[n] = Date.now(); });
+      console.log('__kmv:samples ' + JSON.stringify({ s: site, k }));
+    }, F.sampMs);
+  }
+  const tagOf = (tags, name) => { const m = new RegExp('(?:^|;)' + name + '=([^;]*)').exec(tags); return m ? m[1] : ''; };
+  function ircKind(line){
+    const m = /^(?:@(\S+) )?(?::\S+ )?([A-Z]+|\d{3})(?: #\S+)?( :.*)?/.exec(line); if (!m) return '';
+    const tags = m[1] || '', cmd = m[2];
+    if (cmd === 'PRIVMSG') return 'PRIVMSG' + (tagOf(tags, 'custom-reward-id') ? ':reward' : tagOf(tags, 'bits') ? ':bits' : tagOf(tags, 'reply-parent-msg-id') ? ':reply' : tagOf(tags, 'msg-id') ? ':' + tagOf(tags, 'msg-id') : '');
+    if (cmd === 'USERNOTICE' || cmd === 'NOTICE') return cmd + ':' + (tagOf(tags, 'msg-id') || '?');
+    if (cmd === 'CLEARCHAT') return 'CLEARCHAT:' + (tagOf(tags, 'ban-duration') ? 'timeout' : m[3] ? 'ban' : 'all');
+    return cmd;
+  }
+  const ytKind = a => { const k = Object.keys(a || {}).find(x => x !== 'clickTrackingParams') || ''; const v = a && a[k] || {}, it = v.item || v.replacementItem || v.bannerRenderer;
+    return k + (it ? ':' + (Object.keys(it)[0] || '') : ''); };
+  function sampleAll(data){
+    if (!F.samp || typeof data !== 'string') return;
+    if (site === 'kick') data.split('\n').forEach(l => {
+      let j; try { j = JSON.parse(l); } catch (e) { return; }
+      const pub = j && j.push && j.push.pub; if (!pub || !pub.data) return;
+      let ev = String(pub.data.event || Object.keys(pub.data).join(',')).replace(/^App\\Events\\/, '');
+      if (ev === 'ChatMessageEvent'){ try { const t = JSON.parse(pub.data.data).type; if (t && t !== 'message') ev += ':' + t; } catch (e) {} }
+      sample(ev, l);
+    });
+    else if (site === 'twitch'){
+      if (data.startsWith('{')){ let j; try { j = JSON.parse(data); } catch (e) { return; }
+        let t = j && j.type; try { if (j.notification && j.notification.pubsub) t = JSON.parse(j.notification.pubsub).type; } catch (e) {}
+        if (t !== 'keepalive') sample('hermes:' + (t || '?'), data); }
+      else data.split('\r\n').forEach(l => { const k = l && ircKind(l); if (k && k !== 'PING' && k !== 'PONG') sample(k, l); });
+    }
+  }
   function heard(data){
+    sampleAll(data);
     if (typeof data !== 'string') return;
     if (site === 'twitch'){
       if (data.includes(' #')) data.split('\r\n').forEach(l => { if (TW.test(l)) push(l); });
@@ -28,7 +72,7 @@ function feedAgent(as){
   const seen = new WeakSet(), d = Object.getOwnPropertyDescriptor(MessageEvent.prototype, 'data');
   if (d && d.get) Object.defineProperty(MessageEvent.prototype, 'data', { configurable: true, enumerable: d.enumerable, get(){
     const v = d.get.call(this);
-    try { if (F.on && !seen.has(this) && this.target instanceof WebSocket){ seen.add(this); heard(v); if (typeof v === 'string'){ F.recent.push({ t: Date.now(), v: v.slice(0, 4000) }); if (F.recent.length > 60) F.recent.shift(); } } } catch (e) {}
+    try { if ((F.on || F.samp) && !seen.has(this) && this.target instanceof WebSocket){ seen.add(this); heard(v); if (typeof v === 'string'){ F.recent.push({ t: Date.now(), v: v.slice(0, 4000) }); if (F.recent.length > 60) F.recent.shift(); } } } catch (e) {}
     return v;
   } });
   if (site === 'youtube'){
@@ -36,8 +80,8 @@ function feedAgent(as){
     window.fetch = async function(...a){
       const r = await f.apply(this, a);
       try {
-        if (F.on && /\/live_chat\/get_live_chat\b/.test(String(a[0] && a[0].url || a[0])))
-          r.clone().json().then(j => { const acts = j && j.continuationContents && j.continuationContents.liveChatContinuation && j.continuationContents.liveChatContinuation.actions; if (Array.isArray(acts)) acts.forEach(push); }).catch(() => {});
+        if ((F.on || F.samp) && /\/live_chat\/get_live_chat\b/.test(String(a[0] && a[0].url || a[0])))
+          r.clone().json().then(j => { const acts = j && j.continuationContents && j.continuationContents.liveChatContinuation && j.continuationContents.liveChatContinuation.actions; if (Array.isArray(acts)) acts.forEach(x => { push(x); sample(ytKind(x), JSON.stringify(x)); }); }).catch(() => {});
       } catch (e) {}
       return r;
     };
