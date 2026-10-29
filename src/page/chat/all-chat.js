@@ -1,4 +1,4 @@
-import { alerts } from '../alerts/alerts.js';
+import { alerts, clearAlert } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { SMILEY, addonEmotes, emoteCache, openEmotePicker, pickEmote, renderEmoteList, suggestEmote, withEmotes } from './all-emotes.js';
 import { chatBoxName } from './chat-name.js';
@@ -10,7 +10,7 @@ import { wins } from '../core.js';
 import { feedAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
-import { bellVars, mentMuted, mentOn, mentWords, myName } from '../panels/bell/bell.js';
+import { bellVars, mentMuted, mentOn, mentWords, myName, readChat } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
 import { devOn } from '../panels/developer/developer.js';
 import { linkOpt, nameOf, streamerBots, streamerOf } from '../platforms/linked.js';
@@ -25,7 +25,7 @@ import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { soon } from '../shared/timers.js';
-import { addTab, cycleTabs, frameOf, leaderOf, renderSiteTabs, showTab, tabChannels } from '../windows/frames.js';
+import { addTab, cycleTabs, frameOf, leaderOf, renderSiteTabs, showTab, syncFrameAlert, tabChannels } from '../windows/frames.js';
 import { askIn, runIn, viewId, zoomOf } from '../windows/view.js';
 import { freshEmotes, newEmotesOn } from '../windows/views.js';
 import { syncModBtn } from '../windows/windows.js';
@@ -77,6 +77,8 @@ function ingest(w, json, quiet = false){
     if (m.kind === 'unban') return unbanned(f, view, m, w.channel);
     if (m.kind === 'pin' || m.kind === 'unpin') return setPin(f, s, w.channel, m, quiet);
     m.ch = w.channel;
+    if (m.giftTo && giftTo(f, m)) return;   // (one of the gifted subs announced just before: its name goes on that line)
+    if (m.gift) m.gift.me = m.gift.to.some(r => r.login && r.login === meOn(m.site));
     mentionOf(m, w.channel);
     if (m.kind === 'message' && SmvSpam.ignored(m.sender, appBots(w.channel))) m.bot = true;
     if (m.kind === 'message') mineSeen(f, m);
@@ -101,6 +103,27 @@ function mentionOf(m, ch){
   if (me && m.reply && m.reply.login === me) m.toMe = 'reply';
   else if (me && new RegExp(`(^|[^\\w])@${reEsc(me)}\\b`, 'i').test(text)) m.toMe = 'at';
   else if (m.kind === 'message' && !(me && m.login === me)){ const hit = wordRe() && text.match(wordRe()); if (hit){ m.toMe = 'word'; m.word = hit[2]; } }
+}
+// You're in ALL (pressed in it, or typing): its sites' chats are seen, as pressing into one of them is: their alerts
+// stop (the window's and its tabs' glow) and their mentions are read under the bell
+function allSeen(w){
+  const chs = tabChannels(w);
+  frameOf(w).forEach(o => { if (o.kind !== 'chat' || !chs.includes(o.channel)) return; if (o.alert){ clearAlert(o); syncFrameAlert(o); } readChat(o.channel); });
+}
+// Whether you're in the ALL that shows this chat's messages (alerts/alerts.js: then an alert only glows a moment)
+function allLooking(w){
+  const v = w && w.channel && streamerOf(w.channel) ? viewFor(streamerOf(w.channel)) : null;
+  return !!v && document.hasFocus() && v.el.contains(document.activeElement);
+}
+// Twitch's line for each gifted sub: on the "gifted 5 subs" line it belongs to (the same gift id), not a line of its own
+function giftTo(f, m){
+  const g = m.giftTo; if (!g.group) return false;
+  const line = [...f.msgs].reverse().find(x => x.gift && x.site === m.site && x.ch === m.ch && x.gift.id === g.group);
+  if (!line) return false;
+  if (!line.gift.to.some(r => r.login === g.login && r.name === g.name)) line.gift.to.push({ name: g.name, login: g.login });
+  if (g.login && g.login === meOn(m.site)) line.gift.me = true;
+  redrawLine(line);
+  return true;
 }
 // A line drawn again after something about it changed (a tag, its translation)
 function redrawLine(m){
@@ -264,9 +287,16 @@ function lineEl(m){
     if (eventsMode === 'hidden') return null;
     const full = eventsMode === 'full' || !m.summary;
     const words = full ? [m.text || m.sender] : m.summary.map((x, i) => x.strong ? element('b', i ? 'al-amt' : null, x.strong) : x.text);
-    return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}`, dataset: { key: m.site + ':' + m.id } }, element('i', { class: 'pi pi-' + m.site }, site[0]),
+    const to = m.gift ? m.gift.to : [], me = meOn(m.site);
+    return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}${to.length ? ' al-gift' : ''}${m.gift && m.gift.me ? ' al-gift-me' : ''}`, dataset: { key: m.site + ':' + m.id } }, element('i', { class: 'pi pi-' + m.site }, site[0]),
       element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts, m.ch)) : ''),
-      element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.seeIt' }, title: `Show it in ${site}'s own chat`, onclick: () => seeIt(m) }, `See it on ${site} ›`));
+      element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.seeIt' }, title: `Show it in ${site}'s own chat`, onclick: () => seeIt(m) }, `See it on ${site} ›`),
+      // (who got them: a row under it, its button first, their names after it while open)
+      to.length > 0 && element('div', 'al-gl',
+        element('button', { type: 'button', class: 'al-gto', 'aria-expanded': String(!!m.giftOpen), dataset: { cmd: 'all.giftTo' }, title: m.giftOpen ? 'Hide who got them' : 'Who got them',
+          onclick: () => { m.giftOpen = !m.giftOpen; redrawLine(m); } }, `${to.length} ${to.length === 1 ? 'recipient' : 'recipients'}`, element('i', { html: CHEVRON })),
+        m.gift.me && element('span', { class: 'al-tag al-tag-at', title: 'You got one of them' }, 'To you'),
+        ...(m.giftOpen ? to.map(r => element('span', { class: 'al-gc' + (me && r.login === me ? ' me' : '') }, r.name)) : [])));
   }
   const cls = ['al-m', m.toMe === 'reply' ? 'al-rep' : m.toMe === 'at' || m.toMe === 'word' ? 'al-me' : '', m.spam ? 'al-spam' : '', m.bot ? 'al-bot' : '', m.deleted ? 'al-del' : '', m.highlight ? 'al-hl' : '',
     m.announce ? 'al-ann al-ann-' + m.announce : '', m.redeem ? 'al-rw' : ''].filter(Boolean).join(' ');
@@ -332,6 +362,8 @@ function buildView(w){
   const view = { el, list, empty, more, filt, fm, pins, pinChip, pinsShown: false, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
   closeOnOutside(fm, { button: filt });
+  el.addEventListener('pointerdown', () => allSeen(w));
+  el.addEventListener('focusin', () => allSeen(w));
   filt.onclick = () => { if (fm.hidden) openFilters(view); else fm.hidden = true; };
   closeOnOutside(ep, { button: emo });
   emo.onclick = () => openEmotePicker(view, w);
@@ -800,4 +832,4 @@ function init(){
   window.allChat = { sender, modKnown, spamTag, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
-export { allOn, allTabFor, feedReady, init, modViewChs, openModViews, sendSite, setAll, setLock, spamTag };
+export { allLooking, allOn, allTabFor, feedReady, init, modViewChs, openModViews, sendSite, setAll, setLock, spamTag };

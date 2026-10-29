@@ -1,4 +1,5 @@
 import { SmvSpam } from './spam.js';
+import { allLooking } from '../chat/all-chat.js';
 import { wins } from '../core.js';
 import { dndOn, readChat } from '../panels/bell/bell.js';
 import { settings } from '../shared/settings.js';
@@ -66,7 +67,7 @@ function raiseAlert(w, kind, seen){
   playSound(kind);
   if (a.hl === 'off') return;
   w.el.style.setProperty('--al', a.color);
-  const looking = seen || (document.hasFocus() && w.view && document.activeElement === w.view);   // you're in that chat right now
+  const looking = seen || allLooking(w) || (document.hasFocus() && w.view && document.activeElement === w.view);   // you're in that chat right now (or its ALL)
   if (a.hl === 'brief' || looking){
     w.el.classList.remove('al-brief'); void w.el.offsetWidth; w.el.classList.add('al-brief');
     setTimeout(() => w.el.classList.remove('al-brief'), 2600);
