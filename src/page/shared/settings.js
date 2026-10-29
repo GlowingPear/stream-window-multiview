@@ -38,7 +38,8 @@ const SETTING_NAMES = new Set([
   'palette',               // the search box (Ctrl/⌘+K): what you ran last, and how often (shared/commands.js)
   'paletteOn', 'paletteRecent',   // Settings › Search box: the box itself, and remembering what you run
   // Settings › Developer: Developer tools on, and that you were told what Inspect can see
-  'dev', 'devWarned'
+  'dev', 'devWarned',
+  'eventSamples'           // Settings › Developer › Chat events: collecting them (on unless switched off)
 ]);
 // your own alert sound for a kind of alert, as a data: URL ('alertSound.mention', …)
 const isSetting = name => SETTING_NAMES.has(name) || /^alertSound\.\w+$/.test(name);

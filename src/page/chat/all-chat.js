@@ -3,6 +3,7 @@ import { SmvSpam } from '../alerts/spam.js';
 import { SMILEY, addonEmotes, emoteCache, openEmotePicker, pickEmote, renderEmoteList, suggestEmote, withEmotes } from './all-emotes.js';
 import { chatBoxName } from './chat-name.js';
 import { chatZoom } from './chat-zoom.js';
+import { sampleIn } from './event-samples.js';
 import { feedParse } from './feed-parse.js';
 import { autoTrFor } from './translate.js';
 import { wins } from '../core.js';
@@ -758,7 +759,7 @@ function feedOn(w, on){
   if (on) pinsNow(w, w.view);
 }
 // A chat page loaded (again): its helper, on if ALL shows
-function feedReady(w, view){ runIn(view, `(${feedAgent})();${FEED_ON(allOn(w))}`); w.feedOn = allOn(w); if (w.feedOn) pinsNow(w, view); }
+function feedReady(w, view){ runIn(view, `(${feedAgent})();${FEED_ON(allOn(w))}`); sampleIn(view); w.feedOn = allOn(w); if (w.feedOn) pinsNow(w, view); }
 // A pin already up when ALL starts reading a chat: the sites send pins only as they're made, so it's asked for (quietly)
 function pinsNow(w, view){
   askIn(view, `(${pinAgent})()`).then(batch => { if (batch && allOn(w)) ingest(w, JSON.stringify(batch), true); }).catch(() => {});

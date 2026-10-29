@@ -248,7 +248,33 @@ function parseFeed(batch){
   return fn && Array.isArray(batch.raw) ? batch.raw.map(r => { try { return fn(r); } catch { return null; } }).filter(Boolean) : [];
 }
 
+// What ALL does with each kind of event, named as the chats' readers count them (in-site/feed.js), for Settings ›
+// Developer › Chat events: a kind here that hasn't come yet is one ALL still needs; one that came and isn't here, ALL
+// doesn't know. A new kind ALL reads goes here too.
+const KNOWN = {
+  kick: { ChatMessageEvent: 'a message', 'ChatMessageEvent:reply': 'a reply', MessageDeletedEvent: 'a message deleted', UserBannedEvent: 'a ban or timeout',
+    UserUnbannedEvent: 'a ban lifted', ChatroomClearEvent: 'the chat cleared', RewardRedeemedEvent: 'a reward redeemed', KicksGifted: 'Kicks sent',
+    GiftedSubscriptionsEvent: 'gifted subs', LuckyUsersWhoGotGiftSubscriptionsEvent: 'gifted subs', SubscriptionEvent: 'a sub', ChannelSubscriptionEvent: 'a sub',
+    StreamHostEvent: 'a raid', PinnedMessageCreatedEvent: 'a pin', PinnedMessageDeletedEvent: 'a pin taken down' },
+  twitch: { PRIVMSG: 'a message', 'PRIVMSG:reply': 'a reply', 'PRIVMSG:bits': 'a cheer', 'PRIVMSG:reward': 'a reward redeemed', 'PRIVMSG:highlighted-message': 'a highlighted message',
+    'USERNOTICE:sub': 'a sub', 'USERNOTICE:resub': 'a resub', 'USERNOTICE:subgift': 'a gifted sub', 'USERNOTICE:submysterygift': 'gifted subs', 'USERNOTICE:raid': 'a raid',
+    'USERNOTICE:announcement': 'an announcement', 'USERNOTICE:viewermilestone': 'a watch streak', 'USERNOTICE:giftpaidupgrade': 'a gifted sub kept going',
+    'USERNOTICE:primepaidupgrade': 'a Prime sub kept going', 'USERNOTICE:bitsbadgetier': 'a bits badge', CLEARMSG: 'a message deleted', 'CLEARCHAT:timeout': 'a timeout',
+    'CLEARCHAT:ban': 'a ban', 'CLEARCHAT:all': 'the chat cleared', 'hermes:pin-message': 'a pin', 'hermes:unpin-message': 'a pin taken down' },
+  youtube: { 'addChatItemAction:liveChatTextMessageRenderer': 'a message', 'addChatItemAction:liveChatPaidMessageRenderer': 'a Super Chat',
+    'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
+    removeChatItemAction: 'a message deleted', markChatItemsByAuthorAsDeletedAction: 'a ban or timeout',
+    'addBannerToLiveChatCommand:liveChatBannerRenderer': 'a pin', removeBannerForLiveChatCommand: 'a pin taken down' }
+};
+
+// The connections' own housekeeping, and news only for you (your points): counted, never for ALL, so not "unknown"
+const QUIET = {
+  kick: /^(PointsUpdated|pusher:.*|pusher_internal:.*)$/,
+  twitch: /^(\d{3}|CAP|JOIN|PART|PING|PONG|GLOBALUSERSTATE|USERSTATE|ROOMSTATE|RECONNECT|hermes:(welcome|authenticateResponse|subscribeResponse|unsubscribeResponse|keepalive|reconnect|points-earned|claim-available|community-points-user-v1))$/,
+  youtube: /^$/
+};
+
 // (one object, so the tests can reach each site's reader)
-const feedParse = { parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds };
+const feedParse = { KNOWN, QUIET, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds };
 
 export { feedParse };
