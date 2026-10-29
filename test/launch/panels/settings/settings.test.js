@@ -386,7 +386,7 @@ test('chat bots: one list in Chat › Chat bots for mentions and spam alerts, ea
   });
   await win.reload();
   await win.waitForSelector('#loginBtn:not([hidden])');
-  const added = ['botrix', 'mytimerbot', 'griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream', 'botrixofficial'];
+  const added = ['botrix', 'mytimerbot', 'griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream', 'botrixofficial', 'botrixoficial'];
   assert.deepEqual((await saved()).mention.bots, added);
   assert.deepEqual((await saved()).spam.ignore, added, 'and to the spam alerts\' own list');
   assert.deepEqual((await saved()).spam.words, ['upgrade', 'subs', 'chatbot', 'make your stream', 'stays active'], 'new promo words');
