@@ -803,6 +803,20 @@ test('ALL: a reward redeemed with text reads as a message with the reward\'s nam
   assert.equal(await page.$eval('.al-tag-rw', e => e.style.getPropertyValue('--rw')), '#00F1FF', 'in the reward\'s colour');
 });
 
+test('ALL: a YouTube gift is an event (the gift picked out); YouTube\'s stand-ins for held messages, its ticker and its own notice are left out, and don\'t count as unreadable', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const YT = (type, r) => ({ addChatItemAction: { item: { [type]: r } } });
+  await feed(page, 'tw:quietkoala', { s: 'youtube', raw: [YT('liveChatPlaceholderItemRenderer', { id: 'p1', timestampUsec: '1' }), YT('liveChatViewerEngagementMessageRenderer', { id: 'n1', message: { runs: [{ text: 'Welcome to live chat!' }] } }),
+    { addLiveChatTickerItemAction: { item: { liveChatTickerPaidMessageItemRenderer: { id: 't1' } } } },
+    YT('giftMessageViewModel', { id: 'g1', text: { content: 'sent Pepero yummy!' }, authorName: { content: '@Mika ' } })] });
+  assert.deepEqual(await lines(page), ['al-ev | Y@Mika sent Pepero yummy!See it on YouTube ›']);
+  assert.equal(await page.$eval('.all-list .al-ev .al-amt', e => e.textContent), 'Pepero yummy!', 'the gift: picked out, as an amount is');
+  assert.deepEqual(await page.evaluate(() => { const h = window.allHealth.healthOf.get('tw:quietkoala'); return [h.read, h.bad, h.badRaws.length]; }), [1, 0, 0], 'left out: neither read nor unreadable');
+  await feed(page, 'tw:quietkoala', { s: 'youtube', raw: [YT('somethingNew', { id: 'x' })] });
+  assert.equal(await page.evaluate(() => window.allHealth.healthOf.get('tw:quietkoala').bad), 1, 'one it doesn\'t know still counts');
+});
+
 test('ALL: pins wait in the pill (how many), which shows and hides one compact strip: the newest, K T Y switch, ▾ all of them; a new pin pings the pill; a pin taken down goes', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
