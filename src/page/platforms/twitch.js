@@ -11,6 +11,7 @@ const twitch = {
   // ALL's timeout and ban: Twitch's chat commands
   timeoutCmd: (login, secs) => `/timeout ${login} ${secs}`,
   banCmd: login => `/ban ${login}`,
+  deleteMods: false,     // (a mod's message can't be deleted by another mod)
   spamAlerts: true,
   emoteLists: true,
   pageCommands: false,

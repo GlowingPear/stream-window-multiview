@@ -16,6 +16,7 @@ const kick = {
   // ALL's timeout and ban: Kick's chat commands (its timeouts are in minutes)
   timeoutCmd: (login, secs) => `/timeout ${login} ${Math.max(1, Math.round(secs / 60))}`,
   banCmd: login => `/ban ${login}`,
+  deleteMods: true,      // ALL's Delete works on another mod's message, as in its own chat (not their timeout or ban)
   spamAlerts: true,      // spam alerts read its chat
   emoteLists: true,      // the app asks it for a channel's emotes (new emotes glow)
   pageCommands: true,    // /clip, /poll and /prediction in its chat (in-site/kick-commands.js)

@@ -41,6 +41,7 @@ const youtube = {
   mentions: false,       // (YouTube chat isn't read for mentions or spam)
   threadedReplies: false,   // (no replies in its live chat: ALL replies with an @)
   timeoutCmd: null, banCmd: null,   // (no chat commands: mod actions from its own tab)
+  deleteMods: false,
   spamAlerts: false,
   emoteLists: false,
   pageCommands: false,
