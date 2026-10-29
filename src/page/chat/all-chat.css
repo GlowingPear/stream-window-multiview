@@ -255,7 +255,6 @@
 .all-ep{position:absolute;right:10px;bottom:58px;width:min(330px,calc(100% - 20px));max-height:min(380px,70%);display:flex;flex-direction:column;padding:6px;z-index:6;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 16px 36px rgba(0,0,0,.6)}
 .all-ep[hidden]{display:none}
 .all-ep-h{display:flex;align-items:baseline;gap:8px;padding:4px 6px 6px;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.all-ep-h small{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;font-size:10.5px}
 .all-ep-bar{display:flex;gap:6px;margin:0 2px 8px}
 .all-ep-q{flex:1;min-width:0;height:30px;padding:0 9px;border:1px solid var(--line2);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;font-size:12.5px}
 .all-ep-q:focus,.all-ep-f:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 60%,var(--line2))}

@@ -140,7 +140,7 @@ async function openEmotePicker(view, w){
   search.addEventListener('input', draw);
   search.addEventListener('keydown', e => { if (e.key === 'Escape'){ e.preventDefault(); ep.hidden = true; view.input.focus(); } });
   pick.addEventListener('change', () => { show = view.epShow = pick.value; draw(); search.focus(); });
-  ep.replaceChildren(element('div', 'all-ep-h', `${p} emotes`, element('small', null, 'Picking one locks the box to ' + p)), element('div', 'all-ep-bar', search, pick), grid);
+  ep.replaceChildren(element('div', 'all-ep-h', `${p} emotes`), element('div', 'all-ep-bar', search, pick), grid);
   draw();
   search.focus();
 }
