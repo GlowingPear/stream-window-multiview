@@ -239,7 +239,7 @@ function slowStart(ch){
 // A line drawn again after something about it changed (a tag, its translation)
 function redrawLine(m){
   const view = viewFor(ownerOf(m.ch)), el = view && view.list.querySelector(`[data-key="${CSS.escape(m.site + ':' + m.id)}"]`);
-  if (el){ const n = lineEl(m); if (n) el.replaceWith(n); else el.remove(); }
+  if (el){ const n = lineEl(m); if (n) el.replaceWith(n); else el.remove(); return n; }
 }
 // Spam alerts › Tag the message in chat (where you moderate: alerts/spam-alerts.js): the same message here gets it too
 function spamTag(ch, sender, body, why, abuse){
@@ -549,6 +549,22 @@ function badgeEls(m){
   });
   return out;
 }
+// An event line cut off with … (its words or its message): a click opens it in place, both wrapped onto as many lines as
+// they need, and another click closes it (m.open, so it stays open when redrawn). Only while something is cut off: a
+// line that fits does nothing. -> whether a click opens or closes it now
+function evOpenable(m, el){
+  const open = el.classList.contains('al-open'), can = open || [...el.querySelectorAll('.al-evw, .al-evm')].some(e => e.scrollWidth > e.clientWidth);
+  el.classList.toggle('al-can', can);
+  if (can){ el.setAttribute('aria-expanded', String(open)); el.title = open ? 'Back to one line' : 'Show all of it'; }
+  else { el.removeAttribute('aria-expanded'); el.removeAttribute('title'); }
+  return can;
+}
+function evToggle(m, e){
+  // (its buttons, links and emotes do what they do; selecting its text doesn't toggle it)
+  if (e.target.closest('button, a, img, .al-gl') || String(getSelection()) || !evOpenable(m, e.currentTarget)) return;
+  m.open = !e.currentTarget.classList.contains('al-open');
+  const n = redrawLine(m); if (n) evOpenable(m, n);   // (still under the pointer: it can close again)
+}
 function lineEl(m){
   if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' ? null : mineEl(m);
   if (m.kind === 'raidout') return element('div', { class: `al-ev al-raidout al-${SITE_CLASS[m.site]}`, dataset: { key: m.site + ':' + m.id } },
@@ -569,7 +585,9 @@ function lineEl(m){
     const full = eventsMode === 'full' || !m.summary;
     const words = full ? [m.text || m.sender] : m.summary.map((x, i) => x.strong ? element('b', i ? 'al-amt' : null, x.strong) : x.text);
     const to = m.gift ? m.gift.to : [], me = meOn(m.site);
-    return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}${to.length ? ' al-gift' : ''}${m.gift && m.gift.me ? ' al-gift-me' : ''}`, dataset: { key: m.site + ':' + m.id } }, element('i', { class: 'pi pi-' + m.site }, site[0]),
+    const open = m.open && !full;
+    return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}${open ? ' al-open al-can' : ''}${to.length ? ' al-gift' : ''}${m.gift && m.gift.me ? ' al-gift-me' : ''}`, dataset: { key: m.site + ':' + m.id },
+      'aria-expanded': open && 'true', title: open && 'Back to one line', onpointerenter: e => evOpenable(m, e.currentTarget), onclick: e => evToggle(m, e) }, element('i', { class: 'pi pi-' + m.site }, site[0]),
       element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts, m.ch)) : ''),
       // (a shoutout: open the channel it points to, as a raid's line does)
       m.shoutout && element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.shoutoutOpen' }, title: `Open ${chLabel(m.shoutout)} in a window of its own`, onclick: () => addParsed({ channel: m.shoutout, only: null }) }, 'Open ›'),

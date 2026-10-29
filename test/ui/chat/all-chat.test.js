@@ -462,6 +462,93 @@ test('ALL: events are a short line (no See it on …); Events: short, full or hi
   assert.doesNotMatch(await page.textContent('.all-list'), /See it on/);
 });
 
+test('ALL: an event line cut off with … opens in place on a click, its short words and message wrapped, and closes on another; one that fits doesn\'t; its buttons and links don\'t toggle it', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(() => { window.__opened = []; window.open = u => { window.__opened.push(u); }; });
+  const KE = (event, data) => JSON.stringify({ push: { channel: 'chatroom_1', pub: { data: { event, data: JSON.stringify(data) } } } });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KE('RewardRedeemedEvent', { reward_title: 'Pick the next map and the loadout for the whole squad for one round', username: 'oakmoss', user_input: '' }),
+    KE('RewardRedeemedEvent', { reward_title: 'Hydrate', username: 'tide', user_input: '' })] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'Jean', login: 'jean', id: 'g', 'msg-id': 'resub', 'system-msg': 'Jean\\ssubscribed\\sfor\\s38\\smonths!' },
+    ':tmi.twitch.tv USERNOTICE #quietkoala :three years already, thanks for all the late night streams and the chill vibes, my clips are at clips.example.com/jean')] });
+  const ev = n => page.locator('.all-list .al-ev').nth(n);
+  const state = n => ev(n).evaluate(e => ({ open: e.classList.contains('al-open'), can: e.classList.contains('al-can'), expanded: e.getAttribute('aria-expanded'), cursor: getComputedStyle(e).cursor,
+    h: e.offsetHeight, wrap: getComputedStyle(e.querySelector('.al-evw')).whiteSpace, text: e.textContent }));
+  const closed = await state(0);
+  assert.deepEqual([closed.open, closed.wrap], [false, 'nowrap'], 'one line, cut off with …');
+  assert.equal(closed.text, 'Koakmoss redeemed Pick the next map and the loadout for the whole squad for one round', 'nothing but its words: no See it on …');
+  // pointing at it: it can open
+  await ev(0).hover();
+  assert.deepEqual(await ev(0).evaluate(e => [e.classList.contains('al-can'), e.getAttribute('aria-expanded'), getComputedStyle(e).cursor, e.title]), [true, 'false', 'pointer', 'Show all of it']);
+  // a click: open, the same short words wrapped onto more lines
+  await ev(0).click();
+  const open = await state(0);
+  assert.deepEqual([open.open, open.can, open.expanded, open.wrap, open.text], [true, true, 'true', 'normal', closed.text]);
+  assert.ok(open.h > closed.h * 1.5, `taller once open (${closed.h} -> ${open.h})`);
+  assert.equal(await ev(0).evaluate(e => e.querySelector('.al-evw').scrollWidth <= e.querySelector('.al-evw').clientWidth), true, 'nothing cut off');
+  // it stays open when ALL is drawn again (Events: full, its own look, then short again)
+  await page.click('.all-filt');
+  await page.click('.all-fm [aria-label="Events"] >> text=Full');
+  await page.click('.all-filt');
+  assert.deepEqual(await ev(0).evaluate(e => [e.classList.contains('al-full'), e.classList.contains('al-open'), e.hasAttribute('aria-expanded')]), [true, false, false], 'full: the site\'s own words, nothing to open');
+  await ev(0).click();
+  assert.equal(await ev(0).evaluate(e => e.classList.contains('al-open')), false, 'a click on a full line does nothing');
+  await page.click('.all-filt');
+  await page.click('.all-fm [aria-label="Events"] >> text=Short');
+  await page.click('.all-filt');
+  assert.equal((await state(0)).open, true, 'open again, back on short');
+  // another click: one line again
+  await ev(0).click();
+  const again = await state(0);
+  assert.deepEqual([again.open, again.expanded, again.h], [false, 'false', closed.h]);
+  // one that fits: no pointer, a click does nothing
+  await ev(1).hover();
+  assert.deepEqual(await state(1).then(s => [s.can, s.expanded, s.cursor]), [false, null, 'auto']);
+  await ev(1).click();
+  assert.equal((await state(1)).open, false);
+  // a sub's message cut off: it opens too, under its words; a link in it opens in your browser, the line stays open
+  assert.equal(await ev(2).evaluate(e => getComputedStyle(e.querySelector('.al-evm')).textOverflow), 'ellipsis');
+  await ev(2).click();
+  assert.equal((await state(2)).open, true);
+  assert.ok(await ev(2).evaluate(e => e.querySelector('.al-evm').getBoundingClientRect().top >= e.querySelector('.al-evw').getBoundingClientRect().bottom - 1), 'its message under its words');
+  await ev(2).locator('.al-link').click();
+  assert.deepEqual(await page.evaluate(() => window.__opened), ['https://clips.example.com/jean']);
+  assert.equal((await state(2)).open, true, 'the link: not a toggle');
+  // selecting its text doesn't close it
+  await ev(2).evaluate(e => getSelection().selectAllChildren(e.querySelector('.al-evm')));
+  await ev(2).evaluate(e => e.querySelector('.al-evm').click());
+  assert.equal((await state(2)).open, true, 'not while text is selected');
+});
+
+test('ALL: a shoutout\'s and a raid\'s Open › and a gift\'s recipients button keep their own click, also on a line cut off', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const hermes = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
+  const N = (id, tags) => TW({ 'display-name': 'BrightWick', login: 'brightwick', id, ...tags }, ':tmi.twitch.tv USERNOTICE #quietkoala');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [hermes('create', { shoutoutID: 's9', sourceLogin: 'quietkoala', targetLogin: 'novalynxthelongestnamed', targetUserDisplayName: 'NovalynxTheLongestNamed' }),
+    N('g1', { 'msg-id': 'submysterygift', 'msg-param-mass-gift-count': '2', 'msg-param-community-gift-id': '777' }),
+    N('g2', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'Sol', 'msg-param-recipient-user-name': 'sol', 'msg-param-community-gift-id': '777' }),
+    N('g3', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'Rue', 'msg-param-recipient-user-name': 'rue', 'msg-param-community-gift-id': '777' })] });
+  // (a narrow ALL: the lines are cut off)
+  await page.$eval('.all-list', l => { l.style.width = '170px'; });
+  const so = page.locator('.all-list .al-ev').first(), gift = page.locator('.all-list .al-ev.al-gift');
+  await so.hover();
+  assert.equal(await so.evaluate(e => e.classList.contains('al-can')), true, 'cut off');
+  await gift.hover();
+  assert.equal(await gift.evaluate(e => e.classList.contains('al-can')), true, 'cut off');
+  await gift.locator('.al-gto').click();
+  assert.deepEqual(await gift.evaluate(e => [e.classList.contains('al-open'), e.querySelector('.al-gto').getAttribute('aria-expanded'), e.querySelectorAll('.al-gc').length]), [false, 'true', 2], 'who got them, the line not opened');
+  // a raid's Open ›
+  await page.evaluate(() => window.allChat.allRaid('tw:quietkoala', 'tw:emberfall'));
+  await page.click('.all-list [data-cmd="all.raidOpen"]');
+  assert.ok(await page.evaluate(() => window.openWins().some(w => w.channel === 'tw:emberfall')));
+  assert.equal(await page.locator('.all-list .al-raidout .al-tag-raid').textContent(), 'Opened');
+  // a shoutout's Open ›
+  await so.locator('[data-cmd="all.shoutoutOpen"]').evaluate(b => b.click());   // (under the raid's new window now)
+  assert.ok(await page.evaluate(() => window.openWins().some(w => w.channel === 'tw:novalynxthelongestnamed')), 'Open: that channel, in a window of its own');
+  assert.equal(await so.evaluate(e => e.classList.contains('al-open')), false, 'not a toggle');
+});
+
 test('ALL: Send on [K ▾]: the main site first, Tab steps the sites you can send on (YouTube only with a live chat), Enter sends there; ⇧Tab its own tab', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');

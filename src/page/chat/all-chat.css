@@ -98,16 +98,19 @@
 .al-ev.al-y{background:linear-gradient(90deg,rgba(255,42,42,.2),rgba(255,42,42,.05));border:1px solid rgba(255,90,90,.45)}
 .al-evm{color:var(--muted)}
 
-/* events: the short line, its amount; full: the site's own words; Open › on raids and shoutouts; announcements */
+/* events: the short line, its amount; cut off, a click opens it (al-open), wrapped; full: the site's own words; Open › on
+   raids and shoutouts; announcements */
 .al-ev .al-evt{flex:1;min-width:0;display:flex;gap:6px;align-items:baseline;overflow:hidden}
 .al-evw{flex:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .al-evw b{font-weight:750}
 .al-evw b.al-amt{color:#ffd166}
 .al-evm{flex:1;min-width:0;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .al-evm:not(:empty)::before{content:"· "}
-.al-ev.al-full .al-evt{flex-direction:column;gap:1px}
-.al-ev.al-full .al-evw,.al-ev.al-full .al-evm{white-space:normal}
-.al-ev.al-full .al-evm::before{content:none}
+.al-ev.al-full .al-evt,.al-ev.al-open .al-evt{flex-direction:column;gap:1px}
+.al-ev.al-full .al-evw,.al-ev.al-full .al-evm,.al-ev.al-open .al-evw,.al-ev.al-open .al-evm{white-space:normal}
+.al-ev.al-full .al-evm::before,.al-ev.al-open .al-evm::before{content:none}
+.al-ev.al-can{cursor:pointer}
+.al-ev.al-can:hover{filter:brightness(1.12)}
 .al-go{flex:none;margin-left:auto;border:0;background:none;padding:0 0 0 6px;font:inherit;font-size:11.5px;font-weight:700;color:var(--accent);cursor:pointer;white-space:nowrap;opacity:.9}
 .al-go:hover{opacity:1;text-decoration:underline}
 .al-evchip{border-color:var(--line2);background:var(--panel2)}
