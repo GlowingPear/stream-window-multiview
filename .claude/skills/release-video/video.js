@@ -223,7 +223,7 @@ async function encode(inputs, seconds, thumb, mp4, work) {
   fs.rmSync(plain, { force: true });
 }
 
-// Record a scenes module ({ name, poster, features, seed, stage, run }) and encode it. Returns { mp4, sheet, capture }.
+// Record a scenes module ({ name, poster, features, seed, stage, prepare, run }) and encode it. Returns { mp4, sheet, capture }.
 async function record(scenes, { dir = ROOT, out, keep = false } = {}) {
   ffmpeg();
   const name = scenes.name || 'stream-multiview-whats-new';
@@ -236,6 +236,7 @@ async function record(scenes, { dir = ROOT, out, keep = false } = {}) {
   let cap = null, sfx = null, failed = null;
   try {
     await stage.install(run.app, scenes.stage);
+    if (scenes.prepare) await scenes.prepare(m);   // e.g. saved settings and a reload, before the cards are added
     await m.evaluate(({ css, pear }) => {
       const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
       document.body.insertAdjacentHTML('beforeend', '<div id="tr-cap"></div><div id="tr-card" class="on"></div><div id="tr-ring"></div><div id="tr-mouse"></div>');
