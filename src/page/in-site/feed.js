@@ -45,6 +45,40 @@ function feedAgent(as){
   return true;
 }
 
+// A pin already up when ALL starts reading this chat (the sites send a pin only as it's made). Each site's chat page
+// asks for its pin as it loads: Kick with the chat's history, Twitch with a pinnedChatMessages query, YouTube in the
+// page's first data. -> { s, raw: [it as the live pin event] } for feedAgent's batch shape, or null (none, or unreadable)
+async function pinAgent(as, nameAs){
+  const site = as || (/(^|\.)kick\.com$/.test(location.hostname) ? 'kick' : /(^|\.)twitch\.tv$/.test(location.hostname) ? 'twitch' : 'youtube');
+  const name = nameAs || (location.pathname.match(/\/popout\/([^/]+)/) || [])[1];   // (as, nameAs: the tests')
+  try {
+    if (site === 'kick'){
+      if (!name) return null;
+      const ch = await (await fetch(`/api/v2/channels/${encodeURIComponent(name)}`, { credentials: 'include' })).json();
+      const h = await (await fetch(`https://web.kick.com/api/v1/chat/${encodeURIComponent(ch.id)}/history`, { credentials: 'include' })).json();
+      const pm = h && h.data && h.data.pinned_message;
+      if (!pm || !pm.message) return null;
+      return { s: 'kick', raw: [JSON.stringify({ push: { channel: `chatrooms.${ch.chatroom ? ch.chatroom.id : 0}.v2`, pub: { data: { event: 'App\\Events\\PinnedMessageCreatedEvent', data: JSON.stringify({ message: pm.message, pinned_by: pm.pinned_by || null }) } } } })] };
+    }
+    if (site === 'twitch'){
+      if (!name) return null;
+      const query = `query { user(login: ${JSON.stringify(decodeURIComponent(name).toLowerCase())}) { channel { pinnedChatMessages(first: 1) { edges { node { id pinnedBy { displayName }
+        pinnedMessage { id sentAt content { text fragments { text content { __typename ... on Emote { id } } } } sender { id login displayName chatColor displayBadges { setID version } } } } } } } } }`;
+      const r = await (await fetch('https://gql.twitch.tv/gql', { method: 'POST', headers: { 'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko', 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) })).json();
+      const node = (((((r && r.data && r.data.user) || {}).channel || {}).pinnedChatMessages || {}).edges || [])[0];
+      const n = node && node.node, m = n && n.pinnedMessage;
+      if (!m || !m.id) return null;
+      const u = m.sender || {}, c = m.content || {};
+      const message = { id: m.id, sent_at: Math.floor((Date.parse(m.sentAt) || Date.now()) / 1000), content: { text: c.text || '', fragments: (c.fragments || []).map(f => f.content && f.content.__typename === 'Emote' && f.content.id ? { text: f.text, emoticon: { emoticonID: f.content.id } } : { text: f.text }) },
+        sender: { id: u.id, login: u.login, display_name: u.displayName, chat_color: u.chatColor, badges: (u.displayBadges || []).map(b => ({ id: b.setID, version: b.version })) } };
+      return { s: 'twitch', raw: [JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'pin-message', data: { id: n.id, pinned_by: { display_name: (n.pinnedBy || {}).displayName || '' }, message } }) } })] };
+    }
+    const acts = (((window.ytInitialData || {}).contents || {}).liveChatRenderer || {}).actions || [];
+    const pins = acts.filter(a => a && a.addBannerToLiveChatCommand);
+    return pins.length ? { s: 'youtube', raw: pins } : null;
+  } catch (e) { return null; }
+}
+
 // "See it on …" in ALL: scrolls the site's chat to the message with that id and flashes it. Twitch and Kick keep the id
 // in each line's React props (message.id), YouTube as the line's own id. -> whether it was found
 function seekAgent(id){
@@ -129,4 +163,4 @@ function profileAgent(id){
   return true;
 }
 
-export { feedAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress };
+export { feedAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress };

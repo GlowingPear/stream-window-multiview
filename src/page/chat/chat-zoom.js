@@ -1,6 +1,7 @@
 import { wins } from '../core.js';
 import { commands } from '../shared/commands.js';
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { setZoom } from '../windows/view.js';
 
 /* Chat text size (applies to every chat window) */
@@ -16,6 +17,7 @@ function applyChatZoom(){
   document.querySelectorAll('.zoom [data-z]').forEach(b => { b.disabled = +b.dataset.z < 0 ? zoomIdx === 0 : zoomIdx === ZOOMS.length - 1; });
   wins.forEach(w => { if (w.kind === 'chat' && w.ready) setZoom(w.view, chatZoom()); });
   settings.set('chatZoom', zoomIdx);
+  store.changed('chatZoom');
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
@@ -27,6 +29,7 @@ function init(){
     { id: 'chat.zoomOut', group: 'Chats', title: 'Chat text smaller', sub: 'Fits more messages and emotes', words: ['zoom', 'font size'], icon: 'zoomin', button: '#chatZoom [data-z="-1"]', offWhy: 'As small as it goes' }
   ]);
   document.querySelectorAll('#lyZoom [data-z]').forEach(b => { b.dataset.cmd = +b.dataset.z > 0 ? 'chat.zoomIn' : 'chat.zoomOut'; });
+  window.chatZoomTo = i => { zoomIdx = i; applyChatZoom(); };   // for the tests (the buttons are the desktop app's)
 }
 
 export { applyChatZoom, chatZoom, init, zoomIdx, ZOOMS, zoomVars };
