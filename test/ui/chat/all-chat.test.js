@@ -1075,7 +1075,7 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
       ? [{ id: 'kick-channel', label: 'Channel', pic: img, emotes: [{ name: 'koalaHype', url: img, send: '[emote:1:koalaHype]', subs: true }, { name: 'koalaWave', url: img, send: '[emote:2:koalaWave]' }] },
          { id: 'kick-yours', label: 'Sub emotes', emotes: [{ name: 'otterWave', url: img, send: '[emote:4:otterWave]', from: 'Otter' }, { name: 'otterLUL', url: img, send: '[emote:5:otterLUL]', from: 'Otter' }, { name: 'foxHi', url: img, send: '[emote:6:foxHi]', from: 'Fox' }], channels: [{ name: 'Otter', pic: img }, { name: 'Fox' }] },
          { id: 'kick-global', label: 'Kick', emotes: [{ name: 'KEKW', url: img, send: '[emote:9:KEKW]' }] }]
-      : [{ id: 'twitch-global', label: 'Twitch', emotes: [{ name: 'Kappa', url: img, send: 'Kappa' }] }]; } };
+      : [{ id: 'twitch-channel', label: 'Channel', emotes: [{ name: 'koalaTwHi', url: img, send: 'koalaTwHi' }] }, { id: 'twitch-global', label: 'Twitch', emotes: [{ name: 'Kappa', url: img, send: 'Kappa' }] }]; } };
     window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push([m.channel, text]); return 'sent'; };
   }, LIVE);
   // :name
@@ -1143,6 +1143,10 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   await page.waitForFunction(() => window.__sends.length === 2);
   assert.deepEqual(await page.evaluate(() => window.__sends[1]), ['tw:quietkoala', 'Kappa KEKW']);
   assert.deepEqual(await page.evaluate(() => window.__asked), ['quietkoala', 'tw:quietkoala'], 'each site\'s asked once');
+  // Twitch's picker: a channel group without its picture (the site didn't send one): the app's own for the channel
+  await page.click('.all-emo-b');
+  await page.waitForSelector('.all-ep .all-ep-e');
+  assert.deepEqual(await page.$$eval('.all-ep-sec', l => l.map(e => (e.querySelector('.ch-av') ? '[channel] ' : e.querySelector('.pi') ? `[${e.querySelector('.pi').textContent}] ` : '') + [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(''))), ['[channel] Channel', '[T] Twitch']);
 });
 
 test('ALL: the send button: there once there\'s something to send, says where, sends like Enter, a spinner (and no second send) while sending', async t => {
