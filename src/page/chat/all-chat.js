@@ -616,9 +616,9 @@ function lineEl(m){
     element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0]), element('span', { class: 'al-evt', html: SHIELD }), element('span', 'al-evw', ...m.words.map(x => x instanceof Node ? x.cloneNode(true) : x)));
   const site = PLAT_NAME[m.site] || m.site;
   const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]), ...badgeEls(m));
-  const can = m.kind === 'message' && canModerate(m);
+  const can = m.kind === 'message' && !whyNot(m, 'delete'), canAll = can && !whyNot(m);
   const name = element('b', { class: 'al-n' + (can ? ' can' : ''), style: { color: nameColor(m) }, role: 'button', tabindex: '-1', dataset: { cmd: 'all.profile' },
-    title: `${m.sender}'s card on ${site}` + (can ? `\n${kShift()}-click: delete · ${kCtrl()}-click: time out (${durText(lastTimeout())}) · ${kCtrl()}+${kShift()}-click: ban` : ''),
+    title: `${m.sender}'s card on ${site}` + (canAll ? `\n${kShift()}-click: delete · ${kCtrl()}-click: time out (${durText(lastTimeout())}) · ${kCtrl()}+${kShift()}-click: ban` : can ? `\n${kShift()}-click: delete` : ''),
     onclick: e => nameClick(m, e) }, m.sender);
   if (m.kind === 'event'){
     if (eventsMode === 'hidden') return null;
@@ -942,24 +942,24 @@ const modKnown = new Map();   // channel -> whether you moderate it, set by the 
 const youMod = ch => modKnown.has(ch) ? modKnown.get(ch) : modIs.get(ch) === true;
 // The sites of this window's streamer whose mod view you can open
 const modViewChs = w => tabChannels(w).filter(ch => modUrl(ch) && youMod(ch));
-// Why you can't moderate them here (nothing: you can)
-function whyNot(m){
+// Why you can't do that to them here (nothing: you can): 'delete', or else a timeout or ban. A mod's message can be
+// deleted where the site lets another mod do it (deleteMods); a mod is never timed out or banned from here
+function whyNot(m, action = 'ban'){
   const site = PLAT_NAME[m.site];
   if (!platform(m.ch).timeoutCmd) return `From ${site}'s own tab`;
   if (!youMod(m.ch)) return `You're not a mod on ${site}`;
   if (m.login && m.login === meOn(m.site)) return 'That\'s you';
   if (m.badges.includes('host')) return `${m.sender} is the streamer`;
-  if (m.badges.includes('mod') || m.badges.includes('staff')) return `${m.sender} is a mod on ${site}`;
+  if (m.badges.includes('staff') || m.badges.includes('mod') && !(action === 'delete' && platform(m.ch).deleteMods)) return `${m.sender} is a mod on ${site}`;
   return '';
 }
-const canModerate = m => !whyNot(m);
 const TIMEOUTS = [60, 600, 3600, 86400];
 const durText = secs => secs >= 86400 ? `${secs / 86400}d` : secs >= 3600 ? `${secs / 3600}h` : `${Math.round(secs / 60)}m`;
 const lastTimeout = () => TIMEOUTS.includes(settings.num('allTimeout')) ? settings.num('allTimeout') : 600;
 const chatFor = m => wins.find(o => o.kind === 'chat' && o.channel === m.ch);
 async function modAct(m, action, secs){
   const c = chatFor(m), site = PLAT_NAME[m.site], who = m.sender; if (!c) return;
-  const why = action === 'pin' ? (youMod(m.ch) && platform(m.ch).timeoutCmd ? '' : whyNot(m) || `You're not a mod on ${site}`) : whyNot(m);
+  const why = action === 'pin' ? (youMod(m.ch) && platform(m.ch).timeoutCmd ? '' : whyNot(m) || `You're not a mod on ${site}`) : whyNot(m, action);
   if (why) return flash(why);
   if (action === 'ban' && !await ask(`Ban ${who} on ${site}?`, `They can't chat on ${site} until they're unbanned. Done with ${site}'s own /ban.`, { ok: 'Ban', danger: true })) return;
   if (action === 'timeout') settings.set('allTimeout', secs);
@@ -1011,7 +1011,7 @@ function copyData(m){
 // ⋯ and the right-click: the line's menu (the mod part only where you're a mod)
 function openLineMenu(m, at){
   const view = viewFor(ownerOf(m.ch)); if (!view) return;
-  const site = PLAT_NAME[m.site], why = whyNot(m), mod = youMod(m.ch) && !!platform(m.ch).timeoutCmd, lm = view.lm;
+  const site = PLAT_NAME[m.site], why = whyNot(m), whyDel = whyNot(m, 'delete'), mod = youMod(m.ch) && !!platform(m.ch).timeoutCmd, lm = view.lm;
   const item = (label, ic, run, more = {}) => element('button', { type: 'button', role: 'menuitem', class: 'all-li' + (more.red ? ' red' : ''), disabled: !!more.off, title: more.off || '', dataset: { cmd: more.cmd },
     onclick: () => { lm.hidden = true; run(); } }, element('i', { html: ic }), element('span', null, label), more.kb ? element('small', null, more.kb) : '');
   const text = m.parts.map(x => x.text || x.name).join(''), plain = m.parts.map(x => x.text || '').join('').replace(/\s+/g, ' ').trim();
@@ -1037,7 +1037,7 @@ function openLineMenu(m, at){
     mod && item('Pin message', icon.pin, () => modAct(m, 'pin'), { cmd: 'all.menuPin' }),
     item(`Open profile on ${site}`, icon.user, () => openSiteCard(m), { cmd: 'all.menuProfile' }),
     mod && element('hr'),
-    mod && item('Delete message', icon.bin, () => modAct(m, 'delete'), { kb: `${kShift()}-click name`, off: why, cmd: 'all.menuDelete' }),
+    mod && item('Delete message', icon.bin, () => modAct(m, 'delete'), { kb: `${kShift()}-click name`, off: whyDel, cmd: 'all.menuDelete' }),
     mod && item('Timeout', TIMER, () => modAct(m, 'timeout', lastTimeout()), { kb: `${kCtrl()}-click name`, off: why, cmd: 'all.menuTimeout' }),
     mod && !why && element('div', 'all-durs', ...TIMEOUTS.map(sec => element('button', { type: 'button', class: sec === lastTimeout() ? 'on' : '', dataset: { cmd: 'all.timeoutFor' }, onclick: () => { lm.hidden = true; modAct(m, 'timeout', sec); } }, durText(sec)))),
     mod && item('Ban', BAN, () => modAct(m, 'ban'), { kb: `${kCtrl()}+${kShift()}-click name`, off: why, red: true, cmd: 'all.menuBan' }),
