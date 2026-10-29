@@ -2,7 +2,10 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.2 (current)
+## 0.4.3 (current)
+- ALL: Kick's badges as its chat shows them, emote pictures in the box, and the messages already in the chats
+
+## 0.4.2
 - ALL: chat windows resize from their corners again
 - Channel settings for every channel, ALL for a single channel, and evenly spaced dropdown arrows
 - ALL: Twitch watch streaks, rewards and shoutouts, and no more reloading Twitch chats for nothing
