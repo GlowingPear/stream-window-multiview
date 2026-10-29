@@ -91,6 +91,8 @@ function parseTwitch(line){
     const prm = {}; Object.keys(g).forEach(k => { if (k.startsWith('msg-param-')) prm[k.slice(10)] = g[k]; });
     // an announcement is a message the streamer or a mod highlighted, not an event
     if (msg.event === 'announcement'){ msg.kind = 'message'; msg.announce = (prm.color || 'PRIMARY').toLowerCase(); delete msg.event; delete msg.text; }
+    // a watch streak: their message, highlighted, with how many streams (as Twitch's chat shows it)
+    else if (msg.event === 'viewermilestone' && prm.category === 'watch-streak' && +prm.value > 0){ msg.kind = 'message'; msg.streak = +prm.value; delete msg.event; delete msg.text; }
     else msg.summary = twitchSummary(msg.event, msg.sender, prm, msg.text);
     // gifted subs: who got them. Twitch sends the "gifted 5 subs" line, then one line for each sub, with the same gift id
     if (msg.event === 'submysterygift') msg.gift = { id: prm['community-gift-id'] || '', count: +prm['mass-gift-count'] || 0, to: [] };
@@ -110,6 +112,21 @@ function twitchPin(frame){
     const target = String(d.target_user_login || (/^(timeout|ban|delete|untimeout|unban)$/.test(a) ? args[0] || '' : '')).toLowerCase();
     return { site: 'twitch', kind: 'modaction', action: a, by: String(d.created_by), target, t: Date.now(),
       secs: a === 'timeout' ? +args[1] || 0 : 0, msgId: a === 'delete' ? String(d.msg_id || args[2] || '') : '', arg: /^(slow|followers)$/.test(a) ? +args[0] || 0 : 0 };
+  }
+  // a channel points reward redeemed without text (one with text is a chat message, with its reward: PRIVMSG)
+  if (p && p.type === 'reward-redeemed'){
+    const r = (p.data && p.data.redemption) || {}, u = r.user || {}, rw = r.reward || {};
+    if (!r.id || r.user_input || !rw.title) return null;
+    const who = String(u.display_name || u.login || 'Someone');
+    return { site: 'twitch', kind: 'event', event: 'reward', id: 'rw-' + r.id, t: Date.parse(r.redeemed_at) || Date.now(), sender: who, login: String(u.login || '').toLowerCase(), color: '', userId: u.id ? String(u.id) : '',
+      badges: [], parts: [], summary: [{ strong: who }, { text: ' redeemed ' }, { strong: String(rw.title) }], text: `${who} redeemed ${rw.title}`,
+      redeem: { title: String(rw.title), color: /^#[0-9a-f]{6}$/i.test(rw.background_color || '') ? rw.background_color : '' } };
+  }
+  // a shoutout: the streamer or a moderator points the chat to another channel
+  if (p && p.type === 'create' && p.data && p.data.shoutoutID && p.data.targetLogin){
+    const d = p.data, to = String(d.targetUserDisplayName || d.targetLogin), by = String(d.sourceLogin || '');
+    return { site: 'twitch', kind: 'event', event: 'shoutout', id: 'so-' + d.shoutoutID, t: Date.now(), sender: by, login: by.toLowerCase(), color: '', userId: '', badges: [], parts: [],
+      summary: [{ strong: by || 'They' }, { text: ' shouted out ' }, { strong: to }], text: `${by || 'They'} shouted out ${to}`, shoutout: 'tw:' + String(d.targetLogin).toLowerCase() };
   }
   // (and the chat's modes, all of them, as a moderator changes one)
   if (p && p.type === 'updated_room'){
@@ -327,7 +344,8 @@ const KNOWN = {
     'USERNOTICE:sub': 'a sub', 'USERNOTICE:resub': 'a resub', 'USERNOTICE:subgift': 'a gifted sub', 'USERNOTICE:submysterygift': 'gifted subs', 'USERNOTICE:raid': 'a raid',
     'USERNOTICE:announcement': 'an announcement', 'USERNOTICE:viewermilestone': 'a watch streak', 'USERNOTICE:giftpaidupgrade': 'a gifted sub kept going',
     'USERNOTICE:primepaidupgrade': 'a Prime sub kept going', 'USERNOTICE:bitsbadgetier': 'a bits badge', CLEARMSG: 'a message deleted', 'CLEARCHAT:timeout': 'a timeout',
-    'CLEARCHAT:ban': 'a ban', 'CLEARCHAT:all': 'the chat cleared', 'hermes:pin-message': 'a pin', 'hermes:unpin-message': 'a pin taken down', ROOMSTATE: 'the chat’s modes (above the box)', 'hermes:updated_room': 'the chat’s modes (above the box)', 'hermes:moderation_action': 'who a moderator was (to moderators)' },
+    'CLEARCHAT:ban': 'a ban', 'CLEARCHAT:all': 'the chat cleared', 'hermes:pin-message': 'a pin', 'hermes:unpin-message': 'a pin taken down', ROOMSTATE: 'the chat’s modes (above the box)', 'hermes:updated_room': 'the chat’s modes (above the box)', 'hermes:moderation_action': 'who a moderator was (to moderators)',
+    'hermes:reward-redeemed': 'a reward redeemed (without text)', 'hermes:create': 'a shoutout' },
   youtube: { 'addChatItemAction:liveChatTextMessageRenderer': 'a message', 'addChatItemAction:liveChatPaidMessageRenderer': 'a Super Chat',
     'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
     removeChatItemAction: 'a message deleted', markChatItemsByAuthorAsDeletedAction: 'a ban or timeout',
@@ -347,6 +365,12 @@ const IGNORED = {
     'hermes:subscribeResponse': 'the connection’s own', 'hermes:unsubscribeResponse': 'the connection’s own', 'hermes:reconnect': 'the connection’s own',
     'hermes:points-earned': 'your channel points', 'hermes:claim-available': 'your bonus points', 'hermes:clips-leaderboard-update': 'the clips leaderboard',
     'hermes:viewcount': 'the viewer count',
+    'hermes:drop-progress': 'your drops’ progress', 'hermes:claim-claimed': 'your bonus points, claimed', 'hermes:commercial': 'an ad break (Twitch’s own)',
+    'hermes:viewer-milestones-update': 'your own watch streak (others’: USERNOTICE:viewermilestone)', 'hermes:watch-streak': 'your own watch streak', 'hermes:streak-recovered': 'your own watch streak',
+    'hermes:send-private-callout': 'a note only for you (to share your streak)', 'hermes:goal_updated': 'the channel’s goal bar', 'hermes:custom-reward-updated': 'the channel’s rewards list',
+    'hermes:active-multipliers-updated': 'your points multipliers', 'hermes:broadcast_settings_update': 'the stream’s title and category (on its window)',
+    'hermes:hype-train-start': 'the hype train (Twitch’s own panel)', 'hermes:hype-train-end': 'the hype train (Twitch’s own panel)', 'hermes:hype-train-conductor-update': 'the hype train (Twitch’s own panel)',
+    'hermes:mystery-gift-purchase': 'gifted subs being bought (the gift is USERNOTICE:submysterygift)', 'hermes:?': 'the connection’s own (no type)',
     ...Object.fromEntries(['slow_on', 'slow_off', 'followers_on', 'followers_on_zero', 'followers_off', 'subs_on', 'subs_off', 'emote_only_on', 'emote_only_off', 'r9k_on', 'r9k_off']
       .map(n => ['NOTICE:' + n, 'the chat’s modes (shown above the box)'])) },
   youtube: {}

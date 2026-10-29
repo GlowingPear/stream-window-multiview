@@ -387,6 +387,22 @@ test('ALL\'s developer items: Why didn\'t this alert? (its site\'s chat explains
   assert.equal(await blown(), false, 'Esc from its box');
 });
 
+test('ALL: a Twitch watch streak is their message highlighted with its tag (as Twitch\'s chat shows it); a reward redeemed without text and a shoutout are events', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const ws = (id, text) => TW({ 'display-name': 'Brightwick', login: 'brightwick', id, 'msg-id': 'viewermilestone', 'msg-param-category': 'watch-streak', 'msg-param-value': '5' }, ':tmi.twitch.tv USERNOTICE #quietkoala' + (text ? ' :' + text : ''));
+  const hermes = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [ws('w1', 'five streams, let\'s go'), ws('w2', ''),
+    hermes('reward-redeemed', { redemption: { id: 'r1', user: { id: '9', login: 'tide', display_name: 'Tide' }, reward: { title: 'Hydrate!', background_color: '#1D7C9F' } } }),
+    hermes('create', { shoutoutID: 's9', sourceLogin: 'quietkoala', targetLogin: 'novalynx', targetUserDisplayName: 'Novalynx' })] });
+  const all = await page.$$eval('#stage .win.chat:not(.tab-hidden) .all-list > *', l => l.map(e => [e.className.split(' ').filter(c => /^al-(m|ev|streak)$/.test(c)).join(' '), e.textContent.replace(/\s+/g, ' ').trim()]));
+  assert.deepEqual(all, [['al-m al-streak', "TBrightwick: five streams, let's goWatch streak · 5"], ['al-m al-streak', 'TBrightwick: watched 5 streams in a rowWatch streak · 5'],
+    ['al-ev', 'TTide redeemed Hydrate!See it on Twitch ›'], ['al-ev', 'Tquietkoala shouted out NovalynxOpen ›']]);
+  // a shoutout's Open: that channel, in a window of its own
+  await page.click('.all-list [data-cmd="all.shoutoutOpen"]');
+  assert.ok(await page.evaluate(() => window.openWins().some(w => w.channel === 'tw:novalynx')));
+});
+
 test('ALL: events are a short line with See it on …; Events: short, full or hidden; an announcement is a message', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
@@ -1039,10 +1055,22 @@ test('ALL\'s health: a site whose chat has new messages while ALL read none is l
   const check = () => page.evaluate(() => window.allHealth.checkAll());
   const banner = () => page.$eval('.all-health', e => (e.hidden ? '' : e.textContent.replace(/\s+/g, ' ').trim()));
   await check();                                   // (the first look: what its chat shows now)
-  await check();                                   // new lines there, none read: loaded again
+  await check();                                   // new lines there, none read: once is no reason (a site's own line, a message drawn again)
+  assert.equal(await page.evaluate(() => window.__reloads), 0, 'not for one check');
+  // a chat page that loads again starts from what it shows then (its history doesn't come over its connection)
+  await page.evaluate(() => window.allHealth.chatLoaded('tw:quietkoala'));
+  await check();                                   // (its first look again)
+  await check();
+  assert.equal(await page.evaluate(() => window.__reloads), 0, 'loaded: from there');
+  // not while you've just sent there: loading it again would hold your message up
+  await page.evaluate(() => { window.allHealth.noteSend('tw:quietkoala', 'sent'); });
+  await check();
+  assert.equal(await page.evaluate(() => window.__reloads), 0, 'just sent: not loaded again');
+  await page.evaluate(() => { window.allHealth.healthOf.get('tw:quietkoala').sentAt = 0; });
+  await check();                                   // twice in a row, nothing sent lately: loaded again
   assert.equal(await page.evaluate(() => window.__reloads), 1);
   assert.equal(await banner(), '', 'not yet: it tries again first');
-  await check();
+  await check(); await check();
   assert.equal(await banner(), 'TALL isn\'t reading Twitch\'s messages: its chat has new onesReport for a fixSee it on Twitch ›');
   assert.equal(await page.$eval('.all-sites .pi-twitch', e => e.classList.contains('warn')), true);
   // read again: it clears itself

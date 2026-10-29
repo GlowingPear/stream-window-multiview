@@ -2,7 +2,7 @@ import { alerts, clearAlert } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { SMILEY, addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, renderEmoteList, suggestEmote,
   withEmotes } from './all-emotes.js';
-import { healthState, noteRaw, noteSend, reportHealth } from './all-health.js';
+import { chatLoaded, healthState, noteRaw, noteSend, reportHealth } from './all-health.js';
 import { blowOn, blowUp } from './blow-up.js';
 import { chatBoxName } from './chat-name.js';
 import { chatZoom } from './chat-zoom.js';
@@ -556,7 +556,9 @@ function lineEl(m){
     const to = m.gift ? m.gift.to : [], me = meOn(m.site);
     return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}${to.length ? ' al-gift' : ''}${m.gift && m.gift.me ? ' al-gift-me' : ''}`, dataset: { key: m.site + ':' + m.id } }, element('i', { class: 'pi pi-' + m.site }, site[0]),
       element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts, m.ch)) : ''),
-      element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.seeIt' }, title: `Show it in ${site}'s own chat`, onclick: () => seeIt(m) }, `See it on ${site} ›`),
+      // (a shoutout: open the channel it points to, as a raid's line does)
+      m.shoutout ? element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.shoutoutOpen' }, title: `Open ${chLabel(m.shoutout)} in a window of its own`, onclick: () => addParsed({ channel: m.shoutout, only: null }) }, 'Open ›')
+        : element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.seeIt' }, title: `Show it in ${site}'s own chat`, onclick: () => seeIt(m) }, `See it on ${site} ›`),
       // (who got them: a row under it, its button first, their names after it while open)
       to.length > 0 && element('div', 'al-gl',
         element('button', { type: 'button', class: 'al-gto', 'aria-expanded': String(!!m.giftOpen), dataset: { cmd: 'all.giftTo' }, title: m.giftOpen ? 'Hide who got them' : 'Who got them',
@@ -565,9 +567,10 @@ function lineEl(m){
         ...(m.giftOpen ? to.map(r => element('span', { class: 'al-gc' + (me && r.login === me ? ' me' : '') }, r.name)) : [])));
   }
   const cls = ['al-m', m.toMe === 'reply' ? 'al-rep' : m.toMe === 'at' || m.toMe === 'word' ? 'al-me' : '', m.spam ? 'al-spam' : '', m.bot ? 'al-bot' : '', m.deleted ? 'al-del' : '', m.highlight ? 'al-hl' : '',
-    m.announce ? 'al-ann al-ann-' + m.announce : '', m.redeem ? 'al-rw' : ''].filter(Boolean).join(' ');
+    m.announce ? 'al-ann al-ann-' + m.announce : '', m.redeem ? 'al-rw' : '', m.streak ? 'al-streak' : ''].filter(Boolean).join(' ');
   const hideBot = m.bot && !botsShown && !m.open;
-  const body = hideBot ? element('span', 'al-hid', 'bot message hidden') : m.tr && !m.trOrig ? element('span', 'al-txt', m.tr.text) : element('span', 'al-txt', ...partsEl(m.parts, m.ch));
+  const body = hideBot ? element('span', 'al-hid', 'bot message hidden') : m.tr && !m.trOrig ? element('span', 'al-txt', m.tr.text)
+    : m.streak && !m.parts.length ? element('span', 'al-txt al-quiet', `watched ${m.streak} streams in a row`) : element('span', 'al-txt', ...partsEl(m.parts, m.ch));
   const tags = [
     m.toMe === 'at' && element('span', 'al-tag al-tag-at', '@YOU'),
     m.toMe === 'word' && element('span', { class: 'al-tag al-tag-at', title: 'A word you watch for (Settings › Mentions)' }, m.word),
@@ -577,6 +580,7 @@ function lineEl(m){
     m.toMe === 'reply' && element('span', { class: 'al-tag al-tag-rp' + (m.bot ? ' soft' : '') }, m.bot ? 'TO YOU' : 'REPLY'),
     m.toMe === 'at' && m.bot && element('span', 'al-tag al-tag-rp soft', 'TO YOU'),
     m.highlight && element('span', 'al-tag al-tag-hl', 'Highlighted'),
+    m.streak && element('span', { class: 'al-tag al-tag-streak', title: `Watched ${m.streak} streams in a row` }, `Watch streak · ${m.streak}`),
     m.announce && element('span', 'al-tag al-tag-ann', 'Announcement'),
     m.bits && element('span', 'al-tag al-tag-bits', `${m.bits} bits`),
     m.redeem && element('span', { class: 'al-tag al-tag-rw', title: 'A reward redeemed with channel points', style: m.redeem.color ? { '--rw': m.redeem.color } : {} }, m.redeem.title || 'Channel points'),
@@ -1135,7 +1139,7 @@ function feedOn(w, on){
   if (on) pinsNow(w, w.view);
 }
 // A chat page loaded (again): its helper, on if its window has an ALL tab
-function feedReady(w, view){ runIn(view, `(${feedAgent})();${FEED_ON(allTabFor(w))}`); sampleIn(view); w.feedOn = allTabFor(w); if (w.feedOn) pinsNow(w, view); }
+function feedReady(w, view){ chatLoaded(w.channel); runIn(view, `(${feedAgent})();${FEED_ON(allTabFor(w))}`); sampleIn(view); w.feedOn = allTabFor(w); if (w.feedOn) pinsNow(w, view); }
 // A pin already up when ALL starts reading a chat: the sites send pins only as they're made, so it's asked for (quietly)
 // A chat's badges' pictures came (badgesAgent): Twitch's own kept once, for every chat
 function gotBadges(ch, r){
