@@ -26,6 +26,7 @@ import { fromApp, fromSite, siteMessage } from '../shared/incoming.js';
 import { viewPressed } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
+import { stopWinTimer } from '../shared/timers.js';
 import { mountCapture, openCapturePicker } from './capture.js';
 import { focusBoxNow, playQuality, tabKeyAgent, tabKeyJs } from './frames.js';
 import { applyPlay } from './pause.js';
@@ -61,6 +62,7 @@ function ytFollow(ch, vid){
   delete ytCache[ch];
   wins.filter(o => ytChannelWin(o) && o.channel === ch && o.ytVid !== vid).forEach(o => {
     o.ytVid = vid;
+    stopWinTimer(o, 'yt');                                                       // (one waiting to go live: it's live now)
     if (o.view) loadView(o.view, srcFor(o)); else mountView(o);
     if (o.mini && o.mini.wv) loadView(o.mini.wv, streamSrc(o.channel, true, vid));
   });
@@ -74,9 +76,11 @@ async function reloadYt(w){
   if (w.ready) reloadPage(w); else w.view.src = srcFor(w);
   if (w.mini && w.mini.wv) loadView(w.mini.wv, streamSrc(w.channel, true, ytVidOf(w)));
 }
+// A window still waiting for the channel to go live (no page yet, "isn't live right now") loads as soon as the live
+// check says it is, also a tab you can't see: its own question to YouTube may have come too early.
 function followYtStreams(){
   wins.forEach(w => {
-    if (!ytChannelWin(w) || !w.ytVid) return;
+    if (!ytChannelWin(w) || (!w.ytVid && w.view)) return;
     const i = infoFor(w.channel);
     if (i && i.live && i.videoId && i.videoId !== w.ytVid) ytFollow(w.channel, i.videoId);
   });
