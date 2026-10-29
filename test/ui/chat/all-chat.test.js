@@ -854,6 +854,48 @@ test('ALL: what you send shows at once (sending, then sent) and the real line ta
   assert.equal(await page.locator('.al-mine-failed').count(), 0, 'its line goes');
 });
 
+test('ALL: your line while it sends shows the emotes you picked as their pictures (and add-on emotes), sending or not sent; the real line still takes its place; Edit puts them back', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => {
+    window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
+    const img = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    window.kmv = { ...(window.kmv || {}), emotesPick: async () => [{ id: 'kick-global', label: 'Kick', emotes: [{ name: 'KEKW', url: img, send: '[emote:9:KEKW]' }] }, { id: '7tv', label: '7TV', emotes: [{ name: 'catJAM', url: img, send: 'catJAM' }] }] };
+    window.__sends = []; window.allChat.sender.send = (m, text) => new Promise(r => { window.__sends.push(text); window.__done = r; });
+  }, LIVE);
+  const shows = () => page.$$eval('.all-list .al-mine', l => l.map(e => e.className.replace(/.*al-mine-/, '') + ' | ' + [...e.querySelector('.al-txt').childNodes]
+    .map(n => (n.nodeName === 'IMG' ? `[${n.alt} ${n.dataset.send}]` : n.textContent)).join('')));
+  const pick = async () => { await page.keyboard.type(':ke'); await page.waitForSelector('.all-at:not([hidden]) .all-emi'); await page.keyboard.press('Enter'); };
+  await page.focus('.all-in');
+  await page.keyboard.type('that clutch '); await pick(); await page.keyboard.type('so KEKWgood');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__sends.length === 1);
+  assert.deepEqual(await page.evaluate(() => window.__sends), ['that clutch [emote:9:KEKW] so KEKWgood']);
+  assert.deepEqual(await shows(), ['sending | that clutch [KEKW [emote:9:KEKW]] so KEKWgood'], 'sending: the picked emote as its picture; a word that only has its name in it stays a word');
+  await page.evaluate(() => window.__done('sent'));
+  await page.waitForSelector('.al-mine-sent');
+  assert.deepEqual(await shows(), ['sent | that clutch [KEKW [emote:9:KEKW]] so KEKWgood']);
+  // the chat brings it back (the emote as Kick writes it): the real line, in its place
+  const KF = (data) => JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: 'App\\Events\\ChatMessageEvent', data: JSON.stringify(data) } } } });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF({ id: 'k9', content: 'that clutch [emote:9:KEKW] so KEKWgood', type: 'message', sender: { id: 2, username: 'MeKick', slug: 'mekick', identity: { badges: [] } } })] });
+  assert.deepEqual(await shows(), []);
+  assert.deepEqual(await lines(page), ['al-m | KMeKick: that clutch KEKW so KEKWgood'], '(Kick\'s emote picture can\'t load here: its name)');
+  // not sent: still its picture; Edit puts the text and the emote back in the box
+  await page.evaluate(() => { window.allChat.sender.send = async () => 'not-sent'; });
+  await pick(); await page.keyboard.type('again');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.al-mine-failed');
+  assert.deepEqual(await shows(), ['failed | [KEKW [emote:9:KEKW]] again']);
+  await page.click('.al-mine-failed [data-cmd="all.edit"]');
+  assert.equal(await page.$eval('.all-in', b => [...b.childNodes].map(n => (n.nodeName === 'IMG' ? `[${n.alt}]` : n.textContent)).join('')), '[KEKW] again', 'the emote back as its picture');
+  // with no emote picked: text, with an add-on emote's name as its picture (as on the other lines)
+  await page.fill('.all-in', 'vibing catJAM here');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.al-mine-failed .al-txt img[alt=catJAM]');
+  assert.deepEqual(await shows(), ['failed | vibing [catJAM catJAM] here'], 'its 7TV emote');
+  assert.equal(await page.$eval('.al-mine-failed .al-txt img', i => i.title), 'catJAM · 7TV');
+});
+
 test('ALL with an offline Kick or Twitch: its chat is loaded (a hidden tab) to read and send on, and its tab can be watched; not YouTube\'s', async t => {
   const page = await allApp(t);
   const OFF = { ...LIVE, 'tw:quietkoala': { live: false, checked: now } };
