@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.0 (current)
+## 0.4.1 (current)
+- Release video: a new song, Twitch and YouTube stand-ins, and the 0.4.0 video
+- ALL: every Kick message, the sites' own badges, and a new emote picker
+
+## 0.4.0
 - Tab only switches to a linked site that's live
 - One chat bot list for mentions and spam alerts, and a linked streamer's own bots
 - ALL: a linked streamer's Kick, Twitch and YouTube chats as one list
