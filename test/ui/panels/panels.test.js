@@ -4,6 +4,20 @@ const assert = require('node:assert/strict');
 const { setup, add, win, box, press } = require('../app');
 const { openApp } = setup();
 
+test('a channel\'s picture in its circle has no made-up colour or initials behind it (they\'d show through its transparent parts); without one, they stay', async t => {
+  const page = await openApp(t);
+  const looks = await page.evaluate(() => {
+    const pic = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="3" fill="#fff"/></svg>');
+    return ['sv-av', 'pal-av', 'ch-av', 'lc-av', 'la-av', 'pf-av', 'es-av'].map(c => {
+      const mk = withPic => { const a = document.createElement('span'); a.className = c; a.style.setProperty('--c', '#7a3a5a'); a.textContent = 'NO';
+        if (withPic){ const im = new Image(); im.src = pic; a.append(im); } document.body.append(a); const st = getComputedStyle(a); const r = [st.backgroundColor, st.color]; a.remove(); return r; };
+      const [withPic, without] = [mk(true), mk(false)];
+      return [c, withPic[0] === 'rgba(0, 0, 0, 0)' && withPic[1] === 'rgba(0, 0, 0, 0)', without[0] === 'rgb(122, 58, 90)'];
+    });
+  });
+  assert.deepEqual(looks.filter(([, a, b]) => !a || !b), [], 'each: no colour or initials with a picture, its colour without');
+});
+
 test('Channels: one box searches your channels and opens (or opens and saves) a new one; tabs with counts, remove, Open all and Save all open', async t => {
   const page = await openApp(t);
   const savedList = async () => JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.saved')) || '[]');
