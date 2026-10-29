@@ -1099,29 +1099,27 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   await page.waitForSelector('.all-at:not([hidden]) .all-emi');
   assert.deepEqual(await page.$$eval('.all-at .all-emi', l => l.map(b => b.textContent)), ['otterLULOtter']);
   await page.keyboard.press('Escape'); await page.fill('.all-in', '');
-  // the smiley: tabs, search, a pick
+  // the smiley: all of them, under a heading for each kind (each channel you're subscribed to with its picture)
   await page.click('.all-emo-b');
   await page.waitForSelector('.all-ep .all-ep-e');
-  assert.deepEqual(await page.$$eval('.all-ep-tabs button', l => l.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['Channel*', 'Sub emotes', 'Kick']);
-  assert.equal(await page.isVisible('.all-ep-chs'), false, 'a tab without channels: no row of them');
-  assert.deepEqual(await page.$$eval('.all-ep-e', l => l.map(b => b.title)), ['koalaHype (subscribers)', 'koalaWave']);
+  const grid = () => page.$$eval('.all-ep-grid > *', l => l.map(e => e.classList.contains('all-ep-sec') ? `# ${e.querySelector('img') ? '[pic] ' : ''}${e.textContent}` : e.title));
+  assert.deepEqual(await grid(), ['# Channel', 'koalaHype (subscribers)', 'koalaWave', '# [pic] OtterSub emotes', 'otterWave · Otter', 'otterLUL · Otter', '# FFoxSub emotes', 'foxHi · Fox', '# Kick', 'KEKW'], 'a channel without a picture: its first letter');
+  // search: across them, under their headings
   await page.fill('.all-ep-q', 'wave');
-  assert.deepEqual(await page.$$eval('.all-ep-e', l => l.map(b => b.title)), ['koalaWave', 'otterWave · Otter'], 'every tab\'s');
+  assert.deepEqual(await grid(), ['# Channel', 'koalaWave', '# [pic] OtterSub emotes', 'otterWave · Otter']);
   await page.fill('.all-ep-q', 'zzz');
   assert.match(await page.textContent('.all-ep-grid'), /No Kick emote matches “zzz”/);
   await page.fill('.all-ep-q', '');
-  // Sub emotes: each channel's under its name
-  await page.click('.all-ep-tabs button >> text=Sub emotes');
-  assert.deepEqual(await page.$$eval('.all-ep-grid > *', l => l.map(e => e.classList.contains('all-ep-sec') ? `# ${e.querySelector('img') ? '[pic] ' : ''}${e.textContent}` : e.title)), ['# [pic] Otter', 'otterWave · Otter', 'otterLUL · Otter', '# FFox', 'foxHi · Fox'], 'its picture, or its first letter');
-  // a picture for each channel above them: a press goes to its emotes
-  assert.deepEqual(await page.$$eval('.all-ep-chs button', l => l.map(b => b.getAttribute('aria-label'))), ['Otter\'s emotes', 'Fox\'s emotes']);
-  await page.click('.all-ep-chs button >> nth=1');
-  assert.equal(await page.$eval('.all-ep-grid', g => g.scrollTop === [...g.querySelectorAll('.all-ep-sec')][1].offsetTop || g.scrollTop >= g.scrollHeight - g.clientHeight - 1), true, 'scrolled to Fox\'s (or as far as it goes)');
-  await page.fill('.all-ep-q', 'o');
-  assert.equal(await page.locator('.all-ep-sec').count(), 0, 'searching: no headings');
-  assert.equal(await page.isVisible('.all-ep-chs'), false, 'nor the channels');
-  await page.fill('.all-ep-q', '');
-  await page.click('.all-ep-tabs button >> text=Kick');
+  // beside the search: show one kind, or one channel (with their pictures in its list)
+  assert.deepEqual(await page.$$eval('.all-ep-f option', l => l.map(o => o.textContent)), ['All emotes', 'Channel', 'Sub emotes', 'Otter', 'Fox', 'Kick']);
+  await page.click('.all-ep-f');
+  assert.deepEqual(await page.$$eval('.dd-list button', l => l.map(b => (b.querySelector('img, i') ? '[pic] ' : '') + b.textContent)), ['All emotes', 'Channel', 'Sub emotes', '[pic] Otter', '[pic] FFox', 'Kick']);
+  await page.keyboard.press('Escape');
+  await page.selectOption('.all-ep-f', 'kick-yours');
+  assert.deepEqual(await grid(), ['# [pic] OtterSub emotes', 'otterWave · Otter', 'otterLUL · Otter', '# FFoxSub emotes', 'foxHi · Fox']);
+  await page.selectOption('.all-ep-f', 'kick-yours/Fox');
+  assert.deepEqual(await grid(), ['# FFoxSub emotes', 'foxHi · Fox']);
+  await page.selectOption('.all-ep-f', 'kick-global');
   await page.click('.all-ep-e');
   assert.equal(await page.inputValue('.all-in'), 'KEKW ');
   await page.keyboard.press('Escape');
