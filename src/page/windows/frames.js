@@ -485,7 +485,6 @@ function splitAll(test = () => true){
 }
 let lastStreamers = '';
 function streamersChanged(){
-  wins.forEach(w => { const b = w.el.querySelector('[data-a=link]'); if (b) b.hidden = !linkedOn(); });   // the ⋯ menu's Link channels…
   const sig = linkedOn() ? JSON.stringify(settings.json('streamers', [])) : '';
   wins.forEach(w => { if (w.channel) w.el.querySelector('.title').textContent = nameOf(w.channel); });   // the name shown
   if (sig === lastStreamers){ renderAllSiteTabs(); return; }

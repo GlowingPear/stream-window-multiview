@@ -60,6 +60,9 @@
 .lc-foot{display:flex;align-items:center;gap:10px;margin-top:14px}
 .lc-gap{flex:1}
 .lc-unlink{color:var(--danger) !important}
+/* what only a linked streamer has, on a channel on its own: greyed, its line says how to get it */
+.lc-off .st-t{color:var(--muted)}.lc-off select{opacity:.5;cursor:not-allowed}
+.lc-unlink:disabled{opacity:.4;cursor:not-allowed;text-decoration:none}
 
 /* ---------- Settings › Windows (panels/settings/windows-pane.js) ---------- */
 .wb-head{border-bottom:0;padding-bottom:4px}

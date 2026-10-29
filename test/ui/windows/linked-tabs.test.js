@@ -348,6 +348,50 @@ test('the Link channels card: their own chat bots, a name on one site each; thei
   await page.click('#linkDlg .lc-bot button');
   assert.equal(await bots(), undefined);
 });
+test('Channel settings for a channel on its own: its chat bots, Opens by itself and its ALL tab; what only a linked streamer has, greyed with how to get it; linking it moves its bots to the streamer', async t => {
+  const page = await linkedApp(t, { on: false });
+  await page.evaluate(() => window.openLinkCard('novalynx'));
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.linkedOn')), null, 'opening it doesn\'t turn Linked channels on: linking does');
+  const opts = () => page.$$eval('#linkDlg .lc-opt', l => l.map(o => [o.querySelector('.st-t').firstChild.textContent, o.querySelector('small').textContent, o.querySelector('select').disabled]));
+  assert.deepEqual(await opts(), [['Their streams', 'Link another channel to use this', true], ['Opens by itself when live ⚡', 'Going live opens it', false],
+    ['ALL tab', 'Its chat in ALL\'s list, with its badges, emotes and filters', false], ['Name shown', 'Link another channel to use this', true]]);
+  assert.match(await page.textContent('#linkDlg .lc-head p'), /Its settings, and its other sites to link/);
+  assert.deepEqual(await page.$$eval('#linkDlg .lc-sec', l => l.map(e => e.textContent)), ['Channels', 'Add a channel', 'Their chat bots', 'This channel']);
+  assert.equal(await page.isDisabled('#linkDlg .lc-unlink'), true, 'Unlink all: greyed');
+  // its own chat bot: on its site only (no site to pick), kept with the channel
+  assert.equal(await page.locator('#linkDlg .lc-botplat button').count(), 1);
+  await page.fill('#lcBotIn', 'lynxbot'); await page.keyboard.press('Enter');
+  assert.deepEqual(await page.evaluate(() => [JSON.parse(localStorage.getItem('kickMultiview.chanOpts')), window.linkedApi.streamerBots('novalynx')]), [{ novalynx: { bots: ['lynxbot'] } }, ['lynxbot']]);
+  // Opens by itself, and its ALL tab
+  await page.selectOption('#linkDlg [data-cmd="link.autoOpen"]', 'on');
+  assert.ok((await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.autoOpen')))).includes('novalynx'));
+  await page.evaluate(() => window.frames_.openStreamer('novalynx', 'chat', ['novalynx']));
+  await page.selectOption('#linkDlg [data-cmd="link.allTab"]', 'on');
+  assert.deepEqual(await page.evaluate(() => [JSON.parse(localStorage.getItem('kickMultiview.chanOpts')).novalynx.allTab, JSON.parse(localStorage.getItem('kickMultiview.allOpen'))]), [true, ['c:novalynx']]);
+  await page.click('#linkDlg [data-cmd="link.done"]');
+  await page.waitForSelector('#stage .win.chat:not(.tab-hidden) .all-view');
+  assert.deepEqual(await page.$$eval('#stage .win.chat:not(.tab-hidden) .ptab', l => l.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['ALL*', 'K'], 'ALL, and its site\'s own chat');
+  const KF = (id, user, content) => JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: 'App\\Events\\ChatMessageEvent', data: JSON.stringify({ id, content, type: 'message', sender: { id: 1, username: user, identity: {} } }) } } } });
+  await page.evaluate(([a, b]) => window.allChat.ingest('novalynx', { s: 'kick', raw: [a, b] }), [KF('n1', 'tide', 'hi lynx'), KF('n2', 'LynxBot', 'follow the socials')]);
+  assert.deepEqual(await page.$$eval('#stage .win.chat:not(.tab-hidden) .all-list .al-m', l => l.map(e => e.classList.contains('al-bot') + ' ' + e.querySelector('.al-n').textContent)), ['false tide', 'true LynxBot'], 'its own bot: hidden');
+  // linked: its bot goes to the streamer, its ALL on stays on (and shown), as the streamer's
+  await page.evaluate(() => { window.linkedApi.setOn(true); window.linkedApi.link('novalynx', 'tw:novalynx'); });
+  const st = await page.evaluate(() => { const s = window.linkedApi.listStreamers().find(x => x.accounts.includes('novalynx')); return [s.bots, s.allTab, JSON.parse(localStorage.getItem('kickMultiview.allOpen')).includes(s.id), JSON.parse(localStorage.getItem('kickMultiview.chanOpts'))]; });
+  assert.deepEqual(st, [[{ p: 'kick', name: 'lynxbot' }], true, true, {}]);
+  assert.equal(await page.$eval('#linkDlg [data-cmd="link.allTab"]', e => e.value), 'on');
+  await page.evaluate(() => window.openLinkCard('novalynx'));
+  assert.deepEqual((await opts()).map(o => o[2]), [false, false, false, false], 'linked: all of it');
+  assert.equal(await page.isDisabled('#linkDlg .lc-unlink'), false);
+});
+
+test('a channel with its ALL off, linked: the streamer\'s ALL is As in Settings', async t => {
+  const page = await linkedApp(t, { extra: { chanOpts: JSON.stringify({ novalynx: { bots: ['lynxbot'] } }) } });
+  await page.evaluate(() => window.linkedApi.link('novalynx', 'tw:novalynx'));
+  assert.equal(await page.evaluate(() => window.linkedApi.listStreamers().find(x => x.accounts.includes('novalynx')).allTab), undefined);
+  await page.evaluate(() => window.openLinkCard('novalynx'));
+  assert.equal(await page.$eval('#linkDlg [data-cmd="link.allTab"]', e => e.value), '', 'As in Settings');
+});
+
 test('chat bots: which list mentions and spam alerts use (this list, their own, both for spam alerts)', async t => {
   const page = await linkedApp(t);
   const use = (kind, mode, own) => page.evaluate(([kind, mode, own]) => { const a = window.smvNotes.alerts[kind]; a.botsMode = mode; if (kind === 'spam') a.ignore = own; else a.ownBots = own; return window.botsFor(kind, 'novalynx'); }, [kind, mode, own]);

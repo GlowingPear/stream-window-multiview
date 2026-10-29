@@ -6,6 +6,7 @@ import { mentCovered, mentMuted, mentOn, toggleChatMentions } from '../bell/bell
 import { autoOpen, fmtViewers, infoFor, notifyAll, notifyOff, saved, setNotify, svHue, svInitials, tabPlat,
   toggleAutoOpen, toggleSaved } from './channels.js';
 import { follows } from './follow-suggestions.js';
+import { openLinkCard } from '../linked/link-card.js';
 import { openProfile } from '../profiles/profiles.js';
 import { streamerName, streamerOf } from '../../platforms/linked.js';
 import { PLATFORMS, PLAT_NAME, chLabel, chNames, externalFor, isModOf, normCh, openModView, parseInput, platOf,
@@ -79,12 +80,14 @@ function buttonsFor(ch, known){
     { label: 'Open its page', icon: 'pop', run: () => inBrowser(ch) },
     canProfile(ch) && { label: 'Profile', icon: 'user', run: () => openProfile(ch) },
     { label: sv ? 'Saved' : 'Save', icon: 'star', on: sv, run: () => toggleSaved(ch) },
+    !/^yt:v:/.test(ch) && { label: 'Channel settings', icon: 'layers', run: () => openLinkCard(ch) },
     more
   ].filter(Boolean);
   return [...openButtons(ch).map(o => ({ label: o.title, icon: o.icon, run: o.run })),
     canProfile(ch) && { label: 'Profile', icon: 'user', run: () => openProfile(ch) },
     { label: sv ? 'Saved' : 'Save', icon: 'star', on: sv, run: () => toggleSaved(ch) },
     sv && DESKTOP && ROLE === 'main' && { label: 'Auto-open', icon: 'bolt', on: autoOpen.includes(ch), run: () => toggleAutoOpen(ch) },
+    !/^yt:v:/.test(ch) && { label: 'Channel settings', icon: 'layers', run: () => openLinkCard(ch) },
     more
   ].filter(Boolean);
 }
@@ -105,6 +108,7 @@ function channelMore(ch){
   add('site', `On ${siteHost(ch)}`, { group: 'Open', icon: 'link', sub: 'In a window of its own', run: () => inBrowser(ch) });
   add('copy', 'Copy link', { group: 'Share', icon: 'copy', sub: platform(ch).pageUrl(ch, 'stream').replace(/^https?:\/\/(www\.)?/, ''), run: () => copyLink(ch) });
   if (canProfile(ch)) add('profile', 'Profile', { group: 'Channel', col: 1, icon: 'user', sub: 'When they stream, past streams, notes', run: () => openProfile(ch) });
+  if (!/^yt:v:/.test(ch)) add('settings', 'Channel settings…', { group: 'Channel', col: 1, icon: 'layers', sub: 'Its chat bots, ALL, opening when live, linking its other sites', run: () => openLinkCard(ch) });
   add('saved', 'Saved', { group: 'Channel', col: 1, icon: 'star', sub: () => saved.includes(ch) ? 'Remove from your channels' : 'Add to your channels', toggle: { get: () => saved.includes(ch), set: () => toggleSaved(ch) } });
   if (DESKTOP && ROLE === 'main' && saved.includes(ch)){
     add('auto', 'Opens by itself when live', { group: 'Channel', col: 1, icon: 'bolt', sub: 'Once per stream', toggle: { get: () => autoOpen.includes(ch), set: () => toggleAutoOpen(ch) } });

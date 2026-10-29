@@ -22,7 +22,7 @@ import { addParsed } from '../layout/placement.js';
 import { bellVars, mentMuted, mentOn, mentWords, myName, readChat, syncAtBtn } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
 import { devOn } from '../panels/developer/developer.js';
-import { nameOf, optFor, streamerBots, streamerOf } from '../platforms/linked.js';
+import { chanOpt, nameOf, optFor, setChanOpt, streamerBots, streamerOf } from '../platforms/linked.js';
 import { PLAT_NAME, chLabel, modIs, modUrl, openModView, platOf, platform } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { element } from '../shared/element.js';
@@ -53,17 +53,33 @@ const feeds = new Map();               // streamer id -> { msgs: [], byId: Map }
 let botsShown = false;                 // "Bots: shown" (the chip; a saved setting)
 let eventsMode = 'short';              // subs, gifts, raids, Super Chats: 'short' (one line), 'full' (the site's words) or 'hidden'
 
-// Whether a window has an ALL tab: a chat window of a linked streamer with tabs for more than one site
+// Whose ALL a chat is in: its linked streamer, or, for a channel that isn't linked with its own ALL on (Channel settings),
+// a streamer of one ('c:<channel>'), the same one each time it's asked for
+const solos = new Map();
+function ownerOf(ch){
+  const s = streamerOf(ch); if (s || !ch || chanOpt(ch, 'allTab') !== true || /^yt:v:/.test(ch)) return s;
+  if (!solos.has(ch)) solos.set(ch, { id: 'c:' + ch, name: '', main: ch, accounts: [ch], solo: true });
+  return solos.get(ch);
+}
+// Whether a window has an ALL tab: a chat window of a linked streamer with tabs for more than one site, or of a channel
+// with its own ALL on
 function allTabFor(w){
-  if (!w || w.kind !== 'chat' || !streamerOf(w.channel)) return false;
+  if (!w || w.kind !== 'chat' || !ownerOf(w.channel)) return false;
   const lead = leaderOf(w);
+  if (ownerOf(w.channel).solo) return !lead.split && !lead.sbs;   // (its own choice: on)
   return optFor(w.channel, 'allTab') !== false && !lead.split && !lead.sbs && tabChannels(w).length > 1;   // (Settings › Linked channels, or their own choice on their card)
 }
 const allOpen = () => { const l = settings.json('allOpen', []); return Array.isArray(l) ? l : []; };
 // Whether ALL is what the window shows (remembered for each streamer)
-const allOn = w => allTabFor(w) && allOpen().includes(streamerOf(w.channel).id);
+const allOn = w => allTabFor(w) && allOpen().includes(ownerOf(w.channel).id);
+// Channel settings › ALL tab of a channel that isn't linked: on shows it in its window straight away; off forgets it
+function setSoloAll(ch, on){
+  const id = 'c:' + ch, list = allOpen().filter(x => x !== id);
+  settings.set('allOpen', on ? [...list, id] : list);
+  setChanOpt(ch, 'allTab', !!on);
+}
 function setAll(w, on){
-  const s = streamerOf(w.channel); if (!s) return;
+  const s = ownerOf(w.channel); if (!s) return;
   const list = allOpen().filter(id => id !== s.id);
   settings.set('allOpen', on ? [...list, s.id] : list);
   syncAll();
@@ -85,7 +101,7 @@ function botsChanged(){
   if (any) redrawAll();
 }
 function ingest(w, json, quiet = false){
-  const s = streamerOf(w.channel); if (!s) return;
+  const s = ownerOf(w.channel); if (!s) return;
   let batch; try { batch = JSON.parse(json); } catch { return; }
   const f = feedOf(s), view = viewFor(s);
   (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => { const got = feedParse.parseFeed({ s: batch.s, raw: [raw] }); noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0); got.forEach(m => {
@@ -133,7 +149,7 @@ function allSeen(w){
 }
 // Whether you're in the ALL that shows this chat's messages (alerts/alerts.js: then an alert only glows a moment)
 function allLooking(w){
-  const v = w && w.channel && streamerOf(w.channel) ? viewFor(streamerOf(w.channel)) : null;
+  const v = w && w.channel && ownerOf(w.channel) ? viewFor(ownerOf(w.channel)) : null;
   return !!v && document.hasFocus() && v.el.contains(document.activeElement);
 }
 // Twitch's line for each gifted sub: on the "gifted 5 subs" line it belongs to (the same gift id), not a line of its own
@@ -154,7 +170,7 @@ const modesOf = new Map();   // channel -> { modes: { slow, followers, subs, emo
 function setModes(ch, r){
   const was = modesOf.get(ch) || {};
   modesOf.set(ch, { ...was, ...r, modes: { ...(was.modes || {}), ...(r.modes || {}) }, me: r.me || was.me });
-  const v = viewFor(streamerOf(ch)); if (v) renderCmp(v, v.w);
+  const v = viewFor(ownerOf(ch)); if (v) renderCmp(v, v.w);
 }
 const modeDur = s => { const d = +(s / 86400).toFixed(1); return s < 60 ? `${s}s` : s < 3600 ? `${Math.round(s / 60)} min` : s < 86400 ? `${+(s / 3600).toFixed(1)} h` : `${d} day${d === 1 ? '' : 's'}`; };
 // What a chat's modes mean for you there: its chips, why you can't send (followers only, subscribers only, a ban), and
@@ -208,17 +224,17 @@ function slowStart(ch){
   const st = modesOf.get(ch), r = chatRules(ch);
   if (!st || !r.slow || r.free) return;
   st.until = Date.now() + r.slow * 1000;
-  const v = viewFor(streamerOf(ch)); if (v){ renderModes(v, v.w); syncSendB(v, v.w); }
+  const v = viewFor(ownerOf(ch)); if (v){ renderModes(v, v.w); syncSendB(v, v.w); }
 }
 
 // A line drawn again after something about it changed (a tag, its translation)
 function redrawLine(m){
-  const view = viewFor(streamerOf(m.ch)), el = view && view.list.querySelector(`[data-key="${CSS.escape(m.site + ':' + m.id)}"]`);
+  const view = viewFor(ownerOf(m.ch)), el = view && view.list.querySelector(`[data-key="${CSS.escape(m.site + ':' + m.id)}"]`);
   if (el){ const n = lineEl(m); if (n) el.replaceWith(n); else el.remove(); }
 }
 // Spam alerts › Tag the message in chat (where you moderate: alerts/spam-alerts.js): the same message here gets it too
 function spamTag(ch, sender, body, why, abuse){
-  const s = streamerOf(ch); if (!s) return;
+  const s = ownerOf(ch); if (!s) return;
   const norm = t => String(t || '').replace(/\s+/g, ' ').trim().toLowerCase(), b = norm(body), who = norm(sender);
   const m = [...feedOf(s).msgs].reverse().find(x => x.kind === 'message' && x.ch === ch && norm(x.sender) === who && !!norm(textOf(x)) && (norm(textOf(x)) === b || b.includes(norm(textOf(x)))));
   if (!m) return;
@@ -242,14 +258,14 @@ async function translateNow(){
 // A site's chat translated (or its new messages too, or back as sent): in its own chat, and its lines in ALL with it.
 // ALL's line menu and the search box both use it (windows/window-commands.js).
 function translateSite(ch, how, on){
-  const cw = wins.find(o => o.kind === 'chat' && o.channel === ch), s = streamerOf(ch), f = s && feeds.get(s.id);
+  const cw = wins.find(o => o.kind === 'chat' && o.channel === ch), s = ownerOf(ch), f = s && feeds.get(s.id);
   if (cw) translateChat(cw, how === 'stop' ? { do: 'translateStop' } : how === 'auto' ? { do: 'translateAuto', on } : { do: 'translateChat' });
   if (!f) return;
   if (how === 'chat') f.msgs.filter(x => x.ch === ch && x.kind === 'message' && !x.tr && !x.bot).forEach(translateSoon);
   if (how === 'stop') f.msgs.forEach(x => { if (x.ch === ch && x.tr){ x.trOrig = true; redrawLine(x); } });
 }
 // ALL translating a site's chat's lines (its line menu's Stop translating shows only then)
-const trShown = ch => { const s = streamerOf(ch), f = s && feeds.get(s.id); return !!f && f.msgs.some(x => x.ch === ch && x.tr && !x.trOrig); };
+const trShown = ch => { const s = ownerOf(ch), f = s && feeds.get(s.id); return !!f && f.msgs.some(x => x.ch === ch && x.tr && !x.trOrig); };
 // A deleted message, or all of one person's (a timeout or ban), or the whole chat cleared. Where you're a mod it stays,
 // struck through, saying why, and a line says what was done (who did it where the site says); otherwise it goes, as
 // the site doesn't show it to you either.
@@ -283,7 +299,7 @@ function logWords(d, who, site){
 }
 // They raided another channel (windows/raids.js): a line in their ALL, with Open (unless it's open already)
 function allRaid(from, to, opened){
-  const s = streamerOf(from); if (!s) return;
+  const s = ownerOf(from); if (!s) return;
   const f = feedOf(s), view = viewFor(s), m = { kind: 'raidout', site: platOf(from), ch: from, id: 'raid' + (++logN), t: Date.now(), to, opened };
   f.msgs.push(m); if (view) addLine(view, m);
 }
@@ -371,7 +387,7 @@ function renderPins(view){
 
 /* ---- the view ---- */
 const viewFor = s => {
-  const lead = wins.find(o => o.kind === 'chat' && !o.hiddenTab && streamerOf(o.channel) === s && allOn(o));
+  const lead = wins.find(o => o.kind === 'chat' && !o.hiddenTab && ownerOf(o.channel) === s && allOn(o));
   return lead && lead.allView || null;
 };
 const SITE_CLASS = { kick: 'k', twitch: 't', youtube: 'y' };
@@ -459,7 +475,7 @@ function emoteSeen(ch, name){
   const fresh = freshEmotes.get(ch); if (!fresh || !fresh.delete(name)) return;
   if (window.kmv && window.kmv.emotesSeen) window.kmv.emotesSeen(ch, name).catch(() => {});
   wins.forEach(o => { if (o.kind === 'chat' && o.channel === ch && o.ready) runIn(o.view, `window.__kmvNew && window.__kmvNew.set(window.__kmvNew.list().filter(n => n !== ${JSON.stringify(name)}))`); });
-  const view = viewFor(streamerOf(ch));
+  const view = viewFor(ownerOf(ch));
   if (view) view.el.querySelectorAll('img.al-new').forEach(i => { if (i.alt === name){ i.classList.remove('al-new'); i.title = name; } });
 }
 // A Twitch badge's tooltip as Twitch says it: a sub's months, and the badge they have if it's another ("27-Month
@@ -587,7 +603,7 @@ function addLine(view, m){
   if (stick) list.scrollTop = list.scrollHeight; else view.more.hidden = false;
 }
 function buildView(w){
-  const s = streamerOf(w.channel), f = feedOf(s);
+  const s = ownerOf(w.channel), f = feedOf(s);
   const list = element('div', { class: 'all-list', tabindex: '-1', role: 'log', 'aria-label': `${nameOf(w.channel)}'s chats together`, 'aria-live': 'off' });
   const empty = element('div', 'all-empty');
   const more = element('button', { type: 'button', class: 'all-more', hidden: true, dataset: { cmd: 'all.latest' }, onclick: () => { list.scrollTop = list.scrollHeight; more.hidden = true; } }, 'New messages ↓');
@@ -697,11 +713,11 @@ const sendSaved = () => { const o = settings.json('allSend', {}); return o && ty
 // The site it sends on: the last one used for this streamer, else their main channel, else the first that can
 function sendSite(w){
   const lock = w.allView && w.allView.lock; if (lock) return lock.ch;
-  const s = streamerOf(w.channel), ok = sendSites(w), was = sendSaved()[s.id];
+  const s = ownerOf(w.channel), ok = sendSites(w), was = sendSaved()[s.id];
   return ok.includes(was) ? was : ok.includes(s.main) ? s.main : ok[0] || null;
 }
 function setSendSite(view, w, ch){
-  settings.set('allSend', { ...sendSaved(), [streamerOf(w.channel).id]: ch });
+  settings.set('allSend', { ...sendSaved(), [ownerOf(w.channel).id]: ch });
   renderCmp(view, w);
 }
 function stepSend(view, w, d){
@@ -738,7 +754,7 @@ function renderCmp(view, w){
 }
 // The picker's menu: each of their sites, the ones you can't send on with why
 function openPickMenu(view, w){
-  const ok = sendSites(w), cur = sendSite(w), main = streamerOf(w.channel).main;
+  const ok = sendSites(w), cur = sendSite(w), main = ownerOf(w.channel).main;
   const why = ch => { const i = infoFor(ch); return platOf(ch) === 'youtube' && !(i && i.live) ? 'no live chat found' : i && !i.live ? 'offline' : 'not open'; };
   view.menu.replaceChildren(
     ...tabChannels(w).map(ch => { const p = platOf(ch), can = ok.includes(ch);
@@ -777,7 +793,7 @@ const threads = ch => { const t = platform(ch).threadedReplies; return t === tru
 
 /* ---- replies, @ and names: the box locks to one site until it's sent or cancelled ---- */
 function startReply(m){
-  const view = viewFor(streamerOf(m.ch)); if (!view) return;
+  const view = viewFor(ownerOf(m.ch)); if (!view) return;
   if (!sendSites(view.w).includes(m.ch)) return flash(`Can't send on ${PLAT_NAME[m.site]} right now`);
   setLock(view, view.w, { kind: 'reply', ch: m.ch, msg: m });
   view.input.focus();
@@ -915,7 +931,7 @@ function copyData(m){
 }
 // ⋯ and the right-click: the line's menu (the mod part only where you're a mod)
 function openLineMenu(m, at){
-  const view = viewFor(streamerOf(m.ch)); if (!view) return;
+  const view = viewFor(ownerOf(m.ch)); if (!view) return;
   const site = PLAT_NAME[m.site], why = whyNot(m), mod = youMod(m.ch) && !!platform(m.ch).timeoutCmd, lm = view.lm;
   const item = (label, ic, run, more = {}) => element('button', { type: 'button', role: 'menuitem', class: 'all-li' + (more.red ? ' red' : ''), disabled: !!more.off, title: more.off || '', dataset: { cmd: more.cmd },
     onclick: () => { lm.hidden = true; run(); } }, element('i', { html: ic }), element('span', null, label), more.kb ? element('small', null, more.kb) : '');
@@ -1062,8 +1078,8 @@ function mineSeen(f, m){
   document.querySelectorAll(`.all-list [data-key="${CSS.escape(p.site + ':' + p.id)}"]`).forEach(el => el.remove());
 }
 function mineEl(p){
-  const site = PLAT_NAME[p.site], view = viewFor(streamerOf(p.ch));
-  const drop = () => { const f = feedOf(streamerOf(p.ch)); const i = f.msgs.indexOf(p); if (i >= 0) f.msgs.splice(i, 1); setMine(p, 'dropped'); document.querySelectorAll(`.all-list [data-key="${CSS.escape(p.site + ':' + p.id)}"]`).forEach(el => el.remove()); };
+  const site = PLAT_NAME[p.site], view = viewFor(ownerOf(p.ch));
+  const drop = () => { const f = feedOf(ownerOf(p.ch)); const i = f.msgs.indexOf(p); if (i >= 0) f.msgs.splice(i, 1); setMine(p, 'dropped'); document.querySelectorAll(`.all-list [data-key="${CSS.escape(p.site + ':' + p.id)}"]`).forEach(el => el.remove()); };
   const state = {
     sending: element('span', 'al-tag al-tag-mine', element('i', 'al-spin'), 'Sending'),
     sent: element('span', 'al-tag al-tag-mine', 'Sent'),
@@ -1181,4 +1197,4 @@ function init(){
 }
 
 export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, init, modViewChs, openModViews, sendSite,
-  setAll, setLock, spamTag, translateSite };
+  setAll, setLock, setSoloAll, spamTag, translateSite };

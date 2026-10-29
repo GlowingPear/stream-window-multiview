@@ -44,7 +44,7 @@ function streamerButtons(s){
     ...(live.length > 1 ? live.map(c => ({ label: `${site(c)} only`, icon: 'ytPlay', run: () => openStreamer(s.main, modeSel ? modeSel.value : 'both', [c]) })) : []),
     DESKTOP && { label: 'Profile', icon: 'user', run: () => openProfile(s.main) },
     { label: sv ? 'Saved' : 'Save', icon: 'star', on: sv, run: () => saveAll(s, !sv) },
-    { label: 'Linked channels', icon: 'layers', run: () => openLinkCard(s.main) },
+    { label: 'Channel settings', icon: 'layers', run: () => openLinkCard(s.main) },
     { label: 'More…', more: true }
   ].filter(Boolean);
 }
@@ -67,7 +67,7 @@ function streamerMore(s){
   if (DESKTOP) add('alerts', 'Live alerts', { icon: 'bell', disabled: () => !notifyAll && 'Live notifications are off (Channels › the bell)',
     toggle: { get: () => notifyAll && s.accounts.every(c => !notifyOff.includes(c)), set: on => s.accounts.forEach(c => setNotify(c, on)) } });
   add('auto', 'Opens by itself (⚡)', { icon: 'bolt', toggle: { get: () => s.accounts.some(c => autoOpen.includes(c)), set: () => openLinkCard(s.main) }, sub: 'Choose together or separate in the card' });
-  add('card', 'Linked channels…', { group: 'Linking', icon: 'layers', run: () => openLinkCard(s.main) });
+  add('card', 'Channel settings…', { group: 'Linking', icon: 'layers', run: () => openLinkCard(s.main) });
   add('addAcc', 'Link another channel…', { group: 'Linking', icon: 'plus', run: () => openLinkCard(s.main, { add: true }) });
   s.accounts.filter(c => c !== s.main).forEach(c => add('main:' + c, `Make ${site(c)} the main channel`, { group: 'Linking', icon: 'star', sub: 'First tab, picture and name', run: () => setMain(c) }));
   s.accounts.forEach(c => add('unlink:' + c, `Unlink ${site(c)}`, { group: 'Linking', icon: 'unlink', sub: `${chLabel(c)} becomes its own channel`, run: () => askUnlink(c) }));
