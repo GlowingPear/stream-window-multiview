@@ -23,7 +23,8 @@ function kickGroups(d, slug) {
   const other = id => d.filter(s => s && Array.isArray(s.emotes) && String(s.id) === id);
   return [
     group('kick-channel', 'Channel', own.flatMap(s => s.emotes.map(emote))),
-    group('kick-yours', 'Your emotes', yours.flatMap(s => s.emotes.map(e => { const x = emote(e); if (x) delete x.subs; return x; }))),   // (yours to use: not marked subs)
+    // (yours to use: not marked subs; from: the channel's, for its heading in the picker)
+    group('kick-yours', 'Sub emotes', yours.flatMap(s => s.emotes.map(e => { const x = emote(e); if (x){ delete x.subs; x.from = String((s.user && s.user.username) || s.slug); } return x; }))),
     group('kick-collectibles', 'Collectibles', other('Collectibles').flatMap(s => s.emotes.map(emote))),
     group('kick-global', 'Kick', other('Global').flatMap(s => s.emotes.map(emote))),
     group('kick-emoji', 'Emoji', other('Emoji').flatMap(s => s.emotes.map(emote)))
@@ -38,7 +39,8 @@ function twitchGroups(d, login) {
   const of = test => sets.filter(s => s && Array.isArray(s.emotes) && test(s)).flatMap(s => s.emotes.map(emote));
   return [
     group('twitch-channel', 'Channel', of(s => owner(s) === String(login).toLowerCase())),
-    group('twitch-yours', 'Your emotes', of(s => owner(s) && owner(s) !== String(login).toLowerCase() && owner(s) !== 'twitch')),
+    group('twitch-yours', 'Sub emotes', sets.filter(s => s && Array.isArray(s.emotes) && owner(s) && owner(s) !== String(login).toLowerCase() && owner(s) !== 'twitch')
+      .flatMap(s => s.emotes.map(e => { const x = emote(e); if (x) x.from = String((s.owner && (s.owner.displayName || s.owner.login)) || ''); return x; }))),
     group('twitch-global', 'Twitch', of(s => !owner(s) || owner(s) === 'twitch'))
   ].filter(Boolean);
 }

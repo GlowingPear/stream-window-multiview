@@ -72,7 +72,7 @@ function renderEmoteList(view){
   const p = PLAT_NAME[platOf(view.atList[0].ch)];
   view.at.replaceChildren(element('div', 'all-at-h', `${p} emotes`),
     ...view.atList.map((e, i) => element('button', { type: 'button', role: 'option', class: 'all-ati all-emi' + (i === view.atSel ? ' on' : ''), 'aria-selected': String(i === view.atSel), dataset: { cmd: 'all.emotePick' },
-      onmousedown: ev => ev.preventDefault(), onclick: () => pickEmote(view, view.w, e) }, emoteImg(e), element('span', null, e.name), element('small', null, e.group + (e.subs ? ' · subs' : '')))),
+      onmousedown: ev => ev.preventDefault(), onclick: () => pickEmote(view, view.w, e) }, emoteImg(e), element('span', null, e.name), element('small', null, e.from || e.group + (e.subs ? ' · subs' : '')))),
     element('div', 'all-mh', element('kbd', null, '↑'), element('kbd', null, '↓'), ' pick · ', element('kbd', null, 'Tab'), ' or ', element('kbd', null, 'Enter'), ` adds it and locks to ${p}`));
 }
 // An emote into the box (in place of the :name typed, or at the caret), the box locked to its site
@@ -115,9 +115,17 @@ async function openEmotePicker(view, w){
     const q = search.value.trim().toLowerCase();
     tabs.replaceChildren(...groups.map(g => element('button', { type: 'button', role: 'tab', class: g.id === tab && !q ? 'on' : '', 'aria-selected': String(g.id === tab && !q), dataset: { cmd: 'all.emoteTab' },
       onclick: () => { tab = view.epTab = g.id; search.value = ''; draw(); } }, g.label)));
-    const list = q ? groups.flatMap(g => g.emotes).filter(e => e.name.toLowerCase().includes(q)).slice(0, 300) : (groups.find(g => g.id === tab) || groups[0]).emotes.slice(0, 600);
-    grid.replaceChildren(...(list.length ? list.map(e => element('button', { type: 'button', role: 'option', class: 'all-ep-e', title: e.name + (e.subs ? ' (subscribers)' : ''), 'aria-label': e.name, dataset: { cmd: 'all.emotePick' },
-      onclick: () => { pickEmote(view, w, { ...e, ch }); } }, emoteImg(e))) : [element('div', 'all-ep-none', `No ${p} emote matches “${search.value.trim()}”`)]));
+    const list = q ? groups.flatMap(g => g.emotes).filter(e => e.name.toLowerCase().includes(q)).slice(0, 300) : (groups.find(g => g.id === tab) || groups[0]).emotes;
+    // (Sub emotes: each channel's under its name, as the sites' pickers group them)
+    let from = null;
+    const cells = list.flatMap(e => {
+      const b = element('button', { type: 'button', role: 'option', class: 'all-ep-e', title: e.name + (e.from ? ` · ${e.from}` : e.subs ? ' (subscribers)' : ''), 'aria-label': e.name, dataset: { cmd: 'all.emotePick' },
+        onclick: () => { pickEmote(view, w, { ...e, ch }); } }, emoteImg(e));
+      if (q || !e.from || e.from === from) return [b];
+      from = e.from;
+      return [element('div', { class: 'all-ep-sec', role: 'presentation' }, e.from), b];
+    });
+    grid.replaceChildren(...(list.length ? cells : [element('div', 'all-ep-none', `No ${p} emote matches “${search.value.trim()}”`)]));
   };
   search.addEventListener('input', draw);
   search.addEventListener('keydown', e => { if (e.key === 'Escape'){ e.preventDefault(); ep.hidden = true; view.input.focus(); } });

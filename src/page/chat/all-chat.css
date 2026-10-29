@@ -264,6 +264,8 @@
 .all-ep-e:hover,.all-ep-e:focus-visible{background:var(--line)}
 .all-ep-e img{width:28px;height:28px;object-fit:contain}
 .all-ep-none{grid-column:1/-1;padding:16px 8px;color:var(--muted);font-size:12px;text-align:center}
+.all-ep-sec{grid-column:1/-1;position:sticky;top:0;z-index:1;padding:8px 6px 4px;background:var(--panel);color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.02em}
+.all-ep-sec:first-child{padding-top:2px}
 /* the send button: a square in the send site's colour, there once there's something to send, a spinner while sending */
 .all-send-b{flex:none;position:relative;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:9px;cursor:pointer;color:#fff;
   background:linear-gradient(160deg,color-mix(in srgb,var(--site,var(--accent)) 92%,#fff),var(--site,var(--accent)) 55%,color-mix(in srgb,var(--site,var(--accent)) 78%,#000));
