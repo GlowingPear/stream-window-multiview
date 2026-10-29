@@ -180,8 +180,8 @@ function twitchSummary(ev, name, p, system){
     case 'viewermilestone': return [{ strong: name }, { text: ' watched ' }, { strong: plural(p.value, 'stream', 'streams') }, { text: ' in a row' }];
     case 'giftpaidupgrade': case 'anongiftpaidupgrade': case 'primepaidupgrade': return [{ strong: name }, { text: ' kept their sub going' }];
     // (they got a gift sub from the community and gave one on: who gave them theirs)
-    case 'communitypayforward': return [{ strong: name }, { text: ' paid forward the gift sub from ' },
-      p['prior-gifter-anonymous'] === 'true' ? { text: 'an anonymous gifter' } : { strong: p['prior-gifter-display-name'] || p['prior-gifter-user-name'] || 'someone' }];
+    case 'communitypayforward': return p['prior-gifter-anonymous'] === 'true' ? [{ strong: name }, { text: ' paid forward an anonymous gift sub' }]
+      : [{ strong: name }, { text: ' paid forward the gift sub from ' }, { strong: p['prior-gifter-display-name'] || p['prior-gifter-user-name'] || 'someone' }];
     case 'bitsbadgetier': return [{ strong: name }, { text: ' earned a ' }, { strong: plural(p.threshold, 'bit', 'bits') }, { text: ' badge' }];
     default: return system ? [{ text: system }] : [{ strong: name }];
   }

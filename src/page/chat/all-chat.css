@@ -351,7 +351,8 @@
 .al-raidout .al-evt{flex:none;display:grid;color:var(--accent)}
 .al-raidout .al-evt svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
 .al-raidout .al-evw{flex:1;min-width:0;white-space:normal}
-.al-raidin{margin-left:auto;font-variant-numeric:tabular-nums}
+.al-raidin{margin-left:auto;font-variant-numeric:tabular-nums;text-transform:none;letter-spacing:.02em}
+.al-ev.al-raidsoon{border-style:dashed}
 .al-ev.al-raidoff{opacity:.65}
 .al-raidoff .al-evt{color:var(--muted)}
 .al-tag-raid{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--text);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent)}

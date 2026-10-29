@@ -141,7 +141,7 @@ test('Twitch events in a few words, the amount picked out; an announcement is a 
   assert.equal(words(fwd({ 'msg-param-prior-gifter-anonymous': 'false', 'msg-param-prior-gifter-display-name': 'Tinroof' })), '[Brightwick] paid forward the gift sub from [Tinroof]');
   assert.equal(words(fwd({ 'msg-param-prior-gifter-anonymous': 'false' })), '[Brightwick] paid forward the gift sub from [tinroof]', 'without a display name: the login');
   assert.equal(words(ev('communitypayforward', {})), '[Brightwick] paid forward the gift sub from [someone]');
-  assert.equal(words(fwd({ 'msg-param-prior-gifter-anonymous': 'true', 'msg-param-prior-gifter-display-name': 'AnAnonymousGifter' })), '[Brightwick] paid forward the gift sub from an anonymous gifter');
+  assert.equal(words(fwd({ 'msg-param-prior-gifter-anonymous': 'true', 'msg-param-prior-gifter-display-name': 'AnAnonymousGifter' })), '[Brightwick] paid forward an anonymous gift sub');
   assert.equal(words(ev('charitydonation', {})), "the site's words");
   assert.equal(words(ev('submysterygift', {})), "the site's words", 'without its number');
   assert.equal(words(parseTwitch(TW({ 'display-name': 'X', 'msg-id': 'other', id: 'e' }, ':tmi.twitch.tv USERNOTICE #q')).summary), '[X]');

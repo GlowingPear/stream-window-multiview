@@ -1117,7 +1117,7 @@ test('ALL: Twitch\'s raid countdown is one line, kept up to date and counting do
   assert.equal((await raids()).length, 5);
 });
 
-test('ALL: a gift sub paid forward (from someone, or an anonymous gifter) and a goal reached are events', async t => {
+test('ALL: a gift sub paid forward (from someone, or an anonymous one) and a goal reached are events', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
   const fwd = (id, prm) => TW({ 'display-name': 'Brightwick', login: 'brightwick', id, 'msg-id': 'communitypayforward', 'system-msg': 'Brightwick\\sis\\spaying\\sforward\\sthe\\sGift', ...prm }, ':tmi.twitch.tv USERNOTICE #quietkoala');
@@ -1125,7 +1125,7 @@ test('ALL: a gift sub paid forward (from someone, or an anonymous gifter) and a 
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [fwd('p1', { 'msg-param-prior-gifter-anonymous': 'false', 'msg-param-prior-gifter-display-name': 'Tinroof' }),
     fwd('p2', { 'msg-param-prior-gifter-anonymous': 'true', 'msg-param-prior-gifter-display-name': 'AnAnonymousGifter' }),
     goal({ contributionType: 'FOLLOWERS', description: '' }), goal({ id: 'g2', contributionType: 'SUBS', currentContributions: 50, targetContributions: 50, description: 'Road to 50' })] });
-  assert.deepEqual(await lines(page), ['al-ev | TBrightwick paid forward the gift sub from TinroofSee it on Twitch ›', 'al-ev | TBrightwick paid forward the gift sub from an anonymous gifterSee it on Twitch ›',
+  assert.deepEqual(await lines(page), ['al-ev | TBrightwick paid forward the gift sub from TinroofSee it on Twitch ›', 'al-ev | TBrightwick paid forward an anonymous gift subSee it on Twitch ›',
     'al-ev | TFollower goal reached · 230See it on Twitch ›', 'al-ev | TSub goal reached · 50Road to 50See it on Twitch ›']);
   assert.deepEqual(await page.$$eval('.al-ev .al-amt', l => l.map(e => e.textContent)), ['Tinroof', '230', '50'], 'who gave it, and the count, picked out');
 });
