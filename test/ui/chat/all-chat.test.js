@@ -1413,6 +1413,93 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   assert.deepEqual(await page.$$eval('.all-ep-sec', l => l.map(e => (e.querySelector('.ch-av') ? '[channel] ' : e.querySelector('.pi') ? `[${e.querySelector('.pi').textContent}] ` : '') + [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(''))), ['[channel] Channel', '[T] Twitch']);
 });
 
+test('ALL: the emotes you sent last, in a row over the box (as Kick\'s chat has): for the site it sends on, the ones its channel can use, the newest first, as many as fit; a click adds one; kept', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const ready = live => {
+    window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; });
+    const img = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', e = (name, send) => ({ name, url: img, send: send || name });
+    const many = Array.from({ length: 24 }, (_, i) => 'm' + String(i + 1).padStart(2, '0'));
+    window.kmv = { ...(window.kmv || {}), emotesPick: async ch => (ch === 'quietkoala'
+      ? [{ id: 'kick-channel', label: 'Channel', emotes: [e('koalaHype', '[emote:1:koalaHype]'), e('koalaWave', '[emote:2:koalaWave]')] }, { id: 'kick-global', label: 'Kick', emotes: [e('KEKW', '[emote:9:KEKW]')] },
+         { id: '7tv', label: '7TV', emotes: many.map(n => e(n)) }]
+      : [{ id: 'twitch-global', label: 'Twitch', emotes: [e('Kappa')] }]) };
+    window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push([m.channel, text]); return window.__answer || 'sent'; };
+    window.smvNotes.liveStatus(live);
+  };
+  await page.evaluate(ready, LIVE);
+  const row = () => page.$$eval('.all-re:not([hidden]) .all-re-e', l => l.map(b => b.title || b.dataset.tipTitle));
+  const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.allRecentEmotes')));
+  const send = async (q, extra = '') => {
+    await page.focus('.all-in'); await page.keyboard.type(':' + q);
+    await page.waitForSelector('.all-at:not([hidden]) .all-emi'); await page.keyboard.press('Enter');
+    if (extra) await page.keyboard.type(extra);
+    const n = await page.evaluate(() => window.__sends.length);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(n => window.__sends.length > n && !document.querySelector('.all-view').querySelector('.al-mine-sending'), n);
+  };
+  assert.equal(await page.isVisible('.all-re'), false, 'nothing sent yet: no row');
+  // sent: to the front of the site's list (saved), the row shows them
+  await send('koalaw');
+  await page.waitForFunction(() => document.querySelectorAll('.all-re .all-re-e').length === 1);
+  assert.deepEqual(await row(), ['koalaWave']);
+  await send('ke', 'gg');
+  await page.waitForFunction(() => document.querySelectorAll('.all-re .all-re-e').length === 2);
+  assert.deepEqual(await row(), ['KEKW', 'koalaWave'], 'the newest first');
+  assert.deepEqual(await saved(), { kick: ['KEKW', 'koalaWave'] });
+  assert.deepEqual(await page.$eval('.all-re-e', b => [b.dataset.cmd, b.getAttribute('aria-label'), b.querySelector('img').getBoundingClientRect().width]), ['all.emotePick', 'KEKW', 28]);
+  assert.equal(await page.evaluate(() => { const r = document.querySelector('.all-re').getBoundingClientRect(), b = document.querySelector('.all-box').getBoundingClientRect(); return b.top - r.bottom >= 0 && b.top - r.bottom < 10; }), true, 'just over the box');
+  // again: to the front, once; not sent, or picked and then not in the message: not noted
+  await send('koalaw');
+  await page.waitForFunction(() => document.querySelector('.all-re .all-re-e').getAttribute('aria-label') === 'koalaWave');
+  assert.deepEqual(await row(), ['koalaWave', 'KEKW']);
+  await page.evaluate(() => { window.__answer = 'disabled'; });
+  await send('ke');
+  await page.evaluate(() => { window.__answer = ''; });
+  await page.focus('.all-in'); await page.keyboard.type(':ke'); await page.waitForSelector('.all-at:not([hidden]) .all-emi'); await page.keyboard.press('Enter');
+  await page.fill('.all-in', 'just words');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__sends.length === 5);
+  assert.deepEqual(await page.evaluate(() => window.__sends[4]), ['quietkoala', 'just words']);
+  assert.deepEqual(await saved(), { kick: ['koalaWave', 'KEKW'] }, 'neither noted');
+  // another site: its own list (none yet: no row); only the ones its channel can use
+  await page.focus('.all-in'); await page.keyboard.press('Tab');
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Send a message on Twitch');
+  assert.equal(await page.isVisible('.all-re'), false, 'nothing sent on Twitch yet');
+  await page.evaluate(() => localStorage.setItem('kickMultiview.allRecentEmotes', JSON.stringify({ kick: ['koalaWave', 'KEKW'], twitch: ['notYours', 'Kappa'] })));
+  await page.keyboard.press('Tab'); await page.keyboard.press('Tab');
+  await page.waitForFunction(() => document.querySelectorAll('.all-re:not([hidden]) .all-re-e').length === 1);
+  assert.deepEqual(await row(), ['Kappa'], 'an emote that channel can\'t use isn\'t there');
+  // a click: into the box at the caret (as from the smiley), locked to its site, the keyboard still in the box
+  await page.keyboard.type('hi');
+  await page.click('.all-re-e');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'hi Kappa ');
+  assert.equal(await page.evaluate(() => document.activeElement.className), 'all-in');
+  assert.match(await page.textContent('.all-rb'), /Emotes from Twitch · sends on Twitch only/);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__sends.length === 6);
+  assert.deepEqual(await page.evaluate(() => window.__sends[5]), ['tw:quietkoala', 'hi Kappa']);
+  assert.deepEqual(await saved(), { kick: ['koalaWave', 'KEKW'], twitch: ['Kappa', 'notYours'] });
+  // kept: after a reload, Kick's row as it was
+  await page.evaluate(() => localStorage.setItem('kickMultiview.allSend', JSON.stringify({ s1: 'quietkoala' })));
+  await page.reload();
+  await page.waitForSelector('.all-view');
+  await page.evaluate(ready, LIVE);
+  await page.waitForFunction(() => document.querySelectorAll('.all-re:not([hidden]) .all-re-e').length === 2);
+  assert.deepEqual(await row(), ['koalaWave', 'KEKW']);
+  // 20 kept for each site; the row one line, as many as fit (no wrapping, no scrollbar)
+  await page.evaluate(() => localStorage.setItem('kickMultiview.allRecentEmotes', JSON.stringify({ kick: Array.from({ length: 20 }, (_, i) => 'm' + String(i + 1).padStart(2, '0')) })));
+  await page.focus('.all-in'); await page.keyboard.press('Tab'); await page.keyboard.press('Tab');
+  await page.waitForFunction(() => document.querySelectorAll('.all-re:not([hidden]) .all-re-e').length === 20);
+  const fit = await page.$eval('.all-re', r => { const top = r.getBoundingClientRect().top, bs = [...r.children].map(b => b.getBoundingClientRect());
+    return { shown: bs.filter(b => b.top === top && b.right <= r.getBoundingClientRect().right + 0.5).length, height: r.getBoundingClientRect().height, scrolls: r.scrollWidth > r.clientWidth || getComputedStyle(r).overflowY !== 'hidden' }; });
+  assert.ok(fit.shown > 3 && fit.shown < 20, `some fit, whole (${fit.shown})`);
+  assert.deepEqual([fit.height, fit.scrolls], [32, false], 'one line');
+  await send('m21');
+  await page.waitForFunction(() => document.querySelector('.all-re .all-re-e').getAttribute('aria-label') === 'm21');
+  assert.deepEqual((await saved()).kick, ['m21', ...Array.from({ length: 19 }, (_, i) => 'm' + String(i + 1).padStart(2, '0'))], 'the newest in front, the oldest out');
+});
+
 test('ALL\'s box: one line of text (pasted or dropped in: its text on one line), no longer than the site takes, its placeholder when emptied', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');

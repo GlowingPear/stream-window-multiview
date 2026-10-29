@@ -1,8 +1,8 @@
 import { alerts, clearAlert } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { emoteBox } from './all-box.js';
-import { SMILEY, addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, renderEmoteList, suggestEmote,
-  withEmotes } from './all-emotes.js';
+import { SMILEY, addonEmotes, emoteCache, forgetEmotes, noteRecent, openEmotePicker, pickEmote, renderEmoteList,
+  renderRecent, suggestEmote, withEmotes } from './all-emotes.js';
 import { chatLoaded, healthState, noteRaw, noteSend, reportHealth } from './all-health.js';
 import { blowOn, blowUp } from './blow-up.js';
 import { chatBoxName } from './chat-name.js';
@@ -698,13 +698,14 @@ function buildView(w){
   const sendB = element('button', { type: 'button', class: 'all-send-b', 'aria-label': 'Send', html: SEND, disabled: true, dataset: { cmd: 'all.send' } });
   const emo = element('button', { type: 'button', class: 'all-emo-b', title: 'Emotes', 'aria-label': 'Emotes', 'aria-haspopup': 'dialog', html: SMILEY, dataset: { cmd: 'all.emotes' } });
   const ep = element('div', { class: 'pop all-ep', role: 'dialog', 'aria-label': 'Emotes', hidden: true });
+  const recent = element('div', { class: 'all-re', role: 'toolbar', 'aria-label': 'Emotes you used last', hidden: true });
   const pins = element('div', { class: 'all-pins', hidden: true, role: 'region', 'aria-label': 'Pinned messages' });
   const pinChip = element('button', { type: 'button', class: 'all-pinchip', hidden: true, dataset: { cmd: 'all.pins' },
     onclick: () => { view.pinsShown = !view.pinsShown; renderPins(view); } });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, filt), health, pins, element('div', 'all-lw', list, more), empty,
-    element('div', 'all-cmp', bar, modes, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm, ecard);
-  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, pinChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
+    element('div', 'all-cmp', bar, modes, recent, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm, ecard);
+  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, pinChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, recent, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
   closeOnOutside(fm, { button: filt });
   el.addEventListener('pointerdown', () => allSeen(w));
@@ -827,6 +828,7 @@ function renderCmp(view, w){
   view.input.maxLength = p === 'youtube' ? 200 : 500;
   view.el.dataset.send = p || '';
   syncSendB(view, w);
+  renderRecent(view, w);
 }
 // The picker's menu: each of their sites, the ones you can't send on with why
 function openPickMenu(view, w){
@@ -1124,6 +1126,7 @@ async function deliver(view, w, p){
   if (!m) r = 'gone';
   else try { r = p.threaded ? await sender.reply(m, p.lock.msg.id, p.send || p.text, p.lock.msg.sender) : await sender.send(m, p.send || p.text); } catch { r = 'error'; }
   view.sending = false; syncSendB(view, w);
+  if (r === 'sent' && noteRecent(p)) renderRecent(view, w);   // (its emotes: the row over the box)
   if (p.state === 'seen') return;   // (its chat brought it back already)
   noteSend(p.ch, r, r === 'sent' ? '' : SEND_FAIL[r] ? SEND_FAIL[r](site) : '');   // (two failures in a row: ALL's health says so)
   if (r === 'sent'){ slowStart(p.ch); setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
