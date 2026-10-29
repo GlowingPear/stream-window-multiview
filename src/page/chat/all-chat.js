@@ -106,7 +106,7 @@ function ingest(w, json, quiet = false, shown = false){
   const s = ownerOf(w.channel); if (!s) return;
   let batch; try { batch = JSON.parse(json); } catch { return; }
   const f = feedOf(s), view = viewFor(s); let added = 0;
-  (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => { const got = feedParse.parseFeed({ s: batch.s, raw: [raw] }); if (!shown) noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0); got.forEach(m => {
+  (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => { const got = feedParse.parseFeed({ s: batch.s, raw: [raw] }); if (!shown && (got.length || !feedParse.leftOut(batch.s, raw))) noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0); got.forEach(m => {
     if (shown && m.kind !== 'message' && m.kind !== 'event') return;
     if (devOn) m.raw = raw;   // (Developer tools: the line's Copy message data)
     if (m.kind === 'delete' || m.kind === 'clear' || m.kind === 'clearall') return removed(f, view, m, w.channel);
