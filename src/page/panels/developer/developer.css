@@ -36,7 +36,7 @@
 .why-verdict.ok{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
 /* Settings › Developer › Chat events (chat/event-samples.js): what ALL still needs (amber chips), what it doesn't know
    (rows in the accent, "new" for a day), what it shows (quieter); a row opens its samples */
-.dv-list.dv-events{max-height:460px;background:var(--bg)}
+.dv-list.dv-events{max-height:410px;background:var(--bg)}
 .ev-top{position:sticky;top:0;z-index:1;background:var(--panel);border-bottom:1px solid var(--line);padding:4px 12px 10px}
 .ev-top .st-row{padding:8px 0;border:0}
 .ev-acts{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
