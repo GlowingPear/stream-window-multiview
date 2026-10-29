@@ -673,6 +673,51 @@ test('ALL: pressing or typing in it is seeing its chats: their alerts stop (the 
   await page.locator('.all-in').blur();
 });
 
+test('ALL: the send site\'s modes above the box; slow mode counts down after you send; followers or subscribers only, or a ban, close the box and say why; a moderator is exempt', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
+    window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push([m.channel, text]); return 'sent'; }; }, LIVE);
+  const bar = () => page.$eval('.all-modes', e => (e.hidden ? '' : e.textContent.replace(/\s+/g, ' ').trim()));
+  assert.equal(await bar(), '', 'no modes: no bar');
+  // Kick (the send site): slow mode and emotes only, as its chatroom said; you a follower, not a mod
+  await page.evaluate(() => window.allChat.setModes('quietkoala', { modes: { slow: 3, followers: null, subs: false, emotes: true }, me: { signedIn: true, follower: true, followedAt: 1 } }));
+  assert.equal(await bar(), 'Slow 3sEmotes only');
+  await page.fill('.all-in', 'gg');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__sends.length === 1);
+  await page.waitForSelector('.all-modes.waiting');
+  assert.match(await bar(), /^Slow mode · you can send in [123]s/);
+  assert.equal(await page.getAttribute('.all-send-b', 'data-wait') !== '', true);
+  await page.fill('.all-in', 'again'); await page.keyboard.press('Enter');
+  assert.equal(await page.evaluate(() => window.__sends.length), 1, 'not while waiting');
+  await page.waitForFunction(() => !document.querySelector('.all-modes.waiting'), null, { timeout: 5000 });
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__sends.length === 2);
+  // as it changes live: followers only for 10 minutes (Kick's event), and you only followed a minute ago
+  await page.evaluate(() => window.allChat.setModes('quietkoala', { me: { signedIn: true, follower: true, followedAt: Date.now() - 60000 } }));
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatroomUpdatedEvent', { slow_mode: { enabled: false }, followers_mode: { enabled: true, min_duration: 10 }, subscribers_mode: { enabled: false }, emotes_mode: { enabled: false } })] });
+  assert.match(await page.getAttribute('.all-in', 'placeholder'), /^Followers only · you can chat in 9 min$/);
+  assert.equal(await page.isDisabled('.all-in'), true);
+  assert.match(await bar(), /^Followers only · you can chat in 9 minFollowers 10 min$/);
+  // subscribers only, not subscribed; then a ban
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatroomUpdatedEvent', { followers_mode: { enabled: false }, subscribers_mode: { enabled: true } })] });
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Subscribers only · subscribe on Kick to chat');
+  await page.evaluate(() => window.allChat.setModes('quietkoala', { me: { signedIn: true, banned: true } }));
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'You’re banned from this Kick chat');
+  // a moderator: the modes show, quieter, and don't apply
+  await page.evaluate(() => window.allChat.setModes('quietkoala', { me: { signedIn: true, mod: true } }));
+  assert.equal(await page.isDisabled('.all-in'), false);
+  assert.equal(await bar(), 'Subscribers onlyexempt');
+  // Twitch (Tab): its ROOMSTATE, its own modes; YouTube's words where its box would be
+  await page.evaluate(() => window.allChat.setModes('tw:quietkoala', { me: { signedIn: true, follower: false } }));
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'followers-only': '0', 'room-id': '1' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')] });
+  await page.focus('.all-in'); await page.keyboard.press('Tab');
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Followers only · follow on Twitch to chat');
+  assert.equal(await bar(), 'Followers only · follow on Twitch to chatFollowers only');
+  await page.evaluate(() => window.allChat.setModes('yt:quietkoala', { blocked: 'Sign in to chat' }));
+});
+
 test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley opens its picker; picking one locks the box to that site and sends it as the site writes it', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');

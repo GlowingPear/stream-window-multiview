@@ -46,6 +46,15 @@ function parseTwitch(line){
   // (Twitch's chat says who and how long, not which moderator)
   if (l.cmd === 'CLEARMSG') return g['target-msg-id'] ? { site: 'twitch', kind: 'delete', target: g['target-msg-id'], t } : null;
   if (l.cmd === 'CLEARCHAT') return l.text ? { site: 'twitch', kind: 'clear', login: l.text.toLowerCase(), t, until: g['ban-duration'] ? t + g['ban-duration'] * 1000 : 0 } : { site: 'twitch', kind: 'clearall', t };
+  // the chat's modes: all of them as you join, then each one that changes (-1: off; followers-only in minutes, 0 any follower)
+  if (l.cmd === 'ROOMSTATE'){
+    const modes = {};
+    if ('slow' in g) modes.slow = +g.slow || 0;
+    if ('followers-only' in g) modes.followers = +g['followers-only'] < 0 ? null : +g['followers-only'] || 0;
+    if ('subs-only' in g) modes.subs = g['subs-only'] === '1';
+    if ('emote-only' in g) modes.emotes = g['emote-only'] === '1';
+    return Object.keys(modes).length ? { site: 'twitch', kind: 'modes', modes, t } : null;
+  }
   if (l.cmd !== 'PRIVMSG' && l.cmd !== 'USERNOTICE') return null;
   let text = l.text, action = false;
   const me = /^\u0001ACTION ([\s\S]*)\u0001$/.exec(text); if (me){ text = me[1]; action = true; }
@@ -79,6 +88,12 @@ function parseTwitch(line){
 function twitchPin(frame){
   let p;
   try { p = JSON.parse(JSON.parse(frame).notification.pubsub); } catch { return null; }
+  // (and the chat's modes, all of them, as a moderator changes one)
+  if (p && p.type === 'updated_room'){
+    const r = (p.data && p.data.room && p.data.room.modes) || null; if (!r) return null;
+    return { site: 'twitch', kind: 'modes', t: Date.now(), modes: { slow: +r.slow_mode_duration_seconds || 0, followers: r.followers_only_duration_minutes == null ? null : +r.followers_only_duration_minutes,
+      subs: !!r.subscribers_only_mode_enabled, emotes: !!r.emote_only_mode_enabled, verified: !!r.verified_only_mode_enabled } };
+  }
   const d = p && p.data; if (!d || !d.id) return null;
   if (p.type === 'unpin-message') return { site: 'twitch', kind: 'unpin', id: String(d.id), t: Date.now() };
   if (p.type !== 'pin-message' || !d.message || !d.message.id) return null;
@@ -159,6 +174,12 @@ function parseKick(frame){
   try { p = JSON.parse(frame).push.pub.data; d = typeof p.data === 'string' ? JSON.parse(p.data) : p.data; } catch { return null; }
   if (!p || !d) return null;
   const ev = String(p.event || '').split('\\').pop();
+  // the chat's modes, all of them, as a moderator changes one
+  if (ev === 'ChatroomUpdatedEvent'){
+    const on = x => !!(x && x.enabled);
+    return { site: 'kick', kind: 'modes', t: Date.now(), modes: { slow: on(d.slow_mode) ? +d.slow_mode.message_interval || 0 : 0, followers: on(d.followers_mode) ? +d.followers_mode.min_duration || 0 : null,
+      subs: on(d.subscribers_mode), emotes: on(d.emotes_mode), verified: false } };
+  }
   if (ev === 'MessageDeletedEvent'){
     const target = d.message && d.message.id; if (!target) return null;
     const out = { site: 'kick', kind: 'delete', target, t: Date.now() };
@@ -259,12 +280,12 @@ const KNOWN = {
   kick: { ChatMessageEvent: 'a message', 'ChatMessageEvent:reply': 'a reply', MessageDeletedEvent: 'a message deleted', UserBannedEvent: 'a ban or timeout',
     UserUnbannedEvent: 'a ban lifted', ChatroomClearEvent: 'the chat cleared', RewardRedeemedEvent: 'a reward redeemed', KicksGifted: 'Kicks sent',
     GiftedSubscriptionsEvent: 'gifted subs', LuckyUsersWhoGotGiftSubscriptionsEvent: 'gifted subs', SubscriptionEvent: 'a sub', ChannelSubscriptionEvent: 'a sub',
-    StreamHostEvent: 'a raid', PinnedMessageCreatedEvent: 'a pin', PinnedMessageDeletedEvent: 'a pin taken down' },
+    StreamHostEvent: 'a raid', PinnedMessageCreatedEvent: 'a pin', PinnedMessageDeletedEvent: 'a pin taken down', ChatroomUpdatedEvent: 'the chat’s modes (above the box)' },
   twitch: { PRIVMSG: 'a message', 'PRIVMSG:reply': 'a reply', 'PRIVMSG:bits': 'a cheer', 'PRIVMSG:reward': 'a reward redeemed', 'PRIVMSG:highlighted-message': 'a highlighted message',
     'USERNOTICE:sub': 'a sub', 'USERNOTICE:resub': 'a resub', 'USERNOTICE:subgift': 'a gifted sub', 'USERNOTICE:submysterygift': 'gifted subs', 'USERNOTICE:raid': 'a raid',
     'USERNOTICE:announcement': 'an announcement', 'USERNOTICE:viewermilestone': 'a watch streak', 'USERNOTICE:giftpaidupgrade': 'a gifted sub kept going',
     'USERNOTICE:primepaidupgrade': 'a Prime sub kept going', 'USERNOTICE:bitsbadgetier': 'a bits badge', CLEARMSG: 'a message deleted', 'CLEARCHAT:timeout': 'a timeout',
-    'CLEARCHAT:ban': 'a ban', 'CLEARCHAT:all': 'the chat cleared', 'hermes:pin-message': 'a pin', 'hermes:unpin-message': 'a pin taken down' },
+    'CLEARCHAT:ban': 'a ban', 'CLEARCHAT:all': 'the chat cleared', 'hermes:pin-message': 'a pin', 'hermes:unpin-message': 'a pin taken down', ROOMSTATE: 'the chat’s modes (above the box)', 'hermes:updated_room': 'the chat’s modes (above the box)' },
   youtube: { 'addChatItemAction:liveChatTextMessageRenderer': 'a message', 'addChatItemAction:liveChatPaidMessageRenderer': 'a Super Chat',
     'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
     removeChatItemAction: 'a message deleted', markChatItemsByAuthorAsDeletedAction: 'a ban or timeout',
@@ -278,12 +299,14 @@ const IGNORED = {
   kick: { PointsUpdated: 'your channel points', GoalProgressUpdateEvent: 'the channel’s goal bar', GiftsLeaderboardUpdated: 'the gift leaderboard',
     KicksLeaderboardUpdated: 'the Kicks leaderboard', NewSubscriberUpdatedEvent: 'the sub count (ChannelSubscriptionEvent is the sub)',
     NewActivityFeedEvent: 'the activity feed (the same subs and follows)', StopStreamBroadcast: 'the stream ending', StreamerIsLive: 'the stream starting',
-    PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)', PollUpdateEvent: 'a poll (Kick’s own panel)' },
+    GamificationWatchTimeGoalReached: 'your watch-time goal', PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)', PollUpdateEvent: 'a poll (Kick’s own panel)' },
   twitch: { CAP: 'the connection’s own', JOIN: 'the connection’s own', PART: 'the connection’s own', GLOBALUSERSTATE: 'the connection’s own (you)', USERSTATE: 'the connection’s own (you)',
-    ROOMSTATE: 'the chat’s modes', RECONNECT: 'the connection’s own', 'hermes:welcome': 'the connection’s own', 'hermes:authenticateResponse': 'the connection’s own',
+    RECONNECT: 'the connection’s own', 'hermes:welcome': 'the connection’s own', 'hermes:authenticateResponse': 'the connection’s own',
     'hermes:subscribeResponse': 'the connection’s own', 'hermes:unsubscribeResponse': 'the connection’s own', 'hermes:reconnect': 'the connection’s own',
     'hermes:points-earned': 'your channel points', 'hermes:claim-available': 'your bonus points', 'hermes:clips-leaderboard-update': 'the clips leaderboard',
-    'hermes:viewcount': 'the viewer count' },
+    'hermes:viewcount': 'the viewer count',
+    ...Object.fromEntries(['slow_on', 'slow_off', 'followers_on', 'followers_on_zero', 'followers_off', 'subs_on', 'subs_off', 'emote_only_on', 'emote_only_off', 'r9k_on', 'r9k_off']
+      .map(n => ['NOTICE:' + n, 'the chat’s modes (shown above the box)'])) },
   youtube: {}
 };
 // Why ALL leaves a kind out, or '' (Twitch's numbered replies are the connection's own too)

@@ -204,3 +204,44 @@ test('Chat events: the reader counts every kind its connection brings (named by 
   for (let i = 0; i < 40 && !sent.length; i++) await new Promise(r => setTimeout(r, 50));
   assert.deepEqual(Object.fromEntries(Object.entries(sent[0].k).map(([k, v]) => [k, v.n])), { 'addChatItemAction:liveChatTextMessageRenderer': 1, 'addBannerToLiveChatCommand:liveChatBannerRenderer': 1, removeChatItemAction: 1, 'replaceChatItemAction:liveChatPaidMessageRenderer': 1 });
 });
+
+test('the chat\'s modes and you there (modesAgent): Kick\'s chatroom and /me (its login), Twitch\'s chatSettings and you (its login), YouTube\'s words where its box would be', async t => {
+  const page = await openApp(t);
+  const got = await page.evaluate(async () => {
+    const asked = [], was = window.fetch, out = {};
+    document.cookie = 'session_token=tok1'; document.cookie = 'auth-token=tok2';
+    window.fetch = async (url, o = {}) => { url = String(url); asked.push(url.replace(/^https:\/\/gql.twitch.tv\/gql$/, 'gql') + ' ' + ((o.headers || {}).Authorization || '')); return { json: async () => {
+      if (/\/chatroom$/.test(url)) return { slow_mode: { enabled: true, message_interval: 5 }, followers_mode: { enabled: true, min_duration: 10 }, subscribers_mode: { enabled: false }, emotes_mode: { enabled: true } };
+      if (/\/me$/.test(url)) return { is_following: true, following_since: '2026-10-01T00:00:00Z', subscription: null, is_moderator: false, is_broadcaster: false, banned: null };
+      const q = JSON.parse(o.body).query;
+      if (/chatSettings/.test(q)) return { data: { user: { chatSettings: { slowModeDurationSeconds: null, followersOnlyDurationMinutes: 1440, isSubscribersOnlyModeEnabled: false, isEmoteOnlyModeEnabled: false, requireVerifiedAccount: true } } } };
+      return { data: { user: { self: { follower: null, subscriptionBenefit: { id: 's' }, isModerator: false, isVIP: true } }, currentUser: { login: 'metwitch' } } };
+    } }; };
+    out.kick = await window.modesAgent('kick', 'quietkoala');
+    out.twitch = await window.modesAgent('twitch', 'QuietKoala');
+    document.cookie = 'session_token=; max-age=0'; document.cookie = 'auth-token=; max-age=0';
+    out.kickOut = await window.modesAgent('kick', 'quietkoala');
+    out.twitchOut = await window.modesAgent('twitch', 'quietkoala');
+    out.none = [await window.modesAgent('kick', ''), await window.modesAgent('twitch', '')];
+    window.fetch = async () => { throw new Error('offline'); };
+    out.failed = await window.modesAgent('kick', 'quietkoala');
+    window.fetch = async () => ({ json: async () => ({ data: { user: null } }) });
+    out.noUser = await window.modesAgent('twitch', 'quietkoala');
+    window.fetch = was;
+    // YouTube: its box, or its words instead
+    const wrap = document.createElement('div'); wrap.id = 'yt-wrap'; document.body.append(wrap);
+    wrap.innerHTML = '<yt-live-chat-text-input-field-renderer><div id="input"></div></yt-live-chat-text-input-field-renderer>';
+    out.ytBox = await window.modesAgent('youtube');
+    wrap.innerHTML = '<yt-live-chat-restricted-participation-renderer>Subscribers-only mode.   Subscribe to chat</yt-live-chat-restricted-participation-renderer>';
+    out.ytSaid = await window.modesAgent('youtube');
+    wrap.innerHTML = ''; out.ytNone = await window.modesAgent('youtube'); wrap.remove();
+    return { out, asked };
+  });
+  const o = got.out;
+  assert.deepEqual(o.kick, { modes: { slow: 5, followers: 10, subs: false, emotes: true, verified: false }, me: { signedIn: true, follower: true, followedAt: Date.parse('2026-10-01T00:00:00Z'), sub: false, mod: false, vip: false, host: false, banned: false } });
+  assert.deepEqual(o.twitch, { modes: { slow: 0, followers: 1440, subs: false, emotes: false, verified: true }, me: { signedIn: true, follower: false, followedAt: 0, sub: true, mod: false, vip: true, host: false, banned: false } });
+  assert.deepEqual([o.kickOut.me, o.twitchOut.me], [{ signedIn: false }, { signedIn: false }], 'signed out: the modes, no you');
+  assert.deepEqual([o.none, o.failed, o.noUser], [[null, null], null, null]);
+  assert.deepEqual([o.ytBox, o.ytSaid, o.ytNone], [{ modes: {}, me: { signedIn: true } }, { blocked: 'Subscribers-only mode. Subscribe to chat' }, null]);
+  assert.deepEqual(got.asked.slice(0, 4), ['/api/v2/channels/quietkoala/chatroom ', '/api/v2/channels/quietkoala/me Bearer tok1', 'gql ', 'gql OAuth tok2']);
+});

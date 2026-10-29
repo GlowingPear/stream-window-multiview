@@ -7,7 +7,7 @@ import { sampleIn } from './event-samples.js';
 import { feedParse } from './feed-parse.js';
 import { autoTrFor } from './translate.js';
 import { wins } from '../core.js';
-import { feedAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
+import { feedAgent, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
 import { bellVars, mentMuted, mentOn, mentWords, myName, readChat } from '../panels/bell/bell.js';
@@ -76,6 +76,7 @@ function ingest(w, json, quiet = false){
     if (m.kind === 'delete' || m.kind === 'clear' || m.kind === 'clearall') return removed(f, view, m, w.channel);
     if (m.kind === 'unban') return unbanned(f, view, m, w.channel);
     if (m.kind === 'pin' || m.kind === 'unpin') return setPin(f, s, w.channel, m, quiet);
+    if (m.kind === 'modes') return setModes(w.channel, { modes: m.modes });
     m.ch = w.channel;
     if (m.giftTo && giftTo(f, m)) return;   // (one of the gifted subs announced just before: its name goes on that line)
     if (m.gift) m.gift.me = m.gift.to.some(r => r.login && r.login === meOn(m.site));
@@ -125,6 +126,61 @@ function giftTo(f, m){
   redrawLine(line);
   return true;
 }
+/* ---- the chats' modes: slow mode, followers only, subscribers only, … above the box, for the site it sends on ---- */
+const modesOf = new Map();   // channel -> { modes: { slow, followers, subs, emotes, verified }, me: { … }, blocked, until (slow mode: when you can send again) }
+function setModes(ch, r){
+  const was = modesOf.get(ch) || {};
+  modesOf.set(ch, { ...was, ...r, modes: { ...(was.modes || {}), ...(r.modes || {}) }, me: r.me || was.me });
+  const v = viewFor(streamerOf(ch)); if (v) renderCmp(v, v.w);
+}
+const modeDur = s => { const d = +(s / 86400).toFixed(1); return s < 60 ? `${s}s` : s < 3600 ? `${Math.round(s / 60)} min` : s < 86400 ? `${+(s / 3600).toFixed(1)} h` : `${d} day${d === 1 ? '' : 's'}`; };
+// What a chat's modes mean for you there: its chips, why you can't send (followers only, subscribers only, a ban), and
+// slow mode's wait after you sent. Moderators and the streamer (and Twitch's VIPs) aren't held to them.
+function chatRules(ch){
+  const st = modesOf.get(ch); if (!st) return { chips: [], block: '', wait: 0, free: false };
+  if (st.blocked) return { chips: [], block: st.blocked, wait: 0, free: false };
+  const m = st.modes || {}, me = st.me || {}, site = PLAT_NAME[platOf(ch)];
+  const free = !!(me.mod || me.host || me.vip || youMod(ch));
+  const chips = [
+    m.slow > 0 && { k: 'slow', t: `Slow ${modeDur(m.slow)}`, tip: `Slow mode: one message every ${modeDur(m.slow)}` },
+    m.followers != null && { k: 'followers', t: m.followers ? `Followers ${modeDur(m.followers * 60)}` : 'Followers only', tip: m.followers ? `Followers only: followed for at least ${modeDur(m.followers * 60)}` : 'Followers only' },
+    m.subs && { k: 'subs', t: 'Subscribers only', tip: 'Subscribers only' },
+    m.emotes && { k: 'emotes', t: 'Emotes only', tip: 'Emotes only: messages of emotes alone' },
+    m.verified && { k: 'verified', t: 'Verified only', tip: `Verified accounts only (${site} asks for a phone or email)` }].filter(Boolean);
+  let block = '';
+  if (me.banned) block = `You’re banned from this ${site} chat`;
+  else if (!free && me.signedIn){
+    const left = m.followers && me.followedAt ? m.followers * 60000 - (Date.now() - me.followedAt) : 0;
+    if (m.subs && !me.sub) block = `Subscribers only · subscribe on ${site} to chat`;
+    else if (m.followers != null && !me.follower) block = `Followers only · follow on ${site}${m.followers ? ` for ${modeDur(m.followers * 60)}` : ''} to chat`;
+    else if (left > 0) block = `Followers only · you can chat in ${modeDur(Math.ceil(left / 1000))}`;
+  }
+  const wait = !free && st.until ? Math.max(0, Math.ceil((st.until - Date.now()) / 1000)) : 0;
+  return { chips, block, wait, free, slow: m.slow || 0, me };
+}
+// The bar above the box: the send site's modes (yours to ignore as a mod), slow mode's countdown, or why you can't chat
+function renderModes(view, w){
+  const ch = sendSite(w), r = ch ? chatRules(ch) : { chips: [] }, bar = view.modes, p = ch && platOf(ch);
+  bar.hidden = !r.chips.length && !r.block && !r.wait;
+  if (bar.hidden) return;
+  const why = r.free && (r.me && r.me.host ? 'Your chat: they don’t apply to you' : r.me && r.me.vip && !r.me.mod ? 'You’re a VIP: they don’t apply to you' : 'You’re a moderator: they don’t apply to you');
+  bar.className = 'all-modes all-modes-' + p + (r.block ? ' blocked' : r.wait ? ' waiting' : '') + (r.free ? ' free' : '');
+  bar.replaceChildren(...[
+    r.block ? element('span', 'all-mb', element('i', { html: icon.lock }), element('span', null, r.block))
+      : r.wait ? element('span', { class: 'all-mw', style: { '--p': String(r.wait / Math.max(1, r.slow)) } }, element('i', { html: TIMER }), element('span', null, 'Slow mode · you can send in ', element('b', null, `${r.wait}s`)))
+      : '',
+    ...r.chips.filter(c => !(r.wait && c.k === 'slow')).map(c => element('span', { class: 'all-mc all-mc-' + c.k, title: c.tip }, c.t)),   // (counting down: that says it)
+    why && element('span', { class: 'all-mfree', title: why }, element('i', { html: icon.check }), r.me && r.me.host ? 'yours' : 'exempt')].filter(Boolean));
+  if (r.wait){ clearTimeout(view.modeT); view.modeT = setTimeout(() => { if (view.el.isConnected){ renderModes(view, w); syncSendB(view, w); } }, 250); }
+}
+// A message of yours went on a chat in slow mode: the wait starts
+function slowStart(ch){
+  const st = modesOf.get(ch), r = chatRules(ch);
+  if (!st || !r.slow || r.free) return;
+  st.until = Date.now() + r.slow * 1000;
+  const v = viewFor(streamerOf(ch)); if (v){ renderModes(v, v.w); syncSendB(v, v.w); }
+}
+
 // A line drawn again after something about it changed (a tag, its translation)
 function redrawLine(m){
   const view = viewFor(streamerOf(m.ch)), el = view && view.list.querySelector(`[data-key="${CSS.escape(m.site + ':' + m.id)}"]`);
@@ -344,6 +400,7 @@ function buildView(w){
   list.addEventListener('scroll', () => { if (list.scrollHeight - list.scrollTop - list.clientHeight < 60) more.hidden = true; });
   const filt = element('button', { type: 'button', class: 'all-filt', 'aria-label': 'What ALL shows', 'aria-haspopup': 'menu', html: FILTER, dataset: { cmd: 'all.filters' } });
   const fm = element('div', { class: 'pop all-lm all-fm', role: 'menu', 'aria-label': 'What ALL shows', hidden: true });
+  const modes = element('div', { class: 'all-modes', hidden: true, role: 'status', 'aria-live': 'polite' });
   const pick = element('button', { type: 'button', class: 'all-pick', dataset: { cmd: 'all.sendSite' }, 'aria-haspopup': 'menu' });
   const input = element('input', { type: 'text', class: 'all-in', autocomplete: 'off', spellcheck: true, maxlength: 500, dataset: { cmd: 'all.message' } });
   const menu = element('div', { class: 'pop all-menu', role: 'menu', hidden: true });
@@ -358,8 +415,8 @@ function buildView(w){
     onclick: () => { view.pinsShown = !view.pinsShown; renderPins(view); } });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, filt), pins, list, more, empty,
-    element('div', 'all-cmp', bar, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm);
-  const view = { el, list, empty, more, filt, fm, pins, pinChip, pinsShown: false, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
+    element('div', 'all-cmp', bar, modes, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm);
+  const view = { el, list, empty, more, filt, fm, modes, pins, pinChip, pinsShown: false, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
   closeOnOutside(fm, { button: filt });
   el.addEventListener('pointerdown', () => allSeen(w));
@@ -443,9 +500,11 @@ function stepSend(view, w, d){
 // The send button: in the send site's colour, there to press once there's something to send (a spinner while sending)
 function syncSendB(view, w){
   const b = view.sendB, ch = sendSite(w), p = ch && PLAT_NAME[platOf(ch)];
-  b.disabled = !p || !view.input.value.trim() || !!view.sending;
+  const r = ch ? chatRules(ch) : {};
+  b.disabled = !p || !view.input.value.trim() || !!view.sending || !!r.wait || !!r.block;
   b.classList.toggle('busy', !!view.sending);
-  b.title = view.sending ? 'Sending…' : p ? `Send on ${p} (Enter)` : 'No chat to send on right now';
+  b.classList.toggle('wait', !!r.wait); b.dataset.wait = r.wait ? String(r.wait) : '';
+  b.title = view.sending ? 'Sending…' : r.wait ? `Slow mode: ${r.wait}s` : p ? `Send on ${p} (Enter)` : 'No chat to send on right now';
 }
 function renderCmp(view, w){
   const ch = sendSite(w), p = ch && platOf(ch);
@@ -455,8 +514,12 @@ function renderCmp(view, w){
   renderLock(view, w);
   view.pick.title = view.lock ? `Locked to ${PLAT_NAME[p]} while ${LOCK_WHY[view.lock.kind]} (Esc unlocks)` : p ? `Sending on ${PLAT_NAME[p]} (Tab: the next site)` : 'No chat to send on right now';
   // Settings › Chat › Channel name in chat boxes: its text, as the sites' boxes say it (the picker beside it shows the site)
-  view.input.placeholder = !p ? 'No chat to send on right now' : chatBoxName(ch) || `Send a message on ${PLAT_NAME[p]}`;
-  view.input.disabled = !p;
+  // (its modes say why you can't chat there: that, instead of the name)
+  const rules = ch ? chatRules(ch) : null;
+  view.input.placeholder = !p ? 'No chat to send on right now' : rules.block || chatBoxName(ch) || `Send a message on ${PLAT_NAME[p]}`;
+  view.input.disabled = !p || !!rules.block;
+  view.el.classList.toggle('all-blocked', !!(rules && rules.block));
+  renderModes(view, w);
   view.input.maxLength = p === 'youtube' ? 200 : 500;
   view.el.dataset.send = p || '';
   syncSendB(view, w);
@@ -692,6 +755,9 @@ const sameText = (a, b) => a.replace(/\s+/g, ' ').trim().toLowerCase() === b.rep
 async function sendNow(view, w){
   let text = view.input.value.trim(); const ch = sendSite(w); if (!text || !ch) return;
   if (view.sending) return flash('Still sending the last one');
+  const rules = chatRules(ch);
+  if (rules.block) return flash(rules.block);
+  if (rules.wait) return flash(`Slow mode on ${PLAT_NAME[platOf(ch)]}: you can send in ${rules.wait}s`);
   const lock = view.lock, threaded = !!(lock && lock.kind === 'reply' && threads(ch));
   // a reply where the site has none from here: an @ of them, in front
   if (lock && lock.kind === 'reply' && !threaded && !new RegExp(`^@${lock.msg.login}\\b`, 'i').test(text)) text = `@${lock.msg.sender.replace(/^@/, '')} ${text}`;
@@ -709,11 +775,12 @@ async function deliver(view, w, p){
   else try { r = p.threaded ? await sender.reply(m, p.lock.msg.id, p.send || p.text, p.lock.msg.sender) : await sender.send(m, p.send || p.text); } catch { r = 'error'; }
   view.sending = false; syncSendB(view, w);
   if (p.state === 'seen') return;   // (its chat brought it back already)
-  if (r === 'sent'){ setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
+  if (r === 'sent'){ slowStart(p.ch); setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
   p.why = r === 'no-reply' ? `Couldn't start a reply on ${site}: the message may have scrolled out of its chat` : r === 'gone' ? `${site}'s chat isn't open`
     : (SEND_FAIL[r] || (x => `${x}'s chat didn't answer`))(site);
   setMine(p, 'failed');
   flash(`Not sent: ${p.why}`);
+  if (r === 'disabled' && m && m.view) askIn(m.view, `(${modesAgent})()`).then(x => { if (x) setModes(p.ch, x); }).catch(() => {});   // (why: its modes again)
 }
 // How you look in that chat: as in your last message there (name, colour, badges), else your name, the streamer's
 // badge in your own channel
@@ -794,6 +861,7 @@ function feedOn(w, on){
 function feedReady(w, view){ runIn(view, `(${feedAgent})();${FEED_ON(allOn(w))}`); sampleIn(view); w.feedOn = allOn(w); if (w.feedOn) pinsNow(w, view); }
 // A pin already up when ALL starts reading a chat: the sites send pins only as they're made, so it's asked for (quietly)
 function pinsNow(w, view){
+  askIn(view, `(${modesAgent})()`).then(r => { if (r && allOn(w)) setModes(w.channel, r); }).catch(() => {});
   askIn(view, `(${pinAgent})()`).then(batch => { if (batch && allOn(w)) ingest(w, JSON.stringify(batch), true); }).catch(() => {});
 }
 
@@ -827,9 +895,9 @@ function init(){
   store.watch(['mod'], () => { redrawAll(); wins.forEach(syncModBtn); });
   store.watch(['chatZoom'], () => wins.forEach(w => { if (w.allView) fitSize(w.allView); }));
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.pinAgent = pinAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.pinAgent = pinAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
-  window.allChat = { sender, modKnown, spamTag, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.allChat = { sender, modKnown, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
 export { allLooking, allOn, allTabFor, feedReady, init, modViewChs, openModViews, sendSite, setAll, setLock, spamTag };

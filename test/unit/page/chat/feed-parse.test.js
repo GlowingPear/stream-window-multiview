@@ -179,3 +179,21 @@ test('Twitch: a pin and its taking down, from its other connection (as Twitch se
   assert.deepEqual(parseTwitch(emote).msg.parts, [{ text: 'hi ' }, { emote: 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0', name: 'Kappa' }]);
   for (const f of ['{}', '{"notification":{"pubsub":"{\\"type\\":\\"viewcount\\",\\"data\\":{}}"}}', '{ not json']) assert.equal(parseTwitch(f), null, f);
 });
+
+test('the chats\' modes as they change: Twitch\'s ROOMSTATE (what changed) and its other connection\'s room, Kick\'s ChatroomUpdatedEvent (all of them)', async () => {
+  const { parseTwitch, parseKick } = await load();
+  assert.deepEqual(parseTwitch(TW({ 'emote-only': '0', 'followers-only': '-1', r9k: '0', 'room-id': '1', slow: '0', 'subs-only': '0' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')).modes,
+    { slow: 0, followers: null, subs: false, emotes: false }, 'as you join: all of them, off');
+  assert.deepEqual(parseTwitch(TW({ 'room-id': '1', slow: '30' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')).modes, { slow: 30 }, 'then only what changed');
+  assert.deepEqual(parseTwitch(TW({ 'followers-only': '10' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')).modes, { followers: 10 });
+  assert.deepEqual(parseTwitch(TW({ 'followers-only': '0', 'subs-only': '1', 'emote-only': '1' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')).modes, { followers: 0, subs: true, emotes: true });
+  assert.equal(parseTwitch(TW({ 'room-id': '1' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')), null);
+  const room = modes => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'updated_room', data: { room: { channel_id: '1', modes } } }) } });
+  assert.deepEqual(parseTwitch(room({ followers_only_duration_minutes: null, emote_only_mode_enabled: false, subscribers_only_mode_enabled: true, verified_only_mode_enabled: true, slow_mode_duration_seconds: 5 })),
+    { site: 'twitch', kind: 'modes', t: parseTwitch(room({})).t, modes: { slow: 5, followers: null, subs: true, emotes: false, verified: true } });
+  assert.equal(parseTwitch(JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'updated_room', data: {} }) } })), null);
+  const k = parseKick(JSON.stringify({ push: { channel: 'chatrooms.67706967.v2', pub: { data: { event: 'App\\Events\\ChatroomUpdatedEvent', data: JSON.stringify({ id: 67706967,
+    slow_mode: { enabled: true, message_interval: 5 }, subscribers_mode: { enabled: false }, followers_mode: { enabled: true, min_duration: 10 }, emotes_mode: { enabled: false },
+    advanced_bot_protection: { enabled: false, remaining_time: 0 }, account_age: { enabled: false, min_duration: 0 } }) } } } }));
+  assert.deepEqual([k.site, k.kind, k.modes], ['kick', 'modes', { slow: 5, followers: 10, subs: false, emotes: false, verified: false }]);
+});
