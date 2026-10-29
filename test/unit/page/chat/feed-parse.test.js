@@ -223,3 +223,21 @@ test('Twitch\'s moderation actions (to moderators): who did what to whom, how lo
   assert.equal(act('', []), null);
   assert.equal(parseTwitch(JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'moderation_action', data: { moderation_action: 'ban', args: [] } }) } })), null, 'without who did it');
 });
+
+test('Twitch: a watch streak is their message, highlighted, with how many streams; a reward redeemed without text and a shoutout are events; Twitch\'s own news is ignored, with why', async () => {
+  const { parseTwitch, ignoredWhy, KNOWN } = await load();
+  const streak = text => parseTwitch(TW({ 'display-name': 'Brightwick', login: 'brightwick', id: 'w1', 'msg-id': 'viewermilestone', 'msg-param-category': 'watch-streak', 'msg-param-value': '5', 'system-msg': 'Brightwick\\swatched\\s5\\sconsecutive\\sstreams' }, ':tmi.twitch.tv USERNOTICE #quietkoala' + (text ? ' :' + text : '')));
+  const w = streak('five in a row');
+  assert.deepEqual([w.kind, w.streak, w.parts, w.event, w.text], ['message', 5, [{ text: 'five in a row' }], undefined, undefined]);
+  assert.deepEqual([streak('').kind, streak('').parts], ['message', []], 'without words: still the line');
+  const hermes = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
+  const redemption = (extra = {}) => ({ redemption: { id: 'r1', user: { id: '9', login: 'tide', display_name: 'Tide' }, redeemed_at: '2026-10-29T07:21:55Z', reward: { title: 'Hydrate!', background_color: '#1D7C9F' }, ...extra } });
+  const r = parseTwitch(hermes('reward-redeemed', redemption()));
+  assert.deepEqual([r.kind, r.event, r.id, r.sender, r.text, r.redeem], ['event', 'reward', 'rw-r1', 'Tide', 'Tide redeemed Hydrate!', { title: 'Hydrate!', color: '#1D7C9F' }]);
+  assert.equal(parseTwitch(hermes('reward-redeemed', redemption({ user_input: 'hi' }))), null, 'with text: the chat\'s line (PRIVMSG) is it');
+  const so = parseTwitch(hermes('create', { shoutoutID: 's9', sourceLogin: 'quietkoala', targetLogin: 'novalynx', targetUserDisplayName: 'Novalynx' }));
+  assert.deepEqual([so.kind, so.event, so.text, so.shoutout], ['event', 'shoutout', 'quietkoala shouted out Novalynx', 'tw:novalynx']);
+  assert.deepEqual([KNOWN.twitch['hermes:reward-redeemed'], KNOWN.twitch['hermes:create']], ['a reward redeemed (without text)', 'a shoutout']);
+  for (const k of ['hermes:drop-progress', 'hermes:commercial', 'hermes:watch-streak', 'hermes:hype-train-start', 'hermes:mystery-gift-purchase', 'hermes:?']) assert.ok(ignoredWhy('twitch', k), k);
+});
+

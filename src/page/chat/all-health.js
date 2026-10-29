@@ -18,10 +18,10 @@ import { askIn, reloadView } from '../windows/view.js';
    working, with See it on … and Report for a fix; it's in Settings › Developer › Errors too. It clears itself once the
    site's part works again. */
 const CHECK_MS = 45000;
-const healthOf = new Map();   // channel -> { read, bad, raws, badRaws, sends, last, state: '' | 'retrying' | 'broken', what, why, since, hidden }
+const healthOf = new Map();   // channel -> { read, bad, raws, badRaws, sends, last, odd, sentAt, state: '' | 'retrying' | 'broken', what, why, since, hidden }
 const hOf = ch => {
   let h = healthOf.get(ch);
-  if (!h){ h = { read: 0, bad: 0, raws: [], badRaws: [], sends: [], last: null, state: '', what: '', why: '', since: 0, hidden: false }; healthOf.set(ch, h); }
+  if (!h){ h = { read: 0, bad: 0, raws: [], badRaws: [], sends: [], last: null, odd: 0, sentAt: 0, state: '', what: '', why: '', since: 0, hidden: false }; healthOf.set(ch, h); }
   return h;
 };
 const keep = (list, x, n) => { list.push(String(x).slice(0, 4000)); if (list.length > n) list.shift(); };
@@ -34,6 +34,7 @@ function noteRaw(ch, raw, ok){
 // A send's result: two failures in a row for the same reason (not the chat's own modes: chat/all-chat.js says those)
 function noteSend(ch, r, why){
   const h = hOf(ch);
+  h.sentAt = Date.now();
   if (r === 'sent'){ h.sends = []; if (h.what === 'send') healed(ch); return; }
   if (!/^(no-box|not-filled|not-sent|error)$/.test(r)) return;
   h.sends.push(r); if (h.sends.length > 5) h.sends.shift();
@@ -52,16 +53,26 @@ function healed(ch){
   Object.assign(h, { state: '', what: '', why: '', since: 0 });
   store.changed('allHealth');
 }
+// A chat page loaded (again): what it shows first is its history, which doesn't come over its connection: the next
+// check starts from there
+function chatLoaded(ch){ const h = hOf(ch); h.last = null; h.odd = 0; }
 // Every 45 seconds: each chat ALL reads, against its own page
 async function checkAll(){
   for (const w of wins.filter(o => o.kind === 'chat' && o.view && o.ready && o.feedOn)){
     const h = hOf(w.channel), site = PLAT_NAME[platOf(w.channel)];
     let p; try { p = await askIn(w.view, `(${lineProbe})()`); } catch { continue; }
-    const moved = h.last !== null && !!p && !!p.last && p.last !== h.last;
-    if (moved && !h.read && !h.bad){
-      if (h.state === ''){ h.state = 'retrying'; devError('chat', `ALL · ${site}`, `Read nothing while its chat had new messages: loading that chat again`); reloadView(w.view); }
-      else broke(w.channel, 'read', `ALL isn't reading ${site}'s messages: its chat has new ones`);
-    } else if (moved && h.bad >= 5 && h.bad > h.read) broke(w.channel, 'parse', `ALL can't make sense of ${site}'s messages (${h.bad} of the last ${h.bad + h.read})`);
+    const moved = h.last !== null && !!p && !!p.last && p.last !== h.last, quiet = moved && !h.read && !h.bad;   // (quiet: its chat moved, ALL read nothing)
+    h.odd = quiet ? h.odd + 1 : 0;
+    if (quiet){
+      // not for one check alone (a site's own line in its chat, a message drawn again, is no reason to load it again),
+      // nor while you've just sent there (loading it again would hold your message up)
+      if (h.odd >= 2 && Date.now() - h.sentAt > 60000){
+        h.odd = 0;
+        if (h.state === ''){ h.state = 'retrying'; devError('chat', `ALL · ${site}`, `Read nothing while its chat had new messages: loading that chat again`); reloadView(w.view); }
+        else broke(w.channel, 'read', `ALL isn't reading ${site}'s messages: its chat has new ones`);
+      }
+    }
+    else if (moved && h.bad >= 5 && h.bad > h.read) broke(w.channel, 'parse', `ALL can't make sense of ${site}'s messages (${h.bad} of the last ${h.bad + h.read})`);
     else if (h.read && h.what !== 'send') healed(w.channel);
     else if (h.read && h.state === 'retrying') h.state = '';
     h.last = p ? p.last : h.last; h.read = 0; h.bad = 0;
@@ -89,7 +100,7 @@ async function reportHealth(chs){
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   setInterval(() => { checkAll().catch(() => {}); }, CHECK_MS);
-  window.allHealth = { healthOf, noteRaw, noteSend, checkAll, broke, healed, reportHealth };   // for the tests
+  window.allHealth = { healthOf, noteRaw, noteSend, checkAll, broke, healed, reportHealth, chatLoaded };   // for the tests
 }
 
-export { healthState, init, noteRaw, noteSend, reportHealth };
+export { chatLoaded, healthState, init, noteRaw, noteSend, reportHealth };
