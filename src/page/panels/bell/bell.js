@@ -1,6 +1,7 @@
 import { alerts, playSound, wantNotify } from '../../alerts/alerts.js';
 import { revealChat, spamOpts } from '../../alerts/spam-alerts.js';
 import { SmvSpam } from '../../alerts/spam.js';
+import { allOn } from '../../chat/all-chat.js';
 import { $, ROLE, wins } from '../../core.js';
 import { addParsed } from '../../layout/placement.js';
 import { injectMention, pushMyName, renderMentions, renderNoteHistory } from './all-notifications.js';
@@ -8,6 +9,7 @@ import { SmvNotes } from './notifications.js';
 import { infoFor } from '../channels/channels.js';
 import { showHelp } from '../help/help.js';
 import { ignoreSender, renderSpamHist } from '../settings/alerts.js';
+import { nameOf } from '../../platforms/linked.js';
 import { PLAT_NAME, chLabel, chLabelP, platOf } from '../../platforms/platforms.js';
 import { element, esc } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -15,7 +17,7 @@ import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
-import { openStreamer } from '../../windows/frames.js';
+import { openStreamer, tabChannels } from '../../windows/frames.js';
 
 /* ---------- the notification centre: the toolbar bell ----------
    Chat mentions, likely spam, saved channels going live, raids and the app's own messages, in one list
@@ -69,19 +71,26 @@ const readChat = ch => readNotes(n => n.channel === ch && (SmvNotes.tabOf(n) ===
 const mentNameFor = ch => { const p = platOf(ch); return p === 'kick' ? myName : p === 'twitch' ? myTwitch : ''; };   // YouTube chat isn't covered
 const mentCovered = ch => /^(kick|twitch)$/.test(platOf(ch)) && !!(mentNameFor(ch) || mentWords.length);
 const mentAny = () => !!(myName || myTwitch || mentWords.length);
-function toggleChatMentions(ch){
-  if (mentMuted.has(ch)) mentMuted.delete(ch); else mentMuted.add(ch);
+// The chats a window's @ button is for: its chat, or with its ALL tab showing every chat of theirs ALL reads
+const atChannels = w => (w && allOn(w) ? tabChannels(w).filter(mentCovered) : w ? [w.channel] : []);
+// One chat's mentions on or off, or several (a window's ALL): all off unless they all were, then all on
+function toggleChatMentions(chs){
+  chs = [].concat(chs).filter(Boolean); if (!chs.length) return;
+  const off = !chs.every(c => mentMuted.has(c));
+  chs.forEach(c => { if (off) mentMuted.add(c); else mentMuted.delete(c); });
   settings.set('mentMuted', [...mentMuted]);
-  wins.forEach(x => { if (x.kind === 'chat' && x.channel === ch){ syncAtBtn(x); if (x.ready) injectMention(x); } });
-  flash(mentMuted.has(ch) ? `Mentions off for ${chLabel(ch)}'s chat` : `Mentions on for ${chLabel(ch)}'s chat`);
+  wins.forEach(x => { if (x.kind === 'chat' && (chs.includes(x.channel) || atChannels(x).some(c => chs.includes(c)))){ syncAtBtn(x); if (x.ready && chs.includes(x.channel)) injectMention(x); } });
+  const who = chs.length > 1 ? `${nameOf(chs[0])}'s chats` : `${chLabel(chs[0])}'s chat`;
+  flash(off ? `Mentions off for ${who}` : `Mentions on for ${who}`);
 }
 function syncAtBtn(w){
   const b = w.el && w.el.querySelector('[data-a=at]'); if (!b) return;
-  const muted = mentMuted.has(w.channel);
-  b.hidden = !(mentOn && mentCovered(w.channel));
+  const chs = atChannels(w), all = chs.length > 1, muted = !!chs.length && chs.every(c => mentMuted.has(c));
+  b.hidden = !(mentOn && chs.some(mentCovered));
   b.innerHTML = muted ? icon.atOff : icon.at;
   b.classList.toggle('off', muted);
-  b.title = muted ? 'Mentions are off for this chat. Click to turn them on' : 'Mentions are on for this chat. Click to turn them off';
+  b.title = all ? (muted ? 'Mentions are off for their chats in ALL. Click to turn them on' : 'Mentions are on for their chats in ALL. Click to turn them off')
+    : muted ? 'Mentions are off for this chat. Click to turn them on' : 'Mentions are on for this chat. Click to turn them off';
 }
 function updateBellBtn(){
   wins.forEach(syncAtBtn);
@@ -336,6 +345,7 @@ function seeBell(){
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
+  window.chatMentions = { atChannels, toggleChatMentions };   // for the tests (the @ button is the desktop app's)
   myName = settings.text('myName');
   myTwitch = settings.text('myTwitch');
   mentOn = settings.flag('mentOn', true);
@@ -353,7 +363,7 @@ function init(){
   store.watch('notes', () => renderBell());
 }
 
-export { addNote, bell, bellCount, bellVars, cleanParts, dndOn, dndT, dndUntil, drawNotes, dropNotes, EMPTY, init,
-  mentAny, mentBodyNodes, mentCovered, mentMuted, mentNameFor, mentOn, mentWords, myName, myTwitch, nh, noteActs,
-  noteRow, notes, partsText, readChat, readNotes, renderBell, saveNotes, seeBell, setMyName, spamWhy, subName,
-  syncAtBtn, TAB_NAME, timeAgo, toggleChatMentions, updateBellBtn };
+export { addNote, atChannels, bell, bellCount, bellVars, cleanParts, dndOn, dndT, dndUntil, drawNotes, dropNotes,
+  EMPTY, init, mentAny, mentBodyNodes, mentCovered, mentMuted, mentNameFor, mentOn, mentWords, myName, myTwitch, nh,
+  noteActs, noteRow, notes, partsText, readChat, readNotes, renderBell, saveNotes, seeBell, setMyName, spamWhy,
+  subName, syncAtBtn, TAB_NAME, timeAgo, toggleChatMentions, updateBellBtn };

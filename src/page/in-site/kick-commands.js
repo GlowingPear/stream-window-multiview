@@ -58,4 +58,4 @@ function init(){
   window.kickCmdAgent = kickCmdAgent; window.kickCmdHeard = kickCmdHeard; window.KICK_PAGE_CMDS = KICK_PAGE_CMDS;
 }
 
-export { init, KICK_CMD_JS };
+export { init, KICK_CMD_JS, KICK_PAGE_CMDS, kickCmdHeard };

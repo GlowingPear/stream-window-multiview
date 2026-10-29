@@ -131,6 +131,44 @@ test('ALL: off in Settings › Linked channels, no tab; and a new message while 
   assert.equal(await page.locator('.all-view').count(), 0);
 });
 
+test('ALL: new messages in its hidden site tabs count as read while it shows (Count new messages in chats you can\'t see); /poll on Kick opens in Kick\'s own chat', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]', chatCounts: '1' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(() => window.chatNew('tw:quietkoala', 3));
+  assert.equal(await page.evaluate(() => window.chatNewFor('tw:quietkoala')), 0, 'ALL shows them');
+  await page.evaluate(() => window.allChat.setAll(window.openWins().find(o => o.channel === 'quietkoala'), false));
+  await page.evaluate(() => window.chatNew('tw:quietkoala', 3));
+  assert.equal(await page.evaluate(() => window.chatNewFor('tw:quietkoala')), 3, 'ALL off: its hidden tab counts');
+  // Kick's /poll from ALL: Kick's own tab, its poll form there; nothing sent
+  await page.evaluate(() => window.allChat.setAll(window.openWins().find(o => o.channel === 'quietkoala'), true));
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
+    window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push(text); return 'sent'; }; }, LIVE);
+  await page.fill('.all-in', '/poll Best map?'); await page.keyboard.press('Enter');
+  await page.waitForSelector('.kpoll');
+  assert.deepEqual(await tabs(page), ['ALL', 'K*', 'T', 'Y']);
+  assert.equal(await page.$eval('.kpoll [name="subject"]', e => e.value), 'Best map?');
+  assert.deepEqual(await page.evaluate(() => window.__sends), []);
+});
+
+test('ALL: the window\'s @ button (the desktop app\'s) turns mentions off and on for every chat of theirs it reads; only its own chat with ALL off', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const at = () => page.evaluate(() => window.chatMentions.atChannels(window.openWins().find(o => o.channel === 'quietkoala')));
+  const press = () => page.evaluate(() => window.chatMentions.toggleChatMentions(window.chatMentions.atChannels(window.openWins().find(o => o.channel === 'quietkoala'))));
+  const muted = () => page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.mentMuted') || '[]').sort());
+  assert.deepEqual((await at()).sort(), ['quietkoala', 'tw:quietkoala'], 'YouTube isn\'t covered by mentions');
+  await press();
+  assert.deepEqual(await muted(), ['quietkoala', 'tw:quietkoala']);
+  assert.match(await page.textContent('#msg'), /Mentions off for quietkoala's chats/);
+  await page.evaluate(() => window.chatMentions.toggleChatMentions('tw:quietkoala'));   // one of them on again (the search box's)
+  await press();
+  assert.deepEqual(await muted(), ['quietkoala', 'tw:quietkoala'], 'not all off: all off');
+  await press();
+  assert.deepEqual(await muted(), []);
+  await page.evaluate(() => window.allChat.setAll(window.openWins().find(o => o.channel === 'quietkoala'), false));
+  assert.deepEqual(await at(), ['quietkoala'], 'ALL off: its own chat');
+});
+
 test('ALL: on or off for each linked streamer (their card), over Settings › Linked channels', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');

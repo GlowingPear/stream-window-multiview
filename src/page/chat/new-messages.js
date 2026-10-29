@@ -1,7 +1,9 @@
+import { allOn } from './all-chat.js';
 import { ROLE, wins } from '../core.js';
 import { DESKTOP } from '../shared/env.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
+import { leaderOf, tabChannels } from '../windows/frames.js';
 import { askIn } from '../windows/view.js';
 
 /* ---- New messages in the chats you can't see (Settings > Chat > Count new messages in chats you can't see, off
@@ -19,6 +21,9 @@ function clearNew(w){ if (unread.has(w)){ unread.delete(w); store.changed('unrea
 function forgetNew(){ unread = new WeakMap(); store.changed('unread'); }
 // Can you see this chat now: shown, in the window, and not under another window at the points tried
 function canSee(w){
+  // a hidden tab whose messages its window's ALL tab shows (chat/all-chat.js): seen when that window is
+  const lead = w && w.frame && w.hiddenTab ? leaderOf(w) : null;
+  if (lead && lead !== w && allOn(lead) && tabChannels(lead).includes(w.channel)) return canSee(lead);
   if (!w || !w.el || !w.el.isConnected || !w.el.offsetParent || getComputedStyle(w.el).visibility === 'hidden') return false;
   const r = w.el.getBoundingClientRect();
   if (r.width < 20 || r.height < 20) return false;
@@ -68,7 +73,7 @@ function init(){
   }
   // changed in the other window
   settings.onChange(['chatCounts'], () => { countsOn = settings.flag('chatCounts', false); if (sw) sw.checked = countsOn; forgetNew(); });
-  window.chatNew = (ch, n) => addNew(wins.find(w => w.kind === 'chat' && w.channel === ch), n);   // for the tests
+  window.chatNew = (ch, n) => addNew(wins.find(w => w.kind === 'chat' && w.channel === ch), n); window.chatNewFor = newFor;   // for the tests
 }
 
 export { clearNew, init, newCount, newFor };
