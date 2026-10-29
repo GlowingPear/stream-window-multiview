@@ -492,15 +492,21 @@ function twitchTip(p, title){
 const GIFT_TIERS = [1, 5, 10, 25, 50, ...Array.from({ length: 18 }, (_, i) => 100 + i * 50), 1000, 2000, 3000, 4000, 5000];
 const kickIconKey = p => p.icon || (p.set === 'sub_gifter' ? 'Gift' + GIFT_TIERS.filter(n => n <= Math.max(1, +p.v || 1)).pop() : p.set);
 // A Kick icon kept as shapes and colours only: its drawing elements and their drawing attributes (no scripts, links, styles
-// or handlers), so nothing from the site's page runs here
-const SVG_TAGS = new Set(['svg', 'g', 'path', 'circle', 'ellipse', 'rect', 'polygon', 'polyline', 'line', 'defs', 'lineargradient', 'radialgradient', 'stop', 'clippath', 'mask']);
+// or handlers), so nothing from the site's page runs here. A shape it draws again (<use>, as its OG and moderator badges
+// do) only from inside the icon (#id)
+const SVG_TAGS = new Set(['svg', 'g', 'path', 'circle', 'ellipse', 'rect', 'polygon', 'polyline', 'line', 'defs', 'lineargradient', 'radialgradient', 'stop', 'clippath', 'mask', 'use']);
+const SVG_HREF = /^(xlink:)?href$/;
+const ownRef = use => { const refs = [...use.attributes].filter(a => SVG_HREF.test(a.name.toLowerCase())); return refs.length > 0 && refs.every(a => /^#[\w-]+$/.test(a.value.trim())); };
 const SVG_ATTRS = /^(viewbox|xmlns|d|fill|stroke|stroke-width|stroke-linecap|stroke-linejoin|stroke-miterlimit|fill-rule|clip-rule|fill-opacity|stroke-opacity|opacity|cx|cy|r|rx|ry|x|y|x1|x2|y1|y2|width|height|points|transform|id|offset|stop-color|stop-opacity|gradientunits|gradienttransform|clip-path|mask)$/;
 function cleanSvg(text){
-  const doc = new DOMParser().parseFromString(String(text || ''), 'image/svg+xml'), root = doc.documentElement;
+  // (the site's page writes xlink:href without saying what xlink is, which an SVG file must)
+  const src = String(text || '').replace(/^(\s*<svg\b)(?![^>]*\sxmlns:xlink=)(?=[\s\S]*\sxlink:)/, '$1 xmlns:xlink="http://www.w3.org/1999/xlink"');
+  const doc = new DOMParser().parseFromString(src, 'image/svg+xml'), root = doc.documentElement;
   if (!root || root.nodeName.toLowerCase() !== 'svg' || doc.querySelector('parsererror')) return '';
   const walk = el => {
-    [...el.children].forEach(c => { if (SVG_TAGS.has(c.nodeName.toLowerCase())) walk(c); else c.remove(); });
-    [...el.attributes].forEach(a => { if (!SVG_ATTRS.test(a.name.toLowerCase()) || /^\s*(javascript|data):/i.test(a.value) || (/url\(/i.test(a.value) && !/^url\(#[\w-]+\)$/.test(a.value.trim()))) el.removeAttribute(a.name); });
+    [...el.children].forEach(c => { if (SVG_TAGS.has(c.nodeName.toLowerCase()) && (c.nodeName.toLowerCase() !== 'use' || ownRef(c))) walk(c); else c.remove(); });
+    [...el.attributes].forEach(a => { if (SVG_HREF.test(a.name.toLowerCase())){ if (!/^#[\w-]+$/.test(a.value.trim())) el.removeAttribute(a.name); return; }   // (from inside the icon only)
+      if (!SVG_ATTRS.test(a.name.toLowerCase()) || /^\s*(javascript|data):/i.test(a.value) || (/url\(/i.test(a.value) && !/^url\(#[\w-]+\)$/.test(a.value.trim()))) el.removeAttribute(a.name); });
   };
   walk(root);
   ['width', 'height'].forEach(a => root.removeAttribute(a));   // (its size: ALL's)

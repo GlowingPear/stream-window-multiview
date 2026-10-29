@@ -50,6 +50,21 @@ test('Kick: badges in Kick\'s order (sort_order), named as Kick names them; a le
   [{ url: 'https://ext.cdn.kick.com/chat/badges/24.png', title: 'Level 24', icon: 'Level24' }, { set: 'founder', v: '1', title: 'Founder' }, { set: 'sub_gifter', v: '2', title: 'Sub Gifter' }, { set: 'subscriber', v: '2' }]);
 });
 
+test('Kick: only the badges its chat shows: taken off ones left out, one without sort_order last, the first 4 only (a sub badge behind 4 others isn\'t worn)', async () => {
+  const { kickPics } = (await load());
+  const pic = (name, o, more = {}) => ({ name, badge_type: 'global', image_url: `https://ext.cdn.kick.com/chat/badges/${name}.png`, selected: true, sort_order: o, ...more });
+  // (as Kick sends it: OG and an 11-month sub, a level and two picked badges)
+  assert.deepEqual(kickPics({ badges: [{ type: 'og', text: 'OG', sort_order: 7 }, { type: 'subscriber', text: 'Subscriber', count: 11, sort_order: 9 }],
+    badges_v2: [pic('Flyby', 4), pic('level', 1, { metadata: { level: 68 } }), pic('WoW', 4)] }),
+  [{ url: 'https://ext.cdn.kick.com/chat/badges/level.png', title: 'Level 68', icon: 'Level68' }, { url: 'https://ext.cdn.kick.com/chat/badges/Flyby.png', title: 'Flyby' },
+    { url: 'https://ext.cdn.kick.com/chat/badges/WoW.png', title: 'WoW' }, { set: 'og', v: '1', title: 'OG' }], 'Kick\'s 4: not the sub badge');
+  assert.deepEqual(kickPics({ badges: [{ type: 'og', text: 'OG', active: false, sort_order: 7 }, { type: 'subscriber', count: 3, active: true, sort_order: 9 }, { type: 'vip', text: 'VIP' }],
+    badges_v2: [pic('Ghost', 4, { selected: false }), pic('NoOrder', undefined), pic('Rare', 2, { image_url: 'http://not-https/x.png' })] }),
+  [{ set: 'subscriber', v: '3' }, { set: 'vip', v: '1', title: 'VIP' }, { url: 'https://ext.cdn.kick.com/chat/badges/NoOrder.png', title: 'NoOrder' }],
+    'taken off: left out; without sort_order: last, as they came; one without a usable picture counts towards the 4 but isn\'t drawn');
+  assert.deepEqual(kickPics({}), []);
+});
+
 test('Kick: messages and replies from its live connection, emotes and badges', async () => {
   const { parseKick } = await load();
   const sender = { id: 7, username: 'Lowtide', slug: 'lowtide', identity: { color: '#7FD2FF', badges: [{ type: 'subscriber', count: 41 }, { type: 'moderator' }, { type: 'og' }, { type: 'unknown' }],
@@ -57,7 +72,7 @@ test('Kick: messages and replies from its live connection, emotes and badges', a
       { name: 'Ghost', image_url: 'https://ext.cdn.kick.com/chat/badges/ghost.png', selected: false }] } };
   const m = parseKick(KF('ChatMessageEvent', { id: 'k1', content: 'nice [emote:37226:KEKW]!', type: 'message', created_at: '2026-10-28T04:27:10+00:00', sender, metadata: { message_ref: '1' } }));
   assert.deepEqual(m, { site: 'kick', kind: 'message', id: 'k1', t: Date.parse('2026-10-28T04:27:10+00:00'), sender: 'Lowtide', login: 'lowtide', color: '#7FD2FF', userId: '7',
-    badges: ['sub', 'mod', 'og'], pics: [{ set: 'subscriber', v: '41' }, { set: 'moderator', v: '1' }, { set: 'og', v: '1' }, { url: 'https://ext.cdn.kick.com/chat/badges/founder.png', title: 'kick_founder22' }, { url: 'https://ext.cdn.kick.com/chat/badges/46.png', title: 'level' }],
+    badges: ['sub', 'mod', 'og'], pics: [{ set: 'subscriber', v: '41' }, { set: 'moderator', v: '1' }, { set: 'og', v: '1' }, { set: 'unknown', v: '1' }],   // (Kick's first 4)
     parts: [{ text: 'nice ' }, { emote: 'https://files.kick.com/emotes/37226/fullsize', name: 'KEKW' }, { text: '!' }] });
   const r = parseKick(KF('ChatMessageEvent', { id: 'k2', content: 'yes', type: 'reply', sender, thread_parent_id: 'k0',
     metadata: { original_sender: { id: 1, username: 'You' }, original_message: { id: 'k0', content: 'gg [emote:1:Pog]' } } }));

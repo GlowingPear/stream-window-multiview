@@ -233,6 +233,13 @@ test('ALL: the sites\' own badges (a channel\'s sub badge for their months, Kick
   assert.deepEqual(cleaned.keys, ['Gift25', 'founder', 'Level24']);
   assert.equal(cleaned.ran, 0);
   assert.deepEqual(await giftyBadges(), ['al-bk Level 24', 'al-bk Founder', 'al-bk Sub Gifter'], 'Kick\'s own icons, in its order');
+  // Kick's OG icon draws its shapes twice (<use>), and its page writes xlink:href without saying what xlink is: kept, from
+  // inside the icon only
+  const og = await page.evaluate(() => {
+    window.allChat.gotKickIcons({ og: '<svg viewBox="0 0 20 20" data-ds-icon="OGBadge"><use xlink:href="#OGBadge__a" fill="url(#OGBadge__b)"/><use href="#x" xlink:href="https://evil/x.svg#a"/><defs><linearGradient id="OGBadge__b"><stop stop-color="#00fff2"/></linearGradient><path id="OGBadge__a" d="M1 1h4v4H1z"/></defs></svg>' });
+    return window.allChat.kickIcons.get('og');
+  });
+  assert.equal(og, '<svg viewBox="0 0 20 20"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#OGBadge__a" fill="url(#OGBadge__b)"/><defs><linearGradient id="OGBadge__b"><stop stop-color="#00fff2"/></linearGradient><path id="OGBadge__a" d="M1 1h4v4H1z"/></defs></svg>');
   // Twitch's own kept once: a second Twitch chat's answer without them still finds them
   await page.evaluate(() => window.allChat.gotBadges('tw:quietkoala', { twitch: { own: {} } }));
   assert.deepEqual((await badges())[0], ['icon sub', 'img #mod Moderator']);
