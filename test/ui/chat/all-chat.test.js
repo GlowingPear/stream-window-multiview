@@ -579,6 +579,62 @@ test('ALL: as it starts reading a chat it asks for a pin already up (into the pi
   assert.ok(Math.abs(menu.right - pill.right) < 8, `lined up with it (${pill.right} / ${menu.right})`);
 });
 
+test('ALL honours the chats\' settings: 7TV, BetterTTV and FrankerFaceZ emotes in messages; words you watch for (not in a muted chat); spam alerts\' tag; translating; new emotes glowing; Developer tools\' message data', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]', mentWords: JSON.stringify(['giveaway']), mentMuted: JSON.stringify(['quietkoala']), newEmotes: '1' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(() => {
+    const img = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';   // (a real one: a broken picture shows its name)
+    window.__seen = []; window.__tr = [];
+    window.kmv = { ...(window.kmv || {}),
+      emotesPick: async ch => (ch === 'tw:quietkoala' ? [{ id: 'twitch-global', label: 'Twitch', emotes: [{ name: 'Kappa', url: img, send: 'Kappa' }] },
+        { id: '7tv', label: '7TV', emotes: [{ name: 'catJAM', url: img, send: 'catJAM' }] }, { id: 'bttv', label: 'BTTV', emotes: [{ name: 'monkaS', url: img, send: 'monkaS' }] }] : []),
+      emotesSeen: async (ch, name) => { window.__seen.push([ch, name]); },
+      translate: async texts => { window.__tr.push(...texts); return texts.map(x => (/hola/.test(x) ? { text: 'hello friends', from: 'es' } : null)); } };
+    window.freshEmotes.set('tw:quietkoala', new Set(['catJAM']));
+  });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'drift', id: 'a' }, ':drift!d@d PRIVMSG #quietkoala :warming up')] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'drift', id: 'b' }, ':drift!d@d PRIVMSG #quietkoala :catJAM this song monkaS'),
+    TW({ 'display-name': 'lowtide', id: 'c' }, ':lowtide!l@l PRIVMSG #quietkoala :is the GIVEAWAY still on?')] });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatMessageEvent', { id: 'k1', content: 'giveaway when', type: 'message', sender: { id: 3, username: 'brightwick', slug: 'brightwick', identity: {} } })] });
+  // add-on emotes: in their words, with where they come from; a new one glows until pointed at
+  await page.waitForSelector('.all-list img[alt=monkaS]');
+  assert.deepEqual(await page.$$eval('.all-list [data-key="twitch:b"] img', l => l.map(i => [i.alt, i.title, i.classList.contains('al-new')])), [['catJAM', 'catJAM · new', true], ['monkaS', 'monkaS · BetterTTV', false]]);
+  await page.hover('.all-list [data-key="twitch:b"] img[alt=catJAM]');
+  await page.waitForFunction(() => window.__seen.length === 1);
+  assert.deepEqual(await page.evaluate(() => window.__seen), [['tw:quietkoala', 'catJAM']]);
+  assert.equal(await page.$eval('.all-list [data-key="twitch:b"] img[alt=catJAM]', i => i.classList.contains('al-new')), false);
+  // a word you watch for: marked as to you, the word its tag; not in a chat with mentions muted
+  assert.deepEqual(await lines(page).then(l => l.slice(-2)), ['al-m al-me | Tlowtide: is the GIVEAWAY still on?GIVEAWAY', 'al-m | Kbrightwick: giveaway when']);
+  // spam alerts' tag, where you moderate (alerts/spam-alerts.js finds it in the chat; the same message here)
+  await page.evaluate(() => window.allChat.spamTag('tw:quietkoala', 'Drift', 'catJAM  this song monkaS', 'Repeats the same message · new chatter', false));
+  assert.deepEqual(await page.$eval('.all-list [data-key="twitch:b"]', e => [e.classList.contains('al-spam'), e.querySelector('.al-tag-spam').textContent, e.querySelector('.al-tag-spam').title]), [true, 'Spam?', 'Repeats the same message · new chatter']);
+  await page.evaluate(() => window.allChat.spamTag('tw:quietkoala', 'nobody', 'x', 'y', true));
+  // translating: from the line's menu, then with Translate new messages in every chat; the badge shows the original
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'sol', id: 'd' }, ':sol!s@s PRIVMSG #quietkoala :hola amigos')] });
+  await page.hover('.all-list [data-key="twitch:d"]'); await page.click('.all-list [data-key="twitch:d"] [data-cmd="all.more"]');
+  await page.click('.all-lm [data-cmd="all.menuTranslate"]');
+  await page.waitForSelector('.all-list [data-key="twitch:d"] .al-tag-tr');
+  assert.equal(await page.textContent('.all-list [data-key="twitch:d"] .al-txt'), 'hello friends');
+  assert.equal(await page.textContent('.all-list [data-key="twitch:d"] .al-tag-tr'), 'Translated · ES');
+  await page.click('.all-list [data-key="twitch:d"] .al-tag-tr');
+  assert.equal(await page.textContent('.all-list [data-key="twitch:d"] .al-txt'), 'hola amigos');
+  assert.equal(await page.textContent('.all-list [data-key="twitch:d"] .al-tag-tr'), 'Original · ES');
+  await page.evaluate(() => { localStorage.setItem('kickMultiview.translateAll', '1'); });
+  await page.evaluate(async () => { const { setTrAll } = await import('./page/chat/translate.js'); setTrAll(true); });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'sol', id: 'e' }, ':sol!s@s PRIVMSG #quietkoala :hola otra vez'), TW({ 'display-name': 'sol', id: 'f' }, ':sol!s@s PRIVMSG #quietkoala :ok')] });
+  await page.waitForSelector('.all-list [data-key="twitch:e"] .al-tag-tr');
+  assert.deepEqual(await page.evaluate(() => window.__tr), ['hola amigos', 'hola otra vez'], 'only words are asked for (not "ok")');
+  // Developer tools: Copy message data (what ALL made of it, and the site's own line)
+  await page.evaluate(() => { window.devTools.setDev(true); window.__copied = ''; navigator.clipboard.writeText = async t => { window.__copied = t; }; });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'zed', id: 'g' }, ':zed!z@z PRIVMSG #quietkoala :check this')] });
+  await page.hover('.all-list [data-key="twitch:g"]'); await page.click('.all-list [data-key="twitch:g"] [data-cmd="all.more"]');
+  await page.click('.all-lm [data-cmd="all.menuData"]');
+  await page.waitForFunction(() => window.__copied);
+  const data = JSON.parse(await page.evaluate(() => window.__copied));
+  assert.equal(data.sender, 'zed'); assert.match(data.raw, /PRIVMSG #quietkoala :check this$/);
+  await page.evaluate(() => window.devTools.setDev(false));
+});
+
 test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley opens its picker; picking one locks the box to that site and sends it as the site writes it', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
