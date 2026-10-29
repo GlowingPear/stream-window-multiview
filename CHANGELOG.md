@@ -2,7 +2,39 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.3.30 (current)
+## 0.4.0 (current)
+- Tab only switches to a linked site that's live
+- One chat bot list for mentions and spam alerts, and a linked streamer's own bots
+- ALL: a linked streamer's Kick, Twitch and YouTube chats as one list
+- ALL: subs, gifts, raids and Super Chats as one short line, with See it on …
+- ALL: send on any of the streamer's sites from one box
+- ALL: reply, @ and open someone's card from the merged chat
+- ALL: mod actions from the merged chat, where you're a mod
+- ALL: the mod button opens each site's mod view, or all of them
+- ALL: Kick's messages reach it, your sends show (and can't send twice), offline Kick and Twitch chats
+- ALL: ⇧Tab steps through the window's tabs (ALL › K › T), offline Kick and Twitch too
+- ALL: what moderators do (struck with who and how long for mods; gone for everyone else; a cleared chat)
+- ALL: Kick's rewards redeemed, Kicks, subs and raids; Twitch's channel points messages
+- ALL: pins share one strip (Kick's and YouTube's); Kick's unbans
+- ALL: emotes: :name suggestions and the picker, per site, with the lock
+- ALL: Twitch replies thread (the pointer over the line in its hidden chat, Twitch's own Reply)
+- ALL: Twitch's pins in the pins strip
+- ALL: a send button in the site's colour; its box follows Channel name in chat boxes
+- ALL: pins wait in a pill that pings on a new one, pins already up are shown, a filter pill, and text that follows Chat text size
+- ALL follows the chats' settings: add-on emotes, words you watch for, spam tags, translation and new emotes
+- ALL: gifted subs say who got them, and being in ALL clears its chats' alerts
+- Settings › Developer › Chat events: every event the chats send, what ALL still needs, and an export without names
+- ALL: the chat's modes above the box, a slow-mode countdown, and the box closed (saying why) where you can't chat
+- ALL: Twitch's moderator names and mode changes, their raids with Open, and a setting to open raids from tabs you weren't watching
+- ALL says when a site's part stops working, and a Report for a fix to send
+- Connected apps: the Kick players' state on its own line, without the On by default tag
+- ALL on or off for each linked streamer
+- ALL: Kick's /poll, /prediction and /clip open in Kick's chat, unread counts and the @ button follow ALL
+- ALL: links, the emote card, the sites' right-click items, translating a whole chat, and Blow up on a click
+- ALL: Why didn't this alert? and Copy chat HTML, spelling suggestions in the app's text boxes, chat actions in the search box
+- Update Grapevine to 0.11.2
+
+## 0.3.30
 - Fix the focus ring left around a window's channel picker after a click
 - Tab to another site's chat puts the keyboard in its chat box
 
