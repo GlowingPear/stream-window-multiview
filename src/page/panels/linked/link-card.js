@@ -45,7 +45,7 @@ function renderCard(){
   const prof = chs[0] && svProf[chs[0]] && svProf[chs[0]].info;
   const av = element('span', { class: 'lc-av', style: { '--c': svHue(chs[0] || 'x') } }, svInitials(name));
   if (prof && prof.avatar){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = prof.avatar; av.appendChild(im); }
-  const parts = [element('div', 'lc-head', av, element('div', null, element('h3', { id: 'lcName' }, name), !chs.length && element('p', null, 'Start with one of their channels, then add their other sites')))];
+  const parts = [element('div', 'lc-head', av, element('div', null, element('small', 'lc-kicker', 'Channel settings'), element('h3', { id: 'lcName' }, name), !chs.length && element('p', null, 'Start with one of their channels, then add their other sites')))];
   if (chs.length){
     parts.push(element('div', 'lc-sec', 'Channels'), ...chs.map(ch => element('div', 'lc-acc', lcSite(ch), element('div', 'lc-acc-t', element('b', null, chLabel(ch)), liveText(ch)),
       s && ch === s.main ? element('span', 'lc-main', 'Main') : s ? element('button', { type: 'button', class: 'btn lc-mk', dataset: { cmd: 'link.main' }, onclick: () => { setMain(ch); renderCard(); } }, 'Make main') : null,

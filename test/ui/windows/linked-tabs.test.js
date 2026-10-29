@@ -355,7 +355,8 @@ test('Channel settings for a channel on its own: its chat bots, Opens by itself 
   const opts = () => page.$$eval('#linkDlg .lc-opt', l => l.map(o => [o.querySelector('.st-t').firstChild.textContent, o.querySelector('small').textContent, o.querySelector('select').disabled]));
   assert.deepEqual(await opts(), [['Their streams', 'Link another channel to use this', true], ['Opens by itself when live ⚡', 'Going live opens it', false],
     ['ALL tab', 'Its chat in ALL\'s list, with its badges, emotes and filters', false], ['Name shown', 'Link another channel to use this', true]]);
-  assert.equal(await page.locator('#linkDlg .lc-head p').count(), 0, 'just its name');
+  assert.equal(await page.locator('#linkDlg .lc-head p').count(), 0, 'its name, under what the card is');
+  assert.equal(await page.textContent('#linkDlg .lc-kicker'), 'Channel settings');
   assert.deepEqual(await page.$$eval('#linkDlg .lc-sec', l => l.map(e => e.textContent)), ['Channels', 'Add a channel', 'Their chat bots', 'This channel']);
   assert.equal(await page.isDisabled('#linkDlg .lc-unlink'), true, 'Unlink all: greyed');
   // its own chat bot: on its site only (no site to pick), kept with the channel
