@@ -15,7 +15,7 @@ import { addParsed } from '../layout/placement.js';
 import { bellVars, mentMuted, mentOn, mentWords, myName, readChat } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
 import { devOn } from '../panels/developer/developer.js';
-import { linkOpt, nameOf, streamerBots, streamerOf } from '../platforms/linked.js';
+import { nameOf, optFor, streamerBots, streamerOf } from '../platforms/linked.js';
 import { PLAT_NAME, chLabel, modIs, modUrl, openModView, platOf, platform } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { element } from '../shared/element.js';
@@ -49,7 +49,7 @@ let eventsMode = 'short';              // subs, gifts, raids, Super Chats: 'shor
 function allTabFor(w){
   if (!w || w.kind !== 'chat' || !streamerOf(w.channel)) return false;
   const lead = leaderOf(w);
-  return linkOpt('allTab') !== false && !lead.split && !lead.sbs && tabChannels(w).length > 1;
+  return optFor(w.channel, 'allTab') !== false && !lead.split && !lead.sbs && tabChannels(w).length > 1;   // (Settings › Linked channels, or their own choice on their card)
 }
 const allOpen = () => { const l = settings.json('allOpen', []); return Array.isArray(l) ? l : []; };
 // Whether ALL is what the window shows (remembered for each streamer)
