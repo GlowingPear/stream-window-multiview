@@ -1,5 +1,6 @@
 import { alerts, clearAlert } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
+import { emoteBox } from './all-box.js';
 import { SMILEY, addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, renderEmoteList, suggestEmote,
   withEmotes } from './all-emotes.js';
 import { chatLoaded, healthState, noteRaw, noteSend, reportHealth } from './all-health.js';
@@ -624,7 +625,7 @@ function buildView(w){
   const health = element('div', { class: 'all-health', hidden: true, role: 'alert' });
   const ecard = element('div', { class: 'pop all-ecard', hidden: true, role: 'tooltip' });
   const pick = element('button', { type: 'button', class: 'all-pick', dataset: { cmd: 'all.sendSite' }, 'aria-haspopup': 'menu' });
-  const input = element('input', { type: 'text', class: 'all-in', autocomplete: 'off', spellcheck: true, maxlength: 500, dataset: { cmd: 'all.message' } });
+  const input = emoteBox({ 'aria-label': 'Message', dataset: { cmd: 'all.message' } }, () => view.emotePics);
   const menu = element('div', { class: 'pop all-menu', role: 'menu', hidden: true });
   const bar = element('div', { class: 'all-rb', hidden: true });
   const at = element('div', { class: 'pop all-at', role: 'listbox', hidden: true });
@@ -642,7 +643,7 @@ function buildView(w){
   closeOnOutside(lm);
   closeOnOutside(fm, { button: filt });
   el.addEventListener('pointerdown', () => allSeen(w));
-  el.addEventListener('click', e => { if (blowOn && !e.target.closest('a, button, input, img, .al-n, .pop')) blowUp(w); });   // (Blow up chat: clicking into ALL, as into a site's chat; not on what you clicked to use)
+  el.addEventListener('click', e => { if (blowOn && !e.target.closest('a, button, input, img, .all-in, .al-n, .pop')) blowUp(w); });   // (Blow up chat: clicking into ALL, as into a site's chat; not on what you clicked to use)
   el.addEventListener('focusin', () => allSeen(w));
   filt.onclick = () => { if (fm.hidden) openFilters(view); else fm.hidden = true; };
   closeOnOutside(ep, { button: emo });
@@ -811,7 +812,10 @@ function startReply(m){
 const LOCK_WHY = { reply: 'replying', at: 'mentioning', emote: 'using its emotes' };
 function setLock(view, w, lock){
   view.lock = lock;
-  if (!lock) view.emoteSends = null;   // (emotes picked: words again)
+  if (!lock){   // (emotes picked: words again, in the box too)
+    const had = view.emotePics; view.emoteSends = view.emotePics = null;
+    if (had && view.input.value){ const at = view.input.selectionStart, v = view.input.value; view.input.value = v; if (document.activeElement === view.input) view.input.selectionStart = at; }
+  }
   view.at.hidden = true;
   renderCmp(view, w);
 }
@@ -1043,7 +1047,7 @@ async function sendNow(view, w){
   // a reply where the site has none from here: an @ of them, in front
   if (lock && lock.kind === 'reply' && !threaded && !new RegExp(`^@${lock.msg.login}\\b`, 'i').test(text)) text = `@${lock.msg.sender.replace(/^@/, '')} ${text}`;
   const site = platOf(ch), f = feedOf(view.s);
-  const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, send: withEmotes(view, text), emotes: view.emoteSends && new Map(view.emoteSends), parts: [{ text }], ...youOn(f, site, ch), lock, threaded, state: 'sending' };
+  const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, send: withEmotes(view, text), emotes: view.emoteSends && new Map(view.emoteSends), pics: view.emotePics && new Map(view.emotePics), parts: [{ text }], ...youOn(f, site, ch), lock, threaded, state: 'sending' };
   view.input.value = ''; if (lock) setLock(view, w, null);
   f.msgs.push(p); addLine(view, p);
   await deliver(view, w, p);
@@ -1096,7 +1100,7 @@ function mineEl(p){
     unseen: element('span', { class: 'al-tag al-tag-mine', title: `${site} took it, but it hasn't shown in its chat yet` }, `Sent · not seen in ${site}'s chat yet`),
     failed: element('div', 'al-mine-fail', element('span', 'al-tag al-tag-fail', 'Not sent'), element('span', 'al-why', p.why || ''),
       element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.retry' }, onclick: () => { if (view && !view.sending) deliver(view, view.w, p); else flash('Still sending the last one'); } }, 'Retry'),
-      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.edit' }, onclick: () => { if (!view) return; drop(); view.input.value = p.lock && p.lock.kind === 'reply' && !p.threaded ? p.text.replace(/^@\S+\s/, '') : p.text; if (p.lock) setLock(view, view.w, p.lock); if (p.emotes) view.emoteSends = new Map(p.emotes); view.input.focus(); } }, 'Edit'),
+      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.edit' }, onclick: () => { if (!view) return; drop(); if (p.emotes){ view.emoteSends = new Map(p.emotes); view.emotePics = new Map(p.pics || []); } view.input.value = p.lock && p.lock.kind === 'reply' && !p.threaded ? p.text.replace(/^@\S+\s/, '') : p.text; if (p.lock) setLock(view, view.w, p.lock); view.input.focus(); view.input.selectionStart = view.input.value.length; } }, 'Edit'),
       element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.dismiss' }, title: 'Remove this line', onclick: drop }, '✕'))
   }[p.state];
   return element('div', { class: 'al-m al-mine al-mine-' + p.state, dataset: { key: p.site + ':' + p.id } },
