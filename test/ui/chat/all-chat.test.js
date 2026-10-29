@@ -259,6 +259,55 @@ test('ALL: on or off for each linked streamer (their card), over Settings › Li
   assert.equal(await page.evaluate(() => window.linkedApi.listStreamers()[0].allTab), false);
 });
 
+test('the search box has a chat\'s whole-chat menu items: in ALL, one set per site\'s chat (Translate, its new messages too, Stop; with Developer tools, its HTML and Why); a message ALL has already is not drawn twice', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const acts = () => page.evaluate(() => window.winActions(window.openWins().find(o => o.channel === 'tw:quietkoala')).filter(x => /translat|HTML|alert\?/i.test(x)));
+  const got = await acts();
+  for (const site of ['Twitch', 'Kick']) assert.deepEqual(got.filter(x => x.startsWith(site + ':')), [`${site}: translate`, `${site}: translate new messages`, `${site}: stop translating`]);
+  assert.ok(!got.some(x => /HTML|alert\?/.test(x)), 'developer items only with Developer tools');
+  await page.evaluate(() => window.devTools.setDev(true));
+  const dev = await acts();
+  assert.ok(dev.includes('Twitch: copy chat HTML') && dev.includes('Kick: why no alert?'), dev.join(' | '));
+  await page.evaluate(() => window.devTools.setDev(false));
+  // the same message sent again (YouTube does, when its chat is rebuilt or switches view): one line
+  const one = { s: 'twitch', raw: [TW({ 'display-name': 'drift', id: 'dup1' }, ':drift!d@d PRIVMSG #quietkoala :only once')] };
+  await feed(page, 'tw:quietkoala', one); await feed(page, 'tw:quietkoala', one);
+  assert.equal(await page.$$eval('.all-list .al-txt', l => l.filter(e => /only once/.test(e.textContent)).length), 1);
+});
+
+test('ALL\'s developer items: Why didn\'t this alert? (its site\'s chat explains that line, found by its id), Copy the chat\'s HTML; Esc puts back a chat blown up from ALL, also from its box', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]', chatBlowup: '1', myTwitch: 'metwitch' });
+  await page.waitForSelector('.all-view');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'drift', id: 'w1' }, ':drift!d@d PRIVMSG #quietkoala :hey metwitch look')] });
+  await page.evaluate(() => {
+    window.devTools.setDev(true); window.__copied = []; navigator.clipboard.writeText = async x => { window.__copied.push(x); };
+    const w = window.openWins().find(o => o.channel === 'tw:quietkoala'); w.ready = true;
+    w.view.executeJavaScript = async js => (/chatHtml\(30\)/.test(js) ? { html: '<div class="chat-list">…</div>', n: 30, total: 120 }
+      : /explain/.test(js) && /"w1"/.test(js) ? { found: true, line: 'drift: hey metwitch look', sender: 'drift', body: 'hey metwitch look', me: 'metwitch', words: [], armed: true, decided: null, at: false, word: '', own: false } : true);
+  });
+  await page.click('.all-list .al-txt', { button: 'right' });
+  await page.click('.all-lm [data-cmd="all.menuWhy"]');
+  await page.waitForSelector('#whyTitle');
+  assert.match(await page.textContent('.why-line'), /hey metwitch look/);
+  await page.keyboard.press('Escape');
+  await page.click('.all-list .al-txt', { button: 'right' });
+  await page.click('.all-lm [data-cmd="all.menuChatHtml"]');
+  await page.waitForFunction(() => window.__copied.length);
+  assert.match(await page.evaluate(() => window.__copied[0]), /^<!-- Stream Multiview · Twitch · the last 30 of 120 messages · .* -->\n<div class="chat-list">/);
+  await page.evaluate(() => window.devTools.setDev(false));
+  // Blow up from ALL, then Esc: in the list, and in its box
+  const blown = () => page.evaluate(() => !!window.blownWin());
+  await page.click('.all-list', { position: { x: 20, y: 200 } });
+  assert.equal(await blown(), true);
+  await page.keyboard.press('Escape');
+  assert.equal(await blown(), false, 'Esc from the list');
+  await page.click('.all-list', { position: { x: 20, y: 200 } });
+  await page.focus('.all-in');
+  await page.keyboard.press('Escape');
+  assert.equal(await blown(), false, 'Esc from its box');
+});
+
 test('ALL: events are a short line with See it on …; Events: short, full or hidden; an announcement is a message', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');

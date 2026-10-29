@@ -154,6 +154,8 @@ contextBridge.exposeInMainWorld('kmv', {
   devInspect: id => ipcRenderer.invoke('dev:inspect', id),
   onDevChanged: cb => ipcRenderer.on('dev:changed', () => cb()),
   onDevCopied: cb => ipcRenderer.on('dev:copied', (_e, d) => cb(d || {})),
+  onEditMenu: cb => ipcRenderer.on('page:edit-menu', (_e, d) => cb(d || {})),
+  editDo: a => ipcRenderer.send('page:edit', a),
   onViewWhy: cb => ipcRenderer.on('view:why', (_e, id) => cb(id)),
 
   // Chrome extensions

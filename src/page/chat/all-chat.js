@@ -10,6 +10,7 @@ import { feedParse } from './feed-parse.js';
 import { openInBrowser } from './kick-panel.js';
 import { autoTrFor, translateChat } from './translate.js';
 import { EMOTE_SITE, saveEmote } from './view-menu.js';
+import { showWhy } from './why-alert.js';
 import { wins } from '../core.js';
 import { feedAgent, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
@@ -84,6 +85,7 @@ function ingest(w, json, quiet = false){
     if (m.kind === 'modaction') return modAction(f, view, m, w.channel);
     if (m.kind === 'pin' || m.kind === 'unpin') return setPin(f, s, w.channel, m, quiet);
     if (m.kind === 'modes') return setModes(w.channel, { modes: m.modes });
+    if (m.id && f.byId.has(m.site + ':' + m.id)) return;   // (one it has: YouTube sends its recent ones again when its chat is rebuilt or switches view)
     m.ch = w.channel;
     if (m.giftTo && giftTo(f, m)) return;   // (one of the gifted subs announced just before: its name goes on that line)
     if (m.gift) m.gift.me = m.gift.to.some(r => r.login && r.login === meOn(m.site));
@@ -216,6 +218,17 @@ async function translateNow(){
   ms.forEach((m, i) => { const g = Array.isArray(got) && got[i]; if (g && g.text && g.text.trim() !== textOf(m).trim()){ m.tr = { text: String(g.text), from: String(g.fromName || g.from || '') }; redrawLine(m); } });
   if (trQueue.length) trSoon();
 }
+// A site's chat translated (or its new messages too, or back as sent): in its own chat, and its lines in ALL with it.
+// ALL's line menu and the search box both use it (windows/window-commands.js).
+function translateSite(ch, how, on){
+  const cw = wins.find(o => o.kind === 'chat' && o.channel === ch), s = streamerOf(ch), f = s && feeds.get(s.id);
+  if (cw) translateChat(cw, how === 'stop' ? { do: 'translateStop' } : how === 'auto' ? { do: 'translateAuto', on } : { do: 'translateChat' });
+  if (!f) return;
+  if (how === 'chat') f.msgs.filter(x => x.ch === ch && x.kind === 'message' && !x.tr && !x.bot).forEach(translateSoon);
+  if (how === 'stop') f.msgs.forEach(x => { if (x.ch === ch && x.tr){ x.trOrig = true; redrawLine(x); } });
+}
+// ALL translating a site's chat's lines (its line menu's Stop translating shows only then)
+const trShown = ch => { const s = streamerOf(ch), f = s && feeds.get(s.id); return !!f && f.msgs.some(x => x.ch === ch && x.tr && !x.trOrig); };
 // A deleted message, or all of one person's (a timeout or ban), or the whole chat cleared. Where you're a mod it stays,
 // struck through, saying why, and a line says what was done (who did it where the site says); otherwise it goes, as
 // the site doesn't show it to you either.
@@ -808,6 +821,13 @@ function openFilters(view){
   view.fm.hidden = false;
   placeAt(view, view.fm, view.filt);
 }
+// Developer tools: a site's chat's last 30 messages and what's around them, as HTML for an issue (in-site/chat-message.js)
+async function copyChatHtml(cw){
+  const r = await askIn(cw.view, 'window.__kmvMsg && window.__kmvMsg.chatHtml ? window.__kmvMsg.chatHtml(30) : null').catch(() => null);
+  if (!r || typeof r.html !== 'string') return flash('Couldn’t find the chat’s messages');
+  const text = `<!-- Stream Multiview · ${PLAT_NAME[platOf(cw.channel)]} · the last ${r.n} of ${r.total} messages · ${new Date().toISOString()} -->\n${r.html}`;
+  navigator.clipboard?.writeText(text).then(() => flash(`Copied the chat’s HTML (${r.n} message${r.n === 1 ? '' : 's'}, ${Math.max(1, Math.round(text.length / 1024))} KB)`), () => flash('Couldn\'t copy it'));
+}
 // Developer tools: what ALL made of the message, and what the site sent (while they're on)
 function copyData(m){
   const data = JSON.stringify(m, (k, v) => (v instanceof Node || typeof v === 'function' ? undefined : k === 'raw' && typeof v === 'string' ? (() => { try { return JSON.parse(v); } catch { return v; } })() : v), 2);
@@ -852,12 +872,13 @@ function openLineMenu(m, at){
     // translating: this message, or all of its site's chat (here and in its own chat), and its new messages too
     window.kmv && window.kmv.translate && element('hr'),
     window.kmv && window.kmv.translate && !m.tr && item('Translate', TRANSLATE, () => translateSoon(m), { cmd: 'all.menuTranslate' }),
-    window.kmv && window.kmv.translate && cw && item(`Translate ${site}'s chat to ${lang}`, TRANSLATE, () => { translateChat(cw, { do: 'translateChat' }); feedOf(streamerOf(m.ch)).msgs.filter(x => x.ch === m.ch && x.kind === 'message' && !x.tr && !x.bot).forEach(translateSoon); }, { cmd: 'all.menuTranslateChat' }),
-    window.kmv && window.kmv.translate && cw && item(trAuto ? 'Stop translating new messages' : 'Translate new messages too', TRANSLATE, () => translateChat(cw, { do: 'translateAuto', on: !trAuto }), { cmd: 'all.menuTranslateAuto' }),
-    window.kmv && window.kmv.translate && cw && feedOf(streamerOf(m.ch)).msgs.some(x => x.ch === m.ch && x.tr && !x.trOrig) && item('Stop translating', TRANSLATE, () => {
-      translateChat(cw, { do: 'translateStop' }); feedOf(streamerOf(m.ch)).msgs.forEach(x => { if (x.ch === m.ch && x.tr){ x.trOrig = true; redrawLine(x); } }); }, { cmd: 'all.menuTranslateStop' }),
+    window.kmv && window.kmv.translate && cw && item(`Translate ${site}'s chat to ${lang}`, TRANSLATE, () => translateSite(m.ch, 'chat'), { cmd: 'all.menuTranslateChat' }),
+    window.kmv && window.kmv.translate && cw && item(trAuto ? 'Stop translating new messages' : 'Translate new messages too', TRANSLATE, () => translateSite(m.ch, 'auto', !trAuto), { cmd: 'all.menuTranslateAuto' }),
+    window.kmv && window.kmv.translate && cw && trShown(m.ch) && item('Stop translating', TRANSLATE, () => translateSite(m.ch, 'stop'), { cmd: 'all.menuTranslateStop' }),
     devOn && element('hr'),
     devOn && item('Copy message data', icon.code, () => copyData(m), { cmd: 'all.menuData' }),
+    devOn && cw && m.id && item('Why didn\'t this alert?', icon.alert, () => showWhy(cw, `(${messageHtml})(${JSON.stringify(m.id)}, true)`), { cmd: 'all.menuWhy' }),
+    devOn && cw && item(`Copy ${site}'s chat HTML`, icon.code, () => copyChatHtml(cw), { cmd: 'all.menuChatHtml' }),
     devOn && cw && m.id && item('Copy message HTML', icon.code, () => askIn(cw.view, `(${messageHtml})(${JSON.stringify(m.id)})`).then(h => (h ? copy(h, 'Copied the message\'s HTML') : flash(`Couldn't find it in ${site}'s chat (it may have scrolled out)`))).catch(() => flash('Couldn\'t copy it')), { cmd: 'all.menuHtml' }),
     mod && modUrl(m.ch) && item(`Open ${site} mod view`, icon.mod, () => openModView(m.ch), { cmd: 'all.menuModView' })].filter(x => x instanceof Node));   // (only what applies: a hidden item is false)
   view.ecard.hidden = true; clearTimeout(view.ecard.hideT);   // (an emote's card: the menu instead)
@@ -1056,5 +1077,5 @@ function init(){
   window.allChat = { sender, modKnown, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
-export { allLooking, allOn, allRaid, allTabFor, feedReady, init, modViewChs, openModViews, sendSite, setAll, setLock,
-  spamTag };
+export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, init, modViewChs, openModViews, sendSite,
+  setAll, setLock, spamTag, translateSite };

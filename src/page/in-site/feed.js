@@ -186,8 +186,9 @@ function lineProbe(html){
   return out;
 }
 
-// Developer tools' Copy message HTML in ALL: that message's line in this chat, found by its id (as See it on … finds it)
-function messageHtml(id){
+// Developer tools in ALL: that message's line in this chat, found by its id (as See it on … finds it): its HTML (Copy
+// message HTML), or with why, how the mention and spam alerts read it (Why didn't this alert?: in-site/mentions.js explain)
+function messageHtml(id, why){
   const rows = document.querySelectorAll('.chat-line__message, .chat-line__status, [class*="user-notice-line"], [data-index], yt-live-chat-text-message-renderer, yt-live-chat-paid-message-renderer, yt-live-chat-membership-item-renderer');
   const idOf = el => {
     if (el.id && el.id === id) return id;
@@ -196,6 +197,7 @@ function messageHtml(id){
     return '';
   };
   const hit = [...rows].reverse().find(el => idOf(el) === id);
+  if (why) return hit && window.__kmvMention ? window.__kmvMention.explain(hit) : null;
   return hit ? hit.outerHTML.slice(0, 50000) : '';
 }
 

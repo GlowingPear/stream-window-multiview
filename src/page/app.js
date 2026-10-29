@@ -94,6 +94,7 @@ import { init as panelsExtensionsExtensions } from './panels/extensions/extensio
 import { init as sharedAsk } from './shared/ask.js';
 import { init as sharedTooltips } from './shared/tooltips.js';
 import { init as sharedLayers } from './shared/layers.js';
+import { init as sharedEditMenu } from './shared/edit-menu.js';
 import { init as windowsWindowCommands } from './windows/window-commands.js';
 import { init as panelsChannelsChannelCommands } from './panels/channels/channel-commands.js';
 import { init as panelsLinkedLinkedCommands } from './panels/linked/linked-commands.js';
@@ -194,6 +195,7 @@ import { init as panelsSettingsSearchBox } from './panels/settings/search-box.js
   sharedAsk,
   sharedTooltips,
   sharedLayers,
+  sharedEditMenu,
   windowsWindowCommands,
   panelsChannelsChannelCommands,
   panelsLinkedLinkedCommands,
