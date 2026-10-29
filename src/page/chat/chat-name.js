@@ -25,7 +25,9 @@ function syncChatName(w){
   if (t) runIn(w.view, `(${chatNameAgent.toString()})(${JSON.stringify(cfg)});window.__kmvName.set(${JSON.stringify(t)})`);
   else runIn(w.view, 'window.__kmvName && window.__kmvName.set("")');
 }
-const syncAll = () => wins.forEach(syncChatName);
+const syncAll = () => { wins.forEach(syncChatName); store.changed('chatName'); };
+// What a box sending to that channel says (ALL's box too, chat/all-chat.js), or '' for the usual words
+const chatBoxName = ch => (nameOn && ch ? chatNameText(nameTpl, chLabel(ch)) : '');
 
 // The settings row: the text field shows only while it's on, the sample shows what a box will say
 function showSetting(){
@@ -64,4 +66,4 @@ function init(){
   window.chatNameAgent = chatNameAgent;   // for the tests
 }
 
-export { init, syncChatName };
+export { chatBoxName, init, syncChatName };
