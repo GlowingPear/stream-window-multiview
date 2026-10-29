@@ -83,8 +83,8 @@ test('the export: each kind with what ALL does with it (or unknown), the kinds A
 test('ALL\'s report for a fix: each site\'s state, its last raw messages anonymised (one set of placeholders), its line\'s HTML, and its chat events', () => {
   const { healthReport } = require('../../../src/main/event-samples');
   const s = createSampleStore({ now: () => 1000 });
-  s.add('kick', { ChatMessageEvent: { n: 3, x: JSON.stringify({ content: 'hi there', sender: { username: 'Koala' } }) } });
-  const out = healthReport({ known: { kick: { ChatMessageEvent: 'a message' } }, sites: [
+  s.add('kick', { ChatMessageEvent: { n: 3, x: JSON.stringify({ content: 'hi there', sender: { username: 'Koala' } }) }, PointsUpdated: { n: 9 } });
+  const out = healthReport({ known: { kick: { ChatMessageEvent: 'a message' } }, ignored: { kick: { PointsUpdated: 'your channel points' } }, sites: [
     { site: 'kick', state: 'broken', what: 'read', why: "ALL isn't reading Kick's messages: its chat has new ones", since: '2026-10-29T03:00:00.000Z', sends: ['no-box'], lines: 50,
       raws: [JSON.stringify({ push: { pub: { data: { event: 'App\\Events\\NewThing', data: JSON.stringify({ username: 'Koala', text: 'secret words' }) } } } })], badRaws: ['not json at all'], lineHtml: '<div class="x">word</div>' },
     { site: 'myspace' }, null] }, s.list(), { now: () => 2000, version: '0.3.31' });
@@ -93,7 +93,8 @@ test('ALL\'s report for a fix: each site\'s state, its last raw messages anonymi
   assert.deepEqual([k.state, k.what, k.lines, k.sends, k.lineHtml], ['broken', 'read', 50, ['no-box'], '<div class="x">word</div>']);
   assert.deepEqual(JSON.parse(k.raws[0].push.pub.data.data), { username: 'user1', text: 'word word' });
   assert.deepEqual(k.badRaws, ['word word word word']);
-  assert.deepEqual(k.events.kinds.map(x => [x.kind, x.status, x.samples[0].sender.username]), [['ChatMessageEvent', 'shown', 'user1']], 'Koala: the same placeholder in the events');
+  assert.deepEqual(k.events.kinds.filter(x => x.samples.length).map(x => [x.kind, x.status, x.samples[0].sender.username]), [['ChatMessageEvent', 'shown', 'user1']], 'Koala: the same placeholder in the events');
+  assert.deepEqual(k.events.kinds.map(x => [x.kind, x.status, x.does]).sort(), [['ChatMessageEvent', 'shown', 'a message'], ['PointsUpdated', 'ignored', 'your channel points']], 'left out on purpose: ignored, with why, as in the export');
   assert.ok(!/Koala|secret|hi there/.test(JSON.stringify(out)));
   assert.deepEqual(healthReport(null, {}).sites, []);
 });

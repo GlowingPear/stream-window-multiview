@@ -422,8 +422,12 @@ const ytKind = a => { const k = Object.keys(a || {}).find(x => x !== 'clickTrack
 // Whether ALL leaves out something a chat handed over on purpose (not one it couldn't read): YouTube's reader passes on
 // every action, the ones ALL ignores too (the others' leave those out)
 const leftOut = (site, raw) => site === 'youtube' && !!raw && typeof raw === 'object' && !!ignoredWhy(site, ytKind(raw));
+// The kinds heard (samples: { site: { kind: … } }) that ALL leaves out on purpose: { site: { kind: why } }, for the
+// chat events' export and ALL's report
+const ignoredKinds = samples => Object.fromEntries(Object.keys(KNOWN).map(s => [s, Object.fromEntries(Object.keys((samples && samples[s]) || {})
+  .filter(k => !KNOWN[s][k] && ignoredWhy(s, k)).map(k => [k, ignoredWhy(s, k)]))]));
 
 // (one object, so the tests can reach each site's reader)
-const feedParse = { KNOWN, IGNORED, ignoredWhy, leftOut, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds, kickPics, ytPics, BADGES };
+const feedParse = { KNOWN, IGNORED, ignoredWhy, ignoredKinds, leftOut, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds, kickPics, ytPics, BADGES };
 
 export { feedParse };

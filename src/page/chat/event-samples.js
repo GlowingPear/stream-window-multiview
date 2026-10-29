@@ -97,8 +97,7 @@ async function renderEvents(){
 async function exportEvents(){
   if (!DESKTOP || !window.kmv.samplesExport) return;
   const d = (window.kmv.samplesInfo ? await window.kmv.samplesInfo().catch(() => null) : null) || {};
-  const ignored = Object.fromEntries(EV_SITES.map(s => [s, Object.fromEntries(Object.keys(d[s] || {}).filter(k => !feedParse.KNOWN[s][k] && feedParse.ignoredWhy(s, k)).map(k => [k, feedParse.ignoredWhy(s, k)]))]));
-  const r = await window.kmv.samplesExport(feedParse.KNOWN, ignored).catch(() => null);
+  const r = await window.kmv.samplesExport(feedParse.KNOWN, feedParse.ignoredKinds(d)).catch(() => null);
   if (r && r.saved) flash('Saved the chat events, without names, ids or words', { subject: 'downloads' });
   else if (r && r.error) flash('Couldn’t save the file');
 }

@@ -152,9 +152,10 @@ function anonymise(site, text, ph) {
 // The export: every kind with its status (known: { site: { kind: what ALL does with it } } from the page), the kinds
 // ALL knows that haven't come yet, and the samples without names, ids or words.
 // ignored: { site: { kind: why ALL leaves it out } }, marked 'ignored' with why.
-function exportSamples(data, known, { now = () => Date.now(), version = '', ignored = {} } = {}) {
+// ph: the placeholders to use (the report's, so a name is the same one in its raw messages and its events)
+function exportSamples(data, known, { now = () => Date.now(), version = '', ignored = {}, ph = placeholders() } = {}) {
   known = known && typeof known === 'object' ? known : {};
-  const ph = placeholders(), d = tidy(data);
+  const d = tidy(data);
   const out = { what: 'Stream Multiview chat event samples (Settings › Developer › Chat events)', version, made: new Date(now()).toISOString(),
     note: 'Names, ids and the words of messages are placeholders (user1, id1, word); the same name is the same placeholder throughout.', sites: {} };
   for (const s of SITES) {
@@ -171,10 +172,11 @@ function exportSamples(data, known, { now = () => Date.now(), version = '', igno
 
 // ALL's report for a fix (page/chat/all-health.js): each site's state, its last raw messages (all, and those no reader
 // understood) and its newest chat line's HTML (its words already taken out in the page), plus that site's chat events,
-// with names, ids and words replaced throughout (one set of placeholders for the whole report)
+// with names, ids and words replaced throughout (one set of placeholders for the whole report). report.ignored: the
+// kinds ALL leaves out on purpose, as for the export
 function healthReport(report, data, { now = () => Date.now(), version = '' } = {}) {
   const ph = placeholders(), sites = Array.isArray(report && report.sites) ? report.sites.filter(s => s && SITES.includes(s.site)).slice(0, 6) : [];
-  const evs = exportSamples(data, report && report.known, { now, version });
+  const evs = exportSamples(data, report && report.known, { now, version, ph, ignored: (report && report.ignored) || {} });
   return { what: 'Stream Multiview ALL report (for a fix)', version, made: new Date(now()).toISOString(),
     note: 'Names, ids and the words of messages are placeholders (user1, id1, word).',
     sites: sites.map(s => ({ site: s.site, state: String(s.state || ''), what: String(s.what || ''), why: String(s.why || '').replace(/\b(on|from) \S+$/, '$1 …'),
