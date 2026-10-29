@@ -267,7 +267,9 @@
 .all-ep-e img{width:28px;height:28px;object-fit:contain}
 .all-ep-none{grid-column:1/-1;padding:16px 8px;color:var(--muted);font-size:12px;text-align:center}
 .all-ep-sec{grid-column:1/-1;position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:7px;padding:8px 6px 4px;background:var(--panel);color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.02em}
-.all-ep-sec img,.all-ep-sec i{width:18px;height:18px;border-radius:50%;object-fit:cover;flex:none;display:grid;place-items:center;background:var(--line);color:var(--text);font-size:10px;font-style:normal;font-weight:800}
+.all-ep-pic{flex:none;position:relative;width:18px;height:18px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:var(--line);color:var(--text);font-size:10px;font-weight:800;line-height:1}
+.all-ep-pic img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover}
+.dd-list .all-ep-pic{width:16px;height:16px;font-size:9px}
 .all-ep-sec:first-child{padding-top:2px}
 .all-ep-sec.chan{color:var(--text)}
 .all-ep-sec small{margin-left:auto;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:0}

@@ -1113,7 +1113,8 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   // beside the search: show one kind, or one channel (with their pictures in its list)
   assert.deepEqual(await page.$$eval('.all-ep-f option', l => l.map(o => o.textContent)), ['All emotes', 'Channel', 'Sub emotes', 'Otter', 'Fox', 'Kick']);
   await page.click('.all-ep-f');
-  assert.deepEqual(await page.$$eval('.dd-list button', l => l.map(b => (b.querySelector('img, i') ? '[pic] ' : '') + b.textContent)), ['All emotes', 'Channel', 'Sub emotes', '[pic] Otter', '[pic] FFox', 'Kick']);
+  assert.deepEqual(await page.$$eval('.dd-list button', l => l.map(b => (b.querySelector('.all-ep-pic') ? '[pic] ' : '') + b.textContent)), ['All emotes', 'Channel', 'Sub emotes', '[pic] Otter', '[pic] FFox', 'Kick']);
+  assert.deepEqual(await page.$eval('.dd-list .all-ep-pic', e => { const c = getComputedStyle(e); return [c.width, c.height, c.borderRadius]; }), ['16px', '16px', '50%'], 'small circles, as the window swap list\'s');
   await page.keyboard.press('Escape');
   await page.selectOption('.all-ep-f', 'kick-yours');
   assert.deepEqual(await grid(), ['# [pic] OtterSub emotes', 'otterWave · Otter', 'otterLUL · Otter', '# FFoxSub emotes', 'foxHi · Fox']);

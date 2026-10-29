@@ -24,6 +24,7 @@ test('Kick: the emotes of the other channels you\'re subscribed to (signed in), 
   assert.deepEqual(g[1].emotes[0], { name: 'betaWave', url: 'https://files.kick.com/emotes/2/fullsize', send: '[emote:2:betaWave]', from: 'Beta' }, 'yours to use: not marked subs; its channel as Kick names it');
   assert.equal(g[1].emotes[1].from, 'gamma', 'or its slug');
   assert.deepEqual(g[1].channels, [{ name: 'Beta', pic: 'https://files.kick.com/images/user/2/beta.webp' }, { name: 'gamma' }], 'its channels, with their pictures (once each)');
+  assert.deepEqual(kickGroups([{ slug: 'x', emotes: [] }, { slug: 'zed', emotes: [{ id: 1, name: 'zA' }] }, { slug: 'Amy', emotes: [{ id: 2, name: 'aA' }] }, { slug: 'bob', emotes: [{ id: 3, name: 'bA' }] }], 'x')[0].channels.map(c => c.name), ['Amy', 'bob', 'zed'], 'A to Z, whatever the case');
 });
 
 test('Twitch: the channel\'s, your other sets, and Twitch\'s own', () => {

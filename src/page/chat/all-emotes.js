@@ -145,7 +145,7 @@ async function openEmotePicker(view, w){
   search.focus();
 }
 // A channel's picture (its first letter until there is one)
-const chPic = c => c.pic ? element('img', { src: c.pic, alt: '', referrerPolicy: 'no-referrer', loading: 'lazy' }) : element('i', null, (c.label || c.name || '?')[0]);
+const chPic = c => element('span', 'all-ep-pic', c.pic ? element('img', { src: c.pic, alt: '', referrerPolicy: 'no-referrer', loading: 'lazy' }) : (c.label || c.name || '?')[0]);   // (a circle: in its heading, and in the list beside the search)
 const SMILEY = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1 1.3 2.2 2 3.5 2s2.5-.7 3.5-2M9 9.5h.01M15 9.5h.01"/></svg>';
 
 export { addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, renderEmoteList, SMILEY, suggestEmote,

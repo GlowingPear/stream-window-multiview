@@ -11,13 +11,14 @@ const clean = list => {
 };
 const group = (id, label, emotes) => { const e = clean(emotes); return e.length ? { id, label, emotes: e } : null; };
 // The emotes of other channels you're subscribed to: each with its channel (from), and the channels with their pictures
-// (channels: [{ name, pic }], once each), for the picker's row of them and their headings
+// (channels: [{ name, pic }], once each, A to Z), for the picker's list and headings
 const PIC = /^https:\/\//;
 function subGroup(id, label, sets){
   const g = group(id, label, sets.flatMap(s => s.emotes.map(e => e && { ...e, from: s.name })));
   if (!g) return null;
   const has = new Set(g.emotes.map(e => e.from)), seen = new Set();
-  g.channels = sets.filter(s => has.has(s.name) && !seen.has(s.name) && seen.add(s.name)).map(s => ({ name: s.name, ...(PIC.test(s.pic || '') ? { pic: s.pic } : {}) }));
+  g.channels = sets.filter(s => has.has(s.name) && !seen.has(s.name) && seen.add(s.name)).map(s => ({ name: s.name, ...(PIC.test(s.pic || '') ? { pic: s.pic } : {}) }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));   // (A to Z, as you'd look for one)
   return g;
 }
 
