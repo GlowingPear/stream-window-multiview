@@ -96,13 +96,15 @@ function winActions(w){
     // what its right-click menu does to the whole chat; in ALL, to each site's chat there (and its lines in ALL)
     const all = allOn(w), chs = all ? tabChannels(w).filter(ch => wins.some(o => o.kind === 'chat' && o.channel === ch)) : [w.channel];
     chs.forEach(ch => {
-      const cw = wins.find(o => o.kind === 'chat' && o.channel === ch) || w, of = all ? `${PLAT_NAME[platOf(ch)]}'s chat` : 'this chat', k = all ? ':' + ch : '';
-      add('translate' + k, `Translate ${of}`, () => translateSite(ch, 'chat'), { icon: 'chat', sub: 'Its messages in your language', words: ['language'] });
-      add('translateAuto' + k, autoTrFor(ch) ? `Stop translating ${of}'s new messages` : `Translate ${of}'s new messages too`, () => translateSite(ch, 'auto', !autoTrFor(ch)), { icon: 'chat', words: ['language', 'translate'] });
-      add('translateStop' + k, `Stop translating ${of}`, () => translateSite(ch, 'stop'), { icon: 'chat', sub: 'Its messages as they were sent', words: ['language', 'original'] });
+      const cw = wins.find(o => o.kind === 'chat' && o.channel === ch) || w, site = PLAT_NAME[platOf(ch)], k = all ? ':' + ch : '';
+      const t = (one, inAll) => (all ? `${site}: ${inAll}` : one), of = all ? `${site}'s chat` : 'This chat';   // (short: the list has two columns)
+      add('translate' + k, t('Translate this chat', 'translate'), () => translateSite(ch, 'chat'), { icon: 'chat', sub: `${of}, in your language`, words: ['language'] });
+      add('translateAuto' + k, autoTrFor(ch) ? t('Stop translating new messages', 'stop translating new') : t('Translate new messages too', 'translate new messages'), () => translateSite(ch, 'auto', !autoTrFor(ch)),
+        { icon: 'chat', sub: `${of}: the ones still to come`, words: ['language', 'translate', 'auto'] });
+      add('translateStop' + k, t('Stop translating', 'stop translating'), () => translateSite(ch, 'stop'), { icon: 'chat', sub: `${of}: its messages as they were sent`, words: ['language', 'original'] });
       if (devOn){
-        add('chatHtml' + k, `Copy ${of}'s HTML`, () => copyChatHtml(cw), { icon: 'code', sub: 'Developer tools: its last 30 messages, for an issue', words: ['developer'] });
-        add('why' + k, `Why didn't ${of}'s last message alert?`, () => showWhy(cw), { icon: 'alert', sub: 'Developer tools: how mention alerts read it', words: ['developer', 'mention'] });
+        add('chatHtml' + k, t('Copy chat HTML', 'copy chat HTML'), () => copyChatHtml(cw), { icon: 'code', sub: `Developer tools: ${all ? of + "'s" : 'its'} last 30 messages`, words: ['developer'] });
+        add('why' + k, t('Why didn\'t the last message alert?', 'why no alert?'), () => showWhy(cw), { icon: 'alert', sub: `Developer tools: how mention alerts read ${all ? of + "'s" : 'its'} last message`, words: ['developer', 'mention', 'alert'] });
       }
     });
     if (isKickMod(w)){

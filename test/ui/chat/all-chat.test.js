@@ -264,11 +264,11 @@ test('the search box has a chat\'s whole-chat menu items: in ALL, one set per si
   await page.waitForSelector('.all-view');
   const acts = () => page.evaluate(() => window.winActions(window.openWins().find(o => o.channel === 'tw:quietkoala')).filter(x => /translat|HTML|alert\?/i.test(x)));
   const got = await acts();
-  for (const site of ['Twitch', 'Kick']) assert.ok(got.includes(`Translate ${site}'s chat`) && got.includes(`Stop translating ${site}'s chat`), site);
+  for (const site of ['Twitch', 'Kick']) assert.deepEqual(got.filter(x => x.startsWith(site + ':')), [`${site}: translate`, `${site}: translate new messages`, `${site}: stop translating`]);
   assert.ok(!got.some(x => /HTML|alert\?/.test(x)), 'developer items only with Developer tools');
   await page.evaluate(() => window.devTools.setDev(true));
   const dev = await acts();
-  assert.ok(dev.includes('Copy Twitch\'s chat\'s HTML') && dev.includes('Why didn\'t Kick\'s chat\'s last message alert?'), dev.join(' | '));
+  assert.ok(dev.includes('Twitch: copy chat HTML') && dev.includes('Kick: why no alert?'), dev.join(' | '));
   await page.evaluate(() => window.devTools.setDev(false));
   // the same message sent again (YouTube does, when its chat is rebuilt or switches view): one line
   const one = { s: 'twitch', raw: [TW({ 'display-name': 'drift', id: 'dup1' }, ':drift!d@d PRIVMSG #quietkoala :only once')] };
