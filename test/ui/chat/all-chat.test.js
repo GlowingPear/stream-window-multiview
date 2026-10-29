@@ -1353,7 +1353,7 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => window.__sends.length === 1);
   assert.deepEqual(await page.evaluate(() => window.__sends[0]), ['quietkoala', 'gg [emote:9:KEKW]'], 'as Kick writes it');
-  assert.match(await page.textContent('.al-mine'), /gg KEKW/, 'your line shows its name');
+  assert.equal(await page.$eval('.al-mine .al-txt', t => [...t.childNodes].map(n => (n.nodeName === 'IMG' ? `[${n.alt}]` : n.textContent)).join('')), 'gg [KEKW]', 'your line shows its picture');
   assert.equal(await page.isVisible('.all-rb'), false, 'sent: unlocked');
   assert.deepEqual(await page.$eval('.all-in', b => [b.value, b.childNodes.length]), ['', 0], 'sent: the box empty (its placeholder shows)');
   // a sub emote from another channel: its channel beside it
