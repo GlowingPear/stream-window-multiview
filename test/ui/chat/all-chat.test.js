@@ -103,7 +103,7 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
     'al-m al-rep al-bot | ↩ replying to youTkoala_helper: bot message hiddenTO YOUShow',
     'al-m | Tloudmouth99: trash lol',
     'al-m al-hl | Thappy: HAPPY BIRTHDAYHighlighted100 bits',
-    'al-ev | TJean subscribedlove itSee it on Twitch ›',
+    'al-ev | TJean subscribedlove it',
     'al-m | Kratchetkid: nobody likes you']);
   // Show opens one bot's message, Hide closes it
   await page.click('.all-list .al-bot >> nth=0 >> .al-show');
@@ -139,7 +139,7 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
   assert.ok(!(await lines(page)).some(l => l.startsWith('al-ev')), 'events hidden');
   await fromOther('allBots', 'hidden'); await fromOther('allEvents', 'short');
   assert.match((await lines(page))[2], /bot message hidden/);
-  assert.equal((await lines(page))[6], 'al-ev | TJean subscribedlove itSee it on Twitch ›');
+  assert.equal((await lines(page))[6], 'al-ev | TJean subscribedlove it');
   // deleted: kept, struck, with why; a timeout or ban marks their lines, and a line says what was done (and by whom, where the site says)
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('MessageDeletedEvent', { id: 'z', message: { id: 'k9' }, aiModerated: true, violatedRules: ['bullying'] })] });
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'ban-duration': '600' }, ':tmi.twitch.tv CLEARCHAT #quietkoala :loudmouth99'), TW({ 'target-msg-id': 'a' }, ':tmi.twitch.tv CLEARMSG #quietkoala :x')] });
@@ -428,26 +428,26 @@ test('ALL: a Twitch watch streak is their message highlighted with its tag (as T
     hermes('create', { shoutoutID: 's9', sourceLogin: 'quietkoala', targetLogin: 'novalynx', targetUserDisplayName: 'Novalynx' })] });
   const all = await page.$$eval('#stage .win.chat:not(.tab-hidden) .all-list > *', l => l.map(e => [e.className.split(' ').filter(c => /^al-(m|ev|streak)$/.test(c)).join(' '), e.textContent.replace(/\s+/g, ' ').trim()]));
   assert.deepEqual(all, [['al-m al-streak', "TBrightwick: five streams, let's goWatch streak · 5"], ['al-m al-streak', 'TBrightwick: watched 5 streams in a rowWatch streak · 5'],
-    ['al-ev', 'TTide redeemed Hydrate!See it on Twitch ›'], ['al-ev', 'Tquietkoala shouted out NovalynxOpen ›']]);
+    ['al-ev', 'TTide redeemed Hydrate!'], ['al-ev', 'Tquietkoala shouted out NovalynxOpen ›']]);
   // a shoutout's Open: that channel, in a window of its own
   await page.click('.all-list [data-cmd="all.shoutoutOpen"]');
   assert.ok(await page.evaluate(() => window.openWins().some(w => w.channel === 'tw:novalynx')));
 });
 
-test('ALL: events are a short line with See it on …; Events: short, full or hidden; an announcement is a message', async t => {
+test('ALL: events are a short line (no See it on …); Events: short, full or hidden; an announcement is a message', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [
     TW({ 'display-name': 'brightwick', login: 'brightwick', 'msg-id': 'submysterygift', 'msg-param-mass-gift-count': '5', id: 'g1', 'system-msg': 'brightwick\\sis\\sgifting\\s5\\sTier\\s1\\sSubs!' }, ':tmi.twitch.tv USERNOTICE #quietkoala'),
     TW({ 'display-name': 'quietkoala', 'msg-id': 'announcement', 'msg-param-color': 'GREEN', id: 'a1' }, ':tmi.twitch.tv USERNOTICE #quietkoala :scrims at 8pm')] });
-  assert.deepEqual(await lines(page), ['al-ev | Tbrightwick gifted 5 subsSee it on Twitch ›', 'al-m | Tquietkoala: scrims at 8pmAnnouncement']);
+  assert.deepEqual(await lines(page), ['al-ev | Tbrightwick gifted 5 subs', 'al-m | Tquietkoala: scrims at 8pmAnnouncement']);
   assert.equal(await page.textContent('.al-ev .al-amt'), '5 subs', 'the amount picked out');
   assert.ok(await page.$eval('.all-list .al-m', l => l.classList.contains('al-ann-green')));
   await page.click('.all-filt');
   const ev = v => page.click(`.all-fm [aria-label="Events"] >> text=${v}`);
   assert.equal(await page.textContent('.all-fm [aria-label="Events"] .on'), 'Short');
   await ev('Full');
-  assert.equal((await lines(page))[0], 'al-ev | Tbrightwick is gifting 5 Tier 1 Subs!See it on Twitch ›', 'the site\'s own words');
+  assert.equal((await lines(page))[0], 'al-ev | Tbrightwick is gifting 5 Tier 1 Subs!', 'the site\'s own words');
   await ev('Hidden');
   assert.deepEqual(await lines(page), ['al-m | Tquietkoala: scrims at 8pmAnnouncement']);
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.allEvents')), 'hidden');
@@ -457,10 +457,96 @@ test('ALL: events are a short line with See it on …; Events: short, full or hi
   assert.equal(await page.$eval('.all-filt', e => e.classList.contains('set')), false);
   await page.click('.all-filt');
   assert.equal(await page.isVisible('.all-fm'), false, 'the pill closes it again');
-  // See it on Twitch: Twitch's own chat
-  await page.click('.al-ev .al-go');
-  assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
-  assert.equal(await page.locator('.all-view').count(), 0);
+  // no See it on … on an event's line: the line itself opens (below)
+  assert.equal(await page.locator('.all-list .al-ev button').count(), 0);
+  assert.doesNotMatch(await page.textContent('.all-list'), /See it on/);
+});
+
+test('ALL: an event line cut off with … opens in place on a click, its short words and message wrapped, and closes on another; one that fits doesn\'t; its buttons and links don\'t toggle it', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(() => { window.__opened = []; window.open = u => { window.__opened.push(u); }; });
+  const KE = (event, data) => JSON.stringify({ push: { channel: 'chatroom_1', pub: { data: { event, data: JSON.stringify(data) } } } });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KE('RewardRedeemedEvent', { reward_title: 'Pick the next map and the loadout for the whole squad for one round', username: 'oakmoss', user_input: '' }),
+    KE('RewardRedeemedEvent', { reward_title: 'Hydrate', username: 'tide', user_input: '' })] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'Jean', login: 'jean', id: 'g', 'msg-id': 'resub', 'system-msg': 'Jean\\ssubscribed\\sfor\\s38\\smonths!' },
+    ':tmi.twitch.tv USERNOTICE #quietkoala :three years already, thanks for all the late night streams and the chill vibes, my clips are at clips.example.com/jean')] });
+  const ev = n => page.locator('.all-list .al-ev').nth(n);
+  const state = n => ev(n).evaluate(e => ({ open: e.classList.contains('al-open'), can: e.classList.contains('al-can'), expanded: e.getAttribute('aria-expanded'), cursor: getComputedStyle(e).cursor,
+    h: e.offsetHeight, wrap: getComputedStyle(e.querySelector('.al-evw')).whiteSpace, text: e.textContent }));
+  const closed = await state(0);
+  assert.deepEqual([closed.open, closed.wrap], [false, 'nowrap'], 'one line, cut off with …');
+  assert.equal(closed.text, 'Koakmoss redeemed Pick the next map and the loadout for the whole squad for one round', 'nothing but its words: no See it on …');
+  // pointing at it: it can open
+  await ev(0).hover();
+  assert.deepEqual(await ev(0).evaluate(e => [e.classList.contains('al-can'), e.getAttribute('aria-expanded'), getComputedStyle(e).cursor, e.title]), [true, 'false', 'pointer', 'Show all of it']);
+  // a click: open, the same short words wrapped onto more lines
+  await ev(0).click();
+  const open = await state(0);
+  assert.deepEqual([open.open, open.can, open.expanded, open.wrap, open.text], [true, true, 'true', 'normal', closed.text]);
+  assert.ok(open.h > closed.h * 1.5, `taller once open (${closed.h} -> ${open.h})`);
+  assert.equal(await ev(0).evaluate(e => e.querySelector('.al-evw').scrollWidth <= e.querySelector('.al-evw').clientWidth), true, 'nothing cut off');
+  // it stays open when ALL is drawn again (Events: full, its own look, then short again)
+  await page.click('.all-filt');
+  await page.click('.all-fm [aria-label="Events"] >> text=Full');
+  await page.click('.all-filt');
+  assert.deepEqual(await ev(0).evaluate(e => [e.classList.contains('al-full'), e.classList.contains('al-open'), e.hasAttribute('aria-expanded')]), [true, false, false], 'full: the site\'s own words, nothing to open');
+  await ev(0).click();
+  assert.equal(await ev(0).evaluate(e => e.classList.contains('al-open')), false, 'a click on a full line does nothing');
+  await page.click('.all-filt');
+  await page.click('.all-fm [aria-label="Events"] >> text=Short');
+  await page.click('.all-filt');
+  assert.equal((await state(0)).open, true, 'open again, back on short');
+  // another click: one line again
+  await ev(0).click();
+  const again = await state(0);
+  assert.deepEqual([again.open, again.expanded, again.h], [false, 'false', closed.h]);
+  // one that fits: no pointer, a click does nothing
+  await ev(1).hover();
+  assert.deepEqual(await state(1).then(s => [s.can, s.expanded, s.cursor]), [false, null, 'auto']);
+  await ev(1).click();
+  assert.equal((await state(1)).open, false);
+  // a sub's message cut off: it opens too, under its words; a link in it opens in your browser, the line stays open
+  assert.equal(await ev(2).evaluate(e => getComputedStyle(e.querySelector('.al-evm')).textOverflow), 'ellipsis');
+  await ev(2).click();
+  assert.equal((await state(2)).open, true);
+  assert.ok(await ev(2).evaluate(e => e.querySelector('.al-evm').getBoundingClientRect().top >= e.querySelector('.al-evw').getBoundingClientRect().bottom - 1), 'its message under its words');
+  await ev(2).locator('.al-link').click();
+  assert.deepEqual(await page.evaluate(() => window.__opened), ['https://clips.example.com/jean']);
+  assert.equal((await state(2)).open, true, 'the link: not a toggle');
+  // selecting its text doesn't close it
+  await ev(2).evaluate(e => getSelection().selectAllChildren(e.querySelector('.al-evm')));
+  await ev(2).evaluate(e => e.querySelector('.al-evm').click());
+  assert.equal((await state(2)).open, true, 'not while text is selected');
+});
+
+test('ALL: a shoutout\'s and a raid\'s Open › and a gift\'s recipients button keep their own click, also on a line cut off', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const hermes = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
+  const N = (id, tags) => TW({ 'display-name': 'BrightWick', login: 'brightwick', id, ...tags }, ':tmi.twitch.tv USERNOTICE #quietkoala');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [hermes('create', { shoutoutID: 's9', sourceLogin: 'quietkoala', targetLogin: 'novalynxthelongestnamed', targetUserDisplayName: 'NovalynxTheLongestNamed' }),
+    N('g1', { 'msg-id': 'submysterygift', 'msg-param-mass-gift-count': '2', 'msg-param-community-gift-id': '777' }),
+    N('g2', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'Sol', 'msg-param-recipient-user-name': 'sol', 'msg-param-community-gift-id': '777' }),
+    N('g3', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'Rue', 'msg-param-recipient-user-name': 'rue', 'msg-param-community-gift-id': '777' })] });
+  // (a narrow ALL: the lines are cut off)
+  await page.$eval('.all-list', l => { l.style.width = '170px'; });
+  const so = page.locator('.all-list .al-ev').first(), gift = page.locator('.all-list .al-ev.al-gift');
+  await so.hover();
+  assert.equal(await so.evaluate(e => e.classList.contains('al-can')), true, 'cut off');
+  await gift.hover();
+  assert.equal(await gift.evaluate(e => e.classList.contains('al-can')), true, 'cut off');
+  await gift.locator('.al-gto').click();
+  assert.deepEqual(await gift.evaluate(e => [e.classList.contains('al-open'), e.querySelector('.al-gto').getAttribute('aria-expanded'), e.querySelectorAll('.al-gc').length]), [false, 'true', 2], 'who got them, the line not opened');
+  // a raid's Open ›
+  await page.evaluate(() => window.allChat.allRaid('tw:quietkoala', 'tw:emberfall'));
+  await page.click('.all-list [data-cmd="all.raidOpen"]');
+  assert.ok(await page.evaluate(() => window.openWins().some(w => w.channel === 'tw:emberfall')));
+  assert.equal(await page.locator('.all-list .al-raidout .al-tag-raid').textContent(), 'Opened');
+  // a shoutout's Open ›
+  await so.locator('[data-cmd="all.shoutoutOpen"]').evaluate(b => b.click());   // (under the raid's new window now)
+  assert.ok(await page.evaluate(() => window.openWins().some(w => w.channel === 'tw:novalynxthelongestnamed')), 'Open: that channel, in a window of its own');
+  assert.equal(await so.evaluate(e => e.classList.contains('al-open')), false, 'not a toggle');
 });
 
 test('ALL: Send on [K ▾]: the main site first, Tab steps the sites you can send on (YouTube only with a live chat), Enter sends there; ⇧Tab its own tab', async t => {
@@ -797,8 +883,8 @@ test('ALL: a reward redeemed with text reads as a message with the reward\'s nam
     KE('RewardRedeemedEvent', { reward_title: 'Hydrate', username: 'oakmoss', user_input: '' }), KE('KicksGifted', { gift_transaction_id: 'g1', sender: { username: 'Jshoti' }, gift: { name: 'Full Send', amount: 100 } }),
     KF('GiftedSubscriptionsEvent', { gifter_username: 'brightwick', gifted_usernames: ['a', 'b'] })] });
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'custom-reward-id': 'abc', id: 'r1', 'display-name': 'tinroof' }, ':tinroof!t@t PRIVMSG #quietkoala :play the new map')] });
-  assert.deepEqual(await lines(page), ['al-m | Kdriftwood_7: say hi to samShoutout', 'al-ev | Koakmoss redeemed HydrateSee it on Kick ›', 'al-ev | KJshoti sent Full Send · 100 KicksSee it on Kick ›',
-    'al-ev | Kbrightwick gifted 2 subsSee it on Kick ›2 recipients', 'al-m | Ttinroof: play the new mapChannel points']);
+  assert.deepEqual(await lines(page), ['al-m | Kdriftwood_7: say hi to samShoutout', 'al-ev | Koakmoss redeemed Hydrate', 'al-ev | KJshoti sent Full Send · 100 Kicks',
+    'al-ev | Kbrightwick gifted 2 subs2 recipients', 'al-m | Ttinroof: play the new mapChannel points']);
   assert.equal(await page.$$eval('.all-list .al-rw', l => l.length), 2, 'redeems: their own edge');
   assert.equal(await page.$eval('.al-tag-rw', e => e.style.getPropertyValue('--rw')), '#00F1FF', 'in the reward\'s colour');
 });
@@ -958,7 +1044,7 @@ test('ALL: gifted subs say who got them: Twitch\'s line for each on its "gifted 
     N('g2', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'LowTide', 'msg-param-recipient-user-name': 'lowtide', 'msg-param-community-gift-id': '777' }),
     N('g3', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'Drift', 'msg-param-recipient-user-name': 'drift', 'msg-param-community-gift-id': '777' }),
     N('g4', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'Sol', 'msg-param-recipient-user-name': 'sol' })] });
-  assert.deepEqual(await lines(page), ['al-ev | TBrightWick gifted 3 subsSee it on Twitch ›2 recipients', 'al-ev | TBrightWick gifted a sub to SolSee it on Twitch ›'], 'one line for the gift; a gift of its own stays a line');
+  assert.deepEqual(await lines(page), ['al-ev | TBrightWick gifted 3 subs2 recipients', 'al-ev | TBrightWick gifted a sub to Sol'], 'one line for the gift; a gift of its own stays a line');
   await page.click('.al-gto');
   assert.deepEqual(await page.$$eval('.al-gl .al-gc', l => l.map(e => e.textContent)), ['LowTide', 'Drift']);
   assert.equal(await page.getAttribute('.al-gto', 'aria-expanded'), 'true');
@@ -969,7 +1055,7 @@ test('ALL: gifted subs say who got them: Twitch\'s line for each on its "gifted 
   assert.equal(await page.locator('.al-gl .al-gc').count(), 0, 'closed: the names go, the button stays');
   // Kick: its gift has the names
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('GiftedSubscriptionsEvent', { gifted_usernames: ['mekick', 'Koala2'], gifter_username: 'Yajeli', correlation_id: 'c1' })] });
-  assert.match((await lines(page)).pop(), /^al-ev \| KYajeli gifted 2 subsSee it on Kick ›2 recipientsTo you$/);
+  assert.match((await lines(page)).pop(), /^al-ev \| KYajeli gifted 2 subs2 recipientsTo you$/);
 });
 
 test('ALL: pressing or typing in it is seeing its chats: their alerts stop (the tabs\' and the window\'s glow); one that comes while you\'re in it only glows a moment', async t => {
