@@ -223,5 +223,5 @@ function init(){
   window.freshEmotes = freshEmotes;   // for the tests
 }
 
-export { emoteOn, freshEmotes, init, markNewEmotes, mountView, newEmotesOn, pngOf, reloadPage, reloadWin, viewVars,
-  ytCache };
+export { copyEmote, emoteOn, freshEmotes, init, markNewEmotes, mountView, newEmotesOn, pngOf, reloadPage, reloadWin,
+  viewVars, ytCache };
