@@ -8,28 +8,45 @@ import { element } from '../shared/element.js';
    picking one locks the box to that site, as @ and replies do. What's sent is what that site expects: Kick's
    [emote:<id>:<name>], elsewhere the name. */
 
-const emoteCache = new Map();   // channel -> a promise of its groups ([{ id, label, emotes: [{ name, url, send }] }])
+const emoteCache = new Map();   // channel -> a promise of its groups ([{ id, label, emotes: [{ name, url, send }] }]), while it has a chat open
+// A group several chats have (Kick's and Twitch's own sets, the ones your account can use, a streamer's 7TV set on each
+// of their sites) is kept once: the first chat's copy, until the last chat with it closes
+const shared = new Map();       // the group's id, size and a hash of it -> { g, n: how many chats have it }
+const hashOf = t => { let h = 0x811c9dc5; for (let i = 0; i < t.length; i++) h = Math.imul(h ^ t.charCodeAt(i), 0x01000193); return (h >>> 0).toString(36); };
+const keyOf = g => { const t = JSON.stringify(g); return `${g.id}|${t.length}|${hashOf(t)}`; };
+const share = gs => gs.map(g => { const k = keyOf(g), had = shared.get(k); if (had){ had.n++; return had.g; } shared.set(k, { g, n: 1 }); return g; });
 function emoteGroups(ch){
   if (!emoteCache.has(ch)){
     const ask = window.kmv && window.kmv.emotesPick;
-    const p = (ask ? Promise.resolve(ask(ch)).catch(() => null) : Promise.resolve(null)).then(g => Array.isArray(g) ? g : []);
+    const p = (ask ? Promise.resolve(ask(ch)).catch(() => null) : Promise.resolve(null)).then(g => Array.isArray(g) && emoteCache.get(ch) === p ? share(g) : []);
     emoteCache.set(ch, p);
-    p.then(g => { if (!g.length) emoteCache.delete(ch); });   // (nothing: ask again next time)
+    p.then(g => { if (!g.length && emoteCache.get(ch) === p) emoteCache.delete(ch); });   // (nothing: ask again next time)
   }
   return emoteCache.get(ch);
+}
+// The channel has no chat open any more: its emotes go (and a shared group with the last chat that had it)
+function forgetEmotes(ch){
+  const p = emoteCache.get(ch); if (!p) return;
+  emoteCache.delete(ch); addons.delete(ch);
+  p.then(gs => gs.forEach(g => { const k = keyOf(g), had = shared.get(k); if (had && had.g === g && --had.n <= 0) shared.delete(k); }));
 }
 // The channel's 7TV, BetterTTV and FrankerFaceZ emotes by name (the picker's), for its messages in ALL as the site's chat
 // shows them with those add-ons: null until they've come, then ready() (ALL draws its lines again)
 const ADDON = { '7tv': '7TV', bttv: 'BetterTTV', ffz: 'FrankerFaceZ' };
-const addons = new Map();   // channel -> Map(name -> { url, src }) or null while asking
+const addons = new Map();   // channel -> { size, get(name) -> { url, src } } or null while asking
+const byName = new WeakMap();   // a group -> Map(name -> { url, src }) (made once for a shared group)
+function namesOf(g){
+  if (!byName.has(g)){ const m = new Map(); g.emotes.forEach(e => { if (!m.has(e.name)) m.set(e.name, { url: e.url, src: ADDON[g.id] }); }); byName.set(g, m); }
+  return byName.get(g);
+}
 function addonEmotes(ch, ready){
   if (!addons.has(ch)){
     addons.set(ch, null);
     emoteGroups(ch).then(gs => {
-      const m = new Map();
-      gs.filter(g => ADDON[g.id]).forEach(g => g.emotes.forEach(e => { if (!m.has(e.name)) m.set(e.name, { url: e.url, src: ADDON[g.id] }); }));
-      addons.set(ch, m);
-      if (m.size && ready) ready();
+      if (!emoteCache.has(ch)) return addons.delete(ch);   // (its chat closed meanwhile)
+      const maps = gs.filter(g => ADDON[g.id]).map(namesOf), size = maps.reduce((n, m) => n + m.size, 0);
+      addons.set(ch, { size, get: name => { for (const m of maps){ const e = m.get(name); if (e) return e; } } });   // (the first group's, as before)
+      if (size && ready) ready();
     });
   }
   return addons.get(ch);
@@ -110,4 +127,5 @@ async function openEmotePicker(view, w){
 }
 const SMILEY = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1 1.3 2.2 2 3.5 2s2.5-.7 3.5-2M9 9.5h.01M15 9.5h.01"/></svg>';
 
-export { addonEmotes, emoteCache, openEmotePicker, pickEmote, renderEmoteList, SMILEY, suggestEmote, withEmotes };
+export { addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, renderEmoteList, SMILEY, suggestEmote,
+  withEmotes };

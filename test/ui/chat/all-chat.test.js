@@ -187,6 +187,39 @@ test('ALL: the window\'s @ button (the desktop app\'s) turns mentions off and on
   assert.deepEqual(await at(), ['quietkoala'], 'ALL off: its own chat');
 });
 
+test('ALL: the sites\' own badges (a channel\'s sub badge for their months, Kick\'s picked ones), with the sites\' words; ALL\'s icons until the pictures come; a channel\'s badges and emotes go with its last chat, groups several chats have kept once', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const img = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  await page.evaluate(img => {
+    const set = (id, label, names) => ({ id, label, emotes: names.map(name => ({ name, url: img, send: name })) });
+    window.kmv = { ...(window.kmv || {}), emotesPick: async ch => (ch === 'tw:quietkoala' ? [set('twitch-global', 'Twitch', ['Kappa']), set('7tv', '7TV', ['catJAM'])] : [set('kick-global', 'Kick', ['KEKW']), set('7tv', '7TV', ['catJAM'])]) };
+  }, img);
+  await page.route('https://ext.cdn.kick.com/**', r => r.fulfill({ body: Buffer.from(img.split(',')[1], 'base64'), contentType: 'image/gif' }));   // (Kick's badge pictures: a stand-in)
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'drift', id: 'a', badges: 'subscriber/24,moderator/1,glhf-pledge/1', 'badge-info': 'subscriber/27' }, ':drift!d@d PRIVMSG #quietkoala :hi')] });
+  const kickSender = { id: 2, username: 'Lowtide', slug: 'lowtide', identity: { badges: [{ type: 'moderator', text: 'Moderator', sort_order: 3 }, { type: 'subscriber', count: 4, sort_order: 9 }, { type: 'founder', text: 'Founder', sort_order: 6 }], badges_v2: [{ name: 'GoldenK', image_url: 'https://ext.cdn.kick.com/chat/badges/k.png', selected: true, sort_order: 4 }, { name: 'level', image_url: 'https://ext.cdn.kick.com/chat/badges/lv.png', selected: false, sort_order: 1 }] } };
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatMessageEvent', { id: 'k1', content: 'yo', type: 'message', sender: kickSender })] });
+  const badges = () => page.$$eval('.all-list .al-m .al-who', l => l.map(w => [...w.querySelectorAll('.al-b, .al-bi')].map(b => b.tagName === 'IMG' ? `img ${b.getAttribute('src').replace(/^data:[^#]*|^https:\/\/ext\.cdn\.kick\.com\/chat\/badges\//, '')} ${b.title}` : b.className.replace('al-b al-b-', 'icon '))));
+  assert.deepEqual(await badges(), [['icon sub', 'icon mod'], ['icon mod', 'img k.png GoldenK', 'icon founder', 'icon sub']], 'before the pictures: ALL\'s icons, in Kick\'s order (its picked ones came with theirs; not a level it didn\'t pick)');
+  // the pictures come: Twitch's (the channel's sub badge, Twitch's own moderator), Kick's sub badges by months
+  await page.evaluate(img => {
+    window.allChat.gotBadges('tw:quietkoala', { twitch: { own: { 'subscriber/24': { url: img + '#sub24', title: '2-Year Subscriber' } }, global: { 'moderator/1': { url: img + '#mod', title: 'Moderator' } } } });
+    window.allChat.gotBadges('quietkoala', { kick: { subs: [{ months: 1, url: img + '#s1' }, { months: 3, url: img + '#s3' }, { months: 6, url: img + '#s6' }] } });
+  }, img);
+  assert.deepEqual(await badges(), [['img #sub24 27-Month Subscriber (2-Year Badge)', 'img #mod Moderator'], ['icon mod', 'img k.png GoldenK', 'icon founder', 'img #s3 4-Month Subscriber']], 'as the sites say them; one without a picture: left out');
+  assert.deepEqual(await page.$$eval('.all-list .al-m:last-child .al-b', l => l.map(b => b.title)), ['Moderator', 'Founder'], 'Kick\'s names for its own');
+  // Twitch's own kept once: a second Twitch chat's answer without them still finds them
+  await page.evaluate(() => window.allChat.gotBadges('tw:quietkoala', { twitch: { own: {} } }));
+  assert.deepEqual((await badges())[0], ['icon sub', 'img #mod Moderator']);
+  // the emotes several chats have (the streamer's 7TV set on both sites): one copy
+  const sharedSet = () => page.evaluate(async () => { const c = window.allEmotes.emoteCache; const a = await c.get('quietkoala'), b = await c.get('tw:quietkoala'); return a && b ? [a[1] === b[1], a[0] === b[0]] : null; });
+  assert.deepEqual(await sharedSet(), [true, false], 'the 7TV set once; each site\'s own set its own');
+  // the streamer's window closed: their badges and emotes go; Twitch's own too, with no Twitch chat open
+  await page.click('#stage .win.chat:not(.tab-hidden) button.x');
+  await page.waitForFunction(() => !document.querySelector('#stage .win.chat'));
+  assert.deepEqual(await page.evaluate(() => [window.allChat.badgePics.size, window.allEmotes.emoteCache.size, window.allChat.twBadges()]), [0, 0, null]);
+});
+
 test('ALL has the sites\' chats\' extras: links open in your browser; the line menu\'s link, emote and selected-text items, both copies, translating its site\'s chat; the emote card on hover; Copy message HTML; Blow up on a click', async t => {
   const page = await allApp(t, { allOpen: '["s1"]', emotePreview: '1', chatBlowup: '1' });
   await page.waitForSelector('.all-view');
@@ -909,11 +942,13 @@ test('ALL: the send site\'s modes above the box; slow mode counts down after you
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatroomUpdatedEvent', { slow_mode: { enabled: false }, followers_mode: { enabled: true, min_duration: 10 }, subscribers_mode: { enabled: false }, emotes_mode: { enabled: false } })] });
   assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Can’t send on Kick', 'the bar says why');
   assert.equal(await page.isDisabled('.all-in'), true);
-  assert.equal(await bar(), 'Followers only · you can chat in 9 min', 'said once: not its chip as well');
+  assert.equal(await bar(), 'Followers onlyYou can chat in 9 min', 'said once: not its chip as well');
+  assert.deepEqual(await page.$eval('.all-mb', e => [e.querySelector('b').textContent, e.querySelector('small').textContent, e.title]), ['Followers only', 'You can chat in 9 min', 'Followers only · you can chat in 9 min'], 'two lines: what\'s in the way, what to do');
   // subscribers only, not subscribed; then a ban
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatroomUpdatedEvent', { followers_mode: { enabled: false }, subscribers_mode: { enabled: true } })] });
-  assert.equal(await bar(), 'Subscribers only · subscribe on Kick to chat');
+  assert.equal(await bar(), 'Subscribers onlySubscribe on Kick to chat');
   await page.evaluate(() => window.allChat.setModes('quietkoala', { me: { signedIn: true, banned: true } }));
+  assert.equal(await page.$eval('.all-mb', e => e.querySelectorAll('small').length), 0, 'one sentence: one line');
   assert.equal(await bar(), 'You’re banned from this Kick chatSubscribers only', 'not the mode it\'s because of: its chip stays');
   assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Can’t send on Kick');
   // a moderator: the modes show, quieter, and don't apply
@@ -925,7 +960,7 @@ test('ALL: the send site\'s modes above the box; slow mode counts down after you
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'followers-only': '0', 'room-id': '1' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')] });
   await page.focus('.all-in'); await page.keyboard.press('Tab');
   assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Can’t send on Twitch');
-  assert.equal(await bar(), 'Followers only · follow on Twitch to chat');
+  assert.equal(await bar(), 'Followers onlyFollow on Twitch to chat');
   await page.evaluate(() => window.allChat.setModes('yt:quietkoala', { blocked: 'Sign in to chat' }));
 });
 

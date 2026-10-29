@@ -130,6 +130,31 @@ test('the reader on Twitch: its chat lines, and a pin or its taking down from it
   assert.deepEqual(heard[0].raw.map(r => r.startsWith('{') ? JSON.parse(JSON.parse(r).notification.pubsub).type : r), ['@id=a :x!x@x PRIVMSG #q :hi', 'pin-message', 'unpin-message']);
 });
 
+test('the badges\' pictures (badgesAgent): Kick\'s channel sub badges by months; Twitch\'s channel badges, and its own only when asked for; none for YouTube, or a site that won\'t answer', async t => {
+  const page = await openApp(t);
+  const got = await page.evaluate(async () => {
+    const asked = [];
+    const badge = (setID, version, title, imageURL = `https://static-cdn.jtvnw.net/badges/v1/${setID}${version}/2`) => ({ setID, version, title, imageURL });
+    window.fetch = async (url, o = {}) => ({ json: async () => {
+      url = String(url); asked.push(url + (o.body ? ' ' + JSON.parse(o.body).query.replace(/\s+/g, ' ').slice(0, 15) : ''));
+      if (/\/api\/v2\/channels\/quietkoala$/.test(url)) return { id: 77, subscriber_badges: [{ months: 6, badge_image: { src: 'https://files.kick.com/channel_subscriber_badges/6.png' } }, { months: 1, badge_image: { src: 'https://files.kick.com/channel_subscriber_badges/1.png' } }, { months: 3, badge_image: { src: 'http://not-https' } }] };
+      const all = /badges \{/.test(JSON.parse(o.body).query);
+      return { data: { ...(all ? { badges: [badge('moderator', '1', 'Moderator'), badge('premium', '1', 'Prime Gaming', '')] } : {}), user: { broadcastBadges: [badge('subscriber', '24', '2-Year Subscriber')] } } };
+    } });
+    const out = { kick: await window.badgesAgent(false, 'kick', 'quietkoala'), twitch: await window.badgesAgent(false, 'twitch', 'quietkoala'), twitchAll: await window.badgesAgent(true, 'twitch', 'quietkoala'),
+      youtube: await window.badgesAgent(true, 'youtube', 'quietkoala'), noName: await window.badgesAgent(true, 'kick', '') };
+    window.fetch = async () => { throw new Error('offline'); };
+    out.failed = [await window.badgesAgent(true, 'kick', 'quietkoala'), await window.badgesAgent(true, 'twitch', 'quietkoala')];
+    return { out, asked };
+  });
+  assert.deepEqual(got.out.kick, { kick: { subs: [{ months: 1, url: 'https://files.kick.com/channel_subscriber_badges/1.png' }, { months: 6, url: 'https://files.kick.com/channel_subscriber_badges/6.png' }] } }, 'by months; not a picture that isn\'t https');
+  const sub = { 'subscriber/24': { url: 'https://static-cdn.jtvnw.net/badges/v1/subscriber24/2', title: '2-Year Subscriber' } };
+  assert.deepEqual(got.out.twitch, { twitch: { own: sub } }, 'Twitch\'s own not asked for: ALL has them');
+  assert.deepEqual(got.out.twitchAll, { twitch: { own: sub, global: { 'moderator/1': { url: 'https://static-cdn.jtvnw.net/badges/v1/moderator1/2', title: 'Moderator' } } } });
+  assert.deepEqual([got.out.youtube, got.out.noName, ...got.out.failed], [null, null, null, null]);
+  assert.deepEqual(got.asked, ['/api/v2/channels/quietkoala', 'https://gql.twitch.tv/gql query { user(lo', 'https://gql.twitch.tv/gql query { badges ']);
+});
+
 test('a pin already up (pinAgent): Kick\'s chat history, Twitch\'s pinnedChatMessages, YouTube\'s first data; each as the live pin, which the parser reads', async t => {
   const page = await openApp(t);
   const got = await page.evaluate(async () => {

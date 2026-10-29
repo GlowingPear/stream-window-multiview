@@ -124,6 +124,31 @@ async function pinAgent(as, nameAs){
   } catch (e) { return null; }
 }
 
+// The pictures of the chat's badges, for ALL's lines (feed-parse.js keeps each message's badges as { set, v }): asked
+// once as ALL starts reading the chat. Kick: the channel's sub badges, by months (its other badges come with their
+// pictures, or are its own icons); Twitch: the channel's (subs, bits), and Twitch's own when asked for (global: the same
+// for every chat, so ALL keeps them once), by set and version. YouTube's come with their pictures.
+// -> { kick: { subs: [{ months, url }] } } or { twitch: { own: { '<set>/<version>': { url, title } }, global?: { … } } },
+// or null (none, or unreadable)
+async function badgesAgent(global, as, nameAs){
+  const site = as || (/(^|\.)kick\.com$/.test(location.hostname) ? 'kick' : /(^|\.)twitch\.tv$/.test(location.hostname) ? 'twitch' : 'youtube');
+  const name = nameAs || (location.pathname.match(/\/popout\/([^/]+)/) || [])[1];   // (as, nameAs: the tests')
+  if (!name || site === 'youtube') return null;
+  try {
+    if (site === 'kick'){
+      const ch = await (await fetch(`/api/v2/channels/${encodeURIComponent(name)}`, { credentials: 'include' })).json();
+      const subs = (ch && Array.isArray(ch.subscriber_badges) ? ch.subscriber_badges : []).map(b => ({ months: +b.months || 0, url: (b.badge_image && b.badge_image.src) || '' })).filter(b => /^https:\/\//.test(b.url));
+      return subs.length ? { kick: { subs: subs.sort((a, b) => a.months - b.months) } } : null;
+    }
+    const fields = '{ setID version title imageURL(size: DOUBLE) }';
+    const query = `query { ${global ? `badges ${fields} ` : ''}user(login: ${JSON.stringify(decodeURIComponent(name).toLowerCase())}) { broadcastBadges ${fields} } }`;
+    const r = await (await fetch('https://gql.twitch.tv/gql', { method: 'POST', headers: { 'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko', 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) })).json();
+    const d = (r && r.data) || {}, byKey = list => { const out = {}; (list || []).forEach(b => { if (b && b.setID && /^https:\/\//.test(b.imageURL || '')) out[b.setID + '/' + b.version] = { url: b.imageURL, title: b.title || '' }; }); return out; };
+    const own = byKey(d.user && d.user.broadcastBadges), all = global ? byKey(d.badges) : null;
+    return Object.keys(own).length || (all && Object.keys(all).length) ? { twitch: { own, ...(all ? { global: all } : {}) } } : null;
+  } catch (e) { return null; }
+}
+
 // The chat's modes and where you stand in it, for ALL's box (chat/all-chat.js): asked as ALL starts reading the chat;
 // changes come live after (feed-parse.js). Kick: its chatroom (the modes) and your /me there (with the chat's login);
 // Twitch: chatSettings, and you there (with the page's login); YouTube: what its chat says where its box would be
@@ -286,5 +311,5 @@ function profileAgent(id){
   return true;
 }
 
-export { feedAgent, lineProbe, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt,
-  twReplyPress };
+export { badgesAgent, feedAgent, lineProbe, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent,
+  twReplyAt, twReplyPress };

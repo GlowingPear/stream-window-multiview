@@ -11,7 +11,7 @@ test('Twitch: a message with its id, badges, colour and emotes (by character, no
   const m = parseTwitch(TW({ 'badge-info': 'subscriber/18', badges: 'subscriber/18,moderator/1,glhf-pledge/1', color: '#FF7F50', 'display-name': 'Tinroof', emotes: '25:5-9', 'first-msg': '1',
     id: 'a1', 'tmi-sent-ts': '1793161256615', 'user-id': '42' }, ':tinroof!tinroof@tinroof.tmi.twitch.tv PRIVMSG #quietkoala :hi 😀 Kappa gg'));
   assert.deepEqual(m, { site: 'twitch', kind: 'message', id: 'a1', t: 1793161256615, sender: 'Tinroof', login: 'tinroof', color: '#FF7F50', userId: '42',
-    badges: ['sub', 'mod'], parts: [{ text: 'hi 😀 ' }, { emote: 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0', name: 'Kappa' }, { text: ' gg' }], first: true });
+    badges: ['sub', 'mod'], pics: [{ set: 'subscriber', v: '18', months: 18 }, { set: 'moderator', v: '1' }, { set: 'glhf-pledge', v: '1' }], parts: [{ text: 'hi 😀 ' }, { emote: 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0', name: 'Kappa' }, { text: ' gg' }], first: true });
 });
 
 test('Twitch: replies, /me, Highlight my message, cheers, escaped tags', async () => {
@@ -39,12 +39,22 @@ test('Twitch: subs and other events, deletions and timeouts; anything else is le
 });
 
 const KF = (event, data) => JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: 'App\\Events\\' + event, data: JSON.stringify(data) } } } });
+test('Kick: badges in Kick\'s order (sort_order), named as Kick names them; a level picked to show, with its number', async () => {
+  const { kickPics } = (await load());
+  assert.deepEqual(kickPics({ badges: [{ type: 'founder', text: 'Founder', sort_order: 6 }, { type: 'subscriber', text: 'Subscriber', count: 2, sort_order: 9 }, { type: 'sub_gifter', text: 'Sub Gifter', count: 2, sort_order: 8 }],
+    badges_v2: [{ name: 'level', image_url: 'https://ext.cdn.kick.com/chat/badges/24.png', metadata: { level: 24 }, selected: true, sort_order: 1 }] }),
+  [{ url: 'https://ext.cdn.kick.com/chat/badges/24.png', title: 'Level 24' }, { set: 'founder', v: '1', title: 'Founder' }, { set: 'sub_gifter', v: '2', title: 'Sub Gifter' }, { set: 'subscriber', v: '2' }]);
+});
+
 test('Kick: messages and replies from its live connection, emotes and badges', async () => {
   const { parseKick } = await load();
-  const sender = { id: 7, username: 'Lowtide', slug: 'lowtide', identity: { color: '#7FD2FF', badges: [{ type: 'moderator' }, { type: 'og' }, { type: 'unknown' }] } };
+  const sender = { id: 7, username: 'Lowtide', slug: 'lowtide', identity: { color: '#7FD2FF', badges: [{ type: 'subscriber', count: 41 }, { type: 'moderator' }, { type: 'og' }, { type: 'unknown' }],
+    badges_v2: [{ name: 'kick_founder22', image_url: 'https://ext.cdn.kick.com/chat/badges/founder.png', selected: true }, { name: 'level', image_url: 'https://ext.cdn.kick.com/chat/badges/46.png', selected: true },
+      { name: 'Ghost', image_url: 'https://ext.cdn.kick.com/chat/badges/ghost.png', selected: false }] } };
   const m = parseKick(KF('ChatMessageEvent', { id: 'k1', content: 'nice [emote:37226:KEKW]!', type: 'message', created_at: '2026-10-28T04:27:10+00:00', sender, metadata: { message_ref: '1' } }));
   assert.deepEqual(m, { site: 'kick', kind: 'message', id: 'k1', t: Date.parse('2026-10-28T04:27:10+00:00'), sender: 'Lowtide', login: 'lowtide', color: '#7FD2FF', userId: '7',
-    badges: ['mod', 'og'], parts: [{ text: 'nice ' }, { emote: 'https://files.kick.com/emotes/37226/fullsize', name: 'KEKW' }, { text: '!' }] });
+    badges: ['sub', 'mod', 'og'], pics: [{ set: 'subscriber', v: '41' }, { set: 'moderator', v: '1' }, { set: 'og', v: '1' }, { url: 'https://ext.cdn.kick.com/chat/badges/founder.png', title: 'kick_founder22' }, { url: 'https://ext.cdn.kick.com/chat/badges/46.png', title: 'level' }],
+    parts: [{ text: 'nice ' }, { emote: 'https://files.kick.com/emotes/37226/fullsize', name: 'KEKW' }, { text: '!' }] });
   const r = parseKick(KF('ChatMessageEvent', { id: 'k2', content: 'yes', type: 'reply', sender, thread_parent_id: 'k0',
     metadata: { original_sender: { id: 1, username: 'You' }, original_message: { id: 'k0', content: 'gg [emote:1:Pog]' } } }));
   assert.deepEqual(r.reply, { id: 'k0', sender: 'You', login: 'you', body: 'gg Pog' });
@@ -69,10 +79,10 @@ const YT = (type, r) => ({ addChatItemAction: { item: { [type]: r } } });
 test('YouTube: messages with emoji and badges, Super Chats, memberships, removals', async () => {
   const { parseYouTube } = await load();
   const author = { authorName: { simpleText: '@SoraHikari' }, authorExternalChannelId: 'UCx', timestampUsec: '1793161469214882',
-    authorBadges: [{ liveChatAuthorBadgeRenderer: { icon: { iconType: 'MODERATOR' } } }, { liveChatAuthorBadgeRenderer: { customThumbnail: {}, tooltip: 'Member (6 months)' } }] };
+    authorBadges: [{ liveChatAuthorBadgeRenderer: { icon: { iconType: 'MODERATOR' } } }, { liveChatAuthorBadgeRenderer: { customThumbnail: { thumbnails: [{ url: 'https://yt3.ggpht.com/m=s16' }, { url: 'https://yt3.ggpht.com/m=s32' }] }, tooltip: 'Member (6 months)' } }] };
   const m = parseYouTube(YT('liveChatTextMessageRenderer', { id: 'y1', ...author, message: { runs: [{ text: 'hi ' }, { emoji: { emojiId: '👋', shortcuts: [':wave:'] } },
     { emoji: { emojiId: 'UCx/abc', isCustomEmoji: true, shortcuts: [':lofi:'], image: { thumbnails: [{ url: 'https://yt3.ggpht.com/e' }] } } }] } }));
-  assert.deepEqual(m, { site: 'youtube', id: 'y1', t: 1793161469215, sender: '@SoraHikari', login: 'sorahikari', color: '', userId: 'UCx', badges: ['mod', 'sub'], kind: 'message',
+  assert.deepEqual(m, { site: 'youtube', id: 'y1', t: 1793161469215, sender: '@SoraHikari', login: 'sorahikari', color: '', userId: 'UCx', badges: ['mod', 'sub'], pics: [{ set: 'moderator', v: '1' }, { url: 'https://yt3.ggpht.com/m=s32', title: 'Member (6 months)' }], kind: 'message',
     parts: [{ text: 'hi ' }, { text: '👋' }, { emote: 'https://yt3.ggpht.com/e', name: ':lofi:' }] });
   const sc = parseYouTube(YT('liveChatPaidMessageRenderer', { id: 'y2', ...author, purchaseAmountText: { simpleText: '£5.00' }, message: { runs: [{ text: 'love it' }] } }));
   assert.equal(sc.kind, 'event'); assert.equal(sc.text, '@SoraHikari sent a Super Chat · £5.00'); assert.deepEqual(sc.parts, [{ text: 'love it' }]);
