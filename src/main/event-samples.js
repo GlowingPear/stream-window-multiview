@@ -119,17 +119,17 @@ function anonymise(site, text, ph) {
 
 // The export: every kind with its status (known: { site: { kind: what ALL does with it } } from the page), the kinds
 // ALL knows that haven't come yet, and the samples without names, ids or words.
-// quiet: { site: a pattern (its source) } for the connections' own kinds, marked 'ignored'.
-function exportSamples(data, known, { now = () => Date.now(), version = '', quiet = {} } = {}) {
+// ignored: { site: { kind: why ALL leaves it out } }, marked 'ignored' with why.
+function exportSamples(data, known, { now = () => Date.now(), version = '', ignored = {} } = {}) {
   known = known && typeof known === 'object' ? known : {};
   const ph = placeholders(), d = tidy(data);
   const out = { what: 'Stream Multiview chat event samples (Settings › Developer › Chat events)', version, made: new Date(now()).toISOString(),
     note: 'Names, ids and the words of messages are placeholders (user1, id1, word); the same name is the same placeholder throughout.', sites: {} };
   for (const s of SITES) {
     const k = known[s] && typeof known[s] === 'object' ? known[s] : {};
-    let q = null; try { q = quiet && typeof quiet[s] === 'string' && quiet[s] ? new RegExp(quiet[s]) : null; } catch {}
+    const ig = ignored && ignored[s] && typeof ignored[s] === 'object' ? ignored[s] : {};
     const kinds = Object.entries(d[s]).sort((a, b) => b[1].last - a[1].last).map(([kind, e]) => ({
-      kind, status: k[kind] ? 'shown' : q && q.test(kind) ? 'ignored' : 'unknown', does: k[kind] || '', n: e.n, first: new Date(e.first).toISOString(), last: new Date(e.last).toISOString(),
+      kind, status: k[kind] ? 'shown' : ig[kind] ? 'ignored' : 'unknown', does: k[kind] || (ig[kind] ? String(ig[kind]) : ''), n: e.n, first: new Date(e.first).toISOString(), last: new Date(e.last).toISOString(),
       samples: e.samples.map(x => anonymise(s, x.x, ph))
     }));
     out.sites[s] = { needed: Object.keys(k).filter(kind => !d[s][kind]), kinds };

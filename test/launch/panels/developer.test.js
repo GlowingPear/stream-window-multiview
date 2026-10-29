@@ -179,29 +179,40 @@ test('the error log and the sites\' answers: from the main process, the page and
 
 test('Chat events: what the chats\' readers send, sorted by what ALL does with it (still needed, unknown, in ALL); a row\'s samples; Export without names; the switch; Clear', T, async () => {
   // what a chat's reader sends (in-site/feed.js), from the stand-in Kick chat; and more straight to the app
-  await inView(a.win, 'alpha', 'chat', () => { console.log('__kmv:samples ' + JSON.stringify({ s: 'kick', k: { NewActivityFeedEvent: { n: 2, x: JSON.stringify({ type: 'new_subscriber', username: 'RealPerson42', channel_id: 57035257 }) } } })); return true; });
-  await a.win.evaluate(() => window.kmv.samplesAdd('kick', { ChatMessageEvent: { n: 40, x: JSON.stringify({ content: 'hello there', sender: { username: 'RealPerson42' } }) } }));
+  await inView(a.win, 'alpha', 'chat', () => { console.log('__kmv:samples ' + JSON.stringify({ s: 'kick', k: { MysteryEvent: { n: 2, x: JSON.stringify({ type: 'new_subscriber', username: 'RealPerson42', channel_id: 57035257 }) } } })); return true; });
+  await a.win.evaluate(() => window.kmv.samplesAdd('kick', { GoalProgressUpdateEvent: { n: 5 }, ChatMessageEvent: { n: 40, x: JSON.stringify({ content: 'hello there', sender: { username: 'RealPerson42' } }) } }));
   await a.win.evaluate(() => window.openSettings('developer'));
   await a.win.click('#devTabs [data-t=events]');
-  await a.win.waitForSelector('#devList .ev-unknown .ev-row');
+  await a.win.waitForSelector('#devList .ev-sec .ev-row');
   assert.equal(await pane('.dv-keep').isVisible(), false, 'its own Clear instead');
   assert.match(await a.win.textContent('#devTabs [data-t=events]'), /^Chat events \(1 new\)$/);
   const texts = sel => a.win.$$eval(sel, l => l.map(e => e.textContent.replace(/\s+/g, ' ').trim()));
-  assert.deepEqual(await texts('#devList .ev-unknown .ev-row'), ['KickNewActivityFeedEventnewnot in ALL yet×2just now']);
-  assert.deepEqual(await texts('#devList .ev-shown .ev-row'), ['KickChatMessageEventa message×40just now']);
-  const needed = await texts('#devList .ev-need .ev-chip');
+  const view = v => a.win.click(`#devList .ev-view[data-v=${v}]`);
+  // three lists, one at a time: Unknown first, each tab with how many
+  assert.deepEqual(await texts('#devList .ev-view'), ['Unknown1', 'Still needed' + await a.win.$eval('#devList .ev-v-needed .ev-vn', e => e.textContent), 'Shown in ALL1', 'Ignored1']);
+  assert.equal(await a.win.getAttribute('#devList .ev-v-unknown', 'aria-selected'), 'true');
+  assert.deepEqual(await texts('#devList .ev-sec .ev-row'), ['KickMysteryEventnewnot in ALL yet×2just now']);
+  await view('shown');
+  assert.deepEqual(await texts('#devList .ev-sec .ev-row'), ['KickChatMessageEventa message×40just now']);
+  await view('ignored');
+  assert.deepEqual(await texts('#devList .ev-sec .ev-row'), ['KickGoalProgressUpdateEventthe channel’s goal bar×5just now'], 'left out on purpose, and why');
+  await view('needed');
+  const needed = await texts('#devList .ev-sec .ev-chip');
   assert.ok(needed.includes('KickStreamHostEventa raid') && needed.includes('TwitchUSERNOTICE:raida raid') && !needed.some(n => /ChatMessageEventa message/.test(n)), needed.join(' | '));
-  assert.match(await a.win.textContent('#devList .ev-stats'), /Kick2 kinds · 42 heard/);
-  // a site's pill: only that site's (the others dimmed); again: every site
+  assert.match(await a.win.textContent('#devList .ev-desc'), /none has come yet/);
+  assert.match(await a.win.textContent('#devList .ev-stats'), /Kick3·47/);
+  assert.match(await a.win.getAttribute('#devList .ev-stat:has(.dv-kick)', 'title'), /^Kick: 3 kinds, 47 heard/);
+  // a site's pill: only that site's (the others dimmed), the tabs' counts too; again: every site
   await a.win.click('#devList .ev-stat:has(.dv-twitch)');
   assert.equal(await a.win.getAttribute('#devList .ev-stat:has(.dv-twitch)', 'aria-pressed'), 'true');
-  assert.deepEqual(await texts('#devList .ev-unknown .ev-row, #devList .ev-shown .ev-row'), [], 'no Kick rows');
-  assert.ok((await texts('#devList .ev-need .ev-chip')).every(n => n.startsWith('Twitch')));
+  assert.ok((await texts('#devList .ev-sec .ev-chip')).every(n => n.startsWith('Twitch')));
+  assert.deepEqual(await texts('#devList .ev-v-unknown .ev-vn, #devList .ev-v-shown .ev-vn, #devList .ev-v-ignored .ev-vn'), ['0', '0', '0'], 'no Kick rows');
+  await view('unknown');
+  assert.match(await a.win.textContent('#devList .ev-sec'), /Nothing unknown yet/);
   assert.match(await a.win.textContent('#devTabs [data-t=events]'), /\(1 new\)/, 'the tab still counts every site');
   await a.win.click('#devList .ev-stat:has(.dv-twitch)');
-  assert.equal((await texts('#devList .ev-shown .ev-row')).length, 1);
   // a row: its samples, laid out, as they came (here, with the names: they stay on this computer)
-  await a.win.click('#devList .ev-unknown .ev-row');
+  await a.win.click('#devList .ev-sec .ev-row');
   assert.match(await a.win.textContent('#devList .ev-samples pre'), /"username": "RealPerson42"/);
   await a.win.click('#devList .ev-samples [data-cmd="dev.eventCopy"]');
   assert.match(await copied(), /RealPerson42/);
@@ -211,7 +222,7 @@ test('Chat events: what the chats\' readers send, sorted by what ALL does with i
   assert.ok(file, 'saved where it asked (Downloads)');
   const exp = JSON.parse(fs.readFileSync(path.join(out, path.basename(file)), 'utf8'));
   assert.ok(!/RealPerson42|hello there|57035257/.test(JSON.stringify(exp)), 'no names, words or ids');
-  assert.deepEqual(exp.sites.kick.kinds.map(k => [k.kind, k.status]).sort(), [['ChatMessageEvent', 'shown'], ['NewActivityFeedEvent', 'unknown']]);
+  assert.deepEqual(exp.sites.kick.kinds.map(k => [k.kind, k.status]).sort(), [['ChatMessageEvent', 'shown'], ['GoalProgressUpdateEvent', 'ignored'], ['MysteryEvent', 'unknown']]);
   assert.ok(exp.sites.kick.needed.includes('StreamHostEvent'));
   // the switch: off in every chat's reader, and remembered
   await a.win.click('#evOn');
@@ -224,7 +235,7 @@ test('Chat events: what the chats\' readers send, sorted by what ALL does with i
   await a.win.waitForSelector('#askDlg:not([hidden])');
   await a.win.click('#askDlg .ask-yes');
   await a.win.waitForFunction(() => !document.querySelector('#devList .ev-row'));
-  assert.match(await a.win.textContent('#devList .ev-unknown'), /Nothing new yet/);
+  assert.match(await a.win.textContent('#devList .ev-sec'), /Nothing unknown yet/);
   await a.win.click('#devTabs [data-t=errors]');
   assert.equal(await pane('.dv-keep').isVisible(), true);
 });

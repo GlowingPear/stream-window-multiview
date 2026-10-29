@@ -173,13 +173,13 @@ app.on('will-quit', saveSamples);
 appIpc.on('samples:add', (_e, site, kinds) => { if (sampleStore.add(String(site), kinds) && !samplesSaveT) samplesSaveT = setTimeout(saveSamples, 30000); });
 appIpc.handle('samples:info', () => sampleStore.list());
 appIpc.handle('samples:clear', () => { sampleStore.clear(); saveSamples(); return true; });
-appIpc.handle('samples:export', async (e, known, quiet) => {
+appIpc.handle('samples:export', async (e, known, ignored) => {
   const d = new Date(), two = n => String(n).padStart(2, '0');
   const name = `stream-multiview-chat-events-${d.getFullYear()}${two(d.getMonth() + 1)}${two(d.getDate())}-${two(d.getHours())}${two(d.getMinutes())}.json`;
   const win = BrowserWindow.fromWebContents(e.sender);
   const r = await dialog.showSaveDialog(win, { title: 'Export chat events', defaultPath: path.join(app.getPath('downloads'), name), filters: [{ name: 'JSON', extensions: ['json'] }] }).catch(() => null);
   if (!r || r.canceled || !r.filePath) return { saved: false };
-  try { fs.writeFileSync(r.filePath, JSON.stringify(exportSamples(sampleStore.list(), known, { version: app.getVersion(), quiet }), null, 2)); return { saved: true, file: r.filePath }; } catch { return { saved: false, error: true }; }
+  try { fs.writeFileSync(r.filePath, JSON.stringify(exportSamples(sampleStore.list(), known, { version: app.getVersion(), ignored }), null, 2)); return { saved: true, file: r.filePath }; } catch { return { saved: false, error: true }; }
 });
 // Inspect: Chrome's developer tools for a stream's or chat's page in this window (they can read its logins, so only
 // with Developer tools on, or in a developer copy).

@@ -18,7 +18,7 @@ import { runIn } from '../windows/view.js';
    (what it still needs), the ones it doesn't know, and the ones it shows. Export saves them without names, ids or
    words, to hand over for fixing ALL's readers (chat/feed-parse.js) and testing them with what the sites really send. */
 let samplesOn = true;
-const evs = { open: '', site: '' };   // open: the kind whose samples are open ("<site> <kind>"); site: only that site's (its pill)
+const evs = { open: '', site: '', view: 'unknown' };   // open: the kind whose samples are open ("<site> <kind>"); site: only that site's (its pill); view: which list
 const EV_SITES = ['kick', 'twitch', 'youtube'];
 const EV_SAMP_JS = on => `window.__kmvFeed && (window.__kmvFeed.samp = ${!!on})`;
 
@@ -47,16 +47,16 @@ async function renderEvents(){
   const known = feedParse.KNOWN, rows = [], needed = [];
   EV_SITES.forEach(s => {
     const got = d[s] || {};
-    Object.entries(got).forEach(([kind, e]) => { const q = !known[s][kind] && feedParse.QUIET[s].test(kind); rows.push({ s, kind, e, quiet: q, does: known[s][kind] || (q ? 'the connection’s own' : '') }); });
+    Object.entries(got).forEach(([kind, e]) => { const ign = known[s][kind] ? '' : feedParse.ignoredWhy(s, kind); rows.push({ s, kind, e, ign, does: known[s][kind] || ign }); });
     Object.entries(known[s]).forEach(([kind, does]) => { if (!got[kind]) needed.push({ s, kind, does }); });
   });
   const allNew = rows.filter(r => !r.does).length, only = r => !evs.site || r.s === evs.site;
-  const unknown = rows.filter(r => !r.does && only(r)).sort((a, b) => b.e.first - a.e.first), shown = rows.filter(r => r.does && only(r)).sort((a, b) => a.quiet - b.quiet || b.e.n - a.e.n);
+  const unknown = rows.filter(r => !r.does && only(r)).sort((a, b) => b.e.first - a.e.first), shown = rows.filter(r => r.does && !r.ign && only(r)).sort((a, b) => b.e.n - a.e.n), ignored = rows.filter(r => r.ign && only(r)).sort((a, b) => b.e.n - a.e.n);
   const tab = $('#devTabs [data-t=events] .dv-n'); if (tab) tab.textContent = allNew ? `(${allNew} new)` : '';
   const site = s => element('span', 'dv-site dv-' + s, PLAT_NAME[s]);
   const row = r => {
     const key = r.s + ' ' + r.kind, open = evs.open === key, fresh = !r.does && Date.now() - r.e.first < 86400000;
-    return [element('button', { type: 'button', class: 'ev-row' + (open ? ' open' : '') + (r.does ? '' : ' ev-unk') + (r.quiet ? ' ev-quiet' : ''), 'aria-expanded': String(open), dataset: { cmd: 'dev.eventOpen' },
+    return [element('button', { type: 'button', class: 'ev-row' + (open ? ' open' : '') + (r.does ? '' : ' ev-unk') + (r.ign ? ' ev-ign' : ''), 'aria-expanded': String(open), dataset: { cmd: 'dev.eventOpen' },
       title: r.e.samples.length ? (open ? 'Hide its samples' : 'Show its samples') : 'Counted (no sample kept yet)', onclick: () => { evs.open = open ? '' : key; renderEvents(); } },
       site(r.s), element('span', 'ev-k', element('span', 'ev-kt', r.kind), fresh && element('em', 'ev-new', 'new')), element('span', 'ev-does', r.does || 'not in ALL yet'),
       element('span', 'ev-n', '×' + evCount(r.e.n)), element('span', 'ev-ago', evAgo(r.e.last))),
@@ -64,26 +64,38 @@ async function renderEvents(){
       element('div', 'ev-sh', element('span', null, evAgo(x.t)), element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'dev.eventCopy' }, onclick: () => copyText(x.x, 'Copied the sample (as it came: with names)') }, 'Copy')),
       element('pre', null, evPretty(x.x)))) : [element('div', 'dv-empty', 'Counted, but no sample kept yet: one comes within a minute of the next.')]))];
   };
-  const section = (cls, title, sub, items) => element('section', 'ev-sec ' + cls, element('div', 'ev-h', element('b', null, title), element('small', null, sub)), ...items);
+  const needs = needed.filter(only);
+  const VIEWS = [
+    ['unknown', 'Unknown', unknown.length, 'Sent by the sites, but ALL doesn’t know them. The newest first; “new” for a day.'],
+    ['needed', 'Still needed', needs.length, 'ALL reads these, but none has come yet. Each moves to Shown in ALL when one does.'],
+    ['shown', 'Shown in ALL', shown.length, 'Kinds ALL reads and shows in its list, the most heard first.'],
+    ['ignored', 'Ignored', ignored.length, 'Heard, and left out on purpose: each says why. The most heard first.']];
+  const cur = VIEWS.find(v => v[0] === evs.view) || VIEWS[0];
+  const body = cur[0] === 'unknown' ? (unknown.length ? unknown.flatMap(row) : [element('div', 'ev-none', element('b', null, samplesOn ? 'Nothing unknown yet' : 'Collecting is off'), samplesOn ? 'They show here as the chats you have open hear them.' : 'Switch it on to count what the chats you have open hear.')])
+    : cur[0] === 'needed' ? (needs.length ? [element('div', 'ev-chips', ...needs.map(n => element('span', { class: 'ev-chip', title: `${PLAT_NAME[n.s]}: ${n.does}` }, site(n.s), element('span', 'ev-k', n.kind), element('span', 'ev-does', n.does))))]
+      : [element('div', 'ev-none', element('b', null, 'Nothing still needed'), 'Every kind ALL reads has come at least once.')])
+    : cur[0] === 'shown' ? (shown.length ? shown.flatMap(row) : [element('div', 'ev-none', element('b', null, 'None heard yet'), 'What ALL shows is listed here as it comes.')])
+    : (ignored.length ? ignored.flatMap(row) : [element('div', 'ev-none', element('b', null, 'None heard yet'), 'The connections’ own housekeeping and the sites’ panels show here.')]);
   list.replaceChildren(
     element('div', 'ev-top',
       element('div', 'st-row ev-on', element('span', 'st-t', 'Collect chat events', element('small', null, 'Every chat you have open, read-only. Each kind is counted, with its last 3 samples, kept on this computer.')),
         element('input', { type: 'checkbox', class: 'st-sw', id: 'evOn', checked: samplesOn, onchange: e => setSamples(e.target.checked) })),
       element('div', 'ev-acts',
         element('div', { class: 'ev-stats' + (evs.site ? ' filtered' : ''), role: 'group', 'aria-label': 'Show one site' }, ...EV_SITES.map(s => { const k = Object.values(d[s] || {}), on = evs.site === s;
-          return element('button', { type: 'button', class: 'ev-stat' + (on ? ' on' : ''), 'aria-pressed': String(on), title: on ? 'Show every site again' : `Only ${PLAT_NAME[s]}`, dataset: { cmd: 'dev.eventsSite' },
-            onclick: () => { evs.site = on ? '' : s; evs.open = ''; renderEvents(); } }, site(s), element('b', null, String(k.length)), ' kinds · ', element('b', null, evCount(k.reduce((a, e) => a + e.n, 0))), ' heard'); })),
+          return element('button', { type: 'button', class: 'ev-stat' + (on ? ' on' : ''), 'aria-pressed': String(on), title: `${PLAT_NAME[s]}: ${k.length} kinds, ${k.reduce((a, e) => a + e.n, 0).toLocaleString()} heard · ` + (on ? 'press to show every site again' : `press to show only ${PLAT_NAME[s]}`), dataset: { cmd: 'dev.eventsSite' },
+            onclick: () => { evs.site = on ? '' : s; evs.open = ''; renderEvents(); } }, site(s), element('b', null, String(k.length)), element('span', 'ev-sep', '·'), evCount(k.reduce((a, e) => a + e.n, 0))); })),
         element('button', { type: 'button', class: 'btn primary', id: 'evExport', dataset: { cmd: 'dev.eventsExport' }, title: 'Saves them as a file, with names, ids and the words of messages replaced', onclick: exportEvents }, 'Export…'),
-        element('button', { type: 'button', class: 'btn', id: 'evClear', dataset: { cmd: 'dev.eventsClear' }, onclick: clearEvents }, 'Clear'))),
-    section('ev-unknown', 'Unknown', 'Sent by the sites, but ALL doesn\'t know them: the newest first', unknown.length ? unknown.flatMap(row) : [element('div', 'dv-empty', samplesOn ? 'Nothing new yet. They show here as the chats you have open hear them.' : 'Collecting is off.')]),
-    section('ev-need', 'Still needed', 'ALL knows these, but none has come yet: they show here once one does', needed.some(only)
-      ? [element('div', 'ev-chips', ...needed.filter(only).map(n => element('span', { class: 'ev-chip', title: `${PLAT_NAME[n.s]}: ${n.does}` }, site(n.s), element('span', 'ev-k', n.kind), element('span', 'ev-does', n.does))))]
-      : [element('div', 'dv-empty', 'Every kind ALL knows has come at least once.')]),
-    section('ev-shown', 'In ALL', 'What it already shows, the most heard first', shown.length ? shown.flatMap(row) : [element('div', 'dv-empty', 'None heard yet.')]));
+        element('button', { type: 'button', class: 'btn', id: 'evClear', dataset: { cmd: 'dev.eventsClear' }, onclick: clearEvents }, 'Clear')),
+      element('div', { class: 'ev-views', role: 'tablist', 'aria-label': 'Which events' }, ...VIEWS.map(([v, label, n]) => element('button', { type: 'button', role: 'tab', class: `ev-view ev-v-${v}` + (v === cur[0] ? ' on' : ''),
+        'aria-selected': String(v === cur[0]), dataset: { cmd: 'dev.eventsView', v }, onclick: () => { evs.view = v; evs.open = ''; renderEvents(); list.scrollTop = 0; } }, element('i', 'ev-dot'), label, element('span', 'ev-vn', evCount(n))))),
+      element('p', 'ev-desc', cur[3])),
+    element('section', 'ev-sec ev-' + cur[0], ...body));
 }
 async function exportEvents(){
   if (!DESKTOP || !window.kmv.samplesExport) return;
-  const r = await window.kmv.samplesExport(feedParse.KNOWN, Object.fromEntries(EV_SITES.map(s => [s, feedParse.QUIET[s].source]))).catch(() => null);
+  const d = (window.kmv.samplesInfo ? await window.kmv.samplesInfo().catch(() => null) : null) || {};
+  const ignored = Object.fromEntries(EV_SITES.map(s => [s, Object.fromEntries(Object.keys(d[s] || {}).filter(k => !feedParse.KNOWN[s][k] && feedParse.ignoredWhy(s, k)).map(k => [k, feedParse.ignoredWhy(s, k)]))]));
+  const r = await window.kmv.samplesExport(feedParse.KNOWN, ignored).catch(() => null);
   if (r && r.saved) flash('Saved the chat events, without names, ids or words', { subject: 'downloads' });
   else if (r && r.error) flash('Couldn’t save the file');
 }

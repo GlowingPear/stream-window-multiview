@@ -75,7 +75,7 @@ test('the export: each kind with what ALL does with it (or unknown), the kinds A
   assert.deepEqual(out.sites.kick.kinds.map(k => k.samples[0]), [{ username: 'user1' }, { content: 'word word', sender: { username: 'user1' } }]);
   assert.deepEqual(out.sites.twitch, { needed: [], kinds: [] });
   assert.deepEqual(exportSamples({}, null).sites.youtube, { needed: [], kinds: [] });
-  // the connections' own (a pattern from the page): ignored, not unknown; a broken pattern is left out
+  // left out on purpose (the page says why): ignored, with why; not unknown
   s.add('twitch', { '001': { n: 1 }, 'hermes:mystery': { n: 1 } });
-  assert.deepEqual(exportSamples(s.list(), {}, { quiet: { twitch: '^(\\d{3})$', kick: '(' } }).sites.twitch.kinds.map(k => [k.kind, k.status]).sort(), [['001', 'ignored'], ['hermes:mystery', 'unknown']]);
+  assert.deepEqual(exportSamples(s.list(), {}, { ignored: { twitch: { '001': 'the connection’s own' }, kick: 'bad' } }).sites.twitch.kinds.map(k => [k.kind, k.status, k.does]).sort(), [['001', 'ignored', 'the connection’s own'], ['hermes:mystery', 'unknown', '']]);
 });

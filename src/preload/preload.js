@@ -147,7 +147,7 @@ contextBridge.exposeInMainWorld('kmv', {
   samplesAdd: (site, kinds) => ipcRenderer.send('samples:add', site, kinds),
   samplesInfo: () => ipcRenderer.invoke('samples:info'),
   samplesClear: () => ipcRenderer.invoke('samples:clear'),
-  samplesExport: (known, quiet) => ipcRenderer.invoke('samples:export', known, quiet),
+  samplesExport: (known, ignored) => ipcRenderer.invoke('samples:export', known, ignored),
   devReport: lines => ipcRenderer.invoke('dev:report', lines),
   devSave: text => ipcRenderer.invoke('dev:save', String(text || '')),
   devInspect: id => ipcRenderer.invoke('dev:inspect', id),

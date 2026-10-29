@@ -267,14 +267,25 @@ const KNOWN = {
     'addBannerToLiveChatCommand:liveChatBannerRenderer': 'a pin', removeBannerForLiveChatCommand: 'a pin taken down' }
 };
 
-// The connections' own housekeeping, and news only for you (your points): counted, never for ALL, so not "unknown"
-const QUIET = {
-  kick: /^(PointsUpdated|pusher:.*|pusher_internal:.*)$/,
-  twitch: /^(\d{3}|CAP|JOIN|PART|PING|PONG|GLOBALUSERSTATE|USERSTATE|ROOMSTATE|RECONNECT|hermes:(welcome|authenticateResponse|subscribeResponse|unsubscribeResponse|keepalive|reconnect|points-earned|claim-available|community-points-user-v1))$/,
-  youtube: /^$/
+// Kinds ALL hears and leaves out on purpose, and why (Settings › Developer › Chat events lists them as Ignored, not
+// unknown): the connections' own housekeeping, news only for you (your points), and the sites' panels (goals,
+// leaderboards). One the sites start sending that ALL has no use for goes here.
+const IGNORED = {
+  kick: { PointsUpdated: 'your channel points', GoalProgressUpdateEvent: 'the channel’s goal bar', GiftsLeaderboardUpdated: 'the gift leaderboard',
+    KicksLeaderboardUpdated: 'the Kicks leaderboard', NewSubscriberUpdatedEvent: 'the sub count (ChannelSubscriptionEvent is the sub)',
+    NewActivityFeedEvent: 'the activity feed (the same subs and follows)', StopStreamBroadcast: 'the stream ending', StreamerIsLive: 'the stream starting',
+    PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)', PollUpdateEvent: 'a poll (Kick’s own panel)' },
+  twitch: { CAP: 'the connection’s own', JOIN: 'the connection’s own', PART: 'the connection’s own', GLOBALUSERSTATE: 'the connection’s own (you)', USERSTATE: 'the connection’s own (you)',
+    ROOMSTATE: 'the chat’s modes', RECONNECT: 'the connection’s own', 'hermes:welcome': 'the connection’s own', 'hermes:authenticateResponse': 'the connection’s own',
+    'hermes:subscribeResponse': 'the connection’s own', 'hermes:unsubscribeResponse': 'the connection’s own', 'hermes:reconnect': 'the connection’s own',
+    'hermes:points-earned': 'your channel points', 'hermes:claim-available': 'your bonus points', 'hermes:clips-leaderboard-update': 'the clips leaderboard',
+    'hermes:viewcount': 'the viewer count' },
+  youtube: {}
 };
+// Why ALL leaves a kind out, or '' (Twitch's numbered replies are the connection's own too)
+const ignoredWhy = (site, kind) => (IGNORED[site] && IGNORED[site][kind]) || (site === 'twitch' && /^\d{3}$/.test(kind) ? 'the connection’s own' : site === 'kick' && /^pusher(_internal)?:/.test(kind) ? 'the connection’s own' : '');
 
 // (one object, so the tests can reach each site's reader)
-const feedParse = { KNOWN, QUIET, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds };
+const feedParse = { KNOWN, IGNORED, ignoredWhy, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds };
 
 export { feedParse };
