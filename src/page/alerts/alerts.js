@@ -3,6 +3,7 @@ import { allLooking } from '../chat/all-chat.js';
 import { wins } from '../core.js';
 import { dndOn, readChat } from '../panels/bell/bell.js';
 import { settings } from '../shared/settings.js';
+import { store } from '../shared/store.js';
 import { syncFrameAlert } from '../windows/frames.js';
 
 /* ---------- alerts: how a chat window gets your attention (Settings > Mentions, Spam alerts) ---------- */
@@ -28,7 +29,7 @@ const ALERT_DEFAULTS = {
 };
 const ALERT_KINDS = Object.keys(ALERT_DEFAULTS);
 let alerts;
-const saveAlerts = () => { settings.set('alerts', alerts); };
+const saveAlerts = () => { settings.set('alerts', alerts); store.changed('bots'); };   // (the chat bot lists are in it: ALL hides their messages)
 const SOUND_KEY = kind => 'alertSound.' + kind;      // your own sound file, as a data: URL (a saved setting)
 
 // The built-in sounds are made on the fly, so there are no sound files to ship.

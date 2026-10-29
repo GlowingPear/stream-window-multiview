@@ -74,6 +74,13 @@ const feedOf = s => { let f = feeds.get(s.id); if (!f){ f = { msgs: [], byId: ne
 // Your name on that site: messages to it are marked
 const meOn = site => (site === 'kick' ? myName : site === 'twitch' ? bellVars.myTwitch : '').toLowerCase();
 const appBots = ch => [...(alerts.mention.bots || SmvSpam.BOTS), ...streamerBots(ch)];
+const isBot = m => SmvSpam.ignored(m.sender, appBots(m.ch));
+// The chat bot lists changed (Settings › Chat › Chat bots, a streamer's own): the messages already here checked again
+function botsChanged(){
+  let any = false;
+  feeds.forEach(f => f.msgs.forEach(m => { if (m.kind !== 'message') return; const b = isBot(m); if (b !== !!m.bot){ m.bot = b; any = true; } }));
+  if (any) redrawAll();
+}
 function ingest(w, json, quiet = false){
   const s = streamerOf(w.channel); if (!s) return;
   let batch; try { batch = JSON.parse(json); } catch { return; }
@@ -90,7 +97,7 @@ function ingest(w, json, quiet = false){
     if (m.giftTo && giftTo(f, m)) return;   // (one of the gifted subs announced just before: its name goes on that line)
     if (m.gift) m.gift.me = m.gift.to.some(r => r.login && r.login === meOn(m.site));
     mentionOf(m, w.channel);
-    if (m.kind === 'message' && SmvSpam.ignored(m.sender, appBots(w.channel))) m.bot = true;
+    if (m.kind === 'message' && isBot(m)) m.bot = true;
     if (m.kind === 'message') mineSeen(f, m);
     f.msgs.push(m); if (m.id) f.byId.set(m.site + ':' + m.id, m);
     if (f.msgs.length > MAX){ const old = f.msgs.shift(); if (old.id) f.byId.delete(old.site + ':' + old.id); }
@@ -999,6 +1006,10 @@ function mineEl(p){
       ...p.badges.map(b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' }))), element('b', { class: 'al-n', style: { color: nameColor(p) } }, p.sender), ': ', element('span', 'al-txt', p.text), p.state === 'failed' ? '' : state || ''),
     p.state === 'failed' && state);
 }
+function readFilters(){
+  botsShown = settings.text('allBots') === 'shown';
+  eventsMode = ['short', 'full', 'hidden'].includes(settings.text('allEvents')) ? settings.text('allEvents') : 'short';
+}
 function setBotsShown(on){ botsShown = !!on; settings.set('allBots', botsShown ? 'shown' : 'hidden'); redrawAll(); }
 function setEventsMode(mode){ eventsMode = mode; settings.set('allEvents', mode); redrawAll(); }
 const redrawAll = () => wins.forEach(w => { if (w.allView){ const v = w.allView; v.list.replaceChildren(...feedOf(v.s).msgs.map(lineEl).filter(Boolean)); renderTop(v, w); v.list.scrollTop = v.list.scrollHeight; } });
@@ -1058,8 +1069,7 @@ const BADGE_SVG = {
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   trSoon = soon(() => translateNow(), 300);
-  botsShown = settings.text('allBots') === 'shown';
-  eventsMode = ['short', 'full', 'hidden'].includes(settings.text('allEvents')) ? settings.text('allEvents') : 'short';
+  readFilters();
   fromSite('feed', (w, json) => { if (allOn(w)) ingest(w, json); });
   // Esc closes ALL's menus (the line's, Send on's)
   document.addEventListener('keydown', e => {
@@ -1069,8 +1079,11 @@ function init(){
   store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncAll());
   store.watch(['chatName', 'names'], () => wins.forEach(w => { if (w.allView) renderCmp(w.allView, w); }));
   store.watch(['mod'], () => { redrawAll(); wins.forEach(syncModBtn); });
+  store.watch(['bots', 'streamers'], () => botsChanged());
   store.watch(['chatZoom'], () => wins.forEach(w => { if (w.allView) fitSize(w.allView); }));
   store.watch(['allHealth'], () => wins.forEach(w => { if (w.allView) renderTop(w.allView, w); }));
+  // What ALL shows, changed in the other window
+  settings.onChange(['allBots', 'allEvents'], () => { readFilters(); redrawAll(); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
   window.feedAgent = feedAgent; window.pinAgent = pinAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
