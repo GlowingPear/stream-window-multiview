@@ -540,7 +540,9 @@ function lineEl(m){
     const to = m.gift ? m.gift.to : [], me = meOn(m.site);
     return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}${to.length ? ' al-gift' : ''}${m.gift && m.gift.me ? ' al-gift-me' : ''}`, dataset: { key: m.site + ':' + m.id } }, element('i', { class: 'pi pi-' + m.site }, site[0]),
       element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts, m.ch)) : ''),
-      element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.seeIt' }, title: `Show it in ${site}'s own chat`, onclick: () => seeIt(m) }, `See it on ${site} ›`),
+      // (a shoutout: open the channel it points to, as a raid's line does)
+      m.shoutout ? element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.shoutoutOpen' }, title: `Open ${chLabel(m.shoutout)} in a window of its own`, onclick: () => addParsed({ channel: m.shoutout, only: null }) }, 'Open ›')
+        : element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.seeIt' }, title: `Show it in ${site}'s own chat`, onclick: () => seeIt(m) }, `See it on ${site} ›`),
       // (who got them: a row under it, its button first, their names after it while open)
       to.length > 0 && element('div', 'al-gl',
         element('button', { type: 'button', class: 'al-gto', 'aria-expanded': String(!!m.giftOpen), dataset: { cmd: 'all.giftTo' }, title: m.giftOpen ? 'Hide who got them' : 'Who got them',

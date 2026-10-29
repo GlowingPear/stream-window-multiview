@@ -397,7 +397,10 @@ test('ALL: a Twitch watch streak is their message highlighted with its tag (as T
     hermes('create', { shoutoutID: 's9', sourceLogin: 'quietkoala', targetLogin: 'novalynx', targetUserDisplayName: 'Novalynx' })] });
   const all = await page.$$eval('#stage .win.chat:not(.tab-hidden) .all-list > *', l => l.map(e => [e.className.split(' ').filter(c => /^al-(m|ev|streak)$/.test(c)).join(' '), e.textContent.replace(/\s+/g, ' ').trim()]));
   assert.deepEqual(all, [['al-m al-streak', "TBrightwick: five streams, let's goWatch streak · 5"], ['al-m al-streak', 'TBrightwick: watched 5 streams in a rowWatch streak · 5'],
-    ['al-ev', 'TTide redeemed Hydrate!See it on Twitch ›'], ['al-ev', 'Tquietkoala shouted out NovalynxSee it on Twitch ›']]);
+    ['al-ev', 'TTide redeemed Hydrate!See it on Twitch ›'], ['al-ev', 'Tquietkoala shouted out NovalynxOpen ›']]);
+  // a shoutout's Open: that channel, in a window of its own
+  await page.click('.all-list [data-cmd="all.shoutoutOpen"]');
+  assert.ok(await page.evaluate(() => window.openWins().some(w => w.channel === 'tw:novalynx')));
 });
 
 test('ALL: events are a short line with See it on …; Events: short, full or hidden; an announcement is a message', async t => {
