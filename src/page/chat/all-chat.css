@@ -67,6 +67,15 @@
 .al-tag-del.ai{background:linear-gradient(90deg,rgba(255,95,95,.18),rgba(255,160,90,.18));color:#ffc9a8;border-color:rgba(255,140,100,.45)}
 .al-tag-hl{background:rgba(145,70,255,.25);color:#e0ccff}
 .al-tag-bits{background:rgba(155,100,255,.18);color:#e0ccff;border:1px solid rgba(180,140,255,.5)}
+/* spam alerts' tag (where you moderate), a translated message's badge (press: the original), new emotes glowing */
+.al-m.al-spam{background:linear-gradient(90deg,rgba(255,95,95,.10),transparent 70%);box-shadow:inset 3px 0 0 rgba(255,95,95,.65)}
+.al-tag-spam{background:rgba(255,95,95,.16);color:#ffb1b1;border:1px solid rgba(255,95,95,.45);cursor:help}
+.al-tag-spam.abuse{background:rgba(255,140,60,.16);color:#ffcf9e;border-color:rgba(255,150,80,.5)}
+.al-tag-tr{font:inherit;font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;background:rgba(111,168,255,.12);color:#b9d3ff;border:1px solid rgba(111,168,255,.35)}
+.al-tag-tr:hover{background:rgba(111,168,255,.24);color:#fff}
+.al-e.al-new{border-radius:4px;outline:2px solid var(--accent);outline-offset:1px;animation:al-newglow 1.6s ease-in-out infinite alternate}
+@keyframes al-newglow{from{box-shadow:0 0 2px 1px color-mix(in srgb,var(--accent) 35%,transparent)}to{box-shadow:0 0 10px 3px color-mix(in srgb,var(--accent) 75%,transparent)}}
+@media (prefers-reduced-motion:reduce){.al-e.al-new{animation:none;box-shadow:0 0 8px 2px color-mix(in srgb,var(--accent) 60%,transparent)}}
 
 /* a sub, gift, raid or Super Chat: one short line in the site's colour */
 .al-ev{display:flex;align-items:center;gap:8px;margin:4px 10px;padding:6px 10px;border-radius:8px;font-size:12.5px;overflow-wrap:anywhere}

@@ -18,6 +18,22 @@ function emoteGroups(ch){
   }
   return emoteCache.get(ch);
 }
+// The channel's 7TV, BetterTTV and FrankerFaceZ emotes by name (the picker's), for its messages in ALL as the site's chat
+// shows them with those add-ons: null until they've come, then ready() (ALL draws its lines again)
+const ADDON = { '7tv': '7TV', bttv: 'BetterTTV', ffz: 'FrankerFaceZ' };
+const addons = new Map();   // channel -> Map(name -> { url, src }) or null while asking
+function addonEmotes(ch, ready){
+  if (!addons.has(ch)){
+    addons.set(ch, null);
+    emoteGroups(ch).then(gs => {
+      const m = new Map();
+      gs.filter(g => ADDON[g.id]).forEach(g => g.emotes.forEach(e => { if (!m.has(e.name)) m.set(e.name, { url: e.url, src: ADDON[g.id] }); }));
+      addons.set(ch, m);
+      if (m.size && ready) ready();
+    });
+  }
+  return addons.get(ch);
+}
 const emoteImg = e => { const img = element('img', { src: e.url, alt: e.name, loading: 'lazy', referrerPolicy: 'no-referrer', draggable: false }); img.onerror = () => { img.style.visibility = 'hidden'; }; return img; };
 
 // :name in the box (two letters or more): the send site's emotes that match, the ones starting with it first
@@ -94,4 +110,4 @@ async function openEmotePicker(view, w){
 }
 const SMILEY = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1 1.3 2.2 2 3.5 2s2.5-.7 3.5-2M9 9.5h.01M15 9.5h.01"/></svg>';
 
-export { emoteCache, openEmotePicker, pickEmote, renderEmoteList, SMILEY, suggestEmote, withEmotes };
+export { addonEmotes, emoteCache, openEmotePicker, pickEmote, renderEmoteList, SMILEY, suggestEmote, withEmotes };

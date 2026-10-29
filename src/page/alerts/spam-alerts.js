@@ -1,6 +1,7 @@
 import { alerts, clearAlert, raiseAlert, wantNotify } from './alerts.js';
 import { SmvSpam } from './spam.js';
 import { supportBanner } from './support-banner.js';
+import { spamTag } from '../chat/all-chat.js';
 import { chatOverlay, overlayIsOn } from '../chat/chat-overlay.js';
 import { GAP, colWidth, colsMode, msg, wins } from '../core.js';
 import { buildCols } from '../layout/columns.js';
@@ -72,6 +73,7 @@ function flagSpam(w, l, r, seen){
   if (a.tag){
     const why = spamWhy(r);
     runIn(w.view, `window.__kmvMention && window.__kmvMention.mark(${JSON.stringify(l.line)}, ${JSON.stringify(why)}, ${JSON.stringify(a.color)}, ${JSON.stringify(r.abuse ? 'abuse' : 'spam')})`);
+    spamTag(w.channel, l.sender, l.body, why, r.abuse);   // (and in ALL)
   }
   raiseAlert(w, 'spam', seen);
   addNote({ kind: 'spam', channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body, score: r.score, need: r.need, signs: r.signs,

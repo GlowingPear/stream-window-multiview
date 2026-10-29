@@ -169,6 +169,7 @@ async function markNewEmotes(w){
   const frame = w.view;
   const r = await window.kmv.emotesOpen(w.channel).catch(() => null);
   if (!r || w.view !== frame || !newEmotesOn) return;
+  freshEmotes.set(w.channel, new Set(r.fresh || []));   // (ALL's lines glow them too: chat/all-chat.js)
   await addCss(frame, NEW_EMOTE_CSS());
   runIn(frame, `${NEW_EMOTE_JS};window.__kmvNew.set(${JSON.stringify(r.fresh || [])})`);
   const a = r.added || [];
@@ -178,9 +179,12 @@ function newEmoteSeen(w, json){
   let d; try { d = JSON.parse(json); } catch { return; }
   if (!d || typeof d.name !== 'string' || !window.kmv.emotesSeen) return;
   window.kmv.emotesSeen(w.channel, d.name).catch(() => {});
+  freshEmotes.get(w.channel)?.delete(d.name);
   // the same channel's other chat windows: not new there either
   wins.forEach(o => { if (o !== w && o.kind === 'chat' && o.channel === w.channel && o.ready) runIn(o.view, `window.__kmvNew && window.__kmvNew.set(window.__kmvNew.list().filter(n => n !== ${JSON.stringify(d.name)}))`); });
 }
+// The emotes still new in each channel's chat (Highlight new emotes), for ALL's lines: channel -> Set of names
+const freshEmotes = new Map();
 // The hover card is off unless switched on (the same preview is always in the right-click menu on an emote)
 var emoteOn = false;
 // Other files change these through viewVars: a variable imported from another file can't be assigned to.
@@ -216,6 +220,8 @@ function init(){
   if (DESKTOP) fromApp('onViewPressed', id => { const w = wins.find(x => x.view && viewId(x.view) === id); if (w) viewTouched(w, w.view); });
   store.watch('live', () => followYtStreams());
   window.ytFollow_ = { reloadWin, followYtStreams };   // for the tests
+  window.freshEmotes = freshEmotes;   // for the tests
 }
 
-export { emoteOn, init, markNewEmotes, mountView, newEmotesOn, pngOf, reloadPage, reloadWin, viewVars, ytCache };
+export { emoteOn, freshEmotes, init, markNewEmotes, mountView, newEmotesOn, pngOf, reloadPage, reloadWin, viewVars,
+  ytCache };

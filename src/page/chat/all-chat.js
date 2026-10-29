@@ -1,15 +1,17 @@
 import { alerts } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
-import { SMILEY, emoteCache, openEmotePicker, pickEmote, renderEmoteList, suggestEmote, withEmotes } from './all-emotes.js';
+import { SMILEY, addonEmotes, emoteCache, openEmotePicker, pickEmote, renderEmoteList, suggestEmote, withEmotes } from './all-emotes.js';
 import { chatBoxName } from './chat-name.js';
 import { chatZoom } from './chat-zoom.js';
 import { feedParse } from './feed-parse.js';
+import { autoTrFor } from './translate.js';
 import { wins } from '../core.js';
 import { feedAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
-import { bellVars, myName } from '../panels/bell/bell.js';
+import { bellVars, mentMuted, mentOn, mentWords, myName } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
+import { devOn } from '../panels/developer/developer.js';
 import { linkOpt, nameOf, streamerBots, streamerOf } from '../platforms/linked.js';
 import { PLAT_NAME, modIs, modUrl, openModView, platOf, platform } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
@@ -21,8 +23,10 @@ import { fromSite } from '../shared/incoming.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
+import { soon } from '../shared/timers.js';
 import { addTab, cycleTabs, frameOf, leaderOf, renderSiteTabs, showTab, tabChannels } from '../windows/frames.js';
 import { askIn, runIn, viewId, zoomOf } from '../windows/view.js';
+import { freshEmotes, newEmotesOn } from '../windows/views.js';
 import { syncModBtn } from '../windows/windows.js';
 
 /* ---- ALL: a linked streamer's Kick, Twitch and YouTube chats as one list (issue #203) ----
@@ -66,20 +70,64 @@ function ingest(w, json, quiet = false){
   const s = streamerOf(w.channel); if (!s) return;
   let batch; try { batch = JSON.parse(json); } catch { return; }
   const f = feedOf(s), view = viewFor(s);
-  feedParse.parseFeed(batch).forEach(m => {
+  (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => feedParse.parseFeed({ s: batch.s, raw: [raw] }).forEach(m => {
+    if (devOn) m.raw = raw;   // (Developer tools: the line's Copy message data)
     if (m.kind === 'delete' || m.kind === 'clear' || m.kind === 'clearall') return removed(f, view, m, w.channel);
     if (m.kind === 'unban') return unbanned(f, view, m, w.channel);
     if (m.kind === 'pin' || m.kind === 'unpin') return setPin(f, s, w.channel, m, quiet);
     m.ch = w.channel;
-    const me = meOn(m.site);
-    if (me && m.reply && m.reply.login === me) m.toMe = 'reply';
-    else if (me && m.parts.some(p => p.text && new RegExp(`(^|[^\\w])@${me.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(p.text))) m.toMe = 'at';
+    mentionOf(m, w.channel);
     if (m.kind === 'message' && SmvSpam.ignored(m.sender, appBots(w.channel))) m.bot = true;
     if (m.kind === 'message') mineSeen(f, m);
     f.msgs.push(m); if (m.id) f.byId.set(m.site + ':' + m.id, m);
     if (f.msgs.length > MAX){ const old = f.msgs.shift(); if (old.id) f.byId.delete(old.site + ':' + old.id); }
     if (view) addLine(view, m);
-  });
+    if (m.kind === 'message' && !m.bot && autoTrFor(w.channel)) translateSoon(m);
+  }));
+}
+const reEsc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const textOf = m => m.parts.map(p => p.text || p.name || '').join('');
+// Messages to you, as the mention alerts read them (Settings › Mentions): a reply to you, your @name, or a word you
+// watch for. Not with mentions off, or muted in that chat.
+let wordList = null, wordReC = null;
+const wordRe = () => {
+  if (wordList !== mentWords){ wordList = mentWords; wordReC = mentWords.length ? new RegExp('(^|[^\\p{L}\\p{N}_])(' + [...mentWords].sort((a, b) => b.length - a.length).map(reEsc).join('|') + ')(?![\\p{L}\\p{N}_])', 'iu') : null; }
+  return wordReC;
+};
+function mentionOf(m, ch){
+  if (!mentOn || mentMuted.has(ch)) return;
+  const me = meOn(m.site), text = m.parts.map(p => p.text || '').join('');
+  if (me && m.reply && m.reply.login === me) m.toMe = 'reply';
+  else if (me && new RegExp(`(^|[^\\w])@${reEsc(me)}\\b`, 'i').test(text)) m.toMe = 'at';
+  else if (m.kind === 'message' && !(me && m.login === me)){ const hit = wordRe() && text.match(wordRe()); if (hit){ m.toMe = 'word'; m.word = hit[2]; } }
+}
+// A line drawn again after something about it changed (a tag, its translation)
+function redrawLine(m){
+  const view = viewFor(streamerOf(m.ch)), el = view && view.list.querySelector(`[data-key="${CSS.escape(m.site + ':' + m.id)}"]`);
+  if (el){ const n = lineEl(m); if (n) el.replaceWith(n); else el.remove(); }
+}
+// Spam alerts › Tag the message in chat (where you moderate: alerts/spam-alerts.js): the same message here gets it too
+function spamTag(ch, sender, body, why, abuse){
+  const s = streamerOf(ch); if (!s) return;
+  const norm = t => String(t || '').replace(/\s+/g, ' ').trim().toLowerCase(), b = norm(body), who = norm(sender);
+  const m = [...feedOf(s).msgs].reverse().find(x => x.kind === 'message' && x.ch === ch && norm(x.sender) === who && !!norm(textOf(x)) && (norm(textOf(x)) === b || b.includes(norm(textOf(x)))));
+  if (!m) return;
+  m.spam = { why: String(why || ''), abuse: !!abuse };
+  redrawLine(m);
+}
+// Translating (chat/translate.js): new messages from a chat that translates them (Settings › Chat › Translate new
+// messages in every chat, or that chat's Translate new messages too), or one from its menu. The badge shows the original.
+const trQueue = [];
+let trSoon;
+function translateSoon(m){
+  if (!window.kmv || !window.kmv.translate || !/\p{L}{3}/u.test(textOf(m)) || trQueue.includes(m)) return;
+  trQueue.push(m); trSoon();
+}
+async function translateNow(){
+  const ms = trQueue.splice(0, 25); if (!ms.length) return;
+  const got = await window.kmv.translate(ms.map(textOf)).catch(() => null);
+  ms.forEach((m, i) => { const g = Array.isArray(got) && got[i]; if (g && g.text && g.text.trim() !== textOf(m).trim()){ m.tr = { text: String(g.text), from: String(g.fromName || g.from || '') }; redrawLine(m); } });
+  if (trQueue.length) trSoon();
 }
 // A deleted message, or all of one person's (a timeout or ban), or the whole chat cleared. Where you're a mod it stays,
 // struck through, saying why, and a line says what was done (who did it where the site says); otherwise it goes, as
@@ -147,7 +195,7 @@ function renderPins(view){
   const row = (p, sub, ...end) => {
     const text = p.msg.parts.map(x => x.text || x.name).join('');
     return element('div', { class: 'all-pin-row', title: `${p.msg.sender}: ${text}${p.by ? `\nPinned by ${p.by}` : ''}` }, element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0]),
-      element('div', 'all-pin-t', element('b', { style: { color: nameColor(p.msg) } }, p.msg.sender), ' ', ...partsEl(p.msg.parts)), element('small', 'all-pin-s', sub), ...end);
+      element('div', 'all-pin-t', element('b', { style: { color: nameColor(p.msg) } }, p.msg.sender), ' ', ...partsEl(p.msg.parts, p.ch)), element('small', 'all-pin-s', sub), ...end);
   };
   if (view.pinsOpen){
     view.pins.replaceChildren(...f.pins.map((p, i) => row(p, pinAgo(p.t), !i && element('button', { type: 'button', class: 'all-pin-open', title: 'Only the newest', 'aria-label': 'Only the newest', 'aria-expanded': 'true', html: CHEVRON, dataset: { cmd: 'all.pinsOpen' }, onclick: () => { view.pinsOpen = false; renderPins(view); } }))));
@@ -173,13 +221,32 @@ function nameColor(m){
   let h = 0; for (const c of m.login || m.sender) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return `hsl(${h % 360} 70% 68%)`;
 }
-function partsEl(parts){
-  return parts.map(p => {
-    if (!p.emote) return p.text;
-    const img = element('img', { class: 'al-e', src: p.emote, alt: p.name, title: p.name, loading: 'lazy', referrerPolicy: 'no-referrer' });
-    img.onerror = () => img.replaceWith(document.createTextNode(p.name));
-    return img;
+// A message's text and emotes; with its channel (ch), the 7TV, BetterTTV and FrankerFaceZ emotes in its words too (as the
+// site's chat shows them with those add-ons), and the emotes new since you last opened the chat glowing (Settings ›
+// Chat › Highlight new emotes) until you point at one
+function partsEl(parts, ch){
+  const add = ch ? addonEmotes(ch, redrawAll) : null, fresh = ch && newEmotesOn ? freshEmotes.get(ch) : null, out = [];
+  parts.forEach(p => {
+    if (p.emote) return out.push(emoteEl(p.emote, p.name, '', ch, fresh));
+    if (!add || !add.size) return out.push(p.text);
+    String(p.text).split(/(\s+)/).forEach(t => { const e = t && add.get(t); if (e) out.push(emoteEl(e.url, t, e.src, ch, fresh)); else if (t) out.push(t); });
   });
+  return out;
+}
+function emoteEl(src, name, from, ch, fresh){
+  const isNew = !!(fresh && fresh.has(name));
+  const img = element('img', { class: 'al-e' + (isNew ? ' al-new' : ''), src, alt: name, title: isNew ? `${name} · new` : from ? `${name} · ${from}` : name, loading: 'lazy', referrerPolicy: 'no-referrer' });
+  img.onerror = () => img.replaceWith(document.createTextNode(name));
+  if (isNew) img.onpointerenter = () => emoteSeen(ch, name);
+  return img;
+}
+// A new emote pointed at: not new any more, here and in that channel's chats (as pointing at it there does)
+function emoteSeen(ch, name){
+  const fresh = freshEmotes.get(ch); if (!fresh || !fresh.delete(name)) return;
+  if (window.kmv && window.kmv.emotesSeen) window.kmv.emotesSeen(ch, name).catch(() => {});
+  wins.forEach(o => { if (o.kind === 'chat' && o.channel === ch && o.ready) runIn(o.view, `window.__kmvNew && window.__kmvNew.set(window.__kmvNew.list().filter(n => n !== ${JSON.stringify(name)}))`); });
+  const view = viewFor(streamerOf(ch));
+  if (view) view.el.querySelectorAll('img.al-new').forEach(i => { if (i.alt === name){ i.classList.remove('al-new'); i.title = name; } });
 }
 function lineEl(m){
   if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' ? null : mineEl(m);
@@ -197,15 +264,19 @@ function lineEl(m){
     const full = eventsMode === 'full' || !m.summary;
     const words = full ? [m.text || m.sender] : m.summary.map((x, i) => x.strong ? element('b', i ? 'al-amt' : null, x.strong) : x.text);
     return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}`, dataset: { key: m.site + ':' + m.id } }, element('i', { class: 'pi pi-' + m.site }, site[0]),
-      element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts)) : ''),
+      element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts, m.ch)) : ''),
       element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.seeIt' }, title: `Show it in ${site}'s own chat`, onclick: () => seeIt(m) }, `See it on ${site} ›`));
   }
-  const cls = ['al-m', m.toMe === 'reply' ? 'al-rep' : m.toMe === 'at' ? 'al-me' : '', m.bot ? 'al-bot' : '', m.deleted ? 'al-del' : '', m.highlight ? 'al-hl' : '',
+  const cls = ['al-m', m.toMe === 'reply' ? 'al-rep' : m.toMe === 'at' || m.toMe === 'word' ? 'al-me' : '', m.spam ? 'al-spam' : '', m.bot ? 'al-bot' : '', m.deleted ? 'al-del' : '', m.highlight ? 'al-hl' : '',
     m.announce ? 'al-ann al-ann-' + m.announce : '', m.redeem ? 'al-rw' : ''].filter(Boolean).join(' ');
   const hideBot = m.bot && !botsShown && !m.open;
-  const body = hideBot ? element('span', 'al-hid', 'bot message hidden') : element('span', 'al-txt', ...partsEl(m.parts));
+  const body = hideBot ? element('span', 'al-hid', 'bot message hidden') : m.tr && !m.trOrig ? element('span', 'al-txt', m.tr.text) : element('span', 'al-txt', ...partsEl(m.parts, m.ch));
   const tags = [
     m.toMe === 'at' && element('span', 'al-tag al-tag-at', '@YOU'),
+    m.toMe === 'word' && element('span', { class: 'al-tag al-tag-at', title: 'A word you watch for (Settings › Mentions)' }, m.word),
+    m.spam && element('span', { class: 'al-tag al-tag-spam' + (m.spam.abuse ? ' abuse' : ''), title: m.spam.why }, m.spam.abuse ? 'Abuse?' : 'Spam?'),
+    m.tr && !hideBot && element('button', { type: 'button', class: 'al-tag al-tag-tr', title: m.trOrig ? 'Show the translation' : 'Show the original', dataset: { cmd: 'all.translation' },
+      onclick: () => { m.trOrig = !m.trOrig; redrawLine(m); } }, `${m.trOrig ? 'Original' : 'Translated'}${m.tr.from ? ' · ' + m.tr.from.toUpperCase() : ''}`),
     m.toMe === 'reply' && element('span', { class: 'al-tag al-tag-rp' + (m.bot ? ' soft' : '') }, m.bot ? 'TO YOU' : 'REPLY'),
     m.toMe === 'at' && m.bot && element('span', 'al-tag al-tag-rp soft', 'TO YOU'),
     m.highlight && element('span', 'al-tag al-tag-hl', 'Highlighted'),
@@ -522,6 +593,11 @@ function openFilters(view){
   view.fm.hidden = false;
   placeAt(view, view.fm, view.filt);
 }
+// Developer tools: what ALL made of the message, and what the site sent (while they're on)
+function copyData(m){
+  const data = JSON.stringify(m, (k, v) => (v instanceof Node || typeof v === 'function' ? undefined : k === 'raw' && typeof v === 'string' ? (() => { try { return JSON.parse(v); } catch { return v; } })() : v), 2);
+  navigator.clipboard?.writeText(data).then(() => flash('Copied the message\'s data'), () => flash('Couldn\'t copy it'));
+}
 // ⋯ and the right-click: the line's menu (the mod part only where you're a mod)
 function openLineMenu(m, at){
   const view = viewFor(streamerOf(m.ch)); if (!view) return;
@@ -540,6 +616,9 @@ function openLineMenu(m, at){
     mod && item('Ban', BAN, () => modAct(m, 'ban'), { kb: `${kCtrl()}+${kShift()}-click name`, off: why, red: true, cmd: 'all.menuBan' }),
     element('hr'),
     item('Copy message', icon.copy, () => { navigator.clipboard?.writeText(text).then(() => flash('Copied'), () => flash('Couldn\'t copy it')); }, { cmd: 'all.menuCopy' }),
+    window.kmv && window.kmv.translate && !m.tr && item('Translate', TRANSLATE, () => translateSoon(m), { cmd: 'all.menuTranslate' }),
+    devOn && element('hr'),
+    devOn && item('Copy message data', icon.code, () => copyData(m), { cmd: 'all.menuData' }),
     mod && modUrl(m.ch) && item(`Open ${site} mod view`, icon.mod, () => openModView(m.ch), { cmd: 'all.menuModView' }));
   lm.hidden = false;
   placeAt(view, lm, at);
@@ -686,6 +765,7 @@ function pinsNow(w, view){
 }
 
 const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+const TRANSLATE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h9M8.5 3v2M6 5c.6 3.2 2.6 5.8 5.5 7.2M11 5c-.8 3.6-3.4 6.4-7 7.6M13 21l4-9 4 9M14.4 18h5.2"/></svg>';
 const FILTER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"/></svg>';
 const BADGE_SVG = {
   host: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2"/><path d="M15 11l6-4v10l-6-4z"/></svg>',
@@ -700,6 +780,7 @@ const BADGE_SVG = {
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
+  trSoon = soon(() => translateNow(), 300);
   botsShown = settings.text('allBots') === 'shown';
   eventsMode = ['short', 'full', 'hidden'].includes(settings.text('allEvents')) ? settings.text('allEvents') : 'short';
   fromSite('feed', (w, json) => { if (allOn(w)) ingest(w, json); });
@@ -715,7 +796,7 @@ function init(){
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
   window.feedAgent = feedAgent; window.pinAgent = pinAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
-  window.allChat = { sender, modKnown, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.allChat = { sender, modKnown, spamTag, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
-export { allOn, allTabFor, feedReady, init, modViewChs, openModViews, sendSite, setAll, setLock };
+export { allOn, allTabFor, feedReady, init, modViewChs, openModViews, sendSite, setAll, setLock, spamTag };
