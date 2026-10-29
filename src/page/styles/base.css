@@ -18,3 +18,7 @@ button,input,select{font:inherit;color:inherit}
 .edit-mi:disabled{opacity:.4;cursor:default}
 .edit-mi.sug{font-weight:700}
 .edit-none{padding:6px 10px;color:var(--muted);font-size:12px;font-style:italic}
+/* a channel's picture in its circle (Channels, the search box, title bars, Channel settings, profiles, the empty
+   stage): just the picture, without the made-up colour and initials that stand in until there is one (they'd show
+   through a picture's transparent parts); a picture that fails is taken out, and they're back */
+:is(.sv-av, .pal-av, .ch-av, .lc-av, .la-av, .pf-av, .es-av):has(img){background:none;color:transparent}
