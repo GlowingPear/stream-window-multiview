@@ -165,3 +165,17 @@ test('Kick: a ban or timeout lifted, and by whom', async () => {
   assert.equal(u.kind, 'unban'); assert.equal(u.login, 'saifyones'); assert.equal(u.who, 'SaifYones'); assert.equal(u.by, 'NightOwl');
   assert.equal(parseKick(KF('UserUnbannedEvent', {})), null);
 });
+
+test('Twitch: a pin and its taking down, from its other connection (as Twitch sent them)', async () => {
+  const { parseTwitch } = await load();
+  const PIN = "{\"notification\":{\"subscription\":{\"id\":\"BPkHroKUNkrfvl-GDeMgx\"},\"type\":\"pubsub\",\"pubsub\":\"{\\\"type\\\":\\\"pin-message\\\",\\\"data\\\":{\\\"id\\\":\\\"e9ba29e9-5acb-43e6-beef-11ed92076d8e\\\",\\\"pinned_by\\\":{\\\"id\\\":\\\"111\\\",\\\"login\\\":\\\"quietkoala\\\",\\\"display_name\\\":\\\"QuietKoala\\\"},\\\"message\\\":{\\\"id\\\":\\\"7cc99aa0-cb9d-4902-83fb-919d24e57404\\\",\\\"sender\\\":{\\\"id\\\":\\\"111\\\",\\\"login\\\":\\\"quietkoala\\\",\\\"display_name\\\":\\\"QuietKoala\\\",\\\"badges\\\":[{\\\"id\\\":\\\"broadcaster\\\",\\\"version\\\":\\\"1\\\"},{\\\"id\\\":\\\"haunter\\\",\\\"version\\\":\\\"1\\\"}],\\\"chat_color\\\":\\\"#FF69B4\\\"},\\\"content\\\":{\\\"text\\\":\\\"scrims at 8pm\\\",\\\"fragments\\\":[{\\\"text\\\":\\\"scrims at 8pm\\\"}]},\\\"type\\\":\\\"MOD\\\",\\\"starts_at\\\":1793194900,\\\"updated_at\\\":1793194900,\\\"ends_at\\\":1793196100,\\\"sent_at\\\":1793194897}}}\"},\"id\":\"e3073da7-4393-57e6-a78e-5efcbe47292f-msg0-topic0BPkHroKUNkrfvl-GDeMgx\",\"type\":\"notification\",\"timestamp\":\"2026-10-28T13:41:40.686189434Z\"}";
+  const UNPIN = "{\"notification\":{\"subscription\":{\"id\":\"KztRXgi8yqCtaIrJrCQDn\"},\"type\":\"pubsub\",\"pubsub\":\"{\\\"type\\\":\\\"unpin-message\\\",\\\"data\\\":{\\\"id\\\":\\\"e9ba29e9-5acb-43e6-beef-11ed92076d8e\\\",\\\"unpinned_by\\\":{\\\"id\\\":\\\"111\\\",\\\"display_name\\\":\\\"QuietKoala\\\"},\\\"reason\\\":\\\"UNPIN\\\"}}\"},\"id\":\"a768cfc8-7341-500d-9670-ac938deaf89a-msg0-topic0KztRXgi8yqCtaIrJrCQDn\",\"type\":\"notification\",\"timestamp\":\"2026-10-28T13:45:15.257694191Z\"}";
+  const p = parseTwitch(PIN);
+  assert.equal(p.kind, 'pin'); assert.equal(p.id, 'e9ba29e9-5acb-43e6-beef-11ed92076d8e'); assert.equal(p.by, 'QuietKoala');
+  assert.equal(p.msg.sender, 'QuietKoala'); assert.equal(p.msg.login, 'quietkoala'); assert.equal(p.msg.color, '#FF69B4'); assert.deepEqual(p.msg.badges, ['host']);
+  assert.deepEqual(p.msg.parts, [{ text: 'scrims at 8pm' }]);
+  assert.deepEqual(parseTwitch(UNPIN), { site: 'twitch', kind: 'unpin', id: 'e9ba29e9-5acb-43e6-beef-11ed92076d8e', t: parseTwitch(UNPIN).t });
+  const emote = JSON.stringify({ notification: { pubsub: JSON.stringify({ type: 'pin-message', data: { id: 'p2', message: { id: 'm2', sender: { login: 'a', display_name: 'A' }, content: { text: 'hi Kappa', fragments: [{ text: 'hi ' }, { text: 'Kappa', emoticon: { emoticonID: '25' } }] } } } }) } });
+  assert.deepEqual(parseTwitch(emote).msg.parts, [{ text: 'hi ' }, { emote: 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0', name: 'Kappa' }]);
+  for (const f of ['{}', '{"notification":{"pubsub":"{\\"type\\":\\"viewcount\\",\\"data\\":{}}"}}', '{ not json']) assert.equal(parseTwitch(f), null, f);
+});
