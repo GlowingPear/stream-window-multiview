@@ -326,3 +326,13 @@
 .all-hl-rep:hover{background:rgba(232,184,74,.26)}
 .all-hl-x{display:grid;place-items:center;width:22px;height:22px;border:0;border-radius:6px;background:none;color:#e8c98a;cursor:pointer}
 .all-hl-x:hover{background:rgba(232,184,74,.18)}.all-hl-x svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4}
+/* links in messages (open in your browser); the emote card on hover (Settings › Chat › Emote preview on hover) */
+.al-link{color:#8ab4ff;text-decoration:underline;text-decoration-color:color-mix(in srgb,#8ab4ff 45%,transparent);text-underline-offset:2px;overflow-wrap:anywhere;cursor:pointer}
+.al-link:hover{color:#b7cfff;text-decoration-color:currentColor}
+.all-ecard{position:absolute;z-index:7;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:132px;max-width:200px;padding:12px 12px 9px;text-align:center;
+  background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 16px 36px rgba(0,0,0,.6)}
+.all-ecard[hidden]{display:none}
+.all-ecard img{max-width:112px;max-height:112px;object-fit:contain;margin-bottom:5px;image-rendering:auto}
+.all-ecard b{font-size:13px;overflow-wrap:anywhere}
+.all-ecard small{color:var(--muted);font-size:11px}
+.all-ec-acts{display:flex;gap:12px;margin-top:6px;font-size:11.5px}

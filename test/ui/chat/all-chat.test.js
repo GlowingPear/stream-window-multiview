@@ -169,6 +169,75 @@ test('ALL: the window\'s @ button (the desktop app\'s) turns mentions off and on
   assert.deepEqual(await at(), ['quietkoala'], 'ALL off: its own chat');
 });
 
+test('ALL has the sites\' chats\' extras: links open in your browser; the line menu\'s link, emote and selected-text items, both copies, translating its site\'s chat; the emote card on hover; Copy message HTML; Blow up on a click', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]', emotePreview: '1', chatBlowup: '1' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(() => {
+    window.__opened = []; window.open = url => { window.__opened.push(url); return null; };
+    window.__copied = []; navigator.clipboard.writeText = async x => { window.__copied.push(x); };
+    window.__saved = []; window.kmv = { ...(window.kmv || {}), emoteDownload: async (url, name) => { window.__saved.push([url, name]); return { saved: true }; }, translate: async texts => texts.map(() => ({ text: 'hello', from: 'es' })) };
+  });
+  const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+  await page.route('https://static-cdn.jtvnw.net/**', r => r.fulfill({ body: gif, contentType: 'image/gif' }));   // (Twitch's emote pictures: a stand-in)
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'drift', id: 'a', emotes: '25:0-4' }, ':drift!d@d PRIVMSG #quietkoala :Kappa clip at https://clips.twitch.tv/BraveOwl-abc, nice')] });
+  // a link: shown as one, opens in the browser (without the comma after it)
+  assert.equal(await page.getAttribute('.all-list .al-link', 'href'), 'https://clips.twitch.tv/BraveOwl-abc');
+  await page.click('.all-list .al-link');
+  assert.deepEqual(await page.evaluate(() => window.__opened), ['https://clips.twitch.tv/BraveOwl-abc']);
+  // right-click the link: its items
+  await page.click('.all-list .al-link', { button: 'right' });
+  const items = () => page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent.trim()));
+  assert.deepEqual((await items()).slice(0, 2), ['Open link in your browser', 'Copy link address']);
+  assert.doesNotMatch(await page.textContent('.all-lm'), /false|null|undefined/, 'only what applies');
+  await page.click('.all-lm [data-cmd="all.menuLinkCopy"]');
+  assert.deepEqual(await page.evaluate(() => window.__copied), ['https://clips.twitch.tv/BraveOwl-abc']);
+  // right-click the emote: its items; Save asks for the bigger picture
+  await page.click('.all-list img.al-e', { button: 'right' });
+  assert.deepEqual((await items()).slice(0, 4), ['Copy emote text', 'Save image as…', 'Copy image', 'Copy image address']);
+  await page.click('.all-lm [data-cmd="all.menuEmoteSave"]');
+  await page.waitForFunction(() => window.__saved.length);
+  assert.deepEqual(await page.evaluate(() => window.__saved[0]), ['https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/3.0', 'Kappa']);
+  // the emote card on hover (Emote preview on hover is on)
+  await page.hover('.all-list img.al-e');
+  await page.waitForSelector('.all-ecard:not([hidden])');
+  assert.equal(await page.textContent('.all-ecard b'), 'Kappa');
+  await page.mouse.move(5, 5); await page.waitForSelector('.all-ecard', { state: 'hidden' });
+  // words selected: Copy, Translate, Search
+  await page.evaluate(() => { const t = document.querySelector('.all-list .al-txt'), r = document.createRange(); r.selectNodeContents(t.lastChild); const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
+  await page.click('.all-list .al-txt', { button: 'right' });
+  const sel = await items();
+  assert.ok(sel.includes('Copy') && sel.some(x => /^Translate “.*” to /.test(x)) && sel.some(x => /^Search Google for “/.test(x)), sel.join(' | '));
+  await page.click('.all-lm [data-cmd="all.menuSelSearch"]');
+  assert.match((await page.evaluate(() => window.__opened)).pop(), /^https:\/\/www\.google\.com\/search\?q=/);
+  await page.evaluate(() => getSelection().removeAllRanges());
+  // both copies
+  await page.click('.all-list .al-txt', { button: 'right' });
+  await page.click('.all-lm [data-cmd="all.menuCopyPlain"]');
+  await page.click('.all-list .al-txt', { button: 'right' });
+  await page.click('.all-lm [data-cmd="all.menuCopy"]');
+  assert.deepEqual((await page.evaluate(() => window.__copied)).slice(-2), ['clip at https://clips.twitch.tv/BraveOwl-abc, nice', 'Kappa clip at https://clips.twitch.tv/BraveOwl-abc, nice']);
+  // translate its site's chat: every Twitch line here; Translate new messages too; Stop translating
+  await page.click('.all-list .al-txt', { button: 'right' });
+  await page.click('.all-lm [data-cmd="all.menuTranslateChat"]');
+  await page.waitForSelector('.all-list .al-tag-tr');
+  await page.click('.all-list .al-txt', { button: 'right' });
+  assert.equal(await page.isVisible('.all-lm [data-cmd="all.menuTranslateStop"]'), true);
+  await page.click('.all-lm [data-cmd="all.menuTranslateAuto"]');
+  await page.click('.all-list .al-txt', { button: 'right' });
+  assert.equal((await page.textContent('.all-lm [data-cmd="all.menuTranslateAuto"]')).trim(), 'Stop translating new messages');
+  await page.click('.all-lm [data-cmd="all.menuTranslateStop"]');
+  assert.equal(await page.textContent('.all-list .al-tag-tr'), 'Original · ES');
+  // Developer tools: Copy message HTML, from its site's chat
+  await page.evaluate(() => { window.devTools.setDev(true); const w = window.openWins().find(o => o.channel === 'tw:quietkoala'); w.view.executeJavaScript = async js => (/messageHtml|outerHTML/.test(js) ? '<div class="chat-line__message">…</div>' : true); });
+  await page.click('.all-list .al-txt', { button: 'right' });
+  await page.click('.all-lm [data-cmd="all.menuHtml"]');
+  await page.waitForFunction(() => window.__copied.some(x => x.startsWith('<div')));
+  await page.evaluate(() => window.devTools.setDev(false));
+  // Blow up chat: a click into ALL blows its window up
+  await page.click('.all-list');
+  assert.equal(await page.$eval('#stage .win.chat:not(.tab-hidden)', e => e.classList.contains('blown')), true);
+});
+
 test('ALL: events are a short line with See it on …; Events: short, full or hidden; an announcement is a message', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
@@ -379,7 +448,7 @@ test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeo
   await page.click(line(0), { button: 'right' });
   assert.deepEqual(await page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent.trim() + (b.disabled ? ' (off)' : ''))).then(x => x.map(s => s.replace(/\s+/g, ' '))),
     ['Reply', 'Pin message', 'Open profile on Kick', /Delete message.*click name/.source && 'Delete message' + (process.platform === 'darwin' ? '⇧-click name' : 'Shift-click name'),
-     'Timeout' + (process.platform === 'darwin' ? '⌘-click name' : 'Ctrl-click name'), 'Ban' + (process.platform === 'darwin' ? '⌘+⇧-click name' : 'Ctrl+Shift-click name'), 'Copy message', 'Open Kick mod view'].map(x => x));
+     'Timeout' + (process.platform === 'darwin' ? '⌘-click name' : 'Ctrl-click name'), 'Ban' + (process.platform === 'darwin' ? '⌘+⇧-click name' : 'Ctrl+Shift-click name'), 'Copy message', 'Copy message with emotes', 'Open Kick mod view'].map(x => x));
   await page.click('.all-lm .all-durs button >> text=1h');
   await page.waitForFunction(() => window.__acts.length === 2);
   assert.deepEqual((await acts())[1], ['send', 'quietkoala', '/timeout loudmouth 60'], 'Kick counts minutes');
@@ -417,7 +486,7 @@ test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeo
   await page.keyboard.press('Escape');
   assert.equal(await page.isVisible('.all-lm'), false, 'Esc closes it');
   await page.click(line(4), { button: 'right' });
-  assert.deepEqual(await page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent.trim())), ['Reply', 'Open profile on Twitch', 'Copy message'], 'no mod part where you aren\'t a mod');
+  assert.deepEqual(await page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent.trim())), ['Reply', 'Open profile on Twitch', 'Copy message', 'Copy message with emotes'], 'no mod part where you aren\'t a mod');
   await page.mouse.click(5, 5);
   // a message gone from the site's chat, and a site that won't take it
   for (const [ans, want] of [['no-line', /That message has gone from Kick's chat/], ['no-button', /Kick doesn't offer that there/], ['nope', /Kick didn't take it/]]){

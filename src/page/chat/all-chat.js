@@ -2,13 +2,16 @@ import { alerts, clearAlert } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { SMILEY, addonEmotes, emoteCache, openEmotePicker, pickEmote, renderEmoteList, suggestEmote, withEmotes } from './all-emotes.js';
 import { healthState, noteRaw, noteSend, reportHealth } from './all-health.js';
+import { blowOn, blowUp } from './blow-up.js';
 import { chatBoxName } from './chat-name.js';
 import { chatZoom } from './chat-zoom.js';
 import { sampleIn } from './event-samples.js';
 import { feedParse } from './feed-parse.js';
-import { autoTrFor } from './translate.js';
+import { openInBrowser } from './kick-panel.js';
+import { autoTrFor, translateChat } from './translate.js';
+import { saveEmote } from './view-menu.js';
 import { wins } from '../core.js';
-import { feedAgent, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
+import { feedAgent, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
@@ -30,7 +33,7 @@ import { store } from '../shared/store.js';
 import { soon } from '../shared/timers.js';
 import { addTab, cycleTabs, frameOf, leaderOf, renderSiteTabs, showTab, syncFrameAlert, tabChannels } from '../windows/frames.js';
 import { askIn, runIn, viewId, zoomOf } from '../windows/view.js';
-import { freshEmotes, newEmotesOn } from '../windows/views.js';
+import { copyEmote, emoteOn, freshEmotes, newEmotesOn } from '../windows/views.js';
 import { syncModBtn } from '../windows/windows.js';
 
 /* ---- ALL: a linked streamer's Kick, Twitch and YouTube chats as one list (issue #203) ----
@@ -349,18 +352,54 @@ function nameColor(m){
 function partsEl(parts, ch){
   const add = ch ? addonEmotes(ch, redrawAll) : null, fresh = ch && newEmotesOn ? freshEmotes.get(ch) : null, out = [];
   parts.forEach(p => {
-    if (p.emote) return out.push(emoteEl(p.emote, p.name, '', ch, fresh));
-    if (!add || !add.size) return out.push(p.text);
-    String(p.text).split(/(\s+)/).forEach(t => { const e = t && add.get(t); if (e) out.push(emoteEl(e.url, t, e.src, ch, fresh)); else if (t) out.push(t); });
+    if (p.emote) return out.push(emoteEl(p.emote, p.name, '', ch, fresh, p.send));
+    if (!add || !add.size) return out.push(...linkify(p.text));
+    String(p.text).split(/(\s+)/).forEach(t => { const e = t && add.get(t); if (e) out.push(emoteEl(e.url, t, e.src, ch, fresh)); else if (t) out.push(...linkify(t)); });
   });
   return out;
 }
-function emoteEl(src, name, from, ch, fresh){
+// Web links in a message: they open in your browser (right-click: copy it)
+const URL_RE = /\bhttps?:\/\/[^\s<>"]+[^\s<>".,!?:;)\]'"]/g;
+function linkify(t){
+  const s = String(t || ''), out = []; let i = 0, x;
+  URL_RE.lastIndex = 0;
+  while ((x = URL_RE.exec(s))){
+    if (x.index > i) out.push(s.slice(i, x.index));
+    const url = x[0];
+    out.push(element('a', { class: 'al-link', href: url, title: url, rel: 'noreferrer', onclick: e => { e.preventDefault(); openInBrowser(url); } }, url.length > 60 ? url.slice(0, 57) + '…' : url));
+    i = x.index + url.length;
+  }
+  if (i < s.length) out.push(s.slice(i));
+  return out;
+}
+// An emote's bigger picture (the card, Save, Copy image): each site's and add-on's larger size
+const bigEmote = u => String(u).replace(/(static-cdn\.jtvnw\.net\/emoticons\/v2\/[^/]+\/[^/]+\/[^/]+\/)1\.0$/, '$13.0').replace(/(7tv\.app\/emote\/[^/]+\/)1x\.webp$/, '$14x.webp')
+  .replace(/(betterttv\.net\/emote\/[^/]+\/)1x$/, '$13x').replace(/(frankerfacez\.com\/emote\/\d+\/)1$/, '$14');
+function emoteEl(src, name, from, ch, fresh, send){
   const isNew = !!(fresh && fresh.has(name));
-  const img = element('img', { class: 'al-e' + (isNew ? ' al-new' : ''), src, alt: name, title: isNew ? `${name} · new` : from ? `${name} · ${from}` : name, loading: 'lazy', referrerPolicy: 'no-referrer' });
+  const img = element('img', { class: 'al-e' + (isNew ? ' al-new' : ''), src, alt: name, title: emoteOn ? '' : isNew ? `${name} · new` : from ? `${name} · ${from}` : name, loading: 'lazy', referrerPolicy: 'no-referrer',
+    dataset: { send: send || name, from: from || PLAT_NAME[platOf(ch || '')] || '' } });
   img.onerror = () => img.replaceWith(document.createTextNode(name));
-  if (isNew) img.onpointerenter = () => emoteSeen(ch, name);
+  img.onpointerenter = () => { if (isNew) emoteSeen(ch, name); if (emoteOn) emoteCard(img); };
   return img;
+}
+// Settings › Chat › Emote preview on hover (as in the sites' chats: in-site/emote-preview.js): a card with the emote big,
+// its name and where it's from, Copy name and Save
+function emoteCard(img){
+  const host = wins.find(o => o.allView && o.allView.el.contains(img)), view = host && host.allView; if (!view) return;
+  const card = view.ecard, name = img.alt, url = bigEmote(img.src);
+  clearTimeout(card.hideT);
+  card.replaceChildren(element('img', { src: url, alt: name, referrerPolicy: 'no-referrer' }), element('b', null, name), element('small', null, img.dataset.from || ''),
+    element('div', 'all-ec-acts',
+      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.emoteCopyName' }, onclick: () => navigator.clipboard?.writeText(img.dataset.send || name).then(() => flash('Copied ' + name)) }, 'Copy name'),
+      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.emoteSave' }, onclick: () => saveEmote(JSON.stringify({ url, name })) }, 'Save')));
+  card.hidden = false;
+  placeAt(view, card, img);
+  // above the emote when there's room, so the line stays readable
+  const z = parseFloat(view.el.style.zoom) || 1, vr = view.el.getBoundingClientRect(), r = img.getBoundingClientRect(), up = (r.top - vr.top) / z - card.offsetHeight - 6;
+  if (up >= 6) card.style.top = up + 'px';
+  const hide = () => { card.hideT = setTimeout(() => { card.hidden = true; }, 220); };
+  img.onpointerleave = hide; card.onpointerenter = () => clearTimeout(card.hideT); card.onpointerleave = hide;
 }
 // A new emote pointed at: not new any more, here and in that channel's chats (as pointing at it there does)
 function emoteSeen(ch, name){
@@ -449,6 +488,7 @@ function buildView(w){
   const fm = element('div', { class: 'pop all-lm all-fm', role: 'menu', 'aria-label': 'What ALL shows', hidden: true });
   const modes = element('div', { class: 'all-modes', hidden: true, role: 'status', 'aria-live': 'polite' });
   const health = element('div', { class: 'all-health', hidden: true, role: 'alert' });
+  const ecard = element('div', { class: 'pop all-ecard', hidden: true, role: 'tooltip' });
   const pick = element('button', { type: 'button', class: 'all-pick', dataset: { cmd: 'all.sendSite' }, 'aria-haspopup': 'menu' });
   const input = element('input', { type: 'text', class: 'all-in', autocomplete: 'off', spellcheck: true, maxlength: 500, dataset: { cmd: 'all.message' } });
   const menu = element('div', { class: 'pop all-menu', role: 'menu', hidden: true });
@@ -463,11 +503,12 @@ function buildView(w){
     onclick: () => { view.pinsShown = !view.pinsShown; renderPins(view); } });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, filt), health, pins, list, more, empty,
-    element('div', 'all-cmp', bar, modes, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm);
-  const view = { el, list, empty, more, filt, fm, modes, health, pins, pinChip, pinsShown: false, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
+    element('div', 'all-cmp', bar, modes, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm, ecard);
+  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, pinChip, pinsShown: false, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
   closeOnOutside(fm, { button: filt });
   el.addEventListener('pointerdown', () => allSeen(w));
+  el.addEventListener('click', e => { if (blowOn && !e.target.closest('a, button, input, img, .al-n, .pop')) blowUp(w); });   // (Blow up chat: clicking into ALL, as into a site's chat; not on what you clicked to use)
   el.addEventListener('focusin', () => allSeen(w));
   filt.onclick = () => { if (fm.hidden) openFilters(view); else fm.hidden = true; };
   closeOnOutside(ep, { button: emo });
@@ -763,8 +804,25 @@ function openLineMenu(m, at){
   const site = PLAT_NAME[m.site], why = whyNot(m), mod = youMod(m.ch) && !!platform(m.ch).timeoutCmd, lm = view.lm;
   const item = (label, ic, run, more = {}) => element('button', { type: 'button', role: 'menuitem', class: 'all-li' + (more.red ? ' red' : ''), disabled: !!more.off, title: more.off || '', dataset: { cmd: more.cmd },
     onclick: () => { lm.hidden = true; run(); } }, element('i', { html: ic }), element('span', null, label), more.kb ? element('small', null, more.kb) : '');
-  const text = m.parts.map(x => x.text || x.name).join('');
-  lm.replaceChildren(element('div', 'all-lh', element('i', { class: 'pi pi-' + m.site }, site[0]), element('b', null, m.sender), element('small', null, site)),
+  const text = m.parts.map(x => x.text || x.name).join(''), plain = m.parts.map(x => x.text || '').join('').replace(/\s+/g, ' ').trim();
+  // what was right-clicked: a link, an emote, words selected in ALL (as the sites' chats' menu has them: src/main/context-menu.js)
+  const t = at && at.target && at.target.closest ? at.target : null, link = t && t.closest('a.al-link'), em = t && t.closest('img.al-e');
+  const sel = String(window.getSelection ? window.getSelection() : '').trim(), selIn = sel && view.list.contains(window.getSelection().anchorNode);
+  const copy = (x, said = 'Copied') => navigator.clipboard?.writeText(x).then(() => flash(said), () => flash('Couldn\'t copy it'));
+  const tl = (navigator.language || 'en').split('-')[0], lang = (() => { try { return new Intl.DisplayNames([navigator.language || 'en'], { type: 'language' }).of(tl); } catch { return tl; } })();
+  const short = x => `“${x.length > 24 ? x.slice(0, 23) + '…' : x}”`;
+  const cw = chatFor(m), trAuto = autoTrFor(m.ch);
+  lm.replaceChildren(...[element('div', 'all-lh', element('i', { class: 'pi pi-' + m.site }, site[0]), element('b', null, m.sender), element('small', null, site)),
+    link && item('Open link in your browser', icon.pop, () => openInBrowser(link.href), { cmd: 'all.menuLink' }),
+    link && item('Copy link address', icon.link, () => copy(link.href, 'Copied the link'), { cmd: 'all.menuLinkCopy' }),
+    em && item('Copy emote text', icon.copy, () => copy(em.dataset.send || em.alt), { cmd: 'all.menuEmoteText' }),
+    em && item('Save image as…', icon.download, () => saveEmote(JSON.stringify({ url: bigEmote(em.src), name: em.alt })), { cmd: 'all.menuEmoteSave' }),
+    em && item('Copy image', icon.copy, () => copyEmote(JSON.stringify({ url: bigEmote(em.src), name: em.alt })), { cmd: 'all.menuEmoteCopy' }),
+    em && item('Copy image address', icon.link, () => copy(bigEmote(em.src)), { cmd: 'all.menuEmoteAddr' }),
+    selIn && item('Copy', icon.copy, () => copy(sel), { cmd: 'all.menuSelCopy' }),
+    selIn && item(`Translate ${short(sel)} to ${lang}`, TRANSLATE, () => openInBrowser(`https://translate.google.com/?sl=auto&tl=${encodeURIComponent(tl)}&text=${encodeURIComponent(sel)}&op=translate`), { cmd: 'all.menuSelTranslate' }),
+    selIn && item(`Search Google for ${short(sel)}`, icon.search, () => openInBrowser(`https://www.google.com/search?q=${encodeURIComponent(sel)}`), { cmd: 'all.menuSelSearch' }),
+    (link || em || selIn) && element('hr'),
     sendSites(view.w).includes(m.ch) && item('Reply', icon.reply, () => startReply(m), { cmd: 'all.menuReply' }),
     mod && item('Pin message', icon.pin, () => modAct(m, 'pin'), { cmd: 'all.menuPin' }),
     item(`Open profile on ${site}`, icon.user, () => openSiteCard(m), { cmd: 'all.menuProfile' }),
@@ -774,11 +832,19 @@ function openLineMenu(m, at){
     mod && !why && element('div', 'all-durs', ...TIMEOUTS.map(sec => element('button', { type: 'button', class: sec === lastTimeout() ? 'on' : '', dataset: { cmd: 'all.timeoutFor' }, onclick: () => { lm.hidden = true; modAct(m, 'timeout', sec); } }, durText(sec)))),
     mod && item('Ban', BAN, () => modAct(m, 'ban'), { kb: `${kCtrl()}+${kShift()}-click name`, off: why, red: true, cmd: 'all.menuBan' }),
     element('hr'),
-    item('Copy message', icon.copy, () => { navigator.clipboard?.writeText(text).then(() => flash('Copied'), () => flash('Couldn\'t copy it')); }, { cmd: 'all.menuCopy' }),
+    item('Copy message', icon.copy, () => copy(plain), { cmd: 'all.menuCopyPlain', off: plain ? '' : 'Only emotes' }),
+    item('Copy message with emotes', icon.copy, () => copy(text), { cmd: 'all.menuCopy' }),
+    // translating: this message, or all of its site's chat (here and in its own chat), and its new messages too
+    window.kmv && window.kmv.translate && element('hr'),
     window.kmv && window.kmv.translate && !m.tr && item('Translate', TRANSLATE, () => translateSoon(m), { cmd: 'all.menuTranslate' }),
+    window.kmv && window.kmv.translate && cw && item(`Translate ${site}'s chat to ${lang}`, TRANSLATE, () => { translateChat(cw, { do: 'translateChat' }); feedOf(streamerOf(m.ch)).msgs.filter(x => x.ch === m.ch && x.kind === 'message' && !x.tr && !x.bot).forEach(translateSoon); }, { cmd: 'all.menuTranslateChat' }),
+    window.kmv && window.kmv.translate && cw && item(trAuto ? 'Stop translating new messages' : 'Translate new messages too', TRANSLATE, () => translateChat(cw, { do: 'translateAuto', on: !trAuto }), { cmd: 'all.menuTranslateAuto' }),
+    window.kmv && window.kmv.translate && cw && feedOf(streamerOf(m.ch)).msgs.some(x => x.ch === m.ch && x.tr && !x.trOrig) && item('Stop translating', TRANSLATE, () => {
+      translateChat(cw, { do: 'translateStop' }); feedOf(streamerOf(m.ch)).msgs.forEach(x => { if (x.ch === m.ch && x.tr){ x.trOrig = true; redrawLine(x); } }); }, { cmd: 'all.menuTranslateStop' }),
     devOn && element('hr'),
     devOn && item('Copy message data', icon.code, () => copyData(m), { cmd: 'all.menuData' }),
-    mod && modUrl(m.ch) && item(`Open ${site} mod view`, icon.mod, () => openModView(m.ch), { cmd: 'all.menuModView' }));
+    devOn && cw && m.id && item('Copy message HTML', icon.code, () => askIn(cw.view, `(${messageHtml})(${JSON.stringify(m.id)})`).then(h => (h ? copy(h, 'Copied the message\'s HTML') : flash(`Couldn't find it in ${site}'s chat (it may have scrolled out)`))).catch(() => flash('Couldn\'t copy it')), { cmd: 'all.menuHtml' }),
+    mod && modUrl(m.ch) && item(`Open ${site} mod view`, icon.mod, () => openModView(m.ch), { cmd: 'all.menuModView' })].filter(x => x instanceof Node));   // (only what applies: a hidden item is false)
   lm.hidden = false;
   placeAt(view, lm, at);
 }
@@ -793,10 +859,10 @@ function openModViews(w, at){
     return element('button', { type: 'button', role: 'menuitem', class: 'all-li all-mvi', disabled: !!off, title: off ? (modUrl(ch) ? `You don't moderate their ${site} channel` : `${site} has no mod view for each channel`) : `Opens in a window of its own`, dataset: { cmd: 'all.modView' },
       onclick: () => { mv.hidden = true; openModView(ch); } }, element('i', { class: 'pi pi-' + p }, site[0]), element('span', null, off || `${site} mod view`), off ? '' : element('i', { class: 'all-mvx', html: icon.pop }));
   };
-  mv.replaceChildren(element('div', 'all-mvh', 'Mod views'), ...tabChannels(w).map(row),
+  mv.replaceChildren(...[element('div', 'all-mvh', 'Mod views'), ...tabChannels(w).map(row),
     chs.length > 1 && element('hr'),
     chs.length > 1 && element('button', { type: 'button', role: 'menuitem', class: 'all-li', dataset: { cmd: 'all.modViewsAll' }, onclick: () => { mv.hidden = true; chs.forEach(openModView); } },
-      element('i', { html: icon.mod }), element('span', null, 'Open all'), element('small', null, `${chs.length} windows`)));
+      element('i', { html: icon.mod }), element('span', null, 'Open all'), element('small', null, `${chs.length} windows`))].filter(x => x instanceof Node));
   mv.hidden = false;
   placeAt(view, mv, at, 6);
 }
