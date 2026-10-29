@@ -17,9 +17,9 @@ function feedAgent(as){
   const send = () => { timer = 0; if (!batch.length) return; const raw = batch; batch = []; console.log('__kmv:feed ' + JSON.stringify({ s: site, raw })); };
   const push = x => { if (!F.on) return; batch.push(x); if (batch.length > 400) batch.splice(0, batch.length - 400); if (!timer) timer = setTimeout(send, 250); };
   // Twitch's chat lines that ALL shows; Kick's events
-  const TW = / (PRIVMSG|USERNOTICE|CLEARMSG|CLEARCHAT) #/;
+  const TW = / (PRIVMSG|USERNOTICE|CLEARMSG|CLEARCHAT|ROOMSTATE) #/;
   // (in the frame's text the event's name is JSON: App\\Events\\…, its backslashes doubled; the newer ones have no App\\Events)
-  const KICK = /"event":"(App\\+Events\\+)?(ChatMessageEvent|MessageDeletedEvent|UserBannedEvent|UserUnbannedEvent|ChatroomClearEvent|RewardRedeemedEvent|KicksGifted|GiftedSubscriptionsEvent|LuckyUsersWhoGotGiftSubscriptionsEvent|SubscriptionEvent|ChannelSubscriptionEvent|StreamHostEvent|PinnedMessageCreatedEvent|PinnedMessageDeletedEvent)"/;
+  const KICK = /"event":"(App\\+Events\\+)?(ChatMessageEvent|MessageDeletedEvent|UserBannedEvent|UserUnbannedEvent|ChatroomClearEvent|RewardRedeemedEvent|KicksGifted|GiftedSubscriptionsEvent|LuckyUsersWhoGotGiftSubscriptionsEvent|SubscriptionEvent|ChannelSubscriptionEvent|StreamHostEvent|PinnedMessageCreatedEvent|PinnedMessageDeletedEvent|ChatroomUpdatedEvent)"/;
   // Chat events: what kind each thing is. Kick: its event's name (a chat message's type too); Twitch: the line's command
   // (a message's kind, a notice's msg-id, a clear's), or its other connection's type; YouTube: the action (and its item)
   const S = { k: {}, at: {}, timer: 0 };
@@ -65,7 +65,7 @@ function feedAgent(as){
     if (typeof data !== 'string') return;
     if (site === 'twitch'){
       if (data.includes(' #')) data.split('\r\n').forEach(l => { if (TW.test(l)) push(l); });
-      else if (data.startsWith('{') && /\\"(un)?pin-message\\"/.test(data)) push(data);   // (its other connection: a message pinned or taken down)
+      else if (data.startsWith('{') && /\\"((un)?pin-message|updated_room)\\"/.test(data)) push(data);   // (its other connection: a message pinned or taken down, the chat's modes)
     }
     else if (site === 'kick' && data.startsWith('{"push"') && KICK.test(data)) push(data);
   }
@@ -120,6 +120,52 @@ async function pinAgent(as, nameAs){
     const acts = (((window.ytInitialData || {}).contents || {}).liveChatRenderer || {}).actions || [];
     const pins = acts.filter(a => a && a.addBannerToLiveChatCommand);
     return pins.length ? { s: 'youtube', raw: pins } : null;
+  } catch (e) { return null; }
+}
+
+// The chat's modes and where you stand in it, for ALL's box (chat/all-chat.js): asked as ALL starts reading the chat;
+// changes come live after (feed-parse.js). Kick: its chatroom (the modes) and your /me there (with the chat's login);
+// Twitch: chatSettings, and you there (with the page's login); YouTube: what its chat says where its box would be
+// (sign in, members only), as it doesn't say more. -> { modes: { slow, followers, subs, emotes, verified }, me: { signedIn,
+// follower, followedAt, sub, mod, vip, host, banned } } or { blocked: "<the site's words>" }, or null (unreadable)
+async function modesAgent(as, nameAs){
+  const site = as || (/(^|\.)kick\.com$/.test(location.hostname) ? 'kick' : /(^|\.)twitch\.tv$/.test(location.hostname) ? 'twitch' : 'youtube');
+  const name = nameAs || (location.pathname.match(/\/popout\/([^/]+)/) || [])[1];
+  const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
+  try {
+    if (site === 'kick'){
+      if (!name) return null;
+      const r = await (await fetch(`/api/v2/channels/${encodeURIComponent(name)}/chatroom`, { headers: { Accept: 'application/json' } })).json();
+      const on = x => !!(x && x.enabled);
+      const modes = { slow: on(r.slow_mode) ? +r.slow_mode.message_interval || 0 : 0, followers: on(r.followers_mode) ? +r.followers_mode.min_duration || 0 : null,
+        subs: on(r.subscribers_mode), emotes: on(r.emotes_mode), verified: false };
+      const tok = ck('session_token');
+      if (!tok) return { modes, me: { signedIn: false } };
+      const me = await (await fetch(`/api/v2/channels/${encodeURIComponent(name)}/me`, { headers: { Accept: 'application/json', Authorization: 'Bearer ' + tok } })).json();
+      return { modes, me: { signedIn: !me.message, follower: !!me.is_following, followedAt: Date.parse(me.following_since) || 0, sub: !!me.subscription,
+        mod: !!me.is_moderator, vip: false, host: !!me.is_broadcaster, banned: !!me.banned } };
+    }
+    if (site === 'twitch'){
+      if (!name) return null;
+      const login = decodeURIComponent(name).toLowerCase(), tok = ck('auth-token');
+      const gql = (query, auth) => fetch('https://gql.twitch.tv/gql', { method: 'POST', headers: { 'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko', 'Content-Type': 'application/json', ...(auth ? { Authorization: 'OAuth ' + tok } : {}) },
+        body: JSON.stringify({ query }) }).then(r => r.json());
+      const s = (((await gql(`query { user(login: ${JSON.stringify(login)}) { chatSettings { slowModeDurationSeconds followersOnlyDurationMinutes isSubscribersOnlyModeEnabled isEmoteOnlyModeEnabled requireVerifiedAccount } } }`)).data || {}).user || {}).chatSettings;
+      if (!s) return null;
+      const modes = { slow: +s.slowModeDurationSeconds || 0, followers: s.followersOnlyDurationMinutes == null ? null : +s.followersOnlyDurationMinutes, subs: !!s.isSubscribersOnlyModeEnabled,
+        emotes: !!s.isEmoteOnlyModeEnabled, verified: !!s.requireVerifiedAccount };
+      if (!tok) return { modes, me: { signedIn: false } };
+      const d = (await gql(`query { user(login: ${JSON.stringify(login)}) { self { follower { followedAt } subscriptionBenefit { id } isModerator isVIP } } currentUser { login } }`, true)).data || {};
+      const self = (d.user || {}).self || {}, you = ((d.currentUser || {}).login || '').toLowerCase();
+      return { modes, me: { signedIn: !!you, follower: !!self.follower, followedAt: self.follower ? Date.parse(self.follower.followedAt) || 0 : 0, sub: !!self.subscriptionBenefit,
+        mod: !!self.isModerator, vip: !!self.isVIP, host: !!you && you === login, banned: false } };
+    }
+    // YouTube: its box, or what it says instead (Sign in to chat, members only, …)
+    const box = document.querySelector('yt-live-chat-text-input-field-renderer #input');
+    if (box) return { modes: {}, me: { signedIn: true } };
+    const say = document.querySelector('yt-live-chat-restricted-participation-renderer, #input-panel');
+    const text = say ? say.innerText.replace(/\s+/g, ' ').trim() : '';
+    return text ? { blocked: text.slice(0, 160) } : null;
   } catch (e) { return null; }
 }
 
@@ -207,4 +253,4 @@ function profileAgent(id){
   return true;
 }
 
-export { feedAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress };
+export { feedAgent, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress };

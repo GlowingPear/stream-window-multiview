@@ -281,3 +281,26 @@
 .al-gc{padding:1px 7px;line-height:18px;border-radius:999px;background:color-mix(in srgb,var(--text) 8%,transparent);font-size:11px;font-weight:600}
 .al-gc.me{background:var(--accent);color:var(--accent-ink)}
 .al-ev.al-gift-me{box-shadow:inset 3px 0 0 var(--accent)}
+/* the send site's chat modes, above the box: chips in its colour; slow mode's countdown (a draining bar); why you can't
+   chat there (the box greyed, saying it); a moderator's or the streamer's "exempt" (the chips quieter) */
+.all-modes{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:0 0 7px;font-size:11px;--sc:var(--accent)}
+.all-modes[hidden]{display:none}
+.all-modes-kick{--sc:#53fc18}.all-modes-twitch{--sc:#a970ff}.all-modes-youtube{--sc:#ff5a5a}
+.all-mc{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 8px;border-radius:999px;font-weight:700;letter-spacing:.01em;color:var(--text);
+  background:color-mix(in srgb,var(--sc) 11%,transparent);border:1px solid color-mix(in srgb,var(--sc) 38%,transparent)}
+.all-mc::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--sc);box-shadow:0 0 6px color-mix(in srgb,var(--sc) 70%,transparent)}
+.all-modes.free .all-mc{opacity:.6}
+.all-modes.free .all-mc::before{box-shadow:none}
+.all-mfree{display:inline-flex;align-items:center;gap:3px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:9.5px}
+.all-mfree i{display:grid}.all-mfree svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2.6}
+.all-mw{position:relative;display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:7px;overflow:hidden;font-weight:600;color:var(--text);
+  background:color-mix(in srgb,var(--sc) 9%,var(--panel));border:1px solid color-mix(in srgb,var(--sc) 35%,transparent)}
+.all-mw::after{content:'';position:absolute;left:0;bottom:0;height:2px;width:calc(var(--p,1) * 100%);background:var(--sc);transition:width .25s linear}
+.all-mw b{font-variant-numeric:tabular-nums;color:var(--sc)}
+.all-mw i,.all-mb i{display:grid}.all-mw svg,.all-mb svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.all-mb{flex-basis:100%;display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;color:#ffc9c9;
+  background:linear-gradient(90deg,rgba(255,95,95,.14),rgba(255,95,95,.05));border:1px solid rgba(255,95,95,.35)}
+.all-blocked .all-in{cursor:not-allowed;opacity:.75}
+.all-blocked .all-in::placeholder{color:#ffb1b1}
+.all-send-b.wait svg{opacity:0}
+.all-send-b.wait::after{content:attr(data-wait);position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)}
