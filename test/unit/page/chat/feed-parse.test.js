@@ -137,6 +137,11 @@ test('Twitch events in a few words, the amount picked out; an announcement is a 
   assert.equal(words(ev('viewermilestone', { 'msg-param-value': '7' })), '[Brightwick] watched [7 streams] in a row');
   assert.equal(words(ev('giftpaidupgrade', {})), '[Brightwick] kept their sub going');
   assert.equal(words(ev('bitsbadgetier', { 'msg-param-threshold': '1000' })), '[Brightwick] earned a [1,000 bits] badge');
+  const fwd = prm => ev('communitypayforward', { 'msg-param-prior-gifter-id': '7', 'msg-param-prior-gifter-user-name': 'tinroof', ...prm });
+  assert.equal(words(fwd({ 'msg-param-prior-gifter-anonymous': 'false', 'msg-param-prior-gifter-display-name': 'Tinroof' })), '[Brightwick] paid forward the gift sub from [Tinroof]');
+  assert.equal(words(fwd({ 'msg-param-prior-gifter-anonymous': 'false' })), '[Brightwick] paid forward the gift sub from [tinroof]', 'without a display name: the login');
+  assert.equal(words(ev('communitypayforward', {})), '[Brightwick] paid forward the gift sub from [someone]');
+  assert.equal(words(fwd({ 'msg-param-prior-gifter-anonymous': 'true', 'msg-param-prior-gifter-display-name': 'AnAnonymousGifter' })), '[Brightwick] paid forward the gift sub from an anonymous gifter');
   assert.equal(words(ev('charitydonation', {})), "the site's words");
   assert.equal(words(ev('submysterygift', {})), "the site's words", 'without its number');
   assert.equal(words(parseTwitch(TW({ 'display-name': 'X', 'msg-id': 'other', id: 'e' }, ':tmi.twitch.tv USERNOTICE #q')).summary), '[X]');
@@ -253,6 +258,31 @@ test('Twitch: a watch streak is their message, highlighted, with how many stream
   const so = parseTwitch(hermes('create', { shoutoutID: 's9', sourceLogin: 'quietkoala', targetLogin: 'novalynx', targetUserDisplayName: 'Novalynx' }));
   assert.deepEqual([so.kind, so.event, so.text, so.shoutout], ['event', 'shoutout', 'quietkoala shouted out Novalynx', 'tw:novalynx']);
   assert.deepEqual([KNOWN.twitch['hermes:reward-redeemed'], KNOWN.twitch['hermes:create']], ['a reward redeemed (without text)', 'a shoutout']);
+  assert.equal(KNOWN.twitch['USERNOTICE:communitypayforward'], 'a gift sub paid forward');
   for (const k of ['hermes:drop-progress', 'hermes:commercial', 'hermes:watch-streak', 'hermes:hype-train-start', 'hermes:mystery-gift-purchase', 'hermes:?']) assert.ok(ignoredWhy('twitch', k), k);
 });
 
+
+test('Twitch: a raid getting ready (its countdown), going and called off, from its other connection; a goal reached', async () => {
+  const { parseTwitch, KNOWN } = await load();
+  const pub = obj => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify(obj) } });
+  const raid = (type, extra = {}) => pub({ type, raid: { id: 'r7', creator_id: '1', source_id: '1', source_display_name: 'Quietkoala', target_id: '2', target_login: 'PixelMoth',
+    target_display_name: 'PixelMoth', target_viewer_count: '230', transition_jitter_seconds: 0, force_raid_now_seconds: 90, viewer_count: 27, raid_created_at: 1793277992, ...extra } });
+  const up = parseTwitch(raid('raid_update_v2'));
+  assert.deepEqual({ ...up, t: 0 }, { site: 'twitch', kind: 'raid', state: 'update', id: 'rd-r7', t: 0, to: 'tw:pixelmoth', viewers: 27, at: (1793277992 + 90) * 1000 });
+  assert.equal(parseTwitch(raid('raid_go_v2')).state, 'go');
+  assert.equal(parseTwitch(raid('raid_cancel_v2')).state, 'cancel');
+  assert.deepEqual([parseTwitch(raid('raid_update_v2', { raid_created_at: 0, viewer_count: undefined })).at, parseTwitch(raid('raid_update_v2', { viewer_count: undefined })).viewers], [0, 0], 'without a start: no countdown');
+  assert.equal(parseTwitch(raid('raid_update_v2', { target_login: '' })), null);
+  assert.equal(parseTwitch(pub({ type: 'raid_update_v2' })), null);
+  assert.equal(parseTwitch(raid('raid_other_v2')), null);
+  const goal = g => parseTwitch(pub({ type: 'goal_achieved', data: { goal: { id: 'g1', state: 'ACTIVE', description: '', currentContributions: 230, targetContributions: 230, ...g } } }));
+  const words = s => s.map(x => x.strong ? `[${x.strong}]` : x.text).join('');
+  const f = goal({ contributionType: 'FOLLOWERS' });
+  assert.deepEqual([f.kind, f.event, f.id, f.text, f.parts, words(f.summary)], ['event', 'goal', 'goal-g1-230', 'Follower goal reached · 230', [], '[Follower goal] reached · [230]']);
+  assert.equal(words(goal({ contributionType: 'SUB_POINTS', currentContributions: 1500, targetContributions: 1500 }).summary), '[Sub point goal] reached · [1,500]');
+  assert.equal(words(goal({ contributionType: 'SOMETHING_NEW', currentContributions: 0, targetContributions: 0 }).summary), '[Goal] reached');
+  assert.deepEqual(goal({ contributionType: 'SUBS', description: ' Road to 100 subs ' }).parts, [{ text: 'Road to 100 subs' }], 'its description: its words');
+  assert.equal(parseTwitch(pub({ type: 'goal_achieved', data: { goal: {} } })), null);
+  for (const k of ['hermes:raid_update_v2', 'hermes:raid_go_v2', 'hermes:raid_cancel_v2', 'hermes:goal_achieved']) assert.ok(KNOWN.twitch[k], k);
+});
