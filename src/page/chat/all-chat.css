@@ -118,6 +118,13 @@
 /* sending: Send on [K ▾] and the box */
 .all-cmp{flex:none;padding:8px 10px 10px;border-top:1px solid var(--line)}
 .all-box{display:flex;gap:6px;align-items:stretch}
+/* the emotes you used last, over the box (as Kick's chat has them): one line, as many as fit (the rest wrap out of sight) */
+.all-re{display:flex;flex-wrap:wrap;gap:2px;height:32px;overflow:hidden;margin:0 0 6px}
+.all-re[hidden]{display:none}
+.all-re-e{flex:none;display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:7px;background:none;cursor:pointer;transition:background-color .12s}
+.all-re-e:hover,.all-re-e:focus-visible{background:var(--line)}
+.all-re-e:active{background:var(--line2)}
+.all-re-e img{width:28px;height:28px;object-fit:contain}
 .all-pick{flex:none;height:36px;padding:0 8px;border-radius:9px;border:1px solid var(--line2);background:var(--panel2);display:flex;align-items:center;gap:5px;color:var(--muted);cursor:pointer}
 .all-pick .pi{width:16px;height:16px;font-size:9.5px}
 .all-pick:hover{border-color:var(--muted)}

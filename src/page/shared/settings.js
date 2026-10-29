@@ -21,6 +21,7 @@ const SETTING_NAMES = new Set([
   'linkedOn', 'streamers', 'linkedNot', 'linkedOpts', 'linkedTip', 'linkedTabs',
   // the ALL tab of a linked streamer's chat window: the streamers it shows for, and whether bots' messages show
   'allOpen', 'allBots', 'allEvents', 'allSend', 'allTimeout',
+  'allRecentEmotes',       // the emotes you sent from ALL last, for each site (the row over its box: chat/all-emotes.js)
   // Settings › Windows: the channel's name on stream / chat windows' title bars, and each button's place and ⋯ choice
   'barNameStream', 'barNameChat', 'barButtons',
   // Connected apps: Connect with Pear Drops, sign Kick players out while it farms, your Kick choice from
