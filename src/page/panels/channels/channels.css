@@ -19,7 +19,7 @@
 .sp-notify svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
 .sp-add{display:flex;align-items:center;gap:10px;margin:0 14px;height:46px;padding:0 6px 0 14px;border-radius:10px;border:1px solid var(--line2);background:var(--bg);color:var(--muted)}
 .sp-add input{font-size:14.5px}
-.sp-add select{flex:none;height:34px;border-color:transparent;background:var(--panel2);color:var(--text);font-size:12.5px;font-weight:600}
+.sp-add select{flex:none;height:34px;border-color:transparent;background-color:var(--panel2);color:var(--text);font-size:12.5px;font-weight:600}
 .sp-addrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 14px 0;font-size:12.5px;color:var(--muted)}
 .sp-addrow[hidden]{display:none}
 .sp-addl{min-width:0;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
