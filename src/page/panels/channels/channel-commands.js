@@ -8,7 +8,7 @@ import { autoOpen, fmtViewers, infoFor, notifyAll, notifyOff, saved, setNotify, 
 import { follows } from './follow-suggestions.js';
 import { openLinkCard } from '../linked/link-card.js';
 import { openProfile } from '../profiles/profiles.js';
-import { streamerName, streamerOf } from '../../platforms/linked.js';
+import { mainOf, nameOf, streamerName, streamerOf } from '../../platforms/linked.js';
 import { PLATFORMS, PLAT_NAME, chLabel, chNames, externalFor, isModOf, normCh, openModView, parseInput, platOf,
   platform } from '../../platforms/platforms.js';
 import { commands } from '../../shared/commands.js';
@@ -80,14 +80,12 @@ function buttonsFor(ch, known){
     { label: 'Open its page', icon: 'pop', run: () => inBrowser(ch) },
     canProfile(ch) && { label: 'Profile', icon: 'user', run: () => openProfile(ch) },
     { label: sv ? 'Saved' : 'Save', icon: 'star', on: sv, run: () => toggleSaved(ch) },
-    !/^yt:v:/.test(ch) && { label: 'Channel settings', icon: 'layers', run: () => openLinkCard(ch) },
     more
   ].filter(Boolean);
   return [...openButtons(ch).map(o => ({ label: o.title, icon: o.icon, run: o.run })),
     canProfile(ch) && { label: 'Profile', icon: 'user', run: () => openProfile(ch) },
     { label: sv ? 'Saved' : 'Save', icon: 'star', on: sv, run: () => toggleSaved(ch) },
     sv && DESKTOP && ROLE === 'main' && { label: 'Auto-open', icon: 'bolt', on: autoOpen.includes(ch), run: () => toggleAutoOpen(ch) },
-    !/^yt:v:/.test(ch) && { label: 'Channel settings', icon: 'layers', run: () => openLinkCard(ch) },
     more
   ].filter(Boolean);
 }
@@ -200,6 +198,17 @@ function typedItems(q){
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   lookSoon = soon(lookUpName, 400);
+  // Channel settings for…: Enter shows the channels you know (a linked streamer once), the box searches only them, and
+  // Enter on one opens its Channel settings
+  commands.add({ id: 'channel.settingsFor', group: 'Channels', title: 'Channel settings for…', sub: 'Pick a channel: its chat bots, ALL, opening when live, linking', icon: 'layers',
+    words: ['channel settings', 'bots', 'all tab', 'link'], more: () => {
+      const seen = new Set();
+      return knownChannels().filter(ch => !/^yt:v:/.test(ch)).map(mainOf).filter(ch => !seen.has(ch) && seen.add(ch)).map(ch => {
+        const it = channelItem(ch);
+        return { id: 'channel.settingsFor:' + ch, kind: 'channel', group: 'Channel settings for', title: streamerOf(ch) ? nameOf(ch) : it.title, sub: it.sub, words: it.words,
+          avatar: it.avatar, site: it.site, hue: it.hue, initials: it.initials, live: it.live, verb: 'Settings', noRecent: true, run: () => openLinkCard(ch) };
+      });
+    } });
   commands.provide('channels', q => {
     const items = knownChannels().map(ch => channelItem(ch));
     // the empty box: saved channels that are live, by viewers

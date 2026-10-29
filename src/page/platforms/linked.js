@@ -195,5 +195,5 @@ function init(){
 }
 
 export { accountsOf, botsOf, canLink, chanOpt, dismissed, forgetNot, groupKey, init, laterPair, link, linkedOn,
-  linkOpt, listStreamers, nameOf, notSame, optFor, ordered, sameStreamer, setChanOpt, setMain, setOn, setOpt,
+  linkOpt, listStreamers, mainOf, nameOf, notSame, optFor, ordered, sameStreamer, setChanOpt, setMain, setOn, setOpt,
   setStreamerOpt, streamerBots, streamerName, streamerOf, suggestions, unlink, unlinkAll };

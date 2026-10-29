@@ -55,7 +55,7 @@ test('off by default: one row and one window per account, each window with its o
   assert.deepEqual(await page.$$eval('#stage .win.stream .ptab', bs => bs.map(b => b.textContent + ':' + b.classList.contains('solo'))), ['K:true', 'T:true']);
   assert.equal(await page.locator('#stage .win .tag').count(), 0, 'no STREAM / CHAT tag');
   assert.deepEqual(await page.$$eval('#stage .win.stream .col-pick option', os => [...new Set(os.map(o => o.textContent))]), ['quietkoala'], 'no "· Twitch" after the name');
-  assert.equal(await page.locator('#stage .win [data-a=link]:not([hidden])').count(), 0, 'no Link channels… in ⋯');
+  assert.equal(await page.locator('#stage .win [data-a=link]:not([hidden])').count(), 0, 'no Channel settings… in ⋯ (the Channels list and the search box have them)');
   assert.equal(await page.evaluate(() => window.linkedApi.suggestions().length), 0);
 });
 
@@ -355,7 +355,7 @@ test('Channel settings for a channel on its own: its chat bots, Opens by itself 
   const opts = () => page.$$eval('#linkDlg .lc-opt', l => l.map(o => [o.querySelector('.st-t').firstChild.textContent, o.querySelector('small').textContent, o.querySelector('select').disabled]));
   assert.deepEqual(await opts(), [['Their streams', 'Link another channel to use this', true], ['Opens by itself when live ⚡', 'Going live opens it', false],
     ['ALL tab', 'Its chat in ALL\'s list, with its badges, emotes and filters', false], ['Name shown', 'Link another channel to use this', true]]);
-  assert.match(await page.textContent('#linkDlg .lc-head p'), /Its settings, and its other sites to link/);
+  assert.equal(await page.locator('#linkDlg .lc-head p').count(), 0, 'just its name');
   assert.deepEqual(await page.$$eval('#linkDlg .lc-sec', l => l.map(e => e.textContent)), ['Channels', 'Add a channel', 'Their chat bots', 'This channel']);
   assert.equal(await page.isDisabled('#linkDlg .lc-unlink'), true, 'Unlink all: greyed');
   // its own chat bot: on its site only (no site to pick), kept with the channel
@@ -390,6 +390,21 @@ test('a channel with its ALL off, linked: the streamer\'s ALL is As in Settings'
   assert.equal(await page.evaluate(() => window.linkedApi.listStreamers().find(x => x.accounts.includes('novalynx')).allTab), undefined);
   await page.evaluate(() => window.openLinkCard('novalynx'));
   assert.equal(await page.$eval('#linkDlg [data-cmd="link.allTab"]', e => e.value), '', 'As in Settings');
+});
+
+test('Channel settings: unlinking one of two leaves the channel it was opened for, on its own; a channel nobody checks says so, not Checking…', async t => {
+  const page = await linkedApp(t, { streamers: [{ id: 's2', name: '', main: 'novalynx', accounts: ['novalynx', 'tw:novalynx'] }] });
+  await page.evaluate(() => { window.__ask = window.ask; });
+  await page.evaluate(() => window.openLinkCard('novalynx'));
+  await page.click('#linkDlg .lc-acc:has-text("novalynx") >> nth=1 >> .lc-x');
+  await page.click('#askDlg .ask-yes');
+  const accs = () => page.$$eval('#linkDlg .lc-acc:not(.lc-sug)', l => l.map(e => e.querySelector('.pi').textContent + ' ' + e.querySelector('.lc-st').textContent));
+  assert.deepEqual(await accs(), ['K Live · 312 watching'], 'just novalynx on Kick');
+  assert.equal(await page.locator('#linkDlg .lc-sec:has-text("This channel")').count(), 1);
+  await page.evaluate(() => window.openLinkCard('tw:novalynx'));
+  assert.deepEqual(await accs(), ['T Offline'], 'saved channels: checked');
+  await page.evaluate(() => window.openLinkCard('nobodysaved'));
+  assert.deepEqual(await page.$$eval('#linkDlg .lc-acc .lc-st', l => l.map(e => e.textContent)), ['Not in your channels']);
 });
 
 test('chat bots: which list mentions and spam alerts use (this list, their own, both for spam alerts)', async t => {

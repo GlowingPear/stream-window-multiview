@@ -15,9 +15,9 @@ import { store } from '../../shared/store.js';
    adding an account by site and name, @handle or link (linking), their own chat bots and their own choices. A channel on
    its own has its bots, Opens by itself and its ALL tab; what only a linked streamer has is greyed, with how to get it.
    Opened from Channels (▾ › Channel settings…), a window's ⋯, a profile, Settings › Linked channels and the search box. ---- */
-let dlg, card, cur = [], curPlat = 'kick', botPlat = 'kick', addFocus = false;
+let dlg, card, cur = [], opened = null, curPlat = 'kick', botPlat = 'kick', addFocus = false;   // (opened: the channel it was opened for)
 function openLinkCard(ch, { add } = {}){
-  cur = ch ? accountsOf(ch) : [];
+  cur = ch ? accountsOf(ch) : []; opened = ch || null;
   addFocus = !!add || !ch;
   dlg.hidden = false;
   renderCard();
@@ -32,7 +32,7 @@ function accounts(){
 }
 function liveText(ch){
   const i = infoFor(ch);
-  if (!i) return element('span', 'lc-st', 'Checking…');
+  if (!i) return element('span', 'lc-st', saved.includes(ch) || streamerOf(ch) ? 'Checking…' : 'Not in your channels');   // (only theirs are checked)
   if (i.missing) return element('span', 'lc-st lc-bad', 'Channel not found');
   return i.live ? element('span', 'lc-st lc-live', `Live · ${Number(i.viewers || 0).toLocaleString()} watching`) : element('span', 'lc-st', 'Offline');
 }
@@ -45,7 +45,7 @@ function renderCard(){
   const prof = chs[0] && svProf[chs[0]] && svProf[chs[0]].info;
   const av = element('span', { class: 'lc-av', style: { '--c': svHue(chs[0] || 'x') } }, svInitials(name));
   if (prof && prof.avatar){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = prof.avatar; av.appendChild(im); }
-  const parts = [element('div', 'lc-head', av, element('div', null, element('h3', { id: 'lcName' }, name), element('p', null, s ? 'One streamer, on several sites' : chs.length ? 'Its settings, and its other sites to link' : 'Start with one of their channels, then add their other sites')))];
+  const parts = [element('div', 'lc-head', av, element('div', null, element('h3', { id: 'lcName' }, name), !chs.length && element('p', null, 'Start with one of their channels, then add their other sites')))];
   if (chs.length){
     parts.push(element('div', 'lc-sec', 'Channels'), ...chs.map(ch => element('div', 'lc-acc', lcSite(ch), element('div', 'lc-acc-t', element('b', null, chLabel(ch)), liveText(ch)),
       s && ch === s.main ? element('span', 'lc-main', 'Main') : s ? element('button', { type: 'button', class: 'btn lc-mk', dataset: { cmd: 'link.main' }, onclick: () => { setMain(ch); renderCard(); } }, 'Make main') : null,
@@ -171,7 +171,11 @@ function setAutoOpenFor(s, v){
 }
 async function unlinkOne(ch){
   if (!await ask(`Unlink ${chLabel(ch)} on ${PLAT_NAME[platOf(ch)]}?`, 'It becomes its own channel again. Its windows move out of the streamer\'s window.', { ok: 'Unlink' })) return;
-  unlink(ch); renderCard();
+  unlink(ch);
+  // the rest of the streamer, or, the streamer gone (one account left), the channel it was opened for on its own
+  const rest = cur.filter(c => c !== ch);
+  cur = rest.some(c => streamerOf(c)) ? rest : [opened || rest[0]].filter(Boolean);
+  renderCard();
 }
 async function unlinkEvery(s){
   if (!await ask(`Unlink ${streamerName(s)}?`, `Back to ${s.accounts.length} separate channels. Notes and tags stay with each channel.`, { ok: 'Unlink all', danger: true })) return;

@@ -16,6 +16,20 @@ async function run(page, text, how = 'Enter'){
 }
 const first = async (page, text) => { await page.keyboard.press(K); await page.fill('#palQ', text); await page.waitForTimeout(60); const r = await page.evaluate(() => window.palette.rows()); await page.keyboard.press('Escape'); await page.keyboard.press('Escape'); return r; };
 
+test('Channel settings for…: Enter lists the channels you know, the box searches only them, and Enter opens that one\'s Channel settings', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'bravo');
+  await run(page, 'channel settings for');
+  assert.equal(await page.getAttribute('#palQ', 'placeholder'), 'Filter actions…', 'its list, not the results');
+  const titles = () => page.evaluate(() => window.palette.rows().map(r => r.title));
+  assert.deepEqual((await titles()).sort(), ['alpha', 'bravo']);
+  await page.type('#palQ', 'brav'); await page.waitForTimeout(60);
+  assert.deepEqual(await titles(), ['bravo'], 'only channels');
+  await page.keyboard.press('Enter'); await page.waitForTimeout(150);
+  assert.equal(await page.isVisible('#linkDlg'), true);
+  assert.equal(await page.textContent('#lcName'), 'bravo');
+});
+
 test('each layout, as its picture in the Layout menu does', async t => {
   const page = await openApp(t);
   await add(page, 'alpha', 'bravo');

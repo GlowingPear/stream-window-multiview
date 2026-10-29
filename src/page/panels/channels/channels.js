@@ -238,7 +238,7 @@ function renderSaved(){
   });
   appendFollowSugs(list, q);
 }
-// The buttons on a saved channel's row: ⚡ opens by itself, 🔔 its live notification, its profile, ✕ remove
+// The buttons on a saved channel's row: ⚡ opens by itself, 🔔 its live notification, its profile, its Channel settings, ✕ remove
 function rowButtons(acts, chs, { profile = true } = {}){
   const main = chs[0];
   if (DESKTOP && ROLE === 'main'){
@@ -255,6 +255,8 @@ function rowButtons(acts, chs, { profile = true } = {}){
     acts.appendChild(element('button', { class: 'prof', html: icon.user, title: `${nameOf(main)}'s profile: when they stream, past streams, your notes`,
       onclick: ev => { ev.stopPropagation(); panel.hidden = true; openProfile(main); } }));
   }
+  if (!/^yt:v:/.test(main)) acts.appendChild(element('button', { class: 'cset', html: icon.layers, title: `${nameOf(main)}'s Channel settings: chat bots, ALL, opening when live, linking their other sites`,
+    onclick: ev => { ev.stopPropagation(); panel.hidden = true; openLinkCard(main); } }));
   acts.appendChild(element('button', { class: 'rm', html: icon.close, title: 'Remove from saved',
     onclick: ev => { ev.stopPropagation(); saved = saved.filter(c => !chs.includes(c)); persistSaved(); } }));
 }
