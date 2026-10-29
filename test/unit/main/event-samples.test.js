@@ -97,3 +97,67 @@ test('ALL\'s report for a fix: each site\'s state, its last raw messages anonymi
   assert.ok(!/Koala|secret|hi there/.test(JSON.stringify(out)));
   assert.deepEqual(healthReport(null, {}).sites, []);
 });
+
+test('anonymise: names go by what a field is called, wherever it is (raids, clips, shoutouts, the stream\'s title); titles\' words out; a reward\'s title and categories kept', () => {
+  const ph = placeholders();
+  const hermes = pubsub => JSON.parse(anonymise('twitch', JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify(pubsub) } }), ph).notification.pubsub);
+  const raid = hermes({ type: 'raid_update_v2', raid: { id: 'r-77', source_id: '4411', source_display_name: 'MapleFern', source_profile_image: 'https://cdn.example/maple.png', source_stream_category: 'music',
+    target_id: '5522', target_login: 'driftwoodjay', target_display_name: 'DriftwoodJay', target_profile_image: 'https://cdn.example/jay.png', target_stream_name: 'cozy night with @MapleFern',
+    target_stream_category: 'just chatting', target_stream_thumbnail: 'https://cdn.example/jay-{width}x{height}.jpg', target_viewer_count: '120', force_raid_now_seconds: 90 } }).raid;
+  assert.deepEqual([raid.source_display_name, raid.target_login, raid.target_display_name, raid.target_stream_name], ['user1', 'user2', 'user2', 'word word word word'], 'DriftwoodJay: the same placeholder as driftwoodjay');
+  assert.deepEqual([raid.source_profile_image, raid.target_stream_thumbnail].map(u => u.startsWith('https://example.invalid/file')), [true, true]);
+  assert.deepEqual([raid.source_stream_category, raid.target_stream_category, raid.target_viewer_count, raid.force_raid_now_seconds], ['music', 'just chatting', '120', 90], 'categories and amounts stay');
+  const go = hermes({ type: 'raid_go_v2', raid: { source_display_name: 'MapleFern', target_login: 'driftwoodjay' } }).raid;
+  assert.deepEqual([go.source_display_name, go.target_login], ['user1', 'user2'], 'the same people, the same placeholders');
+  const embed = hermes({ type: 'chat_rich_embed', data: { message_id: 'm-1', request_url: 'https://clips.example/BraveOtter', author_name: 'PebbleQuill', thumbnail_url: 'https://cdn.example/clip.jpg', title: 'the big save',
+    twitch_metadata: { clip_metadata: { game: 'Racing', channel_display_name: 'DriftwoodJay', slug: 'BraveOtterDancingKoala-xyz', broadcaster_id: '5522' } } } }).data;
+  assert.deepEqual([embed.author_name, embed.title, embed.twitch_metadata.clip_metadata.channel_display_name, embed.twitch_metadata.clip_metadata.game], ['user3', 'word word word', 'user2', 'Racing']);
+  assert.ok(embed.request_url.startsWith('https://example.invalid/') && embed.thumbnail_url.startsWith('https://example.invalid/') && /^user\d+$/.test(embed.twitch_metadata.clip_metadata.slug));
+  const board = hermes({ type: 'clips-leaderboard-update', new_leaderboard: [{ clip_slug: 'QuietOwl-abc', clip_title: 'that jump', curator_display_name: 'PebbleQuill', curator_login: 'pebblequill' }] }).new_leaderboard[0];
+  assert.deepEqual([board.clip_title, board.curator_display_name, board.curator_login], ['word word', 'user3', 'user3']);
+  const so = hermes({ type: 'create', data: { sourceLogin: 'mapleFern', targetLogin: 'driftwoodjay', targetUserDisplayName: 'DriftwoodJay', targetUserPrimaryColorHex: 'FF5451' } }).data;
+  assert.deepEqual([so.sourceLogin, so.targetLogin, so.targetUserDisplayName, so.targetUserPrimaryColorHex], ['user1', 'user2', 'user2', 'FF5451']);
+  // the stream's title (and its old one), the channel; a status elsewhere is a state, kept
+  const bs = hermes({ type: 'broadcast_settings_update', channel_id: '5522', channel: 'driftwoodjay', old_status: 'day one', status: 'day two of the run', old_game: 'Racing', game: 'Puzzles' });
+  assert.deepEqual([bs.channel, bs.old_status, bs.status, bs.game], ['channel1', 'word word', 'word word word word word', 'Puzzles']);
+  // a channel's reward: its title and prompt stay (not a person); who redeemed it doesn't
+  const rw = hermes({ type: 'reward-redeemed', data: { redemption: { status: 'UNFULFILLED', user: { login: 'pebblequill' }, reward: { title: 'Hydrate!', prompt: 'take a sip', default_image: { url_1x: 'https://cdn.example/r/5522/1.png' } } } } }).data.redemption;
+  assert.deepEqual([rw.status, rw.user.login, rw.reward.title, rw.reward.prompt], ['UNFULFILLED', 'user3', 'Hydrate!', 'take a sip']);
+  assert.ok(rw.reward.default_image.url_1x.startsWith('https://example.invalid/'), 'an image can name the channel (its id)');
+  // Kick: the stream's title, a channel's reward title kept, the connection's name without its id
+  const kick = (channel, data) => { const o = anonymise('kick', JSON.stringify({ push: { channel, pub: { data: { event: 'X', data: JSON.stringify(data) } } } }), ph); return [o.push.channel, JSON.parse(o.push.pub.data.data)]; };
+  const [c1, live] = kick('channel.7712345', { livestream: { id: 99001, channel_id: 7712345, session_title: 'speedruns with MapleFern', created_at: '2026-10-29T08:00:00Z' } });
+  assert.deepEqual([live.livestream.session_title, live.livestream.created_at], ['word word word', '2026-10-29T08:00:00Z']);
+  assert.match(c1, /^channel\.\d+$/); assert.notEqual(c1, 'channel.7712345');
+  assert.equal(String(live.livestream.channel_id), c1.split('.')[1], 'the id in the connection\'s name is the same placeholder as the channel\'s id');
+  const [c2, reward] = kick('chatroom_8812345', { reward_title: '+500 cheers for the stream', username: 'PebbleQuill', status: 'active' });
+  assert.deepEqual([reward.reward_title, reward.username, reward.status], ['+500 cheers for the stream', 'user3', 'active']);
+  assert.match(c2, /^chatroom_\d+$/);
+  assert.deepEqual(['chatrooms.8812345.v2', 'private-channelpoints-6612345', 'private-6612345'].map(c => kick(c, {})[0].replace(/\d+/, 'N')), ['chatrooms.N.v2', 'private-channelpoints-N', 'private-N']);
+  assert.ok(!/maple|driftwood|pebble|otter|7712345|8812345|6612345|cozy|speedruns|big save|that jump|day one/i.test(JSON.stringify([raid, go, embed, board, so, bs, rw, live, reward, c1, c2])));
+});
+
+test('anonymise: Twitch\'s tags go by their names (any name, login or display name; ids; URLs; a sub plan\'s name), and what kind of line it is stays', () => {
+  const ph = placeholders();
+  const irc = '@display-name=MapleFern;login=maplefern;msg-id=sharedchatnotice;source-msg-id=sub;source-id=5f2c-11;source-room-id=4411;msg-param-sub-plan-name=Subscription\\s(driftwoodjay);msg-param-profileImageURL=https://cdn.example/jay-%s.png'
+    + ';msg-param-mass-gift-sender-display-name=PebbleQuill;msg-param-someone-new-user-name=quietotter;msg-param-sub-plan=1000;msg-param-goal-description=road\\sto\\s100 :tmi.twitch.tv USERNOTICE #driftwoodjay';
+  const tags = Object.fromEntries(anonymise('twitch', irc, ph).split(' ')[0].slice(1).split(';').map(kv => kv.split('=')));
+  assert.deepEqual(tags, { 'display-name': 'user1', login: 'user1', 'msg-id': 'sharedchatnotice', 'source-msg-id': 'sub', 'source-id': 'id1', 'source-room-id': 'id2', 'msg-param-sub-plan-name': 'word\\sword',
+    'msg-param-profileImageURL': 'https://example.invalid/file1', 'msg-param-mass-gift-sender-display-name': 'user2', 'msg-param-someone-new-user-name': 'user3', 'msg-param-sub-plan': '1000', 'msg-param-goal-description': 'word\\sword\\sword' });
+});
+
+test('anonymise: JSON cut short (past a sample\'s size) still loses its names, ids and words, at any depth of quoting; a value the cut leaves open goes', () => {
+  const ph = placeholders();
+  const whole = JSON.stringify({ notification: { pubsub: JSON.stringify({ type: 'hype-train-start', data: { id: 'ht-1', conductor: { user: { id: '4411', login: 'maplefern', display_name: 'MapleFern' } }, level: 3,
+    message: 'go go go', rewards: [{ __typename: 'Emote', token: 'RawkOut' }], channel_id: 5522000, title: 'cozy night with PebbleQuill' } }) } });
+  const cut = whole.slice(0, whole.indexOf('cozy') + 8);
+  const out = anonymise('twitch', cut, ph);
+  assert.equal(typeof out, 'string');
+  assert.ok(!/maple|4411|ht-1|go go|5522000|cozy|pebble/i.test(out), out);
+  assert.match(out, /\\"login\\":\\"user1\\",\\"display_name\\":\\"user1\\"/);
+  assert.match(out, /\\"message\\":\\"word word word\\"/);
+  assert.match(out, /\\"token\\":\\"RawkOut\\"/, 'what isn\'t a person stays');
+  assert.match(out, /\\"level\\":3/);
+  assert.ok(out.endsWith('\\"title\\":\\"…'), out.slice(-40));
+  assert.equal(anonymise('kick', '{"username":"MapleFern","content":"hello the', ph), '{"username":"user1","content":"…', 'and at the top');
+});

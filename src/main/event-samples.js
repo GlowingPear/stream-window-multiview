@@ -47,13 +47,20 @@ function createSampleStore({ saved, now = () => Date.now() } = {}) {
 }
 
 /* ---- export: the shapes without the people ---- */
-const NAME_KEY = /^(username|user_name|slug|login|display_?name|displayname|sender_?name|gifter_username|host_username|last_subscriber|author_?name|channel_?name|broadcaster_?(login|name)|user_?login|recipient.*name)$/i;
-const NAMES_KEY = /^(gifted_usernames|usernames)$/i;
+// Names go by what a field is called, wherever it is: anything ending in login, user name, display name or slug
+// (source_display_name, target_login, curator_login, clip_slug, sourceLogin, targetUserDisplayName, …)
+const NAME_KEY = /(^|_)(user_?name|login|display_?name|slug|sender_?name|author_?name|channel_?name|broadcaster_?name)$|^(last_subscriber|recipient.*name)$|[a-z](login|display_?name|user_?name|channel_?name)$/i;
+const NAMES_KEY = /(^|_)usernames$/i;
 const ID_KEY = /^(id|uuid|.*_id|.*Id|.*ID|correlation_id|target|nonce|client-nonce)$/;
 const KEEP_KEY = /emot|emoji|badge|gift_id|setID|reward_id|sticker|icon|type$/i;   // ids of public things: kept
 const TEXT_KEY = /^(content|text|message|body|user_input|optional_message|simpleText|msg|system-msg|reason)$/i;
-const URL_KEY = /picture|photo|avatar|thumbnail|profile_image|banner_image|image_url|url$/i;
+// A stream's or clip's title (session_title, target_stream_name, a clip's title, the stream's status): its words out.
+// A reward's title stays (Kick's reward_title, Twitch's reward.title): it's the channel's reward, not a person.
+const TITLE_KEY = /(^|_)title$|_stream_name$|^(old_)?status$/i;
+const URL_KEY = /picture|photo|avatar|thumbnail|profile_image|banner_image|image_url|url/i;
 const PERSON = /^(sender|user|author|gifter|host|pinned_?by|pinnedBy|banned_by|unbanned_by|moderator|recipient|owner|channel|broadcaster|chatter)$/i;
+// Kick's connection names (chatrooms.123.v2, channel_123, private-channelpoints-123): the name stays, its id doesn't
+const KICK_CHANNEL = /^(chatrooms?|channel|private(-[a-z]+)*|[a-z]+-channel)([._-])(\d+)(\.v\d+)?$/;
 
 function placeholders() {
   const seen = new Map(), counts = {};
@@ -65,43 +72,68 @@ function placeholders() {
 }
 // The words of a message: each word becomes "word", Kick's [emote:id:name] tags stay (they're the shape)
 const words = s => String(s).split(/(\[emote:\d+:[^\]]*\])/).map(p => (/^\[emote:/.test(p) ? p : p.replace(/[^\s]+/g, 'word'))).join('');
+const numId = (v, ph) => +ph('', v).replace(/\D/g, '') || 0;
 
-function anonJson(v, ph, key = '', inPerson = false) {
-  if (Array.isArray(v)) return v.map(x => (NAMES_KEY.test(key) && typeof x === 'string' ? ph('user', x) : anonJson(x, ph, key, inPerson)));
+// One value, by its field's name. ctx: { person: inside someone, reward: inside a reward }
+function anonValue(key, v, ph, ctx = {}) {
+  if (typeof v === 'number') return ID_KEY.test(key) && !KEEP_KEY.test(key) && v > 999 ? numId(v, ph) : v;
+  if (typeof v !== 'string' || !v || KEEP_KEY.test(key)) return v;
+  if (URL_KEY.test(key) && /^https?:|^\/\//.test(v)) return 'https://example.invalid/' + ph('file', v);
+  if (NAME_KEY.test(key) || (ctx.person && /^(name|simpleText|text)$/i.test(key))) return ph('user', v);
+  if (key === 'channel') { const m = v.match(KICK_CHANNEL); return m ? v.replace(/\d+/, d => numId(+d, ph)) : ph('channel', v); }
+  if (ID_KEY.test(key)) return ph('id', v);
+  if (TEXT_KEY.test(key) || (TITLE_KEY.test(key) && !ctx.reward && !/reward/i.test(key))) return words(v);
+  return v;
+}
+
+function anonJson(v, ph, key = '', ctx = {}) {
+  if (Array.isArray(v)) return v.map(x => (NAMES_KEY.test(key) && typeof x === 'string' ? ph('user', x) : anonJson(x, ph, key, ctx)));
   if (v && typeof v === 'object') {
     const out = {};
-    for (const [k, x] of Object.entries(v)) out[k] = anonJson(x, ph, k, inPerson || PERSON.test(k) || /^author/i.test(k));
+    // a status next to an old_status is the stream's title (Twitch's broadcast_settings_update); elsewhere a status is a state
+    for (const [k, x] of Object.entries(v)) out[k] = anonJson(x, ph, k === 'status' && !('old_status' in v) ? 'state' : k,
+      { person: ctx.person || PERSON.test(k) || /^author/i.test(k), reward: ctx.reward || /reward/i.test(k) });
     return out;
   }
   if (typeof v === 'string') {
     const t = v.trim();
     if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
-      try { return JSON.stringify(anonJson(JSON.parse(t), ph, key, inPerson)); } catch {}
+      try { return JSON.stringify(anonJson(JSON.parse(t), ph, key, ctx)); } catch {}
     }
-    if (!v || KEEP_KEY.test(key)) return v;
-    if (URL_KEY.test(key) && /^https?:|^\/\//.test(v)) return 'https://example.invalid/' + ph('file', v);
-    if (NAME_KEY.test(key) || (inPerson && /^(name|simpleText|text)$/i.test(key))) return ph('user', v);
-    if (ID_KEY.test(key)) return ph('id', v);
-    if (TEXT_KEY.test(key)) return words(v);
-    return v;
   }
-  if (typeof v === 'number' && ID_KEY.test(key) && !KEEP_KEY.test(key) && v > 999) return +ph('', v).replace(/\D/g, '') || 0;
-  return v;
+  return anonValue(key, v, ph, ctx);
 }
 
-// A Twitch chat line (IRC): who, the channel, ids and the words out; what kind of line and its tags' names stay
-const IRC_PERSON_TAG = /^(display-name|login|user-id|room-id|target-user-id|reply-parent-display-name|reply-parent-user-login|reply-parent-user-id|reply-thread-parent-display-name|reply-thread-parent-user-login|reply-thread-parent-user-id|msg-param-(recipient-display-name|recipient-user-name|recipient-id|login|displayName|sender-login|sender-name|gifter-login|gifter-name|origin-id|prior-gifter-display-name|prior-gifter-user-name|prior-gifter-id))$/;
-const IRC_ID_TAG = /^(id|target-msg-id|reply-parent-msg-id|reply-thread-parent-msg-id|client-nonce|msg-param-origin-id|custom-reward-id)$/;
-const IRC_TEXT_TAG = /^(system-msg|reply-parent-msg-body|msg-param-message)$/;
+// JSON cut short (a sample past its size): it can't be read whole, so each "field": value pair in it, at any depth of
+// quoting (a JSON string inside JSON), goes by its field's name as above, and a value the cut leaves open goes
+const PAIR = /(\\*)"([^"\\]+)\1"(\s*:\s*)(?:\1"([^"\\]*)\1"|(-?\d+)(?=\s*[,}\]\\]))/g;
+function anonCut(text, ph) {
+  let last = 0;
+  const out = text.replace(PAIR, (m, q, k, sep, str, num, at) => {
+    last = at + m.length;
+    return `${q}"${k}${q}"${sep}` + (str !== undefined ? `${q}"${anonValue(k, str, ph)}${q}"` : String(anonValue(k, +num, ph)));
+  });
+  const cut = out.length - (text.length - last);
+  return out.slice(0, cut) + out.slice(cut).replace(/(\\*)"([^"\\]*)$/, '$1"…');
+}
+
+// A Twitch chat line (IRC): who, the channel, ids and the words out; what kind of line and its tags' names stay.
+// Tags go by their names too: one ending in a name or login is someone (msg-param-recipient-display-name,
+// msg-param-prior-gifter-user-name, …), one ending in id an id (but msg-id is what kind of line), one ending in URL a file.
+const IRC_TEXT_TAG = /^(system-msg|reply-parent-msg-body|msg-param-message|msg-param-sub-plan-name|msg-param-goal-description)$/;
+const IRC_PERSON_TAG = /(^|-)(display-?name|login|user-?name|user-login|name)$/i;
+const IRC_ID_TAG = /((^|-)id|Id)$|^client-nonce$/;
+const IRC_KIND_TAG = /^(source-)?msg-id$/;
 function anonIrc(line, ph) {
   let rest = String(line), tags = '';
   if (rest.startsWith('@')) { const i = rest.indexOf(' '); tags = rest.slice(1, i < 0 ? undefined : i); rest = i < 0 ? '' : rest.slice(i + 1); }
   const tagOut = tags ? '@' + tags.split(';').map(kv => {
     const i = kv.indexOf('='), k = i < 0 ? kv : kv.slice(0, i), v = i < 0 ? '' : kv.slice(i + 1);
-    if (!v) return kv;
-    if (IRC_PERSON_TAG.test(k)) return `${k}=${/id$/i.test(k) ? ph('id', v) : ph('user', v)}`;
-    if (IRC_ID_TAG.test(k)) return `${k}=${ph('id', v)}`;
+    if (!v || IRC_KIND_TAG.test(k)) return kv;
     if (IRC_TEXT_TAG.test(k)) return `${k}=${v.split('\\s').map(w => (w ? 'word' : w)).join('\\s')}`;
+    if (/url$/i.test(k) && /^https?:/.test(v)) return `${k}=https://example.invalid/${ph('file', v)}`;
+    if (IRC_PERSON_TAG.test(k)) return `${k}=${ph('user', v)}`;
+    if (IRC_ID_TAG.test(k)) return `${k}=${ph('id', v)}`;
     return kv;
   }).join(';') + ' ' : '';
   const trail = rest.indexOf(' :');
@@ -113,7 +145,7 @@ function anonIrc(line, ph) {
 }
 function anonymise(site, text, ph) {
   const t = String(text).trim();
-  if (t.startsWith('{') || t.startsWith('[')) { try { return anonJson(JSON.parse(t), ph); } catch {} }
+  if (t.startsWith('{') || t.startsWith('[')) { try { return anonJson(JSON.parse(t), ph); } catch { return anonCut(t, ph); } }
   return site === 'twitch' ? anonIrc(t, ph) : words(t);
 }
 
