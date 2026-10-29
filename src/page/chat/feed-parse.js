@@ -128,6 +128,22 @@ function twitchPin(frame){
     return { site: 'twitch', kind: 'event', event: 'shoutout', id: 'so-' + d.shoutoutID, t: Date.now(), sender: by, login: by.toLowerCase(), color: '', userId: '', badges: [], parts: [],
       summary: [{ strong: by || 'They' }, { text: ' shouted out ' }, { strong: to }], text: `${by || 'They'} shouted out ${to}`, shoutout: 'tw:' + String(d.targetLogin).toLowerCase() };
   }
+  // a raid the channel is getting ready: Twitch's countdown, sent again as viewers join it (raid_update_v2), then the raid
+  // going (raid_go_v2: now, or Twitch sends it on its own at raid_created_at + force_raid_now_seconds) or called off
+  // (raid_cancel_v2: not heard yet, taken to carry the same raid). One raid id for all of them: ALL's one line for it.
+  const rs = p && /^raid_(update|go|cancel)_v2$/.exec(p.type || '');
+  if (rs){
+    const r = p.raid || {}, at = +r.raid_created_at > 0 ? (+r.raid_created_at + (+r.force_raid_now_seconds || 0)) * 1000 : 0;
+    if (!r.id || !r.target_login) return null;
+    return { site: 'twitch', kind: 'raid', state: rs[1], id: 'rd-' + r.id, t: Date.now(), to: 'tw:' + String(r.target_login).toLowerCase(), viewers: +r.viewer_count || 0, at };
+  }
+  // a goal of the channel's reached (followers, subs…: its progress is the goal bar's, left out)
+  if (p && p.type === 'goal_achieved' && p.data && p.data.goal && p.data.goal.id){
+    const g = p.data.goal, what = GOAL_KINDS[String(g.contributionType || '').toUpperCase()] || '', n = Number(g.currentContributions || g.targetContributions || 0);
+    const summary = [{ strong: what ? `${what} goal` : 'Goal' }, { text: ' reached' }, ...(n > 0 ? [{ text: ' · ' }, { strong: n.toLocaleString('en-US') }] : [])];
+    return { site: 'twitch', kind: 'event', event: 'goal', id: `goal-${g.id}-${+g.targetContributions || 0}`, t: Date.now(), sender: '', login: '', color: '', userId: '', badges: [],
+      parts: String(g.description || '').trim() ? [{ text: String(g.description).trim() }] : [], summary, text: summary.map(x => x.text || x.strong).join('') };
+  }
   // (and the chat's modes, all of them, as a moderator changes one)
   if (p && p.type === 'updated_room'){
     const r = (p.data && p.data.room && p.data.room.modes) || null; if (!r) return null;
@@ -146,6 +162,9 @@ function twitchPin(frame){
   return { site: 'twitch', kind: 'pin', id: String(d.id), msg, t: Date.now(), by: (d.pinned_by && d.pinned_by.display_name) || '' };
 }
 
+// A goal's kind (contributionType), as Twitch's goal bar names it
+const GOAL_KINDS = { FOLLOWERS: 'Follower', NEW_FOLLOWERS: 'Follower', SUBS: 'Sub', NEW_SUBS: 'New sub', SUB_POINTS: 'Sub point', NEW_SUB_POINTS: 'New sub point', BITS: 'Bits' };
+
 // A Twitch event in a few words, the amount picked out: [{ text }, { strong }]
 function twitchSummary(ev, name, p, system){
   const n = v => Number(v || 0).toLocaleString('en-US'), plural = (v, one, many) => `${n(v)} ${+v === 1 ? one : many}`;
@@ -160,6 +179,9 @@ function twitchSummary(ev, name, p, system){
     case 'raid': return [{ strong: p.displayName || name }, { text: ' raided with ' }, { strong: plural(p.viewerCount, 'viewer', 'viewers') }];
     case 'viewermilestone': return [{ strong: name }, { text: ' watched ' }, { strong: plural(p.value, 'stream', 'streams') }, { text: ' in a row' }];
     case 'giftpaidupgrade': case 'anongiftpaidupgrade': case 'primepaidupgrade': return [{ strong: name }, { text: ' kept their sub going' }];
+    // (they got a gift sub from the community and gave one on: who gave them theirs)
+    case 'communitypayforward': return p['prior-gifter-anonymous'] === 'true' ? [{ strong: name }, { text: ' paid forward an anonymous gift sub' }]
+      : [{ strong: name }, { text: ' paid forward the gift sub from ' }, { strong: p['prior-gifter-display-name'] || p['prior-gifter-user-name'] || 'someone' }];
     case 'bitsbadgetier': return [{ strong: name }, { text: ' earned a ' }, { strong: plural(p.threshold, 'bit', 'bits') }, { text: ' badge' }];
     default: return system ? [{ text: system }] : [{ strong: name }];
   }
@@ -346,9 +368,11 @@ const KNOWN = {
   twitch: { PRIVMSG: 'a message', 'PRIVMSG:reply': 'a reply', 'PRIVMSG:bits': 'a cheer', 'PRIVMSG:reward': 'a reward redeemed', 'PRIVMSG:highlighted-message': 'a highlighted message',
     'USERNOTICE:sub': 'a sub', 'USERNOTICE:resub': 'a resub', 'USERNOTICE:subgift': 'a gifted sub', 'USERNOTICE:submysterygift': 'gifted subs', 'USERNOTICE:raid': 'a raid',
     'USERNOTICE:announcement': 'an announcement', 'USERNOTICE:viewermilestone': 'a watch streak', 'USERNOTICE:giftpaidupgrade': 'a gifted sub kept going',
-    'USERNOTICE:primepaidupgrade': 'a Prime sub kept going', 'USERNOTICE:bitsbadgetier': 'a bits badge', CLEARMSG: 'a message deleted', 'CLEARCHAT:timeout': 'a timeout',
+    'USERNOTICE:primepaidupgrade': 'a Prime sub kept going', 'USERNOTICE:bitsbadgetier': 'a bits badge', 'USERNOTICE:communitypayforward': 'a gift sub paid forward', CLEARMSG: 'a message deleted', 'CLEARCHAT:timeout': 'a timeout',
     'CLEARCHAT:ban': 'a ban', 'CLEARCHAT:all': 'the chat cleared', 'hermes:pin-message': 'a pin', 'hermes:unpin-message': 'a pin taken down', ROOMSTATE: 'the chat’s modes (above the box)', 'hermes:updated_room': 'the chat’s modes (above the box)', 'hermes:moderation_action': 'who a moderator was (to moderators)',
-    'hermes:reward-redeemed': 'a reward redeemed (without text)', 'hermes:create': 'a shoutout' },
+    'hermes:reward-redeemed': 'a reward redeemed (without text)', 'hermes:create': 'a shoutout',
+    'hermes:raid_update_v2': 'a raid getting ready (one line, counting down)', 'hermes:raid_go_v2': 'a raid going (its line: Open)', 'hermes:raid_cancel_v2': 'a raid called off (its line says so)',
+    'hermes:goal_achieved': 'a goal reached (its progress: hermes:goal_updated)' },
   youtube: { 'addChatItemAction:liveChatTextMessageRenderer': 'a message', 'addChatItemAction:liveChatPaidMessageRenderer': 'a Super Chat',
     'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
     removeChatItemAction: 'a message deleted', markChatItemsByAuthorAsDeletedAction: 'a ban or timeout',
