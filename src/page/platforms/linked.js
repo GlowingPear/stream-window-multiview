@@ -62,7 +62,7 @@ const streamerBots = ch => botsOf(streamerOf(ch)).filter(b => b.p === platOf(ch)
 const optDefault = k => OPT_DEFAULTS[k];
 function linkOpt(k){ const o = settings.json('linkedOpts', {}) || {}; return k in o ? o[k] : OPT_DEFAULTS[k]; }
 // A streamer's own choice (their streams, opening by themselves), or the page's
-const optFor = (ch, k) => { const s = streamerOf(ch); return s && s[k] ? s[k] : linkOpt(k); };
+const optFor = (ch, k) => { const s = streamerOf(ch); return s && s[k] !== undefined && s[k] !== null && s[k] !== '' ? s[k] : linkOpt(k); };   // (their own choice, also an off: false)
 function setOpt(k, v){
   const o = settings.json('linkedOpts', {}) || {};
   if (v === OPT_DEFAULTS[k]) delete o[k]; else o[k] = v;

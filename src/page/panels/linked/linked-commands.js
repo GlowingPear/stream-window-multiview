@@ -77,6 +77,8 @@ function streamerMore(s){
     disabled: () => optFor(s.main, 'streams') === v && 'Already chosen', run: () => setStreamerOpt(s.id, 'streams', v) }));
   ['together', 'separate'].forEach(v => add('auto:' + v, `When they open by themselves: ${v}`, { group: 'Their choices', icon: 'bolt',
     disabled: () => optFor(s.main, 'autoOpen') === v && 'Already chosen', run: () => setStreamerOpt(s.id, 'autoOpen', v) }));
+  [[true, 'on'], [false, 'off']].forEach(([v, w]) => add('allTab:' + w, `Their ALL tab: ${w}`, { group: 'Their choices', icon: 'chat', sub: 'Their chats as one list',
+    disabled: () => optFor(s.main, 'allTab') === v && 'Already chosen', run: () => setStreamerOpt(s.id, 'allTab', v) }));
   add('copy', 'Copy their links', { group: 'Share', icon: 'copy', sub: 'Every site\'s link, one per line', run: () => copyLinks(s) });
   return out;
 }

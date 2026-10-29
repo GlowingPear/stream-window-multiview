@@ -169,6 +169,25 @@ test('ALL: the window\'s @ button (the desktop app\'s) turns mentions off and on
   assert.deepEqual(await at(), ['quietkoala'], 'ALL off: its own chat');
 });
 
+test('ALL: on or off for each linked streamer (their card), over Settings › Linked channels', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(() => window.linkedApi.setStreamerOpt('s1', 'allTab', false));
+  assert.deepEqual(await tabs(page), ['K*', 'T', 'Y'], 'off for them: no ALL tab');
+  assert.equal(await page.locator('.all-view').count(), 0);
+  // off in Settings, on for them
+  await page.evaluate(() => { window.linkedApi.setOpt('allTab', false); window.linkedApi.setStreamerOpt('s1', 'allTab', true); });
+  assert.deepEqual((await tabs(page))[0], 'ALL*');
+  // as in Settings again (off)
+  await page.evaluate(() => window.linkedApi.setStreamerOpt('s1', 'allTab', null));
+  assert.equal((await tabs(page)).includes('ALL') || (await tabs(page)).includes('ALL*'), false);
+  // their card: the choice
+  await page.evaluate(() => { window.linkedApi.setOpt('allTab', true); });
+  await page.evaluate(() => window.openLinkCard('quietkoala'));
+  await page.selectOption('[data-cmd="link.allTab"]', 'off');
+  assert.equal(await page.evaluate(() => window.linkedApi.listStreamers()[0].allTab), false);
+});
+
 test('ALL: events are a short line with See it on …; Events: short, full or hidden; an announcement is a message', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
