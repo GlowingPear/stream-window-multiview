@@ -202,6 +202,9 @@ test('ALL has the sites\' chats\' extras: links open in your browser; the line m
   assert.equal(await page.getAttribute('.all-list .al-link', 'href'), 'https://clips.twitch.tv/BraveOwl-abc');
   await page.click('.all-list .al-link');
   assert.deepEqual(await page.evaluate(() => window.__opened), ['https://clips.twitch.tv/BraveOwl-abc']);
+  // without https://: www.…, or a name with a usual ending (and its path), opened as https://; not an address or a number
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'drift', id: 'a2' }, ':drift!d@d PRIVMSG #quietkoala :socials: kick.com/quietkoala, www.koala.gg! mail me@koala.com v1.2.3')] });
+  assert.deepEqual(await page.$$eval('.all-list .al-m:last-child .al-link', l => l.map(a => [a.textContent, a.getAttribute('href')])), [['kick.com/quietkoala', 'https://kick.com/quietkoala'], ['www.koala.gg', 'https://www.koala.gg']]);
   // right-click the link: its items
   await page.click('.all-list .al-link', { button: 'right' });
   const items = () => page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent.trim()));
@@ -709,6 +712,18 @@ test('ALL: pins wait in the pill (how many), which shows and hides one compact s
   const strip = () => page.$eval('.all-pins', e => e.textContent.replace(/\s+/g, ' ').trim());
   assert.equal(await strip(), 'Kquietkoala scrims at 8pmjust now');
   assert.match(await page.getAttribute('.all-pin-row', 'title'), /^quietkoala: scrims at 8pm\nPinned by nightowl_mod$/, 'the whole message, and who pinned it');
+  // a press on the message: all of it, over several lines; again: one line. Its link opens without that
+  await feed(page, 'quietkoala', { s: 'kick', raw: [kpin('k6', 'scrims at 8pm, sign up at tilt.fyi/71JEms and read the rules first, all of them, twice over please')] });
+  assert.deepEqual(await page.$eval('.all-pin-t', e => [getComputedStyle(e).whiteSpace, e.getAttribute('aria-expanded'), e.dataset.cmd]), ['nowrap', 'false', 'all.pinFull']);
+  await page.click('.all-pin-t b');
+  assert.deepEqual(await page.$eval('.all-pin-t', e => [getComputedStyle(e).whiteSpace, e.getAttribute('aria-expanded')]), ['normal', 'true']);
+  await page.evaluate(() => { window.__opened = []; window.open = url => { window.__opened.push(url); return null; }; });
+  await page.click('.all-pin-t .al-link');
+  assert.deepEqual(await page.evaluate(() => window.__opened), ['https://tilt.fyi/71JEms']);
+  assert.equal(await page.getAttribute('.all-pin-t', 'aria-expanded'), 'true', 'the link: not a press on the message');
+  await page.click('.all-pin-t b');
+  assert.equal(await page.getAttribute('.all-pin-t', 'aria-expanded'), 'false');
+  await feed(page, 'quietkoala', { s: 'kick', raw: [kpin('k5', 'scrims at 8pm')] });
   await page.evaluate(() => window.allChat.ingest('tw:quietkoala', { s: 'youtube', raw: [{ addBannerToLiveChatCommand: { bannerRenderer: { liveChatBannerRenderer: { actionId: 'b1', contents: { liveChatTextMessageRenderer: { id: 'y9', authorName: { simpleText: 'Mika R.' }, message: { runs: [{ text: 'clip of the ace' }] } } } } } } }] }));
   assert.equal(await strip(), 'YMika R. clip of the acejust nowYK', 'the newest');
   await page.click('.all-pin-sw .pi-kick');

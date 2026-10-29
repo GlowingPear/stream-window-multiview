@@ -213,7 +213,9 @@
 .all-pin-row{display:flex;align-items:center;gap:7px;min-height:30px;padding:4px 6px 4px 8px}
 .all-pin-row+.all-pin-row{border-top:1px solid var(--line)}
 .all-pin-row>.pi{flex:none;width:15px;height:15px;font-size:9px;border-radius:4px}
-.all-pin-t{flex:1;min-width:0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.all-pin-t{flex:1;min-width:0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.all-pin-row.full{align-items:flex-start}
+.all-pin-row.full .all-pin-t{white-space:normal;overflow-wrap:anywhere;max-height:40vh;overflow:auto}
 .all-pin-t .al-e{height:18px;vertical-align:-4px}
 .all-pin-s{flex:none;color:var(--muted);font-size:10.5px;font-variant-numeric:tabular-nums}
 .all-pin-sw{display:flex;gap:3px;flex:none}

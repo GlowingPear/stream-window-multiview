@@ -336,11 +336,13 @@ function renderPins(view){
   view.pins.hidden = !n || !view.pinsShown;
   if (n < 2) view.pinsOpen = false;
   if (view.pins.hidden) return;
-  // one line each: site, name, the message (the rest in its tooltip), and when (or 1 of 2)
+  // one line each: site, name, the message, and when (or 1 of 2). A press on the message shows all of it (and again: one line)
   const row = (p, sub, ...end) => {
     const text = p.msg.parts.map(x => x.text || x.name).join('');
-    return element('div', { class: 'all-pin-row', title: `${p.msg.sender}: ${text}${p.by ? `\nPinned by ${p.by}` : ''}` }, element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0]),
-      element('div', 'all-pin-t', element('b', { style: { color: nameColor(p.msg) } }, p.msg.sender), ' ', ...partsEl(p.msg.parts, p.ch)), element('small', 'all-pin-s', sub), ...end);
+    return element('div', { class: 'all-pin-row' + (view.pinFull ? ' full' : ''), title: `${p.msg.sender}: ${text}${p.by ? `\nPinned by ${p.by}` : ''}` }, element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0]),
+      element('div', { class: 'all-pin-t', role: 'button', tabindex: '0', 'aria-expanded': String(!!view.pinFull), dataset: { cmd: 'all.pinFull' },
+        onclick: () => { view.pinFull = !view.pinFull; renderPins(view); }, onkeydown: e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.target.click(); } } },
+        element('b', { style: { color: nameColor(p.msg) } }, p.msg.sender), ' ', ...partsEl(p.msg.parts, p.ch)), element('small', 'all-pin-s', sub), ...end);
   };
   if (view.pinsOpen){
     view.pins.replaceChildren(...f.pins.map((p, i) => row(p, pinAgo(p.t), !i && element('button', { type: 'button', class: 'all-pin-open', title: 'Only the newest', 'aria-label': 'Only the newest', 'aria-expanded': 'true', html: CHEVRON, dataset: { cmd: 'all.pinsOpen' }, onclick: () => { view.pinsOpen = false; renderPins(view); } }))));
@@ -378,16 +380,18 @@ function partsEl(parts, ch){
   });
   return out;
 }
-// Web links in a message: they open in your browser (right-click: copy it)
-const URL_RE = /\bhttps?:\/\/[^\s<>"]+[^\s<>".,!?:;)\]'"]/g;
+// Web links in a message: they open in your browser (right-click: copy it). Also without https:// (www.…, or a
+// name with a usual ending: kick.com/someone, youtu.be/…), opened as https://
+const LINK_TLDS = 'com|net|org|io|gg|tv|me|co|be|fyi|ly|to|app|dev|ai|xyz|live|link|shop|store|site|online|info|uk|de|fr|es|it|nl|eu|us|ca|au|jp|br';
+const URL_RE = new RegExp(`(?:\\bhttps?:\\/\\/|(?<![\\w@.-])www\\.|(?<![\\w@.\\/-])(?=(?:[a-z0-9-]+\\.)+(?:${LINK_TLDS})(?![\\w-])))[^\\s<>"]*[^\\s<>".,!?:;)\\]'"]`, 'gi');
 function linkify(t){
   const s = String(t || ''), out = []; let i = 0, x;
   URL_RE.lastIndex = 0;
   while ((x = URL_RE.exec(s))){
     if (x.index > i) out.push(s.slice(i, x.index));
-    const url = x[0];
-    out.push(element('a', { class: 'al-link', href: url, title: url, rel: 'noreferrer', onclick: e => { e.preventDefault(); openInBrowser(url); } }, url.length > 60 ? url.slice(0, 57) + '…' : url));
-    i = x.index + url.length;
+    const shown = x[0], url = /^https?:\/\//i.test(shown) ? shown : 'https://' + shown;
+    out.push(element('a', { class: 'al-link', href: url, title: url, rel: 'noreferrer', onclick: e => { e.preventDefault(); e.stopPropagation(); openInBrowser(url); } }, shown.length > 60 ? shown.slice(0, 57) + '…' : shown));
+    i = x.index + shown.length;
   }
   if (i < s.length) out.push(s.slice(i));
   return out;
@@ -539,7 +543,7 @@ function buildView(w){
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, filt), health, pins, list, more, empty,
     element('div', 'all-cmp', bar, modes, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm, ecard);
-  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, pinChip, pinsShown: false, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
+  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, pinChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
   closeOnOutside(fm, { button: filt });
   el.addEventListener('pointerdown', () => allSeen(w));
