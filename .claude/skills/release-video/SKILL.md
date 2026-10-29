@@ -13,11 +13,11 @@ Files next to this one:
 |---|---|
 | `changes.js` | Lists what to cover: PRs merged since the newest tag (or a range), with their descriptions |
 | `video.js` | Records a scenes file and makes the MP4, always under 10 MB (`node video.js <scenes.js>`) |
-| `stage.js` | Stand-in kick.com: six made-up channels (`pixelpear`, `nightowl`, `arcadia`, `lofilane`, `tidepool`, `emberfox`) with moving pictures, chats with a chat box and user cards (each message in a row of its own, as on Kick), made-up emotes (`EMOTES`; `emoteHtml(name)` for a message, served at Kick's emote address so no real emote is ever asked for), and Kick's channel API |
+| `stage.js` | Stand-in kick.com (and Twitch and YouTube: their chats and players are stand-ins, and the app's questions to them get empty answers, so no real channel shows): six made-up channels (`pixelpear`, `nightowl`, `arcadia`, `lofilane`, `tidepool`, `emberfox`) with moving pictures, chats with a chat box and user cards (each message in a row of its own, as on Kick), made-up emotes (`EMOTES`; `emoteHtml(name)` for a message, `[emote:<EMOTE_IDS[name]>:<name>]` in Kick's chat events, served at Kick's emote address so no real emote is ever asked for, and listed as each channel's emotes), and Kick's channel API |
 | `capture.js` | Smooth capture of every frame the window paints |
-| `music.js` | Generated upbeat backing track (no samples, nothing to license) |
+| `music.js` | Generated backing song (no samples, nothing to license): intro, verse, lift, chorus with a hook, breakdown, arranged to fit the video's length |
 | `sounds.js` | Records the app's own sounds (alert chimes and the like) so the music can pause for them |
-| `examples/` | Finished scenes files, as models for the next one: `0.2.20.js` (one feature set, seeded data), `0.2.16-to-0.2.18.js` (three releases, chats, alerts; recorded from a v0.2.18 checkout with `--dir`) |
+| `examples/` | Finished scenes files, as models for the next one: `0.2.20.js` (one feature set, seeded data), `0.2.16-to-0.2.18.js` (three releases, chats, alerts; recorded from a v0.2.18 checkout with `--dir`), `0.4.0.js` (ALL: a linked streamer on Kick and Twitch, fed made-up lines in each site's format by `0.4.0-chat.js`; captions beside the chat) |
 
 ## 1. Check the tools
 
@@ -56,6 +56,7 @@ module.exports = {
   features: 4,                                  // how many feature() calls: the progress dots
   seed(data) { /* optional: write files (e.g. profiles.json) into the app's data folder before it starts */ },
   stage: { mod: 'nightowl', kick: { /* optional: extra or replaced Kick API answers, by slug */ } },
+  async prepare(m) { /* optional: saved settings and a reload, before the cards are added (a reload in run() removes them) */ },
   async run(t) { /* the scenes */ }
 };
 ```

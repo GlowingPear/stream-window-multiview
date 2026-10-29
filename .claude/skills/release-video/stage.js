@@ -1,6 +1,8 @@
 // Stand-ins for kick.com, so a video shows only made-up channels and chatters (never real ones):
 // a moving picture for each stream, a scrolling chat with a chat box and Kick-style user cards,
 // and Kick's channel API (live, viewers, start time, bio, profile picture, follow/unfollow) for live checks and profiles.
+// Twitch and YouTube never go out either: their chats and players are stand-ins too (a channel's Twitch chat is
+// tw:<name>), and the app's own questions to them get empty answers, so no real channel there ever shows.
 //   await stage.install(run.app, { mod: 'nightowl' });
 //   add channels by name: stage.CHANNELS
 const CHANNELS = ['pixelpear', 'nightowl', 'arcadia', 'lofilane', 'tidepool', 'emberfox'];
@@ -23,19 +25,19 @@ for(let i=0;i<7;i++){const r=(.18+.08*i)*Math.min(W,H);x.beginPath();x.arc(W*(.5
 t++;requestAnimationFrame(f)}f();</script>`;
 
 // window.say(name, text) adds a message; clicking a name opens a user card (to the left, off a narrow window, as kick.com does)
-const chatPage = ch => `<!doctype html><meta charset=utf-8><title>chat</title><style>
+const chatPage = (ch, accent = '#53fc18') => `<!doctype html><meta charset=utf-8><title>chat</title><style>
 html,body{margin:0;height:100%;background:#18181b;color:#efeff1;font:13px/1.45 system-ui,sans-serif;overflow:hidden}
 #chat{position:absolute;inset:0 0 58px 0;display:flex;flex-direction:column;justify-content:flex-end;padding:6px 10px;overflow:hidden}
 #box{position:absolute;left:0;right:0;bottom:0;height:58px;display:flex;align-items:center;gap:8px;padding:0 10px;border-top:1px solid #2a2a2e;background:#1f1f23}
 #box input{flex:1;min-width:0;height:34px;border-radius:6px;border:1px solid #3a3a3f;background:#0e0e10;color:#efeff1;padding:0 10px;font:13px system-ui}
-#box button{height:34px;padding:0 14px;border:0;border-radius:6px;background:#53fc18;color:#0b0d0b;font:700 13px system-ui}
+#box button{height:34px;padding:0 14px;border:0;border-radius:6px;background:${accent};color:#0b0d0b;font:700 13px system-ui}
 .row{padding:3px 4px;border-radius:4px}.row b{font-weight:700;cursor:pointer}
 #user-identity{position:fixed;top:56px;right:calc(100% + 12px);width:356px;background:#232328;border:1px solid #3a3a3f;border-radius:10px;padding:16px;box-shadow:0 12px 40px #000c;z-index:5}
 #user-identity .hd{display:flex;align-items:center;gap:12px}#user-identity .av{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font:800 20px system-ui;color:#111}
 #user-identity .nm{font:700 17px system-ui}#user-identity .sub{opacity:.6;font-size:12px;margin-top:2px}
 #user-identity .badges{display:flex;gap:6px;margin:12px 0}#user-identity .badges i{font-style:normal;font-size:11px;padding:3px 7px;border-radius:5px;background:#34343a}
 #user-identity .acts{display:flex;gap:8px;margin-top:6px}#user-identity .acts button{flex:1;height:32px;border-radius:6px;border:0;font:600 12px system-ui;background:#34343a;color:#fff}
-#user-identity .acts .p{background:#53fc18;color:#111}#user-identity .x{position:absolute;right:10px;top:8px;background:none;border:0;color:#aaa;font-size:18px}
+#user-identity .acts .p{background:${accent};color:#111}#user-identity .x{position:absolute;right:10px;top:8px;background:none;border:0;color:#aaa;font-size:18px}
 </style><body><div id="chat"></div><div id="box"><input placeholder="Send a message"><button>Chat</button></div><script>
 const COL=['#ff7f50','#9acd32','#1e90ff','#ff69b4','#daa520','#00ced1','#ba55d3','#3cb371'];
 const NAMES=['mossyrock','quietkoala','bytebun','sundew','ravenquill','zestyplum','tinycomet','glowmoth','ferngully','paperboat'];
@@ -63,6 +65,8 @@ const EMOTE = 'https://files.kick.com/emotes/';
 const EMOTES = { pearHype: ['🍐', 95], owlWave: ['🦉', 250], arcadeGG: ['👾', 320], tideLUL: ['🌊', 190] };
 const emoteSvg = n => { const [e, h] = EMOTES[n] || ['⭐', 50]; return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">`
   + `<rect width="64" height="64" rx="14" fill="hsl(${h},70%,45%)"/><text x="32" y="45" font-size="38" text-anchor="middle">${e}</text></svg>`; };
+// Kick's chat events name an emote by number ([emote:<id>:<name>]): each made-up one has a made-up number too
+const EMOTE_IDS = { pearHype: 9100001, owlWave: 9100002, arcadeGG: 9100003, tideLUL: 9100004 };
 const emoteHtml = n => `<span data-emote-name="${n}"><img src="${EMOTE}${n}/fullsize" alt="${n}" width="28" height="28" style="vertical-align:middle"></span>`;
 
 // Kick's /api/v2/channels/<slug> for a made-up channel: live for a while, with viewers and a bio
@@ -80,9 +84,9 @@ function kickChannel(ch, i) {
 async function install(app, { mod = 'nightowl', kick = {} } = {}) {
   const api = Object.fromEntries(CHANNELS.map((c, i) => [c, kickChannel(c, i)]));
   Object.assign(api, kick);
-  await app.evaluate(({ session, ipcMain, net }, { pages, api, mod, pics, PIC, emotes, EMOTE }) => {
+  await app.evaluate(({ session, ipcMain, net }, { pages, api, mod, pics, PIC, emotes, EMOTE, ids }) => {
     const svg = s => new Response(s, { headers: { 'content-type': 'image/svg+xml' } });
-    const emote = url => url.startsWith(EMOTE) && emotes[url.slice(EMOTE.length).split('/')[0]];
+    const emote = url => { const k = url.startsWith(EMOTE) && url.slice(EMOTE.length).split('/')[0]; return k && (emotes[k] || emotes[ids[k]]); };
     const html = s => new Response(s, { headers: { 'content-type': 'text/html' } });
     // profile pictures (shown in the main window's own session); everything else there goes out as normal
     try { session.defaultSession.protocol.unhandle('https'); } catch {}
@@ -109,17 +113,46 @@ async function install(app, { mod = 'nightowl', kick = {} } = {}) {
         if (m[2] === '/me') return json({ following: true, following_since: '2025-03-14T20:00:00Z' });
         return json(c);
       }
+      // the channel's emotes (the emote picker, :name suggestions): the made-up ones, by their made-up numbers
+      const em = /^\/emotes\/([\w-]+)$/.exec(u.pathname);
+      if (em) return json([{ slug: em[1], user_id: 1, emotes: Object.entries(ids).map(([id, name]) => ({ id: +id, name, subscribers_only: false })) }]);
       if (u.pathname.startsWith('/api/')) return json({ message: 'Not found' }, 404);
       return html('<!doctype html><title>Kick</title>');
     });
     for (const ch of Object.keys(pages.stream)) session.fromPartition('persist:kmv-stream-' + ch).protocol.handle('https', req =>
       /player\.kick\.com/.test(req.url) ? html(pages.stream[ch]) : new Response('', { status: 404 }));
+    // Twitch and YouTube: stand-in chats (Twitch's in its own colour) and players; their APIs answer with nothing
+    for (const p of ['persist:twitch', 'persist:youtube']) {
+      const t = session.fromPartition(p);
+      try { t.protocol.unhandle('https'); } catch {}
+      t.protocol.handle('https', req => {
+        const u = new URL(req.url);
+        const tw = /^\/popout\/([^/]+)\/chat/.exec(u.pathname);
+        if (tw) return html(pages.twitch.replace(/__CH__/g, decodeURIComponent(tw[1])));
+        if (/gql\.twitch\.tv/.test(u.host)) return json({ data: {} });
+        if (/player\.twitch\.tv/.test(u.host)) return html(pages.stream[u.searchParams.get('channel')] || pages.stream.pixelpear);
+        return new Response('', { status: 404 });
+      });
+    }
+    for (const ch of Object.keys(pages.stream)) {
+      const t = session.fromPartition('persist:kmv-stream-tw_' + ch);
+      try { t.protocol.unhandle('https'); } catch {}
+      t.protocol.handle('https', req => /player\.twitch\.tv/.test(req.url) ? html(pages.stream[ch]) : new Response('', { status: 404 }));
+    }
+    // the app's own questions to Twitch and YouTube (live checks, profiles) from this process: empty answers
+    if (!globalThis.__realFetch) globalThis.__realFetch = globalThis.fetch;
+    globalThis.fetch = (input, init) => {
+      const url = String(input && input.url || input);
+      if (/^https:\/\/([\w-]+\.)*(twitch\.tv|youtube\.com|googleapis\.com|ttvnw\.net|jtvnw\.net)\//.test(url))
+        return Promise.resolve(/gql\.twitch\.tv/.test(url) ? json(/^\s*\[/.test(String(init && init.body || '')) ? [] : { data: {} }) : new Response('', { status: 404 }));
+      return globalThis.__realFetch(input, init);
+    };
     ipcMain.removeHandler('mod:check');
     ipcMain.handle('mod:check', (_e, ch) => ch === mod);
     return s.cookies.set({ url: 'https://kick.com', name: 'session_token', value: 'stand-in' });   // "logged in" to Kick
-  }, { mod, api, PIC, EMOTE, emotes: Object.fromEntries(Object.keys(EMOTES).map(n => [n, emoteSvg(n)])), pics: Object.fromEntries(CHANNELS.map(c => [c, picSvg(c)])), pages: {
-    chat: Object.fromEntries(CHANNELS.map(c => [c, chatPage(c)])),
+  }, { mod, api, PIC, EMOTE, ids: Object.fromEntries(Object.entries(EMOTE_IDS).map(([n, i]) => [i, n])), emotes: Object.fromEntries(Object.keys(EMOTES).map(n => [n, emoteSvg(n)])), pics: Object.fromEntries(CHANNELS.map(c => [c, picSvg(c)])), pages: {
+    chat: Object.fromEntries(CHANNELS.map(c => [c, chatPage(c)])), twitch: chatPage('__CH__', '#a970ff'),
     stream: Object.fromEntries(CHANNELS.map(c => [c, streamPage(c)])) } });
 }
 
-module.exports = { CHANNELS, EMOTES, install, kickTime, emoteHtml };
+module.exports = { CHANNELS, EMOTES, EMOTE_IDS, install, kickTime, emoteHtml };
