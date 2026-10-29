@@ -214,6 +214,22 @@ test('ALL: the sites\' own badges (a channel\'s sub badge for their months, Kick
   }, img);
   assert.deepEqual(await badges(), [['img #sub24 27-Month Subscriber (2-Year Badge)', 'img #mod Moderator'], ['icon mod', 'img k.png GoldenK', 'icon founder', 'img #s3 4-Month Subscriber']], 'as the sites say them; one without a picture: left out');
   assert.deepEqual(await page.$$eval('.all-list .al-m:last-child .al-b', l => l.map(b => b.title)), ['Moderator', 'Founder'], 'Kick\'s names for its own');
+  // Kick's own icons, once its chat has drawn them: cleaned to shapes and colours, a gift by how many (30: Gift25)
+  const kickLine = sender => KF('ChatMessageEvent', { id: 'k-' + sender.username, content: 'hi', type: 'message', sender });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [kickLine({ id: 4, username: 'Gifty', slug: 'gifty', identity: { badges: [{ type: 'sub_gifter', text: 'Sub Gifter', count: 30, sort_order: 8 }, { type: 'founder', text: 'Founder', sort_order: 6 }],
+    badges_v2: [{ name: 'level', image_url: 'https://ext.cdn.kick.com/chat/badges/lv.png', metadata: { level: 24 }, selected: true, sort_order: 1 }] } })] });
+  const giftyBadges = () => page.$$eval('.all-list [data-key="kick:k-Gifty"] .al-who > :not(.pi)', l => l.map(b => b.className + ' ' + (b.title || b.dataset.tipTitle || '')));
+  assert.deepEqual(await giftyBadges(), ['al-bi Level 24', 'al-b al-b-founder Founder', 'al-b al-b-gifter Sub Gifter'], 'before Kick\'s icons: its level\'s picture, ALL\'s icons');
+  const cleaned = await page.evaluate(() => {
+    window.__ran = 0;
+    window.allChat.gotKickIcons({ Gift25: '<svg data-ds-icon="Gift25" viewBox="0 0 20 20" width="20" class="x" onload="window.__ran++"><script>window.__ran++</script><path d="M1 1h18v18H1z" fill="#53fc18" style="fill:red" onclick="window.__ran++"/><a href="javascript:window.__ran++"><path d="M0 0"/></a><use href="https://evil/x.svg#a"/><path fill="url(https://evil/x)" d="M2 2"/></svg>',
+      founder: '<svg viewBox="0 0 20 20"><defs><linearGradient id="g1"><stop stop-color="#feb635"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#g1)"/></svg>', Level24: '<svg viewBox="0 0 20 20"><path d="M1 1h2v2H1z"/></svg>', 'bad key!': '<svg/>', moderator: 'not svg' });
+    return { gift: window.allChat.kickIcons.get('Gift25'), keys: [...window.allChat.kickIcons.keys()], ran: window.__ran };
+  });
+  assert.equal(cleaned.gift, '<svg viewBox="0 0 20 20"><path d="M1 1h18v18H1z" fill="#53fc18"/><path d="M2 2"/></svg>', 'only shapes and colours: no script, handler, style, link or outside address');
+  assert.deepEqual(cleaned.keys, ['Gift25', 'founder', 'Level24']);
+  assert.equal(cleaned.ran, 0);
+  assert.deepEqual(await giftyBadges(), ['al-bk Level 24', 'al-bk Founder', 'al-bk Sub Gifter'], 'Kick\'s own icons, in its order');
   // Twitch's own kept once: a second Twitch chat's answer without them still finds them
   await page.evaluate(() => window.allChat.gotBadges('tw:quietkoala', { twitch: { own: {} } }));
   assert.deepEqual((await badges())[0], ['icon sub', 'img #mod Moderator']);

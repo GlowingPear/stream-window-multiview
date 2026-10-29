@@ -47,7 +47,7 @@ test('Kick: badges in Kick\'s order (sort_order), named as Kick names them; a le
   const { kickPics } = (await load());
   assert.deepEqual(kickPics({ badges: [{ type: 'founder', text: 'Founder', sort_order: 6 }, { type: 'subscriber', text: 'Subscriber', count: 2, sort_order: 9 }, { type: 'sub_gifter', text: 'Sub Gifter', count: 2, sort_order: 8 }],
     badges_v2: [{ name: 'level', image_url: 'https://ext.cdn.kick.com/chat/badges/24.png', metadata: { level: 24 }, selected: true, sort_order: 1 }] }),
-  [{ url: 'https://ext.cdn.kick.com/chat/badges/24.png', title: 'Level 24' }, { set: 'founder', v: '1', title: 'Founder' }, { set: 'sub_gifter', v: '2', title: 'Sub Gifter' }, { set: 'subscriber', v: '2' }]);
+  [{ url: 'https://ext.cdn.kick.com/chat/badges/24.png', title: 'Level 24', icon: 'Level24' }, { set: 'founder', v: '1', title: 'Founder' }, { set: 'sub_gifter', v: '2', title: 'Sub Gifter' }, { set: 'subscriber', v: '2' }]);
 });
 
 test('Kick: messages and replies from its live connection, emotes and badges', async () => {

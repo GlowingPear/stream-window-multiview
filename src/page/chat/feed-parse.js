@@ -235,7 +235,7 @@ function kickPics(idy){
   const own = (idy.badges || []).filter(b => b && b.type && BADGES[String(b.type).toLowerCase()]).map(b => ({ o: +b.sort_order || 0,
     p: { set: String(b.type), v: String(+b.count || 1), ...(b.type !== 'subscriber' && b.text ? { title: String(b.text) } : {}) } }));
   const picked = (idy.badges_v2 || []).filter(b => b && b.selected && /^https:\/\//.test(b.image_url || '')).map(b => ({ o: +b.sort_order || 0,
-    p: { url: b.image_url, title: b.name === 'level' && b.metadata && b.metadata.level ? `Level ${b.metadata.level}` : String(b.name) } }));
+    p: { url: b.image_url, ...(b.name === 'level' && b.metadata && b.metadata.level ? { title: `Level ${b.metadata.level}`, icon: `Level${b.metadata.level}` } : { title: String(b.name) }) } }));   // (icon: Kick's own for it, if ALL has it)
   return [...own, ...picked].sort((a, b) => a.o - b.o).map(x => x.p);
 }
 // A Kick chat message (ChatMessageEvent's, or the one in a pin)

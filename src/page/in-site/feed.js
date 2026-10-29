@@ -149,6 +149,20 @@ async function badgesAgent(global, as, nameAs){
   } catch (e) { return null; }
 }
 
+// Kick's own badges as its chat draws them (its icons, not pictures: founder, moderator, a sub gifter's gift for how many,
+// a level), for ALL's lines to look the same: the ones it has drawn that ALL doesn't have yet (known), by the badge's
+// type, a gift's icon name (Gift25) or a level's (Level24). -> { '<key>': '<svg>' } (chat/all-chat.js cleans them)
+function kickIconsAgent(known){
+  const out = {}, have = new Set(known || []);
+  const keep = (k, svg) => { if (k && svg && !have.has(k) && !out[k]) out[k] = svg.outerHTML.slice(0, 20000); };
+  document.querySelectorAll('[data-testid^="identity-badge-"]').forEach(b => {
+    const type = b.dataset.testid.slice('identity-badge-'.length), svg = b.querySelector('svg');
+    if (svg) keep(type === 'sub_gifter' ? svg.dataset.dsIcon : type, svg);
+  });
+  document.querySelectorAll('svg[data-ds-icon^="Level"]').forEach(svg => keep(svg.dataset.dsIcon, svg));
+  return out;
+}
+
 // The chat's modes and where you stand in it, for ALL's box (chat/all-chat.js): asked as ALL starts reading the chat;
 // changes come live after (feed-parse.js). Kick: its chatroom (the modes) and your /me there (with the chat's login);
 // Twitch: chatSettings, and you there (with the page's login); YouTube: what its chat says where its box would be
@@ -311,5 +325,5 @@ function profileAgent(id){
   return true;
 }
 
-export { badgesAgent, feedAgent, lineProbe, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent,
-  twReplyAt, twReplyPress };
+export { badgesAgent, feedAgent, kickIconsAgent, lineProbe, messageHtml, modesAgent, pinAgent, profileAgent,
+  replyAgent, seekAgent, twReplyAt, twReplyPress };

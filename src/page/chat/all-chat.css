@@ -42,6 +42,7 @@
 .al-e{height:22px;width:auto;vertical-align:middle;margin:-3px 1px}
 .al-b{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:3px;flex:none}
 .al-bi{height:18px;width:auto;max-width:36px;flex:none;object-fit:contain;border-radius:3px}
+.al-bk{display:inline-grid;place-items:center;width:18px;height:18px;flex:none}.al-bk svg{width:18px;height:18px}
 .al-b svg{width:11px;height:11px;fill:#fff;stroke:#fff}
 .al-b-host{background:#e91916}.al-b-mod{background:#00ad03}.al-b-vip{background:#e005b9}.al-b-sub{background:#8205b4}
 .al-b-og{background:#1e3a14;box-shadow:inset 0 0 0 1px #53fc18}.al-b-og svg{fill:#53fc18;stroke:#53fc18}

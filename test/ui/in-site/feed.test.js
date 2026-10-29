@@ -155,6 +155,24 @@ test('the badges\' pictures (badgesAgent): Kick\'s channel sub badges by months;
   assert.deepEqual(got.asked, ['/api/v2/channels/quietkoala', 'https://gql.twitch.tv/gql query { user(lo', 'https://gql.twitch.tv/gql query { badges ']);
 });
 
+test('Kick\'s own badge icons as its chat draws them (kickIconsAgent): by type, a gift by its icon name, a level\'s; not the ones ALL has, nor a picture', async t => {
+  const page = await openApp(t);
+  const got = await page.evaluate(() => {
+    const badge = (type, inner) => { const d = document.createElement('div'); d.dataset.testid = 'identity-badge-' + type; d.innerHTML = inner; return d; };
+    const box = document.createElement('div');
+    box.append(badge('founder', '<svg data-ds-icon="FounderBadge" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#feb635"/></svg>'),
+      badge('sub_gifter', '<svg data-ds-icon="Gift25" viewBox="0 0 20 20"><path d="M1 1h18v18H1z" fill="#53fc18"/></svg>'),
+      badge('moderator', '<svg data-ds-icon="ModeratorBadge" viewBox="0 0 20 20"><path d="M2 2h16v16H2z"/></svg>'),
+      badge('subscriber', '<img src="https://files.kick.com/channel_subscriber_badges/1.png" alt="1-Month Subscriber">'));
+    box.insertAdjacentHTML('beforeend', '<div><svg data-ds-icon="Level24" viewBox="0 0 20 20"><path d="M1 1h2v2H1z"/></svg></div>');
+    document.body.append(box);
+    const r = window.kickIconsAgent(['moderator']);
+    box.remove();
+    return Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v.match(/data-ds-icon="(\w+)"/)[1]]));
+  });
+  assert.deepEqual(got, { founder: 'FounderBadge', Gift25: 'Gift25', Level24: 'Level24' });
+});
+
 test('a pin already up (pinAgent): Kick\'s chat history, Twitch\'s pinnedChatMessages, YouTube\'s first data; each as the live pin, which the parser reads', async t => {
   const page = await openApp(t);
   const got = await page.evaluate(async () => {

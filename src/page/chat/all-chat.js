@@ -13,8 +13,8 @@ import { autoTrFor, translateChat } from './translate.js';
 import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
 import { wins } from '../core.js';
-import { badgesAgent, feedAgent, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt,
-  twReplyPress } from '../in-site/feed.js';
+import { badgesAgent, feedAgent, kickIconsAgent, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent,
+  seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
@@ -106,6 +106,7 @@ function ingest(w, json, quiet = false){
     if (f.msgs.length > MAX){ const old = f.msgs.shift(); if (old.id) f.byId.delete(old.site + ':' + old.id); }
     if (view) addLine(view, m);
     if (m.kind === 'message' && !m.bot && autoTrFor(w.channel)) translateSoon(m);
+    if (m.site === 'kick' && m.pics && m.pics.some(p => (!p.url || p.icon) && !kickIcons.has(kickIconKey(p)))) kickIconsSoon(w);
   }); });
 }
 const reEsc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -148,6 +149,7 @@ function giftTo(f, m){
 /* ---- the chats' modes: slow mode, followers only, subscribers only, … above the box, for the site it sends on ---- */
 const badgePics = new Map();   // channel -> its badges' pictures, as badgesAgent read them (in-site/feed.js), or null (none); while it has a chat open
 let twBadges = null;           // Twitch's own badges' pictures (the same in every chat: kept once)
+const kickIcons = new Map();   // Kick's own badge icons as its chat draws them (kickIconsAgent), cleaned: '<type>' | 'Gift25' | 'Level24' -> <svg>
 const modesOf = new Map();   // channel -> { modes: { slow, followers, subs, emotes, verified }, me: { … }, blocked, until (slow mode: when you can send again) }
 function setModes(ch, r){
   const was = modesOf.get(ch) || {};
@@ -469,6 +471,36 @@ function twitchTip(p, title){
 }
 // A line's badges: the site's own pictures, in its order (the channel's sub badge for their months, the bits badge they
 // have…), or ALL's icon for one without a picture (Kick's roles, YouTube's, any before the pictures came)
+// Kick's icon for a badge: a gift by how many were gifted (its thresholds: Gift1 under 5, Gift5, Gift10, Gift25 … Gift5000),
+// a level's own, or its type's
+const GIFT_TIERS = [1, 5, 10, 25, 50, ...Array.from({ length: 18 }, (_, i) => 100 + i * 50), 1000, 2000, 3000, 4000, 5000];
+const kickIconKey = p => p.icon || (p.set === 'sub_gifter' ? 'Gift' + GIFT_TIERS.filter(n => n <= Math.max(1, +p.v || 1)).pop() : p.set);
+// A Kick icon kept as shapes and colours only: its drawing elements and their drawing attributes (no scripts, links, styles
+// or handlers), so nothing from the site's page runs here
+const SVG_TAGS = new Set(['svg', 'g', 'path', 'circle', 'ellipse', 'rect', 'polygon', 'polyline', 'line', 'defs', 'lineargradient', 'radialgradient', 'stop', 'clippath', 'mask']);
+const SVG_ATTRS = /^(viewbox|xmlns|d|fill|stroke|stroke-width|stroke-linecap|stroke-linejoin|stroke-miterlimit|fill-rule|clip-rule|fill-opacity|stroke-opacity|opacity|cx|cy|r|rx|ry|x|y|x1|x2|y1|y2|width|height|points|transform|id|offset|stop-color|stop-opacity|gradientunits|gradienttransform|clip-path|mask)$/;
+function cleanSvg(text){
+  const doc = new DOMParser().parseFromString(String(text || ''), 'image/svg+xml'), root = doc.documentElement;
+  if (!root || root.nodeName.toLowerCase() !== 'svg' || doc.querySelector('parsererror')) return '';
+  const walk = el => {
+    [...el.children].forEach(c => { if (SVG_TAGS.has(c.nodeName.toLowerCase())) walk(c); else c.remove(); });
+    [...el.attributes].forEach(a => { if (!SVG_ATTRS.test(a.name.toLowerCase()) || /^\s*(javascript|data):/i.test(a.value) || (/url\(/i.test(a.value) && !/^url\(#[\w-]+\)$/.test(a.value.trim()))) el.removeAttribute(a.name); });
+  };
+  walk(root);
+  ['width', 'height'].forEach(a => root.removeAttribute(a));   // (its size: ALL's)
+  return new XMLSerializer().serializeToString(root);
+}
+// The icons a Kick chat drew that ALL doesn't have yet, asked a moment after its messages (its chat has drawn them by then)
+function gotKickIcons(r){
+  let any = false;
+  Object.entries(r || {}).forEach(([k, svg]) => { const c = /^[\w-]{1,40}$/.test(k) && !kickIcons.has(k) && cleanSvg(svg); if (c){ kickIcons.set(k, c); any = true; } });
+  if (any) redrawAll();
+}
+const askKickIcons = new Map();   // Kick chat -> its debounced ask
+function kickIconsSoon(w){
+  if (!askKickIcons.has(w.channel)) askKickIcons.set(w.channel, soon(() => { if (w.view && w.ready) askIn(w.view, `(${kickIconsAgent})(${JSON.stringify([...kickIcons.keys()])})`).then(gotKickIcons).catch(() => {}); }, 800));
+  askKickIcons.get(w.channel)();
+}
 const OWN_ICON = { founder: 'founder' };   // (a badge with an icon of its own, not its kind's: Kick's founder coin)
 const badgeIcon = b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' });
 function badgeEls(m){
@@ -477,6 +509,8 @@ function badgeEls(m){
   m.pics.forEach(p => {
     let pic = p.url ? p : null;
     if (!pic && m.site === 'twitch'){ const b = own[p.set + '/' + p.v] || (twBadges && twBadges[p.set + '/' + p.v]); if (b) pic = { url: b.url, title: twitchTip(p, b.title) }; }   // (the channel's sub and bits badges first)
+    const kickIcon = m.site === 'kick' && !(p.url && !p.icon) && kickIcons.get(kickIconKey(p));
+    if (kickIcon) return out.push(element('i', { class: 'al-bk', title: p.title || BADGE_TIP[feedParse.BADGES[String(p.set).toLowerCase()]] || '', html: kickIcon }));
     if (!pic && kick && p.set === 'subscriber'){ const b = kick.subs.filter(x => x.months <= +p.v).pop() || kick.subs[0]; if (b) pic = { url: b.url, title: `${p.v}-Month Subscriber` }; }
     if (pic) return out.push(element('img', { class: 'al-bi', src: pic.url, alt: '', title: pic.title || '', referrerPolicy: 'no-referrer', loading: 'lazy' }));
     const k = OWN_ICON[p.set] || feedParse.BADGES[p.set.toLowerCase()];
@@ -1141,9 +1175,9 @@ function init(){
   // What ALL shows, changed in the other window
   settings.onChange(['allBots', 'allEvents'], () => { readFilters(); redrawAll(); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.pinAgent = pinAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.pinAgent = pinAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
-  window.allChat = { sender, modKnown, gotBadges, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.allChat = { sender, modKnown, gotBadges, gotKickIcons, kickIcons, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
 export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, init, modViewChs, openModViews, sendSite,
