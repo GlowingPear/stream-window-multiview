@@ -17,6 +17,7 @@ const TOPICS = new Set([
   'barButtons',  // Settings › Windows: the title bars' names and buttons (panels/settings/windows-pane.js)
   'live',        // what the live checks last said about them
   'chatZoom',    // Settings › Chat › Chat text size (chat/chat-zoom.js)
+  'allHealth',   // a site's part of ALL stopped working, or works again (chat/all-health.js)
   'chatName',    // Settings › Chat › Channel name in chat boxes: on, its text, or a channel's name learned (chat/chat-name.js)
   'mod',         // which channels you moderate, as the sites answered (platforms/platforms.js modIs)
   'names',       // channel names learned from the sites

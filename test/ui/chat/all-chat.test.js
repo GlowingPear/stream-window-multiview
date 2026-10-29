@@ -755,6 +755,47 @@ test('ALL: they raid someone: a line with Open (Opened once it is)', async t => 
   assert.ok(await page.evaluate(() => window.openWins().some(w => w.channel === 'tw:pixelmoth')));
 });
 
+test('ALL\'s health: a site whose chat has new messages while ALL read none is loaded again once, then its badge turns amber with a line (See it on …, ✕); messages no reader understood, and sends failing twice, too; it clears itself', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(() => {
+    window.__probe = 0; window.__reloads = 0;
+    const w = window.openWins().find(o => o.channel === 'tw:quietkoala');
+    w.ready = true; w.feedOn = true;
+    w.view.executeJavaScript = async js => (/lineProbe|rows\[rows.length - 1\]/.test(js) ? { n: 50, last: 'line ' + (++window.__probe) } : true);
+    w.view.reload = () => { window.__reloads++; };
+  });
+  const check = () => page.evaluate(() => window.allHealth.checkAll());
+  const banner = () => page.$eval('.all-health', e => (e.hidden ? '' : e.textContent.replace(/\s+/g, ' ').trim()));
+  await check();                                   // (the first look: what its chat shows now)
+  await check();                                   // new lines there, none read: loaded again
+  assert.equal(await page.evaluate(() => window.__reloads), 1);
+  assert.equal(await banner(), '', 'not yet: it tries again first');
+  await check();
+  assert.equal(await banner(), 'TALL isn\'t reading Twitch\'s messages: its chat has new onesReport for a fixSee it on Twitch ›');
+  assert.equal(await page.$eval('.all-sites .pi-twitch', e => e.classList.contains('warn')), true);
+  // read again: it clears itself
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'drift', id: 'a' }, ':drift!d@d PRIVMSG #quietkoala :back')] });
+  await check();
+  assert.equal(await banner(), '');
+  assert.equal(await page.$eval('.all-sites .pi-twitch', e => e.classList.contains('warn')), false);
+  // what no reader understood, more than what it read
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: Array.from({ length: 6 }, (_, i) => '@@ a shape Twitch never sent ' + i) });
+  await check();
+  assert.match(await banner(), /^TALL can't make sense of Twitch's messages \(6 of the last 6\)/);
+  await page.click('.all-hl-x');
+  assert.equal(await banner(), '', '✕: hidden');
+  // sending failing twice for the same reason
+  await page.evaluate(() => { window.allHealth.noteSend('quietkoala', 'not-filled', 'Couldn\'t type into Kick\'s chat box'); window.allHealth.noteSend('quietkoala', 'disabled'); window.allHealth.noteSend('quietkoala', 'not-filled', 'Couldn\'t type into Kick\'s chat box'); });
+  assert.match(await banner(), /^KSending on Kick isn't working: Couldn't type into Kick's chat box/);
+  await page.evaluate(() => window.allHealth.noteSend('quietkoala', 'sent'));
+  assert.equal(await banner(), '');
+  // See it on …: that site's own chat
+  await page.evaluate(() => window.allHealth.broke('tw:quietkoala', 'read', 'x'));
+  await page.click('.all-hl [data-cmd="all.healthSee"]');
+  assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
+});
+
 test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley opens its picker; picking one locks the box to that site and sends it as the site writes it', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
