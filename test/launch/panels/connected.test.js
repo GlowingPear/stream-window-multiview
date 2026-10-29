@@ -69,7 +69,7 @@ test('switched off: no socket; on, Pear Drops connects; farming signs the Kick s
   assert.equal(await partition('chat'), 'persist:kick', 'the chat stays signed in');
   await until(() => heard.length && heard.at(-1).signedIn === false);
   assert.deepEqual(heard.at(-1), { signedIn: false, mode: 'auto', account: { platform: 'kick', user: 'pearfan' }, open: [{ platform: 'kick', slug: 'pixelpear' }] }, 'Pear Drops hears it');
-  assert.match(await a.win.textContent('#caPearDrops .ca-line'), /^Farming Neon Rush Launch Week on PixelPear · your Kick players are signed out$/);
+  assert.match(await a.win.textContent('#caPearDrops .ca-line'), /^Farming Neon Rush Launch Week on PixelPearYour Kick players are signed out$/);
 });
 
 test('Logins: Kick is a locked "Auto" chip while Pear Drops sets it, with a link to Connected apps', T, async () => {

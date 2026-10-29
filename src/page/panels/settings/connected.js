@@ -46,13 +46,13 @@ function lineFor(st, ctx){
     if (farming && farming.state === 'farming'){
       const what = (farming.drop && (farming.drop.campaign || farming.drop.category)) || '';
       const where = farming.channel ? (farming.channel.name || farming.channel.slug) : '';
-      const tail = ctx.out ? ' · your Kick players are signed out'
-        : !ctx.auto ? ' · ' + signed + ' (signing out is off)'
-        : ' · on another Kick account, so ' + signed;
-      return { line: [element('b', null, what ? 'Farming ' + what : 'Farming'), where ? ' on ' + where : '', tail], tone: 'ok', act: 'disconnect', paired };
+      const players = ctx.out ? 'Your Kick players are signed out'
+        : !ctx.auto ? signed + ' (signing out is off)'
+        : 'On another Kick account, so ' + signed;
+      return { line: [element('b', null, what ? 'Farming ' + what : 'Farming'), where ? ' on ' + where : '', element('small', 'ca-sub', players)], tone: 'ok', act: 'disconnect', paired };
     }
     if (ctx.out && ctx.backAt != null) return { line: ['Signing Kick players back in at ' + clock(ctx.backAt)], tone: 'ok', act: 'disconnect', paired };
-    return { line: ["Pear Drops isn't farming · " + signed], tone: 'ok', act: 'disconnect', paired };
+    return { line: ["Pear Drops isn't farming", element('small', 'ca-sub', signed)], tone: 'ok', act: 'disconnect', paired };   // (the players: a line of their own)
   }
   if (peer.status === 'waiting'){
     if (peer.reason === 'confirm-there') return { line: ['Press ', element('b', null, 'Allow'), " in Pear Drops' Connected apps to pair."], tone: 'wait', act: null };
