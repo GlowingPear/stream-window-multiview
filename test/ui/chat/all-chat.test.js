@@ -907,14 +907,15 @@ test('ALL: the send site\'s modes above the box; slow mode counts down after you
   // as it changes live: followers only for 10 minutes (Kick's event), and you only followed a minute ago
   await page.evaluate(() => window.allChat.setModes('quietkoala', { me: { signedIn: true, follower: true, followedAt: Date.now() - 60000 } }));
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatroomUpdatedEvent', { slow_mode: { enabled: false }, followers_mode: { enabled: true, min_duration: 10 }, subscribers_mode: { enabled: false }, emotes_mode: { enabled: false } })] });
-  assert.match(await page.getAttribute('.all-in', 'placeholder'), /^Followers only · you can chat in 9 min$/);
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Can’t send on Kick', 'the bar says why');
   assert.equal(await page.isDisabled('.all-in'), true);
-  assert.match(await bar(), /^Followers only · you can chat in 9 minFollowers 10 min$/);
+  assert.equal(await bar(), 'Followers only · you can chat in 9 min', 'said once: not its chip as well');
   // subscribers only, not subscribed; then a ban
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatroomUpdatedEvent', { followers_mode: { enabled: false }, subscribers_mode: { enabled: true } })] });
-  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Subscribers only · subscribe on Kick to chat');
+  assert.equal(await bar(), 'Subscribers only · subscribe on Kick to chat');
   await page.evaluate(() => window.allChat.setModes('quietkoala', { me: { signedIn: true, banned: true } }));
-  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'You’re banned from this Kick chat');
+  assert.equal(await bar(), 'You’re banned from this Kick chatSubscribers only', 'not the mode it\'s because of: its chip stays');
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Can’t send on Kick');
   // a moderator: the modes show, quieter, and don't apply
   await page.evaluate(() => window.allChat.setModes('quietkoala', { me: { signedIn: true, mod: true } }));
   assert.equal(await page.isDisabled('.all-in'), false);
@@ -923,8 +924,8 @@ test('ALL: the send site\'s modes above the box; slow mode counts down after you
   await page.evaluate(() => window.allChat.setModes('tw:quietkoala', { me: { signedIn: true, follower: false } }));
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'followers-only': '0', 'room-id': '1' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')] });
   await page.focus('.all-in'); await page.keyboard.press('Tab');
-  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Followers only · follow on Twitch to chat');
-  assert.equal(await bar(), 'Followers only · follow on Twitch to chatFollowers only');
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Can’t send on Twitch');
+  assert.equal(await bar(), 'Followers only · follow on Twitch to chat');
   await page.evaluate(() => window.allChat.setModes('yt:quietkoala', { blocked: 'Sign in to chat' }));
 });
 

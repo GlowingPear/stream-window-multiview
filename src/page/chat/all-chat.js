@@ -163,16 +163,16 @@ function chatRules(ch){
     m.subs && { k: 'subs', t: 'Subscribers only', tip: 'Subscribers only' },
     m.emotes && { k: 'emotes', t: 'Emotes only', tip: 'Emotes only: messages of emotes alone' },
     m.verified && { k: 'verified', t: 'Verified only', tip: `Verified accounts only (${site} asks for a phone or email)` }].filter(Boolean);
-  let block = '';
+  let block = '', blockK = '';   // (blockK: the mode it's because of: its chip goes, the bar says it)
   if (me.banned) block = `You’re banned from this ${site} chat`;
   else if (!free && me.signedIn){
     const left = m.followers && me.followedAt ? m.followers * 60000 - (Date.now() - me.followedAt) : 0;
-    if (m.subs && !me.sub) block = `Subscribers only · subscribe on ${site} to chat`;
-    else if (m.followers != null && !me.follower) block = `Followers only · follow on ${site}${m.followers ? ` for ${modeDur(m.followers * 60)}` : ''} to chat`;
-    else if (left > 0) block = `Followers only · you can chat in ${modeDur(Math.ceil(left / 1000))}`;
+    if (m.subs && !me.sub){ block = `Subscribers only · subscribe on ${site} to chat`; blockK = 'subs'; }
+    else if (m.followers != null && !me.follower){ block = `Followers only · follow on ${site}${m.followers ? ` for ${modeDur(m.followers * 60)}` : ''} to chat`; blockK = 'followers'; }
+    else if (left > 0){ block = `Followers only · you can chat in ${modeDur(Math.ceil(left / 1000))}`; blockK = 'followers'; }
   }
   const wait = !free && st.until ? Math.max(0, Math.ceil((st.until - Date.now()) / 1000)) : 0;
-  return { chips, block, wait, free, slow: m.slow || 0, me };
+  return { chips, block, blockK, wait, free, slow: m.slow || 0, me };
 }
 // The bar above the box: the send site's modes (yours to ignore as a mod), slow mode's countdown, or why you can't chat
 function renderModes(view, w){
@@ -185,7 +185,7 @@ function renderModes(view, w){
     r.block ? element('span', 'all-mb', element('i', { html: icon.lock }), element('span', null, r.block))
       : r.wait ? element('span', { class: 'all-mw', style: { '--p': String(r.wait / Math.max(1, r.slow)) } }, element('i', { html: TIMER }), element('span', null, 'Slow mode · you can send in ', element('b', null, `${r.wait}s`)))
       : '',
-    ...r.chips.filter(c => !(r.wait && c.k === 'slow')).map(c => element('span', { class: 'all-mc all-mc-' + c.k, title: c.tip }, c.t)),   // (counting down: that says it)
+    ...r.chips.filter(c => !(r.wait && c.k === 'slow') && c.k !== r.blockK).map(c => element('span', { class: 'all-mc all-mc-' + c.k, title: c.tip }, c.t)),   // (counting down, or why you can't chat: that says it)
     why && element('span', { class: 'all-mfree', title: why }, element('i', { html: icon.check }), r.me && r.me.host ? 'yours' : 'exempt')].filter(Boolean));
   if (r.wait){ clearTimeout(view.modeT); view.modeT = setTimeout(() => { if (view.el.isConnected){ renderModes(view, w); syncSendB(view, w); } }, 250); }
 }
@@ -659,7 +659,7 @@ function renderCmp(view, w){
   // Settings › Chat › Channel name in chat boxes: its text, as the sites' boxes say it (the picker beside it shows the site)
   // (its modes say why you can't chat there: that, instead of the name)
   const rules = ch ? chatRules(ch) : null;
-  view.input.placeholder = !p ? 'No chat to send on right now' : rules.block || chatBoxName(ch) || `Send a message on ${PLAT_NAME[p]}`;
+  view.input.placeholder = !p ? 'No chat to send on right now' : (rules.block ? `Can’t send on ${PLAT_NAME[p]}` : '') || chatBoxName(ch) || `Send a message on ${PLAT_NAME[p]}`;
   view.input.disabled = !p || !!rules.block;
   view.el.classList.toggle('all-blocked', !!(rules && rules.block));
   renderModes(view, w);
