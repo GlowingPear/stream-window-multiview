@@ -18,7 +18,7 @@ import { runIn } from '../windows/view.js';
    (what it still needs), the ones it doesn't know, and the ones it shows. Export saves them without names, ids or
    words, to hand over for fixing ALL's readers (chat/feed-parse.js) and testing them with what the sites really send. */
 let samplesOn = true;
-const evs = { open: '' };       // the kind whose samples are open ("<site> <kind>")
+const evs = { open: '', site: '' };   // open: the kind whose samples are open ("<site> <kind>"); site: only that site's (its pill)
 const EV_SITES = ['kick', 'twitch', 'youtube'];
 const EV_SAMP_JS = on => `window.__kmvFeed && (window.__kmvFeed.samp = ${!!on})`;
 
@@ -50,8 +50,9 @@ async function renderEvents(){
     Object.entries(got).forEach(([kind, e]) => { const q = !known[s][kind] && feedParse.QUIET[s].test(kind); rows.push({ s, kind, e, quiet: q, does: known[s][kind] || (q ? 'the connection’s own' : '') }); });
     Object.entries(known[s]).forEach(([kind, does]) => { if (!got[kind]) needed.push({ s, kind, does }); });
   });
-  const unknown = rows.filter(r => !r.does).sort((a, b) => b.e.first - a.e.first), shown = rows.filter(r => r.does).sort((a, b) => a.quiet - b.quiet || b.e.n - a.e.n);
-  const tab = $('#devTabs [data-t=events] .dv-n'); if (tab) tab.textContent = unknown.length ? `(${unknown.length} new)` : '';
+  const allNew = rows.filter(r => !r.does).length, only = r => !evs.site || r.s === evs.site;
+  const unknown = rows.filter(r => !r.does && only(r)).sort((a, b) => b.e.first - a.e.first), shown = rows.filter(r => r.does && only(r)).sort((a, b) => a.quiet - b.quiet || b.e.n - a.e.n);
+  const tab = $('#devTabs [data-t=events] .dv-n'); if (tab) tab.textContent = allNew ? `(${allNew} new)` : '';
   const site = s => element('span', 'dv-site dv-' + s, PLAT_NAME[s]);
   const row = r => {
     const key = r.s + ' ' + r.kind, open = evs.open === key, fresh = !r.does && Date.now() - r.e.first < 86400000;
@@ -69,12 +70,14 @@ async function renderEvents(){
       element('div', 'st-row ev-on', element('span', 'st-t', 'Collect chat events', element('small', null, 'Every chat you have open, read-only. Each kind is counted, with its last 3 samples, kept on this computer.')),
         element('input', { type: 'checkbox', class: 'st-sw', id: 'evOn', checked: samplesOn, onchange: e => setSamples(e.target.checked) })),
       element('div', 'ev-acts',
-        element('div', 'ev-stats', ...EV_SITES.map(s => { const k = Object.values(d[s] || {}); return element('span', 'ev-stat', site(s), element('b', null, String(k.length)), ' kinds · ', element('b', null, evCount(k.reduce((a, e) => a + e.n, 0))), ' heard'); })),
+        element('div', { class: 'ev-stats' + (evs.site ? ' filtered' : ''), role: 'group', 'aria-label': 'Show one site' }, ...EV_SITES.map(s => { const k = Object.values(d[s] || {}), on = evs.site === s;
+          return element('button', { type: 'button', class: 'ev-stat' + (on ? ' on' : ''), 'aria-pressed': String(on), title: on ? 'Show every site again' : `Only ${PLAT_NAME[s]}`, dataset: { cmd: 'dev.eventsSite' },
+            onclick: () => { evs.site = on ? '' : s; evs.open = ''; renderEvents(); } }, site(s), element('b', null, String(k.length)), ' kinds · ', element('b', null, evCount(k.reduce((a, e) => a + e.n, 0))), ' heard'); })),
         element('button', { type: 'button', class: 'btn primary', id: 'evExport', dataset: { cmd: 'dev.eventsExport' }, title: 'Saves them as a file, with names, ids and the words of messages replaced', onclick: exportEvents }, 'Export…'),
         element('button', { type: 'button', class: 'btn', id: 'evClear', dataset: { cmd: 'dev.eventsClear' }, onclick: clearEvents }, 'Clear'))),
     section('ev-unknown', 'Unknown', 'Sent by the sites, but ALL doesn\'t know them: the newest first', unknown.length ? unknown.flatMap(row) : [element('div', 'dv-empty', samplesOn ? 'Nothing new yet. They show here as the chats you have open hear them.' : 'Collecting is off.')]),
-    section('ev-need', 'Still needed', 'ALL knows these, but none has come yet: they show here once one does', needed.length
-      ? [element('div', 'ev-chips', ...needed.map(n => element('span', { class: 'ev-chip', title: `${PLAT_NAME[n.s]}: ${n.does}` }, site(n.s), element('span', 'ev-k', n.kind), element('span', 'ev-does', n.does))))]
+    section('ev-need', 'Still needed', 'ALL knows these, but none has come yet: they show here once one does', needed.some(only)
+      ? [element('div', 'ev-chips', ...needed.filter(only).map(n => element('span', { class: 'ev-chip', title: `${PLAT_NAME[n.s]}: ${n.does}` }, site(n.s), element('span', 'ev-k', n.kind), element('span', 'ev-does', n.does))))]
       : [element('div', 'dv-empty', 'Every kind ALL knows has come at least once.')]),
     section('ev-shown', 'In ALL', 'What it already shows, the most heard first', shown.length ? shown.flatMap(row) : [element('div', 'dv-empty', 'None heard yet.')]));
 }

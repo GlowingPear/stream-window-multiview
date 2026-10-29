@@ -192,6 +192,14 @@ test('Chat events: what the chats\' readers send, sorted by what ALL does with i
   const needed = await texts('#devList .ev-need .ev-chip');
   assert.ok(needed.includes('KickStreamHostEventa raid') && needed.includes('TwitchUSERNOTICE:raida raid') && !needed.some(n => /ChatMessageEventa message/.test(n)), needed.join(' | '));
   assert.match(await a.win.textContent('#devList .ev-stats'), /Kick2 kinds · 42 heard/);
+  // a site's pill: only that site's (the others dimmed); again: every site
+  await a.win.click('#devList .ev-stat:has(.dv-twitch)');
+  assert.equal(await a.win.getAttribute('#devList .ev-stat:has(.dv-twitch)', 'aria-pressed'), 'true');
+  assert.deepEqual(await texts('#devList .ev-unknown .ev-row, #devList .ev-shown .ev-row'), [], 'no Kick rows');
+  assert.ok((await texts('#devList .ev-need .ev-chip')).every(n => n.startsWith('Twitch')));
+  assert.match(await a.win.textContent('#devTabs [data-t=events]'), /\(1 new\)/, 'the tab still counts every site');
+  await a.win.click('#devList .ev-stat:has(.dv-twitch)');
+  assert.equal((await texts('#devList .ev-shown .ev-row')).length, 1);
   // a row: its samples, laid out, as they came (here, with the names: they stay on this computer)
   await a.win.click('#devList .ev-unknown .ev-row');
   assert.match(await a.win.textContent('#devList .ev-samples pre'), /"username": "RealPerson42"/);
