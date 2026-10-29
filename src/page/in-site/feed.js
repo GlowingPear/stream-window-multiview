@@ -67,7 +67,8 @@ function feedAgent(as){
       if (data.includes(' #')) data.split('\r\n').forEach(l => { if (TW.test(l)) push(l); });
       else if (data.startsWith('{') && /\\"((un)?pin-message|updated_room|moderation_action)\\"/.test(data)) push(data);   // (its other connection: a message pinned or taken down, the chat's modes, what a moderator did)
     }
-    else if (site === 'kick' && data.startsWith('{"push"') && KICK.test(data)) push(data);
+    // (Kick's connection sends what comes together in one message, a line each: a busy chat's messages often do)
+    else if (site === 'kick') data.split('\n').forEach(l => { if (l.startsWith('{"push"') && KICK.test(l)) push(l); });
   }
   const seen = new WeakSet(), d = Object.getOwnPropertyDescriptor(MessageEvent.prototype, 'data');
   if (d && d.get) Object.defineProperty(MessageEvent.prototype, 'data', { configurable: true, enumerable: d.enumerable, get(){
