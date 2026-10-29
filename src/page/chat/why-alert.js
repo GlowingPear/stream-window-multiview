@@ -69,10 +69,11 @@ const whyText = (w, r, res) => [`How this message was read · ${chLabel(w.channe
 
 let whyDlg = null;
 const closeWhy = () => { if (whyDlg){ whyDlg.remove(); whyDlg = null; } };
-async function showWhy(w){
+// js: how to ask the chat's page about the message (the one right-clicked there, or from ALL the one with its id)
+async function showWhy(w, js = 'window.__kmvMention && window.__kmvMsg ? window.__kmvMention.explain(window.__kmvMsg.last()) : null'){
   if (!w || !w.view) return;
   let r = null;
-  try { r = await askIn(w.view, 'window.__kmvMention && window.__kmvMsg ? window.__kmvMention.explain(window.__kmvMsg.last()) : null'); } catch {}
+  try { r = await askIn(w.view, js); } catch {}
   const res = whyChecks(w, r);
   closeWhy();
   const mark = ok => element('span', 'why-m why-' + (ok === true ? 'y' : ok === false ? 'x' : 'n'), ok === true ? '✓' : ok === false ? '✗' : '–');
@@ -98,4 +99,4 @@ function init(){
   window.showWhy = showWhy; window.whyChecks = whyChecks;   // for the tests
 }
 
-export { init };
+export { init, showWhy };

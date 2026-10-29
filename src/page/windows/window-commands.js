@@ -1,17 +1,19 @@
 import { revealWin } from '../alerts/spam-alerts.js';
-import { allOn, allTabFor, setAll } from '../chat/all-chat.js';
+import { allOn, allTabFor, copyChatHtml, setAll, translateSite } from '../chat/all-chat.js';
 import { blowUp, blownWin, putBack } from '../chat/blow-up.js';
 import { makeClip } from '../chat/kick-clip.js';
 import { openPollForm } from '../chat/kick-poll.js';
 import { openPredictionForm } from '../chat/kick-prediction.js';
-import { translateChat } from '../chat/translate.js';
-import { ROLE, colsMode, shownWins } from '../core.js';
+import { autoTrFor } from '../chat/translate.js';
+import { showWhy } from '../chat/why-alert.js';
+import { ROLE, colsMode, shownWins, wins } from '../core.js';
 import { isRail, showRailChat } from '../layout/chat-rail.js';
 import { isStage, putOnStage } from '../layout/chat-stage.js';
 import { buildCols } from '../layout/columns.js';
 import { colKey } from '../layout/layouts.js';
 import { fsMute, removeChannel, renderSwitcher } from '../layout/switcher.js';
 import { infoFor } from '../panels/channels/channels.js';
+import { devOn } from '../panels/developer/developer.js';
 import { openLinkCard } from '../panels/linked/link-card.js';
 import { save } from '../persistence.js';
 import { linkedOn, nameOf, streamerOf } from '../platforms/linked.js';
@@ -91,7 +93,18 @@ function winActions(w){
   if (w.kind === 'stream' || w.kind === 'capture') add('remove', 'Remove', () => removeChannel(colKey(w)), { icon: 'close', sub: w.kind === 'stream' ? 'The stream and its chat' : 'This window' });
   if (w.kind === 'chat'){
     if (ROLE === 'main') add('blow', w === blownWin() ? 'Put it back' : 'Blow it up', () => { if (w === blownWin()) putBack(); else blowUp(w); }, { icon: 'zoomin', sub: 'Big in the middle of the screen, with bigger text' });
-    add('translate', 'Translate this chat', () => translateChat(w, { do: 'translate' }), { icon: 'chat', sub: 'New messages in your language', words: ['language'] });
+    // what its right-click menu does to the whole chat; in ALL, to each site's chat there (and its lines in ALL)
+    const all = allOn(w), chs = all ? tabChannels(w).filter(ch => wins.some(o => o.kind === 'chat' && o.channel === ch)) : [w.channel];
+    chs.forEach(ch => {
+      const cw = wins.find(o => o.kind === 'chat' && o.channel === ch) || w, of = all ? `${PLAT_NAME[platOf(ch)]}'s chat` : 'this chat', k = all ? ':' + ch : '';
+      add('translate' + k, `Translate ${of}`, () => translateSite(ch, 'chat'), { icon: 'chat', sub: 'Its messages in your language', words: ['language'] });
+      add('translateAuto' + k, autoTrFor(ch) ? `Stop translating ${of}'s new messages` : `Translate ${of}'s new messages too`, () => translateSite(ch, 'auto', !autoTrFor(ch)), { icon: 'chat', words: ['language', 'translate'] });
+      add('translateStop' + k, `Stop translating ${of}`, () => translateSite(ch, 'stop'), { icon: 'chat', sub: 'Its messages as they were sent', words: ['language', 'original'] });
+      if (devOn){
+        add('chatHtml' + k, `Copy ${of}'s HTML`, () => copyChatHtml(cw), { icon: 'code', sub: 'Developer tools: its last 30 messages, for an issue', words: ['developer'] });
+        add('why' + k, `Why didn't ${of}'s last message alert?`, () => showWhy(cw), { icon: 'alert', sub: 'Developer tools: how mention alerts read it', words: ['developer', 'mention'] });
+      }
+    });
     if (isKickMod(w)){
       add('clip', 'Make a clip', () => makeClip(w), { icon: 'capture', sub: 'Kick: the last moments of the stream, as /clip does', words: ['/clip'] });
       add('poll', 'Start a poll', () => openPollForm(w), { icon: 'chatview', sub: 'Kick: as /poll does', words: ['/poll', 'vote'] });

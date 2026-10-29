@@ -271,6 +271,7 @@ function openStreamsWindow(specs = []) {
   if (target || st?.maximized || (!st && others[0])) streamsWin.maximize();
   if (st?.fullscreen) streamsWin.setFullScreen(true);
   streamsWin.loadFile(path.join(SRC, 'index.html'), { query: { role: 'streams' } });
+  editMenuFor(streamsWin);
   streamsWin.webContents.on('will-navigate', e => e.preventDefault());
   streamsWin.webContents.on('did-finish-load', () => { streamsReady = true; flushStreams(); });
   streamsWin.on('close', () => saveState(streamsWin, 'streams-window-state'));
@@ -446,6 +447,23 @@ function keepOnSites(wc) {
 // Opens an address in your browser: http and https only.
 const openExternal = url => { const u = guard.webUrl(url); if (u) shell.openExternal(u).catch(() => {}); };
 
+// A text box in the app's own page (ALL's box, the Channels box, Settings' boxes): its right-click menu is the page's
+// own (page/shared/edit-menu.js). This says what's under the pointer (a misspelled word and Chromium's suggestions,
+// what can be done) and does what's chosen there.
+function editMenuFor(win) {
+  win.webContents.on('context-menu', (_e, p) => {
+    if (!p.isEditable) return;
+    const f = p.editFlags || {};
+    win.webContents.send('page:edit-menu', { x: p.x, y: p.y, word: p.misspelledWord || '', sugs: (p.dictionarySuggestions || []).slice(0, 5),
+      can: { undo: !!f.canUndo, redo: !!f.canRedo, cut: !!f.canCut, copy: !!f.canCopy, paste: !!f.canPaste, selectAll: f.canSelectAll !== false } });
+  });
+}
+appIpc.on('page:edit', (e, a) => {
+  const wc = e.sender; if (!a || typeof a.do !== 'string') return;
+  if (a.do === 'replaceMisspelling' && typeof a.word === 'string') wc.replaceMisspelling(a.word);
+  else if (a.do === 'addWord' && typeof a.word === 'string') wc.session.addWordToSpellCheckerDictionary(a.word);
+  else if (['undo', 'redo', 'cut', 'copy', 'paste', 'selectAll'].includes(a.do)) wc[a.do]();
+});
 function createMain() {
   const st = loadState();
   mainWin = new BrowserWindow({
@@ -457,6 +475,7 @@ function createMain() {
   if (st?.maximized) mainWin.maximize();
   mainWin.loadFile(path.join(SRC, 'index.html'));
   mainWin.webContents.on('will-navigate', e => e.preventDefault());
+  editMenuFor(mainWin);
   mainWin.on('close', () => {
     saveState(mainWin);
     // Closing the main window quits the app; leave the streams popped out for next launch.
