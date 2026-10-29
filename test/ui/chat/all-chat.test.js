@@ -879,7 +879,9 @@ test('ALL: your line while it sends shows the emotes you picked as their picture
   const KF = (data) => JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: 'App\\Events\\ChatMessageEvent', data: JSON.stringify(data) } } } });
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF({ id: 'k9', content: 'that clutch [emote:9:KEKW] so KEKWgood', type: 'message', sender: { id: 2, username: 'MeKick', slug: 'mekick', identity: { badges: [] } } })] });
   assert.deepEqual(await shows(), []);
-  assert.deepEqual(await lines(page), ['al-m | KMeKick: that clutch KEKW so KEKWgood'], '(Kick\'s emote picture can\'t load here: its name)');
+  // (Kick's emote picture can't load here: its name, once it has failed; the picture, by its name, until then)
+  assert.deepEqual(await page.$$eval('#stage .win.chat:not(.tab-hidden) .all-list > .al-m', l => l.map(e => { const c = e.cloneNode(true); c.querySelectorAll('img.al-e').forEach(i => i.replaceWith(i.alt)); return c.textContent.replace(/\s+/g, ' ').trim(); })),
+    ['KMeKick: that clutch KEKW so KEKWgood']);
   // not sent: still its picture; Edit puts the text and the emote back in the box
   await page.evaluate(() => { window.allChat.sender.send = async () => 'not-sent'; });
   await pick(); await page.keyboard.type('again');
