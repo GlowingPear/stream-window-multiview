@@ -126,3 +126,41 @@ test('the reader on Twitch: its chat lines, and a pin or its taking down from it
   assert.equal(heard[0].s, 'twitch');
   assert.deepEqual(heard[0].raw.map(r => r.startsWith('{') ? JSON.parse(JSON.parse(r).notification.pubsub).type : r), ['@id=a :x!x@x PRIVMSG #q :hi', 'pin-message', 'unpin-message']);
 });
+
+test('a pin already up (pinAgent): Kick\'s chat history, Twitch\'s pinnedChatMessages, YouTube\'s first data; each as the live pin, which the parser reads', async t => {
+  const page = await openApp(t);
+  const got = await page.evaluate(async () => {
+    const { feedParse } = await import('./page/chat/feed-parse.js');
+    const asked = [];
+    const answer = (url, body) => {
+      asked.push(url + (body ? ' ' + JSON.parse(body).query.replace(/\s+/g, ' ').slice(0, 44).trim() : ''));
+      if (/\/api\/v2\/channels\/quietkoala$/.test(url)) return { id: 77, chatroom: { id: 5 } };
+      if (/web\.kick\.com\/api\/v1\/chat\/77\/history$/.test(url)) return { data: { messages: [], pinned_message: { message: { id: 'k1', content: 'scrims at 8pm [emote:39:GG]', type: 'message', metadata: '{"message_ref":"1"}', created_at: '2026-10-29T01:10:29Z',
+        sender: { id: 2, slug: 'quietkoala', username: 'QuietKoala', identity: { color: '#FEA0CF', badges: [{ type: 'broadcaster', text: 'Broadcaster' }] } } }, pinned_by: { username: 'nightowl_mod' } } } };
+      if (/gql\.twitch\.tv/.test(url)) return { data: { user: { channel: { pinnedChatMessages: { edges: [{ node: { id: 'tp1', pinnedBy: { displayName: 'NightOwl' },
+        pinnedMessage: { id: 'tm1', sentAt: '2026-10-29T01:14:28Z', content: { text: 'giveaway Kappa', fragments: [{ text: 'giveaway ', content: null }, { text: 'Kappa', content: { __typename: 'Emote', id: '25' } }] },
+          sender: { id: '9', login: 'quietkoala', displayName: 'QuietKoala', chatColor: '#FF69B4', displayBadges: [{ setID: 'broadcaster', version: '1' }] } } } }] } } } } };
+      return {};
+    };
+    const was = window.fetch;
+    window.fetch = async (url, o = {}) => ({ json: async () => answer(String(url), o.body) });
+    window.ytInitialData = { contents: { liveChatRenderer: { actions: [{ addChatItemAction: {} }, { clickTrackingParams: 'x', addBannerToLiveChatCommand: { bannerRenderer: { liveChatBannerRenderer: { actionId: 'b1',
+      contents: { liveChatTextMessageRenderer: { id: 'y9', authorName: { simpleText: '@MikaR' }, message: { runs: [{ text: 'clip of the ace' }] } } } } } } }] } } };
+    const out = {};
+    for (const s of ['kick', 'twitch', 'youtube']){ const b = await window.pinAgent(s, 'quietkoala'); out[s] = feedParse.parseFeed(b).map(m => ({ kind: m.kind, id: m.id, by: m.by || '', sender: m.msg.sender, badges: m.msg.badges, parts: m.msg.parts.map(p => p.text || '[' + p.name + ']') })); }
+    // none up, or a site that won't answer: nothing
+    window.fetch = async url => ({ json: async () => (/channels\/quietkoala$/.test(url) ? { id: 77 } : /history/.test(url) ? { data: { pinned_message: null } } : { data: { user: { channel: { pinnedChatMessages: { edges: [] } } } } }) });
+    window.ytInitialData = { contents: { liveChatRenderer: { actions: [] } } };
+    out.none = [await window.pinAgent('kick', 'quietkoala'), await window.pinAgent('twitch', 'quietkoala'), await window.pinAgent('youtube')];
+    window.fetch = async () => { throw new Error('offline'); };
+    out.failed = [await window.pinAgent('kick', 'quietkoala'), await window.pinAgent('twitch', 'quietkoala'), await window.pinAgent('kick', '')];
+    window.fetch = was; delete window.ytInitialData;
+    return { out, asked };
+  });
+  assert.deepEqual(got.out.kick, [{ kind: 'pin', id: 'k1', by: 'nightowl_mod', sender: 'QuietKoala', badges: ['host'], parts: ['scrims at 8pm ', '[GG]'] }]);
+  assert.deepEqual(got.out.twitch, [{ kind: 'pin', id: 'tp1', by: 'NightOwl', sender: 'QuietKoala', badges: ['host'], parts: ['giveaway ', '[Kappa]'] }]);
+  assert.deepEqual(got.out.youtube, [{ kind: 'pin', id: 'b1', by: '', sender: '@MikaR', badges: [], parts: ['clip of the ace'] }]);
+  assert.deepEqual(got.out.none, [null, null, null]);
+  assert.deepEqual(got.out.failed, [null, null, null]);
+  assert.deepEqual(got.asked, ['/api/v2/channels/quietkoala', 'https://web.kick.com/api/v1/chat/77/history', 'https://gql.twitch.tv/gql query { user(login: "quietkoala") { channel']);
+});

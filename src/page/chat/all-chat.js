@@ -2,9 +2,10 @@ import { alerts } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { SMILEY, emoteCache, openEmotePicker, pickEmote, renderEmoteList, suggestEmote, withEmotes } from './all-emotes.js';
 import { chatBoxName } from './chat-name.js';
+import { chatZoom } from './chat-zoom.js';
 import { feedParse } from './feed-parse.js';
 import { wins } from '../core.js';
-import { feedAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
+import { feedAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
 import { bellVars, myName } from '../panels/bell/bell.js';
@@ -61,14 +62,14 @@ const feedOf = s => { let f = feeds.get(s.id); if (!f){ f = { msgs: [], byId: ne
 // Your name on that site: messages to it are marked
 const meOn = site => (site === 'kick' ? myName : site === 'twitch' ? bellVars.myTwitch : '').toLowerCase();
 const appBots = ch => [...(alerts.mention.bots || SmvSpam.BOTS), ...streamerBots(ch)];
-function ingest(w, json){
+function ingest(w, json, quiet = false){
   const s = streamerOf(w.channel); if (!s) return;
   let batch; try { batch = JSON.parse(json); } catch { return; }
   const f = feedOf(s), view = viewFor(s);
   feedParse.parseFeed(batch).forEach(m => {
     if (m.kind === 'delete' || m.kind === 'clear' || m.kind === 'clearall') return removed(f, view, m, w.channel);
     if (m.kind === 'unban') return unbanned(f, view, m, w.channel);
-    if (m.kind === 'pin' || m.kind === 'unpin') return setPin(f, s, w.channel, m);
+    if (m.kind === 'pin' || m.kind === 'unpin') return setPin(f, s, w.channel, m, quiet);
     m.ch = w.channel;
     const me = meOn(m.site);
     if (me && m.reply && m.reply.login === me) m.toMe = 'reply';
@@ -112,40 +113,51 @@ function unbanned(f, view, d, ch){
   f.msgs.push(m); if (view) addLine(view, m);
 }
 
-/* ---- pins: one strip, however many sites have one ---- */
-// A site's pin (each site has one at a time), or its pin taken down. A new one shows, also if the others were hidden.
-function setPin(f, s, ch, d){
+/* ---- pins: the pill (📌 and how many) shows and hides one compact strip, however many sites have one ---- */
+// A site's pin (each site has one at a time), or its pin taken down. A new one makes the pill ping; one already up when
+// the chat opens (quiet: read by pinAgent) goes in without.
+function setPin(f, s, ch, d, quiet = false){
   if (d.kind === 'unpin' && d.id && !f.pins.some(p => p.site === d.site && p.id === d.id)) return;   // (another pin's)
+  if (d.kind === 'pin' && quiet && f.pins.some(p => p.site === d.site && p.id === d.id)) return;   // (heard already)
   f.pins = f.pins.filter(p => p.site !== d.site);
-  if (d.kind === 'pin'){ d.msg.ch = ch; f.pins.unshift({ site: d.site, ch, id: d.id, msg: d.msg, t: d.t, hidden: false }); }
-  const view = viewFor(s); if (view){ if (d.kind === 'pin') view.pinAt = d.site; renderPins(view); }
+  if (d.kind === 'pin'){ d.msg.ch = ch; f.pins.unshift({ site: d.site, ch, id: d.id, msg: d.msg, t: d.t, by: d.by || '' }); }
+  const view = viewFor(s); if (!view) return;
+  if (d.kind === 'pin') view.pinAt = d.site;
+  renderPins(view);
+  if (d.kind === 'pin' && !quiet) pingPill(view, d.site);
+}
+// The pill's ping: it bounces and glows in the site's colour for a few seconds (a new pin, yours or a moderator's)
+function pingPill(view, site){
+  const c = view.pinChip;
+  c.classList.remove('ping', 'ping-kick', 'ping-twitch', 'ping-youtube'); void c.offsetWidth;   // (again from the start)
+  c.classList.add('ping', 'ping-' + site);
+  clearTimeout(c.pingT); c.pingT = setTimeout(() => c.classList.remove('ping', 'ping-' + site), 3200);
 }
 const pinAgo = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
 function renderPins(view){
-  const f = feedOf(view.s), shown = f.pins.filter(p => !p.hidden), n = shown.length;
-  view.pinChip.hidden = !f.pins.length || !!n;
-  view.pinChip.replaceChildren(element('i', { html: icon.pin }), String(f.pins.length));
-  view.pins.hidden = !n;
-  if (!n){ view.pinsOpen = false; return; }
+  const f = feedOf(view.s), n = f.pins.length;
+  view.pinChip.hidden = !n;
+  view.pinChip.replaceChildren(element('i', { html: icon.pin }), String(n));
+  view.pinChip.setAttribute('aria-pressed', String(!!view.pinsShown && !!n));
+  view.pinChip.title = view.pinsShown ? 'Hide the pinned messages' : `Show the pinned message${n > 1 ? 's' : ''}`;
+  view.pins.hidden = !n || !view.pinsShown;
   if (n < 2) view.pinsOpen = false;
-  const hide = p => element('button', { type: 'button', class: 'all-pin-x', title: 'Hide here (it stays pinned on the site)', 'aria-label': 'Hide this pin', html: icon.close, dataset: { cmd: 'all.pinHide' },
-    onclick: () => { p.hidden = true; renderPins(view); } });
-  const body = (p, sub) => element('div', 'all-pin-b', element('div', 'all-pin-t', element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0]),
-    element('b', { style: { color: nameColor(p.msg) } }, p.msg.sender), ': ', ...partsEl(p.msg.parts)), element('div', 'all-pin-s', sub));
-  const PIN_IC = () => element('i', { class: 'all-pin-ic', html: icon.pin });
+  if (view.pins.hidden) return;
+  // one line each: site, name, the message (the rest in its tooltip), and when (or 1 of 2)
+  const row = (p, sub, ...end) => {
+    const text = p.msg.parts.map(x => x.text || x.name).join('');
+    return element('div', { class: 'all-pin-row', title: `${p.msg.sender}: ${text}${p.by ? `\nPinned by ${p.by}` : ''}` }, element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0]),
+      element('div', 'all-pin-t', element('b', { style: { color: nameColor(p.msg) } }, p.msg.sender), ' ', ...partsEl(p.msg.parts)), element('small', 'all-pin-s', sub), ...end);
+  };
   if (view.pinsOpen){
-    view.pins.replaceChildren(element('button', { type: 'button', class: 'all-pin-h', dataset: { cmd: 'all.pinsOpen' }, 'aria-expanded': 'true', onclick: () => { view.pinsOpen = false; renderPins(view); } },
-      `${n} pinned`, element('span', null, '▴')),
-      ...shown.map(p => element('div', 'all-pin-row', PIN_IC(), body(p, `${PLAT_NAME[p.site]} · ${pinAgo(p.t)}`), hide(p))));
+    view.pins.replaceChildren(...f.pins.map((p, i) => row(p, pinAgo(p.t), !i && element('button', { type: 'button', class: 'all-pin-open', title: 'Only the newest', 'aria-label': 'Only the newest', 'aria-expanded': 'true', html: CHEVRON, dataset: { cmd: 'all.pinsOpen' }, onclick: () => { view.pinsOpen = false; renderPins(view); } }))));
     return;
   }
-  const cur = shown.find(p => p.site === view.pinAt) || shown[0], i = shown.indexOf(cur);
-  view.pins.replaceChildren(element('div', 'all-pin-row', PIN_IC(),
-    body(cur, `Pinned on ${PLAT_NAME[cur.site]}${n > 1 ? ` · ${i + 1} of ${n}` : ''}${n > 1 && !i ? ' · newest' : ''}`),
-    n > 1 && element('span', 'all-pin-sw', ...shown.map(p => element('button', { type: 'button', class: 'pi pi-' + p.site + (p === cur ? ' on' : ''), title: `${PLAT_NAME[p.site]}'s pin`, 'aria-pressed': String(p === cur), dataset: { cmd: 'all.pinSite' },
+  const cur = f.pins.find(p => p.site === view.pinAt) || f.pins[0];
+  view.pins.replaceChildren(row(cur, pinAgo(cur.t),
+    n > 1 && element('span', 'all-pin-sw', ...f.pins.map(p => element('button', { type: 'button', class: 'pi pi-' + p.site + (p === cur ? ' on' : ''), title: `${PLAT_NAME[p.site]}'s pin`, 'aria-pressed': String(p === cur), dataset: { cmd: 'all.pinSite' },
       onclick: () => { view.pinAt = p.site; renderPins(view); } }, PLAT_NAME[p.site][0]))),
-    n > 1 && element('button', { type: 'button', class: 'all-pin-open', title: 'All of them', 'aria-expanded': 'false', dataset: { cmd: 'all.pinsOpen' }, onclick: () => { view.pinsOpen = true; renderPins(view); } }, '▾'),
-    hide(cur)));
+    n > 1 && element('button', { type: 'button', class: 'all-pin-open', title: `All ${n}`, 'aria-label': `All ${n} pins`, 'aria-expanded': 'false', html: CHEVRON, dataset: { cmd: 'all.pinsOpen' }, onclick: () => { view.pinsOpen = true; renderPins(view); } })));
 }
 
 /* ---- the view ---- */
@@ -228,9 +240,8 @@ function buildView(w){
   const empty = element('div', 'all-empty');
   const more = element('button', { type: 'button', class: 'all-more', hidden: true, dataset: { cmd: 'all.latest' }, onclick: () => { list.scrollTop = list.scrollHeight; more.hidden = true; } }, 'New messages ↓');
   list.addEventListener('scroll', () => { if (list.scrollHeight - list.scrollTop - list.clientHeight < 60) more.hidden = true; });
-  const chip = element('button', { type: 'button', class: 'all-chip', dataset: { cmd: 'all.bots' }, 'aria-pressed': String(!botsShown), onclick: () => setBotsShown(!botsShown) });
-  const evChip = element('button', { type: 'button', class: 'all-chip all-evchip', dataset: { cmd: 'all.events' }, title: 'Subs, gifts, raids and Super Chats: one short line, the site\'s own words, or hidden',
-    onclick: () => setEventsMode({ short: 'full', full: 'hidden', hidden: 'short' }[eventsMode]) });
+  const filt = element('button', { type: 'button', class: 'all-filt', 'aria-label': 'What ALL shows', 'aria-haspopup': 'menu', html: FILTER, dataset: { cmd: 'all.filters' } });
+  const fm = element('div', { class: 'pop all-lm all-fm', role: 'menu', 'aria-label': 'What ALL shows', hidden: true });
   const pick = element('button', { type: 'button', class: 'all-pick', dataset: { cmd: 'all.sendSite' }, 'aria-haspopup': 'menu' });
   const input = element('input', { type: 'text', class: 'all-in', autocomplete: 'off', spellcheck: true, maxlength: 500, dataset: { cmd: 'all.message' } });
   const menu = element('div', { class: 'pop all-menu', role: 'menu', hidden: true });
@@ -241,13 +252,15 @@ function buildView(w){
   const emo = element('button', { type: 'button', class: 'all-emo-b', title: 'Emotes', 'aria-label': 'Emotes', 'aria-haspopup': 'dialog', html: SMILEY, dataset: { cmd: 'all.emotes' } });
   const ep = element('div', { class: 'pop all-ep', role: 'dialog', 'aria-label': 'Emotes', hidden: true });
   const pins = element('div', { class: 'all-pins', hidden: true, role: 'region', 'aria-label': 'Pinned messages' });
-  const pinChip = element('button', { type: 'button', class: 'all-pinchip', hidden: true, title: 'Show the pinned messages again', dataset: { cmd: 'all.pinsBack' },
-    onclick: () => { feedOf(s).pins.forEach(p => { p.hidden = false; }); renderPins(view); } });
+  const pinChip = element('button', { type: 'button', class: 'all-pinchip', hidden: true, dataset: { cmd: 'all.pins' },
+    onclick: () => { view.pinsShown = !view.pinsShown; renderPins(view); } });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
-  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, chip, evChip), pins, list, more, empty,
-    element('div', 'all-cmp', bar, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep);
-  const view = { el, list, empty, more, chip, evChip, pins, pinChip, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
+  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, filt), pins, list, more, empty,
+    element('div', 'all-cmp', bar, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm);
+  const view = { el, list, empty, more, filt, fm, pins, pinChip, pinsShown: false, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
+  closeOnOutside(fm, { button: filt });
+  filt.onclick = () => { if (fm.hidden) openFilters(view); else fm.hidden = true; };
   closeOnOutside(ep, { button: emo });
   emo.onclick = () => openEmotePicker(view, w);
   sendB.onclick = () => { sendNow(view, w); input.focus(); };
@@ -272,16 +285,25 @@ function buildView(w){
   });
   input.addEventListener('input', () => { syncSendB(view, w); suggestAt(view, w); if (view.at.hidden || view.atMode === 'emote') suggestEmote(view, w); if (!input.value.trim() && view.lock && (view.lock.kind === 'at' || view.lock.kind === 'emote')) setLock(view, w, null); });
   list.append(...f.msgs.map(lineEl).filter(Boolean));
+  // the chat's text size: Chat text size, times this chat's own (Chat Stage, Chat Rail and Blow up make one bigger, on its view)
+  view.sizeObs = new MutationObserver(() => fitSize(view));
+  view.sizeObs.observe(w.el, { attributes: true, attributeFilter: ['style'], subtree: true });
+  fitSize(view);
   return view;
 }
-// The sites it hears, the bots chip, and what it says while it has nothing yet
+// ALL's text the size of the chat's: Chat text size, times the bigger size Chat Stage, Chat Rail or Blow up give this chat
+function fitSize(view){
+  const own = view.w.view && view.w.view.style ? parseFloat(view.w.view.style.zoom) || 1 : 1;
+  const z = Math.round(chatZoom() * own * 100) / 100, was = view.el.style.zoom;
+  if (String(z === 1 ? '' : z) !== was) view.el.style.zoom = z === 1 ? '' : String(z);
+}
+// The sites it hears, the filter pill, and what it says while it has nothing yet
 function renderTop(view, w){
   const chs = tabChannels(w), heard = chs.filter(ch => frameOf(w).some(o => o.channel === ch && o.kind === 'chat'));
   view.el.querySelector('.all-sites').replaceChildren(...chs.map(ch => element('i', { class: 'pi pi-' + platOf(ch) + (heard.includes(ch) ? '' : ' dim'), title: `${PLAT_NAME[platOf(ch)]}${heard.includes(ch) ? '' : ': offline'}` }, PLAT_NAME[platOf(ch)][0])));
-  view.chip.replaceChildren(element('i', { html: botsShown ? icon.eye : EYE_OFF }), `Bots: ${botsShown ? 'shown' : 'hidden'}`);
-  view.chip.setAttribute('aria-pressed', String(!botsShown));
-  view.evChip.textContent = `Events: ${eventsMode}`;
-  view.evChip.setAttribute('aria-pressed', String(eventsMode !== 'full'));
+  view.filt.title = `What ALL shows · bots ${botsShown ? 'shown' : 'hidden'}, events ${eventsMode}`;
+  view.filt.classList.toggle('set', botsShown || eventsMode !== 'short');   // (a dot: not as it starts)
+  if (!view.fm.hidden) openFilters(view);
   const names = heard.map(ch => PLAT_NAME[platOf(ch)]), off = chs.filter(ch => !heard.includes(ch)).map(ch => PLAT_NAME[platOf(ch)]);
   renderCmp(view, w);
   view.empty.replaceChildren(element('b', null, names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.slice(-1)} chats together` : `${names[0] || 'Their'} chat`),
@@ -482,6 +504,24 @@ function nameClick(m, e){
   e.preventDefault();
   if (ctrl && e.shiftKey) modAct(m, 'ban'); else if (ctrl) modAct(m, 'timeout', lastTimeout()); else modAct(m, 'delete');
 }
+// A menu of ALL's, under (or beside) what opened it, inside ALL (its size: ALL follows the chat's text size)
+function placeAt(view, pop, at, top = null){
+  const z = parseFloat(view.el.style.zoom) || 1, vr = view.el.getBoundingClientRect();
+  const r = at.getBoundingClientRect ? at.getBoundingClientRect() : { left: at.clientX, right: at.clientX, top: at.clientY, bottom: at.clientY };
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  pop.style.left = Math.max(6, Math.min(vr.width / z - w - 6, (r.right - vr.left) / z - w)) + 'px';
+  pop.style.top = (top !== null ? top : Math.max(6, Math.min(vr.height / z - h - 6, (r.bottom - vr.top) / z + 4))) + 'px';
+}
+// The filter pill's menu: bots' messages hidden or shown; events (subs, gifts, raids, Super Chats) short, full or hidden
+function openFilters(view){
+  const seg = (label, sub, opts, cur, set, cmd) => element('div', 'all-fmr', element('div', 'all-fml', element('b', null, label), element('small', null, sub)),
+    element('div', { class: 'all-durs all-seg', role: 'group', 'aria-label': label }, ...opts.map(([v, t]) => element('button', { type: 'button', class: v === cur ? 'on' : '', 'aria-pressed': String(v === cur), dataset: { cmd }, onclick: () => set(v) }, t))));
+  view.fm.replaceChildren(element('div', 'all-mvh', 'Show in ALL'),
+    seg('Bots', 'Their messages, or one line to open', [[false, 'Hidden'], [true, 'Shown']], botsShown, setBotsShown, 'all.bots'),
+    seg('Events', 'Subs, gifts, raids and Super Chats', [['short', 'Short'], ['full', 'Full'], ['hidden', 'Hidden']], eventsMode, setEventsMode, 'all.events'));
+  view.fm.hidden = false;
+  placeAt(view, view.fm, view.filt);
+}
 // ⋯ and the right-click: the line's menu (the mod part only where you're a mod)
 function openLineMenu(m, at){
   const view = viewFor(streamerOf(m.ch)); if (!view) return;
@@ -502,10 +542,7 @@ function openLineMenu(m, at){
     item('Copy message', icon.copy, () => { navigator.clipboard?.writeText(text).then(() => flash('Copied'), () => flash('Couldn\'t copy it')); }, { cmd: 'all.menuCopy' }),
     mod && modUrl(m.ch) && item(`Open ${site} mod view`, icon.mod, () => openModView(m.ch), { cmd: 'all.menuModView' }));
   lm.hidden = false;
-  const vr = view.el.getBoundingClientRect(), r = at.getBoundingClientRect ? at.getBoundingClientRect() : { left: at.clientX, right: at.clientX, top: at.clientY, bottom: at.clientY };
-  const w = lm.offsetWidth, h = lm.offsetHeight;
-  lm.style.left = Math.max(6, Math.min(vr.width - w - 6, r.right - vr.left - w)) + 'px';
-  lm.style.top = Math.max(6, Math.min(vr.height - h - 6, r.bottom - vr.top + 4)) + 'px';
+  placeAt(view, lm, at);
 }
 // The title bar's mod button in ALL: each site's mod view (where you're a mod), or all of them at once
 function openModViews(w, at){
@@ -523,9 +560,7 @@ function openModViews(w, at){
     chs.length > 1 && element('button', { type: 'button', role: 'menuitem', class: 'all-li', dataset: { cmd: 'all.modViewsAll' }, onclick: () => { mv.hidden = true; chs.forEach(openModView); } },
       element('i', { html: icon.mod }), element('span', null, 'Open all'), element('small', null, `${chs.length} windows`)));
   mv.hidden = false;
-  const vr = view.el.getBoundingClientRect(), r = at.getBoundingClientRect();
-  mv.style.left = Math.max(6, Math.min(vr.width - mv.offsetWidth - 6, r.right - vr.left - mv.offsetWidth)) + 'px';
-  mv.style.top = '6px';
+  placeAt(view, mv, at, 6);
 }
 const SHIELD = '<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V6z"/></svg>';
 const TIMER = '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>';
@@ -630,7 +665,7 @@ function syncAll(){
     if (w.kind !== 'chat') return;
     const show = !w.hiddenTab && allOn(w);
     if (show && !w.allView){ w.allView = buildView(w); w.el.querySelector('.body').append(w.allView.el); w.allView.list.scrollTop = w.allView.list.scrollHeight; }
-    if (!show && w.allView){ w.allView.el.remove(); w.allView = null; }
+    if (!show && w.allView){ w.allView.sizeObs.disconnect(); w.allView.el.remove(); w.allView = null; }
     w.el.classList.toggle('all-on', show);
     syncModBtn(w);
     if (show) renderTop(w.allView, w);
@@ -641,11 +676,17 @@ const FEED_ON = on => `window.__kmvFeed && (window.__kmvFeed.on = ${!!on})`;
 function feedOn(w, on){
   if (!w.view || !w.ready || w.feedOn === on) return;
   w.feedOn = on; runIn(w.view, FEED_ON(on));
+  if (on) pinsNow(w, w.view);
 }
 // A chat page loaded (again): its helper, on if ALL shows
-function feedReady(w, view){ runIn(view, `(${feedAgent})();${FEED_ON(allOn(w))}`); w.feedOn = allOn(w); }
+function feedReady(w, view){ runIn(view, `(${feedAgent})();${FEED_ON(allOn(w))}`); w.feedOn = allOn(w); if (w.feedOn) pinsNow(w, view); }
+// A pin already up when ALL starts reading a chat: the sites send pins only as they're made, so it's asked for (quietly)
+function pinsNow(w, view){
+  askIn(view, `(${pinAgent})()`).then(batch => { if (batch && allOn(w)) ingest(w, JSON.stringify(batch), true); }).catch(() => {});
+}
 
-const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7c1.8 0 3.4-.5 4.8-1.3"/></svg>';
+const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+const FILTER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"/></svg>';
 const BADGE_SVG = {
   host: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2"/><path d="M15 11l6-4v10l-6-4z"/></svg>',
   mod: '<svg viewBox="0 0 24 24"><path d="M19 5L9 15M5 15l4 4M7 13l4 4M4 20l2-2" fill="none" stroke-width="2.6" stroke-linecap="round"/></svg>',
@@ -665,15 +706,16 @@ function init(){
   // Esc closes ALL's menus (the line's, Send on's)
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
-    wins.forEach(w => { const v = w.allView; if (!v) return; [v.lm, v.menu, v.mv, v.ep].forEach(m => { if (!m.hidden){ m.hidden = true; e.preventDefault(); } }); });
+    wins.forEach(w => { const v = w.allView; if (!v) return; [v.lm, v.menu, v.mv, v.ep, v.fm].forEach(m => { if (!m.hidden){ m.hidden = true; e.preventDefault(); } }); });
   });
   store.watch(['streamers', 'tabs', 'wins', 'live'], () => syncAll());
   store.watch(['chatName', 'names'], () => wins.forEach(w => { if (w.allView) renderCmp(w.allView, w); }));
   store.watch(['mod'], () => { redrawAll(); wins.forEach(syncModBtn); });
+  store.watch(['chatZoom'], () => wins.forEach(w => { if (w.allView) fitSize(w.allView); }));
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.pinAgent = pinAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
-  window.allChat = { sender, modKnown, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch)); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.allChat = { sender, modKnown, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
 export { allOn, allTabFor, feedReady, init, modViewChs, openModViews, sendSite, setAll, setLock };

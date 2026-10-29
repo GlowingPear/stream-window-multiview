@@ -175,7 +175,7 @@ function parseKick(frame){
   const kickEvent = kickEvents(ev, d);
   if (kickEvent) return kickEvent;
   // a message pinned (the whole message comes with it), or the pin taken down
-  if (ev === 'PinnedMessageCreatedEvent'){ const m = d.message && kickMsg(d.message); return m ? { site: 'kick', kind: 'pin', id: m.id, msg: m, t: Date.now() } : null; }
+  if (ev === 'PinnedMessageCreatedEvent'){ const m = d.message && kickMsg(d.message); return m ? { site: 'kick', kind: 'pin', id: m.id, msg: m, t: Date.now(), by: (d.pinned_by && d.pinned_by.username) || '' } : null; }
   if (ev === 'PinnedMessageDeletedEvent') return { site: 'kick', kind: 'unpin', t: Date.now() };
   if (ev !== 'ChatMessageEvent') return null;
   return kickMsg(d);

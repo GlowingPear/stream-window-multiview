@@ -77,13 +77,18 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
   assert.match((await lines(page))[2], /Nightbot: Follow the socials!Hide/);
   await page.click('.all-list .al-bot >> nth=0 >> .al-show');
   assert.match((await lines(page))[2], /bot message hidden/);
-  // the chip: all bots' messages shown
-  assert.match(await page.textContent('.all-chip'), /Bots: hidden/);
-  await page.click('.all-chip');
-  assert.match(await page.textContent('.all-chip'), /Bots: shown/);
+  // the filter pill's menu: all bots' messages shown
+  await page.click('.all-filt');
+  const seg = name => page.$$eval(`.all-fm [aria-label="${name}"] button`, l => l.map(b => b.textContent + (b.classList.contains('on') ? '*' : '')));
+  assert.deepEqual(await seg('Bots'), ['Hidden*', 'Shown']);
+  await page.click('.all-fm [aria-label="Bots"] >> text=Shown');
+  assert.deepEqual(await seg('Bots'), ['Hidden', 'Shown*'], 'the menu stays open, showing the choice');
+  assert.match(await page.getAttribute('.all-filt', 'title'), /bots shown/);
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.allBots')), 'shown');
   assert.match((await lines(page))[3], /koala_helper: you have 4,200 pointsTO YOU$/);
-  await page.click('.all-chip');
+  await page.click('.all-fm [aria-label="Bots"] >> text=Hidden');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.isVisible('.all-fm'), false, 'Esc closes it');
   // deleted: kept, struck, with why; a timeout or ban marks their lines, and a line says what was done (and by whom, where the site says)
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('MessageDeletedEvent', { id: 'z', message: { id: 'k9' }, aiModerated: true, violatedRules: ['bullying'] })] });
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'ban-duration': '600' }, ':tmi.twitch.tv CLEARCHAT #quietkoala :loudmouth99'), TW({ 'target-msg-id': 'a' }, ':tmi.twitch.tv CLEARMSG #quietkoala :x')] });
@@ -135,16 +140,20 @@ test('ALL: events are a short line with See it on …; Events: short, full or hi
   assert.deepEqual(await lines(page), ['al-ev | Tbrightwick gifted 5 subsSee it on Twitch ›', 'al-m | Tquietkoala: scrims at 8pmAnnouncement']);
   assert.equal(await page.textContent('.al-ev .al-amt'), '5 subs', 'the amount picked out');
   assert.ok(await page.$eval('.all-list .al-m', l => l.classList.contains('al-ann-green')));
-  const chip = '.all-evchip';
-  assert.equal(await page.textContent(chip), 'Events: short');
-  await page.click(chip);
-  assert.equal(await page.textContent(chip), 'Events: full');
+  await page.click('.all-filt');
+  const ev = v => page.click(`.all-fm [aria-label="Events"] >> text=${v}`);
+  assert.equal(await page.textContent('.all-fm [aria-label="Events"] .on'), 'Short');
+  await ev('Full');
   assert.equal((await lines(page))[0], 'al-ev | Tbrightwick is gifting 5 Tier 1 Subs!See it on Twitch ›', 'the site\'s own words');
-  await page.click(chip);
-  assert.equal(await page.textContent(chip), 'Events: hidden');
+  await ev('Hidden');
   assert.deepEqual(await lines(page), ['al-m | Tquietkoala: scrims at 8pmAnnouncement']);
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.allEvents')), 'hidden');
-  await page.click(chip);
+  assert.match(await page.getAttribute('.all-filt', 'title'), /events hidden/);
+  assert.equal(await page.$eval('.all-filt', e => e.classList.contains('set')), true, 'changed: a dot');
+  await ev('Short');
+  assert.equal(await page.$eval('.all-filt', e => e.classList.contains('set')), false);
+  await page.click('.all-filt');
+  assert.equal(await page.isVisible('.all-fm'), false, 'the pill closes it again');
   // See it on Twitch: Twitch's own chat
   await page.click('.al-ev .al-go');
   assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
@@ -491,41 +500,83 @@ test('ALL: a reward redeemed with text reads as a message with the reward\'s nam
   assert.equal(await page.$eval('.al-tag-rw', e => e.style.getPropertyValue('--rw')), '#00F1FF', 'in the reward\'s colour');
 });
 
-test('ALL: pins share one strip: the newest, K T Y switch, ▾ all of them; ✕ hides one here, all hidden: a chip brings them back; a pin taken down goes', async t => {
+test('ALL: pins wait in the pill (how many), which shows and hides one compact strip: the newest, K T Y switch, ▾ all of them; a new pin pings the pill; a pin taken down goes', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
-  assert.equal(await page.isVisible('.all-pins'), false, 'no pins: no strip');
-  const kpin = (id, text) => KF('PinnedMessageCreatedEvent', { message: { id, content: text, type: 'message', sender: { username: 'quietkoala', slug: 'quietkoala', identity: {} } } });
+  assert.equal(await page.isVisible('.all-pinchip'), false, 'no pins: no pill');
+  const kpin = (id, text) => KF('PinnedMessageCreatedEvent', { message: { id, content: text, type: 'message', sender: { username: 'quietkoala', slug: 'quietkoala', identity: {} } }, pinned_by: { username: 'nightowl_mod' } });
   await feed(page, 'quietkoala', { s: 'kick', raw: [kpin('k5', 'scrims at 8pm')] });
+  assert.equal((await page.textContent('.all-pinchip')).trim(), '1');
+  assert.equal(await page.isVisible('.all-pins'), false, 'in the pill, not over the chat');
+  assert.deepEqual(await page.$eval('.all-pinchip', e => [...e.classList]), ['all-pinchip', 'ping', 'ping-kick'], 'a new pin: the pill pings, in the site\'s colour');
+  await page.click('.all-pinchip');
+  assert.equal(await page.getAttribute('.all-pinchip', 'aria-pressed'), 'true');
   const strip = () => page.$eval('.all-pins', e => e.textContent.replace(/\s+/g, ' ').trim());
-  assert.equal(await strip(), 'Kquietkoala: scrims at 8pmPinned on Kick');
-  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [] });
+  assert.equal(await strip(), 'Kquietkoala scrims at 8pmjust now');
+  assert.match(await page.getAttribute('.all-pin-row', 'title'), /^quietkoala: scrims at 8pm\nPinned by nightowl_mod$/, 'the whole message, and who pinned it');
   await page.evaluate(() => window.allChat.ingest('tw:quietkoala', { s: 'youtube', raw: [{ addBannerToLiveChatCommand: { bannerRenderer: { liveChatBannerRenderer: { actionId: 'b1', contents: { liveChatTextMessageRenderer: { id: 'y9', authorName: { simpleText: 'Mika R.' }, message: { runs: [{ text: 'clip of the ace' }] } } } } } } }] }));
-  assert.equal(await strip(), 'YMika R.: clip of the acePinned on YouTube · 1 of 2 · newestYK▾', 'the newest');
+  assert.equal(await strip(), 'YMika R. clip of the acejust nowYK', 'the newest');
   await page.click('.all-pin-sw .pi-kick');
-  assert.match(await strip(), /^Kquietkoala: scrims at 8pmPinned on Kick · 2 of 2/);
+  assert.match(await strip(), /^Kquietkoala scrims at 8pmjust nowYK/);
+  assert.equal(await page.getAttribute('.all-pin-open', 'aria-label'), 'All 2 pins');
   await page.click('.all-pin-open');
-  assert.deepEqual(await page.$$eval('.all-pins .all-pin-row', l => l.map(e => e.textContent.replace(/\s+/g, ' ').trim())), ['YMika R.: clip of the aceYouTube · just now', 'Kquietkoala: scrims at 8pmKick · just now']);
-  assert.match(await page.textContent('.all-pin-h'), /2 pinned/);
-  await page.click('.all-pin-h');
-  // ✕: hidden here; both hidden: the chip; it brings them back
-  await page.click('.all-pin-x'); await page.click('.all-pin-x');
+  assert.deepEqual(await page.$$eval('.all-pins .all-pin-row', l => l.map(e => e.textContent.replace(/\s+/g, ' ').trim())), ['YMika R. clip of the acejust now', 'Kquietkoala scrims at 8pmjust now']);
+  await page.click('.all-pin-open');
+  // the pill hides the strip again
+  await page.click('.all-pinchip');
   assert.equal(await page.isVisible('.all-pins'), false);
   assert.equal((await page.textContent('.all-pinchip')).trim(), '2');
   await page.click('.all-pinchip');
-  assert.equal(await page.isVisible('.all-pins'), true);
-  assert.equal(await page.isVisible('.all-pinchip'), false);
   // taken down on its site: gone from the strip
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('PinnedMessageDeletedEvent', {})] });
-  assert.equal(await strip(), 'YMika R.: clip of the acePinned on YouTube');
+  assert.equal(await strip(), 'YMika R. clip of the acejust now');
   // Twitch's, from its other connection: the newest; taken down by its id
   const hermes = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [hermes('pin-message', { id: 'tp1', pinned_by: { display_name: 'QuietKoala' }, message: { id: 'tm1', sender: { login: 'quietkoala', display_name: 'QuietKoala', chat_color: '#FF69B4' }, content: { text: 'giveaway at 500 subs' } } })] });
-  assert.match(await strip(), /^TQuietKoala: giveaway at 500 subsPinned on Twitch · 1 of 2 · newest/);
+  assert.match(await strip(), /^TQuietKoala giveaway at 500 subsjust nowTY/);
+  assert.deepEqual(await page.$eval('.all-pinchip', e => [...e.classList]), ['all-pinchip', 'ping', 'ping-twitch']);
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [hermes('unpin-message', { id: 'other' })] });
-  assert.match(await strip(), /Pinned on Twitch/, 'another pin\'s id: stays');
+  assert.match(await strip(), /^TQuietKoala/, 'another pin\'s id: stays');
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [hermes('unpin-message', { id: 'tp1' })] });
-  assert.equal(await strip(), 'YMika R.: clip of the acePinned on YouTube');
+  assert.equal(await strip(), 'YMika R. clip of the acejust now');
+  // one already up when ALL starts reading a chat (pinAgent): in the pill quietly, and not again when the site sends it too
+  await page.evaluate(() => window.allChat.ingest('quietkoala', { s: 'kick', raw: [JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: 'App\\Events\\PinnedMessageCreatedEvent', data: JSON.stringify({ message: { id: 'k7', content: 'merch is live', type: 'message', sender: { username: 'quietkoala', slug: 'quietkoala', identity: {} } } }) } } } })] }, true));
+  assert.equal(await page.$eval('.all-pinchip', e => e.classList.contains('ping-kick')), false, 'already up: no ping');
+  assert.equal((await page.textContent('.all-pinchip')).trim(), '2');
+});
+
+test('ALL: as it starts reading a chat it asks for a pin already up (into the pill, quietly); its text follows Chat text size, and the bigger size Chat Stage, Chat Rail or Blow up give the chat', async t => {
+  const page = await allApp(t);
+  await page.waitForSelector('#stage .win.chat:not(.tab-hidden) .ptab.all');
+  // the Kick chat's page answers pinAgent with its pin (as Kick's chat history would)
+  await page.evaluate(() => {
+    const w = window.openWins().find(o => o.kind === 'chat' && o.channel === 'quietkoala');
+    const pin = { s: 'kick', raw: [JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: 'App\\Events\\PinnedMessageCreatedEvent', data: JSON.stringify({ message: { id: 'k7', content: 'merch is live', type: 'message', sender: { username: 'quietkoala', slug: 'quietkoala', identity: {} } } }) } } } })] };
+    w.view.executeJavaScript = async js => (/pinAgent|pinnedChatMessages/.test(js) ? pin : true);
+    w.ready = true; w.feedOn = false;
+    window.allChat.setAll(w, true);
+  });
+  await page.waitForSelector('.all-pinchip:not([hidden])');
+  assert.equal((await page.textContent('.all-pinchip')).trim(), '1');
+  assert.equal(await page.$eval('.all-pinchip', e => e.classList.contains('ping')), false, 'already up: no ping');
+  assert.equal(await page.isVisible('.all-pins'), false);
+  // the text size
+  const size = () => page.$eval('.all-view', e => e.style.zoom);
+  assert.equal(await size(), '');
+  const zoom = i => page.evaluate(i => window.chatZoomTo(i), i);   // (Chat text size: 0.6 … 1 (5), 1.1, 1.25)
+  await zoom(6);
+  assert.equal(await size(), '1.1');
+  await page.evaluate(() => { const w = window.openWins().find(o => o.allView); w.view.style.zoom = '1.5'; });
+  await page.waitForFunction(() => document.querySelector('.all-view').style.zoom === '1.65');
+  await page.evaluate(() => { const w = window.openWins().find(o => o.allView); w.view.style.zoom = ''; });
+  await zoom(5);
+  await page.waitForFunction(() => document.querySelector('.all-view').style.zoom === '');
+  // a menu in a bigger ALL still opens under what opened it
+  await zoom(7);
+  await page.click('.all-filt');
+  const [pill, menu] = await page.evaluate(() => [document.querySelector('.all-filt').getBoundingClientRect(), document.querySelector('.all-fm').getBoundingClientRect()].map(r => ({ bottom: r.bottom, top: r.top, right: r.right })));
+  assert.ok(menu.top >= pill.bottom && menu.top - pill.bottom < 12, `under the pill (${pill.bottom} → ${menu.top})`);
+  assert.ok(Math.abs(menu.right - pill.right) < 8, `lined up with it (${pill.right} / ${menu.right})`);
 });
 
 test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley opens its picker; picking one locks the box to that site and sends it as the site writes it', async t => {
