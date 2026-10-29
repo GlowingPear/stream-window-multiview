@@ -45,8 +45,14 @@ test('an ALL tab before the sites: it shows their chats as one list, and a site\
   assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
   assert.equal(await page.locator('#stage .win.chat .all-view').count(), 0);
   assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.allOpen'))), []);
+  // the chats are still read while a site's tab shows (as its chat page says, __kmv:feed): back on ALL, nothing is missing
+  await page.evaluate(async ([ch, raw]) => {
+    const { siteMessage } = await import('./page/shared/incoming.js'), w = window.openWins().find(o => o.kind === 'chat' && o.channel === ch);
+    siteMessage(w, w.view, '__kmv:feed ' + JSON.stringify({ s: 'kick', raw: [raw] }));
+  }, ['quietkoala', KF('ChatMessageEvent', { id: 'k-while', content: 'said while Twitch showed', type: 'message', sender: { id: 3, username: 'tide', identity: {} } })]);
   await page.click('#stage .win.chat:not(.tab-hidden) .ptab.all');
-  assert.equal((await lines(page)).length, 2, 'what came before is still there');
+  assert.equal((await lines(page)).length, 3, 'what came before is still there, and what was said meanwhile');
+  assert.match((await lines(page))[2], /tide: said while Twitch showed/);
 });
 
 test('ALL: messages to you, bots hidden one by one, deletions with who or AI moderation, timeouts', async t => {

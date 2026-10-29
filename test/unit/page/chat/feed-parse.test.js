@@ -19,6 +19,10 @@ test('Twitch: replies, /me, Highlight my message, cheers, escaped tags', async (
   const r = parseTwitch(TW({ 'display-name': 'Quill', id: 'r1', 'reply-parent-msg-id': 'p1', 'reply-parent-display-name': 'You', 'reply-parent-user-login': 'you', 'reply-parent-msg-body': 'is\\sthat\\sthe\\sdefault?' },
     ':quill!quill@quill.tmi.twitch.tv PRIVMSG #quietkoala :@You yeah default'));
   assert.deepEqual(r.reply, { id: 'p1', sender: 'You', login: 'you', body: 'is that the default?' });
+  assert.deepEqual(r.parts, [{ text: 'yeah default' }], 'without the "@You " Twitch puts first (its chat leaves it out)');
+  const tags = { id: 'r2', 'reply-parent-msg-id': 'p1', 'reply-parent-display-name': '00Bluey', 'reply-parent-user-login': '00bluey' };
+  assert.deepEqual(parseTwitch(TW({ ...tags, emotes: '25:9-13' }, ':a!a@a PRIVMSG #q :@00Bluey Kappa')).parts, [{ emote: 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0', name: 'Kappa' }], 'its emotes still where they are');
+  assert.deepEqual(parseTwitch(TW(tags, ':a!a@a PRIVMSG #q :@Quill look')).parts, [{ text: '@Quill look' }], 'someone else\'s @: kept');
   assert.equal(parseTwitch(':a!a@a PRIVMSG #q :\u0001ACTION waves\u0001').action, true);
   assert.deepEqual(parseTwitch(':a!a@a PRIVMSG #q :\u0001ACTION waves\u0001').parts, [{ text: 'waves' }]);
   assert.equal(parseTwitch(TW({ 'msg-id': 'highlighted-message', id: 'h' }, ':a!a@a PRIVMSG #q :HAPPY BIRTHDAY')).highlight, true);

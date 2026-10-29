@@ -14,13 +14,13 @@ test('Kick: the channel\'s, Kick\'s and the emoji, each sent as Kick writes an e
   assert.equal(kickGroups({ message: 'no' }, 'alpha'), null);
 });
 
-test('Kick: the emotes of the other channels you\'re subscribed to (signed in), after the channel\'s, as Your emotes', () => {
+test('Kick: the emotes of the other channels you\'re subscribed to (signed in), after the channel\'s, as Your emotes; then your collectibles', () => {
   const g = kickGroups([
     { slug: 'alpha', emotes: [{ id: 1, name: 'pearHype', subscribers_only: true }] },
     { slug: 'beta', emotes: [{ id: 2, name: 'betaWave', subscribers_only: true }] }, { slug: 'gamma', emotes: [{ id: 3, name: 'gammaLUL', subscribers_only: true }] },
-    { id: 'Global', emotes: [{ id: 9, name: 'KEKW' }] }
+    { id: 'Global', emotes: [{ id: 9, name: 'KEKW' }] }, { id: 'Collectibles', emotes: [{ id: 7, name: 'collectiblesCooked' }] }
   ], 'Alpha');
-  assert.deepEqual(g.map(x => [x.id, x.label, x.emotes.map(e => e.name)]), [['kick-channel', 'Channel', ['pearHype']], ['kick-yours', 'Your emotes', ['betaWave', 'gammaLUL']], ['kick-global', 'Kick', ['KEKW']]]);
+  assert.deepEqual(g.map(x => [x.id, x.label, x.emotes.map(e => e.name)]), [['kick-channel', 'Channel', ['pearHype']], ['kick-yours', 'Your emotes', ['betaWave', 'gammaLUL']], ['kick-collectibles', 'Collectibles', ['collectiblesCooked']], ['kick-global', 'Kick', ['KEKW']]]);
   assert.deepEqual(g[1].emotes[0], { name: 'betaWave', url: 'https://files.kick.com/emotes/2/fullsize', send: '[emote:2:betaWave]' }, 'yours to use: not marked subs');
 });
 

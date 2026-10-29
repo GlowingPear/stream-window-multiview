@@ -12,7 +12,8 @@ const clean = list => {
 const group = (id, label, emotes) => { const e = clean(emotes); return e.length ? { id, label, emotes: e } : null; };
 
 // Kick: kick.com/emotes/<slug> -> [{ slug, user, emotes: [{ id, name, subscribers_only }] }, …the other channels you're
-// subscribed to (signed in: theirs you can use in any chat), { id: 'Global', … }, { id: 'Emoji', … }]
+// subscribed to (signed in: theirs you can use in any chat), { id: 'Global', … }, { id: 'Emoji', … }, { id: 'Collectibles', … }
+// (signed in: the ones you've collected)]
 function kickGroups(d, slug) {
   if (!Array.isArray(d)) return null;
   const emote = e => e && e.id != null && { name: String(e.name || ''), url: `https://files.kick.com/emotes/${encodeURIComponent(e.id)}/fullsize`, send: `[emote:${e.id}:${e.name}]`,
@@ -23,6 +24,7 @@ function kickGroups(d, slug) {
   return [
     group('kick-channel', 'Channel', own.flatMap(s => s.emotes.map(emote))),
     group('kick-yours', 'Your emotes', yours.flatMap(s => s.emotes.map(e => { const x = emote(e); if (x) delete x.subs; return x; }))),   // (yours to use: not marked subs)
+    group('kick-collectibles', 'Collectibles', other('Collectibles').flatMap(s => s.emotes.map(emote))),
     group('kick-global', 'Kick', other('Global').flatMap(s => s.emotes.map(emote))),
     group('kick-emoji', 'Emoji', other('Emoji').flatMap(s => s.emotes.map(emote)))
   ].filter(Boolean);

@@ -43,7 +43,8 @@ import { syncModBtn } from '../windows/windows.js';
    An ALL tab before the site tabs of a linked streamer's chat window. It covers the chat you watched with the app's
    own list; the site tabs stay as they are (loaded, playing their part), and clicking one shows that site's chat
    again. The messages come from each site's own connection, heard inside its chat page (in-site/feed.js, read by
-   chat/feed-parse.js): only while ALL shows, and only from the tabs that are open (an offline site's isn't loaded).
+   chat/feed-parse.js): while the window has an ALL tab (also while a site's tab shows, so going back to ALL misses
+   nothing), and only from the tabs that are open (an offline site's isn't loaded).
    Each line has its site's icon and the sender's badges. Messages to you are marked (an @ green, a reply blue),
    bots on the app's chat bot list or the streamer's own are a line each with the text hidden (Show opens one),
    and a deleted message stays struck through with who or what deleted it (Kick's AI moderation and its rule). */
@@ -1059,7 +1060,8 @@ function seeIt(m){
   if (c.view && m.id) runIn(c.view, `(${seekAgent})(${JSON.stringify(m.id)})`);
 }
 
-// ALL shows over the chat of each window that has it on; each chat hands over its messages only while it does
+// ALL shows over the chat of each window that has it on. Each chat hands over its messages while its window has an ALL
+// tab, also while one of the sites' tabs shows: back on ALL, nothing said meanwhile is missing
 function syncAll(){
   // ALL reads (and sends on) their Kick and Twitch chats also while offline: each gets its hidden tab
   wins.filter(w => w.kind === 'chat' && !w.hiddenTab && allOn(w)).forEach(w => {
@@ -1073,7 +1075,7 @@ function syncAll(){
     w.el.classList.toggle('all-on', show);
     syncModBtn(w); syncAtBtn(w);
     if (show) renderTop(w.allView, w);
-    feedOn(w, allOn(w));
+    feedOn(w, allTabFor(w));
   });
 }
 const FEED_ON = on => `window.__kmvFeed && (window.__kmvFeed.on = ${!!on})`;
@@ -1082,8 +1084,8 @@ function feedOn(w, on){
   w.feedOn = on; runIn(w.view, FEED_ON(on));
   if (on) pinsNow(w, w.view);
 }
-// A chat page loaded (again): its helper, on if ALL shows
-function feedReady(w, view){ runIn(view, `(${feedAgent})();${FEED_ON(allOn(w))}`); sampleIn(view); w.feedOn = allOn(w); if (w.feedOn) pinsNow(w, view); }
+// A chat page loaded (again): its helper, on if its window has an ALL tab
+function feedReady(w, view){ runIn(view, `(${feedAgent})();${FEED_ON(allTabFor(w))}`); sampleIn(view); w.feedOn = allTabFor(w); if (w.feedOn) pinsNow(w, view); }
 // A pin already up when ALL starts reading a chat: the sites send pins only as they're made, so it's asked for (quietly)
 // A chat's badges' pictures came (badgesAgent): Twitch's own kept once, for every chat
 function gotBadges(ch, r){
@@ -1100,8 +1102,8 @@ function forgetClosed(){
 }
 function pinsNow(w, view){
   if (!badgePics.has(w.channel)) askIn(view, `(${badgesAgent})(${!twBadges})`).then(r => gotBadges(w.channel, r)).catch(() => {});
-  askIn(view, `(${modesAgent})()`).then(r => { if (r && allOn(w)) setModes(w.channel, r); }).catch(() => {});
-  askIn(view, `(${pinAgent})()`).then(batch => { if (batch && allOn(w)) ingest(w, JSON.stringify(batch), true); }).catch(() => {});
+  askIn(view, `(${modesAgent})()`).then(r => { if (r && allTabFor(w)) setModes(w.channel, r); }).catch(() => {});
+  askIn(view, `(${pinAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true); }).catch(() => {});
 }
 
 const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
@@ -1115,7 +1117,7 @@ const BADGE_SVG = {
   og: '<svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6 .6-4.5 4 1.3 6L12 16.2 6.6 19.2l1.3-6-4.5-4 6-.6z"/></svg>',
   verified: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   staff: '<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V6z"/></svg>',
-  gifter: '<svg viewBox="0 0 24 24"><path d="M4 10h16v10H4zM3 7h18v3H3zM12 7v13M12 7c-2-4-6-3-5 0M12 7c2-4 6-3 5 0"/></svg>',
+  gifter: '<svg viewBox="0 0 24 24"><path d="M2.5 8.5h19v4.5h-19zM4 14.5h16V22H4z"/><path class="bow" d="M12 8.5C10.5 4 6.5 3.2 6.2 6c-.2 1.8 2.6 2.5 5.8 2.5zM12 8.5c1.5-4.5 5.5-5.3 5.8-2.5.2 1.8-2.6 2.5-5.8 2.5z"/><path class="rib" d="M12 8.5V22"/></svg>',
   founder: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M10 8.6l2.6-1.8V17.2"/></svg>'
 };
 
@@ -1123,7 +1125,7 @@ const BADGE_SVG = {
 function init(){
   trSoon = soon(() => translateNow(), 300);
   readFilters();
-  fromSite('feed', (w, json) => { if (allOn(w)) ingest(w, json); });
+  fromSite('feed', (w, json) => { if (allTabFor(w)) ingest(w, json); });
   // Esc closes ALL's menus (the line's, Send on's)
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;

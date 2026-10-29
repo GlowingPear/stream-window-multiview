@@ -81,6 +81,11 @@ function parseTwitch(line){
   if (g['custom-reward-id']) msg.redeem = { title: '', color: '' };   // (a channel points reward with text: Twitch's chat doesn't say which)
   if (g['first-msg'] === '1') msg.first = true;
   if (g['reply-parent-msg-id']) msg.reply = { id: g['reply-parent-msg-id'], sender: g['reply-parent-display-name'] || g['reply-parent-user-login'] || '', login: (g['reply-parent-user-login'] || '').toLowerCase(), body: g['reply-parent-msg-body'] || '' };
+  // (a reply's text starts with "@<who it replies to> ": Twitch's chat leaves it out, the "replying to" line says it)
+  if (msg.reply && msg.parts[0] && msg.parts[0].text){
+    const at = /^@(\S+)\s*/.exec(msg.parts[0].text);
+    if (at && [msg.reply.login, msg.reply.sender.toLowerCase()].includes(at[1].toLowerCase())){ msg.parts[0] = { text: msg.parts[0].text.slice(at[0].length) }; if (!msg.parts[0].text) msg.parts.shift(); }
+  }
   if (msg.kind === 'event'){
     msg.event = g['msg-id'] || ''; msg.text = g['system-msg'] || '';
     const prm = {}; Object.keys(g).forEach(k => { if (k.startsWith('msg-param-')) prm[k.slice(10)] = g[k]; });
