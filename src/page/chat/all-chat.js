@@ -1191,9 +1191,10 @@ function seeIt(ch){
 // ALL shows over the chat of each window that has it on. Each chat hands over its messages while its window has an ALL
 // tab, also while one of the sites' tabs shows: back on ALL, nothing said meanwhile is missing
 function syncAll(){
-  // ALL reads (and sends on) their Kick and Twitch chats also while offline: each gets its hidden tab
+  // ALL reads (and sends on) their Kick and Twitch chats also while offline: each gets its hidden tab. YouTube's has a
+  // chat only while live: its tab while the live check says so (also one live already when the app starts)
   wins.filter(w => w.kind === 'chat' && !w.hiddenTab && allOn(w)).forEach(w => {
-    tabChannels(w).forEach(ch => { if (platOf(ch) !== 'youtube' && !infoFor(ch)?.missing && !frameOf(w).some(o => o.channel === ch) && !wins.some(o => o.kind === 'chat' && o.channel === ch)) addTab(w, ch, false); });
+    tabChannels(w).forEach(ch => { if ((platOf(ch) !== 'youtube' || infoFor(ch)?.live) && !infoFor(ch)?.missing && !frameOf(w).some(o => o.channel === ch) && !wins.some(o => o.kind === 'chat' && o.channel === ch)) addTab(w, ch, false); });
   });
   wins.forEach(w => {
     if (w.kind !== 'chat') return;

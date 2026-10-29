@@ -4,6 +4,7 @@ import { winOfView } from './translate.js';
 import { coreVars, wins } from '../core.js';
 import { dropMini } from '../layout/switch-control.js';
 import { addNote, noteActs } from '../panels/bell/bell.js';
+import { infoFor } from '../panels/channels/channels.js';
 import { save } from '../persistence.js';
 import { chLabel, rememberName } from '../platforms/platforms.js';
 import { DESKTOP } from '../shared/env.js';
@@ -128,13 +129,16 @@ async function resolveYt(w){
   if (w.ytBusy) return;
   w.ytBusy = true;
   setWait(w, `Looking for ${chLabel(w.channel)}'s live stream…`, false);
-  let r = ytCache[w.channel] && Date.now() - ytCache[w.channel].t < 30000 ? ytCache[w.channel].r : undefined;
+  // the live check already knows its live video: no need to ask (YouTube's page can say "not live" for a while yet)
+  const i = infoFor(w.channel);
+  let r = i && i.live && i.videoId ? { live: true, videoId: i.videoId }
+    : ytCache[w.channel] && Date.now() - ytCache[w.channel].t < 30000 ? ytCache[w.channel].r : undefined;
   if (r === undefined){
     try { r = await window.kmv.ytResolve(w.channel); } catch { r = null; }
     ytCache[w.channel] = { r, t: Date.now() };
   }
   w.ytBusy = false;
-  if (!wins.includes(w)) return;
+  if (!wins.includes(w) || w.view) return;                                       // (or it loaded meanwhile: the live check, see followYtStreams)
   if (r && r.name) rememberName(w.channel, r.name);
   if (r && r.live && r.videoId){ w.ytVid = r.videoId; mountView(w); return; }
   setWait(w, !r ? 'Couldn’t reach YouTube. Trying again in 2 minutes.'
