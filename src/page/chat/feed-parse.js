@@ -310,9 +310,17 @@ function parseYouTube(action){
   }
   if (action.removeBannerForLiveChatCommand) return { site: 'youtube', kind: 'unpin', id: action.removeBannerForLiveChatCommand.targetActionId || '', t: Date.now() };
   if (action.markChatItemsByAuthorAsDeletedAction) return { site: 'youtube', kind: 'clear', userId: action.markChatItemsByAuthorAsDeletedAction.externalChannelId, t: Date.now() };
-  const item = action.addChatItemAction && action.addChatItemAction.item; if (!item) return null;
-  const [type] = Object.keys(item), r = item[type] || {};
+  // (a message YouTube held back, let through: it takes the place of its stand-in, which ALL leaves out; as the
+  // stand-in's id, so one already here isn't shown twice)
+  const put = action.replaceChatItemAction, item = (action.addChatItemAction && action.addChatItemAction.item) || (put && put.replacementItem); if (!item) return null;
+  const [type] = Object.keys(item), r = put && put.targetItemId ? { ...item[type], id: put.targetItemId } : item[type] || {};
   if (!r.id) return null;
+  // a gift (YouTube's Jewels gifts): its own words ("sent …"), the gift picked out
+  if (type === 'giftMessageViewModel'){
+    const who = String((r.authorName && r.authorName.content) || '').trim() || 'Someone', said = String((r.text && r.text.content) || '').trim() || 'sent a gift', what = /^sent (.+)$/i.exec(said);
+    return { site: 'youtube', kind: 'event', event: 'gift', id: r.id, t: Math.round(+r.timestampUsec / 1000) || Date.now(), sender: who, login: who.replace(/^@/, '').toLowerCase(), color: '', userId: '',
+      badges: [], pics: [], text: `${who} ${said}`, summary: [{ strong: who }, ...(what ? [{ text: ' sent ' }, { strong: what[1] }] : [{ text: ' ' + said }])], parts: [] };
+  }
   const base = { site: 'youtube', id: r.id, t: Math.round(+r.timestampUsec / 1000) || Date.now(), sender: (r.authorName && r.authorName.simpleText) || '',
     login: ((r.authorName && r.authorName.simpleText) || '').replace(/^@/, '').toLowerCase(), color: '', userId: r.authorExternalChannelId || '', badges: ytBadges(r.authorBadges), pics: ytPics(r.authorBadges) };
   if (type === 'liveChatTextMessageRenderer') return { ...base, kind: 'message', parts: ytParts(r.message && r.message.runs) };
@@ -351,6 +359,7 @@ const KNOWN = {
     'hermes:reward-redeemed': 'a reward redeemed (without text)', 'hermes:create': 'a shoutout' },
   youtube: { 'addChatItemAction:liveChatTextMessageRenderer': 'a message', 'addChatItemAction:liveChatPaidMessageRenderer': 'a Super Chat',
     'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
+    'addChatItemAction:giftMessageViewModel': 'a gift', 'replaceChatItemAction:liveChatTextMessageRenderer': 'a held message let through',
     removeChatItemAction: 'a message deleted', markChatItemsByAuthorAsDeletedAction: 'a ban or timeout',
     'addBannerToLiveChatCommand:liveChatBannerRenderer': 'a pin', removeBannerForLiveChatCommand: 'a pin taken down' }
 };
@@ -376,12 +385,19 @@ const IGNORED = {
     'hermes:mystery-gift-purchase': 'gifted subs being bought (the gift is USERNOTICE:submysterygift)', 'hermes:?': 'the connection’s own (no type)',
     ...Object.fromEntries(['slow_on', 'slow_off', 'followers_on', 'followers_on_zero', 'followers_off', 'subs_on', 'subs_off', 'emote_only_on', 'emote_only_off', 'r9k_on', 'r9k_off']
       .map(n => ['NOTICE:' + n, 'the chat’s modes (shown above the box)'])) },
-  youtube: {}
+  youtube: { 'addChatItemAction:liveChatPlaceholderItemRenderer': 'an empty stand-in for a message YouTube holds back (for review; let through, replaceChatItemAction brings it)',
+    'addChatItemAction:liveChatViewerEngagementMessageRenderer': 'YouTube’s own notice (welcome, guard your privacy)' }
 };
 // Why ALL leaves a kind out, or '' (Twitch's numbered replies are the connection's own too)
-const ignoredWhy = (site, kind) => (IGNORED[site] && IGNORED[site][kind]) || (site === 'twitch' && /^\d{3}$/.test(kind) ? 'the connection’s own' : site === 'kick' && /^pusher(_internal)?:/.test(kind) ? 'the connection’s own' : '');
+const ignoredWhy = (site, kind) => (IGNORED[site] && IGNORED[site][kind]) || (site === 'twitch' && /^\d{3}$/.test(kind) ? 'the connection’s own' : site === 'kick' && /^pusher(_internal)?:/.test(kind) ? 'the connection’s own' : site === 'youtube' && /^addLiveChatTickerItemAction:/.test(kind) ? 'the ticker at the top (its Super Chat or membership is its own line)' : '');
+// A YouTube action's kind, as its reader counts it (in-site/feed.js's ytKind)
+const ytKind = a => { const k = Object.keys(a || {}).find(x => x !== 'clickTrackingParams') || ''; const v = a && a[k] || {}, it = v.item || v.replacementItem || v.bannerRenderer;
+  return k + (it ? ':' + (Object.keys(it)[0] || '') : ''); };
+// Whether ALL leaves out something a chat handed over on purpose (not one it couldn't read): YouTube's reader passes on
+// every action, the ones ALL ignores too (the others' leave those out)
+const leftOut = (site, raw) => site === 'youtube' && !!raw && typeof raw === 'object' && !!ignoredWhy(site, ytKind(raw));
 
 // (one object, so the tests can reach each site's reader)
-const feedParse = { KNOWN, IGNORED, ignoredWhy, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds, kickPics, ytPics, BADGES };
+const feedParse = { KNOWN, IGNORED, ignoredWhy, leftOut, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds, kickPics, ytPics, BADGES };
 
 export { feedParse };

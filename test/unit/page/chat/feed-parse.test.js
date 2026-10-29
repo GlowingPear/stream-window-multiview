@@ -155,6 +155,34 @@ test('YouTube events in a few words', async () => {
   assert.equal(words(YT('liveChatMembershipItemRenderer', { id: 'm', ...author, headerSubtext: { simpleText: 'Member for 6 months' } })), '[@Mika] Member for 6 months');
 });
 
+test('YouTube: a gift is an event (its words, the gift picked out); a held message let through takes its stand-in\'s place; its stand-ins, the ticker and its own notice are ignored, with why', async () => {
+  const { parseYouTube, parseFeed, KNOWN, ignoredWhy, leftOut } = await load();
+  const gift = (text, extra = {}) => YT('giftMessageViewModel', { id: 'g1', text: { content: text }, authorName: { content: '@Mika ' }, authorAvatar: {}, ...extra });
+  const g = parseYouTube(gift('sent Pepero yummy!'));
+  assert.deepEqual([g.kind, g.event, g.id, g.sender, g.login, g.text, g.parts], ['event', 'gift', 'g1', '@Mika', 'mika', '@Mika sent Pepero yummy!', []]);
+  assert.deepEqual(g.summary, [{ strong: '@Mika' }, { text: ' sent ' }, { strong: 'Pepero yummy!' }]);
+  assert.ok(Math.abs(g.t - Date.now()) < 5000, 'no time of its own: now');
+  assert.equal(parseYouTube(gift('sent x', { timestampUsec: '1793161469214882' })).t, 1793161469215);
+  assert.deepEqual(parseYouTube(gift('gave a heart')).summary, [{ strong: '@Mika' }, { text: ' gave a heart' }], 'other words: as they are');
+  assert.equal(parseYouTube(YT('giftMessageViewModel', { id: 'g2' })).text, 'Someone sent a gift', 'without its words or name');
+  assert.equal(KNOWN.youtube['addChatItemAction:giftMessageViewModel'], 'a gift');
+  // let through: as the stand-in's id (one already here isn't shown twice)
+  const msg = { id: 'real', authorName: { simpleText: '@Mika' }, timestampUsec: '1', message: { runs: [{ text: 'held' }] } };
+  const r = parseYouTube({ replaceChatItemAction: { targetItemId: 'stand', replacementItem: { liveChatTextMessageRenderer: msg } } });
+  assert.deepEqual([r.kind, r.id, r.parts], ['message', 'stand', [{ text: 'held' }]]);
+  assert.equal(parseYouTube({ replaceChatItemAction: { replacementItem: { liveChatTextMessageRenderer: msg } } }).id, 'real');
+  assert.equal(parseYouTube({ replaceChatItemAction: { targetItemId: 'stand' } }), null);
+  assert.ok(KNOWN.youtube['replaceChatItemAction:liveChatTextMessageRenderer']);
+  // ignored: read by no reader, but not unreadable either
+  const stand = YT('liveChatPlaceholderItemRenderer', { id: 'p1', timestampUsec: '1' }), ticker = { clickTrackingParams: 'x', addLiveChatTickerItemAction: { item: { liveChatTickerPaidMessageItemRenderer: { id: 't1' } } } };
+  const notice = YT('liveChatViewerEngagementMessageRenderer', { id: 'n1', message: { runs: [{ text: 'Welcome to live chat!' }] } });
+  for (const a of [stand, ticker, notice]){ assert.deepEqual(parseFeed({ s: 'youtube', raw: [a] }), []); assert.equal(leftOut('youtube', a), true); }
+  for (const k of ['addChatItemAction:liveChatPlaceholderItemRenderer', 'addChatItemAction:liveChatViewerEngagementMessageRenderer', 'addLiveChatTickerItemAction:liveChatTickerPaidMessageItemRenderer',
+    'addLiveChatTickerItemAction:liveChatTickerSponsorItemRenderer']) assert.ok(ignoredWhy('youtube', k), k);
+  assert.equal(ignoredWhy('youtube', 'addChatItemAction:somethingNew'), '');
+  for (const [s, a] of [['youtube', YT('somethingNew', { id: 'x' })], ['youtube', gift('sent x')], ['youtube', 'x'], ['youtube', null], ['twitch', stand]]) assert.equal(leftOut(s, a), false);
+});
+
 test('Kick: a reward redeemed (with text: a message with the reward; without: an event), Kicks sent, subs, gifted subs, a raid', async () => {
   const { parseKick } = await load();
   const KE = (event, data) => JSON.stringify({ push: { channel: 'chatroom_1', pub: { data: { event, data: JSON.stringify(data) } } } });
