@@ -65,7 +65,7 @@ function feedAgent(as){
     if (typeof data !== 'string') return;
     if (site === 'twitch'){
       if (data.includes(' #')) data.split('\r\n').forEach(l => { if (TW.test(l)) push(l); });
-      else if (data.startsWith('{') && /\\"((un)?pin-message|updated_room)\\"/.test(data)) push(data);   // (its other connection: a message pinned or taken down, the chat's modes)
+      else if (data.startsWith('{') && /\\"((un)?pin-message|updated_room|moderation_action)\\"/.test(data)) push(data);   // (its other connection: a message pinned or taken down, the chat's modes, what a moderator did)
     }
     else if (site === 'kick' && data.startsWith('{"push"') && KICK.test(data)) push(data);
   }

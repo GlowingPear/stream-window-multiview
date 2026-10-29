@@ -304,3 +304,8 @@
 .all-blocked .all-in::placeholder{color:#ffb1b1}
 .all-send-b.wait svg{opacity:0}
 .all-send-b.wait::after{content:attr(data-wait);position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)}
+/* they raided someone: a line with the raid's arrow, and Open (or Opened) */
+.al-raidout .al-evt{flex:none;display:grid;color:var(--accent)}
+.al-raidout .al-evt svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.al-raidout .al-evw{flex:1;min-width:0;white-space:normal}
+.al-tag-raid{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--text);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent)}

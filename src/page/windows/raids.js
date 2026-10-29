@@ -1,3 +1,4 @@
+import { allRaid } from '../chat/all-chat.js';
 import { closeWin } from '../chat/view-menu.js';
 import { ROLE, coreVars, lastLayout, wins } from '../core.js';
 import { setRect } from '../layout/geometry.js';
@@ -49,6 +50,10 @@ function followRaid(from, to, tell){
   const stays = w => !!streamerOf(w.channel) && (optFor(w.channel, 'raid') === 'tell' || w.hiddenTab || frameOf(w).some(o => o !== w && infoFor(o.channel)?.live));
   const kept = all.filter(stays), old = all.filter(w => !kept.includes(w));
   kept.forEach(w => { putTabBack(w); if (!w.hiddenTab) raidSwitch(w, from, to); });
+  // a tab of theirs you weren't watching raided: set to, the raided channel opens in a window of its own beside them
+  const opened = !old.length && kept.some(w => w.hiddenTab) && optFor(from, 'raidOther') === 'open' && !wins.some(o => o.channel === to);
+  if (opened) addParsed({ channel: to, only: null });
+  if (streamerOf(from)) allRaid(from, to, opened || !!old.length);   // (a line in their ALL)
   // kept under the bell (the main window's, also for a raid the streams window followed); its pop-up where it switched
   const text = `${chLabel(from)} raided ${chLabel(to)}: switched to them`;
   addNote({ kind: 'raid', channel: to, from, label: chLabel(to) }, old.length ? text : null, `${chLabel(from)} raided ${chLabel(to)}`);

@@ -197,3 +197,15 @@ test('the chats\' modes as they change: Twitch\'s ROOMSTATE (what changed) and i
     advanced_bot_protection: { enabled: false, remaining_time: 0 }, account_age: { enabled: false, min_duration: 0 } }) } } } }));
   assert.deepEqual([k.site, k.kind, k.modes], ['kick', 'modes', { slow: 5, followers: 10, subs: false, emotes: false, verified: false }]);
 });
+
+test('Twitch\'s moderation actions (to moderators): who did what to whom, how long; a mode with its length', async () => {
+  const { parseTwitch } = await load();
+  const act = (moderation_action, args, extra = {}) => parseTwitch(JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'moderation_action', data: { type: 'chat_channel_moderation', moderation_action, args, created_by: 'NightOwl', ...extra } }) } }));
+  const pick = a => a && [a.kind, a.action, a.by, a.target, a.secs, a.msgId, a.arg];
+  assert.deepEqual(pick(act('timeout', ['LowTide', '600', 'spam'])), ['modaction', 'timeout', 'NightOwl', 'lowtide', 600, '', 0]);
+  assert.deepEqual(pick(act('ban', ['LowTide'], { target_user_login: 'lowtide' })), ['modaction', 'ban', 'NightOwl', 'lowtide', 0, '', 0]);
+  assert.deepEqual(pick(act('delete', ['LowTide', 'bad words', 'm9'])), ['modaction', 'delete', 'NightOwl', 'lowtide', 0, 'm9', 0]);
+  assert.deepEqual(pick(act('slow', ['5'])), ['modaction', 'slow', 'NightOwl', '', 0, '', 5]);
+  assert.equal(act('', []), null);
+  assert.equal(parseTwitch(JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'moderation_action', data: { moderation_action: 'ban', args: [] } }) } })), null, 'without who did it');
+});

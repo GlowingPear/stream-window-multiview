@@ -26,6 +26,7 @@ const OPT_DEFAULTS = {
   alsoLive: 'add',        // another of their accounts goes live: 'add' its tab, 'switch' to it too, or 'none'
   ended: 'switch',        // the stream you're watching ends: 'switch' to a live one, or 'stay'
   raid: 'follow',         // they raid: 'follow' the one you were watching, or 'tell' (a note under the bell)
+  raidOther: 'tell',      // one of their tabs you weren't watching raids: 'tell' (a note under the bell), or 'open' the raided channel in a window of its own
   suggest: true           // suggest accounts to link
 };
 let streamers = null;     // (read on first use)

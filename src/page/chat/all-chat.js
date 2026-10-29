@@ -10,11 +10,12 @@ import { wins } from '../core.js';
 import { feedAgent, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
+import { addParsed } from '../layout/placement.js';
 import { bellVars, mentMuted, mentOn, mentWords, myName, readChat } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
 import { devOn } from '../panels/developer/developer.js';
 import { linkOpt, nameOf, streamerBots, streamerOf } from '../platforms/linked.js';
-import { PLAT_NAME, modIs, modUrl, openModView, platOf, platform } from '../platforms/platforms.js';
+import { PLAT_NAME, chLabel, modIs, modUrl, openModView, platOf, platform } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { element } from '../shared/element.js';
 import { DESKTOP, keyName } from '../shared/env.js';
@@ -75,6 +76,7 @@ function ingest(w, json, quiet = false){
     if (devOn) m.raw = raw;   // (Developer tools: the line's Copy message data)
     if (m.kind === 'delete' || m.kind === 'clear' || m.kind === 'clearall') return removed(f, view, m, w.channel);
     if (m.kind === 'unban') return unbanned(f, view, m, w.channel);
+    if (m.kind === 'modaction') return modAction(f, view, m, w.channel);
     if (m.kind === 'pin' || m.kind === 'unpin') return setPin(f, s, w.channel, m, quiet);
     if (m.kind === 'modes') return setModes(w.channel, { modes: m.modes });
     m.ch = w.channel;
@@ -224,13 +226,51 @@ function removed(f, view, d, ch){
     m.deleted = d.ai ? { ai: true, rules: d.rules || [] } : { by: d.kind === 'clear' ? (d.until ? 'timeout' : 'ban') : d.kind === 'clearall' ? 'clear' : '', secs };
     lineOf(m)?.replaceWith(lineEl(m));
   });
-  // what was done, as a line: for mods, and a cleared chat for everyone
-  if (d.kind === 'delete' || (!mod && d.kind !== 'clearall')) return;
-  const who = hit[0] ? hit[0].sender : d.login, secs = d.until ? Math.round((d.until - d.t) / 1000) : 0;
-  const words = d.kind === 'clearall' ? [d.by ? element('b', null, d.by) : 'A moderator', ` cleared ${site}'s chat`]
+  // what was done, as a line: for mods, and a cleared chat for everyone (who did it: Kick says; Twitch tells moderators
+  // apart, as a moderation action, before or after: modAction)
+  if (d.kind === 'delete'){ const by = d.site === 'twitch' && takeModBy('msg:' + d.target); if (by && hit[0] && hit[0].deleted){ hit[0].deleted.who = by; lineOf(hit[0])?.replaceWith(lineEl(hit[0])); } return; }
+  if (!mod && d.kind !== 'clearall') return;
+  const who = hit[0] ? hit[0].sender : d.login;
+  if (!d.by && d.site === 'twitch') d.by = takeModBy(d.kind === 'clearall' ? 'clear' : 'user:' + d.login) || '';
+  const m = { kind: 'modlog', site: d.site, ch, id: 'log' + (++logN), t: d.t, d, who, words: logWords(d, who, site) };
+  f.msgs.push(m); if (view) addLine(view, m);
+}
+// A moderation line's words: who did it (where known), to whom, how long
+function logWords(d, who, site){
+  const secs = d.until ? Math.round((d.until - d.t) / 1000) : 0;
+  return d.kind === 'clearall' ? [d.by ? element('b', null, d.by) : 'A moderator', ` cleared ${site}'s chat`]
     : d.until ? [...(d.by ? [element('b', null, d.by), ' timed out '] : []), element('b', null, who), d.by ? '' : ' was timed out', element('span', 'al-amt', ` · ${durText(secs)}`)]
     : [...(d.by ? [element('b', null, d.by), ' banned '] : []), element('b', null, who), d.by ? '' : ' was banned'];
-  const m = { kind: 'modlog', site: d.site, ch, id: 'log' + (++logN), t: d.t, words };
+}
+// They raided another channel (windows/raids.js): a line in their ALL, with Open (unless it's open already)
+function allRaid(from, to, opened){
+  const s = streamerOf(from); if (!s) return;
+  const f = feedOf(s), view = viewFor(s), m = { kind: 'raidout', site: platOf(from), ch: from, id: 'raid' + (++logN), t: Date.now(), to, opened };
+  f.msgs.push(m); if (view) addLine(view, m);
+}
+/* Twitch's moderation actions (to moderators): who timed out, banned, deleted or cleared, and who changed a mode. Its chat
+   says what happened without who: the two meet whichever comes first (kept a little while for the other). */
+const modBy = new Map();   // "user:<login>" | "msg:<id>" | "clear" -> { by, t }
+function takeModBy(key){ const x = modBy.get(key); modBy.delete(key); return x && Date.now() - x.t < 15000 ? x.by : ''; }
+const MODE_SAID = { slow: ['turned on slow mode', 's'], slowoff: ['turned off slow mode'], followers: ['turned on followers-only', 'm'], followersoff: ['turned off followers-only'],
+  subscribers: ['turned on subscribers-only'], subscribersoff: ['turned off subscribers-only'], emoteonly: ['turned on emotes-only'], emoteonlyoff: ['turned off emotes-only'],
+  uniquechat: ['turned on unique chat'], uniquechatoff: ['turned off unique chat'] };
+function modAction(f, view, a, ch){
+  const site = PLAT_NAME[a.site], recent = x => x.kind === 'modlog' && x.site === a.site && x.ch === ch && !x.d.by && a.t - x.t < 15000;
+  if (/^(timeout|ban|clear)$/.test(a.action)){
+    const line = [...f.msgs].reverse().find(x => recent(x) && (a.action === 'clear' ? x.d.kind === 'clearall' : x.d.login === a.target));
+    if (!line){ modBy.set(a.action === 'clear' ? 'clear' : 'user:' + a.target, { by: a.by, t: a.t }); return; }
+    line.d.by = a.by; line.words = logWords(line.d, line.who, site); redrawLine(line);
+    return;
+  }
+  if (a.action === 'delete'){
+    const m = a.msgId && f.byId.get(a.site + ':' + a.msgId);
+    if (m && m.deleted){ m.deleted.who = a.by; redrawLine(m); } else if (a.msgId) modBy.set('msg:' + a.msgId, { by: a.by, t: a.t });
+    return;
+  }
+  const said = MODE_SAID[a.action]; if (!said) return;
+  const words = [element('b', null, a.by), ' ' + said[0], said[1] && a.arg ? element('span', 'al-amt', ` · ${said[1] === 's' ? modeDur(a.arg) : a.arg ? modeDur(a.arg * 60) : ''}`) : ''];
+  const m = { kind: 'modlog', site: a.site, ch, id: 'log' + (++logN), t: a.t, d: { by: a.by }, who: '', words };
   f.msgs.push(m); if (view) addLine(view, m);
 }
 // A ban or timeout lifted (Kick says so): for mods, a line says who lifted it; their struck lines stay as they were
@@ -330,6 +370,11 @@ function emoteSeen(ch, name){
 }
 function lineEl(m){
   if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' ? null : mineEl(m);
+  if (m.kind === 'raidout') return element('div', { class: `al-ev al-raidout al-${SITE_CLASS[m.site]}`, dataset: { key: m.site + ':' + m.id } },
+    element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0]), element('span', { class: 'al-evt', html: icon.raid }),
+    element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' raided ', element('b', null, chLabel(m.to)), element('span', 'al-amt', ` on ${PLAT_NAME[m.site]}`)),
+    m.opened ? element('span', 'al-tag al-tag-raid', 'Opened') : element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.raidOpen' }, title: `Open ${chLabel(m.to)} in a window of its own`,
+      onclick: () => { addParsed({ channel: m.to, only: null }); m.opened = true; redrawLine(m); } }, 'Open ›'));
   if (m.kind === 'modlog') return element('div', { class: `al-ev al-log al-${SITE_CLASS[m.site]}`, dataset: { key: m.site + ':' + m.id } },
     element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0]), element('span', { class: 'al-evt', html: SHIELD }), element('span', 'al-evw', ...m.words.map(x => x instanceof Node ? x.cloneNode(true) : x)));
   const site = PLAT_NAME[m.site] || m.site;
@@ -371,7 +416,7 @@ function lineEl(m){
     m.bits && element('span', 'al-tag al-tag-bits', `${m.bits} bits`),
     m.redeem && element('span', { class: 'al-tag al-tag-rw', title: 'A reward redeemed with channel points', style: m.redeem.color ? { '--rw': m.redeem.color } : {} }, m.redeem.title || 'Channel points'),
     m.deleted && element('span', { class: 'al-tag al-tag-del' + (m.deleted.ai ? ' ai' : '') },
-      m.deleted.ai ? ['Deleted', 'AI moderation', ...m.deleted.rules].join(' · ') : m.deleted.by === 'ban' ? 'Banned' : m.deleted.by === 'timeout' ? 'Timed out' + (m.deleted.secs ? ` · ${durText(m.deleted.secs)}` : '') : m.deleted.by === 'clear' ? 'Chat cleared' : 'Deleted'),
+      m.deleted.ai ? ['Deleted', 'AI moderation', ...m.deleted.rules].join(' · ') : m.deleted.by === 'ban' ? 'Banned' : m.deleted.by === 'timeout' ? 'Timed out' + (m.deleted.secs ? ` · ${durText(m.deleted.secs)}` : '') : m.deleted.by === 'clear' ? 'Chat cleared' : 'Deleted' + (m.deleted.who ? ` by ${m.deleted.who}` : '')),
     m.bot && !botsShown && element('button', { type: 'button', class: 'al-show linkish', dataset: { cmd: 'all.showBot' }, onclick: e => { m.open = !m.open; e.target.closest('.al-m').replaceWith(lineEl(m)); } }, m.open ? 'Hide' : 'Show')
   ].filter(Boolean);
   if (m.toMe === 'at' && m.bot) tags.splice(0, 1);   // (a bot's @: marked as to you, softly)
@@ -897,7 +942,8 @@ function init(){
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
   window.feedAgent = feedAgent; window.pinAgent = pinAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
-  window.allChat = { sender, modKnown, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.allChat = { sender, modKnown, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
-export { allLooking, allOn, allTabFor, feedReady, init, modViewChs, openModViews, sendSite, setAll, setLock, spamTag };
+export { allLooking, allOn, allRaid, allTabFor, feedReady, init, modViewChs, openModViews, sendSite, setAll, setLock,
+  spamTag };
