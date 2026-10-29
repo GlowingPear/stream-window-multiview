@@ -15,7 +15,7 @@ import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
 import { wins } from '../core.js';
 import { badgesAgent, feedAgent, kickIconsAgent, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent,
-  seekAgent, shownAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
+  shownAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
@@ -572,8 +572,7 @@ function lineEl(m){
     return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}${to.length ? ' al-gift' : ''}${m.gift && m.gift.me ? ' al-gift-me' : ''}`, dataset: { key: m.site + ':' + m.id } }, element('i', { class: 'pi pi-' + m.site }, site[0]),
       element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts, m.ch)) : ''),
       // (a shoutout: open the channel it points to, as a raid's line does)
-      m.shoutout ? element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.shoutoutOpen' }, title: `Open ${chLabel(m.shoutout)} in a window of its own`, onclick: () => addParsed({ channel: m.shoutout, only: null }) }, 'Open ›')
-        : element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.seeIt' }, title: `Show it in ${site}'s own chat`, onclick: () => seeIt(m) }, `See it on ${site} ›`),
+      m.shoutout && element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.shoutoutOpen' }, title: `Open ${chLabel(m.shoutout)} in a window of its own`, onclick: () => addParsed({ channel: m.shoutout, only: null }) }, 'Open ›'),
       // (who got them: a row under it, its button first, their names after it while open)
       to.length > 0 && element('div', 'al-gl',
         element('button', { type: 'button', class: 'al-gto', 'aria-expanded': String(!!m.giftOpen), dataset: { cmd: 'all.giftTo' }, title: m.giftOpen ? 'Hide who got them' : 'Who got them',
@@ -701,7 +700,7 @@ function renderHealth(view, w, chs){
     element('button', { type: 'button', class: 'all-hl-x', 'aria-label': 'Hide', title: 'Hide (it comes back if it changes)', html: icon.close, dataset: { cmd: 'all.healthHide' }, onclick: () => { h.hidden = true; renderHealth(view, w, chs); } }),
     element('div', 'all-hl-acts',
       element('button', { type: 'button', class: 'all-hl-rep', dataset: { cmd: 'all.healthReport' }, title: 'Saves what\'s needed to fix it, without names, ids or words', onclick: () => reportHealth([ch]) }, 'Report for a fix'),
-      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.healthSee' }, onclick: () => seeIt({ ch }) }, `See it on ${PLAT_NAME[platOf(ch)]} ›`)))));
+      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.healthSee' }, onclick: () => seeIt(ch) }, `See it on ${PLAT_NAME[platOf(ch)]} ›`)))));
 }
 // The sites it hears, the filter pill, and what it says while it has nothing yet
 function renderTop(view, w){
@@ -1124,12 +1123,11 @@ function readFilters(){
 function setBotsShown(on){ botsShown = !!on; settings.set('allBots', botsShown ? 'shown' : 'hidden'); redrawAll(); }
 function setEventsMode(mode){ eventsMode = mode; settings.set('allEvents', mode); redrawAll(); }
 const redrawAll = () => wins.forEach(w => { if (w.allView){ const v = w.allView; v.list.replaceChildren(...feedOf(v.s).msgs.map(lineEl).filter(Boolean)); renderTop(v, w); v.list.scrollTop = v.list.scrollHeight; } });
-// "See it on …": that site's chat, scrolled to it (and flashed), where it has its full look and controls
-function seeIt(m){
-  const c = wins.find(o => o.kind === 'chat' && o.channel === m.ch); if (!c) return;
+// "See it on …" (ALL's health warning): that site's own chat, where it has its full look and controls
+function seeIt(ch){
+  const c = wins.find(o => o.kind === 'chat' && o.channel === ch); if (!c) return;
   setAll(c, false);
   showTab(c);
-  if (c.view && m.id) runIn(c.view, `(${seekAgent})(${JSON.stringify(m.id)})`);
 }
 
 // ALL shows over the chat of each window that has it on. Each chat hands over its messages while its window has an ALL
@@ -1214,7 +1212,7 @@ function init(){
   // What ALL shows, changed in the other window
   settings.onChange(['allBots', 'allEvents'], () => { readFilters(); redrawAll(); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.pinAgent = pinAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.pinAgent = pinAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
   window.allChat = { sender, modKnown, gotBadges, gotKickIcons, kickIcons, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }

@@ -1,4 +1,4 @@
-// ALL's helpers inside a chat page (in-site/feed.js): find a message by its id (See it on …), start the site's own reply
+// ALL's helpers inside a chat page (in-site/feed.js): find a message by its id (Copy message HTML), start the site's own reply
 // to it (Kick), click its sender's name (their card). Stand-in lines in the app's own page, with the id where each site
 // keeps it (React props, or the element's id).
 const test = require('node:test');
@@ -26,13 +26,13 @@ const addLines = page => page.evaluate(() => {
   wrap.append(tw, kick, yt); document.body.append(wrap);
 });
 
-test('See it on …: the line with that id, by React props or its own id, scrolled to and outlined; another id isn\'t found', async t => {
+test('Copy message HTML (developer tools): the line with that id, by React props or its own id; another id isn\'t found', async t => {
   const page = await openApp(t);
   await addLines(page);
-  assert.equal(await page.evaluate(() => window.seekAgent('tw1')), true);
-  assert.ok(await page.$eval('.chat-line__message', e => !!e.style.outline));
-  assert.equal(await page.evaluate(() => window.seekAgent('yt1')), true);
-  assert.equal(await page.evaluate(() => window.seekAgent('nope')), false);
+  assert.match(await page.evaluate(() => window.messageHtml('tw1')), /^<div class="chat-line__message">.*tinroof/);
+  assert.match(await page.evaluate(() => window.messageHtml('yt1')), /^<yt-live-chat-text-message-renderer id="yt1">/);
+  assert.equal(await page.evaluate(() => window.messageHtml('nope')), '');
+  assert.equal(await page.evaluate(() => window.messageHtml('nope', true)), null, 'Why didn\'t this alert?: nothing to explain');
 });
 
 test('a Kick reply: its hover bar\'s Reply (the arrow), not the line\'s other Reply; a line that isn\'t there: no', async t => {
