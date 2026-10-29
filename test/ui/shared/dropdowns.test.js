@@ -166,6 +166,13 @@ test('the list: above when there\'s no room below, disabled options skipped, and
   assert.equal(await page.isVisible('#settingsDlg'), true, 'Escape closes only the list');
 });
 
+test('every dropdown has the app\'s own arrow, as far from its edge as its words are from the other (not the system\'s, tight to the edge)', async t => {
+  const page = await openApp(t);
+  const look = await page.evaluate(() => { const s = document.createElement('select'); s.innerHTML = '<option>one</option>'; document.body.append(s); const c = getComputedStyle(s);
+    return [c.appearance, /^url\("data:image\/svg\+xml/.test(c.backgroundImage), c.paddingRight, c.paddingLeft, c.backgroundPositionX]; });
+  assert.deepEqual(look, ['none', true, '30px', '10px', 'calc(100% - 10px)']);
+});
+
 test('a dropdown the page gives bounds (ddBounds: the emote picker it\'s in) keeps its list inside them: it scrolls, and it lines up with their right edge', async t => {
   const page = await openApp(t);
   await page.evaluate(() => {

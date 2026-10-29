@@ -294,6 +294,7 @@ function palRun(i, how){
     return;
   }
   if (how === 'alt' && !it.alt){ if (it.more) return palPush(it); how = 'run'; }
+  if (how === 'run' && it.more && !it.run && !it.toggle && !it.button) return palPush(it);   // (only a list: Enter opens it, as Tab does)
   palWhy = commands.run(it, how);
   if (palWhy){ palPaintFoot(); return; }
   if ((it.toggle && how === 'run') || it.stay){ renderPalette(); return; }    // a switch flips where it is (and Clear Recent asks there)

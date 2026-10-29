@@ -398,7 +398,7 @@ function pfRenderProf(){
   const url = (s && s.url) || platform(ch).profileUrl(ch);
   const ext = element('button', 'btn'); ext.innerHTML = pfIco.ext + 'Open on ' + P; ext.onclick = () => window.kmv.openExternal(url);
   acts.appendChild(ext);
-  if (pf.group){ const la = element('button', 'btn'); la.innerHTML = icon.layers + 'Linked channels'; la.title = 'Their channels, the main one, and their choices'; la.onclick = () => openLinkCard(pf.main); acts.appendChild(la); }
+  { const la = element('button', 'btn'); la.innerHTML = icon.layers + 'Channel settings'; la.title = 'Their chat bots, ALL, opening when live, and their linked channels'; la.onclick = () => openLinkCard(pf.main); acts.appendChild(la); }
   main.appendChild(acts);
   hero.appendChild(main);
   box.appendChild(hero);
@@ -631,7 +631,7 @@ function pfRenderLinked(){
   openOn.setAttribute('aria-haspopup', 'true');
   openOn.onclick = () => pfOpenOnMenu(openOn);
   acts.appendChild(openOn);
-  const la = element('button', 'btn'); la.innerHTML = icon.layers + 'Linked channels'; la.title = 'Their channels, the main one, and their choices';
+  const la = element('button', 'btn'); la.innerHTML = icon.layers + 'Channel settings'; la.title = 'Their chat bots, ALL, opening when live, and their linked channels';
   la.onclick = () => openLinkCard(main);
   acts.appendChild(la);
   hm.appendChild(acts);

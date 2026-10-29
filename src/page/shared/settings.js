@@ -14,6 +14,7 @@ const SETTING_NAMES = new Set([
   'chatZoom', 'chatBlowup', 'chatBlowSize', 'stageCh', 'stageSplit', 'stageZoom', 'railCh', 'railZoom', 'lastSession', 'startMuted', 'snap',
   // channels
   'saved', 'savedTab', 'autoOpen', 'notifyAll', 'notifyOff', 'chNames', 'ytNames', 'watchSignedIn',
+  'chanOpts',              // Channel settings of a channel that isn't linked: its chat bots, its ALL tab (platforms/linked.js)
   'accounts', 'account', 'profView',
   // Settings › Linked channels: the switch, the linked streamers, pairs answered "Not the same", the page's options,
   // the first-time tip, and tabs closed or split out for each streamer

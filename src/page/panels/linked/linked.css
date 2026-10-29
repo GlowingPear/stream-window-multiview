@@ -59,7 +59,11 @@
 .lc-opt small{display:block;color:var(--muted);font-size:11.5px}
 .lc-foot{display:flex;align-items:center;gap:10px;margin-top:14px}
 .lc-gap{flex:1}
+.lc-kicker{display:block;margin-bottom:2px;color:var(--muted);font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
 .lc-unlink{color:var(--danger) !important}
+/* what only a linked streamer has, on a channel on its own: greyed, its line says how to get it */
+.lc-off .st-t{color:var(--muted)}.lc-off select{opacity:.5;cursor:not-allowed}
+.lc-unlink:disabled{opacity:.4;cursor:not-allowed;text-decoration:none}
 
 /* ---------- Settings › Windows (panels/settings/windows-pane.js) ---------- */
 .wb-head{border-bottom:0;padding-bottom:4px}

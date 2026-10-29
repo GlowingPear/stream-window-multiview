@@ -16,7 +16,7 @@ import { infoFor } from '../panels/channels/channels.js';
 import { devOn } from '../panels/developer/developer.js';
 import { openLinkCard } from '../panels/linked/link-card.js';
 import { save } from '../persistence.js';
-import { linkedOn, nameOf, streamerOf } from '../platforms/linked.js';
+import { nameOf, streamerOf } from '../platforms/linked.js';
 import { PLAT_NAME, chLabel, isModOf, platOf } from '../platforms/platforms.js';
 import { commands } from '../shared/commands.js';
 import { DESKTOP } from '../shared/env.js';
@@ -77,8 +77,8 @@ function winActions(w){
   const closed = w.frame ? (closedTabs[w.frame] || []).filter(ch => !members.some(o => o.channel === ch)) : [];
   closed.forEach(ch => add('reopen:' + ch, `Reopen ${PLAT_NAME[platOf(ch)]}`, () => addTab(lead, ch, true), { icon: 'plus', sub: 'A tab you closed', words: ['reopen', 'closed tab'] }));
   if (w.split && streamerOf(w.channel)) add('join', 'Join back', () => joinTab(w), { icon: 'link', sub: `Back as a tab in ${nameOf(w.channel)}'s window` });
-  if (w.channel && linkedOn() && !/^yt:v:/.test(w.channel)){
-    add('link', streamerOf(w.channel) ? 'Linked channels…' : 'Link this window\'s channel with…', () => openLinkCard(w.channel, { add: !streamerOf(w.channel) }), { icon: 'layers', sub: 'The same streamer on other sites' });
+  if (w.channel && !/^yt:v:/.test(w.channel)){
+    add('link', 'Channel settings…', () => openLinkCard(w.channel), { icon: 'layers', sub: 'Its chat bots, ALL, opening when live, linking its other sites' });
     if (streamerOf(w.channel)) add('unlink', `Unlink ${PLAT_NAME[platOf(lead.channel)]} from ${nameOf(lead.channel)}`, () => unlinkTab(lead.channel), { icon: 'unlink', sub: 'It becomes its own channel again' });
   }
   if (w.kind === 'stream'){

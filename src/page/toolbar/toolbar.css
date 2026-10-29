@@ -5,7 +5,10 @@ header{position:fixed;top:0;left:0;right:0;height:var(--head);z-index:100000;dis
 header.c1 .brand-txt{display:none} header.c1 .brand{margin-right:0}
 body.role-streams .brand-txt{display:inline !important}
 .brand .pear{width:20px;height:20px;fill:var(--accent);color:var(--accent);filter:drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 35%, transparent))}
-select{height:34px;padding:0 8px;border-radius:7px;border:1px solid var(--line2);background:var(--panel2)}
+/* every dropdown: the app's own arrow, the same space from the edge as from the words (not the system's, tight to the edge) */
+select{height:34px;padding:0 30px 0 10px;border-radius:7px;border:1px solid var(--line2);appearance:none;-webkit-appearance:none;cursor:pointer;
+  background:var(--panel2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa4ad' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center/12px}
+select[multiple]{padding-right:10px;background-image:none}
 .btn{height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);background:var(--panel2);cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:var(--muted)}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent-edge);font-weight:700}

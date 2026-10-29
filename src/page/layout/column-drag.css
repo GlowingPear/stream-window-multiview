@@ -40,9 +40,9 @@ body.coldrag #stage{scroll-snap-type:none}
   font-size:20px;line-height:1;display:grid;place-items:center;padding:0 0 2px}
 .cs-btn:hover:not(:disabled){background:var(--accent);color:var(--accent-ink)}
 .cs-btn:disabled{opacity:.35;cursor:default}
-.cs-pick{flex:1;min-width:0;height:22px;padding:0 6px;border:1px solid transparent;border-radius:6px;background:transparent;
+.cs-pick{flex:1;min-width:0;height:22px;padding:0 19px 0 6px;border:1px solid transparent;border-radius:6px;background-color:transparent;background-position:right 5px center;background-size:10px;
   font-weight:600;text-align:center;text-align-last:center;cursor:pointer}
-.cs-pick:hover{border-color:var(--line2);background:var(--panel2)}
+.cs-pick:hover{border-color:var(--line2);background-color:var(--panel2)}
 .cs-pick option{background:var(--panel);color:var(--text)}
 .cs-pos{flex:none;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 
@@ -56,8 +56,8 @@ body.fs-dragmode, body.fs-dragmode *{cursor:grabbing !important}
 @container (max-width:720px){ .fs-back span{display:none} .fs-back{padding:0 7px} }
 @container (max-width:470px){ .fs-side span{display:none} }
 
-.col-pick{display:block;min-width:36px;max-width:230px;flex:0 1 auto;height:22px;padding:0 2px 0 4px;border:1px solid transparent;
-  border-radius:5px;background:transparent;font-weight:600;cursor:pointer;text-overflow:ellipsis}
-.col-pick:hover{border-color:var(--line2);background:var(--panel)}
+.col-pick{display:block;min-width:36px;max-width:230px;flex:0 1 auto;height:22px;padding:0 17px 0 4px;border:1px solid transparent;
+  border-radius:5px;background-color:transparent;background-position:right 4px center;background-size:10px;font-weight:600;cursor:pointer;text-overflow:ellipsis}
+.col-pick:hover{border-color:var(--line2);background-color:var(--panel)}
 .col-pick option{background:var(--panel);color:var(--text)}
 .win:has(.col-pick) .title{display:none}

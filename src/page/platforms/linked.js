@@ -58,7 +58,18 @@ const listStreamers = () => linkedOn() ? all().map(s => ({ ...s, accounts: order
 // A streamer's own chat bots (their card): names for one site each, { p: 'kick', name: 'quietkoala' }. Never a mention
 // or spam in their chats on that site, on top of the app's list.
 const botsOf = s => s && Array.isArray(s.bots) ? s.bots.filter(b => b && typeof b.name === 'string' && b.name && PLATFORMS[b.p]) : [];
-const streamerBots = ch => botsOf(streamerOf(ch)).filter(b => b.p === platOf(ch)).map(b => b.name);
+// A channel's own choices while it isn't linked (Channel settings): its chat bots (names on its site) and its ALL tab.
+// Linking it moves its bots to the streamer, and its ALL then follows the streamer's (Settings › Linked channels).
+const chanOpts = () => { const o = settings.json('chanOpts', {}); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; };
+const chanOpt = (ch, k) => (chanOpts()[ch] || {})[k];
+function setChanOpt(ch, k, v){
+  const o = chanOpts(), c = { ...(o[ch] || {}) };
+  if (v === null || v === undefined || v === false || (Array.isArray(v) && !v.length)) delete c[k]; else c[k] = v;
+  if (Object.keys(c).length) o[ch] = c; else delete o[ch];
+  settings.set('chanOpts', o); store.changed('streamers');
+}
+const chanBots = ch => (Array.isArray(chanOpt(ch, 'bots')) ? chanOpt(ch, 'bots') : []).filter(n => typeof n === 'string' && n);
+const streamerBots = ch => { const s = streamerOf(ch); return s ? botsOf(s).filter(b => b.p === platOf(ch)).map(b => b.name) : chanBots(ch); };
 const optDefault = k => OPT_DEFAULTS[k];
 function linkOpt(k){ const o = settings.json('linkedOpts', {}) || {}; return k in o ? o[k] : OPT_DEFAULTS[k]; }
 // A streamer's own choice (their streams, opening by themselves), or the page's
@@ -89,6 +100,16 @@ function link(a, b){
   else if (!s){ s = { id: newId(), name: '', main: a, accounts: [a, b] }; list.push(s); }
   else if (t){ s.accounts.push(...t.accounts); list.splice(list.indexOf(t), 1); }
   else s.accounts.push(b);
+  // their own bots go to the streamer. Their own ALL on stays on for the streamer (and shown where it was), off becomes
+  // the streamer's As in Settings
+  [a, b].forEach(ch => {
+    const mine = chanBots(ch).filter(n => !botsOf(s).some(x => x.p === platOf(ch) && x.name.toLowerCase() === n.toLowerCase()));
+    if (mine.length) s.bots = [...botsOf(s), ...mine.map(name => ({ p: platOf(ch), name }))];
+    if (chanOpt(ch, 'allTab') === true && s.allTab === undefined) s.allTab = true;
+  });
+  const shown = settings.json('allOpen', []), solo = [a, b].map(ch => 'c:' + ch);
+  if (Array.isArray(shown) && shown.some(x => solo.includes(x))) settings.set('allOpen', [...new Set(shown.map(x => solo.includes(x) ? s.id : x))]);
+  const o = chanOpts(); if (o[a] || o[b]){ delete o[a]; delete o[b]; settings.set('chanOpts', o); }
   forgetNot(a, b);
   saveStreamers();
   return s;
@@ -173,6 +194,6 @@ function init(){
   window.linkedApi = { link, unlink, unlinkAll, setOn, setOpt, setMain, notSame, suggestions, listStreamers, streamerOf, setStreamerOpt, streamerBots };   // for the tests
 }
 
-export { accountsOf, botsOf, canLink, dismissed, forgetNot, groupKey, init, laterPair, link, linkedOn, linkOpt,
-  listStreamers, nameOf, notSame, optFor, ordered, sameStreamer, setMain, setOn, setOpt, setStreamerOpt,
-  streamerBots, streamerName, streamerOf, suggestions, unlink, unlinkAll };
+export { accountsOf, botsOf, canLink, chanOpt, dismissed, forgetNot, groupKey, init, laterPair, link, linkedOn,
+  linkOpt, listStreamers, mainOf, nameOf, notSame, optFor, ordered, sameStreamer, setChanOpt, setMain, setOn, setOpt,
+  setStreamerOpt, streamerBots, streamerName, streamerOf, suggestions, unlink, unlinkAll };

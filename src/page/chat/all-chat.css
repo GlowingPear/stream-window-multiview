@@ -258,8 +258,7 @@
 .all-ep-bar{display:flex;gap:6px;margin:0 2px 8px}
 .all-ep-q{flex:1;min-width:0;height:30px;padding:0 9px;border:1px solid var(--line2);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;font-size:12.5px}
 .all-ep-q:focus,.all-ep-f:focus{outline:none;border-color:color-mix(in srgb,var(--accent) 60%,var(--line2))}
-.all-ep-f{flex:none;max-width:46%;height:30px;padding:0 26px 0 10px;border:1px solid var(--line2);border-radius:8px;font:inherit;font-size:12px;font-weight:650;color:var(--text);cursor:pointer;appearance:none;text-overflow:ellipsis;
-  background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa4ad' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center/12px}
+.all-ep-f{flex:none;max-width:46%;height:30px;border-radius:8px;background-color:var(--bg);font-size:12px;font-weight:650;color:var(--text);text-overflow:ellipsis}
 .all-ep-grid{position:relative;display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:2px;overflow:auto;min-height:60px}
 .all-ep-e{display:grid;place-items:center;height:38px;border:0;border-radius:7px;background:none;cursor:pointer}
 .all-ep-e:hover,.all-ep-e:focus-visible{background:var(--line)}
