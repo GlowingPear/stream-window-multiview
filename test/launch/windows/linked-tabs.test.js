@@ -188,3 +188,87 @@ test('the pointer moved over a chat page (ALL\'s Twitch replies): only a page th
     assert.equal(await a.win.evaluate(b => window.kmv.viewHover(...b), bad), false, JSON.stringify(bad));
   await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
 });
+
+// A linked streamer's YouTube chat, a tab you can't see: it loads as soon as the live check knows its live video, without
+// a click and without waiting for its own 2-minute check. yt:resolve (YouTube's page) answers "not live" here unless a
+// test says otherwise: it can lag behind the live check.
+const ytWin = ch => a.win.evaluate(ch => {
+  const w = window.openWins().find(o => o.kind === 'chat' && o.channel === ch); if (!w) return null;
+  const wait = w.el.querySelector('.waitmsg');
+  return { hidden: !!w.hiddenTab, src: w.view ? w.view.getAttribute('src') : null, wait: wait.hidden ? '' : wait.querySelector('span').textContent };
+}, ch);
+const ytAnswers = (live, ms = 0) => a.app.evaluate(({ ipcMain }, [live, ms]) => {
+  globalThis.__yt = { live, n: 0 };
+  ipcMain.removeHandler('yt:resolve');
+  ipcMain.handle('yt:resolve', async () => { globalThis.__yt.n++; if (ms) await new Promise(r => setTimeout(r, ms));
+    return globalThis.__yt.live ? { live: true, videoId: 'pageVideo01' } : { live: false }; });
+}, [live, ms]);
+const asked = () => a.app.evaluate(() => globalThis.__yt.n);
+const untilWin = async (ch, test, what) => { await a.win.waitForFunction(([ch, src]) => { const w = window.openWins().find(o => o.kind === 'chat' && o.channel === ch); return !!w && new RegExp(src).test(w.view?.getAttribute('src') || ''); }, [ch, test.source], { timeout: 15000 }).catch(() => { throw new Error('timed out: ' + what); }); };
+
+test('a YouTube chat tab waiting for its channel to go live loads when the live check says it is, without a click', T, async () => {
+  await ytAnswers(false);
+  await a.win.evaluate(() => {
+    window.linkedApi.setOn(true); window.linkedApi.link('echo', 'yt:@echo');
+    window.smvNotes.liveStatus({ echo: { live: true, checked: Date.now() } });          // (YouTube: not checked yet)
+    window.frames_.openStreamer('echo', 'chat', ['echo', 'yt:@echo']);
+  });
+  await a.win.waitForFunction(() => /isn’t live right now/.test(window.openWins().find(o => o.channel === 'yt:@echo')?.el.querySelector('.waitmsg span').textContent || ''));
+  assert.equal((await ytWin('yt:@echo')).hidden, true, 'a tab you can\'t see');
+  assert.equal(await asked(), 1);
+  await a.win.evaluate(() => window.smvNotes.liveStatus({ echo: { live: true, checked: Date.now() }, 'yt:@echo': { live: true, videoId: 'liveCheck01', checked: Date.now() } }));
+  await untilWin('yt:@echo', /live_chat.*v=liveCheck01/, 'its live chat loads');
+  assert.deepEqual(await ytWin('yt:@echo'), { hidden: true, src: 'https://www.youtube.com/live_chat?is_popout=1&v=liveCheck01', wait: '' }, 'no waiting message');
+  assert.equal(await a.win.evaluate(() => window.openWins().find(o => o.channel === 'yt:@echo').el.classList.contains('tab-hidden')), true, 'still not shown: nothing was clicked');
+  assert.equal(await asked(), 1, 'YouTube wasn\'t asked again');
+  await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
+});
+
+test('a YouTube tab that opens while the live check knows its video loads it at once, even if YouTube\'s page says "not live" yet', T, async () => {
+  await ytAnswers(false);
+  await a.win.evaluate(() => {
+    window.linkedApi.setOn(true); window.linkedApi.link('foxtrot', 'yt:@foxtrot');
+    window.smvNotes.liveStatus({ foxtrot: { live: true, checked: Date.now() }, 'yt:@foxtrot': { live: true, videoId: 'liveCheck02', checked: Date.now() } });
+    window.frames_.openStreamer('foxtrot', 'chat', ['foxtrot', 'yt:@foxtrot']);
+  });
+  await untilWin('yt:@foxtrot', /v=liveCheck02/, 'the live check\'s video');
+  assert.equal(await asked(), 0, 'YouTube wasn\'t asked');
+  assert.equal((await ytWin('yt:@foxtrot')).wait, '');
+  await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
+});
+
+test('YouTube\'s late "not live" answer, after the live check loaded the tab meanwhile, leaves it loaded', T, async () => {
+  await ytAnswers(false, 1500);
+  await a.win.evaluate(() => {
+    window.linkedApi.setOn(true); window.linkedApi.link('golf', 'yt:@golf');
+    window.smvNotes.liveStatus({ golf: { live: true, checked: Date.now() } });
+    window.frames_.openStreamer('golf', 'chat', ['golf', 'yt:@golf']);
+  });
+  await a.win.waitForFunction(() => /Looking for/.test(window.openWins().find(o => o.channel === 'yt:@golf')?.el.querySelector('.waitmsg span').textContent || ''));
+  await a.win.evaluate(() => window.smvNotes.liveStatus({ golf: { live: true, checked: Date.now() }, 'yt:@golf': { live: true, videoId: 'liveCheck03', checked: Date.now() } }));
+  await untilWin('yt:@golf', /v=liveCheck03/, 'the live check\'s video');
+  await a.win.waitForFunction(() => !window.openWins().find(o => o.channel === 'yt:@golf').ytBusy, null, { timeout: 5000 });
+  assert.deepEqual(await ytWin('yt:@golf'), { hidden: true, src: 'https://www.youtube.com/live_chat?is_popout=1&v=liveCheck03', wait: '' }, 'still that video, no waiting message');
+  await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
+});
+
+test('ALL: a YouTube channel already live at the first live check (as when the app starts) gets its tab, loaded, without a click', T, async () => {
+  await ytAnswers(false);
+  await a.win.evaluate(() => {
+    window.linkedApi.setOn(true); window.linkedApi.link('hotel', 'tw:hotel'); window.linkedApi.link('hotel', 'yt:@hotel');
+    window.smvNotes.liveStatus({ hotel: { live: true, checked: Date.now() }, 'tw:hotel': { live: true, checked: Date.now() } });   // (YouTube: not checked yet)
+    window.frames_.openStreamer('hotel', 'chat', ['hotel']);
+  });
+  await a.win.click('#stage .win.chat:not(.tab-hidden) .ptab.all');
+  await a.win.waitForFunction(() => window.openWins().some(o => o.channel === 'tw:hotel'));
+  assert.equal(await ytWin('yt:@hotel'), null, 'no YouTube tab while it isn\'t known to be live (its offline channel has no chat)');
+  // the first answer about YouTube says live: no "went live" for the tabs (it was never known offline), but ALL reads it
+  await a.win.evaluate(() => window.smvNotes.liveStatus({ hotel: { live: true, checked: Date.now() }, 'tw:hotel': { live: true, checked: Date.now() }, 'yt:@hotel': { live: true, videoId: 'liveCheck04', checked: Date.now() } }));
+  await untilWin('yt:@hotel', /v=liveCheck04/, 'its live chat loads');
+  assert.equal((await ytWin('yt:@hotel')).hidden, true, 'a tab you can\'t see, under ALL');
+  assert.equal(await asked(), 0);
+  // offline again: its tab goes (ALL keeps only Kick's and Twitch's offline chats)
+  await a.win.evaluate(() => window.smvNotes.liveStatus({ hotel: { live: true, checked: Date.now() }, 'tw:hotel': { live: true, checked: Date.now() }, 'yt:@hotel': { live: false, checked: Date.now() } }));
+  await a.win.waitForFunction(() => !window.openWins().some(o => o.channel === 'yt:@hotel'));
+  await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
+});
