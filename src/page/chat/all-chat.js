@@ -1095,6 +1095,16 @@ function openSiteCard(m){
    back; if it fails, it stays, red, with why, Retry and Edit. One message at a time, so Enter can't send it twice. ---- */
 let mineN = 0;
 const sameText = (a, b) => a.replace(/\s+/g, ' ').trim().toLowerCase() === b.replace(/\s+/g, ' ').trim().toLowerCase();
+// Your line's words as ALL draws a message's: each emote you picked in the box as its picture, the rest text
+function mineParts(text, pics, sends){
+  const out = [];
+  text.split(/(\s+)/).forEach(t => {
+    if (pics && pics.has(t)) return out.push({ emote: pics.get(t), name: t, send: sends && sends.get(t) });
+    const last = out[out.length - 1];
+    if (last && !last.emote) last.text += t; else if (t) out.push({ text: t });
+  });
+  return out;
+}
 async function sendNow(view, w){
   let text = view.input.value.trim(); const ch = sendSite(w); if (!text || !ch) return;
   if (view.sending) return flash('Still sending the last one');
@@ -1114,7 +1124,7 @@ async function sendNow(view, w){
   // a reply where the site has none from here: an @ of them, in front
   if (lock && lock.kind === 'reply' && !threaded && !new RegExp(`^@${lock.msg.login}\\b`, 'i').test(text)) text = `@${lock.msg.sender.replace(/^@/, '')} ${text}`;
   const site = platOf(ch), f = feedOf(view.s);
-  const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, send: withEmotes(view, text), emotes: view.emoteSends && new Map(view.emoteSends), pics: view.emotePics && new Map(view.emotePics), parts: [{ text }], ...youOn(f, site, ch), lock, threaded, state: 'sending' };
+  const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, send: withEmotes(view, text), emotes: view.emoteSends && new Map(view.emoteSends), pics: view.emotePics && new Map(view.emotePics), parts: mineParts(text, view.emotePics, view.emoteSends), ...youOn(f, site, ch), lock, threaded, state: 'sending' };
   view.input.value = ''; if (lock) setLock(view, w, null);
   f.msgs.push(p); addLine(view, p);
   await deliver(view, w, p);
@@ -1174,7 +1184,7 @@ function mineEl(p){
   return element('div', { class: 'al-m al-mine al-mine-' + p.state, dataset: { key: p.site + ':' + p.id } },
     p.threaded && element('span', 'al-q', '↩ replying to ', element('b', null, p.lock.msg.sender)),
     element('div', 'al-line', element('span', 'al-who', element('i', { class: 'pi pi-' + p.site, title: site }, site[0]),
-      ...p.badges.map(b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' }))), element('b', { class: 'al-n', style: { color: nameColor(p) } }, p.sender), ': ', element('span', 'al-txt', p.text), p.state === 'failed' ? '' : state || ''),
+      ...p.badges.map(b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' }))), element('b', { class: 'al-n', style: { color: nameColor(p) } }, p.sender), ': ', element('span', 'al-txt', ...partsEl(p.parts, p.ch)), p.state === 'failed' ? '' : state || ''),
     p.state === 'failed' && state);
 }
 function readFilters(){
