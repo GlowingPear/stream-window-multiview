@@ -9,7 +9,7 @@ import { sampleIn } from './event-samples.js';
 import { feedParse } from './feed-parse.js';
 import { openInBrowser } from './kick-panel.js';
 import { autoTrFor, translateChat } from './translate.js';
-import { saveEmote } from './view-menu.js';
+import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { wins } from '../core.js';
 import { feedAgent, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
@@ -378,27 +378,42 @@ const bigEmote = u => String(u).replace(/(static-cdn\.jtvnw\.net\/emoticons\/v2\
 function emoteEl(src, name, from, ch, fresh, send){
   const isNew = !!(fresh && fresh.has(name));
   const img = element('img', { class: 'al-e' + (isNew ? ' al-new' : ''), src, alt: name, title: emoteOn ? '' : isNew ? `${name} · new` : from ? `${name} · ${from}` : name, loading: 'lazy', referrerPolicy: 'no-referrer',
-    dataset: { send: send || name, from: from || PLAT_NAME[platOf(ch || '')] || '' } });
+    dataset: { send: send || name, from: from || PLAT_NAME[platOf(ch || '')] || '', site: ({ '7TV': '7TV', BetterTTV: 'BTTV', FrankerFaceZ: 'FFZ' })[from] || PLAT_NAME[platOf(ch || '')] || 'Kick' } });
   img.onerror = () => img.replaceWith(document.createTextNode(name));
   img.onpointerenter = () => { if (isNew) emoteSeen(ch, name); if (emoteOn) emoteCard(img); };
   return img;
 }
-// Settings › Chat › Emote preview on hover (as in the sites' chats: in-site/emote-preview.js): a card with the emote big,
-// its name and where it's from, Copy name and Save
+// An emote, big: its picture in a frame, its name with its site's badge (or Add-on), and where it's from, as the sites'
+// chats show it (in-site/emote-preview.js's card, the emote's right-click menu: chat/view-menu.js EMOTE_SITE)
+function emotePreview(img){
+  const s = EMOTE_SITE[img.dataset.site] || EMOTE_SITE.Kick, addOn = /^(7TV|BTTV|FFZ)$/.test(img.dataset.site);
+  const pic = element('img', { src: bigEmote(img.src), alt: '', referrerPolicy: 'no-referrer' });
+  pic.onerror = () => { if (pic.src !== img.src) pic.src = img.src; };
+  return element('div', 'all-epre', element('div', 'all-epic', pic),
+    element('div', null, element('div', 'all-etop', element('span', 'all-enm', img.alt), element('span', { class: 'all-ebadge', style: { background: s[0], color: s[1] } }, addOn ? 'Add-on' : img.dataset.site)),
+      element('div', 'all-esub', s[2])));
+}
+// Settings › Chat › Emote preview on hover (as in the sites' chats): the emote big, Copy name, Copy image and Download
 function emoteCard(img){
   const host = wins.find(o => o.allView && o.allView.el.contains(img)), view = host && host.allView; if (!view) return;
   const card = view.ecard, name = img.alt, url = bigEmote(img.src);
   clearTimeout(card.hideT);
-  card.replaceChildren(element('img', { src: url, alt: name, referrerPolicy: 'no-referrer' }), element('b', null, name), element('small', null, img.dataset.from || ''),
-    element('div', 'all-ec-acts',
-      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.emoteCopyName' }, onclick: () => navigator.clipboard?.writeText(img.dataset.send || name).then(() => flash('Copied ' + name)) }, 'Copy name'),
-      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.emoteSave' }, onclick: () => saveEmote(JSON.stringify({ url, name })) }, 'Save')));
-  card.hidden = false;
+  const said = (b, text, back) => { b.textContent = text; setTimeout(() => { b.textContent = back; }, 1200); };
+  const btn = (label, cmd, run) => { const b = element('button', { type: 'button', dataset: { cmd } }, label); b.onclick = () => run(b); return b; };
+  card.replaceChildren(emotePreview(img), element('div', 'all-eacts',
+    btn('Copy name', 'all.emoteCopyName', b => navigator.clipboard?.writeText(img.dataset.send || name).then(() => said(b, 'Copied', 'Copy name'))),
+    btn('Copy image', 'all.emoteCopyImage', b => { copyEmote(JSON.stringify({ url, name })); said(b, 'Copied', 'Copy image'); }),
+    btn('Download', 'all.emoteSave', b => { saveEmote(JSON.stringify({ url, name })); said(b, 'Saving…', 'Download'); })),
+    element('span', 'all-etip'));
+  card.hidden = false; card.classList.remove('show');
   placeAt(view, card, img);
-  // above the emote when there's room, so the line stays readable
-  const z = parseFloat(view.el.style.zoom) || 1, vr = view.el.getBoundingClientRect(), r = img.getBoundingClientRect(), up = (r.top - vr.top) / z - card.offsetHeight - 6;
-  if (up >= 6) card.style.top = up + 'px';
-  const hide = () => { card.hideT = setTimeout(() => { card.hidden = true; }, 220); };
+  // above the emote when there's room, so the line stays readable; its little pointer at the emote
+  const z = parseFloat(view.el.style.zoom) || 1, vr = view.el.getBoundingClientRect(), r = img.getBoundingClientRect(), up = (r.top - vr.top) / z - card.offsetHeight - 10;
+  if (up >= 6) card.style.top = up + 'px'; else card.style.top = Math.max(6, Math.min((r.bottom - vr.top) / z + 10, vr.height / z - card.offsetHeight - 6)) + 'px';   // (below it, inside ALL)
+  const tip = card.querySelector('.all-etip'); tip.className = 'all-etip ' + (up >= 6 ? 'down' : 'up');
+  tip.style.left = Math.max(10, Math.min(card.offsetWidth - 22, (r.left + r.width / 2 - vr.left) / z - parseFloat(card.style.left) - 6)) + 'px';
+  requestAnimationFrame(() => card.classList.add('show'));
+  const hide = () => { card.hideT = setTimeout(() => { card.hidden = true; card.classList.remove('show'); }, 220); };
   img.onpointerleave = hide; card.onpointerenter = () => clearTimeout(card.hideT); card.onpointerleave = hide;
 }
 // A new emote pointed at: not new any more, here and in that channel's chats (as pointing at it there does)
@@ -812,7 +827,7 @@ function openLineMenu(m, at){
   const tl = (navigator.language || 'en').split('-')[0], lang = (() => { try { return new Intl.DisplayNames([navigator.language || 'en'], { type: 'language' }).of(tl); } catch { return tl; } })();
   const short = x => `“${x.length > 24 ? x.slice(0, 23) + '…' : x}”`;
   const cw = chatFor(m), trAuto = autoTrFor(m.ch);
-  lm.replaceChildren(...[element('div', 'all-lh', element('i', { class: 'pi pi-' + m.site }, site[0]), element('b', null, m.sender), element('small', null, site)),
+  lm.replaceChildren(...[em && emotePreview(em), element('div', 'all-lh', element('i', { class: 'pi pi-' + m.site }, site[0]), element('b', null, m.sender), element('small', null, site)),
     link && item('Open link in your browser', icon.pop, () => openInBrowser(link.href), { cmd: 'all.menuLink' }),
     link && item('Copy link address', icon.link, () => copy(link.href, 'Copied the link'), { cmd: 'all.menuLinkCopy' }),
     em && item('Copy emote text', icon.copy, () => copy(em.dataset.send || em.alt), { cmd: 'all.menuEmoteText' }),
@@ -845,6 +860,7 @@ function openLineMenu(m, at){
     devOn && item('Copy message data', icon.code, () => copyData(m), { cmd: 'all.menuData' }),
     devOn && cw && m.id && item('Copy message HTML', icon.code, () => askIn(cw.view, `(${messageHtml})(${JSON.stringify(m.id)})`).then(h => (h ? copy(h, 'Copied the message\'s HTML') : flash(`Couldn't find it in ${site}'s chat (it may have scrolled out)`))).catch(() => flash('Couldn\'t copy it')), { cmd: 'all.menuHtml' }),
     mod && modUrl(m.ch) && item(`Open ${site} mod view`, icon.mod, () => openModView(m.ch), { cmd: 'all.menuModView' })].filter(x => x instanceof Node));   // (only what applies: a hidden item is false)
+  view.ecard.hidden = true; clearTimeout(view.ecard.hideT);   // (an emote's card: the menu instead)
   lm.hidden = false;
   placeAt(view, lm, at);
 }

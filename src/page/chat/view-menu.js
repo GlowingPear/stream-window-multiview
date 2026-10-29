@@ -169,4 +169,4 @@ function init(){
   fromSite('emote-dl', (w, json) => saveEmote(json));
 }
 
-export { closeWin, init, releaseWin, resolveYt, saveEmote, setWait };
+export { closeWin, EMOTE_SITE, init, releaseWin, resolveYt, saveEmote, setWait };

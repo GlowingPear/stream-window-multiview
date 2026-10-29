@@ -200,7 +200,8 @@ test('ALL has the sites\' chats\' extras: links open in your browser; the line m
   // the emote card on hover (Emote preview on hover is on)
   await page.hover('.all-list img.al-e');
   await page.waitForSelector('.all-ecard:not([hidden])');
-  assert.equal(await page.textContent('.all-ecard b'), 'Kappa');
+  assert.equal(await page.textContent('.all-ecard .all-enm'), 'Kappa');
+  assert.deepEqual(await page.$$eval('.all-ecard .all-eacts button', l => l.map(b => b.textContent)), ['Copy name', 'Copy image', 'Download']);
   await page.mouse.move(5, 5); await page.waitForSelector('.all-ecard', { state: 'hidden' });
   // words selected: Copy, Translate, Search
   await page.evaluate(() => { const t = document.querySelector('.all-list .al-txt'), r = document.createRange(); r.selectNodeContents(t.lastChild); const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
@@ -234,7 +235,8 @@ test('ALL has the sites\' chats\' extras: links open in your browser; the line m
   await page.waitForFunction(() => window.__copied.some(x => x.startsWith('<div')));
   await page.evaluate(() => window.devTools.setDev(false));
   // Blow up chat: a click into ALL blows its window up
-  await page.click('.all-list');
+  await page.mouse.move(5, 5); await page.waitForSelector('.all-ecard', { state: 'hidden' });
+  await page.click('.all-list', { position: { x: 20, y: 240 } });
   assert.equal(await page.$eval('#stage .win.chat:not(.tab-hidden)', e => e.classList.contains('blown')), true);
 });
 

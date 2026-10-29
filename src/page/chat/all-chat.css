@@ -164,7 +164,7 @@
 .al-hb button[data-cmd="all.delete"]{color:#ff9b9b}
 .al-hb svg[fill=currentColor]{fill:currentColor;stroke:none}
 .al-n.can:hover{text-decoration-color:#ff8b8b}
-.all-lm{position:absolute;min-width:250px;padding:5px;z-index:6;background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 36px rgba(0,0,0,.6)}
+.all-lm{position:absolute;max-height:calc(100% - 12px);overflow-y:auto;box-sizing:border-box;min-width:250px;padding:5px;z-index:6;background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 36px rgba(0,0,0,.6)}
 .all-lm[hidden]{display:none}
 .all-lm hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
 .all-lh{display:flex;align-items:center;gap:6px;padding:6px 8px 7px;border-bottom:1px solid var(--line);margin-bottom:4px;font-size:12px}
@@ -329,10 +329,27 @@
 /* links in messages (open in your browser); the emote card on hover (Settings › Chat › Emote preview on hover) */
 .al-link{color:#8ab4ff;text-decoration:underline;text-decoration-color:color-mix(in srgb,#8ab4ff 45%,transparent);text-underline-offset:2px;overflow-wrap:anywhere;cursor:pointer}
 .al-link:hover{color:#b7cfff;text-decoration-color:currentColor}
-.all-ecard{position:absolute;z-index:7;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:132px;max-width:200px;padding:12px 12px 9px;text-align:center;
-  background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 16px 36px rgba(0,0,0,.6)}
+.all-ecard{position:absolute;z-index:7;width:272px;box-sizing:border-box;padding:12px;display:flex;flex-direction:column;gap:10px;
+  background:var(--panel2);border:1px solid var(--line2);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.4);
+  opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s}
+.all-ecard.show{opacity:1;transform:none}
 .all-ecard[hidden]{display:none}
-.all-ecard img{max-width:112px;max-height:112px;object-fit:contain;margin-bottom:5px;image-rendering:auto}
-.all-ecard b{font-size:13px;overflow-wrap:anywhere}
-.all-ecard small{color:var(--muted);font-size:11px}
-.all-ec-acts{display:flex;gap:12px;margin-top:6px;font-size:11.5px}
+@media (prefers-reduced-motion:reduce){.all-ecard{transition:none;transform:none}}
+.all-epre{display:flex;flex-direction:column;gap:8px}
+.all-epic{position:relative;height:136px;border-radius:9px;background:var(--bg);border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.all-epic img{width:112px;height:112px;object-fit:contain}
+.all-etop{display:flex;align-items:center;gap:8px;min-width:0}
+.all-enm{font-size:16px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.all-ebadge{flex:none;font-size:10px;font-weight:800;letter-spacing:.06em;border-radius:4px;padding:1px 5px;text-transform:uppercase}
+.all-esub{font-size:12px;color:var(--muted);margin-top:3px}
+.all-eacts{display:flex;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.all-eacts button{flex:1;height:30px;padding:0 4px;white-space:nowrap;border-radius:7px;border:1px solid var(--line2);background:var(--bg);color:var(--text);font:600 12px inherit;cursor:pointer}
+.all-eacts button:hover{border-color:var(--muted)}
+.all-etip{position:absolute;width:12px;height:12px;background:var(--panel2);transform:rotate(45deg)}
+.all-etip.down{bottom:-7px;border-right:1px solid var(--line2);border-bottom:1px solid var(--line2)}
+.all-etip.up{top:-7px;border-left:1px solid var(--line2);border-top:1px solid var(--line2)}
+/* the emote's right-click menu: the emote big at its top, as the sites' chats' menu has it */
+.all-lm .all-epre{padding:6px 6px 9px;margin-bottom:4px;border-bottom:1px solid var(--line)}
+.all-lm .all-epic{height:124px;border-radius:7px}
+.all-lm .all-epic img{width:104px;height:104px}
+.all-lm .all-enm{font-size:15px}
