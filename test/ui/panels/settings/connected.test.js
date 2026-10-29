@@ -62,7 +62,7 @@ const card = page => page.evaluate(() => {
   const act = c.querySelector('.ca-act');
   return {
     chip: c.querySelector('.ca-chip').textContent, tone: c.querySelector('.ca-chip').className.replace('ca-chip ', ''),
-    line: c.querySelector('.ca-line').textContent, foot: vis(c.querySelector('.ca-foot')) ? c.querySelector('.ca-foot').className.replace('ca-foot ', '') : null,
+    line: [...c.querySelector('.ca-line').childNodes].map(n => (n.nodeType === 1 && n.classList.contains('ca-sub') ? ' / ' : '') + n.textContent).join(''), foot: vis(c.querySelector('.ca-foot')) ? c.querySelector('.ca-foot').className.replace('ca-foot ', '') : null,
     act: vis(act) ? act.textContent : null, test: vis(c.querySelector('.ca-test')), paired: c.querySelector('.ca-paired').textContent,
     page: vis(c.querySelector('.ca-page'))
   };
@@ -97,7 +97,7 @@ test('Connected apps: Pear Drops\' card, for each state of the link: its chip, o
     [{ status: 'pair-again', keyHeldBy: 'them' }, 'Pair again', "Press Pair again in Pear Drops' Connected apps.", null],
     [{ status: 'incompatible', report: { state: 'incompatible', text: "Can't connect: update Stream Multiview to 0.4.0 or later" } }, "Can't connect", "Can't connect: update Stream Multiview to 0.4.0 or later", null],
     [{ status: 'incompatible', report: null }, "Can't connect", "Can't connect: one of the apps needs updating.", null],
-    [{}, 'Connected · 0.1.6', "Pear Drops isn't farming · Kick players are signed in", 'Disconnect'],
+    [{}, 'Connected · 0.1.6', "Pear Drops isn't farming / Kick players are signed in", 'Disconnect'],
     [{ report: { state: 'limited', text: 'Works, with a feature missing: update Pear Drops to 0.1.7 or later' } }, 'Connected · 0.1.6', 'Works, with a feature missing: update Pear Drops to 0.1.7 or later', 'Disconnect']
   ];
   for (const [p, chip, line, act] of states){
@@ -127,7 +127,7 @@ test('Connected apps: farming signs Kick players out at once, the line says so, 
   await push(page, { on: true, peer: peer(), farming: FARMING(), open: true, wait: 600 });
   assert.equal(await page.evaluate(() => window.pearLink.kickOut), true);
   let c = await card(page);
-  assert.equal(c.line, 'Farming Neon Rush Launch Week on PixelPear · your Kick players are signed out');
+  assert.equal(c.line, 'Farming Neon Rush Launch Week on PixelPear / Your Kick players are signed out');
   assert.equal(c.foot, 'ok');
   let report = (await calls(page, 'players')).pop()[1].platforms.kick;
   assert.deepEqual(report, { signedIn: false, mode: 'auto', account: { platform: 'kick', user: 'pearfan' }, open: [] }, 'Pear Drops hears it');
@@ -142,16 +142,16 @@ test('Connected apps: farming signs Kick players out at once, the line says so, 
   await push(page, { on: true, peer: peer(), farming: { ...FARMING(), state: 'paused' }, open: true, wait: 600 });
   await page.waitForFunction(() => window.pearLink.kickOut === false, null, { timeout: 5000 });
   c = await card(page);
-  assert.equal(c.line, "Pear Drops isn't farming · Kick players are signed in");
+  assert.equal(c.line, "Pear Drops isn't farming / Kick players are signed in");
   report = (await calls(page, 'players')).pop()[1].platforms.kick;
   assert.equal(report.signedIn, true, 'back in: Pear Drops hears it');
   // farming with another Kick account, or with Auto off: the players stay as they are
   await push(page, { on: true, peer: peer(), farming: { ...FARMING(), account: { platform: 'kick', user: 'otherfan' } }, open: true, wait: 600 });
   assert.equal(await page.evaluate(() => window.pearLink.kickOut), false);
-  assert.equal((await card(page)).line, 'Farming Neon Rush Launch Week on PixelPear · on another Kick account, so Kick players are signed in');
+  assert.equal((await card(page)).line, 'Farming Neon Rush Launch Week on PixelPear / On another Kick account, so Kick players are signed in');
   await page.click('#caKickAuto');
   await push(page, { on: true, peer: peer(), farming: FARMING(), open: true, wait: 600 });
-  assert.equal((await card(page)).line, 'Farming Neon Rush Launch Week on PixelPear · Kick players are signed in (signing out is off)');
+  assert.equal((await card(page)).line, 'Farming Neon Rush Launch Week on PixelPear / Kick players are signed in (signing out is off)');
   assert.equal(await page.evaluate(() => window.pearLink.kickOut), false);
   report = (await calls(page, 'players')).pop()[1].platforms.kick;
   assert.deepEqual([report.mode, report.signedIn], ['signed-in', true], 'your own choice again');
