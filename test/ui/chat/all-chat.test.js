@@ -58,6 +58,30 @@ test('an ALL tab before the sites: it shows their chats as one list, and a site\
   assert.match((await lines(page))[2], /tide: said while Twitch showed/);
 });
 
+test('ALL: what the chats already show as it starts reading them comes in too, among the others by time, once each; asked of each chat as ALL starts', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const at = s => new Date(Date.now() - s * 1000).toISOString();
+  const km = (id, content, secs, who = 'tide') => KF('ChatMessageEvent', { id, content, type: 'message', created_at: at(secs), sender: { id: 3, username: who, identity: {} } });
+  // a live one first, then what the chats showed before
+  await feed(page, 'quietkoala', { s: 'kick', raw: [km('k-live', 'just now', 1)] });
+  await page.evaluate(([k, tw]) => { window.allChat.ingest('quietkoala', k, true, true); window.allChat.ingest('tw:quietkoala', tw, true, true); }, [
+    { s: 'kick', raw: [km('k-old', 'a minute ago', 60), km('k-live', 'just now', 1), JSON.stringify({ push: { pub: { data: { event: 'App\\Events\\MessageDeletedEvent', data: '{"message":{"id":"k-live"}}' } } } })] },
+    { s: 'twitch', raw: [TW({ 'display-name': 'tinroof', id: 't-old', 'tmi-sent-ts': String(Date.now() - 30000) }, ':tinroof!t@t PRIVMSG #quietkoala :half a minute ago')] }]);
+  assert.deepEqual(await lines(page), ['al-m | Ktide: a minute ago', 'al-m | Ttinroof: half a minute ago', 'al-m | Ktide: just now'], 'by time; one it had: once; nothing but messages from them (not a deletion)');
+  assert.equal(await page.isVisible('.all-empty'), false);
+  assert.equal(await page.$eval('.all-list', l => l.scrollHeight - l.scrollTop - l.clientHeight < 2), true, 'at the newest');
+  // asked of each chat as ALL starts reading it (with the pin, badges and modes)
+  const asked = await page.evaluate(async () => {
+    const { feedReady } = await import('./page/chat/all-chat.js');
+    const w = window.openWins().find(o => o.channel === 'quietkoala'), js = [];
+    feedReady(w, { executeJavaScript: async code => { js.push(code); return null; }, getWebContentsId: () => 1 });
+    await new Promise(r => setTimeout(r, 50));
+    return js.some(c => c.startsWith('(async function shownAgent('));
+  });
+  assert.equal(asked, true);
+});
+
 test('ALL: messages to you, bots hidden one by one, deletions with who or AI moderation, timeouts', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');

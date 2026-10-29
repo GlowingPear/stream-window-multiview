@@ -211,6 +211,66 @@ test('a pin already up (pinAgent): Kick\'s chat history, Twitch\'s pinnedChatMes
   assert.deepEqual(got.asked, ['/api/v2/channels/quietkoala', 'https://web.kick.com/api/v1/chat/77/history', 'https://gql.twitch.tv/gql query { user(login: "quietkoala") { channel']);
 });
 
+test('what the chat already shows (shownAgent): Kick\'s lines and the history its chat loads with, Twitch\'s lines as its chat\'s lines, YouTube\'s lines\' own data; each read as the live ones are', async t => {
+  const page = await openApp(t);
+  const got = await page.evaluate(async () => {
+    const { feedParse } = await import('./page/chat/feed-parse.js');
+    const wrap = document.createElement('div'); document.body.append(wrap);
+    const line = (cls, message, attrs = {}) => { const el = document.createElement('div'); el.className = cls; Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v)); el['__reactFiber$t'] = { memoizedProps: {}, return: { memoizedProps: { message } } }; wrap.append(el); return el; };
+    const sender = (id, username, badges = []) => ({ id, username, slug: username.toLowerCase(), identity: { color: '#7FD2FF', badges } });
+    const asked = [];
+    const was = window.fetch;
+    window.fetch = async url => { asked.push(String(url)); return { json: async () => (/\/api\/v2\/channels\/quietkoala$/.test(url) ? { id: 77, chatroom: { id: 5 } }
+      : /chat\/77\/history$/.test(url) ? { data: { messages: [
+        { id: 'k2', content: 'second [emote:39:GG]', type: 'reply', created_at: '2026-10-29T15:13:10Z', metadata: '{"original_sender":{"username":"Tide"},"original_message":{"id":"k0","content":"first?"}}', sender: sender(2, 'Lowtide', [{ type: 'og', sort_order: 7 }]) },
+        { id: 'k1', content: 'first', type: 'message', created_at: '2026-10-29T15:13:00Z', metadata: 'null', sender: sender(3, 'Tide') },
+        { id: 'kx', content: 'taken down', type: 'message', created_at: '2026-10-29T15:13:01Z', deleted_at: '2026-10-29T15:13:02Z', sender: sender(3, 'Tide') }] } } : {}) }; };
+    // Kick: a line drawn since (its props as its live event's), and one it has from its history too
+    line('', { id: 'k3', content: 'third', type: 'message', created_at: '2026-10-29T15:13:20Z', sender: sender(4, 'Quill') }, { 'data-index': '3' });
+    line('', { id: 'k1', content: 'first', type: 'message', created_at: '2026-10-29T15:13:00Z', sender: sender(3, 'Tide') }, { 'data-index': '1' });
+    line('', { id: 'k-no-time', content: 'not a message line', sender: sender(5, 'X') }, { 'data-index': '9' });
+    const parse = (b, f = m => [m.id, m.sender, m.parts.map(p => p.text || '[' + p.name + ']').join('')]) => feedParse.parseFeed(b).map(f);
+    const out = {};
+    out.kick = parse(await window.shownAgent('kick', 'quietkoala'));
+    out.kickReply = feedParse.parseFeed(await window.shownAgent('kick', 'quietkoala')).find(m => m.id === 'k2').reply;
+    window.fetch = async () => { throw new Error('offline'); };
+    out.kickOffline = parse(await window.shownAgent('kick', 'quietkoala'));
+    wrap.replaceChildren();
+    out.kickNone = await window.shownAgent('kick', 'quietkoala');
+    // Twitch: its lines' message props
+    line('chat-line__message', { id: 't1', timestamp: 1793286890690, user: { userLogin: 'tinroof', userDisplayName: 'TinRoof', userID: '11', color: '#FF7F50' }, badges: { subscriber: '12', moderator: '1' }, badgeDynamicData: { subscriber: '14' },
+      messageParts: [{ type: 0, content: 'gg ' }, { type: 6, content: { emoteID: '25', alt: 'Kappa' } }, { type: 0, content: ' and 😀 ' }, { type: 6, content: { emoteID: '25', alt: 'Kappa' } }, { type: 0, content: ' a;b\\c' }], messageBody: 'x' });
+    line('chat-line__message', { id: 't2', timestamp: 1793286891690, user: { userLogin: 'quill', userDisplayName: 'quill' }, badges: {}, messageParts: [{ type: 2, content: { recipient: 'TinRoof' } }, { type: 0, content: ' yes ' }, { type: 3, content: { url: 'https://x.y' } }],
+      reply: { parentMsgId: 't1', parentUserLogin: 'tinroof', parentDisplayName: 'TinRoof', parentMessageBody: 'gg Kappa' }, isFirstMsg: true });
+    line('chat-line__message', { id: 't3', user: { userLogin: 'gone' }, messageParts: [{ type: 0, content: 'deleted' }], deleted: true });
+    line('chat-line__message', { id: 't4', user: { userLogin: 'body' }, messageParts: [], messageBody: 'only its body' });
+    out.twitch = feedParse.parseFeed(await window.shownAgent('twitch', 'QuietKoala')).map(m => ({ id: m.id, t: m.t, sender: m.sender, login: m.login, color: m.color, badges: m.badges, pics: m.pics, parts: m.parts.map(p => p.text || '[' + p.name + ']'), reply: m.reply, first: m.first }));
+    wrap.replaceChildren();
+    // YouTube: its lines' own data
+    const yt = (tag, data) => { const el = document.createElement(tag); el.data = data; wrap.append(el); };
+    yt('yt-live-chat-text-message-renderer', { id: 'y1', timestampUsec: '1793286890000000', authorName: { simpleText: '@MikaR' }, message: { runs: [{ text: 'clip it' }] } });
+    yt('yt-live-chat-paid-message-renderer', { id: 'y2', timestampUsec: '1793286891000000', authorName: { simpleText: '@Fan' }, purchaseAmountText: { simpleText: '$5.00' }, message: { runs: [{ text: 'gg' }] } });
+    yt('yt-live-chat-text-message-renderer', null);
+    out.youtube = feedParse.parseFeed(await window.shownAgent('youtube')).map(m => [m.kind, m.id, m.sender, m.amount || '']);
+    wrap.replaceChildren();
+    out.empty = [await window.shownAgent('twitch', 'quietkoala'), await window.shownAgent('youtube')];
+    window.fetch = was; wrap.remove();
+    return { out, asked };
+  });
+  assert.deepEqual(got.out.kick, [['k2', 'Lowtide', 'second [GG]'], ['k1', 'Tide', 'first'], ['k3', 'Quill', 'third'], ['k1', 'Tide', 'first']], 'its history (not a deleted one), then its lines (one it has twice: ALL keeps one)');
+  assert.deepEqual(got.out.kickReply, { id: 'k0', sender: 'Tide', login: 'tide', body: 'first?' }, 'a reply\'s metadata read');
+  assert.deepEqual(got.out.kickOffline, [['k3', 'Quill', 'third'], ['k1', 'Tide', 'first']], 'no history: the lines it shows');
+  assert.equal(got.out.kickNone, null);
+  assert.deepEqual(got.out.twitch, [
+    { id: 't1', t: 1793286890690, sender: 'TinRoof', login: 'tinroof', color: '#FF7F50', badges: ['sub', 'mod'], pics: [{ set: 'subscriber', v: '12', months: 14 }, { set: 'moderator', v: '1' }],
+      parts: ['gg ', '[Kappa]', ' and 😀 ', '[Kappa]', ' a;b\\c'], reply: undefined, first: undefined },
+    { id: 't2', t: 1793286891690, sender: 'quill', login: 'quill', color: '', badges: [], pics: [], parts: ['yes https://x.y'], reply: { id: 't1', sender: 'TinRoof', login: 'tinroof', body: 'gg Kappa' }, first: true },
+    { id: 't4', t: got.out.twitch[2].t, sender: 'body', login: 'body', color: '', badges: [], pics: [], parts: ['only its body'], reply: undefined, first: undefined }], 'as its chat\'s lines: emotes where they are (after an emoji too), its months, a reply without its @; not a deleted line');
+  assert.deepEqual(got.out.youtube, [['message', 'y1', '@MikaR', ''], ['event', 'y2', '@Fan', '$5.00']]);
+  assert.deepEqual(got.out.empty, [null, null]);
+  assert.deepEqual(got.asked.slice(0, 2), ['/api/v2/channels/quietkoala', 'https://web.kick.com/api/v1/chat/77/history']);
+});
+
 test('Chat events: the reader counts every kind its connection brings (named by kind, one sample a minute each) while sampling is on, also with ALL off', async t => {
   const page = await openApp(t);
   const sent = [];

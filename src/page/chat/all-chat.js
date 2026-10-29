@@ -15,7 +15,7 @@ import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
 import { wins } from '../core.js';
 import { badgesAgent, feedAgent, kickIconsAgent, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent,
-  seekAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
+  seekAgent, shownAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent } from '../in-site/send.js';
@@ -101,11 +101,13 @@ function botsChanged(){
   feeds.forEach(f => f.msgs.forEach(m => { if (m.kind !== 'message') return; const b = isBot(m); if (b !== !!m.bot){ m.bot = b; any = true; } }));
   if (any) redrawAll();
 }
-function ingest(w, json, quiet = false){
+// shown: the messages the chat already showed as ALL started reading it (shownAgent): put in among the others by time
+function ingest(w, json, quiet = false, shown = false){
   const s = ownerOf(w.channel); if (!s) return;
   let batch; try { batch = JSON.parse(json); } catch { return; }
-  const f = feedOf(s), view = viewFor(s);
-  (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => { const got = feedParse.parseFeed({ s: batch.s, raw: [raw] }); noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0); got.forEach(m => {
+  const f = feedOf(s), view = viewFor(s); let added = 0;
+  (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => { const got = feedParse.parseFeed({ s: batch.s, raw: [raw] }); if (!shown) noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0); got.forEach(m => {
+    if (shown && m.kind !== 'message' && m.kind !== 'event') return;
     if (devOn) m.raw = raw;   // (Developer tools: the line's Copy message data)
     if (m.kind === 'delete' || m.kind === 'clear' || m.kind === 'clearall') return removed(f, view, m, w.channel);
     if (m.kind === 'unban') return unbanned(f, view, m, w.channel);
@@ -120,11 +122,17 @@ function ingest(w, json, quiet = false){
     if (m.kind === 'message' && isBot(m)) m.bot = true;
     if (m.kind === 'message') mineSeen(f, m);
     f.msgs.push(m); if (m.id) f.byId.set(m.site + ':' + m.id, m);
+    if (shown){ added++; if (m.site === 'kick' && m.pics && m.pics.some(p => (!p.url || p.icon) && !kickIcons.has(kickIconKey(p)))) kickIconsSoon(w); return; }
     if (f.msgs.length > MAX){ const old = f.msgs.shift(); if (old.id) f.byId.delete(old.site + ':' + old.id); }
     if (view) addLine(view, m);
     if (m.kind === 'message' && !m.bot && autoTrFor(w.channel)) translateSoon(m);
     if (m.site === 'kick' && m.pics && m.pics.some(p => (!p.url || p.icon) && !kickIcons.has(kickIconKey(p)))) kickIconsSoon(w);
   }); });
+  if (!added) return;
+  // (in time order, the oldest past MAX let go; the list drawn again, at its newest)
+  f.msgs.sort((a, b) => a.t - b.t);
+  f.msgs.splice(0, Math.max(0, f.msgs.length - MAX)).forEach(old => { if (old.id) f.byId.delete(old.site + ':' + old.id); });
+  if (view){ view.list.replaceChildren(...f.msgs.map(lineEl).filter(Boolean)); view.empty.hidden = view.list.children.length > 0; view.list.scrollTop = view.list.scrollHeight; }
 }
 const reEsc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const textOf = m => m.parts.map(p => p.text || p.name || '').join('');
@@ -1168,6 +1176,7 @@ function pinsNow(w, view){
   if (!badgePics.has(w.channel)) askIn(view, `(${badgesAgent})(${!twBadges})`).then(r => gotBadges(w.channel, r)).catch(() => {});
   askIn(view, `(${modesAgent})()`).then(r => { if (r && allTabFor(w)) setModes(w.channel, r); }).catch(() => {});
   askIn(view, `(${pinAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true); }).catch(() => {});
+  askIn(view, `(${shownAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true, true); }).catch(() => {});   // (what it already shows)
 }
 
 const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
@@ -1205,9 +1214,9 @@ function init(){
   // What ALL shows, changed in the other window
   settings.onChange(['allBots', 'allEvents'], () => { readFilters(); redrawAll(); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.pinAgent = pinAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.pinAgent = pinAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
-  window.allChat = { sender, modKnown, gotBadges, gotKickIcons, kickIcons, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.allChat = { sender, modKnown, gotBadges, gotKickIcons, kickIcons, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
 export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, init, modViewChs, openModViews, sendSite,
