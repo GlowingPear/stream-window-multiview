@@ -1,3 +1,4 @@
+import { reportHealth } from './all-health.js';
 import { feedParse } from './feed-parse.js';
 import { $, wins } from '../core.js';
 import { copyText, devTab } from '../panels/developer/developer.js';
@@ -85,7 +86,9 @@ async function renderEvents(){
           return element('button', { type: 'button', class: 'ev-stat' + (on ? ' on' : ''), 'aria-pressed': String(on), title: `${PLAT_NAME[s]}: ${k.length} kinds, ${k.reduce((a, e) => a + e.n, 0).toLocaleString()} heard · ` + (on ? 'press to show every site again' : `press to show only ${PLAT_NAME[s]}`), dataset: { cmd: 'dev.eventsSite' },
             onclick: () => { evs.site = on ? '' : s; evs.open = ''; renderEvents(); } }, site(s), element('b', null, String(k.length)), element('span', 'ev-sep', '·'), evCount(k.reduce((a, e) => a + e.n, 0))); })),
         element('button', { type: 'button', class: 'btn primary', id: 'evExport', dataset: { cmd: 'dev.eventsExport' }, title: 'Saves them as a file, with names, ids and the words of messages replaced', onclick: exportEvents }, 'Export…'),
-        element('button', { type: 'button', class: 'btn', id: 'evClear', dataset: { cmd: 'dev.eventsClear' }, onclick: clearEvents }, 'Clear')),
+        element('button', { type: 'button', class: 'btn', id: 'evClear', dataset: { cmd: 'dev.eventsClear' }, onclick: clearEvents }, 'Clear'),
+        element('button', { type: 'button', class: 'btn', id: 'evReport', dataset: { cmd: 'dev.allReport' }, title: 'Something in ALL not working? Saves what\'s needed to fix it (every chat ALL reads), without names, ids or words',
+          onclick: () => reportHealth(wins.filter(w => w.kind === 'chat' && w.feedOn).map(w => w.channel)) }, 'Report ALL…')),
       element('div', { class: 'ev-views', role: 'tablist', 'aria-label': 'Which events' }, ...VIEWS.map(([v, label, n]) => element('button', { type: 'button', role: 'tab', class: `ev-view ev-v-${v}` + (v === cur[0] ? ' on' : ''),
         'aria-selected': String(v === cur[0]), dataset: { cmd: 'dev.eventsView', v }, onclick: () => { evs.view = v; evs.open = ''; renderEvents(); list.scrollTop = 0; } }, element('i', 'ev-dot'), label, element('span', 'ev-vn', evCount(n))))),
       element('p', 'ev-desc', cur[3])),
@@ -115,7 +118,8 @@ function init(){
   });
   commands.add([
     { id: 'dev.eventsExport', group: 'Developer', title: 'Export chat events', sub: 'Every kind the sites send, without names, ids or words', words: ['samples', 'developer', 'events'], icon: 'download', button: '#evExport', when: () => DESKTOP },
-    { id: 'dev.eventsClear', group: 'Developer', title: 'Clear the chat events kept', icon: 'bin', button: '#evClear', when: () => DESKTOP }
+    { id: 'dev.eventsClear', group: 'Developer', title: 'Clear the chat events kept', icon: 'bin', button: '#evClear', when: () => DESKTOP },
+    { id: 'dev.allReport', group: 'Developer', title: 'Report a problem with ALL', sub: 'Saves what’s needed to fix it, without names, ids or words', words: ['bug', 'broken', 'all tab'], icon: 'alert', button: '#evReport', when: () => DESKTOP }
   ]);
   settings.onChange('eventSamples', (_n, v) => { samplesOn = v !== '0'; renderEvents(); });
   window.chatEvents = { renderEvents, setSamples };   // for the tests

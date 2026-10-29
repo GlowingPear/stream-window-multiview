@@ -224,6 +224,13 @@ test('Chat events: what the chats\' readers send, sorted by what ALL does with i
   assert.ok(!/RealPerson42|hello there|57035257/.test(JSON.stringify(exp)), 'no names, words or ids');
   assert.deepEqual(exp.sites.kick.kinds.map(k => [k.kind, k.status]).sort(), [['ChatMessageEvent', 'shown'], ['GoalProgressUpdateEvent', 'ignored'], ['MysteryEvent', 'unknown']]);
   assert.ok(exp.sites.kick.needed.includes('StreamHostEvent'));
+  // Report ALL…: a report for a fix (here no chat feeds ALL: its shape, and that site's events)
+  await a.win.evaluate(() => window.allHealth.noteRaw('alpha', JSON.stringify({ username: 'RealPerson42' }), false));
+  await a.win.click('#evReport');
+  const rep = await until(() => a.app.evaluate(() => globalThis.__d.saved.find(p => /all-report-\d{8}-\d{4}\.json$/.test(p))));
+  const report = JSON.parse(fs.readFileSync(path.join(out, path.basename(rep)), 'utf8'));
+  assert.equal(report.what, 'Stream Multiview ALL report (for a fix)');
+  assert.ok(Array.isArray(report.sites) && !/RealPerson42/.test(JSON.stringify(report)));
   // the switch: off in every chat's reader, and remembered
   await a.win.click('#evOn');
   assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.eventSamples')), '0');

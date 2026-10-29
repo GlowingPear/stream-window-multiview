@@ -18,7 +18,7 @@ const extensions = require('./extensions');
 const guard = require('./guard');
 const { pageOptions } = require('./activity');
 const { createErrorLog, createSiteLog, describeRequest, diagnostics } = require('./devlog');
-const { createSampleStore, exportSamples } = require('./event-samples');
+const { createSampleStore, exportSamples, healthReport } = require('./event-samples');
 
 // Each platform's chats + login window share one saved session per platform, so you log in once.
 const PARTITION = 'persist:kick';
@@ -180,6 +180,14 @@ appIpc.handle('samples:export', async (e, known, ignored) => {
   const r = await dialog.showSaveDialog(win, { title: 'Export chat events', defaultPath: path.join(app.getPath('downloads'), name), filters: [{ name: 'JSON', extensions: ['json'] }] }).catch(() => null);
   if (!r || r.canceled || !r.filePath) return { saved: false };
   try { fs.writeFileSync(r.filePath, JSON.stringify(exportSamples(sampleStore.list(), known, { version: app.getVersion(), ignored }), null, 2)); return { saved: true, file: r.filePath }; } catch { return { saved: false, error: true }; }
+});
+appIpc.handle('samples:report', async (e, report) => {
+  const d = new Date(), two = n => String(n).padStart(2, '0');
+  const name = `stream-multiview-all-report-${d.getFullYear()}${two(d.getMonth() + 1)}${two(d.getDate())}-${two(d.getHours())}${two(d.getMinutes())}.json`;
+  const win = BrowserWindow.fromWebContents(e.sender);
+  const r = await dialog.showSaveDialog(win, { title: 'Save the report', defaultPath: path.join(app.getPath('downloads'), name), filters: [{ name: 'JSON', extensions: ['json'] }] }).catch(() => null);
+  if (!r || r.canceled || !r.filePath) return { saved: false };
+  try { fs.writeFileSync(r.filePath, JSON.stringify(healthReport(report, sampleStore.list(), { version: app.getVersion() }), null, 2)); return { saved: true, file: r.filePath }; } catch { return { saved: false, error: true }; }
 });
 // Inspect: Chrome's developer tools for a stream's or chat's page in this window (they can read its logins, so only
 // with Developer tools on, or in a developer copy).

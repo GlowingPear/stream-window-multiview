@@ -1,6 +1,7 @@
 import { alerts, clearAlert } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { SMILEY, addonEmotes, emoteCache, openEmotePicker, pickEmote, renderEmoteList, suggestEmote, withEmotes } from './all-emotes.js';
+import { healthState, noteRaw, noteSend, reportHealth } from './all-health.js';
 import { chatBoxName } from './chat-name.js';
 import { chatZoom } from './chat-zoom.js';
 import { sampleIn } from './event-samples.js';
@@ -72,7 +73,7 @@ function ingest(w, json, quiet = false){
   const s = streamerOf(w.channel); if (!s) return;
   let batch; try { batch = JSON.parse(json); } catch { return; }
   const f = feedOf(s), view = viewFor(s);
-  (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => feedParse.parseFeed({ s: batch.s, raw: [raw] }).forEach(m => {
+  (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => { const got = feedParse.parseFeed({ s: batch.s, raw: [raw] }); noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0); got.forEach(m => {
     if (devOn) m.raw = raw;   // (Developer tools: the line's Copy message data)
     if (m.kind === 'delete' || m.kind === 'clear' || m.kind === 'clearall') return removed(f, view, m, w.channel);
     if (m.kind === 'unban') return unbanned(f, view, m, w.channel);
@@ -89,7 +90,7 @@ function ingest(w, json, quiet = false){
     if (f.msgs.length > MAX){ const old = f.msgs.shift(); if (old.id) f.byId.delete(old.site + ':' + old.id); }
     if (view) addLine(view, m);
     if (m.kind === 'message' && !m.bot && autoTrFor(w.channel)) translateSoon(m);
-  }));
+  }); });
 }
 const reEsc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const textOf = m => m.parts.map(p => p.text || p.name || '').join('');
@@ -446,6 +447,7 @@ function buildView(w){
   const filt = element('button', { type: 'button', class: 'all-filt', 'aria-label': 'What ALL shows', 'aria-haspopup': 'menu', html: FILTER, dataset: { cmd: 'all.filters' } });
   const fm = element('div', { class: 'pop all-lm all-fm', role: 'menu', 'aria-label': 'What ALL shows', hidden: true });
   const modes = element('div', { class: 'all-modes', hidden: true, role: 'status', 'aria-live': 'polite' });
+  const health = element('div', { class: 'all-health', hidden: true, role: 'alert' });
   const pick = element('button', { type: 'button', class: 'all-pick', dataset: { cmd: 'all.sendSite' }, 'aria-haspopup': 'menu' });
   const input = element('input', { type: 'text', class: 'all-in', autocomplete: 'off', spellcheck: true, maxlength: 500, dataset: { cmd: 'all.message' } });
   const menu = element('div', { class: 'pop all-menu', role: 'menu', hidden: true });
@@ -459,9 +461,9 @@ function buildView(w){
   const pinChip = element('button', { type: 'button', class: 'all-pinchip', hidden: true, dataset: { cmd: 'all.pins' },
     onclick: () => { view.pinsShown = !view.pinsShown; renderPins(view); } });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
-  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, filt), pins, list, more, empty,
+  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, filt), health, pins, list, more, empty,
     element('div', 'all-cmp', bar, modes, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm);
-  const view = { el, list, empty, more, filt, fm, modes, pins, pinChip, pinsShown: false, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
+  const view = { el, list, empty, more, filt, fm, modes, health, pins, pinChip, pinsShown: false, pinsOpen: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
   closeOnOutside(fm, { button: filt });
   el.addEventListener('pointerdown', () => allSeen(w));
@@ -503,10 +505,25 @@ function fitSize(view){
   const z = Math.round(chatZoom() * own * 100) / 100, was = view.el.style.zoom;
   if (String(z === 1 ? '' : z) !== was) view.el.style.zoom = z === 1 ? '' : String(z);
 }
+// A site's part of ALL that stopped working (chat/all-health.js): one line above the list, what isn't working, with See
+// it on … (its own chat, where nothing is lost) and Report for a fix; ✕ hides it until it changes
+function renderHealth(view, w, chs){
+  const bad = chs.map(ch => [ch, healthState(ch)]).filter(([, h]) => h && !h.hidden);
+  view.health.hidden = !bad.length;
+  view.health.replaceChildren(...bad.map(([ch, h]) => element('div', 'all-hl',
+    element('i', { class: 'all-hl-ic', html: icon.alert }), element('i', { class: 'pi pi-' + platOf(ch) }, PLAT_NAME[platOf(ch)][0]),
+    element('span', 'all-hl-t', h.why),
+    element('button', { type: 'button', class: 'all-hl-x', 'aria-label': 'Hide', title: 'Hide (it comes back if it changes)', html: icon.close, dataset: { cmd: 'all.healthHide' }, onclick: () => { h.hidden = true; renderHealth(view, w, chs); } }),
+    element('div', 'all-hl-acts',
+      element('button', { type: 'button', class: 'all-hl-rep', dataset: { cmd: 'all.healthReport' }, title: 'Saves what\'s needed to fix it, without names, ids or words', onclick: () => reportHealth([ch]) }, 'Report for a fix'),
+      element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.healthSee' }, onclick: () => seeIt({ ch }) }, `See it on ${PLAT_NAME[platOf(ch)]} ›`)))));
+}
 // The sites it hears, the filter pill, and what it says while it has nothing yet
 function renderTop(view, w){
   const chs = tabChannels(w), heard = chs.filter(ch => frameOf(w).some(o => o.channel === ch && o.kind === 'chat'));
-  view.el.querySelector('.all-sites').replaceChildren(...chs.map(ch => element('i', { class: 'pi pi-' + platOf(ch) + (heard.includes(ch) ? '' : ' dim'), title: `${PLAT_NAME[platOf(ch)]}${heard.includes(ch) ? '' : ': offline'}` }, PLAT_NAME[platOf(ch)][0])));
+  view.el.querySelector('.all-sites').replaceChildren(...chs.map(ch => { const bad = healthState(ch);
+    return element('i', { class: 'pi pi-' + platOf(ch) + (heard.includes(ch) ? '' : ' dim') + (bad ? ' warn' : ''), title: bad ? bad.why : `${PLAT_NAME[platOf(ch)]}${heard.includes(ch) ? '' : ': offline'}` }, PLAT_NAME[platOf(ch)][0]); }));
+  renderHealth(view, w, chs);
   view.filt.title = `What ALL shows · bots ${botsShown ? 'shown' : 'hidden'}, events ${eventsMode}`;
   view.filt.classList.toggle('set', botsShown || eventsMode !== 'short');   // (a dot: not as it starts)
   if (!view.fm.hidden) openFilters(view);
@@ -820,6 +837,7 @@ async function deliver(view, w, p){
   else try { r = p.threaded ? await sender.reply(m, p.lock.msg.id, p.send || p.text, p.lock.msg.sender) : await sender.send(m, p.send || p.text); } catch { r = 'error'; }
   view.sending = false; syncSendB(view, w);
   if (p.state === 'seen') return;   // (its chat brought it back already)
+  noteSend(p.ch, r, r === 'sent' ? '' : SEND_FAIL[r] ? SEND_FAIL[r](site) : '');   // (two failures in a row: ALL's health says so)
   if (r === 'sent'){ slowStart(p.ch); setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
   p.why = r === 'no-reply' ? `Couldn't start a reply on ${site}: the message may have scrolled out of its chat` : r === 'gone' ? `${site}'s chat isn't open`
     : (SEND_FAIL[r] || (x => `${x}'s chat didn't answer`))(site);
@@ -939,6 +957,7 @@ function init(){
   store.watch(['chatName', 'names'], () => wins.forEach(w => { if (w.allView) renderCmp(w.allView, w); }));
   store.watch(['mod'], () => { redrawAll(); wins.forEach(syncModBtn); });
   store.watch(['chatZoom'], () => wins.forEach(w => { if (w.allView) fitSize(w.allView); }));
+  store.watch(['allHealth'], () => wins.forEach(w => { if (w.allView) renderTop(w.allView, w); }));
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
   window.feedAgent = feedAgent; window.pinAgent = pinAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.seekAgent = seekAgent; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests

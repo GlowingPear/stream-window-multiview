@@ -215,4 +215,4 @@ function init(){
   window.devTools = { setDev, pageLines, winState, renderDev, exchangeText };   // for the tests
 }
 
-export { copyText, copyWinState, devOn, devTab, init, inspectWin, renderDev };
+export { copyText, copyWinState, devError, devOn, devTab, init, inspectWin, renderDev };
