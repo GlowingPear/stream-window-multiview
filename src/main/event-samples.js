@@ -137,4 +137,19 @@ function exportSamples(data, known, { now = () => Date.now(), version = '', igno
   return out;
 }
 
-module.exports = { createSampleStore, exportSamples, anonymise, placeholders, SITES };
+// ALL's report for a fix (page/chat/all-health.js): each site's state, its last raw messages (all, and those no reader
+// understood) and its newest chat line's HTML (its words already taken out in the page), plus that site's chat events,
+// with names, ids and words replaced throughout (one set of placeholders for the whole report)
+function healthReport(report, data, { now = () => Date.now(), version = '' } = {}) {
+  const ph = placeholders(), sites = Array.isArray(report && report.sites) ? report.sites.filter(s => s && SITES.includes(s.site)).slice(0, 6) : [];
+  const evs = exportSamples(data, report && report.known, { now, version });
+  return { what: 'Stream Multiview ALL report (for a fix)', version, made: new Date(now()).toISOString(),
+    note: 'Names, ids and the words of messages are placeholders (user1, id1, word).',
+    sites: sites.map(s => ({ site: s.site, state: String(s.state || ''), what: String(s.what || ''), why: String(s.why || '').replace(/\b(on|from) \S+$/, '$1 …'),
+      since: String(s.since || ''), sends: (Array.isArray(s.sends) ? s.sends : []).map(String).slice(-5), lines: Number.isFinite(s.lines) ? s.lines : null,
+      raws: (Array.isArray(s.raws) ? s.raws : []).slice(-20).map(x => anonymise(s.site, x, ph)),
+      badRaws: (Array.isArray(s.badRaws) ? s.badRaws : []).slice(-10).map(x => anonymise(s.site, x, ph)),
+      lineHtml: String(s.lineHtml || '').slice(0, 6000), events: evs.sites[s.site] })) };
+}
+
+module.exports = { createSampleStore, exportSamples, healthReport, anonymise, placeholders, SITES };

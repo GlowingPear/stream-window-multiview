@@ -65,7 +65,7 @@ function feedAgent(as){
     if (typeof data !== 'string') return;
     if (site === 'twitch'){
       if (data.includes(' #')) data.split('\r\n').forEach(l => { if (TW.test(l)) push(l); });
-      else if (data.startsWith('{') && /\\"((un)?pin-message|updated_room)\\"/.test(data)) push(data);   // (its other connection: a message pinned or taken down, the chat's modes)
+      else if (data.startsWith('{') && /\\"((un)?pin-message|updated_room|moderation_action)\\"/.test(data)) push(data);   // (its other connection: a message pinned or taken down, the chat's modes, what a moderator did)
     }
     else if (site === 'kick' && data.startsWith('{"push"') && KICK.test(data)) push(data);
   }
@@ -169,6 +169,23 @@ async function modesAgent(as, nameAs){
   } catch (e) { return null; }
 }
 
+// For ALL's check that it reads this chat (chat/all-health.js): how many message lines the page shows, and its newest
+// one's text (it changes when a message comes: compared on this computer only). With html: the newest line's HTML for a
+// report, its words replaced and only its structure's attributes kept (class, id, role, data-a-target, data-index).
+function lineProbe(html){
+  const rows = document.querySelectorAll('.chat-line__message, [data-index], yt-live-chat-text-message-renderer');
+  const last = rows[rows.length - 1];
+  const out = { n: rows.length, last: last ? last.innerText.replace(/\s+/g, ' ').slice(0, 200) : '' };
+  if (html && last){
+    const c = last.cloneNode(true), keep = /^(class|id|role|data-a-target|data-index|data-testid)$/;
+    const walk = document.createTreeWalker(c, NodeFilter.SHOW_TEXT);
+    for (let t = walk.nextNode(); t; t = walk.nextNode()) t.nodeValue = t.nodeValue.replace(/[^\s]+/g, 'word');
+    [c, ...c.querySelectorAll('*')].forEach(e => [...e.attributes].forEach(at => { if (!keep.test(at.name)) e.removeAttribute(at.name); }));
+    out.html = c.outerHTML.slice(0, 6000);
+  }
+  return out;
+}
+
 // "See it on …" in ALL: scrolls the site's chat to the message with that id and flashes it. Twitch and Kick keep the id
 // in each line's React props (message.id), YouTube as the line's own id. -> whether it was found
 function seekAgent(id){
@@ -253,4 +270,4 @@ function profileAgent(id){
   return true;
 }
 
-export { feedAgent, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress };
+export { feedAgent, lineProbe, modesAgent, pinAgent, profileAgent, replyAgent, seekAgent, twReplyAt, twReplyPress };

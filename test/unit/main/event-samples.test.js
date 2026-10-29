@@ -79,3 +79,21 @@ test('the export: each kind with what ALL does with it (or unknown), the kinds A
   s.add('twitch', { '001': { n: 1 }, 'hermes:mystery': { n: 1 } });
   assert.deepEqual(exportSamples(s.list(), {}, { ignored: { twitch: { '001': 'the connection’s own' }, kick: 'bad' } }).sites.twitch.kinds.map(k => [k.kind, k.status, k.does]).sort(), [['001', 'ignored', 'the connection’s own'], ['hermes:mystery', 'unknown', '']]);
 });
+
+test('ALL\'s report for a fix: each site\'s state, its last raw messages anonymised (one set of placeholders), its line\'s HTML, and its chat events', () => {
+  const { healthReport } = require('../../../src/main/event-samples');
+  const s = createSampleStore({ now: () => 1000 });
+  s.add('kick', { ChatMessageEvent: { n: 3, x: JSON.stringify({ content: 'hi there', sender: { username: 'Koala' } }) } });
+  const out = healthReport({ known: { kick: { ChatMessageEvent: 'a message' } }, sites: [
+    { site: 'kick', state: 'broken', what: 'read', why: "ALL isn't reading Kick's messages: its chat has new ones", since: '2026-10-29T03:00:00.000Z', sends: ['no-box'], lines: 50,
+      raws: [JSON.stringify({ push: { pub: { data: { event: 'App\\Events\\NewThing', data: JSON.stringify({ username: 'Koala', text: 'secret words' }) } } } })], badRaws: ['not json at all'], lineHtml: '<div class="x">word</div>' },
+    { site: 'myspace' }, null] }, s.list(), { now: () => 2000, version: '0.3.31' });
+  assert.equal(out.sites.length, 1);
+  const k = out.sites[0];
+  assert.deepEqual([k.state, k.what, k.lines, k.sends, k.lineHtml], ['broken', 'read', 50, ['no-box'], '<div class="x">word</div>']);
+  assert.deepEqual(JSON.parse(k.raws[0].push.pub.data.data), { username: 'user1', text: 'word word' });
+  assert.deepEqual(k.badRaws, ['word word word word']);
+  assert.deepEqual(k.events.kinds.map(x => [x.kind, x.status, x.samples[0].sender.username]), [['ChatMessageEvent', 'shown', 'user1']], 'Koala: the same placeholder in the events');
+  assert.ok(!/Koala|secret|hi there/.test(JSON.stringify(out)));
+  assert.deepEqual(healthReport(null, {}).sites, []);
+});

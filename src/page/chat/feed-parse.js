@@ -88,6 +88,14 @@ function parseTwitch(line){
 function twitchPin(frame){
   let p;
   try { p = JSON.parse(JSON.parse(frame).notification.pubsub); } catch { return null; }
+  // what a moderator did, and who (Twitch sends it to moderators only): a timeout, ban, deleted message, cleared chat, a mode
+  if (p && p.type === 'moderation_action'){
+    const d = p.data || {}, a = String(d.moderation_action || ''), args = Array.isArray(d.args) ? d.args.map(String) : [];
+    if (!a || !d.created_by) return null;
+    const target = String(d.target_user_login || (/^(timeout|ban|delete|untimeout|unban)$/.test(a) ? args[0] || '' : '')).toLowerCase();
+    return { site: 'twitch', kind: 'modaction', action: a, by: String(d.created_by), target, t: Date.now(),
+      secs: a === 'timeout' ? +args[1] || 0 : 0, msgId: a === 'delete' ? String(d.msg_id || args[2] || '') : '', arg: /^(slow|followers)$/.test(a) ? +args[0] || 0 : 0 };
+  }
   // (and the chat's modes, all of them, as a moderator changes one)
   if (p && p.type === 'updated_room'){
     const r = (p.data && p.data.room && p.data.room.modes) || null; if (!r) return null;
@@ -285,7 +293,7 @@ const KNOWN = {
     'USERNOTICE:sub': 'a sub', 'USERNOTICE:resub': 'a resub', 'USERNOTICE:subgift': 'a gifted sub', 'USERNOTICE:submysterygift': 'gifted subs', 'USERNOTICE:raid': 'a raid',
     'USERNOTICE:announcement': 'an announcement', 'USERNOTICE:viewermilestone': 'a watch streak', 'USERNOTICE:giftpaidupgrade': 'a gifted sub kept going',
     'USERNOTICE:primepaidupgrade': 'a Prime sub kept going', 'USERNOTICE:bitsbadgetier': 'a bits badge', CLEARMSG: 'a message deleted', 'CLEARCHAT:timeout': 'a timeout',
-    'CLEARCHAT:ban': 'a ban', 'CLEARCHAT:all': 'the chat cleared', 'hermes:pin-message': 'a pin', 'hermes:unpin-message': 'a pin taken down', ROOMSTATE: 'the chat’s modes (above the box)', 'hermes:updated_room': 'the chat’s modes (above the box)' },
+    'CLEARCHAT:ban': 'a ban', 'CLEARCHAT:all': 'the chat cleared', 'hermes:pin-message': 'a pin', 'hermes:unpin-message': 'a pin taken down', ROOMSTATE: 'the chat’s modes (above the box)', 'hermes:updated_room': 'the chat’s modes (above the box)', 'hermes:moderation_action': 'who a moderator was (to moderators)' },
   youtube: { 'addChatItemAction:liveChatTextMessageRenderer': 'a message', 'addChatItemAction:liveChatPaidMessageRenderer': 'a Super Chat',
     'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
     removeChatItemAction: 'a message deleted', markChatItemsByAuthorAsDeletedAction: 'a ban or timeout',
