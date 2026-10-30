@@ -37,7 +37,7 @@ import { store } from '../shared/store.js';
 import { soon, winTimer } from '../shared/timers.js';
 import { addTab, cycleTabs, frameOf, leaderOf, renderSiteTabs, showTab, syncFrameAlert, tabChannels } from '../windows/frames.js';
 import { askIn, pressIn, runIn, viewId, zoomOf } from '../windows/view.js';
-import { copyEmote, emoteOn, freshEmotes, newEmotesOn } from '../windows/views.js';
+import { copyEmote, emoteOn, freshEmotes, newEmotesOn, reloadWin } from '../windows/views.js';
 import { syncModBtn } from '../windows/windows.js';
 
 /* ---- ALL: a linked streamer's Kick, Twitch and YouTube chats as one list (issue #203) ----
@@ -215,6 +215,12 @@ function blockEl(text){
   const [what, ...todo] = text.split(' · '), rest = todo.join(' · ');
   return element('span', { class: 'all-mb', title: text }, element('i', { html: icon.lock }),
     element('span', 'all-mbt', element('b', null, what), rest && element('small', null, rest[0].toUpperCase() + rest.slice(1))));
+}
+// Reload on a window showing ALL: every site chat it reads for them (their hidden tabs too), each reading your sign-in and
+// its modes again as it loads (feedReady)
+function reloadAll(w){
+  const chs = tabChannels(w);
+  frameOf(w).filter(o => o.kind === 'chat' && chs.includes(o.channel)).forEach(reloadWin);
 }
 // The bar above the box: the send site's modes (yours to ignore as a mod), slow mode's countdown, or why you can't chat
 function renderModes(view, w){
@@ -1309,5 +1315,5 @@ function init(){
   window.allChat = { sender, modKnown, gotBadges, gotKickIcons, kickIcons, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
-export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, init, modViewChs, openModViews, sendSite,
-  setAll, setLock, setSoloAll, spamTag, translateSite };
+export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, init, modViewChs, openModViews, reloadAll,
+  sendSite, setAll, setLock, setSoloAll, spamTag, translateSite };

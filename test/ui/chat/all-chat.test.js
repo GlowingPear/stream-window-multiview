@@ -1278,6 +1278,26 @@ test('ALL: YouTube asking you to sign in says so once, plainly; signed in since 
   assert.equal(await page.evaluate(() => { window.allChat.setModes('quietkoala', { blocked: 'Something in the way' }); window.allChat.setModes('quietkoala', { modes: { slow: 0 }, me: { signedIn: true } }); return window.allChat.modesOf.get('quietkoala').blocked; }), '');
 });
 
+test('ALL: Reload on its window reloads each site chat it reads (their hidden tabs too); a site\'s own tab reloads only its chat', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const live = { ...LIVE, 'yt:@quietkoala': { live: true, videoId: 'koalaLive01', checked: Date.now() } };
+  await page.evaluate(live => window.smvNotes.liveStatus(live), live);
+  await page.waitForFunction(() => window.openWins().filter(w => w.kind === 'chat' && w.view).length === 3);
+  const blank = () => page.evaluate(() => window.openWins().forEach(w => { if (w.kind === 'chat') w.view.src = 'about:blank'; }));
+  const loaded = () => page.evaluate(() => window.openWins().filter(w => w.kind === 'chat' && w.view.getAttribute('src') !== 'about:blank').map(w => w.channel).sort());
+  const reload = () => page.$eval('#stage .win.chat:not(.tab-hidden) [data-a=reload]', b => b.click());   // (in the bar's overflow: as its command presses it)
+  await blank();
+  await reload();
+  assert.deepEqual(await loaded(), ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala']);
+  // Twitch's own tab: only its chat
+  await page.click('#stage .win.chat:not(.tab-hidden) .ptabs button:text-is("T")');
+  await page.waitForSelector('#stage .win.chat:not(.tab-hidden):not(.all-on)');
+  await blank();
+  await reload();
+  assert.deepEqual(await loaded(), ['tw:quietkoala']);
+});
+
 test('ALL: YouTube\'s chat blocked as it loads is asked again a moment later (its box drawn since clears it); a chat closed forgets its rules, opened again it reads them afresh', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
