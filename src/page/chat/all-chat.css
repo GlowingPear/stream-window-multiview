@@ -130,6 +130,12 @@
 .all-re-e:hover,.all-re-e:focus-visible{background:var(--line)}
 .all-re-e:active{background:var(--line2)}
 .all-re-e img{width:22px;height:22px;object-fit:contain}
+/* (not while you can't send there; in a short chat, it gives way first: chat/all-chat.js fitRoom) */
+.all-blocked .all-re,.all-no-re .all-re{display:none}
+/* the @ and :name lists and the smiley's picker open over the row, not half over it (what you pick shows in it at once) */
+.all-view:has(.all-re:not([hidden])):not(.all-no-re,.all-blocked) :is(.all-at,.all-ep){bottom:87px}
+/* in a short chat, after the row: the pins' strip, then the health line (the pill and the site's amber badge still say so) */
+.all-no-pins .all-pins,.all-no-health .all-health{display:none}
 .all-pick{flex:none;height:36px;padding:0 8px;border-radius:9px;border:1px solid var(--line2);background:var(--panel2);display:flex;align-items:center;gap:5px;color:var(--muted);cursor:pointer}
 .all-pick .pi{width:16px;height:16px;font-size:9.5px}
 .all-pick:hover{border-color:var(--muted)}
@@ -336,6 +342,7 @@
    chat there (the box greyed, saying it); a moderator's or the streamer's "exempt" (the chips quieter) */
 .all-modes{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:0 0 7px;font-size:11px;--sc:var(--accent)}
 .all-modes[hidden]{display:none}
+.all-modes:not(.blocked){height:24px;overflow:hidden}   /* (one line, as many chips as fit: the rest wrap out of sight, as the row of emotes does) */
 .all-modes-kick{--sc:#53fc18}.all-modes-twitch{--sc:#a970ff}.all-modes-youtube{--sc:#ff5a5a}
 .all-mc{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 8px;border-radius:999px;font-weight:700;letter-spacing:.01em;color:var(--text);
   background:color-mix(in srgb,var(--sc) 11%,transparent);border:1px solid color-mix(in srgb,var(--sc) 38%,transparent)}
