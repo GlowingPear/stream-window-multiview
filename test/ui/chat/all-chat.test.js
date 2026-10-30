@@ -641,7 +641,7 @@ test('ALL: reply from a line: the box locks to its site with a bar (Kick: its ow
   assert.match(await page.textContent('.all-rb'), /^Replying to lowtide on Kick·/);
   await page.fill('.all-in', 'default, 1.2 green');
   await page.press('.all-in', 'Enter');
-  await page.waitForFunction(() => window.__sends.length === 2);
+  await page.waitForFunction(() => document.querySelectorAll('.al-mine-sent').length === 2);
   assert.deepEqual(await page.evaluate(() => window.__sends[1]), ['reply', 'quietkoala', 'k1', 'default, 1.2 green']);
   // the message has gone from Kick's chat: it says so on your line; Edit: the reply again, to try once more
   await page.evaluate(() => { window.__replyAnswer = 'no-reply'; });
@@ -861,6 +861,87 @@ test('ALL: what you send shows at once (sending, then sent) and the real line ta
   await page.click('.al-mine-failed [data-cmd="all.edit"]');
   assert.equal(await page.$eval('.all-in', b => b.value), 'edit me');
   assert.equal(await page.locator('.al-mine-failed').count(), 0, 'its line goes');
+});
+
+test('ALL: your line while it sends has your badges as your real line has them (the sites\' pictures, Kick\'s icons, the sub badge for your months); kept for next time, for each chat (the newest 50), saved only when it changes', async t => {
+  const others = Object.fromEntries(Array.from({ length: 50 }, (_, i) => ['c' + i, { sender: 'Me', login: 'me', color: '', badges: [] }]));
+  const page = await allApp(t, { allOpen: '["s1"]', allMyLook: JSON.stringify(others) });
+  await page.waitForSelector('.all-view');
+  const img = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  await page.route('https://ext.cdn.kick.com/**', r => r.fulfill({ body: Buffer.from(img.split(',')[1], 'base64'), contentType: 'image/gif' }));   // (Kick's badge pictures: a stand-in)
+  // (the chats' pages "loaded", their badges' pictures in, Kick's moderator icon drawn; sends wait)
+  const ready = async () => page.evaluate(([live, img]) => {
+    window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
+    window.allChat.gotBadges('quietkoala', { kick: { subs: [{ months: 1, url: img + '#s1' }, { months: 3, url: img + '#s3' }] } });
+    window.allChat.gotBadges('tw:quietkoala', { twitch: { own: { 'subscriber/12': { url: img + '#sub12', title: '1-Year Subscriber' } }, global: {} } });
+    window.allChat.gotKickIcons({ moderator: '<svg viewBox="0 0 20 20"><path d="M1 1h2v2H1z"/></svg>' });
+    window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push(text); return 'sent'; };
+    window.__saves = 0; const set = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k, v){ if (k === 'kickMultiview.allMyLook') window.__saves++; return set.call(this, k, v); };
+  }, [LIVE, img]);
+  await ready();
+  const who = sel => page.$eval(sel, w => [...w.children].map(c => c.className + (c.tagName === 'IMG' ? ' ' + c.getAttribute('src').replace(/^data:[^#]*|^https:\/\/ext\.cdn\.kick\.com\/chat\/badges\//, '') + ' ' + c.title : c.title ? ' ' + c.title : '')));
+  const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.allMyLook')));
+  const send = async text => { const n = await page.evaluate(() => window.__sends.length); await page.fill('.all-in', text); await page.press('.all-in', 'Enter'); await page.waitForFunction(n => window.__sends.length === n + 1 && document.querySelectorAll('.al-mine-sent').length === n + 1, n); };
+  const meKick = id => KF('ChatMessageEvent', { id, content: 'hey ' + id, type: 'message', sender: { id: 2, username: 'MeKick', slug: 'mekick', identity: { color: '#4fd1c5',
+    badges: [{ type: 'moderator', text: 'Moderator', sort_order: 1 }, { type: 'subscriber', count: 4, sort_order: 9 }], badges_v2: [{ name: 'Star', image_url: 'https://ext.cdn.kick.com/chat/badges/star.png', selected: true, sort_order: 4 }] } } });
+  // your messages: your look saved once (the same look again, or someone else's message: nothing written)
+  await feed(page, 'quietkoala', { s: 'kick', raw: [meKick('k1')] });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [meKick('k2'), KF('ChatMessageEvent', { id: 'k3', content: 'yo', type: 'message', sender: { id: 3, username: 'Lowtide', slug: 'lowtide', identity: { badges: [{ type: 'vip' }] } } })] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'MeTwitch', id: 't1', color: '#9146FF', badges: 'subscriber/12', 'badge-info': 'subscriber/14' }, ':metwitch!m@m PRIVMSG #quietkoala :hello')] });
+  assert.equal(await page.evaluate(() => window.__saves), 2, 'once for each chat');
+  const kickReal = await who('.all-list [data-key="kick:k2"] .al-who'), twReal = await who('.all-list [data-key="twitch:t1"] .al-who');
+  assert.deepEqual(kickReal, ['pi pi-kick Kick', 'al-bk Moderator', 'al-bi star.png Star', 'al-bi #s3 4-Month Subscriber']);
+  assert.deepEqual(twReal, ['pi pi-twitch Twitch', 'al-bi #sub12 14-Month Subscriber (1-Year Badge)']);
+  const kept = await saved();
+  assert.equal(Object.keys(kept).length, 50, 'the newest 50');
+  assert.deepEqual(Object.keys(kept).slice(-3), ['c49', 'quietkoala', 'tw:quietkoala'], 'the oldest out');
+  assert.deepEqual(kept.quietkoala, { sender: 'MeKick', login: 'mekick', color: '#4fd1c5', badges: ['mod', 'sub'],
+    pics: [{ set: 'moderator', v: '1', title: 'Moderator' }, { url: 'https://ext.cdn.kick.com/chat/badges/star.png', title: 'Star' }, { set: 'subscriber', v: '4' }] }, 'only what your line draws');
+  // sending on Kick, then on Twitch: as your real line there
+  await send('on kick');
+  assert.deepEqual(await who('.all-list .al-mine:last-child .al-who'), kickReal);
+  await page.focus('.all-in'); await page.keyboard.press('Tab');
+  await send('on twitch');
+  assert.deepEqual(await who('.all-list .al-mine:last-child .al-who'), twReal);
+  assert.equal(await page.locator('.al-mine .al-b').count(), 0, 'not ALL\'s own icons');
+  // next time, with no message of yours in ALL yet: as you looked there last
+  await page.evaluate(() => localStorage.setItem('kickMultiview.allSend', JSON.stringify({ s1: 'quietkoala' })));
+  await page.reload();
+  await page.waitForSelector('.all-view');
+  await ready();
+  assert.equal(await page.locator('.all-list .al-m').count(), 0);
+  await send('after a reload');
+  assert.deepEqual(await who('.all-list .al-mine:last-child .al-who'), kickReal);
+  assert.equal(await page.$eval('.al-mine .al-n', n => n.textContent), 'MeKick');
+  // your message again, the same look: not saved again
+  await feed(page, 'quietkoala', { s: 'kick', raw: [meKick('k4')] });
+  assert.equal(await page.evaluate(() => window.__saves), 0);
+});
+
+test('ALL: your line while it sends, with nothing of yours seen or kept in that chat: your name, no badges (the streamer\'s in your own channel); a look kept under a name you no longer use, or damaged, isn\'t used', async t => {
+  const look = { sender: 'OldName', login: 'oldname', color: '#ff0000', badges: ['sub'], pics: [{ set: 'subscriber', v: '4' }] };
+  const page = await allApp(t, { allOpen: '["s1"]', allMyLook: JSON.stringify({ quietkoala: look, 'tw:quietkoala': { sender: 'MeTwitch', login: 'metwitch', color: 7, badges: 'sub', pics: [null, { url: 'javascript:alert(1)' }, { set: 'subscriber', v: '12', months: 14, extra: 'x' }, { url: 'https://x.test/b.png', title: 'B', months: -1 }] }, junk: 'x', empty: { sender: '' } }) });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push(text); return 'sent'; }; }, LIVE);
+  const mine = () => page.$$eval('.al-mine', l => l.map(e => [...e.querySelector('.al-who').children].map(c => c.className + (c.tagName === 'IMG' ? ' ' + c.getAttribute('src') : '')).join(', ') + ' | ' + e.querySelector('.al-n').textContent));
+  await page.fill('.all-in', 'hi'); await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => window.__sends.length === 1 && document.querySelector('.al-mine-sent'));
+  assert.deepEqual(await mine(), ['pi pi-kick | mekick'], 'your name now, not the old one\'s look');
+  // a damaged look: only what's sound (here: no picture of its own, so ALL's sub icon until Twitch's pictures come)
+  await page.focus('.all-in'); await page.keyboard.press('Tab');
+  await page.fill('.all-in', 'hey'); await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => document.querySelectorAll('.al-mine-sent').length === 2);
+  assert.deepEqual((await mine())[1], 'pi pi-twitch, al-b al-b-sub, al-bi https://x.test/b.png | MeTwitch');
+  // in your own channel: the streamer's badge
+  await page.evaluate(() => localStorage.setItem('kickMultiview.myName', 'quietkoala'));
+  await page.reload();
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push(text); return 'sent'; }; }, LIVE);
+  await page.evaluate(() => localStorage.setItem('kickMultiview.allSend', JSON.stringify({ s1: 'quietkoala' })));
+  await page.fill('.all-in', 'hi'); await page.press('.all-in', 'Enter');
+  await page.waitForFunction(() => window.__sends.length === 1 && document.querySelector('.al-mine-sent'));
+  assert.deepEqual(await mine(), ['pi pi-kick, al-b al-b-host | quietkoala']);
 });
 
 test('ALL: your line while it sends shows the emotes you picked as their pictures (and add-on emotes), sending or not sent; the real line still takes its place; Edit puts them back', async t => {
@@ -1219,7 +1300,7 @@ test('ALL: the send site\'s modes above the box; slow mode counts down after you
   assert.equal(await page.evaluate(() => window.__sends.length), 1, 'not while waiting');
   await page.waitForFunction(() => !document.querySelector('.all-modes.waiting'), null, { timeout: 5000 });
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => window.__sends.length === 2);
+  await page.waitForFunction(() => document.querySelectorAll('.al-mine-sent').length === 2);
   // as it changes live: followers only for 10 minutes (Kick's event), and you only followed a minute ago
   await page.evaluate(() => window.allChat.setModes('quietkoala', { me: { signedIn: true, follower: true, followedAt: Date.now() - 60000 } }));
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatroomUpdatedEvent', { slow_mode: { enabled: false }, followers_mode: { enabled: true, min_duration: 10 }, subscribers_mode: { enabled: false }, emotes_mode: { enabled: false } })] });
@@ -1484,7 +1565,7 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   await page.keyboard.press('Tab');
   await page.keyboard.type('KEKW');
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => window.__sends.length === 2);
+  await page.waitForFunction(() => document.querySelectorAll('.al-mine-sent').length === 2);
   assert.deepEqual(await page.evaluate(() => window.__sends[1]), ['tw:quietkoala', 'Kappa KEKW']);
   assert.deepEqual(await page.evaluate(() => window.__asked), ['quietkoala', 'tw:quietkoala'], 'each site\'s asked once');
   // Twitch's picker: a channel group without its picture (the site didn't send one): the app's own for the channel
