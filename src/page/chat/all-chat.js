@@ -2,7 +2,7 @@ import { alerts, clearAlert } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { emoteBox } from './all-box.js';
 import { SMILEY, addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, renderEmoteList, renderRecent,
-  suggestEmote, withEmotes } from './all-emotes.js';
+  suggestEmote, useRecent, withEmotes } from './all-emotes.js';
 import { chatLoaded, healthState, noteRaw, noteSend, reportHealth } from './all-health.js';
 import { blowOn, blowUp } from './blow-up.js';
 import { chatBoxName } from './chat-name.js';
@@ -1165,15 +1165,31 @@ async function sendNow(view, w){
     kickCmdHeard(k, JSON.stringify({ cmd: kcmd[1].toLowerCase(), text: text.slice(kcmd[0].length).trim() }), k.view);
     return;
   }
-  const rules = chatRules(ch);
-  if (rules.block) return flash(rules.block);
-  if (rules.wait) return flash(`Slow mode on ${PLAT_NAME[platOf(ch)]}: you can send in ${rules.wait}s`);
+  const held = heldBy(ch); if (held) return flash(held);
   const lock = view.lock, threaded = !!(lock && lock.kind === 'reply' && threads(ch));
   // a reply where the site has none from here: an @ of them, in front
   if (lock && lock.kind === 'reply' && !threaded && !new RegExp(`^@${lock.msg.login}\\b`, 'i').test(text)) text = `@${lock.msg.sender.replace(/^@/, '')} ${text}`;
+  const send = withEmotes(view, text), sends = view.emoteSends && new Map(view.emoteSends), pics = view.emotePics && new Map(view.emotePics);
+  view.input.value = ''; if (lock) setLock(view, w, null);   // (the emotes picked go with it)
+  await post(view, w, { ch, text, send, emotes: sends, pics, lock, threaded });
+}
+// An emote from the row over the box: sent on its own at once, what's in the box left as it is
+async function sendEmote(view, w, e){
+  if (!e || !e.ch) return;
+  if (view.sending) return flash('Still sending the last one');
+  const held = heldBy(e.ch); if (held) return flash(held);
+  useRecent(platOf(e.ch), [e.name]); renderRecent(view, w);
+  await post(view, w, { ch: e.ch, text: e.name, send: e.send || e.name, emotes: new Map([[e.name, e.send]]), pics: e.url ? new Map([[e.name, e.url]]) : null, lock: null, threaded: false });
+}
+// Why nothing can be sent on the channel now (a message to show), or ''
+function heldBy(ch){
+  const rules = chatRules(ch);
+  return rules.block || (rules.wait ? `Slow mode on ${PLAT_NAME[platOf(ch)]}: you can send in ${rules.wait}s` : '');
+}
+// Your line in ALL, then sent
+async function post(view, w, { ch, text, send, emotes, pics, lock, threaded }){
   const site = platOf(ch), f = feedOf(view.s);
-  const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, send: withEmotes(view, text), emotes: view.emoteSends && new Map(view.emoteSends), pics: view.emotePics && new Map(view.emotePics), parts: mineParts(text, view.emotePics, view.emoteSends), ...youOn(f, site, ch), lock, threaded, state: 'sending' };
-  view.input.value = ''; if (lock) setLock(view, w, null);
+  const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, send, emotes, pics, parts: mineParts(text, pics, emotes), ...youOn(f, site, ch), lock, threaded, state: 'sending' };
   f.msgs.push(p); addLine(view, p);
   await deliver(view, w, p);
 }
@@ -1383,4 +1399,4 @@ function init(){
 }
 
 export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, init, modViewChs, openModViews, reloadAll,
-  sendSite, setAll, setLock, setSoloAll, spamTag, translateSite };
+  sendEmote, sendSite, setAll, setLock, setSoloAll, spamTag, translateSite };

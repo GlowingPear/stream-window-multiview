@@ -1,4 +1,4 @@
-import { sendSite, setLock } from './all-chat.js';
+import { sendEmote, sendSite, setLock } from './all-chat.js';
 import { PLAT_NAME, platOf } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
@@ -78,7 +78,7 @@ function renderEmoteList(view){
     element('div', 'all-mh', element('kbd', null, '↑'), element('kbd', null, '↓'), ' pick · ', element('kbd', null, 'Tab'), ' or ', element('kbd', null, 'Enter'), ` adds it and locks to ${p}`));
 }
 // An emote into the box (in place of the :name typed, or at the caret), the box locked to its site; `recent`: picked from
-// the smiley or the row, so to the front of the row (one from the :name list isn't)
+// the smiley, so to the front of the row (one from the :name list isn't)
 function pickEmote(view, w, e, recent){
   if (!e) return;
   const v = view.input, at = v.selectionStart ?? v.value.length;
@@ -94,8 +94,8 @@ function pickEmote(view, w, e, recent){
   if (recent && e.ch){ useRecent(platOf(e.ch), [e.name]); renderRecent(view, w); }
 }
 // The emotes you used last, in a row over ALL's box, as Kick's chat has over its own: each emote picked in ALL from the
-// smiley or the row goes to the front of its site's list (saved: { kick: [names], twitch: [names] }, the newest first); one
-// from the :name list doesn't, nor does sending it. The row shows the ones the
+// smiley, or sent from the row (a click sends it on its own), goes to the front of its site's list (saved: { kick: [names],
+// twitch: [names] }, the newest first); one from the :name list doesn't, nor does sending a message with it. The row shows the ones the
 // channel it sends on can use now (a sub emote of a channel you're no longer subscribed to isn't there), as many as fit.
 const RECENT_MAX = 20;
 const recentSaved = () => { const o = settings.json('allRecentEmotes', {}); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; };
@@ -117,8 +117,8 @@ async function renderRecent(view, w){
   const byN = new Map(); groups.forEach(g => g.emotes.forEach(e => { if (!byN.has(e.name)) byN.set(e.name, e); }));
   const list = names.map(n => byN.get(n)).filter(Boolean);
   row.hidden = !list.length;
-  row.replaceChildren(...list.map(e => element('button', { type: 'button', class: 'all-re-e', title: e.name, 'aria-label': e.name, dataset: { cmd: 'all.emotePick' },
-    onmousedown: ev => ev.preventDefault(), onclick: () => pickEmote(view, w, { ...e, ch }, true) }, emoteImg(e))));
+  row.replaceChildren(...list.map(e => element('button', { type: 'button', class: 'all-re-e', title: e.name, 'aria-label': e.name, dataset: { cmd: 'all.emoteSend' },
+    onmousedown: ev => ev.preventDefault(), onclick: () => sendEmote(view, w, { ...e, ch }) }, emoteImg(e))));
 }
 // What's sent: each emote picked here as its site writes it (a word that only looks like one stays a word)
 function withEmotes(view, text){
@@ -200,4 +200,4 @@ const chPic = c => element('span', 'all-ep-pic', c.pic ? element('img', { src: c
 const SMILEY = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1 1.3 2.2 2 3.5 2s2.5-.7 3.5-2M9 9.5h.01M15 9.5h.01"/></svg>';
 
 export { addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, renderEmoteList, renderRecent, SMILEY,
-  suggestEmote, withEmotes };
+  suggestEmote, useRecent, withEmotes };
