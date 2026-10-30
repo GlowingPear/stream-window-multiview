@@ -2,7 +2,10 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.5 (current)
+## 0.4.6 (current)
+- ALL: only picker emotes go in the recent row, a click there sends it, and the box follows the cursor
+
+## 0.4.5
 - ALL keeps its newest line in sight above the box, with a smaller recent-emotes row
 - ALL keeps one line for a Kick raid sent twice, and knows four more Twitch messages
 - Chat events keep a few samples of rare kinds, and each status
