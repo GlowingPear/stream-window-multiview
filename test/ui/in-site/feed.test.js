@@ -82,6 +82,8 @@ test('the reader passes on what the site\'s connection brings, as the page reads
     ws.onerror = () => {};
     const frame = (ev, data) => JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: ev, data: JSON.stringify(data) } } } });
     for (const f of [frame('App\\Events\\ChatMessageEvent', { id: 'k1', content: 'hi' }), frame('App\\Events\\MessageDeletedEvent', { message: { id: 'k1' } }), frame('RewardRedeemedEvent', { reward_title: 'Hydrate' }), frame('GoalProgressUpdateEvent', {}), 'not json',
+      // a raid coming in (the raided chat's), and going out (the raiding channel's, its chat moved to the raided one)
+      frame('App\\Events\\StreamHostedEvent', { message: { id: 'h1', numberOfViewers: 5 }, user: { username: 'novalynx' } }), frame('App\\Events\\ChatMoveToSupportedChannelEvent', { hosted: { slug: 'emberfall' } }),
       // what comes together in one message, a line each: each one passed on by itself
       [frame('App\\Events\\ChatMessageEvent', { id: 'k2', content: 'gg' }), frame('PointsUpdated', {}), frame('App\\Events\\ChatMessageEvent', { id: 'k3', content: '[emote:1:KEKW]' })].join('\n')])
       ws.dispatchEvent(new MessageEvent('message', { data: f }));
@@ -90,8 +92,9 @@ test('the reader passes on what the site\'s connection brings, as the page reads
   for (let i = 0; i < 30 && !heard.length; i++) await new Promise(r => setTimeout(r, 50));
   assert.equal(heard.length, 1, 'one batch');
   assert.equal(heard[0].s, 'kick');
-  assert.deepEqual(heard[0].raw.map(r => JSON.parse(r).push.pub.data.event), ['App\\Events\\ChatMessageEvent', 'App\\Events\\MessageDeletedEvent', 'RewardRedeemedEvent', 'App\\Events\\ChatMessageEvent', 'App\\Events\\ChatMessageEvent'], 'Kick\'s newer events have no App\\Events');
-  assert.deepEqual(heard[0].raw.slice(3).map(r => JSON.parse(JSON.parse(r).push.pub.data.data).id), ['k2', 'k3'], 'the messages of one websocket message, a line each');
+  assert.deepEqual(heard[0].raw.map(r => JSON.parse(r).push.pub.data.event), ['App\\Events\\ChatMessageEvent', 'App\\Events\\MessageDeletedEvent', 'RewardRedeemedEvent',
+    'App\\Events\\StreamHostedEvent', 'App\\Events\\ChatMoveToSupportedChannelEvent', 'App\\Events\\ChatMessageEvent', 'App\\Events\\ChatMessageEvent'], 'Kick\'s newer events have no App\\Events');
+  assert.deepEqual(heard[0].raw.slice(5).map(r => JSON.parse(JSON.parse(r).push.pub.data.data).id), ['k2', 'k3'], 'the messages of one websocket message, a line each');
 });
 
 test('a Twitch reply: the line found and scrolled to, where the pointer goes; then its Reply (not the thread\'s) pressed; a line that isn\'t there: no', async t => {

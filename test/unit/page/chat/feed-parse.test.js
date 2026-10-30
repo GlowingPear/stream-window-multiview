@@ -110,6 +110,10 @@ test('YouTube: messages with emoji and badges, Super Chats, memberships, removal
   assert.equal(parseYouTube(YT('liveChatMembershipItemRenderer', { id: 'y5', ...author })).text, '@SoraHikari became a member');
   assert.deepEqual(parseYouTube({ removeChatItemAction: { targetItemId: 'y1' } }).target, 'y1');
   assert.equal(parseYouTube({ markChatItemsByAuthorAsDeletedAction: { externalChannelId: 'UCx' } }).userId, 'UCx');
+  // marked deleted ("Message deleted" where it was): the same as taken away
+  const marked = parseYouTube({ clickTrackingParams: 'x', markChatItemAsDeletedAction: { deletedStateMessage: { runs: [{ text: 'Message deleted' }] }, targetItemId: 'y1' } });
+  assert.deepEqual([marked.site, marked.kind, marked.target], ['youtube', 'delete', 'y1']);
+  assert.equal(parseYouTube({ markChatItemAsDeletedAction: { deletedStateMessage: {} } }), null, 'without which message');
   for (const a of [YT('liveChatViewerEngagementMessageRenderer', { id: 'z' }), YT('liveChatTextMessageRenderer', {}), { addLiveChatTickerItemAction: {} }, null, 'x'])
     assert.equal(parseYouTube(a), null);
 });
@@ -186,6 +190,12 @@ test('YouTube: a gift is an event (its words, the gift picked out); a held messa
     'addLiveChatTickerItemAction:liveChatTickerSponsorItemRenderer']) assert.ok(ignoredWhy('youtube', k), k);
   assert.equal(ignoredWhy('youtube', 'addChatItemAction:somethingNew'), '');
   for (const [s, a] of [['youtube', YT('somethingNew', { id: 'x' })], ['youtube', gift('sent x')], ['youtube', 'x'], ['youtube', null], ['twitch', stand]]) assert.equal(leftOut(s, a), false);
+  // YouTube's own housekeeping (that you're in the chat, its moderation state, parts of its page): ignored, and its key is its kind
+  const own = [{ clickTrackingParams: 'x', liveChatReportPresenceCommand: { clientMessageId: 'c' } }, { liveChatReportModerationStateCommand: {} }, { clickTrackingParams: 'x', elementsCommand: { setEntityCommand: {} } }];
+  for (const a of own){ assert.deepEqual(parseFeed({ s: 'youtube', raw: [a] }), []); assert.equal(leftOut('youtube', a), true, Object.keys(a).pop()); }
+  for (const k of ['liveChatReportPresenceCommand', 'liveChatReportModerationStateCommand', 'elementsCommand']) assert.ok(ignoredWhy('youtube', k), k);
+  assert.equal(KNOWN.youtube.markChatItemAsDeletedAction, 'a message deleted (marked)');
+  assert.equal(leftOut('youtube', { markChatItemAsDeletedAction: { targetItemId: 'y1' } }), false, 'read, not left out');
 });
 
 test('Kick: a reward redeemed (with text: a message with the reward; without: an event), Kicks sent, subs, gifted subs, a raid', async () => {
@@ -202,6 +212,42 @@ test('Kick: a reward redeemed (with text: a message with the reward; without: an
   assert.equal(parseKick(KF('SubscriptionEvent', { username: 'jean', months: 1 })).text, 'jean subscribed');
   const h = parseKick(KF('StreamHostEvent', { host_username: 'novalynx', number_viewers: 120, optional_message: 'go say hi' }));
   assert.equal(h.text, 'novalynx raided with 120 viewers'); assert.deepEqual(h.parts, [{ text: 'go say hi' }]);
+});
+
+test('Kick: a raid coming in (StreamHostedEvent), with its message or without; a raid going out (its chat moved to the raided channel)', async () => {
+  const { parseKick, KNOWN } = await load();
+  const KC = (event, data, channel) => JSON.stringify({ push: { channel, pub: { data: { event: 'App\\Events\\' + event, data: JSON.stringify(data) } } } });
+  const hosted = (extra = {}) => parseKick(KC('StreamHostedEvent', { message: { id: 'h1', numberOfViewers: 264, optionalMessage: null, createdAt: '2026-10-29T22:55:42.988282Z', ...extra },
+    user: { id: 23, username: 'Novalynx', isSuperAdmin: false, verified: { id: 24 } } }, 'chatrooms.1'));
+  const h = hosted();
+  assert.deepEqual([h.site, h.kind, h.id, h.sender, h.login, h.text, h.parts], ['kick', 'event', 'host-h1', 'Novalynx', 'novalynx', 'Novalynx raided with 264 viewers', []]);
+  assert.deepEqual(h.summary, [{ strong: 'Novalynx' }, { text: ' raided with ' }, { strong: '264 viewers' }]);
+  assert.deepEqual(hosted({ optionalMessage: 'bringing the squad, be nice', numberOfViewers: 1 }).parts, [{ text: 'bringing the squad, be nice' }]);
+  assert.equal(hosted({ numberOfViewers: 1 }).text, 'Novalynx raided with 1 viewer');
+  assert.match(parseKick(KC('StreamHostedEvent', { message: {} }, 'chatrooms.1')).text, /^Someone raided with 0 viewers$/, 'without who or how many');
+  const move = (hostedTo, live = { viewer_count: 412 }) => parseKick(KC('ChatMoveToSupportedChannelEvent', { channel: { id: 1, slug: 'quietkoala', current_livestream: live }, slug: 'emberfall',
+    hosted: hostedTo }, 'channel.1'));
+  const r = move({ id: 2, username: 'Emberfall', slug: 'EmberFall', viewers_count: 300, is_live: true });
+  assert.deepEqual({ ...r, t: 0, id: r.id.replace(/\d+$/, 'N') }, { site: 'kick', kind: 'raid', state: 'go', id: 'rd-emberfall-N', t: 0, to: 'emberfall', viewers: 412, at: 0 }, 'its viewers: the raiding stream\'s');
+  assert.deepEqual([move({ username: 'Emberfall' }, null).to, move({ username: 'Emberfall' }, null).viewers], ['emberfall', 0], 'by its name; without the stream: no count');
+  assert.equal(move(null), null);
+  assert.equal(move({}), null);
+  for (const k of ['StreamHostedEvent', 'ChatMoveToSupportedChannelEvent', 'ChatMessageEvent:celebration']) assert.ok(KNOWN.kick[k], k);
+  assert.equal(KNOWN.kick.StreamHostEvent, undefined, 'the name that never came: not still needed');
+});
+
+test('Kick: a resub shared with a message (a celebration) is an event with the message and its months; one of a kind ALL doesn\'t know is the message', async () => {
+  const { parseKick } = await load();
+  const cel = (celebration, content = 'sixteen months, still here') => parseKick(KF('ChatMessageEvent', { id: 'c1', chatroom_id: 3, content, type: 'celebration', created_at: '2026-10-30T00:17:38+00:00',
+    sender: { id: 7, username: 'Oakmoss', slug: 'oakmoss', identity: { color: '#31D6C2', badges: [{ type: 'subscriber', text: 'Subscriber', count: 16, sort_order: 9 }] } }, metadata: { celebration } }));
+  const c = cel({ id: 'cb1', type: 'subscription_renewed', total_months: 16, created_at: '2026-10-28T06:58:38.910687Z' });
+  assert.deepEqual([c.kind, c.event, c.id, c.sender, c.login, c.color, c.badges, c.text, c.parts], ['event', 'resub', 'c1', 'Oakmoss', 'oakmoss', '#31D6C2', ['sub'], 'Oakmoss subscribed · 16 months', [{ text: 'sixteen months, still here' }]]);
+  assert.deepEqual(c.summary, [{ strong: 'Oakmoss' }, { text: ' subscribed' }, { text: ' · ' }, { strong: '16 months' }]);
+  assert.equal(c.t, Date.parse('2026-10-30T00:17:38+00:00'));
+  assert.equal(cel({ type: 'subscription_renewed' }).text, 'Oakmoss subscribed', 'without its months');
+  const other = cel({ id: 'cb2', type: 'something_new', total_months: 3 });
+  assert.deepEqual([other.kind, other.event, other.summary, other.parts], ['message', undefined, undefined, [{ text: 'sixteen months, still here' }]]);
+  assert.equal(cel(undefined).kind, 'message', 'no celebration with it');
 });
 
 test('Twitch: a channel points reward with text is a message marked as a redeem', async () => {
@@ -287,7 +333,13 @@ test('Twitch: a watch streak is their message, highlighted, with how many stream
   assert.deepEqual([so.kind, so.event, so.text, so.shoutout], ['event', 'shoutout', 'quietkoala shouted out Novalynx', 'tw:novalynx']);
   assert.deepEqual([KNOWN.twitch['hermes:reward-redeemed'], KNOWN.twitch['hermes:create']], ['a reward redeemed (without text)', 'a shoutout']);
   assert.equal(KNOWN.twitch['USERNOTICE:communitypayforward'], 'a gift sub paid forward');
-  for (const k of ['hermes:drop-progress', 'hermes:commercial', 'hermes:watch-streak', 'hermes:hype-train-start', 'hermes:mystery-gift-purchase', 'hermes:?', 'hermes:update-message']) assert.ok(ignoredWhy('twitch', k), k);
+  for (const k of ['hermes:drop-progress', 'hermes:commercial', 'hermes:watch-streak', 'hermes:hype-train-start', 'hermes:mystery-gift-purchase', 'hermes:?', 'hermes:update-message',
+    'hermes:ads-schedule-update', 'hermes:points-spent', 'hermes:channel-last-viewed-content-updated', 'hermes:global-last-viewed-content-updated']) assert.ok(ignoredWhy('twitch', k), k);
+  // the hype train: all its news, whatever Twitch names it (Twitch's own panel)
+  for (const k of ['hermes:hype-train-start', 'hermes:hype-train-end', 'hermes:hype-train-conductor-update', 'hermes:hype-train-rewards', 'hermes:hype-train-reward-eligibility', 'hermes:hype-train-level-up', 'hermes:hype-train-progression'])
+    assert.equal(ignoredWhy('twitch', k), 'the hype train (Twitch’s own panel)', k);
+  assert.equal(ignoredWhy('kick', 'hermes:hype-train-start'), '', 'Twitch\'s only');
+  assert.equal(ignoredWhy('twitch', 'hermes:automod_caught_message'), '', 'not ignored: for later');
   assert.ok(ignoredWhy('kick', 'KicksBalanceUpdated'), 'your own Kicks balance');
 });
 

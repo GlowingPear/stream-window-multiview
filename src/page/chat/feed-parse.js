@@ -212,11 +212,19 @@ function kickEvents(ev, d){
     const who = String(d.username || 'Someone');
     return event('sub-' + t + '-' + who, who, [{ strong: who }, { text: ' subscribed' }, ...(+d.months > 1 ? [{ text: ' · ' }, { strong: plural(d.months, 'month', 'months') }] : [])]);
   }
-  if (ev === 'StreamHostEvent'){
-    const who = String(d.host_username || 'Someone');
-    return event('host-' + t + '-' + who, who, [{ strong: who }, { text: ' raided with ' }, { strong: plural(d.number_viewers, 'viewer', 'viewers') }], d.optional_message ? [{ text: String(d.optional_message) }] : []);
+  // a raid coming in: StreamHostedEvent on the raided channel's chat (StreamHostEvent: the name Kick used before)
+  if (ev === 'StreamHostedEvent' || ev === 'StreamHostEvent'){
+    const m = d.message || {}, who = String((d.user && d.user.username) || d.host_username || 'Someone'), said = m.optionalMessage || d.optional_message;
+    return event('host-' + (m.id || t + '-' + who), who, [{ strong: who }, { text: ' raided with ' }, { strong: plural(m.numberOfViewers ?? d.number_viewers, 'viewer', 'viewers') }], said ? [{ text: String(said) }] : []);
   }
   return null;
+}
+// A raid going out: Kick moves the raiding channel's chat to the one it raids (ChatMoveToSupportedChannelEvent, on its
+// channel.<id> subscription), with the viewers it took. As Twitch's raid going (raid_go_v2): ALL's one line for it.
+function kickRaid(d){
+  const to = d.hosted && (d.hosted.slug || d.hosted.username); if (!to) return null;
+  const t = Date.now(), ls = (d.channel && d.channel.current_livestream) || {};
+  return { site: 'kick', kind: 'raid', state: 'go', id: `rd-${String(to).toLowerCase()}-${t}`, t, to: String(to).toLowerCase(), viewers: +ls.viewer_count || 0, at: 0 };
 }
 
 /* Kick: one frame of its live connection: {"push":{"channel":…,"pub":{"data":{"event":"App\\Events\\…","data":"<json>"}}}} */
@@ -264,8 +272,18 @@ function parseKick(frame){
   // a message pinned (the whole message comes with it), or the pin taken down
   if (ev === 'PinnedMessageCreatedEvent'){ const m = d.message && kickMsg(d.message); return m ? { site: 'kick', kind: 'pin', id: m.id, msg: m, t: Date.now(), by: (d.pinned_by && d.pinned_by.username) || '' } : null; }
   if (ev === 'PinnedMessageDeletedEvent') return { site: 'kick', kind: 'unpin', t: Date.now() };
+  if (ev === 'ChatMoveToSupportedChannelEvent') return kickRaid(d);
   if (ev !== 'ChatMessageEvent') return null;
-  return kickMsg(d);
+  return d.type === 'celebration' ? kickCelebration(d) : kickMsg(d);
+}
+// A celebration shared with a message (a resub: "subscribed · 16 months"): an event with the message, as Twitch's resub
+// with a message is. One of a kind ALL doesn't know: the message as usual.
+function kickCelebration(d){
+  const m = kickMsg(d), c = (d.metadata && d.metadata.celebration) || {};
+  if (!m || c.type !== 'subscription_renewed') return m;
+  const months = +c.total_months || 0, n = months > 1 ? [{ text: ' · ' }, { strong: `${months.toLocaleString('en-US')} months` }] : [];
+  const summary = [{ strong: m.sender || 'Someone' }, { text: ' subscribed' }, ...n];
+  return { ...m, kind: 'event', event: 'resub', summary, text: summary.map(x => x.text || x.strong).join('') };
 }
 // Kick's badges as its chat shows them, picked as its chat picks them: its own (a role, OG, founder, sub gifter, the
 // channel's sub badge by months: its icons, named as Kick names them) and badges_v2's (a level, a game's: their
@@ -322,7 +340,9 @@ function ytPics(list){
 }
 function parseYouTube(action){
   if (!action || typeof action !== 'object') return null;
-  if (action.removeChatItemAction) return { site: 'youtube', kind: 'delete', target: action.removeChatItemAction.targetItemId, t: Date.now() };
+  // a message deleted: taken away, or marked deleted ("Message deleted" where it was)
+  const del = action.removeChatItemAction || action.markChatItemAsDeletedAction;
+  if (del) return del.targetItemId ? { site: 'youtube', kind: 'delete', target: del.targetItemId, t: Date.now() } : null;
   // a message pinned at the top of the chat (a banner), or taken down
   const banner = action.addBannerToLiveChatCommand && ((action.addBannerToLiveChatCommand.bannerRenderer || {}).liveChatBannerRenderer || {});
   if (banner){
@@ -372,7 +392,8 @@ const KNOWN = {
   kick: { ChatMessageEvent: 'a message', 'ChatMessageEvent:reply': 'a reply', MessageDeletedEvent: 'a message deleted', UserBannedEvent: 'a ban or timeout',
     UserUnbannedEvent: 'a ban lifted', ChatroomClearEvent: 'the chat cleared', RewardRedeemedEvent: 'a reward redeemed', KicksGifted: 'Kicks sent',
     GiftedSubscriptionsEvent: 'gifted subs', LuckyUsersWhoGotGiftSubscriptionsEvent: 'gifted subs', SubscriptionEvent: 'a sub', ChannelSubscriptionEvent: 'a sub',
-    StreamHostEvent: 'a raid', PinnedMessageCreatedEvent: 'a pin', PinnedMessageDeletedEvent: 'a pin taken down', ChatroomUpdatedEvent: 'the chat’s modes (above the box)' },
+    StreamHostedEvent: 'a raid coming in', ChatMoveToSupportedChannelEvent: 'a raid going out (its line: Open)', 'ChatMessageEvent:celebration': 'a resub shared with a message',
+    PinnedMessageCreatedEvent: 'a pin', PinnedMessageDeletedEvent: 'a pin taken down', ChatroomUpdatedEvent: 'the chat’s modes (above the box)' },
   twitch: { PRIVMSG: 'a message', 'PRIVMSG:reply': 'a reply', 'PRIVMSG:bits': 'a cheer', 'PRIVMSG:reward': 'a reward redeemed', 'PRIVMSG:highlighted-message': 'a highlighted message',
     'USERNOTICE:sub': 'a sub', 'USERNOTICE:resub': 'a resub', 'USERNOTICE:subgift': 'a gifted sub', 'USERNOTICE:submysterygift': 'gifted subs', 'USERNOTICE:raid': 'a raid',
     'USERNOTICE:announcement': 'an announcement', 'USERNOTICE:viewermilestone': 'a watch streak', 'USERNOTICE:giftpaidupgrade': 'a gifted sub kept going',
@@ -384,7 +405,7 @@ const KNOWN = {
   youtube: { 'addChatItemAction:liveChatTextMessageRenderer': 'a message', 'addChatItemAction:liveChatPaidMessageRenderer': 'a Super Chat',
     'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
     'addChatItemAction:giftMessageViewModel': 'a gift', 'replaceChatItemAction:liveChatTextMessageRenderer': 'a held message let through',
-    removeChatItemAction: 'a message deleted', markChatItemsByAuthorAsDeletedAction: 'a ban or timeout',
+    removeChatItemAction: 'a message deleted', markChatItemAsDeletedAction: 'a message deleted (marked)', markChatItemsByAuthorAsDeletedAction: 'a ban or timeout',
     'addBannerToLiveChatCommand:liveChatBannerRenderer': 'a pin', removeBannerForLiveChatCommand: 'a pin taken down' }
 };
 
@@ -406,16 +427,19 @@ const IGNORED = {
     'hermes:viewer-milestones-update': 'your own watch streak (others’: USERNOTICE:viewermilestone)', 'hermes:watch-streak': 'your own watch streak', 'hermes:streak-recovered': 'your own watch streak',
     'hermes:send-private-callout': 'a note only for you (to share your streak)', 'hermes:goal_updated': 'the channel’s goal bar', 'hermes:custom-reward-updated': 'the channel’s rewards list',
     'hermes:active-multipliers-updated': 'your points multipliers', 'hermes:broadcast_settings_update': 'the stream’s title and category (on its window)',
-    'hermes:hype-train-start': 'the hype train (Twitch’s own panel)', 'hermes:hype-train-end': 'the hype train (Twitch’s own panel)', 'hermes:hype-train-conductor-update': 'the hype train (Twitch’s own panel)',
+    'hermes:ads-schedule-update': 'ad breaks (Twitch’s own)', 'hermes:points-spent': 'your channel points',
+    'hermes:channel-last-viewed-content-updated': 'what you last watched', 'hermes:global-last-viewed-content-updated': 'what you last watched',
     'hermes:mystery-gift-purchase': 'gifted subs being bought (the gift is USERNOTICE:submysterygift)',
     'hermes:update-message': 'a message edited (it carries only the message’s id, not its new words)', 'hermes:?': 'the connection’s own (no type)',
     ...Object.fromEntries(['slow_on', 'slow_off', 'followers_on', 'followers_on_zero', 'followers_off', 'subs_on', 'subs_off', 'emote_only_on', 'emote_only_off', 'r9k_on', 'r9k_off']
       .map(n => ['NOTICE:' + n, 'the chat’s modes (shown above the box)'])) },
   youtube: { 'addChatItemAction:liveChatPlaceholderItemRenderer': 'an empty stand-in for a message YouTube holds back (for review; let through, replaceChatItemAction brings it)',
-    'addChatItemAction:liveChatViewerEngagementMessageRenderer': 'YouTube’s own notice (welcome, guard your privacy)' }
+    'addChatItemAction:liveChatViewerEngagementMessageRenderer': 'YouTube’s own notice (welcome, guard your privacy)',
+    liveChatReportPresenceCommand: 'YouTube’s own (that you’re in the chat)', liveChatReportModerationStateCommand: 'YouTube’s own (moderation state)', elementsCommand: 'YouTube’s own (parts of its page)' }
 };
-// Why ALL leaves a kind out, or '' (Twitch's numbered replies are the connection's own too)
-const ignoredWhy = (site, kind) => (IGNORED[site] && IGNORED[site][kind]) || (site === 'twitch' && /^\d{3}$/.test(kind) ? 'the connection’s own' : site === 'kick' && /^pusher(_internal)?:/.test(kind) ? 'the connection’s own' : site === 'youtube' && /^addLiveChatTickerItemAction:/.test(kind) ? 'the ticker at the top (its Super Chat or membership is its own line)' : '');
+// Why ALL leaves a kind out, or '' (Twitch's numbered replies are the connection's own too, and all its hype train's news)
+const ignoredWhy = (site, kind) => (IGNORED[site] && IGNORED[site][kind]) || (site === 'twitch' && /^\d{3}$/.test(kind) ? 'the connection’s own'
+  : site === 'twitch' && /^hermes:hype-train-/.test(kind) ? 'the hype train (Twitch’s own panel)' : site === 'kick' && /^pusher(_internal)?:/.test(kind) ? 'the connection’s own' : site === 'youtube' && /^addLiveChatTickerItemAction:/.test(kind) ? 'the ticker at the top (its Super Chat or membership is its own line)' : '');
 // A YouTube action's kind, as its reader counts it (in-site/feed.js's ytKind)
 const ytKind = a => { const k = Object.keys(a || {}).find(x => x !== 'clickTrackingParams') || ''; const v = a && a[k] || {}, it = v.item || v.replacementItem || v.bannerRenderer;
   return k + (it ? ':' + (Object.keys(it)[0] || '') : ''); };
@@ -428,6 +452,6 @@ const ignoredKinds = samples => Object.fromEntries(Object.keys(KNOWN).map(s => [
   .filter(k => !KNOWN[s][k] && ignoredWhy(s, k)).map(k => [k, ignoredWhy(s, k)]))]));
 
 // (one object, so the tests can reach each site's reader)
-const feedParse = { KNOWN, IGNORED, ignoredWhy, ignoredKinds, leftOut, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds, kickPics, ytPics, BADGES };
+const feedParse = { KNOWN, IGNORED, ignoredWhy, ignoredKinds, leftOut, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, kickRaid, kickCelebration, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds, kickPics, ytPics, BADGES };
 
 export { feedParse };
