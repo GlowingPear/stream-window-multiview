@@ -39,7 +39,9 @@ function prepare({ dir = root, profile = '' } = {}) {
   const branch = git(dir, ['rev-parse', '--abbrev-ref', 'HEAD']) || 'dev';
   const env = { ...process.env, SMV_DEV_DATA: data, SMV_DEV_LABEL: branch };
   delete env.ELECTRON_RUN_AS_NODE;   // set by Electron-based editors and tools; the app can't start with it
+  // A fresh data folder is temporary: removed when the app closes (cleanup()), or when this script ends without that.
   const cleanup = () => { if (!profile) { try { fs.rmSync(data, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch {} } };
+  if (!profile) process.once('exit', cleanup);
   return { electron: require(path.join(dir, 'node_modules', 'electron')), dir, data, branch, env, cleanup };
 }
 

@@ -8,8 +8,8 @@
 // clock, a fixed Math.random and no animations, then put through a list of states (panels, menus, dialogs,
 // layouts), each with the toolbar on top, on the left with labels and on the left icons only, in a dark and a
 // light theme, at a wide and a narrow size. For each one it compares the screenshots pixel by pixel and every
-// visible element's box and computed styles. The report (report.md, with before / after / diff pictures) goes
-// in a temporary folder; the exit code is 1 when anything differs.
+// visible element's box and computed styles. When anything differs, the report (report.md, with before / after /
+// diff pictures) goes in a temporary folder and the exit code is 1; otherwise nothing is left behind.
 // Needs Playwright: npm run test:setup.
 const fs = require('fs');
 const os = require('os');
@@ -260,7 +260,7 @@ async function main() {
   fs.mkdirSync(outDir);
   git(['worktree', 'add', '--detach', baseDir, base]);
   const servers = [];
-  let browser;
+  let browser, keep = false;   // the folder stays only when it holds a report of differences
   try {
     const [before, after] = await Promise.all([serve(fs.realpathSync(baseDir)), serve(ROOT)]);
     servers.push(before, after);
@@ -315,12 +315,13 @@ async function main() {
     console.log(changed.length ? `\n${changed.length} of ${jobs.length} captures differ:` : `\nNo differences in ${jobs.length} captures.`);
     if (noise.length) console.log(`(${noise.length} more with only drawing noise: ${NOISE} pixels or fewer, every element and style the same.)`);
     for (const r of changed) console.log(`  ${r.id}: ${r.pixels} pixels${r.where ? ` in ${r.where.x0},${r.where.y0}–${r.where.x1},${r.where.y1} (up to ${r.where.maxD}/255)` : ''}, ${r.lines.length} element changes`);
-    console.log(`Report: ${path.join(outDir, 'report.md')}`);
+    if (changed.length) { keep = true; console.log(`Report: ${path.join(outDir, 'report.md')}`); }
     process.exitCode = changed.length ? 1 : 0;
   } finally {
     if (browser) await browser.close();
     servers.forEach(s => s.close());
     try { git(['worktree', 'remove', '--force', baseDir]); } catch {}
+    if (!keep) try { fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch {}
   }
 }
 
