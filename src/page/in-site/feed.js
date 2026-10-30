@@ -228,9 +228,10 @@ function kickIconsAgent(known){
 // The chat's modes and where you stand in it, for ALL's box (chat/all-chat.js): asked as ALL starts reading the chat;
 // changes come live after (feed-parse.js). Kick: its chatroom (the modes) and your /me there (with the chat's login);
 // Twitch: chatSettings, and you there (with the page's login); YouTube: what its chat says where its box would be
-// (sign in, members only), as it doesn't say more. -> { modes: { slow, followers, subs, emotes, verified }, me: { signedIn,
-// follower, followedAt, sub, mod, vip, host, banned } } or { blocked: "<the site's words>" }, or null (unreadable)
-async function modesAgent(as, nameAs){
+// (sign in, members only), as it doesn't say more; it builds that after the page loads, so it's waited for (up to wait ms).
+// -> { modes: { slow, followers, subs, emotes, verified }, me: { signedIn, follower, followedAt, sub, mod, vip, host, banned } }
+// or { blocked: "<the site's words>", signIn (YouTube asks you to sign in) }, or null (unreadable)
+async function modesAgent(as, nameAs, wait = 8000){
   const site = as || (/(^|\.)kick\.com$/.test(location.hostname) ? 'kick' : /(^|\.)twitch\.tv$/.test(location.hostname) ? 'twitch' : 'youtube');
   const name = nameAs || (location.pathname.match(/\/popout\/([^/]+)/) || [])[1];
   const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
@@ -262,12 +263,18 @@ async function modesAgent(as, nameAs){
       return { modes, me: { signedIn: !!you, follower: !!self.follower, followedAt: self.follower ? Date.parse(self.follower.followedAt) || 0 : 0, sub: !!self.subscriptionBenefit,
         mod: !!self.isModerator, vip: !!self.isVIP, host: !!you && you === login, banned: false } };
     }
-    // YouTube: its box, or what it says instead (Sign in to chat, members only, …)
-    const box = document.querySelector('yt-live-chat-text-input-field-renderer #input');
-    if (box) return { modes: {}, me: { signedIn: true } };
-    const say = document.querySelector('yt-live-chat-restricted-participation-renderer, #input-panel');
-    const text = say ? say.innerText.replace(/\s+/g, ' ').trim() : '';
-    return text ? { blocked: text.slice(0, 160) } : null;
+    // YouTube: its box, or what it says instead (Sign in to chat, members only, …): each of its lines once, as
+    // "what · what to do" (its lines run together read as one sentence), and whether it's its sign-in
+    for (const end = Date.now() + wait; ; await new Promise(r => setTimeout(r, 250))){
+      if (document.querySelector('yt-live-chat-text-input-field-renderer #input')) return { modes: {}, me: { signedIn: true } };
+      const say = document.querySelector('yt-live-chat-restricted-participation-renderer, #input-panel');
+      const lines = say ? [...new Set(say.innerText.split(/\n+/).map(l => l.replace(/\s+/g, ' ').replace(/[.\s]+$/, '').trim()).filter(Boolean))] : [];
+      if (lines.length){
+        const signIn = !!say.querySelector('a[href*="ServiceLogin"], a[href*="accounts.google."], #sign-in-button') || lines.some(l => /\bsign in\b/i.test(l));
+        return { blocked: lines.join(' · ').slice(0, 160), ...(signIn ? { signIn } : {}) };
+      }
+      if (Date.now() >= end) return null;
+    }
   } catch (e) { return null; }
 }
 

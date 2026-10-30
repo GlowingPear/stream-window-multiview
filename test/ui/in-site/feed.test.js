@@ -340,7 +340,15 @@ test('the chat\'s modes and you there (modesAgent): Kick\'s chatroom and /me (it
     out.ytBox = await window.modesAgent('youtube');
     wrap.innerHTML = '<yt-live-chat-restricted-participation-renderer>Subscribers-only mode.   Subscribe to chat</yt-live-chat-restricted-participation-renderer>';
     out.ytSaid = await window.modesAgent('youtube');
-    wrap.innerHTML = ''; out.ytNone = await window.modesAgent('youtube'); wrap.remove();
+    // signed out: its lines once each, as what's in the way · what to do, and that it's its sign-in (its button, or its words)
+    wrap.innerHTML = '<yt-live-chat-restricted-participation-renderer><div>All messages that you send will appear publicly.</div><div><a href="https://accounts.google.com/ServiceLogin?service=youtube">Sign in to chat</a></div></yt-live-chat-restricted-participation-renderer>';
+    out.ytSignIn = await window.modesAgent('youtube');
+    wrap.innerHTML = '<div id="input-panel"><div>Sign in to chat</div><div>Sign in to chat</div></div>';
+    out.ytSignInWords = await window.modesAgent('youtube');
+    // its box built after the page loaded: waited for
+    wrap.innerHTML = ''; setTimeout(() => { wrap.innerHTML = '<yt-live-chat-text-input-field-renderer><div id="input"></div></yt-live-chat-text-input-field-renderer>'; }, 300);
+    out.ytLater = await window.modesAgent('youtube', '', 3000);
+    wrap.innerHTML = ''; const t0 = Date.now(); out.ytNone = await window.modesAgent('youtube', '', 300); out.ytWaited = Date.now() - t0; wrap.remove();
     return { out, asked };
   });
   const o = got.out;
@@ -349,5 +357,8 @@ test('the chat\'s modes and you there (modesAgent): Kick\'s chatroom and /me (it
   assert.deepEqual([o.kickOut.me, o.twitchOut.me], [{ signedIn: false }, { signedIn: false }], 'signed out: the modes, no you');
   assert.deepEqual([o.none, o.failed, o.noUser], [[null, null], null, null]);
   assert.deepEqual([o.ytBox, o.ytSaid, o.ytNone], [{ modes: {}, me: { signedIn: true } }, { blocked: 'Subscribers-only mode. Subscribe to chat' }, null]);
+  assert.deepEqual([o.ytSignIn, o.ytSignInWords], [{ blocked: 'All messages that you send will appear publicly · Sign in to chat', signIn: true }, { blocked: 'Sign in to chat', signIn: true }]);
+  assert.deepEqual(o.ytLater, { modes: {}, me: { signedIn: true } });
+  assert.ok(o.ytWaited >= 250, 'nothing there yet: waited before saying it can\'t read it');
   assert.deepEqual(got.asked.slice(0, 4), ['/api/v2/channels/quietkoala/chatroom ', '/api/v2/channels/quietkoala/me Bearer tok1', 'gql ', 'gql OAuth tok2']);
 });
