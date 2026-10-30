@@ -1756,7 +1756,7 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   assert.deepEqual(await page.$$eval('.all-ep-sec', l => l.map(e => (e.querySelector('.ch-av') ? '[channel] ' : e.querySelector('.pi') ? `[${e.querySelector('.pi').textContent}] ` : '') + [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(''))), ['[channel] Channel', '[T] Twitch']);
 });
 
-test('ALL: the emotes you used last, in a row over the box (as Kick\'s chat has): for the site it sends on, the ones its channel can use, the newest first, as many as fit; picked from the smiley or the row, to the front (from :name, or sent, not); a click adds one; kept', async t => {
+test('ALL: the emotes you used last, in a row over the box (as Kick\'s chat has): for the site it sends on, the ones its channel can use, the newest first, as many as fit; picked from the smiley or sent from the row, to the front (from :name, or sent in a message, not); a click sends one; kept', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
   const ready = live => {
@@ -1796,7 +1796,7 @@ test('ALL: the emotes you used last, in a row over the box (as Kick\'s chat has)
   await fromSmiley('KEKW');
   await rowIs(['KEKW', 'koalaWave'], 'the newest first');
   assert.deepEqual(await saved(), { kick: ['KEKW', 'koalaWave'] });
-  assert.deepEqual(await page.$eval('.all-re-e', b => [b.dataset.cmd, b.getAttribute('aria-label'), b.querySelector('img').getBoundingClientRect().width, b.getBoundingClientRect().height]), ['all.emotePick', 'KEKW', 22, 26], 'small, still easy to press');
+  assert.deepEqual(await page.$eval('.all-re-e', b => [b.dataset.cmd, b.getAttribute('aria-label'), b.querySelector('img').getBoundingClientRect().width, b.getBoundingClientRect().height]), ['all.emoteSend', 'KEKW', 22, 26], 'small, still easy to press');
   assert.equal(await page.evaluate(() => { const r = document.querySelector('.all-re').getBoundingClientRect(), b = document.querySelector('.all-box').getBoundingClientRect(); return b.top - r.bottom >= 0 && b.top - r.bottom < 10; }), true, 'just over the box');
   // sent: no change (the order as picked)
   await sendBox();
@@ -1833,17 +1833,17 @@ test('ALL: the emotes you used last, in a row over the box (as Kick\'s chat has)
   await page.keyboard.press('Tab'); await page.keyboard.press('Tab');
   await page.waitForFunction(() => document.querySelectorAll('.all-re:not([hidden]) .all-re-e').length === 1);
   assert.deepEqual(await row(), ['Kappa'], 'an emote that channel can\'t use isn\'t there');
-  // a click: into the box at the caret (as from the smiley), locked to its site, the keyboard still in the box
+  // a click: sends it on its own at once, as your line in ALL; what's in the box stays, the keyboard still in it
   await page.keyboard.type('hi');
   await page.click('.all-re-e');
-  assert.equal(await page.$eval('.all-in', b => b.value), 'hi Kappa ');
-  assert.equal(await page.evaluate(() => document.activeElement.className), 'all-in');
-  assert.match(await page.textContent('.all-rb'), /Emotes from Twitch · sends on Twitch only/);
-  assert.deepEqual((await saved()).twitch, ['Kappa', 'notYours'], 'clicked: in front at once');
-  await page.keyboard.press('Enter');
   await page.waitForFunction(() => window.__sends.length === 5);
-  assert.deepEqual(await page.evaluate(() => window.__sends[4]), ['tw:quietkoala', 'hi Kappa']);
-  assert.deepEqual(await saved(), { kick: ['koalaWave', 'KEKW'], twitch: ['Kappa', 'notYours'] });
+  assert.deepEqual(await page.evaluate(() => window.__sends[4]), ['tw:quietkoala', 'Kappa']);
+  await page.waitForSelector('.al-mine-sent .al-mine-e, .al-mine-sent img');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'hi');
+  assert.equal(await page.evaluate(() => document.activeElement.className), 'all-in');
+  assert.equal(await page.isVisible('.all-rb'), false, 'not locked');
+  assert.deepEqual(await saved(), { kick: ['koalaWave', 'KEKW'], twitch: ['Kappa', 'notYours'] }, 'sent: in front');
+  await page.fill('.all-in', '');
   // kept: after a reload, Kick's row as it was
   await page.evaluate(() => localStorage.setItem('kickMultiview.allSend', JSON.stringify({ s1: 'quietkoala' })));
   await page.reload();
@@ -1851,11 +1851,19 @@ test('ALL: the emotes you used last, in a row over the box (as Kick\'s chat has)
   await page.evaluate(ready, LIVE);
   await page.waitForFunction(() => document.querySelectorAll('.all-re:not([hidden]) .all-re-e').length === 2);
   assert.deepEqual(await row(), ['koalaWave', 'KEKW']);
-  // a click on one further along: it moves to the front
+  // a click on one further along: sent, and it moves to the front
+  await page.evaluate(() => window.allChat.setModes('quietkoala', { modes: { slow: 30 }, me: { signedIn: true } }));
   await page.click('.all-re-e[aria-label="KEKW"]');
+  await page.waitForFunction(() => window.__sends.length === 1);
+  assert.deepEqual(await page.evaluate(() => window.__sends[0]), ['quietkoala', '[emote:9:KEKW]'], 'as its site writes it');
   await rowIs(['KEKW', 'koalaWave']);
-  assert.equal(await page.$eval('.all-in', b => b.value), 'KEKW ');
-  await page.keyboard.press('Escape'); await page.fill('.all-in', '');
+  assert.equal(await page.$eval('.all-in', b => b.value), '');
+  // slow mode, that one sent a moment ago: another isn't sent, the row as it was
+  await page.waitForSelector('.all-modes.waiting');
+  await page.click('.all-re-e[aria-label="koalaWave"]');
+  assert.equal(await page.evaluate(() => window.__sends.length), 1, 'not while waiting');
+  assert.deepEqual(await row(), ['KEKW', 'koalaWave']);
+  await page.evaluate(() => window.allChat.setModes('quietkoala', { modes: { slow: 0 }, me: { signedIn: true } }));
   // 20 kept for each site; the row one line, as many as fit (no wrapping, no scrollbar)
   await page.evaluate(() => localStorage.setItem('kickMultiview.allRecentEmotes', JSON.stringify({ kick: Array.from({ length: 20 }, (_, i) => 'm' + String(i + 1).padStart(2, '0')) })));
   await page.focus('.all-in'); await page.keyboard.press('Tab'); await page.keyboard.press('Tab');
@@ -1867,6 +1875,37 @@ test('ALL: the emotes you used last, in a row over the box (as Kick\'s chat has)
   await fromSmiley('m21');
   await page.waitForFunction(() => document.querySelector('.all-re .all-re-e').getAttribute('aria-label') === 'm21');
   assert.deepEqual((await saved()).kick, ['m21', ...Array.from({ length: 19 }, (_, i) => 'm' + String(i + 1).padStart(2, '0'))], 'the newest in front, the oldest out');
+});
+
+test('ALL\'s box keeps the caret in sight as emotes go in: picked from the smiley one after another (the box not focused), and from :name inside a long line', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => {
+    window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; });
+    const img = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    window.kmv = { ...(window.kmv || {}), emotesPick: async () => [{ id: 'kick-global', label: 'Kick', emotes: ['koalaWave', 'KEKW'].map(n => ({ name: n, url: img, send: n })) }] };
+    window.smvNotes.liveStatus(live);
+  }, LIVE);
+  // the caret: its place in the box as you see it, and whether it's inside
+  const caret = () => page.evaluate(() => { const b = document.querySelector('.all-in'), r = b.getBoundingClientRect(), c = getSelection().getRangeAt(0).getClientRects()[0] || getSelection().getRangeAt(0).getBoundingClientRect();
+    return { at: b.selectionStart, len: b.value.length, inside: c.left >= r.left - 0.5 && c.right <= r.right + 0.5, scrolled: b.scrollLeft > 0, overflows: b.scrollWidth > b.clientWidth }; });
+  await page.click('.all-list');
+  await page.click('.all-emo-b'); await page.waitForSelector('.all-ep .all-ep-e');
+  for (let i = 0; i < 12; i++){
+    await page.click(`.all-ep-e[aria-label="${i % 2 ? 'KEKW' : 'koalaWave'}"]`);
+    const c = await caret();
+    assert.equal(c.at, c.len, 'after the newest');
+    assert.equal(c.inside, true, `in sight after pick ${i + 1}`);
+  }
+  assert.deepEqual(await caret().then(c => [c.overflows, c.scrolled]), [true, true], 'more than fits: scrolled along');
+  await page.keyboard.type('X');
+  assert.match(await page.$eval('.all-in', b => b.value), /KEKW X$/, 'typing goes on after them');
+  // :name near the start of a long line: the caret just after it, in sight
+  await page.keyboard.press('Escape'); await page.fill('.all-in', '');
+  await page.focus('.all-in'); await page.keyboard.type('a long line of words that is far wider than the box can show at once');
+  await page.keyboard.press('Home'); await page.keyboard.type('hi :ke');
+  await page.waitForSelector('.all-at:not([hidden]) .all-emi'); await page.keyboard.press('Enter');
+  assert.deepEqual(await caret().then(c => [c.at, c.inside]), ['hi KEKW '.length, true]);
 });
 
 test('ALL at its newest line stays there as what\'s over the box comes and goes (the row of emotes, the reply bar, the modes); scrolled up, it stays put; in a short chat the row, then the pins, then the health line give way; not while you can\'t send', async t => {
