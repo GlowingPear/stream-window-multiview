@@ -65,7 +65,7 @@ function feedAgent(as){
     if (typeof data !== 'string') return;
     if (site === 'twitch'){
       if (data.includes(' #')) data.split('\r\n').forEach(l => { if (TW.test(l)) push(l); });
-      else if (data.startsWith('{') && /\\"((un)?pin-message|updated_room|moderation_action|reward-redeemed)\\"|\\"type\\":\\"create\\"/.test(data)) push(data);   // (its other connection: a message pinned or taken down, the chat's modes, a reward redeemed, a shoutout, what a moderator did)
+      else if (data.startsWith('{') && /\\"((un)?pin-message|updated_room|moderation_action|reward-redeemed|raid_(update|go|cancel)_v2|goal_achieved)\\"|\\"type\\":\\"create\\"/.test(data)) push(data);   // (its other connection: a message pinned or taken down, the chat's modes, a reward redeemed, a shoutout, what a moderator did, a raid getting ready, going or called off, a goal reached)
     }
     // (Kick's connection sends what comes together in one message, a line each: a busy chat's messages often do)
     else if (site === 'kick') data.split('\n').forEach(l => { if (l.startsWith('{"push"') && KICK.test(l)) push(l); });
