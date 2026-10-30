@@ -40,6 +40,14 @@ function emoteBox(props, pics){
     if (!set){ r.selectNodeContents(box); r.collapse(false); }
     r.collapse(true);
     const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    showCaret(r, n >= valueOf(box).length);
+  };
+  // scrolled so the caret shows (typing does that itself, putting it there from code doesn't): at the end, all the way
+  const showCaret = (r, end) => {
+    if (end){ box.scrollLeft = box.scrollWidth; return; }
+    const c = r.getClientRects()[0], b = box.getBoundingClientRect(); if (!c) return;
+    if (c.right > b.right - 2) box.scrollLeft += c.right - b.right + 2;
+    else if (c.left < b.left + 2) box.scrollLeft -= b.left + 2 - c.left;
   };
   const draw = text => {
     const m = pics() || new Map(), out = [];
