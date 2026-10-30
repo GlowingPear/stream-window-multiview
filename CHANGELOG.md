@@ -2,7 +2,27 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.3 (current)
+## 0.4.4 (current)
+- ALL: click a cut-off event line to read all of it
+- ALL shows Twitch's raid countdown, gift subs paid forward and goals reached
+- ALL: delete another moderator's message on Kick
+- ALL shows YouTube gifts; YouTube's held-message stand-ins and ticker no longer count as unreadable
+- A linked streamer's YouTube chat loads as soon as they're live, without clicking its tab
+- ALL: a row of the emotes you used last over its box, as Kick's chat has
+- Fix a test broken by two ALL changes merging together
+- Developer reports hide every name: raids, clips, stream titles and Twitch's tags too
+- ALL: emotes show as pictures in your message while it sends
+- Remove a node_modules link committed by mistake
+- Sending on YouTube from ALL works again
+- ALL: YouTube's "Sign in to chat" clears once you're signed in, and Reload re-reads every chat
+- ALL: a hidden bot message just says “hidden”
+- Your line in ALL shows your badges while it sends
+- ALL: Kick raids in and out, Kick resub messages, and YouTube's deleted messages
+- ALL shows Twitch's raid countdown and goals reached in the app, not only in tests
+- Tests and developer tools clean up their temporary folders
+- ALL sends on a site whose tab is hidden without waiting for it to show
+
+## 0.4.3
 - ALL: Kick's badges as its chat shows them, emote pictures in the box, and the messages already in the chats
 
 ## 0.4.2
