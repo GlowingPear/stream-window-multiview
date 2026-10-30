@@ -274,7 +274,7 @@ test('what the chat already shows (shownAgent): Kick\'s lines and the history it
   assert.deepEqual(got.asked.slice(0, 2), ['/api/v2/channels/quietkoala', 'https://web.kick.com/api/v1/chat/77/history']);
 });
 
-test('Chat events: the reader counts every kind its connection brings (named by kind, one sample a minute each) while sampling is on, also with ALL off', async t => {
+test('Chat events: the reader counts every kind its connection brings (named by kind, a few samples first, then one a minute each) while sampling is on, also with ALL off', async t => {
   const page = await openApp(t);
   const sent = [];
   page.on('console', m => { if (m.text().startsWith('__kmv:samples ')) sent.push(JSON.parse(m.text().slice(14))); });
@@ -284,12 +284,12 @@ test('Chat events: the reader counts every kind its connection brings (named by 
     for (const f of frames) ws.dispatchEvent(new MessageEvent('message', { data: f }));
   }, [site, frames]);
   const KF = (event, data) => JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: 'App\\Events\\' + event, data: JSON.stringify(data) } } } });
-  await run('kick', [KF('ChatMessageEvent', { type: 'message' }), KF('ChatMessageEvent', { type: 'reply' }), KF('ChatMessageEvent', { type: 'message' }),
+  await run('kick', [KF('ChatMessageEvent', { type: 'message' }), KF('ChatMessageEvent', { type: 'reply' }), KF('ChatMessageEvent', { type: 'message' }), KF('ChatMessageEvent', { type: 'message' }),
     JSON.stringify({ push: { channel: 'channel_9', pub: { data: { event: 'NewActivityFeedEvent', data: '{}' } } } }), '{"id":1,"connect":{}}', 'not json']);
   for (let i = 0; i < 40 && !sent.length; i++) await new Promise(r => setTimeout(r, 50));
   assert.equal(sent[0].s, 'kick');
-  assert.deepEqual(Object.fromEntries(Object.entries(sent[0].k).map(([k, v]) => [k, [v.n, !!v.x]])), { ChatMessageEvent: [2, true], 'ChatMessageEvent:reply': [1, true], NewActivityFeedEvent: [1, true] }, 'nothing about ALL: it\'s off');
-  // a kind sampled a moment ago: counted, no sample again for a minute
+  assert.deepEqual(Object.fromEntries(Object.entries(sent[0].k).map(([k, v]) => [k, [v.n, v.xs.length]])), { ChatMessageEvent: [3, 3], 'ChatMessageEvent:reply': [1, 1], NewActivityFeedEvent: [1, 1] }, 'a kind\'s first 3 all kept; nothing about ALL: it\'s off');
+  // a kind sampled 3 times already, a moment ago: counted, no sample again for a minute
   await page.evaluate(KF => { const ws = new WebSocket('ws://127.0.0.1:9'); ws.onerror = () => {}; ws.addEventListener('message', e => e.data); ws.dispatchEvent(new MessageEvent('message', { data: KF })); }, KF('ChatMessageEvent', { type: 'message' }));
   for (let i = 0; i < 40 && sent.length < 2; i++) await new Promise(r => setTimeout(r, 50));
   assert.deepEqual(sent[1].k, { ChatMessageEvent: { n: 1 } });
@@ -312,6 +312,38 @@ test('Chat events: the reader counts every kind its connection brings (named by 
   });
   for (let i = 0; i < 40 && !sent.length; i++) await new Promise(r => setTimeout(r, 50));
   assert.deepEqual(Object.fromEntries(Object.entries(sent[0].k).map(([k, v]) => [k, v.n])), { 'addChatItemAction:liveChatTextMessageRenderer': 1, 'addBannerToLiveChatCommand:liveChatBannerRenderer': 1, removeChatItemAction: 1, 'replaceChatItemAction:liveChatPaidMessageRenderer': 1 });
+});
+
+test('Chat events: a rare kind\'s first 3 samples are all kept, and each new status (an AutoMod hold, then a mod allowing it); a busy kind still one a minute', async t => {
+  const page = await openApp(t);
+  const sent = [];
+  page.on('console', m => { if (m.text().startsWith('__kmv:samples ')) sent.push(JSON.parse(m.text().slice(14))); });
+  await page.evaluate(() => { delete window.__kmvFeed; window.feedAgent('twitch'); window.__kmvFeed.samp = true; window.__kmvFeed.sampMs = 60; });
+  const send = frames => page.evaluate(frames => {
+    const ws = new WebSocket('ws://127.0.0.1:9'); ws.onerror = () => {}; ws.addEventListener('message', e => e.data);
+    for (const f of frames) ws.dispatchEvent(new MessageEvent('message', { data: f }));
+  }, frames);
+  const batch = async frames => { const at = sent.length; await send(frames); for (let i = 0; i < 40 && sent.length === at; i++) await new Promise(r => setTimeout(r, 50)); return sent[at].k; };
+  // hermes: its pubsub a JSON string inside JSON, so the status is escaped (\"status\":\"PENDING\")
+  const held = (status, id) => JSON.stringify({ type: 'notification', notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'automod_caught_message', data: { message: { id }, status } }) } });
+  const raid = n => JSON.stringify({ type: 'notification', notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'raid_update_v2', raid: { n } }) } });
+  const line = n => '@id=a' + n + ' :x!x@x PRIVMSG #q :hi ' + n;
+  const statuses = k => k.xs.map(x => /PENDING|ALLOWED|DENIED/.exec(x)[0]);
+  let k = await batch([raid(1), raid(2), raid(3), raid(4), line(1), line(2), line(3), line(4)]);
+  assert.deepEqual([k['hermes:raid_update_v2'].n, k['hermes:raid_update_v2'].xs.length, k.PRIVMSG.n, k.PRIVMSG.xs.length], [4, 3, 4, 3], 'the first 3 of each, in one go');
+  k = await batch([raid(5), line(5), line(6)]);
+  assert.deepEqual([k['hermes:raid_update_v2'], k.PRIVMSG], [{ n: 1 }, { n: 2 }], 'after 3: one a minute (a busy kind too)');
+  // a held message, then a mod allowing it, within a second: both kept; another PENDING too (its first 3)
+  k = await batch([held('PENDING', 'm1'), held('ALLOWED', 'm1')]);
+  assert.deepEqual(statuses(k['hermes:automod_caught_message']), ['PENDING', 'ALLOWED']);
+  k = await batch([held('PENDING', 'm2'), held('PENDING', 'm3'), held('DENIED', 'm3'), held('ALLOWED', 'm4')]);
+  assert.deepEqual([k['hermes:automod_caught_message'].n, statuses(k['hermes:automod_caught_message'])], [4, ['PENDING', 'DENIED']], 'its third, then the status not sampled yet; not one it has had (in a minute)');
+  // escaped twice (a JSON string inside one inside JSON), and moderation_action: a variant too
+  const deep = action => JSON.stringify({ type: 'notification', notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'chat_moderator_actions', data: JSON.stringify({ moderation_action: action }) }) } });
+  k = await batch([deep('ban'), deep('ban'), deep('ban'), deep('ban')]);
+  assert.equal(k['hermes:chat_moderator_actions'].xs.length, 3);
+  k = await batch([deep('ban'), deep('timeout'), deep('delete'), deep('untimeout'), deep('unban')]);
+  assert.deepEqual(k['hermes:chat_moderator_actions'].xs.map(x => /moderation_action\\+":\\+"(\w+)/.exec(x)[1]), ['timeout', 'delete', 'untimeout'], 'each new one, up to 3 a batch');
 });
 
 test('the chat\'s modes and you there (modesAgent): Kick\'s chatroom and /me (its login), Twitch\'s chatSettings and you (its login), YouTube\'s words where its box would be', async t => {

@@ -5,9 +5,9 @@ const { createSampleStore, exportSamples, anonymise, placeholders } = require('.
 test('the store: counts, first and last heard, the last 3 samples of each kind; other sites and bad input left out', () => {
   let t = 1000;
   const s = createSampleStore({ now: () => t });
-  assert.equal(s.add('kick', { GiftedSubscriptionsEvent: { n: 1, x: 'a' } }), true);
-  t = 2000; s.add('kick', { GiftedSubscriptionsEvent: { n: 2, x: 'b' }, PointsUpdated: { n: 5 } });
-  t = 3000; s.add('kick', { GiftedSubscriptionsEvent: { n: 1, x: 'c' } }); s.add('kick', { GiftedSubscriptionsEvent: { n: 1, x: 'd' } });
+  assert.equal(s.add('kick', { GiftedSubscriptionsEvent: { n: 1, xs: ['a'] } }), true);
+  t = 2000; s.add('kick', { GiftedSubscriptionsEvent: { n: 2, xs: ['b'] }, PointsUpdated: { n: 5 } });
+  t = 3000; s.add('kick', { GiftedSubscriptionsEvent: { n: 1, xs: ['c'] } }); s.add('kick', { GiftedSubscriptionsEvent: { n: 1, xs: ['d'] } });
   const e = s.list().kick.GiftedSubscriptionsEvent;
   assert.deepEqual([e.n, e.first, e.last, e.samples.map(x => x.x)], [5, 1000, 3000, ['b', 'c', 'd']]);
   assert.deepEqual(s.list().kick.PointsUpdated.samples, [], 'counted without a sample');
@@ -16,6 +16,37 @@ test('the store: counts, first and last heard, the last 3 samples of each kind; 
   s.add('twitch', { ['k'.repeat(200)]: { n: 1 }, '': { n: 1 }, ok: 'not an object' });
   assert.deepEqual(s.list().twitch, {});
   s.clear(); assert.deepEqual(s.list(), { kick: {}, twitch: {}, youtube: {} });
+});
+
+test('the store: several samples at once (newest last, at most 3, text only); an old x alone is counted without a sample', () => {
+  let t = 1000;
+  const s = createSampleStore({ now: () => t });
+  s.add('twitch', { A: { n: 5, xs: ['a', 'b', 7, '', 'c', 'd'] }, B: { n: 1, x: 'old' }, C: { n: 1, xs: 'nope' } });
+  assert.deepEqual(s.list().twitch.A.samples, [{ t, x: 'a' }, { t, x: 'b' }, { t, x: 'c' }], 'the first 3 it sent; not a number or an empty one');
+  assert.deepEqual([s.list().twitch.B.n, s.list().twitch.B.samples, s.list().twitch.C.samples], [1, [], []]);
+  s.add('twitch', { A: { n: 1, xs: ['x'.repeat(9000)] } });
+  assert.equal(s.list().twitch.A.samples[2].x.length, 8000, 'cut to its size');
+});
+
+test('the store keeps each variant past 3 samples: the oldest one whose status a newer one has goes first', () => {
+  const held = st => JSON.stringify({ type: 'automod_caught_message', data: JSON.stringify({ status: st, message: { id: 'm' } }) });
+  const s = createSampleStore();
+  const kinds = () => s.list().twitch['hermes:automod_caught_message'].samples.map(x => /PENDING|ALLOWED|DENIED/.exec(x.x)[0]);
+  s.add('twitch', { 'hermes:automod_caught_message': { n: 1, xs: [held('PENDING')] } });
+  for (let i = 0; i < 5; i++) s.add('twitch', { 'hermes:automod_caught_message': { n: 1, xs: [held('ALLOWED')] } });
+  assert.deepEqual(kinds(), ['PENDING', 'ALLOWED', 'ALLOWED'], 'a PENDING outlasts many ALLOWEDs (in escaped JSON)');
+  s.add('twitch', { 'hermes:automod_caught_message': { n: 2, xs: [held('DENIED'), held('ALLOWED')] } });
+  assert.deepEqual(kinds(), ['PENDING', 'DENIED', 'ALLOWED']);
+  s.add('twitch', { 'hermes:automod_caught_message': { n: 1, xs: [held('PENDING')] } });
+  assert.deepEqual(kinds(), ['DENIED', 'ALLOWED', 'PENDING'], 'the older PENDING goes for the newer one');
+  s.add('twitch', { 'hermes:automod_caught_message': { n: 1, xs: [JSON.stringify({ moderation_action: 'ban' })] } });
+  assert.deepEqual(s.list().twitch['hermes:automod_caught_message'].samples.length, 3);
+  assert.match(s.list().twitch['hermes:automod_caught_message'].samples[2].x, /ban/, 'every one differs: the oldest goes');
+  assert.doesNotMatch(s.list().twitch['hermes:automod_caught_message'].samples.map(x => x.x).join(), /DENIED/);
+  // samples without a status count as one variant: the oldest of them goes first, a status kept
+  const p = createSampleStore();
+  p.add('kick', { E: { n: 4, xs: ['{"status":"live"}', 'a', 'b'] } }); p.add('kick', { E: { n: 1, xs: ['c'] } });
+  assert.deepEqual(p.list().kick.E.samples.map(x => x.x), ['{"status":"live"}', 'b', 'c']);
 });
 
 test('the store keeps what was saved (tidied), and drops the least recently heard kinds past 300', () => {
@@ -66,8 +97,8 @@ test('anonymise: Twitch\'s chat lines (tags, who, the channel, the words) and it
 test('the export: each kind with what ALL does with it (or unknown), the kinds ALL knows that haven\'t come, newest first, anonymised', () => {
   let t = Date.UTC(2026, 9, 29, 12);
   const s = createSampleStore({ now: () => t });
-  s.add('kick', { ChatMessageEvent: { n: 10, x: JSON.stringify({ content: 'hello there', sender: { username: 'Koala' } }) } });
-  t += 1000; s.add('kick', { NewActivityFeedEvent: { n: 1, x: JSON.stringify({ username: 'Koala' }) } });
+  s.add('kick', { ChatMessageEvent: { n: 10, xs: [JSON.stringify({ content: 'hello there', sender: { username: 'Koala' } })] } });
+  t += 1000; s.add('kick', { NewActivityFeedEvent: { n: 1, xs: [JSON.stringify({ username: 'Koala' })] } });
   const out = exportSamples(s.list(), { kick: { ChatMessageEvent: 'a message', StreamHostEvent: 'a raid' } }, { now: () => t, version: '0.3.31' });
   assert.equal(out.version, '0.3.31'); assert.equal(out.made, '2026-10-29T12:00:01.000Z');
   assert.deepEqual(out.sites.kick.needed, ['StreamHostEvent']);
@@ -83,7 +114,7 @@ test('the export: each kind with what ALL does with it (or unknown), the kinds A
 test('ALL\'s report for a fix: each site\'s state, its last raw messages anonymised (one set of placeholders), its line\'s HTML, and its chat events', () => {
   const { healthReport } = require('../../../src/main/event-samples');
   const s = createSampleStore({ now: () => 1000 });
-  s.add('kick', { ChatMessageEvent: { n: 3, x: JSON.stringify({ content: 'hi there', sender: { username: 'Koala' } }) }, PointsUpdated: { n: 9 } });
+  s.add('kick', { ChatMessageEvent: { n: 3, xs: [JSON.stringify({ content: 'hi there', sender: { username: 'Koala' } })] }, PointsUpdated: { n: 9 } });
   const out = healthReport({ known: { kick: { ChatMessageEvent: 'a message' } }, ignored: { kick: { PointsUpdated: 'your channel points' } }, sites: [
     { site: 'kick', state: 'broken', what: 'read', why: "ALL isn't reading Kick's messages: its chat has new ones", since: '2026-10-29T03:00:00.000Z', sends: ['no-box'], lines: 50,
       raws: [JSON.stringify({ push: { pub: { data: { event: 'App\\Events\\NewThing', data: JSON.stringify({ username: 'Koala', text: 'secret words' }) } } } })], badRaws: ['not json at all'], lineHtml: '<div class="x">word</div>' },

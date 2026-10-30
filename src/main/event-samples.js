@@ -22,11 +22,25 @@ function tidy(saved) {
   return d;
 }
 
+// A sample's variant: the value of the first status or moderation_action field in its text, at any depth of quoting
+// (an AutoMod hold's PENDING, then ALLOWED or DENIED); '' for one without. The page's sampler reads it the same way.
+const VARIANT = /(\\*)"(status|moderation_action)\1"\s*:\s*\1"([^"\\]{1,40})\1"/;
+const variantOf = x => { const m = VARIANT.exec(x); return m ? m[2] + '=' + m[3] : ''; };
+// Past SAMPLES, the oldest sample whose variant a newer one also has goes first, so the last of a variant stays
+// (a PENDING among many ALLOWEDs); when every one differs, the oldest
+function trim(samples) {
+  while (samples.length > SAMPLES) {
+    const vs = samples.map(x => variantOf(x.x));
+    const i = vs.findIndex((v, j) => vs.indexOf(v, j + 1) > j);
+    samples.splice(i < 0 ? 0 : i, 1);
+  }
+}
+
 // saved: what toSave() gave at the end of the last run. now: the clock (for the tests).
 function createSampleStore({ saved, now = () => Date.now() } = {}) {
   let data = tidy(saved);
   return {
-    // kinds: { "<kind>": { n: how many since the last time, x?: a sample's text } } from one chat of that site
+    // kinds: { "<kind>": { n: how many since the last time, xs?: samples' texts, oldest first } } from one chat of that site
     add(site, kinds) {
       if (!SITES.includes(site) || !kinds || typeof kinds !== 'object') return false;
       const t = now(), d = data[site];
@@ -34,7 +48,10 @@ function createSampleStore({ saved, now = () => Date.now() } = {}) {
         if (typeof k !== 'string' || !k || k.length > KIND_MAX || !v || typeof v !== 'object') continue;
         const e = d[k] || (d[k] = { n: 0, first: t, last: t, samples: [] });
         e.n += Math.max(1, Math.min(1e6, +v.n || 1)); e.last = t;
-        if (typeof v.x === 'string' && v.x) { e.samples.push({ t, x: v.x.slice(0, SAMPLE_MAX) }); if (e.samples.length > SAMPLES) e.samples.shift(); }
+        if (Array.isArray(v.xs)) {
+          v.xs.slice(0, 20).filter(x => typeof x === 'string' && x).slice(0, SAMPLES).forEach(x => e.samples.push({ t, x: x.slice(0, SAMPLE_MAX) }));
+          trim(e.samples);
+        }
       }
       const keys = Object.keys(d);
       if (keys.length > KINDS) keys.sort((a, b) => d[a].last - d[b].last).slice(0, keys.length - KINDS).forEach(k => delete d[k]);
