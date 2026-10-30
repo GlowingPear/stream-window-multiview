@@ -7,6 +7,7 @@ import { element, esc } from '../../shared/element.js';
 import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
+import { store } from '../../shared/store.js';
 import { panel } from '../../toolbar/toolbar.js';
 
 /* ===================== 2.4: colours and themes ===================== */
@@ -56,6 +57,7 @@ function applyTheme(persist){
   const warn = $('#themePane .th-warn');
   if (warn){ warn.textContent = fx.notes.join(' '); warn.hidden = !fx.notes.length; }
   document.body.classList.toggle('theme-light', light);
+  store.changed('theme');
   if (persist){ settings.set('theme', { name: theme.name, vars: v, light, edited: theme.edited }); }
   if (typeof swCss !== 'undefined'){ switchVars.swCss = null; switchVars.swLastSig = ''; if (typeof pushSwitcherState === 'function') pushSwitcherState(true); }
 }

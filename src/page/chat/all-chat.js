@@ -15,7 +15,7 @@ import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
 import { wins } from '../core.js';
 import { badgesAgent, feedAgent, kickIconsAgent, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent,
-  shownAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
+  shownAgent, twReplyAt, twReplyPress, ytLookAgent } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent, sentAgent } from '../in-site/send.js';
@@ -123,6 +123,7 @@ function ingest(w, json, quiet = false, shown = false){
     if (m.kind === 'message' && isBot(m)) m.bot = true;
     if (m.kind === 'message') mineSeen(f, m);
     f.msgs.push(m); if (m.id) f.byId.set(m.site + ':' + m.id, m);
+    if (m.site === 'youtube' && m.kind === 'message') ytLookSoon(w, m);
     if (shown){ added++; if (m.site === 'kick' && m.pics && m.pics.some(p => (!p.url || p.icon) && !kickIcons.has(kickIconKey(p)))) kickIconsSoon(w); return; }
     if (f.msgs.length > MAX){ const old = f.msgs.shift(); if (old.id) f.byId.delete(old.site + ':' + old.id); }
     if (view) addLine(view, m);
@@ -176,6 +177,7 @@ function giftTo(f, m){
 const badgePics = new Map();   // channel -> its badges' pictures, as badgesAgent read them (in-site/feed.js), or null (none); while it has a chat open
 let twBadges = null;           // Twitch's own badges' pictures (the same in every chat: kept once)
 const kickIcons = new Map();   // Kick's own badge icons as its chat draws them (kickIconsAgent), cleaned: '<type>' | 'Gift25' | 'Level24' -> <svg>
+let ytLook = null;             // how a YouTube chat draws names and badges (ytLookAgent): { dark, names, icons: { moderator: { svg, color } } }, cleaned
 const modesOf = new Map();   // channel -> { modes: { slow, followers, subs, emotes, verified }, me: { … }, blocked, signIn, until (slow mode: when you can send again) }
 // r: modesAgent's whole answer (its modes and you, or why you can't chat), or a change the chat's messages said (modes alone).
 // A whole answer says whether you're blocked: one without a block clears the last one (signed in since, the chat open to you again).
@@ -422,7 +424,7 @@ function renderPins(view){
     return element('div', { class: 'all-pin-row' + (view.pinFull ? ' full' : ''), title: `${p.msg.sender}: ${text}${p.by ? `\nPinned by ${p.by}` : ''}` }, element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0]),
       element('div', { class: 'all-pin-t', role: 'button', tabindex: '0', 'aria-expanded': String(!!view.pinFull), dataset: { cmd: 'all.pinFull' },
         onclick: () => { view.pinFull = !view.pinFull; renderPins(view); }, onkeydown: e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.target.click(); } } },
-        element('b', { style: { color: nameColor(p.msg) } }, p.msg.sender), ' ', ...partsEl(p.msg.parts, p.ch)), element('small', 'all-pin-s', sub), ...end);
+        (st => element('b', { class: pillCls(st).trim(), style: st }, p.msg.sender))(nameStyle(p.msg, p.ch)), ' ', ...partsEl(p.msg.parts, p.ch)), element('small', 'all-pin-s', sub), ...end);
   };
   if (view.pinsOpen){
     view.pins.replaceChildren(...f.pins.map((p, i) => row(p, pinAgo(p.t), !i && element('button', { type: 'button', class: 'all-pin-open', title: 'Only the newest', 'aria-label': 'Only the newest', 'aria-expanded': 'true', html: CHEVRON, dataset: { cmd: 'all.pinsOpen' }, onclick: () => { view.pinsOpen = false; renderPins(view); } }))));
@@ -442,12 +444,16 @@ const viewFor = s => {
 };
 const SITE_CLASS = { kick: 'k', twitch: 't', youtube: 'y' };
 const BADGE_TIP = { host: 'Streamer', mod: 'Moderator', vip: 'VIP', sub: 'Subscriber', og: 'OG', verified: 'Verified', staff: 'Staff', gifter: 'Sub gifter', founder: 'Founder' };
-// a readable colour for a name: the site's, or one from the name
-function nameColor(m){
-  if (/^#[0-9a-f]{6}$/i.test(m.color)) return m.color;
-  let h = 0; for (const c of m.login || m.sender) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return `hsl(${h % 360} 70% 68%)`;
+// A name as its site's own chat shows it (the site's nameStyle: its colour, and YouTube's streamer on a pill), in the
+// theme's light or dark; else a readable colour from the name. -> a style for it; .background: on a pill (pillCls)
+const lightTheme = () => document.body.classList.contains('theme-light');
+function nameStyle(m, ch = m.ch){
+  const s = ch && platform(ch) && platform(ch).nameStyle(m, { light: lightTheme(), look: ytLook });
+  if (s && s.color) return s.bg ? { color: s.color, background: s.bg } : { color: s.color };
+  let h = 0; for (const c of m.login || m.sender || '') h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return { color: `hsl(${h % 360} 70% ${lightTheme() ? 36 : 68}%)` };
 }
+const pillCls = st => st.background ? ' al-pill' : '';
 // A message's text and emotes; with its channel (ch), the 7TV, BetterTTV and FrankerFaceZ emotes in its words too (as the
 // site's chat shows them with those add-ons), and the emotes new since you last opened the chat glowing (Settings ›
 // Chat › Highlight new emotes) until you point at one
@@ -568,6 +574,30 @@ function gotKickIcons(r){
   Object.entries(r || {}).forEach(([k, svg]) => { const c = /^[\w-]{1,40}$/.test(k) && !kickIcons.has(k) && cleanSvg(svg); if (c){ kickIcons.set(k, c); any = true; } });
   if (any) redrawAll();
 }
+// What a YouTube chat said about its names and badges: colours only if they're colours, icons cleaned as Kick's
+const cssColor = c => typeof c === 'string' && /^(#[0-9a-f]{3,8}|rgba?\([\d.,\s%]+\)|hsla?\([\d.,\s%]+\))$/i.test(c.trim()) && !/^rgba\([^)]*,\s*0\s*\)$/.test(c.trim()) ? c.trim() : '';
+function gotYtLook(r){
+  if (!r || typeof r !== 'object') return;
+  const names = {}, icons = {};
+  Object.entries(r.names || {}).forEach(([k, c]) => { if (/^(viewer|mod|member|owner|ownerBg)$/.test(k) && cssColor(c)) names[k] = cssColor(c); });
+  Object.entries(r.icons || {}).forEach(([k, x]) => { const svg = /^(moderator|verified|owner)$/.test(k) && x && cleanSvg(x.svg); if (svg) icons[k] = { svg, color: cssColor(x.color) }; });
+  const next = { dark: !!r.dark, names, icons };
+  if (JSON.stringify(next) === JSON.stringify(ytLook)) return;
+  ytLook = next;
+  redrawAll();
+}
+// Asked once a YouTube chat has drawn its first messages, and again (at most every half a minute) for a badge it hasn't
+// drawn yet: its moderator's or streamer's, the first time one says something
+const YT_ICON = { mod: 'moderator', verified: 'verified', host: 'owner' };
+const askYtLook = new Map();   // YouTube chat -> { ask (debounced), at (when last asked) }
+function ytLookSoon(w, m){
+  const want = !ytLook || m.badges.some(b => YT_ICON[b] && !ytLook.icons[YT_ICON[b]]);
+  if (!want) return;
+  if (!askYtLook.has(w.channel)) askYtLook.set(w.channel, { at: 0, ask: soon(() => { if (w.view && w.ready) askIn(w.view, `(${ytLookAgent})()`).then(gotYtLook).catch(() => {}); }, 1200) });
+  const a = askYtLook.get(w.channel);
+  if (ytLook && Date.now() - a.at < 30000) return;
+  a.at = Date.now(); a.ask();
+}
 const askKickIcons = new Map();   // Kick chat -> its debounced ask
 function kickIconsSoon(w){
   if (!askKickIcons.has(w.channel)) askKickIcons.set(w.channel, soon(() => { if (w.view && w.ready) askIn(w.view, `(${kickIconsAgent})(${JSON.stringify([...kickIcons.keys()])})`).then(gotKickIcons).catch(() => {}); }, 800));
@@ -581,6 +611,8 @@ function badgeEls(m){
   m.pics.forEach(p => {
     let pic = p.url ? p : null;
     if (!pic && m.site === 'twitch'){ const b = own[p.set + '/' + p.v] || (twBadges && twBadges[p.set + '/' + p.v]); if (b) pic = { url: b.url, title: twitchTip(p, b.title) }; }   // (the channel's sub and bits badges first)
+    const ytIcon = m.site === 'youtube' && !p.url && ytLook && ytLook.icons[p.set];   // (as its chat draws it: a moderator's shield)
+    if (ytIcon) return out.push(element('i', { class: 'al-bk al-by', style: ytIcon.color ? { color: ytIcon.color } : {}, title: p.title || BADGE_TIP[feedParse.BADGES[p.set]] || '', html: ytIcon.svg }));
     const kickIcon = m.site === 'kick' && !(p.url && !p.icon) && kickIcons.get(kickIconKey(p));
     if (kickIcon) return out.push(element('i', { class: 'al-bk', title: p.title || BADGE_TIP[feedParse.BADGES[String(p.set).toLowerCase()]] || '', html: kickIcon }));
     if (!pic && kick && p.set === 'subscriber'){ const b = kick.subs.filter(x => x.months <= +p.v).pop() || kick.subs[0]; if (b) pic = { url: b.url, title: `${p.v}-Month Subscriber` }; }
@@ -626,7 +658,8 @@ function lineEl(m){
   const site = PLAT_NAME[m.site] || m.site;
   const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]), ...badgeEls(m));
   const can = m.kind === 'message' && !whyNot(m, 'delete'), canAll = can && !whyNot(m);
-  const name = element('b', { class: 'al-n' + (can ? ' can' : ''), style: { color: nameColor(m) }, role: 'button', tabindex: '-1', dataset: { cmd: 'all.profile' },
+  const st = nameStyle(m);
+  const name = element('b', { class: 'al-n' + (can ? ' can' : '') + pillCls(st), style: st, role: 'button', tabindex: '-1', dataset: { cmd: 'all.profile' },
     title: `${m.sender}'s card on ${site}` + (canAll ? `\n${kShift()}-click: delete · ${kCtrl()}-click: time out (${durText(lastTimeout())}) · ${kCtrl()}+${kShift()}-click: ban` : can ? `\n${kShift()}-click: delete` : ''),
     onclick: e => nameClick(m, e) }, m.sender);
   if (m.kind === 'event'){
@@ -1283,7 +1316,7 @@ function mineEl(p){
   return element('div', { class: 'al-m al-mine al-mine-' + p.state, dataset: { key: p.site + ':' + p.id } },
     p.threaded && element('span', 'al-q', '↩ replying to ', element('b', null, p.lock.msg.sender)),
     element('div', 'al-line', element('span', 'al-who', element('i', { class: 'pi pi-' + p.site, title: site }, site[0]),
-      ...badgeEls({ site: p.site, ch: p.ch, badges: p.badges, pics: p.myPics })), element('b', { class: 'al-n', style: { color: nameColor(p) } }, p.sender), ': ', element('span', 'al-txt', ...partsEl(p.parts, p.ch)), p.state === 'failed' ? '' : state || ''),
+      ...badgeEls({ site: p.site, ch: p.ch, badges: p.badges, pics: p.myPics })), (st => element('b', { class: 'al-n' + pillCls(st), style: st }, p.sender))(nameStyle(p)), ': ', element('span', 'al-txt', ...partsEl(p.parts, p.ch)), p.state === 'failed' ? '' : state || ''),
     p.state === 'failed' && state);
 }
 function readFilters(){
@@ -1387,15 +1420,16 @@ function init(){
   store.watch(['wins'], () => forgetClosed());
   store.watch(['chatName', 'names'], () => wins.forEach(w => { if (w.allView) renderCmp(w.allView, w); }));
   store.watch(['mod'], () => { redrawAll(); wins.forEach(syncModBtn); });
+  store.watch(['theme'], () => redrawAll());   // (names: their site's colours for a light or dark theme)
   store.watch(['bots', 'streamers'], () => botsChanged());
   store.watch(['chatZoom'], () => wins.forEach(w => { if (w.allView) fitSize(w.allView); }));
   store.watch(['allHealth'], () => wins.forEach(w => { if (w.allView) renderTop(w.allView, w); }));
   // What ALL shows, changed in the other window
   settings.onChange(['allBots', 'allEvents'], () => { readFilters(); redrawAll(); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.pinAgent = pinAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.sentAgent = sentAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.ytLookAgent = ytLookAgent; window.pinAgent = pinAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.sentAgent = sentAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
-  window.allChat = { sender, SEND_LIMIT, modKnown, gotBadges, gotKickIcons, kickIcons, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.allChat = { sender, SEND_LIMIT, modKnown, gotBadges, gotKickIcons, kickIcons, gotYtLook, ytLook: () => ytLook, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
 export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, init, modViewChs, openModViews, reloadAll,

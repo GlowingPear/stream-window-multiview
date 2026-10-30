@@ -234,6 +234,30 @@ function kickIconsAgent(known){
   return out;
 }
 
+// Runs inside a YouTube chat page: how it draws names and badges, for ALL to do the same (YouTube changes them as it
+// tries things: a moderator's shield and lighter blue, the streamer's pill). From the names it has drawn, else its
+// colours (CSS variables); the badges' icons as it drew them, with their colour.
+// -> { dark, names: { viewer, mod, member, owner, ownerBg }, icons: { moderator: { svg, color }, … } }
+function ytLookAgent(){
+  const root = document.documentElement, v = n => getComputedStyle(root).getPropertyValue(n).trim();
+  const newMod = !!document.querySelector('yt-live-chat-author-chip[enable-new-moderator-text-color]');
+  const names = { viewer: v('--yt-live-chat-secondary-text-color'), mod: v(newMod ? '--yt-live-chat-new-moderator-color' : '--yt-live-chat-moderator-color'),
+    member: v('--yt-live-chat-sponsor-color'), owner: v('--yt-live-chat-author-chip-owner-text-color'), ownerBg: v('--yt-live-chat-author-chip-owner-background-color') };
+  document.querySelectorAll('yt-live-chat-text-message-renderer yt-live-chat-author-chip:not([is-highlighted]) #author-name').forEach(n => {
+    const role = ['owner', 'moderator', 'member'].find(r => n.classList.contains(r)), s = getComputedStyle(n);
+    if (!role) names.viewer = s.color;
+    else if (role === 'owner'){ names.owner = s.color; names.ownerBg = s.backgroundColor; }
+    else names[role === 'moderator' ? 'mod' : 'member'] = s.color;
+  });
+  Object.keys(names).forEach(k => { if (!names[k]) delete names[k]; });
+  const icons = {};
+  document.querySelectorAll('yt-live-chat-author-badge-renderer[type]').forEach(b => {
+    const type = b.getAttribute('type'), svg = b.querySelector('svg');
+    if (svg && /^(moderator|verified|owner)$/.test(type) && !icons[type]) icons[type] = { svg: svg.outerHTML.slice(0, 20000), color: getComputedStyle(b).color };
+  });
+  return { dark: root.hasAttribute('dark'), names, icons };
+}
+
 // The chat's modes and where you stand in it, for ALL's box (chat/all-chat.js): asked as ALL starts reading the chat;
 // changes come live after (feed-parse.js). Kick: its chatroom (the modes) and your /me there (with the chat's login);
 // Twitch: chatSettings, and you there (with the page's login); YouTube: what its chat says where its box would be
@@ -386,4 +410,4 @@ function profileAgent(id){
 }
 
 export { badgesAgent, feedAgent, kickIconsAgent, lineProbe, messageHtml, modesAgent, pinAgent, profileAgent,
-  replyAgent, shownAgent, twReplyAt, twReplyPress };
+  replyAgent, shownAgent, twReplyAt, twReplyPress, ytLookAgent };

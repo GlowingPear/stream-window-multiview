@@ -176,6 +176,37 @@ test('Kick\'s own badge icons as its chat draws them (kickIconsAgent): by type, 
   assert.deepEqual(got, { founder: 'FounderBadge', Gift25: 'Gift25', Level24: 'Level24' });
 });
 
+test('how a YouTube chat draws names and badges (ytLookAgent): its colours, the names it drew over them, its badges\' icons in their colour', async t => {
+  const page = await openApp(t);
+  const look = () => page.evaluate(() => window.ytLookAgent());
+  const got = await page.evaluate(() => {
+    const root = document.documentElement;
+    root.setAttribute('dark', '');
+    [['--yt-live-chat-secondary-text-color', 'rgba(255,255,255,0.7)'], ['--yt-live-chat-moderator-color', '#5e84f1'], ['--yt-live-chat-new-moderator-color', '#3ea6ff'],
+      ['--yt-live-chat-sponsor-color', '#2ba640'], ['--yt-live-chat-author-chip-owner-text-color', '#111'], ['--yt-live-chat-author-chip-owner-background-color', '#ffd600']].forEach(([k, v]) => root.style.setProperty(k, v));
+    const line = (cls, style, chipAttr) => { const l = document.createElement('yt-live-chat-text-message-renderer'), chip = document.createElement('yt-live-chat-author-chip'), n = document.createElement('span');
+      if (chipAttr) chip.setAttribute(chipAttr, ''); n.id = 'author-name'; if (cls) n.className = cls; Object.assign(n.style, style); chip.append(n); l.append(chip); return l; };
+    const badge = (type, color) => { const b = document.createElement('yt-live-chat-author-badge-renderer'); b.setAttribute('type', type); b.style.color = color; b.innerHTML = '<svg viewBox="0 0 16 16"><path d="M8 1l6 3v4c0 4-6 7-6 7S2 12 2 8V4z"/></svg>'; return b; };
+    const box = document.createElement('div'); box.id = 'yt-box';
+    box.append(line('', { color: 'rgb(170, 170, 170)' }), badge('moderator', 'rgb(62, 166, 255)'), badge('member', 'red'));
+    document.body.append(box);
+    const before = window.ytLookAgent();
+    // the new moderator colour: its chip says so; a highlighted name (yours, mentioned) isn't how others look
+    box.append(line('owner', { color: 'rgb(15, 15, 15)', backgroundColor: 'rgb(241, 241, 241)' }), line('moderator', { color: 'rgb(1, 2, 3)' }, 'is-highlighted'));
+    box.firstChild.querySelector('yt-live-chat-author-chip').setAttribute('enable-new-moderator-text-color', '');
+    const after = window.ytLookAgent();
+    box.remove(); root.removeAttribute('dark'); root.removeAttribute('style');
+    return { before, after };
+  });
+  assert.equal(got.before.dark, true);
+  assert.deepEqual(got.before.names, { viewer: 'rgb(170, 170, 170)', mod: '#5e84f1', member: '#2ba640', owner: '#111', ownerBg: '#ffd600' }, 'its colours, a viewer\'s as it drew one');
+  assert.deepEqual(Object.keys(got.before.icons), ['moderator'], 'its moderator, verified and streamer badges only');
+  assert.match(got.before.icons.moderator.svg, /^<svg viewBox="0 0 16 16"><path/);
+  assert.equal(got.before.icons.moderator.color, 'rgb(62, 166, 255)');
+  assert.deepEqual(got.after.names, { viewer: 'rgb(170, 170, 170)', mod: '#3ea6ff', member: '#2ba640', owner: 'rgb(15, 15, 15)', ownerBg: 'rgb(241, 241, 241)' }, 'the new moderator blue, and the streamer as drawn');
+  assert.equal((await look()).dark, false);
+});
+
 test('a pin already up (pinAgent): Kick\'s chat history, Twitch\'s pinnedChatMessages, YouTube\'s first data; each as the live pin, which the parser reads', async t => {
   const page = await openApp(t);
   const got = await page.evaluate(async () => {
