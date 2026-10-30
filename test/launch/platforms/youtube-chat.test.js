@@ -100,3 +100,48 @@ test('YouTube\'s half-dark chat (white under white text, signed out) uses its li
   await chat(() => document.documentElement.setAttribute('dark', ''));   // YouTube switching it back
   await until(async () => (await look()) === false);
 });
+
+// Sending from ALL: YouTube's Send button can ignore a script's press (a click that isn't a real one). This stand-in's
+// only acts on a real press (event.isTrusted), as YouTube's may: the app presses it for real where sendAgent says it
+// is (scaled by the chat's zoom), the keyboard stays where you were typing, and it's 'sent' once the box empties.
+test('ALL\'s send on YouTube: a Send button that only takes a real press is pressed for real, at any zoom, keeping your keyboard', T, async () => {
+  await chat(() => {
+    document.querySelector('#kmv-send')?.remove();
+    const wrap = document.createElement('div'); wrap.id = 'kmv-send';
+    wrap.style.cssText = 'position:fixed;left:0;right:0;bottom:0;height:48px;display:flex;align-items:center;background:#eee;z-index:99';
+    const f = document.createElement('yt-live-chat-text-input-field-renderer'), box = document.createElement('div');
+    box.id = 'input'; box.contentEditable = 'true'; box.style.cssText = 'flex:1;min-width:60px;height:24px'; f.style.cssText = 'display:flex;flex:1'; f.append(box);
+    const s = document.createElement('div'); s.id = 'send-button';
+    const r = document.createElement('yt-button-renderer'), shape = document.createElement('yt-button-shape'), b = document.createElement('button');
+    b.setAttribute('aria-label', 'Send'); b.textContent = '>'; b.style.cssText = 'width:40px;height:32px;margin:0 8px';
+    window.__fake = 0; window.__real = [];
+    b.addEventListener('click', e => { if (!e.isTrusted){ window.__fake++; return; } window.__real.push(box.innerText.trim()); box.textContent = ''; });
+    shape.append(b); r.append(shape); s.append(r); wrap.append(f, s); document.body.append(wrap);
+  });
+  if (await a.win.isVisible('#settingsDlg')){ await a.win.keyboard.press('Escape'); await a.win.waitForSelector('#settingsDlg', { state: 'hidden' }); }   // (the tests before)
+  await a.win.click('#savedBtn'); await a.win.fill('#savedInput', 'typing here');
+  const send = (text, zoom) => a.win.evaluate(async ([text, zoom]) => {
+    const w = window.openWins().find(o => o.kind === 'chat');
+    w.view.setZoomFactor(zoom);
+    await new Promise(r => setTimeout(r, 300));
+    const r = await window.allChat.sender.send(w, text);
+    return [r && r.press ? 'press' : r, await window.allChat.sender.press(w, r, text)];
+  }, [text, zoom]);
+  try {
+    assert.deepEqual(await send('Haii King', 1), ['press', 'sent'], 'the script\'s press ignored, the real one sent it');
+    assert.deepEqual(await send('zoomed in', 1.5), ['press', 'sent'], 'at 150 %');
+  } finally { await a.win.evaluate(() => window.openWins().find(o => o.kind === 'chat').view.setZoomFactor(1)); }
+  assert.deepEqual(await chat(() => [window.__real, window.__fake]), [['Haii King', 'zoomed in'], 2], 'each sent once, by the real press');
+  await a.win.waitForTimeout(600);
+  assert.equal(await a.win.evaluate(() => document.activeElement.id), 'savedInput', 'the keyboard stays where you were typing');
+  // a press somewhere else in the chat: nothing sent, and it says so
+  const missed = await a.win.evaluate(async () => {
+    const w = window.openWins().find(o => o.kind === 'chat');
+    await window.allChat.sender.send(w, 'missed');
+    return window.allChat.sender.press(w, { press: { x: 2, y: 2 }, start: Date.now() }, 'missed');
+  });
+  assert.equal(missed, 'not-sent');
+  assert.deepEqual(await chat(() => window.__real), ['Haii King', 'zoomed in']);
+  await chat(() => document.querySelector('#kmv-send').remove());
+  await a.win.click('#savedBtn');
+});

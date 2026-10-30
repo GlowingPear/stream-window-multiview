@@ -18,7 +18,7 @@ import { badgesAgent, feedAgent, kickIconsAgent, messageHtml, modesAgent, pinAge
   shownAgent, twReplyAt, twReplyPress } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { modAgent } from '../in-site/mod.js';
-import { sendAgent } from '../in-site/send.js';
+import { sendAgent, sentAgent } from '../in-site/send.js';
 import { addParsed } from '../layout/placement.js';
 import { bellVars, mentMuted, mentOn, mentWords, myName, readChat, syncAtBtn } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
@@ -36,7 +36,7 @@ import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { soon, winTimer } from '../shared/timers.js';
 import { addTab, cycleTabs, frameOf, leaderOf, renderSiteTabs, showTab, syncFrameAlert, tabChannels } from '../windows/frames.js';
-import { askIn, runIn, viewId, zoomOf } from '../windows/view.js';
+import { askIn, pressIn, runIn, viewId, zoomOf } from '../windows/view.js';
 import { copyEmote, emoteOn, freshEmotes, newEmotesOn } from '../windows/views.js';
 import { syncModBtn } from '../windows/windows.js';
 
@@ -853,8 +853,16 @@ const sender = {
   mod: (m, action, id) => askIn(m.view, `(${modAgent})(${JSON.stringify(action)}, ${JSON.stringify(id)})`),
   send: (m, text) => askIn(m.view, `(${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)})`),
   reply: (m, id, text, who) => platform(m.channel).threadedReplies === 'pointer' ? pointerReply(m, id, text, who)
-    : askIn(m.view, `(async () => (await (${replyAgent})(${JSON.stringify(id)})) ? (${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)}) : 'no-reply')()`)
+    : askIn(m.view, `(async () => (await (${replyAgent})(${JSON.stringify(id)})) ? (${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)}) : 'no-reply')()`),
+  // YouTube's Send button can ignore a script's press: sendAgent then says where it is ({ press: { x, y }, start }), the
+  // app presses it for real there (in the chat's hidden tab too: it's laid out, only see-through), and asks whether it sent
+  press: async (m, r, text) => {
+    if (!pressIn(m.view, r.press.x, r.press.y)) return 'not-sent';
+    return askIn(m.view, `(${sentAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)}, ${Number(r.start) || 0})`);
+  }
 };
+// What sendAgent answered, after the real press it asked for (if it did)
+const pressed = async (m, r, text) => r && typeof r === 'object' && r.press ? sender.press(m, r, text) : r;
 // Where the site's Reply only shows under a real pointer (Twitch): the line found and scrolled to, the pointer moved over
 // it in that (hidden) chat, its Reply pressed, then the text sent as the reply. No Reply on it (your own message): as an @.
 async function pointerReply(m, id, text, who){
@@ -968,7 +976,7 @@ async function modAct(m, action, secs){
   let r;
   try {
     if (action === 'delete' || action === 'pin') r = await sender.mod(c, action, m.id);
-    else r = (await sender.send(c, action === 'ban' ? platform(m.ch).banCmd(m.login) : platform(m.ch).timeoutCmd(m.login, secs))) === 'sent' ? 'done' : 'failed';
+    else { const cmd = action === 'ban' ? platform(m.ch).banCmd(m.login) : platform(m.ch).timeoutCmd(m.login, secs); r = (await pressed(c, await sender.send(c, cmd), cmd)) === 'sent' ? 'done' : 'failed'; }
   } catch { r = 'failed'; }
   flash(r === 'done' ? { delete: `Deleted ${who}'s message on ${site}`, pin: `Pinned ${who}'s message on ${site}`, timeout: `Timed out ${who} on ${site} for ${durText(secs)}`, ban: `Banned ${who} on ${site}` }[action]
     : r === 'no-line' ? `That message has gone from ${site}'s chat` : r === 'no-button' ? `${site} doesn't offer that there: try from its own tab` : `${site} didn't take it: try from its own tab`);
@@ -1134,7 +1142,7 @@ async function deliver(view, w, p){
   view.sending = true; setMine(p, 'sending'); syncSendB(view, w);
   let r;
   if (!m) r = 'gone';
-  else try { r = p.threaded ? await sender.reply(m, p.lock.msg.id, p.send || p.text, p.lock.msg.sender) : await sender.send(m, p.send || p.text); } catch { r = 'error'; }
+  else try { const t = p.send || p.text; r = await pressed(m, p.threaded ? await sender.reply(m, p.lock.msg.id, t, p.lock.msg.sender) : await sender.send(m, t), t); } catch { r = 'error'; }
   view.sending = false; syncSendB(view, w);
   if (r === 'sent' && noteRecent(p)) renderRecent(view, w);   // (its emotes: the row over the box)
   if (p.state === 'seen') return;   // (its chat brought it back already)
@@ -1284,7 +1292,7 @@ function init(){
   // What ALL shows, changed in the other window
   settings.onChange(['allBots', 'allEvents'], () => { readFilters(); redrawAll(); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.pinAgent = pinAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.pinAgent = pinAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.sentAgent = sentAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
   window.allChat = { sender, modKnown, gotBadges, gotKickIcons, kickIcons, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }

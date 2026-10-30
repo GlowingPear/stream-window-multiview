@@ -807,6 +807,15 @@ test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeo
     await page.click(`${line(0)} >> .al-n`, { modifiers: ['Shift'] });
     await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#msg')?.textContent || ''), want.source);
   }
+  // a timeout whose command needed the app's real press of the site's Send (as on YouTube): done once that sent it
+  await page.evaluate(() => { window.allChat.sender.send = async (m, text) => { window.__acts.push(['send', m.channel, text]); return { press: { x: 3, y: 4 }, start: 7 }; };
+    window.allChat.sender.press = async (m, r, text) => { window.__acts.push(['press', m.channel, r, text]); return window.__pressAnswer; }; });
+  for (const [ans, want] of [['sent', /Timed out loudmouth on Kick/], ['not-sent', /Kick didn't take it/]]){
+    await page.evaluate(a => { window.__acts = []; window.__pressAnswer = a; document.querySelector('#msg').textContent = ''; }, ans);
+    await page.click(`${line(0)} >> .al-n`, { modifiers: [mod] });
+    await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#msg')?.textContent || ''), want.source);
+    assert.deepEqual(await acts(), [['send', 'quietkoala', '/timeout loudmouth 60'], ['press', 'quietkoala', { press: { x: 3, y: 4 }, start: 7 }, '/timeout loudmouth 60']]);
+  }
 });
 
 test('ALL: what you send shows at once (sending, then sent) and the real line takes its place; Enter can\'t send twice; not sent: Retry or Edit', async t => {
@@ -896,6 +905,33 @@ test('ALL: your line while it sends shows the emotes you picked as their picture
   await page.waitForSelector('.al-mine-failed .al-txt img[alt=catJAM]');
   assert.deepEqual(await shows(), ['failed | vibing [catJAM catJAM] here'], 'its 7TV emote');
   assert.equal(await page.$eval('.al-mine-failed .al-txt img', i => i.title), 'catJAM · 7TV');
+});
+
+test('ALL: a site that only takes a real press on its Send (YouTube): the app presses it there, then it\'s sent or not sent', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); }, LIVE);
+  await page.evaluate(() => { window.__calls = [];
+    window.allChat.sender.send = async (m, text) => { window.__calls.push(['send', m.channel, text]); return window.__answer; };
+    window.allChat.sender.press = async (m, r, text) => { window.__calls.push(['press', m.channel, r, text]); return window.__pressAnswer; }; });
+  const mine = () => page.$$eval('.all-list .al-mine', l => l.map(e => e.className.replace(/.*al-mine-/, '') + ' | ' + e.textContent.replace(/\s+/g, ' ').trim()));
+  const at = { press: { x: 412, y: 630 }, start: 1234 };
+  await page.evaluate(at => { window.__answer = at; window.__pressAnswer = 'sent'; }, at);
+  await page.fill('.all-in', 'Haii King');
+  await page.press('.all-in', 'Enter');
+  await page.waitForSelector('.al-mine-sent');
+  assert.deepEqual(await page.evaluate(() => window.__calls), [['send', 'quietkoala', 'Haii King'], ['press', 'quietkoala', at, 'Haii King']], 'pressed where the page said, with what was sent');
+  assert.equal(await page.evaluate(() => document.activeElement.classList.contains('all-in')), true, 'the keyboard still in ALL\'s box');
+  await page.evaluate(() => { window.__calls = []; window.__pressAnswer = 'not-sent'; });
+  await page.fill('.all-in', 'try again');
+  await page.press('.all-in', 'Enter');
+  await page.waitForSelector('.al-mine-failed');
+  assert.match((await mine()).pop(), /^failed \| .*try againNot sentKick didn't send it: it's still in its chat box/);
+  assert.equal((await page.evaluate(() => window.__calls)).length, 2);
+  await page.evaluate(() => { window.__calls = []; window.__answer = 'sent'; });   // a plain answer: no press
+  await page.click('.al-mine-failed [data-cmd="all.retry"]');
+  await page.waitForSelector('.al-mine-failed', { state: 'detached' });
+  assert.deepEqual(await page.evaluate(() => window.__calls), [['send', 'quietkoala', 'try again']]);
 });
 
 test('ALL with an offline Kick or Twitch: its chat is loaded (a hidden tab) to read and send on, and its tab can be watched; not YouTube\'s', async t => {

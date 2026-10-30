@@ -4,7 +4,7 @@ import { platOf, watchSignedIn, ytVidOf } from './platforms.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { settings } from '../shared/settings.js';
-import { askIn, reloadView, runIn } from '../windows/view.js';
+import { askIn, pressIn, reloadView, runIn } from '../windows/view.js';
 
 /* Settings > YouTube: skip ads, and answer YouTube's cookie question (it keeps the video paused until
    it's answered). Checked once a second in each YouTube player. */
@@ -49,17 +49,7 @@ function ytTick(view, skip, answer){
       window.kmv.ytConsentFallback(view.getAttribute('partition')).then(() => reloadView(view)).catch(() => {});
     }
     if (!r.skip || !skipChk.checked) return;
-    // The click moves the keyboard to the player: give it straight back to where you were typing.
-    const keep = document.activeElement;
-    if (keep !== view){
-      const back = () => { if (keep && keep !== document.body && keep.isConnected) keep.focus(); else view.blur(); };
-      view.addEventListener('focus', back, { once: true });
-      // the view doesn't always say it took the keyboard (Electron 44): look again a few times
-      [50, 200, 500].forEach(ms => setTimeout(() => { if (document.activeElement === view) back(); }, ms));
-      setTimeout(() => view.removeEventListener('focus', back), 1000);
-    }
-    view.skipAt = Date.now();                       // not you clicking into the stream (see mountView)
-    ['mouseDown', 'mouseUp'].forEach(type => view.sendInputEvent({ type, x: r.skip.x, y: r.skip.y, button: 'left', clickCount: 1 }));
+    pressIn(view, r.skip.x, r.skip.y);   // (a real click, the keyboard left where you were typing)
   }).catch(() => {});
 }
 /* The like button on YouTube streams. The watch page keeps YouTube's own like button (hidden with the rest
