@@ -212,10 +212,11 @@ function kickEvents(ev, d){
     const who = String(d.username || 'Someone');
     return event('sub-' + t + '-' + who, who, [{ strong: who }, { text: ' subscribed' }, ...(+d.months > 1 ? [{ text: ' · ' }, { strong: plural(d.months, 'month', 'months') }] : [])]);
   }
-  // a raid coming in: StreamHostedEvent on the raided channel's chat (StreamHostEvent: the name Kick used before)
+  // a raid coming in: StreamHostedEvent on the raided channel's chat, StreamHostEvent on its other subscription (both come,
+  // in their own shapes): one line for the raid, by who raided (within 10 minutes), whichever comes first
   if (ev === 'StreamHostedEvent' || ev === 'StreamHostEvent'){
     const m = d.message || {}, who = String((d.user && d.user.username) || d.host_username || 'Someone'), said = m.optionalMessage || d.optional_message;
-    return event('host-' + (m.id || t + '-' + who), who, [{ strong: who }, { text: ' raided with ' }, { strong: plural(m.numberOfViewers ?? d.number_viewers, 'viewer', 'viewers') }], said ? [{ text: String(said) }] : []);
+    return event('host-' + who.toLowerCase() + '-' + Math.floor(t / 600000), who, [{ strong: who }, { text: ' raided with ' }, { strong: plural(m.numberOfViewers ?? d.number_viewers, 'viewer', 'viewers') }], said ? [{ text: String(said) }] : []);
   }
   return null;
 }
@@ -392,7 +393,7 @@ const KNOWN = {
   kick: { ChatMessageEvent: 'a message', 'ChatMessageEvent:reply': 'a reply', MessageDeletedEvent: 'a message deleted', UserBannedEvent: 'a ban or timeout',
     UserUnbannedEvent: 'a ban lifted', ChatroomClearEvent: 'the chat cleared', RewardRedeemedEvent: 'a reward redeemed', KicksGifted: 'Kicks sent',
     GiftedSubscriptionsEvent: 'gifted subs', LuckyUsersWhoGotGiftSubscriptionsEvent: 'gifted subs', SubscriptionEvent: 'a sub', ChannelSubscriptionEvent: 'a sub',
-    StreamHostedEvent: 'a raid coming in', ChatMoveToSupportedChannelEvent: 'a raid going out (its line: Open)', 'ChatMessageEvent:celebration': 'a resub shared with a message',
+    StreamHostedEvent: 'a raid coming in', StreamHostEvent: 'a raid coming in (on its other subscription)', ChatMoveToSupportedChannelEvent: 'a raid going out (its line: Open)', 'ChatMessageEvent:celebration': 'a resub shared with a message',
     PinnedMessageCreatedEvent: 'a pin', PinnedMessageDeletedEvent: 'a pin taken down', ChatroomUpdatedEvent: 'the chat’s modes (above the box)' },
   twitch: { PRIVMSG: 'a message', 'PRIVMSG:reply': 'a reply', 'PRIVMSG:bits': 'a cheer', 'PRIVMSG:reward': 'a reward redeemed', 'PRIVMSG:highlighted-message': 'a highlighted message',
     'USERNOTICE:sub': 'a sub', 'USERNOTICE:resub': 'a resub', 'USERNOTICE:subgift': 'a gifted sub', 'USERNOTICE:submysterygift': 'gifted subs', 'USERNOTICE:raid': 'a raid',
@@ -425,7 +426,8 @@ const IGNORED = {
     'hermes:viewcount': 'the viewer count',
     'hermes:drop-progress': 'your drops’ progress', 'hermes:claim-claimed': 'your bonus points, claimed', 'hermes:commercial': 'an ad break (Twitch’s own)',
     'hermes:viewer-milestones-update': 'your own watch streak (others’: USERNOTICE:viewermilestone)', 'hermes:watch-streak': 'your own watch streak', 'hermes:streak-recovered': 'your own watch streak',
-    'hermes:send-private-callout': 'a note only for you (to share your streak)', 'hermes:goal_updated': 'the channel’s goal bar', 'hermes:custom-reward-updated': 'the channel’s rewards list',
+    'hermes:send-private-callout': 'a note only for you (to share your streak)', 'hermes:goal_updated': 'the channel’s goal bar', 'hermes:goal_created': 'the channel’s goal bar (a new goal)', 'hermes:goal_finished': 'the channel’s goal bar (a goal ended; reached: hermes:goal_achieved)',
+    'hermes:collaboration-status-none': 'streaming together (Twitch’s own panel)', 'hermes:stream-down': 'the stream ending (the live check says so)', 'hermes:custom-reward-updated': 'the channel’s rewards list',
     'hermes:active-multipliers-updated': 'your points multipliers', 'hermes:broadcast_settings_update': 'the stream’s title and category (on its window)',
     'hermes:ads-schedule-update': 'ad breaks (Twitch’s own)', 'hermes:points-spent': 'your channel points',
     'hermes:channel-last-viewed-content-updated': 'what you last watched', 'hermes:global-last-viewed-content-updated': 'what you last watched',
