@@ -2,7 +2,12 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.4 (current)
+## 0.4.5 (current)
+- ALL keeps its newest line in sight above the box, with a smaller recent-emotes row
+- ALL keeps one line for a Kick raid sent twice, and knows four more Twitch messages
+- Chat events keep a few samples of rare kinds, and each status
+
+## 0.4.4
 - ALL: click a cut-off event line to read all of it
 - ALL shows Twitch's raid countdown, gift subs paid forward and goals reached
 - ALL: delete another moderator's message on Kick
