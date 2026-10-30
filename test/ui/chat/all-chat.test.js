@@ -429,6 +429,10 @@ test('ALL: a Twitch watch streak is their message highlighted with its tag (as T
   const all = await page.$$eval('#stage .win.chat:not(.tab-hidden) .all-list > *', l => l.map(e => [e.className.split(' ').filter(c => /^al-(m|ev|streak)$/.test(c)).join(' '), e.textContent.replace(/\s+/g, ' ').trim()]));
   assert.deepEqual(all, [['al-m al-streak', "TBrightwick: five streams, let's goWatch streak · 5"], ['al-m al-streak', 'TBrightwick: watched 5 streams in a rowWatch streak · 5'],
     ['al-ev', 'TTide redeemed Hydrate!'], ['al-ev', 'Tquietkoala shouted out NovalynxOpen ›']]);
+  // a quiet tint behind it (a name in any colour stays readable), its warm edge, the tag readable on it
+  assert.deepEqual(await page.$eval('.all-list .al-streak', e => { const s = getComputedStyle(e), tag = getComputedStyle(e.querySelector('.al-tag-streak'));
+    return [s.backgroundImage.match(/rgba\([^)]*\)/)[0], s.boxShadow, tag.backgroundColor, tag.color]; }),
+    ['rgba(255, 138, 31, 0.1)', 'rgb(255, 159, 69) 3px 0px 0px 0px inset', 'rgba(255, 138, 31, 0.14)', 'rgb(255, 198, 144)']);
   // a shoutout's Open: that channel, in a window of its own
   await page.click('.all-list [data-cmd="all.shoutoutOpen"]');
   assert.ok(await page.evaluate(() => window.openWins().some(w => w.channel === 'tw:novalynx')));
