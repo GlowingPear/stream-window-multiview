@@ -40,6 +40,8 @@
 /* ---------- tabs you're not watching sit under the one you watch: invisible, playing, muted ---------- */
 .win.tab-hidden{opacity:0;pointer-events:none;visibility:visible;box-shadow:none}
 .win.tab-hidden .rz{display:none}
+/* drawn for a moment, still unseen under the one you watch (drawTab in frames.js) */
+.win.tab-hidden.tab-drawn{opacity:.01}
 /* side by side: a column each, under the bar of the one you watch */
 .win.sbs-lead .body{width:calc(100% / var(--sbs-n, 1));border-right:1px solid var(--line)}
 .win.sbs-lead .body::before,.win.sbs-col .bar::before{content:attr(data-site)}

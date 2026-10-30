@@ -133,6 +133,11 @@ function syncFrameRects(w){
     o.el.setAttribute('aria-hidden', String(i <= 0));
   });
 }
+// A chat you can't see drawn for a moment (ALL sending on it): Chromium draws the page of a view you can't see (a hidden
+// tab, opacity 0, or the chat under ALL, visibility hidden) only about once a second (its requestAnimationFrame), so a
+// site whose send waits on frames (Twitch's) stalls. At 1% it's drawn as a shown one is, and still can't be seen: it's
+// under the tab you watch, or under ALL, both opaque. (frames.css, chat/all-chat.css)
+function drawTab(w, on){ if (w && w.el) w.el.classList.toggle('tab-drawn', !!on); }
 // The window shows that one of its tabs needs you (a mention or spam in a chat you can't see)
 function syncFrameAlert(w){
   if (!w.frame) return;
@@ -657,7 +662,7 @@ function init(){
   window.frames_ = { showTab, addTab, closeTab, splitTab, joinTab, setSideBySide, openStreamer, mergeOpen, splitAll, frameOf, stepTab, switchTo, cycleTabs };   // for the tests
 }
 
-export { addTab, applyFrames, closedTabs, closeFrame, closeTab, cycleTabs, focusBoxNow, frameFields, frameNote,
-  frameOf, init, joinTab, leaderOf, mergeOpen, openStreamer, playQuality, putTabBack, renderSiteTabs, restoreFrames,
-  setSideBySide, showTab, splitTab, stepTab, switchTo, syncFrameAlert, syncFrameRects, tabChannels, tabKeyAgent,
-  tabKeyJs, unlinkTab };
+export { addTab, applyFrames, closedTabs, closeFrame, closeTab, cycleTabs, drawTab, focusBoxNow, frameFields,
+  frameNote, frameOf, init, joinTab, leaderOf, mergeOpen, openStreamer, playQuality, putTabBack, renderSiteTabs,
+  restoreFrames, setSideBySide, showTab, splitTab, stepTab, switchTo, syncFrameAlert, syncFrameRects, tabChannels,
+  tabKeyAgent, tabKeyJs, unlinkTab };

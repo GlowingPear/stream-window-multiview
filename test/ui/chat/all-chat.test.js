@@ -929,6 +929,35 @@ test('ALL: what you send shows at once (sending, then sent) and the real line ta
   assert.equal(await page.locator('.al-mine-failed').count(), 0, 'its line goes');
 });
 
+test('ALL: a chat that never answers can\'t leave your line on Sending: after the limit it\'s not sent, with why, and Retry works; if it went after all, the real line takes its place', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); }, LIVE);
+  await page.evaluate(() => { window.allChat.SEND_LIMIT.ms = 400; window.__sends = []; window.allChat.sender.send = (m, text) => { window.__sends.push(text); return window.__answer ? Promise.resolve(window.__answer) : new Promise(() => {}); }; });
+  const mine = () => page.$$eval('.all-list .al-mine', l => l.map(e => e.className.replace(/.*al-mine-/, '') + ' | ' + e.textContent.replace(/\s+/g, ' ').trim()));
+  await page.fill('.all-in', 'anyone there');
+  await page.press('.all-in', 'Enter');
+  await page.waitForSelector('.al-mine-sending');
+  assert.equal(await page.$eval('.all-send-b', b => b.title), 'Sending…');
+  await page.waitForSelector('.al-mine-failed');
+  assert.match((await mine())[0], /^failed \| .*anyone thereNot sentKick's chat didn't answer in time/);
+  assert.match(await page.textContent('#msg'), /Not sent: Kick's chat didn't answer in time/);
+  assert.notEqual(await page.$eval('.all-send-b', b => b.title), 'Sending…', 'free to send again');
+  await page.evaluate(() => { window.__answer = 'sent'; });
+  await page.click('.al-mine-failed [data-cmd="all.retry"]');
+  await page.waitForSelector('.al-mine-sent');
+  assert.deepEqual(await page.evaluate(() => window.__sends), ['anyone there', 'anyone there']);
+  // one that didn't answer in time, then its chat brings it back: it went, so the real line takes its place
+  await page.evaluate(() => { window.__answer = null; });
+  await page.fill('.all-in', 'late but sent');
+  await page.press('.all-in', 'Enter');
+  await page.waitForSelector('.al-mine-failed');
+  const KF = (data) => JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: 'App\\Events\\ChatMessageEvent', data: JSON.stringify(data) } } } });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF({ id: 'k10', content: 'late but sent', type: 'message', sender: { id: 2, username: 'MeKick', slug: 'mekick', identity: { badges: [] } } })] });
+  assert.equal(await page.locator('.al-mine-failed').count(), 0, 'not left as not sent');
+  assert.match((await lines(page)).at(-1), /late but sent/);
+});
+
 test('ALL: your line while it sends has your badges as your real line has them (the sites\' pictures, Kick\'s icons, the sub badge for your months); kept for next time, for each chat (the newest 50), saved only when it changes', async t => {
   const others = Object.fromEntries(Array.from({ length: 50 }, (_, i) => ['c' + i, { sender: 'Me', login: 'me', color: '', badges: [] }]));
   const page = await allApp(t, { allOpen: '["s1"]', allMyLook: JSON.stringify(others) });
