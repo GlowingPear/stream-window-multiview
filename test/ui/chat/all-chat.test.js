@@ -99,8 +99,8 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
   assert.deepEqual(await lines(page), [
     'al-m al-me | Tlowtide: @MeTwitch what crosshair?@YOU',
     'al-m al-rep | ↩ replying to you: is it default?Tquill: yeahREPLY',
-    'al-m al-bot | TNightbot: bot message hiddenShow',
-    'al-m al-rep al-bot | ↩ replying to youTkoala_helper: bot message hiddenTO YOUShow',
+    'al-m al-bot | TNightbot: hiddenShow',
+    'al-m al-rep al-bot | ↩ replying to youTkoala_helper: hiddenTO YOUShow',
     'al-m | Tloudmouth99: trash lol',
     'al-m al-hl | Thappy: HAPPY BIRTHDAYHighlighted100 bits',
     'al-ev | TJean subscribedlove it',
@@ -109,7 +109,7 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
   await page.click('.all-list .al-bot >> nth=0 >> .al-show');
   assert.match((await lines(page))[2], /Nightbot: Follow the socials!Hide/);
   await page.click('.all-list .al-bot >> nth=0 >> .al-show');
-  assert.match((await lines(page))[2], /bot message hidden/);
+  assert.match((await lines(page))[2], /hidden/);
   // the filter pill's menu: all bots' messages shown
   await page.click('.all-filt');
   const seg = name => page.$$eval(`.all-fm [aria-label="${name}"] button`, l => l.map(b => b.textContent + (b.classList.contains('on') ? '*' : '')));
@@ -124,11 +124,11 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
   assert.equal(await page.isVisible('.all-fm'), false, 'Esc closes it');
   // the chat bot lists changed: the messages already here checked again (Settings › Chat › Chat bots, the streamer's own bots)
   await page.evaluate(async () => { const { alerts, saveAlerts } = await import('./page/alerts/alerts.js'), { SmvSpam } = await import('./page/alerts/spam.js'); alerts.mention.bots = [...(alerts.mention.bots || SmvSpam.BOTS), 'loudmouth99']; saveAlerts(); });
-  assert.equal((await lines(page))[4], 'al-m al-bot | Tloudmouth99: bot message hiddenShow');
+  assert.equal((await lines(page))[4], 'al-m al-bot | Tloudmouth99: hiddenShow');
   await page.evaluate(async () => { const { alerts, saveAlerts } = await import('./page/alerts/alerts.js'); alerts.mention.bots = alerts.mention.bots.filter(b => b !== 'loudmouth99'); saveAlerts(); });
   assert.equal((await lines(page))[4], 'al-m | Tloudmouth99: trash lol');
   await page.evaluate(() => window.linkedApi.setStreamerOpt('s1', 'bots', [{ p: 'kick', name: 'ratchetkid' }]));
-  assert.equal((await lines(page))[7], 'al-m al-bot | Kratchetkid: bot message hiddenShow');
+  assert.equal((await lines(page))[7], 'al-m al-bot | Kratchetkid: hiddenShow');
   await page.evaluate(() => window.linkedApi.setStreamerOpt('s1', 'bots', [{ p: 'twitch', name: 'koala_helper' }]));
   assert.equal((await lines(page))[7], 'al-m | Kratchetkid: nobody likes you');
   // Bots and Events changed in the other window: here too
@@ -138,7 +138,7 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
   await fromOther('allEvents', 'hidden');
   assert.ok(!(await lines(page)).some(l => l.startsWith('al-ev')), 'events hidden');
   await fromOther('allBots', 'hidden'); await fromOther('allEvents', 'short');
-  assert.match((await lines(page))[2], /bot message hidden/);
+  assert.match((await lines(page))[2], /hidden/);
   assert.equal((await lines(page))[6], 'al-ev | TJean subscribedlove it');
   // deleted: kept, struck, with why; a timeout or ban marks their lines, and a line says what was done (and by whom, where the site says)
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('MessageDeletedEvent', { id: 'z', message: { id: 'k9' }, aiModerated: true, violatedRules: ['bullying'] })] });
