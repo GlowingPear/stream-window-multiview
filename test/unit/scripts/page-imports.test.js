@@ -3,9 +3,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { plan } = require('../../../scripts/page-imports');
+const { tempDir } = require('../../helpers');
 
 test('every module in src/page/ imports and exports what its code needs (if not: npm run page-imports)', () => {
   const { changes } = plan();
@@ -13,7 +13,7 @@ test('every module in src/page/ imports and exports what its code needs (if not:
 });
 
 test('it adds what\'s missing, drops what isn\'t used, keeps the load order line, and an object\'s keys aren\'t uses', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-imports-'));
+  const dir = tempDir('imports');
   const put = (f, t) => { fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true }); fs.writeFileSync(path.join(dir, f), t); };
   put('app.js', '//    1. core.js\n//    2. panels/list.js\nimport \'./panels/list.js\';\n');
   put('core.js', 'const wins = [];\nlet unused = 1;\nconst helper = () => 1;\n');
@@ -46,7 +46,7 @@ test('names a module declares inside itself: declarations, parameters and catch,
 
 test('start-up code belongs in init(): a module\'s top only has what can run in any order', () => {
   const { startupProblems } = require('../../../scripts/page-imports');
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-startup-')), dir = path.join(root, 'page');
+  const root = tempDir('startup'), dir = path.join(root, 'page');
   const put = (f, t) => { fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true }); fs.writeFileSync(path.join(dir, f), t); };
   fs.writeFileSync(path.join(root, 'index.html'), '<script type="module" src="page/shared/menu.js"></script><script type="module" src="page/app.js"></script>');
   put('app.js', "import { init } from './panel.js';\ninit();\n");
@@ -77,7 +77,7 @@ test('start-up code belongs in init(): a module\'s top only has what can run in 
 });
 
 test('files checked out with \\r\\n line ends (git on Windows) are read the same', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-crlf-'));
+  const dir = tempDir('crlf');
   const put = (f, t) => fs.writeFileSync(path.join(dir, f), t.replace(/\n/g, '\r\n'));
   put('app.js', "import { init } from './b.js';\ninit();\n");
   put('a.js', 'const wins = [];\n\nexport { wins };\n');
@@ -87,7 +87,7 @@ test('files checked out with \\r\\n line ends (git on Windows) are read the same
 
 test('a plain script a page loads itself (not a module) is left alone', () => {
   const { moduleFiles } = require('../../../scripts/page-imports');
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-imports-')), dir = path.join(root, 'page');
+  const root = tempDir('imports'), dir = path.join(root, 'page');
   const put = (f, t) => { fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true }); fs.writeFileSync(path.join(root, f), t); };
   put('page/app.js', ''); put('page/core.js', 'const icon = {};\n'); put('page/boot.js', 'const icon = 1;\n');
   put('page/layout/own-window.js', 'let icon = {};\n'); put('page/shared/dropdown.js', '');

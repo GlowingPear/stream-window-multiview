@@ -4,7 +4,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { createPearLink, mergePlayers, safeCrypt, PEAR_DROPS } = require('../../../src/main/link');
 // Grapevine is a dependency of the app: the quick tests (npm test with nothing installed) skip what needs it,
@@ -17,6 +16,7 @@ const { paths } = HAVE ? require('@streamorchard/grapevine') : {};
 
 const FAST = { pollMs: 50, backoffMs: [50] };
 const MULTIVIEW = require('../../../package.json').grapevine.app;
+const { tempDir } = require('../../helpers');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function until(fn, ms = 5000) {
   for (const end = Date.now() + ms; Date.now() < end; await sleep(20)) if (await fn()) return true;
@@ -27,7 +27,7 @@ const farmingFixture = () => { const { seq, at, ...data } = fixtures('drops.farm
 // A multiview link and (optionally) a stand-in Pear Drops sharing a temporary Grapevine folder. Everything is
 // stopped before the folder goes: a link still running could make it again while it's removed.
 async function setup(t, { peer = true, peerTiming = {}, provides = { 'drops.farming': '1.0' }, ...o } = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-link-'));
+  const root = tempDir('link');
   const dir = path.join(root, 'gv');
   const sent = [];
   const pl = await createPearLink({ version: '0.4.0', userData: path.join(root, 'data'), appData: root, dev: true, env: { GRAPEVINE_DIR: dir }, send: st => sent.push(st), timing: FAST, strict: true, ...o });
@@ -224,7 +224,7 @@ test('the pairing kept: the app started again connects with its key, without ask
 
 test('the key store: keys saved before (by the sync calls, or unencrypted) still read, a rotated key is saved again, one that can\'t be read is not paired', NEEDS, async t => {
   const { fileKeyStore } = require('@streamorchard/grapevine');
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-keys-'));
+  const root = tempDir('keys');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const file = path.join(root, 'grapevine.json');
   const enc = k => Buffer.from('enc:' + k).toString('base64');
@@ -263,7 +263,7 @@ test('safeCrypt: safeStorage\'s async calls, or none (keys as they are) when it 
 });
 
 test('where it looks for apps: GRAPEVINE_DIR, else a developer copy\'s own folder, else the system\'s', NEEDS, async t => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-link-'));
+  const root = tempDir('link');
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const dev = await createPearLink({ version: '0.4.0', userData: root, appData: root, dev: true, env: {} });
   fs.mkdirSync(path.join(root, 'demo-apps', 'Pear Drops'), { recursive: true });
@@ -278,7 +278,7 @@ test('where it looks for apps: GRAPEVINE_DIR, else a developer copy\'s own folde
 });
 
 test('a link that can\'t start (another copy is using Grapevine) says why', NEEDS, async t => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-link-'));
+  const root = tempDir('link');
   const env = { GRAPEVINE_DIR: path.join(root, 'gv'), SMV_LINK_SIGN_BACK_IN_MS: '500' };
   const first = await createPearLink({ version: '0.4.0', userData: path.join(root, 'a'), appData: root, env });
   const logs = [];

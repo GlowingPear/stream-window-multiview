@@ -4,15 +4,15 @@
 // reward" chip when it's ready, and a click asks it to show the reward.
 const test = require('node:test');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { launchApp, assert } = require('../app');
 const { standInPeer } = require('@streamorchard/grapevine/stand-in-peer');
 const { memoryKeyStore } = require('@streamorchard/grapevine');
+const { tempDir } = require('../../helpers');
 
 const T = { timeout: 90000 };
 const PD = 'com.streamorchard.peardrops';
-const GV = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-gv-'));
+const GV = tempDir('gv');
 const FAST = { pollMs: 100, backoffMs: [100] };
 const peerKeys = memoryKeyStore();          // the stand-in's pairing, kept when it's started again
 let a, peer, shown = 0;

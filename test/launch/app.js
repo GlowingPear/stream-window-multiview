@@ -3,9 +3,8 @@
 // messages), so the tests need no network or logins.
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
-const { ROOT, playwright, killApp } = require('../helpers');
+const { ROOT, playwright, killApp, tempDir } = require('../helpers');
 
 function electronPath() {
   if (process.env.ELECTRON_PATH) return process.env.ELECTRON_PATH;
@@ -15,12 +14,13 @@ function electronPath() {
 }
 
 // opts.storage: localStorage values to start with (the page is reloaded once with them).
-// opts.data: the data folder of an earlier launch, to start the app again with what it saved.
+// opts.data: the data folder of an earlier launch, to start the app again with what it saved. A folder made here is
+// removed when the test file's process exits, once the app is closed (a later launch may still start from it).
 // opts.hidden: invisible windows that never take focus, or not, whatever the command (see test/helpers.js).
 // --use-mock-keychain: what the app encrypts (cookies, the Pear Drops pairing) uses a stand-in keychain, so a Mac
 // never asks for the developer's Keychain password. Other systems ignore it.
 async function launchApp(opts = {}) {
-  const data = opts.data || fs.mkdtempSync(path.join(os.tmpdir(), 'smv-test-'));
+  const data = opts.data || tempDir('test');
   fs.mkdirSync(path.join(data, 'Stream Multiview'), { recursive: true });
   fs.writeFileSync(path.join(data, 'Stream Multiview', 'updates.json'), JSON.stringify({ auto: false }));
   const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' };
@@ -29,7 +29,6 @@ async function launchApp(opts = {}) {
   try { app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', '--use-mock-keychain', ROOT], env, timeout: 60000, hidden: opts.hidden }); }
   catch (e) { return retry(e); }
   const proc = app.process();
-  process.once('exit', () => killApp(proc));   // never leave the app open if the tests die
   const output = [];                           // the app's last messages, to say why a start failed
   for (const s of [proc.stdout, proc.stderr]) s?.on('data', d => { output.push(String(d)); if (output.length > 40) output.shift(); });
   try {

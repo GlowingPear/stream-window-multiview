@@ -4,9 +4,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { tempDir } = require('../../helpers');
 
 const ROOT = path.join(__dirname, '..', '..', '..');
 const CHANGELOG = `# What's new in Stream Multiview
@@ -21,7 +21,7 @@ Intro text.
 `;
 
 function project({ changelog = CHANGELOG, version = '0.2.10' } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-rel-'));
+  const dir = tempDir('rel');
   fs.mkdirSync(path.join(dir, 'scripts'));
   for (const f of ['prepare-release.js', 'release-notes.js']) fs.copyFileSync(path.join(ROOT, 'scripts', f), path.join(dir, 'scripts', f));
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'stream-multiview', version }, null, 2) + '\n');

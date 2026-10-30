@@ -3,9 +3,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { harden, readFuse } = require('../../../src/main/harden');
+const { tempDir } = require('../../helpers');
 
 const SENTINEL = 'dL7pKGdnNz796PbbjQWNKmHXBZaB9tsX';
 const ON = 0x31, OFF = 0x30, REMOVED = 0x72;
@@ -15,7 +15,7 @@ function engine(fuses, { copies = 1 } = {}) {
   const wire = Buffer.concat([Buffer.from(SENTINEL), Buffer.from([1, fuses.length]), Buffer.from(fuses)]);
   const parts = [Buffer.alloc(64, 7)];
   for (let i = 0; i < copies; i++) parts.push(wire, Buffer.alloc(32, 9));
-  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'smv-fuse-')), 'engine');
+  const file = path.join(tempDir('fuse'), 'engine');
   fs.writeFileSync(file, Buffer.concat(parts));
   return file;
 }
@@ -58,7 +58,7 @@ test('harden leaves the file alone when the fuse is already on, when only checki
   assert.equal(harden(removed), 'removed');
   assert.equal(fuseByte(removed), REMOVED);
 
-  const plain = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'smv-fuse-')), 'engine');
+  const plain = path.join(tempDir('fuse'), 'engine');
   fs.writeFileSync(plain, Buffer.alloc(200, 1));
   assert.equal(harden(plain), 'unknown');
   assert.deepEqual(fs.readFileSync(plain), Buffer.alloc(200, 1));

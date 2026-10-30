@@ -3,9 +3,9 @@
 // HTML and Why didn't this alert?. What's copied is caught on its way to the clipboard (the test files share it).
 const test = require('node:test');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { launchApp, viewLoaded, assert, openChannel, inView } = require('../app');
+const { tempDir } = require('../../helpers');
 
 const T = { timeout: 90000 };
 const CHAT = /popout\/alpha\/chat/;
@@ -13,7 +13,7 @@ let a, out;
 const until = async (fn, ms = 8000) => { const end = Date.now() + ms; let v; while (!(v = await fn().catch(() => null)) && Date.now() < end) await new Promise(r => setTimeout(r, 100)); return v; };
 test.before(async () => {
   a = await launchApp();
-  out = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-dev-'));
+  out = tempDir('dev');
   await a.app.evaluate(({ Menu, clipboard, dialog }, out) => {
     const t = globalThis.__d = { menus: [], copied: null, saved: [] };
     const writeText = clipboard.writeText.bind(clipboard);

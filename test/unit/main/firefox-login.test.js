@@ -7,6 +7,7 @@ const os = require('os');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 const { firefoxRoots, parseProfilesIni, findProfiles, readYouTubeCookies, youtubeLoginFromFirefox } = require('../../../src/main/firefox-login');
+const { tempDir } = require('../../helpers');
 
 const FUTURE = Math.floor(Date.now() / 1000) + 86400 * 365;
 const PAST = Math.floor(Date.now() / 1000) - 86400;
@@ -30,7 +31,7 @@ const signedIn = [
   { host: '.google.com', name: '__Secure-3PSID', value: 'psid', httpOnly: 1 },
   { host: 'accounts.google.com', name: '__Host-GAPS', value: 'gaps', sameSite: 1 }
 ];
-const tmpRoot = () => fs.mkdtempSync(path.join(os.tmpdir(), 'smv-fftest-'));
+const tmpRoot = () => tempDir('fftest');
 
 test('reads only what the YouTube login needs: nothing from other sites, nor Google\'s other cookies', () => {
   const root = tmpRoot();

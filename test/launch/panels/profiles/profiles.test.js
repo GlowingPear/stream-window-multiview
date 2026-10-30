@@ -4,9 +4,9 @@
 // nothing reaches the real sites; the history starts from a made-up profiles.json.
 const test = require('node:test');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { launchApp, assert, openChannel } = require('../../app');
+const { tempDir } = require('../../../helpers');
 
 const T = { timeout: 60000 };
 const MIN = 60e3, HOUR = 60 * MIN, DAY = 24 * HOUR;
@@ -37,7 +37,7 @@ const KICK = {
 
 let a;
 test.before(async () => {
-  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-prof-'));
+  const data = tempDir('prof');
   fs.mkdirSync(path.join(data, 'Stream Multiview'), { recursive: true });
   fs.writeFileSync(path.join(data, 'Stream Multiview', 'profiles.json'), JSON.stringify({ v: 1, ch: { alpha: history() },
     meta: { bravo: { notes: 'old friend', tags: ['Friends'], fav: true, nick: 'Bee' } } }));

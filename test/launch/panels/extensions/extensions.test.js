@@ -6,7 +6,7 @@ const test = require('node:test');
 const fs = require('fs');
 const path = require('path');
 const { launchApp, inView, viewLoaded, winSel, assert, openChannel, setMode } = require('../../app');
-const { ROOT } = require('../../../helpers');
+const { ROOT, tempDir } = require('../../../helpers');
 
 const T = { timeout: 60000 };
 const FIXTURE = path.join(ROOT, 'test', 'fixtures', 'marker-extension');
@@ -188,7 +188,7 @@ test('A site watched signed in has one switch for its chats and streams; sites i
   assert.equal(await a.win.isHidden(card + ' .ex-note'), true);
 
   // an extension made for Kick only: Twitch and YouTube are marked in the install dialog
-  const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'smv-kick-ext-'));
+  const dir = tempDir('kick-ext');
   fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ manifest_version: 3, name: 'Kick Only', version: '1.0',
     content_scripts: [{ matches: ['https://kick.com/*'], js: ['c.js'] }] }));
   fs.writeFileSync(path.join(dir, 'c.js'), '');
@@ -223,7 +223,7 @@ test('Switched off in Settings, then removed', T, async () => {
 });
 
 test('A folder extension reloads after its files change, keeping its settings; a broken folder says what\'s wrong', T, async () => {
-  const dir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'smv-reload-ext-'));
+  const dir = tempDir('reload-ext');
   fs.cpSync(FIXTURE, dir, { recursive: true });
   const manifest = () => JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
   const write = m => fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(m));

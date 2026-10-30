@@ -4,10 +4,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { stubExists, openChannel, setMode } = require('../../app');
-const { ROOT, playwright, killApp } = require('../../../helpers');
+const { ROOT, playwright, killApp, tempDir } = require('../../../helpers');
 
 function electronPath() {
   if (process.env.ELECTRON_PATH) return process.env.ELECTRON_PATH;
@@ -21,7 +20,7 @@ let app, win, started = 0;
 const pageErrors = [];
 
 test.before(async () => {
-  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-settings-'));
+  const data = tempDir('settings');
   fs.mkdirSync(path.join(data, 'Stream Multiview'), { recursive: true });
   fs.writeFileSync(path.join(data, 'Stream Multiview', 'updates.json'), JSON.stringify({ auto: false }));
   const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' };
@@ -250,7 +249,7 @@ test('alert sounds: each one plays, and you can pick your own sound file', T, as
     await win.click('[data-play=mention]');
   }
   // your own sound: a tiny WAV file
-  const wav = path.join(os.tmpdir(), `smv-test-${process.pid}.wav`);
+  const wav = path.join(tempDir('sound'), 'sound.wav');
   const n = 800, buf = Buffer.alloc(44 + n);
   buf.write('RIFF', 0); buf.writeUInt32LE(36 + n, 4); buf.write('WAVEfmt ', 8); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
   buf.writeUInt32LE(8000, 24); buf.writeUInt32LE(8000, 28); buf.writeUInt16LE(1, 32); buf.writeUInt16LE(8, 34); buf.write('data', 36); buf.writeUInt32LE(n, 40); buf.fill(128, 44);

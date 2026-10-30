@@ -3,9 +3,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const x = require('../../../src/main/extensions');
+const { tempDir } = require('../../helpers');
 
 const ID = 'abcdefghijklmnopabcdefghijklmnop';
 const entry = over => x.normalizeEntry({ id: ID, ...over });
@@ -143,7 +143,7 @@ test('which of the sites it runs on, from its manifest', () => {
 });
 
 test('its icon from the folder, as a picture the page can show', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-ext-'));
+  const dir = tempDir('ext');
   fs.writeFileSync(path.join(dir, 'i48.png'), Buffer.from([1, 2, 3]));
   fs.writeFileSync(path.join(dir, 'i.svg'), '<svg/>');
   fs.writeFileSync(path.join(dir, 'manifest.json'), '﻿{"name":"x"}');
@@ -158,7 +158,7 @@ test('its icon from the folder, as a picture the page can show', () => {
 });
 
 test('reloading from a folder: its manifest, or what\'s wrong with the folder', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-ext-'));
+  const dir = tempDir('ext');
   const file = path.join(dir, 'manifest.json');
   fs.writeFileSync(file, '﻿{"name":"x","version":"2"}');
   assert.deepEqual(x.checkFolder(dir), { manifest: { name: 'x', version: '2' } });
