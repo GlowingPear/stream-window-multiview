@@ -19,7 +19,7 @@ function feedAgent(as){
   // Twitch's chat lines that ALL shows; Kick's events
   const TW = / (PRIVMSG|USERNOTICE|CLEARMSG|CLEARCHAT|ROOMSTATE) #/;
   // (in the frame's text the event's name is JSON: App\\Events\\…, its backslashes doubled; the newer ones have no App\\Events)
-  const KICK = /"event":"(App\\+Events\\+)?(ChatMessageEvent|MessageDeletedEvent|UserBannedEvent|UserUnbannedEvent|ChatroomClearEvent|RewardRedeemedEvent|KicksGifted|GiftedSubscriptionsEvent|LuckyUsersWhoGotGiftSubscriptionsEvent|SubscriptionEvent|ChannelSubscriptionEvent|StreamHostEvent|PinnedMessageCreatedEvent|PinnedMessageDeletedEvent|ChatroomUpdatedEvent)"/;
+  const KICK = /"event":"(App\\+Events\\+)?(ChatMessageEvent|MessageDeletedEvent|UserBannedEvent|UserUnbannedEvent|ChatroomClearEvent|RewardRedeemedEvent|KicksGifted|GiftedSubscriptionsEvent|LuckyUsersWhoGotGiftSubscriptionsEvent|SubscriptionEvent|ChannelSubscriptionEvent|StreamHostEvent|StreamHostedEvent|ChatMoveToSupportedChannelEvent|PinnedMessageCreatedEvent|PinnedMessageDeletedEvent|ChatroomUpdatedEvent)"/;
   // Chat events: what kind each thing is. Kick: its event's name (a chat message's type too); Twitch: the line's command
   // (a message's kind, a notice's msg-id, a clear's), or its other connection's type; YouTube: the action (and its item)
   const S = { k: {}, at: {}, timer: 0 };

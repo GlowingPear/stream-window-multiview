@@ -198,7 +198,7 @@ test('Chat events: what the chats\' readers send, sorted by what ALL does with i
   assert.deepEqual(await texts('#devList .ev-sec .ev-row'), ['KickGoalProgressUpdateEventthe channel’s goal bar×5just now'], 'left out on purpose, and why');
   await view('needed');
   const needed = await texts('#devList .ev-sec .ev-chip');
-  assert.ok(needed.includes('KickStreamHostEventa raid') && needed.includes('TwitchUSERNOTICE:raida raid') && !needed.some(n => /ChatMessageEventa message/.test(n)), needed.join(' | '));
+  assert.ok(needed.includes('KickStreamHostedEventa raid coming in') && needed.includes('TwitchUSERNOTICE:raida raid') && !needed.some(n => /ChatMessageEventa message/.test(n)), needed.join(' | '));
   assert.match(await a.win.textContent('#devList .ev-desc'), /none has come yet/);
   assert.match(await a.win.textContent('#devList .ev-stats'), /Kick3·47/);
   assert.match(await a.win.getAttribute('#devList .ev-stat:has(.dv-kick)', 'title'), /^Kick: 3 kinds, 47 heard/);
@@ -223,7 +223,7 @@ test('Chat events: what the chats\' readers send, sorted by what ALL does with i
   const exp = JSON.parse(fs.readFileSync(path.join(out, path.basename(file)), 'utf8'));
   assert.ok(!/RealPerson42|hello there|57035257/.test(JSON.stringify(exp)), 'no names, words or ids');
   assert.deepEqual(exp.sites.kick.kinds.map(k => [k.kind, k.status]).sort(), [['ChatMessageEvent', 'shown'], ['GoalProgressUpdateEvent', 'ignored'], ['MysteryEvent', 'unknown']]);
-  assert.ok(exp.sites.kick.needed.includes('StreamHostEvent'));
+  assert.ok(exp.sites.kick.needed.includes('StreamHostedEvent'));
   // Report ALL…: a report for a fix (here no chat feeds ALL: its shape, and that site's events)
   await a.win.evaluate(() => window.allHealth.noteRaw('alpha', JSON.stringify({ username: 'RealPerson42' }), false));
   const feeds = on => a.win.evaluate(v => { window.openWins().find(o => o.kind === 'chat' && o.channel === 'alpha').feedOn = v; }, on);

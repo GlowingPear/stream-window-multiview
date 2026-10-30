@@ -329,15 +329,16 @@ const sameRaid = (f, from, to) => [...f.msgs].reverse().find(x => x.kind === 'ra
 /* Twitch's raid countdown (its other connection, for the channel getting ready to raid): one line for each raid, the
    same line kept up to date as Twitch sends it again (more viewers in it), counting down to when Twitch sends it on
    its own: a timer of the chat's window, a tick a second (Twitch's own news comes only as viewers join). Going, it's
-   the raid's line (Open ›; the raid followed later, allRaid, finds it); called off, it says so. */
+   the raid's line (Open ›; the raid followed later, allRaid, finds it); called off, it says so. Kick says only that it
+   went (its chat moved to the raided channel): straight to the raid's line. */
 function raidNews(f, view, r, w){
-  let m = f.byId.get('twitch:' + r.id);
+  let m = f.byId.get(r.site + ':' + r.id);
   if (!m){
     if (r.state === 'cancel') return;
     // (the raid followed first, windows/raids.js: its line is this one's; go says nothing new)
     const same = sameRaid(f, w.channel, r.to); if (same && !same.soon && r.state === 'go'){ same.viewers = same.viewers || r.viewers; redrawLine(same); return; }
-    m = { kind: 'raidout', site: 'twitch', ch: w.channel, id: r.id, t: r.t, to: r.to, soon: true };
-    f.msgs.push(m); f.byId.set('twitch:' + r.id, m); if (view) addLine(view, m);
+    m = { kind: 'raidout', site: r.site, ch: w.channel, id: r.id, t: r.t, to: r.to, soon: true };
+    f.msgs.push(m); f.byId.set(r.site + ':' + r.id, m); if (view) addLine(view, m);
   }
   if (!m.soon) return;   // (gone or called off: what came after says nothing new)
   m.viewers = r.viewers || m.viewers; m.at = r.at || m.at;
