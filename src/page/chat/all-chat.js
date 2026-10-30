@@ -35,7 +35,7 @@ import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { soon, winTimer } from '../shared/timers.js';
-import { addTab, cycleTabs, frameOf, leaderOf, renderSiteTabs, showTab, syncFrameAlert, tabChannels } from '../windows/frames.js';
+import { addTab, cycleTabs, drawTab, frameOf, leaderOf, renderSiteTabs, showTab, syncFrameAlert, tabChannels } from '../windows/frames.js';
 import { askIn, pressIn, runIn, viewId, zoomOf } from '../windows/view.js';
 import { copyEmote, emoteOn, freshEmotes, newEmotesOn, reloadWin } from '../windows/views.js';
 import { syncModBtn } from '../windows/windows.js';
@@ -856,8 +856,13 @@ const SEND_FAIL = {
   'no-box': p => `Can't chat on ${p} from here: you may need to sign in to ${p} (Settings › Accounts)`,
   disabled: p => `${p} isn't letting you chat right now (followers-only, slow mode or similar)`,
   'not-filled': p => `Couldn't type into ${p}'s chat box`,
-  'not-sent': p => `${p} didn't send it: it's still in its chat box`
+  'not-sent': p => `${p} didn't send it: it's still in its chat box`,
+  'no-answer': p => `${p}'s chat didn't answer in time`
 };
+// How long a send may take before its line says so (sendAgent takes about 3 s at most; YouTube's real press 1.5 s more):
+// a chat page that never answers can't leave it on Sending…, and Retry works. ms: for the tests.
+const SEND_LIMIT = { ms: 10000 };
+const inTime = work => new Promise(done => { const t = setTimeout(() => done('no-answer'), SEND_LIMIT.ms); work.then(r => { clearTimeout(t); done(r); }, () => { clearTimeout(t); done('error'); }); });
 const sender = {
   mod: (m, action, id) => askIn(m.view, `(${modAgent})(${JSON.stringify(action)}, ${JSON.stringify(id)})`),
   send: (m, text) => askIn(m.view, `(${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)})`),
@@ -1151,7 +1156,8 @@ async function deliver(view, w, p){
   view.sending = true; setMine(p, 'sending'); syncSendB(view, w);
   let r;
   if (!m) r = 'gone';
-  else try { const t = p.send || p.text; r = await pressed(m, p.threaded ? await sender.reply(m, p.lock.msg.id, t, p.lock.msg.sender) : await sender.send(m, t), t); } catch { r = 'error'; }
+  else { const t = p.send || p.text; drawTab(m, true); r = await inTime((async () => pressed(m, p.threaded ? await sender.reply(m, p.lock.msg.id, t, p.lock.msg.sender) : await sender.send(m, t), t))()); }
+  if (m) drawTab(m, false);
   view.sending = false; syncSendB(view, w);
   if (r === 'sent' && noteRecent(p)) renderRecent(view, w);   // (its emotes: the row over the box)
   if (p.state === 'seen') return;   // (its chat brought it back already)
@@ -1159,6 +1165,7 @@ async function deliver(view, w, p){
   if (r === 'sent'){ slowStart(p.ch); setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
   p.why = r === 'no-reply' ? `Couldn't start a reply on ${site}: the message may have scrolled out of its chat` : r === 'gone' ? `${site}'s chat isn't open`
     : (SEND_FAIL[r] || (x => `${x}'s chat didn't answer`))(site);
+  p.late = r === 'no-answer';   // (it may still have gone: if its chat brings it back, the real line takes its place)
   setMine(p, 'failed');
   flash(`Not sent: ${p.why}`);
   if (r === 'disabled' && m && m.view) askIn(m.view, `(${modesAgent})()`).then(x => { if (x) setModes(p.ch, x); }).catch(() => {});   // (why: its modes again)
@@ -1214,7 +1221,7 @@ function mineSeen(f, m){
   const me = meOn(m.site);
   if (me && m.login !== me && m.sender.toLowerCase() !== me) return;
   if (me) noteMyLook(m);
-  const p = f.msgs.find(x => x.kind === 'mine' && x.site === m.site && x.state !== 'failed' && x.state !== 'seen' && sameText(x.text, m.parts.map(y => y.text || y.name).join('')));
+  const p = f.msgs.find(x => x.kind === 'mine' && x.site === m.site && (x.state !== 'failed' || x.late) && x.state !== 'seen' && sameText(x.text, m.parts.map(y => y.text || y.name).join('')));
   if (!p) return;
   p.state = 'seen';
   f.msgs.splice(f.msgs.indexOf(p), 1);
@@ -1347,7 +1354,7 @@ function init(){
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
   window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.pinAgent = pinAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.sentAgent = sentAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
-  window.allChat = { sender, modKnown, gotBadges, gotKickIcons, kickIcons, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.allChat = { sender, SEND_LIMIT, modKnown, gotBadges, gotKickIcons, kickIcons, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
 export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, init, modViewChs, openModViews, reloadAll,

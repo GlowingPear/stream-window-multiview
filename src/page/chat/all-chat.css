@@ -2,6 +2,8 @@
 .ptab.all{width:auto;padding:0 7px;font-size:10.5px;letter-spacing:.04em;color:var(--text)}
 .ptab.all.on{background:var(--text);color:var(--bg)}
 .win.chat.all-on .body webview{visibility:hidden}
+/* while ALL sends on this chat: drawn, still unseen under ALL (drawTab in windows/frames.js) */
+.win.chat.all-on.tab-drawn .body webview{visibility:visible;opacity:.01}
 
 .all-view{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;background:var(--bg);font-size:13px;line-height:1.45;color:var(--text)}
 .all-top{flex:none;display:flex;align-items:center;gap:8px;padding:7px 10px 6px;border-bottom:1px solid var(--line)}
