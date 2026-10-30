@@ -112,7 +112,8 @@ function readYouTubeCookies(profileDir, { now = Date.now() / 1000 } = {}) {
       };
     }).filter(c => (!c.expirationDate || c.expirationDate > now) && needed(c));
   } finally {
-    fs.rmSync(tmp, { recursive: true, force: true });
+    // (Windows can hold the copy for a moment after it's closed: try again, and never fail the sign-in over it)
+    try { fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); } catch {}
   }
 }
 

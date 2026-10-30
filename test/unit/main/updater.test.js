@@ -116,6 +116,19 @@ test('if the new app can\'t be moved in, the swap script puts the old one back a
   } finally { fs.rmSync(t.dir, { recursive: true, force: true }); }
 });
 
+test('the swap script removes the download\'s temporary folder at the end, and nothing else', { skip: !unix }, () => {
+  const t = swapSetup();
+  try {
+    const download = path.join(t.dir, 'download');
+    fs.mkdirSync(path.join(download, 'app'), { recursive: true }); fs.writeFileSync(path.join(download, 'swap.sh'), '');
+    execFileSync('/bin/sh', [t.script, String(2 ** 22 + 12345), t.app, t.stage, t.opener, download]);
+    assert.equal(fs.readFileSync(path.join(t.app, 'Contents', 'v'), 'utf8'), 'new');
+    assert.equal(fs.existsSync(download), false);
+    assert.equal(fs.readFileSync(t.opened, 'utf8'), t.app);
+    assert.ok(fs.existsSync(t.script), 'only that folder');
+  } finally { fs.rmSync(t.dir, { recursive: true, force: true }); }
+});
+
 // Real ditto and codesign: an app signed (ad hoc) like a release is unpacked; a changed copy is refused.
 const mac = process.platform === 'darwin';
 const run = (cmd, args) => new Promise((res, rej) => execFile(cmd, args, (e, o, er) => e ? rej(e) : res(`${o}\n${er}`)));
