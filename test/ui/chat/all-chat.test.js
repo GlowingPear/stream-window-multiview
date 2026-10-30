@@ -1756,7 +1756,7 @@ test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley op
   assert.deepEqual(await page.$$eval('.all-ep-sec', l => l.map(e => (e.querySelector('.ch-av') ? '[channel] ' : e.querySelector('.pi') ? `[${e.querySelector('.pi').textContent}] ` : '') + [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(''))), ['[channel] Channel', '[T] Twitch']);
 });
 
-test('ALL: the emotes you used last, in a row over the box (as Kick\'s chat has): for the site it sends on, the ones its channel can use, the newest first, as many as fit; picked (the smiley, :name, the row) or sent, to the front; a click adds one; kept', async t => {
+test('ALL: the emotes you used last, in a row over the box (as Kick\'s chat has): for the site it sends on, the ones its channel can use, the newest first, as many as fit; picked from the smiley or the row, to the front (from :name, or sent, not); a click adds one; kept', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
   const ready = live => {
@@ -1774,43 +1774,51 @@ test('ALL: the emotes you used last, in a row over the box (as Kick\'s chat has)
   const row = () => page.$$eval('.all-re:not([hidden]) .all-re-e', l => l.map(b => b.title || b.dataset.tipTitle));
   const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.allRecentEmotes')));
   const rowIs = async (l, why) => { await page.waitForFunction(l => [...document.querySelectorAll('.all-re:not([hidden]) .all-re-e')].map(b => b.title).join() === l.join(), l, { timeout: 3000 }).catch(() => {}); assert.deepEqual(await row(), l, why); };
-  const send = async (q, extra = '') => {
-    await page.focus('.all-in'); await page.keyboard.type(':' + q);
-    await page.waitForSelector('.all-at:not([hidden]) .all-emi'); await page.keyboard.press('Enter');
-    if (extra) await page.keyboard.type(extra);
-    const n = await page.evaluate(() => window.__sends.length);
-    await page.keyboard.press('Enter');
-    await page.waitForFunction(n => window.__sends.length > n && !document.querySelector('.all-view').querySelector('.al-mine-sending'), n);
+  const sends = () => page.evaluate(() => window.__sends.length);
+  const sendBox = async () => { const n = await sends(); await page.focus('.all-in'); await page.keyboard.press('Enter');
+    await page.waitForFunction(n => window.__sends.length > n && !document.querySelector('.all-view').querySelector('.al-mine-sending'), n); };
+  const fromSmiley = async name => {
+    await page.click('.all-emo-b'); await page.waitForSelector('.all-ep .all-ep-e');
+    await page.click(`.all-ep-e[aria-label="${name}"]`);
+    await page.click('.all-in'); await page.waitForSelector('.all-ep', { state: 'hidden' });   // (closed by a press outside: Escape would unlock the box too)
   };
-  assert.equal(await page.isVisible('.all-re'), false, 'nothing sent yet: no row');
-  // sent: to the front of the site's list (saved), the row shows them
-  await send('koalaw');
-  await page.waitForFunction(() => document.querySelectorAll('.all-re .all-re-e').length === 1);
-  assert.deepEqual(await row(), ['koalaWave']);
-  await send('ke', 'gg');
-  await page.waitForFunction(() => document.querySelectorAll('.all-re .all-re-e').length === 2);
-  assert.deepEqual(await row(), ['KEKW', 'koalaWave'], 'the newest first');
+  assert.equal(await page.isVisible('.all-re'), false, 'nothing picked yet: no row');
+  // picked from :name, and sent: not in the row, nothing saved
+  await page.focus('.all-in'); await page.keyboard.type(':ke'); await page.waitForSelector('.all-at:not([hidden]) .all-emi'); await page.keyboard.press('Enter');
+  await page.keyboard.type('gg');
+  await sendBox();
+  assert.deepEqual(await page.evaluate(() => window.__sends[0]), ['quietkoala', '[emote:9:KEKW] gg'], 'still sent as the emote');
+  assert.equal(await page.isVisible('.all-re'), false, ':name: no row');
+  assert.equal(await saved(), null, ':name: nothing saved');
+  // picked from the smiley: to the front of the site's list at once (saved), before it's sent, the row shows them
+  await fromSmiley('koalaWave');
+  await rowIs(['koalaWave'], 'picked: in the row straight away');
+  await fromSmiley('KEKW');
+  await rowIs(['KEKW', 'koalaWave'], 'the newest first');
   assert.deepEqual(await saved(), { kick: ['KEKW', 'koalaWave'] });
   assert.deepEqual(await page.$eval('.all-re-e', b => [b.dataset.cmd, b.getAttribute('aria-label'), b.querySelector('img').getBoundingClientRect().width, b.getBoundingClientRect().height]), ['all.emotePick', 'KEKW', 22, 26], 'small, still easy to press');
   assert.equal(await page.evaluate(() => { const r = document.querySelector('.all-re').getBoundingClientRect(), b = document.querySelector('.all-box').getBoundingClientRect(); return b.top - r.bottom >= 0 && b.top - r.bottom < 10; }), true, 'just over the box');
-  // again: to the front, once
-  await send('koalaw');
-  await page.waitForFunction(() => document.querySelector('.all-re .all-re-e').getAttribute('aria-label') === 'koalaWave');
-  assert.deepEqual(await row(), ['koalaWave', 'KEKW']);
-  // picked from :name: to the front at once, before it's sent (and noted then even if it isn't sent, or is taken out again)
-  await page.focus('.all-in'); await page.keyboard.type(':ke'); await page.waitForSelector('.all-at:not([hidden]) .all-emi'); await page.keyboard.press('Enter');
-  await rowIs(['KEKW', 'koalaWave'], 'picked: in front straight away');
+  // sent: no change (the order as picked)
+  await sendBox();
+  assert.deepEqual(await page.evaluate(() => window.__sends[1]), ['quietkoala', '[emote:2:koalaWave] [emote:9:KEKW]']);
+  assert.deepEqual(await saved(), { kick: ['KEKW', 'koalaWave'] }, 'sending doesn\'t move them');
+  // one in the row picked again from :name: stays where it is
+  await page.focus('.all-in'); await page.keyboard.type(':koalaw'); await page.waitForSelector('.all-at:not([hidden]) .all-emi'); await page.keyboard.press('Tab');
+  await sendBox();
+  await rowIs(['KEKW', 'koalaWave'], ':name doesn\'t move it to the front');
   assert.deepEqual(await saved(), { kick: ['KEKW', 'koalaWave'] });
+  // again from the smiley: to the front, once
+  await fromSmiley('koalaWave');
+  await rowIs(['koalaWave', 'KEKW']);
   await page.fill('.all-in', 'just words');
-  await page.keyboard.press('Enter');
-  await page.waitForFunction(() => window.__sends.length === 4);
+  await sendBox();
   assert.deepEqual(await page.evaluate(() => window.__sends[3]), ['quietkoala', 'just words']);
-  assert.deepEqual(await saved(), { kick: ['KEKW', 'koalaWave'] }, 'once');
-  // picked from the smiley: to the front at once, the row showing it under the picker (which opens over the row, not half over it)
+  assert.deepEqual(await saved(), { kick: ['koalaWave', 'KEKW'] }, 'once');
+  // the smiley's picker opens over the row, not half over it
   await page.click('.all-emo-b');
   await page.waitForSelector('.all-ep .all-ep-e');
   await page.click('.all-ep-e[aria-label="koalaHype"]');
-  await rowIs(['koalaHype', 'KEKW', 'koalaWave']);
+  await rowIs(['koalaHype', 'koalaWave', 'KEKW']);
   assert.equal(await page.evaluate(() => document.querySelector('.all-ep').getBoundingClientRect().bottom <= document.querySelector('.all-re').getBoundingClientRect().top), true, 'the picker over the row');
   await page.keyboard.press('Escape'); await page.focus('.all-in'); await page.keyboard.press('Escape'); await page.fill('.all-in', '');
   await page.focus('.all-in'); await page.keyboard.type(':koalaw'); await page.waitForSelector('.all-at:not([hidden]) .all-emi');
@@ -1856,7 +1864,7 @@ test('ALL: the emotes you used last, in a row over the box (as Kick\'s chat has)
     return { shown: bs.filter(b => b.top === top && b.right <= r.getBoundingClientRect().right + 0.5).length, height: r.getBoundingClientRect().height, scrolls: r.scrollWidth > r.clientWidth || getComputedStyle(r).overflowY !== 'hidden' }; });
   assert.ok(fit.shown > 3 && fit.shown < 20, `some fit, whole (${fit.shown})`);
   assert.deepEqual([fit.height, fit.scrolls], [26, false], 'one line');
-  await send('m21');
+  await fromSmiley('m21');
   await page.waitForFunction(() => document.querySelector('.all-re .all-re-e').getAttribute('aria-label') === 'm21');
   assert.deepEqual((await saved()).kick, ['m21', ...Array.from({ length: 19 }, (_, i) => 'm' + String(i + 1).padStart(2, '0'))], 'the newest in front, the oldest out');
 });
@@ -1878,8 +1886,9 @@ test('ALL at its newest line stays there as what\'s over the box comes and goes 
   const shown = sel => page.evaluate(sel => { const e = document.querySelector(sel); return !!e && !!e.offsetHeight; }, sel);
   assert.equal(await newestShows(), true);
   assert.equal(await shown('.all-re'), false, 'nothing used yet: no row');
-  // the row appears (an emote picked): the list stays at its newest line
-  await page.focus('.all-in'); await page.keyboard.type(':koalaw'); await page.waitForSelector('.all-at:not([hidden]) .all-emi'); await page.keyboard.press('Enter');
+  // the row appears (an emote picked from the smiley): the list stays at its newest line
+  await page.click('.all-emo-b'); await page.waitForSelector('.all-ep .all-ep-e'); await page.click('.all-ep-e[aria-label="koalaWave"]');
+  await page.click('.all-in'); await page.waitForSelector('.all-ep', { state: 'hidden' });
   await page.waitForFunction(() => !!document.querySelector('.all-re').offsetHeight);
   assert.equal(await newestShows(), true, 'the row appeared: the newest line still shows');
   // sent: your line, then the reply bar and the modes over the box
