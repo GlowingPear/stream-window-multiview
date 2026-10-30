@@ -8,7 +8,9 @@
    on, a batch at a time, while the app has it on (window.__kmvFeed.on): "__kmv:feed {"s":"twitch","raw":[...]}".
    Settings › Developer › Chat events (#233), while window.__kmvFeed.samp is on: every kind of thing the connection
    brings, counted, with one of each now and then (at most once a minute a kind), every 10 seconds:
-   "__kmv:samples {"s":"kick","k":{"<kind>":{"n":3,"x":"<one of them>"}}}" (chat/event-samples.js). */
+   "__kmv:samples {"s":"kick","k":{"<kind>":{"n":3,"xs":["<one of them>"]}}}" (chat/event-samples.js). A rare kind's first
+   3 are all kept, and so is one with a status (or moderation_action) not sampled yet: an AutoMod hold's PENDING, then
+   its ALLOWED (up to 3 a kind a batch). */
 function feedAgent(as){
   if (window.__kmvFeed) return true;
   const F = window.__kmvFeed = { on: false, samp: false, sampMs: 10000, recent: [] };   // (sampMs: the tests' shorter wait)   // recent: what the connection brought lately (in-site/send.js checks it before pressing again)
@@ -22,14 +24,21 @@ function feedAgent(as){
   const KICK = /"event":"(App\\+Events\\+)?(ChatMessageEvent|MessageDeletedEvent|UserBannedEvent|UserUnbannedEvent|ChatroomClearEvent|RewardRedeemedEvent|KicksGifted|GiftedSubscriptionsEvent|LuckyUsersWhoGotGiftSubscriptionsEvent|SubscriptionEvent|ChannelSubscriptionEvent|StreamHostEvent|StreamHostedEvent|ChatMoveToSupportedChannelEvent|PinnedMessageCreatedEvent|PinnedMessageDeletedEvent|ChatroomUpdatedEvent)"/;
   // Chat events: what kind each thing is. Kick: its event's name (a chat message's type too); Twitch: the line's command
   // (a message's kind, a notice's msg-id, a clear's), or its other connection's type; YouTube: the action (and its item)
-  const S = { k: {}, at: {}, timer: 0 };
+  // got: what this page has sampled of each kind (how many, which variants: a status or moderation_action in its text,
+  // also as escaped JSON inside JSON)
+  const S = { k: {}, at: {}, got: {}, timer: 0 };
+  const variantOf = x => { const m = /(\\*)"(status|moderation_action)\1"\s*:\s*\1"([^"\\]{1,40})\1"/.exec(x); return m ? m[2] + '=' + m[3] : ''; };
   function sample(kind, x){
     if (!F.samp || !kind) return;
     const e = S.k[kind] || (S.k[kind] = { n: 0 }); e.n++;
-    if (e.x === undefined && Date.now() - (S.at[kind] || 0) > 60000) e.x = String(x).slice(0, 8000);
+    const g = S.got[kind] || (S.got[kind] = { n: 0, v: [] }), text = String(x).slice(0, 8000), v = variantOf(text), had = e.xs ? e.xs.length : 0;
+    if ((!had && Date.now() - (S.at[kind] || 0) > 60000) || (had < 3 && (g.n < 3 || (v && !g.v.includes(v))))){
+      (e.xs || (e.xs = [])).push(text); g.n++;
+      if (v && !g.v.includes(v) && g.v.length < 20) g.v.push(v);
+    }
     if (!S.timer) S.timer = setTimeout(() => {
       S.timer = 0; const k = S.k; S.k = {};
-      Object.keys(k).forEach(n => { if (k[n].x !== undefined) S.at[n] = Date.now(); });
+      Object.keys(k).forEach(n => { if (k[n].xs) S.at[n] = Date.now(); });
       console.log('__kmv:samples ' + JSON.stringify({ s: site, k }));
     }, F.sampMs);
   }
