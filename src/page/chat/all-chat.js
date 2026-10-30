@@ -37,7 +37,7 @@ import { store } from '../shared/store.js';
 import { soon, winTimer } from '../shared/timers.js';
 import { addTab, cycleTabs, frameOf, leaderOf, renderSiteTabs, showTab, syncFrameAlert, tabChannels } from '../windows/frames.js';
 import { askIn, pressIn, runIn, viewId, zoomOf } from '../windows/view.js';
-import { copyEmote, emoteOn, freshEmotes, newEmotesOn } from '../windows/views.js';
+import { copyEmote, emoteOn, freshEmotes, newEmotesOn, reloadWin } from '../windows/views.js';
 import { syncModBtn } from '../windows/windows.js';
 
 /* ---- ALL: a linked streamer's Kick, Twitch and YouTube chats as one list (issue #203) ----
@@ -176,10 +176,12 @@ function giftTo(f, m){
 const badgePics = new Map();   // channel -> its badges' pictures, as badgesAgent read them (in-site/feed.js), or null (none); while it has a chat open
 let twBadges = null;           // Twitch's own badges' pictures (the same in every chat: kept once)
 const kickIcons = new Map();   // Kick's own badge icons as its chat draws them (kickIconsAgent), cleaned: '<type>' | 'Gift25' | 'Level24' -> <svg>
-const modesOf = new Map();   // channel -> { modes: { slow, followers, subs, emotes, verified }, me: { … }, blocked, until (slow mode: when you can send again) }
+const modesOf = new Map();   // channel -> { modes: { slow, followers, subs, emotes, verified }, me: { … }, blocked, signIn, until (slow mode: when you can send again) }
+// r: modesAgent's whole answer (its modes and you, or why you can't chat), or a change the chat's messages said (modes alone).
+// A whole answer says whether you're blocked: one without a block clears the last one (signed in since, the chat open to you again).
 function setModes(ch, r){
-  const was = modesOf.get(ch) || {};
-  modesOf.set(ch, { ...was, ...r, modes: { ...(was.modes || {}), ...(r.modes || {}) }, me: r.me || was.me });
+  const was = modesOf.get(ch) || {}, whole = 'me' in r || 'blocked' in r;
+  modesOf.set(ch, { ...was, ...r, modes: { ...(was.modes || {}), ...(r.modes || {}) }, me: r.me || was.me, ...(whole ? { blocked: r.blocked || '', signIn: !!r.signIn } : {}) });
   const v = viewFor(ownerOf(ch)); if (v) renderCmp(v, v.w);
 }
 const modeDur = s => { const d = +(s / 86400).toFixed(1); return s < 60 ? `${s}s` : s < 3600 ? `${Math.round(s / 60)} min` : s < 86400 ? `${+(s / 3600).toFixed(1)} h` : `${d} day${d === 1 ? '' : 's'}`; };
@@ -187,7 +189,7 @@ const modeDur = s => { const d = +(s / 86400).toFixed(1); return s < 60 ? `${s}s
 // slow mode's wait after you sent. Moderators and the streamer (and Twitch's VIPs) aren't held to them.
 function chatRules(ch){
   const st = modesOf.get(ch); if (!st) return { chips: [], block: '', wait: 0, free: false };
-  if (st.blocked) return { chips: [], block: st.blocked, wait: 0, free: false };
+  if (st.blocked) return { chips: [], block: st.signIn ? `Not signed in to ${PLAT_NAME[platOf(ch)]} · sign in from Settings › Accounts to chat` : st.blocked, wait: 0, free: false };
   const m = st.modes || {}, me = st.me || {}, site = PLAT_NAME[platOf(ch)];
   const free = !!(me.mod || me.host || me.vip || youMod(ch));
   const chips = [
@@ -213,6 +215,12 @@ function blockEl(text){
   const [what, ...todo] = text.split(' · '), rest = todo.join(' · ');
   return element('span', { class: 'all-mb', title: text }, element('i', { html: icon.lock }),
     element('span', 'all-mbt', element('b', null, what), rest && element('small', null, rest[0].toUpperCase() + rest.slice(1))));
+}
+// Reload on a window showing ALL: every site chat it reads for them (their hidden tabs too), each reading your sign-in and
+// its modes again as it loads (feedReady)
+function reloadAll(w){
+  const chs = tabChannels(w);
+  frameOf(w).filter(o => o.kind === 'chat' && chs.includes(o.channel)).forEach(reloadWin);
 }
 // The bar above the box: the send site's modes (yours to ignore as a mod), slow mode's countdown, or why you can't chat
 function renderModes(view, w){
@@ -1243,16 +1251,26 @@ function gotBadges(ch, r){
   badgePics.set(ch, r ? (r.twitch ? { twitch: r.twitch.own } : r) : null);
   if (r) redrawAll();
 }
-// A channel whose last chat closed: its badges' and emotes' pictures go (asked again if it opens again)
+// A channel whose last chat closed: its badges' and emotes' pictures and its modes go (asked again if it opens again)
 function forgetClosed(){
   const open = new Set(wins.filter(w => w.kind === 'chat').map(w => w.channel));
   [...badgePics.keys()].forEach(ch => { if (!open.has(ch)) badgePics.delete(ch); });
   [...emoteCache.keys()].forEach(ch => { if (!open.has(ch)) forgetEmotes(ch); });
+  [...modesOf.keys()].forEach(ch => { if (!open.has(ch)) modesOf.delete(ch); });   // (opened again: what it says then)
   if (!wins.some(w => w.kind === 'chat' && platOf(w.channel) === 'twitch')) twBadges = null;
 }
+// The chat's modes and you there (modesAgent). YouTube's chat draws its box late, and may say "Sign in" while it does:
+// a block (or nothing to read) is asked again a few seconds later, twice, so a box drawn since clears it.
+function askModes(w, view, tries = 2){
+  askIn(view, `(${modesAgent})()`).then(r => {
+    if (r && allTabFor(w)) setModes(w.channel, r);
+    if (platOf(w.channel) === 'youtube' && (!r || r.blocked) && tries > 0) winTimer(w, 'modes', () => { if (wins.includes(w) && allTabFor(w)) askModes(w, view, tries - 1); }, MODES_AGAIN);
+  }).catch(() => {});
+}
+const MODES_AGAIN = 4000;
 function pinsNow(w, view){
   if (!badgePics.has(w.channel)) askIn(view, `(${badgesAgent})(${!twBadges})`).then(r => gotBadges(w.channel, r)).catch(() => {});
-  askIn(view, `(${modesAgent})()`).then(r => { if (r && allTabFor(w)) setModes(w.channel, r); }).catch(() => {});
+  askModes(w, view);
   askIn(view, `(${pinAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true); }).catch(() => {});
   askIn(view, `(${shownAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true, true); }).catch(() => {});   // (what it already shows)
 }
@@ -1297,5 +1315,5 @@ function init(){
   window.allChat = { sender, modKnown, gotBadges, gotKickIcons, kickIcons, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
-export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, init, modViewChs, openModViews, sendSite,
-  setAll, setLock, setSoloAll, spamTag, translateSite };
+export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, init, modViewChs, openModViews, reloadAll,
+  sendSite, setAll, setLock, setSoloAll, spamTag, translateSite };

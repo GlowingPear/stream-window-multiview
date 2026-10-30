@@ -1,4 +1,4 @@
-import { allOn, allTabFor, modViewChs, openModViews } from '../chat/all-chat.js';
+import { allOn, allTabFor, modViewChs, openModViews, reloadAll } from '../chat/all-chat.js';
 import { toggleStreamOverlay } from '../chat/chat-overlay.js';
 import { resolveYt } from '../chat/view-menu.js';
 import { BAR, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, mutedChk, sizehint, snapChk, stage, wins } from '../core.js';
@@ -119,7 +119,7 @@ function createWin(spec, rect){
     const b = e.target.closest('button'); if (!b) return;
     const a = b.dataset.a;
     if (a === 'close'){ closeFrame(w); refitLocked(); }
-    else if (a === 'reload') reloadWin(w);
+    else if (a === 'reload') { if (allOn(w)) reloadAll(w); else reloadWin(w); }   // (ALL: each chat it reads)
     else if (a === 'pop') {
       if (DESKTOP){
         if (w.kind === 'chat') window.kmv.openWindow(externalFor(w), 380, 760);

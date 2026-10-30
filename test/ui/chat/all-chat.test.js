@@ -429,6 +429,10 @@ test('ALL: a Twitch watch streak is their message highlighted with its tag (as T
   const all = await page.$$eval('#stage .win.chat:not(.tab-hidden) .all-list > *', l => l.map(e => [e.className.split(' ').filter(c => /^al-(m|ev|streak)$/.test(c)).join(' '), e.textContent.replace(/\s+/g, ' ').trim()]));
   assert.deepEqual(all, [['al-m al-streak', "TBrightwick: five streams, let's goWatch streak · 5"], ['al-m al-streak', 'TBrightwick: watched 5 streams in a rowWatch streak · 5'],
     ['al-ev', 'TTide redeemed Hydrate!'], ['al-ev', 'Tquietkoala shouted out NovalynxOpen ›']]);
+  // a quiet tint behind it (a name in any colour stays readable), its warm edge, the tag readable on it
+  assert.deepEqual(await page.$eval('.all-list .al-streak', e => { const s = getComputedStyle(e), tag = getComputedStyle(e.querySelector('.al-tag-streak'));
+    return [s.backgroundImage.match(/rgba\([^)]*\)/)[0], s.boxShadow, tag.backgroundColor, tag.color]; }),
+    ['rgba(255, 138, 31, 0.1)', 'rgb(255, 159, 69) 3px 0px 0px 0px inset', 'rgba(255, 138, 31, 0.14)', 'rgb(255, 198, 144)']);
   // a shoutout's Open: that channel, in a window of its own
   await page.click('.all-list [data-cmd="all.shoutoutOpen"]');
   assert.ok(await page.evaluate(() => window.openWins().some(w => w.channel === 'tw:novalynx')));
@@ -1245,6 +1249,93 @@ test('ALL: the send site\'s modes above the box; slow mode counts down after you
   assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Can’t send on Twitch');
   assert.equal(await bar(), 'Followers onlyFollow on Twitch to chat');
   await page.evaluate(() => window.allChat.setModes('yt:quietkoala', { blocked: 'Sign in to chat' }));
+});
+
+test('ALL: YouTube asking you to sign in says so once, plainly; signed in since (a whole answer without a block), its box works again; its other blocks keep its words', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const live = { ...LIVE, 'yt:@quietkoala': { live: true, checked: Date.now() } };
+  await page.evaluate(live => { window.smvNotes.liveStatus(live); window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); }, live);
+  await page.waitForFunction(() => window.openWins().some(w => w.kind === 'chat' && w.channel === 'yt:@quietkoala'));
+  const bar = () => page.$eval('.all-modes', e => (e.hidden ? '' : e.textContent.replace(/\s+/g, ' ').trim()));
+  await page.focus('.all-in'); await page.keyboard.press('Tab'); await page.keyboard.press('Tab');
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Send a message on YouTube');
+  // signed out: YouTube's two lines ("All messages … publicly", "Sign in to chat") aren't shown run together, the app says it
+  await page.evaluate(() => window.allChat.setModes('yt:@quietkoala', { blocked: 'All messages that you send will appear publicly · Sign in to chat', signIn: true }));
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Can’t send on YouTube');
+  assert.equal(await page.isDisabled('.all-in'), true);
+  assert.deepEqual(await page.$eval('.all-mb', e => [e.querySelector('b').textContent, e.querySelector('small').textContent]), ['Not signed in to YouTube', 'Sign in from Settings › Accounts to chat']);
+  // a mode change from its messages (no answer about you) leaves the block
+  await page.evaluate(() => window.allChat.setModes('yt:@quietkoala', { modes: { slow: 5 } }));
+  assert.equal(await page.isDisabled('.all-in'), true);
+  // signed in and reloaded: its box is there (modesAgent's answer has no block): the box works and the bar's gone
+  await page.evaluate(() => window.allChat.setModes('yt:@quietkoala', { modes: {}, me: { signedIn: true } }));
+  assert.equal(await page.isDisabled('.all-in'), false);
+  assert.equal(await page.getAttribute('.all-in', 'placeholder'), 'Send a message on YouTube');
+  assert.equal(await page.$eval('.all-view', e => e.classList.contains('all-blocked')), false);
+  assert.equal(await bar(), 'Slow 5s', 'only its modes');
+  assert.deepEqual(await page.evaluate(() => { const m = window.allChat.modesOf.get('yt:@quietkoala'); return [m.blocked, m.signIn]; }), ['', false]);
+  // members only: YouTube's words, its lines as what's in the way, then what to do
+  await page.evaluate(() => window.allChat.setModes('yt:@quietkoala', { blocked: 'Members-only mode · Join this channel to chat' }));
+  assert.deepEqual(await page.$eval('.all-mb', e => [e.querySelector('b').textContent, e.querySelector('small').textContent]), ['Members-only mode', 'Join this channel to chat']);
+  // Kick's answers clear a block the same way
+  assert.equal(await page.evaluate(() => { window.allChat.setModes('quietkoala', { blocked: 'Something in the way' }); window.allChat.setModes('quietkoala', { modes: { slow: 0 }, me: { signedIn: true } }); return window.allChat.modesOf.get('quietkoala').blocked; }), '');
+});
+
+test('ALL: Reload on its window reloads each site chat it reads (their hidden tabs too); a site\'s own tab reloads only its chat', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const live = { ...LIVE, 'yt:@quietkoala': { live: true, videoId: 'koalaLive01', checked: Date.now() } };
+  await page.evaluate(live => window.smvNotes.liveStatus(live), live);
+  await page.waitForFunction(() => window.openWins().filter(w => w.kind === 'chat' && w.view).length === 3);
+  const blank = () => page.evaluate(() => window.openWins().forEach(w => { if (w.kind === 'chat') w.view.src = 'about:blank'; }));
+  const loaded = () => page.evaluate(() => window.openWins().filter(w => w.kind === 'chat' && w.view.getAttribute('src') !== 'about:blank').map(w => w.channel).sort());
+  const reload = () => page.$eval('#stage .win.chat:not(.tab-hidden) [data-a=reload]', b => b.click());   // (in the bar's overflow: as its command presses it)
+  await blank();
+  await reload();
+  assert.deepEqual(await loaded(), ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala']);
+  // Twitch's own tab: only its chat
+  await page.click('#stage .win.chat:not(.tab-hidden) .ptabs button:text-is("T")');
+  await page.waitForSelector('#stage .win.chat:not(.tab-hidden):not(.all-on)');
+  await blank();
+  await reload();
+  assert.deepEqual(await loaded(), ['tw:quietkoala']);
+});
+
+test('ALL: YouTube\'s chat blocked as it loads is asked again a moment later (its box drawn since clears it); a chat closed forgets its rules, opened again it reads them afresh', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => window.smvNotes.liveStatus(live), { ...LIVE, 'yt:@quietkoala': { live: true, videoId: 'koalaLive01', checked: Date.now() } });
+  await page.waitForFunction(() => window.openWins().some(w => w.kind === 'chat' && w.channel === 'yt:@quietkoala' && w.view));
+  // its page answers "Sign in" first (its box not drawn yet), its box after
+  const load = answers => page.evaluate(async answers => {
+    const { feedReady } = await import('./page/chat/all-chat.js');
+    const w = window.openWins().find(o => o.kind === 'chat' && o.channel === 'yt:@quietkoala');
+    window.__modesAsked = 0;
+    feedReady(w, { executeJavaScript: async code => (code.startsWith('(async function modesAgent(') ? answers[Math.min(window.__modesAsked++, answers.length - 1)] : null), getWebContentsId: () => 1 });
+  }, answers);
+  const st = () => page.evaluate(() => { const m = window.allChat.modesOf.get('yt:@quietkoala'); return m ? m.blocked : null; });
+  await load([{ blocked: 'Sign in to chat', signIn: true }, { modes: {}, me: { signedIn: true } }]);
+  await page.waitForFunction(() => window.__modesAsked === 1);
+  assert.equal(await st(), 'Sign in to chat');
+  await page.waitForFunction(() => window.__modesAsked === 2, null, { timeout: 10000 });
+  await page.waitForFunction(() => window.allChat.modesOf.get('yt:@quietkoala').blocked === '');
+  // signed in: not asked again. Nothing to read yet, then blocked every time: asked twice more, no more
+  await load([null, { blocked: 'Members-only mode · Join this channel to chat' }]);
+  await page.waitForFunction(() => window.__modesAsked === 3, null, { timeout: 15000 });
+  await page.waitForTimeout(4500);
+  assert.equal(await page.evaluate(() => window.__modesAsked), 3);
+  assert.equal(await st(), 'Members-only mode · Join this channel to chat');
+  // the window closed: its chats' rules go; opened again, a signed-in answer is all it knows
+  await page.evaluate(() => window.allChat.setModes('quietkoala', { modes: { slow: 3 }, me: { signedIn: true } }));
+  await page.$eval('#stage .win.chat:not(.tab-hidden) [data-a=close]', b => b.click());
+  await page.waitForFunction(() => !window.openWins().some(w => w.kind === 'chat'));
+  assert.deepEqual(await page.evaluate(() => [...window.allChat.modesOf.keys()]), []);
+  await page.evaluate(live => { window.frames_.openStreamer('quietkoala', 'chat', ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala']); window.smvNotes.liveStatus(live); }, { ...LIVE, 'yt:@quietkoala': { live: true, videoId: 'koalaLive02', checked: Date.now() } });
+  await page.waitForFunction(() => window.openWins().some(w => w.kind === 'chat' && w.channel === 'yt:@quietkoala'));
+  await load([{ modes: {}, me: { signedIn: true } }]);
+  await page.waitForFunction(() => window.__modesAsked === 1);
+  assert.equal(await st(), '');
 });
 
 test('ALL: where you moderate Twitch, its moderation lines say who (its moderation actions, before or after its chat\'s line); a deleted message says by whom; a mode changed is a line', async t => {
