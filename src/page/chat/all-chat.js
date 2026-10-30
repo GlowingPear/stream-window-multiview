@@ -680,19 +680,26 @@ function lineEl(m){
     element('div', 'al-line', who, name, m.action ? ' ' : ': ', body, ...tags));
 }
 function addLine(view, m){
-  const list = view.list, stick = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+  const list = view.list, stick = atEnd(view);
   const el = lineEl(m); if (!el) return;
   view.empty.hidden = true;
   list.append(el);
   while (list.children.length > MAX) list.firstChild.remove();
-  if (stick) list.scrollTop = list.scrollHeight; else view.more.hidden = false;
+  if (stick){ list.scrollTop = list.scrollHeight; view.atEnd = true; } else view.more.hidden = false;
 }
+// The list at its newest lines (or nearly): measured with its height as last drawn, so a list made shorter a moment ago
+// (the row of emotes, a bar, before its ResizeObserver puts it back at the bottom) still counts as at its newest lines
+const atEnd = view => view.list.scrollHeight - view.list.scrollTop - (view.listH ?? view.list.clientHeight) < 60;
 function buildView(w){
   const s = ownerOf(w.channel), f = feedOf(s);
   const list = element('div', { class: 'all-list', tabindex: '-1', role: 'log', 'aria-label': `${nameOf(w.channel)}'s chats together`, 'aria-live': 'off' });
   const empty = element('div', 'all-empty');
   const more = element('button', { type: 'button', class: 'all-more', hidden: true, dataset: { cmd: 'all.latest' }, onclick: () => { list.scrollTop = list.scrollHeight; more.hidden = true; } }, 'New messages ↓');
-  list.addEventListener('scroll', () => { if (list.scrollHeight - list.scrollTop - list.clientHeight < 60) more.hidden = true; });
+  list.addEventListener('scroll', () => { view.atEnd = atEnd(view); if (view.atEnd) more.hidden = true; });
+  // The list at its newest lines stays there when it gets shorter or taller (the row of emotes, the modes, the reply or
+  // lock bar over the box come and go, the window is resized): as a new line keeps it there (addLine). Scrolled up, it stays put.
+  const ends = new ResizeObserver(() => { fitRoom(view); if (view.atEnd) list.scrollTop = list.scrollHeight; view.listH = list.clientHeight; });
+  ends.observe(list);
   const filt = element('button', { type: 'button', class: 'all-filt', 'aria-label': 'What ALL shows', 'aria-haspopup': 'menu', html: FILTER, dataset: { cmd: 'all.filters' } });
   const fm = element('div', { class: 'pop all-lm all-fm', role: 'menu', 'aria-label': 'What ALL shows', hidden: true });
   const modes = element('div', { class: 'all-modes', hidden: true, role: 'status', 'aria-live': 'polite' });
@@ -714,7 +721,7 @@ function buildView(w){
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, filt), health, pins, element('div', 'all-lw', list, more), empty,
     element('div', 'all-cmp', bar, modes, recent, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm, ecard);
-  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, pinChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, recent, sendB, w, lock: null, atList: [], atSel: 0, atMode: '' };
+  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, pinChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, recent, sendB, w, ends, atEnd: true, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
   closeOnOutside(fm, { button: filt });
   el.addEventListener('pointerdown', () => allSeen(w));
@@ -750,6 +757,22 @@ function buildView(w){
   view.sizeObs.observe(w.el, { attributes: true, attributeFilter: ['style'], subtree: true });
   fitSize(view);
   return view;
+}
+// In a short chat, what's over and under the list gives way so the list keeps at least ROOM_LINES lines: first the row
+// of emotes you used last, then the pins' strip (the pill still says how many), then the health line (its site's badge
+// still says so, amber). Each is measured while it shows; the list's room without them is the same either way.
+const ROOM_LINES = 3, LINE_H = 27, LIST_PAD = 14;   // (a line: 14px text, 1.5 high, 3px over and under; the list's own padding)
+const YIELDS = [['health', 'all-no-health'], ['pins', 'all-no-pins'], ['recent', 'all-no-re']];   // (the last gives way first)
+function fitRoom(view){
+  const el = view.el, sizes = view.yieldH || (view.yieldH = {});
+  const own = YIELDS.map(([k, cls]) => {
+    const x = view[k], off = x.hidden || (k === 'recent' && el.classList.contains('all-blocked'));   // (not there anyway)
+    if (!off && x.offsetHeight){ const c = getComputedStyle(x); sizes[k] = x.offsetHeight + (parseFloat(c.marginTop) || 0) + (parseFloat(c.marginBottom) || 0); }
+    return { k, cls, h: off ? 0 : sizes[k] || 0, shown: !off && !!x.offsetHeight };
+  });
+  let room = view.list.clientHeight + own.reduce((n, y) => n + (y.shown ? y.h : 0), 0);   // (the list without any of them)
+  const need = ROOM_LINES * LINE_H + LIST_PAD;
+  own.forEach(y => { const keep = room - y.h >= need; if (keep) room -= y.h; el.classList.toggle(y.cls, !keep && y.h > 0); });
 }
 // ALL's text the size of the chat's: Chat text size, times the bigger size Chat Stage, Chat Rail or Blow up give this chat
 function fitSize(view){
@@ -1274,7 +1297,7 @@ function syncAll(){
     if (w.kind !== 'chat') return;
     const show = !w.hiddenTab && allOn(w);
     if (show && !w.allView){ w.allView = buildView(w); w.el.querySelector('.body').append(w.allView.el); w.allView.list.scrollTop = w.allView.list.scrollHeight; }
-    if (!show && w.allView){ w.allView.sizeObs.disconnect(); w.allView.el.remove(); w.allView = null; }
+    if (!show && w.allView){ w.allView.sizeObs.disconnect(); w.allView.ends.disconnect(); w.allView.el.remove(); w.allView = null; }
     w.el.classList.toggle('all-on', show);
     syncModBtn(w); syncAtBtn(w);
     if (show) renderTop(w.allView, w);

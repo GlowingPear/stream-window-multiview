@@ -90,9 +90,10 @@ function pickEmote(view, w, e){
   if (!view.lock) setLock(view, w, { kind: 'emote', ch: e.ch });
   v.focus();
   v.selectionStart = v.selectionEnd = (before + pad + e.name + ' ').length;
+  if (e.ch){ useRecent(platOf(e.ch), [e.name]); renderRecent(view, w); }   // (picked is used: to the front of the row at once)
 }
-// The emotes you used last, in a row over ALL's box, as Kick's chat has over its own: each emote sent from ALL goes to the
-// front of its site's list (saved: { kick: [names], twitch: [names] }, the newest first). The row shows the ones the
+// The emotes you used last, in a row over ALL's box, as Kick's chat has over its own: each emote picked in ALL (from the
+// smiley, the :name list or the row) and each one sent goes to the front of its site's list (saved: { kick: [names], twitch: [names] }, the newest first). The row shows the ones the
 // channel it sends on can use now (a sub emote of a channel you're no longer subscribed to isn't there), as many as fit.
 const RECENT_MAX = 20;
 const recentSaved = () => { const o = settings.json('allRecentEmotes', {}); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; };
@@ -102,10 +103,14 @@ function noteRecent(p){
   const m = p.emotes; if (!m || !m.size) return false;
   const used = p.text.split(/\s+/).filter(word => m.has(word));
   if (!used.length) return false;
-  let list = recentOf(p.site);
-  used.forEach(n => { list = [n, ...list.filter(x => x !== n)]; });
-  settings.set('allRecentEmotes', { ...recentSaved(), [p.site]: list.slice(0, RECENT_MAX) });
+  useRecent(p.site, used);
   return true;
+}
+// Each to the front of the site's list, once (the last of them first), the oldest out past RECENT_MAX
+function useRecent(site, names){
+  let list = recentOf(site);
+  names.forEach(n => { list = [n, ...list.filter(x => x !== n)]; });
+  settings.set('allRecentEmotes', { ...recentSaved(), [site]: list.slice(0, RECENT_MAX) });
 }
 async function renderRecent(view, w){
   const row = view.recent, ch = sendSite(w), names = ch ? recentOf(platOf(ch)) : [], key = ch + '|' + names.join(' ');
