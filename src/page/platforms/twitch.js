@@ -4,6 +4,41 @@
 // twitch.tv/<name> pages that aren't a channel
 const NOT_CHANNELS = ['directory', 'videos', 'settings', 'search', 'downloads', 'p', 'subscriptions', 'inventory', 'wallet', 'drops'];
 
+/* ---- A name's colour as Twitch's own chat shows it (its web chat's code, read 2026-10-30) ----
+   Someone who never picked one gets one of these 15, picked at random by each Twitch page (two people can see two
+   different ones): here it's picked from the name, so it stays the same. Then "Readable Colors" (on unless you turn it
+   off): a colour too dark on its dark background (or too light on its light one) is made lighter (darker) in steps of
+   10% of its Lab lightness until it reads (contrast 4.5), one that's nearly black is grey. Its conversions are copied
+   as they are, rounding included, so the colours come out the same. */
+const TW_COLORS = ['#FF0000', '#0000FF', '#008000', '#B22222', '#FF7F50', '#9ACD32', '#FF4500', '#2E8B57', '#DAA520', '#D2691E', '#5F9EA0',
+  '#1E90FF', '#FF69B4', '#8A2BE2', '#00FF7F'];
+const TW_BG = { dark: [15, 14, 17], light: [250, 249, 250] };
+const twDefault = login => { let h = 0; for (const c of String(login || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return TW_COLORS[h % TW_COLORS.length]; };
+const lum = rgb => { const [r, g, b] = rgb.map(x => (x /= 255) <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4)); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const contrast = (a, b) => { const x = lum(a) + 0.05, y = lum(b) + 0.05; return x > y ? x / y : y / x; };
+function rgbToLab(rgb){
+  const [r, g, b] = rgb.map(x => (x /= 255) > 0.04045 ? Math.pow((x + 0.055) / 1.055, 2.4) : x / 12.92);
+  let x = (0.4124 * r + 0.3576 * g + 0.1805 * b) * 100 / 95.047, y = (0.2126 * r + 0.7152 * g + 0.0722 * b), z = (0.0193 * r + 0.1192 * g + 0.9505 * b) * 100 / 108.883;
+  const f = t => t > 0.008856 ? Math.pow(t, 1 / 3) : 7.787 * t + 16 / 116;
+  x = f(x); y = f(y); z = f(z);
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+function labToRgb([l, a, b]){
+  const yy = l <= 8 ? 100 * l / 903.3 : 100 * Math.pow((l + 16) / 116, 3), fy = l <= 8 ? yy / 100 * 7.787 + 16 / 116 : Math.pow(yy / 100, 1 / 3);
+  const x = 95.047 * Math.pow(a / 500 + fy, 3) / 100, y = yy / 100, z = 108.883 * Math.pow(fy - b / 200, 3) / 100;
+  const g = c => { c = c > 0.0031308 ? 1.055 * Math.pow(c, 1 / 2.4) - 0.055 : c * 12.92; return 255 * Math.min(Math.max(0, c), 1); };
+  return [g(3.2406 * x - 1.5372 * y - 0.4986 * z), g(-0.9689 * x + 1.8758 * y + 0.0415 * z), g(0.0557 * x - 0.204 * y + 1.057 * z)];
+}
+const hex = rgb => '#' + rgb.map(c => Math.round(Math.min(Math.max(c, 0), 255)).toString(16).padStart(2, '0')).join('').toUpperCase();
+function readable(color, light){
+  const rgb = [1, 3, 5].map(i => parseInt(color.slice(i, i + 2), 16)), bg = light ? TW_BG.light : TW_BG.dark;
+  if (!light && rgb.every(c => c < 36)) return '#7A7A7A';
+  let c = rgb, k = contrast(c, bg);
+  if (k > 4.5) return color.toUpperCase();
+  for (let i = 50; i >= 0 && k < 4.5; i--){ const lab = rgbToLab(c); lab[0] += (light ? -0.1 : 0.1) * lab[0]; c = labToRgb(lab); k = contrast(c, bg); }
+  return hex(c);
+}
+
 const twitch = {
   id: 'twitch', name: 'Twitch', letter: 'T',
   mentions: true,
@@ -16,6 +51,8 @@ const twitch = {
   emoteLists: true,
   pageCommands: false,
   likes: false,
+  // A name in ALL as its chat shows it (see kick.js): their colour, or one of Twitch's own, made readable
+  nameStyle: (m, { light } = {}) => ({ color: readable(/^#[0-9a-f]{6}$/i.test(m.color || '') ? m.color : twDefault(m.login || m.sender), !!light) }),
   lowQualityJs: null,
   partition: 'persist:twitch',
   idFor: name => 'tw:' + name,

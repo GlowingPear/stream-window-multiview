@@ -200,3 +200,37 @@ test("each site says how its chat shows someone supporting the stream, in words 
   const cheers = new RegExp(twitch.support.finds.find(f => f.msg).re, 'gi');
   assert.deepEqual([...'Cheer100 great run cheer50 cheering'.matchAll(cheers)].map(x => x.groups.n), ['100', '50']);
 });
+
+test('a name in ALL as each site\'s own chat shows it (nameStyle), on a dark theme or a light one', () => {
+  // Kick: their colour, as it is (none: ALL picks one)
+  assert.deepEqual(kick.nameStyle({ color: '#7CFF4F' }), { color: '#7CFF4F' });
+  assert.equal(kick.nameStyle({ color: '' }), null);
+  // Twitch: "Readable Colors", as its chat works them out (these are what its own code gives)
+  const tw = (color, light) => twitch.nameStyle({ login: 'someone', color }, { light }).color;
+  assert.equal(tw('#FF7F50'), '#FF7F50', 'readable already: as it is');
+  assert.equal(tw('#0000FF'), '#8B58FF', 'too dark on its dark background: lighter');
+  assert.equal(tw('#123456'), '#6A84AC');
+  assert.equal(tw('#000000'), '#7A7A7A', 'nearly black: grey');
+  assert.equal(tw('#FFFF00', true), '#6A7500', 'too light on its light background: darker');
+  assert.equal(tw('#00FF7F', true), '#007B00');
+  assert.equal(tw('#000000', true), '#000000');
+  // someone who never picked one: one of Twitch's 15, the same each time for the same name
+  const none = login => twitch.nameStyle({ login, color: '' }).color;
+  assert.equal(none('paperwren'), none('paperwren'));
+  assert.equal(twitch.nameStyle({ login: 'paperwren', color: 'not a colour' }).color, none('paperwren'));
+  const seen = new Set(Array.from({ length: 300 }, (_, i) => none('viewer' + i)));
+  assert.ok(seen.size > 10 && [...seen].every(c => ['#FF0000', '#0000FF', '#008000', '#B22222', '#FF7F50', '#9ACD32', '#FF4500', '#2E8B57', '#DAA520', '#D2691E', '#5F9EA0',
+    '#1E90FF', '#FF69B4', '#8A2BE2', '#00FF7F'].map(x => tw(x)).includes(c)), 'Twitch\'s own colours, made readable');
+  // YouTube: by who they are, the streamer on a pill; its first role badge counts (verified isn't one)
+  const yt = (badges, o) => youtube.nameStyle({ login: 'x', color: '', badges }, o);
+  assert.deepEqual(yt([]), { color: 'rgba(255,255,255,0.7)' });
+  assert.deepEqual(yt(['verified', 'mod']), { color: '#3ea6ff' });
+  assert.deepEqual(yt(['sub']), { color: '#2ba640' });
+  assert.deepEqual(yt(['host', 'mod']), { color: '#111111', bg: '#ffd600' });
+  assert.deepEqual([yt([], { light: true }), yt(['mod'], { light: true }), yt(['sub'], { light: true }), yt(['host'], { light: true })],
+    [{ color: '#606060' }, { color: '#065fd4' }, { color: '#107516' }, { color: '#000000', bg: '#fbc02d' }]);
+  // as its chat page draws them, when it's as light or dark as the app (a moderator's older blue, a member's own)
+  const look = { dark: true, names: { mod: 'rgb(94, 132, 241)', member: 'rgb(15, 157, 88)' } };
+  assert.deepEqual([yt(['mod'], { look }), yt(['sub'], { look }), yt([], { look })], [{ color: 'rgb(94, 132, 241)' }, { color: 'rgb(15, 157, 88)' }, { color: 'rgba(255,255,255,0.7)' }]);
+  assert.deepEqual(yt(['mod'], { look, light: true }), { color: '#065fd4' }, 'a dark page\'s colours aren\'t used on a light theme');
+});

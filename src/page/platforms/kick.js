@@ -21,6 +21,10 @@ const kick = {
   emoteLists: true,      // the app asks it for a channel's emotes (new emotes glow)
   pageCommands: true,    // /clip, /poll and /prediction in its chat (in-site/kick-commands.js)
   likes: false,          // a like button on its streams
+  // A name in ALL (chat/all-chat.js) as its own chat shows it: m a message (feed-parse.js), light whether the app's
+  // theme is light, look what the site's chat page says about its colours (YouTube's: youtube.js). -> { color, bg? }
+  // (bg: a name on a pill), or null: ALL picks one. Kick shows the colour each account has, as it is
+  nameStyle: m => /^#[0-9a-f]{6}$/i.test(m.color || '') ? { color: m.color } : null,
   lowQualityJs: null,     // a tab you're not watching: its lowest quality (windows/frames.js). Its embedded player has none to set from outside
   partition: 'persist:kick',   // its chats' storage (and a signed-in player's)
   // A bare name typed in the Channels box, and the name on the site
