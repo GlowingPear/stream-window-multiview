@@ -179,8 +179,8 @@ test('the error log and the sites\' answers: from the main process, the page and
 
 test('Chat events: what the chats\' readers send, sorted by what ALL does with it (still needed, unknown, in ALL); a row\'s samples; Export without names; the switch; Clear', T, async () => {
   // what a chat's reader sends (in-site/feed.js), from the stand-in Kick chat; and more straight to the app
-  await inView(a.win, 'alpha', 'chat', () => { console.log('__kmv:samples ' + JSON.stringify({ s: 'kick', k: { MysteryEvent: { n: 2, x: JSON.stringify({ type: 'new_subscriber', username: 'RealPerson42', channel_id: 57035257 }) } } })); return true; });
-  await a.win.evaluate(() => window.kmv.samplesAdd('kick', { GoalProgressUpdateEvent: { n: 5 }, ChatMessageEvent: { n: 40, x: JSON.stringify({ content: 'hello there', sender: { username: 'RealPerson42' } }) } }));
+  await inView(a.win, 'alpha', 'chat', () => { console.log('__kmv:samples ' + JSON.stringify({ s: 'kick', k: { MysteryEvent: { n: 2, xs: [JSON.stringify({ type: 'new_subscriber', username: 'RealPerson42', channel_id: 57035257 })] } } })); return true; });
+  await a.win.evaluate(() => window.kmv.samplesAdd('kick', { GoalProgressUpdateEvent: { n: 5 }, ChatMessageEvent: { n: 40, xs: [JSON.stringify({ content: 'hello there', sender: { username: 'RealPerson42' } })] } }));
   await a.win.evaluate(() => window.openSettings('developer'));
   await a.win.click('#devTabs [data-t=events]');
   await a.win.waitForSelector('#devList .ev-sec .ev-row');
