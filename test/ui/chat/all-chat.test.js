@@ -553,6 +553,68 @@ test('ALL: a shoutout\'s and a raid\'s Open › and a gift\'s recipients button 
   assert.equal(await so.evaluate(e => e.classList.contains('al-open')), false, 'not a toggle');
 });
 
+test('ALL: Kick\'s raids: one coming in is an event (with its message); one going out is the raid\'s line with Open ›, one line also when the raid is followed too', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const KC = (event, data, channel) => JSON.stringify({ push: { channel, pub: { data: { event: 'App\\Events\\' + event, data: JSON.stringify(data) } } } });
+  const hosted = (id, who, n, said = null) => KC('StreamHostedEvent', { message: { id, numberOfViewers: n, optionalMessage: said, createdAt: new Date().toISOString() }, user: { id: 9, username: who } }, 'chatrooms.1');
+  const moved = (to, n) => KC('ChatMoveToSupportedChannelEvent', { channel: { id: 1, slug: 'quietkoala', current_livestream: { viewer_count: n } }, slug: to, hosted: { id: 2, username: to, slug: to, viewers_count: 300, is_live: true } }, 'channel.1');
+  await feed(page, 'quietkoala', { s: 'kick', raw: [hosted('h1', 'Novalynx', 264), hosted('h2', 'Pixelmoth', 1, 'bringing the squad')] });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [hosted('h1', 'Novalynx', 264)] });
+  assert.deepEqual(await lines(page), ['al-ev | KNovalynx raided with 264 viewers', 'al-ev | KPixelmoth raided with 1 viewerbringing the squad'], 'the same raid sent again: one line');
+  assert.equal(await page.textContent('.all-list .al-ev .al-amt'), '264 viewers', 'how many picked out');
+  // going out: the raid's line, Open ›; the raid followed after (windows/raids.js): the same line
+  await feed(page, 'quietkoala', { s: 'kick', raw: [moved('emberfall', 412)] });
+  await page.evaluate(() => window.allChat.allRaid('quietkoala', 'emberfall'));
+  await feed(page, 'quietkoala', { s: 'kick', raw: [moved('emberfall', 412)] });
+  const out = () => page.$$eval('.all-list .al-raidout', l => l.map(e => e.textContent.replace(/\s+/g, ' ').trim()));
+  assert.deepEqual(await out(), ['Kquietkoala raided emberfall on Kick · 412 viewersOpen ›'], 'one line for one raid');
+  assert.ok(await page.$eval('.all-list .al-raidout', e => e.classList.contains('al-k') && !e.classList.contains('al-raidsoon')), 'Kick\'s, gone (no countdown)');
+  // the other way round: followed first, then Kick says so (its viewers added to the line)
+  await page.evaluate(() => window.allChat.allRaid('quietkoala', 'sablewing'));
+  await feed(page, 'quietkoala', { s: 'kick', raw: [moved('sablewing', 87)] });
+  assert.deepEqual((await out()).slice(1), ['Kquietkoala raided sablewing on Kick · 87 viewersOpen ›']);
+  // Open ›: that channel in a window of its own
+  await page.click('.all-list .al-raidout >> nth=0 >> [data-cmd="all.raidOpen"]');
+  assert.ok(await page.evaluate(() => window.openWins().some(w => w.channel === 'emberfall')));
+  assert.equal(await page.locator('.all-list .al-raidout >> nth=0 >> .al-tag-raid').textContent(), 'Opened');
+  // Kick sending it again later (within a few minutes): still the one line
+  await feed(page, 'quietkoala', { s: 'kick', raw: [moved('emberfall', 5)] });
+  assert.equal(await page.locator('.all-list .al-raidout').count(), 2, 'within a few minutes of the last one: still its line');
+});
+
+test('ALL: a Kick resub shared with a message is an event with its months and the message, as Twitch\'s is; a celebration of a kind ALL doesn\'t know is the message', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const cel = (id, celebration, content) => KF('ChatMessageEvent', { id, content, type: 'celebration', created_at: new Date().toISOString(),
+    sender: { id: 7, username: 'Oakmoss', slug: 'oakmoss', identity: { color: '#31D6C2', badges: [{ type: 'subscriber', count: 16 }] } }, metadata: { celebration } });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [cel('c1', { id: 'cb1', type: 'subscription_renewed', total_months: 16 }, 'sixteen months, still here'), cel('c2', { id: 'cb2', type: 'something_new' }, 'what is this')] });
+  assert.deepEqual(await lines(page), ['al-ev | KOakmoss subscribed · 16 monthssixteen months, still here', 'al-m | KOakmoss: what is this']);
+  assert.equal(await page.textContent('.all-list .al-ev .al-amt'), '16 months', 'the months picked out');
+  assert.equal(await page.textContent('.all-list .al-ev .al-evm'), 'sixteen months, still here', 'the message under its words');
+  // Events: full: its own words; hidden: gone
+  await page.click('.all-filt');
+  await page.click('.all-fm [aria-label="Events"] >> text=Full');
+  assert.equal((await lines(page))[0], 'al-ev | KOakmoss subscribed · 16 monthssixteen months, still here');
+  await page.click('.all-fm [aria-label="Events"] >> text=Hidden');
+  assert.deepEqual(await lines(page), ['al-m | KOakmoss: what is this']);
+});
+
+test('ALL: a YouTube message marked deleted is deleted: struck with Deleted where you moderate, gone where you don\'t', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const YT = (id, who, text) => ({ addChatItemAction: { item: { liveChatTextMessageRenderer: { id, authorName: { simpleText: who }, timestampUsec: String(Date.now() * 1000), message: { runs: [{ text }] } } } } });
+  const marked = id => ({ clickTrackingParams: 'x', markChatItemAsDeletedAction: { deletedStateMessage: { runs: [{ text: 'Message deleted' }] }, targetItemId: id } });
+  await page.evaluate(() => window.allChat.modKnown.set('tw:quietkoala', true));
+  await feed(page, 'tw:quietkoala', { s: 'youtube', raw: [YT('y1', '@Mika', 'hello'), YT('y2', '@Rowan', 'buy followers here'), YT('y3', '@Sol', 'nice')] });
+  await feed(page, 'tw:quietkoala', { s: 'youtube', raw: [marked('y2'), marked('y2')] });
+  assert.deepEqual(await lines(page), ['al-m | Y@Mika: hello', 'al-m al-del | Y@Rowan: buy followers hereDeleted', 'al-m | Y@Sol: nice'], 'a mod: kept, struck (sent again: the same)');
+  await page.evaluate(() => window.allChat.modKnown.set('tw:quietkoala', false));
+  await feed(page, 'tw:quietkoala', { s: 'youtube', raw: [marked('y3')] });
+  assert.deepEqual(await lines(page), ['al-m | Y@Mika: hello', 'al-m al-del | Y@Rowan: buy followers hereDeleted'], 'not a mod: gone');
+  assert.equal(await page.evaluate(() => window.allHealth.healthOf.get('tw:quietkoala').bad), 0, 'read, not unreadable');
+});
+
 test('ALL: Send on [K ▾]: the main site first, Tab steps the sites you can send on (YouTube only with a live chat), Enter sends there; ⇧Tab its own tab', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
