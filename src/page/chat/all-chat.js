@@ -863,6 +863,9 @@ const SEND_FAIL = {
 // a chat page that never answers can't leave it on Sending…, and Retry works. ms: for the tests.
 const SEND_LIMIT = { ms: 10000 };
 const inTime = work => new Promise(done => { const t = setTimeout(() => done('no-answer'), SEND_LIMIT.ms); work.then(r => { clearTimeout(t); done(r); }, () => { clearTimeout(t); done('error'); }); });
+// Once the chat's page has drawn a frame since drawTab (its next one can be a second away while it wasn't drawn), so the
+// site's send runs at its usual pace. At most a second; a view that can't be asked: at once.
+const drawn = m => Promise.race([askIn(m.view, 'new Promise(r => requestAnimationFrame(() => r(1)))').catch(() => 0), new Promise(r => setTimeout(r, 1000))]);
 const sender = {
   mod: (m, action, id) => askIn(m.view, `(${modAgent})(${JSON.stringify(action)}, ${JSON.stringify(id)})`),
   send: (m, text) => askIn(m.view, `(${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)})`),
@@ -1156,7 +1159,7 @@ async function deliver(view, w, p){
   view.sending = true; setMine(p, 'sending'); syncSendB(view, w);
   let r;
   if (!m) r = 'gone';
-  else { const t = p.send || p.text; drawTab(m, true); r = await inTime((async () => pressed(m, p.threaded ? await sender.reply(m, p.lock.msg.id, t, p.lock.msg.sender) : await sender.send(m, t), t))()); }
+  else { const t = p.send || p.text; drawTab(m, true); r = await inTime((async () => { await drawn(m); return pressed(m, p.threaded ? await sender.reply(m, p.lock.msg.id, t, p.lock.msg.sender) : await sender.send(m, t), t); })()); }
   if (m) drawTab(m, false);
   view.sending = false; syncSendB(view, w);
   if (r === 'sent' && noteRecent(p)) renderRecent(view, w);   // (its emotes: the row over the box)

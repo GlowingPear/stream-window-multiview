@@ -61,7 +61,7 @@ test('a hidden tab (ALL over Kick\'s chat): Twitch\'s send that waits on frames 
   const r = await sendFromAll('hello hidden tab'); console.log('# sent in ' + r.ms + ' ms');
   assert.equal(r.line, 'sent');
   assert.deepEqual(await sentIn(), ['hello hidden tab'], 'sent once');
-  assert.ok(r.ms < 2500, `in ${r.ms} ms`);
+  assert.ok(r.ms < 5000, `in ${r.ms} ms`);
   assert.equal(r.during.drawn, true, 'drawn while it sends');
   assert.equal(r.after.drawn, false, 'and not after');
   assert.equal(await a.win.evaluate(() => getComputedStyle(window.openWins().find(w => w.channel === 'tw:quietkoala').el).opacity), '0', 'unseen again');
@@ -83,7 +83,7 @@ test('the chat under ALL (Twitch\'s tab shown, then ALL): its send goes too; dra
   const r = await sendFromAll('hello under all');
   assert.equal(r.line, 'sent');
   assert.deepEqual(await sentIn(), ['hello hidden tab', 'hello under all']);
-  assert.ok(r.ms < 2500, `in ${r.ms} ms`);
+  assert.ok(r.ms < 5000, `in ${r.ms} ms`);
   assert.equal(r.during.drawn, true);
   assert.equal(r.after.drawn, false);
   // while drawn, its view is see-through under ALL, which covers it
