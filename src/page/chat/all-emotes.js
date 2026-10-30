@@ -77,8 +77,9 @@ function renderEmoteList(view){
       onmousedown: ev => ev.preventDefault(), onclick: () => pickEmote(view, view.w, e) }, emoteImg(e), element('span', null, e.name), element('small', null, e.from || e.group + (e.subs ? ' · subs' : '')))),
     element('div', 'all-mh', element('kbd', null, '↑'), element('kbd', null, '↓'), ' pick · ', element('kbd', null, 'Tab'), ' or ', element('kbd', null, 'Enter'), ` adds it and locks to ${p}`));
 }
-// An emote into the box (in place of the :name typed, or at the caret), the box locked to its site
-function pickEmote(view, w, e){
+// An emote into the box (in place of the :name typed, or at the caret), the box locked to its site; `recent`: picked from
+// the smiley or the row, so to the front of the row (one from the :name list isn't)
+function pickEmote(view, w, e, recent){
   if (!e) return;
   const v = view.input, at = v.selectionStart ?? v.value.length;
   const before = v.value.slice(0, at).replace(/(^|\s):[\w]*$/, '$1'), after = v.value.slice(at);
@@ -90,22 +91,15 @@ function pickEmote(view, w, e){
   if (!view.lock) setLock(view, w, { kind: 'emote', ch: e.ch });
   v.focus();
   v.selectionStart = v.selectionEnd = (before + pad + e.name + ' ').length;
-  if (e.ch){ useRecent(platOf(e.ch), [e.name]); renderRecent(view, w); }   // (picked is used: to the front of the row at once)
+  if (recent && e.ch){ useRecent(platOf(e.ch), [e.name]); renderRecent(view, w); }
 }
-// The emotes you used last, in a row over ALL's box, as Kick's chat has over its own: each emote picked in ALL (from the
-// smiley, the :name list or the row) and each one sent goes to the front of its site's list (saved: { kick: [names], twitch: [names] }, the newest first). The row shows the ones the
+// The emotes you used last, in a row over ALL's box, as Kick's chat has over its own: each emote picked in ALL from the
+// smiley or the row goes to the front of its site's list (saved: { kick: [names], twitch: [names] }, the newest first); one
+// from the :name list doesn't, nor does sending it. The row shows the ones the
 // channel it sends on can use now (a sub emote of a channel you're no longer subscribed to isn't there), as many as fit.
 const RECENT_MAX = 20;
 const recentSaved = () => { const o = settings.json('allRecentEmotes', {}); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; };
 const recentOf = site => { const l = recentSaved()[site]; return Array.isArray(l) ? l.filter(n => typeof n === 'string') : []; };
-// A message sent: the emotes picked for it that are in it, each to the front (the last in it first)
-function noteRecent(p){
-  const m = p.emotes; if (!m || !m.size) return false;
-  const used = p.text.split(/\s+/).filter(word => m.has(word));
-  if (!used.length) return false;
-  useRecent(p.site, used);
-  return true;
-}
 // Each to the front of the site's list, once (the last of them first), the oldest out past RECENT_MAX
 function useRecent(site, names){
   let list = recentOf(site);
@@ -124,7 +118,7 @@ async function renderRecent(view, w){
   const list = names.map(n => byN.get(n)).filter(Boolean);
   row.hidden = !list.length;
   row.replaceChildren(...list.map(e => element('button', { type: 'button', class: 'all-re-e', title: e.name, 'aria-label': e.name, dataset: { cmd: 'all.emotePick' },
-    onmousedown: ev => ev.preventDefault(), onclick: () => pickEmote(view, w, { ...e, ch }) }, emoteImg(e))));
+    onmousedown: ev => ev.preventDefault(), onclick: () => pickEmote(view, w, { ...e, ch }, true) }, emoteImg(e))));
 }
 // What's sent: each emote picked here as its site writes it (a word that only looks like one stays a word)
 function withEmotes(view, text){
@@ -172,7 +166,7 @@ async function openEmotePicker(view, w){
       if (!list.length) return [];
       return [element('div', { class: 'all-ep-sec' + (x.chan ? ' chan' : ''), role: 'presentation' }, x.chan ? chPic(x) : kindIcon(x.group, ch, (groups.find(g => g.id === x.group) || {}).pic), x.label, x.chan && element('small', null, 'Sub emotes')),
         ...list.map(e => element('button', { type: 'button', role: 'option', class: 'all-ep-e', title: e.name + (e.from ? ` · ${e.from}` : e.subs ? ' (subscribers)' : ''), 'aria-label': e.name, dataset: { cmd: 'all.emotePick' },
-          onclick: () => { pickEmote(view, w, { ...e, ch }); } }, emoteImg(e)))];
+          onclick: () => { pickEmote(view, w, { ...e, ch }, true); } }, emoteImg(e)))];
     });
     grid.replaceChildren(...(cells.length ? cells : [element('div', 'all-ep-none', `No ${p} emote matches “${search.value.trim()}”`)]));
     grid.scrollTop = 0;
@@ -205,5 +199,5 @@ function kindIcon(id, ch, pic){
 const chPic = c => element('span', 'all-ep-pic', c.pic ? element('img', { src: c.pic, alt: '', referrerPolicy: 'no-referrer', loading: 'lazy' }) : (c.label || c.name || '?')[0]);   // (a circle: in its heading, and in the list beside the search)
 const SMILEY = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1 1.3 2.2 2 3.5 2s2.5-.7 3.5-2M9 9.5h.01M15 9.5h.01"/></svg>';
 
-export { addonEmotes, emoteCache, forgetEmotes, noteRecent, openEmotePicker, pickEmote, renderEmoteList,
-  renderRecent, SMILEY, suggestEmote, withEmotes };
+export { addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, renderEmoteList, renderRecent, SMILEY,
+  suggestEmote, withEmotes };

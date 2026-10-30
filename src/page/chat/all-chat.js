@@ -1,8 +1,8 @@
 import { alerts, clearAlert } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { emoteBox } from './all-box.js';
-import { SMILEY, addonEmotes, emoteCache, forgetEmotes, noteRecent, openEmotePicker, pickEmote, renderEmoteList,
-  renderRecent, suggestEmote, withEmotes } from './all-emotes.js';
+import { SMILEY, addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, renderEmoteList, renderRecent,
+  suggestEmote, withEmotes } from './all-emotes.js';
 import { chatLoaded, healthState, noteRaw, noteSend, reportHealth } from './all-health.js';
 import { blowOn, blowUp } from './blow-up.js';
 import { chatBoxName } from './chat-name.js';
@@ -1185,7 +1185,6 @@ async function deliver(view, w, p){
   else { const t = p.send || p.text; drawTab(m, true); r = await inTime((async () => { await drawn(m); return pressed(m, p.threaded ? await sender.reply(m, p.lock.msg.id, t, p.lock.msg.sender) : await sender.send(m, t), t); })()); }
   if (m) drawTab(m, false);
   view.sending = false; syncSendB(view, w);
-  if (r === 'sent' && noteRecent(p)) renderRecent(view, w);   // (its emotes: the row over the box)
   if (p.state === 'seen') return;   // (its chat brought it back already)
   noteSend(p.ch, r, r === 'sent' ? '' : SEND_FAIL[r] ? SEND_FAIL[r](site) : '');   // (two failures in a row: ALL's health says so)
   if (r === 'sent'){ slowStart(p.ch); setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
