@@ -641,7 +641,7 @@ function lineEl(m){
   const cls = ['al-m', m.toMe === 'reply' ? 'al-rep' : m.toMe === 'at' || m.toMe === 'word' ? 'al-me' : '', m.spam ? 'al-spam' : '', m.bot ? 'al-bot' : '', m.deleted ? 'al-del' : '', m.highlight ? 'al-hl' : '',
     m.announce ? 'al-ann al-ann-' + m.announce : '', m.redeem ? 'al-rw' : '', m.streak ? 'al-streak' : ''].filter(Boolean).join(' ');
   const hideBot = m.bot && !botsShown && !m.open;
-  const body = hideBot ? element('span', 'al-hid', 'bot message hidden') : m.tr && !m.trOrig ? element('span', 'al-txt', m.tr.text)
+  const body = hideBot ? element('span', 'al-hid', 'hidden') : m.tr && !m.trOrig ? element('span', 'al-txt', m.tr.text)
     : m.streak && !m.parts.length ? element('span', 'al-txt al-quiet', `watched ${m.streak} streams in a row`) : element('span', 'al-txt', ...partsEl(m.parts, m.ch));
   const tags = [
     m.toMe === 'at' && element('span', 'al-tag al-tag-at', '@YOU'),
