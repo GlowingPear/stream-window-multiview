@@ -4,6 +4,7 @@
 //   const { main, close } = await drive.connect(9333);                 // a copy started with npm run dev -- --debug 9333
 //   const run = await drive.launch({ profile: 'work', video: true });  // starts its own copy; records the main window
 //   ... await run.close()  ->  { video: '<path>.webm' }
+//   drive.clean()                                                     // after the PR is merged: removes every capture
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -15,11 +16,20 @@ const { prepare } = require(path.join(ROOT, 'scripts', 'dev'));
 const isMain = p => /\/src\/index\.html$/.test(p.url());
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// A folder outside the project for screenshots and videos (they are never committed).
+// A folder outside the project for screenshots and videos (they are never committed). They stay there while the
+// change is open (the pull request needs them); clean() removes them all once it's merged.
+const CAPTURES = () => path.join(os.tmpdir(), 'stream-multiview-pr');
 function outDir(name = 'captures') {
-  const dir = path.join(os.tmpdir(), 'stream-multiview-pr', name);
+  const dir = path.join(CAPTURES(), name);
   fs.mkdirSync(dir, { recursive: true });
   return dir;
+}
+// Removes every screenshot and video in the captures folder (all of outDir's folders). -> what was removed
+function clean() {
+  const dir = CAPTURES();
+  if (!fs.existsSync(dir)) return { removed: dir, existed: false };
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  return { removed: dir, existed: true };
 }
 
 // Attach to a running dev copy. `pages()` lists every window and web view (streams, chats, hidden checkers).
@@ -42,16 +52,21 @@ async function connect(port) {
 // Only one copy per profile can run at a time.
 async function launch({ dir = ROOT, profile = '', video = false, size = { width: 1280, height: 800 }, seed } = {}) {
   const p = prepare({ dir, profile });
-  if (seed) await seed(p.data);
+  // Playwright records into a folder of its own: the video is moved out of it into the video folder on close.
   const videoDir = video ? fs.mkdtempSync(path.join(outDir('video'), 'run-')) : '';
-  const app = await playwright()._electron.launch({
-    executablePath: p.electron, args: [p.dir], env: p.env, timeout: 60000,
-    colorScheme: 'no-override',   // keep the system's light/dark setting (see connect)
-    ...(video ? { recordVideo: { dir: videoDir, size } } : {})
-  });
+  const dropVideoDir = () => { if (videoDir) try { fs.rmSync(videoDir, { recursive: true, force: true }); } catch {} };
+  let app;
+  try {
+    if (seed) await seed(p.data);
+    app = await playwright()._electron.launch({
+      executablePath: p.electron, args: [p.dir], env: p.env, timeout: 60000,
+      colorScheme: 'no-override',   // keep the system's light/dark setting (see connect)
+      ...(video ? { recordVideo: { dir: videoDir, size } } : {})
+    });
+  } catch (e) { p.cleanup(); dropVideoDir(); throw e; }
   let main = null;
   for (let i = 0; i < 100 && !main; i++) { main = app.windows().find(isMain); if (!main) await sleep(200); }
-  if (!main) { await app.close(); p.cleanup(); throw new Error('The app did not open its main window (is another copy using this profile?).'); }
+  if (!main) { await app.close(); p.cleanup(); dropVideoDir(); throw new Error('The app did not open its main window (is another copy using this profile?).'); }
   main.setDefaultTimeout(15000);   // a step that can't happen fails instead of waiting forever
   await main.waitForLoadState('domcontentloaded');
   // the same size as the video, so nothing is squashed
@@ -64,7 +79,16 @@ async function launch({ dir = ROOT, profile = '', video = false, size = { width:
       const closed = app.close().then(() => true, () => false);
       if (!(await Promise.race([closed, new Promise(r => setTimeout(() => r(false), 10000))]))) app.process().kill('SIGKILL');
       p.cleanup();
-      return { video: v ? await v.path() : '' };
+      let file = '';
+      if (v) {
+        const recorded = await v.path().catch(() => '');
+        if (recorded && fs.existsSync(recorded)) {
+          file = path.join(path.dirname(videoDir), path.basename(videoDir) + path.extname(recorded));   // video/run-XXXXXX.webm
+          fs.renameSync(recorded, file);
+        }
+      }
+      dropVideoDir();
+      return { video: file };
     }
   };
 }
@@ -108,4 +132,4 @@ async function frames(video, times = [1, -0.3]) {
 // Blur private details (names, chats, avatars) before a screenshot or recording.
 const blur = (page, selectors) => page.addStyleTag({ content: `${selectors.join(',')}{filter:blur(6px)!important}` });
 
-module.exports = { connect, launch, blur, frames, outDir, tools, isMain };
+module.exports = { connect, launch, blur, frames, outDir, clean, tools, isMain };

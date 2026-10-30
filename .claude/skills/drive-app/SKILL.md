@@ -50,8 +50,10 @@ Playwright can only record a copy it starts itself. Close any copy that uses the
 const run = await drive.launch({ profile: 'work', video: true });   // or dir: '<other worktree>' to record another branch
 await drive.blur(run.main, ['#importDlg .dlg-list label']);       // hide private details
 // ... the steps ...
-const { video } = await run.close();                                 // WebM in the temp folder
+const { video } = await run.close();                                 // WebM in drive.outDir('video')
 ```
+
+`run.close()` also removes the run's temporary data folder (a `profile` keeps its data) and Playwright's recording folder; the video itself stays until `drive.clean()`.
 
 - Keep videos short (~15 s, or as long as the "before" slowness takes) and under 10 MB. The window is set to 1280×800 to match the video.
 - Close anything that distracts from the change first. Open streams play ads and chats scroll: in a dev profile, clear them with `#clear`, then click **Close all** in the app's own confirm dialog (`#askDlg .ask-yes`).
@@ -78,7 +80,7 @@ Kick sits behind Cloudflare. Its check fails, and can't be passed even by hand, 
 
 ## Privacy
 
-Captures go to `drive.outDir()` in the system temp folder, never into the repo. Before capturing, blur or crop anything private (usernames, chats, followed channels, avatars) with `drive.blur(page, selectors)`, unless it's what the change is about.
+Captures go to `drive.outDir()` in the system temp folder (`stream-multiview-pr`), never into the repo. They stay there while the change is open, for the pull request; once it's merged, `drive.clean()` removes them all (the `open-pr` skill does it). Before capturing, blur or crop anything private (usernames, chats, followed channels, avatars) with `drive.blur(page, selectors)`, unless it's what the change is about.
 
 ## Before / after
 

@@ -84,4 +84,8 @@ Never delete the branch on GitHub before the merge: that closes the PR.
 
 `start-change` also runs this before each new change, so merged worktrees don't pile up.
 
-Delete any temporary dev profile and the captures in the temp folder.
+Delete any temporary dev profile, and remove the captures from the temp folder:
+
+```sh
+node -e "require('./.claude/skills/drive-app/drive').clean()"
+```

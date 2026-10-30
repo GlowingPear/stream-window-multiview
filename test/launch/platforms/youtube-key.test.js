@@ -6,9 +6,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const http = require('http');
-const os = require('os');
 const path = require('path');
-const { ROOT, playwright, killApp } = require('../../helpers');
+const { ROOT, playwright, killApp, tempDir } = require('../../helpers');
 
 function electronPath() {
   if (process.env.ELECTRON_PATH) return process.env.ELECTRON_PATH;
@@ -51,7 +50,7 @@ function fakeGoogle() {
 let data;
 test.before(async () => {
   server = await fakeGoogle();
-  data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-ytkey-'));
+  data = tempDir('ytkey');
   fs.mkdirSync(path.join(data, 'Stream Multiview'), { recursive: true });
   fs.writeFileSync(path.join(data, 'Stream Multiview', 'updates.json'), JSON.stringify({ auto: false }));
   const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', SMV_YT_API: `http://127.0.0.1:${server.address().port}`, SMV_YT_FEED: `http://127.0.0.1:${server.address().port}/feeds`, ELECTRON_ENABLE_LOGGING: '0' };

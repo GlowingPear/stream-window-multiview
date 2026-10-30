@@ -4,15 +4,15 @@
 // the app starts again, and Disconnect.
 const test = require('node:test');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { launchApp, winSel, assert, openChannel } = require('../app');
 const { standInPeer } = require('@streamorchard/grapevine/stand-in-peer');
 const { memoryKeyStore, paths } = require('@streamorchard/grapevine');
+const { tempDir } = require('../../helpers');
 
 const T = { timeout: 90000 };
 const PD = 'com.streamorchard.peardrops';
-const GV = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-gv-'));
+const GV = tempDir('gv');
 const FAST = { pollMs: 100, backoffMs: [100] };
 const peerKeys = memoryKeyStore();          // the stand-in's pairing, kept when it's started again
 let a, peer, heard = [], shown = 0;

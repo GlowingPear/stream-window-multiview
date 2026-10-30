@@ -2,15 +2,15 @@
 // items do their job. The menu is read instead of shown, and links "open" into a list instead of the browser.
 const test = require('node:test');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { launchApp, viewLoaded, assert, openChannel, inView } = require('../app');
+const { tempDir } = require('../../helpers');
 
 const T = { timeout: 60000 };
 let a, out;
 test.before(async () => {
   a = await launchApp();
-  out = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-menu-'));
+  out = tempDir('menu');
   await a.app.evaluate(({ Menu, shell, session, clipboard }, out) => {
     const t = globalThis.__m = { menus: [], opened: [], saved: [], copied: null };
     // What the app copies: the test files run side by side and share the computer's clipboard, so another one

@@ -2,16 +2,16 @@
 // emote where you choose. kick.com and its emote pictures are stand-ins; the save dialog is answered by the test.
 const test = require('node:test');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { launchApp, inView, viewLoaded, assert, openChannel } = require('../app');
+const { tempDir } = require('../../helpers');
 
 const T = { timeout: 60000 };
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 let a, out;
 test.before(async () => {
   a = await launchApp();
-  out = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-emote-'));
+  out = tempDir('emote');
   await a.app.evaluate(({ session, net, dialog }, [png, out]) => {
     const pic = Buffer.from(png, 'base64');
     globalThis.__asked = [];

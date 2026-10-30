@@ -1,6 +1,7 @@
 // Shared bits for the UI and launch tests.
 const fs = require('fs');
 const http = require('http');
+const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
@@ -12,10 +13,76 @@ function playwright() {
   try { pw = require('playwright'); } catch {
     throw new Error('Playwright is not installed. Run "npm run test:setup" once, then run the tests again.');
   }
+  notePlaywrightFolders();
   hideElectron(pw);
   quietElectron(pw);
   if (COVERAGE) recordElectron(pw);
+  trackElectron(pw);
   return pw;
+}
+
+/* ---- Temporary folders: nothing a test makes is left in the system's temp folder ----
+   tempDir('name', t) makes a fresh folder (smv-name-XXXXXX) and removes it when the test t ends; without t (a
+   folder for a whole file, or one the desktop app is still using), when the test file's process exits. Whatever
+   is still there at the exit goes then too, synchronously, so it also happens when --test-force-exit ends the
+   run. A folder that can't be removed (Windows keeps files locked for a moment after a program closes) is
+   tried a few times, then only warned about: cleaning up never fails a test. */
+const leftovers = new Set();
+const running = new Set();   // the desktop apps still open, stopped before their folders are removed
+let exitHooked = false;
+function removeDir(dir) {
+  try {
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: process.platform === 'win32' ? 10 : 3, retryDelay: 100 });
+    leftovers.delete(dir);
+  } catch (e) { console.warn(`# Couldn't remove the temporary folder ${dir}: ${e && e.message || e}`); }
+}
+function hookExit() {
+  if (exitHooked) return;
+  exitHooked = true;
+  process.on('exit', () => {
+    for (const proc of running) killApp(proc);
+    for (const dir of [...leftovers]) removeDir(dir);
+  });
+}
+function removeAtExit(dir) { leftovers.add(dir); hookExit(); }
+function tempDir(name, t) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `smv-${name}-`));
+  removeAtExit(dir);
+  if (t && typeof t.after === 'function') t.after(() => removeDir(dir));
+  return dir;
+}
+
+// Playwright removes its own temporary folders (playwright-artifacts-*, a browser's profile) once a browser or the
+// app has closed, but it does it in the background, and --test-force-exit can end the process first. The ones
+// this process's Playwright makes are noted as it makes them and removed at the exit; another process's (a test
+// file running alongside, a script) are never touched.
+function notePlaywrightFolders() {
+  const fsp = fs.promises, mkdtemp = fsp.mkdtemp;
+  if (mkdtemp.__smvNoted) return;
+  const noted = async (prefix, ...rest) => {
+    const dir = await mkdtemp.call(fsp, prefix, ...rest);
+    if (/^playwright[-_]/.test(path.basename(String(prefix)))) removeAtExit(dir);
+    return dir;
+  };
+  noted.__smvNoted = true;
+  fsp.mkdtemp = noted;
+}
+
+// Every copy of the desktop app is stopped when the process exits (before its data folder is removed), whether
+// or not the test that started it got to close it.
+function trackElectron(pw) {
+  if (pw._electron.__smvTracked) return;
+  pw._electron.__smvTracked = true;
+  const launch = pw._electron.launch.bind(pw._electron);
+  pw._electron.launch = async (opts = {}) => {
+    const app = await launch(opts);
+    const proc = app.process();
+    if (proc) {
+      running.add(proc); hookExit();
+      proc.once('exit', () => running.delete(proc));
+    }
+    return app;
+  };
 }
 
 /* ---- npm run test:launch:hidden (or SMV_TEST_HIDDEN=1): the desktop app's windows are invisible and never
@@ -100,4 +167,4 @@ function serve() {
   });
 }
 
-module.exports = { ROOT, playwright, serve, startCoverage, saveCoverage, killApp };
+module.exports = { ROOT, playwright, serve, startCoverage, saveCoverage, killApp, tempDir, removeDir };

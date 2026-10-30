@@ -2197,6 +2197,14 @@ async function installInstaller() {
   sendUpd();
   return updStatus();
 }
+// Mac: a downloaded app that wasn't swapped in (the app closed without restarting) isn't left in the temp folder.
+let swapStarted = false;
+// Only the folder downloadMacApp made (stream-multiview-update-XXXXXX in the temp folder) is ever removed.
+app.on('will-quit', () => {
+  if (!updState.swap || swapStarted) return;
+  const dir = path.dirname(path.dirname(String(updState.swap.newApp || '')));
+  if (path.dirname(dir) === path.resolve(app.getPath('temp')) && /^stream-multiview-update-/.test(path.basename(dir))) try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
+});
 // Hand over to the downloaded installer, then close so it can replace the app.
 function runInstaller() {
   const sw = updState.swap;
@@ -2209,7 +2217,8 @@ function runInstaller() {
     const { spawn } = require('child_process');
     const script = path.join(path.dirname(path.dirname(sw.newApp)), 'swap.sh');
     fs.writeFileSync(script, updater.macSwapScript());
-    spawn('/bin/sh', [script, String(process.pid), sw.appPath, sw.newApp], { detached: true, stdio: 'ignore' }).unref();
+    spawn('/bin/sh', [script, String(process.pid), sw.appPath, sw.newApp, 'open', path.dirname(script)], { detached: true, stdio: 'ignore' }).unref();
+    swapStarted = true;
     setTimeout(() => app.quit(), 300);    // the script waits for the app to close, swaps in the new one and opens it
     return true;
   }

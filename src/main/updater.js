@@ -284,7 +284,8 @@ function canWriteInside(appDir) {
   try { fs.unlinkSync(f); } catch {}
   return true;
 }
-// Run detached after the app quits: $1 the app's process, $2 the app, $3 the new app, $4 what opens it again.
+// Run detached after the app quits: $1 the app's process, $2 the app, $3 the new app, $4 what opens it again,
+// $5 the download's temporary folder, removed at the end (the script is in it too).
 // The old app is only deleted once the new one is in place; if the move fails, the old one goes back.
 function macSwapScript() {
   return `#!/bin/sh
@@ -299,6 +300,8 @@ if mv "$app" "$old"; then
 fi
 xattr -dr com.apple.quarantine "$app" 2>/dev/null
 "$open" "$app"
+[ -n "$5" ] && rm -rf "$5"
+exit 0
 `;
 }
 

@@ -2,10 +2,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const zlib = require('zlib');
 const { execFile, execFileSync, spawn, spawnSync } = require('child_process');
+const { tempDir } = require('../../helpers');
 const { readBody, downloadTo, downloadBuffer, compareVersions, pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript,
   latestInfo, readZip, appFiles, applyUpdate, REPO_RE } = require('../../../src/main/updater');
 
@@ -72,7 +72,7 @@ test('macSwapBlocker only allows a signed app in a folder it can write to', () =
 });
 const unix = process.platform !== 'win32';
 test('canWriteInside says whether the app may change its own files, and leaves nothing behind', { skip: !unix || process.getuid?.() === 0 }, () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-write-'));
+  const dir = tempDir('write');
   try {
     assert.equal(canWriteInside(dir), true);
     assert.deepEqual(fs.readdirSync(dir), []);
@@ -84,7 +84,7 @@ test('canWriteInside says whether the app may change its own files, and leaves n
 
 // The swap script with a stand-in for `open`, on folders that look like apps.
 function swapSetup() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-swap-'));
+  const dir = tempDir('swap');
   const app = path.join(dir, 'Applications', 'Stream Multiview.app'), stage = path.join(dir, 'stage', 'Stream Multiview.app');
   for (const [d, v] of [[app, 'old'], [stage, 'new']]) { fs.mkdirSync(path.join(d, 'Contents'), { recursive: true }); fs.writeFileSync(path.join(d, 'Contents', 'v'), v); }
   const script = path.join(dir, 'swap.sh'), opener = path.join(dir, 'open.sh'), opened = path.join(dir, 'opened');
@@ -116,6 +116,19 @@ test('if the new app can\'t be moved in, the swap script puts the old one back a
   } finally { fs.rmSync(t.dir, { recursive: true, force: true }); }
 });
 
+test('the swap script removes the download\'s temporary folder at the end, and nothing else', { skip: !unix }, () => {
+  const t = swapSetup();
+  try {
+    const download = path.join(t.dir, 'download');
+    fs.mkdirSync(path.join(download, 'app'), { recursive: true }); fs.writeFileSync(path.join(download, 'swap.sh'), '');
+    execFileSync('/bin/sh', [t.script, String(2 ** 22 + 12345), t.app, t.stage, t.opener, download]);
+    assert.equal(fs.readFileSync(path.join(t.app, 'Contents', 'v'), 'utf8'), 'new');
+    assert.equal(fs.existsSync(download), false);
+    assert.equal(fs.readFileSync(t.opened, 'utf8'), t.app);
+    assert.ok(fs.existsSync(t.script), 'only that folder');
+  } finally { fs.rmSync(t.dir, { recursive: true, force: true }); }
+});
+
 // Real ditto and codesign: an app signed (ad hoc) like a release is unpacked; a changed copy is refused.
 const mac = process.platform === 'darwin';
 const run = (cmd, args) => new Promise((res, rej) => execFile(cmd, args, (e, o, er) => e ? rej(e) : res(`${o}\n${er}`)));
@@ -131,7 +144,7 @@ function signedApp(dir) {
   return { app, exe, req: designatedReq(`${r.stdout}\n${r.stderr}`) };
 }
 test('unpackMacApp unpacks the app and accepts it when the signature matches', { skip: !mac }, async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-unpack-'));
+  const dir = tempDir('unpack');
   try {
     const { app, req } = signedApp(dir);
     assert.match(req, /cdhash/);
@@ -143,7 +156,7 @@ test('unpackMacApp unpacks the app and accepts it when the signature matches', {
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 test('unpackMacApp refuses an app that was changed, or signed by someone else', { skip: !mac }, async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-unpack-'));
+  const dir = tempDir('unpack');
   try {
     const { app, exe, req } = signedApp(dir);
     fs.appendFileSync(exe, 'echo changed\n');                      // changed after signing: the signature is broken
@@ -158,7 +171,7 @@ test('unpackMacApp refuses an app that was changed, or signed by someone else', 
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 test('unpackMacApp checks the new app against this app\'s signature requirement (any system, stand-in tools)', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-unpack-'));
+  const dir = tempDir('unpack');
   try {
     const out = path.join(dir, 'out'), calls = [];
     const fake = async (cmd, args) => {
@@ -175,7 +188,7 @@ test('unpackMacApp checks the new app against this app\'s signature requirement 
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 test('unpackMacApp refuses a download without an app in it', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-unpack-'));
+  const dir = tempDir('unpack');
   try {
     const out = path.join(dir, 'out');
     const fake = async cmd => { if (cmd === 'ditto') { fs.mkdirSync(out, { recursive: true }); fs.writeFileSync(path.join(out, 'readme.txt'), 'x'); } return ''; };
@@ -313,7 +326,7 @@ test('readBody tells at most every so often, and always at the start and the end
 });
 
 test('downloadTo saves the download (via a .part file) and reports its progress', async () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-dl-')), file = path.join(dir, 'sub', 'app.dmg');
+  const dir = tempDir('dl'), file = path.join(dir, 'sub', 'app.dmg');
   const seen = [], asked = [];
   const fetchFn = async (url, opt) => { asked.push([url, opt.headers['User-Agent']]); return download(['hello ', 'world']); };
   assert.equal(await downloadTo('https://x/app.dmg', file, { fetch: fetchFn, onProgress: p => seen.push(p), every: 0, now: clock() }), file);
@@ -400,8 +413,10 @@ test('appFiles finds the app when it sits in a sub-folder of the repository', ()
 });
 
 /* ---------- replacing the app's files ---------- */
+// The app's folder is inside a folder of its own, where its backups (<folder>-bk) go too, so they're removed with it.
 function appDir(pkg) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-upd-'));
+  const dir = path.join(tempDir('upd'), 'app');
+  fs.mkdirSync(dir);
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify(pkg));
   fs.writeFileSync(path.join(dir, 'main.js'), 'old main');
   fs.writeFileSync(path.join(dir, 'index.html'), 'old page');

@@ -4,10 +4,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { stubExists, openChannel, nameIs } = require('../app');
-const { ROOT, playwright, killApp } = require('../../helpers');
+const { ROOT, playwright, killApp, tempDir } = require('../../helpers');
 
 function electronPath() {
   if (process.env.ELECTRON_PATH) return process.env.ELECTRON_PATH;
@@ -21,7 +20,7 @@ let app, win;
 const pageErrors = [];
 
 test.before(async () => {
-  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'smv-alerts-'));
+  const data = tempDir('alerts');
   fs.mkdirSync(path.join(data, 'Stream Multiview'), { recursive: true });
   fs.writeFileSync(path.join(data, 'Stream Multiview', 'updates.json'), JSON.stringify({ auto: false }));
   const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' };
