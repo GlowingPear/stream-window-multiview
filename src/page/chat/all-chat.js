@@ -1162,13 +1162,46 @@ async function deliver(view, w, p){
   flash(`Not sent: ${p.why}`);
   if (r === 'disabled' && m && m.view) askIn(m.view, `(${modesAgent})()`).then(x => { if (x) setModes(p.ch, x); }).catch(() => {});   // (why: its modes again)
 }
-// How you look in that chat: as in your last message there (name, colour, badges), else your name, the streamer's
-// badge in your own channel
+// How you look in that chat: as in your last message there (name, colour, badges and their pictures: myPics, as p.pics
+// is the emotes you picked), else as you looked there last time (saved), else your name, the streamer's badge in your
+// own channel
 function youOn(f, site, ch){
-  const me = meOn(site), last = me && [...f.msgs].reverse().find(x => x.kind === 'message' && x.site === site && (x.login === me || x.sender.toLowerCase() === me));
-  if (last) return { sender: last.sender, login: last.login, color: last.color, badges: last.badges };
+  const me = meOn(site), last = me && [...f.msgs].reverse().find(x => x.kind === 'message' && x.site === site && x.ch === ch && (x.login === me || x.sender.toLowerCase() === me));
+  const saved = me && savedLooks()[ch], look = last ? lookOf(last) : saved && (saved.login === me || saved.sender.toLowerCase() === me) && saved;   // (saved: also you, not a name you used before)
+  if (look) return { sender: look.sender, login: look.login, color: look.color, badges: look.badges, myPics: look.pics };
   const name = site === 'kick' ? myName : site === 'twitch' ? bellVars.myTwitch : '';
   return { sender: name || 'You', login: me, color: '', badges: me && ch.replace(/^tw:/, '').toLowerCase() === me ? ['host'] : [] };
+}
+// Your look in each chat, kept for next time (allMyLook: channel -> look, the newest MY_LOOKS). Only what a line of
+// yours draws; read back with a check on each part, as anything could be in storage
+const MY_LOOKS = 50;
+const lookStr = v => (typeof v === 'string' ? v.slice(0, 200) : '');
+const cleanPic = p => {
+  if (!p || typeof p !== 'object') return null;
+  const o = {};
+  ['set', 'v', 'title', 'icon'].forEach(k => { if (typeof p[k] === 'string') o[k] = lookStr(p[k]); });
+  if (typeof p.url === 'string' && /^https:\/\//.test(p.url)) o.url = lookStr(p.url);
+  if (Number.isFinite(p.months) && p.months > 0) o.months = p.months;
+  return o.set || o.url ? o : null;
+};
+const lookOf = m => ({ sender: lookStr(m.sender), login: lookStr(m.login), color: lookStr(m.color), badges: (Array.isArray(m.badges) ? m.badges : []).filter(b => typeof b === 'string').slice(0, 10),
+  ...(Array.isArray(m.pics) ? { pics: m.pics.map(cleanPic).filter(Boolean) } : {}) });
+let myLooks = null;   // (read once: what's saved)
+function savedLooks(){
+  if (!myLooks){
+    const o = settings.json('allMyLook', {});
+    myLooks = {};
+    if (o && typeof o === 'object' && !Array.isArray(o)) Object.entries(o).forEach(([ch, l]) => { if (l && typeof l === 'object' && typeof l.sender === 'string' && l.sender) myLooks[ch] = lookOf(l); });
+  }
+  return myLooks;
+}
+// A message of yours came in: your look in its chat saved, only when it changed
+function noteMyLook(m){
+  const look = lookOf(m), all = savedLooks();
+  if (!look.sender || JSON.stringify(all[m.ch]) === JSON.stringify(look)) return;
+  delete all[m.ch]; all[m.ch] = look;   // (the newest last)
+  const chs = Object.keys(all); chs.slice(0, Math.max(0, chs.length - MY_LOOKS)).forEach(ch => delete all[ch]);
+  settings.set('allMyLook', all);
 }
 // A line of yours changes state: drawn again where it is
 function setMine(p, state){
@@ -1179,6 +1212,7 @@ function setMine(p, state){
 function mineSeen(f, m){
   const me = meOn(m.site);
   if (me && m.login !== me && m.sender.toLowerCase() !== me) return;
+  if (me) noteMyLook(m);
   const p = f.msgs.find(x => x.kind === 'mine' && x.site === m.site && x.state !== 'failed' && x.state !== 'seen' && sameText(x.text, m.parts.map(y => y.text || y.name).join('')));
   if (!p) return;
   p.state = 'seen';
@@ -1200,7 +1234,7 @@ function mineEl(p){
   return element('div', { class: 'al-m al-mine al-mine-' + p.state, dataset: { key: p.site + ':' + p.id } },
     p.threaded && element('span', 'al-q', '↩ replying to ', element('b', null, p.lock.msg.sender)),
     element('div', 'al-line', element('span', 'al-who', element('i', { class: 'pi pi-' + p.site, title: site }, site[0]),
-      ...p.badges.map(b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' }))), element('b', { class: 'al-n', style: { color: nameColor(p) } }, p.sender), ': ', element('span', 'al-txt', ...partsEl(p.parts, p.ch)), p.state === 'failed' ? '' : state || ''),
+      ...badgeEls({ site: p.site, ch: p.ch, badges: p.badges, pics: p.myPics })), element('b', { class: 'al-n', style: { color: nameColor(p) } }, p.sender), ': ', element('span', 'al-txt', ...partsEl(p.parts, p.ch)), p.state === 'failed' ? '' : state || ''),
     p.state === 'failed' && state);
 }
 function readFilters(){
