@@ -3,6 +3,7 @@ import { $ } from '../../core.js';
 import { bellVars, myName } from '../bell/bell.js';
 import { listStreamers, streamerOf } from '../../platforms/linked.js';
 import { PLAT_NAME, platOf } from '../../platforms/platforms.js';
+import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
@@ -26,7 +27,7 @@ function renderPreview(){
   previewEl.replaceChildren(...SAMPLE.map(x => {
     const text = fillShout(textEl.value, { name: x.name, link: shoutLink(x.site, x.login), links: shoutLink(x.site, x.login), game: x.game });
     const parts = text.split(/(https:\/\/\S+)/).map((t, i) => (i % 2 ? element('span', 'lnk', t) : t));
-    return element('span', null, element('i', { class: 'pi pi-' + x.site }, PLAT_NAME[x.site][0]), element('b', null, me[x.site]), ': ', ...parts, !x.game && element('em', null, 'no game found'));
+    return element('span', null, element('i', { class: 'pi pi-' + x.site }, PLAT_NAME[x.site][0]), element('b', null, me[x.site]), ': ', ...parts, ...(x.game ? [] : [' ', element('em', null, 'no game found')]));
   }));
 }
 // Puts a token in the message where the caret is
@@ -106,6 +107,9 @@ function init(){
     const b = e.target.closest('[data-z]'); if (!b) return;
     settings.set('shoutRunN', Math.max(1, Math.min(RUN_MAX, (settings.num('shoutRunN') || 5) + +b.dataset.z))); store.changed('shoutouts');
   });
+  commands.add([
+    { id: 'settings.shoutRunMore', kind: 'setting', group: 'Settings', title: 'More recent chatters in a shoutout run', sub: 'Settings › Chat › Shoutouts · up to 20', words: ['shoutout'], icon: 'megaphone', button: '#shoutRunSet [data-z="1"]' },
+    { id: 'settings.shoutRunFewer', kind: 'setting', group: 'Settings', title: 'Fewer recent chatters in a shoutout run', sub: 'Settings › Chat › Shoutouts', words: ['shoutout'], icon: 'megaphone', button: '#shoutRunSet [data-z="-1"]' }]);
   textEl.addEventListener('input', () => { renderPreview(); saveText(); });
   $('#shoutTokens').append(...SHOUT_TOKENS.map(t => element('button', { type: 'button', dataset: { cmd: 'settings.shoutToken' }, onclick: () => addToken(t) }, element('code', null, t), ' ' + TOKEN_HELP[t])),
     element('span', 'so-hint', 'Words in [ ] are left out when there\'s no game.'));

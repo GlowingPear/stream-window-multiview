@@ -1,5 +1,5 @@
 import { SmvSpam } from '../alerts/spam.js';
-import { allOn, appBots, chatRules, feeds, ownerOf, sendInChat, setModes, youMod } from './all-chat.js';
+import { allOn, appBots, chatRules, feeds, ownerOf, sendInChat, sendSite, setModes, youMod } from './all-chat.js';
 import { RUN_MAX, kickTries, pickRun, shoutFor, shoutLink, shoutRow, streams } from './shoutout-text.js';
 import { winOfView } from './translate.js';
 import { wins } from '../core.js';
@@ -35,8 +35,9 @@ const SO_DAY = 86400000;
 const KNOWN_MAX = 400;            // people remembered (their address, last game, whether they stream)
 const GAME_WAIT = 1500;           // a click waits this long for someone's last game at most, then sends without it
 const FIND_WAIT = 8000;           // ...and this long for a Kick address it has to look up (it can't send without one)
-const RUN_GAP = 1000;             // a run: one message a second
-const RUN_LOOK = 6000;            // a run: looking up who streams, at most this long before the list shows
+// a run: one message a second; looking up who streams for at most 6 s before the list shows; a message held back tried
+// again after 10 s (or the chat's slow mode). Changed by the tests only.
+const SO_TIMING = { gap: 1000, look: 6000, retry: 10 };
 const AGAIN = [5, 15, 60, 0];     // Settings: ask before shouting the same person out again within (minutes; 0: never ask)
 const SHOUT_SITES = ['kick', 'twitch'];
 let soKnown = {};                   // 'site:login' -> { login (their address), game, streams, missing, t }
@@ -117,7 +118,7 @@ async function shoutOut(p, { chs, again = true, quiet = false } = {}){
   let r = 'gone';
   for (const ch of targets){
     const site = platOf(ch), c = soChatWin(ch);
-    const { to, text } = shoutFor({ tpl: settings.text('shoutText'), people: soPeople(), person: who, site, soLinksOf,
+    const { to, text } = shoutFor({ tpl: settings.text('shoutText'), people: soPeople(), person: who, site, linksOf: soLinksOf,
       gameOf: x => (x === who ? info && info.game : soKnown[soKey(x)] && soKnown[soKey(x)].game) || '' });
     r = await sendInChat(c, text);
     if (r !== 'sent'){ if (!quiet) flash(`Not sent: ${(SHOUT_FAIL[r] || SHOUT_FAIL['no-answer'])(PLAT_NAME[site])}`); continue; }
@@ -146,11 +147,14 @@ function shoutTag(m){
 
 /* ---- a run: the last few different streamers who chatted, one a second ---- */
 // The chat lines a window can pick from: ALL's (every site of theirs), or what a site's chat page shows
+// The chat a run sends in: a site's chat window's own; in ALL, the site its send box is on
+const soRunCh = w => (allOn(w) ? sendSite(w) : w.channel);
 async function soRunLines(w){
+  // ALL: the site its send box is on (its K / T picker): that chat's people, shouted out there
   if (allOn(w)){
-    const s = ownerOf(w.channel), f = feeds.get(s.id);
-    return (f ? f.msgs : []).filter(m => (m.kind === 'message' || (m.kind === 'event' && m.support && m.support.kind === 'raid')) && SHOUT_SITES.includes(m.site) && m.login)
-      .map(m => ({ ...soPersonOf(m), name: m.sender, t: m.t, bot: !!m.bot, ch: m.ch, raid: m.kind === 'event' }));
+    const s = ownerOf(w.channel), f = feeds.get(s.id), ch = soRunCh(w);
+    return (f ? f.msgs : []).filter(m => m.ch === ch && (m.kind === 'message' || (m.kind === 'event' && m.support && m.support.kind === 'raid')) && SHOUT_SITES.includes(m.site) && m.login)
+      .map(m => ({ ...soPersonOf(m), name: m.sender, t: m.t, bot: !!m.bot, ch, raid: m.kind === 'event' }));
   }
   if (!w.view) return [];
   const got = await askIn(w.view, 'window.__kmvShout && window.__kmvShout.chatters ? window.__kmvShout.chatters() : []').catch(() => []);
@@ -173,21 +177,23 @@ async function soPickFor(w, lines, n){
     for (let i = lines.length - 1; i >= 0 && todo.length < RUN_MAX * 3; i--){ const k = soKey(lines[i]); if (!seen.has(k)){ seen.add(k); if (!soKnownStreamer(lines[i])) todo.push(lines[i]); } }
     let at = 0;
     const next = async () => { while (at < todo.length){ const p = todo[at++]; await soLookUp(p); } };
-    await soWithin(Promise.all([next(), next(), next(), next()]), RUN_LOOK);
+    await soWithin(Promise.all([next(), next(), next(), next()]), SO_TIMING.look);
   }
-  return pickRun(lines, { n, me, host, onlyStreamers: only, streamsOf: p => soKnownStreamer(p) || !!(soKnown[soKey(p)] && soKnown[soKey(p)].streams), soSentAt, againMs: soAgainMs() });
+  return pickRun(lines, { n, me, host, onlyStreamers: only, streamsOf: p => soKnownStreamer(p) || !!(soKnown[soKey(p)] && soKnown[soKey(p)].streams), sentAt: soSentAt, againMs: soAgainMs() });
 }
 // The ⋯ menu's Shout out recent chatters (and the search box's): the list first, or straight away (Settings, or ⇧ for the other)
 async function openRun(w, { flip = false } = {}){
   if (!w || !shoutOn()) return;
   if (soRun && !soRun.stop) return flash('Already shouting out: Stop it first');
+  const ch = soRunCh(w);
+  if (!ch || !SHOUT_SITES.includes(platOf(ch))) return flash(ch ? `Shoutouts are for Kick and Twitch: pick one of them to send on` : 'No chat to send on right now');
   const lines = await soRunLines(w);
   if (!lines.length) return flash('No one has chatted here yet');
   const first = settings.flag('shoutListFirst', true) !== flip;
   if (!first){
     const r = await soPickFor(w, lines, soRunN());
     const go = r.list.filter(p => p.on);
-    return go.length ? startRun(w, go) : flash('No streamers to shout out among the last soPeople who chatted');
+    return go.length ? startRun(w, go) : flash('No streamers to shout out among the last people who chatted');
   }
   runDialog(w, lines);
 }
@@ -204,8 +210,8 @@ async function runDialog(w, lines){
   const nolist = element('input', { type: 'checkbox', dataset: { cmd: 'shout.runNoList' } });
   const box = element('div', { class: 'dlg so-dlg', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'soDlgT' },
     element('h3', { id: 'soDlgT' }, element('span', { class: 'so-hic', html: icon.megaphone }), 'Shout out recent chatters'),
-    element('div', 'dlg-sub', settings.flag('shoutStreamers', true) ? 'The last streamers who chatted in ' : 'The last soPeople who chatted in ', element('b', null, nameOf(w.channel) || chLabel(w.channel)),
-      allOn(w) ? '\'s chats, newest first. Each gets your shoutout in the chat they wrote in.' : '\'s chat, newest first.'),
+    element('div', 'dlg-sub', settings.flag('shoutStreamers', true) ? 'The last streamers who chatted in ' : 'The last people who chatted in ', element('b', null, nameOf(w.channel) || chLabel(w.channel)),
+      `'s ${allOn(w) ? PLAT_NAME[platOf(soRunCh(w))] + ' ' : ''}chat, newest first. Each gets your shoutout there.`),
     element('div', 'so-count', element('span', null, settings.flag('shoutStreamers', true) ? 'Streamers who chatted last' : 'People who chatted last'),
       element('div', 'zoom', element('button', { type: 'button', 'aria-label': 'Fewer', dataset: { cmd: 'shout.runFewer' }, onclick: () => setN(state.n - 1) }, '−'), count,
         element('button', { type: 'button', 'aria-label': 'More', dataset: { cmd: 'shout.runMore' }, onclick: () => setN(state.n + 1) }, '+'))),
@@ -299,10 +305,10 @@ async function startRun(w, list){
       // held back (slow mode, the site's limit, a filter): its modes again, then wait and try again
       const c = soChatWin(p.ch);
       if (c && c.view){ const x = await askIn(c.view, `(${modesAgent})()`).catch(() => null); if (x) setModes(p.ch, x); }
-      await soCountDown(r, chatRules(p.ch).wait || 10, RUN_HELD[res] || 'Waiting', 'It tries again then');
+      await soCountDown(r, chatRules(p.ch).wait || SO_TIMING.retry, RUN_HELD[res] || 'Waiting', 'It tries again then');
     }
     if (r.stop) return;
-    if (r.i < list.length - 1){ soDrawStrip(); await soPause(r, RUN_GAP); }
+    if (r.i < list.length - 1){ soDrawStrip(); await soPause(r, SO_TIMING.gap); }
   }
   if (soRun === r) stopRun(done ? `Shouted out ${done} ${done === 1 ? 'person' : 'people'}` : '');
 }
@@ -361,7 +367,7 @@ function init(){
     }
     return out;
   });
-  window.shoutouts = { shoutOut, openRun, stopRun, lookUp: soLookUp, known: () => soKnown, sent: () => soSent, state: () => soRun && { i: soRun.i, n: soRun.list.length, wait: soRun.wait } };   // for the tests
+  window.shoutouts = { timing: SO_TIMING, shoutOut, openRun, stopRun, lookUp: soLookUp, known: () => soKnown, sent: () => soSent, state: () => soRun && { i: soRun.i, n: soRun.list.length, wait: soRun.wait } };   // for the tests
 }
 
 export { init, openRun, shoutInSite, shoutOn, shoutOut, shoutTag, soPersonOf, soSentAt };

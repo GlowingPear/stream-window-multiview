@@ -17,8 +17,8 @@ function shoutAgent(on, look){
   }
   if (S.ready) return true;
   S.ready = true;
-  const site = /(^|\.)kick\.com$/.test(location.hostname) ? 'kick' : 'twitch';
-  const L = look || {};
+  const L = look || {};   // (the tests': { site, line, bar })
+  const site = L.site || (/(^|\.)kick\.com$/.test(location.hostname) ? 'kick' : 'twitch');
   const LINE = L.line || (site === 'kick' ? '[data-index]' : '.chat-line__message, .user-notice-line');
   const BAR = L.bar || (site === 'kick' ? 'div[class*="group-hover:flex"]' : '.chat-line__icons');
   const RAID = /\b(raid(ed|ing)?|is (now )?hosting|hosted)\b/i;
