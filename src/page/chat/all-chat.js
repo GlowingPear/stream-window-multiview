@@ -1159,7 +1159,7 @@ function openFilters(view){
   view.fm.replaceChildren(element('div', 'all-mvh', 'Show in ALL'),
     seg('Bots', 'Their messages, or one line to open', [[false, 'Hidden'], [true, 'Shown']], botsShown, setBotsShown, 'all.bots'),
     seg('Events', 'Subs, gifts, raids and Super Chats', [['short', 'Short'], ['full', 'Full'], ['hidden', 'Hidden']], eventsMode, setEventsMode, 'all.events'),
-    seg('Hype train', 'Twitch’s, over the chat: its level and time left', [[true, 'Shown'], [false, 'Hidden']], hypeShown, setHypeShown, 'all.hype'));
+    seg('Hype train', 'Twitch’s, over the chat', [[true, 'Shown'], [false, 'Hidden']], hypeShown, setHypeShown, 'all.hype'));
   view.fm.hidden = false;
   placeAt(view, view.fm, view.filt);
 }

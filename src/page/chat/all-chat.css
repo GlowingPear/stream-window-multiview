@@ -23,7 +23,7 @@
 .all-filt.set::after{content:'';position:absolute;top:-2px;right:-2px;width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 1.5px var(--bg)}
 .all-pinchip svg,.all-filt svg{width:9px;height:9px}
 /* the filter pill's menu: two rows, each a name and its choices */
-.all-fm{min-width:236px;padding:6px 6px 8px}
+.all-fm{min-width:236px;max-width:268px;padding:6px 6px 8px}   /* (a long line wraps rather than widening it past its pill) */
 .all-fmr{padding:6px 6px 2px}
 .all-fml{display:flex;flex-direction:column;margin-bottom:6px}
 .all-fml b{font-size:12.5px}.all-fml small{color:var(--muted);font-size:11px}
