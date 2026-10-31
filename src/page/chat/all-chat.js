@@ -711,7 +711,7 @@ function lineEl(m){
     m.announce && element('span', 'al-tag al-tag-ann', 'Announcement'),
     m.bits && element('span', 'al-tag al-tag-bits', `${m.bits} bits`),
     m.redeem && element('span', { class: 'al-tag al-tag-rw', title: 'A reward redeemed with channel points', style: m.redeem.color ? { '--rw': m.redeem.color } : {} }, m.redeem.title || 'Channel points'),
-    m.deleted && element('span', { class: 'al-tag al-tag-del' + (m.deleted.ai ? ' ai' : '') },
+    m.deleted && element('span', { class: 'al-tag al-tag-del' + (m.deleted.ai ? ' ai' : ''), dataset: { copy: removedNote(m.deleted) } },
       m.deleted.ai ? ['Deleted', 'AI moderation', ...m.deleted.rules].join(' · ') : m.deleted.by === 'ban' ? 'Banned' : m.deleted.by === 'timeout' ? 'Timed out' + (m.deleted.secs ? ` · ${durText(m.deleted.secs)}` : '') : m.deleted.by === 'clear' ? 'Chat cleared' : 'Deleted' + (m.deleted.who ? ` by ${m.deleted.who}` : '')),
     m.bot && !botsShown && element('button', { type: 'button', class: 'al-show linkish', dataset: { cmd: 'all.showBot' }, onclick: e => { m.open = !m.open; e.target.closest('.al-m').replaceWith(lineEl(m)); } }, m.open ? 'Hide' : 'Show')
   ].filter(Boolean);
@@ -724,6 +724,22 @@ function lineEl(m){
   return element('div', { class: cls, dataset: { key: m.site + ':' + m.id }, oncontextmenu: e => { e.preventDefault(); openLineMenu(m, e); } }, hover,
     m.reply && element('span', 'al-q', '↩ replying to ', element('b', null, m.reply.login && m.reply.login === meOn(m.site) ? 'you' : m.reply.sender), m.reply.body ? ': ' + m.reply.body : ''),
     element('div', 'al-line', who, name, m.action ? ' ' : ': ', body, ...tags));
+}
+// What a removed message says when copied, as Kick's own chat has it: (Deleted) AI Mod [Sexual]
+const removedNote = d => !d ? '' : d.ai ? ['(Deleted) AI Mod', ...d.rules.map(r => `[${r.charAt(0).toUpperCase()}${r.slice(1)}]`)].join(' ')
+  : `(${d.by === 'ban' ? 'Banned' : d.by === 'timeout' ? 'Timed out' + (d.secs ? ` · ${durText(d.secs)}` : '') : d.by === 'clear' ? 'Chat cleared' : 'Deleted' + (d.who ? ` by ${d.who}` : '')})`;
+// Lines selected in ALL, as text to paste: emotes as their names, a removed message with why (removedNote) and no other
+// tags, buttons or site badge; a line each (and what it replies to on a line of its own)
+function selectedText(sel){
+  if (!sel || !sel.rangeCount) return '';
+  const box = element('div');
+  for (let i = 0; i < sel.rangeCount; i++) box.append(sel.getRangeAt(i).cloneContents());
+  box.querySelectorAll('img.al-e').forEach(e => e.replaceWith(e.dataset.send || e.alt));
+  box.querySelectorAll('.al-tag-del').forEach(e => e.replaceWith(' ' + e.dataset.copy));
+  box.querySelectorAll('.al-hb, .al-tag, .al-who .pi, button').forEach(e => e.remove());
+  box.querySelectorAll('.al-q').forEach(e => e.append('\n'));
+  const rows = box.querySelectorAll('.al-m, .al-ev');
+  return (rows.length ? [...rows] : [box]).map(r => r.textContent).join('\n').split('\n').map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n');
 }
 function addLine(view, m){
   const list = view.list, stick = atEnd(view);
@@ -741,6 +757,7 @@ function buildView(w){
   const list = element('div', { class: 'all-list', tabindex: '-1', role: 'log', 'aria-label': `${nameOf(w.channel)}'s chats together`, 'aria-live': 'off' });
   const empty = element('div', 'all-empty');
   const more = element('button', { type: 'button', class: 'all-more', hidden: true, dataset: { cmd: 'all.latest' }, onclick: () => { list.scrollTop = list.scrollHeight; more.hidden = true; } }, 'New messages ↓');
+  list.addEventListener('copy', e => { const t = selectedText(getSelection()); if (!t || !e.clipboardData) return; e.preventDefault(); e.clipboardData.setData('text/plain', t); });
   list.addEventListener('scroll', () => { view.atEnd = atEnd(view); if (view.atEnd) more.hidden = true; });
   // The list at its newest lines stays there when it gets shorter or taller (the row of emotes, the modes, the reply or
   // lock bar over the box come and go, the window is resized): as a new line keeps it there (addLine). Scrolled up, it stays put.
@@ -1259,7 +1276,7 @@ function openLineMenu(m, at){
     em && item('Save image as…', icon.download, () => saveEmote(JSON.stringify({ url: bigEmote(em.src), name: em.alt })), { cmd: 'all.menuEmoteSave' }),
     em && item('Copy image', icon.copy, () => copyEmote(JSON.stringify({ url: bigEmote(em.src), name: em.alt })), { cmd: 'all.menuEmoteCopy' }),
     em && item('Copy image address', icon.link, () => copy(bigEmote(em.src)), { cmd: 'all.menuEmoteAddr' }),
-    selIn && item('Copy', icon.copy, () => copy(sel), { cmd: 'all.menuSelCopy' }),
+    selIn && item('Copy', icon.copy, () => copy(selectedText(window.getSelection()) || sel), { cmd: 'all.menuSelCopy' }),
     selIn && item(`Translate ${short(sel)} to ${lang}`, TRANSLATE, () => openInBrowser(`https://translate.google.com/?sl=auto&tl=${encodeURIComponent(tl)}&text=${encodeURIComponent(sel)}&op=translate`), { cmd: 'all.menuSelTranslate' }),
     selIn && item(`Search Google for ${short(sel)}`, icon.search, () => openInBrowser(`https://www.google.com/search?q=${encodeURIComponent(sel)}`), { cmd: 'all.menuSelSearch' }),
     (link || em || selIn) && element('hr'),
@@ -1274,6 +1291,7 @@ function openLineMenu(m, at){
     element('hr'),
     item('Copy message', icon.copy, () => copy(plain), { cmd: 'all.menuCopyPlain', off: plain ? '' : 'Only emotes' }),
     item('Copy message with emotes', icon.copy, () => copy(text), { cmd: 'all.menuCopy' }),
+    item('Copy with @name', icon.copy, () => copy(`@${m.sender.replace(/^@/, '')}: ${text.trim()}${m.deleted ? ' ' + removedNote(m.deleted) : ''}`), { cmd: 'all.menuCopyName' }),
     // translating: this message, or all of its site's chat (here and in its own chat), and its new messages too
     window.kmv && window.kmv.translate && element('hr'),
     window.kmv && window.kmv.translate && !m.tr && item('Translate', TRANSLATE, () => translateSoon(m), { cmd: 'all.menuTranslate' }),
