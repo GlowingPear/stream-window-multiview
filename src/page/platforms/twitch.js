@@ -39,6 +39,50 @@ function readable(color, light){
   return hex(c);
 }
 
+// Its chat's commands, for ALL's box (/ at the start: chat/all-chat.js): { name, args (what goes after it), does, who:
+// 'all', 'mod' (moderators and the streamer) or 'host' (the streamer, and editors for some) }. From Twitch's help (Chat
+// Commands) and its chat's own usage lines, read 2026-10-31; the ones that open a panel in its own chat (/poll, /prediction,
+// /goal, /user, /vote, /gift, /requests, /sharedchat) are left out, as from ALL it would open out of sight.
+const TW_COMMANDS = [
+  { name: 'me', args: 'message', does: 'Your message as an action, in your name\u2019s colour', who: 'all' },
+  { name: 'color', args: 'colour', does: 'Change your name\u2019s colour (a name, or #hex with Turbo)', who: 'all' },
+  { name: 'w', args: 'user message', does: 'Whisper to someone', who: 'all' },
+  { name: 'block', args: 'user', does: 'Block someone\u2019s messages and whispers', who: 'all' },
+  { name: 'unblock', args: 'user', does: 'Unblock someone', who: 'all' },
+  { name: 'timeout', args: 'user [seconds] [reason]', does: 'Stop someone chatting for a while (10 minutes if no time)', who: 'mod' },
+  { name: 'untimeout', args: 'user', does: 'End someone\u2019s timeout', who: 'mod' },
+  { name: 'ban', args: 'user [reason]', does: 'Ban someone from the chat', who: 'mod' },
+  { name: 'unban', args: 'user', does: 'Lift a ban or a timeout', who: 'mod' },
+  { name: 'warn', args: 'user reason', does: 'Warn someone: they can\u2019t chat until they\u2019ve seen it', who: 'mod' },
+  { name: 'announce', args: 'message', does: 'Highlight a message for the whole chat', who: 'mod' },
+  { name: 'shoutout', args: 'user', does: 'Point the chat to another channel', who: 'mod' },
+  { name: 'monitor', args: 'user', does: 'Start monitoring someone\u2019s messages', who: 'mod' },
+  { name: 'unmonitor', args: 'user', does: 'Stop monitoring someone', who: 'mod' },
+  { name: 'restrict', args: 'user', does: 'Start restricting someone\u2019s messages', who: 'mod' },
+  { name: 'unrestrict', args: 'user', does: 'Stop restricting someone', who: 'mod' },
+  { name: 'slow', args: '[seconds]', does: 'Slow mode: time between someone\u2019s messages', who: 'mod' },
+  { name: 'slowoff', args: '', does: 'Slow mode off', who: 'mod' },
+  { name: 'followers', args: '[time, like 30m or 1w]', does: 'Followers only (followed for at least that long)', who: 'mod' },
+  { name: 'followersoff', args: '', does: 'Followers only off', who: 'mod' },
+  { name: 'subscribers', args: '', does: 'Subscribers only', who: 'mod' },
+  { name: 'subscribersoff', args: '', does: 'Subscribers only off', who: 'mod' },
+  { name: 'emoteonly', args: '', does: 'Emotes only', who: 'mod' },
+  { name: 'emoteonlyoff', args: '', does: 'Emotes only off', who: 'mod' },
+  { name: 'uniquechat', args: '', does: 'Unique chat: no repeated messages', who: 'mod' },
+  { name: 'uniquechatoff', args: '', does: 'Unique chat off', who: 'mod' },
+  { name: 'clear', args: '', does: 'Clear the chat for everyone', who: 'mod' },
+  { name: 'endpoll', args: '', does: 'End the poll running now', who: 'mod' },
+  { name: 'deletepoll', args: '', does: 'Delete the poll running now', who: 'mod' },
+  { name: 'raid', args: 'channel', does: 'Raid another live channel', who: 'host' },
+  { name: 'unraid', args: '', does: 'Call off the raid', who: 'host' },
+  { name: 'commercial', args: '[30|60|90|120|150|180]', does: 'Run an ad break (seconds)', who: 'host' },
+  { name: 'marker', args: '[description]', does: 'Mark this moment of the stream', who: 'host' },
+  { name: 'mod', args: 'user', does: 'Make someone a moderator', who: 'host' },
+  { name: 'unmod', args: 'user', does: 'Take someone\u2019s moderator role away', who: 'host' },
+  { name: 'vip', args: 'user', does: 'Make someone a VIP', who: 'host' },
+  { name: 'unvip', args: 'user', does: 'Take someone\u2019s VIP status away', who: 'host' }
+];
+
 const twitch = {
   id: 'twitch', name: 'Twitch', letter: 'T',
   mentions: true,
@@ -51,6 +95,7 @@ const twitch = {
   emoteLists: true,
   pageCommands: false,
   likes: false,
+  chatCommands: TW_COMMANDS,
   // A name in ALL as its chat shows it (see kick.js): their colour, or one of Twitch's own, made readable
   nameStyle: (m, { light } = {}) => ({ color: readable(/^#[0-9a-f]{6}$/i.test(m.color || '') ? m.color : twDefault(m.login || m.sender), !!light) }),
   lowQualityJs: null,

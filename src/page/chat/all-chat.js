@@ -643,7 +643,7 @@ function evToggle(m, e){
   const n = redrawLine(m); if (n) evOpenable(m, n);   // (still under the pointer: it can close again)
 }
 function lineEl(m){
-  if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' ? null : mineEl(m);
+  if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' || (m.cmd && m.state !== 'failed') ? null : mineEl(m);   // (a command: a line only if it couldn't be sent)
   if (m.kind === 'raidout'){
     // (Twitch's countdown: getting ready, then raided; or called off)
     const viewers = m.viewers ? ` · ${m.viewers.toLocaleString('en-US')} ${m.viewers === 1 ? 'viewer' : 'viewers'}` : '', left = m.soon ? raidLeft(m) : -1;
@@ -776,8 +776,8 @@ function buildView(w){
     if (!at.hidden && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)){
       e.preventDefault();
       if (e.key === 'Escape') at.hidden = true;
-      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){ view.atSel = (view.atSel + (e.key === 'ArrowDown' ? 1 : -1) + view.atList.length) % view.atList.length; (view.atMode === 'emote' ? renderEmoteList : renderAt)(view); }
-      else (view.atMode === 'emote' ? pickEmote : pickAt)(view, w, view.atList[view.atSel]);
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){ view.atSel = (view.atSel + (e.key === 'ArrowDown' ? 1 : -1) + view.atList.length) % view.atList.length; (view.atMode === 'emote' ? renderEmoteList : view.atMode === 'cmd' ? renderCmds : renderAt)(view); }
+      else (view.atMode === 'emote' ? pickEmote : view.atMode === 'cmd' ? pickCmd : pickAt)(view, w, view.atList[view.atSel]);
       return;
     }
     if (e.key === 'Escape' && view.lock){ e.preventDefault(); setLock(view, w, null); }
@@ -788,7 +788,7 @@ function buildView(w){
       else if (e.shiftKey) cycleTabs(w); else stepSend(view, w, 1);
     }
   });
-  input.addEventListener('input', () => { syncSendB(view, w); suggestAt(view, w); if (view.at.hidden || view.atMode === 'emote') suggestEmote(view, w); if (!input.value.trim() && view.lock && (view.lock.kind === 'at' || view.lock.kind === 'emote')) setLock(view, w, null); });
+  input.addEventListener('input', () => { syncSendB(view, w); if (suggestCmd(view, w)) return; suggestAt(view, w); if (view.at.hidden || view.atMode === 'emote') suggestEmote(view, w); if (!input.value.trim() && view.lock && (view.lock.kind === 'at' || view.lock.kind === 'emote')) setLock(view, w, null); });
   list.append(...f.msgs.map(lineEl).filter(Boolean));
   // the chat's text size: Chat text size, times this chat's own (Chat Stage, Chat Rail and Blow up make one bigger, on its view)
   view.sizeObs = new MutationObserver(() => fitSize(view));
@@ -985,6 +985,42 @@ function renderLock(view, w){
     : [element('span', 'all-rb-t', 'Mentioning on ', element('b', { class: 'all-rb-site' }, p), ` · ${p} names only`)];
   bar.replaceChildren(element('i', { class: 'all-rb-i', html: l.kind === 'reply' ? icon.reply : l.kind === 'emote' ? SMILEY : icon.at }), ...words,
     element('button', { type: 'button', class: 'all-rb-x', title: 'Cancel (Esc)', 'aria-label': 'Cancel', html: icon.close, dataset: { cmd: 'all.unlock' }, onclick: () => { setLock(view, w, null); view.input.focus(); } }));
+}
+// / at the start of the box: the commands of the site it sends on (or is locked to) that you can use there (the site
+// module's chatCommands: mods' where you moderate, the streamer's in your own channel), the ones starting with what's typed
+const CMD_SHOWN = 4;
+function suggestCmd(view, w){
+  const v = view.input, upto = v.value.slice(0, v.selectionStart ?? v.value.length), mm = /^\/([a-z]*)$/i.exec(upto);
+  const ch = mm && ((view.lock && view.lock.ch) || sendSite(w)), cmds = ch ? platform(ch).chatCommands || [] : [];
+  if (!mm || !cmds.length){ if (view.atMode === 'cmd'){ view.at.hidden = true; view.atMode = ''; } return false; }
+  const me = meOn(platOf(ch)), host = !!me && platform(ch).handle(ch).toLowerCase() === me, mod = host || youMod(ch), q = mm[1].toLowerCase();
+  const list = cmds.filter(c => (c.who === 'all' || (c.who === 'mod' && mod) || (c.who === 'host' && host)) && c.name.startsWith(q));
+  view.atList = list; view.atSel = 0; view.atQ = q; view.atMode = 'cmd'; view.cmdCh = ch;
+  if (!list.length){ view.at.hidden = true; return true; }
+  renderCmds(view);
+  view.at.hidden = false;
+  return true;
+}
+function renderCmds(view){
+  const site = platOf(view.cmdCh), q = view.atQ, from = Math.max(0, Math.min(view.atSel - CMD_SHOWN + 1, view.atList.length - CMD_SHOWN));
+  const head = { all: 'Everyone', mod: 'Moderators', host: 'Streamer' }, rows = [];
+  view.atList.slice(from, from + CMD_SHOWN).forEach((c, k) => {
+    const i = from + k, prev = view.atList[i - 1];
+    if (!k || !prev || prev.who !== c.who) rows.push(element('div', 'all-cmd-g', head[c.who] || ''));
+    rows.push(element('button', { type: 'button', role: 'option', class: 'all-ati all-cmd' + (i === view.atSel ? ' on' : ''), 'aria-selected': String(i === view.atSel), dataset: { cmd: 'all.cmdPick' },
+      onmousedown: e => e.preventDefault(), onclick: () => pickCmd(view, view.w, c) },
+      element('span', 'all-cmd-n', element('b', null, '/' + c.name.slice(0, q.length)), c.name.slice(q.length)), c.args && element('span', 'all-cmd-a', c.args), element('small', { class: 'all-cmd-d', title: c.does }, c.does)));
+  });
+  view.at.replaceChildren(element('div', 'all-at-h', element('i', { class: 'pi pi-' + site }, PLAT_NAME[site][0]), `${PLAT_NAME[site]} commands`), ...rows,
+    element('div', 'all-mh', element('kbd', null, '↑'), element('kbd', null, '↓'), ' pick · ', element('kbd', null, 'Tab'), ' fills it in', view.atList.length > CMD_SHOWN ? ` · ${view.atList.length} in all, keep typing` : ''));
+}
+function pickCmd(view, w, c){
+  if (!c) return;
+  const v = view.input, rest = v.value.slice(v.selectionStart ?? v.value.length).replace(/^\S*\s*/, '');
+  v.value = '/' + c.name + ' ' + rest;
+  v.selectionStart = v.selectionEnd = c.name.length + 2;
+  view.at.hidden = true; view.atMode = '';
+  v.focus();
 }
 // @ in the box: names seen in their chats, newest first (only the locked site's while locked)
 function suggestAt(view, w){
@@ -1229,6 +1265,7 @@ function heldBy(ch){
 async function post(view, w, { ch, text, send, emotes, pics, lock, threaded }){
   const site = platOf(ch), f = feedOf(view.s);
   const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, send, emotes, pics, parts: mineParts(text, pics, emotes), ...youOn(f, site, ch), lock, threaded, state: 'sending' };
+  if (/^\/(?!me\b)[a-z]/i.test(text)) p.cmd = true;   // (a chat command: it never comes back as a line, so it shows none; /me does)
   f.msgs.push(p); addLine(view, p);
   await deliver(view, w, p);
 }
@@ -1242,11 +1279,13 @@ async function deliver(view, w, p){
   view.sending = false; syncSendB(view, w);
   if (p.state === 'seen') return;   // (its chat brought it back already)
   noteSend(p.ch, r, r === 'sent' ? '' : SEND_FAIL[r] ? SEND_FAIL[r](site) : '');   // (two failures in a row: ALL's health says so)
+  if (r === 'sent' && p.cmd){ const f = feedOf(view.s), i = f.msgs.indexOf(p); if (i >= 0) f.msgs.splice(i, 1); p.state = 'dropped'; return flash(`Sent ${p.text.split(/\s/)[0]} on ${site}`); }
   if (r === 'sent'){ slowStart(p.ch); setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
   p.why = r === 'no-reply' ? `Couldn't start a reply on ${site}: the message may have scrolled out of its chat` : r === 'gone' ? `${site}'s chat isn't open`
     : (SEND_FAIL[r] || (x => `${x}'s chat didn't answer`))(site);
   p.late = r === 'no-answer';   // (it may still have gone: if its chat brings it back, the real line takes its place)
   setMine(p, 'failed');
+  if (p.cmd) addLine(view, p);   // (a command shows a line only now: why, and Retry)
   flash(`Not sent: ${p.why}`);
   if (r === 'disabled' && m && m.view) askIn(m.view, `(${modesAgent})()`).then(x => { if (x) setModes(p.ch, x); }).catch(() => {});   // (why: its modes again)
 }

@@ -8,6 +8,34 @@ const NOT_CHANNELS = new Set(['login', 'signup', 'register', 'categories', 'cate
   'subscriptions', 'messages', 'notifications', 'wallet', 'video', 'videos', 'clips', 'clip', 'terms-of-service', 'privacy-policy',
   'community-guidelines', 'dmca-policy', 'popout', 'api', 'auth', 'oauth', 'verify', 'stream', 'chatroom', 'help', 'about', 'careers', 'kick-creators', 'emotes']);
 
+// Its chat's commands, for ALL's box (/ at the start: chat/all-chat.js), as twitch.js says them. From Kick's help (KICK chat
+// commands), read 2026-10-31. /poll, /prediction and /clip open Kick's own panel (in-site/kick-commands.js does it from
+// ALL too); /user and /category, which open one in its chat, are left out.
+const KICK_COMMANDS = [
+  { name: 'clip', args: '[seconds] [title]', does: 'Clip the last moments of the stream (Kick\u2019s panel)', who: 'all' },
+  { name: 'ban', args: 'user [reason]', does: 'Ban someone from the chat', who: 'mod' },
+  { name: 'unban', args: 'user', does: 'Lift someone\u2019s ban', who: 'mod' },
+  { name: 'timeout', args: 'user time', does: 'Stop someone chatting for a while', who: 'mod' },
+  { name: 'clear', args: '', does: 'Clear the chat for everyone', who: 'mod' },
+  { name: 'slow', args: 'on seconds | off', does: 'Slow mode: time between someone\u2019s messages', who: 'mod' },
+  { name: 'followonly', args: 'on | off', does: 'Followers only', who: 'mod' },
+  { name: 'emoteonly', args: 'on | off', does: 'Emotes only', who: 'mod' },
+  { name: 'title', args: 'new title', does: 'Change the stream\u2019s title', who: 'mod' },
+  { name: 'poll', args: '', does: 'Start a poll (Kick\u2019s panel)', who: 'mod' },
+  { name: 'polldelete', args: '', does: 'Delete the poll running now', who: 'mod' },
+  { name: 'prediction', args: '', does: 'Start a prediction (Kick\u2019s panel)', who: 'mod' },
+  { name: 'subonly', args: 'on | off', does: 'Subscribers only', who: 'host' },
+  { name: 'raid', args: '', does: 'Raid another channel', who: 'host' },
+  { name: 'mod', args: 'user', does: 'Make someone a moderator', who: 'host' },
+  { name: 'unmod', args: 'user', does: 'Take someone\u2019s moderator role away', who: 'host' },
+  { name: 'vip', args: 'user', does: 'Give someone a VIP badge', who: 'host' },
+  { name: 'unvip', args: 'user', does: 'Take someone\u2019s VIP badge away', who: 'host' },
+  { name: 'og', args: 'user', does: 'Give someone an OG badge', who: 'host' },
+  { name: 'unog', args: 'user', does: 'Take someone\u2019s OG badge away', who: 'host' },
+  { name: 'multi', args: 'on | off', does: 'Multistreaming (Kick Partners)', who: 'host' },
+  { name: 'kpp', args: 'on | off', does: 'Kick Partner Program income (Kick Partners)', who: 'host' }
+];
+
 const kick = {
   id: 'kick', name: 'Kick', letter: 'K',
   // What it can do in the app
@@ -21,6 +49,7 @@ const kick = {
   emoteLists: true,      // the app asks it for a channel's emotes (new emotes glow)
   pageCommands: true,    // /clip, /poll and /prediction in its chat (in-site/kick-commands.js)
   likes: false,          // a like button on its streams
+  chatCommands: KICK_COMMANDS,   // its chat's commands, for ALL's / list (above)
   // A name in ALL (chat/all-chat.js) as its own chat shows it: m a message (feed-parse.js), light whether the app's
   // theme is light, look what the site's chat page says about its colours (YouTube's: youtube.js). -> { color, bg? }
   // (bg: a name on a pill), or null: ALL picks one. Kick shows the colour each account has, as it is

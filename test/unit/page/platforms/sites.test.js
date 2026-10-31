@@ -234,3 +234,20 @@ test('a name in ALL as each site\'s own chat shows it (nameStyle), on a dark the
   assert.deepEqual([yt(['mod'], { look }), yt(['sub'], { look }), yt([], { look })], [{ color: 'rgb(94, 132, 241)' }, { color: 'rgb(15, 157, 88)' }, { color: 'rgba(255,255,255,0.7)' }]);
   assert.deepEqual(yt(['mod'], { look, light: true }), { color: '#065fd4' }, 'a dark page\'s colours aren\'t used on a light theme');
 });
+
+test('each site\'s chat commands for ALL\'s / list: a name, what goes after it, what it does, who can use it; none that only open a panel out of sight', () => {
+  const ok = c => /^[a-z]+$/.test(c.name) && typeof c.args === 'string' && typeof c.does === 'string' && c.does.length > 5 && ['all', 'mod', 'host'].includes(c.who);
+  for (const p of [kick, twitch]) {
+    assert.ok(p.chatCommands.length > 10, p.id);
+    assert.deepEqual(p.chatCommands.filter(c => !ok(c)), [], p.id);
+    assert.equal(new Set(p.chatCommands.map(c => c.name)).size, p.chatCommands.length, p.id + ': each once');
+    assert.deepEqual(['all', 'mod', 'host'].map(w => p.chatCommands.filter(c => c.who === w).length > 0), [true, true, true], p.id + ': for everyone, mods and the streamer');
+  }
+  assert.deepEqual(youtube.chatCommands, [], 'YouTube\'s chat has none');
+  const names = p => p.chatCommands.map(c => c.name);
+  for (const panel of ['poll', 'prediction', 'goal', 'user', 'vote', 'gift', 'requests', 'sharedchat']) assert.ok(!names(twitch).includes(panel), 'Twitch: ' + panel);
+  for (const panel of ['user', 'category']) assert.ok(!names(kick).includes(panel), 'Kick: ' + panel);
+  assert.ok(['clip', 'poll', 'prediction'].every(n => names(kick).includes(n)), 'Kick\'s own panels open from ALL too');
+  assert.deepEqual(['timeout', 'ban', 'slow'].map(n => twitch.chatCommands.find(c => c.name === n).who), ['mod', 'mod', 'mod']);
+  assert.equal(twitch.chatCommands.find(c => c.name === 'vip').who, 'host');
+});

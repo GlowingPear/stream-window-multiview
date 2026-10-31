@@ -440,3 +440,12 @@
 .all-poll-p{flex:none;font-variant-numeric:tabular-nums;font-size:11px}
 .all-poll-m{display:block;margin-top:5px;color:var(--muted);font-size:10.5px}
 @media (prefers-reduced-motion:reduce){.all-poll-bar{transition:none}}
+
+/* / at the start of ALL's box: the site's commands, by who can use them */
+.all-cmd-g{padding:6px 8px 2px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in srgb,var(--muted) 80%,transparent)}
+.all-ati.all-cmd{display:grid;grid-template-columns:auto 1fr;column-gap:8px;row-gap:1px;align-items:baseline}
+.all-cmd-n{font:600 12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text)}
+.all-cmd-n b{color:var(--accent);font-weight:700}
+.all-cmd-a{font:12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.all-ati.all-cmd small.all-cmd-d{grid-column:1/-1;margin-left:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.all-at-h .pi{width:14px;height:14px;font-size:8.5px;margin-right:5px;vertical-align:-2px}
