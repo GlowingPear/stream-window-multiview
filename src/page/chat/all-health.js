@@ -3,7 +3,7 @@ import { feedParse } from './feed-parse.js';
 import { wins } from '../core.js';
 import { lineProbe } from '../in-site/feed.js';
 import { devError } from '../panels/developer/developer.js';
-import { PLAT_NAME, platOf } from '../platforms/platforms.js';
+import { PLAT_NAME, chLabel, platOf } from '../platforms/platforms.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { store } from '../shared/store.js';
@@ -48,7 +48,7 @@ function broke(ch, what, why){
   const h = hOf(ch);
   if (h.state === 'broken' && h.what === what) return;
   Object.assign(h, { state: 'broken', what, why, since: Date.now(), hidden: false });
-  devError('chat', `ALL · ${PLAT_NAME[platOf(ch)]}`, why);
+  devError('chat', `ALL · ${PLAT_NAME[platOf(ch)]} · ${chLabel(ch)}`, why);
   store.changed('allHealth');
 }
 function healed(ch){
@@ -73,7 +73,7 @@ async function checkAll(){
       // nor while you've just sent there (loading it again would hold your message up)
       if (h.odd >= 2 && Date.now() - h.sentAt > 60000){
         h.odd = 0;
-        if (h.state === ''){ h.state = 'retrying'; devError('chat', `ALL · ${site}`, `Read nothing while its chat had new messages: loading that chat again`); reloadView(w.view); }
+        if (h.state === ''){ h.state = 'retrying'; devError('chat', `ALL · ${site} · ${chLabel(w.channel)}`, `Read nothing while its chat had new messages: loading that chat again`); reloadView(w.view); }
         else broke(w.channel, 'read', `ALL isn't reading ${site}'s messages: its chat has new ones`);
       }
     }
