@@ -439,9 +439,8 @@ test('a window\'s chat pop-up and mod view buttons open app windows', T, async (
   });
   await openChannel(win, 'alpha', 'chat');
   const opened = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map(w => w.webContents.getURL()).filter(u => /^https:/.test(u) && !/robots\.txt/.test(u)));   // (not the hidden live checker)
-  await win.waitForSelector('#stage .win.chat [data-a=mod]:not([hidden])');
-  await win.click('#stage .win.chat [data-a=popchat]');
-  await win.click('#stage .win.chat [data-a=mod]');
+  await win.waitForSelector('#stage .win.chat [data-a=mod]:not([hidden])', { state: 'attached' });   // (on the bar, or in its ⋯ when the chat is narrow)
+  for (const a of ['popchat', 'mod']) await win.$eval(`#stage .win.chat [data-a=${a}]`, b => b.click());
   for (let i = 0; i < 50 && (await opened()).length < 2; i++) await new Promise(r => setTimeout(r, 100));
   assert.deepEqual((await opened()).sort(), ['https://dashboard.kick.com/moderator/alpha', 'https://kick.com/popout/alpha/chat']);
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().filter(w => /^https:/.test(w.webContents.getURL()) && !/robots/.test(w.webContents.getURL())).forEach(w => w.close()));
