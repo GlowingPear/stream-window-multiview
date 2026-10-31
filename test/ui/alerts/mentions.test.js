@@ -498,3 +498,38 @@ test('Why didn\'t this alert? (explain): how the helper read each line when it c
   await page.evaluate(() => window.__kmvMention.take());
   assert.deepEqual((await why(5)).slice(0, 2), ['gus', 'off']);
 });
+
+test('asleep while the site\'s connection is read (setScreen): it reads nothing, still tags lines (by the site\'s id, drawn later too) and notes clicks; awake again, what\'s there is old', async t => {
+  const app = await openApp(t);
+  const js = await app.evaluate(() => window.chatAgentJs);
+  const page = await app.context().newPage();
+  await page.setContent(`<div id="chat">${row('regular', 'hello')}</div>`);
+  await page.evaluate(js);
+  await page.evaluate(() => { window.__kmvMention.setMe('mod_me', ['pear']); window.__kmvMention.setWatch(true); window.__kmvMention.setFeed(true); });
+  await page.waitForTimeout(2800);
+  const say = (n, b) => page.evaluate(h => document.getElementById('chat').insertAdjacentHTML('beforeend', h), row(n, b));
+  await page.evaluate(() => window.__kmvMention.setScreen(false));
+  assert.equal(await page.evaluate(() => window.__kmvMention.screen()), false);
+  await say('ann', '@mod_me hi');
+  await say('bob', 'pear pie');
+  let q = await page.evaluate(() => window.__kmvMention.take());
+  assert.deepEqual([q.m, q.l, q.f, q.s], [[], [], [], []], 'nothing read');
+  assert.equal(await page.evaluate(() => window.__kmvMention.count()), 0);
+  await page.mouse.click(5, 5);
+  assert.ok((await page.evaluate(() => window.__kmvMention.take())).c > 0, 'a click is still noted');
+  // a line the feed flagged, by its id: tagged when it's drawn (here: an element with that id, as YouTube's are)
+  await page.evaluate(() => window.__kmvMention.mark('spammer: buy views', 'Likely spam: test', '#ff5f5f', 'spam', 'msg-7'));
+  await page.evaluate(() => document.getElementById('chat').insertAdjacentHTML('beforeend', '<div class="row" id="msg-7"><b>spammer</b>: <span>buy views now</span></div>'));
+  await page.evaluate(() => window.__kmvMention.take());
+  assert.equal(await page.evaluate(() => { const t = document.querySelector('#msg-7 [data-kmv-spam]'); return t && t.title; }), 'Likely spam: test', 'found by its id, not its words');
+  // its id when it's explained (the app's answer for it)
+  const e = await page.evaluate(() => window.__kmvMention.explain(document.getElementById('msg-7')));
+  assert.deepEqual([e.found, e.id, e.screen], [true, 'msg-7', false]);
+  // awake: what's already there is old, new lines are read again
+  await page.evaluate(() => window.__kmvMention.setScreen(true));
+  await page.evaluate(() => window.__kmvMention.setScreen(true));   // (again: nothing changes)
+  await page.waitForTimeout(2800);
+  await say('cat', '@mod_me back');
+  q = await page.evaluate(() => window.__kmvMention.take());
+  assert.deepEqual(q.m.map(m => m.sender), ['cat'], 'only the new one');
+});

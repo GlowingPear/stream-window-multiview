@@ -121,6 +121,7 @@ const twitch = {
   banCmd: login => `/ban ${login}`,
   deleteMods: false,     // (a mod's message can't be deleted by another mod)
   spamAlerts: true,
+  feedReaders: true,     // the alerts, chat over the stream and counts read its chat's connection (chat/chat-feed.js)
   emoteLists: true,
   pageCommands: false,
   likes: false,

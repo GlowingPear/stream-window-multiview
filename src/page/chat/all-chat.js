@@ -1,11 +1,11 @@
 import { alerts, clearAlert } from '../alerts/alerts.js';
-import { spamFromFeed } from '../alerts/spam-alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { emoteBox } from './all-box.js';
 import { SMILEY, addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, refreshEmotes, renderEmoteList,
   renderRecent, suggestEmote, useRecent, withEmotes } from './all-emotes.js';
 import { chatLoaded, healthState, noteRaw, noteSend, reportHealth } from './all-health.js';
 import { blowOn, blowUp } from './blow-up.js';
+import { feedLoaded, fromFeed } from './chat-feed.js';
 import { chatBoxName } from './chat-name.js';
 import { chatZoom } from './chat-zoom.js';
 import { sampleIn } from './event-samples.js';
@@ -132,7 +132,7 @@ function ingest(w, json, quiet = false, shown = false){
     mentionOf(m, w.channel);
     if (m.kind === 'message' && isBot(m)) m.bot = true;
     if (m.kind === 'message') mineSeen(f, m);
-    if (m.kind === 'message' && !quiet && !shown && !m.bot && m.login !== meOn(m.site) && platform(w.channel).spamAlerts) spamFromFeed(w, m.sender, spamText(m), m.t);   // (its page may not draw it while ALL shows)
+    if (!quiet && !shown) fromFeed(w, m);   // (the alerts, chat over the stream, counts: its page may not draw it while ALL shows)
     f.msgs.push(m); if (m.id) f.byId.set(m.site + ':' + m.id, m);
     if (m.site === 'youtube' && m.kind === 'message') ytLookSoon(w, m);
     if (shown){ added++; if (m.site === 'kick' && m.pics && m.pics.some(p => (!p.url || p.icon) && !kickIcons.has(kickIconKey(p)))) kickIconsSoon(w); return; }
@@ -1282,7 +1282,7 @@ function openLineMenu(m, at){
     window.kmv && window.kmv.translate && cw && trShown(m.ch) && item('Stop translating', TRANSLATE, () => translateSite(m.ch, 'stop'), { cmd: 'all.menuTranslateStop' }),
     devOn && element('hr'),
     devOn && item('Copy message data', icon.code, () => copyData(m), { cmd: 'all.menuData' }),
-    devOn && cw && m.id && item('Why didn\'t this alert?', icon.alert, () => showWhy(cw, `(${messageHtml})(${JSON.stringify(m.id)}, true)`), { cmd: 'all.menuWhy' }),
+    devOn && cw && m.id && item('Why didn\'t this alert?', icon.alert, () => showWhy(cw, `(${messageHtml})(${JSON.stringify(m.id)}, true)`, m), { cmd: 'all.menuWhy' }),
     devOn && cw && item(`Copy ${site}'s chat HTML`, icon.code, () => copyChatHtml(cw), { cmd: 'all.menuChatHtml' }),
     devOn && cw && m.id && item('Copy message HTML', icon.code, () => askIn(cw.view, `(${messageHtml})(${JSON.stringify(m.id)})`).then(h => (h ? copy(h, 'Copied the message\'s HTML') : flash(`Couldn't find it in ${site}'s chat (it may have scrolled out)`))).catch(() => flash('Couldn\'t copy it')), { cmd: 'all.menuHtml' }),
     mod && modUrl(m.ch) && item(`Open ${site} mod view`, icon.mod, () => openModView(m.ch), { cmd: 'all.menuModView' })].filter(x => x instanceof Node));   // (only what applies: a hidden item is false)
@@ -1654,28 +1654,30 @@ function syncAll(){
     feedOn(w, allTabFor(w));
   });
 }
-// A chat page hands over its messages while ALL reads it (w.feedOn) or spam alerts do (w.feedSpam: a chat you
-// moderate, alerts/spam-alerts.js), as its page may not draw them (out of sight behind ALL, or scrolled up)
+// A chat page hands over its messages while ALL reads it (w.feedOn) or the app's other readers do (w.feedRead: the
+// alerts, chat over the stream, counts: chat/chat-feed.js), as its page may not draw them (behind ALL, or scrolled up)
 const FEED_ON = on => `window.__kmvFeed && (window.__kmvFeed.on = ${!!on})`;
 function feedOn(w, on){
   if (!w.view || !w.ready || w.feedOn === on) return;
-  w.feedOn = on; runIn(w.view, FEED_ON(on || w.feedSpam));
+  w.feedOn = on; runIn(w.view, FEED_ON(on || w.feedRead));
   if (on) pinsNow(w, w.view);
 }
-function feedSpam(w, on){
-  if (!w.view || !w.ready || !!w.feedSpam === on) return;
-  w.feedSpam = on; runIn(w.view, FEED_ON(on || w.feedOn));
+function feedRead(w, on){
+  if (!w.view || !w.ready || !!w.feedRead === on) return;
+  w.feedRead = on; runIn(w.view, FEED_ON(on || w.feedOn));
 }
-// A chat page loaded (again): its helper, on if its window has an ALL tab (spam alerts turn it on again for theirs)
-function feedReady(w, view){ chatLoaded(w.channel); runIn(view, `(${feedAgent})();${FEED_ON(allTabFor(w))}`); sampleIn(view); w.feedOn = allTabFor(w); w.feedSpam = false; if (w.feedOn) pinsNow(w, view); }
-// What a chat ALL doesn't read handed over for spam alerts: its messages, checked (ALL's own go through ingest)
-function spamOnly(w, json){
+// A chat page loaded (again): its helper, on if its window has an ALL tab (the other readers turn it on again for theirs)
+function feedReady(w, view){ chatLoaded(w.channel); runIn(view, `(${feedAgent})();${FEED_ON(allTabFor(w))}`); sampleIn(view); w.feedOn = allTabFor(w); w.feedRead = false; feedLoaded(w); if (w.feedOn) pinsNow(w, view); }
+// What a chat ALL doesn't read handed over for the other readers (chat/chat-feed.js; ALL's own go through ingest),
+// counted for its health as ALL's are (chat/all-health.js)
+function readOnly(w, json){
   let batch; try { batch = JSON.parse(json); } catch { return; }
-  (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => feedParse.parseFeed({ s: batch.s, raw: [raw] }).forEach(m => {
-    if (m.kind === 'message' && m.login !== meOn(m.site) && !isBot({ ...m, ch: w.channel })) spamFromFeed(w, m.sender, spamText(m), m.t);
-  }));
+  (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => {
+    const got = feedParse.parseFeed({ s: batch.s, raw: [raw] });
+    if (got.length || !feedParse.leftOut(batch.s, raw)) noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0);
+    got.forEach(m => fromFeed(w, m));
+  });
 }
-const spamText = m => m.parts.filter(p => !p.emote).map(p => p.text).join('');   // (its words: as the chat's page reads them, without its emotes)
 // A pin already up when ALL starts reading a chat: the sites send pins only as they're made, so it's asked for (quietly)
 // A chat's badges' pictures came (badgesAgent): Twitch's own kept once, for every chat
 function gotBadges(ch, r){
@@ -1731,7 +1733,7 @@ const BADGE_SVG = {
 function init(){
   trSoon = soon(() => translateNow(), 300);
   readFilters();
-  fromSite('feed', (w, json) => { if (allTabFor(w)) ingest(w, json); else if (w.feedSpam) spamOnly(w, json); });
+  fromSite('feed', (w, json) => { if (allTabFor(w)) ingest(w, json); else if (w.feedRead) readOnly(w, json); });
   // Esc closes ALL's menus (the line's, Send on's)
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
@@ -1753,6 +1755,6 @@ function init(){
   window.allChat = { sender, SEND_LIMIT, modKnown, gotBadges, gotKickIcons, kickIcons, gotYtLook, ytLook: () => ytLook, liveCmds, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
-export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, feedSpam, init, modViewChs, openInspects,
-  openModViews, openPopUps, openSaves, overBox, reloadAll, sendEmote, sendSite, setAll, setLock, setSoloAll,
-  SITE_BUTTONS, siteAction, spamTag, translateSite };
+export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedRead, feedReady, init, mentionOf, modViewChs,
+  openInspects, openModViews, openPopUps, openSaves, overBox, reloadAll, sendEmote, sendSite, setAll, setLock,
+  setSoloAll, SITE_BUTTONS, siteAction, spamTag, translateSite };

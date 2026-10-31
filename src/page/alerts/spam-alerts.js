@@ -1,7 +1,8 @@
 import { alerts, clearAlert, raiseAlert, wantNotify } from './alerts.js';
 import { SmvSpam } from './spam.js';
 import { supportBanner } from './support-banner.js';
-import { feedSpam, spamTag } from '../chat/all-chat.js';
+import { spamTag } from '../chat/all-chat.js';
+import { screenSaid, supportKey, syncFeeds } from '../chat/chat-feed.js';
 import { chatOverlay, overlayIsOn } from '../chat/chat-overlay.js';
 import { GAP, colWidth, colsMode, msg, wins } from '../core.js';
 import { buildCols } from '../layout/columns.js';
@@ -92,7 +93,7 @@ function flagSpam(w, l, r, seen){
   const a = alerts.spam;
   if (a.tag){
     const why = spamWhy(r);
-    if (l.line) markLine(w, l.line, { why, abuse: r.abuse });
+    if (l.line || l.id) markLine(w, l.line || `${l.sender}: ${l.body}`, { why, abuse: r.abuse }, l.id);   // (one from the feed: by its id, once its page draws it)
     spamTag(w.channel, l.sender, l.body, why, r.abuse);   // (and in ALL)
   }
   raiseAlert(w, 'spam', seen);
@@ -100,14 +101,14 @@ function flagSpam(w, l, r, seen){
             abuse: r.abuse, unread: !seen }, `${r.abuse ? 'Abusive message' : 'Likely spam'} in ${chLabel(w.channel)}'s chat`);
   if (wantNotify('spam')) window.kmv.notifyMention({ kind: 'spam', abuse: r.abuse, channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body });
 }
-// Spam alerts › Tag the message in chat: its line in the chat's page
-const markLine = (w, line, flag) => runIn(w.view, `window.__kmvMention && window.__kmvMention.mark(${JSON.stringify(line)}, ${JSON.stringify(flag.why)}, ${JSON.stringify(alerts.spam.color)}, ${JSON.stringify(flag.abuse ? 'abuse' : 'spam')})`);
-// A message the chat's connection to the site brought (chat/all-chat.js: ALL's, or for spam alerts alone in a chat you
-// moderate): checked as it comes, as the chat's page may not draw it until it's in view (Kick's doesn't while ALL is in
-// front of it, or while it's scrolled up). The page's line for it, when it's drawn, isn't checked again.
-function spamFromFeed(w, sender, body, t){
+// Spam alerts › Tag the message in chat: its line in the chat's page (found by the site's id for it, when it has one)
+const markLine = (w, line, flag, id = '') => runIn(w.view, `window.__kmvMention && window.__kmvMention.mark(${JSON.stringify(line)}, ${JSON.stringify(flag.why)}, ${JSON.stringify(alerts.spam.color)}, ${JSON.stringify(flag.abuse ? 'abuse' : 'spam')}, ${JSON.stringify(id)})`);
+// A message the chat's connection to the site brought (chat/chat-feed.js: ALL's, or one read for the alerts alone):
+// checked as it comes, as the chat's page may not draw it until it's in view (Kick's doesn't while ALL is in front of
+// it, or while it's scrolled up). The page's line for it, when it's drawn, isn't checked again.
+function spamFromFeed(w, sender, body, t, id = ''){
   if (!alerts.spam.on || !w || !String(body || '').trim()) return;
-  spamCheck(w, [{ sender, body, t, line: null }]);
+  spamCheck(w, [{ sender, body, t, line: null, id }]);
 }
 // Bring a chat into view (and flash it).
 function revealChat(ch){
@@ -133,7 +134,7 @@ function revealWin(c){
 let polling = false;
 async function pollMentions(){
   const ment = mentOn && mentAny(), spam = !!alerts.spam.on, sup = !!alerts.support.on, feed = overlayIsOn();
-  if (!spam) wins.forEach(w => { if (w.feedSpam) feedSpam(w, false); });   // (spam alerts off: chats stop handing over their messages for them)
+  syncFeeds();                                                  // (each chat hands over its messages while something reads them)
   if ((!ment && !spam && !sup && !feed) || polling) return;
   polling = true;
   try { await pollChats(ment, spam); } finally { polling = false; }
@@ -153,8 +154,9 @@ function supportText(s){
     default: return '';
   }
 }
-function supportFrom(w, list){
+function supportFrom(w, list, screen = false){
   for (const s of list || []){
+    if (screen && s.who && screenSaid(w.channel, 'support', s.who, supportKey(s))) continue;   // (the site's connection said it first)
     const what = supportText(s);
     if (!what || !s.who) continue;
     const item = { channel: w.channel, label: chLabelP(w.channel), sender: String(s.who).slice(0, 40), body: what, kind: 'support', quoted: '', t: s.t || Date.now(), unread: true };
@@ -173,9 +175,8 @@ async function pollChats(ment, spam){
     if (q === null){ injectMention(w); continue; }          // chat reloaded: set it up again
     if (!q) continue;
     (q.k || []).forEach(n => firstSpoke(w.channel + '\n' + n, 0));
-    if (spam) feedSpam(w, await modChat(w));                  // (a chat you moderate: its messages as they come, drawn or not)
     if (spam && q.l && q.l.length) await spamCheck(w, q.l, q.c);
-    if (alerts.support.on && q.s && q.s.length) supportFrom(w, q.s);
+    if (alerts.support.on && q.s && q.s.length) supportFrom(w, q.s, true);
     if (q.f && q.f.length) chatOverlay(w, q.f);                // chat over the stream (chat/chat-overlay.js)
     if (q.c){                                                 // you clicked or typed in the chat: what came before is seen
       if (w.alert && w.alert.since <= q.c) clearAlert(w);
@@ -183,19 +184,24 @@ async function pollChats(ment, spam){
     }
     const bots = botsFor('mention', w.channel);
     (q.m || []).filter(m => !SmvSpam.ignored(m.sender, bots)).forEach(m => {
-      const looking = (document.hasFocus() && document.activeElement === w.view) || (q.c && (m.t || 0) <= q.c);   // you're in that chat right now
-      const item = { channel: w.channel, label: chLabelP(w.channel), sender: m.sender, body: m.body, kind: m.kind, quoted: m.quoted || '', t: m.t || Date.now(),
-                     unread: !looking };
-      if (m.kind === 'word') item.word = m.word;
-      // emotes in the message (and the message it replies to): kept with it, their names in its text
-      const parts = cleanParts(m.parts), qparts = cleanParts(m.qparts);
-      if (parts){ item.parts = parts; item.body = partsText(parts); }
-      if (qparts){ item.qparts = qparts; item.quoted = partsText(qparts); }
-      if (wantNotify('mention')) window.kmv.notifyMention(item);
-      addNote(item, `${item.sender} ${item.kind === 'reply' ? 'replied to you' : item.kind === 'word' ? `said “${item.word}”` : 'mentioned you'} in ${chLabel(item.channel)}`);
-      raiseAlert(w, 'mention', looking);
+      if (screenSaid(w.channel, 'mention', m.sender, m.parts ? partsText(cleanParts(m.parts) || []) || m.body : m.body)) return;   // (the site's connection said it first)
+      mentionAlert(w, m, (document.hasFocus() && document.activeElement === w.view) || (q.c && (m.t || 0) <= q.c));   // (looking: you're in that chat right now)
     });
   }
+}
+// A message to you (m: { sender, body, kind: 'reply' | 'mention' | 'word', word?, quoted, t, parts?, qparts? }), from the
+// chat's screen or its feed (chat/chat-feed.js): under the bell, a desktop notification, and its window lit
+function mentionAlert(w, m, looking){
+  const item = { channel: w.channel, label: chLabelP(w.channel), sender: m.sender, body: m.body, kind: m.kind, quoted: m.quoted || '', t: m.t || Date.now(),
+                 unread: !looking };
+  if (m.kind === 'word') item.word = m.word;
+  // emotes in the message (and the message it replies to): kept with it, their names in its text
+  const parts = cleanParts(m.parts), qparts = cleanParts(m.qparts);
+  if (parts){ item.parts = parts; item.body = partsText(parts); }
+  if (qparts){ item.qparts = qparts; item.quoted = partsText(qparts); }
+  if (wantNotify('mention')) window.kmv.notifyMention(item);
+  addNote(item, `${item.sender} ${item.kind === 'reply' ? 'replied to you' : item.kind === 'word' ? `said “${item.word}”` : 'mentioned you'} in ${chLabel(item.channel)}`);
+  raiseAlert(w, 'mention', !!looking);
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
@@ -207,4 +213,5 @@ function init(){
   window.supportFrom = (ch, list) => supportFrom(wins.find(w => w.kind === 'chat' && w.channel === ch), list);   // for the tests
 }
 
-export { botsFor, forgetChat, init, pollMentions, revealChat, revealWin, spamFirst, spamFromFeed, spamOpts };
+export { botsFor, forgetChat, init, mentionAlert, pollMentions, revealChat, revealWin, spamFirst, spamFromFeed,
+  spamOpts, supportFrom };
