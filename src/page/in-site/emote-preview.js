@@ -87,7 +87,7 @@ function emoteAgent(){
       const old = () => { const t = el('textarea'); t.value = t0; t.style.cssText = 'position:fixed;left:-999px'; root.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch {} t.remove(); };
       try { navigator.clipboard.writeText(t0).then(done, old); } catch { old(); }
     });
-    pic2.title = e.animated ? 'Copy the picture (as a still picture: the clipboard has no moving ones)' : 'Copy the picture';
+    pic2.title = e.animated ? 'Copy the picture (it pastes moving where files can be pasted, as in chat apps)' : 'Copy the picture';
     pic2.addEventListener('click', () => { (example && exSend ? exSend : send)('copy', { url: e.big, small: e.small, name: e.name }); said(pic2, 'Copied', 'Copy image'); });
     dl.addEventListener('click', () => {
       if (example){ said(dl, 'Only an example', 'Download'); return; }
