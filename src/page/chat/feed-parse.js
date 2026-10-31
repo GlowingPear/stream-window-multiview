@@ -339,6 +339,15 @@ function ytPics(list){
     return url ? { url, title: (r.tooltip || r.accessibility && r.accessibility.accessibilityData && r.accessibility.accessibilityData.label || 'Member') } : null;
   }).filter(Boolean);
 }
+// A YouTube poll: { kind: 'poll', state ('open', 'update'), id, question, meta (its "who · how many votes" line),
+// choices: [{ text, ratio (0 to 1: of the votes, 0 before any) }] }
+const ytWords = t => (t && (t.simpleText || ytText(Array.isArray(t.runs) ? t.runs : []))) || '';   // (a text YouTube gives as simpleText or runs)
+function ytPoll(p, state){
+  const h = (p.header && p.header.pollHeaderRenderer) || {}, id = String(p.liveChatPollId || '');
+  const choices = (Array.isArray(p.choices) ? p.choices : []).map(c => ({ text: ytWords(c && c.text).trim(), ratio: Math.min(1, Math.max(0, +(c && c.voteRatio) || 0)) })).filter(c => c.text);
+  if (!id || !choices.length) return null;
+  return { site: 'youtube', kind: 'poll', state, id, t: Date.now(), question: ytWords(h.pollQuestion).trim(), meta: ytWords(h.metadataText).replace(/\s+/g, ' ').trim(), choices };
+}
 function parseYouTube(action){
   if (!action || typeof action !== 'object') return null;
   // a message deleted: taken away, or marked deleted ("Message deleted" where it was)
@@ -353,6 +362,13 @@ function parseYouTube(action){
   }
   if (action.removeBannerForLiveChatCommand) return { site: 'youtube', kind: 'unpin', id: action.removeBannerForLiveChatCommand.targetActionId || '', t: Date.now() };
   if (action.markChatItemsByAuthorAsDeletedAction) return { site: 'youtube', kind: 'clear', userId: action.markChatItemsByAuthorAsDeletedAction.externalChannelId, t: Date.now() };
+  // all of someone's messages taken away (YouTube hides them, or a moderator removed them): as a ban here
+  if (action.removeChatItemByAuthorAction) return action.removeChatItemByAuthorAction.externalChannelId ? { site: 'youtube', kind: 'clear', userId: String(action.removeChatItemByAuthorAction.externalChannelId), t: Date.now() } : null;
+  // a poll: opened over the chat, its votes as they come, closed
+  const poll = (action.showLiveChatActionPanelAction && (((action.showLiveChatActionPanelAction.panelToShow || {}).liveChatActionPanelRenderer || {}).contents || {}).pollRenderer)
+    || (action.updateLiveChatPollAction && (action.updateLiveChatPollAction.pollToUpdate || {}).pollRenderer);
+  if (poll) return ytPoll(poll, action.showLiveChatActionPanelAction ? 'open' : 'update');
+  if (action.closeLiveChatActionPanelAction) return action.closeLiveChatActionPanelAction.targetPanelId ? { site: 'youtube', kind: 'poll', state: 'close', id: String(action.closeLiveChatActionPanelAction.targetPanelId), t: Date.now() } : null;
   // (a message YouTube held back, let through: it takes the place of its stand-in, which ALL leaves out; as the
   // stand-in's id, so one already here isn't shown twice)
   const put = action.replaceChatItemAction, item = (action.addChatItemAction && action.addChatItemAction.item) || (put && put.replacementItem); if (!item) return null;
@@ -398,7 +414,7 @@ const KNOWN = {
   twitch: { PRIVMSG: 'a message', 'PRIVMSG:reply': 'a reply', 'PRIVMSG:bits': 'a cheer', 'PRIVMSG:reward': 'a reward redeemed', 'PRIVMSG:highlighted-message': 'a highlighted message',
     'USERNOTICE:sub': 'a sub', 'USERNOTICE:resub': 'a resub', 'USERNOTICE:subgift': 'a gifted sub', 'USERNOTICE:submysterygift': 'gifted subs', 'USERNOTICE:raid': 'a raid',
     'USERNOTICE:announcement': 'an announcement', 'USERNOTICE:viewermilestone': 'a watch streak', 'USERNOTICE:giftpaidupgrade': 'a gifted sub kept going',
-    'USERNOTICE:primepaidupgrade': 'a Prime sub kept going', 'USERNOTICE:bitsbadgetier': 'a bits badge', 'USERNOTICE:communitypayforward': 'a gift sub paid forward', CLEARMSG: 'a message deleted', 'CLEARCHAT:timeout': 'a timeout',
+    'USERNOTICE:primepaidupgrade': 'a Prime sub kept going', 'USERNOTICE:bitsbadgetier': 'a bits badge', 'USERNOTICE:communitypayforward': 'a gift sub paid forward', 'USERNOTICE:sharedchatnotice': 'another channel’s sub, gift or raid in a shared chat (as Twitch words it)', CLEARMSG: 'a message deleted', 'CLEARCHAT:timeout': 'a timeout',
     'CLEARCHAT:ban': 'a ban', 'CLEARCHAT:all': 'the chat cleared', 'hermes:pin-message': 'a pin', 'hermes:unpin-message': 'a pin taken down', ROOMSTATE: 'the chat’s modes (above the box)', 'hermes:updated_room': 'the chat’s modes (above the box)', 'hermes:moderation_action': 'who a moderator was (to moderators)',
     'hermes:reward-redeemed': 'a reward redeemed (without text)', 'hermes:create': 'a shoutout',
     'hermes:raid_update_v2': 'a raid getting ready (one line, counting down)', 'hermes:raid_go_v2': 'a raid going (its line: Open)', 'hermes:raid_cancel_v2': 'a raid called off (its line says so)',
@@ -407,6 +423,8 @@ const KNOWN = {
     'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
     'addChatItemAction:giftMessageViewModel': 'a gift', 'replaceChatItemAction:liveChatTextMessageRenderer': 'a held message let through',
     removeChatItemAction: 'a message deleted', markChatItemAsDeletedAction: 'a message deleted (marked)', markChatItemsByAuthorAsDeletedAction: 'a ban or timeout',
+    removeChatItemByAuthorAction: 'all of someone’s messages taken away (as a ban)', 'showLiveChatActionPanelAction': 'a poll opened (its card over ALL)', updateLiveChatPollAction: 'a poll’s votes (its card)',
+    closeLiveChatActionPanelAction: 'a poll closed (its card goes)',
     'addBannerToLiveChatCommand:liveChatBannerRenderer': 'a pin', removeBannerForLiveChatCommand: 'a pin taken down' }
 };
 
@@ -433,11 +451,14 @@ const IGNORED = {
     'hermes:channel-last-viewed-content-updated': 'what you last watched', 'hermes:global-last-viewed-content-updated': 'what you last watched',
     'hermes:mystery-gift-purchase': 'gifted subs being bought (the gift is USERNOTICE:submysterygift)',
     'hermes:update-message': 'a message edited (it carries only the message’s id, not its new words)', 'hermes:?': 'the connection’s own (no type)',
+    'hermes:extension_message': 'an extension’s own message (its panel in Twitch’s chat)', 'hermes:chat_rich_embed': 'a link’s preview card (the link is in its message)',
     ...Object.fromEntries(['slow_on', 'slow_off', 'followers_on', 'followers_on_zero', 'followers_off', 'subs_on', 'subs_off', 'emote_only_on', 'emote_only_off', 'r9k_on', 'r9k_off']
       .map(n => ['NOTICE:' + n, 'the chat’s modes (shown above the box)'])) },
   youtube: { 'addChatItemAction:liveChatPlaceholderItemRenderer': 'an empty stand-in for a message YouTube holds back (for review; let through, replaceChatItemAction brings it)',
     'addChatItemAction:liveChatViewerEngagementMessageRenderer': 'YouTube’s own notice (welcome, guard your privacy)',
-    liveChatReportPresenceCommand: 'YouTube’s own (that you’re in the chat)', liveChatReportModerationStateCommand: 'YouTube’s own (moderation state)', elementsCommand: 'YouTube’s own (parts of its page)' }
+    liveChatReportPresenceCommand: 'YouTube’s own (that you’re in the chat)', liveChatReportModerationStateCommand: 'YouTube’s own (moderation state)', elementsCommand: 'YouTube’s own (parts of its page)',
+    addInteractivityWidgetAction: 'YouTube’s floating note of who sent a gift (the gift is its own line)', updateOrAddInteractivityWidgetAction: 'YouTube’s floating note of who sent a gift (the gift is its own line)',
+    'replaceChatItemAction:liveChatPlaceholderItemRenderer': 'a stand-in for a held message, replaced by another (the message, let through, comes on its own)' }
 };
 // Why ALL leaves a kind out, or '' (Twitch's numbered replies are the connection's own too, and all its hype train's news)
 const ignoredWhy = (site, kind) => (IGNORED[site] && IGNORED[site][kind]) || (site === 'twitch' && /^\d{3}$/.test(kind) ? 'the connection’s own'

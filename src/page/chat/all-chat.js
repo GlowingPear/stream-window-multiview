@@ -116,6 +116,7 @@ function ingest(w, json, quiet = false, shown = false){
     if (m.kind === 'pin' || m.kind === 'unpin') return setPin(f, s, w.channel, m, quiet);
     if (m.kind === 'modes') return setModes(w.channel, { modes: m.modes });
     if (m.kind === 'raid') return raidNews(f, view, m, w);
+    if (m.kind === 'poll') return pollNews(s, w.channel, m);
     if (m.id && f.byId.has(m.site + ':' + m.id)) return;   // (one it has: YouTube sends its recent ones again when its chat is rebuilt or switches view)
     m.ch = w.channel;
     if (m.giftTo && giftTo(f, m)) return;   // (one of the gifted subs announced just before: its name goes on that line)
@@ -752,12 +753,13 @@ function buildView(w){
   const ep = element('div', { class: 'pop all-ep', role: 'dialog', 'aria-label': 'Emotes', hidden: true });
   const recent = element('div', { class: 'all-re', role: 'toolbar', 'aria-label': 'Emotes you used last', hidden: true });
   const pins = element('div', { class: 'all-pins', hidden: true, role: 'region', 'aria-label': 'Pinned messages' });
+  const poll = element('div', { class: 'all-poll', hidden: true, role: 'region', 'aria-label': 'Poll' });
   const pinChip = element('button', { type: 'button', class: 'all-pinchip', hidden: true, dataset: { cmd: 'all.pins' },
     onclick: () => { view.pinsShown = !view.pinsShown; renderPins(view); } });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
-  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, filt), health, pins, element('div', 'all-lw', list, more), empty,
+  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, filt), health, pins, poll, element('div', 'all-lw', list, more), empty,
     element('div', 'all-cmp', bar, modes, recent, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm, ecard);
-  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, pinChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, recent, sendB, w, ends, atEnd: true, lock: null, atList: [], atSel: 0, atMode: '' };
+  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, poll, pinChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, recent, sendB, w, ends, atEnd: true, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
   closeOnOutside(fm, { button: filt });
   el.addEventListener('pointerdown', () => allSeen(w));
@@ -798,7 +800,7 @@ function buildView(w){
 // of emotes you used last, then the pins' strip (the pill still says how many), then the health line (its site's badge
 // still says so, amber). Each is measured while it shows; the list's room without them is the same either way.
 const ROOM_LINES = 3, LINE_H = 27, LIST_PAD = 14;   // (a line: 14px text, 1.5 high, 3px over and under; the list's own padding)
-const YIELDS = [['health', 'all-no-health'], ['pins', 'all-no-pins'], ['recent', 'all-no-re']];   // (the last gives way first)
+const YIELDS = [['health', 'all-no-health'], ['poll', 'all-no-poll'], ['pins', 'all-no-pins'], ['recent', 'all-no-re']];   // (the last gives way first)
 function fitRoom(view){
   const el = view.el, sizes = view.yieldH || (view.yieldH = {});
   const own = YIELDS.map(([k, cls]) => {
@@ -844,6 +846,7 @@ function renderTop(view, w){
     off.length ? element('span', null, `${off.join(' and ')} ${off.length > 1 ? 'are' : 'is'} offline`) : '', element('small', null, 'New messages show here as they arrive.'));
   view.empty.hidden = !!view.list.children.length;
   renderPins(view);
+  renderPoll(view);
 }
 
 /* ---- sending: Send on [K ▾] (in-site/send.js types it into that site's own chat box) ---- */
@@ -1336,6 +1339,32 @@ function seeIt(ch){
   showTab(c);
 }
 
+/* ---- A YouTube poll: a card over ALL's list while it's open (its question, each choice's share of the votes, as
+   they come), gone when YouTube closes it. Voting is in YouTube's own chat (Vote on YouTube shows it). */
+const polls = new Map();   // streamer id -> Map(channel -> its open poll: { id, question, meta, choices: [{ text, ratio }] })
+function pollNews(s, ch, m){
+  if (!s) return;
+  const all = polls.get(s.id) || new Map(), was = all.get(ch);
+  if (m.state === 'close'){ if (was && was.id === m.id) all.delete(ch); }
+  else all.set(ch, { ...m, ch, question: m.question || (was && was.id === m.id ? was.question : ''), meta: m.meta || (was && was.id === m.id ? was.meta : '') });
+  if (all.size) polls.set(s.id, all); else polls.delete(s.id);
+  const view = viewFor(s); if (view){ renderPoll(view); fitRoom(view); }
+}
+function renderPoll(view){
+  const list = [...(polls.get(view.s.id) || new Map()).values()];
+  view.poll.hidden = !list.length;
+  view.poll.replaceChildren(...list.map(p => {
+    const top = Math.max(...p.choices.map(c => c.ratio)), voted = top > 0, pct = c => Math.round(c.ratio * 100);
+    return element('div', { class: 'all-poll-card', dataset: { ch: p.ch } },
+      element('div', 'all-poll-h', element('i', { class: 'pi pi-' + platOf(p.ch) }, PLAT_NAME[platOf(p.ch)][0]), element('i', { class: 'all-poll-i', html: POLL }),
+        element('b', 'all-poll-q', p.question || 'Poll'),
+        element('button', { type: 'button', class: 'linkish all-poll-go', dataset: { cmd: 'all.pollVote' }, title: `Vote in ${PLAT_NAME[platOf(p.ch)]}\u2019s own chat`, onclick: () => seeIt(p.ch) }, `Vote on ${PLAT_NAME[platOf(p.ch)]}`)),
+      element('div', 'all-poll-cs', ...p.choices.map(c => element('div', { class: 'all-poll-c' + (voted && c.ratio === top ? ' top' : '') },
+        element('span', { class: 'all-poll-bar', style: { width: pct(c) + '%' } }), element('span', 'all-poll-t', c.text), voted && element('b', 'all-poll-p', pct(c) + '%')))),
+      p.meta && element('small', 'all-poll-m', p.meta));
+  }));
+}
+
 // ALL shows over the chat of each window that has it on. Each chat hands over its messages while its window has an ALL
 // tab, also while one of the sites' tabs shows: back on ALL, nothing said meanwhile is missing
 function syncAll(){
@@ -1408,6 +1437,7 @@ function pinsNow(w, view){
   askIn(view, `(${shownAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true, true); }).catch(() => {});   // (what it already shows)
 }
 
+const POLL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 20V12M12 20V5M19 20v-5"/></svg>';
 const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 const TRANSLATE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h9M8.5 3v2M6 5c.6 3.2 2.6 5.8 5.5 7.2M11 5c-.8 3.6-3.4 6.4-7 7.6M13 21l4-9 4 9M14.4 18h5.2"/></svg>';
 const FILTER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"/></svg>';

@@ -2106,3 +2106,35 @@ test('reloading ALL asks again for its chats\' emotes, not from the last 10 minu
   assert.deepEqual((await page.evaluate(() => window.__asked)).filter(([, fresh]) => fresh).map(([ch]) => ch).sort(), ['quietkoala', 'tw:quietkoala'], 'each chat ALL reads, asked afresh');
   assert.deepEqual((await suggest()).sort(), ['koalaNew', 'koalaWave'], 'the new one too');
 });
+
+test('a YouTube poll: a card over ALL while it\'s open, its votes as they come (the leading one brighter), Vote on YouTube shows its chat, gone when closed; someone\'s messages all taken away go from ALL', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.evaluate(now => window.smvNotes.liveStatus({ 'yt:@quietkoala': { live: true, checked: now } }), Date.now());
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'chat', ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala']));
+  await page.click('#stage .win.chat:not(.tab-hidden) .ptab.all');
+  const runs = t => ({ runs: [{ text: t }] });
+  const poll = ratios => ({ liveChatPollId: 'p1', header: { pollHeaderRenderer: { pollQuestion: runs('Which game next?'), metadataText: runs('quietkoala • 12 votes') } },
+    choices: ['Deadlock', 'Balatro'].map((t, i) => ({ text: runs(t), ...(ratios ? { voteRatio: ratios[i] } : {}) })) });
+  const yt = raw => feed(page, 'yt:@quietkoala', { s: 'youtube', raw });
+  await yt([{ showLiveChatActionPanelAction: { panelToShow: { liveChatActionPanelRenderer: { id: 'p1', contents: { pollRenderer: poll() } } } } }]);
+  const card = () => page.$eval('.all-poll', p => p.hidden ? null : { q: p.querySelector('.all-poll-q').textContent, rows: [...p.querySelectorAll('.all-poll-c')].map(c => c.textContent + (c.classList.contains('top') ? ' *' : '') + ' ' + c.querySelector('.all-poll-bar').style.width), m: (p.querySelector('.all-poll-m') || {}).textContent || '' });
+  assert.deepEqual(await card(), { q: 'Which game next?', rows: ['Deadlock 0%', 'Balatro 0%'], m: 'quietkoala • 12 votes' }, 'no votes yet: no numbers');
+  await yt([{ updateLiveChatPollAction: { pollToUpdate: { pollRenderer: poll([0.25, 0.75]) } } }]);
+  assert.deepEqual((await card()).rows, ['Deadlock25% 25%', 'Balatro75% * 75%']);
+  // Vote on YouTube: its own chat
+  await page.click('.all-poll-go');
+  assert.deepEqual(await tabs(page), ['ALL', 'K', 'T', 'Y*']);
+  await page.click('#stage .win.chat:not(.tab-hidden) .ptab.all');
+  assert.equal((await card()).q, 'Which game next?', 'still there back on ALL');
+  // another poll's close: this one stays; its own: gone
+  await yt([{ closeLiveChatActionPanelAction: { targetPanelId: 'p9' } }]);
+  assert.ok(await card());
+  await yt([{ closeLiveChatActionPanelAction: { targetPanelId: 'p1' } }]);
+  assert.equal(await card(), null);
+  // all of someone's messages taken away (not a mod here: gone)
+  const msg = (id, name, cid) => ({ addChatItemAction: { item: { liveChatTextMessageRenderer: { id, timestampUsec: String(Date.now() * 1000), authorName: { simpleText: name }, authorExternalChannelId: cid, message: runs('hello there') } } } });
+  await yt([msg('y1', '@spammy', 'UCbad'), msg('y2', '@kind', 'UCok'), msg('y3', '@spammy', 'UCbad')]);
+  assert.equal((await lines(page)).length, 3);
+  await yt([{ removeChatItemByAuthorAction: { externalChannelId: 'UCbad' } }]);
+  assert.deepEqual((await lines(page)).map(l => l.split(' | ')[1]), ['Y@kind: hello there']);
+});
