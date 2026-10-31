@@ -50,6 +50,24 @@ test('chrome.cookies: the library\'s handlers are wrapped, and a change is only 
   assert.deepEqual(sent, [['a', 'cookies.onChanged', '.kick.com'], ['all', 'tabs.onUpdated']]);
 });
 
+test('a window watched by many sessions\' extensions: its listener limit grows with them, once each', async () => {
+  const { EventEmitter } = require('events');
+  const { watchedBy } = require('../../../src/main/extensions');
+  const win = new EventEmitter(), shells = Array.from({ length: 14 }, () => ({}));
+  const warned = [], warn = w => warned.push(w.name);
+  process.on('warning', warn);
+  for (const s of shells){
+    assert.equal(watchedBy(win, s), true);
+    ['closed', 'focus', 'resized'].forEach(e => win.on(e, () => {}));   // (what the library adds for each)
+  }
+  assert.equal(watchedBy(win, shells[0]), false, 'once for each');
+  assert.equal(win.getMaxListeners(), 24);
+  assert.equal(watchedBy(new EventEmitter(), shells[0]), true, 'each window on its own');
+  await new Promise(r => setTimeout(r, 20));   // (Node says it a moment later)
+  process.off('warning', warn);
+  assert.deepEqual(warned, [], 'no memory leak warning');
+});
+
 test('an extension opens web pages and its own pages; the store window stays on the store', () => {
   const { extOpenable, storeNavOk } = require('../../../src/main/extensions');
   for (const u of ['https://example.com/welcome', 'http://example.com/', 'chrome-extension://abcdefghijklmnopabcdefghijklmnop/options.html'])
