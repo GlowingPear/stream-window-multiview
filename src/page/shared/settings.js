@@ -21,6 +21,8 @@ const SETTING_NAMES = new Set([
   'linkedOn', 'streamers', 'linkedNot', 'linkedOpts', 'linkedTip', 'linkedTabs',
   // the ALL tab of a linked streamer's chat window: the streamers it shows for, and whether bots' messages show
   'allOpen', 'allBots', 'allEvents', 'allSend', 'allTimeout',
+  'allHype',               // ALL's hype train strip: 'shown' or 'hidden' (its filter menu)
+  'allHidden',             // the sites a streamer's ALL hides (its K / T / Y switches): { [streamer id]: ['kick', …] }
   'allRecentEmotes',       // the emotes you sent from ALL last, for each site (the row over its box: chat/all-emotes.js)
   'allMyLook',             // how you looked in each chat (name, colour, badges): your line while it sends from ALL, before your first message there
   // Settings › Windows: the channel's name on stream / chat windows' title bars, and each button's place and ⋯ choice

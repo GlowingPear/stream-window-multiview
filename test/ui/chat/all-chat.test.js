@@ -2079,3 +2079,73 @@ test('names as each site\'s own chat shows them: Twitch made readable (its own c
   await look({ moderator: { svg: '<svg viewBox="0 0 16 16"><path d="M8 1l6 3v4z"/></svg>', color: 'rgb(62, 166, 255)' } });
   assert.equal(await before.evaluate(e => e.isConnected), true);
 });
+
+test('ALL\'s top bar: thin, its sites\' switches hide a site\'s lines (saved, for that streamer) and show them again; Twitch\'s hype train in a strip under it: its level, how far, the time left; a level up, an end; hidden from the filter menu', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const H = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
+  const exp = s => new Date(Date.now() + s * 1000).toISOString();
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatMessageEvent', { id: 'k1', content: 'kick says hi', type: 'message', sender: { id: 1, username: 'driftwood_7', identity: { color: '#7CFF4F' } } })] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ color: '#FF7F50', 'display-name': 'tinroof', id: 't1' }, ':tinroof!t@t PRIVMSG #quietkoala :twitch says hi')] });
+  const top = () => page.$eval('#stage .win.chat:not(.tab-hidden) .all-top', e => Math.round(e.getBoundingClientRect().height));
+  assert.ok(await top() <= 21, 'as thin as the strip');
+  // a site's switch: its lines hidden (and saved), back with another press
+  const sites = () => page.$$eval('.all-sites button', l => l.map(b => b.textContent + (b.getAttribute('aria-pressed') === 'true' ? '' : ' off')));
+  assert.deepEqual(await sites(), ['K', 'T', 'Y']);
+  await page.click('.all-sites .pi-kick');
+  assert.deepEqual(await sites(), ['K off', 'T', 'Y']);
+  assert.deepEqual((await lines(page)).map(l => l.split(' | ')[1]), ['Ttinroof: twitch says hi']);
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.allHidden'))), { s1: ['kick'] });
+  assert.match(await page.$eval('.all-sites .pi-kick', b => b.title || b.dataset.tipTitle || ''), /Show Kick in ALL/);
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('ChatMessageEvent', { id: 'k2', content: 'while hidden', type: 'message', sender: { id: 1, username: 'driftwood_7', identity: {} } })] });
+  assert.equal((await lines(page)).length, 1, 'new ones too');
+  await page.click('.all-sites .pi-kick');
+  assert.deepEqual((await lines(page)).map(l => l.split(' | ')[1].split(':')[0]), ['Kdriftwood_7', 'Ttinroof', 'Kdriftwood_7'], 'all of them back, in order');
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.allHidden')), '{}');
+  // the hype train: started
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [H('hype-train-start', { id: 'ht1', expiresAt: exp(214), isGoldenKappaTrain: false, progress: { goal: 3000, progression: 2700, level: { value: 5 } } })] });
+  const strip = () => page.$$eval('.all-hype .all-ht', l => l.map(s => ({ cls: s.className.replace('all-ht', '').trim(), text: s.textContent, fill: (s.querySelector('.all-ht-fill') || {}).style?.width || '' })));
+  let s = await strip();
+  assert.equal(s.length, 1);
+  assert.match(s[0].text, /^LV 5Hype Train90%3:3[34]$/);
+  assert.equal(s[0].fill, '90%');
+  const before = s[0].text;
+  await page.waitForTimeout(1200);
+  assert.notEqual((await strip())[0].text, before, 'the time counts down');
+  // moving along, then a level up: its flash, the time again from its new end
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [H('hype-train-progression', { id: 'ht1', progress: { goal: 3000, progression: 2950, level: { value: 5 } } })] });
+  assert.match((await strip())[0].text, /98%3:3/, 'its time kept');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [H('hype-train-level-up', { id: 'ht1', expiresAt: exp(300), progress: { goal: 3500, progression: 175, level: { value: 6 } } })] });
+  s = await strip();
+  assert.equal(s[0].cls, 'up');
+  assert.match(s[0].text, /^LV 6Level 6!5%(5:00|4:59)$/);
+  // the last half minute, then ended: how far it got
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [H('hype-train-progression', { id: 'ht1', expiresAt: exp(25), progress: { goal: 3500, progression: 2240, level: { value: 6 } } })] });
+  await page.evaluate(() => { const real = Date.now; Date.now = () => real() + 4000; });   // (past the level up's flash)
+  await page.waitForTimeout(1100);
+  assert.equal((await strip())[0].cls, 'soon last', 'amber, and its pulse');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [H('hype-train-end', { id: 'ht1', ending_reason: 'COMPLETED' })] });
+  s = await strip();
+  assert.deepEqual([s[0].cls, s[0].text, s[0].fill], ['done', 'LV 6Hype Train overReached level 6', '']);
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [H('hype-train-progression', { id: 'ht1', progress: { goal: 3500, progression: 3000, level: { value: 6 } } })] });
+  assert.equal((await strip())[0].cls, 'done', 'news after its end: nothing');
+  await page.evaluate(() => { const real = Date.now; Date.now = () => real() + 11000; });
+  await page.waitForFunction(() => document.querySelector('.all-hype').hidden);
+  // a Golden Kappa train, hidden from the filter menu (and its dot), shown again
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [H('hype-train-start', { id: 'ht2', expiresAt: new Date(Date.now() + 60000 * 30).toISOString(), isGoldenKappaTrain: true, progress: { goal: 2000, progression: 760, level: { value: 3 } } })] });
+  s = await strip();
+  assert.deepEqual([s[0].cls, s[0].text.startsWith('LV 3Golden Kappa Train38%')], ['gold', true]);
+  await page.click('.all-filt');
+  await page.click('.all-fm [data-cmd="all.hype"]:has-text("Hidden")');
+  assert.equal(await page.isVisible('.all-hype'), false);
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.allHype')), 'hidden');
+  assert.ok(await page.$('.all-filt.set'), 'the filter\'s dot');
+  await page.click('.all-fm [data-cmd="all.hype"]:has-text("Shown")');
+  assert.equal(await page.isVisible('.all-hype .all-ht.gold'), true);
+  // Twitch switched off: its strip too
+  await page.keyboard.press('Escape');
+  await page.click('.all-sites .pi-twitch');
+  assert.equal(await page.isVisible('.all-hype'), false);
+  await page.click('.all-sites .pi-twitch');
+  assert.equal(await page.isVisible('.all-hype'), true);
+});

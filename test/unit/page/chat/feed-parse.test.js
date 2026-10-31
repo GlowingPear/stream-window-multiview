@@ -339,11 +339,12 @@ test('Twitch: a watch streak is their message, highlighted, with how many stream
   assert.deepEqual([so.kind, so.event, so.text, so.shoutout], ['event', 'shoutout', 'quietkoala shouted out Novalynx', 'tw:novalynx']);
   assert.deepEqual([KNOWN.twitch['hermes:reward-redeemed'], KNOWN.twitch['hermes:create']], ['a reward redeemed (without text)', 'a shoutout']);
   assert.equal(KNOWN.twitch['USERNOTICE:communitypayforward'], 'a gift sub paid forward');
-  for (const k of ['hermes:drop-progress', 'hermes:commercial', 'hermes:watch-streak', 'hermes:hype-train-start', 'hermes:mystery-gift-purchase', 'hermes:?', 'hermes:update-message',
+  for (const k of ['hermes:drop-progress', 'hermes:commercial', 'hermes:watch-streak', 'hermes:mystery-gift-purchase', 'hermes:?', 'hermes:update-message',
     'hermes:ads-schedule-update', 'hermes:points-spent', 'hermes:channel-last-viewed-content-updated', 'hermes:global-last-viewed-content-updated', 'hermes:goal_created', 'hermes:goal_finished', 'hermes:collaboration-status-none', 'hermes:stream-down']) assert.ok(ignoredWhy('twitch', k), k);
-  // the hype train: all its news, whatever Twitch names it (Twitch's own panel)
-  for (const k of ['hermes:hype-train-start', 'hermes:hype-train-end', 'hermes:hype-train-conductor-update', 'hermes:hype-train-rewards', 'hermes:hype-train-reward-eligibility', 'hermes:hype-train-level-up', 'hermes:hype-train-progression'])
-    assert.equal(ignoredWhy('twitch', k), 'the hype train (Twitch’s own panel)', k);
+  // the hype train: its start, progress, level ups and end are ALL's strip; the rest of its news (conductors, rewards) is Twitch's own panel's
+  for (const k of ['hermes:hype-train-start', 'hermes:hype-train-end', 'hermes:hype-train-level-up', 'hermes:hype-train-progression']) assert.ok(KNOWN.twitch[k] && !ignoredWhy('twitch', k), k);
+  for (const k of ['hermes:hype-train-conductor-update', 'hermes:hype-train-rewards', 'hermes:hype-train-reward-eligibility'])
+    assert.equal(ignoredWhy('twitch', k), 'the hype train’s conductors and rewards (Twitch’s own panel)', k);
   assert.equal(ignoredWhy('kick', 'hermes:hype-train-start'), '', 'Twitch\'s only');
   assert.equal(ignoredWhy('twitch', 'hermes:automod_caught_message'), '', 'not ignored: for later');
   assert.ok(ignoredWhy('kick', 'KicksBalanceUpdated'), 'your own Kicks balance');
@@ -382,3 +383,28 @@ test('ignoredKinds: of the kinds heard, those ALL leaves out on purpose, with wh
   assert.deepEqual(ignoredKinds(null), { kick: {}, twitch: {}, youtube: {} });
 });
 
+
+test('Twitch\'s hype train (its other connection, and its GraphQL): started, moving along, a level up, ended; its conductors left out', async () => {
+  const { parseTwitch, hypeTrain } = await load();
+  const hermes = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
+  // as a real start came (its shape, the names and numbers made up)
+  const start = parseTwitch(hermes('hype-train-start', { __typename: 'HypeTrainExecution', id: 'ht-9', startedAt: '2026-10-30T22:11:02.490Z', expiresAt: '2026-10-30T22:16:02.490Z', endedAt: null,
+    isGoldenKappaTrain: false, progress: { __typename: 'HypeTrainProgress', id: 'ht-9', goal: 3000, progression: 2700, total: 10500, level: { value: 5, goal: 10800, rewards: [] } } }));
+  assert.deepEqual({ ...start, t: 0 }, { site: 'twitch', kind: 'hype', state: 'start', id: 'ht-9', t: 0, level: 5, value: 2700, goal: 3000, expires: Date.parse('2026-10-30T22:16:02.490Z'), golden: false });
+  // its other news, in either naming: the same train (a conductor's id has its source on the end)
+  const lv = parseTwitch(hermes('hype-train-level-up', { id: 'ht-9', expiresAt: '2026-10-30T22:21:00Z', isGoldenKappaTrain: true, progress: { goal: 3500, progression: 120, level: { value: 6 } } }));
+  assert.deepEqual([lv.state, lv.id, lv.level, lv.value, lv.goal, lv.golden], ['level-up', 'ht-9', 6, 120, 3500, true]);
+  const before = Date.now(), old = parseTwitch(hermes('hype-train-progression', { execution_id: 'ht-9-SUBS', progress: { level: { value: 6 }, value: 900, goal: 3500, remaining_seconds: 200 } }));
+  assert.deepEqual([old.state, old.id, old.level, old.value, old.goal], ['progression', 'ht-9', 6, 900, 3500]);
+  assert.ok(old.expires >= before + 200000 && old.expires <= Date.now() + 200000, 'its time left, from now');
+  assert.equal(parseTwitch(hermes('hype-train-progression', { id: 'ht-9', progress: { level: { value: 6 }, progression: 950 } })).expires, 0, 'no time said: kept as it was (ALL\'s)');
+  assert.deepEqual({ ...parseTwitch(hermes('hype-train-end', { id: 'ht-9', ended_at: 1793398562000, ending_reason: 'COMPLETED' })), t: 0 }, { site: 'twitch', kind: 'hype', state: 'end', id: 'ht-9', t: 0 });
+  assert.equal(parseTwitch(hermes('hype-train-conductor-update', { id: 'ht-9-SUBS', source: 'SUBS', user: { login: 'someone' } })), null);
+  // nothing to show
+  assert.equal(parseTwitch(hermes('hype-train-start', { progress: { goal: 1, level: { value: 1 } } })), null, 'no id');
+  assert.equal(parseTwitch(hermes('hype-train-progression', { id: 'x', progress: {} })), null, 'no level or goal');
+  assert.equal(hypeTrain('start', null), null);
+  // GraphQL's running train (in-site/feed.js hypeAgent): read as a start; one that has ended, its end
+  assert.equal(hypeTrain('start', { id: 'ht-2', expiresAt: '2026-10-30T22:16:02Z', progress: { goal: 2000, progression: 500, level: { value: 2 } } }).level, 2);
+  assert.equal(hypeTrain('start', { id: 'ht-2', endedAt: '2026-10-30T22:16:02Z', progress: { goal: 2000, level: { value: 2 } } }).state, 'end');
+});
