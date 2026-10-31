@@ -235,11 +235,12 @@ function twitchSummary(ev, name, p, system){
 // gifted subs, a raid (host). The text a viewer adds has its emotes, as a message's does. Heard on busy chats: RewardRedeemedEvent, KicksGifted; the others by Kick's long-used names.
 function kickEvents(ev, d){
   const t = Date.now(), n = v => Number(v || 0).toLocaleString('en-US'), plural = (v, one, many) => `${n(v)} ${+v === 1 ? one : many}`;
-  const event = (id, who, summary, parts = []) => ({ site: 'kick', kind: 'event', event: ev, id: String(id), t, sender: who, login: who.toLowerCase(), color: '', userId: '', badges: [], parts,
+  // (login: from the name, which isn't always the channel's address on Kick: named says so, for a shoutout's link)
+  const event = (id, who, summary, parts = []) => ({ site: 'kick', kind: 'event', event: ev, id: String(id), t, sender: who, login: who.toLowerCase(), named: true, color: '', userId: '', badges: [], parts,
     summary, text: summary.map(x => x.text || x.strong).join('') });
   if (ev === 'RewardRedeemedEvent'){
     const who = String(d.username || 'Someone'), title = String(d.reward_title || 'a reward'), id = 'rw-' + (d.id || `${t}-${who}`);
-    if (String(d.user_input || '').trim()) return { site: 'kick', kind: 'message', id, t, sender: who, login: who.toLowerCase(), color: '', userId: d.user_id ? String(d.user_id) : '', badges: [],
+    if (String(d.user_input || '').trim()) return { site: 'kick', kind: 'message', id, t, sender: who, login: who.toLowerCase(), named: true, color: '', userId: d.user_id ? String(d.user_id) : '', badges: [],
       parts: kickParts(d.user_input), redeem: { title, color: /^#[0-9a-f]{6}$/i.test(d.reward_background_color || '') ? d.reward_background_color : '' } };
     return event(id, who, [{ strong: who }, { text: ' redeemed ' }, { strong: title }]);
   }
@@ -267,7 +268,8 @@ function kickEvents(ev, d){
     const m = d.message || {}, who = String((d.user && d.user.username) || d.host_username || 'Someone'), said = m.optionalMessage || d.optional_message;
     const viewers = +(m.numberOfViewers ?? d.number_viewers) || 0;
     return { ...event('host-' + who.toLowerCase() + '-' + Math.floor(t / 600000), who, [{ strong: who }, { text: ' raided with ' }, { strong: plural(viewers, 'viewer', 'viewers') }], said ? kickParts(said) : []),
-      support: { kind: 'raid', who, n: Math.max(1, viewers) } };
+      support: { kind: 'raid', who, n: Math.max(1, viewers) },
+      ...(d.user && d.user.slug ? { login: String(d.user.slug).toLowerCase(), named: false } : {}) };   // (the raider's address, when Kick sends it)
   }
   return null;
 }

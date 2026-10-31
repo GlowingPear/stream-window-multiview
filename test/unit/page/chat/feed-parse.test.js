@@ -267,6 +267,9 @@ test('Kick: a raid coming in (StreamHostedEvent), with its message or without; a
   const h = hosted();
   assert.deepEqual([h.site, h.kind, h.id, h.sender, h.login, h.text, h.parts], ['kick', 'event', h.id, 'Novalynx', 'novalynx', 'Novalynx raided with 264 viewers', []]);
   assert.deepEqual(h.summary, [{ strong: 'Novalynx' }, { text: ' raided with ' }, { strong: '264 viewers' }]);
+  assert.equal(h.named, true, 'its login is from the name (a shoutout looks its Kick address up)');
+  const withSlug = parseKick(KC('StreamHostedEvent', { message: { numberOfViewers: 3 }, user: { username: 'Nova_Lynx', slug: 'nova-lynx' } }, 'chatrooms.1'));
+  assert.deepEqual([withSlug.sender, withSlug.login, withSlug.named], ['Nova_Lynx', 'nova-lynx', false], 'Kick sent the address: that, as it is');
   assert.deepEqual(hosted({ optionalMessage: 'bringing the squad, be nice', numberOfViewers: 1 }).parts, [{ text: 'bringing the squad, be nice' }]);
   assert.equal(hosted({ numberOfViewers: 1 }).text, 'Novalynx raided with 1 viewer');
   assert.match(parseKick(KC('StreamHostedEvent', { message: {} }, 'chatrooms.1')).text, /^Someone raided with 0 viewers$/, 'without who or how many');
