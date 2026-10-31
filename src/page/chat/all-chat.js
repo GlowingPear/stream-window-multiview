@@ -1339,8 +1339,7 @@ function siteAction(a, ch){
     pop: { label: 'Page', icon: icon.pop, title: `Their ${site} channel page, in a pop-up`, run: () => popUp(chat, 'page') },
     popchat: { label: 'Chat', icon: icon.chatpop, title: `Just their ${site} chat, in a pop-up`, run: () => popUp(chat, 'chat') },
     mod: !modUrl(ch) && platform(ch).likes ? likeAction(ch)   // (a site with no mod view, YouTube: its like in that place)
-      : modOff ? { blank: true }   // (not a mod there: nothing, rather than a button that can't)
-      : { label: 'Mod', icon: icon.mod, title: `${site} mod view, in a window of its own`, run: () => openModView(ch) },
+      : { label: 'Mod', icon: icon.mod, title: modOff || `${site} mod view, in a window of its own`, off: !!modOff, run: () => openModView(ch) },
     star: { label: saved ? 'Saved' : 'Save', icon: icon.star, on: saved, keep: true, title: saved ? `Saved: remove their ${site} channel` : `Save their ${site} channel`, run: () => toggleSaved(ch) },
     ext: { label: 'Ext', icon: icon.ext, off: !cw, title: cw ? `Extensions in their ${site} chat` : `Their ${site} chat isn't open`, run: at => openExtMenu(cw, at) },
     state: { label: 'State', icon: icon.copy, off: !cw, dev: true, title: `Copy what the app knows about their ${site} chat, for a report`, run: () => copyWinState(cw) },

@@ -1204,7 +1204,7 @@ test('ALL: the pop-up buttons ask which site (its channel page, or just its chat
   assert.deepEqual(await star(), ['☆', false, false], 'Twitch unsaved');
 });
 
-test('ALL: the ⋯ menu has a line for each site with its buttons (icons, each with its tooltip); a site\'s tab has the plain list', async t => {
+test('ALL: the ⋯ menu: the whole streamer\'s buttons as icons, then a line for each site with its own (the mod view only where you moderate one of them); a site\'s tab has the plain list', async t => {
   const page = await allApp(t, { allOpen: '["s1"]', saved: '["quietkoala"]', barButtons: JSON.stringify({ order: [], always: ['pop', 'popchat', 'star', 'mod', 'reload'], never: null }) });
   await page.waitForSelector('.all-view');
   await page.evaluate(() => { window.__opened = []; window.open = u => { window.__opened.push(u); }; window.allChat.modKnown.set('quietkoala', true); });
@@ -1212,20 +1212,27 @@ test('ALL: the ⋯ menu has a line for each site with its buttons (icons, each w
   await page.click(`${bar} [data-a=more]`);
   const menu = () => page.$eval('#barMenu', m => ({
     rows: [...m.querySelectorAll(':scope > button')].map(b => b.textContent.trim()),
+    top: [...m.querySelectorAll('.bm-top .bm-act')].map(b => b.querySelector('.bm-tl').textContent),
     sites: [...m.querySelectorAll('.bm-site')].map(s => [s.querySelector('.bm-sn').textContent, ...[...s.querySelectorAll('.bm-act')].map(b => b.dataset.cmd.split('.').pop() + (b.disabled ? ' (off)' : '') + (b.classList.contains('on') ? ' ✓' : ''))]),
-    tips: [...m.querySelectorAll('.bm-site:first-of-type .bm-act')].map(b => b.title) }));
+    tips: [...(m.querySelector('.bm-site')?.querySelectorAll('.bm-act') || [])].map(b => b.title) }));
   let m = await menu();
-  assert.ok(m.rows.includes('Reload'), 'the whole streamer\'s, as rows');
-  assert.deepEqual(m.sites, [['KKick', 'pop', 'popchat', 'mod', 'star ✓'], ['TTwitch', 'pop', 'popchat', 'star'], ['YYouTube', 'pop', 'popchat', 'like (off)', 'star']]);
+  assert.deepEqual(m.rows, [], 'no rows: the whole streamer\'s are a row of icons too');
+  assert.ok(m.top.includes('Reload'), JSON.stringify(m.top));
+  // a mod on one site: the mod view's place on each, greyed where you're not, YouTube's like
+  assert.deepEqual(m.sites, [['KKick', 'pop', 'popchat', 'mod', 'star ✓'], ['TTwitch', 'pop', 'popchat', 'mod (off)', 'star'], ['YYouTube', 'pop', 'popchat', 'like (off)', 'star']]);
   assert.deepEqual(m.tips, ['Their Kick channel page, in a pop-up', 'Just their Kick chat, in a pop-up', 'Kick mod view, in a window of its own', 'Saved: remove their Kick channel']);
   // the star keeps it open; the others close it
-  await page.click('#barMenu .bm-site:nth-of-type(2) [data-cmd="win.site.star"]');
+  await page.locator('#barMenu .bm-site').nth(1).locator('[data-cmd="win.site.star"]').click();
   m = await menu();
-  assert.deepEqual(m.sites[1], ['TTwitch', 'pop', 'popchat', 'star ✓'], 'not a mod there: no mod view (a gap in its place)');
-  assert.equal(await page.$$eval('#barMenu .bm-site:nth-of-type(2) .bm-gap', l => l.length), 1);
-  await page.click('#barMenu .bm-site:nth-of-type(2) [data-cmd="win.site.popchat"]');
+  assert.deepEqual(m.sites[1], ['TTwitch', 'pop', 'popchat', 'mod (off)', 'star ✓']);
+  await page.locator('#barMenu .bm-site').nth(1).locator('[data-cmd="win.site.popchat"]').click();
   assert.equal(await page.isVisible('#barMenu'), false);
   assert.deepEqual(await page.evaluate(() => window.__opened), ['https://www.twitch.tv/popout/quietkoala/chat?popout=']);
+  // a mod nowhere: no mod view's place at all, YouTube's like neither
+  await page.evaluate(() => { window.allChat.modKnown.set('quietkoala', false); window.allChat.syncMod(); });
+  await page.click(`${bar} [data-a=more]`);
+  assert.deepEqual((await menu()).sites, [['KKick', 'pop', 'popchat', 'star ✓'], ['TTwitch', 'pop', 'popchat', 'star ✓'], ['YYouTube', 'pop', 'popchat', 'star']]);
+  await page.keyboard.press('Escape');
   // a site's tab: the buttons as rows
   await page.click(`${bar} .ptab.kick`);
   await page.click(`${bar} [data-a=more]`);

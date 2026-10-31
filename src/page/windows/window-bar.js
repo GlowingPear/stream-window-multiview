@@ -5,6 +5,7 @@ import { infoFor } from '../panels/channels/channels.js';
 import { barButtons } from '../panels/settings/windows-pane.js';
 import { PLAT_NAME, chLabel, platOf } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
+import { icon } from '../shared/icons.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { store } from '../shared/store.js';
 import { tipName } from '../shared/tooltips.js';
@@ -77,21 +78,31 @@ function openBarMenu(more){
   barMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
   barMenu.style.top = Math.min(innerHeight - barMenu.offsetHeight - 8, r.bottom + 4) + 'px';
 }
+// The top row's short names (a word each, under its icon)
+const TILE_NAMES = { link: 'Settings', profile: 'Profile', reload: 'Reload', max: 'Maximize', at: 'Mentions', chat: 'Add chat', feat: 'Highlight', overlay: 'Overlay', like: 'Like' };
 // ALL's ⋯ menu: what's for the whole streamer, then a line for each site with its buttons (icons, each with its tooltip)
 function allBarMenu(w, more){
-  const ovf = [...more.closest('.btns').querySelectorAll('.ovf:not([hidden])')], keys = new Set(ovf.map(b => b.dataset.a));
-  ovf.filter(b => !SITE_BUTTONS.includes(b.dataset.a)).forEach(b => barMenu.appendChild(barItem(b)));
-  const acts = SITE_BUTTONS.filter(a => keys.has(a));
+  const ovf = [...more.closest('.btns').querySelectorAll('.ovf:not([hidden])')], keys = new Set(ovf.map(b => b.dataset.a)), chs = tabChannels(w);
+  barMenu.classList.add('bm-all');
+  // the whole streamer's: a row of icons too
+  const whole = ovf.filter(b => !SITE_BUTTONS.includes(b.dataset.a));
+  if (whole.length) barMenu.appendChild(element('div', { class: 'bm-top', role: 'group', 'aria-label': 'Every site' }, ...whole.map(b => {
+    const t = barItem(b).querySelector('.bm-t').textContent;
+    return element('button', { type: 'button', role: 'menuitem', class: 'bm-act bm-tile' + (b.classList.contains('on') ? ' on' : ''), title: b.title || t, 'aria-label': t,
+      onclick: () => { barMenu.hidden = true; if (b.isConnected) b.click(); } },
+      element('span', { class: 'bm-ti', html: b.dataset.a === 'chat' ? icon.plus : b.querySelector('svg')?.outerHTML || '' }), element('span', 'bm-tl', TILE_NAMES[b.dataset.a] || t));
+  })));
+  // the mod view's place: only where you moderate one of their sites (then greyed where you don't, and YouTube's like)
+  const modAny = chs.some(ch => { const x = siteAction('mod', ch); return x.key !== 'like' && !x.off; });
+  const acts = SITE_BUTTONS.filter(a => keys.has(a) && (a !== 'mod' || modAny));
   if (acts.length){
-    barMenu.classList.add('bm-all');
     if (barMenu.children.length) barMenu.appendChild(element('hr', 'bm-hr'));
-    for (const ch of tabChannels(w)){
+    for (const ch of chs){
       const p = platOf(ch), live = infoFor(ch)?.live;
       barMenu.appendChild(element('div', { class: 'bm-site', role: 'group', 'aria-label': PLAT_NAME[p] },
         element('span', { class: 'bm-sn', title: `${PLAT_NAME[p]}${live ? ' · live' : ''}` }, element('i', { class: 'pi pi-' + p + (live ? ' bm-live' : '') }, PLAT_NAME[p][0]), element('span', null, PLAT_NAME[p])),
         ...acts.map(a => {
           const x = siteAction(a, ch);
-          if (x.blank) return element('span', { class: 'bm-gap', 'aria-hidden': 'true' });   // (keeps the columns in line)
           return element('button', { type: 'button', role: 'menuitem', class: 'bm-act' + (x.on ? ' on' : '') + (x.dev ? ' bm-dev' : ''), disabled: x.off, title: x.title, 'aria-label': x.title, dataset: { cmd: 'win.site.' + (x.key || a) }, html: x.icon,
             onclick: () => { barMenu.hidden = true; x.run(more); if (x.keep) openBarMenu(more); } });
         })));
