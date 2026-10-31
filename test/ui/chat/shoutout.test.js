@@ -240,32 +240,32 @@ test('Settings › Shoutouts › Channels: a card for a found channel, its messa
   const page = await allApp(t, { shoutOn: '1', shoutPeople: JSON.stringify(rows) });
   await page.evaluate(() => window.openSettings('shoutouts'));
   await page.click('#soTabs [data-t=channels]');
-  const cards = () => page.$$eval('#shoutPeople .sc-card', l => l.map(c => [c.dataset.ch, c.querySelector('.nm').textContent, (c.querySelector('.sc-sum') || {}).textContent || '']));
+  const cards = () => page.$$eval('#shoutPeople .shc-card', l => l.map(c => [c.dataset.ch, c.querySelector('.nm').textContent, (c.querySelector('.shc-sum') || {}).textContent || '']));
   assert.deepEqual(await cards(), [['pebblesong', 'Pebblesong', 'Pebble time {link}'], ['rowanbrook', 'Rowanbrook', 'Your general message · also for Quillby']], 'moved over: an alias is a chatter on its channel\'s card');
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.shoutPeople')), null, 'once');
   // a found channel (no lookups here: as typed, on each site), its card open for its message
-  await page.fill('.sc-add input', 'Tinroof'); await page.click('.sc-add .btn');
-  assert.deepEqual(await page.$$eval('.sc-res .sc-ri', l => l.map(r => r.querySelector('small').textContent)), ['Kick', 'Twitch']);
-  await page.click('.sc-res .sc-ri >> nth=1');
-  const open = '#shoutPeople .sc-card.open';
+  await page.fill('.shc-add input', 'Tinroof'); await page.click('.shc-add .btn');
+  assert.deepEqual(await page.$$eval('.shc-res .shc-ri', l => l.map(r => r.querySelector('small').textContent)), ['Kick', 'Twitch']);
+  await page.click('.shc-res .shc-ri >> nth=1');
+  const open = '#shoutPeople .shc-card.open';
   assert.equal(await page.getAttribute(open, 'data-ch'), 'tw:tinroof');
   await page.fill(`${open} textarea`, 'Captain {name} {link}');
-  assert.match(await page.textContent(`${open} .sc-pv`), /metwitch: Captain tinroof https:\/\/twitch\.tv\/tinroof/);
-  await page.fill(`${open} .sc-chip-in`, 'tin_alt'); await page.press(`${open} .sc-chip-in`, 'Enter');
+  assert.match(await page.textContent(`${open} .shc-pv`), /metwitch: Captain tinroof https:\/\/twitch\.tv\/tinroof/);
+  await page.fill(`${open} .shc-chip-in`, 'tin_alt'); await page.press(`${open} .shc-chip-in`, 'Enter');
   await page.waitForFunction(() => (JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')) || []).some(c => c.ch === 'tw:tinroof' && c.msg && c.also.length));
   assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')).find(c => c.ch === 'tw:tinroof')),
     { ch: 'tw:tinroof', streamer: '', name: 'tinroof', avatar: '', msg: 'Captain {name} {link}', perSite: false, sites: {}, also: [{ site: 'twitch', login: 'tin_alt', name: 'tin_alt' }] });
   await page.click(`${open} [data-cmd="settings.shoutChatterRemove"]`);
   // the same channel again: Added
-  await page.fill('.sc-add input', 'tinroof'); await page.click('.sc-add .btn');
-  assert.match(await page.textContent('.sc-res .sc-ri >> nth=1'), /Added/);
+  await page.fill('.shc-add input', 'tinroof'); await page.click('.shc-add .btn');
+  assert.match(await page.textContent('.shc-res .shc-ri >> nth=1'), /Added/);
   await page.keyboard.press('Escape');
   // a linked streamer: one message, or one per site, each with its preview
-  await page.fill('.sc-add input', 'quietkoala'); await page.click('.sc-add .btn');
-  assert.deepEqual(await page.$$eval('.sc-res .sc-ri small', l => l.map(x => x.textContent)), ['Linked streamer · Kick and Twitch']);
-  await page.click('.sc-res .sc-ri');
+  await page.fill('.shc-add input', 'quietkoala'); await page.click('.shc-add .btn');
+  assert.deepEqual(await page.$$eval('.shc-res .shc-ri small', l => l.map(x => x.textContent)), ['Linked streamer · Kick and Twitch']);
+  await page.click('.shc-res .shc-ri');
   await page.click(`${open} [data-cmd="settings.shoutCardPerSite"]`);
-  assert.deepEqual(await page.$$eval(`${open} .sc-msg .mh`, l => l.map(x => x.textContent)), ['KOn Kick', 'TOn Twitch']);
+  assert.deepEqual(await page.$$eval(`${open} .shc-msg .mh`, l => l.map(x => x.textContent)), ['KOn Kick', 'TOn Twitch']);
   await page.fill(`${open} textarea[aria-label="Their message on Twitch"]`, 'Twitch only {link}');
   await page.waitForFunction(() => (JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')) || []).some(c => c.streamer === 's1' && c.perSite && c.sites.twitch === 'Twitch only {link}'));
   // removed

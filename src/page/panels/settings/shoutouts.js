@@ -50,7 +50,7 @@ function renderChannels(){
   peopleEl.replaceChildren(...(cards.length ? cards.map(c => {
     const el = shoutCardEl(c, { open: openCards.has(cardKey(c)), save: saveCard,
       remove: () => { openCards.delete(cardKey(c)); const base = pendingCards || soCards(); pendingCards = null; soSaveCards(base.filter(x => cardKey(x) !== cardKey(c))); } });   // (what you'd typed in the others, kept; this one's, gone)
-    el.addEventListener('click', e => { if (e.target.closest('.sc-tog')) setTimeout(() => { const now = peopleEl.querySelector(`.sc-card[data-ch="${CSS.escape(c.ch)}"]`); if (now && now.classList.contains('open')) openCards.add(cardKey(c)); else openCards.delete(cardKey(c)); }, 0); });
+    el.addEventListener('click', e => { if (e.target.closest('.shc-tog')) setTimeout(() => { const now = peopleEl.querySelector(`.shc-card[data-ch="${CSS.escape(c.ch)}"]`); if (now && now.classList.contains('open')) openCards.add(cardKey(c)); else openCards.delete(cardKey(c)); }, 0); });
     return el;
   }) : [element('div', 'so-empty', 'No channels yet. Find a channel above to give it a shoutout of its own, or to list the other accounts it\'s for.')]));
 }
@@ -97,7 +97,7 @@ function init(){
     const have = soCards().find(c => cardKey(c) === cardKey(card));
     if (!have) soSaveCards([...soCards(), card]);
     openCards = new Set([cardKey(card)]); renderChannels();   // (only the new one open)
-    peopleEl.querySelector(`.sc-card[data-ch="${CSS.escape((have || card).ch)}"] textarea`)?.focus();
+    peopleEl.querySelector(`.shc-card[data-ch="${CSS.escape((have || card).ch)}"] textarea`)?.focus();
   }, { taken: card => soCards().some(c => cardKey(c) === cardKey(card)) }));
   renderChannels();
   // (the Channels tab: cards not checked yet are looked up on Kick and Twitch)

@@ -396,7 +396,7 @@ test('ALL: on or off for each linked streamer (their card), over Settings › Li
   assert.equal((await tabs(page)).includes('ALL') || (await tabs(page)).includes('ALL*'), false);
   // their card: the choice
   await page.evaluate(() => { window.linkedApi.setOpt('allTab', true); });
-  await page.evaluate(() => window.openLinkCard('quietkoala'));
+  await page.evaluate(() => window.openLinkCard('quietkoala', { tab: 'chat' }));
   await page.selectOption('[data-cmd="link.allTab"]', 'off');
   assert.equal(await page.evaluate(() => window.linkedApi.listStreamers()[0].allTab), false);
 });

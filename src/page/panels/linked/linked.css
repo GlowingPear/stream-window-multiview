@@ -66,8 +66,8 @@
 .lc-tabbed .lc-foot{margin:0;padding:12px 20px;border-top:1px solid var(--line);background:rgba(0,0,0,.12);flex:none}
 .lc-note{margin-top:14px;padding:9px 11px;border-radius:9px;background:rgba(255,196,64,.08);border:1px solid rgba(255,196,64,.3);color:#ffd27a;font-size:12.5px}
 .lc-so-note{margin-top:12px}
-.sc-card.sc-bare{border:0;background:none;box-shadow:none;overflow:visible}
-.sc-card.sc-bare .sc-body{padding:0;border-top:0}
+.shc-card.shc-bare{border:0;background:none;box-shadow:none;overflow:visible}
+.shc-card.shc-bare .sc-body{padding:0;border-top:0}
 .lc-gap{flex:1}
 .lc-kicker{display:block;margin-bottom:2px;color:var(--muted);font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
 .lc-unlink{color:var(--danger) !important}
