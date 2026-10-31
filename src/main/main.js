@@ -1626,7 +1626,8 @@ mainIpc.handle('account:login', (_e, plat) => { openLogin(PARTS[plat] ? plat : '
 // Who is logged in where (Twitch keeps your name in a cookie; YouTube only tells us that you're signed in).
 const youtubeSignedIn = () => session.fromPartition(PARTS.youtube).cookies.get({}).then(c => c.some(x => /(youtube|google)\.com$/.test(x.domain) && /^(SAPISID|__Secure-3PSID|LOGIN_INFO)$/.test(x.name)), () => false);
 appIpc.handle('accounts:status', async () => {
-  const out = { kick: null, twitch: null, youtube: false };
+  const out = { kick: false, twitch: null, youtube: false };
+  out.kick = await kickSignedIn();     // Kick's name comes from its pages (detectMe); this is only whether you're signed in
   try {
     const c = await session.fromPartition(PARTS.twitch).cookies.get({ name: 'login' });
     const tw = c.find(x => /twitch\.tv$/.test(x.domain));
