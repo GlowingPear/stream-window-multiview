@@ -1138,12 +1138,16 @@ function nameClick(m, e){
   if (ctrl && e.shiftKey) modAct(m, 'ban'); else if (ctrl) modAct(m, 'timeout', lastTimeout()); else modAct(m, 'delete');
 }
 // A menu of ALL's, under (or beside) what opened it, inside ALL (its size: ALL follows the chat's text size)
+// Under a button it stays under it: in too short an ALL it scrolls rather than covering what opened it (at a point, a
+// right-click, it moves up to fit)
 function placeAt(view, pop, at, top = null){
   const z = parseFloat(view.el.style.zoom) || 1, vr = view.el.getBoundingClientRect();
   const r = at.getBoundingClientRect ? at.getBoundingClientRect() : { left: at.clientX, right: at.clientX, top: at.clientY, bottom: at.clientY };
-  const w = pop.offsetWidth, h = pop.offsetHeight;
+  pop.style.maxHeight = ''; pop.style.overflowY = '';
+  const w = pop.offsetWidth, h = pop.offsetHeight, below = (r.bottom - vr.top) / z + 4, room = vr.height / z - below - 6;
   pop.style.left = Math.max(6, Math.min(vr.width / z - w - 6, (r.right - vr.left) / z - w)) + 'px';
-  pop.style.top = (top !== null ? top : Math.max(6, Math.min(vr.height / z - h - 6, (r.bottom - vr.top) / z + 4))) + 'px';
+  if (top === null && at.getBoundingClientRect && h > room && room >= 80){ pop.style.top = below + 'px'; pop.style.maxHeight = room + 'px'; pop.style.overflowY = 'auto'; return; }
+  pop.style.top = (top !== null ? top : Math.max(6, Math.min(vr.height / z - h - 6, below))) + 'px';
 }
 // The filter pill's menu: bots' messages hidden or shown; events (subs, gifts, raids, Super Chats) short, full or hidden
 function openFilters(view){

@@ -1279,6 +1279,15 @@ test('ALL: as it starts reading a chat it asks for a pin already up (into the pi
   const [pill, menu] = await page.evaluate(() => [document.querySelector('.all-filt').getBoundingClientRect(), document.querySelector('.all-fm').getBoundingClientRect()].map(r => ({ bottom: r.bottom, top: r.top, right: r.right })));
   assert.ok(menu.top >= pill.bottom && menu.top - pill.bottom < 12, `under the pill (${pill.bottom} → ${menu.top})`);
   assert.ok(Math.abs(menu.right - pill.right) < 8, `lined up with it (${pill.right} / ${menu.right})`);
+  // in an ALL too short for all of it: still under it, scrolling
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => { document.querySelector('#stage .win.chat:not(.tab-hidden)').style.height = '230px'; });
+  await page.waitForTimeout(100);
+  await page.click('.all-filt');
+  const [p2, m2] = await page.evaluate(() => [document.querySelector('.all-filt').getBoundingClientRect(), document.querySelector('.all-fm')].map(x => x.getBoundingClientRect ? (r => ({ bottom: r.bottom, top: r.top }))(x.getBoundingClientRect()) : x));
+  const scrolls = await page.$eval('.all-fm', m => getComputedStyle(m).overflowY === 'auto' && m.scrollHeight > m.clientHeight);
+  assert.ok(m2.top >= p2.bottom && m2.top - p2.bottom < 12, `still under the pill (${p2.bottom} → ${m2.top})`);
+  assert.equal(scrolls, true, 'what doesn\'t fit scrolls');
 });
 
 test('ALL honours the chats\' settings: 7TV, BetterTTV and FrankerFaceZ emotes in messages; words you watch for (not in a muted chat); spam alerts\' tag; translating; new emotes glowing; Developer tools\' message data', async t => {
