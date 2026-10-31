@@ -259,3 +259,16 @@ test('each site\'s chat commands for ALL\'s / list: a name, what goes after it, 
   assert.equal(twitch.chatCommands.find(c => c.name === 'raid').who, 'host');
   assert.ok(!kick.chatCommands.some(c => c.who === 'lead'), 'Kick has no lead moderators');
 });
+
+test('Twitch\'s own list read live (liveCommands): its order, the same ones left out, a lead moderator\'s; not usable: null', () => {
+  const raw = [['me', 1], ['ban', 2, ['username', 'reason?']], ['unban', 2, ['username']], ['color', 0, ['color']], ['vip', 3, ['username']], ['raid', 3, ['channel'], true], ['poll', 2, [], true], ['help', 0, ['command?']],
+    ['block', 0, ['username']], ['timeout', 2, ['username', 'duration?']], ['clear', 2], ['mod', 3, ['username']], ['Bad Name', 0]]
+    .map(([name, level, args = [], editor = false]) => ({ name, level, editor, description: name + ' it.', args: args.map(a => ({ name: a.replace('?', ''), required: !a.endsWith('?') })) }));
+  const l = twitch.liveCommands(raw);
+  assert.deepEqual(l.map(c => c.name), ['ban', 'unban', 'clear', 'mod', 'raid', 'timeout', 'vip', 'block', 'color', 'me'], 'channel management first, each by name with un… next to its other half; poll and help left out');
+  assert.deepEqual(l.find(c => c.name === 'ban'), { name: 'ban', args: 'username [reason]', does: 'ban it', who: 'mod' });
+  assert.deepEqual(['vip', 'mod', 'raid', 'me', 'color'].map(n => l.find(c => c.name === n).who), ['lead', 'lead', 'host', 'all', 'all']);
+  assert.equal(twitch.liveCommands(raw.slice(0, 5)), null, 'too few to be its list');
+  assert.equal(twitch.liveCommands(null), null);
+  assert.deepEqual([kick.liveCommands, youtube.liveCommands], [null, null], 'Kick\'s and YouTube\'s: their copy');
+});

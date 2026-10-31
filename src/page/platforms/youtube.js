@@ -54,6 +54,7 @@ const youtube = {
   pageCommands: false,
   likes: true,
   chatCommands: [],   // (its live chat has no commands)
+  liveCommands: null,
   // A name in ALL (see kick.js): YouTube colours a name by who they are, not by them. As its chat page draws them (look:
   // in-site/feed.js ytLookAgent), when it's in the same light or dark as the app, else its usual colours
   nameStyle(m, { light, look } = {}){

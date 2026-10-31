@@ -2267,8 +2267,8 @@ test('/ at the start of ALL\'s box: the site\'s commands you can use there (mods
   let l = await list('/');
   assert.equal(l.head, 'TTwitch commands');
   assert.deepEqual(l.groups, ['Everyone']);
-  assert.deepEqual(l.cmds, ['/block', '/unblock', '/color', '/me'], 'in Twitch\'s own order');
-  assert.match(l.foot, /5 in all, keep typing/);
+  assert.deepEqual(l.cmds, ['/block', '/unblock', '/color', '/me', '/vote'], 'in Twitch\'s own order');
+  assert.doesNotMatch(l.foot, /in all/, 'all of them showing');
   assert.equal(await list('/ti'), null, 'no /timeout for you');
   // a mod there: theirs too
   await page.evaluate(() => window.allChat.modKnown.set('tw:quietkoala', true));
@@ -2281,7 +2281,8 @@ test('/ at the start of ALL\'s box: the site\'s commands you can use there (mods
   assert.equal(await list('/raid'), null);
   // ↓ and Tab fill one in; the rest of what you typed stays
   l = await list('/un');
-  assert.deepEqual(l.cmds, ['/unban', '/unmod', '/unmonitor', '/unrestrict'], 'a lead moderator\'s /unmod in its place');
+  assert.deepEqual(l.cmds, ['/unban', '/unmod', '/unmonitor', '/unrestrict', '/untimeout', '/uniquechat'], 'a lead moderator\'s /unmod in its place');
+  assert.match(l.foot, /9 in all, keep typing/);
   await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('Tab');
   assert.equal(await page.$eval('.all-in', b => b.value), '/unmonitor ');
   assert.equal(await page.isVisible('.all-at'), false);
@@ -2300,6 +2301,10 @@ test('/ at the start of ALL\'s box: the site\'s commands you can use there (mods
   await page.fill('.all-in', '/slow 30'); await page.keyboard.press('Enter');
   await page.waitForSelector('.all-list .al-mine-failed');
   assert.match(await page.textContent('.all-list .al-mine-failed'), /\/slow 30/);
+  // the chat's own list as its page has it now (Twitch's, read live): it, not the copy
+  await page.evaluate(() => window.allChat.liveCmds.set('tw:quietkoala', [{ name: 'shiny', args: 'thing', does: 'A command Twitch just added', who: 'all' }, { name: 'ban', args: 'username', does: 'Ban', who: 'mod' }]));
+  l = await list('/');
+  assert.deepEqual(l.cmds, ['/shiny', '/ban']);
   // YouTube: no commands, no list
   await page.evaluate(() => { const b = document.querySelector('.all-pick'); b.click(); });
   const yt = await page.$('.all-menu:not([hidden]) [data-cmd="all.sendOn"]:not([disabled]):has-text("YouTube")');

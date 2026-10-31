@@ -481,11 +481,17 @@
 .all-poll-m{flex:1;min-width:0;color:var(--muted);font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (prefers-reduced-motion:reduce){.all-poll-bar{transition:none}}
 
-/* / at the start of ALL's box: the site's commands, by who can use them */
-.all-cmd-g{padding:6px 8px 2px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:color-mix(in srgb,var(--muted) 80%,transparent)}
-.all-ati.all-cmd{display:grid;grid-template-columns:auto 1fr;column-gap:8px;row-gap:1px;align-items:baseline}
-.all-cmd-n{font:600 12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text)}
+/* / at the start of ALL's box: the site's commands, one line each (name, what goes after it, what it does); the one picked
+   says all of what it does under it */
+.all-at-cmds{padding:4px}
+.all-at-cmds .all-at-h{display:flex;align-items:center;gap:6px;padding:4px 6px 5px;line-height:14px}
+.all-at-cmds .all-at-h .pi{width:14px;height:14px;font-size:8.5px;border-radius:4px;flex:none}
+.all-cmd-g{padding:5px 8px 2px;font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;line-height:12px;color:color-mix(in srgb,var(--muted) 75%,transparent)}
+.all-ati.all-cmd{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:7px;row-gap:1px;padding:4px 8px;min-height:24px;box-sizing:border-box}
+.all-cmd-n{flex:none;font:600 12px/16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text)}
 .all-cmd-n b{color:var(--accent);font-weight:700}
-.all-cmd-a{font:12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.all-ati.all-cmd small.all-cmd-d{grid-column:1/-1;margin-left:0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.all-at-h .pi{width:14px;height:14px;font-size:8.5px;margin-right:5px;vertical-align:-2px}
+.all-cmd-a{flex:none;max-width:45%;font:11.5px/16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.all-ati.all-cmd small.all-cmd-d{flex:1 1 0;min-width:0;margin-left:0;font-size:11px;line-height:16px;color:color-mix(in srgb,var(--muted) 85%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.all-ati.all-cmd.on small.all-cmd-d{flex:1 0 100%;white-space:normal;color:var(--muted)}
+.all-ati.all-cmd.on .all-cmd-a{max-width:none;white-space:normal}
+.all-at-cmds .all-mh{margin-top:3px;padding:5px 6px 2px}

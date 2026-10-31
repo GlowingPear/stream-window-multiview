@@ -76,6 +76,7 @@ async function suggestEmote(view, w){
   view.at.hidden = false;
 }
 function renderEmoteList(view){
+  view.at.classList.remove('all-at-cmds');   // (the same popup as / commands')
   const p = PLAT_NAME[platOf(view.atList[0].ch)];
   view.at.replaceChildren(element('div', 'all-at-h', `${p} emotes`),
     ...view.atList.map((e, i) => element('button', { type: 'button', role: 'option', class: 'all-ati all-emi' + (i === view.atSel ? ' on' : ''), 'aria-selected': String(i === view.atSel), dataset: { cmd: 'all.emotePick' },

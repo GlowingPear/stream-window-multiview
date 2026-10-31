@@ -99,6 +99,23 @@ function feedAgent(as){
   return true;
 }
 
+// Runs inside a Twitch chat page: its chat's commands, as its own / list has them (its getCommands, asked for every level
+// as an editor: each says its own level). -> [{ name, args: [{ name, required }], description, level (0 viewer, 1 VIP,
+// 2 moderator, 3 streamer), editor }], or null (not there yet, or Twitch changed)
+function twCommandsAgent(){
+  const box = document.querySelector('[data-a-target="chat-input"]'); if (!box) return null;
+  const fk = Object.keys(box).find(k => k.startsWith('__reactFiber')); if (!fk) return null;
+  let root = box[fk]; while (root.return) root = root.return;
+  let get = null; const stack = [root]; let n = 0;
+  while (stack.length && !get && n < 300000){ const f = stack.pop(); n++; const p = f && f.memoizedProps; if (p && typeof p.getCommands === 'function') get = p.getCommands; if (f && f.sibling) stack.push(f.sibling); if (f && f.child) stack.push(f.child); }
+  if (!get) return null;
+  try {
+    const all = get(3, { isEditor: true, hasPermissions: { has: () => true } });
+    return Array.isArray(all) ? all.map(c => ({ name: String(c && c.name || ''), args: (c && Array.isArray(c.commandArgs) ? c.commandArgs : []).map(x => ({ name: String(x && x.name || ''), required: !!(x && x.isRequired) })),
+      description: String(c && c.description || ''), level: +(c && c.permissionLevel) || 0, editor: !!(c && c.allowEditorUsage) })) : null;
+  } catch (e) { return null; }
+}
+
 // Runs inside a Twitch chat page: the hype train already running in its channel (its news only comes as it changes),
 // as Twitch's GraphQL says it -> its execution ({ id, expiresAt, endedAt, isGoldenKappaTrain, progress }) or null
 async function hypeAgent(nameAs){
@@ -423,4 +440,4 @@ function profileAgent(id){
 }
 
 export { badgesAgent, feedAgent, hypeAgent, kickIconsAgent, lineProbe, messageHtml, modesAgent, pinAgent,
-  profileAgent, replyAgent, shownAgent, twReplyAt, twReplyPress, ytLookAgent };
+  profileAgent, replyAgent, shownAgent, twCommandsAgent, twReplyAt, twReplyPress, ytLookAgent };

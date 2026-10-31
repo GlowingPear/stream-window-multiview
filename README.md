@@ -217,6 +217,7 @@ What the tests deliberately don't do, because it needs the real outside world:
 | `npm run dev -- --debug` | Also opens a debugging port on `127.0.0.1`, for test scripts (Playwright) |
 | `npm run page-imports` | Updates the import and export lines of the page's modules (`src/page/`) to what their code uses. `npm test` fails when they're out of step |
 | `npm run visual-diff` | For a change that shouldn't change how anything looks: captures the page in this folder and in `main` through its panels, menus and layouts, and compares them (pictures, and every element's box and styles). Local only |
+| `npm run check:commands` | Compares the chat commands ALL's `/` list knows (`chatCommands` in `src/page/platforms/twitch.js` and `kick.js`) with what Twitch's and Kick's own chats offer now, read from a signed-in developer copy (`npm run dev -- --profile <name> --debug 9333`; for Kick, type `/` in one of its chats first). Says what's new, gone or changed. Nothing is typed or sent |
 
 Both work on Windows, Mac and Linux, and download the app engine if `npm install` skipped it. Changes to the Electron side (`src/main/`, `src/preload/`) need a restart of the app; changes to the page (`src/index.html` and `src/page/`) only **View › Reload everything**.
 

@@ -97,6 +97,21 @@ const TW_COMMANDS = [
   { name: "vote", args: "index", does: "Vote in the active poll on the given channel", who: 'all' }
 ];
 
+// Its chat's commands as its own page has them now (in-site/feed.js twCommandsAgent: Twitch's own list, read live), as
+// chatCommands says them: its order (channel management first, then everyone's, each by name with an un… next to its other
+// half), the same ones left out, a lead moderator's as Twitch offers them. null: not usable (ALL keeps TW_COMMANDS).
+const TW_LEFT_OUT = new Set(['goal', 'poll', 'prediction', 'raidbrowser', 'user', 'sharedchat', 'gift', 'requests', 'help', 'mods', 'vips']);
+const TW_LEAD = new Set(['mod', 'unmod', 'vip', 'unvip']);
+function twLiveCommands(raw){
+  if (!Array.isArray(raw) || raw.length < 10) return null;
+  const list = raw.filter(c => c && /^[a-z]{1,30}$/.test(c.name) && !TW_LEFT_OUT.has(c.name)).slice(0, 100).map(c => ({
+    name: c.name, args: (Array.isArray(c.args) ? c.args : []).filter(a => a && /^[\w-]{1,30}$/.test(a.name)).map(a => a.required ? a.name : `[${a.name}]`).join(' '),
+    does: String(c.description || '').trim().replace(/\.$/, '').slice(0, 200),
+    who: c.level <= 1 ? 'all' : c.level === 2 ? 'mod' : TW_LEAD.has(c.name) ? 'lead' : 'host', mgmt: !!c.editor || c.level >= 2 }));
+  const trim = n => n.startsWith('un') && !n.startsWith('unique') ? n.slice(2) : n;
+  return list.filter(c => c.does).sort((a, b) => a.mgmt !== b.mgmt ? b.mgmt - a.mgmt : trim(a.name).localeCompare(trim(b.name))).map(({ mgmt, ...c }) => c);
+}
+
 const twitch = {
   id: 'twitch', name: 'Twitch', letter: 'T',
   mentions: true,
@@ -110,6 +125,7 @@ const twitch = {
   pageCommands: false,
   likes: false,
   chatCommands: TW_COMMANDS,
+  liveCommands: twLiveCommands,   // (its own page's list, read live: above)
   // A name in ALL as its chat shows it (see kick.js): their colour, or one of Twitch's own, made readable
   nameStyle: (m, { light } = {}) => ({ color: readable(/^#[0-9a-f]{6}$/i.test(m.color || '') ? m.color : twDefault(m.login || m.sender), !!light) }),
   lowQualityJs: null,

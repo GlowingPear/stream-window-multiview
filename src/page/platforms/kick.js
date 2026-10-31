@@ -51,6 +51,7 @@ const kick = {
   pageCommands: true,    // /clip, /poll and /prediction in its chat (in-site/kick-commands.js)
   likes: false,          // a like button on its streams
   chatCommands: KICK_COMMANDS,   // its chat's commands, for ALL's / list (above)
+  liveCommands: null,   // (its list can't be read from its page without typing / in it: npm run check:commands checks the copy)
   // A name in ALL (chat/all-chat.js) as its own chat shows it: m a message (feed-parse.js), light whether the app's
   // theme is light, look what the site's chat page says about its colours (YouTube's: youtube.js). -> { color, bg? }
   // (bg: a name on a pill), or null: ALL picks one. Kick shows the colour each account has, as it is
