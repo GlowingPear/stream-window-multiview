@@ -2252,6 +2252,67 @@ test('a YouTube poll: a card over ALL while it\'s open, its votes as they come (
   assert.deepEqual((await lines(page)).map(l => l.split(' | ')[1]), ['Y@kind: hello there']);
 });
 
+test('/ at the start of ALL\'s box: the site\'s commands you can use there (mods\' where you moderate, the streamer\'s in your own channel), narrowed as you type; Tab fills one in; a command sent shows no line, unless it can\'t be sent', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]', allSend: JSON.stringify({ s1: 'tw:quietkoala' }) });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => {
+    window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
+    window.__sends = []; window.__fail = false; window.allChat.sender.send = async (m, text) => { window.__sends.push([m.channel, text]); return window.__fail ? 'not-filled' : 'sent'; };
+  }, LIVE);
+  const list = async typed => {
+    await page.fill('.all-in', ''); await page.focus('.all-in'); await page.keyboard.type(typed); await page.waitForTimeout(60);
+    return page.evaluate(() => { const a = document.querySelector('.all-at'); return a.hidden ? null : { head: a.querySelector('.all-at-h').textContent, groups: [...a.querySelectorAll('.all-cmd-g')].map(g => g.textContent), cmds: [...a.querySelectorAll('.all-cmd .all-cmd-n')].map(n => n.textContent), foot: a.querySelector('.all-mh').textContent }; });
+  };
+  // not a mod there: everyone's
+  let l = await list('/');
+  assert.equal(l.head, 'TTwitch commands');
+  assert.deepEqual(l.groups, ['Everyone']);
+  assert.deepEqual(l.cmds, ['/block', '/unblock', '/color', '/me', '/vote'], 'in Twitch\'s own order');
+  assert.doesNotMatch(l.foot, /in all/, 'all of them showing');
+  assert.equal(await list('/ti'), null, 'no /timeout for you');
+  // a mod there: theirs too
+  await page.evaluate(() => window.allChat.modKnown.set('tw:quietkoala', true));
+  l = await list('/ti');
+  assert.deepEqual([l.groups, l.cmds], [['Channel management'], ['/timeout']]);
+  assert.equal(await list('/vip'), null, 'the streamer\'s and a lead moderator\'s: not a moderator\'s');
+  // a lead moderator there (as their last message's badge says): /mod and /vip too, still not the streamer's /raid
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ badges: 'lead_moderator/1', 'display-name': 'metwitch', id: 'me1', 'user-id': '7' }, ':metwitch!m@m PRIVMSG #quietkoala :hello')] });
+  assert.deepEqual((await list('/vi')).cmds, ['/vip']);
+  assert.equal(await list('/raid'), null);
+  // ↓ and Tab fill one in; the rest of what you typed stays
+  l = await list('/un');
+  assert.deepEqual(l.cmds, ['/unban', '/unmod', '/unmonitor', '/unrestrict', '/untimeout'], 'a lead moderator\'s /unmod in its place');
+  assert.match(l.foot, /9 in all, keep typing/);
+  // each one's description on a line of its own under it, one line at most
+  assert.ok((await page.$$eval('.all-at .all-cmd', rs => rs.map(r => { const n = r.querySelector('.all-cmd-n').getBoundingClientRect(), d = r.querySelector('.all-cmd-d').getBoundingClientRect(); return d.top >= n.bottom - 1 && d.height < 20; }))).every(Boolean));
+  await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('Tab');
+  assert.equal(await page.$eval('.all-in', b => b.value), '/unmonitor ');
+  assert.equal(await page.isVisible('.all-at'), false);
+  // sent: no line of yours waiting to be seen, a word that it went
+  await page.keyboard.type('driftwood_7'); await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__sends.length === 1);
+  assert.deepEqual(await page.evaluate(() => window.__sends[0]), ['tw:quietkoala', '/unmonitor driftwood_7']);
+  await page.waitForFunction(() => /Sent \/unmonitor on Twitch/.test(document.querySelector('#msg').textContent));
+  assert.equal(await page.$('.all-list .al-mine'), null);
+  // /me comes back as your message: it has its line
+  await page.fill('.all-in', '/me waves'); await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__sends.length === 2);
+  assert.ok(await page.$('.all-list .al-mine'));
+  // not sent: its line, with why
+  await page.evaluate(() => { window.__fail = true; });
+  await page.fill('.all-in', '/slow 30'); await page.keyboard.press('Enter');
+  await page.waitForSelector('.all-list .al-mine-failed');
+  assert.match(await page.textContent('.all-list .al-mine-failed'), /\/slow 30/);
+  // the chat's own list as its page has it now (Twitch's, read live): it, not the copy
+  await page.evaluate(() => window.allChat.liveCmds.set('tw:quietkoala', [{ name: 'shiny', args: 'thing', does: 'A command Twitch just added', who: 'all' }, { name: 'ban', args: 'username', does: 'Ban', who: 'mod' }]));
+  l = await list('/');
+  assert.deepEqual(l.cmds, ['/shiny', '/ban']);
+  // YouTube: no commands, no list
+  await page.evaluate(() => { const b = document.querySelector('.all-pick'); b.click(); });
+  const yt = await page.$('.all-menu:not([hidden]) [data-cmd="all.sendOn"]:not([disabled]):has-text("YouTube")');
+  if (yt){ await yt.click(); assert.equal(await list('/'), null); } else await page.keyboard.press('Escape');
+});
+
 test('polls on several sites: one card, the others a press away in its corner, the newest shown; the 📊 pill folds it away; Kick\'s time left, its results, then gone', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.evaluate(now => window.smvNotes.liveStatus({ 'yt:@quietkoala': { live: true, checked: now } }), Date.now());

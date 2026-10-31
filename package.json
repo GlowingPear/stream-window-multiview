@@ -35,6 +35,7 @@
     "page-imports": "node scripts/page-imports.js",
     "dist:win": "npx --yes electron-builder@26.15.3 --win --publish never",
     "dist:mac": "npx --yes electron-builder@26.15.3 --mac --publish never",
+    "check:commands": "node scripts/check-chat-commands.js",
     "grapevine:check": "grapevine-check"
   },
   "devDependencies": {

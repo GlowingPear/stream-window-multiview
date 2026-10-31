@@ -8,6 +8,35 @@ const NOT_CHANNELS = new Set(['login', 'signup', 'register', 'categories', 'cate
   'subscriptions', 'messages', 'notifications', 'wallet', 'video', 'videos', 'clips', 'clip', 'terms-of-service', 'privacy-policy',
   'community-guidelines', 'dmca-policy', 'popout', 'api', 'auth', 'oauth', 'verify', 'stream', 'chatroom', 'help', 'about', 'careers', 'kick-creators', 'emotes']);
 
+// Its chat's commands, for ALL's box (/ at the start: chat/all-chat.js), as twitch.js says them (Kick has no 'lead'). As its chat's own list
+// shows them (read in live chats 2026-10-31): its words, its order (by name), and who can use each (its commands' own
+// minimumRole: viewer, moderator or broadcaster). Its timeout is in minutes. /poll, /prediction and /clip open Kick's own panel from ALL too
+// (in-site/kick-commands.js); /user and /category, which open something in its own chat, are left out.
+const KICK_COMMANDS = [
+  { name: 'ban', args: '<username> [reason]', does: 'Ban a user from the chat', who: 'mod' },
+  { name: 'clear', args: '', does: 'Clear the chat', who: 'mod' },
+  { name: 'clip', args: '[duration] [title]', does: 'Create a clip', who: 'all' },
+  { name: 'emoteonly', args: '<on_off>', does: 'Toggle emote only mode', who: 'mod' },
+  { name: 'followonly', args: '<on_off> [minutes]', does: 'Toggle follow only mode', who: 'mod' },
+  { name: 'kpp', args: '<on_off>', does: 'Toggle partner income', who: 'host' },
+  { name: 'mod', args: '<username>', does: 'Add a moderator to the chat', who: 'host' },
+  { name: 'multi', args: '<on_off>', does: 'Toggle multistream', who: 'host' },
+  { name: 'og', args: '<username>', does: 'Add an OG to the chat', who: 'host' },
+  { name: 'poll', args: '', does: 'Create a poll', who: 'mod' },
+  { name: 'polldelete', args: '', does: 'Delete a poll', who: 'mod' },
+  { name: 'prediction', args: '', does: 'Create a prediction', who: 'mod' },
+  { name: 'raid', args: '[username]', does: 'Raid a channel', who: 'host' },
+  { name: 'slow', args: '<on_off> [seconds]', does: 'Toggle slow mode', who: 'mod' },
+  { name: 'subonly', args: '<on_off>', does: 'Toggle sub only mode', who: 'mod' },
+  { name: 'timeout', args: '<username> <minutes> [reason]', does: 'Timeout a user from the chat', who: 'mod' },
+  { name: 'title', args: '<title>', does: 'Set the title of the stream', who: 'mod' },
+  { name: 'unban', args: '<username>', does: 'Unban a user from the chat', who: 'mod' },
+  { name: 'unmod', args: '<username>', does: 'Remove a moderator from the chat', who: 'host' },
+  { name: 'unog', args: '<username>', does: 'Remove an OG from the chat', who: 'host' },
+  { name: 'unvip', args: '<username>', does: 'Remove a VIP from the chat', who: 'host' },
+  { name: 'vip', args: '<username>', does: 'Add a VIP to the chat', who: 'host' }
+];
+
 const kick = {
   id: 'kick', name: 'Kick', letter: 'K',
   // What it can do in the app
@@ -21,6 +50,8 @@ const kick = {
   emoteLists: true,      // the app asks it for a channel's emotes (new emotes glow)
   pageCommands: true,    // /clip, /poll and /prediction in its chat (in-site/kick-commands.js)
   likes: false,          // a like button on its streams
+  chatCommands: KICK_COMMANDS,   // its chat's commands, for ALL's / list (above)
+  liveCommands: null,   // (its list can't be read from its page without typing / in it: npm run check:commands checks the copy)
   // A name in ALL (chat/all-chat.js) as its own chat shows it: m a message (feed-parse.js), light whether the app's
   // theme is light, look what the site's chat page says about its colours (YouTube's: youtube.js). -> { color, bg? }
   // (bg: a name on a pill), or null: ALL picks one. Kick shows the colour each account has, as it is

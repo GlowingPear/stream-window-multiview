@@ -472,3 +472,21 @@ test('a pin from ALL: Twitch\'s "Unpin After" panel that opens after it is click
   assert.deepEqual(await page.evaluate(() => window.__off), [], 'only after a pin');
   await page.evaluate(() => document.getElementById('other').remove());
 });
+
+test('Twitch\'s chat commands as its own page has them (twCommandsAgent): its getCommands, asked for every level as an editor; none there, or failing: null', async t => {
+  const page = await openApp(t);
+  const got = await page.evaluate(() => {
+    const box = document.createElement('div'); box.setAttribute('data-a-target', 'chat-input'); document.body.append(box);
+    const asked = [];
+    const provider = { memoizedProps: { getCommands: (level, o) => { asked.push([level, o.isEditor, o.hasPermissions.has('x')]); return [{ name: 'ban', permissionLevel: 2, description: 'Ban.', commandArgs: [{ name: 'username', isRequired: true }, { name: 'reason', isRequired: false }] }, { name: 'raid', permissionLevel: 3, allowEditorUsage: true, description: 'Raid.' }]; } } };
+    const rootF = { child: { sibling: provider } }; box['__reactFiber$x'] = { return: rootF };
+    const r1 = window.twCommandsAgent();
+    provider.memoizedProps.getCommands = () => { throw new Error('changed'); };
+    const r2 = window.twCommandsAgent();
+    box.remove();
+    return { r1, r2, asked, r3: window.twCommandsAgent() };
+  });
+  assert.deepEqual(got.r1, [{ name: 'ban', args: [{ name: 'username', required: true }, { name: 'reason', required: false }], description: 'Ban.', level: 2, editor: false }, { name: 'raid', args: [], description: 'Raid.', level: 3, editor: true }]);
+  assert.deepEqual(got.asked, [[3, true, true]]);
+  assert.deepEqual([got.r2, got.r3], [null, null]);
+});
