@@ -400,6 +400,16 @@ test('ignoredKinds: of the kinds heard, those ALL leaves out on purpose, with wh
   assert.deepEqual(ignoredKinds(null), { kick: {}, twitch: {}, youtube: {} });
 });
 
+test('Shield Mode (to moderators) is left out on purpose: its limits come as the chat\'s modes (updated_room), which ALL shows', async () => {
+  const { parseTwitch, ignoredKinds } = await load();
+  const shield = { notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'UPDATE_CHANNEL_MODERATION_MODE', data: { is_shield_mode_active: true, shield_mode_last_activated_by: { login: 'user1' } } }) } };
+  assert.equal(parseTwitch(JSON.stringify(shield)), null);
+  assert.match(ignoredKinds({ twitch: { 'hermes:UPDATE_CHANNEL_MODERATION_MODE': {} } }).twitch['hermes:UPDATE_CHANNEL_MODERATION_MODE'], /^Shield Mode on or off/);
+  // the modes it set, in the same moment: followers-only, slow mode and verified accounts only
+  const room = { notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'updated_room', data: { room: { modes: { followers_only_duration_minutes: 0, slow_mode_duration_seconds: 3, verified_only_mode_enabled: true, subscribers_only_mode_enabled: false, emote_only_mode_enabled: false } } } }) } };
+  assert.deepEqual(parseTwitch(JSON.stringify(room)).modes, { slow: 3, followers: 0, subs: false, emotes: false, verified: true });
+});
+
 
 test('Twitch\'s hype train (its other connection, and its GraphQL): started, moving along, a level up, ended; its conductors left out', async () => {
   const { parseTwitch, hypeTrain } = await load();
