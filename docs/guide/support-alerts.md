@@ -6,7 +6,7 @@ lede: Know when someone sends KICKs, bits or a Super Chat, gifts subs, subscribe
 settings: support
 words: [support, bits, kicks, subs, gift, raid, super chat, member, membership, donation, tip]
 related: [mentions, bell]
-order: 20
+order: 21
 ---
 
 - Off at first: switch it on in Settings > Support. When someone sends KICKs, bits or a Super Chat, gifts subs or memberships, subscribes, or raids in with their viewers (Kick and Twitch) in any open chat, that chat window glows, a pop-up says who and what, and it's listed under the bell (Mentions > Support).

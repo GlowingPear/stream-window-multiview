@@ -24,6 +24,7 @@ How to use every part of the app. The same pages are in the app: Settings › Gu
 - [Right-click in a chat or stream](right-click.md): Copy, translate, search, save emotes and copy a message from the right-click menu.
 - [Emotes and chat extras](emotes.md): Emote preview, new emotes, chat over the streams, counting messages you can't see, and the channel's name in each chat box.
 - [Kick's /clip, /poll and /prediction](kick-commands.md): Kick's own commands in the app's Kick chats.
+- [Shoutouts](shoutouts.md): Shout out a streamer in chat with one click, with your own message, their link and the game they play; or the last few who chatted, one a second.
 
 ## Alerts
 - [Notifications (the bell)](bell.md): Everything the app tells you about, kept under the bell.
