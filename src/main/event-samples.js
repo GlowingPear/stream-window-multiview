@@ -91,11 +91,13 @@ function placeholders() {
 const words = s => String(s).split(/(\[emote:\d+:[^\]]*\])/).map(p => (/^\[emote:/.test(p) ? p : p.replace(/[^\s]+/g, 'word'))).join('');
 const numId = (v, ph) => +ph('', v).replace(/\D/g, '') || 0;
 
-// One value, by its field's name. ctx: { person: inside someone, reward: inside a reward }
+// One value, by its field's name. ctx: { person: inside someone, reward: inside a reward, pic: inside a picture's
+// field, whose links are named by their size (Twitch's profile_image_urls: { "150x150": … }; a field named as a size is
+// one too, for JSON cut short) }
 function anonValue(key, v, ph, ctx = {}) {
   if (typeof v === 'number') return ID_KEY.test(key) && !KEEP_KEY.test(key) && v > 999 ? numId(v, ph) : v;
   if (typeof v !== 'string' || !v || KEEP_KEY.test(key)) return v;
-  if (URL_KEY.test(key) && /^https?:|^\/\//.test(v)) return 'https://example.invalid/' + ph('file', v);
+  if ((URL_KEY.test(key) || ctx.pic || /^\d+x\d*$/.test(key)) && /^https?:|^\/\//.test(v)) return 'https://example.invalid/' + ph('file', v);
   if (NAME_KEY.test(key) || (ctx.person && /^(name|simpleText|text)$/i.test(key))) return ph('user', v);
   if (key === 'channel') { const m = v.match(KICK_CHANNEL); return m ? v.replace(/\d+/, d => numId(+d, ph)) : ph('channel', v); }
   if (ID_KEY.test(key)) return ph('id', v);
@@ -109,7 +111,7 @@ function anonJson(v, ph, key = '', ctx = {}) {
     const out = {};
     // a status next to an old_status is the stream's title (Twitch's broadcast_settings_update); elsewhere a status is a state
     for (const [k, x] of Object.entries(v)) out[k] = anonJson(x, ph, k === 'status' && !('old_status' in v) ? 'state' : k,
-      { person: ctx.person || PERSON.test(k) || /^author/i.test(k), reward: ctx.reward || /reward/i.test(k) });
+      { person: ctx.person || PERSON.test(k) || /^author/i.test(k), reward: ctx.reward || /reward/i.test(k), pic: ctx.pic || URL_KEY.test(k) });
     return out;
   }
   if (typeof v === 'string') {
