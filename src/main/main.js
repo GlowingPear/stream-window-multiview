@@ -1425,11 +1425,11 @@ appIpc.handle('emotes:open', async (_e, ch) => {
 // The emotes to pick from in ALL (emote-picker.js): [{ id, label, emotes: [{ name, url, send }] }], kept 10 minutes per
 // channel. Kick's channel and site emotes; on Twitch the ones your account can use (signed in); the add-ons' for both.
 const pickAsked = new Map();
-appIpc.handle('emotes:pick', async (_e, ch) => {
+appIpc.handle('emotes:pick', async (_e, ch, fresh) => {   // (fresh: asked again, not from the last 10 minutes: ALL reloaded)
   if (!okCh(ch)) return null;
   ch = normCh(ch);
   const was = pickAsked.get(ch);
-  if (was && Date.now() - was.at < 10 * 60e3) return was.groups;
+  if (was && !fresh && Date.now() - was.at < 10 * 60e3) return was.groups;
   let groups = [], id = null, platform = 'kick';
   if (/^yt:/.test(ch)) return [];                            // YouTube: its own box's emoji only
   if (/^tw:/.test(ch)) {

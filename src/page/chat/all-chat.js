@@ -1,8 +1,8 @@
 import { alerts, clearAlert } from '../alerts/alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { emoteBox } from './all-box.js';
-import { SMILEY, addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, renderEmoteList, renderRecent,
-  suggestEmote, useRecent, withEmotes } from './all-emotes.js';
+import { SMILEY, addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, refreshEmotes, renderEmoteList,
+  renderRecent, suggestEmote, useRecent, withEmotes } from './all-emotes.js';
 import { chatLoaded, healthState, noteRaw, noteSend, reportHealth } from './all-health.js';
 import { blowOn, blowUp } from './blow-up.js';
 import { chatBoxName } from './chat-name.js';
@@ -219,10 +219,11 @@ function blockEl(text){
     element('span', 'all-mbt', element('b', null, what), rest && element('small', null, rest[0].toUpperCase() + rest.slice(1))));
 }
 // Reload on a window showing ALL: every site chat it reads for them (their hidden tabs too), each reading your sign-in and
-// its modes again as it loads (feedReady)
+// its modes again as it loads (feedReady), and their emotes asked for again
 function reloadAll(w){
-  const chs = tabChannels(w);
-  frameOf(w).filter(o => o.kind === 'chat' && chs.includes(o.channel)).forEach(reloadWin);
+  const chs = tabChannels(w), open = frameOf(w).filter(o => o.kind === 'chat' && chs.includes(o.channel));
+  open.forEach(reloadWin);
+  open.forEach(o => refreshEmotes(o.channel, redrawAll));   // (its emotes too: the streamer's new ones, on its lines and in the picker)
 }
 // The bar above the box: the send site's modes (yours to ignore as a mod), slow mode's countdown, or why you can't chat
 function renderModes(view, w){
