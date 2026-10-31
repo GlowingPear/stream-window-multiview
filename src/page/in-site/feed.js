@@ -99,6 +99,19 @@ function feedAgent(as){
   return true;
 }
 
+// Runs inside a Twitch chat page: the hype train already running in its channel (its news only comes as it changes),
+// as Twitch's GraphQL says it -> its execution ({ id, expiresAt, endedAt, isGoldenKappaTrain, progress }) or null
+async function hypeAgent(nameAs){
+  const name = nameAs || (location.pathname.match(/\/popout\/([^/]+)/) || [])[1];
+  if (!name) return null;
+  try {
+    const query = `query { user(login: ${JSON.stringify(name)}) { channel { hypeTrain { execution { id startedAt expiresAt endedAt isGoldenKappaTrain progress { goal progression total level { value goal } } } } } } }`;
+    const r = await (await fetch('https://gql.twitch.tv/gql', { method: 'POST', headers: { 'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko', 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) })).json();
+    const x = r && r.data && r.data.user && r.data.user.channel && r.data.user.channel.hypeTrain && r.data.user.channel.hypeTrain.execution;
+    return x && !x.endedAt ? x : null;
+  } catch (e) { return null; }
+}
+
 // A pin already up when ALL starts reading this chat (the sites send a pin only as it's made). Each site's chat page
 // asks for its pin as it loads: Kick with the chat's history, Twitch with a pinnedChatMessages query, YouTube in the
 // page's first data. -> { s, raw: [it as the live pin event] } for feedAgent's batch shape, or null (none, or unreadable)
@@ -409,5 +422,5 @@ function profileAgent(id){
   return true;
 }
 
-export { badgesAgent, feedAgent, kickIconsAgent, lineProbe, messageHtml, modesAgent, pinAgent, profileAgent,
-  replyAgent, shownAgent, twReplyAt, twReplyPress, ytLookAgent };
+export { badgesAgent, feedAgent, hypeAgent, kickIconsAgent, lineProbe, messageHtml, modesAgent, pinAgent,
+  profileAgent, replyAgent, shownAgent, twReplyAt, twReplyPress, ytLookAgent };
