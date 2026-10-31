@@ -219,4 +219,4 @@ function init(){
   window.ytChatAgent = ytChatAgent;   // for the tests
 }
 
-export { applyChatView, init, syncLike, toggleLike };
+export { applyChatView, init, likeHelp, syncLike, toggleLike };

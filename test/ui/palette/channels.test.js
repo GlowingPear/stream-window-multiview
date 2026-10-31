@@ -51,13 +51,13 @@ test('a saved channel that isn\'t open: big, first, with Stream + chat (as the C
   assert.equal((await rows(page))[0].hero, true);
 });
 
-test('an open channel: Go to it, Make big, Mute, Reload, Pop out, Close, + Chat when only its stream is open', async t => {
+test('an open channel: Go to it, Make big, Mute, Reload, Channel page, Close, + Chat when only its stream is open', async t => {
   const page = await openApp(t);
   await add(page, 'alpha');
   await find(page, 'alpha');
   assert.match(await page.textContent('#palList .pal-row.hero .pal-tag.on'), /Open · stream \+ chat/);
   assert.match(await page.textContent('#palList .pal-row.hero .pal-sub'), /offline·stream muted/);
-  assert.deepEqual(await heroButtons(page), ['Go to it', 'Make big', 'Unmute', 'Reload', 'Pop out', 'Close both', 'More…']);
+  assert.deepEqual(await heroButtons(page), ['Go to it', 'Make big', 'Unmute', 'Reload', 'Channel page', 'Close both', 'More…']);
   // Ctrl/⌘+1: the second button, Make big
   await page.keyboard.press('ControlOrMeta+1');
   assert.equal((await windows(page)).find(w => w.kind === 'stream').featured, true, 'big');

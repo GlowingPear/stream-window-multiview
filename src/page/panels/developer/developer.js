@@ -1,4 +1,5 @@
 import { alerts } from '../../alerts/alerts.js';
+import { allOn } from '../../chat/all-chat.js';
 import { renderEvents } from '../../chat/event-samples.js';
 import { trAll } from '../../chat/translate.js';
 import { $, ROLE, colsMode, lastLayout, wins } from '../../core.js';
@@ -16,6 +17,7 @@ import { flash } from '../../shared/flash.js';
 import { fromApp, fromSite } from '../../shared/incoming.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
+import { tabChannels } from '../../windows/frames.js';
 import { pauseWhy } from '../../windows/pause-state.js';
 import { askIn, viewId, zoomOf } from '../../windows/view.js';
 
@@ -166,7 +168,11 @@ async function winState(w){
   ];
   return lines.filter(Boolean).join('\n');
 }
-async function copyWinState(w){ copyText(await winState(w), `Copied ${w.channel ? chLabel(w.channel) + '’s' : 'the window’s'} state`); }
+async function copyWinState(w){
+  // ALL: each of its sites' chats, one after another
+  const ws = allOn(w) ? tabChannels(w).map(ch => wins.find(o => o.kind === 'chat' && o.channel === ch)).filter(Boolean) : [w];
+  copyText((await Promise.all(ws.map(winState))).join('\n\n'), ws.length > 1 ? `Copied the state of ${ws.length} chats` : `Copied ${w.channel ? chLabel(w.channel) + '’s' : 'the window’s'} state`);
+}
 async function inspectWin(w){
   const id = w.view && viewId(w.view);
   if (!id || !window.kmv.devInspect || !(await window.kmv.devInspect(id).catch(() => false))) flash('Couldn’t open the developer tools for it');

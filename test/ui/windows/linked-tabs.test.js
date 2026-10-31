@@ -481,7 +481,7 @@ test('Settings › Windows: a button you move glides to its place, lifted, and g
   await page.click('#wbList [data-k=reload] button:has-text("Never in ⋯")');
   const m = await moving();
   assert.ok(m.reload && m.lifted && m.preview, JSON.stringify(m));
-  assert.deepEqual(m.others, ['mod', 'pop', 'max'], 'the rows below it move up');
+  assert.deepEqual(m.others, ['mod', 'pop', 'popchat', 'max'], 'the rows below it move up');
   await page.waitForFunction(() => document.querySelector('#wbList [data-k=reload]').classList.contains('wb-glow'), null, { timeout: 3000 });
   assert.equal(await page.$eval('#wbList .wb-row:last-child', r => r.dataset.k), 'reload', 'at the bottom, next to ⋯');
   assert.equal(await page.$eval('#wbList [data-k=reload]', r => r.classList.contains('wb-lift')), false, 'put down');

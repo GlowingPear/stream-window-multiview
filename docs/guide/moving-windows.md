@@ -10,4 +10,4 @@ order: 7
 
 - Drag a window by its title bar. Resize it from any edge or corner.
 - Each window's name is a dropdown: pick another channel to swap the two windows.
-- Title bar buttons: volume and mute, + Chat, make big, save (☆), refresh, open in its own window, maximize, close. When a window is too narrow for them all, the rest are in its ⋯ menu.
+- Title bar buttons: volume and mute, + Chat, make big, save (☆), refresh, the channel page in a pop-up, maximize, close. A chat window also has just the chat in a pop-up. When a window is too narrow for them all, the rest are in its ⋯ menu.

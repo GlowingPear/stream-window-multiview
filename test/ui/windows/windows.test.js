@@ -113,10 +113,14 @@ test('title bar buttons: + Chat, save, reload, open in a window, swap, close', a
 
   await page.evaluate(() => { window.opened = []; window.open = (...x) => { window.opened.push(x); return null; }; });
   await a.locator('[data-a=pop]').click();
+  // a chat window: its channel page, or just the chat (narrow)
   await win(page, 'alpha', 'chat').locator('[data-a=pop]').click();
+  await win(page, 'alpha', 'chat').locator('[data-a=popchat]').click();
   const opened = await page.evaluate(() => window.opened);
-  assert.deepEqual(opened.map(o => o[0]), ['https://kick.com/alpha', 'https://kick.com/popout/alpha/chat']);
-  assert.match(opened[1][2], /width=380/, 'chats open narrow');
+  assert.deepEqual(opened.map(o => o[0]), ['https://kick.com/alpha', 'https://kick.com/alpha', 'https://kick.com/popout/alpha/chat']);
+  assert.match(opened[2][2], /width=380/, 'chats open narrow');
+  assert.match(opened[1][2], /width=1100/, 'the page wide');
+  assert.equal(await a.locator('[data-a=popchat]').count(), 0, 'a stream has no chat pop-up');
 
   // the name's dropdown swaps two windows of the same kind
   const before = await windows(page);

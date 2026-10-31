@@ -1,11 +1,15 @@
+import { SITE_BUTTONS, allOn, siteAction } from '../chat/all-chat.js';
 import { newFor } from '../chat/new-messages.js';
 import { $, wins } from '../core.js';
+import { infoFor } from '../panels/channels/channels.js';
 import { barButtons } from '../panels/settings/windows-pane.js';
-import { chLabel } from '../platforms/platforms.js';
+import { PLAT_NAME, chLabel, platOf } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
+import { icon } from '../shared/icons.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { store } from '../shared/store.js';
 import { tipName } from '../shared/tooltips.js';
+import { tabChannels } from './frames.js';
 
 /* ---------- title bars fit any window size ----------
    When a window's title bar is too narrow for everything, it first drops the volume %, then narrows the volume
@@ -14,7 +18,7 @@ import { tipName } from '../shared/tooltips.js';
    Settings › Windows says which buttons are always in the ⋯ menu, and the order: out of room, the leftmost go
    first. Until you change it there, the least-used go first (BAR_ORDER). */
 const BAR_LEVELS = ['b1', 'b2'];
-const BAR_ORDER = ['chat', 'mod', 'reload', 'pop', 'profile', 'overlay', 'at', 'feat', 'like', 'star', 'max'];
+const BAR_ORDER = ['chat', 'mod', 'reload', 'popchat', 'pop', 'profile', 'overlay', 'at', 'feat', 'like', 'star', 'max'];
 function fitBar(bar){
   if (!bar.isConnected || !bar.clientWidth) return;     // not on screen: fitted when it shows (it resizes then)
   const name = bar.querySelector('.col-pick') || bar.querySelector('.title'), more = bar.querySelector('[data-a=more]');
@@ -56,6 +60,9 @@ function openBarMenu(more){
   if (!barMenu.hidden && barMenuFor === more){ barMenu.hidden = true; return; }
   barMenuFor = more;
   barMenu.innerHTML = '';
+  barMenu.classList.remove('bm-all');
+  const w = wins.find(o => o.el && o.el.contains(more));
+  if (w && allOn(w)) return allBarMenu(w, more);
   let devHead = false;
   for (const b of more.closest('.btns').querySelectorAll('.ovf:not([hidden])')){
     // Developer tools' items (Settings › Developer) go last, under a heading of their own
@@ -65,6 +72,41 @@ function openBarMenu(more){
   if (devHead){
     barMenu.appendChild(element('div', { class: 'bm-head', role: 'presentation' }, 'Developer'));
     for (const b of more.closest('.btns').querySelectorAll('.ovf.dev-b:not([hidden])')) barMenu.appendChild(barItem(b));
+  }
+  barMenu.hidden = false;
+  const r = more.getBoundingClientRect(), mw = barMenu.offsetWidth;
+  barMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
+  barMenu.style.top = Math.min(innerHeight - barMenu.offsetHeight - 8, r.bottom + 4) + 'px';
+}
+// The top row's short names (a word each, under its icon)
+const TILE_NAMES = { link: 'Settings', profile: 'Profile', reload: 'Reload', max: 'Maximize', at: 'Mentions', chat: 'Add chat', feat: 'Highlight', overlay: 'Overlay', like: 'Like' };
+// ALL's ⋯ menu: what's for the whole streamer, then a line for each site with its buttons (icons, each with its tooltip)
+function allBarMenu(w, more){
+  const ovf = [...more.closest('.btns').querySelectorAll('.ovf:not([hidden])')], keys = new Set(ovf.map(b => b.dataset.a)), chs = tabChannels(w);
+  barMenu.classList.add('bm-all');
+  // the whole streamer's: a row of icons too
+  const whole = ovf.filter(b => !SITE_BUTTONS.includes(b.dataset.a));
+  if (whole.length) barMenu.appendChild(element('div', { class: 'bm-top', role: 'group', 'aria-label': 'Every site' }, ...whole.map(b => {
+    const t = barItem(b).querySelector('.bm-t').textContent;
+    return element('button', { type: 'button', role: 'menuitem', class: 'bm-act bm-tile' + (b.classList.contains('on') ? ' on' : ''), title: b.title || t, 'aria-label': t,
+      onclick: () => { barMenu.hidden = true; if (b.isConnected) b.click(); } },
+      element('span', { class: 'bm-ti', html: b.dataset.a === 'chat' ? icon.plus : b.querySelector('svg')?.outerHTML || '' }), element('span', 'bm-tl', TILE_NAMES[b.dataset.a] || t));
+  })));
+  // the mod view's place: only where you moderate one of their sites (then greyed where you don't, and YouTube's like)
+  const modAny = chs.some(ch => { const x = siteAction('mod', ch); return x.key !== 'like' && !x.off; });
+  const acts = SITE_BUTTONS.filter(a => keys.has(a) && (a !== 'mod' || modAny));
+  if (acts.length){
+    if (barMenu.children.length) barMenu.appendChild(element('hr', 'bm-hr'));
+    for (const ch of chs){
+      const p = platOf(ch), live = infoFor(ch)?.live;
+      barMenu.appendChild(element('div', { class: 'bm-site', role: 'group', 'aria-label': PLAT_NAME[p] },
+        element('span', { class: 'bm-sn', title: `${PLAT_NAME[p]}${live ? ' · live' : ''}` }, element('i', { class: 'pi pi-' + p + (live ? ' bm-live' : '') }, PLAT_NAME[p][0]), element('span', null, PLAT_NAME[p])),
+        ...acts.map(a => {
+          const x = siteAction(a, ch);
+          return element('button', { type: 'button', role: 'menuitem', class: 'bm-act' + (x.on ? ' on' : '') + (x.dev ? ' bm-dev' : ''), disabled: x.off, title: x.title, 'aria-label': x.title, dataset: { cmd: 'win.site.' + (x.key || a) }, html: x.icon,
+            onclick: () => { barMenu.hidden = true; x.run(more); if (x.keep) openBarMenu(more); } });
+        })));
+    }
   }
   barMenu.hidden = false;
   const r = more.getBoundingClientRect(), mw = barMenu.offsetWidth;

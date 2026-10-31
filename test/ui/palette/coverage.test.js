@@ -61,6 +61,15 @@ test('every visible button and tab has a command in the search box, in every par
   await check(page, 'a window with tabs', seen);
   await page.click('#stage .win.stream:not(.tab-hidden) .ptab.twitch', { button: 'right' }); await check(page, 'the tab menu', seen);
   await page.keyboard.press('Escape');
+  // ALL in its chat, and the menus its title bar's buttons open there (which site's)
+  await page.evaluate(() => window.allChat.setAll(window.openWins().find(w => w.kind === 'chat' && !w.hiddenTab), true));
+  await page.waitForSelector('.all-view');
+  await check(page, 'ALL', seen);
+  for (const a of ['pop', 'popchat', 'star']){
+    await page.$eval(`#stage .win.chat:not(.tab-hidden) [data-a=${a}]`, b => b.click()); await check(page, `ALL's ${a} menu`, seen);
+    await page.keyboard.press('Escape');
+  }
+  await page.evaluate(() => window.allChat.setAll(window.openWins().find(w => w.kind === 'chat' && !w.hiddenTab), false));
   await page.evaluate(() => window.openSettings('linked'));
   for (const sub of ['tabs', 'playing', 'live', 'sugs', 'linked']){ await page.click(`#laTabs [data-t=${sub}]`); await check(page, 'Settings › Linked channels › ' + sub, seen); }
   await page.keyboard.press('Escape');
