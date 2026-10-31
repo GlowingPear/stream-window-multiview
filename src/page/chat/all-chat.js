@@ -11,7 +11,7 @@ import { chatZoom } from './chat-zoom.js';
 import { sampleIn } from './event-samples.js';
 import { feedParse } from './feed-parse.js';
 import { openInBrowser } from './kick-panel.js';
-import { shoutOn, shoutOut, shoutTag, soPersonOf, soSentAt } from './shoutout.js';
+import { shoutHere, shoutOut, shoutTag, soPersonOf, soSentAt } from './shoutout.js';
 import { autoTrFor, translateChat } from './translate.js';
 import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
@@ -675,7 +675,7 @@ function evToggle(m, e){
 }
 // Shoutouts (chat/shoutout.js): who a line can shout out (someone else's message on Kick or Twitch), or null
 function shoutable(m){
-  if (!shoutOn() || m.kind === 'mine' || m.deleted || !['kick', 'twitch'].includes(m.site) || !m.login || m.login === meOn(m.site)) return null;
+  if (!shoutHere(m.ch) || m.kind === 'mine' || m.deleted || !['kick', 'twitch'].includes(m.site) || !m.login || m.login === meOn(m.site)) return null;
   const p = soPersonOf(m);
   return p && { ...p, ch: m.ch };
 }

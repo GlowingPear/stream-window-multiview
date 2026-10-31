@@ -77,27 +77,80 @@ button.al-so:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 .so-pl .pi{width:15px;height:15px;font-size:9px;border-radius:4px;vertical-align:-2px;margin-right:5px}
 .so-pl .lnk{color:#7cc7ff}
 .so-pl em{font-style:normal;font-size:10.5px;font-weight:700;margin-left:8px;padding:1px 7px;border-radius:999px;background:var(--line);color:var(--muted);white-space:nowrap}
-.so-ppl{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:8px}
-.so-ppl:empty{display:none}
-.so-ph,.so-pr{display:grid;grid-template-columns:minmax(120px,1fr) minmax(120px,1fr) 2fr 26px;gap:12px;align-items:center;padding:8px 12px}
-.so-ph{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:rgba(255,255,255,.02);border-bottom:1px solid var(--line)}
-.so-pr{font-size:13px;border-bottom:1px solid var(--line)}
-.so-pr:last-child{border-bottom:0}
-.so-pr .who,.so-pr .to{display:flex;align-items:center;gap:6px;min-width:0}
-.so-pr .who b{font-weight:700;overflow:hidden;text-overflow:ellipsis}
-.so-pr .pi{width:16px;height:16px;font-size:9.5px;border-radius:5px;flex:none}
-.so-pr .who .pi + .pi{margin-left:-2px}
-.so-pr input{width:100%;min-width:0;box-sizing:border-box;padding:5px 8px;font-size:12.5px}
-.so-pr .msgs{display:flex;flex-direction:column;gap:4px;min-width:0}
-.so-pr .site-msg{display:flex;align-items:center;gap:6px}
-.so-pr .x{width:24px;height:24px;border-radius:6px;border:0;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer}
-.so-pr .x:hover{color:var(--text);background:var(--line)}
-.so-pr .x svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
-.so-pr .linkish{font-size:11.5px;justify-self:start}
-.so-pr .st-warn{font-size:11px;color:#ffc440}
 .so-skip:empty{display:none}
 .so-site{flex:none;width:30px;height:24px;border-radius:6px;border:1px solid transparent;font:inherit;font-size:11px;font-weight:800;cursor:pointer;display:grid;place-items:center;padding:0}
 .so-site-kick{background:#53fc18;color:#0a0c0d}
 .so-site-twitch{background:#9146ff;color:#fff}
 .so-site-every{background:var(--panel2);border-color:var(--line2);color:var(--text);font-size:10px}
 .so-site:hover{filter:brightness(1.15)}
+
+/* Settings › Shoutouts › Channels and Channel settings › Shoutout: a card for each channel (panels/settings/shout-cards.js) */
+.sc-add{display:flex;gap:8px;margin-top:10px;position:relative}
+.sc-add .st-in{flex:1;padding:9px 12px 9px 34px;font-size:13px}
+.sc-mag{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);display:grid;pointer-events:none}
+.sc-mag svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2}
+.sc-res{position:absolute;left:0;right:76px;top:calc(100% + 6px);z-index:5;background:var(--panel);border:1px solid var(--line2);border-radius:12px;box-shadow:0 18px 40px rgba(0,0,0,.55);padding:6px}
+.sc-res[hidden]{display:none}
+.sc-res .rh{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 8px 4px}
+.sc-ri{display:flex;align-items:center;gap:10px;padding:8px;border-radius:9px;font-size:13px;cursor:pointer}
+.sc-ri.on{background:var(--line)}
+.sc-ri.taken{opacity:.55;cursor:default}
+.sc-ri .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.sc-ri .tx small{color:var(--muted);font-size:11.5px}
+.sc-ri .go{font-size:11.5px;font-weight:700;color:var(--accent)}
+.sc-ri.taken .go{color:var(--muted)}
+.sc-av{position:relative;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:12px;color:#fff;flex:none;box-shadow:inset 0 0 0 2px rgba(255,255,255,.08)}
+.sc-av.sm{width:30px;height:30px;font-size:10px}
+.sc-av img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover}
+.sc-av .pi{position:absolute;right:-3px;bottom:-3px;width:15px;height:15px;font-size:8.5px;border-radius:4px;box-shadow:0 0 0 2px var(--panel)}
+.sc-list{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.sc-card{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01));overflow:hidden}
+.sc-card.open{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 10%,transparent)}
+.sc-card.lost:not(.open){border-color:rgba(255,196,64,.35)}
+.sc-hd{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer}
+.sc-hd .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.sc-hd .nm{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px}
+.sc-hd .sites{display:flex;gap:6px;flex-wrap:wrap}
+.sc-site{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);padding:1px 7px 1px 2px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.sc-site .pi{width:14px;height:14px;font-size:8.5px;border-radius:4px}
+.sc-pill{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.sc-sum{font-size:12.5px;color:var(--text);opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-sum.gen{color:var(--muted);font-style:italic;opacity:1}
+.sc-sum.gen b{font-style:normal;color:var(--text)}
+.sc-sum.sc-lost{color:#ffc440;opacity:1}
+.sc-hd .ib{flex:none;width:28px;height:28px;border-radius:7px;border:0;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer}
+.sc-hd .ib:hover{background:var(--line);color:var(--text)}
+.sc-hd .ib svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;transition:transform .15s}
+.sc-card.open .sc-tog svg{transform:rotate(180deg)}
+.sc-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line)}
+.sc-row{display:flex;align-items:center;gap:10px;margin-top:12px;min-height:30px}
+.sc-row .lbl{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.sc-row .seg{margin-left:auto}
+.sc-msgs{display:flex;flex-direction:column;gap:12px}
+.sc-msg{display:flex;flex-direction:column;gap:6px}
+.sc-msg .mh{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700}
+.sc-msg .mh .pi{width:16px;height:16px;font-size:9px;border-radius:4px}
+.sc-msg textarea{width:100%;box-sizing:border-box;min-height:44px;resize:none;overflow:hidden;font:inherit;font-size:13px;line-height:1.5;padding:9px 11px}
+.sc-msg textarea::placeholder{color:var(--muted);font-style:italic}
+.sc-pvs{display:flex;flex-direction:column;gap:3px}
+.sc-pv{font-size:12.5px;color:var(--muted);line-height:1.5;padding-left:2px;overflow-wrap:anywhere}
+.sc-pv .pi{width:14px;height:14px;font-size:8.5px;border-radius:4px;display:inline-grid;place-items:center;vertical-align:-2px;margin-right:5px}
+.sc-pv b{color:var(--text)}
+.sc-pv .lnk{color:#7cc7ff}
+.sc-al{display:flex;flex-direction:column;gap:7px}
+.sc-al .ah{font-size:12.5px;color:var(--muted)}
+.sc-al .ah b{color:var(--text)}
+.sc-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sc-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 4px 3px 4px;border-radius:999px;background:var(--panel2);border:1px solid var(--line2);font-size:12.5px;font-weight:600}
+.sc-chip .pi{width:16px;height:16px;font-size:9px;border-radius:50%}
+.sc-chip .sc-any{background:var(--line2);color:var(--text)}
+.sc-chip .x{width:18px;height:18px;border:0;border-radius:50%;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
+.sc-chip .x:hover{background:var(--line);color:var(--text)}
+.sc-chip .x svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.4}
+.sc-chip.add{border-style:dashed;background:none;padding:2px 10px 2px 3px;gap:6px}
+.sc-chip.add .so-site{width:24px;height:20px;border-radius:999px;font-size:10px}
+.sc-chip-in{width:120px;min-width:0;padding:2px 4px!important;border:0!important;background:none!important;font-size:12.5px}
+.sc-chip.add .linkish{font-size:12px}
+.sc-warn{font-size:12px;color:#ffc440;background:rgba(255,196,64,.08);border:1px solid rgba(255,196,64,.3);border-radius:8px;padding:8px 10px}
+.sc-foot{display:flex;align-items:center}
+.sc-foot .rm{margin-left:auto;color:#ff8f8f;font-size:12px}

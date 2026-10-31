@@ -32,28 +32,72 @@ function fillShout(tpl, v){
     .replace(/[ \t]+/g, ' ').replace(/ ([!?.,:;)])/g, '$1').replace(/^ | $/gm, '').trim().slice(0, SHOUT_MAX);
 }
 
-// The People row for a person: a linked streamer's row covers all their sites; anyone else's matches their address on
-// the site it was added from, or on every site when the row says so (the same name elsewhere can be someone else).
-function shoutRow(people, p){
-  const rows = Array.isArray(people) ? people : [];
-  if (!p) return null;
-  const login = String(p.login || '').toLowerCase();
-  return (p.streamer && rows.find(r => r && r.streamer && r.streamer === p.streamer))
-    || rows.find(r => r && !r.streamer && String(r.login || '').toLowerCase() === login && (r.every || r.site === p.site)) || null;
-}
+/* ---- Settings › Shoutouts › Channels: a card for each real channel ----
+   A card: { ch (the channel: 'name' on Kick, 'tw:name' on Twitch; a linked streamer's main one), streamer (a linked
+   streamer's id, or ''), name, msg (their message; '' for yours), perSite (a linked streamer: a message for each site),
+   sites ({ kick, twitch } when perSite), also ([{ site ('' for any), login, name }]: chatters whose shoutout is this
+   channel's, their other accounts), lost (it couldn't be found on its site) }. */
+const siteOfCh = ch => (/^tw:/.test(ch || '') ? 'twitch' : /^yt:/.test(ch || '') ? 'youtube' : 'kick');
+const loginOfCh = ch => String(ch || '').replace(/^tw:/, '').toLowerCase();
+const chOfPerson = p => (p.site === 'twitch' ? 'tw:' : '') + String(p.login || '').toLowerCase();
 
-// What to send for a person, shouted out in a site's chat: their row's message for that site, else its own message,
-// else yours; its other channel instead of them, when it has one. gameOf(to): their last game ('' when not known);
-// linksOf(to): their links on every site the app knows them on. -> { text, to (the person shouted out) }
-function shoutFor({ tpl, people, person, site, gameOf = () => '', linksOf = () => [] }){
-  const row = shoutRow(people, person);
-  const other = row && row.to && row.to.login;
-  const to = other ? { site: row.to.site || person.site, login: String(row.to.login).toLowerCase(), name: row.to.name || row.to.login, streamer: row.to.streamer || '' } : person;
-  const own = other ? shoutRow(people, to) : row;   // (the other channel's own row, if it has one)
-  const msg = (own && own.sites && own.sites[site]) || (own && own.msg) || '';
+// The card a person's shoutout comes from: their own (a linked streamer's covers all their sites), else the card that
+// lists them among its chatters. -> { card, via: 'self' | 'also' }, or null
+function cardFor(cards, p){
+  const list = (Array.isArray(cards) ? cards : []).filter(c => c && c.ch);
+  if (!p || !p.login) return null;
+  const ch = chOfPerson(p), login = String(p.login).toLowerCase();
+  const self = list.find(c => (p.streamer && c.streamer === p.streamer) || c.ch === ch);
+  if (self) return { card: self, via: 'self' };
+  const also = list.find(c => (c.also || []).some(a => a && String(a.login || '').toLowerCase() === login && (!a.site || a.site === p.site)));
+  return also ? { card: also, via: 'also' } : null;
+}
+// A card's message for a site's chat: its own (that site's, when it has one per site), or '' (yours)
+const cardMsg = (card, site) => (!card ? '' : card.perSite ? String((card.sites || {})[site] || '') : String(card.msg || ''));
+
+// What to send for a person, shouted out in a site's chat: their card's message, or yours. A chatter on a card's list
+// gets that card's channel shouted out: a linked streamer's account on the chat's site, else its main one.
+// chsOf(card): a linked streamer's channels; gameOf(to): their last game ('' when not known); linksOf(to): their
+// links on every site the app knows them on. -> { text, to (the person shouted out) }
+function shoutFor({ tpl, cards, person, site, gameOf = () => '', linksOf = () => [], chsOf = () => [] }){
+  const hit = cardFor(cards, person), card = hit && hit.card;
+  let to = person;
+  if (hit && hit.via === 'also'){
+    const accs = card.streamer ? (chsOf(card) || []) : [];
+    const ch = accs.find(a => siteOfCh(a) === site && site !== 'youtube') || card.ch;
+    to = { site: siteOfCh(ch), login: loginOfCh(ch), name: card.name || loginOfCh(ch), streamer: card.streamer || '' };
+  }
   const link = shoutLink(to.site, to.login);
   const links = [...new Set([link, ...(linksOf(to) || [])].filter(Boolean))].join(' ');
-  return { to, text: fillShout(msg || tpl, { name: to.name || to.login, link, links, game: gameOf(to) }) };
+  return { to, card, text: fillShout(cardMsg(card, site) || tpl, { name: to.name || to.login, link, links, game: gameOf(to) }) };
+}
+
+/* #300's People rows as cards: a row with its own message is its channel's card (checked: a name added for every site
+   is found on Kick or Twitch later, and the card follows); a row that shouted out another channel is a chatter on that
+   channel's card, made if it isn't there (with your message). A message for one site keeps that: the card has one per
+   site, the others its main message. -> cards */
+function cardsFromRows(rows){
+  const cards = [], byLogin = new Map();
+  const cardOf = (site, login, name, extra = {}) => {
+    const k = String(login).toLowerCase();
+    if (byLogin.has(k)) return Object.assign(byLogin.get(k), extra);
+    const c = { ch: (site === 'twitch' ? 'tw:' : '') + k, streamer: '', name: name || login, msg: '', perSite: false, sites: {}, also: [], ...extra };
+    byLogin.set(k, c); cards.push(c);
+    return c;
+  };
+  for (const r of (Array.isArray(rows) ? rows : []).filter(r => r && r.login && !(r.to && r.to.login))){
+    const sites = r.sites && typeof r.sites === 'object' ? Object.fromEntries(Object.entries(r.sites).filter(([, v]) => v)) : {};
+    const per = Object.keys(sites).length > 0;
+    cardOf(r.site === 'twitch' ? 'twitch' : 'kick', r.login, r.name, { streamer: r.streamer || '', msg: per ? '' : String(r.msg || ''), perSite: per,
+      sites: per ? { kick: sites.kick || String(r.msg || ''), twitch: sites.twitch || String(r.msg || '') } : {}, unchecked: !!r.every || !r.streamer });
+  }
+  for (const r of (Array.isArray(rows) ? rows : []).filter(r => r && r.login && r.to && r.to.login)){
+    const c = cardOf(r.to.site || (r.site === 'twitch' ? 'twitch' : 'kick'), r.to.login, r.to.name, {});
+    if (!('unchecked' in c)) c.unchecked = true;
+    const login = String(r.login).toLowerCase();
+    if (!c.also.some(a => a.login === login)) c.also.push({ site: r.every ? '' : r.site || '', login, name: r.name || r.login });
+  }
+  return cards;
 }
 
 /* Whether someone streams, from what Kick and Twitch say about their channel. Saved streams (VODs) expire or get deleted,
@@ -92,4 +136,5 @@ function pickRun(lines, { n = 5, me = [], host = [], streamsOf = () => true, onl
   return { list, left: { ...left, bots: left.bots.size } };
 }
 
-export { fillShout, kickTries, pickRun, RUN_MAX, SHOUT_TOKENS, SHOUT_TPL, shoutFor, shoutLink, shoutRow, streams };
+export { cardFor, cardsFromRows, fillShout, kickTries, loginOfCh, pickRun, RUN_MAX, SHOUT_MAX, SHOUT_TOKENS,
+  SHOUT_TPL, shoutFor, shoutLink, siteOfCh, streams };
