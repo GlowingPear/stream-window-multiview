@@ -1,7 +1,9 @@
 import { setSoloAll } from '../../chat/all-chat.js';
+import { shoutOn, soCards, soDropCard, soPutCard } from '../../chat/shoutout.js';
 import { $ } from '../../core.js';
 import { autoOpen, channelVars, infoFor, persistSaved, saved, svHue, svInitials, svProf, toggleAutoOpen } from '../channels/channels.js';
 import { openSettings } from '../settings/settings.js';
+import { shoutCardEl } from '../settings/shout-cards.js';
 import { accountsOf, botsOf, canLink, chanOpt, link, linkOpt, linkedOn, nameOf, notSame, ordered, setChanOpt,
   setMain, setOn, setStreamerOpt, streamerBots, streamerName, streamerOf, suggestions, unlink, unlinkAll } from '../../platforms/linked.js';
 import { PLATFORMS, PLAT_NAME, chLabel, parseInput, platOf } from '../../platforms/platforms.js';
@@ -15,9 +17,11 @@ import { store } from '../../shared/store.js';
    adding an account by site and name, @handle or link (linking), their own chat bots and their own choices. A channel on
    its own has its bots, Opens by itself and its ALL tab; what only a linked streamer has is greyed, with how to get it.
    Opened from Channels (▾ › Channel settings…), a window's ⋯, a profile, Settings › Linked channels and the search box. ---- */
-let dlg, card, cur = [], opened = null, curPlat = 'kick', botPlat = 'kick', addFocus = false;   // (opened: the channel it was opened for)
-function openLinkCard(ch, { add } = {}){
+let dlg, card, cur = [], opened = null, curPlat = 'kick', botPlat = 'kick', addFocus = false, tab = 'accounts';   // (opened: the channel it was opened for; tab: the one showing)
+const LC_TABS = [['accounts', 'Accounts'], ['chat', 'Chat'], ['shoutout', 'Shoutout'], ['streams', 'Streams']];
+function openLinkCard(ch, { add, tab: t } = {}){
   cur = ch ? accountsOf(ch) : []; opened = ch || null;
+  tab = LC_TABS.some(([k]) => k === t) ? t : 'accounts';
   addFocus = !!add || !ch;
   dlg.hidden = false;
   renderCard();
@@ -45,7 +49,10 @@ function renderCard(){
   const prof = chs[0] && svProf[chs[0]] && svProf[chs[0]].info;
   const av = element('span', { class: 'lc-av', style: { '--c': svHue(chs[0] || 'x') } }, svInitials(name));
   if (prof && prof.avatar){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = prof.avatar; av.appendChild(im); }
-  const parts = [element('div', 'lc-head', av, element('div', null, element('small', 'lc-kicker', 'Channel settings'), element('h3', { id: 'lcName' }, name), !chs.length && element('p', null, 'Start with one of their channels, then add their other sites')))];
+  const head = element('div', 'lc-head', av, element('div', null, element('small', 'lc-kicker', 'Channel settings'), element('h3', { id: 'lcName' }, name), !chs.length && element('p', null, 'Start with one of their channels, then add their other sites')));
+  // each tab's parts (no channel yet: Accounts only, without tabs)
+  const T = { accounts: [], chat: [], shoutout: [], streams: [] };
+  let parts = T.accounts;
   if (chs.length){
     parts.push(element('div', 'lc-sec', 'Channels'), ...chs.map(ch => element('div', 'lc-acc', lcSite(ch), element('div', 'lc-acc-t', element('b', null, chLabel(ch)), liveText(ch)),
       s && ch === s.main ? element('span', 'lc-main', 'Main') : s ? element('button', { type: 'button', class: 'btn lc-mk', dataset: { cmd: 'link.main' }, onclick: () => { setMain(ch); renderCard(); } }, 'Make main') : null,
@@ -90,7 +97,7 @@ function renderCard(){
     parts.push(element('div', 'lc-sec', chs.length ? 'Add a channel' : 'Their first channel'), element('div', 'lc-add', segs, inp, go), err);
     if (addFocus) setTimeout(() => inp.focus(), 0);
   }
-  if (chs.length) parts.push(...botsPart(s, chs));
+  if (chs.length) T.chat.push(...botsPart(s, chs));
   // their own choices: a streamer's, or a channel's on its own (what only a streamer has: greyed, with how to get it)
   if (chs.length){
     const one = !s, ch = chs[0], LINK = 'Link another channel to use this';
@@ -100,24 +107,43 @@ function renderCard(){
       return element('label', 'lc-opt' + (off ? ' lc-off' : ''), element('span', 'st-t', label, element('small', null, off ? LINK : sub)), se);
     };
     const ao = one ? autoOpen.includes(ch) : s.accounts.some(c => autoOpen.includes(c));
-    parts.push(element('div', 'lc-sec', one ? 'This channel' : 'This streamer'),
+    T.streams.push(element('div', 'lc-sec', one ? 'This channel' : 'This streamer'),
       sel('Their streams', 'Settings › Linked channels says: ' + ({ tabs: 'tabs in one window', separate: 'separate windows' })[linkOpt('streams')],
         [['', 'As in Settings'], ['tabs', 'Tabs in one window'], ['separate', 'Separate windows']], one ? '' : s.streams || '', v => setStreamerOpt(s.id, 'streams', v), 'link.streams', one),
       one ? sel('Opens by itself when live ⚡', 'Going live opens it', [['off', 'No'], ['on', 'Yes']], ao ? 'on' : 'off', v => { if ((v === 'on') !== ao) toggleAutoOpen(ch); renderCard(); }, 'link.autoOpen')
         : sel('Opens by itself when live ⚡', 'Any of their channels going live opens them', [['off', 'No'], ['together', 'Together, as tabs'], ['separate', 'Separate windows']],
-          ao ? s.autoOpen || 'together' : 'off', v => setAutoOpenFor(s, v), 'link.autoOpen'),
+          ao ? s.autoOpen || 'together' : 'off', v => setAutoOpenFor(s, v), 'link.autoOpen'));
+    T.chat.push(element('div', 'lc-sec', 'Their chats'),
       one ? sel('ALL tab', 'Its chat in ALL\'s list, with its badges, emotes and filters', [['off', 'Off'], ['on', 'On']], chanOpt(ch, 'allTab') === true ? 'on' : 'off', v => setSoloAll(ch, v === 'on'), 'link.allTab')
         : sel('ALL tab', 'Their chats as one list. Settings › Linked channels says: ' + (linkOpt('allTab') !== false ? 'on' : 'off'),
-          [['', 'As in Settings'], ['on', 'On'], ['off', 'Off']], s.allTab === true ? 'on' : s.allTab === false ? 'off' : '', v => setStreamerOpt(s.id, 'allTab', v === 'on' ? true : v === 'off' ? false : null), 'link.allTab'),
+          [['', 'As in Settings'], ['on', 'On'], ['off', 'Off']], s.allTab === true ? 'on' : s.allTab === false ? 'off' : '', v => setStreamerOpt(s.id, 'allTab', v === 'on' ? true : v === 'off' ? false : null), 'link.allTab'));
+    T.accounts.push(element('div', 'lc-sec', 'Shown as'),
       sel('Name shown', 'In the Channels list, title bars and the bell', (one ? [ch] : [...new Set(s.accounts.map(chLabel))]).map(n => [one ? chLabel(n) : n, one ? chLabel(n) : n]),
         one ? chLabel(ch) : streamerName(s), v => setStreamerOpt(s.id, 'name', v === chLabel(s.main) ? '' : v), 'link.name', one));
   }
-  parts.push(element('div', 'lc-foot',
+  if (chs.length) T.shoutout.push(...shoutPart(s, chs, name, prof));
+  const foot = element('div', 'lc-foot',
     chs.length && element('button', { type: 'button', class: 'linkish lc-unlink', disabled: !s, title: s ? '' : 'Link another channel to use this', dataset: { cmd: 'link.unlinkAll' }, onclick: () => s && unlinkEvery(s) }, 'Unlink all'),
     element('span', 'lc-gap'),
-    element('button', { type: 'button', class: 'btn primary', dataset: { cmd: 'link.done' }, onclick: closeLinkCard }, 'Done')));
-  card.replaceChildren(...parts.filter(Boolean));
+    element('button', { type: 'button', class: 'btn primary', dataset: { cmd: 'link.done' }, onclick: closeLinkCard }, 'Done'));
+  card.classList.toggle('lc-tabbed', !!chs.length);
+  if (!chs.length){ card.replaceChildren(...[head, ...T.accounts, foot].filter(Boolean)); addFocus = false; return; }
+  const tabs = element('div', { class: 'st-tabs lc-tabs', role: 'tablist', 'aria-label': 'Channel settings' }, ...LC_TABS.map(([k, t]) => element('button', { type: 'button', role: 'tab', class: k === tab ? 'on' : '', 'aria-selected': String(k === tab), tabindex: k === tab ? '0' : '-1', dataset: { t: k, cmd: 'link.tab.' + k },
+    onclick: () => { tab = k; renderCard(); } }, t)));
+  card.replaceChildren(head, tabs, element('div', { class: 'lc-body', role: 'tabpanel' }, ...T[tab].filter(Boolean)), foot);
   addFocus = false;
+}
+// Their shoutout (Settings › Shoutouts › Channels has every channel's): the same editor as their card there, made the
+// first time it's changed. Shoutouts off, or only where you're a mod: said, with the way to it.
+function shoutPart(s, chs, name, prof){
+  const key = s ? s.id : chs[0], have = soCards().find(c => (c.streamer || c.ch) === key);
+  const card = have ? { ...have } : { ch: s ? s.main : chs[0], streamer: s ? s.id : '', name, avatar: (prof && prof.avatar) || '', msg: '', perSite: false, sites: {}, also: [] };
+  const goSettings = (label, sub) => element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'link.shoutSettings' }, onclick: () => { closeLinkCard(); openSettings('shoutouts', { sub }); } }, label);
+  return [
+    !shoutOn() && element('div', 'lc-note', 'Shoutouts are off: switch them on in ', goSettings('Settings › Shoutouts', 'message'), '.'),
+    shoutCardEl(card, { bare: true, save: c => soPutCard(c), remove: have ? () => { soDropCard(key); renderCard(); } : null }),
+    element('p', 'lc-desc lc-so-note', 'Empty: your general message. Every channel\'s shoutout is in ', goSettings('Settings › Shoutouts › Channels', 'channels'), '.')
+  ].filter(Boolean);
 }
 // Their own chat bots: a name on one of their sites, never a mention or spam in their chats there, on top of the app's
 // list (Chat › Chat bots). Many streamers run a bot as their own account: then their own messages there count as the bot's.

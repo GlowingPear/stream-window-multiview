@@ -203,8 +203,11 @@ test('a chat message: Copy message and Copy message with emotes copy it, also fr
   await inView(a.win, 'alpha', 'chat', () => { document.querySelectorAll('[data-index]').forEach(e => e.remove()); return true; });
 });
 
-test('Shoutouts on (Settings › Chat): the chat page gets its buttons; the right-click menu\'s Shout out sends it in that chat; off: all gone', T, async () => {
-  const setOn = on => a.win.evaluate(on => { const c = document.querySelector('#shoutOnSet'); c.checked = on; c.dispatchEvent(new Event('change')); }, on);
+test('Shoutouts on (Settings › Shoutouts): the chat page gets its buttons; the right-click menu\'s Shout out sends it in that chat; off: all gone', T, async () => {
+  const setOn = on => a.win.evaluate(on => {
+    const m = document.querySelector('#shoutModSet'); m.checked = false; m.dispatchEvent(new Event('change'));   // (only where you're a mod: off, the stand-in chat isn't moderated)
+    const c = document.querySelector('#shoutOnSet'); c.checked = on; c.dispatchEvent(new Event('change'));
+  }, on);
   const chatJs = (fn, arg) => inView(a.win, 'alpha', 'chat', fn, arg);
   const until = async (fn, ok, what) => { let v; for (let i = 0; i < 100; i++){ v = await fn().catch(() => null); if (ok(v)) return v; await new Promise(r => setTimeout(r, 100)); } assert.fail(`${what}: ${JSON.stringify(v)}`); };
   // a Kick chat box that records what's sent, and a message with the data Kick draws it from (its sender's address)

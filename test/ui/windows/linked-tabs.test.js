@@ -319,7 +319,7 @@ test('suggestions: the same name on another site, Not the same is never suggeste
 
 test('the Link channels card: their own chat bots, a name on one site each; their own name warns; only in their chats on that site', async t => {
   const page = await linkedApp(t);
-  await page.evaluate(() => window.openLinkCard('quietkoala'));
+  await page.evaluate(() => window.openLinkCard('quietkoala', { tab: 'chat' }));
   assert.equal(await page.getAttribute('#lcBotIn', 'placeholder'), 'Bot\'s name on Kick', 'their main site first');
   await page.fill('#lcBotIn', '@QuietKoala'); await page.press('#lcBotIn', 'Enter');
   await page.click('#linkDlg .lc-botplat button[data-bp=twitch]');
@@ -334,7 +334,7 @@ test('the Link channels card: their own chat bots, a name on one site each; thei
   assert.match(await page.textContent('#linkDlg .lc-warn'), /QuietKoala is their own name on Kick: everything they type in Kick chat counts as the bot's\. Their messages on other sites aren't affected\./);
   // only in their chats, on that site, as well as the app's list
   const lists = () => page.evaluate(() => ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala', 'novalynx'].map(ch => [window.linkedApi.streamerBots(ch), window.botsFor('mention', ch).slice(-1)[0], window.botsFor('spam', ch).includes('nightbot')]));
-  assert.deepEqual(await lists(), [[['QuietKoala'], 'QuietKoala', true], [['koala_helper'], 'koala_helper', true], [[], 'botrixoficial', true], [[], 'botrixoficial', true]]);
+  assert.deepEqual(await lists(), [[['QuietKoala'], 'QuietKoala', true], [['koala_helper'], 'koala_helper', true], [[], 'missxss', true], [[], 'missxss', true]]);
   // removed: no warning
   await page.click('#linkDlg .lc-bot.lc-own button');
   assert.deepEqual(await bots(), [{ p: 'twitch', name: 'koala_helper' }]);
@@ -344,7 +344,7 @@ test('the Link channels card: their own chat bots, a name on one site each; thei
   assert.equal(await page.isVisible('#linkDlg'), false);
   assert.deepEqual(await page.$$eval('[data-s=chat] .st-subpane', e => e.filter(p => !p.hidden).map(p => p.dataset.t)), ['bots']);
   // the last one removed: nothing saved
-  await page.evaluate(() => window.openLinkCard('quietkoala'));
+  await page.evaluate(() => window.openLinkCard('quietkoala', { tab: 'chat' }));
   await page.click('#linkDlg .lc-bot button');
   assert.equal(await bots(), undefined);
 });
@@ -352,21 +352,30 @@ test('Channel settings for a channel on its own: its chat bots, Opens by itself 
   const page = await linkedApp(t, { on: false });
   await page.evaluate(() => window.openLinkCard('novalynx'));
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.linkedOn')), null, 'opening it doesn\'t turn Linked channels on: linking does');
+  const tab = t => page.click(`#linkDlg .lc-tabs [data-t=${t}]`);
   const opts = () => page.$$eval('#linkDlg .lc-opt', l => l.map(o => [o.querySelector('.st-t').firstChild.textContent, o.querySelector('small').textContent, o.querySelector('select').disabled]));
-  assert.deepEqual(await opts(), [['Their streams', 'Link another channel to use this', true], ['Opens by itself when live ⚡', 'Going live opens it', false],
-    ['ALL tab', 'Its chat in ALL\'s list, with its badges, emotes and filters', false], ['Name shown', 'Link another channel to use this', true]]);
+  const secs = () => page.$$eval('#linkDlg .lc-sec', l => l.map(e => e.textContent));
+  // its tabs: Accounts, Chat, Shoutout, Streams, each with its part
+  assert.deepEqual(await page.$$eval('#linkDlg .lc-tabs [role=tab]', l => l.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['Accounts*', 'Chat', 'Shoutout', 'Streams']);
+  const all = [];
+  for (const t of ['accounts', 'chat', 'streams']){ await tab(t); all.push([t, await secs(), await opts()]); }
+  assert.deepEqual(all, [['accounts', ['Channels', 'Add a channel', 'Shown as'], [['Name shown', 'Link another channel to use this', true]]],
+    ['chat', ['Their chat bots', 'Their chats'], [['ALL tab', 'Its chat in ALL\'s list, with its badges, emotes and filters', false]]],
+    ['streams', ['This channel'], [['Their streams', 'Link another channel to use this', true], ['Opens by itself when live ⚡', 'Going live opens it', false]]]]);
   assert.equal(await page.locator('#linkDlg .lc-head p').count(), 0, 'its name, under what the card is');
   assert.equal(await page.textContent('#linkDlg .lc-kicker'), 'Channel settings');
-  assert.deepEqual(await page.$$eval('#linkDlg .lc-sec', l => l.map(e => e.textContent)), ['Channels', 'Add a channel', 'Their chat bots', 'This channel']);
   assert.equal(await page.isDisabled('#linkDlg .lc-unlink'), true, 'Unlink all: greyed');
   // its own chat bot: on its site only (no site to pick), kept with the channel
+  await tab('chat');
   assert.equal(await page.locator('#linkDlg .lc-botplat button').count(), 1);
   await page.fill('#lcBotIn', 'lynxbot'); await page.keyboard.press('Enter');
   assert.deepEqual(await page.evaluate(() => [JSON.parse(localStorage.getItem('kickMultiview.chanOpts')), window.linkedApi.streamerBots('novalynx')]), [{ novalynx: { bots: ['lynxbot'] } }, ['lynxbot']]);
   // Opens by itself, and its ALL tab
+  await tab('streams');
   await page.selectOption('#linkDlg [data-cmd="link.autoOpen"]', 'on');
   assert.ok((await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.autoOpen')))).includes('novalynx'));
   await page.evaluate(() => window.frames_.openStreamer('novalynx', 'chat', ['novalynx']));
+  await tab('chat');
   await page.selectOption('#linkDlg [data-cmd="link.allTab"]', 'on');
   assert.deepEqual(await page.evaluate(() => [JSON.parse(localStorage.getItem('kickMultiview.chanOpts')).novalynx.allTab, JSON.parse(localStorage.getItem('kickMultiview.allOpen'))]), [true, ['c:novalynx']]);
   await page.click('#linkDlg [data-cmd="link.done"]');
@@ -381,7 +390,9 @@ test('Channel settings for a channel on its own: its chat bots, Opens by itself 
   assert.deepEqual(st, [[{ p: 'kick', name: 'lynxbot' }], true, true, {}]);
   assert.equal(await page.$eval('#linkDlg [data-cmd="link.allTab"]', e => e.value), 'on');
   await page.evaluate(() => window.openLinkCard('novalynx'));
-  assert.deepEqual((await opts()).map(o => o[2]), [false, false, false, false], 'linked: all of it');
+  const linked = [];
+  for (const t of ['accounts', 'chat', 'streams']){ await tab(t); linked.push(...(await opts()).map(o => o[2])); }
+  assert.deepEqual(linked, [false, false, false, false], 'linked: all of it');
   assert.equal(await page.isDisabled('#linkDlg .lc-unlink'), false);
 });
 
@@ -415,7 +426,7 @@ test('a channel with its ALL off, linked: the streamer\'s ALL is As in Settings'
   const page = await linkedApp(t, { extra: { chanOpts: JSON.stringify({ novalynx: { bots: ['lynxbot'] } }) } });
   await page.evaluate(() => window.linkedApi.link('novalynx', 'tw:novalynx'));
   assert.equal(await page.evaluate(() => window.linkedApi.listStreamers().find(x => x.accounts.includes('novalynx')).allTab), undefined);
-  await page.evaluate(() => window.openLinkCard('novalynx'));
+  await page.evaluate(() => window.openLinkCard('novalynx', { tab: 'chat' }));
   assert.equal(await page.$eval('#linkDlg [data-cmd="link.allTab"]', e => e.value), '', 'As in Settings');
 });
 
@@ -427,7 +438,9 @@ test('Channel settings: unlinking one of two leaves the channel it was opened fo
   await page.click('#askDlg .ask-yes');
   const accs = () => page.$$eval('#linkDlg .lc-acc:not(.lc-sug)', l => l.map(e => e.querySelector('.pi').textContent + ' ' + e.querySelector('.lc-st').textContent));
   assert.deepEqual(await accs(), ['K Live · 312 watching'], 'just novalynx on Kick');
+  await page.click('#linkDlg .lc-tabs [data-t=streams]');
   assert.equal(await page.locator('#linkDlg .lc-sec:has-text("This channel")').count(), 1);
+  await page.click('#linkDlg .lc-tabs [data-t=accounts]');
   await page.evaluate(() => window.openLinkCard('tw:novalynx'));
   assert.deepEqual(await accs(), ['T Offline'], 'saved channels: checked');
   await page.evaluate(() => window.openLinkCard('nobodysaved'));
@@ -454,6 +467,7 @@ test('the Link channels card: add an account by name, make one main, the streame
   assert.ok(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.saved')).includes('tw:novalynx')), 'the new account is saved too');
   await page.click('#linkDlg .lc-mk');
   assert.equal(await page.evaluate(() => window.linkedApi.listStreamers()[0].main), 'tw:novalynx');
+  await page.click('#linkDlg .lc-tabs [data-t=streams]');
   await page.selectOption('#linkDlg select[data-cmd="link.streams"]', 'separate');
   assert.equal(await page.evaluate(() => window.linkedApi.listStreamers()[0].streams), 'separate');
   await page.click('#linkDlg button:has-text("Done")');

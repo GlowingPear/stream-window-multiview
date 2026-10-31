@@ -72,6 +72,11 @@ async function sendAgent(site, text, sel, fillOnly){
 }
 // After the app's real press (sendAgent's { press }): 'sent' once the site has emptied its box or its connection has
 // brought the message back (since start, sendAgent's), within 1.5 s; else 'not-sent'. Runs inside the chat page too.
+// What's in the site's chat box now: your draft there (a run of shoutouts waits for it, chat/shoutout.js). -> text ('' empty)
+function draftAgent(site, sel){
+  const box = document.querySelector(sel || { kick: '[data-testid="chat-input"]', twitch: '[data-a-target="chat-input"]', youtube: 'yt-live-chat-text-input-field-renderer #input' }[site]);
+  return box ? String(box.isContentEditable ? box.innerText : box.value || '').replace(/[\u200b\ufeff]/g, '').trim() : '';
+}
 async function sentAgent(site, text, start, sel){
   const box = document.querySelector(sel || { kick: '[data-testid="chat-input"]', twitch: '[data-a-target="chat-input"]', youtube: 'yt-live-chat-text-input-field-renderer #input' }[site]);
   const key = (String(text).match(/[\w ]{4,}/g) || []).sort((a, b) => b.length - a.length)[0];
@@ -81,4 +86,4 @@ async function sentAgent(site, text, start, sel){
   return empty() || echoed() ? 'sent' : 'not-sent';
 }
 
-export { sendAgent, sentAgent };
+export { draftAgent, sendAgent, sentAgent };

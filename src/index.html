@@ -371,10 +371,11 @@
       </section>
       <section class="st-pane" data-s="shoutouts" hidden>
         <h4>Shoutouts</h4><p class="st-sub">Shout out a streamer in chat with one click, or the last few who chatted.</p>
-        <div class="st-tabs" id="soTabs" role="tablist" aria-label="Shoutouts"><button role="tab" data-t="message" class="on" aria-selected="true">Message</button><button role="tab" data-t="people" aria-selected="false" tabindex="-1">People</button><button role="tab" data-t="runs" aria-selected="false" tabindex="-1">Recent chatters</button></div>
+        <div class="st-tabs" id="soTabs" role="tablist" aria-label="Shoutouts"><button role="tab" data-t="message" class="on" aria-selected="true">Message</button><button role="tab" data-t="channels" aria-selected="false" tabindex="-1">Channels</button><button role="tab" data-t="runs" aria-selected="false" tabindex="-1">Recent chatters</button></div>
         <div class="st-subpane" data-t="message">
         <label class="st-row"><span class="st-t">Shout out buttons<small>A shout out button on chat messages and raids, in ALL and in Kick and Twitch chats. One click sends your shoutout to the chat the message is in. Off: no buttons anywhere.</small></span><input type="checkbox" class="st-sw" id="shoutOnSet"></label>
         <div class="so-opts">
+        <label class="st-row"><span class="st-t">Only in chats where I'm a mod<small>The buttons and Shout out recent chatters show only in chats where you're a moderator, and your own channel. In ALL, each message follows the chat it came from. Off: every chat.</small></span><input type="checkbox" class="st-sw" id="shoutModSet"></label>
         <div class="st-sec">Message</div>
         <div class="so-tpl" data-st="Shoutout message" data-st-sub="{name}, {link}, {links}, {game}">
           <textarea class="st-in" id="shoutText" rows="2" maxlength="450" spellcheck="false" aria-label="Shoutout message"></textarea>
@@ -387,10 +388,11 @@
         <div class="st-row"><span class="st-t">Ask before shouting out the same person again<small>Within this long of their last shoutout</small></span><select id="shoutAgainSet" aria-label="Ask before shouting out the same person again"><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="60">1 hour</option><option value="0">Never ask</option></select></div>
         </div>
         </div>
-        <div class="st-subpane so-opts" data-t="people" hidden>
-        <div class="st-sec st-head">People<button class="btn" id="shoutAdd" type="button">Add</button></div>
-        <p class="st-sub" style="margin:2px 0 0">Their own message, or another channel instead. A linked streamer's row covers all their sites.</p>
-        <div class="so-ppl" id="shoutPeople" data-st="People" data-st-sub="Their own shoutout message, or another channel"></div>
+        <div class="st-subpane so-opts" data-t="channels" hidden>
+        <div class="st-sec">Channels with a shoutout of their own</div>
+        <p class="st-sub" style="margin:2px 0 0">Real channels, found on Kick and Twitch. A linked streamer covers all their sites; each can have its own message, and the other accounts it's for.</p>
+        <div id="shoutAddBox"></div>
+        <div class="shc-list" id="shoutPeople" data-st="Channels" data-st-sub="A shoutout of their own, and their other accounts"></div>
         </div>
         <div class="st-subpane so-opts" data-t="runs" hidden>
         <div class="st-row"><span class="st-t">Recent chatters<small>How many a run shouts out, up to 20, one a second</small></span><div class="zoom" id="shoutRunSet"><button type="button" data-z="-1" aria-label="Fewer">−</button><span class="zoomPct">5</span><button type="button" data-z="1" aria-label="More">+</button></div></div>

@@ -28,31 +28,53 @@ test('links are full https:// addresses, lower case; Kick tries the name, then -
   assert.deepEqual(kickTries(null), []);
 });
 
-test('People rows: a linked streamer\'s covers all their sites, with an optional message for one site; anyone else\'s their site, or every site', async () => {
-  const { shoutRow, shoutFor } = await load();
-  const people = [
-    { streamer: 's1', msg: 'Cozy crew! {link}', sites: { twitch: 'Follow the crew at {link}' } },
-    { site: 'kick', login: 'driftwood_7', msg: 'Captain {name}: {links}' },
-    { site: 'twitch', login: 'lanternfern', to: { site: 'twitch', login: 'Pebblesong', name: 'Pebblesong' } },
-    { site: 'twitch', login: 'pebblesong', msg: 'Pebble time {link}' },
-    { site: 'kick', login: 'oakmoss', every: true, msg: 'Oak {link}' }];
+test('cards: a linked streamer\'s covers all their sites (one message, or one per site); a channel\'s its own; a chatter on a card gets that channel', async () => {
+  const { cardFor, shoutFor } = await load();
+  const cards = [
+    { ch: 'maplemoth', streamer: 's1', name: 'MapleMoth', msg: '', perSite: true, sites: { kick: 'Cozy crew! {link}', twitch: 'Follow the crew at {link}' }, also: [{ site: 'kick', login: 'mothling_alt', name: 'mothling_alt' }] },
+    { ch: 'driftwood_7', streamer: '', name: 'driftwood_7', msg: 'Captain {name}: {links}', also: [] },
+    { ch: 'tw:pebblesong', streamer: '', name: 'Pebblesong', msg: '', also: [{ site: '', login: 'lanternfern', name: 'lanternfern' }] },
+    { streamer: '', name: 'no channel' }];
   const maple = { site: 'kick', login: 'maplemoth', name: 'MapleMoth', streamer: 's1' };
-  assert.equal(shoutRow(people, maple), people[0]);
-  assert.equal(shoutRow(people, { ...maple, site: 'twitch' }), people[0], 'the same row on Twitch');
-  assert.equal(shoutRow(people, { site: 'twitch', login: 'driftwood_7' }), null, 'not linked: only on the site it was added from');
-  assert.equal(shoutRow(people, { site: 'twitch', login: 'OakMoss' }), people[4], 'unless it says every site');
-  assert.equal(shoutRow(people, null), null);
-  assert.equal(shoutRow(null, maple), null);
-  const tpl = 'Go see {name} {link}';
-  assert.equal(shoutFor({ tpl, people, person: maple, site: 'kick' }).text, 'Cozy crew! https://kick.com/maplemoth');
-  assert.equal(shoutFor({ tpl, people, person: { ...maple, site: 'twitch', login: 'maplemoth_tv' }, site: 'twitch' }).text, 'Follow the crew at https://twitch.tv/maplemoth_tv', 'its Twitch message, its Twitch link');
-  assert.equal(shoutFor({ tpl, people, person: { site: 'kick', login: 'driftwood_7', name: 'driftwood_7' }, site: 'kick', linksOf: () => ['https://twitch.tv/driftwood7', 'https://kick.com/driftwood_7'] }).text,
+  assert.equal(cardFor(cards, maple).card, cards[0]);
+  assert.equal(cardFor(cards, { site: 'twitch', login: 'maplemoth_tv', streamer: 's1' }).card, cards[0], 'the streamer\'s Twitch account too');
+  assert.equal(cardFor(cards, { site: 'twitch', login: 'driftwood_7' }), null, 'a channel\'s card: only its own site');
+  assert.deepEqual(cardFor(cards, { site: 'kick', login: 'Mothling_Alt' }), { card: cards[0], via: 'also' });
+  assert.equal(cardFor(cards, { site: 'twitch', login: 'mothling_alt' }), null, 'a chatter on one site: only there');
+  assert.equal(cardFor(cards, { site: 'twitch', login: 'lanternfern' }).via, 'also', 'on any site');
+  assert.equal(cardFor(cards, null), null); assert.equal(cardFor(null, maple), null);
+  const tpl = 'Go see {name} {link}', chsOf = c => (c.streamer === 's1' ? ['maplemoth', 'tw:maplemoth_tv', 'yt:@maple'] : []);
+  assert.equal(shoutFor({ tpl, cards, person: maple, site: 'kick', chsOf }).text, 'Cozy crew! https://kick.com/maplemoth');
+  assert.equal(shoutFor({ tpl, cards, person: { ...maple, site: 'twitch', login: 'maplemoth_tv' }, site: 'twitch', chsOf }).text, 'Follow the crew at https://twitch.tv/maplemoth_tv', 'its Twitch message and link');
+  // a chatter on a card: that channel, its account on the chat's site
+  const alt = shoutFor({ tpl, cards, person: { site: 'kick', login: 'mothling_alt', name: 'mothling_alt' }, site: 'twitch', chsOf });
+  assert.deepEqual([alt.to.login, alt.to.site, alt.text], ['maplemoth_tv', 'twitch', 'Follow the crew at https://twitch.tv/maplemoth_tv']);
+  const lf = shoutFor({ tpl, cards, person: { site: 'kick', login: 'lanternfern' }, site: 'kick' });
+  assert.deepEqual([lf.to.login, lf.to.site, lf.text], ['pebblesong', 'twitch', 'Go see Pebblesong https://twitch.tv/pebblesong'], 'no message of its own: yours; a single channel: its own site');
+  assert.equal(shoutFor({ tpl, cards, person: { site: 'kick', login: 'driftwood_7', name: 'driftwood_7' }, site: 'kick', linksOf: () => ['https://twitch.tv/driftwood7', 'https://kick.com/driftwood_7'] }).text,
     'Captain driftwood_7: https://kick.com/driftwood_7 https://twitch.tv/driftwood7', '{links}: each once, theirs on this site first');
-  const lf = shoutFor({ tpl, people, person: { site: 'twitch', login: 'lanternfern', name: 'lanternfern' }, site: 'twitch' });
-  assert.equal(lf.to.login, 'pebblesong');
-  assert.equal(lf.text, 'Pebble time https://twitch.tv/pebblesong', 'another channel instead: that channel, with its own row\'s message');
-  assert.equal(shoutFor({ tpl, people: [people[2]], person: { site: 'twitch', login: 'lanternfern' }, site: 'twitch' }).text, 'Go see Pebblesong https://twitch.tv/pebblesong', 'no row of its own: yours');
-  assert.equal(shoutFor({ tpl: 'Go see {name}[, playing {game}]', people: [], person: { site: 'twitch', login: 'lumen' }, site: 'twitch', gameOf: p => p.login === 'lumen' ? 'Inkwell' : '' }).text, 'Go see lumen, playing Inkwell', 'no name shown: the address');
+  assert.equal(shoutFor({ tpl: 'Go see {name}[, playing {game}]', cards: [], person: { site: 'twitch', login: 'lumen' }, site: 'twitch', gameOf: p => p.login === 'lumen' ? 'Inkwell' : '' }).text, 'Go see lumen, playing Inkwell', 'no card: yours');
+});
+
+test('#300\'s People rows become cards: own messages, a message for one site, and another channel as a chatter on that channel\'s card', async () => {
+  const { cardsFromRows, siteOfCh, loginOfCh } = await load();
+  const cards = cardsFromRows([
+    { site: 'kick', login: 'irongoddess', name: 'irongoddess', every: true, streamer: '', msg: 'Head on over {link}' },
+    { site: 'twitch', login: 'lumen', name: 'Lumen', msg: 'Lumen time {link}' },
+    { site: 'kick', login: 'maplemoth', name: 'MapleMoth', streamer: 's1', msg: 'Cozy {link}', sites: { twitch: 'Twitch cozy {link}' } },
+    { site: 'kick', login: 'starryraccoon', name: 'StarryRaccoon', every: true, msg: '', to: { login: 'station5', name: 'Station5' } },
+    { site: 'kick', login: 'barren791', name: 'Barren791', every: true, msg: '', to: { login: 'Station5', name: 'Station5' } },
+    { site: 'twitch', login: 'her0jake', name: 'Her0Jake', msg: '', to: { login: 'irongoddess', name: 'IronGoddess' } },
+    null, { site: 'kick' }]);
+  assert.deepEqual(cards.map(c => [c.ch, c.name, c.msg, c.perSite, c.also.map(a => a.site + ':' + a.login), !!c.unchecked]), [
+    ['irongoddess', 'irongoddess', 'Head on over {link}', false, ['twitch:her0jake'], true],
+    ['tw:lumen', 'Lumen', 'Lumen time {link}', false, [], true],
+    ['maplemoth', 'MapleMoth', '', true, [], false],
+    ['station5', 'Station5', '', false, [':starryraccoon', ':barren791'], true]]);
+  assert.deepEqual(cards[2].sites, { kick: 'Cozy {link}', twitch: 'Twitch cozy {link}' }, 'per site: the one site\'s own, the others its main message');
+  assert.equal(cards[2].streamer, 's1');
+  assert.deepEqual(cardsFromRows(null), []);
+  assert.deepEqual([siteOfCh('tw:x'), siteOfCh('x'), siteOfCh('yt:@x'), loginOfCh('tw:Ab')], ['twitch', 'kick', 'youtube', 'ab']);
 });
 
 test('who streams: any one sign is enough, as saved streams expire (no VODs is no proof)', async () => {
