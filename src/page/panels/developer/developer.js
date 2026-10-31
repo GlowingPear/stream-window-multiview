@@ -7,8 +7,8 @@ import { featBase, featuredCh } from '../../layout/layouts.js';
 import { mentMuted, mentOn } from '../bell/bell.js';
 import { infoFor } from '../channels/channels.js';
 import { openSettings } from '../settings/settings.js';
-import { linkConnected } from '../../platforms/pear-drops.js';
-import { PLAT_NAME, chLabel, platOf } from '../../platforms/platforms.js';
+import { kickAuto, kickOut, linkConnected } from '../../platforms/pear-drops.js';
+import { PLAT_NAME, chLabel, platOf, streamSignedIn } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
@@ -124,6 +124,8 @@ async function pageLines(){
     'windows   ' + [ROLE === 'main' ? 'main window' : 'streams window', 'layout ' + layoutName(), [plural(n('stream'), 'stream'), plural(n('chat'), 'chat')].join(', ') + (n('capture') ? `, ${n('capture')} captured` : '')].join(' · '),
     ...wins.map(winLine),
     acc ? 'signed in ' + `Kick ${tick(acc.kick)}  Twitch ${tick(acc.twitch)}  YouTube ${tick(acc.youtube)}` : '',
+    // the players can be signed out while you're signed in ("Watch signed in" off, or Pear Drops farming): their own storage then
+    'players   ' + ['kick', 'twitch', 'youtube'].map(p => `${PLAT_NAME[p]} ${streamSignedIn(p) ? 'signed in' : 'signed out'}${p === 'kick' && kickAuto() && kickOut ? ' (while Pear Drops farms)' : ''}`).join('  '),
     'settings  ' + [`start muted ${tick($('#muted') && $('#muted').checked)}`, `auto-pause ${tick(settings.flag('autoPause'))}`,
       `translate: ${trAll ? 'every chat' : [].concat(settings.json('autoTranslate', [])).length + ' chats'}`,
       `mentions ${mentOn ? 'on' : 'off'}${mentMuted.size ? ` (off in ${mentMuted.size})` : ''}`, `spam alerts ${tick(alerts.spam.on)}`, `support ${tick(alerts.support.on)}`, `keys ${tick(settings.flag('keys', true))}`].join(' · '),

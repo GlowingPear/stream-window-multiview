@@ -152,12 +152,15 @@ test('the error log and the sites\' answers: from the main process, the page and
   assert.match(await resp.textContent(), /Kickchannel · GET https:\/\/kick\.com:1\/api\/v2\/channels\/alpha\?token=…failed/);
   await resp.click();
   assert.match(await until(copied), /^GET https:\/\/kick\.com:1\/api\/v2\/channels\/alpha\?token=…\n→ failed: /);
-  // Copy diagnostics: the app, the system, the windows, the errors
+  // Copy diagnostics: the app, the system, the windows, the logins and the players, the errors
+  await a.app.evaluate(({ session }) => session.fromPartition('persist:kick').cookies.set({ url: 'https://kick.com', name: 'session_token', value: 'test' }));
   await a.win.click('#devCopy');
   const report = await until(async () => { const c = await copied(); return /^## Stream Multiview diagnostics/.test(c) && c; });
   assert.match(report, /\nversion   [\d.]+ \(from source\) · Electron [\d.]+ · Chrome [\d.]+\n/);
   assert.match(report, /\nwindows   main window · layout \w+ · 0 streams, 1 chat\n {2}Kick {6}alpha +chat +loaded/);
   assert.match(report, /\ndeveloper tools on\n/);
+  assert.match(report, /\nsigned in Kick ✓ {2}Twitch – {2}YouTube –\n/, 'Kick by its login cookie');
+  assert.match(report, /\nplayers {3}Kick signed out {2}Twitch signed out {2}YouTube signed out\n/);
   assert.match(report, /## Errors \(\d+, newest first\)\n[\s\S]*main went wrong/);
   assert.match(report, /## Requests \(\d+, newest first\)\n.*kick +channel +failed/);
   assert.ok(!/SECRET/.test(report), 'nothing private');
