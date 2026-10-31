@@ -2,7 +2,23 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.6 (current)
+## 0.4.7 (current)
+- ALL shows names in each site's own colours, and YouTube's own badges
+- Spam alerts flag messages a chat hasn't drawn yet (behind ALL, or scrolled up)
+- Reloading ALL refreshes its emotes
+- YouTube channels show as live again when its feeds are down
+- ALL's emote picker starts with your recent emotes
+- ALL shows YouTube polls and removes a user's messages when YouTube does
+- Pinning a Twitch message from ALL closes Twitch's Unpin After panel
+- ALL shows Kick's polls too, one card at a time, folding into a pill
+- ALL shows Twitch's hype train, with a thinner top bar and site switches
+- Spam alerts catch promo bots that post friendly lines before their link
+- ALL lists the site's chat commands when you type /
+- No "possible memory leak" warning with many streams and an extension on
+- Pop-up buttons for a channel's page and its chat, and ALL's buttons ask which site
+- ALL: one line for a Kick sub, and more of the sites' events known
+
+## 0.4.6
 - ALL: only picker emotes go in the recent row, a click there sends it, and the box follows the cursor
 
 ## 0.4.5
