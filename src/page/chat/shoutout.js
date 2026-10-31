@@ -275,19 +275,19 @@ const RUN_HELD = { disabled: 'The chat isn\'t letting you send right now', 'not-
 // The strip above the send box (in ALL) or over the top of the chat: how the run is going, and Stop
 function soDrawStrip(){
   const r = soRun; if (!r) return;
-  const w = r.w, p = r.list[Math.min(r.i, r.list.length - 1)];
+  const at = r.at ?? r.i, w = r.w, p = r.list[Math.min(at, r.list.length - 1)];   // (at: who's next, in the gap after a send)
   if (!r.strip){
     r.strip = element('div', { class: 'so-strip', role: 'status', 'aria-live': 'polite' });
     const view = allOn(w) && w.allView, cmp = view && view.el.querySelector('.all-cmp');
     if (cmp) cmp.before(r.strip); else { r.strip.classList.add('so-float'); (w.el.querySelector('.body') || w.el).appendChild(r.strip); }
   }
-  const dots = element('span', 'so-dots', ...r.list.map((_, i) => element('i', i < r.i ? 'd' : i === r.i ? 'n' : '')));
+  const dots = element('span', 'so-dots', ...r.list.map((_, i) => element('i', i < at ? 'd' : i === at ? 'n' : '')));
   r.strip.classList.toggle('paused', !!r.wait);
   r.strip.replaceChildren(element('span', { class: 'ic', html: r.wait ? icon.clock : icon.megaphone }),
-    element('span', 'tx', r.wait ? element('b', null, `${r.why} · ${r.wait} s`) : element('b', null, `Shouting out ${r.i + 1} of ${r.list.length} · ${p.name}`),
+    element('span', 'tx', r.wait ? element('b', null, `${r.why} · ${r.wait} s`) : element('b', null, `Shouting out ${at + 1} of ${r.list.length} · ${p.name}`),
       r.wait ? element('small', null, r.whySub || 'It tries again then') : dots),
     element('button', { type: 'button', class: 'btn', dataset: { cmd: 'shout.stop' }, onclick: () => stopRun() }, 'Stop'),
-    element('span', { class: 'bar', style: `width:${Math.round((r.i / r.list.length) * 100)}%` }));
+    element('span', { class: 'bar', style: `width:${Math.round((at / r.list.length) * 100)}%` }));
 }
 function stopRun(said){
   const r = soRun; if (!r) return;
@@ -318,7 +318,7 @@ async function startRun(w, list){
       await soCountDown(r, chatRules(p.ch).wait || SO_TIMING.retry, RUN_HELD[res] || 'Waiting', 'It tries again then');
     }
     if (r.stop) return;
-    if (r.i < list.length - 1){ soDrawStrip(); await soPause(r, SO_TIMING.gap); }
+    if (r.i < list.length - 1){ r.at = r.i + 1; soDrawStrip(); await soPause(r, SO_TIMING.gap); r.at = null; }
   }
   if (soRun === r) stopRun(done ? `Shouted out ${done} ${done === 1 ? 'person' : 'people'}` : '');
 }
