@@ -209,6 +209,11 @@ test('Kick: a reward redeemed (with text: a message with the reward; without: an
   assert.equal(r.kind, 'message'); assert.deepEqual(r.parts, [{ text: 'say hi to sam' }]); assert.deepEqual(r.redeem, { title: 'Shoutout', color: '#00F1FF' }); assert.equal(r.login, 'driftwood_7');
   const r2 = parseKick(KE('RewardRedeemedEvent', { reward_title: 'Hydrate', username: 'oakmoss', user_input: '', reward_background_color: 'red' }));
   assert.equal(r2.kind, 'event'); assert.equal(r2.text, 'oakmoss redeemed Hydrate');
+  // its text's emotes, as a message's
+  assert.deepEqual(parseKick(KE('RewardRedeemedEvent', { reward_title: 'Lurk', username: 'oakmoss', user_input: 'brb [emote:6193915:koalaLurk]' })).parts,
+    [{ text: 'brb ' }, { emote: 'https://files.kick.com/emotes/6193915/fullsize', name: 'koalaLurk' }]);
+  assert.deepEqual(parseKick(KE('KicksGifted', { gift_transaction_id: 'g2', sender: { username: 'Jshoti' }, gift: { name: 'Full Send', amount: 100 }, message: '[emote:7:hype]' })).parts,
+    [{ emote: 'https://files.kick.com/emotes/7/fullsize', name: 'hype' }]);
   const k = parseKick(KE('KicksGifted', { gift_transaction_id: 'g1', sender: { username: 'Jshoti' }, gift: { name: 'Full Send', amount: 1000 } }));
   assert.equal(k.id, 'g1'); assert.equal(k.text, 'Jshoti sent Full Send · 1,000 Kicks');
   assert.equal(parseKick(KF('GiftedSubscriptionsEvent', { gifter_username: 'brightwick', gifted_usernames: ['a', 'b', 'c'] })).text, 'brightwick gifted 3 subs');
@@ -218,6 +223,8 @@ test('Kick: a reward redeemed (with text: a message with the reward; without: an
   assert.equal(parseKick(KF('ChannelSubscriptionEvent', { username: 'Jean', user_ids: [3] })).id, parseKick(KF('SubscriptionEvent', { username: 'jean', months: 9 })).id);
   const h = parseKick(KF('StreamHostEvent', { host_username: 'novalynx', number_viewers: 120, optional_message: 'go say hi' }));
   assert.equal(h.text, 'novalynx raided with 120 viewers'); assert.deepEqual(h.parts, [{ text: 'go say hi' }]);
+  assert.deepEqual(parseKick(KF('StreamHostEvent', { host_username: 'novalynx', number_viewers: 2, optional_message: 'hi [emote:7:hype]' })).parts,
+    [{ text: 'hi ' }, { emote: 'https://files.kick.com/emotes/7/fullsize', name: 'hype' }]);
   // Kick sends the same raid as StreamHostedEvent too: the same id, so ALL keeps one line
   const both = parseKick(JSON.stringify({ push: { channel: 'chatrooms.1', pub: { data: { event: 'App\\Events\\StreamHostedEvent', data: JSON.stringify({ message: { id: 'h9', numberOfViewers: 120 }, user: { username: 'Novalynx' } }) } } } }));
   assert.equal(both.id, h.id, 'one raid, one id, whichever name');

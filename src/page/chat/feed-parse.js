@@ -221,7 +221,7 @@ function twitchSummary(ev, name, p, system){
 }
 
 // Kick's other news in chat: a reward redeemed (with its text: a message with the reward's name), Kicks sent, subs and
-// gifted subs, a raid (host). Heard on busy chats: RewardRedeemedEvent, KicksGifted; the others by Kick's long-used names.
+// gifted subs, a raid (host). The text a viewer adds has its emotes, as a message's does. Heard on busy chats: RewardRedeemedEvent, KicksGifted; the others by Kick's long-used names.
 function kickEvents(ev, d){
   const t = Date.now(), n = v => Number(v || 0).toLocaleString('en-US'), plural = (v, one, many) => `${n(v)} ${+v === 1 ? one : many}`;
   const event = (id, who, summary, parts = []) => ({ site: 'kick', kind: 'event', event: ev, id: String(id), t, sender: who, login: who.toLowerCase(), color: '', userId: '', badges: [], parts,
@@ -229,12 +229,12 @@ function kickEvents(ev, d){
   if (ev === 'RewardRedeemedEvent'){
     const who = String(d.username || 'Someone'), title = String(d.reward_title || 'a reward'), id = 'rw-' + (d.id || `${t}-${who}`);
     if (String(d.user_input || '').trim()) return { site: 'kick', kind: 'message', id, t, sender: who, login: who.toLowerCase(), color: '', userId: d.user_id ? String(d.user_id) : '', badges: [],
-      parts: [{ text: String(d.user_input) }], redeem: { title, color: /^#[0-9a-f]{6}$/i.test(d.reward_background_color || '') ? d.reward_background_color : '' } };
+      parts: kickParts(d.user_input), redeem: { title, color: /^#[0-9a-f]{6}$/i.test(d.reward_background_color || '') ? d.reward_background_color : '' } };
     return event(id, who, [{ strong: who }, { text: ' redeemed ' }, { strong: title }]);
   }
   if (ev === 'KicksGifted'){
     const who = String((d.sender && d.sender.username) || 'Someone'), g = d.gift || {};
-    return event(d.gift_transaction_id || 'kg-' + t, who, [{ strong: who }, { text: ' sent ' }, { strong: String(g.name || 'a gift') }, { text: ' · ' }, { strong: `${n(g.amount)} Kicks` }], d.message ? [{ text: String(d.message) }] : []);
+    return event(d.gift_transaction_id || 'kg-' + t, who, [{ strong: who }, { text: ' sent ' }, { strong: String(g.name || 'a gift') }, { text: ' · ' }, { strong: `${n(g.amount)} Kicks` }], d.message ? kickParts(d.message) : []);
   }
   if (ev === 'GiftedSubscriptionsEvent' || ev === 'LuckyUsersWhoGotGiftSubscriptionsEvent'){
     const who = String(d.gifter_username || 'Someone'), got = (Array.isArray(d.gifted_usernames) ? d.gifted_usernames : Array.isArray(d.usernames) ? d.usernames : []).map(String);
@@ -251,7 +251,7 @@ function kickEvents(ev, d){
   // in their own shapes): one line for the raid, by who raided (within 10 minutes), whichever comes first
   if (ev === 'StreamHostedEvent' || ev === 'StreamHostEvent'){
     const m = d.message || {}, who = String((d.user && d.user.username) || d.host_username || 'Someone'), said = m.optionalMessage || d.optional_message;
-    return event('host-' + who.toLowerCase() + '-' + Math.floor(t / 600000), who, [{ strong: who }, { text: ' raided with ' }, { strong: plural(m.numberOfViewers ?? d.number_viewers, 'viewer', 'viewers') }], said ? [{ text: String(said) }] : []);
+    return event('host-' + who.toLowerCase() + '-' + Math.floor(t / 600000), who, [{ strong: who }, { text: ' raided with ' }, { strong: plural(m.numberOfViewers ?? d.number_viewers, 'viewer', 'viewers') }], said ? kickParts(said) : []);
   }
   return null;
 }

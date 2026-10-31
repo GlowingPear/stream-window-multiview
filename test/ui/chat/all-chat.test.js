@@ -1290,6 +1290,10 @@ test('ALL: a reward redeemed with text reads as a message with the reward\'s nam
     'al-ev | Kbrightwick gifted 2 subs2 recipients', 'al-m | Ttinroof: play the new mapChannel points']);
   assert.equal(await page.$$eval('.all-list .al-rw', l => l.length), 2, 'redeems: their own edge');
   assert.equal(await page.$eval('.al-tag-rw', e => e.style.getPropertyValue('--rw')), '#00F1FF', 'in the reward\'s colour');
+  // a redeem's text with emotes: their pictures, as a message's
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KE('RewardRedeemedEvent', { id: 'lurk', reward_title: 'Lurk', username: 'tide', user_input: '[emote:6193915:koalaLurk] [emote:6193915:koalaLurk]' })] });
+  assert.deepEqual(await page.$$eval('.all-list .al-rw:last-child img.al-e', l => l.map(e => [e.alt, e.src])), [['koalaLurk', 'https://files.kick.com/emotes/6193915/fullsize'], ['koalaLurk', 'https://files.kick.com/emotes/6193915/fullsize']]);
+  assert.ok(!(await page.$eval('.all-list .al-rw:last-child', e => e.textContent)).includes('[emote:'), 'no emote codes as text');
 });
 
 test('ALL: a YouTube gift is an event (the gift picked out); YouTube\'s stand-ins for held messages, its ticker and its own notice are left out, and don\'t count as unreadable', async t => {
