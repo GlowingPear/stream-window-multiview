@@ -39,6 +39,79 @@ function readable(color, light){
   return hex(c);
 }
 
+// Its chat's commands, for ALL's box (/ at the start: chat/all-chat.js): { name, args (what goes after it: [optional]),
+// does, who: 'all', 'mod' (moderators and the streamer), 'lead' (lead moderators and the streamer: /mod, /vip and their
+// un…, as Twitch offers a lead moderator) or 'host' (the streamer; Twitch offers editors /raid, /marker, /costream too,
+// but ALL doesn't know who's an editor) }. As Twitch's own
+// chat offers them (its autocomplete's getCommands, read in a live chat 2026-10-31): its words, its order (channel
+// management first, then everyone's, each by name with an un… next to its other half). Left out: the ones that open
+// something in its own chat (/goal, /poll, /raidbrowser, /user, /sharedchat, /gift) or answer only there (/help, /mods,
+// /vips), as from ALL that happens out of sight.
+const TW_COMMANDS = [
+  { name: "announce", args: "message", does: "Call attention to your message with a highlight", who: 'mod' },
+  { name: "announceblue", args: "message", does: "Call attention to your message with a blue highlight", who: 'mod' },
+  { name: "announcegreen", args: "message", does: "Call attention to your message with a green highlight", who: 'mod' },
+  { name: "announceorange", args: "message", does: "Call attention to your message with an orange highlight", who: 'mod' },
+  { name: "announcepurple", args: "message", does: "Call attention to your message with a purple highlight", who: 'mod' },
+  { name: "ban", args: "username [reason]", does: "Permanently ban a user from Chat", who: 'mod' },
+  { name: "unban", args: "username", does: "Remove a timeout or a permanent ban on a user", who: 'mod' },
+  { name: "clear", args: "", does: "Clear chat history for non-Moderator viewers", who: 'mod' },
+  { name: "costream", args: "", does: "Start costreaming on behalf of the broadcaster", who: 'host' },
+  { name: "costreamend", args: "", does: "End costreaming on behalf of the broadcaster", who: 'host' },
+  { name: "deletepoll", args: "", does: "Delete the active poll on the given channel", who: 'mod' },
+  { name: "emoteonly", args: "", does: "Restrict Chat to emote-only messages", who: 'mod' },
+  { name: "emoteonlyoff", args: "", does: "Turn off emote-only mode", who: 'mod' },
+  { name: "endpoll", args: "", does: "End the active poll on the given channel", who: 'mod' },
+  { name: "followers", args: "[duration]", does: "Restrict Chat to followers based on their follow duration", who: 'mod' },
+  { name: "followersoff", args: "", does: "Turn off followers-only mode", who: 'mod' },
+  { name: "leadmod", args: "username", does: "Grant lead moderator status to a user", who: 'host' },
+  { name: "unleadmod", args: "username", does: "Revoke lead moderator status from a user", who: 'host' },
+  { name: "marker", args: "[description]", does: "Add a stream marker at the current timestamp", who: 'host' },
+  { name: "mod", args: "username", does: "Grant moderator status to a user", who: 'lead' },
+  { name: "unmod", args: "username", does: "Revoke moderator status from a user", who: 'lead' },
+  { name: "unmonitor", args: "username", does: "Stop monitoring a user\u2019s messages", who: 'mod' },
+  { name: "monitor", args: "username", does: "Start monitoring a user\u2019s messages", who: 'mod' },
+  { name: "pin", args: "message", does: "Pin a message you send into chat for the channel", who: 'mod' },
+  { name: "raid", args: "channel", does: "Send viewers to another channel when your stream ends", who: 'host' },
+  { name: "unraid", args: "", does: "Cancel an ongoing Raid", who: 'host' },
+  { name: "restrict", args: "username", does: "Start restricting a user\u2019s messages", who: 'mod' },
+  { name: "unrestrict", args: "username", does: "Stop restricting a user\u2019s messages", who: 'mod' },
+  { name: "shield", args: "", does: "Restrict chat and ban harassing chatters", who: 'mod' },
+  { name: "shieldoff", args: "", does: "Deactivate Shield Mode", who: 'mod' },
+  { name: "shoutout", args: "username", does: "Highlight a channel for viewers to follow", who: 'mod' },
+  { name: "slow", args: "[duration]", does: "Limit how frequently users can send messages in Chat", who: 'mod' },
+  { name: "slowoff", args: "", does: "Turn off slow mode", who: 'mod' },
+  { name: "subscribers", args: "", does: "Restrict Chat to subscribers", who: 'mod' },
+  { name: "subscribersoff", args: "", does: "Turn off subscribers-only mode", who: 'mod' },
+  { name: "timeout", args: "username [duration] [reason]", does: "Temporarily ban a user from Chat", who: 'mod' },
+  { name: "untimeout", args: "username", does: "Remove a timeout on a user", who: 'mod' },
+  { name: "uniquechat", args: "", does: "Prevent users from sending duplicate messages in Chat", who: 'mod' },
+  { name: "uniquechatoff", args: "", does: "Turn off unique-chat mode", who: 'mod' },
+  { name: "vip", args: "username", does: "Grant VIP status to a user", who: 'lead' },
+  { name: "unvip", args: "username", does: "Revoke VIP status from a user", who: 'lead' },
+  { name: "warn", args: "username reason", does: "Issue a warning to a user that they must acknowledge before chatting again in this channel", who: 'mod' },
+  { name: "block", args: "username", does: "Block a user from interacting with you on Twitch", who: 'all' },
+  { name: "unblock", args: "username", does: "Remove user from your block list", who: 'all' },
+  { name: "color", args: "color", does: "Change your username color, i.e. blue, green, etc", who: 'all' },
+  { name: "me", args: "message", does: "Express an action in the third person", who: 'all' },
+  { name: "vote", args: "index", does: "Vote in the active poll on the given channel", who: 'all' }
+];
+
+// Its chat's commands as its own page has them now (in-site/feed.js twCommandsAgent: Twitch's own list, read live), as
+// chatCommands says them: its order (channel management first, then everyone's, each by name with an un… next to its other
+// half), the same ones left out, a lead moderator's as Twitch offers them. null: not usable (ALL keeps TW_COMMANDS).
+const TW_LEFT_OUT = new Set(['goal', 'poll', 'prediction', 'raidbrowser', 'user', 'sharedchat', 'gift', 'requests', 'help', 'mods', 'vips']);
+const TW_LEAD = new Set(['mod', 'unmod', 'vip', 'unvip']);
+function twLiveCommands(raw){
+  if (!Array.isArray(raw) || raw.length < 10) return null;
+  const list = raw.filter(c => c && /^[a-z]{1,30}$/.test(c.name) && !TW_LEFT_OUT.has(c.name)).slice(0, 100).map(c => ({
+    name: c.name, args: (Array.isArray(c.args) ? c.args : []).filter(a => a && /^[\w-]{1,30}$/.test(a.name)).map(a => a.required ? a.name : `[${a.name}]`).join(' '),
+    does: String(c.description || '').trim().replace(/\.$/, '').slice(0, 200),
+    who: c.level <= 1 ? 'all' : c.level === 2 ? 'mod' : TW_LEAD.has(c.name) ? 'lead' : 'host', mgmt: !!c.editor || c.level >= 2 }));
+  const trim = n => n.startsWith('un') && !n.startsWith('unique') ? n.slice(2) : n;
+  return list.filter(c => c.does).sort((a, b) => a.mgmt !== b.mgmt ? b.mgmt - a.mgmt : trim(a.name).localeCompare(trim(b.name))).map(({ mgmt, ...c }) => c);
+}
+
 const twitch = {
   id: 'twitch', name: 'Twitch', letter: 'T',
   mentions: true,
@@ -51,6 +124,8 @@ const twitch = {
   emoteLists: true,
   pageCommands: false,
   likes: false,
+  chatCommands: TW_COMMANDS,
+  liveCommands: twLiveCommands,   // (its own page's list, read live: above)
   // A name in ALL as its chat shows it (see kick.js): their colour, or one of Twitch's own, made readable
   nameStyle: (m, { light } = {}) => ({ color: readable(/^#[0-9a-f]{6}$/i.test(m.color || '') ? m.color : twDefault(m.login || m.sender), !!light) }),
   lowQualityJs: null,

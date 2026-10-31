@@ -234,3 +234,41 @@ test('a name in ALL as each site\'s own chat shows it (nameStyle), on a dark the
   assert.deepEqual([yt(['mod'], { look }), yt(['sub'], { look }), yt([], { look })], [{ color: 'rgb(94, 132, 241)' }, { color: 'rgb(15, 157, 88)' }, { color: 'rgba(255,255,255,0.7)' }]);
   assert.deepEqual(yt(['mod'], { look, light: true }), { color: '#065fd4' }, 'a dark page\'s colours aren\'t used on a light theme');
 });
+
+test('each site\'s chat commands for ALL\'s / list: a name, what goes after it, what it does, who can use it; none that only open a panel out of sight', () => {
+  const ok = c => /^[a-z]+$/.test(c.name) && typeof c.args === 'string' && typeof c.does === 'string' && c.does.length > 5 && ['all', 'mod', 'lead', 'host'].includes(c.who);
+  for (const p of [kick, twitch]) {
+    assert.ok(p.chatCommands.length > 10, p.id);
+    assert.deepEqual(p.chatCommands.filter(c => !ok(c)), [], p.id);
+    assert.equal(new Set(p.chatCommands.map(c => c.name)).size, p.chatCommands.length, p.id + ': each once');
+    assert.deepEqual(['all', 'mod', 'host'].map(w => p.chatCommands.filter(c => c.who === w).length > 0), [true, true, true], p.id + ': for everyone, mods and the streamer');
+  }
+  assert.deepEqual(youtube.chatCommands, [], 'YouTube\'s chat has none');
+  const names = p => p.chatCommands.map(c => c.name);
+  for (const panel of ['poll', 'prediction', 'goal', 'raidbrowser', 'user', 'gift', 'sharedchat', 'help', 'mods', 'vips']) assert.ok(!names(twitch).includes(panel), 'Twitch: ' + panel);
+  // in each site's own order: Twitch's channel management first, then everyone's, each by name with an un… next to its other half; Kick's by name
+  const trim = n => n.startsWith('un') && !n.startsWith('unique') ? n.slice(2) : n, mgmt = c => c.who !== 'all';
+  const twSorted = [...twitch.chatCommands].sort((a, b) => mgmt(a) !== mgmt(b) ? mgmt(b) - mgmt(a) : trim(a.name).localeCompare(trim(b.name)));
+  assert.deepEqual(names(twitch), twSorted.map(c => c.name));
+  assert.deepEqual(names(kick), [...names(kick)].sort());
+  assert.equal(kick.chatCommands.find(c => c.name === 'timeout').args, '<username> <minutes> [reason]', 'Kick\'s timeouts are in minutes (ALL\'s own timeout says minutes too: timeoutCmd)');
+  for (const panel of ['user', 'category']) assert.ok(!names(kick).includes(panel), 'Kick: ' + panel);
+  assert.ok(['clip', 'poll', 'prediction'].every(n => names(kick).includes(n)), 'Kick\'s own panels open from ALL too');
+  assert.deepEqual(['timeout', 'ban', 'slow'].map(n => twitch.chatCommands.find(c => c.name === n).who), ['mod', 'mod', 'mod']);
+  assert.deepEqual(['mod', 'unmod', 'vip', 'unvip'].map(n => twitch.chatCommands.find(c => c.name === n).who), ['lead', 'lead', 'lead', 'lead'], 'a lead moderator\'s too, as Twitch offers them');
+  assert.equal(twitch.chatCommands.find(c => c.name === 'raid').who, 'host');
+  assert.ok(!kick.chatCommands.some(c => c.who === 'lead'), 'Kick has no lead moderators');
+});
+
+test('Twitch\'s own list read live (liveCommands): its order, the same ones left out, a lead moderator\'s; not usable: null', () => {
+  const raw = [['me', 1], ['ban', 2, ['username', 'reason?']], ['unban', 2, ['username']], ['color', 0, ['color']], ['vip', 3, ['username']], ['raid', 3, ['channel'], true], ['poll', 2, [], true], ['help', 0, ['command?']],
+    ['block', 0, ['username']], ['timeout', 2, ['username', 'duration?']], ['clear', 2], ['mod', 3, ['username']], ['Bad Name', 0]]
+    .map(([name, level, args = [], editor = false]) => ({ name, level, editor, description: name + ' it.', args: args.map(a => ({ name: a.replace('?', ''), required: !a.endsWith('?') })) }));
+  const l = twitch.liveCommands(raw);
+  assert.deepEqual(l.map(c => c.name), ['ban', 'unban', 'clear', 'mod', 'raid', 'timeout', 'vip', 'block', 'color', 'me'], 'channel management first, each by name with un… next to its other half; poll and help left out');
+  assert.deepEqual(l.find(c => c.name === 'ban'), { name: 'ban', args: 'username [reason]', does: 'ban it', who: 'mod' });
+  assert.deepEqual(['vip', 'mod', 'raid', 'me', 'color'].map(n => l.find(c => c.name === n).who), ['lead', 'lead', 'host', 'all', 'all']);
+  assert.equal(twitch.liveCommands(raw.slice(0, 5)), null, 'too few to be its list');
+  assert.equal(twitch.liveCommands(null), null);
+  assert.deepEqual([kick.liveCommands, youtube.liveCommands], [null, null], 'Kick\'s and YouTube\'s: their copy');
+});

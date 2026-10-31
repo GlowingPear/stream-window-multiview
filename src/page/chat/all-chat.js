@@ -16,7 +16,7 @@ import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
 import { wins } from '../core.js';
 import { badgesAgent, feedAgent, hypeAgent, kickIconsAgent, messageHtml, modesAgent, pinAgent, profileAgent,
-  replyAgent, shownAgent, twReplyAt, twReplyPress, ytLookAgent } from '../in-site/feed.js';
+  replyAgent, shownAgent, twCommandsAgent, twReplyAt, twReplyPress, ytLookAgent } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent, sentAgent } from '../in-site/send.js';
@@ -647,7 +647,7 @@ function evToggle(m, e){
   const n = redrawLine(m); if (n) evOpenable(m, n);   // (still under the pointer: it can close again)
 }
 function lineEl(m){
-  if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' ? null : mineEl(m);
+  if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' || (m.cmd && m.state !== 'failed') ? null : mineEl(m);   // (a command: a line only if it couldn't be sent)
   if (m.ch && siteOff(ownerOf(m.ch), m.site)) return null;   // (its site switched off in this ALL; your own lines stay)
   if (m.kind === 'raidout'){
     // (Twitch's countdown: getting ready, then raided; or called off)
@@ -784,8 +784,8 @@ function buildView(w){
     if (!at.hidden && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)){
       e.preventDefault();
       if (e.key === 'Escape') at.hidden = true;
-      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){ view.atSel = (view.atSel + (e.key === 'ArrowDown' ? 1 : -1) + view.atList.length) % view.atList.length; (view.atMode === 'emote' ? renderEmoteList : renderAt)(view); }
-      else (view.atMode === 'emote' ? pickEmote : pickAt)(view, w, view.atList[view.atSel]);
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){ view.atSel = (view.atSel + (e.key === 'ArrowDown' ? 1 : -1) + view.atList.length) % view.atList.length; (view.atMode === 'emote' ? renderEmoteList : view.atMode === 'cmd' ? renderCmds : renderAt)(view); }
+      else (view.atMode === 'emote' ? pickEmote : view.atMode === 'cmd' ? pickCmd : pickAt)(view, w, view.atList[view.atSel]);
       return;
     }
     if (e.key === 'Escape' && view.lock){ e.preventDefault(); setLock(view, w, null); }
@@ -796,7 +796,7 @@ function buildView(w){
       else if (e.shiftKey) cycleTabs(w); else stepSend(view, w, 1);
     }
   });
-  input.addEventListener('input', () => { syncSendB(view, w); suggestAt(view, w); if (view.at.hidden || view.atMode === 'emote') suggestEmote(view, w); if (!input.value.trim() && view.lock && (view.lock.kind === 'at' || view.lock.kind === 'emote')) setLock(view, w, null); });
+  input.addEventListener('input', () => { syncSendB(view, w); if (suggestCmd(view, w)) return; suggestAt(view, w); if (view.at.hidden || view.atMode === 'emote') suggestEmote(view, w); if (!input.value.trim() && view.lock && (view.lock.kind === 'at' || view.lock.kind === 'emote')) setLock(view, w, null); });
   list.append(...f.msgs.map(lineEl).filter(Boolean));
   // the chat's text size: Chat text size, times this chat's own (Chat Stage, Chat Rail and Blow up make one bigger, on its view)
   view.sizeObs = new MutationObserver(() => fitSize(view));
@@ -1062,6 +1062,55 @@ function renderLock(view, w){
   bar.replaceChildren(element('i', { class: 'all-rb-i', html: l.kind === 'reply' ? icon.reply : l.kind === 'emote' ? SMILEY : icon.at }), ...words,
     element('button', { type: 'button', class: 'all-rb-x', title: 'Cancel (Esc)', 'aria-label': 'Cancel', html: icon.close, dataset: { cmd: 'all.unlock' }, onclick: () => { setLock(view, w, null); view.input.focus(); } }));
 }
+// / at the start of the box: the commands of the site it sends on (or is locked to) that you can use there (the site
+// module's chatCommands: mods' where you moderate, a lead moderator's where your last message there had that badge, the
+// streamer's in your own channel), the ones starting with what's typed
+const CMD_SHOWN = 5;
+// A chat's commands as its own page has them now (its site module's liveCommands: Twitch's, which differ a little by
+// channel: /pin where you can pin), asked as its page loads (and once more a few seconds on, its list may not be there
+// yet); without them its module's copy (chatCommands)
+const liveCmds = new Map();   // channel -> its commands
+function askCommands(w, view, again = true){
+  askIn(view, `(${twCommandsAgent})()`).then(r => { const l = platform(w.channel).liveCommands(r); if (l && l.length) liveCmds.set(w.channel, l); else if (again) setTimeout(() => { if (w.view === view) askCommands(w, view, false); }, 5000); }).catch(() => {});
+}
+function suggestCmd(view, w){
+  const v = view.input, upto = v.value.slice(0, v.selectionStart ?? v.value.length), mm = /^\/([a-z]*)$/i.exec(upto);
+  const ch = mm && ((view.lock && view.lock.ch) || sendSite(w)), cmds = ch ? liveCmds.get(ch) || platform(ch).chatCommands || [] : [];
+  if (!mm || !cmds.length){ if (view.atMode === 'cmd'){ view.at.hidden = true; view.atMode = ''; } return false; }
+  const me = meOn(platOf(ch)), host = !!me && platform(ch).handle(ch).toLowerCase() === me, mod = host || youMod(ch), q = mm[1].toLowerCase();
+  const lead = host || (mod && (youOn(feedOf(view.s), platOf(ch), ch).myPics || []).some(p => p && p.set === 'lead_moderator'));
+  const list = cmds.filter(c => (c.who === 'all' || (c.who === 'mod' && mod) || (c.who === 'lead' && lead) || (c.who === 'host' && host)) && c.name.startsWith(q));
+  view.atList = list; view.atSel = 0; view.atQ = q; view.atMode = 'cmd'; view.cmdCh = ch;
+  if (!list.length){ view.at.hidden = true; return true; }
+  renderCmds(view);
+  view.at.hidden = false;
+  return true;
+}
+function renderCmds(view){
+  const site = platOf(view.cmdCh), q = view.atQ, from = Math.max(0, Math.min(view.atSel - CMD_SHOWN + 1, view.atList.length - CMD_SHOWN));
+  // headings where the site's own order keeps each group together (Twitch's: channel management, then everyone's); Kick's
+  // is by name, with none
+  const group = c => c.who === 'all' ? 'Everyone' : 'Channel management', rows = [];
+  const heads = view.atList.filter((c, i, l) => i && group(l[i - 1]) !== group(c)).length <= 1;
+  view.atList.slice(from, from + CMD_SHOWN).forEach((c, k) => {
+    const i = from + k, prev = view.atList[i - 1];
+    if (heads && (!k || !prev || group(prev) !== group(c))) rows.push(element('div', 'all-cmd-g', group(c)));
+    rows.push(element('button', { type: 'button', role: 'option', class: 'all-ati all-cmd' + (i === view.atSel ? ' on' : ''), 'aria-selected': String(i === view.atSel), dataset: { cmd: 'all.cmdPick' },
+      onmousedown: e => e.preventDefault(), onclick: () => pickCmd(view, view.w, c) },
+      element('span', 'all-cmd-n', element('b', null, '/' + c.name.slice(0, q.length)), c.name.slice(q.length)), c.args && element('span', 'all-cmd-a', c.args), element('small', { class: 'all-cmd-d', title: c.does }, c.does)));
+  });
+  view.at.classList.add('all-at-cmds');
+  view.at.replaceChildren(element('div', 'all-at-h', element('i', { class: 'pi pi-' + site }, PLAT_NAME[site][0]), element('span', null, `${PLAT_NAME[site]} commands`)), ...rows,
+    element('div', 'all-mh', element('kbd', null, '↑'), element('kbd', null, '↓'), ' pick · ', element('kbd', null, 'Tab'), ' fills it in', view.atList.length > CMD_SHOWN ? ` · ${view.atList.length} in all, keep typing` : ''));
+}
+function pickCmd(view, w, c){
+  if (!c) return;
+  const v = view.input, rest = v.value.slice(v.selectionStart ?? v.value.length).replace(/^\S*\s*/, '');
+  v.value = '/' + c.name + ' ' + rest;
+  v.selectionStart = v.selectionEnd = c.name.length + 2;
+  view.at.hidden = true; view.atMode = '';
+  v.focus();
+}
 // @ in the box: names seen in their chats, newest first (only the locked site's while locked)
 function suggestAt(view, w){
   const v = view.input, upto = v.value.slice(0, v.selectionStart ?? v.value.length), mm = /(^|\s)@([\w.]*)$/.exec(upto);
@@ -1081,6 +1130,7 @@ function suggestAt(view, w){
   view.at.hidden = false;
 }
 function renderAt(view){
+  view.at.classList.remove('all-at-cmds');   // (the same popup as / commands')
   view.at.replaceChildren(element('div', 'all-at-h', view.lock ? `${PLAT_NAME[platOf(view.lock.ch)]} names` : 'Names in chat'),
     ...view.atList.map((m, i) => element('button', { type: 'button', role: 'option', class: 'all-ati' + (i === view.atSel ? ' on' : ''), 'aria-selected': String(i === view.atSel), dataset: { cmd: 'all.atPick' },
       onmousedown: e => e.preventDefault(), onclick: () => pickAt(view, view.w, m) },
@@ -1372,6 +1422,7 @@ function heldBy(ch){
 async function post(view, w, { ch, text, send, emotes, pics, lock, threaded }){
   const site = platOf(ch), f = feedOf(view.s);
   const p = { kind: 'mine', site, ch, id: 'mine' + (++mineN), t: Date.now(), text, send, emotes, pics, parts: mineParts(text, pics, emotes), ...youOn(f, site, ch), lock, threaded, state: 'sending' };
+  if (/^\/(?!me\b)[a-z]/i.test(text)) p.cmd = true;   // (a chat command: it never comes back as a line, so it shows none; /me does)
   f.msgs.push(p); addLine(view, p);
   await deliver(view, w, p);
 }
@@ -1385,11 +1436,13 @@ async function deliver(view, w, p){
   view.sending = false; syncSendB(view, w);
   if (p.state === 'seen') return;   // (its chat brought it back already)
   noteSend(p.ch, r, r === 'sent' ? '' : SEND_FAIL[r] ? SEND_FAIL[r](site) : '');   // (two failures in a row: ALL's health says so)
+  if (r === 'sent' && p.cmd){ const f = feedOf(view.s), i = f.msgs.indexOf(p); if (i >= 0) f.msgs.splice(i, 1); p.state = 'dropped'; return flash(`Sent ${p.text.split(/\s/)[0]} on ${site}`); }
   if (r === 'sent'){ slowStart(p.ch); setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
   p.why = r === 'no-reply' ? `Couldn't start a reply on ${site}: the message may have scrolled out of its chat` : r === 'gone' ? `${site}'s chat isn't open`
     : (SEND_FAIL[r] || (x => `${x}'s chat didn't answer`))(site);
   p.late = r === 'no-answer';   // (it may still have gone: if its chat brings it back, the real line takes its place)
   setMine(p, 'failed');
+  if (p.cmd) addLine(view, p);   // (a command shows a line only now: why, and Retry)
   flash(`Not sent: ${p.why}`);
   if (r === 'disabled' && m && m.view) askIn(m.view, `(${modesAgent})()`).then(x => { if (x) setModes(p.ch, x); }).catch(() => {});   // (why: its modes again)
 }
@@ -1601,6 +1654,7 @@ function forgetClosed(){
   [...badgePics.keys()].forEach(ch => { if (!open.has(ch)) badgePics.delete(ch); });
   [...emoteCache.keys()].forEach(ch => { if (!open.has(ch)) forgetEmotes(ch); });
   [...modesOf.keys()].forEach(ch => { if (!open.has(ch)) modesOf.delete(ch); });   // (opened again: what it says then)
+  [...liveCmds.keys()].forEach(ch => { if (!open.has(ch)) liveCmds.delete(ch); });
   if (!wins.some(w => w.kind === 'chat' && platOf(w.channel) === 'twitch')) twBadges = null;
 }
 // The chat's modes and you there (modesAgent). YouTube's chat draws its box late, and may say "Sign in" while it does:
@@ -1617,6 +1671,7 @@ function pinsNow(w, view){
   askModes(w, view);
   askIn(view, `(${pinAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true); }).catch(() => {});
   askIn(view, `(${shownAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true, true); }).catch(() => {});   // (what it already shows)
+  if (platform(w.channel).liveCommands) askCommands(w, view);
   if (platOf(w.channel) === 'twitch') askIn(view, `(${hypeAgent})()`).then(x => { const m = x && feedParse.hypeTrain('start', x); if (m && allTabFor(w)) hypeNews(ownerOf(w.channel), w.channel, m); }).catch(() => {});   // (a hype train already running)
 }
 
@@ -1658,9 +1713,9 @@ function init(){
   // What ALL shows, changed in the other window
   settings.onChange(['allBots', 'allEvents', 'allHype', 'allHidden'], () => { readFilters(); redrawAll(); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.ytLookAgent = ytLookAgent; window.pinAgent = pinAgent; window.hypeAgent = hypeAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.sentAgent = sentAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.ytLookAgent = ytLookAgent; window.pinAgent = pinAgent; window.hypeAgent = hypeAgent; window.twCommandsAgent = twCommandsAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.sentAgent = sentAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
-  window.allChat = { sender, SEND_LIMIT, modKnown, gotBadges, gotKickIcons, kickIcons, gotYtLook, ytLook: () => ytLook, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.allChat = { sender, SEND_LIMIT, modKnown, gotBadges, gotKickIcons, kickIcons, gotYtLook, ytLook: () => ytLook, liveCmds, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
 export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, feedSpam, init, modViewChs, openInspects,
