@@ -43,13 +43,13 @@
 .ev-acts .btn{flex:none;height:28px;padding:0 12px;font-size:12px;border-radius:8px}
 .ev-stats+.btn{margin-left:auto}
 .ev-stats{display:flex;gap:6px;flex-wrap:wrap;margin-right:auto}
-.ev-stat{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px 0 3px;border-radius:999px;background:var(--panel2);border:1px solid var(--line2);color:var(--muted);font:inherit;font-size:11.5px;cursor:pointer;transition:opacity .15s,border-color .15s,box-shadow .15s}
+.ev-stat{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px 0 2px;border-radius:999px;background:var(--panel2);border:1px solid var(--line2);color:var(--muted);font:inherit;font-size:11.5px;cursor:pointer;transition:opacity .15s,border-color .15s,box-shadow .15s}
 .ev-stat:hover{border-color:color-mix(in srgb,var(--accent) 55%,transparent);color:var(--text)}
 .ev-stats.filtered .ev-stat:not(.on){opacity:.45}
 .ev-stat.on{color:var(--text);border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
 .ev-stat b{color:var(--text);font-variant-numeric:tabular-nums}
 .ev-sep{opacity:.5}
-.ev-stat .dv-site{border-radius:999px;padding:2px 7px}
+.ev-stat .pi{border-radius:50%}
 .ev-sec{padding:8px 10px 10px}
 /* the three lists: a segmented control, each with its colour (unknown: the accent, still needed: amber, in ALL: grey) */
 .ev-views{display:flex;gap:3px;margin-top:10px;padding:3px;border-radius:10px;background:var(--bg);border:1px solid var(--line2)}

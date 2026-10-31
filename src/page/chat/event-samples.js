@@ -2,7 +2,7 @@ import { reportHealth } from './all-health.js';
 import { feedParse } from './feed-parse.js';
 import { $, wins } from '../core.js';
 import { copyText, devTab } from '../panels/developer/developer.js';
-import { PLAT_NAME, platOf } from '../platforms/platforms.js';
+import { PLATFORMS, PLAT_NAME, platOf } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
@@ -55,6 +55,7 @@ async function renderEvents(){
   const unknown = rows.filter(r => !r.does && only(r)).sort((a, b) => b.e.first - a.e.first), shown = rows.filter(r => r.does && !r.ign && only(r)).sort((a, b) => b.e.n - a.e.n), ignored = rows.filter(r => r.ign && only(r)).sort((a, b) => b.e.n - a.e.n);
   const tab = $('#devTabs [data-t=events] .dv-n'); if (tab) tab.textContent = allNew ? `(${allNew} new)` : '';
   const site = s => element('span', 'dv-site dv-' + s, PLAT_NAME[s]);
+  const letter = s => element('i', { class: 'pi pi-' + s, 'aria-label': PLAT_NAME[s] }, PLATFORMS[s].letter);   // the site's badge (platIcon), so the counts and buttons fit one line
   const row = r => {
     const key = r.s + ' ' + r.kind, open = evs.open === key, fresh = !r.does && Date.now() - r.e.first < 86400000;
     return [element('button', { type: 'button', class: 'ev-row' + (open ? ' open' : '') + (r.does ? '' : ' ev-unk') + (r.ign ? ' ev-ign' : ''), 'aria-expanded': String(open), dataset: { cmd: 'dev.eventOpen' },
@@ -84,11 +85,11 @@ async function renderEvents(){
       element('div', 'ev-acts',
         element('div', { class: 'ev-stats' + (evs.site ? ' filtered' : ''), role: 'group', 'aria-label': 'Show one site' }, ...EV_SITES.map(s => { const k = Object.values(d[s] || {}), on = evs.site === s;
           return element('button', { type: 'button', class: 'ev-stat' + (on ? ' on' : ''), 'aria-pressed': String(on), title: `${PLAT_NAME[s]}: ${k.length} kinds, ${k.reduce((a, e) => a + e.n, 0).toLocaleString()} heard · ` + (on ? 'press to show every site again' : `press to show only ${PLAT_NAME[s]}`), dataset: { cmd: 'dev.eventsSite' },
-            onclick: () => { evs.site = on ? '' : s; evs.open = ''; renderEvents(); } }, site(s), element('b', null, String(k.length)), element('span', 'ev-sep', '·'), evCount(k.reduce((a, e) => a + e.n, 0))); })),
-        element('button', { type: 'button', class: 'btn primary', id: 'evExport', dataset: { cmd: 'dev.eventsExport' }, title: 'Saves them as a file, with names, ids and the words of messages replaced', onclick: exportEvents }, 'Export…'),
+            onclick: () => { evs.site = on ? '' : s; evs.open = ''; renderEvents(); } }, letter(s), element('b', null, String(k.length)), element('span', 'ev-sep', '·'), evCount(k.reduce((a, e) => a + e.n, 0))); })),
+        element('button', { type: 'button', class: 'btn primary', id: 'evExport', dataset: { cmd: 'dev.eventsExport' }, title: 'Saves them as a file, with names, ids and the words of messages replaced', onclick: exportEvents }, 'Export'),
         element('button', { type: 'button', class: 'btn', id: 'evClear', dataset: { cmd: 'dev.eventsClear' }, onclick: clearEvents }, 'Clear'),
         element('button', { type: 'button', class: 'btn', id: 'evReport', dataset: { cmd: 'dev.allReport' }, title: 'Something in ALL not working? Saves what\'s needed to fix it (every chat ALL reads), without names, ids or words',
-          onclick: () => reportHealth(wins.filter(w => w.kind === 'chat' && w.feedOn).map(w => w.channel)) }, 'Report ALL…')),
+          onclick: () => reportHealth(wins.filter(w => w.kind === 'chat' && w.feedOn).map(w => w.channel)) }, 'Report ALL')),
       element('div', { class: 'ev-views', role: 'tablist', 'aria-label': 'Which events' }, ...VIEWS.map(([v, label, n]) => element('button', { type: 'button', role: 'tab', class: `ev-view ev-v-${v}` + (v === cur[0] ? ' on' : ''),
         'aria-selected': String(v === cur[0]), dataset: { cmd: 'dev.eventsView', v }, onclick: () => { evs.view = v; evs.open = ''; renderEvents(); list.scrollTop = 0; } }, element('i', 'ev-dot'), label, element('span', 'ev-vn', evCount(n))))),
       element('p', 'ev-desc', cur[3])),
