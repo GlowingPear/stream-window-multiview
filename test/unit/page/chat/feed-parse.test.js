@@ -408,3 +408,26 @@ test('Twitch\'s hype train (its other connection, and its GraphQL): started, mov
   assert.equal(hypeTrain('start', { id: 'ht-2', expiresAt: '2026-10-30T22:16:02Z', progress: { goal: 2000, progression: 500, level: { value: 2 } } }).level, 2);
   assert.equal(hypeTrain('start', { id: 'ht-2', endedAt: '2026-10-30T22:16:02Z', progress: { goal: 2000, level: { value: 2 } } }).state, 'end');
 });
+
+test('YouTube: a poll opened, its votes, closed; all of someone\'s messages taken away; what ALL leaves out of YouTube\'s and Twitch\'s, and why', async () => {
+  const { parseYouTube, KNOWN, ignoredWhy } = await load();
+  const runs = t => ({ runs: [{ text: t }] });
+  const poll = ratios => ({ liveChatPollId: 'p1', header: { pollHeaderRenderer: { pollQuestion: runs('Which game next?'), metadataText: { runs: [{ text: 'quietkoala' }, { text: '  •  128 votes ' }] } } },
+    choices: ['Deadlock', 'Hollow Knight', ''].map((t, i) => ({ text: runs(t), ...(ratios ? { voteRatio: ratios[i], votePercentage: { simpleText: Math.round(ratios[i] * 100) + '%' } } : {}) })) });
+  const open = parseYouTube({ showLiveChatActionPanelAction: { panelToShow: { liveChatActionPanelRenderer: { id: 'p1', contents: { pollRenderer: poll() } } } } });
+  assert.deepEqual({ ...open, t: 0 }, { site: 'youtube', kind: 'poll', state: 'open', id: 'p1', t: 0, question: 'Which game next?', meta: 'quietkoala • 128 votes',
+    choices: [{ text: 'Deadlock', ratio: 0 }, { text: 'Hollow Knight', ratio: 0 }] }, 'an empty choice left out; no votes yet');
+  const up = parseYouTube({ updateLiveChatPollAction: { pollToUpdate: { pollRenderer: poll([0.6, 1.4, 0]) } } });
+  assert.deepEqual([up.state, up.choices.map(c => c.ratio)], ['update', [0.6, 1]], 'a share is 0 to 1');
+  assert.deepEqual({ ...parseYouTube({ closeLiveChatActionPanelAction: { targetPanelId: 'p1', skipOnDismissCommand: true } }), t: 0 }, { site: 'youtube', kind: 'poll', state: 'close', id: 'p1', t: 0 });
+  assert.equal(parseYouTube({ closeLiveChatActionPanelAction: {} }), null);
+  assert.equal(parseYouTube({ updateLiveChatPollAction: { pollToUpdate: { pollRenderer: { choices: [{ text: runs('a') }] } } } }), null, 'no id');
+  assert.equal(parseYouTube({ showLiveChatActionPanelAction: { panelToShow: { liveChatActionPanelRenderer: { contents: { pollRenderer: { liveChatPollId: 'p2', choices: [] } } } } } }), null, 'no choices');
+  // all of someone's messages taken away: as a ban (ALL takes them away, or marks them for mods)
+  assert.deepEqual({ ...parseYouTube({ removeChatItemByAuthorAction: { externalChannelId: 'UCbad' } }), t: 0 }, { site: 'youtube', kind: 'clear', userId: 'UCbad', t: 0 });
+  assert.equal(parseYouTube({ removeChatItemByAuthorAction: {} }), null);
+  for (const k of ['removeChatItemByAuthorAction', 'showLiveChatActionPanelAction', 'updateLiveChatPollAction', 'closeLiveChatActionPanelAction']) assert.ok(KNOWN.youtube[k], k);
+  for (const k of ['addInteractivityWidgetAction', 'updateOrAddInteractivityWidgetAction', 'replaceChatItemAction:liveChatPlaceholderItemRenderer']) assert.ok(ignoredWhy('youtube', k), k);
+  for (const k of ['hermes:extension_message', 'hermes:chat_rich_embed']) assert.ok(ignoredWhy('twitch', k), k);
+  assert.match(KNOWN.twitch['USERNOTICE:sharedchatnotice'], /shared chat/, 'shown, as Twitch words it');
+});

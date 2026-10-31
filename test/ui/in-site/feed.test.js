@@ -443,3 +443,32 @@ test('the chat\'s modes and you there (modesAgent): Kick\'s chatroom and /me (it
   assert.ok(o.ytWaited >= 250, 'nothing there yet: waited before saying it can\'t read it');
   assert.deepEqual(got.asked.slice(0, 4), ['/api/v2/channels/quietkoala/chatroom ', '/api/v2/channels/quietkoala/me Bearer tok1', 'gql ', 'gql OAuth tok2']);
 });
+
+test('a pin from ALL: Twitch\'s "Unpin After" panel that opens after it is clicked off (Escape and a press outside), without ALL waiting for it; nothing else is pressed', async t => {
+  const page = await openApp(t);
+  await page.evaluate(() => {
+    document.getElementById('md-wrap')?.remove(); window.__off = [];
+    const row = document.createElement('div'); row.id = 'md-wrap'; row.className = 'chat-line__message'; row['__reactFiber$m'] = { memoizedProps: { message: { id: 'tw9' } } };
+    const pin = document.createElement('button'); pin.setAttribute('aria-label', 'Pin this message');
+    // Twitch: the pin made, then (a moment later) its panel over the chat, which closes on Escape or a press outside it
+    pin.onclick = () => setTimeout(() => {
+      const panel = document.createElement('div'); panel.id = 'tw-unpin'; panel.innerHTML = '<p>Unpin After</p><label><input type="radio"> Customized time</label>';
+      const close = e => { if (!panel.contains(e.target)){ window.__off.push(e.type); panel.remove(); } };
+      document.addEventListener('mousedown', close); document.addEventListener('keydown', e => { if (e.key === 'Escape'){ window.__off.push('Escape'); panel.remove(); } });
+      document.body.append(panel);
+    }, 400);
+    row.append(pin); document.body.append(row);
+  });
+  const t0 = Date.now();
+  assert.equal(await page.evaluate(() => window.modAgent('pin', 'tw9')), 'done');
+  assert.ok(Date.now() - t0 < 1500, 'answered without waiting for the panel');
+  await page.waitForFunction(() => !document.getElementById('tw-unpin') && window.__off.length);
+  assert.equal(await page.evaluate(() => window.__off[0]), 'Escape');
+  // a delete: nothing is clicked off
+  await page.evaluate(() => { window.__off = []; const d = document.createElement('button'); d.setAttribute('aria-label', 'Delete'); document.querySelector('#md-wrap').append(d);
+    const p = document.createElement('div'); p.id = 'other'; p.textContent = 'Unpin After'; document.body.append(p); document.addEventListener('mousedown', () => window.__off.push('mousedown')); });
+  assert.equal(await page.evaluate(() => window.modAgent('delete', 'tw9')), 'done');
+  await page.waitForTimeout(800);
+  assert.deepEqual(await page.evaluate(() => window.__off), [], 'only after a pin');
+  await page.evaluate(() => document.getElementById('other').remove());
+});
