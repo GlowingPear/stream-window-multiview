@@ -261,6 +261,19 @@ async function badgesAgent(global, as, nameAs){
   } catch (e) { return null; }
 }
 
+// Runs inside a Twitch chat page: its channel's id (Twitch's room id, which a reward redeemed names), once as ALL starts
+// reading the chat. -> '<id>', or null (unreadable)
+async function twRoomAgent(nameAs){
+  const name = nameAs || (location.pathname.match(/\/popout\/([^/]+)/) || [])[1];   // (nameAs: the tests')
+  if (!name) return null;
+  try {
+    const query = `query { user(login: ${JSON.stringify(decodeURIComponent(name).toLowerCase())}) { id } }`;
+    const r = await (await fetch('https://gql.twitch.tv/gql', { method: 'POST', headers: { 'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko', 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) })).json();
+    const id = String((r && r.data && r.data.user && r.data.user.id) || '');
+    return /^\d+$/.test(id) ? id : null;
+  } catch (e) { return null; }
+}
+
 // Kick's own badges as its chat draws them (its icons, not pictures: founder, moderator, a sub gifter's gift for how many,
 // a level), for ALL's lines to look the same: the ones it has drawn that ALL doesn't have yet (known), by the badge's
 // type, a gift's icon name (Gift25) or a level's (Level24). -> { '<key>': '<svg>' } (chat/all-chat.js cleans them)
@@ -451,4 +464,4 @@ function profileAgent(id){
 }
 
 export { badgesAgent, channelsAgent, feedAgent, hypeAgent, kickIconsAgent, lineProbe, messageHtml, modesAgent,
-  pinAgent, profileAgent, replyAgent, shownAgent, twCommandsAgent, twReplyAt, twReplyPress, ytLookAgent };
+  pinAgent, profileAgent, replyAgent, shownAgent, twCommandsAgent, twReplyAt, twReplyPress, twRoomAgent, ytLookAgent };

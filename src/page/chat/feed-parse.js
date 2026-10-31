@@ -64,7 +64,7 @@ function parseTwitch(line){
     if ('followers-only' in g) modes.followers = +g['followers-only'] < 0 ? null : +g['followers-only'] || 0;
     if ('subs-only' in g) modes.subs = g['subs-only'] === '1';
     if ('emote-only' in g) modes.emotes = g['emote-only'] === '1';
-    return Object.keys(modes).length ? { site: 'twitch', kind: 'modes', modes, t } : null;
+    return Object.keys(modes).length ? { site: 'twitch', kind: 'modes', modes, t, ...(g['room-id'] ? { room: g['room-id'] } : {}) } : null;   // (room: the channel's id, as you join)
   }
   if (l.cmd !== 'PRIVMSG' && l.cmd !== 'USERNOTICE') return null;
   let text = l.text, action = false;
@@ -143,14 +143,16 @@ function twitchPin(frame){
     return { site: 'twitch', kind: 'modaction', action: a, by: String(d.created_by), target, t: Date.now(),
       secs: a === 'timeout' ? +args[1] || 0 : 0, msgId: a === 'delete' ? String(d.msg_id || args[2] || '') : '', arg: /^(slow|followers)$/.test(a) ? +args[0] || 0 : 0 };
   }
-  // a channel points reward redeemed without text (one with text is a chat message, with its reward: PRIVMSG)
+  // a channel points reward redeemed without text (one with text is a chat message, with its reward: PRIVMSG). room: the
+  // channel it was redeemed in. Your own come to every Twitch chat page you're signed in on (your own topic): ALL keeps
+  // each in its channel's chat.
   if (p && p.type === 'reward-redeemed'){
     const r = (p.data && p.data.redemption) || {}, u = r.user || {}, rw = r.reward || {};
     if (!r.id || r.user_input || !rw.title) return null;
     const who = String(u.display_name || u.login || 'Someone');
     return { site: 'twitch', kind: 'event', event: 'reward', id: 'rw-' + r.id, t: Date.parse(r.redeemed_at) || Date.now(), sender: who, login: String(u.login || '').toLowerCase(), color: '', userId: u.id ? String(u.id) : '',
       badges: [], parts: [], summary: [{ strong: who }, { text: ' redeemed ' }, { strong: String(rw.title) }], text: `${who} redeemed ${rw.title}`,
-      redeem: { title: String(rw.title), color: /^#[0-9a-f]{6}$/i.test(rw.background_color || '') ? rw.background_color : '' } };
+      redeem: { title: String(rw.title), color: /^#[0-9a-f]{6}$/i.test(rw.background_color || '') ? rw.background_color : '' }, room: String(r.channel_id || rw.channel_id || '') };
   }
   // a shoutout: the streamer or a moderator points the chat to another channel
   if (p && p.type === 'create' && p.data && p.data.shoutoutID && p.data.targetLogin){
