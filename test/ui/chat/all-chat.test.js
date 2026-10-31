@@ -1963,12 +1963,12 @@ test('ALL at its newest line stays there as what\'s over the box comes and goes 
     room: document.querySelector('.all-list').clientHeight >= 3 * 27 + 14, box: document.querySelector('.all-box').getBoundingClientRect().bottom <= document.querySelector('#stage .win.chat:not(.tab-hidden)').getBoundingClientRect().bottom })); };
   await size(640);
   assert.deepEqual(await state(), { re: true, pins: true, health: true, room: true, box: true }, 'room for everything');
-  await size(400);
+  await size(382);   // (the top bar as thin as the hype train strip: 18px less than it was)
   assert.deepEqual(await state(), { re: false, pins: true, health: true, room: true, box: true }, 'the row gives way');
-  await size(350);
+  await size(332);
   assert.deepEqual(await state(), { re: false, pins: false, health: true, room: true, box: true }, 'then the pins\' strip (the pill says how many)');
   assert.equal(await shown('.all-pinchip'), true);
-  await size(260);
+  await size(242);
   assert.deepEqual(await state(), { re: false, pins: false, health: false, room: true, box: true }, 'then the health line (its badge says so)');
   assert.equal(await newestShows(), true, 'short: the newest line still shows');
   await size(640);
