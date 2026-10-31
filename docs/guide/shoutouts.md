@@ -16,6 +16,7 @@ Shoutouts are off until you switch them on: Settings › Chat › Shoutouts › 
 - **People:** give someone their own message, or shout out another channel instead (a second account, a duo's main channel). A linked streamer's row covers all their sites, with an optional message for one site.
 - **Kick names with _:** on Kick, a name with `_` sometimes has `-` in its channel address. The app takes the address from Kick's own data, or asks Kick, and never sends a guessed link.
 - **The same person again soon:** within 15 minutes (or what you set), it asks first, so a double click never posts twice. A line you shouted out gets a small ✓ SO.
+- **Send straight away:** on unless you switch it off. Off: a shoutout goes in the chat box (ALL's, on the right site, or the site's own) for you to check and press Enter. A run of recent chatters still sends, after its list.
 - **Twitch's own shoutout too:** switch it on to also run /shoutout where you're a Twitch moderator (Twitch allows one every 2 minutes). Off unless you switch it on.
 
 ## Shout out recent chatters
