@@ -367,6 +367,7 @@ function init(){
     }
     return out;
   });
+  window.shoutAgent = shoutAgent;   // for the tests
   window.shoutouts = { timing: SO_TIMING, shoutOut, openRun, stopRun, lookUp: soLookUp, known: () => soKnown, sent: () => soSent, state: () => soRun && { i: soRun.i, n: soRun.list.length, wait: soRun.wait } };   // for the tests
 }
 
