@@ -26,8 +26,9 @@ function shoutAgent(on, look){
   const css = document.createElement('style');
   css.setAttribute('data-kmv-so', '');
   css.textContent = `
-    .kmv-so-b{display:inline-grid;place-items:center;width:28px;height:28px;margin:0;padding:0;border:0;border-radius:6px;background:rgba(83,252,24,.12);color:#53fc18;cursor:pointer;flex:none}
-    .kmv-so-b:hover{background:rgba(83,252,24,.24)}
+    .kmv-so-b:not(.kmv-so-like){display:inline-grid;place-items:center;width:28px;height:28px;margin:0;padding:0;border:0;border-radius:6px;background:rgba(83,252,24,.12);color:#53fc18;cursor:pointer;flex:none}
+    .kmv-so-b:not(.kmv-so-like):hover{background:rgba(83,252,24,.24)}
+    .kmv-so-like svg{flex:none}
     .kmv-so-own{position:absolute;right:8px;top:-14px;z-index:20;display:none;padding:3px;border-radius:8px;background:#24292d;border:1px solid #31373c;box-shadow:0 8px 20px rgba(0,0,0,.5)}
     [data-kmv-so-line]:hover>.kmv-so-own,[data-kmv-so-line]:focus-within>.kmv-so-own{display:flex}
     .kmv-so-pill{display:inline-flex;align-items:center;gap:5px;margin-left:8px;padding:3px 10px 3px 8px;border-radius:999px;border:1px solid rgba(83,252,24,.45);background:rgba(83,252,24,.12);color:#53fc18;font:700 12px/1.2 inherit;cursor:pointer;white-space:nowrap;vertical-align:middle}
@@ -64,11 +65,15 @@ function shoutAgent(on, look){
     return name && /^[\w-]{2,40}$/.test(name) ? { site, login: name.toLowerCase(), name, named: true } : null;
   }
   const press = p => console.log('__kmv:shoutout ' + JSON.stringify(p));
-  function button(p){
+  // like: one of the site's own buttons in that hover bar: ours takes its look (its classes, so its size, colour and
+  // hover; an icon the size of its icon), so it looks like one of theirs. Without one: a look of its own.
+  function button(p, like){
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'kmv-so-b'; b.setAttribute('data-kmv-so', '');
+    b.type = 'button'; b.className = like ? `${like.className} kmv-so-b kmv-so-like` : 'kmv-so-b'; b.setAttribute('data-kmv-so', '');
     b.title = `Shout out ${p.name} (Stream Multiview)`; b.setAttribute('aria-label', `Shout out ${p.name}`);
     b.innerHTML = MEGA;
+    const theirs = like && like.querySelector('svg'), r = theirs && theirs.getBoundingClientRect();
+    if (r && r.width){ const svg = b.querySelector('svg'); svg.setAttribute('width', String(Math.round(r.width))); svg.setAttribute('height', String(Math.round(r.height))); }
     b.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); if (S.on) press(who(b) || p); }, true);
     return b;
   }
@@ -88,8 +93,15 @@ function shoutAgent(on, look){
       (line.querySelector('div, span') || line).appendChild(pill);
       return;
     }
-    const bar = line.querySelector(BAR);
-    if (bar){ bar.insertBefore(button(p), bar.firstChild); return; }
+    const bar = line.querySelector(BAR), like = bar && bar.querySelector('button:not([data-kmv-so])');
+    if (bar){
+      const b = button(p, like);
+      // (a site that wraps each of its buttons, as Twitch does: ours wrapped the same way)
+      const wrap = like && like.parentElement !== bar ? Object.assign(document.createElement(like.parentElement.tagName), { className: like.parentElement.className }) : null;
+      if (wrap){ wrap.setAttribute('data-kmv-so', ''); wrap.appendChild(b); }
+      bar.insertBefore(wrap || b, bar.firstChild);
+      return;
+    }
     const own = document.createElement('div');
     own.className = 'kmv-so-own'; own.setAttribute('data-kmv-so', '');
     own.appendChild(button(p));

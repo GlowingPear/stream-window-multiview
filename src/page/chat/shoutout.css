@@ -1,7 +1,6 @@
 /* Shoutouts (chat/shoutout.js): ALL's buttons and tags, the recent chatters list, a run's strip, Settings › Shoutouts */
 
 /* ALL: the hover bar's button, a raid's button, the line menu's items, the ✓ SO tag */
-.al-hb button.al-so-b{color:var(--accent)}
 .al-so{display:inline-flex;align-items:center;gap:5px;flex:none;margin-left:auto;padding:3px 9px 3px 7px;border-radius:999px;border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);
   background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}
 .al-so i{display:grid;place-items:center}

@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const { setup } = require('../app');
 const { openApp } = setup();
 
-const ICON = '<button aria-label="Reply">r</button><button aria-label="Pin">p</button>';
+const ICON = '<button class="kbtn" aria-label="Reply"><svg width="20" height="20" style="display:block"></svg></button><button class="kbtn" aria-label="Pin"><svg width="20" height="20" style="display:block"></svg></button>';
 // Kick: a row ([data-index]) with its hover bar (group-hover:flex), its data on the row's .group
 const KICK = (i, name, slug, text, { bar = true, data = true } = {}) => ({ html: `<div data-index="${i}"><div class="group"><div><div><button data-prevent-expand>${name}</button></div><span aria-hidden="true">:&nbsp;</span></div><span class="font-normal">${text}</span>`
   + (bar ? `<div class="hidden group-hover:flex">${ICON}</div>` : '') + '</div></div>', data: data && { i, message: { id: 'm' + i, created_at: new Date(Date.now() - (9 - i) * 1000).toISOString(), sender: { username: name, slug } } } });
@@ -38,6 +38,7 @@ test('Kick: the button first in a message\'s hover bar; a press says who, by the
   await p.hover('[data-index="1"]');
   assert.deepEqual(await p.$$eval('[data-index="1"] .group-hover\\:flex button', l => l.map(b => b.getAttribute('aria-label'))), ['Shout out Pixel_Fox', 'Reply', 'Pin'], 'first in its hover bar');
   assert.equal(await p.getAttribute('[data-index="1"] .kmv-so-b', 'title'), 'Shout out Pixel_Fox (Stream Multiview)');
+  assert.deepEqual(await p.$eval('[data-index="1"] .kmv-so-b', b => [b.className, b.querySelector('svg').getAttribute('width')]), ['kbtn kmv-so-b kmv-so-like', '20'], 'the look of the site\'s own buttons: their class, an icon their size');
   await p.click('[data-index="1"] .kmv-so-b');
   await p.waitForTimeout(100);
   assert.deepEqual(p.logs, [{ site: 'kick', login: 'pixel-fox', name: 'Pixel_Fox', named: false }], 'its address, not the name shown');
@@ -75,11 +76,11 @@ test('Kick: the button first in a message\'s hover bar; a press says who, by the
 });
 
 test('Twitch: the button first in a message\'s icons, who from the line\'s data (its login); a press while off sends nothing', async t => {
-  const TW = (i, name, login) => ({ html: `<div class="chat-line__message" data-i="${i}"><span class="chat-line__icons"><div><button aria-label="Reply">r</button></div></span>`
+  const TW = (i, name, login) => ({ html: `<div class="chat-line__message" data-i="${i}"><span class="chat-line__icons"><div class="tw-wrap"><button class="tw-btn" aria-label="Reply">r</button></div></span>`
     + `<span class="chat-author__display-name">${name}</span>: <span>hey</span></div>`, data: { i, message: { id: 't' + i, timestamp: Date.now(), user: { userLogin: login, userDisplayName: name } } } });
   const p = await page(t, [TW(1, 'Lumen', 'lumen_fox'), { html: '<div class="chat-line__message" data-i="2"><span>Welcome to the chat room!</span></div>' }], 'twitch');
   await p.hover('.chat-line__message[data-i="1"]');
-  assert.equal(await p.$eval('.chat-line__message[data-i="1"] .chat-line__icons', e => e.firstElementChild.className), 'kmv-so-b');
+  assert.deepEqual(await p.$eval('.chat-line__message[data-i="1"] .chat-line__icons', e => [e.firstElementChild.className, e.firstElementChild.firstElementChild.className]), ['tw-wrap', 'tw-btn kmv-so-b kmv-so-like'], 'wrapped as Twitch wraps its own, with its look');
   await p.click('.chat-line__message[data-i="1"] .kmv-so-b');
   await p.waitForTimeout(100);
   assert.deepEqual(p.logs, [{ site: 'twitch', login: 'lumen_fox', name: 'Lumen', named: false }]);
