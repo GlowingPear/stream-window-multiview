@@ -503,6 +503,7 @@ const IGNORED = {
     'hermes:extension_message': 'an extension’s own message (its panel in Twitch’s chat)',
     'hermes:stream-up': 'the stream starting (the live check says so)', 'hermes:favorite-channel-update': 'streaming together (Twitch’s own panel)', 'hermes:collaboration-status-refetch': 'streaming together (Twitch’s own panel)',
  'hermes:chat_rich_embed': 'a link’s preview card (the link is in its message)',
+    'hermes:UPDATE_CHANNEL_MODERATION_MODE': 'Shield Mode on or off, to moderators (what it limits comes as the chat’s modes, above the box)',
     ...Object.fromEntries(['slow_on', 'slow_off', 'followers_on', 'followers_on_zero', 'followers_off', 'subs_on', 'subs_off', 'emote_only_on', 'emote_only_off', 'r9k_on', 'r9k_off']
       .map(n => ['NOTICE:' + n, 'the chat’s modes (shown above the box)'])) },
   youtube: { 'addChatItemAction:liveChatPlaceholderItemRenderer': 'an empty stand-in for a message YouTube holds back (for review; let through, replaceChatItemAction brings it)',
