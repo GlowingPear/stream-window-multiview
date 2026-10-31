@@ -171,6 +171,18 @@ function twitchPin(frame){
     return { site: 'twitch', kind: 'modes', t: Date.now(), modes: { slow: +r.slow_mode_duration_seconds || 0, followers: r.followers_only_duration_minutes == null ? null : +r.followers_only_duration_minutes,
       subs: !!r.subscribers_only_mode_enabled, emotes: !!r.emote_only_mode_enabled, verified: !!r.verified_only_mode_enabled } };
   }
+  // your own message held by AutoMod (Twitch tells only you, by its id): waiting for a moderator, then ALLOWED or DENIED.
+  // (Moderators get the same kind with the whole message in it, for their queue: not read yet, #221.)
+  if (p && p.type === 'automod_caught_message'){
+    const a = p.data || {}; if (!a.message_id || !a.status || a.message) return null;
+    return { site: 'twitch', kind: 'automod', msgId: String(a.message_id), status: String(a.status).toUpperCase(), t: Date.now() };
+  }
+  // Twitch's marks on a message, to moderators (chat highlights): a raider's (how long since the raid), and the like
+  if (p && p.type === 'chat-highlight'){
+    const h = p.data || {}, marks = (Array.isArray(h.highlights) ? h.highlights : []).filter(x => x && x.type).map(x => ({ type: String(x.type), secs: +x.seconds_since_event || 0 }));
+    if (!h.msg_id || !marks.length) return null;
+    return { site: 'twitch', kind: 'marks', msgId: String(h.msg_id), marks, t: Date.now() };
+  }
   const d = p && p.data; if (!d || !d.id) return null;
   if (p.type === 'unpin-message') return { site: 'twitch', kind: 'unpin', id: String(d.id), t: Date.now() };
   if (p.type !== 'pin-message' || !d.message || !d.message.id) return null;
@@ -454,7 +466,8 @@ const KNOWN = {
     'hermes:reward-redeemed': 'a reward redeemed (without text)', 'hermes:create': 'a shoutout',
     'hermes:raid_update_v2': 'a raid getting ready (one line, counting down)', 'hermes:raid_go_v2': 'a raid going (its line: Open)', 'hermes:raid_cancel_v2': 'a raid called off (its line says so)',
     'hermes:goal_achieved': 'a goal reached (its progress: hermes:goal_updated)', 'hermes:hype-train-start': 'a hype train (its strip over ALL)',
-    'hermes:hype-train-progression': 'a hype train moving along (its strip)', 'hermes:hype-train-level-up': 'a hype train’s new level (its strip)', 'hermes:hype-train-end': 'a hype train ending (its strip)' },
+    'hermes:hype-train-progression': 'a hype train moving along (its strip)', 'hermes:hype-train-level-up': 'a hype train’s new level (its strip)', 'hermes:hype-train-end': 'a hype train ending (its strip)',
+    'hermes:automod_caught_message': 'your message held by AutoMod (your line says so, then sent or not; a moderator’s queue of held messages: not yet)', 'hermes:chat-highlight': 'Twitch’s marks on a message, to moderators (a raider’s: a tag on its line)' },
   youtube: { 'addChatItemAction:liveChatTextMessageRenderer': 'a message', 'addChatItemAction:liveChatPaidMessageRenderer': 'a Super Chat',
     'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
     'addChatItemAction:giftMessageViewModel': 'a gift', 'replaceChatItemAction:liveChatTextMessageRenderer': 'a held message let through',
@@ -489,7 +502,7 @@ const IGNORED = {
     'hermes:update-message': 'a message edited (it carries only the message’s id, not its new words)', 'hermes:?': 'the connection’s own (no type)',
     'hermes:extension_message': 'an extension’s own message (its panel in Twitch’s chat)',
     'hermes:stream-up': 'the stream starting (the live check says so)', 'hermes:favorite-channel-update': 'streaming together (Twitch’s own panel)', 'hermes:collaboration-status-refetch': 'streaming together (Twitch’s own panel)',
-    'hermes:chat-highlight': 'Twitch’s marks on a message for moderators (a raider’s, a first-time chatter’s)', 'hermes:chat_rich_embed': 'a link’s preview card (the link is in its message)',
+ 'hermes:chat_rich_embed': 'a link’s preview card (the link is in its message)',
     ...Object.fromEntries(['slow_on', 'slow_off', 'followers_on', 'followers_on_zero', 'followers_off', 'subs_on', 'subs_off', 'emote_only_on', 'emote_only_off', 'r9k_on', 'r9k_off']
       .map(n => ['NOTICE:' + n, 'the chat’s modes (shown above the box)'])) },
   youtube: { 'addChatItemAction:liveChatPlaceholderItemRenderer': 'an empty stand-in for a message YouTube holds back (for review; let through, replaceChatItemAction brings it)',

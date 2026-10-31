@@ -192,7 +192,7 @@ test('YouTube: a gift is an event (its words, the gift picked out); a held messa
     'addLiveChatTickerItemAction:liveChatTickerSponsorItemRenderer']) assert.ok(ignoredWhy('youtube', k), k);
   assert.equal(ignoredWhy('youtube', 'addChatItemAction:somethingNew'), '');
   for (const [s, k] of [['kick', 'ChatMessageSentEvent'], ['twitch', 'hermes:stream-up'], ['twitch', 'hermes:favorite-channel-update'],
-    ['twitch', 'hermes:collaboration-status-refetch'], ['twitch', 'hermes:chat-highlight']]) assert.ok(ignoredWhy(s, k), k);
+    ['twitch', 'hermes:collaboration-status-refetch']]) assert.ok(ignoredWhy(s, k), k);
   for (const [s, a] of [['youtube', YT('somethingNew', { id: 'x' })], ['youtube', gift('sent x')], ['youtube', 'x'], ['youtube', null], ['twitch', stand]]) assert.equal(leftOut(s, a), false);
   // YouTube's own housekeeping (that you're in the chat, its moderation state, parts of its page): ignored, and its key is its kind
   const own = [{ clickTrackingParams: 'x', liveChatReportPresenceCommand: { clientMessageId: 'c' } }, { liveChatReportModerationStateCommand: {} }, { clickTrackingParams: 'x', elementsCommand: { setEntityCommand: {} } }];
@@ -328,6 +328,19 @@ test('Twitch\'s moderation actions (to moderators): who did what to whom, how lo
   assert.equal(parseTwitch(JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'moderation_action', data: { moderation_action: 'ban', args: [] } }) } })), null, 'without who did it');
 });
 
+test('Twitch: your own message held by AutoMod (its id and status: not a moderator\'s queue, with the whole message); Twitch\'s marks on a message', async () => {
+  const { parseTwitch, KNOWN, ignoredWhy } = await load();
+  const hermes = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
+  const a = parseTwitch(hermes('automod_caught_message', { message_id: 'm7', status: 'pending' }));
+  assert.deepEqual([a.kind, a.msgId, a.status], ['automod', 'm7', 'PENDING']);
+  assert.equal(parseTwitch(hermes('automod_caught_message', { message_id: 'm7' })), null, 'without a status');
+  assert.equal(parseTwitch(hermes('automod_caught_message', { message: { id: 'm8', content: { text: 'hi' } }, status: 'PENDING' })), null, 'a moderator\'s queue: not yet (#221)');
+  const h = parseTwitch(hermes('chat-highlight', { msg_id: 'm9', highlights: [{ type: 'raider', seconds_since_event: 254 }, {}] }));
+  assert.deepEqual([h.kind, h.msgId, h.marks], ['marks', 'm9', [{ type: 'raider', secs: 254 }]]);
+  assert.equal(parseTwitch(hermes('chat-highlight', { msg_id: 'm9', highlights: [] })), null, 'no marks');
+  for (const k of ['hermes:automod_caught_message', 'hermes:chat-highlight']) assert.ok(KNOWN.twitch[k] && !ignoredWhy('twitch', k), k);
+});
+
 test('Twitch: a watch streak is their message, highlighted, with how many streams; a reward redeemed without text and a shoutout are events; Twitch\'s own news is ignored, with why', async () => {
   const { parseTwitch, ignoredWhy, KNOWN } = await load();
   const streak = text => parseTwitch(TW({ 'display-name': 'Brightwick', login: 'brightwick', id: 'w1', 'msg-id': 'viewermilestone', 'msg-param-category': 'watch-streak', 'msg-param-value': '5', 'system-msg': 'Brightwick\\swatched\\s5\\sconsecutive\\sstreams' }, ':tmi.twitch.tv USERNOTICE #quietkoala' + (text ? ' :' + text : '')));
@@ -350,7 +363,7 @@ test('Twitch: a watch streak is their message, highlighted, with how many stream
   for (const k of ['hermes:hype-train-conductor-update', 'hermes:hype-train-rewards', 'hermes:hype-train-reward-eligibility'])
     assert.equal(ignoredWhy('twitch', k), 'the hype train’s conductors and rewards (Twitch’s own panel)', k);
   assert.equal(ignoredWhy('kick', 'hermes:hype-train-start'), '', 'Twitch\'s only');
-  assert.equal(ignoredWhy('twitch', 'hermes:automod_caught_message'), '', 'not ignored: for later');
+  assert.equal(ignoredWhy('twitch', 'hermes:automod_caught_message'), '', 'read (your own held message), not ignored');
   assert.ok(ignoredWhy('kick', 'KicksBalanceUpdated'), 'your own Kicks balance');
 });
 
