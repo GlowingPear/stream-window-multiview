@@ -9,8 +9,8 @@ const NOT_CHANNELS = new Set(['login', 'signup', 'register', 'categories', 'cate
   'community-guidelines', 'dmca-policy', 'popout', 'api', 'auth', 'oauth', 'verify', 'stream', 'chatroom', 'help', 'about', 'careers', 'kick-creators', 'emotes']);
 
 // Its chat's commands, for ALL's box (/ at the start: chat/all-chat.js), as twitch.js says them. As its chat's own list
-// shows them (read in a live chat 2026-10-31): its words, its order (by name). Its timeout is in minutes. Who can use each:
-// Kick's help (KICK chat commands). /poll, /prediction and /clip open Kick's own panel from ALL too
+// shows them (read in live chats 2026-10-31): its words, its order (by name), and who can use each (its commands' own
+// minimumRole: viewer, moderator or broadcaster). Its timeout is in minutes. /poll, /prediction and /clip open Kick's own panel from ALL too
 // (in-site/kick-commands.js); /user and /category, which open something in its own chat, are left out.
 const KICK_COMMANDS = [
   { name: 'ban', args: '<username> [reason]', does: 'Ban a user from the chat', who: 'mod' },
@@ -27,7 +27,7 @@ const KICK_COMMANDS = [
   { name: 'prediction', args: '', does: 'Create a prediction', who: 'mod' },
   { name: 'raid', args: '[username]', does: 'Raid a channel', who: 'host' },
   { name: 'slow', args: '<on_off> [seconds]', does: 'Toggle slow mode', who: 'mod' },
-  { name: 'subonly', args: '<on_off>', does: 'Toggle sub only mode', who: 'host' },
+  { name: 'subonly', args: '<on_off>', does: 'Toggle sub only mode', who: 'mod' },
   { name: 'timeout', args: '<username> <minutes> [reason]', does: 'Timeout a user from the chat', who: 'mod' },
   { name: 'title', args: '<title>', does: 'Set the title of the stream', who: 'mod' },
   { name: 'unban', args: '<username>', does: 'Unban a user from the chat', who: 'mod' },
