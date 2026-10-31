@@ -19,6 +19,7 @@ const guard = require('./guard');
 const { pageOptions } = require('./activity');
 const { createErrorLog, createSiteLog, describeRequest, diagnostics } = require('./devlog');
 const { createSampleStore, exportSamples, healthReport } = require('./event-samples');
+const { createPartitionCare, HTTP_CACHE_MAX, CODE_CACHE_MAX, DAY } = require('./partitions');
 
 // Each platform's chats + login window share one saved session per platform, so you log in once.
 const PARTITION = 'persist:kick';
@@ -52,6 +53,8 @@ const ICON = path.join(SRC, process.platform === 'win32' ? 'icon.ico' : 'icon.pn
 
 // Let streams start with sound when you want them to (the app has its own mute buttons).
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+// Each saved storage's cache of the sites' files stays under a size (without it, each stream's grows past a gigabyte: partitions.js).
+app.commandLine.appendSwitch('disk-cache-size', String(HTTP_CACHE_MAX));
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
@@ -195,6 +198,32 @@ appIpc.handle('samples:report', async (e, report) => {
   const r = await dialog.showSaveDialog(win, { title: 'Save the report', defaultPath: path.join(app.getPath('downloads'), name), filters: [{ name: 'JSON', extensions: ['json'] }] }).catch(() => null);
   if (!r || r.canceled || !r.filePath) return { saved: false };
   try { fs.writeFileSync(r.filePath, JSON.stringify(healthReport(report, sampleStore.list(), { version: app.getVersion() }), null, 2)); return { saved: true, file: r.filePath }; } catch { return { saved: false, error: true }; }
+});
+
+/* ---------- streams' own storage (partitions.js) ----------
+   When each stream's storage was last used is kept in partitions.json. At start-up, ones unused for a month go;
+   their files are deleted in the background, and caches past their size are cleared then and once a day. */
+const partitionCare = createPartitionCare({ dir: path.join(app.getPath('userData'), 'Partitions'),
+  saved: (() => { try { return JSON.parse(fs.readFileSync(stateFile('partitions'), 'utf8')); } catch { return null; } })() });
+let partitionsSaveT = null;
+const savePartitions = () => {
+  clearTimeout(partitionsSaveT); partitionsSaveT = null;
+  if (partitionCare.takeChanged()) try { fs.writeFileSync(stateFile('partitions'), JSON.stringify(partitionCare.toSave())); } catch {}
+};
+const savePartitionsSoon = () => { if (!partitionsSaveT) partitionsSaveT = setTimeout(savePartitions, 60000); };
+// the streams still open as the app closes were in use today, however long ago they opened
+app.on('will-quit', () => {
+  for (const wc of webContents.getAllWebContents()) try { if (wc.getType() === 'webview' && wc.session.storagePath) partitionCare.use('persist:' + path.basename(wc.session.storagePath)); } catch {}
+  savePartitions();
+});
+async function tidyPartitions() {
+  await partitionCare.emptyTrash();
+  for (const p of await partitionCare.oversized('Code Cache', CODE_CACHE_MAX)) await session.fromPartition(p).clearCodeCaches({}).catch(() => {});
+  for (const p of await partitionCare.oversized('Cache', 2 * HTTP_CACHE_MAX)) await session.fromPartition(p).clearCache().catch(() => {});
+}
+app.whenReady().then(() => {
+  setTimeout(tidyPartitions, 30000);
+  setInterval(tidyPartitions, DAY);
 });
 // Inspect: Chrome's developer tools for a stream's or chat's page in this window (they can read its logins, so only
 // with Developer tools on, or in a developer copy).
@@ -612,7 +641,10 @@ app.on('web-contents-created', (_e, wc) => {
   wc.on('will-redirect', (d, url, _inPlace, isMain) => syncUA(d && d.url ? d.url : url, d && 'isMainFrame' in d ? d.isMainFrame : isMain));
   wc.on('destroyed', () => signinWcs.delete(wc.id));
   // Web views: no preload or Node, sandboxed, https only, and only the app's own storage (guard.js).
-  wc.on('will-attach-webview', (ev, webPreferences, params) => { if (!guard.lockWebview(webPreferences, params)) ev.preventDefault(); });
+  wc.on('will-attach-webview', (ev, webPreferences, params) => {
+    if (!guard.lockWebview(webPreferences, params)) return ev.preventDefault();
+    if (partitionCare.use(params.partition)) savePartitionsSoon();
+  });
   // When you last clicked or typed in this page: a page opens links in your browser only just after that.
   wc.on('input-event', (_ev, input) => {
     if (!/^(mouseDown|rawKeyDown|keyDown|gestureTap|touchStart)$/.test(input.type)) return;
@@ -2405,6 +2437,7 @@ app.on('second-instance', () => { if (mainWin) { if (mainWin.isMinimized()) main
 if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? 'com.glowingpear.streammultiview' : process.execPath);
 
 app.whenReady().then(async () => {
+  partitionCare.prune(); savePartitions();       // before anything opens a stream's storage
   guard.lockSession(session.defaultSession, wc => appContents(wc));
   sec = loadSec();
   await loadYtKey();
