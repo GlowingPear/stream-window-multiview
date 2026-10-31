@@ -153,6 +153,38 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
   assert.equal((await lines(page)).pop(), 'al-ev | Knightowl_mod lifted the ban on ratchetkid');
 });
 
+test('ALL: copying a removed message says why, as Kick\'s chat does: the menu\'s Copy with @name, and lines selected (emotes as their names, no tags or buttons, a line each)', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(() => { window.allChat.modKnown.set('quietkoala', true); window.allChat.modKnown.set('tw:quietkoala', true); window.__copied = []; navigator.clipboard.writeText = async x => { window.__copied.push(x); }; });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [
+    KF('ChatMessageEvent', { id: 'k1', content: 'hello there', type: 'message', sender: { id: 1, username: 'calmfern', identity: {} } }),
+    KF('ChatMessageEvent', { id: 'k2', content: 'I love honey [emote:37226:KEKW] so sticky', type: 'message', sender: { id: 2, username: 'honeybadger', identity: {} } })
+  ] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'loudmouth99', id: 'e' }, ':loudmouth99!l@l PRIVMSG #quietkoala :trash lol'), TW({ 'display-name': 'lowtide', id: 'f' }, ':lowtide!l@l PRIVMSG #quietkoala :@MeTwitch hi')] });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('MessageDeletedEvent', { id: 'z', message: { id: 'k2' }, aiModerated: true, violatedRules: ['sexual', 'spam'] })] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'ban-duration': '600' }, ':tmi.twitch.tv CLEARCHAT #quietkoala :loudmouth99')] });
+  const row = n => `.all-list > .al-m:nth-child(${n})`;
+  // the menu: @ their name, the message with its emotes, and why it was removed
+  const copyName = async n => { await page.click(row(n) + ' .al-txt', { button: 'right' }); await page.click('.all-lm [data-cmd="all.menuCopyName"]'); return (await page.evaluate(() => window.__copied)).pop(); };
+  assert.equal(await copyName(2), '@honeybadger: I love honey KEKW so sticky (Deleted) AI Mod [Sexual] [Spam]');
+  assert.equal(await copyName(3), '@loudmouth99: trash lol (Timed out · 10m)');
+  assert.equal(await copyName(1), '@calmfern: hello there', 'not removed: just the message');
+  // selected lines, copied (the keys, and the menu's Copy): what's on them as text, the removed one with why
+  const copied = () => page.evaluate(() => { const dt = new DataTransfer(), e = new ClipboardEvent('copy', { clipboardData: dt, bubbles: true, cancelable: true }); const at = getSelection().anchorNode; (at.nodeType === 1 ? at : at.parentElement).dispatchEvent(e); return e.defaultPrevented ? dt.getData('text/plain') : null; });
+  const select = (from, to, end) => page.evaluate(([from, to, end]) => { const r = document.createRange(), s = getSelection(); r.setStartBefore(document.querySelector(from)); if (end) r.setEnd(document.querySelector(to).firstChild, end); else r.setEndAfter(document.querySelector(to)); s.removeAllRanges(); s.addRange(r); }, [from, to, end]);
+  await select(row(1), row(4));
+  assert.equal(await copied(), 'calmfern: hello there\nhoneybadger: I love honey KEKW so sticky (Deleted) AI Mod [Sexual] [Spam]\nloudmouth99: trash lol (Timed out · 10m)\nlowtide: @MeTwitch hi');
+  await select(row(2) + ' .al-n', row(2));
+  assert.equal(await copied(), 'honeybadger: I love honey KEKW so sticky (Deleted) AI Mod [Sexual] [Spam]', 'one line, from its name');
+  await select(row(2) + ' .al-n', row(2) + ' .al-txt', 2);
+  assert.equal(await copied(), 'honeybadger: I', 'part of it: only that (the reason comes with the line\'s end)');
+  await select(row(1) + ' .al-n', row(1) + ' .al-txt');
+  await page.click(row(1) + ' .al-txt', { button: 'right' });
+  await page.click('.all-lm [data-cmd="all.menuSelCopy"]');
+  assert.equal((await page.evaluate(() => window.__copied)).pop(), 'calmfern: hello there');
+});
+
 test('ALL: where you aren\'t a mod, what a moderator removes goes from ALL (as the site doesn\'t show it to you either); a cleared chat says so', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
@@ -836,7 +868,7 @@ test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeo
   await page.click(line(0), { button: 'right' });
   assert.deepEqual(await page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent.trim() + (b.disabled ? ' (off)' : ''))).then(x => x.map(s => s.replace(/\s+/g, ' '))),
     ['Reply', 'Pin message', 'Open profile on Kick', /Delete message.*click name/.source && 'Delete message' + (process.platform === 'darwin' ? '⇧-click name' : 'Shift-click name'),
-     'Timeout' + (process.platform === 'darwin' ? '⌘-click name' : 'Ctrl-click name'), 'Ban' + (process.platform === 'darwin' ? '⌘+⇧-click name' : 'Ctrl+Shift-click name'), 'Copy message', 'Copy message with emotes', 'Open Kick mod view'].map(x => x));
+     'Timeout' + (process.platform === 'darwin' ? '⌘-click name' : 'Ctrl-click name'), 'Ban' + (process.platform === 'darwin' ? '⌘+⇧-click name' : 'Ctrl+Shift-click name'), 'Copy message', 'Copy message with emotes', 'Copy with @name', 'Open Kick mod view'].map(x => x));
   await page.click('.all-lm .all-durs button >> text=1h');
   await page.waitForFunction(() => window.__acts.length === 2);
   assert.deepEqual((await acts())[1], ['send', 'quietkoala', '/timeout loudmouth 60'], 'Kick counts minutes');
@@ -891,7 +923,7 @@ test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeo
   await page.keyboard.press('Escape');
   assert.equal(await page.isVisible('.all-lm'), false, 'Esc closes it');
   await page.click(line(4), { button: 'right' });
-  assert.deepEqual(await page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent.trim())), ['Reply', 'Open profile on Twitch', 'Copy message', 'Copy message with emotes'], 'no mod part where you aren\'t a mod');
+  assert.deepEqual(await page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent.trim())), ['Reply', 'Open profile on Twitch', 'Copy message', 'Copy message with emotes', 'Copy with @name'], 'no mod part where you aren\'t a mod');
   await page.mouse.click(5, 5);
   // a Twitch mod's message, where you're a mod too: Twitch doesn't let a mod delete it, so nothing is offered
   await page.evaluate(() => window.allChat.modKnown.set('tw:quietkoala', true));
