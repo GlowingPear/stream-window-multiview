@@ -100,6 +100,26 @@ function cardsFromRows(rows){
   return cards;
 }
 
+/* ---- Who a bot's message is about (BotRix's "Thanks for the follow Pixelfox", "Thank you for redeeming headpat @Lumen"):
+   a shoutout from a bot's line is for them, never the bot. The bots' usual sentences ({user}: who; anything else in { }:
+   anything), then any @name in it. As regular expressions too, for the scripts in the sites' chats (in-site/shoutout.js). ---- */
+const BOT_SAYS = [
+  'Thanks for the follow {user}', 'Thank you for the follow {user}', 'Thank you for following {user}', '{user} followed us!',
+  '{user} just gifted {count} KICKs', 'Thanks {user} for the {count} KICKs', '{user} thank you for raiding me with {count} spectators',
+  'Thanks to {user} for hosting with {count} viewers', '{user} just raided the channel with {count} viewers', '{user} is raiding with {count}',
+  'Thank you for the raid {user}', 'Thanks for the raid {user}', 'Welcome {user}', 'Thank you for subscribing {user}', 'Thanks for subscribing {user}',
+  '{user} just subscribed', '{user} has subscribed', 'Thank you {user} for the sub'];
+const BOT_SAYS_RE = BOT_SAYS.map(t => t.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{(?!user\})[^}]*\}/g, '.*?').replace(/\s+/g, '\\s+').replace(/\{user\}/g, '@?([\\w-]{2,40})'));
+// The names a bot's message is about, in order: its sentences', then its @names. skip: names left out (you, the bot, the
+// channel). -> [name] (as written, without @)
+function botTargets(text, skip = []){
+  const t = String(text || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim(), out = [], no = new Set(skip.map(x => String(x || '').toLowerCase()));
+  const add = n => { const k = String(n || '').replace(/^@/, ''); if (/^[\w-]{2,40}$/.test(k) && !no.has(k.toLowerCase()) && !out.some(x => x.toLowerCase() === k.toLowerCase())) out.push(k); };
+  for (const re of BOT_SAYS_RE){ const m = new RegExp(re, 'i').exec(t); if (m) add(m[1]); }
+  for (const m of t.matchAll(/(?:^|[^\w@])@([\w-]{2,40})/g)) add(m[1]);
+  return out;
+}
+
 /* Whether someone streams, from what Kick and Twitch say about their channel. Saved streams (VODs) expire or get deleted,
    and some channels never keep them, so none of them isn't proof: any one sign is enough. -> true, or false (no sign
    found). info: { live, lastBroadcast, recent (Kick's recent categories), vods, partner, affiliate, verified, known } */
@@ -136,5 +156,5 @@ function pickRun(lines, { n = 5, me = [], host = [], streamsOf = () => true, onl
   return { list, left: { ...left, bots: left.bots.size } };
 }
 
-export { cardFor, cardsFromRows, fillShout, kickTries, loginOfCh, pickRun, RUN_MAX, SHOUT_MAX, SHOUT_TOKENS,
-  SHOUT_TPL, shoutFor, shoutLink, siteOfCh, streams };
+export { BOT_SAYS_RE, botTargets, cardFor, cardsFromRows, fillShout, kickTries, loginOfCh, pickRun, RUN_MAX,
+  SHOUT_MAX, SHOUT_TOKENS, SHOUT_TPL, shoutFor, shoutLink, siteOfCh, streams };

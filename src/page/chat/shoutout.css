@@ -154,3 +154,7 @@ button.al-so:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 .sc-warn{font-size:12px;color:#ffc440;background:rgba(255,196,64,.08);border:1px solid rgba(255,196,64,.3);border-radius:8px;padding:8px 10px}
 .sc-foot{display:flex;align-items:center}
 .sc-foot .rm{margin-left:auto;color:#ff8f8f;font-size:12px}
+.al-so-ev{flex:none;margin-left:auto;width:24px;height:22px;border:0;border-radius:6px;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0;opacity:0;transition:opacity .12s}
+.al-ev:hover .al-so-ev,.al-so-ev:focus-visible{opacity:1}
+.al-so-ev:hover{background:var(--line2);color:var(--text)}
+.al-so-ev svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}

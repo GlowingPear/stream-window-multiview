@@ -1,6 +1,7 @@
 import { SmvSpam } from '../alerts/spam.js';
 import { allOn, appBots, chatRules, feeds, fillAll, ownerOf, sendInChat, sendSite, setModes, youMod } from './all-chat.js';
-import { RUN_MAX, cardFor, cardsFromRows, kickTries, loginOfCh, pickRun, shoutFor, shoutLink, siteOfCh, streams } from './shoutout-text.js';
+import { BOT_SAYS_RE, RUN_MAX, cardFor, cardsFromRows, kickTries, loginOfCh, pickRun, shoutFor, shoutLink, siteOfCh,
+  streams } from './shoutout-text.js';
 import { winOfView } from './translate.js';
 import { wins } from '../core.js';
 import { modesAgent } from '../in-site/feed.js';
@@ -70,6 +71,10 @@ function soCards(){
   settings.set('shoutChannels', cards); settings.remove('shoutPeople');
   return cards;
 }
+// A channel's card, saved where it is (or added); and taken away. key: a linked streamer's id, else the channel
+const soCardKey = c => c.streamer || c.ch;
+function soPutCard(card){ const cards = soCards(), i = cards.findIndex(c => soCardKey(c) === soCardKey(card)); if (i >= 0) cards[i] = card; else cards.push(card); soSaveCards(cards); }
+const soDropCard = key => soSaveCards(soCards().filter(c => soCardKey(c) !== key));
 const soSaveCards = cards => { if (!Array.isArray(cards)) return; settings.set('shoutChannels', cards); store.changed('shoutouts'); };
 // A linked streamer's channels (a card's)
 const soAccountsOf = card => { const s = card && card.streamer && listStreamers().find(x => x.id === card.streamer); return s ? s.accounts : []; };
@@ -389,7 +394,7 @@ function syncShoutButtons(){
 // The script in each Kick and Twitch chat page: on, or taken away
 function shoutInSite(w, view = w && w.ready && w.view){
   if (!w || w.kind !== 'chat' || !SHOUT_SITES.includes(platOf(w.channel)) || !view) return;
-  runIn(view, `(${shoutAgent})(${shoutHere(w.channel)})`);
+  runIn(view, `(${shoutAgent})(${shoutHere(w.channel)}, null, ${JSON.stringify({ names: appBots(w.channel), says: BOT_SAYS_RE })})`);   // (its bots: a bot's line is for who it's about)
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).

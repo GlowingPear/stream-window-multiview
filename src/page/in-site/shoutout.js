@@ -6,9 +6,11 @@
    name on screen, as a Kick name with _ can have - in its address. A press says so: "__kmv:shoutout" { site, login,
    name, named } (named: the login came from a name). The right-click menu asks who() (chat-message.js ctx()), and a run
    of recent chatters asks chatters(). */
-function shoutAgent(on, look){
+function shoutAgent(on, look, bots){
   const S = window.__kmvShout || (window.__kmvShout = { on: false });
   S.on = !!on;
+  // bots: this chat's chat bots (names) and how to read who their messages are about (chat/shoutout-text.js BOT_SAYS_RE)
+  if (bots && typeof bots === 'object'){ S.bots = (bots.names || []).map(n => String(n).toLowerCase()); S.says = (bots.says || []).map(r => { try { return new RegExp(r, 'i'); } catch (e) { return null; } }).filter(Boolean); }
   const SO = '[data-kmv-so]';
   if (!on){
     document.querySelectorAll(SO).forEach(e => e.remove());
@@ -22,6 +24,10 @@ function shoutAgent(on, look){
   const LINE = L.line || (site === 'kick' ? '[data-index]' : '.chat-line__message, .user-notice-line');
   const BAR = L.bar || (site === 'kick' ? 'div[class*="group-hover:flex"]' : '.chat-line__icons');
   const RAID = /\b(raid(ed|ing)?|is (now )?hosting|hosted)\b/i;
+  // Kick's special messages, drawn as cards of their own without a hover bar: a reward redeemed (or a highlighted
+  // message), Kicks sent; where their sender's name is
+  const SPECIAL = site === 'kick' ? ['div[class*="border-l-4"]', 'div[class*="border-[#42474D]"]'] : ['.user-notice-line', '[class*="channel-points-reward"]'];
+  const NAME = site === 'kick' ? 'button[data-prevent-expand], button.inline.font-bold' : '.chat-author__display-name, [data-a-target="chat-message-username"]';
   const MEGA = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.2v3.6a1 1 0 0 0 1 1h2.2L15 19V5L7.2 9.2H5a1 1 0 0 0-1 1z"/><path d="M7.6 14.8 9 19.6h2.6l-1-4"/><path d="M18 9.2a3.6 3.6 0 0 1 0 5.6"/></svg>';
   const css = document.createElement('style');
   css.setAttribute('data-kmv-so', '');
@@ -30,7 +36,8 @@ function shoutAgent(on, look){
     .kmv-so-b:not(.kmv-so-like):hover{background:rgba(83,252,24,.24)}
     .kmv-so-like svg{flex:none}
     .kmv-so-own{position:absolute;right:8px;top:-14px;z-index:20;display:none;padding:3px;border-radius:8px;background:#24292d;border:1px solid #31373c;box-shadow:0 8px 20px rgba(0,0,0,.5)}
-    [data-kmv-so-line]:hover>.kmv-so-own,[data-kmv-so-line]:focus-within>.kmv-so-own{display:flex}
+    [data-kmv-so-line]:hover .kmv-so-own,[data-kmv-so-line]:focus-within .kmv-so-own{display:flex}
+    .kmv-so-own.kmv-so-in{top:4px;right:4px}
     [data-kmv-so-line]:not(:hover):not(:focus-within) [data-kmv-so]:not(.kmv-so-pill){display:none!important}
     .kmv-so-pill{display:inline-flex;align-items:center;gap:5px;margin-left:8px;padding:3px 10px 3px 8px;border-radius:999px;border:1px solid rgba(83,252,24,.45);background:rgba(83,252,24,.12);color:#53fc18;font:700 12px/1.2 inherit;cursor:pointer;white-space:nowrap;vertical-align:middle}
     .kmv-so-pill:hover{background:rgba(83,252,24,.22)}
@@ -47,7 +54,7 @@ function shoutAgent(on, look){
   };
   const clean = s => String(s || '').trim().replace(/^@/, '');
   // Who sent a line: { site, login, name, named }, or null (a line with no sender: a system notice)
-  function who(el){
+  function sender(el){
     const line = el && el.closest && el.closest(LINE);
     if (!line) return null;
     const m = propsOf(line, 'message');
@@ -61,9 +68,23 @@ function shoutAgent(on, look){
       if (p && (p.login || p['msg-param-login'])) return { site, login: clean(p.login || p['msg-param-login']).toLowerCase(), name: clean(p.displayName || p['msg-param-displayName'] || p.login), named: false };
     }
     // (no data: the name shown, said to be a name, so the app looks the address up)
-    const nameEl = line.querySelector(site === 'kick' ? 'button[data-prevent-expand], button.inline.font-bold' : '.chat-author__display-name, [data-a-target="chat-message-username"]');
+    const nameEl = line.querySelector(NAME);
     const name = nameEl && clean(nameEl.textContent);
     return name && /^[\w-]{2,40}$/.test(name) ? { site, login: name.toLowerCase(), name, named: true } : null;
+  }
+  // Who a line is for: who sent it, or (a chat bot's message: "Thanks for the follow Pixelfox") who it's about, never
+  // the bot. -> a person, with from: the bot's name; or null
+  function whoFor(el){
+    const p = sender(el);
+    if (!p || !(S.bots || []).includes(p.login)) return p;
+    const line = el.closest(LINE), nameEl = line && line.querySelector(NAME);
+    let text = (line && line.textContent) || '';
+    if (nameEl) text = text.replace(nameEl.textContent, ' ');
+    text = text.replace(/\s+/g, ' ').trim();
+    const skip = [p.login, p.name.toLowerCase()];
+    for (const re of S.says || []){ const m = re.exec(text); if (m && m[1] && !skip.includes(m[1].replace(/^@/, '').toLowerCase())) return { site, login: m[1].replace(/^@/, '').toLowerCase(), name: m[1].replace(/^@/, ''), named: site === 'kick', from: p.name }; }
+    const at = /(?:^|[^\w@])@([\w-]{2,40})/.exec(text);
+    return at && !skip.includes(at[1].toLowerCase()) ? { site, login: at[1].toLowerCase(), name: at[1], named: site === 'kick', from: p.name } : null;
   }
   const press = p => console.log('__kmv:shoutout ' + JSON.stringify(p));
   // like: one of the site's own buttons in that hover bar: ours takes its look (its classes, so its size, colour and
@@ -71,11 +92,11 @@ function shoutAgent(on, look){
   function button(p, like){
     const b = document.createElement('button');
     b.type = 'button'; b.className = like ? `${like.className} kmv-so-b kmv-so-like` : 'kmv-so-b'; b.setAttribute('data-kmv-so', '');
-    b.title = `Shout out ${p.name} (Stream Multiview)`; b.setAttribute('aria-label', `Shout out ${p.name}`);
+    b.title = `Shout out ${p.name}${p.from ? ` (from ${p.from}'s message)` : ''} (Stream Multiview)`; b.setAttribute('aria-label', `Shout out ${p.name}`);
     b.innerHTML = MEGA;
     const theirs = like && like.querySelector('svg'), r = theirs && theirs.getBoundingClientRect();
     if (r && r.width){ const svg = b.querySelector('svg'); svg.setAttribute('width', String(Math.round(r.width))); svg.setAttribute('height', String(Math.round(r.height))); }
-    b.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); b.blur(); if (S.on) press(who(b) || p); }, true);   // (blur: a click doesn't keep it showing)
+    b.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); b.blur(); if (S.on) press(whoFor(b) || p); }, true);   // (blur: a click doesn't keep it showing)
     return b;
   }
   // A line under the pointer: its button (in the site's hover bar, else a bar of its own), or a raid's pill
@@ -83,7 +104,7 @@ function shoutAgent(on, look){
   // ours; a bar the site drew again without ours gets it again on the next hover)
   function dress(line){
     if (!S.on || line.querySelector('[data-kmv-so]')) return;
-    const p = who(line);
+    const p = whoFor(line);
     if (!p) return;
     line.setAttribute('data-kmv-so-line', '');
     const raid = RAID.test(line.textContent || '') && line.textContent.length < 300 && !line.querySelector(BAR);
@@ -105,23 +126,25 @@ function shoutAgent(on, look){
       bar.insertBefore(wrap || b, bar.firstChild);
       return;
     }
+    // no hover bar: a bar of its own, in a special card's top corner (a reward, Kicks), else over the line's
+    const card = SPECIAL.map(sel => line.matches(sel) ? line : line.querySelector(sel)).find(Boolean) || line;
     const own = document.createElement('div');
-    own.className = 'kmv-so-own'; own.setAttribute('data-kmv-so', '');
+    own.className = 'kmv-so-own' + (card !== line ? ' kmv-so-in' : ''); own.setAttribute('data-kmv-so', '');
     own.appendChild(button(p));
-    if (getComputedStyle(line).position === 'static') line.style.position = 'relative';
-    line.appendChild(own);
+    if (getComputedStyle(card).position === 'static') card.style.position = 'relative';
+    card.appendChild(own);
   }
   document.addEventListener('mouseover', ev => { const line = S.on && ev.target && ev.target.closest && ev.target.closest(LINE); if (line) dress(line); }, true);
   // The people who chatted here, oldest first (for a run of recent chatters): from the lines the chat shows
   function chatters(){
     return [...document.querySelectorAll(LINE)].map(line => {
-      const p = who(line), m = propsOf(line, 'message');
+      const p = whoFor(line), m = propsOf(line, 'message');
       if (!p) return null;
       const t = m && (Date.parse(m.created_at || '') || +m.timestamp) || 0;
       return { ...p, t, raid: RAID.test(line.textContent || '') && line.textContent.length < 300 };
     }).filter(Boolean).slice(-300);
   }
-  S.who = who; S.chatters = chatters; S.dress = dress;
+  S.who = whoFor; S.chatters = chatters; S.dress = dress;
   return true;
 }
 

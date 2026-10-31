@@ -11,6 +11,7 @@ import { chatZoom } from './chat-zoom.js';
 import { sampleIn } from './event-samples.js';
 import { feedParse } from './feed-parse.js';
 import { openInBrowser } from './kick-panel.js';
+import { botTargets } from './shoutout-text.js';
 import { shoutHere, shoutOut, shoutTag, soPersonOf, soSentAt } from './shoutout.js';
 import { autoTrFor, translateChat } from './translate.js';
 import { EMOTE_SITE, saveEmote } from './view-menu.js';
@@ -676,8 +677,20 @@ function evToggle(m, e){
 // Shoutouts (chat/shoutout.js): who a line can shout out (someone else's message on Kick or Twitch), or null
 function shoutable(m){
   if (!shoutHere(m.ch) || m.kind === 'mine' || m.deleted || !['kick', 'twitch'].includes(m.site) || !m.login || m.login === meOn(m.site)) return null;
+  // a chat bot's message ("Thanks for the follow Pixelfox"): who it's about, never the bot (none found: nothing)
+  if (m.bot){
+    const own = ownerOf(m.ch), name = botTargets(m.parts.map(x => x.text || '').join(''), [m.login, m.sender, meOn(m.site), ...(own ? own.accounts.map(chLabel) : [])])[0];
+    const p = name && soPersonOf({ site: m.site, login: name.toLowerCase(), sender: name, named: m.site === 'kick' });
+    return p && { ...p, ch: m.ch, from: m.sender };
+  }
   const p = soPersonOf(m);
   return p && { ...p, ch: m.ch };
+}
+// Shout out on a special line (a sub, gift, Kicks, a reward redeemed): a small button on its right, while the pointer's on it
+function eventSo(m){
+  const raid = (m.support && m.support.kind === 'raid') || m.event === 'raid', p = m.kind === 'event' && !raid && shoutable(m);
+  return p && element('button', { type: 'button', class: 'al-so-ev', title: `Shout out ${m.sender} in ${PLAT_NAME[m.site]} chat`, 'aria-label': `Shout out ${m.sender}`, html: icon.megaphone, dataset: { cmd: 'all.eventShoutout' },
+    onclick: e => { e.stopPropagation(); shoutOut(p); } });
 }
 // A raid's line: Shout out who raided, then ✓ Shouted out
 function raidSo(m){
@@ -692,7 +705,7 @@ function raidSo(m){
 function shoutItems(m, view, item){
   const p = shoutable(m); if (!p) return [];
   const chs = sendSites(view.w), chip = t => element('em', null, t);
-  const one = item(`Shout out ${m.sender}`, icon.megaphone, () => shoutOut(p), { cmd: 'all.menuShoutout' });
+  const one = item(`Shout out ${p.from ? p.name : m.sender}`, icon.megaphone, () => shoutOut(p), { cmd: 'all.menuShoutout' });
   one.classList.add('so-li'); one.appendChild(element('span', 'so-on', chip(`${PLAT_NAME[m.site]} chat`)));
   if (chs.length < 2) return [one];
   const every = item('Shout out in every chat', icon.megaphone, () => shoutOut(p, { chs }), { cmd: 'all.menuShoutoutAll' });
@@ -734,7 +747,7 @@ function lineEl(m){
       'aria-expanded': open && 'true', title: open && 'Back to one line', onpointerenter: e => evOpenable(m, e.currentTarget), onclick: e => evToggle(m, e) }, element('i', { class: 'pi pi-' + m.site }, site[0]),
       element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts, m.ch)) : ''),
       // (a raid: shout out who raided, Settings › Shoutouts; then that it's done)
-      raidSo(m),
+      raidSo(m), eventSo(m),
       // (a shoutout: open the channel it points to, as a raid's line does)
       m.shoutout && element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.shoutoutOpen' }, title: `Open ${chLabel(m.shoutout)} in a window of its own`, onclick: () => addParsed({ channel: m.shoutout, only: null }) }, 'Open ›'),
       // (who got them: a row under it, its button first, their names after it while open)
@@ -773,7 +786,7 @@ function lineEl(m){
   if (m.toMe === 'at' && m.bot) tags.splice(0, 1);   // (a bot's @: marked as to you, softly)
   const so = shoutable(m);   // (Settings › Shoutouts on, someone else's message: chat/shoutout.js)
   const hover = !m.deleted && element('span', 'al-hb',
-    so && element('button', { type: 'button', class: 'al-so-b', title: `Shout out ${m.sender} on ${site}`, 'aria-label': `Shout out ${m.sender} on ${site}`, html: icon.megaphone, dataset: { cmd: 'all.shoutout' }, onclick: () => shoutOut(so) }),
+    so && element('button', { type: 'button', class: 'al-so-b', title: so.from ? `Shout out ${so.name} on ${site} (from ${so.from}'s message)` : `Shout out ${m.sender} on ${site}`, 'aria-label': `Shout out ${so.from ? so.name : m.sender} on ${site}`, html: icon.megaphone, dataset: { cmd: 'all.shoutout' }, onclick: () => shoutOut(so) }),
     element('button', { type: 'button', title: `Reply on ${site}`, 'aria-label': `Reply to ${m.sender} on ${site}`, html: icon.reply, dataset: { cmd: 'all.reply' }, onclick: () => startReply(m) }),
     can && element('button', { type: 'button', title: `Delete on ${site} (${kShift()}-click the name)`, 'aria-label': `Delete ${m.sender}'s message on ${site}`, html: icon.bin, dataset: { cmd: 'all.delete' }, onclick: () => modAct(m, 'delete') }),
     element('span', 'al-hb-div'),
