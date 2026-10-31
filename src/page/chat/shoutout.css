@@ -158,3 +158,14 @@ button.al-so:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 .al-ev:hover .al-so-ev,.al-so-ev:focus-visible{opacity:1}
 .al-so-ev:hover{background:var(--line2);color:var(--text)}
 .al-so-ev svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+/* a long run list: what's below, ticking all or none; a run's steps shrink to fit a narrow chat */
+.so-lw{position:relative}
+.so-list.so-cut{-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(180deg,#000 calc(100% - 44px),transparent)}
+.so-more{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);z-index:1;padding:3px 10px;border-radius:999px;border:1px solid var(--line2);background:var(--panel);color:var(--text);font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.so-more[hidden]{display:none}
+.so-ticks{margin-left:auto;font-size:12px}
+.so-ticks[hidden]{display:none}
+.so-ticks .linkish{font-size:12px}
+.so-count .so-ticks + .zoom{margin-left:12px}
+.so-dots{max-width:100%}
+.so-dots i{flex:0 1 16px;min-width:3px}

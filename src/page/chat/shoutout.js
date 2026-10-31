@@ -5,7 +5,7 @@ import { BOT_SAYS_RE, RUN_MAX, cardFor, cardsFromRows, kickTries, loginOfCh, pic
 import { winOfView } from './translate.js';
 import { wins } from '../core.js';
 import { modesAgent } from '../in-site/feed.js';
-import { sendAgent } from '../in-site/send.js';
+import { draftAgent, sendAgent } from '../in-site/send.js';
 import { shoutAgent } from '../in-site/shoutout.js';
 import { bellVars, myName } from '../panels/bell/bell.js';
 import { isSaved } from '../panels/channels/channels.js';
@@ -269,6 +269,14 @@ async function runDialog(w, lines){
   closeRunDialog();
   const state = { n: soRunN(), res: null, showAll: false, ticks: new Map() };
   const list = element('div', { class: 'so-list', role: 'group', 'aria-label': 'Who to shout out' });
+  // a long list: how many more are below (it scrolls), and ticking them all or none at once
+  const more = element('button', { type: 'button', class: 'so-more', hidden: true, dataset: { cmd: 'shout.runMoreBelow' }, onclick: () => list.scrollBy({ top: list.clientHeight - 40, behavior: 'smooth' }) });
+  const below = () => { const end = list.scrollTop + list.clientHeight, n = [...list.children].filter(r => r.offsetTop + r.offsetHeight / 2 > end).length;
+    more.hidden = !n; more.textContent = `${n} more ↓`; list.classList.toggle('so-cut', n > 0); };
+  list.addEventListener('scroll', below);
+  const tickAll = on => { if (!state.res) return; [...state.res.list, ...(state.showAll ? state.res.left.viewers : [])].forEach(p => state.ticks.set(soKey(p), on)); draw(); };
+  const ticks = element('span', 'so-ticks', element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'shout.runTickAll' }, onclick: () => tickAll(true) }, 'Tick all'), ' · ',
+    element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'shout.runTickNone' }, onclick: () => tickAll(false) }, 'none'));
   const count = element('span', 'zoomPct', String(state.n));
   const skip = element('div', 'so-skip');
   const go = element('button', { type: 'button', class: 'btn primary', dataset: { cmd: 'shout.runSend' } }, 'Send');
@@ -278,10 +286,10 @@ async function runDialog(w, lines){
     element('h3', { id: 'soDlgT' }, element('span', { class: 'so-hic', html: icon.megaphone }), 'Shout out recent chatters'),
     element('div', 'dlg-sub', settings.flag('shoutStreamers', true) ? 'The last streamers who chatted in ' : 'The last people who chatted in ', element('b', null, nameOf(w.channel) || chLabel(w.channel)),
       `'s ${allOn(w) ? PLAT_NAME[platOf(soRunCh(w))] + ' ' : ''}chat, newest first. Each gets your shoutout there.`),
-    element('div', 'so-count', element('span', null, settings.flag('shoutStreamers', true) ? 'Streamers who chatted last' : 'People who chatted last'),
+    element('div', 'so-count', element('span', null, settings.flag('shoutStreamers', true) ? 'Streamers who chatted last' : 'People who chatted last'), ticks,
       element('div', 'zoom', element('button', { type: 'button', 'aria-label': 'Fewer', dataset: { cmd: 'shout.runFewer' }, onclick: () => setN(state.n - 1) }, '−'), count,
         element('button', { type: 'button', 'aria-label': 'More', dataset: { cmd: 'shout.runMore' }, onclick: () => setN(state.n + 1) }, '+'))),
-    list, skip, element('label', 'so-nolist', nolist, 'Start straight away next time'),
+    element('div', 'so-lw', list, more), skip, element('label', 'so-nolist', nolist, 'Start straight away next time'),
     element('div', 'dlg-foot', pace, element('button', { type: 'button', class: 'btn', dataset: { cmd: 'shout.runCancel' }, onclick: closeRunDialog }, 'Cancel'), go));
   soDlg = element('div', { class: 'dlg-bg so-bg', onclick: e => { if (e.target === soDlg) closeRunDialog(); } }, box);
   soDlg.addEventListener('keydown', e => { if (e.key === 'Escape'){ e.preventDefault(); closeRunDialog(); } else if (e.key === 'Enter' && !e.target.closest('button')){ e.preventDefault(); go.click(); } });
@@ -305,6 +313,8 @@ async function runDialog(w, lines){
     const r = state.res;
     list.replaceChildren(...r.list.map(p => row(p, p.why === 'recent' ? `Shouted out ${soAgo(soSentAt(p))}` : '')), ...(state.showAll ? r.left.viewers.map(p => row(p, 'No streams found')) : []));
     if (!list.children.length) list.replaceChildren(element('div', 'so-wait', 'No one to shout out yet'));
+    ticks.hidden = list.querySelectorAll('.so-row').length < 4;
+    requestAnimationFrame(below);
     const left = [r.left.you && 'you', r.left.host && (nameOf(w.channel) || chLabel(w.channel)), r.left.bots && `${r.left.bots} chat ${r.left.bots === 1 ? 'bot' : 'bots'}`,
       r.left.viewers.length && `${r.left.viewers.length} ${r.left.viewers.length === 1 ? 'person' : 'people'} with no streams found`].filter(Boolean);
     skip.replaceChildren(...(left.length ? [`Left out: ${left.length > 1 ? left.slice(0, -1).join(', ') + ' and ' + left[left.length - 1] : left[0]}.`] : []),
@@ -340,7 +350,7 @@ function soDrawStrip(){
   const dots = element('span', 'so-dots', ...r.list.map((_, i) => element('i', i < at ? 'd' : i === at ? 'n' : '')));
   r.strip.classList.toggle('paused', !!r.wait);
   r.strip.replaceChildren(element('span', { class: 'ic', html: r.wait ? icon.clock : icon.megaphone }),
-    element('span', 'tx', r.wait ? element('b', null, `${r.why} · ${r.wait} s`) : element('b', null, `Shouting out ${at + 1} of ${r.list.length} · ${p.name}`),
+    element('span', 'tx', r.wait ? element('b', null, typeof r.wait === 'number' ? `${r.why} · ${r.wait} s` : r.why) : element('b', null, `Shouting out ${at + 1} of ${r.list.length} · ${p.name}`),
       r.wait ? element('small', null, r.whySub || 'It tries again then') : dots),
     element('button', { type: 'button', class: 'btn', dataset: { cmd: 'shout.stop' }, onclick: () => stopRun() }, 'Stop'),
     element('span', { class: 'bar', style: `width:${Math.round((at / r.list.length) * 100)}%` }));
@@ -364,6 +374,9 @@ async function startRun(w, list){
     for (let tries = 0; !r.stop; tries++){
       const rules = chatRules(p.ch);
       if (rules.wait){ await soCountDown(r, rules.wait, 'Waiting for slow mode', `${PLAT_NAME[platOf(p.ch)]}'s chat here: a message every ${rules.slow || rules.wait} s`); continue; }
+      // your draft in the site's own chat box goes first: it waits (it'd type over it)
+      const cw = soChatWin(p.ch), draft = cw && cw.view ? await askIn(cw.view, `(${draftAgent})(${JSON.stringify(platOf(p.ch))})`).catch(() => '') : '';
+      if (draft && !r.stop){ await soWaitDraft(r, cw, platOf(p.ch)); continue; }
       const res = await shoutOut(p, { chs: [p.ch], again: false, quiet: true });
       if (r.stop) return;
       if (res === 'sent'){ done++; break; }
@@ -377,6 +390,17 @@ async function startRun(w, list){
     if (r.i < list.length - 1){ r.at = r.i + 1; soDrawStrip(); await soPause(r, SO_TIMING.gap); r.at = null; }
   }
   if (soRun === r) stopRun(done ? `Shouted out ${done} ${done === 1 ? 'person' : 'people'}` : '');
+}
+// Waits while you have something typed in that site's chat box (sent or cleared: it goes on)
+async function soWaitDraft(r, c, site){
+  r.why = 'Waiting while you type'; r.whySub = `Your message in ${PLAT_NAME[site]}'s chat box goes first`; r.wait = '…';
+  soDrawStrip();
+  while (!r.stop && wins.includes(r.w)){
+    await soPause(r, 1000);
+    const d = c.view ? await askIn(c.view, `(${draftAgent})(${JSON.stringify(site)})`).catch(() => '') : '';
+    if (!d) break;
+  }
+  r.wait = 0; if (!r.stop) soDrawStrip();
 }
 async function soCountDown(r, secs, why, sub){
   r.why = why; r.whySub = sub;

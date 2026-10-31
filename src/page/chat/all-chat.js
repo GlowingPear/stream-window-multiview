@@ -1111,11 +1111,22 @@ const sender = {
 // started. Shoutouts send this way too (chat/shoutout.js). -> sendAgent's answer, 'no-answer', or 'gone' (no chat there)
 async function sendInChat(c, text){
   if (!c || !c.view) return 'gone';
-  drawTab(c, true);
-  const r = await inTime((async () => { await drawn(c); return pressed(c, await sender.send(c, text), text); })());
-  drawTab(c, false);
-  if (r === 'sent') slowStart(c.channel);
-  return r;
+  return inTurn(c.channel, async () => {
+    drawTab(c, true);
+    const r = await inTime((async () => { await drawn(c); return pressed(c, await sender.send(c, text), text); })());
+    drawTab(c, false);
+    if (r === 'sent') slowStart(c.channel);
+    return r;
+  });
+}
+// One send at a time in a chat: ALL's box and shoutouts (a run's too) take turns, so neither types over the other in the
+// site's chat box. -> work's answer
+const turns = new Map();   // channel -> the send going on there (its promise)
+function inTurn(ch, work){
+  const next = (turns.get(ch) || Promise.resolve()).catch(() => {}).then(work);
+  turns.set(ch, next);
+  next.finally(() => { if (turns.get(ch) === next) turns.delete(ch); }).catch(() => {});
+  return next;
 }
 // Puts a text in ALL's box, on that site, for you to send (a shoutout with Send straight away off: chat/shoutout.js).
 // -> whether it could (ALL shows in a window that can send on that site)
@@ -1549,8 +1560,7 @@ async function deliver(view, w, p){
   view.sending = true; setMine(p, 'sending'); syncSendB(view, w);
   let r;
   if (!m) r = 'gone';
-  else { const t = p.send || p.text; drawTab(m, true); r = await inTime((async () => { await drawn(m); return pressed(m, p.threaded ? await sender.reply(m, p.lock.msg.id, t, p.lock.msg.sender) : await sender.send(m, t), t); })()); }
-  if (m) drawTab(m, false);
+  else { const t = p.send || p.text; r = await inTurn(m.channel, async () => { drawTab(m, true); const x = await inTime((async () => { await drawn(m); return pressed(m, p.threaded ? await sender.reply(m, p.lock.msg.id, t, p.lock.msg.sender) : await sender.send(m, t), t); })()); drawTab(m, false); return x; }); }
   view.sending = false; syncSendB(view, w);
   if (p.state === 'seen') return;   // (its chat brought it back already)
   noteSend(p.ch, r, r === 'sent' ? '' : SEND_FAIL[r] ? SEND_FAIL[r](site) : '');   // (two failures in a row: ALL's health says so)
