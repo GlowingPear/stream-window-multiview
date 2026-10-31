@@ -2281,8 +2281,10 @@ test('/ at the start of ALL\'s box: the site\'s commands you can use there (mods
   assert.equal(await list('/raid'), null);
   // ↓ and Tab fill one in; the rest of what you typed stays
   l = await list('/un');
-  assert.deepEqual(l.cmds, ['/unban', '/unmod', '/unmonitor', '/unrestrict', '/untimeout', '/uniquechat'], 'a lead moderator\'s /unmod in its place');
+  assert.deepEqual(l.cmds, ['/unban', '/unmod', '/unmonitor', '/unrestrict', '/untimeout'], 'a lead moderator\'s /unmod in its place');
   assert.match(l.foot, /9 in all, keep typing/);
+  // each one's description on a line of its own under it, one line at most
+  assert.ok((await page.$$eval('.all-at .all-cmd', rs => rs.map(r => { const n = r.querySelector('.all-cmd-n').getBoundingClientRect(), d = r.querySelector('.all-cmd-d').getBoundingClientRect(); return d.top >= n.bottom - 1 && d.height < 20; }))).every(Boolean));
   await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('Tab');
   assert.equal(await page.$eval('.all-in', b => b.value), '/unmonitor ');
   assert.equal(await page.isVisible('.all-at'), false);

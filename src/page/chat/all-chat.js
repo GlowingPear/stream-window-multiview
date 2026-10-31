@@ -1063,7 +1063,7 @@ function renderLock(view, w){
 // / at the start of the box: the commands of the site it sends on (or is locked to) that you can use there (the site
 // module's chatCommands: mods' where you moderate, a lead moderator's where your last message there had that badge, the
 // streamer's in your own channel), the ones starting with what's typed
-const CMD_SHOWN = 6;
+const CMD_SHOWN = 5;
 // A chat's commands as its own page has them now (its site module's liveCommands: Twitch's, which differ a little by
 // channel: /pin where you can pin), asked as its page loads (and once more a few seconds on, its list may not be there
 // yet); without them its module's copy (chatCommands)

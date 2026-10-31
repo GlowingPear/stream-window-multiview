@@ -483,15 +483,14 @@
 
 /* / at the start of ALL's box: the site's commands, one line each (name, what goes after it, what it does); the one picked
    says all of what it does under it */
-.all-at-cmds{padding:4px}
+.all-at-cmds{padding:4px;max-height:calc(100% - 64px);overflow-y:auto;box-sizing:border-box}
 .all-at-cmds .all-at-h{display:flex;align-items:center;gap:6px;padding:4px 6px 5px;line-height:14px}
 .all-at-cmds .all-at-h .pi{width:14px;height:14px;font-size:8.5px;border-radius:4px;flex:none}
 .all-cmd-g{padding:5px 8px 2px;font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;line-height:12px;color:color-mix(in srgb,var(--muted) 75%,transparent)}
-.all-ati.all-cmd{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:7px;row-gap:1px;padding:4px 8px;min-height:24px;box-sizing:border-box}
+.all-ati.all-cmd{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:7px;row-gap:0;padding:4px 8px;box-sizing:border-box}
 .all-cmd-n{flex:none;font:600 12px/16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--text)}
 .all-cmd-n b{color:var(--accent);font-weight:700}
-.all-cmd-a{flex:none;max-width:45%;font:11.5px/16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.all-ati.all-cmd small.all-cmd-d{flex:1 1 0;min-width:0;margin-left:0;font-size:11px;line-height:16px;color:color-mix(in srgb,var(--muted) 85%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.all-ati.all-cmd.on small.all-cmd-d{flex:1 0 100%;white-space:normal;color:var(--muted)}
-.all-ati.all-cmd.on .all-cmd-a{max-width:none;white-space:normal}
+.all-cmd-a{flex:1 1 0;min-width:0;font:11.5px/16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.all-ati.all-cmd small.all-cmd-d{flex:1 0 100%;min-width:0;margin-left:0;font-size:11px;line-height:15px;color:color-mix(in srgb,var(--muted) 85%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.all-ati.all-cmd.on small.all-cmd-d{color:var(--muted)}
 .all-at-cmds .all-mh{margin-top:3px;padding:5px 6px 2px}
