@@ -21,6 +21,7 @@ const TOPICS = new Set([
   'chatName',    // Settings › Chat › Channel name in chat boxes: on, its text, or a channel's name learned (chat/chat-name.js)
   'bots',        // the chat bot lists (Settings › Chat › Chat bots, saved with the alerts: alerts/alerts.js)
   'mod',         // which channels you moderate, as the sites answered (platforms/platforms.js modIs)
+  'theme',       // the theme's colours, light or dark (panels/settings/themes.js)
   'names',       // channel names learned from the sites
   'channelsBox', // the Channels box: its text, site tab and picked site
   'autoOpen',    // channels that open by themselves when they go live

@@ -2042,3 +2042,40 @@ test('ALL: with Settings › Chat › Channel name in chat boxes, its box says w
   await page.evaluate(() => { const c = document.querySelector('#chatNameSet'); c.checked = false; c.dispatchEvent(new Event('change')); });
   assert.equal(await ph(), 'Send a message on Twitch', 'off: the usual words');
 });
+
+test('names as each site\'s own chat shows them: Twitch made readable (its own colour for someone with none), YouTube by who they are; again in a light theme; YouTube\'s own badges and colours once its chat says them', async t => {
+  const page = await allApp(t);
+  await page.evaluate(now => window.smvNotes.liveStatus({ 'yt:@quietkoala': { live: true, checked: now } }), Date.now());
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'chat', ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala']));
+  await page.click('#stage .win.chat:not(.tab-hidden) .ptab.all');
+  const YT = (id, name, badges = []) => ({ addChatItemAction: { item: { liveChatTextMessageRenderer: { id, timestampUsec: String(Date.now() * 1000), authorName: { simpleText: name }, authorExternalChannelId: 'UC' + id,
+    message: { runs: [{ text: 'hi' }] }, authorBadges: badges.map(type => ({ liveChatAuthorBadgeRenderer: { icon: { iconType: type }, tooltip: type } })) } } } });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ color: '#0000FF', 'display-name': 'deepnavy', id: 't1' }, ':deepnavy!d@d PRIVMSG #quietkoala :hi'),
+    TW({ color: '#000000', 'display-name': 'inkblot', id: 't2' }, ':inkblot!i@i PRIVMSG #quietkoala :hi'), TW({ color: '', 'display-name': 'paperwren', id: 't3' }, ':paperwren!p@p PRIVMSG #quietkoala :hi'),
+    TW({ badges: 'lead_moderator/1', color: '#8A2BE2', 'display-name': 'leadfox', id: 't4' }, ':leadfox!l@l PRIVMSG #quietkoala :hi')] });
+  await feed(page, 'yt:@quietkoala', { s: 'youtube', raw: [YT('y1', '@moss.runner'), YT('y2', '@hollowpine', ['MODERATOR']), YT('y3', '@quietkoala', ['OWNER']), YT('y4', '@verified.one', ['VERIFIED'])] });
+  const names = () => page.$$eval('.all-list .al-m .al-n', l => Object.fromEntries(l.map(n => [n.textContent, n.style.color + (n.classList.contains('al-pill') ? ' on ' + n.style.backgroundColor : '')])));
+  assert.deepEqual(await names(), { deepnavy: 'rgb(139, 88, 255)', inkblot: 'rgb(122, 122, 122)', paperwren: 'rgb(210, 105, 30)', leadfox: 'rgb(180, 84, 255)',
+    '@moss.runner': 'rgba(255, 255, 255, 0.7)', '@hollowpine': 'rgb(62, 166, 255)', '@quietkoala': 'rgb(17, 17, 17) on rgb(255, 214, 0)', '@verified.one': 'rgba(255, 255, 255, 0.7)' });
+  assert.ok(await page.$('.all-list [data-key="twitch:t4"] .al-b-mod'), 'a lead moderator has the mod badge');
+  // a light theme: the same names as the sites' light themes show them
+  await page.keyboard.press('ControlOrMeta+k');
+  await page.fill('#palQ', ''); await page.type('#palQ', 'theme: daylight'); await page.waitForTimeout(60);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.body.classList.contains('theme-light'));
+  assert.deepEqual(await names(), { deepnavy: 'rgb(0, 0, 255)', inkblot: 'rgb(0, 0, 0)', paperwren: 'rgb(177, 78, 0)', leadfox: 'rgb(138, 43, 226)',
+    '@moss.runner': 'rgb(96, 96, 96)', '@hollowpine': 'rgb(6, 95, 212)', '@quietkoala': 'rgb(0, 0, 0) on rgb(251, 192, 45)', '@verified.one': 'rgb(96, 96, 96)' });
+  // YouTube's chat says how it draws them (ytLookAgent): its colours (in its light: a dark page's aren't used here), its icons in their colour, cleaned
+  const look = icons => page.evaluate(([icons]) => { window.__ran = 0; window.allChat.gotYtLook({ dark: false, names: { mod: 'rgb(94, 132, 241)', member: 'url(x)', ownerBg: 'rgba(0, 0, 0, 0)' }, icons }); return window.__ran; }, [icons]);
+  assert.equal(await look({ moderator: { svg: '<svg viewBox="0 0 16 16" onload="window.__ran++"><path d="M8 1l6 3v4z" onclick="window.__ran++"/><script>window.__ran++</script></svg>', color: 'rgb(62, 166, 255)' },
+    member: { svg: '<svg viewBox="0 0 16 16"/>', color: 'red' }, verified: { svg: 'not svg', color: 'red' } }), 0);
+  assert.deepEqual(await page.evaluate(() => window.allChat.ytLook()), { dark: false, names: { mod: 'rgb(94, 132, 241)' }, icons: { moderator: { svg: '<svg viewBox="0 0 16 16"><path d="M8 1l6 3v4z"/></svg>', color: 'rgb(62, 166, 255)' } } },
+    'only colours, only its moderator, verified and streamer icons, only shapes');
+  assert.equal((await names())['@hollowpine'], 'rgb(94, 132, 241)');
+  assert.deepEqual(await page.$eval('.all-list [data-key="youtube:y2"] .al-by', b => [b.style.color, b.title, b.innerHTML]), ['rgb(62, 166, 255)', 'Moderator', '<svg viewBox="0 0 16 16"><path d="M8 1l6 3v4z"></path></svg>'], 'its shield, in its colour');
+  assert.equal(await page.$('.all-list [data-key="youtube:y4"] .al-by'), null, 'a badge it didn\'t draw: ALL\'s own');
+  // the same answer again: nothing redrawn
+  const before = await page.$('.all-list [data-key="youtube:y2"]');
+  await look({ moderator: { svg: '<svg viewBox="0 0 16 16"><path d="M8 1l6 3v4z"/></svg>', color: 'rgb(62, 166, 255)' } });
+  assert.equal(await before.evaluate(e => e.isConnected), true);
+});

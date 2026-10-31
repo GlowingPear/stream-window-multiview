@@ -12,6 +12,8 @@ test('Twitch: a message with its id, badges, colour and emotes (by character, no
     id: 'a1', 'tmi-sent-ts': '1793161256615', 'user-id': '42' }, ':tinroof!tinroof@tinroof.tmi.twitch.tv PRIVMSG #quietkoala :hi 😀 Kappa gg'));
   assert.deepEqual(m, { site: 'twitch', kind: 'message', id: 'a1', t: 1793161256615, sender: 'Tinroof', login: 'tinroof', color: '#FF7F50', userId: '42',
     badges: ['sub', 'mod'], pics: [{ set: 'subscriber', v: '18', months: 18 }, { set: 'moderator', v: '1' }, { set: 'glhf-pledge', v: '1' }], parts: [{ text: 'hi 😀 ' }, { emote: 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0', name: 'Kappa' }, { text: ' gg' }], first: true });
+  // a lead moderator is a moderator (so ALL never offers to time them out)
+  assert.deepEqual(parseTwitch(TW({ badges: 'lead_moderator/1,subscriber/2006', 'display-name': 'Leadfox', id: 'a2' }, ':leadfox!l@l PRIVMSG #quietkoala :hi')).badges, ['mod', 'sub']);
 });
 
 test('Twitch: replies, /me, Highlight my message, cheers, escaped tags', async () => {

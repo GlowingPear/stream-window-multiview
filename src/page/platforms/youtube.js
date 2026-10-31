@@ -36,6 +36,13 @@ const YT_FIT_JS = `(function(){
   [0, 300, 1000, 2500, 5000].forEach(t => setTimeout(kick, t));
 })()`;
 
+// Its chat's name colours (its live chat page's, read 2026-10-30): a viewer, a moderator (the shield's blue: YouTube
+// still shows some an older blue, #5e84f1, which its page then says), a member, and the streamer on a pill
+const YT_NAMES = {
+  dark: { viewer: 'rgba(255,255,255,0.7)', mod: '#3ea6ff', member: '#2ba640', owner: '#111111', ownerBg: '#ffd600' },
+  light: { viewer: '#606060', mod: '#065fd4', member: '#107516', owner: '#000000', ownerBg: '#fbc02d' }
+};
+
 const youtube = {
   id: 'youtube', name: 'YouTube', letter: 'Y',
   mentions: false,       // (YouTube chat isn't read for mentions or spam)
@@ -46,6 +53,13 @@ const youtube = {
   emoteLists: false,
   pageCommands: false,
   likes: true,
+  // A name in ALL (see kick.js): YouTube colours a name by who they are, not by them. As its chat page draws them (look:
+  // in-site/feed.js ytLookAgent), when it's in the same light or dark as the app, else its usual colours
+  nameStyle(m, { light, look } = {}){
+    const c = { ...(light ? YT_NAMES.light : YT_NAMES.dark), ...(look && !look.dark === !!light ? look.names : {}) };
+    const role = (m.badges || []).find(b => /^(host|mod|sub)$/.test(b));
+    return role === 'host' ? { color: c.owner, bg: c.ownerBg } : { color: role === 'mod' ? c.mod : role === 'sub' ? c.member : c.viewer };
+  },
   // a tab you're not watching (windows/frames.js): its lowest quality, or back to automatic
   lowQualityJs: low => `(() => { const p = document.getElementById('movie_player'); const q = ${low ? "'tiny'" : "'auto'"}; if (p && p.setPlaybackQualityRange) p.setPlaybackQualityRange(q, q); })()`,
   partition: 'persist:youtube',
