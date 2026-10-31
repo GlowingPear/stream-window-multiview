@@ -23,7 +23,7 @@ import { soon, stopWinTimer, winTimer } from '../shared/timers.js';
 import { askIn, runIn } from '../windows/view.js';
 import { activeWin } from '../windows/window-commands.js';
 
-/* ---- Shoutouts (Settings › Chat › Shoutouts, off unless switched on; issue #300) ----
+/* ---- Shoutouts (Settings › Shoutouts, off unless switched on; issue #300) ----
    One click shouts someone out in a chat: from ALL's lines (chat/all-chat.js: the hover bar, the line's menu, a raid's
    line), from the Kick and Twitch chats' own pages (in-site/shoutout.js: a button on each message, a pill on a raid;
    their right-click menu) and from the search box. The message is yours (Settings), or the one on their People row,

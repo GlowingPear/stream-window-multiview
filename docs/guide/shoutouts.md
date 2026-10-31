@@ -3,13 +3,13 @@ title: Shoutouts
 group: chat
 icon: megaphone
 lede: Shout out a streamer in chat with one click, with your own message, their link and the game they play; or the last few who chatted, one a second.
-settings: chat
+settings: shoutouts
 words: [shoutout, shout out, so, raid, raider, promote, recent chatters, /shoutout]
 related: [right-click, linked-channels]
 order: 18
 ---
 
-Shoutouts are off until you switch them on: Settings › Chat › Shoutouts › **Shout out buttons**.
+Shoutouts are off until you switch them on: Settings › Shoutouts › **Shout out buttons**.
 
 - **One click:** a megaphone button sits first on each message's hover bar in ALL and in Kick's and Twitch's own chats, and on a raid's line. It sends your shoutout straight away, in the chat the message is in. The right-click menu on a message has **Shout out** too, and ALL's menu also has **Shout out in every chat** for a streamer on several sites.
 - **Your message:** set it in Settings, with `{name}`, `{link}` (their channel, a full https:// link so it's clickable), `{links}` (every site the app knows them on) and `{game}` (the last game they played). Words in `[ ]` are left out when the game isn't known, so the message never says "playing undefined". The preview shows it with a game and without.

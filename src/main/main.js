@@ -575,7 +575,7 @@ function runMenuAct(wc, a) {
     case 'whyAlert':
       if (wc.hostWebContents && !wc.hostWebContents.isDestroyed()) wc.hostWebContents.send('view:why', wc.id);
       break;
-    // a shoutout of who sent the message (Settings › Chat › Shoutouts): the app's page builds it and sends it in this chat
+    // a shoutout of who sent the message (Settings › Shoutouts): the app's page builds it and sends it in this chat
     case 'shoutout':
       if (wc.hostWebContents && !wc.hostWebContents.isDestroyed()) wc.hostWebContents.send('view:shoutout', wc.id, a.who);
       break;

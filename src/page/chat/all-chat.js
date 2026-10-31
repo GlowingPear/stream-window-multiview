@@ -710,7 +710,7 @@ function lineEl(m){
     return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}${open ? ' al-open al-can' : ''}${to.length ? ' al-gift' : ''}${m.gift && m.gift.me ? ' al-gift-me' : ''}`, dataset: { key: m.site + ':' + m.id },
       'aria-expanded': open && 'true', title: open && 'Back to one line', onpointerenter: e => evOpenable(m, e.currentTarget), onclick: e => evToggle(m, e) }, element('i', { class: 'pi pi-' + m.site }, site[0]),
       element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts, m.ch)) : ''),
-      // (a raid: shout out who raided, Settings › Chat › Shoutouts; then that it's done)
+      // (a raid: shout out who raided, Settings › Shoutouts; then that it's done)
       raidSo(m),
       // (a shoutout: open the channel it points to, as a raid's line does)
       m.shoutout && element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.shoutoutOpen' }, title: `Open ${chLabel(m.shoutout)} in a window of its own`, onclick: () => addParsed({ channel: m.shoutout, only: null }) }, 'Open ›'),
@@ -746,7 +746,7 @@ function lineEl(m){
     m.bot && !botsShown && element('button', { type: 'button', class: 'al-show linkish', dataset: { cmd: 'all.showBot' }, onclick: e => { m.open = !m.open; e.target.closest('.al-m').replaceWith(lineEl(m)); } }, m.open ? 'Hide' : 'Show')
   ].filter(Boolean);
   if (m.toMe === 'at' && m.bot) tags.splice(0, 1);   // (a bot's @: marked as to you, softly)
-  const so = shoutable(m);   // (Settings › Chat › Shoutouts on, someone else's message: chat/shoutout.js)
+  const so = shoutable(m);   // (Settings › Shoutouts on, someone else's message: chat/shoutout.js)
   const hover = !m.deleted && element('span', 'al-hb',
     so && element('button', { type: 'button', class: 'al-so-b', title: `Shout out ${m.sender} on ${site}`, 'aria-label': `Shout out ${m.sender} on ${site}`, html: icon.megaphone, dataset: { cmd: 'all.shoutout' }, onclick: () => shoutOut(so) }),
     element('button', { type: 'button', title: `Reply on ${site}`, 'aria-label': `Reply to ${m.sender} on ${site}`, html: icon.reply, dataset: { cmd: 'all.reply' }, onclick: () => startReply(m) }),
@@ -1797,7 +1797,7 @@ function init(){
   store.watch(['chatName', 'names'], () => wins.forEach(w => { if (w.allView) renderCmp(w.allView, w); }));
   store.watch(['mod'], () => { redrawAll(); wins.forEach(syncModBtn); });
   store.watch(['theme'], () => redrawAll());
-  store.watch(['shoutouts'], () => redrawAll());   // (Settings › Chat › Shoutouts, or someone shouted out: the buttons and ✓ SO tags)   // (names: their site's colours for a light or dark theme)
+  store.watch(['shoutouts'], () => redrawAll());   // (Settings › Shoutouts, or someone shouted out: the buttons and ✓ SO tags)   // (names: their site's colours for a light or dark theme)
   store.watch(['bots', 'streamers'], () => botsChanged());
   store.watch(['chatZoom'], () => wins.forEach(w => { if (w.allView) fitSize(w.allView); }));
   store.watch(['allHealth'], () => wins.forEach(w => { if (w.allView) renderTop(w.allView, w); }));

@@ -1,5 +1,5 @@
 /* ---- Shoutouts inside a Kick or Twitch chat page (turned into text: see src/page/README.md; chat/shoutout.js runs it
-   while Settings › Chat › Shoutouts is on, and again with on = false to take it all away). It adds a Shout out button to
+   while Settings › Shoutouts is on, and again with on = false to take it all away). It adds a Shout out button to
    the start of each message's hover bar (the app draws it: it isn't a copy of the site's buttons), and a Shout out pill
    to a raid's line. A message whose hover bar can't be found gets a small bar of its own. Who sent a message comes from
    the line's own data (the React props the site draws it from: Kick's sender slug, Twitch's login), never from the

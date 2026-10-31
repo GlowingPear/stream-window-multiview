@@ -75,7 +75,7 @@ function menuFor(params, { langs = ['en'], dev = false, devTools = false, emote 
   ]);
   // a chat message: its text without who sent it (emotes left out, or as their text)
   const msg = message && typeof message.html === 'string' && message.html && !p.isEditable ? message : null;
-  // Settings › Chat › Shoutouts on: shout out who sent it (the app's page sends it, in this chat)
+  // Settings › Shoutouts on: shout out who sent it (the app's page sends it, in this chat)
   const shout = msg && msg.shout && typeof msg.shout === 'object' && /^(kick|twitch)$/.test(msg.shout.site) && /^[\w-]{1,40}$/.test(String(msg.shout.login || '')) ? msg.shout : null;
   if (shout) group([{ label: `Shout out ${String(shout.name || shout.login).slice(0, 40)}`, act: { do: 'shoutout', who: { site: shout.site, login: String(shout.login).toLowerCase(), name: String(shout.name || shout.login).slice(0, 40) } } }]);
   if (msg) group([

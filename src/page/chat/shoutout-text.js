@@ -1,4 +1,4 @@
-/* ---- Shoutouts (issue #300): the message, who a row of Settings › Chat › Shoutouts › People is for, whether someone
+/* ---- Shoutouts (issue #300): the message, who a row of Settings › Shoutouts › People is for, whether someone
    streams, and who a run of recent chatters shouts out. Nothing here touches the page (unit tested on its own).
    A person: { site: 'kick' | 'twitch', login (their channel address: Kick's slug, Twitch's login), name (as shown),
    streamer (a linked streamer's id, or '') }. */

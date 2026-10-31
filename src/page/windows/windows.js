@@ -133,7 +133,7 @@ function createWin(spec, rect){
     else if (a === 'ext') openExtMenu(w, b.classList.contains('ovf') ? el.querySelector('[data-a=more]') : b);   // from the ⋯ menu (always): open under ⋯
     else if (a === 'more') openBarMenu(b);
     else if (a === 'state') copyWinState(w);
-    else if (a === 'shout') openRun(w, { flip: e.shiftKey });   // (Settings › Chat › Shoutouts: chat/shoutout.js)
+    else if (a === 'shout') openRun(w, { flip: e.shiftKey });   // (Settings › Shoutouts: chat/shoutout.js)
     else if (a === 'link') openLinkCard(w.channel);
     else if (a === 'inspect') { if (allOn(w)) openInspects(w, anchor(), b); else inspectWin(w); }
     else if (a === 'chat'){

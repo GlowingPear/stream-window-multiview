@@ -9,7 +9,7 @@ import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
 import { soon } from '../../shared/timers.js';
 
-/* ---- Settings › Chat › Shoutouts (chat/shoutout.js does them): on, your message with a live preview (with a game and
+/* ---- Settings › Shoutouts (chat/shoutout.js does them): on, your message with a live preview (with a game and
    without one), the People list (their own message, another channel instead, a linked streamer's row for every site
    with an optional message for one site), and how sending and runs of recent chatters go. Off by default. */
 const SAMPLE = [   // the preview's made-up channels: one with a last game, one without
@@ -55,7 +55,7 @@ function setWho(r, name, site){
   }
 }
 function renderPeople(){
-  if (!rows.length){ peopleEl.replaceChildren(); return; }
+  if (!rows.length){ peopleEl.replaceChildren(element('div', 'so-empty', 'No one yet. Add someone to give them a message of their own, or to shout out another channel when you shout them out.')); return; }
   peopleEl.replaceChildren(element('div', 'so-ph', element('span', null, 'Chatter'), element('span', null, 'Shout out'), element('span', null, 'Message'), element('span')),
     ...rows.map(r => {
       const s = r.streamer && listStreamers().find(x => x.id === r.streamer);
@@ -99,6 +99,12 @@ function syncShoutSettings(){
 function init(){
   textEl = $('#shoutText'); previewEl = $('#shoutPreview'); peopleEl = $('#shoutPeople');
   if (!textEl) return;
+  // the page's tabs: Message, People, Recent chatters
+  $('#soTabs').addEventListener('click', e => {
+    const b = e.target.closest('button[data-t]'); if (!b) return;
+    $('#soTabs').querySelectorAll('button').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-selected', String(on)); x.tabIndex = on ? 0 : -1; });
+    document.querySelectorAll('.st-pane[data-s="shoutouts"] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
+  });
   saveText = soon(() => { settings.set('shoutText', textEl.value.trim() === SHOUT_TPL ? '' : textEl.value); store.changed('shoutouts'); }, 500);
   savePeople = soon(saveRows, 500);
   const flag = (sel, key) => { $(sel).onchange = e => { settings.set(key, e.target.checked ? '1' : '0'); store.changed('shoutouts'); }; };
@@ -109,8 +115,8 @@ function init(){
     settings.set('shoutRunN', Math.max(1, Math.min(RUN_MAX, (settings.num('shoutRunN') || 5) + +b.dataset.z))); store.changed('shoutouts');
   });
   commands.add([
-    { id: 'settings.shoutRunMore', kind: 'setting', group: 'Settings', title: 'More recent chatters in a shoutout run', sub: 'Settings › Chat › Shoutouts · up to 20', words: ['shoutout'], icon: 'megaphone', button: '#shoutRunSet [data-z="1"]' },
-    { id: 'settings.shoutRunFewer', kind: 'setting', group: 'Settings', title: 'Fewer recent chatters in a shoutout run', sub: 'Settings › Chat › Shoutouts', words: ['shoutout'], icon: 'megaphone', button: '#shoutRunSet [data-z="-1"]' }]);
+    { id: 'settings.shoutRunMore', kind: 'setting', group: 'Settings', title: 'More recent chatters in a shoutout run', sub: 'Settings › Shoutouts · up to 20', words: ['shoutout'], icon: 'megaphone', button: '#shoutRunSet [data-z="1"]' },
+    { id: 'settings.shoutRunFewer', kind: 'setting', group: 'Settings', title: 'Fewer recent chatters in a shoutout run', sub: 'Settings › Shoutouts', words: ['shoutout'], icon: 'megaphone', button: '#shoutRunSet [data-z="-1"]' }]);
   textEl.addEventListener('input', () => { renderPreview(); saveText(); });
   $('#shoutTokens').append(...SHOUT_TOKENS.map(t => element('button', { type: 'button', dataset: { cmd: 'settings.shoutToken' }, onclick: () => addToken(t) }, element('code', null, t), ' ' + TOKEN_HELP[t])),
     element('span', 'so-hint', 'Words in [ ] are left out when there\'s no game.'));

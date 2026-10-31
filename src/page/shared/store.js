@@ -19,7 +19,7 @@ const TOPICS = new Set([
   'chatZoom',    // Settings › Chat › Chat text size (chat/chat-zoom.js)
   'allHealth',   // a site's part of ALL stopped working, or works again (chat/all-health.js)
   'chatName',    // Settings › Chat › Channel name in chat boxes: on, its text, or a channel's name learned (chat/chat-name.js)
-  'shoutouts',   // Settings › Chat › Shoutouts: on, its options, or someone shouted out (chat/shoutout.js)
+  'shoutouts',   // Settings › Shoutouts: on, its options, or someone shouted out (chat/shoutout.js)
   'bots',        // the chat bot lists (Settings › Chat › Chat bots, saved with the alerts: alerts/alerts.js)
   'mod',         // which channels you moderate, as the sites answered (platforms/platforms.js modIs)
   'theme',       // the theme's colours, light or dark (panels/settings/themes.js)

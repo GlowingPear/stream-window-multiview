@@ -1,5 +1,5 @@
 // Shoutouts (chat/shoutout.js, issue #300): off by default; in ALL a button on each line, a raid's button, the line's
-// menu, the ✓ SO tag and asking before a second one soon; a run of recent chatters; Settings › Chat › Shoutouts.
+// menu, the ✓ SO tag and asking before a second one soon; a run of recent chatters; Settings › Shoutouts.
 // Sending is the stand-in ALL's tests use (window.allChat.sender.send). The names are made up.
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -192,7 +192,7 @@ test('a run of recent chatters, in ALL the chat its send box is on: the list (st
   await page.evaluate(() => { window.shoutouts.openRun(window.openWins().find(w => w.kind === 'chat' && w.allView)); });   // (not waited for: it's the whole run)
   await page.waitForSelector('.all-view .so-strip', { timeout: 5000 }).catch(async () => { throw new Error('no strip; flash: ' + await page.textContent('#msg') + ' dlg ' + await page.locator('.so-dlg').count()); });
   assert.equal(await page.locator('.so-dlg').count(), 0, 'no list');
-  assert.match(await page.textContent('.all-view .so-strip'), /Shouting out 1 of \d · /);
+  assert.match(await page.textContent('.all-view .so-strip'), /Shouting out [12] of \d · /);
   await page.waitForFunction(() => window.__sends.length === 1);
   await page.click('.all-view .so-strip [data-cmd="shout.stop"]');
   assert.equal(await page.locator('.so-strip').count(), 0);
@@ -204,9 +204,9 @@ test('a run of recent chatters, in ALL the chat its send box is on: the list (st
   assert.equal(await page.locator('.so-dlg').count(), 0);
 });
 
-test('Settings › Chat › Shoutouts: off by default (Twitch\'s own too); the message with its preview (with a game and without), People, and the run\'s options', async t => {
+test('Settings › Shoutouts: off by default (Twitch\'s own too); the message with its preview (with a game and without), People, and the run\'s options', async t => {
   const page = await allApp(t);
-  await page.evaluate(() => window.openSettings('chat', { sub: 'shoutouts' }));
+  await page.evaluate(() => window.openSettings('shoutouts'));
   await page.waitForSelector('#shoutOnSet');
   assert.deepEqual(await page.evaluate(() => ['#shoutOnSet', '#shoutSendSet', '#shoutTwitchSet', '#shoutStreamersSet', '#shoutListSet'].map(s => document.querySelector(s).checked)), [false, true, false, true, true]);
   assert.equal(await page.inputValue('#shoutAgainSet'), '15');
@@ -222,10 +222,14 @@ test('Settings › Chat › Shoutouts: off by default (Twitch\'s own too); the m
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.shoutOn')), '1');
   assert.equal(await page.locator('#stage .win.chat [data-a=shout]').first().evaluate(b => b.hidden), false);
   await page.selectOption('#shoutAgainSet', '0');
+  await page.click('#soTabs [data-t=runs]');
+  assert.deepEqual(await page.$$eval('.st-pane[data-s=shoutouts] .st-subpane', l => l.filter(p => !p.hidden).map(p => p.dataset.t)), ['runs'], 'one tab at a time');
   await page.click('#shoutRunSet [data-z="1"]');
   assert.equal(await page.textContent('#shoutRunSet .zoomPct'), '6');
   assert.deepEqual(await page.evaluate(() => ['shoutAgain', 'shoutRunN'].map(k => localStorage.getItem('kickMultiview.' + k))), ['0', '6']);
   // People: a row with its own message, then gone again
+  await page.click('#soTabs [data-t=people]');
+  assert.match(await page.textContent('#shoutPeople'), /No one yet/);
   await page.click('#shoutAdd');
   await page.selectOption('#shoutPeople .so-pr select', 'twitch');
   await page.fill('#shoutPeople .so-pr input[aria-label="Their name"]', 'Tinroof'); await page.press('#shoutPeople .so-pr input[aria-label="Their name"]', 'Tab');
@@ -234,6 +238,7 @@ test('Settings › Chat › Shoutouts: off by default (Twitch\'s own too); the m
   assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.shoutPeople')).map(r => [r.site, r.login, r.name, r.msg])), [['twitch', 'tinroof', 'Tinroof', 'Captain {name} {link}']]);
   await page.click('#shoutPeople [data-cmd="settings.shoutPersonRemove"]');
   assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.shoutPeople'))), []);
+  await page.click('#soTabs [data-t=message]');
   await page.uncheck('#shoutOnSet');
   assert.equal(await page.locator('#stage .win.chat [data-a=shout]').first().evaluate(b => b.hidden), true);
 });

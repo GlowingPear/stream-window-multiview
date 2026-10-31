@@ -1,4 +1,4 @@
-/* Shoutouts (chat/shoutout.js): ALL's buttons and tags, the recent chatters list, a run's strip, Settings › Chat › Shoutouts */
+/* Shoutouts (chat/shoutout.js): ALL's buttons and tags, the recent chatters list, a run's strip, Settings › Shoutouts */
 
 /* ALL: the hover bar's button, a raid's button, the line menu's items, the ✓ SO tag */
 .al-hb button.al-so-b{color:var(--accent)}
@@ -62,8 +62,9 @@ button.al-so:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 .so-pace i{display:grid}
 .so-pace svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2}
 
-/* Settings › Chat › Shoutouts */
-.st-subpane[data-t="shoutouts"]:has(#shoutOnSet:not(:checked)) .so-opts{opacity:.55}
+/* Settings › Shoutouts */
+.st-pane[data-s="shoutouts"]:has(#shoutOnSet:not(:checked)) .so-opts{opacity:.55}
+.so-empty{margin-top:10px;padding:18px 14px;border:1px dashed var(--line2);border-radius:10px;color:var(--muted);font-size:12.5px;text-align:center}
 .so-tpl{display:flex;flex-direction:column;gap:8px;margin-top:6px}
 .so-tpl textarea{width:100%;box-sizing:border-box;min-height:46px;resize:vertical;font:inherit;font-size:13px;line-height:1.5;padding:9px 11px}
 .so-tok{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:11.5px;color:var(--muted)}

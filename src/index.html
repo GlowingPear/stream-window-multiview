@@ -271,6 +271,7 @@
       <button data-s="windows">Windows</button>
       <button data-s="layouts" class="main-only">Layouts</button>
       <button data-s="chat">Chat</button>
+      <button data-s="shoutouts">Shoutouts</button>
       <button data-s="themes">Themes</button>
       <button data-s="search">Search box</button>
       <div class="st-rail-sec">Sites</div>
@@ -336,7 +337,7 @@
       </section>
       <section class="st-pane" data-s="chat" hidden>
         <h4>Chat</h4><p class="st-sub">How chat windows look and behave.</p>
-        <div class="st-tabs" id="chatTabs"><button data-t="box" class="on">Chat box</button><button data-t="messages" class="desk-only">Messages</button><button data-t="emotes">Emotes</button><button data-t="translate">Translation</button><button data-t="shoutouts">Shoutouts</button><button data-t="bots" class="desk-only">Chat bots</button></div>
+        <div class="st-tabs" id="chatTabs"><button data-t="box" class="on">Chat box</button><button data-t="messages" class="desk-only">Messages</button><button data-t="emotes">Emotes</button><button data-t="translate">Translation</button><button data-t="bots" class="desk-only">Chat bots</button></div>
         <div class="st-subpane" data-t="box">
         <label class="st-row"><span class="st-t">Channel name in chat boxes<small>Chat boxes show the channel you're typing in instead of the site's &quot;Send a message&quot;, so you don't post in the wrong chat. A box that says why you can't chat (followers-only, slow mode, sign in) keeps the site's words. Kick, Twitch and YouTube.</small></span><input type="checkbox" class="st-sw" id="chatNameSet"></label>
         <div class="st-row cn-row" id="chatNameRow" hidden><span class="st-t">Text in the box<small><b>{channel}</b> is the channel's name. Empty: just the name.</small></span>
@@ -355,27 +356,6 @@
         <div class="st-row"><span class="st-t"><label for="emoteSet">Emote preview in chats</label><small>Point at an emote in a chat to see it bigger, with its name. Always in the right-click menu on an emote too.<span class="st-ex"><img id="emoteSample" alt="pearWave" width="28" height="28"><button type="button" class="linkish" id="emoteExample">Show example</button></span></small></span><input type="checkbox" class="st-sw" id="emoteSet"></div>
         <label class="st-row desk-only"><span class="st-t">Highlight new emotes<small>Emotes a channel added since you last opened its chat glow in that chat until you point at one, and a message names them when the chat opens. Kick and Twitch, with 7TV, BetterTTV and FrankerFaceZ. The first time you open a channel there's nothing to compare with yet.</small></span><input type="checkbox" class="st-sw" id="newEmoteSet"></label>
         </div>
-        <div class="st-subpane" data-t="shoutouts" hidden>
-        <label class="st-row"><span class="st-t">Shout out buttons<small>A shout out button on chat messages and raids, in ALL and in Kick and Twitch chats. One click sends your shoutout to the chat the message is in. Off: no buttons anywhere.</small></span><input type="checkbox" class="st-sw" id="shoutOnSet"></label>
-        <div class="so-opts">
-        <div class="st-sec">Message</div>
-        <div class="so-tpl" data-st="Shoutout message" data-st-sub="{name}, {link}, {links}, {game}">
-          <textarea class="st-in" id="shoutText" rows="2" maxlength="450" spellcheck="false" aria-label="Shoutout message"></textarea>
-          <div class="so-tok" id="shoutTokens">Add:</div>
-          <div class="so-prev" aria-label="How it looks"><span class="lbl">Preview</span><span class="so-pl" id="shoutPreview"></span></div>
-        </div>
-        <div class="st-sec st-head">People<button class="btn" id="shoutAdd" type="button">Add</button></div>
-        <p class="st-sub" style="margin:2px 0 0">Their own message, or another channel instead. A linked streamer's row covers all their sites.</p>
-        <div class="so-ppl" id="shoutPeople" data-st="People" data-st-sub="Their own shoutout message, or another channel"></div>
-        <div class="st-sec">Sending</div>
-        <label class="st-row"><span class="st-t">Send straight away<small>One click sends your shoutout. Off: it goes in the chat box (ALL's, or the site's own) for you to check and press Enter; Twitch's own shoutout isn't run then. A run of recent chatters still sends, after its list.</small></span><input type="checkbox" class="st-sw" id="shoutSendSet"></label>
-        <label class="st-row"><span class="st-t">Twitch's own shoutout too<small>Where you're a Twitch moderator, also run /shoutout for Twitch's follow card (it allows one every 2 minutes).</small></span><input type="checkbox" class="st-sw" id="shoutTwitchSet"></label>
-        <div class="st-row"><span class="st-t">Ask before shouting out the same person again<small>Within this long of their last shoutout</small></span><select id="shoutAgainSet" aria-label="Ask before shouting out the same person again"><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="60">1 hour</option><option value="0">Never ask</option></select></div>
-        <div class="st-row"><span class="st-t">Recent chatters<small>How many a run shouts out, up to 20, one a second</small></span><div class="zoom" id="shoutRunSet"><button type="button" data-z="-1" aria-label="Fewer">−</button><span class="zoomPct">5</span><button type="button" data-z="1" aria-label="More">+</button></div></div>
-        <label class="st-row"><span class="st-t">Only people who stream<small>A run leaves out chatters with no streams found on Kick or Twitch, and can list them to add back. Off: everyone who chatted.</small></span><input type="checkbox" class="st-sw" id="shoutStreamersSet"></label>
-        <label class="st-row"><span class="st-t">Show who first<small>Before a run starts, list who it will shout out so you can untick anyone. Off: it starts straight away with everyone it would tick. Either way, ⇧-click (or ⇧Enter in the search box) does the other.</small></span><input type="checkbox" class="st-sw" id="shoutListSet"></label>
-        </div>
-        </div>
         <div class="st-subpane" data-t="translate" hidden>
         <label class="st-row"><span class="st-t">Translate new messages in every chat<small>Every chat translates new messages into your language, each with a TRANSLATED · &lt;language&gt; badge. Right-click a chat to stop it there. Off: right-click a chat and choose Translate this chat, or Translate new messages too. The messages are sent to Google Translate; nothing is sent until you switch this on or choose it in a chat.</small></span><input type="checkbox" class="st-sw" id="trAllSet"></label>
         </div>
@@ -387,6 +367,35 @@
         <div class="st-sec">Used by</div>
         <div class="st-row"><span class="st-t">Mentions<small>Messages from these names never alert you</small></span><div class="seg" data-al="mention.botsMode" role="radiogroup" aria-label="Chat bots for mentions"><button type="button" data-v="shared" role="radio">This list</button><button type="button" data-v="own" role="radio">Their own</button></div></div>
         <div class="st-row"><span class="st-t">Spam alerts<small>Messages from these names are never flagged</small></span><div class="seg" data-al="spam.botsMode" role="radiogroup" aria-label="Chat bots for spam alerts"><button type="button" data-v="shared" role="radio">This list</button><button type="button" data-v="own" role="radio">Their own</button><button type="button" data-v="both" role="radio">This list + their own</button></div></div>
+        </div>
+      </section>
+      <section class="st-pane" data-s="shoutouts" hidden>
+        <h4>Shoutouts</h4><p class="st-sub">Shout out a streamer in chat with one click, or the last few who chatted.</p>
+        <div class="st-tabs" id="soTabs" role="tablist" aria-label="Shoutouts"><button role="tab" data-t="message" class="on" aria-selected="true">Message</button><button role="tab" data-t="people" aria-selected="false" tabindex="-1">People</button><button role="tab" data-t="runs" aria-selected="false" tabindex="-1">Recent chatters</button></div>
+        <div class="st-subpane" data-t="message">
+        <label class="st-row"><span class="st-t">Shout out buttons<small>A shout out button on chat messages and raids, in ALL and in Kick and Twitch chats. One click sends your shoutout to the chat the message is in. Off: no buttons anywhere.</small></span><input type="checkbox" class="st-sw" id="shoutOnSet"></label>
+        <div class="so-opts">
+        <div class="st-sec">Message</div>
+        <div class="so-tpl" data-st="Shoutout message" data-st-sub="{name}, {link}, {links}, {game}">
+          <textarea class="st-in" id="shoutText" rows="2" maxlength="450" spellcheck="false" aria-label="Shoutout message"></textarea>
+          <div class="so-tok" id="shoutTokens">Add:</div>
+          <div class="so-prev" aria-label="How it looks"><span class="lbl">Preview</span><span class="so-pl" id="shoutPreview"></span></div>
+        </div>
+        <div class="st-sec">Sending</div>
+        <label class="st-row"><span class="st-t">Send straight away<small>One click sends your shoutout. Off: it goes in the chat box (ALL's, or the site's own) for you to check and press Enter; Twitch's own shoutout isn't run then. A run of recent chatters still sends, after its list.</small></span><input type="checkbox" class="st-sw" id="shoutSendSet"></label>
+        <label class="st-row"><span class="st-t">Twitch's own shoutout too<small>Where you're a Twitch moderator, also run /shoutout for Twitch's follow card (it allows one every 2 minutes).</small></span><input type="checkbox" class="st-sw" id="shoutTwitchSet"></label>
+        <div class="st-row"><span class="st-t">Ask before shouting out the same person again<small>Within this long of their last shoutout</small></span><select id="shoutAgainSet" aria-label="Ask before shouting out the same person again"><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="60">1 hour</option><option value="0">Never ask</option></select></div>
+        </div>
+        </div>
+        <div class="st-subpane so-opts" data-t="people" hidden>
+        <div class="st-sec st-head">People<button class="btn" id="shoutAdd" type="button">Add</button></div>
+        <p class="st-sub" style="margin:2px 0 0">Their own message, or another channel instead. A linked streamer's row covers all their sites.</p>
+        <div class="so-ppl" id="shoutPeople" data-st="People" data-st-sub="Their own shoutout message, or another channel"></div>
+        </div>
+        <div class="st-subpane so-opts" data-t="runs" hidden>
+        <div class="st-row"><span class="st-t">Recent chatters<small>How many a run shouts out, up to 20, one a second</small></span><div class="zoom" id="shoutRunSet"><button type="button" data-z="-1" aria-label="Fewer">−</button><span class="zoomPct">5</span><button type="button" data-z="1" aria-label="More">+</button></div></div>
+        <label class="st-row"><span class="st-t">Only people who stream<small>A run leaves out chatters with no streams found on Kick or Twitch, and can list them to add back. Off: everyone who chatted.</small></span><input type="checkbox" class="st-sw" id="shoutStreamersSet"></label>
+        <label class="st-row"><span class="st-t">Show who first<small>Before a run starts, list who it will shout out so you can untick anyone. Off: it starts straight away with everyone it would tick. Either way, ⇧-click (or ⇧Enter in the search box) does the other.</small></span><input type="checkbox" class="st-sw" id="shoutListSet"></label>
         </div>
       </section>
       <section class="st-pane" data-s="accounts" hidden>

@@ -21,9 +21,8 @@ test('Settings > Chat: after Layouts, every chat setting in its tab; General and
   assert.ok(await page.$eval('#settingsDlg .st-rail [data-s=chat] svg', s => !!s), 'with its icon');
   await page.click('#settingsDlg .st-rail [data-s=chat]');
   assert.equal(await page.textContent('#settingsDlg [data-s=chat] h4'), 'Chat');
-  assert.deepEqual(await shown(page), [['Chat box', ['chatNameSet']], ['Emotes', ['emoteSet']], ['Translation', ['trAllSet']],
-    ['Shoutouts', ['shoutOnSet', 'shoutSendSet', 'shoutTwitchSet', '', '', 'shoutStreamersSet', 'shoutListSet']]], 'Messages and Chat bots only in the desktop app');
-  assert.deepEqual(await page.$$eval('#chatTabs button', l => l.map(b => b.textContent)), ['Chat box', 'Messages', 'Emotes', 'Translation', 'Shoutouts', 'Chat bots']);
+  assert.deepEqual(await shown(page), [['Chat box', ['chatNameSet']], ['Emotes', ['emoteSet']], ['Translation', ['trAllSet']]], 'Messages and Chat bots only in the desktop app');
+  assert.deepEqual(await page.$$eval('#chatTabs button', l => l.map(b => b.textContent)), ['Chat box', 'Messages', 'Emotes', 'Translation', 'Chat bots']);
   // one tab at a time
   await page.click('#chatTabs [data-t=box]');
   assert.deepEqual(await page.$$eval('#settingsDlg [data-s=chat] .st-subpane', l => l.filter(p => !p.hidden).map(p => p.dataset.t)), ['box']);
