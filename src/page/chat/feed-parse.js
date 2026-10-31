@@ -229,9 +229,11 @@ function kickEvents(ev, d){
     return { ...event('gs-' + t + '-' + who, who, [{ strong: who }, { text: ' gifted ' }, { strong: plural(got.length || 1, 'sub', 'subs') }]),
       gift: { id: String(d.correlation_id || ''), count: got.length, to: got.map(u => ({ name: u, login: u.toLowerCase() })) } };
   }
+  // Kick sends one sub as both (on the chat's subscription and the channel's), within a moment: one line, by who (within
+  // 5 minutes), whichever comes first
   if (ev === 'SubscriptionEvent' || ev === 'ChannelSubscriptionEvent'){
     const who = String(d.username || 'Someone');
-    return event('sub-' + t + '-' + who, who, [{ strong: who }, { text: ' subscribed' }, ...(+d.months > 1 ? [{ text: ' · ' }, { strong: plural(d.months, 'month', 'months') }] : [])]);
+    return event('sub-' + who.toLowerCase() + '-' + Math.floor(t / 300000), who, [{ strong: who }, { text: ' subscribed' }, ...(+d.months > 1 ? [{ text: ' · ' }, { strong: plural(d.months, 'month', 'months') }] : [])]);
   }
   // a raid coming in: StreamHostedEvent on the raided channel's chat, StreamHostEvent on its other subscription (both come,
   // in their own shapes): one line for the raid, by who raided (within 10 minutes), whichever comes first
@@ -470,7 +472,7 @@ const IGNORED = {
     KicksLeaderboardUpdated: 'the Kicks leaderboard', NewSubscriberUpdatedEvent: 'the sub count (ChannelSubscriptionEvent is the sub)',
     NewActivityFeedEvent: 'the activity feed (the same subs and follows)', StopStreamBroadcast: 'the stream ending', StreamerIsLive: 'the stream starting',
     GamificationWatchTimeGoalReached: 'your watch-time goal', PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)',
-    KicksBalanceUpdated: 'your own Kicks balance (on your private channel)' },
+    KicksBalanceUpdated: 'your own Kicks balance (on your private channel)', ChatMessageSentEvent: 'a sub as a line in Kick’s chat (the same sub: SubscriptionEvent)' },
   twitch: { CAP: 'the connection’s own', JOIN: 'the connection’s own', PART: 'the connection’s own', GLOBALUSERSTATE: 'the connection’s own (you)', USERSTATE: 'the connection’s own (you)',
     RECONNECT: 'the connection’s own', 'hermes:welcome': 'the connection’s own', 'hermes:authenticateResponse': 'the connection’s own',
     'hermes:subscribeResponse': 'the connection’s own', 'hermes:unsubscribeResponse': 'the connection’s own', 'hermes:reconnect': 'the connection’s own',
@@ -485,7 +487,9 @@ const IGNORED = {
     'hermes:channel-last-viewed-content-updated': 'what you last watched', 'hermes:global-last-viewed-content-updated': 'what you last watched',
     'hermes:mystery-gift-purchase': 'gifted subs being bought (the gift is USERNOTICE:submysterygift)',
     'hermes:update-message': 'a message edited (it carries only the message’s id, not its new words)', 'hermes:?': 'the connection’s own (no type)',
-    'hermes:extension_message': 'an extension’s own message (its panel in Twitch’s chat)', 'hermes:chat_rich_embed': 'a link’s preview card (the link is in its message)',
+    'hermes:extension_message': 'an extension’s own message (its panel in Twitch’s chat)',
+    'hermes:stream-up': 'the stream starting (the live check says so)', 'hermes:favorite-channel-update': 'streaming together (Twitch’s own panel)', 'hermes:collaboration-status-refetch': 'streaming together (Twitch’s own panel)',
+    'hermes:chat-highlight': 'Twitch’s marks on a message for moderators (a raider’s, a first-time chatter’s)', 'hermes:chat_rich_embed': 'a link’s preview card (the link is in its message)',
     ...Object.fromEntries(['slow_on', 'slow_off', 'followers_on', 'followers_on_zero', 'followers_off', 'subs_on', 'subs_off', 'emote_only_on', 'emote_only_off', 'r9k_on', 'r9k_off']
       .map(n => ['NOTICE:' + n, 'the chat’s modes (shown above the box)'])) },
   youtube: { 'addChatItemAction:liveChatPlaceholderItemRenderer': 'an empty stand-in for a message YouTube holds back (for review; let through, replaceChatItemAction brings it)',

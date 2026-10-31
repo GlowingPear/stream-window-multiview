@@ -191,6 +191,8 @@ test('YouTube: a gift is an event (its words, the gift picked out); a held messa
   for (const k of ['addChatItemAction:liveChatPlaceholderItemRenderer', 'addChatItemAction:liveChatViewerEngagementMessageRenderer', 'addLiveChatTickerItemAction:liveChatTickerPaidMessageItemRenderer',
     'addLiveChatTickerItemAction:liveChatTickerSponsorItemRenderer']) assert.ok(ignoredWhy('youtube', k), k);
   assert.equal(ignoredWhy('youtube', 'addChatItemAction:somethingNew'), '');
+  for (const [s, k] of [['kick', 'ChatMessageSentEvent'], ['twitch', 'hermes:stream-up'], ['twitch', 'hermes:favorite-channel-update'],
+    ['twitch', 'hermes:collaboration-status-refetch'], ['twitch', 'hermes:chat-highlight']]) assert.ok(ignoredWhy(s, k), k);
   for (const [s, a] of [['youtube', YT('somethingNew', { id: 'x' })], ['youtube', gift('sent x')], ['youtube', 'x'], ['youtube', null], ['twitch', stand]]) assert.equal(leftOut(s, a), false);
   // YouTube's own housekeeping (that you're in the chat, its moderation state, parts of its page): ignored, and its key is its kind
   const own = [{ clickTrackingParams: 'x', liveChatReportPresenceCommand: { clientMessageId: 'c' } }, { liveChatReportModerationStateCommand: {} }, { clickTrackingParams: 'x', elementsCommand: { setEntityCommand: {} } }];
@@ -212,6 +214,8 @@ test('Kick: a reward redeemed (with text: a message with the reward; without: an
   assert.equal(parseKick(KF('GiftedSubscriptionsEvent', { gifter_username: 'brightwick', gifted_usernames: ['a', 'b', 'c'] })).text, 'brightwick gifted 3 subs');
   assert.equal(parseKick(KF('SubscriptionEvent', { username: 'jean', months: 38 })).text, 'jean subscribed · 38 months');
   assert.equal(parseKick(KF('SubscriptionEvent', { username: 'jean', months: 1 })).text, 'jean subscribed');
+  // the same sub on the channel's subscription too: one id, so ALL keeps one line
+  assert.equal(parseKick(KF('ChannelSubscriptionEvent', { username: 'Jean', user_ids: [3] })).id, parseKick(KF('SubscriptionEvent', { username: 'jean', months: 9 })).id);
   const h = parseKick(KF('StreamHostEvent', { host_username: 'novalynx', number_viewers: 120, optional_message: 'go say hi' }));
   assert.equal(h.text, 'novalynx raided with 120 viewers'); assert.deepEqual(h.parts, [{ text: 'go say hi' }]);
   // Kick sends the same raid as StreamHostedEvent too: the same id, so ALL keeps one line
