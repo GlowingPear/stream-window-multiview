@@ -16,6 +16,19 @@ test('Twitch: a message with its id, badges, colour and emotes (by character, no
   assert.deepEqual(parseTwitch(TW({ badges: 'lead_moderator/1,subscriber/2006', 'display-name': 'Leadfox', id: 'a2' }, ':leadfox!l@l PRIVMSG #quietkoala :hi')).badges, ['mod', 'sub']);
 });
 
+test('Twitch: a giant emote; a shared chat\'s message from another channel (its channel, its badges there, its id in every chat of the session)', async () => {
+  const { parseTwitch, KNOWN } = await load();
+  const g = parseTwitch(TW({ 'msg-id': 'gigantified-emote-message', emotes: '25:0-4', 'emote-only': '1', id: 'g1' }, ':a!a@a PRIVMSG #q :Kappa'));
+  assert.equal(g.giant, true);
+  assert.deepEqual(g.parts, [{ emote: 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0', name: 'Kappa' }]);
+  assert.ok(KNOWN.twitch['PRIVMSG:gigantified-emote-message']);
+  const other = parseTwitch(TW({ badges: '', 'room-id': '100', 'source-room-id': '200', 'source-id': 's1', id: 'm1', 'source-badges': 'subscriber/18,vip/1', 'source-badge-info': 'subscriber/21' }, ':a!a@a PRIVMSG #q :hi'));
+  assert.deepEqual([other.from, other.sourceId, other.badges, other.pics], ['200', 's1', ['sub', 'vip'], [{ set: 'subscriber', v: '18', months: 21 }, { set: 'vip', v: '1' }]]);
+  const own = parseTwitch(TW({ badges: 'moderator/1', 'room-id': '100', 'source-room-id': '100', 'source-id': 'm2', id: 'm2', 'source-badges': 'moderator/1' }, ':a!a@a PRIVMSG #q :hi'));
+  assert.deepEqual([own.from, own.sourceId, own.badges], [undefined, 'm2', ['mod']], 'from this chat itself: no other channel');
+  assert.equal(parseTwitch(TW({ id: 'x' }, ':a!a@a PRIVMSG #q :hi')).sourceId, undefined, 'not a shared chat');
+});
+
 test('Twitch: replies, /me, Highlight my message, cheers, escaped tags', async () => {
   const { parseTwitch } = await load();
   const r = parseTwitch(TW({ 'display-name': 'Quill', id: 'r1', 'reply-parent-msg-id': 'p1', 'reply-parent-display-name': 'You', 'reply-parent-user-login': 'you', 'reply-parent-msg-body': 'is\\sthat\\sthe\\sdefault?' },
@@ -192,7 +205,8 @@ test('YouTube: a gift is an event (its words, the gift picked out); a held messa
     'addLiveChatTickerItemAction:liveChatTickerSponsorItemRenderer']) assert.ok(ignoredWhy('youtube', k), k);
   assert.equal(ignoredWhy('youtube', 'addChatItemAction:somethingNew'), '');
   for (const [s, k] of [['kick', 'ChatMessageSentEvent'], ['twitch', 'hermes:stream-up'], ['twitch', 'hermes:favorite-channel-update'],
-    ['twitch', 'hermes:collaboration-status-refetch']]) assert.ok(ignoredWhy(s, k), k);
+    ['twitch', 'hermes:collaboration-status-refetch'], ['kick', 'ChatSettingsChanged'], ['twitch', 'hermes:automatic-reward-redeemed'], ['twitch', 'hermes:group-updated'], ['twitch', 'hermes:session-started'],
+    ['twitch', 'hermes:slot-settings-changed'], ['twitch', 'hermes:call-ended']]) assert.ok(ignoredWhy(s, k), k);
   for (const [s, a] of [['youtube', YT('somethingNew', { id: 'x' })], ['youtube', gift('sent x')], ['youtube', 'x'], ['youtube', null], ['twitch', stand]]) assert.equal(leftOut(s, a), false);
   // YouTube's own housekeeping (that you're in the chat, its moderation state, parts of its page): ignored, and its key is its kind
   const own = [{ clickTrackingParams: 'x', liveChatReportPresenceCommand: { clientMessageId: 'c' } }, { liveChatReportModerationStateCommand: {} }, { clickTrackingParams: 'x', elementsCommand: { setEntityCommand: {} } }];
