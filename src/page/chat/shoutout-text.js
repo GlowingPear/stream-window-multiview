@@ -84,7 +84,7 @@ function pickRun(lines, { n = 5, me = [], host = [], streamsOf = () => true, onl
     if (mine.has(login) || mine.has(m.site + ':' + login)){ left.you = true; continue; }
     if (owner.has(login) || owner.has(m.site + ':' + login)){ left.host = true; continue; }
     if (m.bot){ left.bots.add(login); continue; }
-    const p = { site: m.site, login, name: m.name || m.login, streamer: m.streamer || '', at: m.t || 0 };
+    const p = { site: m.site, login, name: m.name || m.login, streamer: m.streamer || '', at: m.t || 0, ch: m.ch || '', named: !!m.named, raid: !!m.raid };
     if (onlyStreamers && !streamsOf(p)){ left.viewers.push(p); continue; }
     const last = sentAt(p), recent = againMs > 0 && last && now - last < againMs;
     list.push({ ...p, on: !recent, why: recent ? 'recent' : '' });
@@ -92,4 +92,4 @@ function pickRun(lines, { n = 5, me = [], host = [], streamsOf = () => true, onl
   return { list, left: { ...left, bots: left.bots.size } };
 }
 
-export { RUN_MAX, SHOUT_MAX, SHOUT_TOKENS, SHOUT_TPL, fillShout, kickTries, pickRun, shoutFor, shoutLink, shoutRow, streams };
+export { fillShout, kickTries, pickRun, RUN_MAX, SHOUT_TOKENS, SHOUT_TPL, shoutFor, shoutLink, shoutRow, streams };

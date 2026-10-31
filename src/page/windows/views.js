@@ -3,6 +3,7 @@ import { feedReady } from '../chat/all-chat.js';
 import { blowOn, blowUp, blownWin } from '../chat/blow-up.js';
 import { syncChatName } from '../chat/chat-name.js';
 import { chatZoom } from '../chat/chat-zoom.js';
+import { shoutInSite } from '../chat/shoutout.js';
 import { startStick } from '../chat/stick-bottom.js';
 import { autoTrFor } from '../chat/translate.js';
 import { resolveYt } from '../chat/view-menu.js';
@@ -158,7 +159,8 @@ function mountView(w){
       if (w.kind === 'chat') runIn(frame, `(${tabKeyAgent})();${tabKeyJs(w)}`);   // Tab in an empty chat box: the next site's tab (windows/frames.js)
       if (w.kind === 'chat') runIn(frame, `${TRANSLATE_JS};${autoTrFor(w.channel) ? 'window.__kmvTr.start(true)' : ''}`);
       if (w.kind === 'chat' && platform(w.channel).pageCommands) runIn(frame, KICK_CMD_JS);
-      if (w.kind === 'chat') syncChatName(w);                // Channel name in chat boxes (chat/chat-name.js)
+      if (w.kind === 'chat') syncChatName(w);
+      if (w.kind === 'chat') shoutInSite(w, frame);           // Shoutouts: the buttons in Kick's and Twitch's chats (chat/shoutout.js)                // Channel name in chat boxes (chat/chat-name.js)
       if (w.kind === 'chat') startStick(w);                  // stays at its newest messages (chat/stick-bottom.js)
       if (w.kind === 'chat') focusBoxNow(w);                 // Tab switched to it while it loaded (windows/frames.js)
       applyChatView(w);

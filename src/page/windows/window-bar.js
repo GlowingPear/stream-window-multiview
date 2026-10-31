@@ -28,7 +28,7 @@ function fitBar(bar){
   bar.querySelectorAll('.btns .ovf').forEach(b => b.classList.remove('ovf'));
   const cfg = barButtons();
   if (more){
-    for (const a of [...cfg.always, 'link']){ const b = bar.querySelector(`.btns [data-a=${a}]`); if (b) b.classList.add('ovf'); }   // (Channel settings… only in ⋯)
+    for (const a of [...cfg.always, 'link', 'shout']){ const b = bar.querySelector(`.btns [data-a=${a}]`); if (b) b.classList.add('ovf'); }   // (Channel settings… and Shout out recent chatters only in ⋯)
     more.hidden = !bar.querySelector('.btns .ovf:not([hidden])');
   }
   name.style.minWidth = ''; name.style.flex = 'none';
@@ -79,7 +79,7 @@ function openBarMenu(more){
   barMenu.style.top = Math.min(innerHeight - barMenu.offsetHeight - 8, r.bottom + 4) + 'px';
 }
 // The top row's short names (a word each, under its icon)
-const TILE_NAMES = { link: 'Settings', profile: 'Profile', reload: 'Reload', max: 'Maximize', at: 'Mentions', chat: 'Add chat', feat: 'Highlight', overlay: 'Overlay', like: 'Like' };
+const TILE_NAMES = { shout: 'Shout out', link: 'Settings', profile: 'Profile', reload: 'Reload', max: 'Maximize', at: 'Mentions', chat: 'Add chat', feat: 'Highlight', overlay: 'Overlay', like: 'Like' };
 // ALL's ⋯ menu: what's for the whole streamer, then a line for each site with its buttons (icons, each with its tooltip)
 function allBarMenu(w, more){
   const ovf = [...more.closest('.btns').querySelectorAll('.ovf:not([hidden])')], keys = new Set(ovf.map(b => b.dataset.a)), chs = tabChannels(w);

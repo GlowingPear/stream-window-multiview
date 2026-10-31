@@ -148,4 +148,4 @@ function init(){
   window.winActions = w => winActions(w).map(x => x.title);   // for the tests
 }
 
-export { goToWin, init, winActions };
+export { activeWin, goToWin, init, winActions };
