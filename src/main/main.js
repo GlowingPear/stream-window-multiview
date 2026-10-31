@@ -127,17 +127,21 @@ process.on('uncaughtExceptionMonitor', e => devError('main', 'crash', errText(e)
 app.on('will-quit', saveErrors);
 // Requests to the sites (Node's fetch: live checks, follows, profiles), each noted as it's answered.
 const nodeFetch = globalThis.fetch;
-globalThis.fetch = async (url, opts = {}) => {
+const loggedFetch = via => async (url, opts = {}) => {
   const href = typeof url === 'string' ? url : url && (url.href || url.url), d = describeRequest(href, opts && opts.body);
-  if (!d) return nodeFetch(url, opts);
+  if (!d) return via(url, opts);
   const t0 = Date.now(), method = (opts && opts.method) || 'GET';
   try {
-    const r = await nodeFetch(url, opts);
+    const r = await via(url, opts);
     siteLog.record({ ...d, method, url: href, status: r.status, ms: Date.now() - t0, request: devOn && typeof opts.body === 'string' ? opts.body : undefined,
       body: devOn ? await r.clone().text().catch(() => null) : undefined });
     return r;
   } catch (e) { siteLog.record({ ...d, method, url: href, status: 0, ms: Date.now() - t0, request: devOn && typeof opts.body === 'string' ? opts.body : undefined, error: e && e.message }); throw e; }
 };
+globalThis.fetch = loggedFetch(nodeFetch);
+// YouTube's pages, through Chromium's own network (as the app's windows load them): their answers' headers outgrew
+// what Node's fetch takes (16 KB; it fails with "fetch failed", UND_ERR_HEADERS_OVERFLOW), so every live page check failed
+const pageFetch = loggedFetch((url, opts) => net.fetch(url, opts));
 // a request made from inside a site's page (Kick's, with your login): what it got
 const notePageRequest = (url, t0, r) => { const d = describeRequest(url); if (d) siteLog.record({ ...d, url, status: r ? r.status : 0, ms: Date.now() - t0, body: devOn && r && typeof r.body === 'string' ? r.body : undefined }); };
 appIpc.on('dev:set', (_e, on) => { devOn = !!on; });
@@ -857,7 +861,7 @@ async function fetchTwitch(login) {
 }
 async function fetchYouTube(ch) {
   try {
-    const r = await fetch(ytLiveUrl(ch), { headers: { ...BROWSER_HEADERS(), Cookie: 'SOCS=CAI; CONSENT=YES+1' }, signal: netSignal() });
+    const r = await pageFetch(ytPage(ytLiveUrl(ch)), { headers: { ...BROWSER_HEADERS(), Cookie: 'SOCS=CAI; CONSENT=YES+1' }, signal: netSignal() });
     if (r.status === 404) return { missing: true };
     if (r.ok) return parseYouTube(await r.text(), ch);
   } catch {}
@@ -941,6 +945,8 @@ function ytKeyChanged() {
 }
 const YT_API = devEnv('SMV_YT_API') || 'https://www.googleapis.com/youtube/v3';   // tests point this at a stand-in
 const YT_FEED = devEnv('SMV_YT_FEED') || 'https://www.youtube.com/feeds/videos.xml';   // and this
+const YT_PAGES = devEnv('SMV_YT_PAGES');   // and YouTube's own pages (its live pages)
+const ytPage = url => YT_PAGES ? url.replace(/^https:\/\/www\.youtube\.com/, YT_PAGES) : url;
 // One YouTube Data API call. Error answers go to the gate (which decides when to use the key again) and throw.
 async function ytApi(pathAndQuery, key = ytKey) {
   const r = await fetch(`${YT_API}/${pathAndQuery}&key=${encodeURIComponent(key)}`, { headers: { Accept: 'application/json' }, signal: netSignal() });
@@ -1254,7 +1260,7 @@ async function fetchProfile(ch) {
   if (/^yt:/.test(ch)) {
     if (/^yt:v:/.test(ch)) return { missing: true, video: true };
     const url = ch.startsWith('yt:c:') ? 'https://www.youtube.com/channel/' + ch.slice(5) : 'https://www.youtube.com/' + ch.slice(3);
-    const r = await fetch(url, { headers: { ...BROWSER_HEADERS(), Cookie: 'SOCS=CAI; CONSENT=YES+1' } });
+    const r = await pageFetch(url, { headers: { ...BROWSER_HEADERS(), Cookie: 'SOCS=CAI; CONSENT=YES+1' } });
     if (r.status === 404) return { missing: true };
     return r.ok ? parseYouTubeChannel(await r.text(), ch) : null;
   }
