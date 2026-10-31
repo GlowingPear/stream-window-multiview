@@ -27,7 +27,7 @@ function soCardChs(card){
 // Its picture: theirs (when the site gave one), else their initials on their colour; a channel on one site wears its badge
 function soAvatar(card, small){
   const chs = soCardChs(card);
-  const av = element('span', { class: 'sc-av' + (small ? ' sm' : ''), style: { background: `hsl(${svHue(card.ch)} 42% 36%)` } }, soInitials(card.name || loginOfCh(card.ch)));
+  const av = element('span', { class: 'sc-av' + (small ? ' sm' : ''), style: { background: svHue(card.ch) } }, soInitials(card.name || loginOfCh(card.ch)));
   if (card.avatar && /^https:\/\//.test(card.avatar)){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = card.avatar; av.appendChild(im); }
   if (chs.length === 1) av.appendChild(element('i', { class: 'pi pi-' + siteOfCh(chs[0]) }, soSiteName(siteOfCh(chs[0]))[0]));
   return av;

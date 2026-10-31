@@ -70,7 +70,7 @@ function soCards(){
   settings.set('shoutChannels', cards); settings.remove('shoutPeople');
   return cards;
 }
-const soSaveCards = cards => { settings.set('shoutChannels', cards); store.changed('shoutouts'); };
+const soSaveCards = cards => { if (!Array.isArray(cards)) return; settings.set('shoutChannels', cards); store.changed('shoutouts'); };
 // A linked streamer's channels (a card's)
 const soAccountsOf = card => { const s = card && card.streamer && listStreamers().find(x => x.id === card.streamer); return s ? s.accounts : []; };
 /* Cards not checked yet (moved from #300's rows, or added without a lookup): found on Kick, else Twitch, and a linked

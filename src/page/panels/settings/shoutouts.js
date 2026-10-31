@@ -38,12 +38,12 @@ function addToken(t){
 }
 /* ---- Channels: a card for each channel with a shoutout of its own (panels/settings/shout-cards.js draws one), and adding
    one by looking it up. Open cards stay open as the list is drawn again. ---- */
-let openCards = new Set();
+let openCards = new Set(), pendingCards = null;
 const cardKey = c => c.streamer || c.ch;
 function saveCard(card){
   const cards = soCards(), i = cards.findIndex(c => cardKey(c) === cardKey(card));
   if (i >= 0) cards[i] = card; else cards.push(card);
-  saveCardsSoon(cards);
+  pendingCards = cards; saveCardsSoon();
 }
 function renderChannels(){
   const cards = soCards();
@@ -78,7 +78,7 @@ function init(){
     document.querySelectorAll('.st-pane[data-s="shoutouts"] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
   });
   saveText = soon(() => { settings.set('shoutText', textEl.value.trim() === SHOUT_TPL ? '' : textEl.value); store.changed('shoutouts'); }, 500);
-  saveCardsSoon = soon(cards => soSaveCards(cards), 400);
+  saveCardsSoon = soon(() => { if (pendingCards) soSaveCards(pendingCards); pendingCards = null; }, 400);   // (soon calls it with nothing: the cards wait in pendingCards)
   const flag = (sel, key) => { $(sel).onchange = e => { settings.set(key, e.target.checked ? '1' : '0'); store.changed('shoutouts'); }; };
   flag('#shoutOnSet', 'shoutOn'); flag('#shoutSendSet', 'shoutSend'); flag('#shoutModSet', 'shoutModOnly'); flag('#shoutTwitchSet', 'shoutTwitch'); flag('#shoutStreamersSet', 'shoutStreamers'); flag('#shoutListSet', 'shoutListFirst');
   $('#shoutAgainSet').onchange = e => { settings.set('shoutAgain', e.target.value); store.changed('shoutouts'); };
