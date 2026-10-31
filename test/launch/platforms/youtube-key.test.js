@@ -20,7 +20,7 @@ const T = { timeout: 45000 };   // per test, so one stuck test can't hold up the
 const KEYS = { good: 'good_key_0123456789abcdefghij', bad: 'bad_key_0123456789abcdefghijk', quota: 'quota_key_0123456789abcdefgh' };
 let app, win, server, asked = [], askedIds = [];
 // The channel feed and the stream behind it, for the live check: the feed goes down (404) like YouTube's does.
-const CH = 'UCfeedtest0123456789abcd', VID = 'k62wgMPmQeo', NEXT = 'n3wStr3amAa', yt = { feedUp: true, live: true, pageLive: '' };
+const CH = 'UCfeedtest0123456789abcd', VID = 'k62wgMPmQeo', NEXT = 'n3wStr3amAa', yt = { feedUp: true, live: true, pageLive: '', cookies: [] };
 // The channel's live page: the stream it's on now (pageLive), with more headers than Node's fetch takes (16 KB), as YouTube's now has
 const livePage = () => `<!doctype html><html><head>${yt.pageLive ? `<link rel="canonical" href="https://www.youtube.com/watch?v=${yt.pageLive}">` : ''}` +
   `<meta name="title" content="Day two of the stream"></head><body><script>var d = {"isLive":${!!yt.pageLive},"ownerChannelName":"Feed Test"};</script>${' '.repeat(600)}</body></html>`;
@@ -34,6 +34,9 @@ function fakeGoogle() {
     const srv = http.createServer((req, res) => {
       const u = new URL(req.url, 'http://x'), key = u.searchParams.get('key');
       if (u.pathname === `/channel/${CH}/live`) {
+        // as YouTube in the UK and EU: a consent cookie it stored before ("not answered") gets its "Before you continue" page
+        const c = req.headers.cookie || ''; yt.cookies.push(c);
+        if (/SOCS=CAA/.test(c)) { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end('<!doctype html><html><head><base href="https://consent.youtube.com/"></head><body>Before you continue to YouTube</body></html>'); }
         res.writeHead(200, { 'Content-Type': 'text/html', ...Object.fromEntries(Array.from({ length: 12 }, (_, i) => ['X-Big-' + i, 'x'.repeat(2000)])) });
         return res.end(livePage());
       }
@@ -149,11 +152,15 @@ test('with the key, a live channel stays live while YouTube\'s feeds are down (t
   // the stream ends and a new one starts while the feeds are still down: only its live page says so, and its answer has
   // more headers than Node's fetch takes (it used to fail every time: "fetch failed")
   yt.live = false; yt.pageLive = NEXT;
+  // and YouTube's consent cookie stored in the app's cookies (as its consent page leaves it): the check sends its own only
+  await app.evaluate(({ session }, url) => session.defaultSession.cookies.set({ url, name: 'SOCS', value: 'CAA' }), `http://127.0.0.1:${server.address().port}`);
+  yt.cookies = [];
   const before = (await liveInfo()).checked;
   await win.evaluate(() => window.kmv.checkLiveNow());
   await win.waitForFunction(([c, t]) => window.kmv.liveSnapshot().then(s => s[c] && s[c].checked > t), [ch, before]);
   const info = await liveInfo();
   assert.deepEqual([info.live, info.videoId, info.title], [true, NEXT, 'Day two of the stream'], 'the new stream, from its page');
+  assert.ok(yt.cookies.length && yt.cookies.every(c => /SOCS=CAI/.test(c) && !/SOCS=CAA/.test(c)), JSON.stringify(yt.cookies));
   await win.evaluate(() => window.kmv.watchLive({ channels: [] }));
   yt.feedUp = true; yt.live = true; yt.pageLive = '';
 });

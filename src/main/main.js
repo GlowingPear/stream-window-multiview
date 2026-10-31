@@ -140,8 +140,11 @@ const loggedFetch = via => async (url, opts = {}) => {
 };
 globalThis.fetch = loggedFetch(nodeFetch);
 // YouTube's pages, through Chromium's own network (as the app's windows load them): their answers' headers outgrew
-// what Node's fetch takes (16 KB; it fails with "fetch failed", UND_ERR_HEADERS_OVERFLOW), so every live page check failed
-const pageFetch = loggedFetch((url, opts) => net.fetch(url, opts));
+// what Node's fetch takes (16 KB; it fails with "fetch failed", UND_ERR_HEADERS_OVERFLOW), so every live page check failed.
+// Without the app's cookies: each request says what it needs (YouTube's consent, in its Cookie header). With them, the
+// consent cookie YouTube stores when it sends one request to its "Before you continue" page (UK and EU) wins over the
+// header, and every check after it gets that page too: no live stream, so live channels read as offline.
+const pageFetch = loggedFetch((url, opts) => net.fetch(url, { ...opts, credentials: 'omit' }));
 // a request made from inside a site's page (Kick's, with your login): what it got
 const notePageRequest = (url, t0, r) => { const d = describeRequest(url); if (d) siteLog.record({ ...d, url, status: r ? r.status : 0, ms: Date.now() - t0, body: devOn && r && typeof r.body === 'string' ? r.body : undefined }); };
 appIpc.on('dev:set', (_e, on) => { devOn = !!on; });
