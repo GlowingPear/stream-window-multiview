@@ -2188,25 +2188,25 @@ test('/ at the start of ALL\'s box: the site\'s commands you can use there (mods
   let l = await list('/');
   assert.equal(l.head, 'TTwitch commands');
   assert.deepEqual(l.groups, ['Everyone']);
-  assert.deepEqual(l.cmds, ['/me', '/color', '/w', '/block']);
+  assert.deepEqual(l.cmds, ['/block', '/unblock', '/color', '/me'], 'in Twitch\'s own order');
   assert.match(l.foot, /5 in all, keep typing/);
   assert.equal(await list('/ti'), null, 'no /timeout for you');
   // a mod there: theirs too
   await page.evaluate(() => window.allChat.modKnown.set('tw:quietkoala', true));
   l = await list('/ti');
-  assert.deepEqual([l.groups, l.cmds], [['Moderators'], ['/timeout']]);
+  assert.deepEqual([l.groups, l.cmds], [['Channel management'], ['/timeout']]);
   assert.equal(await list('/vip'), null, 'the streamer\'s: only in your own channel');
   // ↓ and Tab fill one in; the rest of what you typed stays
   l = await list('/un');
-  assert.deepEqual(l.cmds, ['/unblock', '/untimeout', '/unban', '/unmonitor']);
+  assert.deepEqual(l.cmds, ['/unban', '/unmonitor', '/unrestrict', '/untimeout']);
   await page.keyboard.press('ArrowDown'); await page.keyboard.press('Tab');
-  assert.equal(await page.$eval('.all-in', b => b.value), '/untimeout ');
+  assert.equal(await page.$eval('.all-in', b => b.value), '/unmonitor ');
   assert.equal(await page.isVisible('.all-at'), false);
   // sent: no line of yours waiting to be seen, a word that it went
   await page.keyboard.type('driftwood_7'); await page.keyboard.press('Enter');
   await page.waitForFunction(() => window.__sends.length === 1);
-  assert.deepEqual(await page.evaluate(() => window.__sends[0]), ['tw:quietkoala', '/untimeout driftwood_7']);
-  await page.waitForFunction(() => /Sent \/untimeout on Twitch/.test(document.querySelector('#msg').textContent));
+  assert.deepEqual(await page.evaluate(() => window.__sends[0]), ['tw:quietkoala', '/unmonitor driftwood_7']);
+  await page.waitForFunction(() => /Sent \/unmonitor on Twitch/.test(document.querySelector('#msg').textContent));
   assert.equal(await page.$('.all-list .al-mine'), null);
   // /me comes back as your message: it has its line
   await page.fill('.all-in', '/me waves'); await page.keyboard.press('Enter');

@@ -245,7 +245,13 @@ test('each site\'s chat commands for ALL\'s / list: a name, what goes after it, 
   }
   assert.deepEqual(youtube.chatCommands, [], 'YouTube\'s chat has none');
   const names = p => p.chatCommands.map(c => c.name);
-  for (const panel of ['poll', 'prediction', 'goal', 'user', 'vote', 'gift', 'requests', 'sharedchat']) assert.ok(!names(twitch).includes(panel), 'Twitch: ' + panel);
+  for (const panel of ['poll', 'prediction', 'goal', 'raidbrowser', 'user', 'gift', 'sharedchat', 'help', 'mods', 'vips']) assert.ok(!names(twitch).includes(panel), 'Twitch: ' + panel);
+  // in each site's own order: Twitch's channel management first, then everyone's, each by name with an un… next to its other half; Kick's by name
+  const trim = n => n.startsWith('un') && !n.startsWith('unique') ? n.slice(2) : n, mgmt = c => c.who !== 'all';
+  const twSorted = [...twitch.chatCommands].sort((a, b) => mgmt(a) !== mgmt(b) ? mgmt(b) - mgmt(a) : trim(a.name).localeCompare(trim(b.name)));
+  assert.deepEqual(names(twitch), twSorted.map(c => c.name));
+  assert.deepEqual(names(kick), [...names(kick)].sort());
+  assert.equal(kick.chatCommands.find(c => c.name === 'timeout').args, '<username> <minutes> [reason]', 'Kick\'s timeouts are in minutes (ALL\'s own timeout says minutes too: timeoutCmd)');
   for (const panel of ['user', 'category']) assert.ok(!names(kick).includes(panel), 'Kick: ' + panel);
   assert.ok(['clip', 'poll', 'prediction'].every(n => names(kick).includes(n)), 'Kick\'s own panels open from ALL too');
   assert.deepEqual(['timeout', 'ban', 'slow'].map(n => twitch.chatCommands.find(c => c.name === n).who), ['mod', 'mod', 'mod']);

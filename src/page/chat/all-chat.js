@@ -1003,10 +1003,13 @@ function suggestCmd(view, w){
 }
 function renderCmds(view){
   const site = platOf(view.cmdCh), q = view.atQ, from = Math.max(0, Math.min(view.atSel - CMD_SHOWN + 1, view.atList.length - CMD_SHOWN));
-  const head = { all: 'Everyone', mod: 'Moderators', host: 'Streamer' }, rows = [];
+  // headings where the site's own order keeps each group together (Twitch's: channel management, then everyone's); Kick's
+  // is by name, with none
+  const group = c => c.who === 'all' ? 'Everyone' : 'Channel management', rows = [];
+  const heads = view.atList.filter((c, i, l) => i && group(l[i - 1]) !== group(c)).length <= 1;
   view.atList.slice(from, from + CMD_SHOWN).forEach((c, k) => {
     const i = from + k, prev = view.atList[i - 1];
-    if (!k || !prev || prev.who !== c.who) rows.push(element('div', 'all-cmd-g', head[c.who] || ''));
+    if (heads && (!k || !prev || group(prev) !== group(c))) rows.push(element('div', 'all-cmd-g', group(c)));
     rows.push(element('button', { type: 'button', role: 'option', class: 'all-ati all-cmd' + (i === view.atSel ? ' on' : ''), 'aria-selected': String(i === view.atSel), dataset: { cmd: 'all.cmdPick' },
       onmousedown: e => e.preventDefault(), onclick: () => pickCmd(view, view.w, c) },
       element('span', 'all-cmd-n', element('b', null, '/' + c.name.slice(0, q.length)), c.name.slice(q.length)), c.args && element('span', 'all-cmd-a', c.args), element('small', { class: 'all-cmd-d', title: c.does }, c.does)));
