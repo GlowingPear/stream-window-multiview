@@ -101,22 +101,22 @@ function cardsFromRows(rows){
 }
 
 /* ---- Who a bot's message is about (BotRix's "Thanks for the follow Pixelfox", "Thank you for redeeming headpat @Lumen"):
-   a shoutout from a bot's line is for them, never the bot. The bots' usual sentences ({user}: who; anything else in { }:
-   anything), then any @name in it. As regular expressions too, for the scripts in the sites' chats (in-site/shoutout.js). ---- */
+   a shoutout from a bot's line is for them, never the bot; a bot's line it can't read has no shout out button (as the SO
+   Helper extension did). Only the bots' sentences about an event ({user}: who; anything else in { }: anything), not any
+   @name: bots @ whoever used a command. As regular expressions too, for the scripts in the sites' chats (in-site/shoutout.js). ---- */
 const BOT_SAYS = [
   'Thanks for the follow {user}', 'Thank you for the follow {user}', 'Thank you for following {user}', '{user} followed us!',
   '{user} just gifted {count} KICKs', 'Thanks {user} for the {count} KICKs', '{user} thank you for raiding me with {count} spectators',
   'Thanks to {user} for hosting with {count} viewers', '{user} just raided the channel with {count} viewers', '{user} is raiding with {count}',
-  'Thank you for the raid {user}', 'Thanks for the raid {user}', 'Welcome {user}', 'Thank you for subscribing {user}', 'Thanks for subscribing {user}',
-  '{user} just subscribed', '{user} has subscribed', 'Thank you {user} for the sub'];
+  'Thank you for the raid {user}', 'Thanks for the raid {user}', 'Thank you for subscribing {user}', 'Thanks for subscribing {user}',
+  '{user} just subscribed', '{user} has subscribed', 'Thank you {user} for the sub', 'Thank you for redeeming {reward} {user}', 'Thanks for redeeming {reward} {user}', '{user} redeemed {reward}'];
 const BOT_SAYS_RE = BOT_SAYS.map(t => t.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{(?!user\})[^}]*\}/g, '.*?').replace(/\s+/g, '\\s+').replace(/\{user\}/g, '@?([\\w-]{2,40})'));
-// The names a bot's message is about, in order: its sentences', then its @names. skip: names left out (you, the bot, the
-// channel). -> [name] (as written, without @)
+// The names a bot's message is about, in order of its sentences. skip: names left out (you, the bot, the channel).
+// -> [name] (as written, without @); [] when it isn't one of those sentences
 function botTargets(text, skip = []){
   const t = String(text || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim(), out = [], no = new Set(skip.map(x => String(x || '').toLowerCase()));
   const add = n => { const k = String(n || '').replace(/^@/, ''); if (/^[\w-]{2,40}$/.test(k) && !no.has(k.toLowerCase()) && !out.some(x => x.toLowerCase() === k.toLowerCase())) out.push(k); };
   for (const re of BOT_SAYS_RE){ const m = new RegExp(re, 'i').exec(t); if (m) add(m[1]); }
-  for (const m of t.matchAll(/(?:^|[^\w@])@([\w-]{2,40})/g)) add(m[1]);
   return out;
 }
 

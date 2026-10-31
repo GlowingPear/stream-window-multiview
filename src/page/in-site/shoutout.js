@@ -83,8 +83,7 @@ function shoutAgent(on, look, bots){
     text = text.replace(/\s+/g, ' ').trim();
     const skip = [p.login, p.name.toLowerCase()];
     for (const re of S.says || []){ const m = re.exec(text); if (m && m[1] && !skip.includes(m[1].replace(/^@/, '').toLowerCase())) return { site, login: m[1].replace(/^@/, '').toLowerCase(), name: m[1].replace(/^@/, ''), named: site === 'kick', from: p.name }; }
-    const at = /(?:^|[^\w@])@([\w-]{2,40})/.exec(text);
-    return at && !skip.includes(at[1].toLowerCase()) ? { site, login: at[1].toLowerCase(), name: at[1], named: site === 'kick', from: p.name } : null;
+    return null;   // (a bot's line about no one it can read: no button, as the extension did)
   }
   const press = p => console.log('__kmv:shoutout ' + JSON.stringify(p));
   // like: one of the site's own buttons in that hover bar: ours takes its look (its classes, so its size, colour and
