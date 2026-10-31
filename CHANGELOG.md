@@ -2,7 +2,10 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.8 (current)
+## 0.4.9 (current)
+- Streams' own storage no longer grows to gigabytes: caches have a size, and unused streams' storage is removed
+
+## 0.4.8
 - YouTube channels show as live again in the UK and EU
 - ALL: your message held by AutoMod says so, Twitch's raider tags, and the / list right on the box
 
