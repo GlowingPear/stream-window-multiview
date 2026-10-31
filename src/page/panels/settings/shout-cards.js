@@ -44,8 +44,9 @@ function soPreview(card, site, text){
 }
 
 /* A card's element. save(card): it changed (the caller saves it); remove(): the card's Remove (none: no Remove).
-   open: shown open. -> the element */
-function shoutCardEl(card, { save, remove, open = false } = {}){
+   open: shown open. bare: only its editor, always open (Channel settings › Shoutout, under the channel's own name). -> the element */
+function shoutCardEl(card, { save, remove, open = false, bare = false } = {}){
+  if (bare) open = true;
   const chs = soCardChs(card), linked = chs.length > 1;
   const el = element('div', { class: 'sc-card' + (open ? ' open' : '') + (card.lost ? ' lost' : ''), dataset: { ch: card.ch } });
   const sum = () => {
@@ -61,7 +62,7 @@ function shoutCardEl(card, { save, remove, open = false } = {}){
       open || linked ? element('span', 'sites', ...chs.map(ch => element('span', 'sc-site', element('i', { class: 'pi pi-' + siteOfCh(ch) }, soSiteName(siteOfCh(ch))[0]), loginOfCh(ch)))) : sum(),
       linked && !open ? sum() : null),
     toggle);
-  el.appendChild(head);
+  if (bare) el.classList.add('sc-bare'); else el.appendChild(head);
   if (!open) return el;
   const body = element('div', 'sc-body');
   // their message: one, or (a linked streamer) one for each site
