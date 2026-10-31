@@ -1,4 +1,4 @@
-import { allOn, allTabFor, modViewChs, openModViews, reloadAll } from '../chat/all-chat.js';
+import { allOn, allTabFor, modViewChs, openInspects, openModViews, openPopUps, openSaves, reloadAll } from '../chat/all-chat.js';
 import { toggleStreamOverlay } from '../chat/chat-overlay.js';
 import { resolveYt } from '../chat/view-menu.js';
 import { BAR, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, mutedChk, sizehint, snapChk, stage, wins } from '../core.js';
@@ -22,7 +22,7 @@ import { openProfile } from '../panels/profiles/profiles.js';
 import { arrangeButtons, syncBarName } from '../panels/settings/windows-pane.js';
 import { save } from '../persistence.js';
 import { linkedOn, nameOf } from '../platforms/linked.js';
-import { chLabel, chLabelP, checkMod, externalFor, isModOf, modUrl, openModView, platOf, platform } from '../platforms/platforms.js';
+import { chLabel, chLabelP, checkMod, isModOf, modUrl, openModView, platOf, platform, popUp } from '../platforms/platforms.js';
 import { syncLike, toggleLike } from '../platforms/youtube-options.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
@@ -64,7 +64,8 @@ function createWin(spec, rect){
         ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="state" class="dev-b" title="Copy what the app knows about this window, for a report"${devOn ? '' : ' hidden'}>${icon.copy}</button><button data-a="inspect" class="dev-b" title="Chrome's developer tools for this window's page"${devOn ? '' : ' hidden'}>${icon.code}</button>` : ''}
         <button data-a="reload" title="Reload">${icon.reload}</button>
         ${modUrl(w.channel) || (w.kind === 'chat' && allTabFor(w)) ? `<button data-a="mod" title="Open the mod view for this channel"${DESKTOP || !modUrl(w.channel) ? ' hidden' : ''}>${icon.mod}</button>` : ''}
-        <button data-a="pop" title="Open in its own browser window">${icon.pop}</button>
+        <button data-a="pop" title="${w.channel ? 'Open the channel page in a pop-up' : 'Open the page in a pop-up'}">${icon.pop}</button>
+        ${w.kind === 'chat' ? `<button data-a="popchat" title="Open just the chat in a pop-up">${icon.chatpop}</button>` : ''}
         <button data-a="max" title="Maximize / restore (or double-click the bar)">${icon.max}</button>
         ${w.channel && !/^yt:v:/.test(w.channel) ? `<button data-a="link" class="link-b" title="Channel settings: its chat bots, ALL, opening when live, and linking its other sites"${linkedOn() ? '' : ' hidden'}>${icon.layers}</button>` : ''}
         <button data-a="more" class="more-b" title="More: the buttons that don't fit" aria-label="More" aria-haspopup="true" hidden>⋯</button>
@@ -118,29 +119,25 @@ function createWin(spec, rect){
   el.querySelector('.btns').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     const a = b.dataset.a;
+    const anchor = () => b.classList.contains('ovf') ? el.querySelector('[data-a=more]') : b;   // (from the ⋯ menu: under ⋯)
     if (a === 'close'){ closeFrame(w); refitLocked(); }
     else if (a === 'reload') { if (allOn(w)) reloadAll(w); else reloadWin(w); }   // (ALL: each chat it reads)
-    else if (a === 'pop') {
-      if (DESKTOP){
-        if (w.kind === 'chat') window.kmv.openWindow(externalFor(w), 380, 760);
-        else window.kmv.openWindow(externalFor(w), 1100, 700);
-      } else {
-        const feat = w.kind === 'chat' ? 'width=380,height=760' : 'width=1100,height=680';
-        window.open(externalFor(w), 'kmv_' + w.kind + '_' + (w.channel || w.id), feat);
-      }
+    else if (a === 'pop' || a === 'popchat'){   // (ALL: which site's)
+      const what = a === 'pop' ? 'page' : 'chat';
+      if (allOn(w)) openPopUps(w, what, anchor(), b); else popUp(w, what);
     }
-    else if (a === 'mod') { if (allOn(w)) openModViews(w, b.classList.contains('ovf') ? el.querySelector('[data-a=more]') : b); else openModView(w.channel); }
+    else if (a === 'mod') { if (allOn(w)) openModViews(w, anchor(), b); else openModView(w.channel); }
     else if (a === 'max') toggleMax(w);
     else if (a === 'ext') openExtMenu(w, b.classList.contains('ovf') ? el.querySelector('[data-a=more]') : b);   // from the ⋯ menu (always): open under ⋯
     else if (a === 'more') openBarMenu(b);
     else if (a === 'state') copyWinState(w);
     else if (a === 'link') openLinkCard(w.channel);
-    else if (a === 'inspect') inspectWin(w);
+    else if (a === 'inspect') { if (allOn(w)) openInspects(w, anchor(), b); else inspectWin(w); }
     else if (a === 'chat'){
       if (ROLE === 'streams'){ window.kmv.addChat(w.channel); flash(`${chLabel(w.channel)}'s chat added to the main window`); }
       else addChatBeside(w);
     }
-    else if (a === 'star') toggleSaved(w.channel);
+    else if (a === 'star') { if (allOn(w)) openSaves(w, anchor(), b); else toggleSaved(w.channel); }
     else if (a === 'like') toggleLike(w);
     else if (a === 'profile') openProfile(w.channel);
     else if (a === 'at') toggleChatMentions(atChannels(w));   // (with ALL showing: every chat of theirs it reads)

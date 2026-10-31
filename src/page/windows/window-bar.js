@@ -14,7 +14,7 @@ import { tipName } from '../shared/tooltips.js';
    Settings › Windows says which buttons are always in the ⋯ menu, and the order: out of room, the leftmost go
    first. Until you change it there, the least-used go first (BAR_ORDER). */
 const BAR_LEVELS = ['b1', 'b2'];
-const BAR_ORDER = ['chat', 'mod', 'reload', 'pop', 'profile', 'overlay', 'at', 'feat', 'like', 'star', 'max'];
+const BAR_ORDER = ['chat', 'mod', 'reload', 'popchat', 'pop', 'profile', 'overlay', 'at', 'feat', 'like', 'star', 'max'];
 function fitBar(bar){
   if (!bar.isConnected || !bar.clientWidth) return;     // not on screen: fitted when it shows (it resizes then)
   const name = bar.querySelector('.col-pick') || bar.querySelector('.title'), more = bar.querySelector('[data-a=more]');

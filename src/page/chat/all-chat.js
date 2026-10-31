@@ -22,10 +22,10 @@ import { modAgent } from '../in-site/mod.js';
 import { sendAgent, sentAgent } from '../in-site/send.js';
 import { addParsed } from '../layout/placement.js';
 import { bellVars, mentMuted, mentOn, mentWords, myName, readChat, syncAtBtn } from '../panels/bell/bell.js';
-import { infoFor } from '../panels/channels/channels.js';
-import { devOn } from '../panels/developer/developer.js';
+import { infoFor, isSaved, toggleSaved } from '../panels/channels/channels.js';
+import { devOn, inspectWin } from '../panels/developer/developer.js';
 import { chanOpt, nameOf, optFor, setChanOpt, streamerBots, streamerOf } from '../platforms/linked.js';
-import { PLAT_NAME, chLabel, modIs, modUrl, openModView, platOf, platform } from '../platforms/platforms.js';
+import { PLAT_NAME, chLabel, modIs, modUrl, openModView, platOf, platform, popUp } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { element } from '../shared/element.js';
 import { DESKTOP, keyName } from '../shared/env.js';
@@ -775,7 +775,7 @@ function buildView(w){
   closeOnOutside(ep, { button: emo });
   emo.onclick = () => openEmotePicker(view, w);
   sendB.onclick = () => { sendNow(view, w); input.focus(); };
-  closeOnOutside(mv, { button: w.el.querySelector('[data-a=mod]') });
+  closeOnOutside(mv, { button: () => mv.btn });   // (whichever title bar button opened it)
   closeOnOutside(menu, { button: pick });
   pick.onclick = () => { if (view.lock) return flash('Locked to this site · Esc or ✕ unlocks'); if (menu.hidden) openPickMenu(view, w); else menu.hidden = true; };
   input.addEventListener('keydown', e => {
@@ -1228,23 +1228,62 @@ function openLineMenu(m, at){
   lm.hidden = false;
   placeAt(view, lm, at);
 }
-// The title bar's mod button in ALL: each site's mod view (where you're a mod), or all of them at once
-function openModViews(w, at){
+/* ---- the title bar's buttons in ALL, for a streamer's several sites: each one's menu asks which site (a site's tab
+   does it to that site, with no menu). They share one menu, under the button that opened it. ---- */
+function siteMenu(w, at, btn, head, items){
   const view = w.allView; if (!view) return;
   const mv = view.mv;
-  if (!mv.hidden){ mv.hidden = true; return; }
-  const chs = modViewChs(w);
-  const row = ch => {
-    const p = platOf(ch), site = PLAT_NAME[p], off = !modUrl(ch) ? `${site} · no mod view` : !youMod(ch) ? `${site} · you're not a mod` : '';
-    return element('button', { type: 'button', role: 'menuitem', class: 'all-li all-mvi', disabled: !!off, title: off ? (modUrl(ch) ? `You don't moderate their ${site} channel` : `${site} has no mod view for each channel`) : `Opens in a window of its own`, dataset: { cmd: 'all.modView' },
-      onclick: () => { mv.hidden = true; openModView(ch); } }, element('i', { class: 'pi pi-' + p }, site[0]), element('span', null, off || `${site} mod view`), off ? '' : element('i', { class: 'all-mvx', html: icon.pop }));
-  };
-  mv.replaceChildren(...[element('div', 'all-mvh', 'Mod views'), ...tabChannels(w).map(row),
-    chs.length > 1 && element('hr'),
-    chs.length > 1 && element('button', { type: 'button', role: 'menuitem', class: 'all-li', dataset: { cmd: 'all.modViewsAll' }, onclick: () => { mv.hidden = true; chs.forEach(openModView); } },
-      element('i', { html: icon.mod }), element('span', null, 'Open all'), element('small', null, `${chs.length} windows`))].filter(x => x instanceof Node));
+  if (!mv.hidden && mv.head === head){ mv.hidden = true; return; }
+  mv.head = head; mv.btn = btn;
+  mv.replaceChildren(element('div', 'all-mvh', head), ...items.filter(x => x instanceof Node));
   mv.hidden = false;
   placeAt(view, mv, at, 6);
+}
+// One site's row: its badge, what it does (or why it can't), and what it opens at the end
+function siteRow(ch, text, run, { off = '', title = '', cmd, end = icon.pop, keep = false, on = null } = {}){
+  const p = platOf(ch);
+  return element('button', { type: 'button', role: on === null ? 'menuitem' : 'menuitemcheckbox', class: 'all-li all-mvi' + (on ? ' on' : ''), disabled: !!off, title: off ? title : title || '', 'aria-checked': on === null ? null : String(on), dataset: { cmd },
+    onclick: e => { const mv = e.currentTarget.closest('.all-mv'); if (!keep) mv.hidden = true; run(); } },
+    element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]), element('span', null, off || text), off ? '' : element('i', { class: 'all-mvx', html: end }));
+}
+const chatOf = ch => wins.find(o => o.kind === 'chat' && o.channel === ch);
+// The mod button: each site's mod view (where you're a mod), or all of them at once
+function openModViews(w, at, btn = at){
+  const chs = modViewChs(w);
+  siteMenu(w, at, btn, 'Mod views', [...tabChannels(w).map(ch => {
+    const site = PLAT_NAME[platOf(ch)];
+    return siteRow(ch, `${site} mod view`, () => openModView(ch), { cmd: 'all.modView', off: !modUrl(ch) ? `${site} · no mod view` : !youMod(ch) ? `${site} · you're not a mod` : '',
+      title: !modUrl(ch) ? `${site} has no mod view for each channel` : !youMod(ch) ? `You don't moderate their ${site} channel` : 'Opens in a window of its own' });
+  }),
+  chs.length > 1 && element('hr'),
+  chs.length > 1 && element('button', { type: 'button', role: 'menuitem', class: 'all-li', dataset: { cmd: 'all.modViewsAll' }, onclick: () => { w.allView.mv.hidden = true; chs.forEach(openModView); } },
+    element('i', { html: icon.mod }), element('span', null, 'Open all'), element('small', null, `${chs.length} windows`))]);
+}
+// The pop-up buttons: a site's channel page ('page'), or just its chat ('chat')
+function openPopUps(w, what, at, btn = at){
+  const page = what === 'page';
+  siteMenu(w, at, btn, page ? 'Channel page in a pop-up' : 'Chat in a pop-up', tabChannels(w).map(ch => {
+    const site = PLAT_NAME[platOf(ch)];
+    return siteRow(ch, page ? `${site} channel page` : `${site} chat`, () => popUp(chatOf(ch) || { channel: ch, kind: 'chat' }, what),
+      { cmd: page ? 'all.popPage' : 'all.popChat', end: page ? icon.pop : icon.chatpop, title: page ? `Their ${site} page, in a window of its own` : `Just their ${site} chat, in a window of its own` });
+  }));
+}
+// The star: each site saved or not (the menu stays open), and all of them at once
+function openSaves(w, at, btn = at){
+  const chs = tabChannels(w), off = chs.filter(ch => !isSaved(ch));
+  siteMenu(w, at, btn, 'Saved channels', [...chs.map(ch => siteRow(ch, PLAT_NAME[platOf(ch)], () => { toggleSaved(ch); w.allView.mv.hidden = true; openSaves(w, at, btn); },
+    { cmd: 'all.save', keep: true, on: isSaved(ch), end: '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
+      title: isSaved(ch) ? `Saved: click to remove their ${PLAT_NAME[platOf(ch)]} channel` : `Save their ${PLAT_NAME[platOf(ch)]} channel` })),
+  off.length && chs.length > 1 && element('hr'),
+  off.length && chs.length > 1 && element('button', { type: 'button', role: 'menuitem', class: 'all-li', dataset: { cmd: 'all.saveAll' }, onclick: () => { off.forEach(toggleSaved); w.allView.mv.hidden = true; } },
+    element('i', { html: icon.star }), element('span', null, 'Save all'), element('small', null, `${chs.length} sites`))]);
+}
+// Developer tools' Inspect: which site's chat page
+function openInspects(w, at, btn = at){
+  siteMenu(w, at, btn, 'Inspect', tabChannels(w).map(ch => {
+    const cw = chatOf(ch), site = PLAT_NAME[platOf(ch)];
+    return siteRow(ch, `${site} chat's page`, () => inspectWin(cw), { cmd: 'all.inspect', end: icon.code, off: cw && cw.view ? '' : `${site} · not open`, title: cw && cw.view ? `Chrome's developer tools for it` : `Their ${site} chat isn't open` });
+  }));
 }
 const SHIELD = '<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V6z"/></svg>';
 const TIMER = '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>';
@@ -1599,5 +1638,6 @@ function init(){
   window.allChat = { sender, SEND_LIMIT, modKnown, gotBadges, gotKickIcons, kickIcons, gotYtLook, ytLook: () => ytLook, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
-export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, feedSpam, init, modViewChs, openModViews,
-  reloadAll, sendEmote, sendSite, setAll, setLock, setSoloAll, spamTag, translateSite };
+export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, feedSpam, init, modViewChs, openInspects,
+  openModViews, openPopUps, openSaves, reloadAll, sendEmote, sendSite, setAll, setLock, setSoloAll, spamTag,
+  translateSite };

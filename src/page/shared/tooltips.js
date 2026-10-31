@@ -33,7 +33,7 @@ function init(){
     ['[data-a=like]', b => b.classList.contains('on') ? 'Remove like' : 'Like'],
     ['[data-a=reload]', b => /different window/i.test(ttl(b)) ? 'Pick window' : 'Reload'],
     ['[data-a=profile]', 'Profile'], ['#profBtn', 'Profiles'], ['#palBtn', 'Search'], ['.sv .prof', 'Profile'],
-    ['[data-a=pop]', 'Pop out'], ['[data-a=max]', 'Maximize'], ['[data-a=mod]', 'Mod view'], ['[data-a=close]', 'Close'],
+    ['[data-a=pop]', 'Channel page'], ['[data-a=popchat]', 'Chat pop-up'], ['[data-a=max]', 'Maximize'], ['[data-a=mod]', 'Mod view'], ['[data-a=close]', 'Close'],
     ['[data-a=ext]', 'Extensions'], ['[data-a=at]', 'Mentions'], ['[data-a=more]', 'More'],
     ['[data-a=state]', 'Copy window state'], ['[data-a=inspect]', 'Inspect'],
     ['[data-v=mute], .fs-mute', 'Mute'],

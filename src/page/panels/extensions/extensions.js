@@ -1,12 +1,15 @@
+import { allOn } from '../../chat/all-chat.js';
 import { $, wins } from '../../core.js';
 import { openSettings, settingsDlg, settingsTab } from '../settings/settings.js';
 import { PLAT_NAME, extCount, platOf, platformVars, viewPartition, watchSignedIn } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
+import { element } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
 import { icon } from '../../shared/icons.js';
 import { fromApp } from '../../shared/incoming.js';
 import { closeOnOutside } from '../../shared/popover.js';
+import { tabChannels } from '../../windows/frames.js';
 import { viewId } from '../../windows/view.js';
 import { reloadPage } from '../../windows/views.js';
 
@@ -116,6 +119,25 @@ function extButton(w){
 function refreshExtButtons(){ if (DESKTOP) wins.forEach(extButton); }
 async function openExtMenu(w, btn){
   if (!extMenu.hidden && extMenuFor && extMenuFor.w === w){ extMenu.hidden = true; return; }
+  // ALL: each of its sites' chats has its own (each site's chats share theirs), a part each
+  const ws = allOn(w) ? tabChannels(w).map(ch => wins.find(o => o.kind === 'chat' && o.channel === ch)).filter(Boolean) : [w];
+  const parts = await Promise.all(ws.map(extPart));
+  extMenuFor = { w, btn };
+  extMenu.innerHTML = `<div class="em-h menu-head"><span>${ws.length > 1 ? 'Extensions in these chats' : 'Extensions in this window'}</span><button class="menu-set em-set" title="Extension settings" aria-label="Extension settings">${icon.gear}</button></div>`;
+  parts.forEach((part, i) => {
+    if (ws.length > 1){
+      const p = platOf(ws[i].channel);
+      extMenu.appendChild(element('div', 'em-site', element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]), PLAT_NAME[p] + ' chat'));
+    }
+    extMenu.append(...part);
+  });
+  extMenu.hidden = false;
+  const r = btn.getBoundingClientRect(), mw = extMenu.offsetWidth;
+  extMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
+  extMenu.style.top = Math.min(innerHeight - extMenu.offsetHeight - 8, r.bottom + 4) + 'px';
+}
+// One window's part of its extensions menu: a row for each, and what switching one does (each row knows its window)
+async function extPart(w){
   const part = viewPartition(w), plat = platOf(w.channel);
   let xs = [];
   try { xs = await window.kmv.extWindow(part, plat, w.kind); } catch {}
@@ -124,14 +146,13 @@ async function openExtMenu(w, btn){
   let state = null;
   if (tabId >= 0) try { state = await window.kmv.extActionState(part); } catch {}
   const badge = id => { const a = state && state.actions && state.actions.find(a => a.id === id); return a ? String((a.tabs && a.tabs[tabId] && a.tabs[tabId].text) ?? a.text ?? '') : ''; };
-  extMenuFor = { w, btn, part, tabId };
+  const of = { w, part, tabId };
   const where = w.kind === 'chat' ? `${PLAT_NAME[plat]} chats` : `${PLAT_NAME[plat]} streams`;
-  const shared = !xs.length || !xs[0].perWindow;
-  extMenu.innerHTML = `<div class="em-h menu-head"><span>Extensions in this window</span><button class="menu-set em-set" title="Extension settings" aria-label="Extension settings">${icon.gear}</button></div>`;
-  if (!xs.length) extMenu.insertAdjacentHTML('beforeend', '<div class="em-empty">None are switched on. Change that in Settings.</div>');
+  const shared = !xs.length || !xs[0].perWindow, out = [];
+  if (!xs.length) out.push(element('div', 'em-empty', 'None are switched on. Change that in Settings.'));
   for (const x of xs){
     const row = document.createElement('div');
-    row.className = 'em-row'; row.dataset.id = x.id;
+    row.className = 'em-row'; row.dataset.id = x.id; row.extFor = of;
     row.innerHTML = `<button class="em-main"><span class="em-ico"><img alt=""><b class="em-badge"></b></span><span class="em-t"><b></b><span></span></span></button>`
       + (x.options && x.on ? `<button class="em-opt" title="Its options (for ${w.kind === 'chat' ? where : 'this stream'})">${icon.sliders}</button>` : '')
       + '<input type="checkbox" class="st-sw em-on" aria-label="On in this window">';
@@ -146,13 +167,10 @@ async function openExtMenu(w, btn){
     sw.checked = x.on;
     sw.disabled = !x.perWindow;
     if (!x.perWindow) sw.title = `The same in every ${w.kind === 'chat' ? PLAT_NAME[plat] + ' chat' : 'window with your ' + PLAT_NAME[plat] + ' login'}: change it in Settings`;
-    extMenu.appendChild(row);
+    out.push(row);
   }
-  extMenu.insertAdjacentHTML('beforeend', `<div class="em-foot"><span>${shared && xs.length ? 'Same for all ' + (w.kind === 'chat' ? where : PLAT_NAME[plat] + ' chats and signed-in streams') : 'Switching one reloads this window'}</span></div>`);
-  extMenu.hidden = false;
-  const r = btn.getBoundingClientRect(), mw = extMenu.offsetWidth;
-  extMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
-  extMenu.style.top = Math.min(innerHeight - extMenu.offsetHeight - 8, r.bottom + 4) + 'px';
+  out.push(element('div', 'em-foot', element('span', null, shared && xs.length ? 'Same for all ' + (w.kind === 'chat' ? where : PLAT_NAME[plat] + ' chats and signed-in streams') : 'Switching one reloads this window')));
+  return out;
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
@@ -211,9 +229,9 @@ function init(){
   // Each window's extensions button and menu.
   extMenu = $('#extMenu');
   extMenu.addEventListener('click', e => {
-    const f = extMenuFor; if (!f) return;
+    if (!extMenuFor) return;
     const b = e.target.closest('button'); if (!b) return;
-    const id = b.closest('.em-row') && b.closest('.em-row').dataset.id;
+    const row = b.closest('.em-row'), id = row && row.dataset.id, f = { ...extMenuFor, ...(row && row.extFor) };
     if (b.classList.contains('em-set')){ extMenu.hidden = true; openSettings('extensions'); }
     else if (b.classList.contains('em-opt')){ extMenu.hidden = true; window.kmv.extOptions(id, f.part); }
     else if (b.classList.contains('em-main')){
@@ -224,7 +242,7 @@ function init(){
     }
   });
   extMenu.addEventListener('change', e => {
-    const f = extMenuFor, row = e.target.closest('.em-row');
+    const row = e.target.closest('.em-row'), f = row && row.extFor;
     if (!f || !row || !e.target.classList.contains('em-on')) return;
     extMenu.hidden = true;
     window.kmv.extSet(row.dataset.id, { partition: f.part, on: e.target.checked });

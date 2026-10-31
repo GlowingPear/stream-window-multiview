@@ -118,7 +118,7 @@ function winActions(w){
     const a = b.dataset.a;
     if (a === 'more' || b.hidden) continue;
     const t = a === 'chat' ? '+ Chat' : a === 'close' ? 'Close' : tipName(b) || b.title || b.getAttribute('aria-label') || a;
-    add('bar.' + a, t, () => { if (b.isConnected) b.click(); }, { icon: { reload: 'reload', pop: 'pop', max: 'max', close: 'close', star: 'star', profile: 'user', mod: 'mod', feat: 'feat', at: 'at', like: 'like', ext: 'ext', state: 'copy', inspect: 'code', overlay: 'chat', chat: 'chat' }[a] || 'point', sub: b.title && b.title !== t ? b.title : '' });
+    add('bar.' + a, t, () => { if (b.isConnected) b.click(); }, { icon: { reload: 'reload', pop: 'pop', popchat: 'chatpop', max: 'max', close: 'close', star: 'star', profile: 'user', mod: 'mod', feat: 'feat', at: 'at', like: 'like', ext: 'ext', state: 'copy', inspect: 'code', overlay: 'chat', chat: 'chat' }[a] || 'point', sub: b.title && b.title !== t ? b.title : '' });
   }
   // swap places with another window (its title's dropdown)
   const pick = w.el.querySelector('.col-pick');

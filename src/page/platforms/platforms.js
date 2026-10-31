@@ -118,6 +118,12 @@ function openModView(ch){
 }
 const srcFor = w => w.kind === 'stream' ? streamSrc(w.channel, w.muted, ytVidOf(w)) : w.kind === 'chat' ? chatSrc(w.channel, ytVidOf(w)) : w.url;
 const externalFor = w => w.channel ? platform(w.channel).pageUrl(w.channel, w.kind, ytVidOf(w)) : w.url;
+// A window's pop-up (its title bar's buttons): the channel page ('page'), or just its chat ('chat': a chat window's)
+function popUp(w, what){
+  const url = externalFor(what === 'chat' ? w : { ...w, kind: 'stream' }), chat = what === 'chat';
+  if (DESKTOP) window.kmv.openWindow(url, chat ? 380 : 1100, chat ? 760 : 700);
+  else window.open(url, 'kmv_' + (chat ? 'chat' : 'page') + '_' + (w.channel || w.id), chat ? 'width=380,height=760' : 'width=1100,height=680');
+}
 const chatPartition = ch => (platform(ch) || DEFAULT_SITE).partition;
 // "Watch signed in" (account menu, per site): that site's stream players use your login too,
 // so you watch as your account. Off: each stream player gets its own logged-out storage.
@@ -178,5 +184,5 @@ function init(){
 
 export { chatSrc, checkMod, chLabel, chLabelP, chNames, extCount, externalFor, infoNames, init, isModOf, modIs,
   modOk, modUrl, normCh, openModView, parseInput, PLAT_NAME, platform, PLATFORMS, platformVars, platIcon, platOf,
-  rememberName, rememberNames, setWatchSignedIn, srcFor, streamSignedIn, streamSrc, syncStreams, trimPlayerPage,
-  viewPartition, watchSignedIn, ytVidOf };
+  popUp, rememberName, rememberNames, setWatchSignedIn, srcFor, streamSignedIn, streamSrc, syncStreams,
+  trimPlayerPage, viewPartition, watchSignedIn, ytVidOf };

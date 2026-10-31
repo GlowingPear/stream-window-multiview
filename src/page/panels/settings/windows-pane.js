@@ -23,7 +23,8 @@ const BAR_BUTTONS = {
   inspect: ['Inspect', 'Developer tools', 'code'],
   reload: ['Reload', 'Every window', 'reload'],
   mod: ['Mod view', 'Channels you moderate', 'mod'],
-  pop: ['Pop out', 'Every window', 'pop'],
+  pop: ['Channel page', 'Every window: in a pop-up', 'pop'],
+  popchat: ['Chat pop-up', 'Chat windows: just the chat, in a pop-up', 'chatpop'],
   max: ['Maximize', 'Every window', 'max']
 };
 const DEFAULT_ORDER = Object.keys(BAR_BUTTONS);         // the order the bar always had

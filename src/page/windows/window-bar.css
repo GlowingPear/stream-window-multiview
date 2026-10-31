@@ -49,6 +49,7 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 .zoom{padding:0 4px}
 .btns button.star{font-size:15px;line-height:1}
 .btns button.star.on{color:var(--accent)}
+.btns button.star.some{color:color-mix(in srgb,var(--accent) 55%,var(--muted))}   /* ALL: saved on some of their sites */
 .btns button.like.on{color:var(--accent)}
 .btns button.like.on svg path{fill:currentColor}
 .btns button.like.dim{opacity:.4}

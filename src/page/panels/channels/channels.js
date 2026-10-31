@@ -1,4 +1,5 @@
 import { alerts } from '../../alerts/alerts.js';
+import { allOn } from '../../chat/all-chat.js';
 import { $, ROLE, colsMode, lastLayout, modeSel, wins } from '../../core.js';
 import { chatRailLayout } from '../../layout/chat-rail.js';
 import { chatStageLayout } from '../../layout/chat-stage.js';
@@ -22,7 +23,7 @@ import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
 import { panel } from '../../toolbar/toolbar.js';
-import { openStreamer } from '../../windows/frames.js';
+import { openStreamer, tabChannels } from '../../windows/frames.js';
 
 /* ---------- saved channels (always A–Z) + live status ---------- */
 const SAVED = 'saved';   // (a saved setting: shared/settings.js)
@@ -40,6 +41,7 @@ function persistSaved(){
   settings.set(SAVED, saved);
   store.changed('saved'); sendWatch();
 }
+const isSaved = ch => saved.includes(ch);
 function toggleSaved(ch){
   saved = saved.includes(ch) ? saved.filter(c => c !== ch) : [...saved, ch];
   persistSaved();
@@ -53,9 +55,11 @@ function setNotify(ch, on){
 function refreshStars(){
   wins.forEach(w => {
     const b = w.el.querySelector('[data-a=star]'); if (!b) return;
-    const on = saved.includes(w.channel);
-    b.textContent = on ? '★' : '☆'; b.classList.toggle('on', on);
-    b.title = on ? 'Remove from saved' : 'Save this channel';
+    // ALL: every site's (its menu saves each): full when they're all saved, half when some are
+    const all = allOn(w), chs = all ? tabChannels(w) : [w.channel], n = chs.filter(isSaved).length, on = n === chs.length;
+    b.textContent = n ? '★' : '☆'; b.classList.toggle('on', on); b.classList.toggle('some', !!n && !on);
+    b.title = all ? (on ? 'Saved on every site: change which' : n ? `Saved on ${chs.filter(isSaved).map(ch => PLAT_NAME[platOf(ch)]).join(' and ')}: save their other sites` : 'Save their channels')
+      : on ? 'Remove from saved' : 'Save this channel';
   });
 }
 const infoFor = ch => liveInfo[normCh(ch)] || liveInfo[ch];
@@ -361,7 +365,7 @@ function init(){
   settings.onChange(SAVED, (_, v) => {            // a star clicked in the other window
     try { saved = abc(JSON.parse(v || '[]')); } catch {} store.changed('saved'); sendWatch();
   });
-  store.watch(['saved', 'wins'], () => refreshStars());
+  store.watch(['saved', 'wins', 'tabs'], () => refreshStars());
   savedTab = settings.text('savedTab', 'all');
   autoOpen = settings.json('autoOpen', []);
   autoFit = settings.flag('autoFit');
@@ -370,6 +374,6 @@ function init(){
   store.watch(['saved', 'live', 'wins', 'names', 'channelsBox', 'autoOpen', 'liveAlerts', 'streamers'], () => renderSaved());
 }
 
-export { autoFit, autoOpen, channelRow, channelVars, fitOn, fmtViewers, gotLive, infoFor, init, linkPair, liveInfo,
-  liveNote, liveNow, loadSavedProfiles, notifyAll, notifyOff, persistSaved, renderSaved, saved, savedTab, sendWatch,
-  setAutoFit, setNotify, svHue, svInitials, svProf, tabPlat, toggleAutoOpen, toggleSaved };
+export { autoFit, autoOpen, channelRow, channelVars, fitOn, fmtViewers, gotLive, infoFor, init, isSaved, linkPair,
+  liveInfo, liveNote, liveNow, loadSavedProfiles, notifyAll, notifyOff, persistSaved, renderSaved, saved, savedTab,
+  sendWatch, setAutoFit, setNotify, svHue, svInitials, svProf, tabPlat, toggleAutoOpen, toggleSaved };

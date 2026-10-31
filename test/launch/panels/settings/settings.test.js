@@ -430,7 +430,7 @@ test('chat bots: one list in Chat › Chat bots for mentions and spam alerts, ea
   await win.keyboard.press('Escape');
 });
 
-test('a window\'s "open in its own window" and mod view buttons open app windows', T, async () => {
+test('a window\'s chat pop-up and mod view buttons open app windows', T, async () => {
   await app.evaluate(({ app: eapp, session, ipcMain }) => {
     const fake = s => { try { s.protocol.handle('https', () => new Response('<!doctype html><title>stand-in</title>', { headers: { 'content-type': 'text/html' } })); } catch {} };
     ['persist:kick', 'persist:twitch'].forEach(p => fake(session.fromPartition(p)));
@@ -440,7 +440,7 @@ test('a window\'s "open in its own window" and mod view buttons open app windows
   await openChannel(win, 'alpha', 'chat');
   const opened = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map(w => w.webContents.getURL()).filter(u => /^https:/.test(u) && !/robots\.txt/.test(u)));   // (not the hidden live checker)
   await win.waitForSelector('#stage .win.chat [data-a=mod]:not([hidden])');
-  await win.click('#stage .win.chat [data-a=pop]');
+  await win.click('#stage .win.chat [data-a=popchat]');
   await win.click('#stage .win.chat [data-a=mod]');
   for (let i = 0; i < 50 && (await opened()).length < 2; i++) await new Promise(r => setTimeout(r, 100));
   assert.deepEqual((await opened()).sort(), ['https://dashboard.kick.com/moderator/alpha', 'https://kick.com/popout/alpha/chat']);
