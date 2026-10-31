@@ -20,6 +20,7 @@ const { pageOptions } = require('./activity');
 const { createErrorLog, createSiteLog, describeRequest, diagnostics } = require('./devlog');
 const { createSampleStore, exportSamples, healthReport } = require('./event-samples');
 const { createPartitionCare, HTTP_CACHE_MAX, CODE_CACHE_MAX, DAY } = require('./partitions');
+const { openDb } = require('./db');
 
 // Each platform's chats + login window share one saved session per platform, so you log in once.
 const PARTITION = 'persist:kick';
@@ -173,12 +174,19 @@ appIpc.handle('dev:save', async (e, text) => {
   if (!r || r.canceled || !r.filePath) return { saved: false };
   try { fs.writeFileSync(r.filePath, String(text || '')); return { saved: true, file: r.filePath }; } catch { return { saved: false, error: true }; }
 });
+/* ---------- the app's own data (db.js): streamer profiles, chat events, follow lists ----------
+   One SQLite file in the data folder. What older versions kept in profiles.json, event-samples.json and follows.json
+   is copied in the first time (the files stay, for going back to an older version). Closed last, as the app quits. */
+const db = openDb(app.getPath('userData'), { log: m => console.warn(m) });
+try { db.importFiles(app.getPath('userData')); } catch {}
+app.on('quit', () => { try { db.close(); } catch {} });
+
 /* ---------- Settings › Developer › Chat events (event-samples.js, #233) ----------
    Every kind of event the chats' connections bring, counted, with its last few samples (the chats' helpers send them,
    the page passes them on). Kept in a file for the next run; Export saves them without names, ids or words. */
-const sampleStore = createSampleStore({ saved: (() => { try { return JSON.parse(fs.readFileSync(stateFile('event-samples'), 'utf8')); } catch { return null; } })() });
+const sampleStore = createSampleStore({ saved: db.get('eventSamples') });
 let samplesSaveT = null;
-const saveSamples = () => { clearTimeout(samplesSaveT); samplesSaveT = null; try { fs.writeFileSync(stateFile('event-samples'), JSON.stringify(sampleStore.toSave())); } catch {} };
+const saveSamples = () => { clearTimeout(samplesSaveT); samplesSaveT = null; try { db.set('eventSamples', sampleStore.toSave()); } catch {} };
 app.on('will-quit', saveSamples);
 appIpc.on('samples:add', (_e, site, kinds) => { if (sampleStore.add(String(site), kinds) && !samplesSaveT) samplesSaveT = setTimeout(saveSamples, 30000); });
 appIpc.handle('samples:info', () => sampleStore.list());
@@ -1105,7 +1113,7 @@ appIpc.on('live:check-now', () => watcher.checkSoon());
 app.whenReady().then(() => powerMonitor.on('resume', () => watcher.checkSoon()));   // after sleep: who's live now, not hours ago
 
 /* ---------- suggestions from the channels you follow (the Channels box) ----------
-   The last follow list read from each site is kept in follows.json (names only), with who's live among them:
+   The last follow list read from each site is kept (db.js, names only), with who's live among them:
    - Kick: the live checks read your follow list when you have 5 or more saved Kick channels. For suggestions it's
      also read whenever you're signed in: the whole list at start-up and every 30 minutes, the live ones (1-4 pages)
      about once a minute when the live checks haven't just done it.
@@ -1113,18 +1121,17 @@ app.whenReady().then(() => powerMonitor.on('resume', () => watcher.checkSoon()))
      signed in. Who's live on Twitch: one question per 100 channels every 2 minutes. YouTube: no live state.
    The switch in the Channels panel's ⋯ menu turns it all off and forgets the lists. A site you aren't signed in to
    shows no suggestions. */
-const followsFile = () => stateFile('follows');
 let follows = null;
 const followLive = { kick: new Map(), twitch: new Map() }, followLiveAt = { kick: 0, twitch: 0 };
 const followTried = { kick: 0, twitch: 0, youtube: 0 };   // the last time the whole list was asked for (worked or not)
 function followStore() {
-  if (!follows) { let d = null; try { d = JSON.parse(fs.readFileSync(followsFile(), 'utf8')); } catch {} follows = SmvFollows.normStore(d); }
+  if (!follows) { let d = null; try { d = db.get('follows'); } catch {} follows = SmvFollows.normStore(d); }
   return follows;
 }
 const followsOn = () => !followStore().off;
 function saveFollows(next) {
   follows = SmvFollows.normStore(next);
-  try { const f = followsFile(); fs.writeFileSync(f + '.tmp', JSON.stringify(follows)); fs.renameSync(f + '.tmp', f); } catch {}
+  try { db.set('follows', follows); } catch {}
   followsChanged();
 }
 let followsChangedT = null;
@@ -1210,20 +1217,19 @@ mainIpc.handle('follows:set-on', (_e, on) => {
 });
 
 /* ---------- streamer profiles ----------
-   The live checks above are recorded (profiles.json: each stream seen, its viewer counts, a follower
+   The live checks above are recorded (db.js: each stream seen, its viewer counts, a follower
    count a day, and your notes), and opening a profile asks the site for the rest. The queue below also
    asks for saved channels' profiles in the background: soon after one is saved, imported or goes live,
    and slowly for ones the app knows nothing about yet (profile-queue.js). */
-const profFile = () => stateFile('profiles');
 let history = null, histT = null;
 function hist() {
-  if (!history) { let d = null; try { d = JSON.parse(fs.readFileSync(profFile(), 'utf8')); } catch {} history = createHistory(d); }
+  if (!history) { let d = null; try { d = db.loadProfiles(); } catch {} history = createHistory(d); }
   return history;
 }
-function saveHistory() {
+function saveHistory() {      // only the channels that changed are written (db.js)
   clearTimeout(histT); histT = null; histDue = 0;
   if (!history || !history.takeChanged()) return;
-  try { const f = profFile(); fs.writeFileSync(f + '.tmp', JSON.stringify(history.data())); fs.renameSync(f + '.tmp', f); } catch {}
+  try { db.saveProfiles(history.data()); } catch {}
 }
 let histDue = 0;
 function saveHistorySoon(ms = 20000) {      // sooner wins: notes are saved within seconds, live checks once a minute at most

@@ -1,11 +1,11 @@
 // Streamer profiles in the real desktop app: the Profiles directory, a profile with what Kick says and
 // what the app recorded, notes, Unfollow on Kick (from a profile and from the Import follows list), and
 // recording streams from the live checks. kick.com is a stand-in that answers like Kick's API, so
-// nothing reaches the real sites; the history starts from a made-up profiles.json.
+// nothing reaches the real sites; the history starts from a made-up profiles.json (an older version's file, copied in as the app starts).
 const test = require('node:test');
 const fs = require('fs');
 const path = require('path');
-const { launchApp, assert, openChannel } = require('../../app');
+const { launchApp, assert, openChannel, saved } = require('../../app');
 const { tempDir } = require('../../../helpers');
 
 const T = { timeout: 60000 };
@@ -130,9 +130,8 @@ test('notes, tags and nickname are saved to the computer', T, async () => {
   await w.press('.pf-notes [data-k=tag]', 'Enter');
   await w.waitForSelector('.pf-tagx');
   await w.fill('.pf-notes [data-k=nick]', 'Al');
-  const file = path.join(a.data, 'Stream Multiview', 'profiles.json');
   for (let i = 0; i < 50; i++) {
-    let m = null; try { m = JSON.parse(fs.readFileSync(file, 'utf8')).meta.alpha; } catch {}
+    const m = (saved(a.data).profiles() || { meta: {} }).meta.alpha;
     if (m && m.notes === 'Raid train on Friday' && m.nick === 'Al') { assert.deepEqual(m.tags, ['Speedrun']); return; }
     await new Promise(r => setTimeout(r, 200));
   }

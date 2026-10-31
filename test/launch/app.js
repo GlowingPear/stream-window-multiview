@@ -205,4 +205,21 @@ async function typeChannel(win, text) {
   await win.press('#savedInput', 'Enter');
 }
 
-module.exports = { nameIs, launchApp, stubExists, mainWindow, inView, viewLoaded, winSel, assert, openChannel, setMode, typeChannel };
+// What the app keeps in its database (src/main/db.js) in a data folder, read as it is now (the app can be running):
+// saved(data).get('follows'), saved(data).profiles(). null for a database that isn't there (yet).
+function saved(data) {
+  const read = fn => {
+    const file = path.join(data, 'Stream Multiview', 'stream-multiview.db');
+    if (!fs.existsSync(file)) return null;
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync(file, { readOnly: true });
+    try { return fn(db); } catch { return null; } finally { db.close(); }
+  };
+  return {
+    get: key => read(db => { const r = db.prepare('SELECT value FROM state WHERE key = ?').get(key); return r ? JSON.parse(r.value) : null; }),
+    profiles: () => read(db => ({ ch: Object.fromEntries(db.prepare('SELECT ch, data FROM profiles').all().map(r => [r.ch, JSON.parse(r.data)])),
+      meta: Object.fromEntries(db.prepare('SELECT ch, data FROM notes').all().map(r => [r.ch, JSON.parse(r.data)])) }))
+  };
+}
+
+module.exports = { nameIs, launchApp, stubExists, mainWindow, inView, viewLoaded, winSel, assert, openChannel, setMode, typeChannel, saved };

@@ -1,5 +1,5 @@
 // Suggestions from the channels you follow, for the Channels box. The app keeps the last follow list it read from
-// each site (names only, in follows.json): Kick's comes from the live checks, Twitch's and YouTube's from Import
+// each site (names only, in the app's data: main/db.js): Kick's comes from the live checks, Twitch's and YouTube's from Import
 // follows (and a daily refresh). Used by the main process (the store) and by the app page as window.SmvFollows
 // (the suggestions), and by the tests (require). src/shared/ is for code both sides load, so it stays in a form
 // both can: require() and a plain <script>.

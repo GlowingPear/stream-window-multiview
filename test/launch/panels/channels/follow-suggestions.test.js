@@ -1,18 +1,15 @@
 // Suggestions from the channels you follow, in the real desktop app: Kick's follow list is read by itself when
 // you're signed in (even with no saved Kick channels), Twitch's list and who's live on it too, the lists are kept in
-// follows.json, the Channels box suggests them, and switching it off forgets them. kick.com and Twitch's API are
+// the app's data (db.js), the Channels box suggests them, and switching it off forgets them. kick.com and Twitch's API are
 // stand-ins, so nothing reaches the real sites.
 const test = require('node:test');
-const fs = require('fs');
-const path = require('path');
-const { launchApp, assert } = require('../../app');
+const { launchApp, assert, saved } = require('../../app');
 
 const T = { timeout: 90000 };
 const until = async (fn, ms = 40000) => { const end = Date.now() + ms; for (;;) { const v = await fn(); if (v) return v; if (Date.now() > end) throw new Error('timed out waiting'); await new Promise(r => setTimeout(r, 400)); } };
 
 let a;
-const file = () => path.join(a.data, 'Stream Multiview', 'follows.json');
-const stored = () => { try { return JSON.parse(fs.readFileSync(file(), 'utf8')); } catch { return null; } };
+const stored = () => saved(a.data).get('follows');
 test.before(async () => {
   a = await launchApp({ storage: { 'kickMultiview.saved': ['alpha'] } });
   await a.app.evaluate(async ({ session }) => {
