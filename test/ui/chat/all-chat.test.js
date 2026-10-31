@@ -470,6 +470,35 @@ test('ALL: a Twitch watch streak is their message highlighted with its tag (as T
   assert.ok(await page.evaluate(() => window.openWins().some(w => w.channel === 'tw:novalynx')));
 });
 
+test('ALL: a reward redeemed shows only in its own channel\'s chat (Twitch sends your own to every chat page), by the channel\'s id from its ROOMSTATE or asked as ALL starts', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const hermes = (id, room) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'reward-redeemed',
+    data: { redemption: { id, channel_id: room, user: { id: '9', login: 'metwitch', display_name: 'MeTwitch' }, reward: { title: 'Daily Check In ' + id } } } }) } });
+  // the channel's id not known yet: a reward shows (one of its own isn't lost)
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [hermes('r1', '222')] });
+  // as you join, its ROOMSTATE says it: another channel's reward is left out; its own, or one without a channel, shows
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'room-id': '111', slow: '0', 'followers-only': '-1' }, ':tmi.twitch.tv ROOMSTATE #quietkoala'), hermes('r2', '222'), hermes('r3', '111'), hermes('r4', '')] });
+  assert.deepEqual(await lines(page), ['al-ev | TMeTwitch redeemed Daily Check In r1', 'al-ev | TMeTwitch redeemed Daily Check In r3', 'al-ev | TMeTwitch redeemed Daily Check In r4']);
+  assert.equal(await page.evaluate(() => window.allChat.twRooms.get('tw:quietkoala')), '111');
+  // the window closed: its channel's id goes; opened again, ALL asks its chat page (twRoomAgent), once, for Twitch only
+  await page.$eval('#stage .win.chat:not(.tab-hidden) [data-a=close]', b => b.click());
+  await page.waitForFunction(() => !window.openWins().some(w => w.kind === 'chat'));
+  assert.equal(await page.evaluate(() => window.allChat.twRooms.size), 0);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'chat', ['quietkoala', 'tw:quietkoala']));
+  await page.waitForSelector('.all-view');
+  const asked = await page.evaluate(async () => {
+    const { feedReady } = await import('./page/chat/all-chat.js'), asked = [];
+    const view = ch => ({ executeJavaScript: async code => { const m = /^\(async function twRoomAgent\(/.test(code); if (m) asked.push(ch); return m ? (ch === 'tw:quietkoala' ? '111' : null) : null; }, getWebContentsId: () => 1 });
+    for (const ch of ['quietkoala', 'tw:quietkoala', 'tw:quietkoala']){ feedReady(window.openWins().find(o => o.kind === 'chat' && o.channel === ch), view(ch)); await new Promise(r => setTimeout(r, 50)); }
+    return asked;
+  });
+  assert.deepEqual(asked, ['tw:quietkoala'], 'not Kick\'s; not again once known');
+  assert.equal(await page.evaluate(() => window.allChat.twRooms.get('tw:quietkoala')), '111');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [hermes('r5', '222'), hermes('r6', '111')] });
+  assert.deepEqual((await lines(page)).slice(3), ['al-ev | TMeTwitch redeemed Daily Check In r6'], 'ALL keeps what it had; another channel\'s left out');
+});
+
 test('ALL: events are a short line (no See it on …); Events: short, full or hidden; an announcement is a message', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');

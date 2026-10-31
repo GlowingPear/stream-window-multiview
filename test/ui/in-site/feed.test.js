@@ -158,6 +158,20 @@ test('the badges\' pictures (badgesAgent): Kick\'s channel sub badges by months;
   assert.deepEqual(got.asked, ['/api/v2/channels/quietkoala', 'https://gql.twitch.tv/gql query { user(lo', 'https://gql.twitch.tv/gql query { badges ']);
 });
 
+test('a Twitch chat\'s channel id (twRoomAgent): its user\'s id, by its login; null for no name, an odd answer or a site that won\'t answer', async t => {
+  const page = await openApp(t);
+  const got = await page.evaluate(async () => {
+    const asked = [];
+    window.fetch = async (url, o = {}) => ({ json: async () => { asked.push(String(url) + ' ' + JSON.parse(o.body).query); return /odd/.test(o.body) ? { data: { user: { id: 'x1' } } } : /gone/.test(o.body) ? { data: { user: null } } : { data: { user: { id: '111' } } }; } });
+    const out = [await window.twRoomAgent('QuietKoala'), await window.twRoomAgent('odd'), await window.twRoomAgent('gone'), await window.twRoomAgent('')];
+    window.fetch = async () => { throw new Error('offline'); };
+    out.push(await window.twRoomAgent('quietkoala'));
+    return { out, asked };
+  });
+  assert.deepEqual(got.out, ['111', null, null, null, null]);
+  assert.equal(got.asked[0], 'https://gql.twitch.tv/gql query { user(login: "quietkoala") { id } }');
+});
+
 test('Kick\'s own badge icons as its chat draws them (kickIconsAgent): by type, a gift by its icon name, a level\'s; not the ones ALL has, nor a picture', async t => {
   const page = await openApp(t);
   const got = await page.evaluate(() => {

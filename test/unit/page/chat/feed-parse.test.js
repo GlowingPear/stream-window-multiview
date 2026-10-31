@@ -356,6 +356,8 @@ test('the chats\' modes as they change: Twitch\'s ROOMSTATE (what changed) and i
     { slow: 0, followers: null, subs: false, emotes: false }, 'as you join: all of them, off');
   assert.deepEqual(parseTwitch(TW({ 'room-id': '1', slow: '30' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')).modes, { slow: 30 }, 'then only what changed');
   assert.deepEqual(parseTwitch(TW({ 'followers-only': '10' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')).modes, { followers: 10 });
+  assert.deepEqual([parseTwitch(TW({ 'room-id': '1', slow: '30' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')).room, 'room' in parseTwitch(TW({ 'followers-only': '10' }, ':tmi.twitch.tv ROOMSTATE #quietkoala'))],
+    ['1', false], 'the channel\'s id, when it says it (ALL keeps each reward redeemed in its own channel)');
   assert.deepEqual(parseTwitch(TW({ 'followers-only': '0', 'subs-only': '1', 'emote-only': '1' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')).modes, { followers: 0, subs: true, emotes: true });
   assert.equal(parseTwitch(TW({ 'room-id': '1' }, ':tmi.twitch.tv ROOMSTATE #quietkoala')), null);
   const room = modes => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type: 'updated_room', data: { room: { channel_id: '1', modes } } }) } });
@@ -404,6 +406,9 @@ test('Twitch: a watch streak is their message, highlighted, with how many stream
   const r = parseTwitch(hermes('reward-redeemed', redemption()));
   assert.deepEqual([r.kind, r.event, r.id, r.sender, r.text, r.redeem], ['event', 'reward', 'rw-r1', 'Tide', 'Tide redeemed Hydrate!', { title: 'Hydrate!', color: '#1D7C9F' }]);
   assert.equal(parseTwitch(hermes('reward-redeemed', redemption({ user_input: 'hi' }))), null, 'with text: the chat\'s line (PRIVMSG) is it');
+  // the channel it was redeemed in (your own come to every Twitch chat page): the redemption's, or its reward's
+  assert.deepEqual([r.room, parseTwitch(hermes('reward-redeemed', redemption({ channel_id: '111' }))).room,
+    parseTwitch(hermes('reward-redeemed', redemption({ reward: { title: 'Hydrate!', channel_id: '222' } }))).room], ['', '111', '222']);
   const so = parseTwitch(hermes('create', { shoutoutID: 's9', sourceLogin: 'quietkoala', targetLogin: 'novalynx', targetUserDisplayName: 'Novalynx' }));
   assert.deepEqual([so.kind, so.event, so.text, so.shoutout], ['event', 'shoutout', 'quietkoala shouted out Novalynx', 'tw:novalynx']);
   assert.deepEqual([KNOWN.twitch['hermes:reward-redeemed'], KNOWN.twitch['hermes:create']], ['a reward redeemed (without text)', 'a shoutout']);

@@ -17,7 +17,7 @@ import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
 import { wins } from '../core.js';
 import { badgesAgent, channelsAgent, feedAgent, hypeAgent, kickIconsAgent, messageHtml, modesAgent, pinAgent,
-  profileAgent, replyAgent, shownAgent, twCommandsAgent, twReplyAt, twReplyPress, ytLookAgent } from '../in-site/feed.js';
+  profileAgent, replyAgent, shownAgent, twCommandsAgent, twReplyAt, twReplyPress, twRoomAgent, ytLookAgent } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent, sentAgent } from '../in-site/send.js';
@@ -119,12 +119,13 @@ function ingest(w, json, quiet = false, shown = false){
     if (m.kind === 'unban') return unbanned(f, view, m, w.channel);
     if (m.kind === 'modaction') return modAction(f, view, m, w.channel);
     if (m.kind === 'pin' || m.kind === 'unpin') return setPin(f, s, w.channel, m, quiet);
-    if (m.kind === 'modes') return setModes(w.channel, { modes: m.modes });
+    if (m.kind === 'modes'){ if (m.room) twRooms.set(w.channel, m.room); return setModes(w.channel, { modes: m.modes }); }
     if (m.kind === 'raid') return raidNews(f, view, m, w);
     if (m.kind === 'hype') return hypeNews(s, w.channel, m);
     if (m.kind === 'poll') return pollNews(s, w.channel, m);
     if (m.kind === 'automod') return heldMine(f, m);
     if (m.kind === 'marks') return markLine(f, m);
+    if (m.room && twRooms.has(w.channel) && twRooms.get(w.channel) !== m.room) return;   // (your own reward redeemed in another channel: Twitch sends it to every chat page)
     if (m.id && f.byId.has(m.site + ':' + m.id)) return;   // (one it has: YouTube sends its recent ones again when its chat is rebuilt or switches view)
     if (m.sourceId && f.msgs.some(x => x.site === 'twitch' && x.sourceId === m.sourceId)) return;   // (a shared chat's message, read from two of its chats)
     m.ch = w.channel;
@@ -191,6 +192,7 @@ function giftTo(f, m){
 const badgePics = new Map();   // channel -> its badges' pictures, as badgesAgent read them (in-site/feed.js), or null (none); while it has a chat open
 const sharedFrom = new Map();   // a shared chat's other channel (Twitch's room id) -> { login, name, pic } as channelsAgent read it (in-site/feed.js), or null (being asked)
 let twBadges = null;           // Twitch's own badges' pictures (the same in every chat: kept once)
+const twRooms = new Map();     // a Twitch channel -> its id (Twitch's room id), from its ROOMSTATE or twRoomAgent (in-site/feed.js); while it has a chat open
 const kickIcons = new Map();   // Kick's own badge icons as its chat draws them (kickIconsAgent), cleaned: '<type>' | 'Gift25' | 'Level24' -> <svg>
 let ytLook = null;             // how a YouTube chat draws names and badges (ytLookAgent): { dark, names, icons: { moderator: { svg, color } } }, cleaned
 const modesOf = new Map();   // channel -> { modes: { slow, followers, subs, emotes, verified }, me: { … }, blocked, signIn, until (slow mode: when you can send again) }
@@ -1784,7 +1786,8 @@ function forgetClosed(){
   const open = new Set(wins.filter(w => w.kind === 'chat').map(w => w.channel));
   [...badgePics.keys()].forEach(ch => { if (!open.has(ch)) badgePics.delete(ch); });
   [...emoteCache.keys()].forEach(ch => { if (!open.has(ch)) forgetEmotes(ch); });
-  [...modesOf.keys()].forEach(ch => { if (!open.has(ch)) modesOf.delete(ch); });   // (opened again: what it says then)
+  [...modesOf.keys()].forEach(ch => { if (!open.has(ch)) modesOf.delete(ch); });
+  [...twRooms.keys()].forEach(ch => { if (!open.has(ch)) twRooms.delete(ch); });   // (opened again: what it says then)
   [...liveCmds.keys()].forEach(ch => { if (!open.has(ch)) liveCmds.delete(ch); });
   if (!wins.some(w => w.kind === 'chat' && platOf(w.channel) === 'twitch')) twBadges = null;
 }
@@ -1799,6 +1802,7 @@ function askModes(w, view, tries = 2){
 const MODES_AGAIN = 4000;
 function pinsNow(w, view){
   if (!badgePics.has(w.channel)) askIn(view, `(${badgesAgent})(${!twBadges})`).then(r => gotBadges(w.channel, r)).catch(() => {});
+  if (platOf(w.channel) === 'twitch' && !twRooms.has(w.channel)) askIn(view, `(${twRoomAgent})()`).then(id => { if (id) twRooms.set(w.channel, id); }).catch(() => {});
   askModes(w, view);
   askIn(view, `(${pinAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true); }).catch(() => {});
   askIn(view, `(${shownAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true, true); }).catch(() => {});   // (what it already shows)
@@ -1845,9 +1849,9 @@ function init(){
   // What ALL shows, changed in the other window
   settings.onChange(['allBots', 'allEvents', 'allHype', 'allHidden'], () => { readFilters(); redrawAll(); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.ytLookAgent = ytLookAgent; window.pinAgent = pinAgent; window.hypeAgent = hypeAgent; window.twCommandsAgent = twCommandsAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.sentAgent = sentAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.ytLookAgent = ytLookAgent; window.twRoomAgent = twRoomAgent; window.pinAgent = pinAgent; window.hypeAgent = hypeAgent; window.twCommandsAgent = twCommandsAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.sentAgent = sentAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
-  window.allChat = { sender, SEND_LIMIT, modKnown, gotBadges, gotKickIcons, kickIcons, gotYtLook, ytLook: () => ytLook, liveCmds, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
+  window.allChat = { sender, SEND_LIMIT, modKnown, gotBadges, gotKickIcons, kickIcons, gotYtLook, ytLook: () => ytLook, liveCmds, cleanSvg, badgePics, twBadges: () => twBadges, twRooms, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
 export { allLooking, allOn, allRaid, allTabFor, appBots, chatRules, copyChatHtml, feedRead, feedReady, feeds,
