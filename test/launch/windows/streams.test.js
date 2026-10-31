@@ -176,8 +176,10 @@ test('a stream\'s sound stays off until the app\'s volume and mute are on its pl
   await a.win.click(`${winSel(title)} [data-a=reload]`);
   await until(async () => !(await sound('stream')));
   await until(() => sound('stream'));
-  aud = await a.app.evaluate(() => globalThis.__aud);
-  assert.deepEqual(aud.find(r => r.on.some(o => o && /youtube\.com\/watch/.test(o.url))).on.map(o => o.muted), [true, true], 'after loading again, too');
+  // (what the player said as its sound came on is read from it, a moment after)
+  const ytOn = () => a.app.evaluate(() => globalThis.__aud.find(r => r.on.some(o => o && /youtube\.com\/watch/.test(o.url))).on.map(o => o && o.muted));
+  await until(async () => (await ytOn()).length >= 2);
+  assert.deepEqual(await ytOn(), [true, true], 'after loading again, too');
 });
 
 test('the switch control: pause and play, mute, hear only one, its volume, and a small live preview', T, async () => {
