@@ -207,6 +207,21 @@ test('how a YouTube chat draws names and badges (ytLookAgent): its colours, the 
   assert.equal((await look()).dark, false);
 });
 
+test('a hype train already running (hypeAgent): Twitch\'s GraphQL for the chat\'s channel; none, or one that has ended, or no answer: null', async t => {
+  const page = await openApp(t);
+  const got = await page.evaluate(async () => {
+    const real = window.fetch, asked = [];
+    const run = async answer => { window.fetch = async (url, o) => { asked.push(JSON.parse(o.body).query.replace(/\s+/g, ' ').slice(0, 60)); if (answer === 'fail') throw new Error('offline'); return { json: async () => answer }; }; try { return await window.hypeAgent('quietkoala'); } finally { window.fetch = real; } };
+    const ex = x => ({ data: { user: { channel: { hypeTrain: { execution: x } } } } });
+    const r = [await run(ex({ id: 'ht-1', expiresAt: '2026-10-30T22:16:02Z', endedAt: null, progress: { goal: 2, progression: 1, level: { value: 3 } } })), await run(ex(null)),
+      await run(ex({ id: 'ht-0', endedAt: '2026-10-30T22:16:02Z' })), await run({ errors: [{}] }), await run('fail'), await window.hypeAgent('')];
+    return { r, asked };
+  });
+  assert.equal(got.r[0].id, 'ht-1');
+  assert.deepEqual(got.r.slice(1), [null, null, null, null, null]);
+  assert.match(got.asked[0], /^query \{ user\(login: "quietkoala"\) \{ channel \{ hypeTrain \{ ex/);
+});
+
 test('a pin already up (pinAgent): Kick\'s chat history, Twitch\'s pinnedChatMessages, YouTube\'s first data; each as the live pin, which the parser reads', async t => {
   const page = await openApp(t);
   const got = await page.evaluate(async () => {

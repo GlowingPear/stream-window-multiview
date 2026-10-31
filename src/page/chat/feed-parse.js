@@ -101,6 +101,24 @@ function parseTwitch(line){
   return msg;
 }
 
+// A Twitch hype train as ALL's strip shows it: { kind: 'hype', state ('start', 'progression', 'level-up', 'end'), id, level,
+// value and goal (towards the next level), expires (when it runs out, ms), golden (a Golden Kappa train) }. Its start
+// (and Twitch's GraphQL hypeTrain.execution, the train already running: in-site/feed.js hypeAgent) say it as
+// { progress: { progression, goal, level: { value } }, expiresAt }; its other news is read the same way, or as Twitch's
+// older names (progress.value, remaining_seconds), as they come. null: nothing to show.
+function hypeTrain(state, d){
+  if (!d || typeof d !== 'object') return null;
+  const id = String(d.id || d.execution_id || (d.progress && d.progress.id) || '').replace(/-(SUBS|BITS|[A-Z_]+)$/, '');
+  if (!id) return null;
+  if (state === 'end' || d.endedAt) return { site: 'twitch', kind: 'hype', state: 'end', id, t: Date.now() };
+  const pr = d.progress || d, lv = pr.level || d.level || {}, level = +(typeof lv === 'object' ? lv.value : lv) || 0;
+  const value = +(pr.progression ?? pr.value) || 0, goal = +pr.goal || 0;
+  const secs = +(pr.remaining_seconds ?? d.remaining_seconds) || 0;
+  const expires = Date.parse(d.expiresAt || d.expires_at || pr.expiresAt || '') || (secs ? Date.now() + secs * 1000 : 0);
+  if (!level && !goal) return null;
+  return { site: 'twitch', kind: 'hype', state, id, t: Date.now(), level: Math.max(1, level), value: Math.max(0, value), goal, expires, golden: !!(d.isGoldenKappaTrain || d.is_golden_kappa_train) };
+}
+
 // Twitch's other connection (hermes): a message pinned (the whole message with it) or taken down
 function twitchPin(frame){
   let p;
@@ -144,6 +162,9 @@ function twitchPin(frame){
     return { site: 'twitch', kind: 'event', event: 'goal', id: `goal-${g.id}-${+g.targetContributions || 0}`, t: Date.now(), sender: '', login: '', color: '', userId: '', badges: [],
       parts: String(g.description || '').trim() ? [{ text: String(g.description).trim() }] : [], summary, text: summary.map(x => x.text || x.strong).join('') };
   }
+  // the hype train: started, moving along, a level up, ended (its conductors and rewards: left out)
+  const ht = p && /^hype-train-(start|progression|level-up|end)$/.exec(p.type || '');
+  if (ht) return hypeTrain(ht[1], p.data);
   // (and the chat's modes, all of them, as a moderator changes one)
   if (p && p.type === 'updated_room'){
     const r = (p.data && p.data.room && p.data.room.modes) || null; if (!r) return null;
@@ -430,7 +451,8 @@ const KNOWN = {
     'CLEARCHAT:ban': 'a ban', 'CLEARCHAT:all': 'the chat cleared', 'hermes:pin-message': 'a pin', 'hermes:unpin-message': 'a pin taken down', ROOMSTATE: 'the chat’s modes (above the box)', 'hermes:updated_room': 'the chat’s modes (above the box)', 'hermes:moderation_action': 'who a moderator was (to moderators)',
     'hermes:reward-redeemed': 'a reward redeemed (without text)', 'hermes:create': 'a shoutout',
     'hermes:raid_update_v2': 'a raid getting ready (one line, counting down)', 'hermes:raid_go_v2': 'a raid going (its line: Open)', 'hermes:raid_cancel_v2': 'a raid called off (its line says so)',
-    'hermes:goal_achieved': 'a goal reached (its progress: hermes:goal_updated)' },
+    'hermes:goal_achieved': 'a goal reached (its progress: hermes:goal_updated)', 'hermes:hype-train-start': 'a hype train (its strip over ALL)',
+    'hermes:hype-train-progression': 'a hype train moving along (its strip)', 'hermes:hype-train-level-up': 'a hype train’s new level (its strip)', 'hermes:hype-train-end': 'a hype train ending (its strip)' },
   youtube: { 'addChatItemAction:liveChatTextMessageRenderer': 'a message', 'addChatItemAction:liveChatPaidMessageRenderer': 'a Super Chat',
     'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
     'addChatItemAction:giftMessageViewModel': 'a gift', 'replaceChatItemAction:liveChatTextMessageRenderer': 'a held message let through',
@@ -472,9 +494,9 @@ const IGNORED = {
     addInteractivityWidgetAction: 'YouTube’s floating note of who sent a gift (the gift is its own line)', updateOrAddInteractivityWidgetAction: 'YouTube’s floating note of who sent a gift (the gift is its own line)',
     'replaceChatItemAction:liveChatPlaceholderItemRenderer': 'a stand-in for a held message, replaced by another (the message, let through, comes on its own)' }
 };
-// Why ALL leaves a kind out, or '' (Twitch's numbered replies are the connection's own too, and all its hype train's news)
+// Why ALL leaves a kind out, or '' (Twitch's numbered replies are the connection's own too, and its hype train's other news)
 const ignoredWhy = (site, kind) => (IGNORED[site] && IGNORED[site][kind]) || (site === 'twitch' && /^\d{3}$/.test(kind) ? 'the connection’s own'
-  : site === 'twitch' && /^hermes:hype-train-/.test(kind) ? 'the hype train (Twitch’s own panel)' : site === 'kick' && /^pusher(_internal)?:/.test(kind) ? 'the connection’s own' : site === 'youtube' && /^addLiveChatTickerItemAction:/.test(kind) ? 'the ticker at the top (its Super Chat or membership is its own line)' : '');
+  : site === 'twitch' && /^hermes:hype-train-/.test(kind) && !KNOWN.twitch[kind] ? 'the hype train’s conductors and rewards (Twitch’s own panel)' : site === 'kick' && /^pusher(_internal)?:/.test(kind) ? 'the connection’s own' : site === 'youtube' && /^addLiveChatTickerItemAction:/.test(kind) ? 'the ticker at the top (its Super Chat or membership is its own line)' : '');
 // A YouTube action's kind, as its reader counts it (in-site/feed.js's ytKind)
 const ytKind = a => { const k = Object.keys(a || {}).find(x => x !== 'clickTrackingParams') || ''; const v = a && a[k] || {}, it = v.item || v.replacementItem || v.bannerRenderer;
   return k + (it ? ':' + (Object.keys(it)[0] || '') : ''); };
@@ -487,6 +509,6 @@ const ignoredKinds = samples => Object.fromEntries(Object.keys(KNOWN).map(s => [
   .filter(k => !KNOWN[s][k] && ignoredWhy(s, k)).map(k => [k, ignoredWhy(s, k)]))]));
 
 // (one object, so the tests can reach each site's reader)
-const feedParse = { KNOWN, IGNORED, ignoredWhy, ignoredKinds, leftOut, parseFeed, parseTwitch, twitchPin, twitchSummary, parseKick, kickEvents, kickRaid, kickCelebration, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds, kickPics, ytPics, BADGES };
+const feedParse = { KNOWN, IGNORED, ignoredWhy, ignoredKinds, leftOut, parseFeed, parseTwitch, twitchPin, hypeTrain, twitchSummary, parseKick, kickEvents, kickRaid, kickCelebration, parseYouTube, ircLine, twitchParts, kickParts, ytParts, badgeKinds, kickPics, ytPics, BADGES };
 
 export { feedParse };

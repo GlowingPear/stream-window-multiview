@@ -15,8 +15,8 @@ import { autoTrFor, translateChat } from './translate.js';
 import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
 import { wins } from '../core.js';
-import { badgesAgent, feedAgent, kickIconsAgent, messageHtml, modesAgent, pinAgent, profileAgent, replyAgent,
-  shownAgent, twReplyAt, twReplyPress, ytLookAgent } from '../in-site/feed.js';
+import { badgesAgent, feedAgent, hypeAgent, kickIconsAgent, messageHtml, modesAgent, pinAgent, profileAgent,
+  replyAgent, shownAgent, twReplyAt, twReplyPress, ytLookAgent } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent, sentAgent } from '../in-site/send.js';
@@ -53,6 +53,8 @@ import { syncModBtn } from '../windows/windows.js';
 const MAX = 400;                       // lines kept for each streamer
 const feeds = new Map();               // streamer id -> { msgs: [], byId: Map }
 let botsShown = false;                 // "Bots: shown" (the chip; a saved setting)
+let hypeShown = true;                  // Twitch's hype train strip (the filter menu; a saved setting)
+let hiddenSites = {};                  // the sites each streamer's ALL hides (its K / T / Y switches): { [streamer id]: ['kick', …] }
 let eventsMode = 'short';              // subs, gifts, raids, Super Chats: 'short' (one line), 'full' (the site's words) or 'hidden'
 
 // Whose ALL a chat is in: its linked streamer, or, for a channel that isn't linked with its own ALL on (Channel settings),
@@ -116,6 +118,7 @@ function ingest(w, json, quiet = false, shown = false){
     if (m.kind === 'pin' || m.kind === 'unpin') return setPin(f, s, w.channel, m, quiet);
     if (m.kind === 'modes') return setModes(w.channel, { modes: m.modes });
     if (m.kind === 'raid') return raidNews(f, view, m, w);
+    if (m.kind === 'hype') return hypeNews(s, w.channel, m);
     if (m.kind === 'poll') return pollNews(s, w.channel, m);
     if (m.id && f.byId.has(m.site + ':' + m.id)) return;   // (one it has: YouTube sends its recent ones again when its chat is rebuilt or switches view)
     m.ch = w.channel;
@@ -643,6 +646,7 @@ function evToggle(m, e){
 }
 function lineEl(m){
   if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' ? null : mineEl(m);
+  if (m.ch && siteOff(ownerOf(m.ch), m.site)) return null;   // (its site switched off in this ALL; your own lines stay)
   if (m.kind === 'raidout'){
     // (Twitch's countdown: getting ready, then raided; or called off)
     const viewers = m.viewers ? ` · ${m.viewers.toLocaleString('en-US')} ${m.viewers === 1 ? 'viewer' : 'viewers'}` : '', left = m.soon ? raidLeft(m) : -1;
@@ -752,15 +756,16 @@ function buildView(w){
   const ep = element('div', { class: 'pop all-ep', role: 'dialog', 'aria-label': 'Emotes', hidden: true });
   const recent = element('div', { class: 'all-re', role: 'toolbar', 'aria-label': 'Emotes you used last', hidden: true });
   const pins = element('div', { class: 'all-pins', hidden: true, role: 'region', 'aria-label': 'Pinned messages' });
+  const hype = element('div', { class: 'all-hype', hidden: true, role: 'status', 'aria-label': 'Hype train' });
   const poll = element('div', { class: 'all-poll', hidden: true, role: 'region', 'aria-label': 'Poll' });
   const pollChip = element('button', { type: 'button', class: 'all-pinchip all-pollchip', hidden: true, dataset: { cmd: 'all.polls' },
     onclick: () => { view.pollsShown = !view.pollsShown; renderPoll(view); fitRoom(view); } });
   const pinChip = element('button', { type: 'button', class: 'all-pinchip', hidden: true, dataset: { cmd: 'all.pins' },
     onclick: () => { view.pinsShown = !view.pinsShown; renderPins(view); } });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
-  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, pollChip, filt), health, pins, poll, element('div', 'all-lw', list, more), empty,
+  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, pollChip, filt), hype, health, pins, poll, element('div', 'all-lw', list, more), empty,
     element('div', 'all-cmp', bar, modes, recent, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm, ecard);
-  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, poll, pollChip, pollsShown: true, pollAt: '', pinChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, recent, sendB, w, ends, atEnd: true, lock: null, atList: [], atSel: 0, atMode: '' };
+  const view = { el, list, empty, more, filt, fm, modes, health, ecard, hype, pins, poll, pollChip, pollsShown: true, pollAt: '', pinChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, recent, sendB, w, ends, atEnd: true, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
   closeOnOutside(fm, { button: filt });
   el.addEventListener('pointerdown', () => allSeen(w));
@@ -835,11 +840,14 @@ function renderHealth(view, w, chs){
 // The sites it hears, the filter pill, and what it says while it has nothing yet
 function renderTop(view, w){
   const chs = tabChannels(w), heard = chs.filter(ch => frameOf(w).some(o => o.channel === ch && o.kind === 'chat'));
-  view.el.querySelector('.all-sites').replaceChildren(...chs.map(ch => { const bad = healthState(ch);
-    return element('i', { class: 'pi pi-' + platOf(ch) + (heard.includes(ch) ? '' : ' dim') + (bad ? ' warn' : ''), title: bad ? bad.why : `${PLAT_NAME[platOf(ch)]}${heard.includes(ch) ? '' : ': offline'}` }, PLAT_NAME[platOf(ch)][0]); }));
+  // each site's switch: shown in ALL or hidden (faded and crossed), and whether it's offline or ALL has trouble reading it
+  view.el.querySelector('.all-sites').replaceChildren(...chs.map(ch => { const bad = healthState(ch), p = platOf(ch), off = siteOff(view.s, p);
+    const state = bad ? bad.why : `${PLAT_NAME[p]}${heard.includes(ch) ? '' : ': offline'}`;
+    return element('button', { type: 'button', class: 'pi pi-' + p + (heard.includes(ch) ? '' : ' dim') + (bad ? ' warn' : '') + (off ? ' off' : ''), 'aria-pressed': String(!off), dataset: { cmd: 'all.site' },
+      title: `${state}\n${off ? `Show ${PLAT_NAME[p]} in ALL` : `Hide ${PLAT_NAME[p]} in ALL`}`, 'aria-label': `${PLAT_NAME[p]} in ALL`, onclick: () => toggleSite(view.s, p) }, PLAT_NAME[p][0]); }));
   renderHealth(view, w, chs);
   view.filt.title = `What ALL shows · bots ${botsShown ? 'shown' : 'hidden'}, events ${eventsMode}`;
-  view.filt.classList.toggle('set', botsShown || eventsMode !== 'short');   // (a dot: not as it starts)
+  view.filt.classList.toggle('set', botsShown || eventsMode !== 'short' || !hypeShown);   // (a dot: not as it starts)
   if (!view.fm.hidden) openFilters(view);
   const names = heard.map(ch => PLAT_NAME[platOf(ch)]), off = chs.filter(ch => !heard.includes(ch)).map(ch => PLAT_NAME[platOf(ch)]);
   renderCmp(view, w);
@@ -847,7 +855,72 @@ function renderTop(view, w){
     off.length ? element('span', null, `${off.join(' and ')} ${off.length > 1 ? 'are' : 'is'} offline`) : '', element('small', null, 'New messages show here as they arrive.'));
   view.empty.hidden = !!view.list.children.length;
   renderPins(view);
+  renderHype(view);
   renderPoll(view);
+}
+
+/* ---- Twitch's hype train: a strip under ALL's top bar while one runs in a chat it reads ----
+   Its level, how far it is towards the next (filled), and the time left (a ring and the minutes): amber in the last
+   minute, a soft pulse in the last 30 seconds. A level up flashes its new level for a moment; a Golden Kappa train is
+   gold. Ended, it says how far it got for 10 seconds. One strip a train (newest first), each its chat's when ALL reads
+   two Twitch chats. The strips are drawn again when news comes, and their times every second (hypeTick). */
+const hypes = new Map();   // streamer id -> Map(channel -> { id, level, value, goal, expires, golden, started, upAt, over })
+const HYPE_UP = 3000, HYPE_OVER = 10000, HYPE_LATE = 15000, HYPE_LEVEL = 5 * 60000;
+let hypeTimer = 0;
+function hypeNews(s, ch, m){
+  if (!s) return;
+  const all = hypes.get(s.id) || new Map(); hypes.set(s.id, all);
+  const was = all.get(ch), same = was && was.id === m.id;
+  if (m.state === 'end'){ if (!same || was.over) return; was.over = Date.now(); }
+  else {
+    if (same && was.over) return;   // (news after its end)
+    all.set(ch, { ...(same ? was : { started: Date.now(), upAt: 0 }), id: m.id, level: m.level, value: m.value, goal: m.goal || (same ? was.goal : 0),
+      expires: m.expires || (same ? was.expires : 0), golden: m.golden || (same && was.golden), upAt: same && m.level > was.level ? Date.now() : same ? was.upAt : 0, over: 0 });
+  }
+  const view = viewFor(s); if (view) renderHype(view);
+  if (!hypeTimer) hypeTimer = setInterval(hypeTick, 1000);
+}
+// The trains a streamer's ALL shows now (ended ones gone after a while, one Twitch never said ended once well past its time)
+function hypeTrains(s){
+  const all = hypes.get(s.id); if (!all) return [];
+  const now = Date.now();
+  all.forEach((t, ch) => { if ((t.over && now - t.over > HYPE_OVER) || (!t.over && t.expires && now - t.expires > HYPE_LATE)) all.delete(ch); });
+  if (!all.size) hypes.delete(s.id);
+  return [...all.entries()].map(([ch, t]) => ({ ...t, ch })).filter(t => hypeShown && !siteOff(s, platOf(t.ch))).sort((a, b) => b.started - a.started);
+}
+const mmss = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+// what a strip shows that changes by the second: its classes, the ring and the time
+function hypeLook(t, now = Date.now()){
+  const left = t.expires ? Math.max(0, t.expires - now) : 0, up = !t.over && t.upAt && now - t.upAt < HYPE_UP;
+  return { left, up, cls: 'all-ht' + (t.golden ? ' gold' : '') + (t.over ? ' done' : '') + (up ? ' up' : '') + (!t.over && t.expires && left < 60000 ? ' soon' : '') + (!t.over && t.expires && left < 30000 ? ' last' : ''),
+    ring: Math.round(Math.min(1, left / HYPE_LEVEL) * 100) + '%' };
+}
+function renderHype(view){
+  const trains = hypeTrains(view.s), twitchChs = tabChannels(view.w).filter(ch => platOf(ch) === 'twitch').length;
+  view.hype.hidden = !trains.length;
+  view.hype.replaceChildren(...trains.map(t => {
+    const L = hypeLook(t), pct = t.goal ? Math.min(100, Math.round(t.value / t.goal * 100)) : 0;
+    const name = t.over ? 'Hype Train over' : L.up ? `Level ${t.level}!` : t.golden ? 'Golden Kappa Train' : 'Hype Train';
+    return element('div', { class: L.cls, dataset: { ch: t.ch }, style: { '--left': L.ring },
+      title: t.over ? `It reached level ${t.level}` : `Level ${t.level} · ${pct}% of the way to level ${t.level + 1}${t.expires ? ` · ${mmss(L.left)} left` : ''}` },
+      !t.over && element('span', { class: 'all-ht-fill', style: { width: pct + '%' } }),
+      element('i', { class: 'all-ht-i', html: TRAIN }), element('span', 'all-ht-lv', `LV ${t.level}`), element('span', 'all-ht-nm', name),
+      element('span', 'all-ht-who', twitchChs > 1 ? '· ' + nameOf(t.ch) : ''),
+      t.over ? element('span', 'all-ht-ok', `Reached level ${t.level}`) : element('span', 'all-ht-pc', pct + '%'),
+      !t.over && t.expires && element('span', 'all-ht-cd', element('i'), element('b', null, mmss(L.left))));
+  }));
+}
+// Every second while a train runs: the times, and the strips drawn again when one's look changes (a level up's flash
+// over, the last minute, ended, gone)
+function hypeTick(){
+  if (!hypes.size){ clearInterval(hypeTimer); hypeTimer = 0; return; }
+  const now = Date.now();
+  wins.forEach(w => {
+    const view = w.allView; if (!view || !hypes.has(view.s.id)) return;
+    const trains = hypeTrains(view.s), strips = [...view.hype.children];
+    if (strips.length !== trains.length || trains.some((t, i) => strips[i].dataset.ch !== t.ch || strips[i].className !== hypeLook(t, now).cls)) return renderHype(view);
+    trains.forEach((t, i) => { const L = hypeLook(t, now), cd = strips[i].querySelector('.all-ht-cd b'); strips[i].style.setProperty('--left', L.ring); if (cd) cd.textContent = mmss(L.left); });
+  });
 }
 
 /* ---- sending: Send on [K ▾] (in-site/send.js types it into that site's own chat box) ---- */
@@ -1069,12 +1142,16 @@ function nameClick(m, e){
   if (ctrl && e.shiftKey) modAct(m, 'ban'); else if (ctrl) modAct(m, 'timeout', lastTimeout()); else modAct(m, 'delete');
 }
 // A menu of ALL's, under (or beside) what opened it, inside ALL (its size: ALL follows the chat's text size)
+// Under a button it stays under it: in too short an ALL it scrolls rather than covering what opened it (at a point, a
+// right-click, it moves up to fit)
 function placeAt(view, pop, at, top = null){
   const z = parseFloat(view.el.style.zoom) || 1, vr = view.el.getBoundingClientRect();
   const r = at.getBoundingClientRect ? at.getBoundingClientRect() : { left: at.clientX, right: at.clientX, top: at.clientY, bottom: at.clientY };
-  const w = pop.offsetWidth, h = pop.offsetHeight;
+  pop.style.maxHeight = ''; pop.style.overflowY = '';
+  const w = pop.offsetWidth, h = pop.offsetHeight, below = (r.bottom - vr.top) / z + 4, room = vr.height / z - below - 6;
   pop.style.left = Math.max(6, Math.min(vr.width / z - w - 6, (r.right - vr.left) / z - w)) + 'px';
-  pop.style.top = (top !== null ? top : Math.max(6, Math.min(vr.height / z - h - 6, (r.bottom - vr.top) / z + 4))) + 'px';
+  if (top === null && at.getBoundingClientRect && h > room && room >= 80){ pop.style.top = below + 'px'; pop.style.maxHeight = room + 'px'; pop.style.overflowY = 'auto'; return; }
+  pop.style.top = (top !== null ? top : Math.max(6, Math.min(vr.height / z - h - 6, below))) + 'px';
 }
 // The filter pill's menu: bots' messages hidden or shown; events (subs, gifts, raids, Super Chats) short, full or hidden
 function openFilters(view){
@@ -1082,7 +1159,8 @@ function openFilters(view){
     element('div', { class: 'all-durs all-seg', role: 'group', 'aria-label': label }, ...opts.map(([v, t]) => element('button', { type: 'button', class: v === cur ? 'on' : '', 'aria-pressed': String(v === cur), dataset: { cmd }, onclick: () => set(v) }, t))));
   view.fm.replaceChildren(element('div', 'all-mvh', 'Show in ALL'),
     seg('Bots', 'Their messages, or one line to open', [[false, 'Hidden'], [true, 'Shown']], botsShown, setBotsShown, 'all.bots'),
-    seg('Events', 'Subs, gifts, raids and Super Chats', [['short', 'Short'], ['full', 'Full'], ['hidden', 'Hidden']], eventsMode, setEventsMode, 'all.events'));
+    seg('Events', 'Subs, gifts, raids and Super Chats', [['short', 'Short'], ['full', 'Full'], ['hidden', 'Hidden']], eventsMode, setEventsMode, 'all.events'),
+    seg('Hype train', 'Twitch’s, over the chat', [[true, 'Shown'], [false, 'Hidden']], hypeShown, setHypeShown, 'all.hype'));
   view.fm.hidden = false;
   placeAt(view, view.fm, view.filt);
 }
@@ -1328,9 +1406,22 @@ function mineEl(p){
 }
 function readFilters(){
   botsShown = settings.text('allBots') === 'shown';
+  hypeShown = settings.text('allHype') !== 'hidden';
+  const h = settings.json('allHidden', {}); hiddenSites = h && typeof h === 'object' && !Array.isArray(h) ? h : {};
   eventsMode = ['short', 'full', 'hidden'].includes(settings.text('allEvents')) ? settings.text('allEvents') : 'short';
 }
 function setBotsShown(on){ botsShown = !!on; settings.set('allBots', botsShown ? 'shown' : 'hidden'); redrawAll(); }
+function setHypeShown(on){ hypeShown = !!on; settings.set('allHype', hypeShown ? 'shown' : 'hidden'); redrawAll(); }
+// A site's switch in ALL's top bar (K, T, Y): its messages, events and hype train hidden in that streamer's ALL, or back
+const siteOff = (s, p) => !!s && Array.isArray(hiddenSites[s.id]) && hiddenSites[s.id].includes(p);
+function toggleSite(s, p){
+  const now = new Set(Array.isArray(hiddenSites[s.id]) ? hiddenSites[s.id] : []);
+  if (now.has(p)) now.delete(p); else now.add(p);
+  hiddenSites = { ...hiddenSites, [s.id]: [...now] };
+  if (!now.size) delete hiddenSites[s.id];
+  settings.set('allHidden', hiddenSites);
+  redrawAll();
+}
 function setEventsMode(mode){ eventsMode = mode; settings.set('allEvents', mode); redrawAll(); }
 const redrawAll = () => wins.forEach(w => { if (w.allView){ const v = w.allView; v.list.replaceChildren(...feedOf(v.s).msgs.map(lineEl).filter(Boolean)); renderTop(v, w); v.list.scrollTop = v.list.scrollHeight; } });
 // "See it on …" (ALL's health warning): that site's own chat, where it has its full look and controls
@@ -1462,8 +1553,10 @@ function pinsNow(w, view){
   askModes(w, view);
   askIn(view, `(${pinAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true); }).catch(() => {});
   askIn(view, `(${shownAgent})()`).then(batch => { if (batch && allTabFor(w)) ingest(w, JSON.stringify(batch), true, true); }).catch(() => {});   // (what it already shows)
+  if (platOf(w.channel) === 'twitch') askIn(view, `(${hypeAgent})()`).then(x => { const m = x && feedParse.hypeTrain('start', x); if (m && allTabFor(w)) hypeNews(ownerOf(w.channel), w.channel, m); }).catch(() => {});   // (a hype train already running)
 }
 
+const TRAIN = '<svg viewBox="0 0 24 24"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3h9A2.5 2.5 0 0 1 19 5.5V16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M5 11h14M8 21l2-3M16 21l-2-3"/></svg>';
 const POLL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 20V12M12 20V5M19 20v-5"/></svg>';
 const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 const TRANSLATE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h9M8.5 3v2M6 5c.6 3.2 2.6 5.8 5.5 7.2M11 5c-.8 3.6-3.4 6.4-7 7.6M13 21l4-9 4 9M14.4 18h5.2"/></svg>';
@@ -1499,9 +1592,9 @@ function init(){
   store.watch(['chatZoom'], () => wins.forEach(w => { if (w.allView) fitSize(w.allView); }));
   store.watch(['allHealth'], () => wins.forEach(w => { if (w.allView) renderTop(w.allView, w); }));
   // What ALL shows, changed in the other window
-  settings.onChange(['allBots', 'allEvents'], () => { readFilters(); redrawAll(); });
+  settings.onChange(['allBots', 'allEvents', 'allHype', 'allHidden'], () => { readFilters(); redrawAll(); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.ytLookAgent = ytLookAgent; window.pinAgent = pinAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.sentAgent = sentAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.ytLookAgent = ytLookAgent; window.pinAgent = pinAgent; window.hypeAgent = hypeAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.sentAgent = sentAgent; window.modAgent = modAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
   window.allChat = { sender, SEND_LIMIT, modKnown, gotBadges, gotKickIcons, kickIcons, gotYtLook, ytLook: () => ytLook, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
