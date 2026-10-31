@@ -1,6 +1,7 @@
 import { alerts } from '../alerts/alerts.js';
 import { botsFor, spamFirst, spamOpts } from '../alerts/spam-alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
+import { feedDecided } from './chat-feed.js';
 import { winOfView } from './translate.js';
 import { dndOn, mentMuted, mentNameFor, mentOn, mentWords, notes } from '../panels/bell/bell.js';
 import { openSettings } from '../panels/settings/settings.js';
@@ -11,8 +12,9 @@ import { fromApp } from '../shared/incoming.js';
 import { askIn } from '../windows/view.js';
 
 /* ---- Why didn't this alert? (a chat's right-click menu, with Settings › Developer › Developer tools on): how the
-   mention and spam alerts read that message. Each check in the order the app makes them, what the chat's helper
-   decided when the message came in (in-site/mentions.js: explain()), and the first reason it didn't alert. ---- */
+   mention and spam alerts read that message. Each check in the order the app makes them, what was decided when the
+   message came in (from the site's connection, chat/chat-feed.js, by its id; or by the chat's helper reading its page,
+   in-site/mentions.js: explain()), and the first reason it didn't alert. ---- */
 const WHY_SEEN = {
   before: [false, 'It was already in the chat when alerts started there (only new messages alert)'],
   own: [false, 'It\'s your own message'],
@@ -36,6 +38,8 @@ function whyChecks(w, r){
     return { checks: out, verdict: { alert: false, text: fail[0] } };
   }
   add(true, `Read as a message: name ${r.sender}, text “${r.body.slice(0, 120)}”`);
+  if (r.via) out.push({ ok: null, text: r.via === 'feed' ? `Read from ${name}'s connection to the chat, as it came` : 'Read from the chat\'s page, as it showed it',
+    note: r.via === 'feed' ? '' : 'Before the connection brought its first message, or while it wasn\'t working' });
   if (!site.mentions) add(false, `Mention alerts read Kick and Twitch chats, not ${name}`);
   else {
     add(mentOn, mentOn ? 'Mention alerts are on' : 'Mention alerts are off', mentOn ? '' : 'Settings › Mentions');
@@ -64,16 +68,28 @@ function whyChecks(w, r){
   const alerted = !!inBell || (r.decided && r.decided.v === 'alerted');
   return { checks: out, verdict: alerted ? { alert: true, text: 'It did alert' + (inBell ? ': it\'s under the bell' : '') } : { alert: false, text: fail[0] || 'It didn\'t match anything that alerts' } };
 }
+// What the site's connection said about it (chat/chat-feed.js), by its id: what was decided then, and that it was read
+// there. A message ALL has that its page hasn't drawn: read from ALL's copy.
+function withFeed(w, r, msg){
+  const id = (r && r.id) || (msg && msg.id) || '', d = feedDecided(w.channel, id);
+  if (r && r.found) return d ? { ...r, decided: d, via: 'feed' } : { ...r, via: 'screen' };
+  if (!msg || msg.kind !== 'message') return r;
+  const me = mentNameFor(w.channel).toLowerCase(), text = msg.parts.map(p => p.text != null ? p.text : p.name || '').join('');
+  return { found: true, line: `${msg.sender}: ${text}`, sender: msg.sender, body: text, me, words: mentWords, armed: true, decided: d, via: 'feed', id,
+    at: msg.toMe === 'at', word: msg.toMe === 'word' ? msg.word : '', own: !!me && msg.login === me };
+}
 const whyText = (w, r, res) => [`How this message was read · ${chLabel(w.channel)} · ${PLAT_NAME[platOf(w.channel)] || ''}`, r && r.found ? `${r.sender}: ${r.body}` : '',
   ...res.checks.map(c => `${c.ok === true ? '✓' : c.ok === false ? '✗' : '–'} ${c.text}${c.note ? ` (${c.note})` : ''}`), (res.verdict.alert ? 'Alerted: ' : 'No alert: ') + res.verdict.text].filter(Boolean).join('\n');
 
 let whyDlg = null;
 const closeWhy = () => { if (whyDlg){ whyDlg.remove(); whyDlg = null; } };
-// js: how to ask the chat's page about the message (the one right-clicked there, or from ALL the one with its id)
-async function showWhy(w, js = 'window.__kmvMention && window.__kmvMsg ? window.__kmvMention.explain(window.__kmvMsg.last()) : null'){
+// js: how to ask the chat's page about the message (the one right-clicked there, or from ALL the one with its id);
+// msg: ALL's message, for when its page hasn't drawn it (behind ALL, or scrolled up)
+async function showWhy(w, js = 'window.__kmvMention && window.__kmvMsg ? window.__kmvMention.explain(window.__kmvMsg.last()) : null', msg = null){
   if (!w || !w.view) return;
   let r = null;
   try { r = await askIn(w.view, js); } catch {}
+  r = withFeed(w, r, msg);
   const res = whyChecks(w, r);
   closeWhy();
   const mark = ok => element('span', 'why-m why-' + (ok === true ? 'y' : ok === false ? 'x' : 'n'), ok === true ? '✓' : ok === false ? '✗' : '–');
@@ -96,7 +112,7 @@ async function showWhy(w, js = 'window.__kmvMention && window.__kmvMsg ? window.
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   fromApp('onViewWhy', id => showWhy(winOfView(id)));
-  window.showWhy = showWhy; window.whyChecks = whyChecks;   // for the tests
+  window.showWhy = showWhy; window.whyChecks = whyChecks; window.whyWithFeed = withFeed;   // for the tests
 }
 
 export { init, showWhy };

@@ -8,7 +8,7 @@ import { askIn } from '../windows/view.js';
 
 /* ---- New messages in the chats you can't see (Settings > Chat > Count new messages in chats you can't see, off
    unless switched on). While it's on, every chat is asked every 3 s how many new messages others wrote since the last
-   time (the chat helper's count(), in-site/mentions.js). A chat you can't see right now (hidden by Chat Stage or Chat
+   time (the chat helper's count(), in-site/mentions.js), or its feed says so as they come (chat/chat-feed.js). A chat you can't see right now (hidden by Chat Stage or Chat
    Rail, scrolled out of the window, or covered by another window or a dialog) adds them up until you can see it
    again. The parts that show the counts (Chat Stage's strip, Chat Rail's tabs, the switch control, the streams'
    title bars) watch 'unread' in the store. */
@@ -42,6 +42,9 @@ function addNew(w, n){
   unread.set(w, newCount(w) + n);
   store.changed('unread');
 }
+// n new messages from others, from the chat's feed (chat/chat-feed.js)
+const feedNew = (w, n) => addNew(w, n);
+const countsAreOn = () => countsOn;
 async function askChats(){
   if (asking || !countsOn) return;
   asking = true;
@@ -76,4 +79,4 @@ function init(){
   window.chatNew = (ch, n) => addNew(wins.find(w => w.kind === 'chat' && w.channel === ch), n); window.chatNewFor = newFor;   // for the tests
 }
 
-export { clearNew, init, newCount, newFor };
+export { clearNew, countsAreOn, feedNew, init, newCount, newFor };

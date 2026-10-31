@@ -1,3 +1,4 @@
+import { feedFailed } from './chat-feed.js';
 import { feedParse } from './feed-parse.js';
 import { wins } from '../core.js';
 import { lineProbe } from '../in-site/feed.js';
@@ -16,7 +17,9 @@ import { askIn, reloadView } from '../windows/view.js';
    own page how many lines it shows: new ones there while ALL read none from it means the reader broke. It tries once
    more (that chat loaded again), then the site's badge in ALL turns amber and a line above its list says what isn't
    working, with See it on … and Report for a fix; it's in Settings › Developer › Errors too. It clears itself once the
-   site's part works again. */
+   site's part works again.
+   The app's other readers (chat/chat-feed.js) read a chat's connection too, also without ALL: the same check, for each
+   chat they read, makes its page read its screen again instead (no reload, nothing amber: the alerts still work). */
 const CHECK_MS = 45000;
 const healthOf = new Map();   // channel -> { read, bad, raws, badRaws, sends, last, odd, sentAt, state: '' | 'retrying' | 'broken', what, why, since, hidden }
 const hOf = ch => {
@@ -58,11 +61,13 @@ function healed(ch){
 function chatLoaded(ch){ const h = hOf(ch); h.last = null; h.odd = 0; }
 // Every 45 seconds: each chat ALL reads, against its own page
 async function checkAll(){
-  for (const w of wins.filter(o => o.kind === 'chat' && o.view && o.ready && o.feedOn)){
+  for (const w of wins.filter(o => o.kind === 'chat' && o.view && o.ready && (o.feedOn || (o.feedRead && o.feedLive)))){
     const h = hOf(w.channel), site = PLAT_NAME[platOf(w.channel)];
     let p; try { p = await askIn(w.view, `(${lineProbe})()`); } catch { continue; }
     const moved = h.last !== null && !!p && !!p.last && p.last !== h.last, quiet = moved && !h.read && !h.bad;   // (quiet: its chat moved, ALL read nothing)
     h.odd = quiet ? h.odd + 1 : 0;
+    if (quiet && h.odd >= 2) feedFailed(w);                   // (the alerts: its screen read again)
+    if (!w.feedOn){ if (h.odd >= 2) h.odd = 0; h.last = p ? p.last : h.last; h.read = 0; h.bad = 0; continue; }   // (no ALL: nothing else to do)
     if (quiet){
       // not for one check alone (a site's own line in its chat, a message drawn again, is no reason to load it again),
       // nor while you've just sent there (loading it again would hold your message up)

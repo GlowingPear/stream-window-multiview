@@ -202,6 +202,34 @@ test('YouTube: a gift is an event (its words, the gift picked out); a held messa
   assert.equal(leftOut('youtube', { markChatItemAsDeletedAction: { targetItemId: 'y1' } }), false, 'read, not left out');
 });
 
+test('Support, for support alerts: who, how much, and a gift\'s group, as fields (not only in the words)', async () => {
+  const { parseTwitch, parseKick, parseFeed } = await load();
+  const tw = (id, prm, name = 'Brightwick') => parseTwitch(TW({ 'display-name': name, login: name.toLowerCase(), 'msg-id': id, id: 'e', ...prm }, ':tmi.twitch.tv USERNOTICE #q')).support;
+  assert.deepEqual(parseTwitch(TW({ 'display-name': 'Quill', bits: '200', id: 'b' }, ':quill!q@q PRIVMSG #q :Cheer200 nice')).support, { kind: 'bits', who: 'Quill', n: 200 });
+  assert.equal(parseTwitch(TW({ id: 'm' }, ':a!a@a PRIVMSG #q :hi')).support, undefined, 'a plain message: none');
+  assert.deepEqual(tw('sub', { 'msg-param-cumulative-months': '1' }), { kind: 'sub', who: 'Brightwick', n: 1 });
+  assert.deepEqual(tw('resub', { 'msg-param-cumulative-months': '38' }), { kind: 'sub', who: 'Brightwick', n: 38 });
+  assert.deepEqual(tw('subgift', { 'msg-param-recipient-display-name': 'Tinroof', 'msg-param-community-gift-id': 'g7' }), { kind: 'gift', who: 'Brightwick', n: 1, to: 'Tinroof', group: 'g7' });
+  assert.deepEqual(tw('subgift', {}), { kind: 'gift', who: 'Brightwick', n: 1, to: '', group: '' }, 'a gift on its own: no group');
+  assert.deepEqual(tw('submysterygift', { 'msg-param-mass-gift-count': '5', 'msg-param-community-gift-id': 'g7' }), { kind: 'gifts', who: 'Brightwick', n: 5, group: 'g7' });
+  assert.equal(tw('submysterygift', {}), undefined, 'without how many: none');
+  assert.deepEqual(tw('raid', { 'msg-param-displayName': 'Novalynx', 'msg-param-viewerCount': '11' }), { kind: 'raid', who: 'Novalynx', n: 11 });
+  assert.equal(tw('raid', {}), undefined);
+  assert.equal(tw('viewermilestone', { 'msg-param-category': 'watch-streak', 'msg-param-value': '7' }), undefined, 'a watch streak isn\'t support');
+  // Kick, in the shapes its connection sends (recorded from busy chats)
+  const KE = (event, data) => JSON.stringify({ push: { channel: 'channel_1', pub: { data: { event, data: JSON.stringify(data) } } } });
+  assert.deepEqual(parseKick(KE('KicksGifted', { gift_transaction_id: 'g1', sender: { username: 'Jshoti' }, gift: { name: 'Skull Emoji', amount: 50 } })).support, { kind: 'kicks', who: 'Jshoti', n: 50 });
+  assert.deepEqual(parseKick(KE('GiftedSubscriptionsEvent', { correlation_id: 'pi_1', gifter_username: 'Kevino', gifted_usernames: ['a', 'b', 'c', 'd', 'e'], gifted_total: 5 })).support, { kind: 'gifts', who: 'Kevino', n: 5, group: 'pi_1' });
+  assert.deepEqual(parseKick(KE('GiftedSubscriptionsEvent', { correlation_id: 'pi_2', gifter_username: 'Kevino', gifted_usernames: ['tinroof'] })).support, { kind: 'gift', who: 'Kevino', n: 1, to: 'tinroof', group: 'pi_2' }, 'one sub: to someone');
+  assert.deepEqual(parseKick(KE('SubscriptionEvent', { username: 'jean', months: 38 })).support, { kind: 'sub', who: 'jean', n: 38 });
+  assert.deepEqual(parseKick(KE('ChannelSubscriptionEvent', { username: 'jean' })).support, { kind: 'sub', who: 'jean', n: 1 });
+  assert.deepEqual(parseKick(KE('StreamHostEvent', { host_username: 'MommaOcco', number_viewers: 57, optional_message: null })).support, { kind: 'raid', who: 'MommaOcco', n: 57 });
+  assert.deepEqual(parseKick(KE('App\\Events\\StreamHostedEvent', { message: { id: 'd0', numberOfViewers: 57, optionalMessage: null }, user: { username: 'MommaOcco' } })).support, { kind: 'raid', who: 'MommaOcco', n: 57 });
+  const cel = parseKick(KE('App\\Events\\ChatMessageEvent', { id: 'c1', type: 'celebration', content: 'still here', sender: { username: 'Oakmoss', identity: { badges: [] } }, metadata: { celebration: { type: 'subscription_renewed', total_months: 16 } } }));
+  assert.deepEqual(cel.support, { kind: 'sub', who: 'Oakmoss', n: 16 }, 'a resub shared with a message');
+  assert.deepEqual(parseFeed({ s: 'kick', raw: [KE('KicksGifted', { sender: { username: 'a' }, gift: {} })] })[0].support, { kind: 'kicks', who: 'a', n: 1 }, 'without an amount: one');
+});
+
 test('Kick: a reward redeemed (with text: a message with the reward; without: an event), Kicks sent, subs, gifted subs, a raid', async () => {
   const { parseKick, KNOWN } = await load();
   const KE = (event, data) => JSON.stringify({ push: { channel: 'chatroom_1', pub: { data: { event, data: JSON.stringify(data) } } } });

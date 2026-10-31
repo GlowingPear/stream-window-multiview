@@ -50,6 +50,7 @@ const youtube = {
   timeoutCmd: null, banCmd: null,   // (no chat commands: mod actions from its own tab)
   deleteMods: false,
   spamAlerts: false,
+  feedReaders: false,    // (its chat's screen is read for support and chat over the stream: its gifted memberships aren't read from its connection yet)
   emoteLists: false,
   pageCommands: false,
   likes: true,

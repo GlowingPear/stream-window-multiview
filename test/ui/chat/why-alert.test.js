@@ -81,3 +81,27 @@ test('the dialog: the checks, Copy, Mention settings and Close', async t => {
   await page.evaluate(() => window.showWhy(null));
   assert.equal(await page.locator('#whyDlg').count(), 0, 'no window: nothing');
 });
+
+test('which reader read it: the site\'s connection (what was decided then, by its id) or the chat\'s page; ALL\'s copy of one its page never drew', async t => {
+  const page = await openApp(t, { init: () => localStorage.setItem('kickMultiview.myName', 'mod_me') });
+  const via = r => page.evaluate(r => window.whyWithFeed({ channel: 'pixelpear' }, r.r, r.msg), r);
+  // the feed decided about it (chat/chat-feed.js): that answer, and that it was read there
+  await page.evaluate(() => window.chatFeed.fromFeed('pixelpear', null));   // (nothing: no window)
+  let r = await via({ r: said({ id: 'k1' }) });
+  assert.equal(r.via, 'screen', 'nothing decided by the feed for it: the page\'s answer');
+  assert.equal(r.decided.v, 'nomatch');
+  r = await via({ r: { found: false, text: 'x' } });
+  assert.deepEqual(r, { found: false, text: 'x' }, 'not found, and no copy from ALL: as it was');
+  // ALL's copy: read from it, the page's answer was nothing
+  const msg = { kind: 'message', id: 'k2', sender: 'Quietkoala', login: 'quietkoala', parts: [{ text: '@mod_me hi ' }, { emote: 'https://files.kick.com/emotes/1/fullsize', name: 'wave' }], toMe: 'at' };
+  r = await via({ r: null, msg });
+  assert.deepEqual([r.found, r.via, r.sender, r.body, r.at, r.word, r.own, r.id], [true, 'feed', 'Quietkoala', '@mod_me hi wave', true, '', false, 'k2']);
+  assert.equal((await via({ r: null, msg: { ...msg, login: 'mod_me', toMe: 'word', word: 'pear' } })).own, true);
+  assert.equal((await via({ r: null, msg: { ...msg, toMe: 'word', word: 'pear' } })).word, 'pear');
+  assert.equal(await via({ r: null, msg: { ...msg, kind: 'event' } }), null, 'an event: nothing to explain');
+  const shown = await rows(page, 'pixelpear', { ...said(), via: 'feed' });
+  assert.equal(shown.rows[1], '– Read from Kick\'s connection to the chat, as it came');
+  const fromPage = await rows(page, 'pixelpear', { ...said(), via: 'screen' });
+  assert.equal(fromPage.rows[1], '– Read from the chat\'s page, as it showed it (Before the connection brought its first message, or while it wasn\'t working)');
+  assert.equal((await rows(page, 'pixelpear', said())).rows[1], '✓ Mention alerts are on', 'not said when it isn\'t known');
+});

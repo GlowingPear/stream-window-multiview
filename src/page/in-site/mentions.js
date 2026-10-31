@@ -1,10 +1,12 @@
 // Runs inside each chat: spots new messages that @mention you or reply to you, and (with spam alerts
 // on) hands the app every new message so it can check them, then tags the ones it flags.
-// It reads the chat's visible text, so it keeps working if Kick or Twitch change their page code.
+// It reads the chat's visible text. While the site's own connection brings the chat's messages to the app
+// (chat/chat-feed.js), it sleeps (setScreen(false)): it only tags flagged lines and notes your clicks. It wakes when
+// that stops working, or before it has started.
 function mentionAgent(){
   if (window.__kmvMention) return true;
   const seen = new Set(), marks = new Map(), known = new Set(), said = new Map(), rowSaid = new WeakMap();
-  let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0;
+  let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0, screen = true;
   let feed = false, feedQ = [];                              // new messages for the chat over the stream (setFeed)
   let fresh = 0, counting = false;                           // new messages from others since the app last asked (count())
   let sup = null, supQueue = [], supMe = '';                          // support (Settings > Support): the site's wording, and what was found
@@ -110,6 +112,7 @@ function mentionAgent(){
     return out.some(x => lineOf(x.l)) ? out : textLines(document.body.innerText).map(l => ({ l }));
   }
   function scan(){
+    if (!screen){ if (document.body) marks.forEach(tag); return; }   // (asleep: the app reads the site's connection)
     if ((!me && !wordRe && !watch && !counting && !sup && !feed) || !document.body) return;
     if (sup) supScan();
     const all = chatLines();
@@ -341,9 +344,19 @@ function mentionAgent(){
     }
     return null;
   }
+  // A message's line by the site's id for it (as the feed brings it): Kick's and Twitch's in the line's React props,
+  // YouTube's as the element's id. The biggest element that's still only that message.
+  const LINE_SEL = '.chat-line__message, .chat-line__status, [class*="user-notice-line"], [data-index], yt-live-chat-text-message-renderer, yt-live-chat-paid-message-renderer, yt-live-chat-membership-item-renderer';
+  function idOf(el){
+    if (el.id) return el.id;
+    const k = Object.keys(el).find(x => x.startsWith('__reactFiber')) || Object.keys(el.querySelector('.group') || {}).find(x => x.startsWith('__reactFiber'));
+    for (let f = k && (el[k] || (el.querySelector('.group') || {})[k]), i = 0; f && i < 8; f = f.return, i++){ const p = f.memoizedProps || {}, m = p.message || p.notice || p.msg; if (m && m.id) return String(m.id); }
+    return '';
+  }
+  const rowById = id => (id && [...document.querySelectorAll(LINE_SEL)].reverse().find(el => idOf(el) === id)) || null;
   function tag(m, line){
     if (m.row && m.row.isConnected && m.row.querySelector(':scope > [data-kmv-spam]')) return;   // still there
-    const row = m.row = rowFor(line);
+    const row = m.row = rowById(m.id) || rowFor(line);
     if (!row || row.querySelector(':scope > [data-kmv-spam]')) return;
     if (!document.getElementById('kmv-spam-css')){
       const st = document.createElement('style'); st.id = 'kmv-spam-css';
@@ -390,13 +403,22 @@ function mentionAgent(){
       if (on && !armed) arm();
       else if (on && document.body) chatLines().forEach(({ l }) => { const m = lineOf(l); if (m && known.size < 2000) known.add(m[1].toLowerCase()); });
     },
-    // kind: 'abuse' tags it "ABUSIVE" rather than "LIKELY SPAM"
-    mark(line, why, color, kind){
+    // kind: 'abuse' tags it "ABUSIVE" rather than "LIKELY SPAM"; id: the site's id for it (one the feed brought),
+    // found by that before its text. One not drawn yet is tagged once it is.
+    mark(line, why, color, kind, id){
       if (marks.has(line)) return;
-      marks.set(line, { why, color, kind }); tag(marks.get(line), line);
+      marks.set(line, { why, color, kind, id: id || '' }); if (document.body) tag(marks.get(line), line);
       if (marks.size > 200) marks.delete(marks.keys().next().value);
     },
     look(){ scan(); },
+    // Off: the app reads the site's connection, so this reads nothing (tags and clicks still). On again: what the chat
+    // shows by then is old.
+    setScreen(on){
+      on = !!on; if (on === screen) return;
+      screen = on; queue = []; lines = []; supQueue = []; feedQ = []; fresh = 0;
+      if (on && (me || wordRe || watch || counting || sup || feed)) arm();
+    },
+    screen(){ return screen; },                              // (for the tests)
     // How a message line was read (Why didn't this alert?): el is the message's element (messageAgent's last()).
     // { found, line, sender, body, me, words, armed, watch, decided: { v, kind?, t } | null, at, word, own }
     explain(el){
@@ -405,10 +427,11 @@ function mentionAgent(){
       const text = flat(el.innerText), lines = chatLines().filter(x => lineOf(x.l));
       const hit = [...lines].reverse().find(x => x.row && (x.row === el || x.row.contains(el) || el.contains(x.row)))
         || [...lines].reverse().find(x => { const f = flat(x.l); return f === text || text.endsWith(f) || f.endsWith(text); });
-      if (!hit) return { found: false, text: text.slice(0, 300), me, words, armed };
+      const id = idOf(el) || (hit && hit.row ? idOf(hit.row) : '');   // (the app's answer for it, when the feed read it)
+      if (!hit) return { found: false, text: text.slice(0, 300), me, words, armed, id, screen };
       const m = lineOf(hit.l), body = m[2];
       const atRe = me && new RegExp('(^|[^A-Za-z0-9_])@' + esc(me) + '(?![A-Za-z0-9_])', 'i'), w = wordRe ? body.match(wordRe) : null;
-      return { found: true, line: hit.l, sender: m[1], body, me, words, armed, watch, decided: decided.get(hit.l) || null,
+      return { found: true, line: hit.l, sender: m[1], body, me, words, armed, watch, decided: decided.get(hit.l) || null, id, screen,
         at: !!(atRe && atRe.test(body)), word: w ? w[2] : '', own: !!me && m[1].toLowerCase() === me };
     },
     // how many new messages others wrote since it was last asked (Chat Stage counts them for the chats out of sight).

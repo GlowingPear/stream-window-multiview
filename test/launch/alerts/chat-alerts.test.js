@@ -78,6 +78,16 @@ const tagOf = (ch, text) => inChat(ch, t => {
   const tag = row && row.querySelector('[data-kmv-spam]');
   return tag ? tag.title : null;
 }, text);
+// What a chat's own connection to Kick brings (in-site/feed.js), as its page hands it over: its messages and news
+const kickFrame = (event, data, channel = 'chatrooms.1.v2') => JSON.stringify({ push: { channel, pub: { data: { event, data: JSON.stringify(data) } } } });
+let frameN = 0;
+const kickMsg = (sender, content, extra = {}) => kickFrame('App\\Events\\ChatMessageEvent', { id: 'f' + (++frameN), content, type: 'message', created_at: new Date().toISOString(),
+  sender: { id: 9, username: sender, slug: sender.toLowerCase(), identity: {} }, ...extra });
+const feed = (ch, ...raw) => win.evaluate(async ([ch, raw]) => {
+  const { siteMessage } = await import('./page/shared/incoming.js'), w = window.openWins().find(o => o.kind === 'chat' && o.channel === ch);
+  siteMessage(w, w.view, '__kmv:feed ' + JSON.stringify({ s: 'kick', raw }));
+}, [ch, raw]);
+const notesOf = (kind, sender) => win.evaluate(([k, s]) => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').filter(n => n.kind === k && (!s || n.sender === s)), [kind, sender]);
 // Click a chat window's bar on its empty part (not its channel dropdown or a button).
 const clickBar = ch => win.click(`#stage .win.chat:has(.title${nameIs(ch)}) .bar .grab`);
 const ready = () => win.waitForTimeout(3000);   // the chat helper treats what's already there as old, for 2.5 s
@@ -360,18 +370,20 @@ test('spam alerts check what the site sends, drawn or not (behind ALL, scrolled 
   await win.evaluate(() => window.spamFromFeed('alpha', 'pagebot', 'cheap viewers at growfast com zero cost boost upgrades'));
   await win.waitForTimeout(500);
   assert.equal(await notes('pagebot'), 1, 'counted once');
-  // without ALL: a chat you moderate hands over its messages for spam alerts, so one its page hasn't drawn (scrolled up) is checked too
-  await win.waitForFunction(async () => {
-    const w = window.openWins().find(o => o.kind === 'chat' && o.channel === 'alpha');
-    return w.feedSpam && await w.view.executeJavaScript('!!(window.__kmvFeed && window.__kmvFeed.on)');
-  }, null, { polling: 500 });
-  assert.equal(await win.evaluate(() => !!window.openWins().find(o => o.kind === 'chat' && o.channel === 'bravo').feedSpam), false, 'not in a chat you don\'t moderate');
-  await win.evaluate(async () => {
-    const { siteMessage } = await import('./page/shared/incoming.js'), w = window.openWins().find(o => o.kind === 'chat' && o.channel === 'alpha');
-    const data = { id: 'u1', content: 'hq ai stream upgrades unseenlink com zero cost upgrades', type: 'message', created_at: new Date().toISOString(), sender: { id: 9, username: 'unseenbot', slug: 'unseenbot', identity: {} } };
-    siteMessage(w, w.view, '__kmv:feed ' + JSON.stringify({ s: 'kick', raw: [JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: 'App\\Events\\ChatMessageEvent', data: JSON.stringify(data) } } } })] }));
-  });
+  // without ALL: every chat the alerts read hands over its messages, so one its page hasn't drawn (scrolled up) is checked too
+  for (const ch of ['alpha', 'bravo']) await win.waitForFunction(async ch => {
+    const w = window.openWins().find(o => o.kind === 'chat' && o.channel === ch);
+    return w.feedRead && await w.view.executeJavaScript('!!(window.__kmvFeed && window.__kmvFeed.on)');
+  }, ch, { polling: 500 });
+  await feed('alpha', kickMsg('unseenbot', 'hq ai stream upgrades unseenlink com zero cost upgrades'));
   await win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').some(n => n.kind === 'spam' && n.sender === 'unseenbot'));
+  // its connection works, so its page reads nothing more itself: a line flagged from the connection is tagged by its id there
+  await win.waitForFunction(() => window.chatFeed.live('alpha'));
+  assert.equal(await inChat('alpha', () => window.__kmvMention.screen()), false, 'its screen reader asleep');
+  await feed('alpha', kickMsg('idbot', 'hq ai stream upgrades idlink com zero cost upgrades', { id: 'spam-id-1' }));
+  await win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').some(n => n.kind === 'spam' && n.sender === 'idbot'));
+  await inChat('alpha', () => { const d = document.createElement('div'); d.className = 'row'; d.id = 'spam-id-1'; d.innerHTML = '<b>idbot</b>: <span>(drawn its own way) idlink</span>'; document.getElementById('chat').appendChild(d); });
+  await win.waitForFunction(() => window.openWins().find(o => o.kind === 'chat' && o.channel === 'alpha').view.executeJavaScript('!!document.querySelector("#spam-id-1 [data-kmv-spam]")'), null, { polling: 500 });
   // spam alerts off: what ALL hears isn't checked
   await win.evaluate(() => window.openSettings('spam'));
   await win.uncheck('#spamOn');
@@ -379,12 +391,66 @@ test('spam alerts check what the site sends, drawn or not (behind ALL, scrolled 
   await win.evaluate(() => window.spamFromFeed('alpha', 'offbot', 'hq ai stream upgrades offlink com zero cost upgrades'));
   await win.waitForTimeout(500);
   assert.equal(await notes('offbot'), 0);
-  await win.waitForFunction(() => !window.openWins().find(o => o.kind === 'chat' && o.channel === 'alpha').feedSpam);   // (and the chat stops handing them over)
-  assert.equal(await spamCount(), flagged + 3);
+  assert.equal(await spamCount(), flagged + 4);
+  await win.evaluate(() => window.chatFeed.failed('alpha'));   // (its screen read again, for the tests after this one)
+  assert.equal(await inChat('alpha', () => window.__kmvMention.screen()), true);
   await win.evaluate(() => window.openSettings('spam'));
   await win.check('#spamOn');
   await win.keyboard.press('Escape');
   await clickBar('alpha');
+});
+
+test('mentions from the site\'s connection: at once, drawn or not, once each (also when the page read it first); a reply; never yours or a bot\'s; its screen read again when the connection stops working', T, async () => {
+  await clickBar('alpha'); await clickBar('bravo');
+  await win.waitForFunction(() => window.openWins().find(o => o.kind === 'chat' && o.channel === 'bravo').feedRead, null, { polling: 500 });
+  const mine = () => notesOf('mention').then(l => l.filter(n => n.channel === 'bravo').length);
+  const before = await mine();
+  // read by the page first (its connection hasn't brought anything yet), then by the connection: one alert
+  await say('bravo', 'earlybird', '@mename the page saw this first');
+  await win.waitForFunction(n => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').filter(x => x.kind === 'mention' && x.channel === 'bravo').length > n, before);
+  await feed('bravo', kickMsg('earlybird', '@mename the page saw this first'));
+  await win.waitForFunction(() => window.chatFeed.live('bravo'));
+  assert.equal(await mine(), before + 1, 'once');
+  // the connection's alone (the page, scrolled up or behind ALL, never draws it): at once
+  await feed('bravo', kickMsg('unseenfan', 'hey @mename, look at this'));
+  await win.waitForFunction(n => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').filter(x => x.kind === 'mention' && x.channel === 'bravo').length > n, before + 1);
+  assert.deepEqual(await alertOf('bravo'), { level: 'al-1', color: '#e8b84a' });
+  const id = 'f' + frameN;
+  // the same message again (the connection re-sends), and the page drawing it later: still once
+  await win.evaluate(([raw]) => window.chatFeed.fromFeed('bravo', { site: 'kick', kind: 'message', id: raw, sender: 'unseenfan', login: 'unseenfan', parts: [{ text: 'hey @mename, look at this' }], t: Date.now() }), [id]);
+  await say('bravo', 'unseenfan', 'hey @mename, look at this');
+  await win.waitForTimeout(2500);
+  assert.equal(await mine(), before + 2);
+  assert.equal(await win.evaluate(id => window.chatFeed.decided('bravo', id).v, id), 'alerted', 'what was decided, for Why didn\'t this alert?');
+  // a reply to you; your own message and a chat bot's never
+  await feed('bravo', kickMsg('replyfox', 'yes, tonight', { type: 'reply', metadata: { original_message: { id: 'o1', content: 'on later?' }, original_sender: { username: 'mename' } } }));
+  await win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').some(x => x.kind === 'reply' && x.sender === 'replyfox' && x.quoted === 'on later?'));
+  await feed('bravo', kickMsg('mename', '@mename talking to myself'), kickMsg('Nightbot', '@mename follow the rules'), kickMsg('someone', 'just chatting'));
+  await win.waitForTimeout(2000);
+  assert.equal(await mine(), before + 2, 'not yours, not a bot\'s, not one without your name');
+  assert.deepEqual([await win.evaluate(id => window.chatFeed.decided('bravo', id).v, 'f' + (frameN - 2)), await win.evaluate(id => window.chatFeed.decided('bravo', id).v, 'f' + frameN)], ['own', 'nomatch']);
+  // the connection stopped working (its page drew new lines, it brought none: chat/all-health.js): its page reads its screen again
+  // (rows as Kick's are, so the check sees them: a line each time it checks)
+  await win.evaluate(async () => {
+    const w = window.openWins().find(o => o.kind === 'chat' && o.channel === 'bravo');
+    for (let i = 0; i < 3; i++){
+      await w.view.executeJavaScript(`(() => { const d = document.createElement('div'); d.className = 'row'; d.dataset.index = '${900 + i}'; d.innerHTML = '<b>x</b>: <span>line ${i}</span>'; document.getElementById('chat').appendChild(d); })()`);
+      await window.allHealth.checkAll();
+    }
+  });
+  await win.waitForFunction(() => !window.chatFeed.live('bravo'));
+  assert.equal(await inChat('bravo', () => window.__kmvMention.screen()), true, 'awake');
+  await inChat('bravo', () => document.querySelectorAll('#chat [data-index]').forEach(r => r.remove()));   // (Kick-shaped rows: the page is read as Kick's then, for the tests after this)
+  await clickBar('bravo');
+  await ready();
+  await say('bravo', 'afterfox', '@mename read from the page again');
+  await win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').some(x => x.kind === 'mention' && x.sender === 'afterfox'));
+  // and for a while its connection doesn't take over again
+  await feed('bravo', kickMsg('laterfox', 'hello'));
+  await win.waitForTimeout(500);
+  assert.equal(await win.evaluate(() => window.chatFeed.live('bravo')), false);
+  await clickBar('bravo');
+  assert.deepEqual(pageErrors, []);
 });
 
 test('spam alerts: chat bots on the list are skipped, and History can add an account to it', T, async () => {
@@ -428,7 +494,7 @@ test('spam alerts: chat bots on the list are skipped, and History can add an acc
   await win.keyboard.press('Escape');
 });
 
-test('spam alerts off: chats stop handing over their messages', T, async () => {
+test('spam alerts off: nothing is checked or tagged', T, async () => {
   await win.evaluate(() => window.openSettings('spam'));
   await win.uncheck('#spamOn');
   await win.keyboard.press('Escape');
@@ -478,5 +544,34 @@ test('support alerts: a raid banner over a chat glows its window and is listed o
   await win.waitForSelector('#bellList .nc-row.k-support');
   assert.deepEqual(await raids(), ['pixelpear raided with 120 viewers']);
   await win.keyboard.press('Escape');
+  assert.deepEqual(pageErrors, []);
+});
+
+test('support alerts from the site\'s connection: Kicks, gifted subs (once, also named two ways), a raid (once), a resub; under the smallest set, yours, and the page\'s line for one already said: nothing', T, async () => {
+  await win.evaluate(() => window.openSettings('support'));
+  if (!(await win.isChecked('#supportOn'))) await win.click('label:has(#supportOn)');
+  await win.evaluate(() => window.openSettings('mentions'));
+  await win.click('#mentTabs [data-t=names]');
+  if ((await win.inputValue('#mentUser')) !== 'mename'){ await win.fill('#mentUser', 'mename'); await win.press('#mentUser', 'Enter'); }   // (your own)
+  await win.keyboard.press('Escape');
+  await ready();
+  const said = () => notesOf('support').then(l => l.filter(n => n.channel === 'bravo').map(n => `${n.sender} ${n.body}`));
+  const before = await said();
+  await feed('bravo',
+    kickFrame('KicksGifted', { gift_transaction_id: 'k1', sender: { username: 'kicksender' }, gift: { name: 'Hell Yeah', amount: 150 } }, 'channel_1'),
+    kickFrame('KicksGifted', { gift_transaction_id: 'k2', sender: { username: 'smallsender' }, gift: { name: 'Skull Emoji', amount: 50 } }, 'channel_1'),
+    kickFrame('KicksGifted', { gift_transaction_id: 'k3', sender: { username: 'mename' }, gift: { name: 'Full Send', amount: 500 } }, 'channel_1'),
+    kickFrame('GiftedSubscriptionsEvent', { correlation_id: 'pi_9', gifter_username: 'giftowl', gifted_usernames: ['a1', 'b2', 'c3'], gifted_total: 3 }, 'chatroom_1'),
+    kickFrame('LuckyUsersWhoGotGiftSubscriptionsEvent', { correlation_id: 'pi_9', gifter_username: 'giftowl', usernames: ['a1', 'b2', 'c3'] }),
+    kickFrame('App\\Events\\StreamHostedEvent', { message: { id: 'h1', numberOfViewers: 57 }, user: { username: 'mossyhost' } }, 'chatrooms.1'),
+    kickFrame('App\\Events\\StreamHostEvent', { host_username: 'mossyhost', number_viewers: 57 }),
+    kickFrame('App\\Events\\SubscriptionEvent', { username: 'loyalfern', months: 5 }));
+  await win.waitForFunction(n => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').filter(x => x.kind === 'support' && x.channel === 'bravo').length >= n + 4, before.length);
+  await win.waitForTimeout(1000);
+  assert.deepEqual((await said()).filter(x => !before.includes(x)).sort(), ['giftowl gifted 3 subs', 'kicksender sent 150 KICKs', 'loyalfern subscribed for 5 months', 'mossyhost raided with 57 viewers']);
+  // the page draws one of them later (its screen reads it): not again
+  await inChat('bravo', () => { const d = document.createElement('div'); d.className = 'row'; d.textContent = 'kicksender sent 150'; document.getElementById('chat').appendChild(d); });
+  await win.waitForTimeout(4000);
+  assert.equal((await said()).length, before.length + 4);
   assert.deepEqual(pageErrors, []);
 });

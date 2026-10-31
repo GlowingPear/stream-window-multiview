@@ -58,6 +58,7 @@ import { init as chatAllChat } from './chat/all-chat.js';
 import { init as chatEventSamples } from './chat/event-samples.js';
 import { init as chatAllHealth } from './chat/all-health.js';
 import { init as chatChatOverlay } from './chat/chat-overlay.js';
+import { init as chatChatFeed } from './chat/chat-feed.js';
 import { init as chatStickBottom } from './chat/stick-bottom.js';
 import { init as alertsSupportBanner } from './alerts/support-banner.js';
 import { init as panelsEmptyStageEmptyStage } from './panels/empty-stage/empty-stage.js';
@@ -157,6 +158,7 @@ import { init as panelsSettingsSearchBox } from './panels/settings/search-box.js
   chatBlowUp,
   chatChatName,
   chatChatOverlay,
+  chatChatFeed,
   chatStickBottom,
   alertsSupportBanner,
   panelsEmptyStageEmptyStage,

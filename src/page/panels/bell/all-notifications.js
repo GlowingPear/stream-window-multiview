@@ -1,5 +1,6 @@
 import { alerts } from '../../alerts/alerts.js';
 import { revealChat } from '../../alerts/spam-alerts.js';
+import { screenOn } from '../../chat/chat-feed.js';
 import { overlayIsOn } from '../../chat/chat-overlay.js';
 import { $, ROLE, wins } from '../../core.js';
 import { MENTION_JS } from '../../in-site/mentions.js';
@@ -141,7 +142,7 @@ function injectMention(w){
   const watch = !!alerts.spam.on && site.spamAlerts;
   const sup = alerts.support.on && site.support ? site.support : null;   // Settings > Support (your own never counts)
   runIn(w.view, `${MENTION_JS};window.__kmvMention.setMe(${JSON.stringify(who)},${JSON.stringify(words)});window.__kmvMention.setWatch(${watch});window.__kmvMention.setFeed(${overlayIsOn()});` +
-    `window.__kmvMention.setSupport(${JSON.stringify(sup)},${JSON.stringify(mentNameFor(w.channel))})`);
+    `window.__kmvMention.setSupport(${JSON.stringify(sup)},${JSON.stringify(mentNameFor(w.channel))});window.__kmvMention.setScreen(${screenOn(w)})`);   // (asleep while its feed works: chat/chat-feed.js)
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
