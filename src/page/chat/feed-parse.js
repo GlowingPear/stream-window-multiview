@@ -77,8 +77,17 @@ function parseTwitch(line){
     pics: twitchPics((g.badges || '').split(',').filter(Boolean).map(b => b.split('/')), g['badge-info'] || ''),
     parts: twitchParts(text, g.emotes)
   };
+  // a shared chat (Twitch's Stream Together): a message from another channel's chat, with its badges there, and the id
+  // it has in every chat of the session (the same message, read from two of them, is shown once)
+  if (g['source-id']) msg.sourceId = g['source-id'];
+  if (g['source-room-id'] && g['room-id'] && g['source-room-id'] !== g['room-id']){
+    msg.from = g['source-room-id'];
+    msg.badges = badgeKinds((g['source-badges'] || '').split(',').map(b => b.split('/')[0]).filter(Boolean));
+    msg.pics = twitchPics((g['source-badges'] || '').split(',').filter(Boolean).map(b => b.split('/')), g['source-badge-info'] || '');
+  }
   if (action) msg.action = true;
   if (g['msg-id'] === 'highlighted-message') msg.highlight = true;
+  if (g['msg-id'] === 'gigantified-emote-message') msg.giant = true;   // (its emote, shown big, as Twitch's chat does)
   if (+g.bits){ msg.bits = +g.bits; msg.support = { kind: 'bits', who: msg.sender, n: msg.bits }; }
   if (g['custom-reward-id']) msg.redeem = { title: '', color: '' };   // (a channel points reward with text: Twitch's chat doesn't say which)
   if (g['first-msg'] === '1') msg.first = true;
@@ -475,6 +484,7 @@ const KNOWN = {
     PinnedMessageCreatedEvent: 'a pin', PinnedMessageDeletedEvent: 'a pin taken down', ChatroomUpdatedEvent: 'the chat’s modes (above the box)',
     PollUpdateEvent: 'a poll and its votes (its card over ALL)', PollDeleteEvent: 'a poll deleted (its card goes)' },
   twitch: { PRIVMSG: 'a message', 'PRIVMSG:reply': 'a reply', 'PRIVMSG:bits': 'a cheer', 'PRIVMSG:reward': 'a reward redeemed', 'PRIVMSG:highlighted-message': 'a highlighted message',
+    'PRIVMSG:gigantified-emote-message': 'a giant emote (its line shows it big)',
     'USERNOTICE:sub': 'a sub', 'USERNOTICE:resub': 'a resub', 'USERNOTICE:subgift': 'a gifted sub', 'USERNOTICE:submysterygift': 'gifted subs', 'USERNOTICE:raid': 'a raid',
     'USERNOTICE:announcement': 'an announcement', 'USERNOTICE:viewermilestone': 'a watch streak', 'USERNOTICE:giftpaidupgrade': 'a gifted sub kept going',
     'USERNOTICE:primepaidupgrade': 'a Prime sub kept going', 'USERNOTICE:bitsbadgetier': 'a bits badge', 'USERNOTICE:communitypayforward': 'a gift sub paid forward', 'USERNOTICE:sharedchatnotice': 'another channel’s sub, gift or raid in a shared chat (as Twitch words it)', CLEARMSG: 'a message deleted', 'CLEARCHAT:timeout': 'a timeout',
@@ -501,7 +511,8 @@ const IGNORED = {
     KicksLeaderboardUpdated: 'the Kicks leaderboard', NewSubscriberUpdatedEvent: 'the sub count (ChannelSubscriptionEvent is the sub)',
     NewActivityFeedEvent: 'the activity feed (the same subs and follows)', StopStreamBroadcast: 'the stream ending', StreamerIsLive: 'the stream starting',
     GamificationWatchTimeGoalReached: 'your watch-time goal', PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)',
-    KicksBalanceUpdated: 'your own Kicks balance (on your private channel)', ChatMessageSentEvent: 'a sub as a line in Kick’s chat (the same sub: SubscriptionEvent)' },
+    KicksBalanceUpdated: 'your own Kicks balance (on your private channel)', ChatMessageSentEvent: 'a sub as a line in Kick’s chat (the same sub: SubscriptionEvent)',
+    ChatSettingsChanged: 'the chat’s modes again (the same change comes as ChatroomUpdatedEvent, shown above the box)' },
   twitch: { CAP: 'the connection’s own', JOIN: 'the connection’s own', PART: 'the connection’s own', GLOBALUSERSTATE: 'the connection’s own (you)', USERSTATE: 'the connection’s own (you)',
     RECONNECT: 'the connection’s own', 'hermes:welcome': 'the connection’s own', 'hermes:authenticateResponse': 'the connection’s own',
     'hermes:subscribeResponse': 'the connection’s own', 'hermes:unsubscribeResponse': 'the connection’s own', 'hermes:reconnect': 'the connection’s own',
@@ -518,6 +529,9 @@ const IGNORED = {
     'hermes:update-message': 'a message edited (it carries only the message’s id, not its new words)', 'hermes:?': 'the connection’s own (no type)',
     'hermes:extension_message': 'an extension’s own message (its panel in Twitch’s chat)',
     'hermes:stream-up': 'the stream starting (the live check says so)', 'hermes:favorite-channel-update': 'streaming together (Twitch’s own panel)', 'hermes:collaboration-status-refetch': 'streaming together (Twitch’s own panel)',
+    ...Object.fromEntries(['group-updated', 'group-disbanded', 'session-started', 'session-updated', 'session-ended', 'session-role-changed', 'slot-assignments-changed', 'slot-settings-changed', 'call-ended']
+      .map(n => ['hermes:' + n, 'streaming together (Twitch’s own panel)'])),
+    'hermes:automatic-reward-redeemed': 'a reward Twitch runs itself (a giant emote: its message is the line)',
  'hermes:chat_rich_embed': 'a link’s preview card (the link is in its message)',
     'hermes:UPDATE_CHANNEL_MODERATION_MODE': 'Shield Mode on or off, to moderators (what it limits comes as the chat’s modes, above the box)',
     ...Object.fromEntries(['slow_on', 'slow_off', 'followers_on', 'followers_on_zero', 'followers_off', 'subs_on', 'subs_off', 'emote_only_on', 'emote_only_off', 'r9k_on', 'r9k_off']

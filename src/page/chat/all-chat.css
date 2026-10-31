@@ -50,6 +50,10 @@
 .al-e{height:22px;width:auto;vertical-align:middle;margin:-3px 1px}
 .al-b{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:3px;flex:none}
 .al-bi{height:18px;width:auto;max-width:36px;flex:none;object-fit:contain;border-radius:3px}
+/* a shared chat's message from another channel: that channel's picture, round, before the badges (as Twitch's chat has it) */
+.al-from{width:16px;height:16px;flex:none;border-radius:50%;object-fit:cover;background:color-mix(in srgb,var(--text) 18%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--text) 22%,transparent)}
+/* a giant emote (Twitch's): under the name, about four times its size */
+.al-giant{display:block;margin-top:2px}.al-giant .al-e{height:88px;margin:0}
 .al-bk{display:inline-grid;place-items:center;width:18px;height:18px;flex:none}.al-bk svg{width:18px;height:18px}
 .al-by svg{width:16px;height:16px;fill:currentColor}   /* (YouTube's badges: in their colour, as its chat draws them) */
 .al-pill{padding:0 4px;border-radius:2px}   /* (YouTube's streamer: a name on a pill) */

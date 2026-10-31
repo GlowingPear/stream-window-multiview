@@ -135,15 +135,18 @@ test('the error log and the sites\' answers: from the main process, the page and
   await a.win.evaluate(() => { dispatchEvent(new ErrorEvent('error', { message: 'page went wrong', filename: 'app://x/src/page/windows/pause.js', lineno: 88 })); });
   await a.win.evaluate(() => { dispatchEvent(new PromiseRejectionEvent('unhandledrejection', { promise: Promise.resolve(), reason: new Error('promise went wrong') })); });
   await inView(a.win, 'alpha', 'chat', () => { setTimeout(() => { null.helperWentWrong(); }); return true; });
+  // ALL not reading a chat: its site and which chat
+  await a.win.evaluate(() => { window.allHealth.broke('alpha', 'read', 'ALL isn\'t reading Kick\'s messages'); window.allHealth.healed('alpha'); });
   // a site that didn't answer (a closed port: no time limit to wait for)
   await a.app.evaluate(() => fetch('https://kick.com:1/api/v2/channels/alpha?token=SECRET').catch(() => null));
   await a.win.evaluate(() => window.openSettings('developer'));
-  await until(() => a.win.evaluate(() => document.querySelectorAll('#devList .dv-row').length >= 4));
+  await until(() => a.win.evaluate(() => document.querySelectorAll('#devList .dv-row').length >= 5));
   const rows = await a.win.$$eval('#devList .dv-row', e => e.map(x => x.querySelector('.dv-src').textContent + ' ' + x.querySelector('.dv-msg').textContent));
   assert.ok(rows.includes('MAIN main went wrong'), rows.join('\n'));
   assert.ok(rows.includes('PAGE windows/pause.js:88: page went wrong'), rows.join('\n'));
   assert.ok(rows.includes('PAGE promise: promise went wrong'), rows.join('\n'));
   assert.ok(rows.some(r => /^CHAT alpha \d+:\d+: .*helperWentWrong/.test(r)), rows.join('\n'));
+  assert.ok(rows.includes('CHAT ALL · Kick · alpha: ALL isn\'t reading Kick\'s messages'), rows.join('\n'));
   assert.match(await a.win.textContent('#devTabs [data-t=errors]'), /^Errors \(\d+\)$/);
   // the sites' answers: Errors only, and a click copies the request and the answer
   await a.win.click('#devTabs [data-t=responses]');

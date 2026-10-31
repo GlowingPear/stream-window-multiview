@@ -169,6 +169,18 @@ test('anonymise: names go by what a field is called, wherever it is (raids, clip
   assert.ok(!/maple|driftwood|pebble|otter|7712345|8812345|6612345|cozy|speedruns|big save|that jump|day one/i.test(JSON.stringify([raid, go, embed, board, so, bs, rw, live, reward, c1, c2])));
 });
 
+test('anonymise: pictures named by their size (Twitch\'s profile_image_urls, profile_images: { "150x150": … }) go, whole or cut short', () => {
+  const ph = placeholders();
+  const pic = 'https://static-cdn.jtvnw.net/jtv_user_pictures/maple-profile_image-150x150.png';
+  const pubsub = { type: 'group-updated', data: { users: [{ login: 'maplefern', profile_image_urls: { '150x150': pic, '28x28': pic }, profile_images: { '50x50': pic }, primary_color_hex: '00F593' }] } };
+  const whole = JSON.stringify({ notification: { pubsub: JSON.stringify(pubsub) } });
+  const u = JSON.parse(anonymise('twitch', whole, ph).notification.pubsub).data.users[0];
+  assert.deepEqual([u.profile_image_urls['150x150'], u.profile_image_urls['28x28'], u.profile_images['50x50']].map(x => x.startsWith('https://example.invalid/file')), [true, true, true]);
+  assert.equal(u.primary_color_hex, '00F593', 'what isn\'t a link stays');
+  const cut = anonymise('twitch', whole.slice(0, whole.indexOf('28x28') + 20), ph);
+  assert.ok(!/maple|jtvnw/i.test(cut), cut);
+});
+
 test('anonymise: Twitch\'s tags go by their names (any name, login or display name; ids; URLs; a sub plan\'s name), and what kind of line it is stays', () => {
   const ph = placeholders();
   const irc = '@display-name=MapleFern;login=maplefern;msg-id=sharedchatnotice;source-msg-id=sub;source-id=5f2c-11;source-room-id=4411;msg-param-sub-plan-name=Subscription\\s(driftwoodjay);msg-param-profileImageURL=https://cdn.example/jay-%s.png'

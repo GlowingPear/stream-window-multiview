@@ -1765,6 +1765,31 @@ test('ALL: a gift sub paid forward (from someone, or an anonymous one) and a goa
   assert.deepEqual(await page.$$eval('.al-ev .al-amt', l => l.map(e => e.textContent)), ['Tinroof', '230', '50'], 'who gave it, and the count, picked out');
 });
 
+test('ALL: a giant emote under the name, big; a shared chat\'s message from another channel with that channel\'s picture (its name on hover), its badges there, once when two of its chats bring it', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const pic = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  await page.route('https://static-cdn.jtvnw.net/**', r => r.fulfill({ contentType: 'image/gif', body: Buffer.from(pic.split(',')[1], 'base64') }));   // (the emote's picture)
+  await page.evaluate(pic => {
+    window.__asked = [];
+    const w = window.openWins().find(o => o.channel === 'tw:quietkoala');
+    w.view.executeJavaScript = async js => { if (!/channelsAgent/.test(js)) return null; window.__asked.push(js); return [{ id: '200', login: 'maplefern', name: 'MapleFern', pic }]; };
+  }, pic);
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [
+    TW({ 'display-name': 'tinroof', id: 'g1', 'msg-id': 'gigantified-emote-message', emotes: '25:0-4', 'emote-only': '1' }, ':tinroof!t@t PRIVMSG #quietkoala :Kappa'),
+    TW({ 'display-name': 'pebble', id: 's1', 'room-id': '100', 'source-room-id': '200', 'source-id': 'src1', badges: '', 'source-badges': 'vip/1' }, ':pebble!p@p PRIVMSG #quietkoala :hi from the other chat'),
+    TW({ 'display-name': 'pebble', id: 's1-again', 'room-id': '300', 'source-room-id': '200', 'source-id': 'src1', badges: '', 'source-badges': 'vip/1' }, ':pebble!p@p PRIVMSG #quietkoala :hi from the other chat'),
+    TW({ 'display-name': 'drift', id: 'own', 'room-id': '100', 'source-room-id': '100', 'source-id': 'own' }, ':drift!d@d PRIVMSG #quietkoala :from this chat')] });
+  const giant = await page.$eval('.all-list .al-m .al-giant', e => { const i = e.querySelector('img.al-e'); return [getComputedStyle(e).display, i && i.getAttribute('src'), i && i.getBoundingClientRect().height]; });
+  assert.deepEqual(giant, ['block', 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/3.0', 88], 'on a line of its own, its bigger picture, about 4× an emote');
+  await page.waitForSelector('.all-list img.al-from');
+  assert.equal((await lines(page)).filter(l => /hi from the other chat/.test(l)).length, 1, 'once, though two chats of the session brought it');
+  assert.deepEqual(await page.$$eval('.all-list .al-m .al-who', l => l.map(w => [...w.children].map(c => c.className))), [['pi pi-twitch'], ['pi pi-twitch', 'al-from', 'al-b al-b-vip'], ['pi pi-twitch']],
+    'the channel\'s picture first, then their badges in that channel; none on this chat\'s own');
+  assert.equal(await page.$eval('.all-list img.al-from', i => i.title), 'Sent from MapleFern');
+  assert.equal((await page.evaluate(() => window.__asked)).length, 1, 'asked once for that channel');
+});
+
 test('ALL\'s health: a site whose chat has new messages while ALL read none is loaded again once, then its badge turns amber with a line (See it on …, ✕); messages no reader understood, and sends failing twice, too; it clears itself', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
