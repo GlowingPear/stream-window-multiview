@@ -161,7 +161,7 @@ function supportFrom(w, list, screen = false){
     if (!what || !s.who) continue;
     const item = { channel: w.channel, label: chLabelP(w.channel), sender: String(s.who).slice(0, 40), body: what, kind: 'support', quoted: '', t: s.t || Date.now(), unread: true };
     if (s.kind === 'raid') item.raid = true;                   // (the desktop notification says "raided")
-    if (wantNotify('support')) window.kmv.notifyMention(item);
+    if (DESKTOP && wantNotify('support')) window.kmv.notifyMention(item);
     addNote(item, `${item.sender} ${what} in ${chLabel(w.channel)}`);
     raiseAlert(w, 'support', false);
     supportBanner(w.channel, item.sender, what, s.kind);          // on its stream's picture too
@@ -199,7 +199,7 @@ function mentionAlert(w, m, looking){
   const parts = cleanParts(m.parts), qparts = cleanParts(m.qparts);
   if (parts){ item.parts = parts; item.body = partsText(parts); }
   if (qparts){ item.qparts = qparts; item.quoted = partsText(qparts); }
-  if (wantNotify('mention')) window.kmv.notifyMention(item);
+  if (DESKTOP && wantNotify('mention')) window.kmv.notifyMention(item);   // (the feed reads chats in the UI tests' plain browser too)
   addNote(item, `${item.sender} ${item.kind === 'reply' ? 'replied to you' : item.kind === 'word' ? `said “${item.word}”` : 'mentioned you'} in ${chLabel(item.channel)}`);
   raiseAlert(w, 'mention', !!looking);
 }

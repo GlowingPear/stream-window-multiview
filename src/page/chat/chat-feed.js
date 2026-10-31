@@ -30,7 +30,7 @@ let pending = new Map();            // chat window -> { over: [], n } (chat over
 let flushT = 0;
 
 const flat = t => String(t || '').replace(/\s+/g, ' ').trim().toLowerCase();
-const textOf = m => m.parts.map(p => p.text != null ? p.text : p.name || '').join('');
+const textOf = m => m.parts.map(p => p.text != null ? p.text : p.name || '').join('').replace(/\s+/g, ' ').trim();
 // Its parts as the bell and chat over the stream keep them: [{ t } | { e, src }] (null: text only)
 const partsOf = m => (m.parts.some(p => p.emote) ? m.parts.map(p => p.emote ? { e: p.name, src: p.emote } : { t: p.text || '' }) : null);
 const reads = w => !!w && w.kind === 'chat' && !!platform(w.channel).feedReaders;
@@ -66,7 +66,7 @@ const SCREEN_JS = on => `window.__kmvMention && window.__kmvMention.setScreen &&
 function goLive(w){
   if (w.feedLive || Date.now() - (w.feedBroke || 0) < LIVE_AGAIN_MS) return;
   w.feedLive = true;
-  runIn(w.view, SCREEN_JS(false));
+  if (w.view) runIn(w.view, SCREEN_JS(false));   // (a hidden tab's chat may have no view yet: its helper starts asleep)
 }
 // The feed stopped working for this chat (chat/all-health.js): its page's screen read again
 function feedFailed(w){
@@ -90,7 +90,7 @@ function fromFeed(w, m){
   }
   if (m.kind === 'message' || m.kind === 'event') goLive(w);   // (first: its screen reader stops before this is read)
   if (m.kind === 'message') message(w, m);
-  else if (m.kind === 'event' && m.support) support(w, m);
+  if (m.support) support(w, m);   // (an event, or a message with a cheer in it)
 }
 function message(w, m){
   const ch = w.channel, site = platform(ch), me = flat(mentNameFor(ch)), body = textOf(m), parts = partsOf(m);
@@ -116,15 +116,16 @@ function message(w, m){
   if (parts) item.parts = parts;
   mentionAlert(w, item, (document.hasFocus() && document.activeElement === w.view) || allLooking(w));
 }
-// Someone supporting the stream: once (a community gift's subs given one by one are part of it), never your own
+// Someone supporting the stream: once (a community gift's subs given one by one are part of it, by the gift's id), never
+// your own
 function support(w, m){
   const s = m.support, ch = w.channel;
   if (!alerts.support.on || !platform(ch).support || !s.who) return;
   if (flat(s.who) === flat(mentNameFor(ch))) return;
   if (s.group){
     for (const [g, t] of groups) if (Date.now() - t > SAME_MS) groups.delete(g);
-    if (s.kind === 'gift' && groups.has(s.group)) return;
-    if (s.kind === 'gifts') groups.set(s.group, Date.now());
+    if (groups.has(s.group)) return;   // (one of its subs, or the same gift again: Kick names it two ways)
+    groups.set(s.group, Date.now());
   }
   if (sameAs(ch, 'support', s.who, supportKey(s), 'feed')) return;
   supportFrom(w, [{ kind: s.kind, who: s.who, n: s.n, unit: s.unit || '', t: m.t || Date.now(), ...(s.to ? { to: s.to } : {}), ...(s.amt ? { amt: s.amt } : {}) }]);
