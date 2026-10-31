@@ -2,7 +2,7 @@
 // player loaded and playing, muted, under the one you watch; switching moves the sound. Players are stand-in pages
 // (see app.js).
 const test = require('node:test');
-const { launchApp, assert } = require('../app');
+const { launchApp, assert, openChannel, setMode } = require('../app');
 
 const T = { timeout: 90000 };
 let a;
@@ -125,6 +125,26 @@ test('Tab in an empty chat box switches site and the keyboard is in the new chat
   await a.win.evaluate(() => window.linkedApi.setOpt('allTab', true));
   await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
   await a.win.evaluate(() => localStorage.removeItem('kickMultiview.linkedOpts'));
+});
+
+test('a channel on its own with its ALL on: ⇧Tab in its chat goes to ALL, and in ALL back to its chat', T, async () => {
+  await a.win.evaluate(() => {
+    localStorage.setItem('kickMultiview.chanOpts', JSON.stringify({ lynx: { allTab: true } }));
+    localStorage.setItem('kickMultiview.allOpen', JSON.stringify([]));
+  });
+  await setMode(a.win, 'chat');
+  await openChannel(a.win, 'lynx');
+  await chatReady('lynx');
+  await addBox('lynx', KICK);
+  await untilIn('lynx', () => !!window.__kmvTabKey?.on, 'Tab switches to ALL in a channel on its own');
+  await inChat('lynx', () => { const b = document.querySelector('[contenteditable]'); b.focus(); b.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true })); });
+  await a.win.waitForSelector('#stage .win.chat:not(.tab-hidden) .all-view');
+  await a.win.focus('.all-in');
+  await a.win.keyboard.press('Shift+Tab');
+  await a.win.waitForSelector('#stage .win.chat:not(.tab-hidden) .ptab.kick.on');
+  await a.win.click('#stage .win.chat:not(.tab-hidden) [data-a=close]');
+  await a.win.evaluate(() => { localStorage.removeItem('kickMultiview.chanOpts'); localStorage.removeItem('kickMultiview.allOpen'); });
+  await setMode(a.win, 'both');
 });
 
 test('the keyboard went somewhere else in the app while the chat loaded: it stays there', T, async () => {

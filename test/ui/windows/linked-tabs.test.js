@@ -2,7 +2,7 @@
 // with their windows as one window with a tab per site. Off by default: then everything is as before.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { setup, add, press } = require('../app');
+const { setup, add, mode, press } = require('../app');
 const { openApp } = setup();
 
 const now = Date.now();
@@ -383,6 +383,32 @@ test('Channel settings for a channel on its own: its chat bots, Opens by itself 
   await page.evaluate(() => window.openLinkCard('novalynx'));
   assert.deepEqual((await opts()).map(o => o[2]), [false, false, false, false], 'linked: all of it');
   assert.equal(await page.isDisabled('#linkDlg .lc-unlink'), false);
+});
+
+test('a channel on its own with its ALL on: its site\'s tab can be clicked and ⇧Tab goes to it, and back to ALL; it can\'t be closed or dragged out', async t => {
+  const page = await linkedApp(t, { on: false, extra: { chanOpts: JSON.stringify({ novalynx: { allTab: true } }), allOpen: JSON.stringify(['c:novalynx']) } });
+  await mode(page, 'chat');
+  await add(page, 'novalynx');
+  await page.waitForSelector('#stage .win.chat:not(.tab-hidden) .all-view');
+  const bar = () => page.$$eval('#stage .win.chat:not(.tab-hidden) .ptab', l => l.map(b => b.textContent + (b.classList.contains('on') ? '*' : '') + (getComputedStyle(b).pointerEvents === 'none' ? ' (can\'t click)' : '')));
+  assert.deepEqual(await bar(), ['ALL*', 'K']);
+  // its site's tab: its own chat
+  await page.click('#stage .win.chat:not(.tab-hidden) .ptab.kick');
+  assert.deepEqual(await bar(), ['ALL', 'K*']);
+  assert.equal(await page.locator('#stage .win.chat:not(.tab-hidden) .all-view').count(), 0);
+  // middle-click and dragging out leave it (it's the window's only site)
+  await page.click('#stage .win.chat:not(.tab-hidden) .ptab.kick', { button: 'middle' });
+  const tab = await page.locator('#stage .win.chat:not(.tab-hidden) .ptab.kick').boundingBox();
+  await page.mouse.move(tab.x + 5, tab.y + 5); await page.mouse.down(); await page.mouse.move(tab.x + 200, tab.y + 200, { steps: 5 }); await page.mouse.up();
+  assert.equal((await shown(page, 'chat')).length, 1, 'still one chat window');
+  assert.deepEqual(await bar(), ['ALL', 'K*']);
+  assert.doesNotMatch(await page.getAttribute('#stage .win.chat:not(.tab-hidden) .ptab.kick', 'title'), /Middle-click|Drag it out/);
+  // ALL again, then ⇧Tab in its box: the site's chat, and ⇧Tab from there (the chat's helper asks) back to ALL
+  await page.click('#stage .win.chat:not(.tab-hidden) .ptab.all');
+  await page.waitForSelector('#stage .win.chat:not(.tab-hidden) .all-view');
+  await page.focus('.all-in');
+  await page.keyboard.press('Shift+Tab');
+  assert.deepEqual(await bar(), ['ALL', 'K*']);
 });
 
 test('a channel with its ALL off, linked: the streamer\'s ALL is As in Settings', async t => {

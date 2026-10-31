@@ -79,19 +79,21 @@ function tabTip(w, ch){
   const info = infoFor(ch), p = platOf(ch), m = memberFor(w, ch);
   const state = info ? (info.missing ? 'channel not found: it may have been renamed (right-click to fix or unlink it)' : info.live ? 'live' + (info.viewers ? ` · ${Number(info.viewers).toLocaleString()} watching` : '') : 'offline') : '';
   const alert = m && m.alert ? (m.alert.kind === 'spam' ? ' · likely spam' : ' · a message mentions you') : (m && newFor(ch) && m.kind === 'chat' ? ` · ${newFor(ch)} new` : '');
-  const solo = tabChannels(w).length < 2;
-  const how = tabLocked(w, ch) ? '\nIt opens here when it goes live.' : `\nClick to watch it here (${keyName('Alt+' + tabNo(w, ch))}). Middle-click closes it. Drag it out for its own window.`;
-  return `${PLAT_NAME[p]}${w.kind === 'chat' ? ' chat' : ''}${state ? ' · ' + state : ''}${alert}` + (solo ? '' : how);
+  const lone = tabChannels(w).length < 2;     // the window's only site: next to ALL it shows its own chat again; on its own, nothing
+  const how = lone ? (allTabFor(leaderOf(w)) ? '\nClick to show its own chat.' : '') : tabLocked(w, ch) ? '\nIt opens here when it goes live.'
+    : `\nClick to watch it here (${keyName('Alt+' + tabNo(w, ch))}). Middle-click closes it. Drag it out for its own window.`;
+  return `${PLAT_NAME[p]}${w.kind === 'chat' ? ' chat' : ''}${state ? ' · ' + state : ''}${alert}` + how;
 }
 // The tabs (K / T / Y) on one window's bar
 function renderSiteTabs(w){
   const box = w.el.querySelector('.ptabs'); if (!box) return;
-  const lead = leaderOf(w), chs = tabChannels(w), solo = chs.length < 2, all = allOn(w);
+  // lone: the window's only site (it can't be closed or dragged out); solo: that, without ALL next to it (no tab to click)
+  const lead = leaderOf(w), chs = tabChannels(w), lone = chs.length < 2, solo = lone && !allTabFor(w), all = allOn(w);
   const closed = (closedTabs[lead.frame] || []).filter(ch => accountsOf(w.channel).includes(ch) && !memberFor(w, ch));
   const parts = chs.map(ch => {
     const m = memberFor(w, ch), info = infoFor(ch), p = platOf(ch), on = !all && m && (m === lead || (lead.sbs && m.kind === lead.kind));
     const cls = ['ptab', p, on ? 'on' : '', info && info.live ? 'live' : info ? 'off' : '', m && m.alert ? (m.alert.kind === 'spam' ? 'spam' : 'at') : '',
-      m && m !== lead && m.kind === 'chat' && newFor(ch) ? 'new' : '', m && m.glowUntil > Date.now() ? 'newsite' : '', solo ? 'solo' : '',
+      m && m !== lead && m.kind === 'chat' && newFor(ch) ? 'new' : '', m && m.glowUntil > Date.now() ? 'newsite' : '', solo ? 'solo' : '', lone ? 'lone' : '',
       info && info.missing && streamerOf(ch) ? 'gone' : '', !solo && tabLocked(w, ch) ? 'locked' : ''].filter(Boolean).join(' ');   // gone: a renamed or deleted channel (Fix or Unlink in its menu)
     const name = tabTip(w, ch);
     const b = element('button', { class: cls, type: 'button', role: 'tab', 'aria-selected': String(!!on), tabindex: on ? '0' : '-1', 'aria-disabled': !solo && tabLocked(w, ch) && 'true',
@@ -542,7 +544,8 @@ function tabKeyAgent(){
 }
 // Tab only switches where it would: a chat of a linked streamer, with the setting on, and another of its sites live
 // (otherwise Tab is the site's own again)
-const tabKeyJs = w => `window.__kmvTabKey && (window.__kmvTabKey.on = ${!!(streamerOf(w.channel) && linkOpt('tabKey') && (stepChannels(w).length > 1 || allTabFor(w)))})`;
+// (a linked streamer's sites; or ALL, also of a channel on its own with its ALL on)
+const tabKeyJs = w => `window.__kmvTabKey && (window.__kmvTabKey.on = ${!!(linkOpt('tabKey') && ((streamerOf(w.channel) && stepChannels(w).length > 1) || allTabFor(w)))})`;
 function syncTabKeys(){ wins.forEach(w => { if (w.kind === 'chat' && w.ready && w.view) runIn(w.view, tabKeyJs(w)); }); }
 // The chat Tab switched to: the keyboard goes to its chat box, so you can type straight away. in-site/chat-box-focus.js
 // waits for the site to draw its box; a chat still loading gets it once it has, and one that loads another page first
@@ -609,7 +612,7 @@ function init(){
     if (m) showTab(m); else addTab(t.w, ch, true);
   });
   stage.addEventListener('auxclick', e => {
-    const t = tabOf(e); if (!t || e.button !== 1 || t.b.classList.contains('solo')) return;
+    const t = tabOf(e); if (!t || e.button !== 1 || t.b.classList.contains('lone')) return;
     e.preventDefault(); const m = memberFor(t.w, t.b.dataset.ch); if (m) closeTab(m);
   });
   stage.addEventListener('mousedown', e => { const t = tabOf(e); if (t && (e.button === 1 || t.b.classList.contains('locked'))) e.preventDefault(); });   // (no autoscroll; an offline tab doesn't take the focus)
@@ -620,7 +623,7 @@ function init(){
   stage.addEventListener('pointerdown', e => {
     const t = tabOf(e); if (!t || e.button !== 0) return;
     e.stopPropagation();                         // (the bar doesn't drag the window from a tab)
-    if (t.b.classList.contains('solo') || t.b.classList.contains('locked') || !t.b.dataset.ch) return;
+    if (t.b.classList.contains('lone') || t.b.classList.contains('locked') || !t.b.dataset.ch) return;
     const sx = e.clientX, sy = e.clientY, b = t.b; b.dragged = false;
     const move = ev => { if (Math.abs(ev.clientY - sy) > 40 || Math.abs(ev.clientX - sx) > 80){ b.dragged = true; b.classList.add('dragging-out'); } };
     const up = ev => {
