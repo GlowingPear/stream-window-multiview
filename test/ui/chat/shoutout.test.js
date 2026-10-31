@@ -149,7 +149,7 @@ test('Send straight away off: the shoutout goes in ALL\'s box on its site, for y
 test('a run of recent chatters, in ALL the chat its send box is on: the list (streamers only, a recent one unticked, Show them), then one a second with a strip; held back, it waits; Stop', async t => {
   const known = { 'kick:driftwood_7': { login: 'driftwood_7', game: 'Harbor Run', streams: true, t: now }, 'twitch:tinroof': { login: 'tinroof', game: '', streams: true, t: now },
     'kick:maplemoth': { login: 'maplemoth', game: 'Meadowlight', streams: true, t: now }, 'kick:pebble': { login: 'pebble', streams: false, t: now }, 'kick:oakmoss': { login: 'oakmoss', game: '', streams: true, t: now } };
-  const page = await allApp(t, { shoutOn: '1', shoutKnown: JSON.stringify(known), shoutSent: JSON.stringify({ 'kick:oakmoss': now - 120000 }) });
+  const page = await allApp(t, { shoutOn: '1', shoutKnown: JSON.stringify(known), shoutSent: JSON.stringify({ 'kick:oakmoss': Date.now() - 120000 }) });   // (its own now: the file's can be minutes old)
   await page.evaluate(() => Object.assign(window.shoutouts.timing, { gap: 50, look: 300, retry: 1 }));
   await chat(page);
   await feed(page, 'quietkoala', { s: 'kick', raw: [kick('k3', 'Oakmoss', 'hello'), kick('k4', 'Pebble', 'hi'), kick('k5', 'quietkoala', 'welcome raiders')] });
