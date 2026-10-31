@@ -84,10 +84,17 @@ test('Twitch: the button first in a message\'s icons, who from the line\'s data 
   await p.click('.chat-line__message[data-i="1"] .kmv-so-b');
   await p.waitForTimeout(100);
   assert.deepEqual(p.logs, [{ site: 'twitch', login: 'lumen_fox', name: 'Lumen', named: false }]);
+  // the pointer gone: hidden, whatever the site does with its bar; the site's bar drawn again without it: back on the next hover
+  await p.mouse.move(2, 600);
+  assert.equal(await p.isVisible('.chat-line__message[data-i="1"] .kmv-so-b'), false, 'not left behind');
+  await p.evaluate(() => document.querySelector('.chat-line__message[data-i="1"] .chat-line__icons [data-kmv-so]').remove());
+  await p.hover('.chat-line__message[data-i="1"]');
+  assert.equal(await p.isVisible('.chat-line__message[data-i="1"] .kmv-so-b'), true);
   await p.hover('.chat-line__message[data-i="2"]');
   assert.equal(await p.locator('.chat-line__message[data-i="2"] [data-kmv-so]').count(), 0, 'a notice with no one: nothing');
   // switched off with the button already there: its press does nothing
   await p.evaluate(() => { window.__kmvShout.on = false; });
+  await p.hover('.chat-line__message[data-i="1"]');
   await p.click('.chat-line__message[data-i="1"] .kmv-so-b', { force: true });
   await p.waitForTimeout(100);
   assert.equal(p.logs.length, 1);

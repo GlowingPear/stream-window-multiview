@@ -31,6 +31,7 @@ function shoutAgent(on, look){
     .kmv-so-like svg{flex:none}
     .kmv-so-own{position:absolute;right:8px;top:-14px;z-index:20;display:none;padding:3px;border-radius:8px;background:#24292d;border:1px solid #31373c;box-shadow:0 8px 20px rgba(0,0,0,.5)}
     [data-kmv-so-line]:hover>.kmv-so-own,[data-kmv-so-line]:focus-within>.kmv-so-own{display:flex}
+    [data-kmv-so-line]:not(:hover):not(:focus-within) [data-kmv-so]:not(.kmv-so-pill){display:none!important}
     .kmv-so-pill{display:inline-flex;align-items:center;gap:5px;margin-left:8px;padding:3px 10px 3px 8px;border-radius:999px;border:1px solid rgba(83,252,24,.45);background:rgba(83,252,24,.12);color:#53fc18;font:700 12px/1.2 inherit;cursor:pointer;white-space:nowrap;vertical-align:middle}
     .kmv-so-pill:hover{background:rgba(83,252,24,.22)}
     .kmv-so-pill svg{width:13px;height:13px}`;
@@ -74,12 +75,14 @@ function shoutAgent(on, look){
     b.innerHTML = MEGA;
     const theirs = like && like.querySelector('svg'), r = theirs && theirs.getBoundingClientRect();
     if (r && r.width){ const svg = b.querySelector('svg'); svg.setAttribute('width', String(Math.round(r.width))); svg.setAttribute('height', String(Math.round(r.height))); }
-    b.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); if (S.on) press(who(b) || p); }, true);
+    b.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); b.blur(); if (S.on) press(who(b) || p); }, true);   // (blur: a click doesn't keep it showing)
     return b;
   }
   // A line under the pointer: its button (in the site's hover bar, else a bar of its own), or a raid's pill
+  // (only while the pointer is on the message, as some sites (Twitch) clear their hover bar's own buttons and leave
+  // ours; a bar the site drew again without ours gets it again on the next hover)
   function dress(line){
-    if (!S.on || line.hasAttribute('data-kmv-so-line')) return;
+    if (!S.on || line.querySelector('[data-kmv-so]')) return;
     const p = who(line);
     if (!p) return;
     line.setAttribute('data-kmv-so-line', '');
