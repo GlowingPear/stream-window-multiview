@@ -29,7 +29,7 @@ const SmvSpam = (() => {
   // Chat bots that post intros, rules, socials and timers, often the same text in several chats, and repeat
   // names back ("thanks for the follow, @you"). Never flagged as spam, and never a mention.
   const BOTS = ['botrix', 'nightbot', 'streamelements', 'fossabot', 'moobot', 'streamlabs', 'wizebot', 'sery_bot', 'kickbot',
-    'griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream', 'botrixofficial', 'botrixoficial'];   // (new ones at the end: see FIRST_BOTS; BotRixOficial is BotRix on Twitch)
+    'griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream', 'botrixofficial', 'botrixoficial', 'missxss'];   // (new ones at the end: see FIRST_BOTS; BotRixOficial is BotRix on Twitch)
   // The bots offered before the app remembered which ones it had offered, and the promo words and bot lines before
   // it remembered those.
   const FIRST_BOTS = BOTS.slice(0, 9), FIRST_WORDS = WORDS.slice(0, 10), FIRST_OPENERS = OPENERS.slice(0, 2);
