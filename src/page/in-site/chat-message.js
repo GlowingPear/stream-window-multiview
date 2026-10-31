@@ -89,7 +89,11 @@ function messageAgent(){
       const c = ctxAt; ctxAt = null;
       const m = c && Date.now() - c.t < 3000 ? partsOf(c.target) : null;
       lastLine = m ? m.line : null;
-      return read(m);
+      const r = read(m);
+      // (shoutouts on in this chat: who sent it, for the menu's Shout out; in-site/shoutout.js)
+      const S = window.__kmvShout;
+      if (r && m && S && S.on && S.who) r.shout = S.who(m.line);
+      return r;
     },
     // the message last right-clicked (its whole line), while it's still in the chat
     last: () => lastLine && lastLine.isConnected ? lastLine : null

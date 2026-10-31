@@ -36,6 +36,9 @@ const SETTING_NAMES = new Set([
   'dndFor', 'desktopNotify',
   // chats
   'autoTranslate', 'noTranslate', 'translateAll', 'emotePreview', 'newEmotes', 'chatName', 'chatNameText', 'chatOverlay', 'chatOverlayOff', 'chatOverlayKeep', 'chatOverlaySecs', 'chatOverlayLines', 'chatCounts',
+  // Settings › Shoutouts (chat/shoutout.js): on, the message, People, Twitch's own, asking again, a run's size, streamers only, the list first;
+  // who's who (their address, last game, whether they stream) and when you shouted them out
+  'shoutOn', 'shoutSend', 'shoutText', 'shoutPeople', 'shoutTwitch', 'shoutAgain', 'shoutRunN', 'shoutStreamers', 'shoutListFirst', 'shoutKnown', 'shoutSent',
   // YouTube
   'ytSkip', 'ytConsent', 'ytAutoLike', 'ytAutoLiked', 'ytChatView',
   // the app

@@ -7,7 +7,7 @@ settings: notify
 show: "#bellBtn"
 words: [bell, notification, do not disturb, dnd, red number, unread, desktop]
 related: [mentions, spam-alerts]
-order: 18
+order: 19
 ---
 
 - The bell in the toolbar keeps everything the app tells you about: mentions, likely spam, saved channels going live, raids it followed, and the app's own messages ("Logged out of Twitch", "Saved layout", a saved emote, an update, a closed channel you can still undo).

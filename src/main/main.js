@@ -575,6 +575,10 @@ function runMenuAct(wc, a) {
     case 'whyAlert':
       if (wc.hostWebContents && !wc.hostWebContents.isDestroyed()) wc.hostWebContents.send('view:why', wc.id);
       break;
+    // a shoutout of who sent the message (Settings › Shoutouts): the app's page builds it and sends it in this chat
+    case 'shoutout':
+      if (wc.hostWebContents && !wc.hostWebContents.isDestroyed()) wc.hostWebContents.send('view:shoutout', wc.id, a.who);
+      break;
   }
 }
 async function copyChatHtml(wc) {
@@ -603,7 +607,7 @@ async function showViewMenu(wc, params) {
   const emote = ctx.emote && typeof ctx.emote === 'object' && typeof ctx.emote.text === 'string' && params.mediaType === 'image' ? ctx.emote : null;
   const chat = ctx.chat && typeof ctx.chat === 'object' ? { on: !!ctx.chat.on, auto: !!ctx.chat.auto } : null;
   const m = ctx.message && typeof ctx.message === 'object' ? ctx.message : null;
-  const message = m && chat ? { text: String(m.text || ''), withEmotes: String(m.withEmotes || ''), html: String(m.html || '') } : null;
+  const message = m && chat ? { text: String(m.text || ''), withEmotes: String(m.withEmotes || ''), html: String(m.html || ''), shout: m.shout && typeof m.shout === 'object' ? m.shout : null } : null;
   const items = menuFor(params, { langs, dev: !!DEV, devTools: devOn, emote, chat, message });
   if (!items.length) return;
   const host = wc.hostWebContents;

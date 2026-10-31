@@ -32,7 +32,8 @@ function languageIn(code, inLang) {
 //   emote: the emote under the pointer (see emoteAgent in index.html): { name, text, big, small } where text is what to paste in
 //     that chat, big and small its pictures' addresses
 //   chat: a chat window's translation state (see translateAgent): { on, auto }; null: not a chat
-//   message: the chat message under the pointer (see messageAgent): { text, withEmotes, html }; null: not a message
+//   message: the chat message under the pointer (see messageAgent): { text, withEmotes, html, shout }; null: not a message.
+//     shout: who sent it, while shoutouts are on in that chat (in-site/shoutout.js): { site, login, name }
 // -> [{ label, act, enabled?, checked? } | { label, head: true } | { type: 'separator' }]
 function menuFor(params, { langs = ['en'], dev = false, devTools = false, emote = null, chat = null, message = null } = {}) {
   const p = params || {}, f = p.editFlags || {}, out = [];
@@ -74,6 +75,9 @@ function menuFor(params, { langs = ['en'], dev = false, devTools = false, emote 
   ]);
   // a chat message: its text without who sent it (emotes left out, or as their text)
   const msg = message && typeof message.html === 'string' && message.html && !p.isEditable ? message : null;
+  // Settings › Shoutouts on: shout out who sent it (the app's page sends it, in this chat)
+  const shout = msg && msg.shout && typeof msg.shout === 'object' && /^(kick|twitch)$/.test(msg.shout.site) && /^[\w-]{1,40}$/.test(String(msg.shout.login || '')) ? msg.shout : null;
+  if (shout) group([{ label: `Shout out ${String(shout.name || shout.login).slice(0, 40)}`, act: { do: 'shoutout', who: { site: shout.site, login: String(shout.login).toLowerCase(), name: String(shout.name || shout.login).slice(0, 40) } } }]);
   if (msg) group([
     { label: 'Copy message', act: { do: 'copyText', text: msg.text || '' }, enabled: !!msg.text },
     { label: 'Copy message with emotes', act: { do: 'copyText', text: msg.withEmotes || '' }, enabled: !!msg.withEmotes }

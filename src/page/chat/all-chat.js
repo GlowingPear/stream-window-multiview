@@ -11,6 +11,7 @@ import { chatZoom } from './chat-zoom.js';
 import { sampleIn } from './event-samples.js';
 import { feedParse } from './feed-parse.js';
 import { openInBrowser } from './kick-panel.js';
+import { shoutOn, shoutOut, shoutTag, soPersonOf, soSentAt } from './shoutout.js';
 import { autoTrFor, translateChat } from './translate.js';
 import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
@@ -670,6 +671,32 @@ function evToggle(m, e){
   m.open = !e.currentTarget.classList.contains('al-open');
   const n = redrawLine(m); if (n) evOpenable(m, n);   // (still under the pointer: it can close again)
 }
+// Shoutouts (chat/shoutout.js): who a line can shout out (someone else's message on Kick or Twitch), or null
+function shoutable(m){
+  if (!shoutOn() || m.kind === 'mine' || m.deleted || !['kick', 'twitch'].includes(m.site) || !m.login || m.login === meOn(m.site)) return null;
+  const p = soPersonOf(m);
+  return p && { ...p, ch: m.ch };
+}
+// A raid's line: Shout out who raided, then ✓ Shouted out
+function raidSo(m){
+  const raid = m.kind === 'event' && ((m.support && m.support.kind === 'raid') || m.event === 'raid'), p = raid && shoutable(m);
+  if (!p) return null;
+  const t = soSentAt(p);
+  if (t && Date.now() - t < 12 * 3600000) return element('span', { class: 'al-so done', title: 'You shouted them out' }, element('i', { html: icon.check }), 'Shouted out');
+  return element('button', { type: 'button', class: 'al-so', title: `Shout out ${m.sender} in ${PLAT_NAME[m.site]} chat`, dataset: { cmd: 'all.raidShoutout' },
+    onclick: e => { e.stopPropagation(); shoutOut(p); } }, element('i', { html: icon.megaphone }), 'Shout out');
+}
+// The line menu's Shout out (in its chat) and Shout out in every chat (a streamer's several sites you can send on)
+function shoutItems(m, view, item){
+  const p = shoutable(m); if (!p) return [];
+  const chs = sendSites(view.w), chip = t => element('em', null, t);
+  const one = item(`Shout out ${m.sender}`, icon.megaphone, () => shoutOut(p), { cmd: 'all.menuShoutout' });
+  one.classList.add('so-li'); one.appendChild(element('span', 'so-on', chip(`${PLAT_NAME[m.site]} chat`)));
+  if (chs.length < 2) return [one];
+  const every = item('Shout out in every chat', icon.megaphone, () => shoutOut(p, { chs }), { cmd: 'all.menuShoutoutAll' });
+  every.appendChild(element('span', 'so-on', ...chs.map(ch => chip(PLAT_NAME[platOf(ch)]))));
+  return [one, every];
+}
 function lineEl(m){
   if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' || (m.cmd && m.state !== 'failed') ? null : mineEl(m);   // (a command: a line only if it couldn't be sent)
   if (m.ch && siteOff(ownerOf(m.ch), m.site)) return null;   // (its site switched off in this ALL; your own lines stay)
@@ -704,6 +731,8 @@ function lineEl(m){
     return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}${open ? ' al-open al-can' : ''}${to.length ? ' al-gift' : ''}${m.gift && m.gift.me ? ' al-gift-me' : ''}`, dataset: { key: m.site + ':' + m.id },
       'aria-expanded': open && 'true', title: open && 'Back to one line', onpointerenter: e => evOpenable(m, e.currentTarget), onclick: e => evToggle(m, e) }, element('i', { class: 'pi pi-' + m.site }, site[0]),
       element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts, m.ch)) : ''),
+      // (a raid: shout out who raided, Settings › Shoutouts; then that it's done)
+      raidSo(m),
       // (a shoutout: open the channel it points to, as a raid's line does)
       m.shoutout && element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.shoutoutOpen' }, title: `Open ${chLabel(m.shoutout)} in a window of its own`, onclick: () => addParsed({ channel: m.shoutout, only: null }) }, 'Open ›'),
       // (who got them: a row under it, its button first, their names after it while open)
@@ -722,6 +751,7 @@ function lineEl(m){
     : element('span', 'al-txt', ...partsEl(m.parts, m.ch));
   const tags = [
     m.toMe === 'at' && element('span', 'al-tag al-tag-at', '@YOU'),
+    shoutTag(m),
     m.toMe === 'word' && element('span', { class: 'al-tag al-tag-at', title: 'A word you watch for (Settings › Mentions)' }, m.word),
     m.spam && element('span', { class: 'al-tag al-tag-spam' + (m.spam.abuse ? ' abuse' : ''), title: m.spam.why }, m.spam.abuse ? 'Abuse?' : 'Spam?'),
     m.tr && !hideBot && element('button', { type: 'button', class: 'al-tag al-tag-tr', title: m.trOrig ? 'Show the translation' : 'Show the original', dataset: { cmd: 'all.translation' },
@@ -739,7 +769,9 @@ function lineEl(m){
     m.bot && !botsShown && element('button', { type: 'button', class: 'al-show linkish', dataset: { cmd: 'all.showBot' }, onclick: e => { m.open = !m.open; e.target.closest('.al-m').replaceWith(lineEl(m)); } }, m.open ? 'Hide' : 'Show')
   ].filter(Boolean);
   if (m.toMe === 'at' && m.bot) tags.splice(0, 1);   // (a bot's @: marked as to you, softly)
+  const so = shoutable(m);   // (Settings › Shoutouts on, someone else's message: chat/shoutout.js)
   const hover = !m.deleted && element('span', 'al-hb',
+    so && element('button', { type: 'button', class: 'al-so-b', title: `Shout out ${m.sender} on ${site}`, 'aria-label': `Shout out ${m.sender} on ${site}`, html: icon.megaphone, dataset: { cmd: 'all.shoutout' }, onclick: () => shoutOut(so) }),
     element('button', { type: 'button', title: `Reply on ${site}`, 'aria-label': `Reply to ${m.sender} on ${site}`, html: icon.reply, dataset: { cmd: 'all.reply' }, onclick: () => startReply(m) }),
     can && element('button', { type: 'button', title: `Delete on ${site} (${kShift()}-click the name)`, 'aria-label': `Delete ${m.sender}'s message on ${site}`, html: icon.bin, dataset: { cmd: 'all.delete' }, onclick: () => modAct(m, 'delete') }),
     element('span', 'al-hb-div'),
@@ -1060,6 +1092,26 @@ const sender = {
     return askIn(m.view, `(${sentAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)}, ${Number(r.start) || 0})`);
   }
 };
+// Sends a message in a chat window as ALL's box does: its hidden tab drawn while it sends, given its time, then slow mode
+// started. Shoutouts send this way too (chat/shoutout.js). -> sendAgent's answer, 'no-answer', or 'gone' (no chat there)
+async function sendInChat(c, text){
+  if (!c || !c.view) return 'gone';
+  drawTab(c, true);
+  const r = await inTime((async () => { await drawn(c); return pressed(c, await sender.send(c, text), text); })());
+  drawTab(c, false);
+  if (r === 'sent') slowStart(c.channel);
+  return r;
+}
+// Puts a text in ALL's box, on that site, for you to send (a shoutout with Send straight away off: chat/shoutout.js).
+// -> whether it could (ALL shows in a window that can send on that site)
+function fillAll(ch, text){
+  const w = wins.find(o => o.kind === 'chat' && o.allView && allOn(o) && sendSites(o).includes(ch)), view = w && w.allView;
+  if (!view || view.lock) return false;
+  setSendSite(view, w, ch);
+  view.input.value = text; syncSendB(view, w);
+  view.input.focus(); view.input.setSelectionRange?.(text.length, text.length);
+  return true;
+}
 // What sendAgent answered, after the real press it asked for (if it did)
 const pressed = async (m, r, text) => r && typeof r === 'object' && r.press ? sender.press(m, r, text) : r;
 // Where the site's Reply only shows under a real pointer (Twitch): the line found and scrolled to, the pointer moved over
@@ -1304,6 +1356,7 @@ function openLineMenu(m, at){
     selIn && item(`Search Google for ${short(sel)}`, icon.search, () => openInBrowser(`https://www.google.com/search?q=${encodeURIComponent(sel)}`), { cmd: 'all.menuSelSearch' }),
     (link || em || selIn) && element('hr'),
     sendSites(view.w).includes(m.ch) && item('Reply', icon.reply, () => startReply(m), { cmd: 'all.menuReply' }),
+    ...shoutItems(m, view, item),
     mod && item('Pin message', icon.pin, () => modAct(m, 'pin'), { cmd: 'all.menuPin' }),
     item(`Open profile on ${site}`, icon.user, () => openSiteCard(m), { cmd: 'all.menuProfile' }),
     mod && element('hr'),
@@ -1784,7 +1837,8 @@ function init(){
   store.watch(['wins'], () => forgetClosed());
   store.watch(['chatName', 'names'], () => wins.forEach(w => { if (w.allView) renderCmp(w.allView, w); }));
   store.watch(['mod'], () => { redrawAll(); wins.forEach(syncModBtn); });
-  store.watch(['theme'], () => redrawAll());   // (names: their site's colours for a light or dark theme)
+  store.watch(['theme'], () => redrawAll());
+  store.watch(['shoutouts'], () => redrawAll());   // (Settings › Shoutouts, or someone shouted out: the buttons and ✓ SO tags)   // (names: their site's colours for a light or dark theme)
   store.watch(['bots', 'streamers'], () => botsChanged());
   store.watch(['chatZoom'], () => wins.forEach(w => { if (w.allView) fitSize(w.allView); }));
   store.watch(['allHealth'], () => wins.forEach(w => { if (w.allView) renderTop(w.allView, w); }));
@@ -1796,6 +1850,7 @@ function init(){
   window.allChat = { sender, SEND_LIMIT, modKnown, gotBadges, gotKickIcons, kickIcons, gotYtLook, ytLook: () => ytLook, liveCmds, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
-export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedRead, feedReady, init, mentionOf, modViewChs,
-  openInspects, openModViews, openPopUps, openSaves, overBox, reloadAll, sendEmote, sendSite, setAll, setLock,
-  setSoloAll, SITE_BUTTONS, siteAction, spamTag, translateSite };
+export { allLooking, allOn, allRaid, allTabFor, appBots, chatRules, copyChatHtml, feedRead, feedReady, feeds,
+  fillAll, init, mentionOf, modViewChs, openInspects, openModViews, openPopUps, openSaves, overBox, ownerOf,
+  reloadAll, sendEmote, sendInChat, sendSite, setAll, setLock, setModes, setSoloAll, SITE_BUTTONS, siteAction,
+  spamTag, translateSite, youMod };

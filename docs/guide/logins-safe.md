@@ -5,7 +5,7 @@ icon: lock
 lede: What the app keeps of your logins, and how.
 words: [security, safe, password, stolen, data folder, encrypted]
 related: [logging-in]
-order: 29
+order: 30
 ---
 
 - Your passwords are never saved, only the "stay signed in" login from each site, and it is encrypted.

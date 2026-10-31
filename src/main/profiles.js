@@ -314,7 +314,8 @@ function parseKickProfile(d, slug) {
     chat: { followersOnly: !!cr.followers_mode, followMinutes: num(cr.following_min_duration), subsOnly: !!cr.subscribers_mode, emoteOnly: !!cr.emotes_mode,
       slowSeconds: cr.slow_mode ? num(cr.message_interval) || null : null },
     badges: (Array.isArray(d.subscriber_badges) ? d.subscriber_badges : []).map(b => ({ months: num(b.months), src: httpsUrl(b.badge_image && (b.badge_image.src || b.badge_image.url)) })).filter(b => b.src).slice(0, 12),
-    vods: parseKickVideos(d.previous_livestreams) || []
+    vods: parseKickVideos(d.previous_livestreams) || [],
+    recent: (Array.isArray(d.recent_categories) ? d.recent_categories : []).map(c => str(c && c.name)).filter(Boolean).slice(0, 10)   // (what it streamed lately: kept when its saved streams expire)
   };
 }
 // Kick past broadcasts: /api/v2/channels/<name>/videos (or previous_livestreams in the channel JSON).

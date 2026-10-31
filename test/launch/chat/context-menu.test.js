@@ -203,6 +203,43 @@ test('a chat message: Copy message and Copy message with emotes copy it, also fr
   await inView(a.win, 'alpha', 'chat', () => { document.querySelectorAll('[data-index]').forEach(e => e.remove()); return true; });
 });
 
+test('Shoutouts on (Settings › Chat): the chat page gets its buttons; the right-click menu\'s Shout out sends it in that chat; off: all gone', T, async () => {
+  const setOn = on => a.win.evaluate(on => { const c = document.querySelector('#shoutOnSet'); c.checked = on; c.dispatchEvent(new Event('change')); }, on);
+  const chatJs = (fn, arg) => inView(a.win, 'alpha', 'chat', fn, arg);
+  const until = async (fn, ok, what) => { let v; for (let i = 0; i < 100; i++){ v = await fn().catch(() => null); if (ok(v)) return v; await new Promise(r => setTimeout(r, 100)); } assert.fail(`${what}: ${JSON.stringify(v)}`); };
+  // a Kick chat box that records what's sent, and a message with the data Kick draws it from (its sender's address)
+  await chatJs(h => {
+    window.__sent = [];
+    const box = document.createElement('div'); box.contentEditable = 'true'; box.setAttribute('data-testid', 'chat-input');
+    box.addEventListener('keydown', e => { if (e.key === 'Enter'){ window.__sent.push(box.innerText.trim()); box.textContent = ''; } });
+    document.body.insertAdjacentHTML('beforeend', h); document.body.append(box);
+    document.querySelector('[data-index]')['__reactFiber$t'] = { memoizedProps: { message: { id: 'm1', sender: { username: 'Pixel_Fox', slug: 'pixel-fox' } } } };
+    return true;
+  }, kickMsg('Pixel_Fox', 'hello there'));
+  const press = () => chatJs(() => { const e = document.querySelector('[data-index] .font-normal'), r = e.getBoundingClientRect();
+    e.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: r.left + 2, clientY: r.top + 2 })); return true; });
+  await press();
+  assert.ok(!(await rightClick(CHAT, {})).labels.some(l => /Shout out/.test(l)), 'off: not offered');
+  await setOn(true);
+  await until(() => chatJs(() => !!(window.__kmvShout && window.__kmvShout.on)), v => v === true, 'the chat page has its shoutouts');
+  // the button: on the message under the pointer
+  await chatJs(() => { document.querySelector('[data-index] .font-normal').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); return true; });
+  assert.equal(await chatJs(() => document.querySelectorAll('[data-index] .kmv-so-b').length), 1);
+  // the menu: Shout out first, by the sender's address; it sends in this chat
+  await press();
+  const m = await rightClick(CHAT, {});
+  assert.equal(m.labels[0], 'Shout out Pixel_Fox');
+  await m.pick('Shout out Pixel_Fox');
+  const sent = await until(() => chatJs(() => window.__sent), v => Array.isArray(v) && v.length === 1, 'sent in the chat');
+  assert.match(sent[0], /^Go check out Pixel_Fox! .*→ https:\/\/kick\.com\/pixel-fox$/);
+  // off: the buttons go from the page, and the menu doesn't offer it
+  await setOn(false);
+  await until(() => chatJs(() => document.querySelectorAll('[data-kmv-so]').length), v => v === 0, 'buttons gone');
+  await press();
+  assert.ok(!(await rightClick(CHAT, {})).labels.some(l => /Shout out/.test(l)));
+  await chatJs(() => { document.querySelectorAll('[data-index], [data-testid="chat-input"]').forEach(e => e.remove()); return true; });
+});
+
 test('Translate new messages in every chat: on in open and new chats, off in one chat only, and back to each chat\'s choice when switched off', T, async () => {
   const w = a.win;
   const st = ch => inView(w, ch, 'chat', () => window.__kmvTr ? window.__kmvTr.state() : null);

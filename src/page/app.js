@@ -55,6 +55,7 @@ import { init as chatChatZoom } from './chat/chat-zoom.js';
 import { init as chatBlowUp } from './chat/blow-up.js';
 import { init as chatChatName } from './chat/chat-name.js';
 import { init as chatAllChat } from './chat/all-chat.js';
+import { init as chatShoutout } from './chat/shoutout.js';
 import { init as chatEventSamples } from './chat/event-samples.js';
 import { init as chatAllHealth } from './chat/all-health.js';
 import { init as chatChatOverlay } from './chat/chat-overlay.js';
@@ -78,6 +79,7 @@ import { init as layoutGameFocus } from './layout/game-focus.js';
 import { init as panelsSettingsThemes } from './panels/settings/themes.js';
 import { init as panelsSettingsSettings } from './panels/settings/settings.js';
 import { init as panelsSettingsGeneral } from './panels/settings/general.js';
+import { init as panelsSettingsShoutouts } from './panels/settings/shoutouts.js';
 import { init as panelsSettingsWindowsPane } from './panels/settings/windows-pane.js';
 import { init as panelsLinkedLinkCard } from './panels/linked/link-card.js';
 import { init as panelsLinkedLinkedPane } from './panels/linked/linked-pane.js';
@@ -124,6 +126,7 @@ import { init as panelsSettingsSearchBox } from './panels/settings/search-box.js
   windowsWindows,
   windowsFrames,
   chatAllChat,
+  chatShoutout,
   windowsViews,
   chatTranslate,
   chatViewMenu,
@@ -178,6 +181,7 @@ import { init as panelsSettingsSearchBox } from './panels/settings/search-box.js
   panelsSettingsSettings,
   panelsHelpGuide,
   panelsSettingsGeneral,
+  panelsSettingsShoutouts,
   panelsSettingsWindowsPane,
   panelsLinkedLinkCard,
   panelsLinkedLinkedPane,

@@ -142,6 +142,17 @@ test('a chat message: Copy message (without emotes) and Copy message with emotes
   assert.ok(!labels(menuFor({}, { chat, message: { text: 'x', withEmotes: 'x', html: '' } })).includes('Copy message'), 'no message there');
 });
 
+test('a chat message with shoutouts on: Shout out who sent it, first; nothing for a sender that isn\'t Kick or Twitch, or a strange address', () => {
+  const chat = { on: false, auto: false }, message = { text: 'hi', withEmotes: 'hi', html: '<div></div>', shout: { site: 'kick', login: 'Pixel_Fox', name: 'Pixel_Fox' } };
+  const m = menuFor({}, { chat, message });
+  assert.deepEqual(labels(m).slice(0, 4), ['Shout out Pixel_Fox', '—', 'Copy message', 'Copy message with emotes']);
+  assert.deepEqual(m[0].act, { do: 'shoutout', who: { site: 'kick', login: 'pixel_fox', name: 'Pixel_Fox' } });
+  assert.equal(menuFor({}, { chat, message: { ...message, shout: { site: 'kick', login: 'nova-lynx' } } })[0].label, 'Shout out nova-lynx', 'no name: the address');
+  for (const shout of [{ site: 'youtube', login: 'x' }, { site: 'kick', login: 'a b' }, { site: 'twitch', login: '' }, 'kick', null])
+    assert.ok(!labels(menuFor({}, { chat, message: { ...message, shout } })).some(l => /Shout out/.test(l)), JSON.stringify(shout));
+  assert.ok(!labels(menuFor({ isEditable: true }, { chat, message })).some(l => /Shout out/.test(l)), 'not in the chat box');
+});
+
 test('Developer tools on: a Developer group last, with the message\'s and the chat\'s HTML, Why didn\'t this alert? and Inspect', () => {
   const chat = { on: false, auto: false }, message = { text: 'hi', withEmotes: 'hi', html: '<div data-index="1">hi</div>' };
   const m = menuFor({ x: 4, y: 5 }, { chat, message, devTools: true });

@@ -1,5 +1,6 @@
 import { allOn, allTabFor, modViewChs, openInspects, openModViews, openPopUps, openSaves, reloadAll } from '../chat/all-chat.js';
 import { toggleStreamOverlay } from '../chat/chat-overlay.js';
+import { openRun, shoutOn } from '../chat/shoutout.js';
 import { resolveYt } from '../chat/view-menu.js';
 import { BAR, MIN_H, MIN_W, ROLE, colsMode, coreVars, lastLayout, mutedChk, sizehint, snapChk, stage, wins } from '../core.js';
 import { VOL_JS } from '../in-site/volume.js';
@@ -62,6 +63,7 @@ function createWin(spec, rect){
         ${w.channel && DESKTOP && ROLE === 'main' && !/^yt:v:/.test(w.channel) ? `<button data-a="profile" title="Profile: when they stream, past streams, your notes">${icon.user}</button>` : ''}
         ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="ext" class="ext-b" title="Extensions in this window" hidden>${icon.ext}<b class="ext-n"></b></button>` : ''}
         ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="state" class="dev-b" title="Copy what the app knows about this window, for a report"${devOn ? '' : ' hidden'}>${icon.copy}</button><button data-a="inspect" class="dev-b" title="Chrome's developer tools for this window's page"${devOn ? '' : ' hidden'}>${icon.code}</button>` : ''}
+        ${w.kind === 'chat' && /^(kick|twitch)$/.test(platOf(w.channel)) ? `<button data-a="shout" title="Shout out recent chatters"${shoutOn() ? '' : ' hidden'}>${icon.megaphone}</button>` : ''}
         <button data-a="reload" title="Reload">${icon.reload}</button>
         ${modUrl(w.channel) || (w.kind === 'chat' && allTabFor(w)) ? `<button data-a="mod" title="Open the mod view for this channel"${DESKTOP || !modUrl(w.channel) ? ' hidden' : ''}>${icon.mod}</button>` : ''}
         <button data-a="pop" title="${w.channel ? 'Open the channel page in a pop-up' : 'Open the page in a pop-up'}">${icon.pop}</button>
@@ -131,6 +133,7 @@ function createWin(spec, rect){
     else if (a === 'ext') openExtMenu(w, b.classList.contains('ovf') ? el.querySelector('[data-a=more]') : b);   // from the ⋯ menu (always): open under ⋯
     else if (a === 'more') openBarMenu(b);
     else if (a === 'state') copyWinState(w);
+    else if (a === 'shout') openRun(w, { flip: e.shiftKey });   // (Settings › Shoutouts: chat/shoutout.js)
     else if (a === 'link') openLinkCard(w.channel);
     else if (a === 'inspect') { if (allOn(w)) openInspects(w, anchor(), b); else inspectWin(w); }
     else if (a === 'chat'){
