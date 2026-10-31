@@ -200,17 +200,18 @@ test('Chat events: what the chats\' readers send, sorted by what ALL does with i
   const needed = await texts('#devList .ev-sec .ev-chip');
   assert.ok(needed.includes('KickStreamHostedEventa raid coming in') && needed.includes('TwitchUSERNOTICE:raida raid') && !needed.some(n => /ChatMessageEventa message/.test(n)), needed.join(' | '));
   assert.match(await a.win.textContent('#devList .ev-desc'), /none has come yet/);
-  assert.match(await a.win.textContent('#devList .ev-stats'), /Kick3·47/);
-  assert.match(await a.win.getAttribute('#devList .ev-stat:has(.dv-kick)', 'title'), /^Kick: 3 kinds, 47 heard/);
+  assert.match(await a.win.textContent('#devList .ev-stats'), /^K3·47T0·0Y0·0$/, 'each site by its letter, so the row fits one line');
+  assert.deepEqual(await a.win.$$eval('#devList .ev-stat .pi', l => l.map(e => e.getAttribute('aria-label'))), ['Kick', 'Twitch', 'YouTube']);
+  assert.match(await a.win.getAttribute('#devList .ev-stat:has(.pi-kick)', 'title'), /^Kick: 3 kinds, 47 heard/);
   // a site's pill: only that site's (the others dimmed), the tabs' counts too; again: every site
-  await a.win.click('#devList .ev-stat:has(.dv-twitch)');
-  assert.equal(await a.win.getAttribute('#devList .ev-stat:has(.dv-twitch)', 'aria-pressed'), 'true');
+  await a.win.click('#devList .ev-stat:has(.pi-twitch)');
+  assert.equal(await a.win.getAttribute('#devList .ev-stat:has(.pi-twitch)', 'aria-pressed'), 'true');
   assert.ok((await texts('#devList .ev-sec .ev-chip')).every(n => n.startsWith('Twitch')));
   assert.deepEqual(await texts('#devList .ev-v-unknown .ev-vn, #devList .ev-v-shown .ev-vn, #devList .ev-v-ignored .ev-vn'), ['0', '0', '0'], 'no Kick rows');
   await view('unknown');
   assert.match(await a.win.textContent('#devList .ev-sec'), /Nothing unknown yet/);
   assert.match(await a.win.textContent('#devTabs [data-t=events]'), /\(1 new\)/, 'the tab still counts every site');
-  await a.win.click('#devList .ev-stat:has(.dv-twitch)');
+  await a.win.click('#devList .ev-stat:has(.pi-twitch)');
   // a row: its samples, laid out, as they came (here, with the names: they stay on this computer)
   await a.win.click('#devList .ev-sec .ev-row');
   assert.match(await a.win.textContent('#devList .ev-samples pre'), /"username": "RealPerson42"/);
@@ -224,7 +225,7 @@ test('Chat events: what the chats\' readers send, sorted by what ALL does with i
   assert.ok(!/RealPerson42|hello there|57035257/.test(JSON.stringify(exp)), 'no names, words or ids');
   assert.deepEqual(exp.sites.kick.kinds.map(k => [k.kind, k.status]).sort(), [['ChatMessageEvent', 'shown'], ['GoalProgressUpdateEvent', 'ignored'], ['MysteryEvent', 'unknown']]);
   assert.ok(exp.sites.kick.needed.includes('StreamHostedEvent'));
-  // Report ALL…: a report for a fix (here no chat feeds ALL: its shape, and that site's events)
+  // Report ALL: a report for a fix (here no chat feeds ALL: its shape, and that site's events)
   await a.win.evaluate(() => window.allHealth.noteRaw('alpha', JSON.stringify({ username: 'RealPerson42' }), false));
   const feeds = on => a.win.evaluate(v => { window.openWins().find(o => o.kind === 'chat' && o.channel === 'alpha').feedOn = v; }, on);
   await feeds(true);   // (as if ALL read alpha's chat: the report has its site)
