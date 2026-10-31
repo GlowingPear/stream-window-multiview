@@ -59,8 +59,10 @@ function renderPeople(){
   peopleEl.replaceChildren(element('div', 'so-ph', element('span', null, 'Chatter'), element('span', null, 'Shout out'), element('span', null, 'Message'), element('span')),
     ...rows.map(r => {
       const s = r.streamer && listStreamers().find(x => x.id === r.streamer);
-      const site = element('select', { 'aria-label': 'Their site', dataset: { cmd: 'settings.shoutPersonSite' }, onchange: e => { setWho(r, r.name, e.target.value); savePeople(); renderPeople(); } },
-        ...[['kick', 'Kick'], ['twitch', 'Twitch'], ['every', 'Every site']].map(([v, t]) => element('option', { value: v, selected: (r.every ? 'every' : r.site) === v }, t)));
+      // their site: a badge that steps Kick → Twitch → every site (the same name elsewhere can be someone else)
+      const cur = r.every ? 'every' : r.site, next = { kick: 'twitch', twitch: 'every', every: 'kick' }[cur], SITE_NAME = { kick: 'Kick', twitch: 'Twitch', every: 'Every site' };
+      const site = element('button', { type: 'button', class: 'so-site so-site-' + cur, title: `On ${SITE_NAME[cur]} · click for ${SITE_NAME[next]}`, 'aria-label': `Their site: ${SITE_NAME[cur]}. Change to ${SITE_NAME[next]}`, dataset: { cmd: 'settings.shoutPersonSite' },
+        onclick: () => { setWho(r, r.name, next); savePeople(); renderPeople(); } }, cur === 'every' ? 'All' : PLAT_NAME[cur][0]);
       const name = element('input', { class: 'st-in', value: r.name || '', placeholder: 'Their name', 'aria-label': 'Their name', spellcheck: 'false', dataset: { cmd: 'settings.shoutPersonName' },
         onchange: e => { setWho(r, e.target.value, r.every ? 'every' : r.site); savePeople(); renderPeople(); } });
       const who = element('span', 'who', ...(s ? [...s.accounts.filter(a => ['kick', 'twitch'].includes(platOf(a))).map(a => element('i', { class: 'pi pi-' + platOf(a), title: PLAT_NAME[platOf(a)] }, PLAT_NAME[platOf(a)][0])), name] : [site, name]));

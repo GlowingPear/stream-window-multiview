@@ -97,3 +97,8 @@ button.al-so:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 .so-pr .linkish{font-size:11.5px;justify-self:start}
 .so-pr .st-warn{font-size:11px;color:#ffc440}
 .so-skip:empty{display:none}
+.so-site{flex:none;width:30px;height:24px;border-radius:6px;border:1px solid transparent;font:inherit;font-size:11px;font-weight:800;cursor:pointer;display:grid;place-items:center;padding:0}
+.so-site-kick{background:#53fc18;color:#0a0c0d}
+.so-site-twitch{background:#9146ff;color:#fff}
+.so-site-every{background:var(--panel2);border-color:var(--line2);color:var(--text);font-size:10px}
+.so-site:hover{filter:brightness(1.15)}

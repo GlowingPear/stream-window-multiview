@@ -231,7 +231,8 @@ test('Settings › Shoutouts: off by default (Twitch\'s own too); the message wi
   await page.click('#soTabs [data-t=people]');
   assert.match(await page.textContent('#shoutPeople'), /No one yet/);
   await page.click('#shoutAdd');
-  await page.selectOption('#shoutPeople .so-pr select', 'twitch');
+  assert.equal(await page.getAttribute('#shoutPeople .so-site', 'aria-label'), 'Their site: Kick. Change to Twitch');
+  await page.click('#shoutPeople .so-site');
   await page.fill('#shoutPeople .so-pr input[aria-label="Their name"]', 'Tinroof'); await page.press('#shoutPeople .so-pr input[aria-label="Their name"]', 'Tab');
   await page.fill('#shoutPeople .so-pr input[aria-label="Their message"]', 'Captain {name} {link}');
   await page.waitForFunction(() => /Captain/.test(localStorage.getItem('kickMultiview.shoutPeople') || ''));
