@@ -126,8 +126,10 @@ function shoutAddEl(added, { taken = () => false } = {}){
   closeOnOutside(res, { button: go });
   let picks = [], at = 0;
   const pick = x => { res.hidden = true; inp.value = ''; added(x); };
-  const draw = () => res.replaceChildren(element('div', 'rh', picks.length ? 'Found' : 'Nothing found'), ...picks.map((x, i) => element('div', { class: 'sc-ri' + (i === at ? ' on' : '') + (x.taken ? ' taken' : ''), role: 'option', 'aria-selected': String(i === at), dataset: { cmd: 'settings.shoutAddPick' }, onclick: () => !x.taken && pick(x.card), onpointerenter: () => { at = i; draw(); } },
-    soAvatar(x.card, true), element('span', 'tx', element('b', null, x.card.name), element('small', null, x.sub)), element('span', 'go', x.taken ? 'Added' : i === at ? 'Add ↵' : 'Add'))));
+  // (the one picked: marked, never drawn again under the pointer, so a click lands on it)
+  const mark = () => res.querySelectorAll('.sc-ri').forEach((r, i) => { r.classList.toggle('on', i === at); r.setAttribute('aria-selected', String(i === at)); const g = r.querySelector('.go'); if (!picks[i].taken) g.textContent = i === at ? 'Add ↵' : 'Add'; });
+  const draw = () => { res.replaceChildren(element('div', 'rh', picks.length ? 'Found' : 'Nothing found'), ...picks.map((x, i) => element('div', { class: 'sc-ri' + (x.taken ? ' taken' : ''), role: 'option', dataset: { cmd: 'settings.shoutAddPick' }, onclick: () => !x.taken && pick(x.card), onpointerenter: () => { at = i; mark(); } },
+    soAvatar(x.card, true), element('span', 'tx', element('b', null, x.card.name), element('small', null, x.sub)), element('span', 'go', x.taken ? 'Added' : 'Add')))); mark(); };
   const find = async () => {
     const q = inp.value.trim(); if (!q) return inp.focus();
     const parsed = parseInput(q, 'kick'), ch = parsed && parsed.channel;
@@ -138,7 +140,7 @@ function shoutAddEl(added, { taken = () => false } = {}){
     if (window.kmv && window.kmv.profileLookup){
       found = await window.kmv.profileLookup(name).catch(() => []) || [];
       if (name.includes('_') && !found.some(f => siteOfCh(f.ch) === 'kick')) found.push(...(await window.kmv.profileLookup(name.replace(/_/g, '-')).catch(() => []) || []).filter(f => siteOfCh(f.ch) === 'kick'));
-    } else if (ch && ['kick', 'twitch'].includes(siteOfCh(ch))) found = [{ ch, name: q.replace(/^@/, '') }];   // (no lookups here: as typed)
+    } else if (/[/.:]/.test(q) && ch && ['kick', 'twitch'].includes(siteOfCh(ch))) found = [{ ch, name: loginOfCh(ch) }];   // (no lookups here: a link, as it is; a name, on each site)
     else found = [{ ch: name, name }, { ch: 'tw:' + name, name }];
     go.classList.remove('busy');
     const seen = new Set();
@@ -156,11 +158,13 @@ function shoutAddEl(added, { taken = () => false } = {}){
   go.onclick = find;
   inp.addEventListener('keydown', e => {
     if (e.key === 'Enter'){ e.preventDefault(); if (!res.hidden && picks[at] && !picks[at].taken) pick(picks[at].card); else find(); }
-    else if (!res.hidden && (e.key === 'ArrowDown' || e.key === 'ArrowUp')){ e.preventDefault(); at = (at + (e.key === 'ArrowDown' ? 1 : -1) + picks.length) % Math.max(1, picks.length); draw(); }
-    else if (e.key === 'Escape' && !res.hidden){ e.preventDefault(); e.stopPropagation(); res.hidden = true; }
+    else if (!res.hidden && (e.key === 'ArrowDown' || e.key === 'ArrowUp')){ e.preventDefault(); at = (at + (e.key === 'ArrowDown' ? 1 : -1) + picks.length) % Math.max(1, picks.length); mark(); }
   });
   inp.addEventListener('input', () => { res.hidden = true; });
-  return element('div', 'sc-add', element('span', { class: 'sc-mag', html: icon.search }), inp, go, res);
+  const box = element('div', 'sc-add', element('span', { class: 'sc-mag', html: icon.search }), inp, go, res);
+  // Esc anywhere in it (Find has the focus after a press): the list closes, not the window it's in
+  box.addEventListener('keydown', e => { if (e.key === 'Escape' && !res.hidden){ e.preventDefault(); e.stopPropagation(); res.hidden = true; inp.focus(); } });
+  return box;
 }
 
 export { shoutAddEl, shoutCardEl };

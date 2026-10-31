@@ -11,8 +11,8 @@ const LIVE = { quietkoala: { live: true, checked: now }, 'tw:quietkoala': { live
 const STREAMER = { id: 's1', name: '', main: 'quietkoala', accounts: ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala'] };
 async function allApp(t, extra = {}){
   const set = { saved: JSON.stringify(STREAMER.accounts), intro: JSON.stringify({ done: true, tips: true }), linkedTip: '1', linkedOn: '1', streamers: JSON.stringify([STREAMER]),
-    myName: 'mekick', myTwitch: 'metwitch', allOpen: '["s1"]', ...extra };
-  const page = await openApp(t, { init: `if (window === top && !sessionStorage.getItem('set')){ sessionStorage.setItem('set', '1'); for (const [k, v] of Object.entries(${JSON.stringify(set)})) localStorage.setItem('kickMultiview.' + k, v); }` });
+    myName: 'mekick', myTwitch: 'metwitch', allOpen: '["s1"]', shoutModOnly: '0', ...extra };   // (only where you're a mod: its own test)
+  const page = await openApp(t, { init: `if (window === top && !sessionStorage.getItem('set')){ sessionStorage.setItem('set', '1'); for (const [k, v] of Object.entries(${JSON.stringify(set)})) if (v !== null) localStorage.setItem('kickMultiview.' + k, v); }` });
   await page.evaluate(live => window.smvNotes.liveStatus(live), LIVE);
   await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'chat', ['quietkoala', 'tw:quietkoala']));
   await page.waitForSelector('.all-view');
@@ -204,11 +204,11 @@ test('a run of recent chatters, in ALL the chat its send box is on: the list (st
   assert.equal(await page.locator('.so-dlg').count(), 0);
 });
 
-test('Settings › Shoutouts: off by default (Twitch\'s own too); the message with its preview (with a game and without), People, and the run\'s options', async t => {
-  const page = await allApp(t);
+test('Settings › Shoutouts: off by default (Twitch\'s own too, only where you\'re a mod on); the message with its preview (with a game and without), and the run\'s options', async t => {
+  const page = await allApp(t, { shoutModOnly: null });
   await page.evaluate(() => window.openSettings('shoutouts'));
   await page.waitForSelector('#shoutOnSet');
-  assert.deepEqual(await page.evaluate(() => ['#shoutOnSet', '#shoutSendSet', '#shoutTwitchSet', '#shoutStreamersSet', '#shoutListSet'].map(s => document.querySelector(s).checked)), [false, true, false, true, true]);
+  assert.deepEqual(await page.evaluate(() => ['#shoutOnSet', '#shoutModSet', '#shoutSendSet', '#shoutTwitchSet', '#shoutStreamersSet', '#shoutListSet'].map(s => document.querySelector(s).checked)), [false, true, true, false, true, true]);
   assert.equal(await page.inputValue('#shoutAgainSet'), '15');
   assert.equal(await page.textContent('#shoutRunSet .zoomPct'), '5');
   const preview = () => page.$$eval('#shoutPreview > span', l => l.map(s => s.textContent));
@@ -217,29 +217,89 @@ test('Settings › Shoutouts: off by default (Twitch\'s own too); the message wi
   await page.click('#shoutTokens button:has-text("{name}")');
   assert.deepEqual(await preview(), ['Kmekick: Follow Pixelfox', 'Tmetwitch: Follow Lumen no game found']);
   await page.waitForFunction(() => localStorage.getItem('kickMultiview.shoutText') === 'Follow {name}');
-  // on: the ⋯ item shows on the chat windows
+  // on, only where you're a mod (here: nowhere), then everywhere: the ⋯ item shows on the chat windows
   await page.check('#shoutOnSet');
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.shoutOn')), '1');
+  assert.equal(await page.locator('#stage .win.chat [data-a=shout]').first().evaluate(b => b.hidden), true, 'not a mod there');
+  await page.uncheck('#shoutModSet');
   assert.equal(await page.locator('#stage .win.chat [data-a=shout]').first().evaluate(b => b.hidden), false);
   await page.selectOption('#shoutAgainSet', '0');
   await page.click('#soTabs [data-t=runs]');
   assert.deepEqual(await page.$$eval('.st-pane[data-s=shoutouts] .st-subpane', l => l.filter(p => !p.hidden).map(p => p.dataset.t)), ['runs'], 'one tab at a time');
   await page.click('#shoutRunSet [data-z="1"]');
   assert.equal(await page.textContent('#shoutRunSet .zoomPct'), '6');
-  assert.deepEqual(await page.evaluate(() => ['shoutAgain', 'shoutRunN'].map(k => localStorage.getItem('kickMultiview.' + k))), ['0', '6']);
-  // People: a row with its own message, then gone again
-  await page.click('#soTabs [data-t=people]');
-  assert.match(await page.textContent('#shoutPeople'), /No one yet/);
-  await page.click('#shoutAdd');
-  assert.equal(await page.getAttribute('#shoutPeople .so-site', 'aria-label'), 'Their site: Kick. Change to Twitch');
-  await page.click('#shoutPeople .so-site');
-  await page.fill('#shoutPeople .so-pr input[aria-label="Their name"]', 'Tinroof'); await page.press('#shoutPeople .so-pr input[aria-label="Their name"]', 'Tab');
-  await page.fill('#shoutPeople .so-pr input[aria-label="Their message"]', 'Captain {name} {link}');
-  await page.waitForFunction(() => /Captain/.test(localStorage.getItem('kickMultiview.shoutPeople') || ''));
-  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.shoutPeople')).map(r => [r.site, r.login, r.name, r.msg])), [['twitch', 'tinroof', 'Tinroof', 'Captain {name} {link}']]);
-  await page.click('#shoutPeople [data-cmd="settings.shoutPersonRemove"]');
-  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.shoutPeople'))), []);
+  assert.deepEqual(await page.evaluate(() => ['shoutAgain', 'shoutRunN', 'shoutModOnly'].map(k => localStorage.getItem('kickMultiview.' + k))), ['0', '6', '0']);
   await page.click('#soTabs [data-t=message]');
   await page.uncheck('#shoutOnSet');
   assert.equal(await page.locator('#stage .win.chat [data-a=shout]').first().evaluate(b => b.hidden), true);
 });
+
+test('Settings › Shoutouts › Channels: a card for a found channel, its message with a preview per site, its other accounts; #300\'s rows moved over; a linked streamer\'s per site', async t => {
+  const rows = [{ site: 'kick', login: 'pebblesong', name: 'Pebblesong', every: true, msg: 'Pebble time {link}' },
+    { site: 'kick', login: 'quillby', name: 'Quillby', every: true, msg: '', to: { login: 'rowanbrook', name: 'Rowanbrook' } }];
+  const page = await allApp(t, { shoutOn: '1', shoutPeople: JSON.stringify(rows) });
+  await page.evaluate(() => window.openSettings('shoutouts'));
+  await page.click('#soTabs [data-t=channels]');
+  const cards = () => page.$$eval('#shoutPeople .sc-card', l => l.map(c => [c.dataset.ch, c.querySelector('.nm').textContent, (c.querySelector('.sc-sum') || {}).textContent || '']));
+  assert.deepEqual(await cards(), [['pebblesong', 'Pebblesong', 'Pebble time {link}'], ['rowanbrook', 'Rowanbrook', 'Your general message · also for Quillby']], 'moved over: an alias is a chatter on its channel\'s card');
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.shoutPeople')), null, 'once');
+  // a found channel (no lookups here: as typed, on each site), its card open for its message
+  await page.fill('.sc-add input', 'Tinroof'); await page.click('.sc-add .btn');
+  assert.deepEqual(await page.$$eval('.sc-res .sc-ri', l => l.map(r => r.querySelector('small').textContent)), ['Kick', 'Twitch']);
+  await page.click('.sc-res .sc-ri >> nth=1');
+  const open = '#shoutPeople .sc-card.open';
+  assert.equal(await page.getAttribute(open, 'data-ch'), 'tw:tinroof');
+  await page.fill(`${open} textarea`, 'Captain {name} {link}');
+  assert.match(await page.textContent(`${open} .sc-pv`), /metwitch: Captain tinroof https:\/\/twitch\.tv\/tinroof/);
+  await page.fill(`${open} .sc-chip-in`, 'tin_alt'); await page.press(`${open} .sc-chip-in`, 'Enter');
+  await page.waitForFunction(() => (JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')) || []).some(c => c.ch === 'tw:tinroof' && c.msg && c.also.length));
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')).find(c => c.ch === 'tw:tinroof')),
+    { ch: 'tw:tinroof', streamer: '', name: 'tinroof', avatar: '', msg: 'Captain {name} {link}', perSite: false, sites: {}, also: [{ site: 'twitch', login: 'tin_alt', name: 'tin_alt' }] });
+  await page.click(`${open} [data-cmd="settings.shoutChatterRemove"]`);
+  // the same channel again: Added
+  await page.fill('.sc-add input', 'tinroof'); await page.click('.sc-add .btn');
+  assert.match(await page.textContent('.sc-res .sc-ri >> nth=1'), /Added/);
+  await page.keyboard.press('Escape');
+  // a linked streamer: one message, or one per site, each with its preview
+  await page.fill('.sc-add input', 'quietkoala'); await page.click('.sc-add .btn');
+  assert.deepEqual(await page.$$eval('.sc-res .sc-ri small', l => l.map(x => x.textContent)), ['Linked streamer · Kick and Twitch']);
+  await page.click('.sc-res .sc-ri');
+  await page.click(`${open} [data-cmd="settings.shoutCardPerSite"]`);
+  assert.deepEqual(await page.$$eval(`${open} .sc-msg .mh`, l => l.map(x => x.textContent)), ['KOn Kick', 'TOn Twitch']);
+  await page.fill(`${open} textarea[aria-label="Their message on Twitch"]`, 'Twitch only {link}');
+  await page.waitForFunction(() => (JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')) || []).some(c => c.streamer === 's1' && c.perSite && c.sites.twitch === 'Twitch only {link}'));
+  // removed
+  await page.click(`${open} [data-cmd="settings.shoutCardRemove"]`);
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')).some(c => c.streamer === 's1')), false);
+});
+
+test('only in chats where you\'re a mod (on unless switched off): no buttons elsewhere; your own channel counts', async t => {
+  const page = await allApp(t, { shoutOn: '1', shoutModOnly: '1' });
+  await chat(page);
+  await line(page, 'boss fight').hover();
+  assert.equal(await page.locator('.all-list .al-so-b').count(), 0, 'not a mod');
+  await page.evaluate(() => { window.allChat.modKnown.set('quietkoala', true); window.allChat.syncMod(); });
+  await line(page, 'boss fight').hover();
+  assert.equal(await line(page, 'boss fight').locator('.al-so-b').count(), 1, 'a mod on Kick: its lines');
+  assert.equal(await line(page, 'gg everyone').locator('.al-so-b').count(), 0, 'not on Twitch');
+  await page.evaluate(() => { localStorage.setItem('kickMultiview.myTwitch', 'quietkoala'); window.allChat.modKnown.set('quietkoala', false); window.allChat.syncMod(); });
+});
+
+test('a chat bot\'s line shouts out who it\'s about, never the bot, and has no button when it\'s about no one; special lines have one too', async t => {
+  const page = await allApp(t, { shoutOn: '1' });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [kick('b1', 'BotRix', 'Thanks for the follow Pixel_Fox'), kick('b2', 'BotRix', '@viewer9 the stream has been live for 2h'),
+    KF('SubscriptionEvent', { username: 'Oakmoss', months: 3 })] });
+  const bot = n => page.locator('.all-list .al-m:has(.al-n:text-is("BotRix"))').nth(n);   // (its text hidden, as bots' are)
+  await bot(0).locator('.al-n').hover();   // (not its Show: over that, the hover bar steps aside)
+  const b = bot(0).locator('.al-so-b');
+  assert.equal(await b.getAttribute('title'), 'Shout out Pixel_Fox on Kick (from BotRix\'s message)');
+  assert.equal(await bot(1).locator('.al-so-b').count(), 0, 'an @ of whoever used a command: no button');
+  // (its Kick address looked up: no lookups here, so not sent)
+  await bot(0).locator('.al-n').hover(); await b.click();
+  await flashed(page, /Couldn't find Pixel_Fox's Kick channel/);
+  // a sub: its button, for who subscribed
+  const sub = page.locator('.all-list .al-ev:has-text("Oakmoss")');
+  await sub.hover(); await sub.locator('.al-so-ev').click();
+  await flashed(page, /Couldn't find Oakmoss's Kick channel/);
+});
+
