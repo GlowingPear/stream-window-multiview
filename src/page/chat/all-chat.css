@@ -434,7 +434,9 @@
 .all-poll-cs{display:flex;flex-direction:column;gap:3px;margin-top:6px}
 .all-poll-c{position:relative;isolation:isolate;display:flex;align-items:center;gap:6px;min-height:20px;padding:0 7px;border-radius:5px;background:var(--panel2);font-size:11.5px;overflow:hidden}
 .all-poll-bar{position:absolute;inset:0 auto 0 0;z-index:-1;background:color-mix(in srgb,var(--text) 12%,transparent);border-radius:5px;transition:width .5s ease}
-.all-poll-c.top .all-poll-bar{background:color-mix(in srgb,#ff2a2a 30%,transparent)}
+.all-poll-card{--site:#ff2a2a}.all-poll-kick{--site:#53fc18}.all-poll-twitch{--site:#9146ff}   /* (the leading choice in its site's colour) */
+.all-poll-c.top .all-poll-bar{background:color-mix(in srgb,var(--site) 30%,transparent)}
+.all-poll-h .all-pin-sw{margin-right:1px}
 .all-poll-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .all-poll-p{flex:none;font-variant-numeric:tabular-nums;font-size:11px}
 .all-poll-m{display:block;margin-top:5px;color:var(--muted);font-size:10.5px}

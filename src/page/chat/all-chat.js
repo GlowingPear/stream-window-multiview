@@ -405,9 +405,8 @@ function setPin(f, s, ch, d, quiet = false){
   renderPins(view);
   if (d.kind === 'pin' && !quiet) pingPill(view, d.site);
 }
-// The pill's ping: it bounces and glows in the site's colour for a few seconds (a new pin, yours or a moderator's)
-function pingPill(view, site){
-  const c = view.pinChip;
+// The pill's ping: it bounces and glows in the site's colour for a few seconds (a new pin, yours or a moderator's; on the polls' pill, a new poll)
+function pingPill(view, site, c = view.pinChip){   // (or the polls' pill: a new poll)
   c.classList.remove('ping', 'ping-kick', 'ping-twitch', 'ping-youtube'); void c.offsetWidth;   // (again from the start)
   c.classList.add('ping', 'ping-' + site);
   clearTimeout(c.pingT); c.pingT = setTimeout(() => c.classList.remove('ping', 'ping-' + site), 3200);
@@ -754,12 +753,14 @@ function buildView(w){
   const recent = element('div', { class: 'all-re', role: 'toolbar', 'aria-label': 'Emotes you used last', hidden: true });
   const pins = element('div', { class: 'all-pins', hidden: true, role: 'region', 'aria-label': 'Pinned messages' });
   const poll = element('div', { class: 'all-poll', hidden: true, role: 'region', 'aria-label': 'Poll' });
+  const pollChip = element('button', { type: 'button', class: 'all-pinchip all-pollchip', hidden: true, dataset: { cmd: 'all.polls' },
+    onclick: () => { view.pollsShown = !view.pollsShown; renderPoll(view); fitRoom(view); } });
   const pinChip = element('button', { type: 'button', class: 'all-pinchip', hidden: true, dataset: { cmd: 'all.pins' },
     onclick: () => { view.pinsShown = !view.pinsShown; renderPins(view); } });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
-  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, filt), health, pins, poll, element('div', 'all-lw', list, more), empty,
+  const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), pinChip, pollChip, filt), health, pins, poll, element('div', 'all-lw', list, more), empty,
     element('div', 'all-cmp', bar, modes, recent, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm, ecard);
-  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, poll, pinChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, recent, sendB, w, ends, atEnd: true, lock: null, atList: [], atSel: 0, atMode: '' };
+  const view = { el, list, empty, more, filt, fm, modes, health, ecard, pins, poll, pollChip, pollsShown: true, pollAt: '', pinChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, recent, sendB, w, ends, atEnd: true, lock: null, atList: [], atSel: 0, atMode: '' };
   closeOnOutside(lm);
   closeOnOutside(fm, { button: filt });
   el.addEventListener('pointerdown', () => allSeen(w));
@@ -1344,24 +1345,49 @@ function seeIt(ch){
 const polls = new Map();   // streamer id -> Map(channel -> its open poll: { id, question, meta, choices: [{ text, ratio }] })
 function pollNews(s, ch, m){
   if (!s) return;
-  const all = polls.get(s.id) || new Map(), was = all.get(ch);
+  const all = polls.get(s.id) || new Map(), was = all.get(ch), fresh = m.state !== 'close' && !(was && was.id === m.id && (!was.until || Date.now() < was.until));
   if (m.state === 'close'){ if (was && was.id === m.id) all.delete(ch); }
   else all.set(ch, { ...m, ch, question: m.question || (was && was.id === m.id ? was.question : ''), meta: m.meta || (was && was.id === m.id ? was.meta : '') });
   if (all.size) polls.set(s.id, all); else polls.delete(s.id);
-  const view = viewFor(s); if (view){ renderPoll(view); fitRoom(view); }
+  const view = viewFor(s); if (!view) return;
+  if (fresh){ view.pollsShown = true; view.pollAt = ch; pingPill(view, platOf(ch), view.pollChip); }   // (a new poll: shown, its card on it, and its pill pings)
+  renderPoll(view); fitRoom(view);
+  if (!pollTimer && [...polls.values()].some(a => [...a.values()].some(p => p.ends))) pollTimer = setInterval(pollTick, 1000);
+}
+const pollLeft = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+// Kick's polls run for a time, then show their results for a while: their time left by the second, gone when Kick stops showing them
+let pollTimer = 0;
+function pollTick(){
+  const now = Date.now(); let timed = false;
+  polls.forEach((all, sid) => {
+    all.forEach((p, ch) => { if (p.until && now > p.until) all.delete(ch); else if (p.ends) timed = true; });
+    if (!all.size) polls.delete(sid);
+  });
+  wins.forEach(w => { if (w.allView){ renderPoll(w.allView); fitRoom(w.allView); } });
+  if (!timed){ clearInterval(pollTimer); pollTimer = 0; }
 }
 function renderPoll(view){
-  const list = [...(polls.get(view.s.id) || new Map()).values()];
-  view.poll.hidden = !list.length;
-  view.poll.replaceChildren(...list.map(p => {
+  const list = [...(polls.get(view.s.id) || new Map()).values()], now = Date.now();
+  // the pill: how many, folding them away and back (as the pins' pill does)
+  view.pollChip.hidden = !list.length;
+  view.pollChip.replaceChildren(element('i', { html: POLL }), String(list.length));
+  view.pollChip.setAttribute('aria-pressed', String(!!view.pollsShown && !!list.length));
+  view.pollChip.title = view.pollsShown ? `Hide the poll${list.length > 1 ? 's' : ''}` : `Show the poll${list.length > 1 ? 's' : ''}`;
+  view.poll.hidden = !list.length || !view.pollsShown;
+  // one at a time (the sites often run the same poll): the one picked or started last, the others a press away in its corner
+  const cur = list.find(p => p.ch === view.pollAt) || list[list.length - 1];
+  view.poll.replaceChildren(...[cur].filter(Boolean).map(p => {
     const top = Math.max(...p.choices.map(c => c.ratio)), voted = top > 0, pct = c => Math.round(c.ratio * 100);
-    return element('div', { class: 'all-poll-card', dataset: { ch: p.ch } },
-      element('div', 'all-poll-h', element('i', { class: 'pi pi-' + platOf(p.ch) }, PLAT_NAME[platOf(p.ch)][0]), element('i', { class: 'all-poll-i', html: POLL }),
-        element('b', 'all-poll-q', p.question || 'Poll'),
+    return element('div', { class: 'all-poll-card all-poll-' + platOf(p.ch), dataset: { ch: p.ch } },
+      element('div', 'all-poll-h', list.length > 1
+        ? element('span', 'all-pin-sw', ...list.map(x => element('button', { type: 'button', class: 'pi pi-' + platOf(x.ch) + (x === p ? ' on' : ''), title: `${PLAT_NAME[platOf(x.ch)]}'s poll`, 'aria-pressed': String(x === p), dataset: { cmd: 'all.pollSite' },
+            onclick: () => { view.pollAt = x.ch; renderPoll(view); fitRoom(view); } }, PLAT_NAME[platOf(x.ch)][0])))
+        : element('i', { class: 'pi pi-' + platOf(p.ch) }, PLAT_NAME[platOf(p.ch)][0]),
+        element('i', { class: 'all-poll-i', html: POLL }), element('b', 'all-poll-q', p.question || 'Poll'),
         element('button', { type: 'button', class: 'linkish all-poll-go', dataset: { cmd: 'all.pollVote' }, title: `Vote in ${PLAT_NAME[platOf(p.ch)]}\u2019s own chat`, onclick: () => seeIt(p.ch) }, `Vote on ${PLAT_NAME[platOf(p.ch)]}`)),
       element('div', 'all-poll-cs', ...p.choices.map(c => element('div', { class: 'all-poll-c' + (voted && c.ratio === top ? ' top' : '') },
         element('span', { class: 'all-poll-bar', style: { width: pct(c) + '%' } }), element('span', 'all-poll-t', c.text), voted && element('b', 'all-poll-p', pct(c) + '%')))),
-      p.meta && element('small', 'all-poll-m', p.meta));
+      (p.meta || p.ends) && element('small', 'all-poll-m', [p.meta, p.ends ? (now < p.ends ? `${pollLeft(p.ends - now)} left` : 'Final results') : ''].filter(Boolean).join(' · ')));
   }));
 }
 
