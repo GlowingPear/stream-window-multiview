@@ -55,8 +55,24 @@ test('friendly filler lines from a new chatter just before add to the score', ()
     { sender: 'newacct', body: "Don't work too hard, leave some success for the rest of us.", chat: 'alpha', t: T - 40_000 }
   ];
   const r = score(msg('best viewers at botkiva[.]com'), { recent, firstSeen });
-  assert.ok(r.signs.some(s => s.text === 'Friendly filler lines just before'));
+  assert.deepEqual(r.signs.filter(s => /newbie|filler/.test(s.key)), [{ key: 'newbie', text: 'Started chatting in the last few minutes', points: 1 }, { key: 'filler', text: 'Friendly filler lines just before', points: 2 }],
+    'a sign of its own, as well as being new');
   assert.equal(r.spam, true);
+});
+
+test('a promo bot\'s run (friendly lines, a pitch, then its site with a space before .com) is flagged at its link on Balanced; the lines before it aren\'t', () => {
+  const firstSeen = { 'alpha\nmirage1': T - 120_000 }, recent = [];
+  const say = (body, t) => { const m = { ...msg(body, { sender: 'mirage1' }), t }; const r = score(m, { recent, firstSeen }); recent.push(m); return r; };
+  const r1 = say('Hello friend, tuning in to catch the great vibes today ⚡', T - 90_000);
+  const r2 = say('Keep your chat moving non-stop and attract organic traffic with AI-driven stream engagement tools.', T - 60_000);
+  const r3 = say('Enjoy the games and have a wonderful stream! 🎮', T - 30_000);
+  const r4 = say('Create a fire stream atmosphere with "kivasmm com"', T);
+  assert.deepEqual([r1.spam, r2.spam, r3.spam], [false, false, false], 'nothing to promote yet');
+  assert.ok(r2.signs.some(s => s.key === 'words' && s.points === 2), 'its pitch has promo words');
+  assert.deepEqual([r4.spam, r4.score, r4.signs.map(s => s.key)], [true, 6, ['hidden', 'newbie', 'filler']]);
+  // someone new who chats a bit, then links a site not on the list: not enough
+  const r5 = score({ ...msg('look at this sheet docs.example.org/abc', { sender: 'mirage1' }), t: T + 1000 }, { recent, firstSeen });
+  assert.deepEqual([r5.spam, r5.score], [false, 4]);
 });
 
 test('firstSeen can be a Map', () => {
@@ -256,7 +272,7 @@ test('promo words and bot lines added to the built-in lists reach a list you cha
   assert.deepEqual(withNew('words', null, null), { list: null, offered: WORDS });
   // changed before the app remembered what it offered: the ones added since are added, as written
   const words = withNew('words', [...firstWords, 'subs'], null);
-  assert.deepEqual(words.list, [...firstWords, 'subs', 'chatbot', 'make your stream', 'stays active']);
+  assert.deepEqual(words.list, [...firstWords, 'subs', 'chatbot', 'make your stream', 'stays active', 'engagement', 'organic', 'traffic', 'ai-driven']);
   assert.deepEqual(words.offered, WORDS);
   const lines = withNew('openers', ['Hey stranger, still running the show?'], null);
   assert.deepEqual(lines.list, ['Hey stranger, still running the show?', ...OPENERS.slice(2)]);
@@ -400,8 +416,13 @@ test('warnings: nothing left that can flag (on its group), and signs that can no
   assert.deepEqual(scoringWarnings(noSpam, 'balanced'), [{ text: 'Nothing can flag promo spam: every sign that can is off.', group: 'spam' }]);
   assert.deepEqual(scoringWarnings({ insult: 0, slur: 0, swearing: 0 }, 'balanced'), [{ text: 'Nothing can flag abuse: every sign that can is off.', group: 'abuse' }]);
   assert.deepEqual(scoringWarnings({ insult: 0, slur: 0, swearing: 0 }, 'balanced', false), [], 'abuse off: nothing to warn about');
-  const short = scoringWarnings({ hidden: 1, words: 0, junk: 0, newbie: 0 }, 'balanced');
+  const short = scoringWarnings({ hidden: 1, words: 0, junk: 0, newbie: 0, filler: 0 }, 'balanced');
   assert.deepEqual(short.map(x => x.sign), ['hidden', 'plain', 'contact', 'elsewhere']);
   assert.equal(short[0].text, 'Disguised link can\'t be flagged on Balanced any more without another strong sign: with every small sign it reaches 1 of 5.');
   assert.deepEqual(scoringWarnings({ insult: 1 }, 'relaxed'), [], 'still reaches 6 with the small signs (1 + 1 + 1 + 3)');
+});
+
+test('warnings: friendly lines first goes with spam signs only, like promo words', () => {
+  assert.deepEqual(scoringWarnings({ filler: 4 }, 'balanced').map(w => w.sign), ['filler'], 'with just a link to a site not on the list, now enough');
+  assert.deepEqual(scoringWarnings({ filler: 4, words: 0 }, 'balanced', true).filter(w => w.sign === 'insult'), [], 'not with an insult');
 });

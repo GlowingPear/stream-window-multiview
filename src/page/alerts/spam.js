@@ -7,7 +7,7 @@ const SmvSpam = (() => {
   const ALLOWED = ['kick.com', 'twitch.tv', 'youtube.com', 'youtu.be', 'discord.gg', 'discord.com', 'x.com', 'twitter.com',
     'instagram.com', 'tiktok.com', 'reddit.com', 'imgur.com', 'streamable.com', 'medal.tv', 'github.com', 'spotify.com'];
   const WORDS = ['upgrade', 'viewers', 'followers', 'boost', 'promo', 'promote', 'zero cost', 'cheap', 'free followers', 'grow your',
-    'chatbot', 'make your stream', 'stays active'];
+    'chatbot', 'make your stream', 'stays active', 'engagement', 'organic', 'traffic', 'ai-driven'];   // (new ones at the end: see FIRST_WORDS)
   // Lines promo bots post: greetings they open with, a few lines before the link, and the opt-out line under their
   // ads. Matched whole, ignoring case and punctuation.
   const OPENERS = ['Hey stranger, still running the show?', 'Your stream’s got something special, friend',
@@ -68,6 +68,7 @@ const SmvSpam = (() => {
     { key: 'words', group: 'spam', points: 1, label: 'Promo words', short: 'Promo words, each', note: 'For each one, up to 2' },
     { key: 'junk', group: 'spam', points: 1, label: 'Emotes breaking up the words', short: 'Emotes between words' },
     { key: 'newbie', group: 'spam', points: 1, label: 'New chatter', short: 'New chatter' },
+    { key: 'filler', group: 'spam', points: 2, label: 'Friendly lines just before, from a new chatter', short: 'Friendly lines first' },
     { key: 'insult', group: 'abuse', points: 4, flags: true, label: 'Insult aimed at someone', short: 'Insult at someone' },
     { key: 'slur', group: 'abuse', points: 5, flags: true, label: 'Slur or threat', short: 'Slur or threat' },
     { key: 'swearing', group: 'abuse', points: 5, flags: true, label: 'Swearing over and over', short: 'Swearing on repeat' },
@@ -207,9 +208,9 @@ const SmvSpam = (() => {
     const on = SIGNS.filter(s => abuseOn || s.group !== 'abuse');
     const level = Object.keys(LEVELS).find(k => LEVELS[k] === need);
     const lv = level[0].toUpperCase() + level.slice(1);
-    // The small signs that can come with a sign that flags: promo words (two of them) with spam, keeps at it with an
+    // The small signs that can come with a sign that flags: promo words (two of them) and friendly lines first with spam, keeps at it with an
     // insult or a slur, emotes and a new chatter with anything.
-    const goesWith = (small, big) => small.key === 'words' ? big.group === 'spam' : small.key === 'again' ? /^(insult|slur)$/.test(big.key) : true;
+    const goesWith = (small, big) => small.key === 'words' || small.key === 'filler' ? big.group === 'spam' : small.key === 'again' ? /^(insult|slur)$/.test(big.key) : true;
     const times = s => s.key === 'words' ? 2 : 1;
     const extra = (big, pts) => on.filter(s => !s.flags && goesWith(s, big)).reduce((a, s) => a + times(s) * pts[s.key], 0);
     for (const [g, what] of [['spam', 'promo spam'], ['abuse', 'abuse']].filter(([g]) => on.some(s => s.group === g)))
@@ -322,8 +323,9 @@ const SmvSpam = (() => {
     const isNew = first && t - first < WINDOW_MS;
     if (isNew) {
       const filler = theirs.filter(r => !/@|https?:|\.\w{2,4}\b/.test(r.body) && norm(r.body).split(' ').length >= 3);
-      if (filler.length >= 2) sign('newbie', 'Friendly filler lines just before', pts.newbie);
-      else sign('newbie', 'Started chatting in the last few minutes', pts.newbie);
+      sign('newbie', 'Started chatting in the last few minutes', pts.newbie);
+      // (a promo bot's way: a couple of friendly lines first, then its link)
+      if (filler.length >= 2) sign('filler', 'Friendly filler lines just before', pts.filler);
     }
 
     const total = signs.reduce((a, x) => a + x.points, 0);
