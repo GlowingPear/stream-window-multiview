@@ -132,7 +132,9 @@ function withEmotes(view, text){
 }
 
 // The smiley: all the send site's emotes, under a heading for each kind (each channel you're subscribed to with its
-// picture), a search box, and beside it a list to show one kind or one channel only
+// picture), a search box, and beside it a list to show one kind or one channel only. Your recent ones come first
+// (all of them, not searching): up to RECENT_ROWS rows, the newest first, the ones the channel can use now
+const RECENT_ROWS = 3;
 async function openEmotePicker(view, w){
   const ep = view.ep;
   if (!ep.hidden){ ep.hidden = true; return; }
@@ -151,6 +153,8 @@ async function openEmotePicker(view, w){
   const secs = groups.flatMap(g => g.channels && g.channels.length
     ? g.channels.map(c => ({ key: g.id + '/' + c.name, group: g.id, label: c.name, pic: c.pic || '', chan: true, emotes: g.emotes.filter(e => e.from === c.name) }))
     : [{ key: g.id, group: g.id, label: g.label, emotes: g.emotes }]);
+  const byN = new Map(); groups.forEach(g => g.emotes.forEach(e => { if (!byN.has(e.name)) byN.set(e.name, e); }));
+  const recent = recentOf(platOf(ch)).map(n => byN.get(n)).filter(Boolean);
   const keys = new Set(['', ...groups.map(g => g.id), ...secs.map(x => x.key)]);
   let show = keys.has(view.epShow) ? view.epShow : '';
   const search = element('input', { type: 'search', class: 'all-ep-q', placeholder: `Search ${p} emotes`, spellcheck: false, dataset: { cmd: 'all.emoteSearch' } });
@@ -163,17 +167,20 @@ async function openEmotePicker(view, w){
   const grid = element('div', { class: 'all-ep-grid', role: 'listbox' });
   const draw = () => {
     const q = search.value.trim().toLowerCase();
-    const shown = secs.filter(x => !show || x.group === show || x.key === show);
+    const shown = [...(!q && !show && recent.length ? [{ key: 'recent', group: 'recent', label: 'Recent', emotes: recent }] : []), ...secs.filter(x => !show || x.group === show || x.key === show)];
     let n = 0;
     const cells = shown.flatMap(x => {
       const list = (q ? x.emotes.filter(e => e.name.toLowerCase().includes(q)) : x.emotes).slice(0, q ? Math.max(0, 300 - n) : Infinity);
       n += list.length;
       if (!list.length) return [];
       return [element('div', { class: 'all-ep-sec' + (x.chan ? ' chan' : ''), role: 'presentation' }, x.chan ? chPic(x) : kindIcon(x.group, ch, (groups.find(g => g.id === x.group) || {}).pic), x.label, x.chan && element('small', null, 'Sub emotes')),
-        ...list.map(e => element('button', { type: 'button', role: 'option', class: 'all-ep-e', title: e.name + (e.from ? ` · ${e.from}` : e.subs ? ' (subscribers)' : ''), 'aria-label': e.name, dataset: { cmd: 'all.emotePick' },
+        ...list.map(e => element('button', { type: 'button', role: 'option', class: 'all-ep-e' + (x.key === 'recent' ? ' recent' : ''), title: e.name + (e.from ? ` · ${e.from}` : e.subs ? ' (subscribers)' : ''), 'aria-label': e.name, dataset: { cmd: 'all.emotePick' },
           onclick: () => { pickEmote(view, w, { ...e, ch }, true); } }, emoteImg(e)))];
     });
     grid.replaceChildren(...(cells.length ? cells : [element('div', 'all-ep-none', `No ${p} emote matches “${search.value.trim()}”`)]));
+    // Recent: as many as RECENT_ROWS rows hold at the picker's width
+    const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
+    [...grid.querySelectorAll('.all-ep-e.recent')].slice(cols * RECENT_ROWS).forEach(b => b.remove());
     grid.scrollTop = 0;
   };
   search.addEventListener('input', draw);
@@ -190,6 +197,7 @@ const KIND_SVG = {
   all: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg>',
   yours: '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
   collectibles: '<svg viewBox="0 0 24 24"><path d="M7 4h10l4 5-9 11L3 9z"/><path class="ln" d="M3 9h18M9 4l3 16 3-16"/></svg>',
+  recent: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
   hypetrain: '<svg viewBox="0 0 24 24"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3h9A2.5 2.5 0 0 1 19 5.5V16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path class="ln" d="M5 11h14M8 21l2-3M16 21l-2-3"/><circle class="hole" cx="8.5" cy="14.5" r="1.2"/><circle class="hole" cx="15.5" cy="14.5" r="1.2"/></svg>'
 };
 const ADDON_LETTER = { '7tv': '7', bttv: 'B', ffz: 'F' };
