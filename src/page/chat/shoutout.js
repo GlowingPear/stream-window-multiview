@@ -1,9 +1,10 @@
 import { SmvSpam } from '../alerts/spam.js';
-import { allOn, appBots, chatRules, feeds, ownerOf, sendInChat, sendSite, setModes, youMod } from './all-chat.js';
+import { allOn, appBots, chatRules, feeds, fillAll, ownerOf, sendInChat, sendSite, setModes, youMod } from './all-chat.js';
 import { RUN_MAX, kickTries, pickRun, shoutFor, shoutLink, shoutRow, streams } from './shoutout-text.js';
 import { winOfView } from './translate.js';
 import { wins } from '../core.js';
 import { modesAgent } from '../in-site/feed.js';
+import { sendAgent } from '../in-site/send.js';
 import { shoutAgent } from '../in-site/shoutout.js';
 import { bellVars, myName } from '../panels/bell/bell.js';
 import { isSaved } from '../panels/channels/channels.js';
@@ -120,6 +121,15 @@ async function shoutOut(p, { chs, again = true, quiet = false } = {}){
     const site = platOf(ch), c = soChatWin(ch);
     const { to, text } = shoutFor({ tpl: settings.text('shoutText'), people: soPeople(), person: who, site, linksOf: soLinksOf,
       gameOf: x => (x === who ? info && info.game : soKnown[soKey(x)] && soKnown[soKey(x)].game) || '' });
+    // Send straight away off (Settings): it goes in the chat box for you to send (ALL's, else the site's own); a run sends
+    if (!quiet && !settings.flag('shoutSend', true)){
+      const allBox = targets.length === 1 && fillAll(ch, text);
+      r = allBox ? 'filled' : c && c.view ? await askIn(c.view, `(${sendAgent})(${JSON.stringify(site)}, ${JSON.stringify(text)}, null, true)`).catch(() => 'no-answer') : 'gone';
+      if (r !== 'filled'){ flash(`Couldn't put it in the chat box: ${(SHOUT_FAIL[r] || SHOUT_FAIL['no-answer'])(PLAT_NAME[site])}`); continue; }
+      soSent[soKey(to)] = soSent[soKey(who)] = Date.now();
+      flash(`Shoutout for ${to.name || to.login} is in ${allBox ? 'the' : PLAT_NAME[site] + '\'s'} chat box: press Enter to send it`);
+      continue;
+    }
     r = await sendInChat(c, text);
     if (r !== 'sent'){ if (!quiet) flash(`Not sent: ${(SHOUT_FAIL[r] || SHOUT_FAIL['no-answer'])(PLAT_NAME[site])}`); continue; }
     soSent[soKey(to)] = soSent[soKey(who)] = Date.now();
@@ -131,7 +141,7 @@ async function shoutOut(p, { chs, again = true, quiet = false } = {}){
   }
   soSaveSent();
   store.changed('shoutouts');
-  return r;
+  return r === 'filled' ? 'sent' : r;
 }
 function soSaveSent(){
   const cut = Date.now() - SO_DAY;
@@ -340,7 +350,7 @@ function init(){
   soSaveKnown = soon(() => settings.set('shoutKnown', soKnown), 1500);
   store.watch(['shoutouts', 'wins'], () => syncShoutButtons());
   store.watch(['shoutouts'], () => { if (!shoutOn()){ stopRun(); closeRunDialog(); } wins.forEach(w => shoutInSite(w)); });
-  settings.onChange(['shoutOn', 'shoutText', 'shoutPeople', 'shoutTwitch', 'shoutAgain', 'shoutRunN', 'shoutStreamers', 'shoutListFirst'], () => store.changed('shoutouts'));
+  settings.onChange(['shoutOn', 'shoutSend', 'shoutText', 'shoutPeople', 'shoutTwitch', 'shoutAgain', 'shoutRunN', 'shoutStreamers', 'shoutListFirst'], () => store.changed('shoutouts'));
   settings.onChange(['shoutSent'], () => { soSent = settings.json('shoutSent', {}) || {}; store.changed('shoutouts'); });
   // a press in a Kick or Twitch chat page, and its right-click menu's Shout out: in that chat
   fromSite('shoutout', (w, d) => { const p = soPersonOf({ site: d.site, login: d.login, sender: d.name, named: d.named }); if (p) shoutOut({ ...p, ch: w.channel }); });

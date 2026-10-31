@@ -86,6 +86,7 @@ function renderPeople(){
 function syncShoutSettings(){
   $('#shoutOnSet').checked = settings.flag('shoutOn');
   $('#shoutTwitchSet').checked = settings.flag('shoutTwitch');
+  $('#shoutSendSet').checked = settings.flag('shoutSend', true);
   $('#shoutStreamersSet').checked = settings.flag('shoutStreamers', true);
   $('#shoutListSet').checked = settings.flag('shoutListFirst', true);
   const again = settings.num('shoutAgain'), opts = ['5', '15', '60', '0'];
@@ -101,7 +102,7 @@ function init(){
   saveText = soon(() => { settings.set('shoutText', textEl.value.trim() === SHOUT_TPL ? '' : textEl.value); store.changed('shoutouts'); }, 500);
   savePeople = soon(saveRows, 500);
   const flag = (sel, key) => { $(sel).onchange = e => { settings.set(key, e.target.checked ? '1' : '0'); store.changed('shoutouts'); }; };
-  flag('#shoutOnSet', 'shoutOn'); flag('#shoutTwitchSet', 'shoutTwitch'); flag('#shoutStreamersSet', 'shoutStreamers'); flag('#shoutListSet', 'shoutListFirst');
+  flag('#shoutOnSet', 'shoutOn'); flag('#shoutSendSet', 'shoutSend'); flag('#shoutTwitchSet', 'shoutTwitch'); flag('#shoutStreamersSet', 'shoutStreamers'); flag('#shoutListSet', 'shoutListFirst');
   $('#shoutAgainSet').onchange = e => { settings.set('shoutAgain', e.target.value); store.changed('shoutouts'); };
   $('#shoutRunSet').addEventListener('click', e => {
     const b = e.target.closest('[data-z]'); if (!b) return;

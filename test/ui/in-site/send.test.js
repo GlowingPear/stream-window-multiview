@@ -27,6 +27,14 @@ const addBox = (page, { editable = 'true', disabled = false, button = false, sla
 }, [editable, disabled, button, slate, deaf]);
 const send = (page, site, text = 'hello chat') => page.evaluate(([site, text]) => window.sendAgent(site, text, '#sd-box'), [site, text]);
 
+test('only filling (a shoutout for you to send): the text goes in the box, and nothing is pressed', async t => {
+  const page = await openApp(t);
+  await addBox(page, { button: true });
+  assert.equal(await page.evaluate(() => window.sendAgent('twitch', 'Go check out Lumen!', '#sd-box', true)), 'filled');
+  assert.equal(await page.$eval('#sd-box', b => b.innerText.trim()), 'Go check out Lumen!');
+  assert.deepEqual(await page.evaluate(() => window.__sent), []);
+});
+
 test('a box that takes typed text: it\'s filled and sent with Enter, or the send button where the site has one', async t => {
   const page = await openApp(t);
   await addBox(page);

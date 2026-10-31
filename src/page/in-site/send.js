@@ -8,7 +8,7 @@
    'not-sent' (pressed, but the site kept it in its box), or on YouTube { press: { x, y }, start } (its button
    didn't take the script's press: the app presses it for real, then asks sentAgent). (A promise: it waits a moment
    for the editor before sending.) */
-async function sendAgent(site, text, sel){
+async function sendAgent(site, text, sel, fillOnly){
   const BOX = sel || { kick: '[data-testid="chat-input"]', twitch: '[data-a-target="chat-input"]', youtube: 'yt-live-chat-text-input-field-renderer #input' }[site];
   const box = document.querySelector(BOX);
   if (!box) return 'no-box';
@@ -39,6 +39,7 @@ async function sendAgent(site, text, sel){
     }
   }
   if (!ed && !slate && value() !== String(text).trim()) return 'not-filled';
+  if (fillOnly) return 'filled';   // (only typed into the box, for you to send: Settings › Chat › Shoutouts › Send straight away off)
   await new Promise(r => setTimeout(r, 200));   // (the editor draws the text first; a send before that sends nothing)
   // send: the site's button where it has one, else Enter in the box. The site empties its box once it has sent; if it
   // hasn't, its editor wasn't ready for the press (Twitch's can take a moment), so press again, up to three times.

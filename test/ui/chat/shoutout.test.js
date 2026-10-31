@@ -129,6 +129,23 @@ test('on: the line\'s menu has Shout out (in its chat) and Shout out in every ch
   assert.deepEqual(await sends(page), [['quietkoala', 'Go check out Driftwood_7! → https://kick.com/driftwood_7'], ['tw:quietkoala', 'Go check out Driftwood_7! → https://kick.com/driftwood_7']]);
 });
 
+test('Send straight away off: the shoutout goes in ALL\'s box on its site, for you to send; nothing is sent (Twitch\'s own neither)', async t => {
+  const page = await allApp(t, { shoutOn: '1', shoutSend: '0', shoutTwitch: '1' });
+  await page.evaluate(() => window.allChat.modKnown.set('tw:quietkoala', true));
+  await chat(page);
+  await line(page, 'gg everyone').hover(); await line(page, 'gg everyone').locator('.al-so-b').click();
+  await flashed(page, /Shoutout for Tinroof is in the chat box: press Enter to send it/);
+  assert.equal(await page.evaluate(() => document.querySelector('.all-in').value), 'Go check out Tinroof! → https://twitch.tv/tinroof');
+  assert.equal(await page.textContent('.all-pick .pi'), 'T', 'on Twitch, where they chatted');
+  await page.waitForTimeout(1500);
+  assert.deepEqual(await sends(page), [], 'not sent, and no /shoutout');
+  assert.equal(await line(page, 'gg everyone').locator('.al-tag-so').count(), 1, 'counted as shouted out (you send it)');
+  // Enter sends it, as anything in the box
+  await page.focus('.all-in'); await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__sends.length === 1);
+  assert.deepEqual(await sends(page), [['tw:quietkoala', 'Go check out Tinroof! → https://twitch.tv/tinroof']]);
+});
+
 test('a run of recent chatters, in ALL the chat its send box is on: the list (streamers only, a recent one unticked, Show them), then one a second with a strip; held back, it waits; Stop', async t => {
   const known = { 'kick:driftwood_7': { login: 'driftwood_7', game: 'Harbor Run', streams: true, t: now }, 'twitch:tinroof': { login: 'tinroof', game: '', streams: true, t: now },
     'kick:maplemoth': { login: 'maplemoth', game: 'Meadowlight', streams: true, t: now }, 'kick:pebble': { login: 'pebble', streams: false, t: now }, 'kick:oakmoss': { login: 'oakmoss', game: '', streams: true, t: now } };
@@ -191,7 +208,7 @@ test('Settings › Chat › Shoutouts: off by default (Twitch\'s own too); the m
   const page = await allApp(t);
   await page.evaluate(() => window.openSettings('chat', { sub: 'shoutouts' }));
   await page.waitForSelector('#shoutOnSet');
-  assert.deepEqual(await page.evaluate(() => ['#shoutOnSet', '#shoutTwitchSet', '#shoutStreamersSet', '#shoutListSet'].map(s => document.querySelector(s).checked)), [false, false, true, true]);
+  assert.deepEqual(await page.evaluate(() => ['#shoutOnSet', '#shoutSendSet', '#shoutTwitchSet', '#shoutStreamersSet', '#shoutListSet'].map(s => document.querySelector(s).checked)), [false, true, false, true, true]);
   assert.equal(await page.inputValue('#shoutAgainSet'), '15');
   assert.equal(await page.textContent('#shoutRunSet .zoomPct'), '5');
   const preview = () => page.$$eval('#shoutPreview > span', l => l.map(s => s.textContent));

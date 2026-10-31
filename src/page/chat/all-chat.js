@@ -1062,6 +1062,16 @@ async function sendInChat(c, text){
   if (r === 'sent') slowStart(c.channel);
   return r;
 }
+// Puts a text in ALL's box, on that site, for you to send (a shoutout with Send straight away off: chat/shoutout.js).
+// -> whether it could (ALL shows in a window that can send on that site)
+function fillAll(ch, text){
+  const w = wins.find(o => o.kind === 'chat' && o.allView && allOn(o) && sendSites(o).includes(ch)), view = w && w.allView;
+  if (!view || view.lock) return false;
+  setSendSite(view, w, ch);
+  view.input.value = text; syncSendB(view, w);
+  view.input.focus(); view.input.setSelectionRange?.(text.length, text.length);
+  return true;
+}
 // What sendAgent answered, after the real press it asked for (if it did)
 const pressed = async (m, r, text) => r && typeof r === 'object' && r.press ? sender.press(m, r, text) : r;
 // Where the site's Reply only shows under a real pointer (Twitch): the line found and scrolled to, the pointer moved over
@@ -1799,7 +1809,7 @@ function init(){
   window.allChat = { sender, SEND_LIMIT, modKnown, gotBadges, gotKickIcons, kickIcons, gotYtLook, ytLook: () => ytLook, liveCmds, cleanSvg, badgePics, twBadges: () => twBadges, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }
 
-export { allLooking, allOn, allRaid, allTabFor, appBots, chatRules, copyChatHtml, feedRead, feedReady, feeds, init,
-  mentionOf, modViewChs, openInspects, openModViews, openPopUps, openSaves, overBox, ownerOf, reloadAll, sendEmote,
-  sendInChat, sendSite, setAll, setLock, setModes, setSoloAll, SITE_BUTTONS, siteAction, spamTag, translateSite,
-  youMod };
+export { allLooking, allOn, allRaid, allTabFor, appBots, chatRules, copyChatHtml, feedRead, feedReady, feeds,
+  fillAll, init, mentionOf, modViewChs, openInspects, openModViews, openPopUps, openSaves, overBox, ownerOf,
+  reloadAll, sendEmote, sendInChat, sendSite, setAll, setLock, setModes, setSoloAll, SITE_BUTTONS, siteAction,
+  spamTag, translateSite, youMod };
