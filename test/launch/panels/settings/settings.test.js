@@ -388,7 +388,7 @@ test('chat bots: one list in Chat › Chat bots for mentions and spam alerts, ea
   const added = ['botrix', 'mytimerbot', 'griddlebot', 'kickpulsebot', 'kicklet', 'lumiastream', 'botrixofficial', 'botrixoficial'];
   assert.deepEqual((await saved()).mention.bots, added);
   assert.deepEqual((await saved()).spam.ignore, added, 'and to the spam alerts\' own list');
-  assert.deepEqual((await saved()).spam.words, ['upgrade', 'subs', 'chatbot', 'make your stream', 'stays active'], 'new promo words');
+  assert.deepEqual((await saved()).spam.words, ['upgrade', 'subs', 'chatbot', 'make your stream', 'stays active', 'engagement', 'organic', 'traffic', 'ai-driven'], 'new promo words');
   assert.deepEqual((await saved()).spam.openers, ['Hey stranger, still running the show?', 'If you do not wish to receive any more messages', 'type !noads'], 'new bot lines');
   await win.evaluate(() => window.openSettings('chat', { sub: 'bots' }));
   await win.click('[data-list=mbots] .st-chip:has-text("kicklet") button');

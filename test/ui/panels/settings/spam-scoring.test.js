@@ -24,7 +24,7 @@ const warnedAt = page => page.$$eval('[data-s=spam] [data-t=scoring] .sc-warn-ic
 test('Scoring: every sign has a slider from 0 (Off) to 8 at its built-in points, and only changed points are kept', async t => {
   const page = await openSpam(t, 'scoring');
   const rows = await page.$$eval('#spamPoints .sc-group', g => g.map(x => [x.dataset.g, [...x.querySelectorAll('.sc-row')].map(r => r.dataset.pt)]));
-  assert.deepEqual(rows, [['spam', ['hidden', 'plain', 'contact', 'elsewhere', 'flood', 'opener', 'words', 'junk', 'newbie']], ['abuse', ['insult', 'slur', 'swearing', 'again']]]);
+  assert.deepEqual(rows, [['spam', ['hidden', 'plain', 'contact', 'elsewhere', 'flood', 'opener', 'words', 'junk', 'newbie', 'filler']], ['abuse', ['insult', 'slur', 'swearing', 'again']]]);
   assert.deepEqual(await page.$eval('.sc-row[data-pt=hidden] input', e => [e.min, e.max, e.value]), ['0', '8', '3']);
   assert.equal(await page.textContent('.sc-row[data-pt=hidden] .sc-flag'), '⚑', 'can flag a message');
   assert.equal(await page.textContent('.sc-row[data-pt=newbie] .sc-flag'), '', 'only adds points');
