@@ -7,11 +7,13 @@ const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseT
 const { parseKickEmotes, parseTwitchEmotes, parse7tv, parseBttv, parseFfz, createEmoteStore } = require('./emote-lists');
 const { kickGroups, twitchGroups, stvGroup, bttvGroup, ffzGroup } = require('./emote-picker');
 const { menuFor, translateTarget } = require('./context-menu');
+const emoteClip = require('./emote-clip');
 const { makeTranslator } = require('./translate');
 const { createProfileQueue } = require('./profile-queue');
 const { centre, describe, fill, placeParts } = require('./monitors');
 const SmvFollows = require('../shared/follows');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const fs = require('fs');
 const { youtubeLoginFromFirefox } = require('./firefox-login');
 const extensions = require('./extensions');
@@ -557,6 +559,9 @@ function runMenuAct(wc, a) {
     case 'openImage': openSiteWindow(a.url, 520, 520, WEB_PARTITION); break;   // a picture from chat: none of your logins
     case 'saveImage': if (/^https?:\/\//i.test(a.url)) { hookSaveAs(wc.session); savingAs.set(a.url, a.name); wc.downloadURL(a.url); } break;
     case 'copyImage': wc.copyImageAt(a.x, a.y); break;
+    case 'copyEmote':   // the app's page makes the still and copies it (see copyEmote in views.js)
+      if (wc.hostWebContents && !wc.hostWebContents.isDestroyed()) wc.hostWebContents.send('view:copy-emote', JSON.stringify({ url: a.url, small: a.small, name: a.name }));
+      break;
     case 'replaceMisspelling': wc.replaceMisspelling(a.word); break;
     case 'addWord': wc.session.addWordToSpellCheckerDictionary(a.word); break;
     case 'inspect': wc.inspectElement(a.x, a.y); break;
@@ -1516,9 +1521,8 @@ appIpc.handle('emote:download', async (e, url, name, small) => {
   let got = await fetchEmote(url).catch(() => null);
   if (!got && small && small !== url && emoteUrlOk(small)) got = await fetchEmote(small).catch(() => null);   // the big one isn't there: the one in chat
   if (!got) return { error: 'fetch' };
-  const base = String(name || 'emote').replace(/[^\w.\-]+/g, '_').replace(/^[._]+/, '').slice(0, 60) || 'emote';
   const win = BrowserWindow.fromWebContents(e.sender) || mainWin;
-  const { canceled, filePath } = await dialog.showSaveDialog(win, { title: 'Save emote', defaultPath: path.join(app.getPath('downloads'), base + got.ext),
+  const { canceled, filePath } = await dialog.showSaveDialog(win, { title: 'Save emote', defaultPath: path.join(app.getPath('downloads'), emoteClip.fileName(name, got.ext)),
     filters: [{ name: 'Image', extensions: [got.ext.slice(1)] }] });
   if (canceled || !filePath) return { canceled: true };
   try { fs.writeFileSync(filePath, got.buf); } catch { return { error: 'write' }; }
@@ -1527,8 +1531,8 @@ appIpc.handle('emote:download', async (e, url, name, small) => {
   while (savedEmotes.size > 50) savedEmotes.delete(savedEmotes.keys().next().value);
   return { saved: true, file: path.basename(filePath), id };
 });
-// "Copy image" on an emote card: the picture, fetched like Download. The app's page turns it into a still
-// PNG (the clipboard has no moving pictures, and not every kind of picture can be read here) and puts it on the clipboard.
+// "Copy image" on an emote: the picture, fetched like Download. The app's page turns it into a still PNG (not every
+// kind of picture can be read here) and puts it on the clipboard with clipboard:emote.
 appIpc.handle('emote:fetch', async (_e, url, small) => {
   if (!emoteUrlOk(url)) return { error: 'bad' };
   let got = await fetchEmote(url).catch(() => null);
@@ -1537,12 +1541,29 @@ appIpc.handle('emote:fetch', async (_e, url, small) => {
   const type = Object.keys(EMOTE_TYPES).find(k => EMOTE_TYPES[k] === got.ext);
   return { type, data: got.buf.toString('base64') };
 });
-appIpc.handle('clipboard:png', async (_e, dataUrl) => {
+// A still PNG on the clipboard (dataUrl: made by the app's page), and with it a file of the picture (files: its path)
+async function copyPicture(dataUrl, file) {
   if (typeof dataUrl !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(dataUrl) || dataUrl.length > 20 * 1024 * 1024) return false;
   const img = nativeImage.createFromDataURL(dataUrl);
   if (img.isEmpty()) return false;
-  try { await clipboard.write([new ClipboardItem({ 'image/png': new Blob([img.toPNG()], { type: 'image/png' }) })]); } catch { return false; }
+  const item = { 'image/png': new Blob([img.toPNG()], { type: 'image/png' }) };
+  if (file) item['text/uri-list'] = pathToFileURL(file).href;   // (a file, as Finder or Explorer copy one)
+  try { await clipboard.write([new ClipboardItem(item)]); } catch { return false; }
   return true;
+}
+appIpc.handle('clipboard:png', (_e, dataUrl) => copyPicture(dataUrl));
+// An emote's still PNG and, when it moves, the emote itself as a file (see emote-clip.js): a 7TV one as its GIF
+appIpc.handle('clipboard:emote', async (_e, dataUrl, url, small, name) => {
+  let file = null;
+  if (emoteUrlOk(url)) {
+    const gif = emoteClip.gifUrl(url);
+    let got = gif ? await fetchEmote(gif).catch(() => null) : null;
+    if (!got) got = await fetchEmote(url).catch(() => null);
+    if (!got && small && small !== url && emoteUrlOk(small)) got = await fetchEmote(small).catch(() => null);
+    if (got && emoteClip.animated(got.buf))
+      try { file = emoteClip.saveCopy(path.join(app.getPath('temp'), 'stream-multiview-emotes'), emoteClip.fileName(name, got.ext), got.buf); } catch {}
+  }
+  return copyPicture(dataUrl, file);
 });
 appIpc.handle('emote:show', (_e, id) => {
   const f = savedEmotes.get(String(id));

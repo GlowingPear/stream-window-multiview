@@ -199,10 +199,10 @@ const viewVars = {
 async function copyEmote(json){
   let d; try { d = JSON.parse(json); } catch { return; }
   if (!d || typeof d.url !== 'string' || !window.kmv || !window.kmv.emoteFetch) return;
-  const name = typeof d.name === 'string' ? d.name.slice(0, 60) : 'emote';
-  const r = await window.kmv.emoteFetch(d.url, typeof d.small === 'string' ? d.small : '').catch(() => null);
+  const name = typeof d.name === 'string' ? d.name.slice(0, 60) : 'emote', small = typeof d.small === 'string' ? d.small : '';
+  const r = await window.kmv.emoteFetch(d.url, small).catch(() => null);
   const png = r && r.data ? await pngOf(`data:${r.type};base64,${r.data}`) : null;
-  if (!png || !(await window.kmv.clipboardPng(png).catch(() => false))) flash(`Couldn’t copy ${name}`, { subject: 'downloads' });
+  if (!png || !(await window.kmv.clipboardEmote(png, d.url, small, name).catch(() => false))) flash(`Couldn’t copy ${name}`, { subject: 'downloads' });
 }
 // A picture as a still PNG (an animated one: its first frame)
 async function pngOf(src){
@@ -219,8 +219,10 @@ function init(){
   newEmotesOn = settings.flag('newEmotes');
   fromSite('emote-seen', (w, json, view) => { if (w.view === view) newEmoteSeen(w, json); });
   emoteOn = settings.flag('emotePreview');
-  // "Copy image" on an emote card: the app fetches the picture (only from the emote sites) and copies a still of it
+  // "Copy image" on an emote card or in an emote's right-click menu: the app fetches the picture (only from the emote
+  // sites) and copies a still of it, and a moving one also as a file
   fromSite('emote-copy', (w, json) => copyEmote(json));
+  if (DESKTOP) fromApp('onViewCopyEmote', json => copyEmote(json));
   if (DESKTOP) fromApp('onViewPressed', id => { const w = wins.find(x => x.view && viewId(x.view) === id); if (w) viewTouched(w, w.view); });
   store.watch('live', () => followYtStreams());
   window.ytFollow_ = { reloadWin, followYtStreams };   // for the tests

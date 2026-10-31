@@ -134,11 +134,13 @@ contextBridge.exposeInMainWorld('kmv', {
   emoteShow: id => ipcRenderer.invoke('emote:show', id),
   emoteFetch: (url, small) => ipcRenderer.invoke('emote:fetch', url, small),
   clipboardPng: dataUrl => ipcRenderer.invoke('clipboard:png', dataUrl),
+  clipboardEmote: (dataUrl, url, small, name) => ipcRenderer.invoke('clipboard:emote', dataUrl, url, small, name),
   translate: (texts, tl) => ipcRenderer.invoke('translate:texts', texts, tl),
   onViewMenu: cb => ipcRenderer.on('view:menu', (_e, id, d) => cb(id, d || {})),
   viewMenuAct: (id, i) => ipcRenderer.send('view:menu-act', id, i),
   viewMenuClose: id => ipcRenderer.send('view:menu-close', id),
   onViewTranslate: cb => ipcRenderer.on('view:translate', (_e, id, a) => cb(id, a || {})),
+  onViewCopyEmote: cb => ipcRenderer.on('view:copy-emote', (_e, json) => cb(json)),
   // Settings › Developer: the switch, the error log and Requests, the report, Inspect
   devSet: on => ipcRenderer.send('dev:set', !!on),
   devLog: (src, where, msg) => ipcRenderer.send('dev:log', String(src), String(where || '').slice(0, 200), String(msg || '').slice(0, 2000)),

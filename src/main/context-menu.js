@@ -29,7 +29,8 @@ function languageIn(code, inLang) {
 
 // params: Electron's context-menu params. opts: { langs, dev, devTools, emote, chat, message }
 //   dev: a developer copy (Inspect); devTools: Settings › Developer › Developer tools is on (a Developer group, with Inspect)
-//   emote: the emote under the pointer (see emoteAgent in index.html): { name, text } where text is what to paste in that chat
+//   emote: the emote under the pointer (see emoteAgent in index.html): { name, text, big, small } where text is what to paste in
+//     that chat, big and small its pictures' addresses
 //   chat: a chat window's translation state (see translateAgent): { on, auto }; null: not a chat
 //   message: the chat message under the pointer (see messageAgent): { text, withEmotes, html }; null: not a message
 // -> [{ label, act, enabled?, checked? } | { label, head: true } | { type: 'separator' }]
@@ -53,7 +54,8 @@ function menuFor(params, { langs = ['en'], dev = false, devTools = false, emote 
   if (p.mediaType === 'image' && webUrl(p.srcURL)) group([
     { label: 'Open image in new window', act: { do: 'openImage', url: p.srcURL } },
     { label: 'Save image as…', act: { do: 'saveImage', url: p.srcURL, name: (em && em.name) || p.altText || p.titleText || '' } },
-    { label: 'Copy image', act: { do: 'copyImage', x: p.x, y: p.y } },
+    // an emote: the app copies it (a moving one also as a file, so it pastes moving); another picture: as Chrome copies it
+    { label: 'Copy image', act: em && webUrl(em.big) ? { do: 'copyEmote', url: em.big, small: webUrl(em.small) ? em.small : '', name: em.name || '' } : { do: 'copyImage', x: p.x, y: p.y } },
     { label: 'Copy image address', act: { do: 'copyText', text: p.srcURL } }
   ]);
   if (p.isEditable) group([

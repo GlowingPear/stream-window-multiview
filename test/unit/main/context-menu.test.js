@@ -89,7 +89,13 @@ test('an emote in a chat: Copy emote text first, then the image items with Save 
   assert.deepEqual(labels(m), ['Copy emote text', '—', 'Open image in new window', 'Save image as…', 'Copy image', 'Copy image address']);
   assert.deepEqual(m[0].act, { do: 'copyText', text: 'pearHype' });
   assert.equal(find(m, 'Save image as…').act.name, 'pearHype');
-  assert.deepEqual(find(m, 'Copy image').act, { do: 'copyImage', x: 3, y: 4 });
+  assert.deepEqual(find(m, 'Copy image').act, { do: 'copyImage', x: 3, y: 4 }, 'without its pictures\' addresses: as Chrome copies it');
+  // with them: the app copies it (a moving one also as a file)
+  const big = 'https://files.kick.com/emotes/1/fullsize';
+  assert.deepEqual(find(menuFor(p, { emote: { name: 'pearHype', text: 'pearHype', big, small: 'https://files.kick.com/emotes/1/small' } }), 'Copy image').act,
+    { do: 'copyEmote', url: big, small: 'https://files.kick.com/emotes/1/small', name: 'pearHype' });
+  assert.deepEqual(find(menuFor(p, { emote: { text: 'x', big, small: 'data:image/png;base64,AA' } }), 'Copy image').act, { do: 'copyEmote', url: big, small: '', name: '' });
+  assert.deepEqual(find(menuFor(p, { emote: { name: 'x', text: 'x', big: 'data:image/png;base64,AA' } }), 'Copy image').act, { do: 'copyImage', x: 3, y: 4 });
   // the text is whatever that chat needs (worked out where the emote is: see emoteAgent's textOf)
   for (const text of ['KEKW', 'pearHype', '😂', ':_pearWave:']) assert.deepEqual(menuFor(p, { emote: { name: 'x', text } })[0].act, { do: 'copyText', text });
   assert.deepEqual(labels(menuFor(p, { emote: { name: 'x', text: '' } })).slice(0, 1), ['Open image in new window'], 'no text: no Copy emote text');
