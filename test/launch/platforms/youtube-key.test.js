@@ -20,7 +20,10 @@ const T = { timeout: 45000 };   // per test, so one stuck test can't hold up the
 const KEYS = { good: 'good_key_0123456789abcdefghij', bad: 'bad_key_0123456789abcdefghijk', quota: 'quota_key_0123456789abcdefgh' };
 let app, win, server, asked = [], askedIds = [];
 // The channel feed and the stream behind it, for the live check: the feed goes down (404) like YouTube's does.
-const CH = 'UCfeedtest0123456789abcd', VID = 'k62wgMPmQeo', yt = { feedUp: true, live: true };
+const CH = 'UCfeedtest0123456789abcd', VID = 'k62wgMPmQeo', NEXT = 'n3wStr3amAa', yt = { feedUp: true, live: true, pageLive: '' };
+// The channel's live page: the stream it's on now (pageLive), with more headers than Node's fetch takes (16 KB), as YouTube's now has
+const livePage = () => `<!doctype html><html><head>${yt.pageLive ? `<link rel="canonical" href="https://www.youtube.com/watch?v=${yt.pageLive}">` : ''}` +
+  `<meta name="title" content="Day two of the stream"></head><body><script>var d = {"isLive":${!!yt.pageLive},"ownerChannelName":"Feed Test"};</script>${' '.repeat(600)}</body></html>`;
 const feedXml = () => `<?xml version="1.0"?><feed xmlns:yt="http://www.youtube.com/xml/schemas/2015"><yt:channelId>${CH}</yt:channelId>` +
   `<author><name>Feed Test</name></author><entry><yt:videoId>${VID}</yt:videoId></entry></feed>`;
 const pageErrors = [];
@@ -30,6 +33,10 @@ function fakeGoogle() {
   return new Promise(resolve => {
     const srv = http.createServer((req, res) => {
       const u = new URL(req.url, 'http://x'), key = u.searchParams.get('key');
+      if (u.pathname === `/channel/${CH}/live`) {
+        res.writeHead(200, { 'Content-Type': 'text/html', ...Object.fromEntries(Array.from({ length: 12 }, (_, i) => ['X-Big-' + i, 'x'.repeat(2000)])) });
+        return res.end(livePage());
+      }
       if (u.pathname === '/feeds') {
         res.writeHead(yt.feedUp ? 200 : 404, { 'Content-Type': 'text/xml' });
         return res.end(yt.feedUp && u.searchParams.get('channel_id') === CH ? feedXml() : 'Not Found');
@@ -53,7 +60,7 @@ test.before(async () => {
   data = tempDir('ytkey');
   fs.mkdirSync(path.join(data, 'Stream Multiview'), { recursive: true });
   fs.writeFileSync(path.join(data, 'Stream Multiview', 'updates.json'), JSON.stringify({ auto: false }));
-  const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', SMV_YT_API: `http://127.0.0.1:${server.address().port}`, SMV_YT_FEED: `http://127.0.0.1:${server.address().port}/feeds`, ELECTRON_ENABLE_LOGGING: '0' };
+  const env = { ...process.env, SMV_DEV_DATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', SMV_YT_API: `http://127.0.0.1:${server.address().port}`, SMV_YT_FEED: `http://127.0.0.1:${server.address().port}/feeds`, SMV_YT_PAGES: `http://127.0.0.1:${server.address().port}`, ELECTRON_ENABLE_LOGGING: '0' };
   delete env.ELECTRON_RUN_AS_NODE;
   app = await playwright()._electron.launch({ executablePath: electronPath(), args: ['--no-sandbox', '--use-mock-keychain', ROOT], env, timeout: 60000 });
   const proc = app.process();
@@ -139,8 +146,16 @@ test('with the key, a live channel stays live while YouTube\'s feeds are down (t
     assert.equal(info.viewers, 42, 'with fresh numbers from the API');
     assert.ok(askedIds.some(q => q.split(',').includes(VID)), 'the API is asked about the same stream');
   }
+  // the stream ends and a new one starts while the feeds are still down: only its live page says so, and its answer has
+  // more headers than Node's fetch takes (it used to fail every time: "fetch failed")
+  yt.live = false; yt.pageLive = NEXT;
+  const before = (await liveInfo()).checked;
+  await win.evaluate(() => window.kmv.checkLiveNow());
+  await win.waitForFunction(([c, t]) => window.kmv.liveSnapshot().then(s => s[c] && s[c].checked > t), [ch, before]);
+  const info = await liveInfo();
+  assert.deepEqual([info.live, info.videoId, info.title], [true, NEXT, 'Day two of the stream'], 'the new stream, from its page');
   await win.evaluate(() => window.kmv.watchLive({ channels: [] }));
-  yt.feedUp = true;
+  yt.feedUp = true; yt.live = true; yt.pageLive = '';
 });
 
 test('removing the key', T, async () => {

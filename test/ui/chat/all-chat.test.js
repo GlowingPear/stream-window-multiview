@@ -2150,6 +2150,40 @@ test('ALL\'s top bar: thin, its sites\' switches hide a site\'s lines (saved, fo
   assert.equal(await page.isVisible('.all-hype'), true);
 });
 
+test('the emote picker starts with your recent emotes: the newest first, ones the channel can use, up to 3 rows; not while searching or showing one kind', async t => {
+  const names = Array.from({ length: 20 }, (_, i) => 'e' + i);
+  const page = await allApp(t, { allOpen: '["s1"]', allRecentEmotes: JSON.stringify({ kick: ['gone', ...names] }) });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(([live, names]) => {
+    window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
+    const img = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    window.kmv = { ...(window.kmv || {}), emotesPick: async ch => ch === 'quietkoala' ? [{ id: 'kick-global', label: 'Kick', emotes: [...names].reverse().map((name, i) => ({ name, url: img, send: `[emote:${i}:${name}]` })) }] : [] };
+  }, [LIVE, names]);
+  await page.addStyleTag({ content: '.all-ep{width:230px !important;max-width:230px !important}' });   // (a narrow picker: fewer emotes a row)
+  await page.click('.all-emo-b');
+  await page.waitForSelector('.all-ep .all-ep-e');
+  const grid = () => page.$eval('.all-ep-grid', g => {
+    const cols = getComputedStyle(g).gridTemplateColumns.split(' ').length, recent = [...g.querySelectorAll('.all-ep-e.recent')];
+    return { cols, heads: [...g.querySelectorAll('.all-ep-sec')].map(s => s.textContent), recent: recent.map(b => b.title), rows: new Set(recent.map(b => b.offsetTop)).size };
+  });
+  const g = await grid();
+  assert.deepEqual(g.heads, ['Recent', 'KKick']);
+  assert.ok(g.cols * 3 < names.length, 'more than 3 rows of them');
+  assert.deepEqual(g.recent, names.slice(0, g.cols * 3), 'the newest first, as many as 3 rows hold; one the channel doesn\'t have isn\'t there');
+  assert.equal(g.rows, 3);
+  // searching, or one kind: no Recent
+  await page.fill('.all-ep-q', 'e1');
+  assert.deepEqual((await grid()).heads, ['KKick']);
+  await page.fill('.all-ep-q', '');
+  assert.deepEqual((await grid()).heads, ['Recent', 'KKick']);
+  await page.evaluate(() => { const s = document.querySelector('.all-ep-f'); s.value = 'kick-global'; s.dispatchEvent(new Event('change')); });
+  assert.deepEqual((await grid()).heads, ['KKick']);
+  // a recent one picked: in the box, as from its own section
+  await page.evaluate(() => { const s = document.querySelector('.all-ep-f'); s.value = ''; s.dispatchEvent(new Event('change')); });
+  await page.click('.all-ep-e.recent >> nth=1');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'e1 ');
+});
+
 test('reloading ALL asks again for its chats\' emotes, not from the last 10 minutes: one the streamer just added shows', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
