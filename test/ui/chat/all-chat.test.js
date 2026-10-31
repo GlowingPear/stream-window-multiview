@@ -2172,3 +2172,48 @@ test('a YouTube poll: a card over ALL while it\'s open, its votes as they come (
   await yt([{ removeChatItemByAuthorAction: { externalChannelId: 'UCbad' } }]);
   assert.deepEqual((await lines(page)).map(l => l.split(' | ')[1]), ['Y@kind: hello there']);
 });
+
+test('polls on several sites: one card, the others a press away in its corner, the newest shown; the 📊 pill folds it away; Kick\'s time left, its results, then gone', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.evaluate(now => window.smvNotes.liveStatus({ 'yt:@quietkoala': { live: true, checked: now } }), Date.now());
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'chat', ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala']));
+  await page.click('#stage .win.chat:not(.tab-hidden) .ptab.all');
+  const runs = t => ({ runs: [{ text: t }] });
+  await feed(page, 'yt:@quietkoala', { s: 'youtube', raw: [{ showLiveChatActionPanelAction: { panelToShow: { liveChatActionPanelRenderer: { id: 'p1', contents: { pollRenderer: { liveChatPollId: 'p1',
+    header: { pollHeaderRenderer: { pollQuestion: runs('Which game next?') } }, choices: [{ text: runs('Deadlock'), voteRatio: 0.6 }, { text: runs('Balatro'), voteRatio: 0.4 }] } } } } } }] });
+  const kick = (remaining, votes = [3, 1]) => feed(page, 'quietkoala', { s: 'kick', raw: [KF('PollUpdateEvent', { poll: { title: 'Which game next?', options: [{ id: 0, label: 'Deadlock', votes: votes[0] }, { id: 1, label: 'Balatro', votes: votes[1] }], duration: 300, remaining, result_display_duration: 60 } })] });
+  await kick(90);
+  const card = () => page.evaluate(() => { const p = document.querySelector('.all-poll'); return p.hidden ? null : { cards: p.querySelectorAll('.all-poll-card').length, site: p.querySelector('.all-poll-card').className.replace('all-poll-card all-poll-', ''),
+    sw: [...p.querySelectorAll('.all-pin-sw .pi')].map(b => b.textContent + (b.classList.contains('on') ? '*' : '')), m: (p.querySelector('.all-poll-m') || {}).textContent || '', go: p.querySelector('.all-poll-go').textContent }; });
+  const pill = () => page.$eval('.all-pollchip', b => b.hidden ? null : b.textContent + (b.getAttribute('aria-pressed') === 'true' ? ' on' : ''));
+  let c = await card();
+  assert.deepEqual([c.cards, c.site, c.sw, c.go], [1, 'kick', ['Y', 'K*'], 'Vote on Kick'], 'one card: the newest, the other a press away');
+  assert.match(c.m, /^4 votes · 1:(29|30) left$/);
+  assert.equal(await pill(), '2 on');
+  await page.click('.all-poll .all-pin-sw .pi-youtube');
+  c = await card();
+  assert.deepEqual([c.site, c.sw, c.go], ['youtube', ['Y*', 'K'], 'Vote on YouTube']);
+  // Kick's votes come in: the card stays where you put it
+  await kick(80, [5, 1]);
+  assert.equal((await card()).site, 'youtube');
+  // the pill folds it away and back
+  await page.click('.all-pollchip');
+  assert.deepEqual([await card(), await pill()], [null, '2']);
+  await page.click('.all-pollchip');
+  assert.equal((await card()).site, 'youtube');
+  // Kick's time up: its results, for as long as Kick shows them; then gone
+  await kick(0, [6, 2]);
+  await page.click('.all-poll .all-pin-sw .pi-kick');
+  assert.equal((await card()).m, '8 votes · Final results');
+  await page.evaluate(() => { const real = Date.now; Date.now = () => real() + 61000; });
+  await page.waitForFunction(() => !document.querySelector('.all-poll .all-pin-sw'));
+  c = await card();
+  assert.deepEqual([c.site, c.sw, await pill()], ['youtube', [], '1 on']);
+  // a new poll on Kick: shown, unfolded, its pill pinging
+  await page.click('.all-pollchip');
+  await kick(120);
+  assert.equal((await card()).site, 'kick');
+  assert.ok(await page.$('.all-pollchip.ping'), 'its pill pings');
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('PollDeleteEvent', [])] });
+  assert.equal((await card()).site, 'youtube', 'deleted: gone');
+});
