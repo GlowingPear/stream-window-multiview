@@ -122,8 +122,11 @@ function ingest(w, json, quiet = false, shown = false){
     if (m.kind === 'raid') return raidNews(f, view, m, w);
     if (m.kind === 'hype') return hypeNews(s, w.channel, m);
     if (m.kind === 'poll') return pollNews(s, w.channel, m);
+    if (m.kind === 'automod') return heldMine(f, m);
+    if (m.kind === 'marks') return markLine(f, m);
     if (m.id && f.byId.has(m.site + ':' + m.id)) return;   // (one it has: YouTube sends its recent ones again when its chat is rebuilt or switches view)
     m.ch = w.channel;
+    const mk = m.id && f.marks && f.marks.get(m.site + ':' + m.id); if (mk){ m.marks = mk; f.marks.delete(m.site + ':' + m.id); }   // (its marks came first)
     if (m.giftTo && giftTo(f, m)) return;   // (one of the gifted subs announced just before: its name goes on that line)
     if (m.gift) m.gift.me = m.gift.to.some(r => r.login && r.login === meOn(m.site));
     mentionOf(m, w.channel);
@@ -703,6 +706,7 @@ function lineEl(m){
     m.toMe === 'reply' && element('span', { class: 'al-tag al-tag-rp' + (m.bot ? ' soft' : '') }, m.bot ? 'TO YOU' : 'REPLY'),
     m.toMe === 'at' && m.bot && element('span', 'al-tag al-tag-rp soft', 'TO YOU'),
     m.highlight && element('span', 'al-tag al-tag-hl', 'Highlighted'),
+    ...(m.marks || []).map(x => { const k = MARKS[x.type]; return element('span', { class: 'al-tag al-tag-mark', title: k ? k[1](x) : `Twitch marks it: ${x.type.replace(/_/g, ' ')}` }, k ? k[0] : x.type.replace(/_/g, ' ')); }),
     m.streak && element('span', { class: 'al-tag al-tag-streak', title: `Watched ${m.streak} streams in a row` }, `Watch streak · ${m.streak}`),
     m.announce && element('span', 'al-tag al-tag-ann', 'Announcement'),
     m.bits && element('span', 'al-tag al-tag-bits', `${m.bits} bits`),
@@ -1083,7 +1087,7 @@ function suggestCmd(view, w){
   view.atList = list; view.atSel = 0; view.atQ = q; view.atMode = 'cmd'; view.cmdCh = ch;
   if (!list.length){ view.at.hidden = true; return true; }
   renderCmds(view);
-  view.at.hidden = false;
+  view.at.hidden = false; overBox(view);
   return true;
 }
 function renderCmds(view){
@@ -1127,7 +1131,13 @@ function suggestAt(view, w){
   view.atList = list; view.atSel = 0; view.atQ = mm[2]; view.atMode = 'at';
   if (!list.length){ view.at.hidden = true; return; }
   renderAt(view);
-  view.at.hidden = false;
+  view.at.hidden = false; overBox(view);
+}
+// The box's lists (/ commands, @ names, :emotes) sit right on the box, over the emote row and the bars above it
+function overBox(view){
+  const z = parseFloat(view.el.style.zoom) || 1, box = view.input.closest('.all-box');
+  if (!box || !box.offsetParent) return;
+  view.at.style.bottom = Math.round((view.el.getBoundingClientRect().bottom - box.getBoundingClientRect().top) / z + 4) + 'px';
 }
 function renderAt(view){
   view.at.classList.remove('all-at-cmds');   // (the same popup as / commands')
@@ -1436,6 +1446,7 @@ async function deliver(view, w, p){
   if (p.state === 'seen') return;   // (its chat brought it back already)
   noteSend(p.ch, r, r === 'sent' ? '' : SEND_FAIL[r] ? SEND_FAIL[r](site) : '');   // (two failures in a row: ALL's health says so)
   if (r === 'sent' && p.cmd){ const f = feedOf(view.s), i = f.msgs.indexOf(p); if (i >= 0) f.msgs.splice(i, 1); p.state = 'dropped'; return flash(`Sent ${p.text.split(/\s/)[0]} on ${site}`); }
+  if (r === 'sent' && p.state === 'held'){ slowStart(p.ch); return; }   // (AutoMod has it already: its line says so)
   if (r === 'sent'){ slowStart(p.ch); setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
   p.why = r === 'no-reply' ? `Couldn't start a reply on ${site}: the message may have scrolled out of its chat` : r === 'gone' ? `${site}'s chat isn't open`
     : (SEND_FAIL[r] || (x => `${x}'s chat didn't answer`))(site);
@@ -1486,6 +1497,30 @@ function noteMyLook(m){
   const chs = Object.keys(all); chs.slice(0, Math.max(0, chs.length - MY_LOOKS)).forEach(ch => delete all[ch]);
   settings.set('allMyLook', all);
 }
+// AutoMod held a message of yours (Twitch tells only you, by its id): your line waiting in ALL says so, then it's sent (its
+// chat brings it back) or not. (Its id is Twitch's own: the first hold goes to your newest line still waiting there.)
+function heldMine(f, m){
+  const p = f.msgs.find(x => x.kind === 'mine' && x.automod === m.msgId)
+    || (m.status === 'PENDING' && [...f.msgs].reverse().find(x => x.kind === 'mine' && x.site === 'twitch' && !x.automod && /^(sending|sent|unseen)$/.test(x.state)));
+  if (!p || !/^(sending|sent|unseen|held)$/.test(p.state)) return;
+  p.automod = m.msgId;
+  if (m.status === 'PENDING') return setMine(p, 'held');
+  if (m.status === 'ALLOWED'){ setMine(p, 'sent'); setTimeout(() => { if (p.state === 'sent') setMine(p, 'unseen'); }, 15000); return; }
+  p.why = m.status === 'DENIED' ? 'AutoMod held it, and a moderator didn\'t allow it' : 'AutoMod held it, and no moderator allowed it in time';
+  p.late = false;
+  setMine(p, 'failed');
+}
+// Twitch's marks on a message, to moderators (chat highlights): tags on its line. Marks that come before their message
+// wait for it (the newest 50).
+const MARKS = { raider: ['Raider', x => x.secs >= 60 ? `Came in with a raid ${Math.round(x.secs / 60)} min ago` : 'Came in with a raid'],
+  first_time_chatter: ['First chat', () => 'Their first message in this chat'], returning_chatter: ['Returning', () => 'Back in this chat after a while'] };
+function markLine(f, m){
+  const k = 'twitch:' + m.msgId, line = f.byId.get(k);
+  if (line){ line.marks = m.marks; redrawLine(line); return; }
+  const w = f.marks || (f.marks = new Map());
+  w.set(k, m.marks);
+  if (w.size > 50) w.delete(w.keys().next().value);
+}
 // A line of yours changes state: drawn again where it is
 function setMine(p, state){
   p.state = state;
@@ -1508,6 +1543,7 @@ function mineEl(p){
   const state = {
     sending: element('span', 'al-tag al-tag-mine', element('i', 'al-spin'), 'Sending'),
     sent: element('span', 'al-tag al-tag-mine', 'Sent'),
+    held: element('span', { class: 'al-tag al-tag-held', title: `${site}'s AutoMod is holding it until a moderator allows it` }, 'Held by AutoMod · waiting for a moderator'),
     unseen: element('span', { class: 'al-tag al-tag-mine', title: `${site} took it, but it hasn't shown in its chat yet` }, `Sent · not seen in ${site}'s chat yet`),
     failed: element('div', 'al-mine-fail', element('span', 'al-tag al-tag-fail', 'Not sent'), element('span', 'al-why', p.why || ''),
       element('button', { type: 'button', class: 'linkish', dataset: { cmd: 'all.retry' }, onclick: () => { if (view && !view.sending) deliver(view, view.w, p); else flash('Still sending the last one'); } }, 'Retry'),
@@ -1718,5 +1754,5 @@ function init(){
 }
 
 export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, feedSpam, init, modViewChs, openInspects,
-  openModViews, openPopUps, openSaves, reloadAll, sendEmote, sendSite, setAll, setLock, setSoloAll, SITE_BUTTONS,
-  siteAction, spamTag, translateSite };
+  openModViews, openPopUps, openSaves, overBox, reloadAll, sendEmote, sendSite, setAll, setLock, setSoloAll,
+  SITE_BUTTONS, siteAction, spamTag, translateSite };

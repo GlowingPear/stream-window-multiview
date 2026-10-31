@@ -665,6 +665,43 @@ test('ALL: Send on [K ▾]: the main site first, Tab steps the sites you can sen
   assert.equal(await page.locator('.all-view').count(), 0);
 });
 
+test('ALL: a message of yours AutoMod holds says so, then is sent (its line comes back) or not; Twitch\'s marks on a message are tags on its line, whenever they come', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]', allSend: JSON.stringify({ s1: 'tw:quietkoala' }) });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
+    window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push(text); return 'sent'; }; }, LIVE);
+  const HM = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
+  const held = (id, status) => feed(page, 'tw:quietkoala', { s: 'twitch', raw: [HM('automod_caught_message', { message_id: id, status })] });
+  const mine = () => page.$$eval('.all-list .al-mine', l => l.map(x => x.textContent));
+  const say = async text => { const n = await page.evaluate(() => window.__sends.length); await page.fill('.all-in', text); await page.press('.all-in', 'Enter'); await page.waitForFunction(n => window.__sends.length === n + 1, n); };
+  // a hold for a message sent somewhere else (Twitch's own chat): nothing here
+  await held('a0', 'PENDING');
+  assert.deepEqual(await mine(), []);
+  await say('is this link ok');
+  await held('a1', 'PENDING');
+  assert.match((await mine())[0], /is this link okHeld by AutoMod · waiting for a moderator$/);
+  await held('a1', 'PENDING');
+  assert.match((await mine())[0], /Held by AutoMod/, 'again (another of their chats): the same');
+  await held('a1', 'ALLOWED');
+  assert.match((await mine())[0], /is this link okSent$/, 'allowed: sent, waiting for its chat to bring it');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'metwitch', id: 'x1', 'user-id': '7' }, ':metwitch!m@m PRIVMSG #quietkoala :is this link ok')] });
+  assert.deepEqual(await mine(), [], 'its chat brought it: the real line');
+  assert.match(await page.textContent('.all-list'), /is this link ok/);
+  // denied: not sent, and why
+  await say('another link');
+  await held('a2', 'PENDING');
+  await held('a2', 'DENIED');
+  assert.match(await page.textContent('.all-list .al-mine-failed'), /another linkNot sentAutoMod held it, and a moderator didn't allow it/);
+  // Twitch's marks: before their message (it waits for it), or after
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [HM('chat-highlight', { msg_id: 'r1', highlights: [{ type: 'raider', seconds_since_event: 254 }] })] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'Novalynx', id: 'r1', 'user-id': '8' }, ':novalynx!n@n PRIVMSG #quietkoala :hi from the raid')] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'Oakmoss', id: 'r2', 'user-id': '9' }, ':oakmoss!o@o PRIVMSG #quietkoala :first time here')] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [HM('chat-highlight', { msg_id: 'r2', highlights: [{ type: 'first_time_chatter' }, { type: 'something_new' }] })] });
+  const tags = id => page.$$eval(`.all-list [data-key="twitch:${id}"] .al-tag-mark`, l => l.map(x => [x.textContent, x.title]));
+  assert.deepEqual(await tags('r1'), [['Raider', 'Came in with a raid 4 min ago']]);
+  assert.deepEqual(await tags('r2'), [['First chat', 'Their first message in this chat'], ['something new', 'Twitch marks it: something new']]);
+});
+
 test('ALL: with one site to send on, Tab says so; with none, the box says so', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
@@ -1910,7 +1947,12 @@ test('ALL: the emotes you used last, in a row over the box (as Kick\'s chat has)
   assert.equal(await page.evaluate(() => document.querySelector('.all-ep').getBoundingClientRect().bottom <= document.querySelector('.all-re').getBoundingClientRect().top), true, 'the picker over the row');
   await page.keyboard.press('Escape'); await page.focus('.all-in'); await page.keyboard.press('Escape'); await page.fill('.all-in', '');
   await page.focus('.all-in'); await page.keyboard.type(':koalaw'); await page.waitForSelector('.all-at:not([hidden]) .all-emi');
-  assert.equal(await page.evaluate(() => document.querySelector('.all-at').getBoundingClientRect().bottom <= document.querySelector('.all-re').getBoundingClientRect().top), true, 'the :name list over the row too');
+  const onBox = () => page.evaluate(() => { const a = document.querySelector('.all-at').getBoundingClientRect(), b = document.querySelector('.all-box').getBoundingClientRect(), r = document.querySelector('.all-re').getBoundingClientRect();
+    return a.bottom <= b.top && a.bottom >= b.top - 8 && a.bottom >= r.bottom; });
+  assert.equal(await onBox(), true, 'the :name list right on the box, over the row while it\'s open');
+  await page.keyboard.press('Escape'); await page.fill('.all-in', '');
+  await page.focus('.all-in'); await page.keyboard.type('/'); await page.waitForSelector('.all-at:not([hidden]) .all-cmd');
+  assert.equal(await onBox(), true, 'the / list too');
   await page.keyboard.press('Escape'); await page.fill('.all-in', '');
   await page.evaluate(() => localStorage.setItem('kickMultiview.allRecentEmotes', JSON.stringify({ kick: ['koalaWave', 'KEKW'] })));
   // another site: its own list (none yet: no row); only the ones its channel can use

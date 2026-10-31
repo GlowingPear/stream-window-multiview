@@ -141,7 +141,7 @@
 /* (not while you can't send there; in a short chat, it gives way first: chat/all-chat.js fitRoom) */
 .all-blocked .all-re,.all-no-re .all-re{display:none}
 /* the @ and :name lists and the smiley's picker open over the row, not half over it (what you pick shows in it at once) */
-.all-view:has(.all-re:not([hidden])):not(.all-no-re,.all-blocked) :is(.all-at,.all-ep){bottom:87px}
+.all-view:has(.all-re:not([hidden])):not(.all-no-re,.all-blocked) .all-ep{bottom:87px}   /* (the / and @ lists stay on the box, over the row) */
 /* in a short chat, after the row: the pins' strip, then the health line (the pill and the site's amber badge still say so) */
 .all-no-pins .all-pins,.all-no-health .all-health,.all-no-poll .all-poll{display:none}
 .all-pick{flex:none;height:36px;padding:0 8px;border-radius:9px;border:1px solid var(--line2);background:var(--panel2);display:flex;align-items:center;gap:5px;color:var(--muted);cursor:pointer}
@@ -232,6 +232,9 @@
 @keyframes al-spin{to{transform:rotate(360deg)}}
 .al-mine-fail{display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px;margin:3px 0 1px 22px}
 .al-mine-fail .al-tag{margin-left:0}
+.al-tag-held{color:#ffd27a;background:rgba(255,190,70,.14);border:1px solid rgba(255,190,70,.4)}
+.al-mine-held{opacity:1}
+.al-tag-mark{color:#d9c7ff;background:rgba(145,70,255,.2);border:1px solid rgba(145,70,255,.45)}
 .al-tag-fail{color:#ffb3b3;background:rgba(255,90,90,.18);border-color:rgba(255,90,90,.45)}
 .al-why{color:#ffb3b3;font-size:11.5px}
 .al-mine-fail .linkish{font-size:11.5px;font-weight:700}

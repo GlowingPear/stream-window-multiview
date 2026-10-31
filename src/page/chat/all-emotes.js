@@ -1,4 +1,4 @@
-import { sendEmote, sendSite, setLock } from './all-chat.js';
+import { overBox, sendEmote, sendSite, setLock } from './all-chat.js';
 import { PLAT_NAME, platOf } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
@@ -73,7 +73,7 @@ async function suggestEmote(view, w){
   view.atMode = 'emote'; view.atList = list.map(e => ({ ...e, ch })); view.atSel = 0; view.atQ = mm[2];
   if (!list.length){ view.at.hidden = true; return; }
   renderEmoteList(view);
-  view.at.hidden = false;
+  view.at.hidden = false; overBox(view);
 }
 function renderEmoteList(view){
   view.at.classList.remove('all-at-cmds');   // (the same popup as / commands')
