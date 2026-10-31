@@ -1383,11 +1383,12 @@ function renderPoll(view){
         ? element('span', 'all-pin-sw', ...list.map(x => element('button', { type: 'button', class: 'pi pi-' + platOf(x.ch) + (x === p ? ' on' : ''), title: `${PLAT_NAME[platOf(x.ch)]}'s poll`, 'aria-pressed': String(x === p), dataset: { cmd: 'all.pollSite' },
             onclick: () => { view.pollAt = x.ch; renderPoll(view); fitRoom(view); } }, PLAT_NAME[platOf(x.ch)][0])))
         : element('i', { class: 'pi pi-' + platOf(p.ch) }, PLAT_NAME[platOf(p.ch)][0]),
-        element('i', { class: 'all-poll-i', html: POLL }), element('b', 'all-poll-q', p.question || 'Poll'),
-        element('button', { type: 'button', class: 'linkish all-poll-go', dataset: { cmd: 'all.pollVote' }, title: `Vote in ${PLAT_NAME[platOf(p.ch)]}\u2019s own chat`, onclick: () => seeIt(p.ch) }, `Vote on ${PLAT_NAME[platOf(p.ch)]}`)),
+        element('i', { class: 'all-poll-i', html: POLL }), element('b', { class: 'all-poll-q', title: p.question || '' }, p.question || 'Poll')),
       element('div', 'all-poll-cs', ...p.choices.map(c => element('div', { class: 'all-poll-c' + (voted && c.ratio === top ? ' top' : '') },
-        element('span', { class: 'all-poll-bar', style: { width: pct(c) + '%' } }), element('span', 'all-poll-t', c.text), voted && element('b', 'all-poll-p', pct(c) + '%')))),
-      (p.meta || p.ends) && element('small', 'all-poll-m', [p.meta, p.ends ? (now < p.ends ? `${pollLeft(p.ends - now)} left` : 'Final results') : ''].filter(Boolean).join(' · ')));
+        element('span', { class: 'all-poll-bar', style: { width: pct(c) + '%' } }), element('span', { class: 'all-poll-t', title: c.text }, c.text), voted && element('b', 'all-poll-p', pct(c) + '%')))),
+      // its footer: who and how many votes (and Kick's time left), and where to vote
+      element('div', 'all-poll-f', element('small', 'all-poll-m', [p.meta, p.ends ? (now < p.ends ? `${pollLeft(p.ends - now)} left` : 'Final results') : ''].filter(Boolean).join(' · ')),
+        element('button', { type: 'button', class: 'linkish all-poll-go', dataset: { cmd: 'all.pollVote' }, title: `Vote in ${PLAT_NAME[platOf(p.ch)]}\u2019s own chat`, onclick: () => seeIt(p.ch) }, `Vote on ${PLAT_NAME[platOf(p.ch)]}`)));
   }));
 }
 
