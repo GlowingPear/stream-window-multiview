@@ -197,7 +197,8 @@ test('Kick: the channel\'s profile, live stream, chat rules, socials and badges'
     livestream: { is_live: true, session_title: 'Live!', viewer_count: 50, start_time: '2026-10-11 19:02:11', categories: [{ name: 'Chess' }], thumbnail: { url: 'https://images.kick.com/t.jpg' } },
     chatroom: { followers_mode: true, following_min_duration: 10, slow_mode: true, message_interval: 5 },
     subscriber_badges: [{ months: 1, badge_image: { src: 'https://files.kick.com/1.png' } }, { months: 3, badge_image: { src: 'http://insecure/x.png' } }],
-    previous_livestreams: [{ id: 9, start_time: '2026-10-10 18:00:00', duration: 7200000, session_title: 'Old', categories: [{ name: 'Go' }], views: 77 }]
+    previous_livestreams: [{ id: 9, start_time: '2026-10-10 18:00:00', duration: 7200000, session_title: 'Old', categories: [{ name: 'Go' }], views: 77 }],
+    recent_categories: [{ name: 'Chess' }, { name: '' }, null, { name: 'Go' }]
   }, 'novakit');
   assert.equal(p.name, 'NovaKit');
   assert.equal(p.followers, 1234);
@@ -210,6 +211,8 @@ test('Kick: the channel\'s profile, live stream, chat rules, socials and badges'
   assert.deepEqual(p.socials.map(s => [s.site, s.url]), [['Instagram', 'https://instagram.com/nova'], ['X', 'https://x.com/nova']], 'a script link is never kept');
   assert.equal(p.badges.length, 1, 'only https pictures');
   assert.deepEqual(p.vods, [{ id: '9', start: Date.UTC(2026, 9, 10, 18), end: Date.UTC(2026, 9, 10, 20), title: 'Old', category: 'Go', views: 77 }]);
+  assert.deepEqual(p.recent, ['Chess', 'Go'], 'what it streamed lately (kept when its saved streams expire)');
+  assert.deepEqual(parseKickProfile({ slug: 'x', user: {} }).recent, []);
   assert.equal(parseKickProfile({ message: 'nope' }), null);
   assert.equal(parseKickProfile({ slug: 'x', user: {}, livestream: null }).live, null);
 });

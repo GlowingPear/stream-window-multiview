@@ -159,6 +159,7 @@ contextBridge.exposeInMainWorld('kmv', {
   onEditMenu: cb => ipcRenderer.on('page:edit-menu', (_e, d) => cb(d || {})),
   editDo: a => ipcRenderer.send('page:edit', a),
   onViewWhy: cb => ipcRenderer.on('view:why', (_e, id) => cb(id)),
+  onViewShoutout: cb => ipcRenderer.on('view:shoutout', (_e, id, who) => cb(id, who || {})),
 
   // Chrome extensions
   extList: () => ipcRenderer.invoke('ext:list'),
