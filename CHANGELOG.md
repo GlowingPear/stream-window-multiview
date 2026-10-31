@@ -2,7 +2,10 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.10 (current)
+## 0.4.11 (current)
+- ALL on a channel on its own: its site's tab can be clicked, and ⇧Tab goes to it
+
+## 0.4.10
 - Developer › Chat events: the sites' counts and its buttons fit one line
 - Twitch's Shield Mode no longer shows as an unknown chat event
 - Streamer profiles, chat events and follow lists are kept in a database
