@@ -272,6 +272,17 @@ function parseKick(frame){
     return { site: 'kick', kind: 'modes', t: Date.now(), modes: { slow: on(d.slow_mode) ? +d.slow_mode.message_interval || 0 : 0, followers: on(d.followers_mode) ? +d.followers_mode.min_duration || 0 : null,
       subs: on(d.subscribers_mode), emotes: on(d.emotes_mode), verified: false } };
   }
+  // a poll: its votes as they come (each as a share, and how many), the time left, then its results for as long as Kick
+  // shows them; deleted. (One at a time in a chat: its id is Kick's own.)
+  if (ev === 'PollUpdateEvent'){
+    const pl = d.poll || {}, opts = Array.isArray(pl.options) ? pl.options : [], total = opts.reduce((n, o) => n + (+(o && o.votes) || 0), 0);
+    const choices = opts.map(o => ({ text: String((o && o.label) || '').trim(), ratio: total ? (+o.votes || 0) / total : 0 })).filter(c => c.text);
+    if (!choices.length) return null;
+    const left = Math.max(0, +pl.remaining || 0), now = Date.now();
+    return { site: 'kick', kind: 'poll', state: 'update', id: 'kick', t: now, question: String(pl.title || '').trim(), meta: `${total.toLocaleString('en-US')} ${total === 1 ? 'vote' : 'votes'}`, choices,
+      ends: now + left * 1000, until: now + (left + Math.max(0, +pl.result_display_duration || 0)) * 1000 };
+  }
+  if (ev === 'PollDeleteEvent') return { site: 'kick', kind: 'poll', state: 'close', id: 'kick', t: Date.now() };
   if (ev === 'MessageDeletedEvent'){
     const target = d.message && d.message.id; if (!target) return null;
     const out = { site: 'kick', kind: 'delete', target, t: Date.now() };
@@ -431,7 +442,8 @@ const KNOWN = {
     UserUnbannedEvent: 'a ban lifted', ChatroomClearEvent: 'the chat cleared', RewardRedeemedEvent: 'a reward redeemed', KicksGifted: 'Kicks sent',
     GiftedSubscriptionsEvent: 'gifted subs', LuckyUsersWhoGotGiftSubscriptionsEvent: 'gifted subs', SubscriptionEvent: 'a sub', ChannelSubscriptionEvent: 'a sub',
     StreamHostedEvent: 'a raid coming in', StreamHostEvent: 'a raid coming in (on its other subscription)', ChatMoveToSupportedChannelEvent: 'a raid going out (its line: Open)', 'ChatMessageEvent:celebration': 'a resub shared with a message',
-    PinnedMessageCreatedEvent: 'a pin', PinnedMessageDeletedEvent: 'a pin taken down', ChatroomUpdatedEvent: 'the chat’s modes (above the box)' },
+    PinnedMessageCreatedEvent: 'a pin', PinnedMessageDeletedEvent: 'a pin taken down', ChatroomUpdatedEvent: 'the chat’s modes (above the box)',
+    PollUpdateEvent: 'a poll and its votes (its card over ALL)', PollDeleteEvent: 'a poll deleted (its card goes)' },
   twitch: { PRIVMSG: 'a message', 'PRIVMSG:reply': 'a reply', 'PRIVMSG:bits': 'a cheer', 'PRIVMSG:reward': 'a reward redeemed', 'PRIVMSG:highlighted-message': 'a highlighted message',
     'USERNOTICE:sub': 'a sub', 'USERNOTICE:resub': 'a resub', 'USERNOTICE:subgift': 'a gifted sub', 'USERNOTICE:submysterygift': 'gifted subs', 'USERNOTICE:raid': 'a raid',
     'USERNOTICE:announcement': 'an announcement', 'USERNOTICE:viewermilestone': 'a watch streak', 'USERNOTICE:giftpaidupgrade': 'a gifted sub kept going',
@@ -457,7 +469,7 @@ const IGNORED = {
   kick: { PointsUpdated: 'your channel points', GoalProgressUpdateEvent: 'the channel’s goal bar', GiftsLeaderboardUpdated: 'the gift leaderboard',
     KicksLeaderboardUpdated: 'the Kicks leaderboard', NewSubscriberUpdatedEvent: 'the sub count (ChannelSubscriptionEvent is the sub)',
     NewActivityFeedEvent: 'the activity feed (the same subs and follows)', StopStreamBroadcast: 'the stream ending', StreamerIsLive: 'the stream starting',
-    GamificationWatchTimeGoalReached: 'your watch-time goal', PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)', PollUpdateEvent: 'a poll (Kick’s own panel)',
+    GamificationWatchTimeGoalReached: 'your watch-time goal', PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)',
     KicksBalanceUpdated: 'your own Kicks balance (on your private channel)' },
   twitch: { CAP: 'the connection’s own', JOIN: 'the connection’s own', PART: 'the connection’s own', GLOBALUSERSTATE: 'the connection’s own (you)', USERSTATE: 'the connection’s own (you)',
     RECONNECT: 'the connection’s own', 'hermes:welcome': 'the connection’s own', 'hermes:authenticateResponse': 'the connection’s own',

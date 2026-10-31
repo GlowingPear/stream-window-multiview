@@ -431,3 +431,18 @@ test('YouTube: a poll opened, its votes, closed; all of someone\'s messages take
   for (const k of ['hermes:extension_message', 'hermes:chat_rich_embed']) assert.ok(ignoredWhy('twitch', k), k);
   assert.match(KNOWN.twitch['USERNOTICE:sharedchatnotice'], /shared chat/, 'shown, as Twitch words it');
 });
+
+test('Kick: a poll\'s votes (each a share, and how many), its time left and how long its results show; deleted', async () => {
+  const { parseKick, KNOWN, ignoredWhy } = await load();
+  const KF = (event, data) => JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: 'App\\Events\\' + event, data: JSON.stringify(data) } } } });
+  const before = Date.now();
+  const m = parseKick(KF('PollUpdateEvent', { poll: { title: ' Best set? ', options: [{ id: 0, label: 'Beyond the Brave', votes: 14 }, { id: 1, label: 'Battle Styles', votes: 6 }, { id: 2, label: '', votes: 0 }], duration: 300, remaining: 88, result_display_duration: 300 } }));
+  assert.deepEqual([m.kind, m.state, m.id, m.question, m.meta], ['poll', 'update', 'kick', 'Best set?', '20 votes']);
+  assert.deepEqual(m.choices, [{ text: 'Beyond the Brave', ratio: 0.7 }, { text: 'Battle Styles', ratio: 0.3 }], 'an empty one left out');
+  assert.ok(m.ends >= before + 88000 && m.ends <= Date.now() + 88000);
+  assert.equal(m.until - m.ends, 300000, 'its results for 5 minutes after');
+  assert.equal(parseKick(KF('PollUpdateEvent', { poll: { title: 'x', options: [{ label: 'a', votes: 0 }], remaining: 0 } })).choices[0].ratio, 0, 'no votes yet');
+  assert.equal(parseKick(KF('PollUpdateEvent', { poll: { title: 'x', options: [] } })), null);
+  assert.deepEqual({ ...parseKick(KF('PollDeleteEvent', [])), t: 0 }, { site: 'kick', kind: 'poll', state: 'close', id: 'kick', t: 0 });
+  assert.ok(KNOWN.kick.PollUpdateEvent && KNOWN.kick.PollDeleteEvent && !ignoredWhy('kick', 'PollUpdateEvent'));
+});
