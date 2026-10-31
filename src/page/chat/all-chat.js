@@ -15,8 +15,8 @@ import { autoTrFor, translateChat } from './translate.js';
 import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
 import { wins } from '../core.js';
-import { badgesAgent, feedAgent, hypeAgent, kickIconsAgent, messageHtml, modesAgent, pinAgent, profileAgent,
-  replyAgent, shownAgent, twCommandsAgent, twReplyAt, twReplyPress, ytLookAgent } from '../in-site/feed.js';
+import { badgesAgent, channelsAgent, feedAgent, hypeAgent, kickIconsAgent, messageHtml, modesAgent, pinAgent,
+  profileAgent, replyAgent, shownAgent, twCommandsAgent, twReplyAt, twReplyPress, ytLookAgent } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { modAgent } from '../in-site/mod.js';
 import { sendAgent, sentAgent } from '../in-site/send.js';
@@ -125,7 +125,9 @@ function ingest(w, json, quiet = false, shown = false){
     if (m.kind === 'automod') return heldMine(f, m);
     if (m.kind === 'marks') return markLine(f, m);
     if (m.id && f.byId.has(m.site + ':' + m.id)) return;   // (one it has: YouTube sends its recent ones again when its chat is rebuilt or switches view)
+    if (m.sourceId && f.msgs.some(x => x.site === 'twitch' && x.sourceId === m.sourceId)) return;   // (a shared chat's message, read from two of its chats)
     m.ch = w.channel;
+    if (m.from) sharedAsk(w, m.from);
     const mk = m.id && f.marks && f.marks.get(m.site + ':' + m.id); if (mk){ m.marks = mk; f.marks.delete(m.site + ':' + m.id); }   // (its marks came first)
     if (m.giftTo && giftTo(f, m)) return;   // (one of the gifted subs announced just before: its name goes on that line)
     if (m.gift) m.gift.me = m.gift.to.some(r => r.login && r.login === meOn(m.site));
@@ -186,6 +188,7 @@ function giftTo(f, m){
 }
 /* ---- the chats' modes: slow mode, followers only, subscribers only, … above the box, for the site it sends on ---- */
 const badgePics = new Map();   // channel -> its badges' pictures, as badgesAgent read them (in-site/feed.js), or null (none); while it has a chat open
+const sharedFrom = new Map();   // a shared chat's other channel (Twitch's room id) -> { login, name, pic } as channelsAgent read it (in-site/feed.js), or null (being asked)
 let twBadges = null;           // Twitch's own badges' pictures (the same in every chat: kept once)
 const kickIcons = new Map();   // Kick's own badge icons as its chat draws them (kickIconsAgent), cleaned: '<type>' | 'Gift25' | 'Level24' -> <svg>
 let ytLook = null;             // how a YouTube chat draws names and badges (ytLookAgent): { dark, names, icons: { moderator: { svg, color } } }, cleaned
@@ -263,6 +266,24 @@ function slowStart(ch){
 function redrawLine(m){
   const view = viewFor(ownerOf(m.ch)), el = view && view.list.querySelector(`[data-key="${CSS.escape(m.site + ':' + m.id)}"]`);
   if (el){ const n = lineEl(m); if (n) el.replaceWith(n); else el.remove(); return n; }
+}
+// A shared chat's message from another channel (Twitch's Stream Together): that channel's name and picture, asked of the
+// chat it came through once, and its lines drawn again when they come (no answer: asked again a minute later)
+function sharedAsk(w, id){
+  if (sharedFrom.has(id) || !w.view) return;
+  sharedFrom.set(id, null);
+  askIn(w.view, `(${channelsAgent})(${JSON.stringify([id])})`).catch(() => null).then(r => {
+    const u = r && r.find(x => x.id === id);
+    if (!u){ setTimeout(() => { if (sharedFrom.get(id) === null) sharedFrom.delete(id); }, 60000); return; }
+    sharedFrom.set(id, u);
+    feeds.forEach(f => f.msgs.filter(x => x.from === id).forEach(redrawLine));
+  });
+}
+// Its badge on the line, before the others, as Twitch's chat has it: the channel's picture, its name on hover (a dot
+// until it's known)
+function sharedEl(m){
+  const c = sharedFrom.get(m.from), title = c ? `Sent from ${c.name}` : 'Sent from another channel in this shared chat';
+  return c && c.pic ? element('img', { class: 'al-from', src: c.pic, alt: '', title, referrerPolicy: 'no-referrer', loading: 'lazy' }) : element('span', { class: 'al-from', title });
 }
 // Spam alerts › Tag the message in chat (where you moderate: alerts/spam-alerts.js): the same message here gets it too
 function spamTag(ch, sender, body, why, abuse){
@@ -618,7 +639,7 @@ const OWN_ICON = { founder: 'founder' };   // (a badge with an icon of its own, 
 const badgeIcon = b => element('i', { class: 'al-b al-b-' + b, title: BADGE_TIP[b] || b, html: BADGE_SVG[b] || '' });
 function badgeEls(m){
   if (!m.pics) return m.badges.map(badgeIcon);
-  const got = badgePics.get(m.ch) || {}, kick = got.kick, own = got.twitch || {}, out = [], icons = new Set();
+  const got = badgePics.get(m.ch) || {}, kick = got.kick, own = (!m.from && got.twitch) || {}, out = [], icons = new Set();   // (another channel's in a shared chat: its sub badges aren't this channel's)
   m.pics.forEach(p => {
     let pic = p.url ? p : null;
     if (!pic && m.site === 'twitch'){ const b = own[p.set + '/' + p.v] || (twBadges && twBadges[p.set + '/' + p.v]); if (b) pic = { url: b.url, title: twitchTip(p, b.title) }; }   // (the channel's sub and bits badges first)
@@ -668,7 +689,7 @@ function lineEl(m){
   if (m.kind === 'modlog') return element('div', { class: `al-ev al-log al-${SITE_CLASS[m.site]}`, dataset: { key: m.site + ':' + m.id } },
     element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0]), element('span', { class: 'al-evt', html: SHIELD }), element('span', 'al-evw', ...m.words.map(x => x instanceof Node ? x.cloneNode(true) : x)));
   const site = PLAT_NAME[m.site] || m.site;
-  const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]), ...badgeEls(m));
+  const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]), m.from && sharedEl(m), ...badgeEls(m));
   const can = m.kind === 'message' && !whyNot(m, 'delete'), canAll = can && !whyNot(m);
   const st = nameStyle(m);
   const name = element('b', { class: 'al-n' + (can ? ' can' : '') + pillCls(st), style: st, role: 'button', tabindex: '-1', dataset: { cmd: 'all.profile' },
@@ -696,7 +717,9 @@ function lineEl(m){
     m.announce ? 'al-ann al-ann-' + m.announce : '', m.redeem ? 'al-rw' : '', m.streak ? 'al-streak' : ''].filter(Boolean).join(' ');
   const hideBot = m.bot && !botsShown && !m.open;
   const body = hideBot ? element('span', 'al-hid', 'hidden') : m.tr && !m.trOrig ? element('span', 'al-txt', m.tr.text)
-    : m.streak && !m.parts.length ? element('span', 'al-txt al-quiet', `watched ${m.streak} streams in a row`) : element('span', 'al-txt', ...partsEl(m.parts, m.ch));
+    : m.streak && !m.parts.length ? element('span', 'al-txt al-quiet', `watched ${m.streak} streams in a row`)
+    : m.giant ? element('span', 'al-txt al-giant', ...partsEl(m.parts.map(p => (p.emote ? { ...p, emote: bigEmote(p.emote) } : p)), m.ch))   // (a giant emote: under the name, big)
+    : element('span', 'al-txt', ...partsEl(m.parts, m.ch));
   const tags = [
     m.toMe === 'at' && element('span', 'al-tag al-tag-at', '@YOU'),
     m.toMe === 'word' && element('span', { class: 'al-tag al-tag-at', title: 'A word you watch for (Settings › Mentions)' }, m.word),
