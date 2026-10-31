@@ -206,6 +206,19 @@ function scopeCookies(router) {
   return true;
 }
 
+// A session's extensions watch each window their pages are in, with listeners of their own on it ('closed', 'focus',
+// 'resized'), and every stream channel has a session of its own: the window's limit of 10 grows with them, as the
+// app's does (shellFor). True the first time this session's extensions watch that window.
+const watching = new WeakMap();   // window -> the sessions' extensions watching it
+function watchedBy(win, shell) {
+  let set = watching.get(win);
+  if (!set) watching.set(win, set = new Set());
+  if (set.has(shell)) return false;
+  set.add(shell);
+  win.setMaxListeners(Math.max(win.getMaxListeners(), 10 + set.size));
+  return true;
+}
+
 function createHost(deps) {
   const { electron, userData } = deps;
   const { app, session, BrowserWindow, webContents, ipcMain, dialog } = electron;
@@ -293,7 +306,7 @@ function createHost(deps) {
       if (wc.getType() !== 'webview' || !wc.hostWebContents) return;
       const s = shells.get(wc.session);
       const win = BrowserWindow.fromWebContents(wc.hostWebContents);
-      if (s && win) s.addTab(wc, win);
+      if (s && win) { watchedBy(win, s); s.addTab(wc, win); }
     } catch {}
   }
   app.on('web-contents-created', (_e, wc) => { if (wc.getType() === 'webview') wc.once('did-attach', () => addTab(wc)); });
@@ -559,4 +572,4 @@ function createHost(deps) {
   return { ready: () => ready, list: () => list, sync, syncAll, update };
 }
 
-module.exports = { mayTouchCookie, scopeCookies, extOpenable, storeNavOk, PLATS, KINDS, STREAM_PREFIX, STORE_PART, defaultGrid, targetOf, normalizeList, normalizeEntry, isOn, wantedIds, idFromInput, compat, blocksNothing, sitesOf, permissionLines, addedAccess, iconDataUrl, readManifest, checkFolder, createHost };
+module.exports = { watchedBy, mayTouchCookie, scopeCookies, extOpenable, storeNavOk, PLATS, KINDS, STREAM_PREFIX, STORE_PART, defaultGrid, targetOf, normalizeList, normalizeEntry, isOn, wantedIds, idFromInput, compat, blocksNothing, sitesOf, permissionLines, addedAccess, iconDataUrl, readManifest, checkFolder, createHost };
