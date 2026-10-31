@@ -54,4 +54,23 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 .btns button.like.on svg path{fill:currentColor}
 .btns button.like.dim{opacity:.4}
 #barMenu .bm-head{margin:4px 6px 0;padding:8px 4px 3px;border-top:1px solid var(--line);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+/* ALL's ⋯: a line for each site, its buttons as icons */
+#barMenu.bm-all{width:auto;min-width:210px}
+#barMenu .bm-hr{border:0;border-top:1px solid var(--line);margin:4px 4px}
+#barMenu .bm-site{display:flex;align-items:center;gap:2px;padding:3px 4px 3px 8px;border-radius:7px}
+#barMenu .bm-site:hover{background:color-mix(in srgb,var(--line) 45%,transparent)}
+#barMenu .bm-sn{display:flex;align-items:center;gap:7px;flex:1;min-width:0;margin-right:8px;font-size:12px;font-weight:600;color:var(--text);white-space:nowrap}
+#barMenu .bm-sn span{overflow:hidden;text-overflow:ellipsis}
+#barMenu .bm-sn .pi{position:relative;width:16px;height:16px;font-size:9.5px;border-radius:4px}
+#barMenu .bm-sn .bm-live::after{content:"";position:absolute;right:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:#ff4b4b;box-shadow:0 0 0 2px var(--panel)}
+#barMenu button.bm-act{flex:none;justify-content:center;width:28px;height:28px;padding:0;border-radius:6px;color:var(--text)}
+#barMenu button.bm-act svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#barMenu button.bm-act:hover:not(:disabled){background:var(--line2)}
+#barMenu .bm-gap{flex:none;width:28px;height:28px}
+#barMenu button.bm-act:disabled{opacity:.3;cursor:default}
+#barMenu button.bm-act.on{color:var(--accent)}
+#barMenu button.bm-act.on svg{fill:currentColor}
+#barMenu button.bm-act.bm-dev{color:var(--muted)}
+#barMenu button.bm-act:not(.bm-dev) + .bm-dev{margin-left:7px;position:relative}
+#barMenu button.bm-act:not(.bm-dev) + .bm-dev::before{content:"";position:absolute;left:-5px;top:7px;bottom:7px;border-left:1px solid var(--line2)}
 #barMenu .bm-head:first-child{margin-top:0;padding-top:4px;border-top:0}

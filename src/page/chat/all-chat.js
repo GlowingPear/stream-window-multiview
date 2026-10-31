@@ -23,9 +23,11 @@ import { sendAgent, sentAgent } from '../in-site/send.js';
 import { addParsed } from '../layout/placement.js';
 import { bellVars, mentMuted, mentOn, mentWords, myName, readChat, syncAtBtn } from '../panels/bell/bell.js';
 import { infoFor, isSaved, toggleSaved } from '../panels/channels/channels.js';
-import { devOn, inspectWin } from '../panels/developer/developer.js';
+import { copyWinState, devOn, inspectWin } from '../panels/developer/developer.js';
+import { openExtMenu } from '../panels/extensions/extensions.js';
 import { chanOpt, nameOf, optFor, setChanOpt, streamerBots, streamerOf } from '../platforms/linked.js';
 import { PLAT_NAME, chLabel, modIs, modUrl, openModView, platOf, platform, popUp } from '../platforms/platforms.js';
+import { likeHelp, toggleLike } from '../platforms/youtube-options.js';
 import { ask } from '../shared/ask.js';
 import { element } from '../shared/element.js';
 import { DESKTOP, keyName } from '../shared/env.js';
@@ -1278,6 +1280,29 @@ function openSaves(w, at, btn = at){
   off.length && chs.length > 1 && element('button', { type: 'button', role: 'menuitem', class: 'all-li', dataset: { cmd: 'all.saveAll' }, onclick: () => { off.forEach(toggleSaved); w.allView.mv.hidden = true; } },
     element('i', { html: icon.star }), element('span', null, 'Save all'), element('small', null, `${chs.length} sites`))]);
 }
+// The ⋯ menu in ALL, grouped by site (windows/window-bar.js): what a title bar button does to one site
+const SITE_BUTTONS = ['pop', 'popchat', 'mod', 'star', 'ext', 'state', 'inspect'];
+function siteAction(a, ch){
+  const cw = chatOf(ch), chat = cw || { channel: ch, kind: 'chat' }, site = PLAT_NAME[platOf(ch)], saved = isSaved(ch);
+  const modOff = !modUrl(ch) ? `${site} has no mod view for each channel` : !youMod(ch) ? `You don't moderate their ${site} channel` : '';
+  return {
+    pop: { label: 'Page', icon: icon.pop, title: `Their ${site} channel page, in a pop-up`, run: () => popUp(chat, 'page') },
+    popchat: { label: 'Chat', icon: icon.chatpop, title: `Just their ${site} chat, in a pop-up`, run: () => popUp(chat, 'chat') },
+    mod: !modUrl(ch) && platform(ch).likes ? likeAction(ch)   // (a site with no mod view, YouTube: its like in that place)
+      : modOff ? { blank: true }   // (not a mod there: nothing, rather than a button that can't)
+      : { label: 'Mod', icon: icon.mod, title: `${site} mod view, in a window of its own`, run: () => openModView(ch) },
+    star: { label: saved ? 'Saved' : 'Save', icon: icon.star, on: saved, keep: true, title: saved ? `Saved: remove their ${site} channel` : `Save their ${site} channel`, run: () => toggleSaved(ch) },
+    ext: { label: 'Ext', icon: icon.ext, off: !cw, title: cw ? `Extensions in their ${site} chat` : `Their ${site} chat isn't open`, run: at => openExtMenu(cw, at) },
+    state: { label: 'State', icon: icon.copy, off: !cw, dev: true, title: `Copy what the app knows about their ${site} chat, for a report`, run: () => copyWinState(cw) },
+    inspect: { label: 'Inspect', icon: icon.code, off: !(cw && cw.view), dev: true, title: `Chrome's developer tools for their ${site} chat's page`, run: () => inspectWin(cw) }
+  }[a] || null;
+}
+// Liking their stream on a site that has likes (YouTube): its stream window's like button does it
+function likeAction(ch){
+  const sw = wins.find(o => o.kind === 'stream' && o.channel === ch), site = PLAT_NAME[platOf(ch)], on = !!(sw && sw.like && sw.like.signedIn && sw.like.liked);
+  return { key: 'like', label: 'Like', icon: icon.like, on, off: !sw,
+    title: !sw ? `Their ${site} stream isn't open: like it from there` : likeHelp(sw) || (on ? `You like their ${site} stream: click to remove your like` : `Like their ${site} stream`), run: () => toggleLike(sw) };
+}
 // Developer tools' Inspect: which site's chat page
 function openInspects(w, at, btn = at){
   siteMenu(w, at, btn, 'Inspect', tabChannels(w).map(ch => {
@@ -1639,5 +1664,5 @@ function init(){
 }
 
 export { allLooking, allOn, allRaid, allTabFor, copyChatHtml, feedReady, feedSpam, init, modViewChs, openInspects,
-  openModViews, openPopUps, openSaves, reloadAll, sendEmote, sendSite, setAll, setLock, setSoloAll, spamTag,
-  translateSite };
+  openModViews, openPopUps, openSaves, reloadAll, sendEmote, sendSite, setAll, setLock, setSoloAll, SITE_BUTTONS,
+  siteAction, spamTag, translateSite };

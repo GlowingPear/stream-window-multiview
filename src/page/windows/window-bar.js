@@ -1,11 +1,14 @@
+import { SITE_BUTTONS, allOn, siteAction } from '../chat/all-chat.js';
 import { newFor } from '../chat/new-messages.js';
 import { $, wins } from '../core.js';
+import { infoFor } from '../panels/channels/channels.js';
 import { barButtons } from '../panels/settings/windows-pane.js';
-import { chLabel } from '../platforms/platforms.js';
+import { PLAT_NAME, chLabel, platOf } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { store } from '../shared/store.js';
 import { tipName } from '../shared/tooltips.js';
+import { tabChannels } from './frames.js';
 
 /* ---------- title bars fit any window size ----------
    When a window's title bar is too narrow for everything, it first drops the volume %, then narrows the volume
@@ -56,6 +59,9 @@ function openBarMenu(more){
   if (!barMenu.hidden && barMenuFor === more){ barMenu.hidden = true; return; }
   barMenuFor = more;
   barMenu.innerHTML = '';
+  barMenu.classList.remove('bm-all');
+  const w = wins.find(o => o.el && o.el.contains(more));
+  if (w && allOn(w)) return allBarMenu(w, more);
   let devHead = false;
   for (const b of more.closest('.btns').querySelectorAll('.ovf:not([hidden])')){
     // Developer tools' items (Settings › Developer) go last, under a heading of their own
@@ -65,6 +71,31 @@ function openBarMenu(more){
   if (devHead){
     barMenu.appendChild(element('div', { class: 'bm-head', role: 'presentation' }, 'Developer'));
     for (const b of more.closest('.btns').querySelectorAll('.ovf.dev-b:not([hidden])')) barMenu.appendChild(barItem(b));
+  }
+  barMenu.hidden = false;
+  const r = more.getBoundingClientRect(), mw = barMenu.offsetWidth;
+  barMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
+  barMenu.style.top = Math.min(innerHeight - barMenu.offsetHeight - 8, r.bottom + 4) + 'px';
+}
+// ALL's ⋯ menu: what's for the whole streamer, then a line for each site with its buttons (icons, each with its tooltip)
+function allBarMenu(w, more){
+  const ovf = [...more.closest('.btns').querySelectorAll('.ovf:not([hidden])')], keys = new Set(ovf.map(b => b.dataset.a));
+  ovf.filter(b => !SITE_BUTTONS.includes(b.dataset.a)).forEach(b => barMenu.appendChild(barItem(b)));
+  const acts = SITE_BUTTONS.filter(a => keys.has(a));
+  if (acts.length){
+    barMenu.classList.add('bm-all');
+    if (barMenu.children.length) barMenu.appendChild(element('hr', 'bm-hr'));
+    for (const ch of tabChannels(w)){
+      const p = platOf(ch), live = infoFor(ch)?.live;
+      barMenu.appendChild(element('div', { class: 'bm-site', role: 'group', 'aria-label': PLAT_NAME[p] },
+        element('span', { class: 'bm-sn', title: `${PLAT_NAME[p]}${live ? ' · live' : ''}` }, element('i', { class: 'pi pi-' + p + (live ? ' bm-live' : '') }, PLAT_NAME[p][0]), element('span', null, PLAT_NAME[p])),
+        ...acts.map(a => {
+          const x = siteAction(a, ch);
+          if (x.blank) return element('span', { class: 'bm-gap', 'aria-hidden': 'true' });   // (keeps the columns in line)
+          return element('button', { type: 'button', role: 'menuitem', class: 'bm-act' + (x.on ? ' on' : '') + (x.dev ? ' bm-dev' : ''), disabled: x.off, title: x.title, 'aria-label': x.title, dataset: { cmd: 'win.site.' + (x.key || a) }, html: x.icon,
+            onclick: () => { barMenu.hidden = true; x.run(more); if (x.keep) openBarMenu(more); } });
+        })));
+    }
   }
   barMenu.hidden = false;
   const r = more.getBoundingClientRect(), mw = barMenu.offsetWidth;
