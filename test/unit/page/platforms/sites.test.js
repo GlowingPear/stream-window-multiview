@@ -236,7 +236,7 @@ test('a name in ALL as each site\'s own chat shows it (nameStyle), on a dark the
 });
 
 test('each site\'s chat commands for ALL\'s / list: a name, what goes after it, what it does, who can use it; none that only open a panel out of sight', () => {
-  const ok = c => /^[a-z]+$/.test(c.name) && typeof c.args === 'string' && typeof c.does === 'string' && c.does.length > 5 && ['all', 'mod', 'host'].includes(c.who);
+  const ok = c => /^[a-z]+$/.test(c.name) && typeof c.args === 'string' && typeof c.does === 'string' && c.does.length > 5 && ['all', 'mod', 'lead', 'host'].includes(c.who);
   for (const p of [kick, twitch]) {
     assert.ok(p.chatCommands.length > 10, p.id);
     assert.deepEqual(p.chatCommands.filter(c => !ok(c)), [], p.id);
@@ -255,5 +255,7 @@ test('each site\'s chat commands for ALL\'s / list: a name, what goes after it, 
   for (const panel of ['user', 'category']) assert.ok(!names(kick).includes(panel), 'Kick: ' + panel);
   assert.ok(['clip', 'poll', 'prediction'].every(n => names(kick).includes(n)), 'Kick\'s own panels open from ALL too');
   assert.deepEqual(['timeout', 'ban', 'slow'].map(n => twitch.chatCommands.find(c => c.name === n).who), ['mod', 'mod', 'mod']);
-  assert.equal(twitch.chatCommands.find(c => c.name === 'vip').who, 'host');
+  assert.deepEqual(['mod', 'unmod', 'vip', 'unvip'].map(n => twitch.chatCommands.find(c => c.name === n).who), ['lead', 'lead', 'lead', 'lead'], 'a lead moderator\'s too, as Twitch offers them');
+  assert.equal(twitch.chatCommands.find(c => c.name === 'raid').who, 'host');
+  assert.ok(!kick.chatCommands.some(c => c.who === 'lead'), 'Kick has no lead moderators');
 });

@@ -8,7 +8,7 @@ const NOT_CHANNELS = new Set(['login', 'signup', 'register', 'categories', 'cate
   'subscriptions', 'messages', 'notifications', 'wallet', 'video', 'videos', 'clips', 'clip', 'terms-of-service', 'privacy-policy',
   'community-guidelines', 'dmca-policy', 'popout', 'api', 'auth', 'oauth', 'verify', 'stream', 'chatroom', 'help', 'about', 'careers', 'kick-creators', 'emotes']);
 
-// Its chat's commands, for ALL's box (/ at the start: chat/all-chat.js), as twitch.js says them. As its chat's own list
+// Its chat's commands, for ALL's box (/ at the start: chat/all-chat.js), as twitch.js says them (Kick has no 'lead'). As its chat's own list
 // shows them (read in live chats 2026-10-31): its words, its order (by name), and who can use each (its commands' own
 // minimumRole: viewer, moderator or broadcaster). Its timeout is in minutes. /poll, /prediction and /clip open Kick's own panel from ALL too
 // (in-site/kick-commands.js); /user and /category, which open something in its own chat, are left out.

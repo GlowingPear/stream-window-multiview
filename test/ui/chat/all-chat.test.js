@@ -2195,11 +2195,15 @@ test('/ at the start of ALL\'s box: the site\'s commands you can use there (mods
   await page.evaluate(() => window.allChat.modKnown.set('tw:quietkoala', true));
   l = await list('/ti');
   assert.deepEqual([l.groups, l.cmds], [['Channel management'], ['/timeout']]);
-  assert.equal(await list('/vip'), null, 'the streamer\'s: only in your own channel');
+  assert.equal(await list('/vip'), null, 'the streamer\'s and a lead moderator\'s: not a moderator\'s');
+  // a lead moderator there (as their last message's badge says): /mod and /vip too, still not the streamer's /raid
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ badges: 'lead_moderator/1', 'display-name': 'metwitch', id: 'me1', 'user-id': '7' }, ':metwitch!m@m PRIVMSG #quietkoala :hello')] });
+  assert.deepEqual((await list('/vi')).cmds, ['/vip']);
+  assert.equal(await list('/raid'), null);
   // ↓ and Tab fill one in; the rest of what you typed stays
   l = await list('/un');
-  assert.deepEqual(l.cmds, ['/unban', '/unmonitor', '/unrestrict', '/untimeout']);
-  await page.keyboard.press('ArrowDown'); await page.keyboard.press('Tab');
+  assert.deepEqual(l.cmds, ['/unban', '/unmod', '/unmonitor', '/unrestrict'], 'a lead moderator\'s /unmod in its place');
+  await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('Tab');
   assert.equal(await page.$eval('.all-in', b => b.value), '/unmonitor ');
   assert.equal(await page.isVisible('.all-at'), false);
   // sent: no line of yours waiting to be seen, a word that it went

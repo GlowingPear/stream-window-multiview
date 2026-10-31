@@ -988,14 +988,16 @@ function renderLock(view, w){
     element('button', { type: 'button', class: 'all-rb-x', title: 'Cancel (Esc)', 'aria-label': 'Cancel', html: icon.close, dataset: { cmd: 'all.unlock' }, onclick: () => { setLock(view, w, null); view.input.focus(); } }));
 }
 // / at the start of the box: the commands of the site it sends on (or is locked to) that you can use there (the site
-// module's chatCommands: mods' where you moderate, the streamer's in your own channel), the ones starting with what's typed
+// module's chatCommands: mods' where you moderate, a lead moderator's where your last message there had that badge, the
+// streamer's in your own channel), the ones starting with what's typed
 const CMD_SHOWN = 4;
 function suggestCmd(view, w){
   const v = view.input, upto = v.value.slice(0, v.selectionStart ?? v.value.length), mm = /^\/([a-z]*)$/i.exec(upto);
   const ch = mm && ((view.lock && view.lock.ch) || sendSite(w)), cmds = ch ? platform(ch).chatCommands || [] : [];
   if (!mm || !cmds.length){ if (view.atMode === 'cmd'){ view.at.hidden = true; view.atMode = ''; } return false; }
   const me = meOn(platOf(ch)), host = !!me && platform(ch).handle(ch).toLowerCase() === me, mod = host || youMod(ch), q = mm[1].toLowerCase();
-  const list = cmds.filter(c => (c.who === 'all' || (c.who === 'mod' && mod) || (c.who === 'host' && host)) && c.name.startsWith(q));
+  const lead = host || (mod && (youOn(feedOf(view.s), platOf(ch), ch).myPics || []).some(p => p && p.set === 'lead_moderator'));
+  const list = cmds.filter(c => (c.who === 'all' || (c.who === 'mod' && mod) || (c.who === 'lead' && lead) || (c.who === 'host' && host)) && c.name.startsWith(q));
   view.atList = list; view.atSel = 0; view.atQ = q; view.atMode = 'cmd'; view.cmdCh = ch;
   if (!list.length){ view.at.hidden = true; return true; }
   renderCmds(view);

@@ -40,7 +40,9 @@ function readable(color, light){
 }
 
 // Its chat's commands, for ALL's box (/ at the start: chat/all-chat.js): { name, args (what goes after it: [optional]),
-// does, who: 'all', 'mod' (moderators and the streamer) or 'host' (the streamer; editors too for some) }. As Twitch's own
+// does, who: 'all', 'mod' (moderators and the streamer), 'lead' (lead moderators and the streamer: /mod, /vip and their
+// un…, as Twitch offers a lead moderator) or 'host' (the streamer; Twitch offers editors /raid, /marker, /costream too,
+// but ALL doesn't know who's an editor) }. As Twitch's own
 // chat offers them (its autocomplete's getCommands, read in a live chat 2026-10-31): its words, its order (channel
 // management first, then everyone's, each by name with an un… next to its other half). Left out: the ones that open
 // something in its own chat (/goal, /poll, /raidbrowser, /user, /sharedchat, /gift) or answer only there (/help, /mods,
@@ -65,8 +67,8 @@ const TW_COMMANDS = [
   { name: "leadmod", args: "username", does: "Grant lead moderator status to a user", who: 'host' },
   { name: "unleadmod", args: "username", does: "Revoke lead moderator status from a user", who: 'host' },
   { name: "marker", args: "[description]", does: "Add a stream marker at the current timestamp", who: 'host' },
-  { name: "mod", args: "username", does: "Grant moderator status to a user", who: 'host' },
-  { name: "unmod", args: "username", does: "Revoke moderator status from a user", who: 'host' },
+  { name: "mod", args: "username", does: "Grant moderator status to a user", who: 'lead' },
+  { name: "unmod", args: "username", does: "Revoke moderator status from a user", who: 'lead' },
   { name: "unmonitor", args: "username", does: "Stop monitoring a user\u2019s messages", who: 'mod' },
   { name: "monitor", args: "username", does: "Start monitoring a user\u2019s messages", who: 'mod' },
   { name: "pin", args: "message", does: "Pin a message you send into chat for the channel", who: 'mod' },
@@ -85,8 +87,8 @@ const TW_COMMANDS = [
   { name: "untimeout", args: "username", does: "Remove a timeout on a user", who: 'mod' },
   { name: "uniquechat", args: "", does: "Prevent users from sending duplicate messages in Chat", who: 'mod' },
   { name: "uniquechatoff", args: "", does: "Turn off unique-chat mode", who: 'mod' },
-  { name: "vip", args: "username", does: "Grant VIP status to a user", who: 'host' },
-  { name: "unvip", args: "username", does: "Revoke VIP status from a user", who: 'host' },
+  { name: "vip", args: "username", does: "Grant VIP status to a user", who: 'lead' },
+  { name: "unvip", args: "username", does: "Revoke VIP status from a user", who: 'lead' },
   { name: "warn", args: "username reason", does: "Issue a warning to a user that they must acknowledge before chatting again in this channel", who: 'mod' },
   { name: "block", args: "username", does: "Block a user from interacting with you on Twitch", who: 'all' },
   { name: "unblock", args: "username", does: "Remove user from your block list", who: 'all' },
