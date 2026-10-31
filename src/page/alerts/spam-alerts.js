@@ -1,7 +1,7 @@
 import { alerts, clearAlert, raiseAlert, wantNotify } from './alerts.js';
 import { SmvSpam } from './spam.js';
 import { supportBanner } from './support-banner.js';
-import { spamTag } from '../chat/all-chat.js';
+import { feedSpam, spamTag } from '../chat/all-chat.js';
 import { chatOverlay, overlayIsOn } from '../chat/chat-overlay.js';
 import { GAP, colWidth, colsMode, msg, wins } from '../core.js';
 import { buildCols } from '../layout/columns.js';
@@ -49,7 +49,23 @@ function botsFor(kind, ch){
 const spamOpts = ch => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS, ignore: botsFor('spam', ch),
   abuse: alerts.spam.abuse !== false, abuseWords: alerts.spam.abuseWords || SmvSpam.ABUSE, slurs: alerts.spam.slurs || SmvSpam.SLURS, swears: alerts.spam.swears || SmvSpam.SWEARS,
   points: alerts.spam.points });
+// Messages already checked, from either side (the chat's page, or ALL hearing them from the site while the page is out
+// of sight and doesn't draw them): channel + sender -> [{ b: its words, t, flag: what was found, if it was flagged }].
+// The same message coming from the other side isn't checked or counted again; flagged, it only gets its tag there too.
+const checked = new Map();
+const flatBody = t => String(t || '').replace(/\s+/g, ' ').trim().toLowerCase();
+function checkedBefore(ch, sender, body, now){
+  const k = ch + '\n' + String(sender).toLowerCase(), b = flatBody(body), list = (checked.get(k) || []).filter(x => now - x.t < 5 * 60000);
+  if (list.length) checked.set(k, list); else checked.delete(k);
+  return b ? list.find(x => x.b === b || x.b.includes(b) || b.includes(x.b)) : null;   // (an emote-only message: words to tell it by)
+}
+function noteChecked(ch, sender, body, now, flag){
+  const k = ch + '\n' + String(sender).toLowerCase(), b = flatBody(body); if (!b) return;
+  checked.set(k, [...(checked.get(k) || []), { b, t: now, flag }].slice(-20));
+  if (checked.size > FIRST_MAX) checked.delete(checked.keys().next().value);
+}
 // seenAt: when you last clicked or typed in that chat; messages from before then don't need a lasting alert.
+// A line from ALL has no line in the chat's page (line: null) to tag yet.
 async function spamCheck(w, lines, seenAt){
   const mod = await modChat(w);
   const now = Date.now(), opts = spamOpts(w.channel);
@@ -57,13 +73,17 @@ async function spamCheck(w, lines, seenAt){
   lines.forEach(l => {
     if (l.mod) return;                                         // a moderator removed it: not a new message
     if (SmvSpam.ignored(l.sender, opts.ignore)) return;        // chat bots: not checked, and their repeats don't count against anyone
+    const before = checkedBefore(w.channel, l.sender, l.body, now);
+    if (before){ if (before.flag && l.line && alerts.spam.tag) markLine(w, l.line, before.flag); return; }   // (heard by ALL first: its tag in the chat too)
     const msg = { sender: l.sender, body: l.body, chat: w.channel, t: l.t || now };
     const k = w.channel + '\n' + String(l.sender).toLowerCase();
     firstSpoke(k, msg.t);
+    let flag = null;
     if (mod){
       const r = SmvSpam.score(msg, { recent: spamRecent, firstSeen: spamFirst }, opts);
-      if (r.spam) flagSpam(w, l, r, !!seenAt && (l.t || now) <= seenAt);
+      if (r.spam){ flag = { why: spamWhy(r), abuse: r.abuse }; flagSpam(w, l, r, !!seenAt && (l.t || now) <= seenAt); }
     }
+    noteChecked(w.channel, l.sender, l.body, now, flag);
     spamRecent.push(msg);
   });
   if (spamRecent.length > 3000) spamRecent.splice(0, spamRecent.length - 3000);
@@ -72,13 +92,22 @@ function flagSpam(w, l, r, seen){
   const a = alerts.spam;
   if (a.tag){
     const why = spamWhy(r);
-    runIn(w.view, `window.__kmvMention && window.__kmvMention.mark(${JSON.stringify(l.line)}, ${JSON.stringify(why)}, ${JSON.stringify(a.color)}, ${JSON.stringify(r.abuse ? 'abuse' : 'spam')})`);
+    if (l.line) markLine(w, l.line, { why, abuse: r.abuse });
     spamTag(w.channel, l.sender, l.body, why, r.abuse);   // (and in ALL)
   }
   raiseAlert(w, 'spam', seen);
   addNote({ kind: 'spam', channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body, score: r.score, need: r.need, signs: r.signs,
             abuse: r.abuse, unread: !seen }, `${r.abuse ? 'Abusive message' : 'Likely spam'} in ${chLabel(w.channel)}'s chat`);
   if (wantNotify('spam')) window.kmv.notifyMention({ kind: 'spam', abuse: r.abuse, channel: w.channel, label: chLabelP(w.channel), sender: l.sender, body: l.body });
+}
+// Spam alerts › Tag the message in chat: its line in the chat's page
+const markLine = (w, line, flag) => runIn(w.view, `window.__kmvMention && window.__kmvMention.mark(${JSON.stringify(line)}, ${JSON.stringify(flag.why)}, ${JSON.stringify(alerts.spam.color)}, ${JSON.stringify(flag.abuse ? 'abuse' : 'spam')})`);
+// A message the chat's connection to the site brought (chat/all-chat.js: ALL's, or for spam alerts alone in a chat you
+// moderate): checked as it comes, as the chat's page may not draw it until it's in view (Kick's doesn't while ALL is in
+// front of it, or while it's scrolled up). The page's line for it, when it's drawn, isn't checked again.
+function spamFromFeed(w, sender, body, t){
+  if (!alerts.spam.on || !w || !String(body || '').trim()) return;
+  spamCheck(w, [{ sender, body, t, line: null }]);
 }
 // Bring a chat into view (and flash it).
 function revealChat(ch){
@@ -104,6 +133,7 @@ function revealWin(c){
 let polling = false;
 async function pollMentions(){
   const ment = mentOn && mentAny(), spam = !!alerts.spam.on, sup = !!alerts.support.on, feed = overlayIsOn();
+  if (!spam) wins.forEach(w => { if (w.feedSpam) feedSpam(w, false); });   // (spam alerts off: chats stop handing over their messages for them)
   if ((!ment && !spam && !sup && !feed) || polling) return;
   polling = true;
   try { await pollChats(ment, spam); } finally { polling = false; }
@@ -143,6 +173,7 @@ async function pollChats(ment, spam){
     if (q === null){ injectMention(w); continue; }          // chat reloaded: set it up again
     if (!q) continue;
     (q.k || []).forEach(n => firstSpoke(w.channel + '\n' + n, 0));
+    if (spam) feedSpam(w, await modChat(w));                  // (a chat you moderate: its messages as they come, drawn or not)
     if (spam && q.l && q.l.length) await spamCheck(w, q.l, q.c);
     if (alerts.support.on && q.s && q.s.length) supportFrom(w, q.s);
     if (q.f && q.f.length) chatOverlay(w, q.f);                // chat over the stream (chat/chat-overlay.js)
@@ -171,8 +202,9 @@ async function pollChats(ment, spam){
 function init(){
   window.spamFirst = spamFirst; window.firstSpoke = firstSpoke; window.botsFor = botsFor;   // for the tests
   window.spamCheck = (ch, lines) => spamCheck(wins.find(w => w.kind === 'chat' && w.channel === ch), lines);   // for the tests
+  window.spamFromFeed = (ch, sender, body) => spamFromFeed(wins.find(w => w.kind === 'chat' && w.channel === ch), sender, body, Date.now());   // for the tests
   window.openWins = () => wins;   // for the tests
   window.supportFrom = (ch, list) => supportFrom(wins.find(w => w.kind === 'chat' && w.channel === ch), list);   // for the tests
 }
 
-export { botsFor, forgetChat, init, pollMentions, revealChat, revealWin, spamFirst, spamOpts };
+export { botsFor, forgetChat, init, pollMentions, revealChat, revealWin, spamFirst, spamFromFeed, spamOpts };

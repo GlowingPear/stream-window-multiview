@@ -17,10 +17,10 @@ const shared = new Map();       // the group's id, size and a hash of it -> { g,
 const hashOf = t => { let h = 0x811c9dc5; for (let i = 0; i < t.length; i++) h = Math.imul(h ^ t.charCodeAt(i), 0x01000193); return (h >>> 0).toString(36); };
 const keyOf = g => { const t = JSON.stringify(g); return `${g.id}|${t.length}|${hashOf(t)}`; };
 const share = gs => gs.map(g => { const k = keyOf(g), had = shared.get(k); if (had){ had.n++; return had.g; } shared.set(k, { g, n: 1 }); return g; });
-function emoteGroups(ch){
+function emoteGroups(ch, fresh = false){
   if (!emoteCache.has(ch)){
     const ask = window.kmv && window.kmv.emotesPick;
-    const p = (ask ? Promise.resolve(ask(ch)).catch(() => null) : Promise.resolve(null)).then(g => Array.isArray(g) && emoteCache.get(ch) === p ? share(g) : []);
+    const p = (ask ? Promise.resolve(ask(ch, fresh)).catch(() => null) : Promise.resolve(null)).then(g => Array.isArray(g) && emoteCache.get(ch) === p ? share(g) : []);
     emoteCache.set(ch, p);
     p.then(g => { if (!g.length && emoteCache.get(ch) === p) emoteCache.delete(ch); });   // (nothing: ask again next time)
   }
@@ -31,6 +31,11 @@ function forgetEmotes(ch){
   const p = emoteCache.get(ch); if (!p) return;
   emoteCache.delete(ch); addons.delete(ch);
   p.then(gs => gs.forEach(g => { const k = keyOf(g), had = shared.get(k); if (had && had.g === g && --had.n <= 0) shared.delete(k); }));
+}
+// ALL reloaded: the channel's emotes asked for again (new ones the streamer added, ones taken away), then ready()
+function refreshEmotes(ch, ready){
+  forgetEmotes(ch);
+  emoteGroups(ch, true).then(() => { if (ready) ready(); });
 }
 // The channel's 7TV, BetterTTV and FrankerFaceZ emotes by name (the picker's), for its messages in ALL as the site's chat
 // shows them with those add-ons: null until they've come, then ready() (ALL draws its lines again)
@@ -207,5 +212,5 @@ function kindIcon(id, ch, pic){
 const chPic = c => element('span', 'all-ep-pic', c.pic ? element('img', { src: c.pic, alt: '', referrerPolicy: 'no-referrer', loading: 'lazy' }) : (c.label || c.name || '?')[0]);   // (a circle: in its heading, and in the list beside the search)
 const SMILEY = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1 1.3 2.2 2 3.5 2s2.5-.7 3.5-2M9 9.5h.01M15 9.5h.01"/></svg>';
 
-export { addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, renderEmoteList, renderRecent, SMILEY,
-  suggestEmote, useRecent, withEmotes };
+export { addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, refreshEmotes, renderEmoteList,
+  renderRecent, SMILEY, suggestEmote, useRecent, withEmotes };

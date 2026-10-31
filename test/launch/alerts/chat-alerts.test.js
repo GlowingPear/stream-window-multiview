@@ -342,6 +342,51 @@ test('abuse: insults in a chat you moderate are tagged ABUSIVE, and a ban shown 
   await clickBar('alpha');
 });
 
+test('spam alerts check what the site sends, drawn or not (behind ALL, scrolled up): at once, and its line in the chat, drawn later, is tagged but not counted again', T, async () => {
+  await clickBar('alpha');
+  const flagged = await spamCount(), notes = sender => win.evaluate(s => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').filter(n => n.kind === 'spam' && n.sender === s).length, sender);
+  // heard by ALL from Kick while the chat's page, out of sight behind ALL, hasn't drawn it
+  await win.evaluate(() => window.spamFromFeed('alpha', 'hiddenbot', 'hq ai stream upgrades nopelink com zero cost upgrades'));
+  await win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').some(n => n.kind === 'spam' && n.sender === 'hiddenbot'));
+  assert.equal((await alertOf('alpha')).level, 'al-1', 'the window lights up straight away');
+  // the chat shown again draws it: tagged there too, not a second alert
+  await say('alpha', 'hiddenbot', 'hq ai stream upgrades nopelink com zero cost upgrades');
+  await win.waitForTimeout(3000);
+  assert.match(await tagOf('alpha', 'nopelink'), /Likely spam.*Disguised link: nopelink com/s);
+  assert.equal(await notes('hiddenbot'), 1, 'counted once');
+  // the other way round: drawn by the chat first, then heard by ALL
+  await say('alpha', 'pagebot', 'cheap viewers at growfast com zero cost boost upgrades');
+  await win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').some(n => n.kind === 'spam' && n.sender === 'pagebot'));
+  await win.evaluate(() => window.spamFromFeed('alpha', 'pagebot', 'cheap viewers at growfast com zero cost boost upgrades'));
+  await win.waitForTimeout(500);
+  assert.equal(await notes('pagebot'), 1, 'counted once');
+  // without ALL: a chat you moderate hands over its messages for spam alerts, so one its page hasn't drawn (scrolled up) is checked too
+  await win.waitForFunction(async () => {
+    const w = window.openWins().find(o => o.kind === 'chat' && o.channel === 'alpha');
+    return w.feedSpam && await w.view.executeJavaScript('!!(window.__kmvFeed && window.__kmvFeed.on)');
+  }, null, { polling: 500 });
+  assert.equal(await win.evaluate(() => !!window.openWins().find(o => o.kind === 'chat' && o.channel === 'bravo').feedSpam), false, 'not in a chat you don\'t moderate');
+  await win.evaluate(async () => {
+    const { siteMessage } = await import('./page/shared/incoming.js'), w = window.openWins().find(o => o.kind === 'chat' && o.channel === 'alpha');
+    const data = { id: 'u1', content: 'hq ai stream upgrades unseenlink com zero cost upgrades', type: 'message', created_at: new Date().toISOString(), sender: { id: 9, username: 'unseenbot', slug: 'unseenbot', identity: {} } };
+    siteMessage(w, w.view, '__kmv:feed ' + JSON.stringify({ s: 'kick', raw: [JSON.stringify({ push: { channel: 'chatrooms.1.v2', pub: { data: { event: 'App\\Events\\ChatMessageEvent', data: JSON.stringify(data) } } } })] }));
+  });
+  await win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').some(n => n.kind === 'spam' && n.sender === 'unseenbot'));
+  // spam alerts off: what ALL hears isn't checked
+  await win.evaluate(() => window.openSettings('spam'));
+  await win.uncheck('#spamOn');
+  await win.keyboard.press('Escape');
+  await win.evaluate(() => window.spamFromFeed('alpha', 'offbot', 'hq ai stream upgrades offlink com zero cost upgrades'));
+  await win.waitForTimeout(500);
+  assert.equal(await notes('offbot'), 0);
+  await win.waitForFunction(() => !window.openWins().find(o => o.kind === 'chat' && o.channel === 'alpha').feedSpam);   // (and the chat stops handing them over)
+  assert.equal(await spamCount(), flagged + 3);
+  await win.evaluate(() => window.openSettings('spam'));
+  await win.check('#spamOn');
+  await win.keyboard.press('Escape');
+  await clickBar('alpha');
+});
+
 test('spam alerts: chat bots on the list are skipped, and History can add an account to it', T, async () => {
   await clickBar('alpha'); await clickBar('bravo');
   const timer = 'cheap viewers at promo-site com, zero cost boost';
