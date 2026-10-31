@@ -1,6 +1,8 @@
 /* ---- Each site's chat data (in-site/feed.js) as one kind of message, for the ALL tab (chat/all-chat.js) ----
    A message: { site, kind, id, t, sender, login, color, badges: ['moderator', …], parts: [{ text } | { emote, name }],
-   reply?: { id, sender, login, body }, action?, highlight?, bits?, text? (an event's own words), userId?, pics? }.
+   reply?: { id, sender, login, body }, action?, highlight?, bits?, text? (an event's own words), userId?, pics?, support? }.
+   support: someone supporting the stream, for support alerts (alerts/spam-alerts.js): { kind, who, n, unit?, amt?, to?, group? },
+   kind as the sites' support wordings name it (kicks, bits, gifts, gift, sub, superchat, member, raid).
    pics: its badges as the site shows them, in its order, for their pictures: [{ set, v } (the site's badge and version,
    its picture asked for once: in-site/feed.js badgesAgent) | { url, title } (the picture came with it)].
    kind: 'message', 'event' (a sub, gift, raid, Super Chat…), 'delete' ({ target, ai?, rules? }) or 'clear' (all of
@@ -77,7 +79,7 @@ function parseTwitch(line){
   };
   if (action) msg.action = true;
   if (g['msg-id'] === 'highlighted-message') msg.highlight = true;
-  if (+g.bits) msg.bits = +g.bits;
+  if (+g.bits){ msg.bits = +g.bits; msg.support = { kind: 'bits', who: msg.sender, n: msg.bits }; }
   if (g['custom-reward-id']) msg.redeem = { title: '', color: '' };   // (a channel points reward with text: Twitch's chat doesn't say which)
   if (g['first-msg'] === '1') msg.first = true;
   if (g['reply-parent-msg-id']) msg.reply = { id: g['reply-parent-msg-id'], sender: g['reply-parent-display-name'] || g['reply-parent-user-login'] || '', login: (g['reply-parent-user-login'] || '').toLowerCase(), body: g['reply-parent-msg-body'] || '' };
@@ -97,6 +99,7 @@ function parseTwitch(line){
     // gifted subs: who got them. Twitch sends the "gifted 5 subs" line, then one line for each sub, with the same gift id
     if (msg.event === 'submysterygift') msg.gift = { id: prm['community-gift-id'] || '', count: +prm['mass-gift-count'] || 0, to: [] };
     if (msg.event === 'subgift') msg.giftTo = { name: prm['recipient-display-name'] || prm['recipient-user-name'] || '', login: (prm['recipient-user-name'] || '').toLowerCase(), group: prm['community-gift-id'] || '' };
+    const sup = twitchSupport(msg.event, msg.sender, prm); if (sup) msg.support = sup;
   }
   return msg;
 }
@@ -195,6 +198,14 @@ function twitchPin(frame){
   return { site: 'twitch', kind: 'pin', id: String(d.id), msg, t: Date.now(), by: (d.pinned_by && d.pinned_by.display_name) || '' };
 }
 
+// A Twitch event as support alerts read it (a sub, a gift, gifted subs, a raid), or null
+function twitchSupport(ev, name, p){
+  if (ev === 'sub' || ev === 'resub') return { kind: 'sub', who: name, n: Math.max(1, +p['cumulative-months'] || 1) };
+  if (ev === 'subgift') return { kind: 'gift', who: name, n: 1, to: p['recipient-display-name'] || p['recipient-user-name'] || '', group: p['community-gift-id'] || '' };
+  if (ev === 'submysterygift') return +p['mass-gift-count'] > 0 ? { kind: 'gifts', who: name, n: +p['mass-gift-count'], group: p['community-gift-id'] || '' } : null;
+  if (ev === 'raid') return +p.viewerCount > 0 ? { kind: 'raid', who: p.displayName || name, n: +p.viewerCount } : null;
+  return null;
+}
 // A goal's kind (contributionType), as Twitch's goal bar names it
 const GOAL_KINDS = { FOLLOWERS: 'Follower', NEW_FOLLOWERS: 'Follower', SUBS: 'Sub', NEW_SUBS: 'New sub', SUB_POINTS: 'Sub point', NEW_SUB_POINTS: 'New sub point', BITS: 'Bits' };
 
@@ -234,24 +245,29 @@ function kickEvents(ev, d){
   }
   if (ev === 'KicksGifted'){
     const who = String((d.sender && d.sender.username) || 'Someone'), g = d.gift || {};
-    return event(d.gift_transaction_id || 'kg-' + t, who, [{ strong: who }, { text: ' sent ' }, { strong: String(g.name || 'a gift') }, { text: ' · ' }, { strong: `${n(g.amount)} Kicks` }], d.message ? kickParts(d.message) : []);
+    return { ...event(d.gift_transaction_id || 'kg-' + t, who, [{ strong: who }, { text: ' sent ' }, { strong: String(g.name || 'a gift') }, { text: ' · ' }, { strong: `${n(g.amount)} Kicks` }], d.message ? kickParts(d.message) : []),
+      support: { kind: 'kicks', who, n: Math.max(1, +g.amount || 1) } };
   }
   if (ev === 'GiftedSubscriptionsEvent' || ev === 'LuckyUsersWhoGotGiftSubscriptionsEvent'){
     const who = String(d.gifter_username || 'Someone'), got = (Array.isArray(d.gifted_usernames) ? d.gifted_usernames : Array.isArray(d.usernames) ? d.usernames : []).map(String);
     return { ...event('gs-' + t + '-' + who, who, [{ strong: who }, { text: ' gifted ' }, { strong: plural(got.length || 1, 'sub', 'subs') }]),
-      gift: { id: String(d.correlation_id || ''), count: got.length, to: got.map(u => ({ name: u, login: u.toLowerCase() })) } };
+      gift: { id: String(d.correlation_id || ''), count: got.length, to: got.map(u => ({ name: u, login: u.toLowerCase() })) },
+      support: got.length === 1 ? { kind: 'gift', who, n: 1, to: got[0], group: String(d.correlation_id || '') } : { kind: 'gifts', who, n: got.length || +d.gifted_total || 1, group: String(d.correlation_id || '') } };
   }
   // Kick sends one sub as both (on the chat's subscription and the channel's), within a moment: one line, by who (within
   // 5 minutes), whichever comes first
   if (ev === 'SubscriptionEvent' || ev === 'ChannelSubscriptionEvent'){
     const who = String(d.username || 'Someone');
-    return event('sub-' + who.toLowerCase() + '-' + Math.floor(t / 300000), who, [{ strong: who }, { text: ' subscribed' }, ...(+d.months > 1 ? [{ text: ' · ' }, { strong: plural(d.months, 'month', 'months') }] : [])]);
+    return { ...event('sub-' + who.toLowerCase() + '-' + Math.floor(t / 300000), who, [{ strong: who }, { text: ' subscribed' }, ...(+d.months > 1 ? [{ text: ' · ' }, { strong: plural(d.months, 'month', 'months') }] : [])]),
+      support: { kind: 'sub', who, n: Math.max(1, +d.months || 1) } };
   }
   // a raid coming in: StreamHostedEvent on the raided channel's chat, StreamHostEvent on its other subscription (both come,
   // in their own shapes): one line for the raid, by who raided (within 10 minutes), whichever comes first
   if (ev === 'StreamHostedEvent' || ev === 'StreamHostEvent'){
     const m = d.message || {}, who = String((d.user && d.user.username) || d.host_username || 'Someone'), said = m.optionalMessage || d.optional_message;
-    return event('host-' + who.toLowerCase() + '-' + Math.floor(t / 600000), who, [{ strong: who }, { text: ' raided with ' }, { strong: plural(m.numberOfViewers ?? d.number_viewers, 'viewer', 'viewers') }], said ? kickParts(said) : []);
+    const viewers = +(m.numberOfViewers ?? d.number_viewers) || 0;
+    return { ...event('host-' + who.toLowerCase() + '-' + Math.floor(t / 600000), who, [{ strong: who }, { text: ' raided with ' }, { strong: plural(viewers, 'viewer', 'viewers') }], said ? kickParts(said) : []),
+      support: { kind: 'raid', who, n: Math.max(1, viewers) } };
   }
   return null;
 }
@@ -330,7 +346,7 @@ function kickCelebration(d){
   if (!m || c.type !== 'subscription_renewed') return m;
   const months = +c.total_months || 0, n = months > 1 ? [{ text: ' · ' }, { strong: `${months.toLocaleString('en-US')} months` }] : [];
   const summary = [{ strong: m.sender || 'Someone' }, { text: ' subscribed' }, ...n];
-  return { ...m, kind: 'event', event: 'resub', summary, text: summary.map(x => x.text || x.strong).join('') };
+  return { ...m, kind: 'event', event: 'resub', summary, text: summary.map(x => x.text || x.strong).join(''), support: { kind: 'sub', who: m.sender || 'Someone', n: Math.max(1, months) } };
 }
 // Kick's badges as its chat shows them, picked as its chat picks them: its own (a role, OG, founder, sub gifter, the
 // channel's sub badge by months: its icons, named as Kick names them) and badges_v2's (a level, a game's: their
