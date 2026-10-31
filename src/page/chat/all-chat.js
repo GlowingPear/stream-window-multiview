@@ -1278,7 +1278,7 @@ function openSaves(w, at, btn = at){
       title: isSaved(ch) ? `Saved: click to remove their ${PLAT_NAME[platOf(ch)]} channel` : `Save their ${PLAT_NAME[platOf(ch)]} channel` })),
   off.length && chs.length > 1 && element('hr'),
   off.length && chs.length > 1 && element('button', { type: 'button', role: 'menuitem', class: 'all-li', dataset: { cmd: 'all.saveAll' }, onclick: () => { off.forEach(toggleSaved); w.allView.mv.hidden = true; } },
-    element('i', { html: icon.star }), element('span', null, 'Save all'), element('small', null, `${chs.length} sites`))]);
+    element('i', { html: icon.star }), element('span', null, 'Save all'), element('small', null, `${off.length} not saved`))]);
 }
 // The ⋯ menu in ALL, grouped by site (windows/window-bar.js): what a title bar button does to one site
 const SITE_BUTTONS = ['pop', 'popchat', 'mod', 'star', 'ext', 'state', 'inspect'];

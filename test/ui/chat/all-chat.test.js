@@ -1184,9 +1184,9 @@ test('ALL: the pop-up buttons ask which site (its channel page, or just its chat
   assert.deepEqual(await star(), ['★', false, true]);
   await page.$eval(`${bar} [data-a=star]`, b => b.click());
   assert.equal(await page.textContent('.all-mvh'), 'Saved channels');
-  assert.deepEqual(await rows(), ['KKick ✓', 'TTwitch', 'YYouTube', 'Save all3 sites']);
+  assert.deepEqual(await rows(), ['KKick ✓', 'TTwitch', 'YYouTube', 'Save all2 not saved']);
   await page.click('.all-mv [data-cmd="all.save"] >> nth=1');
-  assert.deepEqual(await rows(), ['KKick ✓', 'TTwitch ✓', 'YYouTube', 'Save all3 sites'], 'saved, and the menu stays');
+  assert.deepEqual(await rows(), ['KKick ✓', 'TTwitch ✓', 'YYouTube', 'Save all1 not saved'], 'saved, and the menu stays');
   await page.click('.all-mv [data-cmd="all.saveAll"]');
   assert.deepEqual(await star(), ['★', true, false], 'every site saved');
   assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.saved')).sort()), ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala']);
