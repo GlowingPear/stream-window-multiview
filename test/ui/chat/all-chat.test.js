@@ -2149,3 +2149,30 @@ test('ALL\'s top bar: thin, its sites\' switches hide a site\'s lines (saved, fo
   await page.click('.all-sites .pi-twitch');
   assert.equal(await page.isVisible('.all-hype'), true);
 });
+
+test('reloading ALL asks again for its chats\' emotes, not from the last 10 minutes: one the streamer just added shows', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => {
+    window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
+    const img = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    window.__asked = []; window.__added = false;
+    window.kmv = { ...(window.kmv || {}), emotesPick: async (ch, fresh) => { window.__asked.push([ch, !!fresh]);
+      return ch === 'quietkoala' ? [{ id: 'kick-channel', label: 'Channel', emotes: [{ name: 'koalaWave', url: img, send: '[emote:2:koalaWave]' }, ...(window.__added ? [{ name: 'koalaNew', url: img, send: '[emote:3:koalaNew]' }] : [])] }] : []; } };
+  }, LIVE);
+  const suggest = async () => {
+    await page.fill('.all-in', ''); await page.focus('.all-in'); await page.keyboard.type(':koala');
+    await page.waitForSelector('.all-at:not([hidden]) .all-emi');
+    const r = await page.$$eval('.all-at .all-emi', l => l.map(b => b.textContent.replace(/(Kick|Channel)$/, '')));
+    await page.keyboard.press('Escape'); await page.fill('.all-in', '');
+    return r;
+  };
+  assert.deepEqual(await suggest(), ['koalaWave']);
+  assert.ok((await page.evaluate(() => window.__asked)).every(([, fresh]) => !fresh), 'asked as usual');
+  await page.evaluate(() => { window.__added = true; window.__asked = []; });
+  assert.deepEqual(await suggest(), ['koalaWave'], 'kept: not asked again by itself');
+  await page.$eval('#stage .win.chat:not(.tab-hidden) [data-a=reload]', b => b.click());   // (in the bar's overflow: as its command presses it)
+  await page.waitForFunction(() => window.__asked.some(([ch, fresh]) => ch === 'quietkoala' && fresh));
+  assert.deepEqual((await page.evaluate(() => window.__asked)).filter(([, fresh]) => fresh).map(([ch]) => ch).sort(), ['quietkoala', 'tw:quietkoala'], 'each chat ALL reads, asked afresh');
+  assert.deepEqual((await suggest()).sort(), ['koalaNew', 'koalaWave'], 'the new one too');
+});
