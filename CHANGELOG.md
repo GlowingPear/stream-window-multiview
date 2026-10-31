@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.7 (current)
+## 0.4.8 (current)
+- YouTube channels show as live again in the UK and EU
+- ALL: your message held by AutoMod says so, Twitch's raider tags, and the / list right on the box
+
+## 0.4.7
 - ALL shows names in each site's own colours, and YouTube's own badges
 - Spam alerts flag messages a chat hasn't drawn yet (behind ALL, or scrolled up)
 - Reloading ALL refreshes its emotes
