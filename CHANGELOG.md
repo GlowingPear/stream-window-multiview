@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.12 (current)
+## 0.4.13 (current)
+- A Twitch reward you redeem shows only in that channel's chat
+- Shoutouts: channels as cards, Channel settings in tabs, only where you're a mod, bots and special messages
+
+## 0.4.12
 - Emotes in Kick redeems in All chat
 - Copying a moving emote pastes it moving
 - Mention and support alerts read Kick and Twitch chats as the site sends them, also behind ALL or scrolled up
