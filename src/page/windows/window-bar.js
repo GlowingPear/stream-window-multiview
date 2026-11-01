@@ -46,7 +46,7 @@ function fitBar(bar){
   if (!fits()){ bar.classList.add('b3'); name.style.minWidth = ''; }
   if (!fits()) bar.classList.add('b4');
   if (!fits()) bar.classList.add('b5');
-  if (!fits()) bar.classList.add('b6');
+  if (bar.scrollWidth > bar.clientWidth) bar.classList.add('b6');   // (not a pixel over: it would come off close)
   fadeTabs(bar.querySelector('.ptabs'), true);
   bar.fitObs?.takeRecords();                               // ignore our own changes
 }
