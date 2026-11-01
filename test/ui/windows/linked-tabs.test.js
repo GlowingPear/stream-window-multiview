@@ -593,7 +593,7 @@ test('opening by themselves: together as tabs when any account goes live, and no
   await page.evaluate(live => window.smvNotes.liveStatus(live), LIVE);
   assert.equal((await all(page)).filter(x => x.kind === 'stream').length, 2, 'not opened again');
 });
-test('a narrow window with its site tabs: close and ⋯ never go off its bar; it tightens to fit every tab, and only then scrolls them, the one you watch in sight', async t => {
+test('a narrow window with its site tabs: close and ⋯ never go off its bar; it tightens to fit every tab, and only past that scrolls them, the one you watch in sight', async t => {
   const page = await linkedApp(t);
   await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'both'));
   await page.waitForSelector('#stage .win.chat:not(.tab-hidden) .bar .ptab.all');
@@ -615,13 +615,17 @@ test('a narrow window with its site tabs: close and ⋯ never go off its bar; it
       assert.ok(!st.scrolls, `${width}px: every tab shows, none scrolled away`);
     }
   }
-  // the mod view Never in ⋯ (a third button): still every tab at 240px; at the narrowest the tabs scroll
+  // the mod view Never in ⋯ (a third button): still every tab, down to the narrowest window
   await page.click('#wbList [data-k=mod] button:has-text("Never in ⋯")');
   await page.keyboard.press('Escape');
-  let st = await state(240);
-  assert.ok(st.fits && st.close && st.more && st.mod && !st.scrolls, `240px with the mod view: everything shows (${JSON.stringify(st)})`);
-  st = await state(220);
-  assert.ok(st.fits && st.close && st.more && st.mod && st.scrolls && st.onSeen, `220px: the tabs scroll, the buttons stay (${JSON.stringify(st)})`);
+  let st;
+  for (const width of [240, 220]){
+    st = await state(width);
+    assert.ok(st.fits && st.close && st.more && st.mod && !st.scrolls, `${width}px with the mod view: everything shows (${JSON.stringify(st)})`);
+  }
+  // more than fits (narrower than a window can be, as a busier bar would be): the tabs scroll, the buttons stay
+  st = await state(190);
+  assert.ok(st.fits && st.close && st.more && st.mod && st.scrolls && st.onSeen, `the tabs scroll, the buttons stay (${JSON.stringify(st)})`);
   // a fade says there are more tabs; watching one that's scrolled away brings it into sight
   const fades = () => chat.evaluate(el => [...el.querySelector('.ptabs').classList].filter(c => c.startsWith('fade-')));
   await chat.evaluate(el => { el.querySelector('.ptabs').scrollLeft = 0; });
@@ -634,6 +638,6 @@ test('a narrow window with its site tabs: close and ⋯ never go off its bar; it
   await chat.evaluate(el => el.querySelector('.ptab.all').click());
   await page.waitForSelector('#stage .win.chat:not(.tab-hidden) .ptab.all.on');
   await page.waitForTimeout(50);
-  st = await state(220);
+  st = await state(190);
   assert.ok(st.scrolls && st.onSeen, `ALL, now watched, is in sight (${JSON.stringify(st)})`);
 });
