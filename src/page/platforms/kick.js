@@ -45,6 +45,10 @@ const kick = {
   // ALL's timeout and ban: Kick's chat commands (its timeouts are in minutes)
   timeoutCmd: (login, secs) => `/timeout ${login} ${Math.max(1, Math.round(secs / 60))}`,
   banCmd: login => `/ban ${login}`,
+  // ... sent as Kick's own request, the one its chat makes (a command put in its box from outside is sent as a message):
+  // ch the channel, name their username, secs a timeout's length (none: a ban). -> { url, method, body }, for kickApi
+  modRequest: (ch, name, secs) => ({ url: `https://kick.com/api/v2/channels/${encodeURIComponent(ch)}/bans`, method: 'POST',
+    body: secs ? { banned_username: name, duration: Math.max(1, Math.round(secs / 60)), permanent: false } : { banned_username: name, permanent: true } }),
   deleteMods: true,      // ALL's Delete works on another mod's message, as in its own chat (not their timeout or ban)
   spamAlerts: true,      // spam alerts read its chat
   feedReaders: true,     // the alerts, chat over the stream and counts read its chat's connection (chat/chat-feed.js)

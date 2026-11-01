@@ -52,7 +52,7 @@ function runSuites() {
   const failed = [];
   for (const [name, glob, timeout] of SUITES) {
     console.log(`\n=== ${name} tests ===`);
-    const r = spawnSync(process.execPath, ['--test', '--test-force-exit', `--test-timeout=${timeout}`, glob], { cwd: ROOT, env, stdio: 'inherit' });
+    const r = spawnSync(process.execPath, ['--test', '--test-force-exit', '--test-concurrency=4', `--test-timeout=${timeout}`, glob], { cwd: ROOT, env, stdio: 'inherit' });
     if (r.status !== 0) failed.push(name);
   }
   return failed;

@@ -23,6 +23,16 @@ test('all three have the same shape', () => {
   assert.deepEqual([kick, twitch, youtube].map(p => p.deleteMods), [true, false, false], 'only Kick lets a mod delete another mod\'s message');
 });
 
+test('ALL\'s timeout and ban: Kick\'s own request (in minutes; a ban is permanent), Twitch\'s commands (in seconds), none on YouTube', () => {
+  const bans = { url: 'https://kick.com/api/v2/channels/quiet_koala/bans', method: 'POST' };
+  assert.deepEqual(kick.modRequest('quiet_koala', 'Loud_Mouth', 600), { ...bans, body: { banned_username: 'Loud_Mouth', duration: 10, permanent: false } });
+  assert.deepEqual(kick.modRequest('quiet_koala', 'Loud_Mouth', 20), { ...bans, body: { banned_username: 'Loud_Mouth', duration: 1, permanent: false } }, 'a minute at least');
+  assert.deepEqual(kick.modRequest('quiet_koala', 'Loud_Mouth', 0), { ...bans, body: { banned_username: 'Loud_Mouth', permanent: true } });
+  assert.deepEqual([twitch.modRequest, youtube.modRequest], [null, null]);
+  assert.deepEqual([twitch.timeoutCmd('loud', 600), twitch.banCmd('loud')], ['/timeout loud 600', '/ban loud']);
+  assert.deepEqual([youtube.timeoutCmd, youtube.banCmd], [null, null]);
+});
+
 test('channel ids, names and labels', () => {
   assert.deepEqual([kick.idFor('owl'), twitch.idFor('owl'), youtube.idFor('owl')], ['owl', 'tw:owl', 'yt:@owl']);
   assert.deepEqual([kick.handle('owl'), twitch.handle('tw:owl'), youtube.handle('yt:@owl')], ['owl', 'owl', '@owl']);

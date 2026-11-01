@@ -174,15 +174,15 @@ Open an issue with **Something isn't working**. In the app, Settings › Develop
 
 **Making a change:** open a pull request against `main`. Don't change the version number or `CHANGELOG.md` in it. Write the pull request title as one line a user would understand (for example *"Add Hikari theme"*), because titles become the app's "What's new" entries. Every pull request runs the tests, and builds the Windows and Mac installers as a test if it changes anything that goes into them (they appear under the run's **Artifacts**). A red ✗ on the pull request means something broke: open **Details** to see which test.
 
-**Running the tests yourself** (needs Node.js 22 or newer; CI uses the version in `.nvmrc`, which nvm, fnm and Herd switch to for you):
+**Running the tests yourself** (needs Node.js 22 or newer; CI uses the version in `.nvmrc`, which nvm, fnm and Herd switch to for you). The UI and launch tests run four test files at a time, so the browsers and copies of the app they start don't slow your computer to a crawl:
 
 | Command | What it checks | Time |
 |---|---|---|
 | `npm test` | Updates, the release scripts, login encryption, live checks, streamer profile history, the spam scoring and the link with Pear Drops. Needs nothing else installed. | seconds |
 | `npm run test:setup` | Run once: installs the test browser (Playwright). It isn't saved as a dependency of the app. | once |
-| `npm run test:ui` | The app's page in a headless browser: adding streams, moving and resizing windows, layouts, Columns scrolling, the switch control, Saved channels, your layouts, Game focus, undo/redo, shortcuts, themes, Settings, alerts | ~1 min |
-| `npm run test:launch` | Starts the real desktop app with stand-in Kick, Twitch and YouTube pages: start-up, volume and pause, popping streams out, logins, live alerts and notifications, the Import follows dialog, streamer profiles, the menu bar, Settings, updates, showing another app's window, mention and spam alerts in chat windows, Chrome extensions with a small test extension, and Connected apps with Grapevine's stand-in Pear Drops (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~1 min |
-| `npm run test:launch:hidden` | The same, but the app's windows are invisible and never take your keyboard or focus, so you can keep working while it runs. There are no desktop notifications either. Clicks and typing still reach the app, because Playwright sends them straight to its pages. `npm run test:coverage:hidden` does the same for the coverage run. Linux can't make windows see-through, so use `xvfb-run -a` there. | ~1 min |
+| `npm run test:ui` | The app's page in a headless browser: adding streams, moving and resizing windows, layouts, Columns scrolling, the switch control, Saved channels, your layouts, Game focus, undo/redo, shortcuts, themes, Settings, alerts | ~5 min |
+| `npm run test:launch` | Starts the real desktop app with stand-in Kick, Twitch and YouTube pages: start-up, volume and pause, popping streams out, logins, live alerts and notifications, the Import follows dialog, streamer profiles, the menu bar, Settings, updates, showing another app's window, mention and spam alerts in chat windows, Chrome extensions with a small test extension, and Connected apps with Grapevine's stand-in Pear Drops (needs `npm install`; on Linux without a screen, run it with `xvfb-run -a`) | ~3 min |
+| `npm run test:launch:hidden` | The same, but the app's windows are invisible and never take your keyboard or focus, so you can keep working while it runs. There are no desktop notifications either. Clicks and typing still reach the app, because Playwright sends them straight to its pages. `npm run test:coverage:hidden` does the same for the coverage run. Linux can't make windows see-through, so use `xvfb-run -a` there. | ~3 min |
 | `npm run test:all` | All of the above | |
 | `npm run test:coverage` | All of the above, recording which code they run. Prints how much of each file the tests run and writes `coverage/report.md` with the bigger functions no test runs. In CI (which runs it on every pull request and puts the report on the run's summary page) it fails if a file drops below its minimum in `test/coverage-min.json`; on your computer that's only a warning, because some code only runs on Linux, or on Node 22 or newer. | ~2 min |
 
@@ -197,7 +197,7 @@ Open an issue with **Something isn't working**. In the app, Settings › Develop
 - The app's pages have a Content-Security-Policy: no `<script>` in the HTML and no `onclick="…"`-style attributes; code goes in files, handlers in code.
 - `SMV_` variables that point the app somewhere else only work in copies run from source.
 
-The tests are in `test/`. When you add a feature, add a test next to the similar ones. Coverage doesn't have to be 100%, but it can't go down: if `npm run test:coverage` says a file is below its minimum, test what you changed. When coverage goes up, raise the minimums in `test/coverage-min.json` to the numbers on the CI run's summary page.
+The tests are in `test/`. When you add a feature, add a test next to the similar ones. Coverage doesn't have to be 100%, but it can't go down: CI checks it on every pull request (there's no need to run it on your computer), and if it says a file is below its minimum, test what you changed. When coverage goes up, raise the minimums in `test/coverage-min.json` to the numbers on the CI run's summary page.
 
 What the tests deliberately don't do, because it needs the real outside world:
 - Real Kick, Twitch and YouTube: live checks, Import follows and signing in to the real sites. The tests use stand-in pages and answers; the parsing is unit tested in `test/unit`.

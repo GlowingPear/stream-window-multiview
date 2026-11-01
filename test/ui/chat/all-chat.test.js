@@ -873,12 +873,14 @@ test('ALL: @ suggests names from their chats; picking one locks to its site, and
   assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
 });
 
-test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeout lengths, ban asks first), keys on a name; a Kick mod\'s message deleted, not timed out or banned; not for a Twitch mod, the streamer or where you aren\'t one', async t => {
+test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeout lengths, ban asks first), keys on a name (a ban doesn\'t ask); Kick\'s timeout and ban as its own request, Twitch\'s as commands; a Kick mod\'s message deleted, not timed out or banned; not for a Twitch mod, the streamer or where you aren\'t one', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
   await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.allChat.modKnown.set('quietkoala', true); window.allChat.modKnown.set('tw:quietkoala', false); window.smvNotes.liveStatus(live); }, LIVE);
   await page.evaluate(() => { window.__acts = []; window.allChat.sender.mod = async (m, action, id) => { window.__acts.push([action, m.channel, id]); return window.__modAnswer || 'done'; };
-    window.allChat.sender.send = async (m, text) => { window.__acts.push(['send', m.channel, text]); return 'sent'; }; });
+    window.allChat.sender.send = async (m, text) => { window.__acts.push(['send', m.channel, text]); return 'sent'; };
+    window.allChat.sender.request = async (m, req) => { window.__acts.push(['request', m.channel, req]); return window.__reqAnswer || { ok: true, status: 200, message: '', data: null }; }; });
+  const kickBan = body => ['request', 'quietkoala', { url: 'https://kick.com/api/v2/channels/quietkoala/bans', method: 'POST', body: { banned_username: 'loudmouth', ...body } }];
   const ks = (id, name, badges = []) => KF('ChatMessageEvent', { id, content: 'trash lol', type: 'message', sender: { id: 1, username: name, slug: name, identity: { badges: badges.map(type => ({ type })) } } });
   await feed(page, 'quietkoala', { s: 'kick', raw: [ks('k1', 'loudmouth'), ks('k2', 'nightowl_mod', ['moderator']), ks('k3', 'quietkoala', ['broadcaster']), ks('k4', 'mekick')] });
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'twitchy', id: 't1' }, ':twitchy!t@t PRIVMSG #quietkoala :hi')] });
@@ -900,7 +902,7 @@ test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeo
      'Timeout' + (process.platform === 'darwin' ? '⌘-click name' : 'Ctrl-click name'), 'Ban' + (process.platform === 'darwin' ? '⌘+⇧-click name' : 'Ctrl+Shift-click name'), 'Copy message', 'Copy message with emotes', 'Copy with @name', 'Open Kick mod view'].map(x => x));
   await page.click('.all-lm .all-durs button >> text=1h');
   await page.waitForFunction(() => window.__acts.length === 2);
-  assert.deepEqual((await acts())[1], ['send', 'quietkoala', '/timeout loudmouth 60'], 'Kick counts minutes');
+  assert.deepEqual((await acts())[1], kickBan({ duration: 60, permanent: false }), 'Kick\'s own request, not a command in its box (it would send that as a message); in minutes');
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.allTimeout')), '3600');
   await page.click(line(0), { button: 'right' });
   await page.click('.all-lm [data-cmd="all.menuPin"]');
@@ -912,20 +914,22 @@ test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeo
   assert.match(await page.textContent('#askDlg'), /Ban loudmouth on Kick\?/);
   await page.click('#askDlg .ask-yes');
   await page.waitForFunction(() => window.__acts.length === 4);
-  assert.deepEqual((await acts())[3], ['send', 'quietkoala', '/ban loudmouth']);
-  // keys on the name: Ctrl/⌘ times out for the last length, Shift deletes, both ban (asked; No does nothing)
+  assert.deepEqual((await acts())[3], kickBan({ permanent: true }));
+  assert.match(await page.textContent('#msg'), /Banned loudmouth on Kick/);
+  // keys on the name: Ctrl/⌘ times out for the last length, Shift deletes, both ban, none of them asking first
   const mod = process.platform === 'darwin' ? 'Meta' : 'Control';
   await page.click(`${line(0)} >> .al-n`, { modifiers: [mod] });
   await page.waitForFunction(() => window.__acts.length === 5);
-  assert.deepEqual((await acts())[4], ['send', 'quietkoala', '/timeout loudmouth 60']);
+  assert.deepEqual((await acts())[4], kickBan({ duration: 60, permanent: false }));
   await page.click(`${line(0)} >> .al-n`, { modifiers: ['Shift'] });
   await page.waitForFunction(() => window.__acts.length === 6);
   assert.deepEqual((await acts())[5], ['delete', 'quietkoala', 'k1']);
   await page.click(`${line(0)} >> .al-n`, { modifiers: [mod, 'Shift'] });
-  await page.waitForSelector('#askDlg:not([hidden])');
-  await page.click('#askDlg .ask-no');
-  assert.equal((await acts()).length, 6, 'not banned');
+  await page.waitForFunction(() => window.__acts.length === 7);
+  assert.deepEqual((await acts())[6], kickBan({ permanent: true }));
+  assert.equal(await page.isVisible('#askDlg'), false, 'banned without asking');
   // a Kick mod's message: deleted (Kick lets a mod do that), but they aren't timed out or banned
+  await page.evaluate(() => window.__acts.pop());
   await page.click(`${line(1)} >> .al-n`, { modifiers: ['Shift'] });
   await page.waitForFunction(() => window.__acts.length === 7);
   assert.deepEqual((await acts())[6], ['delete', 'quietkoala', 'k2']);
@@ -971,14 +975,25 @@ test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeo
     await page.click(`${line(0)} >> .al-n`, { modifiers: ['Shift'] });
     await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#msg')?.textContent || ''), want.source);
   }
+  // Kick says no (its reason, when it gives one), or doesn't answer
+  for (const [ans, want] of [[{ ok: false, status: 403, message: 'You are not allowed to ban this user.' }, /Kick didn't take it: You are not allowed to ban this user\./], [{ ok: false, status: 0, message: '' }, /Kick didn't take it: try from its own tab/]]){
+    await page.evaluate(a => { window.__reqAnswer = a; document.querySelector('#msg').textContent = ''; }, ans);
+    await page.click(`${line(0)} >> .al-n`, { modifiers: [mod, 'Shift'] });
+    await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#msg')?.textContent || ''), want.source);
+  }
+  // Twitch: its commands, typed in its box (a ban as well as a timeout, in seconds)
+  await page.evaluate(() => { window.__acts = []; });
+  await page.click(`${line(4)} >> .al-n`, { modifiers: [mod, 'Shift'] });
+  await page.waitForFunction(() => window.__acts.length === 1);
+  assert.deepEqual(await acts(), [['send', 'tw:quietkoala', '/ban twitchy']]);
   // a timeout whose command needed the app's real press of the site's Send (as on YouTube): done once that sent it
   await page.evaluate(() => { window.allChat.sender.send = async (m, text) => { window.__acts.push(['send', m.channel, text]); return { press: { x: 3, y: 4 }, start: 7 }; };
     window.allChat.sender.press = async (m, r, text) => { window.__acts.push(['press', m.channel, r, text]); return window.__pressAnswer; }; });
-  for (const [ans, want] of [['sent', /Timed out loudmouth on Kick/], ['not-sent', /Kick didn't take it/]]){
+  for (const [ans, want] of [['sent', /Timed out twitchy on Twitch/], ['not-sent', /Twitch didn't take it/]]){
     await page.evaluate(a => { window.__acts = []; window.__pressAnswer = a; document.querySelector('#msg').textContent = ''; }, ans);
-    await page.click(`${line(0)} >> .al-n`, { modifiers: [mod] });
+    await page.click(`${line(4)} >> .al-n`, { modifiers: [mod] });
     await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#msg')?.textContent || ''), want.source);
-    assert.deepEqual(await acts(), [['send', 'quietkoala', '/timeout loudmouth 60'], ['press', 'quietkoala', { press: { x: 3, y: 4 }, start: 7 }, '/timeout loudmouth 60']]);
+    assert.deepEqual(await acts(), [['send', 'tw:quietkoala', '/timeout twitchy 3600'], ['press', 'tw:quietkoala', { press: { x: 3, y: 4 }, start: 7 }, '/timeout twitchy 3600']]);
   }
 });
 
