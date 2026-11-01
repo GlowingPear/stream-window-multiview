@@ -1,8 +1,8 @@
-import { RUN_MAX, SHOUT_TOKENS, SHOUT_TPL, fillShout, loginOfCh, shoutLink } from '../../chat/shoutout-text.js';
+import { RUN_MAX, SHOUT_TPL, fillShout, loginOfCh, shoutLink } from '../../chat/shoutout-text.js';
 import { soCardAvatars, soCards, soCheckCards, soSaveCards } from '../../chat/shoutout.js';
 import { $ } from '../../core.js';
 import { bellVars, myName } from '../bell/bell.js';
-import { shoutAddEl, shoutCardEl } from './shout-cards.js';
+import { shoutAddEl, shoutCardEl, shoutTokensEl } from './shout-cards.js';
 import { PLAT_NAME } from '../../platforms/platforms.js';
 import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
@@ -16,7 +16,6 @@ import { soon } from '../../shared/timers.js';
 const SAMPLE = [   // the preview's made-up channels: one with a last game, one without
   { site: 'kick', name: 'Pixelfox', login: 'pixelfox', game: 'Tidepool' },
   { site: 'twitch', name: 'Lumen', login: 'lumen', game: '' }];
-const TOKEN_HELP = { '{name}': 'their name', '{link}': 'their channel', '{links}': 'every site', '{game}': 'last game' };
 let textEl, previewEl, peopleEl;
 let saveText = null, saveCardsSoon = null;
 
@@ -28,13 +27,6 @@ function renderPreview(){
     const parts = text.split(/(https:\/\/\S+)/).map((t, i) => (i % 2 ? element('span', 'lnk', t) : t));
     return element('span', null, element('i', { class: 'pi pi-' + x.site }, PLAT_NAME[x.site][0]), element('b', null, me[x.site]), ': ', ...parts, ...(x.game ? [] : [' ', element('em', null, 'no game found')]));
   }));
-}
-// Puts a token in the message where the caret is
-function addToken(t){
-  const s = textEl.selectionStart ?? textEl.value.length, e = textEl.selectionEnd ?? s;
-  textEl.value = textEl.value.slice(0, s) + t + textEl.value.slice(e);
-  textEl.focus(); textEl.setSelectionRange(s + t.length, s + t.length);
-  textEl.dispatchEvent(new Event('input'));
 }
 /* ---- Channels: a card for each channel with a shoutout of its own (panels/settings/shout-cards.js draws one), by name,
    and adding one by looking it up. Open cards stay open as the list is drawn again. ---- */
@@ -91,8 +83,7 @@ function init(){
     { id: 'settings.shoutRunMore', kind: 'setting', group: 'Settings', title: 'More recent chatters in a shoutout run', sub: 'Settings › Shoutouts · up to 20', words: ['shoutout'], icon: 'megaphone', button: '#shoutRunSet [data-z="1"]' },
     { id: 'settings.shoutRunFewer', kind: 'setting', group: 'Settings', title: 'Fewer recent chatters in a shoutout run', sub: 'Settings › Shoutouts', words: ['shoutout'], icon: 'megaphone', button: '#shoutRunSet [data-z="-1"]' }]);
   textEl.addEventListener('input', () => { renderPreview(); saveText(); });
-  $('#shoutTokens').append(...SHOUT_TOKENS.map(t => element('button', { type: 'button', dataset: { cmd: 'settings.shoutToken' }, onclick: () => addToken(t) }, element('code', null, t), ' ' + TOKEN_HELP[t])),
-    element('span', 'so-hint', 'Words in [ ] are left out when there\'s no game.'));
+  $('#shoutTokens').replaceWith(Object.assign(shoutTokensEl(textEl, element('span', 'so-hint', 'Words in [ ] are left out when there\'s no game.')), { id: 'shoutTokens' }));
   // adding a channel: looked up, then its card, open for its message
   $('#shoutAddBox').replaceWith(shoutAddEl(card => {
     const have = soCards().find(c => cardKey(c) === cardKey(card));

@@ -251,6 +251,13 @@ test('Settings › Shoutouts › Channels: a card for a found channel, its messa
   assert.equal(await page.getAttribute(open, 'data-ch'), 'tw:tinroof');
   await page.fill(`${open} textarea`, 'Captain {name} {link}');
   assert.match(await page.textContent(`${open} .shc-pv`), /metwitch: Captain tinroof https:\/\/twitch\.tv\/tinroof/);
+  // the tokens, as under your general message: put in where the caret is
+  assert.deepEqual(await page.$$eval(`${open} .so-tok button`, l => l.map(b => b.textContent)), ['{name} their name', '{link} their channel', '{links} every site', '{game} last game']);
+  await page.$eval(`${open} textarea`, t => t.setSelectionRange(8, 8));
+  await page.click(`${open} .so-tok button:has-text("{game}")`);
+  assert.equal(await page.inputValue(`${open} textarea`), 'Captain {game}{name} {link}');
+  assert.match(await page.textContent(`${open} .shc-pv`), /metwitch: Captain Tidepooltinroof/);
+  await page.fill(`${open} textarea`, 'Captain {name} {link}');
   await page.fill(`${open} .shc-chip-in`, 'tin_alt'); await page.press(`${open} .shc-chip-in`, 'Enter');
   await page.waitForFunction(() => (JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')) || []).some(c => c.ch === 'tw:tinroof' && c.msg && c.also.length));
   assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')).find(c => c.ch === 'tw:tinroof')),
@@ -266,7 +273,11 @@ test('Settings › Shoutouts › Channels: a card for a found channel, its messa
   await page.click('.shc-res .shc-ri');
   await page.click(`${open} [data-cmd="settings.shoutCardPerSite"]`);
   assert.deepEqual(await page.$$eval(`${open} .shc-msg .mh`, l => l.map(x => x.textContent)), ['KOn Kick', 'TOn Twitch']);
-  await page.fill(`${open} textarea[aria-label="Their message on Twitch"]`, 'Twitch only {link}');
+  await page.fill(`${open} textarea[aria-label="Their message on Twitch"]`, 'Twitch only ');
+  assert.equal(await page.locator(`${open} .shc-msg .so-tok`).count(), 2, 'one for each site\'s message');
+  await page.click(`${open} .shc-msg:has(textarea[aria-label="Their message on Twitch"]) .so-tok button:has-text("{link}")`);
+  assert.equal(await page.inputValue(`${open} textarea[aria-label="Their message on Twitch"]`), 'Twitch only {link}');
+  assert.equal(await page.inputValue(`${open} textarea[aria-label="Their message on Kick"]`), '', 'not the other site\'s');
   await page.waitForFunction(() => (JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')) || []).some(c => c.streamer === 's1' && c.perSite && c.sites.twitch === 'Twitch only {link}'));
   // removed
   await page.click(`${open} [data-cmd="settings.shoutCardRemove"]`);
@@ -294,6 +305,36 @@ test('Settings › Shoutouts › Channels: the cards by name, whatever their cas
   await page.click('#soTabs [data-t=message]'); await page.click('#soTabs [data-t=channels]');
   await page.waitForTimeout(100);
   assert.equal(await page.evaluate(() => window.__asked.length), 4);
+});
+
+test('Channel settings › Shoutout: their message with the tokens, saved as their card', async t => {
+  const page = await allApp(t, { shoutOn: '1' });
+  await page.evaluate(() => window.openLinkCard('quietkoala', { tab: 'shoutout' }));
+  const box = '#linkDlg .shc-bare';
+  await page.waitForSelector(box);
+  await page.fill(`${box} textarea`, 'Hey ');
+  await page.click(`${box} .so-tok button:has-text("{name}")`);
+  assert.equal(await page.inputValue(`${box} textarea`), 'Hey {name}');
+  await page.waitForFunction(() => (JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')) || []).some(c => c.streamer === 's1' && c.msg === 'Hey {name}'));
+});
+
+test('Settings › Shoutouts › Channels: a long list scrolls on its own, under the tabs and the Add box', async t => {
+  const list = Array.from({ length: 30 }, (_, i) => ({ ch: 'chan' + i, streamer: '', name: 'Chan' + String(i).padStart(2, '0'), avatar: 'https://pics.test/x.png', msg: '', perSite: false, sites: {}, also: [] }));
+  const page = await allApp(t, { shoutOn: '1', shoutChannels: JSON.stringify(list) });
+  await page.evaluate(() => window.openSettings('shoutouts'));
+  await page.click('#soTabs [data-t=channels]');
+  const top = () => page.evaluate(() => ['#soTabs', '.shc-add'].map(s => Math.round(document.querySelector(s).getBoundingClientRect().top)));
+  const before = await top();
+  assert.equal(await page.$eval('#shoutPeople', l => l.scrollHeight > l.clientHeight), true, 'the list scrolls');
+  await page.$eval('#shoutPeople', l => { l.scrollTop = l.scrollHeight; });
+  await page.locator('#shoutPeople .shc-card').last().click();
+  assert.deepEqual(await top(), before, 'the tabs and the Add box stay where they are');
+  assert.equal(await page.$eval('#settingsDlg .st-body', b => b.scrollTop), 0);
+  assert.equal(await page.locator('#shoutPeople .shc-card.open').count(), 1);
+  assert.ok(await page.$eval('#shoutPeople .shc-card', c => c.getBoundingClientRect().height) < 44, 'a closed card is one line');
+  // the other tabs scroll as before
+  await page.click('#soTabs [data-t=message]');
+  assert.equal(await page.$eval('#settingsDlg .st-body', b => getComputedStyle(b).overflowY), 'auto');
 });
 
 test('only in chats where you\'re a mod (on unless switched off): no buttons elsewhere; your own channel counts', async t => {
