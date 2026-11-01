@@ -1,4 +1,4 @@
-import { SHOUT_MAX, SHOUT_TPL, fillShout, loginOfCh, shoutLink, siteOfCh } from '../../chat/shoutout-text.js';
+import { SHOUT_MAX, SHOUT_TOKENS, SHOUT_TPL, fillShout, loginOfCh, shoutLink, siteOfCh } from '../../chat/shoutout-text.js';
 import { bellVars, myName } from '../bell/bell.js';
 import { svHue } from '../channels/channels.js';
 import { listStreamers, streamerName, streamerOf } from '../../platforms/linked.js';
@@ -16,6 +16,7 @@ import { settings } from '../../shared/settings.js';
 const SO_X = '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const SO_CHEV = '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
 const SO_SAMPLE_GAME = 'Tidepool';   // (the preview's last game: made up)
+const TOKEN_HELP = { '{name}': 'their name', '{link}': 'their channel', '{links}': 'every site', '{game}': 'last game' };
 
 const soSiteName = site => PLAT_NAME[site] || site;
 const soInitials = name => String(name || '?').replace(/[^a-z0-9]/gi, '').slice(0, 2).toUpperCase() || '?';
@@ -33,7 +34,17 @@ function soAvatar(card, small){
   return av;
 }
 // A textarea that grows to show all of its text
-function soGrow(t){ const fit = () => { t.style.height = 'auto'; t.style.height = Math.max(44, t.scrollHeight + 2) + 'px'; }; t.addEventListener('input', fit); requestAnimationFrame(fit); return t; }
+function soGrow(t){ const fit = () => { t.style.height = 'auto'; t.style.height = Math.max(34, t.scrollHeight + 2) + 'px'; }; t.addEventListener('input', fit); requestAnimationFrame(fit); return t; }
+// "Add:" and a button for each token, which puts it in the textarea where the caret is (the general message, a card's)
+function shoutTokensEl(t, ...more){
+  const add = tok => {
+    const s = t.selectionStart ?? t.value.length, e = t.selectionEnd ?? s;
+    t.value = t.value.slice(0, s) + tok + t.value.slice(e);
+    t.focus(); t.setSelectionRange(s + tok.length, s + tok.length);
+    t.dispatchEvent(new Event('input'));
+  };
+  return element('div', 'so-tok', 'Add:', ...SHOUT_TOKENS.map(tok => element('button', { type: 'button', dataset: { cmd: 'settings.shoutToken' }, onclick: () => add(tok) }, element('code', null, tok), ' ' + TOKEN_HELP[tok])), ...more);
+}
 // The preview of a message in a site's chat, as it would be sent (made-up game; their real link)
 function soPreview(card, site, text){
   const ch = soCardChs(card).find(c => siteOfCh(c) === site) || card.ch, login = loginOfCh(ch);
@@ -68,11 +79,11 @@ function shoutCardEl(card, { save, remove, open = false, bare = false } = {}){
   // their message: one, or (a linked streamer) one for each site
   const sites = chs.map(siteOfCh);
   const field = (site, value, onInput) => {
-    const t = soGrow(element('textarea', { class: 'st-in', rows: 2, maxlength: SHOUT_MAX, spellcheck: false, placeholder: 'Your general message (Settings › Shoutouts › Message)', 'aria-label': site ? `Their message on ${soSiteName(site)}` : 'Their message', dataset: { cmd: 'settings.shoutCardMsg' } }));
+    const t = soGrow(element('textarea', { class: 'st-in', rows: 1, maxlength: SHOUT_MAX, spellcheck: false, placeholder: 'Your general message (Settings › Shoutouts › Message)', 'aria-label': site ? `Their message on ${soSiteName(site)}` : 'Their message', dataset: { cmd: 'settings.shoutCardMsg' } }));
     t.value = value || '';
     const pvs = element('div', 'shc-pvs', ...(site ? [site] : sites).map(x => soPreview(card, x, t.value)));
     t.addEventListener('input', () => { onInput(t.value); pvs.replaceChildren(...(site ? [site] : sites).map(x => soPreview(card, x, t.value))); });
-    return element('div', 'shc-msg', site && element('span', 'mh', element('i', { class: 'pi pi-' + site }, soSiteName(site)[0]), `On ${soSiteName(site)}`), t, pvs);
+    return element('div', 'shc-msg', site && element('span', 'mh', element('i', { class: 'pi pi-' + site }, soSiteName(site)[0]), `On ${soSiteName(site)}`), t, shoutTokensEl(t), pvs);
   };
   const msgs = element('div', 'shc-msgs');
   const drawMsgs = () => msgs.replaceChildren(...(card.perSite ? sites.map(x => field(x, (card.sites || {})[x], v => { card.sites = { ...(card.sites || {}), [x]: v }; save(card); }))
@@ -167,4 +178,4 @@ function shoutAddEl(added, { taken = () => false } = {}){
   return box;
 }
 
-export { shoutAddEl, shoutCardEl };
+export { shoutAddEl, shoutCardEl, shoutTokensEl };
