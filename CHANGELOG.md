@@ -2,7 +2,10 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.15 (current)
+## 0.4.16 (current)
+- Shoutouts: a channel's message has the {name} {link} {links} {game} buttons, and a compact Channels list
+
+## 0.4.15
 - Shoutouts: Remove works, the channels are by name and show their pictures
 
 ## 0.4.14
