@@ -131,7 +131,7 @@
   },
   "dependencies": {
     "@streamorchard/grapevine": "^0.11.2",
-    "electron-chrome-extensions": "4.9.0",
+    "electron-chrome-extensions": "4.10.0",
     "electron-chrome-web-store": "0.13.0"
   },
   "overrides": {
