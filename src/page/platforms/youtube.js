@@ -47,7 +47,7 @@ const youtube = {
   id: 'youtube', name: 'YouTube', letter: 'Y',
   mentions: false,       // (YouTube chat isn't read for mentions or spam)
   threadedReplies: false,   // (no replies in its live chat: ALL replies with an @)
-  timeoutCmd: null, banCmd: null,   // (no chat commands: mod actions from its own tab)
+  timeoutCmd: null, banCmd: null, modRequest: null,   // (no chat commands: mod actions from its own tab)
   deleteMods: false,
   spamAlerts: false,
   feedReaders: false,    // (its chat's screen is read for support and chat over the stream: its gifted memberships aren't read from its connection yet)

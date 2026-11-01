@@ -1,7 +1,7 @@
 /* ---- Mod actions from ALL (chat/all-chat.js) that need a message: runs inside the chat page of its site ----
    Delete and Pin use the site's own buttons on that message, found by its id (Twitch's and Kick's in the line's React
    props) and only by their labels ("Delete", "Delete message", "Pin", "Pin this message…"), so nothing else on the
-   line is ever pressed. Timeouts and bans don't come here: they're the site's own slash commands (in-site/send.js).
+   line is ever pressed. Timeouts and bans don't come here: Kick's own request (its modRequest), Twitch's slash commands.
    After a pin, Twitch opens its pin's "Unpin After" panel over its chat (where you don't see it from ALL, and it's
    still open when you go there): it's clicked off, as you'd do, leaving Twitch's 20 minutes. (Watched for a few
    seconds after the answer, so ALL doesn't wait for it.)

@@ -119,6 +119,7 @@ const twitch = {
   // ALL's timeout and ban: Twitch's chat commands
   timeoutCmd: (login, secs) => `/timeout ${login} ${secs}`,
   banCmd: login => `/ban ${login}`,
+  modRequest: null,      // (they are typed in its box)
   deleteMods: false,     // (a mod's message can't be deleted by another mod)
   spamAlerts: true,
   feedReaders: true,     // the alerts, chat over the stream and counts read its chat's connection (chat/chat-feed.js)

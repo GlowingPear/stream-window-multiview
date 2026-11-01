@@ -10,7 +10,7 @@ import { chatBoxName } from './chat-name.js';
 import { chatZoom } from './chat-zoom.js';
 import { sampleIn } from './event-samples.js';
 import { feedParse } from './feed-parse.js';
-import { openInBrowser } from './kick-panel.js';
+import { askKick, openInBrowser } from './kick-panel.js';
 import { botTargets } from './shoutout-text.js';
 import { shoutHere, shoutOut, shoutTag, soPersonOf, soSentAt } from './shoutout.js';
 import { autoTrFor, translateChat } from './translate.js';
@@ -1098,6 +1098,8 @@ const drawn = m => Promise.race([askIn(m.view, 'new Promise(r => requestAnimatio
 const sender = {
   mod: (m, action, id) => askIn(m.view, `(${modAgent})(${JSON.stringify(action)}, ${JSON.stringify(id)})`),
   send: (m, text) => askIn(m.view, `(${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)})`),
+  // a site's own request (its modRequest) from the chat's page, with its login: { ok, status, message, data } (kickApi)
+  request: (m, { url, method, body }) => askKick(m, url, method, body),
   reply: (m, id, text, who) => platform(m.channel).threadedReplies === 'pointer' ? pointerReply(m, id, text, who)
     : askIn(m.view, `(async () => (await (${replyAgent})(${JSON.stringify(id)})) ? (${sendAgent})(${JSON.stringify(platOf(m.channel))}, ${JSON.stringify(text)}) : 'no-reply')()`),
   // YouTube's Send button can ignore a script's press: sendAgent then says where it is ({ press: { x, y }, start }), the
@@ -1300,26 +1302,30 @@ const TIMEOUTS = [60, 600, 3600, 86400];
 const durText = secs => secs >= 86400 ? `${secs / 86400}d` : secs >= 3600 ? `${secs / 3600}h` : `${Math.round(secs / 60)}m`;
 const lastTimeout = () => TIMEOUTS.includes(settings.num('allTimeout')) ? settings.num('allTimeout') : 600;
 const chatFor = m => wins.find(o => o.kind === 'chat' && o.channel === m.ch);
-async function modAct(m, action, secs){
+// A mod action on m's sender. quick: from the keys on a name, so a ban doesn't ask first
+async function modAct(m, action, secs, { quick } = {}){
   const c = chatFor(m), site = PLAT_NAME[m.site], who = m.sender; if (!c) return;
   const why = action === 'pin' ? (youMod(m.ch) && platform(m.ch).timeoutCmd ? '' : whyNot(m) || `You're not a mod on ${site}`) : whyNot(m, action);
   if (why) return flash(why);
-  if (action === 'ban' && !await ask(`Ban ${who} on ${site}?`, `They can't chat on ${site} until they're unbanned. Done with ${site}'s own /ban.`, { ok: 'Ban', danger: true })) return;
+  if (action === 'ban' && !quick && !await ask(`Ban ${who} on ${site}?`, `They can't chat on ${site} until they're unbanned.`, { ok: 'Ban', danger: true })) return;
   if (action === 'timeout') settings.set('allTimeout', secs);
-  let r;
+  let r, said = '';
   try {
     if (action === 'delete' || action === 'pin') r = await sender.mod(c, action, m.id);
+    else if (platform(m.ch).modRequest){ const a = await sender.request(c, platform(m.ch).modRequest(m.ch, m.sender || m.login, action === 'ban' ? 0 : secs)); r = a.ok ? 'done' : 'failed'; said = a.message; }
     else { const cmd = action === 'ban' ? platform(m.ch).banCmd(m.login) : platform(m.ch).timeoutCmd(m.login, secs); r = (await pressed(c, await sender.send(c, cmd), cmd)) === 'sent' ? 'done' : 'failed'; }
   } catch { r = 'failed'; }
   flash(r === 'done' ? { delete: `Deleted ${who}'s message on ${site}`, pin: `Pinned ${who}'s message on ${site}`, timeout: `Timed out ${who} on ${site} for ${durText(secs)}`, ban: `Banned ${who} on ${site}` }[action]
-    : r === 'no-line' ? `That message has gone from ${site}'s chat` : r === 'no-button' ? `${site} doesn't offer that there: try from its own tab` : `${site} didn't take it: try from its own tab`);
+    : r === 'no-line' ? `That message has gone from ${site}'s chat` : r === 'no-button' ? `${site} doesn't offer that there: try from its own tab`
+    : said ? `${site} didn't take it: ${said}` : `${site} didn't take it: try from its own tab`);
 }
-// A click on a name: their card; with Shift delete, Ctrl / ⌘ time out (the last length), both ban (as Kick's own chat does)
+// A click on a name: their card; with Shift delete, Ctrl / ⌘ time out (the last length), both ban (as Kick's own chat does),
+// none of them asking first
 function nameClick(m, e){
   const ctrl = e.ctrlKey || e.metaKey;
   if (!ctrl && !e.shiftKey) return openSiteCard(m);
   e.preventDefault();
-  if (ctrl && e.shiftKey) modAct(m, 'ban'); else if (ctrl) modAct(m, 'timeout', lastTimeout()); else modAct(m, 'delete');
+  if (ctrl && e.shiftKey) modAct(m, 'ban', 0, { quick: true }); else if (ctrl) modAct(m, 'timeout', lastTimeout()); else modAct(m, 'delete');
 }
 // A menu of ALL's, under (or beside) what opened it, inside ALL (its size: ALL follows the chat's text size)
 // Under a button it stays under it: in too short an ALL it scrolls rather than covering what opened it (at a point, a
