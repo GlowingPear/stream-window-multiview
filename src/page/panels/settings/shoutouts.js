@@ -1,5 +1,5 @@
-import { RUN_MAX, SHOUT_TOKENS, SHOUT_TPL, fillShout, shoutLink } from '../../chat/shoutout-text.js';
-import { soCards, soCheckCards, soSaveCards } from '../../chat/shoutout.js';
+import { RUN_MAX, SHOUT_TOKENS, SHOUT_TPL, fillShout, loginOfCh, shoutLink } from '../../chat/shoutout-text.js';
+import { soCardAvatars, soCards, soCheckCards, soSaveCards } from '../../chat/shoutout.js';
 import { $ } from '../../core.js';
 import { bellVars, myName } from '../bell/bell.js';
 import { shoutAddEl, shoutCardEl } from './shout-cards.js';
@@ -36,20 +36,21 @@ function addToken(t){
   textEl.focus(); textEl.setSelectionRange(s + t.length, s + t.length);
   textEl.dispatchEvent(new Event('input'));
 }
-/* ---- Channels: a card for each channel with a shoutout of its own (panels/settings/shout-cards.js draws one), and adding
-   one by looking it up. Open cards stay open as the list is drawn again. ---- */
+/* ---- Channels: a card for each channel with a shoutout of its own (panels/settings/shout-cards.js draws one), by name,
+   and adding one by looking it up. Open cards stay open as the list is drawn again. ---- */
 let openCards = new Set(), pendingCards = null;
 const cardKey = c => c.streamer || c.ch;
+const cardName = c => c.name || loginOfCh(c.ch);
 function saveCard(card){
   const cards = soCards(), i = cards.findIndex(c => cardKey(c) === cardKey(card));
   if (i >= 0) cards[i] = card; else cards.push(card);
   pendingCards = cards; saveCardsSoon();
 }
 function renderChannels(){
-  const cards = soCards();
+  const cards = [...soCards()].sort((a, b) => cardName(a).localeCompare(cardName(b), undefined, { sensitivity: 'base' }));
   peopleEl.replaceChildren(...(cards.length ? cards.map(c => {
     const el = shoutCardEl(c, { open: openCards.has(cardKey(c)), save: saveCard,
-      remove: () => { openCards.delete(cardKey(c)); const base = pendingCards || soCards(); pendingCards = null; soSaveCards(base.filter(x => cardKey(x) !== cardKey(c))); } });   // (what you'd typed in the others, kept; this one's, gone)
+      remove: () => { openCards.delete(cardKey(c)); const base = pendingCards || soCards(); pendingCards = null; soSaveCards(base.filter(x => cardKey(x) !== cardKey(c))); renderChannels(); } });   // (what you'd typed in the others, kept; this one's, gone; drawn again here, as Remove has the focus)
     el.addEventListener('click', e => { if (e.target.closest('.shc-tog')) setTimeout(() => { const now = peopleEl.querySelector(`.shc-card[data-ch="${CSS.escape(c.ch)}"]`); if (now && now.classList.contains('open')) openCards.add(cardKey(c)); else openCards.delete(cardKey(c)); }, 0); });
     return el;
   }) : [element('div', 'so-empty', 'No channels yet. Find a channel above to give it a shoutout of its own, or to list the other accounts it\'s for.')]));
@@ -100,8 +101,8 @@ function init(){
     peopleEl.querySelector(`.shc-card[data-ch="${CSS.escape((have || card).ch)}"] textarea`)?.focus();
   }, { taken: card => soCards().some(c => cardKey(c) === cardKey(card)) }));
   renderChannels();
-  // (the Channels tab: cards not checked yet are looked up on Kick and Twitch)
-  $('#soTabs').addEventListener('click', e => { if (e.target.closest('[data-t=channels]')) soCheckCards(); });
+  // (the Channels tab: cards not checked yet are looked up on Kick and Twitch, then cards without a picture get theirs)
+  $('#soTabs').addEventListener('click', e => { if (e.target.closest('[data-t=channels]')) Promise.resolve(soCheckCards()).then(soCardAvatars); });
   syncShoutSettings();
   store.watch(['shoutouts'], () => syncShoutSettings());
   // (drawn again for a change from elsewhere: a check, the other window, linking; never while you type in it)
