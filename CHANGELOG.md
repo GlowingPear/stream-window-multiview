@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.13 (current)
+## 0.4.14 (current)
+- Kick: Ban and Timeout from ALL work again, and a ban from the keys on a name doesn't ask first
+- Narrow windows keep their title bar's buttons: the site tabs no longer push them off
+
+## 0.4.13
 - A Twitch reward you redeem shows only in that channel's chat
 - Shoutouts: channels as cards, Channel settings in tabs, only where you're a mod, bots and special messages
 
