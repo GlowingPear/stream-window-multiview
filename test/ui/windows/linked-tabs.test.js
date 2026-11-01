@@ -593,3 +593,34 @@ test('opening by themselves: together as tabs when any account goes live, and no
   await page.evaluate(live => window.smvNotes.liveStatus(live), LIVE);
   assert.equal((await all(page)).filter(x => x.kind === 'stream').length, 2, 'not opened again');
 });
+test('a narrow window with its site tabs: close and ⋯ never go off its bar, the tabs scroll instead and keep the one you watch in sight', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'both'));
+  await page.waitForSelector('#stage .win.chat:not(.tab-hidden) .bar .ptab.all');
+  const chat = page.locator('#stage .win.chat:not(.tab-hidden)');
+  const state = width => chat.evaluate(async (el, width) => {
+    el.style.width = width + 'px';
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const bar = el.querySelector('.bar'), b = bar.getBoundingClientRect(), inBar = s => { const x = bar.querySelector(s); if (!x || x.hidden || getComputedStyle(x).display === 'none') return false; const r = x.getBoundingClientRect(); return r.width > 0 && r.left >= b.left - 0.5 && r.right <= b.right + 0.5; };
+    const tabs = bar.querySelector('.ptabs').getBoundingClientRect(), on = bar.querySelector('.ptab.on').getBoundingClientRect();
+    return { fits: bar.scrollWidth <= bar.clientWidth + 1, close: inBar('[data-a=close]'), more: inBar('[data-a=more]'), onSeen: on.left >= tabs.left - 0.5 && on.right <= tabs.right + 0.5 };
+  }, width);
+  for (const nameOn of [true, false]){
+    if (!nameOn){ await page.evaluate(() => window.openSettings('windows')); await page.click('#barNameChat'); await page.keyboard.press('Escape'); }
+    for (const width of [420, 300, 260, 220]){
+      const st = await state(width);
+      assert.ok(st.fits && st.close && st.more, `name ${nameOn ? 'on' : 'off'}, ${width}px: close and ⋯ on the bar (${JSON.stringify(st)})`);
+      assert.ok(st.onSeen, `${width}px: the tab you watch shows`);
+    }
+  }
+  // at its narrowest: a fade says there are more tabs; watching another brings it into sight
+  const fades = () => chat.evaluate(el => [...el.querySelector('.ptabs').classList].filter(c => c.startsWith('fade-')));
+  await chat.evaluate(el => { el.querySelector('.ptabs').scrollLeft = 0; });
+  await page.waitForTimeout(50);
+  assert.deepEqual(await fades(), ['fade-r'], 'more to the right');
+  await chat.evaluate(el => el.querySelector('.ptab.twitch').click());
+  await page.waitForSelector('#stage .win.chat:not(.tab-hidden) .ptab.twitch.on');
+  await page.waitForTimeout(50);
+  assert.ok((await state(220)).onSeen, 'the Twitch tab, now watched, is in sight');
+  await page.screenshot({ path: require('node:path').join(require('node:os').tmpdir(), 'bar-narrow.png'), clip: await chat.locator('.bar').boundingBox().then(b => ({ x: b.x - 4, y: b.y - 4, width: b.width + 8, height: b.height + 8 })) });
+});
