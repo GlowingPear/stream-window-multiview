@@ -107,6 +107,21 @@ function soCheckCards(){
   })();
   return soChecking;
 }
+// Cards without a picture (rows moved over from #300, ones added without lookups): theirs from their site, asked for
+// once a session (a channel without one keeps its initials)
+const soAvatarAsked = {};
+async function soCardAvatars(){
+  if (!window.kmv || !window.kmv.profileGet) return;
+  for (const c of soCards().filter(x => !x.avatar && !x.lost && !x.unchecked && !soAvatarAsked[x.ch])){
+    soAvatarAsked[c.ch] = true;
+    let r = null;
+    try { r = await window.kmv.profileGet(c.ch); } catch {}
+    const av = r && ((r.site && r.site.avatar) || (r.info && r.info.avatar));
+    if (!av || !/^https:\/\//.test(av)) continue;
+    const cards = soCards(), card = cards.find(x => x.ch === c.ch); if (!card) continue;
+    card.avatar = av; soSaveCards(cards);
+  }
+}
 const soSentAt = p => (p ? soSent[soKey(p)] || 0 : 0);
 const soAgo = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
 // Who's on a chat line: their site and address, their name, and the linked streamer they are (their row covers every site)
@@ -461,5 +476,5 @@ function init(){
   window.shoutouts = { timing: SO_TIMING, shoutOut, openRun, stopRun, lookUp: soLookUp, known: () => soKnown, sent: () => soSent, state: () => soRun && { i: soRun.i, n: soRun.list.length, wait: soRun.wait } };   // for the tests
 }
 
-export { init, openRun, shoutHere, shoutInSite, shoutOn, shoutOut, shoutTag, soCards, soCheckCards, soDropCard,
-  soPersonOf, soPutCard, soSaveCards, soSentAt };
+export { init, openRun, shoutHere, shoutInSite, shoutOn, shoutOut, shoutTag, soCardAvatars, soCards, soCheckCards,
+  soDropCard, soPersonOf, soPutCard, soSaveCards, soSentAt };
