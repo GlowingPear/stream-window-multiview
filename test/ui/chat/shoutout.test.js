@@ -271,6 +271,29 @@ test('Settings › Shoutouts › Channels: a card for a found channel, its messa
   // removed
   await page.click(`${open} [data-cmd="settings.shoutCardRemove"]`);
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')).some(c => c.streamer === 's1')), false);
+  assert.deepEqual((await cards()).map(c => c[0]), ['pebblesong', 'rowanbrook', 'tw:tinroof'], 'gone from the list too (Remove had the focus)');
+});
+
+test('Settings › Shoutouts › Channels: the cards by name, whatever their case; a card without a picture gets its site\'s, asked for once', async t => {
+  const card = (ch, name, avatar = '') => ({ ch, streamer: '', name, avatar, msg: '', perSite: false, sites: {}, also: [] });
+  const list = [card('wrenfield', 'Wrenfield'), card('tw:mossling', 'Mossling'), card('ashgrove', ''), card('juniperhall', 'JuniperHall', 'https://pics.test/j.png'), card('oddone', 'oddone')];
+  const page = await allApp(t, { shoutOn: '1', shoutChannels: JSON.stringify(list) });
+  await page.evaluate(() => { window.__asked = []; window.kmv = { profileGet: async ch => { window.__asked.push(ch);
+    return ch === 'wrenfield' ? { ch, site: { avatar: 'https://pics.test/w.png' } } : ch === 'tw:mossling' ? { ch, site: null, info: { avatar: 'https://pics.test/m.png' } }
+      : ch === 'oddone' ? { ch, site: { avatar: 'http://pics.test/o.png' } } : { ch, missing: true }; } }; });
+  await page.evaluate(() => window.openSettings('shoutouts'));
+  await page.click('#soTabs [data-t=channels]');
+  const names = () => page.$$eval('#shoutPeople .shc-card .nm', l => l.map(n => n.textContent));
+  assert.deepEqual(await names(), ['ashgrove', 'JuniperHall', 'Mossling', 'oddone', 'Wrenfield']);
+  const saved = () => page.evaluate(() => Object.fromEntries(JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')).map(c => [c.ch, c.avatar])));
+  await page.waitForFunction(() => window.__asked.length === 4 && JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')).some(c => c.ch === 'tw:mossling' && c.avatar));
+  assert.deepEqual(await saved(), { wrenfield: 'https://pics.test/w.png', 'tw:mossling': 'https://pics.test/m.png', ashgrove: '', juniperhall: 'https://pics.test/j.png', oddone: '' }, 'only https pictures');
+  assert.deepEqual((await page.evaluate(() => window.__asked)).sort(), ['ashgrove', 'oddone', 'tw:mossling', 'wrenfield'], 'not one that has a picture');
+  assert.deepEqual(await names(), ['ashgrove', 'JuniperHall', 'Mossling', 'oddone', 'Wrenfield'], 'drawn again, still by name');
+  // the tab again: not asked again this session
+  await page.click('#soTabs [data-t=message]'); await page.click('#soTabs [data-t=channels]');
+  await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(() => window.__asked.length), 4);
 });
 
 test('only in chats where you\'re a mod (on unless switched off): no buttons elsewhere; your own channel counts', async t => {
