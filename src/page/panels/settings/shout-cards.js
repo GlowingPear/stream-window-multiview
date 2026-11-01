@@ -43,7 +43,7 @@ function shoutTokensEl(t, ...more){
     t.focus(); t.setSelectionRange(s + tok.length, s + tok.length);
     t.dispatchEvent(new Event('input'));
   };
-  return element('div', 'so-tok', 'Add:', ...SHOUT_TOKENS.map(tok => element('button', { type: 'button', dataset: { cmd: 'settings.shoutToken' }, onclick: () => add(tok) }, element('code', null, tok), ' ' + TOKEN_HELP[tok])), ...more);
+  return element('div', 'so-tok', 'Add:', ...SHOUT_TOKENS.map(tok => element('button', { type: 'button', title: `Add ${TOKEN_HELP[tok]}`, dataset: { cmd: 'settings.shoutToken' }, onclick: () => add(tok) }, element('code', null, tok), element('span', 'd', ' ' + TOKEN_HELP[tok]))), ...more);
 }
 // The preview of a message in a site's chat, as it would be sent (made-up game; their real link)
 function soPreview(card, site, text){

@@ -71,6 +71,9 @@ button.al-so:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 .so-tok button:hover{border-color:var(--accent)}
 .so-tok code{font-family:ui-monospace,Menlo,monospace;color:var(--accent);font-size:11px}
 .so-tok .so-hint{margin-left:4px}
+/* a card's buttons in a narrow window (Channel settings): only the tokens, on one line; what each is, on hover */
+.shc-msg .so-tok{container-type:inline-size}
+@container (max-width:480px){.so-tok .d{display:none}}
 .so-prev{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.25);border:1px dashed var(--line2);font-size:13px;line-height:1.5}
 .so-prev .lbl{flex:none;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;padding-top:2px}
 .so-pl{display:flex;flex-direction:column;gap:4px;min-width:0;overflow-wrap:anywhere}
@@ -107,6 +110,8 @@ button.al-so:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 /* Settings › Shoutouts › Channels: the heading, tabs and Add box stay put; only the list scrolls (3px of room for an open card's ring) */
 #settingsDlg .st-body:has(> .st-pane[data-s="shoutouts"]:not([hidden]) > .st-subpane[data-t="channels"]:not([hidden])){display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}
 .st-pane[data-s="shoutouts"]:has(> .st-subpane[data-t="channels"]:not([hidden])),.st-pane[data-s="shoutouts"] > .st-subpane[data-t="channels"]:not([hidden]){flex:1;min-height:0;display:flex;flex-direction:column}
+.st-pane[data-s="shoutouts"]:has(> .st-subpane[data-t="channels"]:not([hidden])) > .st-sub{margin-bottom:0}   /* (the spacing a block's collapsed margins gave) */
+.st-pane[data-s="shoutouts"] > .st-subpane[data-t="channels"] > .st-sec:first-child{margin-top:12px}
 .st-pane[data-s="shoutouts"] #shoutPeople{flex:1;min-height:0;overflow:auto;margin:10px -3px 0;padding:3px 3px 20px}
 #shoutPeople > *{flex:none}
 .shc-card{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:9px;background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01));overflow:hidden}
@@ -121,6 +126,7 @@ button.al-so:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 .shc-card:not(.open) .shc-av{width:26px;height:26px;font-size:9.5px}
 .shc-card:not(.open) .shc-hd .tx{flex-direction:row;align-items:center;gap:10px}
 .shc-card:not(.open) .shc-hd :is(.nm,.sites){flex:none;flex-wrap:nowrap}
+.shc-card:not(.open) .shc-hd .nm{min-width:120px}
 .shc-card:not(.open) .shc-sum{flex:1;min-width:0}
 .shc-site{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);padding:1px 7px 1px 2px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
 .shc-site .pi{width:14px;height:14px;font-size:8.5px;border-radius:4px}
