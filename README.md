@@ -174,7 +174,7 @@ Open an issue with **Something isn't working**. In the app, Settings › Develop
 
 **Making a change:** open a pull request against `main`. Don't change the version number or `CHANGELOG.md` in it. Write the pull request title as one line a user would understand (for example *"Add Hikari theme"*), because titles become the app's "What's new" entries. Every pull request runs the tests, and builds the Windows and Mac installers as a test if it changes anything that goes into them (they appear under the run's **Artifacts**). A red ✗ on the pull request means something broke: open **Details** to see which test.
 
-**Running the tests yourself** (needs Node.js 22 or newer; CI uses the version in `.nvmrc`, which nvm, fnm and Herd switch to for you):
+**Running the tests yourself** (needs Node.js 22 or newer; CI uses the version in `.nvmrc`, which nvm, fnm and Herd switch to for you). The UI and launch tests run four test files at a time, so the browsers and copies of the app they start don't slow your computer to a crawl:
 
 | Command | What it checks | Time |
 |---|---|---|
@@ -197,7 +197,7 @@ Open an issue with **Something isn't working**. In the app, Settings › Develop
 - The app's pages have a Content-Security-Policy: no `<script>` in the HTML and no `onclick="…"`-style attributes; code goes in files, handlers in code.
 - `SMV_` variables that point the app somewhere else only work in copies run from source.
 
-The tests are in `test/`. When you add a feature, add a test next to the similar ones. Coverage doesn't have to be 100%, but it can't go down: if `npm run test:coverage` says a file is below its minimum, test what you changed. When coverage goes up, raise the minimums in `test/coverage-min.json` to the numbers on the CI run's summary page.
+The tests are in `test/`. When you add a feature, add a test next to the similar ones. Coverage doesn't have to be 100%, but it can't go down: CI checks it on every pull request (there's no need to run it on your computer), and if it says a file is below its minimum, test what you changed. When coverage goes up, raise the minimums in `test/coverage-min.json` to the numbers on the CI run's summary page.
 
 What the tests deliberately don't do, because it needs the real outside world:
 - Real Kick, Twitch and YouTube: live checks, Import follows and signing in to the real sites. The tests use stand-in pages and answers; the parsing is unit tested in `test/unit`.
