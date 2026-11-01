@@ -593,3 +593,51 @@ test('opening by themselves: together as tabs when any account goes live, and no
   await page.evaluate(live => window.smvNotes.liveStatus(live), LIVE);
   assert.equal((await all(page)).filter(x => x.kind === 'stream').length, 2, 'not opened again');
 });
+test('a narrow window with its site tabs: close and ⋯ never go off its bar; it tightens to fit every tab, and only past that scrolls them, the one you watch in sight', async t => {
+  const page = await linkedApp(t);
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'both'));
+  await page.waitForSelector('#stage .win.chat:not(.tab-hidden) .bar .ptab.all');
+  const chat = page.locator('#stage .win.chat:not(.tab-hidden)');
+  const state = width => chat.evaluate(async (el, width) => {
+    el.style.width = width + 'px';
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const bar = el.querySelector('.bar'), b = bar.getBoundingClientRect(), inBar = s => { const x = bar.querySelector(s); if (!x || x.hidden || getComputedStyle(x).display === 'none') return false; const r = x.getBoundingClientRect(); return r.width > 0 && r.left >= b.left - 0.5 && r.right <= b.right + 0.5; };
+    const box = bar.querySelector('.ptabs'), tabs = box.getBoundingClientRect(), on = bar.querySelector('.ptab.on').getBoundingClientRect();
+    return { fits: bar.scrollWidth <= bar.clientWidth + 1, close: inBar('[data-a=close]'), more: inBar('[data-a=more]'), mod: inBar('[data-a=mod]'),
+      scrolls: box.scrollWidth > box.clientWidth + 1, onSeen: on.left >= tabs.left - 0.5 && on.right <= tabs.right + 0.5 };
+  }, width);
+  await page.evaluate(() => window.openSettings('windows'));
+  for (const nameOn of [true, false]){
+    if (!nameOn){ await page.click('#barNameChat'); }
+    for (const width of [420, 300, 260, 220]){
+      const st = await state(width);
+      assert.ok(st.fits && st.close && st.more, `name ${nameOn ? 'on' : 'off'}, ${width}px: close and ⋯ on the bar (${JSON.stringify(st)})`);
+      assert.ok(!st.scrolls, `${width}px: every tab shows, none scrolled away`);
+    }
+  }
+  // the mod view Never in ⋯ (a third button): still every tab at 240px; at the narrowest, close, ⋯ and it stay
+  // (every tab too, with this computer's fonts; Linux's are wider, and the tabs may scroll a few pixels)
+  await page.click('#wbList [data-k=mod] button:has-text("Never in ⋯")');
+  await page.keyboard.press('Escape');
+  let st = await state(240);
+  assert.ok(st.fits && st.close && st.more && st.mod && !st.scrolls, `240px with the mod view: everything shows (${JSON.stringify(st)})`);
+  st = await state(220);
+  assert.ok(st.fits && st.close && st.more && st.mod && st.onSeen, `220px with the mod view: the buttons stay (${JSON.stringify(st)})`);
+  // more than fits (narrower than a window can be, as a busier bar would be): the tabs scroll, the buttons stay
+  st = await state(190);
+  assert.ok(st.fits && st.close && st.more && st.mod && st.scrolls && st.onSeen, `the tabs scroll, the buttons stay (${JSON.stringify(st)})`);
+  // a fade says there are more tabs; watching one that's scrolled away brings it into sight
+  const fades = () => chat.evaluate(el => [...el.querySelector('.ptabs').classList].filter(c => c.startsWith('fade-')));
+  await chat.evaluate(el => { el.querySelector('.ptabs').scrollLeft = 0; });
+  await page.waitForTimeout(50);
+  assert.deepEqual(await fades(), ['fade-r'], 'more to the right');
+  await chat.evaluate(el => { el.querySelector('.ptabs').scrollLeft = 999; });
+  await page.waitForTimeout(50);
+  assert.deepEqual(await fades(), ['fade-l'], 'scrolled to the end: more to the left');
+  assert.equal(await chat.locator('.ptab.all.on').count(), 0);
+  await chat.evaluate(el => el.querySelector('.ptab.all').click());
+  await page.waitForSelector('#stage .win.chat:not(.tab-hidden) .ptab.all.on');
+  await page.waitForTimeout(50);
+  st = await state(190);
+  assert.ok(st.scrolls && st.onSeen, `ALL, now watched, is in sight (${JSON.stringify(st)})`);
+});
