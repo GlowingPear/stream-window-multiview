@@ -13,8 +13,8 @@ import { tabChannels } from './frames.js';
 
 /* ---------- title bars fit any window size ----------
    When a window's title bar is too narrow for everything, it first drops the volume %, then narrows the volume
-   slider, then moves buttons into its ⋯ menu, and only then lets the title shrink. Last, its site tabs scroll sideways
-   (the one you watch kept in sight). Close, mute, ⋯ and the button that's Never in ⋯ always stay on the bar. Re-fits when the window resizes or a button shows or hides.
+   slider, then moves buttons into its ⋯ menu, and only then lets the title shrink. Then it tightens its gaps and
+   buttons, and last its site tabs scroll sideways (the one you watch kept in sight). Close, mute, ⋯ and the button that's Never in ⋯ always stay on the bar. Re-fits when the window resizes or a button shows or hides.
    Settings › Windows says which buttons are always in the ⋯ menu, and the order: out of room, the leftmost go
    first. Until you change it there, the least-used go first (BAR_ORDER). */
 const BAR_LEVELS = ['b1', 'b2'];
@@ -24,7 +24,7 @@ function fitBar(bar){
   const name = bar.querySelector('.col-pick') || bar.querySelector('.title'), more = bar.querySelector('[data-a=more]');
   const fits = () => bar.scrollWidth <= bar.clientWidth + 1;
   // start from everything showing, with the name keeping a few letters
-  bar.classList.remove(...BAR_LEVELS, 'b3', 'b4', 'b5');
+  bar.classList.remove(...BAR_LEVELS, 'b3', 'b4', 'b5', 'b6');
   bar.querySelectorAll('.btns .ovf').forEach(b => b.classList.remove('ovf'));
   const cfg = barButtons();
   if (more){
@@ -46,10 +46,11 @@ function fitBar(bar){
   if (!fits()){ bar.classList.add('b3'); name.style.minWidth = ''; }
   if (!fits()) bar.classList.add('b4');
   if (!fits()) bar.classList.add('b5');
+  if (!fits()) bar.classList.add('b6');
   fadeTabs(bar.querySelector('.ptabs'), true);
   bar.fitObs?.takeRecords();                               // ignore our own changes
 }
-// Site tabs that scroll (b5): the one you watch in sight, and a fade on the side that has more
+// Site tabs that scroll (b6): the one you watch in sight, and a fade on the side that has more
 function fadeTabs(box, toOn){
   if (!box) return;
   const on = box.querySelector('.ptab.on');

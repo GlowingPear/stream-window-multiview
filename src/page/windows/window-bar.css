@@ -13,14 +13,19 @@
 .bar.b1 .vol .pct{display:none}
 .bar.b2 .vol input{width:48px}
 .bar.b4 .title{display:none}
-/* last: less empty bar, and the site tabs scroll sideways (fadeTabs) rather than push close and ⋯ off the bar */
-.bar.b5 .grab{flex-basis:12px}
-.bar.b5 .col-pick{flex-basis:0}                            /* the name stays at its narrowest: the tabs get the room */
-.bar.b5 .ptabs{flex-shrink:1;min-width:24px;overflow:auto hidden;scrollbar-width:none;padding:4px 6px;margin:0 -4px}   /* (the padding keeps the tabs' dots and rings unclipped) */
-.bar.b5 .ptabs::-webkit-scrollbar{display:none}
-.bar.b5 .ptabs.fade-l{mask-image:linear-gradient(90deg,transparent,#000 18px)}
-.bar.b5 .ptabs.fade-r{mask-image:linear-gradient(90deg,#000 calc(100% - 18px),transparent)}
-.bar.b5 .ptabs.fade-l.fade-r{mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent)}
+/* then tighter: smaller gaps, narrower buttons, less empty bar, the name at its narrowest (the tabs get the room) */
+.bar.b5{gap:3px;padding-left:6px}
+.bar.b5 .ptabs{gap:3px;margin:0}
+.bar.b5 .grab{flex-basis:8px}
+.bar.b5 .col-pick{flex-basis:0}
+.bar.b5 .btns{gap:0}
+.bar.b5 .btns button:not(.txt){width:22px}
+/* last: the site tabs scroll sideways (fadeTabs) rather than push close and ⋯ off the bar */
+.bar.b6 .ptabs{flex-shrink:1;min-width:24px;overflow:auto hidden;scrollbar-width:none;padding:4px 6px;margin:0 -4px}   /* (the padding keeps the tabs' dots and rings unclipped) */
+.bar.b6 .ptabs::-webkit-scrollbar{display:none}
+.bar.b6 .ptabs.fade-l{mask-image:linear-gradient(90deg,transparent,#000 18px)}
+.bar.b6 .ptabs.fade-r{mask-image:linear-gradient(90deg,#000 calc(100% - 18px),transparent)}
+.bar.b6 .ptabs.fade-l.fade-r{mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent)}
 .bar .grab{flex:1 0 36px;align-self:stretch}            /* always some empty bar to drag the window by */
 .btns button.ovf{display:none}
 .btns button.more-b{font-size:15px;line-height:1}
