@@ -712,19 +712,20 @@ function raidSo(m){
   return element('button', { type: 'button', class: 'al-so', title: `Shout out ${m.sender} in ${PLAT_NAME[m.site]} chat`, dataset: { cmd: 'all.raidShoutout' },
     onclick: e => { e.stopPropagation(); shoutOut(p); } }, element('i', { html: icon.megaphone }), 'Shout out');
 }
-// The line menu's Shout out (in its chat), and with a streamer's several sites you can send on, a submenu: in its chat or in every chat
+// The line menu's Shout out (in its chat), and with a streamer's several sites you can send on, a submenu: in its chat or
+// in every chat. Who it's for is the line's sender, named in the menu's top; a chat bot's message is about someone else: named
 function shoutItems(m, view, item, group){
   const p = shoutable(m); if (!p) return [];
-  const chs = sendSites(view.w), chip = t => element('em', null, t), name = p.from ? p.name : m.sender;
+  const chs = sendSites(view.w), chip = t => element('em', null, t), label = p.from ? `Shout out ${p.name}` : 'Shout out';
   if (chs.length < 2){
-    const one = item(`Shout out ${name}`, icon.megaphone, () => shoutOut(p), { cmd: 'all.menuShoutout' });
-    one.classList.add('so-li'); one.querySelector('span').title = name; one.appendChild(element('span', 'so-on', chip(`${PLAT_NAME[m.site]} chat`)));
+    const one = item(label, icon.megaphone, () => shoutOut(p), { cmd: 'all.menuShoutout' });
+    one.classList.add('so-li'); one.appendChild(element('span', 'so-on', chip(`${PLAT_NAME[m.site]} chat`)));
     return [one];
   }
   const every = item('In every chat', icon.megaphone, () => shoutOut(p, { chs }), { cmd: 'all.menuShoutoutAll' });
   every.appendChild(element('span', 'so-on', ...chs.map(ch => chip(PLAT_NAME[platOf(ch)]))));
-  const row = group(`Shout out ${name}`, icon.megaphone, 'all.menuShout', [item(`In ${PLAT_NAME[m.site]} chat`, icon.megaphone, () => shoutOut(p), { cmd: 'all.menuShoutout' }), every]);
-  row.classList.add('so-li'); row.querySelector('span').title = name;   // (a long name is cut short)
+  const row = group(label, icon.megaphone, 'all.menuShout', [item(`In ${PLAT_NAME[m.site]} chat`, icon.megaphone, () => shoutOut(p), { cmd: 'all.menuShoutout' }), every]);
+  row.classList.add('so-li');
   return [row];
 }
 function lineEl(m){

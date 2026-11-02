@@ -80,7 +80,8 @@ function menuFor(params, { langs = ['en'], dev = false, devTools = false, emote 
   const msg = message && typeof message.html === 'string' && message.html && !p.isEditable ? message : null;
   // Settings › Shoutouts on: shout out who sent it (the app's page sends it, in this chat)
   const shout = msg && msg.shout && typeof msg.shout === 'object' && /^(kick|twitch)$/.test(msg.shout.site) && /^[\w-]{1,40}$/.test(String(msg.shout.login || '')) ? msg.shout : null;
-  if (shout) group([{ label: `Shout out ${String(shout.name || shout.login).slice(0, 40)}`, act: { do: 'shoutout', who: { site: shout.site, login: String(shout.login).toLowerCase(), name: String(shout.name || shout.login).slice(0, 40) } } }]);
+  // (who sent it: just "Shout out"; a chat bot's message about someone else (from: the bot): named)
+  if (shout) group([{ label: shout.from ? `Shout out ${String(shout.name || shout.login).slice(0, 40)}` : 'Shout out', act: { do: 'shoutout', who: { site: shout.site, login: String(shout.login).toLowerCase(), name: String(shout.name || shout.login).slice(0, 40) } } }]);
   const name = msg && String(msg.name || '').replace(/^@/, '').trim().slice(0, 40);
   // in a chat: the picture's items with the message's in a submenu; elsewhere (a stream's page), as they are
   if (msg) group([
