@@ -784,7 +784,14 @@ test('ALL: a message of yours AutoMod holds says so, then is sent (its line come
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [HM('chat-highlight', { msg_id: 'r2', highlights: [{ type: 'first_time_chatter' }, { type: 'something_new' }] })] });
   const tags = id => page.$$eval(`.all-list [data-key="twitch:${id}"] .al-tag-mark`, l => l.map(x => [x.textContent, x.title]));
   assert.deepEqual(await tags('r1'), [['Raider', 'Came in with a raid 4 min ago']]);
-  assert.deepEqual(await tags('r2'), [['First chat', 'Their first message in this chat'], ['something new', 'Twitch marks it: something new']]);
+  assert.deepEqual(await tags('r2'), [['something new', 'Twitch marks it: something new']], 'a first chat: marked as one (below), not as a mark');
+  // someone's first message in this chat: Twitch's tag on it (to everyone), or its mark (to moderators); marked once
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'Fernleaf', id: 'f1', 'user-id': '10', 'first-msg': '1' }, ':fernleaf!f@f PRIVMSG #quietkoala :hello all')] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [HM('chat-highlight', { msg_id: 'f1', highlights: [{ type: 'first_time_chatter' }] })] });
+  const first = id => page.$eval(`.all-list [data-key="twitch:${id}"]`, l => [l.classList.contains('al-first'), [...l.querySelectorAll('.al-tag-first, .al-tag-mark')].map(x => [x.textContent, x.title])]);
+  assert.deepEqual(await first('f1'), [true, [['First chat', 'Their first message in this chat']]], 'its tag and its mark: once');
+  assert.deepEqual(await first('r2'), [true, [['First chat', 'Their first message in this chat'], ['something new', 'Twitch marks it: something new']]], 'its mark only');
+  assert.deepEqual(await first('r1'), [false, [['Raider', 'Came in with a raid 4 min ago']]], 'not a first chat');
 });
 
 test('ALL: messages held for review are amber cards with Allow and Deny (the site\'s own buttons), until let through, denied, hidden or expired; the chip goes to the oldest waiting', async t => {
