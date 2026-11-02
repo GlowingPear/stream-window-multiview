@@ -28,16 +28,19 @@ function languageIn(code, inLang) {
 }
 
 // params: Electron's context-menu params. opts: { langs, dev, devTools, emote, chat, message }
-//   dev: a developer copy (Inspect); devTools: Settings › Developer › Developer tools is on (a Developer group, with Inspect)
+//   dev: a developer copy (Inspect); devTools: Settings › Developer › Developer tools is on (a Developer submenu, with Inspect)
 //   emote: the emote under the pointer (see emoteAgent in index.html): { name, text, big, small } where text is what to paste in
 //     that chat, big and small its pictures' addresses
 //   chat: a chat window's translation state (see translateAgent): { on, auto }; null: not a chat
-//   message: the chat message under the pointer (see messageAgent): { text, withEmotes, html, shout }; null: not a message.
-//     shout: who sent it, while shoutouts are on in that chat (in-site/shoutout.js): { site, login, name }
-// -> [{ label, act, enabled?, checked? } | { label, head: true } | { type: 'separator' }]
+//   message: the chat message under the pointer (see messageAgent): { text, withEmotes, html, name, shout }; null: not a message.
+//     name: who sent it, as the chat shows it; shout: who sent it, while shoutouts are on in that chat (in-site/shoutout.js): { site, login, name }
+// In a chat, what's used most is in the menu and the rest in submenus: Copy (or Emote, Image), Translate, Developer.
+// -> [{ label, act, enabled?, checked? } | { label, sub: [items] } | { type: 'separator' }]
 function menuFor(params, { langs = ['en'], dev = false, devTools = false, emote = null, chat = null, message = null } = {}) {
   const p = params || {}, f = p.editFlags || {}, out = [];
   const group = items => { const list = items.filter(Boolean); if (!list.length) return; if (out.length) out.push({ type: 'separator' }); out.push(...list); };
+  // a submenu (one item: just that item)
+  const sub = (label, items) => { const list = items.filter(Boolean); return list.filter(x => !x.type).length > 1 ? { label, sub: list } : list.find(x => !x.type) || null; };
   const sel = String(p.selectionText || '').trim();
   const tl = translateTarget(langs);
 
@@ -51,14 +54,14 @@ function menuFor(params, { langs = ['en'], dev = false, devTools = false, emote 
     { label: 'Copy link address', act: { do: 'copyText', text: p.linkURL } }
   ]);
   const em = emote && typeof emote.text === 'string' && emote.text ? emote : null;
-  if (em && p.mediaType === 'image') group([{ label: 'Copy emote text', act: { do: 'copyText', text: em.text } }]);
-  if (p.mediaType === 'image' && webUrl(p.srcURL)) group([
-    { label: 'Open image in new window', act: { do: 'openImage', url: p.srcURL } },
-    { label: 'Save image as…', act: { do: 'saveImage', url: p.srcURL, name: (em && em.name) || p.altText || p.titleText || '' } },
+  const image = p.mediaType === 'image' && webUrl(p.srcURL) ? [
+    em ? { label: 'Copy emote text', act: { do: 'copyText', text: em.text } } : null,
     // an emote: the app copies it (a moving one also as a file, so it pastes moving); another picture: as Chrome copies it
     { label: 'Copy image', act: em && webUrl(em.big) ? { do: 'copyEmote', url: em.big, small: webUrl(em.small) ? em.small : '', name: em.name || '' } : { do: 'copyImage', x: p.x, y: p.y } },
-    { label: 'Copy image address', act: { do: 'copyText', text: p.srcURL } }
-  ]);
+    { label: 'Copy image address', act: { do: 'copyText', text: p.srcURL } },
+    { label: 'Open image in new window', act: { do: 'openImage', url: p.srcURL } },
+    { label: 'Save image as…', act: { do: 'saveImage', url: p.srcURL, name: (em && em.name) || p.altText || p.titleText || '' } }
+  ].filter(Boolean) : [];
   if (p.isEditable) group([
     { label: 'Undo', act: { do: 'undo' }, enabled: !!f.canUndo },
     { label: 'Redo', act: { do: 'redo' }, enabled: !!f.canRedo },
@@ -73,33 +76,55 @@ function menuFor(params, { langs = ['en'], dev = false, devTools = false, emote 
     { label: `Translate ${quoteShort(sel)} to ${languageName(tl)}`, act: { do: 'external', url: translateUrl(sel, tl) } },
     { label: `Search Google for ${quoteShort(sel)}`, act: { do: 'external', url: searchUrl(sel) } }
   ]);
-  // a chat message: its text without who sent it (emotes left out, or as their text)
+  // a chat message: its text without who sent it (emotes left out, or as their text), or with their @name
   const msg = message && typeof message.html === 'string' && message.html && !p.isEditable ? message : null;
   // Settings › Shoutouts on: shout out who sent it (the app's page sends it, in this chat)
   const shout = msg && msg.shout && typeof msg.shout === 'object' && /^(kick|twitch)$/.test(msg.shout.site) && /^[\w-]{1,40}$/.test(String(msg.shout.login || '')) ? msg.shout : null;
-  if (shout) group([{ label: `Shout out ${String(shout.name || shout.login).slice(0, 40)}`, act: { do: 'shoutout', who: { site: shout.site, login: String(shout.login).toLowerCase(), name: String(shout.name || shout.login).slice(0, 40) } } }]);
+  // (who sent it: just "Shout out"; a chat bot's message about someone else (from: the bot): named)
+  if (shout) group([{ label: shout.from ? `Shout out ${String(shout.name || shout.login).slice(0, 40)}` : 'Shout out', act: { do: 'shoutout', who: { site: shout.site, login: String(shout.login).toLowerCase(), name: String(shout.name || shout.login).slice(0, 40) } } }]);
+  const name = msg && String(msg.name || '').replace(/^@/, '').trim().slice(0, 40);
+  // in a chat: Copy image first (it's what you right-clicked), the picture's other items with the message's in a
+  // submenu; elsewhere (a stream's page), as they are
+  const copyImage = image.find(x => x.label === 'Copy image'), more = image.filter(x => x !== copyImage);
   if (msg) group([
+    copyImage,
     { label: 'Copy message', act: { do: 'copyText', text: msg.text || '' }, enabled: !!msg.text },
-    { label: 'Copy message with emotes', act: { do: 'copyText', text: msg.withEmotes || '' }, enabled: !!msg.withEmotes }
+    sub('Copy', [
+      { label: 'Copy message with emotes', act: { do: 'copyText', text: msg.withEmotes || '' }, enabled: !!msg.withEmotes },
+      name && msg.withEmotes ? { label: 'Copy with @name', act: { do: 'copyText', text: `@${name}: ${msg.withEmotes}` } } : null,
+      more.length ? { type: 'separator' } : null,
+      ...more
+    ])
   ]);
-  // a chat: translate all of it (like Chrome's "Translate to English"), and its new messages as they come
-  if (chat && !p.isEditable && !webUrl(p.linkURL)) group([
+  else if (image.length) group(chat ? [copyImage, sub(em ? 'Emote' : 'Image', more)] : image);
+  // a chat: translate the message, all of it (like Chrome's "Translate to English"), and its new messages as they come
+  if (chat && !p.isEditable && !webUrl(p.linkURL)) group([sub('Translate', [
+    msg && msg.text ? { label: 'Translate this message', act: { do: 'translateOne', tl } } : null,
     { label: `Translate this chat to ${languageName(tl)}`, act: { do: 'translateChat', tl }, checked: !!chat.on },
     { label: 'Translate new messages too', act: { do: 'translateAuto', tl, on: !chat.auto }, checked: !!chat.auto },
     chat.on ? { label: 'Stop translating', act: { do: 'translateStop' } } : null
-  ]);
+  ])]);
   // nothing in particular: the page itself
   if (!out.length || (chat && !sel && !em && !webUrl(p.linkURL) && !p.isEditable && p.mediaType !== 'image')) group([{ label: 'Reload', act: { do: 'reload' } }]);
   // Developer tools: the message's and the chat's HTML, how the message was read for alerts, and Inspect
-  if (devTools) group([
-    { label: 'Developer', head: true },
+  if (devTools) group([sub('Developer', [
     msg ? { label: 'Copy message HTML', act: { do: 'copyText', text: msg.html } } : null,
     chat && !p.isEditable ? { label: 'Copy chat HTML', act: { do: 'copyChatHtml' } } : null,
     msg ? { label: 'Why didn\'t this alert?', act: { do: 'whyAlert' } } : null,
     { label: 'Inspect', act: { do: 'inspect', x: p.x, y: p.y } }
-  ]);
+  ])]);
   else if (dev) group([{ label: 'Inspect', act: { do: 'inspect', x: p.x, y: p.y } }]);
   return out;
 }
 
-module.exports = { menuFor, translateTarget, languageName, languageIn, translateUrl, searchUrl };
+// The menu as the app's page draws it (chat/view-menu.js): the same items, each one it can choose with a number, and
+// the item each number is. -> { items: [{ label, id, enabled, checked } | { label, sub } | { sep: true }], byId: [item] }
+function drawnItems(items) {
+  const byId = [];
+  const each = list => list.map(x => x.type ? { sep: true }
+    : x.sub ? { label: x.label, sub: each(x.sub) }
+    : { label: x.label, id: byId.push(x) - 1, enabled: x.enabled !== false, checked: !!x.checked });
+  return { items: each(items), byId };
+}
+
+module.exports = { menuFor, drawnItems, translateTarget, languageName, languageIn, translateUrl, searchUrl };

@@ -49,8 +49,12 @@ async function rightClick(params = {}) {
     for (let i = 0; i < 20 && globalThis.__d.menus.length === before; i++) await new Promise(r => setTimeout(r, 50));
     return globalThis.__d.menus.length - 1;
   }, [CHAT.source, params]);
-  const labels = await a.app.evaluate((_, n) => globalThis.__d.menus[n].map(x => x.type === 'separator' ? '—' : x.label + (x.enabled === false ? ' (off)' : '')), n);
-  return { labels, pick: label => a.app.evaluate((_, [n, label]) => globalThis.__d.menus[n].find(x => x.label === label).click(), [n, label]) };
+  // (a submenu: [its label, its labels])
+  const labels = await a.app.evaluate((_, n) => { const of = l => l.map(x => x.type === 'separator' ? '—' : x.submenu ? [x.label, of(x.submenu)] : x.label + (x.enabled === false ? ' (off)' : '')); return of(globalThis.__d.menus[n]); }, n);
+  return { labels, pick: label => a.app.evaluate((_, [n, label]) => {
+    const find = l => { for (const x of l){ if (x.label === label && x.click) return x; const y = x.submenu && find(x.submenu); if (y) return y; } };
+    find(globalThis.__d.menus[n]).click();
+  }, [n, label]) };
 }
 // a Kick-style message in the stand-in chat, right-clicked in the page
 async function pressMessage() {
@@ -61,13 +65,13 @@ async function pressMessage() {
   });
 }
 
-test('the switch: asked about the first time, then the chats\' menu has a Developer group and the windows\' ⋯ menu Copy window state and Inspect', T, async () => {
+test('the switch: asked about the first time, then the chats\' menu has a Developer submenu and the windows\' ⋯ menu Copy window state and Inspect', T, async () => {
   await a.win.evaluate(() => window.openSettings('developer'));
   assert.equal(await pane('h4').textContent(), 'Developer');
   assert.equal(await pane('h4 .gd-q').getAttribute('aria-label'), 'Help: Developer tools', 'with its ?');
   assert.equal(await a.win.isChecked('#devOn'), false, 'off at first');
   await pressMessage();
-  assert.ok(!(await rightClick()).labels.some(l => /Developer|HTML|alert/.test(l)), 'off: no Developer group');
+  assert.ok(!/Developer|HTML|alert/.test(JSON.stringify((await rightClick()).labels)), 'off: no Developer submenu');
   // the first time: what Inspect can see, and Cancel keeps it off
   await a.win.click('label:has(#devOn)');
   await a.win.waitForSelector('#askDlg:not([hidden])');
@@ -80,7 +84,7 @@ test('the switch: asked about the first time, then the chats\' menu has a Develo
   // the chat's menu, on a message
   await pressMessage();
   const m = await rightClick();
-  assert.deepEqual(m.labels.slice(-6), ['—', 'Developer (off)', 'Copy message HTML', 'Copy chat HTML', 'Why didn\'t this alert?', 'Inspect']);
+  assert.deepEqual(m.labels.slice(-2), ['—', ['Developer', ['Copy message HTML', 'Copy chat HTML', 'Why didn\'t this alert?', 'Inspect']]]);
   // off and on again: not asked again
   await a.win.click('label:has(#devOn)');
   assert.equal(await a.win.isChecked('#devOn'), false);

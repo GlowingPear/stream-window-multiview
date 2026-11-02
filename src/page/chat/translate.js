@@ -33,7 +33,9 @@ async function translateFor(frame, json){
 }
 function translateChat(w, a){
   if (!w || w.kind !== 'chat' || !w.view) return;
-  const js = a.do === 'translateStop' ? 'window.__kmvTr.stop()' : a.do === 'translateAuto' ? `window.__kmvTr.setAuto(${!!a.on})` : 'window.__kmvTr.start(window.__kmvTr.state().auto)';
+  const js = a.do === 'translateStop' ? 'window.__kmvTr.stop()' : a.do === 'translateAuto' ? `window.__kmvTr.setAuto(${!!a.on})`
+    : a.do === 'translateOne' ? 'window.__kmvTr.one(window.__kmvMsg && window.__kmvMsg.last())'   // (the message right-clicked)
+    : 'window.__kmvTr.start(window.__kmvTr.state().auto)';
   if (a.do === 'translateStop' || a.do === 'translateAuto'){
     const on = a.do === 'translateAuto' && a.on;
     if (on){ autoTr.add(w.channel); noTr.delete(w.channel); }

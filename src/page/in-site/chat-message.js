@@ -1,7 +1,7 @@
 /* ---- The chat message you right-clicked: runs inside each chat page (Kick, Twitch, YouTube), for the right-click
    menu's Copy message, Copy message with emotes and Copy message HTML (src/main/context-menu.js). The main process asks
    it with ctx() before it builds the menu: the message's own text (not who sent it), the same with each emote as what
-   you'd type for it, and the whole message's HTML. What the app adds to a message (the translate badge, marks) is left out.
+   you'd type for it, the whole message's HTML, and who sent it (Copy with @name). What the app adds to a message (the translate badge, marks) is left out.
    With Developer tools on, the menu also has Copy chat HTML (chatHtml(): the last messages and the list around them)
    and Why didn't this alert? (the mention helper reads last(), the message right-clicked). Errors in the app's own
    scripts in this page (not the site's) go to Settings › Developer's error log as "__kmv:dev-err" messages. */
@@ -12,6 +12,8 @@ function messageAgent(){
   // the whole message, with its name and badges
   const LINE = '[data-a-target="chat-line-message"], .chat-line__message, yt-live-chat-text-message-renderer, [data-index]';
   const OURS = '[data-kmv-trb], kmv-emote-card, [data-kmv-spam], [class*="kmv-spam"]';
+  // who sent it, as the line shows it: Twitch, YouTube, Kick
+  const NAME = '.chat-author__display-name, [data-a-target="chat-message-username"], yt-live-chat-text-message-renderer #author-name, button[data-prevent-expand], button.inline.font-bold';
   let ctxAt = null;
   const flat = s => String(s || '').replace(/\s+/g, ' ').trim();
   // an emote picture as text: what you'd type for it (the emote helper knows), or its name
@@ -47,8 +49,13 @@ function messageAgent(){
     if (!line || !line.contains(body)) line = body.closest(LINE) || body.parentElement || body;
     return { line, body };
   }
-  // the message an element is in: { text, withEmotes, html } | null (not a message)
-  const read = m => m && { text: textOf(m.body, false), withEmotes: textOf(m.body, true), html: htmlOf(m.line).slice(0, 100000) };
+  function nameOf(m){
+    const prev = m.body.previousElementSibling;   // (Kick: the name is before the colon, next to the text)
+    const n = [...m.line.querySelectorAll(NAME)].find(e => !m.body.contains(e)) || (prev && [...prev.querySelectorAll('button')].pop());
+    return n ? flat(n.textContent).replace(/^@/, '').replace(/:$/, '').slice(0, 40) : '';
+  }
+  // the message an element is in: { text, withEmotes, html, name } | null (not a message)
+  const read = m => m && { text: textOf(m.body, false), withEmotes: textOf(m.body, true), html: htmlOf(m.line).slice(0, 100000), name: nameOf(m) };
   const messageOf = el => read(partsOf(el));
   // The chat's last n messages and what's around them (its list, banners, the pinned message), as HTML for an issue:
   // { html, n, total } | null (no messages). The other messages are left out, and so are scripts, styles, icons'

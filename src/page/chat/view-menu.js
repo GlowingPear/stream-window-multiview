@@ -9,6 +9,7 @@ import { save } from '../persistence.js';
 import { chLabel, rememberName } from '../platforms/platforms.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
+import { flyouts } from '../shared/flyout.js';
 import { fromApp, fromSite } from '../shared/incoming.js';
 import { store } from '../shared/store.js';
 import { stopWinTimer, stopWinTimers, winTimer } from '../shared/timers.js';
@@ -17,8 +18,8 @@ import { runIn, zoomOf } from '../windows/view.js';
 import { mountView, ytCache } from '../windows/views.js';
 
 /* The right-click menu on an emote in a chat: the main process sends its items (the same ones the system menu would
-   have, from src/main/context-menu.js) with the emote, and gets back the one you chose. It looks and works like a
-   system menu (arrows, Enter, Esc, typing a letter), but stays inside this window. */
+   have, from src/main/context-menu.js) with the emote, and gets back the number of the one you chose. It looks and works
+   like a system menu (arrows, Enter, Esc, typing a letter), with its submenus (shared/flyout.js), but stays inside this window. */
 const EMOTE_SITE = { Kick: ['#53fc18', '#0a0c0d', 'Kick emote'], Twitch: ['#8a4fff', '#fff', 'Twitch emote'], YouTube: ['#ff3d3d', '#fff', 'YouTube emoji'],
   '7TV': ['#353e43', '#e7ede9', 'From the 7TV add-on'], BTTV: ['#353e43', '#e7ede9', 'From the BetterTTV add-on'], FFZ: ['#353e43', '#e7ede9', 'From the FrankerFaceZ add-on'] };
 const VM_SRC = /^https:\/\/(files\.kick\.com\/emotes\/|static-cdn\.jtvnw\.net\/|([\w-]+\.)?7tv\.app\/|cdn\.betterttv\.net\/|cdn\.frankerfacez\.com\/|([\w-]+\.)?ggpht\.com\/|www\.gstatic\.com\/)/;
@@ -26,44 +27,52 @@ let viewMenu = null;
 function closeViewMenu(chosen){
   const m = viewMenu; if (!m) return;
   viewMenu = null;
-  m.el.remove();
+  m.el.remove(); m.sub.remove();
   removeEventListener('blur', m.off); removeEventListener('resize', m.off);
   document.removeEventListener('pointerdown', m.out, true);
   runIn(m.view, 'window.__kmvEmote && window.__kmvEmote.menuClosed()');
   if (chosen == null && window.kmv && window.kmv.viewMenuClose) window.kmv.viewMenuClose(m.id);
 }
-// d: { emote: { name, site, big, small, animated, x, y }, items: [{ label, enabled, checked } | { sep } | { head }] }; x, y: in the chat page
+// d: { emote: { name, site, big, small, animated, x, y }, items: [{ label, id, enabled, checked } | { label, sub: [items] } | { sep }] }; x, y: in the chat page
 function showViewMenu(view, id, d, pick){
   closeViewMenu();
-  const e = d.emote || {}, el = document.createElement('div');
+  const e = d.emote || {}, el = document.createElement('div'), sub = document.createElement('div');
   el.className = 'vmenu'; el.setAttribute('role', 'menu'); el.tabIndex = -1;
   el.setAttribute('aria-label', e.name ? `Emote ${e.name}` : 'Menu');
+  sub.className = 'vmenu vm-fly'; sub.setAttribute('role', 'menu'); sub.hidden = true;
+  const fly = flyouts(el, sub);
   if (e.name){
     const pre = document.createElement('div'); pre.className = 'vm-pre'; pre.setAttribute('aria-hidden', 'true');
     const s = EMOTE_SITE[e.site] || ['#353e43', '#e7ede9', 'Emote'], addOn = /^(7TV|BTTV|FFZ)$/.test(e.site);
-    pre.innerHTML = '<div class="vm-pic"><img alt="" referrerpolicy="no-referrer"></div><div><div class="vm-top"><span class="vm-nm"></span><span class="vm-badge"></span></div><div class="vm-sub"></div></div>';
+    pre.innerHTML = '<div class="vm-pic"><img alt="" referrerpolicy="no-referrer"></div><div class="vm-txt"><div class="vm-top"><span class="vm-nm"></span><span class="vm-badge"></span></div><div class="vm-sub"></div></div>';
     const img = pre.querySelector('img');
     if (VM_SRC.test(e.big)) img.src = e.big;
     img.onerror = () => { if (VM_SRC.test(e.small) && img.src !== e.small) img.src = e.small; else img.remove(); };
-    if (e.animated) pre.querySelector('.vm-pic').insertAdjacentHTML('beforeend', '<span class="vm-anim">ANIMATED</span>');
     pre.querySelector('.vm-nm').textContent = e.name;
     const b = pre.querySelector('.vm-badge'); b.textContent = addOn ? 'Add-on' : (e.site || ''); b.style.background = s[0]; b.style.color = s[1];
-    pre.querySelector('.vm-sub').textContent = s[2];
+    pre.querySelector('.vm-sub').textContent = s[2] + (e.animated ? ' · animated' : '');
     el.append(pre);
   }
-  const rows = [];
-  (d.items || []).forEach((x, i) => {
-    if (x.sep){ const r = document.createElement('div'); r.setAttribute('role', 'separator'); el.append(r); return; }
-    if (x.head){ const h = document.createElement('div'); h.className = 'vm-head'; h.setAttribute('role', 'presentation'); h.textContent = x.head; el.append(h); return; }   // (Developer)
+  // an item (in the menu or a submenu): its label on one line, cut short with … when it's long (all of it on hover)
+  function itemEl(x){
+    if (x.sep){ const r = document.createElement('div'); r.setAttribute('role', 'separator'); return r; }
     const b = document.createElement('div');
     b.setAttribute('role', 'checked' in x && x.checked ? 'menuitemcheckbox' : 'menuitem');
     if (x.checked) b.setAttribute('aria-checked', 'true');
     if (x.enabled === false) b.setAttribute('aria-disabled', 'true');
-    b.textContent = x.label; b.dataset.i = i; b.tabIndex = -1;
+    const t = document.createElement('span'); t.className = 'vm-l'; t.textContent = x.label; b.append(t); b.tabIndex = -1;
+    if (x.sub){ b.dataset.sub = x.label; b.insertAdjacentHTML('beforeend', '<b class="vm-x" aria-hidden="true">›</b>'); fly.row(b, () => x.sub.map(itemEl)); }
+    else { b.dataset.i = x.id; b.addEventListener('click', () => choose(b)); }
+    b.addEventListener('pointerenter', () => { if (t.scrollWidth > t.clientWidth) b.title = x.label; });
+    return b;
+  }
+  const rows = [];
+  (d.items || []).forEach(x => {
+    const b = itemEl(x); el.append(b);
+    if (x.sep) return;
     b.addEventListener('pointermove', () => cur(rows.indexOf(b)));
-    b.addEventListener('pointerleave', () => cur(-1));
-    b.addEventListener('click', () => choose(b));
-    el.append(b); rows.push(b);
+    b.addEventListener('pointerleave', () => { if (!b.classList.contains('open')) cur(-1); });
+    rows.push(b);
   });
   let at = -1;
   function cur(n){ at = n; rows.forEach((r, j) => r.classList.toggle('cur', j === n)); if (n >= 0) rows[n].focus({ preventScroll: true }); else el.focus({ preventScroll: true }); }
@@ -72,7 +81,7 @@ function showViewMenu(view, id, d, pick){
     for (let k = 1; k <= rows.length; k++){ const n = ((at < 0 && dir < 0 ? rows.length : at) + dir * k + rows.length * 2) % rows.length; if (usable(rows[n])){ cur(n); return; } }
   }
   function choose(b){
-    if (!b || !usable(b)) return;
+    if (!b || !usable(b) || b.dataset.i == null) return;
     const i = +b.dataset.i;
     closeViewMenu(i);
     pick(i);
@@ -90,7 +99,8 @@ function showViewMenu(view, id, d, pick){
     }
     ev.stopPropagation();
   });
-  document.body.append(el);
+  sub.addEventListener('keydown', ev => { if (ev.key === 'Tab'){ ev.preventDefault(); closeViewMenu(); if (view) view.focus(); } ev.stopPropagation(); });
+  document.body.append(el, sub);
   // where you right-clicked (the chat may be zoomed), kept inside this window: flipped up or left near an edge
   const r = view ? view.getBoundingClientRect() : { left: 0, top: 0 };
   const z = zoomOf(view);
@@ -99,11 +109,13 @@ function showViewMenu(view, id, d, pick){
   left = Math.max(M, Math.min(innerWidth - W - M, left)); top = Math.max(M, Math.min(innerHeight - H - M, top));
   el.style.left = left + 'px'; el.style.top = top + 'px';
   const off = () => closeViewMenu();
-  const out = ev => { if (!el.contains(ev.target)) closeViewMenu(); };
+  const inside = n => el.contains(n) || sub.contains(n);
+  const out = ev => { if (!inside(ev.target)) closeViewMenu(); };
   addEventListener('blur', off); addEventListener('resize', off);
   document.addEventListener('pointerdown', out, true);
-  el.addEventListener('focusout', ev => { if (!el.contains(ev.relatedTarget)) setTimeout(() => { if (viewMenu && viewMenu.el === el && !el.contains(document.activeElement)) closeViewMenu(); }, 0); });
-  viewMenu = { el, view, id, off, out };
+  const lost = ev => { if (!inside(ev.relatedTarget)) setTimeout(() => { if (viewMenu && viewMenu.el === el && !inside(document.activeElement)) closeViewMenu(); }, 0); };
+  el.addEventListener('focusout', lost); sub.addEventListener('focusout', lost);
+  viewMenu = { el, sub, view, id, off, out };
   el.focus({ preventScroll: true });
   return el;
 }
