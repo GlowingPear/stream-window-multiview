@@ -425,16 +425,23 @@ function modAction(f, view, a, ch){
     if (m && m.deleted){ m.deleted.who = a.by; redrawLine(m); } else if (a.msgId) modBy.set('msg:' + a.msgId, { by: a.by, t: a.t });
     return;
   }
+  if (/^un(ban|timeout)$/.test(a.action)){   // (its own line, as in Twitch's chat; their name as their lines have it)
+    const last = a.target && [...f.msgs].reverse().find(x => x.kind === 'message' && x.site === a.site && x.ch === ch && x.login === a.target);
+    if (a.target) unbanned(f, view, { site: a.site, by: a.by, who: last ? last.sender : a.target, t: a.t, timeout: a.action === 'untimeout' }, ch);
+    return;
+  }
   const said = MODE_SAID[a.action]; if (!said) return;
   const words = [element('b', null, a.by), ' ' + said[0], said[1] && a.arg ? element('span', 'al-amt', ` · ${said[1] === 's' ? modeDur(a.arg) : a.arg ? modeDur(a.arg * 60) : ''}`) : ''];
   const m = { kind: 'modlog', site: a.site, ch, id: 'log' + (++logN), t: a.t, d: { by: a.by }, who: '', words };
   f.msgs.push(m); if (view) addLine(view, m);
 }
-// A ban or timeout lifted (Kick says so): for mods, a line says who lifted it; their struck lines stay as they were
+// A ban or timeout lifted (Kick says so; Twitch's moderation actions, which say which): for mods, a line says who lifted
+// it, in green rather than a ban's red; their struck lines stay as they were
 function unbanned(f, view, d, ch){
   if (!youMod(ch)) return;
-  const words = [...(d.by ? [element('b', null, d.by), ' lifted the ban on '] : []), element('b', null, d.who), d.by ? '' : '\'s ban was lifted'];
-  const m = { kind: 'modlog', site: d.site, ch, id: 'log' + (++logN), t: d.t, words };
+  const what = d.timeout ? 'timeout' : 'ban';
+  const words = [...(d.by ? [element('b', null, d.by), ` lifted the ${what} on `] : []), element('b', null, d.who), d.by ? '' : `'s ${what} was lifted`];
+  const m = { kind: 'modlog', site: d.site, ch, id: 'log' + (++logN), t: d.t, d: { by: d.by || '' }, words, lift: true };
   f.msgs.push(m); if (view) addLine(view, m);
 }
 
@@ -752,7 +759,7 @@ function lineEl(m){
         : m.opened ? element('span', 'al-tag al-tag-raid', 'Opened') : element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.raidOpen' }, title: `Open ${chLabel(m.to)} in a window of its own`,
           onclick: () => { addParsed({ channel: m.to, only: null }); m.opened = true; redrawLine(m); } }, 'Open ›'));
   }
-  if (m.kind === 'modlog') return element('div', { class: `al-ev al-log al-${SITE_CLASS[m.site]}`, dataset: { key: m.site + ':' + m.id } },
+  if (m.kind === 'modlog') return element('div', { class: `al-ev al-log al-${SITE_CLASS[m.site]}` + (m.lift ? ' al-lift' : ''), dataset: { key: m.site + ':' + m.id } },
     element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0]), element('span', { class: 'al-evt', html: SHIELD }), element('span', 'al-evw', ...m.words.map(x => x instanceof Node ? x.cloneNode(true) : x)));
   const site = PLAT_NAME[m.site] || m.site;
   const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]), m.from && sharedEl(m), ...badgeEls(m));
