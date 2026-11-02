@@ -10,12 +10,12 @@
 .all-sites{display:flex;gap:4px;margin-right:auto}
 /* the sites' switches: a press hides that site in ALL (faded and crossed), another shows it again; each with more room to press than it shows */
 .all-sites .pi{position:relative;width:14px;height:14px;font-size:8px;border-radius:4px;border:0;padding:0;cursor:pointer;transition:opacity .15s,filter .15s}
-.all-sites .pi::before,.all-pinchip::before,.all-filt::before{content:'';position:absolute;inset:-3px -2px}
+.all-sites .pi::before,.all-pinchip::before,.all-heldchip::before,.all-filt::before{content:'';position:absolute;inset:-3px -2px}
 .all-sites .pi:hover{box-shadow:0 0 0 1.5px color-mix(in srgb,var(--text) 45%,transparent)}
 .all-sites .pi:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .all-sites .pi.off{opacity:.35;filter:grayscale(1)}
 .all-sites .pi.off::after{content:'';position:absolute;left:-2px;right:-2px;top:50%;height:1.5px;background:var(--text);transform:rotate(-45deg);border-radius:1px}
-.all-pinchip,.all-filt{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:3px;height:14px;min-width:20px;padding:0 6px;border-radius:4px;font:inherit;font-size:9.5px;font-weight:700;line-height:1;cursor:pointer;
+.all-pinchip,.all-heldchip,.all-filt{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:3px;height:14px;min-width:20px;padding:0 6px;border-radius:4px;font:inherit;font-size:9.5px;font-weight:700;line-height:1;cursor:pointer;
   border:1px solid var(--line2);background:var(--panel);color:var(--muted);box-sizing:border-box}
 .all-pinchip:hover,.all-filt:hover,.all-view:has(.all-fm:not([hidden])) .all-filt{color:var(--text);border-color:color-mix(in srgb,var(--accent) 55%,transparent);background:color-mix(in srgb,var(--accent) 10%,var(--panel))}
 .all-pinchip[aria-pressed=true]{color:var(--text);border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--panel))}
@@ -258,9 +258,9 @@
 .al-held-end.ok{color:#8fd97a}
 .al-held-x{opacity:.55}
 .al-held-x .al-txt{text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--muted) 70%,transparent)}
-.all-pinchip.all-heldchip{color:#ffd27a;border-color:rgba(255,190,70,.55);background:rgba(255,190,70,.12)}
-.all-pinchip.all-heldchip:hover{color:#ffe2a6;border-color:rgba(255,190,70,.8);background:rgba(255,190,70,.2)}
-.all-heldchip svg{fill:currentColor;stroke:none}
+.all-heldchip{color:#ffd27a;border-color:rgba(255,190,70,.55);background:rgba(255,190,70,.12)}
+.all-heldchip:hover{color:#ffe2a6;border-color:rgba(255,190,70,.8);background:rgba(255,190,70,.2)}
+.all-heldchip svg{width:12px;height:12px;fill:currentColor;stroke:none}
 /* Twitch's suspicious-user flags; a restricted user's message, which only moderators see */
 .al-tag-flag.al-flag-evader{color:#ffc690;background:rgba(255,138,31,.12);border:1px solid rgba(255,138,31,.5)}
 .al-tag-flag.al-flag-monitored{color:#a9c8ff;background:rgba(111,168,255,.12);border:1px solid rgba(111,168,255,.45)}
@@ -308,9 +308,9 @@
 .all-pin-open svg{width:14px;height:14px;transition:transform .18s}
 .all-pin-open[aria-expanded=true] svg{transform:rotate(180deg)}
 .all-pin-open:hover{background:var(--line);color:var(--text)}
-.all-pinchip i{display:grid;place-items:center;width:12px;height:12px}
+.all-pinchip i,.all-heldchip i{display:grid;place-items:center;width:12px;height:12px}
 .all-pinchip svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.2}
-.all-pinchip[hidden]{display:none}
+.all-pinchip[hidden],.all-heldchip[hidden]{display:none}
 /* a new pin: the pill bounces and glows in the site's colour (--pc) */
 .all-pinchip.ping{--pc:var(--accent);color:#fff;border-color:var(--pc);animation:all-ping .7s cubic-bezier(.3,1.6,.5,1) 2,all-glow 1.6s ease-out 2}
 .all-pinchip.ping-kick{--pc:#53fc18}.all-pinchip.ping-kick{color:#0b0e0f;background:#53fc18}

@@ -866,7 +866,7 @@ function buildView(w){
     onclick: () => { view.pollsShown = !view.pollsShown; renderPoll(view); fitRoom(view); } });
   const pinChip = element('button', { type: 'button', class: 'all-pinchip', hidden: true, dataset: { cmd: 'all.pins' },
     onclick: () => { view.pinsShown = !view.pinsShown; renderPins(view); } });
-  const heldChip = element('button', { type: 'button', class: 'all-pinchip all-heldchip', hidden: true, dataset: { cmd: 'all.held' }, title: 'Go to the oldest message waiting for a moderator',
+  const heldChip = element('button', { type: 'button', class: 'all-heldchip', hidden: true, dataset: { cmd: 'all.held' }, title: 'Go to the oldest message waiting for a moderator',
     onclick: () => jumpHeld(view) });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), heldChip, pinChip, pollChip, filt), hype, health, pins, poll, element('div', 'all-lw', list, more), empty,
