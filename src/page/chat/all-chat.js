@@ -1,4 +1,6 @@
 import { alerts, clearAlert } from '../alerts/alerts.js';
+import { flaggedFrom, heldHandled } from '../alerts/flagged.js';
+import { revealChat } from '../alerts/spam-alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { emoteBox } from './all-box.js';
 import { SMILEY, addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, refreshEmotes, renderEmoteList,
@@ -116,6 +118,7 @@ function ingest(w, json, quiet = false, shown = false){
   (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => { const got = feedParse.parseFeed({ s: batch.s, raw: [raw] }); if (!shown && (got.length || !feedParse.leftOut(batch.s, raw))) noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0); got.forEach(m => {
     if (shown && m.kind !== 'message' && m.kind !== 'event') return;
     if (devOn) m.raw = raw;   // (Developer tools: the line's Copy message data)
+    if (!quiet) flaggedFrom(w, m);   // (Settings › Flagged)
     if (m.kind === 'delete' || m.kind === 'clear' || m.kind === 'clearall') return removed(f, view, m, w.channel);
     if (m.kind === 'unban') return unbanned(f, view, m, w.channel);
     if (m.kind === 'modaction') return modAction(f, view, m, w.channel);
@@ -1708,6 +1711,7 @@ function heldEnd(h, status, by){
   heldDrawn(h, h);
 }
 function heldDrawn(h, m){
+  heldHandled(h.site + ':' + h.id, h.kind !== 'held' ? 'allowed' : h.status === 'EXPIRED' ? 'expired' : 'denied', h.byYou ? 'you' : h.by || '');   // (Settings › Flagged's note)
   document.querySelectorAll(`.all-list [data-key="${CSS.escape(h.site + ':' + h.id)}"]`).forEach(el => { const n = lineEl(m); if (n) el.replaceWith(n); else el.remove(); });
   const view = viewFor(ownerOf(h.ch)); if (view) renderHeld(view);
 }
@@ -1729,14 +1733,35 @@ function heldEl(h){
 // Allow or Deny: the site's own button on it, in its chat's tab; its line changes straight away (the site's news of it
 // then only says who)
 async function heldAct(h, allow){
-  const c = chatFor(h), site = PLAT_NAME[h.site]; if (!c) return flash(`${site}'s chat isn't open`);
+  const c = chatFor(h), site = PLAT_NAME[h.site]; if (!c){ flash(`${site}'s chat isn't open`); return 'no-chat'; }
   h.busy = true; redrawLine(h);
   let r; try { r = await sender.held(c, allow ? 'allow' : 'deny', h.id); } catch { r = 'failed'; }
   h.busy = false;
-  if (h.kind !== 'held' || h.status !== 'PENDING') return;   // (handled meanwhile)
-  if (r !== 'done'){ redrawLine(h); return flash(r === 'no-line' ? `That message has gone from ${site}'s chat` : r === 'no-button' ? `${site} doesn't offer that there: try from its own tab` : `${site} didn't take it: try from its own tab`); }
+  if (h.kind !== 'held' || h.status !== 'PENDING') return r;   // (handled meanwhile)
+  if (r !== 'done'){ redrawLine(h); flash(heldFailed(site, r)); return r; }
   h.byYou = true;
   if (allow) heldAllowed(h, ''); else heldEnd(h, 'DENIED', '');
+  return r;
+}
+const heldFailed = (site, r) => r === 'no-line' ? `That message has gone from ${site}'s chat` : r === 'no-button' ? `${site} doesn't offer that there: try from its own tab` : `${site} didn't take it: try from its own tab`;
+// Allow or Deny a held message from outside ALL (Settings › Flagged's note under the bell): ALL's card when it has one,
+// else the site's own button in that chat -> 'done', or why not (said)
+async function pressHeld(ch, id, allow){
+  const s = ownerOf(ch), h = s && feedOf(s).byId.get(platOf(ch) + ':' + id);
+  if (h && h.kind === 'held' && h.status === 'PENDING') return heldAct(h, allow);
+  const c = wins.find(o => o.kind === 'chat' && o.channel === ch), site = PLAT_NAME[platOf(ch)];
+  if (!c){ flash(`${site}'s chat isn't open`); return 'no-chat'; }
+  let r; try { r = await sender.held(c, allow ? 'allow' : 'deny', id); } catch { r = 'failed'; }
+  if (r !== 'done') flash(heldFailed(site, r));
+  return r;
+}
+// Show me (a Flagged note): its chat, and ALL scrolled to it when ALL has it
+function seeFlagged(ch, site, id){
+  revealChat(ch);
+  const view = viewFor(ownerOf(ch)), el = view && view.list.querySelector(`[data-key="${CSS.escape(site + ':' + id)}"]`);
+  if (!el) return;
+  el.scrollIntoView({ block: 'center' });
+  el.classList.remove('al-held-go'); void el.offsetWidth; el.classList.add('al-held-go');
 }
 // The chip: how many wait for a moderator (in the sites shown); it goes to the oldest
 const heldWaiting = view => feedOf(view.s).msgs.filter(x => x.kind === 'held' && x.status === 'PENDING' && !siteOff(view.s, x.site));
@@ -1921,7 +1946,7 @@ function readOnly(w, json){
   (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => {
     const got = feedParse.parseFeed({ s: batch.s, raw: [raw] });
     if (got.length || !feedParse.leftOut(batch.s, raw)) noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0);
-    got.forEach(m => fromFeed(w, m));
+    got.forEach(m => { flaggedFrom(w, m); fromFeed(w, m); });
   });
 }
 // A pin already up when ALL starts reading a chat: the sites send pins only as they're made, so it's asked for (quietly)
@@ -2005,6 +2030,6 @@ function init(){
 }
 
 export { allLooking, allOn, allRaid, allTabFor, appBots, chatRules, copyChatHtml, feedRead, feedReady, feeds,
-  fillAll, init, mentionOf, modViewChs, openInspects, openModViews, openPopUps, openSaves, overBox, ownerOf,
-  reloadAll, sendEmote, sendInChat, sendSite, setAll, setLock, setModes, setSoloAll, SITE_BUTTONS, siteAction,
-  spamTag, translateSite, youMod };
+  fillAll, heldWait, init, mentionOf, modViewChs, openInspects, openModViews, openPopUps, openSaves, overBox,
+  ownerOf, pressHeld, reloadAll, seeFlagged, sendEmote, sendInChat, sendSite, setAll, setLock, setModes, setSoloAll,
+  SITE_BUTTONS, siteAction, spamTag, translateSite, youMod };

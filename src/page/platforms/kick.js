@@ -51,6 +51,7 @@ const kick = {
     body: secs ? { banned_username: name, duration: Math.max(1, Math.round(secs / 60)), permanent: false } : { banned_username: name, permanent: true } }),
   deleteMods: true,      // ALL's Delete works on another mod's message, as in its own chat (not their timeout or ban)
   spamAlerts: true,      // spam alerts read its chat
+  flagged: false,        // Settings › Flagged: Kick holds nothing for moderators (its AI moderation deletes)
   feedReaders: true,     // the alerts, chat over the stream and counts read its chat's connection (chat/chat-feed.js)
   emoteLists: true,      // the app asks it for a channel's emotes (new emotes glow)
   pageCommands: true,    // /clip, /poll and /prediction in its chat (in-site/kick-commands.js)

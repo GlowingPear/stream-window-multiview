@@ -1,7 +1,8 @@
 import { alerts, playSound, wantNotify } from '../../alerts/alerts.js';
+import { flaggedAct, flaggedWaiting } from '../../alerts/flagged.js';
 import { revealChat, spamOpts } from '../../alerts/spam-alerts.js';
 import { SmvSpam } from '../../alerts/spam.js';
-import { allOn } from '../../chat/all-chat.js';
+import { allOn, seeFlagged } from '../../chat/all-chat.js';
 import { $, ROLE, wins } from '../../core.js';
 import { addParsed } from '../../layout/placement.js';
 import { injectMention, pushMyName, renderMentions, renderNoteHistory } from './all-notifications.js';
@@ -55,6 +56,11 @@ function addNote(n, text, desk = text){
   notes = SmvNotes.add(notes, n); saveNotes(); store.changed('notes');
   return notes[0];
 }
+// Some notes changed (a Flagged hold handled): fn(note) for each that test(note) picks
+function updateNotes(test, fn){
+  const hit = notes.filter(test); if (!hit.length) return;
+  hit.forEach(fn); saveNotes(); store.changed('notes');
+}
 function dropNotes(test){
   const before = notes.length;
   notes = notes.filter(n => !test(n));
@@ -66,7 +72,7 @@ function readNotes(test){
   notes.forEach(x => { if (x.unread && (!test || test(x))){ x.unread = false; n++; } });
   if (n){ saveNotes(); store.changed('notes'); }
 }
-const readChat = ch => readNotes(n => n.channel === ch && (SmvNotes.tabOf(n) === 'mentions' || n.kind === 'spam'));
+const readChat = ch => readNotes(n => n.channel === ch && (SmvNotes.tabOf(n) === 'mentions' || n.kind === 'spam' || n.kind === 'flagged'));
 // Mentions for one chat can be turned off with the @ button on its bar.
 const mentNameFor = ch => { const p = platOf(ch); return p === 'kick' ? myName : p === 'twitch' ? myTwitch : ''; };   // YouTube chat isn't covered
 const mentCovered = ch => /^(kick|twitch)$/.test(platOf(ch)) && !!(mentNameFor(ch) || mentWords.length);
@@ -162,7 +168,7 @@ function mentBodyHtml(m){
 /* One row of the bell or All notifications. o: { clock (the time, not "x min ago"), onDelete, close (what's
    open: the bell or the history) } */
 const andList = l => l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1];
-const NOTE_ICO = { mention: 'at', reply: 'reply', support: 'gift', spam: 'mod', live: 'live', raid: 'raid', accounts: 'user', layouts: 'tile', windows: 'popwin', downloads: 'download', updates: 'update' };
+const NOTE_ICO = { mention: 'at', reply: 'reply', support: 'gift', spam: 'mod', flagged: 'mod', live: 'live', raid: 'raid', accounts: 'user', layouts: 'tile', windows: 'popwin', downloads: 'download', updates: 'update' };
 function noteRow(n, o = {}){
   const kind = n.kind || 'mention', tab = SmvNotes.tabOf(n);
   const ico = NOTE_ICO[kind === 'app' ? n.subject : kind];
@@ -194,7 +200,7 @@ function noteRow(n, o = {}){
   } else if (kind === 'spam'){
     top.textContent = n.sender;
     k.textContent = `${n.abuse ? 'Abusive · ' : ''}${n.score} / ${n.need}`; k.classList.add('spam');
-    k.title = `${n.score} points; ${n.need} needed to be flagged`;
+    k.title = `${n.score} points; ${n.need} needed to be marked`;
     where.textContent = chLabelP(n.channel);
     body.textContent = n.body || '';
     act('Show chat', () => { close(); revealChat(n.channel); });
@@ -206,6 +212,24 @@ function noteRow(n, o = {}){
     row.append(acts, why);
     row.title = 'Show this chat';
     row.onclick = () => { close(); revealChat(n.channel); };
+  } else if (kind === 'flagged'){
+    // (Settings › Flagged: a held message, while it waits Allow and Deny; a suspicious user's message)
+    top.textContent = n.sender;
+    k.textContent = n.what === 'held' ? (n.site === 'youtube' ? 'Held for review' : 'Held by AutoMod') + (n.why ? ` · ${n.why}` : '') : n.why || 'Flagged';
+    k.classList.add('flagged');
+    where.textContent = chLabelP(n.channel);
+    body.textContent = n.body || '';
+    if (flaggedWaiting(n)){
+      act('✓ Allow', b => { b.disabled = true; flaggedAct(n, true); }, 'primary').title = `Let it through, with ${PLAT_NAME[n.site]}'s own button`;
+      act('✕ Deny', b => { b.disabled = true; flaggedAct(n, false); }, 'danger').title = `Don't let it through, with ${PLAT_NAME[n.site]}'s own button`;
+    } else if (n.what === 'held'){
+      const done = { allowed: 'Allowed', denied: n.site === 'youtube' ? 'Hidden' : 'Denied', expired: 'Expired · not posted' }[n.done];
+      acts.append(element('span', 'nc-note', done ? done + (n.by && n.done !== 'expired' ? ` by ${n.by}` : '') : 'Handled'));
+    }
+    act('Show me', () => { close(); seeFlagged(n.channel, n.site, n.hid); });
+    row.appendChild(acts);
+    row.title = 'Show this chat';
+    row.onclick = () => { close(); seeFlagged(n.channel, n.site, n.hid); };
   } else if (kind === 'live' || kind === 'raid'){
     const sites = kind === 'live' && Array.isArray(n.sites) && n.sites.length > 1 ? n.sites : null;   // a linked streamer, live on several
     if (kind === 'live'){ top.textContent = n.label || chLabel(n.channel); k.textContent = sites ? 'is live on ' + andList(sites.map(c => PLAT_NAME[platOf(c)])) : 'went live'; }
@@ -258,8 +282,8 @@ function setMyName(n){
 /* The bell and All notifications share how they draw: tabs, the sub-filter chips, the chat (or site) picker
    and the list. v: their filters ({ tab, sub, pick, unread }). */
 const bell = { tab: 'all', sub: 'all', pick: '' }, nh = { tab: 'all', sub: 'all', pick: '', unread: false };
-const TAB_NAME = { all: 'All', mentions: 'Mentions', spam: 'Spam', live: 'Live', app: 'App' };
-const subName = (tab, s) => tab === 'live' && s === 'live' ? 'Went live' : ({ all: 'All', mentions: 'Mentions', spam: 'Spam', live: 'Live', app: 'App',
+const TAB_NAME = { all: 'All', mentions: 'Mentions', spam: 'Mod', live: 'Live', app: 'App' };
+const subName = (tab, s) => tab === 'live' && s === 'live' ? 'Went live' : ({ all: 'All', mentions: 'Mentions', spam: tab === 'all' ? 'Mod' : 'Spam', flagged: 'Flagged', live: 'Live', app: 'App',
   mention: '@ Mentions', reply: 'Replies', word: 'Words', support: 'Support', raid: 'Raids', auto: 'Opened by itself',
   accounts: 'Accounts', layouts: 'Layouts', windows: 'Windows', downloads: 'Downloads', updates: 'Updates' })[s];
 const pickBy = tab => tab === 'live' ? 'site' : tab === 'app' ? '' : 'chan';
@@ -366,4 +390,4 @@ function init(){
 export { addNote, atChannels, bell, bellCount, bellVars, cleanParts, dndOn, dndT, dndUntil, drawNotes, dropNotes,
   EMPTY, init, mentAny, mentBodyNodes, mentCovered, mentMuted, mentNameFor, mentOn, mentWords, myName, myTwitch, nh,
   noteActs, noteRow, notes, partsText, readChat, readNotes, renderBell, saveNotes, seeBell, setMyName, spamWhy,
-  subName, syncAtBtn, TAB_NAME, timeAgo, toggleChatMentions, updateBellBtn };
+  subName, syncAtBtn, TAB_NAME, timeAgo, toggleChatMentions, updateBellBtn, updateNotes };

@@ -204,7 +204,9 @@ function twitchPin(frame){
   if (p && p.type === 'low_trust_user_new_message'){
     const d = p.data || {}, u = d.low_trust_user || {}, flags = lowTrust(u);
     if (!d.message_id || !flags.length) return null;
-    return { site: 'twitch', kind: 'flags', msgId: String(d.message_id), flags, t: Date.now() };
+    const s = u.sender || {}, c = d.message_content || {};
+    return { site: 'twitch', kind: 'flags', msgId: String(d.message_id), flags, sender: String(s.display_name || s.login || ''), login: String(s.login || '').toLowerCase(),
+      text: String(c.text || ''), t: Date.now() };
   }
   // Twitch's marks on a message, to moderators (chat highlights): a raider's (how long since the raid), and the like
   if (p && p.type === 'chat-highlight'){

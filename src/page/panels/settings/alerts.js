@@ -22,16 +22,20 @@ function syncAlertControls(){
     if (c.classList.contains('seg')) c.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.v === v); b.setAttribute('aria-checked', String(b.dataset.v === v)); });
     else if (c.type === 'checkbox') c.checked = !!v; else c.value = String(v);
   });
-  ['mention', 'spam', 'support'].forEach(kind => {
+  ['mention', 'spam', 'support', 'flagged'].forEach(kind => {
     settingsDlg.querySelectorAll(`[data-dep="${kind}.until"]`).forEach(r => r.classList.toggle('st-dim', alerts[kind].hl !== 'until'));
   });
   settingsDlg.querySelectorAll('.st-opts[data-for=mention]').forEach(el => el.classList.toggle('st-dim', !mentOn));
   settingsDlg.querySelectorAll('.st-opts[data-for=spam]').forEach(el => el.classList.toggle('st-dim', !alerts.spam.on));
   settingsDlg.querySelectorAll('.st-opts[data-for=support]').forEach(el => el.classList.toggle('st-dim', !alerts.support.on));
+  settingsDlg.querySelectorAll('.st-opts[data-for=flagged]').forEach(el => el.classList.toggle('st-dim', !alerts.flagged.on));
   $('#spamOn').checked = !!alerts.spam.on;
+  $('#flaggedOn').checked = !!alerts.flagged.on;
   if ($('#mentOn')) $('#mentOn').checked = mentOn;
   const pill = settingsDlg.querySelector('.st-rail [data-s=spam] .st-pill');
   if (pill) pill.textContent = alerts.spam.on ? 'On' : 'Mod';
+  const fPill = settingsDlg.querySelector('.st-rail [data-s=flagged] .st-pill');
+  if (fPill) fPill.textContent = alerts.flagged.on ? 'On' : 'Mod';
   syncScoring();
 }
 function pickSound(kind){
@@ -146,7 +150,7 @@ function scoreRow(s){
   return element('div', { class: 'sc-row', dataset: { pt: s.key, st: `Points for ${s.label}`, stSub: s.note || '' } },
     element('span', { class: 'sc-name', title: s.label + (s.note ? ` (${s.note.toLowerCase()})` : '') }, s.short),
     warnIcon(),
-    element('span', { class: 'sc-flag', title: s.flags ? 'This sign can flag a message' : '' }, s.flags ? '⚑' : ''),
+    element('span', { class: 'sc-flag', title: s.flags ? 'This sign can mark a message' : '' }, s.flags ? '⚑' : ''),
     element('span', { class: 'sc-slider', title: `Built-in: ${s.points}. Double-click to put it back.` }, range,
       element('i', { class: 'sc-def', style: { '--at': s.points / SmvSpam.POINT_MAX } })),
     element('b', 'sc-val'));
@@ -175,7 +179,7 @@ function syncScoring(){
     row.classList.toggle('changed', v !== s.points);
   });
   box.querySelector('.sc-group[data-g=abuse]').classList.toggle('st-dim', !abuseOn);
-  box.querySelector('.sc-group[data-g=abuse]').title = abuseOn ? '' : 'Abuse is off (Alerts › Also flag abuse)';
+  box.querySelector('.sc-group[data-g=abuse]').title = abuseOn ? '' : 'Abuse is off (Alerts › Also catch abuse)';
   $('#spamPointsReset').disabled = !alerts.spam.points;
   const warn = SmvSpam.scoringWarnings(now, alerts.spam.sens, abuseOn);
   SmvSpam.SIGNS.forEach(s => showWarn(box.querySelector(`.sc-row[data-pt="${s.key}"] .sc-warn-ico`), warn.filter(w => w.sign === s.key)));
@@ -203,8 +207,8 @@ function trySpam(){
   const sender = $('#spamTrySender').value.trim().replace(/^@/, '');
   const r = SmvSpam.score({ sender: sender || 'someone', body: text, chat: '', t: Date.now() }, {}, spamOpts());
   out.hidden = false; out.classList.toggle('bad', r.spam);
-  if (r.ignored){ out.innerHTML = `Not checked: <b></b> is on the chat bot list, so it's never flagged.`; out.querySelector('b').textContent = sender; return; }
-  const head = r.spam ? `<b>Would be flagged${r.abuse ? ' as abusive' : ''}</b> (${r.need} points needed)` : r.score >= r.need ? `Not flagged: it has ${r.score} points but no sign that can flag it (like a link or an insult)` : `Not flagged (${r.score} of the ${r.need} points needed)`;
+  if (r.ignored){ out.innerHTML = `Not checked: <b></b> is on the chat bot list, so it's never marked.`; out.querySelector('b').textContent = sender; return; }
+  const head = r.spam ? `<b>Would be marked${r.abuse ? ' as abusive' : ''}</b> (${r.need} points needed)` : r.score >= r.need ? `Not marked: it has ${r.score} points but no sign that can mark it (like a link or an insult)` : `Not marked (${r.score} of the ${r.need} points needed)`;
   out.innerHTML = head + (r.signs.length ? '<table>' + r.signs.map(s => `<tr><td>${esc(s.text)}</td><td>+${s.points}</td></tr>`).join('') + `<tr class="tot"><td>Total</td><td>${r.score}</td></tr></table>` : '<div>No signs of spam.</div>');
 }
 /* Spam alerts: history of flagged messages */
@@ -219,7 +223,7 @@ function renderSpamHist(){
     row.innerHTML = `<div class="mp-top"><b></b><span class="sh-score"></span><span class="mp-time"></span></div><div class="mp-where"></div><div class="mp-body"></div><div class="sh-signs"></div>`;
     row.querySelector('b').textContent = h.sender;
     row.querySelector('.sh-score').textContent = `${h.abuse ? 'Abusive · ' : ''}${h.score} / ${h.need} points`;
-    row.querySelector('.sh-score').title = `${h.score} points; ${h.need} needed to be flagged`;
+    row.querySelector('.sh-score').title = `${h.score} points; ${h.need} needed to be marked`;
     row.querySelector('.mp-where').textContent = chLabelP(h.channel);
     row.querySelector('.mp-time').textContent = timeAgo(h.t);
     row.querySelector('.mp-body').textContent = h.body;
@@ -253,6 +257,15 @@ function init(){
     alerts.spam.on = e.target.checked; saveAlerts(); syncAlertControls();
     if (typeof pushMyName === 'function') pushMyName();      // the chats start or stop handing over their messages
     flash(alerts.spam.on ? 'Spam alerts on, in chats you moderate' : 'Spam alerts off');
+  });
+  $('#flaggedOn').addEventListener('change', e => {
+    alerts.flagged.on = e.target.checked; saveAlerts(); syncAlertControls();   // (the chats you moderate start or stop handing over: chat/chat-feed.js wanted)
+    flash(alerts.flagged.on ? 'Flagged alerts on, in chats you moderate' : 'Flagged alerts off');
+  });
+  $('#flaggedTabs').addEventListener('click', e => {
+    const b = e.target.closest('button[data-t]'); if (!b) return;
+    $('#flaggedTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    settingsDlg.querySelectorAll('[data-s=flagged] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== b.dataset.t; });
   });
   $('#mentTabs').addEventListener('click', e => {
     const b = e.target.closest('button[data-t]'); if (!b) return;

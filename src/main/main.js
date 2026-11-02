@@ -1593,10 +1593,11 @@ appIpc.handle('kick:unfollow', async (_e, slug) => {
 appIpc.on('mention:notify', (_e, m) => {
   if (!desktopNotify || !m || typeof m.channel !== 'string' || !Notification.isSupported()) return;
   const who = String(m.sender || 'Someone').slice(0, 40), where = String(m.label || m.channel).slice(0, 40);
-  const title = m.kind === 'spam' ? `${m.abuse ? 'Abusive message' : 'Likely spam'} in ${where}'s chat` : m.kind === 'reply' ? `${who} replied to you in ${where}'s chat`
+  const title = m.kind === 'flagged' ? (m.what === 'held' ? `${m.site === 'youtube' ? 'Held for review' : 'AutoMod held a message'} in ${where}'s chat` : `${String(m.why || 'Flagged').slice(0, 60)} in ${where}'s chat`)
+    : m.kind === 'spam' ? `${m.abuse ? 'Abusive message' : 'Likely spam'} in ${where}'s chat` : m.kind === 'reply' ? `${who} replied to you in ${where}'s chat`
     : m.kind === 'support' ? `${who} ${m.raid ? 'raided' : 'supported'} ${where}`
     : m.kind === 'word' ? `${who} said "${String(m.word || '').slice(0, 40)}" in ${where}'s chat` : `${who} mentioned you in ${where}'s chat`;
-  const body = (m.kind === 'spam' ? `${who}: ` : m.kind === 'reply' && m.quoted ? `"${String(m.quoted).slice(0, 60)}"  →  ` : '') + String(m.body || '').slice(0, 180);
+  const body = (m.kind === 'spam' || m.kind === 'flagged' ? `${who}: ` : m.kind === 'reply' && m.quoted ? `"${String(m.quoted).slice(0, 60)}"  →  ` : '') + String(m.body || '').slice(0, 180);
   const n = new Notification({ title, body: body || ' ', icon: ICON });
   keepNote(n);
   n.on('click', () => {
