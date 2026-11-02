@@ -60,7 +60,7 @@ test('Scoring: warnings follow the points and the sensitivity, and Reset to defa
   assert.deepEqual(await warnings(page), [], 'Relaxed needs 6');
   await page.selectOption('[data-s=spam] .st-subpane[data-t=scoring] [data-al="spam.sens"]', 'balanced');
   for (const k of ['hidden', 'plain', 'contact', 'elsewhere', 'flood', 'opener']) await slide(page, k, 0);
-  assert.deepEqual(await warnings(page), ['Nothing can flag promo spam: every sign that can is off.']);
+  assert.deepEqual(await warnings(page), ['Nothing can mark promo spam: every sign that can is off.']);
   assert.deepEqual(await warnedAt(page), ['spam'], 'on the Spam heading');
 
   await page.click('#spamPointsReset');
@@ -85,18 +85,18 @@ test('abuse: the toggle dims its signs and silences its warnings; Try it uses yo
   await page.click('#spamTabs [data-t=try]');
   await page.fill('#spamTry', 'kys');
   await page.click('#spamTryBtn');
-  assert.match(await page.textContent('#spamRes'), /^Would be flagged as abusive \(5 points needed\)Slur or threat: "kys"\+5/);
+  assert.match(await page.textContent('#spamRes'), /^Would be marked as abusive \(5 points needed\)Slur or threat: "kys"\+5/);
   await page.fill('#spamTry', 'ur a whore');
   await page.click('#spamTryBtn');
-  assert.match(await page.textContent('#spamRes'), /^Not flagged \(4 of the 5 points needed\)Insult aimed at someone/);
+  assert.match(await page.textContent('#spamRes'), /^Not marked \(4 of the 5 points needed\)Insult aimed at someone/);
   await page.click('#spamTabs [data-t=scoring]');
   await slide(page, 'insult', 5);
   await page.click('#spamTabs [data-t=try]');
-  assert.match(await page.textContent('#spamRes'), /^Would be flagged as abusive/, 'checked again with the new points');
+  assert.match(await page.textContent('#spamRes'), /^Would be marked as abusive/, 'checked again with the new points');
 
   await page.click('#spamTabs [data-t=scoring]');
   for (const k of ['insult', 'slur', 'sexual', 'swearing']) await slide(page, k, 0);
-  assert.deepEqual(await warnings(page), ['Nothing can flag abuse: every sign that can is off.']);
+  assert.deepEqual(await warnings(page), ['Nothing can mark abuse: every sign that can is off.']);
   assert.deepEqual(await warnedAt(page), ['abuse']);
   await page.click('#spamTabs [data-t=alerts]');
   await page.click('[data-s=spam] [data-al="spam.abuse"]');
@@ -137,7 +137,7 @@ test('Lists: abuse words, slurs and threats, swear words and sexual words can be
   await page.click('#spamTabs [data-t=try]');
   await page.fill('#spamTry', 'your wiggle');
   await page.click('#spamTryBtn');
-  assert.match(await page.textContent('#spamRes'), /Would be flagged as abusive[\s\S]*Sexual remark aimed at someone: "wiggle"/);
+  assert.match(await page.textContent('#spamRes'), /Would be marked as abusive[\s\S]*Sexual remark aimed at someone: "wiggle"/);
   await page.click('#spamTabs [data-t=lists]');
   await page.click('[data-reset=sexual]');
   assert.equal((await saved(page)).sexual, null);

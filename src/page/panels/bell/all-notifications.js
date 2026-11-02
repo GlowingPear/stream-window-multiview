@@ -53,6 +53,7 @@ function openBellAt(t){
 function noteTitle(n){
   const tab = SmvNotes.tabOf(n);
   if (tab === 'mentions') return `${n.sender} in ${chLabel(n.channel)}'s chat`;
+  if (n.kind === 'flagged') return `${n.what === 'held' ? (n.site === 'youtube' ? 'Held for review' : 'Held by AutoMod') : n.why || 'Flagged'}: ${n.sender} in ${chLabel(n.channel)}'s chat`;
   if (n.kind === 'spam') return `${n.abuse ? 'Abusive' : 'Spam'}: ${n.sender} in ${chLabel(n.channel)}'s chat`;
   if (n.kind === 'live') return `${n.label || chLabel(n.channel)} went live`;
   if (n.kind === 'raid') return `${n.label || chLabel(n.channel)} raided by ${n.from ? chLabel(n.from) : 'someone'}`;

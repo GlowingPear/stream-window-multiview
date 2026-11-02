@@ -70,11 +70,11 @@ for (const bar of [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left',
 test('the bell\'s tabs and sub-filters, the new ones marked once, and the rows of each kind', async t => {
   const page = await open(t);
   await page.click('#bellBtn');
-  assert.deepEqual(await page.$$eval('#bellPanel .nc-tabs button', e => e.map(b => b.textContent)), ['All5', 'Mentions2', 'Spam1', 'Live2', 'App'],
+  assert.deepEqual(await page.$$eval('#bellPanel .nc-tabs button', e => e.map(b => b.textContent)), ['All5', 'Mentions2', 'Mod1', 'Live2', 'App'],
     'new ones in each tab (app messages never count)');
   assert.deepEqual(await rows(page), ['m1', 's1', 'l1', 'r1', 'a1', 'a2', 'm2', 'm3']);
   assert.deepEqual(await page.$$eval('#bellList .nc-row.unread', e => e.map(r => r.dataset.id)), ['m1', 's1', 'l1', 'r1', 'a1', 'm3'], 'new ones keep their mark while it\'s open');
-  assert.deepEqual(await page.$$eval('#bellPanel .nc-chips button', e => e.map(b => b.textContent)), ['All 8', 'Mentions 3', 'Spam 1', 'Live 2', 'App 2']);
+  assert.deepEqual(await page.$$eval('#bellPanel .nc-chips button', e => e.map(b => b.textContent)), ['All 8', 'Mentions 3', 'Mod 1', 'Live 2', 'App 2']);
   await chip(page, 'live');
   assert.deepEqual(await rows(page), ['l1', 'r1']);
 
@@ -203,7 +203,7 @@ test('All notifications: search, Unread only, Mark all read, delete, clear a tab
   const page = await open(t, seed(at), {}, { clock: at });
   await page.evaluate(() => openNoteHistory('all'));
   assert.equal(await page.textContent('#noteDlg .mh-count'), '8 kept · 6 new');
-  assert.deepEqual(await page.$$eval('#noteDlg .nc-chips button', e => e.map(b => b.textContent)), ['All 8', 'Mentions 3', 'Spam 1', 'Live 2', 'App 2'], 'the kind chips');
+  assert.deepEqual(await page.$$eval('#noteDlg .nc-chips button', e => e.map(b => b.textContent)), ['All 8', 'Mentions 3', 'Mod 1', 'Live 2', 'App 2'], 'the kind chips');
   await page.fill('#nhQ', 'chess');
   assert.deepEqual(await rows(page, '#nhList'), ['l1'], 'titles are searchable');
   await page.fill('#nhQ', 'bravo');

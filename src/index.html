@@ -285,6 +285,7 @@
       <button data-s="mentions" class="main-desk">Mentions</button>
       <button data-s="support" class="main-desk">Support</button>
       <button data-s="spam" class="main-desk">Spam alerts<span class="st-pill">Mod</span></button>
+      <button data-s="flagged" class="main-desk">Flagged<span class="st-pill">Mod</span></button>
       <div class="st-rail-sec">Help</div>
       <button data-s="guide">Guide</button>
       <button data-s="keys">Keyboard shortcuts</button>
@@ -361,12 +362,12 @@
         </div>
               <div class="st-subpane" data-t="bots" hidden>
         <div class="st-sec st-head">Chat bots<button class="btn" data-reset="mbots">Reset</button></div>
-        <p class="st-sub" style="margin:2px 0 0">Accounts like Nightbot, StreamElements or BotRix that post rules and timers and repeat names back to chat ("thanks for the follow, @you"). Their messages are never a mention, reply or word, and never flagged as spam. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> still counts. A channel's own bots (a linked streamer's too) go in its Channel settings: the button on its row in Channels, or the search box.</p>
+        <p class="st-sub" style="margin:2px 0 0">Accounts like Nightbot, StreamElements or BotRix that post rules and timers and repeat names back to chat ("thanks for the follow, @you"). Their messages are never a mention, reply or word, and never marked as spam. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> still counts. A channel's own bots (a linked streamer's too) go in its Channel settings: the button on its row in Channels, or the search box.</p>
         <div class="st-add"><input class="st-in" data-add="mbots" placeholder="Add a chat bot's name, e.g. nightbot" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="mbots">Add</button></div>
         <div class="st-chips" data-list="mbots"></div>
         <div class="st-sec">Used by</div>
         <div class="st-row"><span class="st-t">Mentions<small>Messages from these names never alert you</small></span><div class="seg" data-al="mention.botsMode" role="radiogroup" aria-label="Chat bots for mentions"><button type="button" data-v="shared" role="radio">This list</button><button type="button" data-v="own" role="radio">Their own</button></div></div>
-        <div class="st-row"><span class="st-t">Spam alerts<small>Messages from these names are never flagged</small></span><div class="seg" data-al="spam.botsMode" role="radiogroup" aria-label="Chat bots for spam alerts"><button type="button" data-v="shared" role="radio">This list</button><button type="button" data-v="own" role="radio">Their own</button><button type="button" data-v="both" role="radio">This list + their own</button></div></div>
+        <div class="st-row"><span class="st-t">Spam alerts<small>Messages from these names are never marked</small></span><div class="seg" data-al="spam.botsMode" role="radiogroup" aria-label="Chat bots for spam alerts"><button type="button" data-v="shared" role="radio">This list</button><button type="button" data-v="own" role="radio">Their own</button><button type="button" data-v="both" role="radio">This list + their own</button></div></div>
         </div>
       </section>
       <section class="st-pane" data-s="shoutouts" hidden>
@@ -583,11 +584,11 @@
         </div>
       </section>
       <section class="st-pane" data-s="spam" hidden>
-        <h4>Spam alerts <span class="st-beta" title="New: tell us if it flags something it shouldn't, or misses spam">Beta</span></h4><p class="st-sub">A moderator tool: spots promo-bot messages and abuse in chats you moderate and points you to them, so you can deal with them. It never hides, deletes or reports anything.</p>
+        <h4>Spam alerts <span class="st-beta" title="New: tell us if it marks something it shouldn't, or misses spam">Beta</span></h4><p class="st-sub">A moderator tool: spots promo-bot messages and abuse in chats you moderate and points you to them, so you can deal with them. It never hides, deletes or reports anything.</p>
         <label class="st-lead"><span class="st-t"><b>Watch for spam in chats I moderate</b><small>Only Kick and Twitch chats where you're a moderator (the ones with the mod view <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/></svg> button). Other chats are only read to spot the same message posted in several places.</small></span><input type="checkbox" class="st-sw" id="spamOn"></label>
         <div class="st-tabs" id="spamTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="how">How it works</button><button data-t="scoring">Scoring</button><button data-t="lists">Lists</button><button data-t="try">Try it</button><button data-t="history">History</button></div>
         <div class="st-subpane st-opts" data-t="alerts" data-for="spam">
-        <div class="st-row"><span class="st-t">Also flag abuse<small>Insults and sexual remarks aimed at someone ("ur a …"), slurs and threats, and someone swearing over and over. Tagged "ABUSIVE".</small></span><input type="checkbox" class="st-sw" data-al="spam.abuse"></div>
+        <div class="st-row"><span class="st-t">Also catch abuse<small>Insults and sexual remarks aimed at someone ("ur a …"), slurs and threats, and someone swearing over and over. Tagged "ABUSIVE".</small></span><input type="checkbox" class="st-sw" data-al="spam.abuse"></div>
         <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up.</small></span>
           <select data-al="spam.hl"><option value="off">Off</option><option value="brief">Brief glow</option><option value="until">Until I click the chat</option></select>
           <input type="color" data-al="spam.color" title="Colour"></div>
@@ -605,7 +606,7 @@
           <select data-al="spam.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
         </div>
         <div class="st-subpane" data-t="how" hidden>
-          <div class="st-explain">A message is only flagged when several signs add up. One sign alone is never enough, so normal links and clip links aren't flagged, and a message needs a link, a name to add on another app (or to be posted in several chats) to count. The exceptions are a wall of the same word and a known bot line, which are flagged on their own.
+          <div class="st-explain">A message is only marked when several signs add up. One sign alone is never enough, so normal links and clip links aren't marked, and a message needs a link, a name to add on another app (or to be posted in several chats) to count. The exceptions are a wall of the same word and a known bot line, which are marked on their own.
             <ul>
               <li><b>Disguised link</b> to a site not on the allowed list, written so the chat doesn't turn it into a link: <code>site[.]com</code>, <code>site dot com</code>, <code>site . live</code>, or <code>site com</code> with just a space (only for endings like .com, .net and .org that aren't everyday words, so "call me" or "going live" don't count) (3 points). A normal link to a site not on the list is 1 point.</li>
               <li><b>Asks to be added off-site</b> with a name, like "add me up on discord bram209" or "dm me on telegram: x_y", so the scam carries on where you can't see it (4 points: with a new chatter that's enough on Balanced)</li>
@@ -618,7 +619,7 @@
               <li>Messages from accounts on the <b>chat bot list</b> in Lists (like BotRix or Nightbot) are never checked, and don't count as "the same message in another open chat" either.</li>
               <li><b>A known bot line</b> from the list in Lists, like "Hey stranger, still running the show?", the greeting some promo bots start with before posting their link, or "type !noads", the opt-out line under their ads (6 points, enough on its own)</li>
             </ul>
-            With <b>Also flag abuse</b> on (in Alerts), these are tagged "ABUSIVE". Words are found however they're written: stretched (<code>whooore</code>), with digits or symbols for letters (<code>wh0re</code>, <code>b!tch</code>, <code>f*ck</code>) or spelt out (<code>c u n t</code>).
+            With <b>Also catch abuse</b> on (in Alerts), these are tagged "ABUSIVE". Words are found however they're written: stretched (<code>whooore</code>), with digits or symbols for letters (<code>wh0re</code>, <code>b!tch</code>, <code>f*ck</code>) or spelt out (<code>c u n t</code>).
             <ul>
               <li><b>An insult aimed at someone</b>: "you", "ur a", "your a" or "you're a", then a word from Abuse words in Lists, like "ur a whore" or "you stupid little b!tch" (4 points: with a new chatter, or a second time, that's enough on Balanced). On its own a word like that is often banter, so it's not counted.</li>
               <li><b>A slur or threat</b> from Slurs and threats in Lists, anywhere in the message, like "kys" (5 points, enough on its own on Balanced)</li>
@@ -629,9 +630,9 @@
             These are the built-in points: change them in Scoring.</div>
         </div>
         <div class="st-subpane" data-t="scoring" hidden>
-          <div class="st-row"><span class="st-t">Sensitivity<small>How many points flag a message. Strict flags more, and may flag a few real messages.</small></span>
+          <div class="st-row"><span class="st-t">Sensitivity<small>How many points mark a message. Strict marks more, and may mark a few real messages.</small></span>
             <select data-al="spam.sens"><option value="relaxed">Relaxed (6 points)</option><option value="balanced">Balanced (5 points)</option><option value="strict">Strict (4 points)</option></select></div>
-          <div class="sc-top"><p class="st-sub">The points each sign adds; 0 turns it off. Only signs marked <span class="sc-flag">⚑</span> can flag a message, the others add to one. <span class="sc-warn-ico" id="spamWarnAll" hidden>⚠</span></p><button class="btn" id="spamPointsReset">Reset to defaults</button></div>
+          <div class="sc-top"><p class="st-sub">The points each sign adds; 0 turns it off. Only signs with <span class="sc-flag">⚑</span> can mark a message, the others add to one. <span class="sc-warn-ico" id="spamWarnAll" hidden>⚠</span></p><button class="btn" id="spamPointsReset">Reset to defaults</button></div>
           <div class="sc-list" id="spamPoints"><div class="sc-col" data-col="spam"></div><div class="sc-col" data-col="abuse"></div></div>
         </div>
         <div class="st-subpane" data-t="lists" hidden><div class="ly-md">
@@ -643,10 +644,10 @@
             <div class="ly-panel" data-l="words" hidden><div class="ly-head"><b>Promo words</b><button class="btn" data-reset="words">Reset</button></div><p class="ly-desc">Words and phrases promo bots use. Each one found adds a point (up to 2).</p>
               <div class="st-add"><input class="st-in" data-add="words" placeholder="Add a word or phrase" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="words">Add</button></div>
               <div class="st-chips" data-list="words"></div></div>
-            <div class="ly-panel" data-l="openers" hidden><div class="ly-head"><b>Known bot lines</b><button class="btn" data-reset="openers">Reset</button></div><p class="ly-desc">Lines promo bots post: greetings they start with, so you can deal with the bot before it posts its link, and the opt-out line under their ads. A message with one of these is flagged on its own. Case and punctuation don't matter.</p>
+            <div class="ly-panel" data-l="openers" hidden><div class="ly-head"><b>Known bot lines</b><button class="btn" data-reset="openers">Reset</button></div><p class="ly-desc">Lines promo bots post: greetings they start with, so you can deal with the bot before it posts its link, and the opt-out line under their ads. A message with one of these is marked on its own. Case and punctuation don't matter.</p>
               <div class="st-add"><input class="st-in" data-add="openers" placeholder="Add a line a bot posts" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="openers">Add</button></div>
               <div class="st-chips" data-list="openers"></div></div>
-            <div class="ly-panel" data-l="ignore" hidden><div class="ly-head"><b>Chat bots to ignore</b><button class="btn" data-reset="ignore" data-own>Reset</button></div><p class="ly-desc">Messages from these accounts are never flagged as spam. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> is still checked.</p>
+            <div class="ly-panel" data-l="ignore" hidden><div class="ly-head"><b>Chat bots to ignore</b><button class="btn" data-reset="ignore" data-own>Reset</button></div><p class="ly-desc">Messages from these accounts are never marked as spam. Only the whole name counts (case doesn't matter), so <code>botrix_fan</code> is still checked.</p>
               <div class="st-row"><span class="st-t">Which list</span><div class="seg" data-al="spam.botsMode" role="radiogroup" aria-label="Chat bots for spam alerts"><button type="button" data-v="shared" role="radio">Shared list</button><button type="button" data-v="own" role="radio">Own list</button><button type="button" data-v="both" role="radio">Both</button></div></div>
               <p class="ly-desc" data-shared>The app's list, also used by mentions: <button class="linkish" data-go="chat" data-sub="bots">Chat › Chat bots</button></p>
               <p class="ly-desc" data-both>Spam alerts also skip everyone on the app's list (<button class="linkish" data-go="chat" data-sub="bots">Chat › Chat bots</button>), as well as these:</p>
@@ -667,13 +668,45 @@
           </div>
         </div></div>
         <div class="st-subpane" data-t="try" hidden>
-          <p class="st-sub" style="margin:8px 0 0">Paste a message to see whether it would be flagged, and why. It's checked on its own, as if nothing else had been posted. Add who sent it to check them against the chat bot list.</p>
+          <p class="st-sub" style="margin:8px 0 0">Paste a message to see whether it would be marked, and why. It's checked on its own, as if nothing else had been posted. Add who sent it to check them against the chat bot list.</p>
           <div class="st-try"><input class="st-in" id="spamTrySender" placeholder="Sender (optional)" autocomplete="off" spellcheck="false"><input class="st-in" id="spamTry" placeholder="Paste a chat message" autocomplete="off" spellcheck="false"><button class="btn" id="spamTryBtn">Check</button></div>
           <div class="st-res" id="spamRes" hidden></div>
         </div>
         <div class="st-subpane" data-t="history" hidden>
-          <div class="sh-head"><p class="st-sub">The last messages flagged as likely spam or abuse, with their score. Click one to show that chat.</p><button class="btn" id="spamHistClear">Clear</button></div>
+          <div class="sh-head"><p class="st-sub">The last messages marked as likely spam or abuse, with their score. Click one to show that chat.</p><button class="btn" id="spamHistClear">Clear</button></div>
           <div id="spamHist"></div>
+        </div>
+      </section>
+      <section class="st-pane" data-s="flagged" hidden>
+        <h4>Flagged</h4><p class="st-sub">Messages Twitch and YouTube flag for moderators: held by AutoMod or for review, and suspicious users. In a site's own chat or in ALL, only in chats you moderate: the sites only tell moderators.</p>
+        <label class="st-lead"><span class="st-t"><b>Alert me about flagged messages</b><small>Twitch and YouTube chats where you're a moderator. Under the bell, a held message has Allow, Deny and Show me while it waits.</small></span><input type="checkbox" class="st-sw" id="flaggedOn"></label>
+        <div class="st-tabs" id="flaggedTabs"><button data-t="what" class="on">What alerts</button><button data-t="how">How it alerts</button></div>
+        <div class="st-subpane st-opts" data-t="what" data-for="flagged">
+        <div class="st-sec">Held for a moderator</div>
+        <div class="st-row"><span class="st-t">AutoMod held a message<small>Twitch: waiting for Allow or Deny. One alert each, which stops once it's handled or AutoMod lets it go.</small></span><input type="checkbox" class="st-sw" data-al="flagged.twitchHeld"></div>
+        <div class="st-row"><span class="st-t">Held for review<small>YouTube's own hold, waiting for Show or Hide.</small></span><input type="checkbox" class="st-sw" data-al="flagged.youtubeHeld"></div>
+        <div class="st-sec">Suspicious users (Twitch)</div>
+        <div class="st-row"><span class="st-t">Ban evaders<small>Someone Twitch thinks may be evading a ban.</small></span>
+          <select data-al="flagged.evader"><option value="off">Off</option><option value="likely">Likely only</option><option value="any">Possible or likely</option></select></div>
+        <div class="st-row"><span class="st-t">Monitored users<small>Someone a moderator is keeping an eye on.</small></span><input type="checkbox" class="st-sw" data-al="flagged.monitored"></div>
+        <div class="st-row"><span class="st-t">Restricted users<small>Only moderators see their messages.</small></span><input type="checkbox" class="st-sw" data-al="flagged.restricted"></div>
+        <div class="st-row"><span class="st-t">The same person<small>A suspicious user chatting a lot alerts once.</small></span>
+          <select data-al="flagged.once"><option value="stream">Once a stream</option><option value="every">Every message</option></select></div>
+        </div>
+        <div class="st-subpane st-opts" data-t="how" data-for="flagged" hidden>
+        <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up, until nothing in it is waiting.</small></span>
+          <select data-al="flagged.hl"><option value="off">Off</option><option value="brief">Brief glow</option><option value="until">Until I click the chat</option></select>
+          <input type="color" data-al="flagged.color" title="Colour"></div>
+        <div class="st-row" data-dep="flagged.until"><span class="st-t">Get stronger if unseen<small>Glow, then pulse, then flash.</small></span>
+          <select data-al="flagged.esc"><option value="0">Off</option><option value="10">Every 10 s</option><option value="20">Every 20 s</option><option value="40">Every 40 s</option><option value="60">Every minute</option></select>
+          <select data-al="flagged.max"><option value="pulse">Up to pulse</option><option value="flash">Up to flash</option></select></div>
+        <div class="st-row nt-shared"><span class="st-t">Pop-up in the app<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button><small>A short message saying who and what.</small></span><input type="checkbox" class="st-sw" data-al="flagged.popup"></div>
+        <div class="st-row nt-shared"><span class="st-t">Sound<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
+          <select data-al="flagged.sound"><option value="none">None</option><option value="chime">Chime</option><option value="ping">Ping</option><option value="pop">Pop</option><option value="knock">Low knock</option><option value="custom">Your own sound</option></select>
+          <button class="btn st-play" data-play="flagged" title="Play it">▶</button>
+          <input type="range" min="0" max="1" step="0.05" data-al="flagged.vol" title="Volume"></div>
+        <div class="st-row nt-shared nt-desk"><span class="st-t">Desktop notification<button class="nt-chip" data-go="notify" data-sub="alerts" title="The same setting as in Notifications: changing one changes both">Notifications</button></span>
+          <select data-al="flagged.notify"><option value="never">Never</option><option value="unfocused">When the app isn't in front</option><option value="always">Always</option></select></div>
         </div>
       </section>
       <section class="st-pane" data-s="extensions" hidden>

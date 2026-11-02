@@ -21,6 +21,7 @@ test('all three have the same shape', () => {
   assert.deepEqual([kick, twitch, youtube].map(p => [p.mentions, p.spamAlerts, p.emoteLists, p.pageCommands, p.likes]),
     [[true, true, true, true, false], [true, true, true, false, false], [false, false, false, false, true]]);
   assert.deepEqual([kick, twitch, youtube].map(p => p.deleteMods), [true, false, false], 'only Kick lets a mod delete another mod\'s message');
+  assert.deepEqual([kick, twitch, youtube].map(p => p.flagged), [false, true, true], 'Settings › Flagged: Kick holds nothing for moderators');
 });
 
 test('ALL\'s timeout and ban: Kick\'s own request (in minutes; a ban is permanent), Twitch\'s commands (in seconds), none on YouTube', () => {

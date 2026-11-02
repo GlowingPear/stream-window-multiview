@@ -6,7 +6,7 @@ import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { syncFrameAlert } from '../windows/frames.js';
 
-/* ---------- alerts: how a chat window gets your attention (Settings > Mentions, Spam alerts) ---------- */
+/* ---------- alerts: how a chat window gets your attention (Settings > Mentions, Spam alerts, Support, Flagged) ---------- */
 const ALERT_DEFAULTS = {
   mention: { popup: true, hl: 'until', color: '#e8b84a', esc: 20, max: 'pulse', sound: 'chime', vol: 0.5, repeat: false, notify: 'unfocused',
              bots: null, botsOffered: null,   // bots: the app's chat bot list (Settings › Chat › Chat bots; null: built-in)
@@ -22,6 +22,10 @@ const ALERT_DEFAULTS = {
   // subs, resubs and members too.
   support: { popup: true, on: false, hl: 'brief', color: '#53fc18', esc: 0, max: 'pulse', sound: 'pop', vol: 0.5, repeat: false, notify: 'unfocused',
              minKicks: 100, minBits: 100, minGifts: 1, minMoney: 1, minRaid: 1, subs: true, banner: true },   // banner: who and what on the stream's picture (support-banner.js)
+  // Settings > Flagged: what Twitch and YouTube flag for moderators (alerts/flagged.js): held messages (twitchHeld,
+  // youtubeHeld), ban evaders ('off', 'likely', 'any'), monitored and restricted users; a person once a stream or every message
+  flagged: { popup: true, on: false, hl: 'until', color: '#ffbe46', esc: 0, max: 'pulse', sound: 'knock', vol: 0.5, repeat: false, notify: 'unfocused',
+             twitchHeld: true, youtubeHeld: true, evader: 'likely', monitored: false, restricted: true, once: 'stream' },
   // Settings > Notifications only: a saved channel went live, a raid was followed, the app's own messages
   live: { popup: true, notify: 'always', sound: 'none', vol: 0.5 },
   raid: { popup: true, notify: 'never', sound: 'none', vol: 0.5 },

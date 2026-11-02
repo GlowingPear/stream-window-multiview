@@ -33,6 +33,7 @@ import { init as panelsBellBell } from './panels/bell/bell.js';
 import { init as panelsBellAllNotifications } from './panels/bell/all-notifications.js';
 import { init as alertsAlerts } from './alerts/alerts.js';
 import { init as alertsSpamAlerts } from './alerts/spam-alerts.js';
+import { init as alertsFlagged } from './alerts/flagged.js';
 import { init as sharedFlash } from './shared/flash.js';
 import { init as panelsSettingsNotifications } from './panels/settings/notifications.js';
 import { init as layoutLayouts } from './layout/layouts.js';
@@ -139,6 +140,7 @@ import { init as panelsSettingsSearchBox } from './panels/settings/search-box.js
   panelsBellAllNotifications,
   alertsAlerts,
   alertsSpamAlerts,
+  alertsFlagged,
   sharedFlash,
   panelsSettingsNotifications,
   layoutLayouts,

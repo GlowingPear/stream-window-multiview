@@ -1,4 +1,5 @@
 import { alerts } from '../alerts/alerts.js';
+import { flaggedIn } from '../alerts/flagged.js';
 import { botsFor, mentionAlert, spamFromFeed, supportFrom } from '../alerts/spam-alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { allLooking, feedRead, mentionOf } from './all-chat.js';
@@ -53,6 +54,7 @@ function sameAs(ch, kind, who, what, via){
 
 // Whether a chat's feed is wanted for these readers: something here reads it
 function wanted(w){
+  if (w && w.kind === 'chat' && flaggedIn(w.channel)) return true;   // (Settings › Flagged: also YouTube's, read for this alone)
   if (!reads(w)) return false;
   const site = platform(w.channel);
   return (site.mentions && mentOn && mentAny() && !mentMuted.has(w.channel)) || (site.spamAlerts && !!alerts.spam.on)

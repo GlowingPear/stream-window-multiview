@@ -7,14 +7,14 @@ const SmvNotes = (() => {
   // The bell's tabs, and which tab each kind is in. Each tab keeps its own latest MAX, so a busy spam day
   // can't push your mentions out.
   const TABS = ['all', 'mentions', 'spam', 'live', 'app'];
-  const TAB_OF = { mention: 'mentions', reply: 'mentions', word: 'mentions', support: 'mentions', spam: 'spam', live: 'live', raid: 'live', app: 'app' };
+  const TAB_OF = { mention: 'mentions', reply: 'mentions', word: 'mentions', support: 'mentions', spam: 'spam', flagged: 'spam', live: 'live', raid: 'live', app: 'app' };
   const MAX = 500;
   const SUBJECTS = ['accounts', 'layouts', 'windows', 'downloads', 'updates'];
   // The sub-filters each tab has ('all' first).
   const SUBS = {
     all: ['all', 'mentions', 'spam', 'live', 'app'],
     mentions: ['all', 'mention', 'reply', 'word', 'support'],
-    spam: ['all'],
+    spam: ['all', 'spam', 'flagged'],
     live: ['all', 'live', 'raid', 'auto'],
     app: ['all', ...SUBJECTS]
   };
@@ -48,6 +48,7 @@ const SmvNotes = (() => {
     if (tab === 'all') return tabOf(n) === sub;
     if (tab === 'mentions') return (n.kind || 'mention') === sub;
     if (tab === 'live') return sub === 'auto' ? !!n.auto : n.kind === sub;
+    if (tab === 'spam') return n.kind === sub;
     if (tab === 'app') return n.subject === sub;
     return true;
   }

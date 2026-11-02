@@ -226,21 +226,21 @@ const SmvSpam = (() => {
     const times = s => s.key === 'words' ? 2 : 1;
     const extra = (big, pts) => on.filter(s => !s.flags && goesWith(s, big)).reduce((a, s) => a + times(s) * pts[s.key], 0);
     for (const [g, what] of [['spam', 'promo spam'], ['abuse', 'abuse']].filter(([g]) => on.some(s => s.group === g)))
-      if (on.filter(s => s.flags && s.group === g).every(s => !now[s.key])) out.push({ text: `Nothing can flag ${what}: every sign that can is off.`, group: g });
+      if (on.filter(s => s.flags && s.group === g).every(s => !now[s.key])) out.push({ text: `Nothing can mark ${what}: every sign that can is off.`, group: g });
     for (const s of on.filter(x => x.flags && now[x.key])) {
       if (now[s.key] >= need && s.points < need)
         out.push({ text: `${s.label} (${now[s.key]}) is now enough on its own on ${lv}: every message with it is flagged.`, sign: s.key });
       else if (s.points + extra(s, POINTS) >= need && now[s.key] + extra(s, now) < need)
-        out.push({ text: `${s.label} can't be flagged on ${lv} any more without another strong sign: with every small sign it reaches ${now[s.key] + extra(s, now)} of ${need}.`, sign: s.key });
+        out.push({ text: `${s.label} can't be marked on ${lv} any more without another strong sign: with every small sign it reaches ${now[s.key] + extra(s, now)} of ${need}.`, sign: s.key });
     }
     for (const s of on.filter(x => !x.flags && now[x.key])) {
       const big = on.filter(b => b.flags && now[b.key] && goesWith(s, b)).sort((a, b) => now[a.key] - now[b.key])[0];
       if (!big || now[big.key] >= need) continue;
       if (times(s) * now[s.key] + now[big.key] >= need && times(s) * s.points + big.points < need)
-        out.push({ text: `${s.label} (${now[s.key]}) with just ${big.label.toLowerCase()} (${now[big.key]}) is now enough to flag a message on ${lv}.`, sign: s.key });
+        out.push({ text: `${s.label} (${now[s.key]}) with just ${big.label.toLowerCase()} (${now[big.key]}) is now enough to mark a message on ${lv}.`, sign: s.key });
     }
     if (on.filter(s => now[s.key] >= 4).length >= on.length * 0.7)
-      out.push({ text: 'Most signs are worth 4 or more: almost any message with one of them will be flagged. Expect false alarms.' });
+      out.push({ text: 'Most signs are worth 4 or more: almost any message with one of them will be marked. Expect false alarms.' });
     return out;
   }
 
