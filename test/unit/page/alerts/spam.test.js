@@ -296,6 +296,7 @@ test('a bot timer message repeated in several open chats is not flagged', () => 
 /* ---------- abuse ---------- */
 const keys = r => r.signs.map(x => x.key);
 const before = (body, ago) => ({ sender: 'newacct', body, chat: 'alpha', t: T - ago });
+const found = body => { const { insult, slur, sexual, swearOnly } = abuse(body); return { insult, slur, sexual, swearOnly }; };
 
 test('insults aimed at someone: from a new chatter they are flagged as abuse, and each one more adds up', () => {
   for (const body of ['ur a whore', 'your a bish', 'ur a cunt', 'you stupid little b!tch', 'you are a wh0000re', 'u r a c u n t', 'ur a b.i.t.c.h',
@@ -320,7 +321,7 @@ test('insults aimed at someone: from a new chatter they are flagged as abuse, an
 test('swearing and words that only look like insults are not abuse', () => {
   for (const body of ['that was fucking sick', 'life is a bitch', 'your dick joke lol', 'ur assassin build is nuts', 'thank you', 'you guys are great',
     'the classic bass line', 'go to cocktail hour', 'what a shitshow'])
-    assert.deepEqual(abuse(body), { insult: null, slur: null, swearOnly: false }, body);
+    assert.deepEqual(found(body), { insult: null, slur: null, sexual: null, swearOnly: false }, body);
   assert.equal(flagged('holy shit', {}, { sensitivity: 'strict' }), false, 'one swear');
   assert.equal(abuse('').insult, null);
   assert.equal(abuse(null).swearOnly, false);
@@ -336,10 +337,41 @@ test('a slur or threat is flagged on its own, wherever it is in the message', ()
   assert.equal(abuse('skys the limit').slur, null, 'not inside other words');
 });
 
+test('a sexual remark aimed at someone is flagged on its own: with "you", an @name or the channel\'s name', () => {
+  for (const body of ['if your lips is bite my leather pants zipper penis', 'send nudes @streamer', 'u got nice b00bs', 'alpha show boobs', 'I want to have sex with you'])
+    assert.deepEqual([flagged(body), score(msg(body)).abuse, keys(score(msg(body)))], [true, true, ['sexual']], body);
+  assert.equal(score(msg('ur so horny lol')).signs[0].text, 'Sexual remark aimed at someone: "horny"');
+  assert.deepEqual(keys(score({ ...msg('alpha show boobs'), chat: 'tw:alpha' })), ['sexual'], 'a Twitch channel by its name');
+  assert.equal(flagged('send nudes', {}, { sensitivity: 'relaxed' }), false, 'Relaxed needs 6');
+  // not aimed at anyone: crude, not counted
+  for (const body of ['the penis game is back lol', 'magna cum laude', 'my cat is naked without her sweater', 'that boss fight was horny jail', 'a nude beach'])
+    assert.deepEqual(keys(score(msg(body))), [], body);
+  assert.equal(abuse('the penis game').atYou, false);
+  assert.equal(abuse('ur up').atYou, true);
+  assert.equal(abuse('@mod hi').atYou, true);
+  assert.equal(abuse('email a@b.com').atYou, false, 'an @ inside a word is not a name');
+  assert.equal(abuse('unaware').sexual, null, 'not inside other words');
+  assert.equal(abuse('nipples').sexual, 'nipples', 'plurals');
+});
+
+test('after a sexual remark at someone, the same person\'s next sexual messages count without "you", and each one more adds up', () => {
+  const aimed = before('if you wearing a leather gloves and you touch my zipper penis', 60_000);
+  const r = score(msg('my leather pants zipper penis feels bigger too'), { recent: [aimed] });
+  assert.deepEqual([r.spam, keys(r)], [true, ['sexual', 'again']]);
+  assert.equal(r.signs[0].text, 'Sexual remark aimed at someone: "penis" (after one at someone)');
+  assert.equal(r.signs[1].text, 'Keeps at it: 1 more abusive message in the last 5 minutes');
+  // the earlier one has to be aimed, and before it: crude lines first don't count, and aren't "keeping at it"
+  assert.deepEqual(keys(score(msg('my penis feels bigger'), { recent: [before('penis game lol', 90_000), before('magna cum laude', 60_000)] })), []);
+  const r2 = score(msg('send nudes @streamer'), { recent: [before('penis game lol', 90_000), aimed, before('my penis too', 30_000)] });
+  assert.equal(r2.signs[1].text, 'Keeps at it: 2 more abusive messages in the last 5 minutes', 'the aimed one and the one after it, not the one before');
+  // someone else's: not them
+  assert.deepEqual(keys(score(msg('my penis feels bigger'), { recent: [{ ...aimed, sender: 'other' }] })), []);
+});
+
 test('insults and slurs count as plurals, swear words with any ending, and everyday words that only start like them are not abuse', () => {
   for (const body of ['just pumpkin spiced', 'that ramen is spicy', 'add more spices', 'you are cocky', 'you dicking around', 'ur a cocker spaniel fan',
     'a chink in the armour', 'pass me the fags', 'what a fag that was', 'walked along the dyke'])
-    assert.deepEqual(abuse(body), { insult: null, slur: null, swearOnly: false }, body);
+    assert.deepEqual(found(body), { insult: null, slur: null, sexual: null, swearOnly: false }, body);
   assert.equal(abuse('dirty spics').slur, 'spics');
   assert.equal(abuse('the niggaz').slur, 'niggaz');
   assert.equal(abuse('ur all whores').insult, null, 'not aimed at one person');
@@ -374,6 +406,9 @@ test('abuse can be turned off, and its lists changed or emptied', () => {
   assert.equal(abuse('darn', { swears: ['darn'] }).swearOnly, true);
   assert.equal(score(msg('ur a muppet'), {}, { abuseWords: ['muppet'], sensitivity: 'strict' }).spam, true);
   assert.equal(abuse('u r a', {}).insult, null, 'no word after it');
+  assert.equal(abuse('ur penis', { sexual: [] }).sexual, null, 'an empty list matches nothing');
+  assert.equal(score(msg('ur a muppet'), {}, { abuseWords: [], sexual: ['muppet'] }).signs[0].key, 'sexual', 'your own sexual words');
+  assert.deepEqual(score(msg('send nudes @x'), {}, { abuse: false }).signs, []);
 });
 
 /* ---------- points ---------- */
@@ -418,8 +453,8 @@ test('warnings: signs now enough on their own, small signs tipping a message ove
 test('warnings: nothing left that can flag (on its group), and signs that can no longer be flagged', () => {
   const noSpam = { hidden: 0, plain: 0, contact: 0, elsewhere: 0, flood: 0, opener: 0 };
   assert.deepEqual(scoringWarnings(noSpam, 'balanced'), [{ text: 'Nothing can flag promo spam: every sign that can is off.', group: 'spam' }]);
-  assert.deepEqual(scoringWarnings({ insult: 0, slur: 0, swearing: 0 }, 'balanced'), [{ text: 'Nothing can flag abuse: every sign that can is off.', group: 'abuse' }]);
-  assert.deepEqual(scoringWarnings({ insult: 0, slur: 0, swearing: 0 }, 'balanced', false), [], 'abuse off: nothing to warn about');
+  assert.deepEqual(scoringWarnings({ insult: 0, slur: 0, sexual: 0, swearing: 0 }, 'balanced'), [{ text: 'Nothing can flag abuse: every sign that can is off.', group: 'abuse' }]);
+  assert.deepEqual(scoringWarnings({ insult: 0, slur: 0, sexual: 0, swearing: 0 }, 'balanced', false), [], 'abuse off: nothing to warn about');
   const short = scoringWarnings({ hidden: 1, words: 0, junk: 0, newbie: 0, filler: 0 }, 'balanced');
   assert.deepEqual(short.map(x => x.sign), ['hidden', 'plain', 'contact', 'elsewhere']);
   assert.equal(short[0].text, 'Disguised link can\'t be flagged on Balanced any more without another strong sign: with every small sign it reaches 1 of 5.');

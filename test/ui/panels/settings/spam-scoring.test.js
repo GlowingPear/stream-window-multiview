@@ -24,7 +24,7 @@ const warnedAt = page => page.$$eval('[data-s=spam] [data-t=scoring] .sc-warn-ic
 test('Scoring: every sign has a slider from 0 (Off) to 8 at its built-in points, and only changed points are kept', async t => {
   const page = await openSpam(t, 'scoring');
   const rows = await page.$$eval('#spamPoints .sc-group', g => g.map(x => [x.dataset.g, [...x.querySelectorAll('.sc-row')].map(r => r.dataset.pt)]));
-  assert.deepEqual(rows, [['spam', ['hidden', 'plain', 'contact', 'elsewhere', 'flood', 'opener', 'words', 'junk', 'newbie', 'filler']], ['abuse', ['insult', 'slur', 'swearing', 'again']]]);
+  assert.deepEqual(rows, [['spam', ['hidden', 'plain', 'contact', 'elsewhere', 'flood', 'opener', 'words', 'junk', 'newbie', 'filler']], ['abuse', ['insult', 'slur', 'sexual', 'swearing', 'again']]]);
   assert.deepEqual(await page.$eval('.sc-row[data-pt=hidden] input', e => [e.min, e.max, e.value]), ['0', '8', '3']);
   assert.equal(await page.textContent('.sc-row[data-pt=hidden] .sc-flag'), '⚑', 'can flag a message');
   assert.equal(await page.textContent('.sc-row[data-pt=newbie] .sc-flag'), '', 'only adds points');
@@ -74,7 +74,7 @@ test('Scoring: warnings follow the points and the sensitivity, and Reset to defa
   assert.ok(await page.isDisabled('#spamPointsReset'));
 
   // every sign at 8: most signs high goes on the line above them, and each that's now enough on its own on its row
-  for (const k of ['hidden', 'plain', 'contact', 'elsewhere', 'flood', 'opener', 'words', 'junk', 'newbie', 'insult', 'slur', 'swearing', 'again']) await slide(page, k, 8);
+  for (const k of ['hidden', 'plain', 'contact', 'elsewhere', 'flood', 'opener', 'words', 'junk', 'newbie', 'insult', 'slur', 'sexual', 'swearing', 'again']) await slide(page, k, 8);
   assert.deepEqual(await warnedAt(page), ['spamWarnAll', 'hidden', 'plain', 'contact', 'elsewhere', 'insult']);
   assert.match(await page.getAttribute('#spamWarnAll', 'title'), /^Most signs are worth 4 or more/);
 });
@@ -95,7 +95,7 @@ test('abuse: the toggle dims its signs and silences its warnings; Try it uses yo
   assert.match(await page.textContent('#spamRes'), /^Would be flagged as abusive/, 'checked again with the new points');
 
   await page.click('#spamTabs [data-t=scoring]');
-  for (const k of ['insult', 'slur', 'swearing']) await slide(page, k, 0);
+  for (const k of ['insult', 'slur', 'sexual', 'swearing']) await slide(page, k, 0);
   assert.deepEqual(await warnings(page), ['Nothing can flag abuse: every sign that can is off.']);
   assert.deepEqual(await warnedAt(page), ['abuse']);
   await page.click('#spamTabs [data-t=alerts]');
@@ -110,10 +110,10 @@ test('abuse: the toggle dims its signs and silences its warnings; Try it uses yo
   assert.match(await page.textContent('#spamRes'), /No signs of spam/);
 });
 
-test('Lists: abuse words, slurs and threats, and swear words can be added to, emptied and reset', async t => {
+test('Lists: abuse words, slurs and threats, swear words and sexual words can be added to, emptied and reset', async t => {
   const page = await openSpam(t, 'lists');
   const chips = which => page.$$eval(`[data-list=${which}] .st-chip`, c => c.map(x => x.textContent));
-  for (const [which, has] of [['abuseWords', 'whore'], ['slurs', 'kys'], ['swears', 'fuck']]) {
+  for (const [which, has] of [['abuseWords', 'whore'], ['slurs', 'kys'], ['swears', 'fuck'], ['sexual', 'penis']]) {
     await page.click(`#spamListPick [data-l=${which}]`);
     assert.ok((await chips(which)).includes(has), which);
     assert.equal(await page.textContent(`[data-lcount=${which}]`), String((await chips(which)).length));
@@ -130,6 +130,17 @@ test('Lists: abuse words, slurs and threats, and swear words can be added to, em
   await page.click('#spamTabs [data-t=lists]');
   await page.click('[data-reset=abuseWords]');
   assert.equal((await saved(page)).abuseWords, null);
+  await page.click('#spamListPick [data-l=sexual]');
+  await page.fill('[data-add=sexual]', 'Wiggle');
+  await page.click('[data-addbtn=sexual]');
+  assert.ok((await saved(page)).sexual.includes('wiggle'));
+  await page.click('#spamTabs [data-t=try]');
+  await page.fill('#spamTry', 'your wiggle');
+  await page.click('#spamTryBtn');
+  assert.match(await page.textContent('#spamRes'), /Would be flagged as abusive[\s\S]*Sexual remark aimed at someone: "wiggle"/);
+  await page.click('#spamTabs [data-t=lists]');
+  await page.click('[data-reset=sexual]');
+  assert.equal((await saved(page)).sexual, null);
   await page.click('#spamListPick [data-l=swears]');
   await page.fill('[data-add=swears]', '!!');
   await page.click('[data-addbtn=swears]');
@@ -156,6 +167,8 @@ test('Lists: the abuse lists are blurred under a cover until you click it, and h
   await page.click('[data-reveal=slurs]');
   await page.click('#spamListPick [data-l=swears]');
   assert.ok(await veiled('swears'), 'each list has its own cover');
+  await page.click('#spamListPick [data-l=sexual]');
+  assert.ok(await veiled('sexual'), 'sexual words too');
   await page.click('#spamListPick [data-l=slurs]');
   assert.equal(await veiled('slurs'), false, 'shown until Settings closes');
   await show(page, 'lists');
