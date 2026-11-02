@@ -131,7 +131,7 @@ function setSpamList(which, list){
 function ignoreSender(name){
   const which = spamBotList(), l = listOf(which), v = String(name).trim().toLowerCase();
   if (!l.includes(v)) setSpamList(which, [...l, v]);
-  flash(`${name} added to the chat bot list: never flagged as spam${which === 'mbots' ? ' or counted as a mention' : ''}`);
+  flash(`${name} added to the chat bot list: never marked as spam${which === 'mbots' ? ' or counted as a mention' : ''}`);
 }
 function addSpamItem(which){
   const inp = settingsDlg.querySelector(`[data-add="${which}"]`);

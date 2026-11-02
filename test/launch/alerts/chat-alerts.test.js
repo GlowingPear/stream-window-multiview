@@ -475,7 +475,7 @@ test('spam alerts: chat bots on the list are skipped, and History can add an acc
   assert.equal(await win.$eval('#settingsDlg', e => e.hidden), false, 'the button doesn\'t open the chat');
   assert.match(await win.textContent('#msg'), /timerbot added to the chat bot list/);
   assert.equal(await win.textContent('#spamHist .sh-acts'), 'On the chat bot list: no longer flagged');
-  assert.match(await win.textContent('#msg'), /never flagged as spam or counted as a mention/, 'the list is shared with mentions');
+  assert.match(await win.textContent('#msg'), /never marked as spam or counted as a mention/, 'the list is shared with mentions');
   assert.ok((await win.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).mention.bots)).includes('timerbot'));
   await win.keyboard.press('Escape');
   await clickBar('alpha');

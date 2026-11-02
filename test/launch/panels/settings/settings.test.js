@@ -119,7 +119,7 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   assert.equal(await settingsTab(), 'accounts');
   assert.ok(await win.isHidden('#accountMenu'), 'the menu closes');
   const tabs = await win.$$eval('#settingsDlg .st-rail button', b => b.filter(x => !x.hidden).map(x => x.dataset.s));
-  assert.deepEqual(tabs, ['general', 'windows', 'layouts', 'chat', 'shoutouts', 'themes', 'search', 'accounts', 'linked', 'apps', 'youtube', 'extensions', 'notify', 'mentions', 'support', 'spam', 'guide', 'keys', 'updates', 'developer']);
+  assert.deepEqual(tabs, ['general', 'windows', 'layouts', 'chat', 'shoutouts', 'themes', 'search', 'accounts', 'linked', 'apps', 'youtube', 'extensions', 'notify', 'mentions', 'support', 'spam', 'flagged', 'guide', 'keys', 'updates', 'developer']);
   assert.ok(await win.isVisible('#settingsDlg .am-watch'), 'Watch signed in moved here');
   assert.ok(await win.isHidden('#mentUser'), 'your usernames are under Mentions');
   await win.click('#settingsDlg .st-rail [data-s=mentions]');
@@ -218,7 +218,7 @@ test('spam alerts: off until you turn them on, remembered, and Try it explains a
   await win.fill('#spamTrySender', '@BotRix');
   await win.fill('#spamTry', 'hq ai stream upgrades botkiva com emojiBlowKiss zero cost upgrades emojiBlowKiss');
   await win.press('#spamTrySender', 'Enter');
-  assert.equal(await win.textContent('#spamRes'), "Not checked: BotRix is on the chat bot list, so it's never flagged.");
+  assert.equal(await win.textContent('#spamRes'), "Not checked: BotRix is on the chat bot list, so it's never marked.");
   await win.fill('#spamTrySender', 'botrix_fan');
   await win.click('#spamTryBtn');
   assert.match(await win.textContent('#spamRes'), /Would be marked/, 'only the whole name');

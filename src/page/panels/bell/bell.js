@@ -316,13 +316,14 @@ function drawNotes(root, v, { limit, q = '', onTab } = {}){
     sel.setAttribute('aria-label', 'Which site');
   }
   sel.value = v.pick;
-  // the chips (Spam has none: a summary instead). App's only show how many are new.
+  // the chips (Mod has none until there are Flagged notes: a summary instead). App's only show how many are new.
   const f = noteFilter(v, q), chips = root.querySelector('.nc-chips'), sum = root.querySelector('.nc-sum');
   const subs = SmvNotes.SUBS[v.tab], counts = SmvNotes.subCounts(notes, { ...f, sub: 'all' });
   const fresh = v.tab === 'app' ? SmvNotes.subCounts(notes, { ...f, sub: 'all', unread: true }) : null;
-  chips.innerHTML = ''; chips.hidden = subs.length < 2; chips.classList.toggle('small', v.tab === 'app');
-  if (!subs.includes(v.sub)) v.sub = 'all';
-  subs.length > 1 && subs.forEach(s => {
+  const noChips = subs.length < 2 || (v.tab === 'spam' && !counts.flagged);
+  chips.innerHTML = ''; chips.hidden = noChips; chips.classList.toggle('small', v.tab === 'app');
+  if (!subs.includes(v.sub) || noChips) v.sub = 'all';
+  !noChips && subs.forEach(s => {
     const n = fresh ? fresh[s] : counts[s];
     const b = document.createElement('button'); b.dataset.v = s; b.className = s === v.sub ? 'on' : '';
     b.textContent = subName(v.tab, s) + (n ? ' ' + n : '');

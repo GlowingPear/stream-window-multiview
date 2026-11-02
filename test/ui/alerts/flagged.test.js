@@ -55,6 +55,8 @@ test('Flagged: a hold alerts once (window, pop-up, bell); Allow from the bell pr
   assert.equal(await alerted(page), '', 'nothing else waits there: the window stops calling');
   assert.match(await page.textContent('.all-list [data-key="twitch:h1"]'), /✓ allowed by you$/, 'ALL\'s card too');
   await page.click('#bellBtn'); await page.click('#bellBtn');
+  await page.click('#bellPanel .nc-tabs [data-tab=spam]');
+  assert.deepEqual(await page.$$eval('#bellPanel .nc-chips button', e => e.map(b => b.textContent)), ['All 1', 'Spam', 'Flagged 1'], 'the Mod tab: spam, and Flagged');
   assert.equal(await bellRow(page, 'Saltymike').locator('.nc-note').textContent(), 'Allowed by you');
   assert.deepEqual(await bellRow(page, 'Saltymike').locator('.nc-acts button').allTextContents(), ['Show me'], 'handled: no Allow or Deny');
   await page.click('#bellBtn');
