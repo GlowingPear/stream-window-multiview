@@ -205,7 +205,7 @@ test('YouTube: a gift is an event (its words, the gift picked out); a held messa
     'addLiveChatTickerItemAction:liveChatTickerSponsorItemRenderer']) assert.ok(ignoredWhy('youtube', k), k);
   assert.equal(ignoredWhy('youtube', 'addChatItemAction:somethingNew'), '');
   for (const [s, k] of [['kick', 'ChatMessageSentEvent'], ['twitch', 'hermes:stream-up'], ['twitch', 'hermes:favorite-channel-update'],
-    ['twitch', 'hermes:collaboration-status-refetch'], ['kick', 'ChatSettingsChanged'], ['twitch', 'hermes:automatic-reward-redeemed'], ['twitch', 'hermes:group-updated'], ['twitch', 'hermes:session-started'],
+    ['twitch', 'hermes:collaboration-status-refetch'], ['kick', 'ChatSettingsChanged'], ['kick', 'GoalCreatedEvent'], ['twitch', 'hermes:automatic-reward-redeemed'], ['twitch', 'hermes:group-updated'], ['twitch', 'hermes:session-started'],
     ['twitch', 'hermes:slot-settings-changed'], ['twitch', 'hermes:call-ended']]) assert.ok(ignoredWhy(s, k), k);
   for (const [s, a] of [['youtube', YT('somethingNew', { id: 'x' })], ['youtube', gift('sent x')], ['youtube', 'x'], ['youtube', null], ['twitch', stand]]) assert.equal(leftOut(s, a), false);
   // YouTube's own housekeeping (that you're in the chat, its moderation state, parts of its page): ignored, and its key is its kind
