@@ -1436,13 +1436,13 @@ function openLineMenu(m, at){
       ...TIMEOUTS.map(sec => element('button', { type: 'button', class: sec === lastTimeout() ? 'on' : '', disabled: !!why, 'aria-label': `Time out for ${durText(sec)}`, dataset: { cmd: 'all.timeoutFor' },
         onclick: () => { lm.hidden = true; modAct(m, 'timeout', sec); } }, durText(sec)))),
     element('hr'),
+    em && item('Copy image', icon.copy, () => copyEmote(JSON.stringify({ url: bigEmote(em.src), name: em.alt })), { cmd: 'all.menuEmoteCopy' }),   // (what you right-clicked: first)
     item('Copy message', icon.copy, () => copy(plain), { cmd: 'all.menuCopyPlain', off: plain ? '' : 'Only emotes' }),
     group('Copy', icon.copy, 'all.menuCopyMore', [
       item('Copy message with emotes', icon.copy, () => copy(text), { cmd: 'all.menuCopy' }),
       item('Copy with @name', icon.copy, () => copy(`@${m.sender.replace(/^@/, '')}: ${text.trim()}${m.deleted ? ' ' + removedNote(m.deleted) : ''}`), { cmd: 'all.menuCopyName' }),
       em && element('hr'),
       em && item('Copy emote text', icon.copy, () => copy(em.dataset.send || em.alt), { cmd: 'all.menuEmoteText' }),
-      em && item('Copy image', icon.copy, () => copyEmote(JSON.stringify({ url: bigEmote(em.src), name: em.alt })), { cmd: 'all.menuEmoteCopy' }),
       em && item('Copy image address', icon.link, () => copy(bigEmote(em.src)), { cmd: 'all.menuEmoteAddr' }),
       em && window.kmv && window.kmv.emoteOpen && item('Open image in new window', icon.pop, () => window.kmv.emoteOpen(bigEmote(em.src)), { cmd: 'all.menuEmoteOpen' }),
       em && item('Save image as…', icon.download, () => saveEmote(JSON.stringify({ url: bigEmote(em.src), name: em.alt })), { cmd: 'all.menuEmoteSave' })]),

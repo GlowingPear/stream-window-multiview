@@ -61,7 +61,7 @@ function menuFor(params, { langs = ['en'], dev = false, devTools = false, emote 
     { label: 'Copy image address', act: { do: 'copyText', text: p.srcURL } },
     { label: 'Open image in new window', act: { do: 'openImage', url: p.srcURL } },
     { label: 'Save image as…', act: { do: 'saveImage', url: p.srcURL, name: (em && em.name) || p.altText || p.titleText || '' } }
-  ] : [];
+  ].filter(Boolean) : [];
   if (p.isEditable) group([
     { label: 'Undo', act: { do: 'undo' }, enabled: !!f.canUndo },
     { label: 'Redo', act: { do: 'redo' }, enabled: !!f.canRedo },
@@ -83,17 +83,20 @@ function menuFor(params, { langs = ['en'], dev = false, devTools = false, emote 
   // (who sent it: just "Shout out"; a chat bot's message about someone else (from: the bot): named)
   if (shout) group([{ label: shout.from ? `Shout out ${String(shout.name || shout.login).slice(0, 40)}` : 'Shout out', act: { do: 'shoutout', who: { site: shout.site, login: String(shout.login).toLowerCase(), name: String(shout.name || shout.login).slice(0, 40) } } }]);
   const name = msg && String(msg.name || '').replace(/^@/, '').trim().slice(0, 40);
-  // in a chat: the picture's items with the message's in a submenu; elsewhere (a stream's page), as they are
+  // in a chat: Copy image first (it's what you right-clicked), the picture's other items with the message's in a
+  // submenu; elsewhere (a stream's page), as they are
+  const copyImage = image.find(x => x.label === 'Copy image'), more = image.filter(x => x !== copyImage);
   if (msg) group([
+    copyImage,
     { label: 'Copy message', act: { do: 'copyText', text: msg.text || '' }, enabled: !!msg.text },
     sub('Copy', [
       { label: 'Copy message with emotes', act: { do: 'copyText', text: msg.withEmotes || '' }, enabled: !!msg.withEmotes },
       name && msg.withEmotes ? { label: 'Copy with @name', act: { do: 'copyText', text: `@${name}: ${msg.withEmotes}` } } : null,
-      image.length ? { type: 'separator' } : null,
-      ...image
+      more.length ? { type: 'separator' } : null,
+      ...more
     ])
   ]);
-  else if (image.length) group(chat ? [sub(em ? 'Emote' : 'Image', image)] : image);
+  else if (image.length) group(chat ? [copyImage, sub(em ? 'Emote' : 'Image', more)] : image);
   // a chat: translate the message, all of it (like Chrome's "Translate to English"), and its new messages as they come
   if (chat && !p.isEditable && !webUrl(p.linkURL)) group([sub('Translate', [
     msg && msg.text ? { label: 'Translate this message', act: { do: 'translateOne', tl } } : null,
