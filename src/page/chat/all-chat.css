@@ -92,6 +92,8 @@
 /* a watch streak (Twitch): highlighted, warm, as its chat marks it */
 .al-streak{background:linear-gradient(90deg,rgba(255,138,31,.10),transparent 75%);box-shadow:inset 3px 0 0 #ff9f45}
 .al-tag-streak{background:rgba(255,138,31,.14);color:#ffc690}
+.al-first{background:linear-gradient(90deg,rgba(255,117,230,.10),transparent 75%);box-shadow:inset 3px 0 0 #ff75e6}
+.al-tag-first{background:rgba(255,117,230,.16);color:#ffc2f3}
 .al-quiet{color:var(--muted);font-style:italic}
 .al-tag-bits{background:rgba(155,100,255,.18);color:#e0ccff;border:1px solid rgba(180,140,255,.5)}
 /* spam alerts' tag (where you moderate), a translated message's badge (press: the original), new emotes glowing */
