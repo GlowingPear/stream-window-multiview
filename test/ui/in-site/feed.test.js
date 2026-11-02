@@ -15,7 +15,7 @@ const addLines = page => page.evaluate(() => {
   const tw = document.createElement('div'); tw.className = 'chat-line__message'; props(tw, 'tw1');
   const twName = document.createElement('span'); twName.setAttribute('data-a-target', 'chat-message-username'); twName.textContent = 'tinroof'; twName.onclick = () => window.__clicks.push('tw-name');
   tw.append(twName);
-  const kick = document.createElement('div'); kick.setAttribute('data-index', '1');
+  const kick = document.createElement('div'); kick.setAttribute('data-index', '1'); kick['__reactFiber$t'] = { memoizedProps: { style: {} } };   // (Kick's row has props of its own)
   const g = document.createElement('div'); g.className = 'group'; props(g, 'k1');
   const quote = document.createElement('button'); quote.setAttribute('aria-label', 'Reply'); quote.onclick = () => window.__clicks.push('quote');
   const rep = document.createElement('button'); rep.setAttribute('aria-label', 'Reply'); rep.innerHTML = '<svg data-ds-icon="ArrowCurveLeft"></svg>'; rep.onclick = () => window.__clicks.push('reply');
@@ -31,6 +31,7 @@ test('Copy message HTML (developer tools): the line with that id, by React props
   await addLines(page);
   assert.match(await page.evaluate(() => window.messageHtml('tw1')), /^<div class="chat-line__message">.*tinroof/);
   assert.match(await page.evaluate(() => window.messageHtml('yt1')), /^<yt-live-chat-text-message-renderer id="yt1">/);
+  assert.match(await page.evaluate(() => window.messageHtml('k1')), /^<div data-index="1">/, 'Kick\'s: by its .group\'s props, past the row\'s own');
   assert.equal(await page.evaluate(() => window.messageHtml('nope')), '');
   assert.equal(await page.evaluate(() => window.messageHtml('nope', true)), null, 'Why didn\'t this alert?: nothing to explain');
 });
