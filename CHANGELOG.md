@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.18 (current)
+## 0.4.19 (current)
+- Settings: Flagged has its icon
+- Shoutouts: never for someone banned or timed out
+
+## 0.4.18
 - Diagnostics leave out Chromium's harmless ResizeObserver warning
 - Flagged alerts: held messages and suspicious users alert moderators, with Allow and Deny under the bell
 - Chat right-click menus: shorter, with submenus
