@@ -371,3 +371,42 @@ test('a chat bot\'s line shouts out who it\'s about, never the bot, and has no b
   await flashed(page, /Couldn't find Oakmoss's Kick channel/);
 });
 
+
+test('banned or timed out in that chat: no Shout out for them (the raid\'s line, a bot\'s line about them, the search box, a run), and it says why; lifted or over: back', async t => {
+  const known = { 'kick:driftwood_7': { login: 'driftwood_7', game: '', streams: true, t: now }, 'kick:maplemoth': { login: 'maplemoth', game: '', streams: true, t: now } };
+  const page = await allApp(t, { shoutOn: '1', shoutKnown: JSON.stringify(known) });
+  await chat(page);
+  await feed(page, 'quietkoala', { s: 'kick', raw: [kick('k3', 'Oakmoss', 'hello'), kick('b1', 'BotRix', 'Thanks for the follow Oakmoss')] });
+  const raid = page.locator('.all-list .al-ev:has-text("MapleMoth")'), bot = page.locator('.all-list .al-m:has(.al-n:text-is("BotRix"))');
+  assert.equal(await raid.locator('.al-so').count(), 1);
+  // MapleMoth banned, Oakmoss timed out on Kick, Tinroof on Twitch: the lines already drawn lose their Shout out
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('UserBannedEvent', { user: { username: 'MapleMoth', slug: 'maplemoth' }, permanent: true }),
+    KF('UserBannedEvent', { user: { username: 'Oakmoss', slug: 'oakmoss' }, permanent: false, duration: 10 })] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'ban-duration': '600', 'tmi-sent-ts': String(Date.now()) }, ':tmi.twitch.tv CLEARCHAT #quietkoala :tinroof')] });
+  assert.equal(await raid.locator('.al-so').count(), 0, 'the raid\'s line');
+  await bot.locator('.al-n').hover();
+  assert.equal(await bot.locator('.al-so-b').count(), 0, 'a bot\'s line about them');
+  // asked for anyway (the site's own chat page, a line drawn before): says why, sends nothing
+  assert.equal(await page.evaluate(() => window.shoutouts.shoutOut({ site: 'twitch', login: 'tinroof', name: 'Tinroof', ch: 'tw:quietkoala' })), 'out');
+  await flashed(page, /Tinroof is timed out in Twitch chat: no shoutout/);
+  await page.evaluate(() => window.shoutouts.shoutOut({ site: 'kick', login: 'maplemoth', name: 'MapleMoth', ch: 'quietkoala' }));
+  await flashed(page, /MapleMoth is banned in Kick chat: no shoutout/);
+  assert.deepEqual(await sends(page), []);
+  // the search box: only who's still in good standing
+  await page.evaluate(() => window.palette.open()); await page.keyboard.type('shout out');
+  await page.waitForTimeout(200);
+  const offered = (await page.evaluate(() => window.palette.rows())).filter(r => r.id.startsWith('shout.p.')).map(r => r.title);
+  assert.deepEqual(offered, ['Shout out Driftwood_7']);
+  await page.evaluate(() => window.palette.close());
+  // a run: MapleMoth left out
+  await page.click('#stage .win.chat:not(.tab-hidden) [data-a=more]');
+  await page.click('.bm-tile:has-text("Shout out")');
+  await page.waitForSelector('.so-dlg .so-row');
+  assert.deepEqual(await page.$$eval('.so-dlg .so-row b', l => l.map(b => b.textContent)), ['Driftwood_7']);
+  await page.keyboard.press('Escape');
+  // MapleMoth's ban lifted: the raid's Shout out again; Tinroof's timeout over: can be shouted out again
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('UserUnbannedEvent', { user: { username: 'MapleMoth', slug: 'maplemoth' } })] });
+  assert.equal(await raid.locator('.al-so').count(), 1);
+  assert.equal(await page.evaluate(() => { const was = Date.now; Date.now = () => was() + 601000; try { return window.shoutouts.outWhy({ login: 'tinroof', ch: 'tw:quietkoala' }); } finally { Date.now = was; } }), '');
+  assert.equal(await page.evaluate(() => window.shoutouts.outWhy({ login: 'oakmoss', ch: 'quietkoala' })), 'timed out');
+});
