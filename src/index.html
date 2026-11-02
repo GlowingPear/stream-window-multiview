@@ -587,7 +587,7 @@
         <label class="st-lead"><span class="st-t"><b>Watch for spam in chats I moderate</b><small>Only Kick and Twitch chats where you're a moderator (the ones with the mod view <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/></svg> button). Other chats are only read to spot the same message posted in several places.</small></span><input type="checkbox" class="st-sw" id="spamOn"></label>
         <div class="st-tabs" id="spamTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="how">How it works</button><button data-t="scoring">Scoring</button><button data-t="lists">Lists</button><button data-t="try">Try it</button><button data-t="history">History</button></div>
         <div class="st-subpane st-opts" data-t="alerts" data-for="spam">
-        <div class="st-row"><span class="st-t">Also flag abuse<small>Insults aimed at someone ("ur a …"), slurs and threats, and someone swearing over and over. Tagged "ABUSIVE".</small></span><input type="checkbox" class="st-sw" data-al="spam.abuse"></div>
+        <div class="st-row"><span class="st-t">Also flag abuse<small>Insults and sexual remarks aimed at someone ("ur a …"), slurs and threats, and someone swearing over and over. Tagged "ABUSIVE".</small></span><input type="checkbox" class="st-sw" data-al="spam.abuse"></div>
         <div class="st-row"><span class="st-t">Window highlight<small>The chat window's border lights up.</small></span>
           <select data-al="spam.hl"><option value="off">Off</option><option value="brief">Brief glow</option><option value="until">Until I click the chat</option></select>
           <input type="color" data-al="spam.color" title="Colour"></div>
@@ -622,8 +622,9 @@
             <ul>
               <li><b>An insult aimed at someone</b>: "you", "ur a", "your a" or "you're a", then a word from Abuse words in Lists, like "ur a whore" or "you stupid little b!tch" (4 points: with a new chatter, or a second time, that's enough on Balanced). On its own a word like that is often banter, so it's not counted.</li>
               <li><b>A slur or threat</b> from Slurs and threats in Lists, anywhere in the message, like "kys" (5 points, enough on its own on Balanced)</li>
+              <li><b>A sexual remark aimed at someone</b>: a word from Sexual words in Lists in a message with "you", "your", "ur", an @name or the channel's name, like "send nudes @name" (5 points, enough on its own on Balanced). After one, the same person's next sexual messages count even without "you". On their own those words are often just crude, so they're not counted.</li>
               <li><b>Swearing over and over</b>: the third message in two minutes from the same person that's mostly words from Swear words in Lists (5 points). One "holy shit" at a hype moment doesn't count.</li>
-              <li><b>Keeps at it</b>: an insult or slur from someone who already sent one in the last 5 minutes (3 points)</li>
+              <li><b>Keeps at it</b>: an insult, slur or sexual remark from someone who already sent one in the last 5 minutes (3 points)</li>
             </ul>
             These are the built-in points: change them in Scoring.</div>
         </div>
@@ -634,7 +635,7 @@
           <div class="sc-list" id="spamPoints"><div class="sc-col" data-col="spam"></div><div class="sc-col" data-col="abuse"></div></div>
         </div>
         <div class="st-subpane" data-t="lists" hidden><div class="ly-md">
-          <div class="ly-list" id="spamListPick"><button class="ly-item sel" data-l="allow"><span>Allowed sites</span><small data-lcount="allow"></small></button><button class="ly-item" data-l="words"><span>Promo words</span><small data-lcount="words"></small></button><button class="ly-item" data-l="openers"><span>Known bot lines</span><small data-lcount="openers"></small></button><button class="ly-item" data-l="ignore"><span>Chat bots to ignore</span><small data-lcount="ignore"></small></button><button class="ly-item" data-l="abuseWords"><span>Abuse words</span><small data-lcount="abuseWords"></small></button><button class="ly-item" data-l="slurs"><span>Slurs and threats</span><small data-lcount="slurs"></small></button><button class="ly-item" data-l="swears"><span>Swear words</span><small data-lcount="swears"></small></button></div>
+          <div class="ly-list" id="spamListPick"><button class="ly-item sel" data-l="allow"><span>Allowed sites</span><small data-lcount="allow"></small></button><button class="ly-item" data-l="words"><span>Promo words</span><small data-lcount="words"></small></button><button class="ly-item" data-l="openers"><span>Known bot lines</span><small data-lcount="openers"></small></button><button class="ly-item" data-l="ignore"><span>Chat bots to ignore</span><small data-lcount="ignore"></small></button><button class="ly-item" data-l="abuseWords"><span>Abuse words</span><small data-lcount="abuseWords"></small></button><button class="ly-item" data-l="slurs"><span>Slurs and threats</span><small data-lcount="slurs"></small></button><button class="ly-item" data-l="swears"><span>Swear words</span><small data-lcount="swears"></small></button><button class="ly-item" data-l="sexual"><span>Sexual words</span><small data-lcount="sexual"></small></button></div>
           <div class="ly-detail">
             <div class="ly-panel" data-l="allow"><div class="ly-head"><b>Allowed sites</b><button class="btn" data-reset="allow">Reset</button></div><p class="ly-desc">Links to these never count, typed normally or with a space.</p>
               <div class="st-add"><input class="st-in" data-add="allow" placeholder="Add a site, e.g. example.com" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="allow">Add</button></div>
@@ -660,6 +661,9 @@
             <div class="ly-panel" data-l="swears" hidden><div class="ly-head"><b>Swear words</b><button class="btn" data-hide="swears" hidden>Hide</button><button class="btn" data-reset="swears">Reset</button></div><p class="ly-desc">A message that's mostly these, sent again and again, is someone swearing at the chat.</p>
               <div class="st-add"><input class="st-in" data-add="swears" placeholder="Add a word" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="swears">Add</button></div>
               <div class="st-veil veiled"><div class="st-chips" data-list="swears"></div><button class="st-reveal" data-reveal="swears"><i data-ico="eye"></i><b>Offensive words, hidden</b><small></small></button></div></div>
+            <div class="ly-panel" data-l="sexual" hidden><div class="ly-head"><b>Sexual words</b><button class="btn" data-hide="sexual" hidden>Hide</button><button class="btn" data-reset="sexual">Reset</button></div><p class="ly-desc">Words and phrases that count in a message aimed at someone, with "you", "your", an @name or the channel's name. Plurals count too.</p>
+              <div class="st-add"><input class="st-in" data-add="sexual" placeholder="Add a word or phrase" autocomplete="off" spellcheck="false"><button class="btn" data-addbtn="sexual">Add</button></div>
+              <div class="st-veil veiled"><div class="st-chips" data-list="sexual"></div><button class="st-reveal" data-reveal="sexual"><i data-ico="eye"></i><b>Offensive words, hidden</b><small></small></button></div></div>
           </div>
         </div></div>
         <div class="st-subpane" data-t="try" hidden>
