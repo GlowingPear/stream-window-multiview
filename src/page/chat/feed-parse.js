@@ -511,7 +511,7 @@ const KNOWN = {
 // unknown): the connections' own housekeeping, news only for you (your points), and the sites' panels (goals,
 // leaderboards). One the sites start sending that ALL has no use for goes here.
 const IGNORED = {
-  kick: { PointsUpdated: 'your channel points', GoalProgressUpdateEvent: 'the channel’s goal bar', GiftsLeaderboardUpdated: 'the gift leaderboard',
+  kick: { PointsUpdated: 'your channel points', GoalProgressUpdateEvent: 'the channel’s goal bar', GoalCreatedEvent: 'the channel’s goal bar (a new goal)', GiftsLeaderboardUpdated: 'the gift leaderboard',
     KicksLeaderboardUpdated: 'the Kicks leaderboard', NewSubscriberUpdatedEvent: 'the sub count (ChannelSubscriptionEvent is the sub)',
     NewActivityFeedEvent: 'the activity feed (the same subs and follows)', StopStreamBroadcast: 'the stream ending', StreamerIsLive: 'the stream starting',
     GamificationWatchTimeGoalReached: 'your watch-time goal', PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)',
