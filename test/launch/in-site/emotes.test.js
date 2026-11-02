@@ -137,8 +137,7 @@ test('Copy image in an emote\'s right-click menu: the app copies it, a moving on
     webContents.getAllWebContents().find(w => /popout\/alpha\/chat/.test(w.getURL()))
       .emit('context-menu', { preventDefault() {} }, { x: 40, y: 50, editFlags: {}, mediaType: 'image', srcURL: 'https://files.kick.com/emotes/3/fullsize', altText: 'pearDance' });
   });
-  await w.hover('.vmenu [data-sub=Emote]');   // (in its submenu)
-  await w.click('.vm-fly [role=menuitem]:has(.vm-l:text-is("Copy image"))');
+  await w.click('.vmenu [role=menuitem]:has(.vm-l:text-is("Copy image"))');
   const c = await copied();
   assert.equal(path.basename(fileOf(c)), 'pearDance.gif');
   assert.equal(fs.readFileSync(fileOf(c)).toString('base64'), GIF);

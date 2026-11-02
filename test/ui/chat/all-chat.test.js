@@ -352,7 +352,8 @@ test('ALL has the sites\' chats\' extras: links open in your browser; the line m
   // right-click the emote: its items in the Copy submenu, after the message's; Save asks for the bigger picture
   await page.click('.all-list img.al-e', { button: 'right' });
   assert.deepEqual(await page.$$eval('.all-lm .all-epre .all-enm', l => l.map(e => e.textContent)), ['Kappa'], 'the emote at the top');
-  assert.deepEqual(await subItems(page, 'all.menuCopyMore'), ['Copy message with emotes', 'Copy with @name', 'Copy emote text', 'Copy image', 'Copy image address', 'Save image as…'], 'no Open image outside the desktop app');
+  assert.ok((await items()).includes('Copy image'), 'Copy image: in the menu, as it\'s what was right-clicked');
+  assert.deepEqual(await subItems(page, 'all.menuCopyMore'), ['Copy message with emotes', 'Copy with @name', 'Copy emote text', 'Copy image address', 'Save image as…'], 'no Open image outside the desktop app');
   await page.click('.all-lm-sub [data-cmd="all.menuEmoteSave"]');
   await page.waitForFunction(() => window.__saved.length);
   assert.deepEqual(await page.evaluate(() => window.__saved[0]), ['https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/3.0', 'Kappa']);

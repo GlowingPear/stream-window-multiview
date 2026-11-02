@@ -89,7 +89,7 @@ test('its items: translate and search open the browser, copy copies, links open 
 
 test('an emote: Save image as… suggests its name in Downloads and saves it; Open image opens a window with it', T, async () => {
   const img = await rightClick(/popout\/alpha\/chat/, { mediaType: 'image', srcURL: 'https://kick.com/emotes/pear.png', altText: 'pear Hype' });
-  assert.deepEqual(img.labels[0], ['Image', ['Copy image', 'Copy image address', 'Open image in new window', 'Save image as…']], 'not an emote the chat showed: the system menu, with a submenu');
+  assert.deepEqual(img.labels.slice(0, 2), ['Copy image', ['Image', ['Copy image address', 'Open image in new window', 'Save image as…']]], 'not an emote the chat showed: the system menu, with a submenu');
   await img.pick('Save image as…');
   for (let i = 0; i < 100 && !(await state()).saved.length; i++) await new Promise(r => setTimeout(r, 100));
   const saved = (await state()).saved[0];
@@ -157,10 +157,10 @@ test('right-clicking an emote the chat shows: the app draws the menu with its pr
   assert.equal(await a.win.textContent('.vmenu .vm-nm'), 'pearHype');
   assert.equal(await a.win.textContent('.vmenu .vm-badge'), 'Kick');
   const items = await a.win.$$eval('.vmenu:not(.vm-fly) [role^=menuitem]', els => els.map(e => e.textContent));
-  assert.equal(items[0], 'Emote›', 'its items in a submenu');
+  assert.deepEqual(items.slice(0, 2), ['Copy image', 'Emote›'], 'Copy image first, the rest in a submenu');
   assert.ok(items.includes('Inspect'), 'the same items as the system menu would have');
   await a.win.hover('.vmenu [data-sub=Emote]');
-  assert.deepEqual(await a.win.$$eval('.vm-fly [role^=menuitem]', els => els.map(e => e.textContent)), ['Copy emote text', 'Copy image', 'Copy image address', 'Open image in new window', 'Save image as…']);
+  assert.deepEqual(await a.win.$$eval('.vm-fly [role^=menuitem]', els => els.map(e => e.textContent)), ['Copy emote text', 'Copy image address', 'Open image in new window', 'Save image as…']);
   // where it was right-clicked: the chat window's place plus the pointer's place in it
   const [mb, vb] = await a.win.evaluate(() => {
     const v = [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent.toLowerCase() === 'alpha').querySelector('webview');
@@ -204,10 +204,10 @@ test('a chat message: Copy message, Copy message with emotes and Copy with @name
   }, [CHAT.source, x, y]);
   await a.win.waitForSelector('.vmenu');
   const items = await a.win.$$eval('.vmenu:not(.vm-fly) [role^=menuitem]', els => els.map(e => e.textContent));
-  assert.deepEqual(items.slice(0, 2), ['Copy message', 'Copy›']);
+  assert.deepEqual(items.slice(0, 3), ['Copy image', 'Copy message', 'Copy›']);
   await a.win.hover('.vmenu [data-sub=Copy]');
   assert.deepEqual(await a.win.$$eval('.vm-fly [role^=menuitem]', els => els.map(e => e.textContent)),
-    ['Copy message with emotes', 'Copy with @name', 'Copy emote text', 'Copy image', 'Copy image address', 'Open image in new window', 'Save image as…']);
+    ['Copy message with emotes', 'Copy with @name', 'Copy emote text', 'Copy image address', 'Open image in new window', 'Save image as…']);
   await a.win.click('.vm-fly [role=menuitem]:has(.vm-l:text-is("Copy with @name"))');
   assert.equal(await copied('@quietkoala: gg pearHype well played'), '@quietkoala: gg pearHype well played', 'chosen in a submenu');
   // Translate this message: that one, with the chat left as it is

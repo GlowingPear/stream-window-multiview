@@ -86,15 +86,15 @@ test('anywhere else: Reload; Inspect only in a dev copy', () => {
   assert.ok(!labels(menuFor({ selectionText: 'hi' })).includes('Inspect'));
 });
 
-test('an emote: Copy emote text first, then the image items with Save image as… named after it; in a chat, in an Emote submenu', () => {
+test('an emote: Copy emote text first, then the image items with Save image as… named after it; in a chat, Copy image first and the rest in an Emote submenu', () => {
   const p = { mediaType: 'image', srcURL: 'https://files.kick.com/emotes/1/fullsize', altText: 'alt', x: 3, y: 4 };
   const m = menuFor(p, { emote: { name: 'pearHype', text: 'pearHype' } });
   assert.deepEqual(labels(m), ['Copy emote text', 'Copy image', 'Copy image address', 'Open image in new window', 'Save image as…']);
   assert.deepEqual(m[0].act, { do: 'copyText', text: 'pearHype' });
   assert.deepEqual(labels(menuFor(p, { emote: { name: 'pearHype', text: 'pearHype' }, chat: { on: false, auto: false } })),
-    [['Emote', ['Copy emote text', 'Copy image', 'Copy image address', 'Open image in new window', 'Save image as…']], '—',
+    ['Copy image', ['Emote', ['Copy emote text', 'Copy image address', 'Open image in new window', 'Save image as…']], '—',
       ['Translate', ['Translate this chat to English', 'Translate new messages too']]]);
-  assert.deepEqual(labels(menuFor(p, { chat: { on: false, auto: false } })).slice(0, 1), [['Image', ['Copy image', 'Copy image address', 'Open image in new window', 'Save image as…']]], 'not an emote: Image');
+  assert.deepEqual(labels(menuFor(p, { chat: { on: false, auto: false } })).slice(0, 2), ['Copy image', ['Image', ['Copy image address', 'Open image in new window', 'Save image as…']]], 'not an emote: Image');
   assert.equal(find(m, 'Save image as…').act.name, 'pearHype');
   assert.deepEqual(find(m, 'Copy image').act, { do: 'copyImage', x: 3, y: 4 }, 'without its pictures\' addresses: as Chrome copies it');
   // with them: the app copies it (a moving one also as a file)
@@ -148,10 +148,10 @@ test('a chat message: Copy message (without emotes), and a Copy submenu with Cop
   // only emotes: nothing to copy without them
   const em = menuFor({}, { chat, message: { text: '', withEmotes: 'pearHype', html: '<div></div>' } });
   assert.deepEqual(em.slice(0, 2).map(x => x.enabled !== false), [false, true]);
-  // the selection's items first; on an emote, its items in the Copy submenu; not in the chat box, and not without a message
+  // the selection's items first; on an emote, Copy image before the message's, its other items in the Copy submenu; not in the chat box, and not without a message
   const p = { mediaType: 'image', srcURL: 'https://files.kick.com/emotes/1/fullsize', selectionText: 'hi' };
-  assert.deepEqual(labels(menuFor(p, { chat, message, emote: { name: 'pearHype', text: 'pearHype' } })).slice(0, 6), ['Copy', 'Translate “hi” to English', 'Search Google for “hi”', '—',
-    'Copy message', ['Copy', ['Copy message with emotes', 'Copy with @name', '—', 'Copy emote text', 'Copy image', 'Copy image address', 'Open image in new window', 'Save image as…']]]);
+  assert.deepEqual(labels(menuFor(p, { chat, message, emote: { name: 'pearHype', text: 'pearHype' } })).slice(0, 7), ['Copy', 'Translate “hi” to English', 'Search Google for “hi”', '—',
+    'Copy image', 'Copy message', ['Copy', ['Copy message with emotes', 'Copy with @name', '—', 'Copy emote text', 'Copy image address', 'Open image in new window', 'Save image as…']]]);
   assert.ok(!labels(menuFor({ isEditable: true }, { chat, message })).includes('Copy message'));
   assert.ok(!labels(menuFor({}, { chat, message: { text: 'x', withEmotes: 'x', html: '' } })).includes('Copy message'), 'no message there');
 });
