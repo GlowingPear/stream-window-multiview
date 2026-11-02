@@ -208,10 +208,10 @@ test('spam alerts: off until you turn them on, remembered, and Try it explains a
   await win.click('#spamTabs [data-t=try]');
   await win.fill('#spamTry', 'hq ai stream upgrades botkiva com emojiBlowKiss zero cost upgrades emojiBlowKiss');
   await win.click('#spamTryBtn');
-  assert.match(await win.textContent('#spamRes'), /Would be flagged.*Disguised link: botkiva com.*Total6/s);
+  assert.match(await win.textContent('#spamRes'), /Would be marked.*Disguised link: botkiva com.*Total6/s);
   await win.fill('#spamTry', 'clip it kick.com/someone/clips/abc');
   await win.click('#spamTryBtn');
-  assert.match(await win.textContent('#spamRes'), /Not flagged/);
+  assert.match(await win.textContent('#spamRes'), /Not marked/);
   await win.fill('#spamTry', 'you can call me Sam, we are going live soon');
   await win.click('#spamTryBtn');
   assert.match(await win.textContent('#spamRes'), /No signs of spam/, 'everyday words aren\'t disguised links');
@@ -221,7 +221,7 @@ test('spam alerts: off until you turn them on, remembered, and Try it explains a
   assert.equal(await win.textContent('#spamRes'), "Not checked: BotRix is on the chat bot list, so it's never flagged.");
   await win.fill('#spamTrySender', 'botrix_fan');
   await win.click('#spamTryBtn');
-  assert.match(await win.textContent('#spamRes'), /Would be flagged/, 'only the whole name');
+  assert.match(await win.textContent('#spamRes'), /Would be marked/, 'only the whole name');
   await win.fill('#spamTrySender', '');
   await win.click('#spamTabs [data-t=lists]');
   await win.click('#spamListPick [data-l=allow]');
