@@ -13,11 +13,11 @@ const shown = page => page.$$eval('#chatTabs button', tabs => tabs.filter(b => !
   return [b.textContent, rows.map(e => (e.querySelector('input[type=checkbox]') || {}).id || e.id)];
 }));
 
-test('Settings > Chat: after Layouts, every chat setting in its tab; General and Layouts no longer have them', async t => {
+test('Settings > Chat: after General, every chat setting in its tab; General and Layouts no longer have them', async t => {
   const page = await openApp(t);
   await page.click('#settingsBtn');
   const rail = await page.$$eval('#settingsDlg .st-rail button', l => l.filter(b => !b.hidden).map(b => b.dataset.s));
-  assert.equal(rail[rail.indexOf('layouts') + 1], 'chat', 'right after Layouts');
+  assert.equal(rail[rail.indexOf('general') + 1], 'chat', 'right after General');
   assert.ok(await page.$eval('#settingsDlg .st-rail [data-s=chat] svg', s => !!s), 'with its icon');
   await page.click('#settingsDlg .st-rail [data-s=chat]');
   assert.equal(await page.textContent('#settingsDlg [data-s=chat] h4'), 'Chat');

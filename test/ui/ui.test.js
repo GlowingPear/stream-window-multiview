@@ -861,8 +861,8 @@ test('Settings opens from the gear and Ctrl+, shows only what works in a browser
   await page.click('#settingsBtn');
   assert.ok(await page.isVisible('#settingsDlg'));
   const tabs = await page.$$eval('#settingsDlg .st-rail button', b => b.filter(x => !x.hidden).map(x => x.dataset.s));
-  assert.deepEqual(tabs, ['general', 'windows', 'layouts', 'chat', 'shoutouts', 'themes', 'search', 'linked', 'notify', 'guide', 'keys', 'updates'], 'accounts, alerts and spam need the desktop app');
-  assert.deepEqual(await page.$$eval('#settingsDlg .st-rail-sec', h => h.filter(x => !x.hidden).map(x => x.textContent)), ['Sites', 'Alerts', 'Help'], 'Sites has Linked channels here');
+  assert.deepEqual(tabs, ['general', 'chat', 'search', 'windows', 'layouts', 'themes', 'linked', 'notify', 'shoutouts', 'guide', 'keys', 'updates'], 'accounts, alerts and spam need the desktop app');
+  assert.deepEqual(await page.$$eval('#settingsDlg .st-rail-sec', h => h.filter(x => !x.hidden).map(x => x.textContent)), ['Appearance', 'Sites', 'Alerts', 'Moderation', 'Help'], 'Sites has Linked channels here; Moderation has Shoutouts');
   await press(page, 'Escape');
   assert.ok(await page.isHidden('#settingsDlg'));
   await page.keyboard.press('Control+,');

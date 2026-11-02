@@ -119,7 +119,8 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   assert.equal(await settingsTab(), 'accounts');
   assert.ok(await win.isHidden('#accountMenu'), 'the menu closes');
   const tabs = await win.$$eval('#settingsDlg .st-rail button', b => b.filter(x => !x.hidden).map(x => x.dataset.s));
-  assert.deepEqual(tabs, ['general', 'windows', 'layouts', 'chat', 'shoutouts', 'themes', 'search', 'accounts', 'linked', 'apps', 'youtube', 'extensions', 'notify', 'mentions', 'support', 'spam', 'flagged', 'guide', 'keys', 'updates', 'developer']);
+  assert.deepEqual(tabs, ['general', 'chat', 'search', 'windows', 'layouts', 'themes', 'accounts', 'linked', 'apps', 'youtube', 'extensions', 'notify', 'mentions', 'support', 'shoutouts', 'spam', 'flagged', 'guide', 'keys', 'updates', 'developer']);
+  assert.deepEqual(await win.$$eval('#settingsDlg .st-rail-sec', h => h.filter(x => !x.hidden).map(x => x.textContent)), ['Appearance', 'Sites', 'Alerts', 'Moderation', 'Help']);
   assert.ok(await win.isVisible('#settingsDlg .am-watch'), 'Watch signed in moved here');
   assert.ok(await win.isHidden('#mentUser'), 'your usernames are under Mentions');
   await win.click('#settingsDlg .st-rail [data-s=mentions]');
@@ -204,7 +205,6 @@ test('spam alerts: off until you turn them on, remembered, and Try it explains a
   await win.evaluate(() => window.openSettings('spam'));
   assert.equal(await win.isChecked('#spamOn'), false);
   await win.check('#spamOn');
-  assert.equal(await win.textContent('#settingsDlg .st-rail [data-s=spam] .st-pill'), 'On');
   await win.click('#spamTabs [data-t=try]');
   await win.fill('#spamTry', 'hq ai stream upgrades botkiva com emojiBlowKiss zero cost upgrades emojiBlowKiss');
   await win.click('#spamTryBtn');

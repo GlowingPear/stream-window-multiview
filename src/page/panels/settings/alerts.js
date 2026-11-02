@@ -32,10 +32,6 @@ function syncAlertControls(){
   $('#spamOn').checked = !!alerts.spam.on;
   $('#flaggedOn').checked = !!alerts.flagged.on;
   if ($('#mentOn')) $('#mentOn').checked = mentOn;
-  const pill = settingsDlg.querySelector('.st-rail [data-s=spam] .st-pill');
-  if (pill) pill.textContent = alerts.spam.on ? 'On' : 'Mod';
-  const fPill = settingsDlg.querySelector('.st-rail [data-s=flagged] .st-pill');
-  if (fPill) fPill.textContent = alerts.flagged.on ? 'On' : 'Mod';
   syncScoring();
 }
 function pickSound(kind){

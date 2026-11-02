@@ -142,11 +142,10 @@ test('Settings › Flagged: off at first; the switch, its tabs and options, and 
   await page.evaluate(() => { document.querySelector('.st-rail [data-s=flagged]').hidden = false; window.openSettings('flagged'); });
   const pane = page.locator('.st-pane[data-s=flagged]');
   assert.equal(await pane.locator('#flaggedOn').isChecked(), false, 'off by default');
-  assert.equal(await page.textContent('.st-rail [data-s=flagged] .st-pill'), 'Mod');
   assert.equal(await pane.locator('.st-opts[data-for=flagged]').first().evaluate(e => e.classList.contains('st-dim')), true);
   await pane.locator('#flaggedOn').check();
   assert.equal(await page.textContent('#msg'), 'Flagged alerts on, in chats you moderate');
-  assert.equal(await page.textContent('.st-rail [data-s=flagged] .st-pill'), 'On');
+  assert.equal(await page.textContent('.st-rail [data-s=flagged]'), 'Flagged', 'its name only, on or off (it\'s under Moderation)');
   const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.alerts')).flagged);
   assert.equal((await saved()).on, true);
   assert.deepEqual(await pane.locator('[data-t=what] [data-al]').evaluateAll(l => l.map(c => [c.dataset.al, c.type === 'checkbox' ? c.checked : c.value])),
