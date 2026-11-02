@@ -14,7 +14,7 @@ import { sampleIn } from './event-samples.js';
 import { feedParse } from './feed-parse.js';
 import { askKick, openInBrowser } from './kick-panel.js';
 import { botTargets } from './shoutout-text.js';
-import { shoutHere, shoutOut, shoutTag, soPersonOf, soSentAt } from './shoutout.js';
+import { shoutHere, shoutOut, shoutTag, soHeard, soOutWhy, soPersonOf, soSentAt } from './shoutout.js';
 import { autoTrFor, translateChat } from './translate.js';
 import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
@@ -120,6 +120,8 @@ function ingest(w, json, quiet = false, shown = false){
     if (shown && m.kind !== 'message' && m.kind !== 'event') return;
     if (devOn) m.raw = raw;   // (Developer tools: the line's Copy message data)
     if (!quiet) flaggedFrom(w, m);   // (Settings › Flagged)
+    const out = soHeard(w.channel, m);   // (a ban or timeout: no shoutouts for them, chat/shoutout.js)
+    if (out && view) f.msgs.forEach(x => { const p = x.ch === w.channel && shoutWho(x); if (p && p.login === out) redrawLine(x); });
     if (m.kind === 'delete' || m.kind === 'clear' || m.kind === 'clearall') return removed(f, view, m, w.channel);
     if (m.kind === 'unban') return unbanned(f, view, m, w.channel);
     if (m.kind === 'modaction') return modAction(f, view, m, w.channel);
@@ -685,8 +687,13 @@ function evToggle(m, e){
   m.open = !e.currentTarget.classList.contains('al-open');
   const n = redrawLine(m); if (n) evOpenable(m, n);   // (still under the pointer: it can close again)
 }
-// Shoutouts (chat/shoutout.js): who a line can shout out (someone else's message on Kick or Twitch), or null
+// Shoutouts (chat/shoutout.js): who a line can shout out (someone else's message on Kick or Twitch, not banned or timed
+// out in that chat), or null
 function shoutable(m){
+  const p = shoutWho(m);
+  return p && !soOutWhy(p) ? p : null;
+}
+function shoutWho(m){
   if (!shoutHere(m.ch) || m.kind === 'mine' || m.deleted || !['kick', 'twitch'].includes(m.site) || !m.login || m.login === meOn(m.site)) return null;
   // a chat bot's message ("Thanks for the follow Pixelfox"): who it's about, never the bot (none found: nothing)
   if (m.bot){
@@ -1973,7 +1980,7 @@ function readOnly(w, json){
   (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => {
     const got = feedParse.parseFeed({ s: batch.s, raw: [raw] });
     if (got.length || !feedParse.leftOut(batch.s, raw)) noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0);
-    got.forEach(m => { flaggedFrom(w, m); fromFeed(w, m); });
+    got.forEach(m => { flaggedFrom(w, m); soHeard(w.channel, m); fromFeed(w, m); });
   });
 }
 // A pin already up when ALL starts reading a chat: the sites send pins only as they're made, so it's asked for (quietly)
