@@ -156,13 +156,15 @@ test('a chat message: Copy message (without emotes), and a Copy submenu with Cop
   assert.ok(!labels(menuFor({}, { chat, message: { text: 'x', withEmotes: 'x', html: '' } })).includes('Copy message'), 'no message there');
 });
 
-test('a chat message with shoutouts on: Shout out who sent it, first; nothing for a sender that isn\'t Kick or Twitch, or a strange address', () => {
+test('a chat message with shoutouts on: Shout out who sent it, first (a chat bot\'s message about someone: named); nothing for a sender that isn\'t Kick or Twitch, or a strange address', () => {
   const chat = { on: false, auto: false }, message = { text: 'hi', withEmotes: 'hi', html: '<div></div>', shout: { site: 'kick', login: 'Pixel_Fox', name: 'Pixel_Fox' } };
   const m = menuFor({}, { chat, message });
-  assert.deepEqual(labels(m).slice(0, 4), ['Shout out Pixel_Fox', '—', 'Copy message', 'Copy message with emotes']);
-  assert.equal(menuFor({}, { chat, message: { ...message, shout: { ...message.shout, name: 'x'.repeat(60) } } })[0].label, `Shout out ${'x'.repeat(40)}`, 'a name at most 40 long');
+  assert.deepEqual(labels(m).slice(0, 4), ['Shout out', '—', 'Copy message', 'Copy message with emotes'], 'who sent it: no name');
+  const bot = { ...message.shout, from: 'BotRix' };
+  assert.equal(menuFor({}, { chat, message: { ...message, shout: bot } })[0].label, 'Shout out Pixel_Fox', 'a bot\'s message: who it\'s about');
+  assert.equal(menuFor({}, { chat, message: { ...message, shout: { ...bot, name: 'x'.repeat(60) } } })[0].label, `Shout out ${'x'.repeat(40)}`, 'a name at most 40 long');
   assert.deepEqual(m[0].act, { do: 'shoutout', who: { site: 'kick', login: 'pixel_fox', name: 'Pixel_Fox' } });
-  assert.equal(menuFor({}, { chat, message: { ...message, shout: { site: 'kick', login: 'nova-lynx' } } })[0].label, 'Shout out nova-lynx', 'no name: the address');
+  assert.equal(menuFor({}, { chat, message: { ...message, shout: { site: 'kick', login: 'nova-lynx', from: 'BotRix' } } })[0].label, 'Shout out nova-lynx', 'no name: the address');
   for (const shout of [{ site: 'youtube', login: 'x' }, { site: 'kick', login: 'a b' }, { site: 'twitch', login: '' }, 'kick', null])
     assert.ok(!labels(menuFor({}, { chat, message: { ...message, shout } })).some(l => /Shout out/.test(l)), JSON.stringify(shout));
   assert.ok(!labels(menuFor({ isEditable: true }, { chat, message })).some(l => /Shout out/.test(l)), 'not in the chat box');

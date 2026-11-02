@@ -250,8 +250,8 @@ test('Shoutouts on (Settings › Shoutouts): the chat page gets its buttons; the
   // the menu: Shout out first, by the sender's address; it sends in this chat
   await press();
   const m = await rightClick(CHAT, {});
-  assert.equal(m.labels[0], 'Shout out Pixel_Fox');
-  await m.pick('Shout out Pixel_Fox');
+  assert.equal(m.labels[0], 'Shout out');
+  await m.pick('Shout out');
   const sent = await until(() => chatJs(() => window.__sent), v => Array.isArray(v) && v.length === 1, 'sent in the chat');
   assert.match(sent[0], /^Go check out Pixel_Fox! .*→ https:\/\/kick\.com\/pixel-fox$/);
   // off: the buttons go from the page, and the menu doesn't offer it

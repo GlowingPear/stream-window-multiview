@@ -115,7 +115,7 @@ test('on: the line\'s menu has Shout out, a submenu with in its chat and in ever
   await chat(page);
   await line(page, 'gg everyone').click({ button: 'right' });
   const items = await page.$$eval('.all-lm:not(.all-lm-sub) .all-li', l => l.map(b => b.textContent));
-  assert.ok(items.includes('Shout out Tinroof›'), items.join(' | '));
+  assert.ok(items.includes('Shout out›'), items.join(' | '));
   await page.hover('.all-lm .all-lh'); await page.hover('.all-lm [data-sub="all.menuShout"]');
   assert.deepEqual(await page.$$eval('.all-lm-sub .all-li', l => l.map(b => b.textContent)), ['In Twitch chat', 'In every chatKickTwitch']);
   await page.click('.all-lm-sub [data-cmd="all.menuShoutout"]');
@@ -359,6 +359,9 @@ test('a chat bot\'s line shouts out who it\'s about, never the bot, and has no b
   const b = bot(0).locator('.al-so-b');
   assert.equal(await b.getAttribute('title'), 'Shout out Pixel_Fox on Kick (from BotRix\'s message)');
   assert.equal(await bot(1).locator('.al-so-b').count(), 0, 'an @ of whoever used a command: no button');
+  await bot(0).locator('.al-n').click({ button: 'right' });
+  assert.equal(await page.textContent('.all-lm [data-sub="all.menuShout"]'), 'Shout out Pixel_Fox›', 'its menu: who it\'s about, named');
+  await page.keyboard.press('Escape');
   // (its Kick address looked up: no lookups here, so not sent)
   await bot(0).locator('.al-n').hover(); await b.click();
   await flashed(page, /Couldn't find Pixel_Fox's Kick channel/);
