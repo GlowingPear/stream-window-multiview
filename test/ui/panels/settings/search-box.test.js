@@ -15,11 +15,11 @@ const inBox = page => page.evaluate(() => window.palette.rows().filter(r => r.gr
 const isOpen = page => page.evaluate(() => window.palette.isOpen());
 const BARS = [{ pos: 'top' }, { pos: 'left', labels: true }, { pos: 'left', labels: false }];
 
-test('the page: after Themes, its two switches on, and what\'s remembered, newest first, as the box draws it', async t => {
+test('the page: after Chat, its two switches on, and what\'s remembered, newest first, as the box draws it', async t => {
   const page = await openApp(t, { init: remember(IDS) });
   await open(page);
   const rail = await page.$$eval('#settingsDlg .st-rail button[data-s]', bs => bs.filter(b => !b.hidden).map(b => b.dataset.s));
-  assert.equal(rail[rail.indexOf('themes') + 1], 'search', 'after Themes');
+  assert.equal(rail[rail.indexOf('chat') + 1], 'search', 'after Chat');
   assert.equal(await page.isChecked('#palOnSet'), true);
   assert.equal(await page.isChecked('#palRecentSet'), true);
   assert.deepEqual(await listed(page), IDS);
