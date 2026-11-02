@@ -71,6 +71,37 @@ test('mod actions on a message: only the site\'s buttons labelled Delete or Pin 
   assert.equal(await page.evaluate(() => window.modAgent('pin', 'k1')), 'no-button');
 });
 
+test('held messages: Allow and Deny press only the site\'s own button on that card (Twitch: AutoMod\'s card around the message; YouTube: its held item\'s Show or Hide)', async t => {
+  const page = await openApp(t);
+  await page.evaluate(() => {
+    window.__clicks = [];
+    const btn = (label, what, text) => { const b = document.createElement('button'); if (label) b.setAttribute('aria-label', label); if (text) b.textContent = text; b.onclick = () => window.__clicks.push(what); return b; };
+    // Twitch: the card holds AutoMod's line and the message (its id); Allow and Deny by their words
+    const card = document.createElement('div'); card.id = 'hd-tw';
+    const auto = document.createElement('span'); auto.dataset.aUser = 'automod';
+    const msg = document.createElement('div'); msg.id = 'h-1'; msg.className = 'message'; msg.append(btn('Unban user1', 'unban'));
+    card.append(auto, msg, btn('', 'allow', 'Allow'), btn('', 'deny', 'Deny'));
+    const lone = document.createElement('div'); lone.className = 'chat-line__message';   // (an ordinary line: not a hold, and the card's Allow isn't its)
+    const inLine = document.createElement('span'); inLine.id = 'h-2'; lone.append(inLine);
+    // YouTube: its held item, by its data's id, with Show, Hide and Hide user…
+    const yt = document.createElement('yt-live-chat-auto-mod-message-renderer'); yt.data = { id: 'y-1' };
+    yt.append(btn('Show', 'show'), btn('Hide', 'hide'), btn('Hide user on this channel', 'hideUser'));
+    document.body.append(card, lone, yt);
+  });
+  const act = (a, id, site) => page.evaluate(([a, id, site]) => window.heldAgent(a, id, site), [a, id, site]);
+  assert.equal(await act('allow', 'h-1', 'twitch'), 'done');
+  assert.equal(await act('deny', 'h-1', 'twitch'), 'done');
+  assert.equal(await act('deny', 'y-1', 'youtube'), 'done');
+  assert.equal(await act('allow', 'y-1', 'youtube'), 'done');
+  assert.deepEqual(await page.evaluate(() => window.__clicks), ['allow', 'deny', 'hide', 'show'], 'never Unban or Hide user');
+  assert.equal(await act('allow', 'h-2', 'twitch'), 'no-line', 'not a held card');
+  assert.equal(await act('allow', 'gone', 'twitch'), 'no-line');
+  assert.equal(await act('allow', 'gone', 'youtube'), 'no-line');
+  assert.equal(await act('ban', 'h-1', 'twitch'), 'no-button');
+  await page.evaluate(() => document.querySelectorAll('#hd-tw > button').forEach(b => b.remove()));
+  assert.equal(await act('allow', 'h-1', 'twitch'), 'no-button', 'expired: no Allow on its card');
+});
+
 test('the reader passes on what the site\'s connection brings, as the page reads it: Kick\'s events (their names as Kick writes them), not its other news', async t => {
   const page = await openApp(t);
   const heard = [];

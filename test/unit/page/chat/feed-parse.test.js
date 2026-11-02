@@ -179,6 +179,23 @@ test('YouTube events in a few words', async () => {
   assert.equal(words(YT('liveChatMembershipItemRenderer', { id: 'm', ...author, headerSubtext: { simpleText: 'Member for 6 months' } })), '[@Mika] Member for 6 months');
 });
 
+test('YouTube: a message held for review, to moderators (the whole message, YouTube\'s own line); shown, it takes the held one\'s place', async () => {
+  const { parseYouTube, KNOWN, ignoredWhy } = await load();
+  // (as a report had it, #221)
+  const inner = { message: { runs: [{ text: 'word' }] }, authorName: { simpleText: 'user124' }, authorPhoto: { thumbnails: [] }, id: 'id391', timestampUsec: '1793486171039581', authorExternalChannelId: 'id392' };
+  const held = (extra = {}) => YT('liveChatAutoModMessageRenderer', { id: 'id391', timestampUsec: '1793486171039581', autoModeratedItem: { liveChatTextMessageRenderer: inner },
+    headerText: { runs: [{ text: 'Held for review. Only you and other moderators can see this' }] }, moderationButtons: [], ...extra });
+  const h = parseYouTube(held());
+  assert.deepEqual([h.kind, h.id, h.status, h.why, h.note, h.t], ['held', 'id391', 'PENDING', '', 'Held for review. Only you and other moderators can see this', 1793486171040]);
+  assert.deepEqual([h.msg.kind, h.msg.id, h.msg.sender, h.msg.userId, h.msg.parts], ['message', 'id391', 'user124', 'id392', [{ text: 'word' }]]);
+  assert.equal(parseYouTube(held({ autoModeratedItem: {} })), null, 'without its message');
+  assert.equal(parseYouTube(held({ headerText: undefined })).note, '');
+  const shown = parseYouTube({ replaceChatItemAction: { targetItemId: 'id391', replacementItem: { liveChatTextMessageRenderer: { ...inner, id: 'other' } } } });
+  assert.deepEqual([shown.kind, shown.id], ['message', 'id391'], 'shown: as the held one\'s id');
+  const k = 'addChatItemAction:liveChatAutoModMessageRenderer';
+  assert.ok(KNOWN.youtube[k] && !ignoredWhy('youtube', k));
+});
+
 test('YouTube: a gift is an event (its words, the gift picked out); a held message let through takes its stand-in\'s place; its stand-ins, the ticker and its own notice are ignored, with why', async () => {
   const { parseYouTube, parseFeed, KNOWN, ignoredWhy, leftOut } = await load();
   const gift = (text, extra = {}) => YT('giftMessageViewModel', { id: 'g1', text: { content: text }, authorName: { content: '@Mika ' }, authorAvatar: {}, ...extra });
@@ -388,11 +405,39 @@ test('Twitch: your own message held by AutoMod (its id and status: not a moderat
   const a = parseTwitch(hermes('automod_caught_message', { message_id: 'm7', status: 'pending' }));
   assert.deepEqual([a.kind, a.msgId, a.status], ['automod', 'm7', 'PENDING']);
   assert.equal(parseTwitch(hermes('automod_caught_message', { message_id: 'm7' })), null, 'without a status');
-  assert.equal(parseTwitch(hermes('automod_caught_message', { message: { id: 'm8', content: { text: 'hi' } }, status: 'PENDING' })), null, 'a moderator\'s queue: not yet (#221)');
+  assert.equal(parseTwitch(hermes('automod_caught_message', { message: { id: 'm8', content: { text: 'hi' } }, status: 'PENDING' })).kind, 'held', 'with the whole message: a moderator\'s queue');
   const h = parseTwitch(hermes('chat-highlight', { msg_id: 'm9', highlights: [{ type: 'raider', seconds_since_event: 254 }, {}] }));
   assert.deepEqual([h.kind, h.msgId, h.marks], ['marks', 'm9', [{ type: 'raider', secs: 254 }]]);
   assert.equal(parseTwitch(hermes('chat-highlight', { msg_id: 'm9', highlights: [] })), null, 'no marks');
   for (const k of ['hermes:automod_caught_message', 'hermes:chat-highlight']) assert.ok(KNOWN.twitch[k] && !ignoredWhy('twitch', k), k);
+});
+
+test('Twitch: a message AutoMod held, to moderators (the whole message, why, then who let it through); a suspicious user\'s flags on a message', async () => {
+  const { parseTwitch, KNOWN, ignoredWhy } = await load();
+  const hermes = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
+  // (as a report had them, #221)
+  const caught = (extra = {}) => ({ id: 'id269', content_classification: { category: 'smart-detection', level: 2 },
+    message: { content: { text: 'word word', fragments: [{ text: 'word ' }, { text: 'Kappa', emoticon: { emoticonID: '25' } }] }, id: 'id269', channel_id: 'id89', channel_login: 'user46',
+      sender: { user_id: 'id138', login: 'User104', display_name: 'User104', chat_color: '#8A2BE2', badges: [{ id: 'subscriber', version: '3' }] }, sent_at: '2026-11-01T22:17:50.999069824Z' },
+    reason_code: 'AutoModCaughtMessageReason', resolver_id: '', resolver_login: '', status: 'PENDING', ...extra });
+  const h = parseTwitch(hermes('automod_caught_message', caught()));
+  assert.deepEqual([h.kind, h.id, h.status, h.why, h.by], ['held', 'id269', 'PENDING', 'Smart detection · level 2', '']);
+  assert.deepEqual([h.msg.kind, h.msg.id, h.msg.sender, h.msg.login, h.msg.color, h.msg.userId, h.msg.badges, h.msg.t],
+    ['message', 'id269', 'User104', 'user104', '#8A2BE2', 'id138', ['sub'], Date.parse('2026-11-01T22:17:50.999Z')]);
+  assert.deepEqual(h.msg.parts, [{ text: 'word ' }, { emote: 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0', name: 'Kappa' }]);
+  const ok = parseTwitch(hermes('automod_caught_message', caught({ content_classification: { category: 'unknown', level: 0 }, reason_code: '', resolver_login: 'user117', status: 'ALLOWED' })));
+  assert.deepEqual([ok.status, ok.by, ok.why], ['ALLOWED', 'user117', '']);
+  assert.equal(parseTwitch(hermes('automod_caught_message', caught({ content_classification: { category: 'unknown', level: 0 }, reason_code: 'LinkCaughtMessageReason' }))).why, 'Link', 'not a category: why from its reason');
+  assert.equal(parseTwitch(hermes('automod_caught_message', caught({ status: '' }))), null, 'without a status');
+  assert.equal(parseTwitch(hermes('automod_caught_message', { message: { content: { text: 'hi' } }, status: 'PENDING' })), null, 'without the message\'s id');
+  const lt = (u, extra = {}) => hermes('low_trust_user_new_message', { low_trust_user: { id: 'id138', sender: { login: 'user104' }, types: ['DETECTED_BAN_EVADER'], ...u },
+    message_content: { text: 'word' }, message_id: 'id269', sent_at: '2026-11-01T22:17:50Z', ...extra });
+  const f = parseTwitch(lt({ ban_evasion_evaluation: 'POSSIBLE_EVADER', treatment: 'ACTIVE_MONITORING' }));
+  assert.deepEqual([f.kind, f.msgId, f.flags], ['flags', 'id269', ['evader-possible', 'monitored']]);
+  assert.deepEqual(parseTwitch(lt({ ban_evasion_evaluation: 'LIKELY_EVADER', treatment: 'RESTRICTED' })).flags, ['evader-likely', 'restricted']);
+  assert.equal(parseTwitch(lt({ ban_evasion_evaluation: 'UNLIKELY_EVADER', treatment: 'NO_TREATMENT' })), null, 'nothing to flag');
+  assert.equal(parseTwitch(lt({ treatment: 'RESTRICTED' }, { message_id: '' })), null, 'without its message');
+  for (const k of ['hermes:automod_caught_message', 'hermes:low_trust_user_new_message']) assert.ok(KNOWN.twitch[k] && !ignoredWhy('twitch', k), k);
 });
 
 test('Twitch: a watch streak is their message, highlighted, with how many streams; a reward redeemed without text and a shoutout are events; Twitch\'s own news is ignored, with why', async () => {

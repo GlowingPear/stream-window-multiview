@@ -763,6 +763,109 @@ test('ALL: a message of yours AutoMod holds says so, then is sent (its line come
   assert.deepEqual(await tags('r2'), [['First chat', 'Their first message in this chat'], ['something new', 'Twitch marks it: something new']]);
 });
 
+test('ALL: messages held for review are amber cards with Allow and Deny (the site\'s own buttons), until let through, denied, hidden or expired; the chip goes to the oldest waiting', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
+    window.allChat.modKnown.set('quietkoala', true); window.allChat.modKnown.set('tw:quietkoala', true);
+    window.__held = []; window.__heldR = 'done'; window.allChat.sender.held = async (c, action, id) => { window.__held.push([c.channel, action, id]); return window.__heldR; }; }, LIVE);
+  const HM = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
+  const twHeld = (id, status, extra = {}) => feed(page, 'tw:quietkoala', { s: 'twitch', raw: [HM('automod_caught_message', { id, content_classification: { category: 'smart-detection', level: 2 },
+    message: { id, content: { text: 'you are so bad at this', fragments: [{ text: 'you are so bad at this' }] }, sender: { user_id: 'u' + id, login: 'saltymike', display_name: 'Saltymike' }, sent_at: new Date().toISOString() },
+    reason_code: 'AutoModCaughtMessageReason', resolver_login: '', status, ...extra })] });
+  const ytItem = (id, text) => ({ message: { runs: [{ text }] }, authorName: { simpleText: 'Lofi Ray' }, id, timestampUsec: String(Date.now() * 1000), authorExternalChannelId: 'c' + id });
+  const ytHeld = id => feed(page, 'tw:quietkoala', { s: 'youtube', raw: [{ addChatItemAction: { item: { liveChatAutoModMessageRenderer: { id, timestampUsec: String(Date.now() * 1000),
+    autoModeratedItem: { liveChatTextMessageRenderer: ytItem(id, 'check my channel') }, headerText: { runs: [{ text: 'Held for review' }] } } } } }] });
+  const line = id => page.$eval(`.all-list [data-key$=":${id}"]`, e => [e.className, e.textContent.replace(/\s+/g, ' ').trim()]).catch(() => null);
+  const chip = () => page.$eval('.all-heldchip', e => e.hidden ? '' : e.textContent);
+  // waiting: the card, why, and who sees it; the chip counts it
+  await twHeld('h1', 'PENDING');
+  assert.deepEqual(await line('h1'), ['al-held', 'TAutoMod held thisSmart detection · level 2Saltymike: you are so bad at this✓ Allow✕ DenyOnly you and other mods see this']);
+  assert.equal(await chip(), '1 held');
+  await twHeld('h1', 'PENDING');
+  assert.equal(await page.$$eval('.all-list [data-key="twitch:h1"]', l => l.length), 1, 'again (another of their chats): the same card');
+  await ytHeld('y1');
+  assert.deepEqual(await line('y1'), ['al-held', 'YHeld for reviewLofi Ray: check my channel✓ Allow✕ DenyOnly you and other mods see this']);
+  assert.equal(await chip(), '2 held');
+  await page.click('.all-heldchip');
+  assert.equal(await page.$eval('.all-list [data-key="twitch:h1"]', e => e.classList.contains('al-held-go')), true, 'the chip: to the oldest waiting');
+  // Allow: the site's own button, then its line is the message, allowed by you; the message its chat brings isn't shown again
+  await page.click('.all-list [data-key="twitch:h1"] [data-cmd="all.heldAllow"]');
+  await page.waitForFunction(() => !document.querySelector('.all-list [data-key="twitch:h1"].al-held'));
+  assert.deepEqual(await page.evaluate(() => window.__held), [['tw:quietkoala', 'allow', 'h1']]);
+  assert.deepEqual(await line('h1'), ['al-m', 'TSaltymike: you are so bad at this✓ allowed by you']);
+  await twHeld('h1', 'ALLOWED', { resolver_login: 'metwitch' });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'Saltymike', id: 'h1', 'user-id': 'uh1' }, ':saltymike!s@s PRIVMSG #quietkoala :you are so bad at this')] });
+  assert.equal(await page.$$eval('.all-list [data-key="twitch:h1"]', l => l.length), 1, 'once');
+  assert.equal((await line('h1'))[1], 'TSaltymike: you are so bad at this✓ allowed by you');
+  assert.equal(await chip(), '1 held');
+  // another moderator: allowed (Twitch says who), denied; let through before Twitch says who did it
+  await twHeld('h2', 'PENDING'); await twHeld('h2', 'ALLOWED', { resolver_login: 'nightowl_mod' });
+  assert.match((await line('h2'))[1], /you are so bad at this✓ allowed by nightowl_mod$/);
+  await twHeld('h3', 'PENDING'); await twHeld('h3', 'DENIED', { resolver_login: 'nightowl_mod' });
+  assert.deepEqual(await line('h3'), ['al-m al-held-x', 'TSaltymike: you are so bad at this✕ denied by nightowl_mod']);
+  await twHeld('h4', 'PENDING');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'Saltymike', id: 'h4', 'user-id': 'uh4' }, ':saltymike!s@s PRIVMSG #quietkoala :you are so bad at this')] });
+  assert.match((await line('h4'))[1], /✓ allowed$/, 'its message came first: let through');
+  await twHeld('h4', 'ALLOWED', { resolver_login: 'nightowl_mod' });
+  assert.match((await line('h4'))[1], /✓ allowed by nightowl_mod$/, 'then who');
+  await twHeld('h6', 'PENDING'); await twHeld('h6', 'ALLOWED', { resolver_login: 'MeTwitch' });
+  assert.match((await line('h6'))[1], /✓ allowed by you$/, 'Twitch names you: you');
+  await twHeld('h9', 'ALLOWED', { resolver_login: 'nightowl_mod' });
+  assert.equal(await line('h9'), null, 'handled before ALL heard it held: its message comes on its own');
+  // Deny: the site didn't offer it (the card stays, waiting), then it did: hidden by you
+  await page.evaluate(() => { window.__heldR = 'no-button'; });
+  await page.click('.all-list [data-key="youtube:y1"] [data-cmd="all.heldDeny"]');
+  await page.waitForFunction(() => window.__held.length === 2);
+  await page.waitForFunction(() => !document.querySelector('.all-list [data-key="youtube:y1"] [data-cmd="all.heldDeny"]:disabled'));
+  assert.equal((await line('y1'))[0], 'al-held');
+  await page.evaluate(() => { window.__heldR = 'done'; });
+  await page.click('.all-list [data-key="youtube:y1"] [data-cmd="all.heldDeny"]');
+  await page.waitForFunction(() => document.querySelector('.all-list [data-key="youtube:y1"].al-held-x'));
+  assert.deepEqual(await line('y1'), ['al-m al-held-x', 'YLofi Ray: check my channel✕ hidden by you']);
+  assert.deepEqual((await page.evaluate(() => window.__held)).slice(1), [['tw:quietkoala', 'deny', 'y1'], ['tw:quietkoala', 'deny', 'y1']]);
+  // YouTube: shown (the message in its place), or hidden (taken away) in its own tab or by another moderator
+  await ytHeld('y2');
+  await feed(page, 'tw:quietkoala', { s: 'youtube', raw: [{ replaceChatItemAction: { targetItemId: 'y2', replacementItem: { liveChatTextMessageRenderer: ytItem('y2x', 'check my channel') } } }] });
+  assert.deepEqual(await line('y2'), ['al-m', 'YLofi Ray: check my channel✓ allowed']);
+  await ytHeld('y3');
+  await feed(page, 'tw:quietkoala', { s: 'youtube', raw: [{ removeChatItemAction: { targetItemId: 'y3' } }] });
+  assert.deepEqual(await line('y3'), ['al-m al-held-x', 'YLofi Ray: check my channel✕ hidden']);
+  assert.equal(await chip(), '', 'none waiting: no chip');
+  // Twitch says nothing when a hold runs out: ALL says so after AutoMod's wait
+  await page.evaluate(() => { window.allChat.heldWait.ms = 100; });
+  await twHeld('h5', 'PENDING');
+  assert.equal(await chip(), '1 held');
+  await page.waitForFunction(() => document.querySelector('.all-list [data-key="twitch:h5"].al-held-x'));
+  assert.deepEqual(await line('h5'), ['al-m al-held-x', 'TSaltymike: you are so bad at this✕ expired · not posted']);
+  assert.equal(await chip(), '');
+});
+
+test('ALL: Twitch\'s suspicious-user flags are tags on the line (and a held card), whenever they come; a restricted user\'s message says only mods see it', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); }, LIVE);
+  const HM = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
+  const flags = (id, ev, tr) => feed(page, 'tw:quietkoala', { s: 'twitch', raw: [HM('low_trust_user_new_message', { low_trust_user: { sender: { login: 'n3wacc' }, ban_evasion_evaluation: ev, treatment: tr }, message_id: id })] });
+  const say = (id, text) => feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'N3wacc', id, 'user-id': '5' }, ':n3wacc!n@n PRIVMSG #quietkoala :' + text)] });
+  const tags = id => page.$$eval(`.all-list [data-key="twitch:${id}"] .al-tag-flag`, l => l.map(x => [x.textContent, x.title]));
+  await flags('f1', 'POSSIBLE_EVADER', 'ACTIVE_MONITORING');   // (before its message: it waits for it)
+  await say('f1', 'hey remember me');
+  assert.deepEqual(await tags('f1'), [['Possible ban evader', 'Twitch thinks they may be evading a ban'], ['Monitored', 'Moderators are keeping an eye on them']]);
+  await say('f2', 'free followers');
+  await flags('f2', 'LIKELY_EVADER', 'RESTRICTED');
+  assert.deepEqual((await tags('f2')).map(x => x[0]), ['Likely ban evader', 'Restricted']);
+  assert.equal(await page.textContent('.all-list [data-key="twitch:f2"] .al-only'), 'Only mods see this message');
+  assert.equal(await page.$('.all-list [data-key="twitch:f1"] .al-only'), null);
+  // a held message's: on its card, and still on its line once let through
+  await flags('f3', 'POSSIBLE_EVADER', 'ACTIVE_MONITORING');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [HM('automod_caught_message', { id: 'f3', content_classification: { category: 'smart-detection', level: 2 },
+    message: { id: 'f3', content: { text: 'best viewers here' }, sender: { login: 'n3wacc', display_name: 'N3wacc' } }, status: 'PENDING' })] });
+  assert.deepEqual((await tags('f3')).map(x => x[0]), ['Possible ban evader', 'Monitored']);
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [HM('automod_caught_message', { id: 'f3', message: { id: 'f3', content: { text: 'best viewers here' }, sender: { login: 'n3wacc' } }, resolver_login: 'nightowl_mod', status: 'ALLOWED' })] });
+  assert.deepEqual((await tags('f3')).map(x => x[0]), ['Possible ban evader', 'Monitored']);
+});
+
 test('ALL: with one site to send on, Tab says so; with none, the box says so', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
