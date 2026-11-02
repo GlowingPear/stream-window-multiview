@@ -389,8 +389,10 @@ function messageHtml(id, why){
   const rows = document.querySelectorAll('.chat-line__message, .chat-line__status, [class*="user-notice-line"], [data-index], yt-live-chat-text-message-renderer, yt-live-chat-paid-message-renderer, yt-live-chat-membership-item-renderer');
   const idOf = el => {
     if (el.id && el.id === id) return id;
-    const k = Object.keys(el).find(x => x.startsWith('__reactFiber'));
-    for (let f = k && el[k], i = 0; f && i < 6; f = f.return, i++){ const p = f.memoizedProps || {}, m = p.message || p.notice || p.msg; if (m && m.id) return m.id; }
+    for (const node of [el, el.querySelector('.group')].filter(Boolean)){   // (Kick's row has props of its own too)
+      const k = Object.keys(node).find(x => x.startsWith('__reactFiber'));
+      for (let f = k && node[k], i = 0; f && i < 6; f = f.return, i++){ const p = f.memoizedProps || {}, m = p.message || p.notice || p.msg; if (m && m.id) return m.id; }
+    }
     return '';
   };
   const hit = [...rows].reverse().find(el => idOf(el) === id);

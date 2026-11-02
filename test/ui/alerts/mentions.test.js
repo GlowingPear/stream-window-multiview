@@ -522,6 +522,17 @@ test('asleep while the site\'s connection is read (setScreen): it reads nothing,
   await page.evaluate(() => document.getElementById('chat').insertAdjacentHTML('beforeend', '<div class="row" id="msg-7"><b>spammer</b>: <span>buy views now</span></div>'));
   await page.evaluate(() => window.__kmvMention.take());
   assert.equal(await page.evaluate(() => { const t = document.querySelector('#msg-7 [data-kmv-spam]'); return t && t.title; }), 'Likely spam: test', 'found by its id, not its words');
+  // Kick's: the row has props of its own, the message's id is in its .group's
+  await page.evaluate(() => window.__kmvMention.mark('kspam: cheap followers', 'Likely spam: kick', '#ff5f5f', 'spam', 'k-9'));
+  await page.evaluate(() => {
+    const row = document.createElement('div'); row.setAttribute('data-index', '9'); row['__reactFiber$k'] = { memoizedProps: { style: {} } };
+    const g = document.createElement('div'); g.className = 'group'; g['__reactFiber$k'] = { memoizedProps: {}, return: { memoizedProps: { message: { id: 'k-9' } } } };
+    g.innerHTML = '<span>kspam</span><span aria-hidden="true"> : </span><span>cheap followers here</span>';
+    row.append(g); document.getElementById('chat').append(row);
+  });
+  await page.evaluate(() => window.__kmvMention.take());
+  assert.equal(await page.evaluate(() => { const t = document.querySelector('[data-index="9"] > [data-kmv-spam]'); return t && t.title; }), 'Likely spam: kick', 'Kick\'s row, by its .group\'s id');
+  await page.evaluate(() => document.querySelector('[data-index="9"]').remove());   // (with a Kick row there, only Kick's rows are read)
   // its id when it's explained (the app's answer for it)
   const e = await page.evaluate(() => window.__kmvMention.explain(document.getElementById('msg-7')));
   assert.deepEqual([e.found, e.id, e.screen], [true, 'msg-7', false]);
