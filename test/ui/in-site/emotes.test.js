@@ -174,10 +174,13 @@ test('Settings > Chat: the example emote, in Emote preview\'s own row, shows the
 });
 
 // The right-click menu on an emote (drawn by the app's page with what the main process sends; see showViewMenu)
+const LONG = 'Shout out xXSuperLongStreamerName_Official';
 const MENU = { emote: { name: 'pearHype', site: 'Kick', big: 'https://files.kick.com/emotes/123/fullsize', small: '', animated: true, x: 0, y: 0 },
-  items: [{ label: 'Copy emote text', enabled: true }, { sep: true }, { label: 'Open image in new window', enabled: true }, { label: 'Save image as…', enabled: true },
-    { label: 'Copy image', enabled: true }, { label: 'Copy image address', enabled: true }, { sep: true },
-    { label: 'Translate this chat to English', enabled: true, checked: false }, { label: 'Translate new messages too', enabled: true, checked: true }, { label: 'Disabled one', enabled: false }] };
+  items: [{ label: LONG, id: 0, enabled: true }, { sep: true }, { label: 'Copy message', id: 1, enabled: true },
+    { label: 'Copy', sub: [{ label: 'Copy message with emotes', id: 2, enabled: true }, { label: 'Copy emote text', id: 3, enabled: true }, { sep: true },
+      { label: 'Save image as…', id: 4, enabled: true }, { label: 'Disabled two', id: 5, enabled: false }] }, { sep: true },
+    { label: 'Translate', sub: [{ label: 'Translate this chat to English', id: 6, enabled: true, checked: false }, { label: 'Translate new messages too', id: 7, enabled: true, checked: true }] },
+    { label: 'Disabled one', id: 8, enabled: false }] };
 async function menuAt(page, x, y) {
   await page.evaluate(([d, x, y]) => {
     window.__picked = [];
@@ -185,39 +188,82 @@ async function menuAt(page, x, y) {
     document.getElementById('fakeView')?.remove(); document.body.append(v);
     window.showViewMenu(v, 7, { ...d, emote: { ...d.emote, x, y } }, i => window.__picked.push(i));
   }, [MENU, x, y]);
-  return page.locator('.vmenu');
+  return page.locator('.vmenu:not(.vm-fly)');
 }
+const fly = page => page.locator('.vmenu.vm-fly');
+const focused = page => page.evaluate(() => document.activeElement.textContent);
 
-test('the emote menu: its preview, the same items as the system menu, and the keyboard', async t => {
+test('the emote menu: its preview, the same items and submenus as the system menu, and the keyboard', async t => {
   const page = await openApp(t, { width: 900, height: 700 });
   const m = await menuAt(page, 100, 80);
   assert.equal(await m.getAttribute('role'), 'menu');
   assert.equal(await m.locator('.vm-nm').textContent(), 'pearHype');
   assert.equal(await m.locator('.vm-badge').textContent(), 'Kick');
-  assert.equal(await m.locator('.vm-sub').textContent(), 'Kick emote');
-  assert.equal(await m.locator('.vm-anim').textContent(), 'ANIMATED');
-  assert.deepEqual(await m.locator('[role^=menuitem]').allTextContents(), MENU.items.filter(x => !x.sep).map(x => x.label));
+  assert.equal(await m.locator('.vm-sub').textContent(), 'Kick emote · animated');
+  assert.deepEqual(await m.locator('[role^=menuitem]').allTextContents(), [LONG, 'Copy message', 'Copy›', 'Translate›', 'Disabled one']);
   assert.equal(await m.locator('[role=separator]').count(), 2);
-  assert.equal(await m.locator('[aria-checked=true]').textContent(), 'Translate new messages too');
+  assert.deepEqual(await m.locator('[aria-haspopup=menu]').evaluateAll(l => l.map(e => e.getAttribute('aria-expanded'))), ['false', 'false']);
   assert.equal(await m.locator('[aria-disabled=true]').textContent(), 'Disabled one');
+  // a long one stays on one line, cut short (all of it on hover)
+  const [h0, h1, cut] = await m.evaluate(el => { const r = el.querySelectorAll('[role=menuitem]'), l = r[0].querySelector('.vm-l'); return [r[0].offsetHeight, r[1].offsetHeight, l.scrollWidth > l.clientWidth]; });
+  assert.equal(h0, h1); assert.ok(cut);
+  await m.locator('[role=menuitem]').first().hover();
+  assert.equal(await m.locator('[role=menuitem]').first().getAttribute('title'), LONG);
+  assert.equal(await m.locator('[role=menuitem]').nth(1).getAttribute('title'), null, 'not one that fits');
   const b = await m.boundingBox();
   assert.deepEqual([b.x, b.y], [100, 80], 'where you right-clicked');
-  // arrows, wrapping round and skipping what's off; a letter jumps; Enter chooses
+  // arrows, wrapping round and skipping what's off; a letter jumps
+  await page.mouse.move(800, 600);
   await page.keyboard.press('ArrowDown');
-  assert.equal(await m.locator('.cur').textContent(), 'Copy emote text');
+  assert.equal(await m.locator('.cur').textContent(), LONG);
   await page.keyboard.press('ArrowUp');
-  assert.equal(await m.locator('.cur').textContent(), 'Translate new messages too', 'up from the first: the last one that works');
-  await page.keyboard.press('s');
-  assert.equal(await m.locator('.cur').textContent(), 'Save image as…');
-  await page.keyboard.press('Enter');
-  assert.deepEqual(await page.evaluate(() => window.__picked), [3], 'its place in the list the main process sent');
-  assert.equal(await page.locator('.vmenu').count(), 0, 'closed');
-  // the mouse; a disabled item does nothing
+  assert.equal(await m.locator('.cur').textContent(), 'Translate›', 'up from the first: the last one that works');
+  await page.keyboard.press('c');
+  assert.equal(await m.locator('.cur').textContent(), 'Copy message');
+  // → opens a submenu on its first item, ← goes back; Enter chooses in it
+  await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowRight');
+  assert.equal(await fly(page).isVisible(), true);
+  assert.equal(await focused(page), 'Copy message with emotes');
+  assert.equal(await m.locator('[data-sub=Copy]').getAttribute('aria-expanded'), 'true');
+  await page.keyboard.press('ArrowUp');
+  assert.equal(await focused(page), 'Save image as…', 'round to the last one that works');
+  await page.keyboard.press('ArrowLeft');
+  assert.equal(await fly(page).isVisible(), false);
+  assert.equal(await focused(page), 'Copy›');
+  await page.keyboard.press('ArrowDown'); await page.keyboard.press('Enter');
+  assert.equal(await focused(page), 'Translate this chat to English');
+  assert.equal(await fly(page).locator('[aria-checked=true]').textContent(), 'Translate new messages too');
+  await page.keyboard.press('Escape');
+  assert.equal(await fly(page).isVisible(), false, 'Esc in a submenu: just the submenu');
+  assert.equal(await m.isVisible(), true);
+  await page.keyboard.press('ArrowRight'); await page.keyboard.press('End'); await page.keyboard.press('Enter');
+  assert.deepEqual(await page.evaluate(() => window.__picked), [7], 'its number from the main process');
+  assert.equal(await page.locator('.vmenu').count(), 0, 'closed, with its submenu');
+  // the mouse: pointing at a row opens its submenu beside the menu; a disabled item does nothing
   const m2 = await menuAt(page, 100, 80);
-  await m2.locator('text=Disabled one').click({ force: true });
-  assert.equal(await page.locator('.vmenu').count(), 1);
-  await m2.locator('text=Copy emote text').click();
-  assert.deepEqual(await page.evaluate(() => window.__picked), [0]);
+  await m2.locator('[data-sub=Copy]').hover();
+  await fly(page).waitFor();
+  assert.deepEqual(await fly(page).locator('[role^=menuitem]').allTextContents(), ['Copy message with emotes', 'Copy emote text', 'Save image as…', 'Disabled two']);
+  const [mb, fb] = [await m2.boundingBox(), await fly(page).boundingBox()];
+  assert.ok(Math.abs(fb.x - (mb.x + mb.width)) < 4, 'on its right');
+  await fly(page).locator('text=Disabled two').click({ force: true });
+  assert.equal(await page.locator('.vmenu').count(), 2, 'still open');
+  // pointing at another row closes it after a moment; so does leaving it, other than back to its row
+  await m2.locator('text=Copy message').hover();
+  await fly(page).waitFor({ state: 'hidden' });
+  await m2.locator('[data-sub=Copy]').hover(); await fly(page).locator('text=Copy emote text').hover();
+  await m2.locator('[data-sub=Copy]').hover(); await page.waitForTimeout(400);
+  assert.equal(await fly(page).isVisible(), true, 'back to its row: still open');
+  await fly(page).locator('text=Copy emote text').hover(); await page.mouse.move(800, 650);
+  await fly(page).waitFor({ state: 'hidden' });
+  assert.equal(await page.locator('.vmenu:not(.vm-fly)').count(), 1, 'the menu stays');
+  await m2.locator('[data-sub=Copy]').hover();
+  await fly(page).locator('text=Save image as…').click();
+  assert.deepEqual(await page.evaluate(() => window.__picked), [4]);
+  const m3 = await menuAt(page, 100, 80);
+  await m3.locator('text=Disabled one').click({ force: true });
+  await m3.locator('text=Copy message').click();
+  assert.deepEqual(await page.evaluate(() => window.__picked), [1]);
   // Esc, and a click outside, close it without choosing
   await menuAt(page, 100, 80);
   await page.keyboard.press('Escape');
@@ -228,14 +274,23 @@ test('the emote menu: its preview, the same items as the system menu, and the ke
   assert.deepEqual(await page.evaluate(() => window.__picked), []);
 });
 
-test('the emote menu stays inside the window: near the right or bottom edge it opens the other way', async t => {
+test('the emote menu stays inside the window: near the right or bottom edge it opens the other way, and so do its submenus', async t => {
   const page = await openApp(t, { width: 700, height: 560 });
   const m = await menuAt(page, 690, 550);
   const b = await m.boundingBox();
   assert.ok(b.x + b.width <= 700 && b.y + b.height <= 560 && b.x >= 0 && b.y >= 0, JSON.stringify(b));
   assert.ok(Math.abs(b.x + b.width - 690) < 2, 'to the left of the pointer');
+  await m.locator('[data-sub=Copy]').hover();
+  const f = await fly(page).boundingBox();
+  assert.ok(Math.abs(f.x + f.width - b.x) < 4 && f.y + f.height <= 560, 'the submenu on the left: ' + JSON.stringify(f));
+  // no room on either side: under its row, which stays in sight
+  const narrow = await openApp(t, { width: 420, height: 560 });
+  const n = await menuAt(narrow, 150, 20);
+  await n.locator('[data-sub=Copy]').hover();
+  const [row, nf] = [await n.locator('[data-sub=Copy]').boundingBox(), await fly(narrow).boundingBox()];
+  assert.ok(nf.y >= row.y + row.height && nf.x >= 0 && nf.x + nf.width <= 420, JSON.stringify([row, nf]));
   // taller than the room above or below: kept inside anyway
-  const page2 = await openApp(t, { width: 700, height: 420 });
-  const b2 = await (await menuAt(page2, 20, 200)).boundingBox();
-  assert.ok(b2.y >= 0 && b2.y + b2.height <= 420, JSON.stringify(b2));
+  const page2 = await openApp(t, { width: 700, height: 300 });
+  const b2 = await (await menuAt(page2, 20, 150)).boundingBox();
+  assert.ok(b2.y >= 0 && b2.y + b2.height <= 300, JSON.stringify(b2));
 });

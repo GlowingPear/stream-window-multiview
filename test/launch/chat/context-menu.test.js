@@ -42,7 +42,8 @@ test.before(async () => {
 });
 test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
 
-// Right-click in a view: the menu it got (labels), and a way to pick one of its items.
+// Right-click in a view: the menu it got (labels; a submenu: [its label, its labels]), and a way to pick one of its
+// items, also in a submenu.
 async function rightClick(urlRe, params) {
   const n = await a.app.evaluate(async ({ webContents }, [re, params]) => {
     const wc = webContents.getAllWebContents().find(w => new RegExp(re).test(w.getURL()));
@@ -53,15 +54,19 @@ async function rightClick(urlRe, params) {
     return globalThis.__m.menus.length > before ? globalThis.__m.menus.length - 1 : -1;
   }, [urlRe.source, params]);
   if (n < 0) return null;
-  const labels = await a.app.evaluate((_, n) => globalThis.__m.menus[n].map(x => x.type === 'separator' ? '—' : x.label), n);
-  return { labels, pick: label => a.app.evaluate((_, [n, label]) => globalThis.__m.menus[n].find(x => x.label === label).click(), [n, label]) };
+  const labels = await a.app.evaluate((_, n) => { const of = l => l.map(x => x.type === 'separator' ? '—' : x.submenu ? [x.label, of(x.submenu)] : x.label); return of(globalThis.__m.menus[n]); }, n);
+  return { labels, pick: label => a.app.evaluate((_, [n, label]) => {
+    const find = l => { for (const x of l){ if (x.label === label && x.click) return x; const y = x.submenu && find(x.submenu); if (y) return y; } };
+    find(globalThis.__m.menus[n]).click();
+  }, [n, label]) };
 }
 const state = () => a.app.evaluate(() => globalThis.__m);
 
 test('chat and stream windows get the menu; the app\'s own page does not', T, async () => {
   const chat = (await rightClick(/popout\/alpha\/chat/, {})).labels;
-  assert.match(chat[0], /^Translate this chat to /);
-  assert.deepEqual(chat.slice(1), ['Translate new messages too', '—', 'Reload', '—', 'Inspect'], 'Inspect: this is a dev copy');
+  assert.equal(chat[0][0], 'Translate', 'a submenu');
+  assert.match(chat[0][1][0], /^Translate this chat to /);
+  assert.deepEqual(chat.slice(1), ['—', 'Reload', '—', 'Inspect'], 'Inspect: this is a dev copy');
   assert.deepEqual((await rightClick(/player\.kick\.com\/alpha/, {})).labels, ['Reload', '—', 'Inspect']);
   assert.equal(await rightClick(/index\.html(?!.*role=streams)/, {}), null);
 });
@@ -84,7 +89,7 @@ test('its items: translate and search open the browser, copy copies, links open 
 
 test('an emote: Save image as… suggests its name in Downloads and saves it; Open image opens a window with it', T, async () => {
   const img = await rightClick(/popout\/alpha\/chat/, { mediaType: 'image', srcURL: 'https://kick.com/emotes/pear.png', altText: 'pear Hype' });
-  assert.deepEqual(img.labels.slice(0, 4), ['Open image in new window', 'Save image as…', 'Copy image', 'Copy image address'], 'not an emote the chat showed: the system menu');
+  assert.deepEqual(img.labels[0], ['Image', ['Copy image', 'Copy image address', 'Open image in new window', 'Save image as…']], 'not an emote the chat showed: the system menu, with a submenu');
   await img.pick('Save image as…');
   for (let i = 0; i < 100 && !(await state()).saved.length; i++) await new Promise(r => setTimeout(r, 100));
   const saved = (await state()).saved[0];
@@ -111,13 +116,13 @@ const chatText = () => inView(a.win, 'alpha', 'chat', () => [...document.querySe
 test('Translate this chat: the messages are translated by the app (a stand-in translator), and new ones too when chosen', T, async () => {
   await inView(a.win, 'alpha', 'chat', h => { document.body.insertAdjacentHTML('beforeend', h); return true; }, kickMsg('quietkoala', 'hola amigos'));
   let m = await rightClick(CHAT, {});
-  await m.pick(m.labels[0]);
+  await m.pick(m.labels[0][1][0]);
   for (let i = 0; i < 50 && (await chatText())[0] !== 'hello friends [SPANISH]'; i++) await new Promise(r => setTimeout(r, 100));
   assert.deepEqual(await chatText(), ['hello friends [SPANISH]']);
   assert.deepEqual((await state()).translated, ['hola amigos']);
   m = await rightClick(CHAT, {});
-  assert.deepEqual(m.labels.slice(1, 3), ['Translate new messages too', 'Stop translating']);
-  assert.equal(await a.app.evaluate(() => globalThis.__m.menus.at(-1)[0].checked), true, 'ticked while translating');
+  assert.deepEqual(m.labels[0][1].slice(1, 3), ['Translate new messages too', 'Stop translating']);
+  assert.equal(await a.app.evaluate(() => globalThis.__m.menus.at(-1)[0].submenu[0].checked), true, 'ticked while translating');
   // new messages too: remembered for this chat
   await m.pick('Translate new messages too');
   await a.win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.autoTranslate') || '[]').includes('alpha'));
@@ -151,24 +156,26 @@ test('right-clicking an emote the chat shows: the app draws the menu with its pr
   assert.equal((await state()).menus.length, before, 'not the system menu');
   assert.equal(await a.win.textContent('.vmenu .vm-nm'), 'pearHype');
   assert.equal(await a.win.textContent('.vmenu .vm-badge'), 'Kick');
-  const items = await a.win.$$eval('.vmenu [role^=menuitem]', els => els.map(e => e.textContent));
-  assert.deepEqual(items.slice(0, 5), ['Copy emote text', 'Open image in new window', 'Save image as…', 'Copy image', 'Copy image address']);
+  const items = await a.win.$$eval('.vmenu:not(.vm-fly) [role^=menuitem]', els => els.map(e => e.textContent));
+  assert.equal(items[0], 'Emote›', 'its items in a submenu');
   assert.ok(items.includes('Inspect'), 'the same items as the system menu would have');
+  await a.win.hover('.vmenu [data-sub=Emote]');
+  assert.deepEqual(await a.win.$$eval('.vm-fly [role^=menuitem]', els => els.map(e => e.textContent)), ['Copy emote text', 'Copy image', 'Copy image address', 'Open image in new window', 'Save image as…']);
   // where it was right-clicked: the chat window's place plus the pointer's place in it
   const [mb, vb] = await a.win.evaluate(() => {
     const v = [...document.querySelectorAll('#stage .win.chat')].find(e => e.querySelector('.title').textContent.toLowerCase() === 'alpha').querySelector('webview');
-    const m = document.querySelector('.vmenu').getBoundingClientRect(), r = v.getBoundingClientRect();
+    const m = document.querySelector('.vmenu:not(.vm-fly)').getBoundingClientRect(), r = v.getBoundingClientRect();
     return [{ x: m.left, y: m.top }, { x: r.left + 40 * v.getZoomFactor(), y: r.top + 50 * v.getZoomFactor() }];
   });
   assert.ok(Math.abs(mb.x - vb.x) < 2 || mb.x < vb.x, JSON.stringify([mb, vb]));
-  await a.win.click('.vmenu [role=menuitem]:text-is("Copy emote text")');
+  await a.win.click('.vm-fly [role=menuitem]:has(.vm-l:text-is("Copy emote text"))');
   for (let i = 0; i < 50 && (await a.app.evaluate(() => globalThis.__m.copied)) !== 'pearHype'; i++) await new Promise(r => setTimeout(r, 100));
   assert.equal(await a.app.evaluate(() => globalThis.__m.copied), 'pearHype');
   assert.equal(await a.win.locator('.vmenu').count(), 0, 'closed');
   await inView(a.win, 'alpha', 'chat', () => { document.querySelectorAll('img[alt=pearHype]').forEach(e => e.remove()); return true; });
 });
 
-test('a chat message: Copy message and Copy message with emotes copy it, also from the emote menu; with Developer tools on, Copy message HTML', T, async () => {
+test('a chat message: Copy message, Copy message with emotes and Copy with @name copy it, also from the emote menu; Translate this message; with Developer tools on, Copy message HTML', T, async () => {
   const pic = '<img src="https://files.kick.com/emotes/1/fullsize" alt="pearHype" style="display:inline-block;width:28px;height:28px">';
   await inView(a.win, 'alpha', 'chat', h => { document.body.insertAdjacentHTML('beforeend', h); return true; }, kickMsg('quietkoala', `gg ${pic} well played`));
   // right-clicked in the page (it notes the message), then Electron's event
@@ -176,11 +183,11 @@ test('a chat message: Copy message and Copy message with emotes copy it, also fr
     e.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: r.left + 2, clientY: r.top + 2 })); return [r.left + 2, r.top + 2]; }, sel);
   const copied = async want => { for (let i = 0; i < 50 && (await a.app.evaluate(() => globalThis.__m.copied)) !== want; i++) await new Promise(r => setTimeout(r, 100)); return a.app.evaluate(() => globalThis.__m.copied); };
   const html = await inView(a.win, 'alpha', 'chat', () => document.querySelector('[data-index]').outerHTML);
-  for (const [label, want] of [['Copy message', 'gg well played'], ['Copy message with emotes', 'gg pearHype well played']]) {
+  for (const [label, want] of [['Copy message', 'gg well played'], ['Copy message with emotes', 'gg pearHype well played'], ['Copy with @name', '@quietkoala: gg pearHype well played']]) {
     await press('[data-index] button');
     const m = await rightClick(CHAT, {});
-    assert.deepEqual(m.labels.slice(0, 3), ['Copy message', 'Copy message with emotes', '—']);
-    assert.ok(!m.labels.includes('Copy message HTML'), 'the HTML only with Developer tools on');
+    assert.deepEqual(m.labels.slice(0, 3), ['Copy message', ['Copy', ['Copy message with emotes', 'Copy with @name']], '—']);
+    assert.ok(!JSON.stringify(m.labels).includes('Copy message HTML'), 'the HTML only with Developer tools on');
     await m.pick(label);
     assert.equal(await copied(want), want, label);
   }
@@ -196,10 +203,22 @@ test('a chat message: Copy message and Copy message with emotes copy it, also fr
       .emit('context-menu', { preventDefault() {} }, { x, y, editFlags: {}, mediaType: 'image', srcURL: 'https://files.kick.com/emotes/1/fullsize', altText: 'pearHype' });
   }, [CHAT.source, x, y]);
   await a.win.waitForSelector('.vmenu');
-  const items = await a.win.$$eval('.vmenu [role^=menuitem]', els => els.map(e => e.textContent));
-  assert.deepEqual(items.slice(0, 7), ['Copy emote text', 'Open image in new window', 'Save image as…', 'Copy image', 'Copy image address', 'Copy message', 'Copy message with emotes']);
-  await a.win.click('.vmenu [role=menuitem]:text-is("Copy message")');
-  assert.equal(await copied('gg well played'), 'gg well played');
+  const items = await a.win.$$eval('.vmenu:not(.vm-fly) [role^=menuitem]', els => els.map(e => e.textContent));
+  assert.deepEqual(items.slice(0, 2), ['Copy message', 'Copy›']);
+  await a.win.hover('.vmenu [data-sub=Copy]');
+  assert.deepEqual(await a.win.$$eval('.vm-fly [role^=menuitem]', els => els.map(e => e.textContent)),
+    ['Copy message with emotes', 'Copy with @name', 'Copy emote text', 'Copy image', 'Copy image address', 'Open image in new window', 'Save image as…']);
+  await a.win.click('.vm-fly [role=menuitem]:has(.vm-l:text-is("Copy with @name"))');
+  assert.equal(await copied('@quietkoala: gg pearHype well played'), '@quietkoala: gg pearHype well played', 'chosen in a submenu');
+  // Translate this message: that one, with the chat left as it is
+  await inView(a.win, 'alpha', 'chat', h => { document.body.insertAdjacentHTML('beforeend', h); return true; }, kickMsg('nightowl', 'hola amigos'));
+  await press('[data-index]:last-of-type button');
+  await (await rightClick(CHAT, {})).pick('Translate this message');
+  for (let i = 0; i < 50 && (await chatText())[1] !== 'hello friends [SPANISH]'; i++) await new Promise(r => setTimeout(r, 100));
+  assert.equal((await chatText())[1], 'hello friends [SPANISH]');
+  assert.ok(!(await chatText())[0].includes('['), 'not the other message');
+  assert.deepEqual(await inView(a.win, 'alpha', 'chat', () => window.__kmvTr.state()), { on: false, auto: false });
+  await inView(a.win, 'alpha', 'chat', () => { window.__kmvTr.stop(); return true; });
   await inView(a.win, 'alpha', 'chat', () => { document.querySelectorAll('[data-index]').forEach(e => e.remove()); return true; });
 });
 
@@ -258,7 +277,7 @@ test('Translate new messages in every chat: on in open and new chats, off in one
   assert.deepEqual(await chatText(), ['hello friends [SPANISH]']);
   // the menu shows it ticked
   const m = await rightClick(CHAT, {});
-  assert.equal(await a.app.evaluate(() => globalThis.__m.menus.at(-1)[1].checked), true);
+  assert.equal(await a.app.evaluate(() => globalThis.__m.menus.at(-1)[0].submenu[1].checked), true);
   // a chat opened later starts on too
   await openChannel(w, 'bravo', 'chat');
   await viewLoaded(w, 'bravo', 'chat', /popout\/bravo\/chat/);

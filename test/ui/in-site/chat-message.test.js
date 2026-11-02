@@ -41,6 +41,12 @@ test('Kick, Twitch and YouTube: the text without the name, with each emote as it
   const yt = await at(page, '#author-name');
   assert.deepEqual([yt.text, yt.withEmotes], ['hello', 'hello :_pearWave: 😂'], 'right-clicking the name: its message; YouTube emojis as you\'d type them');
   assert.match(yt.html, /^<yt-live-chat-text-message-renderer>.*<\/yt-live-chat-text-message-renderer>$/s);
+  assert.deepEqual([kick.name, tw.name, yt.name], ['quietkoala', 'oakleaf', 'mossfern'], 'who sent it, for Copy with @name');
+  const named = await page.evaluate(() => { const c = document.querySelector('#chat');
+    c.insertAdjacentHTML('beforeend', '<div data-index="6"><div><div><button data-prevent-expand>@Pixel_Fox</button></div><span aria-hidden="true">:&nbsp;</span></div><span class="font-normal">hi</span></div>'
+      + '<div class="chat-line__message"><span data-a-target="chat-line-message-body">no name</span></div>');
+    return [window.__kmvMsg.messageOf(document.querySelector('[data-index="6"] .font-normal')).name, window.__kmvMsg.messageOf(document.querySelectorAll('[data-a-target="chat-line-message-body"]')[1]).name]; });
+  assert.deepEqual(named, ['Pixel_Fox', ''], 'without its @; none shown: none');
   const only = await at(page, '[data-index="5"] button');
   assert.deepEqual([only.text, only.withEmotes], ['', 'oakCozy'], 'only an emote: nothing without it');
 });

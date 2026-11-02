@@ -78,6 +78,29 @@ test('the badge shows the original and back; Stop translating puts every message
   assert.deepEqual(await page.evaluate(() => window.__kmvTr.state()), { on: false, auto: false });
 });
 
+test('Translate this message: just that one, with the chat left as it is; it can show the original too; Stop translating puts it back', async t => {
+  const page = await chat(t, [kick('a1', 'hola amigos'), twitch('b2', 'qué tal'), kick('c3', 'buenas noches')].join(''));
+  assert.equal(await page.evaluate(() => window.__kmvTr.one(document.querySelector('.chat-line__message'))), true, 'its whole line');
+  await page.waitForSelector('[data-kmv-trb]');
+  assert.deepEqual(await msgs(page), [{ text: 'hola amigos', badge: null }, { text: 'how are you', badge: '"TRANSLATED · SPANISH"' }, { text: 'buenas noches', badge: null }]);
+  assert.deepEqual(await page.evaluate(() => window.__asked), ['qué tal'], 'only it is sent');
+  assert.deepEqual(await page.evaluate(() => window.__kmvTr.state()), { on: false, auto: false }, 'the chat isn\'t being translated');
+  await page.click('.chat-line__message [data-kmv-trb]');
+  assert.equal((await msgs(page))[1].text, 'qué tal');
+  await page.click('.chat-line__message [data-kmv-trb]');
+  // its text, also; not a message: nothing
+  await page.evaluate(() => window.__kmvTr.one(document.querySelectorAll('[data-index] span.font-normal')[1]));
+  await page.waitForFunction(() => document.querySelectorAll('[data-kmv-trb]').length === 2);
+  assert.equal((await msgs(page))[2].text, 'good night');
+  assert.deepEqual(await page.evaluate(() => [window.__kmvTr.one(null), window.__kmvTr.one(document.body.appendChild(document.createElement('p')))]), [false, false]);
+  // drawn again (the chat redraws it): translated again, without asking
+  await page.evaluate(() => { const b = document.querySelector('[data-a-target="chat-line-message-body"]'); b.replaceChildren(document.createTextNode('qué tal')); });
+  await page.waitForFunction(() => document.querySelector('[data-a-target="chat-line-message-body"]').innerText.includes('how are you'));
+  assert.equal((await page.evaluate(() => window.__asked)).length, 2);
+  await page.evaluate(() => window.__kmvTr.stop());
+  assert.deepEqual((await msgs(page)).map(m => m.text), ['hola amigos', 'qué tal', 'buenas noches']);
+});
+
 test('new messages: only translated with "Translate new messages too"; a message drawn again is translated again without asking', async t => {
   const page = await chat(t, kick('a1', 'hola amigos'));
   await page.evaluate(() => window.__kmvTr.start(false));

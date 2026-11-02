@@ -109,21 +109,22 @@ test('on: a raid\'s line has Shout out, then ✓ Shouted out; a Kick name is loo
   await page.evaluate(() => { delete window.kmv; });
 });
 
-test('on: the line\'s menu has Shout out (in its chat) and Shout out in every chat; People rows and Twitch\'s own /shoutout (a mod, switched on)', async t => {
+test('on: the line\'s menu has Shout out, a submenu with in its chat and in every chat; People rows and Twitch\'s own /shoutout (a mod, switched on)', async t => {
   const page = await allApp(t, { shoutOn: '1', shoutTwitch: '1', shoutPeople: JSON.stringify([{ site: 'twitch', login: 'tinroof', name: 'Tinroof', msg: 'Captain {name}! {link}' }]) });
   await page.evaluate(() => window.allChat.modKnown.set('tw:quietkoala', true));
   await chat(page);
   await line(page, 'gg everyone').click({ button: 'right' });
-  const items = await page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent));
-  assert.ok(items.includes('Shout out TinroofTwitch chat'), items.join(' | '));
-  assert.ok(items.includes('Shout out in every chatKickTwitch'));
-  await page.click('.all-lm [data-cmd="all.menuShoutout"]');
+  const items = await page.$$eval('.all-lm:not(.all-lm-sub) .all-li', l => l.map(b => b.textContent));
+  assert.ok(items.includes('Shout out Tinroof›'), items.join(' | '));
+  await page.hover('.all-lm .all-lh'); await page.hover('.all-lm [data-sub="all.menuShout"]');
+  assert.deepEqual(await page.$$eval('.all-lm-sub .all-li', l => l.map(b => b.textContent)), ['In Twitch chat', 'In every chatKickTwitch']);
+  await page.click('.all-lm-sub [data-cmd="all.menuShoutout"]');
   await page.waitForFunction(() => window.__sends.length === 2, null, { timeout: 5000 });
   assert.deepEqual(await sends(page), [['tw:quietkoala', 'Captain Tinroof! https://twitch.tv/tinroof'], ['tw:quietkoala', '/shoutout tinroof']], 'their row\'s message; then Twitch\'s own');
   // every chat: once in each, and Twitch's own isn't for someone without a Twitch channel
   await page.evaluate(() => { window.__sends = []; });
   await line(page, 'boss fight').click({ button: 'right' });
-  await page.click('.all-lm [data-cmd="all.menuShoutoutAll"]');
+  await page.hover('.all-lm .all-lh'); await page.hover('.all-lm [data-sub="all.menuShout"]'); await page.click('.all-lm-sub [data-cmd="all.menuShoutoutAll"]');
   await page.waitForFunction(() => window.__sends.length === 2);
   await page.waitForTimeout(1500);
   assert.deepEqual(await sends(page), [['quietkoala', 'Go check out Driftwood_7! → https://kick.com/driftwood_7'], ['tw:quietkoala', 'Go check out Driftwood_7! → https://kick.com/driftwood_7']]);
