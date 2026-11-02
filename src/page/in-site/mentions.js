@@ -347,10 +347,13 @@ function mentionAgent(){
   // A message's line by the site's id for it (as the feed brings it): Kick's and Twitch's in the line's React props,
   // YouTube's as the element's id. The biggest element that's still only that message.
   const LINE_SEL = '.chat-line__message, .chat-line__status, [class*="user-notice-line"], [data-index], yt-live-chat-text-message-renderer, yt-live-chat-paid-message-renderer, yt-live-chat-membership-item-renderer';
+  // (Kick's row has props of its own too: the message is in its .group's)
   function idOf(el){
     if (el.id) return el.id;
-    const k = Object.keys(el).find(x => x.startsWith('__reactFiber')) || Object.keys(el.querySelector('.group') || {}).find(x => x.startsWith('__reactFiber'));
-    for (let f = k && (el[k] || (el.querySelector('.group') || {})[k]), i = 0; f && i < 8; f = f.return, i++){ const p = f.memoizedProps || {}, m = p.message || p.notice || p.msg; if (m && m.id) return String(m.id); }
+    for (const node of [el, el.querySelector('.group')].filter(Boolean)){
+      const k = Object.keys(node).find(x => x.startsWith('__reactFiber'));
+      for (let f = k && node[k], i = 0; f && i < 8; f = f.return, i++){ const p = f.memoizedProps || {}, m = p.message || p.notice || p.msg; if (m && m.id) return String(m.id); }
+    }
     return '';
   }
   const rowById = id => (id && [...document.querySelectorAll(LINE_SEL)].reverse().find(el => idOf(el) === id)) || null;
