@@ -2,7 +2,13 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.17 (current)
+## 0.4.18 (current)
+- Diagnostics leave out Chromium's harmless ResizeObserver warning
+- Flagged alerts: held messages and suspicious users alert moderators, with Allow and Deny under the bell
+- Chat right-click menus: shorter, with submenus
+- Spam alerts: Kick messages are tagged in its chat again
+
+## 0.4.17
 - Spam alerts flag sexual remarks aimed at someone
 - start-change: after the pull request, auto-merge and clean up without asking
 - Chat events: Kick's new goals are ignored, not unknown
