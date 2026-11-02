@@ -2,7 +2,13 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.16 (current)
+## 0.4.17 (current)
+- Spam alerts flag sexual remarks aimed at someone
+- start-change: after the pull request, auto-merge and clean up without asking
+- Chat events: Kick's new goals are ignored, not unknown
+- ALL: held messages with Allow and Deny, and Twitch's suspicious-user flags, for moderators
+
+## 0.4.16
 - Shoutouts: a channel's message has the {name} {link} {links} {game} buttons, and a compact Channels list
 
 ## 0.4.15
