@@ -223,6 +223,13 @@
 .all-li i{display:grid;color:var(--muted)}.all-li svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
 .all-li small{margin-left:auto;color:var(--muted);font-size:10.5px;white-space:nowrap}
 .all-li.red,.all-li.red i{color:#ff8b8b}
+/* one line each (a long name is cut short); a row with a submenu (shared/flyout.js): its arrow, and lit while it's open */
+.all-lm{max-width:min(320px,calc(100% - 12px))}
+.all-li>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.all-li:focus-visible{outline:none;background:var(--line)}
+.all-li.open{background:var(--line)}
+.all-subx{margin-left:auto;padding-left:12px;color:var(--muted);font-weight:400;font-size:15px;line-height:1}
+.all-lm-sub{z-index:7;min-width:220px}
 .all-durs{display:flex;gap:4px;padding:2px 8px 6px 31px}
 .all-durs button{flex:1;height:24px;border:0;border-radius:5px;background:var(--panel2);color:var(--text);font:inherit;font-size:11px;font-weight:650;cursor:pointer}
 .all-durs button.on{background:var(--accent);color:var(--accent-ink)}
@@ -463,11 +470,13 @@
 .all-etip{position:absolute;width:12px;height:12px;background:var(--panel2);transform:rotate(45deg)}
 .all-etip.down{bottom:-7px;border-right:1px solid var(--line2);border-bottom:1px solid var(--line2)}
 .all-etip.up{top:-7px;border-left:1px solid var(--line2);border-top:1px solid var(--line2)}
-/* the emote's right-click menu: the emote big at its top, as the sites' chats' menu has it */
-.all-lm .all-epre{padding:6px 6px 9px;margin-bottom:4px;border-bottom:1px solid var(--line)}
-.all-lm .all-epic{height:124px;border-radius:7px}
-.all-lm .all-epic img{width:104px;height:104px}
-.all-lm .all-enm{font-size:15px}
+/* the emote's right-click menu: a strip with the emote at its top, as the sites' chats' menu has it */
+.all-lm .all-epre{flex-direction:row;align-items:center;gap:10px;min-width:0;padding:6px;margin-bottom:4px;border-bottom:1px solid var(--line)}
+.all-lm .all-epre>div:last-child{min-width:0}
+.all-lm .all-epic{flex:none;width:44px;height:44px;border-radius:7px}
+.all-lm .all-epic img{width:36px;height:36px}
+.all-lm .all-enm{font-size:14px}
+.all-lm .all-esub{font-size:11px;margin-top:1px}
 
 /* Twitch's hype train: a strip under the top bar, filled towards its next level (its level, the time left) */
 .all-hype{flex:none;display:flex;flex-direction:column}

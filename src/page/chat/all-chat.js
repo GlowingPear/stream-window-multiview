@@ -36,6 +36,7 @@ import { ask } from '../shared/ask.js';
 import { element } from '../shared/element.js';
 import { DESKTOP, keyName } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
+import { flyouts } from '../shared/flyout.js';
 import { icon } from '../shared/icons.js';
 import { fromSite } from '../shared/incoming.js';
 import { closeOnOutside } from '../shared/popover.js';
@@ -711,16 +712,20 @@ function raidSo(m){
   return element('button', { type: 'button', class: 'al-so', title: `Shout out ${m.sender} in ${PLAT_NAME[m.site]} chat`, dataset: { cmd: 'all.raidShoutout' },
     onclick: e => { e.stopPropagation(); shoutOut(p); } }, element('i', { html: icon.megaphone }), 'Shout out');
 }
-// The line menu's Shout out (in its chat) and Shout out in every chat (a streamer's several sites you can send on)
-function shoutItems(m, view, item){
+// The line menu's Shout out (in its chat), and with a streamer's several sites you can send on, a submenu: in its chat or in every chat
+function shoutItems(m, view, item, group){
   const p = shoutable(m); if (!p) return [];
-  const chs = sendSites(view.w), chip = t => element('em', null, t);
-  const one = item(`Shout out ${p.from ? p.name : m.sender}`, icon.megaphone, () => shoutOut(p), { cmd: 'all.menuShoutout' });
-  one.classList.add('so-li'); one.appendChild(element('span', 'so-on', chip(`${PLAT_NAME[m.site]} chat`)));
-  if (chs.length < 2) return [one];
-  const every = item('Shout out in every chat', icon.megaphone, () => shoutOut(p, { chs }), { cmd: 'all.menuShoutoutAll' });
+  const chs = sendSites(view.w), chip = t => element('em', null, t), name = p.from ? p.name : m.sender;
+  if (chs.length < 2){
+    const one = item(`Shout out ${name}`, icon.megaphone, () => shoutOut(p), { cmd: 'all.menuShoutout' });
+    one.classList.add('so-li'); one.querySelector('span').title = name; one.appendChild(element('span', 'so-on', chip(`${PLAT_NAME[m.site]} chat`)));
+    return [one];
+  }
+  const every = item('In every chat', icon.megaphone, () => shoutOut(p, { chs }), { cmd: 'all.menuShoutoutAll' });
   every.appendChild(element('span', 'so-on', ...chs.map(ch => chip(PLAT_NAME[platOf(ch)]))));
-  return [one, every];
+  const row = group(`Shout out ${name}`, icon.megaphone, 'all.menuShout', [item(`In ${PLAT_NAME[m.site]} chat`, icon.megaphone, () => shoutOut(p), { cmd: 'all.menuShoutout' }), every]);
+  row.classList.add('so-li'); row.querySelector('span').title = name;   // (a long name is cut short)
+  return [row];
 }
 function lineEl(m){
   if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' || (m.cmd && m.state !== 'failed') ? null : mineEl(m);   // (a command: a line only if it couldn't be sent)
@@ -858,6 +863,7 @@ function buildView(w){
   const bar = element('div', { class: 'all-rb', hidden: true });
   const at = element('div', { class: 'pop all-at', role: 'listbox', hidden: true });
   const lm = element('div', { class: 'pop all-lm', role: 'menu', hidden: true });
+  const lmSub = element('div', { class: 'pop all-lm all-lm-sub', role: 'menu', hidden: true });
   const sendB = element('button', { type: 'button', class: 'all-send-b', 'aria-label': 'Send', html: SEND, disabled: true, dataset: { cmd: 'all.send' } });
   const emo = element('button', { type: 'button', class: 'all-emo-b', title: 'Emotes', 'aria-label': 'Emotes', 'aria-haspopup': 'dialog', html: SMILEY, dataset: { cmd: 'all.emotes' } });
   const ep = element('div', { class: 'pop all-ep', role: 'dialog', 'aria-label': 'Emotes', hidden: true });
@@ -873,9 +879,10 @@ function buildView(w){
     onclick: () => jumpHeld(view) });
   const mv = element('div', { class: 'pop all-lm all-mv', role: 'menu', 'aria-label': 'Mod views', hidden: true });
   const el = element('div', { class: 'all-view' }, element('div', 'all-top', element('span', 'all-sites'), heldChip, pinChip, pollChip, filt), hype, health, pins, poll, element('div', 'all-lw', list, more), empty,
-    element('div', 'all-cmp', bar, modes, recent, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, mv, ep, fm, ecard);
-  const view = { el, list, empty, more, filt, fm, modes, health, ecard, hype, pins, poll, pollChip, pollsShown: true, pollAt: '', pinChip, heldChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, mv, ep, emo, recent, sendB, w, ends, atEnd: true, lock: null, atList: [], atSel: 0, atMode: '' };
-  closeOnOutside(lm);
+    element('div', 'all-cmp', bar, modes, recent, element('div', 'all-box', pick, input, emo, sendB)), menu, at, lm, lmSub, mv, ep, fm, ecard);
+  const view = { el, list, empty, more, filt, fm, modes, health, ecard, hype, pins, poll, pollChip, pollsShown: true, pollAt: '', pinChip, heldChip, pinsShown: false, pinsOpen: false, pinFull: false, pinAt: '', s, pick, input, menu, bar, at, lm, lmSub, mv, ep, emo, recent, sendB, w, ends, atEnd: true, lock: null, atList: [], atSel: 0, atMode: '' };
+  view.fly = flyouts(lm, lmSub, { zoom: () => parseFloat(el.style.zoom) || 1 });
+  closeOnOutside(lm, { button: lmSub });
   closeOnOutside(fm, { button: filt });
   el.addEventListener('pointerdown', () => allSeen(w));
   el.addEventListener('click', e => { if (blowOn && !e.target.closest('a, button, input, img, .all-in, .al-n, .pop')) blowUp(w); });   // (Blow up chat: clicking into ALL, as into a site's chat; not on what you clicked to use)
@@ -1381,12 +1388,19 @@ function copyData(m){
   const data = JSON.stringify(m, (k, v) => (v instanceof Node || typeof v === 'function' ? undefined : k === 'raw' && typeof v === 'string' ? (() => { try { return JSON.parse(v); } catch { return v; } })() : v), 2);
   navigator.clipboard?.writeText(data).then(() => flash('Copied the message\'s data'), () => flash('Couldn\'t copy it'));
 }
-// ⋯ and the right-click: the line's menu (the mod part only where you're a mod)
+// ⋯ and the right-click: the line's menu (the mod part only where you're a mod). What's used most is in it; the rest of
+// copying, translating and the developer tools in submenus (shared/flyout.js)
 function openLineMenu(m, at){
   const view = viewFor(ownerOf(m.ch)); if (!view) return;
   const site = PLAT_NAME[m.site], why = whyNot(m), whyDel = whyNot(m, 'delete'), mod = youMod(m.ch) && !!platform(m.ch).timeoutCmd, lm = view.lm;
   const item = (label, ic, run, more = {}) => element('button', { type: 'button', role: 'menuitem', class: 'all-li' + (more.red ? ' red' : ''), disabled: !!more.off, title: more.off || '', dataset: { cmd: more.cmd },
     onclick: () => { lm.hidden = true; run(); } }, element('i', { html: ic }), element('span', null, label), more.kb ? element('small', null, more.kb) : '');
+  // a submenu's row (one item: just that item)
+  const group = (label, ic, cmd, items) => {
+    const list = items.filter(x => x instanceof Node); if (list.length < 2) return list[0] || null;
+    return view.fly.row(element('button', { type: 'button', role: 'menuitem', class: 'all-li all-sub', dataset: { cmd, sub: cmd } },
+      element('i', { html: ic }), element('span', null, label), element('b', { class: 'all-subx', 'aria-hidden': 'true' }, '›')), () => list);
+  };
   const text = m.parts.map(x => x.text || x.name).join(''), plain = m.parts.map(x => x.text || '').join('').replace(/\s+/g, ' ').trim();
   // what was right-clicked: a link, an emote, words selected in ALL (as the sites' chats' menu has them: src/main/context-menu.js)
   const t = at && at.target && at.target.closest ? at.target : null, link = t && t.closest('a.al-link'), em = t && t.closest('img.al-e');
@@ -1394,43 +1408,48 @@ function openLineMenu(m, at){
   const copy = (x, said = 'Copied') => navigator.clipboard?.writeText(x).then(() => flash(said), () => flash('Couldn\'t copy it'));
   const tl = (navigator.language || 'en').split('-')[0], lang = (() => { try { return new Intl.DisplayNames([navigator.language || 'en'], { type: 'language' }).of(tl); } catch { return tl; } })();
   const short = x => `“${x.length > 24 ? x.slice(0, 23) + '…' : x}”`;
-  const cw = chatFor(m), trAuto = autoTrFor(m.ch);
+  const cw = chatFor(m), trAuto = autoTrFor(m.ch), tr = window.kmv && window.kmv.translate;
+  view.fly.close();
   lm.replaceChildren(...[em && emotePreview(em), element('div', 'all-lh', element('i', { class: 'pi pi-' + m.site }, site[0]), element('b', null, m.sender), element('small', null, site)),
     link && item('Open link in your browser', icon.pop, () => openInBrowser(link.href), { cmd: 'all.menuLink' }),
     link && item('Copy link address', icon.link, () => copy(link.href, 'Copied the link'), { cmd: 'all.menuLinkCopy' }),
-    em && item('Copy emote text', icon.copy, () => copy(em.dataset.send || em.alt), { cmd: 'all.menuEmoteText' }),
-    em && item('Save image as…', icon.download, () => saveEmote(JSON.stringify({ url: bigEmote(em.src), name: em.alt })), { cmd: 'all.menuEmoteSave' }),
-    em && item('Copy image', icon.copy, () => copyEmote(JSON.stringify({ url: bigEmote(em.src), name: em.alt })), { cmd: 'all.menuEmoteCopy' }),
-    em && item('Copy image address', icon.link, () => copy(bigEmote(em.src)), { cmd: 'all.menuEmoteAddr' }),
     selIn && item('Copy', icon.copy, () => copy(selectedText(window.getSelection()) || sel), { cmd: 'all.menuSelCopy' }),
     selIn && item(`Translate ${short(sel)} to ${lang}`, TRANSLATE, () => openInBrowser(`https://translate.google.com/?sl=auto&tl=${encodeURIComponent(tl)}&text=${encodeURIComponent(sel)}&op=translate`), { cmd: 'all.menuSelTranslate' }),
     selIn && item(`Search Google for ${short(sel)}`, icon.search, () => openInBrowser(`https://www.google.com/search?q=${encodeURIComponent(sel)}`), { cmd: 'all.menuSelSearch' }),
-    (link || em || selIn) && element('hr'),
+    (link || selIn) && element('hr'),
     sendSites(view.w).includes(m.ch) && item('Reply', icon.reply, () => startReply(m), { cmd: 'all.menuReply' }),
-    ...shoutItems(m, view, item),
-    mod && item('Pin message', icon.pin, () => modAct(m, 'pin'), { cmd: 'all.menuPin' }),
+    ...shoutItems(m, view, item, group),
     item(`Open profile on ${site}`, icon.user, () => openSiteCard(m), { cmd: 'all.menuProfile' }),
     mod && element('hr'),
+    mod && item('Pin message', icon.pin, () => modAct(m, 'pin'), { cmd: 'all.menuPin' }),
     mod && item('Delete message', icon.bin, () => modAct(m, 'delete'), { kb: `${kShift()}-click name`, off: whyDel, cmd: 'all.menuDelete' }),
     mod && item('Timeout', TIMER, () => modAct(m, 'timeout', lastTimeout()), { kb: `${kCtrl()}-click name`, off: why, cmd: 'all.menuTimeout' }),
     mod && !why && element('div', 'all-durs', ...TIMEOUTS.map(sec => element('button', { type: 'button', class: sec === lastTimeout() ? 'on' : '', dataset: { cmd: 'all.timeoutFor' }, onclick: () => { lm.hidden = true; modAct(m, 'timeout', sec); } }, durText(sec)))),
     mod && item('Ban', BAN, () => modAct(m, 'ban'), { kb: `${kCtrl()}+${kShift()}-click name`, off: why, red: true, cmd: 'all.menuBan' }),
+    mod && modUrl(m.ch) && item(`Open ${site} mod view`, icon.mod, () => openModView(m.ch), { cmd: 'all.menuModView' }),
     element('hr'),
     item('Copy message', icon.copy, () => copy(plain), { cmd: 'all.menuCopyPlain', off: plain ? '' : 'Only emotes' }),
-    item('Copy message with emotes', icon.copy, () => copy(text), { cmd: 'all.menuCopy' }),
-    item('Copy with @name', icon.copy, () => copy(`@${m.sender.replace(/^@/, '')}: ${text.trim()}${m.deleted ? ' ' + removedNote(m.deleted) : ''}`), { cmd: 'all.menuCopyName' }),
+    group('Copy', icon.copy, 'all.menuCopyMore', [
+      item('Copy message with emotes', icon.copy, () => copy(text), { cmd: 'all.menuCopy' }),
+      item('Copy with @name', icon.copy, () => copy(`@${m.sender.replace(/^@/, '')}: ${text.trim()}${m.deleted ? ' ' + removedNote(m.deleted) : ''}`), { cmd: 'all.menuCopyName' }),
+      em && element('hr'),
+      em && item('Copy emote text', icon.copy, () => copy(em.dataset.send || em.alt), { cmd: 'all.menuEmoteText' }),
+      em && item('Copy image', icon.copy, () => copyEmote(JSON.stringify({ url: bigEmote(em.src), name: em.alt })), { cmd: 'all.menuEmoteCopy' }),
+      em && item('Copy image address', icon.link, () => copy(bigEmote(em.src)), { cmd: 'all.menuEmoteAddr' }),
+      em && window.kmv && window.kmv.emoteOpen && item('Open image in new window', icon.pop, () => window.kmv.emoteOpen(bigEmote(em.src)), { cmd: 'all.menuEmoteOpen' }),
+      em && item('Save image as…', icon.download, () => saveEmote(JSON.stringify({ url: bigEmote(em.src), name: em.alt })), { cmd: 'all.menuEmoteSave' })]),
     // translating: this message, or all of its site's chat (here and in its own chat), and its new messages too
-    window.kmv && window.kmv.translate && element('hr'),
-    window.kmv && window.kmv.translate && !m.tr && item('Translate', TRANSLATE, () => translateSoon(m), { cmd: 'all.menuTranslate' }),
-    window.kmv && window.kmv.translate && cw && item(`Translate ${site}'s chat to ${lang}`, TRANSLATE, () => translateSite(m.ch, 'chat'), { cmd: 'all.menuTranslateChat' }),
-    window.kmv && window.kmv.translate && cw && item(trAuto ? 'Stop translating new messages' : 'Translate new messages too', TRANSLATE, () => translateSite(m.ch, 'auto', !trAuto), { cmd: 'all.menuTranslateAuto' }),
-    window.kmv && window.kmv.translate && cw && trShown(m.ch) && item('Stop translating', TRANSLATE, () => translateSite(m.ch, 'stop'), { cmd: 'all.menuTranslateStop' }),
-    devOn && element('hr'),
-    devOn && item('Copy message data', icon.code, () => copyData(m), { cmd: 'all.menuData' }),
-    devOn && cw && m.id && item('Why didn\'t this alert?', icon.alert, () => showWhy(cw, `(${messageHtml})(${JSON.stringify(m.id)}, true)`, m), { cmd: 'all.menuWhy' }),
-    devOn && cw && item(`Copy ${site}'s chat HTML`, icon.code, () => copyChatHtml(cw), { cmd: 'all.menuChatHtml' }),
-    devOn && cw && m.id && item('Copy message HTML', icon.code, () => askIn(cw.view, `(${messageHtml})(${JSON.stringify(m.id)})`).then(h => (h ? copy(h, 'Copied the message\'s HTML') : flash(`Couldn't find it in ${site}'s chat (it may have scrolled out)`))).catch(() => flash('Couldn\'t copy it')), { cmd: 'all.menuHtml' }),
-    mod && modUrl(m.ch) && item(`Open ${site} mod view`, icon.mod, () => openModView(m.ch), { cmd: 'all.menuModView' })].filter(x => x instanceof Node));   // (only what applies: a hidden item is false)
+    tr && group('Translate', TRANSLATE, 'all.menuTranslateMore', [
+      !m.tr && item('Translate this message', TRANSLATE, () => translateSoon(m), { cmd: 'all.menuTranslate' }),
+      cw && item(`Translate ${site}'s chat to ${lang}`, TRANSLATE, () => translateSite(m.ch, 'chat'), { cmd: 'all.menuTranslateChat' }),
+      cw && item(trAuto ? 'Stop translating new messages' : 'Translate new messages too', TRANSLATE, () => translateSite(m.ch, 'auto', !trAuto), { cmd: 'all.menuTranslateAuto' }),
+      cw && trShown(m.ch) && item('Stop translating', TRANSLATE, () => translateSite(m.ch, 'stop'), { cmd: 'all.menuTranslateStop' })]),
+    devOn && group('Developer', icon.code, 'all.menuDev', [
+      item('Copy message data', icon.code, () => copyData(m), { cmd: 'all.menuData' }),
+      cw && m.id && item('Why didn\'t this alert?', icon.alert, () => showWhy(cw, `(${messageHtml})(${JSON.stringify(m.id)}, true)`, m), { cmd: 'all.menuWhy' }),
+      cw && item(`Copy ${site}'s chat HTML`, icon.code, () => copyChatHtml(cw), { cmd: 'all.menuChatHtml' }),
+      cw && m.id && item('Copy message HTML', icon.code, () => askIn(cw.view, `(${messageHtml})(${JSON.stringify(m.id)})`).then(h => (h ? copy(h, 'Copied the message\'s HTML') : flash(`Couldn't find it in ${site}'s chat (it may have scrolled out)`))).catch(() => flash('Couldn\'t copy it')), { cmd: 'all.menuHtml' })])
+  ].filter(x => x instanceof Node));   // (only what applies: a hidden item is false)
   view.ecard.hidden = true; clearTimeout(view.ecard.hideT);   // (an emote's card: the menu instead)
   lm.hidden = false;
   placeAt(view, lm, at);

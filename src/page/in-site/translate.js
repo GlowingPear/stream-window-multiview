@@ -1,7 +1,7 @@
 import { restore } from '../persistence.js';
 import { ask } from '../shared/ask.js';
 
-/* ---- Translating a chat (right-click a chat > Translate this chat): runs inside each chat page.
+/* ---- Translating a chat (right-click a chat > Translate › Translate this chat, or one message): runs inside each chat page.
    Each message's own text is translated where it is, and a TRANSLATED · <language> badge goes on its end (click: the
    original, and back). Emotes, @mentions, links and names stay as they are: only the text around them is sent.
    The app does the asking (console message "__kmv:tr", answered with got()), and nothing is sent until you choose it. */
@@ -19,6 +19,7 @@ function translateAgent(){
   let on = false, auto = false, flushT = 0, scanT = 0, obs = null;
   const answers = new Map(), waiting = new Set(), failed = new Map(), queue = [], allowed = new Set(), shown = new Set();
   const orig = new WeakMap(), trans = new WeakMap();
+  const singles = new Set();   // messages translated on their own (Translate this message), while the chat isn't
   let send = (what, d) => console.log('__kmv:' + what + ' ' + JSON.stringify(d));
   const flat = s => String(s || '').replace(/\s+/g, ' ').trim();
   const worth = t => (t.match(/\p{L}/gu) || []).length >= 2;
@@ -94,8 +95,13 @@ function translateAgent(){
     if (showOrig){ b.setAttribute('data-orig', ''); body.setAttribute('data-kmv-show-orig', ''); b.title = 'The original. Click to see it translated'; }
     else { b.removeAttribute('data-orig'); body.removeAttribute('data-kmv-show-orig'); b.title = 'Translated. Click to see the original'; shown.add(flat(body.innerText)); }
   }
-  function scan(){ if (on) document.querySelectorAll(BODY).forEach(apply); }
+  function scan(){
+    if (on) document.querySelectorAll(BODY).forEach(apply);
+    singles.forEach(b => { if (b.isConnected) apply(b); else singles.delete(b); });
+  }
   function scanSoon(){ clearTimeout(scanT); scanT = setTimeout(scan, 200); }
+  // the chat changing (new messages, a message drawn again): looked at again
+  function watch(){ if (!obs){ obs = new MutationObserver(scanSoon); obs.observe(document.body, { childList: true, subtree: true, characterData: true }); } }
   function restore(){
     document.querySelectorAll('[data-kmv-trb]').forEach(b => b.remove());
     document.querySelectorAll(BODY).forEach(body => {
@@ -113,11 +119,22 @@ function translateAgent(){
         document.querySelectorAll(BODY).forEach(b => textNodes(b).forEach(n => allowed.add(flat(n.nodeValue))));
       }
       on = true; auto = !!a;
-      if (!obs){ obs = new MutationObserver(scanSoon); obs.observe(document.body, { childList: true, subtree: true, characterData: true }); }
+      watch();
       scan();
     },
     setAuto(a){ if (!on) return this.start(a); auto = !!a; scan(); },
-    stop(){ on = auto = false; if (obs){ obs.disconnect(); obs = null; } queue.length = 0; waiting.clear(); restore(); },
+    stop(){ on = auto = false; if (obs){ obs.disconnect(); obs = null; } queue.length = 0; waiting.clear(); singles.clear(); restore(); },
+    // one message (its whole line, or its text): translated like the others, with the chat left as it is
+    one(line){
+      const body = line && line.matches && (line.matches(BODY) ? line : line.querySelector(BODY));
+      if (!body) return false;
+      css();
+      textNodes(body).forEach(n => allowed.add(flat(n.nodeValue)));
+      singles.add(body);
+      watch();
+      apply(body);
+      return true;
+    },
     // the app's answers: one for each text, in order ({ text, from, fromName } | { same: true } | null: couldn't)
     got(texts, list){
       if (!Array.isArray(texts) || !Array.isArray(list)) return;

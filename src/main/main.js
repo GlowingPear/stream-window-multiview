@@ -6,7 +6,7 @@ const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parse
 const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel } = require('./profiles');
 const { parseKickEmotes, parseTwitchEmotes, parse7tv, parseBttv, parseFfz, createEmoteStore } = require('./emote-lists');
 const { kickGroups, twitchGroups, stvGroup, bttvGroup, ffzGroup } = require('./emote-picker');
-const { menuFor, translateTarget } = require('./context-menu');
+const { menuFor, drawnItems, translateTarget } = require('./context-menu');
 const emoteClip = require('./emote-clip');
 const { makeTranslator } = require('./translate');
 const { createProfileQueue } = require('./profile-queue');
@@ -567,7 +567,7 @@ function runMenuAct(wc, a) {
     case 'inspect': wc.inspectElement(a.x, a.y); break;
     case 'undo': case 'redo': case 'cut': case 'copy': case 'paste': case 'selectAll': case 'reload': wc[a.do](); break;
     // translating a chat: the app's page runs it (it talks to the chat and remembers it per chat)
-    case 'translateChat': case 'translateAuto': case 'translateStop':
+    case 'translateChat': case 'translateAuto': case 'translateStop': case 'translateOne':
       if (wc.hostWebContents && !wc.hostWebContents.isDestroyed()) wc.hostWebContents.send('view:translate', wc.id, { do: a.do, tl: a.tl, on: !!a.on });
       break;
     // Developer tools: the chat's last messages and the list around them; how the message was read for alerts (the page shows it)
@@ -607,27 +607,29 @@ async function showViewMenu(wc, params) {
   const emote = ctx.emote && typeof ctx.emote === 'object' && typeof ctx.emote.text === 'string' && params.mediaType === 'image' ? ctx.emote : null;
   const chat = ctx.chat && typeof ctx.chat === 'object' ? { on: !!ctx.chat.on, auto: !!ctx.chat.auto } : null;
   const m = ctx.message && typeof ctx.message === 'object' ? ctx.message : null;
-  const message = m && chat ? { text: String(m.text || ''), withEmotes: String(m.withEmotes || ''), html: String(m.html || ''), shout: m.shout && typeof m.shout === 'object' ? m.shout : null } : null;
+  const message = m && chat ? { text: String(m.text || ''), withEmotes: String(m.withEmotes || ''), html: String(m.html || ''), name: String(m.name || ''), shout: m.shout && typeof m.shout === 'object' ? m.shout : null } : null;
   const items = menuFor(params, { langs, dev: !!DEV, devTools: devOn, emote, chat, message });
   if (!items.length) return;
   const host = wc.hostWebContents;
   if (emote && appPage(host)) {
-    drawnMenus.set(wc.id, items);
+    const d = drawnItems(items);
+    drawnMenus.set(wc.id, d.byId);
     host.send('view:menu', wc.id, {
       emote: { name: String(emote.name || '').slice(0, 60), site: String(emote.site || ''), big: String(emote.big || ''), small: String(emote.small || ''), animated: !!emote.animated, x: +emote.x || 0, y: +emote.y || 0 },
-      items: items.map(x => x.type ? { sep: true } : x.head ? { head: x.label } : { label: x.label, enabled: x.enabled !== false, checked: !!x.checked })
+      items: d.items
     });
     return;
   }
-  const tmpl = items.map(x => x.type ? x : x.head ? { label: x.label, enabled: false } : { label: x.label, enabled: x.enabled !== false, click: () => runMenuAct(wc, x.act),
+  const tmplOf = list => list.map(x => x.type ? x : x.sub ? { label: x.label, submenu: tmplOf(x.sub) } : { label: x.label, enabled: x.enabled !== false, click: () => runMenuAct(wc, x.act),
     ...('checked' in x ? { type: 'checkbox', checked: !!x.checked } : {}) });
+  const tmpl = tmplOf(items);
   const win = host && BrowserWindow.fromWebContents(host);
   Menu.buildFromTemplate(tmpl).popup(win ? { window: win } : {});
 }
 appIpc.on('view:menu-act', (e, id, i) => {
   const items = drawnMenus.get(id); drawnMenus.delete(id);
   const wc = items && webContents.fromId(id);
-  const x = items && items[i];
+  const x = items && items[i];   // (by its number: see drawnItems)
   if (!wc || !x || x.type || x.enabled === false || wc.hostWebContents !== e.sender) return;   // only the page that drew it
   runMenuAct(wc, x.act);
 });
@@ -1520,6 +1522,8 @@ appIpc.handle('emotes:seen', (_e, ch, name) => {
   if (ok) saveEmotesSoon();
   return ok;
 });
+// "Open image in new window" on an emote in ALL (the chats' own menu: openImage)
+appIpc.handle('emote:open', (_e, url) => { if (!emoteUrlOk(url)) return false; openSiteWindow(url, 520, 520, WEB_PARTITION); return true; });
 appIpc.handle('emote:download', async (e, url, name, small) => {
   if (!emoteUrlOk(url)) return { error: 'bad' };
   let got = await fetchEmote(url).catch(() => null);
