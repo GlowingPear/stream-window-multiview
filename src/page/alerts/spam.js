@@ -1,5 +1,5 @@
-// Spam alerts: scores a chat message for the signs promo bots leave, and (with abuse on) for insults, slurs and
-// threats. Used by the app page (as SmvSpam) and by the tests. One sign alone never flags a message: normal links,
+// Spam alerts: scores a chat message for the signs promo bots leave, and (with abuse on) for insults, slurs, sexual
+// remarks and threats. Used by the app page (as SmvSpam) and by the tests. One sign alone never flags a message: normal links,
 // clip links and someone saying "check kick com/..." stay unflagged. The exceptions are a word flood, a known bot
 // line, a slur or threat and someone swearing over and over. Asking to be added on Discord (or Telegram,
 // ...) counts like a link. How many points each sign is worth can be changed (POINTS, 0 turns one off).
@@ -51,6 +51,12 @@ const SmvSpam = (() => {
     'darkie', 'jigaboo', 'porch monkey', 'faggot', 'tranny', 'shemale',
     'kys', 'kill yourself', 'kill urself', 'kill ur self', 'kill your self', 'kill yo self', 'neck yourself', 'hang yourself',
     'unalive yourself', 'hope you die', 'hope u die', 'drink bleach'];
+  // Sexual words: aimed at someone ("you", "your", an @name, the channel's name) they're harassment. On their own
+  // they're often just crude, so they need that, or the same person's sexual remark at someone a little before ("my
+  // ... penis feels bigger too" after one). Only words with no everyday meaning: "dick" and "cock" are insults.
+  const SEXUAL = ['penis', 'vagina', 'pussy', 'boobs', 'boobies', 'tits', 'titties', 'nipple', 'nude', 'naked', 'horny', 'cum',
+    'cumming', 'jizz', 'sperm', 'semen', 'orgasm', 'erection', 'boner', 'testicles', 'clit', 'dildo', 'blowjob', 'blow job', 'handjob',
+    'hand job', 'suck my', 'lick my', 'sit on my face', 'sex with', 'have sex', 'rape', 'panties', 'thong'];
   // Swear words: a message of little else, several times in a row, is someone swearing at the chat.
   const SWEARS = ['fuck', 'fuk', 'fck', 'shit', 'cunt', 'bitch', 'dick', 'cock', 'pussy', 'ass', 'asshole', 'arsehole', 'bastard', 'twat',
     'wanker', 'prick', 'piss', 'bollocks', 'bullshit', 'motherfucker', 'dumbass', 'jackass', 'whore', 'slut', 'stfu', 'gtfo'];
@@ -71,6 +77,7 @@ const SmvSpam = (() => {
     { key: 'filler', group: 'spam', points: 2, label: 'Friendly lines just before, from a new chatter', short: 'Friendly lines first' },
     { key: 'insult', group: 'abuse', points: 4, flags: true, label: 'Insult aimed at someone', short: 'Insult at someone' },
     { key: 'slur', group: 'abuse', points: 5, flags: true, label: 'Slur or threat', short: 'Slur or threat' },
+    { key: 'sexual', group: 'abuse', points: 5, flags: true, label: 'Sexual remark aimed at someone', short: 'Sexual remark' },
     { key: 'swearing', group: 'abuse', points: 5, flags: true, label: 'Swearing over and over', short: 'Swearing on repeat' },
     { key: 'again', group: 'abuse', points: 3, label: 'Keeps at it', short: 'Keeps at it' }
   ];
@@ -174,17 +181,22 @@ const SmvSpam = (() => {
     reCache.set(key, re);
     return re;
   }
+  // Words that aim a message at someone: "you" in any of its chat spellings.
+  const AT_YOU = /(?<![a-z0-9*])(?:you|u|ya|ye|yer|ur|your|yours|youre|ure|yourself|urself|yourselves)(?![a-z0-9*])/;
   /**
-   * abuse(text, { abuse, slurs, swears }) -> { insult, slur, swearOnly }
-   * insult: the words that insult someone ("ur a whore"), slur: a slur or threat, or null. swearOnly: the message is
-   * mostly swear words (at least half of its 6 or fewer words). Lists left out are the built-in ones.
+   * abuse(text, { abuse, slurs, swears, sexual }) -> { insult, slur, sexual, atYou, swearOnly }
+   * insult: the words that insult someone ("ur a whore"), slur: a slur or threat, sexual: a sexual word, or null. atYou:
+   * it says "you" (or "ur", ...) or @someone. swearOnly: the message is mostly swear words (at least half of its 6 or
+   * fewer words). Lists left out are the built-in ones.
    */
   function abuse(text, lists = {}) {
     const t = plainText(text), pick = (l, def) => Array.isArray(l) ? l : def;
     const ins = listRe('insult', pick(lists.abuse, ABUSE)), sl = listRe('slur', pick(lists.slurs, SLURS)), sw = listRe('swear', pick(lists.swears, SWEARS));
-    const im = ins && ins.exec(t), sm = sl && t.match(sl), words = t.split(' ').filter(Boolean).length;
+    const sx = listRe('sexual', pick(lists.sexual, SEXUAL));
+    const im = ins && ins.exec(t), sm = sl && t.match(sl), xm = sx && t.match(sx), words = t.split(' ').filter(Boolean).length;
     const swears = sw ? (t.match(sw) || []).length : 0;
-    return { insult: im ? im[0] : null, slur: sm ? sm[0] : null, swearOnly: swears > 0 && words <= 6 && swears * 2 >= words };
+    return { insult: im ? im[0] : null, slur: sm ? sm[0] : null, sexual: xm ? xm[0] : null, atYou: AT_YOU.test(t) || /(?:^|\s)@\w/.test(String(text || '')),
+      swearOnly: swears > 0 && words <= 6 && swears * 2 >= words };
   }
 
   // Each sign's points: POINTS with yours over them, whole numbers from 0 to POINT_MAX.
@@ -210,7 +222,7 @@ const SmvSpam = (() => {
     const lv = level[0].toUpperCase() + level.slice(1);
     // The small signs that can come with a sign that flags: promo words (two of them) and friendly lines first with spam, keeps at it with an
     // insult or a slur, emotes and a new chatter with anything.
-    const goesWith = (small, big) => small.key === 'words' || small.key === 'filler' ? big.group === 'spam' : small.key === 'again' ? /^(insult|slur)$/.test(big.key) : true;
+    const goesWith = (small, big) => small.key === 'words' || small.key === 'filler' ? big.group === 'spam' : small.key === 'again' ? /^(insult|slur|sexual)$/.test(big.key) : true;
     const times = s => s.key === 'words' ? 2 : 1;
     const extra = (big, pts) => on.filter(s => !s.flags && goesWith(s, big)).reduce((a, s) => a + times(s) * pts[s.key], 0);
     for (const [g, what] of [['spam', 'promo spam'], ['abuse', 'abuse']].filter(([g]) => on.some(s => s.group === g)))
@@ -260,10 +272,10 @@ const SmvSpam = (() => {
    * ctx:  { recent: [{ sender, body, chat, t }], firstSeen: { [chat + '\n' + sender]: time } }
    *       recent holds the other messages seen lately (any chat, including this one).
    *       firstSeen can also be a Map with the same keys.
-   * opts: { sensitivity, allowed, words, openers, ignore, abuse, abuseWords, slurs, swears, points }
-   *       (openers, ignore, abuseWords, slurs, swears: an empty list matches nothing)
+   * opts: { sensitivity, allowed, words, openers, ignore, abuse, abuseWords, slurs, swears, sexual, points }
+   *       (openers, ignore, abuseWords, slurs, swears, sexual: an empty list matches nothing)
    *       ignore: senders never flagged (exact name, any case); the result then has ignored: true.
-   *       abuse: false leaves out insults, slurs and swearing. points: { [sign key]: 0 to POINT_MAX } (see SIGNS).
+   *       abuse: false leaves out insults, slurs, sexual remarks and swearing. points: { [sign key]: 0 to POINT_MAX } (see SIGNS).
    * abuse: it was flagged, or would be, for abuse rather than spam (its tag says so).
    */
   function score(msg, ctx = {}, opts = {}) {
@@ -299,15 +311,24 @@ const SmvSpam = (() => {
     const recent = (ctx.recent || []).filter(r => t - (r.t || 0) < WINDOW_MS && r !== msg);
     const theirs = recent.filter(r => r.chat === msg.chat && String(r.sender).toLowerCase() === String(msg.sender).toLowerCase() && (r.t || 0) <= t);
     if (opts.abuse !== false) {
-      const lists = { abuse: opts.abuseWords, slurs: opts.slurs, swears: opts.swears }, a = abuse(body, lists);
+      const lists = { abuse: opts.abuseWords, slurs: opts.slurs, swears: opts.swears, sexual: opts.sexual }, a = abuse(body, lists);
+      // aimed at someone: "you", an @name, or the channel's name (its streamer)
+      const chName = norm(String(msg.chat || '').replace(/^(?:tw|yt):@?/i, ''));
+      const aimed = (b, text) => b.atYou || (chName.length >= 3 && ` ${norm(text)} `.includes(` ${chName} `));
+      // their earlier messages, oldest first; a sexual one counts once one of them was aimed at someone
+      const earlier = theirs.slice().sort((x, y) => (x.t || 0) - (y.t || 0)).map(r => ({ r, b: abuse(r.body, lists) }));
+      let remarked = false;
+      for (const e of earlier) if (e.b.sexual) { if (aimed(e.b, e.r.body)) remarked = true; e.remark = remarked; }
+      const sexual = a.sexual && (aimed(a, body) || remarked);
       if (a.insult) sign('insult', `Insult aimed at someone: "${a.insult}"`, pts.insult);
       if (a.slur) sign('slur', `Slur or threat: "${a.slur}"`, pts.slur);
+      if (sexual) sign('sexual', `Sexual remark aimed at someone: "${a.sexual}"${aimed(a, body) ? '' : ' (after one at someone)'}`, pts.sexual);
       if (a.swearOnly) {
         const n = theirs.filter(r => t - (r.t || 0) < SWEAR_MS && abuse(r.body, lists).swearOnly).length;
         if (n >= 2) sign('swearing', `Swearing over and over: ${n + 1} messages in 2 minutes`, pts.swearing);
       }
-      if (a.insult || a.slur) {
-        const n = theirs.filter(r => { const b = abuse(r.body, lists); return b.insult || b.slur; }).length;
+      if (a.insult || a.slur || sexual) {
+        const n = earlier.filter(e => e.b.insult || e.b.slur || e.remark).length;
         if (n) sign('again', `Keeps at it: ${n} more abusive ${n === 1 ? 'message' : 'messages'} in the last 5 minutes`, pts.again);
       }
     }
@@ -336,7 +357,7 @@ const SmvSpam = (() => {
   }
 
   return { score, sites, contact, ignored, withNew, withNewBots, abuse, pointsOf, scoringWarnings, ALLOWED, WORDS, OPENERS, BOTS, LEVELS,
-    ABUSE, SLURS, SWEARS, SIGNS, POINTS, POINT_MAX };
+    ABUSE, SLURS, SWEARS, SEXUAL, SIGNS, POINTS, POINT_MAX };
 })();
 
 export { SmvSpam };

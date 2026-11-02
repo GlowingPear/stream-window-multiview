@@ -48,7 +48,7 @@ function botsFor(kind, ch){
   return theirs.length ? [...list, ...theirs] : list;
 }
 const spamOpts = ch => ({ sensitivity: alerts.spam.sens, allowed: alerts.spam.allow || SmvSpam.ALLOWED, words: alerts.spam.words || SmvSpam.WORDS, openers: alerts.spam.openers || SmvSpam.OPENERS, ignore: botsFor('spam', ch),
-  abuse: alerts.spam.abuse !== false, abuseWords: alerts.spam.abuseWords || SmvSpam.ABUSE, slurs: alerts.spam.slurs || SmvSpam.SLURS, swears: alerts.spam.swears || SmvSpam.SWEARS,
+  abuse: alerts.spam.abuse !== false, abuseWords: alerts.spam.abuseWords || SmvSpam.ABUSE, slurs: alerts.spam.slurs || SmvSpam.SLURS, swears: alerts.spam.swears || SmvSpam.SWEARS, sexual: alerts.spam.sexual || SmvSpam.SEXUAL,
   points: alerts.spam.points });
 // Messages already checked, from either side (the chat's page, or ALL hearing them from the site while the page is out
 // of sight and doesn't draw them): channel + sender -> [{ b: its words, t, flag: what was found, if it was flagged }].

@@ -70,7 +70,8 @@ async function setAlert(kind, k, v){
 /* Spam alerts: allowed sites, promo words, known bot lines, their own chat bots ('ignore'), and the abuse lists. The
    app's chat bot list ('mbots', Chat › Chat bots), and Mentions' own ('mownbots'). */
 const SPAM_LIST = { allow: () => SmvSpam.ALLOWED, words: () => SmvSpam.WORDS, openers: () => SmvSpam.OPENERS, ignore: () => SmvSpam.BOTS, mbots: () => SmvSpam.BOTS,
-  mownbots: () => SmvSpam.BOTS, abuseWords: () => SmvSpam.ABUSE, slurs: () => SmvSpam.SLURS, swears: () => SmvSpam.SWEARS };
+  mownbots: () => SmvSpam.BOTS, abuseWords: () => SmvSpam.ABUSE, slurs: () => SmvSpam.SLURS, swears: () => SmvSpam.SWEARS,
+  sexual: () => SmvSpam.SEXUAL };
 const BOT_LISTS = ['ignore', 'mbots', 'mownbots'];
 const listStore = which => which === 'mbots' ? [alerts.mention, 'bots'] : which === 'mownbots' ? [alerts.mention, 'ownBots'] : [alerts.spam, which];
 const listOf = which => { const [a, k] = listStore(which); return (a[k] || SPAM_LIST[which]()).slice(); };
