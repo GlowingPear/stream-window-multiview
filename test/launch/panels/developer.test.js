@@ -133,6 +133,8 @@ test('the error log and the sites\' answers: from the main process, the page and
   await a.win.evaluate(() => window.devTools.setDev(true));
   await a.app.evaluate(() => console.error('main went wrong'));
   await a.win.evaluate(() => { dispatchEvent(new ErrorEvent('error', { message: 'page went wrong', filename: 'app://x/src/page/windows/pause.js', lineno: 88 })); });
+  // not Chromium's harmless ResizeObserver warning
+  await a.win.evaluate(() => { dispatchEvent(new ErrorEvent('error', { message: 'ResizeObserver loop completed with undelivered notifications.', filename: 'app://x/src/index.html', lineno: 0 })); });
   await a.win.evaluate(() => { dispatchEvent(new PromiseRejectionEvent('unhandledrejection', { promise: Promise.resolve(), reason: new Error('promise went wrong') })); });
   await inView(a.win, 'alpha', 'chat', () => { setTimeout(() => { null.helperWentWrong(); }); return true; });
   // ALL not reading a chat: its site and which chat
@@ -145,6 +147,7 @@ test('the error log and the sites\' answers: from the main process, the page and
   assert.ok(rows.includes('MAIN main went wrong'), rows.join('\n'));
   assert.ok(rows.includes('PAGE windows/pause.js:88: page went wrong'), rows.join('\n'));
   assert.ok(rows.includes('PAGE promise: promise went wrong'), rows.join('\n'));
+  assert.ok(!rows.some(r => /ResizeObserver/.test(r)), rows.join('\n'));
   assert.ok(rows.some(r => /^CHAT alpha \d+:\d+: .*helperWentWrong/.test(r)), rows.join('\n'));
   assert.ok(rows.includes('CHAT ALL · Kick · alpha: ALL isn\'t reading Kick\'s messages'), rows.join('\n'));
   assert.match(await a.win.textContent('#devTabs [data-t=errors]'), /^Errors \(\d+\)$/);

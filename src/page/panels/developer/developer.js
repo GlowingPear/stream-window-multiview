@@ -188,8 +188,12 @@ function syncDevButtons(){
 function init(){
   devOn = DESKTOP && settings.flag('dev');
   if (DESKTOP && window.kmv.devSet) window.kmv.devSet(devOn);
-  // errors on this page, for the error log
-  addEventListener('error', e => devError('page', e.filename ? fileOf(e.filename) + ':' + e.lineno : '', e.message || String(e.error || 'error')));
+  // errors on this page, for the error log. Not Chromium's "ResizeObserver loop completed with undelivered notifications":
+  // an observer that fits what it watches (the toolbar, title bars, ALL) hands the rest to the next frame, and nothing is lost
+  addEventListener('error', e => {
+    if (/^ResizeObserver loop /.test(e.message || '')) return;
+    devError('page', e.filename ? fileOf(e.filename) + ':' + e.lineno : '', e.message || String(e.error || 'error'));
+  });
   addEventListener('unhandledrejection', e => devError('page', 'promise', e.reason && (e.reason.stack || e.reason.message) ? String(e.reason.message || e.reason.stack) : String(e.reason)));
   // and in the app's scripts inside a chat (in-site/chat-message.js)
   fromSite('dev-err', (w, json) => {
