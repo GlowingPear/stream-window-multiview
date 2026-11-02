@@ -433,7 +433,7 @@ test('Twitch: a message AutoMod held, to moderators (the whole message, why, the
   const lt = (u, extra = {}) => hermes('low_trust_user_new_message', { low_trust_user: { id: 'id138', sender: { login: 'user104' }, types: ['DETECTED_BAN_EVADER'], ...u },
     message_content: { text: 'word' }, message_id: 'id269', sent_at: '2026-11-01T22:17:50Z', ...extra });
   const f = parseTwitch(lt({ ban_evasion_evaluation: 'POSSIBLE_EVADER', treatment: 'ACTIVE_MONITORING' }));
-  assert.deepEqual([f.kind, f.msgId, f.flags], ['flags', 'id269', ['evader-possible', 'monitored']]);
+  assert.deepEqual([f.kind, f.msgId, f.flags, f.sender, f.login, f.text], ['flags', 'id269', ['evader-possible', 'monitored'], 'user104', 'user104', 'word'], 'who and what, for Settings › Flagged');
   assert.deepEqual(parseTwitch(lt({ ban_evasion_evaluation: 'LIKELY_EVADER', treatment: 'RESTRICTED' })).flags, ['evader-likely', 'restricted']);
   assert.equal(parseTwitch(lt({ ban_evasion_evaluation: 'UNLIKELY_EVADER', treatment: 'NO_TREATMENT' })), null, 'nothing to flag');
   assert.equal(parseTwitch(lt({ treatment: 'RESTRICTED' }, { message_id: '' })), null, 'without its message');

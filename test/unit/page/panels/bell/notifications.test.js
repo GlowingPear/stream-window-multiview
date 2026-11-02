@@ -60,7 +60,9 @@ test('tabs and their sub-filters, the chat and site pickers, unread only and sea
   assert.deepEqual(who({ tab: 'live', site: 'youtube' }), ['yt:@charlie']);
   assert.deepEqual(who({ tab: 'live', site: 'kick' }), ['delta', 'echo']);
   assert.deepEqual(who({ tab: 'spam', sub: 'all' }), ['bot']);
-  assert.deepEqual(who({ tab: 'spam', sub: 'other' }), ['bot'], 'spam has no sub-filters');
+  assert.deepEqual(who({ tab: 'spam', sub: 'spam' }), ['bot']);
+  assert.deepEqual(who({ tab: 'spam', sub: 'flagged' }), [], 'the Mod tab: spam, and Settings › Flagged\'s');
+  assert.deepEqual([N.tabOf({ kind: 'flagged' }), N.SUBS.spam], ['spam', ['all', 'spam', 'flagged']]);
   assert.deepEqual(who({ tab: 'app', sub: 'accounts' }), ['Logged out of Twitch']);
   // search: names, messages, quoted messages, titles, app messages, and the chat by its shown name
   assert.deepEqual(who({ q: 'RAID' }), ['bob']);
@@ -75,7 +77,7 @@ test('tabs and their sub-filters, the chat and site pickers, unread only and sea
   assert.deepEqual(N.subCounts(l), { all: 9, mentions: 3, spam: 1, live: 3, app: 2 });
   assert.deepEqual(N.subCounts(l, { tab: 'live' }), { all: 3, live: 2, raid: 1, auto: 1 });
   assert.deepEqual(N.subCounts(l, { tab: 'app' }), { all: 2, accounts: 1, layouts: 1, windows: 0, downloads: 0, updates: 0 });
-  assert.deepEqual(N.subCounts(l, { tab: 'spam' }), { all: 1 });
+  assert.deepEqual(N.subCounts(l, { tab: 'spam' }), { all: 1, spam: 1, flagged: 0 });
   assert.deepEqual(N.filter(l, { tab: 'nope', sub: 'x' }), [], 'a tab that doesn\'t exist has nothing');
   assert.deepEqual(N.chats(l), [['alpha', 2], ['tw:bravo', 2], ['yt:@charlie', 1], ['delta', 1], ['echo', 1]]);
   assert.deepEqual([N.tabOf({ kind: 'raid' }), N.tabOf({ kind: 'support' }), N.tabOf({}), N.tabOf(null)], ['live', 'mentions', 'mentions', 'mentions']);
