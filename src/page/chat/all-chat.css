@@ -234,6 +234,15 @@
 .all-durs button{flex:1;height:24px;border:0;border-radius:5px;background:var(--panel2);color:var(--text);font:inherit;font-size:11px;font-weight:650;cursor:pointer}
 .all-durs button.on{background:var(--accent);color:var(--accent-ink)}
 .all-durs button:hover:not(.on){background:var(--line2)}
+/* the line menu's moderating: a row of buttons, the timeout's lengths under it */
+.all-modrow{display:flex;gap:4px;padding:2px 2px 4px}
+.all-modb{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px 5px;border:0;border-radius:6px;background:none;color:var(--text);font:inherit;font-size:11px;cursor:pointer}
+.all-modb i{display:grid;color:var(--muted)}.all-modb svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.all-modb:hover:not(:disabled),.all-modb:focus-visible{outline:none;background:var(--line)}
+.all-modb:disabled{opacity:.4;cursor:default}
+.all-modb.red,.all-modb.red i{color:#ff8b8b}
+.all-tdurs{align-items:center;padding:0 4px 6px 8px}
+.all-tdurs small{flex:none;color:var(--muted);font-size:10.5px;margin-right:4px}
 .al-m:has(.al-show:hover) .al-hb{display:none}   /* (it never covers a line's Show / Hide) */
 /* your own line until its chat brings it back: sending, sent, or not sent with Retry / Edit */
 .al-mine{opacity:.72}

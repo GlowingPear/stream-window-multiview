@@ -1395,6 +1395,8 @@ function openLineMenu(m, at){
   const site = PLAT_NAME[m.site], why = whyNot(m), whyDel = whyNot(m, 'delete'), mod = youMod(m.ch) && !!platform(m.ch).timeoutCmd, lm = view.lm;
   const item = (label, ic, run, more = {}) => element('button', { type: 'button', role: 'menuitem', class: 'all-li' + (more.red ? ' red' : ''), disabled: !!more.off, title: more.off || '', dataset: { cmd: more.cmd },
     onclick: () => { lm.hidden = true; run(); } }, element('i', { html: ic }), element('span', null, label), more.kb ? element('small', null, more.kb) : '');
+  const modBtn = (label, what, ic, run, more = {}) => element('button', { type: 'button', role: 'menuitem', class: 'all-modb' + (more.red ? ' red' : ''), disabled: !!more.off, 'aria-label': what,
+    title: more.off || (more.kb ? `${what} · ${more.kb}` : what), dataset: { cmd: more.cmd }, onclick: () => { lm.hidden = true; run(); } }, element('i', { html: ic }), element('span', null, label));
   // a submenu's row (one item: just that item)
   const group = (label, ic, cmd, items) => {
     const list = items.filter(x => x instanceof Node); if (list.length < 2) return list[0] || null;
@@ -1421,11 +1423,14 @@ function openLineMenu(m, at){
     ...shoutItems(m, view, item, group),
     item(`Open profile on ${site}`, icon.user, () => openSiteCard(m), { cmd: 'all.menuProfile' }),
     mod && element('hr'),
-    mod && item('Pin message', icon.pin, () => modAct(m, 'pin'), { cmd: 'all.menuPin' }),
-    mod && item('Delete message', icon.bin, () => modAct(m, 'delete'), { kb: `${kShift()}-click name`, off: whyDel, cmd: 'all.menuDelete' }),
-    mod && item('Timeout', TIMER, () => modAct(m, 'timeout', lastTimeout()), { kb: `${kCtrl()}-click name`, off: why, cmd: 'all.menuTimeout' }),
-    mod && !why && element('div', 'all-durs', ...TIMEOUTS.map(sec => element('button', { type: 'button', class: sec === lastTimeout() ? 'on' : '', dataset: { cmd: 'all.timeoutFor' }, onclick: () => { lm.hidden = true; modAct(m, 'timeout', sec); } }, durText(sec)))),
-    mod && item('Ban', BAN, () => modAct(m, 'ban'), { kb: `${kCtrl()}+${kShift()}-click name`, off: why, red: true, cmd: 'all.menuBan' }),
+    // moderating: one row of buttons (what each does, its key on the name, or why it can't, on hover); the timeout's lengths under it
+    mod && element('div', { class: 'all-modrow', role: 'group', 'aria-label': 'Moderate' },
+      modBtn('Pin', 'Pin message', icon.pin, () => modAct(m, 'pin'), { cmd: 'all.menuPin' }),
+      modBtn('Delete', 'Delete message', icon.bin, () => modAct(m, 'delete'), { kb: `${kShift()}-click name`, off: whyDel, cmd: 'all.menuDelete' }),
+      modBtn('Timeout', `Time out for ${durText(lastTimeout())}`, TIMER, () => modAct(m, 'timeout', lastTimeout()), { kb: `${kCtrl()}-click name`, off: why, cmd: 'all.menuTimeout' }),
+      modBtn('Ban', 'Ban', BAN, () => modAct(m, 'ban'), { kb: `${kCtrl()}+${kShift()}-click name`, off: why, red: true, cmd: 'all.menuBan' })),
+    mod && !why && element('div', { class: 'all-durs all-tdurs', role: 'group', 'aria-label': 'Time out for' }, element('small', null, 'Time out'),
+      ...TIMEOUTS.map(sec => element('button', { type: 'button', class: sec === lastTimeout() ? 'on' : '', dataset: { cmd: 'all.timeoutFor' }, onclick: () => { lm.hidden = true; modAct(m, 'timeout', sec); } }, durText(sec)))),
     mod && modUrl(m.ch) && item(`Open ${site} mod view`, icon.mod, () => openModView(m.ch), { cmd: 'all.menuModView' }),
     element('hr'),
     item('Copy message', icon.copy, () => copy(plain), { cmd: 'all.menuCopyPlain', off: plain ? '' : 'Only emotes' }),
