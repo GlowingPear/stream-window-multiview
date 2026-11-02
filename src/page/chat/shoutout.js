@@ -123,6 +123,29 @@ async function soCardAvatars(){
   }
 }
 const soSentAt = p => (p ? soSent[soKey(p)] || 0 : 0);
+/* Who's banned or timed out in a chat, as its feed says (ALL's, or the app's readers': chat/all-chat.js), for everyone,
+   not only mods: never shouted out there. 'ch|login' -> until when (0: banned) */
+const soOut = new Map();
+// A ban, timeout or one lifted in a chat: -> their login when shoutouts are on there (their lines' buttons to redraw)
+function soHeard(ch, m){
+  const login = m && (m.kind === 'modaction' ? m.target : m.login), k = ch && login && ch + '|' + String(login).toLowerCase();
+  if (!k) return '';
+  if (m.kind === 'clear') soOut.set(k, m.until || 0);
+  else if (m.kind === 'unban' || (m.kind === 'modaction' && /^un(ban|timeout)$/.test(m.action))) soOut.delete(k);
+  else return '';
+  return shoutHere(ch) ? String(login).toLowerCase() : '';
+}
+// Why someone can't be shouted out in their chat: 'banned', 'timed out', or ''
+function soOutWhy(p){
+  const k = p && p.ch && p.login && p.ch + '|' + String(p.login).toLowerCase();
+  if (!k || !soOut.has(k)) return '';
+  const until = soOut.get(k);
+  if (!until) return 'banned';
+  if (until > Date.now()) return 'timed out';
+  soOut.delete(k);
+  return '';
+}
+const soOutSaid = p => `${p.name || p.login} is ${soOutWhy(p)} in ${PLAT_NAME[platOf(p.ch)]} chat`;
 const soAgo = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
 // Who's on a chat line: their site and address, their name, and the linked streamer they are (their row covers every site)
 function soPersonOf(m){
@@ -171,11 +194,12 @@ const SHOUT_FAIL = { gone: s => `${s}'s chat isn't open`, 'no-box': s => `Sign i
 
 /* Shouts someone out in one chat, or several (a linked streamer's every site). again: ask first when they were shouted
    out lately (a run has asked already). quiet: no "Shouted out" message (a run says how it's going). -> 'sent', or
-   why not ('off', 'cancelled', 'missing', or the send's answer) */
+   why not ('off', 'out' (banned or timed out in their chat), 'cancelled', 'missing', or the send's answer) */
 async function shoutOut(p, { chs, again = true, quiet = false } = {}){
   if (!shoutOn() || !p || !p.login) return 'off';
   const targets = (chs || [p.ch]).filter(Boolean);
   if (!targets.length) return 'gone';
+  if (soOutWhy(p)){ if (!quiet) flash(`${soOutSaid(p)}: no shoutout`); return 'out'; }
   const name = p.name || p.login, last = soSentAt(p);
   if (again && soAgainMs() && last && Date.now() - last < soAgainMs()
     && !await ask(`Shout out ${name} again?`, `You shouted them out ${soAgo(last)}. Send another shoutout now?`, { ok: 'Shout out again' })) return 'cancelled';
@@ -268,7 +292,7 @@ async function openRun(w, { flip = false } = {}){
   const ch = soRunCh(w);
   if (!ch || !SHOUT_SITES.includes(platOf(ch))) return flash(ch ? `Shoutouts are for Kick and Twitch: pick one of them to send on` : 'No chat to send on right now');
   if (!shoutHere(ch)) return flash(SO_NOT_MOD);
-  const lines = await soRunLines(w);
+  const lines = (await soRunLines(w)).filter(p => !soOutWhy(p));   // (not who's banned or timed out there)
   if (!lines.length) return flash('No one has chatted here yet');
   const first = settings.flag('shoutListFirst', true) !== flip;
   if (!first){
@@ -395,6 +419,7 @@ async function startRun(w, list){
       const res = await shoutOut(p, { chs: [p.ch], again: false, quiet: true });
       if (r.stop) return;
       if (res === 'sent'){ done++; break; }
+      if (res === 'out'){ flash(`Skipped ${soOutSaid(p)}`); break; }
       if (res === 'missing' || res === 'gone' || res === 'no-box' || tries >= 2){ flash(`Skipped ${p.name}: ${res === 'missing' ? 'couldn\'t find their Kick channel' : (SHOUT_FAIL[res] || SHOUT_FAIL['no-answer'])(PLAT_NAME[platOf(p.ch)])}`); break; }
       // held back (slow mode, the site's limit, a filter): its modes again, then wait and try again
       const c = soChatWin(p.ch);
@@ -464,7 +489,7 @@ function init(){
       const f = feeds.get(ownerOf(w.channel).id); if (!f) continue;
       for (let i = f.msgs.length - 1; i >= 0 && out.length < 12; i--){
         const m = f.msgs[i], p = (m.kind === 'message' || (m.support && m.support.kind === 'raid')) && !m.bot && shoutHere(m.ch) && soPersonOf(m);
-        if (!p || seen.has(soKey(p)) || soRunWho(w).me.includes(soKey(p)) || soRunWho(w).host.includes(soKey(p))) continue;
+        if (!p || soOutWhy({ ...p, ch: m.ch }) || seen.has(soKey(p)) || soRunWho(w).me.includes(soKey(p)) || soRunWho(w).host.includes(soKey(p))) continue;
         seen.add(soKey(p));
         out.push({ id: 'shout.p.' + soKey(p), group: 'Shoutouts', title: `Shout out ${p.name}`, icon: 'megaphone', noRecent: true,
           sub: `${m.support && m.support.kind === 'raid' ? 'Raided' : 'Chatted ' + soAgo(m.t)} · in ${PLAT_NAME[platOf(m.ch)]} chat`, run: () => shoutOut(p) });
@@ -473,8 +498,8 @@ function init(){
     return out;
   });
   window.shoutAgent = shoutAgent;   // for the tests
-  window.shoutouts = { timing: SO_TIMING, shoutOut, openRun, stopRun, lookUp: soLookUp, known: () => soKnown, sent: () => soSent, state: () => soRun && { i: soRun.i, n: soRun.list.length, wait: soRun.wait } };   // for the tests
+  window.shoutouts = { timing: SO_TIMING, shoutOut, openRun, stopRun, lookUp: soLookUp, known: () => soKnown, sent: () => soSent, outWhy: soOutWhy, state: () => soRun && { i: soRun.i, n: soRun.list.length, wait: soRun.wait } };   // for the tests
 }
 
 export { init, openRun, shoutHere, shoutInSite, shoutOn, shoutOut, shoutTag, soCardAvatars, soCards, soCheckCards,
-  soDropCard, soPersonOf, soPutCard, soSaveCards, soSentAt };
+  soDropCard, soHeard, soOutWhy, soPersonOf, soPutCard, soSaveCards, soSentAt };

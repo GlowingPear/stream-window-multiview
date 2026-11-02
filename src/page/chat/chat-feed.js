@@ -5,6 +5,7 @@ import { SmvSpam } from '../alerts/spam.js';
 import { allLooking, feedRead, mentionOf } from './all-chat.js';
 import { chatOverlay, overlayIsOn } from './chat-overlay.js';
 import { countsAreOn, feedNew } from './new-messages.js';
+import { shoutHere } from './shoutout.js';
 import { wins } from '../core.js';
 import { mentAny, mentMuted, mentNameFor, mentOn, mentWords } from '../panels/bell/bell.js';
 import { devError } from '../panels/developer/developer.js';
@@ -56,6 +57,7 @@ function sameAs(ch, kind, who, what, via){
 function wanted(w){
   if (w && w.kind === 'chat' && flaggedIn(w.channel)) return true;   // (Settings › Flagged: also YouTube's, read for this alone)
   if (!reads(w)) return false;
+  if (shoutHere(w.channel)) return true;   // (shoutouts: who's banned or timed out, chat/shoutout.js)
   const site = platform(w.channel);
   return (site.mentions && mentOn && mentAny() && !mentMuted.has(w.channel)) || (site.spamAlerts && !!alerts.spam.on)
     || (!!alerts.support.on && !!site.support) || overlayIsOn() || countsAreOn();
