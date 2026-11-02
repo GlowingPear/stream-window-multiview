@@ -185,11 +185,26 @@ function twitchPin(frame){
     return { site: 'twitch', kind: 'modes', t: Date.now(), modes: { slow: +r.slow_mode_duration_seconds || 0, followers: r.followers_only_duration_minutes == null ? null : +r.followers_only_duration_minutes,
       subs: !!r.subscribers_only_mode_enabled, emotes: !!r.emote_only_mode_enabled, verified: !!r.verified_only_mode_enabled } };
   }
-  // your own message held by AutoMod (Twitch tells only you, by its id): waiting for a moderator, then ALLOWED or DENIED.
-  // (Moderators get the same kind with the whole message in it, for their queue: not read yet, #221.)
-  if (p && p.type === 'automod_caught_message'){
-    const a = p.data || {}; if (!a.message_id || !a.status || a.message) return null;
+  // your own message held by AutoMod (Twitch tells only you, by its id): waiting for a moderator, then ALLOWED or DENIED
+  if (p && p.type === 'automod_caught_message' && !(p.data && p.data.message)){
+    const a = p.data || {}; if (!a.message_id || !a.status) return null;
     return { site: 'twitch', kind: 'automod', msgId: String(a.message_id), status: String(a.status).toUpperCase(), t: Date.now() };
+  }
+  // a message AutoMod held, to moderators (the whole message, for their queue): PENDING, then ALLOWED or DENIED with the
+  // moderator who did it (resolver_login). One that expires sends nothing (#221).
+  if (p && p.type === 'automod_caught_message'){
+    const a = p.data, msg = hermesMsg(a.message);
+    if (!msg || !a.status) return null;
+    const c = a.content_classification || {}, cat = String(c.category || '');
+    const why = cat && cat !== 'unknown' ? `${cat.charAt(0).toUpperCase()}${cat.slice(1).replace(/[-_]/g, ' ')}${+c.level > 0 ? ` · level ${+c.level}` : ''}`
+      : HELD_WHY[a.reason_code] || '';
+    return { site: 'twitch', kind: 'held', id: msg.id, msg, status: String(a.status).toUpperCase(), why, by: String(a.resolver_login || ''), t: Date.now() };
+  }
+  // Twitch's suspicious-user flags on a message, to moderators: a possible or likely ban evader, monitored or restricted
+  if (p && p.type === 'low_trust_user_new_message'){
+    const d = p.data || {}, u = d.low_trust_user || {}, flags = lowTrust(u);
+    if (!d.message_id || !flags.length) return null;
+    return { site: 'twitch', kind: 'flags', msgId: String(d.message_id), flags, t: Date.now() };
   }
   // Twitch's marks on a message, to moderators (chat highlights): a raider's (how long since the raid), and the like
   if (p && p.type === 'chat-highlight'){
@@ -199,14 +214,27 @@ function twitchPin(frame){
   }
   const d = p && p.data; if (!d || !d.id) return null;
   if (p.type === 'unpin-message') return { site: 'twitch', kind: 'unpin', id: String(d.id), t: Date.now() };
-  if (p.type !== 'pin-message' || !d.message || !d.message.id) return null;
-  const m = d.message, s = m.sender || {}, c = m.content || {};
+  const msg = p.type === 'pin-message' && hermesMsg(d.message); if (!msg) return null;
+  return { site: 'twitch', kind: 'pin', id: String(d.id), msg, t: Date.now(), by: (d.pinned_by && d.pinned_by.display_name) || '' };
+}
+// A whole message on Twitch's other connection (a pin's, an AutoMod hold's), as a chat message; null without its id.
+// sent_at: seconds (a pin's) or a date (a hold's)
+function hermesMsg(m){
+  if (!m || !m.id) return null;
+  const s = m.sender || {}, c = m.content || {};
   const parts = Array.isArray(c.fragments) && c.fragments.length
     ? c.fragments.map(f => f && f.emoticon && f.emoticon.emoticonID ? { emote: `https://static-cdn.jtvnw.net/emoticons/v2/${encodeURIComponent(f.emoticon.emoticonID)}/default/dark/1.0`, name: f.text || '' } : { text: String((f && f.text) || '') })
     : [{ text: String(c.text || '') }];
-  const msg = { site: 'twitch', kind: 'message', id: String(m.id), t: (+m.sent_at || 0) * 1000 || Date.now(), sender: s.display_name || s.login || '', login: String(s.login || '').toLowerCase(),
-    color: s.chat_color || '', userId: s.id ? String(s.id) : '', badges: badgeKinds((s.badges || []).map(b => b && b.id)), pics: twitchPics((s.badges || []).map(b => [b && b.id, b && b.version])), parts };
-  return { site: 'twitch', kind: 'pin', id: String(d.id), msg, t: Date.now(), by: (d.pinned_by && d.pinned_by.display_name) || '' };
+  return { site: 'twitch', kind: 'message', id: String(m.id), t: (+m.sent_at || 0) * 1000 || (typeof m.sent_at === 'string' && Date.parse(m.sent_at)) || Date.now(), sender: s.display_name || s.login || '', login: String(s.login || '').toLowerCase(),
+    color: s.chat_color || '', userId: (s.id || s.user_id) ? String(s.id || s.user_id) : '', badges: badgeKinds((s.badges || []).map(b => b && b.id)), pics: twitchPics((s.badges || []).map(b => [b && b.id, b && b.version])), parts };
+}
+// Why AutoMod held a message, when it isn't one of its categories (a link, a blocked term)
+const HELD_WHY = { LinkCaughtMessageReason: 'Link', BlockedTermCaughtMessageReason: 'Blocked term' };
+// A suspicious user's flags, as Twitch names them: evader (possible or likely), then monitored or restricted
+function lowTrust(u){
+  const ev = { POSSIBLE_EVADER: 'possible', LIKELY_EVADER: 'likely' }[String(u.ban_evasion_evaluation || '').toUpperCase()];
+  const tr = { ACTIVE_MONITORING: 'monitored', RESTRICTED: 'restricted' }[String(u.treatment || '').toUpperCase()];
+  return [ev && 'evader-' + ev, tr].filter(Boolean);
 }
 
 // A Twitch event as support alerts read it (a sub, a gift, gifted subs, a raid), or null
@@ -455,6 +483,12 @@ function parseYouTube(action){
     return { site: 'youtube', kind: 'event', event: 'gift', id: r.id, t: Math.round(+r.timestampUsec / 1000) || Date.now(), sender: who, login: who.replace(/^@/, '').toLowerCase(), color: '', userId: '',
       badges: [], pics: [], text: `${who} ${said}`, summary: [{ strong: who }, ...(what ? [{ text: ' sent ' }, { strong: what[1] }] : [{ text: ' ' + said }])], parts: [] };
   }
+  // a message YouTube held for review, to moderators (Show lets it through: replaceChatItemAction on its id; Hide takes it away)
+  if (type === 'liveChatAutoModMessageRenderer'){
+    const inner = r.autoModeratedItem && r.autoModeratedItem.liveChatTextMessageRenderer;
+    const msg = inner && parseYouTube({ addChatItemAction: { item: { liveChatTextMessageRenderer: { ...inner, id: r.id } } } });
+    return msg ? { site: 'youtube', kind: 'held', id: r.id, msg, status: 'PENDING', why: '', note: ytWords(r.headerText).trim(), by: '', t: msg.t } : null;
+  }
   const base = { site: 'youtube', id: r.id, t: Math.round(+r.timestampUsec / 1000) || Date.now(), sender: (r.authorName && r.authorName.simpleText) || '',
     login: ((r.authorName && r.authorName.simpleText) || '').replace(/^@/, '').toLowerCase(), color: '', userId: r.authorExternalChannelId || '', badges: ytBadges(r.authorBadges), pics: ytPics(r.authorBadges) };
   if (type === 'liveChatTextMessageRenderer') return { ...base, kind: 'message', parts: ytParts(r.message && r.message.runs) };
@@ -497,10 +531,10 @@ const KNOWN = {
     'hermes:raid_update_v2': 'a raid getting ready (one line, counting down)', 'hermes:raid_go_v2': 'a raid going (its line: Open)', 'hermes:raid_cancel_v2': 'a raid called off (its line says so)',
     'hermes:goal_achieved': 'a goal reached (its progress: hermes:goal_updated)', 'hermes:hype-train-start': 'a hype train (its strip over ALL)',
     'hermes:hype-train-progression': 'a hype train moving along (its strip)', 'hermes:hype-train-level-up': 'a hype train’s new level (its strip)', 'hermes:hype-train-end': 'a hype train ending (its strip)',
-    'hermes:automod_caught_message': 'your message held by AutoMod (your line says so, then sent or not; a moderator’s queue of held messages: not yet)', 'hermes:chat-highlight': 'Twitch’s marks on a message, to moderators (a raider’s: a tag on its line)' },
+    'hermes:automod_caught_message': 'a message held by AutoMod: to moderators, its card (Allow, Deny); yours, your line says so', 'hermes:low_trust_user_new_message': 'a suspicious user’s flags on their message (tags on its line, to moderators)', 'hermes:chat-highlight': 'Twitch’s marks on a message, to moderators (a raider’s: a tag on its line)' },
   youtube: { 'addChatItemAction:liveChatTextMessageRenderer': 'a message', 'addChatItemAction:liveChatPaidMessageRenderer': 'a Super Chat',
     'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
-    'addChatItemAction:giftMessageViewModel': 'a gift', 'replaceChatItemAction:liveChatTextMessageRenderer': 'a held message let through',
+    'addChatItemAction:giftMessageViewModel': 'a gift', 'replaceChatItemAction:liveChatTextMessageRenderer': 'a held message let through', 'addChatItemAction:liveChatAutoModMessageRenderer': 'a message held for review, to moderators (its card: Allow, Deny)',
     removeChatItemAction: 'a message deleted', markChatItemAsDeletedAction: 'a message deleted (marked)', markChatItemsByAuthorAsDeletedAction: 'a ban or timeout',
     removeChatItemByAuthorAction: 'all of someone’s messages taken away (as a ban)', 'showLiveChatActionPanelAction': 'a poll opened (its card over ALL)', updateLiveChatPollAction: 'a poll’s votes (its card)',
     closeLiveChatActionPanelAction: 'a poll closed (its card goes)',
