@@ -73,4 +73,8 @@ The new worktree is still identical to `main`, so capture "before" now, before e
 
 ## 6. Hand over
 
-When the developer is happy, follow the `open-pr` skill. Pass on the plan's Why, Testing, the issue number and the capture files.
+When the developer is happy, follow the `open-pr` skill. Pass on the plan's Why, Testing, the issue number and the capture files. Then, without asking:
+
+- **No coverage run:** CI checks it on the pull request (`open-pr` step 5). Only if CI's coverage check fails, add the missing tests and push.
+- **Auto-merge:** `gh pr merge <n> --auto --merge` as soon as the pull request is open (`open-pr` step 7). If a check fails, fix it on the branch and push; auto-merge stays on.
+- **Clean up once merged:** when `gh pr view <n> --json state` says `MERGED`, remove the worktree and its branch, then the branch on GitHub (`open-pr` step 8): `npm run worktree -- --clean && git push origin --delete <branch>`, from the main checkout.
