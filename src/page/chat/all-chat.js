@@ -1413,7 +1413,7 @@ function openLineMenu(m, at){
   const short = x => `“${x.length > 24 ? x.slice(0, 23) + '…' : x}”`;
   const cw = chatFor(m), trAuto = autoTrFor(m.ch), tr = window.kmv && window.kmv.translate;
   view.fly.close();
-  lm.replaceChildren(...[em && emotePreview(em), element('div', 'all-lh', element('i', { class: 'pi pi-' + m.site }, site[0]), element('b', null, m.sender), element('small', null, site)),
+  lm.replaceChildren(...[em && emotePreview(em), element('div', 'all-lh', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]), element('b', null, m.sender)),   // (its site: the badge)
     link && item('Open link in your browser', icon.pop, () => openInBrowser(link.href), { cmd: 'all.menuLink' }),
     link && item('Copy link address', icon.link, () => copy(link.href, 'Copied the link'), { cmd: 'all.menuLinkCopy' }),
     selIn && item('Copy', icon.copy, () => copy(selectedText(window.getSelection()) || sel), { cmd: 'all.menuSelCopy' }),
