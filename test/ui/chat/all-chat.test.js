@@ -1023,12 +1023,14 @@ test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeo
   assert.match(await page.textContent('#msg'), /Deleted loudmouth's message on Kick/);
   // the menu: timeout lengths (remembered), pin, ban after asking
   await page.click(line(0), { button: 'right' });
-  assert.deepEqual(await page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent.trim())), ['Reply', 'Open profile on Kick', 'Open Kick mod view', 'Copy message', 'Copy›']);
-  // moderating: a row of buttons, what each does and its key on the name on hover
+  assert.deepEqual(await page.$$eval('.all-lm .all-li', l => l.map(b => b.textContent.trim())), ['Reply', 'Open profile on Kick', 'Copy message', 'Copy›']);
+  // moderating: a row of buttons, what each does and its key on the name on hover; a row of timeout lengths
   assert.deepEqual(await page.$$eval('.all-lm .all-modrow button', l => l.map(b => [b.textContent, b.getAttribute('aria-label'), b.title || b.dataset.tipTitle])), [
     ['Pin', 'Pin message', 'Pin message'], ['Delete', 'Delete message', `Delete message · ${sh}-click name`],
-    ['Timeout', 'Time out for 10m', `Time out for 10m · ${ct}-click name`], ['Ban', 'Ban', `Ban · ${ct}+${sh}-click name`]]);
-  assert.equal(await page.textContent('.all-lm .all-tdurs small'), 'Time out', 'its lengths under it');
+    ['Mod view', 'Open Kick mod view', 'Open Kick mod view'], ['Ban', 'Ban', `Ban · ${ct}+${sh}-click name`]]);
+  assert.deepEqual(await page.$$eval('.all-lm .all-tdurs button', l => l.map(b => b.getAttribute('aria-label') + (b.classList.contains('on') ? ' (lit)' : ''))),
+    ['Time out for 1m', 'Time out for 10m (lit)', 'Time out for 1h', 'Time out for 1d']);
+  assert.equal(await page.$eval('.all-lm .all-tdurs', e => e.title || e.dataset.tipTitle), `Time out · ${ct}-click name: the lit one`);
   await page.click('.all-lm .all-durs button >> text=1h');
   await page.waitForFunction(() => window.__acts.length === 2);
   assert.deepEqual((await acts())[1], kickBan({ duration: 60, permanent: false }), 'Kick\'s own request, not a command in its box (it would send that as a message); in minutes');
@@ -1070,8 +1072,8 @@ test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeo
   assert.equal((await acts()).length, 7, 'not timed out or banned');
   await page.click(line(1), { button: 'right' });
   assert.deepEqual(await page.$$eval('.all-lm .all-modrow button:disabled', l => l.map(b => b.textContent + ': ' + (b.title || b.dataset.tipTitle))),
-    ['Timeout: nightowl_mod is a mod on Kick', 'Ban: nightowl_mod is a mod on Kick']);
-  assert.equal(await page.locator('.all-lm .all-durs').count(), 0, 'no timeout lengths');
+    ['Ban: nightowl_mod is a mod on Kick']);
+  assert.deepEqual(await page.$eval('.all-lm .all-tdurs', e => [e.title || e.dataset.tipTitle, [...e.querySelectorAll('button')].every(b => b.disabled)]), ['nightowl_mod is a mod on Kick', true], 'no timeout');
   await page.click('.all-lm [data-cmd="all.menuDelete"]');
   await page.waitForFunction(() => window.__acts.length === 8);
   assert.deepEqual((await acts())[7], ['delete', 'quietkoala', 'k2']);
@@ -1081,7 +1083,7 @@ test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeo
     await page.waitForFunction(re => new RegExp(re).test(document.querySelector('#msg')?.textContent || ''), why.source);
   }
   await page.click(line(2), { button: 'right' });
-  assert.deepEqual(await page.$$eval('.all-lm .all-modrow button:disabled', l => l.map(b => b.title || b.dataset.tipTitle)), ['quietkoala is the streamer', 'quietkoala is the streamer', 'quietkoala is the streamer']);
+  assert.deepEqual(await page.$$eval('.all-lm .all-modrow button:disabled', l => l.map(b => b.title || b.dataset.tipTitle)), ['quietkoala is the streamer', 'quietkoala is the streamer']);
   await page.keyboard.press('Escape');
   assert.equal(await page.isVisible('.all-lm'), false, 'Esc closes it');
   await page.click(line(4), { button: 'right' });
@@ -1095,7 +1097,7 @@ test('ALL: mod actions where you\'re a mod: the hover\'s Delete, the menu (timeo
   await page.click(`${line(5)} >> .al-n`, { modifiers: ['Shift'] });
   await page.waitForFunction(() => /owl_twmod is a mod on Twitch/.test(document.querySelector('#msg')?.textContent || ''));
   await page.click(line(5), { button: 'right' });
-  assert.deepEqual(await page.$$eval('.all-lm .all-modrow button:disabled', l => l.map(b => b.title || b.dataset.tipTitle)), ['owl_twmod is a mod on Twitch', 'owl_twmod is a mod on Twitch', 'owl_twmod is a mod on Twitch']);
+  assert.deepEqual(await page.$$eval('.all-lm .all-modrow button:disabled', l => l.map(b => b.title || b.dataset.tipTitle)), ['owl_twmod is a mod on Twitch', 'owl_twmod is a mod on Twitch']);
   await page.keyboard.press('Escape');
   assert.equal((await acts()).length, 8);
   // a message gone from the site's chat, and a site that won't take it
