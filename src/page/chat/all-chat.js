@@ -788,8 +788,10 @@ function lineEl(m){
         m.gift.me && element('span', { class: 'al-tag al-tag-at', title: 'You got one of them' }, 'To you'),
         ...(m.giftOpen ? to.map(r => element('span', { class: 'al-gc' + (me && r.login === me ? ' me' : '') }, r.name)) : [])));
   }
+  // (someone's first message in this chat: Twitch's tag on it, to everyone, or its mark, to moderators; marked once)
+  const first = m.first || (m.marks || []).some(x => x.type === 'first_time_chatter'), marks = (m.marks || []).filter(x => x.type !== 'first_time_chatter');
   const cls = ['al-m', m.toMe === 'reply' ? 'al-rep' : m.toMe === 'at' || m.toMe === 'word' ? 'al-me' : '', m.spam ? 'al-spam' : '', m.bot ? 'al-bot' : '', m.deleted ? 'al-del' : '', m.highlight ? 'al-hl' : '',
-    m.announce ? 'al-ann al-ann-' + m.announce : '', m.redeem ? 'al-rw' : '', m.streak ? 'al-streak' : ''].filter(Boolean).join(' ');
+    m.announce ? 'al-ann al-ann-' + m.announce : '', m.redeem ? 'al-rw' : '', m.streak ? 'al-streak' : '', first ? 'al-first' : ''].filter(Boolean).join(' ');
   const hideBot = m.bot && !botsShown && !m.open;
   const body = hideBot ? element('span', 'al-hid', 'hidden') : m.tr && !m.trOrig ? element('span', 'al-txt', m.tr.text)
     : m.streak && !m.parts.length ? element('span', 'al-txt al-quiet', `watched ${m.streak} streams in a row`)
@@ -805,9 +807,10 @@ function lineEl(m){
     m.toMe === 'reply' && element('span', { class: 'al-tag al-tag-rp' + (m.bot ? ' soft' : '') }, m.bot ? 'TO YOU' : 'REPLY'),
     m.toMe === 'at' && m.bot && element('span', 'al-tag al-tag-rp soft', 'TO YOU'),
     m.highlight && element('span', 'al-tag al-tag-hl', 'Highlighted'),
+    first && element('span', { class: 'al-tag al-tag-first', title: MARKS.first_time_chatter[1]() }, MARKS.first_time_chatter[0]),
     ...flagTags(m),
     m.allowed && element('span', { class: 'al-held-end ok', title: `A moderator let it through ${m.site === 'youtube' ? 'after YouTube held it for review' : 'after AutoMod held it'}` }, '✓ allowed' + resolvedBy(m.allowed)),
-    ...(m.marks || []).map(x => { const k = MARKS[x.type]; return element('span', { class: 'al-tag al-tag-mark', title: k ? k[1](x) : `Twitch marks it: ${x.type.replace(/_/g, ' ')}` }, k ? k[0] : x.type.replace(/_/g, ' ')); }),
+    ...marks.map(x => { const k = MARKS[x.type]; return element('span', { class: 'al-tag al-tag-mark', title: k ? k[1](x) : `Twitch marks it: ${x.type.replace(/_/g, ' ')}` }, k ? k[0] : x.type.replace(/_/g, ' ')); }),
     m.streak && element('span', { class: 'al-tag al-tag-streak', title: `Watched ${m.streak} streams in a row` }, `Watch streak · ${m.streak}`),
     m.announce && element('span', 'al-tag al-tag-ann', 'Announcement'),
     m.bits && element('span', 'al-tag al-tag-bits', `${m.bits} bits`),
