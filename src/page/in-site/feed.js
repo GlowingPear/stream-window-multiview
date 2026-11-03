@@ -130,13 +130,13 @@ async function hypeAgent(nameAs){
 }
 
 // Runs inside a Twitch chat page: the channels a shared chat's messages come from (Twitch's Stream Together), by their
-// ids, as Twitch's GraphQL says them -> [{ id, login, name, pic }] (one it doesn't know: left out), or null (no answer)
+// ids, as Twitch's GraphQL says them -> [{ id, login, name, pic, color }] (one it doesn't know: left out), or null (no answer)
 async function channelsAgent(ids){
   try {
-    const query = `query { users(ids: ${JSON.stringify(ids)}) { id login displayName profileImageURL(width: 50) } }`;
+    const query = `query { users(ids: ${JSON.stringify(ids)}) { id login displayName profileImageURL(width: 50) primaryColorHex } }`;
     const r = await (await fetch('https://gql.twitch.tv/gql', { method: 'POST', headers: { 'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko', 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) })).json();
     const users = r && r.data && r.data.users;
-    return Array.isArray(users) ? users.filter(u => u && u.id).map(u => ({ id: String(u.id), login: String(u.login || ''), name: String(u.displayName || u.login || ''), pic: String(u.profileImageURL || '') })) : null;
+    return Array.isArray(users) ? users.filter(u => u && u.id).map(u => ({ id: String(u.id), login: String(u.login || ''), name: String(u.displayName || u.login || ''), pic: String(u.profileImageURL || ''), color: /^[0-9a-f]{6}$/i.test(u.primaryColorHex || '') ? '#' + u.primaryColorHex : '' })) : null;
   } catch (e) { return null; }
 }
 

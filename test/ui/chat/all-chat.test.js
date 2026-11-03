@@ -1956,7 +1956,7 @@ test('ALL: a gift sub paid forward (from someone, or an anonymous one) and a goa
   assert.deepEqual(await page.$$eval('.al-ev .al-amt', l => l.map(e => e.textContent)), ['Tinroof', '230', '50'], 'who gave it, and the count, picked out');
 });
 
-test('ALL: a giant emote under the name, big; a shared chat\'s message from another channel with that channel\'s picture (its name on hover), its badges there, once when two of its chats bring it', async t => {
+test('ALL: a giant emote under the name, big; a shared chat\'s lines with the picture of the channel each was sent in (its name on hover), another channel\'s with its badges there, the streamer\'s Kick lines too while Twitch is shared, once when two of its chats bring it', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
   const pic = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
@@ -1964,21 +1964,34 @@ test('ALL: a giant emote under the name, big; a shared chat\'s message from anot
   await page.evaluate(pic => {
     window.__asked = [];
     const w = window.openWins().find(o => o.channel === 'tw:quietkoala');
-    w.view.executeJavaScript = async js => { if (!/channelsAgent/.test(js)) return null; window.__asked.push(js); return [{ id: '200', login: 'maplefern', name: 'MapleFern', pic }]; };
+    w.view.executeJavaScript = async js => { if (!/channelsAgent/.test(js)) return null; window.__asked.push(js); return /\["200"\]\)\s*$/.test(js) ? [{ id: '200', login: 'maplefern', name: 'MapleFern', pic, color: '#3366ff' }] : [{ id: '100', login: 'quietkoala', name: 'QuietKoala', pic, color: '#cfa7ff' }]; };
   }, pic);
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [
     TW({ 'display-name': 'tinroof', id: 'g1', 'msg-id': 'gigantified-emote-message', emotes: '25:0-4', 'emote-only': '1' }, ':tinroof!t@t PRIVMSG #quietkoala :Kappa'),
     TW({ 'display-name': 'pebble', id: 's1', 'room-id': '100', 'source-room-id': '200', 'source-id': 'src1', badges: '', 'source-badges': 'vip/1' }, ':pebble!p@p PRIVMSG #quietkoala :hi from the other chat'),
     TW({ 'display-name': 'pebble', id: 's1-again', 'room-id': '300', 'source-room-id': '200', 'source-id': 'src1', badges: '', 'source-badges': 'vip/1' }, ':pebble!p@p PRIVMSG #quietkoala :hi from the other chat'),
-    TW({ 'display-name': 'drift', id: 'own', 'room-id': '100', 'source-room-id': '100', 'source-id': 'own' }, ':drift!d@d PRIVMSG #quietkoala :from this chat')] });
+    TW({ 'display-name': 'drift', id: 'own', 'room-id': '100', 'source-room-id': '100', 'source-id': 'own' }, ':drift!d@d PRIVMSG #quietkoala :from this chat'),
+    TW({ 'display-name': 'calm', id: 'plain', 'room-id': '100' }, ':calm!c@c PRIVMSG #quietkoala :no shared chat')] });
   const giant = await page.$eval('.all-list .al-m .al-giant', e => { const i = e.querySelector('img.al-e'); return [getComputedStyle(e).display, i && i.getAttribute('src'), i && i.getBoundingClientRect().height]; });
   assert.deepEqual(giant, ['block', 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/3.0', 88], 'on a line of its own, its bigger picture, about 4× an emote');
-  await page.waitForSelector('.all-list img.al-from');
+  await page.waitForFunction(() => document.querySelectorAll('.all-list img.al-from').length === 2);
   assert.equal((await lines(page)).filter(l => /hi from the other chat/.test(l)).length, 1, 'once, though two chats of the session brought it');
-  assert.deepEqual(await page.$$eval('.all-list .al-m .al-who', l => l.map(w => [...w.children].map(c => c.className))), [['pi pi-twitch'], ['pi pi-twitch', 'al-from', 'al-b al-b-vip'], ['pi pi-twitch']],
-    'the channel\'s picture first, then their badges in that channel; none on this chat\'s own');
-  assert.equal(await page.$eval('.all-list img.al-from', i => i.title), 'Sent from MapleFern');
-  assert.equal((await page.evaluate(() => window.__asked)).length, 1, 'asked once for that channel');
+  assert.deepEqual(await page.$$eval('.all-list .al-m .al-who', l => l.map(w => [...w.children].map(c => c.className))), [['pi pi-twitch'], ['pi pi-twitch', 'al-from', 'al-b al-b-vip'], ['pi pi-twitch', 'al-from al-own'], ['pi pi-twitch']],
+    'the channel\'s picture first, then their badges in that channel; this chat\'s own in the session with its picture too, as Twitch\'s chat has it; none outside a shared chat');
+  assert.deepEqual(await page.$$eval('.all-list img.al-from', l => l.map(i => i.title)), ['Sent from MapleFern', 'Sent from QuietKoala']);
+  assert.equal((await page.evaluate(() => window.__asked)).length, 2, 'asked once for each channel');
+  assert.deepEqual(await page.$$eval('.all-list img.al-from', l => l.map(i => [i.classList.contains('al-own'), /rgb\(207, 167, 255\) 0px 0px 0px 2px/.test(getComputedStyle(i).boxShadow)])), [[false, false], [true, true]],
+    'this chat\'s own channel\'s picture has a ring in its colour, as Twitch\'s chat has it; another channel\'s none');
+  // Twitch in a shared chat: the streamer's own Kick lines get their Twitch channel's picture too; Twitch's next message
+  // without a channel: over
+  const kick = (id, content) => KF('ChatMessageEvent', { id, content, type: 'message', sender: { id: 3, username: 'tide', identity: {} } });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'drift', id: 'own2', 'room-id': '100', 'source-room-id': '100', 'source-id': 'own2' }, ':drift!d@d PRIVMSG #quietkoala :still shared')] });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [kick('k-shared', 'from kick, while shared')] });
+  assert.deepEqual(await page.$eval('.all-list [data-key="kick:k-shared"] .al-who img.al-from', i => [i.title, i.classList.contains('al-own')]), ['Kick chat · in QuietKoala’s shared chat', true]);
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'calm', id: 'plain2', 'room-id': '100' }, ':calm!c@c PRIVMSG #quietkoala :not shared now')] });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [kick('k-after', 'from kick, after')] });
+  assert.equal(await page.$$eval('.all-list [data-key="kick:k-after"] .al-from', l => l.length), 0, 'the session over: none');
+  assert.equal(await page.$$eval('.all-list [data-key="kick:k-shared"] .al-from', l => l.length), 1, 'the earlier line keeps it');
 });
 
 test('ALL\'s health: a site whose chat has new messages while ALL read none is loaded again once, then its badge turns amber with a line (See it on …, ✕); messages no reader understood, and sends failing twice, too; it clears itself', async t => {
