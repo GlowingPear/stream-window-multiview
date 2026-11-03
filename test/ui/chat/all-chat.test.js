@@ -1862,6 +1862,14 @@ test('ALL: where you moderate Twitch, its moderation lines say who (its moderati
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [act('ban', ['rude'], { target_user_login: 'rude' })] });
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'room-id': '1' }, ':tmi.twitch.tv CLEARCHAT #quietkoala :rude')] });
   assert.equal((await lines(page)).pop(), 'al-ev | TNightOwl banned rude');
+  // a ban or timeout lifted: its own line, as in Twitch's chat (their name as their lines have it)
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [act('unban', ['rude'], { target_user_login: 'rude' })] });
+  assert.equal((await lines(page)).pop(), 'al-ev | TNightOwl lifted the ban on rude');
+  assert.deepEqual(await page.$$eval('#stage .win.chat:not(.tab-hidden) .all-list .al-log', l => l.slice(-2).map(e => e.classList.contains('al-lift'))), [false, true], 'a ban\'s line red, its lifting green');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [act('untimeout', ['LoudMouth99'])] });
+  assert.equal((await lines(page)).pop(), 'al-ev | TNightOwl lifted the timeout on loudmouth99');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [act('unban', ['nobodyhere'])] });
+  assert.equal((await lines(page)).pop(), 'al-ev | TNightOwl lifted the ban on nobodyhere', 'someone with no lines here: their login');
   // a deleted message: by whom (either order)
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'drift', id: 'h' }, ':drift!d@d PRIVMSG #quietkoala :oops'), TW({ 'target-msg-id': 'h' }, ':tmi.twitch.tv CLEARMSG #quietkoala :oops'), act('delete', ['drift', 'oops', 'h'])] });
   assert.match(await page.textContent('.all-list [data-key="twitch:h"]'), /Deleted by NightOwl/);

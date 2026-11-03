@@ -14,16 +14,20 @@ const addLines = page => page.evaluate(() => {
   const props = (el, id) => { el['__reactFiber$t'] = { memoizedProps: {}, return: { memoizedProps: { message: { id } } } }; };
   const tw = document.createElement('div'); tw.className = 'chat-line__message'; props(tw, 'tw1');
   const twName = document.createElement('span'); twName.setAttribute('data-a-target', 'chat-message-username'); twName.textContent = 'tinroof'; twName.onclick = () => window.__clicks.push('tw-name');
-  tw.append(twName);
+  // a moderator's icons before the name (Twitch's ban icon bans at once)
+  const icons = () => ['ban', 'timeout', 'delete'].map(a => { const b = document.createElement('button'); b.setAttribute('data-a-target', 'chat-' + a + '-button'); b.title = a; b.onclick = () => window.__clicks.push('tw-' + a); return b; });
+  tw.append(...icons(), twName);
+  const tw2 = document.createElement('div'); tw2.className = 'chat-line__message'; props(tw2, 'tw2'); tw2.append(...icons());   // (its name not where it's looked for)
   const kick = document.createElement('div'); kick.setAttribute('data-index', '1'); kick['__reactFiber$t'] = { memoizedProps: { style: {} } };   // (Kick's row has props of its own)
   const g = document.createElement('div'); g.className = 'group'; props(g, 'k1');
   const quote = document.createElement('button'); quote.setAttribute('aria-label', 'Reply'); quote.onclick = () => window.__clicks.push('quote');
   const rep = document.createElement('button'); rep.setAttribute('aria-label', 'Reply'); rep.innerHTML = '<svg data-ds-icon="ArrowCurveLeft"></svg>'; rep.onclick = () => window.__clicks.push('reply');
   g.addEventListener('mouseover', () => { if (!g.contains(rep)) g.append(rep); });   // (the hover bar shows on hover)
-  g.append(quote); kick.append(g);
+  const kName = document.createElement('button'); kName.setAttribute('data-prevent-expand', ''); kName.title = 'calmfern'; kName.onclick = () => window.__clicks.push('k-name');
+  g.append(quote, kName); kick.append(g);
   const yt = document.createElement('yt-live-chat-text-message-renderer'); yt.id = 'yt1';
   const ytName = document.createElement('span'); ytName.id = 'author-name'; ytName.onclick = () => window.__clicks.push('yt-name'); yt.append(ytName);
-  wrap.append(tw, kick, yt); document.body.append(wrap);
+  wrap.append(tw, tw2, kick, yt); document.body.append(wrap);
 });
 
 test('Copy message HTML (developer tools): the line with that id, by React props or its own id; another id isn\'t found', async t => {
@@ -44,13 +48,16 @@ test('a Kick reply: its hover bar\'s Reply (the arrow), not the line\'s other Re
   assert.equal(await page.evaluate(() => window.replyAgent('gone')), false);
 });
 
-test('a name: the site\'s own name on that line is clicked (its card); a line that isn\'t there: no', async t => {
+test('a name: the site\'s own name on that line is clicked (its card), never a moderator\'s icons or other buttons before it; no name there, or a line that isn\'t there: no', async t => {
   const page = await openApp(t);
   await addLines(page);
   assert.equal(await page.evaluate(() => window.profileAgent('tw1')), true);
+  assert.equal(await page.evaluate(() => window.profileAgent('k1')), true);
   assert.equal(await page.evaluate(() => window.profileAgent('yt1')), true);
-  assert.deepEqual(await page.evaluate(() => window.__clicks), ['tw-name', 'yt-name']);
+  assert.deepEqual(await page.evaluate(() => window.__clicks), ['tw-name', 'k-name', 'yt-name'], 'Twitch\'s ban, timeout and delete icons, and Kick\'s Reply, aren\'t pressed');
+  assert.equal(await page.evaluate(() => window.profileAgent('tw2')), false);
   assert.equal(await page.evaluate(() => window.profileAgent('gone')), false);
+  assert.deepEqual(await page.evaluate(() => window.__clicks), ['tw-name', 'k-name', 'yt-name'], 'nothing else pressed');
 });
 
 test('mod actions on a message: only the site\'s buttons labelled Delete or Pin are pressed; a line that\'s gone, or no such button: says so', async t => {

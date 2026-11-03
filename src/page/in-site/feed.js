@@ -446,7 +446,8 @@ async function twReplyPress(id){
   return '';
 }
 // Clicks the sender's name on the message with that id, so the site opens its own card for them. Self-contained (it runs
-// in the page on its own). -> whether it did
+// in the page on its own). Only the name, each site's in turn: never another button on the line (a moderator's icons
+// come before the name, and Twitch's ban icon bans at once). -> whether it did
 function profileAgent(id){
   const rows = document.querySelectorAll('.chat-line__message, [data-index], yt-live-chat-text-message-renderer');
   const idOf = el => {
@@ -458,7 +459,8 @@ function profileAgent(id){
     return '';
   };
   const hit = [...rows].reverse().find(el => idOf(el) === id);
-  const name = hit && hit.querySelector('[data-a-target="chat-message-username"], .chat-author__display-name, #author-name, button[title], button');
+  const NAMES = ['[data-a-target="chat-message-username"]', '.chat-author__display-name', '#author-name', 'button[data-prevent-expand]', 'button.inline.font-bold'];
+  const name = hit && NAMES.map(s => hit.querySelector(s)).find(Boolean);
   if (!name) return false;
   hit.scrollIntoView({ block: 'center' });
   name.click();
