@@ -177,8 +177,9 @@ async function pinAgent(as, nameAs){
 // The messages the site's chat already shows, for ALL as it starts reading the chat (feedAgent only hears what comes
 // after), in feedAgent's batch shape, each as its live connection would have brought it: Kick's as its live events (the
 // lines it shows, and the history its chat loads with), Twitch's as its chat's lines (IRC, from what each line shows),
-// YouTube's as its actions. -> { s, raw: [...] }, or null (none, or unreadable)
-async function shownAgent(as, nameAs){
+// YouTube's as its actions. Twitch draws its chat's recent messages a moment after its page loads (as the app starts,
+// later still): it waits for them, until its lines stop coming or `wait` ms. -> { s, raw: [...] }, or null (none, or unreadable)
+async function shownAgent(as, nameAs, wait = 8000){
   const site = as || (/(^|\.)kick\.com$/.test(location.hostname) ? 'kick' : /(^|\.)twitch\.tv$/.test(location.hostname) ? 'twitch' : 'youtube');
   const name = nameAs || (location.pathname.match(/\/popout\/([^/]+)/) || [])[1];   // (as, nameAs: the tests')
   const propsOf = (el, key) => {
@@ -205,6 +206,21 @@ async function shownAgent(as, nameAs){
     }
     if (site === 'twitch'){
       const room = decodeURIComponent(name || '').toLowerCase();
+      const rows = () => document.querySelectorAll('.chat-line__message');
+      for (let n = -1, still = 0, t = Date.now(); Date.now() - t < wait; ){   // (its lines there, and none new for half a second)
+        const now = rows().length; still = now && now === n ? still + 1 : 0; n = now;
+        if (still >= 2) break;
+        await new Promise(r => setTimeout(r, 250));
+      }
+      const msgs = [...rows()].map(el => propsOf(el, 'message')).filter(Boolean);
+      // a shared chat (Twitch's Stream Together): the channel each line was sent in, as its live ones say it, and this
+      // channel's id beside it (a line from another channel: the badges it shows are its badges there)
+      let own = '';
+      if (name && msgs.some(m => m.sourceRoomID)) try {
+        const query = `query { user(login: ${JSON.stringify(room)}) { id } }`;
+        const r = await (await fetch('https://gql.twitch.tv/gql', { method: 'POST', headers: { 'Client-Id': 'kimne78kx3ncx6brgo4mv6wki5h1ko', 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) })).json();
+        own = String((r && r.data && r.data.user && r.data.user.id) || '');
+      } catch (e) {}
       const tag = v => String(v).replace(/\\/g, '\\\\').replace(/;/g, '\\:').replace(/ /g, '\\s').replace(/\r/g, '\\r').replace(/\n/g, '\\n');
       const line = m => {
         const u = m.user || {}, login = String(u.userLogin || '').toLowerCase();
@@ -223,10 +239,11 @@ async function shownAgent(as, nameAs){
         const tags = { 'badge-info': months ? `subscriber/${months}` : '', badges: Object.entries(m.badges || {}).map(([k, v]) => `${k}/${v}`).join(','), bits: +m.bits || '',
           color: u.color || '', 'display-name': u.userDisplayName || login, emotes: Object.entries(emotes).map(([id, at]) => `${id}:${at.join(',')}`).join('/'),
           'first-msg': m.isFirstMsg ? '1' : '', id: m.id, login, 'tmi-sent-ts': +m.timestamp || '', 'user-id': u.userID || '',
+          ...(m.sourceRoomID ? { 'source-room-id': m.sourceRoomID, 'room-id': own, 'source-badges': Object.entries(m.badges || {}).map(([k, v]) => `${k}/${v}`).join(','), 'source-badge-info': months ? `subscriber/${months}` : '' } : {}),
           ...(r && r.parentMsgId ? { 'reply-parent-msg-id': r.parentMsgId, 'reply-parent-user-login': r.parentUserLogin || '', 'reply-parent-display-name': r.parentDisplayName || '', 'reply-parent-msg-body': r.parentMessageBody || '' } : {}) };
         return '@' + Object.entries(tags).filter(([, v]) => v !== '').map(([k, v]) => `${k}=${tag(v)}`).join(';') + ` :${login}!${login}@${login}.tmi.twitch.tv PRIVMSG #${room} :${text.replace(/[\r\n]+/g, ' ')}`;
       };
-      const raw = [...document.querySelectorAll('.chat-line__message')].map(el => propsOf(el, 'message')).filter(Boolean).map(line).filter(Boolean);
+      const raw = msgs.map(line).filter(Boolean);
       return raw.length ? { s: 'twitch', raw } : null;
     }
     const KIND = { 'yt-live-chat-text-message-renderer': 'liveChatTextMessageRenderer', 'yt-live-chat-paid-message-renderer': 'liveChatPaidMessageRenderer',
