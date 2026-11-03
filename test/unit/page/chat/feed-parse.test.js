@@ -23,9 +23,10 @@ test('Twitch: a giant emote; a shared chat\'s message from another channel (its 
   assert.deepEqual(g.parts, [{ emote: 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0', name: 'Kappa' }]);
   assert.ok(KNOWN.twitch['PRIVMSG:gigantified-emote-message']);
   const other = parseTwitch(TW({ badges: '', 'room-id': '100', 'source-room-id': '200', 'source-id': 's1', id: 'm1', 'source-badges': 'subscriber/18,vip/1', 'source-badge-info': 'subscriber/21' }, ':a!a@a PRIVMSG #q :hi'));
-  assert.deepEqual([other.from, other.sourceId, other.badges, other.pics], ['200', 's1', ['sub', 'vip'], [{ set: 'subscriber', v: '18', months: 21 }, { set: 'vip', v: '1' }]]);
+  assert.deepEqual([other.from, other.sentIn, other.sourceId, other.badges, other.pics], ['200', '200', 's1', ['sub', 'vip'], [{ set: 'subscriber', v: '18', months: 21 }, { set: 'vip', v: '1' }]]);
   const own = parseTwitch(TW({ badges: 'moderator/1', 'room-id': '100', 'source-room-id': '100', 'source-id': 'm2', id: 'm2', 'source-badges': 'moderator/1' }, ':a!a@a PRIVMSG #q :hi'));
-  assert.deepEqual([own.from, own.sourceId, own.badges], [undefined, 'm2', ['mod']], 'from this chat itself: no other channel');
+  assert.deepEqual([own.from, own.sentIn, own.sourceId, own.badges], [undefined, '100', 'm2', ['mod']], 'from this chat itself: no other channel, sent in this one');
+  assert.equal(parseTwitch(TW({ 'room-id': '100', id: 'm3' }, ':a!a@a PRIVMSG #q :hi')).sentIn, undefined, 'no shared chat: nowhere said');
   assert.equal(parseTwitch(TW({ id: 'x' }, ':a!a@a PRIVMSG #q :hi')).sourceId, undefined, 'not a shared chat');
 });
 
