@@ -571,7 +571,7 @@ const IGNORED = {
     'hermes:update-message': 'a message edited (it carries only the message’s id, not its new words)', 'hermes:?': 'the connection’s own (no type)',
     'hermes:extension_message': 'an extension’s own message (its panel in Twitch’s chat)',
     'hermes:stream-up': 'the stream starting (the live check says so)', 'hermes:favorite-channel-update': 'streaming together (Twitch’s own panel)', 'hermes:collaboration-status-refetch': 'streaming together (Twitch’s own panel)',
-    ...Object.fromEntries(['group-updated', 'group-disbanded', 'session-started', 'session-updated', 'session-ended', 'session-role-changed', 'slot-assignments-changed', 'slot-settings-changed', 'call-ended']
+    ...Object.fromEntries(['group-updated', 'group-disbanded', 'session-created', 'session-started', 'session-updated', 'session-ended', 'session-role-changed', 'slot-assignments-changed', 'slot-settings-changed', 'call-ended']
       .map(n => ['hermes:' + n, 'streaming together (Twitch’s own panel)'])),
     'hermes:automatic-reward-redeemed': 'a reward Twitch runs itself (a giant emote: its message is the line)',
  'hermes:chat_rich_embed': 'a link’s preview card (the link is in its message)',

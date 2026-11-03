@@ -1854,7 +1854,7 @@ test('ALL: YouTube\'s chat blocked as it loads is asked again a moment later (it
   assert.equal(await st(), '');
 });
 
-test('ALL: where you moderate Twitch, its moderation lines say who (its moderation actions, before or after its chat\'s line); a deleted message says by whom; a mode changed is a line', async t => {
+test('ALL: where you moderate Twitch, its moderation lines say who (its moderation actions, before or after its chat\'s line); the same ban twice is one line; a deleted message says by whom; a mode changed is a line', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
   await page.evaluate(() => { window.allChat.modKnown.set('tw:quietkoala', true); window.allChat.syncMod(); });
@@ -1869,10 +1869,19 @@ test('ALL: where you moderate Twitch, its moderation lines say who (its moderati
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [act('ban', ['rude'], { target_user_login: 'rude' })] });
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'room-id': '1' }, ':tmi.twitch.tv CLEARCHAT #quietkoala :rude')] });
   assert.equal((await lines(page)).pop(), 'al-ev | TNightOwl banned rude');
+  // the same ban again (Twitch sends one twice, a shared chat's, well after the first): still one line
+  const before = await lines(page);
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'room-id': '1' }, ':tmi.twitch.tv CLEARCHAT #quietkoala :rude')] });
+  assert.deepEqual(await lines(page), before, 'one line for one ban');
   // a ban or timeout lifted: its own line, as in Twitch's chat (their name as their lines have it)
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [act('unban', ['rude'], { target_user_login: 'rude' })] });
   assert.equal((await lines(page)).pop(), 'al-ev | TNightOwl lifted the ban on rude');
   assert.deepEqual(await page.$$eval('#stage .win.chat:not(.tab-hidden) .all-list .al-log', l => l.slice(-2).map(e => e.classList.contains('al-lift'))), [false, true], 'a ban\'s line red, its lifting green');
+  // banned again once it was lifted, and a second timeout: each its own line
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'room-id': '1' }, ':tmi.twitch.tv CLEARCHAT #quietkoala :rude')] });
+  assert.equal((await lines(page)).pop(), 'al-ev | Trude was banned');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'ban-duration': '60' }, ':tmi.twitch.tv CLEARCHAT #quietkoala :loudmouth99')] });
+  assert.equal((await lines(page)).pop(), 'al-ev | Tloudmouth99 was timed out · 1m');
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [act('untimeout', ['LoudMouth99'])] });
   assert.equal((await lines(page)).pop(), 'al-ev | TNightOwl lifted the timeout on loudmouth99');
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [act('unban', ['nobodyhere'])] });
