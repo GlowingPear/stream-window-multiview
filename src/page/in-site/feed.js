@@ -388,7 +388,14 @@ async function modesAgent(as, nameAs, wait = 8000){
 function lineProbe(html){
   const rows = document.querySelectorAll('.chat-line__message, [data-index], yt-live-chat-text-message-renderer');
   const last = rows[rows.length - 1];
-  const out = { n: rows.length, last: last ? last.innerText.replace(/\s+/g, ' ').slice(0, 200) : '' };
+  const out = { n: rows.length, last: last ? last.innerText.replace(/\s+/g, ' ').slice(0, 200) : '', id: '' };
+  // its message's id (as messageHtml finds it): a line drawn late, of a message already read, is no sign of trouble
+  if (last && last.id) out.id = last.id;
+  else for (const node of last ? [last, last.querySelector('.group')].filter(Boolean) : []){
+    const k = Object.keys(node).find(x => x.startsWith('__reactFiber'));
+    for (let f = k && node[k], i = 0; f && i < 6 && !out.id; f = f.return, i++){ const p = f.memoizedProps || {}, m = p.message || p.notice || p.msg; if (m && m.id) out.id = String(m.id); }
+    if (out.id) break;
+  }
   if (html && last){
     const c = last.cloneNode(true), keep = /^(class|id|role|data-a-target|data-index|data-testid)$/;
     const walk = document.createTreeWalker(c, NodeFilter.SHOW_TEXT);
