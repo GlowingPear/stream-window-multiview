@@ -313,7 +313,7 @@ test('a pin already up (pinAgent): Kick\'s chat history, Twitch\'s pinnedChatMes
   assert.deepEqual(got.asked, ['/api/v2/channels/quietkoala', 'https://web.kick.com/api/v1/chat/77/history', 'https://gql.twitch.tv/gql query { user(login: "quietkoala") { channel']);
 });
 
-test('what the chat already shows (shownAgent): Kick\'s lines and the history its chat loads with, Twitch\'s lines as its chat\'s lines, YouTube\'s lines\' own data; each read as the live ones are', async t => {
+test('what the chat already shows (shownAgent): Kick\'s lines and the history its chat loads with, Twitch\'s lines as its chat\'s lines (a shared chat\'s too, and its history drawn late), YouTube\'s lines\' own data; each read as the live ones are', async t => {
   const page = await openApp(t);
   const got = await page.evaluate(async () => {
     const { feedParse } = await import('./page/chat/feed-parse.js');
@@ -346,7 +346,15 @@ test('what the chat already shows (shownAgent): Kick\'s lines and the history it
       reply: { parentMsgId: 't1', parentUserLogin: 'tinroof', parentDisplayName: 'TinRoof', parentMessageBody: 'gg Kappa' }, isFirstMsg: true });
     line('chat-line__message', { id: 't3', user: { userLogin: 'gone' }, messageParts: [{ type: 0, content: 'deleted' }], deleted: true });
     line('chat-line__message', { id: 't4', user: { userLogin: 'body' }, messageParts: [], messageBody: 'only its body' });
-    out.twitch = feedParse.parseFeed(await window.shownAgent('twitch', 'QuietKoala')).map(m => ({ id: m.id, t: m.t, sender: m.sender, login: m.login, color: m.color, badges: m.badges, pics: m.pics, parts: m.parts.map(p => p.text || '[' + p.name + ']'), reply: m.reply, first: m.first }));
+    // a shared chat: another channel's line, this channel's own, and one drawn late (Twitch's history comes a moment
+    // after its page): waited for
+    line('chat-line__shared-chat-message chat-line__message', { id: 't5', timestamp: 1793286892690, user: { userLogin: 'pebble' }, badges: { vip: '1' }, messageParts: [{ type: 0, content: 'hi from the other chat' }], sourceRoomID: '200' });
+    line('chat-line__message', { id: 't6', timestamp: 1793286893690, user: { userLogin: 'drift' }, badges: {}, messageParts: [{ type: 0, content: 'from this chat' }], sourceRoomID: '100' });
+    setTimeout(() => line('chat-line__message', { id: 't7', timestamp: 1793286894690, user: { userLogin: 'late' }, badges: {}, messageParts: [{ type: 0, content: 'drawn late' }] }), 300);
+    window.fetch = async (url, o) => { asked.push(String(url) + ' ' + JSON.parse(o.body).query); return { json: async () => ({ data: { user: { id: '100' } } }) }; };
+    const tw = feedParse.parseFeed(await window.shownAgent('twitch', 'QuietKoala'));
+    out.twShared = tw.filter(m => /^t[5-7]$/.test(m.id)).map(m => [m.id, m.from, m.sentIn, m.badges]);
+    out.twitch = tw.filter(m => !/^t[5-7]$/.test(m.id)).map(m => ({ id: m.id, t: m.t, sender: m.sender, login: m.login, color: m.color, badges: m.badges, pics: m.pics, parts: m.parts.map(p => p.text || '[' + p.name + ']'), reply: m.reply, first: m.first }));
     wrap.replaceChildren();
     // YouTube: its lines' own data
     const yt = (tag, data) => { const el = document.createElement(tag); el.data = data; wrap.append(el); };
@@ -355,7 +363,7 @@ test('what the chat already shows (shownAgent): Kick\'s lines and the history it
     yt('yt-live-chat-text-message-renderer', null);
     out.youtube = feedParse.parseFeed(await window.shownAgent('youtube')).map(m => [m.kind, m.id, m.sender, m.amount || '']);
     wrap.replaceChildren();
-    out.empty = [await window.shownAgent('twitch', 'quietkoala'), await window.shownAgent('youtube')];
+    out.empty = [await window.shownAgent('twitch', 'quietkoala', 300), await window.shownAgent('youtube')];
     window.fetch = was; wrap.remove();
     return { out, asked };
   });
@@ -368,6 +376,9 @@ test('what the chat already shows (shownAgent): Kick\'s lines and the history it
       parts: ['gg ', '[Kappa]', ' and 😀 ', '[Kappa]', ' a;b\\c'], reply: undefined, first: undefined },
     { id: 't2', t: 1793286891690, sender: 'quill', login: 'quill', color: '', badges: [], pics: [], parts: ['yes https://x.y'], reply: { id: 't1', sender: 'TinRoof', login: 'tinroof', body: 'gg Kappa' }, first: true },
     { id: 't4', t: got.out.twitch[2].t, sender: 'body', login: 'body', color: '', badges: [], pics: [], parts: ['only its body'], reply: undefined, first: undefined }], 'as its chat\'s lines: emotes where they are (after an emoji too), its months, a reply without its @; not a deleted line');
+  assert.deepEqual(got.out.twShared, [['t5', '200', '200', ['vip']], ['t6', undefined, '100', []], ['t7', undefined, undefined, []]],
+    'a shared chat\'s lines, as its live ones: another channel\'s and this one\'s; one drawn late, waited for');
+  assert.ok(got.asked.includes('https://gql.twitch.tv/gql query { user(login: "quietkoala") { id } }'), 'this channel\'s id asked, for a shared chat');
   assert.deepEqual(got.out.youtube, [['message', 'y1', '@MikaR', ''], ['event', 'y2', '@Fan', '$5.00']]);
   assert.deepEqual(got.out.empty, [null, null]);
   assert.deepEqual(got.asked.slice(0, 2), ['/api/v2/channels/quietkoala', 'https://web.kick.com/api/v1/chat/77/history']);
