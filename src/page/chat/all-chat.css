@@ -52,6 +52,8 @@
 .al-bi{height:18px;width:auto;max-width:36px;flex:none;object-fit:contain;border-radius:3px}
 /* a shared chat's message from another channel: that channel's picture, round, before the badges (as Twitch's chat has it) */
 .al-from{width:16px;height:16px;flex:none;border-radius:50%;object-fit:cover;background:color-mix(in srgb,var(--text) 18%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--text) 22%,transparent)}
+/* this chat's own channel's: a ring in its colour (Twitch's), the same size overall */
+.al-from.al-own{width:14px;height:14px;margin:0 1px;box-shadow:0 0 0 2px var(--ring,var(--accent))}
 /* a giant emote (Twitch's): under the name, about four times its size */
 .al-giant{display:block;margin-top:2px}.al-giant .al-e{height:88px;margin:0}
 .al-bk{display:inline-grid;place-items:center;width:18px;height:18px;flex:none}.al-bk svg{width:18px;height:18px}
