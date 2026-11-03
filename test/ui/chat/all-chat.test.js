@@ -2056,6 +2056,32 @@ test('ALL\'s health: a site whose chat has new messages while ALL read none is l
   assert.deepEqual(await tabs(page), ['ALL', 'K', 'T*', 'Y']);
 });
 
+test('ALL\'s health: lines its chat draws late, of messages ALL already read, are no sign of trouble (a chat page in the background draws about once a minute); a newest line ALL never read, or one without an id, still is', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(() => {
+    window.__probe = 0; window.__reloads = 0; window.__newest = '';
+    const w = window.openWins().find(o => o.channel === 'tw:quietkoala');
+    w.ready = true; w.feedOn = true;
+    w.view.executeJavaScript = async js => (/lineProbe|rows\[rows.length - 1\]/.test(js) ? { n: 50, last: 'line ' + (++window.__probe), id: window.__newest } : true);
+    w.view.reload = () => { window.__reloads++; };
+  });
+  const check = () => page.evaluate(() => window.allHealth.checkAll());
+  const reloads = () => page.evaluate(() => window.__reloads);
+  await check();                                   // (the first look)
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: ['a1', 'a2', 'a3'].map(id => TW({ 'display-name': 'drift', id }, ':drift!d@d PRIVMSG #quietkoala :hi ' + id)) });
+  await check();                                   // (read: fine)
+  for (const id of ['a1', 'a2', 'a3']){ await page.evaluate(id => { window.__newest = id; }, id); await check(); }   // drawn one a minute, nothing new read
+  assert.equal(await reloads(), 0, 'what it read, drawn late: not loaded again');
+  assert.equal(await page.evaluate(() => !window.openWins().find(o => o.channel === 'tw:quietkoala').feedBroke), true, 'the alerts keep its connection');
+  await page.evaluate(() => { window.__newest = 'never-read'; }); await check(); await check();
+  assert.equal(await reloads(), 1, 'a message it never read: loaded again');
+  await page.evaluate(() => window.allHealth.chatLoaded('tw:quietkoala'));
+  await page.evaluate(() => { window.__newest = ''; }); await check(); await check(); await check();
+  assert.equal(await reloads(), 1, 'without an id: as before (it tries again first, then says so)');
+  assert.equal(await page.$eval('.all-sites .pi-twitch', e => e.classList.contains('warn')), true);
+});
+
 test('ALL: :name suggests the send site\'s emotes (with pictures), the smiley opens its picker; picking one locks the box to that site and sends it as the site writes it', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
