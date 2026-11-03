@@ -77,9 +77,11 @@ function parseTwitch(line){
     pics: twitchPics((g.badges || '').split(',').filter(Boolean).map(b => b.split('/')), g['badge-info'] || ''),
     parts: twitchParts(text, g.emotes)
   };
-  // a shared chat (Twitch's Stream Together): a message from another channel's chat, with its badges there, and the id
-  // it has in every chat of the session (the same message, read from two of them, is shown once)
+  // a shared chat (Twitch's Stream Together): the channel each line was sent in (this one's too: Twitch's chat puts its
+  // picture on every line of the session), a message from another channel's chat with its badges there, and the id it
+  // has in every chat of the session (the same message, read from two of them, is shown once)
   if (g['source-id']) msg.sourceId = g['source-id'];
+  if (g['source-room-id']) msg.sentIn = g['source-room-id'];
   if (g['source-room-id'] && g['room-id'] && g['source-room-id'] !== g['room-id']){
     msg.from = g['source-room-id'];
     msg.badges = badgeKinds((g['source-badges'] || '').split(',').map(b => b.split('/')[0]).filter(Boolean));

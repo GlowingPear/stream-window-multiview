@@ -140,7 +140,7 @@ function ingest(w, json, quiet = false, shown = false){
     if (m.id && f.byId.has(m.site + ':' + m.id)) return;   // (one it has: YouTube sends its recent ones again when its chat is rebuilt or switches view)
     if (m.sourceId && f.msgs.some(x => x.site === 'twitch' && x.sourceId === m.sourceId)) return;   // (a shared chat's message, read from two of its chats)
     m.ch = w.channel;
-    if (m.from) sharedAsk(w, m.from);
+    if (m.sentIn) sharedAsk(w, m.sentIn);
     const mk = m.id && f.marks && f.marks.get(m.site + ':' + m.id); if (mk){ m.marks = mk; f.marks.delete(m.site + ':' + m.id); }   // (its marks came first)
     waitingFlags(f, m);
     if (m.giftTo && giftTo(f, m)) return;   // (one of the gifted subs announced just before: its name goes on that line)
@@ -202,7 +202,7 @@ function giftTo(f, m){
 }
 /* ---- the chats' modes: slow mode, followers only, subscribers only, … above the box, for the site it sends on ---- */
 const badgePics = new Map();   // channel -> its badges' pictures, as badgesAgent read them (in-site/feed.js), or null (none); while it has a chat open
-const sharedFrom = new Map();   // a shared chat's other channel (Twitch's room id) -> { login, name, pic } as channelsAgent read it (in-site/feed.js), or null (being asked)
+const sharedFrom = new Map();   // a shared chat's channel, this one or another (Twitch's room id) -> { login, name, pic } as channelsAgent read it (in-site/feed.js), or null (being asked)
 let twBadges = null;           // Twitch's own badges' pictures (the same in every chat: kept once)
 const twRooms = new Map();     // a Twitch channel -> its id (Twitch's room id), from its ROOMSTATE or twRoomAgent (in-site/feed.js); while it has a chat open
 const kickIcons = new Map();   // Kick's own badge icons as its chat draws them (kickIconsAgent), cleaned: '<type>' | 'Gift25' | 'Level24' -> <svg>
@@ -282,8 +282,8 @@ function redrawLine(m){
   const view = viewFor(ownerOf(m.ch)), el = view && view.list.querySelector(`[data-key="${CSS.escape(m.site + ':' + m.id)}"]`);
   if (el){ const n = lineEl(m); if (n) el.replaceWith(n); else el.remove(); return n; }
 }
-// A shared chat's message from another channel (Twitch's Stream Together): that channel's name and picture, asked of the
-// chat it came through once, and its lines drawn again when they come (no answer: asked again a minute later)
+// A shared chat's channel (Twitch's Stream Together), this one or another in the session: its name and picture, asked of
+// the chat it came through once, and its lines drawn again when they come (no answer: asked again a minute later)
 function sharedAsk(w, id){
   if (sharedFrom.has(id) || !w.view) return;
   sharedFrom.set(id, null);
@@ -291,13 +291,13 @@ function sharedAsk(w, id){
     const u = r && r.find(x => x.id === id);
     if (!u){ setTimeout(() => { if (sharedFrom.get(id) === null) sharedFrom.delete(id); }, 60000); return; }
     sharedFrom.set(id, u);
-    feeds.forEach(f => f.msgs.filter(x => x.from === id).forEach(redrawLine));
+    feeds.forEach(f => f.msgs.filter(x => x.sentIn === id).forEach(redrawLine));
   });
 }
-// Its badge on the line, before the others, as Twitch's chat has it: the channel's picture, its name on hover (a dot
-// until it's known)
+// Its badge on each of the session's lines, before the others, as Twitch's chat has it: the picture of the channel it was
+// sent in, its name on hover (a dot until it's known)
 function sharedEl(m){
-  const c = sharedFrom.get(m.from), title = c ? `Sent from ${c.name}` : 'Sent from another channel in this shared chat';
+  const c = sharedFrom.get(m.sentIn), title = c ? `Sent from ${c.name}` : m.from ? 'Sent from another channel in this shared chat' : 'Sent in this shared chat';
   return c && c.pic ? element('img', { class: 'al-from', src: c.pic, alt: '', title, referrerPolicy: 'no-referrer', loading: 'lazy' }) : element('span', { class: 'al-from', title });
 }
 // Spam alerts › Tag the message in chat (where you moderate: alerts/spam-alerts.js): the same message here gets it too
@@ -762,7 +762,7 @@ function lineEl(m){
   if (m.kind === 'modlog') return element('div', { class: `al-ev al-log al-${SITE_CLASS[m.site]}` + (m.lift ? ' al-lift' : ''), dataset: { key: m.site + ':' + m.id } },
     element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0]), element('span', { class: 'al-evt', html: SHIELD }), element('span', 'al-evw', ...m.words.map(x => x instanceof Node ? x.cloneNode(true) : x)));
   const site = PLAT_NAME[m.site] || m.site;
-  const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]), m.from && sharedEl(m), ...badgeEls(m));
+  const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]), m.sentIn && sharedEl(m), ...badgeEls(m));
   const can = m.kind === 'message' && !whyNot(m, 'delete'), canAll = can && !whyNot(m);
   const st = nameStyle(m);
   const name = element('b', { class: 'al-n' + (can ? ' can' : '') + pillCls(st), style: st, role: 'button', tabindex: '-1', dataset: { cmd: 'all.profile' },
