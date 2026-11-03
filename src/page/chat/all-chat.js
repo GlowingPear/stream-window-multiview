@@ -355,10 +355,17 @@ function removed(f, view, d, ch){
   // apart, as a moderation action, before or after: modAction)
   if (d.kind === 'delete'){ const by = d.site === 'twitch' && takeModBy('msg:' + d.target); if (by && hit[0] && hit[0].deleted){ hit[0].deleted.who = by; lineOf(hit[0])?.replaceWith(lineEl(hit[0])); } return; }
   if (!mod && d.kind !== 'clearall') return;
+  if (d.kind === 'clear' && !d.until && stillBanned(f, d.site, ch, d.login)){ if (d.site === 'twitch') takeModBy('user:' + d.login); return; }   // (the same ban again: one line)
   const who = hit[0] ? hit[0].sender : d.login;
   if (!d.by && d.site === 'twitch') d.by = takeModBy(d.kind === 'clearall' ? 'clear' : 'user:' + d.login) || '';
   const m = { kind: 'modlog', site: d.site, ch, id: 'log' + (++logN), t: d.t, d, who, words: logWords(d, who, site) };
   f.msgs.push(m); if (view) addLine(view, m);
+}
+// Banned, as their last moderation line here says (not timed out, and not lifted since): Twitch can send the same ban
+// twice (a shared chat's), well after the first
+function stillBanned(f, site, ch, login){
+  const last = login && [...f.msgs].reverse().find(x => x.kind === 'modlog' && x.site === site && x.ch === ch && x.d && x.d.login === login);
+  return !!last && !last.lift && last.d.kind === 'clear' && !last.d.until;
 }
 // A moderation line's words: who did it (where known), to whom, how long
 function logWords(d, who, site){
@@ -427,7 +434,7 @@ function modAction(f, view, a, ch){
   }
   if (/^un(ban|timeout)$/.test(a.action)){   // (its own line, as in Twitch's chat; their name as their lines have it)
     const last = a.target && [...f.msgs].reverse().find(x => x.kind === 'message' && x.site === a.site && x.ch === ch && x.login === a.target);
-    if (a.target) unbanned(f, view, { site: a.site, by: a.by, who: last ? last.sender : a.target, t: a.t, timeout: a.action === 'untimeout' }, ch);
+    if (a.target) unbanned(f, view, { site: a.site, by: a.by, login: a.target, who: last ? last.sender : a.target, t: a.t, timeout: a.action === 'untimeout' }, ch);
     return;
   }
   const said = MODE_SAID[a.action]; if (!said) return;
@@ -441,7 +448,7 @@ function unbanned(f, view, d, ch){
   if (!youMod(ch)) return;
   const what = d.timeout ? 'timeout' : 'ban';
   const words = [...(d.by ? [element('b', null, d.by), ` lifted the ${what} on `] : []), element('b', null, d.who), d.by ? '' : `'s ${what} was lifted`];
-  const m = { kind: 'modlog', site: d.site, ch, id: 'log' + (++logN), t: d.t, d: { by: d.by || '' }, words, lift: true };
+  const m = { kind: 'modlog', site: d.site, ch, id: 'log' + (++logN), t: d.t, d: { by: d.by || '', login: d.login }, words, lift: true };
   f.msgs.push(m); if (view) addLine(view, m);
 }
 
