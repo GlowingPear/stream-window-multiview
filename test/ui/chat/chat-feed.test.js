@@ -49,9 +49,37 @@ test('ALL: a mention, a reply and support from a chat its page never drew alert 
     TW({ 'display-name': 'Giftowl', login: 'giftowl', 'msg-id': 'subgift', id: 'g2', 'msg-param-recipient-display-name': 'Tinroof', 'msg-param-community-gift-id': 'cg1' }, ':tmi.twitch.tv USERNOTICE #quietkoala'),
     TW({ 'display-name': 'Metwitch', login: 'metwitch', 'msg-id': 'submysterygift', id: 'g3', 'msg-param-mass-gift-count': '9' }, ':tmi.twitch.tv USERNOTICE #quietkoala')] });
   assert.deepEqual((await notes(page, 'support')).sort(), ['tw:quietkoala Giftowl: gifted 3 subs', 'tw:quietkoala Quill: cheered 500 bits']);
-  // a site its readers don't read from its connection yet (YouTube): nothing from it
+  // a channel with no chat open here: nothing from it
   await page.evaluate(() => window.chatFeed.fromFeed('yt:@quietkoala', { site: 'youtube', kind: 'message', id: 'y1', sender: 'x', parts: [{ text: '@mekick' }] }));
   assert.equal((await notes(page, 'mention')).length, 1);
+});
+
+test('YouTube\'s chat from its connection too (#303): Super Chats, new members and memberships gifted alert, once each; its messages count and show over the stream; no mentions there (yet)', async t => {
+  const page = await openApp(t, { init: `if (window === top){ localStorage.setItem('kickMultiview.myName', 'mekick'); localStorage.setItem('kickMultiview.alerts', ${JSON.stringify(JSON.stringify({ mention: { sound: 'none' }, support: { on: true, sound: 'none' } }))}); }` });
+  await add(page, 'https://www.youtube.com/@quietkoala');
+  if (await page.isVisible('text=Got it')) await page.click('text=Got it');
+  await page.evaluate(() => { const s = document.getElementById('chatCountsSet'); s.checked = true; s.dispatchEvent(new Event('change')); window.setChatOverlay(true); });
+  await win(page, '@quietkoala').locator('[data-a=max]').click(); await page.waitForTimeout(400);   // its stream over its chat
+  // as the chat's connection brings them (chat/feed-parse.js: test/unit/page/chat/feed-parse.test.js)
+  const YT = (type, r) => ({ addChatItemAction: { item: { [type]: { timestampUsec: String(Date.now() * 1000), authorExternalChannelId: 'UC1', ...r } } } });
+  const raws = [YT('liveChatPaidMessageRenderer', { id: 'sc1', authorName: { simpleText: '@Pixelfox' }, purchaseAmountText: { simpleText: '$20.00' }, message: { runs: [{ text: 'for the snacks' }] } }),
+    YT('liveChatMembershipItemRenderer', { id: 'mb1', authorName: { simpleText: '@Tinroof' }, headerSubtext: { runs: [{ text: 'Welcome to Koala Club!' }] } }),
+    YT('liveChatMembershipItemRenderer', { id: 'mb2', authorName: { simpleText: '@Oakmoss' }, headerPrimaryText: { runs: [{ text: 'Member for 6 months' }] } }),
+    YT('liveChatSponsorshipsGiftPurchaseAnnouncementRenderer', { id: 'gp1', header: { liveChatSponsorshipsHeaderRenderer: { authorName: { simpleText: '@Giftowl' }, primaryText: { runs: [{ text: 'Sent ' }, { text: '5' }, { text: ' Koala Club gift memberships' }] } } } }),
+    YT('liveChatSponsorshipsGiftRedemptionAnnouncementRenderer', { id: 'gr1', authorName: { simpleText: '@Ann' }, message: { runs: [{ text: 'received a gift membership by @Giftowl' }] } }),
+    YT('liveChatTextMessageRenderer', { id: 'tx1', authorName: { simpleText: '@Driftwood' }, message: { runs: [{ text: 'hey @mekick' }] } })];
+  const send = () => page.evaluate(raws => import('./page/chat/feed-parse.js').then(({ feedParse }) => { feedParse.parseFeed({ s: 'youtube', raw: raws }).forEach(m => window.chatFeed.fromFeed('yt:@quietkoala', m)); window.chatFeed.flush(); }), raws);
+  await send();
+  assert.deepEqual((await notes(page, 'support')).sort(), ['yt:@quietkoala @Giftowl: gifted 5 memberships', 'yt:@quietkoala @Pixelfox: sent a Super Chat: $20.00', 'yt:@quietkoala @Tinroof: became a member'],
+    'a member for a while and each gift given: not again');
+  assert.equal(await page.evaluate(() => window.chatFeed.live('yt:@quietkoala')), true, 'its chat\'s screen reader asleep: the connection reads it');
+  assert.deepEqual(await notes(page, 'mention'), [], 'no mentions read on YouTube yet');
+  assert.equal(await win(page, '@quietkoala').locator('.bar-n').textContent(), '1', 'its message counted');
+  assert.deepEqual(await page.$$eval('#stage .win.stream .co-line', l => l.map(x => x.textContent)), ['@Driftwood: hey @mekick'], 'and over the stream');
+  // YouTube sends its recent ones again: once
+  await send();
+  assert.equal((await notes(page, 'support')).length, 3);
+  assert.equal(await win(page, '@quietkoala').locator('.bar-n').textContent(), '1');
 });
 
 test('chat over the stream and new-message counts from a chat\'s connection, a few at a time; your own counts over the stream only', async t => {
