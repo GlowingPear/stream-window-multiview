@@ -888,6 +888,20 @@ test('ALL: Twitch\'s suspicious-user flags are tags on the line (and a held card
   assert.deepEqual((await tags('f2')).map(x => x[0]), ['Likely ban evader', 'Restricted']);
   assert.equal(await page.textContent('.all-list [data-key="twitch:f2"] .al-only'), 'Only mods see this message');
   assert.equal(await page.$('.all-list [data-key="twitch:f1"] .al-only'), null);
+  // a restricted user's message only comes with its flags (never on the chat's connection): its line is drawn from them,
+  // once, even if the chat's line comes after all
+  const restricted = (id, text) => feed(page, 'tw:quietkoala', { s: 'twitch', raw: [HM('low_trust_user_new_message', { low_trust_user: { sender: { user_id: '5', login: 'n3wacc', display_name: 'N3wacc' },
+    ban_evasion_evaluation: 'LIKELY_EVADER', treatment: 'RESTRICTED' }, message_content: { text, fragments: [{ text }] }, message_id: id, sent_at: new Date().toISOString() })] });
+  await restricted('r1', 'best viewers here');
+  assert.deepEqual((await tags('r1')).map(x => x[0]), ['Likely ban evader', 'Restricted']);
+  assert.match(await page.textContent('.all-list [data-key="twitch:r1"]'), /N3wacc: best viewers here.*Only mods see this message/);
+  await say('r1', 'best viewers here');
+  assert.equal(await page.$$eval('.all-list [data-key="twitch:r1"]', l => l.length), 1);
+  // where the site said you're not a mod: only its flags, waiting for a line (as Twitch sends this only to moderators)
+  await page.evaluate(() => window.allChat.modKnown.set('tw:quietkoala', false));
+  await restricted('r2', 'hello again');
+  assert.equal(await page.$('.all-list [data-key="twitch:r2"]'), null);
+  await page.evaluate(() => window.allChat.modKnown.delete('tw:quietkoala'));
   // a held message's: on its card, and still on its line once let through
   await flags('f3', 'POSSIBLE_EVADER', 'ACTIVE_MONITORING');
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [HM('automod_caught_message', { id: 'f3', content_classification: { category: 'smart-detection', level: 2 },

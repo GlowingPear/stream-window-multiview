@@ -133,7 +133,7 @@ function ingest(w, json, quiet = false, shown = false){
     if (m.kind === 'automod') return heldMine(f, m);
     if (m.kind === 'marks') return markLine(f, m);
     if (m.kind === 'held') return heldNews(f, view, m, w.channel);
-    if (m.kind === 'flags') return flagLine(f, m);
+    if (m.kind === 'flags'){ if (!m.msg || f.byId.has('twitch:' + m.msgId) || notMod(w.channel)) return flagLine(f, m); m = { ...m.msg, flags: m.flags }; }   // (a restricted user's: its line is the flags' message)
     if (m.room && twRooms.has(w.channel) && twRooms.get(w.channel) !== m.room) return;   // (your own reward redeemed in another channel: Twitch sends it to every chat page)
     const hold = m.id && m.kind === 'message' && f.byId.get(m.site + ':' + m.id);
     if (hold && hold.kind === 'held') return heldAllowed(hold, '', m);   // (a held message let through: its line becomes the message)
@@ -1346,6 +1346,7 @@ const kShift = () => kCtrl() === 'Ctrl' ? 'Shift' : '⇧';
 const DOTS = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
 const modKnown = new Map();   // channel -> whether you moderate it, set by the tests (else the sites' answer, platforms.js modIs)
 const youMod = ch => modKnown.has(ch) ? modKnown.get(ch) : modIs.get(ch) === true;
+const notMod = ch => modKnown.has(ch) ? !modKnown.get(ch) : modIs.get(ch) === false;   // (the site said so: not while it's still asking)
 // The sites of this window's streamer whose mod view you can open
 const modViewChs = w => tabChannels(w).filter(ch => modUrl(ch) && youMod(ch));
 // Why you can't do that to them here (nothing: you can): 'delete', or else a timeout or ban. A mod's message can be
