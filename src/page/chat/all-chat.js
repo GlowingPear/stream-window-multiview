@@ -730,7 +730,7 @@ function shoutWho(m){
 }
 // Shout out on a special line (a sub, gift, Kicks, a reward redeemed): a small button on its right, while the pointer's on it
 function eventSo(m){
-  const raid = (m.support && m.support.kind === 'raid') || m.event === 'raid', p = m.kind === 'event' && !raid && shoutable(m);
+  const raid = (m.support && m.support.kind === 'raid') || m.event === 'raid', p = !raid && shoutable(m);
   return p && element('button', { type: 'button', class: 'al-so-ev', title: `Shout out ${m.sender} in ${PLAT_NAME[m.site]} chat`, 'aria-label': `Shout out ${m.sender}`, html: icon.megaphone, dataset: { cmd: 'all.eventShoutout' },
     onclick: e => { e.stopPropagation(); shoutOut(p); } });
 }
@@ -785,10 +785,14 @@ function lineEl(m){
   const name = element('b', { class: 'al-n' + (can ? ' can' : '') + pillCls(st), style: st, role: 'button', tabindex: '-1', dataset: { cmd: 'all.profile' },
     title: `${m.sender}'s card on ${site}` + (canAll ? `\n${kShift()}-click: delete · ${kCtrl()}-click: time out (${durText(lastTimeout())}) · ${kCtrl()}+${kShift()}-click: ban` : can ? `\n${kShift()}-click: delete` : ''),
     onclick: e => nameClick(m, e) }, m.sender);
-  if (m.kind === 'event'){
+  // (a reward redeemed with text, its reward named (Kick's): the card one without text is, its text as the card's message;
+  // with events hidden, still their message, with the reward's tag)
+  const redeemCard = m.kind === 'message' && m.redeem && m.redeem.title && eventsMode !== 'hidden';
+  if (m.kind === 'event' || redeemCard){
     if (eventsMode === 'hidden') return null;
-    const full = eventsMode === 'full' || !m.summary;
-    const words = full ? [m.text || m.sender] : m.summary.map((x, i) => x.strong ? element('b', i ? 'al-amt' : null, x.strong) : x.text);
+    const summary = redeemCard ? [{ strong: m.sender }, { text: ' redeemed ' }, { strong: m.redeem.title }] : m.summary;
+    const full = eventsMode === 'full' || !summary;
+    const words = full ? [redeemCard ? `${m.sender} redeemed ${m.redeem.title}` : m.text || m.sender] : summary.map((x, i) => x.strong ? element('b', i ? 'al-amt' : null, x.strong) : x.text);
     const to = m.gift ? m.gift.to : [], me = meOn(m.site);
     const open = m.open && !full;
     return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}${open ? ' al-open al-can' : ''}${to.length ? ' al-gift' : ''}${m.gift && m.gift.me ? ' al-gift-me' : ''}`, dataset: { key: m.site + ':' + m.id },
