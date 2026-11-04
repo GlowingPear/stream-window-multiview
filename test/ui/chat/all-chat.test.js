@@ -1510,6 +1510,8 @@ test('ALL: the ⋯ menu: the whole streamer\'s buttons as icons, then a line for
 test('ALL: a Kick reward redeemed with text is the card one without text is, its text as the card\'s message (stacked when opened or Events: Full, its message with the reward\'s tag when hidden); Twitch\'s is a message; Kicks sent and Kick\'s subs are events', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
+  // (Kick's emote pictures load, so a line's words don't depend on when one that can't load turns into its name)
+  await page.route('https://files.kick.com/emotes/**', r => r.fulfill({ contentType: 'image/gif', body: Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64') }));
   const KE = (event, data) => JSON.stringify({ push: { channel: 'chatroom_1', pub: { data: { event, data: JSON.stringify(data) } } } });
   await feed(page, 'quietkoala', { s: 'kick', raw: [KE('RewardRedeemedEvent', { reward_title: 'Shoutout', username: 'driftwood_7', user_input: 'say hi to sam', reward_background_color: '#00F1FF' }),
     KE('RewardRedeemedEvent', { reward_title: 'Hydrate', username: 'oakmoss', user_input: '' }), KE('KicksGifted', { gift_transaction_id: 'g1', sender: { username: 'Jshoti' }, gift: { name: 'Full Send', amount: 100 } }),
