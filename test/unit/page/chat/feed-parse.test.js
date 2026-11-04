@@ -262,6 +262,33 @@ test('Support, for support alerts: who, how much, and a gift\'s group, as fields
   assert.deepEqual(parseFeed({ s: 'kick', raw: [KE('KicksGifted', { sender: { username: 'a' }, gift: {} })] })[0].support, { kind: 'kicks', who: 'a', n: 1 }, 'without an amount: one');
 });
 
+test('Support on YouTube: Super Chats and Stickers (the amount with its currency), new members (not a member for a while), memberships gifted to the chat (not each one given)', async () => {
+  const { parseYouTube, parseFeed, leftOut, KNOWN } = await load();
+  const who = { authorName: { simpleText: '@Pixelfox' }, authorExternalChannelId: 'UCp', timestampUsec: '1793161469214882' };
+  const yt = (type, r) => parseYouTube(YT(type, { id: 'y', ...who, ...r }));
+  assert.deepEqual(yt('liveChatPaidMessageRenderer', { purchaseAmountText: { simpleText: '$1,234.50' } }).support, { kind: 'superchat', who: '@Pixelfox', n: 1234.5, amt: '$1,234.50' });
+  assert.deepEqual(yt('liveChatPaidMessageRenderer', { purchaseAmountText: { simpleText: '1.234,50 €' } }).support.n, 1234.5, 'a comma for cents');
+  assert.deepEqual(yt('liveChatPaidStickerRenderer', { purchaseAmountText: { simpleText: '¥500' } }).support, { kind: 'superchat', who: '@Pixelfox', n: 500, amt: '¥500' }, 'a Super Sticker: as its chat counts it');
+  assert.deepEqual(yt('liveChatPaidMessageRenderer', {}).support, { kind: 'superchat', who: '@Pixelfox', n: 1 }, 'no amount: one, no text');
+  assert.deepEqual(yt('liveChatMembershipItemRenderer', { headerSubtext: { runs: [{ text: 'Welcome to Koala Club!' }] } }).support, { kind: 'member', who: '@Pixelfox', n: 1 });
+  assert.equal(yt('liveChatMembershipItemRenderer', { headerPrimaryText: { runs: [{ text: 'Member for ' }, { text: '6' }, { text: ' months' }] }, headerSubtext: { simpleText: 'Koala Club' } }).support, undefined, 'a member for a while: not support');
+  // memberships gifted: the gifter in its header, how many in its words; its shape as YouTube's chat sends it (open-source readers of it)
+  const gift = (text, header = {}) => YT('liveChatSponsorshipsGiftPurchaseAnnouncementRenderer', { id: 'g1', timestampUsec: '1793161469214882', authorExternalChannelId: 'UCg',
+    header: { liveChatSponsorshipsHeaderRenderer: { authorName: { simpleText: '@Giftowl' }, primaryText: { runs: text }, authorBadges: [{ liveChatAuthorBadgeRenderer: { icon: { iconType: 'MODERATOR' } } }], ...header } } });
+  const g = parseYouTube(gift([{ text: 'Sent ' }, { text: '20', bold: true }, { text: ' ' }, { text: 'Koala Club' }, { text: ' gift memberships' }]));
+  assert.deepEqual([g.kind, g.event, g.sender, g.login, g.userId, g.badges, g.text, g.t], ['event', 'giftmemberships', '@Giftowl', 'giftowl', 'UCg', ['mod'], '@Giftowl gifted 20 memberships', 1793161469215]);
+  assert.deepEqual(g.summary, [{ strong: '@Giftowl' }, { text: ' gifted ' }, { strong: '20 memberships' }]);
+  assert.deepEqual(g.support, { kind: 'gifts', unit: 'memberships', who: '@Giftowl', n: 20 });
+  assert.deepEqual(parseYouTube(gift([{ text: 'Gifted 1,000 memberships' }])).support.n, 1000, 'its other words, a big one');
+  assert.deepEqual(parseYouTube(gift([{ text: 'Sent a gift membership' }])).summary[2], { strong: '1 membership' }, 'no number: one');
+  assert.deepEqual([parseYouTube(gift([], { authorName: null })).sender], ['Someone']);
+  assert.equal(KNOWN.youtube['addChatItemAction:liveChatSponsorshipsGiftPurchaseAnnouncementRenderer'], 'memberships gifted to the chat');
+  // each one given: left out on purpose (the gift is its own line)
+  const got = YT('liveChatSponsorshipsGiftRedemptionAnnouncementRenderer', { id: 'g2', ...who, message: { runs: [{ text: 'received a gift membership by ' }, { text: '@Giftowl', bold: true }] } });
+  assert.deepEqual(parseFeed({ s: 'youtube', raw: [got] }), []);
+  assert.equal(leftOut('youtube', got), true);
+});
+
 test('Kick: a reward redeemed (with text: a message with the reward; without: an event), Kicks sent, subs, gifted subs, a raid', async () => {
   const { parseKick, KNOWN } = await load();
   const KE = (event, data) => JSON.stringify({ push: { channel: 'chatroom_1', pub: { data: { event, data: JSON.stringify(data) } } } });

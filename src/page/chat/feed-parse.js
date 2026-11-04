@@ -450,6 +450,8 @@ function ytPics(list){
 }
 // A YouTube poll: { kind: 'poll', state ('open', 'update'), id, question, meta (its "who · how many votes" line),
 // choices: [{ text, ratio (0 to 1: of the votes, 0 before any) }] }
+// An amount of money as a number ("$1,234.50", "1.234,50 €", "¥500"): the screen reader's own (in-site/mentions.js)
+const moneyOf = t => { const c = String(t || '').replace(/[^\d.,]/g, ''); return +(/,\d{2}$/.test(c) ? c.replace(/\./g, '').replace(',', '.') : c.replace(/,/g, '')) || 0; };
 const ytWords = t => (t && (t.simpleText || ytText(Array.isArray(t.runs) ? t.runs : []))) || '';   // (a text YouTube gives as simpleText or runs)
 function ytPoll(p, state){
   const h = (p.header && p.header.pollHeaderRenderer) || {}, id = String(p.liveChatPollId || '');
@@ -495,18 +497,33 @@ function parseYouTube(action){
     const msg = inner && parseYouTube({ addChatItemAction: { item: { liveChatTextMessageRenderer: { ...inner, id: r.id } } } });
     return msg ? { site: 'youtube', kind: 'held', id: r.id, msg, status: 'PENDING', why: '', note: ytWords(r.headerText).trim(), by: '', t: msg.t } : null;
   }
+  // memberships gifted to the chat: the gifter in its header, how many in its words ("Sent 5 … gift memberships"). Each one
+  // given (…GiftRedemptionAnnouncementRenderer, "received a gift membership by …") is left out: part of this one
+  if (type === 'liveChatSponsorshipsGiftPurchaseAnnouncementRenderer'){
+    const h = (r.header && r.header.liveChatSponsorshipsHeaderRenderer) || {}, who = ytWords(h.authorName).trim() || 'Someone';
+    const said = ytWords(h.primaryText).replace(/\s+/g, ' ').trim(), n = Math.max(1, +((/\d[\d,.]*/.exec(said) || [''])[0].replace(/[,.]/g, '')) || 1);
+    const what = `${n.toLocaleString('en-US')} ${n === 1 ? 'membership' : 'memberships'}`;
+    return { site: 'youtube', kind: 'event', event: 'giftmemberships', id: r.id, t: Math.round(+r.timestampUsec / 1000) || Date.now(), sender: who, login: who.replace(/^@/, '').toLowerCase(), color: '',
+      userId: r.authorExternalChannelId || '', badges: ytBadges(h.authorBadges), pics: ytPics(h.authorBadges), text: `${who} gifted ${what}`, summary: [{ strong: who }, { text: ' gifted ' }, { strong: what }], parts: [],
+      support: { kind: 'gifts', unit: 'memberships', who, n } };
+  }
   const base = { site: 'youtube', id: r.id, t: Math.round(+r.timestampUsec / 1000) || Date.now(), sender: (r.authorName && r.authorName.simpleText) || '',
     login: ((r.authorName && r.authorName.simpleText) || '').replace(/^@/, '').toLowerCase(), color: '', userId: r.authorExternalChannelId || '', badges: ytBadges(r.authorBadges), pics: ytPics(r.authorBadges) };
   if (type === 'liveChatTextMessageRenderer') return { ...base, kind: 'message', parts: ytParts(r.message && r.message.runs) };
   if (type === 'liveChatPaidMessageRenderer' || type === 'liveChatPaidStickerRenderer'){
     const amount = (r.purchaseAmountText && r.purchaseAmountText.simpleText) || '';
     const what = type === 'liveChatPaidMessageRenderer' ? 'Chat' : 'Sticker';
+    // (support: the amount as a number to set the smallest by, its text with its currency for the alert, as its chat's screen gave)
     return { ...base, kind: 'event', event: type === 'liveChatPaidMessageRenderer' ? 'superchat' : 'supersticker', amount, text: `${base.sender} sent a Super ${what}${amount ? ' · ' + amount : ''}`,
-      summary: [{ strong: base.sender }, { text: ` Super ${what}` }, ...(amount ? [{ text: ' ' }, { strong: amount }] : [])], parts: ytParts(r.message && r.message.runs) };
+      summary: [{ strong: base.sender }, { text: ` Super ${what}` }, ...(amount ? [{ text: ' ' }, { strong: amount }] : [])], parts: ytParts(r.message && r.message.runs),
+      support: { kind: 'superchat', who: base.sender || 'Someone', n: moneyOf(amount) || 1, ...(amount && /\D/.test(amount) ? { amt: amount } : {}) } };
   }
   if (type === 'liveChatMembershipItemRenderer'){
     const text = ytText((r.headerSubtext || {}).runs) || (r.headerSubtext && r.headerSubtext.simpleText) || `${base.sender} became a member`;
-    return { ...base, kind: 'event', event: 'membership', text, summary: [{ strong: base.sender }, { text: ' ' + (/^welcome/i.test(text) ? 'became a member' : text.replace(base.sender, '').trim() || 'became a member') }], parts: ytParts(r.message && r.message.runs) };
+    // (a member for a while now, its headerPrimaryText "Member for 6 months": not someone becoming one, so not support)
+    const milestone = !!ytWords(r.headerPrimaryText).trim();
+    return { ...base, kind: 'event', event: 'membership', text, summary: [{ strong: base.sender }, { text: ' ' + (/^welcome/i.test(text) ? 'became a member' : text.replace(base.sender, '').trim() || 'became a member') }], parts: ytParts(r.message && r.message.runs),
+      ...(milestone ? {} : { support: { kind: 'member', who: base.sender || 'Someone', n: 1 } }) };
   }
   return null;
 }
@@ -540,7 +557,7 @@ const KNOWN = {
     'hermes:automod_caught_message': 'a message held by AutoMod: to moderators, its card (Allow, Deny); yours, your line says so', 'hermes:low_trust_user_new_message': 'a suspicious user’s flags on their message (tags on its line, to moderators)', 'hermes:chat-highlight': 'Twitch’s marks on a message, to moderators (a raider’s: a tag on its line)' },
   youtube: { 'addChatItemAction:liveChatTextMessageRenderer': 'a message', 'addChatItemAction:liveChatPaidMessageRenderer': 'a Super Chat',
     'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
-    'addChatItemAction:giftMessageViewModel': 'a gift', 'replaceChatItemAction:liveChatTextMessageRenderer': 'a held message let through', 'addChatItemAction:liveChatAutoModMessageRenderer': 'a message held for review, to moderators (its card: Allow, Deny)',
+    'addChatItemAction:giftMessageViewModel': 'a gift', 'addChatItemAction:liveChatSponsorshipsGiftPurchaseAnnouncementRenderer': 'memberships gifted to the chat', 'replaceChatItemAction:liveChatTextMessageRenderer': 'a held message let through', 'addChatItemAction:liveChatAutoModMessageRenderer': 'a message held for review, to moderators (its card: Allow, Deny)',
     removeChatItemAction: 'a message deleted', markChatItemAsDeletedAction: 'a message deleted (marked)', markChatItemsByAuthorAsDeletedAction: 'a ban or timeout',
     removeChatItemByAuthorAction: 'all of someone’s messages taken away (as a ban)', 'showLiveChatActionPanelAction': 'a poll opened (its card over ALL)', updateLiveChatPollAction: 'a poll’s votes (its card)',
     closeLiveChatActionPanelAction: 'a poll closed (its card goes)',
@@ -582,6 +599,7 @@ const IGNORED = {
       .map(n => ['NOTICE:' + n, 'the chat’s modes (shown above the box)'])) },
   youtube: { 'addChatItemAction:liveChatPlaceholderItemRenderer': 'an empty stand-in for a message YouTube holds back (for review; let through, replaceChatItemAction brings it)',
     'addChatItemAction:liveChatViewerEngagementMessageRenderer': 'YouTube’s own notice (welcome, guard your privacy)',
+    'addChatItemAction:liveChatSponsorshipsGiftRedemptionAnnouncementRenderer': 'one of the memberships gifted to the chat, given (the gift is its own line)',
     liveChatReportPresenceCommand: 'YouTube’s own (that you’re in the chat)', liveChatReportModerationStateCommand: 'YouTube’s own (moderation state)', elementsCommand: 'YouTube’s own (parts of its page)',
     addInteractivityWidgetAction: 'YouTube’s floating note of who sent a gift (the gift is its own line)', updateOrAddInteractivityWidgetAction: 'YouTube’s floating note of who sent a gift (the gift is its own line)',
     'replaceChatItemAction:liveChatPlaceholderItemRenderer': 'a stand-in for a held message, replaced by another (the message, let through, comes on its own)' }

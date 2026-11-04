@@ -51,7 +51,7 @@ const youtube = {
   deleteMods: false,
   spamAlerts: false,
   flagged: true,         // Settings › Flagged: messages held for review, to moderators (alerts/flagged.js)
-  feedReaders: false,    // (its chat's screen is read for support and chat over the stream: its gifted memberships aren't read from its connection yet)
+  feedReaders: true,     // the alerts, chat over the stream and counts read its chat's connection (chat/chat-feed.js)
   emoteLists: false,
   pageCommands: false,
   likes: true,
