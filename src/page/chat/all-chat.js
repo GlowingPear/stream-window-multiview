@@ -3,8 +3,8 @@ import { flaggedFrom, heldHandled } from '../alerts/flagged.js';
 import { revealChat } from '../alerts/spam-alerts.js';
 import { SmvSpam } from '../alerts/spam.js';
 import { emoteBox } from './all-box.js';
-import { SMILEY, addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, refreshEmotes, renderEmoteList,
-  renderRecent, suggestEmote, useRecent, withEmotes } from './all-emotes.js';
+import { SMILEY, addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pastedEmotes, pickEmote, refreshEmotes,
+  renderEmoteList, renderRecent, suggestEmote, useRecent, withEmotes } from './all-emotes.js';
 import { chatLoaded, healthState, noteRaw, noteSend, reportHealth } from './all-health.js';
 import { blowOn, blowUp } from './blow-up.js';
 import { feedLoaded, fromFeed } from './chat-feed.js';
@@ -897,7 +897,7 @@ function buildView(w){
   const health = element('div', { class: 'all-health', hidden: true, role: 'alert' });
   const ecard = element('div', { class: 'pop all-ecard', hidden: true, role: 'tooltip' });
   const pick = element('button', { type: 'button', class: 'all-pick', dataset: { cmd: 'all.sendSite' }, 'aria-haspopup': 'menu' });
-  const input = emoteBox({ 'aria-label': 'Message', dataset: { cmd: 'all.message' } }, () => view.emotePics);
+  const input = emoteBox({ 'aria-label': 'Message', dataset: { cmd: 'all.message' } }, () => view.emotePics, t => pastedEmotes(view, view.w, t));
   const menu = element('div', { class: 'pop all-menu', role: 'menu', hidden: true });
   const bar = element('div', { class: 'all-rb', hidden: true });
   const at = element('div', { class: 'pop all-at', role: 'listbox', hidden: true });

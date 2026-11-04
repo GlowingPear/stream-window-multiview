@@ -5,8 +5,8 @@ import { element } from '../shared/element.js';
    selectionStart and selectionEnd (counted in value's characters), placeholder, disabled and maxLength, so the code that
    fills it, reads it and puts the caret in it is the same. pics() -> the emotes picked (name -> picture), or null: a word
    in it with one of those names shows as its picture (a word that only looks like an emote stays a word). Pasted or
-   dropped in: text only, on one line. */
-function emoteBox(props, pics){
+   dropped in: text only, on one line; took(text) -> the text that goes in (and what it does with it after: its emotes). */
+function emoteBox(props, pics, took = t => t){
   const box = element('div', { class: 'all-in', contenteditable: 'true', role: 'textbox', 'aria-multiline': 'false', spellcheck: 'true', ...props });
   let max = 500;
   const valueOf = n => (n.nodeType === 3 ? n.nodeValue.replace(/ /g, ' ') : n.nodeName === 'IMG' ? n.alt : n.nodeName === 'BR' ? '' : [...n.childNodes].map(valueOf).join(''));
@@ -67,7 +67,7 @@ function emoteBox(props, pics){
     maxLength: { get: () => max, set: v => { max = +v || 500; } }
   });
   // one line: no new lines (Enter sends: chat/all-chat.js), text only in, nothing left over when it's emptied, no more than maxLength
-  const insertText = t => document.execCommand('insertText', false, String(t || '').replace(/\s*[\r\n]+\s*/g, ' '));
+  const insertText = t => document.execCommand('insertText', false, took(String(t || '').replace(/\s*[\r\n]+\s*/g, ' ')));
   box.addEventListener('beforeinput', e => { if (/^insert(Paragraph|LineBreak)$/.test(e.inputType)) e.preventDefault(); });
   box.addEventListener('paste', e => { e.preventDefault(); insertText(e.clipboardData && e.clipboardData.getData('text/plain')); });
   box.addEventListener('drop', e => { e.preventDefault(); box.focus(); insertText(e.dataTransfer && e.dataTransfer.getData('text/plain')); });
