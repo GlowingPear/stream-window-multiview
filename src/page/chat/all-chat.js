@@ -133,7 +133,7 @@ function ingest(w, json, quiet = false, shown = false){
     if (m.kind === 'automod') return heldMine(f, m);
     if (m.kind === 'marks') return markLine(f, m);
     if (m.kind === 'held') return heldNews(f, view, m, w.channel);
-    if (m.kind === 'flags') return flagLine(f, m);
+    if (m.kind === 'flags'){ if (!m.msg || f.byId.has('twitch:' + m.msgId) || notMod(w.channel)) return flagLine(f, m); m = { ...m.msg, flags: m.flags }; }   // (a restricted user's: its line is the flags' message)
     if (m.room && twRooms.has(w.channel) && twRooms.get(w.channel) !== m.room) return;   // (your own reward redeemed in another channel: Twitch sends it to every chat page)
     const hold = m.id && m.kind === 'message' && f.byId.get(m.site + ':' + m.id);
     if (hold && hold.kind === 'held') return heldAllowed(hold, '', m);   // (a held message let through: its line becomes the message)
@@ -730,7 +730,7 @@ function shoutWho(m){
 }
 // Shout out on a special line (a sub, gift, Kicks, a reward redeemed): a small button on its right, while the pointer's on it
 function eventSo(m){
-  const raid = (m.support && m.support.kind === 'raid') || m.event === 'raid', p = m.kind === 'event' && !raid && shoutable(m);
+  const raid = (m.support && m.support.kind === 'raid') || m.event === 'raid', p = !raid && shoutable(m);
   return p && element('button', { type: 'button', class: 'al-so-ev', title: `Shout out ${m.sender} in ${PLAT_NAME[m.site]} chat`, 'aria-label': `Shout out ${m.sender}`, html: icon.megaphone, dataset: { cmd: 'all.eventShoutout' },
     onclick: e => { e.stopPropagation(); shoutOut(p); } });
 }
@@ -785,10 +785,14 @@ function lineEl(m){
   const name = element('b', { class: 'al-n' + (can ? ' can' : '') + pillCls(st), style: st, role: 'button', tabindex: '-1', dataset: { cmd: 'all.profile' },
     title: `${m.sender}'s card on ${site}` + (canAll ? `\n${kShift()}-click: delete · ${kCtrl()}-click: time out (${durText(lastTimeout())}) · ${kCtrl()}+${kShift()}-click: ban` : can ? `\n${kShift()}-click: delete` : ''),
     onclick: e => nameClick(m, e) }, m.sender);
-  if (m.kind === 'event'){
+  // (a reward redeemed with text, its reward named (Kick's): the card one without text is, its text as the card's message;
+  // with events hidden, still their message, with the reward's tag)
+  const redeemCard = m.kind === 'message' && m.redeem && m.redeem.title && eventsMode !== 'hidden';
+  if (m.kind === 'event' || redeemCard){
     if (eventsMode === 'hidden') return null;
-    const full = eventsMode === 'full' || !m.summary;
-    const words = full ? [m.text || m.sender] : m.summary.map((x, i) => x.strong ? element('b', i ? 'al-amt' : null, x.strong) : x.text);
+    const summary = redeemCard ? [{ strong: m.sender }, { text: ' redeemed ' }, { strong: m.redeem.title }] : m.summary;
+    const full = eventsMode === 'full' || !summary;
+    const words = full ? [redeemCard ? `${m.sender} redeemed ${m.redeem.title}` : m.text || m.sender] : summary.map((x, i) => x.strong ? element('b', i ? 'al-amt' : null, x.strong) : x.text);
     const to = m.gift ? m.gift.to : [], me = meOn(m.site);
     const open = m.open && !full;
     return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}${open ? ' al-open al-can' : ''}${to.length ? ' al-gift' : ''}${m.gift && m.gift.me ? ' al-gift-me' : ''}`, dataset: { key: m.site + ':' + m.id },
@@ -1346,6 +1350,7 @@ const kShift = () => kCtrl() === 'Ctrl' ? 'Shift' : '⇧';
 const DOTS = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
 const modKnown = new Map();   // channel -> whether you moderate it, set by the tests (else the sites' answer, platforms.js modIs)
 const youMod = ch => modKnown.has(ch) ? modKnown.get(ch) : modIs.get(ch) === true;
+const notMod = ch => modKnown.has(ch) ? !modKnown.get(ch) : modIs.get(ch) === false;   // (the site said so: not while it's still asking)
 // The sites of this window's streamer whose mod view you can open
 const modViewChs = w => tabChannels(w).filter(ch => modUrl(ch) && youMod(ch));
 // Why you can't do that to them here (nothing: you can): 'delete', or else a timeout or ban. A mod's message can be

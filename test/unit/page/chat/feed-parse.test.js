@@ -435,7 +435,13 @@ test('Twitch: a message AutoMod held, to moderators (the whole message, why, the
     message_content: { text: 'word' }, message_id: 'id269', sent_at: '2026-11-01T22:17:50Z', ...extra });
   const f = parseTwitch(lt({ ban_evasion_evaluation: 'POSSIBLE_EVADER', treatment: 'ACTIVE_MONITORING' }));
   assert.deepEqual([f.kind, f.msgId, f.flags, f.sender, f.login, f.text], ['flags', 'id269', ['evader-possible', 'monitored'], 'user104', 'user104', 'word'], 'who and what, for Settings › Flagged');
-  assert.deepEqual(parseTwitch(lt({ ban_evasion_evaluation: 'LIKELY_EVADER', treatment: 'RESTRICTED' })).flags, ['evader-likely', 'restricted']);
+  assert.equal(f.msg, undefined, 'not restricted: its message comes on the chat\'s connection');
+  // restricted: only moderators see it, and only from this, so the whole message comes with it
+  const r = parseTwitch(lt({ ban_evasion_evaluation: 'LIKELY_EVADER', treatment: 'RESTRICTED', sender: { user_id: 'id138', login: 'user104', display_name: 'User104' } },
+    { message_content: { text: 'word Kappa', fragments: [{ text: 'word ' }, { text: 'Kappa', emoticon: { emoticonID: '25' } }] } }));
+  assert.deepEqual(r.flags, ['evader-likely', 'restricted']);
+  assert.deepEqual([r.msg.kind, r.msg.id, r.msg.sender, r.msg.login, r.msg.userId, r.msg.t], ['message', 'id269', 'User104', 'user104', 'id138', Date.parse('2026-11-01T22:17:50Z')]);
+  assert.deepEqual(r.msg.parts, [{ text: 'word ' }, { emote: 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0', name: 'Kappa' }]);
   assert.equal(parseTwitch(lt({ ban_evasion_evaluation: 'UNLIKELY_EVADER', treatment: 'NO_TREATMENT' })), null, 'nothing to flag');
   assert.equal(parseTwitch(lt({ treatment: 'RESTRICTED' }, { message_id: '' })), null, 'without its message');
   for (const k of ['hermes:automod_caught_message', 'hermes:low_trust_user_new_message']) assert.ok(KNOWN.twitch[k] && !ignoredWhy('twitch', k), k);

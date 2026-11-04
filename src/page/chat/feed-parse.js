@@ -202,13 +202,15 @@ function twitchPin(frame){
       : HELD_WHY[a.reason_code] || '';
     return { site: 'twitch', kind: 'held', id: msg.id, msg, status: String(a.status).toUpperCase(), why, by: String(a.resolver_login || ''), t: Date.now() };
   }
-  // Twitch's suspicious-user flags on a message, to moderators: a possible or likely ban evader, monitored or restricted
+  // Twitch's suspicious-user flags on a message, to moderators: a possible or likely ban evader, monitored or restricted.
+  // A restricted user's message never comes on the chat's connection (only moderators see it, from this): msg, the whole message
   if (p && p.type === 'low_trust_user_new_message'){
     const d = p.data || {}, u = d.low_trust_user || {}, flags = lowTrust(u);
     if (!d.message_id || !flags.length) return null;
     const s = u.sender || {}, c = d.message_content || {};
+    const msg = flags.includes('restricted') ? hermesMsg({ id: d.message_id, sender: s, content: c, sent_at: d.sent_at }) : null;
     return { site: 'twitch', kind: 'flags', msgId: String(d.message_id), flags, sender: String(s.display_name || s.login || ''), login: String(s.login || '').toLowerCase(),
-      text: String(c.text || ''), t: Date.now() };
+      text: String(c.text || ''), t: Date.now(), ...(msg ? { msg } : {}) };
   }
   // Twitch's marks on a message, to moderators (chat highlights): a raider's (how long since the raid), and the like
   if (p && p.type === 'chat-highlight'){
