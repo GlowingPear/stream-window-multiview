@@ -88,6 +88,14 @@ test('anonymise: Twitch\'s chat lines (tags, who, the channel, the words) and it
   const hermes = anonymise('twitch', JSON.stringify({ notification: { pubsub: JSON.stringify({ type: 'pin-message', data: { pinned_by: { display_name: 'NightOwl' }, message: { content: { text: 'giveaway at 500' }, sender: { login: 'quietkoala' } } } }) } }), ph);
   const p = JSON.parse(hermes.notification.pubsub);
   assert.deepEqual([p.type, p.data.pinned_by.display_name, p.data.message.content.text, p.data.message.sender.login], ['pin-message', 'user3', 'word word word', 'user4']);
+  // a moderation action: who did it (created_by) and who to (args' first), its reason, a timeout's seconds, a deleted message's id and words
+  const mph = placeholders(), mod = (moderation_action, args) => JSON.parse(anonymise('twitch', JSON.stringify({ notification: { pubsub: JSON.stringify({ type: 'moderation_action',
+    data: { args, created_by: 'nightowl_mod', created_by_user_id: '4242', moderation_action } }) } }), mph).notification.pubsub).data;
+  const ban = mod('ban', ['spamlord', 'ban evasion']);
+  assert.deepEqual([ban.created_by, ban.created_by_user_id, ban.args, ban.moderation_action], ['user2', 'id1', ['user1', 'word word'], 'ban']);
+  assert.deepEqual(mod('timeout', ['spamlord', '600', '']).args, ['user1', '600', '']);
+  assert.deepEqual(mod('delete', ['spamlord', 'buy followers', '0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0']).args, ['user1', 'word word', 'id2']);
+  assert.deepEqual(mod('slow', ['30']).args, ['30']);
   const yt = anonymise('youtube', JSON.stringify({ addChatItemAction: { item: { liveChatTextMessageRenderer: { id: 'Ch4x', authorName: { simpleText: '@MikaR' }, authorExternalChannelId: 'UC123', message: { runs: [{ text: 'clip of the ace' }, { emoji: { emojiId: 'e1' } }] } } } } }), ph);
   const r = yt.addChatItemAction.item.liveChatTextMessageRenderer;
   assert.deepEqual([r.id, r.authorName.simpleText, r.authorExternalChannelId, r.message.runs[0].text, r.message.runs[1].emoji.emojiId], ['id4', 'user5', 'id5', 'word word word word', 'e1']);
