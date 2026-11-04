@@ -1510,6 +1510,8 @@ test('ALL: the ⋯ menu: the whole streamer\'s buttons as icons, then a line for
 test('ALL: a Kick reward redeemed with text is the card one without text is, its text as the card\'s message (stacked when opened or Events: Full, its message with the reward\'s tag when hidden); Twitch\'s is a message; Kicks sent and Kick\'s subs are events', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
+  // (Kick's emote pictures load, so a line's words don't depend on when one that can't load turns into its name)
+  await page.route('https://files.kick.com/emotes/**', r => r.fulfill({ contentType: 'image/gif', body: Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64') }));
   const KE = (event, data) => JSON.stringify({ push: { channel: 'chatroom_1', pub: { data: { event, data: JSON.stringify(data) } } } });
   await feed(page, 'quietkoala', { s: 'kick', raw: [KE('RewardRedeemedEvent', { reward_title: 'Shoutout', username: 'driftwood_7', user_input: 'say hi to sam', reward_background_color: '#00F1FF' }),
     KE('RewardRedeemedEvent', { reward_title: 'Hydrate', username: 'oakmoss', user_input: '' }), KE('KicksGifted', { gift_transaction_id: 'g1', sender: { username: 'Jshoti' }, gift: { name: 'Full Send', amount: 100 } }),
@@ -2465,6 +2467,50 @@ test('ALL\'s box: one line of text (pasted or dropped in: its text on one line),
   await page.keyboard.press('Control+A'); await page.keyboard.press('Meta+A'); await page.keyboard.press('Backspace');
   assert.deepEqual(await page.$eval('.all-in', b => [b.value, b.childNodes.length, getComputedStyle(b, '::before').content]), ['', 0, '"Send a message on Kick"'], 'emptied: its placeholder');
   assert.equal(await page.$eval('.all-in', b => b.selectionStart), 0);
+});
+
+test('ALL\'s box: emotes pasted or dropped in (the send site\'s, by name in the same case; Kick\'s [emote:<id>:<name>]) are as if picked: their pictures, the box locked to that site, sent as it writes them; text without one stays as it is', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => {
+    window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
+    const img = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    window.kmv = { ...(window.kmv || {}), emotesPick: async ch => (ch === 'quietkoala'
+      ? [{ id: 'kick-channel', label: 'Channel', emotes: [{ name: 'koalaSleeping', url: img, send: '[emote:1:koalaSleeping]' }] }, { id: '7tv', label: '7TV', emotes: [{ name: 'catJAM', url: img, send: 'catJAM' }] }]
+      : [{ id: 'twitch-global', label: 'Twitch', emotes: [{ name: 'Kappa', url: img, send: 'Kappa' }] }]) };
+    window.__sends = []; window.allChat.sender.send = async (m, text) => { window.__sends.push([m.channel, text]); return 'sent'; };
+  }, LIVE);
+  const put = (type, text) => page.$eval('.all-in', (b, [type, text]) => { const dt = new DataTransfer(); dt.setData('text/plain', text);
+    b.dispatchEvent(type === 'paste' ? new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }) : new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); }, [type, text]);
+  const boxShows = () => page.$eval('.all-in', b => [...b.childNodes].map(n => (n.nodeName === 'IMG' ? `[${n.alt}]` : n.textContent)).join(''));
+  await page.focus('.all-in');
+  // no emote in it: as it was, not locked
+  await put('paste', 'good night koalasleeping kappa');
+  await page.waitForTimeout(50);
+  assert.equal(await boxShows(), 'good night koalasleeping kappa', 'another case, or another site\'s: words');
+  assert.equal(await page.isVisible('.all-rb'), false);
+  await page.fill('.all-in', '');
+  // the send site's emotes: their pictures, locked to Kick, the caret after them
+  await put('paste', 'good night koalaSleeping catJAM');
+  await page.waitForFunction(() => document.querySelectorAll('.all-in img').length === 2);
+  assert.equal(await boxShows(), 'good night [koalaSleeping] [catJAM]');
+  assert.match(await page.textContent('.all-rb'), /Emotes from Kick · sends on Kick only/, 'locked to Kick');
+  assert.equal(await page.$eval('.all-in', b => b.selectionStart), 'good night koalaSleeping catJAM'.length);
+  // Kick's own code (copied from its chat): the emote, its name in the box; dropped in too
+  await page.route('https://files.kick.com/emotes/**', r => r.fulfill({ contentType: 'image/gif', body: Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64') }));
+  await put('drop', ' [emote:42:otterWave]');
+  await page.waitForFunction(() => document.querySelectorAll('.all-in img').length === 3);
+  assert.deepEqual(await page.$eval('.all-in', b => [b.value, [...b.querySelectorAll('img')].pop().src]), ['good night koalaSleeping catJAM otterWave', 'https://files.kick.com/emotes/42/fullsize']);
+  await page.keyboard.type(' koalaSleeping');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__sends.length === 1);
+  assert.deepEqual(await page.evaluate(() => window.__sends[0]), ['quietkoala', 'good night [emote:1:koalaSleeping] catJAM [emote:42:otterWave] [emote:1:koalaSleeping]'], 'as Kick writes them (a word typed with a pasted emote\'s name: that emote, as one picked)');
+  // on Twitch, its own emotes (Kick's code stays text there)
+  await page.keyboard.press('Tab');
+  await put('paste', 'hi Kappa [emote:42:otterWave]');
+  await page.waitForFunction(() => document.querySelectorAll('.all-in img').length === 1);
+  assert.equal(await boxShows(), 'hi [Kappa] [emote:42:otterWave]');
+  assert.match(await page.textContent('.all-rb'), /Emotes from Twitch/);
 });
 
 test('ALL: the send button: there once there\'s something to send, says where, sends like Enter, a spinner (and no second send) while sending', async t => {

@@ -99,6 +99,32 @@ function pickEmote(view, w, e, recent){
   v.selectionStart = v.selectionEnd = (before + pad + e.name + ' ').length;
   if (recent && e.ch){ useRecent(platOf(e.ch), [e.name]); renderRecent(view, w); }
 }
+// Text pasted or dropped into the box -> the text that goes in. Its emotes are the ones picked, as if from the :name list:
+// each word that's one of the send site's emotes (its name in the same case), and on Kick each [emote:<id>:<name>] (its
+// name in the box); the box locked to that site. A word typed that only looks like an emote stays a word
+function pastedEmotes(view, w, text){
+  const ch = sendSite(w); if (!ch) return text;
+  const found = new Map();   // name -> { send, url }
+  if (platOf(ch) === 'kick') text = text.replace(/\[emote:(\d+):([^\]\s]+)\]/g, (_, id, name) => { found.set(name, { send: `[emote:${id}:${name}]`, url: `https://files.kick.com/emotes/${id}/fullsize` }); return name; });
+  const words = new Set(text.split(/\s+/).filter(w => w && !found.has(w)));
+  const take = () => {
+    if (!found.size || sendSite(w) !== ch) return;
+    found.forEach((e, name) => {
+      (view.emoteSends || (view.emoteSends = new Map())).set(name, e.send);
+      if (e.url) (view.emotePics || (view.emotePics = new Map())).set(name, e.url);
+    });
+    if (!view.lock) setLock(view, w, { kind: 'emote', ch });
+    const v = view.input, at = v.selectionStart;
+    v.value = v.value;   // (drawn again: the emotes as their pictures)
+    if (document.activeElement === v) v.selectionStart = at;
+  };
+  if (!words.size){ queueMicrotask(take); return text; }   // (after it's in the box)
+  emoteGroups(ch).then(groups => {
+    groups.forEach(g => g.emotes.forEach(e => { if (words.has(e.name) && !found.has(e.name)) found.set(e.name, e); }));
+    take();
+  });
+  return text;
+}
 // The emotes you used last, in a row over ALL's box, as Kick's chat has over its own: each emote picked in ALL from the
 // smiley, or sent from the row (a click sends it on its own), goes to the front of its site's list (saved: { kick: [names],
 // twitch: [names] }, the newest first); one from the :name list doesn't, nor does sending a message with it. The row shows the ones the
@@ -213,5 +239,5 @@ function kindIcon(id, ch, pic){
 const chPic = c => element('span', 'all-ep-pic', c.pic ? element('img', { src: c.pic, alt: '', referrerPolicy: 'no-referrer', loading: 'lazy' }) : (c.label || c.name || '?')[0]);   // (a circle: in its heading, and in the list beside the search)
 const SMILEY = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1 1.3 2.2 2 3.5 2s2.5-.7 3.5-2M9 9.5h.01M15 9.5h.01"/></svg>';
 
-export { addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pickEmote, refreshEmotes, renderEmoteList,
-  renderRecent, SMILEY, suggestEmote, useRecent, withEmotes };
+export { addonEmotes, emoteCache, forgetEmotes, openEmotePicker, pastedEmotes, pickEmote, refreshEmotes,
+  renderEmoteList, renderRecent, SMILEY, suggestEmote, useRecent, withEmotes };
