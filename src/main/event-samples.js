@@ -65,8 +65,9 @@ function createSampleStore({ saved, now = () => Date.now() } = {}) {
 
 /* ---- export: the shapes without the people ---- */
 // Names go by what a field is called, wherever it is: anything ending in login, user name, display name or slug
-// (source_display_name, target_login, curator_login, clip_slug, sourceLogin, targetUserDisplayName, …)
-const NAME_KEY = /(^|_)(user_?name|login|display_?name|slug|sender_?name|author_?name|channel_?name|broadcaster_?name)$|^(last_subscriber|recipient.*name)$|[a-z](login|display_?name|user_?name|channel_?name)$/i;
+// (source_display_name, target_login, curator_login, clip_slug, sourceLogin, targetUserDisplayName, …), or who did
+// something (Twitch's moderation actions' created_by)
+const NAME_KEY = /(^|_)(user_?name|login|display_?name|slug|sender_?name|author_?name|channel_?name|broadcaster_?name)$|^(last_subscriber|recipient.*name)$|[a-z](login|display_?name|user_?name|channel_?name)$|[a-z]_by$/i;
 const NAMES_KEY = /(^|_)usernames$/i;
 const ID_KEY = /^(id|uuid|.*_id|.*Id|.*ID|correlation_id|target|nonce|client-nonce)$/;
 const KEEP_KEY = /emot|emoji|badge|gift_id|setID|reward_id|sticker|icon|type$/i;   // ids of public things: kept
@@ -105,7 +106,11 @@ function anonValue(key, v, ph, ctx = {}) {
   return v;
 }
 
+// A Twitch moderation action's args: who first (but a slow mode's seconds), then a number (a timeout's), an id (a deleted
+// message's) or words (a reason, a deleted message's text)
+const modArg = (x, i, ph) => (/^\d+$/.test(x) ? x : i === 0 ? ph('user', x) : /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(x) ? ph('id', x) : words(x));
 function anonJson(v, ph, key = '', ctx = {}) {
+  if (Array.isArray(v) && key === 'args') return v.map((x, i) => (typeof x === 'string' && x ? modArg(x, i, ph) : anonJson(x, ph, key, ctx)));
   if (Array.isArray(v)) return v.map(x => (NAMES_KEY.test(key) && typeof x === 'string' ? ph('user', x) : anonJson(x, ph, key, ctx)));
   if (v && typeof v === 'object') {
     const out = {};
