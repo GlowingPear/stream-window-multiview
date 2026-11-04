@@ -383,6 +383,11 @@ test('a chat bot\'s line shouts out who it\'s about, never the bot, and has no b
   const sub = page.locator('.all-list .al-ev:has-text("Oakmoss")');
   await sub.hover(); await sub.locator('.al-so-ev').click();
   await flashed(page, /Couldn't find Oakmoss's Kick channel/);
+  // a reward redeemed with text: its card's button, for who redeemed it
+  await feed(page, 'quietkoala', { s: 'kick', raw: [JSON.stringify({ push: { channel: 'chatroom_1', pub: { data: { event: 'RewardRedeemedEvent', data: JSON.stringify({ reward_title: 'Hydrate', username: 'Tide', user_input: 'water break' }) } } } })] });
+  const rw = page.locator('.all-list .al-ev:has-text("Tide")');
+  await rw.hover(); await rw.locator('.al-so-ev').click();
+  await flashed(page, /Couldn't find Tide's Kick channel/);
 });
 
 

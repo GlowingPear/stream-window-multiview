@@ -1493,22 +1493,44 @@ test('ALL: the ⋯ menu: the whole streamer\'s buttons as icons, then a line for
   assert.ok(['Channel page', 'Chat pop-up', 'Mod view'].every(r => m.rows.includes(r)), JSON.stringify(m.rows));
 });
 
-test('ALL: a reward redeemed with text reads as a message with the reward\'s name; without text, Kicks sent and Kick\'s subs are events', async t => {
+test('ALL: a Kick reward redeemed with text is the card one without text is, its text as the card\'s message (stacked when opened or Events: Full, its message with the reward\'s tag when hidden); Twitch\'s is a message; Kicks sent and Kick\'s subs are events', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
   const KE = (event, data) => JSON.stringify({ push: { channel: 'chatroom_1', pub: { data: { event, data: JSON.stringify(data) } } } });
   await feed(page, 'quietkoala', { s: 'kick', raw: [KE('RewardRedeemedEvent', { reward_title: 'Shoutout', username: 'driftwood_7', user_input: 'say hi to sam', reward_background_color: '#00F1FF' }),
     KE('RewardRedeemedEvent', { reward_title: 'Hydrate', username: 'oakmoss', user_input: '' }), KE('KicksGifted', { gift_transaction_id: 'g1', sender: { username: 'Jshoti' }, gift: { name: 'Full Send', amount: 100 } }),
     KF('GiftedSubscriptionsEvent', { gifter_username: 'brightwick', gifted_usernames: ['a', 'b'] })] });
+  // (Twitch's chat doesn't say which reward: its message, with a tag)
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'custom-reward-id': 'abc', id: 'r1', 'display-name': 'tinroof' }, ':tinroof!t@t PRIVMSG #quietkoala :play the new map')] });
-  assert.deepEqual(await lines(page), ['al-m | Kdriftwood_7: say hi to samShoutout', 'al-ev | Koakmoss redeemed Hydrate', 'al-ev | KJshoti sent Full Send · 100 Kicks',
+  assert.deepEqual(await lines(page), ['al-ev | Kdriftwood_7 redeemed Shoutoutsay hi to sam', 'al-ev | Koakmoss redeemed Hydrate', 'al-ev | KJshoti sent Full Send · 100 Kicks',
     'al-ev | Kbrightwick gifted 2 subs2 recipients', 'al-m | Ttinroof: play the new mapChannel points']);
-  assert.equal(await page.$$eval('.all-list .al-rw', l => l.length), 2, 'redeems: their own edge');
-  assert.equal(await page.$eval('.al-tag-rw', e => e.style.getPropertyValue('--rw')), '#00F1FF', 'in the reward\'s colour');
+  const card = page.locator('.all-list .al-ev').first();
+  assert.deepEqual(await card.evaluate(e => [e.querySelector('.al-amt').textContent, e.querySelector('.al-evm').textContent, getComputedStyle(e.querySelector('.al-evm'), '::before').content]),
+    ['Shoutout', 'say hi to sam', '"· "'], 'the reward picked out, as a card\'s amount is; its text after a ·');
+  assert.equal(await page.$$eval('.all-list .al-rw', l => l.length), 1, 'Twitch\'s: a redeem\'s edge');
   // a redeem's text with emotes: their pictures, as a message's
   await feed(page, 'quietkoala', { s: 'kick', raw: [KE('RewardRedeemedEvent', { id: 'lurk', reward_title: 'Lurk', username: 'tide', user_input: '[emote:6193915:koalaLurk] [emote:6193915:koalaLurk]' })] });
-  assert.deepEqual(await page.$$eval('.all-list .al-rw:last-child img.al-e', l => l.map(e => [e.alt, e.src])), [['koalaLurk', 'https://files.kick.com/emotes/6193915/fullsize'], ['koalaLurk', 'https://files.kick.com/emotes/6193915/fullsize']]);
-  assert.ok(!(await page.$eval('.all-list .al-rw:last-child', e => e.textContent)).includes('[emote:'), 'no emote codes as text');
+  const lurk = page.locator('.all-list .al-ev').last();
+  assert.deepEqual(await lurk.locator('.al-evm img.al-e').evaluateAll(l => l.map(e => [e.alt, e.src])), [['koalaLurk', 'https://files.kick.com/emotes/6193915/fullsize'], ['koalaLurk', 'https://files.kick.com/emotes/6193915/fullsize']]);
+  assert.ok(!(await lurk.textContent()).includes('[emote:'), 'no emote codes as text');
+  // a long text: cut off with …, a click opens it, the text wrapped under the short words
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KE('RewardRedeemedEvent', { id: 'song', reward_title: 'Pick the next song', username: 'maplemoth',
+    user_input: 'something slow and rainy for the last hour of the stream please, maybe lofi or jazz, or that one with the piano from last week' })] });
+  const song = page.locator('.all-list .al-ev').last(), at = () => song.evaluate(e => [e.classList.contains('al-open'), getComputedStyle(e.querySelector('.al-evm')).whiteSpace, getComputedStyle(e.querySelector('.al-evt')).flexDirection]);
+  assert.deepEqual(await at(), [false, 'nowrap', 'row']);
+  await song.hover(); await song.click();
+  assert.deepEqual(await at(), [true, 'normal', 'column'], 'opened: stacked, wrapped');
+  await song.click();
+  assert.deepEqual(await at(), [false, 'nowrap', 'row']);
+  // Events: Full, the same words, stacked; Hidden, their message again, with the reward's tag (their words don't go)
+  await page.click('.all-filt');
+  const evm = v => page.click(`.all-fm [aria-label="Events"] >> text=${v}`);
+  await evm('Full');
+  assert.deepEqual(await page.locator('.all-list .al-ev').first().evaluate(e => [e.textContent, getComputedStyle(e.querySelector('.al-evt')).flexDirection]), ['Kdriftwood_7 redeemed Shoutoutsay hi to sam', 'column']);
+  await evm('Hidden');
+  assert.deepEqual((await lines(page)).slice(0, 3), ['al-m | Kdriftwood_7: say hi to samShoutout', 'al-m | Ttinroof: play the new mapChannel points', 'al-m | Ktide: Lurk']);
+  assert.equal(await page.$eval('.all-list .al-m .al-tag-rw', e => e.style.getPropertyValue('--rw')), '#00F1FF', 'its tag in the reward\'s colour');
+  assert.equal(await page.$$eval('.all-list .al-rw', l => l.length), 4, 'each with a redeem\'s edge');
 });
 
 test('ALL: a YouTube gift is an event (the gift picked out); YouTube\'s stand-ins for held messages, its ticker and its own notice are left out, and don\'t count as unreadable', async t => {
