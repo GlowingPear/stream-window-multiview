@@ -473,7 +473,7 @@ function init(){
   settings.onChange(['shoutOn', 'shoutSend', 'shoutText', 'shoutChannels', 'shoutModOnly', 'shoutTwitch', 'shoutAgain', 'shoutRunN', 'shoutStreamers', 'shoutListFirst'], () => store.changed('shoutouts'));
   settings.onChange(['shoutSent'], () => { soSent = settings.json('shoutSent', {}) || {}; store.changed('shoutouts'); });
   // a press in a Kick or Twitch chat page, and its right-click menu's Shout out: in that chat
-  fromSite('shoutout', (w, d) => { const p = soPersonOf({ site: d.site, login: d.login, sender: d.name, named: d.named }); if (p) shoutOut({ ...p, ch: w.channel }); });
+  fromSite('shoutout', (w, json) => { let d = {}; try { d = JSON.parse(json); } catch {} const p = soPersonOf({ site: d.site, login: d.login, sender: d.name, named: d.named }); if (p) shoutOut({ ...p, ch: w.channel }); });
   if (DESKTOP) fromApp('onViewShoutout', (id, d) => {
     const w = winOfView(id), p = w && d && soPersonOf({ site: d.site, login: d.login, sender: d.name });
     if (p) shoutOut({ ...p, ch: w.channel });
