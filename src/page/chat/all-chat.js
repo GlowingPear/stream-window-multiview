@@ -19,8 +19,8 @@ import { autoTrFor, translateChat } from './translate.js';
 import { EMOTE_SITE, saveEmote } from './view-menu.js';
 import { showWhy } from './why-alert.js';
 import { wins } from '../core.js';
-import { badgesAgent, channelsAgent, feedAgent, hypeAgent, kickIconsAgent, messageHtml, modesAgent, pinAgent,
-  profileAgent, replyAgent, shownAgent, twCommandsAgent, twReplyAt, twReplyPress, twRoomAgent, ytLookAgent } from '../in-site/feed.js';
+import { badgesAgent, channelsAgent, feedAgent, hypeAgent, kickIconsAgent, lineProbe, messageHtml, modesAgent,
+  pinAgent, profileAgent, replyAgent, shownAgent, twCommandsAgent, twReplyAt, twReplyPress, twRoomAgent, ytLookAgent } from '../in-site/feed.js';
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../in-site/kick-commands.js';
 import { heldAgent, modAgent } from '../in-site/mod.js';
 import { sendAgent, sentAgent } from '../in-site/send.js';
@@ -116,7 +116,7 @@ function ingest(w, json, quiet = false, shown = false){
   const s = ownerOf(w.channel); if (!s) return;
   let batch; try { batch = JSON.parse(json); } catch { return; }
   const f = feedOf(s), view = viewFor(s); let added = 0;
-  (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => { const got = feedParse.parseFeed({ s: batch.s, raw: [raw] }); if (!shown && (got.length || !feedParse.leftOut(batch.s, raw))) noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0); got.forEach(m => {
+  (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => { const got = feedParse.parseFeed({ s: batch.s, raw: [raw] }); if (!shown && (got.length || !feedParse.leftOut(batch.s, raw))) noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0, got.map(m => m.id)); got.forEach(m => {
     if (shown && m.kind !== 'message' && m.kind !== 'event') return;
     if (devOn) m.raw = raw;   // (Developer tools: the line's Copy message data)
     if (!quiet) flaggedFrom(w, m);   // (Settings › Flagged)
@@ -2006,7 +2006,7 @@ function readOnly(w, json){
   let batch; try { batch = JSON.parse(json); } catch { return; }
   (Array.isArray(batch && batch.raw) ? batch.raw : []).forEach(raw => {
     const got = feedParse.parseFeed({ s: batch.s, raw: [raw] });
-    if (got.length || !feedParse.leftOut(batch.s, raw)) noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0);
+    if (got.length || !feedParse.leftOut(batch.s, raw)) noteRaw(w.channel, typeof raw === 'string' ? raw : JSON.stringify(raw), got.length > 0, got.map(m => m.id));
     got.forEach(m => { flaggedFrom(w, m); soHeard(w.channel, m); fromFeed(w, m); });
   });
 }
@@ -2085,7 +2085,7 @@ function init(){
   // What ALL shows, changed in the other window
   settings.onChange(['allBots', 'allEvents', 'allHype', 'allHidden'], () => { readFilters(); redrawAll(); });
   settings.onChange(['allOpen'], () => { syncAll(); wins.forEach(renderSiteTabs); store.changed('tabs'); });
-  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.ytLookAgent = ytLookAgent; window.twRoomAgent = twRoomAgent; window.pinAgent = pinAgent; window.hypeAgent = hypeAgent; window.twCommandsAgent = twCommandsAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.sentAgent = sentAgent; window.modAgent = modAgent; window.heldAgent = heldAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent;   // for the tests
+  window.feedAgent = feedAgent; window.badgesAgent = badgesAgent; window.kickIconsAgent = kickIconsAgent; window.ytLookAgent = ytLookAgent; window.twRoomAgent = twRoomAgent; window.pinAgent = pinAgent; window.hypeAgent = hypeAgent; window.twCommandsAgent = twCommandsAgent; window.shownAgent = shownAgent; window.modesAgent = modesAgent; window.twReplyAt = twReplyAt; window.twReplyPress = twReplyPress; window.sendAgent = sendAgent; window.sentAgent = sentAgent; window.modAgent = modAgent; window.heldAgent = heldAgent; window.replyAgent = replyAgent; window.messageHtml = messageHtml; window.profileAgent = profileAgent; window.lineProbe = lineProbe;   // for the tests
   window.allEmotes = { emoteCache, withEmotes };   // for the tests
   window.allChat = { sender, SEND_LIMIT, modKnown, heldWait, gotBadges, gotKickIcons, kickIcons, gotYtLook, ytLook: () => ytLook, liveCmds, cleanSvg, badgePics, twBadges: () => twBadges, twRooms, allRaid, spamTag, modesOf, setModes, openModViews, syncMod: () => store.changed('mod'), ingest: (ch, batch, quiet, shown) => { const w = wins.find(o => o.kind === 'chat' && o.channel === ch); if (w) ingest(w, JSON.stringify(batch), quiet, shown); }, feeds, setAll, allOn: ch => allOn(wins.find(w => w.kind === 'chat' && w.channel === ch)) };   // for the tests
 }

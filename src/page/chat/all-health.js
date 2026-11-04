@@ -19,20 +19,23 @@ import { askIn, reloadView } from '../windows/view.js';
    working, with See it on … and Report for a fix; it's in Settings › Developer › Errors too. It clears itself once the
    site's part works again.
    The app's other readers (chat/chat-feed.js) read a chat's connection too, also without ALL: the same check, for each
-   chat they read, makes its page read its screen again instead (no reload, nothing amber: the alerts still work). */
+   chat they read, makes its page read its screen again instead (no reload, nothing amber: the alerts still work).
+   A chat page in the background draws its lines late (its timers run about once a minute), well after they were read:
+   new lines there whose newest is a message already read are no sign of trouble. */
 const CHECK_MS = 45000;
-const healthOf = new Map();   // channel -> { read, bad, raws, badRaws, sends, last, odd, sentAt, state: '' | 'retrying' | 'broken', what, why, since, hidden }
+const healthOf = new Map();   // channel -> { read, bad, raws, badRaws, ids, sends, last, odd, sentAt, state: '' | 'retrying' | 'broken', what, why, since, hidden }
 const hOf = ch => {
   let h = healthOf.get(ch);
-  if (!h){ h = { read: 0, bad: 0, raws: [], badRaws: [], sends: [], last: null, odd: 0, sentAt: 0, state: '', what: '', why: '', since: 0, hidden: false }; healthOf.set(ch, h); }
+  if (!h){ h = { read: 0, bad: 0, raws: [], badRaws: [], ids: new Set(), sends: [], last: null, odd: 0, sentAt: 0, state: '', what: '', why: '', since: 0, hidden: false }; healthOf.set(ch, h); }
   return h;
 };
 const keep = (list, x, n) => { list.push(String(x).slice(0, 4000)); if (list.length > n) list.shift(); };
-// What the chat's reader handed over: read (ok), or something no reader understood
-function noteRaw(ch, raw, ok){
+// What the chat's reader handed over: read (ok, with the ids of the messages in it), or something no reader understood
+function noteRaw(ch, raw, ok, ids = []){
   const h = hOf(ch);
   keep(h.raws, raw, 20);
   if (ok) h.read++; else { h.bad++; keep(h.badRaws, raw, 10); }
+  ids.forEach(id => { if (!id) return; h.ids.add(String(id)); if (h.ids.size > 500) h.ids.delete(h.ids.values().next().value); });
 }
 // A send's result: two failures in a row for the same reason (not the chat's own modes: chat/all-chat.js says those)
 function noteSend(ch, r, why){
@@ -64,7 +67,8 @@ async function checkAll(){
   for (const w of wins.filter(o => o.kind === 'chat' && o.view && o.ready && (o.feedOn || (o.feedRead && o.feedLive)))){
     const h = hOf(w.channel), site = PLAT_NAME[platOf(w.channel)];
     let p; try { p = await askIn(w.view, `(${lineProbe})()`); } catch { continue; }
-    const moved = h.last !== null && !!p && !!p.last && p.last !== h.last, quiet = moved && !h.read && !h.bad;   // (quiet: its chat moved, ALL read nothing)
+    const moved = h.last !== null && !!p && !!p.last && p.last !== h.last,
+      quiet = moved && !h.read && !h.bad && !(p.id && h.ids.has(p.id));   // (quiet: its chat moved, ALL read nothing; not lines drawn late, of what it read)
     h.odd = quiet ? h.odd + 1 : 0;
     if (quiet && h.odd >= 2) feedFailed(w);                   // (the alerts: its screen read again)
     if (!w.feedOn){ if (h.odd >= 2) h.odd = 0; h.last = p ? p.last : h.last; h.read = 0; h.bad = 0; continue; }   // (no ALL: nothing else to do)

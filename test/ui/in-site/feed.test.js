@@ -40,6 +40,19 @@ test('Copy message HTML (developer tools): the line with that id, by React props
   assert.equal(await page.evaluate(() => window.messageHtml('nope', true)), null, 'Why didn\'t this alert?: nothing to explain');
 });
 
+test('the health check\'s look at a chat (lineProbe): how many lines, the newest one\'s text and its message\'s id, by React props (Kick\'s past its row\'s own) or its own id; none: no id', async t => {
+  const page = await openApp(t);
+  await addLines(page);
+  const probe = () => page.evaluate(() => { const r = window.lineProbe(); return [r.n, r.id]; });
+  assert.deepEqual(await probe(), [4, 'yt1'], 'YouTube\'s: its own id');
+  await page.evaluate(() => document.querySelector('#fd-wrap yt-live-chat-text-message-renderer').remove());
+  assert.deepEqual(await probe(), [3, 'k1'], 'Kick\'s: its .group\'s props');
+  await page.evaluate(() => document.querySelector('#fd-wrap [data-index]').remove());
+  assert.deepEqual(await probe(), [2, 'tw2'], 'Twitch\'s: its props');
+  await page.evaluate(() => { const d = document.createElement('div'); d.className = 'chat-line__message'; d.textContent = 'a line of its own'; document.getElementById('fd-wrap').append(d); });
+  assert.deepEqual(await page.evaluate(() => { const r = window.lineProbe(); return [r.last, r.id]; }), ['a line of its own', '']);
+});
+
 test('a Kick reply: its hover bar\'s Reply (the arrow), not the line\'s other Reply; a line that isn\'t there: no', async t => {
   const page = await openApp(t);
   await addLines(page);
