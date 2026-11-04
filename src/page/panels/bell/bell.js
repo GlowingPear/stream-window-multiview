@@ -5,11 +5,11 @@ import { SmvSpam } from '../../alerts/spam.js';
 import { allOn, seeFlagged } from '../../chat/all-chat.js';
 import { $, ROLE, wins } from '../../core.js';
 import { addParsed } from '../../layout/placement.js';
-import { injectMention, pushMyName, renderMentions, renderNoteHistory } from './all-notifications.js';
+import { injectMention, pushMyName, renderMentWords, renderMentions, renderNoteHistory } from './all-notifications.js';
 import { SmvNotes } from './notifications.js';
 import { infoFor } from '../channels/channels.js';
 import { showHelp } from '../help/help.js';
-import { ignoreSender, renderSpamHist } from '../settings/alerts.js';
+import { ignoreSender, renderSpamHist, syncAlertControls } from '../settings/alerts.js';
 import { nameOf } from '../../platforms/linked.js';
 import { PLAT_NAME, chLabel, chLabelP, platOf } from '../../platforms/platforms.js';
 import { element, esc } from '../../shared/element.js';
@@ -271,6 +271,13 @@ function noteRow(n, o = {}){
 }
 // The same text as the "LIKELY SPAM" (or "ABUSIVE") tag in the chat.
 const spamWhy = r => `${r.abuse ? 'Abusive' : 'Likely spam'} (${r.score} points, ${r.need} needed):\n` + (r.signs || []).map(s => `• ${s.text} (+${s.points})`).join('\n');
+function readMentions(){
+  myName = settings.text('myName');
+  myTwitch = settings.text('myTwitch');
+  mentOn = settings.flag('mentOn', true);
+  mentMuted = new Set([].concat(settings.json('mentMuted', [])));
+  mentWords = [].concat(settings.json('mentWords', [])).filter(x => typeof x === 'string');
+}
 function setMyName(n){
   myName = String(n || '').trim().replace(/^@/, '');
   if (myName && !/^[A-Za-z0-9_]{2,30}$/.test(myName)) myName = '';
@@ -371,11 +378,14 @@ function seeBell(){
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   window.chatMentions = { atChannels, toggleChatMentions };   // for the tests (the @ button is the desktop app's)
-  myName = settings.text('myName');
-  myTwitch = settings.text('myTwitch');
-  mentOn = settings.flag('mentOn', true);
-  mentMuted = new Set([].concat(settings.json('mentMuted', [])));
-  mentWords = [].concat(settings.json('mentWords', [])).filter(x => typeof x === 'string');
+  readMentions();
+  // Settings › Mentions, changed in the other window or on another computer (Settings › Sync)
+  settings.onChange(['myName', 'myTwitch', 'mentOn', 'mentMuted', 'mentWords'], () => {
+    readMentions();
+    if ($('#mentUser')){ $('#mentOn').checked = mentOn; $('#mentUser').value = myName; $('#mentTwitch').value = myTwitch; }
+    renderMentWords(); pushMyName(); renderMentions(); syncAlertControls();
+    wins.forEach(w => { if (w.kind === 'chat') syncAtBtn(w); });
+  });
   if (Array.isArray(notes)) notes = notes.filter(n => n && typeof n === 'object');
   else {
     // The first start with the bell: the mentions history and spam alerts' history move in. The old ones are

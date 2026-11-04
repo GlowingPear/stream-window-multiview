@@ -130,6 +130,14 @@ const showSpMenu = on => { spMenu.hidden = !on; spMore.classList.toggle('on', on
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   { const t = settings.json('toolbar', {}); if (t.pos === 'left') barPos = 'left'; if (t.labels === false) barLabels = false; }
+  settings.onChange('toolbar', (_, v) => {        // the other window, or another computer (Settings › Sync)
+    let t = {}; try { t = JSON.parse(v || '{}') || {}; } catch {}
+    const pos = t.pos === 'left' ? 'left' : 'top', labels = t.labels !== false;
+    if (pos === barPos && labels === barLabels) return;
+    barPos = pos; barLabels = labels;
+    ['#accountMenu', '#savedPanel', '#bellPanel', '#moreMenu'].forEach(sel => { $(sel).hidden = true; });
+    applyToolbar();
+  });
   if (MAC_BAR) document.addEventListener('pointermove', e => {
     if (!iconsLeft()) return;
     const b = hdrEl.querySelector('.brand').getBoundingClientRect(), x = e.clientX, y = e.clientY;

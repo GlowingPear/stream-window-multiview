@@ -25,6 +25,7 @@ function init(){
     const c = $(sel);
     const v = settings.get(name); if (v !== null) c.checked = v === '1';
     c.addEventListener('change', () => { settings.set(name, c.checked); });
+    settings.onChange(name, (_, v) => { c.checked = v === null ? c.defaultChecked : v === '1'; });   // the other window, or Settings › Sync
   });
   $('#autoFit').checked = $('#lmAutoFit').checked = autoFit;
   $('#autoFit').addEventListener('change', e => setAutoFit(e.target.checked));
@@ -35,22 +36,27 @@ function init(){
   $('#trAllSet').addEventListener('change', e => setTrAll(e.target.checked));
   /* Settings > Chat: emote preview in chats (see emoteAgent) */
   $('#emoteSet').checked = emoteOn;
-  $('#emoteSet').addEventListener('change', e => {
-    viewVars.emoteOn = e.target.checked;
-    settings.set('emotePreview', emoteOn);
+  const setEmotePreview = on => {
+    viewVars.emoteOn = on; $('#emoteSet').checked = on;
     wins.forEach(w => { if (w.kind === 'chat' && w.ready) runIn(w.view, `window.__kmvEmote && window.__kmvEmote.on(${emoteOn})`); });
-  });
+  };
+  $('#emoteSet').addEventListener('change', e => { setEmotePreview(e.target.checked); settings.set('emotePreview', emoteOn); });
   /* Settings > Chat: highlight new emotes (off by default) */
   $('#newEmoteSet').checked = newEmotesOn;
   $('#newEmoteSet').closest('.st-row').hidden = !DESKTOP;   // it asks the sites from the app
-  $('#newEmoteSet').addEventListener('change', e => {
-    viewVars.newEmotesOn = e.target.checked;
-    settings.set('newEmotes', newEmotesOn);
+  const setNewEmotes = on => {
+    viewVars.newEmotesOn = on; $('#newEmoteSet').checked = on;
     wins.forEach(w => {
       if (w.kind !== 'chat' || !w.ready) return;
       if (newEmotesOn) markNewEmotes(w);
       else runIn(w.view, 'window.__kmvNew && window.__kmvNew.set([])');
     });
+  };
+  $('#newEmoteSet').addEventListener('change', e => { setNewEmotes(e.target.checked); settings.set('newEmotes', newEmotesOn); });
+  // changed in the other window, or on another computer (Settings › Sync)
+  settings.onChange(['emotePreview', 'newEmotes'], name => {
+    if (name === 'emotePreview'){ if (settings.flag('emotePreview') !== emoteOn) setEmotePreview(settings.flag('emotePreview')); }
+    else if (settings.flag('newEmotes') !== newEmotesOn) setNewEmotes(settings.flag('newEmotes'));
   });
   // Its example: a made-up emote drawn here (nothing is fetched), shown with the same card a chat gets.
   SAMPLE_EMOTE = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M33 15c0-4 1-7 3.6-10.2" fill="none" stroke="#7a4b1e" stroke-width="3.4" stroke-linecap="round"/><path d="M36 9.6C40 4.2 47.5 3.2 52.5 5.4 49.6 10.8 42.4 12.8 36 9.6Z" fill="#3fbf1f"/><path d="M32 14C25.6 14 23.4 19.4 23.4 24.6c0 5-3 7-6.2 11C13.2 40.6 12 46.8 14.2 52 17.2 58.8 24.4 62 32 62s14.8-3.2 17.8-10c2.2-5.2 1-11.4-3-16.4-3.2-4-6.2-6-6.2-11C40.6 19.4 38.4 14 32 14Z" fill="#9be35a"/><circle cx="26" cy="38" r="3" fill="#0a0c0d"/><circle cx="38" cy="38" r="3" fill="#0a0c0d"/><path d="M25 46c4 4 10 4 14 0" fill="none" stroke="#0a0c0d" stroke-width="3" stroke-linecap="round"/><path d="M50 30l8-8M54 34l8-4" stroke="#e7ede9" stroke-width="3" stroke-linecap="round"/></svg>');

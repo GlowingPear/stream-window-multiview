@@ -47,8 +47,42 @@ const SETTING_NAMES = new Set([
   'paletteOn', 'paletteRecent',   // Settings › Search box: the box itself, and remembering what you run
   // Settings › Developer: Developer tools on, and that you were told what Inspect can see
   'dev', 'devWarned',
-  'eventSamples'           // Settings › Developer › Chat events: collecting them (on unless switched off)
+  'eventSamples',          // Settings › Developer › Chat events: collecting them (on unless switched off)
+  'syncSeen'               // Settings › Sync was opened (its "New" badge goes)
 ]);
+/* Settings › Sync (#337): which keys go to your other computers. Every key above is in exactly one of these two
+   lists (npm test checks), so a new setting has to decide. The channel keys sync as one list of channels, each
+   with its auto-open, alerts and name; alertSound.* (not listed) sync as files of their own. Windows, layouts,
+   sign-ins, history and what's only about this computer stay here. */
+const SYNCED = new Set([
+  'theme', 'themes', 'keys', 'arrowSound', 'barNameStream', 'barNameChat', 'barButtons', 'toolbar', 'paletteOn', 'paletteRecent',
+  'saved', 'autoOpen', 'notifyAll', 'notifyOff', 'chNames', 'chanOpts',
+  'linkedOn', 'streamers', 'linkedNot', 'linkedOpts', 'allBots', 'allEvents', 'allSend', 'allTimeout', 'allHype', 'allHidden',
+  'mentOn', 'mentMuted', 'mentWords', 'myName', 'myTwitch', 'dndFor', 'desktopNotify', 'alerts',
+  'autoTranslate', 'noTranslate', 'translateAll', 'emotePreview', 'newEmotes', 'chatName', 'chatNameText',
+  'chatOverlay', 'chatOverlayOff', 'chatOverlayKeep', 'chatOverlaySecs', 'chatOverlayLines', 'chatCounts',
+  'shoutOn', 'shoutModOnly', 'shoutSend', 'shoutText', 'shoutChannels', 'shoutTwitch', 'shoutAgain', 'shoutRunN', 'shoutStreamers', 'shoutListFirst',
+  'ytSkip', 'ytAutoLike', 'ytChatView',
+  'startMuted', 'autoPause', 'snap'
+]);
+const NOT_SYNCED = new Set([
+  'v1', 'streams.v1', 'popped', 'popPartial', 'lastLayout', 'streams.lastLayout', 'cols', 'colOrder', 'linked', 'featured', 'sideCols', 'pageStep',
+  'switchMode', 'monitors', 'switchRect', 'layoutLocked', 'focusOnly', 'autoFit', 'game', 'chatZoom', 'chatBlowup', 'chatBlowSize',
+  'stageCh', 'stageSplit', 'stageZoom', 'railCh', 'railZoom', 'lastSession', 'presets',
+  'accounts', 'account', 'link.peardrops', 'link.kickAuto', 'link.kickBefore', 'link.widget', 'link.dailyReward',
+  'notifications', 'bellCount', 'msg', 'dnd', 'shoutKnown', 'shoutSent', 'allRecentEmotes', 'allMyLook', 'ytAutoLiked', 'ytConsent', 'spamHistory', 'mentions',
+  'dev', 'devWarned', 'eventSamples', 'seenVersion', 'intro', 'settingsTab', 'savedTab', 'profView', 'allOpen', 'linkedTabs', 'linkedTip', 'watchSignedIn', 'palette', 'syncSeen',
+  'ytNames', 'shoutPeople'   // (only read once, from older versions)
+]);
+/* A synced setting's version (1 unless it says otherwise). Changing what a synced setting holds means a new
+   version here, a step in UPGRADES that turns the old value into the new one, and a test file for the old one
+   (src/page/README.md). Another computer's value from an older version is upgraded when it arrives; one from a
+   newer version waits until this copy updates. */
+const VERSIONS = {};
+const UPGRADES = {};               // { key: [v1 -> v2, v2 -> v3, …] }: each takes the stored text and gives the next
+const syncs = name => SYNCED.has(name) || /^alertSound\.\w+$/.test(name);
+const afterSet = [];               // fn(name, text) after a synced key is set here (panels/settings/sync.js)
+const listeners = [];              // { want, fn }: settings.onChange's, so a synced value is heard in this window too
 // your own alert sound for a kind of alert, as a data: URL ('alertSound.mention', …)
 const isSetting = name => SETTING_NAMES.has(name) || /^alertSound\.\w+$/.test(name);
 const storageKey = name => {
@@ -76,6 +110,7 @@ return {
       if (value === null || value === undefined) localStorage.removeItem(k);
       else localStorage.setItem(k, typeof value === 'boolean' ? (value ? '1' : '0') : typeof value === 'string' ? value
         : typeof value === 'number' ? String(value) : JSON.stringify(value));
+      if (syncs(name)) { const text = readRaw(name); afterSet.forEach(fn => fn(name, text)); }
       return true;
     } catch { return false; }
   },
@@ -84,8 +119,34 @@ return {
   // fn(name, newValue) for each of the names.
   onChange(names, fn) {
     const want = new Map([].concat(names).map(n => [storageKey(n), n]));
+    listeners.push({ want, fn });
     window.addEventListener('storage', e => { if (want.has(e.key)) fn(want.get(e.key), e.newValue); });
-  }
+  },
+
+  // Settings › Sync
+  syncs,
+  synced: () => [...SYNCED],
+  decided: name => SYNCED.has(name) ? 'sync' : NOT_SYNCED.has(name) ? 'local' : '',
+  names: () => [...SETTING_NAMES],
+  version: name => VERSIONS[name] || 1,
+  versions: () => Object.fromEntries([...SYNCED].map(n => [n, VERSIONS[n] || 1])),
+  // Another computer's value, written with version v of the setting -> the text for this copy, or undefined when
+  // it can't be used here (a newer version, or a step that failed). (steps and to: the tests')
+  upgrade(name, v, text, steps = UPGRADES[name] || [], to = VERSIONS[name] || 1) {
+    if ((v || 1) > to) return undefined;
+    try { for (let at = v || 1; at < to; at++) text = steps[at - 1](text); return text; } catch { return undefined; }
+  },
+  afterSet(fn){ afterSet.push(fn); },
+  // A value from another computer: saved, and heard by this window's onChange handlers as a change from the other
+  // window would be (the other window hears it through the storage event as usual). Not passed on to afterSet.
+  applySynced(name, text) {
+    const k = storageKey(name);
+    try { if (text === null || text === undefined) localStorage.removeItem(k); else localStorage.setItem(k, text); } catch { return false; }
+    for (const l of listeners) if (l.want.has(k)) { try { l.fn(name, text ?? null); } catch (e) { console.warn('sync: ' + name, e); } }
+    return true;
+  },
+  // Does anything in this window take a change of this setting while the page is open? (every synced key must)
+  listening: name => { const k = storageKey(name); return listeners.some(l => l.want.has(k)); }
 };
 })();
 

@@ -82,3 +82,47 @@ test('onChange: changes made in the other window, for the names asked about only
   change('dnd', '1');                     // not one of the page's keys
   assert.deepEqual(seen, [['dnd', '99'], ['theme', null]]);
 });
+
+test('sync: every key says whether it goes to your other computers, in one list only', () => {
+  const undecided = settings.names().filter(n => !settings.decided(n));
+  assert.deepEqual(undecided, [], 'add each to SYNCED or NOT_SYNCED in src/page/shared/settings.js');
+  for (const n of settings.synced()) assert.ok(settings.names().includes(n), n + ' is a setting');
+  assert.ok(settings.syncs('theme'));
+  assert.ok(settings.syncs('alertSound.mention'), 'your alert sounds');
+  assert.ok(!settings.syncs('v1'), 'windows stay on each computer');
+  assert.equal(settings.decided('accounts'), 'local');
+  assert.equal(settings.version('theme'), 1);
+  assert.equal(settings.versions().theme, 1);
+});
+
+test('sync: a synced key set here is passed on; a value from another computer is saved and heard here, not passed on', () => {
+  const out = [];
+  settings.afterSet((n, v) => out.push([n, v]));
+  settings.set('theme', 'pear');
+  settings.set('savedTab', 'kick');
+  settings.set('saved', ['alpha']);
+  assert.deepEqual(out, [['theme', 'pear'], ['saved', '["alpha"]']]);
+  const heard = [];
+  assert.equal(settings.listening('snap'), false);
+  settings.onChange(['snap', 'theme'], (n, v) => heard.push([n, v]));
+  settings.onChange('theme', () => { throw new Error('a broken handler'); });
+  assert.equal(settings.listening('snap'), true);
+  assert.equal(settings.applySynced('snap', '1'), true);
+  assert.equal(settings.applySynced('theme', null), true);
+  assert.deepEqual(heard, [['snap', '1'], ['theme', null]]);
+  assert.equal(store.get('kickMultiview.snap'), '1');
+  assert.equal(store.has('kickMultiview.theme'), false);
+  assert.equal(out.length, 2, 'nothing more passed on');
+  failWrites = true;
+  assert.equal(settings.applySynced('snap', '0'), false);
+});
+
+test('sync: an older value is upgraded step by step; a newer one, or a failed step, is left', () => {
+  const steps = [t => t + '>2', t => t + '>3'];
+  assert.equal(settings.upgrade('mentWords', 1, 'a', steps, 3), 'a>2>3');
+  assert.equal(settings.upgrade('mentWords', 2, 'a', steps, 3), 'a>3');
+  assert.equal(settings.upgrade('mentWords', 3, 'a', steps, 3), 'a');
+  assert.equal(settings.upgrade('mentWords', 4, 'a', steps, 3), undefined, 'written by a newer version');
+  assert.equal(settings.upgrade('mentWords', 1, 'a', [() => { throw new Error('bad'); }], 2), undefined);
+  assert.equal(settings.upgrade('theme', 1, 'dark'), 'dark', 'version 1: as it is');
+});
