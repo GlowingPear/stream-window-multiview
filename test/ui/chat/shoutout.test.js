@@ -78,6 +78,20 @@ test('on: the hover bar\'s Shout out sends at once in the chat the line came fro
   assert.equal(await line(page, 'gg everyone').locator('.al-tag-so').count(), 0);
 });
 
+test('on: Shout out in a Kick or Twitch chat\'s own page (its hover bar, a raid\'s pill) sends at once in that chat', async t => {
+  const page = await allApp(t, { shoutOn: '1' });
+  // what the page's button says (in-site/shoutout.js), as the chat page's console message
+  const press = (ch, d) => page.evaluate(async ([ch, d]) => {
+    const { siteMessage } = await import('./page/shared/incoming.js'), w = window.openWins().find(o => o.kind === 'chat' && o.channel === ch);
+    siteMessage(w, w.view, '__kmv:shoutout ' + JSON.stringify(d));
+  }, [ch, d]);
+  await press('quietkoala', { site: 'kick', login: 'driftwood_7', name: 'Driftwood_7', named: false });
+  await flashed(page, /Shouted out Driftwood_7 in Kick chat/);
+  await press('tw:quietkoala', { site: 'twitch', login: 'tinroof', name: 'Tinroof', named: false });
+  await flashed(page, /Shouted out Tinroof in Twitch chat/);
+  assert.deepEqual(await sends(page), [['quietkoala', 'Go check out Driftwood_7! → https://kick.com/driftwood_7'], ['tw:quietkoala', 'Go check out Tinroof! → https://twitch.tv/tinroof']]);
+});
+
 test('on: a raid\'s line has Shout out, then ✓ Shouted out; a Kick name is looked up (- for _ when Kick says so), and nothing goes without it', async t => {
   const page = await allApp(t, { shoutOn: '1', shoutText: 'Hi {name}[, last seen playing {game}]: {link}' });
   await chat(page);
