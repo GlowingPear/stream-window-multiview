@@ -2,7 +2,12 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.22 (current)
+## 0.4.23 (current)
+- CI: App tests run on Ubuntu 24.04
+- Shout out works again in Kick's and Twitch's own chats
+- ALL no longer reloads a working chat when its page draws already-read messages late
+
+## 0.4.22
 - ALL shows a Twitch chat's earlier messages after the app starts or the chat reloads
 
 ## 0.4.21
