@@ -97,7 +97,7 @@ function syComputerRow(c){
     const row = element('div', 'sy-cr me', ic, element('span', 'sy-t', element('span', 'sy-edit', input,
       element('button', { type: 'button', class: 'btn primary', dataset: { cmd: 'sync.renameSave' }, onclick: save }, 'Save'),
       element('button', { type: 'button', class: 'btn', dataset: { cmd: 'sync.renameCancel' }, onclick: cancel }, 'Cancel')),
-      element('small', 'sy-hint', 'Up to 40 characters. Enter saves, Esc puts the old name back. The other computers see it the next time they sync.')));
+      element('small', 'sy-hint', 'Enter saves, Esc cancels. Your other computers see it the next time they sync.')));
     if (first) syDraft = sy.name;
     requestAnimationFrame(() => { input.focus(); if (first) input.select(); });
     return row;

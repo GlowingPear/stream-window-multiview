@@ -192,7 +192,7 @@ test('renaming this computer: the pencil, Enter saves, Esc puts the old name bac
   await page.click('#syncComputers .sy-pen');
   await page.waitForSelector('#syncComputers .sy-edit input');
   assert.equal(await page.inputValue('#syncComputers .sy-edit input'), 'Studio-MacBook');
-  assert.match(await text(page, '#syncComputers .sy-hint'), /^Up to 40 characters\. Enter saves, Esc puts the old name back\./);
+  assert.match(await text(page, '#syncComputers .sy-hint'), /^Enter saves, Esc cancels\. Your other computers see it the next time they sync\.$/);
   await page.fill('#syncComputers .sy-edit input', 'Stream desk Mac');
   await page.keyboard.press('Escape');
   assert.deepEqual(await calls(page, 'rename'), []);
