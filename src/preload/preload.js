@@ -115,6 +115,24 @@ contextBridge.exposeInMainWorld('kmv', {
   onLinkState: cb => ipcRenderer.on('link:state', (_e, st) => cb(st)),
   onLinkActivity: cb => ipcRenderer.on('link:activity', () => cb()),
 
+  // Settings › Sync: the same channels and settings on every computer, through a synced folder
+  syncHello: d => ipcRenderer.invoke('sync:hello', d),
+  syncChanged: (key, value) => ipcRenderer.send('sync:changed', key, value),
+  syncStatus: () => ipcRenderer.invoke('sync:status'),
+  syncFolders: () => ipcRenderer.invoke('sync:folders'),
+  syncPick: () => ipcRenderer.invoke('sync:pick'),
+  syncPeek: folder => ipcRenderer.invoke('sync:peek', folder),
+  syncStart: (folder, mode) => ipcRenderer.invoke('sync:start', folder, mode),
+  syncStop: () => ipcRenderer.invoke('sync:stop'),
+  syncNow: () => ipcRenderer.invoke('sync:now'),
+  syncRename: name => ipcRenderer.invoke('sync:rename', name),
+  syncForget: device => ipcRenderer.invoke('sync:forget', device),
+  syncWhat: what => ipcRenderer.invoke('sync:what', what),
+  syncUndo: () => ipcRenderer.invoke('sync:undo'),
+  syncShow: () => ipcRenderer.invoke('sync:show'),
+  onSyncPull: cb => ipcRenderer.on('sync:pull', (_e, d) => cb(d || {})),
+  onSyncStatus: cb => ipcRenderer.on('sync:status', (_e, s) => cb(s || {})),
+
   // Streamer profiles
   profileGet: (ch, opt) => ipcRenderer.invoke('profile:get', ch, opt || {}),
   profileList: chs => ipcRenderer.invoke('profile:list', chs),

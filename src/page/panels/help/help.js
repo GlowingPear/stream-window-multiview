@@ -60,10 +60,13 @@ var keysOn = true;
 function setKeysOn(on){
   keysOn = !!on;
   settings.set('keys', keysOn);
+  showKeysOn();
+  flash(keysOn ? 'Keyboard shortcuts on' : 'Keyboard shortcuts off');
+}
+function showKeysOn(){
   const g = $('#settingsDlg .sc-grid'); if (g) g.classList.toggle('off', !keysOn);
   const h = $('#keysOn'); if (h) h.checked = keysOn;
   const st = $('#keysSet'); if (st) st.checked = keysOn;
-  flash(keysOn ? 'Keyboard shortcuts on' : 'Keyboard shortcuts off');
 }
 let appVersion = '';
 const kbdHtml = k => keyName(k).split(' or ').map(x => x.split(/(?<=\S)\+(?=\S)/).map(p => `<kbd>${esc(p)}</kbd>`).join('+')).join(' or ');
@@ -103,6 +106,7 @@ async function renderDoc(tab){
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   keysOn = settings.flag('keys', true);
+  settings.onChange('keys', () => { keysOn = settings.flag('keys', true); showKeysOn(); });   // the other window, or Settings › Sync
   // the search box's (Ctrl/⌘+K): every shortcut, with its keys (Enter shows the list)
   commands.add(SHORTCUTS.flatMap(([g, rows]) => rows.map(([k, d]) => ({ id: 'keys:' + k, kind: 'help', group: 'Keyboard shortcuts', title: d, sub: g, keys: k.split(' or ')[0],
     words: ['shortcut', 'key ' + k], icon: 'keys', verb: 'Show', onlyScope: '?', run: () => showHelp('keys') }))));

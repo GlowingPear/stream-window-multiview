@@ -9,6 +9,7 @@ import { loadGuide } from '../help/guide.js';
 import { keysOn, renderDoc, showHelp } from '../help/help.js';
 import { renderSpamHist, veilLists } from './alerts.js';
 import { syncDnd, syncNotifyPane } from './notifications.js';
+import { renderSyncPane } from './sync.js';
 import { renderThemeDlg } from './themes.js';
 import { renderUpdates } from '../updates/updates.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -21,7 +22,7 @@ import { renderLayoutsPane } from '../../toolbar/layout-menu.js';
 let settingsDlg;
 let settingsTab = 'general';
 let MAIN_DESK;
-const ST_ICONS = { general: 'sliders', windows: 'winbar', linked: 'layers', layouts: 'layout', chat: 'chat', shoutouts: 'megaphone', accounts: 'user', apps: 'link', youtube: 'ytPlay', notify: 'bell', mentions: 'at', support: 'gift', spam: 'mod', flagged: 'flag', extensions: 'ext', themes: 'palette', search: 'search', updates: 'update', guide: 'book', keys: 'keys', developer: 'code' };
+const ST_ICONS = { general: 'sliders', windows: 'winbar', linked: 'layers', layouts: 'layout', chat: 'chat', shoutouts: 'megaphone', accounts: 'user', apps: 'link', youtube: 'ytPlay', notify: 'bell', mentions: 'at', support: 'gift', spam: 'mod', flagged: 'flag', extensions: 'ext', themes: 'palette', search: 'search', updates: 'update', sync: 'syncFolder', guide: 'book', keys: 'keys', developer: 'code' };
 // tab: a page (its data-s), sub: a tab inside it (Spam alerts › Scoring)
 function openSettings(tab, { sub } = {}){
   const ok = t => { const b = settingsDlg.querySelector(`.st-rail [data-s="${t}"]`); return b && !b.hidden; };
@@ -43,6 +44,7 @@ function openSettings(tab, { sub } = {}){
   if (settingsTab === 'extensions') renderExtPane();
   if (settingsTab === 'layouts') renderLayoutsPane(true);
   if (settingsTab === 'developer') renderDev();
+  if (settingsTab === 'sync') renderSyncPane();
   if (sub) settingsDlg.querySelector(`.st-pane[data-s="${settingsTab}"] .st-tabs button[data-t="${sub}"]`)?.click();
   return renderDoc(settingsTab);
 }

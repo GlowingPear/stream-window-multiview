@@ -81,7 +81,14 @@ const icon = {
   arrowL:'<svg viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>',
   arrowR:'<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
   shield:'<svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/></svg>',
-  flag:'<svg viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4.5c4.5-2.5 7.5 2.5 13 0v9c-5.5 2.5-8.5-2.5-13 0"/></svg>'
+  flag:'<svg viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4.5c4.5-2.5 7.5 2.5 13 0v9c-5.5 2.5-8.5-2.5-13 0"/></svg>',
+  // Settings › Sync: its folder, this computer and the others, renaming, and the sync apps' folders
+  syncFolder:'<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 13.5a3 3 0 0 1 5.2-2M15 12.5a3 3 0 0 1-5.2 2"/><path d="M14.5 9.5v2h-2M9.5 16.5v-2h2"/></svg>',
+  laptop:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M1 20h22"/></svg>',
+  desktop:'<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="13" rx="2"/><path d="M8 21h8M12 16v5"/></svg>',
+  pencil:'<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>',
+  cloud:'<svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.5-8 6 6 0 0 1 11.5 1.5A3.5 3.5 0 0 1 17.5 18z"/></svg>',
+  dropbox:'<svg viewBox="0 0 24 24"><path d="M12 3l5 3.2-5 3.2-5-3.2zM17 6.2l5 3.2-5 3.2-5-3.2zM7 6.2L2 9.4l5 3.2 5-3.2zM12 15.8l5-3.2M12 15.8l-5-3.2"/></svg>'
 };
 // Icons in the page's own markup: <i data-ico="name"></i>
 const fillIcons = root => root.querySelectorAll('i[data-ico]').forEach(i => { i.innerHTML = icon[i.dataset.ico] || ''; });

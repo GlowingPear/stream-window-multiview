@@ -110,6 +110,8 @@ function alertTick(){
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
+  // your own sounds are read each time one plays: one that came from another computer (Settings › Sync) plays next time
+  settings.onChange(ALERT_KINDS.map(SOUND_KEY), () => {});
   alerts = (() => {
     const a = settings.json('alerts', {}) || {};
     // From before mentions had a chat bot list: the one you made for spam alerts becomes the shared one.

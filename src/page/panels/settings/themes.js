@@ -157,7 +157,9 @@ function init(){
     { name: 'Hikari', note: 'Blue and white', vars: TV('#eaf2fd', '#ffffff', '#f3f8ff', '#d4e3f7', '#b8cfee', '#0f2a4a', '#5a7396', '#1e6fe8', '#ffffff', '#e0394a') },
     { name: 'Tron (princess)', note: 'Pretty in pink', vars: { ...TV('#16080f', '#210d18', '#2b1220', '#3f1d31', '#562a45', '#ffe8f4', '#c992b0', '#ff5fae', '#2b0017', '#ffb547'), '--frame': '#ff9fd0' } }
   ];
-  try { myThemes = [].concat(settings.json('themes', [])).filter(t => t && t.name && t.vars).map(t => ({ name: String(t.name).slice(0, 30), vars: cleanVars(t.vars) })); } catch {}
+  const readMyThemes = () => { try { myThemes = [].concat(settings.json('themes', [])).filter(t => t && t.name && t.vars).map(t => ({ name: String(t.name).slice(0, 30), vars: cleanVars(t.vars) })); } catch { myThemes = []; } };
+  readMyThemes();
+  settings.onChange('themes', () => { readMyThemes(); if (!themeDlg.closest('[hidden]')) renderThemeDlg(); });   // the other window, or Settings › Sync
   theme = { name: 'Pear', vars: { ...BUILTIN_THEMES[0].vars }, edited: false };
   try { const t = settings.json('theme'); if (t && t.vars) theme = { name: t.name || 'Custom', vars: { ...BUILTIN_THEMES[0].vars, ...cleanVars(t.vars) }, edited: !!t.edited }; } catch {}
   contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };

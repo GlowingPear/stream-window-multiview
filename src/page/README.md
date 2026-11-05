@@ -36,6 +36,8 @@
 Don't call `window.kmv.on…` directly.
 
 **Saved settings.** Only through `shared/settings.js`, never `localStorage` directly. Every key is listed there once: add new ones to the list. `settings.flag(name, on)`, `text`, `num` and `json` read a setting, `set(name, value)` and `remove(name)` change it, and `settings.onChange(names, fn)` hears about changes made in the other window. None of them throw.
+- **Sync (Settings › Sync).** Every key is in `SYNCED` (it goes to your other computers) or `NOT_SYNCED` (it stays on this one: windows, layouts, sign-ins, history), and `npm test` fails on a key in neither. A synced key needs a `settings.onChange` handler, because another computer's value arrives while the page is open (`settings.applySynced` runs the same handlers as a change from the other window); a UI test fails without one.
+- **Changing what a synced setting holds** means a new version for it in `VERSIONS`, a step in `UPGRADES` that turns the old value into the new one, and a test with a value of the old version. Older computers keep syncing the keys they understand; a value from a newer version waits until this copy updates.
 
 **Sites.** Ask the channel's site module (`platform(ch)` from `platforms/platforms.js`) rather than checking the site's name: its addresses (`streamUrl`, `chatUrl`, `pageUrl`, `profileUrl`, `modUrl`), reading a channel from a link (`fromUrl`), raids, and what it can do (`mentions`, `spamAlerts`, `emoteLists`, `pageCommands`, `likes`). For something new that differs by site, add it to all three modules, with the same name and shape. A new site is a new module of the same shape, added to `PLATFORMS`. `PLAT_NAME[p]` is a site's name and `platIcon(p)` its badge.
 

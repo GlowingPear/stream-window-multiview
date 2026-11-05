@@ -192,4 +192,5 @@ function init(){
   window.openNoteHistory = openNoteHistory;   // for the tests
 }
 
-export { closeNoteHistory, init, injectMention, pushMyName, renderMentions, renderNoteHistory, setMyTwitch };
+export { closeNoteHistory, init, injectMention, pushMyName, renderMentions, renderMentWords, renderNoteHistory,
+  setMyTwitch };

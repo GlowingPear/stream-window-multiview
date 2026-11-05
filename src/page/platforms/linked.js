@@ -191,6 +191,7 @@ function suggestions({ all: every } = {}){
 function init(){
   // changed in the other window
   settings.onChange(['streamers', 'linkedOn', 'linkedNot', 'linkedOpts'], name => { if (name === 'streamers') streamers = null; store.changed('streamers'); });
+  settings.onChange('chanOpts', () => store.changed('streamers'));   // (read when used; the parts that show it redraw)
   window.linkedApi = { link, unlink, unlinkAll, setOn, setOpt, setMain, notSame, suggestions, listStreamers, streamerOf, setStreamerOpt, streamerBots };   // for the tests
 }
 

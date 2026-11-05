@@ -119,7 +119,7 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   assert.equal(await settingsTab(), 'accounts');
   assert.ok(await win.isHidden('#accountMenu'), 'the menu closes');
   const tabs = await win.$$eval('#settingsDlg .st-rail button', b => b.filter(x => !x.hidden).map(x => x.dataset.s));
-  assert.deepEqual(tabs, ['general', 'chat', 'search', 'windows', 'layouts', 'themes', 'accounts', 'linked', 'apps', 'youtube', 'extensions', 'notify', 'mentions', 'support', 'shoutouts', 'spam', 'flagged', 'guide', 'keys', 'updates', 'developer']);
+  assert.deepEqual(tabs, ['general', 'chat', 'search', 'windows', 'layouts', 'themes', 'accounts', 'linked', 'apps', 'youtube', 'extensions', 'notify', 'mentions', 'support', 'shoutouts', 'spam', 'flagged', 'guide', 'keys', 'updates', 'sync', 'developer']);
   assert.deepEqual(await win.$$eval('#settingsDlg .st-rail-sec', h => h.filter(x => !x.hidden).map(x => x.textContent)), ['Appearance', 'Sites', 'Alerts', 'Moderation', 'Help']);
   assert.ok(await win.isVisible('#settingsDlg .am-watch'), 'Watch signed in moved here');
   assert.ok(await win.isHidden('#mentUser'), 'your usernames are under Mentions');

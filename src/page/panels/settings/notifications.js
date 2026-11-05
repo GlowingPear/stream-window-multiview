@@ -82,7 +82,9 @@ function init(){
   });
   // Do not disturb: still collected under the bell, but quiet. The desktop notifications stop in the app itself too.
   dndOnEl = $('#dndOn'), dndFor = $('#dndFor');
-  { const f = settings.get('dndFor'); if ([...dndFor.options].some(o => o.value === f)) dndFor.value = f; }
+  const readDndFor = () => { const f = settings.get('dndFor'); if ([...dndFor.options].some(o => o.value === f)) dndFor.value = f; };
+  readDndFor();
+  settings.onChange('dndFor', readDndFor);       // the other window, or another computer (Settings › Sync)
   dndOnEl.addEventListener('change', () => setDnd(dndOnEl.checked));
   document.querySelectorAll('.nc-dnd').forEach(b => b.addEventListener('click', () => {
     setDnd(!dndOn());

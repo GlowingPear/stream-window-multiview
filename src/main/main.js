@@ -765,6 +765,44 @@ appIpc.handle('link:activity', (_e, opts) => withLink(l => l.activityPage(pageOp
 appIpc.on('link:note', (_e, text) => withLink(l => l.playersNote(text)));
 appIpc.on('link:players', (e, report) => { const role = fromStreams(e) ? 'streams' : 'main'; withLink(l => l.playersReport(role, report)).catch(err => console.warn('[grapevine]', err.message)); });
 app.on('before-quit', () => { pearLink?.then(l => l?.stop()); });
+
+/* ---------- Settings › Sync: saved channels and settings, the same on every computer (sync.js) ----------
+   The page sends its synced values at start (sync:hello, the main window) and each change after (sync:changed,
+   either window); what other computers changed goes back to the main window as sync:pull. */
+const sync = require('./sync').createSync({
+  userData: app.getPath('userData'), version: app.getVersion(),
+  // tests and captures: where to look for the folders already synced, and the computer's name
+  ...(devEnv('SMV_SYNC_HOME') ? { home: devEnv('SMV_SYNC_HOME'), env: {} } : {}), ...(devEnv('SMV_SYNC_HOST') ? { hostname: devEnv('SMV_SYNC_HOST') } : {}),
+  ...(+devEnv('SMV_SYNC_CHECK_MS') > 0 ? { checkMs: +devEnv('SMV_SYNC_CHECK_MS') } : {}),   // (the launch tests: a second, not a minute)
+  send: (ch, d) => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send(ch, d); },
+  log: m => console.warn(m)
+});
+const syncKey = k => typeof k === 'string' && k.length <= 60 && /^[\w.]+$/.test(k);
+const syncValue = v => v === null || (typeof v === 'string' && v.length <= 12e6);   // (an alert sound is a data: URL)
+mainIpc.handle('sync:hello', (_e, d) => {
+  const values = {}, versions = {};
+  for (const [k, v] of Object.entries((d && d.values) || {})) if (syncKey(k) && syncValue(v)) values[k] = v;
+  for (const [k, v] of Object.entries((d && d.versions) || {})) if (syncKey(k) && Number.isInteger(v) && v > 0) versions[k] = v;
+  return sync.hello({ values, versions });
+});
+appIpc.on('sync:changed', (_e, k, v) => { if (syncKey(k) && syncValue(v)) sync.changed(k, v); });
+mainIpc.handle('sync:status', () => sync.status());
+mainIpc.handle('sync:folders', () => sync.folders());
+mainIpc.handle('sync:pick', async () => {
+  const r = await dialog.showOpenDialog(mainWin, { title: 'Choose a folder your sync app keeps the same on every computer', properties: ['openDirectory', 'createDirectory'] });
+  return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
+});
+const syncFolder = f => typeof f === 'string' && f.length < 1000 && path.isAbsolute(f);
+mainIpc.handle('sync:peek', (_e, folder) => syncFolder(folder) ? sync.peek(folder) : { ok: false, others: [] });
+mainIpc.handle('sync:start', (_e, folder, mode) => syncFolder(folder) ? sync.start({ folder, mode: ['combine', 'theirs', 'mine'].includes(mode) ? mode : 'combine' }) : { ok: false });
+mainIpc.handle('sync:stop', () => sync.stop());
+mainIpc.handle('sync:now', () => sync.syncNow());
+mainIpc.handle('sync:rename', (_e, name) => sync.rename(typeof name === 'string' ? name : ''));
+mainIpc.handle('sync:forget', (_e, device) => sync.forget(typeof device === 'string' ? device : ''));
+mainIpc.handle('sync:what', (_e, what) => sync.setWhat(what && typeof what === 'object' ? what : {}));
+mainIpc.handle('sync:undo', () => sync.undo());
+mainIpc.handle('sync:show', () => { const s = sync.status(); return s.dir ? shell.openPath(s.dir) : ''; });
+app.on('will-quit', () => sync.close());
 // A raid one window followed: the other window (main or streams pop-out) follows it too.
 appIpc.on('raid:followed', (e, from, to) => {
   if (typeof from !== 'string' || typeof to !== 'string' || !validCh(normCh(from)) || !validCh(normCh(to))) return;

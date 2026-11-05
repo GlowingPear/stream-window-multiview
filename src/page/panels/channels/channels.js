@@ -365,6 +365,13 @@ function init(){
   settings.onChange(SAVED, (_, v) => {            // a star clicked in the other window
     try { saved = abc(JSON.parse(v || '[]')); } catch {} store.changed('saved'); sendWatch();
   });
+  // auto-open and live alerts, changed in the other window or on another computer (Settings › Sync)
+  settings.onChange(['autoOpen', 'notifyAll', 'notifyOff'], name => {
+    if (name === 'autoOpen'){ autoOpen = settings.json('autoOpen', []); store.changed('autoOpen'); return; }
+    notifyAll = settings.flag('notifyAll', true); notifyOff = settings.json('notifyOff', []);
+    const na = $('#notifyAll'); if (na) na.checked = notifyAll;
+    sendWatch(); store.changed('liveAlerts');
+  });
   store.watch(['saved', 'wins', 'tabs'], () => refreshStars());
   savedTab = settings.text('savedTab', 'all');
   autoOpen = settings.json('autoOpen', []);

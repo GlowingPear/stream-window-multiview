@@ -11,6 +11,11 @@ const autoTr = new Set();
 let trAll = settings.flag('translateAll');
 const noTr = new Set();
 const saveAutoTr = () => { settings.set('autoTranslate', [...autoTr].slice(-200)) && settings.set('noTranslate', [...noTr].slice(-200)); };
+function readAutoTr(){
+  autoTr.clear(); noTr.clear();
+  [].concat(settings.json('autoTranslate', [])).forEach(c => { if (typeof c === 'string') autoTr.add(c); });
+  [].concat(settings.json('noTranslate', [])).forEach(c => { if (typeof c === 'string') noTr.add(c); });
+}
 // Does this chat translate new messages as they come?
 const autoTrFor = ch => trAll ? !noTr.has(ch) : autoTr.has(ch);
 function setTrAll(on){
@@ -48,8 +53,10 @@ const winOfView = id => wins.find(w => w.view && viewId(w.view) === id);
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
-  [].concat(settings.json('autoTranslate', [])).forEach(c => { if (typeof c === 'string') autoTr.add(c); });
-  [].concat(settings.json('noTranslate', [])).forEach(c => { if (typeof c === 'string') noTr.add(c); });
+  readAutoTr();
+  // changed in the other window, or on another computer (Settings › Sync): new messages from now on
+  settings.onChange(['autoTranslate', 'noTranslate'], readAutoTr);
+  settings.onChange('translateAll', () => { if (settings.flag('translateAll') !== trAll) setTrAll(settings.flag('translateAll')); });
   fromSite('tr', (w, json, view) => { if (w.view === view) translateFor(view, json); });
   fromApp('onViewTranslate', (id, a) => translateChat(winOfView(id), a));
 }
