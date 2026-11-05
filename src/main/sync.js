@@ -66,9 +66,9 @@ function syncedFolders({ platform = process.platform, home = require('os').homed
 }
 
 /* userData: the data folder. send(channel, data): to the main window. Tests pass now, timers, watchDir (fs.watch:
-   closing one takes a moment on macOS), hostname, platform, home and env. */
+   closing one takes a moment on macOS), checkMs, hostname, platform, home and env. */
 function createSync({ userData, version, send = () => {}, now = Date.now, timers = global, hostname = require('os').hostname(),
-  platform = process.platform, home = require('os').homedir(), env = process.env, watchDir = fs.watch, log = () => {} }) {
+  platform = process.platform, home = require('os').homedir(), env = process.env, watchDir = fs.watch, checkMs = CHECK_MS, log = () => {} }) {
   const stateFile = path.join(userData, STATE_FILE);
   const st = Object.assign({
     device: '', name: '', on: false, folder: '', what: { channels: true, settings: true, sounds: true },
@@ -184,7 +184,7 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
       watcher = watchDir(devicesDir(), (_e, name) => { if (!name || String(name) !== st.device + '.json') pullSoon(); });
       watcher.on('error', () => { unwatch(true); });
     } catch { watcher = null; }
-    checkTimer = timers.setInterval(() => { if (!watcher && isDir(st.folder)) watch(); pull(); }, CHECK_MS);
+    checkTimer = timers.setInterval(() => { if (!watcher && isDir(st.folder)) watch(); pull(); }, checkMs);
   }
   function unwatch(keepTimer = false) {
     if (watcher) { try { watcher.close(); } catch {} watcher = null; }

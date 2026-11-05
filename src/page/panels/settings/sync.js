@@ -4,7 +4,6 @@ import { openSettings, settingsDlg } from './settings.js';
 import { ask } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
-import { DESKTOP } from '../../shared/env.js';
 import { flash, flashUndo } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
 import { fromApp } from '../../shared/incoming.js';
@@ -125,7 +124,8 @@ function syRender(){
   chip.className = 'ca-chip' + (!on ? '' : bad ? ' bad' : ' ok');
   card.querySelector('.sy-pick').hidden = on;
   $('#syncFoundHead').hidden = !syFound.length;
-  $('#syncFound').replaceChildren(...syFound.map((f, i) => syFolderRow(f, i === 0)));
+  const fk = JSON.stringify(syFound);              // (only when they change: a row mustn't go while it's being clicked)
+  if ($('#syncFound').dataset.k !== fk){ $('#syncFound').dataset.k = fk; $('#syncFound').replaceChildren(...syFound.map((f, i) => syFolderRow(f, i === 0))); }
   const nameIn = $('#syncNameIn'); if (document.activeElement !== nameIn) nameIn.value = sy.name;
   const foot = card.querySelector('.sy-foot');
   foot.hidden = !on;
@@ -188,7 +188,7 @@ async function renderSyncPane(){
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
-  if (!DESKTOP || !window.kmv.syncHello) return;
+  if (!window.kmv || !window.kmv.syncHello) return;           // the desktop app (or the UI tests' stand-in for it)
   settings.afterSet((name, text) => window.kmv.syncChanged(name, text));     // (both windows: the main process keeps one record)
   if (ROLE !== 'main') return;
   settingsDlg.querySelector('.st-rail [data-s="sync"] .st-new').hidden = settings.flag('syncSeen');
@@ -218,7 +218,8 @@ function init(){
   ]);
   commands.provide('sync', () => !syOn() ? [] : sy.computers.filter(c => !c.me).map(c => ({ id: 'sync.forget.' + c.device, kind: 'setting', group: 'Settings',
     title: `Forget ${c.name}`, sub: 'Settings › Sync: its file goes from the sync folder', words: ['sync', 'computer'], icon: 'close', run: () => syForget(c) })));
-  window.smvSync = { syPull, syDescribe, syAgo, syWhen, get status(){ return sy; } };   // for the tests
+  window.smvSync = { describe: syDescribe, ago: syAgo, when: syWhen, get status(){ return sy; },   // for the tests
+    unheard: () => [...settings.synced(), ...ALERT_KINDS.map(SOUND_KEY)].filter(k => !settings.listening(k)) };
 }
 
 export { init, renderSyncPane };
