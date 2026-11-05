@@ -254,3 +254,20 @@ test("another computer's toolbar, emote and General choices show straight away (
   await pull({ toolbar: 'not json', emotePreview: '0', newEmotes: '0', startMuted: null });
   assert.deepEqual(await state(), { left: false, emote: false, fresh: false, muted, snap: true }, 'a damaged value: the toolbar on top; a removed one: its default');
 });
+
+test("your changes haven't reached the other computers: each one waiting, and the status line when none has them", async t => {
+  const page = await openSync(t);
+  await showPage(page);
+  const at = NOW - 10 * 60e3;
+  const comps = (b1, b2) => [ON.computers[0], { ...ON.computers[1], ...(b1 ? { behind: at } : {}) }, { ...ON.computers[2], ...(b2 ? { behind: at } : {}) }];
+  const time = new Date(at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  await page.evaluate(s => window.syncPush(s), { ...ON, computers: comps(true, false) });
+  assert.equal((await computers(page))[1], `Gaming PC | Waiting | Windows · v0.5.0 · hasn't got this computer's changes from ${time} yet | 3 min ago`);
+  assert.equal(await text(page, '#syncCard .sy-foot .ca-line b'), 'Up to date', 'one of them: only its row');
+  await page.evaluate(s => window.syncPush(s), { ...ON, computers: comps(true, true), behind: at });
+  assert.match(await page.getAttribute('#syncCard .sy-foot', 'class'), /\bwait\b/);
+  assert.equal(await text(page, '#syncCard .sy-foot .ca-line'), `Waiting for your other computers They haven't got this computer's changes from ${time}. If they're on, check iCloud Drive is syncing here (restarting it can help).`);
+  await page.evaluate(s => window.syncPush(s), { ...ON, computers: [ON.computers[0], { ...ON.computers[1], behind: at }], behind: at });
+  assert.match(await text(page, '#syncCard .sy-foot .ca-sub'), /^Gaming PC hasn't got this computer's changes from .* If it's on,/);
+  await page.evaluate(() => window.syncPush({ behind: undefined, computers: [] }));
+});

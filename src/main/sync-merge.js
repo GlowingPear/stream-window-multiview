@@ -4,6 +4,7 @@
 // Each computer keeps a record of its own synced values, whether sync is on or not:
 //   settings: { key: { v, at, dev, value } }   value: the setting's text as the page stores it (null: not set)
 //   channels: { ch: { at, dev, removed?, autoOpen?, notifyOff?, name? } }
+//   streamers: { id: { at, dev, removed?, value } }   the linked streamers (Settings › Linked channels), one at a time
 // `at` is a logical clock (tick()), `dev` the computer that made the change. The newest entry wins, key by key and
 // channel by channel; ties go to the device id, so every computer picks the same one.
 const FORMAT = 1;                                // the device file's format (see readDevice())
@@ -11,7 +12,14 @@ const KEEP_MS = 183 * 24 * 3600e3;               // removed channels' markers, a
 // The page's channel settings, synced as one table of channels rather than as settings.
 const CHANNEL_KEYS = ['saved', 'autoOpen', 'notifyOff', 'chNames', 'ytNames'];
 const SOUND_RE = /^alertSound\.\w+$/;
-const kindOf = key => CHANNEL_KEYS.includes(key) ? 'channels' : SOUND_RE.test(key) ? 'sounds' : 'settings';
+// The linked streamers: one setting in the page, merged streamer by streamer here (a link made on each computer
+// keeps both). Each file also has the whole list as a setting, for copies from before (0.4.24), which sync it whole.
+const STREAMERS = 'streamers';
+const kindOf = key => CHANNEL_KEYS.includes(key) ? 'channels' : key === STREAMERS ? 'streamers' : SOUND_RE.test(key) ? 'sounds' : 'settings';
+// The page values sync.js keeps for the merge: the channel lists and the linked streamers
+const LOCAL_KEYS = [...CHANNEL_KEYS, STREAMERS];
+// What Settings › Sync's switches call each kind (the linked streamers are settings)
+const switchOf = kind => kind === 'streamers' ? 'settings' : kind;
 
 const parse = (text, def) => { try { const v = JSON.parse(text); return v ?? def; } catch { return def; } };
 const list = text => { const v = parse(text, []); return Array.isArray(v) ? v.filter(x => typeof x === 'string') : []; };
@@ -36,6 +44,47 @@ function channelsOf(values) {
   }
   return out;
 }
+// The page's linked streamers -> [{ id, accounts, … }] (only well-formed ones)
+function streamersOf(text) {
+  const v = parse(text, []);
+  return (Array.isArray(v) ? v : []).filter(s => s && typeof s === 'object' && typeof s.id === 'string' && s.id && Array.isArray(s.accounts));
+}
+// A streamer's entry the same as another's? (its whole value: accounts, name, main, bots, options)
+const sameValue = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+// The newest entry first, then the device id, then the streamer's id: every computer orders them the same way
+const newestFirst = (a, b) => b.e.at - a.e.at || String(b.e.dev).localeCompare(String(a.e.dev)) || a.id.localeCompare(b.id);
+/* The linked streamers as the page gets them: in list order (the page's own first, new ones after), and an account
+   in one streamer only. When two computers linked the same account into different streamers, the newer streamer
+   keeps it, and one left with fewer than two accounts isn't a streamer any more. entries: { id: entry } (winners). */
+function streamerList(order, entries) {
+  const live = Object.entries(entries).filter(([, e]) => !e.removed && e.value).map(([id, e]) => ({ id, e }));
+  const taken = new Set(), keep = new Map();
+  for (const { id, e } of live.sort(newestFirst)) {
+    const accounts = e.value.accounts.filter(a => typeof a === 'string' && !taken.has(a));
+    if (accounts.length < 2) continue;
+    accounts.forEach(a => taken.add(a));
+    const v = { ...e.value, accounts };
+    if (!accounts.includes(v.main)) v.main = accounts[0];
+    keep.set(id, v);
+  }
+  const ids = [...order.filter(id => keep.has(id)), ...[...keep.keys()].filter(id => !order.includes(id)).sort()];
+  return ids.map(id => keep.get(id));
+}
+// The whole list, as the setting copies from before (0.4.24) read: its stamp is the newest streamer's
+function streamersSetting(record) {
+  const entries = Object.entries(record.streamers || {}).map(([id, e]) => ({ id, e }));
+  if (!entries.length) return null;
+  const top = [...entries].sort(newestFirst)[0].e;
+  return { v: 1, at: top.at, dev: top.dev, value: JSON.stringify(streamerList(Object.keys(record.streamers).sort(), record.streamers)) };
+}
+// A record from before streamers had their own table: its whole-list setting becomes one entry a streamer
+function moveStreamers(record) {
+  if (!record.streamers) record.streamers = {};
+  const old = record.settings[STREAMERS];
+  if (!old) return;
+  delete record.settings[STREAMERS];
+  for (const s of streamersOf(old.value)) if (!record.streamers[s.id]) record.streamers[s.id] = { at: old.at, dev: old.dev, value: s };
+}
 const sameChannel = (a, b) => !!a.removed === !!b.removed && !!a.autoOpen === !!b.autoOpen && !!a.notifyOff === !!b.notifyOff;
 
 /* This computer's values (all of them, or the ones that changed) into its record. A value that differs from the
@@ -46,8 +95,9 @@ const sameChannel = (a, b) => !!a.removed === !!b.removed && !!a.autoOpen === !!
 function recordLocal(record, values, { dev, now, clock = 0, versions = {}, first = false }) {
   const changed = [];
   const stamp = () => (first ? 0 : (clock = tick(clock, now)));
+  moveStreamers(record);
   for (const [key, value] of Object.entries(values)) {
-    if (kindOf(key) === 'channels') continue;
+    if (kindOf(key) === 'channels' || kindOf(key) === 'streamers') continue;
     const had = record.settings[key], v = versions[key] || 1;
     if (had ? had.value === value : value === null) continue;
     record.settings[key] = { v, at: stamp(), dev, value };
@@ -67,6 +117,20 @@ function recordLocal(record, values, { dev, now, clock = 0, versions = {}, first
       changed.push('ch:' + ch);
     }
   }
+  if (STREAMERS in values) {
+    const cur = new Map(streamersOf(values[STREAMERS]).map(s => [s.id, s]));
+    for (const [id, v] of cur) {
+      const had = record.streamers[id];
+      if (had && !had.removed && sameValue(had.value, v)) continue;
+      record.streamers[id] = { at: stamp(), dev, value: v };
+      changed.push('st:' + id);
+    }
+    for (const [id, had] of Object.entries(record.streamers)) {
+      if (had.removed || cur.has(id)) continue;
+      record.streamers[id] = { at: stamp(), dev, removed: true };
+      changed.push('st:' + id);
+    }
+  }
   return { clock, changed };
 }
 
@@ -78,13 +142,26 @@ function readDevice(d) {
   const format = Number(d.format) || 0;
   if (format > FORMAT) return { ok: false, newer: true, file: { device: d.device, name: String(d.name || ''), os: String(d.os || ''), app: String(d.app || ''), at: +d.at || 0, format } };
   if (format < 1) return { ok: false };
-  const settings = {}, channels = {};
+  const settings = {}, channels = {}, streamers = {};
   for (const [k, e] of Object.entries(d.settings && typeof d.settings === 'object' ? d.settings : {}))
     if (e && typeof e === 'object' && Number.isFinite(e.at)) settings[k] = { v: +e.v || 1, at: e.at, dev: String(e.dev || d.device), value: typeof e.value === 'string' ? e.value : null, ...(e.file ? { file: true } : {}) };
   for (const [ch, e] of Object.entries(d.channels && typeof d.channels === 'object' ? d.channels : {}))
     if (e && typeof e === 'object' && Number.isFinite(e.at)) channels[ch] = { at: e.at, dev: String(e.dev || d.device),
       ...(e.removed ? { removed: true } : {}), ...(e.autoOpen ? { autoOpen: true } : {}), ...(e.notifyOff ? { notifyOff: true } : {}), ...(typeof e.name === 'string' && e.name ? { name: e.name } : {}) };
-  return { ok: true, file: { format, device: d.device, name: String(d.name || '').slice(0, 40), os: String(d.os || ''), app: String(d.app || ''), at: +d.at || 0, what: d.what || null, settings, channels } };
+  // the linked streamers: one entry each (0.4.25 on), or a copy from before's whole list (read as "the whole list
+  // then": a streamer it doesn't have, from before its stamp, was unlinked there)
+  let whole = null;
+  if (d.streamers && typeof d.streamers === 'object' && !Array.isArray(d.streamers)) {
+    for (const [id, e] of Object.entries(d.streamers))
+      if (e && typeof e === 'object' && Number.isFinite(e.at) && (e.removed || (e.value && typeof e.value === 'object' && Array.isArray(e.value.accounts))))
+        streamers[id] = { at: e.at, dev: String(e.dev || d.device), ...(e.removed ? { removed: true } : { value: e.value }) };
+  } else if (settings[STREAMERS]) {
+    const e = settings[STREAMERS];
+    whole = { at: e.at, dev: e.dev };
+    for (const s of streamersOf(e.value)) streamers[s.id] = { at: e.at, dev: e.dev, value: s };
+  }
+  delete settings[STREAMERS];
+  return { ok: true, file: { format, device: d.device, name: String(d.name || '').slice(0, 40), os: String(d.os || ''), app: String(d.app || ''), at: +d.at || 0, what: d.what || null, settings, channels, streamers, ...(whole ? { whole } : {}) } };
 }
 
 /* This computer's file. what: { channels, settings, sounds }: only what it syncs goes in. Sounds are files of
@@ -97,7 +174,13 @@ function deviceFile(record, { device, name, os, app, at, what }) {
     settings[k] = kind === 'sounds' ? { v: e.v, at: e.at, dev: e.dev, value: null, ...(e.value !== null ? { file: true } : {}) } : { v: e.v, at: e.at, dev: e.dev, value: e.value };
   }
   if (what.channels) for (const [ch, e] of Object.entries(record.channels)) channels[ch] = { ...e };
-  return { format: FORMAT, device, name, os, app, at, what: { channels: !!what.channels, settings: !!what.settings, sounds: !!what.sounds }, settings, channels };
+  const streamers = {};
+  if (what.settings) {
+    for (const [id, e] of Object.entries(record.streamers || {})) streamers[id] = { ...e };
+    const whole = streamersSetting(record);
+    if (whole) settings[STREAMERS] = whole;
+  }
+  return { format: FORMAT, device, name, os, app, at, what: { channels: !!what.channels, settings: !!what.settings, sounds: !!what.sounds }, settings, channels, streamers };
 }
 
 /* Merges the other computers' files into this computer's record.
@@ -114,7 +197,7 @@ function merge(record, files, { values, versions, what, clock = 0 }) {
   for (const f of files) {
     for (const [k, e] of Object.entries(f.settings)) {
       const kind = kindOf(k);
-      if (kind === 'channels' || !what[kind] || !(k in versions) || e.v > versions[k]) continue;
+      if (kind === 'channels' || kind === 'streamers' || !what[kind] || !(k in versions) || e.v > versions[k]) continue;
       const own = record.settings[k];
       if (!beats(e, own)) { clock = Math.max(clock, e.at); continue; }
       if (kind === 'sounds' && e.file && typeof e.value !== 'string') continue;   // (its sound file isn't here yet)
@@ -164,6 +247,30 @@ function merge(record, files, { values, versions, what, clock = 0 }) {
       summary.changed = [...changed.keys()].filter(ch => !summary.added.includes(ch) && !summary.removed.includes(ch));
     }
   }
+  if (what.settings && STREAMERS in versions) {
+    moveStreamers(record);
+    let any = false;
+    for (const f of files) {
+      const theirs = f.streamers || {};
+      const entries = Object.entries(theirs);
+      // a copy from before sends its whole list: one this computer has from before then isn't in it any more
+      if (f.whole) for (const [id, own] of Object.entries(record.streamers))
+        if (!(id in theirs) && !own.removed && beats(f.whole, own)) entries.push([id, { at: f.whole.at, dev: f.whole.dev, removed: true }]);
+      for (const [id, e] of entries) {
+        const own = record.streamers[id];
+        clock = Math.max(clock, e.at);
+        if (!beats(e, own)) continue;
+        record.streamers[id] = { ...e }; touched = true;
+        if (own ? !!own.removed === !!e.removed && (e.removed || sameValue(own.value, e.value)) : e.removed) continue;
+        any = true; won(e, f.device);
+      }
+    }
+    if (any) {
+      const before_ = values[STREAMERS] ?? null;
+      const text = JSON.stringify(streamerList(streamersOf(before_).map(s => s.id), record.streamers));
+      if (text !== (before_ ?? '[]')) { before[STREAMERS] = before_; apply[STREAMERS] = text; applyV[STREAMERS] = 1; summary.keys.push(STREAMERS); }
+    }
+  }
   let from = null, best = -Infinity;
   for (const [d, at] of fromAt) if (at > best) { best = at; from = d; }
   return { apply, applyV, before, summary, from, clock, touched };
@@ -174,18 +281,25 @@ function merge(record, files, { values, versions, what, clock = 0 }) {
    channels only the others have go). Changes the record in place, before the merge. -> clock */
 function firstSync(record, files, mode, { dev, now, clock = 0 }) {
   if (mode !== 'theirs' && mode !== 'mine') return clock;
+  moveStreamers(record);
   const theirs = new Set(files.flatMap(f => Object.entries(f.channels).filter(([, e]) => !e.removed).map(([ch]) => ch)));
+  const theirStreamers = new Set(files.flatMap(f => Object.entries(f.streamers || {}).filter(([, e]) => !e.removed).map(([id]) => id)));
   if (mode === 'theirs') {
     for (const e of Object.values(record.settings)) e.at = -1;
     for (const [ch, e] of Object.entries(record.channels)) {
       if (theirs.has(ch)) e.at = -1;
       else if (!e.removed) record.channels[ch] = { at: (clock = tick(clock, now)), dev, removed: true };
     }
+    for (const [id, e] of Object.entries(record.streamers)) {
+      if (theirStreamers.has(id)) e.at = -1;
+      else if (!e.removed) record.streamers[id] = { at: (clock = tick(clock, now)), dev, removed: true };
+    }
     return clock;
   }
   for (const f of files) {
     for (const [k, e] of Object.entries(f.settings)) clock = Math.max(clock, e.at);
     for (const e of Object.values(f.channels)) clock = Math.max(clock, e.at);
+    for (const e of Object.values(f.streamers || {})) clock = Math.max(clock, e.at);
   }
   const keys = new Set([...Object.keys(record.settings), ...files.flatMap(f => Object.keys(f.settings))]);
   for (const k of keys) {
@@ -196,13 +310,18 @@ function firstSync(record, files, mode, { dev, now, clock = 0 }) {
     const e = record.channels[ch];
     record.channels[ch] = e ? { ...e, at: (clock = tick(clock, now)), dev } : { at: (clock = tick(clock, now)), dev, removed: true };
   }
+  for (const id of new Set([...Object.keys(record.streamers), ...theirStreamers])) {
+    const e = record.streamers[id];
+    record.streamers[id] = e ? { ...e, at: (clock = tick(clock, now)), dev } : { at: (clock = tick(clock, now)), dev, removed: true };
+  }
   return clock;
 }
 
 // Removed channels' markers older than about 6 months go; so do files of computers not seen for as long.
 function prune(record, now) {
   for (const [ch, e] of Object.entries(record.channels)) if (e.removed && e.at > 0 && now - e.at > KEEP_MS) delete record.channels[ch];
+  for (const [id, e] of Object.entries(record.streamers || {})) if (e.removed && e.at > 0 && now - e.at > KEEP_MS) delete record.streamers[id];
 }
 const stale = (file, now) => now - (file.at || 0) > KEEP_MS;
 
-module.exports = { FORMAT, KEEP_MS, CHANNEL_KEYS, kindOf, tick, beats, channelsOf, recordLocal, readDevice, deviceFile, merge, firstSync, prune, stale };
+module.exports = { FORMAT, KEEP_MS, CHANNEL_KEYS, LOCAL_KEYS, STREAMERS, kindOf, switchOf, streamersOf, streamerList, tick, beats, channelsOf, recordLocal, readDevice, deviceFile, merge, firstSync, prune, stale };
