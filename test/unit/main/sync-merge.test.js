@@ -216,3 +216,98 @@ test('old markers and computers not seen for 6 months go', () => {
   assert.ok(M.stale({ at: 1 }, M.KEEP_MS + 2));
   assert.ok(!M.stale({ at: 10 }, 20));
 });
+
+/* ---- the linked streamers, one streamer at a time ---- */
+const st = (id, accounts, more = {}) => ({ id, name: '', main: accounts[0], accounts, ...more });
+const SV = { ...V, streamers: 1 };
+const stVals = list => ({ streamers: JSON.stringify(list) });
+
+test('streamers: each gets its own stamp; one changed, unlinked or new is a change of its own', () => {
+  const r = rec();
+  let { clock } = M.recordLocal(r, stVals([st('s1', ['a', 'yt:@a']), st('s2', ['b', 'tw:b'])]), { dev: 'me', now: 10, versions: SV });
+  assert.deepEqual(Object.keys(r.streamers), ['s1', 's2']);
+  assert.equal(r.settings.streamers, undefined, 'not a setting of its own');
+  let changed;
+  ({ clock, changed } = M.recordLocal(r, stVals([st('s1', ['a', 'yt:@a'], { name: 'A' }), st('s3', ['c', 'tw:c'])]), { dev: 'me', now: 20, clock, versions: SV }));
+  assert.deepEqual(changed, ['st:s1', 'st:s3', 'st:s2']);
+  assert.deepEqual(r.streamers.s2, { at: 22, dev: 'me', removed: true });
+  ({ changed } = M.recordLocal(r, stVals([st('s1', ['a', 'yt:@a'], { name: 'A' }), st('s3', ['c', 'tw:c'])]), { dev: 'me', now: 30, clock, versions: SV }));
+  assert.deepEqual(changed, []);
+});
+
+test('streamers: a link made on each computer keeps both, and an unlink stays unlinked', () => {
+  const r = rec();
+  const mine = [st('s1', ['a', 'yt:@a'])];
+  M.recordLocal(r, stVals(mine), { dev: 'me', now: 100, versions: SV });
+  const f = other('pc', {});
+  f.streamers = { s2: { at: 120, dev: 'pc', value: st('s2', ['b', 'tw:b']) } };
+  let m = M.merge(r, [f], { values: stVals(mine), versions: SV, what: ALL, clock: 100 });
+  assert.deepEqual(JSON.parse(m.apply.streamers).map(s => s.id), ['s1', 's2'], 'yours first, theirs after');
+  assert.deepEqual(m.summary.keys, ['streamers']);
+  assert.equal(m.from, 'pc');
+  const both = m.apply.streamers;
+  f.streamers.s1 = { at: 130, dev: 'pc', removed: true };
+  m = M.merge(r, [f], { values: { streamers: both }, versions: SV, what: ALL, clock: m.clock });
+  assert.deepEqual(JSON.parse(m.apply.streamers).map(s => s.id), ['s2']);
+  assert.equal(M.merge(r, [f], { values: { streamers: m.apply.streamers }, versions: SV, what: ALL }).apply.streamers, undefined, 'nothing new');
+  assert.deepEqual(M.merge(rec(), [f], { values: {}, versions: SV, what: { ...ALL, settings: false } }).apply, {}, 'settings switched off');
+});
+
+test('streamers: one account linked into two streamers on two computers: the newer keeps it', () => {
+  const list = M.streamerList(['s1'], {
+    s1: { at: 10, dev: 'me', value: st('s1', ['a', 'yt:@a']) },
+    s2: { at: 20, dev: 'pc', value: st('s2', ['a', 'tw:a'], { main: 'tw:a' }) },
+    s3: { at: 5, dev: 'pc', value: st('s3', ['yt:@a', 'tw:b', 'b']) },
+    s4: { at: 30, dev: 'pc', removed: true }
+  });
+  assert.deepEqual(list.map(s => [s.id, s.accounts, s.main]), [['s2', ['a', 'tw:a'], 'tw:a'], ['s3', ['yt:@a', 'tw:b', 'b'], 'yt:@a']],
+    's1 lost a to s2 and is left with one account; s3 keeps its own');
+  assert.equal(M.streamerList([], { s5: { at: 1, dev: 'x', value: st('s5', ['a', 'b'], { main: 'gone' }) } })[0].main, 'a', 'a main it lost is its first account');
+});
+
+test("streamers: a copy from before (0.4.24) sends its whole list, read as the list then; this computer's file has both", () => {
+  const r = rec();
+  M.recordLocal(r, stVals([st('s1', ['a', 'yt:@a']), st('s2', ['b', 'tw:b'])]), { dev: 'me', now: 100, versions: SV });
+  const old = M.readDevice({ format: 1, device: 'old', at: 300, settings: { streamers: { v: 1, at: 200, dev: 'old', value: JSON.stringify([st('s1', ['a', 'yt:@a']), st('s9', ['z', 'tw:z'])]) } } }).file;
+  assert.deepEqual(old.whole, { at: 200, dev: 'old' });
+  assert.equal(old.settings.streamers, undefined);
+  const m = M.merge(r, [old], { values: stVals([st('s1', ['a', 'yt:@a']), st('s2', ['b', 'tw:b'])]), versions: SV, what: ALL, clock: 100 });
+  assert.deepEqual(JSON.parse(m.apply.streamers).map(s => s.id), ['s1', 's9'], 's2 was unlinked there after it was made here');
+  const file = M.deviceFile(r, { device: 'me', name: '', os: '', app: '', at: 1, what: ALL });
+  assert.deepEqual(Object.keys(file.streamers).sort(), ['s1', 's2', 's9']);
+  assert.ok(file.streamers.s2.removed);
+  assert.deepEqual(JSON.parse(file.settings.streamers.value).map(s => s.id), ['s1', 's9'], 'the whole list too, for copies from before');
+  assert.equal(file.settings.streamers.at, 200, 'stamped as the newest streamer');
+  const back = M.readDevice(JSON.parse(JSON.stringify(file))).file;
+  assert.equal(back.whole, undefined, 'a file with the table is read by its table');
+  assert.deepEqual(Object.keys(back.streamers).sort(), ['s1', 's2', 's9']);
+  const odd = M.readDevice({ format: 1, device: 'x', streamers: { a: null, b: { at: 'no' }, c: { at: 1, value: { accounts: 'no' } }, d: { at: 2, removed: true } } }).file;
+  assert.deepEqual(odd.streamers, { d: { at: 2, dev: 'x', removed: true } });
+  assert.equal(M.deviceFile(rec(), { device: 'me', name: '', os: '', app: '', at: 1, what: ALL }).settings.streamers, undefined, 'no streamers: no list');
+});
+
+test("streamers: a record from before (the whole list as a setting) moves to one entry each; the first sync's choices; old markers", () => {
+  const r = { settings: { streamers: { v: 1, at: 0, dev: 'pc', value: JSON.stringify([st('s1', ['a', 'yt:@a'])]) } }, channels: {} };
+  const { changed } = M.recordLocal(r, stVals([st('s1', ['a', 'yt:@a'])]), { dev: 'me', now: 50, versions: SV });
+  assert.deepEqual(changed, []);
+  assert.deepEqual(r.streamers.s1, { at: 0, dev: 'pc', value: st('s1', ['a', 'yt:@a']) });
+  assert.equal(r.settings.streamers, undefined);
+  const f = () => { const x = other('pc', {}); x.streamers = { s2: { at: 0, dev: 'aaa', value: st('s2', ['b', 'tw:b']) } }; return x; };
+  let t = { settings: {}, channels: {}, streamers: { s1: { at: 0, dev: 'me', value: st('s1', ['a', 'yt:@a']) } } };
+  M.firstSync(t, [f()], 'theirs', { dev: 'me', now: 10 });
+  assert.ok(t.streamers.s1.removed, 'only this computer had it');
+  t = { settings: {}, channels: {}, streamers: { s1: { at: 0, dev: 'me', value: st('s1', ['a', 'yt:@a']) } } };
+  M.firstSync(t, [f()], 'mine', { dev: 'me', now: 10 });
+  assert.ok(t.streamers.s2.removed, 'only the others had it');
+  assert.ok(t.streamers.s1.at > 0);
+  t = { settings: {}, channels: {}, streamers: { s3: { at: 5, dev: 'me', value: st('s3', ['c', 'tw:c']) } } };
+  M.firstSync(t, [f()], 'theirs', { dev: 'me', now: 10 });
+  const t2 = { settings: {}, channels: {}, streamers: { s2: { at: 0, dev: 'me', value: st('s2', ['b', 'tw:b']) } } };
+  M.firstSync(t2, [f()], 'theirs', { dev: 'me', now: 10 });
+  assert.equal(t2.streamers.s2.at, -1, 'theirs too: theirs wins');
+  const p = { settings: {}, channels: {}, streamers: { old: { at: 1, dev: 'x', removed: true }, kept: { at: 1, dev: 'x', value: st('kept', ['k', 'tw:k']) } } };
+  M.prune(p, M.KEEP_MS + 2);
+  assert.deepEqual(Object.keys(p.streamers), ['kept']);
+  assert.equal(M.switchOf('streamers'), 'settings');
+  assert.equal(M.kindOf('streamers'), 'streamers');
+});

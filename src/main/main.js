@@ -774,6 +774,7 @@ const sync = require('./sync').createSync({
   // tests and captures: where to look for the folders already synced, and the computer's name
   ...(devEnv('SMV_SYNC_HOME') ? { home: devEnv('SMV_SYNC_HOME'), env: {} } : {}), ...(devEnv('SMV_SYNC_HOST') ? { hostname: devEnv('SMV_SYNC_HOST') } : {}),
   ...(+devEnv('SMV_SYNC_CHECK_MS') > 0 ? { checkMs: +devEnv('SMV_SYNC_CHECK_MS') } : {}),   // (the launch tests: a second, not a minute)
+  ...(+devEnv('SMV_SYNC_REACH_MS') > 0 ? { reachMs: +devEnv('SMV_SYNC_REACH_MS') } : {}),   // (and "hasn't got your changes" after seconds)
   send: (ch, d) => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send(ch, d); },
   log: m => console.warn(m)
 });

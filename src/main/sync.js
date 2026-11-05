@@ -19,6 +19,7 @@ const SUB = 'Stream Multiview Sync';             // the app's folder inside the 
 const WRITE_MS = 1500;                           // a change is written this long after the last one
 const PULL_MS = 800;                             // a change in the folder is read this long after it's seen
 const CHECK_MS = 60e3;                           // and every minute anyway: some sync apps don't trigger fs.watch
+const REACH_MS = 3 * 60e3;                       // a change the other computers haven't got after this long: Settings says so
 const NAME_MAX = 40;
 const OS_NAME = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' };
 
@@ -66,9 +67,9 @@ function syncedFolders({ platform = process.platform, home = require('os').homed
 }
 
 /* userData: the data folder. send(channel, data): to the main window. Tests pass now, timers, watchDir (fs.watch:
-   closing one takes a moment on macOS), checkMs, hostname, platform, home and env. */
+   closing one takes a moment on macOS), checkMs, reachMs, hostname, platform, home and env. */
 function createSync({ userData, version, send = () => {}, now = Date.now, timers = global, hostname = require('os').hostname(),
-  platform = process.platform, home = require('os').homedir(), env = process.env, watchDir = fs.watch, checkMs = CHECK_MS, log = () => {} }) {
+  platform = process.platform, home = require('os').homedir(), env = process.env, watchDir = fs.watch, checkMs = CHECK_MS, reachMs = REACH_MS, log = () => {} }) {
   const stateFile = path.join(userData, STATE_FILE);
   const st = Object.assign({
     device: '', name: '', on: false, folder: '', what: { channels: true, settings: true, sounds: true },
@@ -143,7 +144,7 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
     if (Object.keys(m.apply).length) {
       const from = r.files.find(f => f.device === m.from);
       st.undo = { at: now(), from: from ? from.name : '', summary: m.summary, before: m.before };
-      for (const [k, v] of Object.entries(m.apply)) if (M.kindOf(k) === 'channels') local[k] = v;
+      for (const [k, v] of Object.entries(m.apply)) if (M.LOCAL_KEYS.includes(k)) local[k] = v;
       send('sync:pull', { values: m.apply, versions: m.applyV, from: st.undo.from, summary: m.summary });
     }
     st.lastSync = now();
@@ -201,16 +202,39 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
     return r.changed;
   }
 
+  /* Has another computer got this computer's latest change? Its file has the same entry (a setting, a channel or a
+     linked streamer) with that stamp or a later one, or it doesn't sync that kind. When a sync app stops carrying this
+     computer's file (Dropbox said "up to date" while it wasn't uploading), the others' files never catch up. */
+  function latestOwn() {
+    let best = null;
+    const look = (table, kind) => { for (const [key, e] of Object.entries(table || {})) if (e.dev === st.device && e.at > 0 && (!best || e.at > best.at)) best = { kind, key, at: e.at }; };
+    if (st.record) { look(st.record.settings, 'settings'); look(st.record.channels, 'channels'); look(st.record.streamers, 'streamers'); }
+    if (best && best.kind === 'settings') best.kind = M.kindOf(best.key);
+    return best;
+  }
+  function hasGot(f, latest) {
+    if (f.what && f.what[M.switchOf(latest.kind)] === false) return true;
+    const table = latest.kind === 'channels' ? f.channels : latest.kind === 'streamers' ? f.streamers : f.settings;
+    const e = table && table[latest.key];
+    return !!e && e.at >= latest.at;
+  }
+
   // What Settings › Sync shows
   function status(push = false) {
     const t = now();
+    const latest = st.on && !st.error ? latestOwn() : null;
+    const waiting = !!latest && t - Math.min(latest.at, t) > reachMs;     // (a stamp ahead of this clock: from now)
     const me = { device: st.device, name: st.name, os: OS_NAME[platform] || platform, app: version, at: st.lastWrite || 0, me: true };
     const list = [me, ...others.map(f => ({ device: f.device, name: f.name || 'A computer', os: f.os, app: f.app, at: f.at,
-      ...(f.newer ? { newer: true } : cmpVersion(f.app, version) < 0 ? { older: true } : {}) }))];
+      ...(f.newer ? { newer: true } : cmpVersion(f.app, version) < 0 ? { older: true } : {}),
+      ...(waiting && !f.newer && !hasGot(f, latest) ? { behind: latest.at } : {}) }))];
     const channels = st.record ? Object.values(st.record.channels).filter(e => !e.removed).length : 0;
     const s = { on: st.on, folder: st.folder, dir: st.folder ? syncDirOf(st.folder) : '', home, name: st.name, device: st.device,
       what: { ...st.what }, error: st.error, lastSync: st.lastSync, computers: st.on ? list : [], channels,
       undo: st.undo ? { at: st.undo.at, from: st.undo.from, summary: st.undo.summary } : null, now: t };
+    // none of the others has this computer's latest change yet (one that's off for the day looks the same)
+    const rest = s.computers.filter(c => !c.me && !c.newer);
+    if (rest.length && rest.every(c => c.behind)) s.behind = latest.at;
     if (push) send('sync:status', s);
     return s;
   }
@@ -219,7 +243,7 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
     // The page's values at start: { values: { key: value }, versions: { key: v } }
     hello({ values = {}, versions: v = {} } = {}) {
       versions = { ...v };
-      for (const k of M.CHANNEL_KEYS) local[k] = values[k] ?? null;
+      for (const k of M.LOCAL_KEYS) local[k] = values[k] ?? null;
       if (st.record && st.app && st.app !== version) backup('before-v' + version);
       st.app = version;
       record(values);
@@ -230,7 +254,8 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
     },
     changed(key, value) {
       if (!ready || typeof key !== 'string') return;
-      if (M.kindOf(key) === 'channels') { local[key] = value ?? null; record({ ...local }); }
+      if (M.kindOf(key) === 'channels') { local[key] = value ?? null; record(Object.fromEntries(M.CHANNEL_KEYS.map(k => [k, local[k]]))); }
+      else if (key === M.STREAMERS) { local[key] = value ?? null; record({ [key]: local[key] }); }
       else record({ [key]: value ?? null });
     },
     status: () => status(),
@@ -285,8 +310,9 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
       st.undo = null;
       const ch = {}, rest = {};
       for (const [k, v] of Object.entries(u.before)) (M.kindOf(k) === 'channels' ? ch : rest)[k] = v;
+      if (M.STREAMERS in rest) local[M.STREAMERS] = rest[M.STREAMERS];
       record(rest);
-      if (Object.keys(ch).length) { Object.assign(local, ch); record({ ...local }); }
+      if (Object.keys(ch).length) { Object.assign(local, ch); record(Object.fromEntries(M.CHANNEL_KEYS.map(k => [k, local[k]]))); }
       send('sync:pull', { values: u.before, undo: true });
       write();
       return status(true);
@@ -301,4 +327,4 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
   };
 }
 
-module.exports = { createSync, syncedFolders, syncDirOf, defaultName, cmpVersion, SUB, STATE_FILE, BACKUPS, CHECK_MS, WRITE_MS, PULL_MS };
+module.exports = { createSync, syncedFolders, syncDirOf, defaultName, cmpVersion, SUB, STATE_FILE, BACKUPS, CHECK_MS, WRITE_MS, PULL_MS, REACH_MS };

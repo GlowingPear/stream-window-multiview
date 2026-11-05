@@ -8,7 +8,7 @@ const path = require('path');
 const S = require('../../../src/main/sync');
 const { tempDir } = require('../../helpers');
 
-const VERSIONS = { theme: 1, snap: 1, 'alertSound.mention': 1 };
+const VERSIONS = { theme: 1, snap: 1, 'alertSound.mention': 1, streamers: 1 };
 // Timers that only run when the test says so
 function fakeTimers() {
   let n = 0; const due = new Map();
@@ -246,5 +246,60 @@ test("a change in the folder is read soon after it's seen (fs.watch), this compu
   errored();
   a.sync.syncNow();
   assert.equal(made, 2, 'watching again');
+  a.sync.close(); b.sync.close();
+});
+
+test('linked streamers made on each computer at nearly the same time: both stay', t => {
+  let now = 1000;
+  const clock = () => now;
+  const folder = tempDir('sync-folder', t);
+  const a = computer(t, 'a', { clock }), b = computer(t, 'b', { clock });
+  const s = (id, accounts) => ({ id, name: '', main: accounts[0], accounts });
+  a.sync.hello(page(['alpha', 'yt:@alpha', 'bravo', 'tw:bravo'], { streamers: '[]' })); a.sync.start({ folder });
+  b.sync.hello(page(['alpha', 'yt:@alpha', 'bravo', 'tw:bravo'], { streamers: '[]' })); b.sync.start({ folder });
+  now = 2000; a.sync.changed('streamers', JSON.stringify([s('sa', ['alpha', 'yt:@alpha'])])); a.timers.run();
+  now = 2001; b.sync.changed('streamers', JSON.stringify([s('sb', ['bravo', 'tw:bravo'])])); b.timers.run();
+  b.sync.syncNow();
+  assert.deepEqual(JSON.parse(b.pulls().at(-1).values.streamers).map(x => x.id), ['sb', 'sa']);
+  a.sync.syncNow();
+  assert.deepEqual(JSON.parse(a.pulls().at(-1).values.streamers).map(x => x.id), ['sa', 'sb']);
+  assert.deepEqual(a.pulls().at(-1).summary.keys, ['streamers']);
+  now = 3000; b.sync.undo();
+  assert.deepEqual(JSON.parse(b.pulls().at(-1).values.streamers).map(x => x.id), ['sb'], 'Undo puts the list back as it was');
+  a.sync.close(); b.sync.close();
+});
+
+test("a change the other computers haven't got after a few minutes: each one, and all of them, say so", t => {
+  let now = 1000;
+  const clock = () => now;
+  const folder = tempDir('sync-folder', t);
+  const a = computer(t, 'a', { clock }), b = computer(t, 'b', { clock });
+  a.sync.hello(page([])); a.sync.start({ folder });
+  b.sync.hello(page([])); b.sync.start({ folder });
+  now = 2000; a.sync.changed('theme', 'pear'); a.timers.run();
+  let s = a.sync.syncNow();
+  assert.equal(s.computers[1].behind, undefined, 'not yet: a minute or two is normal');
+  now = 2000 + S.REACH_MS + 1;
+  s = a.sync.syncNow();
+  assert.equal(s.computers[1].behind, 2000);
+  assert.equal(s.behind, 2000, 'none of the others has it');
+  b.sync.syncNow();                                    // b takes it, and its file has it
+  s = a.sync.syncNow();
+  assert.equal(s.computers[1].behind, undefined);
+  assert.equal(s.behind, undefined);
+  // a kind the other computer doesn't sync doesn't count
+  b.sync.setWhat({ settings: false });
+  now += 10; a.sync.changed('theme', 'dark'); a.timers.run();
+  now += S.REACH_MS + 1;
+  assert.equal(a.sync.syncNow().computers[1].behind, undefined);
+  // a channel and a linked streamer count as changes too
+  b.sync.setWhat({ settings: true });
+  now += 10; a.sync.changed('saved', '["zulu"]'); a.timers.run();
+  now += S.REACH_MS + 1;
+  assert.ok(a.sync.syncNow().computers[1].behind);
+  b.sync.syncNow();
+  now += 10; a.sync.changed('streamers', JSON.stringify([{ id: 'sz', main: 'zulu', accounts: ['zulu', 'tw:zulu'] }])); a.timers.run();
+  now += S.REACH_MS + 1;
+  assert.ok(a.sync.syncNow().behind);
   a.sync.close(); b.sync.close();
 });

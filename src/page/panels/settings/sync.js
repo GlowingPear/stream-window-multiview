@@ -52,6 +52,8 @@ function syWhen(at){
   const days = Math.round((new Date(now).setHours(0, 0, 0, 0) - new Date(at).setHours(0, 0, 0, 0)) / 86400000);
   return (days <= 0 ? 'today' : days === 1 ? 'yesterday' : 'on ' + new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })) + ' at ' + t;
 }
+// "02:08" (today), else "yesterday at 22:40"
+const syClock = at => { const w = syWhen(at); return w.startsWith('today at ') ? w.slice(9) : w; };
 const syCap = t => t.charAt(0).toUpperCase() + t.slice(1);
 const syTilde = p => (sy && sy.home && p && (p === sy.home || p.startsWith(sy.home + '/') || p.startsWith(sy.home + '\\'))) ? '~' + p.slice(sy.home.length) : p || '';
 // The sync app a folder belongs to ("Dropbox"), from the folders found here
@@ -82,7 +84,8 @@ async function syUndo(){ sy = await window.kmv.syncUndo(); syRender(); }
 
 /* ---- drawing ---- */
 function syComputerRow(c){
-  const sub = [c.os, c.app && 'v' + c.app].filter(Boolean).join(' · ') + (c.older ? ' · a few settings reach it once it updates' : c.newer ? ' · writes a newer sync file: update Multiview here to sync with it' : '');
+  const sub = [c.os, c.app && 'v' + c.app].filter(Boolean).join(' · ') + (c.newer ? ' · writes a newer sync file: update Multiview here to sync with it'
+    : c.behind ? ` · hasn't got this computer's changes from ${syClock(c.behind)} yet` : c.older ? ' · a few settings reach it once it updates' : '');
   const ic = element('span', 'sy-ic'); ic.innerHTML = icon[c.os === 'Windows' ? 'desktop' : 'laptop'];
   if (c.me && syRenaming){
     const first = syDraft === null;
@@ -104,7 +107,7 @@ function syComputerRow(c){
   }
   const btn = (cls, ico, title, cmd, onclick) => { const b = element('button', { type: 'button', class: 'sy-btn ' + cls, title, 'aria-label': title, dataset: { cmd }, onclick }); b.innerHTML = icon[ico]; return b; };
   return element('div', { class: 'sy-cr' + (c.me ? ' me' : '') + (c.newer ? ' newer' : ''), dataset: { device: c.device } }, ic,
-    element('span', 'sy-t', c.name, c.me ? element('span', 'sy-tag me', 'This computer') : c.older ? element('span', 'sy-tag wait', 'Older version') : c.newer ? element('span', 'sy-tag wait', 'Newer version') : '', element('small', null, sub)),
+    element('span', 'sy-t', c.name, c.me ? element('span', 'sy-tag me', 'This computer') : c.newer ? element('span', 'sy-tag wait', 'Newer version') : c.behind ? element('span', 'sy-tag wait', 'Waiting') : c.older ? element('span', 'sy-tag wait', 'Older version') : '', element('small', null, sub)),
     c.newer ? element('button', { type: 'button', class: 'btn', dataset: { cmd: 'sync.updates' }, onclick: () => openSettings('updates') }, 'Check for updates') : element('span', 'sy-when', syAgo(c.at)),
     c.me ? btn('sy-pen', 'pencil', 'Rename this computer', 'sync.rename', () => { syRenaming = true; syRender(); })
       : btn('sy-x', 'close', `Forget ${c.name}`, 'sync.forget.' + c.device, () => syForget(c)));
@@ -135,11 +138,14 @@ function syRender(){
   const nameIn = $('#syncNameIn'); if (document.activeElement !== nameIn) nameIn.value = sy.name;
   const foot = card.querySelector('.sy-foot');
   foot.hidden = !on;
-  foot.className = 'ca-foot sy-foot ' + (bad ? 'bad' : 'ok');
+  // none of the other computers has this computer's latest change (a sync app that stopped carrying its file)
+  const behind = on && !bad && sy.behind, rest = (sy.computers || []).filter(c => !c.me && !c.newer);
+  foot.className = 'ca-foot sy-foot ' + (bad ? 'bad' : behind ? 'wait' : 'ok');
   const others = (sy.computers || []).length;
-  foot.querySelector('.ca-line b').textContent = bad ? "Can't reach the folder" : 'Up to date';
+  foot.querySelector('.ca-line b').textContent = bad ? "Can't reach the folder" : behind ? 'Waiting for your other computers' : 'Up to date';
   foot.querySelector('.ca-sub').textContent = bad
     ? `${app ? `Is ${app} running? ` : ''}Your changes wait here and sync once it's back.${sy.lastSync ? ` Last synced ${syWhen(sy.lastSync)}.` : ''}`
+    : behind ? `${rest.length === 1 ? `${rest[0].name} hasn't` : "They haven't"} got this computer's changes from ${syClock(sy.behind)}. If ${rest.length === 1 ? "it's" : "they're"} on, check ${app || 'your sync app'} is syncing here (restarting it can help).`
     : [`Last synced ${sy.lastSync ? syAgo(sy.lastSync, true).toLowerCase() : 'not yet'}`, syPlural(sy.channels, 'channel'), syPlural(others, 'computer')].join(' · ');
   $('#syncNow').hidden = bad; $('#syncRetry').hidden = !bad;
   pane.querySelectorAll('.sy-on').forEach(e => { e.hidden = !on; });
