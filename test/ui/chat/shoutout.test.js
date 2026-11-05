@@ -144,6 +144,29 @@ test('on: the line\'s menu has Shout out, a submenu with in its chat and in ever
   assert.deepEqual(await sends(page), [['quietkoala', 'Go check out Driftwood_7! → https://kick.com/driftwood_7'], ['tw:quietkoala', 'Go check out Driftwood_7! → https://kick.com/driftwood_7']]);
 });
 
+test('a shoutout counts in the chat it was sent in: one in another channel\'s chat (or from before they were kept by chat) gives no ✓ SO here and no asking', async t => {
+  const ago = Date.now() - 60000;
+  const page = await allApp(t, { shoutOn: '1', shoutSent: JSON.stringify({ 'otherchan|kick:driftwood_7': ago, 'kick:driftwood_7': ago, 'quietkoala|twitch:tinroof': ago }) });
+  assert.deepEqual(Object.keys(await page.evaluate(() => window.shoutouts.sent())).sort(), ['otherchan|kick:driftwood_7', 'quietkoala|twitch:tinroof'], 'the old kind dropped');
+  await chat(page);
+  assert.equal(await line(page, 'boss fight').locator('.al-tag-so').count(), 0, 'shouted out in another chat');
+  assert.equal(await line(page, 'gg everyone').locator('.al-tag-so').count(), 0, 'shouted out in Kick\'s quietkoala, not Twitch\'s');
+  await line(page, 'boss fight').hover(); await line(page, 'boss fight').locator('.al-so-b').click();
+  await flashed(page, /Shouted out Driftwood_7 in Kick chat/);
+  assert.equal(await page.locator('#askDlg:not([hidden])').count(), 0, 'not asked: not shouted out in this chat');
+  assert.equal(await line(page, 'boss fight').locator('.al-tag-so').count(), 1);
+  assert.ok((await page.evaluate(() => window.shoutouts.sent()))['quietkoala|kick:driftwood_7'] > ago);
+  // in every chat of a linked streamer: each chat's own, and asked when one of them had it lately
+  await page.evaluate(() => { window.__sends = []; });
+  await line(page, 'gg everyone').click({ button: 'right' });
+  await page.hover('.all-lm .all-lh'); await page.hover('.all-lm [data-sub="all.menuShout"]'); await page.click('.all-lm-sub [data-cmd="all.menuShoutoutAll"]');
+  await page.waitForSelector('#askDlg:not([hidden])');
+  await page.click('#askDlg .ask-yes');
+  await page.waitForFunction(() => window.__sends.length === 2);
+  const sent = await page.evaluate(() => window.shoutouts.sent());
+  assert.ok(sent['quietkoala|twitch:tinroof'] > ago && sent['tw:quietkoala|twitch:tinroof'] > ago);
+});
+
 test('Send straight away off: the shoutout goes in ALL\'s box on its site, for you to send; nothing is sent (Twitch\'s own neither)', async t => {
   const page = await allApp(t, { shoutOn: '1', shoutSend: '0', shoutTwitch: '1' });
   await page.evaluate(() => window.allChat.modKnown.set('tw:quietkoala', true));
@@ -164,7 +187,7 @@ test('Send straight away off: the shoutout goes in ALL\'s box on its site, for y
 test('a run of recent chatters, in ALL the chat its send box is on: the list (streamers only, a recent one unticked, Show them), then one a second with a strip; held back, it waits; Stop', async t => {
   const known = { 'kick:driftwood_7': { login: 'driftwood_7', game: 'Harbor Run', streams: true, t: now }, 'twitch:tinroof': { login: 'tinroof', game: '', streams: true, t: now },
     'kick:maplemoth': { login: 'maplemoth', game: 'Meadowlight', streams: true, t: now }, 'kick:pebble': { login: 'pebble', streams: false, t: now }, 'kick:oakmoss': { login: 'oakmoss', game: '', streams: true, t: now } };
-  const page = await allApp(t, { shoutOn: '1', shoutKnown: JSON.stringify(known), shoutSent: JSON.stringify({ 'kick:oakmoss': Date.now() - 120000 }) });   // (its own now: the file's can be minutes old)
+  const page = await allApp(t, { shoutOn: '1', shoutKnown: JSON.stringify(known), shoutSent: JSON.stringify({ 'quietkoala|kick:oakmoss': Date.now() - 120000, 'otherchan|kick:maplemoth': Date.now() - 60000 }) });   // (its own now: the file's can be minutes old)
   await page.evaluate(() => Object.assign(window.shoutouts.timing, { gap: 50, look: 300, retry: 1 }));
   await chat(page);
   await feed(page, 'quietkoala', { s: 'kick', raw: [kick('k3', 'Oakmoss', 'hello'), kick('k4', 'Pebble', 'hi'), kick('k5', 'quietkoala', 'welcome raiders')] });
@@ -174,7 +197,7 @@ test('a run of recent chatters, in ALL the chat its send box is on: the list (st
   await page.waitForSelector('.so-dlg .so-row');
   assert.match(await page.textContent('.so-dlg .dlg-sub'), /in quietkoala's Kick chat, newest first/);
   const rows = () => page.$$eval('.so-dlg .so-row', l => l.map(r => [r.querySelector('b').textContent, r.querySelector('input').checked, r.querySelector('small').textContent, r.querySelector('.ago').textContent]));
-  assert.deepEqual(await rows(), [['Oakmoss', false, 'Kick', 'Shouted out 2 min ago'], ['MapleMoth', true, 'Raided · Streams Meadowlight', 'just now'], ['Driftwood_7', true, 'Streams Harbor Run', 'just now']], 'not Twitch\'s Tinroof');
+  assert.deepEqual(await rows(), [['Oakmoss', false, 'Kick', 'Shouted out 2 min ago'], ['MapleMoth', true, 'Raided · Streams Meadowlight', 'just now'], ['Driftwood_7', true, 'Streams Harbor Run', 'just now']], 'not Twitch\'s Tinroof; MapleMoth\'s shoutout was in another chat');
   assert.equal(await page.textContent('.so-dlg .so-skip'), 'Left out: you, quietkoala and 1 person with no streams found. Show them');
   assert.equal(await page.textContent('.so-dlg .btn.primary'), 'Send 2');
   await page.click('.so-dlg [data-cmd="shout.runShowAll"]');

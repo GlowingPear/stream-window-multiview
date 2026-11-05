@@ -32,7 +32,7 @@ import { activeWin } from '../windows/window-commands.js';
    different streamers who chatted, one a second, with a strip saying how it's going (and waiting out slow mode).
    Each person's channel address (on Kick a name with _ can have - in its address), last game and whether they stream
    come from the sites (the profile lookup, kmv.profileGet) and are remembered (shoutKnown); when you shouted someone
-   out is too (shoutSent), for the ✓ SO tags and asking before shouting them out again soon. */
+   out is too, in which chat (shoutSent), for the ✓ SO tags and asking before shouting them out again soon there. */
 const SO_DAY = 86400000;
 const KNOWN_MAX = 400;            // people remembered (their address, last game, whether they stream)
 const GAME_WAIT = 1500;           // a click waits this long for someone's last game at most, then sends without it
@@ -43,7 +43,7 @@ const SO_TIMING = { gap: 1000, look: 6000, retry: 10 };
 const AGAIN = [5, 15, 60, 0];     // Settings: ask before shouting the same person out again within (minutes; 0: never ask)
 const SHOUT_SITES = ['kick', 'twitch'];
 let soKnown = {};                   // 'site:login' -> { login (their address), game, streams, missing, t }
-let soSent = {};                    // 'site:login' -> when you last shouted them out
+let soSent = {};                    // 'chat|site:login' -> when you last shouted them out in that chat
 let soRun = null;                   // the run going on: { w, list, i, stop, wait, why, strip }
 let soSaveKnown = null;
 
@@ -122,7 +122,9 @@ async function soCardAvatars(){
     card.avatar = av; soSaveCards(cards);
   }
 }
-const soSentAt = p => (p ? soSent[soKey(p)] || 0 : 0);
+// Shoutouts count in the chat they were sent in: one in another channel's chat doesn't mark them here
+const soSentKey = (ch, p) => String(ch || '').toLowerCase() + '|' + soKey(p);
+const soSentAt = (p, ch = p && p.ch) => (p && ch ? soSent[soSentKey(ch, p)] || 0 : 0);
 /* Who's banned or timed out in a chat, as its feed says (ALL's, or the app's readers': chat/all-chat.js), for everyone,
    not only mods: never shouted out there. 'ch|login' -> until when (0: banned) */
 const soOut = new Map();
@@ -200,7 +202,7 @@ async function shoutOut(p, { chs, again = true, quiet = false } = {}){
   const targets = (chs || [p.ch]).filter(Boolean);
   if (!targets.length) return 'gone';
   if (soOutWhy(p)){ if (!quiet) flash(`${soOutSaid(p)}: no shoutout`); return 'out'; }
-  const name = p.name || p.login, last = soSentAt(p);
+  const name = p.name || p.login, last = Math.max(0, ...targets.map(ch => soSentAt(p, ch)));
   if (again && soAgainMs() && last && Date.now() - last < soAgainMs()
     && !await ask(`Shout out ${name} again?`, `You shouted them out ${soAgo(last)}. Send another shoutout now?`, { ok: 'Shout out again' })) return 'cancelled';
   // their address (a Kick name has to be looked up), and their last game when it comes quickly
@@ -220,13 +222,13 @@ async function shoutOut(p, { chs, again = true, quiet = false } = {}){
       const allBox = targets.length === 1 && fillAll(ch, text);
       r = allBox ? 'filled' : c && c.view ? await askIn(c.view, `(${sendAgent})(${JSON.stringify(site)}, ${JSON.stringify(text)}, null, true)`).catch(() => 'no-answer') : 'gone';
       if (r !== 'filled'){ flash(`Couldn't put it in the chat box: ${(SHOUT_FAIL[r] || SHOUT_FAIL['no-answer'])(PLAT_NAME[site])}`); continue; }
-      soSent[soKey(to)] = soSent[soKey(who)] = Date.now();
+      soSent[soSentKey(ch, to)] = soSent[soSentKey(ch, who)] = Date.now();
       flash(`Shoutout for ${to.name || to.login} is in ${allBox ? 'the' : PLAT_NAME[site] + '\'s'} chat box: press Enter to send it`);
       continue;
     }
     r = await sendInChat(c, text);
     if (r !== 'sent'){ if (!quiet) flash(`Not sent: ${(SHOUT_FAIL[r] || SHOUT_FAIL['no-answer'])(PLAT_NAME[site])}`); continue; }
-    soSent[soKey(to)] = soSent[soKey(who)] = Date.now();
+    soSent[soSentKey(ch, to)] = soSent[soSentKey(ch, who)] = Date.now();
     // Twitch's own shoutout too (Settings, off unless on): where you're a mod, for someone with a Twitch channel
     const tw = to.site === 'twitch' ? to.login : (soLinksOf(to).find(l => /twitch\.tv\//.test(l)) || '').split('/').pop();
     if (site === 'twitch' && tw && settings.flag('shoutTwitch') && youMod(ch) && !quiet)
@@ -283,7 +285,7 @@ async function soPickFor(w, lines, n){
     const next = async () => { while (at < todo.length){ const p = todo[at++]; await soLookUp(p); } };
     await soWithin(Promise.all([next(), next(), next(), next()]), SO_TIMING.look);
   }
-  return pickRun(lines, { n, me, host, onlyStreamers: only, streamsOf: p => soKnownStreamer(p) || !!(soKnown[soKey(p)] && soKnown[soKey(p)].streams), sentAt: soSentAt, againMs: soAgainMs() });
+  return pickRun(lines, { n, me, host, onlyStreamers: only, streamsOf: p => soKnownStreamer(p) || !!(soKnown[soKey(p)] && soKnown[soKey(p)].streams), sentAt: p => soSentAt(p, soRunCh(w)), againMs: soAgainMs() });
 }
 // The ⋯ menu's Shout out recent chatters (and the search box's): the list first, or straight away (Settings, or ⇧ for the other)
 async function openRun(w, { flip = false } = {}){
@@ -350,7 +352,7 @@ async function runDialog(w, lines){
   };
   const draw = () => {
     const r = state.res;
-    list.replaceChildren(...r.list.map(p => row(p, p.why === 'recent' ? `Shouted out ${soAgo(soSentAt(p))}` : '')), ...(state.showAll ? r.left.viewers.map(p => row(p, 'No streams found')) : []));
+    list.replaceChildren(...r.list.map(p => row(p, p.why === 'recent' ? `Shouted out ${soAgo(soSentAt(p, soRunCh(w)))}` : '')), ...(state.showAll ? r.left.viewers.map(p => row(p, 'No streams found')) : []));
     if (!list.children.length) list.replaceChildren(element('div', 'so-wait', 'No one to shout out yet'));
     ticks.hidden = list.querySelectorAll('.so-row').length < 4;
     requestAnimationFrame(below);
@@ -467,6 +469,7 @@ function init(){
   soSent = settings.json('shoutSent', {}) || {};
   if (typeof soKnown !== 'object' || Array.isArray(soKnown)) soKnown = {};
   if (typeof soSent !== 'object' || Array.isArray(soSent)) soSent = {};
+  Object.keys(soSent).forEach(k => { if (!k.includes('|')) delete soSent[k]; });   // (from before they were kept by chat)
   soSaveKnown = soon(() => settings.set('shoutKnown', soKnown), 1500);
   store.watch(['shoutouts', 'wins', 'mod'], () => syncShoutButtons());
   store.watch(['shoutouts', 'mod'], () => { if (!shoutOn()){ stopRun(); closeRunDialog(); } wins.forEach(w => shoutInSite(w)); });   // (mod: where you're a mod, as the sites answered)
