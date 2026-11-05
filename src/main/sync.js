@@ -13,6 +13,8 @@ const crypto = require('crypto');
 const M = require('./sync-merge');
 
 const STATE_FILE = 'sync.json';
+const HISTORY_FILE = 'sync-history.json';       // what each sync changed here, newest first (Settings › Sync › History)
+const HISTORY_MAX = 100;
 const BACKUPS = 'sync-backups';
 const KEEP_BACKUPS = 5;
 const SUB = 'Stream Multiview Sync';             // the app's folder inside the chosen one
@@ -85,6 +87,10 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
   if (!st.device) st.device = crypto.randomBytes(8).toString('hex');
   if (!st.name) st.name = defaultName(hostname);
   st.what = { channels: true, settings: true, sounds: true, ...st.what };
+  const historyFile = path.join(userData, HISTORY_FILE);
+  // [{ at, kind: 'pull' | 'undo' | 'start' | 'stop', from (its name then), device, os, summary, undone, folder, mode }]
+  let history = readJson(historyFile, []);
+  if (!Array.isArray(history)) history = [];
   let local = {};                    // the page's channel values (saved, autoOpen, notifyOff, chNames, ytNames)
   let versions = {};                 // { key: v } of this copy's page
   let ready = false;                 // the page said hello
@@ -95,6 +101,10 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
   let dirty = true;
 
   const save = () => { timers.clearTimeout(saveTimer); saveTimer = null; try { writeAtomic(stateFile, JSON.stringify(st)); } catch (e) { log('sync: ' + e.message); } };
+  const remember = e => {
+    history = [{ at: now(), ...e }, ...history].slice(0, HISTORY_MAX);
+    try { writeAtomic(historyFile, JSON.stringify(history)); } catch (err) { log('sync history: ' + err.message); }
+  };
   const saveSoon = () => { if (!saveTimer) saveTimer = timers.setTimeout(save, 300); };
   const syncDir = () => syncDirOf(st.folder);
   const devicesDir = () => path.join(syncDir(), 'devices');
@@ -150,7 +160,8 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
     if (m.touched) dirty = true;
     if (Object.keys(m.apply).length) {
       const from = r.files.find(f => f.device === m.from);
-      st.undo = { at: now(), from: from ? from.name : '', summary: m.summary, before: m.before };
+      st.undo = { at: now(), from: from ? from.name : '', device: m.from || '', summary: m.summary, before: m.before };
+      remember({ kind: 'pull', from: st.undo.from, device: st.undo.device, os: from ? from.os : '', summary: m.summary });
       for (const [k, v] of Object.entries(m.apply)) if (M.LOCAL_KEYS.includes(k)) local[k] = v;
       send('sync:pull', { values: m.apply, versions: m.applyV, from: st.undo.from, summary: m.summary });
     }
@@ -237,7 +248,7 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
       ...(waiting && !f.newer && !hasGot(f, latest) ? { behind: latest.at } : {}) }))];
     const channels = st.record ? Object.values(st.record.channels).filter(e => !e.removed).length : 0;
     const s = { on: st.on, folder: st.folder, dir: st.folder ? syncDirOf(st.folder) : '', home, name: st.name, device: st.device,
-      what: { ...st.what }, error: st.error, lastSync: st.lastSync, computers: st.on ? list : [], channels,
+      what: { ...st.what }, error: st.error, lastSync: st.lastSync, computers: st.on ? list : [], channels, history,
       undo: st.undo ? { at: st.undo.at, from: st.undo.from, summary: st.undo.summary } : null, now: t };
     // none of the others has this computer's latest change yet (one that's off for the day looks the same)
     const rest = s.computers.filter(c => !c.me && !c.newer);
@@ -284,13 +295,14 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
       if (!st.record) st.record = { settings: {}, channels: {} };
       const r = readOthers();
       dirty = true;
+      remember({ kind: 'start', folder, mode: r && r.files.length ? mode : '' });
       if (r && r.files.length) st.clock = M.firstSync(st.record, r.files, mode, { dev: st.device, now: now(), clock: st.clock });
       save();
       watch();
       pull();
       return { ok: true, ...status() };
     },
-    stop() { st.on = false; st.error = ''; others = []; unwatch(); timers.clearTimeout(writeTimer); writeTimer = null; save(); return status(true); },
+    stop() { if (st.on) remember({ kind: 'stop' }); st.on = false; st.error = ''; others = []; unwatch(); timers.clearTimeout(writeTimer); writeTimer = null; save(); return status(true); },
     syncNow() { if (st.on && !watcher) watch(); return pull(); },
     rename(name) {
       const n = cleanName(name);
@@ -315,6 +327,8 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
       const u = st.undo;
       if (!u) return status();
       st.undo = null;
+      history = history.map(e => e.kind === 'pull' && e.at === u.at ? { ...e, undone: true } : e);
+      remember({ kind: 'undo', from: u.from, device: u.device || '', summary: u.summary });
       const ch = {}, rest = {};
       for (const [k, v] of Object.entries(u.before)) (M.kindOf(k) === 'channels' ? ch : rest)[k] = v;
       if (M.STREAMERS in rest) local[M.STREAMERS] = rest[M.STREAMERS];
@@ -334,4 +348,4 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
   };
 }
 
-module.exports = { createSync, syncedFolders, syncDirOf, defaultName, cmpVersion, SUB, STATE_FILE, BACKUPS, CHECK_MS, WRITE_MS, PULL_MS, REACH_MS };
+module.exports = { createSync, syncedFolders, syncDirOf, defaultName, cmpVersion, SUB, STATE_FILE, HISTORY_FILE, HISTORY_MAX, BACKUPS, CHECK_MS, WRITE_MS, PULL_MS, REACH_MS };
