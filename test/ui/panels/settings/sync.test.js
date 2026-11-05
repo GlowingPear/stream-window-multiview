@@ -241,3 +241,17 @@ test('what a sync changed, in words; times', async t => {
   assert.deepEqual(r, [['1 channel added', '2 channels removed', '1 channel changed', 'your mention words changed', '1 alert sound changed', '2 settings changed'], [],
     'Just now', '5 minutes ago', '3 hours ago', 'Yesterday', 'Not yet', 'on 26 Oct at 14:05']);
 });
+
+test("another computer's toolbar, emote and General choices show straight away (and the same value again changes nothing)", async t => {
+  const page = await openSync(t);
+  const pull = values => page.evaluate(v => window.syncPull({ values: v, from: 'Gaming PC', summary: { keys: Object.keys(v) } }), values);
+  const state = () => page.evaluate(() => ({ left: document.body.classList.contains('bar-left'), emote: document.querySelector('#emoteSet').checked,
+    fresh: document.querySelector('#newEmoteSet').checked, muted: document.querySelector('#muted').checked, snap: document.querySelector('#snap').checked }));
+  const muted = await page.evaluate(() => document.querySelector('#muted').defaultChecked);
+  await pull({ toolbar: JSON.stringify({ pos: 'left', labels: true }), emotePreview: '1', newEmotes: '1', startMuted: '0', snap: '1' });
+  assert.deepEqual(await state(), { left: true, emote: true, fresh: true, muted: false, snap: true });
+  await pull({ toolbar: JSON.stringify({ pos: 'left', labels: true }), emotePreview: '1', newEmotes: '1' });
+  assert.deepEqual(await state(), { left: true, emote: true, fresh: true, muted: false, snap: true }, 'the same again: nothing moves');
+  await pull({ toolbar: 'not json', emotePreview: '0', newEmotes: '0', startMuted: null });
+  assert.deepEqual(await state(), { left: false, emote: false, fresh: false, muted, snap: true }, 'a damaged value: the toolbar on top; a removed one: its default');
+});
