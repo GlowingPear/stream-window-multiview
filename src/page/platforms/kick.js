@@ -51,6 +51,9 @@ const kick = {
     body: secs ? { banned_username: name, duration: Math.max(1, Math.round(secs / 60)), permanent: false } : { banned_username: name, permanent: true } }),
   deleteMods: true,      // ALL's Delete works on another mod's message, as in its own chat (not their timeout or ban)
   spamAlerts: true,      // spam alerts read its chat
+  // Is this name in its chat the channel's own broadcaster? (spam alerts never mark them.) On Kick a name with _ can
+  // have - in its address
+  isHost: (ch, name) => !!name && String(name).toLowerCase().replace(/_/g, '-') === String(ch).toLowerCase().replace(/_/g, '-'),
   flagged: false,        // Settings › Flagged: Kick holds nothing for moderators (its AI moderation deletes)
   feedReaders: true,     // the alerts, chat over the stream and counts read its chat's connection (chat/chat-feed.js)
   emoteLists: true,      // the app asks it for a channel's emotes (new emotes glow)

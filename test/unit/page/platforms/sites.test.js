@@ -24,6 +24,17 @@ test('all three have the same shape', () => {
   assert.deepEqual([kick, twitch, youtube].map(p => p.flagged), [false, true, true], 'Settings › Flagged: Kick holds nothing for moderators');
 });
 
+test('the channel\'s own broadcaster, by their name in its chat (spam alerts never mark them)', () => {
+  assert.equal(kick.isHost('quiet-koala', 'Quiet_Koala'), true, 'a name with _ has - in its address');
+  assert.equal(kick.isHost('hikari', 'HIKARI'), true);
+  assert.equal(kick.isHost('hikari', 'hikarifan'), false);
+  assert.equal(kick.isHost('hikari', ''), false);
+  assert.equal(twitch.isHost('tw:lunarfox', 'LunarFox'), true);
+  assert.equal(twitch.isHost('tw:lunarfox', 'lunarfox_'), false);
+  assert.equal(twitch.isHost('tw:lunarfox', null), false);
+  assert.equal(youtube.isHost('yt:@pear', 'pear'), false, 'its chat\'s names aren\'t its handle');
+});
+
 test('ALL\'s timeout and ban: Kick\'s own request (in minutes; a ban is permanent), Twitch\'s commands (in seconds), none on YouTube', () => {
   const bans = { url: 'https://kick.com/api/v2/channels/quiet_koala/bans', method: 'POST' };
   assert.deepEqual(kick.modRequest('quiet_koala', 'Loud_Mouth', 600), { ...bans, body: { banned_username: 'Loud_Mouth', duration: 10, permanent: false } });
