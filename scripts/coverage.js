@@ -3,6 +3,9 @@
 //   npm run test:coverage                 unit, UI and launch tests, then the report
 //   npm run test:coverage -- --report     only the report, from the last run (coverage/)
 //   npm run test:coverage -- --update     also raise the minimums in test/coverage-min.json to today's numbers
+//   node scripts/coverage.js --suite ui --shard 1/3 --no-report
+//                                         CI: one part of one suite (Node's --test-shard), recorded without a report;
+//                                         each part's coverage/raw is joined under coverage/raw/ for the --report
 // Recorded: the app's pages (src/*.html and the scripts they load, e.g. src/page/**) in the browser and in the
 // desktop app, the desktop app's main process, and the code the unit tests load. The report (coverage/report.md, and the
 // run's summary page on GitHub) lists each file's lines and functions run, and the bigger functions nothing
@@ -44,15 +47,19 @@ function sourceFiles() {
   return list;
 }
 
-function runSuites() {
+// suite: one of SUITES by name ('ui'), or all of them. shard: 'i/n', that part of the suite's files.
+function runSuites({ suite = '', shard = '' } = {}) {
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(RAW, { recursive: true });
   const env = { ...process.env, SMV_COVERAGE: RAW, NODE_V8_COVERAGE: path.join(RAW, 'node') };
   delete env.ELECTRON_RUN_AS_NODE;          // the desktop app must start as an app, not as Node
   const failed = [];
-  for (const [name, glob, timeout] of SUITES) {
-    console.log(`\n=== ${name} tests ===`);
-    const r = spawnSync(process.execPath, ['--test', '--test-force-exit', '--test-concurrency=4', `--test-timeout=${timeout}`, glob], { cwd: ROOT, env, stdio: 'inherit' });
+  const suites = SUITES.filter(([name]) => !suite || name.toLowerCase() === suite.toLowerCase());
+  if (!suites.length) throw new Error(`No test suite called ${suite} (${SUITES.map(([n]) => n.toLowerCase()).join(', ')})`);
+  if (shard && !/^\d+\/\d+$/.test(shard)) throw new Error(`--shard is i/n, e.g. 1/3 (not ${shard})`);
+  for (const [name, glob, timeout] of suites) {
+    console.log(`\n=== ${name} tests${shard ? ` (part ${shard})` : ''} ===`);
+    const r = spawnSync(process.execPath, ['--test', '--test-force-exit', '--test-concurrency=4', `--test-timeout=${timeout}`, ...(shard ? [`--test-shard=${shard}`] : []), glob], { cwd: ROOT, env, stdio: 'inherit' });
     if (r.status !== 0) failed.push(name);
   }
   return failed;
@@ -91,7 +98,10 @@ function collect(files) {
     }
   };
   const read = dir => { try { return fs.readdirSync(dir).map(f => path.join(dir, f)); } catch { return []; } };
-  for (const file of read(path.join(RAW, 'node'))) {
+  // coverage/raw itself, and each part CI ran on its own (coverage/raw/<part>/…, from the parts' uploads)
+  const bases = [RAW];
+  for (let i = 0; i < bases.length; i++) for (const d of read(bases[i])) if (!/[\\/](node|page)$/.test(d) && fs.statSync(d).isDirectory()) bases.push(d);
+  for (const file of bases.flatMap(b => read(path.join(b, 'node')))) {
     let d; try { d = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { continue; }
     for (const s of d.result || []) {
       const rel = relOf(s.url); if (!rel) continue;
@@ -101,7 +111,7 @@ function collect(files) {
       add(rel, copy === real ? null : copy, s.functions);
     }
   }
-  for (const file of read(path.join(RAW, 'page'))) {
+  for (const file of bases.flatMap(b => read(path.join(b, 'page')))) {
     let list; try { list = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { continue; }
     for (const s of list) { const rel = relOf(s.url); if (rel && s.source) add(rel, rel.endsWith('.html') ? s.source : s.source === byRel.get(rel).text ? null : s.source, s.functions); }
   }
@@ -148,7 +158,9 @@ function report(files) {
 
 function main() {
   const args = process.argv.slice(2);
-  const failed = args.includes('--report') ? [] : runSuites();
+  const opt = name => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] || '' : ''; };
+  const failed = args.includes('--report') ? [] : runSuites({ suite: opt('--suite'), shard: opt('--shard') });
+  if (args.includes('--no-report')) process.exit(failed.length ? 1 : 0);
   const { rows, gaps } = report(collect(sourceFiles()));
   let min = {}; try { min = JSON.parse(fs.readFileSync(MIN_FILE, 'utf8')); } catch {}
   const low = rows.filter(r => min[r.file] !== undefined && r.lines + 0.05 < min[r.file]);

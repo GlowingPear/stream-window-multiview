@@ -36,7 +36,10 @@ test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had n
 const where = () => a.app.evaluate(({ BrowserWindow, screen }) => {
   const kind = u => /role=streams/.test(u) ? 'streams' : /switcher\.html/.test(u) ? 'switch' : /index\.html/.test(u) ? 'main' : /^data:/.test(u) ? 'identify' : 'other';
   const out = {};
-  for (const w of BrowserWindow.getAllWindows()) { if (w.isDestroyed()) continue; const k = kind(w.webContents.getURL()); (out[k] = out[k] || []).push(screen.getDisplayMatching(w.getBounds()).id); }
+  for (const w of BrowserWindow.getAllWindows()) {
+    if (w.isDestroyed() || w.webContents.isDestroyed()) continue;    // (a window closing right now: its page can go first)
+    const k = kind(w.webContents.getURL()); (out[k] = out[k] || []).push(screen.getDisplayMatching(w.getBounds()).id);
+  }
   return out;
 });
 async function until(fn, what, ms = 15000) {
