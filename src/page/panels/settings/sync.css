@@ -54,6 +54,7 @@
 
 /* Overview and History: History fills what's left of the window and scrolls inside itself, so the page doesn't */
 #syncTabs{margin:14px 0 2px}
+.st-pane[data-s="sync"] > .st-subpane[data-t="overview"]{min-height:0}   /* (sync off: it's only What syncs, under the folder choices) */
 #syncTabs[hidden]{display:none}
 .st-body:has(> .st-pane[data-s="sync"]:not([hidden]) > .sy-hist-pane:not([hidden])){display:flex;flex-direction:column}
 .st-pane[data-s="sync"]:not([hidden]):has(> .sy-hist-pane:not([hidden])){flex:1;min-height:0;display:flex;flex-direction:column}
