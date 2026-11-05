@@ -84,6 +84,26 @@ test('two computers on one folder: a channel and a setting go across, and the pa
   a.sync.close(); b.sync.close();
 });
 
+test('its files in the folder are written in place, not renamed over (Dropbox on macOS never uploads those)', t => {
+  let now = 1000;
+  const folder = tempDir('sync-folder', t);
+  const a = computer(t, 'a', { clock: () => now });
+  a.sync.hello(page([], { 'alertSound.mention': 'data:audio/x;base64,AAAA' })); a.sync.start({ folder });
+  const dev = a.sync.status().device;
+  const own = path.join(folder, S.SUB, 'devices', dev + '.json'), sound = path.join(folder, S.SUB, 'sounds', dev, 'alertSound.mention');
+  const ino = fs.statSync(own).ino, soundIno = fs.statSync(sound).ino;
+  now = 2000;
+  a.sync.changed('theme', 'pear');
+  a.sync.changed('alertSound.mention', 'data:audio/x;base64,BBBB');
+  a.timers.run();
+  assert.equal(JSON.parse(fs.readFileSync(own, 'utf8')).settings.theme.value, 'pear');
+  assert.equal(fs.statSync(own).ino, ino, 'the same file, written again');
+  assert.equal(fs.readFileSync(sound, 'utf8'), 'data:audio/x;base64,BBBB');
+  assert.equal(fs.statSync(sound).ino, soundIno);
+  assert.deepEqual(fs.readdirSync(path.dirname(own)), [dev + '.json'], 'no temporary file left beside it');
+  a.sync.close();
+});
+
 test('Undo puts back what the last sync changed, as new changes the others take too', t => {
   let now = 1000;
   const clock = () => now;
@@ -123,6 +143,54 @@ test("the first sync: Use theirs and Use this computer's", t => {
   assert.deepEqual(JSON.parse(a.pulls().at(-1).values.saved), ['charlie']);
   assert.equal(a.pulls().at(-1).values.theme, 'dark');
   [a, b, c].forEach(x => x.sync.close());
+});
+
+test('History: each sync that changed something here, an undo, starting and stopping, newest first and kept', t => {
+  let now = 1000;
+  const clock = () => now;
+  const folder = tempDir('sync-folder', t);
+  const a = computer(t, 'a', { clock }), b = computer(t, 'b', { clock });
+  a.sync.hello(page(['alpha'])); a.sync.start({ folder });
+  b.sync.hello(page(['bravo'])); b.sync.start({ folder, mode: 'combine' });
+  const devA = a.sync.status().device;
+  const kinds = s => s.history.map(e => [e.kind, e.from || e.mode || '']);
+  assert.deepEqual(kinds(b.sync.status()), [['pull', 'a'], ['start', 'combine']]);
+  assert.deepEqual(b.sync.status().history[0], { at: 1000, kind: 'pull', from: 'a', device: devA, os: 'macOS', summary: { added: ['alpha'], removed: [], changed: [], keys: [] } });
+  assert.equal(a.sync.status().history[0].mode, '', 'nobody there yet: no choice made');
+
+  now = 2000; a.sync.changed('theme', 'pear'); a.timers.run();
+  now = 3000; b.sync.syncNow();
+  b.sync.syncNow();
+  assert.deepEqual(kinds(b.sync.status()), [['pull', 'a'], ['pull', 'a'], ['start', 'combine']], 'a sync that changes nothing isn\'t listed');
+  assert.deepEqual(b.sync.status().history[0].summary.keys, ['theme']);
+
+  now = 4000; b.sync.undo();
+  const h = b.sync.status().history;
+  assert.deepEqual(kinds(b.sync.status()), [['undo', 'a'], ['pull', 'a'], ['pull', 'a'], ['start', 'combine']]);
+  assert.equal(h[1].undone, true, 'the sync it undid says so');
+  assert.equal(h[2].undone, undefined);
+  now = 5000; b.sync.stop(); b.sync.stop();
+  assert.equal(b.sync.status().history[0].kind, 'stop', 'once');
+  assert.equal(b.sync.status().history.filter(e => e.kind === 'stop').length, 1);
+  b.sync.close();
+
+  // kept in its own file in the data folder, the newest HISTORY_MAX
+  const again = S.createSync({ userData: b.dir, version: '0.5.0', timers: fakeTimers(), watchDir: fakeWatch });
+  assert.deepEqual(again.status().history, b.sync.status().history);
+  fs.writeFileSync(path.join(b.dir, S.HISTORY_FILE), JSON.stringify(Array.from({ length: S.HISTORY_MAX }, (_, i) => ({ at: i, kind: 'stop' }))));
+  const full = S.createSync({ userData: b.dir, version: '0.5.0', now: () => 9000, timers: fakeTimers(), watchDir: fakeWatch });
+  full.hello(page([])); full.start({ folder });
+  assert.equal(full.status().history.length, S.HISTORY_MAX);
+  assert.equal(full.status().history[0].at, 9000);
+  fs.writeFileSync(path.join(b.dir, S.HISTORY_FILE), '{"not":"a list"}');
+  assert.deepEqual(S.createSync({ userData: b.dir, version: '0.5.0', timers: fakeTimers(), watchDir: fakeWatch }).status().history, [], 'a damaged file starts again');
+  fs.mkdirSync(path.join(b.dir, S.HISTORY_FILE + '.tmp'));        // can't be written: it's still listed, and said in the log
+  const logged = [], stuck = S.createSync({ userData: b.dir, version: '0.5.0', timers: fakeTimers(), watchDir: fakeWatch, log: m => logged.push(m) });
+  stuck.hello(page([])); stuck.start({ folder });
+  assert.equal(stuck.status().history[0].kind, 'start');
+  assert.match(logged.join(), /^sync history: /);
+  stuck.close();
+  full.close(); again.close(); a.sync.close();
 });
 
 test('sounds are files of their own; what syncs can be switched off', t => {

@@ -46,12 +46,14 @@ test('two copies on one folder: channels and a setting go across while both are 
     await a.win.waitForTimeout(1500);
     assert.ok(!(await savedOf(a.win)).includes('alpha'), 'not brought back');
 
-    // Undo (Settings › Sync) puts the last sync back here, and on the other computer
-    await a.win.evaluate(() => openSettings('sync'));
-    await a.win.waitForSelector('#syncUndoRow:not([hidden]) #syncUndo');
+    // Undo (Settings › Sync › History, on the latest sync) puts it back here, and on the other computer
+    await a.win.evaluate(() => openSettings('sync', { sub: 'history' }));
+    await a.win.waitForSelector('#syncHistory .sy-ev.k-pull #syncUndo');
     await a.win.click('#syncUndo');
     await has(a.win, 'alpha');
     await has(b.win, 'alpha');
     assert.deepEqual((await a.win.evaluate(() => window.smvSync.status.computers.map(c => c.name))).sort(), ['Gaming-PC', 'Studio-MacBook']);
+    await a.win.waitForSelector('#syncHistory .sy-ev.k-undo');
+    assert.equal(await a.win.$eval('#syncHistory .sy-ev.k-pull', e => e.classList.contains('undone')), true, 'the sync it undid says so');
   } finally { await a.close(); await b.close(); delete process.env.SMV_SYNC_CHECK_MS; }
 });

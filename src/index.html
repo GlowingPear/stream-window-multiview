@@ -772,6 +772,8 @@
           </div>
           <div class="ca-foot sy-foot"><i class="ca-dot"></i><span class="ca-line"><b></b><small class="ca-sub"></small></span><button type="button" class="btn" id="syncNow">Sync now</button><button type="button" class="btn" id="syncRetry">Try again</button><button type="button" class="btn" id="syncChange">Change…</button><button type="button" class="btn" id="syncStop" title="This computer keeps its channels and settings as they are. The other computers keep syncing.">Stop syncing</button></div>
         </div>
+        <div class="st-tabs sy-on" id="syncTabs" role="tablist" aria-label="Sync"><button role="tab" data-t="overview" class="on" aria-selected="true">Overview</button><button role="tab" data-t="history" aria-selected="false" tabindex="-1">History</button></div>
+        <div class="st-subpane" data-t="overview">
         <div class="st-sec sy-on">Computers</div>
         <div class="sy-list sy-on" id="syncComputers"></div>
         <div class="st-sec">What syncs</div>
@@ -781,7 +783,11 @@
           <label class="st-row"><span class="st-t">Your alert sounds<small id="syncSoundsSub"></small></span><input type="checkbox" class="st-sw" id="syncSounds"></label>
         </div>
         <p class="sy-stays" id="syncStays" hidden>Each computer keeps its own windows and layouts, the streams window, monitors, its sign-ins and Pear Drops' pairing, the bell's notifications, Developer tools, and streamer profiles.</p>
-        <div class="st-row sy-on" id="syncUndoRow"><span class="st-t">Undo the last sync<small></small></span><button type="button" class="btn" id="syncUndo">Undo</button></div>
+        </div>
+        <div class="st-subpane sy-hist-pane" data-t="history" hidden>
+          <div class="sy-filters" id="syncFilters"><div class="seg" id="syncKinds" role="radiogroup" aria-label="Show"><button type="button" data-v="all" role="radio" class="on" aria-checked="true">Everything</button><button type="button" data-v="channels" role="radio" aria-checked="false">Channels</button><button type="button" data-v="settings" role="radio" aria-checked="false">Settings</button><button type="button" data-v="sounds" role="radio" aria-checked="false">Sounds</button></div><div class="seg" id="syncFroms" role="radiogroup" aria-label="From"></div><span class="sy-count" id="syncHistCount"></span></div>
+          <div class="sy-hist" id="syncHistory" role="list" aria-label="What each sync changed"></div>
+        </div>
       </section>
       <section class="st-pane" data-s="developer" hidden>
         <h4>Developer</h4><p class="st-sub">Tools for finding out why something isn't working, and for reporting it.</p>
