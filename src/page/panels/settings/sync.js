@@ -120,8 +120,11 @@ function syRender(){
   const on = syOn(), bad = on && sy.error === 'missing', card = $('#syncCard');
   card.querySelector('.sy-title').textContent = on ? 'Syncing through a folder' : 'Turn on sync';
   const app = on ? syAppOf(sy.folder) : '';
-  card.querySelector('.sy-sum').textContent = on ? [app, 'Stream Multiview Sync'].filter(Boolean).join(' › ') : 'Each computer writes its own file to a place all your computers can reach. Nothing goes to us.';
-  card.querySelector('.sy-path').textContent = on ? syTilde(sy.dir) : '';
+  // a sync app's folder by its name (the whole path on hover); another folder by its path
+  const sum = card.querySelector('.sy-sum');
+  sum.textContent = !on ? 'Each computer writes its own file to a place all your computers can reach. Nothing goes to us.' : app ? `${app} › Stream Multiview Sync` : '';
+  sum.title = on ? syTilde(sy.dir) : '';
+  card.querySelector('.sy-path').textContent = card.querySelector('.sy-path').title = on && !app ? syTilde(sy.dir) : '';
   const chip = card.querySelector('.ca-chip');
   chip.textContent = !on ? 'Off' : bad ? 'Folder not found' : 'Syncing';
   chip.className = 'ca-chip' + (!on ? '' : bad ? ' bad' : ' ok');
@@ -144,7 +147,7 @@ function syRender(){
   $('#syncChannels').checked = sy.what.channels; $('#syncSettings').checked = sy.what.settings; $('#syncSounds').checked = sy.what.sounds;
   const sounds = ALERT_KINDS.map(k => settings.get(SOUND_KEY(k))).filter(Boolean);
   const mb = sounds.reduce((n, s) => n + s.length * 0.75, 0) / 1048576;
-  $('#syncSoundsSub').textContent = sounds.length ? `${syPlural(sounds.length, 'sound')}, ${mb < 0.1 ? '<0.1' : mb.toFixed(1)} MB.` : "The sounds you choose for alerts (Settings › Notifications). You haven't added any.";
+  $('#syncSoundsSub').textContent = sounds.length ? `${syPlural(sounds.length, 'sound')}, ${mb < 0.1 ? '<0.1' : mb.toFixed(1)} MB.` : 'None added yet.';
   const u = sy.undo, row = $('#syncUndoRow');
   row.hidden = !on || !u;
   if (u) row.querySelector('small').textContent = `${syCap(syWhen(u.at))}${u.from ? `, from ${u.from}` : ''}: ${syDescribe(u.summary).join(', ') || 'nothing that shows'}.`;
@@ -213,6 +216,7 @@ function init(){
     { id: 'sync.now', kind: 'setting', group: 'Settings', title: 'Sync now', sub: 'Settings › Sync', words: ['sync'], icon: 'syncFolder', button: '#syncNow' },
     { id: 'sync.retry', kind: 'setting', group: 'Settings', title: 'Sync: try the folder again', sub: 'Settings › Sync', words: ['sync'], icon: 'syncFolder', button: '#syncRetry' },
     { id: 'sync.change', kind: 'setting', group: 'Settings', title: 'Sync: change the folder', sub: 'Settings › Sync', words: ['sync'], icon: 'syncFolder', button: '#syncChange' },
+    { id: 'sync.stop', kind: 'setting', group: 'Settings', title: 'Stop syncing', sub: 'Settings › Sync: this computer keeps its channels and settings as they are', words: ['sync'], icon: 'syncFolder', button: '#syncStop' },
     { id: 'sync.stays', kind: 'setting', group: 'Settings', title: 'Sync: what stays on each computer', sub: 'Settings › Sync', words: ['sync'], icon: 'syncFolder', button: '#syncStaysBtn' },
     { id: 'sync.rename', kind: 'setting', group: 'Settings', title: 'Rename this computer', sub: 'Settings › Sync: how your other computers list it', words: ['sync', 'computer name'], icon: 'pencil',
       syWhen: () => syOn(), run: () => { syRenaming = true; openSettings('sync'); } },

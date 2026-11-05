@@ -108,7 +108,8 @@ test('syncing: up to date, the computers (this one, an older version), what sync
   await showPage(page);
   await page.evaluate(s => window.syncPush(s), ON);
   assert.equal(await text(page, '#syncCard .ca-chip'), 'Syncing');
-  assert.equal(await text(page, '#syncCard .sy-path'), '~/Library/Mobile Documents/com~apple~CloudDocs/Stream Multiview Sync');
+  assert.equal(await page.getAttribute('#syncCard .sy-sum', 'title'), '~/Library/Mobile Documents/com~apple~CloudDocs/Stream Multiview Sync', 'the path on hover');
+  assert.equal(await text(page, '#syncCard .sy-sum'), 'iCloud Drive › Stream Multiview Sync');
   assert.equal(await text(page, '#syncCard .sy-foot .ca-line'), 'Up to date Last synced 2 minutes ago · 48 channels · 3 computers');
   assert.deepEqual(await computers(page), ['Studio MacBook | This computer | macOS · v0.5.0 | Just now', 'Gaming PC | Windows · v0.5.0 | 3 min ago',
     'Travel laptop | Older version | Linux · v0.4.22 · a few settings reach it once it updates | 2 days ago']);

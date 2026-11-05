@@ -770,18 +770,18 @@
             <div class="st-row sy-opt"><span class="sy-ic"><i data-ico="syncFolder"></i></span><span class="st-t">Another folder<small>OneDrive, Google Drive, Syncthing… Pick the same folder on your other computers.</small></span><button type="button" class="btn" id="syncChoose">Choose a folder…</button></div>
             <label class="st-row sy-name"><span class="st-t">This computer's name<small>How your other computers list this one.</small></span><input id="syncNameIn" maxlength="40" spellcheck="false" autocomplete="off" aria-label="This computer's name"></label>
           </div>
-          <div class="ca-foot sy-foot"><i class="ca-dot"></i><span class="ca-line"><b></b><small class="ca-sub"></small></span><button type="button" class="btn" id="syncNow">Sync now</button><button type="button" class="btn" id="syncRetry">Try again</button><button type="button" class="btn" id="syncChange">Change…</button></div>
+          <div class="ca-foot sy-foot"><i class="ca-dot"></i><span class="ca-line"><b></b><small class="ca-sub"></small></span><button type="button" class="btn" id="syncNow">Sync now</button><button type="button" class="btn" id="syncRetry">Try again</button><button type="button" class="btn" id="syncChange">Change…</button><button type="button" class="btn" id="syncStop" title="This computer keeps its channels and settings as they are. The other computers keep syncing.">Stop syncing</button></div>
         </div>
         <div class="st-sec sy-on">Computers</div>
         <div class="sy-list sy-on" id="syncComputers"></div>
         <div class="st-sec">What syncs</div>
-        <label class="st-row"><span class="st-t">Saved channels<small>Your channel list, with each channel's auto-open and alert choices.</small></span><input type="checkbox" class="st-sw" id="syncChannels"></label>
-        <div class="st-row"><span class="st-t">Settings<small>Themes, keys, chat, mentions, shoutouts, linked streamers. Windows, layouts and sign-ins stay on each computer. <button type="button" class="linkish" id="syncStaysBtn" aria-expanded="false">What stays here</button></small></span><input type="checkbox" class="st-sw" id="syncSettings" aria-label="Sync settings"></div>
+        <div class="sy-what">
+          <label class="st-row"><span class="st-t">Saved channels<small>With their alerts and opening when live.</small></span><input type="checkbox" class="st-sw" id="syncChannels"></label>
+          <div class="st-row"><span class="st-t">Settings<small>Themes, chat, mentions and more. <button type="button" class="linkish" id="syncStaysBtn" aria-expanded="false">What stays here</button></small></span><input type="checkbox" class="st-sw" id="syncSettings" aria-label="Sync settings"></div>
+          <label class="st-row"><span class="st-t">Your alert sounds<small id="syncSoundsSub"></small></span><input type="checkbox" class="st-sw" id="syncSounds"></label>
+        </div>
         <p class="sy-stays" id="syncStays" hidden>Each computer keeps its own windows and layouts, the streams window, monitors, its sign-ins and Pear Drops' pairing, the bell's notifications, Developer tools, and streamer profiles.</p>
-        <label class="st-row"><span class="st-t">Your alert sounds<small id="syncSoundsSub"></small></span><input type="checkbox" class="st-sw" id="syncSounds"></label>
-        <div class="st-sec sy-on">If something went wrong</div>
         <div class="st-row sy-on" id="syncUndoRow"><span class="st-t">Undo the last sync<small></small></span><button type="button" class="btn" id="syncUndo">Undo</button></div>
-        <div class="st-row sy-on"><span class="st-t">Stop syncing<small>This computer keeps its channels and settings as they are. The other computers keep syncing.</small></span><button type="button" class="btn" id="syncStop">Stop syncing</button></div>
       </section>
       <section class="st-pane" data-s="developer" hidden>
         <h4>Developer</h4><p class="st-sub">Tools for finding out why something isn't working, and for reporting it.</p>
