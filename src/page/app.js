@@ -105,6 +105,7 @@ import { init as panelsLinkedLinkedCommands } from './panels/linked/linked-comma
 import { init as panelsSettingsSettingsCommands } from './panels/settings/settings-commands.js';
 import { init as palettePalette } from './palette/palette.js';
 import { init as panelsSettingsSearchBox } from './panels/settings/search-box.js';
+import { init as panelsSettingsSync } from './panels/settings/sync.js';
 
 [
   core,
@@ -209,5 +210,6 @@ import { init as panelsSettingsSearchBox } from './panels/settings/search-box.js
   panelsLinkedLinkedCommands,
   panelsSettingsSettingsCommands,
   palettePalette,
-  panelsSettingsSearchBox
+  panelsSettingsSearchBox,
+  panelsSettingsSync          // last: every part listens for its settings before this computer's values go to the main process
 ].forEach(init => init());

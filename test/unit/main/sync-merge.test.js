@@ -104,6 +104,7 @@ test('merge: the newer value wins and is applied; this computer adopts its stamp
   const m = M.merge(r, [f], { values: {}, versions: V, what: ALL, clock: 100 });
   assert.deepEqual(m.apply, { theme: 'light' });
   assert.deepEqual(m.before, { theme: 'dark' });
+  assert.deepEqual(m.applyV, { theme: 1 });
   assert.deepEqual(m.summary.keys, ['theme']);
   assert.equal(m.from, 'pc');
   assert.equal(m.clock, 150);

@@ -144,7 +144,7 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
       const from = r.files.find(f => f.device === m.from);
       st.undo = { at: now(), from: from ? from.name : '', summary: m.summary, before: m.before };
       for (const [k, v] of Object.entries(m.apply)) if (M.kindOf(k) === 'channels') local[k] = v;
-      send('sync:pull', { values: m.apply, from: st.undo.from, summary: m.summary });
+      send('sync:pull', { values: m.apply, versions: m.applyV, from: st.undo.from, summary: m.summary });
     }
     st.lastSync = now();
     if (dirty || !fs.existsSync(ownFile())) write(); else saveSoon();

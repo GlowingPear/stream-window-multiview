@@ -771,6 +771,8 @@ app.on('before-quit', () => { pearLink?.then(l => l?.stop()); });
    either window); what other computers changed goes back to the main window as sync:pull. */
 const sync = require('./sync').createSync({
   userData: app.getPath('userData'), version: app.getVersion(),
+  // tests and captures: where to look for the folders already synced, and the computer's name
+  ...(devEnv('SMV_SYNC_HOME') ? { home: devEnv('SMV_SYNC_HOME'), env: {} } : {}), ...(devEnv('SMV_SYNC_HOST') ? { hostname: devEnv('SMV_SYNC_HOST') } : {}),
   send: (ch, d) => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send(ch, d); },
   log: m => console.warn(m)
 });

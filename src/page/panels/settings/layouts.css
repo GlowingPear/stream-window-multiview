@@ -114,5 +114,19 @@
 .dlg.ask{width:min(420px,calc(100vw - 32px))}
 .dlg.ask .dlg-sub{font-size:13px}
 .dlg.ask .btn.danger-fill{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:700}
+/* ask()'s choices (the first sync's question): cards with a radio dot */
+.dlg.ask.wide{width:min(520px,calc(100vw - 32px))}
+.ask-opts{display:flex;flex-direction:column;gap:8px;margin:14px 0 4px}
+.ask-opts[hidden]{display:none}
+.ask-opt{display:flex;align-items:flex-start;gap:12px;width:100%;padding:11px 14px;text-align:left;border-radius:10px;border:1px solid var(--line2);background:var(--panel2);color:var(--text);cursor:pointer;font:inherit}
+.ask-opt:hover{border-color:var(--muted)}
+.ask-opt.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--panel2))}
+.ask-opt i{flex:none;width:14px;height:14px;margin-top:2px;border-radius:50%;border:2px solid var(--line2)}
+.ask-opt.on i{border-color:var(--accent);box-shadow:inset 0 0 0 3px var(--panel2);background:var(--accent)}
+.ask-opt b{display:block;font-size:13px}
+.ask-opt em{font-style:normal;color:var(--accent);font-size:10.5px;font-weight:700;letter-spacing:.04em;margin-left:6px}
+.ask-opt small{display:block;color:var(--muted);font-size:11.5px;line-height:1.45;margin-top:1px}
+.ask-note{margin-right:auto;color:var(--muted);font-size:11.5px;line-height:1.4}
+.ask-note[hidden]{display:none}
 .spin{width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:-2px}
 @keyframes spin{to{transform:rotate(360deg)}}

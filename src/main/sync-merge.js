@@ -104,10 +104,10 @@ function deviceFile(record, { device, name, os, app, at, what }) {
    files: readDevice() files (sound entries that win carry their value, read by sync.js). values: this computer's
    page values (for the channel lists). versions: { key: v } of this copy; a key it doesn't know, or a value
    written by a newer version of a setting, is left for later (its stamp stays, so it's applied after an update).
-   -> { apply: { key: value }, before: { key: value }, summary: { added, removed, changed, keys }, from: device | null,
+   -> { apply: { key: value }, applyV: { key: the version it was written with }, before: { key: value }, summary: { added, removed, changed, keys }, from: device | null,
    clock, touched } */
 function merge(record, files, { values, versions, what, clock = 0 }) {
-  const apply = {}, before = {}, summary = { added: [], removed: [], keys: [] };
+  const apply = {}, before = {}, applyV = {}, summary = { added: [], removed: [], keys: [] };
   let touched = false;                       // the record changed (it has to be written again)
   const fromAt = new Map();                  // device -> the newest stamp it won with (who to say it came from)
   const won = (e, f) => { if (f !== undefined) fromAt.set(f, Math.max(fromAt.get(f) || -Infinity, e.at)); clock = Math.max(clock, e.at); };
@@ -121,7 +121,7 @@ function merge(record, files, { values, versions, what, clock = 0 }) {
       const value = e.value;
       if (!own || own.value !== value) {
         if (!(k in before)) before[k] = own ? own.value : null;
-        apply[k] = value;
+        apply[k] = value; applyV[k] = e.v;
         if (!summary.keys.includes(k)) summary.keys.push(k);
         won(e, f.device);
       } else clock = Math.max(clock, e.at);
@@ -166,7 +166,7 @@ function merge(record, files, { values, versions, what, clock = 0 }) {
   }
   let from = null, best = -Infinity;
   for (const [d, at] of fromAt) if (at > best) { best = at; from = d; }
-  return { apply, before, summary, from, clock, touched };
+  return { apply, applyV, before, summary, from, clock, touched };
 }
 
 /* The first sync, when the folder already has other computers' files. mode: 'combine' (the usual merge), 'theirs'
