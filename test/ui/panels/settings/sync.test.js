@@ -199,6 +199,9 @@ test('renaming this computer: the pencil, Enter saves, Esc puts the old name bac
   assert.equal(await page.isVisible('#settingsDlg'), true, 'Esc only stops renaming');
   await page.click('#syncComputers .sy-pen');
   await page.fill('#syncComputers .sy-edit input', 'Stream desk Mac');
+  await page.evaluate(() => window.syncPush({ lastSync: Date.now() }));      // a status arriving while you type
+  assert.equal(await page.inputValue('#syncComputers .sy-edit input'), 'Stream desk Mac', 'what you typed stays');
+  await page.focus('#syncComputers .sy-edit input');
   await page.keyboard.press('Enter');
   await page.waitForSelector('#syncComputers .sy-pen');
   assert.deepEqual(await calls(page, 'rename'), [['Stream desk Mac']]);

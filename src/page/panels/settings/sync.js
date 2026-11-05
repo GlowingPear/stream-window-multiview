@@ -15,7 +15,7 @@ import { settings } from '../../shared/settings.js';
    takes it as it takes a change from the other window), and draws the page. ---- */
 let sy = null;                   // the main process's status (sync.js status())
 let syFound = [];                  // the folders already synced on this computer: [{ id, name, path }]
-let syRenaming = false;
+let syRenaming = false, syDraft = null;     // renaming this computer, and what's typed so far (a redraw keeps it)
 const syOn = () => !!(sy && sy.on);
 const SY_FOLDER_ICON = { icloud: 'cloud', dropbox: 'dropbox', onedrive: 'cloud', gdrive: 'cloud', nextcloud: 'cloud' };
 // What a sync changed, in words: "2 channels added", "the theme changed"
@@ -85,9 +85,11 @@ function syComputerRow(c){
   const sub = [c.os, c.app && 'v' + c.app].filter(Boolean).join(' · ') + (c.older ? ' · a few settings reach it once it updates' : c.newer ? ' · writes a newer sync file: update Multiview here to sync with it' : '');
   const ic = element('span', 'sy-ic'); ic.innerHTML = icon[c.os === 'Windows' ? 'desktop' : 'laptop'];
   if (c.me && syRenaming){
-    const input = element('input', { value: sy.name, maxlength: 40, spellcheck: false, autocomplete: 'off', 'aria-label': "This computer's name" });
-    const save = async () => { syRenaming = false; sy = await window.kmv.syncRename(input.value); syRender(); };
-    const cancel = () => { syRenaming = false; syRender(); };
+    const first = syDraft === null;
+    const input = element('input', { value: first ? sy.name : syDraft, maxlength: 40, spellcheck: false, autocomplete: 'off', 'aria-label': "This computer's name",
+      oninput: () => { syDraft = input.value; } });
+    const save = async () => { syRenaming = false; syDraft = null; sy = await window.kmv.syncRename(input.value); syRender(); };
+    const cancel = () => { syRenaming = false; syDraft = null; syRender(); };
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter'){ e.preventDefault(); save(); }
       if (e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); cancel(); }
@@ -96,7 +98,8 @@ function syComputerRow(c){
       element('button', { type: 'button', class: 'btn primary', dataset: { cmd: 'sync.renameSave' }, onclick: save }, 'Save'),
       element('button', { type: 'button', class: 'btn', dataset: { cmd: 'sync.renameCancel' }, onclick: cancel }, 'Cancel')),
       element('small', 'sy-hint', 'Up to 40 characters. Enter saves, Esc puts the old name back. The other computers see it the next time they sync.')));
-    requestAnimationFrame(() => { input.focus(); input.select(); });
+    if (first) syDraft = sy.name;
+    requestAnimationFrame(() => { input.focus(); if (first) input.select(); });
     return row;
   }
   const btn = (cls, ico, title, cmd, onclick) => { const b = element('button', { type: 'button', class: 'sy-btn ' + cls, title, 'aria-label': title, dataset: { cmd }, onclick }); b.innerHTML = icon[ico]; return b; };

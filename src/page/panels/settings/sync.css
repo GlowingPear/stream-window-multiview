@@ -46,7 +46,7 @@
 .sy-hint{display:block;color:var(--muted);font-size:11.5px;line-height:1.45;margin-top:6px}
 
 /* "Synced from Gaming PC": a message with a second line and Undo (flashUndo in shared/flash.js) */
-#msg.act{display:flex;align-items:center;gap:14px;padding:8px 10px 8px 14px;cursor:default}
-#msg.act .msg-t{display:flex;flex-direction:column;gap:1px}
-#msg.act small{color:var(--muted);font-size:11.5px}
-#msg.act .btn{flex:none;height:30px;padding:0 12px}
+#msg.msg-act{display:flex;align-items:center;gap:14px;padding:8px 10px 8px 14px;cursor:default}
+#msg.msg-act .msg-t{display:flex;flex-direction:column;gap:1px}
+#msg.msg-act small{color:var(--muted);font-size:11.5px}
+#msg.msg-act .btn{flex:none;height:30px;padding:0 12px}

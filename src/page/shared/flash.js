@@ -16,7 +16,7 @@ const flashVars = {
 function flash(t, o){
   if (t && o && o.subject) return void addNote({ kind: 'app', subject: o.subject, text: t, ...(o.detail ? { detail: o.detail } : {}), ...(o.act ? { act: o.act } : {}) }, t);
   if (!t || o === true || !alerts || alerts.app.popup !== false){
-    msg.textContent = t; msg.classList.remove('keys', 'act'); clearTimeout(flashT); if (t) flashT = setTimeout(() => msg.textContent = '', 3500);
+    msg.textContent = t; msg.classList.remove('keys', 'msg-act'); clearTimeout(flashT); if (t) flashT = setTimeout(() => msg.textContent = '', 3500);
   }
   if (t && o !== true && alerts && wantNotify('app') && DESKTOP && window.kmv.notifyMessage) window.kmv.notifyMessage(t);
 }
@@ -28,7 +28,7 @@ function flashUndo(t, detail, undo, { subject = 'app', ok = () => true, name = '
   if (n) noteActs.set(n.id, { run: undo, ok });
   if (!alerts || alerts.app.popup === false) return;
   const at = name ? t.lastIndexOf(name) : -1;
-  msg.textContent = ''; msg.classList.remove('keys'); msg.classList.add('act');
+  msg.textContent = ''; msg.classList.remove('keys'); msg.classList.add('msg-act');
   msg.append(element('span', 'msg-t', element('span', null, ...(at >= 0 ? [t.slice(0, at), element('b', null, name), t.slice(at + name.length)] : [t])), detail ? element('small', null, detail) : ''),
     element('button', { type: 'button', class: 'btn', onclick: e => { e.stopPropagation(); flash(''); if (ok()) undo(); } }, 'Undo'));
   clearTimeout(flashT); flashT = setTimeout(() => flash(''), 8000);
