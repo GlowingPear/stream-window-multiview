@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.24 (current)
+## 0.4.25 (current)
+- CI: the UI tests in four parts
+- Sync: say when your changes haven't reached the other computers, and keep linked streamers made on each
+
+## 0.4.24
 - Kick rewards redeemed with text show as a card in ALL
 - Restricted Twitch users' messages show in ALL
 - Emotes pasted into ALL's box show as emotes
