@@ -52,6 +52,61 @@
 .sy-edit .btn{height:32px}
 .sy-hint{display:block;color:var(--muted);font-size:11.5px;line-height:1.45;margin-top:6px}
 
+/* Overview and History: History fills what's left of the window and scrolls inside itself, so the page doesn't */
+#syncTabs{margin:14px 0 2px}
+#syncTabs[hidden]{display:none}
+.st-body:has(> .st-pane[data-s="sync"]:not([hidden]) > .sy-hist-pane:not([hidden])){display:flex;flex-direction:column}
+.st-pane[data-s="sync"]:not([hidden]):has(> .sy-hist-pane:not([hidden])){flex:1;min-height:0;display:flex;flex-direction:column}
+.sy-hist-pane:not([hidden]){flex:1;min-height:0;display:flex;flex-direction:column;padding-top:10px}
+.sy-filters{flex:none;display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.sy-filters[hidden]{display:none}
+.sy-filters .seg button{height:28px;padding:0 11px}
+.sy-filters .seg button.on{background:color-mix(in srgb,var(--accent) 14%,var(--panel2));color:var(--accent)}
+.sy-filters .seg button:not(.on):hover{color:var(--text)}
+.sy-count{margin-left:auto;color:var(--muted);font-size:12px}
+
+/* the timeline: a line down the left, each sync a dot on it, grouped by day */
+.sy-hist{flex:1;min-height:180px;overflow:auto;border:1px solid var(--line2);border-radius:12px;background:var(--panel);padding:2px 0 10px;overscroll-behavior:contain}
+.sy-day{position:sticky;top:0;z-index:1;padding:10px 16px 6px;background:linear-gradient(var(--panel) 75%,transparent);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.sy-ev{position:relative;display:flex;gap:12px;padding:6px 16px 10px}
+.sy-ev::before{content:'';position:absolute;left:30px;top:0;bottom:0;width:1px;background:var(--line2)}
+.sy-day + .sy-ev::before{top:16px}
+.sy-ev:has(+ .sy-day)::before,.sy-ev:last-child::before{bottom:calc(100% - 22px)}
+.sy-day + .sy-ev:is(:last-child,:has(+ .sy-day))::before{display:none}
+.sy-ev-ic{position:relative;flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;border:1px solid var(--line2);background:var(--panel2);color:var(--muted)}
+.sy-ev-ic svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sy-ev.k-pull .sy-ev-ic{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 50%,transparent);background:color-mix(in srgb,var(--accent) 9%,var(--panel2))}
+.sy-ev.k-undo .sy-ev-ic{color:#e8b84a;border-color:color-mix(in srgb,#e8b84a 50%,transparent);background:color-mix(in srgb,#e8b84a 9%,var(--panel2))}
+.sy-ev-b{flex:1;min-width:0;padding-top:5px}
+.sy-ev-h{display:flex;align-items:baseline;gap:8px;min-height:20px;font-size:13px}
+.sy-ev-h b{flex:none;font-weight:700}
+.sy-ev-sub{flex:0 1 auto;min-width:0;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sy-ev-h .sy-tag{margin-left:0;flex:none}
+.sy-ev-at{margin-left:auto;flex:none;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.sy-ev-h .btn{flex:none;align-self:center;height:26px;padding:0 10px;font-size:12px;margin:-4px 0}
+.sy-ev.undone .sy-chips{opacity:.5}
+.sy-ev.undone .sy-chip{text-decoration:line-through}
+
+/* each change: + a channel added, − one removed, a channel changed, a setting, a sound */
+.sy-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.sy-chip{display:inline-flex;align-items:center;gap:5px;max-width:220px;height:22px;padding:0 8px;border-radius:999px;border:1px solid var(--line2);background:var(--panel2);font-size:11.5px;font-weight:600;color:var(--text);white-space:nowrap}
+.sy-chip span{overflow:hidden;text-overflow:ellipsis}
+.sy-chip .pi{flex:none;width:14px;height:14px;font-size:8.5px;border-radius:4px}
+.sy-chip.add::before,.sy-chip.rem::before{flex:none;font-weight:800;font-size:13px;line-height:1}
+.sy-chip.add{border-color:color-mix(in srgb,var(--accent) 40%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.sy-chip.add::before{content:'+';color:var(--accent)}
+.sy-chip.rem{border-color:color-mix(in srgb,var(--danger) 40%,transparent);background:color-mix(in srgb,var(--danger) 7%,transparent);color:color-mix(in srgb,var(--text) 75%,var(--danger))}
+.sy-chip.rem::before{content:'−';color:var(--danger)}
+.sy-chip.rem span{text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--danger) 60%,transparent)}
+.sy-chip.set,.sy-chip.snd{color:var(--muted)}
+.sy-chip.snd::before{content:'♪';color:#6aa8ff}
+.sy-chip.more{border-style:dashed;color:var(--muted);cursor:default}
+/* nothing yet, or nothing with these filters */
+.sy-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:100%;padding:28px 24px;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.5}
+.sy-empty b{color:var(--text);font-size:13.5px}
+.sy-empty-ic{display:grid;place-items:center;width:44px;height:44px;margin-bottom:4px;border-radius:50%;border:1px solid var(--line2);background:var(--panel2)}
+.sy-empty-ic svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
 /* "Synced from Gaming PC": a message with a second line and Undo (flashUndo in shared/flash.js) */
 #msg.msg-act{display:flex;align-items:center;gap:14px;padding:8px 10px 8px 14px;cursor:default}
 #msg.msg-act .msg-t{display:flex;flex-direction:column;gap:1px}

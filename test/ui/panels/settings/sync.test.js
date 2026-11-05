@@ -45,7 +45,13 @@ const ON = {
     { device: 'me1', name: 'Studio MacBook', os: 'macOS', app: '0.5.0', at: NOW, me: true },
     { device: 'pc1', name: 'Gaming PC', os: 'Windows', app: '0.5.0', at: NOW - 180e3 },
     { device: 'lx1', name: 'Travel laptop', os: 'Linux', app: '0.4.22', at: NOW - 2 * 86400e3, older: true }],
-  undo: { at: NOW - 180e3, from: 'Gaming PC', summary: { added: ['alpha', 'bravo'], removed: [], keys: ['theme'] } }
+  undo: { at: NOW - 180e3, from: 'Gaming PC', summary: { added: ['alpha', 'bravo'], removed: [], keys: ['theme'] } },
+  history: [
+    { at: NOW - 180e3, kind: 'pull', from: 'Gaming PC', device: 'pc1', os: 'Windows', summary: { added: ['alpha', 'bravo'], removed: [], changed: [], keys: ['theme'] } },
+    { at: NOW - 3600e3, kind: 'undo', from: 'Travel laptop', device: 'lx1', summary: { added: [], removed: [], keys: ['toolbar'] } },
+    { at: NOW - 3700e3, kind: 'pull', from: 'Travel laptop', device: 'lx1', os: 'Linux', undone: true, summary: { added: [], removed: [], keys: ['toolbar'] } },
+    { at: NOW - 86400e3, kind: 'pull', from: 'Gaming PC', device: 'pc1', os: 'Windows', summary: { added: [], removed: ['tw:charlie'], changed: ['delta'], keys: ['alertSound.mention', 'mentWords'] } },
+    { at: NOW - 86460e3, kind: 'start', folder: ICLOUD, mode: 'combine' }]
 };
 
 async function openSync(t, { storage = {} } = {}){
@@ -89,7 +95,7 @@ test('sync is off: the folders already synced first, then any folder; the name; 
   assert.deepEqual(await page.$$eval('#syncFound .st-row', rows => rows.map(r => [r.querySelector('.st-t').textContent, r.querySelector('button').className])),
     [['iCloud Drive~/Library/Mobile Documents/com~apple~CloudDocs', 'btn primary'], ['Dropbox~/Dropbox', 'btn']]);
   assert.equal(await page.inputValue('#syncNameIn'), 'Studio-MacBook');
-  for (const sel of ['#syncComputers', '#syncUndoRow', '#syncStop']) assert.equal(await shown(page, sel), false, sel + ' only while syncing');
+  for (const sel of ['#syncComputers', '#syncTabs', '#syncStop']) assert.equal(await shown(page, sel), false, sel + ' only while syncing');
   await page.fill('#syncNameIn', 'Stream desk Mac');
   await page.click('#syncFound .st-row button');
   await page.waitForSelector('#syncComputers .sy-cr');
@@ -112,14 +118,15 @@ test('syncing: up to date, the computers (this one, an older version), what sync
   assert.equal(await text(page, '#syncCard .sy-foot .ca-line'), 'Up to date Last synced 2 minutes ago · 48 channels · 3 computers');
   assert.deepEqual(await computers(page), ['Studio MacBook | This computer | macOS · v0.5.0 | Just now', 'Gaming PC | Windows · v0.5.0 | 3 min ago',
     'Travel laptop | Older version | Linux · v0.4.22 · a few settings reach it once it updates | 2 days ago']);
-  assert.equal(await text(page, '#syncUndoRow small'), 'Today at 14:02, from Gaming PC: 2 channels added, the theme changed.');
   await page.click('#syncSounds');
   assert.deepEqual(await calls(page, 'what'), [[{ sounds: false }]]);
   await page.click('#syncStaysBtn');
   assert.equal(await shown(page, '#syncStays'), true);
+  await page.click('#syncTabs [data-t=history]');
   await page.click('#syncUndo');
-  await page.waitForFunction(() => !document.querySelector('#syncUndoRow').offsetParent);
+  await page.waitForFunction(() => !document.querySelector('#syncUndo'));
   assert.deepEqual(await calls(page, 'undo'), [[]]);
+  await page.click('#syncTabs [data-t=overview]');
   await page.click('#syncComputers .sy-cr[data-device=pc1] .sy-x');
   await page.click('#askDlg .ask-yes');
   await page.waitForFunction(() => document.querySelectorAll('#syncComputers .sy-cr').length === 2);
@@ -228,6 +235,64 @@ test('a change from another computer: taken straight away, a message with Undo, 
   // a value from a newer version of a setting isn't used
   await page.evaluate(() => window.syncPull({ values: { snap: '0' }, versions: { snap: 9 }, from: 'Office PC', summary: { keys: ['snap'] } }));
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.snap')), '1');
+});
+
+// History: each entry's name, what it says, its time, and its changes (+ added, − removed)
+const history = page => page.$$eval('#syncHistory > *', els => els.map(e => e.classList.contains('sy-day') ? '# ' + e.textContent
+  : [...e.querySelectorAll('.sy-ev-h > :not(button)')].map(x => x.textContent).join(' | ') + ([...e.querySelectorAll('.sy-chip')].length
+    ? ' : ' + [...e.querySelectorAll('.sy-chip')].map(c => ({ add: '+', rem: '−' }[c.classList[1]] || '') + c.textContent).join(', ') : '')
+    + (e.querySelector('#syncUndo') ? ' [Undo]' : '')));
+
+test('History: what each sync changed, by day, newest first, filtered by what changed and which computer', async t => {
+  const page = await openSync(t);
+  await showPage(page);
+  await page.evaluate(s => window.syncPush(s), ON);
+  assert.equal(await shown(page, '#syncHistory'), false, 'Overview first');
+  await page.click('#syncTabs [data-t=history]');
+  assert.equal(await shown(page, '#syncComputers'), false);
+  assert.deepEqual(await history(page), ['# Today',
+    'Gaming PC | 3 changes | 14:02 : +Kalpha, +Kbravo, Theme [Undo]',
+    'Undone | what Travel laptop changed | 13:05 : Toolbar',
+    'Travel laptop | 1 change | Undone | 13:03 : Toolbar',
+    '# Yesterday',
+    'Gaming PC | 4 changes | 14:05 : −Tcharlie, Kdelta, Mention sound, Mention words',
+    'Started syncing | iCloud Drive · Combined with the other computers | 14:04']);
+  assert.equal(await text(page, '#syncHistCount'), '3 syncs');
+  assert.equal(await page.$eval('.st-body', e => e.scrollHeight - e.clientHeight), 0, 'the page itself doesn\'t scroll');
+
+  await page.click('#syncKinds [data-v=channels]');
+  assert.deepEqual(await history(page), ['# Today', 'Gaming PC | 2 changes | 14:02 : +Kalpha, +Kbravo [Undo]', '# Yesterday', 'Gaming PC | 2 changes | 14:05 : −Tcharlie, Kdelta']);
+  await page.click('#syncKinds [data-v=sounds]');
+  assert.deepEqual(await history(page), ['# Yesterday', 'Gaming PC | 1 change | 14:05 : Mention sound']);
+  await page.click('#syncKinds [data-v=settings]');
+  await page.click('#syncFroms [data-v=lx1]');
+  assert.deepEqual(await history(page), ['# Today', 'Undone | what Travel laptop changed | 13:05 : Toolbar', 'Travel laptop | 1 change | Undone | 13:03 : Toolbar']);
+  assert.equal(await text(page, '#syncHistCount'), '1 sync');
+  await page.click('#syncKinds [data-v=sounds]');
+  assert.equal(await text(page, '#syncHistory'), 'Nothing here with these filters Try Everything, or Any computer.');
+  assert.deepEqual(await page.$$eval('#syncFroms button', b => b.map(x => x.dataset.cmd)), ['sync.history.from.any', 'sync.history.from.pc1', 'sync.history.from.lx1'], 'each has its command');
+  await page.click('#syncFroms [data-v=""]');
+  await page.click('#syncKinds [data-v=all]');
+
+  // a status with nothing new doesn't draw it again
+  const first = await page.$('#syncHistory .sy-ev');
+  await page.evaluate(() => window.syncPush({}));
+  assert.equal(await first.evaluate(e => e.isConnected), true);
+
+  await page.evaluate(() => window.syncPush({ history: [{ at: 1, kind: 'pull', from: 'Gaming PC', device: 'pc1', os: 'Windows', summary: null }] }));
+  assert.equal(await shown(page, '#syncFroms'), false, 'one computer: no From filter');
+  await page.evaluate(() => window.syncPush({ history: [], undo: null }));
+  assert.equal(await shown(page, '#syncFilters'), false);
+  assert.equal(await text(page, '#syncHistory'), 'Nothing has synced yet What your other computers change shows here as it arrives, with Undo for the latest.');
+  await page.click('#syncStop');
+  await page.click('#askDlg .ask-yes');
+  await page.waitForFunction(() => !document.querySelector('#syncTabs').offsetParent);
+  assert.equal(await shown(page, '#syncChannels'), true, 'sync off: What syncs shows, without the tabs');
+});
+
+test('History has a name for every synced setting and sound', async t => {
+  const page = await openSync(t);
+  assert.deepEqual(await page.evaluate(() => window.smvSync.unnamed()), []);
 });
 
 test('what a sync changed, in words; times', async t => {

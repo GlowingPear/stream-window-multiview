@@ -1,6 +1,7 @@
 import { ALERT_KINDS, SOUND_KEY } from '../../alerts/alerts.js';
 import { $, ROLE } from '../../core.js';
 import { openSettings, settingsDlg } from './settings.js';
+import { chLabel, platIcon, platOf } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
@@ -15,6 +16,7 @@ import { settings } from '../../shared/settings.js';
    takes it as it takes a change from the other window), and draws the page. ---- */
 let sy = null;                   // the main process's status (sync.js status())
 let syFound = [];                  // the folders already synced on this computer: [{ id, name, path }]
+let syHist = { kind: 'all', device: '' };      // History's filters: what changed, and which computer it came from
 let syRenaming = false, syDraft = null;     // renaming this computer, and what's typed so far (a redraw keeps it)
 const syOn = () => !!(sy && sy.on);
 const SY_FOLDER_ICON = { icloud: 'cloud', dropbox: 'dropbox', onedrive: 'cloud', gdrive: 'cloud', nextcloud: 'cloud' };
@@ -35,6 +37,22 @@ function syDescribe(s){
   if (rest) out.push(syPlural(rest, 'setting') + ' changed');
   return out;
 }
+
+// Each synced setting as History names it (a test checks every synced key has one)
+const SY_LABEL = { theme: 'Theme', themes: 'Your themes', keys: 'Keyboard shortcuts', arrowSound: 'Sound follows the arrow keys',
+  barNameStream: "Streams' title bars", barNameChat: "Chats' title bars", barButtons: 'Title bar buttons', toolbar: 'Toolbar',
+  paletteOn: 'Search box', paletteRecent: 'Search box history', notifyAll: 'Live alerts for every channel', chanOpts: 'Channel settings',
+  linkedOn: 'Linked channels', streamers: 'Linked streamers', linkedNot: 'Not the same streamer', linkedOpts: 'Linked channels options',
+  allBots: "ALL: chat bots", allEvents: 'ALL: events', allSend: 'ALL: sending', allTimeout: 'ALL: timeouts', allHype: 'ALL: hype train', allHidden: 'ALL: hidden sites',
+  mentOn: 'Mentions', mentMuted: 'Muted mentions', mentWords: 'Mention words', myName: 'Kick username', myTwitch: 'Twitch username',
+  dndFor: 'Do not disturb', desktopNotify: 'Desktop notifications', alerts: 'Alerts',
+  autoTranslate: 'Translate chat', noTranslate: "Languages not translated", translateAll: 'Translate every message', emotePreview: 'Emote previews', newEmotes: 'New emotes',
+  chatName: 'Name in chat', chatNameText: 'Name in chat text', chatOverlay: 'Chat overlay', chatOverlayOff: 'Chat overlay off for', chatOverlayKeep: 'Chat overlay stays',
+  chatOverlaySecs: 'Chat overlay time', chatOverlayLines: 'Chat overlay lines', chatCounts: 'Chat counts',
+  shoutOn: 'Shoutouts', shoutModOnly: 'Shoutouts: only as a mod', shoutSend: 'Shoutouts: sending', shoutText: 'Shoutout message', shoutChannels: 'Shoutout cards',
+  shoutTwitch: "Twitch's shoutouts", shoutAgain: 'Shoutouts: asking again', shoutRunN: 'Shoutouts: run size', shoutStreamers: 'Shoutouts: streamers only', shoutListFirst: 'Shoutouts: list first',
+  ytSkip: 'YouTube: skip ads', ytAutoLike: 'YouTube: auto-like', ytChatView: 'YouTube: chat view', startMuted: 'Start muted', autoPause: 'Auto-pause', snap: 'Snap windows' };
+const syLabel = k => SY_LABEL[k] || (/^alertSound\./.test(k) ? syCap(k.slice(11)) + ' sound' : '');
 
 // "Just now", "3 min ago", "Yesterday", "2 days ago"; long: "2 minutes ago"
 function syAgo(at, long = false){
@@ -117,6 +135,97 @@ function syFolderRow(f, first){
   return element('div', 'st-row sy-opt', ic, element('span', 'st-t', f.name, element('small', 'sy-mono', syTilde(f.path))),
     element('button', { type: 'button', class: 'btn' + (first ? ' primary' : ''), onclick: () => syStart(f.path) }, 'Use this'));
 }
+/* ---- History: what each sync changed here, newest first, by day ---- */
+const SY_MODE = { combine: 'Combined with the other computers', theirs: "Took the other computers' channels and settings", mine: "Kept this computer's channels and settings" };
+const SY_CHIPS = 12;                  // a sync's changes shown; the rest are "+N more" (all of them on hover)
+// One change: a channel added, removed or changed, or a setting or sound
+function syChip(kind, text, ch){
+  const c = element('span', 'sy-chip ' + kind);
+  if (ch) c.insertAdjacentHTML('beforeend', platIcon(platOf(ch)));
+  c.append(element('span', null, text));
+  return c;
+}
+// A sync's changes as chips, only the kind the filter shows
+function syChips(sum, kind){
+  const out = [], s = sum || {}, keys = s.keys || [];
+  if (kind === 'all' || kind === 'channels'){
+    (s.added || []).forEach(ch => out.push(syChip('add', chLabel(ch), ch)));
+    (s.removed || []).forEach(ch => out.push(syChip('rem', chLabel(ch), ch)));
+    (s.changed || []).forEach(ch => out.push(syChip('chg', chLabel(ch), ch)));
+  }
+  keys.filter(k => /^alertSound\./.test(k) ? kind === 'all' || kind === 'sounds' : kind === 'all' || kind === 'settings')
+    .forEach(k => out.push(syChip(/^alertSound\./.test(k) ? 'snd' : 'set', syLabel(k) || 'A setting')));
+  if (out.length <= SY_CHIPS) return out;
+  const rest = out.splice(SY_CHIPS - 1);
+  return [...out, element('span', { class: 'sy-chip more', title: rest.map(c => c.textContent).join(', ') }, `+${rest.length} more`)];
+}
+// How many of a sync's changes the filter shows
+function syCount(sum, kind){
+  const s = sum || {}, keys = s.keys || [], snd = keys.filter(k => /^alertSound\./.test(k)).length;
+  const ch = (s.added || []).length + (s.removed || []).length + (s.changed || []).length;
+  return kind === 'channels' ? ch : kind === 'settings' ? keys.length - snd : kind === 'sounds' ? snd : ch + keys.length;
+}
+const syDay = at => { const w = syWhen(at); return w.startsWith('today') ? 'Today' : w.startsWith('yesterday') ? 'Yesterday'
+  : new Date(at).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); };
+const syTime = at => new Date(at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+// What History lists with its filters: [{ e, chips }]
+function syHistShown(){
+  const all = (sy && sy.history) || [], { kind, device } = syHist;
+  return all.map(e => ({ e, chips: e.kind === 'pull' || e.kind === 'undo' ? syChips(e.summary, kind) : [] }))
+    .filter(({ e, chips }) => (!device || e.device === device) && (e.kind === 'pull' || e.kind === 'undo' ? kind === 'all' || chips.length : kind === 'all' && !device));
+}
+function syEvent({ e, chips }){
+  const ic = element('span', 'sy-ev-ic'), canUndo = e.kind === 'pull' && sy.undo && sy.undo.at === e.at;
+  ic.innerHTML = icon[e.kind === 'undo' ? 'undo' : e.kind === 'start' ? 'syncFolder' : e.kind === 'stop' ? 'pause' : e.os === 'Windows' ? 'desktop' : 'laptop'];
+  const n = syCount(e.summary, syHist.kind);
+  const head = e.kind === 'pull' ? [element('b', null, e.from || 'A computer'), element('span', 'sy-ev-sub', n ? syPlural(n, 'change') : 'nothing that shows')]
+    : e.kind === 'undo' ? [element('b', null, 'Undone'), element('span', 'sy-ev-sub', `what ${e.from || 'a computer'} changed`)]
+    : e.kind === 'start' ? [element('b', null, 'Started syncing'), element('span', 'sy-ev-sub', [syAppOf(e.folder) || syTilde(e.folder), SY_MODE[e.mode]].filter(Boolean).join(' · '))]
+    : [element('b', null, 'Stopped syncing')];
+  return element('div', { class: `sy-ev k-${e.kind}` + (e.undone ? ' undone' : ''), role: 'listitem' }, ic,
+    element('div', 'sy-ev-b',
+      element('div', 'sy-ev-h', ...head, e.undone ? element('span', 'sy-tag wait', 'Undone') : '', element('time', 'sy-ev-at', syTime(e.at)),
+        canUndo ? element('button', { type: 'button', class: 'btn', id: 'syncUndo', dataset: { cmd: 'sync.undo' }, title: 'Put back what this sync changed, here and on your other computers', onclick: syUndo }, 'Undo') : ''),
+      chips.length ? element('div', 'sy-chips', ...chips) : ''));
+}
+let syHistKey = '';
+function syRenderHistory(){
+  const hist = (sy && sy.history) || [];
+  // the computers it came from (each by its latest name), for the From filter when there's more than one
+  const froms = [];
+  for (const e of hist) if (e.device && !froms.some(f => f.device === e.device)) froms.push({ device: e.device, name: e.from || 'A computer' });
+  if (syHist.device && !froms.some(f => f.device === syHist.device)) syHist.device = '';
+  const key = JSON.stringify([hist, syHist, sy.undo && sy.undo.at, syDay(Date.now()), froms]);
+  if (key === syHistKey) return;                 // (a status every minute: only redrawn when something changed)
+  syHistKey = key;
+  $('#syncKinds').querySelectorAll('button').forEach(b => { const on = b.dataset.v === syHist.kind; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+  const fromBtn = (device, name) => element('button', { type: 'button', role: 'radio', class: syHist.device === device ? 'on' : '', 'aria-checked': syHist.device === device,
+    dataset: { v: device, cmd: 'sync.history.from.' + (device || 'any') }, onclick: () => { syHist.device = device; syRenderHistory(); } }, name);
+  $('#syncFroms').hidden = froms.length < 2;
+  $('#syncFroms').replaceChildren(...(froms.length < 2 ? [] : [fromBtn('', 'Any computer'), ...froms.map(f => fromBtn(f.device, f.name))]));
+  const shown = syHistShown(), syncs = shown.filter(x => x.e.kind === 'pull').length;
+  $('#syncHistCount').textContent = hist.length ? syPlural(syncs, 'sync') : '';
+  $('#syncFilters').hidden = !hist.length;
+  const list = $('#syncHistory'), out = [];
+  if (!shown.length){
+    const ic = element('span', 'sy-empty-ic'); ic.innerHTML = icon[hist.length ? 'search' : 'clock'];
+    out.push(element('div', 'sy-empty', ic, element('b', null, hist.length ? 'Nothing here with these filters' : 'Nothing has synced yet'),
+      element('span', null, hist.length ? 'Try Everything, or Any computer.' : 'What your other computers change shows here as it arrives, with Undo for the latest.')));
+  }
+  let day = '';
+  for (const x of shown){
+    const d = syDay(x.e.at);
+    if (d !== day){ day = d; out.push(element('div', 'sy-day', d)); }
+    out.push(syEvent(x));
+  }
+  list.replaceChildren(...out);
+}
+const syTab = t => {
+  const pane = settingsDlg.querySelector('.st-pane[data-s="sync"]');
+  pane.querySelectorAll('#syncTabs button').forEach(b => { const on = b.dataset.t === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; });
+  pane.querySelectorAll(':scope > .st-subpane').forEach(p => { p.hidden = p.dataset.t !== t; });
+};
+
 function syRender(){
   const pane = settingsDlg && settingsDlg.querySelector('.st-pane[data-s="sync"]');
   if (!pane || !sy) return;
@@ -154,9 +263,8 @@ function syRender(){
   const sounds = ALERT_KINDS.map(k => settings.get(SOUND_KEY(k))).filter(Boolean);
   const mb = sounds.reduce((n, s) => n + s.length * 0.75, 0) / 1048576;
   $('#syncSoundsSub').textContent = sounds.length ? `${syPlural(sounds.length, 'sound')}, ${mb < 0.1 ? '<0.1' : mb.toFixed(1)} MB.` : 'None added yet.';
-  const u = sy.undo, row = $('#syncUndoRow');
-  row.hidden = !on || !u;
-  if (u) row.querySelector('small').textContent = `${syCap(syWhen(u.at))}${u.from ? `, from ${u.from}` : ''}: ${syDescribe(u.summary).join(', ') || 'nothing that shows'}.`;
+  if (!on) syTab('overview');                    // (History is a tab only while syncing)
+  syRenderHistory();
 }
 
 /* ---- what the buttons do ---- */
@@ -211,7 +319,8 @@ function init(){
   $('#syncChange').onclick = syPickFolder;
   $('#syncNow').onclick = async () => { sy = await window.kmv.syncNow(); syRender(); flash(sy.error ? "Can't reach the folder" : 'Synced'); };
   $('#syncRetry').onclick = async () => { sy = await window.kmv.syncNow(); syRender(); };
-  $('#syncUndo').onclick = syUndo;
+  $('#syncTabs').addEventListener('click', e => { const b = e.target.closest('button[data-t]'); if (b) syTab(b.dataset.t); });
+  $('#syncKinds').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b){ syHist.kind = b.dataset.v; syRenderHistory(); } });
   $('#syncStop').onclick = syStop;
   const nameIn = $('#syncNameIn');
   nameIn.addEventListener('change', () => syRename(nameIn.value));
@@ -225,13 +334,29 @@ function init(){
     { id: 'sync.stop', kind: 'setting', group: 'Settings', title: 'Stop syncing', sub: 'Settings › Sync: this computer keeps its channels and settings as they are', words: ['sync'], icon: 'syncFolder', button: '#syncStop' },
     { id: 'sync.stays', kind: 'setting', group: 'Settings', title: 'Sync: what stays on each computer', sub: 'Settings › Sync', words: ['sync'], icon: 'syncFolder', button: '#syncStaysBtn' },
     { id: 'sync.rename', kind: 'setting', group: 'Settings', title: 'Rename this computer', sub: 'Settings › Sync: how your other computers list it', words: ['sync', 'computer name'], icon: 'pencil',
-      syWhen: () => syOn(), run: () => { syRenaming = true; openSettings('sync'); } },
+      when: () => syOn(), run: () => { syRenaming = true; openSettings('sync'); } },
+    { id: 'sync.undo', kind: 'setting', group: 'Settings', title: 'Undo the last sync', sub: 'Settings › Sync › History: here and on your other computers', words: ['sync', 'undo'], icon: 'undo',
+      when: () => syOn() && !!sy.undo, run: syUndo },
     { id: 'sync.updates', kind: 'setting', group: 'Settings', title: 'Sync: check for updates', sub: 'Another computer writes a newer sync file', words: ['sync'], icon: 'update',
-      syWhen: () => syOn() && sy.computers.some(c => c.newer), run: () => openSettings('updates') }
+      when: () => syOn() && sy.computers.some(c => c.newer), run: () => openSettings('updates') },
+    ...[['all', 'Everything'], ['channels', 'Channels'], ['settings', 'Settings'], ['sounds', 'Sounds']].map(([v, t]) => ({ id: 'sync.history.' + v, kind: 'setting', group: 'Settings',
+      title: `Sync history: ${v === 'all' ? 'everything' : t.toLowerCase()}`, sub: 'Settings › Sync › History', words: ['sync', 'history'], icon: 'clock',
+      button: `#syncKinds [data-v="${v}"]`, run: () => { syHist.kind = v; openSettings('sync', { sub: 'history' }); syRenderHistory(); } }))
   ]);
   commands.provide('sync', () => !syOn() ? [] : sy.computers.filter(c => !c.me).map(c => ({ id: 'sync.forget.' + c.device, kind: 'setting', group: 'Settings',
     title: `Forget ${c.name}`, sub: 'Settings › Sync: its file goes from the sync folder', words: ['sync', 'computer'], icon: 'close', run: () => syForget(c) })));
+  // History's From filter: one for each computer a sync came from
+  commands.provide('syncFrom', () => {
+    if (!syOn()) return [];
+    const froms = [];
+    for (const e of sy.history || []) if (e.device && !froms.some(f => f.device === e.device)) froms.push({ device: e.device, name: e.from || 'A computer' });
+    return froms.length < 2 ? [] : [{ device: '', name: 'any computer' }, ...froms].map(f => ({ id: 'sync.history.from.' + (f.device || 'any'), kind: 'setting', group: 'Settings',
+      title: `Sync history from ${f.name}`, sub: 'Settings › Sync › History', words: ['sync', 'history'], icon: 'clock',
+      run: () => { syHist.device = f.device; openSettings('sync', { sub: 'history' }); syRenderHistory(); } }));
+  });
   window.smvSync = { describe: syDescribe, ago: syAgo, when: syWhen, get status(){ return sy; },   // for the tests
+    // synced keys History has no name for (the channel lists show as their channels)
+    unnamed: () => [...settings.synced(), ...ALERT_KINDS.map(SOUND_KEY)].filter(k => !['saved', 'autoOpen', 'notifyOff', 'chNames'].includes(k) && !syLabel(k)),
     unheard: () => [...settings.synced(), ...ALERT_KINDS.map(SOUND_KEY)].filter(k => !settings.listening(k)) };
 }
 
