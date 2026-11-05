@@ -31,6 +31,13 @@ function writeAtomic(file, text) {
   fs.writeFileSync(tmp, text);
   fs.renameSync(tmp, file);
 }
+// Files in the synced folder are written in place instead: Dropbox on macOS (File Provider) marks a file renamed over
+// another as uploaded without uploading it. Only this computer writes its own files there, and the others get them
+// from the sync app once they're whole; a half-written one read here fails to parse and is read again next time.
+function writeInPlace(file, text) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, text);
+}
 const isDir = p => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
 // "0.4.22" < "0.5.0"
 function cmpVersion(a, b) {
@@ -161,14 +168,14 @@ function createSync({ userData, version, send = () => {}, now = Date.now, timers
       M.prune(st.record, now());
       st.lastWrite = now();
       const file = M.deviceFile(st.record, { device: st.device, name: st.name, os: OS_NAME[platform] || platform, app: version, at: st.lastWrite, what: st.what });
-      writeAtomic(ownFile(), JSON.stringify(file));
+      writeInPlace(ownFile(), JSON.stringify(file));
       dirty = false;
       const dir = path.join(syncDir(), 'sounds', st.device);
       for (const [k, e] of Object.entries(st.record.settings)) {
         if (M.kindOf(k) !== 'sounds') continue;
         if (e.value === null || !st.what.sounds) { if (k in st.sounds) { fs.rmSync(path.join(dir, k), { force: true }); delete st.sounds[k]; } continue; }
         if (st.sounds[k] === e.at && fs.existsSync(path.join(dir, k))) continue;
-        writeAtomic(path.join(dir, k), e.value);
+        writeInPlace(path.join(dir, k), e.value);
         st.sounds[k] = e.at;
       }
       st.error = '';

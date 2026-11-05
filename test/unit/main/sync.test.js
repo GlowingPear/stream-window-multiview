@@ -84,6 +84,26 @@ test('two computers on one folder: a channel and a setting go across, and the pa
   a.sync.close(); b.sync.close();
 });
 
+test('its files in the folder are written in place, not renamed over (Dropbox on macOS never uploads those)', t => {
+  let now = 1000;
+  const folder = tempDir('sync-folder', t);
+  const a = computer(t, 'a', { clock: () => now });
+  a.sync.hello(page([], { 'alertSound.mention': 'data:audio/x;base64,AAAA' })); a.sync.start({ folder });
+  const dev = a.sync.status().device;
+  const own = path.join(folder, S.SUB, 'devices', dev + '.json'), sound = path.join(folder, S.SUB, 'sounds', dev, 'alertSound.mention');
+  const ino = fs.statSync(own).ino, soundIno = fs.statSync(sound).ino;
+  now = 2000;
+  a.sync.changed('theme', 'pear');
+  a.sync.changed('alertSound.mention', 'data:audio/x;base64,BBBB');
+  a.timers.run();
+  assert.equal(JSON.parse(fs.readFileSync(own, 'utf8')).settings.theme.value, 'pear');
+  assert.equal(fs.statSync(own).ino, ino, 'the same file, written again');
+  assert.equal(fs.readFileSync(sound, 'utf8'), 'data:audio/x;base64,BBBB');
+  assert.equal(fs.statSync(sound).ino, soundIno);
+  assert.deepEqual(fs.readdirSync(path.dirname(own)), [dev + '.json'], 'no temporary file left beside it');
+  a.sync.close();
+});
+
 test('Undo puts back what the last sync changed, as new changes the others take too', t => {
   let now = 1000;
   const clock = () => now;
