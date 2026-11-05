@@ -97,7 +97,6 @@ test('sync is off: the folders already synced first, then any folder; the name; 
   assert.deepEqual(await calls(page, 'start'), [[ICLOUD, 'combine']], 'nobody there yet: no question');
   assert.equal(await text(page, '#syncCard .sy-title'), 'Syncing through a folder');
   assert.equal(await text(page, '#syncCard .sy-sum'), 'iCloud Drive › Stream Multiview Sync');
-  await page.click('#syncChoose').catch(() => {});      // (hidden while syncing)
   await page.click('#syncChange');
   await page.waitForFunction(() => window.calls.filter(c => c[0] === 'start').length === 2);
   assert.deepEqual((await calls(page, 'start'))[1], [HOME + '/Sync', 'combine'], 'Change… picks another folder');
