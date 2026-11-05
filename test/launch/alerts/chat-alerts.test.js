@@ -400,6 +400,25 @@ test('spam alerts check what the site sends, drawn or not (behind ALL, scrolled 
   await clickBar('alpha');
 });
 
+test('spam alerts never mark the channel\'s own broadcaster: by their name in its chat, or their badge in what the site sends', T, async () => {
+  await clickBar('alpha');
+  await ready();
+  const flagged = await spamCount();
+  await say('alpha', 'Alpha', 'hq ai stream upgrades hostlink com zero cost upgrades');
+  await win.evaluate(() => window.spamFromFeed('alpha', 'Alpha', 'hq ai stream upgrades hostfeed com zero cost upgrades'));
+  // a name that isn't the channel's, with Kick's broadcaster badge (e.g. its display name)
+  await feed('alpha', kickMsg('TheHost', 'hq ai stream upgrades badgelink com zero cost upgrades', { sender: { id: 7, username: 'TheHost', slug: 'thehost', identity: { badges: [{ type: 'broadcaster' }] } } }));
+  // the same message from someone else is still marked
+  await say('alpha', 'copycat', 'hq ai stream upgrades hostlink com zero cost upgrades');
+  await win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').some(n => n.kind === 'spam' && n.sender === 'copycat'));
+  await win.waitForTimeout(1000);
+  assert.equal(await spamCount(), flagged + 1, 'only copycat');
+  assert.deepEqual((await notesOf('spam')).map(n => n.sender).filter(s => /alpha|thehost/i.test(s)), []);
+  const tagged = () => inChat('alpha', () => [...document.querySelectorAll('.row')].filter(r => /hostlink/.test(r.textContent)).map(r => [r.querySelector('b').textContent, !!r.querySelector('[data-kmv-spam]')]));
+  assert.deepEqual(await tagged(), [['Alpha', false], ['copycat', true]], 'only copycat\'s line is tagged');
+  await clickBar('alpha');
+});
+
 test('mentions from the site\'s connection: at once, drawn or not, once each (also when the page read it first); a reply; never yours or a bot\'s; its screen read again when the connection stops working', T, async () => {
   await clickBar('alpha'); await clickBar('bravo');
   await win.waitForFunction(() => window.openWins().find(o => o.kind === 'chat' && o.channel === 'bravo').feedRead, null, { polling: 500 });

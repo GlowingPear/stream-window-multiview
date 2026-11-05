@@ -13,7 +13,7 @@ import { smoothScrollTo } from '../layout/sideways-scroll.js';
 import { injectMention } from '../panels/bell/all-notifications.js';
 import { addNote, cleanParts, mentAny, mentOn, partsText, readChat, spamWhy } from '../panels/bell/bell.js';
 import { streamerBots } from '../platforms/linked.js';
-import { chLabel, chLabelP, modOk, platOf } from '../platforms/platforms.js';
+import { chLabel, chLabelP, modOk, platOf, platform } from '../platforms/platforms.js';
 import { DESKTOP } from '../shared/env.js';
 import { askIn, runIn } from '../windows/view.js';
 
@@ -65,6 +65,7 @@ function noteChecked(ch, sender, body, now, flag){
   checked.set(k, [...(checked.get(k) || []), { b, t: now, flag }].slice(-20));
   if (checked.size > FIRST_MAX) checked.delete(checked.keys().next().value);
 }
+// l: { sender, body, t, line (its line in the chat's page) | null, id?, host? (ALL's badge says it's the broadcaster) }.
 // seenAt: when you last clicked or typed in that chat; messages from before then don't need a lasting alert.
 // A line from ALL has no line in the chat's page (line: null) to tag yet.
 async function spamCheck(w, lines, seenAt){
@@ -74,6 +75,9 @@ async function spamCheck(w, lines, seenAt){
   lines.forEach(l => {
     if (l.mod) return;                                         // a moderator removed it: not a new message
     if (SmvSpam.ignored(l.sender, opts.ignore)) return;        // chat bots: not checked, and their repeats don't count against anyone
+    // the channel's own broadcaster (their badge in ALL, or their name): never marked, and noted as checked so the
+    // same message from the other side isn't checked either
+    if (l.host || platform(w.channel).isHost(w.channel, l.sender)){ noteChecked(w.channel, l.sender, l.body, now, null); return; }
     const before = checkedBefore(w.channel, l.sender, l.body, now);
     if (before){ if (before.flag && l.line && alerts.spam.tag) markLine(w, l.line, before.flag); return; }   // (heard by ALL first: its tag in the chat too)
     const msg = { sender: l.sender, body: l.body, chat: w.channel, t: l.t || now };
@@ -106,9 +110,9 @@ const markLine = (w, line, flag, id = '') => runIn(w.view, `window.__kmvMention 
 // A message the chat's connection to the site brought (chat/chat-feed.js: ALL's, or one read for the alerts alone):
 // checked as it comes, as the chat's page may not draw it until it's in view (Kick's doesn't while ALL is in front of
 // it, or while it's scrolled up). The page's line for it, when it's drawn, isn't checked again.
-function spamFromFeed(w, sender, body, t, id = ''){
+function spamFromFeed(w, sender, body, t, id = '', host = false){
   if (!alerts.spam.on || !w || !String(body || '').trim()) return;
-  spamCheck(w, [{ sender, body, t, line: null, id }]);
+  spamCheck(w, [{ sender, body, t, line: null, id, host }]);
 }
 // Bring a chat into view (and flash it).
 function revealChat(ch){

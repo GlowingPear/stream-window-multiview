@@ -50,6 +50,7 @@ const youtube = {
   timeoutCmd: null, banCmd: null, modRequest: null,   // (no chat commands: mod actions from its own tab)
   deleteMods: false,
   spamAlerts: false,
+  isHost: () => false,   // (its chat's names aren't its handle: its owner badge says so)
   flagged: true,         // Settings › Flagged: messages held for review, to moderators (alerts/flagged.js)
   feedReaders: true,     // the alerts, chat over the stream and counts read its chat's connection (chat/chat-feed.js)
   emoteLists: false,

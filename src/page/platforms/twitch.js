@@ -122,6 +122,7 @@ const twitch = {
   modRequest: null,      // (they are typed in its box)
   deleteMods: false,     // (a mod's message can't be deleted by another mod)
   spamAlerts: true,
+  isHost: (ch, name) => !!name && String(name).toLowerCase() === ch.slice(3).toLowerCase(),   // (a display name in another script than the login: only ALL's badge says so)
   flagged: true,         // Settings › Flagged: AutoMod's holds and suspicious users, to moderators (alerts/flagged.js)
   feedReaders: true,     // the alerts, chat over the stream and counts read its chat's connection (chat/chat-feed.js)
   emoteLists: true,
