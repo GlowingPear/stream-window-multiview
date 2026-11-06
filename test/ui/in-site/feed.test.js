@@ -170,7 +170,7 @@ test('a Twitch reply: the line found and scrolled to, where the pointer goes; th
   assert.equal(await page.evaluate(() => window.twReplyPress('nope')), '', 'no such line (or no Reply on it)');
 });
 
-test('the reader on Twitch: its chat lines, and a pin or its taking down, a reward redeemed and a shoutout from its other connection; not its other news', async t => {
+test('the reader on Twitch: its chat lines, and a pin or its taking down, a reward redeemed, a shoutout and a hype train from its other connection; not its other news', async t => {
   const page = await openApp(t);
   const heard = [];
   page.on('console', m => { if (m.text().startsWith('__kmv:feed ')) heard.push(JSON.parse(m.text().slice(11))); });
@@ -178,11 +178,12 @@ test('the reader on Twitch: its chat lines, and a pin or its taking down, a rewa
     window.feedAgent('twitch'); window.__kmvFeed.on = true;
     const ws = new WebSocket('ws://127.0.0.1:9'); ws.onerror = () => {}; ws.addEventListener('message', e => e.data);
     const hermes = type => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data: { id: 'p1' } }) } });
-    for (const f of ['@id=a :x!x@x PRIVMSG #q :hi\r\nPING :tmi', hermes('pin-message'), hermes('viewcount'), hermes('unpin-message'), hermes('reward-redeemed'), hermes('create'), hermes('drop-progress'), hermes('commercial'), hermes('raid_update_v2'), hermes('raid_go_v2'), hermes('raid_cancel_v2'), hermes('goal_achieved'), hermes('goal_updated'), hermes('automod_caught_message'), hermes('chat-highlight'), hermes('collaboration-status-refetch')]) ws.dispatchEvent(new MessageEvent('message', { data: f }));
+    for (const f of ['@id=a :x!x@x PRIVMSG #q :hi\r\nPING :tmi', hermes('pin-message'), hermes('viewcount'), hermes('unpin-message'), hermes('reward-redeemed'), hermes('create'), hermes('drop-progress'), hermes('commercial'), hermes('raid_update_v2'), hermes('raid_go_v2'), hermes('raid_cancel_v2'), hermes('goal_achieved'), hermes('goal_updated'), hermes('automod_caught_message'), hermes('chat-highlight'), hermes('collaboration-status-refetch'), hermes('hype-train-start'), hermes('hype-train-conductor-update'), hermes('hype-train-progression'), hermes('hype-train-level-up'), hermes('hype-train-end')]) ws.dispatchEvent(new MessageEvent('message', { data: f }));
   });
   for (let i = 0; i < 30 && !heard.length; i++) await new Promise(r => setTimeout(r, 50));
   assert.equal(heard[0].s, 'twitch');
-  assert.deepEqual(heard[0].raw.map(r => r.startsWith('{') ? JSON.parse(JSON.parse(r).notification.pubsub).type : r), ['@id=a :x!x@x PRIVMSG #q :hi', 'pin-message', 'unpin-message', 'reward-redeemed', 'create', 'raid_update_v2', 'raid_go_v2', 'raid_cancel_v2', 'goal_achieved', 'automod_caught_message', 'chat-highlight']);
+  assert.deepEqual(heard[0].raw.map(r => r.startsWith('{') ? JSON.parse(JSON.parse(r).notification.pubsub).type : r), ['@id=a :x!x@x PRIVMSG #q :hi', 'pin-message', 'unpin-message', 'reward-redeemed', 'create', 'raid_update_v2', 'raid_go_v2', 'raid_cancel_v2', 'goal_achieved', 'automod_caught_message', 'chat-highlight',
+    'hype-train-start', 'hype-train-progression', 'hype-train-level-up', 'hype-train-end'], 'a hype train\'s news, not its conductors');
 });
 
 test('the badges\' pictures (badgesAgent): Kick\'s channel sub badges by months; Twitch\'s channel badges, and its own only when asked for; none for YouTube, or a site that won\'t answer', async t => {
