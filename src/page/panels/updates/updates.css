@@ -1,5 +1,6 @@
 /* Updates (panels/updates/updates.js): Settings › Updates, the toolbar's chip and the "Updated" card */
 .upd-host{display:flex;flex-direction:column;gap:14px;margin-top:12px}
+.upd-host[hidden]{display:none}   /* (only in the desktop app's main window) */
 .upd-host svg,.upd-chip svg,.upd-wn svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .upd-host .btn svg{width:15px;height:15px;flex:none}
 .upd-host .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px}
