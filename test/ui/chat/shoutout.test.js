@@ -321,6 +321,9 @@ test('Settings › Shoutouts › Channels: a card for a found channel, its messa
   await page.click(`${open} [data-cmd="settings.shoutCardRemove"]`);
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.shoutChannels')).some(c => c.streamer === 's1')), false);
   assert.deepEqual((await cards()).map(c => c[0]), ['pebblesong', 'rowanbrook', 'tw:tinroof'], 'gone from the list too (Remove had the focus)');
+  // another Settings page, with Channels still the tab here: only that page shows
+  await page.click('#settingsDlg .st-rail [data-s=general]');
+  assert.deepEqual(await page.$$eval('#settingsDlg .st-pane', l => l.filter(p => getComputedStyle(p).display !== 'none').map(p => p.dataset.s)), ['general']);
 });
 
 test('Settings › Shoutouts › Channels: the cards by name, whatever their case; a card without a picture gets its site\'s, asked for once', async t => {

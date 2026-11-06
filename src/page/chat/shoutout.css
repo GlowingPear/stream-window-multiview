@@ -109,7 +109,7 @@ button.al-so:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
 .shc-list{display:flex;flex-direction:column;gap:5px;margin-top:10px}
 /* Settings › Shoutouts › Channels: the heading, tabs and Add box stay put; only the list scrolls (3px of room for an open card's ring) */
 #settingsDlg .st-body:has(> .st-pane[data-s="shoutouts"]:not([hidden]) > .st-subpane[data-t="channels"]:not([hidden])){display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}
-.st-pane[data-s="shoutouts"]:has(> .st-subpane[data-t="channels"]:not([hidden])),.st-pane[data-s="shoutouts"] > .st-subpane[data-t="channels"]:not([hidden]){flex:1;min-height:0;display:flex;flex-direction:column}
+.st-pane[data-s="shoutouts"]:not([hidden]):has(> .st-subpane[data-t="channels"]:not([hidden])),.st-pane[data-s="shoutouts"] > .st-subpane[data-t="channels"]:not([hidden]){flex:1;min-height:0;display:flex;flex-direction:column}
 .st-pane[data-s="shoutouts"]:has(> .st-subpane[data-t="channels"]:not([hidden])) > .st-sub{margin-bottom:0}   /* (the spacing a block's collapsed margins gave) */
 .st-pane[data-s="shoutouts"] > .st-subpane[data-t="channels"] > .st-sec:first-child{margin-top:12px}
 .st-pane[data-s="shoutouts"] #shoutPeople{flex:1;min-height:0;overflow:auto;margin:10px -3px 0;padding:3px 3px 20px}
