@@ -2,14 +2,14 @@
 // message and the app's own settings, and the first reason it didn't alert.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { setup } = require('../app');
+const { setup, add } = require('../app');
 const { openApp } = setup();
 
 const rows = (page, ch, r) => page.evaluate(([ch, r]) => { const x = window.whyChecks({ channel: ch }, r);
   return { rows: x.checks.map(c => (c.ok === true ? '✓ ' : c.ok === false ? '✗ ' : '– ') + c.text + (c.note ? ` (${c.note})` : '')), verdict: (x.verdict.alert ? 'Alerted: ' : 'No alert: ') + x.verdict.text }; }, [ch, r]);
 const said = (o = {}) => ({ found: true, sender: 'quietkoala', body: 'hello there', at: false, word: '', own: false, armed: true, decided: { v: 'nomatch', t: Date.now() }, ...o });
 
-test('no username, a site without mention alerts, a message the helper couldn\'t find', async t => {
+test('no username (on YouTube, no handle), a message the helper couldn\'t find', async t => {
   const page = await openApp(t);
   let r = await rows(page, 'pixelpear', said());
   assert.deepEqual(r.rows, ['✓ Read as a message: name quietkoala, text “hello there”', '✓ Mention alerts are on', '✓ Mentions are on for this chat',
@@ -17,7 +17,7 @@ test('no username, a site without mention alerts, a message the helper couldn\'t
     '✗ Read when it came in: it didn\'t mention you or a word you watch for', '– Spam alerts: off']);
   assert.equal(r.verdict, 'No alert: No Kick username to look for');
   r = await rows(page, 'yt:@mossfern', said());
-  assert.equal(r.rows[1], '✗ Mention alerts read Kick and Twitch chats, not YouTube');
+  assert.equal(r.rows[3], '✗ No YouTube handle to look for (Settings › Mentions › Your usernames)');
   assert.equal(r.rows.at(-1), '– Spam alerts: not for YouTube');
   r = await rows(page, 'pixelpear', { found: false, text: 'pinned: be nice' });
   assert.deepEqual(r.rows, ['✗ Read as a message (The helper couldn\'t find “pinned: be nice” among the chat\'s messages)']);
@@ -83,7 +83,7 @@ test('the dialog: the checks, Copy, Mention settings and Close', async t => {
 });
 
 test('which reader read it: the site\'s connection (what was decided then, by its id) or the chat\'s page; ALL\'s copy of one its page never drew', async t => {
-  const page = await openApp(t, { init: () => localStorage.setItem('kickMultiview.myName', 'mod_me') });
+  const page = await openApp(t, { init: () => { if (window === top) localStorage.setItem('kickMultiview.myName', 'mod_me'); } });
   const via = r => page.evaluate(r => window.whyWithFeed({ channel: 'pixelpear' }, r.r, r.msg), r);
   // the feed decided about it (chat/chat-feed.js): that answer, and that it was read there
   await page.evaluate(() => window.chatFeed.fromFeed('pixelpear', null));   // (nothing: no window)
@@ -104,4 +104,9 @@ test('which reader read it: the site\'s connection (what was decided then, by it
   const fromPage = await rows(page, 'pixelpear', { ...said(), via: 'screen' });
   assert.equal(fromPage.rows[1], '– Read from the chat\'s page, as it showed it (Before the connection brought its first message, or while it wasn\'t working)');
   assert.equal((await rows(page, 'pixelpear', said())).rows[1], '✓ Mention alerts are on', 'not said when it isn\'t known');
+  // the page's helper found it, the feed alerted it as a mention (YouTube's @: only the connection looks for it): it mentions you
+  await add(page, 'pixelpear');
+  await page.evaluate(() => window.chatFeed.fromFeed('pixelpear', { site: 'kick', kind: 'message', id: 'k3', sender: 'Quietkoala', login: 'quietkoala', parts: [{ text: '@mod_me over here' }], t: Date.now() }));
+  r = await via({ r: said({ id: 'k3' }) });
+  assert.deepEqual([r.via, r.decided.v, r.at], ['feed', 'alerted', true]);
 });

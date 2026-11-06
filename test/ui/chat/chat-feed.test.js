@@ -54,7 +54,7 @@ test('ALL: a mention, a reply and support from a chat its page never drew alert 
   assert.equal((await notes(page, 'mention')).length, 1);
 });
 
-test('YouTube\'s chat from its connection too (#303): Super Chats, new members and memberships gifted alert, once each; its messages count and show over the stream; no mentions there (yet)', async t => {
+test('YouTube\'s chat from its connection too (#303): Super Chats, new members and memberships gifted alert, once each; its messages count and show over the stream; your Kick name isn\'t you there', async t => {
   const page = await openApp(t, { init: `if (window === top){ localStorage.setItem('kickMultiview.myName', 'mekick'); localStorage.setItem('kickMultiview.alerts', ${JSON.stringify(JSON.stringify({ mention: { sound: 'none' }, support: { on: true, sound: 'none' } }))}); }` });
   await add(page, 'https://www.youtube.com/@quietkoala');
   if (await page.isVisible('text=Got it')) await page.click('text=Got it');
@@ -73,13 +73,35 @@ test('YouTube\'s chat from its connection too (#303): Super Chats, new members a
   assert.deepEqual((await notes(page, 'support')).sort(), ['yt:@quietkoala @Giftowl: gifted 5 memberships', 'yt:@quietkoala @Pixelfox: sent a Super Chat: $20.00', 'yt:@quietkoala @Tinroof: became a member'],
     'a member for a while and each gift given: not again');
   assert.equal(await page.evaluate(() => window.chatFeed.live('yt:@quietkoala')), true, 'its chat\'s screen reader asleep: the connection reads it');
-  assert.deepEqual(await notes(page, 'mention'), [], 'no mentions read on YouTube yet');
+  assert.deepEqual(await notes(page, 'mention'), [], 'not your YouTube handle (none set)');
   assert.equal(await win(page, '@quietkoala').locator('.bar-n').textContent(), '1', 'its message counted');
   assert.deepEqual(await page.$$eval('#stage .win.stream .co-line', l => l.map(x => x.textContent)), ['@Driftwood: hey @mekick'], 'and over the stream');
   // YouTube sends its recent ones again: once
   await send();
   assert.equal((await notes(page, 'support')).length, 3);
   assert.equal(await win(page, '@quietkoala').locator('.bar-n').textContent(), '1');
+});
+
+test('YouTube mentions from its connection: your handle (with - and . in it) in any case, once each; not a longer handle, not your own, not with no handle', async t => {
+  const set = { myYouTube: 'Me-yt.tv', alerts: JSON.stringify({ mention: { sound: 'none' } }) };
+  const page = await openApp(t, { init: `if (window === top && !sessionStorage.getItem('set')){ sessionStorage.setItem('set', '1'); for (const [k, v] of Object.entries(${JSON.stringify(set)})) localStorage.setItem('kickMultiview.' + k, v); }` });
+  await add(page, 'https://www.youtube.com/@quietkoala');
+  if (await page.isVisible('text=Got it')) await page.click('text=Got it');
+  const YT = (id, who, text) => ({ addChatItemAction: { item: { liveChatTextMessageRenderer: { id, timestampUsec: String(Date.now() * 1000), authorExternalChannelId: 'UC1', authorName: { simpleText: who }, message: { runs: [{ text }] } } } } });
+  const send = raws => page.evaluate(raws => import('./page/chat/feed-parse.js').then(({ feedParse }) => { feedParse.parseFeed({ s: 'youtube', raw: raws }).forEach(m => window.chatFeed.fromFeed('yt:@quietkoala', m)); }), raws);
+  const decided = () => page.evaluate(() => ['y1', 'y2', 'y3', 'y4', 'y5'].map(id => (window.chatFeed.decided('yt:@quietkoala', id) || {}).v));
+  await send([YT('y1', '@KingMoss-z4l', 'hello my friend @me-YT.tv 🐸'), YT('y2', '@Driftwood', 'hi @me-yt.tvx and @me-yt.tv-2'), YT('y3', '@Me-yt.tv', 'hey @me-yt.tv'),
+    YT('y4', '@Tinroof', 'see you @Me-yt.tv.'), YT('y5', '@Oakmoss', 'just chatting')]);
+  assert.deepEqual((await notes(page, 'mention')).sort(), ['yt:@quietkoala @KingMoss-z4l: hello my friend @me-YT.tv 🐸', 'yt:@quietkoala @Tinroof: see you @Me-yt.tv.']);
+  assert.deepEqual(await decided(), ['alerted', 'nomatch', 'own', 'alerted', 'nomatch']);
+  await send([YT('y1', '@KingMoss-z4l', 'hello my friend @me-YT.tv 🐸')]);   // (YouTube sends its recent ones again)
+  assert.equal((await notes(page, 'mention')).length, 2);
+  // no handle: your Kick name in a YouTube chat isn't you
+  await page.evaluate(() => { localStorage.setItem('kickMultiview.myYouTube', ''); localStorage.setItem('kickMultiview.myName', 'mekick'); });
+  await page.reload(); await page.waitForSelector('#stage .win.chat');
+  await send([YT('y6', '@Driftwood', '@mekick @me-yt.tv')]);
+  assert.deepEqual((await notes(page, 'mention')).sort(), ['yt:@quietkoala @KingMoss-z4l: hello my friend @me-YT.tv 🐸', 'yt:@quietkoala @Tinroof: see you @Me-yt.tv.']);
+  assert.equal(await page.evaluate(() => window.chatFeed.decided('yt:@quietkoala', 'y6').v), 'off');
 });
 
 test('chat over the stream and new-message counts from a chat\'s connection, a few at a time; your own counts over the stream only', async t => {

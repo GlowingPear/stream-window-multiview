@@ -114,6 +114,21 @@ test('a mention lights up that chat window and is listed, a normal message doesn
   await win.keyboard.press('Escape');
 });
 
+test('your YouTube handle (Settings › Mentions): its @ left off, kept as typed; not a handle, cleared', T, async () => {
+  await win.evaluate(() => window.openSettings('mentions'));
+  await win.click('#mentTabs [data-t=names]');
+  const handle = () => win.evaluate(() => localStorage.getItem('kickMultiview.myYouTube'));
+  await win.fill('#mentYouTube', ' @Me-YT.tv ');
+  await win.press('#mentYouTube', 'Enter');
+  assert.equal(await handle(), 'Me-YT.tv');
+  assert.equal(await win.inputValue('#mentYouTube'), 'Me-YT.tv');
+  await win.fill('#mentYouTube', 'not a handle');
+  await win.press('#mentYouTube', 'Enter');
+  assert.equal(await handle(), '');
+  assert.equal(await win.inputValue('#mentYouTube'), '');
+  await win.keyboard.press('Escape');
+});
+
 test('a mention in another chat is counted until you click into that chat, not another one', T, async () => {
   await say('alpha', 'someone', 'hey @mename');
   await win.waitForFunction(() => document.querySelector('#bellBtn .mb-count').textContent === '1');
