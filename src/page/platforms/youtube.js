@@ -45,7 +45,9 @@ const YT_NAMES = {
 
 const youtube = {
   id: 'youtube', name: 'YouTube', letter: 'Y',
-  mentions: false,       // (YouTube chat isn't read for mentions or spam)
+  mentions: true,        // mention alerts read its chat's connection (your handle, Settings › Mentions)
+  screenMentions: false, // (only from its connection: its chat page's text isn't "name: message")
+  mentionEnd: '(?![\\p{L}\\p{N}_-]|\\.[\\p{L}\\p{N}_])',   // a handle can have - and . in it ("@pear" isn't "@pear-x"; "@pear." is)
   threadedReplies: false,   // (no replies in its live chat: ALL replies with an @)
   timeoutCmd: null, banCmd: null, modRequest: null,   // (no chat commands: mod actions from its own tab)
   deleteMods: false,

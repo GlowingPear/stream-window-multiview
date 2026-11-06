@@ -5,7 +5,7 @@ import { overlayIsOn } from '../../chat/chat-overlay.js';
 import { $, ROLE, wins } from '../../core.js';
 import { MENTION_JS } from '../../in-site/mentions.js';
 import { EMPTY, TAB_NAME, bell, bellVars, drawNotes, dropNotes, mentMuted, mentNameFor, mentOn, mentWords, myName,
-  myTwitch, nh, noteRow, notes, partsText, readNotes, renderBell, seeBell, subName, timeAgo } from './bell.js';
+  myTwitch, myYouTube, nh, noteRow, notes, partsText, readNotes, renderBell, seeBell, subName, timeAgo } from './bell.js';
 import { SmvNotes } from './notifications.js';
 import { openSettings } from '../settings/settings.js';
 import { chLabel, platform } from '../../platforms/platforms.js';
@@ -101,7 +101,7 @@ function renderNoteHistory(){
 // The names or words changed (Settings > Mentions).
 function renderMentions(){
   const note = $('#mentNote');
-  if (note) note.textContent = myName || myTwitch ? '' : mentWords.length ? 'Without a username, only your words are found (and your own messages can count).' : 'Needed for mention alerts. Click Detect, or type them in.';
+  if (note) note.textContent = myName || myTwitch || myYouTube ? '' : mentWords.length ? 'Without a username, only your words are found (and your own messages can count).' : 'Needed for mention alerts. Click Detect, or type them in.';
   renderBell();
 }
 function setMentWords(list){
@@ -136,9 +136,17 @@ function setMyTwitch(n){
   const f = $('#mentTwitch'); if (f) f.value = myTwitch;
   pushMyName(); renderMentions();
 }
+// Your YouTube handle (its chat names people by their handle: @name), with letters, numbers, _, - and .
+function setMyYouTube(n){
+  bellVars.myYouTube = String(n || '').trim().replace(/^@/, '');
+  if (myYouTube && !/^[\p{L}\p{N}_.-]{3,30}$/u.test(myYouTube)) bellVars.myYouTube = '';
+  settings.set('myYouTube', myYouTube);
+  const f = $('#mentYouTube'); if (f) f.value = myYouTube;
+  pushMyName(); renderMentions();
+}
 function injectMention(w){
   const site = platform(w.channel);
-  const off = !mentOn || mentMuted.has(w.channel) || !site.mentions;
+  const off = !mentOn || mentMuted.has(w.channel) || !site.mentions || !site.screenMentions;   // (YouTube's: from its connection alone)
   const who = off ? '' : mentNameFor(w.channel), words = off ? [] : mentWords;
   const watch = !!alerts.spam.on && site.spamAlerts;
   const sup = alerts.support.on && site.support ? site.support : null;   // Settings > Support (your own never counts)
@@ -193,4 +201,4 @@ function init(){
 }
 
 export { closeNoteHistory, init, injectMention, pushMyName, renderMentions, renderMentWords, renderNoteHistory,
-  setMyTwitch };
+  setMyTwitch, setMyYouTube };

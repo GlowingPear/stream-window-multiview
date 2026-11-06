@@ -40,21 +40,18 @@ function whyChecks(w, r){
   add(true, `Read as a message: name ${r.sender}, text “${r.body.slice(0, 120)}”`);
   if (r.via) out.push({ ok: null, text: r.via === 'feed' ? `Read from ${name}'s connection to the chat, as it came` : 'Read from the chat\'s page, as it showed it',
     note: r.via === 'feed' ? '' : 'Before the connection brought its first message, or while it wasn\'t working' });
-  if (!site.mentions) add(false, `Mention alerts read Kick and Twitch chats, not ${name}`);
-  else {
-    add(mentOn, mentOn ? 'Mention alerts are on' : 'Mention alerts are off', mentOn ? '' : 'Settings › Mentions');
-    add(!mentMuted.has(ch), mentMuted.has(ch) ? 'Mentions are off for this chat' : 'Mentions are on for this chat', mentMuted.has(ch) ? 'The @ button on its title bar' : '');
-    if (r.own) add(false, 'It\'s your own message');
-    const bots = botsFor('mention', ch);
-    if (SmvSpam.ignored(r.sender, bots)) add(false, `${r.sender} is on the chat bot list`, 'Never a mention');
-    if (!me) add(false, `No ${name} username to look for`, 'Settings › Mentions › Your usernames');
-    else add(r.at, r.at ? `Mentions you (@${me})` : `Mentions you: looked for @${me}`);
-    if (mentWords.length) add(r.word ? true : null, r.word ? `Has “${r.word}”, a word you watch for` : `Words to watch: none of yours (${mentWords.slice(0, 4).join(', ')}${mentWords.length > 4 ? ', …' : ''})`);
-    else out.push({ ok: null, text: 'Words to watch: none set' });
-    const d = r.decided, seen = d && WHY_SEEN[d.v];
-    if (seen) add(seen[0], d.v === 'alerted' ? `Alerted as ${KIND_WORD[d.kind] || 'a mention'} at ${clock(d.t)}` : seen[1]);
-    else out.push({ ok: null, text: r.armed ? 'Not read yet by the helper' : 'Alerts hadn\'t started in this chat yet' });
-  }
+  add(mentOn, mentOn ? 'Mention alerts are on' : 'Mention alerts are off', mentOn ? '' : 'Settings › Mentions');
+  add(!mentMuted.has(ch), mentMuted.has(ch) ? 'Mentions are off for this chat' : 'Mentions are on for this chat', mentMuted.has(ch) ? 'The @ button on its title bar' : '');
+  if (r.own) add(false, 'It\'s your own message');
+  const bots = botsFor('mention', ch);
+  if (SmvSpam.ignored(r.sender, bots)) add(false, `${r.sender} is on the chat bot list`, 'Never a mention');
+  if (!me) add(false, `No ${name} ${platOf(ch) === 'youtube' ? 'handle' : 'username'} to look for`, 'Settings › Mentions › Your usernames');
+  else add(r.at, r.at ? `Mentions you (@${me})` : `Mentions you: looked for @${me}`);
+  if (mentWords.length) add(r.word ? true : null, r.word ? `Has “${r.word}”, a word you watch for` : `Words to watch: none of yours (${mentWords.slice(0, 4).join(', ')}${mentWords.length > 4 ? ', …' : ''})`);
+  else out.push({ ok: null, text: 'Words to watch: none set' });
+  const d = r.decided, seen = d && WHY_SEEN[d.v];
+  if (seen) add(seen[0], d.v === 'alerted' ? `Alerted as ${KIND_WORD[d.kind] || 'a mention'} at ${clock(d.t)}` : seen[1]);
+  else out.push({ ok: null, text: r.armed ? 'Not read yet by the helper' : 'Alerts hadn\'t started in this chat yet' });
   // spam alerts: its score now (the other chats' messages and who spoke first count too)
   if (!alerts.spam.on || !site.spamAlerts) out.push({ ok: null, text: `Spam alerts: ${!site.spamAlerts ? 'not for ' + name : 'off'}` });
   else {
@@ -72,7 +69,7 @@ function whyChecks(w, r){
 // there. A message ALL has that its page hasn't drawn: read from ALL's copy.
 function withFeed(w, r, msg){
   const id = (r && r.id) || (msg && msg.id) || '', d = feedDecided(w.channel, id);
-  if (r && r.found) return d ? { ...r, decided: d, via: 'feed' } : { ...r, via: 'screen' };
+  if (r && r.found) return d ? { ...r, decided: d, via: 'feed', at: r.at || d.kind === 'mention' } : { ...r, via: 'screen' };   // (the page's helper doesn't look for YouTube's @: its connection did)
   if (!msg || msg.kind !== 'message') return r;
   const me = mentNameFor(w.channel).toLowerCase(), text = msg.parts.map(p => p.text != null ? p.text : p.name || '').join('');
   return { found: true, line: `${msg.sender}: ${text}`, sender: msg.sender, body: text, me, words: mentWords, armed: true, decided: d, via: 'feed', id,

@@ -25,7 +25,7 @@ import { openStreamer, tabChannels } from '../../windows/frames.js';
    (notifications.js) kept in localStorage. Only the main window keeps it. */
 const NOTE_SHOWN = 30;    // the latest in each tab of the bell (the rest in All notifications)
 const NOTES_KEY = 'notifications';   // (a saved setting: shared/settings.js)
-let myName = '', myTwitch = '', mentOn = true, mentMuted = new Set(), mentWords = [];
+let myName = '', myTwitch = '', myYouTube = '', mentOn = true, mentMuted = new Set(), mentWords = [];
 let notes = settings.json(NOTES_KEY);
 function saveNotes(){ settings.set(NOTES_KEY, notes); }
 // What each one can still do this session: Undo (a closed channel), Show in folder (a saved emote).
@@ -36,6 +36,7 @@ let bellCount = 'ms', dndUntil = 0, dndT = 0;
 const bellVars = {
   get mentWords(){ return mentWords; }, set mentWords(v){ mentWords = v; },
   get myTwitch(){ return myTwitch; }, set myTwitch(v){ myTwitch = v; },
+  get myYouTube(){ return myYouTube; }, set myYouTube(v){ myYouTube = v; },
   get mentOn(){ return mentOn; }, set mentOn(v){ mentOn = v; },
   get dndUntil(){ return dndUntil; }, set dndUntil(v){ dndUntil = v; },
   get dndT(){ return dndT; }, set dndT(v){ dndT = v; },
@@ -74,9 +75,9 @@ function readNotes(test){
 }
 const readChat = ch => readNotes(n => n.channel === ch && (SmvNotes.tabOf(n) === 'mentions' || n.kind === 'spam' || n.kind === 'flagged'));
 // Mentions for one chat can be turned off with the @ button on its bar.
-const mentNameFor = ch => { const p = platOf(ch); return p === 'kick' ? myName : p === 'twitch' ? myTwitch : ''; };   // YouTube chat isn't covered
-const mentCovered = ch => /^(kick|twitch)$/.test(platOf(ch)) && !!(mentNameFor(ch) || mentWords.length);
-const mentAny = () => !!(myName || myTwitch || mentWords.length);
+const mentNameFor = ch => { const p = platOf(ch); return p === 'kick' ? myName : p === 'twitch' ? myTwitch : p === 'youtube' ? myYouTube : ''; };
+const mentCovered = ch => /^(kick|twitch|youtube)$/.test(platOf(ch)) && !!(mentNameFor(ch) || mentWords.length);
+const mentAny = () => !!(myName || myTwitch || myYouTube || mentWords.length);
 // The chats a window's @ button is for: its chat, or with its ALL tab showing every chat of theirs ALL reads
 const atChannels = w => (w && allOn(w) ? tabChannels(w).filter(mentCovered) : w ? [w.channel] : []);
 // One chat's mentions on or off, or several (a window's ALL): all off unless they all were, then all on
@@ -274,6 +275,7 @@ const spamWhy = r => `${r.abuse ? 'Abusive' : 'Likely spam'} (${r.score} points,
 function readMentions(){
   myName = settings.text('myName');
   myTwitch = settings.text('myTwitch');
+  myYouTube = settings.text('myYouTube');
   mentOn = settings.flag('mentOn', true);
   mentMuted = new Set([].concat(settings.json('mentMuted', [])));
   mentWords = [].concat(settings.json('mentWords', [])).filter(x => typeof x === 'string');
@@ -348,7 +350,7 @@ function drawNotes(root, v, { limit, q = '', onTab } = {}){
 }
 const EMPTY = {
   all: 'Nothing yet. Mentions, spam alerts, channels going live and the app\'s messages show here.',
-  mentions: 'No mentions yet. When someone @mentions you, replies to you or writes one of your words in an open Kick or Twitch chat, it shows here.',
+  mentions: 'No mentions yet. When someone @mentions you, replies to you or writes one of your words in an open Kick, Twitch or YouTube chat, it shows here.',
   spam: 'Nothing flagged. Spam alerts watch the chats you moderate (Settings › Spam alerts).',
   live: 'Nobody has gone live yet. Saved channels show here when they go live, and raids the app followed.',
   app: 'No messages from the app.'
@@ -380,9 +382,9 @@ function init(){
   window.chatMentions = { atChannels, toggleChatMentions };   // for the tests (the @ button is the desktop app's)
   readMentions();
   // Settings › Mentions, changed in the other window or on another computer (Settings › Sync)
-  settings.onChange(['myName', 'myTwitch', 'mentOn', 'mentMuted', 'mentWords'], () => {
+  settings.onChange(['myName', 'myTwitch', 'myYouTube', 'mentOn', 'mentMuted', 'mentWords'], () => {
     readMentions();
-    if ($('#mentUser')){ $('#mentOn').checked = mentOn; $('#mentUser').value = myName; $('#mentTwitch').value = myTwitch; }
+    if ($('#mentUser')){ $('#mentOn').checked = mentOn; $('#mentUser').value = myName; $('#mentTwitch').value = myTwitch; $('#mentYouTube').value = myYouTube; }
     renderMentWords(); pushMyName(); renderMentions(); syncAlertControls();
     wins.forEach(w => { if (w.kind === 'chat') syncAtBtn(w); });
   });
@@ -399,6 +401,6 @@ function init(){
 }
 
 export { addNote, atChannels, bell, bellCount, bellVars, cleanParts, dndOn, dndT, dndUntil, drawNotes, dropNotes,
-  EMPTY, init, mentAny, mentBodyNodes, mentCovered, mentMuted, mentNameFor, mentOn, mentWords, myName, myTwitch, nh,
-  noteActs, noteRow, notes, partsText, readChat, readNotes, renderBell, saveNotes, seeBell, setMyName, spamWhy,
-  subName, syncAtBtn, TAB_NAME, timeAgo, toggleChatMentions, updateBellBtn, updateNotes };
+  EMPTY, init, mentAny, mentBodyNodes, mentCovered, mentMuted, mentNameFor, mentOn, mentWords, myName, myTwitch,
+  myYouTube, nh, noteActs, noteRow, notes, partsText, readChat, readNotes, renderBell, saveNotes, seeBell, setMyName,
+  spamWhy, subName, syncAtBtn, TAB_NAME, timeAgo, toggleChatMentions, updateBellBtn, updateNotes };

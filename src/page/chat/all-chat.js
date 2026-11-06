@@ -30,7 +30,7 @@ import { infoFor, isSaved, toggleSaved } from '../panels/channels/channels.js';
 import { copyWinState, devOn, inspectWin } from '../panels/developer/developer.js';
 import { openExtMenu } from '../panels/extensions/extensions.js';
 import { chanOpt, nameOf, optFor, setChanOpt, streamerBots, streamerOf } from '../platforms/linked.js';
-import { PLAT_NAME, chLabel, modIs, modUrl, openModView, platOf, platform, popUp } from '../platforms/platforms.js';
+import { PLATFORMS, PLAT_NAME, chLabel, modIs, modUrl, openModView, platOf, platform, popUp } from '../platforms/platforms.js';
 import { likeHelp, toggleLike } from '../platforms/youtube-options.js';
 import { ask } from '../shared/ask.js';
 import { element } from '../shared/element.js';
@@ -102,7 +102,7 @@ const feedOf = s => { let f = feeds.get(s.id); if (!f){ f = { msgs: [], byId: ne
 
 /* ---- what the chats hand over ---- */
 // Your name on that site: messages to it are marked
-const meOn = site => (site === 'kick' ? myName : site === 'twitch' ? bellVars.myTwitch : '').toLowerCase();
+const meOn = site => (site === 'kick' ? myName : site === 'twitch' ? bellVars.myTwitch : site === 'youtube' ? bellVars.myYouTube : '').toLowerCase();
 const appBots = ch => [...(alerts.mention.bots || SmvSpam.BOTS), ...streamerBots(ch)];
 const isBot = m => SmvSpam.ignored(m.sender, appBots(m.ch));
 // The chat bot lists changed (Settings › Chat › Chat bots, a streamer's own): the messages already here checked again
@@ -177,7 +177,7 @@ function mentionOf(m, ch){
   if (!mentOn || mentMuted.has(ch)) return;
   const me = meOn(m.site), text = m.parts.map(p => p.text || '').join('');
   if (me && m.reply && m.reply.login === me) m.toMe = 'reply';
-  else if (me && new RegExp(`(^|[^\\w])@${reEsc(me)}\\b`, 'i').test(text)) m.toMe = 'at';
+  else if (me && new RegExp(`(^|[^\\w])@${reEsc(me)}${(PLATFORMS[m.site] || {}).mentionEnd || '\\b'}`, 'iu').test(text)) m.toMe = 'at';
   else if (m.kind === 'message' && !(me && m.login === me)){ const hit = wordRe() && text.match(wordRe()); if (hit){ m.toMe = 'word'; m.word = hit[2]; } }
 }
 // You're in ALL (pressed in it, or typing): its sites' chats are seen, as pressing into one of them is: their alerts
@@ -1673,7 +1673,7 @@ function youOn(f, site, ch){
   const me = meOn(site), last = me && [...f.msgs].reverse().find(x => x.kind === 'message' && x.site === site && x.ch === ch && (x.login === me || x.sender.toLowerCase() === me));
   const saved = me && savedLooks()[ch], look = last ? lookOf(last) : saved && (saved.login === me || saved.sender.toLowerCase() === me) && saved;   // (saved: also you, not a name you used before)
   if (look) return { sender: look.sender, login: look.login, color: look.color, badges: look.badges, myPics: look.pics };
-  const name = site === 'kick' ? myName : site === 'twitch' ? bellVars.myTwitch : '';
+  const name = site === 'kick' ? myName : site === 'twitch' ? bellVars.myTwitch : site === 'youtube' && bellVars.myYouTube ? '@' + bellVars.myYouTube : '';
   return { sender: name || 'You', login: me, color: '', badges: me && ch.replace(/^tw:/, '').toLowerCase() === me ? ['host'] : [] };
 }
 // Your look in each chat, kept for next time (allMyLook: channel -> look, the newest MY_LOOKS). Only what a line of

@@ -13,7 +13,7 @@ import { store } from '../../shared/store.js';
 const BAR_BUTTONS = {
   chat: ['+ Chat', 'Stream windows: open its chat beside it', 'plus'],
   feat: ['Highlight', 'Make this stream big', 'feat'],
-  at: ['Mentions (@)', 'Kick and Twitch chats', 'at'],
+  at: ['Mentions (@)', 'Kick, Twitch and YouTube chats', 'at'],
   overlay: ['Chat over the stream', 'Stream windows', 'chat'],
   like: ['Like', 'YouTube streams', 'like'],
   star: ['Save', 'Every window', 'star'],

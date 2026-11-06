@@ -22,7 +22,7 @@ const syOn = () => !!(sy && sy.on);
 const SY_FOLDER_ICON = { icloud: 'cloud', dropbox: 'dropbox', onedrive: 'cloud', gdrive: 'cloud', nextcloud: 'cloud' };
 // What a sync changed, in words: "2 channels added", "the theme changed"
 const SY_KEY_WORDS = { theme: 'the theme', themes: 'your themes', toolbar: 'the toolbar', keys: 'keyboard shortcuts', mentWords: 'your mention words',
-  myName: 'your Kick username', myTwitch: 'your Twitch username', shoutText: 'the shoutout message', streamers: 'your linked streamers' };
+  myName: 'your Kick username', myTwitch: 'your Twitch username', myYouTube: 'your YouTube handle', shoutText: 'the shoutout message', streamers: 'your linked streamers' };
 const syPlural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
 function syDescribe(s){
   if (!s) return [];
@@ -44,7 +44,7 @@ const SY_LABEL = { theme: 'Theme', themes: 'Your themes', keys: 'Keyboard shortc
   paletteOn: 'Search box', paletteRecent: 'Search box history', notifyAll: 'Live alerts for every channel', chanOpts: 'Channel settings',
   linkedOn: 'Linked channels', streamers: 'Linked streamers', linkedNot: 'Not the same streamer', linkedOpts: 'Linked channels options',
   allBots: "ALL: chat bots", allEvents: 'ALL: events', allSend: 'ALL: sending', allTimeout: 'ALL: timeouts', allHype: 'ALL: hype train', allHidden: 'ALL: hidden sites',
-  mentOn: 'Mentions', mentMuted: 'Muted mentions', mentWords: 'Mention words', myName: 'Kick username', myTwitch: 'Twitch username',
+  mentOn: 'Mentions', mentMuted: 'Muted mentions', mentWords: 'Mention words', myName: 'Kick username', myTwitch: 'Twitch username', myYouTube: 'YouTube handle',
   dndFor: 'Do not disturb', desktopNotify: 'Desktop notifications', alerts: 'Alerts',
   autoTranslate: 'Translate chat', noTranslate: "Languages not translated", translateAll: 'Translate every message', emotePreview: 'Emote previews', newEmotes: 'New emotes',
   chatName: 'Name in chat', chatNameText: 'Name in chat text', chatOverlay: 'Chat overlay', chatOverlayOff: 'Chat overlay off for', chatOverlayKeep: 'Chat overlay stays',

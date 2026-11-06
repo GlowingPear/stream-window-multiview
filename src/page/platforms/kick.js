@@ -41,6 +41,8 @@ const kick = {
   id: 'kick', name: 'Kick', letter: 'K',
   // What it can do in the app
   mentions: true,        // mention and reply alerts read its chat
+  screenMentions: true,  // also from its chat page's text, while its connection isn't read (in-site/mentions.js)
+  mentionEnd: '\\b',     // what ends an @name in a message (a regex): its names are letters, numbers and _
   threadedReplies: true, // ALL replies with its own Reply on the message (chat/all-chat.js)
   // ALL's timeout and ban: Kick's chat commands (its timeouts are in minutes)
   timeoutCmd: (login, secs) => `/timeout ${login} ${Math.max(1, Math.round(secs / 60))}`,
