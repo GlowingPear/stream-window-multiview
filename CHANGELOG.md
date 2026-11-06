@@ -2,7 +2,10 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.26 (current)
+## 0.4.27 (current)
+- Settings: the Shoutouts page no longer stays on screen after its Channels tab
+
+## 0.4.26
 - Settings: the list of pages fits without scrolling again
 - Sync: changes from a Mac reach your other computers through Dropbox, and Settings › Sync shows a history of what each sync changed
 - Shoutouts: ✓ SO and asking again only count shoutouts in that chat
