@@ -2,7 +2,15 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.25 (current)
+## 0.4.26 (current)
+- Settings: the list of pages fits without scrolling again
+- Sync: changes from a Mac reach your other computers through Dropbox, and Settings › Sync shows a history of what each sync changed
+- Shoutouts: ✓ SO and asking again only count shoutouts in that chat
+- Spam alerts: a channel's own broadcaster is never marked as spam
+- ALL: Kick's level-up event counts as left out on purpose, not unknown
+- ALL: a Twitch hype train that starts while ALL is open shows its strip
+
+## 0.4.25
 - CI: the UI tests in four parts
 - Sync: say when your changes haven't reached the other computers, and keep linked streamers made on each
 
