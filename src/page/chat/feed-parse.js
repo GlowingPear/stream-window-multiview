@@ -571,7 +571,7 @@ const IGNORED = {
   kick: { PointsUpdated: 'your channel points', GoalProgressUpdateEvent: 'the channel’s goal bar', GoalCreatedEvent: 'the channel’s goal bar (a new goal)', GiftsLeaderboardUpdated: 'the gift leaderboard',
     KicksLeaderboardUpdated: 'the Kicks leaderboard', NewSubscriberUpdatedEvent: 'the sub count (ChannelSubscriptionEvent is the sub)',
     NewActivityFeedEvent: 'the activity feed (the same subs and follows)', StopStreamBroadcast: 'the stream ending', StreamerIsLive: 'the stream starting',
-    GamificationWatchTimeGoalReached: 'your watch-time goal', PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)',
+    GamificationWatchTimeGoalReached: 'your watch-time goal', GamificationLevelUp: 'your Kick level going up', PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)',
     KicksBalanceUpdated: 'your own Kicks balance (on your private channel)', ChatMessageSentEvent: 'a sub as a line in Kick’s chat (the same sub: SubscriptionEvent)',
     ChatSettingsChanged: 'the chat’s modes again (the same change comes as ChatroomUpdatedEvent, shown above the box)' },
   twitch: { CAP: 'the connection’s own', JOIN: 'the connection’s own', PART: 'the connection’s own', GLOBALUSERSTATE: 'the connection’s own (you)', USERSTATE: 'the connection’s own (you)',

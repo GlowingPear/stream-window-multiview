@@ -534,6 +534,7 @@ test('ignoredKinds: of the kinds heard, those ALL leaves out on purpose, with wh
     kick: { PointsUpdated: 'your channel points', 'pusher:pong': 'the connection’s own' },
     twitch: { '001': 'the connection’s own', 'hermes:update-message': 'a message edited (it carries only the message’s id, not its new words)' }, youtube: {} });
   assert.deepEqual(ignoredKinds(null), { kick: {}, twitch: {}, youtube: {} });
+  assert.deepEqual(ignoredKinds({ kick: { GamificationLevelUp: {} } }).kick, { GamificationLevelUp: 'your Kick level going up' }, 'on your own channel (private-<you>), like your points');
 });
 
 test('Shield Mode (to moderators) is left out on purpose: its limits come as the chat\'s modes (updated_room), which ALL shows', async () => {
