@@ -249,13 +249,24 @@ test('ALL: new messages in its hidden site tabs count as read while it shows (Co
   assert.deepEqual(await page.evaluate(() => window.__sends), []);
 });
 
+test('ALL: a YouTube message to your handle is marked as to you (@YOU), not a longer handle or someone else\'s', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]', myYouTube: 'me-yt.tv' });
+  await page.waitForSelector('.all-view');
+  const YT = (id, who, text) => ({ addChatItemAction: { item: { liveChatTextMessageRenderer: { id, timestampUsec: String(Date.now() * 1000), authorExternalChannelId: 'UC1', authorName: { simpleText: who }, message: { runs: [{ text }] } } } } });
+  await feed(page, 'tw:quietkoala', { s: 'youtube', raw: [YT('y1', '@KingMoss-z4l', 'hello my friend @Me-yt.tv'), YT('y2', '@Driftwood', 'hi @me-yt.tv-2'), YT('y3', '@Sol', 'hey @metwitch')] });
+  const l = (await lines(page)).slice(-3);
+  assert.match(l[0], /^al-m al-me \| .*@KingMoss-z4l: hello my friend @Me-yt\.tv@YOU$/);
+  assert.match(l[1], /^al-m \| .*@Driftwood: hi @me-yt\.tv-2$/);
+  assert.match(l[2], /^al-m \| .*@Sol: hey @metwitch$/, 'your Twitch name, in YouTube\'s chat');
+});
+
 test('ALL: the window\'s @ button (the desktop app\'s) turns mentions off and on for every chat of theirs it reads; only its own chat with ALL off', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
   const at = () => page.evaluate(() => window.chatMentions.atChannels(window.openWins().find(o => o.channel === 'quietkoala')));
   const press = () => page.evaluate(() => window.chatMentions.toggleChatMentions(window.chatMentions.atChannels(window.openWins().find(o => o.channel === 'quietkoala'))));
   const muted = () => page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.mentMuted') || '[]').sort());
-  assert.deepEqual((await at()).sort(), ['quietkoala', 'tw:quietkoala'], 'YouTube isn\'t covered by mentions');
+  assert.deepEqual((await at()).sort(), ['quietkoala', 'tw:quietkoala'], 'YouTube: no handle or words to look for');
   await press();
   assert.deepEqual(await muted(), ['quietkoala', 'tw:quietkoala']);
   assert.match(await page.textContent('#msg'), /Mentions off for quietkoala's chats/);

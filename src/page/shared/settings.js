@@ -32,7 +32,7 @@ const SETTING_NAMES = new Set([
   'link.peardrops', 'link.kickAuto', 'link.kickBefore', 'link.widget', 'link.dailyReward',
   // the bell, mentions and alerts
   'notifications', 'alerts', 'msg', 'mentions', 'spamHistory',   // (the last two: from before the bell, read once)
-  'mentOn', 'mentMuted', 'mentWords', 'myName', 'myTwitch', 'bellCount', 'dnd',
+  'mentOn', 'mentMuted', 'mentWords', 'myName', 'myTwitch', 'myYouTube', 'bellCount', 'dnd',
   'dndFor', 'desktopNotify',
   // chats
   'autoTranslate', 'noTranslate', 'translateAll', 'emotePreview', 'newEmotes', 'chatName', 'chatNameText', 'chatOverlay', 'chatOverlayOff', 'chatOverlayKeep', 'chatOverlaySecs', 'chatOverlayLines', 'chatCounts',
@@ -58,7 +58,7 @@ const SYNCED = new Set([
   'theme', 'themes', 'keys', 'arrowSound', 'barNameStream', 'barNameChat', 'barButtons', 'toolbar', 'paletteOn', 'paletteRecent',
   'saved', 'autoOpen', 'notifyAll', 'notifyOff', 'chNames', 'chanOpts',
   'linkedOn', 'streamers', 'linkedNot', 'linkedOpts', 'allBots', 'allEvents', 'allSend', 'allTimeout', 'allHype', 'allHidden',
-  'mentOn', 'mentMuted', 'mentWords', 'myName', 'myTwitch', 'dndFor', 'desktopNotify', 'alerts',
+  'mentOn', 'mentMuted', 'mentWords', 'myName', 'myTwitch', 'myYouTube', 'dndFor', 'desktopNotify', 'alerts',
   'autoTranslate', 'noTranslate', 'translateAll', 'emotePreview', 'newEmotes', 'chatName', 'chatNameText',
   'chatOverlay', 'chatOverlayOff', 'chatOverlayKeep', 'chatOverlaySecs', 'chatOverlayLines', 'chatCounts',
   'shoutOn', 'shoutModOnly', 'shoutSend', 'shoutText', 'shoutChannels', 'shoutTwitch', 'shoutAgain', 'shoutRunN', 'shoutStreamers', 'shoutListFirst',

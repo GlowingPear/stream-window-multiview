@@ -115,6 +115,8 @@ function twLiveCommands(raw){
 const twitch = {
   id: 'twitch', name: 'Twitch', letter: 'T',
   mentions: true,
+  screenMentions: true,
+  mentionEnd: '\\b',
   threadedReplies: 'pointer',   // ALL replies with its own Reply, which only shows under a real pointer: the desktop app moves it (else an @)
   // ALL's timeout and ban: Twitch's chat commands
   timeoutCmd: (login, secs) => `/timeout ${login} ${secs}`,

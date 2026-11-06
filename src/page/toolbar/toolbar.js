@@ -9,8 +9,8 @@ import { SH, SW, clampPos, setRect } from '../layout/geometry.js';
 import { autoLayout, chatFocusLayout, tile } from '../layout/layouts.js';
 import { addParsed } from '../layout/placement.js';
 import { spotlight } from '../layout/spotlight.js';
-import { pushMyName, renderMentions, setMyTwitch } from '../panels/bell/all-notifications.js';
-import { bellVars, mentOn, myName, myTwitch, renderBell, seeBell, setMyName } from '../panels/bell/bell.js';
+import { pushMyName, renderMentions, setMyTwitch, setMyYouTube } from '../panels/bell/all-notifications.js';
+import { bellVars, mentOn, myName, myTwitch, myYouTube, renderBell, seeBell, setMyName } from '../panels/bell/bell.js';
 import { channelVars, gotLive, liveNote, liveNow, loadSavedProfiles, notifyAll, persistSaved, renderSaved, saved,
   savedTab, sendWatch } from '../panels/channels/channels.js';
 import { follows, followsApi, loadFollows } from '../panels/channels/follow-suggestions.js';
@@ -259,9 +259,11 @@ function init(){
     renderBell();
   }
   if (DESKTOP && ROLE === 'main' && window.kmv.notifyMention){
-    $('#mentOn').checked = mentOn; $('#mentUser').value = myName; $('#mentTwitch').value = myTwitch;
+    $('#mentOn').checked = mentOn; $('#mentUser').value = myName; $('#mentTwitch').value = myTwitch; $('#mentYouTube').value = myYouTube;
     $('#mentTwitch').addEventListener('change', e => setMyTwitch(e.target.value));
     $('#mentTwitch').addEventListener('keydown', e => { if (e.key === 'Enter') setMyTwitch(e.target.value); });
+    $('#mentYouTube').addEventListener('change', e => setMyYouTube(e.target.value));
+    $('#mentYouTube').addEventListener('keydown', e => { if (e.key === 'Enter') setMyYouTube(e.target.value); });
     $('#mentOn').addEventListener('change', e => {
       bellVars.mentOn = e.target.checked;
       settings.set('mentOn', mentOn);

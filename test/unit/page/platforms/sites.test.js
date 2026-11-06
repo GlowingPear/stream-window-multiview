@@ -19,9 +19,20 @@ test('all three have the same shape', () => {
   assert.deepEqual([kick, twitch, youtube].map(p => [p.id, p.name, p.letter, p.partition]),
     [['kick', 'Kick', 'K', 'persist:kick'], ['twitch', 'Twitch', 'T', 'persist:twitch'], ['youtube', 'YouTube', 'Y', 'persist:youtube']]);
   assert.deepEqual([kick, twitch, youtube].map(p => [p.mentions, p.spamAlerts, p.emoteLists, p.pageCommands, p.likes]),
-    [[true, true, true, true, false], [true, true, true, false, false], [false, false, false, false, true]]);
+    [[true, true, true, true, false], [true, true, true, false, false], [true, false, false, false, true]]);
+  assert.deepEqual([kick, twitch, youtube].map(p => p.screenMentions), [true, true, false], 'YouTube\'s mentions only from its connection');
   assert.deepEqual([kick, twitch, youtube].map(p => p.deleteMods), [true, false, false], 'only Kick lets a mod delete another mod\'s message');
   assert.deepEqual([kick, twitch, youtube].map(p => p.flagged), [false, true, true], 'Settings › Flagged: Kick holds nothing for moderators');
+});
+
+test('what ends an @name: Kick\'s and Twitch\'s at a word\'s end, a YouTube handle also not at - or a . inside it', () => {
+  const at = (site, me, text) => new RegExp(`(^|[^\\w])@${me}${site.mentionEnd}`, 'iu').test(text);
+  assert.equal(at(kick, 'mename', 'hi @MeName!'), true);
+  assert.equal(at(twitch, 'mename', 'hi @menamex'), false);
+  assert.equal(at(youtube, 'me-yt', 'hello @Me-YT 🐸'), true);
+  assert.equal(at(youtube, 'me-yt', 'see you @me-yt.'), true, 'a full stop after it');
+  assert.equal(at(youtube, 'me-yt', '@me-yt-2 and @me-yt.tv and @me-ytx'), false, 'longer handles');
+  assert.equal(at(youtube, 'me-yt', 'hi @me-ytñ'), false);
 });
 
 test('the channel\'s own broadcaster, by their name in its chat (spam alerts never mark them)', () => {
