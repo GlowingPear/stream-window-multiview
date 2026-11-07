@@ -119,9 +119,11 @@ function parseTwitch(line){
 // value and goal (towards the next level), expires (when it runs out, ms), golden (a Golden Kappa train) }. Its start
 // (and Twitch's GraphQL hypeTrain.execution, the train already running: in-site/feed.js hypeAgent) say it as
 // { progress: { progression, goal, level: { value } }, expiresAt }; its other news is read the same way, or as Twitch's
-// older names (progress.value, remaining_seconds), as they come. null: nothing to show.
+// older names (progress.value, remaining_seconds), as they come. A level up can say the train only as its hype_train
+// (the same shape as GraphQL's), beside its numbers without an id: read from that. null: nothing to show.
 function hypeTrain(state, d){
   if (!d || typeof d !== 'object') return null;
+  if (!d.id && !d.execution_id && d.hype_train && typeof d.hype_train === 'object') return hypeTrain(state, d.hype_train);
   const id = String(d.id || d.execution_id || (d.progress && d.progress.id) || '').replace(/-(SUBS|BITS|[A-Z_]+)$/, '');
   if (!id) return null;
   if (state === 'end' || d.endedAt) return { site: 'twitch', kind: 'hype', state: 'end', id, t: Date.now() };
