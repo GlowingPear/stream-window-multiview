@@ -119,9 +119,11 @@ function parseTwitch(line){
 // value and goal (towards the next level), expires (when it runs out, ms), golden (a Golden Kappa train) }. Its start
 // (and Twitch's GraphQL hypeTrain.execution, the train already running: in-site/feed.js hypeAgent) say it as
 // { progress: { progression, goal, level: { value } }, expiresAt }; its other news is read the same way, or as Twitch's
-// older names (progress.value, remaining_seconds), as they come. null: nothing to show.
+// older names (progress.value, remaining_seconds), as they come. A level up can say the train only as its hype_train
+// (the same shape as GraphQL's), beside its numbers without an id: read from that. null: nothing to show.
 function hypeTrain(state, d){
   if (!d || typeof d !== 'object') return null;
+  if (!d.id && !d.execution_id && d.hype_train && typeof d.hype_train === 'object') return hypeTrain(state, d.hype_train);
   const id = String(d.id || d.execution_id || (d.progress && d.progress.id) || '').replace(/-(SUBS|BITS|[A-Z_]+)$/, '');
   if (!id) return null;
   if (state === 'end' || d.endedAt) return { site: 'twitch', kind: 'hype', state: 'end', id, t: Date.now() };
@@ -568,7 +570,7 @@ const KNOWN = {
 // unknown): the connections' own housekeeping, news only for you (your points), and the sites' panels (goals,
 // leaderboards). One the sites start sending that ALL has no use for goes here.
 const IGNORED = {
-  kick: { PointsUpdated: 'your channel points', GoalProgressUpdateEvent: 'the channel’s goal bar', GoalCreatedEvent: 'the channel’s goal bar (a new goal)', GiftsLeaderboardUpdated: 'the gift leaderboard',
+  kick: { PointsUpdated: 'your channel points', GoalProgressUpdateEvent: 'the channel’s goal bar', GoalCreatedEvent: 'the channel’s goal bar (a new goal)', GoalAchievedEvent: 'the channel’s goal bar (a goal reached)', GiftsLeaderboardUpdated: 'the gift leaderboard',
     KicksLeaderboardUpdated: 'the Kicks leaderboard', NewSubscriberUpdatedEvent: 'the sub count (ChannelSubscriptionEvent is the sub)',
     NewActivityFeedEvent: 'the activity feed (the same subs and follows)', StopStreamBroadcast: 'the stream ending', StreamerIsLive: 'the stream starting',
     GamificationWatchTimeGoalReached: 'your watch-time goal', GamificationLevelUp: 'your Kick level going up', PredictionUpdated: 'a prediction (Kick’s own panel)', PredictionCreated: 'a prediction (Kick’s own panel)',

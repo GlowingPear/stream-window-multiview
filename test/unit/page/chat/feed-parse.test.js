@@ -223,7 +223,7 @@ test('YouTube: a gift is an event (its words, the gift picked out); a held messa
     'addLiveChatTickerItemAction:liveChatTickerSponsorItemRenderer']) assert.ok(ignoredWhy('youtube', k), k);
   assert.equal(ignoredWhy('youtube', 'addChatItemAction:somethingNew'), '');
   for (const [s, k] of [['kick', 'ChatMessageSentEvent'], ['twitch', 'hermes:stream-up'], ['twitch', 'hermes:favorite-channel-update'],
-    ['twitch', 'hermes:collaboration-status-refetch'], ['kick', 'ChatSettingsChanged'], ['kick', 'GoalCreatedEvent'], ['twitch', 'hermes:automatic-reward-redeemed'], ['twitch', 'hermes:group-updated'], ['twitch', 'hermes:session-started'],
+    ['twitch', 'hermes:collaboration-status-refetch'], ['kick', 'ChatSettingsChanged'], ['kick', 'GoalCreatedEvent'], ['kick', 'GoalAchievedEvent'], ['twitch', 'hermes:automatic-reward-redeemed'], ['twitch', 'hermes:group-updated'], ['twitch', 'hermes:session-started'],
     ['twitch', 'hermes:slot-settings-changed'], ['twitch', 'hermes:call-ended']]) assert.ok(ignoredWhy(s, k), k);
   for (const [s, a] of [['youtube', YT('somethingNew', { id: 'x' })], ['youtube', gift('sent x')], ['youtube', 'x'], ['youtube', null], ['twitch', stand]]) assert.equal(leftOut(s, a), false);
   // YouTube's own housekeeping (that you're in the chat, its moderation state, parts of its page): ignored, and its key is its kind
@@ -558,6 +558,12 @@ test('Twitch\'s hype train (its other connection, and its GraphQL): started, mov
   // its other news, in either naming: the same train (a conductor's id has its source on the end)
   const lv = parseTwitch(hermes('hype-train-level-up', { id: 'ht-9', expiresAt: '2026-10-30T22:21:00Z', isGoldenKappaTrain: true, progress: { goal: 3500, progression: 120, level: { value: 6 } } }));
   assert.deepEqual([lv.state, lv.id, lv.level, lv.value, lv.goal, lv.golden], ['level-up', 'ht-9', 6, 120, 3500, true]);
+  // a level up as it came (its shape, the ids and numbers made up): its numbers without an id, the train in hype_train
+  const lv6 = parseTwitch(hermes('hype-train-level-up', { time_to_expire: 1794014430000, progress: { level: { value: 6, goal: 14500, rewards: [] }, value: 200, goal: 3700, total: 11000, remaining_seconds: 299 },
+    hype_train: { __typename: 'HypeTrainExecution', id: 'ht-7', expiresAt: '2026-11-07T01:20:30.856Z', endedAt: null, isGoldenKappaTrain: false,
+      progress: { __typename: 'HypeTrainProgress', id: 'ht-7', goal: 3700, progression: 200, total: 11000, level: { value: 6, goal: 14500, rewards: [] } } } }));
+  assert.deepEqual({ ...lv6, t: 0 }, { site: 'twitch', kind: 'hype', state: 'level-up', id: 'ht-7', t: 0, level: 6, value: 200, goal: 3700, expires: Date.parse('2026-11-07T01:20:30.856Z'), golden: false });
+  assert.equal(parseTwitch(hermes('hype-train-level-up', { progress: { level: { value: 6 }, goal: 3700 }, hype_train: null })), null, 'no id, no train');
   const before = Date.now(), old = parseTwitch(hermes('hype-train-progression', { execution_id: 'ht-9-SUBS', progress: { level: { value: 6 }, value: 900, goal: 3500, remaining_seconds: 200 } }));
   assert.deepEqual([old.state, old.id, old.level, old.value, old.goal], ['progression', 'ht-9', 6, 900, 3500]);
   assert.ok(old.expires >= before + 200000 && old.expires <= Date.now() + 200000, 'its time left, from now');
