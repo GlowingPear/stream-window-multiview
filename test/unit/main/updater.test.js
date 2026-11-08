@@ -7,7 +7,7 @@ const zlib = require('zlib');
 const { execFile, execFileSync, spawn, spawnSync } = require('child_process');
 const { tempDir } = require('../../helpers');
 const { readBody, downloadTo, downloadBuffer, compareVersions, pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript,
-  latestInfo, readZip, appFiles, applyUpdate, REPO_RE } = require('../../../src/main/updater');
+  latestInfo, readZip, appFiles, applyUpdate, pruneBackups, REPO_RE } = require('../../../src/main/updater');
 
 /* ---------- version numbers ---------- */
 test('compareVersions orders beta versions correctly', () => {
@@ -530,4 +530,17 @@ test('a damaged or tampered list cannot remove anything outside the app\'s own f
   fs.writeFileSync(path.join(dir, '.smv-files.json'), 'not json');
   applyUpdate(dir, newFiles({ ...PKG, version: '0.2.12' }), bk + '2');
   assert.ok(fs.existsSync(path.join(dir, 'keep.txt')), 'an unreadable list removes nothing but the known dropped files');
+});
+
+test('pruneBackups keeps the newest backups (by the time in their name) and leaves anything else alone', t => {
+  const dir = tempDir('backups', t);
+  const names = ['0.4.1-1761000000000', '0.4.10-1762000000000', '0.4.2-1761500000000', '0.4.11-1763000000000', '0.4.9-1761900000000'];
+  for (const n of names) { fs.mkdirSync(path.join(dir, n, 'src'), { recursive: true }); fs.writeFileSync(path.join(dir, n, 'src', 'main.js'), 'x'); }
+  fs.mkdirSync(path.join(dir, 'mine'));
+  fs.writeFileSync(path.join(dir, 'notes-1761000000000'), '');
+  assert.deepEqual(pruneBackups(dir).sort(), ['0.4.1-1761000000000', '0.4.2-1761500000000']);
+  assert.deepEqual(fs.readdirSync(dir).sort(), ['0.4.10-1762000000000', '0.4.11-1763000000000', '0.4.9-1761900000000', 'mine', 'notes-1761000000000']);
+  assert.deepEqual(pruneBackups(dir, 1), ['0.4.10-1762000000000', '0.4.9-1761900000000']);
+  assert.deepEqual(pruneBackups(dir, 1), [], 'nothing more to remove');
+  assert.deepEqual(pruneBackups(path.join(dir, 'missing')), [], 'no backups yet');
 });

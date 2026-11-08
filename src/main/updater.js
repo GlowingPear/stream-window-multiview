@@ -305,4 +305,15 @@ exit 0
 `;
 }
 
-module.exports = { endpoints, readBody, downloadTo, downloadBuffer, pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript, compareVersions, latestInfo, readZip, appFiles, applyUpdate, REPO_RE };
+// Each update keeps the files it replaced in <userData>/update-backup/<version>-<time>: only the newest `keep` stay
+// (by the time in their name), so the folder doesn't grow with every release. Anything else in it is left alone.
+function pruneBackups(dir, keep = 3) {
+  let names = [];
+  try { names = fs.readdirSync(dir, { withFileTypes: true }).filter(e => e.isDirectory() && /^.+-\d{10,}$/.test(e.name)).map(e => e.name); } catch { return []; }
+  const at = n => +n.slice(n.lastIndexOf('-') + 1);
+  const old = names.sort((a, b) => at(b) - at(a)).slice(keep);
+  for (const n of old) try { fs.rmSync(path.join(dir, n), { recursive: true, force: true }); } catch {}
+  return old;
+}
+
+module.exports = { endpoints, readBody, downloadTo, downloadBuffer, pickInstaller, pickMacZip, macAppBundle, designatedReq, macSwapBlocker, unpackMacApp, canWriteInside, macSwapScript, compareVersions, latestInfo, readZip, appFiles, applyUpdate, pruneBackups, REPO_RE };

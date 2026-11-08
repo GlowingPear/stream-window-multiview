@@ -2370,6 +2370,7 @@ async function installUpdate() {
     }
     const backup = path.join(app.getPath('userData'), 'update-backup', app.getVersion() + '-' + Date.now());
     const res = updater.applyUpdate(APP_ROOT, files, backup);
+    updater.pruneBackups(path.dirname(backup));
     updState = { ...updState, state: 'ready', installed: res.version, needsInstall: res.needsInstall };
   } catch (e) {
     const m = String(e && e.message || e);
