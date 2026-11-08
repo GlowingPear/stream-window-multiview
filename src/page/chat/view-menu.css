@@ -24,3 +24,9 @@
 .menu{position:fixed;top:calc(var(--head) + 6px);z-index:100003;width:300px;display:flex;flex-direction:column;gap:2px;padding:6px;
   background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.55)}
 .menu[hidden]{display:none}
+/* Settings › Chat › Emotes › Big emote in right-click menus: the emote big in a frame above its name */
+body.big-emote .vmenu .vm-pre{flex-direction:column;align-items:stretch;gap:8px;padding:6px 6px 9px}
+body.big-emote .vmenu .vm-pic{width:auto;height:124px}
+body.big-emote .vmenu .vm-pic img{width:104px;height:104px}
+body.big-emote .vmenu .vm-nm{font-size:15px}
+body.big-emote .vmenu .vm-sub{font-size:12px;margin-top:2px}

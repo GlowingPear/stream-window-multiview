@@ -35,7 +35,7 @@ const SETTING_NAMES = new Set([
   'mentOn', 'mentMuted', 'mentWords', 'myName', 'myTwitch', 'myYouTube', 'bellCount', 'dnd',
   'dndFor', 'desktopNotify',
   // chats
-  'autoTranslate', 'noTranslate', 'translateAll', 'emotePreview', 'newEmotes', 'chatName', 'chatNameText', 'chatOverlay', 'chatOverlayOff', 'chatOverlayKeep', 'chatOverlaySecs', 'chatOverlayLines', 'chatCounts',
+  'autoTranslate', 'noTranslate', 'translateAll', 'emotePreview', 'newEmotes', 'bigEmoteMenu', 'chatName', 'chatNameText', 'chatOverlay', 'chatOverlayOff', 'chatOverlayKeep', 'chatOverlaySecs', 'chatOverlayLines', 'chatCounts',
   // Settings › Shoutouts (chat/shoutout.js): on, only where you're a mod, sending, the message, the channels' cards (#300's People rows, moved over), Twitch's own, asking again, a run's size, streamers only, the list first;
   // who's who (their address, last game, whether they stream) and when you shouted them out
   'shoutOn', 'shoutModOnly', 'shoutSend', 'shoutText', 'shoutChannels', 'shoutPeople', 'shoutTwitch', 'shoutAgain', 'shoutRunN', 'shoutStreamers', 'shoutListFirst', 'shoutKnown', 'shoutSent',
@@ -59,7 +59,7 @@ const SYNCED = new Set([
   'saved', 'autoOpen', 'notifyAll', 'notifyOff', 'chNames', 'chanOpts',
   'linkedOn', 'streamers', 'linkedNot', 'linkedOpts', 'allBots', 'allEvents', 'allSend', 'allTimeout', 'allHype', 'allHidden',
   'mentOn', 'mentMuted', 'mentWords', 'myName', 'myTwitch', 'myYouTube', 'dndFor', 'desktopNotify', 'alerts',
-  'autoTranslate', 'noTranslate', 'translateAll', 'emotePreview', 'newEmotes', 'chatName', 'chatNameText',
+  'autoTranslate', 'noTranslate', 'translateAll', 'emotePreview', 'newEmotes', 'bigEmoteMenu', 'chatName', 'chatNameText',
   'chatOverlay', 'chatOverlayOff', 'chatOverlayKeep', 'chatOverlaySecs', 'chatOverlayLines', 'chatCounts',
   'shoutOn', 'shoutModOnly', 'shoutSend', 'shoutText', 'shoutChannels', 'shoutTwitch', 'shoutAgain', 'shoutRunN', 'shoutStreamers', 'shoutListFirst',
   'ytSkip', 'ytAutoLike', 'ytChatView',

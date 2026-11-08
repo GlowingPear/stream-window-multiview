@@ -46,7 +46,7 @@ const SY_LABEL = { theme: 'Theme', themes: 'Your themes', keys: 'Keyboard shortc
   allBots: "ALL: chat bots", allEvents: 'ALL: events', allSend: 'ALL: sending', allTimeout: 'ALL: timeouts', allHype: 'ALL: hype train', allHidden: 'ALL: hidden sites',
   mentOn: 'Mentions', mentMuted: 'Muted mentions', mentWords: 'Mention words', myName: 'Kick username', myTwitch: 'Twitch username', myYouTube: 'YouTube handle',
   dndFor: 'Do not disturb', desktopNotify: 'Desktop notifications', alerts: 'Alerts',
-  autoTranslate: 'Translate chat', noTranslate: "Languages not translated", translateAll: 'Translate every message', emotePreview: 'Emote previews', newEmotes: 'New emotes',
+  autoTranslate: 'Translate chat', noTranslate: "Languages not translated", translateAll: 'Translate every message', emotePreview: 'Emote previews', newEmotes: 'New emotes', bigEmoteMenu: 'Big emote in menus',
   chatName: 'Name in chat', chatNameText: 'Name in chat text', chatOverlay: 'Chat overlay', chatOverlayOff: 'Chat overlay off for', chatOverlayKeep: 'Chat overlay stays',
   chatOverlaySecs: 'Chat overlay time', chatOverlayLines: 'Chat overlay lines', chatCounts: 'Chat counts',
   shoutOn: 'Shoutouts', shoutModOnly: 'Shoutouts: only as a mod', shoutSend: 'Shoutouts: sending', shoutText: 'Shoutout message', shoutChannels: 'Shoutout cards',
