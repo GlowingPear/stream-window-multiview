@@ -540,7 +540,7 @@ test('ALL: events are a short line (no See it on …); Events: short, full or hi
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [
     TW({ 'display-name': 'brightwick', login: 'brightwick', 'msg-id': 'submysterygift', 'msg-param-mass-gift-count': '5', id: 'g1', 'system-msg': 'brightwick\\sis\\sgifting\\s5\\sTier\\s1\\sSubs!' }, ':tmi.twitch.tv USERNOTICE #quietkoala'),
     TW({ 'display-name': 'quietkoala', 'msg-id': 'announcement', 'msg-param-color': 'GREEN', id: 'a1' }, ':tmi.twitch.tv USERNOTICE #quietkoala :scrims at 8pm')] });
-  assert.deepEqual(await lines(page), ['al-ev | Tbrightwick gifted 5 subs', 'al-m | Tquietkoala: scrims at 8pmAnnouncement']);
+  assert.deepEqual(await lines(page), ['al-ev | Tbrightwick gifted 5 subs to quietkoala’s community', 'al-m | Tquietkoala: scrims at 8pmAnnouncement']);
   assert.equal(await page.textContent('.al-ev .al-amt'), '5 subs', 'the amount picked out');
   assert.ok(await page.$eval('.all-list .al-m', l => l.classList.contains('al-ann-green')));
   await page.click('.all-filt');
@@ -618,6 +618,21 @@ test('ALL: an event line cut off with … opens in place on a click, its short w
   await ev(2).evaluate(e => getSelection().selectAllChildren(e.querySelector('.al-evm')));
   await ev(2).evaluate(e => e.querySelector('.al-evm').click());
   assert.equal((await state(2)).open, true, 'not while text is selected');
+});
+
+test('ALL: gifted subs say their tier, whose community, the gifter\'s total there and the channel\'s sub goal, as Twitch\'s chat does', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]' });
+  await page.waitForSelector('.all-view');
+  const N = (id, tags) => TW({ 'display-name': 'BrightWick', login: 'brightwick', id, 'msg-param-sub-plan': '1000', ...tags }, ':tmi.twitch.tv USERNOTICE #quietkoala');
+  const goal = cur => ({ 'msg-param-goal-contribution-type': 'NEW_SUBS', 'msg-param-goal-current-contributions': cur, 'msg-param-goal-target-contributions': '30' });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [N('g1', { 'msg-id': 'submysterygift', 'msg-param-mass-gift-count': '5', 'msg-param-sender-count': '475', ...goal('25') }),
+    N('g2', { 'msg-id': 'submysterygift', 'msg-param-mass-gift-count': '10', 'msg-param-sender-count': '0', ...goal('35') }),
+    N('g3', { 'msg-id': 'resub', 'msg-param-cumulative-months': '6', 'msg-param-sub-plan': '2000' })] });
+  assert.deepEqual((await lines(page)).map(l => l.replace(/\d+ \/ 30$/, '')), ['al-ev | TBrightWick gifted 5 Tier 1 subs to quietkoala’s community · 475 total in the channel',
+    'al-ev | TBrightWick gifted 10 Tier 1 subs to quietkoala’s community', 'al-ev | TBrightWick subscribed at Tier 2 · 6 months']);
+  assert.deepEqual(await page.$$eval('.all-list .al-ev', l => l.map(e => { const g = e.querySelector('.al-goal');
+    return g && [g.textContent, g.title, g.classList.contains('done'), g.querySelector('i').style.getPropertyValue('--p')]; })),
+    [['25 / 30', 'New sub goal: 25 of 30', false, '83%'], ['35 / 30', 'New sub goal: 35 of 30', true, '100%'], null], 'the goal as it was with each gift; reached: done, its bar full');
 });
 
 test('ALL: a shoutout\'s and a raid\'s Open › and a gift\'s recipients button keep their own click, also on a line cut off', async t => {
@@ -1738,7 +1753,7 @@ test('ALL: gifted subs say who got them: Twitch\'s line for each on its "gifted 
     N('g2', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'LowTide', 'msg-param-recipient-user-name': 'lowtide', 'msg-param-community-gift-id': '777' }),
     N('g3', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'Drift', 'msg-param-recipient-user-name': 'drift', 'msg-param-community-gift-id': '777' }),
     N('g4', { 'msg-id': 'subgift', 'msg-param-recipient-display-name': 'Sol', 'msg-param-recipient-user-name': 'sol' })] });
-  assert.deepEqual(await lines(page), ['al-ev | TBrightWick gifted 3 subs2 recipients', 'al-ev | TBrightWick gifted a sub to Sol'], 'one line for the gift; a gift of its own stays a line');
+  assert.deepEqual(await lines(page), ['al-ev | TBrightWick gifted 3 subs to quietkoala’s community2 recipients', 'al-ev | TBrightWick gifted a sub to Sol'], 'one line for the gift; a gift of its own stays a line');
   await page.click('.al-gto');
   assert.deepEqual(await page.$$eval('.al-gl .al-gc', l => l.map(e => e.textContent)), ['LowTide', 'Drift']);
   assert.equal(await page.getAttribute('.al-gto', 'aria-expanded'), 'true');
