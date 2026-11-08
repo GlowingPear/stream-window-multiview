@@ -1,6 +1,8 @@
 // A stuck Kick player in the real app (#120): its error page ("This embed seems to be misconfigured") and its
 // offline screen (/<name>/offline), which never recover by themselves, and Reload, which used to load that page
 // again. The player is a stand-in page (see app.js), moved to those pages the way Kick's player does (in-page).
+// Its video stopping (a part that never came), with a stand-in for the video's time; and streams that keep drawing
+// while the window is behind others.
 const test = require('node:test');
 const { launchApp, inView, viewLoaded, winSel, assert, openChannel, setMode } = require('../app');
 
@@ -88,4 +90,54 @@ test('a channel that keeps failing is tried again less and less often', T, async
     await a.win.waitForTimeout(150);
   }
   assert.ok(loads[2] > loads[0] + 250, `waits longer each time (${loads.join(', ')} ms)`);
+});
+
+// The stand-in player's video, playing: its time (moving or not), what it has loaded, and where it was moved to
+const fakeVideo = ch => inView(a.win, ch, 'stream', () => {
+  const v = document.querySelector('video'), f = window.__f = { t: 5, end: 9, moving: true, paused: false, set: null };
+  Object.defineProperty(v, 'paused', { get: () => f.paused });
+  Object.defineProperty(v, 'currentTime', { get: () => f.t, set: x => { f.t = x; f.set = x; } });
+  Object.defineProperty(v, 'buffered', { get: () => ({ length: 1, end: () => f.end }) });
+  v.play = () => Promise.resolve();
+  setInterval(() => { if (f.moving) f.t += 0.1; }, 50);
+  return true;
+});
+const video = (ch, set) => inView(a.win, ch, 'stream', set => window.__f ? Object.assign(window.__f, set || {}) : null, set);
+const until = async (fn, ms = 8000) => { const end = Date.now() + ms; let v; while (!(v = await fn().catch(() => null)) && Date.now() < end) await new Promise(r => setTimeout(r, 100)); return v; };
+
+test('a video that stopped: moved on to the newest part it has, then loaded again; a moving or paused one is left alone; both in the error log', T, async () => {
+  await openChannel(a.win, 'stallone');
+  await times(FAST);
+  await loaded('stallone');
+  await fakeVideo('stallone');
+  await a.win.waitForTimeout(1500);
+  assert.equal((await video('stallone')).set, null, 'moving: left alone');
+  await video('stallone', { paused: true, moving: false });
+  await a.win.waitForTimeout(1500);
+  assert.equal((await video('stallone')).set, null, 'paused in its player: left alone');
+
+  await video('stallone', { paused: false });
+  assert.equal((await until(async () => { const f = await video('stallone'); return f && f.set != null && f; })).set, 8.5, 'stopped: moved on to the newest part');
+  assert.ok(await until(async () => !(await video('stallone'))), 'still stopped there: loaded again');
+  await viewLoaded(a.win, 'stallone', 'stream', PLAYER('stallone'));
+  const log = (await a.win.evaluate(() => window.kmv.devInfo())).errors.filter(e => e.where === 'stallone').map(e => e.msg);
+  assert.deepEqual(log, ['its video stayed stopped: loaded it again', 'its video stopped: moved it on to the newest part']);
+
+  // moved on and playing again: not loaded again
+  await loaded('stallone');
+  await fakeVideo('stallone');
+  await video('stallone', { moving: false });
+  await until(async () => (await video('stallone')).set != null);
+  await video('stallone', { moving: true });
+  await a.win.waitForTimeout(1500);
+  assert.ok(await video('stallone'), 'playing again: left as it is');
+});
+
+test('streams keep drawing while the window is behind others (Windows\' check for covered windows is off, the views aren\'t slowed down)', T, async () => {
+  const r = await a.app.evaluate(({ app, webContents }) => ({
+    features: app.commandLine.getSwitchValue('disable-features'),
+    views: webContents.getAllWebContents().filter(w => w.getType() === 'webview').map(w => w.getBackgroundThrottling())
+  }));
+  assert.match(r.features, /\bCalculateNativeWinOcclusion\b/);
+  assert.ok(r.views.length && r.views.every(t => t === false), JSON.stringify(r.views));
 });
