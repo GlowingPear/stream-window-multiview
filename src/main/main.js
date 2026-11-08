@@ -211,8 +211,9 @@ appIpc.handle('samples:report', async (e, report) => {
 });
 
 /* ---------- streams' own storage (partitions.js) ----------
-   When each stream's storage was last used is kept in partitions.json. At start-up, ones unused for a month go;
-   their files are deleted in the background, and caches past their size are cleared then and once a day. */
+   When each stream's storage was last used, and how big each storage was, is kept in partitions.json. At start-up,
+   ones unused for a month, oversized Code Caches and the oldest streams past the total go; their files are deleted in
+   the background. Every hour the sizes are measured again and caches past their size are cleared. */
 const partitionCare = createPartitionCare({ dir: path.join(app.getPath('userData'), 'Partitions'),
   saved: (() => { try { return JSON.parse(fs.readFileSync(stateFile('partitions'), 'utf8')); } catch { return null; } })() });
 let partitionsSaveT = null;
@@ -226,14 +227,18 @@ app.on('will-quit', () => {
   for (const wc of webContents.getAllWebContents()) try { if (wc.getType() === 'webview' && wc.session.storagePath) partitionCare.use('persist:' + path.basename(wc.session.storagePath)); } catch {}
   savePartitions();
 });
+// A clear that doesn't finish (or fails) is noted in the error log, and doesn't hold up the next one
+const clearing = (what, p, job) => Promise.race([job.then(() => true), new Promise(r => setTimeout(r, 60000, false))])
+  .catch(() => false).then(ok => { if (!ok) console.warn(`Couldn't clear ${p}'s ${what}`); });
 async function tidyPartitions() {
   await partitionCare.emptyTrash();
-  for (const p of await partitionCare.oversized('Code Cache', CODE_CACHE_MAX)) await session.fromPartition(p).clearCodeCaches({}).catch(() => {});
-  for (const p of await partitionCare.oversized('Cache', 2 * HTTP_CACHE_MAX)) await session.fromPartition(p).clearCache().catch(() => {});
+  await partitionCare.measure(); savePartitions();
+  for (const p of partitionCare.oversized('code', CODE_CACHE_MAX)) await clearing('Code Cache', p, session.fromPartition(p).clearCodeCaches({}));
+  for (const p of partitionCare.oversized('http', 2 * HTTP_CACHE_MAX)) await clearing('Cache', p, session.fromPartition(p).clearCache());
 }
 app.whenReady().then(() => {
   setTimeout(tidyPartitions, 30000);
-  setInterval(tidyPartitions, DAY);
+  setInterval(tidyPartitions, DAY / 24);
 });
 // Inspect: Chrome's developer tools for a stream's or chat's page in this window (they can read its logins, so only
 // with Developer tools on, or in a developer copy).
