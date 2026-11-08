@@ -94,7 +94,7 @@ jobs:
       # What it recorded, for the report (also after a failed test: the report still says what ran)
       - name: Keep the coverage
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ matrix.suite }}-${{ strategy.job-index }}
           path: coverage/raw
@@ -129,7 +129,7 @@ jobs:
       # The unit tests, recorded too (seconds), then each part's recording beside them
       - name: Unit tests, with coverage
         run: node scripts/coverage.js --suite unit --no-report
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: coverage-*
           path: coverage/raw/parts
