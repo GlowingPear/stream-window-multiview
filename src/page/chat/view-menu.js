@@ -11,6 +11,7 @@ import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { flyouts } from '../shared/flyout.js';
 import { fromApp, fromSite } from '../shared/incoming.js';
+import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { stopWinTimer, stopWinTimers, winTimer } from '../shared/timers.js';
 import { stopCapture } from '../windows/capture.js';
@@ -183,6 +184,13 @@ function init(){
   });
   window.showViewMenu = showViewMenu; window.closeViewMenu = closeViewMenu;   // for the tests
   fromSite('emote-dl', (w, json) => saveEmote(json));
+  // Settings › Chat › Emotes › Big emote in right-click menus: the emote big in a frame at the top of the menu (here and
+  // in ALL's), or a small picture beside its name (off)
+  const big = document.getElementById('bigEmoteSet');
+  const syncBig = () => { const on = settings.flag('bigEmoteMenu', false); document.body.classList.toggle('big-emote', on); if (big) big.checked = on; };
+  syncBig();
+  if (big) big.addEventListener('change', () => { settings.set('bigEmoteMenu', big.checked); syncBig(); });
+  settings.onChange(['bigEmoteMenu'], syncBig);
 }
 
 export { closeWin, EMOTE_SITE, init, releaseWin, resolveYt, saveEmote, setWait };
