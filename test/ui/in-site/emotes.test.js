@@ -294,3 +294,26 @@ test('the emote menu stays inside the window: near the right or bottom edge it o
   const b2 = await (await menuAt(page2, 20, 150)).boundingBox();
   assert.ok(b2.y >= 0 && b2.y + b2.height <= 300, JSON.stringify(b2));
 });
+
+// Settings › Chat › Emotes › Big emote in right-click menus (the switch, changed as you would)
+const bigEmote = (page, on) => page.evaluate(on => { const s = document.getElementById('bigEmoteSet'); s.checked = on; s.dispatchEvent(new Event('change', { bubbles: true })); }, on);
+// the emote's frame (the tests can't load its picture, which the menu then leaves out)
+const picSize = loc => loc.locator('.vm-pic').evaluate(p => Math.round(p.getBoundingClientRect().height));
+
+test('Big emote in right-click menus: off at first, a small picture beside its name; on, the emote big in a frame above it, saved', async t => {
+  const page = await openApp(t);
+  let menu = await menuAt(page, 300, 200);
+  assert.equal(await picSize(menu), 44, 'small at first');
+  await page.keyboard.press('Escape');
+  await bigEmote(page, true);
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.bigEmoteMenu')), '1');
+  menu = await menuAt(page, 300, 200);
+  assert.equal(await picSize(menu), 124, 'big');
+  const [pic, name] = await Promise.all([menu.locator('.vm-pic').boundingBox(), menu.locator('.vm-nm').boundingBox()]);
+  assert.ok(name.y > pic.y + pic.height - 1, 'its name under it');
+  await page.keyboard.press('Escape');
+  // switched off in the other window: small again
+  await page.evaluate(() => { localStorage.setItem('kickMultiview.bigEmoteMenu', '0'); window.dispatchEvent(new StorageEvent('storage', { key: 'kickMultiview.bigEmoteMenu', newValue: '0' })); });
+  await page.waitForFunction(() => !document.body.classList.contains('big-emote'));
+  assert.equal(await page.isChecked('#bigEmoteSet'), false);
+});

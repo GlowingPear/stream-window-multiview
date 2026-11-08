@@ -363,6 +363,11 @@ test('ALL has the sites\' chats\' extras: links open in your browser; the line m
   // right-click the emote: its items in the Copy submenu, after the message's; Save asks for the bigger picture
   await page.click('.all-list img.al-e', { button: 'right' });
   assert.deepEqual(await page.$$eval('.all-lm .all-epre .all-enm', l => l.map(e => e.textContent)), ['Kappa'], 'the emote at the top');
+  const epic = () => page.$eval('.all-lm .all-epic', p => Math.round(p.getBoundingClientRect().height));
+  assert.equal(await epic(), 44, 'small, beside its name');
+  await page.evaluate(() => { const s = document.getElementById('bigEmoteSet'); s.checked = true; s.dispatchEvent(new Event('change', { bubbles: true })); });   // Settings › Chat › Emotes › Big emote in right-click menus
+  assert.equal(await epic(), 136, 'big in a frame, as its card shows it');
+  await page.evaluate(() => { const s = document.getElementById('bigEmoteSet'); s.checked = false; s.dispatchEvent(new Event('change', { bubbles: true })); });
   assert.ok((await items()).includes('Copy image'), 'Copy image: in the menu, as it\'s what was right-clicked');
   assert.deepEqual(await subItems(page, 'all.menuCopyMore'), ['Copy message with emotes', 'Copy with @name', 'Copy emote text', 'Copy image address', 'Save image as…'], 'no Open image outside the desktop app');
   await page.click('.all-lm-sub [data-cmd="all.menuEmoteSave"]');
