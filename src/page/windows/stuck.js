@@ -1,5 +1,6 @@
 import { infoFor } from '../panels/channels/channels.js';
-import { platform, srcFor } from '../platforms/platforms.js';
+import { devError } from '../panels/developer/developer.js';
+import { chLabel, platform, srcFor } from '../platforms/platforms.js';
 import { DESKTOP } from '../shared/env.js';
 import { winTimer } from '../shared/timers.js';
 import { isPaused } from './pause.js';
@@ -14,13 +15,19 @@ import { askIn, loadView } from './view.js';
    - its error page: the channel's address is loaded again, after 10 s, 30 s, then every minute
    - its offline screen: once a minute, is the channel live (saved channels: the live checks; others: asked)?
      Then its address is loaded again, straight away
+   - its video stopped (its time hasn't moved since the last look, while playing: a part that never came): it
+     moves on to the newest part it has, and if it still hasn't moved at the next look, its address is loaded again
    A stream you paused is left as it is. The waits start again from 10 s once a load has worked for a minute
-   (the player shows itself before it fails, so that isn't the first look after a load). */
-const stuckTimes = { look: 3000, ok: 30000, offline: 60000, retry: [10000, 30000, 60000], calm: 60000 };
+   (the player shows itself before it fails, so that isn't the first look after a load). What it does about a
+   stopped video goes in the error log (Settings › Developer), so a report shows how often streams froze. */
+const stuckTimes = { look: 3000, ok: 5000, offline: 60000, retry: [10000, 30000, 60000], calm: 60000 };
+// The video's time while it plays (null: none, paused or ended), and moving it on to the newest part it has (init())
+let VIDEO_JS, CATCH_UP_JS;
 
 // The player has (re)loaded or moved: look at it shortly
 function watchStuck(w){
   if (!DESKTOP || w.kind !== 'stream' || !w.channel || !platform(w.channel).stuckJs) return;
+  w.stall = null;
   winTimer(w, 'stuck', () => lookStuck(w), stuckTimes.look);
 }
 async function lookStuck(w){
@@ -35,9 +42,29 @@ async function lookStuck(w){
     return;
   }
   if (Date.now() - (w.stuckAt || 0) >= stuckTimes.calm) w.stuckTries = 0;
-  if (st !== 'offline'){ again(stuckTimes.ok); return; }
+  if (st !== 'offline'){ await lookStalled(w, view); return; }
   if (!isPaused(w) && await liveAgain(w.channel) && w.view === view){ loadView(view, srcFor(w)); return; }
   again(stuckTimes.offline);
+}
+// Playing, but its video's time hasn't moved since the last look: move it on, then load it again
+async function lookStalled(w, view){
+  const t = isPaused(w) ? null : await askIn(view, VIDEO_JS).catch(() => null);
+  if (w.view !== view) return;
+  const was = w.stall;
+  w.stall = typeof t === 'number' ? { t, caughtUp: !!(was && was.caughtUp && was.t === t) } : null;
+  if (w.stall && was && was.t === t){
+    if (was.caughtUp){
+      w.stall = null;
+      devError('stream', chLabel(w.channel), 'its video stayed stopped: loaded it again');
+      loadView(view, srcFor(w));
+      return;
+    }
+    const now = await askIn(view, CATCH_UP_JS).catch(() => null);
+    if (w.view !== view) return;
+    w.stall = { t: typeof now === 'number' ? now : t, caughtUp: true };
+    devError('stream', chLabel(w.channel), 'its video stopped: moved it on to the newest part');
+  }
+  winTimer(w, 'stuck', () => lookStuck(w), stuckTimes.ok);
 }
 // Still on its error page: load its address again (not while you've paused it)
 async function retryStuck(w, view){
@@ -61,6 +88,12 @@ async function liveAgain(ch){
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   window.stuckTimes = stuckTimes;   // for the tests
+  VIDEO_JS = `(() => { const v = document.querySelector('video');
+    return v && !v.paused && !v.ended ? v.currentTime : null; })()`;
+  CATCH_UP_JS = `(() => { const v = document.querySelector('video'); if (!v) return null;
+    try { const b = v.buffered; if (b.length){ const end = b.end(b.length - 1); if (end - v.currentTime > 1) v.currentTime = end - 0.5; } } catch (e) {}
+    const p = v.play(); if (p && p.catch) p.catch(() => {});
+    return v.currentTime; })()`;
 }
 
 export { init, watchStuck };

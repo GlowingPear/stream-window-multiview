@@ -99,6 +99,43 @@ function createSiteLog({ max = RESPONSES, now = Date.now } = {}) {
   };
 }
 
+// A page or helper process that went away (Electron's render-process-gone / child-process-gone details), in words.
+// null: it closed normally.
+function goneText({ reason, exitCode } = {}) {
+  if (!reason || reason === 'clean-exit') return null;
+  return `stopped: ${reason}${exitCode ? ` (code ${exitCode})` : ''}`;
+}
+// Which page it was, for the error log: its site and path (a channel's name), without the rest of the address.
+function pageWhere(url) {
+  try { const u = new URL(String(url)); return u.protocol === 'file:' ? u.pathname.split('/').pop() : u.host + u.pathname.replace(/\/$/, ''); } catch { return ''; }
+}
+
+// For the report: the graphics card and whether video and drawing run on it (app.getGPUFeatureStatus(),
+// app.getGPUInfo('basic')), memory (app.getAppMetrics(): KB per process) and how long the app has run (s).
+const VENDORS = { 0x10de: 'NVIDIA', 0x1002: 'AMD', 0x8086: 'Intel', 0x106b: 'Apple', 0x5143: 'Qualcomm', 0x15ad: 'VMware', 0x1414: 'Microsoft' };
+const onGpu = (what, st) => !st ? null : /^enabled/.test(st) ? `${what} on the GPU` : `${what} ${/software/.test(st) ? 'in software' : 'off'} (${st})`;
+function gpuText(status, info) {
+  const devs = (info && Array.isArray(info.gpuDevice) ? info.gpuDevice : []);
+  const d = devs.find(x => x && x.active) || devs[0];
+  const card = d ? [VENDORS[d.vendorId] || (d.vendorId != null ? 'vendor 0x' + Number(d.vendorId).toString(16) : ''), d.driverVersion && `(driver ${d.driverVersion})`].filter(Boolean).join(' ') : '';
+  const st = status || {};
+  return [card, devs.length > 1 && `${devs.length} cards`, onGpu('video decode', st.video_decode), onGpu('compositing', st.gpu_compositing)].filter(Boolean).join(' · ');
+}
+const mb = kb => kb >= 1024 * 1024 ? (kb / 1024 / 1024).toFixed(1) + ' GB' : Math.round(kb / 1024) + ' MB';
+function memoryText(metrics) {
+  const ps = (Array.isArray(metrics) ? metrics : []).filter(p => p && p.memory);
+  if (!ps.length) return '';
+  const kb = p => +p.memory.workingSetSize || 0, total = ps.reduce((n, p) => n + kb(p), 0);
+  const gpu = ps.find(p => p.type === 'GPU'), pages = ps.filter(p => p.type === 'Tab' || p.type === 'Renderer' || p.type === 'Webview');
+  const big = pages.reduce((m, p) => kb(p) > kb(m) ? p : m, pages[0]);
+  return [`${mb(total)} in ${ps.length} processes`, gpu && `GPU process ${mb(kb(gpu))}`, big && `largest page ${mb(kb(big))}`].filter(Boolean).join(' · ');
+}
+function uptimeText(s) {
+  s = Math.max(0, Math.round(+s || 0));
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+  return h ? `${h} h ${m} min` : m ? `${m} min` : `${s} s`;
+}
+
 // Copy diagnostics: the report, as text for an issue. info: { app, sys, page (the page's own part: lines of text),
 // errors, responses }. Everything goes through redact() once more.
 const two = n => String(n).padStart(2, '0');
@@ -109,6 +146,9 @@ function diagnostics({ app = {}, sys = {}, page = [], errors = [], responses = [
   out.push(pad('version', 10) + [`${app.version || '?'} (${app.packaged ? 'installed' : 'from source'})`, app.electron && 'Electron ' + app.electron, app.chrome && 'Chrome ' + app.chrome].filter(Boolean).join(' · '));
   out.push(pad('system', 10) + [[sys.os, sys.release, sys.arch].filter(Boolean).join(' '), sys.displays != null && `${sys.displays} monitor${sys.displays === 1 ? '' : 's'}`,
     sys.scale && `scale ${sys.scale}`, sys.locale].filter(Boolean).join(' · '));
+  if (sys.gpuStatus || sys.gpuInfo) out.push(pad('gpu', 10) + (gpuText(sys.gpuStatus, sys.gpuInfo) || 'unknown'));
+  if (sys.metrics) out.push(pad('memory', 10) + (memoryText(sys.metrics) || 'unknown'));
+  if (sys.uptime != null) out.push(pad('running', 10) + uptimeText(sys.uptime));
   for (const l of [].concat(page || [])) out.push(String(l));
   out.push('', `## Errors (${errors.length}${errors.length ? ', newest first' : ''})`);
   if (!errors.length) out.push('none');
@@ -121,4 +161,4 @@ function diagnostics({ app = {}, sys = {}, page = [], errors = [], responses = [
   return redact(out.join('\n'));
 }
 
-module.exports = { createErrorLog, createSiteLog, describeRequest, diagnostics, redact, MAX, RESPONSES };
+module.exports = { createErrorLog, createSiteLog, describeRequest, diagnostics, goneText, pageWhere, gpuText, memoryText, uptimeText, redact, MAX, RESPONSES };
