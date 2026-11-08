@@ -21,7 +21,7 @@ test('Settings > Chat: after General, every chat setting in its tab; General and
   assert.ok(await page.$eval('#settingsDlg .st-rail [data-s=chat] svg', s => !!s), 'with its icon');
   await page.click('#settingsDlg .st-rail [data-s=chat]');
   assert.equal(await page.textContent('#settingsDlg [data-s=chat] h4'), 'Chat');
-  assert.deepEqual(await shown(page), [['Chat box', ['chatNameSet']], ['Emotes', ['emoteSet']], ['Translation', ['trAllSet']]], 'Messages and Chat bots only in the desktop app');
+  assert.deepEqual(await shown(page), [['Chat box', ['chatNameSet']], ['Emotes', ['emoteSet', 'bigEmoteSet']], ['Translation', ['trAllSet']]], 'Messages and Chat bots only in the desktop app');
   assert.deepEqual(await page.$$eval('#chatTabs button', l => l.map(b => b.textContent)), ['Chat box', 'Messages', 'Emotes', 'Translation', 'Chat bots']);
   // one tab at a time
   await page.click('#chatTabs [data-t=box]');
