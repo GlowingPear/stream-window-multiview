@@ -148,11 +148,20 @@ test('Twitch events in a few words, the amount picked out; an announcement is a 
   const ev = (id, prm, name = 'Brightwick') => parseTwitch(TW({ 'display-name': name, login: name.toLowerCase(), 'msg-id': id, id: 'e', 'system-msg': "the\\ssite's\\swords", ...prm }, ':tmi.twitch.tv USERNOTICE #q')).summary;
   const words = s => s.map(x => x.strong ? `[${x.strong}]` : x.text).join('');
   assert.equal(words(ev('sub', { 'msg-param-sub-plan': 'Prime', 'msg-param-cumulative-months': '1' })), '[Brightwick] subscribed with Prime');
-  assert.equal(words(ev('resub', { 'msg-param-sub-plan': '1000', 'msg-param-cumulative-months': '38' })), '[Brightwick] subscribed · [38 months]');
+  assert.equal(words(ev('resub', { 'msg-param-sub-plan': '1000', 'msg-param-cumulative-months': '38' })), '[Brightwick] subscribed at [Tier 1] · [38 months]');
+  assert.equal(words(ev('resub', { 'msg-param-sub-plan': '3000', 'msg-param-cumulative-months': '2' })), '[Brightwick] subscribed at [Tier 3] · [2 months]');
+  assert.equal(words(ev('resub', { 'msg-param-cumulative-months': '2' })), '[Brightwick] subscribed · [2 months]', 'without its tier');
   assert.equal(words(ev('subgift', { 'msg-param-recipient-display-name': 'Tinroof' })), '[Brightwick] gifted a sub to [Tinroof]');
   assert.equal(words(ev('subgift', {})), '[Brightwick] gifted a sub to [someone]');
-  assert.equal(words(ev('submysterygift', { 'msg-param-mass-gift-count': '5' })), '[Brightwick] gifted [5 subs]');
-  assert.equal(words(ev('submysterygift', { 'msg-param-mass-gift-count': '1' })), '[Brightwick] gifted [1 sub]');
+  assert.equal(words(ev('submysterygift', { 'msg-param-mass-gift-count': '5' })), '[Brightwick] gifted [5 subs] to q’s community');
+  assert.equal(words(ev('submysterygift', { 'msg-param-mass-gift-count': '1' })), '[Brightwick] gifted [1 sub] to q’s community');
+  // their tier, whose community (the channel as Twitch's words name it, else its login), how many the gifter has given there
+  const gifted = (prm, system) => words(ev('submysterygift', { 'msg-param-mass-gift-count': '5', 'msg-param-sub-plan': '1000', 'system-msg': system || "the\\ssite's\\swords", ...prm }));
+  assert.equal(gifted({ 'msg-param-sender-count': '1475' }, "Brightwick\\sis\\sgifting\\s5\\sTier\\s1\\sSubs\\sto\\sQuietKoala's\\scommunity!"), '[Brightwick] gifted [5 Tier 1 subs] to QuietKoala’s community · [1,475] total in the channel');
+  assert.equal(gifted({ 'msg-param-sender-count': '0' }), '[Brightwick] gifted [5 Tier 1 subs] to q’s community', 'an anonymous or hidden total: left out; the channel from its line');
+  assert.equal(gifted({ 'msg-param-sub-plan': '2000' }), '[Brightwick] gifted [5 Tier 2 subs] to q’s community');
+  assert.equal(gifted({ 'msg-param-sub-plan': '' }), '[Brightwick] gifted [5 subs] to q’s community', 'without its tier');
+  assert.equal(words(ev('subgift', { 'msg-param-recipient-display-name': 'Tinroof', 'msg-param-sub-plan': '2000', 'msg-param-sender-count': '12' })), '[Brightwick] gifted [a Tier 2 sub] to [Tinroof] · [12] total in the channel');
   assert.equal(words(ev('raid', { 'msg-param-displayName': 'Novalynx', 'msg-param-viewerCount': '1200' })), '[Novalynx] raided with [1,200 viewers]');
   assert.equal(words(ev('viewermilestone', { 'msg-param-value': '7' })), '[Brightwick] watched [7 streams] in a row');
   assert.equal(words(ev('giftpaidupgrade', {})), '[Brightwick] kept their sub going');
@@ -164,6 +173,11 @@ test('Twitch events in a few words, the amount picked out; an announcement is a 
   assert.equal(words(fwd({ 'msg-param-prior-gifter-anonymous': 'true', 'msg-param-prior-gifter-display-name': 'AnAnonymousGifter' })), '[Brightwick] paid forward an anonymous gift sub');
   assert.equal(words(ev('charitydonation', {})), "the site's words");
   assert.equal(words(ev('submysterygift', {})), "the site's words", 'without its number');
+  // a gift towards the channel's sub goal: where it is now
+  const goal = prm => parseTwitch(TW({ 'display-name': 'B', 'msg-id': 'submysterygift', id: 'e', 'msg-param-mass-gift-count': '5', ...prm }, ':tmi.twitch.tv USERNOTICE #q')).goal;
+  assert.deepEqual(goal({ 'msg-param-goal-contribution-type': 'NEW_SUBS', 'msg-param-goal-current-contributions': '25', 'msg-param-goal-target-contributions': '10' }), { now: 25, of: 10, what: 'New sub' });
+  assert.deepEqual(goal({ 'msg-param-goal-target-contributions': '10' }), { now: 0, of: 10, what: '' });
+  assert.equal(goal({}), undefined, 'no goal');
   assert.equal(words(parseTwitch(TW({ 'display-name': 'X', 'msg-id': 'other', id: 'e' }, ':tmi.twitch.tv USERNOTICE #q')).summary), '[X]');
   const ann = parseTwitch(TW({ 'display-name': 'quietkoala', 'msg-id': 'announcement', 'msg-param-color': 'BLUE', id: 'a', 'system-msg': '' }, ':tmi.twitch.tv USERNOTICE #q :scrims at 8pm'));
   assert.equal(ann.kind, 'message'); assert.equal(ann.announce, 'blue'); assert.equal(ann.event, undefined); assert.deepEqual(ann.parts, [{ text: 'scrims at 8pm' }]);
@@ -304,6 +318,7 @@ test('Kick: a reward redeemed (with text: a message with the reward; without: an
   const k = parseKick(KE('KicksGifted', { gift_transaction_id: 'g1', sender: { username: 'Jshoti' }, gift: { name: 'Full Send', amount: 1000 } }));
   assert.equal(k.id, 'g1'); assert.equal(k.text, 'Jshoti sent Full Send · 1,000 Kicks');
   assert.equal(parseKick(KF('GiftedSubscriptionsEvent', { gifter_username: 'brightwick', gifted_usernames: ['a', 'b', 'c'] })).text, 'brightwick gifted 3 subs');
+  assert.equal(parseKick(KF('GiftedSubscriptionsEvent', { gifter_username: 'brightwick', gifted_usernames: ['a', 'b', 'c'], gifter_total: 1058 })).text, 'brightwick gifted 3 subs · 1,058 total in the channel', 'how many the gifter has given there');
   assert.equal(parseKick(KF('SubscriptionEvent', { username: 'jean', months: 38 })).text, 'jean subscribed · 38 months');
   assert.equal(parseKick(KF('SubscriptionEvent', { username: 'jean', months: 1 })).text, 'jean subscribed');
   // the same sub on the channel's subscription too: one id, so ALL keeps one line

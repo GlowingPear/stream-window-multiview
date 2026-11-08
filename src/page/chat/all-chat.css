@@ -411,6 +411,12 @@
 .al-gc{padding:1px 7px;line-height:18px;border-radius:999px;background:color-mix(in srgb,var(--text) 8%,transparent);font-size:11px;font-weight:600}
 .al-gc.me{background:var(--accent);color:var(--accent-ink)}
 .al-ev.al-gift-me{box-shadow:inset 3px 0 0 var(--accent)}
+/* a gift towards the channel's sub goal: where it is now / the goal, its bar under it */
+.al-goal{flex:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.al-goal b{color:var(--text);font-weight:750}
+.al-goal i{display:block;width:100%;min-width:40px;height:4px;border-radius:2px;background:color-mix(in srgb,var(--text) 14%,transparent);overflow:hidden}
+.al-goal i::after{content:'';display:block;width:var(--p);height:100%;border-radius:inherit;background:#a970ff}
+.al-goal.done i::after{background:#ffd166}
 /* the send site's chat modes, above the box: chips in its colour; slow mode's countdown (a draining bar); why you can't
    chat there (the box greyed, saying it); a moderator's or the streamer's "exempt" (the chips quieter) */
 .all-modes{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:0 0 7px;font-size:11px;--sc:var(--accent)}

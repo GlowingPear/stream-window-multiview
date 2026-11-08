@@ -734,6 +734,14 @@ function eventSo(m){
   return p && element('button', { type: 'button', class: 'al-so-ev', title: `Shout out ${m.sender} in ${PLAT_NAME[m.site]} chat`, 'aria-label': `Shout out ${m.sender}`, html: icon.megaphone, dataset: { cmd: 'all.eventShoutout' },
     onclick: e => { e.stopPropagation(); shoutOut(p); } });
 }
+// A gift's progress towards the channel's sub goal, as Twitch's chat shows it: where it is now / the goal, a bar under it
+function goalEl(m){
+  if (!m.goal) return null;
+  const { now, of, what } = m.goal;
+  return element('span', { class: 'al-goal' + (now >= of ? ' done' : ''), title: `${what ? what + ' goal' : 'Goal'}: ${now.toLocaleString('en-US')} of ${of.toLocaleString('en-US')}` },
+    element('span', 'al-goal-n', element('b', null, now.toLocaleString('en-US')), ` / ${of.toLocaleString('en-US')}`),
+    element('i', { style: `--p:${Math.min(100, Math.round(now / of * 100))}%` }));
+}
 // A raid's line: Shout out who raided, then ✓ Shouted out
 function raidSo(m){
   const raid = m.kind === 'event' && ((m.support && m.support.kind === 'raid') || m.event === 'raid'), p = raid && shoutable(m);
@@ -799,7 +807,7 @@ function lineEl(m){
       'aria-expanded': open && 'true', title: open && 'Back to one line', onpointerenter: e => evOpenable(m, e.currentTarget), onclick: e => evToggle(m, e) }, element('i', { class: 'pi pi-' + m.site }, site[0]),
       element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts, m.ch)) : ''),
       // (a raid: shout out who raided, Settings › Shoutouts; then that it's done)
-      raidSo(m), eventSo(m),
+      raidSo(m), eventSo(m), goalEl(m),
       // (a shoutout: open the channel it points to, as a raid's line does)
       m.shoutout && element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.shoutoutOpen' }, title: `Open ${chLabel(m.shoutout)} in a window of its own`, onclick: () => addParsed({ channel: m.shoutout, only: null }) }, 'Open ›'),
       // (who got them: a row under it, its button first, their names after it while open)
