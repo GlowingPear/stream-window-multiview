@@ -106,7 +106,9 @@ function parseTwitch(line){
     if (msg.event === 'announcement'){ msg.kind = 'message'; msg.announce = (prm.color || 'PRIMARY').toLowerCase(); delete msg.event; delete msg.text; }
     // a watch streak: their message, highlighted, with how many streams (as Twitch's chat shows it)
     else if (msg.event === 'viewermilestone' && prm.category === 'watch-streak' && +prm.value > 0){ msg.kind = 'message'; msg.streak = +prm.value; delete msg.event; delete msg.text; }
-    else msg.summary = twitchSummary(msg.event, msg.sender, prm, msg.text);
+    else msg.summary = twitchSummary(msg.event, msg.sender, prm, msg.text, l.room.slice(1));
+    // (a gift towards the channel's sub goal: where the goal is now, as Twitch's chat shows it on the gift)
+    if (+prm['goal-target-contributions'] > 0) msg.goal = { now: +prm['goal-current-contributions'] || 0, of: +prm['goal-target-contributions'], what: GOAL_KINDS[String(prm['goal-contribution-type'] || '').toUpperCase()] || '' };
     // gifted subs: who got them. Twitch sends the "gifted 5 subs" line, then one line for each sub, with the same gift id
     if (msg.event === 'submysterygift') msg.gift = { id: prm['community-gift-id'] || '', count: +prm['mass-gift-count'] || 0, to: [] };
     if (msg.event === 'subgift') msg.giftTo = { name: prm['recipient-display-name'] || prm['recipient-user-name'] || '', login: (prm['recipient-user-name'] || '').toLowerCase(), group: prm['community-gift-id'] || '' };
@@ -256,17 +258,23 @@ function twitchSupport(ev, name, p){
 // A goal's kind (contributionType), as Twitch's goal bar names it
 const GOAL_KINDS = { FOLLOWERS: 'Follower', NEW_FOLLOWERS: 'Follower', SUBS: 'Sub', NEW_SUBS: 'New sub', SUB_POINTS: 'Sub point', NEW_SUB_POINTS: 'New sub point', BITS: 'Bits' };
 
-// A Twitch event in a few words, the amount picked out: [{ text }, { strong }]
-function twitchSummary(ev, name, p, system){
+// A Twitch event in a few words, the amount picked out: [{ text }, { strong }]. Gifts and subs say their tier, gifted
+// subs whose community they went to (the channel, as Twitch's words name it), and a gift how many the gifter has given in
+// the channel (Twitch sends 0 for an anonymous gifter, one who hides it, and each sub of gifted subs: left out then)
+function twitchSummary(ev, name, p, system, room){
   const n = v => Number(v || 0).toLocaleString('en-US'), plural = (v, one, many) => `${n(v)} ${+v === 1 ? one : many}`;
   const months = +p['cumulative-months'] > 1 ? [{ text: ' · ' }, { strong: plural(p['cumulative-months'], 'month', 'months') }] : [];
-  const prime = p['sub-plan'] === 'Prime' ? [{ text: ' with Prime' }] : [];
+  const tier = { 1000: 'Tier 1', 2000: 'Tier 2', 3000: 'Tier 3' }[p['sub-plan']], subs = v => plural(v, tier ? tier + ' sub' : 'sub', tier ? tier + ' subs' : 'subs');
+  const prime = p['sub-plan'] === 'Prime' ? [{ text: ' with Prime' }] : tier ? [{ text: ' at ' }, { strong: tier }] : [];
+  const total = +p['sender-count'] > 0 ? [{ text: ' · ' }, { strong: n(p['sender-count']) }, { text: ' total in the channel' }] : [];
+  const community = (/ to (\S+)'s community/.exec(system || '') || [])[1] || room;
+  const to = community ? [{ text: ` to ${community}’s community` }] : [];
   const need = { submysterygift: 'mass-gift-count', raid: 'viewerCount', viewermilestone: 'value', bitsbadgetier: 'threshold' }[ev];
   if (need && !(+p[need] > 0)) return system ? [{ text: system }] : [{ strong: name }];   // (without its number: the site's own words)
   switch (ev){
     case 'sub': case 'resub': return [{ strong: name }, { text: ' subscribed' }, ...prime, ...months];
-    case 'subgift': return [{ strong: name }, { text: ' gifted a sub to ' }, { strong: p['recipient-display-name'] || p['recipient-user-name'] || 'someone' }];
-    case 'submysterygift': return [{ strong: name }, { text: ' gifted ' }, { strong: plural(p['mass-gift-count'], 'sub', 'subs') }];
+    case 'subgift': return [{ strong: name }, { text: ' gifted ' }, tier ? { strong: `a ${tier} sub` } : { text: 'a sub' }, { text: ' to ' }, { strong: p['recipient-display-name'] || p['recipient-user-name'] || 'someone' }, ...total];
+    case 'submysterygift': return [{ strong: name }, { text: ' gifted ' }, { strong: subs(p['mass-gift-count']) }, ...to, ...total];
     case 'raid': return [{ strong: p.displayName || name }, { text: ' raided with ' }, { strong: plural(p.viewerCount, 'viewer', 'viewers') }];
     case 'viewermilestone': return [{ strong: name }, { text: ' watched ' }, { strong: plural(p.value, 'stream', 'streams') }, { text: ' in a row' }];
     case 'giftpaidupgrade': case 'anongiftpaidupgrade': case 'primepaidupgrade': return [{ strong: name }, { text: ' kept their sub going' }];
@@ -298,7 +306,9 @@ function kickEvents(ev, d){
   }
   if (ev === 'GiftedSubscriptionsEvent' || ev === 'LuckyUsersWhoGotGiftSubscriptionsEvent'){
     const who = String(d.gifter_username || 'Someone'), got = (Array.isArray(d.gifted_usernames) ? d.gifted_usernames : Array.isArray(d.usernames) ? d.usernames : []).map(String);
-    return { ...event('gs-' + t + '-' + who, who, [{ strong: who }, { text: ' gifted ' }, { strong: plural(got.length || 1, 'sub', 'subs') }]),
+    // (and how many the gifter has given in the channel, as Kick's chat says it)
+    const total = +d.gifter_total > 0 ? [{ text: ' · ' }, { strong: n(d.gifter_total) }, { text: ' total in the channel' }] : [];
+    return { ...event('gs-' + t + '-' + who, who, [{ strong: who }, { text: ' gifted ' }, { strong: plural(got.length || 1, 'sub', 'subs') }, ...total]),
       gift: { id: String(d.correlation_id || ''), count: got.length, to: got.map(u => ({ name: u, login: u.toLowerCase() })) },
       support: got.length === 1 ? { kind: 'gift', who, n: 1, to: got[0], group: String(d.correlation_id || '') } : { kind: 'gifts', who, n: got.length || +d.gifted_total || 1, group: String(d.correlation_id || '') } };
   }
