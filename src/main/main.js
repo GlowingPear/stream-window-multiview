@@ -19,7 +19,7 @@ const { youtubeLoginFromFirefox } = require('./firefox-login');
 const extensions = require('./extensions');
 const guard = require('./guard');
 const { pageOptions } = require('./activity');
-const { createErrorLog, createSiteLog, describeRequest, diagnostics } = require('./devlog');
+const { createErrorLog, createSiteLog, describeRequest, diagnostics, goneText, pageWhere } = require('./devlog');
 const { createSampleStore, exportSamples, healthReport } = require('./event-samples');
 const { createPartitionCare, HTTP_CACHE_MAX, CODE_CACHE_MAX, DAY } = require('./partitions');
 const { openDb } = require('./db');
@@ -58,6 +58,9 @@ const ICON = path.join(SRC, process.platform === 'win32' ? 'icon.ico' : 'icon.pn
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 // Each saved storage's cache of the sites' files stays under a size (without it, each stream's grows past a gigabyte: partitions.js).
 app.commandLine.appendSwitch('disk-cache-size', String(HTTP_CACHE_MAX));
+// Windows: Chromium stops drawing a window it thinks is covered, and gets that wrong with several monitors, a
+// fullscreen game or a screen capture: the streams' pictures stop while their sound goes on. Always draw them.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
@@ -130,6 +133,19 @@ for (const level of ['warn', 'error']) {
   console[level] = (...args) => { was(...args); try { devError('main', '', args.map(errText).join(' ')); } catch {} };
 }
 process.on('uncaughtExceptionMonitor', e => devError('main', 'crash', errText(e)));
+// A page that stops answering or crashes, and a helper process that dies (the GPU's: every stream's picture stops),
+// for finding out why streams froze.
+const pageName = wc => {
+  if (mainWin && !mainWin.isDestroyed() && mainWin.webContents === wc) return 'main window';
+  if (streamsWin && !streamsWin.isDestroyed() && streamsWin.webContents === wc) return 'streams window';
+  return pageWhere(wc.getURL());
+};
+app.on('web-contents-created', (_e, wc) => {
+  wc.on('unresponsive', () => devError('main', pageName(wc), 'stopped responding'));
+  wc.on('responsive', () => devError('main', pageName(wc), 'responding again'));
+  wc.on('render-process-gone', (_ev, d) => { const m = goneText(d); if (m) devError('main', pageName(wc), 'page ' + m); });
+});
+app.on('child-process-gone', (_e, d) => { const m = goneText(d); if (m) devError('main', d.name || d.type + ' process', m); });
 app.on('will-quit', saveErrors);
 // Requests to the sites (Node's fetch: live checks, follows, profiles), each noted as it's answered.
 const nodeFetch = globalThis.fetch;
@@ -158,12 +174,14 @@ appIpc.on('dev:log', (_e, src, where, msg) => { if (['page', 'chat', 'stream'].i
 appIpc.handle('dev:info', () => ({ errors: errorLog.list(), responses: siteLog.list() }));
 appIpc.handle('dev:clear', () => { errorLog.clear(); siteLog.clear(); saveErrors(); return true; });
 // The report: the page's part (its windows and settings, as lines) with this side's.
-appIpc.handle('dev:report', (_e, pageLines) => {
+appIpc.handle('dev:report', async (_e, pageLines) => {
   const ds = screen.getAllDisplays(), prim = screen.getPrimaryDisplay();
+  const gpuInfo = await Promise.race([app.getGPUInfo('basic').catch(() => null), new Promise(r => setTimeout(r, 2000, null))]);
   return diagnostics({
     app: { version: app.getVersion(), packaged: app.isPackaged, electron: process.versions.electron, chrome: process.versions.chrome },
     sys: { os: { darwin: 'macOS', win32: 'Windows', linux: 'Linux' }[process.platform] || process.platform, release: process.getSystemVersion ? process.getSystemVersion() : '',
-      arch: process.arch, displays: ds.length, scale: prim && prim.scaleFactor, locale: app.getLocale() },
+      arch: process.arch, displays: ds.length, scale: prim && prim.scaleFactor, locale: app.getLocale(),
+      gpuStatus: app.getGPUFeatureStatus(), gpuInfo, metrics: app.getAppMetrics(), uptime: process.uptime() },
     page: Array.isArray(pageLines) ? pageLines.map(l => String(l).slice(0, 300)).slice(0, 80) : [],
     errors: errorLog.list(), responses: siteLog.list()
   });
@@ -252,7 +270,8 @@ appIpc.handle('dev:inspect', (e, id) => inspectView(e.sender, id));
 
 const appWebPrefs = () => ({
   preload: path.join(SRC, 'preload', 'preload.js'),
-  contextIsolation: true, nodeIntegration: false, sandbox: true, webviewTag: true
+  contextIsolation: true, nodeIntegration: false, sandbox: true, webviewTag: true,
+  backgroundThrottling: false   // a window behind others still plays its streams at full speed
 });
 // macOS: the toolbar is the title bar. The traffic lights sit inside it (centred in its 52px) and the page makes
 // the toolbar's empty space draggable. Other systems keep their normal frame.
@@ -667,6 +686,7 @@ app.on('web-contents-created', (_e, wc) => {
   // Web views: no preload or Node, sandboxed, https only, and only the app's own storage (guard.js).
   wc.on('will-attach-webview', (ev, webPreferences, params) => {
     if (!guard.lockWebview(webPreferences, params)) return ev.preventDefault();
+    webPreferences.backgroundThrottling = false;   // nor slowed down when the window is behind others
     if (partitionCare.use(params.partition)) savePartitionsSoon();
   });
   // When you last clicked or typed in this page: a page opens links in your browser only just after that.

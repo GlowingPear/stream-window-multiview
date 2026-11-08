@@ -143,6 +143,14 @@ test('the error log and the sites\' answers: from the main process, the page and
   await inView(a.win, 'alpha', 'chat', () => { setTimeout(() => { null.helperWentWrong(); }); return true; });
   // ALL not reading a chat: its site and which chat
   await a.win.evaluate(() => { window.allHealth.broke('alpha', 'read', 'ALL isn\'t reading Kick\'s messages'); window.allHealth.healed('alpha'); });
+  // a page that stops answering or crashes, and a helper process that dies (why streams froze); a normal close isn't noted
+  await a.app.evaluate(({ app, webContents }, re) => {
+    const wc = webContents.getAllWebContents().find(w => new RegExp(re).test(w.getURL()));
+    wc.emit('unresponsive'); wc.emit('responsive');
+    wc.emit('render-process-gone', {}, { reason: 'oom', exitCode: 7 });
+    app.emit('child-process-gone', {}, { type: 'GPU', reason: 'crashed', exitCode: -1073741819 });
+    app.emit('child-process-gone', {}, { type: 'Utility', name: 'Audio Service', reason: 'clean-exit', exitCode: 0 });
+  }, CHAT.source);
   // a site that didn't answer (a closed port: no time limit to wait for)
   await a.app.evaluate(() => fetch('https://kick.com:1/api/v2/channels/alpha?token=SECRET').catch(() => null));
   await a.win.evaluate(() => window.openSettings('developer'));
@@ -154,6 +162,9 @@ test('the error log and the sites\' answers: from the main process, the page and
   assert.ok(!rows.some(r => /ResizeObserver/.test(r)), rows.join('\n'));
   assert.ok(rows.some(r => /^CHAT alpha \d+:\d+: .*helperWentWrong/.test(r)), rows.join('\n'));
   assert.ok(rows.includes('CHAT ALL · Kick · alpha: ALL isn\'t reading Kick\'s messages'), rows.join('\n'));
+  for (const r of ['MAIN kick.com/popout/alpha/chat: stopped responding', 'MAIN kick.com/popout/alpha/chat: responding again',
+    'MAIN kick.com/popout/alpha/chat: page stopped: oom (code 7)', 'MAIN GPU process: stopped: crashed (code -1073741819)']) assert.ok(rows.includes(r), rows.join('\n'));
+  assert.ok(!rows.some(r => /Audio Service/.test(r)), 'a normal close isn\'t noted');
   assert.match(await a.win.textContent('#devTabs [data-t=errors]'), /^Errors \(\d+\)$/);
   // the sites' answers: Errors only, and a click copies the request and the answer
   await a.win.click('#devTabs [data-t=responses]');
@@ -169,6 +180,7 @@ test('the error log and the sites\' answers: from the main process, the page and
   assert.match(report, /\nversion   [\d.]+ \(from source\) · Electron [\d.]+ · Chrome [\d.]+\n/);
   assert.match(report, /\nwindows   main window · layout \w+ · 0 streams, 1 chat\n {2}Kick {6}alpha +chat +loaded/);
   assert.match(report, /\ndeveloper tools on\n/);
+  assert.match(report, /\ngpu {7}\S.*\nmemory {4}[\d.]+ [MG]B in \d+ processes.*\nrunning {3}\d+ (s|min)\n/, 'the graphics card, memory and how long the app has run');
   assert.match(report, /\nsigned in Kick ✓ {2}Twitch – {2}YouTube –\n/, 'Kick by its login cookie');
   assert.match(report, /\nplayers {3}Kick signed out {2}Twitch signed out {2}YouTube signed out\n/);
   assert.match(report, /## Errors \(\d+, newest first\)\n[\s\S]*main went wrong/);
