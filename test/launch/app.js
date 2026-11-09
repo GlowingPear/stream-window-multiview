@@ -33,7 +33,14 @@ async function launchApp(opts = {}) {
   for (const s of [proc.stdout, proc.stderr]) s?.on('data', d => { output.push(String(d)); if (output.length > 40) output.shift(); });
   try {
     await app.evaluate(({ app: eapp, session }) => {
-      const player = '<!doctype html><title>player</title><body style="margin:0;background:#000"><video id="v" muted playsinline style="width:100%;height:100%"></video></body>';
+      // Kick's and Twitch's players: an Amazon IVS player in a React ref on the <video> (as in-site/quality.js finds it),
+      // capped at 720p as Kick caps it. It plays its cap; a test reads it (window.__ivs) or resets it, as a reload does.
+      const player = '<!doctype html><title>player</title><body style="margin:0;background:#000"><video id="v" muted playsinline style="width:100%;height:100%"></video><script>'
+        + 'const qs = [[1080, "1080p60"], [720, "720p60"], [480, "480p"], [360, "360p"], [160, "160p"]].map(([height, name]) => ({ name, height }));'
+        + 'let cap = qs[1]; const ivs = window.__ivs = { getQualities: () => qs, getQuality: () => cap, setAutoMaxQuality: q => { cap = q; ivs.caps.push(q.name); },'
+        + 'isAutoQualityMode: () => true, setAutoQualityMode() {}, caps: [], reset() { cap = qs[1]; delete ivs.__kmvCap; } };'
+        + 'document.getElementById("v").__reactFiber$test = { memoizedState: { memoizedState: { current: ivs }, next: null }, return: null };'
+        + '</script></body>';
       // YouTube's watch page: its player keeps its own volume (0-100) and mute, and sets the <video> from them,
       // levelled down to half (YouTube's loudness levelling), so the video's volume never equals the player's.
       // Its hidden like button flips on a click (counted in __likes), and the page is signed in when the
@@ -45,6 +52,9 @@ async function launchApp(opts = {}) {
         + 'p.setVolume = x => { vol = Math.max(0, Math.min(100, Math.round(x))); show(); }; p.getVolume = () => vol;'
         + 'p.mute = () => { m = true; show(); }; p.unMute = () => { m = false; show(); }; p.isMuted = () => m; show();'
         + 'p.getPlayerState = () => p.state ?? 1;'
+        // its quality: what it has, and the one asked for (setPlaybackQualityRange), 'auto' until then (it plays 720p)
+        + 'p.getAvailableQualityLevels = () => ["hd1080", "hd720", "large", "medium", "small", "tiny", "auto"]; p.q = "auto";'
+        + 'p.setPlaybackQualityRange = a => { p.q = a; }; p.getPlaybackQuality = () => p.q === "auto" ? "hd720" : p.q;'
         + 'const lb = document.querySelector("like-button-view-model button"); window.__likes = 0;'
         + 'lb.onclick = () => { window.__likes++; lb.setAttribute("aria-pressed", String(lb.getAttribute("aria-pressed") !== "true")); };'
         + 'window.ytcfg = { get: k => k === "LOGGED_IN" ? /(^|; )SAPISID=/.test(document.cookie) : undefined };'

@@ -361,7 +361,8 @@ test('Channel settings for a channel on its own: its chat bots, Opens by itself 
   for (const t of ['accounts', 'chat', 'streams']){ await tab(t); all.push([t, await secs(), await opts()]); }
   assert.deepEqual(all, [['accounts', ['Channels', 'Add a channel', 'Shown as'], [['Name shown', 'Link another channel to use this', true]]],
     ['chat', ['Their chat bots', 'Their chats'], [['ALL tab', 'Its chat in ALL\'s list, with its badges, emotes and filters', false]]],
-    ['streams', ['This channel'], [['Their streams', 'Link another channel to use this', true], ['Opens by itself when live ⚡', 'Going live opens it', false]]]]);
+    ['streams', ['This channel'], [['Their streams', 'Link another channel to use this', true], ['Opens by itself when live ⚡', 'Going live opens it', false],
+      ['Quality', 'Settings › General says: Site\'s own', false]]]]);
   assert.equal(await page.locator('#linkDlg .lc-head p').count(), 0, 'its name, under what the card is');
   assert.equal(await page.textContent('#linkDlg .lc-kicker'), 'Channel settings');
   assert.equal(await page.isDisabled('#linkDlg .lc-unlink'), true, 'Unlink all: greyed');
@@ -392,7 +393,7 @@ test('Channel settings for a channel on its own: its chat bots, Opens by itself 
   await page.evaluate(() => window.openLinkCard('novalynx'));
   const linked = [];
   for (const t of ['accounts', 'chat', 'streams']){ await tab(t); linked.push(...(await opts()).map(o => o[2])); }
-  assert.deepEqual(linked, [false, false, false, false], 'linked: all of it');
+  assert.deepEqual(linked, [false, false, false, false, false], 'linked: all of it');
   assert.equal(await page.isDisabled('#linkDlg .lc-unlink'), false);
 });
 
