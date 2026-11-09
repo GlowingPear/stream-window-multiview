@@ -21,6 +21,7 @@ const BAR_BUTTONS = {
   ext: ['Extensions', 'When a window has some', 'ext'],
   state: ['Copy window state', 'Developer tools', 'copy'],
   inspect: ['Inspect', 'Developer tools', 'code'],
+  quality: ['Quality', 'Stream windows: what it plays', 'quality'],
   reload: ['Reload', 'Every window', 'reload'],
   mod: ['Mod view', 'Channels you moderate', 'mod'],
   pop: ['Channel page', 'Every window: in a pop-up', 'pop'],
@@ -122,7 +123,8 @@ function renderWindowsPane(){
   // the preview: a title bar with the buttons in this order, the ones always in ⋯ left out
   const shown = keys.filter(k => !cfg.always.includes(k) && !['state', 'inspect'].includes(k));
   preview.replaceChildren(element('span', { class: 'wb-av' }, 'QU'), element('b', 'wb-nm', 'quietkoala ▾'), element('i', { class: 'pi pi-kick' }, 'K'), element('span', 'wb-gap'),
-    ...shown.map(k => element('span', { class: 'wb-b' + (k === cfg.never ? ' pinned' : ''), title: BAR_BUTTONS[k][0], dataset: { k }, html: k === 'chat' ? icon.plus : icon[BAR_BUTTONS[k][2]] || '' })),
+    ...shown.map(k => k === 'quality' ? element('span', { class: 'wb-b wb-txt' + (k === cfg.never ? ' pinned' : ''), title: BAR_BUTTONS[k][0], dataset: { k } }, '720p')   // (on the bar: what it plays)
+      : element('span', { class: 'wb-b' + (k === cfg.never ? ' pinned' : ''), title: BAR_BUTTONS[k][0], dataset: { k }, html: k === 'chat' ? icon.plus : icon[BAR_BUTTONS[k][2]] || '' })),
     element('span', { class: 'wb-b', title: 'More' }, '⋯'), element('span', { class: 'wb-b', html: icon.close }));
   if (anim){ glide(list, rows, 'y'); glide(preview, btns, 'x'); }
   movedK = null;

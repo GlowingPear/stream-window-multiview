@@ -84,6 +84,7 @@
 .wb-gap{flex:1}
 .wb-b{width:24px;height:24px;display:grid;place-items:center;color:var(--muted);border-radius:5px}
 .wb-b svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.wb-b.wb-txt{width:auto;padding:0 5px;font-size:11px;font-weight:600}   /* Quality: on the bar it says what it plays */
 .wb-b.pinned{color:var(--text);box-shadow:0 0 0 1.5px var(--accent)}
 .wb-list{border:1px solid var(--line2);border-radius:10px;overflow:hidden}
 .wb-row{display:flex;align-items:center;gap:9px;padding:2px 8px;border-top:1px solid var(--line);background:var(--bg)}

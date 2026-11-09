@@ -18,7 +18,7 @@ import { tabChannels } from './frames.js';
    Settings › Windows says which buttons are always in the ⋯ menu, and the order: out of room, the leftmost go
    first. Until you change it there, the least-used go first (BAR_ORDER). */
 const BAR_LEVELS = ['b1', 'b2'];
-const BAR_ORDER = ['chat', 'mod', 'reload', 'popchat', 'pop', 'profile', 'overlay', 'at', 'feat', 'like', 'star', 'max'];
+const BAR_ORDER = ['chat', 'mod', 'reload', 'popchat', 'pop', 'profile', 'quality', 'overlay', 'at', 'feat', 'like', 'star', 'max'];
 function fitBar(bar){
   if (!bar.isConnected || !bar.clientWidth) return;     // not on screen: fitted when it shows (it resizes then)
   const name = bar.querySelector('.col-pick') || bar.querySelector('.title'), more = bar.querySelector('[data-a=more]');
@@ -145,8 +145,8 @@ function barItem(b){
   item.className = b.classList.contains('on') ? 'on' : '';
   item.innerHTML = '<span class="bm-ico"></span><span class="bm-t"></span>';
   item.querySelector('.bm-ico').innerHTML = b.dataset.a === 'chat' ? '+' : b.querySelector('svg')?.outerHTML || b.textContent;
-  item.querySelector('.bm-t').textContent = b.dataset.a === 'chat' ? 'Add chat' : b.dataset.a === 'link' ? 'Channel settings…' : tipName(b) || b.title;
-  const n = b.querySelector('.ext-n')?.textContent;
+  item.querySelector('.bm-t').textContent = b.dataset.a === 'chat' ? 'Add chat' : b.dataset.a === 'link' ? 'Channel settings…' : b.dataset.a === 'quality' ? 'Quality' : tipName(b) || b.title;
+  const n = b.querySelector('.ext-n, .q-n')?.textContent;   // (extensions: how many; quality: what it plays)
   if (n) item.append(element('span', 'bm-n', n));
   item.title = b.title;
   item.onclick = () => { barMenu.hidden = true; if (b.isConnected) b.click(); };
