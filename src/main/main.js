@@ -231,7 +231,8 @@ appIpc.handle('samples:report', async (e, report) => {
 /* ---------- streams' own storage (partitions.js) ----------
    When each stream's storage was last used, and how big each storage was, is kept in partitions.json. At start-up,
    ones unused for a month, oversized Code Caches and the oldest streams past the total go; their files are deleted in
-   the background. Every hour the sizes are measured again and caches past their size are cleared. */
+   the background. Every hour the sizes are measured again, caches past their size are cleared, and the oldest streams
+   past the total go then too (the ones not opened since the app started; the others' caches are cleared). */
 const partitionCare = createPartitionCare({ dir: path.join(app.getPath('userData'), 'Partitions'),
   saved: (() => { try { return JSON.parse(fs.readFileSync(stateFile('partitions'), 'utf8')); } catch { return null; } })() });
 let partitionsSaveT = null;
@@ -240,6 +241,10 @@ const savePartitions = () => {
   if (partitionCare.takeChanged()) try { fs.writeFileSync(stateFile('partitions'), JSON.stringify(partitionCare.toSave())); } catch {}
 };
 const savePartitionsSoon = () => { if (!partitionsSaveT) partitionsSaveT = setTimeout(savePartitions, 60000); };
+// the storage Chromium has opened since the app started (it keeps their files open until it quits)
+const openedParts = new Set();
+app.on('session-created', ses => { try { if (ses.storagePath) openedParts.add(path.basename(ses.storagePath)); } catch {} });
+const shownParts = () => new Set(webContents.getAllWebContents().map(wc => { try { return wc.getType() === 'webview' && wc.session.storagePath ? path.basename(wc.session.storagePath) : null; } catch { return null; } }).filter(Boolean));
 // the streams still open as the app closes were in use today, however long ago they opened
 app.on('will-quit', () => {
   for (const wc of webContents.getAllWebContents()) try { if (wc.getType() === 'webview' && wc.session.storagePath) partitionCare.use('persist:' + path.basename(wc.session.storagePath)); } catch {}
@@ -249,8 +254,16 @@ app.on('will-quit', () => {
 const clearing = (what, p, job) => Promise.race([job.then(() => true), new Promise(r => setTimeout(r, 60000, false))])
   .catch(() => false).then(ok => { if (!ok) console.warn(`Couldn't clear ${p}'s ${what}`); });
 async function tidyPartitions() {
+  await partitionCare.measure();
+  const shown = shownParts();
+  const { clear } = partitionCare.trim({ opened: name => openedParts.has(name), shown: name => shown.has(name) });
+  savePartitions();
   await partitionCare.emptyTrash();
-  await partitionCare.measure(); savePartitions();
+  for (const p of clear) {
+    const ses = session.fromPartition(p);
+    await clearing('Cache', p, ses.clearCache());
+    await clearing('Code Cache', p, ses.clearCodeCaches({}));
+  }
   for (const p of partitionCare.oversized('code', CODE_CACHE_MAX)) await clearing('Code Cache', p, session.fromPartition(p).clearCodeCaches({}));
   for (const p of partitionCare.oversized('http', 2 * HTTP_CACHE_MAX)) await clearing('Cache', p, session.fromPartition(p).clearCache());
 }
