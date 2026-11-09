@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.31 (current)
+## 0.4.32 (current)
+- Fix frozen streams on Windows, and record freezes in diagnostics
+- Streams' storage stays under 3 GB while the app runs, not only at start-up
+
+## 0.4.31
 - Keep the data folder from growing: streams' storage under 3 GB, oversized compiled-script caches removed at start-up, only the last 3 update backups kept
 
 ## 0.4.30
