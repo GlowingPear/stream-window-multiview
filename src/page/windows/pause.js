@@ -72,4 +72,4 @@ function init(){
   if (DESKTOP) setInterval(autoPauseTick, 400);
 }
 
-export { applyPlay, init, isPaused, miniPaused, togglePause };
+export { applyPlay, init, isPaused, miniPaused, streamHidden, togglePause };

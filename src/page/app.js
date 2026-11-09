@@ -43,6 +43,7 @@ import { init as layoutColumns } from './layout/columns.js';
 import { init as layoutSwitcher } from './layout/switcher.js';
 import { init as layoutSwitchControl } from './layout/switch-control.js';
 import { init as windowsPause } from './windows/pause.js';
+import { init as windowsQuality } from './windows/quality.js';
 import { init as platformsYoutubeOptions } from './platforms/youtube-options.js';
 import { init as layoutFocusOnly } from './layout/focus-only.js';
 import { init as layoutColumnDrag } from './layout/column-drag.js';
@@ -151,6 +152,7 @@ import { init as panelsSettingsSync } from './panels/settings/sync.js';
   layoutSwitcher,
   layoutSwitchControl,
   windowsPause,
+  windowsQuality,
   platformsYoutubeOptions,
   layoutFocusOnly,
   layoutColumnDrag,

@@ -12,9 +12,11 @@ const SETTING_NAMES = new Set([
   'lastLayout', 'streams.lastLayout', 'cols', 'colOrder', 'linked', 'featured', 'sideCols', 'pageStep',
   'switchMode', 'monitors', 'switchRect', 'layoutLocked', 'focusOnly', 'autoFit', 'autoPause', 'presets', 'game', 'toolbar',
   'chatZoom', 'chatBlowup', 'chatBlowSize', 'stageCh', 'stageSplit', 'stageZoom', 'railCh', 'railZoom', 'lastSession', 'startMuted', 'snap',
+  // Settings › General: the streams' quality, Fits the window's range, and what streams you can't see play at (windows/quality.js)
+  'quality', 'qualityFit', 'qualityHidden',
   // channels
   'saved', 'savedTab', 'autoOpen', 'notifyAll', 'notifyOff', 'chNames', 'ytNames', 'watchSignedIn',
-  'chanOpts',              // Channel settings of a channel that isn't linked: its chat bots, its ALL tab (platforms/linked.js)
+  'chanOpts',              // Channel settings of a channel that isn't linked: its chat bots, its ALL tab, its streams' quality (platforms/linked.js)
   'accounts', 'account', 'profView',
   // Settings › Linked channels: the switch, the linked streamers, pairs answered "Not the same", the page's options,
   // the first-time tip, and tabs closed or split out for each streamer
@@ -63,7 +65,7 @@ const SYNCED = new Set([
   'chatOverlay', 'chatOverlayOff', 'chatOverlayKeep', 'chatOverlaySecs', 'chatOverlayLines', 'chatCounts',
   'shoutOn', 'shoutModOnly', 'shoutSend', 'shoutText', 'shoutChannels', 'shoutTwitch', 'shoutAgain', 'shoutRunN', 'shoutStreamers', 'shoutListFirst',
   'ytSkip', 'ytAutoLike', 'ytChatView',
-  'startMuted', 'autoPause', 'snap'
+  'startMuted', 'autoPause', 'snap', 'quality', 'qualityFit', 'qualityHidden'
 ]);
 const NOT_SYNCED = new Set([
   'v1', 'streams.v1', 'popped', 'popPartial', 'lastLayout', 'streams.lastLayout', 'cols', 'colOrder', 'linked', 'featured', 'sideCols', 'pageStep',

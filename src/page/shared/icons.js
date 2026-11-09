@@ -88,7 +88,9 @@ const icon = {
   desktop:'<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="13" rx="2"/><path d="M8 21h8M12 16v5"/></svg>',
   pencil:'<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>',
   cloud:'<svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.5-8 6 6 0 0 1 11.5 1.5A3.5 3.5 0 0 1 17.5 18z"/></svg>',
-  dropbox:'<svg viewBox="0 0 24 24"><path d="M12 3l5 3.2-5 3.2-5-3.2zM17 6.2l5 3.2-5 3.2-5-3.2zM7 6.2L2 9.4l5 3.2 5-3.2zM12 15.8l5-3.2M12 15.8l-5-3.2"/></svg>'
+  dropbox:'<svg viewBox="0 0 24 24"><path d="M12 3l5 3.2-5 3.2-5-3.2zM17 6.2l5 3.2-5 3.2-5-3.2zM7 6.2L2 9.4l5 3.2 5-3.2zM12 15.8l5-3.2M12 15.8l-5-3.2"/></svg>',
+  quality:'<svg viewBox="0 0 24 24"><path d="M5 19v-3M10 19v-6M15 19v-9M20 19V6"/></svg>',   // stream quality (windows/quality.js)
+  fit:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 10V9h1M16 10V9h-1M8 14v1h1M16 14v1h-1"/></svg>',
 };
 // Icons in the page's own markup: <i data-ico="name"></i>
 const fillIcons = root => root.querySelectorAll('i[data-ico]').forEach(i => { i.innerHTML = icon[i.dataset.ico] || ''; });

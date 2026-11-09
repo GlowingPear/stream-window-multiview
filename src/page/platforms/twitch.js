@@ -134,7 +134,7 @@ const twitch = {
   liveCommands: twLiveCommands,   // (its own page's list, read live: above)
   // A name in ALL as its chat shows it (see kick.js): their colour, or one of Twitch's own, made readable
   nameStyle: (m, { light } = {}) => ({ color: readable(/^#[0-9a-f]{6}$/i.test(m.color || '') ? m.color : twDefault(m.login || m.sender), !!light) }),
-  lowQualityJs: null,
+  quality: { siteMax: null },   // its stream's quality can be set (windows/quality.js); by itself it goes as high as the stream
   partition: 'persist:twitch',
   idFor: name => 'tw:' + name,
   handle: ch => ch.slice(3),

@@ -51,7 +51,8 @@ const SY_LABEL = { theme: 'Theme', themes: 'Your themes', keys: 'Keyboard shortc
   chatOverlaySecs: 'Chat overlay time', chatOverlayLines: 'Chat overlay lines', chatCounts: 'Chat counts',
   shoutOn: 'Shoutouts', shoutModOnly: 'Shoutouts: only as a mod', shoutSend: 'Shoutouts: sending', shoutText: 'Shoutout message', shoutChannels: 'Shoutout cards',
   shoutTwitch: "Twitch's shoutouts", shoutAgain: 'Shoutouts: asking again', shoutRunN: 'Shoutouts: run size', shoutStreamers: 'Shoutouts: streamers only', shoutListFirst: 'Shoutouts: list first',
-  ytSkip: 'YouTube: skip ads', ytAutoLike: 'YouTube: auto-like', ytChatView: 'YouTube: chat view', startMuted: 'Start muted', autoPause: 'Auto-pause', snap: 'Snap windows' };
+  ytSkip: 'YouTube: skip ads', ytAutoLike: 'YouTube: auto-like', ytChatView: 'YouTube: chat view', startMuted: 'Start muted', autoPause: 'Auto-pause', snap: 'Snap windows',
+  quality: 'Stream quality', qualityFit: 'Fits the window\'s range', qualityHidden: 'Hidden streams\' quality' };
 const syLabel = k => SY_LABEL[k] || (/^alertSound\./.test(k) ? syCap(k.slice(11)) + ' sound' : '');
 
 // "Just now", "3 min ago", "Yesterday", "2 days ago"; long: "2 minutes ago"
