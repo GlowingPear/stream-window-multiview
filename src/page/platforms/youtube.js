@@ -67,8 +67,7 @@ const youtube = {
     const role = (m.badges || []).find(b => /^(host|mod|sub)$/.test(b));
     return role === 'host' ? { color: c.owner, bg: c.ownerBg } : { color: role === 'mod' ? c.mod : role === 'sub' ? c.member : c.viewer };
   },
-  // a tab you're not watching (windows/frames.js): its lowest quality, or back to automatic
-  lowQualityJs: low => `(() => { const p = document.getElementById('movie_player'); const q = ${low ? "'tiny'" : "'auto'"}; if (p && p.setPlaybackQualityRange) p.setPlaybackQualityRange(q, q); })()`,
+  quality: { siteMax: null },   // its stream's quality can be set (windows/quality.js); by itself it goes as high as the stream
   partition: 'persist:youtube',
   idFor: name => 'yt:@' + name,
   handle: ch => ch.slice(3),

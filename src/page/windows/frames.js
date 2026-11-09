@@ -27,6 +27,7 @@ import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { winTimer } from '../shared/timers.js';
 import { isPaused } from './pause.js';
+import { applyQuality } from './quality.js';
 import { askIn, focusView, loadView, runIn } from './view.js';
 import { createWin, pushVol } from './windows.js';
 
@@ -166,7 +167,7 @@ function showTab(w, { follow = true } = {}){
   if (w.kind === 'stream'){
     w.vol = lead.vol; w.muted = lead.muted; lead.muted = true;
     pushVol(lead); pushVol(w);
-    playQuality(lead); playQuality(w);
+    applyQuality(lead); applyQuality(w);   // the one you left at its lowest, if Settings › Linked channels says (windows/quality.js)
     if (linkOpt('jumpLive') && w.ready && !isPaused(w)) runIn(w.view, `${VOL_JS};window.__kmv.play()`);   // the sites are seconds apart: catch up to live
   }
   setRect(w, { x: lead.x, y: lead.y, w: lead.w, h: lead.h });
@@ -190,11 +191,6 @@ function dropOfflineTabs(){
   gone.forEach(o => closeWin(o));
   leads.forEach(l => { if (wins.includes(l)){ syncFrameRects(l); renderFrame(l); } });
   store.changed('tabs'); save();
-}
-// Tabs you're not watching play at the site's lowest quality (Settings › Linked channels › Playing), where it has one
-function playQuality(w){
-  const js = w.kind === 'stream' && w.ready && w.view && platform(w.channel).lowQualityJs;
-  if (js) runIn(w.view, js(!!w.hiddenTab && linkOpt('quality') === 'low'));
 }
 // Open a site of the streamer as a tab of this window (hidden, or the one you watch)
 function addTab(w, ch, show){
@@ -666,6 +662,6 @@ function init(){
 }
 
 export { addTab, applyFrames, closedTabs, closeFrame, closeTab, cycleTabs, drawTab, focusBoxNow, frameFields,
-  frameNote, frameOf, init, joinTab, leaderOf, mergeOpen, openStreamer, playQuality, putTabBack, renderSiteTabs,
-  restoreFrames, setSideBySide, showTab, splitTab, stepTab, switchTo, syncFrameAlert, syncFrameRects, tabChannels,
-  tabKeyAgent, tabKeyJs, unlinkTab };
+  frameNote, frameOf, init, joinTab, leaderOf, mergeOpen, openStreamer, putTabBack, renderSiteTabs, restoreFrames,
+  setSideBySide, showTab, splitTab, stepTab, switchTo, syncFrameAlert, syncFrameRects, tabChannels, tabKeyAgent,
+  tabKeyJs, unlinkTab };

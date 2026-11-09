@@ -92,3 +92,25 @@ body.dragging .shield,body.fs-moving .shield,body.fs-dragmode .shield{display:bl
 #barMenu button.bm-act:not(.bm-dev) + .bm-dev{margin-left:7px;position:relative}
 #barMenu button.bm-act:not(.bm-dev) + .bm-dev::before{content:"";position:absolute;left:-5px;top:7px;bottom:7px;border-left:1px solid var(--line2)}
 #barMenu .bm-head:first-child{margin-top:0;padding-top:4px;border-top:0}
+/* A stream's quality button: what it plays ("720p"), as a text button among the icons; its icon is for the ⋯ menu */
+.btns button.q-b svg{display:none}
+.btns button.q-b{font-variant-numeric:tabular-nums}
+/* Its menu (windows/quality.js): three tiles as at the top of ⋯, then a row of heights to go up to. Your choice is lit;
+   the one playing has an outline. */
+#qualityMenu{width:232px;gap:0}
+#qualityMenu .qm-h{display:flex;justify-content:space-between;align-items:baseline;padding:2px 4px 6px;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+#qualityMenu .qm-h b{font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--text);font-variant-numeric:tabular-nums}
+#qualityMenu .qm-tiles{display:flex;gap:3px}
+#qualityMenu button.qm-tile{flex:1 1 0;min-width:0;align-items:center;gap:3px;padding:7px 4px 5px;color:var(--text)}
+#qualityMenu .qm-ti{display:grid;place-items:center}
+#qualityMenu .qm-ti svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#qualityMenu .qm-tile .qm-tl{font-size:10.5px;line-height:1.1;color:var(--muted);white-space:nowrap}
+#qualityMenu button.qm-tile[aria-checked=true]{background:var(--line)}
+#qualityMenu button.qm-tile[aria-checked=true] .qm-ti{color:var(--accent)}
+#qualityMenu button.qm-tile[aria-checked=true] .qm-tl,#qualityMenu button.qm-tile:hover .qm-tl{color:var(--text)}
+#qualityMenu .qm-steps{display:flex;gap:3px;margin-top:5px;padding-top:6px;border-top:1px solid var(--line)}
+#qualityMenu button.qm-step{flex:1 1 0;min-width:0;align-items:center;padding:5px 0;border-radius:6px;font-size:11px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+#qualityMenu button.qm-step:hover{color:var(--text)}
+#qualityMenu button.qm-step.now{color:var(--text);box-shadow:inset 0 0 0 1px var(--line2)}
+#qualityMenu button.qm-step.qm-no{opacity:.45}
+#qualityMenu button.qm-step[aria-checked=true]{background:var(--line);color:var(--accent)}

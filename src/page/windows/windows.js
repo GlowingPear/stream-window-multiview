@@ -34,6 +34,8 @@ import { chAvatar, swapWindows } from './channel-picker.js';
 import { closeFrame, renderSiteTabs } from './frames.js';
 import { PLAYING, pauseEvents } from './pause-state.js';
 import { isPaused } from './pause.js';
+import { isChoice } from './quality-pick.js';
+import { openQualityMenu } from './quality.js';
 import { arrangedByHand } from './raids.js';
 import { askIn, runIn, setMuted } from './view.js';
 import { mountView, reloadWin, ytCache } from './views.js';
@@ -46,6 +48,7 @@ function createWin(spec, rect){
   // a tab of a window with several sites (windows/frames.js): hidden under the one you watch, or a site taken out
   if (spec.frame){ w.frame = spec.frame; w.hiddenTab = !!spec.hiddenTab; w.sbs = !!spec.sbs && !w.hiddenTab; }
   if (spec.split) w.split = true;
+  if (w.kind === 'stream' && isChoice(spec.quality)) w.quality = spec.quality;   // its own quality (windows/quality.js)
   const hasVol = DESKTOP && w.kind === 'stream';
   const el = document.createElement('div');
   el.className = 'win ' + w.kind + (w.channel ? ' plat-' + platOf(w.channel) : '');
@@ -64,6 +67,7 @@ function createWin(spec, rect){
         ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="ext" class="ext-b" title="Extensions in this window" hidden>${icon.ext}<b class="ext-n"></b></button>` : ''}
         ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="state" class="dev-b" title="Copy what the app knows about this window, for a report"${devOn ? '' : ' hidden'}>${icon.copy}</button><button data-a="inspect" class="dev-b" title="Chrome's developer tools for this window's page"${devOn ? '' : ' hidden'}>${icon.code}</button>` : ''}
         ${w.kind === 'chat' && /^(kick|twitch)$/.test(platOf(w.channel)) ? `<button data-a="shout" title="Shout out recent chatters"${shoutOn() ? '' : ' hidden'}>${icon.megaphone}</button>` : ''}
+        ${w.kind === 'stream' && DESKTOP && platform(w.channel)?.quality ? `<button class="txt q-b" data-a="quality" title="Quality" aria-haspopup="menu" hidden>${icon.quality}<span class="q-n"></span></button>` : ''}
         <button data-a="reload" title="Reload">${icon.reload}</button>
         ${modUrl(w.channel) || (w.kind === 'chat' && allTabFor(w)) ? `<button data-a="mod" title="Open the mod view for this channel"${DESKTOP || !modUrl(w.channel) ? ' hidden' : ''}>${icon.mod}</button>` : ''}
         <button data-a="pop" title="${w.channel ? 'Open the channel page in a pop-up' : 'Open the page in a pop-up'}">${icon.pop}</button>
@@ -130,6 +134,7 @@ function createWin(spec, rect){
     }
     else if (a === 'mod') { if (allOn(w)) openModViews(w, anchor(), b); else openModView(w.channel); }
     else if (a === 'max') toggleMax(w);
+    else if (a === 'quality') openQualityMenu(w, anchor());   // (windows/quality.js)
     else if (a === 'ext') openExtMenu(w, b.classList.contains('ovf') ? el.querySelector('[data-a=more]') : b);   // from the ⋯ menu (always): open under ⋯
     else if (a === 'more') openBarMenu(b);
     else if (a === 'state') copyWinState(w);

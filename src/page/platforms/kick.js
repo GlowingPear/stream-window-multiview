@@ -67,7 +67,9 @@ const kick = {
   // theme is light, look what the site's chat page says about its colours (YouTube's: youtube.js). -> { color, bg? }
   // (bg: a name on a pill), or null: ALL picks one. Kick shows the colour each account has, as it is
   nameStyle: m => /^#[0-9a-f]{6}$/i.test(m.color || '') ? { color: m.color } : null,
-  lowQualityJs: null,     // a tab you're not watching: its lowest quality (windows/frames.js). Its embedded player has none to set from outside
+  // Its stream's quality can be set (windows/quality.js), and how high its player goes by itself: Kick's embedded
+  // player caps itself at 720p (1080p only on rewards.gg)
+  quality: { siteMax: 720 },
   partition: 'persist:kick',   // its chats' storage (and a signed-in player's)
   // A bare name typed in the Channels box, and the name on the site
   idFor: name => name,

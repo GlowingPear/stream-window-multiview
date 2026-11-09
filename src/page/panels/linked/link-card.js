@@ -11,7 +11,9 @@ import { ask } from '../../shared/ask.js';
 import { element } from '../../shared/element.js';
 import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
+import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
+import { QUALITIES, choiceName, qualityOf } from '../../windows/quality-pick.js';
 
 /* ---- Channel settings: a channel's or a linked streamer's card. Its accounts (live or not), the main one, suggestions,
    adding an account by site and name, @handle or link (linking), their own chat bots and their own choices. A channel on
@@ -112,7 +114,11 @@ function renderCard(){
         [['', 'As in Settings'], ['tabs', 'Tabs in one window'], ['separate', 'Separate windows']], one ? '' : s.streams || '', v => setStreamerOpt(s.id, 'streams', v), 'link.streams', one),
       one ? sel('Opens by itself when live ⚡', 'Going live opens it', [['off', 'No'], ['on', 'Yes']], ao ? 'on' : 'off', v => { if ((v === 'on') !== ao) toggleAutoOpen(ch); renderCard(); }, 'link.autoOpen')
         : sel('Opens by itself when live ⚡', 'Any of their channels going live opens them', [['off', 'No'], ['together', 'Together, as tabs'], ['separate', 'Separate windows']],
-          ao ? s.autoOpen || 'together' : 'off', v => setAutoOpenFor(s, v), 'link.autoOpen'));
+          ao ? s.autoOpen || 'together' : 'off', v => setAutoOpenFor(s, v), 'link.autoOpen'),
+      // their streams' quality (windows/quality.js): a window's own still wins
+      sel('Quality', 'Settings › General says: ' + choiceName(qualityOf(settings.text('quality', 'site'))) + (one ? '' : ' · on every site of theirs'),
+        [['', 'As in Settings'], ...QUALITIES.map(c => [c, choiceName(c)])], (one ? chanOpt(ch, 'quality') : s.playQuality) || '',
+        v => { if (one) setChanOpt(ch, 'quality', v || null); else setStreamerOpt(s.id, 'playQuality', v); }, 'link.quality'));
     T.chat.push(element('div', 'lc-sec', 'Their chats'),
       one ? sel('ALL tab', 'Its chat in ALL\'s list, with its badges, emotes and filters', [['off', 'Off'], ['on', 'On']], chanOpt(ch, 'allTab') === true ? 'on' : 'off', v => setSoloAll(ch, v === 'on'), 'link.allTab')
         : sel('ALL tab', 'Their chats as one list. Settings › Linked channels says: ' + (linkOpt('allTab') !== false ? 'on' : 'off'),

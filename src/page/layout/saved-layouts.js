@@ -51,7 +51,7 @@ function capturePreset(name){
     featured: colsMode && featBase.length ? featuredCh : null,
     sideCols, linked, streamCols, pageStep, autoFit: fitOn(),
     order: buildCols().map(c => c.key),
-    windows: wins.filter(w => w.kind !== 'capture').map(w => ({ kind: w.kind, channel: w.channel, url: w.url, vol: w.vol, muted: w.muted, preview: !!w.preview, x: w.x, y: w.y, w: w.w, h: w.h, ...frameFields(w) }))
+    windows: wins.filter(w => w.kind !== 'capture').map(w => ({ kind: w.kind, channel: w.channel, url: w.url, vol: w.vol, muted: w.muted, preview: !!w.preview, ...(w.quality ? { quality: w.quality } : {}), x: w.x, y: w.y, w: w.w, h: w.h, ...frameFields(w) }))
   };
 }
 // "Saved 3 days ago", "4 streams, 2 chats" (the search box's line for it)
@@ -207,7 +207,7 @@ function applyPreset(p, opt = {}){
       if (w.kind === 'stream' && !!w.preview !== !!x.preview) w.preview = !!x.preview;
       return w;
     }
-    return createWin({ kind: x.kind, channel: x.channel, url: x.url, vol: x.vol, muted: x.muted, preview: x.preview }, scaled(x));
+    return createWin({ kind: x.kind, channel: x.channel, url: x.url, vol: x.vol, muted: x.muted, preview: x.preview, quality: x.quality }, scaled(x));
   });
   coreVars.wins = [...made, ...wins.filter(w => !made.includes(w))];      // same window order as when saved
   applyFrames(made.map((w, i) => [w, want[i]]));                          // windows with several sites: their tabs

@@ -27,6 +27,7 @@ import { swapWindows } from './channel-picker.js';
 import { addTab, closeTab, closedTabs, frameOf, joinTab, leaderOf, setSideBySide, showTab, splitTab, stepTab,
   switchTo, tabChannels, unlinkTab } from './frames.js';
 import { isPaused, togglePause } from './pause.js';
+import { qualityActions } from './quality.js';
 import { pushVol, saveSoon } from './windows.js';
 
 /* ---- The search box's (Ctrl/⌘+K) open windows: "charlie · stream", "charlie · chat", "discord · window" ----
@@ -88,6 +89,7 @@ function winActions(w){
     add('volUp', 'Volume up', () => volBy(w, 0.1), { icon: 'volOn' });
     add('volDown', 'Volume down', () => volBy(w, -0.1), { icon: 'volOff' });
     add('pause', isPaused(w) ? 'Play' : 'Pause', () => { togglePause(w); flash(`${chLabel(w.channel)} ${isPaused(w) ? 'paused' : 'playing'}`); }, { icon: isPaused(w) ? 'play' : 'pause' });
+    qualityActions(w).forEach(x => add(x.a, x.title, x.run, { icon: 'quality', sub: x.sub, words: ['quality', 'resolution', 'hd'] }));   // its quality menu (windows/quality.js)
     if (DESKTOP && ROLE === 'main') add('preview', w.preview ? 'Hide its preview' : 'Show its preview', () => { w.preview = !w.preview; save(); renderSwitcher(); }, { icon: w.preview ? 'chevUp' : 'chevDown', sub: 'A small live picture in the switch control' });
   }
   if (w.kind === 'stream' || w.kind === 'capture') add('remove', 'Remove', () => removeChannel(colKey(w)), { icon: 'close', sub: w.kind === 'stream' ? 'The stream and its chat' : 'This window' });

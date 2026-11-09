@@ -29,8 +29,9 @@ import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { stopWinTimer } from '../shared/timers.js';
 import { mountCapture, openCapturePicker } from './capture.js';
-import { focusBoxNow, playQuality, tabKeyAgent, tabKeyJs } from './frames.js';
+import { focusBoxNow, tabKeyAgent, tabKeyJs } from './frames.js';
 import { applyPlay } from './pause.js';
+import { applyQuality } from './quality.js';
 import { watchRaid } from './raids.js';
 import { watchStuck } from './stuck.js';
 import { addCss, loadView, reloadView, runIn, setMuted, setZoom, viewId } from './view.js';
@@ -148,7 +149,7 @@ function mountView(w){
       else setMuted(frame, false);
       if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); watchStuck(w); }
       if (w.kind === 'chat') setZoom(frame, chatZoom());
-      if (w.kind === 'stream' && w.hiddenTab) setTimeout(() => playQuality(w), 4000);   // a tab you're not watching (windows/frames.js)
+      if (w.kind === 'stream') setTimeout(() => applyQuality(w), 1500);   // its quality, once its player is there (windows/quality.js)
       if (w.kind === 'chat' && w === blownWin()) blowUp(w, true);
       if (w.kind === 'chat') { const css = platform(w.channel).chatCss; if (css) addCss(frame, css); }
       if (w.kind === 'chat' && ROLE === 'main') injectMention(w);

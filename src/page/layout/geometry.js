@@ -44,6 +44,7 @@ function showHint(e, w){
 function init(){
   /* ---------- geometry helpers ---------- */
   SW = () => stage.clientWidth, SH = () => stage.clientHeight;
+  window.setWinRect = setRect;   // for the tests
 }
 
 export { clampPos, edges, focusWin, init, near, setRect, SH, showHint, snapE, SW };
