@@ -232,4 +232,8 @@ function saved(data) {
   };
 }
 
-module.exports = { nameIs, launchApp, stubExists, mainWindow, inView, viewLoaded, winSel, assert, openChannel, setMode, typeChannel, saved };
+// Streams watched logged out on every site ("Watch signed in" off, as saved since it's on by default): for tests of
+// the players' own storage
+const SIGNED_OUT = { 'kickMultiview.watchSignedIn': { kick: false, twitch: false, youtube: false, v: 2 } };
+
+module.exports = { SIGNED_OUT, nameIs, launchApp, stubExists, mainWindow, inView, viewLoaded, winSel, assert, openChannel, setMode, typeChannel, saved };

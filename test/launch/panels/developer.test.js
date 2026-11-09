@@ -4,7 +4,7 @@
 const test = require('node:test');
 const fs = require('fs');
 const path = require('path');
-const { launchApp, viewLoaded, assert, openChannel, inView } = require('../app');
+const { SIGNED_OUT, launchApp, viewLoaded, assert, openChannel, inView } = require('../app');
 const { tempDir } = require('../../helpers');
 
 const T = { timeout: 90000 };
@@ -12,7 +12,7 @@ const CHAT = /popout\/alpha\/chat/;
 let a, out;
 const until = async (fn, ms = 8000) => { const end = Date.now() + ms; let v; while (!(v = await fn().catch(() => null)) && Date.now() < end) await new Promise(r => setTimeout(r, 100)); return v; };
 test.before(async () => {
-  a = await launchApp();
+  a = await launchApp({ storage: SIGNED_OUT });
   out = tempDir('dev');
   await a.app.evaluate(({ Menu, clipboard, dialog }, out) => {
     const t = globalThis.__d = { menus: [], copied: null, saved: [] };

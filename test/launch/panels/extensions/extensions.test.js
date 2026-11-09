@@ -5,14 +5,14 @@
 const test = require('node:test');
 const fs = require('fs');
 const path = require('path');
-const { launchApp, inView, viewLoaded, winSel, assert, openChannel, setMode } = require('../../app');
+const { SIGNED_OUT, launchApp, inView, viewLoaded, winSel, assert, openChannel, setMode } = require('../../app');
 const { ROOT, tempDir } = require('../../../helpers');
 
 const T = { timeout: 60000 };
 const FIXTURE = path.join(ROOT, 'test', 'fixtures', 'marker-extension');
 let a;
 test.before(async () => {
-  a = await launchApp({ storage: { 'kickMultiview.alerts': { mention: { sound: 'none' }, spam: { sound: 'none' } } } });
+  a = await launchApp({ storage: { ...SIGNED_OUT, 'kickMultiview.alerts': { mention: { sound: 'none' }, spam: { sound: 'none' } } } });
   // "Load folder" picks the test extension without showing the system's folder picker
   await a.app.evaluate(({ session }) => globalThis.__fake(session.fromPartition('persist:kmv-webstore')));   // no network
   await a.app.evaluate(({ dialog }, dir) => {
