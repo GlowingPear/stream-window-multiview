@@ -169,6 +169,46 @@ test('prune: a stream or Code Cache that can\'t be moved stays and still counts'
   assert.deepEqual(left(dir), ['kmv-stream-new', 'kmv-stream-old']);
 });
 
+test('trim: while the app runs, past STREAMS_MAX, the oldest not opened this run go; opened ones get their caches cleared; shown ones stay', t => {
+  const dir = tempDir('trim', t);
+  const quarter = Math.ceil(STREAMS_MAX / 4);
+  const names = ['kmv-stream-a', 'kmv-stream-b', 'kmv-stream-c', 'kmv-stream-d', 'kmv-stream-e', 'kmv-stream-f'];
+  for (const name of ['kick', ...names]) storage(dir, name);
+  const used = Object.fromEntries(names.map((n, i) => [n, NOW - (9 - i) * DAY]));
+  const size = (all, cache = 0) => ({ all, code: cache / 2, http: cache / 2 });
+  const sizes = { kick: size(STREAMS_MAX * 2), 'kmv-stream-a': size(quarter, quarter), 'kmv-stream-b': size(quarter, quarter - 10),
+    'kmv-stream-c': size(quarter), 'kmv-stream-d': size(quarter), 'kmv-stream-e': size(quarter), 'kmv-stream-f': size(quarter) };
+  const care = createPartitionCare({ dir, now: () => NOW, saved: { used, sizes } });
+  care.takeChanged();
+  const opened = new Set(['kick', 'kmv-stream-a', 'kmv-stream-b', 'kmv-stream-c']), shown = new Set(['kick', 'kmv-stream-c']);
+  const r = care.trim({ opened: n => opened.has(n), shown: n => shown.has(n) });
+  assert.deepEqual(r, { gone: ['kmv-stream-d'], clear: ['persist:kmv-stream-a', 'persist:kmv-stream-b'] },
+    'a and b were opened: cleared; c is shown: skipped; d goes, and the rest fits');
+  assert.deepEqual(left(dir).filter(n => !n.startsWith('.removed-')), ['kick', 'kmv-stream-a', 'kmv-stream-b', 'kmv-stream-c', 'kmv-stream-e', 'kmv-stream-f']);
+  const saved = care.toSave();
+  assert.deepEqual(saved.sizes['kmv-stream-a'], { all: 0, code: 0, http: 0 }, 'its cleared caches no longer count');
+  assert.deepEqual(saved.sizes['kmv-stream-b'], { all: 10, code: 0, http: 0 });
+  assert.equal(saved.sizes['kmv-stream-d'], undefined);
+  assert.equal(saved.used['kmv-stream-d'], undefined);
+  assert.equal(care.takeChanged(), true);
+  assert.deepEqual(care.trim({ opened: n => opened.has(n), shown: n => shown.has(n) }), { gone: [], clear: [] }, 'under the total: nothing more');
+});
+
+test('trim: an opened stream with nothing cached, or one not measured yet, is passed over; one that can\'t be moved stays and still counts', t => {
+  const dir = tempDir('trimstuck', t);
+  for (const name of ['kmv-stream-empty', 'kmv-stream-new', 'kmv-stream-stuck', 'kmv-stream-last']) storage(dir, name);
+  const used = { 'kmv-stream-new': NOW - 4 * DAY, 'kmv-stream-empty': NOW - 3 * DAY, 'kmv-stream-stuck': NOW - 2 * DAY, 'kmv-stream-last': NOW - DAY };
+  const sizes = { 'kmv-stream-empty': { all: STREAMS_MAX, code: 0, http: 0 }, 'kmv-stream-stuck': { all: STREAMS_MAX, code: 0, http: 0 },
+    'kmv-stream-last': { all: 1, code: 0, http: 0 } };
+  const care = createPartitionCare({ dir, now: () => NOW, saved: { used, sizes } });
+  const rename = fs.renameSync;
+  fs.renameSync = (from, to) => { if (from.endsWith('kmv-stream-stuck')) throw Object.assign(new Error('busy'), { code: 'EBUSY' }); return rename(from, to); };
+  let r;
+  try { r = care.trim({ opened: n => n === 'kmv-stream-empty', shown: () => false }); } finally { fs.renameSync = rename; }
+  assert.deepEqual(r, { gone: ['kmv-stream-last'], clear: [] }, 'still over: the next oldest goes');
+  assert.deepEqual(left(dir).filter(n => !n.startsWith('.removed-')), ['kmv-stream-empty', 'kmv-stream-new', 'kmv-stream-stuck']);
+});
+
 test('folderSize: every file all the way down; 0 for a missing folder', async t => {
   const dir = tempDir('size', t);
   fs.mkdirSync(path.join(dir, 'a', 'b'), { recursive: true });

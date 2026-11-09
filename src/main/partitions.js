@@ -6,7 +6,8 @@
 //   settings, and comes back the next time you watch the channel): prune() at start-up, before any view opens,
 // - the compiled scripts ("Code Cache", which disk-cache-size doesn't limit) are cleared past CODE_CACHE_MAX, and a
 //   cache far past its size (from before it had one) straight away,
-// - all the streams' storage together stays under STREAMS_MAX: past it, the ones used longest ago go first.
+// - all the streams' storage together stays under STREAMS_MAX: past it, the ones used longest ago go first, at
+//   start-up and every hour while the app runs (trim()).
 // Each storage's size is measured in the background (measure()) and noted with the dates, so prune() at start-up can
 // remove what's over without reading every file first. It also removes a Code Cache that was past its size: nothing
 // has it open yet then, where clearing it while the app runs has been seen to leave it as it was.
@@ -55,6 +56,12 @@ function createPartitionCare({ dir, saved, now = () => Date.now() } = {}) {
   let changed = false;
   const trash = (from, name, t) => { fs.renameSync(from, path.join(dir, `${TRASH}${name}-${t}`)); };
   const list = () => { try { return fs.readdirSync(dir, { withFileTypes: true }).filter(e => e.isDirectory()).map(e => e.name); } catch { return []; } };
+  // what's no longer there needs no date or size
+  const forgetGone = () => {
+    const here = new Set(list());
+    for (const name of Object.keys(used)) if (!here.has(name)) { delete used[name]; changed = true; }
+    for (const name of Object.keys(sizes)) if (!here.has(name)) { delete sizes[name]; changed = true; }
+  };
   // when a storage was last used: as noted, or (for one from before the app noted it) when its cookies last changed
   const lastUsed = name => {
     if (used[name]) return used[name];
@@ -87,11 +94,30 @@ function createPartitionCare({ dir, saved, now = () => Date.now() } = {}) {
         if (total <= STREAMS_MAX) break;
         if (drop(name)) total -= sizes[name] ? sizes[name].all : 0;
       }
-      // what's no longer there needs no date or size
-      const here = new Set(list());
-      for (const name of Object.keys(used)) if (!here.has(name)) { delete used[name]; changed = true; }
-      for (const name of Object.keys(sizes)) if (!here.has(name)) { delete sizes[name]; changed = true; }
+      forgetGone();
       return gone;
+    },
+    // While the app runs (after measure()): while all the streams' storage is past STREAMS_MAX, the ones used longest
+    // ago go, as at start-up, but only one not opened this run (opened(folder)): Chromium keeps the files of one it has
+    // opened until the app quits. One opened but not on screen now (shown(folder)) has its caches cleared instead, and
+    // the rest of it goes at the next start-up. -> { gone: the folders that went, clear: the partitions to clear }
+    trim({ opened, shown }) {
+      const gone = [], clear = [], t = now();
+      const streams = list().filter(n => STREAM_DIR.test(n)).sort((a, b) => lastUsed(a) - lastUsed(b));
+      let total = streams.reduce((n, name) => n + (sizes[name] ? sizes[name].all : 0), 0);
+      for (const name of streams) {
+        if (total <= STREAMS_MAX) break;
+        const sz = sizes[name];
+        if (!sz || shown(name)) continue;
+        if (!opened(name)) {
+          try { trash(path.join(dir, name), name, t); gone.push(name); total -= sz.all; } catch {}
+        } else if (sz.code + sz.http > 0) {
+          clear.push('persist:' + name); total -= sz.code + sz.http;
+          sizes[name] = { all: Math.max(0, sz.all - sz.code - sz.http), code: 0, http: 0 }; changed = true;
+        }
+      }
+      forgetGone();
+      return { gone, clear };
     },
     // Every storage's size, noted for prune() (in the background: it reads every file)
     async measure() {
