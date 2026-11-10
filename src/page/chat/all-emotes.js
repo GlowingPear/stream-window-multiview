@@ -159,7 +159,8 @@ function withEmotes(view, text){
 }
 
 // The smiley: all the send site's emotes, under a heading for each kind (each channel you're subscribed to with its
-// picture), a search box, and beside it a list to show one kind or one channel only. Your recent ones come first
+// picture), a search box, and beside it a list to show one kind or one channel only. Your recent ones come first, then
+// (Kick) your favourites
 // (all of them, not searching): up to RECENT_ROWS rows, the newest first, the ones the channel can use now
 const RECENT_ROWS = 3;
 async function openEmotePicker(view, w){
@@ -225,6 +226,7 @@ const KIND_SVG = {
   yours: '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
   collectibles: '<svg viewBox="0 0 24 24"><path d="M7 4h10l4 5-9 11L3 9z"/><path class="ln" d="M3 9h18M9 4l3 16 3-16"/></svg>',
   recent: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+  favourites: '<svg viewBox="0 0 24 24"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/></svg>',
   hypetrain: '<svg viewBox="0 0 24 24"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3h9A2.5 2.5 0 0 1 19 5.5V16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path class="ln" d="M5 11h14M8 21l2-3M16 21l-2-3"/><circle class="hole" cx="8.5" cy="14.5" r="1.2"/><circle class="hole" cx="15.5" cy="14.5" r="1.2"/></svg>'
 };
 const ADDON_LETTER = { '7tv': '7', bttv: 'B', ffz: 'F' };

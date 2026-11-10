@@ -27,14 +27,17 @@ function subGroup(id, label, sets){
 // Kick: kick.com/emotes/<slug> -> [{ slug, user, emotes: [{ id, name, subscribers_only }] }, …the other channels you're
 // subscribed to (signed in: theirs you can use in any chat), { id: 'Global', … }, { id: 'Emoji', … }, { id: 'Collectibles', … }
 // (signed in: the ones you've collected)]
-function kickGroups(d, slug) {
+// fav: web.kick.com/api/v1/chat/emotes/favourites -> { data: { emotes: [{ id, name, type, channel_id }], limit } } (signed in:
+// the ones you starred in Kick's emote menu, up to its limit). They come first, as Kick's menu has them after Recent: the
+// ones this channel lets you use (Kick shows the others locked; sent from here, they'd be words)
+function kickGroups(d, slug, fav) {
   if (!Array.isArray(d)) return null;
   const emote = e => e && e.id != null && { name: String(e.name || ''), url: `https://files.kick.com/emotes/${encodeURIComponent(e.id)}/fullsize`, send: `[emote:${e.id}:${e.name}]`,
     ...(e.subscribers_only ? { subs: true } : {}) };
   const own = d.filter(s => s && Array.isArray(s.emotes) && String(s.slug || '').toLowerCase() === String(slug).toLowerCase());
   const yours = d.filter(s => s && Array.isArray(s.emotes) && s.slug && String(s.slug).toLowerCase() !== String(slug).toLowerCase());
   const other = id => d.filter(s => s && Array.isArray(s.emotes) && String(s.id) === id);
-  return [
+  const gs = [
     withPic(group('kick-channel', 'Channel', own.flatMap(s => s.emotes.map(emote))), own[0] && own[0].user && own[0].user.profile_pic),
     // (yours to use: not marked subs)
     subGroup('kick-yours', 'Sub emotes', yours.map(s => ({ name: String((s.user && s.user.username) || s.slug), pic: s.user && s.user.profile_pic,
@@ -43,6 +46,10 @@ function kickGroups(d, slug) {
     group('kick-global', 'Kick', other('Global').flatMap(s => s.emotes.map(emote))),
     group('kick-emoji', 'Emoji', other('Emoji').flatMap(s => s.emotes.map(emote)))
   ].filter(Boolean);
+  const favs = fav && fav.data && Array.isArray(fav.data.emotes) ? fav.data.emotes : [], byId = new Map();
+  gs.forEach(g => g.emotes.forEach(e => { const id = /^\[emote:([^:]+):/.exec(e.send)[1]; if (!byId.has(id)) byId.set(id, e); }));
+  const starred = group('kick-favourites', 'Favourites', favs.map(f => f && f.id != null && byId.get(String(f.id))));
+  return starred ? [starred, ...gs] : gs;
 }
 // Twitch: currentUser { emoteSets { id owner { login displayName profileImageURL } emotes { id token } } }: what your account can use
 // Twitch's own sets under accounts of their own, not channels: its hype trains' rewards
