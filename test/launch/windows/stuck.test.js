@@ -78,7 +78,8 @@ test('the offline screen: back to the player as soon as the channel is live agai
 
 test('a channel that keeps failing is tried again less and less often', T, async () => {
   await openChannel(a.win, 'stuckthree');
-  await times(FAST);
+  // steps far enough apart that the first wait (which can include one look's 300 ms) still shows them growing
+  await times({ ...FAST, retry: [400, 900, 1400] });
   await loaded('stuckthree');
   // every load of its player shows the error page straight away
   const loads = [];
@@ -89,12 +90,12 @@ test('a channel that keeps failing is tried again less and less often', T, async
     loads.push(Date.now() - t);
     await a.win.waitForTimeout(150);
   }
-  assert.ok(loads[2] > loads[0] + 250, `waits longer each time (${loads.join(', ')} ms)`);
+  assert.ok(loads[2] > loads[0] + 600, `waits longer each time (${loads.join(', ')} ms)`);
 });
 
 // The stand-in player's video, playing: its time (moving or not), what it has loaded, and where it was moved to
 const fakeVideo = ch => inView(a.win, ch, 'stream', () => {
-  const v = document.querySelector('video'), f = window.__f = { t: 5, end: 9, moving: true, paused: false, set: null };
+  const v = document.querySelector('video'), f = window.__f = { t: 5, end: 12, moving: true, paused: false, set: null };
   Object.defineProperty(v, 'paused', { get: () => f.paused });
   Object.defineProperty(v, 'currentTime', { get: () => f.t, set: x => { f.t = x; f.set = x; } });
   Object.defineProperty(v, 'buffered', { get: () => ({ length: 1, end: () => f.end }) });
@@ -117,7 +118,7 @@ test('a video that stopped: moved on to the newest part it has, then loaded agai
   assert.equal((await video('stallone')).set, null, 'paused in its player: left alone');
 
   await video('stallone', { paused: false });
-  assert.equal((await until(async () => { const f = await video('stallone'); return f && f.set != null && f; })).set, 8.5, 'stopped: moved on to the newest part');
+  assert.equal((await until(async () => { const f = await video('stallone'); return f && f.set != null && f; })).set, 9, 'stopped: moved on to the newest part, keeping 3 s of it');
   assert.ok(await until(async () => !(await video('stallone'))), 'still stopped there: loaded again');
   await viewLoaded(a.win, 'stallone', 'stream', PLAYER('stallone'));
   const log = (await a.win.evaluate(() => window.kmv.devInfo())).errors.filter(e => e.where === 'stallone').map(e => e.msg);
@@ -131,6 +132,47 @@ test('a video that stopped: moved on to the newest part it has, then loaded agai
   await video('stallone', { moving: true });
   await a.win.waitForTimeout(1500);
   assert.ok(await video('stallone'), 'playing again: left as it is');
+});
+
+const stallLog = async ch => (await a.win.evaluate(() => window.kmv.devInfo())).errors.filter(e => e.where === ch).map(e => e.msg);
+
+test('a video that stopped for one look only (waiting for its next part) is left alone', T, async () => {
+  await openChannel(a.win, 'stalltwo');
+  await times({ ...FAST, ok: 1000 });
+  await loaded('stalltwo');
+  await fakeVideo('stalltwo');
+  await video('stalltwo', { moving: false });
+  await a.win.waitForTimeout(1200);
+  await video('stalltwo', { moving: true });
+  await a.win.waitForTimeout(2500);
+  assert.equal((await video('stalltwo')).set, null, 'not moved on');
+  assert.deepEqual(await stallLog('stalltwo'), [], 'nothing in the error log');
+});
+
+test('a video that stops again within a minute of moving on is loaded again, not moved on again', T, async () => {
+  await openChannel(a.win, 'stallthree');
+  await times(FAST);
+  await loaded('stallthree');
+  await fakeVideo('stallthree');
+  await video('stallthree', { moving: false });
+  await until(async () => (await video('stallthree')).set != null);
+  await video('stallthree', { moving: true });
+  await a.win.waitForTimeout(1000);
+  await video('stallthree', { moving: false, end: 30 });
+  assert.ok(await until(async () => !(await video('stallthree'))), 'stopped again: loaded again');
+  await viewLoaded(a.win, 'stallthree', 'stream', PLAYER('stallthree'));
+  assert.deepEqual(await stallLog('stallthree'), ['its video stayed stopped: loaded it again', 'its video stopped: moved it on to the newest part']);
+});
+
+test('a video stopped close to the newest part it has is started again where it is, then loaded again', T, async () => {
+  await openChannel(a.win, 'stallfour');
+  await times(FAST);
+  await loaded('stallfour');
+  await fakeVideo('stallfour');
+  await video('stallfour', { moving: false, end: 8 });
+  assert.ok(await until(async () => !(await video('stallfour'))), 'loaded again');
+  await viewLoaded(a.win, 'stallfour', 'stream', PLAYER('stallfour'));
+  assert.deepEqual(await stallLog('stallfour'), ['its video stayed stopped: loaded it again', 'its video stopped: started it again']);
 });
 
 test('streams keep drawing while the window is behind others (Windows\' check for covered windows is off, the views aren\'t slowed down)', T, async () => {
