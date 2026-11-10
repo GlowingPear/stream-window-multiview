@@ -78,7 +78,8 @@ test('the offline screen: back to the player as soon as the channel is live agai
 
 test('a channel that keeps failing is tried again less and less often', T, async () => {
   await openChannel(a.win, 'stuckthree');
-  await times(FAST);
+  // steps far enough apart that the first wait (which can include one look's 300 ms) still shows them growing
+  await times({ ...FAST, retry: [400, 900, 1400] });
   await loaded('stuckthree');
   // every load of its player shows the error page straight away
   const loads = [];
@@ -89,7 +90,7 @@ test('a channel that keeps failing is tried again less and less often', T, async
     loads.push(Date.now() - t);
     await a.win.waitForTimeout(150);
   }
-  assert.ok(loads[2] > loads[0] + 250, `waits longer each time (${loads.join(', ')} ms)`);
+  assert.ok(loads[2] > loads[0] + 600, `waits longer each time (${loads.join(', ')} ms)`);
 });
 
 // The stand-in player's video, playing: its time (moving or not), what it has loaded, and where it was moved to
