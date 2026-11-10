@@ -5,7 +5,7 @@
 const test = require('node:test');
 const fs = require('fs');
 const path = require('path');
-const { launchApp, assert, openChannel, winSel } = require('../app');
+const { SIGNED_OUT, launchApp, assert, openChannel, winSel } = require('../app');
 const { tempDir } = require('../../helpers');
 
 const T = { timeout: 90000 };
@@ -24,7 +24,7 @@ test('a stream\'s storage unused for a month goes at start-up; what\'s open as t
   storage(parts, 'kmv-stream-old', 40);
   storage(parts, 'kmv-stream-recent', 3);
   storage(parts, 'kick', 400);
-  const a = await launchApp({ data, hidden: true });
+  const a = await launchApp({ data, hidden: true, storage: SIGNED_OUT });
   try {
     const left = fs.readdirSync(parts);
     assert.ok(!left.includes('kmv-stream-old'), 'the unused one was removed');
@@ -49,7 +49,7 @@ test('at start-up, a Code Cache noted past its size goes, and the oldest streams
   fs.writeFileSync(path.join(home, 'partitions.json'), JSON.stringify({
     used: { 'kmv-stream-older': Date.now() - 2 * DAY, 'kmv-stream-newer': Date.now() - DAY },
     sizes: { kick: size(GB, GB / 2), 'kmv-stream-older': size(2 * GB), 'kmv-stream-newer': size(2 * GB) } }));
-  const a = await launchApp({ data, hidden: true });
+  const a = await launchApp({ data, hidden: true, storage: SIGNED_OUT });
   try {
     const left = fs.readdirSync(parts).filter(n => !n.startsWith('.removed-'));
     assert.ok(!left.includes('kmv-stream-older'), 'the stream used longest ago went');
@@ -69,7 +69,7 @@ test('while the app runs, the oldest streams past the total go, not one on scree
   fs.mkdirSync(home, { recursive: true });
   fs.writeFileSync(path.join(home, 'partitions.json'), JSON.stringify({
     used: { 'kmv-stream-big': Date.now() - 2 * DAY, 'kmv-stream-small': Date.now() - DAY } }));
-  const a = await launchApp({ data, hidden: true });
+  const a = await launchApp({ data, hidden: true, storage: SIGNED_OUT });
   try {
     assert.ok(fs.existsSync(path.join(parts, 'kmv-stream-big')), 'no sizes noted yet: it stays at start-up');
     await openChannel(a.win, 'alpha', 'stream');

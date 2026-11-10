@@ -1,12 +1,12 @@
 // The like button on YouTube streams, and Settings > YouTube > Like streams automatically. The watch page is a
 // stand-in (see app.js) with a hidden like button, so nothing is ever liked for real.
 const test = require('node:test');
-const { launchApp, inView, viewLoaded, winSel, assert, openChannel, setMode } = require('../app');
+const { SIGNED_OUT, launchApp, inView, viewLoaded, winSel, assert, openChannel, setMode } = require('../app');
 
 const T = { timeout: 60000 };
 const VID = 'abcdefghijk';
 let a;
-test.before(async () => { a = await launchApp({ storage: { 'kickMultiview.alerts': { mention: { sound: 'none' }, spam: { sound: 'none' } } } }); });
+test.before(async () => { a = await launchApp({ storage: { ...SIGNED_OUT, 'kickMultiview.alerts': { mention: { sound: 'none' }, spam: { sound: 'none' } } } }); });
 test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
 
 const add = async (...links) => { for (const l of links) await openChannel(a.win, l); };

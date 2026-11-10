@@ -80,22 +80,22 @@ test('the desktop app starts, adds a stream and quits cleanly', async () => {
     await win.waitForSelector('#stage .win.stream webview');
     assert.equal(await win.$$eval('#stage .win', e => e.length), 2);
 
-    // "Watch signed in": off, the stream has its own logged-out storage; on, it uses the Kick login
+    // "Watch signed in": on by default, the stream uses the Kick login; off, it has its own logged-out storage
     const partitions = () => win.$$eval('#stage .win webview', e => e.map(v => v.closest('.win').classList[1] + ' ' + v.getAttribute('partition')));
-    assert.deepEqual(await partitions(), ['stream persist:kmv-stream-alpha', 'chat persist:kick']);
+    assert.deepEqual(await partitions(), ['stream persist:kick', 'chat persist:kick']);
     await win.click('#loginBtn');
     await win.click('#accountMenu .am-more');      // Account settings…
-    await win.check('#settingsDlg .am-watch input[data-w=kick]');
-    assert.deepEqual(await partitions(), ['stream persist:kick', 'chat persist:kick'], 'the Kick stream now uses the Kick login');
+    await win.uncheck('#settingsDlg .am-watch input[data-w=kick]');
+    assert.deepEqual(await partitions(), ['stream persist:kmv-stream-alpha', 'chat persist:kick'], 'the Kick stream now has its own storage');
     assert.equal(await win.$$eval('#stage .win.stream webview', e => e.length), 1, 'the old player was replaced, not added to');
     await win.uncheck('#settingsDlg .am-watch input[data-w=twitch]');
     await win.reload();
     await win.waitForSelector('#stage .win.stream webview');
-    assert.deepEqual(await partitions(), ['stream persist:kick', 'chat persist:kick'], 'the choice is remembered');
+    assert.deepEqual(await partitions(), ['stream persist:kmv-stream-alpha', 'chat persist:kick'], 'the choice is remembered');
     await win.evaluate(() => window.openSettings('accounts'));
-    assert.equal(await win.isChecked('#settingsDlg .am-watch input[data-w=kick]'), true);
-    await win.uncheck('#settingsDlg .am-watch input[data-w=kick]');
-    assert.deepEqual(await partitions(), ['stream persist:kmv-stream-alpha', 'chat persist:kick'], 'and turning it off goes back');
+    assert.equal(await win.isChecked('#settingsDlg .am-watch input[data-w=kick]'), false);
+    await win.check('#settingsDlg .am-watch input[data-w=kick]');
+    assert.deepEqual(await partitions(), ['stream persist:kick', 'chat persist:kick'], 'and turning it on goes back');
 
     await win.waitForTimeout(1500);
     assert.deepEqual(pageErrors, [], 'the page had no errors');

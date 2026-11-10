@@ -2,11 +2,11 @@
 // auto-pause for streams you can't see, "pause all except focus", small previews, chat text size, and
 // YouTube channels waiting until they're live. The players and chats are stand-in pages (see app.js).
 const test = require('node:test');
-const { launchApp, inView, viewLoaded, winSel, assert, openChannel, setMode } = require('../app');
+const { SIGNED_OUT, launchApp, inView, viewLoaded, winSel, assert, openChannel, setMode } = require('../app');
 
 const T = { timeout: 60000 };
 let a;
-test.before(async () => { a = await launchApp({ storage: { 'kickMultiview.alerts': { mention: { sound: 'none' }, spam: { sound: 'none' } } } }); });
+test.before(async () => { a = await launchApp({ storage: { ...SIGNED_OUT, 'kickMultiview.alerts': { mention: { sound: 'none' }, spam: { sound: 'none' } } } }); });
 test.after(async () => { if (a) { assert.deepEqual(a.errors, [], 'the page had no errors'); await a.close(); } });
 
 const add = async (...links) => { for (const l of links) await openChannel(a.win, l); };

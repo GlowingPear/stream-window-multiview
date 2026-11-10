@@ -81,7 +81,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - Saved logins are **encrypted** with a key tied to your user account (kept by Windows, or by the Keychain on a Mac)
 - Optional "Forget my login when I close the app" for each platform
 - Each stream player gets its own storage, so volumes and settings don't leak between streams
-- Optional "Watch signed in" for each platform: streams play with your login so you watch as your account (uses more memory)
+- "Watch signed in" for each platform (on unless switched off): streams play with your login so you watch as your account (uses more memory)
 - Connected apps talk only on this computer, through a private socket that web pages and other computers can't reach. The two apps pair once, with a key kept encrypted like the logins, and never share your login: only whether the Kick players are signed in, your Kick username and the Kick channels open
 
 ---

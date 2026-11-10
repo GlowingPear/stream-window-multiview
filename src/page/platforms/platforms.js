@@ -126,9 +126,11 @@ function popUp(w, what){
 }
 const chatPartition = ch => (platform(ch) || DEFAULT_SITE).partition;
 // "Watch signed in" (account menu, per site): that site's stream players use your login too,
-// so you watch as your account. Off: each stream player gets its own logged-out storage.
+// so you watch as your account. Off: each stream player gets its own logged-out storage. On unless switched off.
 // Kick's players sign out while a linked Pear Drops is farming (Settings › Connected apps, pear-drops.js).
-var watchSignedIn = { kick: false, twitch: false, youtube: false };
+var watchSignedIn = { kick: true, twitch: true, youtube: true };
+// Saved with v: 2 since it's on by default. A value from before that is switched on once for every site (init())
+const WATCH_V = 2;
 const streamSignedIn = p => effectiveSignedIn(p, { auto: kickAuto(), out: kickOut, watch: watchSignedIn });
 const streamPartition = ch => streamSignedIn(platOf(ch)) ? chatPartition(ch) : 'persist:kmv-stream-' + String(ch).replace(/[^a-z0-9_-]/gi, '_');
 const mountedSignedIn = {};             // whether each site's open players were made signed in
@@ -158,7 +160,7 @@ function syncStreams(p){
 function setWatchSignedIn(p, on){
   if (!(p in watchSignedIn) || watchSignedIn[p] === !!on) return;
   watchSignedIn[p] = !!on;
-  settings.set('watchSignedIn', watchSignedIn);
+  settings.set('watchSignedIn', { ...watchSignedIn, v: WATCH_V });
   syncStreams(p);
   reportPlayers();
 }
@@ -173,11 +175,21 @@ function init(){
     changed.forEach(ch => { chNames[ch] = got[ch]; });
     if (changed.length) namesChanged(changed);
   });
-  { const ws = settings.json('watchSignedIn', {}); for (const p in watchSignedIn) watchSignedIn[p] = ws[p] === true; }
+  window.watchSignedIn = watchSignedIn;   // for the tests
+  { const ws = settings.json('watchSignedIn', {}) || {};
+    if (ws.v === WATCH_V) for (const p in watchSignedIn) watchSignedIn[p] = ws[p] !== false;
+    else {
+      // From before it was on by default: on for every site. While Pear Drops' Auto sets Kick, your own Kick
+      // choice waits in link.kickBefore (pear-drops.js): it's switched on too, so Auto still signs Kick players
+      // out while it farms, and turning Auto off gives you signed-in Kick players.
+      settings.set('watchSignedIn', { ...watchSignedIn, v: WATCH_V });
+      if (settings.json('link.kickBefore', null) === false) settings.set('link.kickBefore', 'true');
+    }
+  }
   for (const p in watchSignedIn) mountedSignedIn[p] = streamSignedIn(p);
   settings.onChange('watchSignedIn', (_, v) => {          // changed in the other window
     let ws = {}; try { ws = JSON.parse(v || '{}') || {}; } catch {}
-    for (const p in watchSignedIn) if (watchSignedIn[p] !== (ws[p] === true)){ watchSignedIn[p] = ws[p] === true; syncStreams(p); }
+    for (const p in watchSignedIn) if (watchSignedIn[p] !== (ws[p] !== false)){ watchSignedIn[p] = ws[p] !== false; syncStreams(p); }
     reportPlayers();
   });
 }

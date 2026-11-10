@@ -179,7 +179,7 @@ test('Connected apps: the wait in the Activity log says its minutes, and only th
 });
 
 test('Connected apps: Auto keeps your own Kick choice and gives it back; Disconnect switches the link off', async t => {
-  const page = await openCard(t, { storage: { 'link.peardrops': '0', watchSignedIn: JSON.stringify({ kick: false, twitch: true }) } });
+  const page = await openCard(t, { storage: { 'link.peardrops': '0', watchSignedIn: JSON.stringify({ kick: false, twitch: true, youtube: false, v: 2 }) } });
   await showTab(page);
   const ls = k => page.evaluate(k => localStorage.getItem('kickMultiview.' + k), k);
   await page.click('#caConnect');                                      // Connect on, Auto on (by default): Auto takes over
@@ -188,7 +188,7 @@ test('Connected apps: Auto keeps your own Kick choice and gives it back; Disconn
   await page.evaluate(() => localStorage.setItem('kickMultiview.link.kickBefore', 'true'));
   await page.click('#caKickAuto');                                     // Auto off: your choice back
   assert.equal(await ls('link.kickBefore'), null);
-  assert.deepEqual(JSON.parse(await ls('watchSignedIn')), { kick: true, twitch: true, youtube: false });
+  assert.deepEqual(JSON.parse(await ls('watchSignedIn')), { kick: true, twitch: true, youtube: false, v: 2 });
   await page.click('#caKickAuto');                                     // on again
   assert.equal(await ls('link.kickBefore'), 'true');
   await push(page, { on: true, peer: peer(), farming: null, open: true });
