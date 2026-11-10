@@ -1340,16 +1340,19 @@ const profQueue = createProfileQueue({
 setInterval(() => profQueue.addStale(), 6 * 3600e3).unref?.();
 
 // One request to Kick's API from the kick.com page (with your login when you're logged in).
+// (web.kick.com, Kick's newer API: it refuses X-XSRF-TOKEN, and its own site says it's the web app)
 async function kickApi(u, method = 'GET') {
   await ensureLiveWin();
   if (!liveWin || liveWin.isDestroyed()) return null;
+  const web = /^https:\/\/web\.kick\.com\//.test(u);
   return liveWin.webContents.executeJavaScript(`(async () => {
     const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
-    const t = ck('session_token'), x = ck('XSRF-TOKEN'), method = ${JSON.stringify(method)};
+    const t = ck('session_token'), x = ck('XSRF-TOKEN'), method = ${JSON.stringify(method)}, web = ${web};
     if (method !== 'GET' && !t) return { login: true };
     const h = { Accept: 'application/json' };
     if (t) h.Authorization = 'Bearer ' + t;
-    if (x) h['X-XSRF-TOKEN'] = x;
+    if (x && !web) h['X-XSRF-TOKEN'] = x;
+    if (web) h['x-app-platform'] = 'web';
     try {
       const r = await fetch(${JSON.stringify(u)}, { method, credentials: 'include', headers: h });
       let d = null; try { d = r.status === 204 ? null : await r.json(); } catch {}
@@ -1558,7 +1561,7 @@ appIpc.handle('emotes:open', async (_e, ch) => {
   return { fresh: st.fresh(ch), added };
 });
 // The emotes to pick from in ALL (emote-picker.js): [{ id, label, emotes: [{ name, url, send }] }], kept 10 minutes per
-// channel. Kick's channel and site emotes; on Twitch the ones your account can use (signed in); the add-ons' for both.
+// channel. Kick's channel and site emotes and your favourites; on Twitch the ones your account can use (signed in); the add-ons' for both.
 const pickAsked = new Map();
 appIpc.handle('emotes:pick', async (_e, ch, fresh) => {   // (fresh: asked again, not from the last 10 minutes: ALL reloaded)
   if (!okCh(ch)) return null;
@@ -1575,9 +1578,11 @@ appIpc.handle('emotes:pick', async (_e, ch, fresh) => {   // (fresh: asked again
     groups = twitchGroups(r && r.d, ch.slice(3)) || [];
     id = r && r.d && r.d.data && r.d.data.user && r.d.data.user.id;
   } else {
-    const r = await kickApi(`/emotes/${encodeURIComponent(ch)}`).catch(() => null);
+    // (your favourites: signed in, the ones you starred in Kick's emote menu)
+    const [r, fav] = await Promise.all([kickApi(`/emotes/${encodeURIComponent(ch)}`).catch(() => null),
+      kickApi('https://web.kick.com/api/v1/chat/emotes/favourites').catch(() => null)]);
     if (r && r.status === 200) {
-      groups = kickGroups(r.d, ch) || [];
+      groups = kickGroups(r.d, ch, fav && fav.status === 200 ? fav.d : null) || [];
       const own = Array.isArray(r.d) && r.d.find(s => s && String(s.slug || '').toLowerCase() === ch);
       id = own && own.user_id;
     }

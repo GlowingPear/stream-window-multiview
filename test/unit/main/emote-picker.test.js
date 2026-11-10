@@ -28,6 +28,22 @@ test('Kick: the emotes of the other channels you\'re subscribed to (signed in), 
   assert.deepEqual(kickGroups([{ slug: 'x', emotes: [] }, { slug: 'zed', emotes: [{ id: 1, name: 'zA' }] }, { slug: 'Amy', emotes: [{ id: 2, name: 'aA' }] }, { slug: 'bob', emotes: [{ id: 3, name: 'bA' }] }], 'x')[0].channels.map(c => c.name), ['Amy', 'bob', 'zed'], 'A to Z, whatever the case');
 });
 
+test('Kick: your favourites first (signed in), as Kick\'s menu has them after Recent: the ones this channel lets you use, in your order', () => {
+  const d = [
+    { slug: 'alpha', emotes: [{ id: 1, name: 'pearHype', subscribers_only: true }, { id: 2, name: 'pearWave' }] },
+    { slug: 'beta', user: { username: 'Beta' }, emotes: [{ id: 3, name: 'betaWave', subscribers_only: true }] },
+    { id: 'Global', emotes: [{ id: 9, name: 'KEKW' }] }
+  ];
+  const fav = { data: { limit: 30, emotes: [{ id: 9, name: 'KEKW', type: 'global' }, { id: 3, name: 'betaWave', type: 'subscriber', channel_id: 5 },
+    { id: 77, name: 'notHere', type: 'subscriber' }, { id: 2, name: 'pearWave', type: 'subscriber' }, null, { name: 'noId' }] } };
+  const g = kickGroups(d, 'alpha', fav);
+  assert.deepEqual(g.map(x => [x.id, x.label]), [['kick-favourites', 'Favourites'], ['kick-channel', 'Channel'], ['kick-yours', 'Sub emotes'], ['kick-global', 'Kick']]);
+  assert.deepEqual(g[0].emotes.map(e => e.name), ['KEKW', 'betaWave', 'pearWave'], 'one this channel doesn\'t let you use (locked on Kick) left out');
+  assert.deepEqual(g[0].emotes[1], { name: 'betaWave', url: 'https://files.kick.com/emotes/3/fullsize', send: '[emote:3:betaWave]', from: 'Beta' }, 'as in its own group');
+  for (const none of [null, { message: 'Unauthenticated' }, { data: { emotes: [] } }, { data: { emotes: [{ id: 77, name: 'notHere' }] } }])
+    assert.equal(kickGroups(d, 'alpha', none)[0].id, 'kick-channel', 'none (signed out, or none it can use): no Favourites');
+});
+
 test('Twitch: the channel\'s, your other sets, and Twitch\'s own', () => {
   const g = twitchGroups({ data: { currentUser: { emoteSets: [
     { id: 's1', owner: { login: 'alpha' }, emotes: [{ id: 'e1', token: 'alphaHi' }] },

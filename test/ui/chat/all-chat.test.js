@@ -2727,6 +2727,28 @@ test('the emote picker starts with your recent emotes: the newest first, ones th
   assert.equal(await page.$eval('.all-in', b => b.value), 'e1 ');
 });
 
+test('the emote picker: your Kick favourites after Recent, before the channel\'s, with their own heart', async t => {
+  const page = await allApp(t, { allOpen: '["s1"]', allRecentEmotes: JSON.stringify({ kick: ['KEKW'] }) });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => {
+    window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live);
+    const img = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', e = (name, id) => ({ name, url: img, send: `[emote:${id}:${name}]` });
+    window.kmv = { ...(window.kmv || {}), emotesPick: async ch => ch === 'quietkoala' ? [{ id: 'kick-favourites', label: 'Favourites', emotes: [e('koalaWave', 2), e('KEKW', 9)] },
+      { id: 'kick-channel', label: 'Channel', emotes: [e('koalaHype', 1), e('koalaWave', 2)] }, { id: 'kick-global', label: 'Kick', emotes: [e('KEKW', 9)] }] : [] };
+  }, LIVE);
+  await page.click('.all-emo-b');
+  await page.waitForSelector('.all-ep .all-ep-e');
+  const heads = () => page.$$eval('.all-ep-sec', l => l.map(s => { const i = s.querySelector('.all-ep-ic'); return (i ? `[${[...i.classList].pop()}] ` : '') + [...s.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(''); }));
+  assert.deepEqual(await heads(), ['[recent] Recent', '[favourites] Favourites', 'Channel', 'Kick']);
+  assert.deepEqual(await page.$$eval('.all-ep-grid > .all-ep-e', l => l.map(b => b.title)), ['KEKW', 'koalaWave', 'KEKW', 'koalaHype', 'koalaWave', 'KEKW']);
+  assert.notEqual(await page.$eval('.all-ep-ic.favourites', i => getComputedStyle(i).color), await page.$eval('.all-ep-ic.recent', i => getComputedStyle(i).color), 'its own colour');
+  assert.deepEqual(await page.$$eval('.all-ep-f option', l => l.map(o => o.textContent)), ['All emotes', 'Favourites', 'Channel', 'Kick'], 'one kind to show');
+  await page.selectOption('.all-ep-f', 'kick-favourites');
+  assert.deepEqual(await heads(), ['[favourites] Favourites']);
+  await page.click('.all-ep-e >> nth=0');
+  assert.equal(await page.$eval('.all-in', b => b.value), 'koalaWave ', 'picked like any other');
+});
+
 test('reloading ALL asks again for its chats\' emotes, not from the last 10 minutes: one the streamer just added shows', async t => {
   const page = await allApp(t, { allOpen: '["s1"]' });
   await page.waitForSelector('.all-view');
