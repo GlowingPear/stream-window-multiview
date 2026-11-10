@@ -19,6 +19,7 @@ import { askIn, runIn } from '../windows/view.js';
 
 /* ---------- spam alerts: chats you moderate ---------- */
 const spamRecent = [], spamFirst = new Map();   // messages from the last few minutes (every chat), when each sender first spoke
+const modsSeen = new Set();   // channel \n name: sent by the site's connection with a moderator badge lately (its page's lines have none)
 const FIRST_MAX = 20000;   // senders remembered: busy chats bring thousands an hour, so the ones seen first go
 function firstSpoke(k, t){
   if (spamFirst.has(k)) return;
@@ -65,7 +66,8 @@ function noteChecked(ch, sender, body, now, flag){
   checked.set(k, [...(checked.get(k) || []), { b, t: now, flag }].slice(-20));
   if (checked.size > FIRST_MAX) checked.delete(checked.keys().next().value);
 }
-// l: { sender, body, t, line (its line in the chat's page) | null, id?, host? (ALL's badge says it's the broadcaster) }.
+// l: { sender, body, t, line (its line in the chat's page) | null, id?, host?, modBadge? (the site's badge says it's the
+// broadcaster, or a moderator) }.
 // seenAt: when you last clicked or typed in that chat; messages from before then don't need a lasting alert.
 // A line from ALL has no line in the chat's page (line: null) to tag yet.
 async function spamCheck(w, lines, seenAt){
@@ -78,10 +80,14 @@ async function spamCheck(w, lines, seenAt){
     // the channel's own broadcaster (their badge in ALL, or their name): never marked, and noted as checked so the
     // same message from the other side isn't checked either
     if (l.host || platform(w.channel).isHost(w.channel, l.sender)){ noteChecked(w.channel, l.sender, l.body, now, null); return; }
+    // a moderator (their badge from the site's connection, or on the page a name it last sent with one): checked only with
+    // Also check moderators on, as they post links on purpose
+    const k = w.channel + '\n' + String(l.sender).toLowerCase();
+    if (l.line == null){ modsSeen.delete(k); if (l.modBadge){ modsSeen.add(k); if (modsSeen.size > FIRST_MAX) modsSeen.delete(modsSeen.values().next().value); } }
+    if (!alerts.spam.mods && modsSeen.has(k)){ noteChecked(w.channel, l.sender, l.body, now, null); return; }
     const before = checkedBefore(w.channel, l.sender, l.body, now);
     if (before){ if (before.flag && l.line && alerts.spam.tag) markLine(w, l.line, before.flag); return; }   // (heard by ALL first: its tag in the chat too)
     const msg = { sender: l.sender, body: l.body, chat: w.channel, t: l.t || now };
-    const k = w.channel + '\n' + String(l.sender).toLowerCase();
     firstSpoke(k, msg.t);
     let flag = null;
     if (mod){
@@ -110,9 +116,9 @@ const markLine = (w, line, flag, id = '') => runIn(w.view, `window.__kmvMention 
 // A message the chat's connection to the site brought (chat/chat-feed.js: ALL's, or one read for the alerts alone):
 // checked as it comes, as the chat's page may not draw it until it's in view (Kick's doesn't while ALL is in front of
 // it, or while it's scrolled up). The page's line for it, when it's drawn, isn't checked again.
-function spamFromFeed(w, sender, body, t, id = '', host = false){
+function spamFromFeed(w, sender, body, t, id = '', host = false, mod = false){
   if (!alerts.spam.on || !w || !String(body || '').trim()) return;
-  spamCheck(w, [{ sender, body, t, line: null, id, host }]);
+  spamCheck(w, [{ sender, body, t, line: null, id, host, modBadge: mod }]);
 }
 // Bring a chat into view (and flash it).
 function revealChat(ch){

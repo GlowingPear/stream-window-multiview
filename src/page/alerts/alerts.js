@@ -16,7 +16,8 @@ const ALERT_DEFAULTS = {
           botsOffered: null, wordsOffered: null, openersOffered: null,   // the built-in ones already added to yours
           botsMode: 'shared',  // the app's chat bot list ('shared'), their own (ignore: 'own') or both ('both')
           abuse: true, abuseWords: null, slurs: null, swears: null, sexual: null,   // insults, slurs and threats, swearing over and over, sexual remarks
-          points: null },      // each sign's points ({ hidden: 3, ... }; null: the built-in ones)
+          points: null,        // each sign's points ({ hidden: 3, ... }; null: the built-in ones)
+          mods: false },       // the channel's moderators' messages checked too
   // Settings > Support: someone sent KICKs, bits or a Super Chat, gifted subs, subscribed, or raided. The
   // smallest that alerts: KICKs, bits, gifted subs, a Super Chat's money (any currency), a raid's viewers; subs: new
   // subs, resubs and members too.
