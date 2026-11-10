@@ -686,9 +686,10 @@ function badgeEls(m){
     if (!pic && m.site === 'twitch'){ const b = own[p.set + '/' + p.v] || (twBadges && twBadges[p.set + '/' + p.v]); if (b) pic = { url: b.url, title: twitchTip(p, b.title) }; }   // (the channel's sub and bits badges first)
     const ytIcon = m.site === 'youtube' && !p.url && ytLook && ytLook.icons[p.set];   // (as its chat draws it: a moderator's shield)
     if (ytIcon) return out.push(element('i', { class: 'al-bk al-by', style: ytIcon.color ? { color: ytIcon.color } : {}, title: p.title || BADGE_TIP[feedParse.BADGES[p.set]] || '', html: ytIcon.svg }));
-    const kickIcon = m.site === 'kick' && !(p.url && !p.icon) && kickIcons.get(kickIconKey(p));
-    if (kickIcon) return out.push(element('i', { class: 'al-bk', title: p.title || BADGE_TIP[feedParse.BADGES[String(p.set).toLowerCase()]] || '', html: kickIcon }));
+    // the channel's own sub badges first: Kick's plain sub icon (kept from a chat whose channel has none) is for those only
     if (!pic && kick && p.set === 'subscriber'){ const b = kick.subs.filter(x => x.months <= +p.v).pop() || kick.subs[0]; if (b) pic = { url: b.url, title: `${p.v}-Month Subscriber` }; }
+    const kickIcon = m.site === 'kick' && !(p.set === 'subscriber' && pic) && !(p.url && !p.icon) && kickIcons.get(kickIconKey(p));
+    if (kickIcon) return out.push(element('i', { class: 'al-bk', title: p.title || BADGE_TIP[feedParse.BADGES[String(p.set).toLowerCase()]] || '', html: kickIcon }));
     if (pic) return out.push(element('img', { class: 'al-bi', src: pic.url, alt: '', title: pic.title || '', referrerPolicy: 'no-referrer', loading: 'lazy' }));
     const k = OWN_ICON[p.set] || feedParse.BADGES[p.set.toLowerCase()];
     if (k && !icons.has(k)){ icons.add(k); const i = badgeIcon(k); if (p.title) i.title = p.title; out.push(i); }

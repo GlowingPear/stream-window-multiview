@@ -323,6 +323,12 @@ test('ALL: the sites\' own badges (a channel\'s sub badge for their months, Kick
     return window.allChat.kickIcons.get('og');
   });
   assert.equal(og, '<svg viewBox="0 0 20 20"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#OGBadge__a" fill="url(#OGBadge__b)"/><defs><linearGradient id="OGBadge__b"><stop stop-color="#00fff2"/></linearGradient><path id="OGBadge__a" d="M1 1h4v4H1z"/></defs></svg>');
+  // Kick's plain sub icon (from a chat whose channel has no sub badges of its own) never takes a channel's own picture's place
+  const lowtideSub = () => page.$$eval('.all-list [data-key="kick:k1"] .al-who > :not(.pi)', l => { const b = l[l.length - 1]; return b.tagName === 'IMG' ? 'img ' + b.getAttribute('src').replace(/^data:[^#]*/, '') : b.className + ' ' + b.title; });
+  await page.evaluate(() => window.allChat.gotKickIcons({ subscriber: '<svg data-ds-icon="SubscriberBadge" viewBox="0 0 20 20"><path d="M3 3h14v14H3z" fill="#53fc18"/></svg>' }));
+  assert.equal(await lowtideSub(), 'img #s3', 'the channel\'s own sub badge');
+  await page.evaluate(() => window.allChat.gotBadges('quietkoala', { kick: { subs: [] } }));
+  assert.equal(await lowtideSub(), 'al-bk Subscriber', 'a channel without sub badges: Kick\'s plain one, as its chat draws it');
   // Twitch's own kept once: a second Twitch chat's answer without them still finds them
   await page.evaluate(() => window.allChat.gotBadges('tw:quietkoala', { twitch: { own: {} } }));
   assert.deepEqual((await badges())[0], ['icon sub', 'img #mod Moderator']);
