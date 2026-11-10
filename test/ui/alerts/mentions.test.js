@@ -258,10 +258,11 @@ test('Settings › Mentions opens on Alerts, its first tab, as Notifications and
   await page.evaluate(() => { ['mentions', 'spam'].forEach(s => { document.querySelector(`.st-rail [data-s=${s}]`).hidden = false; }); openSettings('mentions'); });   // (the desktop app's pages)
   const tabs = () => page.$$eval('#mentTabs button', e => e.map(b => b.textContent + (b.classList.contains('on') ? ' *' : '')));
   const shown = () => page.$$eval('[data-s=mentions] .st-subpane', e => e.filter(p => !p.hidden).map(p => p.dataset.t));
-  assert.deepEqual(await tabs(), ['Alerts *', 'Names & words', 'Chat bots']);
+  assert.deepEqual(await tabs(), ['How it alerts *', 'Names & words', 'Chat bots']);
   assert.deepEqual(await shown(), ['alerts']);
   assert.ok(await page.isVisible('[data-s=mentions] [data-al="mention.popup"]'), 'its settings show');
-  for (const p of ['notify', 'spam']) assert.equal(await page.$eval(`[data-s=${p}] .st-tabs button`, b => b.textContent), 'Alerts', `the same first tab as ${p}`);
+  for (const p of ['notify', 'spam']) assert.equal(await page.$eval(`[data-s=${p}] .st-tabs button`, b => b.textContent), 'How it alerts', `the same first tab as ${p}`);
+  for (const p of ['support', 'flagged']) assert.ok(await page.$$eval(`[data-s=${p}] .st-tabs button`, e => e.some(b => b.textContent === 'How it alerts')), `and the same name as ${p}'s`);
   await page.click('#mentTabs [data-t=names]');
   assert.deepEqual(await shown(), ['names']);
   assert.ok(await page.isVisible('#mentUser'));
@@ -273,7 +274,7 @@ test('Settings › Mentions opens on Alerts, its first tab, as Notifications and
   assert.deepEqual(await page.$$eval('[data-s=chat] .st-subpane', e => e.filter(p => !p.hidden).map(p => p.dataset.t)), ['bots']);
   // and Mentions › Chat bots opens on its tab
   await page.evaluate(() => openSettings('mentions', { sub: 'bots' }));
-  assert.deepEqual(await tabs(), ['Alerts', 'Names & words', 'Chat bots *']);
+  assert.deepEqual(await tabs(), ['How it alerts', 'Names & words', 'Chat bots *']);
   assert.deepEqual(await shown(), ['bots']);
 });
 

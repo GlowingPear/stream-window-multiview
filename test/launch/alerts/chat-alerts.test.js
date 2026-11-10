@@ -434,6 +434,32 @@ test('spam alerts never mark the channel\'s own broadcaster: by their name in it
   await clickBar('alpha');
 });
 
+test('spam alerts skip moderators (their badge in what the site sends, then their name in its chat), unless Also check moderators is on', T, async () => {
+  await clickBar('alpha');
+  await ready();
+  const flagged = await spamCount();
+  const modMsg = (name, text) => kickMsg(name, text, { sender: { id: 8, username: name, slug: name.toLowerCase(), identity: { badges: [{ type: 'moderator' }] } } });
+  await feed('alpha', modMsg('ModPal', 'hq ai stream upgrades modlink com zero cost upgrades'));
+  // their next line drawn in the chat (the page's lines have no badges): still a moderator's
+  await say('alpha', 'ModPal', 'hq ai stream upgrades modpage com zero cost upgrades');
+  // the same message from someone else is still marked
+  await say('alpha', 'modcopy', 'hq ai stream upgrades modlink com zero cost upgrades');
+  await win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').some(n => n.kind === 'spam' && n.sender === 'modcopy'));
+  await win.waitForTimeout(1000);
+  assert.equal(await spamCount(), flagged + 1, 'only modcopy');
+  assert.equal((await notesOf('spam', 'ModPal')).length, 0);
+  // Also check moderators: they're checked as anyone is
+  await win.evaluate(() => window.openSettings('spam'));
+  await win.check('[data-al="spam.mods"]');
+  await win.keyboard.press('Escape');
+  await feed('alpha', modMsg('ModPal', 'hq ai stream upgrades checkedlink com zero cost upgrades'));
+  await win.waitForFunction(() => JSON.parse(localStorage.getItem('kickMultiview.notifications') || '[]').some(n => n.kind === 'spam' && n.sender === 'ModPal'));
+  await win.evaluate(() => window.openSettings('spam'));
+  await win.uncheck('[data-al="spam.mods"]');
+  await win.keyboard.press('Escape');
+  await clickBar('alpha');
+});
+
 test('mentions from the site\'s connection: at once, drawn or not, once each (also when the page read it first); a reply; never yours or a bot\'s; its screen read again when the connection stops working', T, async () => {
   await clickBar('alpha'); await clickBar('bravo');
   await win.waitForFunction(() => window.openWins().find(o => o.kind === 'chat' && o.channel === 'bravo').feedRead, null, { polling: 500 });

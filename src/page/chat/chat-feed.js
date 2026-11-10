@@ -106,7 +106,7 @@ function message(w, m){
     if (!flushT) flushT = setTimeout(flush, 300);
   }
   if (own){ decide(m, 'own'); return; }
-  if (site.spamAlerts && !SmvSpam.ignored(m.sender, botsFor('spam', ch))) spamFromFeed(w, m.sender, parts ? parts.filter(x => !x.e).map(x => x.t).join('') : body, m.t, m.id, (m.badges || []).includes('host'));
+  if (site.spamAlerts && !SmvSpam.ignored(m.sender, botsFor('spam', ch))) spamFromFeed(w, m.sender, parts ? parts.filter(x => !x.e).map(x => x.t).join('') : body, m.t, m.id, (m.badges || []).includes('host'), (m.badges || []).includes('mod'));
   if (!site.mentions || !mentOn || mentMuted.has(ch)) return;
   if (!me && !mentWords.length){ decide(m, 'off'); return; }
   mentionOf(m, ch);
