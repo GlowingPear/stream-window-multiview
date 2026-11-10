@@ -507,7 +507,7 @@
         <h4>Notifications</h4><p class="st-sub">What happens when something new arrives. Everything is kept under the bell in the toolbar either way.</p>
         <div class="st-lead nt-dnd"><span class="st-t"><b>Do not disturb</b><small id="dndSt">Still collected under the bell, but no pop-ups, sounds or desktop notifications.</small></span>
           <select id="dndFor" aria-label="For how long"><option value="30">For 30 minutes</option><option value="60">For 1 hour</option><option value="120">For 2 hours</option><option value="240">For 4 hours</option><option value="480">For 8 hours</option><option value="0">Until I turn it off</option></select><input type="checkbox" class="st-sw" id="dndOn" aria-label="Do not disturb"></div>
-        <div class="st-tabs" id="ntTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="bell">Bell &amp; pop-ups</button><button data-t="desktop" class="dn-tab" hidden>Desktop</button></div>
+        <div class="st-tabs" id="ntTabs"><button data-t="alerts" class="on">How it alerts</button><button data-t="bell">Bell &amp; pop-ups</button><button data-t="desktop" class="dn-tab" hidden>Desktop</button></div>
         <div class="st-subpane" data-t="alerts">
         <div class="nt-grid" id="ntGrid"><span class="nt-h">Kind</span><span class="nt-h">Pop-up</span><span class="nt-h nt-desk">Desktop</span><span class="nt-h">Sound</span></div>
         </div>
@@ -525,7 +525,7 @@
       <section class="st-pane" data-s="mentions" hidden>
         <h4>Mentions &amp; replies</h4><p class="st-sub">When someone writes @you or replies to you in an open Kick, Twitch or YouTube chat. The chat already highlights the message itself; these make the <b>window</b> stand out so you can see which chat it's in.</p>
         <label class="st-lead"><span class="st-t"><b>Alert me</b><small>When someone mentions or replies to the usernames below, or writes one of your words.</small></span><input type="checkbox" class="st-sw" id="mentOn"></label>
-        <div class="st-tabs" id="mentTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="names">Names &amp; words</button><button data-t="bots">Chat bots</button></div>
+        <div class="st-tabs" id="mentTabs"><button data-t="alerts" class="on">How it alerts</button><button data-t="names">Names &amp; words</button><button data-t="bots">Chat bots</button></div>
         <div class="st-subpane" data-t="names" hidden>
         <div class="st-sec">Your usernames</div>
         <p class="st-sub" style="margin:2px 0 0">Used to spot mentions and replies to you. For YouTube, your handle: the @name its chat shows for you.</p>
@@ -597,7 +597,7 @@
       <section class="st-pane" data-s="spam" hidden>
         <h4>Spam alerts <span class="st-beta" title="New: tell us if it marks something it shouldn't, or misses spam">Beta</span></h4><p class="st-sub">A moderator tool: spots promo-bot messages and abuse in chats you moderate and points you to them, so you can deal with them. It never hides, deletes or reports anything.</p>
         <label class="st-lead"><span class="st-t"><b>Watch for spam in chats I moderate</b><small>Only Kick and Twitch chats where you're a moderator (the ones with the mod view <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/></svg> button). Other chats are only read to spot the same message posted in several places.</small></span><input type="checkbox" class="st-sw" id="spamOn"></label>
-        <div class="st-tabs" id="spamTabs"><button data-t="alerts" class="on">Alerts</button><button data-t="how">How it works</button><button data-t="scoring">Scoring</button><button data-t="lists">Lists</button><button data-t="try">Try it</button><button data-t="history">History</button></div>
+        <div class="st-tabs" id="spamTabs"><button data-t="alerts" class="on">How it alerts</button><button data-t="how">How it works</button><button data-t="scoring">Scoring</button><button data-t="lists">Lists</button><button data-t="try">Try it</button><button data-t="history">History</button></div>
         <div class="st-subpane st-opts" data-t="alerts" data-for="spam">
         <div class="st-row"><span class="st-t">Also catch abuse<small>Insults and sexual remarks aimed at someone ("ur a …"), slurs and threats, and someone swearing over and over. Tagged "ABUSIVE".</small></span><input type="checkbox" class="st-sw" data-al="spam.abuse"></div>
         <div class="st-row"><span class="st-t">Also check moderators<small>Messages from the channel's moderators are only checked with this on, as they often post links on purpose.</small></span><input type="checkbox" class="st-sw" data-al="spam.mods"></div>
@@ -631,7 +631,7 @@
               <li>Messages from accounts on the <b>chat bot list</b> in Lists (like BotRix or Nightbot) are never checked, and don't count as "the same message in another open chat" either.</li>
               <li><b>A known bot line</b> from the list in Lists, like "Hey stranger, still running the show?", the greeting some promo bots start with before posting their link, or "type !noads", the opt-out line under their ads (6 points, enough on its own)</li>
             </ul>
-            With <b>Also catch abuse</b> on (in Alerts), these are tagged "ABUSIVE". Words are found however they're written: stretched (<code>whooore</code>), with digits or symbols for letters (<code>wh0re</code>, <code>b!tch</code>, <code>f*ck</code>) or spelt out (<code>c u n t</code>).
+            With <b>Also catch abuse</b> on (in How it alerts), these are tagged "ABUSIVE". Words are found however they're written: stretched (<code>whooore</code>), with digits or symbols for letters (<code>wh0re</code>, <code>b!tch</code>, <code>f*ck</code>) or spelt out (<code>c u n t</code>).
             <ul>
               <li><b>An insult aimed at someone</b>: "you", "ur a", "your a" or "you're a", then a word from Abuse words in Lists, like "ur a whore" or "you stupid little b!tch" (4 points: with a new chatter, or a second time, that's enough on Balanced). On its own a word like that is often banter, so it's not counted.</li>
               <li><b>A slur or threat</b> from Slurs and threats in Lists, anywhere in the message, like "kys" (5 points, enough on its own on Balanced)</li>
