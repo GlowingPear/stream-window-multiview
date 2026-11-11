@@ -166,6 +166,19 @@ function twitchPin(frame){
     return { site: 'twitch', kind: 'event', event: 'shoutout', id: 'so-' + d.shoutoutID, t: Date.now(), sender: by, login: by.toLowerCase(), color: '', userId: '', badges: [], parts: [],
       summary: [{ strong: by || 'They' }, { text: ' shouted out ' }, { strong: to }], text: `${by || 'They'} shouted out ${to}`, shoutout: 'tw:' + String(d.targetLogin).toLowerCase() };
   }
+  // a poll, as Kick's: its votes as they come (each choice's share) and its time left, then its results (completed, or
+  // ended early) until Twitch takes them down (archived, about a minute later)
+  const ps = p && /^POLL_(CREATE|UPDATE|COMPLETE|TERMINATE|ARCHIVE)$/.exec(p.type || '');
+  if (ps){
+    const pl = (p.data && p.data.poll) || {}; if (!pl.poll_id) return null;
+    if (ps[1] === 'ARCHIVE') return { site: 'twitch', kind: 'poll', state: 'close', id: String(pl.poll_id), t: Date.now() };
+    const opts = Array.isArray(pl.choices) ? pl.choices : [], votes = o => +(o && o.votes && o.votes.total) || 0, total = opts.reduce((n, o) => n + votes(o), 0);
+    const choices = opts.map(o => ({ text: String((o && o.title) || '').trim(), ratio: total ? votes(o) / total : 0 })).filter(c => c.text);
+    if (!choices.length) return null;
+    const now = Date.now(), ends = /^(CREATE|UPDATE)$/.test(ps[1]) ? now + Math.max(0, +pl.remaining_duration_milliseconds || 0) : now;
+    return { site: 'twitch', kind: 'poll', state: 'update', id: String(pl.poll_id), t: now, question: String(pl.title || '').trim(), meta: `${total.toLocaleString('en-US')} ${total === 1 ? 'vote' : 'votes'}`, choices,
+      ends, until: ends + 5 * 60000 };   // (its results: until Twitch archives them, or 5 minutes)
+  }
   // a raid the channel is getting ready: Twitch's countdown, sent again as viewers join it (raid_update_v2), then the raid
   // going (raid_go_v2: now, or Twitch sends it on its own at raid_created_at + force_raid_now_seconds) or called off
   // (raid_cancel_v2: not heard yet, taken to carry the same raid). One raid id for all of them: ALL's one line for it.
@@ -563,6 +576,8 @@ const KNOWN = {
     'USERNOTICE:primepaidupgrade': 'a Prime sub kept going', 'USERNOTICE:bitsbadgetier': 'a bits badge', 'USERNOTICE:communitypayforward': 'a gift sub paid forward', 'USERNOTICE:sharedchatnotice': 'another channel’s sub, gift or raid in a shared chat (as Twitch words it)', CLEARMSG: 'a message deleted', 'CLEARCHAT:timeout': 'a timeout',
     'CLEARCHAT:ban': 'a ban', 'CLEARCHAT:all': 'the chat cleared', 'hermes:pin-message': 'a pin', 'hermes:unpin-message': 'a pin taken down', ROOMSTATE: 'the chat’s modes (above the box)', 'hermes:updated_room': 'the chat’s modes (above the box)', 'hermes:moderation_action': 'who a moderator was (to moderators)',
     'hermes:reward-redeemed': 'a reward redeemed (without text)', 'hermes:create': 'a shoutout',
+    'hermes:POLL_CREATE': 'a poll (its card over ALL)', 'hermes:POLL_UPDATE': 'a poll’s votes (its card)', 'hermes:POLL_COMPLETE': 'a poll’s results (its card)',
+    'hermes:POLL_TERMINATE': 'a poll ended early (its results, on its card)', 'hermes:POLL_ARCHIVE': 'a poll’s results taken down (its card goes)',
     'hermes:raid_update_v2': 'a raid getting ready (one line, counting down)', 'hermes:raid_go_v2': 'a raid going (its line: Open)', 'hermes:raid_cancel_v2': 'a raid called off (its line says so)',
     'hermes:goal_achieved': 'a goal reached (its progress: hermes:goal_updated)', 'hermes:hype-train-start': 'a hype train (its strip over ALL)',
     'hermes:hype-train-progression': 'a hype train moving along (its strip)', 'hermes:hype-train-level-up': 'a hype train’s new level (its strip)', 'hermes:hype-train-end': 'a hype train ending (its strip)',

@@ -1929,8 +1929,8 @@ function seeIt(ch){
   showTab(c);
 }
 
-/* ---- A YouTube poll: a card over ALL's list while it's open (its question, each choice's share of the votes, as
-   they come), gone when YouTube closes it. Voting is in YouTube's own chat (Vote on YouTube shows it). */
+/* ---- A poll (Kick's, Twitch's, YouTube's): a card over ALL's list while it's open (its question, each choice's share of
+   the votes, as they come), gone when the site closes it. Voting is in the site's own chat (Vote on … shows it). */
 const polls = new Map();   // streamer id -> Map(channel -> its open poll: { id, question, meta, choices: [{ text, ratio }] })
 function pollNews(s, ch, m){
   if (!s) return;
@@ -1944,7 +1944,7 @@ function pollNews(s, ch, m){
   if (!pollTimer && [...polls.values()].some(a => [...a.values()].some(p => p.ends))) pollTimer = setInterval(pollTick, 1000);
 }
 const pollLeft = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
-// Kick's polls run for a time, then show their results for a while: their time left by the second, gone when Kick stops showing them
+// Kick's and Twitch's polls run for a time, then show their results for a while: their time left by the second, gone when Kick stops showing them
 let pollTimer = 0;
 function pollTick(){
   const now = Date.now(); let timed = false;
@@ -1975,7 +1975,7 @@ function renderPoll(view){
         element('i', { class: 'all-poll-i', html: POLL }), element('b', { class: 'all-poll-q', title: p.question || '' }, p.question || 'Poll')),
       element('div', 'all-poll-cs', ...p.choices.map(c => element('div', { class: 'all-poll-c' + (voted && c.ratio === top ? ' top' : '') },
         element('span', { class: 'all-poll-bar', style: { width: pct(c) + '%' } }), element('span', { class: 'all-poll-t', title: c.text }, c.text), voted && element('b', 'all-poll-p', pct(c) + '%')))),
-      // its footer: who and how many votes (and Kick's time left), and where to vote
+      // its footer: who and how many votes (and Kick's or Twitch's time left), and where to vote
       element('div', 'all-poll-f', element('small', 'all-poll-m', [p.meta, p.ends ? (now < p.ends ? `${pollLeft(p.ends - now)} left` : 'Final results') : ''].filter(Boolean).join(' · ')),
         element('button', { type: 'button', class: 'linkish all-poll-go', dataset: { cmd: 'all.pollVote' }, title: `Vote in ${PLAT_NAME[platOf(p.ch)]}\u2019s own chat`, onclick: () => seeIt(p.ch) }, `Vote on ${PLAT_NAME[platOf(p.ch)]}`)));
   }));

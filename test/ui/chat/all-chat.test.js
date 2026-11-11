@@ -2918,4 +2918,17 @@ test('polls on several sites: one card, the others a press away in its corner, t
   assert.ok(await page.$('.all-pollchip.ping'), 'its pill pings');
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('PollDeleteEvent', [])] });
   assert.equal((await card()).site, 'youtube', 'deleted: gone');
+  // Twitch's (from its other connection): shown as Kick's, its results until Twitch archives it
+  const twitch = (type, votes, left) => feed(page, 'tw:quietkoala', { s: 'twitch', raw: [JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data: { poll: { poll_id: 'tp1', title: 'Which game next?',
+    choices: [{ title: 'Deadlock', votes: { total: votes[0] } }, { title: 'Balatro', votes: { total: votes[1] } }], remaining_duration_milliseconds: left } } }) } })] });
+  await twitch('POLL_CREATE', [0, 0], 120000);
+  c = await card();
+  assert.deepEqual([c.site, c.sw, c.go], ['twitch', ['Y', 'T*'], 'Vote on Twitch'], 'a new poll: shown');
+  assert.match(c.m, /^0 votes · (1:59|2:00) left$/);
+  await twitch('POLL_UPDATE', [2, 1], 90000);
+  assert.deepEqual(await page.$$eval('.all-poll .all-poll-p', l => l.map(x => x.textContent)), ['67%', '33%']);
+  await twitch('POLL_COMPLETE', [5, 3], 0);
+  assert.equal((await card()).m, '8 votes · Final results');
+  await twitch('POLL_ARCHIVE', [5, 3], 0);
+  assert.equal((await card()).site, 'youtube', 'archived: gone');
 });
