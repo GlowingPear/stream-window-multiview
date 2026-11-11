@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.35 (current)
+## 0.4.36 (current)
+- ALL shows Twitch polls
+- ALL: called-off Twitch raids, mod anniversaries and YouTube's moderation notes
+
+## 0.4.35
 - Spam alerts skip moderators' messages, with a setting to check them too
 - ALL shows Kick channels' own sub badges again
 
