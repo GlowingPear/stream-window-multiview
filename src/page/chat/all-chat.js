@@ -138,7 +138,8 @@ function ingest(w, json, quiet = false, shown = false){
     const hold = m.id && m.kind === 'message' && f.byId.get(m.site + ':' + m.id);
     if (hold && hold.kind === 'held') return heldAllowed(hold, '', m);   // (a held message let through: its line becomes the message)
     if (m.id && f.byId.has(m.site + ':' + m.id)) return;   // (one it has: YouTube sends its recent ones again when its chat is rebuilt or switches view)
-    if (m.sourceId && f.msgs.some(x => x.site === 'twitch' && x.sourceId === m.sourceId)) return;   // (a shared chat's message, read from two of its chats)
+    if (m.sourceId && f.msgs.some(x => x.site === 'twitch' && x.sourceId === m.sourceId)) return;
+    if (m.event === 'unraid' && raidOff(f, w.channel)) return;   // (its raid's line says it's called off; without one, its own line)   // (a shared chat's message, read from two of its chats)
     m.ch = w.channel;
     if (m.sentIn) sharedAsk(w, m.sentIn);
     sharedNow(f, w, m);
@@ -417,6 +418,12 @@ function raidNews(f, view, r, w){
   if (m.soon) raidTick(m, w);
 }
 function raided(m){ m.soon = false; m.wentAt = Date.now(); }
+// The channel called off its raid (Twitch's chat says so without the raid's id): its newest raid still getting ready
+function raidOff(f, ch){
+  const m = [...f.msgs].reverse().find(x => x.kind === 'raidout' && x.ch === ch && x.soon); if (!m) return false;
+  m.soon = false; m.off = true; redrawLine(m);
+  return true;
+}
 const raidLeft = m => (m.at ? Math.max(0, Math.ceil((m.at - Date.now()) / 1000)) : -1);
 function raidTick(m, w){
   const left = raidLeft(m);

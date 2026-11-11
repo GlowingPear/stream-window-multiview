@@ -282,7 +282,7 @@ function twitchSummary(ev, name, p, system, room){
   const total = +p['sender-count'] > 0 ? [{ text: ' · ' }, { strong: n(p['sender-count']) }, { text: ' total in the channel' }] : [];
   const community = (/ to (\S+)'s community/.exec(system || '') || [])[1] || room;
   const to = community ? [{ text: ` to ${community}’s community` }] : [];
-  const need = { submysterygift: 'mass-gift-count', raid: 'viewerCount', viewermilestone: 'value', bitsbadgetier: 'threshold' }[ev];
+  const need = { submysterygift: 'mass-gift-count', raid: 'viewerCount', viewermilestone: 'value', bitsbadgetier: 'threshold', modiversary: 'months' }[ev];
   if (need && !(+p[need] > 0)) return system ? [{ text: system }] : [{ strong: name }];   // (without its number: the site's own words)
   switch (ev){
     case 'sub': case 'resub': return [{ strong: name }, { text: ' subscribed' }, ...prime, ...months];
@@ -295,6 +295,9 @@ function twitchSummary(ev, name, p, system, room){
     case 'communitypayforward': return p['prior-gifter-anonymous'] === 'true' ? [{ strong: name }, { text: ' paid forward an anonymous gift sub' }]
       : [{ strong: name }, { text: ' paid forward the gift sub from ' }, { strong: p['prior-gifter-display-name'] || p['prior-gifter-user-name'] || 'someone' }];
     case 'bitsbadgetier': return [{ strong: name }, { text: ' earned a ' }, { strong: plural(p.threshold, 'bit', 'bits') }, { text: ' badge' }];
+    // (a moderator's anniversary as one, with their message; a raid the channel called off: its raid's line says so, chat/all-chat.js)
+    case 'modiversary': return [{ strong: name }, { text: ' celebrated ' }, { strong: plural(p.months, 'month', 'months') }, { text: ' as a moderator' }];
+    case 'unraid': return [{ strong: name }, { text: ' called off the raid' }];
     default: return system ? [{ text: system }] : [{ strong: name }];
   }
 }
@@ -522,6 +525,14 @@ function parseYouTube(action){
     const msg = inner && parseYouTube({ addChatItemAction: { item: { liveChatTextMessageRenderer: { ...inner, id: r.id } } } });
     return msg ? { site: 'youtube', kind: 'held', id: r.id, msg, status: 'PENDING', why: '', note: ytWords(r.headerText).trim(), by: '', t: msg.t } : null;
   }
+  // YouTube's note in the chat of a moderator's step (someone hidden or put in timeout, …): a line in its words, bold
+  // where it's bold
+  if (type === 'liveChatModerationMessageRenderer'){
+    const summary = (r.message && Array.isArray(r.message.runs) ? r.message.runs : []).filter(x => x && x.text).map(x => (x.bold ? { strong: x.text } : { text: x.text }));
+    if (!summary.length) return null;
+    return { site: 'youtube', kind: 'event', event: 'modnote', id: r.id, t: Math.round(+r.timestampUsec / 1000) || Date.now(), sender: '', login: '', color: '', userId: '', badges: [], pics: [], parts: [],
+      summary, text: summary.map(x => x.text || x.strong).join('') };
+  }
   // memberships gifted to the chat: the gifter in its header, how many in its words ("Sent 5 … gift memberships"). Each one
   // given (…GiftRedemptionAnnouncementRenderer, "received a gift membership by …") is left out: part of this one
   if (type === 'liveChatSponsorshipsGiftPurchaseAnnouncementRenderer'){
@@ -573,7 +584,8 @@ const KNOWN = {
     'PRIVMSG:gigantified-emote-message': 'a giant emote (its line shows it big)',
     'USERNOTICE:sub': 'a sub', 'USERNOTICE:resub': 'a resub', 'USERNOTICE:subgift': 'a gifted sub', 'USERNOTICE:submysterygift': 'gifted subs', 'USERNOTICE:raid': 'a raid',
     'USERNOTICE:announcement': 'an announcement', 'USERNOTICE:viewermilestone': 'a watch streak', 'USERNOTICE:giftpaidupgrade': 'a gifted sub kept going',
-    'USERNOTICE:primepaidupgrade': 'a Prime sub kept going', 'USERNOTICE:bitsbadgetier': 'a bits badge', 'USERNOTICE:communitypayforward': 'a gift sub paid forward', 'USERNOTICE:sharedchatnotice': 'another channel’s sub, gift or raid in a shared chat (as Twitch words it)', CLEARMSG: 'a message deleted', 'CLEARCHAT:timeout': 'a timeout',
+    'USERNOTICE:primepaidupgrade': 'a Prime sub kept going', 'USERNOTICE:bitsbadgetier': 'a bits badge', 'USERNOTICE:communitypayforward': 'a gift sub paid forward', 'USERNOTICE:sharedchatnotice': 'another channel’s sub, gift or raid in a shared chat (as Twitch words it)',
+    'USERNOTICE:modiversary': 'a moderator’s anniversary as one', 'USERNOTICE:unraid': 'a raid called off (its line says so)', CLEARMSG: 'a message deleted', 'CLEARCHAT:timeout': 'a timeout',
     'CLEARCHAT:ban': 'a ban', 'CLEARCHAT:all': 'the chat cleared', 'hermes:pin-message': 'a pin', 'hermes:unpin-message': 'a pin taken down', ROOMSTATE: 'the chat’s modes (above the box)', 'hermes:updated_room': 'the chat’s modes (above the box)', 'hermes:moderation_action': 'who a moderator was (to moderators)',
     'hermes:reward-redeemed': 'a reward redeemed (without text)', 'hermes:create': 'a shoutout',
     'hermes:POLL_CREATE': 'a poll (its card over ALL)', 'hermes:POLL_UPDATE': 'a poll’s votes (its card)', 'hermes:POLL_COMPLETE': 'a poll’s results (its card)',
@@ -586,7 +598,7 @@ const KNOWN = {
     'addChatItemAction:liveChatPaidStickerRenderer': 'a Super Sticker', 'addChatItemAction:liveChatMembershipItemRenderer': 'a membership',
     'addChatItemAction:giftMessageViewModel': 'a gift', 'addChatItemAction:liveChatSponsorshipsGiftPurchaseAnnouncementRenderer': 'memberships gifted to the chat', 'replaceChatItemAction:liveChatTextMessageRenderer': 'a held message let through', 'addChatItemAction:liveChatAutoModMessageRenderer': 'a message held for review, to moderators (its card: Allow, Deny)',
     removeChatItemAction: 'a message deleted', markChatItemAsDeletedAction: 'a message deleted (marked)', markChatItemsByAuthorAsDeletedAction: 'a ban or timeout',
-    removeChatItemByAuthorAction: 'all of someone’s messages taken away (as a ban)', 'showLiveChatActionPanelAction': 'a poll opened (its card over ALL)', updateLiveChatPollAction: 'a poll’s votes (its card)',
+    removeChatItemByAuthorAction: 'all of someone’s messages taken away (as a ban)', 'addChatItemAction:liveChatModerationMessageRenderer': 'YouTube’s note of a moderator’s step (its own words)', 'showLiveChatActionPanelAction': 'a poll opened (its card over ALL)', updateLiveChatPollAction: 'a poll’s votes (its card)',
     closeLiveChatActionPanelAction: 'a poll closed (its card goes)',
     'addBannerToLiveChatCommand:liveChatBannerRenderer': 'a pin', removeBannerForLiveChatCommand: 'a pin taken down' }
 };
@@ -617,7 +629,7 @@ const IGNORED = {
     'hermes:update-message': 'a message edited (it carries only the message’s id, not its new words)', 'hermes:?': 'the connection’s own (no type)',
     'hermes:extension_message': 'an extension’s own message (its panel in Twitch’s chat)',
     'hermes:stream-up': 'the stream starting (the live check says so)', 'hermes:favorite-channel-update': 'streaming together (Twitch’s own panel)', 'hermes:collaboration-status-refetch': 'streaming together (Twitch’s own panel)',
-    ...Object.fromEntries(['group-updated', 'group-disbanded', 'session-created', 'session-started', 'session-updated', 'session-ended', 'session-role-changed', 'slot-assignments-changed', 'slot-settings-changed', 'call-ended']
+    ...Object.fromEntries(['group-created', 'group-updated', 'group-disbanded', 'call-started', 'session-created', 'session-started', 'session-updated', 'session-ended', 'session-role-changed', 'slot-assignments-changed', 'slot-settings-changed', 'call-ended']
       .map(n => ['hermes:' + n, 'streaming together (Twitch’s own panel)'])),
     'hermes:automatic-reward-redeemed': 'a reward Twitch runs itself (a giant emote: its message is the line)',
  'hermes:chat_rich_embed': 'a link’s preview card (the link is in its message)',

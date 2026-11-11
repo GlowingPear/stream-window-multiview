@@ -2025,6 +2025,14 @@ test('ALL: Twitch\'s raid countdown is one line, kept up to date and counting do
   await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [raid('raid_update_v2', 'r11', 'pixelmoth', 0, 0)] });
   assert.equal((await raids()).pop(), 'al-ev | Tquietkoala is raiding pixelmoth');
   assert.equal((await raids()).length, 5);
+  // called off in the chat (Twitch's unraid, without the raid's id): the raid getting ready says so, no line of its own;
+  // with none getting ready, its own line
+  const unraid = id => TW({ 'display-name': 'QuietKoala', login: 'quietkoala', id, 'msg-id': 'unraid', 'system-msg': 'The\\sraid\\shas\\sbeen\\scanceled.' }, ':tmi.twitch.tv USERNOTICE #quietkoala');
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [unraid('u1')] });
+  assert.equal((await raids()).pop(), 'al-ev | Tquietkoala called off the raid on pixelmoth');
+  assert.equal((await raids()).length, 5);
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [unraid('u2')] });
+  assert.equal((await lines(page)).pop(), 'al-ev | TQuietKoala called off the raid');
 });
 
 test('ALL: a gift sub paid forward (from someone, or an anonymous one) and a goal reached are events', async t => {
