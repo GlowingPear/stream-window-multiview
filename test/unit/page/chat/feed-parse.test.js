@@ -631,3 +631,29 @@ test('Kick: a poll\'s votes (each a share, and how many), its time left and how 
   assert.deepEqual({ ...parseKick(KF('PollDeleteEvent', [])), t: 0 }, { site: 'kick', kind: 'poll', state: 'close', id: 'kick', t: 0 });
   assert.ok(KNOWN.kick.PollUpdateEvent && KNOWN.kick.PollDeleteEvent && !ignoredWhy('kick', 'PollUpdateEvent'));
 });
+
+test('Twitch: a poll\'s votes (each a share, and how many) and its time left; its results once completed or ended early; archived', async () => {
+  const { parseTwitch, KNOWN, ignoredWhy } = await load();
+  // (as Twitch's other connection sends them: POLL_CREATE, POLL_UPDATE, POLL_COMPLETE, POLL_ARCHIVE)
+  const hermes = (type, data) => JSON.stringify({ notification: { type: 'pubsub', pubsub: JSON.stringify({ type, data }) } });
+  const choice = (title, total) => ({ choice_id: 'c-' + title, title, votes: { total, bits: 0, channel_points: 0, base: total, granted: 0 }, tokens: { bits: 0, channel_points: 0 }, total_voters: total });
+  const poll = (type, status, votes, left) => parseTwitch(hermes(type, { poll: { poll_id: 'p1', title: ' Which game next? ', duration_seconds: 180, status, settings: { multi_choice: { is_enabled: true } },
+    choices: [choice('Deadlock', votes[0]), choice('Balatro', votes[1]), choice(' ', 0)], votes: { total: votes[0] + votes[1] }, remaining_duration_milliseconds: left } }));
+  const before = Date.now();
+  let m = poll('POLL_CREATE', 'ACTIVE', [0, 0], 179983);
+  assert.deepEqual([m.site, m.kind, m.state, m.id, m.question, m.meta], ['twitch', 'poll', 'update', 'p1', 'Which game next?', '0 votes']);
+  assert.deepEqual(m.choices, [{ text: 'Deadlock', ratio: 0 }, { text: 'Balatro', ratio: 0 }], 'no votes yet; an empty one left out');
+  assert.ok(m.ends >= before + 179983 && m.ends <= Date.now() + 179983);
+  m = poll('POLL_UPDATE', 'ACTIVE', [3, 1], 116201);
+  assert.deepEqual([m.meta, m.choices.map(c => c.ratio)], ['4 votes', [0.75, 0.25]]);
+  assert.equal(poll('POLL_UPDATE', 'ACTIVE', [1, 0], 1000).meta, '1 vote');
+  for (const type of ['POLL_COMPLETE', 'POLL_TERMINATE']){
+    m = poll(type, 'COMPLETED', [6, 2], 0);
+    assert.ok(m.ends <= Date.now(), `${type}: its time is up`);
+    assert.deepEqual([m.state, m.meta, m.until - m.ends], ['update', '8 votes', 5 * 60000], `${type}: its results, until it's archived (or 5 minutes)`);
+  }
+  assert.deepEqual({ ...poll('POLL_ARCHIVE', 'ARCHIVED', [6, 2], 0), t: 0 }, { site: 'twitch', kind: 'poll', state: 'close', id: 'p1', t: 0 });
+  assert.equal(parseTwitch(hermes('POLL_UPDATE', { poll: { poll_id: 'p1', choices: [] } })), null, 'no choices');
+  assert.equal(parseTwitch(hermes('POLL_UPDATE', { poll: { choices: [choice('a', 1)] } })), null, 'no id');
+  for (const k of ['POLL_CREATE', 'POLL_UPDATE', 'POLL_COMPLETE', 'POLL_TERMINATE', 'POLL_ARCHIVE']) assert.ok(KNOWN.twitch['hermes:' + k] && !ignoredWhy('twitch', 'hermes:' + k), k);
+});
