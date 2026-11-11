@@ -166,6 +166,10 @@ test('Twitch events in a few words, the amount picked out; an announcement is a 
   assert.equal(words(ev('viewermilestone', { 'msg-param-value': '7' })), '[Brightwick] watched [7 streams] in a row');
   assert.equal(words(ev('giftpaidupgrade', {})), '[Brightwick] kept their sub going');
   assert.equal(words(ev('bitsbadgetier', { 'msg-param-threshold': '1000' })), '[Brightwick] earned a [1,000 bits] badge');
+  assert.equal(words(ev('modiversary', { 'msg-param-months': '102' })), '[Brightwick] celebrated [102 months] as a moderator');
+  assert.equal(words(ev('modiversary', { 'msg-param-months': '1' })), '[Brightwick] celebrated [1 month] as a moderator');
+  assert.equal(words(ev('modiversary', {})), "the site's words", 'without its months');
+  assert.equal(words(ev('unraid', {})), '[Brightwick] called off the raid');
   const fwd = prm => ev('communitypayforward', { 'msg-param-prior-gifter-id': '7', 'msg-param-prior-gifter-user-name': 'tinroof', ...prm });
   assert.equal(words(fwd({ 'msg-param-prior-gifter-anonymous': 'false', 'msg-param-prior-gifter-display-name': 'Tinroof' })), '[Brightwick] paid forward the gift sub from [Tinroof]');
   assert.equal(words(fwd({ 'msg-param-prior-gifter-anonymous': 'false' })), '[Brightwick] paid forward the gift sub from [tinroof]', 'without a display name: the login');
@@ -237,7 +241,7 @@ test('YouTube: a gift is an event (its words, the gift picked out); a held messa
     'addLiveChatTickerItemAction:liveChatTickerSponsorItemRenderer']) assert.ok(ignoredWhy('youtube', k), k);
   assert.equal(ignoredWhy('youtube', 'addChatItemAction:somethingNew'), '');
   for (const [s, k] of [['kick', 'ChatMessageSentEvent'], ['twitch', 'hermes:stream-up'], ['twitch', 'hermes:favorite-channel-update'],
-    ['twitch', 'hermes:collaboration-status-refetch'], ['kick', 'ChatSettingsChanged'], ['kick', 'GoalCreatedEvent'], ['kick', 'GoalAchievedEvent'], ['twitch', 'hermes:automatic-reward-redeemed'], ['twitch', 'hermes:group-updated'], ['twitch', 'hermes:session-started'],
+    ['twitch', 'hermes:collaboration-status-refetch'], ['kick', 'ChatSettingsChanged'], ['kick', 'GoalCreatedEvent'], ['kick', 'GoalAchievedEvent'], ['twitch', 'hermes:automatic-reward-redeemed'], ['twitch', 'hermes:group-updated'], ['twitch', 'hermes:group-created'], ['twitch', 'hermes:call-started'], ['twitch', 'hermes:session-started'],
     ['twitch', 'hermes:slot-settings-changed'], ['twitch', 'hermes:call-ended']]) assert.ok(ignoredWhy(s, k), k);
   for (const [s, a] of [['youtube', YT('somethingNew', { id: 'x' })], ['youtube', gift('sent x')], ['youtube', 'x'], ['youtube', null], ['twitch', stand]]) assert.equal(leftOut(s, a), false);
   // YouTube's own housekeeping (that you're in the chat, its moderation state, parts of its page): ignored, and its key is its kind
@@ -297,6 +301,13 @@ test('Support on YouTube: Super Chats and Stickers (the amount with its currency
   assert.deepEqual(parseYouTube(gift([{ text: 'Sent a gift membership' }])).summary[2], { strong: '1 membership' }, 'no number: one');
   assert.deepEqual([parseYouTube(gift([], { authorName: null })).sender], ['Someone']);
   assert.equal(KNOWN.youtube['addChatItemAction:liveChatSponsorshipsGiftPurchaseAnnouncementRenderer'], 'memberships gifted to the chat');
+  // YouTube's note of a moderator's step: a line in its words, bold where it's bold (its shape as a chat sent it)
+  const note = runs => parseYouTube(YT('liveChatModerationMessageRenderer', { id: 'n1', timestampUsec: '1794191929058361', message: { runs } }));
+  const n = note([{ text: '@Pixelfox', bold: true, italics: true }, { text: ' was hidden by ', italics: true }, { text: '@Koalamod', bold: true, italics: true }, { text: '' }]);
+  assert.deepEqual([n.kind, n.event, n.id, n.sender, n.text, n.t], ['event', 'modnote', 'n1', '', '@Pixelfox was hidden by @Koalamod', 1794191929058]);
+  assert.deepEqual(n.summary, [{ strong: '@Pixelfox' }, { text: ' was hidden by ' }, { strong: '@Koalamod' }]);
+  assert.equal(note([]), null, 'no words');
+  assert.ok(KNOWN.youtube['addChatItemAction:liveChatModerationMessageRenderer']);
   // each one given: left out on purpose (the gift is its own line)
   const got = YT('liveChatSponsorshipsGiftRedemptionAnnouncementRenderer', { id: 'g2', ...who, message: { runs: [{ text: 'received a gift membership by ' }, { text: '@Giftowl', bold: true }] } });
   assert.deepEqual(parseFeed({ s: 'youtube', raw: [got] }), []);
@@ -507,6 +518,7 @@ test('Twitch: a watch streak is their message, highlighted, with how many stream
   assert.deepEqual([so.kind, so.event, so.text, so.shoutout], ['event', 'shoutout', 'quietkoala shouted out Novalynx', 'tw:novalynx']);
   assert.deepEqual([KNOWN.twitch['hermes:reward-redeemed'], KNOWN.twitch['hermes:create']], ['a reward redeemed (without text)', 'a shoutout']);
   assert.equal(KNOWN.twitch['USERNOTICE:communitypayforward'], 'a gift sub paid forward');
+  for (const k of ['USERNOTICE:modiversary', 'USERNOTICE:unraid']) assert.ok(KNOWN.twitch[k] && !ignoredWhy('twitch', k), k);
   for (const k of ['hermes:drop-progress', 'hermes:commercial', 'hermes:watch-streak', 'hermes:mystery-gift-purchase', 'hermes:?', 'hermes:update-message',
     'hermes:ads-schedule-update', 'hermes:points-spent', 'hermes:channel-last-viewed-content-updated', 'hermes:global-last-viewed-content-updated', 'hermes:goal_created', 'hermes:goal_finished', 'hermes:collaboration-status-none', 'hermes:stream-down']) assert.ok(ignoredWhy('twitch', k), k);
   // the hype train: its start, progress, level ups and end are ALL's strip; the rest of its news (conductors, rewards) is Twitch's own panel's
