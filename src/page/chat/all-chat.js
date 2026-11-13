@@ -45,6 +45,7 @@ import { KICK_PAGE_CMDS, kickCmdHeard } from '../sites/kick/commands.js';
 import { askKick, openInBrowser } from '../sites/kick/panel.js';
 import { PLATFORMS } from '../sites/sites.js';
 import { likeHelp, toggleLike } from '../sites/youtube/options.js';
+import { sendFoundNoBox } from '../toolbar/login-lost.js';
 import { addTab, cycleTabs, drawTab, frameOf, leaderOf, renderSiteTabs, showTab, syncFrameAlert, tabChannels } from '../windows/frames.js';
 import { askIn, pressIn, runIn, viewId, zoomOf } from '../windows/view.js';
 import { copyEmote, emoteOn, freshEmotes, newEmotesOn, reloadWin } from '../windows/views.js';
@@ -1686,6 +1687,7 @@ async function deliver(view, w, p){
   if (p.cmd) addLine(view, p);   // (a command shows a line only now: why, and Retry)
   flash(`Not sent: ${p.why}`);
   if (r === 'disabled' && m && m.view) askIn(m.view, modesJs(platOf(m.channel))).then(x => { if (x) setModes(p.ch, x); }).catch(() => {});   // (why: its modes again)
+  if (r === 'no-box') sendFoundNoBox(p.site);   // (signed out by the site? it's asked: toolbar/login-lost.js)
 }
 // How you look in that chat: as in your last message there (name, colour, badges and their pictures: myPics, as p.pics
 // is the emotes you picked), else as you looked there last time (saved), else your name, the streamer's badge in your

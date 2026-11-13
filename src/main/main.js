@@ -868,6 +868,7 @@ const sites = createSites(site => ({
   BrowserWindow,
   fetch: (url, opts) => globalThis.fetch(url, opts),   // (the one that notes requests for Settings › Developer)
   pageFetch, getJson, headers: BROWSER_HEADERS,
+  loginFetch: loggedFetch((url, opts) => session.fromPartition(site.partition).fetch(url, { ...opts, credentials: 'include' })),   // (with its login)
   netSignal, netTimeout: NET_TIMEOUT, sleep, notePageRequest, devEnv, stateFile, safeStorage,
   toMain: (ch, ...args) => mainWin?.webContents.send(ch, ...args),
   ipc: { app: appIpc, main: mainIpc },
@@ -1337,6 +1338,17 @@ mainIpc.handle('account:login', (_e, plat) => { openLogin(siteId(plat)); });
 appIpc.handle('accounts:status', async () => {
   const out = {};
   for (const a of sites.list) out[a.id] = await a.account();
+  return out;
+});
+// Whether each saved login still works, asked of the site with it (one site, or all): { [id]: true | false | null }.
+// Only for a site you're signed in to (its cookies are here) that can be asked; a site that takes too long is null.
+appIpc.handle('accounts:check', async (_e, id) => {
+  const list = id == null ? sites.list : SmvSites.IDS.includes(id) ? [sites.get(id)] : [];
+  const out = {};
+  await Promise.all(list.filter(a => a.loginWorks).map(async a => {
+    if (!(await a.signedIn().catch(() => false))) return;
+    out[a.id] = await Promise.race([a.loginWorks().catch(() => null), sleep(NET_TIMEOUT).then(() => null)]);
+  }));
   return out;
 });
 

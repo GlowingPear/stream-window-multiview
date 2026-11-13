@@ -116,7 +116,8 @@ test('YouTube sign-in copies the login from Firefox', async () => {
   const { DatabaseSync } = require('node:sqlite');
   const { firefoxRoots } = require('../../src/main/firefox-login');
   const data = tempDir('launch');
-  const env = appEnv({ HOME: data, XDG_CONFIG_HOME: data, APPDATA: data, LOCALAPPDATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' });
+  // (YouTube's pages at an address that never answers: asking whether the copied login works must not reach YouTube)
+  const env = appEnv({ HOME: data, XDG_CONFIG_HOME: data, APPDATA: data, LOCALAPPDATA: data, SMV_UPDATE_API: 'http://127.0.0.1:9', SMV_YT_PAGES: 'http://127.0.0.1:9', ELECTRON_ENABLE_LOGGING: '0' });
 
   // a Firefox profile signed in to YouTube (plus another site's login, which must not be copied)
   const prof = path.join(firefoxRoots(process.platform, env, data)[0], 'Profiles', 'test.default-release');

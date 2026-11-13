@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('kmv', {
   openLogin: plat => ipcRenderer.invoke('account:login', plat),   // (no site: the main process opens the one a bare name is on)
   logout: plat => ipcRenderer.invoke('account:logout', plat),
   accountsStatus: () => ipcRenderer.invoke('accounts:status'),
+  accountsCheck: site => ipcRenderer.invoke('accounts:check', site),
   ytResolve: ch => ipcRenderer.invoke('yt:resolve', ch),
   modCheck: ch => ipcRenderer.invoke('mod:check', ch),
   ytKeyStatus: () => ipcRenderer.invoke('ytkey:status'),

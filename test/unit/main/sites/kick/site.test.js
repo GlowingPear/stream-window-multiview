@@ -313,7 +313,7 @@ test('the moderator check, your name, and Unfollow', async () => {
   let unfollow = 200;
   const cached = { following: { since: null } };
   const { a, rec } = kickWith((url, code) => {
-    if (code.includes('/api/v1/user')) return 'Pear_Fan';
+    if (code.includes('/api/v1/user')) return { name: 'Pear_Fan' };
     if (url.endsWith('/follow')) return unfollow === 'login' ? { login: true } : { status: unfollow, d: null };
     return { status: 200, d: { is_moderator: true } };
   }, { cookies: signedIn, profiles: { pixelpear: cached } });
@@ -327,6 +327,26 @@ test('the moderator check, your name, and Unfollow', async () => {
   assert.deepEqual(await unf(null, 'pixelpear'), { error: 'refused', status: 403 });
   unfollow = 'login';
   assert.deepEqual(await unf(null, 'pixelpear'), { error: 'login' });
+});
+
+test('whether the login still works: Kick names you, answers with nobody (it has signed the app out), or doesn\'t answer', async () => {
+  let who = { name: 'Pear_Fan' }, ran = '';
+  const { a, rec } = kickWith((url, code) => { ran = code; return who; }, { cookies: signedIn });
+  assert.equal(await a.loginWorks(), true);
+  // what it runs in Kick's page: its user, with the login; Kick's own answers counted (200, 401), not a 403 (Cloudflare's check)
+  assert.match(ran, /\/api\/v1\/user/);
+  assert.match(ran, /r\.status === 200 \|\| r\.status === 401/);
+  assert.equal(await rec.handlers.app['me:detect'](), 'Pear_Fan');
+  who = { name: '' };   // (a login Kick no longer takes: 200 with nothing, as with none)
+  assert.equal(await a.loginWorks(), false);
+  assert.equal(await rec.handlers.app['me:detect'](), null);
+  who = { name: 'not a name!' };   // (someone, even if the name isn't one the app keeps)
+  assert.equal(await a.loginWorks(), true);
+  assert.equal(await rec.handlers.app['me:detect'](), null);
+  for (const no of [null, 'Pear_Fan', 7]){ who = no; assert.equal(await a.loginWorks(), null, String(no)); }   // (no answer: Cloudflare's check, a dead page)
+  rec.cookies = [];
+  who = { name: '' };
+  assert.equal(await a.loginWorks(), null, 'no login here: nothing to check');
 });
 
 test('signing in and out: the login cookie, and the hidden window starts again', async () => {

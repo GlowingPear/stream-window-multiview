@@ -30,6 +30,7 @@ import { store } from '../shared/store.js';
 import { stopWinTimer } from '../shared/timers.js';
 import { KICK_CMD_JS } from '../sites/kick/commands.js';
 import { applyChatView, syncLike } from '../sites/youtube/options.js';
+import { chatLoginCheck } from '../toolbar/login-lost.js';
 import { mountCapture, openCapturePicker } from './capture.js';
 import { focusBoxNow, tabKeyAgent, tabKeyJs } from './frames.js';
 import { applyPlay } from './pause.js';
@@ -166,6 +167,7 @@ function mountView(w){
       if (w.kind === 'chat') shoutInSite(w, frame);           // Shoutouts: the buttons in Kick's and Twitch's chats (chat/shoutout.js)                // Channel name in chat boxes (chat/chat-name.js)
       if (w.kind === 'chat') startStick(w);                  // stays at its newest messages (chat/stick-bottom.js)
       if (w.kind === 'chat') focusBoxNow(w);                 // Tab switched to it while it loaded (windows/frames.js)
+      if (w.kind === 'chat') chatLoginCheck(w);              // does it show you signed out, though the app has your login? (toolbar/login-lost.js)
       applyChatView(w);
     });
   }

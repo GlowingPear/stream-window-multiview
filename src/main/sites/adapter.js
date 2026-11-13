@@ -14,6 +14,7 @@ const SLOTS = {
   named: ['boolean', true, 'its pages say which account is signed in (shown in the Account menu), not only that one is'],
   signedIn: ['function', true, '() -> whether you\'re signed in (follow suggestions)'],
   account: ['function', true, '() -> your name there, or whether you\'re signed in, or null (accounts:status)'],
+  loginWorks: ['function', false, '() -> true | false | null: whether the saved login still works, asked of the site with it (false: the site has signed the app out though its cookies are still here; null: couldn\'t tell). Only asked while signedIn() (accounts:check)'],
   liveOne: ['function', true, '(ch) -> its live info, { missing }, or null: is one channel live'],
   profile: ['function', true, '(ch) -> its profile, { missing }, or null'],
   byName: ['function', true, '(name) -> the channel id a plain name is there'],

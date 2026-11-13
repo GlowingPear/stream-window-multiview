@@ -70,6 +70,7 @@ import { init as toolbarHeader } from './toolbar/header.js';
 import { init as toolbarToolbar } from './toolbar/toolbar.js';
 import { init as toolbarLayoutMenu } from './toolbar/layout-menu.js';
 import { init as toolbarAccountsMenu } from './toolbar/accounts-menu.js';
+import { init as toolbarLoginLost } from './toolbar/login-lost.js';
 import { init as toolbarFarming } from './toolbar/farming.js';
 import { init as toolbarDailyReward } from './toolbar/daily-reward.js';
 import { init as layoutUndo } from './layout/undo.js';
@@ -176,6 +177,7 @@ import { init as panelsSettingsSync } from './panels/settings/sync.js';
   toolbarToolbar,
   toolbarLayoutMenu,
   toolbarAccountsMenu,
+  toolbarLoginLost,
   toolbarFarming,
   toolbarDailyReward,
   layoutUndo,

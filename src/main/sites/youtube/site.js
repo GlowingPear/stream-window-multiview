@@ -140,6 +140,9 @@ const isGoogleSignin = url => SIGNIN_HOST_RE.test(String(url || ''));
 const REJECT_ALL = 'CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg';
 // The YouTube login: its own cookies and the sign-in ones it checks on google.com
 const signedInWith = list => list.some(x => /(youtube|google)\.com$/.test(x.domain) && LOGIN_COOKIE.test(x.name));
+// Whether a YouTube page was for someone signed in (its ytcfg's LOGGED_IN), or null when it doesn't say (its cookie
+// question, or not a page of its own)
+const loggedInOn = html => { const m = /"LOGGED_IN"\s*:\s*(true|false)/.exec(String(html || '')); return m ? m[1] === 'true' : null; };
 
 // A link on the Subscriptions page -> its channel id (or null)
 function fromLink(href) {
@@ -375,6 +378,14 @@ function create(ctx) {
     named: false,                     // YouTube only tells us that you're signed in
     signedIn,
     async account() { try { return signedInWith(await ctx.session().cookies.get({})); } catch { return false; } },
+    // Whether its login cookies still sign you in: its home page, with them, says (Google can sign the app out while
+    // they're still here)
+    async loginWorks() {
+      try {
+        const r = await ctx.loginFetch(ytPage(YT + '/'), { headers: ctx.headers(), signal: ctx.netSignal() });
+        return r.ok ? loggedInOn(await r.text()) : null;
+      } catch { return null; }
+    },
     ready: loadYtKey,
     signInAs: { urls: ['https://*.google.com/*', 'https://*.youtube.com/*', 'https://*.gstatic.com/*'], test: isGoogleSignin, userAgent: () => firefoxUA() },
     liveOne, liveBatch,

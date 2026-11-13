@@ -23,6 +23,7 @@ import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { PLATFORMS } from '../sites/sites.js';
+import { checkLogins, loginLost, markBack, markLost } from './login-lost.js';
 import { placeMenu, showSpMenu } from './toolbar.js';
 import { popOutStreams, popoutVars, receiveChat, receiveStreams, streamsCameBack, updatePopBtn } from '../windows/popout.js';
 import { reloadPage } from '../windows/views.js';
@@ -40,15 +41,23 @@ function init(){
     acct = Object.assign(acct, settings.json('accounts', {})); acct.kick = acct.kick || settings.text('account');   // (older copies kept Kick's alone)
     const showAccounts = () => {
       settings.set('accounts', acct);
-      const on = sites().filter(p => acct[p.id]);
+      const on = sites().filter(p => acct[p.id]), gone = on.filter(p => loginLost(p.id));   // (gone: the site has signed the app out: toolbar/login-lost.js)
       lb.classList.toggle('has-acct', !!on.length);
-      lb.title = on.length ? 'Logged in: ' + on.map(p => p.me.named ? `${p.name} (${acct[p.id]})` : p.name).join(', ') : 'Log in to ' + siteNames();
+      lb.classList.toggle('acct-lost', !!gone.length);
+      lb.title = (gone.length ? gone.map(p => `${p.name} has signed this app out: sign in again`).join('\n') + '\n' : '')
+        + (on.length ? 'Logged in: ' + on.map(p => p.me.named ? `${p.name} (${acct[p.id]})` : p.name).join(', ') : 'Log in to ' + siteNames());
       document.querySelectorAll('#accountMenu .am-row, #settingsDlg .am-row').forEach(row => {
-        const p = row.dataset.p, v = acct[p];
-        row.querySelector('.am-st').textContent = v ? (PLATFORMS[p].me.named ? `Logged in as ${v}` : 'Logged in') : 'Not logged in';
-        row.querySelector('.am-in').hidden = !!v;
-        row.querySelector('.am-sw').hidden = row.querySelector('.am-out').hidden = !v;
-        row.classList.toggle('on', !!v);
+        const p = row.dataset.p, v = acct[p], lost = !!v && loginLost(p);
+        row.querySelector('.am-st').textContent = lost ? `Signed out by ${PLAT_NAME[p]}` : v ? (PLATFORMS[p].me.named ? `Logged in as ${v}` : 'Logged in') : 'Not logged in';
+        const inB = row.querySelector('.am-in');
+        inB.hidden = !!v && !lost;
+        inB.textContent = lost ? 'Sign in again' : 'Log in';
+        inB.classList.toggle('primary', lost);
+        row.querySelector('.am-sw').hidden = !v || lost;
+        row.querySelector('.am-imp').hidden = lost;   // (it can't read your follows until you sign in again)
+        row.querySelector('.am-out').hidden = !v;
+        row.classList.toggle('on', !!v && !lost);
+        row.classList.toggle('lost', lost);
       });
       if (window.kmv.accountsState) window.kmv.accountsState({ ...acct });    // the menu bar's Account menu follows
       applyLink();                                                            // a linked Pear Drops on another Kick account isn't in the way
@@ -59,19 +68,21 @@ function init(){
       for (const p of sites()){
         if (p.login.fromPages) acct[p.id] = fromPages || '';
         else if (st) acct[p.id] = p.me.named ? st[p.id] || '' : !!st[p.id];
+        if (!acct[p.id]) markBack(p.id);   // (no login here at all now: "Not logged in" says it)
       }
       showAccounts();
       return acct;
     };
     showAccounts();
+    store.watch('logins', showAccounts);   // a site signed the app out, or its login works again (toolbar/login-lost.js)
     lb.onclick = () => {
       am.hidden = !am.hidden;
-      if (!am.hidden){ placeMenu(am, lb); refreshAccount(); }
+      if (!am.hidden){ placeMenu(am, lb); refreshAccount().then(() => checkLogins()); }   // (does each site still take its login? at most every 10 minutes)
     };
     closeOnOutside(am, { button: lb });
     const doLogout = async p => {
       await window.kmv.logout(p);
-      acct[p] = loggedOut(p); showAccounts();
+      acct[p] = loggedOut(p); markBack(p, { relogged: true }); showAccounts();
       if (ROLE === 'main' && typeof setMyName === 'function' && PLATFORMS[p].me.named){   // (a name you typed for a site whose login doesn't say whose stays)
         setMyName(p, '');
         dropNotes(n => SmvNotes.tabOf(n) === 'mentions' && platOf(n.channel) === p);
@@ -119,6 +130,7 @@ function init(){
       wins.forEach(w => { if ((w.kind === 'chat' || (w.kind === 'stream' && streamSignedIn(p))) && w.ready && platOf(w.channel) === p) reloadPage(w); });   // that platform's chats (and signed-in streams) pick up the new login
       modOk.clear(); wins.forEach(w => { if (platOf(w.channel) === p) checkMod(w); });
       if (!PLATFORMS[p]) return;
+      markBack(p, { relogged: true });   // (a new login, or none: either way not the one the site took back)
       if (info.loggedOut){ acct[p] = loggedOut(p); showAccounts(); return; }
       await refreshAccount();
       if (ROLE === 'main' && typeof setMyName === 'function' && PLATFORMS[p].me.named && acct[p] && !myNameOn(p)) setMyName(p, acct[p]);
@@ -312,6 +324,7 @@ function init(){
         const sub = dlg.querySelector('.dlg-sub');
         if (r && r.error === 'login'){
           const ff = PLATFORMS[p].login.firefox, site = PLAT_NAME[p];
+          if (acct[p]) markLost(p);   // (the app has a login for it, and the site wouldn't take it: toolbar/login-lost.js)
           sub.textContent = ff && acct[p]
             ? `${site} has signed this app out. In Firefox, open ${PLATFORMS[p].hosts[0]} (choose your account if it asks), then copy your login again.`
             : `You need to be logged in to ${site} in this app first.` + (ff ? ` ${site} sign-in currently only works through Firefox.` : '');

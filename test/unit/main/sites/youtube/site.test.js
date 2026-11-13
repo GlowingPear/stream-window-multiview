@@ -264,6 +264,23 @@ test('signing in: through Firefox (the page shows how), the login\'s cookies, an
   assert.ok(a.signInAs.urls.includes('https://*.google.com/*'));
 });
 
+test('whether the login still works: YouTube\'s home page, with it, says whether someone\'s signed in', async () => {
+  let page = answer({ text: '<script>ytcfg.set({"LOGGED_IN":true,"x":1})</script>' });
+  const { a, rec } = youtubeWith({ loginFetch: () => page });
+  assert.equal(await a.loginWorks(), true);
+  assert.deepEqual(rec.fetched.map(f => [f.url, !!f.login]), [['https://www.youtube.com/', true]], 'its home page, with the login');
+  page = answer({ text: '{"LOGGED_IN" : false}' });
+  assert.equal(await a.loginWorks(), false, 'Google has signed the app out');
+  page = answer({ text: '<html>Before you continue to YouTube</html>' });
+  assert.equal(await a.loginWorks(), null, 'its cookie question: it doesn\'t say');
+  page = answer({ status: 503 });
+  assert.equal(await a.loginWorks(), null);
+  assert.equal(await youtubeWith().a.loginWorks(), null, 'no answer');
+  const stand = youtubeWith({ env: { SMV_YT_PAGES: 'http://127.0.0.1:9' }, loginFetch: () => answer({ text: '"LOGGED_IN":true' }) });
+  await stand.a.loginWorks();
+  assert.equal(stand.rec.fetched[0].url, 'http://127.0.0.1:9/', 'the tests\' stand-in for its pages');
+});
+
 test('YouTube\'s cookie question: "Reject all" saved in a player\'s storage or YouTube\'s, nowhere else', async () => {
   const { rec } = youtubeWith();
   const fallback = rec.handlers.app['youtube:consentFallback'];

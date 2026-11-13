@@ -321,8 +321,10 @@ function create(ctx) {
   }
 
   /* Kick only */
-  // Best guess at your Kick username from your logged-in session (you can also type it in).
-  ctx.ipc.app.handle('me:detect', async () => {
+  // Who Kick says is signed in, asked from its own page with your login: { name } ('' when it answered with nobody: a
+  // login it no longer takes answers 200 with nothing, like none at all), or null when it didn't answer (a 403 can be
+  // Cloudflare's check, not Kick's answer).
+  async function whoAmI() {
     await ensureLiveWin();
     if (!liveWin) return null;
     const r = await liveWin.webContents.executeJavaScript(`(async () => {
@@ -330,13 +332,26 @@ function create(ctx) {
     const h = { Accept: 'application/json' }, t = ck('session_token'), x = ck('XSRF-TOKEN');
     if (t) h.Authorization = 'Bearer ' + t;
     if (x) h['X-XSRF-TOKEN'] = x;
+    let answered = false;
     for (const u of ['/api/v1/user', '/api/v2/user']) {
       try { const r = await fetch(u, { credentials: 'include', headers: h });
-        if (r.ok) { const d = await r.json(); const n = d.username || (d.user && d.user.username) || d.slug; if (n) return String(n); } } catch (e) {}
+        if (r.status === 200 || r.status === 401) answered = true;
+        if (r.ok) { const d = await r.json().catch(() => null); const n = d && (d.username || (d.user && d.user.username) || d.slug); if (n) return { name: String(n) }; } } catch (e) {}
     }
-    return null; })()`, true).catch(() => null);
-    return typeof r === 'string' && /^[A-Za-z0-9_]{2,30}$/.test(r) ? r : null;
+    return answered ? { name: '' } : null; })()`, true).catch(() => null);
+    return r && typeof r === 'object' && typeof r.name === 'string' ? { name: r.name } : null;
+  }
+  // Best guess at your Kick username from your logged-in session (you can also type it in).
+  ctx.ipc.app.handle('me:detect', async () => {
+    const r = await whoAmI();
+    return r && /^[A-Za-z0-9_]{2,30}$/.test(r.name) ? r.name : null;
   });
+  // Whether the login cookie still signs you in: Kick names someone (or, answering with nobody, doesn't)
+  async function loginWorks() {
+    if (!(await signedIn())) return null;
+    const r = await whoAmI();
+    return r ? !!r.name : null;
+  }
   // Unfollow on Kick itself (what the Unfollow button on the channel's page does).
   ctx.ipc.app.handle('kick:unfollow', async (_e, slug) => {
     slug = String(slug || '').toLowerCase();
@@ -356,7 +371,7 @@ function create(ctx) {
     id: site.id, site,
     loginUrl: KICK,
     named: true,                      // its name comes from its pages (me:detect): account() is only whether you're signed in
-    signedIn, account: signedIn,
+    signedIn, account: signedIn, loginWorks,
     keeps: w => w === liveWin,
     loggedOut: closeLiveWin,          // the checker starts fresh, logged out
     close: closeLiveWin,              // the hidden checker must not keep the app running
