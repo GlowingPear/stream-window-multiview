@@ -1,0 +1,36 @@
+/* Twitch: how the page shows something as Twitch's, everywhere it does. Each part's own CSS draws it, and this
+   file only gives it Twitch's colours, so everything that's about Twitch alone is here. index.html loads the
+   sites' files after every part's, so these win as they did in each part's file. A new site: a copy of this file in its
+   folder, with its id and colours (the same selectors), and its <link> next to these. */
+
+/* A linked window's site tabs (windows/frames.css): its tab, and the tab showing */
+.ptab.twitch{color:#b28cff}
+.ptab.on.twitch{background:#9146ff;color:#fff}
+
+/* The switch control's list (platforms.css): the dot by its channels' names */
+.fs-item.plat-twitch .fs-name .dot{background:#a970ff}
+
+/* ALL (chat/all-chat.css): the send box and its button, a reward's line, pins, the chat's modes, polls */
+.all-view[data-send=twitch]{--site:#9146ff}
+.all-view[data-send=twitch] .all-rb-site{color:#b28cff}
+.all-pinchip.ping-twitch{--pc:#9146ff;background:#9146ff}
+.all-modes-twitch{--sc:#a970ff}
+.all-poll-twitch{--site:#9146ff}
+
+/* Shoutouts (chat/shoutout.css): the site chip */
+.so-site-twitch{background:#9146ff;color:#fff}
+
+/* Notifications (panels/settings/notifications.css): the dot by where it happened */
+.mp-row.plat-twitch .mp-where .dot{background:#a970ff}
+
+/* Its badge (alerts/alerts.css's .pi): next to channel names, on ALL's lines, in lists */
+.pi-twitch{background:#9146ff;color:#fff}
+
+/* Accounts (panels/channels/import-progress.css): the dot of a login that's on */
+.am-row[data-p=twitch].on .pdot{background:#a970ff}
+
+/* Profiles (panels/profiles/profiles.css): its site chip */
+.pf-plat.twitch{background:rgba(145,70,255,.2);color:#c4a5ff}
+
+/* Settings › Developer (panels/developer/developer.css): its pill */
+.dv-twitch{background:#8a4fff;color:#fff}

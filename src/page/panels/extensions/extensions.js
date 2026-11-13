@@ -1,7 +1,7 @@
 import { allOn } from '../../chat/all-chat.js';
 import { $, wins } from '../../core.js';
 import { openSettings, settingsDlg, settingsTab } from '../settings/settings.js';
-import { PLAT_NAME, extCount, platOf, platformVars, viewPartition, watchSignedIn } from '../../platforms/platforms.js';
+import { PLAT_NAME, extCount, platOf, platformVars, siteIds, viewPartition, watchSignedIn } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
@@ -9,22 +9,23 @@ import { DESKTOP } from '../../shared/env.js';
 import { icon } from '../../shared/icons.js';
 import { fromApp } from '../../shared/incoming.js';
 import { closeOnOutside } from '../../shared/popover.js';
+import { PLATFORMS } from '../../sites/sites.js';
 import { tabChannels } from '../../windows/frames.js';
 import { viewId } from '../../windows/view.js';
 import { reloadPage } from '../../windows/views.js';
 
 let extPane;
-const EXT_PLATS = ['kick', 'twitch', 'youtube'], EXT_COL = { kick: '#53fc18', twitch: '#a970ff', youtube: '#ff3d3d' };
+const EXT_PLATS = () => siteIds(), EXT_COL = p => PLATFORMS[p].colors.dot;
 const andList = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
 // A site watched signed in has one switch for its chats and streams (they share a session), shown as one
 // cell across both rows. A site the extension doesn't name in its manifest is dimmed but can still be set.
 function extGridHtml(grid, sites){
   const runs = p => !sites || sites.includes(p);
-  let h = '<span class="h"></span>' + EXT_PLATS.map(p => `<span class="h${runs(p) ? '' : ' ex-off'}"><span><i class="pdot" style="background:${EXT_COL[p]}"></i>${PLAT_NAME[p]}`
+  let h = '<span class="h"></span>' + EXT_PLATS().map(p => `<span class="h${runs(p) ? '' : ' ex-off'}"><span><i class="pdot" style="background:${EXT_COL(p)}"></i>${PLAT_NAME[p]}`
     + (watchSignedIn[p] ? '<em class="ex-chip">signed in</em>' : '') + '</span>' + (runs(p) ? '' : '<small>Doesn\'t run here</small>') + '</span>').join('');
   for (const [k, label] of [['stream', 'Streams'], ['chat', 'Chats']]){
     h += `<span class="rl">${label}</span>`;
-    EXT_PLATS.forEach((p, i) => {
+    EXT_PLATS().forEach((p, i) => {
       const at = `grid-column:${i + 2}`, off = runs(p) ? '' : ' ex-off';
       if (!watchSignedIn[p]) h += `<span class="${off}" style="${at}"><input type="checkbox" data-p="${p}" data-k="${k}" aria-label="${PLAT_NAME[p]} ${label.toLowerCase()}"${grid[p][k] ? ' checked' : ''}></span>`;
       else if (k === 'stream') h += `<label class="ex-both${off}" style="${at};grid-row:span 2"><input type="checkbox" data-p="${p}" data-k="chat" aria-label="${PLAT_NAME[p]} chats and streams"${grid[p].chat ? ' checked' : ''}><span>Chats &amp; streams<br>(signed in)</span></label>`;
@@ -32,7 +33,7 @@ function extGridHtml(grid, sites){
   }
   return h;
 }
-const extSignedNote = () => EXT_PLATS.some(p => watchSignedIn[p])
+const extSignedNote = () => EXT_PLATS().some(p => watchSignedIn[p])
   ? 'Signed-in streams share their chat\'s login, so they share its extensions. To set them separately, watch them logged out in <button class="linkish" data-go="accounts">Accounts</button>.' : '';
 function extFill(box, x){
   const warn = box.querySelector('.ex-warn');

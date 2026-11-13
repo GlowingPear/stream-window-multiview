@@ -102,7 +102,7 @@ async function reportHealth(chs){
       raws: h.raws, badRaws: h.badRaws, lines: probe ? probe.n : null, lineHtml: probe ? probe.html || '' : '' });
   }
   const heard = (window.kmv.samplesInfo ? await window.kmv.samplesInfo().catch(() => null) : null) || {};
-  const r = await window.kmv.healthReport({ sites, known: feedParse.KNOWN, ignored: feedParse.ignoredKinds(heard) }).catch(() => null);
+  const r = await window.kmv.healthReport({ sites, known: feedParse.known(), ignored: feedParse.ignoredKinds(heard) }).catch(() => null);
   if (r && r.saved) flash('Saved the report, without names, ids or words: send it for a fix', { subject: 'downloads' });
   else if (r && r.error) flash('Couldn’t save the report');
 }

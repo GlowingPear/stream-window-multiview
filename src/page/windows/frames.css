@@ -4,8 +4,6 @@
 .ptab{position:relative;flex:none;width:20px;height:20px;border:0;border-radius:5px;padding:0;display:grid;place-items:center;cursor:pointer;
   font:800 11px/1 system-ui,sans-serif;background:transparent;color:var(--muted);transition:background .12s}
 .ptab:hover{background:var(--line2)}
-.ptab.kick{color:#53fc18}.ptab.twitch{color:#b28cff}.ptab.youtube{color:#ff6a6a}
-.ptab.on.kick{background:#53fc18;color:#0b0e0f}.ptab.on.twitch{background:#9146ff;color:#fff}.ptab.on.youtube{background:#ff2a2a;color:#fff}
 .ptab.solo{cursor:inherit;pointer-events:none}
 .ptab.off:not(.on){opacity:.38}
 .ptab.off.on{filter:saturate(.45) brightness(.85)}

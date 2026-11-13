@@ -14,7 +14,6 @@
 .dv-page{background:color-mix(in srgb,#5b8cff 25%,transparent);color:#bcd2ff}
 .dv-main{background:color-mix(in srgb,#a678ff 25%,transparent);color:#dac8ff}
 .dv-chat,.dv-stream{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--text)}
-.dv-kick{background:#53fc18;color:#0a0c0d}.dv-twitch{background:#8a4fff;color:#fff}.dv-youtube{background:#ff3d3d;color:#fff}
 .dv-st{font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
 .dv-st.ok{color:var(--accent)}.dv-st.bad{color:var(--danger)}
 .dv-n{color:var(--muted);font-weight:600}

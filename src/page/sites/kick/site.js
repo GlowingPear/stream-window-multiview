@@ -1,0 +1,231 @@
+import { Site } from '../adapter.js';
+import { kickFeed } from './feed.js';
+import { kickBadges, kickIconsAgent, kickModes, kickPins, kickShown, kickTap, replyAgent } from './in-site/feed.js';
+import { kickShoutouts } from './shoutouts.js';
+
+// Kick, as the rest of the page sees it. Twitch (twitch.js) and YouTube (youtube.js) have the same shape, and
+// platforms.js picks the one for a channel (platform(ch)), so the page asks the site's module instead of
+// checking which site it is. Nothing here touches the page (the unit tests load it on its own, after setting
+// globalThis.SmvSites). Its id, name, letter, channel-id prefix and storage come from the list of sites both sides
+// share (src/shared/sites.js, window.SmvSites). Kick's channel ids are the channel's name: "nightowl".
+
+// kick.com/<name> pages that aren't a channel
+const NOT_CHANNELS = new Set(['login', 'signup', 'register', 'categories', 'category', 'browse', 'following', 'search', 'settings', 'dashboard',
+  'subscriptions', 'messages', 'notifications', 'wallet', 'video', 'videos', 'clips', 'clip', 'terms-of-service', 'privacy-policy',
+  'community-guidelines', 'dmca-policy', 'popout', 'api', 'auth', 'oauth', 'verify', 'stream', 'chatroom', 'help', 'about', 'careers', 'kick-creators', 'emotes']);
+
+// Its chat's commands, for ALL's box (/ at the start: chat/all-chat.js), as twitch.js says them (Kick has no 'lead'). As its chat's own list
+// shows them (read in live chats 2026-10-31): its words, its order (by name), and who can use each (its commands' own
+// minimumRole: viewer, moderator or broadcaster). Its timeout is in minutes. /poll, /prediction and /clip open Kick's own panel from ALL too
+// (commands.js); /user and /category, which open something in its own chat, are left out.
+const KICK_COMMANDS = [
+  { name: 'ban', args: '<username> [reason]', does: 'Ban a user from the chat', who: 'mod' },
+  { name: 'clear', args: '', does: 'Clear the chat', who: 'mod' },
+  { name: 'clip', args: '[duration] [title]', does: 'Create a clip', who: 'all' },
+  { name: 'emoteonly', args: '<on_off>', does: 'Toggle emote only mode', who: 'mod' },
+  { name: 'followonly', args: '<on_off> [minutes]', does: 'Toggle follow only mode', who: 'mod' },
+  { name: 'kpp', args: '<on_off>', does: 'Toggle partner income', who: 'host' },
+  { name: 'mod', args: '<username>', does: 'Add a moderator to the chat', who: 'host' },
+  { name: 'multi', args: '<on_off>', does: 'Toggle multistream', who: 'host' },
+  { name: 'og', args: '<username>', does: 'Add an OG to the chat', who: 'host' },
+  { name: 'poll', args: '', does: 'Create a poll', who: 'mod' },
+  { name: 'polldelete', args: '', does: 'Delete a poll', who: 'mod' },
+  { name: 'prediction', args: '', does: 'Create a prediction', who: 'mod' },
+  { name: 'raid', args: '[username]', does: 'Raid a channel', who: 'host' },
+  { name: 'slow', args: '<on_off> [seconds]', does: 'Toggle slow mode', who: 'mod' },
+  { name: 'subonly', args: '<on_off>', does: 'Toggle sub only mode', who: 'mod' },
+  { name: 'timeout', args: '<username> <minutes> [reason]', does: 'Timeout a user from the chat', who: 'mod' },
+  { name: 'title', args: '<title>', does: 'Set the title of the stream', who: 'mod' },
+  { name: 'unban', args: '<username>', does: 'Unban a user from the chat', who: 'mod' },
+  { name: 'unmod', args: '<username>', does: 'Remove a moderator from the chat', who: 'host' },
+  { name: 'unog', args: '<username>', does: 'Remove an OG from the chat', who: 'host' },
+  { name: 'unvip', args: '<username>', does: 'Remove a VIP from the chat', who: 'host' },
+  { name: 'vip', args: '<username>', does: 'Add a VIP to the chat', who: 'host' }
+];
+
+const kick = new Site({   // (what each slot is for, and its default: sites/adapter.js)
+  id: 'kick',
+  // What it can do in the app
+  mentions: true,        // mention and reply alerts read its chat
+  screenMentions: true,  // also from its chat page's text, while its connection isn't read (in-site/mentions.js)
+  mentionEnd: '\\b',     // what ends an @name in a message (a regex): its names are letters, numbers and _
+  threadedReplies: true, // ALL replies with its own Reply on the message (chat/all-chat.js)
+  // ALL's timeout and ban: Kick's chat commands (its timeouts are in minutes)
+  timeoutCmd: (login, secs) => `/timeout ${login} ${Math.max(1, Math.round(secs / 60))}`,
+  banCmd: login => `/ban ${login}`,
+  // ... sent as Kick's own request, the one its chat makes (a command put in its box from outside is sent as a message):
+  // ch the channel, name their username, secs a timeout's length (none: a ban). -> { url, method, body }, for kickApi
+  modRequest: (ch, name, secs) => ({ url: `https://kick.com/api/v2/channels/${encodeURIComponent(ch)}/bans`, method: 'POST',
+    body: secs ? { banned_username: name, duration: Math.max(1, Math.round(secs / 60)), permanent: false } : { banned_username: name, permanent: true } }),
+  deleteMods: true,      // ALL's Delete works on another mod's message, as in its own chat (not their timeout or ban)
+  spamAlerts: true,      // spam alerts read its chat
+  // Is this name in its chat the channel's own broadcaster? (spam alerts never mark them.) On Kick a name with _ can
+  // have - in its address
+  isHost: (ch, name) => !!name && String(name).toLowerCase().replace(/_/g, '-') === String(ch).toLowerCase().replace(/_/g, '-'),
+  flagged: false,        // Settings › Flagged: Kick holds nothing for moderators (its AI moderation deletes)
+  feedReaders: true,     // the alerts, chat over the stream and counts read its chat's connection (chat/chat-feed.js)
+  emoteLists: true,      // the app asks it for a channel's emotes (new emotes glow)
+  pageCommands: true,    // /clip, /poll and /prediction in its chat (commands.js)
+  // Held messages (Settings › Flagged, ALL's held cards): who holds them (by: 'AutoMod'; '' for the site itself, "held
+  // for review"), whether a hold runs out (expires), whether your own messages can be held (yours), and the words its
+  // own buttons and its chat use (allow, deny, denied). null: it holds none
+  held: null,
+  // The Welcome screen's "What can I paste?" (panels/empty-stage): what you can type or paste for its channels
+  pasteHints: ['<code>kick.com/nightowl</code> or just <code>nightowl</code>: a Kick stream and chat'],
+  following: true,       // a profile says whether you follow them (with your login)
+  roundsFollowers: false, // its follower counts are rounded (a profile says so)
+  offlineChat: true,     // its chat is there while the channel is offline (YouTube's live chat comes with a stream)
+  liveVideo: false,      // its channel's stream is a video of its own, looked up while it's live (windows/views.js, resolveYt)
+  chatMax: 500,          // the longest message its chat takes
+  // Its emotes in ALL's picker (chat/all-emotes.js): none, what the picker says when it has none (null: "you may need to
+  // sign in"); paste(text, add), text pasted in ALL with its emotes in its own form -> the text with each emote as its
+  // name, add(name, { send, url }) for each one
+  emotes: {
+    none: null,
+    paste: (text, add) => text.replace(/\[emote:(\d+):([^\]\s]+)\]/g, (_, id, name) => { add(name, { send: `[emote:${id}:${name}]`, url: `https://files.kick.com/emotes/${id}/fullsize` }); return name; })
+  },
+  // What ALL (chat/all-chat.js) reads from its chat beyond the messages. false where it has none of it:
+  feed: kickFeed,   // its chat's data as ALL's messages (feed.js; chat/feed-parse.js)
+  chat: {
+    ownIcons: true,      // badges drawn with its chat page's own icons, read from there (inSite.icons)
+    globalBadges: false, // badge pictures that are the same in every chat, read once (Twitch's)
+    look: false,         // how its chat page draws names and badges, read from it (YouTube's: inSite.look)
+    shared: false,       // shared chat: a message sent in another channel's chat shows here too (Twitch; its channels: inSite.channels)
+    modByLater: false,   // who deleted a message or banned someone comes on its own, after it (Twitch)
+    hypeTrains: false,   // hype trains (Twitch; the one already running: inSite.hypeTrain)
+    modesAgain: false    // its chat's modes may not be readable until its page has them: asked again (YouTube)
+  },
+  // The scripts that run inside its chat page (in-site/; sites/in-site.js builds them): its parts of them, each a
+  // self-contained function, as it runs there as text (see "Scripts that run inside the sites" in src/page/README.md).
+  // null where it has none: the caller skips it. The same slots on every site:
+  //   tap, pins, shown, badges, modes: its parts of in-site/feed.js's feedAgent (({ F, push, sample }) -> heard(text),
+  //     for each websocket text, or null), pinAgent (name -> [the pin as its live event] | null), shownAgent
+  //     (({ name, wait, propsOf }) -> [raw]), badgesAgent ((name, global) -> { <site>: … } | null) and modesAgent
+  //     (({ name, wait, cookie }) -> { modes, me } | { blocked, signIn } | null)
+  //   icons (chat.ownIcons: known -> { key: svg }), look (chat.look: -> { dark, names, icons }), room (its chat's own
+  //     id: -> id | null), hypeTrain (chat.hypeTrains: the one running -> it | null), channels (chat.shared: ids ->
+  //     [{ id, login, name, pic, color }] | null), commands (its chat's own command list, for liveCommands)
+  //   reply (threadedReplies true: id -> whether its own Reply started), replyAt / replyPress (threadedReplies
+  //     'pointer': id -> where the pointer goes | null; id -> 'ok' | 'cant' | '')
+  //   heldCard (held: id -> the held message's card in its chat | null; in-site/mod.js heldAgent)
+  //   emote: its emotes in a chat page: look (the emote card's badge: [background, colour, words]), find((img, url,
+  //     name) -> { big, text? } | null: in-site/emote-preview.js), host and path (regular expressions' text: where its
+  //     emotes' pictures are, and what their path starts with, for in-site/mentions.js and new-emotes.js; host null:
+  //     not read there)
+  // Kick's: in-site/feed.js
+  inSite: {
+    tap: kickTap, pins: kickPins, shown: kickShown, badges: kickBadges, modes: kickModes,
+    icons: kickIconsAgent, look: null, room: null, hypeTrain: null, channels: null, commands: null,
+    reply: replyAgent, replyAt: null, replyPress: null, heldCard: null,
+    emote: {
+      look: ['#53fc18', '#0a0c0d', 'Kick emote'],
+      find: (img, u) => { const m = u.hostname === 'files.kick.com' && u.pathname.match(/^\/emotes\/(\d+)\//); return m ? { big: `https://files.kick.com/emotes/${m[1]}/fullsize` } : null; },
+      host: 'files\\.kick\\.com', path: '^/emotes/',
+      pics: 'files\\.kick\\.com\\/emotes\\/'   // (where its emote pictures are: after https://, a regular expression's text)
+    }
+  },
+  // How in-site/send.js sends in its chat (its box: chatBox.box): button, its send button (null: Enter in the box);
+  // inner, what to press inside that button when it's a wrapper (the first there); waitEnabled, wait for the button
+  // to be on (the site turns it on once it has seen the text); realPress, the site only takes a real press on it (one
+  // press, then the app presses it for real)
+  send: { button: null, inner: null, waitEnabled: false, realPress: false },
+  likes: false,          // a like button on its streams
+  chatCommands: KICK_COMMANDS,   // its chat's commands, for ALL's / list (above)
+  liveCommands: null,   // (its list can't be read from its page without typing / in it: npm run check:commands checks the copy)
+  // A name in ALL (chat/all-chat.js) as its own chat shows it: m a message (feed-parse.js), light whether the app's
+  // theme is light, look what the site's chat page says about its colours (YouTube's: youtube.js). -> { color, bg? }
+  // (bg: a name on a pill), or null: ALL picks one. Kick shows the colour each account has, as it is
+  nameStyle: m => /^#[0-9a-f]{6}$/i.test(m.color || '') ? { color: m.color } : null,
+  // Its stream's quality can be set (windows/quality.js), and how high its player goes by itself: Kick's embedded
+  // player caps itself at 720p (1080p only on rewards.gg)
+  quality: { siteMax: 720 },
+  // You on it (Settings › Mentions, the accounts): the saved setting with your name there, and what a name there looks
+  // like. at: its chat shows names as "@name". named: its login says which account it is (else just signed in or not)
+  me: { setting: 'myName', valid: /^[A-Za-z0-9_]{2,30}$/, at: false, named: true, word: 'username' },   // (word: what a name there is called)
+  // fromPages: the app reads your name from its pages (window.kmv.detectMe), not from its login's cookies
+  login: { fromPages: true, firefox: false, unfollow: true },   // firefox: you sign in by copying Firefox's login; unfollow: Import follows can unfollow
+  // Its colours where the page sets them in code: dot (a login's dot, an extension's site), brand (a profile's banner)
+  colors: { dot: '#53fc18', brand: '#53fc18' },
+  // Shoutouts (chat/shoutout.js): null for a site without. { tries(name): the channel addresses a name in its chat can
+  // be, in the order to ask the site (null: a name is its address); command: its own shoutout command, sent after the
+  // message where you're a mod (Settings › Shoutouts), or null; page: how its chat page draws a message, for the
+  // Shout out buttons inside it (in-site/shoutout.js's look) }. Kick's: shoutouts.js
+  shoutouts: kickShoutouts,
+  // A bare name typed in the Channels box, and the name on the site
+  idFor: name => name,
+  // Text typed in the Channels box that's one of its channels in its own short form ("tw:name"): { channel, only }, or
+  // undefined (Kick has none: a bare name is a Kick channel unless a Channels tab says otherwise)
+  fromText: () => undefined,
+  handle: ch => ch,
+  // What a channel is called until the site's own spelling is known
+  label: ch => ch,
+  // A link: { channel, only } ('chat' for a chat link), null for a page of the site that isn't a channel,
+  // undefined for another site. host has no "www." or "m.", parts are the path's parts.
+  fromUrl(host, parts){
+    if (host !== 'kick.com' && !host.endsWith('.kick.com')) return undefined;
+    const name = s => /^[A-Za-z0-9_-]{1,40}$/.test(s || '') ? s.toLowerCase() : null;   // anything else isn't a channel's name
+    if (parts[0] === 'popout' && parts[1]) return name(parts[1]) ? { channel: name(parts[1]), only: 'chat' } : null;
+    if (parts[0] && parts[1] === 'chatroom') return name(parts[0]) ? { channel: name(parts[0]), only: 'chat' } : null;
+    if (parts[0]) return name(parts[0]) ? { channel: name(parts[0]), only: null } : null;
+    return null;
+  },
+  streamUrl: (ch, muted) => `https://player.kick.com/${encodeURIComponent(ch)}?autoplay=true&muted=${muted ? 'true' : 'false'}`,
+  chatUrl: ch => `https://kick.com/popout/${encodeURIComponent(ch)}/chat`,
+  // Where "Open in the browser" goes for a stream or chat window, and the channel's own page (Streamer profiles)
+  pageUrl: (ch, kind) => kind === 'chat' ? kick.chatUrl(ch) : `https://kick.com/${encodeURIComponent(ch)}`,
+  profileUrl: ch => 'https://kick.com/' + ch,
+  modUrl: ch => `https://dashboard.kick.com/moderator/${encodeURIComponent(ch)}`,
+  // What its player shows (run in the player's page; windows/stuck.js): 'error' for its error page ("This embed
+  // seems to be misconfigured", which never tries again), 'offline' for its offline screen (/<name>/offline, which
+  // never goes back to the player when the channel is live again), else 'ok'.
+  stuckJs: `(() => /This embed seems to be misconfigured/i.test(document.body ? document.body.innerText : '') ? 'error'
+    : /^\\/[^/]+\\/offline\\/?$/i.test(location.pathname) ? 'offline' : 'ok')()`,
+  // Its popout chat places a user's card (click a name) to the left of the chat, as on kick.com, which is off
+  // the window's left edge here. Keep it inside the window.
+  chatCss: `#user-identity { left: 0 !important; right: auto !important; width: min(356px, 100vw) !important;
+  max-height: 100vh !important; overflow-y: auto !important; }`,
+  // Its chat box's empty text (Settings > Chat > Channel name in chat boxes, in-site/chat-name.js): the box, the
+  // element showing the text, the box's attributes with the same text, and the site's usual text (only that one
+  // changes: a box that says something else, like followers-only or slow mode, says why you can't chat).
+  // Its chat's message list and its own "back to the newest messages" button (in-site/stick-bottom.js keeps the chat at
+  // its newest messages; with no list here it uses the biggest box that scrolls).
+  chatScroll: { list: '#chatroom-messages', resume: null },   // scrolling down is enough: Kick follows again by itself
+  // Someone supporting the stream (Settings > Support, in-site/mentions.js): how its chat shows it. { kind, re }
+  // reads a row of the site's own (not someone's message) by its text, with the name (who), the number (n) and who
+  // got a gift (to); { kind, row, who, n } an element it draws for it; { kind, re, msg: true, from? } words in a
+  // message (from: only that sender's); { kind, re, page: true } a banner over the chat; anyRow: also a row that holds
+  // a message (otherwise those are messages, never notices). kind: kicks, bits, gifts (to
+  // the community), gift (to someone), sub, superchat, member, raid (n: the viewers it brought).
+  // A notice can start with the time (when the chat shows times), and the KICK icon between "sent" and the number can
+  // carry words of its own.
+  support: { finds: [
+    // a raid (Kick calls it hosting) shows as a banner at the top of the chat
+    { kind: 'raid', page: true, re: '^(?<who>[A-Za-z0-9_]{2,30}) is (?:hosting|raiding)(?: your channel| the channel)? with (?<n>\\d[\\d,]*) viewers?' },
+    { kind: 'gifts', re: '(?:^|\\s)(?<who>[A-Za-z0-9_]{2,30}) gifted (?<n>\\d[\\d,]*) subscriptions? to the community' },
+    { kind: 'gift', re: '(?:^|\\s)(?<who>[A-Za-z0-9_]{2,30}) gifted (?:a|(?<n>\\d+)) subs? to (?<to>[A-Za-z0-9_]{2,30})' },
+    { kind: 'kicks', re: '(?:^|\\s)(?<who>[A-Za-z0-9_]{2,30}) sent\\D{0,30}?(?<n>\\d[\\d,]*)(?!\\d)' },
+    // KickBot, Kick's own bot, says each KICKs gift in the chat: "@name just gifted 100 KICKs!" (a message, read even
+    // when the "sent" box isn't drawn; the two are one gift)
+    { kind: 'kicks', msg: true, from: 'KickBot', re: '^@?(?<who>[A-Za-z0-9_]{2,30}) just gifted (?<n>\\d[\\d,]*) KICKs?\\b' },
+    { kind: 'sub', re: '(?:^|\\s)(?<who>[A-Za-z0-9_]{2,30}) (?:just )?(?:re)?subscribed(?: for (?<n>\\d+) months?)?' },
+    // a sub celebrated ("mossy_rock celebrates their subscription for 7 months!"): its box also holds their message, so
+    // it's read in rows with a message too (anyRow), and only at the row's start, never from words in a message
+    { kind: 'sub', anyRow: true, re: '^(?:\\d{1,2}:\\d{2}(?:\\s?[AP]M)?\\s+)?(?<who>[A-Za-z0-9_]{2,30}) celebrates? their subscription(?: for (?<n>\\d+) months?)?' }
+  ] },
+  chatBox: { box: '[data-testid="chat-input"]', hint: '[data-testid="chat-input"] ~ div', attrs: [], says: '^send a message$' },
+  // A raid: the channel a stream or chat window's new address (a URL) is for, or null when it isn't a channel's
+  // player, chat or page.
+  raidTarget(kind, u){
+    const host = u.hostname.replace(/^(www|m)\./, ''), parts = u.pathname.split('/').filter(Boolean).map(x => x.toLowerCase());
+    let ch = null;
+    if (kind === 'stream') ch = host === 'player.kick.com' && parts.length === 1 ? parts[0] : null;
+    else if (host === 'kick.com'){
+      if (parts[0] === 'popout' && parts[2] === 'chat') ch = parts[1];
+      else if (parts.length === 1 || (parts.length === 2 && parts[1] === 'chatroom')) ch = parts[0];
+    }
+    if (ch && (!/^[a-z0-9_-]{3,25}$/.test(ch) || NOT_CHANNELS.has(ch))) ch = null;
+    return ch;
+  }
+});
+
+export { kick };

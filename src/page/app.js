@@ -9,10 +9,10 @@ import { init as inSiteEmotePreview } from './in-site/emote-preview.js';
 import { init as inSiteNewEmotes } from './in-site/new-emotes.js';
 import { init as inSiteTranslate } from './in-site/translate.js';
 import { init as inSiteChatMessage } from './in-site/chat-message.js';
-import { init as inSiteKickCommands } from './in-site/kick-commands.js';
-import { init as chatKickClip } from './chat/kick-clip.js';
-import { init as chatKickPoll } from './chat/kick-poll.js';
-import { init as chatKickPrediction } from './chat/kick-prediction.js';
+import { init as kickCommands } from './sites/kick/commands.js';
+import { init as kickClip } from './sites/kick/clip.js';
+import { init as kickPoll } from './sites/kick/poll.js';
+import { init as kickPrediction } from './sites/kick/prediction.js';
 import { init as inSiteVolume } from './in-site/volume.js';
 import { init as platformsPlatforms } from './platforms/platforms.js';
 import { init as platformsPearDrops } from './platforms/pear-drops.js';
@@ -45,7 +45,7 @@ import { init as layoutSwitcher } from './layout/switcher.js';
 import { init as layoutSwitchControl } from './layout/switch-control.js';
 import { init as windowsPause } from './windows/pause.js';
 import { init as windowsQuality } from './windows/quality.js';
-import { init as platformsYoutubeOptions } from './platforms/youtube-options.js';
+import { init as sitesYoutubeOptions } from './sites/youtube/options.js';
 import { init as layoutFocusOnly } from './layout/focus-only.js';
 import { init as layoutColumnDrag } from './layout/column-drag.js';
 import { init as layoutSavedLayouts } from './layout/saved-layouts.js';
@@ -117,10 +117,10 @@ import { init as panelsSettingsSync } from './panels/settings/sync.js';
   inSiteNewEmotes,
   inSiteTranslate,
   inSiteChatMessage,
-  inSiteKickCommands,
-  chatKickPoll,
-  chatKickPrediction,
-  chatKickClip,
+  kickCommands,
+  kickPoll,
+  kickPrediction,
+  kickClip,
   inSiteVolume,
   platformsPlatforms,
   platformsPearDrops,
@@ -155,7 +155,7 @@ import { init as panelsSettingsSync } from './panels/settings/sync.js';
   layoutSwitchControl,
   windowsPause,
   windowsQuality,
-  platformsYoutubeOptions,
+  sitesYoutubeOptions,
   layoutFocusOnly,
   layoutColumnDrag,
   layoutSavedLayouts,

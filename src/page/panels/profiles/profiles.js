@@ -5,7 +5,8 @@ import { bell } from '../bell/bell.js';
 import { channelVars, infoFor, loadSavedProfiles, notifyAll, notifyOff, persistSaved, saved, sendWatch, toggleSaved } from '../channels/channels.js';
 import { openLinkCard } from '../linked/link-card.js';
 import { linkedOn, nameOf, ordered, siteName, siteNo, siteNum, streamerOf } from '../../platforms/linked.js';
-import { PLAT_NAME, chLabel, modUrl, normCh, parseInput, platOf, platform, rememberName, rememberNames } from '../../platforms/platforms.js';
+import { PLAT_NAME, chLabel, isVideo, modUrl, normCh, parseInput, platOf, platform, rememberName, rememberNames,
+  siteIds } from '../../platforms/platforms.js';
 import { ask, askChecked } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
 import { element, esc } from '../../shared/element.js';
@@ -17,6 +18,7 @@ import { closeOnOutside } from '../../shared/popover.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
 import { closeOverlays } from '../../shortcuts.js';
+import { PLATFORMS } from '../../sites/sites.js';
 import { loadBarAvatars } from '../../windows/channel-picker.js';
 import { openStreamer } from '../../windows/frames.js';
 
@@ -26,7 +28,7 @@ const pf = { list: {}, plat: 'all', flags: new Set(), sort: 'live', cur: null, d
 const pfHue = ch => { let h = 0; for (const c of String(ch)) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 35% 36%)`; };
 // "NovaKit" -> NK, "ember_and_oak" -> EA, "quietcartographer" -> QU
 function pfInitials(n){
-  const t = String(n).replace(/^(tw:|yt:c:|yt:@?)/, '').trim();
+  const s = String(n), b = SmvSites.bare(s), t = (b !== s ? b.replace(/^@/, '') : s).trim();   // (a channel id: its name there)
   const words = t.split(/[\s_.\-]+/).filter(w => /[A-Za-z0-9]/.test(w));
   if (words.length > 1) return (words[0][0] + words[1][0]).toUpperCase();
   const caps = t.slice(1).match(/[A-Z]/);
@@ -56,7 +58,7 @@ function mergeMeta(metas, first = 0){
 function pfEntries(){
   const seen = new Map();
   for (const ch of saved){
-    if (/^yt:v:/.test(ch)) continue;
+    if (isVideo(ch)) continue;
     const st = linkedOn() ? streamerOf(ch) : null, key = st ? 's:' + st.id : ch;
     if (!seen.has(key)) seen.set(key, st ? { key, main: st.main, chs: ordered(st), st } : { key, main: ch, chs: [ch], st: null });
   }
@@ -311,18 +313,20 @@ function pfSaveMeta(ch, patch){
   const send = () => chs.forEach(c => window.kmv.profileMeta(c, meta).catch(() => {}));
   if ('notes' in patch || 'nick' in patch) pfNotesT = setTimeout(send, 500); else send();
 }
+// Unfollow on the site itself (a site whose login.unfollow is on: Kick's), asking first
 async function unfollowKick(ch, name){
   if (!window.kmv || !window.kmv.kickUnfollow) return null;
-  const yes = await ask(`Unfollow ${name} on Kick?`, 'This unfollows them on kick.com itself, the same as the Unfollow button on their channel page. You can follow them again on Kick any time.',
-    { ok: 'Unfollow on Kick', danger: true, check: saved.includes(ch) ? 'Also remove them from my saved streamers' : '' });
+  const p = platform(ch), site = p.name, host = p.hosts[0];
+  const yes = await ask(`Unfollow ${name} on ${site}?`, `This unfollows them on ${host} itself, the same as the Unfollow button on their channel page. You can follow them again on ${site} any time.`,
+    { ok: `Unfollow on ${site}`, danger: true, check: saved.includes(ch) ? 'Also remove them from my saved streamers' : '' });
   if (!yes) return null;
   const alsoRemove = askChecked();
   const r = await window.kmv.kickUnfollow(ch).catch(() => null);
   if (r && r.ok){
     if (alsoRemove && saved.includes(ch)) toggleSaved(ch);
-    flash(`Unfollowed ${name} on Kick` + (alsoRemove ? ' and removed from Saved' : ''), { subject: 'accounts' });
-  } else flash(r && r.error === 'login' ? 'Log in to Kick in this app first, then try again.' : `Couldn't unfollow ${name} on Kick right now. Try again in a minute, or unfollow on kick.com.`,
-    { subject: 'accounts', ...(r && r.error === 'login' ? { act: { t: 'login', p: 'kick' } } : {}) });
+    flash(`Unfollowed ${name} on ${site}` + (alsoRemove ? ' and removed from Saved' : ''), { subject: 'accounts' });
+  } else flash(r && r.error === 'login' ? `Log in to ${site} in this app first, then try again.` : `Couldn't unfollow ${name} on ${site} right now. Try again in a minute, or unfollow on ${host}.`,
+    { subject: 'accounts', ...(r && r.error === 'login' ? { act: { t: 'login', p: p.id } } : {}) });
   return r;
 }
 
@@ -345,7 +349,7 @@ function pfRenderProf(){
   /* hero */
   const hero = element('div', 'pf-hero');
   const banner = element('div', 'pf-banner');
-  hero.style.setProperty('--pc', { kick: '#53fc18', twitch: '#9146ff', youtube: '#ff3030' }[plat]);
+  hero.style.setProperty('--pc', PLATFORMS[plat].colors.brand);
   if (s && s.banner) banner.style.backgroundImage = `url("${s.banner.replace(/"/g, '%22')}")`; else banner.classList.add('none');
   hero.appendChild(banner);
   const main = element('div', 'pf-hero-main'), avw = element('div', 'pf-avwrap');
@@ -385,9 +389,9 @@ function pfRenderProf(){
     bell.onclick = () => { channelVars.notifyOff = notifyOff.includes(ch) ? notifyOff.filter(c => c !== ch) : [...notifyOff, ch]; settings.set('notifyOff', notifyOff); sendWatch(); store.changed('liveAlerts'); pfRenderProf(); };
     acts.appendChild(bell);
   }
-  if (plat === 'kick' && s && s.loggedIn && s.following !== false){
-    const u = element('button', 'btn unf'); u.innerHTML = pfIco.unf + 'Unfollow on Kick';
-    u.title = 'Unfollow them on kick.com itself (asks first)';
+  if (PLATFORMS[plat].login.unfollow && s && s.loggedIn && s.following !== false){
+    const u = element('button', 'btn unf'); u.innerHTML = pfIco.unf + esc('Unfollow on ' + P);
+    u.title = `Unfollow them on ${PLATFORMS[plat].hosts[0]} itself (asks first)`;
     u.onclick = async () => { u.disabled = true; const r = await unfollowKick(ch, (pf.data.meta && pf.data.meta.nick) || realName); u.disabled = false; if (r && r.ok && pf.cur === ch && pf.data.site){ pf.data.site.following = false; pfRenderProf(); } };
     acts.appendChild(u);
   }
@@ -448,7 +452,7 @@ function pfRenderProf(){
   const tile = (k, v, sub, cls) => { const t = element('div', 'pf-tile'); t.append(element('span', 'k', k), element('span', 'v' + (v == null ? ' na' : ''), v == null ? 'Not enough data yet' : v), element('span', 's' + (cls ? ' ' + cls : ''), sub || '')); tiles.appendChild(t); };
   const fch = sm.followers && sm.followers.change != null ? sm.followers : null;
   tile('Followers', followers != null ? fmtN(followers) : s && s.followersText ? s.followersText.replace(/ subscribers$/, '') : null,
-    fch ? `${fch.change >= 0 ? '+' : ''}${fch.change.toLocaleString()} since ${fmtDay(keyDate(fch.since))}` : followers != null ? `from ${P} · growth shows after a few days` : plat === 'youtube' ? 'from YouTube (rounded)' : `from ${P}`, fch && fch.change > 0 ? 'up' : '');
+    fch ? `${fch.change >= 0 ? '+' : ''}${fch.change.toLocaleString()} since ${fmtDay(keyDate(fch.since))}` : followers != null ? `from ${P} · growth shows after a few days` : PLATFORMS[plat].roundsFollowers ? `from ${P} (rounded)` : `from ${P}`, fch && fch.change > 0 ? 'up' : '');
   tile('Avg viewers', st && st.avgViewers != null ? fmtN(st.avgViewers) : null, st && st.avgViewers != null ? `seen by the app · ${st.seenWithViewers} stream${st.seenWithViewers === 1 ? '' : 's'}, 30 days` : 'counted by the app while it\'s open');
   tile('Streams', st ? String(st.streams30) : null, st ? `last 30 days · ${Math.round(st.hours30)} h live` : 'last 30 days');
   tile('Avg length', st && st.avgLength != null ? fmtDur(st.avgLength) : null, st && st.longest ? `longest ${fmtDur(st.longest)} (90 days)` : '');
@@ -523,7 +527,7 @@ function pfRenderProf(){
   const yb = element('div', 'pf-box'); yb.appendChild(element('h4', '', `You and ${shown}`));
   const kv = element('div', 'pf-kv');
   const row = (k, v) => { if (v == null || v === '') return; const r = element('div'); r.append(element('span', '', k), element('b', '', v)); kv.appendChild(r); };
-  if (plat !== 'youtube') row(`Following on ${P}`, !s ? null : s.following === false ? 'No' : s.following && s.following.since ? `Since ${fmtDate(s.following.since)}` : s.following ? 'Yes' : s.loggedIn === false ? `Log in to ${P} to see` : null);
+  if (PLATFORMS[plat].following) row(`Following on ${P}`, !s ? null : s.following === false ? 'No' : s.following && s.following.since ? `Since ${fmtDate(s.following.since)}` : s.following ? 'Yes' : s.loggedIn === false ? `Log in to ${P} to see` : null);
   if (s && s.sub) row('Subscription', [s.sub.tier ? `Tier ${s.sub.tier}` : 'Subscribed', s.sub.prime ? 'Prime' : '', s.sub.months ? `${s.sub.months} months` : ''].filter(Boolean).join(' · '));
   if (pf.mod[ch] != null) row('Moderator', pf.mod[ch] ? 'Yes' : 'No');
   row('Saved in the app', isSaved ? (sm.tracked ? `Since ${fmtDate(sm.tracked)}` : 'Yes') : 'No');
@@ -588,7 +592,7 @@ function pfRenderLinked(){
 
   /* hero: the name with every account's site, the followers added up, the main channel's bio */
   const hero = element('div', 'pf-hero'), banner = element('div', 'pf-banner');
-  hero.style.setProperty('--pc', { kick: '#53fc18', twitch: '#9146ff', youtube: '#ff3030' }[platOf(main)]);
+  hero.style.setProperty('--pc', platform(main).colors.brand);
   const bn = chs.map(siteOf).find(s => s && s.banner);
   if (bn) banner.style.backgroundImage = `url("${bn.banner.replace(/"/g, '%22')}")`; else banner.classList.add('none');
   hero.appendChild(banner);
@@ -768,8 +772,8 @@ function pfOpenOnMenu(btn){
   pf.group.forEach(c => {
     const s = (pf.accs[c] || {}).site, url = (s && s.url) || platform(c).profileUrl(c);
     items.push(element('button', { type: 'button', role: 'menuitem', onclick: () => { pfMenu.hidden = true; window.kmv.openExternal(url); } }, pfSiteIco(c), element('span', null, PLAT_NAME[platOf(c)]), element('small', null, url.replace(/^https?:\/\/(www\.)?/, ''))));
-    if (platOf(c) === 'kick' && s && s.loggedIn && s.following !== false)
-      items.push(element('button', { type: 'button', role: 'menuitem', class: 'pf-unf', onclick: async () => { pfMenu.hidden = true; const r = await unfollowKick(c, nameOf(c)); if (r && r.ok && pf.accs[c] && pf.accs[c].site){ pf.accs[c].site.following = false; pfRenderProf(); } } }, element('span', { class: 'pf-mi', html: pfIco.unf }), element('span', null, 'Unfollow on Kick')));
+    if (platform(c).login.unfollow && s && s.loggedIn && s.following !== false)
+      items.push(element('button', { type: 'button', role: 'menuitem', class: 'pf-unf', onclick: async () => { pfMenu.hidden = true; const r = await unfollowKick(c, nameOf(c)); if (r && r.ok && pf.accs[c] && pf.accs[c].site){ pf.accs[c].site.following = false; pfRenderProf(); } } }, element('span', { class: 'pf-mi', html: pfIco.unf }), element('span', null, 'Unfollow on ' + PLAT_NAME[platOf(c)])));
   });
   pfMenu.replaceChildren(...items);
   pfMenu.hidden = false;
@@ -879,7 +883,7 @@ function init(){
     // the search box's (Ctrl/⌘+K): Profiles at each filter, and looking a name up (a channel's own profile is on its Tab list)
     commands.add([
       { id: 'profiles', group: 'Profiles', title: 'Streamer profiles', sub: 'Your saved streamers: when they stream, past streams, your notes', words: ['profiles'], icon: 'user', button: '#profBtn' },
-      ...[['all', '', 'All'], ['kick', '', 'Kick'], ['twitch', '', 'Twitch'], ['youtube', '', 'YouTube'], ['all', 'live', 'Live now'], ['all', 'fav', 'Favourites'], ['all', 'notes', 'Has notes'], ['all', 'tagged', 'Tagged']]
+      ...[['all', '', 'All'], ...siteIds().map(p => [p, '', PLAT_NAME[p]]), ['all', 'live', 'Live now'], ['all', 'fav', 'Favourites'], ['all', 'notes', 'Has notes'], ['all', 'tagged', 'Tagged']]
         .map(([plat, flag, n]) => ({ id: `profiles.${flag || plat}`, kind: 'tab', group: 'Profiles', title: 'Profiles: ' + n, sub: 'Streamer profiles, ' + (flag || plat !== 'all' ? 'only ' + n.toLowerCase() : 'everyone'),
           words: ['favorites'], icon: 'user', run: () => openProfilesAt({ plat, flag }) }))
     ]);

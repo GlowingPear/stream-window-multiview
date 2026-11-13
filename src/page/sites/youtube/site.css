@@ -1,0 +1,28 @@
+/* YouTube: how the page shows something as YouTube's, everywhere it does. Each part's own CSS draws it, and this
+   file only gives it YouTube's colours, so everything that's about YouTube alone is here. index.html loads the
+   sites' files after every part's, so these win as they did in each part's file. A new site: a copy of this file in its
+   folder, with its id and colours (the same selectors), and its <link> next to these. */
+
+/* A linked window's site tabs (windows/frames.css): its tab, and the tab showing */
+.ptab.youtube{color:#ff6a6a}
+.ptab.on.youtube{background:#ff2a2a;color:#fff}
+
+/* The switch control's list (platforms.css): the dot by its channels' names */
+.fs-item.plat-youtube .fs-name .dot{background:#ff3d3d}
+
+/* ALL (chat/all-chat.css): the send box and its button, a reward's line, pins, the chat's modes, polls */
+.all-view[data-send=youtube]{--site:#ff2a2a}
+.all-pinchip.ping-youtube{--pc:#ff3b3b;background:#ff3b3b}
+.all-modes-youtube{--sc:#ff5a5a}
+
+/* Its badge (alerts/alerts.css's .pi): next to channel names, on ALL's lines, in lists */
+.pi-youtube{background:#ff2a2a;color:#fff}
+
+/* Accounts (panels/channels/import-progress.css): the dot of a login that's on */
+.am-row[data-p=youtube].on .pdot{background:#ff3d3d}
+
+/* Profiles (panels/profiles/profiles.css): its site chip */
+.pf-plat.youtube{background:rgba(255,48,48,.18);color:#ff9a9a}
+
+/* Settings › Developer (panels/developer/developer.css): its pill */
+.dv-youtube{background:#ff3d3d;color:#fff}

@@ -7,7 +7,7 @@ import { chatFocusLayout, layoutChatsOnly } from './layouts.js';
 import { refitLocked } from './lock.js';
 import { save } from '../persistence.js';
 import { streamerOf } from '../platforms/linked.js';
-import { chLabel, rememberName } from '../platforms/platforms.js';
+import { chLabel, isVideo, rememberName } from '../platforms/platforms.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { openStreamer } from '../windows/frames.js';
@@ -74,7 +74,7 @@ function addParsed(p){
     const r = defaultStreamRect();
     createWin({ kind: 'stream', channel: p.channel }, r);
     if (mode === 'both'){
-      if (/^yt:v:/.test(p.channel)) addChatIfLive(p.channel, r);     // a normal YouTube video has no live chat
+      if (isVideo(p.channel)) addChatIfLive(p.channel, r);     // a normal YouTube video has no live chat
       else createWin({ kind: 'chat', channel: p.channel }, chatRectBeside(r));
     }
   }

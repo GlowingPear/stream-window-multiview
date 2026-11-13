@@ -1,10 +1,11 @@
 import { wins } from '../core.js';
 import { saved, sendWatch, svProf } from '../panels/channels/channels.js';
 import { follows } from '../panels/channels/follow-suggestions.js';
-import { PLATFORMS, PLAT_NAME, chLabel, chNames, parseInput, platOf, platform } from './platforms.js';
+import { PLAT_NAME, chLabel, chNames, isVideo, parseInput, platOf, platform } from './platforms.js';
 import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
+import { PLATFORMS } from '../sites/sites.js';
 
 /* ---- Linked channels: one streamer on several sites (Settings › Linked channels) ----
    A streamer is a name and its accounts, on any sites (two on one site too): { id, name, main, accounts: ['quietkoala', 'tw:quietkoala'],
@@ -12,7 +13,6 @@ import { store } from '../shared/store.js';
    The switch ("linkedOn", off unless set) is the one gate: while it's off streamerOf() finds nobody and there are no
    suggestions, so everything that groups by streamer shows one row and one window per account, as it did before.
    Turning it off keeps the streamers, the answers and the options. */
-const SITE_ORDER = ['kick', 'twitch', 'youtube'];
 // The page's options and what they are until you change them (Settings › Linked channels)
 const OPT_DEFAULTS = {
   streams: 'tabs',        // their streams: 'tabs' in one window, or 'separate' windows
@@ -42,7 +42,7 @@ function all(){
   }
   return streamers;
 }
-const siteRank = ch => SITE_ORDER.indexOf(platOf(ch));
+const siteRank = ch => SmvSites.IDS.indexOf(platOf(ch));
 // A streamer's accounts: the main one first, then Kick, Twitch, YouTube
 const ordered = s => [...s.accounts].sort((a, b) => (b === s.main) - (a === s.main) || siteRank(a) - siteRank(b));
 const streamerOf = ch => linkedOn() && ch ? all().find(s => s.accounts.includes(ch)) || null : null;
@@ -95,7 +95,7 @@ function saveStreamers(){ settings.set('streamers', streamers); store.changed('s
 const newId = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 // Can b join a's streamer? A channel is in one streamer at most (a streamer can have two on one site). A video isn't a channel.
 function canLink(a, b){
-  if (!a || !b || a === b || /^yt:v:/.test(a) || /^yt:v:/.test(b)) return false;
+  if (!a || !b || a === b || isVideo(a) || isVideo(b)) return false;
   const s = all().find(x => x.accounts.includes(a)), t = all().find(x => x.accounts.includes(b));
   return !(s && s === t);
 }
@@ -162,7 +162,7 @@ function laterPair(a, b){ later.add(pairKey(a, b)); store.changed('streamers'); 
 // What the app knows about: saved, open, followed and named channels (not videos)
 function known(){
   const set = new Set([...saved, ...wins.map(w => w.channel), ...((follows && follows.items) || []).map(f => f.ch), ...Object.keys(chNames)]);
-  return [...set].filter(ch => ch && !/^yt:v:/.test(ch) && PLATFORMS[platOf(ch)]);
+  return [...set].filter(ch => ch && !isVideo(ch) && PLATFORMS[platOf(ch)]);
 }
 const handleKey = ch => String(platform(ch).handle(ch)).toLowerCase().replace(/^@/, '').replace(/[-_.]/g, '');
 // The other channels a channel's page links to (Kick's socials, Twitch's social links), on other sites or its own

@@ -1,16 +1,14 @@
 import { SmvSpam } from '../alerts/spam.js';
 import { allOn, appBots, chatRules, feeds, fillAll, ownerOf, sendInChat, sendSite, setModes, youMod } from './all-chat.js';
-import { BOT_SAYS_RE, RUN_MAX, cardFor, cardsFromRows, kickTries, loginOfCh, pickRun, shoutFor, shoutLink, siteOfCh,
-  streams } from './shoutout-text.js';
+import { BOT_SAYS_RE, RUN_MAX, cardFor, cardsFromRows, loginOfCh, pickRun, shoutFor, shoutLink, siteOfCh, streams } from './shoutout-text.js';
 import { winOfView } from './translate.js';
 import { wins } from '../core.js';
-import { modesAgent } from '../in-site/feed.js';
 import { draftAgent, sendAgent } from '../in-site/send.js';
 import { shoutAgent } from '../in-site/shoutout.js';
-import { bellVars, myName } from '../panels/bell/bell.js';
+import { myNameOn } from '../panels/bell/bell.js';
 import { isSaved } from '../panels/channels/channels.js';
 import { listStreamers, nameOf, streamerOf } from '../platforms/linked.js';
-import { PLAT_NAME, chLabel, platOf, platform } from '../platforms/platforms.js';
+import { PLAT_NAME, chLabel, platOf, platform, shoutSites } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
@@ -21,6 +19,8 @@ import { fromApp, fromSite } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { soon, stopWinTimer, winTimer } from '../shared/timers.js';
+import { inSiteCall, modesJs, sendSpec, shoutPage } from '../sites/in-site.js';
+import { PLATFORMS } from '../sites/sites.js';
 import { askIn, runIn } from '../windows/view.js';
 import { activeWin } from '../windows/window-commands.js';
 
@@ -41,7 +41,6 @@ const FIND_WAIT = 8000;           // ...and this long for a Kick address it has 
 // again after 10 s (or the chat's slow mode). Changed by the tests only.
 const SO_TIMING = { gap: 1000, look: 6000, retry: 10 };
 const AGAIN = [5, 15, 60, 0];     // Settings: ask before shouting the same person out again within (minutes; 0: never ask)
-const SHOUT_SITES = ['kick', 'twitch'];
 let soKnown = {};                   // 'site:login' -> { login (their address), game, streams, missing, t }
 let soSent = {};                    // 'chat|site:login' -> when you last shouted them out in that chat
 let soRun = null;                   // the run going on: { w, list, i, stop, wait, why, strip }
@@ -52,16 +51,16 @@ const shoutOn = () => settings.flag('shoutOn');
 function shoutHere(ch){
   if (!shoutOn() || !ch) return false;
   if (!settings.flag('shoutModOnly', true)) return true;
-  const site = platOf(ch), me = (site === 'kick' ? myName : site === 'twitch' ? bellVars.myTwitch : '').toLowerCase();
+  const me = myNameOn(platOf(ch)).toLowerCase();
   return youMod(ch) || (!!me && platform(ch).handle(ch).toLowerCase() === me);
 }
 const SO_NOT_MOD = 'Shoutouts show in chats where you\'re a mod (Settings › Shoutouts)';
 const soKey = p => p.site + ':' + String(p.login || '').toLowerCase();
-const soCh = p => (p.site === 'twitch' ? 'tw:' : '') + String(p.login || '').toLowerCase();
+const soCh = p => PLATFORMS[p.site].idFor(String(p.login || '').toLowerCase());
 const soAgainMs = () => { const m = settings.text('shoutAgain') === '' ? 15 : settings.num('shoutAgain'); return (AGAIN.includes(m) ? m : 15) * 60000; };
 const soRunN = () => Math.max(1, Math.min(RUN_MAX, settings.num('shoutRunN') || 5));
 // Settings › Shoutouts › Channels: a card for each channel with a shoutout of its own (chat/shoutout-text.js). #300's
-// People rows become cards the first time (shoutPeople, then gone), each checked on Kick and Twitch (soCheckCards).
+// People rows become cards the first time (shoutPeople, then gone), each checked on the sites that do shoutouts (soCheckCards).
 function soCards(){
   const l = settings.json('shoutChannels', null);
   if (Array.isArray(l)) return l;
@@ -78,8 +77,8 @@ const soDropCard = key => soSaveCards(soCards().filter(c => soCardKey(c) !== key
 const soSaveCards = cards => { if (!Array.isArray(cards)) return; settings.set('shoutChannels', cards); store.changed('shoutouts'); };
 // A linked streamer's channels (a card's)
 const soAccountsOf = card => { const s = card && card.streamer && listStreamers().find(x => x.id === card.streamer); return s ? s.accounts : []; };
-/* Cards not checked yet (moved from #300's rows, or added without a lookup): found on Kick, else Twitch, and a linked
-   streamer's own card when it's one of theirs; lost when neither has it (it still works, by its name). Needs the sites'
+/* Cards not checked yet (moved from #300's rows, or added without a lookup): found on its site, else the other sites
+   that do shoutouts (Kick, Twitch), and a linked streamer's own card when it's one of theirs; lost when none has it (it still works, by its name). Needs the sites'
    answers (the desktop app). */
 let soChecking = null;
 function soCheckCards(){
@@ -88,8 +87,8 @@ function soCheckCards(){
     for (const c of soCards().filter(x => x.unchecked)){
       const login = loginOfCh(c.ch), first = siteOfCh(c.ch);
       let found = null;
-      for (const site of [first, first === 'kick' ? 'twitch' : 'kick']){
-        const info = await soLookUp({ site, login, named: site === 'kick' });
+      for (const site of [first, ...shoutSites().filter(s => s !== first)]){
+        const info = await soLookUp({ site, login, named: true });
         if (!info) { found = 'unknown'; break; }   // (no answer: tried again another time)
         if (info.login){ found = { site, login: info.login }; break; }
       }
@@ -151,7 +150,7 @@ const soOutSaid = p => `${p.name || p.login} is ${soOutWhy(p)} in ${PLAT_NAME[pl
 const soAgo = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
 // Who's on a chat line: their site and address, their name, and the linked streamer they are (their row covers every site)
 function soPersonOf(m){
-  if (!m || !SHOUT_SITES.includes(m.site) || !m.login) return null;
+  if (!m || !shoutSites().includes(m.site) || !m.login) return null;
   const login = String(m.login).toLowerCase(), s = streamerOf(soCh({ site: m.site, login }));
   return { site: m.site, login, name: m.sender || m.name || m.login, streamer: s ? s.id : '', named: !!m.named, ch: m.ch || '' };
 }
@@ -160,7 +159,7 @@ const soKnownStreamer = p => isSaved(soCh(p)) || !!p.streamer || !!cardFor(soCar
 // Their links on every site the app knows them on (a linked streamer's Kick and Twitch accounts)
 function soLinksOf(p){
   const s = p.streamer && listStreamers().find(x => x.id === p.streamer);
-  return s ? s.accounts.filter(a => SHOUT_SITES.includes(platOf(a))).map(a => shoutLink(platOf(a), platform(a).handle(a))) : [];
+  return s ? s.accounts.filter(a => shoutSites().includes(platOf(a))).map(a => shoutLink(platOf(a), platform(a).handle(a))) : [];
 }
 function soRemember(k, info){
   soKnown[k] = { ...info, t: Date.now() };
@@ -169,12 +168,14 @@ function soRemember(k, info){
   soSaveKnown();
 }
 /* Someone's channel on their site, as the site says: { login (their address), game, streams } or { missing: true }
-   (no such channel), or null (no answer: nothing is concluded). A Kick name is tried as it is, then with - for _. */
+   (no such channel), or null (no answer: nothing is concluded). A name from a chat (named) is tried at each address it
+   can be on its site (its shoutouts.tries: a Kick name as it is, then with - for _). */
 async function soLookUp(p){
   const k = soKey(p), have = soKnown[k];
   if (have && Date.now() - have.t < SO_DAY) return have;
   if (!window.kmv || !window.kmv.profileGet) return have || null;
-  for (const login of p.site === 'kick' && p.named ? kickTries(p.login) : [String(p.login).toLowerCase()]){
+  const tries = p.named && PLATFORMS[p.site].shoutouts.tries;
+  for (const login of tries ? tries(p.login) : [String(p.login).toLowerCase()]){
     let r = null;
     try { r = await window.kmv.profileGet(soCh({ site: p.site, login })); } catch {}
     if (!r || r.error || r.failed) return have || null;
@@ -205,11 +206,12 @@ async function shoutOut(p, { chs, again = true, quiet = false } = {}){
   const name = p.name || p.login, last = Math.max(0, ...targets.map(ch => soSentAt(p, ch)));
   if (again && soAgainMs() && last && Date.now() - last < soAgainMs()
     && !await ask(`Shout out ${name} again?`, `You shouted them out ${soAgo(last)}. Send another shoutout now?`, { ok: 'Shout out again' })) return 'cancelled';
-  // their address (a Kick name has to be looked up), and their last game when it comes quickly
+  // their address (a name on a site where it isn't always the address, Kick's, has to be looked up), and their last
+  // game when it comes quickly
   let info = soKnown[soKey(p)] || null;
-  if (p.site === 'kick' && p.named && !(info && info.login)){
+  if (p.named && PLATFORMS[p.site].shoutouts.tries && !(info && info.login)){
     info = await soWithin(soLookUp(p), FIND_WAIT);
-    if (!info || !info.login){ if (!quiet) flash(`Couldn't find ${name}'s Kick channel`); return 'missing'; }
+    if (!info || !info.login){ if (!quiet) flash(`Couldn't find ${name}'s ${PLAT_NAME[p.site]} channel`); return 'missing'; }
   } else if (!info || Date.now() - info.t > SO_DAY) info = await soWithin(soLookUp(p), GAME_WAIT) || info;
   const who = { ...p, login: (info && info.login) || p.login };
   let r = 'gone';
@@ -220,7 +222,7 @@ async function shoutOut(p, { chs, again = true, quiet = false } = {}){
     // Send straight away off (Settings): it goes in the chat box for you to send (ALL's, else the site's own); a run sends
     if (!quiet && !settings.flag('shoutSend', true)){
       const allBox = targets.length === 1 && fillAll(ch, text);
-      r = allBox ? 'filled' : c && c.view ? await askIn(c.view, `(${sendAgent})(${JSON.stringify(site)}, ${JSON.stringify(text)}, null, true)`).catch(() => 'no-answer') : 'gone';
+      r = allBox ? 'filled' : c && c.view ? await askIn(c.view, inSiteCall(sendAgent, sendSpec(site), text, null, true)).catch(() => 'no-answer') : 'gone';
       if (r !== 'filled'){ flash(`Couldn't put it in the chat box: ${(SHOUT_FAIL[r] || SHOUT_FAIL['no-answer'])(PLAT_NAME[site])}`); continue; }
       soSent[soSentKey(ch, to)] = soSent[soSentKey(ch, who)] = Date.now();
       flash(`Shoutout for ${to.name || to.login} is in ${allBox ? 'the' : PLAT_NAME[site] + '\'s'} chat box: press Enter to send it`);
@@ -229,10 +231,11 @@ async function shoutOut(p, { chs, again = true, quiet = false } = {}){
     r = await sendInChat(c, text);
     if (r !== 'sent'){ if (!quiet) flash(`Not sent: ${(SHOUT_FAIL[r] || SHOUT_FAIL['no-answer'])(PLAT_NAME[site])}`); continue; }
     soSent[soSentKey(ch, to)] = soSent[soSentKey(ch, who)] = Date.now();
-    // Twitch's own shoutout too (Settings, off unless on): where you're a mod, for someone with a Twitch channel
-    const tw = to.site === 'twitch' ? to.login : (soLinksOf(to).find(l => /twitch\.tv\//.test(l)) || '').split('/').pop();
-    if (site === 'twitch' && tw && settings.flag('shoutTwitch') && youMod(ch) && !quiet)
-      setTimeout(() => { sendInChat(soChatWin(ch), `/shoutout ${tw}`); }, 1200);   // (Twitch saying no, as it allows one every 2 minutes: the message went)
+    // The site's own shoutout too (Twitch's: Settings, off unless on): where you're a mod, for someone with a channel there
+    const cmd = PLATFORMS[site].shoutouts.command, home = SmvSites.byId[site].home;
+    const own = to.site === site ? to.login : (soLinksOf(to).find(l => l.startsWith(home)) || '').split('/').pop();
+    if (cmd && own && settings.flag('shoutTwitch') && youMod(ch) && !quiet)
+      setTimeout(() => { sendInChat(soChatWin(ch), `${cmd} ${own}`); }, 1200);   // (the site saying no, as Twitch allows one every 2 minutes: the message went)
     if (!quiet) flash(`Shouted out ${to.name || to.login} in ${PLAT_NAME[site]} chat`);
   }
   soSaveSent();
@@ -259,20 +262,20 @@ async function soRunLines(w){
   // ALL: the site its send box is on (its K / T picker): that chat's people, shouted out there
   if (allOn(w)){
     const s = ownerOf(w.channel), f = feeds.get(s.id), ch = soRunCh(w);
-    return (f ? f.msgs : []).filter(m => m.ch === ch && (m.kind === 'message' || (m.kind === 'event' && m.support && m.support.kind === 'raid')) && SHOUT_SITES.includes(m.site) && m.login)
+    return (f ? f.msgs : []).filter(m => m.ch === ch && (m.kind === 'message' || (m.kind === 'event' && m.support && m.support.kind === 'raid')) && shoutSites().includes(m.site) && m.login)
       .map(m => ({ ...soPersonOf(m), name: m.sender, t: m.t, bot: !!m.bot, ch, raid: m.kind === 'event' }));
   }
   if (!w.view) return [];
   const got = await askIn(w.view, 'window.__kmvShout && window.__kmvShout.chatters ? window.__kmvShout.chatters() : []').catch(() => []);
   const bots = SmvSpam.ignored ? n => SmvSpam.ignored(n, appBots(w.channel)) : () => false;
-  return (Array.isArray(got) ? got : []).filter(x => x && SHOUT_SITES.includes(x.site) && /^[\w-]{1,40}$/.test(String(x.login || '')))
+  return (Array.isArray(got) ? got : []).filter(x => x && shoutSites().includes(x.site) && /^[\w-]{1,40}$/.test(String(x.login || '')))
     .map(x => ({ ...soPersonOf({ site: x.site, login: x.login, sender: String(x.name || x.login).slice(0, 40), named: !!x.named }), t: +x.t || 0, bot: bots(String(x.name || x.login)), ch: w.channel, raid: !!x.raid }));
 }
 // Who's left out as yours, or the channel's own
 function soRunWho(w){
-  const me = [myName && 'kick:' + myName, bellVars.myTwitch && 'twitch:' + bellVars.myTwitch].filter(Boolean);
+  const me = shoutSites().filter(myNameOn).map(p => p + ':' + myNameOn(p));
   const s = ownerOf(w.channel), accounts = s ? s.accounts : [w.channel];
-  return { me, host: accounts.filter(a => SHOUT_SITES.includes(platOf(a))).map(a => platOf(a) + ':' + platform(a).handle(a).toLowerCase()) };
+  return { me, host: accounts.filter(a => shoutSites().includes(platOf(a))).map(a => platOf(a) + ':' + platform(a).handle(a).toLowerCase()) };
 }
 async function soPickFor(w, lines, n){
   const { me, host } = soRunWho(w);
@@ -292,7 +295,7 @@ async function openRun(w, { flip = false } = {}){
   if (!w || !shoutOn()) return;
   if (soRun && !soRun.stop) return flash('Already shouting out: Stop it first');
   const ch = soRunCh(w);
-  if (!ch || !SHOUT_SITES.includes(platOf(ch))) return flash(ch ? `Shoutouts are for Kick and Twitch: pick one of them to send on` : 'No chat to send on right now');
+  if (!ch || !shoutSites().includes(platOf(ch))) return flash(ch ? `Shoutouts are for Kick and Twitch: pick one of them to send on` : 'No chat to send on right now');
   if (!shoutHere(ch)) return flash(SO_NOT_MOD);
   const lines = (await soRunLines(w)).filter(p => !soOutWhy(p));   // (not who's banned or timed out there)
   if (!lines.length) return flash('No one has chatted here yet');
@@ -416,7 +419,7 @@ async function startRun(w, list){
       const rules = chatRules(p.ch);
       if (rules.wait){ await soCountDown(r, rules.wait, 'Waiting for slow mode', `${PLAT_NAME[platOf(p.ch)]}'s chat here: a message every ${rules.slow || rules.wait} s`); continue; }
       // your draft in the site's own chat box goes first: it waits (it'd type over it)
-      const cw = soChatWin(p.ch), draft = cw && cw.view ? await askIn(cw.view, `(${draftAgent})(${JSON.stringify(platOf(p.ch))})`).catch(() => '') : '';
+      const cw = soChatWin(p.ch), draft = cw && cw.view ? await askIn(cw.view, inSiteCall(draftAgent, sendSpec(platOf(p.ch)))).catch(() => '') : '';
       if (draft && !r.stop){ await soWaitDraft(r, cw, platOf(p.ch)); continue; }
       const res = await shoutOut(p, { chs: [p.ch], again: false, quiet: true });
       if (r.stop) return;
@@ -425,7 +428,7 @@ async function startRun(w, list){
       if (res === 'missing' || res === 'gone' || res === 'no-box' || tries >= 2){ flash(`Skipped ${p.name}: ${res === 'missing' ? 'couldn\'t find their Kick channel' : (SHOUT_FAIL[res] || SHOUT_FAIL['no-answer'])(PLAT_NAME[platOf(p.ch)])}`); break; }
       // held back (slow mode, the site's limit, a filter): its modes again, then wait and try again
       const c = soChatWin(p.ch);
-      if (c && c.view){ const x = await askIn(c.view, `(${modesAgent})()`).catch(() => null); if (x) setModes(p.ch, x); }
+      if (c && c.view){ const x = await askIn(c.view, modesJs(platOf(p.ch))).catch(() => null); if (x) setModes(p.ch, x); }
       await soCountDown(r, chatRules(p.ch).wait || SO_TIMING.retry, RUN_HELD[res] || 'Waiting', 'It tries again then');
     }
     if (r.stop) return;
@@ -439,7 +442,7 @@ async function soWaitDraft(r, c, site){
   soDrawStrip();
   while (!r.stop && wins.includes(r.w)){
     await soPause(r, 1000);
-    const d = c.view ? await askIn(c.view, `(${draftAgent})(${JSON.stringify(site)})`).catch(() => '') : '';
+    const d = c.view ? await askIn(c.view, inSiteCall(draftAgent, sendSpec(site))).catch(() => '') : '';
     if (!d) break;
   }
   r.wait = 0; if (!r.stop) soDrawStrip();
@@ -451,7 +454,7 @@ async function soCountDown(r, secs, why, sub){
 }
 
 // The chat a command from the search box is for: the window you're in, else the last Kick or Twitch chat opened
-const soLastChat = () => { const a = activeWin(); return a && a.kind === 'chat' ? a : [...wins].reverse().find(w => w.kind === 'chat' && SHOUT_SITES.includes(platOf(w.channel))) || null; };
+const soLastChat = () => { const a = activeWin(); return a && a.kind === 'chat' ? a : [...wins].reverse().find(w => w.kind === 'chat' && shoutSites().includes(platOf(w.channel))) || null; };
 // Each chat window's ⋯ Shout out recent chatters, there while shoutouts are on (Kick and Twitch chats, and ALL)
 function syncShoutButtons(){
   const on = shoutOn();
@@ -459,8 +462,8 @@ function syncShoutButtons(){
 }
 // The script in each Kick and Twitch chat page: on, or taken away
 function shoutInSite(w, view = w && w.ready && w.view){
-  if (!w || w.kind !== 'chat' || !SHOUT_SITES.includes(platOf(w.channel)) || !view) return;
-  runIn(view, `(${shoutAgent})(${shoutHere(w.channel)}, null, ${JSON.stringify({ names: appBots(w.channel), says: BOT_SAYS_RE })})`);   // (its bots: a bot's line is for who it's about)
+  if (!w || w.kind !== 'chat' || !shoutSites().includes(platOf(w.channel)) || !view) return;
+  runIn(view, inSiteCall(shoutAgent, shoutHere(w.channel), shoutPage(platOf(w.channel)), { names: appBots(w.channel), says: BOT_SAYS_RE }));   // (its bots: a bot's line is for who it's about)
 }
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
@@ -482,7 +485,7 @@ function init(){
     if (p) shoutOut({ ...p, ch: w.channel });
   });
   commands.add({ id: 'shout.recent', group: 'Shoutouts', title: 'Shout out recent chatters', sub: 'One a second, in the chat they wrote in', icon: 'megaphone', words: ['shoutout', 'so', 'raid'],
-    when: () => shoutOn() && wins.some(w => w.kind === 'chat' && SHOUT_SITES.includes(platOf(w.channel)) && shoutHere(soRunCh(w) || w.channel)),
+    when: () => shoutOn() && wins.some(w => w.kind === 'chat' && shoutSites().includes(platOf(w.channel)) && shoutHere(soRunCh(w) || w.channel)),
     run: () => openRun(soLastChat()), alt: () => openRun(soLastChat(), { flip: true }), altLabel: () => (settings.flag('shoutListFirst', true) ? 'Start straight away' : 'Show who first') });
   commands.add({ id: 'shout.stop', group: 'Shoutouts', title: 'Stop shouting out', icon: 'megaphone', when: () => !!soRun, run: () => stopRun('Stopped') });
   commands.provide('shoutouts', () => {
@@ -500,7 +503,7 @@ function init(){
     }
     return out;
   });
-  window.shoutAgent = shoutAgent;   // for the tests
+  window.shoutAgent = (on, look, bots) => shoutAgent(on, look ? { ...shoutPage(look.site), ...look } : null, bots);   // for the tests (look: { site } and what else they change)
   window.shoutouts = { timing: SO_TIMING, shoutOut, openRun, stopRun, lookUp: soLookUp, known: () => soKnown, sent: () => soSent, outWhy: soOutWhy, state: () => soRun && { i: soRun.i, n: soRun.list.length, wait: soRun.wait } };   // for the tests
 }
 

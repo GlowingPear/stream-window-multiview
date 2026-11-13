@@ -11,7 +11,6 @@
 @keyframes ping{0%,40%{box-shadow:0 0 0 3px #e8b84a,0 10px 30px rgba(0,0,0,.45)}100%{box-shadow:0 10px 30px rgba(0,0,0,.45)}}
 
 .pi{flex:none;display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;font:800 11px/1 system-ui,sans-serif;letter-spacing:0}
-.pi-kick{background:#53fc18;color:#0b0e0f}.pi-twitch{background:#9146ff;color:#fff}.pi-youtube{background:#ff2a2a;color:#fff}
 /* a streamer's second (third, …) account on one site: a tiny number at the bottom right of its badge or tab (platforms/linked.js),
    half outside its corner, so the letter stays centred like the other sites' */
 .pi:where(:has(> .pn)){position:relative;margin-right:3px}

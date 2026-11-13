@@ -52,7 +52,7 @@ const SmvNotes = (() => {
     if (tab === 'app') return n.subject === sub;
     return true;
   }
-  const PLAT = ch => /^tw:/i.test(ch) ? 'twitch' : /^yt:/i.test(ch) ? 'youtube' : 'kick';
+  const PLAT = ch => SmvSites.siteOf(ch) || SmvSites.DEFAULT;
   // The words search looks in.
   const words = (n, label) => [n.sender, n.body, n.quoted, n.word, n.title, n.category, n.text, n.detail, n.from,
     n.channel && label ? label(n.channel) : n.label || n.channel];

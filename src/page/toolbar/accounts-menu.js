@@ -1,8 +1,7 @@
 import { ZOOMS, applyChatZoom, zoomIdx, zoomVars } from '../chat/chat-zoom.js';
 import { $, ROLE, coreVars, msg, popped, wins } from '../core.js';
 import { spotlight } from '../layout/spotlight.js';
-import { setMyTwitch } from '../panels/bell/all-notifications.js';
-import { dropNotes, myName, myTwitch, setMyName } from '../panels/bell/bell.js';
+import { dropNotes, myNameOn, setMyName } from '../panels/bell/bell.js';
 import { SmvNotes } from '../panels/bell/notifications.js';
 import { channelVars, persistSaved, saved } from '../panels/channels/channels.js';
 import { esRefresh } from '../panels/empty-stage/empty-stage.js';
@@ -11,7 +10,8 @@ import { unfollowKick } from '../panels/profiles/profiles.js';
 import { openSettings } from '../panels/settings/settings.js';
 import { suggestions } from '../platforms/linked.js';
 import { applyLink, kickAuto, linkIcon } from '../platforms/pear-drops.js';
-import { PLAT_NAME, checkMod, modOk, platOf, rememberNames, setWatchSignedIn, streamSignedIn, watchSignedIn } from '../platforms/platforms.js';
+import { PLAT_NAME, checkMod, modOk, platOf, readLogins, rememberNames, setWatchSignedIn, siteIds, siteNames, sites,
+  streamSignedIn, watchSignedIn } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { commands } from '../shared/commands.js';
 import { esc } from '../shared/element.js';
@@ -22,6 +22,7 @@ import { fromApp } from '../shared/incoming.js';
 import { closeOnOutside } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
+import { PLATFORMS } from '../sites/sites.js';
 import { placeMenu, showSpMenu } from './toolbar.js';
 import { popOutStreams, popoutVars, receiveChat, receiveStreams, streamsCameBack, updatePopBtn } from '../windows/popout.js';
 import { reloadPage } from '../windows/views.js';
@@ -33,16 +34,18 @@ function init(){
     lb.hidden = false;
     // Accounts menu (log in and out) and Settings > Accounts (that, and everything else about logins)
     const am = $('#accountMenu'), sa = $('#settingsDlg .st-pane[data-s=accounts]'), sy = $('#settingsDlg .st-pane[data-s=youtube]');
-    let acct = { kick: '', twitch: '', youtube: false };
-    acct = Object.assign(acct, settings.json('accounts', {})); acct.kick = acct.kick || settings.text('account');
+    // Who you're logged in as on each site: your name there, or (a site whose login doesn't say whose: me.named) true / false
+    const loggedOut = p => (PLATFORMS[p].me.named ? '' : false);
+    let acct = Object.fromEntries(siteIds().map(p => [p, loggedOut(p)]));
+    acct = Object.assign(acct, settings.json('accounts', {})); acct.kick = acct.kick || settings.text('account');   // (older copies kept Kick's alone)
     const showAccounts = () => {
       settings.set('accounts', acct);
-      const n = [acct.kick, acct.twitch, acct.youtube].filter(Boolean).length;
-      lb.classList.toggle('has-acct', !!n);
-      lb.title = n ? 'Logged in: ' + [acct.kick && `Kick (${acct.kick})`, acct.twitch && `Twitch (${acct.twitch})`, acct.youtube && 'YouTube'].filter(Boolean).join(', ') : 'Log in to Kick, Twitch or YouTube';
+      const on = sites().filter(p => acct[p.id]);
+      lb.classList.toggle('has-acct', !!on.length);
+      lb.title = on.length ? 'Logged in: ' + on.map(p => p.me.named ? `${p.name} (${acct[p.id]})` : p.name).join(', ') : 'Log in to ' + siteNames();
       document.querySelectorAll('#accountMenu .am-row, #settingsDlg .am-row').forEach(row => {
         const p = row.dataset.p, v = acct[p];
-        row.querySelector('.am-st').textContent = v ? (p === 'youtube' ? 'Logged in' : `Logged in as ${v}`) : 'Not logged in';
+        row.querySelector('.am-st').textContent = v ? (PLATFORMS[p].me.named ? `Logged in as ${v}` : 'Logged in') : 'Not logged in';
         row.querySelector('.am-in').hidden = !!v;
         row.querySelector('.am-sw').hidden = row.querySelector('.am-out').hidden = !v;
         row.classList.toggle('on', !!v);
@@ -52,9 +55,11 @@ function init(){
       if (!wins.length) esRefresh();                                         // the welcome screen's logins
     };
     const refreshAccount = async () => {
-      const k = window.kmv.detectMe ? await window.kmv.detectMe().catch(() => null) : null;
-      const st = window.kmv.accountsStatus ? await window.kmv.accountsStatus().catch(() => null) : null;
-      acct.kick = k || ''; if (st){ acct.twitch = st.twitch || ''; acct.youtube = !!st.youtube; }
+      const { fromPages, st } = await readLogins();
+      for (const p of sites()){
+        if (p.login.fromPages) acct[p.id] = fromPages || '';
+        else if (st) acct[p.id] = p.me.named ? st[p.id] || '' : !!st[p.id];
+      }
       showAccounts();
       return acct;
     };
@@ -66,11 +71,10 @@ function init(){
     closeOnOutside(am, { button: lb });
     const doLogout = async p => {
       await window.kmv.logout(p);
-      acct[p] = p === 'youtube' ? false : ''; showAccounts();
-      if (ROLE === 'main' && typeof setMyName === 'function'){
-        if (p === 'kick') setMyName('');
-        if (p === 'twitch') setMyTwitch('');
-        if (p !== 'youtube') dropNotes(n => SmvNotes.tabOf(n) === 'mentions' && platOf(n.channel) === p);
+      acct[p] = loggedOut(p); showAccounts();
+      if (ROLE === 'main' && typeof setMyName === 'function' && PLATFORMS[p].me.named){   // (a name you typed for a site whose login doesn't say whose stays)
+        setMyName(p, '');
+        dropNotes(n => SmvNotes.tabOf(n) === 'mentions' && platOf(n.channel) === p);
       }
       flash(`Logged out of ${PLAT_NAME[p]}`, { subject: 'accounts', detail: 'Log in again to keep chat and follows working.', act: { t: 'login', p } });
     };
@@ -89,7 +93,7 @@ function init(){
     };
     am.addEventListener('click', onAccountClick);
     // the search box's (Ctrl/⌘+K): each site's buttons, as in the menu (each one is there while its button is)
-    for (const p of ['kick', 'twitch', 'youtube']){
+    for (const p of siteIds()){
       const n = PLAT_NAME[p], row = `.am-row[data-p="${p}"]`;
       commands.add([
         { id: `account.${p}.login`, group: 'Accounts', title: `Log in to ${n}`, icon: 'signin', words: ['sign in', 'account'], button: `${row} .am-in` },
@@ -99,7 +103,7 @@ function init(){
       ]);
     }
     commands.add([
-      { id: 'account.menu', group: 'Accounts', title: 'Logins', sub: 'Log in to Kick, Twitch or YouTube', icon: 'signin', words: ['accounts'], button: '#loginBtn' },
+      { id: 'account.menu', group: 'Accounts', title: 'Logins', sub: 'Log in to ' + siteNames(), icon: 'signin', words: ['accounts'], button: '#loginBtn' },
       { id: 'account.firefox', group: 'Accounts', title: 'Sign in to YouTube with Firefox', sub: 'Copies your YouTube login from Firefox', icon: 'signin', button: '.am-ff', when: () => true },
       { id: 'account.settings', group: 'Accounts', title: 'Account settings', sub: 'Settings › Accounts', icon: 'gear', button: '#accountMenu .am-more', when: () => true }
     ]);
@@ -111,15 +115,13 @@ function init(){
       else if (action === 'logout' && await ask(`Log out of ${PLAT_NAME[p]}?`, `${PLAT_NAME[p]} chats in this app will show as logged out until someone logs in again.`, { ok: 'Log out', danger: true })) await doLogout(p);
     });
     fromApp('onAccountChanged', async info => {
-      const p = info.platform || 'kick';
+      const p = info.platform || SmvSites.DEFAULT;
       wins.forEach(w => { if ((w.kind === 'chat' || (w.kind === 'stream' && streamSignedIn(p))) && w.ready && platOf(w.channel) === p) reloadPage(w); });   // that platform's chats (and signed-in streams) pick up the new login
       modOk.clear(); wins.forEach(w => { if (platOf(w.channel) === p) checkMod(w); });
-      if (info.loggedOut){ acct[p] = p === 'youtube' ? false : ''; showAccounts(); return; }
+      if (!PLATFORMS[p]) return;
+      if (info.loggedOut){ acct[p] = loggedOut(p); showAccounts(); return; }
       await refreshAccount();
-      if (ROLE === 'main' && typeof setMyName === 'function'){
-        if (p === 'kick' && acct.kick && !myName) setMyName(acct.kick);
-        if (p === 'twitch' && acct.twitch && !myTwitch) setMyTwitch(acct.twitch);
-      }
+      if (ROLE === 'main' && typeof setMyName === 'function' && PLATFORMS[p].me.named && acct[p] && !myNameOn(p)) setMyName(p, acct[p]);
     });
     if (ROLE === 'main') setTimeout(refreshAccount, 5000);
 
@@ -215,13 +217,12 @@ function init(){
     /* ---- Import follows: read the channels you follow (with your login) and pick which to save ---- */
     const dlg = $('#importDlg');
     let impItems = [], impPlat = '', impBusy = false;
-    const PCOL = { kick: '#53fc18', twitch: '#a970ff', youtube: '#ff3d3d' };
     const closeImport = () => { dlg.hidden = true; };
     dlg.querySelector('.dlg-cancel').onclick = closeImport;
     dlg.addEventListener('pointerdown', e => { if (e.target === dlg && !impBusy) closeImport(); });
     const impSetup = (p, sub) => {
       impPlat = p;
-      dlg.querySelector('.pdot').style.background = PCOL[p];
+      dlg.querySelector('.pdot').style.background = PLATFORMS[p].colors.dot;
       dlg.querySelector('.dlg-title').textContent = `Import ${PLAT_NAME[p]} follows`;
       dlg.querySelector('.dlg-sub').innerHTML = sub;
       dlg.querySelector('.dlg-tools').hidden = true;
@@ -250,10 +251,10 @@ function init(){
         cb.checked = have || (keep.has(x.ch) ? keep.get(x.ch) : x.pick !== false); cb.disabled = have;
         cb.onchange = () => { x.pick = cb.checked; impCount(); };
         l.querySelector('.nm').textContent = x.name;
-        l.querySelector('.id').textContent = have ? 'already saved' : x.ch.replace(/^(tw:|yt:c:|yt:)/, '');
-        if (impPlat === 'kick' && window.kmv.kickUnfollow){
+        l.querySelector('.id').textContent = have ? 'already saved' : SmvSites.bare(x.ch);
+        if (PLATFORMS[impPlat].login.unfollow && window.kmv.kickUnfollow){
           const u = document.createElement('button'); u.type = 'button'; u.className = 'unf'; u.textContent = 'Unfollow';
-          u.title = `Unfollow ${x.name} on kick.com`;
+          u.title = `Unfollow ${x.name} on ${PLATFORMS[impPlat].hosts[0]}`;
           u.onclick = async e => {
             e.preventDefault(); e.stopPropagation();
             u.disabled = true;
@@ -310,13 +311,14 @@ function init(){
       if (!r || r.error){
         const sub = dlg.querySelector('.dlg-sub');
         if (r && r.error === 'login'){
-          sub.textContent = p === 'youtube' && acct.youtube
-            ? 'YouTube has signed this app out. In Firefox, open youtube.com (choose your account if it asks), then copy your login again.'
-            : `You need to be logged in to ${PLAT_NAME[p]} in this app first.` + (p === 'youtube' ? ' YouTube sign-in currently only works through Firefox.' : '');
-          list.innerHTML = `<div class="empty"><button class="btn imp-login">${p === 'youtube' ? 'Sign in to YouTube with Firefox' : 'Log in to ' + PLAT_NAME[p]}</button></div>`;
+          const ff = PLATFORMS[p].login.firefox, site = PLAT_NAME[p];
+          sub.textContent = ff && acct[p]
+            ? `${site} has signed this app out. In Firefox, open ${PLATFORMS[p].hosts[0]} (choose your account if it asks), then copy your login again.`
+            : `You need to be logged in to ${site} in this app first.` + (ff ? ` ${site} sign-in currently only works through Firefox.` : '');
+          list.innerHTML = `<div class="empty"><button class="btn imp-login">${ff ? `Sign in to ${esc(site)} with Firefox` : 'Log in to ' + esc(site)}</button></div>`;
           list.querySelector('.imp-login').onclick = () => {
             closeImport();
-            if (p === 'youtube'){ openFfDlg(); return; }
+            if (ff){ openFfDlg(); return; }
             window.kmv.openLogin(p); flash(`Log in, close the login window, then click Import follows again.`);
           };
         } else {

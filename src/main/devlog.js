@@ -55,28 +55,9 @@ function createErrorLog({ max = MAX, now = Date.now, saved = [] } = {}) {
   };
 }
 
-// What a request to a site is, in words: { site, what } (null: not a site the app asks about channels).
-function describeRequest(url, body) {
-  let u; try { u = new URL(String(url)); } catch { return null; }
-  const h = u.hostname, p = u.pathname;
-  if (h === 'gql.twitch.tv') {
-    const q = String(body || '');
-    const what = /users\s*\(\s*logins/.test(q) ? 'live check (many channels)' : /user\s*\(\s*login/.test(q) ? 'live check'
-      : /follow/i.test(q) ? 'follows' : /moderat|isModerator|mod\b/i.test(q) ? 'moderator check' : 'GQL';
-    return { site: 'twitch', what };
-  }
-  if (/(^|\.)twitch\.tv$/.test(h)) return { site: 'twitch', what: /^\/[\w]+\/?$/.test(p) ? 'channel page' : 'page' };
-  if (h === 'www.googleapis.com' && /^\/youtube\//.test(p)) return { site: 'youtube', what: 'API ' + p.replace(/^\/youtube\/v3\//, '') };
-  if (/(^|\.)youtube\.com$/.test(h)) {
-    const what = /\/feeds\/videos\.xml$/.test(p) ? 'channel feed' : /\/live$/.test(p) ? 'live page' : /^\/watch/.test(p) ? 'video page' : 'page';
-    return { site: 'youtube', what };
-  }
-  if (/(^|\.)kick\.com$/.test(h)) {
-    const what = /follow/i.test(p) ? 'follows' : /\/api\/v\d\/channels\/[^/]+\/?$/.test(p) ? 'channel' : /\/api\//.test(p) ? 'API ' + p.replace(/^\/api\//, '') : 'page';
-    return { site: 'kick', what };
-  }
-  return null;
-}
+// What a request to a site is, in words: { site, what } (null: not a site the app asks about channels). Each site
+// says for its own (sites/<id>/site.js).
+const { describeRequest } = require('./sites');
 
 // The last answers from the sites: { t, site, what, method, url, status, ms, request, body }, newest first. status 0:
 // no answer (offline, a time limit). What was sent (request) and the answer's text (body) only when asked to keep

@@ -4,7 +4,8 @@
 //
 // Export takes out who and what: names, ids and the words of messages become placeholders (the same one each time a
 // name comes back), and what's left is each event's shape, to fix and test ALL's readers (page/chat/feed-parse.js).
-const SITES = ['kick', 'twitch', 'youtube'];
+const sites = require('./sites');
+const SITES = [...require('../shared/sites').IDS];
 const KINDS = 300;         // kinds kept for each site (the least recently heard go first)
 const SAMPLES = 3;         // samples of each kind, newest last
 const SAMPLE_MAX = 8000;   // a sample's text
@@ -170,7 +171,7 @@ function anonIrc(line, ph) {
 function anonymise(site, text, ph) {
   const t = String(text).trim();
   if (t.startsWith('{') || t.startsWith('[')) { try { return anonJson(JSON.parse(t), ph); } catch { return anonCut(t, ph); } }
-  return site === 'twitch' ? anonIrc(t, ph) : words(t);
+  return sites.has(site, 'ircChat') ? anonIrc(t, ph) : words(t);
 }
 
 // The export: every kind with its status (known: { site: { kind: what ALL does with it } } from the page), the kinds

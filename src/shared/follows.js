@@ -4,14 +4,14 @@
 // (the suggestions), and by the tests (require). src/shared/ is for code both sides load, so it stays in a form
 // both can: require() and a plain <script>.
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else root.SmvFollows = factory();
-})(typeof self !== 'undefined' ? self : this, function () {
-  const SITES = ['kick', 'twitch', 'youtube'];
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./sites'));
+  else root.SmvFollows = factory(root.SmvSites);
+})(typeof self !== 'undefined' ? self : this, function (Sites) {
+  const SITES = Sites.IDS;
   const MAX_ITEMS = 5000;            // per site: more than anyone follows, and a cap on what a bad answer can store
-  const CH_RE = /^(tw:[a-z0-9_]{1,25}|yt:@[\w.\-]{2,100}|yt:c:UC[\w-]{10,40}|[a-z0-9_-]{1,40})$/;
-  const siteOf = ch => /^tw:/.test(ch) ? 'twitch' : /^yt:/.test(ch) ? 'youtube' : 'kick';
-  const label = ch => String(ch).replace(/^(tw:|yt:c:|yt:)/, '');
+  const siteOf = Sites.siteOf, label = Sites.bare;
+  // a channel (not one video) of one of the sites
+  const okCh = ch => Sites.validCh(ch) && !Sites.isVideo(ch);
 
   // A store read from disk (or anything else) -> { v: 1, off?, kick?: { at, items: [{ ch, name }] }, twitch?, youtube? }
   function normStore(d) {
@@ -30,8 +30,8 @@
     const seen = new Map();
     for (const x of Array.isArray(items) ? items : []) {
       if (!x || typeof x.ch !== 'string') continue;
-      const ch = /^yt:c:/i.test(x.ch) ? 'yt:c:' + x.ch.slice(5) : x.ch.toLowerCase();
-      if (!CH_RE.test(ch) || siteOf(ch) !== site || seen.has(ch)) continue;
+      const ch = Sites.normCh(x.ch);
+      if (!okCh(ch) || siteOf(ch) !== site || seen.has(ch)) continue;
       const name = typeof x.name === 'string' && x.name.trim() ? x.name.trim().slice(0, 100) : label(ch);
       seen.set(ch, name);
       if (seen.size >= MAX_ITEMS) break;

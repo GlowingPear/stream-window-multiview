@@ -1,8 +1,13 @@
+import { emoteSites, inSiteCall } from '../sites/in-site.js';
+
 /* ---- Emote preview: point at an emote in a chat to see it big, with its name, Copy name and Download.
    Runs inside each chat page (Kick, Twitch, YouTube, and emotes from add-ons like 7TV, BTTV and FFZ). The card
    lives in its own shadow root, styled with a constructed sheet, so the site's styles and rules don't touch it.
-   Download is asked of the app through a console message (the chat page can't reach the app any other way). */
-function emoteAgent(){
+   Download is asked of the app through a console message (the chat page can't reach the app any other way).
+   sites: each site's emotes (sites/in-site.js emoteSites: its name, and its site.js's inSite.emote: look, the card's
+   badge colours and words, and find(img, url, name) -> { big, text? } for a picture that's one of its emotes, else null;
+   text: what to type for it, when that isn't its name). The add-ons' are here: they show in every site's chat. */
+function emoteAgent(sites){
   if (window.__kmvEmote) return true;
   let on = false, host = null, root = null, card = null, cur = null, pending = null, showT = 0, hideT = 0, example = false, ctxAt = null, menuOpen = false, exSend = null;
   // How the card asks the app for things: a console message from a chat page (the app's page swaps this for a direct call)
@@ -16,28 +21,18 @@ function emoteAgent(){
     const name = String(img.getAttribute('data-emote-name') || img.alt || img.title || img.getAttribute('aria-label') || '').replace(/^:|:$/g, '').trim();
     if (!name || name.length > 60) return null;
     const h = u.hostname, path = u.pathname;
-    let m, big = null, site = '';
-    if (h === 'files.kick.com' && (m = path.match(/^\/emotes\/(\d+)\//))){ site = 'Kick'; big = `https://files.kick.com/emotes/${m[1]}/fullsize`; }
-    else if (h === 'static-cdn.jtvnw.net' && /^\/emoticons\//.test(path)){ site = 'Twitch'; big = u.href.replace(/\/[123]\.0(?=$|\?)/, '/3.0'); }
+    let big = null, site = '', text = name, x = null;
+    const own = (sites || []).find(s => (x = s.find(img, u, name)));
+    if (own){ site = own.name; big = x.big; if (x.text) text = x.text; }
     else if (/(^|\.)7tv\.app$/.test(h) && /\/emote\//.test(path)){ site = '7TV'; big = u.href.replace(/\/[1-3]x(\.\w+)?(?=$|\?)/, '/4x$1'); }
     else if (h === 'cdn.betterttv.net' && /\/emote\//.test(path)){ site = 'BTTV'; big = u.href.replace(/\/[12]x(\.\w+)?(?=$|\?)/, '/3x$1'); }
     else if (/(^|\.)frankerfacez\.com$/.test(h) && /\/emote\//.test(path)){ site = 'FFZ'; big = u.href.replace(/\/[12](?=$|\?)/, '/4'); }
-    else if (/(^|\.)ggpht\.com$|^www\.gstatic\.com$/.test(h) && img.closest('yt-live-chat-text-message-renderer, #message')){ site = 'YouTube'; big = u.href.replace(/=w\d+-h\d+/, '=w128-h128'); }
     else return null;
-    return { name, text: textOf(img, site, name), small: u.href, big: big || u.href, site, animated: /\/animated\/|\.gif(\?|$)/i.test(u.href), addOn: /^(7TV|BTTV|FFZ)$/.test(site) };
+    return { name, text, small: u.href, big: big || u.href, site, animated: /\/animated\/|\.gif(\?|$)/i.test(u.href), addOn: /^(7TV|BTTV|FFZ)$/.test(site) };
   }
-  // What to type (or paste) in this chat to get the emote: its code on Twitch and the add-ons, its name on Kick,
-  // and on YouTube a standard emoji itself, or a YouTube or channel emoji's shortcode (":_name:").
-  function textOf(img, site, name){
-    if (site !== 'YouTube') return name;
-    const alt = String(img.alt || '').trim(), tip = String(img.getAttribute('shared-tooltip-text') || '').trim();
-    if (alt && /\p{Extended_Pictographic}/u.test(alt) && !/[A-Za-z]/.test(alt)) return alt;
-    if (/^:[^\s:]+:$/.test(tip)) return tip;
-    if (/^:[^\s:]+:$/.test(alt)) return alt;
-    return ':' + name + ':';
-  }
-  const SITE = { Kick: ['#53fc18', '#0a0c0d', 'Kick emote'], Twitch: ['#8a4fff', '#fff', 'Twitch emote'], YouTube: ['#ff3d3d', '#fff', 'YouTube emoji'],
-    '7TV': ['#353e43', '#e7ede9', 'From the 7TV add-on'], BTTV: ['#353e43', '#e7ede9', 'From the BetterTTV add-on'], FFZ: ['#353e43', '#e7ede9', 'From the FrankerFaceZ add-on'] };
+  // the card's badge (its colours) and the words under the name: the sites' (their look), and the add-ons'
+  const SITE = { '7TV': ['#353e43', '#e7ede9', 'From the 7TV add-on'], BTTV: ['#353e43', '#e7ede9', 'From the BetterTTV add-on'], FFZ: ['#353e43', '#e7ede9', 'From the FrankerFaceZ add-on'] };
+  (sites || []).forEach(s => { SITE[s.name] = s.look; });
   const CSS = `:host{all:initial}
     .card{position:fixed;z-index:2147483647;width:272px;box-sizing:border-box;padding:12px;display:flex;flex-direction:column;gap:10px;
       background:#1b2023;border:1px solid #353e43;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.4);
@@ -160,7 +155,8 @@ let EMOTE_JS;
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
-  EMOTE_JS = `(${emoteAgent.toString()})()`;
+  EMOTE_JS = inSiteCall(emoteAgent, emoteSites());
+  window.emoteAgent = () => emoteAgent(emoteSites());   // for the tests
 }
 
 export { EMOTE_JS, emoteAgent, init };

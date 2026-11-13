@@ -1,7 +1,7 @@
 import { $, input } from '../../core.js';
 import { addParsed } from '../../layout/placement.js';
 import { loadSavedProfiles, persistSaved, saved, tabPlat } from './channels.js';
-import { PLAT_NAME, chLabel, parseInput, platOf } from '../../platforms/platforms.js';
+import { PLAT_NAME, chLabel, isVideo, parseInput, platOf } from '../../platforms/platforms.js';
 import { flash } from '../../shared/flash.js';
 import { store } from '../../shared/store.js';
 
@@ -44,7 +44,7 @@ async function openFromBox(saveToo){
   const t = addTarget();
   if (!t){ if (input.value.trim()) flash('Couldn’t read that link or channel name'); return; }
   const ch = t.p.channel;
-  if (ch && window.kmv && window.kmv.channelExists && !/^yt:v:/.test(ch)){
+  if (ch && window.kmv && window.kmv.channelExists && !isVideo(ch)){
     const btn = saveToo ? $('#spOpenSave') : $('#spOpen');
     addBusy = true; btn.classList.add('busy');
     const r = await window.kmv.channelExists(ch).catch(() => 'unknown');

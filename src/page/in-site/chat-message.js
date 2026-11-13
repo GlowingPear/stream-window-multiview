@@ -112,6 +112,7 @@ let MESSAGE_JS;
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   MESSAGE_JS = `(${messageAgent.toString()})()`;
+  window.messageAgent = messageAgent;   // for the tests
 }
 
-export { init, MESSAGE_JS, messageAgent };
+export { init, MESSAGE_JS };

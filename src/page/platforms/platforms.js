@@ -1,29 +1,42 @@
 import { wins } from '../core.js';
-import { kick } from './kick.js';
 import { nameOf } from './linked.js';
 import { kickAuto, kickOut, reportPlayers } from './pear-drops.js';
 import { effectiveSignedIn } from './players-link.js';
-import { twitch } from './twitch.js';
-import { syncLike } from './youtube-options.js';
-import { youtube } from './youtube.js';
 import { DESKTOP } from '../shared/env.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
+import { PLATFORMS } from '../sites/sites.js';
+import { syncLike } from '../sites/youtube/options.js';
 import { addCss, runIn } from '../windows/view.js';
 import { mountView } from '../windows/views.js';
 
-/* ---------- URL parsing ---------- */
 /* ---------- platforms ----------
    Channel ids: Kick "name", Twitch "tw:name", YouTube "yt:@handle" | "yt:c:UC…" | "yt:v:VIDEOID" (a specific video).
-   Each site's own details (addresses, links, what it can do) are in kick.js, twitch.js and youtube.js:
-   platform(ch) is a channel's. */
-const PLATFORMS = { kick, twitch, youtube };
-const DEFAULT_SITE = kick;     // a bare name is a Kick channel (unless a Channels tab says otherwise)
+   The list of sites and their ids is src/shared/sites.js (window.SmvSites), which the main process shares. Each
+   site's own details for the page (addresses, links, what it can do, its parts) are in its folder (sites/<id>/site.js),
+   and sites/sites.js lists them (PLATFORMS): platform(ch) is a channel's. A new site: README.md, "Adding a site". */
+let DEFAULT_SITE;              // a bare name is a channel of the site with no prefix (Kick), unless a Channels tab says otherwise
+// the sites' ids, in the shared list's order
+const siteIds = () => Object.keys(PLATFORMS);
+const sites = () => Object.values(PLATFORMS);
+// The sites that do shoutouts (their module's `shoutouts`: chat/shoutout.js)
+const shoutSites = () => sites().filter(p => p.shoutouts).map(p => p.id);
+const shoutSiteNames = () => shoutSites().map(p => PLATFORMS[p].name).join(' or ');
+// Who holds a site's held messages: "AutoMod" (its held.by), or '' for the site itself ("held for review"); and as said
+// in a sentence ("AutoMod", "YouTube")
+const heldByOf = site => ((PLATFORMS[site] || {}).held || {}).by || '';
+// "Denied" (Twitch), "Hidden" (YouTube): a held message its moderators turned down
+const deniedWord = site => { const d = ((PLATFORMS[site] || {}).held || {}).denied || 'denied'; return d[0].toUpperCase() + d.slice(1); };
+const heldWho = site => heldByOf(site) || (PLAT_NAME || {})[site] || '';
+// The sites' names in a sentence: "Kick, Twitch or YouTube"
+const siteNames = (and = 'or') => { const n = sites().map(p => p.name); return n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ` ${and} ` + n[n.length - 1]; };
 let PLAT_NAME;
 // Small platform badge (K / T / Y in each platform's colour) shown next to channel names.
 const platIcon = p => `<i class="pi pi-${p}" title="${PLAT_NAME[p]}" aria-label="${PLAT_NAME[p]}">${(PLATFORMS[p] || {}).letter || '?'}</i>`;
-const platOf = ch => !ch ? '' : /^tw:/i.test(ch) ? 'twitch' : /^yt:/i.test(ch) ? 'youtube' : 'kick';
+const platOf = ch => SmvSites.siteOf(ch);
 const platform = ch => PLATFORMS[platOf(ch)];
+// One video rather than a channel ("yt:v:…"): no profile, no channel settings, no linking
+const isVideo = ch => SmvSites.isVideo(ch);
 // Display names learned from the sites (live checks, follows imports, profiles, YouTube pages), so channels show as
 // "PixelBandit" rather than their id "pixelbandit". Kick and Twitch: only the same handle in other capitals (Twitch
 // names in another script would hide which channel it is). YouTube: the name of a channel or video id ("@handles" stay).
@@ -61,16 +74,14 @@ function chLabel(ch){
   return platform(ch).label(ch);
 }
 const chLabelP = ch => chLabel(ch) + (platform(ch) === DEFAULT_SITE ? '' : ' · ' + platform(ch).name);
-function normCh(c){ c = String(c || '').trim(); return /^yt:(v|c):/i.test(c) ? 'yt:' + c.slice(3, 5).toLowerCase() + c.slice(5) : c.toLowerCase(); }
+const normCh = c => SmvSites.normCh(c);
 
-// Turn whatever was typed or pasted into a channel. Plain names use `plat` (Kick unless a Saved tab says otherwise).
-// A link: each site's fromUrl() says whether it's its own, and which channel; any other link opens as a web page.
-function parseInput(raw, plat = 'kick'){
+// Turn whatever was typed or pasted into a channel. A site's own short form ("tw:name", "@handle"): its fromText().
+// Plain names use `plat` (the default site unless a Saved tab says otherwise). A link: each site's fromUrl() says
+// whether it's its own, and which channel; any other link opens as a web page.
+function parseInput(raw, plat){
   raw = String(raw || '').trim(); if (!raw) return null;
-  let m;
-  if ((m = raw.match(/^(?:tw|twitch)\s*:\s*([A-Za-z0-9_]{1,25})$/i))) return { channel: 'tw:' + m[1].toLowerCase(), only: null };
-  if ((m = raw.match(/^(?:yt|youtube)\s*:\s*@?([\w.\-]{2,100})$/i))) return { channel: 'yt:@' + m[1].toLowerCase(), only: null };
-  if ((m = raw.match(/^@([\w.\-]{2,100})$/))) return { channel: 'yt:@' + m[1].toLowerCase(), only: null };
+  for (const p of Object.values(PLATFORMS)){ const r = p.fromText(raw); if (r !== undefined) return r; }
   if (/^[A-Za-z0-9_-]+$/.test(raw)){
     const n = raw.toLowerCase();
     return { channel: (PLATFORMS[plat] || DEFAULT_SITE).idFor(n), only: null };
@@ -92,7 +103,7 @@ function trimPlayerPage(view, ch){
 }
 
 // Addresses for each platform's player and chat. YouTube needs the live video's id (looked up when needed).
-const ytVidOf = w => /^yt:v:/.test(w.channel || '') ? w.channel.slice(5) : (w.ytVid || null);
+const ytVidOf = w => isVideo(w.channel || '') ? w.channel.slice(5) : (w.ytVid || null);
 const streamSrc = (ch, muted, vid) => (platform(ch) || DEFAULT_SITE).streamUrl(ch, muted, vid);
 const chatSrc = (ch, vid) => (platform(ch) || DEFAULT_SITE).chatUrl(ch, vid);
 // Each platform's moderator dashboard for a channel (YouTube has none for each channel).
@@ -124,11 +135,19 @@ function popUp(w, what){
   if (DESKTOP) window.kmv.openWindow(url, chat ? 380 : 1100, chat ? 760 : 700);
   else window.open(url, 'kmv_' + (chat ? 'chat' : 'page') + '_' + (w.channel || w.id), chat ? 'width=380,height=760' : 'width=1100,height=680');
 }
+// Who you're logged in as, as the desktop app reads it: fromPages, your name on the site that reads it from its pages
+// (its login.fromPages: window.kmv.detectMe), and st, the others' from their logins (window.kmv.accountsStatus:
+// { [site]: your name there, or whether you're signed in }); null when it can't say.
+async function readLogins(){
+  const fromPages = window.kmv.detectMe && sites().some(p => p.login.fromPages) ? await window.kmv.detectMe().catch(() => null) : null;
+  const st = window.kmv.accountsStatus ? await window.kmv.accountsStatus().catch(() => null) : null;
+  return { fromPages, st };
+}
 const chatPartition = ch => (platform(ch) || DEFAULT_SITE).partition;
 // "Watch signed in" (account menu, per site): that site's stream players use your login too,
 // so you watch as your account. Off: each stream player gets its own logged-out storage. On unless switched off.
 // Kick's players sign out while a linked Pear Drops is farming (Settings › Connected apps, pear-drops.js).
-var watchSignedIn = { kick: true, twitch: true, youtube: true };
+var watchSignedIn = {};
 // Saved with v: 2 since it's on by default. A value from before that is switched on once for every site (init())
 const WATCH_V = 2;
 const streamSignedIn = p => effectiveSignedIn(p, { auto: kickAuto(), out: kickOut, watch: watchSignedIn });
@@ -167,7 +186,9 @@ function setWatchSignedIn(p, on){
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
+  DEFAULT_SITE = PLATFORMS[SmvSites.DEFAULT];
   PLAT_NAME = Object.fromEntries(Object.values(PLATFORMS).map(p => [p.id, p.name]));
+  for (const p of siteIds()) watchSignedIn[p] = true;
   Object.assign(chNames, settings.json('ytNames', {}), settings.json(NAMES, {}));
   settings.onChange(NAMES, (_, v) => {          // learned in the other window
     let got = {}; try { got = JSON.parse(v || '{}') || {}; } catch {}
@@ -194,7 +215,8 @@ function init(){
   });
 }
 
-export { chatSrc, checkMod, chLabel, chLabelP, chNames, extCount, externalFor, infoNames, init, isModOf, modIs,
-  modOk, modUrl, normCh, openModView, parseInput, PLAT_NAME, platform, PLATFORMS, platformVars, platIcon, platOf,
-  popUp, rememberName, rememberNames, setWatchSignedIn, srcFor, streamSignedIn, streamSrc, syncStreams,
-  trimPlayerPage, viewPartition, watchSignedIn, ytVidOf };
+export { chatSrc, checkMod, chLabel, chLabelP, chNames, deniedWord, extCount, externalFor, heldByOf, heldWho,
+  infoNames, init, isModOf, isVideo, modIs, modOk, modUrl, normCh, openModView, parseInput, PLAT_NAME, platform,
+  platformVars, platIcon, platOf, popUp, readLogins, rememberName, rememberNames, setWatchSignedIn, shoutSiteNames,
+  shoutSites, siteIds, siteNames, sites, srcFor, streamSignedIn, streamSrc, syncStreams, trimPlayerPage,
+  viewPartition, watchSignedIn, ytVidOf };

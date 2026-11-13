@@ -11,7 +11,6 @@
 #accountMenu .am-row,#settingsDlg .am-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px}
 #accountMenu .am-row:hover,#settingsDlg .am-row:hover{background:var(--panel2)}
 .am-row .pdot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--line2)}
-.am-row[data-p=kick].on .pdot{background:#53fc18}.am-row[data-p=twitch].on .pdot{background:#a970ff}.am-row[data-p=youtube].on .pdot{background:#ff3d3d}
 .am-txt{flex:1;min-width:0;display:flex;flex-direction:column}
 .am-txt b{font-size:13px}
 .am-st{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

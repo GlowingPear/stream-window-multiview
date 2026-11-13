@@ -1,13 +1,14 @@
 import { SHOUT_MAX, SHOUT_TOKENS, SHOUT_TPL, fillShout, loginOfCh, shoutLink, siteOfCh } from '../../chat/shoutout-text.js';
-import { bellVars, myName } from '../bell/bell.js';
+import { myNameOn } from '../bell/bell.js';
 import { svHue } from '../channels/channels.js';
 import { listStreamers, streamerName, streamerOf } from '../../platforms/linked.js';
-import { PLAT_NAME, parseInput } from '../../platforms/platforms.js';
+import { PLAT_NAME, parseInput, shoutSiteNames, shoutSites } from '../../platforms/platforms.js';
 import { element } from '../../shared/element.js';
 import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
 import { closeOnOutside } from '../../shared/popover.js';
 import { settings } from '../../shared/settings.js';
+import { PLATFORMS } from '../../sites/sites.js';
 
 /* ---- A channel's shoutout card (#309): the same editor in Settings › Shoutouts › Channels and in Channel settings ›
    Shoutout. A card is a real channel (chat/shoutout-text.js has its shape): its picture and sites, its message (one, or
@@ -20,10 +21,10 @@ const TOKEN_HELP = { '{name}': 'their name', '{link}': 'their channel', '{links}
 
 const soSiteName = site => PLAT_NAME[site] || site;
 const soInitials = name => String(name || '?').replace(/[^a-z0-9]/gi, '').slice(0, 2).toUpperCase() || '?';
-// The channels a card covers: a linked streamer's Kick and Twitch accounts, else its own
+// The channels a card covers: a linked streamer's accounts on the sites that do shoutouts (Kick, Twitch), else its own
 function soCardChs(card){
   const s = card.streamer && listStreamers().find(x => x.id === card.streamer);
-  return (s ? s.accounts : [card.ch]).filter(ch => ['kick', 'twitch'].includes(siteOfCh(ch)));
+  return (s ? s.accounts : [card.ch]).filter(ch => shoutSites().includes(siteOfCh(ch)));
 }
 // Its picture: theirs (when the site gave one), else their initials on their colour; a channel on one site wears its badge
 function soAvatar(card, small){
@@ -49,7 +50,7 @@ function shoutTokensEl(t, ...more){
 function soPreview(card, site, text){
   const ch = soCardChs(card).find(c => siteOfCh(c) === site) || card.ch, login = loginOfCh(ch);
   const msg = fillShout(text || settings.text('shoutText') || SHOUT_TPL, { name: card.name || login, link: shoutLink(site, login), links: soCardChs(card).map(c => shoutLink(siteOfCh(c), loginOfCh(c))).join(' '), game: SO_SAMPLE_GAME });
-  const me = (site === 'kick' ? myName : bellVars.myTwitch) || 'you';
+  const me = myNameOn(site) || 'you';
   return element('div', 'shc-pv', element('i', { class: 'pi pi-' + site }, soSiteName(site)[0]), element('b', null, me), ': ',
     ...msg.split(/(https:\/\/\S+)/).map((t, i) => (i % 2 ? element('span', 'lnk', t) : t)));
 }
@@ -62,7 +63,7 @@ function shoutCardEl(card, { save, remove, open = false, bare = false } = {}){
   const el = element('div', { class: 'shc-card' + (open ? ' open' : '') + (card.lost ? ' lost' : ''), dataset: { ch: card.ch } });
   const sum = () => {
     const also = (card.also || []).map(a => a.name || a.login), msg = card.perSite ? Object.values(card.sites || {}).find(Boolean) : card.msg;
-    if (card.lost) return element('span', 'shc-sum shc-lost', `Couldn't find this channel on Kick or Twitch: it's shouted out by its name`);
+    if (card.lost) return element('span', 'shc-sum shc-lost', `Couldn't find this channel on ${shoutSiteNames()}: it's shouted out by its name`);
     return element('span', 'shc-sum' + (msg ? '' : ' gen'), msg || 'Your general message',
       ...(also.length ? [' · also for ', ...also.flatMap((n, i) => [i ? (i === also.length - 1 ? ' and ' : ', ') : '', element('b', null, n)])] : []));
   };
@@ -104,12 +105,13 @@ function shoutCardEl(card, { save, remove, open = false, bare = false } = {}){
   const drawChips = () => chips.replaceChildren(...(card.also || []).map(a => element('span', 'shc-chip', a.site ? element('i', { class: 'pi pi-' + a.site }, soSiteName(a.site)[0]) : element('i', { class: 'pi shc-any', title: 'Any site' }, '∗'), a.name || a.login,
     element('button', { type: 'button', class: 'x', title: `Remove ${a.name || a.login}`, 'aria-label': `Remove ${a.name || a.login}`, html: SO_X, dataset: { cmd: 'settings.shoutChatterRemove' },
       onclick: () => { card.also = card.also.filter(x => x !== a); save(card); drawChips(); } }))), adder());
-  let addSite = sites[0] || 'kick';
+  let addSite = sites[0] || shoutSites()[0];
   const adder = () => {
     const inp = element('input', { class: 'st-in shc-chip-in', placeholder: 'Their name', 'aria-label': 'A chatter whose shoutout is this channel\'s', spellcheck: false, maxlength: 40, dataset: { cmd: 'settings.shoutChatterName' } });
-    const next = { kick: 'twitch', twitch: '', '': 'kick' };
+    // each site that does shoutouts in turn, then any site ('')
+    const order = [...shoutSites(), ''], next = s => order[(order.indexOf(s) + 1) % order.length];
     const siteB = element('button', { type: 'button', class: 'so-site so-site-' + (addSite || 'every'), title: `${addSite ? 'On ' + soSiteName(addSite) : 'On any site'} · click to change`, 'aria-label': `Their site: ${addSite ? soSiteName(addSite) : 'any'}`, dataset: { cmd: 'settings.shoutChatterSite' },
-      onclick: () => { addSite = next[addSite]; drawChips(); chips.querySelector('.shc-chip-in')?.focus(); } }, addSite ? soSiteName(addSite)[0] : 'All');
+      onclick: () => { addSite = next(addSite); drawChips(); chips.querySelector('.shc-chip-in')?.focus(); } }, addSite ? soSiteName(addSite)[0] : 'All');
     const add = () => {
       const name = inp.value.trim().replace(/^@/, ''); if (!/^[\w-]{2,40}$/.test(name)){ inp.focus(); return; }
       const login = name.toLowerCase();
@@ -121,13 +123,14 @@ function shoutCardEl(card, { save, remove, open = false, bare = false } = {}){
   };
   drawChips();
   body.append(element('div', 'shc-al', element('span', 'ah', 'Also for these chatters, ', element('b', null, 'their other accounts'), `: their shoutout is ${card.name || loginOfCh(card.ch)}'s`), chips));
-  if (card.lost) body.appendChild(element('div', 'shc-warn', `Couldn't find ${card.name || loginOfCh(card.ch)} on Kick or Twitch. It's shouted out by its name until you remove it and add the right channel.`));
+  if (card.lost) body.appendChild(element('div', 'shc-warn', `Couldn't find ${card.name || loginOfCh(card.ch)} on ${shoutSiteNames()}. It's shouted out by its name until you remove it and add the right channel.`));
   if (remove) body.appendChild(element('div', 'shc-foot', element('button', { type: 'button', class: 'linkish rm', dataset: { cmd: 'settings.shoutCardRemove' }, onclick: remove }, 'Remove')));
   el.appendChild(body);
   return el;
 }
 
-/* Adding a channel: a name or link, looked up on Kick and Twitch (and a Kick name with _ as - too), shown with its
+/* Adding a channel: a name or link, looked up on the sites that do shoutouts (Kick, Twitch; at each address a name can be
+   on a site: a Kick name with _ as - too), shown with its
    picture to pick; a linked streamer's channel adds the streamer. Without lookups (a browser), the name as typed.
    added(card): a card was picked. -> the element */
 function shoutAddEl(added, { taken = () => false } = {}){
@@ -143,20 +146,22 @@ function shoutAddEl(added, { taken = () => false } = {}){
     soAvatar(x.card, true), element('span', 'tx', element('b', null, x.card.name), element('small', null, x.sub)), element('span', 'go', x.taken ? 'Added' : 'Add')))); mark(); };
   const find = async () => {
     const q = inp.value.trim(); if (!q) return inp.focus();
-    const parsed = parseInput(q, 'kick'), ch = parsed && parsed.channel;
+    const parsed = parseInput(q), ch = parsed && parsed.channel;
     const name = /[/.:]/.test(q) && ch ? loginOfCh(ch) : q.replace(/^@/, '').toLowerCase();
     if (!/^[\w.-]{2,40}$/.test(name)) return flash('Couldn’t read that name or link');
     go.classList.add('busy');
     let found = [];
     if (window.kmv && window.kmv.profileLookup){
       found = await window.kmv.profileLookup(name).catch(() => []) || [];
-      if (name.includes('_') && !found.some(f => siteOfCh(f.ch) === 'kick')) found.push(...(await window.kmv.profileLookup(name.replace(/_/g, '-')).catch(() => []) || []).filter(f => siteOfCh(f.ch) === 'kick'));
-    } else if (/[/.:]/.test(q) && ch && ['kick', 'twitch'].includes(siteOfCh(ch))) found = [{ ch, name: loginOfCh(ch) }];   // (no lookups here: a link, as it is; a name, on each site)
-    else found = [{ ch: name, name }, { ch: 'tw:' + name, name }];
+      // (a site where a name can have another address too: those, when it found none there)
+      for (const p of sites().filter(p => p.shoutouts && p.shoutouts.tries && !found.some(f => siteOfCh(f.ch) === p.id)))
+        for (const alt of p.shoutouts.tries(name).slice(1)) found.push(...(await window.kmv.profileLookup(alt).catch(() => []) || []).filter(f => siteOfCh(f.ch) === p.id));
+    } else if (/[/.:]/.test(q) && ch && shoutSites().includes(siteOfCh(ch))) found = [{ ch, name: loginOfCh(ch) }];   // (no lookups here: a link, as it is; a name, on each site)
+    else found = shoutSites().map(p => ({ ch: PLATFORMS[p].idFor(name), name }));
     go.classList.remove('busy');
     const seen = new Set();
     picks = [];
-    for (const f of found.filter(f => f && ['kick', 'twitch'].includes(siteOfCh(f.ch)))){
+    for (const f of found.filter(f => f && shoutSites().includes(siteOfCh(f.ch)))){
       const s = streamerOf(f.ch);
       const card = s ? { ch: s.main, streamer: s.id, name: streamerName(s), avatar: f.avatar || '', msg: '', perSite: false, sites: {}, also: [] }
         : { ch: f.ch, streamer: '', name: f.name || loginOfCh(f.ch), avatar: f.avatar || '', msg: '', perSite: false, sites: {}, also: [] };

@@ -217,7 +217,7 @@ What the tests deliberately don't do, because it needs the real outside world:
 | `npm run dev -- --debug` | Also opens a debugging port on `127.0.0.1`, for test scripts (Playwright) |
 | `npm run page-imports` | Updates the import and export lines of the page's modules (`src/page/`) to what their code uses. `npm test` fails when they're out of step |
 | `npm run visual-diff` | For a change that shouldn't change how anything looks: captures the page in this folder and in `main` through its panels, menus and layouts, and compares them (pictures, and every element's box and styles). Local only |
-| `npm run check:commands` | Compares the chat commands ALL's `/` list knows (`chatCommands` in `src/page/platforms/twitch.js` and `kick.js`) with what Twitch's and Kick's own chats offer now, read from a signed-in developer copy (`npm run dev -- --profile <name> --debug 9333`; for Kick, type `/` in one of its chats first). Says what's new, gone or changed. Nothing is typed or sent |
+| `npm run check:commands` | Compares the chat commands ALL's `/` list knows (`chatCommands` in `src/page/sites/twitch/site.js` and Kick's) with what Twitch's and Kick's own chats offer now, read from a signed-in developer copy (`npm run dev -- --profile <name> --debug 9333`; for Kick, type `/` in one of its chats first). Says what's new, gone or changed. Nothing is typed or sent |
 
 Both work on Windows, Mac and Linux, and download the app engine if `npm install` skipped it. Changes to the Electron side (`src/main/`, `src/preload/`) need a restart of the app; changes to the page (`src/index.html` and `src/page/`) only **View › Reload everything**.
 
@@ -257,12 +257,13 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 |---|---|
 | `src/main.js` | The app's start file: it only loads `src/main/main.js` (it stays here, with `src/index.html`, for copies that update themselves) |
 | `src/main/main.js` | Electron main process: windows, logins, live checks, notifications, game window placement |
+| `src/main/sites/` | Each site's main-process side, a folder each (`kick/`, `twitch/`, `youtube/`: its `site.js`): its live checks, logins, follows, moderator check, emotes and profile. `index.js` lists them, `adapter.js` says (and checks) what each one has. See *Adding a site* |
 | `src/main/` | The rest of the Electron side: `live.js` (live-status, link and follow import parsing), `profiles.js` (streamer profiles: the streams the live checks see, the profile's numbers, what the sites say), `profile-queue.js` (fetching saved channels' profiles in the background), `extensions.js` (Chrome extensions, with `electron-chrome-extensions` and `electron-chrome-web-store`), `emote-lists.js` (new emotes), `context-menu.js` and `translate.js` (the right-click menu, translating chats), `firefox-login.js` (the YouTube login from Firefox), `link.js` (Connected apps: the link with Pear Drops, through `@streamorchard/grapevine`), `updater.js` (updates from GitHub), `harden.js` (Electron's cookie-encryption fuse, so saved logins are encrypted), `db.js` (the app's own data in one SQLite file, `stream-multiview.db`: streamer profiles, chat events, follow lists), `partitions.js` (keeping each stream's own storage small), `sync.js` and `sync-merge.js` (Settings › Sync: saved channels and settings, the same on every computer, through a folder a sync app already moves) |
 | `src/preload/` | `preload.js`, the safe bridge between the app's pages and the main process (`window.kmv`), and `signin-preload.js`, which makes Google's sign-in page accept the app |
 | `src/index.html` | The main app page (also the streams window): its markup, and the CSS and code it loads from `src/page/` |
-| `src/page/` | The page's code and CSS, by part of the app: `windows/`, `layout/` (layouts, columns, switch control), `toolbar/`, `panels/` (Channels, the bell, Settings, profiles, help, …), `chat/`, `alerts/`, `platforms/`, `in-site/` (scripts that run inside the Kick, Twitch and YouTube pages), `palette/` (the search box, Ctrl/⌘+K), `shared/` (saved settings, icons, messages, the confirm dialog, tooltips, the search box's commands) and `styles/base.css`. `app.js` loads them and runs each part's start-up code (its `init()`) in order. How the code there is written: `src/page/README.md` |
+| `src/page/` | The page's code and CSS, by part of the app: `windows/`, `layout/` (layouts, columns, switch control), `toolbar/`, `panels/` (Channels, the bell, Settings, profiles, help, …), `chat/`, `alerts/`, `sites/` (a folder for each site: everything the page knows about it), `platforms/` (channel ids and links, Pear Drops), `in-site/` (scripts that run inside the sites' pages, with each site's part from its folder), `palette/` (the search box, Ctrl/⌘+K), `shared/` (saved settings, icons, messages, the confirm dialog, tooltips, the search box's commands) and `styles/base.css`. `app.js` loads them and runs each part's start-up code (its `init()`) in order. How the code there is written: `src/page/README.md` |
 | `src/switcher.html` | The switch control when it's popped out into its own window |
-| `src/shared/` | Code both the main process and the page load: `follows.js` (suggestions from the channels you follow) |
+| `src/shared/` | Code both the main process and the page load: `sites.js` (the list of sites and their channel ids), `follows.js` (suggestions from the channels you follow) |
 | `src/icon.ico`, `src/icon.png` | App icons |
 | `build/` | Installer setup: the large Mac icon and the hook that turns on login encryption in the installers |
 | `scripts/prepare-release.js` | Sets the version from the release tag and adds the release notes to `CHANGELOG.md` |
@@ -278,6 +279,20 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 | `docs/guide/` | The guide: how to use every feature, a page per topic (shown in the app as Settings › Guide) |
 | `.github/ISSUE_TEMPLATE/bug.yml` | The "Something isn't working" issue form, with a box for Copy diagnostics |
 | `CHANGELOG.md` | Version history (also shown in the app) |
+
+### Adding a site
+
+Everything about one site is in a folder of its own on each side, so a new site is those two folders and its entry in the list of sites; nothing else names a site. `npm test` checks it: code outside the sites' folders that names one fails (`test/unit/sites-in-their-folders.test.js`, with the few that do on purpose and why), and so does a site that's missing something or has it wrong.
+
+1. **Its entry in `src/shared/sites.js`:** its id, name, letter, the prefix of its channel ids (`tw:` for Twitch), what its channel ids look like, its storage, its web addresses and the sign-in pages it sends you to.
+2. **Its page folder, `src/page/sites/<id>/`**, and a line for it in `src/page/sites/sites.js`:
+   - `site.js`: `new Site({ id: '<id>', … })`. `src/page/sites/adapter.js` lists every slot, what it's for and its default: the required ones (its addresses, reading its links, your name there, its colours), and the optional ones it fills in as it has them (its chat's mentions, held messages, shoutouts, emotes, moderating…). A slot it leaves out is the default, which says it hasn't got it, and the page leaves that out. A wrong or unknown slot stops the page as it loads, saying which.
+   - `feed.js`: its chat's data as ALL's messages (for ALL, the alerts and the counts), and `in-site/`: its parts of the scripts that run inside its chat page (the tap that hears its chat's connection, pins, history, badges, the chat's modes). Without them its chat works on its own, without ALL.
+   - `site.css`: its colours wherever the page shows something as its own (its badge, a login's dot, ALL's send box…): a copy of another site's with its own colours, and its `<link>` next to theirs in `src/index.html`.
+   - Its own features, if it has some no other site has (Kick's poll, prediction and clip panels).
+3. **Its main-process folder, `src/main/sites/<id>/`**, and a line for it in `src/main/sites/index.js`: `site.js` exports `create(ctx)`, returning `new SiteAdapter({ … })` (`src/main/sites/adapter.js` lists and checks what it has: its login page, whether you're signed in, its live checks, its profile; and as it has them, follows, a moderator check, emotes), and the plain things `adapter.js`'s `MODULE` lists.
+4. **Its rows in `src/index.html`:** the Accounts menu and Settings › Accounts, the Channels box's site picker and tabs, Forget my login, Watch signed in, and its name box in Settings › Mentions (`npm test` says which one is missing). A saved setting for your name there (its `me.setting`) goes in `src/page/shared/settings.js`'s list, and in Settings › Sync's names (`panels/settings/sync.js`).
+5. **Tests** next to the other sites': `test/unit/page/sites/<id>/` and `test/unit/main/sites/<id>/`.
 
 ---
 

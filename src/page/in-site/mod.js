@@ -40,19 +40,13 @@ async function modAgent(action, id){
 }
 
 // Allow or deny a held message (chat/all-chat.js's held cards): the site's own button on it, found by the message's id
-// and only by its label. Twitch: AutoMod's card in its chat, around <div id="<id>" class="message"> (with AutoMod's own
-// line in it), its Allow or Deny. YouTube: its held item (its id, as its element's or in its data),
-// its Show or Hide (not Hide user…). site: the chat's. -> 'done', 'no-line' (not in its chat) or 'no-button'.
-function heldAgent(action, id, site){
+// and only by its label (Twitch's Allow or Deny on AutoMod's card; YouTube's Show or Hide, not Hide user…). heldCard:
+// the site's part (its site.js's inSite.heldCard: id -> the held message's card in its chat, or null).
+// -> 'done', 'no-line' (not in its chat) or 'no-button'.
+function heldAgent(action, id, heldCard){
   const LABEL = { allow: /^(allow|show)( message)?$/i, deny: /^(deny|hide)( message)?$/i }[action];
   if (!LABEL) return 'no-button';
-  let card = null;
-  if (site === 'twitch'){
-    // (the card: the widest box around the message with AutoMod's one line in it and no chat line of anyone's)
-    const msg = [...document.querySelectorAll('[id]')].find(el => el.id === id);
-    const one = el => el.querySelectorAll('[data-a-user="automod"]').length === 1 && !el.querySelector('.chat-line__message');
-    for (let el = msg; el && el !== document.body; el = el.parentElement){ if (one(el)) card = el; else if (card) break; }
-  } else card = [...document.querySelectorAll('yt-live-chat-auto-mod-message-renderer')].find(el => el.id === id || (el.data && el.data.id === id)) || null;
+  const card = heldCard ? heldCard(id) : null;
   if (!card) return 'no-line';
   const label = b => (b.getAttribute('aria-label') || b.textContent || '').trim();
   const b = [...card.querySelectorAll('button')].find(x => LABEL.test(label(x)));

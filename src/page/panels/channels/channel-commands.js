@@ -9,13 +9,14 @@ import { follows } from './follow-suggestions.js';
 import { openLinkCard } from '../linked/link-card.js';
 import { openProfile } from '../profiles/profiles.js';
 import { mainOf, nameOf, streamerName, streamerOf } from '../../platforms/linked.js';
-import { PLATFORMS, PLAT_NAME, chLabel, chNames, externalFor, isModOf, normCh, openModView, parseInput, platOf,
-  platform } from '../../platforms/platforms.js';
+import { PLAT_NAME, chLabel, chNames, externalFor, isModOf, isVideo, normCh, openModView, parseInput, platOf,
+  platform, siteIds } from '../../platforms/platforms.js';
 import { commands } from '../../shared/commands.js';
 import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
 import { store } from '../../shared/store.js';
 import { soon } from '../../shared/timers.js';
+import { PLATFORMS } from '../../sites/sites.js';
 import { chPhoto } from '../../windows/channel-picker.js';
 import { isPaused } from '../../windows/pause.js';
 import { goToWin, winActions } from '../../windows/window-commands.js';
@@ -27,7 +28,6 @@ import { goToWin, winActions } from '../../windows/window-commands.js';
    or a YouTube channel that isn't live. More… lists everything for it (Tab, on its row when it isn't big). */
 let lastSite = '';
 let typed = { name: '', site: '', picked: false };   // a bare name typed, and the site picked for it (K / T / Y)
-const SITES = ['kick', 'twitch', 'youtube'];                       // the site of the channel you last opened from the box (for a bare name)
 const looked = new Map();                // a bare name -> { busy } or { items: what profile:lookup found } (kept for the session)
 let lookFor = '';
 const isOpen = ch => wins.some(w => w.channel === ch);
@@ -53,7 +53,7 @@ const saveCh = ch => { if (!saved.includes(ch)) toggleSaved(ch); };
 // what can be asked about a channel's windows
 const winsOf = ch => wins.filter(w => w.channel === ch);
 const streamOf = ch => wins.find(w => w.kind === 'stream' && w.channel === ch);
-const canProfile = ch => DESKTOP && ROLE === 'main' && !!window.kmv.profileGet && !/^yt:v:/.test(ch);
+const canProfile = ch => DESKTOP && ROLE === 'main' && !!window.kmv.profileGet && !isVideo(ch);
 
 // The big row's buttons: Enter runs the first, ← → or Tab / ⇧Tab pick one, Ctrl/⌘+1–9 run the others, More… everything
 function buttonsFor(ch, known){
@@ -75,7 +75,7 @@ function buttonsFor(ch, known){
     { label: 'Chat only', icon: 'chat', run: () => openCh(ch, 'chat') },
     canProfile(ch) && { label: 'Look up profile', icon: 'user', run: () => openProfile(ch) }
   ].filter(Boolean);
-  if (platOf(ch) === 'youtube' && !liveOf(ch) && !/^yt:v:/.test(ch)) return [
+  if (platform(ch).liveVideo && !liveOf(ch) && !isVideo(ch)) return [
     { label: 'Check now', icon: 'reload', run: () => { if (DESKTOP && window.kmv.checkLiveNow) window.kmv.checkLiveNow(); flash(`Checking whether ${name} is live…`); } },
     { label: 'Open its page', icon: 'pop', run: () => inBrowser(ch) },
     canProfile(ch) && { label: 'Profile', icon: 'user', run: () => openProfile(ch) },
@@ -95,7 +95,7 @@ function openButtons(ch){
   const all = { both: { title: 'Stream + chat', icon: 'colsview' }, stream: { title: 'Stream only', icon: 'ytPlay' }, chat: { title: 'Chat only', icon: 'chat' } };
   return [mode, ...['both', 'stream', 'chat'].filter(m => m !== mode)].map(m => ({ mode: m, ...all[m], run: () => openCh(ch, m) }));
 }
-const siteHost = ch => ({ Kick: 'kick.com', Twitch: 'twitch.tv', YouTube: 'youtube.com' })[platform(ch).name];
+const siteHost = ch => platform(ch).hosts[0];
 // More… (or Tab on its row): everything for a channel (the big row's buttons with the same keys)
 function channelMore(ch){
   const name = chLabel(ch), g = name, out = [], keyOf = {};
@@ -106,7 +106,7 @@ function channelMore(ch){
   add('site', `On ${siteHost(ch)}`, { group: 'Open', icon: 'link', sub: 'In a window of its own', run: () => inBrowser(ch) });
   add('copy', 'Copy link', { group: 'Share', icon: 'copy', sub: platform(ch).pageUrl(ch, 'stream').replace(/^https?:\/\/(www\.)?/, ''), run: () => copyLink(ch) });
   if (canProfile(ch)) add('profile', 'Profile', { group: 'Channel', col: 1, icon: 'user', sub: 'When they stream, past streams, notes', run: () => openProfile(ch) });
-  if (!/^yt:v:/.test(ch)) add('settings', 'Channel settings…', { group: 'Channel', col: 1, icon: 'layers', sub: 'Its chat bots, ALL, opening when live, linking its other sites', run: () => openLinkCard(ch) });
+  if (!isVideo(ch)) add('settings', 'Channel settings…', { group: 'Channel', col: 1, icon: 'layers', sub: 'Its chat bots, ALL, opening when live, linking its other sites', run: () => openLinkCard(ch) });
   add('saved', 'Saved', { group: 'Channel', col: 1, icon: 'star', sub: () => saved.includes(ch) ? 'Remove from your channels' : 'Add to your channels', toggle: { get: () => saved.includes(ch), set: () => toggleSaved(ch) } });
   if (DESKTOP && ROLE === 'main' && saved.includes(ch)){
     add('auto', 'Opens by itself when live', { group: 'Channel', col: 1, icon: 'bolt', sub: 'Once per stream', toggle: { get: () => autoOpen.includes(ch), set: () => toggleAutoOpen(ch) } });
@@ -176,10 +176,10 @@ function typedItems(q){
   lookFor = name; if (!looked.has(name)) lookSoon();
   const look = looked.get(name), hits = (look && look.items) || [];
   const chOf = s => normCh(PLATFORMS[s].idFor(name)), hitOf = s => hits.find(x => x.ch === chOf(s));
-  const found = SITES.filter(s => hitOf(s) && !known.has(chOf(s)));
+  const found = siteIds().filter(s => hitOf(s) && !known.has(chOf(s)));
   if (!typed.picked && found.length && !hitOf(typed.site)) typed.site = found[0];
-  const sites = () => SITES.map(s => ({ p: s, letter: PLATFORMS[s].letter, name: PLAT_NAME[s], on: s === typed.site }));
-  const step = d => { typed.site = SITES[(SITES.indexOf(typed.site) + d + SITES.length) % SITES.length]; typed.picked = true; };
+  const sites = () => siteIds().map(s => ({ p: s, letter: PLATFORMS[s].letter, name: PLAT_NAME[s], on: s === typed.site }));
+  const step = d => { const ids = siteIds(); typed.site = ids[(ids.indexOf(typed.site) + d + ids.length) % ids.length]; typed.picked = true; };
   const pick = { pickSite: s => { typed.site = s; typed.picked = true; }, nextSite: () => step(1), prevSite: () => step(-1) };
   const ch = chOf(typed.site), hit = hitOf(typed.site);
   if (known.has(ch)) return [];
@@ -188,7 +188,7 @@ function typedItems(q){
     const it = channelItem(ch, { known: false }), live = hit && hit.live;
     return [{ ...it, title: name, found: true, sites, ...pick, avatar: hit ? hit.avatar || '' : '', live: !!live, viewers: live && live.viewers != null ? fmtViewers(live.viewers) : null, pills: [],
       heroSub: [hit ? { ok: `✓ Found on ${PLAT_NAME[typed.site]}` } : `No ${PLAT_NAME[typed.site]} channel called “${name}”`, live && 'live', live && live.title,
-        live && live.viewers != null && `${fmtViewers(live.viewers)} watching`, ...SITES.filter(s => s !== typed.site).map(stateOf)] }];
+        live && live.viewers != null && `${fmtViewers(live.viewers)} watching`, ...siteIds().filter(s => s !== typed.site).map(stateOf)] }];
   }
   return [{ id: 'open:as', kind: 'channel', openAs: true, group: 'Open as a channel', title: `Open “${name}” as a channel`, icon: 'plus', matched: 30, boost: -40,
     sub: !look || look.busy ? (canLook() ? 'Checking Kick, Twitch and YouTube…' : 'Kick, Twitch or YouTube') : look.items ? 'Not found on Kick, Twitch or YouTube' : 'Kick, Twitch or YouTube',
@@ -203,7 +203,7 @@ function init(){
   commands.add({ id: 'channel.settingsFor', group: 'Channels', title: 'Channel settings for…', sub: 'Pick a channel: its chat bots, ALL, opening when live, linking', icon: 'layers',
     words: ['channel settings', 'bots', 'all tab', 'link'], more: () => {
       const seen = new Set();
-      return knownChannels().filter(ch => !/^yt:v:/.test(ch)).map(mainOf).filter(ch => !seen.has(ch) && seen.add(ch)).map(ch => {
+      return knownChannels().filter(ch => !isVideo(ch)).map(mainOf).filter(ch => !seen.has(ch) && seen.add(ch)).map(ch => {
         const it = channelItem(ch);
         return { id: 'channel.settingsFor:' + ch, kind: 'channel', group: 'Channel settings for', title: streamerOf(ch) ? nameOf(ch) : it.title, sub: it.sub, words: it.words,
           avatar: it.avatar, site: it.site, hue: it.hue, initials: it.initials, live: it.live, verb: 'Settings', noRecent: true, run: () => openLinkCard(ch) };

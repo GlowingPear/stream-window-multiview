@@ -1,6 +1,6 @@
 import { ROLE, wins } from '../core.js';
 import { platOf, setWatchSignedIn, syncStreams, watchSignedIn } from './platforms.js';
-import { SIGN_BACK_IN_MS, autoSwitched, needOut, nextKickOut, playersReport } from './players-link.js';
+import { PEAR_SITE, SIGN_BACK_IN_MS, autoSwitched, needOut, nextKickOut, playersReport } from './players-link.js';
 import { fromApp } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
@@ -32,7 +32,7 @@ const linkConnected = () => !!(linkState && linkState.peer && linkState.peer.sta
 // Pear Drops sends its daily reward: connected, and new enough to have rewards.daily (0.1.12 or later).
 const rewardShared = () => linkOn() && linkConnected() && !!(linkState.peer.shares && (linkState.peer.shares.in || []).includes('rewards.daily'));
 const linkReward = () => (rewardShared() && linkState.reward) || null;
-const kickStreams = () => wins.filter(w => w.kind === 'stream' && w.channel && platOf(w.channel) === 'kick');
+const kickStreams = () => wins.filter(w => w.kind === 'stream' && w.channel && platOf(w.channel) === PEAR_SITE);
 
 // Apply the rule: out at once when Pear Drops starts farming, back in once it hasn't farmed for 5 minutes.
 function applyLink(){
@@ -45,7 +45,7 @@ function applyLink(){
   noteWait(waited, wait);
   clearTimeout(backTimer); backTimer = null;
   if (backAt != null) backTimer = setTimeout(applyLink, Math.max(0, backAt - Date.now()));
-  syncStreams('kick');
+  syncStreams(PEAR_SITE);
   reportPlayers();
   store.changed('link');
   const chest = JSON.stringify([linkReward(), rewardShared(), linkOn() && linkConnected(), kickUser(), settings.flag('link.dailyReward', true)]);
@@ -87,7 +87,7 @@ function switchLink(change){
   change();
   const r = autoSwitched(was, kickAuto(), watchSignedIn.kick, settings.json('link.kickBefore', null));
   settings.set('link.kickBefore', r.before === null ? null : JSON.stringify(r.before));   // (json: true / false)
-  setWatchSignedIn('kick', r.watchKick);
+  setWatchSignedIn(PEAR_SITE, r.watchKick);
   applyLink();
 }
 async function setLinkOn(on){

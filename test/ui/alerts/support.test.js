@@ -13,7 +13,7 @@ const { openApp } = setup();
 async function chatPage(t, site, html, you = '') {
   const page = await openApp(t);
   await page.evaluate(async ([site, html, css, you]) => {
-    const cfg = (await import(`./page/platforms/${site}.js`))[site].support;
+    const cfg = (await import(`./page/sites/${site}/site.js`))[site].support;
     const st = document.createElement('style'); st.textContent = css; document.head.append(st);
     const d = document.createElement('div'); d.id = 'sup-chat'; d.innerHTML = html; document.body.append(d);
     window.mentionAgent();
@@ -172,7 +172,7 @@ test('raids: Kick\'s banner over the chat once (not again as its viewers go up, 
   let page = await chatPage(t, 'kick', kickRow(1, 'regular', 'evening all'));
   await banner(page, 'oldraider is hosting your channel with 40 viewers');
   await page.evaluate(() => window.__kmvMention.setSupport(null));      // the banner already there when it starts is old
-  await page.evaluate(async () => window.__kmvMention.setSupport((await import('./page/platforms/kick.js')).kick.support, ''));
+  await page.evaluate(async () => window.__kmvMention.setSupport((await import('./page/sites/kick/site.js')).kick.support, ''));
   await page.waitForTimeout(2800);
   await banner(page, 'oldraider is hosting your channel with 44 viewers');
   assert.deepEqual(await found(page), [], 'the same raid, its viewers counted up');

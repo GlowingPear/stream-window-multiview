@@ -1,9 +1,13 @@
+import { emoteHosts, inSiteCall } from '../sites/in-site.js';
+
 // Runs inside each chat: spots new messages that @mention you or reply to you, and (with spam alerts
 // on) hands the app every new message so it can check them, then tags the ones it flags.
 // It reads the chat's visible text. While the site's own connection brings the chat's messages to the app
 // (chat/chat-feed.js), it sleeps (setScreen(false)): it only tags flagged lines and notes your clicks. It wakes when
-// that stops working, or before it has started.
-function mentionAgent(){
+// that stops working, or before it has started. hosts: where the sites keep their emotes' pictures
+// (sites/in-site.js emoteHosts: [{ host, path }], regular expressions' text; path: what a picture's path there starts
+// with to be an emote), for the emotes in a message (the add-ons' are here).
+function mentionAgent(hosts){
   if (window.__kmvMention) return true;
   const seen = new Set(), marks = new Map(), known = new Set(), said = new Map(), rowSaid = new WeakMap();
   let me = '', words = [], wordRe = null, watch = false, armed = false, queue = [], lines = [], armT = 0, seenAt = 0, screen = true;
@@ -279,13 +283,15 @@ function mentionAgent(){
   }
   // A message's text and emotes in order, after "name:" (or "Replying to @name:"): [{ t: text } | { e: name, src }].
   // null when it can't be told apart exactly (then the plain text is used, as before).
-  const EMOTE_HOST = /^(files\.kick\.com|static-cdn\.jtvnw\.net|(\w+\.)?7tv\.app|cdn\.betterttv\.net|cdn\.frankerfacez\.com)$/;
+  const EMOTE_HOST = /^((\w+\.)?7tv\.app|cdn\.betterttv\.net|cdn\.frankerfacez\.com)$/;
+  const OWN_HOSTS = (hosts || []).map(h => ({ host: new RegExp('^(' + h.host + ')$'), path: h.path ? new RegExp(h.path) : null }));
   function emoteIn(img){
     let u; try { u = new URL(img.currentSrc || img.src); } catch { return null; }
     const name = String(img.getAttribute('data-emote-name') || img.alt || img.title || '').replace(/^:|:$/g, '').trim();
     const r = img.getBoundingClientRect();
-    if (u.protocol !== 'https:' || !EMOTE_HOST.test(u.hostname) || !name || name.length > 60 || r.width > 96 || r.height > 96) return null;
-    if (u.hostname === 'files.kick.com' && !/^\/emotes\//.test(u.pathname)) return null;
+    const own = OWN_HOSTS.find(h => h.host.test(u.hostname));
+    if (u.protocol !== 'https:' || !(own || EMOTE_HOST.test(u.hostname)) || !name || name.length > 60 || r.width > 96 || r.height > 96) return null;
+    if (own && own.path && !own.path.test(u.pathname)) return null;
     return { e: name, src: u.href.slice(0, 300) };
   }
   // An element's shown text and emotes, in order, as they are: [{ t: text } | { e: name, src }]
@@ -454,7 +460,8 @@ let MENTION_JS;
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
-  MENTION_JS = `(${mentionAgent.toString()})()`;
+  MENTION_JS = inSiteCall(mentionAgent, emoteHosts());
+  window.chatAgentJs = MENTION_JS; window.mentionAgent = () => mentionAgent(emoteHosts());   // for the tests
 }
 
-export { init, MENTION_JS, mentionAgent };
+export { init, MENTION_JS };
