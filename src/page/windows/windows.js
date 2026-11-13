@@ -23,13 +23,13 @@ import { openProfile } from '../panels/profiles/profiles.js';
 import { arrangeButtons, syncBarName } from '../panels/settings/windows-pane.js';
 import { save } from '../persistence.js';
 import { linkedOn, nameOf } from '../platforms/linked.js';
-import { chLabel, chLabelP, checkMod, isModOf, modUrl, openModView, platOf, platform, popUp } from '../platforms/platforms.js';
-import { syncLike, toggleLike } from '../platforms/youtube-options.js';
+import { chLabel, chLabelP, checkMod, isModOf, isVideo, modUrl, openModView, platOf, platform, popUp } from '../platforms/platforms.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { icon } from '../shared/icons.js';
 import { store } from '../shared/store.js';
 import { soon } from '../shared/timers.js';
+import { syncLike, toggleLike } from '../sites/youtube/options.js';
 import { chAvatar, swapWindows } from './channel-picker.js';
 import { closeFrame, renderSiteTabs } from './frames.js';
 import { PLAYING, pauseEvents } from './pause-state.js';
@@ -63,7 +63,7 @@ function createWin(spec, rect){
         ${w.kind === 'stream' ? '<button class="co-b" data-a="overlay" hidden></button>' : ''}
         ${w.kind === 'stream' && DESKTOP && platform(w.channel)?.likes ? `<button class="like dim" data-a="like" aria-pressed="false">${icon.like}</button>` : ''}
         ${w.channel ? '<button class="star" data-a="star"></button>' : ''}
-        ${w.channel && DESKTOP && ROLE === 'main' && !/^yt:v:/.test(w.channel) ? `<button data-a="profile" title="Profile: when they stream, past streams, your notes">${icon.user}</button>` : ''}
+        ${w.channel && DESKTOP && ROLE === 'main' && !isVideo(w.channel) ? `<button data-a="profile" title="Profile: when they stream, past streams, your notes">${icon.user}</button>` : ''}
         ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="ext" class="ext-b" title="Extensions in this window" hidden>${icon.ext}<b class="ext-n"></b></button>` : ''}
         ${DESKTOP && (w.kind === 'stream' || w.kind === 'chat') ? `<button data-a="state" class="dev-b" title="Copy what the app knows about this window, for a report"${devOn ? '' : ' hidden'}>${icon.copy}</button><button data-a="inspect" class="dev-b" title="Chrome's developer tools for this window's page"${devOn ? '' : ' hidden'}>${icon.code}</button>` : ''}
         ${w.kind === 'chat' && /^(kick|twitch)$/.test(platOf(w.channel)) ? `<button data-a="shout" title="Shout out recent chatters"${shoutOn() ? '' : ' hidden'}>${icon.megaphone}</button>` : ''}
@@ -73,7 +73,7 @@ function createWin(spec, rect){
         <button data-a="pop" title="${w.channel ? 'Open the channel page in a pop-up' : 'Open the page in a pop-up'}">${icon.pop}</button>
         ${w.kind === 'chat' ? `<button data-a="popchat" title="Open just the chat in a pop-up">${icon.chatpop}</button>` : ''}
         <button data-a="max" title="Maximize / restore (or double-click the bar)">${icon.max}</button>
-        ${w.channel && !/^yt:v:/.test(w.channel) ? `<button data-a="link" class="link-b" title="Channel settings: its chat bots, ALL, opening when live, and linking its other sites"${linkedOn() ? '' : ' hidden'}>${icon.layers}</button>` : ''}
+        ${w.channel && !isVideo(w.channel) ? `<button data-a="link" class="link-b" title="Channel settings: its chat bots, ALL, opening when live, and linking its other sites"${linkedOn() ? '' : ' hidden'}>${icon.layers}</button>` : ''}
         <button data-a="more" class="more-b" title="More: the buttons that don't fit" aria-label="More" aria-haspopup="true" hidden>⋯</button>
         <button data-a="close" class="x" title="Close">${icon.close}</button>
       </div>

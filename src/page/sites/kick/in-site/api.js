@@ -1,5 +1,5 @@
 // Run inside a Kick chat page (turned into text, given what it needs): Kick's own requests, the way its channel page makes
-// them, with the chat's login (chat/kick-prediction.js, chat/kick-clip.js).
+// them, with the chat's login (sites/kick/prediction.js, clip.js).
 
 // One request to Kick's API: kick.com/api/... or web.kick.com/api/... (the clips). Answers { ok, status, message, data }:
 // status 0 when it didn't get an answer, 401 without a login; message Kick's own when it gave one; data what it sent back

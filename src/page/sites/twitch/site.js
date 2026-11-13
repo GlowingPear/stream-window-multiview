@@ -1,3 +1,9 @@
+import { Site } from '../adapter.js';
+import { twitchFeed } from './feed.js';
+import { channelsAgent, hypeAgent, twCommandsAgent, twReplyAt, twReplyPress, twRoomAgent, twitchBadges,
+  twitchHeldCard, twitchModes, twitchPins, twitchShown, twitchTap } from './in-site/feed.js';
+import { twitchShoutouts } from './shoutouts.js';
+
 // Twitch, as the rest of the page sees it (the same shape as kick.js, which says more).
 // Twitch's channel ids are "tw:" and the channel's name: "tw:nightowl".
 
@@ -112,8 +118,8 @@ function twLiveCommands(raw){
   return list.filter(c => c.does).sort((a, b) => a.mgmt !== b.mgmt ? b.mgmt - a.mgmt : trim(a.name).localeCompare(trim(b.name))).map(({ mgmt, ...c }) => c);
 }
 
-const twitch = {
-  id: 'twitch', name: 'Twitch', letter: 'T',
+const twitch = new Site({   // (what each slot is for, and its default: sites/adapter.js)
+  id: 'twitch',
   mentions: true,
   screenMentions: true,
   mentionEnd: '\\b',
@@ -129,14 +135,42 @@ const twitch = {
   feedReaders: true,     // the alerts, chat over the stream and counts read its chat's connection (chat/chat-feed.js)
   emoteLists: true,
   pageCommands: false,
+  held: { by: 'AutoMod', expires: true, yours: true, allow: 'Allow', deny: 'Deny', denied: 'denied' },
+  pasteHints: ['<code>twitch.tv/nightowl</code> or <code>tw:nightowl</code>: Twitch'],
+  following: true,
+  roundsFollowers: false,
+  offlineChat: true,
+  liveVideo: false,
+  chatMax: 500,
+  emotes: { none: null, paste: null },
+  feed: twitchFeed,   // its chat's data as ALL's messages (feed.js; chat/feed-parse.js)
+  chat: { ownIcons: false, globalBadges: true, look: false, shared: true, modByLater: true, hypeTrains: true, modesAgain: false },
+  // The scripts that run inside its chat page, its parts of them (see kick.js's inSite): in-site/feed.js
+  inSite: {
+    tap: twitchTap, pins: twitchPins, shown: twitchShown, badges: twitchBadges, modes: twitchModes,
+    icons: null, look: null, room: twRoomAgent, hypeTrain: hypeAgent, channels: channelsAgent, commands: twCommandsAgent,
+    reply: null, replyAt: twReplyAt, replyPress: twReplyPress, heldCard: twitchHeldCard,
+    emote: {
+      look: ['#8a4fff', '#fff', 'Twitch emote'],
+      find: (img, u) => u.hostname === 'static-cdn.jtvnw.net' && /^\/emoticons\//.test(u.pathname) ? { big: u.href.replace(/\/[123]\.0(?=$|\?)/, '/3.0') } : null,
+      host: 'static-cdn\\.jtvnw\\.net', path: null,
+      pics: 'static-cdn\\.jtvnw\\.net\\/'
+    }
+  },
+  // How in-site/send.js sends in its chat (see kick.js's send): its send button
+  send: { button: '[data-a-target="chat-send-button"]', inner: null, waitEnabled: false, realPress: false },
   likes: false,
   chatCommands: TW_COMMANDS,
   liveCommands: twLiveCommands,   // (its own page's list, read live: above)
   // A name in ALL as its chat shows it (see kick.js): their colour, or one of Twitch's own, made readable
   nameStyle: (m, { light } = {}) => ({ color: readable(/^#[0-9a-f]{6}$/i.test(m.color || '') ? m.color : twDefault(m.login || m.sender), !!light) }),
   quality: { siteMax: null },   // its stream's quality can be set (windows/quality.js); by itself it goes as high as the stream
-  partition: 'persist:twitch',
+  me: { setting: 'myTwitch', valid: /^[A-Za-z0-9_]{2,30}$/, at: false, named: true, word: 'username' },
+  login: { fromPages: false, firefox: false, unfollow: false },
+  colors: { dot: '#a970ff', brand: '#9146ff' },
+  shoutouts: twitchShoutouts,   // (shoutouts.js; Settings › Shoutouts › Twitch's own shoutout too)
   idFor: name => 'tw:' + name,
+  fromText(raw){ const m = raw.match(/^(?:tw|twitch)\s*:\s*([A-Za-z0-9_]{1,25})$/i); return m ? { channel: 'tw:' + m[1].toLowerCase(), only: null } : undefined; },
   handle: ch => ch.slice(3),
   label: ch => ch.slice(3),
   fromUrl(host, parts, u){
@@ -191,6 +225,6 @@ const twitch = {
     const player = host === 'player.twitch.tv';
     return (kind === 'stream' ? player : !player && (one.only === 'chat' || parts.length === 1)) ? one.channel : null;
   }
-};
+});
 
 export { twitch };

@@ -1,4 +1,4 @@
-/* Kick's /clip in a chat window (chat/kick-clip.js): the slide-up panel of kick-commands.css, the chat's full width, with the
+/* Kick's /clip in a chat window (sites/kick/clip.js): the slide-up panel of commands.css, the chat's full width, with the
    look of Kick's Share Clip (its colours, sizes and corners) */
 .kclip{gap:0;max-height:100%;overflow-y:auto;overscroll-behavior:contain;padding:16px 14px 14px;background:#181b1f}
 .kclip h3{font-size:16px;font-weight:700;line-height:24px}

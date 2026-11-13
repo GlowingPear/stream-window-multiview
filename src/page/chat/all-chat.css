@@ -164,7 +164,6 @@
 .all-in[aria-disabled="true"]{opacity:.6;cursor:default}
 /* an emote picked into the box: its picture, as in the lines */
 .all-in .all-ie{height:22px;width:auto;vertical-align:middle;margin:-3px 1px 0}
-.all-view[data-send=kick]{--site:#53fc18}.all-view[data-send=twitch]{--site:#9146ff}.all-view[data-send=youtube]{--site:#ff2a2a}
 .all-view[data-send] .all-pick{border-color:color-mix(in srgb,var(--site,var(--line2)) 55%,transparent)}
 .all-menu{position:absolute;left:10px;bottom:58px;min-width:240px;padding:5px;z-index:5;background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 36px rgba(0,0,0,.6)}
 .all-menu[hidden]{display:none}
@@ -198,7 +197,6 @@
 .all-rb-x svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2}
 .all-pick.locked{border-color:var(--site,var(--accent));background:color-mix(in srgb,var(--site,var(--accent)) 10%,var(--panel2));color:var(--site,var(--accent))}
 .all-lock{display:grid}.all-lock svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.6}
-.all-view[data-send=twitch] .all-rb-site{color:#b28cff}
 
 /* @: names in chat */
 .all-at{position:absolute;left:10px;right:10px;bottom:58px;padding:5px;z-index:5;background:var(--panel);border:1px solid var(--line2);border-radius:10px;box-shadow:0 16px 36px rgba(0,0,0,.6)}
@@ -312,7 +310,6 @@
 .al-lift .al-evt{color:var(--accent)}
 /* a reward redeemed with text: the reward's name as a tag, a faint edge in the site's colour */
 .al-m.al-rw{box-shadow:inset 3px 0 0 rgba(145,70,255,.7);background:linear-gradient(90deg,rgba(145,70,255,.10),transparent 70%)}
-.al-m.al-rw:has(.pi-kick){box-shadow:inset 3px 0 0 rgba(83,252,24,.6);background:linear-gradient(90deg,rgba(83,252,24,.08),transparent 70%)}
 .al-tag-rw{color:#e6dcff;background:color-mix(in srgb,var(--rw,#9146ff) 30%,transparent);border:1px solid color-mix(in srgb,var(--rw,#9146ff) 60%,transparent);text-transform:none;letter-spacing:0}
 /* pins: the pill (📌 and how many) toggles one compact strip: a line per pin, the newest (K T Y switch, ▾ all of them) */
 .all-pins{flex:none;margin:6px 10px 0;border:1px solid var(--line2);border-radius:9px;background:var(--panel);overflow:hidden}
@@ -337,9 +334,6 @@
 .all-pinchip[hidden],.all-heldchip[hidden]{display:none}
 /* a new pin: the pill bounces and glows in the site's colour (--pc) */
 .all-pinchip.ping{--pc:var(--accent);color:#fff;border-color:var(--pc);animation:all-ping .7s cubic-bezier(.3,1.6,.5,1) 2,all-glow 1.6s ease-out 2}
-.all-pinchip.ping-kick{--pc:#53fc18}.all-pinchip.ping-kick{color:#0b0e0f;background:#53fc18}
-.all-pinchip.ping-twitch{--pc:#9146ff;background:#9146ff}
-.all-pinchip.ping-youtube{--pc:#ff3b3b;background:#ff3b3b}
 .all-pinchip.ping svg{animation:all-wiggle .7s ease-in-out 2}
 @keyframes all-ping{0%{transform:scale(1)}30%{transform:scale(1.28)}55%{transform:scale(.92)}80%{transform:scale(1.08)}100%{transform:scale(1)}}
 @keyframes all-glow{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--pc) 70%,transparent)}100%{box-shadow:0 0 0 12px color-mix(in srgb,var(--pc) 0%,transparent)}}
@@ -389,7 +383,6 @@
   background:linear-gradient(160deg,color-mix(in srgb,var(--site,var(--accent)) 92%,#fff),var(--site,var(--accent)) 55%,color-mix(in srgb,var(--site,var(--accent)) 78%,#000));
   box-shadow:0 1px 0 rgba(255,255,255,.22) inset,0 4px 14px color-mix(in srgb,var(--site,var(--accent)) 38%,transparent);
   transition:transform .12s ease,box-shadow .15s ease,filter .15s ease,background .2s ease,color .2s ease}
-.all-view[data-send=kick] .all-send-b:not(:disabled):not(.busy){color:#0b1a07}
 .all-send-b svg{width:17px;height:17px;fill:currentColor;stroke:currentColor;stroke-width:1.2;stroke-linejoin:round;transform:translateX(1px);transition:transform .15s ease}
 .all-send-b svg path+path{fill:none;stroke-width:1.8;stroke:color-mix(in srgb,var(--site,var(--accent)) 70%,#000)}
 .all-send-b:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 7px 18px color-mix(in srgb,var(--site,var(--accent)) 48%,transparent)}
@@ -423,7 +416,6 @@
 .all-modes{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:0 0 7px;font-size:11px;--sc:var(--accent)}
 .all-modes[hidden]{display:none}
 .all-modes:not(.blocked){height:24px;overflow:hidden}   /* (one line, as many chips as fit: the rest wrap out of sight, as the row of emotes does) */
-.all-modes-kick{--sc:#53fc18}.all-modes-twitch{--sc:#a970ff}.all-modes-youtube{--sc:#ff5a5a}
 .all-mc{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 8px;border-radius:999px;font-weight:700;letter-spacing:.01em;color:var(--text);
   background:color-mix(in srgb,var(--sc) 11%,transparent);border:1px solid color-mix(in srgb,var(--sc) 38%,transparent)}
 .all-mc::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--sc);box-shadow:0 0 6px color-mix(in srgb,var(--sc) 70%,transparent)}
@@ -545,7 +537,7 @@
 .all-poll-cs{display:flex;flex-direction:column;gap:3px;margin-top:6px}
 .all-poll-c{position:relative;isolation:isolate;display:flex;align-items:center;gap:6px;min-height:20px;padding:0 7px;border-radius:5px;background:var(--panel2);font-size:11.5px;overflow:hidden}
 .all-poll-bar{position:absolute;inset:0 auto 0 0;z-index:-1;background:color-mix(in srgb,var(--text) 12%,transparent);border-radius:5px;transition:width .5s ease}
-.all-poll-card{--site:#ff2a2a}.all-poll-kick{--site:#53fc18}.all-poll-twitch{--site:#9146ff}   /* (the leading choice in its site's colour) */
+.all-poll-card{--site:#ff2a2a}   /* (the leading choice in its site's colour) */
 .all-poll-c.top .all-poll-bar{background:color-mix(in srgb,var(--site) 30%,transparent)}
 .all-poll-h .all-pin-sw{margin-right:1px}
 .all-poll-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

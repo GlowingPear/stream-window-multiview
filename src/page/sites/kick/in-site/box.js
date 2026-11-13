@@ -1,5 +1,5 @@
 // Run inside a Kick chat page (turned into text, given what they need): Kick's chat box, emptied or filled in the way its
-// channel page does it (chat/kick-poll.js, chat/kick-prediction.js, chat/kick-clip.js). The box is a Lexical editor:
+// channel page does it (sites/kick/poll.js, prediction.js, clip.js). The box is a Lexical editor:
 // changing its text directly would leave the editor out of step, so it's given a new state instead.
 
 // Empties it (it still says "/poll …"), as Kick's channel page does once the form opens

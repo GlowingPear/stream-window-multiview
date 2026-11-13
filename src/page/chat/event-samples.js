@@ -2,7 +2,7 @@ import { reportHealth } from './all-health.js';
 import { feedParse } from './feed-parse.js';
 import { $, wins } from '../core.js';
 import { copyText, devTab } from '../panels/developer/developer.js';
-import { PLATFORMS, PLAT_NAME, platOf } from '../platforms/platforms.js';
+import { PLAT_NAME, platOf, siteIds } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
@@ -10,6 +10,7 @@ import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { fromSite } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
+import { PLATFORMS } from '../sites/sites.js';
 import { runIn } from '../windows/view.js';
 
 /* ---- Settings › Developer › Chat events (#233): every kind of event the sites' chat connections send ----
@@ -20,7 +21,7 @@ import { runIn } from '../windows/view.js';
    words, to hand over for fixing ALL's readers (chat/feed-parse.js) and testing them with what the sites really send. */
 let samplesOn = true;
 const evs = { open: '', site: '', view: 'unknown' };   // open: the kind whose samples are open ("<site> <kind>"); site: only that site's (its pill); view: which list
-const EV_SITES = ['kick', 'twitch', 'youtube'];
+const EV_SITES = () => siteIds();
 const EV_SAMP_JS = on => `window.__kmvFeed && (window.__kmvFeed.samp = ${!!on})`;
 
 // A chat page's reader (feedReady in chat/all-chat.js loads it): counting, or not
@@ -45,8 +46,8 @@ async function renderEvents(){
   if (!list || !pane || pane.hidden || devTab() !== 'events') return;
   const d = (DESKTOP && window.kmv.samplesInfo ? await window.kmv.samplesInfo().catch(() => null) : null) || {};
   if (devTab() !== 'events') return;
-  const known = feedParse.KNOWN, rows = [], needed = [];
-  EV_SITES.forEach(s => {
+  const known = feedParse.known(), rows = [], needed = [];
+  EV_SITES().forEach(s => {
     const got = d[s] || {};
     Object.entries(got).forEach(([kind, e]) => { const ign = known[s][kind] ? '' : feedParse.ignoredWhy(s, kind); rows.push({ s, kind, e, ign, does: known[s][kind] || ign }); });
     Object.entries(known[s]).forEach(([kind, does]) => { if (!got[kind]) needed.push({ s, kind, does }); });
@@ -83,7 +84,7 @@ async function renderEvents(){
       element('div', 'st-row ev-on', element('span', 'st-t', 'Collect chat events', element('small', null, 'Every chat you have open, read-only. Each kind is counted, with its last 3 samples, kept on this computer.')),
         element('input', { type: 'checkbox', class: 'st-sw', id: 'evOn', checked: samplesOn, onchange: e => setSamples(e.target.checked) })),
       element('div', 'ev-acts',
-        element('div', { class: 'ev-stats' + (evs.site ? ' filtered' : ''), role: 'group', 'aria-label': 'Show one site' }, ...EV_SITES.map(s => { const k = Object.values(d[s] || {}), on = evs.site === s;
+        element('div', { class: 'ev-stats' + (evs.site ? ' filtered' : ''), role: 'group', 'aria-label': 'Show one site' }, ...EV_SITES().map(s => { const k = Object.values(d[s] || {}), on = evs.site === s;
           return element('button', { type: 'button', class: 'ev-stat' + (on ? ' on' : ''), 'aria-pressed': String(on), title: `${PLAT_NAME[s]}: ${k.length} kinds, ${k.reduce((a, e) => a + e.n, 0).toLocaleString()} heard · ` + (on ? 'press to show every site again' : `press to show only ${PLAT_NAME[s]}`), dataset: { cmd: 'dev.eventsSite' },
             onclick: () => { evs.site = on ? '' : s; evs.open = ''; renderEvents(); } }, letter(s), element('b', null, String(k.length)), element('span', 'ev-sep', '·'), evCount(k.reduce((a, e) => a + e.n, 0))); })),
         element('button', { type: 'button', class: 'btn primary', id: 'evExport', dataset: { cmd: 'dev.eventsExport' }, title: 'Saves them as a file, with names, ids and the words of messages replaced', onclick: exportEvents }, 'Export'),
@@ -98,7 +99,7 @@ async function renderEvents(){
 async function exportEvents(){
   if (!DESKTOP || !window.kmv.samplesExport) return;
   const d = (window.kmv.samplesInfo ? await window.kmv.samplesInfo().catch(() => null) : null) || {};
-  const r = await window.kmv.samplesExport(feedParse.KNOWN, feedParse.ignoredKinds(d)).catch(() => null);
+  const r = await window.kmv.samplesExport(feedParse.known(), feedParse.ignoredKinds(d)).catch(() => null);
   if (r && r.saved) flash('Saved the chat events, without names, ids or words', { subject: 'downloads' });
   else if (r && r.error) flash('Couldn’t save the file');
 }

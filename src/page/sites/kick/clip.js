@@ -1,11 +1,11 @@
-import { askKick, kickIcon, kickPanel, openInBrowser, openKickPage } from './kick-panel.js';
-import { kickClearBox, kickFillBox } from '../in-site/kick-box.js';
-import { element } from '../shared/element.js';
-import { focusView, runIn } from '../windows/view.js';
+import { element } from '../../shared/element.js';
+import { kickClearBox, kickFillBox } from './in-site/box.js';
+import { askKick, kickIcon, kickPanel, openInBrowser, openKickPage } from './panel.js';
+import { focusView, runIn } from '../../windows/view.js';
 
 // Kick's /clip in a chat window. On the channel page, "/clip [seconds] [title]" makes a clip of the last 30 seconds (or
 // the seconds given, 10 to 180) straight away, titled with what followed or the stream's title, then shows "Share Clip".
-// The popout chat the app shows can't, so the chat window does the same (chat/kick-panel.js): the same checks, wording
+// The popout chat the app shows can't, so the chat window does the same (panel.js): the same checks, wording
 // and requests as Kick's (read from kick.com, October 2026), made from the chat's page with its login, and a copy of its
 // Share Clip panel, the chat's full width over its bottom.
 const CLIP_LIMITS = { seconds: 30, min: 10, max: 180, title: 50 };   // the default length, the shortest and longest; title characters

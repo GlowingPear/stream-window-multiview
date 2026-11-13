@@ -1,18 +1,13 @@
-import { makeClip } from '../chat/kick-clip.js';
-import { openPollForm } from '../chat/kick-poll.js';
-import { openPredictionForm } from '../chat/kick-prediction.js';
-import { messageAgent } from './chat-message.js';
-import { emoteAgent } from './emote-preview.js';
-import { MENTION_JS, mentionAgent } from './mentions.js';
-import { newEmoteAgent } from './new-emotes.js';
-import { translateAgent } from './translate.js';
-import { platOf } from '../platforms/platforms.js';
-import { fromSite } from '../shared/incoming.js';
+import { platform } from '../../platforms/platforms.js';
+import { fromSite } from '../../shared/incoming.js';
+import { makeClip } from './clip.js';
+import { openPollForm } from './poll.js';
+import { openPredictionForm } from './prediction.js';
 
 // Kick chat commands that only work on the channel page: the popout chat (what the app shows) knows them but has nowhere to
 // show their popup, so they do nothing there. The chat window gets a copy of what Kick shows instead: /poll its poll form
-// (chat/kick-poll.js), /prediction its prediction window (chat/kick-prediction.js), /clip its clip and Share Clip
-// (chat/kick-clip.js).
+// (poll.js), /prediction its prediction window (prediction.js), /clip its clip and Share Clip (clip.js). A site whose
+// module says it has these (pageCommands: site.js) runs this in its chat page (windows/views.js).
 const KICK_PAGE_CMDS = ['clip', 'poll', 'prediction'];
 // Runs inside each Kick chat page: a message that is one of these commands isn't sent (Enter or the send
 // button); the app is told through a console message instead, with what followed the command.
@@ -43,7 +38,7 @@ let KICK_CMD_JS;
 function kickCmdHeard(w, data, view){
   if (w.view !== view) return;
   let m; try { m = JSON.parse(data); } catch { return; }
-  if (!m || !KICK_PAGE_CMDS.includes(m.cmd) || platOf(w.channel) !== 'kick') return;
+  if (!m || !KICK_PAGE_CMDS.includes(m.cmd) || !platform(w.channel).pageCommands) return;
   const text = typeof m.text === 'string' ? m.text : '';
   if (m.cmd === 'poll') openPollForm(w, text);
   else if (m.cmd === 'prediction') openPredictionForm(w, text);
@@ -54,7 +49,6 @@ function kickCmdHeard(w, data, view){
 function init(){
   KICK_CMD_JS = `(${kickCmdAgent.toString()})(${JSON.stringify(KICK_PAGE_CMDS)})`;
   fromSite('kick-cmd', kickCmdHeard);   // see kickCmdAgent
-  window.chatAgentJs = MENTION_JS; window.newEmoteAgent = newEmoteAgent; window.mentionAgent = mentionAgent; window.emoteAgent = emoteAgent; window.translateAgent = translateAgent; window.messageAgent = messageAgent;   // for the tests
   window.kickCmdAgent = kickCmdAgent; window.kickCmdHeard = kickCmdHeard; window.KICK_PAGE_CMDS = KICK_PAGE_CMDS;
 }
 

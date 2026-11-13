@@ -17,7 +17,7 @@ import { openLinkCard } from '../panels/linked/link-card.js';
 import { save } from '../persistence.js';
 import { accountsOf, linkOpt, linkedOn, listStreamers, nameOf, optFor, setMain, siteName, siteNo, siteNum,
   streamerOf, unlink } from '../platforms/linked.js';
-import { PLAT_NAME, chLabel, externalFor, platOf, platform, srcFor } from '../platforms/platforms.js';
+import { PLAT_NAME, chLabel, externalFor, isVideo, platOf, platform, srcFor } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
 import { DESKTOP, keyName } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
@@ -68,9 +68,9 @@ const memberFor = (w, ch) => frameOf(w).find(o => o.channel === ch) || null;
 // A site known to be offline: its tab can't be clicked and isn't loaded (it opens by itself when it goes live).
 // Not known yet (no live check so far) counts as watchable.
 const siteOffline = ch => { const i = infoFor(ch); return !!i && !i.live && !i.missing; };
-// A chat window with ALL: their Kick and Twitch chats can be read, sent on and watched while offline too (YouTube's
-// offline channel has no live chat)
-const allKeeps = (w, ch) => w.kind === 'chat' && platOf(ch) !== 'youtube' && allTabFor(leaderOf(w));
+// A chat window with ALL: their chats can be read, sent on and watched while offline too, on a site whose chat is there
+// while offline (offlineChat: YouTube's live chat comes with a stream)
+const allKeeps = (w, ch) => w.kind === 'chat' && platform(ch).offlineChat && allTabFor(leaderOf(w));
 const tabLocked = (w, ch) => siteOffline(ch) && leaderOf(w).channel !== ch && !allKeeps(w, ch);
 // Where Tab, ⌥← and ⌥→ go: the one you watch, and the others known to be live (not ones offline, not found, or
 // not checked yet)
@@ -393,7 +393,7 @@ function tabEnded(w){
 // chs: the sites to open (default: the live ones, or the main channel). Returns the stream frame's window or null.
 function openStreamer(ch, mode = 'both', chs){
   const s = streamerOf(ch); if (!s) return null;
-  const all = accountsOf(ch).filter(c => !/^yt:v:/.test(c));
+  const all = accountsOf(ch).filter(c => !isVideo(c));
   const live = all.filter(c => infoFor(c)?.live);
   let want = chs && chs.length ? chs : live.length ? live : [s.main];
   const first = want.includes(s.main) ? s.main : want[0];

@@ -1,4 +1,4 @@
-/* Kick's /poll form in a chat window (chat/kick-poll.js): the slide-up panel of kick-commands.css, the chat's full width,
+/* Kick's /poll form in a chat window (sites/kick/poll.js): the slide-up panel of commands.css, the chat's full width,
    with Kick's own "Create a new poll" look (its colours, sizes and corners); it scrolls when the chat is shorter than it */
 .kpoll{gap:0;max-height:100%;overflow-y:auto;overscroll-behavior:contain;padding:16px 14px 14px}
 .kpoll h3{font-size:16px;margin-bottom:14px}

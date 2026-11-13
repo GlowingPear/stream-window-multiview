@@ -11,13 +11,15 @@ import { infoFor } from '../channels/channels.js';
 import { showHelp } from '../help/help.js';
 import { ignoreSender, renderSpamHist, syncAlertControls } from '../settings/alerts.js';
 import { nameOf, siteName, siteNum } from '../../platforms/linked.js';
-import { PLAT_NAME, chLabel, chLabelP, platOf } from '../../platforms/platforms.js';
+import { PLAT_NAME, chLabel, chLabelP, deniedWord, heldByOf, platOf } from '../../platforms/platforms.js';
 import { element, esc } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
+import { emotePics } from '../../sites/in-site.js';
+import { PLATFORMS } from '../../sites/sites.js';
 import { openStreamer, tabChannels } from '../../windows/frames.js';
 
 /* ---------- the notification centre: the toolbar bell ----------
@@ -25,7 +27,10 @@ import { openStreamer, tabChannels } from '../../windows/frames.js';
    (notifications.js) kept in localStorage. Only the main window keeps it. */
 const NOTE_SHOWN = 30;    // the latest in each tab of the bell (the rest in All notifications)
 const NOTES_KEY = 'notifications';   // (a saved setting: shared/settings.js)
-let myName = '', myTwitch = '', myYouTube = '', mentOn = true, mentMuted = new Set(), mentWords = [];
+let mentOn = true, mentMuted = new Set(), mentWords = [];
+// Your name on each site (Settings › Mentions): { [site]: name }. Each site's module says which saved setting holds it
+// and what a name there looks like (its `me`).
+const myNames = {};
 let notes = settings.json(NOTES_KEY);
 function saveNotes(){ settings.set(NOTES_KEY, notes); }
 // What each one can still do this session: Undo (a closed channel), Show in folder (a saved emote).
@@ -35,8 +40,6 @@ let bellCount = 'ms', dndUntil = 0, dndT = 0;
 // Other files change these through bellVars: a variable imported from another file can't be assigned to.
 const bellVars = {
   get mentWords(){ return mentWords; }, set mentWords(v){ mentWords = v; },
-  get myTwitch(){ return myTwitch; }, set myTwitch(v){ myTwitch = v; },
-  get myYouTube(){ return myYouTube; }, set myYouTube(v){ myYouTube = v; },
   get mentOn(){ return mentOn; }, set mentOn(v){ mentOn = v; },
   get dndUntil(){ return dndUntil; }, set dndUntil(v){ dndUntil = v; },
   get dndT(){ return dndT; }, set dndT(v){ dndT = v; },
@@ -75,9 +78,15 @@ function readNotes(test){
 }
 const readChat = ch => readNotes(n => n.channel === ch && (SmvNotes.tabOf(n) === 'mentions' || n.kind === 'spam' || n.kind === 'flagged'));
 // Mentions for one chat can be turned off with the @ button on its bar.
-const mentNameFor = ch => { const p = platOf(ch); return p === 'kick' ? myName : p === 'twitch' ? myTwitch : p === 'youtube' ? myYouTube : ''; };
-const mentCovered = ch => /^(kick|twitch|youtube)$/.test(platOf(ch)) && !!(mentNameFor(ch) || mentWords.length);
-const mentAny = () => !!(myName || myTwitch || myYouTube || mentWords.length);
+const myNameOn = site => myNames[site] || '';
+const mentNameFor = ch => myNameOn(platOf(ch));
+const mentCovered = ch => !!platOf(ch) && !!(mentNameFor(ch) || mentWords.length);
+const anyName = () => Object.values(myNames).some(Boolean);
+const mentAny = () => anyName() || !!mentWords.length;
+// The saved settings with your names, and each site's name box (Settings › Mentions)
+const nameSettings = () => Object.values(PLATFORMS).map(p => p.me.setting);
+const nameBox = site => document.querySelector(`[data-me="${site}"]`);
+const showNames = () => Object.keys(PLATFORMS).forEach(p => { const f = nameBox(p); if (f) f.value = myNameOn(p); });
 // The chats a window's @ button is for: its chat, or with its ALL tab showing every chat of theirs ALL reads
 const atChannels = w => (w && allOn(w) ? tabChannels(w).filter(mentCovered) : w ? [w.channel] : []);
 // One chat's mentions on or off, or several (a window's ALL): all off unless they all were, then all on
@@ -113,13 +122,13 @@ function updateBellBtn(){
 function timeAgo(t){ const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 48 * 60 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; }
 const MENT_KIND = { mention: 'Mention', reply: 'Reply', word: 'Word', support: 'Support' };
 // Emotes in a mention: [{ t: text } | { e: name, src }], from the chat helper (and saved), so checked here.
-const EMOTE_SRC = /^https:\/\/(files\.kick\.com\/emotes\/|static-cdn\.jtvnw\.net\/|([\w-]+\.)?7tv\.app\/|cdn\.betterttv\.net\/|cdn\.frankerfacez\.com\/)/;
+// (only pictures from where the sites and add-ons keep their emotes: sites/in-site.js emotePics)
 function cleanParts(p){
   if (!Array.isArray(p) || !p.length || p.length > 80) return null;
   const out = [];
   for (const x of p){
     if (x && typeof x.t === 'string') out.push({ t: x.t.slice(0, 500) });
-    else if (x && typeof x.e === 'string' && x.e && typeof x.src === 'string' && EMOTE_SRC.test(x.src) && x.src.length <= 300) out.push({ e: x.e.slice(0, 60), src: x.src });
+    else if (x && typeof x.e === 'string' && x.e && typeof x.src === 'string' && emotePics({ inMessages: true }).test(x.src) && x.src.length <= 300) out.push({ e: x.e.slice(0, 60), src: x.src });
     else return null;
   }
   const n = out.filter(x => x.e).length;
@@ -137,7 +146,7 @@ function mentBodyNodes(m, parts, mark){
       const im = document.createElement('img');
       im.className = 'mp-emote'; im.alt = x.e; im.title = x.e; im.loading = 'lazy'; im.referrerPolicy = 'no-referrer';
       im.onerror = () => im.replaceWith(document.createTextNode(`:${x.e}:`));
-      if (EMOTE_SRC.test(x.src)) im.src = x.src; else { frag.append(`:${x.e}:`); continue; }
+      if (emotePics({ inMessages: true }).test(x.src)) im.src = x.src; else { frag.append(`:${x.e}:`); continue; }
       frag.append(im); continue;
     }
     if (!re){ frag.append(x.t); continue; }
@@ -216,7 +225,7 @@ function noteRow(n, o = {}){
   } else if (kind === 'flagged'){
     // (Settings › Flagged: a held message, while it waits Allow and Deny; a suspicious user's message)
     top.textContent = n.sender;
-    k.textContent = n.what === 'held' ? (n.site === 'youtube' ? 'Held for review' : 'Held by AutoMod') + (n.why ? ` · ${n.why}` : '') : n.why || 'Flagged';
+    k.textContent = n.what === 'held' ? (heldByOf(n.site) ? 'Held by ' + heldByOf(n.site) : 'Held for review') + (n.why ? ` · ${n.why}` : '') : n.why || 'Flagged';
     k.classList.add('flagged');
     where.textContent = chLabelP(n.channel);
     body.textContent = n.body || '';
@@ -224,7 +233,7 @@ function noteRow(n, o = {}){
       act('✓ Allow', b => { b.disabled = true; flaggedAct(n, true); }, 'primary').title = `Let it through, with ${PLAT_NAME[n.site]}'s own button`;
       act('✕ Deny', b => { b.disabled = true; flaggedAct(n, false); }, 'danger').title = `Don't let it through, with ${PLAT_NAME[n.site]}'s own button`;
     } else if (n.what === 'held'){
-      const done = { allowed: 'Allowed', denied: n.site === 'youtube' ? 'Hidden' : 'Denied', expired: 'Expired · not posted' }[n.done];
+      const done = { allowed: 'Allowed', denied: deniedWord(n.site), expired: 'Expired · not posted' }[n.done];
       acts.append(element('span', 'nc-note', done ? done + (n.by && n.done !== 'expired' ? ` by ${n.by}` : '') : 'Handled'));
     }
     act('Show me', () => { close(); seeFlagged(n.channel, n.site, n.hid); });
@@ -273,18 +282,19 @@ function noteRow(n, o = {}){
 // The same text as the "LIKELY SPAM" (or "ABUSIVE") tag in the chat.
 const spamWhy = r => `${r.abuse ? 'Abusive' : 'Likely spam'} (${r.score} points, ${r.need} needed):\n` + (r.signs || []).map(s => `• ${s.text} (+${s.points})`).join('\n');
 function readMentions(){
-  myName = settings.text('myName');
-  myTwitch = settings.text('myTwitch');
-  myYouTube = settings.text('myYouTube');
+  for (const p of Object.values(PLATFORMS)) myNames[p.id] = settings.text(p.me.setting);
   mentOn = settings.flag('mentOn', true);
   mentMuted = new Set([].concat(settings.json('mentMuted', [])));
   mentWords = [].concat(settings.json('mentWords', [])).filter(x => typeof x === 'string');
 }
-function setMyName(n){
-  myName = String(n || '').trim().replace(/^@/, '');
-  if (myName && !/^[A-Za-z0-9_]{2,30}$/.test(myName)) myName = '';
-  settings.set('myName', myName);
-  $('#mentUser').value = myName;
+// Your name on a site: without an @, and '' when it can't be a name there
+function setMyName(site, n){
+  const p = PLATFORMS[site]; if (!p) return;
+  let name = String(n || '').trim().replace(/^@/, '');
+  if (name && !p.me.valid.test(name)) name = '';
+  myNames[site] = name;
+  settings.set(p.me.setting, name);
+  const f = nameBox(site); if (f) f.value = name;
   pushMyName(); renderMentions();
 }
 
@@ -382,9 +392,9 @@ function init(){
   window.chatMentions = { atChannels, toggleChatMentions };   // for the tests (the @ button is the desktop app's)
   readMentions();
   // Settings › Mentions, changed in the other window or on another computer (Settings › Sync)
-  settings.onChange(['myName', 'myTwitch', 'myYouTube', 'mentOn', 'mentMuted', 'mentWords'], () => {
+  settings.onChange([...nameSettings(), 'mentOn', 'mentMuted', 'mentWords'], () => {
     readMentions();
-    if ($('#mentUser')){ $('#mentOn').checked = mentOn; $('#mentUser').value = myName; $('#mentTwitch').value = myTwitch; $('#mentYouTube').value = myYouTube; }
+    if ($('#mentUser')){ $('#mentOn').checked = mentOn; showNames(); }
     renderMentWords(); pushMyName(); renderMentions(); syncAlertControls();
     wins.forEach(w => { if (w.kind === 'chat') syncAtBtn(w); });
   });
@@ -400,7 +410,7 @@ function init(){
   store.watch('notes', () => renderBell());
 }
 
-export { addNote, atChannels, bell, bellCount, bellVars, cleanParts, dndOn, dndT, dndUntil, drawNotes, dropNotes,
-  EMPTY, init, mentAny, mentBodyNodes, mentCovered, mentMuted, mentNameFor, mentOn, mentWords, myName, myTwitch,
-  myYouTube, nh, noteActs, noteRow, notes, partsText, readChat, readNotes, renderBell, saveNotes, seeBell, setMyName,
-  spamWhy, subName, syncAtBtn, TAB_NAME, timeAgo, toggleChatMentions, updateBellBtn, updateNotes };
+export { addNote, anyName, atChannels, bell, bellCount, bellVars, cleanParts, dndOn, dndT, dndUntil, drawNotes,
+  dropNotes, EMPTY, init, mentAny, mentBodyNodes, mentCovered, mentMuted, mentNameFor, mentOn, mentWords, myNameOn,
+  nh, noteActs, noteRow, notes, partsText, readChat, readNotes, renderBell, saveNotes, seeBell, setMyName, spamWhy,
+  subName, syncAtBtn, TAB_NAME, timeAgo, toggleChatMentions, updateBellBtn, updateNotes };

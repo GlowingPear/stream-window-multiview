@@ -1,9 +1,9 @@
 import { RUN_MAX, SHOUT_TPL, fillShout, loginOfCh, shoutLink } from '../../chat/shoutout-text.js';
 import { soCardAvatars, soCards, soCheckCards, soSaveCards } from '../../chat/shoutout.js';
 import { $ } from '../../core.js';
-import { bellVars, myName } from '../bell/bell.js';
+import { myNameOn } from '../bell/bell.js';
 import { shoutAddEl, shoutCardEl, shoutTokensEl } from './shout-cards.js';
-import { PLAT_NAME } from '../../platforms/platforms.js';
+import { PLAT_NAME, shoutSites } from '../../platforms/platforms.js';
 import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
@@ -13,19 +13,19 @@ import { soon } from '../../shared/timers.js';
 /* ---- Settings › Shoutouts (chat/shoutout.js does them): on, your message with a live preview (with a game and
    without one), the People list (their own message, another channel instead, a linked streamer's row for every site
    with an optional message for one site), and how sending and runs of recent chatters go. Off by default. */
-const SAMPLE = [   // the preview's made-up channels: one with a last game, one without
-  { site: 'kick', name: 'Pixelfox', login: 'pixelfox', game: 'Tidepool' },
-  { site: 'twitch', name: 'Lumen', login: 'lumen', game: '' }];
+const SAMPLE = [   // the preview's made-up channels: one with a last game, one without (on the first two sites that do shoutouts)
+  { name: 'Pixelfox', login: 'pixelfox', game: 'Tidepool' },
+  { name: 'Lumen', login: 'lumen', game: '' }];
+const samples = () => { const s = shoutSites(); return SAMPLE.map((x, i) => ({ ...x, site: s[i % s.length] })); };
 let textEl, previewEl, peopleEl;
 let saveText = null, saveCardsSoon = null;
 
 // The preview: your message as a chat line, once with a game and once without
 function renderPreview(){
-  const me = { kick: myName || 'you', twitch: bellVars.myTwitch || 'you' };
-  previewEl.replaceChildren(...SAMPLE.map(x => {
+  previewEl.replaceChildren(...samples().map(x => {
     const text = fillShout(textEl.value, { name: x.name, link: shoutLink(x.site, x.login), links: shoutLink(x.site, x.login), game: x.game });
     const parts = text.split(/(https:\/\/\S+)/).map((t, i) => (i % 2 ? element('span', 'lnk', t) : t));
-    return element('span', null, element('i', { class: 'pi pi-' + x.site }, PLAT_NAME[x.site][0]), element('b', null, me[x.site]), ': ', ...parts, ...(x.game ? [] : [' ', element('em', null, 'no game found')]));
+    return element('span', null, element('i', { class: 'pi pi-' + x.site }, PLAT_NAME[x.site][0]), element('b', null, myNameOn(x.site) || 'you'), ': ', ...parts, ...(x.game ? [] : [' ', element('em', null, 'no game found')]));
   }));
 }
 /* ---- Channels: a card for each channel with a shoutout of its own (panels/settings/shout-cards.js draws one), by name,

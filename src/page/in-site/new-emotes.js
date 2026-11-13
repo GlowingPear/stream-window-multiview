@@ -1,10 +1,13 @@
+import { emoteHosts, inSiteCall } from '../sites/in-site.js';
+
 /* ---- New emotes: emotes a channel added since you last opened its chat glow until you point at one (#new-emotes).
    The app works out which are new (src/main/emote-lists.js, asked when the chat opens); this marks them in the chat page,
    also in messages that come in later, and tells the app when you've pointed at one. */
-function newEmoteAgent(){
+function newEmoteAgent(hosts){
   if (window.__kmvNew) return true;
   let fresh = new Set(), queued = false;
-  const HOST = /^(files\.kick\.com|static-cdn\.jtvnw\.net|([\w-]+\.)?7tv\.app|cdn\.betterttv\.net|([\w-]+\.)?frankerfacez\.com)$/;
+  // the sites' emotes (hosts: sites/in-site.js emoteHosts, as mentionAgent's), and the add-ons'
+  const HOST = new RegExp('^(' + [...(hosts || []).map(h => h.host), '([\\w-]+\\.)?7tv\\.app', 'cdn\\.betterttv\\.net', '([\\w-]+\\.)?frankerfacez\\.com'].join('|') + ')$');
   const nameOf = img => {
     try { if (!HOST.test(new URL(img.currentSrc || img.src).hostname)) return ''; } catch { return ''; }
     return String(img.getAttribute('data-emote-name') || img.alt || img.title || '').replace(/^:|:$/g, '').trim();
@@ -37,7 +40,8 @@ const NEW_EMOTE_CSS = () => { const a = getComputedStyle(document.documentElemen
 
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
-  NEW_EMOTE_JS = `(${newEmoteAgent.toString()})()`;
+  NEW_EMOTE_JS = inSiteCall(newEmoteAgent, emoteHosts());
+  window.newEmoteAgent = () => newEmoteAgent(emoteHosts());   // for the tests
 }
 
-export { init, NEW_EMOTE_CSS, NEW_EMOTE_JS, newEmoteAgent };
+export { init, NEW_EMOTE_CSS, NEW_EMOTE_JS };

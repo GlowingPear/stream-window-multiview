@@ -1,0 +1,32 @@
+/* Kick: how the page shows something as Kick's, everywhere it does. Each part's own CSS draws it, and this
+   file only gives it Kick's colours, so everything that's about Kick alone is here. index.html loads the
+   sites' files after every part's, so these win as they did in each part's file. A new site: a copy of this file in its
+   folder, with its id and colours (the same selectors), and its <link> next to these. */
+
+/* A linked window's site tabs (windows/frames.css): its tab, and the tab showing */
+.ptab.kick{color:#53fc18}
+.ptab.on.kick{background:#53fc18;color:#0b0e0f}
+
+/* ALL (chat/all-chat.css): the send box and its button, a reward's line, pins, the chat's modes, polls */
+.all-view[data-send=kick]{--site:#53fc18}
+.al-m.al-rw:has(.pi-kick){box-shadow:inset 3px 0 0 rgba(83,252,24,.6);background:linear-gradient(90deg,rgba(83,252,24,.08),transparent 70%)}
+.all-pinchip.ping-kick{--pc:#53fc18}
+.all-pinchip.ping-kick{color:#0b0e0f;background:#53fc18}
+.all-view[data-send=kick] .all-send-b:not(:disabled):not(.busy){color:#0b1a07}
+.all-modes-kick{--sc:#53fc18}
+.all-poll-kick{--site:#53fc18}
+
+/* Shoutouts (chat/shoutout.css): the site chip */
+.so-site-kick{background:#53fc18;color:#0a0c0d}
+
+/* Its badge (alerts/alerts.css's .pi): next to channel names, on ALL's lines, in lists */
+.pi-kick{background:#53fc18;color:#0b0e0f}
+
+/* Accounts (panels/channels/import-progress.css): the dot of a login that's on */
+.am-row[data-p=kick].on .pdot{background:#53fc18}
+
+/* Profiles (panels/profiles/profiles.css): its site chip */
+.pf-plat.kick{background:rgba(83,252,24,.16);color:#7dff4a}
+
+/* Settings › Developer (panels/developer/developer.css): its pill */
+.dv-kick{background:#53fc18;color:#0a0c0d}

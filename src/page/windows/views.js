@@ -10,7 +10,6 @@ import { resolveYt } from '../chat/view-menu.js';
 import { ROLE, wins } from '../core.js';
 import { MESSAGE_JS } from '../in-site/chat-message.js';
 import { EMOTE_JS } from '../in-site/emote-preview.js';
-import { KICK_CMD_JS } from '../in-site/kick-commands.js';
 import { NEW_EMOTE_CSS, NEW_EMOTE_JS } from '../in-site/new-emotes.js';
 import { TRANSLATE_JS } from '../in-site/translate.js';
 import { focusWin } from '../layout/geometry.js';
@@ -19,8 +18,9 @@ import { readChat } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
 import { extButton } from '../panels/extensions/extensions.js';
 import { kickHold } from '../platforms/pear-drops.js';
-import { chLabel, checkMod, extCount, platOf, platform, srcFor, streamSrc, trimPlayerPage, viewPartition, ytVidOf } from '../platforms/platforms.js';
-import { applyChatView, syncLike } from '../platforms/youtube-options.js';
+import { chLabel, checkMod, extCount, isVideo, platOf, platform, srcFor, streamSrc, trimPlayerPage, viewPartition,
+  ytVidOf } from '../platforms/platforms.js';
+import { PEAR_SITE } from '../platforms/players-link.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { fromApp, fromSite, siteMessage } from '../shared/incoming.js';
@@ -28,6 +28,8 @@ import { viewPressed } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { stopWinTimer } from '../shared/timers.js';
+import { KICK_CMD_JS } from '../sites/kick/commands.js';
+import { applyChatView, syncLike } from '../sites/youtube/options.js';
 import { mountCapture, openCapturePicker } from './capture.js';
 import { focusBoxNow, tabKeyAgent, tabKeyJs } from './frames.js';
 import { applyPlay } from './pause.js';
@@ -59,7 +61,7 @@ function reloadWin(w){
 // A YouTube channel's live stream is a video of its own, so when the channel goes live again (a new stream) its
 // windows still have the old one. The live check says which video is live now (they follow it), and Reload asks
 // YouTube again.
-const ytChannelWin = w => (w.kind === 'stream' || w.kind === 'chat') && !!w.channel && platOf(w.channel) === 'youtube' && !/^yt:v:/.test(w.channel);
+const ytChannelWin = w => (w.kind === 'stream' || w.kind === 'chat') && !!w.channel && platform(w.channel).liveVideo && !isVideo(w.channel);
 function ytFollow(ch, vid){
   delete ytCache[ch];
   wins.filter(o => ytChannelWin(o) && o.channel === ch && o.ytVid !== vid).forEach(o => {
@@ -95,10 +97,10 @@ function reloadPage(w){
 function mountView(w){
   if (w.kind === 'capture'){ mountCapture(w); return; }
   // At start-up a Kick player waits (up to 2 s) for whether a linked Pear Drops is farming (platforms/pear-drops.js)
-  if (kickHold && w.kind === 'stream' && !w.view && platOf(w.channel) === 'kick'){ kickHold.then(() => { if (!w.view && wins.includes(w)) mountView(w); }); return; }
+  if (kickHold && w.kind === 'stream' && !w.view && platOf(w.channel) === PEAR_SITE){ kickHold.then(() => { if (!w.view && wins.includes(w)) mountView(w); }); return; }
   const src = srcFor(w);
   const wait = w.el.querySelector('.waitmsg');
-  if (!src){ if (w.channel && platOf(w.channel) === 'youtube') resolveYt(w); return; }
+  if (!src){ if (w.channel && platform(w.channel).liveVideo) resolveYt(w); return; }
   wait.hidden = true;
   if (w.view){ w.view.src = src; return; }
   let frame;
@@ -137,7 +139,7 @@ function mountView(w){
       if (e.isMainFrame && !e.isInPlace && w.view === frame && w.ready){ w.audioHeld = w.audioLoading = true; setMuted(frame, true); }
     });
     // a new page (another video, or loaded again): its like state is read again (see readLike)
-    if (w.kind === 'stream' && platOf(w.channel) === 'youtube') frame.addEventListener('did-start-navigation', e => {
+    if (w.kind === 'stream' && platform(w.channel).likes) frame.addEventListener('did-start-navigation', e => {
       if (e.isMainFrame && !e.isInPlace && w.view === frame){ w.like = null; syncLike(w); }
     });
     // Download from an emote card (see emoteAgent): the chat page asks through a console message

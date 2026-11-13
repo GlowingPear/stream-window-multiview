@@ -4,11 +4,11 @@ import { screenOn } from '../../chat/chat-feed.js';
 import { overlayIsOn } from '../../chat/chat-overlay.js';
 import { $, ROLE, wins } from '../../core.js';
 import { MENTION_JS } from '../../in-site/mentions.js';
-import { EMPTY, TAB_NAME, bell, bellVars, drawNotes, dropNotes, mentMuted, mentNameFor, mentOn, mentWords, myName,
-  myTwitch, myYouTube, nh, noteRow, notes, partsText, readNotes, renderBell, seeBell, subName, timeAgo } from './bell.js';
+import { EMPTY, TAB_NAME, anyName, bell, bellVars, drawNotes, dropNotes, mentMuted, mentNameFor, mentOn, mentWords,
+  nh, noteRow, notes, partsText, readNotes, renderBell, seeBell, subName, timeAgo } from './bell.js';
 import { SmvNotes } from './notifications.js';
 import { openSettings } from '../settings/settings.js';
-import { chLabel, platform } from '../../platforms/platforms.js';
+import { chLabel, heldByOf, platform } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -53,7 +53,7 @@ function openBellAt(t){
 function noteTitle(n){
   const tab = SmvNotes.tabOf(n);
   if (tab === 'mentions') return `${n.sender} in ${chLabel(n.channel)}'s chat`;
-  if (n.kind === 'flagged') return `${n.what === 'held' ? (n.site === 'youtube' ? 'Held for review' : 'Held by AutoMod') : n.why || 'Flagged'}: ${n.sender} in ${chLabel(n.channel)}'s chat`;
+  if (n.kind === 'flagged') return `${n.what === 'held' ? (heldByOf(n.site) ? 'Held by ' + heldByOf(n.site) : 'Held for review') : n.why || 'Flagged'}: ${n.sender} in ${chLabel(n.channel)}'s chat`;
   if (n.kind === 'spam') return `${n.abuse ? 'Abusive' : 'Spam'}: ${n.sender} in ${chLabel(n.channel)}'s chat`;
   if (n.kind === 'live') return `${n.label || chLabel(n.channel)} went live`;
   if (n.kind === 'raid') return `${n.label || chLabel(n.channel)} raided by ${n.from ? chLabel(n.from) : 'someone'}`;
@@ -101,7 +101,7 @@ function renderNoteHistory(){
 // The names or words changed (Settings > Mentions).
 function renderMentions(){
   const note = $('#mentNote');
-  if (note) note.textContent = myName || myTwitch || myYouTube ? '' : mentWords.length ? 'Without a username, only your words are found (and your own messages can count).' : 'Needed for mention alerts. Click Detect, or type them in.';
+  if (note) note.textContent = anyName() ? '' : mentWords.length ? 'Without a username, only your words are found (and your own messages can count).' : 'Needed for mention alerts. Click Detect, or type them in.';
   renderBell();
 }
 function setMentWords(list){
@@ -128,21 +128,6 @@ function addMentWord(){
 }
 function pushMyName(){
   wins.forEach(w => { if (w.kind === 'chat' && w.ready) injectMention(w); });
-}
-function setMyTwitch(n){
-  bellVars.myTwitch = String(n || '').trim().replace(/^@/, '');
-  if (myTwitch && !/^[A-Za-z0-9_]{2,30}$/.test(myTwitch)) bellVars.myTwitch = '';
-  settings.set('myTwitch', myTwitch);
-  const f = $('#mentTwitch'); if (f) f.value = myTwitch;
-  pushMyName(); renderMentions();
-}
-// Your YouTube handle (its chat names people by their handle: @name), with letters, numbers, _, - and .
-function setMyYouTube(n){
-  bellVars.myYouTube = String(n || '').trim().replace(/^@/, '');
-  if (myYouTube && !/^[\p{L}\p{N}_.-]{3,30}$/u.test(myYouTube)) bellVars.myYouTube = '';
-  settings.set('myYouTube', myYouTube);
-  const f = $('#mentYouTube'); if (f) f.value = myYouTube;
-  pushMyName(); renderMentions();
 }
 function injectMention(w){
   const site = platform(w.channel);
@@ -200,5 +185,4 @@ function init(){
   window.openNoteHistory = openNoteHistory;   // for the tests
 }
 
-export { closeNoteHistory, init, injectMention, pushMyName, renderMentions, renderMentWords, renderNoteHistory,
-  setMyTwitch, setMyYouTube };
+export { closeNoteHistory, init, injectMention, pushMyName, renderMentions, renderMentWords, renderNoteHistory };

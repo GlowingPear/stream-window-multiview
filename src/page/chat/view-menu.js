@@ -14,6 +14,7 @@ import { fromApp, fromSite } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { stopWinTimer, stopWinTimers, winTimer } from '../shared/timers.js';
+import { emoteLook, emotePics } from '../sites/in-site.js';
 import { stopCapture } from '../windows/capture.js';
 import { runIn, zoomOf } from '../windows/view.js';
 import { mountView, ytCache } from '../windows/views.js';
@@ -21,9 +22,7 @@ import { mountView, ytCache } from '../windows/views.js';
 /* The right-click menu on an emote in a chat: the main process sends its items (the same ones the system menu would
    have, from src/main/context-menu.js) with the emote, and gets back the number of the one you chose. It looks and works
    like a system menu (arrows, Enter, Esc, typing a letter), with its submenus (shared/flyout.js), but stays inside this window. */
-const EMOTE_SITE = { Kick: ['#53fc18', '#0a0c0d', 'Kick emote'], Twitch: ['#8a4fff', '#fff', 'Twitch emote'], YouTube: ['#ff3d3d', '#fff', 'YouTube emoji'],
-  '7TV': ['#353e43', '#e7ede9', 'From the 7TV add-on'], BTTV: ['#353e43', '#e7ede9', 'From the BetterTTV add-on'], FFZ: ['#353e43', '#e7ede9', 'From the FrankerFaceZ add-on'] };
-const VM_SRC = /^https:\/\/(files\.kick\.com\/emotes\/|static-cdn\.jtvnw\.net\/|([\w-]+\.)?7tv\.app\/|cdn\.betterttv\.net\/|cdn\.frankerfacez\.com\/|([\w-]+\.)?ggpht\.com\/|www\.gstatic\.com\/)/;
+// (the emote pictures it shows: the sites' and the add-ons', sites/in-site.js)
 let viewMenu = null;
 function closeViewMenu(chosen){
   const m = viewMenu; if (!m) return;
@@ -44,11 +43,11 @@ function showViewMenu(view, id, d, pick){
   const fly = flyouts(el, sub);
   if (e.name){
     const pre = document.createElement('div'); pre.className = 'vm-pre'; pre.setAttribute('aria-hidden', 'true');
-    const s = EMOTE_SITE[e.site] || ['#353e43', '#e7ede9', 'Emote'], addOn = /^(7TV|BTTV|FFZ)$/.test(e.site);
+    const s = emoteLook(e.site) || ['#353e43', '#e7ede9', 'Emote'], addOn = /^(7TV|BTTV|FFZ)$/.test(e.site);
     pre.innerHTML = '<div class="vm-pic"><img alt="" referrerpolicy="no-referrer"></div><div class="vm-txt"><div class="vm-top"><span class="vm-nm"></span><span class="vm-badge"></span></div><div class="vm-sub"></div></div>';
     const img = pre.querySelector('img');
-    if (VM_SRC.test(e.big)) img.src = e.big;
-    img.onerror = () => { if (VM_SRC.test(e.small) && img.src !== e.small) img.src = e.small; else img.remove(); };
+    if (emotePics().test(e.big)) img.src = e.big;
+    img.onerror = () => { if (emotePics().test(e.small) && img.src !== e.small) img.src = e.small; else img.remove(); };
     pre.querySelector('.vm-nm').textContent = e.name;
     const b = pre.querySelector('.vm-badge'); b.textContent = addOn ? 'Add-on' : (e.site || ''); b.style.background = s[0]; b.style.color = s[1];
     pre.querySelector('.vm-sub').textContent = s[2] + (e.animated ? ' · animated' : '');
@@ -193,4 +192,4 @@ function init(){
   settings.onChange(['bigEmoteMenu'], syncBig);
 }
 
-export { closeWin, EMOTE_SITE, init, releaseWin, resolveYt, saveEmote, setWait };
+export { closeWin, init, releaseWin, resolveYt, saveEmote, setWait };

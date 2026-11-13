@@ -45,7 +45,7 @@ function whyChecks(w, r){
   if (r.own) add(false, 'It\'s your own message');
   const bots = botsFor('mention', ch);
   if (SmvSpam.ignored(r.sender, bots)) add(false, `${r.sender} is on the chat bot list`, 'Never a mention');
-  if (!me) add(false, `No ${name} ${platOf(ch) === 'youtube' ? 'handle' : 'username'} to look for`, 'Settings › Mentions › Your usernames');
+  if (!me) add(false, `No ${name} ${platform(ch).me.word} to look for`, 'Settings › Mentions › Your usernames');
   else add(r.at, r.at ? `Mentions you (@${me})` : `Mentions you: looked for @${me}`);
   if (mentWords.length) add(r.word ? true : null, r.word ? `Has “${r.word}”, a word you watch for` : `Words to watch: none of yours (${mentWords.slice(0, 4).join(', ')}${mentWords.length > 4 ? ', …' : ''})`);
   else out.push({ ok: null, text: 'Words to watch: none set' });

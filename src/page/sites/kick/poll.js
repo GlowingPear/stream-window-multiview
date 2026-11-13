@@ -1,8 +1,8 @@
-import { openChannelPage } from './kick-panel.js';
-import { kickClearBox } from '../in-site/kick-box.js';
-import { kickPollPost } from '../in-site/kick-poll.js';
-import { element } from '../shared/element.js';
-import { askIn, runIn } from '../windows/view.js';
+import { element } from '../../shared/element.js';
+import { kickClearBox } from './in-site/box.js';
+import { kickPollPost } from './in-site/poll.js';
+import { openChannelPage } from './panel.js';
+import { askIn, runIn } from '../../windows/view.js';
 
 // Kick's /poll in a chat window. Kick only opens its "Create a new poll" form on the channel page: the popout chat the app
 // shows has nowhere to put it. So the chat window gets a copy, the chat's full width, over its bottom: the same fields,

@@ -1,12 +1,12 @@
-import { askKick, kickIcon, kickPanel, openChannelPage, openInBrowser } from './kick-panel.js';
-import { kickApi } from '../in-site/kick-api.js';
-import { kickClearBox } from '../in-site/kick-box.js';
-import { element } from '../shared/element.js';
-import { stopWinTimer, winTimer } from '../shared/timers.js';
-import { runIn } from '../windows/view.js';
+import { element } from '../../shared/element.js';
+import { stopWinTimer, winTimer } from '../../shared/timers.js';
+import { kickApi } from './in-site/api.js';
+import { kickClearBox } from './in-site/box.js';
+import { askKick, kickIcon, kickPanel, openChannelPage, openInBrowser } from './panel.js';
+import { runIn } from '../../windows/view.js';
 
 // Kick's /prediction in a chat window. Kick only opens its prediction window on the channel page: the popout chat the app
-// shows has nowhere to put it. So the chat window gets a copy, the chat's full width, over its bottom (chat/kick-panel.js):
+// shows has nowhere to put it. So the chat window gets a copy, the chat's full width, over its bottom (panel.js):
 // the same steps, fields, choices, checks and wording as Kick's own (read from kick.com, October 2026), and the same
 // requests, made from the chat's page with its login. Like Kick's, it starts a prediction (the form, then Confirm), or, when
 // one is running, manages it: end submissions, choose the outcome, or delete it and return the points.

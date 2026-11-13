@@ -32,10 +32,10 @@
 <link rel="stylesheet" href="page/layout/column-drag.css">
 <link rel="stylesheet" href="page/windows/channel-picker.css">
 <link rel="stylesheet" href="page/platforms/platforms.css">
-<link rel="stylesheet" href="page/chat/kick-commands.css">
-<link rel="stylesheet" href="page/chat/kick-poll.css">
-<link rel="stylesheet" href="page/chat/kick-prediction.css">
-<link rel="stylesheet" href="page/chat/kick-clip.css">
+<link rel="stylesheet" href="page/sites/kick/commands.css">
+<link rel="stylesheet" href="page/sites/kick/poll.css">
+<link rel="stylesheet" href="page/sites/kick/prediction.css">
+<link rel="stylesheet" href="page/sites/kick/clip.css">
 <link rel="stylesheet" href="page/chat/blow-up.css">
 <link rel="stylesheet" href="page/chat/chat-overlay.css">
 <link rel="stylesheet" href="page/chat/all-chat.css">
@@ -63,6 +63,10 @@
 <link rel="stylesheet" href="page/panels/developer/developer.css">
 <link rel="stylesheet" href="page/panels/linked/linked.css">
 <link rel="stylesheet" href="page/palette/palette.css">
+<!-- each site's colours (src/page/sites/<id>/site.css): after every part's, so they win as they did there -->
+<link rel="stylesheet" href="page/sites/kick/site.css">
+<link rel="stylesheet" href="page/sites/twitch/site.css">
+<link rel="stylesheet" href="page/sites/youtube/site.css">
 <style id="themeVars"></style>
 <!-- before the first paint: the macOS toolbar's room for the traffic lights, and the saved colour theme -->
 <script src="page/boot.js"></script>
@@ -535,9 +539,9 @@
         <div class="st-subpane" data-t="names" hidden>
         <div class="st-sec">Your usernames</div>
         <p class="st-sub" style="margin:2px 0 0">Used to spot mentions and replies to you. For YouTube, your handle: the @name its chat shows for you.</p>
-        <div class="st-row"><span class="st-t">Kick</span><input class="st-in" id="mentUser" placeholder="e.g. YourName" autocomplete="off" spellcheck="false"><button class="btn" id="mentDetect" title="Read them from your Kick and Twitch logins">Detect</button></div>
-        <div class="st-row"><span class="st-t">Twitch</span><input class="st-in" id="mentTwitch" placeholder="(optional)" autocomplete="off" spellcheck="false"></div>
-        <div class="st-row"><span class="st-t">YouTube</span><input class="st-in" id="mentYouTube" placeholder="@handle (optional)" autocomplete="off" spellcheck="false"></div>
+        <div class="st-row"><span class="st-t">Kick</span><input class="st-in" id="mentUser" data-me="kick" placeholder="e.g. YourName" autocomplete="off" spellcheck="false"><button class="btn" id="mentDetect" title="Read them from your Kick and Twitch logins">Detect</button></div>
+        <div class="st-row"><span class="st-t">Twitch</span><input class="st-in" id="mentTwitch" data-me="twitch" placeholder="(optional)" autocomplete="off" spellcheck="false"></div>
+        <div class="st-row"><span class="st-t">YouTube</span><input class="st-in" id="mentYouTube" data-me="youtube" placeholder="@handle (optional)" autocomplete="off" spellcheck="false"></div>
         <span class="mp-note" id="mentNote"></span>
         <div class="st-sec">Also alert me for</div>
         <p class="st-sub" style="margin:2px 0 0">Nicknames or other words that mean you. A message with one counts as a mention, with or without an @. Whole words only, any case: "pear" finds "hi Pear!" but not "pears". Your own messages never count.</p>
@@ -838,6 +842,7 @@
   <div class="dlg-foot"><span class="dlg-note ff-note"></span><button class="btn dlg-cancel">Close</button><button class="btn primary ff-copy">Copy my login from Firefox</button></div>
 </div></div>
 
+<script src="shared/sites.js"></script>
 <script src="shared/follows.js"></script>
 <script type="module" src="page/shared/dropdown.js"></script>
 <script type="module" src="page/app.js"></script>

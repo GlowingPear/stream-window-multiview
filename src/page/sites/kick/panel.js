@@ -1,11 +1,11 @@
-import { kickApi } from '../in-site/kick-api.js';
-import { element } from '../shared/element.js';
-import { DESKTOP } from '../shared/env.js';
-import { askIn } from '../windows/view.js';
+import { element } from '../../shared/element.js';
+import { DESKTOP } from '../../shared/env.js';
+import { kickApi } from './in-site/api.js';
+import { askIn } from '../../windows/view.js';
 
-// What Kick's chat panels share in a chat window: /poll (chat/kick-poll.js), /prediction (chat/kick-prediction.js) and
-// /clip (chat/kick-clip.js) each get a copy of what Kick shows for them on the channel page, sliding up over the bottom of
-// the chat, its full width (.kcmd in kick-commands.css).
+// What Kick's chat panels share in a chat window: /poll (poll.js), /prediction (prediction.js) and
+// /clip (clip.js) each get a copy of what Kick shows for them on the channel page, sliding up over the bottom of
+// the chat, its full width (.kcmd in commands.css).
 
 // A kick.com page in its own window with its sound off and your login (the channel's page, a clip's)
 function openKickPage(url, name = '_blank'){
@@ -19,7 +19,7 @@ function openInBrowser(url){
   else window.open(url, '_blank', 'noopener');
 }
 
-// A request to Kick's API from w's chat page, with its login (in-site/kick-api.js): { ok, status, message, data }, status 0
+// A request to Kick's API from w's chat page, with its login (in-site/api.js): { ok, status, message, data }, status 0
 // when there was no answer (the page couldn't be asked either)
 const askKick = (w, url, method = 'GET', body) =>
   askIn(w.view, `(${kickApi})(${[url, method, body].filter(x => x !== undefined).map(x => JSON.stringify(x)).join(', ')})`)

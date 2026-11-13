@@ -1,11 +1,15 @@
-/* ---- Shoutouts inside a Kick or Twitch chat page (turned into text: see src/page/README.md; chat/shoutout.js runs it
-   while Settings › Shoutouts is on, and again with on = false to take it all away). It adds a Shout out button to
+/* ---- Shoutouts inside a chat page of a site that has them (turned into text: see src/page/README.md; chat/shoutout.js
+   runs it while Settings › Shoutouts is on, and again with on = false to take it all away). It adds a Shout out button to
    the start of each message's hover bar (the app draws it: it isn't a copy of the site's buttons), and a Shout out pill
    to a raid's line. A message whose hover bar can't be found gets a small bar of its own. Who sent a message comes from
    the line's own data (the React props the site draws it from: Kick's sender slug, Twitch's login), never from the
    name on screen, as a Kick name with _ can have - in its address. A press says so: "__kmv:shoutout" { site, login,
    name, named } (named: the login came from a name). The right-click menu asks who() (chat-message.js ctx()), and a run
-   of recent chatters asks chatters(). */
+   of recent chatters asks chatters().
+   look: the site's part (its shoutouts' page: sites/<id>/shoutouts.js), with its id (site): line (a message's line),
+   bar (its hover bar), special (its cards without a hover bar), name (where a line shows its sender's name),
+   namesDiffer (a name shown can differ from its address, so a name read from a line's words is looked up), and
+   sender(message, clean) -> { login, name, named } from a line's React props (message), or null. */
 function shoutAgent(on, look, bots){
   const S = window.__kmvShout || (window.__kmvShout = { on: false });
   S.on = !!on;
@@ -17,17 +21,10 @@ function shoutAgent(on, look, bots){
     document.querySelectorAll('[data-kmv-so-line]').forEach(e => e.removeAttribute('data-kmv-so-line'));
     return true;
   }
-  if (S.ready) return true;
+  if (S.ready || !look) return true;
   S.ready = true;
-  const L = look || {};   // (the tests': { site, line, bar })
-  const site = L.site || (/(^|\.)kick\.com$/.test(location.hostname) ? 'kick' : 'twitch');
-  const LINE = L.line || (site === 'kick' ? '[data-index]' : '.chat-line__message, .user-notice-line');
-  const BAR = L.bar || (site === 'kick' ? 'div[class*="group-hover:flex"]' : '.chat-line__icons');
+  const L = look, site = L.site, LINE = L.line, BAR = L.bar, SPECIAL = L.special || [], NAME = L.name;
   const RAID = /\b(raid(ed|ing)?|is (now )?hosting|hosted)\b/i;
-  // Kick's special messages, drawn as cards of their own without a hover bar: a reward redeemed (or a highlighted
-  // message), Kicks sent; where their sender's name is
-  const SPECIAL = site === 'kick' ? ['div[class*="border-l-4"]', 'div[class*="border-[#42474D]"]'] : ['.user-notice-line', '[class*="channel-points-reward"]'];
-  const NAME = site === 'kick' ? 'button[data-prevent-expand], button.inline.font-bold' : '.chat-author__display-name, [data-a-target="chat-message-username"]';
   const MEGA = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.2v3.6a1 1 0 0 0 1 1h2.2L15 19V5L7.2 9.2H5a1 1 0 0 0-1 1z"/><path d="M7.6 14.8 9 19.6h2.6l-1-4"/><path d="M18 9.2a3.6 3.6 0 0 1 0 5.6"/></svg>';
   const css = document.createElement('style');
   css.setAttribute('data-kmv-so', '');
@@ -57,16 +54,8 @@ function shoutAgent(on, look, bots){
   function sender(el){
     const line = el && el.closest && el.closest(LINE);
     if (!line) return null;
-    const m = propsOf(line, 'message');
-    if (site === 'kick'){
-      const s = (m && (m.sender || m.user)) || null;
-      if (s && (s.slug || s.username)) return { site, login: clean(s.slug || s.username).toLowerCase(), name: clean(s.username || s.slug), named: !s.slug };
-    } else {
-      const u = (m && m.user) || null;
-      if (u && u.userLogin) return { site, login: clean(u.userLogin).toLowerCase(), name: clean(u.userDisplayName || u.userLogin), named: false };
-      const p = m && (m.params || m.msgParams);   // (a raid's notice: who raided)
-      if (p && (p.login || p['msg-param-login'])) return { site, login: clean(p.login || p['msg-param-login']).toLowerCase(), name: clean(p.displayName || p['msg-param-displayName'] || p.login), named: false };
-    }
+    const m = propsOf(line, 'message'), who = m ? L.sender(m, clean) : null;
+    if (who) return { site, ...who };
     // (no data: the name shown, said to be a name, so the app looks the address up)
     const nameEl = line.querySelector(NAME);
     const name = nameEl && clean(nameEl.textContent);
@@ -82,7 +71,7 @@ function shoutAgent(on, look, bots){
     if (nameEl) text = text.replace(nameEl.textContent, ' ');
     text = text.replace(/\s+/g, ' ').trim();
     const skip = [p.login, p.name.toLowerCase()];
-    for (const re of S.says || []){ const m = re.exec(text); if (m && m[1] && !skip.includes(m[1].replace(/^@/, '').toLowerCase())) return { site, login: m[1].replace(/^@/, '').toLowerCase(), name: m[1].replace(/^@/, ''), named: site === 'kick', from: p.name }; }
+    for (const re of S.says || []){ const m = re.exec(text); if (m && m[1] && !skip.includes(m[1].replace(/^@/, '').toLowerCase())) return { site, login: m[1].replace(/^@/, '').toLowerCase(), name: m[1].replace(/^@/, ''), named: !!L.namesDiffer, from: p.name }; }
     return null;   // (a bot's line about no one it can read: no button, as the extension did)
   }
   const press = p => console.log('__kmv:shoutout ' + JSON.stringify(p));

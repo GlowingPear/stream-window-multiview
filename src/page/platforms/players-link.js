@@ -25,19 +25,23 @@ function nextKickOut({ out, backAt }, need, now, wait = SIGN_BACK_IN_MS){
   return { out: true, backAt, remount: false };
 }
 
+// The site whose players Pear Drops signs out while it farms (it farms Kick's drops), as Grapevine's players capability
+// names it too
+const PEAR_SITE = 'kick';
+
 // Whether a site's players play as your account: your own "Watch signed in" choice, except Kick while Auto is on
 // (signed in unless signed out for Pear Drops).
-const effectiveSignedIn = (p, { auto, out, watch }) => (p === 'kick' && auto ? !out : !!watch[p]);
-const kickMode = ({ auto, watch }) => (auto ? 'auto' : watch.kick ? 'signed-in' : 'signed-out');
+const effectiveSignedIn = (p, { auto, out, watch }) => (p === PEAR_SITE && auto ? !out : !!watch[p]);
+const kickMode = ({ auto, watch }) => (auto ? 'auto' : watch[PEAR_SITE] ? 'signed-in' : 'signed-out');
 
 // What players.changed says about this window's Kick players. open: the Kick channels of its stream windows.
 function playersReport({ auto, out, watch, mine, open }){
   const seen = new Set();
-  const list = open.filter(slug => slug && !seen.has(slug) && seen.add(slug)).slice(0, 100).map(slug => ({ platform: 'kick', slug }));
-  return { platforms: { kick: {
-    signedIn: effectiveSignedIn('kick', { auto, out, watch }),
+  const list = open.filter(slug => slug && !seen.has(slug) && seen.add(slug)).slice(0, 100).map(slug => ({ platform: PEAR_SITE, slug }));
+  return { platforms: { [PEAR_SITE]: {
+    signedIn: effectiveSignedIn(PEAR_SITE, { auto, out, watch }),
     mode: kickMode({ auto, watch }),
-    account: mine ? { platform: 'kick', user: String(mine).slice(0, 100) } : null,
+    account: mine ? { platform: PEAR_SITE, user: String(mine).slice(0, 100) } : null,
     open: list
   } } };
 }
@@ -50,4 +54,4 @@ function autoSwitched(wasAuto, isAuto, watchKick, before){
   return { watchKick, before };
 }
 
-export { autoSwitched, effectiveSignedIn, needOut, nextKickOut, playersReport, SIGN_BACK_IN_MS };
+export { autoSwitched, effectiveSignedIn, needOut, nextKickOut, PEAR_SITE, playersReport, SIGN_BACK_IN_MS };

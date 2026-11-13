@@ -1,8 +1,8 @@
-// Checks the chat commands ALL's / list knows (src/page/platforms/twitch.js and kick.js, chatCommands) against what the
+// Checks the chat commands ALL's / list knows (src/page/sites/twitch/site.js and kick's, chatCommands) against what the
 // sites' own chats offer now, read from a signed-in developer copy over its debugging port. Nothing is typed or sent.
 //   npm run dev -- --profile <name> --debug 9333      (signed in to Twitch and Kick, a chat of each open)
 //   npm run check:commands [-- --port 9333]
-// Twitch: its chat page's own list (as ALL reads it as it runs: in-site/feed.js twCommandsAgent). Kick: the list its chat
+// Twitch: its chat page's own list (as ALL reads it as it runs: its site module's inSite.commands). Kick: the list its chat
 // shows as you type /, so type / in a Kick chat first (in one where you're the streamer it has every command, each saying
 // who can use it). Prints what's new, what's gone and what changed; exits 1 when anything differs.
 const path = require('path');
@@ -61,7 +61,9 @@ async function main(){
   catch { console.error(`No developer copy on port ${port}: start one with npm run dev -- --profile <name> --debug ${port}`); process.exit(2); }
   const src = path.join(__dirname, '..', 'src', 'page');
   const imp = f => import(pathToFileURL(path.join(src, f)).href);
-  const [{ twCommandsAgent }, { twitch }, { kick }] = await Promise.all([imp('in-site/feed.js'), imp('platforms/twitch.js'), imp('platforms/kick.js')]);
+  globalThis.SmvSites = require(path.join(__dirname, '..', 'src', 'shared', 'sites.js'));   // (the site modules read the shared list of sites)
+  const [{ twitch }, { kick }] = await Promise.all([imp('sites/twitch/site.js'), imp('sites/kick/site.js')]);
+  const twCommandsAgent = twitch.inSite.commands;
   const chats = re => targets.filter(t => t.type === 'webview' && re.test(t.url));
   let diffs = 0;
   // Twitch: its whole list from any of its chats (each command says who can use it); /pin only where you can pin

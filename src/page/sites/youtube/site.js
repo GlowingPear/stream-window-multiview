@@ -1,3 +1,8 @@
+import { Site } from '../adapter.js';
+import { youtubeFeed } from './feed.js';
+import { youtubeEmote } from './in-site/emotes.js';
+import { youtubeHeldCard, youtubeModes, youtubePins, youtubeShown, youtubeTap, ytLookAgent } from './in-site/feed.js';
+
 // YouTube, as the rest of the page sees it (the same shape as kick.js, which says more).
 // YouTube's channel ids are "yt:@handle", "yt:c:UC…" (a channel id) or "yt:v:VIDEOID" (a specific video). A
 // channel's stream and chat need its live video's id (vid), which the app looks up when needed.
@@ -43,8 +48,8 @@ const YT_NAMES = {
   light: { viewer: '#606060', mod: '#065fd4', member: '#107516', owner: '#000000', ownerBg: '#fbc02d' }
 };
 
-const youtube = {
-  id: 'youtube', name: 'YouTube', letter: 'Y',
+const youtube = new Site({   // (what each slot is for, and its default: sites/adapter.js)
+  id: 'youtube',
   mentions: true,        // mention alerts read its chat's connection (your handle, Settings › Mentions)
   screenMentions: false, // (only from its connection: its chat page's text isn't "name: message")
   mentionEnd: '(?![\\p{L}\\p{N}_-]|\\.[\\p{L}\\p{N}_])',   // a handle can have - and . in it ("@pear" isn't "@pear-x"; "@pear." is)
@@ -57,19 +62,47 @@ const youtube = {
   feedReaders: true,     // the alerts, chat over the stream and counts read its chat's connection (chat/chat-feed.js)
   emoteLists: false,
   pageCommands: false,
+  held: { by: '', expires: false, yours: false, allow: 'Show', deny: 'Hide', denied: 'hidden' },   // (held for review)
+  pasteHints: ['<code>youtube.com/@nightowl</code> or <code>@nightowl</code>: a YouTube channel\'s live stream',
+    '<code>youtube.com/watch?v=…</code> or <code>youtu.be/…</code>: any YouTube video'],
+  following: false,
+  roundsFollowers: true,
+  offlineChat: false,    // (its live chat is the live stream's)
+  liveVideo: true,
+  chatMax: 200,
+  emotes: { none: 'YouTube\'s emoji are in its own chat box', paste: null },
+  feed: youtubeFeed,   // its chat's data as ALL's messages (feed.js; chat/feed-parse.js)
+  chat: { ownIcons: false, globalBadges: false, look: true, shared: false, modByLater: false, hypeTrains: false, modesAgain: true },
+  // The scripts that run inside its chat page, its parts of them (see kick.js's inSite): in-site/feed.js, in-site/emotes.js
+  inSite: {
+    tap: youtubeTap, pins: youtubePins, shown: youtubeShown, badges: null, modes: youtubeModes,   // (badges: its come with their pictures)
+    icons: null, look: ytLookAgent, room: null, hypeTrain: null, channels: null, commands: null,
+    reply: null, replyAt: null, replyPress: null, heldCard: youtubeHeldCard,
+    emote: { look: ['#ff3d3d', '#fff', 'YouTube emoji'], find: youtubeEmote, host: null, path: null, pics: '([\\w-]+\\.)?ggpht\\.com\\/|www\\.gstatic\\.com\\/' }   // (host: its emoji aren't read in a message's words)
+  },
+  // How in-site/send.js sends in its chat (see kick.js's send): the <button> inside its #send-button (its
+  // yt-button-renderer wrapper comes first in the page and a click on that does nothing), off until it has seen the
+  // text, and it may only take a real press
+  send: { button: '#send-button', inner: ['button', 'yt-button-renderer'], waitEnabled: true, realPress: true },
   likes: true,
   chatCommands: [],   // (its live chat has no commands)
   liveCommands: null,
   // A name in ALL (see kick.js): YouTube colours a name by who they are, not by them. As its chat page draws them (look:
-  // in-site/feed.js ytLookAgent), when it's in the same light or dark as the app, else its usual colours
+  // its inSite.look, in-site/feed.js ytLookAgent), when it's in the same light or dark as the app, else its usual colours
   nameStyle(m, { light, look } = {}){
     const c = { ...(light ? YT_NAMES.light : YT_NAMES.dark), ...(look && !look.dark === !!light ? look.names : {}) };
     const role = (m.badges || []).find(b => /^(host|mod|sub)$/.test(b));
     return role === 'host' ? { color: c.owner, bg: c.ownerBg } : { color: role === 'mod' ? c.mod : role === 'sub' ? c.member : c.viewer };
   },
   quality: { siteMax: null },   // its stream's quality can be set (windows/quality.js); by itself it goes as high as the stream
-  partition: 'persist:youtube',
+  // your handle: letters, numbers, _, - and . (its chat names people by their handle: @name); its login doesn't say whose
+  me: { setting: 'myYouTube', valid: /^[\p{L}\p{N}_.-]{3,30}$/u, at: true, named: false, word: 'handle' },
+  login: { fromPages: false, firefox: true, unfollow: false },   // (Google blocks signing in inside the app)
+  colors: { dot: '#ff3d3d', brand: '#ff3030' },
+  shoutouts: null,
   idFor: name => 'yt:@' + name,
+  // "yt:name", "youtube:@name" or just "@name"
+  fromText(raw){ const m = raw.match(/^(?:yt|youtube)\s*:\s*@?([\w.\-]{2,100})$/i) || raw.match(/^@([\w.\-]{2,100})$/); return m ? { channel: 'yt:@' + m[1].toLowerCase(), only: null } : undefined; },
   handle: ch => ch.slice(3),
   label(ch){ const r = ch.slice(3); return /^(v|c):/.test(r) ? (r[0] === 'v' ? 'YouTube video' : 'YouTube channel') : r; },
   // A channel or video id takes the name YouTube gives it; an "@handle" is already its name.
@@ -119,6 +152,6 @@ const youtube = {
   playerCss: YT_CSS,
   playerFitJs: YT_FIT_JS,
   raidTarget: () => null
-};
+});
 
 export { youtube };

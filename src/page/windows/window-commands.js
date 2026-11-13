@@ -1,9 +1,6 @@
 import { revealWin } from '../alerts/spam-alerts.js';
 import { allOn, allTabFor, copyChatHtml, setAll, translateSite } from '../chat/all-chat.js';
 import { blowUp, blownWin, putBack } from '../chat/blow-up.js';
-import { makeClip } from '../chat/kick-clip.js';
-import { openPollForm } from '../chat/kick-poll.js';
-import { openPredictionForm } from '../chat/kick-prediction.js';
 import { autoTrFor } from '../chat/translate.js';
 import { showWhy } from '../chat/why-alert.js';
 import { ROLE, colsMode, shownWins, wins } from '../core.js';
@@ -17,12 +14,15 @@ import { devOn } from '../panels/developer/developer.js';
 import { openLinkCard } from '../panels/linked/link-card.js';
 import { save } from '../persistence.js';
 import { nameOf, streamerOf } from '../platforms/linked.js';
-import { PLAT_NAME, chLabel, isModOf, platOf } from '../platforms/platforms.js';
+import { PLAT_NAME, chLabel, isModOf, isVideo, platOf, platform } from '../platforms/platforms.js';
 import { commands } from '../shared/commands.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { tipName } from '../shared/tooltips.js';
 import { makeBig } from '../shortcuts.js';
+import { makeClip } from '../sites/kick/clip.js';
+import { openPollForm } from '../sites/kick/poll.js';
+import { openPredictionForm } from '../sites/kick/prediction.js';
 import { swapWindows } from './channel-picker.js';
 import { addTab, closeTab, closedTabs, frameOf, joinTab, leaderOf, setSideBySide, showTab, splitTab, stepTab,
   switchTo, tabChannels, unlinkTab } from './frames.js';
@@ -37,7 +37,8 @@ import { pushVol, saveSoon } from './windows.js';
 const winName = w => w.channel ? nameOf(w.channel).replace(/^@/, '') : w.kind === 'capture' ? (w.capName || 'Window') : (() => { try { return new URL(w.url).hostname; } catch { return 'Page'; } })();
 const winKind = w => w.kind === 'capture' ? 'window' : w.kind === 'web' ? 'page' : w.kind;
 const activeWin = () => shownWins().find(w => w.el.classList.contains('active')) || null;
-const isKickMod = w => DESKTOP && platOf(w.channel) === 'kick' && isModOf(w.channel);
+// a chat whose site has commands that open a panel (Kick's /clip, /poll, /prediction), where you're a mod
+const pageCmdMod = w => DESKTOP && !!w.channel && platform(w.channel).pageCommands && isModOf(w.channel);
 // where it is and how it is: "Column 3 · muted · 100% volume"
 function winState(w){
   const col = colsMode ? buildCols().findIndex(c => c.key === colKey(w)) + 1 : 0, where = col > 0 ? 'Column ' + col : '';
@@ -78,7 +79,7 @@ function winActions(w){
   const closed = w.frame ? (closedTabs[w.frame] || []).filter(ch => !members.some(o => o.channel === ch)) : [];
   closed.forEach(ch => add('reopen:' + ch, `Reopen ${PLAT_NAME[platOf(ch)]}`, () => addTab(lead, ch, true), { icon: 'plus', sub: 'A tab you closed', words: ['reopen', 'closed tab'] }));
   if (w.split && streamerOf(w.channel)) add('join', 'Join back', () => joinTab(w), { icon: 'link', sub: `Back as a tab in ${nameOf(w.channel)}'s window` });
-  if (w.channel && !/^yt:v:/.test(w.channel)){
+  if (w.channel && !isVideo(w.channel)){
     add('link', 'Channel settings…', () => openLinkCard(w.channel), { icon: 'layers', sub: 'Its chat bots, ALL, opening when live, linking its other sites' });
     if (streamerOf(w.channel)) add('unlink', `Unlink ${PLAT_NAME[platOf(lead.channel)]} from ${nameOf(lead.channel)}`, () => unlinkTab(lead.channel), { icon: 'unlink', sub: 'It becomes its own channel again' });
   }
@@ -109,7 +110,7 @@ function winActions(w){
         add('why' + k, t('Why didn\'t the last message alert?', 'why no alert?'), () => showWhy(cw), { icon: 'alert', sub: `Developer tools: how mention alerts read ${all ? of + "'s" : 'its'} last message`, words: ['developer', 'mention', 'alert'] });
       }
     });
-    if (isKickMod(w)){
+    if (pageCmdMod(w)){
       add('clip', 'Make a clip', () => makeClip(w), { icon: 'capture', sub: 'Kick: the last moments of the stream, as /clip does', words: ['/clip'] });
       add('poll', 'Start a poll', () => openPollForm(w), { icon: 'chatview', sub: 'Kick: as /poll does', words: ['/poll', 'vote'] });
       add('prediction', 'Start a prediction', () => openPredictionForm(w), { icon: 'sparkle', sub: 'Kick: as /prediction does', words: ['/prediction', 'bet'] });

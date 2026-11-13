@@ -158,6 +158,7 @@ let TRANSLATE_JS;
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   TRANSLATE_JS = `(${translateAgent.toString()})()`;
+  window.translateAgent = translateAgent;   // for the tests
 }
 
-export { init, TRANSLATE_JS, translateAgent };
+export { init, TRANSLATE_JS };

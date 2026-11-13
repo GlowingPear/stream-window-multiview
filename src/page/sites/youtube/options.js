@@ -1,10 +1,10 @@
-import { $, ROLE, wins } from '../core.js';
-import { openSettings } from '../panels/settings/settings.js';
-import { platOf, watchSignedIn, ytVidOf } from './platforms.js';
-import { DESKTOP } from '../shared/env.js';
-import { flash } from '../shared/flash.js';
-import { settings } from '../shared/settings.js';
-import { askIn, pressIn, reloadView, runIn } from '../windows/view.js';
+import { $, ROLE, wins } from '../../core.js';
+import { openSettings } from '../../panels/settings/settings.js';
+import { platOf, watchSignedIn, ytVidOf } from '../../platforms/platforms.js';
+import { DESKTOP } from '../../shared/env.js';
+import { flash } from '../../shared/flash.js';
+import { settings } from '../../shared/settings.js';
+import { askIn, pressIn, reloadView, runIn } from '../../windows/view.js';
 
 /* Settings > YouTube: skip ads, and answer YouTube's cookie question (it keeps the video paused until
    it's answered). Checked once a second in each YouTube player. */

@@ -9,8 +9,8 @@ import { SH, SW, clampPos, setRect } from '../layout/geometry.js';
 import { autoLayout, chatFocusLayout, tile } from '../layout/layouts.js';
 import { addParsed } from '../layout/placement.js';
 import { spotlight } from '../layout/spotlight.js';
-import { pushMyName, renderMentions, setMyTwitch, setMyYouTube } from '../panels/bell/all-notifications.js';
-import { bellVars, mentOn, myName, myTwitch, myYouTube, renderBell, seeBell, setMyName } from '../panels/bell/bell.js';
+import { pushMyName, renderMentions } from '../panels/bell/all-notifications.js';
+import { bellVars, mentOn, myNameOn, renderBell, seeBell, setMyName } from '../panels/bell/bell.js';
 import { channelVars, gotLive, liveNote, liveNow, loadSavedProfiles, notifyAll, persistSaved, renderSaved, saved,
   savedTab, sendWatch } from '../panels/channels/channels.js';
 import { follows, followsApi, loadFollows } from '../panels/channels/follow-suggestions.js';
@@ -18,7 +18,7 @@ import { addPlat, openBoxVars, openFromBox } from '../panels/channels/open-box.j
 import { syncAlertControls } from '../panels/settings/alerts.js';
 import { syncLiveAlerts } from '../panels/settings/notifications.js';
 import { groupKey, sameStreamer, streamerOf } from '../platforms/linked.js';
-import { PLAT_NAME } from '../platforms/platforms.js';
+import { PLAT_NAME, readLogins, siteIds, sites } from '../platforms/platforms.js';
 import { commands } from '../shared/commands.js';
 import { DESKTOP } from '../shared/env.js';
 import { setTb } from '../shared/icons.js';
@@ -259,31 +259,38 @@ function init(){
     renderBell();
   }
   if (DESKTOP && ROLE === 'main' && window.kmv.notifyMention){
-    $('#mentOn').checked = mentOn; $('#mentUser').value = myName; $('#mentTwitch').value = myTwitch; $('#mentYouTube').value = myYouTube;
-    $('#mentTwitch').addEventListener('change', e => setMyTwitch(e.target.value));
-    $('#mentTwitch').addEventListener('keydown', e => { if (e.key === 'Enter') setMyTwitch(e.target.value); });
-    $('#mentYouTube').addEventListener('change', e => setMyYouTube(e.target.value));
-    $('#mentYouTube').addEventListener('keydown', e => { if (e.key === 'Enter') setMyYouTube(e.target.value); });
+    $('#mentOn').checked = mentOn;
+    // each site's name box ([data-me=<site>])
+    document.querySelectorAll('[data-me]').forEach(f => {
+      const site = f.dataset.me;
+      f.value = myNameOn(site);
+      f.addEventListener('change', e => setMyName(site, e.target.value));
+      f.addEventListener('keydown', e => { if (e.key === 'Enter') setMyName(site, e.target.value); });
+    });
     $('#mentOn').addEventListener('change', e => {
       bellVars.mentOn = e.target.checked;
       settings.set('mentOn', mentOn);
       pushMyName(); renderMentions(); syncAlertControls();
     });
-    $('#mentUser').addEventListener('change', e => setMyName(e.target.value));
-    $('#mentUser').addEventListener('keydown', e => { if (e.key === 'Enter') setMyName(e.target.value); });
+    // Your names from your logins, on each site whose login says whose it is (me.named). quiet: at start-up, only
+    // where you haven't got one
+    const named = () => sites().filter(p => p.me.named);
     const detect = async quiet => {
-      $('#mentNote').textContent = 'Checking your Kick login…';
-      const n = await window.kmv.detectMe().catch(() => null);
-      const st = window.kmv.accountsStatus ? await window.kmv.accountsStatus().catch(() => null) : null;
-      if (n) setMyName(n);
-      if (st && st.twitch && (!quiet || !myTwitch)) setMyTwitch(st.twitch);
-      if (!n && !(st && st.twitch)) $('#mentNote').textContent = quiet && (myName || myTwitch) ? '' : 'Couldn’t read them from your logins. Make sure you’re logged in, or type them in.';
-      else if (n || (st && st.twitch)) $('#mentNote').textContent = '';
+      $('#mentNote').textContent = `Checking your ${named().map(p => p.name).join(' and ')} logins…`;
+      const { fromPages, st } = await readLogins();
+      let found = false;
+      for (const p of named()){
+        const n = p.login.fromPages ? fromPages : st && st[p.id];
+        if (!n) continue;
+        found = true;
+        if (!quiet || !myNameOn(p.id)) setMyName(p.id, n);
+      }
+      $('#mentNote').textContent = found || (quiet && named().some(p => myNameOn(p.id))) ? '' : 'Couldn’t read them from your logins. Make sure you’re logged in, or type them in.';
     };
     $('#mentDetect').onclick = () => detect(false);
     fromApp('onFocusChat', ch => revealChat(ch));
     setInterval(pollMentions, 1500);
-    if (!myName || !myTwitch) setTimeout(() => detect(true), 4000);
+    if (named().some(p => !myNameOn(p.id))) setTimeout(() => detect(true), 4000);
     renderMentions();
   }
   $('#openAll').onclick = () => {
@@ -300,7 +307,7 @@ function init(){
       toggle: { get: () => follows.on, set: on => { if (window.kmv.followsSetOn) window.kmv.followsSetOn(on).then(loadFollows).catch(() => {}); } } },
     { id: 'channels.notifyAll', group: 'Channels', title: 'Notify me when they go live', sub: 'For every saved channel', words: ['live alerts'], icon: 'bell',
       when: () => DESKTOP && ROLE === 'main' && !!window.kmv.watchLive, toggle: { get: () => $('#notifyAll').checked, set: () => $('#notifyAll').click() } },
-    ...['all', 'kick', 'twitch', 'youtube'].map(t => ({ id: 'channels.tab.' + t, kind: 'tab', group: 'Channels', title: 'Channels: ' + (t === 'all' ? 'All' : PLAT_NAME[t]),
+    ...['all', ...siteIds()].map(t => ({ id: 'channels.tab.' + t, kind: 'tab', group: 'Channels', title: 'Channels: ' + (t === 'all' ? 'All' : PLAT_NAME[t]),
       sub: t === 'all' ? 'Your channels' : `Your ${PLAT_NAME[t]} channels only`, icon: 'star', when: () => ROLE === 'main', run: () => openChannelsAt(t) }))
   ]);
   document.querySelectorAll('#savedTabs [data-t]').forEach(b => { b.dataset.cmd = 'channels.tab.' + b.dataset.t; });

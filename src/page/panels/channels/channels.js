@@ -15,7 +15,7 @@ import { openLinkCard } from '../linked/link-card.js';
 import { openProfile } from '../profiles/profiles.js';
 import { accountsOf, canLink, laterPair, link, linkedOn, listStreamers, nameOf, notSame, optFor, siteName, siteNum,
   streamerName, streamerOf, suggestions } from '../../platforms/linked.js';
-import { PLAT_NAME, chLabel, infoNames, normCh, platIcon, platOf, rememberNames } from '../../platforms/platforms.js';
+import { PLAT_NAME, chLabel, infoNames, isVideo, normCh, platIcon, platOf, rememberNames } from '../../platforms/platforms.js';
 import { element } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
@@ -86,7 +86,7 @@ const channelVars = {
   get notifyOff(){ return notifyOff; }, set notifyOff(v){ notifyOff = v; },
   get savedTab(){ return savedTab; }, set savedTab(v){ savedTab = v; },
 };
-const tabPlat = () => savedTab === 'all' ? 'kick' : savedTab;
+const tabPlat = () => savedTab === 'all' ? SmvSites.DEFAULT : savedTab;
 // Channels that open by themselves when they go live
 let autoOpen = [];
 let autoFit = false;                  // Settings > Layouts: in Auto layout, fit them in as the last streams
@@ -255,11 +255,11 @@ function rowButtons(acts, chs, { profile = true } = {}){
       onclick: ev => { ev.stopPropagation(); chs.forEach(c => setNotify(c, !on)); } });
     acts.append(au, bell);
   }
-  if (profile && DESKTOP && ROLE === 'main' && !/^yt:v:/.test(main)){
+  if (profile && DESKTOP && ROLE === 'main' && !isVideo(main)){
     acts.appendChild(element('button', { class: 'prof', html: icon.user, title: `${nameOf(main)}'s profile: when they stream, past streams, your notes`,
       onclick: ev => { ev.stopPropagation(); panel.hidden = true; openProfile(main); } }));
   }
-  if (!/^yt:v:/.test(main)) acts.appendChild(element('button', { class: 'cset', html: icon.layers, title: `${nameOf(main)}'s Channel settings: chat bots, ALL, opening when live, linking their other sites`,
+  if (!isVideo(main)) acts.appendChild(element('button', { class: 'cset', html: icon.layers, title: `${nameOf(main)}'s Channel settings: chat bots, ALL, opening when live, linking their other sites`,
     onclick: ev => { ev.stopPropagation(); panel.hidden = true; openLinkCard(main); } }));
   acts.appendChild(element('button', { class: 'rm', html: icon.close, title: 'Remove from saved',
     onclick: ev => { ev.stopPropagation(); saved = saved.filter(c => !chs.includes(c)); persistSaved(); } }));

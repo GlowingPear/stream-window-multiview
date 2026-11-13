@@ -7,7 +7,7 @@ import { openProfile } from '../profiles/profiles.js';
 import { openSettings } from '../settings/settings.js';
 import { canLink, link, linkedOn, listStreamers, mainOf, notSame, optFor, setMain, setStreamerOpt, siteName, siteNo,
   streamerName, suggestions, unlink, unlinkAll } from '../../platforms/linked.js';
-import { PLAT_NAME, chLabel, platOf, platform } from '../../platforms/platforms.js';
+import { PLAT_NAME, chLabel, isVideo, platOf, platform, siteIds } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -95,7 +95,7 @@ async function askUnlinkAll(s){
 }
 // Everything about linking: the suggestions first, then the actions
 function linkingItems(){
-  const out = [], g = 'Linked channels', act = shownWins().find(w => w.el.classList.contains('active') && w.channel && !/^yt:v:/.test(w.channel));
+  const out = [], g = 'Linked channels', act = shownWins().find(w => w.el.classList.contains('active') && w.channel && !isVideo(w.channel));
   suggestions().forEach(x => out.push({ id: `link.sug:${x.a}|${x.b}`, group: 'Suggested links', title: `Link ${chLabel(x.a)} on ${site(x.a)} with ${chLabel(x.b)} on ${site(x.b)}`,
     sub: x.why, words: ['link', 'same streamer'], siteIcons: [{ p: platOf(x.a) }, { p: platOf(x.b) }], icon: 'layers', run: () => linkPair(x.a, x.b),
     alt: () => notSame(x.a, x.b), altLabel: 'not the same' }));
@@ -116,7 +116,7 @@ function linkingItems(){
   if (multi.length) out.push({ id: 'link.multiLive', group: g, title: 'Live on more than one site', sub: multi.map(s => `${streamerName(s)} (${liveIn(s).map(site).join(' + ')})`).join(' · '),
     icon: 'live', words: ['live', 'several sites', 'simulcast'], verb: 'Watch them', run: () => multi.forEach(s => openStreamer(s.main, modeSel ? modeSel.value : 'both')) });
   // a site everywhere: every linked window that has it live switches to it
-  ['kick', 'twitch', 'youtube'].forEach(p => out.push({ id: `link.prefer:${p}`, group: g, title: `Switch every linked window to ${PLAT_NAME[p]}`, sub: 'Windows where it isn\'t live stay as they are', icon: 'arrowR', words: ['tabs', 'site'],
+  siteIds().forEach(p => out.push({ id: `link.prefer:${p}`, group: g, title: `Switch every linked window to ${PLAT_NAME[p]}`, sub: 'Windows where it isn\'t live stay as they are', icon: 'arrowR', words: ['tabs', 'site'],
     disabled: () => !wins.some(w => w.frame && platOf(w.channel) === p && w.hiddenTab) && 'No linked window has it as a tab', run: () => preferSite(p) }));
   return out;
 }

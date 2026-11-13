@@ -1,16 +1,16 @@
 /* ---- Sending a message from ALL (chat/all-chat.js): runs inside the chat page of the site it's sent on ----
    The text goes into the site's own chat box as typing would, and is sent as Enter (or the send button) would, so
    the site's own rules apply (slow mode, followers-only, its filters) and it shows in its chat as yours. The box is an
-   editor on each site (Kick: Lexical, Twitch: Slate, YouTube: its own): Kick's is given a new state (in-site/kick-box.js
+   editor on each site (Kick: Lexical, Twitch: Slate, YouTube: its own): Kick's is given a new state (sites/kick/in-site/box.js
    does the same), Twitch's gets it through its own insertText (typed input alone leaves its state empty, so it sends
    nothing), YouTube's as typed input. -> 'sent', or why not: 'no-box' (signed out, or no chat),
    'disabled' (the site says you can't chat here now), 'not-filled' (the box didn't take it),
    'not-sent' (pressed, but the site kept it in its box), or on YouTube { press: { x, y }, start } (its button
    didn't take the script's press: the app presses it for real, then asks sentAgent). (A promise: it waits a moment
-   for the editor before sending.) */
-async function sendAgent(site, text, sel, fillOnly){
-  const BOX = sel || { kick: '[data-testid="chat-input"]', twitch: '[data-a-target="chat-input"]', youtube: 'yt-live-chat-text-input-field-renderer #input' }[site];
-  const box = document.querySelector(BOX);
+   for the editor before sending.) S: the site's chat box and send button (sites/in-site.js sendSpec: its site.js's
+   chatBox.box and send); sel: another box (the tests'). */
+async function sendAgent(S, text, sel, fillOnly){
+  const box = document.querySelector(sel || S.box);
   if (!box) return 'no-box';
   if (box.getAttribute('contenteditable') === 'false' || box.closest('[aria-disabled="true"], [disabled]')) return 'disabled';
   const value = () => (box.isContentEditable ? box.innerText : box.value || '').replace(/[\u200b\ufeff]/g, '').trim();
@@ -41,24 +41,24 @@ async function sendAgent(site, text, sel, fillOnly){
   if (!ed && !slate && value() !== String(text).trim()) return 'not-filled';
   if (fillOnly) return 'filled';   // (only typed into the box, for you to send: Settings › Shoutouts › Send straight away off)
   await new Promise(r => setTimeout(r, 200));   // (the editor draws the text first; a send before that sends nothing)
-  // send: the site's button where it has one, else Enter in the box. The site empties its box once it has sent; if it
-  // hasn't, its editor wasn't ready for the press (Twitch's can take a moment), so press again, up to three times.
-  // YouTube's button: the <button> inside its #send-button (its yt-button-renderer wrapper comes first in the page and
-  // a click on that does nothing). It's off (disabled, or aria-disabled on it or what's around it) until YouTube has
-  // seen the text, so it's waited for first.
+  // send: the site's button where it has one (S.button), else Enter in the box. The site empties its box once it has
+  // sent; if it hasn't, its editor wasn't ready for the press (Twitch's can take a moment), so press again, up to three
+  // times. A button that's a wrapper (S.inner: what to press inside it, the first there; YouTube's <button> inside its
+  // #send-button, as its yt-button-renderer comes first in the page and a click on that does nothing). It's off
+  // (disabled, or aria-disabled on it or what's around it, up to the wrapper) until the site has seen the text, so where
+  // the site's does that (S.waitEnabled: YouTube's) it's waited for first.
   const btn = () => {
-    if (site === 'twitch') return document.querySelector('[data-a-target="chat-send-button"]');
-    const s = site === 'youtube' && document.querySelector('#send-button');
-    return s ? s.querySelector('button') || s.querySelector('yt-button-renderer') : null;
+    const s = S.button && document.querySelector(S.button);
+    return s && S.inner ? S.inner.map(q => s.querySelector(q)).find(Boolean) || null : s || null;
   };
-  const off = b => { for (let e = b; e; e = e.parentElement){ if (e.disabled || e.hasAttribute('disabled') || e.getAttribute('aria-disabled') === 'true') return true; if (e.id === 'send-button') break; } return false; };
-  if (site === 'youtube') for (let t = 0; t < 15 && btn() && off(btn()); t++) await new Promise(r => setTimeout(r, 100));
+  const off = b => { for (let e = b; e; e = e.parentElement){ if (e.disabled || e.hasAttribute('disabled') || e.getAttribute('aria-disabled') === 'true') return true; if (S.inner && e.matches(S.button)) break; } return false; };
+  if (S.waitEnabled) for (let t = 0; t < 15 && btn() && off(btn()); t++) await new Promise(r => setTimeout(r, 100));
   // (and never again once the site's connection has brought it back: it was sent, whatever the box shows)
   const start = Date.now(), key = (String(text).match(/[\w ]{4,}/g) || []).sort((a, b) => b.length - a.length)[0];
   const echoed = () => { const R = window.__kmvFeed && window.__kmvFeed.recent; return !!(R && key && R.some(x => x.t >= start && x.v.includes(key))); };
-  // YouTube may only take a real press on its button (not a script's): one press here, then the app presses it for real
-  // (sender.press in chat/all-chat.js) at its centre, in the page's CSS pixels
-  const yt = site === 'youtube' && btn();
+  // A site that may only take a real press on its button, not a script's (S.realPress: YouTube's): one press here, then
+  // the app presses it for real (sender.press in chat/all-chat.js) at its centre, in the page's CSS pixels
+  const yt = S.realPress && btn();
   for (let i = 0; i < (yt ? 1 : 3); i++){
     if (i && echoed()) return 'sent';
     const b = btn();
@@ -72,13 +72,14 @@ async function sendAgent(site, text, sel, fillOnly){
 }
 // After the app's real press (sendAgent's { press }): 'sent' once the site has emptied its box or its connection has
 // brought the message back (since start, sendAgent's), within 1.5 s; else 'not-sent'. Runs inside the chat page too.
-// What's in the site's chat box now: your draft there (a run of shoutouts waits for it, chat/shoutout.js). -> text ('' empty)
-function draftAgent(site, sel){
-  const box = document.querySelector(sel || { kick: '[data-testid="chat-input"]', twitch: '[data-a-target="chat-input"]', youtube: 'yt-live-chat-text-input-field-renderer #input' }[site]);
+// What's in the site's chat box now: your draft there (a run of shoutouts waits for it, chat/shoutout.js). S, sel: as
+// sendAgent's. -> text ('' empty)
+function draftAgent(S, sel){
+  const box = document.querySelector(sel || S.box);
   return box ? String(box.isContentEditable ? box.innerText : box.value || '').replace(/[\u200b\ufeff]/g, '').trim() : '';
 }
-async function sentAgent(site, text, start, sel){
-  const box = document.querySelector(sel || { kick: '[data-testid="chat-input"]', twitch: '[data-a-target="chat-input"]', youtube: 'yt-live-chat-text-input-field-renderer #input' }[site]);
+async function sentAgent(S, text, start, sel){
+  const box = document.querySelector(sel || S.box);
   const key = (String(text).match(/[\w ]{4,}/g) || []).sort((a, b) => b.length - a.length)[0];
   const echoed = () => { const R = window.__kmvFeed && window.__kmvFeed.recent; return !!(R && key && R.some(x => x.t >= start && x.v.includes(key))); };
   const empty = () => !!box && !(box.isContentEditable ? box.innerText : box.value || '').replace(/[\u200b\ufeff]/g, '').trim();

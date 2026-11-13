@@ -1,24 +1,16 @@
+import { PLATFORMS } from '../sites/sites.js';
+
 /* ---- Shoutouts (issue #300): the message, who a row of Settings › Shoutouts › People is for, whether someone
    streams, and who a run of recent chatters shouts out. Nothing here touches the page (unit tested on its own).
-   A person: { site: 'kick' | 'twitch', login (their channel address: Kick's slug, Twitch's login), name (as shown),
+   A person: { site (a site that does shoutouts: Kick, Twitch), login (their channel address: Kick's slug, Twitch's login), name (as shown),
    streamer (a linked streamer's id, or '') }. */
 const SHOUT_TPL = 'Go check out {name}! [Last seen playing {game} ]→ {link}';
 const SHOUT_TOKENS = ['{name}', '{link}', '{links}', '{game}'];
 const SHOUT_MAX = 450;       // a message, at most (Twitch takes 500 characters, Kick a little more)
 const RUN_MAX = 20;          // a run of recent chatters, at most (Twitch: about 20 messages in 30 s for a viewer)
-const SITE_URL = { kick: 'https://kick.com/', twitch: 'https://twitch.tv/' };
-
 // A channel's address on its site, always a full https:// link (the sites' chats only make those clickable)
-const shoutLink = (site, login) => (SITE_URL[site] && login ? SITE_URL[site] + String(login).toLowerCase() : '');
-
-// Kick's address for a name: the name, then (only if Kick hasn't got that one) with - for _, as some Kick names with
-// _ have - in their address and some keep the _. Never guessed: the caller asks Kick for each in turn.
-function kickTries(name){
-  const n = String(name || '').trim().replace(/^@/, '').toLowerCase();
-  if (!n) return [];
-  const dash = n.replace(/_/g, '-');
-  return dash === n ? [n] : [n, dash];
-}
+// (only a site that does shoutouts: its module's shoutouts)
+const shoutLink = (site, login) => (PLATFORMS[site] && PLATFORMS[site].shoutouts && login ? SmvSites.byId[site].home + String(login).toLowerCase() : '');
 
 // The message: {name}, {link}, {links} and {game} filled in. A part in [ ] is left out when something in it is empty
 // (no game known); an empty one outside [ ] is left out with the space around it. Never "undefined", never two spaces.
@@ -37,9 +29,9 @@ function fillShout(tpl, v){
    streamer's id, or ''), name, msg (their message; '' for yours), perSite (a linked streamer: a message for each site),
    sites ({ kick, twitch } when perSite), also ([{ site ('' for any), login, name }]: chatters whose shoutout is this
    channel's, their other accounts), lost (it couldn't be found on its site) }. */
-const siteOfCh = ch => (/^tw:/.test(ch || '') ? 'twitch' : /^yt:/.test(ch || '') ? 'youtube' : 'kick');
-const loginOfCh = ch => String(ch || '').replace(/^tw:/, '').toLowerCase();
-const chOfPerson = p => (p.site === 'twitch' ? 'tw:' : '') + String(p.login || '').toLowerCase();
+const siteOfCh = ch => SmvSites.siteOf(ch || 'x');
+const loginOfCh = ch => SmvSites.bare(ch || '').toLowerCase();
+const chOfPerson = p => ((SmvSites.byId[p.site] || {}).prefix || '') + String(p.login || '').toLowerCase();
 
 // The card a person's shoutout comes from: their own (a linked streamer's covers all their sites), else the card that
 // lists them among its chatters. -> { card, via: 'self' | 'also' }, or null
@@ -64,7 +56,7 @@ function shoutFor({ tpl, cards, person, site, gameOf = () => '', linksOf = () =>
   let to = person;
   if (hit && hit.via === 'also'){
     const accs = card.streamer ? (chsOf(card) || []) : [];
-    const ch = accs.find(a => siteOfCh(a) === site && site !== 'youtube') || card.ch;
+    const ch = accs.find(a => siteOfCh(a) === site) || card.ch;   // (only a site that does shoutouts sends one)
     to = { site: siteOfCh(ch), login: loginOfCh(ch), name: card.name || loginOfCh(ch), streamer: card.streamer || '' };
   }
   const link = shoutLink(to.site, to.login);
@@ -81,7 +73,7 @@ function cardsFromRows(rows){
   const cardOf = (site, login, name, extra = {}) => {
     const k = String(login).toLowerCase();
     if (byLogin.has(k)) return Object.assign(byLogin.get(k), extra);
-    const c = { ch: (site === 'twitch' ? 'tw:' : '') + k, streamer: '', name: name || login, msg: '', perSite: false, sites: {}, also: [], ...extra };
+    const c = { ch: chOfPerson({ site, login: k }), streamer: '', name: name || login, msg: '', perSite: false, sites: {}, also: [], ...extra };
     byLogin.set(k, c); cards.push(c);
     return c;
   };
@@ -132,16 +124,17 @@ function streams(info){
 /* Who a run of recent chatters shouts out: the last n different people, newest first. lines: ALL's or a chat's messages
    ({ site, login, name, streamer, t, bot }), oldest first. Someone on several sites (a linked streamer, or the same
    address on Kick and Twitch) counts once, at their newest message. Left out: you, the channel's own accounts, bots,
-   and (onlyStreamers) people with no streams found. Someone shouted out within againMs is listed, not ticked.
+   and (onlyStreamers) people with no streams found, and anyone on a site that isn't in sites (the ones that do
+   shoutouts, unless given). Someone shouted out within againMs is listed, not ticked.
    -> { list: [{ ...person, at, on, why }], left: { you, host, bots, viewers: [person] } } */
-function pickRun(lines, { n = 5, me = [], host = [], streamsOf = () => true, onlyStreamers = true, sentAt = () => 0, againMs = 0, now = Date.now() } = {}){
+function pickRun(lines, { sites = Object.keys(PLATFORMS).filter(p => PLATFORMS[p].shoutouts), n = 5, me = [], host = [], streamsOf = () => true, onlyStreamers = true, sentAt = () => 0, againMs = 0, now = Date.now() } = {}){
   const key = p => (p.streamer ? 's:' + p.streamer : String(p.login || '').toLowerCase());
   const mine = new Set(me.map(x => String(x).toLowerCase())), owner = new Set(host.map(x => String(x).toLowerCase()));
   const seen = new Set(), list = [], left = { you: false, host: false, bots: new Set(), viewers: [] };
   const cap = Math.max(1, Math.min(RUN_MAX, +n || 5));
   for (let i = (lines || []).length - 1; i >= 0 && list.length < cap; i--){
     const m = lines[i];
-    if (!m || !m.login || (m.site !== 'kick' && m.site !== 'twitch')) continue;
+    if (!m || !m.login || !sites.includes(m.site)) continue;
     const k = key(m), login = String(m.login).toLowerCase();
     if (seen.has(k)) continue;
     seen.add(k);
@@ -156,5 +149,5 @@ function pickRun(lines, { n = 5, me = [], host = [], streamsOf = () => true, onl
   return { list, left: { ...left, bots: left.bots.size } };
 }
 
-export { BOT_SAYS_RE, botTargets, cardFor, cardsFromRows, fillShout, kickTries, loginOfCh, pickRun, RUN_MAX,
-  SHOUT_MAX, SHOUT_TOKENS, SHOUT_TPL, shoutFor, shoutLink, siteOfCh, streams };
+export { BOT_SAYS_RE, botTargets, cardFor, cardsFromRows, fillShout, loginOfCh, pickRun, RUN_MAX, SHOUT_MAX,
+  SHOUT_TOKENS, SHOUT_TPL, shoutFor, shoutLink, siteOfCh, streams };

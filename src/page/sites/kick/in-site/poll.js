@@ -1,4 +1,4 @@
-// Run inside a Kick chat page (turned into text, given what it needs): the poll form's request (chat/kick-poll.js).
+// Run inside a Kick chat page (turned into text, given what it needs): the poll form's request (sites/kick/poll.js).
 
 // Starts a poll the way Kick's own "Create a new poll" form does (on the channel page), with the chat's login.
 // Answers { ok, status, message }: status 0 when the request didn't get an answer, message Kick's own when it gave one.

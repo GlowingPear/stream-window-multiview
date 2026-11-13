@@ -6,20 +6,21 @@ import { openSettings } from '../settings/settings.js';
 import { shoutCardEl } from '../settings/shout-cards.js';
 import { accountsOf, botsOf, canLink, chanOpt, link, linkOpt, linkedOn, nameOf, notSame, ordered, setChanOpt,
   setMain, setOn, setStreamerOpt, siteNum, streamerBots, streamerName, streamerOf, suggestions, unlink, unlinkAll } from '../../platforms/linked.js';
-import { PLATFORMS, PLAT_NAME, chLabel, parseInput, platOf } from '../../platforms/platforms.js';
+import { PLAT_NAME, chLabel, isVideo, parseInput, platOf } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
 import { element } from '../../shared/element.js';
 import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
+import { PLATFORMS } from '../../sites/sites.js';
 import { QUALITIES, choiceName, qualityOf } from '../../windows/quality-pick.js';
 
 /* ---- Channel settings: a channel's or a linked streamer's card. Its accounts (live or not), the main one, suggestions,
    adding an account by site and name, @handle or link (linking), their own chat bots and their own choices. A channel on
    its own has its bots, Opens by itself and its ALL tab; what only a linked streamer has is greyed, with how to get it.
    Opened from Channels (▾ › Channel settings…), a window's ⋯, a profile, Settings › Linked channels and the search box. ---- */
-let dlg, card, cur = [], opened = null, curPlat = null, botPlat = 'kick', addFocus = false, tab = 'accounts';   // (opened: the channel it was opened for; tab: the one showing)
+let dlg, card, cur = [], opened = null, curPlat = null, botPlat = '', addFocus = false, tab = 'accounts';   // (opened: the channel it was opened for; tab: the one showing)
 const LC_TABS = [['accounts', 'Accounts'], ['chat', 'Chat'], ['shoutout', 'Shoutout'], ['streams', 'Streams']];
 function openLinkCard(ch, { add, tab: t } = {}){
   cur = ch ? accountsOf(ch) : []; opened = ch || null; curPlat = null;
@@ -80,7 +81,7 @@ function renderCard(){
   const submit = async () => {
     const r = parseInput(inp.value, curPlat), ch = r && r.channel;
     if (!ch){ err.textContent = 'Couldn’t read that link or name'; err.hidden = false; return; }
-    if (/^yt:v:/.test(ch)){ err.textContent = 'A video isn’t a channel: paste their channel’s link or @handle'; err.hidden = false; return; }
+    if (isVideo(ch)){ err.textContent = 'A video isn’t a channel: paste their channel’s link or @handle'; err.hidden = false; return; }
     if (chs.includes(ch)){ err.textContent = `${chLabel(ch)} on ${PLAT_NAME[platOf(ch)]} is already one of theirs`; err.hidden = false; return; }
     if (window.kmv && window.kmv.channelExists){
       go.classList.add('busy');

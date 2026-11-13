@@ -5,7 +5,7 @@ import { fmtViewers, infoFor, liveNow, saved, svHue, svInitials, svProf } from '
 import { openSettings } from '../settings/settings.js';
 import { restore, save } from '../../persistence.js';
 import { accountsOf, groupKey, nameOf, sameStreamer, streamerOf } from '../../platforms/linked.js';
-import { PLAT_NAME, parseInput, platIcon, platOf } from '../../platforms/platforms.js';
+import { PLAT_NAME, isVideo, parseInput, platIcon, platOf, siteIds, siteNames, sites } from '../../platforms/platforms.js';
 import { commands } from '../../shared/commands.js';
 import { esc } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -14,6 +14,7 @@ import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
 import { closeOverlays, layoutPick } from '../../shortcuts.js';
+import { PLATFORMS } from '../../sites/sites.js';
 import { panel, savedBtn, showSpMenu } from '../../toolbar/toolbar.js';
 import { openStreamer } from '../../windows/frames.js';
 
@@ -22,20 +23,18 @@ import { openStreamer } from '../../windows/frames.js';
    ticked); and a tour of the real toolbar buttons. It switches to the Launchpad once you've opened your first
    stream (or skip it): the paste box, saved channels that are live now, and reopening the last session.
    Progress is kept in kickMultiview.intro and can be reset from Settings > General. */
-var intro = {}, esBuilt = false, esPlat = 'kick', esPrevWins = 0, esReady = false;
+var intro = {}, esBuilt = false, esPlat = '', esPrevWins = 0, esReady = false;
 function saveIntro(){ settings.set('intro', intro); }
 const ES_SEARCH = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
-const ES_FORMATS = `<details class="es-formats"><summary>What can I paste?</summary><ul>
-  <li><code>kick.com/nightowl</code> or just <code>nightowl</code>: a Kick stream and chat</li>
-  <li><code>twitch.tv/nightowl</code> or <code>tw:nightowl</code>: Twitch</li>
-  <li><code>youtube.com/@nightowl</code> or <code>@nightowl</code>: a YouTube channel's live stream</li>
-  <li><code>youtube.com/watch?v=…</code> or <code>youtu.be/…</code>: any YouTube video</li>
-  <li>A chat link (<code>kick.com/popout/nightowl/chat</code>) opens just the chat; any other web link opens as a page.</li></ul></details>`;
-const ES_BOX = `<div class="es-box">${ES_SEARCH}<input class="es-in" placeholder="Paste a link or type a channel name" aria-label="Channel name or link" autocomplete="off" spellcheck="false">
+// (each site's pasteHints, then a chat link of the site a bare name is on)
+const ES_FORMATS = () => `<details class="es-formats"><summary>What can I paste?</summary><ul>
+  ${sites().flatMap(p => p.pasteHints).map(h => `<li>${h}</li>`).join('\n  ')}
+  <li>A chat link (<code>${PLATFORMS[SmvSites.DEFAULT].chatUrl('nightowl').replace(/^https:\/\//, '')}</code>) opens just the chat; any other web link opens as a page.</li></ul></details>`;
+const ES_BOX = () => `<div class="es-box">${ES_SEARCH}<input class="es-in" placeholder="Paste a link or type a channel name" aria-label="Channel name or link" autocomplete="off" spellcheck="false">
   <span class="es-badge" hidden></span>
-  <div class="es-plat" hidden role="radiogroup" aria-label="Site"><button data-p="kick" role="radio">Kick</button><button data-p="twitch" role="radio">Twitch</button><button data-p="youtube" role="radio">YouTube</button></div>
+  <div class="es-plat" hidden role="radiogroup" aria-label="Site">${sites().map(p => `<button data-p="${p.id}" role="radio">${p.name}</button>`).join('')}</div>
   <select class="es-mode" aria-label="What to open"><option value="both">Stream + chat</option><option value="stream">Stream only</option><option value="chat">Chat only</option></select>
-  <button class="btn primary es-go">Open</button></div>${ES_FORMATS}`;
+  <button class="btn primary es-go">Open</button></div>${ES_FORMATS()}`;
 // What a typed or pasted text will open, for the badge: { p: parsed, label } | null
 function esRead(text){
   const t = String(text || '').trim(); if (!t) return null;
@@ -46,7 +45,7 @@ function esRead(text){
     return /\s/.test(t) || !/^[\w-]+(\.[\w-]+)+$/.test(host) ? null : { p, label: 'Web page', bare };
   }
   const plat = PLAT_NAME[platOf(p.channel)];
-  const label = /^yt:v:/.test(p.channel) ? 'YouTube video' : p.only === 'chat' ? `${plat} chat` : `${plat} channel`;
+  const label = isVideo(p.channel) ? `${plat} video` : p.only === 'chat' ? `${plat} chat` : `${plat} channel`;
   return { p, label, bare };
 }
 function esWireBox(root){
@@ -57,7 +56,7 @@ function esWireBox(root){
     plat.hidden = !(r && r.bare);
     badge.hidden = !r || r.bare;
     if (r && !r.bare) badge.textContent = r.label;
-    plat.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.p === esPlat); b.setAttribute('aria-checked', String(b.dataset.p === esPlat)); });
+    plat.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.p === (esPlat || SmvSites.DEFAULT)); b.setAttribute('aria-checked', String(b.dataset.p === (esPlat || SmvSites.DEFAULT))); });
   };
   const go = () => {
     const r = esRead(inp.value);
@@ -99,17 +98,17 @@ function esBuild(){
   if (esBuilt || ROLE !== 'main') return;
   esBuilt = true;
   const first = $('#empty .es-first'), pad = $('#empty .es-pad');
-  first.innerHTML = `<div class="es-head">${$('.brand .pear') ? $('.brand .pear').outerHTML : ''}<div><h2>Welcome to Stream Multiview</h2><p>Watch Kick, Twitch and YouTube side by side, with their chats.</p></div><button class="linkish es-skip">Skip to the launchpad</button></div>
+  first.innerHTML = `<div class="es-head">${$('.brand .pear') ? $('.brand .pear').outerHTML : ''}<div><h2>Welcome to Stream Multiview</h2><p>Watch ${siteNames('and')} side by side, with their chats.</p></div><button class="linkish es-skip">Skip to the launchpad</button></div>
     <div class="es-cols">
-      <div class="es-col es-get"><h3>Get watching</h3>${ES_BOX}
+      <div class="es-col es-get"><h3>Get watching</h3>${ES_BOX()}
         <div class="desk-blk"><h4>Log in once</h4><div class="es-row es-accts"></div>
-        <h4>Import the channels you follow</h4><div class="es-imp">${['kick', 'twitch', 'youtube'].map(p => `<button class="btn" data-imp="${p}" title="Import the channels you follow on ${PLAT_NAME[p]} into your channels">${platIcon(p)} ${PLAT_NAME[p]}</button>`).join('')}</div></div>
+        <h4>Import the channels you follow</h4><div class="es-imp">${siteIds().map(p => `<button class="btn" data-imp="${p}" title="Import the channels you follow on ${PLAT_NAME[p]} into your channels">${platIcon(p)} ${PLAT_NAME[p]}</button>`).join('')}</div></div>
         <h4>Handy keys</h4><div class="es-keys"><div><kbd>F1</kbd> All shortcuts</div><div><kbd>N</kbd> Add a channel</div><div><kbd>${navigator.platform.startsWith('Mac') ? '⌘' : 'Ctrl'}</kbd>+<kbd>Z</kbd> Undo</div><div><kbd>W</kbd> Another app’s window</div><div><kbd>L</kbd> Layouts</div><div><kbd>Esc</kbd> Close menus</div></div>
       </div>
       <div class="es-col"><h3>Learn the app <small class="es-prog"></small></h3><div class="es-learn"></div>
         <button class="btn primary es-tour">Take the tour</button></div>
     </div>`;
-  pad.innerHTML = `<div class="es-pad-in"><h2>What do you want to watch?</h2>${ES_BOX}<div class="es-live"></div>
+  pad.innerHTML = `<div class="es-pad-in"><h2>What do you want to watch?</h2>${ES_BOX()}<div class="es-live"></div>
     <div class="es-acts"><button class="btn es-reopen">${icon.undo}Reopen last session <small></small></button><button class="btn es-impbtn desk-only">${icon.download}Import follows</button><button class="btn es-learnbtn">${icon.book}Learn the app</button></div></div>`;
   [first, pad].forEach(esWireBox);
   first.querySelectorAll('.desk-blk').forEach(e => { e.hidden = !DESKTOP; });
@@ -145,9 +144,9 @@ function esRefresh(){
   first.hidden = !isFirst; pad.hidden = isFirst;
   if (isFirst){
     const a = esAccounts();
-    first.querySelector('.es-accts').innerHTML = ['kick', 'twitch', 'youtube'].map(p => {
+    first.querySelector('.es-accts').innerHTML = siteIds().map(p => {
       const v = a[p];
-      return `<div class="es-acct${v ? ' on' : ''}">${platIcon(p)}<span>${PLAT_NAME[p]}<small>${v ? (p === 'youtube' ? 'Logged in' : 'Logged in as ' + esc(String(v))) : 'Not logged in'}</small></span>${v ? '' : `<button class="btn" data-login="${p}">Log in</button>`}</div>`;
+      return `<div class="es-acct${v ? ' on' : ''}">${platIcon(p)}<span>${PLAT_NAME[p]}<small>${v ? (PLATFORMS[p].me.named ? 'Logged in as ' + esc(String(v)) : 'Logged in') : 'Not logged in'}</small></span>${v ? '' : `<button class="btn" data-login="${p}">Log in</button>`}</div>`;
     }).join('');
     const list = esLearnList(), seen = new Set(intro.seen || []);
     first.querySelector('.es-prog').textContent = `${list.filter(c => seen.has(c.id)).length} of ${list.length} seen`;

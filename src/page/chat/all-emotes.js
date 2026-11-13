@@ -1,5 +1,5 @@
 import { overBox, sendEmote, sendSite, setLock } from './all-chat.js';
-import { PLAT_NAME, platOf } from '../platforms/platforms.js';
+import { PLAT_NAME, platOf, platform } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
 import { chAvatar } from '../windows/channel-picker.js';
@@ -105,7 +105,8 @@ function pickEmote(view, w, e, recent){
 function pastedEmotes(view, w, text){
   const ch = sendSite(w); if (!ch) return text;
   const found = new Map();   // name -> { send, url }
-  if (platOf(ch) === 'kick') text = text.replace(/\[emote:(\d+):([^\]\s]+)\]/g, (_, id, name) => { found.set(name, { send: `[emote:${id}:${name}]`, url: `https://files.kick.com/emotes/${id}/fullsize` }); return name; });
+  const paste = platform(ch).emotes.paste;   // (a site's emotes in its own form: Kick's [emote:id:name])
+  if (paste) text = paste(text, (name, e) => found.set(name, e));
   const words = new Set(text.split(/\s+/).filter(w => w && !found.has(w)));
   const take = () => {
     if (!found.size || sendSite(w) !== ch) return;
@@ -174,7 +175,7 @@ async function openEmotePicker(view, w){
   if (ep.hidden) return;
   const groups = [...all.filter(g => !g.channels), ...all.filter(g => g.channels)];   // (Sub emotes and their channels last)
   if (!groups.length){
-    ep.replaceChildren(element('div', 'all-ep-h', `${p} emotes`), element('div', 'all-ep-none', platOf(ch) === 'youtube' ? 'YouTube\'s emoji are in its own chat box' : `No emotes found: you may need to sign in to ${p} (Settings › Accounts)`));
+    ep.replaceChildren(element('div', 'all-ep-h', `${p} emotes`), element('div', 'all-ep-none', platform(ch).emotes.none || `No emotes found: you may need to sign in to ${p} (Settings › Accounts)`));
     return;
   }
   // a section for each kind, and for each channel in Sub emotes: { key, group, label, pic?, emotes }

@@ -1,4 +1,4 @@
-/* Kick's /prediction window in a chat window (chat/kick-prediction.js): the slide-up panel of kick-commands.css, the chat's
+/* Kick's /prediction window in a chat window (sites/kick/prediction.js): the slide-up panel of commands.css, the chat's
    full width, with Kick's own look (its colours, sizes and corners); it scrolls when the chat is shorter than it */
 .kpred{gap:0;max-height:100%;overflow-y:auto;overscroll-behavior:contain;padding:16px 14px 14px;background:#181b1f}
 .kpred h3{font-size:18px;font-weight:700;line-height:28px}

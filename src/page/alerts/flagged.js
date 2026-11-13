@@ -3,9 +3,10 @@ import { allLooking, heldWait, pressHeld, youMod } from '../chat/all-chat.js';
 import { wins } from '../core.js';
 import { addNote, updateNotes } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
-import { chLabel, chLabelP, platform } from '../platforms/platforms.js';
+import { chLabel, chLabelP, heldByOf, platform } from '../platforms/platforms.js';
 import { DESKTOP } from '../shared/env.js';
 import { store } from '../shared/store.js';
+import { PLATFORMS } from '../sites/sites.js';
 
 /* ---------- Flagged (Settings › Flagged): what Twitch and YouTube flag for moderators, in chats you moderate ----------
    A message held for a moderator (Twitch's AutoMod, YouTube's held for review) and a suspicious user's message (Twitch:
@@ -38,9 +39,9 @@ function flaggedFrom(w, m){
 function heldAlert(w, m){
   const k = m.site + ':' + m.id, a = alerts.flagged;
   if (waiting.has(k) || !flaggedIn(w.channel) || !a[m.site + 'Held']) return;
-  waiting.set(k, { ch: w.channel, timer: m.site === 'twitch' ? setTimeout(() => heldHandled(k, 'expired'), heldWait.ms) : 0 });
+  waiting.set(k, { ch: w.channel, timer: PLATFORMS[m.site].held.expires ? setTimeout(() => heldHandled(k, 'expired'), heldWait.ms) : 0 });
   raise(w, { what: 'held', site: m.site, hid: m.id, sender: m.msg.sender, body: textOf(m.msg), why: m.why || '' },
-    m.site === 'youtube' ? `Held for review in ${chLabel(w.channel)}'s chat: ${m.msg.sender}` : `AutoMod held ${m.msg.sender}'s message in ${chLabel(w.channel)}'s chat`);
+    heldByOf(m.site) ? `${heldByOf(m.site)} held ${m.msg.sender}'s message in ${chLabel(w.channel)}'s chat` : `Held for review in ${chLabel(w.channel)}'s chat: ${m.msg.sender}`);
 }
 function flagsAlert(w, m){
   const a = alerts.flagged, f = m.flags || [];

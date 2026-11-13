@@ -7,6 +7,7 @@ import { autoFit, setAutoFit } from '../channels/channels.js';
 import { keysOn, setKeysOn } from '../help/help.js';
 import { DESKTOP } from '../../shared/env.js';
 import { settings } from '../../shared/settings.js';
+import { emoteSites } from '../../sites/in-site.js';
 import { runIn } from '../../windows/view.js';
 import { emoteOn, markNewEmotes, newEmotesOn, pngOf, viewVars } from '../../windows/views.js';
 
@@ -63,9 +64,9 @@ function init(){
   {
     const pic = $('#emoteSample');
     pic.src = SAMPLE_EMOTE;
-    emoteAgent();                                            // the card, here (it doesn't open by itself: it's off in this page)
+    emoteAgent(emoteSites());                                // the card, here (it doesn't open by itself: it's off in this page)
     window.__kmvEmote.setExampleSend((what, d) => { if (what === 'copy') copySample(d && d.url); });
-    const e = () => ({ name: 'pearWave', text: 'pearWave', small: SAMPLE_EMOTE, big: SAMPLE_EMOTE, site: 'Kick', animated: false, addOn: false });
+    const e = () => ({ name: 'pearWave', text: 'pearWave', small: SAMPLE_EMOTE, big: SAMPLE_EMOTE, site: emoteSites()[0].name, animated: false, addOn: false });   // (as the first site's emote)
     let t = 0;
     pic.addEventListener('pointerenter', () => { clearTimeout(t); t = setTimeout(() => window.__kmvEmote.preview(pic, e(), true), 120); });
     pic.addEventListener('pointerleave', () => { clearTimeout(t); window.__kmvEmote.hideSoon(); });

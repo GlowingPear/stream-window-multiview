@@ -2,7 +2,7 @@ import { $ } from '../../core.js';
 import { allowLink, applyLink, backAt, disconnectLink, kickAuto, kickOut, linkIcon, linkOn, linkState, pairAgainLink,
   setKickAuto, setLinkOn, testLink } from '../../platforms/pear-drops.js';
 import { watchSignedIn } from '../../platforms/platforms.js';
-import { effectiveSignedIn } from '../../platforms/players-link.js';
+import { PEAR_SITE, effectiveSignedIn } from '../../platforms/players-link.js';
 import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
@@ -83,7 +83,7 @@ function renderCard(){
   const ch = card.querySelector('.ca-chip');
   ch.textContent = chip.text; ch.className = 'ca-chip ' + chip.tone;
   const v = lineFor(on ? st : (st && { ...st, peer: peer && { ...peer, status: 'off' } }), {
-    auto, out: kickOut, backAt, signedIn: effectiveSignedIn('kick', { auto, out: kickOut, watch: watchSignedIn })
+    auto, out: kickOut, backAt, signedIn: effectiveSignedIn(PEAR_SITE, { auto, out: kickOut, watch: watchSignedIn })
   });
   const foot = card.querySelector('.ca-foot');
   const shown = testAnswer ? { line: [testAnswer.text], tone: testAnswer.ok ? 'ok' : 'wait' } : v;
