@@ -475,6 +475,52 @@ test('the Link channels card: add an account by name, make one main, the streame
   assert.equal(await page.isVisible('#linkDlg'), false);
 });
 
+test('two channels on one site: the card links a second Kick channel; their tabs and badges say 1 and 2, the tips their names; the chat and Switch to Kick pick the right one', async t => {
+  const page = await linkedApp(t, { streamers: [{ ...STREAMER, accounts: ['quietkoala', 'tw:quietkoala'] }], saved: ['quietkoala', 'tw:quietkoala'] });
+  await page.evaluate(live => window.smvNotes.liveStatus(live), { ...LIVE, koalaclips: { live: true, viewers: 80, title: 'clips', checked: Date.now() } });
+  await page.evaluate(() => window.openLinkCard('quietkoala'));
+  assert.deepEqual(await page.$$eval('#linkDlg .lc-plat button', bs => bs.map(b => b.dataset.p + (b.classList.contains('on') ? '*' : ''))), ['kick', 'twitch', 'youtube*'],
+    'every site, the one they don\'t have yet picked');
+  await page.click('#linkDlg .lc-plat button[data-p=kick]');
+  await page.fill('#lcIn', 'quietkoala');
+  await page.click('#linkDlg button[data-cmd="link.add"]');
+  assert.match(await page.textContent('#linkDlg .lc-err'), /^quietkoala on Kick is already one of theirs$/);
+  await page.fill('#lcIn', 'koalaclips');
+  await page.click('#linkDlg button[data-cmd="link.add"]');
+  assert.deepEqual(await page.evaluate(() => window.linkedApi.listStreamers()[0].accounts), ['quietkoala', 'koalaclips', 'tw:quietkoala']);
+  assert.deepEqual(await page.$$eval('#linkDlg .lc-acc .pi', l => l.map(i => i.textContent)), ['K1', 'K2', 'T'], 'numbered only where a site repeats');
+  await page.click('#linkDlg button[data-cmd="link.done"]');
+  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'both'));
+  const tab = '#stage .win.stream:not(.tab-hidden) .ptab';
+  assert.deepEqual(await page.$$eval(tab, bs => bs.map(b => b.textContent)), ['K1', 'K2', 'T']);
+  assert.match(await page.getAttribute(tab + '[data-ch=koalaclips]', 'title'), /^Kick \(koalaclips\) · live · 80 watching/);
+  assert.equal(await page.getAttribute(tab + '[data-ch=koalaclips]', 'aria-label'), 'Kick (koalaclips) · live · 80 watching', 'the number isn\'t read out: the name is');
+  // the number: small, over the tab's bottom right corner
+  assert.deepEqual(await page.$eval(tab + '[data-ch=koalaclips]', b => { const r = b.getBoundingClientRect(), n = b.querySelector('.pn').getBoundingClientRect();
+    return [n.right > r.right, n.bottom > r.bottom, n.left > r.left + r.width / 2, n.height <= r.height / 2]; }), [true, true, true, true]);
+  await page.click(tab + '[data-ch=koalaclips]');
+  assert.equal((await shown(page, 'chat'))[0].ch, 'koalaclips', 'the chat follows that channel, not their other Kick one');
+  await page.click(tab + '[data-ch=koalaclips]', { button: 'right' });
+  await page.waitForSelector('#tabMenu:not([hidden])');
+  assert.match(await page.textContent('#tabMenu .tm-head'), /^koalaclips on Kick · live/);
+  assert.ok(await page.isVisible('#tabMenu button:has-text("Make Kick (koalaclips) the main channel")'));
+  await page.keyboard.press('Escape');
+  // the search box: their sites numbered the same way; Switch every linked window to Kick takes their main one
+  await page.click(tab + '[data-ch="tw:quietkoala"]');
+  await page.keyboard.press('Control+k');
+  await page.keyboard.type('quietkoala');
+  await page.waitForTimeout(300);
+  assert.deepEqual(await page.$$eval('#palList .pal-row.hero .pal-sic .pi', l => l.map(i => i.textContent)), ['K1', 'K2', 'T']);
+  await page.fill('#palQ', 'Switch every linked window to Kick');
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Enter');
+  assert.equal((await shown(page, 'stream'))[0].ch, 'quietkoala', 'their main channel, not the other Kick one');
+  // unlinking the second (its tab's menu): it's a window of its own, and theirs is back to a plain K
+  await page.click(tab + '[data-ch=koalaclips]', { button: 'right' });
+  await page.click('#tabMenu button:has-text("Unlink from")');
+  assert.deepEqual(await page.$$eval('#stage .win.stream:not(.tab-hidden)', ws => ws.map(w => [...w.querySelectorAll('.ptab')].map(b => b.textContent).join(' '))), ['K T', 'K']);
+});
+
 test('Settings › Linked channels: off, the page only says what it does; on, its five tabs', async t => {
   const page = await linkedApp(t, { on: false });
   await page.evaluate(() => window.openSettings('linked'));

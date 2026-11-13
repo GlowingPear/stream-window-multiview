@@ -186,7 +186,7 @@ function palRowEl(r, i){
   const it = r.item, off = commands.disabledWhy(it), hero = !!r.hero;
   const sub = palParts(palVal(hero && it.heroSub ? it.heroSub : it.sub));
   const line = element('span', 'pal-line', palMarked(it.title, r.marks),
-    it.siteIcons && element('span', 'pal-sic', ...it.siteIcons.map(x => element('i', { class: `pi pi-${x.p}${x.dim ? ' dim' : ''}`, title: PLAT_NAME[x.p] }, PLAT_NAME[x.p][0]))),   // a linked streamer's sites
+    it.siteIcons && element('span', 'pal-sic', ...it.siteIcons.map(x => element('i', { class: `pi pi-${x.p}${x.dim ? ' dim' : ''}`, title: PLAT_NAME[x.p] }, PLAT_NAME[x.p][0], x.n ? element('span', { class: 'pn', 'aria-hidden': 'true' }, String(x.n)) : null))),   // a linked streamer's sites
     hero && it.live && palLivePill(), ...(hero ? palVal(it.pills) || [] : []).map(p => palPill(p.text, p.accent)),
     ...(palVal(it.tags) || []).map(t => palPill(t)), hero && palSites(it, true));
   const subEl = (sub.length || (it.live && !hero)) && element('span', 'pal-sub', !hero && it.live && palLivePill(), ...sub);

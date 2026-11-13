@@ -12,6 +12,11 @@
 
 .pi{flex:none;display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;font:800 11px/1 system-ui,sans-serif;letter-spacing:0}
 .pi-kick{background:#53fc18;color:#0b0e0f}.pi-twitch{background:#9146ff;color:#fff}.pi-youtube{background:#ff2a2a;color:#fff}
+/* a streamer's second (third, …) account on one site: a tiny number at the bottom right of its badge or tab (platforms/linked.js) */
+.pi:where(:has(> .pn)),.ptab:has(> .pn){box-sizing:border-box;padding:0 3px 3px 0}   /* (its letter moves up and left, clear of the number) */
+.pi:where(:has(> .pn)){position:relative;margin-right:3px}
+.pn{position:absolute;right:-5px;bottom:-5px;min-width:10px;height:10px;padding:0 2px;box-sizing:border-box;border-radius:5px;background:var(--text);color:var(--bg);
+  font:800 7.5px/10px system-ui,sans-serif;letter-spacing:0;text-align:center;box-shadow:0 0 0 1.5px rgba(0,0,0,.55);pointer-events:none}
 .am-head{padding:6px 2px 8px 10px;font-size:13px;font-weight:700;border-bottom:1px solid var(--line);margin-bottom:4px}
 .am-head span{display:block;font-size:11px;font-weight:400;color:var(--muted)}
 #accountMenu{width:440px}

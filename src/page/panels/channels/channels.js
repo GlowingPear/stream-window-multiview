@@ -13,8 +13,8 @@ import { appendFollowSugs } from './follow-suggestions.js';
 import { esRefresh } from '../empty-stage/empty-stage.js';
 import { openLinkCard } from '../linked/link-card.js';
 import { openProfile } from '../profiles/profiles.js';
-import { accountsOf, canLink, laterPair, link, linkedOn, listStreamers, nameOf, notSame, optFor, streamerName,
-  streamerOf, suggestions } from '../../platforms/linked.js';
+import { accountsOf, canLink, laterPair, link, linkedOn, listStreamers, nameOf, notSame, optFor, siteName, siteNum,
+  streamerName, streamerOf, suggestions } from '../../platforms/linked.js';
 import { PLAT_NAME, chLabel, infoNames, normCh, platIcon, platOf, rememberNames } from '../../platforms/platforms.js';
 import { element } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -298,7 +298,7 @@ function streamerRow(e){
     title: 'Open them (as set in the Stream / Chat dropdown and Settings › Linked channels)', picTitle: live.length ? 'Live now' : 'Offline' });
   row.querySelector('.sv-av .pi')?.remove();
   row.querySelector('.sv-line .nm').after(element('span', 'sv-sites', ...chs.map(c => siteIcon(c))));
-  live.forEach(c => { const i = infoFor(c); if (i.viewers != null) meta.append(element('span', { class: 'sv-view sv-pv', title: `${PLAT_NAME[platOf(c)]}: watching now` }, siteIcon(c, true), fmtViewers(i.viewers))); });
+  live.forEach(c => { const i = infoFor(c); if (i.viewers != null) meta.append(element('span', { class: 'sv-view sv-pv', title: `${siteName(c)}: watching now` }, siteIcon(c, true), fmtViewers(i.viewers))); });
   if (DESKTOP && ROLE === 'main' && chs.some(c => autoOpen.includes(c))) meta.insertAdjacentHTML('beforeend', `<span class="bolt" title="Opens by itself when any of them goes live">${icon.bolt}</span>`);
   const open = svExpanded.has(s.id);
   acts.prepend(element('button', { class: 'exp' + (open ? ' on' : ''), html: icon.chevDown, title: open ? 'Hide their channels' : 'Their channels', 'aria-expanded': String(open),
@@ -311,7 +311,7 @@ function streamerRow(e){
 // A site's tiny icon, dimmed when that channel is offline
 function siteIcon(ch, plain){
   const p = platOf(ch), info = infoFor(ch);
-  return element('i', { class: `pi pi-${p}${!plain && !(info && info.live) ? ' dim' : ''}`, title: PLAT_NAME[p] + (plain ? '' : info ? info.live ? ' · live' : ' · offline' : ''), 'aria-label': PLAT_NAME[p] }, PLAT_NAME[p][0]);
+  return element('i', { class: `pi pi-${p}${!plain && !(info && info.live) ? ' dim' : ''}`, title: siteName(ch) + (plain ? '' : info ? info.live ? ' · live' : ' · offline' : ''), 'aria-label': siteName(ch) }, PLAT_NAME[p][0], siteNum(ch));
 }
 function accountRows(e){
   const box = element('div', 'sv-accs');

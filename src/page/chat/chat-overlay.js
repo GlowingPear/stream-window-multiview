@@ -1,7 +1,7 @@
 import { ROLE, wins } from '../core.js';
 import { pushMyName } from '../panels/bell/all-notifications.js';
 import { cleanParts, mentBodyNodes } from '../panels/bell/bell.js';
-import { linkOpt, linkedOn, sameStreamer, streamerOf } from '../platforms/linked.js';
+import { linkOpt, linkedOn, sameStreamer, siteName, siteNum, streamerOf } from '../platforms/linked.js';
 import { PLAT_NAME, chLabel, platOf } from '../platforms/platforms.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
@@ -44,7 +44,7 @@ function drawLines(ch, list){
     if (!box) { box = element('div', { class: 'co-box', 'aria-live': 'polite' }); body.append(box); }
     for (const m of list) {
       const parts = cleanParts(m.parts), id = ++lineId;
-      const line = element('div', 'co-line', every && element('i', { class: 'pi pi-' + platOf(ch), title: PLAT_NAME[platOf(ch)] }, PLAT_NAME[platOf(ch)][0]), element('b', null, String(m.sender || '').slice(0, 30)), ': ',
+      const line = element('div', 'co-line', every && element('i', { class: 'pi pi-' + platOf(ch), title: siteName(ch) }, PLAT_NAME[platOf(ch)][0], siteNum(ch)), element('b', null, String(m.sender || '').slice(0, 30)), ': ',
         parts ? mentBodyNodes({}, parts, false) : String(m.body || '').slice(0, 300));
       line.dataset.id = id;
       box.append(line);

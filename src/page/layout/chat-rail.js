@@ -5,7 +5,7 @@ import { SH, SW } from './geometry.js';
 import { applyRects, colKey, featuredCh, inColOrder, layoutChatsOnly, rowRects, setColsMode, sortedChats, tile,
   vidLabel } from './layouts.js';
 import { save } from '../persistence.js';
-import { nameOf, sameStreamer } from '../platforms/linked.js';
+import { nameOf, sameStreamer, siteName, siteNum } from '../platforms/linked.js';
 import { PLAT_NAME, chLabel, platOf } from '../platforms/platforms.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
@@ -125,8 +125,8 @@ function renderTabs(chats, chat){
 // A linked streamer's rail tab: an icon per site, clicking one switches the rail chat to it (windows/frames.js)
 function railSites(c){
   const chs = tabChannels(c); if (chs.length < 2) return null;
-  return element('span', 'rl-sites', ...chs.map((ch, i) => element('i', { class: `pi pi-${platOf(ch)}${ch === c.channel ? ' on' : ''}`, title: `${PLAT_NAME[platOf(ch)]} chat`,
-    onclick: e => { e.stopPropagation(); showRailChat(c.channel); switchTo(c, i + 1); } }, PLAT_NAME[platOf(ch)][0])));
+  return element('span', 'rl-sites', ...chs.map((ch, i) => element('i', { class: `pi pi-${platOf(ch)}${ch === c.channel ? ' on' : ''}`, title: `${siteName(ch)} chat`,
+    onclick: e => { e.stopPropagation(); showRailChat(c.channel); switchTo(c, i + 1); } }, PLAT_NAME[platOf(ch)][0], siteNum(ch))));
 }
 function syncTab(c){
   const t = [...tabsEl.querySelectorAll('.rl-tab')].find(t => t.dataset.ch === c.channel); if (!t) return;

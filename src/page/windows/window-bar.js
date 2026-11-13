@@ -3,6 +3,7 @@ import { newFor } from '../chat/new-messages.js';
 import { $, wins } from '../core.js';
 import { infoFor } from '../panels/channels/channels.js';
 import { barButtons } from '../panels/settings/windows-pane.js';
+import { siteName, siteNo, siteNum } from '../platforms/linked.js';
 import { PLAT_NAME, chLabel, platOf } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
 import { icon } from '../shared/icons.js';
@@ -124,8 +125,8 @@ function allBarMenu(w, more){
     if (barMenu.children.length) barMenu.appendChild(element('hr', 'bm-hr'));
     for (const ch of chs){
       const p = platOf(ch), live = infoFor(ch)?.live;
-      barMenu.appendChild(element('div', { class: 'bm-site', role: 'group', 'aria-label': PLAT_NAME[p] },
-        element('span', { class: 'bm-sn', title: `${PLAT_NAME[p]}${live ? ' · live' : ''}` }, element('i', { class: 'pi pi-' + p + (live ? ' bm-live' : '') }, PLAT_NAME[p][0]), element('span', null, PLAT_NAME[p])),
+      barMenu.appendChild(element('div', { class: 'bm-site', role: 'group', 'aria-label': siteName(ch) },
+        element('span', { class: 'bm-sn', title: `${siteName(ch)}${live ? ' · live' : ''}` }, element('i', { class: 'pi pi-' + p + (live ? ' bm-live' : '') }, PLAT_NAME[p][0], siteNum(ch)), element('span', null, siteNo(ch) ? chLabel(ch) : PLAT_NAME[p])),
         ...acts.map(a => {
           const x = siteAction(a, ch);
           return element('button', { type: 'button', role: 'menuitem', class: 'bm-act' + (x.on ? ' on' : '') + (x.dev ? ' bm-dev' : ''), disabled: x.off, title: x.title, 'aria-label': x.title, dataset: { cmd: 'win.site.' + (x.key || a) }, html: x.icon,

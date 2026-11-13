@@ -29,7 +29,7 @@ import { bellVars, mentMuted, mentOn, mentWords, myName, readChat, syncAtBtn } f
 import { infoFor, isSaved, toggleSaved } from '../panels/channels/channels.js';
 import { copyWinState, devOn, inspectWin } from '../panels/developer/developer.js';
 import { openExtMenu } from '../panels/extensions/extensions.js';
-import { chanOpt, nameOf, optFor, setChanOpt, streamerBots, streamerOf } from '../platforms/linked.js';
+import { accountsOf, chanOpt, nameOf, optFor, setChanOpt, siteName, siteNo, siteNum, streamerBots, streamerOf } from '../platforms/linked.js';
 import { PLATFORMS, PLAT_NAME, chLabel, modIs, modUrl, openModView, platOf, platform, popUp } from '../platforms/platforms.js';
 import { likeHelp, toggleLike } from '../platforms/youtube-options.js';
 import { ask } from '../shared/ask.js';
@@ -354,7 +354,7 @@ function removed(f, view, d, ch){
   if (held && held.kind === 'held') return heldEnd(held, 'DENIED', '');   // (YouTube's Hide: the held message taken away)
   const mod = youMod(ch), site = PLAT_NAME[d.site];
   const hit = d.kind === 'delete' ? [f.byId.get(d.site + ':' + d.target)].filter(Boolean)
-    : f.msgs.filter(m => m.site === d.site && m.kind === 'message' && (d.kind === 'clearall' || (d.login ? m.login === d.login : m.userId === d.userId)));
+    : f.msgs.filter(m => m.site === d.site && m.ch === ch && m.kind === 'message' && (d.kind === 'clearall' || (d.login ? m.login === d.login : m.userId === d.userId)));
   const lineOf = m => view && view.list.querySelector(`.al-m[data-key="${CSS.escape(m.site + ':' + m.id)}"]`);
   if (!mod) hit.forEach(m => { f.msgs.splice(f.msgs.indexOf(m), 1); f.byId.delete(m.site + ':' + m.id); lineOf(m)?.remove(); });
   else hit.forEach(m => {
@@ -470,15 +470,15 @@ function unbanned(f, view, d, ch){
 }
 
 /* ---- pins: the pill (📌 and how many) shows and hides one compact strip, however many sites have one ---- */
-// A site's pin (each site has one at a time), or its pin taken down. A new one makes the pill ping; one already up when
+// A chat's pin (each chat has one at a time), or its pin taken down. A new one makes the pill ping; one already up when
 // the chat opens (quiet: read by pinAgent) goes in without.
 function setPin(f, s, ch, d, quiet = false){
-  if (d.kind === 'unpin' && d.id && !f.pins.some(p => p.site === d.site && p.id === d.id)) return;   // (another pin's)
-  if (d.kind === 'pin' && quiet && f.pins.some(p => p.site === d.site && p.id === d.id)) return;   // (heard already)
-  f.pins = f.pins.filter(p => p.site !== d.site);
+  if (d.kind === 'unpin' && d.id && !f.pins.some(p => p.ch === ch && p.id === d.id)) return;   // (another pin's)
+  if (d.kind === 'pin' && quiet && f.pins.some(p => p.ch === ch && p.id === d.id)) return;   // (heard already)
+  f.pins = f.pins.filter(p => p.ch !== ch);
   if (d.kind === 'pin'){ d.msg.ch = ch; f.pins.unshift({ site: d.site, ch, id: d.id, msg: d.msg, t: d.t, by: d.by || '' }); }
   const view = viewFor(s); if (!view) return;
-  if (d.kind === 'pin') view.pinAt = d.site;
+  if (d.kind === 'pin') view.pinAt = ch;
   renderPins(view);
   if (d.kind === 'pin' && !quiet) pingPill(view, d.site);
 }
@@ -501,7 +501,7 @@ function renderPins(view){
   // one line each: site, name, the message, and when (or 1 of 2). A press on the message shows all of it (and again: one line)
   const row = (p, sub, ...end) => {
     const text = p.msg.parts.map(x => x.text || x.name).join('');
-    return element('div', { class: 'all-pin-row' + (view.pinFull ? ' full' : ''), title: `${p.msg.sender}: ${text}${p.by ? `\nPinned by ${p.by}` : ''}` }, element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0]),
+    return element('div', { class: 'all-pin-row' + (view.pinFull ? ' full' : ''), title: `${p.msg.sender}: ${text}${p.by ? `\nPinned by ${p.by}` : ''}` }, element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0], siteNum(p.ch)),
       element('div', { class: 'all-pin-t', role: 'button', tabindex: '0', 'aria-expanded': String(!!view.pinFull), dataset: { cmd: 'all.pinFull' },
         onclick: () => { view.pinFull = !view.pinFull; renderPins(view); }, onkeydown: e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.target.click(); } } },
         (st => element('b', { class: pillCls(st).trim(), style: st }, p.msg.sender))(nameStyle(p.msg, p.ch)), ' ', ...partsEl(p.msg.parts, p.ch)), element('small', 'all-pin-s', sub), ...end);
@@ -510,10 +510,10 @@ function renderPins(view){
     view.pins.replaceChildren(...f.pins.map((p, i) => row(p, pinAgo(p.t), !i && element('button', { type: 'button', class: 'all-pin-open', title: 'Only the newest', 'aria-label': 'Only the newest', 'aria-expanded': 'true', html: CHEVRON, dataset: { cmd: 'all.pinsOpen' }, onclick: () => { view.pinsOpen = false; renderPins(view); } }))));
     return;
   }
-  const cur = f.pins.find(p => p.site === view.pinAt) || f.pins[0];
+  const cur = f.pins.find(p => p.ch === view.pinAt) || f.pins[0];
   view.pins.replaceChildren(row(cur, pinAgo(cur.t),
-    n > 1 && element('span', 'all-pin-sw', ...f.pins.map(p => element('button', { type: 'button', class: 'pi pi-' + p.site + (p === cur ? ' on' : ''), title: `${PLAT_NAME[p.site]}'s pin`, 'aria-pressed': String(p === cur), dataset: { cmd: 'all.pinSite' },
-      onclick: () => { view.pinAt = p.site; renderPins(view); } }, PLAT_NAME[p.site][0]))),
+    n > 1 && element('span', 'all-pin-sw', ...f.pins.map(p => element('button', { type: 'button', class: 'pi pi-' + p.site + (p === cur ? ' on' : ''), title: `${siteName(p.ch)}'s pin`, 'aria-pressed': String(p === cur), dataset: { cmd: 'all.pinSite' },
+      onclick: () => { view.pinAt = p.ch; renderPins(view); } }, PLAT_NAME[p.site][0], siteNum(p.ch)))),
     n > 1 && element('button', { type: 'button', class: 'all-pin-open', title: `All ${n}`, 'aria-label': `All ${n} pins`, 'aria-expanded': 'false', html: CHEVRON, dataset: { cmd: 'all.pinsOpen' }, onclick: () => { view.pinsOpen = true; renderPins(view); } })));
 }
 
@@ -777,13 +777,13 @@ function shoutItems(m, view, item, group){
 }
 function lineEl(m){
   if (m.kind === 'mine') return m.state === 'seen' || m.state === 'dropped' || (m.cmd && m.state !== 'failed') ? null : mineEl(m);   // (a command: a line only if it couldn't be sent)
-  if (m.ch && siteOff(ownerOf(m.ch), m.site)) return null;   // (its site switched off in this ALL; your own lines stay)
+  if (m.ch && siteOff(ownerOf(m.ch), m.ch)) return null;   // (its site switched off in this ALL; your own lines stay)
   if (m.kind === 'held') return heldEl(m);
   if (m.kind === 'raidout'){
     // (Twitch's countdown: getting ready, then raided; or called off)
     const viewers = m.viewers ? ` · ${m.viewers.toLocaleString('en-US')} ${m.viewers === 1 ? 'viewer' : 'viewers'}` : '', left = m.soon ? raidLeft(m) : -1;
     return element('div', { class: `al-ev al-raidout al-${SITE_CLASS[m.site]}${m.soon ? ' al-raidsoon' : ''}${m.off ? ' al-raidoff' : ''}`, dataset: { key: m.site + ':' + m.id } },
-      element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0]), element('span', { class: 'al-evt', html: icon.raid }),
+      element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0], siteNum(m.ch)), element('span', { class: 'al-evt', html: icon.raid }),
       m.soon ? element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' is raiding ', element('b', null, chLabel(m.to)), element('span', 'al-amt', viewers))
         : m.off ? element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' called off the raid on ', element('b', null, chLabel(m.to)))
         : element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' raided ', element('b', null, chLabel(m.to)), element('span', 'al-amt', ` on ${PLAT_NAME[m.site]}${viewers}`)),
@@ -793,9 +793,9 @@ function lineEl(m){
           onclick: () => { addParsed({ channel: m.to, only: null }); m.opened = true; redrawLine(m); } }, 'Open ›'));
   }
   if (m.kind === 'modlog') return element('div', { class: `al-ev al-log al-${SITE_CLASS[m.site]}` + (m.lift ? ' al-lift' : ''), dataset: { key: m.site + ':' + m.id } },
-    element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0]), element('span', { class: 'al-evt', html: SHIELD }), element('span', 'al-evw', ...m.words.map(x => x instanceof Node ? x.cloneNode(true) : x)));
+    element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0], siteNum(m.ch)), element('span', { class: 'al-evt', html: SHIELD }), element('span', 'al-evw', ...m.words.map(x => x instanceof Node ? x.cloneNode(true) : x)));
   const site = PLAT_NAME[m.site] || m.site;
-  const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]), (m.sentIn || m.sharedAs) && sharedEl(m), ...badgeEls(m));
+  const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0], siteNum(m.ch)), (m.sentIn || m.sharedAs) && sharedEl(m), ...badgeEls(m));
   const can = m.kind === 'message' && !whyNot(m, 'delete'), canAll = can && !whyNot(m);
   const st = nameStyle(m);
   const name = element('b', { class: 'al-n' + (can ? ' can' : '') + pillCls(st), style: st, role: 'button', tabindex: '-1', dataset: { cmd: 'all.profile' },
@@ -812,7 +812,7 @@ function lineEl(m){
     const to = m.gift ? m.gift.to : [], me = meOn(m.site);
     const open = m.open && !full;
     return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}${open ? ' al-open al-can' : ''}${to.length ? ' al-gift' : ''}${m.gift && m.gift.me ? ' al-gift-me' : ''}`, dataset: { key: m.site + ':' + m.id },
-      'aria-expanded': open && 'true', title: open && 'Back to one line', onpointerenter: e => evOpenable(m, e.currentTarget), onclick: e => evToggle(m, e) }, element('i', { class: 'pi pi-' + m.site }, site[0]),
+      'aria-expanded': open && 'true', title: open && 'Back to one line', onpointerenter: e => evOpenable(m, e.currentTarget), onclick: e => evToggle(m, e) }, element('i', { class: 'pi pi-' + m.site }, site[0], siteNum(m.ch)),
       element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts, m.ch)) : ''),
       // (a raid: shout out who raided, Settings › Shoutouts; then that it's done)
       raidSo(m), eventSo(m), goalEl(m),
@@ -1001,7 +1001,7 @@ function renderHealth(view, w, chs){
   const bad = chs.map(ch => [ch, healthState(ch)]).filter(([, h]) => h && !h.hidden);
   view.health.hidden = !bad.length;
   view.health.replaceChildren(...bad.map(([ch, h]) => element('div', 'all-hl',
-    element('i', { class: 'all-hl-ic', html: icon.alert }), element('i', { class: 'pi pi-' + platOf(ch) }, PLAT_NAME[platOf(ch)][0]),
+    element('i', { class: 'all-hl-ic', html: icon.alert }), element('i', { class: 'pi pi-' + platOf(ch) }, PLAT_NAME[platOf(ch)][0], siteNum(ch)),
     element('span', 'all-hl-t', h.why),
     element('button', { type: 'button', class: 'all-hl-x', 'aria-label': 'Hide', title: 'Hide (it comes back if it changes)', html: icon.close, dataset: { cmd: 'all.healthHide' }, onclick: () => { h.hidden = true; renderHealth(view, w, chs); } }),
     element('div', 'all-hl-acts',
@@ -1012,10 +1012,10 @@ function renderHealth(view, w, chs){
 function renderTop(view, w){
   const chs = tabChannels(w), heard = chs.filter(ch => frameOf(w).some(o => o.channel === ch && o.kind === 'chat'));
   // each site's switch: shown in ALL or hidden (faded and crossed), and whether it's offline or ALL has trouble reading it
-  view.el.querySelector('.all-sites').replaceChildren(...chs.map(ch => { const bad = healthState(ch), p = platOf(ch), off = siteOff(view.s, p);
-    const state = bad ? bad.why : `${PLAT_NAME[p]}${heard.includes(ch) ? '' : ': offline'}`;
+  view.el.querySelector('.all-sites').replaceChildren(...chs.map(ch => { const bad = healthState(ch), p = platOf(ch), off = siteOff(view.s, ch), name = siteName(ch);
+    const state = bad ? bad.why : `${name}${heard.includes(ch) ? '' : ': offline'}`;
     return element('button', { type: 'button', class: 'pi pi-' + p + (heard.includes(ch) ? '' : ' dim') + (bad ? ' warn' : '') + (off ? ' off' : ''), 'aria-pressed': String(!off), dataset: { cmd: 'all.site' },
-      title: `${state}\n${off ? `Show ${PLAT_NAME[p]} in ALL` : `Hide ${PLAT_NAME[p]} in ALL`}`, 'aria-label': `${PLAT_NAME[p]} in ALL`, onclick: () => toggleSite(view.s, p) }, PLAT_NAME[p][0]); }));
+      title: `${state}\n${off ? `Show ${name} in ALL` : `Hide ${name} in ALL`}`, 'aria-label': `${name} in ALL`, onclick: () => toggleSite(view.s, ch) }, PLAT_NAME[p][0], siteNum(ch)); }));
   renderHealth(view, w, chs);
   view.filt.title = `What ALL shows · bots ${botsShown ? 'shown' : 'hidden'}, events ${eventsMode}`;
   view.filt.classList.toggle('set', botsShown || eventsMode !== 'short' || !hypeShown);   // (a dot: not as it starts)
@@ -1058,7 +1058,7 @@ function hypeTrains(s){
   const now = Date.now();
   all.forEach((t, ch) => { if ((t.over && now - t.over > HYPE_OVER) || (!t.over && t.expires && now - t.expires > HYPE_LATE)) all.delete(ch); });
   if (!all.size) hypes.delete(s.id);
-  return [...all.entries()].map(([ch, t]) => ({ ...t, ch })).filter(t => hypeShown && !siteOff(s, platOf(t.ch))).sort((a, b) => b.started - a.started);
+  return [...all.entries()].map(([ch, t]) => ({ ...t, ch })).filter(t => hypeShown && !siteOff(s, t.ch)).sort((a, b) => b.started - a.started);
 }
 const mmss = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
 // what a strip shows that changes by the second: its classes, the ring and the time
@@ -1130,11 +1130,11 @@ function syncSendB(view, w){
 }
 function renderCmp(view, w){
   const ch = sendSite(w), p = ch && platOf(ch);
-  view.pick.replaceChildren(p ? element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]) : element('i', { class: 'pi dim' }, '–'),
+  view.pick.replaceChildren(p ? element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0], siteNum(ch)) : element('i', { class: 'pi dim' }, '–'),
     view.lock ? element('i', { class: 'all-lock', html: icon.lock, title: 'Locked to this site' }) : element('span', 'all-caret', '▾'));
   view.pick.classList.toggle('locked', !!view.lock);
   renderLock(view, w);
-  view.pick.title = view.lock ? `Locked to ${PLAT_NAME[p]} while ${LOCK_WHY[view.lock.kind]} (Esc unlocks)` : p ? `Sending on ${PLAT_NAME[p]} (Tab: the next site)` : 'No chat to send on right now';
+  view.pick.title = view.lock ? `Locked to ${siteName(ch)} while ${LOCK_WHY[view.lock.kind]} (Esc unlocks)` : p ? `Sending on ${siteName(ch)} (Tab: the next site)` : 'No chat to send on right now';
   // Settings › Chat › Channel name in chat boxes: its text, as the sites' boxes say it (the picker beside it shows the site)
   // (its modes say why you can't chat there: that, instead of the name)
   const rules = ch ? chatRules(ch) : null;
@@ -1155,7 +1155,7 @@ function openPickMenu(view, w){
     ...tabChannels(w).map(ch => { const p = platOf(ch), can = ok.includes(ch);
       return element('button', { type: 'button', role: 'menuitemradio', class: 'all-mi' + (ch === cur ? ' on' : ''), disabled: !can, 'aria-checked': String(ch === cur), dataset: { cmd: 'all.sendOn' },
         onclick: () => { setSendSite(view, w, ch); view.menu.hidden = true; view.input.focus(); } },
-        element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]), element('span', null, PLAT_NAME[p] + (can ? '' : ' · ' + why(ch))), ch === main ? element('small', null, 'Main') : ''); }),
+        element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0], siteNum(ch)), element('span', null, siteName(ch) + (can ? '' : ' · ' + why(ch))), ch === main ? element('small', null, 'Main') : ''); }),
     element('div', 'all-mh', element('kbd', null, 'Tab'), ' next site · ', element('kbd', null, '⇧Tab'), ' its own tab'));
   view.menu.hidden = false;
 }
@@ -1345,7 +1345,7 @@ function renderAt(view){
   view.at.replaceChildren(element('div', 'all-at-h', view.lock ? `${PLAT_NAME[platOf(view.lock.ch)]} names` : 'Names in chat'),
     ...view.atList.map((m, i) => element('button', { type: 'button', role: 'option', class: 'all-ati' + (i === view.atSel ? ' on' : ''), 'aria-selected': String(i === view.atSel), dataset: { cmd: 'all.atPick' },
       onmousedown: e => e.preventDefault(), onclick: () => pickAt(view, view.w, m) },
-      element('i', { class: 'pi pi-' + m.site }, PLAT_NAME[m.site][0]), element('span', null, element('b', null, m.sender.slice(0, view.atQ.length + (m.sender.startsWith('@') ? 1 : 0))), m.sender.slice(view.atQ.length + (m.sender.startsWith('@') ? 1 : 0))),
+      element('i', { class: 'pi pi-' + m.site }, PLAT_NAME[m.site][0], siteNum(m.ch)), element('span', null, element('b', null, m.sender.slice(0, view.atQ.length + (m.sender.startsWith('@') ? 1 : 0))), m.sender.slice(view.atQ.length + (m.sender.startsWith('@') ? 1 : 0))),
       element('small', null, PLAT_NAME[m.site]))),
     element('div', 'all-mh', element('kbd', null, '↑'), element('kbd', null, '↓'), ' pick · ', element('kbd', null, 'Tab'), ' or ', element('kbd', null, 'Enter'), ' adds it and locks to its site'));
 }
@@ -1468,7 +1468,7 @@ function openLineMenu(m, at){
   const short = x => `“${x.length > 24 ? x.slice(0, 23) + '…' : x}”`;
   const cw = chatFor(m), trAuto = autoTrFor(m.ch), tr = window.kmv && window.kmv.translate;
   view.fly.close();
-  lm.replaceChildren(...[em && emotePreview(em), element('div', 'all-lh', element('i', { class: 'pi pi-' + m.site, title: site }, site[0]), element('b', null, m.sender)),   // (its site: the badge)
+  lm.replaceChildren(...[em && emotePreview(em), element('div', 'all-lh', element('i', { class: 'pi pi-' + m.site, title: site }, site[0], siteNum(m.ch)), element('b', null, m.sender)),   // (its site: the badge)
     link && item('Open link in your browser', icon.pop, () => openInBrowser(link.href), { cmd: 'all.menuLink' }),
     link && item('Copy link address', icon.link, () => copy(link.href, 'Copied the link'), { cmd: 'all.menuLinkCopy' }),
     selIn && item('Copy', icon.copy, () => copy(selectedText(window.getSelection()) || sel), { cmd: 'all.menuSelCopy' }),
@@ -1533,7 +1533,7 @@ function siteRow(ch, text, run, { off = '', title = '', cmd, end = icon.pop, kee
   const p = platOf(ch);
   return element('button', { type: 'button', role: on === null ? 'menuitem' : 'menuitemcheckbox', class: 'all-li all-mvi' + (on ? ' on' : ''), disabled: !!off, title: off ? title : title || '', 'aria-checked': on === null ? null : String(on), dataset: { cmd },
     onclick: e => { const mv = e.currentTarget.closest('.all-mv'); if (!keep) mv.hidden = true; run(); } },
-    element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]), element('span', null, off || text), off ? '' : element('i', { class: 'all-mvx', html: end }));
+    element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0], siteNum(ch)), element('span', null, off || text), off ? '' : element('i', { class: 'all-mvx', html: end }));
 }
 const chatOf = ch => wins.find(o => o.kind === 'chat' && o.channel === ch);
 // The mod button: each site's mod view (where you're a mod), or all of them at once
@@ -1801,13 +1801,13 @@ function heldEl(h){
   const site = PLAT_NAME[h.site], m = h.msg, st = nameStyle(m), key = h.site + ':' + h.id;
   const name = element('b', { class: 'al-n' + pillCls(st), style: st, role: 'button', tabindex: '-1', dataset: { cmd: 'all.profile' }, title: `${m.sender}'s card on ${site}`, onclick: () => openSiteCard(m) }, m.sender);
   if (h.status !== 'PENDING') return element('div', { class: 'al-m al-held-x', dataset: { key } },
-    element('div', 'al-line', element('span', 'al-who', element('i', { class: 'pi pi-' + h.site, title: site }, site[0])), name, ': ', element('span', 'al-txt', ...partsEl(m.parts, h.ch)),
+    element('div', 'al-line', element('span', 'al-who', element('i', { class: 'pi pi-' + h.site, title: site }, site[0], siteNum(h.ch))), name, ': ', element('span', 'al-txt', ...partsEl(m.parts, h.ch)),
       element('span', { class: 'al-held-end', title: h.site === 'youtube' ? 'YouTube held it for review, and it wasn\'t shown' : 'AutoMod held it, and it wasn\'t posted' },
         h.status === 'EXPIRED' ? '✕ expired · not posted' : `✕ ${h.site === 'youtube' ? 'hidden' : 'denied'}${resolvedBy(h)}`)));
   const act = allow => element('button', { type: 'button', class: 'al-held-b ' + (allow ? 'ok' : 'no'), disabled: !!h.busy, dataset: { cmd: allow ? 'all.heldAllow' : 'all.heldDeny' },
     title: `${allow ? (h.site === 'youtube' ? 'Show' : 'Allow') : (h.site === 'youtube' ? 'Hide' : 'Deny')} it, with ${site}'s own button`, onclick: () => heldAct(h, allow) }, allow ? '✓ Allow' : '✕ Deny');
   return element('div', { class: 'al-held', dataset: { key }, role: 'group', 'aria-label': `${h.site === 'twitch' ? 'AutoMod held' : 'Held for review'}: ${m.sender}`, oncontextmenu: e => e.preventDefault() },
-    element('div', 'al-held-h', element('i', { class: 'al-held-ic', html: SHIELD }), element('i', { class: 'pi pi-' + h.site, title: site }, site[0]),
+    element('div', 'al-held-h', element('i', { class: 'al-held-ic', html: SHIELD }), element('i', { class: 'pi pi-' + h.site, title: site }, site[0], siteNum(h.ch)),
       element('b', { title: h.note || '' }, h.site === 'twitch' ? 'AutoMod held this' : 'Held for review'), h.why && element('span', 'al-held-why', h.why)),
     element('div', 'al-line', ...badgeEls({ ...m, ch: h.ch }), name, ': ', element('span', 'al-txt', ...partsEl(m.parts, h.ch)), ...flagTags(h)),
     element('div', 'al-held-acts', act(true), act(false), element('span', 'al-held-who', 'Only you and other mods see this')));
@@ -1846,7 +1846,7 @@ function seeFlagged(ch, site, id){
   el.classList.remove('al-held-go'); void el.offsetWidth; el.classList.add('al-held-go');
 }
 // The chip: how many wait for a moderator (in the sites shown); it goes to the oldest
-const heldWaiting = view => feedOf(view.s).msgs.filter(x => x.kind === 'held' && x.status === 'PENDING' && !siteOff(view.s, x.site));
+const heldWaiting = view => feedOf(view.s).msgs.filter(x => x.kind === 'held' && x.status === 'PENDING' && !siteOff(view.s, x.ch));
 function renderHeld(view){
   const n = heldWaiting(view).length, c = view.heldChip;
   c.hidden = !n;
@@ -1884,7 +1884,7 @@ function mineSeen(f, m){
   const me = meOn(m.site);
   if (me && m.login !== me && m.sender.toLowerCase() !== me) return;
   if (me) noteMyLook(m);
-  const p = f.msgs.find(x => x.kind === 'mine' && x.site === m.site && (x.state !== 'failed' || x.late) && x.state !== 'seen' && sameText(x.text, m.parts.map(y => y.text || y.name).join('')));
+  const p = f.msgs.find(x => x.kind === 'mine' && x.ch === m.ch && (x.state !== 'failed' || x.late) && x.state !== 'seen' && sameText(x.text, m.parts.map(y => y.text || y.name).join('')));
   if (!p) return;
   p.state = 'seen';
   f.msgs.splice(f.msgs.indexOf(p), 1);
@@ -1905,7 +1905,7 @@ function mineEl(p){
   }[p.state];
   return element('div', { class: 'al-m al-mine al-mine-' + p.state, dataset: { key: p.site + ':' + p.id } },
     p.threaded && element('span', 'al-q', '↩ replying to ', element('b', null, p.lock.msg.sender)),
-    element('div', 'al-line', element('span', 'al-who', element('i', { class: 'pi pi-' + p.site, title: site }, site[0]),
+    element('div', 'al-line', element('span', 'al-who', element('i', { class: 'pi pi-' + p.site, title: site }, site[0], siteNum(p.ch)),
       ...badgeEls({ site: p.site, ch: p.ch, badges: p.badges, pics: p.myPics })), (st => element('b', { class: 'al-n' + pillCls(st), style: st }, p.sender))(nameStyle(p)), ': ', element('span', 'al-txt', ...partsEl(p.parts, p.ch)), p.state === 'failed' ? '' : state || ''),
     p.state === 'failed' && state);
 }
@@ -1917,11 +1917,16 @@ function readFilters(){
 }
 function setBotsShown(on){ botsShown = !!on; settings.set('allBots', botsShown ? 'shown' : 'hidden'); redrawAll(); }
 function setHypeShown(on){ hypeShown = !!on; settings.set('allHype', hypeShown ? 'shown' : 'hidden'); redrawAll(); }
-// A site's switch in ALL's top bar (K, T, Y): its messages, events and hype train hidden in that streamer's ALL, or back
-const siteOff = (s, p) => !!s && Array.isArray(hiddenSites[s.id]) && hiddenSites[s.id].includes(p);
-function toggleSite(s, p){
-  const now = new Set(Array.isArray(hiddenSites[s.id]) ? hiddenSites[s.id] : []);
-  if (now.has(p)) now.delete(p); else now.add(p);
+// A site's switch in ALL's top bar (K, T, Y): its messages, events and hype train hidden in that streamer's ALL, or back.
+// The list has sites ('kick'), and 'c:<channel>' for one of a streamer's two (or more) channels on a site.
+const siteOff = (s, ch) => { const h = s && Array.isArray(hiddenSites[s.id]) ? hiddenSites[s.id] : []; return h.includes(platOf(ch)) || h.includes('c:' + ch); };
+function toggleSite(s, ch){
+  const now = new Set(Array.isArray(hiddenSites[s.id]) ? hiddenSites[s.id] : []), p = platOf(ch);
+  if (siteOff(s, ch)){
+    // (its whole site was hidden: only this one comes back)
+    if (siteNo(ch) && now.has(p)) accountsOf(ch).filter(c => c !== ch && platOf(c) === p).forEach(c => now.add('c:' + c));
+    now.delete(p); now.delete('c:' + ch);
+  } else now.add(siteNo(ch) ? 'c:' + ch : p);
   hiddenSites = { ...hiddenSites, [s.id]: [...now] };
   if (!now.size) delete hiddenSites[s.id];
   settings.set('allHidden', hiddenSites);
@@ -1976,15 +1981,15 @@ function renderPoll(view){
     const top = Math.max(...p.choices.map(c => c.ratio)), voted = top > 0, pct = c => Math.round(c.ratio * 100);
     return element('div', { class: 'all-poll-card all-poll-' + platOf(p.ch), dataset: { ch: p.ch } },
       element('div', 'all-poll-h', list.length > 1
-        ? element('span', 'all-pin-sw', ...list.map(x => element('button', { type: 'button', class: 'pi pi-' + platOf(x.ch) + (x === p ? ' on' : ''), title: `${PLAT_NAME[platOf(x.ch)]}'s poll`, 'aria-pressed': String(x === p), dataset: { cmd: 'all.pollSite' },
-            onclick: () => { view.pollAt = x.ch; renderPoll(view); fitRoom(view); } }, PLAT_NAME[platOf(x.ch)][0])))
-        : element('i', { class: 'pi pi-' + platOf(p.ch) }, PLAT_NAME[platOf(p.ch)][0]),
+        ? element('span', 'all-pin-sw', ...list.map(x => element('button', { type: 'button', class: 'pi pi-' + platOf(x.ch) + (x === p ? ' on' : ''), title: `${siteName(x.ch)}'s poll`, 'aria-pressed': String(x === p), dataset: { cmd: 'all.pollSite' },
+            onclick: () => { view.pollAt = x.ch; renderPoll(view); fitRoom(view); } }, PLAT_NAME[platOf(x.ch)][0], siteNum(x.ch))))
+        : element('i', { class: 'pi pi-' + platOf(p.ch) }, PLAT_NAME[platOf(p.ch)][0], siteNum(p.ch)),
         element('i', { class: 'all-poll-i', html: POLL }), element('b', { class: 'all-poll-q', title: p.question || '' }, p.question || 'Poll')),
       element('div', 'all-poll-cs', ...p.choices.map(c => element('div', { class: 'all-poll-c' + (voted && c.ratio === top ? ' top' : '') },
         element('span', { class: 'all-poll-bar', style: { width: pct(c) + '%' } }), element('span', { class: 'all-poll-t', title: c.text }, c.text), voted && element('b', 'all-poll-p', pct(c) + '%')))),
       // its footer: who and how many votes (and Kick's or Twitch's time left), and where to vote
       element('div', 'all-poll-f', element('small', 'all-poll-m', [p.meta, p.ends ? (now < p.ends ? `${pollLeft(p.ends - now)} left` : 'Final results') : ''].filter(Boolean).join(' · ')),
-        element('button', { type: 'button', class: 'linkish all-poll-go', dataset: { cmd: 'all.pollVote' }, title: `Vote in ${PLAT_NAME[platOf(p.ch)]}\u2019s own chat`, onclick: () => seeIt(p.ch) }, `Vote on ${PLAT_NAME[platOf(p.ch)]}`)));
+        element('button', { type: 'button', class: 'linkish all-poll-go', dataset: { cmd: 'all.pollVote' }, title: `Vote in ${siteName(p.ch)}\u2019s own chat`, onclick: () => seeIt(p.ch) }, `Vote on ${PLAT_NAME[platOf(p.ch)]}`)));
   }));
 }
 

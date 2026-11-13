@@ -5,7 +5,7 @@ import { autoOpen, channelVars, infoFor, persistSaved, saved, svHue, svInitials,
 import { openSettings } from '../settings/settings.js';
 import { shoutCardEl } from '../settings/shout-cards.js';
 import { accountsOf, botsOf, canLink, chanOpt, link, linkOpt, linkedOn, nameOf, notSame, ordered, setChanOpt,
-  setMain, setOn, setStreamerOpt, streamerBots, streamerName, streamerOf, suggestions, unlink, unlinkAll } from '../../platforms/linked.js';
+  setMain, setOn, setStreamerOpt, siteNum, streamerBots, streamerName, streamerOf, suggestions, unlink, unlinkAll } from '../../platforms/linked.js';
 import { PLATFORMS, PLAT_NAME, chLabel, parseInput, platOf } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
 import { element } from '../../shared/element.js';
@@ -19,10 +19,10 @@ import { QUALITIES, choiceName, qualityOf } from '../../windows/quality-pick.js'
    adding an account by site and name, @handle or link (linking), their own chat bots and their own choices. A channel on
    its own has its bots, Opens by itself and its ALL tab; what only a linked streamer has is greyed, with how to get it.
    Opened from Channels (▾ › Channel settings…), a window's ⋯, a profile, Settings › Linked channels and the search box. ---- */
-let dlg, card, cur = [], opened = null, curPlat = 'kick', botPlat = 'kick', addFocus = false, tab = 'accounts';   // (opened: the channel it was opened for; tab: the one showing)
+let dlg, card, cur = [], opened = null, curPlat = null, botPlat = 'kick', addFocus = false, tab = 'accounts';   // (opened: the channel it was opened for; tab: the one showing)
 const LC_TABS = [['accounts', 'Accounts'], ['chat', 'Chat'], ['shoutout', 'Shoutout'], ['streams', 'Streams']];
 function openLinkCard(ch, { add, tab: t } = {}){
-  cur = ch ? accountsOf(ch) : []; opened = ch || null;
+  cur = ch ? accountsOf(ch) : []; opened = ch || null; curPlat = null;
   tab = LC_TABS.some(([k]) => k === t) ? t : 'accounts';
   addFocus = !!add || !ch;
   dlg.hidden = false;
@@ -43,7 +43,7 @@ function liveText(ch){
   return i.live ? element('span', 'lc-st lc-live', `Live · ${Number(i.viewers || 0).toLocaleString()} watching`) : element('span', 'lc-st', 'Offline');
 }
 const lcPlat = p => element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]);
-const lcSite = ch => lcPlat(platOf(ch));
+const lcSite = ch => { const i = lcPlat(platOf(ch)), n = siteNum(ch); if (n) i.append(n); return i; };
 function renderCard(){
   if (dlg.hidden) return;
   const { s, chs } = accounts();
@@ -51,7 +51,7 @@ function renderCard(){
   const prof = chs[0] && svProf[chs[0]] && svProf[chs[0]].info;
   const av = element('span', { class: 'lc-av', style: { '--c': svHue(chs[0] || 'x') } }, svInitials(name));
   if (prof && prof.avatar){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = prof.avatar; av.appendChild(im); }
-  const head = element('div', 'lc-head', av, element('div', null, element('small', 'lc-kicker', 'Channel settings'), element('h3', { id: 'lcName' }, name), !chs.length && element('p', null, 'Start with one of their channels, then add their other sites')));
+  const head = element('div', 'lc-head', av, element('div', null, element('small', 'lc-kicker', 'Channel settings'), element('h3', { id: 'lcName' }, name), !chs.length && element('p', null, 'Start with one of their channels, then add their others')));
   // each tab's parts (no channel yet: Accounts only, without tabs)
   const T = { accounts: [], chat: [], shoutout: [], streams: [] };
   let parts = T.accounts;
@@ -71,34 +71,32 @@ function renderCard(){
         element('button', { type: 'button', class: 'btn lc-no', title: 'Not the same streamer (never suggested again)', 'aria-label': 'Not the same', html: icon.close, dataset: { cmd: 'link.not' }, onclick: () => { notSame(mine, other); renderCard(); } }));
     }));
   }
-  // add an account: its site, and a name, @handle or link
-  const free = Object.keys(PLATFORMS).filter(p => !chs.some(c => platOf(c) === p));
-  if (!free.includes(curPlat)) curPlat = free[0] || 'kick';
-  if (free.length){
-    const inp = element('input', { class: 'st-in lc-in', id: 'lcIn', dataset: { cmd: 'link.card' }, placeholder: 'Name, @handle or link', autocomplete: 'off', spellcheck: false, 'aria-label': 'Their name, @handle or link' });
-    const err = element('div', { class: 'lc-err', hidden: true });
-    const go = element('button', { type: 'button', class: 'btn', dataset: { cmd: 'link.add' } }, 'Link');
-    const submit = async () => {
-      const r = parseInput(inp.value, curPlat), ch = r && r.channel;
-      if (!ch){ err.textContent = 'Couldn’t read that link or name'; err.hidden = false; return; }
-      if (/^yt:v:/.test(ch)){ err.textContent = 'A video isn’t a channel: paste their channel’s link or @handle'; err.hidden = false; return; }
-      if (chs.some(c => platOf(c) === platOf(ch))){ err.textContent = `They already have a ${PLAT_NAME[platOf(ch)]} channel here`; err.hidden = false; return; }
-      if (window.kmv && window.kmv.channelExists){
-        go.classList.add('busy');
-        const ok = await window.kmv.channelExists(ch).catch(() => 'unknown');
-        go.classList.remove('busy');
-        if (ok === 'missing'){ err.textContent = `There's no ${PLAT_NAME[platOf(ch)]} channel called “${chLabel(ch)}”.`; err.hidden = false; return; }
-      }
-      addAccount(ch, chs[0]);
-    };
-    go.onclick = submit;
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); submit(); } });
-    inp.addEventListener('input', () => { err.hidden = true; const r = parseInput(inp.value, curPlat); if (r && r.channel && /[/.:]/.test(inp.value) && free.includes(platOf(r.channel))){ curPlat = platOf(r.channel); segs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.p === curPlat)); } });
-    const segs = element('div', { class: 'seg lc-plat', role: 'radiogroup', 'aria-label': 'Site' }, ...free.map(p => element('button', { type: 'button', class: p === curPlat ? 'on' : '', role: 'radio', 'aria-checked': String(p === curPlat), title: PLAT_NAME[p], dataset: { p },
-      onclick: () => { curPlat = p; segs.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.p === p); b.setAttribute('aria-checked', String(b.dataset.p === p)); }); inp.focus(); } }, element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]))));
-    parts.push(element('div', 'lc-sec', chs.length ? 'Add a channel' : 'Their first channel'), element('div', 'lc-add', segs, inp, go), err);
-    if (addFocus) setTimeout(() => inp.focus(), 0);
-  }
+  // add an account: its site (one they don't have yet first; another on a site they have is fine too), and a name, @handle or link
+  const sites = Object.keys(PLATFORMS), free = sites.filter(p => !chs.some(c => platOf(c) === p));
+  if (!sites.includes(curPlat)) curPlat = free[0] || sites[0];   // (until you pick one)
+  const inp = element('input', { class: 'st-in lc-in', id: 'lcIn', dataset: { cmd: 'link.card' }, placeholder: 'Name, @handle or link', autocomplete: 'off', spellcheck: false, 'aria-label': 'Their name, @handle or link' });
+  const err = element('div', { class: 'lc-err', hidden: true });
+  const go = element('button', { type: 'button', class: 'btn', dataset: { cmd: 'link.add' } }, 'Link');
+  const submit = async () => {
+    const r = parseInput(inp.value, curPlat), ch = r && r.channel;
+    if (!ch){ err.textContent = 'Couldn’t read that link or name'; err.hidden = false; return; }
+    if (/^yt:v:/.test(ch)){ err.textContent = 'A video isn’t a channel: paste their channel’s link or @handle'; err.hidden = false; return; }
+    if (chs.includes(ch)){ err.textContent = `${chLabel(ch)} on ${PLAT_NAME[platOf(ch)]} is already one of theirs`; err.hidden = false; return; }
+    if (window.kmv && window.kmv.channelExists){
+      go.classList.add('busy');
+      const ok = await window.kmv.channelExists(ch).catch(() => 'unknown');
+      go.classList.remove('busy');
+      if (ok === 'missing'){ err.textContent = `There's no ${PLAT_NAME[platOf(ch)]} channel called “${chLabel(ch)}”.`; err.hidden = false; return; }
+    }
+    addAccount(ch, chs[0]);
+  };
+  go.onclick = submit;
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); submit(); } });
+  inp.addEventListener('input', () => { err.hidden = true; const r = parseInput(inp.value, curPlat); if (r && r.channel && /[/.:]/.test(inp.value) && sites.includes(platOf(r.channel))){ curPlat = platOf(r.channel); segs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.p === curPlat)); } });
+  const segs = element('div', { class: 'seg lc-plat', role: 'radiogroup', 'aria-label': 'Site' }, ...sites.map(p => element('button', { type: 'button', class: p === curPlat ? 'on' : '', role: 'radio', 'aria-checked': String(p === curPlat), title: PLAT_NAME[p], dataset: { p },
+    onclick: () => { curPlat = p; segs.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.p === p); b.setAttribute('aria-checked', String(b.dataset.p === p)); }); inp.focus(); } }, element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]))));
+  parts.push(element('div', 'lc-sec', chs.length ? 'Add a channel' : 'Their first channel'), element('div', 'lc-add', segs, inp, go), err);
+  if (addFocus) setTimeout(() => inp.focus(), 0);
   if (chs.length) T.chat.push(...botsPart(s, chs));
   // their own choices: a streamer's, or a channel's on its own (what only a streamer has: greyed, with how to get it)
   if (chs.length){
@@ -189,10 +187,10 @@ function botsPart(s, chs){
 function addAccount(ch, to){
   if (!to){ cur = [ch]; renderCard(); return; }
   if (!linkedOn()){ setOn(true); flash('Linked channels turned on (Settings › Linked channels)'); }
-  if (!canLink(to, ch)){ flash(`${chLabel(ch)} can't join: one channel per site, and a channel belongs to one streamer`); return; }
+  if (!canLink(to, ch)){ flash(`${chLabel(ch)} can't join: a channel belongs to one streamer`); return; }
   const s = link(to, ch); if (!s) return;
   if (s.accounts.some(c => saved.includes(c))){ channelVars.saved = [...new Set([...saved, ...s.accounts])]; persistSaved(); }
-  cur = s.accounts; renderCard();
+  cur = s.accounts; curPlat = null; renderCard();
   flash(`Linked ${chLabel(ch)} on ${PLAT_NAME[platOf(ch)]} to ${nameOf(to)}`);
 }
 function setAutoOpenFor(s, v){
