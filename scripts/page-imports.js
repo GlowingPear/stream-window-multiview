@@ -53,6 +53,7 @@ function scan(src) {
     if (/\s/.test(c)) { i++; continue; }
     const op = src.slice(i, i + 4).match(/^(>>>=|\.\.\.|===|!==|\*\*=|<<=|>>=|>>>|&&=|\|\|=|\?\?=|=>|==|!=|<=|>=|&&|\|\||\?\?|\?\.|\+\+|--|\+=|-=|\*=|\/=|%=|&=|\|=|\^=|\*\*|<<|>>|.)/s)[0];
     if (stack.length) { if (op === '{') stack[stack.length - 1]++; else if (op === '}') stack[stack.length - 1]--; }
+    if (op === '(' && (last === ')' || last === ']')) ids.calledResult = true;   // (…)( or […]( in the code: a call of what it gives
     i += op.length; last = op;
   }
   return ids;
@@ -161,7 +162,9 @@ function wrap(list, lead, tail) {
 const BUILT_INS = new Set(['document', 'window', 'location', 'navigator', 'localStorage', 'sessionStorage', 'Math', 'JSON', 'Object',
   'Array', 'Set', 'Map', 'WeakMap', 'WeakSet', 'Date', 'Number', 'String', 'Boolean', 'RegExp', 'Symbol', 'Infinity', 'NaN',
   'undefined', 'null', 'true', 'false', 'let', 'const', 'var', 'Promise', 'Error', 'Intl', 'globalThis', 'new', 'typeof', 'void',
-  'in', 'of', 'instanceof']);
+  'in', 'of', 'instanceof',
+  // set by a plain script the pages load before any module (src/shared/sites.js: the list of sites both sides share)
+  'SmvSites']);
 function readyAtLoad(text, names, own, fromLeaf) {
   const init = text.replace(/^(const|let|var)\s+/, '');
   if (/^[\w$]+\s*=\s*(async\s+)?((\([^()]*\)|[\w$]+)\s*=>|function\b)/.test(init) && names.length === 1) return true;   // a function: runs later
@@ -181,7 +184,7 @@ function readyAtLoad(text, names, own, fromLeaf) {
     }
     later.push([a, b]);
   }
-  const ids = scan(text).filter(t => !later.some(([a, b]) => t.i >= a && t.i < b));
+  const all = scan(text), ids = all.filter(t => !later.some(([a, b]) => t.i >= a && t.i < b));
   for (let k = 0; k < ids.length; k++) {
     const t = ids[k], after = text.slice(t.i + t.name.length);
     if (t.prev === '.' || t.prev === '?.') continue;
@@ -193,11 +196,12 @@ function readyAtLoad(text, names, own, fromLeaf) {
       continue;
     }
     if (/^(get|set)$/.test(t.name) && /^(\{|,)$/.test(t.prev)) continue;
-    if (/^\s*\(/.test(after) && !(t.prev === 'new' && /^(Set|Map|WeakMap|WeakSet)$/.test(t.name))) return false;   // a call
+    // a call (new of a class from a module that has loaded, not in a cycle, only runs that class's code: a site's Site)
+    if (/^\s*\(/.test(after) && !(t.prev === 'new' && (/^(Set|Map|WeakMap|WeakSet)$/.test(t.name) || fromLeaf(t.name)))) return false;
     if (names.includes(t.name) || own.has(t.name) || BUILT_INS.has(t.name) || fromLeaf(t.name)) continue;
     return false;
   }
-  return !/\)\s*\(|\]\s*\(/.test(text);
+  return !all.calledResult;   // (in its code: not in a string, such as a script sent to a site's page)
 }
 // The page's modules: every .js file except app.js, and except the plain scripts a page loads itself
 // (<script src="page/…"> without type="module", e.g. boot.js): they aren't modules, so they have no imports.
@@ -205,6 +209,27 @@ function moduleFiles(dir = PAGE) {
   const html = fs.readdirSync(path.join(dir, '..')).filter(f => f.endsWith('.html')).map(f => fs.readFileSync(path.join(dir, '..', f), 'utf8')).join('\n');
   const plain = new Set([...html.matchAll(/<script(?![^>]*type="module")[^>]*src="page\/([^"]+)"/g)].map(m => m[1]));
   return fs.readdirSync(dir, { recursive: true }).map(f => f.split(path.sep).join('/')).filter(f => f.endsWith('.js') && f !== 'app.js' && !plain.has(f)).sort();
+}
+// The modules in an order where each comes after the ones it imports (deps(f): them), and the ones in an import cycle
+// (Tarjan's strongly connected components: a cycle's modules come together, in any order). -> { order, inCycle: Set }
+function loadOrder(files, deps) {
+  const index = new Map(), low = new Map(), stack = [], on = new Set(), order = [], inCycle = new Set();
+  let n = 0;
+  const visit = f => {
+    index.set(f, n); low.set(f, n); n++; stack.push(f); on.add(f);
+    for (const g of deps(f)) {
+      if (!index.has(g)) { visit(g); low.set(f, Math.min(low.get(f), low.get(g))); }
+      else if (on.has(g)) low.set(f, Math.min(low.get(f), index.get(g)));
+    }
+    if (low.get(f) !== index.get(f)) return;
+    const group = [];
+    let g;
+    do { g = stack.pop(); on.delete(g); group.push(g); } while (g !== f);
+    if (group.length > 1 || deps(f).includes(f)) group.forEach(x => inCycle.add(x));
+    order.push(...group.sort());
+  };
+  files.forEach(f => { if (!index.has(f)) visit(f); });
+  return { order, inCycle };
 }
 // ['file:line: what'] for code at a module's top that should be in its init()
 function startupProblems(dir = PAGE) {
@@ -222,9 +247,12 @@ function startupProblems(dir = PAGE) {
   const leaf = f => imp[f] && !imp[f].size;
   const ready = {};                  // file -> names ready as it loads
   const problems = [];
-  // modules that import nothing first, so others can use what they have ready
-  for (const f of [...files.filter(leaf), ...files.filter(f => !leaf(f))]) {
-    const have = new Set(), fromLeaf = n => { const g = imp[f].get(n); return !!g && leaf(g) && !!ready[g] && ready[g].has(n); };
+  // A module's imports load before it, unless they import it back (a cycle: then either can load first). So the names
+  // another module has ready are ready here too when it isn't in a cycle; it's checked first (the ones it imports
+  // before it, so a module that imports nothing first of all).
+  const { order, inCycle } = loadOrder(files, f => [...new Set(imp[f].values())].filter(g => imp[g]));
+  for (const f of order) {
+    const have = new Set(), fromLeaf = n => { const g = imp[f].get(n); return !!g && !inCycle.has(g) && !!ready[g] && ready[g].has(n); };
     for (const st of topLevelStatements(mods[f].body)) {
       if (st.kind === 'comment') continue;
       const empty = /^(let|var)\s+[\w$, ]+;/.test(st.text);       // declared here, set by init()
@@ -246,7 +274,7 @@ function plan(dir = PAGE) {
   const files = moduleFiles(dir);
   const mods = Object.fromEntries(files.map(f => [f, readModule(path.join(dir, f))]));
   const declared = Object.fromEntries(files.map(f => [f, topLevelNames(mods[f].body)]));
-  const owner = {}, ambiguous = new Set();     // a name several modules declare (each its own) is never imported
+  const owner = Object.create(null), ambiguous = new Set();   // (no inherited names: a class's constructor isn't a module's); a name several modules declare (each its own) is never imported
   for (const f of files) for (const nm of declared[f]) { if (owner[nm] && owner[nm] !== f) ambiguous.add(nm); owner[nm] = f; }
   for (const nm of ambiguous) delete owner[nm];
   const uses = {}, notes = [];
