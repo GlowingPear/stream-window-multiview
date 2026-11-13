@@ -134,6 +134,23 @@ test('importing your follows: signed out, a refused token, or the Following page
   assert.deepEqual(await nobody.a.follows.import({ scrape: false }), { items: [] }, 'follows nobody');
 });
 
+test('whether the login still works: Twitch names you, refuses the token (401), names nobody, or doesn\'t answer', async () => {
+  let reply = answer({ json: { data: { currentUser: { login: 'me_myself' } } } }), asked = null;
+  const { a } = twitchWith({ cookies: signedIn, gql: (q, v, opts) => { asked = { q, auth: opts.headers.Authorization }; return reply; } });
+  assert.equal(await a.loginWorks(), true);
+  assert.deepEqual(asked, { q: 'query{currentUser{login}}', auth: 'OAuth tok' }, 'with your login\'s token');
+  reply = answer({ status: 401 });
+  assert.equal(await a.loginWorks(), false, 'a token Twitch no longer takes');
+  reply = answer({ json: { data: { currentUser: null } } });
+  assert.equal(await a.loginWorks(), false, 'a token that isn\'t anyone\'s');
+  reply = answer({ status: 500 });
+  assert.equal(await a.loginWorks(), null, 'no answer: can\'t tell');
+  reply = Promise.reject(new Error('offline'));
+  reply.catch(() => {});
+  assert.equal(await a.loginWorks(), null);
+  assert.equal(await twitchWith().a.loginWorks(), null, 'no login here: nothing to check');
+});
+
 test('suggestions in the background: your follows once a day, and who\'s live among them', async () => {
   const { a, rec } = twitchWith({ cookies: signedIn, gql: (q, v) => (v && v.l
     ? answer({ json: { data: { users: v.l.map(l => userAnswer(l, l === 'alpha')) } } })

@@ -11,7 +11,7 @@ const answer = ({ status = 200, json, text } = {}) => ({
   text: async () => (text !== undefined ? text : JSON.stringify(json))
 });
 
-// over: { cookies, fetch, pageFetch, getJson, env, safeStorage, snapshot, saved, busy, scrape, profiles, BrowserWindow }
+// over: { cookies, fetch, pageFetch, loginFetch, getJson, env, safeStorage, snapshot, saved, busy, scrape, profiles, BrowserWindow }
 function stubCtx(id, over = {}) {
   const site = SmvSites.byId[id];
   const rec = { handlers: { app: {}, main: {} }, sent: [], progress: [], kept: [], changed: 0, checks: 0, scraped: [], notes: [],
@@ -25,6 +25,7 @@ function stubCtx(id, over = {}) {
     BrowserWindow: over.BrowserWindow,
     fetch: async (url, opts) => { rec.fetched.push({ url, opts }); if (!over.fetch) throw new Error('offline'); return over.fetch(url, opts); },
     pageFetch: async (url, opts) => { rec.fetched.push({ url, opts, page: true }); if (!over.pageFetch) throw new Error('offline'); return over.pageFetch(url, opts); },
+    loginFetch: async (url, opts) => { rec.fetched.push({ url, opts, login: true }); if (!over.loginFetch) throw new Error('offline'); return over.loginFetch(url, opts); },
     getJson: async (url, opts) => { rec.fetched.push({ url, opts, json: true }); return over.getJson ? over.getJson(url, opts) : null; },
     headers: () => ({ 'User-Agent': 'test' }),
     netSignal: () => undefined, netTimeout: 1000,

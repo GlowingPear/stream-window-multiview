@@ -109,6 +109,17 @@ function create(ctx) {
       body: JSON.stringify({ query, variables }) });
     return { status: r.status, d: r.ok ? await r.json() : null };
   }
+  // Whether your login's token still signs you in: Twitch turns a token it no longer takes away (401), and names
+  // nobody for one that isn't yours to use (null: no token, or no answer)
+  async function loginWorks() {
+    const tok = await token();
+    if (!tok) return null;
+    try {
+      const r = await gql(tok, 'query{currentUser{login}}');
+      if (r.status === 401) return false;
+      return r.d && r.d.data ? !!(r.d.data.currentUser && r.d.data.currentUser.login) : null;
+    } catch { return null; }
+  }
   async function query(q, variables, tok) {
     const headers = gqlHeaders();
     if (tok) headers.Authorization = 'OAuth ' + tok;
@@ -232,6 +243,7 @@ function create(ctx) {
     loginUrl: 'https://www.twitch.tv/login',
     named: true,                      // Twitch keeps your name in a cookie
     signedIn: () => token().then(Boolean),
+    loginWorks,
     async account() {
       try {
         const c = await ctx.session().cookies.get({ name: 'login' });

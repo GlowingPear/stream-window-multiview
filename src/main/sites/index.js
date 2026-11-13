@@ -12,6 +12,7 @@
 //   BrowserWindow               for windows of its own (Kick's hidden kick.com window)
 //   fetch, pageFetch, getJson   requests: Node's (noted in Settings › Developer), Chromium's without cookies (pages
 //                               with big headers), and JSON through Chromium; headers(): a normal browser's
+//   loginFetch                  Chromium's with its login (its storage's cookies)
 //   netSignal(), netTimeout     a request's time limit
 //   sleep(ms), notePageRequest(url, t0, answer) (a request made from inside a site's page, for Settings › Developer)
 //   devEnv(name)                a stand-in address the tests give (empty in an installed copy)
