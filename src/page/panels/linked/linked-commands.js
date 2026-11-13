@@ -5,8 +5,8 @@ import { autoOpen, fmtViewers, infoFor, linkPair, notifyAll, notifyOff, saved, s
 import { openLinkCard } from './link-card.js';
 import { openProfile } from '../profiles/profiles.js';
 import { openSettings } from '../settings/settings.js';
-import { canLink, link, linkedOn, listStreamers, notSame, optFor, setMain, setStreamerOpt, streamerName, suggestions,
-  unlink, unlinkAll } from '../../platforms/linked.js';
+import { canLink, link, linkedOn, listStreamers, mainOf, notSame, optFor, setMain, setStreamerOpt, siteName, siteNo,
+  streamerName, suggestions, unlink, unlinkAll } from '../../platforms/linked.js';
 import { PLAT_NAME, chLabel, platOf, platform } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
@@ -18,7 +18,7 @@ import { openStreamer, setSideBySide, showTab } from '../../windows/frames.js';
 /* ---- The search box (Ctrl/⌘+K) for linked channels: a linked streamer as one result (its sites, each site's
    viewers, Watch as tabs, one site only, Profile, Saved, Linked channels, and everything else under More…), and
    every linking action ("link" finds them, suggestions first). Nothing here while Linked channels is off. ---- */
-const site = c => PLAT_NAME[platOf(c)];
+const site = c => siteName(c);
 const liveIn = s => s.accounts.filter(c => infoFor(c) && infoFor(c).live);
 const isOpenS = s => wins.some(w => s.accounts.includes(w.channel));
 const andList = l => l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1];
@@ -27,12 +27,12 @@ function streamerItem(s){
   const lead = live.includes(s.main) ? s.main : live[0] || s.main, info = infoFor(lead) || {};
   const total = live.reduce((t, c) => t + (+infoFor(c).viewers || 0), 0);
   return { id: 'st:' + s.id, kind: 'channel', group: 'Streamers', title: name.replace(/^@/, ''),
-    sub: [live.length ? `live on ${andList(live.map(site))}` : 'offline', `${s.accounts.length} sites`, info.title],
+    sub: [live.length ? `live on ${andList(live.map(site))}` : 'offline', new Set(s.accounts.map(platOf)).size === s.accounts.length ? `${s.accounts.length} sites` : `${s.accounts.length} channels`, info.title],
     heroSub: [live.length && info.title && { b: info.title }, live.length && info.category, ...s.accounts.map(c => infoFor(c) && infoFor(c).live ? { b: fmtViewers(infoFor(c).viewers), t: '', pre: site(c) + ' ' } : `${site(c)} offline`)]
       .filter(Boolean).map(x => x && x.pre ? `${x.pre}${x.b}` : x),
     words: [...s.accounts.map(c => platform(c).handle(c).replace(/^@/, '')), ...s.accounts.map(site), 'linked'],
     avatar: chPhoto(s.main), hue: svHue(s.main), initials: svInitials(name.replace(/^@/, '')), live: !!live.length, viewers: total ? fmtViewers(total) : null,
-    siteIcons: s.accounts.map(c => ({ p: platOf(c), dim: !live.includes(c) })),
+    siteIcons: s.accounts.map(c => ({ p: platOf(c), n: siteNo(c), dim: !live.includes(c) })),
     pills: open ? [{ text: 'Open', accent: true }] : sv ? [{ text: 'Saved' }] : [],
     boost: 14 + (live.length ? 8 : 0) + (open ? 6 : 0) + (sv ? 5 : 0),
     buttons: streamerButtons(s), run: () => streamerButtons(s)[0].run(), verb: 'Watch', more: () => streamerMore(s) };
@@ -99,7 +99,7 @@ function linkingItems(){
   suggestions().forEach(x => out.push({ id: `link.sug:${x.a}|${x.b}`, group: 'Suggested links', title: `Link ${chLabel(x.a)} on ${site(x.a)} with ${chLabel(x.b)} on ${site(x.b)}`,
     sub: x.why, words: ['link', 'same streamer'], siteIcons: [{ p: platOf(x.a) }, { p: platOf(x.b) }], icon: 'layers', run: () => linkPair(x.a, x.b),
     alt: () => notSame(x.a, x.b), altLabel: 'not the same' }));
-  out.push({ id: 'link.accounts', group: g, title: 'Link channels…', sub: 'Pick a streamer, then add their other sites', icon: 'layers', words: ['link', 'same streamer', 'several sites'], run: () => openLinkCard(null) });
+  out.push({ id: 'link.accounts', group: g, title: 'Link channels…', sub: 'Pick a streamer, then add their other channels', icon: 'layers', words: ['link', 'same streamer', 'several sites'], run: () => openLinkCard(null) });
   if (act) out.push({ id: 'link.window', group: g, title: 'Link this window\'s channel with…', sub: [chLabel(act.channel), 'the window you\'re on'], icon: 'layers', words: ['link'], run: () => openLinkCard(act.channel, { add: true }) });
   out.push({ id: 'link.find', group: g, title: 'Find streamers on several sites', sub: 'Checks your saved and followed channels for the same streamer elsewhere', icon: 'search', words: ['link', 'suggest'],
     run: () => { const n = suggestions({ all: true }).length; flash(n ? `${n} streamer${n === 1 ? ' is' : 's are'} on several sites · Settings › Linked channels › Suggestions` : 'No streamers found on several sites'); openSettings('linked', { sub: 'sugs' }); } });
@@ -128,7 +128,13 @@ async function linkEvery(){
 }
 function preferSite(p){
   let n = 0;
-  wins.filter(w => w.frame && w.hiddenTab && platOf(w.channel) === p && infoFor(w.channel)?.live && w.kind === 'stream').forEach(w => { showTab(w); n++; });
+  // one tab per window: their main channel when they have two on that site, and none where that site already shows
+  new Set(wins.filter(w => w.frame && w.kind === 'stream').map(w => w.frame)).forEach(f => {
+    const ws = wins.filter(w => w.frame === f && w.kind === 'stream'), shown = ws.find(w => !w.hiddenTab);
+    if (shown && platOf(shown.channel) === p) return;
+    const to = ws.filter(w => w.hiddenTab && platOf(w.channel) === p && infoFor(w.channel)?.live).sort((a, b) => (b.channel === mainOf(b.channel)) - (a.channel === mainOf(a.channel)))[0];
+    if (to){ showTab(to); n++; }
+  });
   flash(n ? `${n} window${n === 1 ? '' : 's'} switched to ${PLAT_NAME[p]}` : `No linked window is live on ${PLAT_NAME[p]}`);
 }
 

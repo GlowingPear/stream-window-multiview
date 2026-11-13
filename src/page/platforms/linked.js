@@ -1,12 +1,13 @@
 import { wins } from '../core.js';
 import { saved, sendWatch, svProf } from '../panels/channels/channels.js';
 import { follows } from '../panels/channels/follow-suggestions.js';
-import { PLATFORMS, chLabel, chNames, parseInput, platOf, platform } from './platforms.js';
+import { PLATFORMS, PLAT_NAME, chLabel, chNames, parseInput, platOf, platform } from './platforms.js';
+import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 
 /* ---- Linked channels: one streamer on several sites (Settings › Linked channels) ----
-   A streamer is a name and its accounts, one per site: { id, name, main, accounts: ['quietkoala', 'tw:quietkoala'],
+   A streamer is a name and its accounts, on any sites (two on one site too): { id, name, main, accounts: ['quietkoala', 'tw:quietkoala'],
    streams?, autoOpen? } (saved as "streamers"). Nothing is linked by itself: the app suggests, and you choose.
    The switch ("linkedOn", off unless set) is the one gate: while it's off streamerOf() finds nobody and there are no
    suggestions, so everything that groups by streamer shows one row and one window per account, as it did before.
@@ -55,6 +56,16 @@ const nameOf = ch => { const s = streamerOf(ch); return s ? streamerName(s) : ch
 const groupKey = ch => { const s = streamerOf(ch); return s ? 's:' + s.id : ch; };
 const sameStreamer = (a, b) => a === b || (!!a && !!b && groupKey(a) === groupKey(b));
 const listStreamers = () => linkedOn() ? all().map(s => ({ ...s, accounts: ordered(s) })) : [];
+// Which of their streamer's accounts on its site a channel is: 1, 2, … in the order they were linked; 0 when it's the only one there
+function siteNo(ch){
+  const s = streamerOf(ch); if (!s) return 0;
+  const same = s.accounts.filter(a => platOf(a) === platOf(ch));
+  return same.length > 1 ? same.indexOf(ch) + 1 : 0;
+}
+// A channel's site in words: "Kick", or "Kick (quietkoala2)" when their streamer has more than one Kick account
+const siteName = ch => PLAT_NAME[platOf(ch)] + (siteNo(ch) ? ` (${chLabel(ch)})` : '');
+// The tiny number at the bottom right of a site's badge or tab, when their streamer has more than one account on that site
+const siteNum = ch => { const n = siteNo(ch); return n ? element('span', { class: 'pn', 'aria-hidden': 'true' }, String(n)) : null; };
 // A streamer's own chat bots (their card): names for one site each, { p: 'kick', name: 'quietkoala' }. Never a mention
 // or spam in their chats on that site, on top of the app's list.
 const botsOf = s => s && Array.isArray(s.bots) ? s.bots.filter(b => b && typeof b.name === 'string' && b.name && PLATFORMS[b.p]) : [];
@@ -82,13 +93,11 @@ function setOpt(k, v){
 
 function saveStreamers(){ settings.set('streamers', streamers); store.changed('streamers'); sendWatch(); }   // (the main process: one went-live notification each)
 const newId = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-// Can b join a's streamer? One account per site, and a channel is in one streamer at most. A video isn't a channel.
+// Can b join a's streamer? A channel is in one streamer at most (a streamer can have two on one site). A video isn't a channel.
 function canLink(a, b){
   if (!a || !b || a === b || /^yt:v:/.test(a) || /^yt:v:/.test(b)) return false;
   const s = all().find(x => x.accounts.includes(a)), t = all().find(x => x.accounts.includes(b));
-  if (s && s === t) return false;
-  const sites = [...(s ? s.accounts : [a]), ...(t ? t.accounts : [b])].map(platOf);
-  return new Set(sites).size === sites.length;
+  return !(s && s === t);
 }
 // Link b to a's streamer (or make one of the two). b's own streamer joins too. Returns the streamer, or null.
 function link(a, b){
@@ -156,10 +165,10 @@ function known(){
   return [...set].filter(ch => ch && !/^yt:v:/.test(ch) && PLATFORMS[platOf(ch)]);
 }
 const handleKey = ch => String(platform(ch).handle(ch)).toLowerCase().replace(/^@/, '').replace(/[-_.]/g, '');
-// The other sites' channels a channel's page links to (Kick's socials, Twitch's social links)
+// The other channels a channel's page links to (Kick's socials, Twitch's social links), on other sites or its own
 function pageLinks(ch){
   const p = svProf[ch], socials = (p && p.info && Array.isArray(p.info.socials)) ? p.info.socials : [];
-  return socials.map(s => s && s.url && parseInput(s.url)).filter(r => r && r.channel && platOf(r.channel) !== platOf(ch)).map(r => r.channel);
+  return socials.map(s => s && s.url && parseInput(s.url)).filter(r => r && r.channel && r.channel !== ch).map(r => r.channel);
 }
 // [{ a, b, why }]: pairs worth linking, saved ones first. Not ones already linked, answered, or hidden for now.
 function suggestions({ all: every } = {}){
@@ -174,7 +183,7 @@ function suggestions({ all: every } = {}){
   for (const ch of chs){ const k = handleKey(ch); if (k.length < 3) continue; (byName.get(k) || byName.set(k, []).get(k)).push(ch); }
   for (const ch of chs) for (const to of pageLinks(ch)){
     const same = handleKey(to) === handleKey(ch);
-    add(ch, to, (same ? 'Same name · ' : '') + `their ${platform(ch).name} page links to ${platform(to).name}`);
+    add(ch, to, (same ? 'Same name · ' : '') + `their ${platform(ch).name} page links to ${platOf(to) === platOf(ch) ? 'another ' + platform(to).name + ' channel' : platform(to).name}`);
   }
   for (const group of byName.values()){
     if (group.length < 2) continue;
@@ -197,4 +206,4 @@ function init(){
 
 export { accountsOf, botsOf, canLink, chanOpt, dismissed, forgetNot, groupKey, init, laterPair, link, linkedOn,
   linkOpt, listStreamers, mainOf, nameOf, notSame, optFor, ordered, sameStreamer, setChanOpt, setMain, setOn, setOpt,
-  setStreamerOpt, streamerBots, streamerName, streamerOf, suggestions, unlink, unlinkAll };
+  setStreamerOpt, siteName, siteNo, siteNum, streamerBots, streamerName, streamerOf, suggestions, unlink, unlinkAll };
