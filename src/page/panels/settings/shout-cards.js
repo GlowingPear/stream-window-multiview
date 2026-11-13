@@ -77,7 +77,7 @@ function shoutCardEl(card, { save, remove, open = false, bare = false } = {}){
   if (!open) return el;
   const body = element('div', 'shc-body');
   // their message: one, or (a linked streamer) one for each site
-  const sites = chs.map(siteOfCh);
+  const sites = [...new Set(chs.map(siteOfCh))];   // (one message for each site: two Kick channels of theirs share it)
   const field = (site, value, onInput) => {
     const t = soGrow(element('textarea', { class: 'st-in', rows: 1, maxlength: SHOUT_MAX, spellcheck: false, placeholder: 'Your general message (Settings › Shoutouts › Message)', 'aria-label': site ? `Their message on ${soSiteName(site)}` : 'Their message', dataset: { cmd: 'settings.shoutCardMsg' } }));
     t.value = value || '';
