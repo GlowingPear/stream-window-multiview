@@ -27,8 +27,9 @@ const SETTING_NAMES = new Set([
   'allHidden',             // the sites a streamer's ALL hides (its K / T / Y switches): { [streamer id]: ['kick', 'c:<channel>' (one of two on a site), …] }
   'allRecentEmotes',       // the emotes you sent from ALL last, for each site (the row over its box: chat/all-emotes.js)
   'allMyLook',             // how you looked in each chat (name, colour, badges): your line while it sends from ALL, before your first message there
-  // Settings › Windows: the channel's name on stream / chat windows' title bars, and each button's place and ⋯ choice
-  'barNameStream', 'barNameChat', 'barButtons',
+  // Settings › Windows: the channel's name on stream / chat windows' title bars, and each button's place and ⋯ choice;
+  // the minutes after a stream ends that its windows close (windows/ended.js)
+  'barNameStream', 'barNameChat', 'barButtons', 'closeEnded',
   // Connected apps: Connect with Pear Drops, sign Kick players out while it farms, your Kick choice from
   // before that took over, the toolbar's farming widget and its daily reward chest
   'link.peardrops', 'link.kickAuto', 'link.kickBefore', 'link.widget', 'link.dailyReward',
@@ -57,7 +58,7 @@ const SETTING_NAMES = new Set([
    with its auto-open, alerts and name; alertSound.* (not listed) sync as files of their own. Windows, layouts,
    sign-ins, history and what's only about this computer stay here. */
 const SYNCED = new Set([
-  'theme', 'themes', 'keys', 'arrowSound', 'barNameStream', 'barNameChat', 'barButtons', 'toolbar', 'paletteOn', 'paletteRecent',
+  'theme', 'themes', 'keys', 'arrowSound', 'barNameStream', 'barNameChat', 'barButtons', 'closeEnded', 'toolbar', 'paletteOn', 'paletteRecent',
   'saved', 'autoOpen', 'notifyAll', 'notifyOff', 'chNames', 'chanOpts',
   'linkedOn', 'streamers', 'linkedNot', 'linkedOpts', 'allBots', 'allEvents', 'allSend', 'allTimeout', 'allHype', 'allHidden',
   'mentOn', 'mentMuted', 'mentWords', 'myName', 'myTwitch', 'myYouTube', 'dndFor', 'desktopNotify', 'alerts',

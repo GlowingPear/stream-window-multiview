@@ -15,6 +15,7 @@ import { flash } from '../shared/flash.js';
 import { fromApp } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
+import { raidedFrom } from './ended.js';
 import { frameNote, frameOf, leaderOf, openStreamer, putTabBack, showTab } from './frames.js';
 import { createWin } from './windows.js';
 
@@ -43,6 +44,7 @@ function followRaid(from, to, tell){
   if (raidSeen[from + '>' + to] && Date.now() - raidSeen[from + '>' + to] < 15000) return;   // both windows of a channel report it
   for (const k in raidSeen) if (Date.now() - raidSeen[k] >= 15000) delete raidSeen[k];
   raidSeen[from + '>' + to] = Date.now();
+  raidedFrom(from);                                               // not a stream that ended (windows/ended.js)
   const all = wins.filter(w => w.channel === from && (w.kind === 'stream' || w.kind === 'chat'));
   if (tell && DESKTOP && window.kmv.raidFollowed) window.kmv.raidFollowed(from, to);   // the other window (streams pop-out or main)
   // A linked streamer's tabs (windows/frames.js): a raid belongs to one tab. It's followed only from the tab you watch,

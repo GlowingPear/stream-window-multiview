@@ -40,7 +40,7 @@ function syDescribe(s){
 
 // Each synced setting as History names it (a test checks every synced key has one)
 const SY_LABEL = { theme: 'Theme', themes: 'Your themes', keys: 'Keyboard shortcuts', arrowSound: 'Sound follows the arrow keys',
-  barNameStream: "Streams' title bars", barNameChat: "Chats' title bars", barButtons: 'Title bar buttons', toolbar: 'Toolbar',
+  barNameStream: "Streams' title bars", barNameChat: "Chats' title bars", barButtons: 'Title bar buttons', closeEnded: 'Close windows when a stream ends', toolbar: 'Toolbar',
   paletteOn: 'Search box', paletteRecent: 'Search box history', notifyAll: 'Live alerts for every channel', chanOpts: 'Channel settings',
   linkedOn: 'Linked channels', streamers: 'Linked streamers', linkedNot: 'Not the same streamer', linkedOpts: 'Linked channels options',
   allBots: "ALL: chat bots", allEvents: 'ALL: events', allSend: 'ALL: sending', allTimeout: 'ALL: timeouts', allHype: 'ALL: hype train', allHidden: 'ALL: hidden sites',

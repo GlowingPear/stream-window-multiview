@@ -11,6 +11,7 @@ import { gameKey, gameLayout, setGameKey } from './game-focus.js';
 import { setRect } from './geometry.js';
 import { chatFocusLayout, colKey, colOrder, featBase, featSwitch, featuredCh, isVid, layoutVars, setFeatured,
   toggleFeatured, vidByKey } from './layouts.js';
+import { refitLocked } from './lock.js';
 import { focusChannel, fsMoveStart, fsScrolledAt, openFocusView, placeMinis, setSwitchMode } from './switch-control.js';
 import { refreshFromSwitcher } from './undo.js';
 import { addNote, noteActs, renderBell } from '../panels/bell/bell.js';
@@ -45,7 +46,8 @@ function toast(text, undo, ok){
   undoNote = n && undo ? n.id : null;
   if (undoNote) noteActs.set(undoNote, { run: undo, ok: ok || (() => true) });
 }
-function removeChannel(ch){
+// ended: its stream ended (windows/ended.js), which the message says
+function removeChannel(ch, { ended } = {}){
   const cap = vidByKey(ch);
   if (cap && cap.kind === 'capture'){
     const wasBig = featuredCh === ch && featBase.length > 0;
@@ -57,7 +59,7 @@ function removeChannel(ch){
   }
   const ws = wins.filter(w => colKey(w) === ch); if (!ws.length) return;   // (a linked streamer's: every tab)
   const name = nameOf(ws[0].channel);
-  const specs = ws.map(w => ({ kind: w.kind, channel: w.channel, muted: w.muted, vol: w.vol, preview: w.preview, rect: { x: w.x, y: w.y, w: w.w, h: w.h } }));
+  const specs = ws.map(w => ({ kind: w.kind, channel: w.channel, muted: w.muted, vol: w.vol, preview: w.preview, rect: { x: w.x, y: w.y, w: w.w, h: w.h }, at: wins.indexOf(w) }));
   const order = buildCols().map(c => c.key), idx = order.indexOf(ch);
   const wasBig = featuredCh === ch && featBase.length > 0;
   ws.forEach(closeWin);
@@ -66,12 +68,15 @@ function removeChannel(ch){
     setFeatured(next ? next.key : null);
   }
   if (colsMode) columnsLayout(); else relayout();
-  toast(`Removed ${name}`, () => {
+  toast(ended ? `${name}'s stream ended: closed their windows` : `Removed ${name}`, () => {
     if (wins.some(w => colKey(w) === ch)) return;
-    specs.forEach(sp => createWin(sp, sp.rect));
+    specs.forEach(sp => {                // back in their place in the list (Auto layout and Tile go by it)
+      const n = createWin(sp, sp.rect);
+      wins.splice(wins.indexOf(n), 1); wins.splice(Math.min(sp.at, wins.length), 0, n);
+    });
     if (idx >= 0){ layoutVars.colOrder = colOrder.filter(k => k !== ch); colOrder.splice(Math.min(idx, colOrder.length), 0, ch); }
     if (wasBig) setFeatured(ch);
-    if (colsMode) columnsLayout(); else if (lastLayout === 'chatfocus') chatFocusLayout(); else if (lastLayout === 'stage') chatStageLayout(); else if (lastLayout === 'rail') chatRailLayout();
+    relayout();
     save();
   }, () => !wins.some(w => colKey(w) === ch));
 }
@@ -243,13 +248,15 @@ function toggleCapPause(s){
   syncSwitcher();
 }
 const isFocusView = () => colsMode && featBase.length > 0 && !!featuredCh;
-// Re-run whatever layout is showing (outside Columns).
+// Re-run whatever layout is showing (outside Columns). Auto layout and Tile only when it's locked (it fits around
+// windows that close), as the window's own ✕ does.
 function relayout(){
   if (colsMode) columnsLayout();
   else if (lastLayout === 'chatfocus') chatFocusLayout();
   else if (lastLayout === 'stage') chatStageLayout();
   else if (lastLayout === 'rail') chatRailLayout();
   else if (lastLayout === 'game') gameLayout();
+  else refitLocked();
 }
 function fsMute(s, solo){
   if (solo){   // hear only this one

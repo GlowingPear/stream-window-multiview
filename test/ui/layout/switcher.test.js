@@ -2,7 +2,7 @@
 // also in its buttons' tooltips.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { setup, add, press } = require('../app');
+const { setup, add, press, windows, settled } = require('../app');
 const { openApp } = setup();
 
 test('a name with markup in it stays text in the switch control, tooltips too', async t => {
@@ -18,4 +18,22 @@ test('a name with markup in it stays text in the switch control, tooltips too', 
   assert.equal(await page.locator('#featSwitch [onmouseover], #featSwitch img[onerror]').count(), 0, 'no attributes or elements from it');
   await page.hover(item + ' .fs-rl');
   assert.equal(await page.evaluate(() => window.__xss), undefined);
+});
+
+test('Remove (the switch control, its ✕, the search box) with the layout locked: Auto layout fits around what is left, as the window\'s ✕ does; Undo puts it back in its place', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha', 'bravo', 'charlie');
+  await page.click('#layoutBtn'); await page.click('#layoutMenu [data-l=auto]');
+  await settled(page);
+  await page.keyboard.press('Shift+L');
+  const streams = async () => (await windows(page)).filter(w => w.kind === 'stream').sort((p, q) => p.y - q.y || p.x - q.x);
+  const before = await streams();
+  await page.evaluate(() => window.smvNotes.removeChannel('bravo'));
+  await settled(page);
+  const after = await streams();
+  assert.deepEqual(after.map(w => w.title), ['alpha', 'charlie']);
+  assert.ok(after[1].y < before[2].y && after[1].h > before[0].h, 'charlie moved up into the room, bigger');
+  await page.click('#toast button');
+  await settled(page);
+  assert.deepEqual(await streams(), before, 'Undo: bravo back where it was');
 });
