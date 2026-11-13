@@ -6,14 +6,14 @@ const { setup } = require('../app');
 const { openApp } = setup();
 
 const now = Date.now();
-const LIVE = { quietkoala: { live: true, checked: now }, 'tw:quietkoala': { live: true, checked: now }, 'yt:@quietkoala': { live: false, checked: now } };
+const LIVE = { quietkoala: { live: true, checked: now }, 'tw:quietkoala': { live: true, checked: now }, 'yt:@quietkoala': { live: false, checked: now }, koalaclips: { live: true, checked: now } };
 const STREAMER = { id: 's1', name: '', main: 'quietkoala', accounts: ['quietkoala', 'tw:quietkoala', 'yt:@quietkoala'], bots: [{ p: 'twitch', name: 'koala_helper' }] };
-async function allApp(t, extra = {}){
+async function allApp(t, extra = {}, chs = ['quietkoala', 'tw:quietkoala'], live = LIVE){
   const set = { saved: JSON.stringify(STREAMER.accounts), intro: JSON.stringify({ done: true, tips: true }), linkedTip: '1', linkedOn: '1', streamers: JSON.stringify([STREAMER]),
     myName: 'mekick', myTwitch: 'metwitch', ...extra };
   const page = await openApp(t, { init: `if (window === top && !sessionStorage.getItem('set')){ sessionStorage.setItem('set', '1'); for (const [k, v] of Object.entries(${JSON.stringify(set)})) localStorage.setItem('kickMultiview.' + k, v); }` });
-  await page.evaluate(live => window.smvNotes.liveStatus(live), LIVE);
-  await page.evaluate(() => window.frames_.openStreamer('quietkoala', 'chat', ['quietkoala', 'tw:quietkoala']));
+  await page.evaluate(live => window.smvNotes.liveStatus(live), live);
+  await page.evaluate(chs => window.frames_.openStreamer('quietkoala', 'chat', chs), chs);
   await page.waitForSelector('#stage .win.chat:not(.tab-hidden) .ptab.all');
   return page;
 }
@@ -167,6 +167,50 @@ test('ALL: messages to you, bots hidden one by one, deletions with who or AI mod
   assert.deepEqual(after.slice(8), ['al-ev | Tloudmouth99 was timed out · 10m', 'al-ev | Knightowl_mod banned ratchetkid'], 'Twitch doesn\'t say which moderator; Kick does');
   await feed(page, 'quietkoala', { s: 'kick', raw: [KF('UserUnbannedEvent', { user: { slug: 'ratchetkid', username: 'ratchetkid' }, unbanned_by: { username: 'nightowl_mod' } })] });
   assert.equal((await lines(page)).pop(), 'al-ev | Knightowl_mod lifted the ban on ratchetkid');
+});
+
+test('ALL with two Kick channels of theirs: each line\'s badge says which (1, 2), a ban or pin in one isn\'t the other\'s, and each has its own switch', async t => {
+  const S2 = { ...STREAMER, accounts: ['quietkoala', 'tw:quietkoala', 'koalaclips'] };
+  const page = await allApp(t, { allOpen: '["s1"]', streamers: JSON.stringify([S2]), saved: JSON.stringify(S2.accounts) }, ['quietkoala', 'tw:quietkoala', 'koalaclips']);
+  await page.waitForSelector('.all-view');
+  assert.deepEqual(await tabs(page), ['ALL*', 'K1', 'K2', 'T']);
+  const said = (id, who, text) => KF('ChatMessageEvent', { id, content: text, type: 'message', sender: { id: 1, username: who, identity: {} } });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [said('k1', 'driftwood_7', 'hi main')] });
+  await feed(page, 'koalaclips', { s: 'kick', raw: [said('c1', 'driftwood_7', 'hi clips')] });
+  await feed(page, 'tw:quietkoala', { s: 'twitch', raw: [TW({ 'display-name': 'tinroof', id: 't1' }, ':tinroof!t@t PRIVMSG #quietkoala :hi twitch')] });
+  assert.deepEqual((await lines(page)).map(l => l.split(' | ')[1]), ['K1driftwood_7: hi main', 'K2driftwood_7: hi clips', 'Ttinroof: hi twitch']);
+  assert.equal(await page.$eval('.all-list .al-m .al-who .pi', i => i.title), 'Kick', 'the badge\'s tip');
+  // banned in one Kick chat: only their lines there go
+  await feed(page, 'quietkoala', { s: 'kick', raw: [KF('UserBannedEvent', { user: { slug: 'driftwood_7', username: 'driftwood_7' }, banned_by: { username: 'nightowl_mod' }, permanent: true })] });
+  assert.deepEqual((await lines(page)).filter(l => l.startsWith('al-m')).map(l => l.split(' | ')[1]), ['K2driftwood_7: hi clips', 'Ttinroof: hi twitch']);
+  // a pin in each: both kept, the switch says which
+  const kpin = (id, text) => KF('PinnedMessageCreatedEvent', { message: { id, content: text, type: 'message', sender: { username: 'quietkoala', slug: 'quietkoala', identity: {} } } });
+  await feed(page, 'quietkoala', { s: 'kick', raw: [kpin('p1', 'scrims at 8pm')] });
+  await feed(page, 'koalaclips', { s: 'kick', raw: [kpin('p2', 'clip of the week')] });
+  assert.equal(await page.textContent('.all-pinchip'), '2');
+  await page.click('.all-pinchip');
+  assert.deepEqual(await page.$$eval('.all-pin-sw .pi', l => l.map(b => b.textContent + ' ' + b.title)), ['K2 Kick (koalaclips)\'s pin', 'K1 Kick (quietkoala)\'s pin']);
+  await page.click('.all-pin-sw .pi[title^="Kick (quietkoala)"]');
+  assert.match(await page.textContent('.all-pin-row'), /^K1quietkoala scrims at 8pm/);
+  await feed(page, 'koalaclips', { s: 'kick', raw: [KF('PinnedMessageDeletedEvent', {})] });
+  assert.equal(await page.textContent('.all-pinchip'), '1', 'taken down in one: the other stays');
+  // each Kick channel its own switch: hiding one leaves the other
+  const sites = () => page.$$eval('.all-sites button', l => l.map(b => b.textContent + (b.getAttribute('aria-pressed') === 'true' ? '' : ' off')));
+  assert.deepEqual(await sites(), ['K1', 'K2', 'T']);
+  await page.click('.all-sites .pi[aria-label="Kick (koalaclips) in ALL"]');
+  assert.deepEqual(await sites(), ['K1', 'K2 off', 'T']);
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.allHidden'))), { s1: ['c:koalaclips'] });
+  assert.ok(!(await lines(page)).some(l => / \| K2/.test(l)), 'its lines hidden');
+  await feed(page, 'quietkoala', { s: 'kick', raw: [said('k2', 'mossbyte', 'still here')] });
+  assert.match((await lines(page)).pop(), /K1mossbyte: still here$/, 'the other Kick chat\'s still show');
+  // the whole site hidden (as before it had two): pressing one brings back only that one
+  await page.evaluate(() => { localStorage.setItem('kickMultiview.allHidden', JSON.stringify({ s1: ['kick'] })); window.dispatchEvent(new StorageEvent('storage', { key: 'kickMultiview.allHidden' })); });
+  assert.deepEqual(await sites(), ['K1 off', 'K2 off', 'T']);
+  await page.click('.all-sites .pi[aria-label="Kick (quietkoala) in ALL"]');
+  assert.deepEqual(await sites(), ['K1', 'K2 off', 'T']);
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('kickMultiview.allHidden'))), { s1: ['c:koalaclips'] });
+  await page.click('.all-sites .pi[aria-label="Kick (koalaclips) in ALL"]');
+  assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.allHidden')), '{}');
 });
 
 test('ALL: copying a removed message says why, as Kick\'s chat does: the menu\'s Copy with @name, and lines selected (emotes as their names, no tags or buttons, a line each)', async t => {
@@ -1601,7 +1645,7 @@ test('ALL: a YouTube gift is an event (the gift picked out); YouTube\'s stand-in
 });
 
 test('ALL: pins wait in the pill (how many), which shows and hides one compact strip: the newest, K T Y switch, ▾ all of them; a new pin pings the pill; a pin taken down goes', async t => {
-  const page = await allApp(t, { allOpen: '["s1"]' });
+  const page = await allApp(t, { allOpen: '["s1"]' }, STREAMER.accounts, { ...LIVE, 'yt:@quietkoala': { live: true, checked: now } });   // (YouTube's chat too: its pin)
   await page.waitForSelector('.all-view');
   assert.equal(await page.isVisible('.all-pinchip'), false, 'no pins: no pill');
   const kpin = (id, text) => KF('PinnedMessageCreatedEvent', { message: { id, content: text, type: 'message', sender: { username: 'quietkoala', slug: 'quietkoala', identity: {} } }, pinned_by: { username: 'nightowl_mod' } });
@@ -1626,7 +1670,7 @@ test('ALL: pins wait in the pill (how many), which shows and hides one compact s
   await page.click('.all-pin-t b');
   assert.equal(await page.getAttribute('.all-pin-t', 'aria-expanded'), 'false');
   await feed(page, 'quietkoala', { s: 'kick', raw: [kpin('k5', 'scrims at 8pm')] });
-  await page.evaluate(() => window.allChat.ingest('tw:quietkoala', { s: 'youtube', raw: [{ addBannerToLiveChatCommand: { bannerRenderer: { liveChatBannerRenderer: { actionId: 'b1', contents: { liveChatTextMessageRenderer: { id: 'y9', authorName: { simpleText: 'Mika R.' }, message: { runs: [{ text: 'clip of the ace' }] } } } } } } }] }));
+  await page.evaluate(() => window.allChat.ingest('yt:@quietkoala', { s: 'youtube', raw: [{ addBannerToLiveChatCommand: { bannerRenderer: { liveChatBannerRenderer: { actionId: 'b1', contents: { liveChatTextMessageRenderer: { id: 'y9', authorName: { simpleText: 'Mika R.' }, message: { runs: [{ text: 'clip of the ace' }] } } } } } } }] }));
   assert.equal(await strip(), 'YMika R. clip of the acejust nowYK', 'the newest');
   await page.click('.all-pin-sw .pi-kick');
   assert.match(await strip(), /^Kquietkoala scrims at 8pmjust nowYK/);
