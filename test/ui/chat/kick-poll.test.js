@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const { setup } = require('../app');
 const { openApp } = setup();
 
-// A chat window for a channel, its view running what the form sends to the Kick page (the scripts in in-site/kick-poll.js,
+// A chat window for a channel, its view running what the form sends to the Kick page (the scripts in sites/kick/in-site/poll.js,
 // called with the same arguments). fetch answers with window.__answer: { status, body } or 'throw'.
 async function chat(t, { width = 340, height = 640 } = {}) {
   const page = await openApp(t, { width: 900, height: 800 });

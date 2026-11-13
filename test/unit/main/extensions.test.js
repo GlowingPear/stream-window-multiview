@@ -91,6 +91,16 @@ test('a site\'s own session is its chats; a stream\'s own session is that stream
   assert.equal(x.targetOf(undefined), null);
 });
 
+test('every site in sites.js: its own session is its chats, and an extension that names its address runs there', () => {
+  const SmvSites = require('../../../src/shared/sites');
+  assert.deepEqual(x.PLATS, SmvSites.IDS);
+  for (const s of SmvSites.SITES) {
+    assert.deepEqual(x.targetOf(s.partition), { plat: s.id, kind: 'chat', perWindow: false });
+    assert.deepEqual(x.sitesOf({ host_permissions: [`https://*.${s.hosts[0]}/*`] }), [s.id]);
+  }
+  assert.deepEqual(Object.keys(x.defaultGrid()), SmvSites.IDS);
+});
+
 test('on where the grid says, unless a stream window chose for itself', () => {
   const e = entry({ grid: { twitch: { chat: true } }, win: { 'persist:kmv-stream-alpha': false } });
   const stream = p => x.targetOf(p, 'kick', 'stream');

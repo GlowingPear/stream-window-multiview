@@ -2,7 +2,9 @@
 // and who a run of recent chatters shouts out. The names are made up.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const load = () => import('../../../../src/page/chat/shoutout-text.js');
+const load = () => { globalThis.SmvSites = require('../../../../src/shared/sites.js'); return import('../../../../src/page/chat/shoutout-text.js'); };   // (the page loads the list of sites first)
+// Kick's addresses for a name in its chat (its module's shoutouts.tries)
+const kickTries = async name => (await import('../../../../src/page/sites/kick/site.js')).kick.shoutouts.tries(name);
 
 test('the message: {name}, {link}, {links} and {game}; a [ ] part is left out without a game; never "undefined" or two spaces', async () => {
   const { fillShout, SHOUT_TPL } = await load();
@@ -17,15 +19,15 @@ test('the message: {name}, {link}, {links} and {game}; a [ ] part is left out wi
 });
 
 test('links are full https:// addresses, lower case; Kick tries the name, then - for _ (only when it differs)', async () => {
-  const { shoutLink, kickTries } = await load();
+  const { shoutLink } = await load();
   assert.equal(shoutLink('kick', 'Pixel_Fox'), 'https://kick.com/pixel_fox');
   assert.equal(shoutLink('twitch', 'Lumen'), 'https://twitch.tv/lumen');
   assert.equal(shoutLink('youtube', 'x'), '');
   assert.equal(shoutLink('kick', ''), '');
-  assert.deepEqual(kickTries('@Pixel_Fox_'), ['pixel_fox_', 'pixel-fox-']);
-  assert.deepEqual(kickTries('maplemoth'), ['maplemoth']);
-  assert.deepEqual(kickTries('  '), []);
-  assert.deepEqual(kickTries(null), []);
+  assert.deepEqual(await kickTries('@Pixel_Fox_'), ['pixel_fox_', 'pixel-fox-']);
+  assert.deepEqual(await kickTries('maplemoth'), ['maplemoth']);
+  assert.deepEqual(await kickTries('  '), []);
+  assert.deepEqual(await kickTries(null), []);
 });
 
 test('cards: a linked streamer\'s covers all their sites (one message, or one per site); a channel\'s its own; a chatter on a card gets that channel', async () => {

@@ -56,7 +56,7 @@ const BOXES = {
 async function boxOf(t, site) {
   const page = await openApp(t);
   await page.evaluate(async ([site, html]) => {
-    const cfg = (await import(`./page/platforms/${site}.js`))[site].chatBox;
+    const cfg = (await import(`./page/sites/${site}/site.js`))[site].chatBox;
     const d = document.createElement('div'); d.id = 'standin'; d.innerHTML = html; document.body.append(d);
     window.chatNameAgent(cfg);
     window.boxCfg = cfg;

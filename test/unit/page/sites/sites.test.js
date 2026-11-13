@@ -1,21 +1,23 @@
-// Each site's module (src/page/platforms/kick.js, twitch.js, youtube.js): the same shape, their links,
+// Each site's module (src/page/sites/<id>/site.js): the same shape, their links,
 // addresses and raids.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 let kick, twitch, youtube;
 test.before(async () => {
-  ({ kick } = await import('../../../../src/page/platforms/kick.js'));
-  ({ twitch } = await import('../../../../src/page/platforms/twitch.js'));
-  ({ youtube } = await import('../../../../src/page/platforms/youtube.js'));
+  globalThis.SmvSites = require('../../../../src/shared/sites.js');   // (the page loads it before its modules)
+  ({ kick } = await import('../../../../src/page/sites/kick/site.js'));
+  ({ twitch } = await import('../../../../src/page/sites/twitch/site.js'));
+  ({ youtube } = await import('../../../../src/page/sites/youtube/site.js'));
 });
 // a link as platforms.js hands it over: host without www. or m., and the path's parts
 const link = s => { const u = new URL(s); return [u.hostname.replace(/^(www|m)\./, ''), u.pathname.split('/').filter(Boolean), u]; };
 
-test('all three have the same shape', () => {
+test('all three have the same shape (every slot of sites/adapter.js: what one hasn\'t got is its default)', () => {
   const keys = o => Object.keys(o).sort();
   assert.deepEqual(keys(twitch), keys(kick));
-  assert.deepEqual(keys(youtube).filter(k => !['namedBySite', 'playerCss', 'playerFitJs'].includes(k)), keys(kick));
+  assert.deepEqual(keys(youtube), keys(kick));
+  assert.deepEqual([kick, twitch, youtube].map(p => typeof p.playerCss), ['object', 'object', 'string'], 'only YouTube trims its watch page (null: not)');
   assert.deepEqual([kick, twitch, youtube].map(p => [p.id, p.name, p.letter, p.partition]),
     [['kick', 'Kick', 'K', 'persist:kick'], ['twitch', 'Twitch', 'T', 'persist:twitch'], ['youtube', 'YouTube', 'Y', 'persist:youtube']]);
   assert.deepEqual([kick, twitch, youtube].map(p => [p.mentions, p.spamAlerts, p.emoteLists, p.pageCommands, p.likes]),

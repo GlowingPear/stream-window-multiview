@@ -51,14 +51,17 @@ test('start-up code belongs in init(): a module\'s top only has what can run in 
   fs.writeFileSync(path.join(root, 'index.html'), '<script type="module" src="page/shared/menu.js"></script><script type="module" src="page/app.js"></script>');
   put('app.js', "import { init } from './panel.js';\ninit();\n");
   put('shared/consts.js', "const SIZE = Math.max(1, 2);\nconst helpers = (() => ({ twice: n => n * 2 }))();\nexport { helpers, SIZE };\n");   // imports nothing
+  put('shared/shape.js', "import { SIZE } from './consts.js';\nclass Shape { constructor(o){ Object.assign(this, { size: SIZE }, o); } }\nexport { Shape };\n");   // a class, from a module that isn't in a cycle
   put('shared/menu.js', "document.addEventListener('click', () => {});\n");    // the page loads it itself
   put('core.js', "const $ = s => document.querySelector(s);\nlet stage;\nfunction init(){ stage = $('#stage'); }\nexport { $, init, stage };\n");
   put('panel.js', [
     "import { $, stage } from './core.js';",
     "import { helpers, SIZE } from './shared/consts.js';",
+    "import { Shape } from './shared/shape.js';",
     '',
     'const GAP = 6, list = [], seen = new Set();',
     'const big = SIZE * 2;',
+    'const shaped = new Shape({ name: "panel" });',
     'const vars = { get gap(){ return GAP; }, set gap(v){ /* … */ } };',
     'const later = () => helpers.twice(stage.offsetWidth);',
     'const opts = { size: () => $("#x").offsetWidth, name: "panel" };',
@@ -66,13 +69,13 @@ test('start-up code belongs in init(): a module\'s top only has what can run in 
     'const wide = stage.offsetWidth > 900;',
     "stage.classList.add('ready');",
     'function init(){}',
-    'export { big, box, init, later, list, opts, seen, vars, wide };',
+    'export { big, box, init, later, list, opts, seen, shaped, vars, wide };',
     ''
   ].join('\n'));
   assert.deepEqual(startupProblems(dir), [
-    'panel.js:9: box needs other code to run first: declare it with let and set it in init()',
-    'panel.js:10: wide needs other code to run first: declare it with let and set it in init()',
-    'panel.js:11: runs as the module loads: put it in init()'
+    'panel.js:11: box needs other code to run first: declare it with let and set it in init()',
+    'panel.js:12: wide needs other code to run first: declare it with let and set it in init()',
+    'panel.js:13: runs as the module loads: put it in init()'
   ]);
 });
 

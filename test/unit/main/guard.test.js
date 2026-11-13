@@ -24,6 +24,18 @@ test('the sites and their sign-in pages open inside the app; only over https', (
     assert.ok(!g.inApp(u), u);
 });
 
+test('every site in sites.js: its addresses open inside the app, and its login\'s storage is one a web view may use', () => {
+  const SmvSites = require('../../../src/shared/sites');
+  for (const s of SmvSites.SITES) {
+    for (const h of s.hosts) assert.ok(g.isSite(`https://${h}/x`) && g.isSite(`https://www.${h}/x`), h);
+    for (const h of s.signIn) assert.ok(g.isLogin(`https://accounts.${h}/x`), h);
+    assert.ok(g.VIEW_PARTITION.test(s.partition), s.partition);
+    assert.ok(!g.VIEW_PARTITION.test(s.partition + 'x'), s.partition + 'x');
+  }
+  for (const p of ['persist:kmv-mini', 'persist:kmv-web', 'persist:kmv-stream-abc_1']) assert.ok(g.VIEW_PARTITION.test(p), p);
+  for (const p of ['persist:kmv-webstore', 'persist:other', 'kick', '']) assert.ok(!g.VIEW_PARTITION.test(p), p);
+});
+
 test('pop-ups: the sites open in the app; other addresses in your browser, only just after you clicked; the app\'s own pages never open one', () => {
   assert.equal(g.popupFor('https://kick.com/login'), 'app');
   assert.equal(g.popupFor('https://accounts.google.com/o/oauth2'), 'app');
