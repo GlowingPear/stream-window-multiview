@@ -2,7 +2,10 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.38 (current)
+## 0.4.39 (current)
+- A site that has signed the app out says so, with Sign in again
+
+## 0.4.38
 - Numbered site badges keep their letter centred
 - Each site's code in a folder of its own: adding a site is plug and play
 
