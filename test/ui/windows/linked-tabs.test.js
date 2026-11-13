@@ -498,6 +498,11 @@ test('two channels on one site: the card links a second Kick channel; their tabs
   // the number: small, over the tab's bottom right corner
   assert.deepEqual(await page.$eval(tab + '[data-ch=koalaclips]', b => { const r = b.getBoundingClientRect(), n = b.querySelector('.pn').getBoundingClientRect();
     return [n.right > r.right, n.bottom > r.bottom, n.left > r.left + r.width / 2, n.height <= r.height / 2]; }), [true, true, true, true]);
+  // its letter stays centred, as on a tab without a number (T)
+  const off = sel => page.$eval(tab + sel, b => { const g = document.createRange(); g.selectNodeContents([...b.childNodes].find(c => c.nodeType === 3));
+    const l = g.getBoundingClientRect(), r = b.getBoundingClientRect(); return [(l.left + l.right - r.left - r.right) / 2, (l.top + l.bottom - r.top - r.bottom) / 2]; });
+  const [numbered, plain] = [await off('[data-ch=koalaclips]'), await off('[data-ch="tw:quietkoala"]')];
+  assert.ok(Math.abs(numbered[0] - plain[0]) <= 1 && Math.abs(numbered[1] - plain[1]) <= 1, `centred like T (${numbered} vs ${plain})`);
   await page.click(tab + '[data-ch=koalaclips]');
   assert.equal((await shown(page, 'chat'))[0].ch, 'koalaclips', 'the chat follows that channel, not their other Kick one');
   await page.click(tab + '[data-ch=koalaclips]', { button: 'right' });
