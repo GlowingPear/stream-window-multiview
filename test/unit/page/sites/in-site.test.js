@@ -30,8 +30,9 @@ test('every site has the same slots for its parts; each part runs on its own as 
   }
   assert.deepEqual(Object.values(PLATFORMS).map(p => [p.id, !!p.inSite.tap, !!p.inSite.pins, !!p.inSite.shown, !!p.inSite.badges, !!p.inSite.modes]),
     [['kick', true, true, true, true, true], ['twitch', true, true, true, true, true], ['youtube', true, true, true, false, true]], 'YouTube\'s badges come with their pictures');
-  assert.deepEqual(Object.values(PLATFORMS).map(p => ['icons', 'look', 'room', 'hypeTrain', 'channels', 'commands', 'reply', 'replyAt', 'replyPress', 'heldCard'].filter(k => p.inSite[k])),
-    [['icons', 'reply'], ['room', 'hypeTrain', 'channels', 'commands', 'replyAt', 'replyPress', 'heldCard'], ['look', 'heldCard']]);
+  assert.deepEqual(Object.values(PLATFORMS).map(p => ['icons', 'look', 'room', 'hypeTrain', 'channels', 'commands', 'reply', 'replyAt', 'replyPress', 'heldCard', 'signedOut'].filter(k => p.inSite[k])),
+    [['icons', 'reply'], ['room', 'hypeTrain', 'channels', 'commands', 'replyAt', 'replyPress', 'heldCard'], ['look', 'heldCard', 'signedOut']],
+    'only YouTube\'s chat page shows you signed out (Kick\'s and Twitch\'s look the same: those sites are asked)');
 });
 
 test('a site\'s parts slot fits what it says it can do (chat flags, replies, held messages, its own commands)', () => {

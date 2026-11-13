@@ -1,0 +1,20 @@
+/* A login a site has taken back (toolbar/login-lost.js), in amber as ALL's line for a site that stopped working
+   (chat/all-chat.css .all-hl): a dot on the Logins button, its row in Logins and Settings › Accounts, and a strip at
+   the top of the site's chat windows (the chat starts below it, so nothing of it is hidden) */
+#loginBtn.acct-lost > i{position:relative;color:#e8b84a}
+#loginBtn.acct-lost > i::after{content:'!';position:absolute;top:-5px;right:-7px;width:11px;height:11px;border-radius:50%;background:#e8b84a;color:#1a1405;
+  font:900 8.5px/11px system-ui,sans-serif;font-style:normal;text-align:center;box-shadow:0 0 0 2px var(--panel)}
+.am-row.lost .pdot{background:#e8b84a}
+.am-row.lost .am-st{color:#ffd27a;font-weight:600}
+#accountMenu .am-row .btn.primary,#settingsDlg .am-row .btn.primary{background:rgba(232,184,74,.16);border-color:rgba(232,184,74,.6);color:#ffe2a6}
+#accountMenu .am-row .btn.primary:hover,#settingsDlg .am-row .btn.primary:hover{background:rgba(232,184,74,.28);border-color:#e8b84a}
+
+.win.has-login-lost .body webview{top:36px;height:calc(100% - 36px)}
+.login-lost{position:absolute;top:0;left:0;right:0;z-index:2;height:36px;box-sizing:border-box;display:flex;align-items:center;gap:7px;padding:0 4px 0 10px;
+  font-size:12px;color:#ffe2a6;background:linear-gradient(90deg,rgba(232,184,74,.2),rgba(232,184,74,.07)),var(--panel);border-bottom:1px solid rgba(232,184,74,.42)}
+.ll-ic{display:grid;flex:none;color:#e8b84a}.ll-ic svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.ll-t{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ll-go{flex:none;height:24px;padding:0 9px;border-radius:7px;border:1px solid rgba(232,184,74,.55);background:rgba(232,184,74,.14);color:#ffe9b8;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+.ll-go:hover{background:rgba(232,184,74,.26)}
+.ll-x{display:grid;place-items:center;flex:none;width:24px;height:24px;border:0;border-radius:6px;background:none;color:#e8c98a;cursor:pointer}
+.ll-x:hover{background:rgba(232,184,74,.18)}.ll-x svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4}

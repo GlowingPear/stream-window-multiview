@@ -78,7 +78,7 @@ const SLOTS = {
   chat: [{ ownIcons: ['boolean', false], globalBadges: ['boolean', false], look: ['boolean', false], shared: ['boolean', false], modByLater: ['boolean', false], hypeTrains: ['boolean', false], modesAgain: ['boolean', false] }, {},
     'what ALL reads from its chat beyond the messages (sites/kick/site.js says what each is)'],
   inSite: [{ tap: ['function', null], pins: ['function', null], shown: ['function', null], badges: ['function', null], modes: ['function', null], icons: ['function', null], look: ['function', null], room: ['function', null],
-    hypeTrain: ['function', null], channels: ['function', null], commands: ['function', null], reply: ['function', null], replyAt: ['function', null], replyPress: ['function', null], heldCard: ['function', null],
+    hypeTrain: ['function', null], channels: ['function', null], commands: ['function', null], reply: ['function', null], replyAt: ['function', null], replyPress: ['function', null], heldCard: ['function', null], signedOut: ['function', null],
     emote: [{ look: ['array', REQUIRED], find: ['function', REQUIRED], host: ['string', null], path: ['string', null], pics: ['string', REQUIRED] }, null] }, {},
     'its parts of the scripts that run inside its chat page (in-site/; sites/kick/site.js says what each is)'],
   send: [{ button: ['string', null], inner: ['string|array', null], waitEnabled: ['boolean', false], realPress: ['boolean', false] }, {}, 'how in-site/send.js sends in its chat'],

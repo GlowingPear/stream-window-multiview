@@ -21,6 +21,7 @@ const TOPICS = new Set([
   'chatName',    // Settings › Chat › Channel name in chat boxes: on, its text, or a channel's name learned (chat/chat-name.js)
   'shoutouts',   // Settings › Shoutouts: on, its options, or someone shouted out (chat/shoutout.js)
   'bots',        // the chat bot lists (Settings › Chat › Chat bots, saved with the alerts: alerts/alerts.js)
+  'logins',      // a site signed the app out, or its login works again (toolbar/login-lost.js)
   'mod',         // which channels you moderate, as the sites answered (platforms/platforms.js modIs)
   'theme',       // the theme's colours, light or dark (panels/settings/themes.js)
   'names',       // channel names learned from the sites

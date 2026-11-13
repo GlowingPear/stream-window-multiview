@@ -108,6 +108,8 @@ const kick = new Site({   // (what each slot is for, and its default: sites/adap
   //   reply (threadedReplies true: id -> whether its own Reply started), replyAt / replyPress (threadedReplies
   //     'pointer': id -> where the pointer goes | null; id -> 'ok' | 'cant' | '')
   //   heldCard (held: id -> the held message's card in its chat | null; in-site/mod.js heldAgent)
+  //   signedOut (-> true: its chat page shows you signed out (its sign-in where the box would be), false: its chat box,
+  //     null: can't tell yet; toolbar/login-lost.js. null: its page can't say, so the site's asked instead)
   //   emote: its emotes in a chat page: look (the emote card's badge: [background, colour, words]), find((img, url,
   //     name) -> { big, text? } | null: in-site/emote-preview.js), host and path (regular expressions' text: where its
   //     emotes' pictures are, and what their path starts with, for in-site/mentions.js and new-emotes.js; host null:
@@ -116,7 +118,7 @@ const kick = new Site({   // (what each slot is for, and its default: sites/adap
   inSite: {
     tap: kickTap, pins: kickPins, shown: kickShown, badges: kickBadges, modes: kickModes,
     icons: kickIconsAgent, look: null, room: null, hypeTrain: null, channels: null, commands: null,
-    reply: replyAgent, replyAt: null, replyPress: null, heldCard: null,
+    reply: replyAgent, replyAt: null, replyPress: null, heldCard: null, signedOut: null,   // (its chat page looks the same signed out: the site's asked)
     emote: {
       look: ['#53fc18', '#0a0c0d', 'Kick emote'],
       find: (img, u) => { const m = u.hostname === 'files.kick.com' && u.pathname.match(/^\/emotes\/(\d+)\//); return m ? { big: `https://files.kick.com/emotes/${m[1]}/fullsize` } : null; },

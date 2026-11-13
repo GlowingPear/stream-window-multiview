@@ -2,6 +2,7 @@ import { Site } from '../adapter.js';
 import { youtubeFeed } from './feed.js';
 import { youtubeEmote } from './in-site/emotes.js';
 import { youtubeHeldCard, youtubeModes, youtubePins, youtubeShown, youtubeTap, ytLookAgent } from './in-site/feed.js';
+import { youtubeSignedOut } from './in-site/signed-out.js';
 
 // YouTube, as the rest of the page sees it (the same shape as kick.js, which says more).
 // YouTube's channel ids are "yt:@handle", "yt:c:UC…" (a channel id) or "yt:v:VIDEOID" (a specific video). A
@@ -73,11 +74,11 @@ const youtube = new Site({   // (what each slot is for, and its default: sites/a
   emotes: { none: 'YouTube\'s emoji are in its own chat box', paste: null },
   feed: youtubeFeed,   // its chat's data as ALL's messages (feed.js; chat/feed-parse.js)
   chat: { ownIcons: false, globalBadges: false, look: true, shared: false, modByLater: false, hypeTrains: false, modesAgain: true },
-  // The scripts that run inside its chat page, its parts of them (see kick.js's inSite): in-site/feed.js, in-site/emotes.js
+  // The scripts that run inside its chat page, its parts of them (see kick.js's inSite): in-site/feed.js, in-site/emotes.js, in-site/signed-out.js
   inSite: {
     tap: youtubeTap, pins: youtubePins, shown: youtubeShown, badges: null, modes: youtubeModes,   // (badges: its come with their pictures)
     icons: null, look: ytLookAgent, room: null, hypeTrain: null, channels: null, commands: null,
-    reply: null, replyAt: null, replyPress: null, heldCard: youtubeHeldCard,
+    reply: null, replyAt: null, replyPress: null, heldCard: youtubeHeldCard, signedOut: youtubeSignedOut,
     emote: { look: ['#ff3d3d', '#fff', 'YouTube emoji'], find: youtubeEmote, host: null, path: null, pics: '([\\w-]+\\.)?ggpht\\.com\\/|www\\.gstatic\\.com\\/' }   // (host: its emoji aren't read in a message's words)
   },
   // How in-site/send.js sends in its chat (see kick.js's send): the <button> inside its #send-button (its

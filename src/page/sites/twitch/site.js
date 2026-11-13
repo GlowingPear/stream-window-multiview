@@ -149,7 +149,7 @@ const twitch = new Site({   // (what each slot is for, and its default: sites/ad
   inSite: {
     tap: twitchTap, pins: twitchPins, shown: twitchShown, badges: twitchBadges, modes: twitchModes,
     icons: null, look: null, room: twRoomAgent, hypeTrain: hypeAgent, channels: channelsAgent, commands: twCommandsAgent,
-    reply: null, replyAt: twReplyAt, replyPress: twReplyPress, heldCard: twitchHeldCard,
+    reply: null, replyAt: twReplyAt, replyPress: twReplyPress, heldCard: twitchHeldCard, signedOut: null,   // (its chat page looks the same signed out: the site's asked)
     emote: {
       look: ['#8a4fff', '#fff', 'Twitch emote'],
       find: (img, u) => u.hostname === 'static-cdn.jtvnw.net' && /^\/emoticons\//.test(u.pathname) ? { big: u.href.replace(/\/[123]\.0(?=$|\?)/, '/3.0') } : null,

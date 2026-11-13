@@ -266,7 +266,7 @@ function noteRow(n, o = {}){
     row.querySelector('.mp-where').remove();
     body.textContent = n.detail || '';
     const a = n.act || {}, live = noteActs.get(n.id);
-    if (a.t === 'login' && DESKTOP && window.kmv.openLogin) act('Log in', () => { close(); window.kmv.openLogin(a.p); }, 'primary');
+    if (a.t === 'login' && DESKTOP && window.kmv.openLogin) act(a.again ? 'Sign in again' : 'Log in', () => { close(); window.kmv.openLogin(a.p); }, 'primary');
     if (a.t === 'undo' && live && live.ok()) act('Undo', b => { live.run(); noteActs.delete(n.id); b.remove(); }, 'accent');
     if (a.t === 'folder' && live) act('Show in folder', () => live.run());
     if (a.t === 'news') act('What\'s new', () => { close(); showHelp('news'); });
