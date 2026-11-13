@@ -46,7 +46,8 @@ function toast(text, undo, ok){
   undoNote = n && undo ? n.id : null;
   if (undoNote) noteActs.set(undoNote, { run: undo, ok: ok || (() => true) });
 }
-function removeChannel(ch){
+// ended: its stream ended (windows/ended.js), which the message says
+function removeChannel(ch, { ended } = {}){
   const cap = vidByKey(ch);
   if (cap && cap.kind === 'capture'){
     const wasBig = featuredCh === ch && featBase.length > 0;
@@ -67,7 +68,7 @@ function removeChannel(ch){
     setFeatured(next ? next.key : null);
   }
   if (colsMode) columnsLayout(); else relayout();
-  toast(`Removed ${name}`, () => {
+  toast(ended ? `${name}'s stream ended: closed their windows` : `Removed ${name}`, () => {
     if (wins.some(w => colKey(w) === ch)) return;
     specs.forEach(sp => {                // back in their place in the list (Auto layout and Tile go by it)
       const n = createWin(sp, sp.rect);

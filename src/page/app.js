@@ -24,6 +24,7 @@ import { init as windowsFrames } from './windows/frames.js';
 import { init as windowsViews } from './windows/views.js';
 import { init as chatTranslate } from './chat/translate.js';
 import { init as chatViewMenu } from './chat/view-menu.js';
+import { init as windowsEnded } from './windows/ended.js';
 import { init as windowsRaids } from './windows/raids.js';
 import { init as windowsStuck } from './windows/stuck.js';
 import { init as layoutLock } from './layout/lock.js';
@@ -134,6 +135,7 @@ import { init as panelsSettingsSync } from './panels/settings/sync.js';
   chatTranslate,
   chatViewMenu,
   windowsRaids,
+  windowsEnded,
   windowsStuck,
   layoutLock,
   panelsChannelsChannels,

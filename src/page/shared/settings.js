@@ -11,6 +11,7 @@ const SETTING_NAMES = new Set([
   'popped', 'popPartial',  // the streams window is open; only the streams you can't see went to it
   'lastLayout', 'streams.lastLayout', 'cols', 'colOrder', 'linked', 'featured', 'sideCols', 'pageStep',
   'switchMode', 'monitors', 'switchRect', 'layoutLocked', 'focusOnly', 'autoFit', 'autoPause', 'presets', 'game', 'toolbar',
+  'closeEnded',             // Settings › Layouts: the minutes after a stream ends that its windows close (windows/ended.js)
   'chatZoom', 'chatBlowup', 'chatBlowSize', 'stageCh', 'stageSplit', 'stageZoom', 'railCh', 'railZoom', 'lastSession', 'startMuted', 'snap',
   // Settings › General: the streams' quality, Fits the window's range, and what streams you can't see play at (windows/quality.js)
   'quality', 'qualityFit', 'qualityHidden',
@@ -57,7 +58,7 @@ const SETTING_NAMES = new Set([
    with its auto-open, alerts and name; alertSound.* (not listed) sync as files of their own. Windows, layouts,
    sign-ins, history and what's only about this computer stay here. */
 const SYNCED = new Set([
-  'theme', 'themes', 'keys', 'arrowSound', 'barNameStream', 'barNameChat', 'barButtons', 'toolbar', 'paletteOn', 'paletteRecent',
+  'theme', 'themes', 'keys', 'arrowSound', 'barNameStream', 'barNameChat', 'barButtons', 'closeEnded', 'toolbar', 'paletteOn', 'paletteRecent',
   'saved', 'autoOpen', 'notifyAll', 'notifyOff', 'chNames', 'chanOpts',
   'linkedOn', 'streamers', 'linkedNot', 'linkedOpts', 'allBots', 'allEvents', 'allSend', 'allTimeout', 'allHype', 'allHidden',
   'mentOn', 'mentMuted', 'mentWords', 'myName', 'myTwitch', 'myYouTube', 'dndFor', 'desktopNotify', 'alerts',
