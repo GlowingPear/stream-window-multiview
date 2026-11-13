@@ -1,21 +1,20 @@
 // Stream Multiview — desktop app (Electron main process)
 const { app, BrowserWindow, session, shell, ipcMain, Menu, screen, Notification, dialog, desktopCapturer, net, safeStorage, powerMonitor, clipboard, ClipboardItem, nativeImage, webContents } = require('electron');
-const { parseChannel, createLiveWatcher, SLUG_RE, platformOf, parseTwitch, parseTwitchHtml, ytLiveUrl, parseYouTube,
-  validCh, isGoogleSignin, firefoxUA, readKickFollowPages, kickFollowsFrom, twitchFollowsFrom, canModerate, channelFromLink,
-  parseTwitchUsers, readKickLive, parseYtFeed, parseYtVideos, ytErrorReason, createKeyGate, createFeedGate, ytNoFeed, normCh, toTime, withTimeout, keepLatest } = require('./live');
-const { createHistory, profileSummary, parseKickProfile, parseKickVideos, parseTwitchProfile, parseYouTubeChannel } = require('./profiles');
-const { parseKickEmotes, parseTwitchEmotes, parse7tv, parseBttv, parseFfz, createEmoteStore } = require('./emote-lists');
-const { kickGroups, twitchGroups, stvGroup, bttvGroup, ffzGroup } = require('./emote-picker');
+const { createLiveWatcher, platformOf, validCh, normCh, withTimeout, keepLatest } = require('./live');
+const { createHistory, profileSummary } = require('./profiles');
+const { parse7tv, parseBttv, parseFfz, createEmoteStore } = require('./emote-lists');
+const { stvGroup, bttvGroup, ffzGroup } = require('./emote-picker');
 const { menuFor, drawnItems, translateTarget } = require('./context-menu');
 const emoteClip = require('./emote-clip');
 const { makeTranslator } = require('./translate');
 const { createProfileQueue } = require('./profile-queue');
 const { centre, describe, fill, placeParts } = require('./monitors');
 const SmvFollows = require('../shared/follows');
+const SmvSites = require('../shared/sites');
+const { createSites } = require('./sites');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const fs = require('fs');
-const { youtubeLoginFromFirefox } = require('./firefox-login');
 const extensions = require('./extensions');
 const guard = require('./guard');
 const { pageOptions } = require('./activity');
@@ -24,15 +23,12 @@ const { createSampleStore, exportSamples, healthReport } = require('./event-samp
 const { createPartitionCare, HTTP_CACHE_MAX, CODE_CACHE_MAX, DAY } = require('./partitions');
 const { openDb } = require('./db');
 
-// Each platform's chats + login window share one saved session per platform, so you log in once.
-const PARTITION = 'persist:kick';
+// Each site's chats + login window share one saved session per site (its partition in src/shared/sites.js), so you
+// log in once. What differs by site is in its own module (sites/<id>/site.js): main.js asks the channel's site (sites.of).
 const WEB_PARTITION = 'persist:kmv-web';      // other web pages: storage of their own, none of your logins
-const PARTS = { kick: 'persist:kick', twitch: 'persist:twitch', youtube: 'persist:youtube' };
-const LOGIN_URL = {
-  kick: 'https://kick.com',
-  twitch: 'https://www.twitch.tv/login',
-  youtube: 'https://accounts.google.com/ServiceLogin?service=youtube&continue=https%3A%2F%2Fwww.youtube.com%2F'
-};
+const partitionOf = id => SmvSites.byId[id].partition;
+// A site's id from the page (an unknown one: the site with no prefix, as before)
+const siteId = id => (SmvSites.IDS.includes(id) ? id : SmvSites.DEFAULT);
 
 // The app used to be called "Kick Multiview": keep using that data folder (your logins, saved channels, layouts).
 app.setName('Stream Multiview');
@@ -71,6 +67,7 @@ const chromeUA = () => {
            : 'X11; Linux x86_64';
   return `Mozilla/5.0 (${os}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`;
 };
+const BROWSER_HEADERS = () => ({ 'User-Agent': chromeUA(), 'Accept-Language': 'en-US,en;q=0.9' });
 
 // What any page may ask for (camera, microphone, notifications, opening other apps, devices…): only what the app
 // needs, on every session as it's made (guard.js). The app's own pages are known by their window.
@@ -115,7 +112,7 @@ const switcherIpc = guard.guardedIpc(ipcMain, roleOf, ['switcher'], refused);
 
 /* ---------- Settings › Developer: the error log and the sites' last answers (devlog.js) ----------
    This side's warnings and errors, the page's and the chat helpers' go in the error log, kept for the next run too.
-   Every request to Kick, Twitch and YouTube about channels goes in Requests, with its answer's text while
+   Every request to the sites about channels goes in Requests, with its answer's text while
    Developer tools are on. Copy diagnostics puts them in a report with the app's version and the system. */
 let devOn = false;                     // Settings › Developer › Developer tools (the page says)
 const errorLog = createErrorLog({ saved: (() => { try { return JSON.parse(fs.readFileSync(stateFile('error-log'), 'utf8')); } catch { return []; } })() });
@@ -497,11 +494,7 @@ app.whenReady().then(() => {
 
 // A site's own pages use its login; any other page gets storage of its own, without your logins.
 function partitionFor(url) {
-  try { const h = new URL(url).hostname;
-    if (/(^|\.)kick\.com$/.test(h)) return PARTITION;
-    if (/(^|\.)twitch\.tv$/.test(h)) return PARTS.twitch;
-    if (/(^|\.)(youtube\.com|youtu\.be|google\.com)$/.test(h)) return PARTS.youtube;
-  } catch {}
+  try { const s = SmvSites.siteOfHost(new URL(url).hostname); if (s) return s.partition; } catch {}
   return WEB_PARTITION;
 }
 function openSiteWindow(url, width = 1100, height = 780, partition) {
@@ -566,7 +559,7 @@ function createMain() {
     streamsWin?.close();
     switcherWin?.close();
     watcher.stop();
-    if (liveWin && !liveWin.isDestroyed()) liveWin.destroy();   // the hidden checker must not keep the app running
+    sites.list.forEach(a => a.close && a.close());   // (a site's hidden windows must not keep the app running)
   });
   mainWin.on('closed', () => { mainWin = null; });
   mainWin.on('resize', () => { if (shapeState !== 'none') applyGameShape(); placeGameSoon(); });
@@ -686,12 +679,14 @@ app.on('web-contents-created', (_e, wc) => {
   try { wc.setUserAgent(chromeUA()); } catch {}
   // Web views start with their sound off; the page turns it on once it's ready (a stream: once its volume is set).
   if (wc.getType() === 'webview') try { wc.setAudioMuted(true); } catch {}   // every view (incl. each stream's private storage) looks like normal Chrome
-  // Google's sign-in pages get a Firefox identity (see googleSignin below); everything else stays Chrome.
+  // Sign-in pages that refuse the app as it is (Google's) get another browser's identity (see signInAs below);
+  // everything else stays Chrome.
   const syncUA = (url, isMain) => {
     if (!isMain) return;
-    const want = isGoogleSignin(url) ? firefoxUA() : chromeUA();
+    const as = signInAs(url);
+    const want = as ? as.userAgent() : chromeUA();
     try { if (wc.getUserAgent() !== want) wc.setUserAgent(want); } catch {}
-    if (isGoogleSignin(url)) signinWcs.add(wc.id); else signinWcs.delete(wc.id);
+    if (as) signinWcs.add(wc.id); else signinWcs.delete(wc.id);
   };
   wc.on('did-start-navigation', (d, url, _inPlace, isMain) => syncUA(d && d.url ? d.url : url, d && 'isMainFrame' in d ? d.isMainFrame : isMain));
   wc.on('will-redirect', (d, url, _inPlace, isMain) => syncUA(d && d.url ? d.url : url, d && 'isMainFrame' in d ? d.isMainFrame : isMain));
@@ -860,54 +855,33 @@ appIpc.handle('chat:add', (_e, channel) => {
   if (typeof channel === 'string' && validCh(normCh(channel)) && mainWin) { mainWin.webContents.send('chat:add', channel); mainWin.focus(); }
 });
 
-/* ---------- live alerts for saved channels ---------- */
-// A hidden, muted window on kick.com (using your Kick login) asks Kick for each saved channel's info.
-let liveWin = null, liveLoading = null;
+/* ---------- the sites (sites/<id>/site.js) ---------- */
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const NET_TIMEOUT = 20000;   // one request to a site: after this it counts as no answer (a dead connection never ends)
 const netSignal = () => AbortSignal.timeout(NET_TIMEOUT);
-const liveJs = code => liveWin && !liveWin.isDestroyed() ? withTimeout(liveWin.webContents.executeJavaScript(code, true), NET_TIMEOUT, null) : Promise.resolve(null);   // null: no answer
-function ensureLiveWin() {
-  if (liveWin && !liveWin.isDestroyed()) return liveLoading;
-  liveWin = new BrowserWindow({ show: false, width: 900, height: 700,
-    webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
-  liveWin.webContents.setAudioMuted(true);
-  liveWin.on('closed', () => { liveWin = null; });
-  // A crashed page never answers again: close it, and the next check opens a fresh one. (Not on 'unresponsive':
-  // a busy computer sets that off too, and closing it then cuts off the checks in flight. Each one has a time limit.)
-  const w = liveWin;
-  w.webContents.on('render-process-gone', () => { if (!w.isDestroyed()) w.destroy(); });
-  // Not on kick.com in time: its requests would run on a blank page (signed out, no answers), so start again next time
-  liveLoading = withTimeout(w.loadURL('https://kick.com/robots.txt').then(() => true, () => true), NET_TIMEOUT, false)
-    .then(ok => { if (ok) return; if (liveWin === w) liveWin = null; if (!w.isDestroyed()) w.destroy(); });
-  return liveLoading;
-}
-async function fetchChannel(slug) {
-  if (!SLUG_RE.test(slug)) return null;
-  await ensureLiveWin();
-  if (!liveWin) return null;
-  for (const ver of ['v2', 'v1']) {
-    const url = `/api/${ver}/channels/${slug}`, t0 = Date.now();
-    const r = await liveJs(
-      `fetch(${JSON.stringify(url)},{credentials:'include',headers:{Accept:'application/json'}})` +
-      `.then(async r=>({status:r.status,body:r.ok?await r.text():''})).catch(()=>({status:0,body:''}))`
-    ).catch(() => null) || { status: 0, body: '' };
-    notePageRequest('https://kick.com' + url, t0, r);
-    if (r.status === 200){ const info = parseChannel(r.body, slug); if (info) return info; }
-    if (r.status === 404) return { missing: true };
-  }
-  // Blocked (e.g. a security check): open the address directly so the browser can pass the check, then read it.
-  try {
-    await withTimeout(liveWin.loadURL(`https://kick.com/api/v2/channels/${slug}`), NET_TIMEOUT, null);
-    for (let i = 0; i < 6; i++) {
-      await sleep(1500);
-      const txt = await liveJs('document.body ? document.body.innerText : ""').catch(() => '') || '';
-      const info = parseChannel(txt, slug);
-      if (info) { liveLoading = Promise.resolve(); return info; }
-    }
-  } catch {}
-  return null;
-}
+let importing = null;        // the site whose follow list is being read (one at a time)
+// What each site's module shares with this file (see the top of sites/index.js)
+const sites = createSites(site => ({
+  site,
+  session: () => session.fromPartition(site.partition),
+  sessionOf: p => session.fromPartition(p),
+  BrowserWindow,
+  fetch: (url, opts) => globalThis.fetch(url, opts),   // (the one that notes requests for Settings › Developer)
+  pageFetch, getJson, headers: BROWSER_HEADERS,
+  netSignal, netTimeout: NET_TIMEOUT, sleep, notePageRequest, devEnv, stateFile, safeStorage,
+  toMain: (ch, ...args) => mainWin?.webContents.send(ch, ...args),
+  ipc: { app: appIpc, main: mainIpc },
+  progress: text => progress(site.id, text),
+  follows: { saved: () => followStore()[site.id], keep: items => keepFollows(site.id, items), changed: () => followsChanged() },
+  importing: { busy: () => !!importing, run: async fn => { importing = site.id; try { return await fn(); } finally { importing = null; } } },
+  live: { snapshot: () => watcher.snapshot(), checkSoon: () => watcher.checkSoon() },
+  scrapeFollowPage: (url, opts) => scrapeFollowPage(sites.get(site.id), url, opts),
+  setLoginCookies: list => setLoginCookies(site.partition, list),
+  cachedProfile: ch => { const c = siteCache.get(ch); return c && c.data ? c.data : null; }
+}));
+const siteOf = ch => sites.of(ch);
+
+/* ---------- live alerts for saved channels ---------- */
 // Notifications are kept so their click handlers work. Electron doesn't always say when one is closed
 // (one left in the notification centre, or that just timed out), so only the latest ones are kept.
 const liveNotes = new Set();
@@ -975,213 +949,19 @@ function notifyLive(slug, info) {
   });
   n.show();
 }
-const TWITCH_CID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';   // Twitch's public web client id
-const BROWSER_HEADERS = () => ({ 'User-Agent': chromeUA(), 'Accept-Language': 'en-US,en;q=0.9' });
-async function fetchTwitch(login) {
-  try {
-    const r = await fetch('https://gql.twitch.tv/gql', { method: 'POST',
-      headers: { 'Client-Id': TWITCH_CID, 'Content-Type': 'text/plain;charset=UTF-8', ...BROWSER_HEADERS() },
-      body: JSON.stringify({ query: `query{user(login:${JSON.stringify(login)}){login displayName stream{id title viewersCount createdAt game{name}}}}` }), signal: netSignal() });
-    if (r.ok) { const info = parseTwitch(await r.json(), login); if (info) return info; }
-  } catch {}
-  try {   // fallback: the channel page
-    const r = await fetch(`https://www.twitch.tv/${login}`, { headers: BROWSER_HEADERS(), signal: netSignal() });
-    if (r.ok) return parseTwitchHtml(await r.text(), login);
-  } catch {}
-  return null;
-}
-async function fetchYouTube(ch) {
-  try {
-    const r = await pageFetch(ytPage(ytLiveUrl(ch)), { headers: { ...BROWSER_HEADERS(), Cookie: 'SOCS=CAI; CONSENT=YES+1' }, signal: netSignal() });
-    if (r.status === 404) return { missing: true };
-    if (r.ok) return parseYouTube(await r.text(), ch);
-  } catch {}
-  return null;
-}
-const fetchAny = ch => /^tw:/.test(ch) ? fetchTwitch(ch.slice(3)) : /^yt:/.test(ch) ? fetchYouTube(ch) : fetchChannel(ch);
-appIpc.handle('yt:resolve', async (_e, ch) => (typeof ch === 'string' && /^yt:/.test(ch) ? fetchYouTube(ch) : null));
+// Is one channel live: its site's answer
+const fetchAny = ch => { const a = siteOf(ch); return a ? a.liveOne(ch) : Promise.resolve(null); };
 
 /* ---------- checking many channels at once ----------
-   Twitch: one question for up to 100 channels. Kick (logged in): the live channels you follow, from your
-   follow list (live ones come first, so usually 1-4 pages); the whole list is read every 30 min to know
-   which saved channels you follow. YouTube with an API key: each channel's feed, then one question per 50
-   videos. Whatever these can't answer is checked one at a time, as before. */
-let kickFollowed = null, kickFollowedAt = 0, kickLiveFirst = true, kickLivePages = 0;
-async function kickBatch(slugs) {
-  // A few saved channels: asking for each is fewer requests than reading the follow list's live pages.
-  if (slugs.length < Math.max(5, kickLivePages + 1)) return { results: [], rest: slugs };
-  await ensureLiveWin();
-  if (!liveWin) return { results: [], rest: slugs };
-  const allPages = !kickFollowed || !kickLiveFirst || Date.now() - kickFollowedAt > 30 * 60e3;
-  const get = async u => { const r = await kickGet(u); if (allPages) await sleep(400); return r; };   // the whole list: unhurried
-  const r = await readKickLive(get, { allPages }).catch(() => null);
-  if (!r || r.login) { if (r) kickFollowed = null; return { results: [], rest: slugs }; }
-  if (r.followed) { kickFollowed = r.followed; kickFollowedAt = Date.now(); kickLiveFirst = r.liveFirst !== false; }
-  if (!allPages) kickLivePages = r.pages;
-  keptKickRead(r);
-  const results = [], rest = [];
-  for (const s of slugs) {
-    if (!kickFollowed || !kickFollowed.has(s)) rest.push(s);
-    else results.push([s, r.live.get(s) || { live: false, partial: true, title: '', viewers: null, category: '', name: '', checked: Date.now() }]);
-  }
-  return { results, rest };
-}
-async function twitchBatch(chs) {
-  const results = [], rest = [];
-  for (let i = 0; i < chs.length; i += 100) {
-    const part = chs.slice(i, i + 100), logins = part.map(c => c.slice(3));
-    let m = null;
-    try {
-      const r = await fetch('https://gql.twitch.tv/gql', { method: 'POST',
-        headers: { 'Client-Id': TWITCH_CID, 'Content-Type': 'text/plain;charset=UTF-8', ...BROWSER_HEADERS() },
-        body: JSON.stringify({ query: 'query($l:[String!]){users(logins:$l){login displayName stream{id title viewersCount createdAt game{name}}}}', variables: { l: logins } }), signal: netSignal() });
-      if (r.ok) m = parseTwitchUsers(await r.json(), logins);
-    } catch {}
-    if (!m) { rest.push(...part); continue; }
-    for (const c of part) results.push([c, m.get(c.slice(3))]);
-  }
-  return { results, rest };
-}
-
-// YouTube API key: optional, stored encrypted with the system's key store, never sent to the page.
-let ytKey = '', ytKeySaved = false;
-const ytGate = createKeyGate();
-const ytKeyFile = () => stateFile('youtube-key');
-// (safeStorage's async calls, once the app is ready: the sync ones are gone in Electron 46, and what they saved reads the same)
-async function loadYtKey() {
-  try {
-    const d = JSON.parse(fs.readFileSync(ytKeyFile(), 'utf8'));
-    if (!d || !d.enc || !(await safeStorage.isAsyncEncryptionAvailable())) return;
-    const { result, shouldReEncrypt } = await safeStorage.decryptStringAsync(Buffer.from(d.enc, 'base64'));
-    ytKey = result; ytKeySaved = true;
-    if (shouldReEncrypt) await storeYtKey(result);       // the system's key changed: saved again with the new one
-  } catch {}
-}
-async function storeYtKey(key) {
-  ytKey = key; ytKeySaved = false; ytGate.reset();
-  try {
-    if (!key) fs.rmSync(ytKeyFile(), { force: true });
-    else if (await safeStorage.isAsyncEncryptionAvailable()) {
-      const enc = await safeStorage.encryptStringAsync(key);
-      if (ytKey !== key) return;                          // changed again meanwhile: that one is saved instead
-      fs.writeFileSync(ytKeyFile(), JSON.stringify({ enc: enc.toString('base64') })); ytKeySaved = true;
-    }
-  } catch {}
-}
-const ytKeyStatus = () => ({ set: !!ytKey, saved: ytKeySaved, ...ytGate.status() });
-let lastYtState = 'ok';
-function ytKeyChanged() {
-  const st = ytGate.status().state;
-  if (st !== lastYtState) { lastYtState = st; mainWin?.webContents.send('ytkey:status', ytKeyStatus()); }
-}
-const YT_API = devEnv('SMV_YT_API') || 'https://www.googleapis.com/youtube/v3';   // tests point this at a stand-in
-const YT_FEED = devEnv('SMV_YT_FEED') || 'https://www.youtube.com/feeds/videos.xml';   // and this
-const YT_PAGES = devEnv('SMV_YT_PAGES');   // and YouTube's own pages (its live pages)
-const ytPage = url => YT_PAGES ? url.replace(/^https:\/\/www\.youtube\.com/, YT_PAGES) : url;
-// One YouTube Data API call. Error answers go to the gate (which decides when to use the key again) and throw.
-async function ytApi(pathAndQuery, key = ytKey) {
-  const r = await fetch(`${YT_API}/${pathAndQuery}&key=${encodeURIComponent(key)}`, { headers: { Accept: 'application/json' }, signal: netSignal() });
-  const d = await r.json().catch(() => null);
-  if (!r.ok) { const e = new Error('youtube ' + r.status); e.status = r.status; e.reason = ytErrorReason(d); throw e; }
-  return d;
-}
-const ytIds = new Map();      // "yt:@handle" -> "UC…" (asked once: 1 quota unit)
-const ytDone = new Set();     // videos that can never be live (normal videos, finished streams): not asked about again
-async function ytChannelId(ch) {
-  if (ch.startsWith('yt:c:')) return ch.slice(5);
-  if (ytIds.has(ch)) return ytIds.get(ch);
-  const d = await ytApi('channels?part=id&forHandle=' + encodeURIComponent(ch.slice(3)));
-  const id = d && Array.isArray(d.items) && d.items[0] ? d.items[0].id : '';
-  ytIds.set(ch, id);
-  return id;
-}
-const ytFeed = createFeedGate();   // the channel feeds, shared: they go down for everyone at once
-async function ytBatch(chs) {
-  if (!chs.length || !ytKey || !ytGate.usable()) return { results: [], rest: chs };
-  const results = [], rest = [], feeds = new Map(), ask = new Set(), noFeed = [], recheck = new Map();
-  try {
-    const tryFeed = ytFeed.usable();
-    let answered = false;
-    for (const ch of chs) {
-      if (ch.startsWith('yt:v:')) { ask.add(ch.slice(5)); continue; }
-      const id = await ytChannelId(ch);
-      if (!id) { results.push([ch, { missing: true }]); continue; }
-      let f = null;
-      if (tryFeed) {
-        try {
-          // A 404 here is the feed being down (it happens to every channel at once), not a missing channel
-          const r = await fetch(YT_FEED + '?channel_id=' + id, { headers: BROWSER_HEADERS(), signal: netSignal() });
-          if (r.ok) f = parseYtFeed(await r.text());
-        } catch {}
-      }
-      if (!f) { noFeed.push(ch); continue; }
-      answered = true;
-      feeds.set(ch, f);
-      f.ids.forEach(v => { if (!ytDone.has(v)) ask.add(v); });
-    }
-    if (answered) ytFeed.ok(); else if (tryFeed && noFeed.length) ytFeed.fail();
-    const prev = noFeed.length ? watcher.snapshot() : {};
-    for (const ch of noFeed) {
-      const what = ytNoFeed(prev[ch], { allFailing: !answered, down: ytFeed.down() });
-      if (what === 'recheck' && !ytDone.has(prev[ch].videoId)) { recheck.set(ch, prev[ch].videoId); ask.add(prev[ch].videoId); }
-      else if (what === 'page' || what === 'recheck') rest.push(ch);
-      // 'keep': left out of this round, so its last result stays
-    }
-    const vids = new Map(), ids = [...ask];
-    for (let i = 0; i < ids.length; i += 50) {
-      const part = ids.slice(i, i + 50);
-      const m = parseYtVideos(await ytApi('videos?part=snippet,liveStreamingDetails&id=' + part.join(','))) || new Map();
-      for (const v of part) { const x = m.get(v); if (!x || x.state === 'done') ytDone.add(v); else vids.set(v, x); }
-    }
-    if (ytDone.size > 50000) ytDone.clear();
-    ytGate.ok(); ytKeyChanged();
-    const at = Date.now();
-    const result = (ch, liveId, f) => {
-      const v = liveId && vids.get(liveId);
-      return [ch, { live: !!v, videoId: liveId || null, title: v ? v.title : '', viewers: v ? v.viewers : null, category: '', startedAt: v ? v.startedAt : null,
-        name: (f && f.name) || (v && v.channelTitle) || ch.replace(/^yt:(v:|c:)?/, ''), checked: at }];
-    };
-    for (const [ch, vid] of recheck) {
-      // still live: the same stream. Ended: a new one may have started, which only its page can tell
-      if (vids.has(vid) && vids.get(vid).state === 'live') results.push(result(ch, vid, { name: prev[ch].name })); else rest.push(ch);
-    }
-    for (const ch of chs) {
-      if (ch.startsWith('yt:v:')) { const v = ch.slice(5); results.push(result(ch, vids.has(v) && vids.get(v).state === 'live' ? v : null, null)); continue; }
-      const f = feeds.get(ch);
-      if (!f) continue;
-      results.push(result(ch, f.ids.find(v => vids.has(v) && vids.get(v).state === 'live'), f));
-    }
-    return { results, rest };
-  } catch (e) {
-    if (e && e.status) { ytGate.fail(e); ytKeyChanged(); }
-    return { results: [], rest: chs };   // this round is checked page by page instead
-  }
-}
-const SITE_TIMEOUT = 3 * 60e3;   // reading a long Kick follow list takes a while; under the watcher's 5 min for the whole batch
+   Each site its own way (liveBatch in sites/<id>/site.js): one question for many channels, or the live ones among the
+   channels you follow. Whatever these can't answer is checked one at a time, as before. */
+const SITE_TIMEOUT = 3 * 60e3;   // reading a long follow list takes a while; under the watcher's 5 min for the whole batch
 async function liveBatch(list) {
-  const kick = list.filter(c => !/^(tw|yt):/.test(c)), tw = list.filter(c => /^tw:/.test(c)), yt = list.filter(c => /^yt:/.test(c));
   // Each site on its own clock: one that doesn't answer in time is checked one at a time instead, without holding up the others
-  const safe = (fn, chs) => { const none = { results: [], rest: chs }; return withTimeout(fn(chs), SITE_TIMEOUT, none).catch(() => none); };
-  const parts = await Promise.all([safe(kickBatch, kick), safe(twitchBatch, tw), safe(ytBatch, yt)]);
+  const safe = (a, chs) => { const none = { results: [], rest: chs }; return a.liveBatch ? withTimeout(a.liveBatch(chs), SITE_TIMEOUT, none).catch(() => none) : Promise.resolve(none); };
+  const parts = await Promise.all(sites.list.map(a => safe(a, list.filter(c => SmvSites.siteOf(c) === a.id))));
   return { results: parts.flatMap(p => p.results), rest: parts.flatMap(p => p.rest) };
 }
-appIpc.handle('ytkey:status', () => ytKeyStatus());
-mainIpc.handle('ytkey:set', async (_e, key) => {
-  key = String(key || '').trim();
-  if (!/^[\w-]{20,100}$/.test(key)) return { ...ytKeyStatus(), error: 'format' };
-  try { await ytApi('videos?part=id&id=dQw4w9WgXcQ', key); }   // one test question (1 quota unit)
-  catch (e) {
-    if (!e.status) return { ...ytKeyStatus(), error: 'network' };
-    const g = createKeyGate(); const st = g.fail(e);
-    if (st === 'badkey') return { ...ytKeyStatus(), error: 'badkey', reason: e.reason };
-    // over quota or too fast: the key itself is fine, so keep it
-    await storeYtKey(key); ytGate.fail(e); ytKeyChanged(); watcher.checkSoon();
-    return ytKeyStatus();
-  }
-  await storeYtKey(key); ytKeyChanged(); watcher.checkSoon();
-  return ytKeyStatus();
-});
-mainIpc.handle('ytkey:remove', async () => { await storeYtKey(''); ytKeyChanged(); return ytKeyStatus(); });
 
 const watcher = createLiveWatcher({
   fetchChannel: fetchAny,
@@ -1201,17 +981,11 @@ appIpc.on('live:check-now', () => watcher.checkSoon());
 app.whenReady().then(() => powerMonitor.on('resume', () => watcher.checkSoon()));   // after sleep: who's live now, not hours ago
 
 /* ---------- suggestions from the channels you follow (the Channels box) ----------
-   The last follow list read from each site is kept (db.js, names only), with who's live among them:
-   - Kick: the live checks read your follow list when you have 5 or more saved Kick channels. For suggestions it's
-     also read whenever you're signed in: the whole list at start-up and every 30 minutes, the live ones (1-4 pages)
-     about once a minute when the live checks haven't just done it.
-   - Twitch and YouTube: what Import follows found, read again in the background at most once a day while you're
-     signed in. Who's live on Twitch: one question per 100 channels every 2 minutes. YouTube: no live state.
-   The switch in the Channels panel's ⋯ menu turns it all off and forgets the lists. A site you aren't signed in to
-   shows no suggestions. */
+   The last follow list read from each site is kept (db.js, names only), with who's live among them. Each site reads
+   its own again in the background while you're signed in (follows.tick in sites/<id>/site.js: how often, and whether it
+   can tell who's live, differs by site). The switch in the Channels panel's ⋯ menu turns it all off and forgets the
+   lists. A site you aren't signed in to shows no suggestions. */
 let follows = null;
-const followLive = { kick: new Map(), twitch: new Map() }, followLiveAt = { kick: 0, twitch: 0 };
-const followTried = { kick: 0, twitch: 0, youtube: 0 };   // the last time the whole list was asked for (worked or not)
 function followStore() {
   if (!follows) { let d = null; try { d = db.get('follows'); } catch {} follows = SmvFollows.normStore(d); }
   return follows;
@@ -1231,58 +1005,13 @@ function keepFollows(site, items) {
   if (!followsOn() || !Array.isArray(items)) return;
   saveFollows(SmvFollows.setSite(followStore(), site, items));
 }
-// A read of Kick's follow list (by the live checks or for suggestions): who's live, and the whole list when it was read
-function keptKickRead(r) {
-  if (!r || r.login) return;
-  followLive.kick = r.live || new Map(); followLiveAt.kick = Date.now();
-  if (r.followed) keepFollows('kick', [...r.followed].map(ch => ({ ch, name: (r.live.get(ch) || {}).name || '' })));
-  else followsChanged();
-}
 let followsBusy = false;
 async function followsTick() {
   if (followsBusy || !followsOn() || !mainWin) return;
   followsBusy = true;
   try {
-    const st = followStore(), now = Date.now();
-    if (await kickSignedIn()) {
-      const whole = (!kickFollowedAt || now - kickFollowedAt > 30 * 60e3 || !st.kick) && now - followTried.kick > 30 * 60e3;
-      if (whole) followTried.kick = now;
-      if (whole || now - followLiveAt.kick > 75e3) {
-        await ensureLiveWin();
-        if (liveWin) {
-          const get = async u => { const x = await kickGet(u); if (whole) await sleep(400); return x; };   // the whole list: unhurried
-          const r = await readKickLive(get, { allPages: whole }).catch(() => null);
-          if (r && r.login) { kickFollowed = null; followLive.kick = new Map(); }
-          else if (r) {
-            if (r.followed) { kickFollowed = r.followed; kickFollowedAt = Date.now(); kickLiveFirst = r.liveFirst !== false; }
-            keptKickRead(r);
-          }
-        }
-      }
-    } else if (followLive.kick.size) { followLive.kick = new Map(); followsChanged(); }
-    const token = await twitchToken();
-    if (token) {
-      if ((!st.twitch || now - st.twitch.at > 24 * 3600e3) && now - followTried.twitch > 6 * 3600e3) {
-        followTried.twitch = now;
-        const r = await twitchFollows({ scrape: false }).catch(() => null);
-        if (r && r.items) keepFollows('twitch', r.items);
-      }
-      const tw = (followStore().twitch || { items: [] }).items.map(x => x.ch);
-      if (tw.length && now - followLiveAt.twitch > 120e3) {
-        const r = await twitchBatch(tw).catch(() => null);
-        if (r) {
-          const m = new Map(r.results.filter(([, x]) => x && x.live).map(([ch, x]) => [ch, x]));
-          if (m.size || followLive.twitch.size) followsChanged();
-          followLive.twitch = m; followLiveAt.twitch = Date.now();
-        }
-      }
-    } else if (followLive.twitch.size) { followLive.twitch = new Map(); followsChanged(); }
-    const yt = followStore().youtube;
-    if ((!yt || now - yt.at > 24 * 3600e3) && now - followTried.youtube > 6 * 3600e3 && !importing && (await youtubeSignedIn())) {
-      importing = 'youtube'; followTried.youtube = now;
-      try { const r = await youtubeFollows().catch(() => null); if (r && r.items && r.items.length) keepFollows('youtube', r.items.filter(x => validCh(x.ch))); }
-      finally { importing = null; }
-    }
+    const now = Date.now();
+    for (const a of sites.list) if (a.follows) await a.follows.tick(now);
   } catch {} finally { followsBusy = false; }
 }
 app.whenReady().then(() => {
@@ -1292,15 +1021,16 @@ app.whenReady().then(() => {
 // The followed channels from the sites you're signed in to, and who's live among them (the page picks suggestions)
 appIpc.handle('follows:get', async () => {
   if (!followsOn()) return { on: false, items: [], live: {} };
-  const [k, tw, yt] = await Promise.all([kickSignedIn(), twitchToken().then(Boolean), youtubeSignedIn()]);
-  const sites = SmvFollows.SITES.filter((s, i) => [k, tw, yt][i]);
+  const signed = await Promise.all(sites.list.map(a => a.signedIn()));
+  const on = sites.list.filter((_a, i) => signed[i]).map(a => a.id);
   const live = {};
-  for (const s of ['kick', 'twitch']) if (sites.includes(s)) followLive[s].forEach((x, ch) => { live[ch] = { live: true, viewers: x.viewers, title: x.title || '', category: x.category || '' }; });
-  return { on: true, items: SmvFollows.allFollows(followStore(), sites), live };
+  for (const a of sites.list) if (on.includes(a.id) && a.follows && a.follows.live)
+    a.follows.live().forEach((x, ch) => { live[ch] = { live: true, viewers: x.viewers, title: x.title || '', category: x.category || '' }; });
+  return { on: true, items: SmvFollows.allFollows(followStore(), SmvFollows.SITES.filter(s => on.includes(s))), live };
 });
 mainIpc.handle('follows:set-on', (_e, on) => {
-  if (on) { if (!followsOn()) { saveFollows({ v: 1 }); Object.keys(followTried).forEach(k => { followTried[k] = 0; }); setTimeout(followsTick, 500); } }
-  else { followLive.kick = new Map(); followLive.twitch = new Map(); saveFollows({ v: 1, off: true }); }
+  if (on) { if (!followsOn()) { saveFollows({ v: 1 }); sites.list.forEach(a => a.follows && a.follows.retry()); setTimeout(followsTick, 500); } }
+  else { sites.list.forEach(a => a.follows && a.follows.clearLive && a.follows.clearLive()); saveFollows({ v: 1, off: true }); }
   return followsOn();
 });
 
@@ -1339,89 +1069,15 @@ const profQueue = createProfileQueue({
 });
 setInterval(() => profQueue.addStale(), 6 * 3600e3).unref?.();
 
-// One request to Kick's API from the kick.com page (with your login when you're logged in).
-// (web.kick.com, Kick's newer API: it refuses X-XSRF-TOKEN, and its own site says it's the web app)
-async function kickApi(u, method = 'GET') {
-  await ensureLiveWin();
-  if (!liveWin || liveWin.isDestroyed()) return null;
-  const web = /^https:\/\/web\.kick\.com\//.test(u);
-  return liveWin.webContents.executeJavaScript(`(async () => {
-    const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
-    const t = ck('session_token'), x = ck('XSRF-TOKEN'), method = ${JSON.stringify(method)}, web = ${web};
-    if (method !== 'GET' && !t) return { login: true };
-    const h = { Accept: 'application/json' };
-    if (t) h.Authorization = 'Bearer ' + t;
-    if (x && !web) h['X-XSRF-TOKEN'] = x;
-    if (web) h['x-app-platform'] = 'web';
-    try {
-      const r = await fetch(${JSON.stringify(u)}, { method, credentials: 'include', headers: h });
-      let d = null; try { d = r.status === 204 ? null : await r.json(); } catch {}
-      return { status: r.status, d, auth: !!t };
-    } catch (e) { return { status: 0, d: null, auth: !!t }; }
-  })()`, true).catch(() => null);
-}
-async function twitchQuery(query, variables, token) {
-  const headers = { 'Client-Id': TWITCH_CID, 'Content-Type': 'text/plain;charset=UTF-8', ...BROWSER_HEADERS() };
-  if (token) headers.Authorization = 'OAuth ' + token;
-  const r = await fetch('https://gql.twitch.tv/gql', { method: 'POST', headers, body: JSON.stringify({ query, variables }) });
-  return r.ok ? r.json() : null;
-}
-const TW_PROFILE = `query($l:String!){user(login:$l){id login displayName description profileImageURL(width:300) bannerImageURL createdAt
-  roles{isPartner isAffiliate} followers{totalCount} stream{createdAt viewersCount title game{name} previewImageURL(width:440,height:248)}
-  lastBroadcast{startedAt title game{name}} channel{socialMedias{name title url}}
-  videos(first:40,type:ARCHIVE,sort:TIME){edges{node{id title createdAt lengthSeconds viewCount game{name}}}}}}`;
-const TW_BASIC = 'query($l:String!){user(login:$l){id login displayName description profileImageURL(width:300) bannerImageURL createdAt followers{totalCount} stream{createdAt viewersCount title game{name}}}}';
-const TW_SELF = 'query($l:String!){user(login:$l){self{follower{followedAt} subscriptionBenefit{tier purchasedWithPrime}}}}';
-
-async function fetchProfile(ch) {
-  if (/^tw:/.test(ch)) {
-    const login = ch.slice(3);
-    let d = await twitchQuery(TW_PROFILE, { l: login }).catch(() => null);
-    if (!d || (d.errors && !(d.data && d.data.user !== undefined))) d = await twitchQuery(TW_BASIC, { l: login }).catch(() => null);   // a field Twitch no longer has
-    const p = parseTwitchProfile(d, login);
-    if (!p || p.missing) return p;
-    const token = await twitchToken();
-    if (token) {
-      const me = await twitchQuery(TW_SELF, { l: login }, token).catch(() => null);
-      const self = me && me.data && me.data.user && me.data.user.self;
-      if (self) { const x = parseTwitchProfile({ data: { user: { login, self } } }, login); p.following = x.following; p.sub = x.sub; }
-    }
-    p.loggedIn = !!token;
-    return p;
-  }
-  if (/^yt:/.test(ch)) {
-    if (/^yt:v:/.test(ch)) return { missing: true, video: true };
-    const url = ch.startsWith('yt:c:') ? 'https://www.youtube.com/channel/' + ch.slice(5) : 'https://www.youtube.com/' + ch.slice(3);
-    const r = await pageFetch(url, { headers: { ...BROWSER_HEADERS(), Cookie: 'SOCS=CAI; CONSENT=YES+1' } });
-    if (r.status === 404) return { missing: true };
-    return r.ok ? parseYouTubeChannel(await r.text(), ch) : null;
-  }
-  const r = await kickApi(`/api/v2/channels/${encodeURIComponent(ch)}`);
-  if (!r) return null;
-  if (r.status === 404) return { missing: true };
-  const p = r.status === 200 ? parseKickProfile(r.d, ch) : null;
-  if (!p) return null;
-  const v = await kickApi(`/api/v2/channels/${encodeURIComponent(ch)}/videos`);
-  const vods = v && v.status === 200 ? parseKickVideos(Array.isArray(v.d) ? v.d : v.d && v.d.data) : null;
-  if (vods && vods.length) p.vods = vods;
-  p.loggedIn = !!r.auth;
-  if (r.auth) {
-    const me = await kickApi(`/api/v2/channels/${encodeURIComponent(ch)}/me`);
-    const m = me && me.status === 200 && me.d;
-    if (m && typeof m.following === 'boolean') p.following = m.following ? { since: toTime(m.following_since || m.followed_at) } : false;
-    if (m && m.subscription) p.sub = { tier: '', months: Number.isFinite(+m.subscription.months) ? +m.subscription.months : null };
-  }
-  if (p.following === undefined && kickFollowed) p.following = kickFollowed.has(ch) ? { since: null } : false;
-  return p;
-}
+// A streamer's profile: its site's answer
+async function fetchProfile(ch) { const a = siteOf(ch); return a ? a.profile(ch) : null; }
 
 const siteCache = new Map();          // channel -> { at, data } (10 minutes)
-// Signed in to Kick (its login cookie), asked of the session itself: a page can still see the old cookies for a moment.
-const kickSignedIn = () => session.fromPartition(PARTITION).cookies.get({ url: 'https://kick.com', name: 'session_token' }).then(l => l.some(c => c.value), () => false);
 async function siteProfile(ch, refresh) {
   const c = siteCache.get(ch);
-  // a Kick profile kept from before you signed in (no follow state, no Unfollow): ask again
-  const stale = c && c.data && !/^(tw|yt):/.test(ch) && c.data.loggedIn === false && await kickSignedIn();
+  // a profile its site wants asked again (Kick's kept from before you signed in: no follow state, no Unfollow)
+  const a = siteOf(ch);
+  const stale = c && c.data && a && a.profileStale && await a.profileStale(c.data);
   if (c && !refresh && !stale && Date.now() - c.at < 10 * 60e3) return c.data;
   const p = await Promise.race([fetchProfile(ch).catch(() => null), sleep(20000).then(() => null)]);
   if (p) {
@@ -1466,11 +1122,11 @@ appIpc.handle('channel:exists', async (_e, ch) => {
   const p = await Promise.race([siteProfile(normCh(ch)).catch(() => null), sleep(8000).then(() => null)]);
   return !p ? 'unknown' : p.missing ? 'missing' : 'yes';
 });
-// Looking up a name that isn't saved: the same name on Kick, Twitch and YouTube.
+// Looking up a name that isn't saved: the same name on each site.
 appIpc.handle('profile:lookup', async (_e, q) => {
   const name = String(q || '').trim().replace(/^@/, '').toLowerCase();
   if (!/^[a-z0-9_.\-]{2,40}$/.test(name)) return [];
-  const cands = [name, 'tw:' + name, 'yt:@' + name].filter(c => validCh(c));
+  const cands = sites.list.map(a => a.byName(name)).filter(c => validCh(c));
   const found = await Promise.all(cands.map(async ch => { const p = await siteProfile(ch); return p && !p.missing ? { ch, name: p.name, avatar: p.avatar, followers: p.followers, followersText: p.followersText || '', live: p.live ? { title: p.live.title, viewers: p.live.viewers } : null } : null; }));
   return found.filter(Boolean);
 });
@@ -1480,12 +1136,12 @@ appIpc.handle('profile:meta', (_e, ch, patch) => {
   saveHistorySoon(2000);
   return m;
 });
-// Unfollow on Kick itself (what the Unfollow button on the channel's page does).
 // Download an emote from an emote card in a chat (see emoteAgent in index.html): only pictures from the
 // emote sites, at most 10 MB, saved where you choose (Downloads, named after the emote).
-const EMOTE_HOSTS = /^(files\.kick\.com|static-cdn\.jtvnw\.net|cdn\.7tv\.app|(\w+\.)?7tv\.app|cdn\.betterttv\.net|cdn\.frankerfacez\.com|(\w+\.)?ggpht\.com|www\.gstatic\.com)$/;
+// (the add-ons' here, each site's in its module: emoteHost)
+const EMOTE_HOSTS = /^(cdn\.7tv\.app|(\w+\.)?7tv\.app|cdn\.betterttv\.net|cdn\.frankerfacez\.com)$/;
 const EMOTE_TYPES = { 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp', 'image/avif': '.avif', 'image/jpeg': '.jpg', 'image/svg+xml': '.svg' };
-const emoteUrlOk = u => { try { const x = new URL(u); return x.protocol === 'https:' && EMOTE_HOSTS.test(x.hostname); } catch { return false; } };
+const emoteUrlOk = u => { try { const x = new URL(u); return x.protocol === 'https:' && (EMOTE_HOSTS.test(x.hostname) || sites.list.some(a => a.emoteHost && a.emoteHost(x.hostname))); } catch { return false; } };
 async function fetchEmote(url) {
   const r = await Promise.race([net.fetch(url, { headers: BROWSER_HEADERS() }), sleep(15000).then(() => null)]);
   if (!r || !r.ok) return null;
@@ -1520,30 +1176,24 @@ async function getJson(url, opts = {}) {
     return r && r.ok ? await r.json() : null;
   } catch { return null; }
 }
+// The emote add-ons a site's channels can have (emotes.addOns in sites/<id>/site.js: the name each one knows the site by)
+const EMOTE_ADD_ONS = [
+  { key: '7tv', url: (as, id) => `${EMOTE_APIS.stv}/users/${as}/${encodeURIComponent(id)}`, names: parse7tv, group: stvGroup },
+  { key: 'bttv', url: (as, id) => `${EMOTE_APIS.bttv}/cached/users/${as}/${encodeURIComponent(id)}`, names: parseBttv, group: bttvGroup },
+  { key: 'ffz', url: (_as, id) => `${EMOTE_APIS.ffz}/room/id/${encodeURIComponent(id)}`, names: parseFfz, group: ffzGroup }
+];
+// The add-ons' answers for a channel (id: its user there), in that order: read with x[how] (names or group), null for
+// one the site hasn't got
+const addOnEmotes = (a, id, how) => Promise.all(EMOTE_ADD_ONS.map(x => a.emotes.addOns[x.key] ? getJson(x.url(a.emotes.addOns[x.key], id)).then(x[how]) : null));
 // { [source]: [names] } for the sources that answered (a source that didn't is left out, not emptied)
 async function emoteLists(ch) {
-  const out = {};
-  let platform = 'kick', id = null;
-  if (/^tw:/.test(ch)) {
-    platform = 'twitch';
-    const d = await getJson('https://gql.twitch.tv/gql', { method: 'POST', headers: { 'Client-Id': TWITCH_CID, 'Content-Type': 'text/plain;charset=UTF-8' },
-      body: JSON.stringify({ query: 'query($l:String!){user(login:$l){id subscriptionProducts{emotes{token}}}}', variables: { l: ch.slice(3) } }) });
-    const t = parseTwitchEmotes(d);
-    if (t) { out.twitch = t.names; id = t.userId; }
-  } else if (!/^yt:/.test(ch)) {
-    const r = await kickApi(`/emotes/${encodeURIComponent(ch)}`).catch(() => null);
-    const k = r && r.status === 200 ? parseKickEmotes(r.d, ch) : null;
-    if (k) { out.kick = k.names; id = k.userId; }
-  } else return out;                                     // YouTube: no channel emote lists to ask
-  if (id) {
-    const [stv, bttv, ffz] = await Promise.all([
-      getJson(`${EMOTE_APIS.stv}/users/${platform}/${encodeURIComponent(id)}`).then(parse7tv),
-      platform === 'twitch' ? getJson(`${EMOTE_APIS.bttv}/cached/users/twitch/${encodeURIComponent(id)}`).then(parseBttv) : null,
-      platform === 'twitch' ? getJson(`${EMOTE_APIS.ffz}/room/id/${encodeURIComponent(id)}`).then(parseFfz) : null
-    ]);
-    if (stv) out['7tv'] = stv;
-    if (bttv) out.bttv = bttv;
-    if (ffz) out.ffz = ffz;
+  const out = {}, a = siteOf(ch);
+  if (!a || !a.emotes) return out;                       // a site with no channel emote lists to ask
+  const own = await a.emotes.list(ch);
+  if (own) out[a.id] = own.names;
+  if (own && own.id) {
+    const got = await addOnEmotes(a, own.id, 'names');
+    EMOTE_ADD_ONS.forEach((x, i) => { if (got[i]) out[x.key] = got[i]; });
   }
   return out;
 }
@@ -1561,40 +1211,17 @@ appIpc.handle('emotes:open', async (_e, ch) => {
   return { fresh: st.fresh(ch), added };
 });
 // The emotes to pick from in ALL (emote-picker.js): [{ id, label, emotes: [{ name, url, send }] }], kept 10 minutes per
-// channel. Kick's channel and site emotes and your favourites; on Twitch the ones your account can use (signed in); the add-ons' for both.
+// channel: what its site has (emotes.pick in sites/<id>/site.js), and the add-ons'.
 const pickAsked = new Map();
 appIpc.handle('emotes:pick', async (_e, ch, fresh) => {   // (fresh: asked again, not from the last 10 minutes: ALL reloaded)
   if (!okCh(ch)) return null;
   ch = normCh(ch);
   const was = pickAsked.get(ch);
   if (was && !fresh && Date.now() - was.at < 10 * 60e3) return was.groups;
-  let groups = [], id = null, platform = 'kick';
-  if (/^yt:/.test(ch)) return [];                            // YouTube: its own box's emoji only
-  if (/^tw:/.test(ch)) {
-    platform = 'twitch';
-    const token = await twitchToken();
-    // (the owners' pictures at the profiles' size, TW_PROFILE: the same address, so one download for both)
-    const r = token ? await twitchGql(token, 'query($l:String!){currentUser{emoteSets{id owner{login displayName profileImageURL(width:300)} emotes{id token}}} user(login:$l){id profileImageURL(width:300)}}', { l: ch.slice(3) }).catch(() => null) : null;
-    groups = twitchGroups(r && r.d, ch.slice(3)) || [];
-    id = r && r.d && r.d.data && r.d.data.user && r.d.data.user.id;
-  } else {
-    // (your favourites: signed in, the ones you starred in Kick's emote menu)
-    const [r, fav] = await Promise.all([kickApi(`/emotes/${encodeURIComponent(ch)}`).catch(() => null),
-      kickApi('https://web.kick.com/api/v1/chat/emotes/favourites').catch(() => null)]);
-    if (r && r.status === 200) {
-      groups = kickGroups(r.d, ch, fav && fav.status === 200 ? fav.d : null) || [];
-      const own = Array.isArray(r.d) && r.d.find(s => s && String(s.slug || '').toLowerCase() === ch);
-      id = own && own.user_id;
-    }
-  }
-  if (id) {
-    const [stv, bttv, ffz] = await Promise.all([
-      getJson(`${EMOTE_APIS.stv}/users/${platform}/${encodeURIComponent(id)}`).then(stvGroup),
-      platform === 'twitch' ? getJson(`${EMOTE_APIS.bttv}/cached/users/twitch/${encodeURIComponent(id)}`).then(bttvGroup) : null,
-      platform === 'twitch' ? getJson(`${EMOTE_APIS.ffz}/room/id/${encodeURIComponent(id)}`).then(ffzGroup) : null
-    ]);
-    groups.push(...[stv, bttv, ffz].filter(Boolean));
-  }
+  const a = siteOf(ch);
+  if (!a || !a.emotes) return [];                            // a site whose chat has only its own box's emoji
+  const { groups, id } = await a.emotes.pick(ch);
+  if (id) groups.push(...(await addOnEmotes(a, id, 'group')).filter(Boolean));
   if (groups.length) pickAsked.set(ch, { at: Date.now(), groups });
   return groups;
 });
@@ -1661,25 +1288,12 @@ appIpc.handle('emote:show', (_e, id) => {
   shell.showItemInFolder(f);
   return true;
 });
-appIpc.handle('kick:unfollow', async (_e, slug) => {
-  slug = String(slug || '').toLowerCase();
-  if (!SLUG_RE.test(slug)) return { error: 'bad' };
-  const r = await kickApi(`/api/v2/channels/${encodeURIComponent(slug)}/follow`, 'DELETE');
-  if (!r) return { error: 'failed' };
-  if (r.login || r.status === 401) return { error: 'login' };
-  if (r.status >= 200 && r.status < 300) {
-    if (kickFollowed) kickFollowed.delete(slug);
-    const c = siteCache.get(slug); if (c && c.data) c.data.following = false;
-    return { ok: true };
-  }
-  return { error: r.status === 403 ? 'refused' : 'failed', status: r.status };
-});
-
 /* ---------- chat mentions / replies ---------- */
+const heldTitle = id => (SmvSites.IDS.includes(id) && sites.get(id).heldTitle) || 'AutoMod held a message';
 appIpc.on('mention:notify', (_e, m) => {
   if (!desktopNotify || !m || typeof m.channel !== 'string' || !Notification.isSupported()) return;
   const who = String(m.sender || 'Someone').slice(0, 40), where = String(m.label || m.channel).slice(0, 40);
-  const title = m.kind === 'flagged' ? (m.what === 'held' ? `${m.site === 'youtube' ? 'Held for review' : 'AutoMod held a message'} in ${where}'s chat` : `${String(m.why || 'Flagged').slice(0, 60)} in ${where}'s chat`)
+  const title = m.kind === 'flagged' ? (m.what === 'held' ? `${heldTitle(m.site)} in ${where}'s chat` : `${String(m.why || 'Flagged').slice(0, 60)} in ${where}'s chat`)
     : m.kind === 'spam' ? `${m.abuse ? 'Abusive message' : 'Likely spam'} in ${where}'s chat` : m.kind === 'reply' ? `${who} replied to you in ${where}'s chat`
     : m.kind === 'support' ? `${who} ${m.raid ? 'raided' : 'supported'} ${where}`
     : m.kind === 'word' ? `${who} said "${String(m.word || '').slice(0, 40)}" in ${where}'s chat` : `${who} mentioned you in ${where}'s chat`;
@@ -1691,22 +1305,6 @@ appIpc.on('mention:notify', (_e, m) => {
   });
   n.show();
 });
-// Best guess at your Kick username from your logged-in session (you can also type it in).
-appIpc.handle('me:detect', async () => {
-  await ensureLiveWin();
-  if (!liveWin) return null;
-  const r = await liveWin.webContents.executeJavaScript(`(async () => {
-    const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
-    const h = { Accept: 'application/json' }, t = ck('session_token'), x = ck('XSRF-TOKEN');
-    if (t) h.Authorization = 'Bearer ' + t;
-    if (x) h['X-XSRF-TOKEN'] = x;
-    for (const u of ['/api/v1/user', '/api/v2/user']) {
-      try { const r = await fetch(u, { credentials: 'include', headers: h });
-        if (r.ok) { const d = await r.json(); const n = d.username || (d.user && d.user.username) || d.slug; if (n) return String(n); } } catch (e) {}
-    }
-    return null; })()`, true).catch(() => null);
-  return typeof r === 'string' && /^[A-Za-z0-9_]{2,30}$/.test(r) ? r : null;
-});
 appIpc.handle('live:snapshot', () => watcher.snapshot());
 // Is one channel live (saved or not)? Asked by a stream window whose player is stuck on its offline screen.
 appIpc.handle('live:one', async (_e, ch) => {
@@ -1715,55 +1313,46 @@ appIpc.handle('live:one', async (_e, ch) => {
   return i && !i.missing ? { live: !!i.live } : null;
 });
 
-async function logout(plat = 'kick') {
-  const part = PARTS[plat];
-  // Close that platform's open pages first so nothing re-saves the old login.
+async function logout(id) {
+  const a = sites.get(id), ses = session.fromPartition(a.site.partition);
+  // Close that site's open pages first so nothing re-saves the old login (not a site's own hidden windows: keeps).
   BrowserWindow.getAllWindows().forEach(w => {
-    if (w === mainWin || w === streamsWin || w === liveWin || w === switcherWin) return;
-    try { if (w.webContents.session === session.fromPartition(part)) w.close(); } catch {}
+    if (w === mainWin || w === streamsWin || w === switcherWin || sites.list.some(x => x.keeps && x.keeps(w))) return;
+    try { if (w.webContents.session === ses) w.close(); } catch {}
   });
-  await wipeSession(session.fromPartition(part));
-  if (plat === 'kick' && liveWin && !liveWin.isDestroyed()) liveWin.destroy();   // the Kick checker starts fresh, logged out
-  mainWin?.webContents.send('account:changed', { platform: plat, loggedOut: true });
+  await wipeSession(ses);
+  if (a.loggedOut) a.loggedOut();
+  mainWin?.webContents.send('account:changed', { platform: id, loggedOut: true });
 }
-function openLogin(plat = 'kick') {
-  if (!PARTS[plat]) return;
-  // Google blocks signing in to YouTube inside the app: show how to sign in with Firefox instead.
-  if (plat === 'youtube'){ mainWin?.webContents.send('youtube:signin'); return; }
-  const w = openSiteWindow(LOGIN_URL[plat], 1100, 800, PARTS[plat]);
-  w?.on('closed', () => mainWin?.webContents.send('account:changed', { platform: plat, loggedOut: false }));
+function openLogin(id) {
+  const a = sites.get(id);
+  if (!a) return;
+  if (a.openLogin) { a.openLogin(); return; }      // a site that signs in some other way (no login window)
+  const w = openSiteWindow(a.loginUrl, 1100, 800, a.site.partition);
+  w?.on('closed', () => mainWin?.webContents.send('account:changed', { platform: id, loggedOut: false }));
 }
-mainIpc.handle('account:logout', async (_e, plat) => { await logout(PARTS[plat] ? plat : 'kick'); return true; });
-mainIpc.handle('account:login', (_e, plat) => { openLogin(PARTS[plat] ? plat : 'kick'); });
-// Who is logged in where (Twitch keeps your name in a cookie; YouTube only tells us that you're signed in).
-const youtubeSignedIn = () => session.fromPartition(PARTS.youtube).cookies.get({}).then(c => c.some(x => /(youtube|google)\.com$/.test(x.domain) && /^(SAPISID|__Secure-3PSID|LOGIN_INFO)$/.test(x.name)), () => false);
+mainIpc.handle('account:logout', async (_e, plat) => { await logout(siteId(plat)); return true; });
+mainIpc.handle('account:login', (_e, plat) => { openLogin(siteId(plat)); });
+// Who is logged in where: each site's account(), its name or only whether you're signed in.
 appIpc.handle('accounts:status', async () => {
-  const out = { kick: false, twitch: null, youtube: false };
-  out.kick = await kickSignedIn();     // Kick's name comes from its pages (detectMe); this is only whether you're signed in
-  try {
-    const c = await session.fromPartition(PARTS.twitch).cookies.get({ name: 'login' });
-    const tw = c.find(x => /twitch\.tv$/.test(x.domain));
-    if (tw && /^[A-Za-z0-9_]{2,30}$/.test(tw.value)) out.twitch = tw.value;
-  } catch {}
-  try {
-    const c = await session.fromPartition(PARTS.youtube).cookies.get({});
-    out.youtube = c.some(x => /(youtube|google)\.com$/.test(x.domain) && /^(SAPISID|__Secure-3PSID|LOGIN_INFO)$/.test(x.name));
-  } catch {}
+  const out = {};
+  for (const a of sites.list) out[a.id] = await a.account();
   return out;
 });
 
-/* ---------- Google (YouTube) sign-in ----------
-   Google blocks sign-in from apps built on Chromium ("This browser or app may not be secure").
-   On Google's sign-in pages only, the app shows itself as Firefox: Firefox user agent, no Chrome
+/* ---------- sign-in pages that refuse the app as it is ----------
+   Google blocks sign-in from apps built on Chromium ("This browser or app may not be secure"). On a site's sign-in
+   pages like that (signInAs in sites/<id>/site.js) the app shows itself as another browser: its user agent, no Chrome
    client hints, and no Chrome-only page features (signin-preload.js). */
-const signinWcs = new Set();     // web contents currently showing a Google sign-in page
-function setupGoogleSignin(ses) {
-  ses.webRequest.onBeforeSendHeaders({ urls: ['https://*.google.com/*', 'https://*.youtube.com/*', 'https://*.gstatic.com/*'] }, (d, cb) => {
-    const signin = isGoogleSignin(d.url) && (d.resourceType === 'mainFrame' || d.resourceType === 'subFrame') || signinWcs.has(d.webContentsId);
+const signinWcs = new Set();     // web contents currently showing such a sign-in page
+const signInAs = url => (sites.list.find(a => a.signInAs && a.signInAs.test(url)) || {}).signInAs || null;
+function setupSignInAs(ses, as) {
+  ses.webRequest.onBeforeSendHeaders({ urls: as.urls }, (d, cb) => {
+    const signin = as.test(d.url) && (d.resourceType === 'mainFrame' || d.resourceType === 'subFrame') || signinWcs.has(d.webContentsId);
     if (!signin) return cb({ requestHeaders: d.requestHeaders });
     const h = {};
     for (const [k, v] of Object.entries(d.requestHeaders)) if (!/^sec-ch-ua/i.test(k)) h[k] = v;
-    h['User-Agent'] = firefoxUA();
+    h['User-Agent'] = as.userAgent();
     cb({ requestHeaders: h });
   });
   const file = path.join(SRC, 'preload', 'signin-preload.js');
@@ -1773,26 +1362,9 @@ function setupGoogleSignin(ses) {
   } catch {}
 }
 
-/* ---------- YouTube: cookie question ----------
-   In some countries YouTube asks about cookies first and keeps the video paused until you answer.
-   The stream page clicks the answer chosen in Settings > YouTube; if that doesn't work (YouTube changed
-   the question), it asks for this: "Reject all" saved in that player's storage, as YouTube saves it. */
-const YT_REJECT_ALL = 'CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg';
-appIpc.handle('youtube:consentFallback', async (_e, part) => {
-  if (typeof part !== 'string' || !/^persist:(kmv-stream-[\w-]{1,120}|youtube)$/.test(part)) return false;
-  try {
-    await session.fromPartition(part).cookies.set({ url: 'https://www.youtube.com', domain: '.youtube.com', name: 'SOCS', value: YT_REJECT_ALL,
-      secure: true, sameSite: 'lax', expirationDate: Math.floor(Date.now() / 1000) + 390 * 86400 });
-    return true;
-  } catch { return false; }
-});
-
-/* ---------- YouTube: copy the login from Firefox ----------
-   Google blocks signing in to YouTube inside apps, so YouTube sign-in goes through Firefox:
-   you sign in there, and the app copies just the YouTube / Google login out of Firefox's
-   cookie database (see firefox-login.js). No extension and no exported file. */
-async function setLoginCookies(plat, list) {
-  const ses = session.fromPartition(PARTS[plat]);
+// A login copied in from another browser (a site's: YouTube's from Firefox, firefox-login.js), into its storage
+async function setLoginCookies(partition, list) {
+  const ses = session.fromPartition(partition);
   let n = 0;
   for (const c of list) {
     const host = c.domain.replace(/^\./, '');
@@ -1810,27 +1382,15 @@ async function setLoginCookies(plat, list) {
   await ses.cookies.flushStore().catch(() => {});
   return n;
 }
-mainIpc.handle('youtube:fromFirefox', async () => {
-  let r;
-  try { r = youtubeLoginFromFirefox(); } catch { return { error: 'read' }; }
-  if (r.error) return r;
-  const n = await setLoginCookies('youtube', r.cookies);
-  mainWin?.webContents.send('account:changed', { platform: 'youtube', loggedOut: false });
-  return { ok: true, count: n, profile: r.profile, signedIn: await hasLogin('youtube') };
-});
-async function hasLogin(plat) {
-  const names = { kick: /^session_token$/, twitch: /^auth-token$/, youtube: /^(SAPISID|__Secure-3PSID|LOGIN_INFO)$/ }[plat];
-  try { return (await session.fromPartition(PARTS[plat]).cookies.get({})).some(c => names.test(c.name)); } catch { return false; }
-}
-const platformName = p => ({ kick: 'Kick', twitch: 'Twitch', youtube: 'YouTube' })[p] || p;
-
 /* ---------- import the channels you follow ---------- */
 const progress = (plat, text) => mainWin?.webContents.send('follows:progress', { platform: plat, text });
 // Open a page with your login in a hidden window, keep scrolling until no more channels load,
-// and collect the channel links on it.
-async function scrapeFollowPage(plat, url, { maxRounds = 70 } = {}) {
+// and collect the channel links on it (a's fromLink). scope: where on the page its channels are; signedOut: the
+// page's own way of saying you're signed out (a script's expression), for a page that doesn't send you to sign in.
+async function scrapeFollowPage(a, url, { maxRounds = 70, scope = 'main', signedOut = '' } = {}) {
+  const plat = a.id;
   const win = new BrowserWindow({ show: false, width: 1280, height: 1000,
-    webPreferences: { partition: PARTS[plat], contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
+    webPreferences: { partition: a.site.partition, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
   win.webContents.setAudioMuted(true);
   try {
     await win.loadURL(url).catch(() => {});
@@ -1838,9 +1398,7 @@ async function scrapeFollowPage(plat, url, { maxRounds = 70 } = {}) {
     const cur = win.webContents.getURL();
     if (/\/login|signin|accounts\.google\.com|ServiceLogin/i.test(cur)) return { error: 'login' };
     const pickJs = `(() => {
-      const scope = ${JSON.stringify(plat)} === 'youtube'
-        ? (document.querySelector('ytd-browse[page-subtype="subscriptions"], ytd-browse[page-subtype="channels"], ytd-browse:not([hidden])') || document)
-        : (document.querySelector('main') || document);
+      const scope = document.querySelector(${JSON.stringify(scope)}) || document;
       const out = [];
       scope.querySelectorAll('a[href]').forEach(a => {
         if (a.closest('nav, header, aside, ytd-guide-renderer, #guide, ytd-mini-guide-renderer, tp-yt-app-drawer, [data-a-target="side-nav-bar"], #masthead')) return;
@@ -1848,10 +1406,7 @@ async function scrapeFollowPage(plat, url, { maxRounds = 70 } = {}) {
         const t = (card.querySelector('#channel-title #text, #text.ytd-channel-name, h3, h4, p[title], [data-a-target="preview-card-channel-link"]') || a);
         out.push({ href: a.getAttribute('href'), name: (t.getAttribute && t.getAttribute('title')) || (t.textContent || '').trim() || (a.querySelector('img') && a.querySelector('img').alt) || '' });
       });
-      // YouTube signed out: its page says so (ytcfg), or shows a Sign in button
-      const ytOut = !!(window.ytcfg && window.ytcfg.get && window.ytcfg.get('LOGGED_IN') === false)
-        || !!document.querySelector('ytd-masthead a[href*="ServiceLogin"], ytd-masthead ytd-button-renderer a[href*="accounts.google.com"]');
-      return { links: out, signedOut: ${JSON.stringify(plat)} === 'youtube' && ytOut };
+      return { links: out, signedOut: ${signedOut || 'false'} };
     })()`;
     const scrollJs = `(() => {
       window.scrollTo(0, document.documentElement.scrollHeight);
@@ -1864,8 +1419,8 @@ async function scrapeFollowPage(plat, url, { maxRounds = 70 } = {}) {
       if (r && r.signedOut && !found.size) return { error: 'login' };
       const before = found.size;
       (r ? r.links : []).forEach(l => {
-        const ch = channelFromLink(plat, l.href);
-        if (ch && validCh(ch) && !found.has(ch)) found.set(ch, String(l.name || '').replace(/\s+/g, ' ').trim().slice(0, 60) || ch.replace(/^(tw:|yt:@|yt:c:)/, ''));
+        const ch = a.fromLink(l.href);
+        if (ch && validCh(ch) && !found.has(ch)) found.set(ch, String(l.name || '').replace(/\s+/g, ' ').trim().slice(0, 60) || SmvSites.bare(ch).replace(/^@/, ''));
       });
       if (found.size !== before) progress(plat, `Found ${found.size} so far…`);
       stable = found.size === before ? stable + 1 : 0;
@@ -1875,93 +1430,22 @@ async function scrapeFollowPage(plat, url, { maxRounds = 70 } = {}) {
     return { items: [...found].map(([ch, name]) => ({ ch, name })) };
   } finally { if (!win.isDestroyed()) win.destroy(); }
 }
-// One API call from the kick.com page, so your login goes with it.
-async function kickGet(u) {
-  if (!liveWin || liveWin.isDestroyed()) return null;
-  const t0 = Date.now();
-  return liveJs(`(async () => {
-    const ck = n => { const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; };
-    const t = ck('session_token'), x = ck('XSRF-TOKEN');
-    if (!t) return { login: true };
-    const h = { Accept: 'application/json', Authorization: 'Bearer ' + t };
-    if (x) h['X-XSRF-TOKEN'] = x;
-    try { const r = await fetch(${JSON.stringify(u)}, { credentials: 'include', headers: h }); return { status: r.status, d: r.ok ? await r.json() : null }; }
-    catch (e) { return { status: 0, d: null }; }
-  })()`).catch(() => null).then(r => { if (!r || !r.login) notePageRequest(new URL(u, 'https://kick.com').href, t0, r && { status: r.status, body: r.d ? JSON.stringify(r.d) : '' }); return r; });
-}
-async function twitchToken() {
-  try {
-    const c = await session.fromPartition(PARTS.twitch).cookies.get({ name: 'auth-token' });
-    return (c.find(x => /twitch\.tv$/.test(x.domain)) || {}).value || '';
-  } catch { return ''; }
-}
-async function twitchGql(token, query, variables) {
-  const r = await fetch('https://gql.twitch.tv/gql', { method: 'POST',
-    headers: { 'Client-Id': TWITCH_CID, Authorization: 'OAuth ' + token, 'Content-Type': 'text/plain;charset=UTF-8', ...BROWSER_HEADERS() },
-    body: JSON.stringify({ query, variables }) });
-  return { status: r.status, d: r.ok ? await r.json() : null };
-}
-async function kickFollows() {
-  await ensureLiveWin();
-  if (!liveWin) return { error: 'failed' };
-  const r = await readKickFollowPages(kickGet, { onCount: n => progress('kick', `Found ${n} so far…`) });
-  if (r.login) return { error: 'login' };
-  const { pages, status } = r;
-  const items = kickFollowsFrom(pages);
-  if (items.length) return { items };
-  if ((status === 401 || status === 403) && !pages.length) {
-    const s = await scrapeFollowPage('kick', 'https://kick.com/following');   // the API is blocked: read the Following page instead
-    return s.items && s.items.length ? s : { error: 'login' };
-  }
-  return scrapeFollowPage('kick', 'https://kick.com/following');
-}
-async function twitchFollows({ scrape = true } = {}) {
-  const token = await twitchToken();
-  if (!token) return { error: 'login' };
-  const items = new Map(); let after = null, ok = false;
-  for (let i = 0; i < 60; i++) {
-    let page = null;
-    try {
-      const r = await twitchGql(token, 'query($after:Cursor){currentUser{follows(first:100,after:$after){edges{cursor node{login displayName}} pageInfo{hasNextPage}}}}', { after });
-      if (r.status === 401) return { error: 'login' };
-      if (r.d) page = twitchFollowsFrom(r.d);
-    } catch {}
-    if (!page) break;
-    ok = true;
-    page.items.forEach(x => items.set(x.ch, x.name));
-    progress('twitch', `Found ${items.size} so far…`);
-    if (!page.next) break;
-    after = page.next;
-  }
-  if (ok && items.size) return { items: [...items].map(([ch, name]) => ({ ch, name })) };
-  if (ok && !scrape) return { items: [] };               // follows nobody (Import also looks at the Following page)
-  return scrape ? scrapeFollowPage('twitch', 'https://www.twitch.tv/directory/following/channels') : null;
-}
-// Whether you can moderate a channel (its moderator, or your own channel): true, false, or null when
-// it can't be told (signed out, offline). Windows only show their mod view button when it's true.
+// Whether you can moderate a channel (its moderator, or your own channel): true, false, or null when it can't be
+// told (signed out, offline, a site without a moderator check). Windows only show their mod view button when it's true.
 appIpc.handle('mod:check', async (_e, ch) => {
-  if (typeof ch !== 'string' || !validCh(ch) || /^yt:/.test(ch)) return null;
-  try {
-    if (/^tw:/.test(ch)) {
-      const token = await twitchToken();
-      if (!token) return null;
-      const r = await twitchGql(token, 'query($l:String!){currentUser{login} user(login:$l){self{isModerator isEditor}}}', { l: ch.slice(3) });
-      return canModerate('twitch', r.d, ch.slice(3));
-    }
-    await ensureLiveWin();
-    const r = await kickGet(`/api/v2/channels/${encodeURIComponent(ch)}/me`);
-    return r && r.d ? canModerate('kick', r.d, ch) : null;
-  } catch { return null; }
+  if (typeof ch !== 'string' || !validCh(ch)) return null;
+  const a = siteOf(ch);
+  if (!a || !a.modCheck) return null;
+  try { return await a.modCheck(ch); } catch { return null; }
 });
-const youtubeFollows = () => scrapeFollowPage('youtube', 'https://www.youtube.com/feed/channels');
-let importing = null;
 mainIpc.handle('follows:import', async (_e, plat) => {
-  if (!PARTS[plat]) return { error: 'bad' };
+  const a = SmvSites.IDS.includes(plat) ? sites.get(plat) : null;
+  if (!a || !a.follows) return { error: 'bad' };
   if (importing) return { error: 'busy' };
   importing = plat;
   try {
     progress(plat, 'Reading the channels you follow…');
-    const r = await (plat === 'kick' ? kickFollows() : plat === 'twitch' ? twitchFollows() : youtubeFollows());
+    const r = await a.follows.import();
     if (r && r.items) { r.items = r.items.filter(x => validCh(x.ch)); if (r.items.length) keepFollows(plat, r.items); }
     return r || { error: 'failed' };
   } catch { return { error: 'failed' }; }
@@ -1978,7 +1462,7 @@ const secFile = () => stateFile('security');
 function loadSec() {
   let d = {};
   try { d = JSON.parse(fs.readFileSync(secFile(), 'utf8')) || {}; } catch {}
-  d.forget = Object.assign({ kick: false, twitch: false, youtube: false }, d.forget || {});
+  d.forget = Object.assign(Object.fromEntries(SmvSites.IDS.map(id => [id, false])), d.forget || {});
   return d;
 }
 function saveSec(d) { try { fs.writeFileSync(secFile(), JSON.stringify(d)); } catch {} }
@@ -1999,8 +1483,8 @@ function encryptionState() {
 // Re-save logins that were stored before encryption was switched on, so they're encrypted too.
 async function encryptOldLogins() {
   if (encryptionState() !== 'on' || sec.migrated) return;
-  for (const p of Object.values(PARTS)) {
-    const ses = session.fromPartition(p);
+  for (const s of SmvSites.SITES) {
+    const ses = session.fromPartition(s.partition);
     let list = [];
     try { list = await ses.cookies.get({}); } catch {}
     for (const c of list) {
@@ -2024,12 +1508,12 @@ async function wipeSession(ses) {
   await ses.cookies.flushStore().catch(() => {});
 }
 async function forgetLogins(which) {
-  for (const p of which) await wipeSession(session.fromPartition(PARTS[p]));
+  for (const p of which) await wipeSession(session.fromPartition(partitionOf(p)));
 }
-const forgetList = () => Object.keys(PARTS).filter(p => sec && sec.forget[p]);
+const forgetList = () => SmvSites.IDS.filter(p => sec && sec.forget[p]);
 appIpc.handle('security:get', () => ({ encryption: encryptionState(), forget: { ...sec.forget } }));
 mainIpc.handle('security:setForget', (_e, plat, on) => {
-  if (!PARTS[plat]) return null;
+  if (!SmvSites.IDS.includes(plat)) return null;
   sec.forget[plat] = !!on; saveSec(sec);
   return { ...sec.forget };
 });
@@ -2472,10 +1956,11 @@ appIpc.handle('app:version', () => app.getVersion());
 
 /* ---------- menu ---------- */
 // Who is logged in where, as the page last told us (it checks on start and after every log in or out).
-let menuAccounts = { kick: '', twitch: '', youtube: false };
+// (a site that's named: its account's name, '' signed out; the others: whether you're signed in)
+let menuAccounts = Object.fromEntries(sites.list.map(a => [a.id, a.named ? '' : false]));
 appIpc.on('accounts:state', (_e, a) => {
   const clean = v => (typeof v === 'string' && /^[A-Za-z0-9_]{1,30}$/.test(v) ? v : '');
-  const next = { kick: clean(a && a.kick), twitch: clean(a && a.twitch), youtube: !!(a && a.youtube) };
+  const next = Object.fromEntries(sites.list.map(x => [x.id, x.named ? clean(a && a[x.id]) : !!(a && a[x.id])]));
   if (JSON.stringify(next) === JSON.stringify(menuAccounts)) return;
   menuAccounts = next; buildMenu();
 });
@@ -2488,9 +1973,10 @@ function showMain() {
 const showSettings = tab => showMain()?.webContents.send('settings:show', tab);
 const checkUpdatesNow = () => { showSettings('updates'); checkForUpdate({ manual: true }); };
 // One item per site that says what clicking it does: log in, or log out of the account that's in.
-function accountItem(plat, name) {
-  const who = menuAccounts[plat];
-  if (!who) return { label: `Log in to ${name}…`, click: () => (plat === 'youtube' ? openLogin('youtube') : showMain()?.webContents.send('menu:account', { platform: plat, action: 'login' })) };
+// (a site that signs in some other way, openLogin: straight away; the others through the page, as its Log in does)
+function accountItem(a) {
+  const plat = a.id, name = a.site.name, who = menuAccounts[plat];
+  if (!who) return { label: `Log in to ${name}…`, click: () => (a.openLogin ? openLogin(plat) : showMain()?.webContents.send('menu:account', { platform: plat, action: 'login' })) };
   return { label: `Log out of ${name}${typeof who === 'string' ? ` (${who})` : ''}`, click: () => showMain()?.webContents.send('menu:account', { platform: plat, action: 'logout' }) };
 }
 // The app window to open the search box in: the one you're in (the streams window too), else the main window
@@ -2516,9 +2002,7 @@ function buildMenu() {
       { role: 'quit' }
     ]}] : [{ label: 'File', submenu: [settingsItem, { type: 'separator' }, { role: 'quit', label: 'Exit' }] }]),
     { label: 'Account', submenu: [
-      accountItem('kick', 'Kick'),
-      accountItem('twitch', 'Twitch'),
-      accountItem('youtube', 'YouTube'),
+      ...sites.list.map(accountItem),
       { type: 'separator' },
       { label: 'Account settings…', click: () => showSettings('accounts') }
     ]},
@@ -2560,17 +2044,19 @@ app.whenReady().then(async () => {
   partitionCare.prune(); savePartitions();       // before anything opens a stream's storage
   guard.lockSession(session.defaultSession, wc => appContents(wc));
   sec = loadSec();
-  await loadYtKey();
+  for (const a of sites.list) if (a.ready) await a.ready();     // (what the sites saved, e.g. YouTube's API key)
   if (forgetList().length && sec.wiped !== true) await forgetLogins(forgetList());     // the app didn't get to wipe them last time
   if (sec.wiped !== false) { sec.wiped = false; saveSec(sec); }     // logins saved from now on are wiped when it closes
   encryptOldLogins();
   const ua = chromeUA();
   app.userAgentFallback = ua;
-  Object.values(PARTS).forEach(p => session.fromPartition(p).setUserAgent(ua));
-  setupGoogleSignin(session.fromPartition(PARTS.youtube));
+  SmvSites.SITES.forEach(s => session.fromPartition(s.partition).setUserAgent(ua));
+  sites.list.forEach(a => { if (a.signInAs) setupSignInAs(session.fromPartition(a.site.partition), a.signInAs); });
   setupCapture();
   extensions.createHost({ electron: require('electron'), userData: app.getPath('userData'),
-    appWindows: () => [mainWin, streamsWin].filter(w => w && !w.isDestroyed()), rejectCookies: YT_REJECT_ALL, ipc: { app: appIpc, main: mainIpc } });
+    appWindows: () => [mainWin, streamsWin].filter(w => w && !w.isDestroyed()),
+    // (Google's "Reject all" to its cookie question: the extension store is Google's too, and asks the same)
+    rejectCookies: require('./sites/youtube/site').REJECT_ALL, ipc: { app: appIpc, main: mainIpc } });
   scheduleUpdates();
   buildMenu();
   createMain();

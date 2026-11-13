@@ -1,6 +1,7 @@
 // The right-click menu in chat and stream windows (their <webview>s), modelled on Chrome's: only the items
 // that fit what was clicked. Plain data, so it can be tested: menuFor() gives the items, each with an
 // `act` that main.js carries out (open in the browser, copy, save, edit commands…).
+const sites = require('./sites');
 
 // The language to translate into: the system's first preferred language, as Google Translate names it.
 function translateTarget(langs) {
@@ -79,7 +80,7 @@ function menuFor(params, { langs = ['en'], dev = false, devTools = false, emote 
   // a chat message: its text without who sent it (emotes left out, or as their text), or with their @name
   const msg = message && typeof message.html === 'string' && message.html && !p.isEditable ? message : null;
   // Settings › Shoutouts on: shout out who sent it (the app's page sends it, in this chat)
-  const shout = msg && msg.shout && typeof msg.shout === 'object' && /^(kick|twitch)$/.test(msg.shout.site) && /^[\w-]{1,40}$/.test(String(msg.shout.login || '')) ? msg.shout : null;
+  const shout = msg && msg.shout && typeof msg.shout === 'object' && sites.has(msg.shout.site, 'shoutouts') && /^[\w-]{1,40}$/.test(String(msg.shout.login || '')) ? msg.shout : null;
   // (who sent it: just "Shout out"; a chat bot's message about someone else (from: the bot): named)
   if (shout) group([{ label: shout.from ? `Shout out ${String(shout.name || shout.login).slice(0, 40)}` : 'Shout out', act: { do: 'shoutout', who: { site: shout.site, login: String(shout.login).toLowerCase(), name: String(shout.name || shout.login).slice(0, 40) } } }]);
   const name = msg && String(msg.name || '').replace(/^@/, '').trim().slice(0, 40);

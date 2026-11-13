@@ -4,8 +4,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('kmv', {
   desktop: true,
   openWindow: (url, w, h, opts) => ipcRenderer.invoke('open-window', url, w, h, opts),
-  openLogin: plat => ipcRenderer.invoke('account:login', plat || 'kick'),
-  logout: plat => ipcRenderer.invoke('account:logout', plat || 'kick'),
+  openLogin: plat => ipcRenderer.invoke('account:login', plat),   // (no site: the main process opens the one a bare name is on)
+  logout: plat => ipcRenderer.invoke('account:logout', plat),
   accountsStatus: () => ipcRenderer.invoke('accounts:status'),
   ytResolve: ch => ipcRenderer.invoke('yt:resolve', ch),
   modCheck: ch => ipcRenderer.invoke('mod:check', ch),

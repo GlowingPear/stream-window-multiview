@@ -3,6 +3,7 @@
 // tests call it with stand-ins).
 const path = require('path');
 const { fileURLToPath } = require('url');
+const SmvSites = require('../shared/sites');
 
 /* ---------- addresses ---------- */
 const urlOf = u => { try { return new URL(String(u)); } catch { return null; } };
@@ -12,16 +13,18 @@ function webUrl(u) {
   return x && (x.protocol === 'https:' || x.protocol === 'http:') && !x.username && !x.password ? x.href : '';
 }
 const httpsHost = u => { const x = urlOf(u); return x && x.protocol === 'https:' ? x.hostname.toLowerCase() : ''; };
-const SITE_HOST = /(^|\.)(kick\.com|twitch\.tv|youtube\.com|youtu\.be)$/;
-const LOGIN_HOST = /(^|\.)(google\.com|apple\.com)$|^accounts\.youtube\.com$/;
+const hostIn = (h, list) => !!h && list.some(d => h === d || h.endsWith('.' + d));
+const SITE_HOSTS = SmvSites.SITES.flatMap(s => s.hosts);
+// (and Sign in with Apple, which the sites offer, and a site's own accounts page: Google's sign-in passes through one)
+const LOGIN_HOSTS = [...SmvSites.SITES.flatMap(s => s.signIn), 'apple.com'];
 // The sites themselves, and the pages they send you to to sign in: these open inside the app, with its logins.
-const isSite = u => SITE_HOST.test(httpsHost(u));
-const isLogin = u => LOGIN_HOST.test(httpsHost(u));
+const isSite = u => hostIn(httpsHost(u), SITE_HOSTS);
+const isLogin = u => { const h = httpsHost(u); return hostIn(h, LOGIN_HOSTS) || SITE_HOSTS.some(d => h === 'accounts.' + d); };
 const inApp = u => isSite(u) || isLogin(u);
 
 /* ---------- web views ---------- */
 // The storage a <webview> may use: a site's login, a stream's own, the switch control's, web pages'.
-const VIEW_PARTITION = /^persist:(kick|twitch|youtube|kmv-mini|kmv-web|kmv-stream-[\w-]{1,120})$/;
+const VIEW_PARTITION = new RegExp(`^(${SmvSites.SITES.map(s => s.partition).join('|')}|persist:(kmv-mini|kmv-web|kmv-stream-[\\w-]{1,120}))$`);
 // will-attach-webview: what a web view may be. -> false to refuse it
 function lockWebview(webPreferences, params) {
   delete webPreferences.preload;

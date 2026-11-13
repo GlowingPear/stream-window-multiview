@@ -1,5 +1,5 @@
 // Chrome extensions: which ones are installed, and which pages each one runs on.
-// An extension is switched on per site (Kick, Twitch, YouTube) and per window type (streams, chats).
+// An extension is switched on per site (src/shared/sites.js) and per window type (streams, chats).
 // Electron loads an extension into a session (a set of pages sharing storage), so:
 //   - chats use their site's login session, shared by every chat of that site (and by its streams
 //     while "Watch signed in" is on), so they follow the Chats setting;
@@ -7,10 +7,12 @@
 // The top half is plain logic (tested on its own); createHost() below wires it into Electron.
 const fs = require('fs');
 const path = require('path');
+const SmvSites = require('../shared/sites');
 
-const PLATS = ['kick', 'twitch', 'youtube'];
+const PLATS = [...SmvSites.IDS];
 const KINDS = ['stream', 'chat'];
-const SITE_PARTS = { 'persist:kick': 'kick', 'persist:twitch': 'twitch', 'persist:youtube': 'youtube' };
+// each site's login storage -> the site ('persist:kick' -> 'kick')
+const SITE_PARTS = Object.fromEntries(SmvSites.SITES.map(s => [s.partition, s.id]));
 const STREAM_PREFIX = 'persist:kmv-stream-';
 const STORE_PART = 'persist:kmv-webstore';
 const STORE_URL = 'https://chromewebstore.google.com/';
@@ -84,9 +86,9 @@ const blocksNothing = manifest => ['declarativeNetRequest', 'declarativeNetReque
 const hostsOf = m => [...(m.host_permissions || []), ...(m.content_scripts || []).flatMap(c => c.matches || []),
   ...(m.manifest_version === 2 ? (m.permissions || []).filter(p => /[:/*]/.test(p)) : [])];
 
-// Which of Kick, Twitch and YouTube it can run on. One that names no sites (a popup, or activeTab) might
+// Which of the sites it can run on. One that names no sites (a popup, or activeTab) might
 // run anywhere, so it counts as all of them.
-const SITE_HOSTS = { kick: 'kick.com', twitch: 'twitch.tv', youtube: 'youtube.com' };
+const SITE_HOSTS = Object.fromEntries(SmvSites.SITES.map(s => [s.id, s.hosts[0]]));   // (its main address)
 function sitesOf(manifest) {
   const hosts = hostsOf(manifest || {});
   if (!hosts.length) return [...PLATS];
@@ -162,7 +164,7 @@ const extOpenable = u => { try { const x = new URL(String(u)); return x.protocol
 const STORE_HOST = /^(chromewebstore|accounts|consent)\.google\.com$/;
 const storeNavOk = u => { try { const x = new URL(String(u)); return x.protocol === 'https:' && STORE_HOST.test(x.hostname); } catch { return false; } };
 const EXT_ID = /^[a-p]{32}$/;
-const EXT_PARTITION = /^persist:(kick|twitch|youtube|kmv-stream-[\w-]{1,120})$/;
+const EXT_PARTITION = new RegExp(`^(${Object.keys(SITE_PARTS).join('|')}|${STREAM_PREFIX}[\\w-]{1,120})$`);
 
 // chrome.cookies as Chrome has it: only with the "cookies" permission, and only the cookies of sites the extension
 // may reach (its host permissions). electron-chrome-extensions gives every extension every cookie of its session
