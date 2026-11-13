@@ -491,10 +491,11 @@ test('Settings › Linked channels: off, the page only says what it does; on, it
 test('Settings › Windows: names off, Always / Never in ⋯ and the order of the buttons', async t => {
   const page = await linkedApp(t, { on: false });
   await add(page, 'novalynx');
-  await page.evaluate(() => window.openSettings('windows'));
+  await page.evaluate(() => window.openSettings('windows', { sub: 'general' }));
   await page.click('#barNameStream');
   assert.equal(await page.locator('#stage .win.stream .bar.nm-off').count(), 1, 'the stream\'s name is off');
   assert.notEqual(await page.$eval('#stage .win.stream .bar.nm-off .col-pick', s => getComputedStyle(s).color), 'rgba(0, 0, 0, 0)', 'its ▾ still shows (drawn in the text\'s colour)');
+  await page.click('#winTabs [data-t=buttons]');
   // Never in ⋯: Reload, right next to ⋯; then Pop out instead (Reload back to When out of room)
   await page.click('#wbList [data-k=reload] button:has-text("Never in ⋯")');
   const order = () => page.$$eval('#stage .win.stream .btns > button', bs => bs.map(b => b.dataset.a));
@@ -513,7 +514,7 @@ test('Settings › Windows: names off, Always / Never in ⋯ and the order of th
 
 test('Settings › Windows: a button you move glides to its place, lifted, and glows there; the others and the preview\'s buttons glide too; not with reduced motion', async t => {
   const page = await linkedApp(t, { on: false });
-  await page.evaluate(() => window.openSettings('windows'));
+  await page.evaluate(() => window.openSettings('windows', { sub: 'buttons' }));
   const moving = () => page.evaluate(() => ({
     reload: document.querySelector('#wbList [data-k=reload]').getAnimations().length,
     lifted: document.querySelector('#wbList [data-k=reload]').classList.contains('wb-lift'),
@@ -607,7 +608,7 @@ test('a narrow window with its site tabs: close and ⋯ never go off its bar; it
     return { fits: bar.scrollWidth <= bar.clientWidth + 1, close: inBar('[data-a=close]'), more: inBar('[data-a=more]'), mod: inBar('[data-a=mod]'),
       scrolls: box.scrollWidth > box.clientWidth + 1, onSeen: on.left >= tabs.left - 0.5 && on.right <= tabs.right + 0.5 };
   }, width);
-  await page.evaluate(() => window.openSettings('windows'));
+  await page.evaluate(() => window.openSettings('windows', { sub: 'general' }));
   for (const nameOn of [true, false]){
     if (!nameOn){ await page.click('#barNameChat'); }
     for (const width of [420, 300, 260, 220]){
@@ -618,6 +619,7 @@ test('a narrow window with its site tabs: close and ⋯ never go off its bar; it
   }
   // the mod view Never in ⋯ (a third button): still every tab at 240px; at the narrowest, close, ⋯ and it stay
   // (every tab too, with this computer's fonts; Linux's are wider, and the tabs may scroll a few pixels)
+  await page.click('#winTabs [data-t=buttons]');
   await page.click('#wbList [data-k=mod] button:has-text("Never in ⋯")');
   await page.keyboard.press('Escape');
   let st = await state(240);

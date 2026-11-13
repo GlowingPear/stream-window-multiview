@@ -1,4 +1,4 @@
-// A stream that ends (Settings › Layouts › Close a channel's windows when its stream ends): a channel seen live
+// A stream that ends (Settings › Windows › Close a channel's windows when its stream ends): a channel seen live
 // while its windows are open, then offline for the setting's minutes, has its stream and chat closed, and the
 // layout fits around what's left. The live checks are given with the page's liveStatus (as the app's arrive).
 const test = require('node:test');
@@ -21,11 +21,11 @@ async function open(t, { minutes = 1, lock = true, fit = false } = {}){
   return page;
 }
 
-test('Settings › Layouts: the setting, Never by default, remembered', async t => {
+test('Settings › Windows: the setting, Never by default, remembered', async t => {
   const page = await openApp(t);
-  await page.evaluate(() => window.openSettings('layouts'));
+  await page.evaluate(() => window.openSettings('windows', { sub: 'general' }));
   assert.equal(await page.inputValue('#closeEndedSet'), '0', 'Never');
-  assert.match(await page.textContent('.st-pane[data-s="layouts"] .st-row:has(#closeEndedSet) .st-t'), /Close a channel's windows when its stream ends/);
+  assert.match(await page.textContent('.st-pane[data-s="windows"] .st-row:has(#closeEndedSet) .st-t'), /Close a channel's windows when its stream ends/);
   await page.selectOption('#closeEndedSet', '5');
   assert.equal(await page.evaluate(() => localStorage.getItem('kickMultiview.closeEnded')), '5');
   await page.selectOption('#closeEndedSet', '0');

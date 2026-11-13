@@ -4,6 +4,7 @@ import { element } from '../../shared/element.js';
 import { icon } from '../../shared/icons.js';
 import { settings } from '../../shared/settings.js';
 import { store } from '../../shared/store.js';
+import { wireTabs } from '../../toolbar/toolbar.js';
 
 /* ---- Settings › Windows: stream and chat windows' title bars ----
    The channel's name on stream / chat windows (off: the picture and the site tabs), and each title bar button's
@@ -143,11 +144,12 @@ function init(){
   $('#barNameStream').addEventListener('change', e => { settings.set('barNameStream', e.target.checked); store.changed('barButtons'); });
   $('#barNameChat').addEventListener('change', e => { settings.set('barNameChat', e.target.checked); store.changed('barButtons'); });
   $('#wbReset').onclick = resetBar;
+  wireTabs($('#winTabs'), t => { document.querySelectorAll('#settingsDlg [data-s=windows] .st-subpane').forEach(p => { p.hidden = p.dataset.t !== t; }); });
   settings.onChange(['barButtons', 'barNameStream', 'barNameChat'], () => store.changed('barButtons'));   // changed in the other window
   store.watch('barButtons', () => { renderWindowsPane(); wins.forEach(w => { arrangeButtons(w); syncBarName(w); }); });
   // each button's choice, from the search box: "Never in ⋯: Reload"
   commands.provide('barButtons', () => Object.entries(BAR_BUTTONS).flatMap(([k, [name]]) => CHOICES.map(([v, label]) => ({
-    id: `bar.${k}.${v}`, kind: 'setting', group: 'Settings', title: `${label}: ${name}`, sub: 'Settings › Windows › Buttons and the ⋯ menu', words: ['title bar', 'button', 'menu'],
+    id: `bar.${k}.${v}`, kind: 'setting', group: 'Settings', title: `${label}: ${name}`, sub: 'Settings › Windows › Title bar buttons', words: ['title bar', 'button', 'menu'],
     icon: 'winbar', disabled: () => choiceOf(barButtons(), k) === v && 'Already chosen', run: () => setChoice(k, v) }))));
   renderWindowsPane();
   window.barButtons = barButtons;   // for the tests

@@ -11,7 +11,6 @@ const SETTING_NAMES = new Set([
   'popped', 'popPartial',  // the streams window is open; only the streams you can't see went to it
   'lastLayout', 'streams.lastLayout', 'cols', 'colOrder', 'linked', 'featured', 'sideCols', 'pageStep',
   'switchMode', 'monitors', 'switchRect', 'layoutLocked', 'focusOnly', 'autoFit', 'autoPause', 'presets', 'game', 'toolbar',
-  'closeEnded',             // Settings › Layouts: the minutes after a stream ends that its windows close (windows/ended.js)
   'chatZoom', 'chatBlowup', 'chatBlowSize', 'stageCh', 'stageSplit', 'stageZoom', 'railCh', 'railZoom', 'lastSession', 'startMuted', 'snap',
   // Settings › General: the streams' quality, Fits the window's range, and what streams you can't see play at (windows/quality.js)
   'quality', 'qualityFit', 'qualityHidden',
@@ -28,8 +27,9 @@ const SETTING_NAMES = new Set([
   'allHidden',             // the sites a streamer's ALL hides (its K / T / Y switches): { [streamer id]: ['kick', …] }
   'allRecentEmotes',       // the emotes you sent from ALL last, for each site (the row over its box: chat/all-emotes.js)
   'allMyLook',             // how you looked in each chat (name, colour, badges): your line while it sends from ALL, before your first message there
-  // Settings › Windows: the channel's name on stream / chat windows' title bars, and each button's place and ⋯ choice
-  'barNameStream', 'barNameChat', 'barButtons',
+  // Settings › Windows: the channel's name on stream / chat windows' title bars, and each button's place and ⋯ choice;
+  // the minutes after a stream ends that its windows close (windows/ended.js)
+  'barNameStream', 'barNameChat', 'barButtons', 'closeEnded',
   // Connected apps: Connect with Pear Drops, sign Kick players out while it farms, your Kick choice from
   // before that took over, the toolbar's farming widget and its daily reward chest
   'link.peardrops', 'link.kickAuto', 'link.kickBefore', 'link.widget', 'link.dailyReward',

@@ -71,7 +71,7 @@ test('Channel settings › Streams: a channel\'s own quality, saying what Settin
 
 test('Settings › Windows: Quality is a button like the others, shown as what it plays on the preview, before Reload', async t => {
   const page = await openApp(t);
-  await page.evaluate(() => window.openSettings('windows'));
+  await page.evaluate(() => window.openSettings('windows', { sub: 'buttons' }));
   const rows = await page.$$eval('#wbList [data-k]', l => l.map(r => r.dataset.k));
   assert.equal(rows[rows.indexOf('quality') + 1], 'reload');
   assert.match(await page.textContent('#wbList [data-k=quality]'), /QualityStream windows: what it plays/);

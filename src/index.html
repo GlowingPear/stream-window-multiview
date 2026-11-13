@@ -311,19 +311,24 @@
         <label class="st-row"><span class="st-t">Keyboard shortcuts<small>Esc still closes menus when they're off. <button class="linkish" data-help="keys">See the list</button></small></span><input type="checkbox" class="st-sw" id="keysSet"></label>
       </section>
       <section class="st-pane" data-s="windows" hidden>
-        <h4>Windows</h4><p class="st-sub">Stream and chat windows' title bars: names, buttons and the ⋯ menu.</p>
+        <h4>Windows</h4><p class="st-sub">Stream and chat windows: their names, title bar buttons and the ⋯ menu, and closing them when a stream ends.</p>
+        <div class="st-tabs" id="winTabs" role="tablist" aria-label="Windows"><button role="tab" data-t="general" class="on" aria-selected="true">General</button><button role="tab" data-t="buttons" aria-selected="false" tabindex="-1">Title bar buttons</button></div>
+        <div class="st-subpane" data-t="general">
         <label class="st-row"><span class="st-t">Show the channel's name on stream windows<small>Off: just the picture and the K / T / Y tabs. Click the picture for the window list; hover it for the name.</small></span><input type="checkbox" class="st-sw" id="barNameStream" checked></label>
         <label class="st-row"><span class="st-t">Show the channel's name on chat windows<small>Off: just the picture and the K / T / Y tabs, leaving more room for the chat's buttons.</small></span><input type="checkbox" class="st-sw" id="barNameChat" checked></label>
+        <label class="st-row"><span class="st-t">Close a channel's windows when its stream ends<small>After a live channel goes offline without a raid, its stream and chat close and the layout fits around what's left. Back live in time: they stay. Undo brings them back.</small></span><select class="st-sel" id="closeEndedSet"><option value="0">Never</option><option value="1">After 1 minute</option><option value="2">After 2 minutes</option><option value="5">After 5 minutes</option><option value="10">After 10 minutes</option><option value="15">After 15 minutes</option><option value="30">After 30 minutes</option></select></label>
+        </div>
+        <div class="st-subpane" data-t="buttons" hidden>
         <div class="st-row wb-head"><span class="st-t">Buttons and the ⋯ menu</span><button class="btn" id="wbReset" title="Back to the bar's own order, with Extensions, Copy window state and Inspect always in ⋯">Reset</button></div>
         <div class="wb-preview" id="wbPreview" aria-label="How a title bar looks"></div>
         <div class="wb-list" id="wbList" role="list" aria-label="Title bar buttons"></div>
+        </div>
       </section>
       <section class="st-pane" data-s="layouts" hidden>
         <h4>Layouts</h4><p class="st-sub">How the windows are arranged. Switch with <b>Layout ▾</b> in the toolbar, or here.</p>
         <div class="st-tabs" id="lyTabs" role="tablist" aria-label="Layouts"><button role="tab" data-t="layouts" class="on" aria-selected="true">Layouts</button><button role="tab" data-t="switch" aria-selected="false" tabindex="-1">Switch control</button><button role="tab" data-t="toolbar" aria-selected="false" tabindex="-1">Toolbar</button><button role="tab" data-t="monitors" aria-selected="false" tabindex="-1">Monitors</button></div>
         <div class="st-subpane" data-t="layouts"><div class="ly-md"><div class="ly-list" id="lyList" role="listbox" aria-label="Layouts"><div id="lyPresetList"></div></div><div class="ly-detail" id="lyDetail"><div id="lyPresetDetail"></div><div class="ly-panel" data-k="+new" hidden><div class="ly-head"><b>Save what's on screen</b></div><p class="ly-desc">Keeps the open windows, where they are and their order, with the layout's options. Using it later keeps the windows that are already open and reopens the rest.</p><div class="st-add"><input class="st-in" id="lyPresetName" placeholder="Name this layout" maxlength="40" autocomplete="off" spellcheck="false"><button class="btn" id="lyPresetSave">Save</button></div></div></div></div>
           <label class="st-row ly-keys"><span class="st-t">Sound follows the arrow keys<small><b>←</b> / <b>→</b> move between streams in every layout. With this on, the stream you move to is the one you hear: the others are muted.</small></span><input type="checkbox" class="st-sw" id="arrowSound"></label>
-          <label class="st-row"><span class="st-t">Close a channel's windows when its stream ends<small>After a live channel goes offline without a raid, its stream and chat close and the layout fits around what's left. Back live in time: they stay. Undo brings them back.</small></span><select class="st-sel" id="closeEndedSet"><option value="0">Never</option><option value="1">After 1 minute</option><option value="2">After 2 minutes</option><option value="5">After 5 minutes</option><option value="10">After 10 minutes</option><option value="15">After 15 minutes</option><option value="30">After 30 minutes</option></select></label>
           </div>
         <div class="st-subpane" data-t="switch" hidden>
           <p class="st-sub ly-intro">A button for every stream: make one big, swap them, pause, mute and set the volume. Where it shows:</p>

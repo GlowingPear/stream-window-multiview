@@ -9,7 +9,7 @@ import { DESKTOP } from '../shared/env.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 
-/* ---- A stream that ends closes its windows (Settings › Layouts) ----
+/* ---- A stream that ends closes its windows (Settings › Windows) ----
    A channel that ends its stream without raiding anyone leaves its windows on the site's offline screen (Kick's
    player often just goes black), so the screen can't say it ended: the live checks do. A channel seen live while
    its windows are open, then offline for the setting's minutes, has its stream and chat closed as Remove does
