@@ -3,12 +3,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
+const { pathToFileURL } = require('url');   // (import() of a Windows path needs a file:// URL)
 const ROOT = path.join(__dirname, '../../../..');
 // what's shared, with each site's reader (sites/<id>/feed.js) as before they moved, for the tests across sites
 const load = async () => {
   globalThis.SmvSites = require(path.join(ROOT, 'src/shared/sites.js'));
-  const { feedParse } = await import(path.join(ROOT, 'src/page/chat/feed-parse.js'));
-  const { PLATFORMS: P } = await import(path.join(ROOT, 'src/page/sites/sites.js'));
+  const { feedParse } = await import(pathToFileURL(path.join(ROOT, 'src/page/chat/feed-parse.js')).href);
+  const { PLATFORMS: P } = await import(pathToFileURL(path.join(ROOT, 'src/page/sites/sites.js')).href);
   return { ...P.kick.feed, ...P.twitch.feed, ...P.youtube.feed, ...feedParse, KNOWN: feedParse.known(), IGNORED: feedParse.ignored(),
     parseKick: P.kick.feed.parse, parseTwitch: P.twitch.feed.parse, parseYouTube: P.youtube.feed.parse };
 };

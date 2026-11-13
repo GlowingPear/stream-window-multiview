@@ -3,12 +3,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
+const { pathToFileURL } = require('url');   // (import() of a Windows path needs a file:// URL)
 const ROOT = path.join(__dirname, '../../../../..');
 // its reader, with what ALL says about the kinds it reads (chat/feed-parse.js)
 const load = async () => {
   globalThis.SmvSites = require(path.join(ROOT, 'src/shared/sites.js'));
-  const { twitchFeed: feed } = await import(path.join(ROOT, 'src/page/sites/twitch/feed.js'));
-  const { feedParse } = await import(path.join(ROOT, 'src/page/chat/feed-parse.js'));
+  const { twitchFeed: feed } = await import(pathToFileURL(path.join(ROOT, 'src/page/sites/twitch/feed.js')).href);
+  const { feedParse } = await import(pathToFileURL(path.join(ROOT, 'src/page/chat/feed-parse.js')).href);
   return { ...feed, parseTwitch: feed.parse, KNOWN: feedParse.known(), ignoredWhy: feedParse.ignoredWhy, ignoredKinds: feedParse.ignoredKinds, leftOut: feedParse.leftOut, parseFeed: feedParse.parseFeed };
 };
 const TW = (tags, rest) => '@' + Object.entries(tags).map(([k, v]) => `${k}=${v}`).join(';') + ' ' + rest;

@@ -3,12 +3,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
+const { pathToFileURL } = require('url');   // (import() of a Windows path needs a file:// URL)
 const ROOT = path.join(__dirname, '../../../../..');
 // its reader, with what ALL says about the kinds it reads (chat/feed-parse.js)
 const load = async () => {
   globalThis.SmvSites = require(path.join(ROOT, 'src/shared/sites.js'));
-  const { youtubeFeed: feed } = await import(path.join(ROOT, 'src/page/sites/youtube/feed.js'));
-  const { feedParse } = await import(path.join(ROOT, 'src/page/chat/feed-parse.js'));
+  const { youtubeFeed: feed } = await import(pathToFileURL(path.join(ROOT, 'src/page/sites/youtube/feed.js')).href);
+  const { feedParse } = await import(pathToFileURL(path.join(ROOT, 'src/page/chat/feed-parse.js')).href);
   return { ...feed, parseYouTube: feed.parse, KNOWN: feedParse.known(), ignoredWhy: feedParse.ignoredWhy, ignoredKinds: feedParse.ignoredKinds, leftOut: feedParse.leftOut, parseFeed: feedParse.parseFeed };
 };
 const YT = (type, r) => ({ addChatItemAction: { item: { [type]: r } } });
