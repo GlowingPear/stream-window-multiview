@@ -4,7 +4,7 @@ import { addParsed } from '../../layout/placement.js';
 import { bell } from '../bell/bell.js';
 import { channelVars, infoFor, loadSavedProfiles, notifyAll, notifyOff, persistSaved, saved, sendWatch, toggleSaved } from '../channels/channels.js';
 import { openLinkCard } from '../linked/link-card.js';
-import { linkedOn, nameOf, ordered, streamerOf } from '../../platforms/linked.js';
+import { linkedOn, nameOf, ordered, siteName, siteNo, siteNum, streamerOf } from '../../platforms/linked.js';
 import { PLAT_NAME, chLabel, modUrl, normCh, parseInput, platOf, platform, rememberName, rememberNames } from '../../platforms/platforms.js';
 import { ask, askChecked } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
@@ -45,7 +45,7 @@ const pfLive = ch => !!(infoFor(ch) && infoFor(ch).live);
 /* ---- linked channels (platforms/linked.js): a streamer is one card and one profile; notes, tags, nickname and
    favourite are one set for them, written to every account (so unlinking leaves each a copy) ---- */
 const SITE_LETTER = { kick: 'K', twitch: 'T', youtube: 'Y' };
-const pfSiteIco = (ch, dim) => element('i', { class: `pi pi-${platOf(ch)}${dim ? ' dim' : ''}`, title: PLAT_NAME[platOf(ch)] }, SITE_LETTER[platOf(ch)] || '?');
+const pfSiteIco = (ch, dim) => element('i', { class: `pi pi-${platOf(ch)}${dim ? ' dim' : ''}`, title: siteName(ch) }, SITE_LETTER[platOf(ch)] || '?', siteNum(ch));
 const andList = l => l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1];
 function mergeMeta(metas, first = 0){
   const notes = [...new Set(metas.map(x => (x.notes || '').trim()).filter(Boolean))];
@@ -288,7 +288,7 @@ function pfViewChips(){
   const chips = element('div', 'pf-chips');
   const chip = (v, label, ico, dim) => { const b = element('button', { type: 'button', class: (pf.view === v ? 'on' : '') + (dim ? ' dim' : ''), onclick: () => pfSetView(v) }, ico || '', label); chips.appendChild(b); };
   chip('all', 'All sites');
-  pf.group.forEach(c => chip(c, PLAT_NAME[platOf(c)], pfSiteIco(c), !pfLive(c)));
+  pf.group.forEach(c => chip(c, siteNo(c) ? chLabel(c) : PLAT_NAME[platOf(c)], pfSiteIco(c), !pfLive(c)));
   row.appendChild(chips);
   return row;
 }
@@ -601,7 +601,7 @@ function pfRenderLinked(){
   if (m.nick && m.nick !== realName) h2.appendChild(element('small', '', realName));
   h2.appendChild(element('span', 'pf-sites', ...chs.map(c => pfSiteIco(c, !pfLive(c)))));
   id.appendChild(h2);
-  if (fols.length) id.appendChild(element('div', 'pf-meta', [`${fmtN(total)} followers across ${chs.length} sites`, ...fols.map(([c, f]) => `${PLAT_NAME[platOf(c)]} ${fmtN(f)}`)].join(' · ')));
+  if (fols.length) id.appendChild(element('div', 'pf-meta', [`${fmtN(total)} followers across ${chs.length} ${new Set(chs.map(platOf)).size === chs.length ? 'sites' : 'channels'}`, ...fols.map(([c, f]) => `${siteName(c)} ${fmtN(f)}`)].join(' · ')));
   if (ms && ms.bio) id.appendChild(element('p', 'pf-bio', ms.bio));
   if (!chs.some(c => siteOf(c)) && chs.some(c => acc(c).loading)){ const l = element('div', 'pf-load'); l.innerHTML = '<span class="spin"></span> Asking the sites…'; id.appendChild(l); }
   if (ms && ms.socials && pfSocialsOf(ms).length){
@@ -645,20 +645,20 @@ function pfRenderLinked(){
     const lead = live.includes(main) ? main : live[0], li = infoFor(lead) || {}, sl = (siteOf(lead) || {}).live;
     const starts = live.map(c => (infoFor(c) || {}).startedAt || ((siteOf(c) || {}).live || {}).startedAt).filter(Boolean), started = starts.length ? Math.min(...starts) : null;
     const together = live.reduce((t, c) => t + (+(infoFor(c) || {}).viewers || 0), 0);
-    txt.appendChild(element('div', 'pf-now-k', [`Live now on ${andList(live.map(c => PLAT_NAME[platOf(c)]))}`, started ? `up ${fmtDur(Date.now() - started)}` : ''].filter(Boolean).join(' · ')));
+    txt.appendChild(element('div', 'pf-now-k', [`Live now on ${andList(live.map(siteName))}`, started ? `up ${fmtDur(Date.now() - started)}` : ''].filter(Boolean).join(' · ')));
     txt.appendChild(element('div', 'pf-now-t', li.title || (sl && sl.title) || 'Live'));
     const sub = element('div', 'pf-now-s');
     const cat = li.category || (sl && sl.category); if (cat) sub.append(cat);
     live.forEach(c => { const v = (infoFor(c) || {}).viewers; if (v == null) return; if (sub.childNodes.length) sub.append(' · '); sub.append(pfSiteIco(c), ` ${Number(v).toLocaleString()} watching`); });
     if (live.length > 1 && together) sub.append(` · ${together.toLocaleString()} together`);
     txt.appendChild(sub);
-    const w = element('button', 'btn primary', live.length > 1 ? `Watch (tabs: ${live.map(c => SITE_LETTER[platOf(c)]).join(', ')})` : 'Watch now');
+    const w = element('button', 'btn primary', live.length > 1 ? `Watch (tabs: ${live.map(c => SITE_LETTER[platOf(c)] + (siteNo(c) || '')).join(', ')})` : 'Watch now');
     w.onclick = () => { profDlg.hidden = true; openStreamer(main, 'both', live); };
     const c2 = element('button', 'btn', 'Chat only'); c2.onclick = () => { profDlg.hidden = true; openStreamer(main, 'chat', live); };
     btns.append(w, c2);
     if (live.length > 1){
       const one = element('div', 'pf-now-sites');
-      live.forEach(c => { const b = element('button', { class: 'btn', title: `Watch on ${PLAT_NAME[platOf(c)]} only`, 'aria-label': `Watch on ${PLAT_NAME[platOf(c)]} only` }, pfSiteIco(c)); b.onclick = () => { profDlg.hidden = true; openStreamer(main, 'both', [c]); }; one.appendChild(b); });
+      live.forEach(c => { const b = element('button', { class: 'btn', title: `Watch on ${siteName(c)} only`, 'aria-label': `Watch on ${siteName(c)} only` }, pfSiteIco(c)); b.onclick = () => { profDlg.hidden = true; openStreamer(main, 'both', [c]); }; one.appendChild(b); });
       btns.appendChild(one);
     }
   } else {
@@ -685,9 +685,9 @@ function pfRenderLinked(){
   const stats = chs.map(c => ((acc(c).summary || {}).stats) || null);
   const tiles = element('div', 'pf-stats');
   const tile = (k, v, sub) => { const t = element('div', 'pf-tile'); t.append(element('span', 'k', k), element('span', 'v' + (v == null ? ' na' : ''), v == null ? 'Not enough data yet' : v), element('span', 's', sub || '')); tiles.appendChild(t); };
-  tile('Followers', fols.length ? fmtN(total) : null, fols.map(([c, f]) => `${PLAT_NAME[platOf(c)]} ${fmtN(f)}`).join(' · '));
+  tile('Followers', fols.length ? fmtN(total) : null, fols.map(([c, f]) => `${siteName(c)} ${fmtN(f)}`).join(' · '));
   const avgs = stats.map((x, i) => x && x.avgViewers != null ? [chs[i], x.avgViewers] : null).filter(Boolean);
-  tile('Avg viewers', avgs.length ? fmtN(avgs.reduce((t, [, v]) => t + v, 0)) : null, avgs.length > 1 ? `${andList(avgs.map(([c]) => PLAT_NAME[platOf(c)]))} added up, while live together` : avgs.length ? `seen by the app on ${PLAT_NAME[platOf(avgs[0][0])]}` : 'counted by the app while it\'s open');
+  tile('Avg viewers', avgs.length ? fmtN(avgs.reduce((t, [, v]) => t + v, 0)) : null, avgs.length > 1 ? `${andList(avgs.map(([c]) => siteName(c)))} added up, while live together` : avgs.length ? `seen by the app on ${siteName(avgs[0][0])}` : 'counted by the app while it\'s open');
   const multi = in30.filter(r => r.sites.length > 1).length, most = Math.max(0, ...in30.map(r => r.sites.length)), hours = in30.reduce((t, r) => t + ((r.end || nowT) - r.start), 0) / 36e5;
   tile('Streams', hist.length ? String(in30.length) : null, `last 30 days · ${Math.round(hours)} h live${multi ? ` · on ${most} sites at once in ${multi}` : ''}`);
   const lens = in90.map(r => r.end - r.start);
@@ -737,7 +737,7 @@ function pfRenderLinked(){
       c[3].textContent = r.title || '–'; c[3].title = r.title || '';
       c[4].textContent = r.cat || '–';
       c[5].textContent = r.peak ? r.peak.toLocaleString() : r.views != null ? `${fmtN(r.views)} views` : '–';
-      if (Object.keys(r.peaks).length > 1) c[5].title = Object.entries(r.peaks).map(([x, v]) => `${PLAT_NAME[platOf(x)]} ${v.toLocaleString()}`).join(' · ');
+      if (Object.keys(r.peaks).length > 1) c[5].title = Object.entries(r.peaks).map(([x, v]) => `${siteName(x)} ${v.toLocaleString()}`).join(' · ');
       body.appendChild(tr);
     });
     wrap.appendChild(tb); hbox.appendChild(wrap);

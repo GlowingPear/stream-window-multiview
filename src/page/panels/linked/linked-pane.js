@@ -1,7 +1,8 @@
 import { $, wins } from '../../core.js';
 import { autoOpen, linkPair, svHue, svInitials, svProf } from '../channels/channels.js';
 import { openLinkCard } from './link-card.js';
-import { dismissed, forgetNot, linkOpt, linkedOn, listStreamers, notSame, setOn, setOpt, streamerName, suggestions } from '../../platforms/linked.js';
+import { dismissed, forgetNot, linkOpt, linkedOn, listStreamers, notSame, setOn, setOpt, siteName, siteNum,
+  streamerName, suggestions } from '../../platforms/linked.js';
 import { PLAT_NAME, chLabel, platOf } from '../../platforms/platforms.js';
 import { element } from '../../shared/element.js';
 import { store } from '../../shared/store.js';
@@ -16,7 +17,7 @@ const laPic = (ch, name) => {
   const p = svProf[ch] && svProf[ch].info; if (p && p.avatar){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = p.avatar; a.appendChild(im); }
   return a;
 };
-const laSite = (ch, dim) => element('i', { class: 'pi pi-' + platOf(ch) + (dim ? ' dim' : ''), title: PLAT_NAME[platOf(ch)] }, PLAT_NAME[platOf(ch)][0]);
+const laSite = (ch, dim) => element('i', { class: 'pi pi-' + platOf(ch) + (dim ? ' dim' : ''), title: siteName(ch) }, PLAT_NAME[platOf(ch)][0], siteNum(ch));
 const laAgo = t => { const d = Math.floor((Date.now() - t) / 864e5); return !t ? '' : d < 1 ? 'today' : d === 1 ? 'yesterday' : d < 7 ? `${d} days ago` : new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
 function renderLinkedPane(){
   if (!pane) return;
@@ -47,7 +48,7 @@ function renderLinkedPane(){
   const list = listStreamers(), n2 = list.reduce((t, s) => t + s.accounts.length, 0);
   $('#laCount').textContent = list.length ? `${list.length} streamer${list.length === 1 ? '' : 's'} · ${n2} channels` : '';
   $('#laLinked').replaceChildren(...(list.length ? list.map(s => {
-    const own = [`Main: ${PLAT_NAME[platOf(s.main)]}`, (s.streams || linkOpt('streams')) === 'separate' ? 'separate windows' : 'tabs in one window'];
+    const own = [`Main: ${siteName(s.main)}`, (s.streams || linkOpt('streams')) === 'separate' ? 'separate windows' : 'tabs in one window'];
     if (s.streams) own[1] += ' (its own choice)';
     if (s.accounts.some(c => autoOpen.includes(c))) own.push('opens by itself, ' + ((s.autoOpen || linkOpt('autoOpen')) === 'separate' ? 'separate' : 'together'));
     return element('div', 'la-row', laPic(s.main, streamerName(s)), element('span', 'la-t', element('b', null, streamerName(s)), ...s.accounts.map(c => laSite(c)), element('small', null, own.join(' · '))),
