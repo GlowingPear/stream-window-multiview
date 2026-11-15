@@ -39,7 +39,7 @@
     "grapevine:check": "grapevine-check"
   },
   "devDependencies": {
-    "electron": "^45.2.3"
+    "electron": "^45.3.0"
   },
   "build": {
     "appId": "com.glowingpear.streammultiview",
