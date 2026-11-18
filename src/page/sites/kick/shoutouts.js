@@ -26,7 +26,8 @@ const kickShoutouts = {
     // its special messages, drawn as cards of their own without a hover bar: a reward redeemed (or a highlighted
     // message), Kicks sent
     special: ['div[class*="border-l-4"]', 'div[class*="border-[#42474D]"]'],
-    name: 'button[data-prevent-expand], button.inline.font-bold',   // where a line shows its sender's name
+    // where a line shows its sender's name (a raid's line: the raider's, as words of its own)
+    name: 'button[data-prevent-expand], button.inline.font-bold, span[aria-hidden="true"].cursor-pointer.font-bold',
     namesDiffer: true,                          // a name shown isn't always its address (- for _)
     sender: kickShoutSender
   }
