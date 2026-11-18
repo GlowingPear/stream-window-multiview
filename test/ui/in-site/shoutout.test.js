@@ -12,6 +12,10 @@ const ICON = '<button class="kbtn" aria-label="Reply"><svg width="20" height="20
 // Kick: a row ([data-index]) with its hover bar (group-hover:flex), its data on the row's .group
 const KICK = (i, name, slug, text, { bar = true, data = true } = {}) => ({ html: `<div data-index="${i}"><div class="group"><div><div><button data-prevent-expand>${name}</button></div><span aria-hidden="true">:&nbsp;</span></div><span class="font-normal">${text}</span>`
   + (bar ? `<div class="hidden group-hover:flex">${ICON}</div>` : '') + '</div></div>', data: data && { i, message: { id: 'm' + i, created_at: new Date(Date.now() - (9 - i) * 1000).toISOString(), sender: { username: name, slug } } } });
+// Kick's raid line as its chat draws it: no hover bar and no message, the raider's name as words of its own
+const RAIDED = (i, name, n) => ({ html: `<div data-index="${i}"><div class="relative px-2"><div class="w-full rounded bg-surface-bg-highest px-2">`
+  + `<span class="text-neutral pr-1 font-semibold" style="display: var(--chatroom-timestamps-display);">02:43 AM</span><svg data-ds-icon="Relocate" width="16" height="16"></svg>`
+  + `<span class="text-surface-fg-subtle"><span aria-hidden="true" class="cursor-pointer font-bold">${name}</span> has raided with <span class="font-bold">${n}</span> viewers.</span></div></div></div>` });
 async function page(t, rows, site = 'kick'){
   const p = await openApp(t, { width: 520, height: 640 });
   const logs = [];
@@ -73,6 +77,23 @@ test('Kick: the button first in a message\'s hover bar; a press says who, by the
   await p.evaluate(() => window.shoutAgent(true));
   await p.hover('[data-index="1"]');
   assert.equal(await p.locator('[data-index="1"] .kmv-so-b').count(), 1);
+});
+
+test('Kick: its own raid line ("… has raided with 5 viewers."): a pill after its words, for the raider by their name; the right-click menu too', async t => {
+  const p = await page(t, [KICK(1, 'Pixel_Fox', 'pixel-fox', 'hello there'), RAIDED(2, 'Maple_Moth', 5)]);
+  await p.hover('[data-index="2"]');
+  assert.equal(await p.locator('[data-index="2"] .kmv-so-pill').count(), 1);
+  assert.equal(await p.$eval('[data-index="2"] .kmv-so-pill', b => b.parentElement.className), 'text-surface-fg-subtle', 'after "viewers.", in the line\'s box');
+  await p.click('[data-index="2"] .kmv-so-pill');
+  await p.waitForTimeout(100);
+  assert.deepEqual(p.logs, [{ site: 'kick', login: 'maple_moth', name: 'Maple_Moth', named: true }], 'the name, said to be a name (the app looks its address up)');
+  assert.deepEqual(await p.evaluate(() => window.__kmvShout.chatters().map(x => [x.login, x.raid])), [['pixel-fox', false], ['maple_moth', true]]);
+  await p.click('[data-index="2"] .text-surface-fg-subtle', { button: 'right' });
+  const m = await p.evaluate(() => window.__kmvMsg.ctx());
+  assert.deepEqual([m.text, m.name, m.shout.login], ['Maple_Moth has raided with 5 viewers.', '', 'maple_moth']);
+  // the hover bar's name stays the name in an ordinary message
+  await p.hover('[data-index="1"]');
+  assert.equal(await p.getAttribute('[data-index="1"] .kmv-so-b', 'aria-label'), 'Shout out Pixel_Fox');
 });
 
 test('Twitch: the button first in a message\'s icons, who from the line\'s data (its login); a press while off sends nothing', async t => {

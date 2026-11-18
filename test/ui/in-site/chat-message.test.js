@@ -15,6 +15,10 @@ const YT = `<yt-live-chat-text-message-renderer><span id="author-name">mossfern<
 // a Kick line with only an emote, or with no message text at all
 const ONLY = (body = '') => `<div data-index="5"><div><div><button>quietkoala</button></div><span aria-hidden="true">:&nbsp;</span></div>${body}</div>`;
 
+// a line of Kick's own (a raid): no message and no name with a colon, the time it shows, then its words
+const RAID = `<div data-index="7"><div class="relative"><div class="rounded"><span class="text-neutral" style="display: var(--chatroom-timestamps-display);">02:43 AM</span>`
+  + `<svg data-ds-icon="Relocate" width="16" height="16"></svg><span class="subtle"><span aria-hidden="true" class="cursor-pointer font-bold">quietkoala</span> has raided with <span class="font-bold">5</span> viewers.</span></div></div></div>`;
+
 async function chat(t, body) {
   const page = await openApp(t, { width: 420, height: 640 });
   await page.evaluate(body => {
@@ -49,6 +53,17 @@ test('Kick, Twitch and YouTube: the text without the name, with each emote as it
   assert.deepEqual(named, ['Pixel_Fox', ''], 'without its @; none shown: none');
   const only = await at(page, '[data-index="5"] button');
   assert.deepEqual([only.text, only.withEmotes], ['', 'oakCozy'], 'only an emote: nothing without it');
+});
+
+test('Kick\'s own lines (a raid): its words without the time, no one who sent it, and its whole HTML (Copy message HTML)', async t => {
+  const page = await chat(t, KICK + RAID + '<div data-index="8"><div><img src="https://files.kick.com/x.png" alt=""></div></div>');
+  const raid = await at(page, '[data-index="7"] .font-bold');
+  assert.deepEqual([raid.text, raid.withEmotes, raid.name], ['quietkoala has raided with 5 viewers.', 'quietkoala has raided with 5 viewers.', ''], 'not the message before it\'s sender');
+  assert.match(raid.html, /^<div data-index="7">.*02:43 AM.*has raided with.*<\/div>$/s, 'the whole line, with its time');
+  await page.click('[data-index="7"] .subtle', { button: 'right' });
+  assert.equal((await page.evaluate(() => window.__kmvMsg.ctx())).text, 'quietkoala has raided with 5 viewers.');
+  assert.equal(await at(page, '[data-index="8"] img'), null, 'a row with no words: not a message');
+  assert.equal((await at(page, '[data-index="4"] .font-normal')).text, 'gg well played', 'a message still reads as one');
 });
 
 test('right-click: ctx() is that message, once and only just after; not a message: null', async t => {

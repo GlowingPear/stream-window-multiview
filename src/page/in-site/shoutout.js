@@ -102,7 +102,9 @@ function shoutAgent(on, look, bots){
       pill.innerHTML = MEGA + '<span>Shout out</span>';
       pill.title = `Shout out ${p.name} (Stream Multiview)`;
       pill.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); if (S.on) press(p); }, true);
-      (line.querySelector('div, span') || line).appendChild(pill);
+      // (after the raid's words: the innermost element that says it)
+      const says = [...line.querySelectorAll('div, span')].filter(e => RAID.test(e.textContent || '')).pop();
+      (says || line.querySelector('div, span') || line).appendChild(pill);
       return;
     }
     const bar = line.querySelector(BAR), like = bar && bar.querySelector('button:not([data-kmv-so])');
