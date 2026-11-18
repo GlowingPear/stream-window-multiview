@@ -11,7 +11,9 @@ function messageAgent(){
   const BODY = '[data-a-target="chat-line-message-body"], yt-live-chat-text-message-renderer #message, [data-index] div:has(> span[aria-hidden="true"]) + span';
   // the whole message, with its name and badges
   const LINE = '[data-a-target="chat-line-message"], .chat-line__message, yt-live-chat-text-message-renderer, [data-index]';
-  const OURS = '[data-kmv-trb], kmv-emote-card, [data-kmv-spam], [class*="kmv-spam"]';
+  const OURS = '[data-kmv-trb], kmv-emote-card, [data-kmv-spam], [class*="kmv-spam"], [data-kmv-so]';
+  // the time a line shows (Kick), left out of a notice's words
+  const TIME = '[style*="chatroom-timestamps-display"]';
   // who sent it, as the line shows it: Twitch, YouTube, Kick
   const NAME = '.chat-author__display-name, [data-a-target="chat-message-username"], yt-live-chat-text-message-renderer #author-name, button[data-prevent-expand], button.inline.font-bold';
   let ctxAt = null;
@@ -24,7 +26,7 @@ function messageAgent(){
   function textOf(body, emotes){
     let out = '';
     const walk = document.createTreeWalker(body, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
-      acceptNode: n => n.nodeType === 1 && n.matches(OURS) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+      acceptNode: n => n.nodeType === 1 && n.matches(OURS + ', ' + TIME) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
     });
     for (let n = walk.nextNode(); n; n = walk.nextNode()){
       if (n.nodeType === 3) out += n.nodeValue;
@@ -38,18 +40,23 @@ function messageAgent(){
     [c, ...c.querySelectorAll('*')].forEach(e => [...e.attributes].forEach(a => { if (/^data-kmv-/.test(a.name)) e.removeAttribute(a.name); }));
     return c.outerHTML;
   }
-  // the message an element is in: { line, body } | null (not a message)
+  // A line of the site's own, not anyone's message (Kick's "Pixel_Fox has raided with 5 viewers."): a row with no
+  // message text and no name with a colon before it (a message with no text has one); its words are its message
+  const noticeOf = line => line && line.matches('[data-index]') && flat(textOf(line, true))
+    && ![...line.querySelectorAll('span[aria-hidden="true"]')].some(s => /^:\s*$/.test(s.textContent));
+  // the message an element is in: { line, body, notice } | null (not a message)
   function partsOf(el){
     if (el && el.nodeType !== 1) el = el.parentElement;
     if (!el || !el.closest) return null;
     let line = el.closest(LINE);
     while (line && line.matches('[data-index]') && line.parentElement && line.parentElement.closest('[data-index]')) line = line.parentElement.closest('[data-index]');   // Kick: the outermost row
     const body = el.closest(BODY) || (line && line.querySelector(BODY));
-    if (!body) return null;
+    if (!body) return noticeOf(line) ? { line, body: line, notice: true } : null;
     if (!line || !line.contains(body)) line = body.closest(LINE) || body.parentElement || body;
     return { line, body };
   }
   function nameOf(m){
+    if (m.notice) return '';   // (no one sent it)
     const prev = m.body.previousElementSibling;   // (Kick: the name is before the colon, next to the text)
     const n = [...m.line.querySelectorAll(NAME)].find(e => !m.body.contains(e)) || (prev && [...prev.querySelectorAll('button')].pop());
     return n ? flat(n.textContent).replace(/^@/, '').replace(/:$/, '').slice(0, 40) : '';
