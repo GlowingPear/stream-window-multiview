@@ -67,7 +67,7 @@ test('Installed: on where the grid says (streams by default, plus Twitch chats h
   await a.win.click('#settingsDlg .ex-folder');
   await a.win.waitForSelector('#extDlg:not([hidden])');
   const grid = await a.win.$$eval('#extDlg .ex-grid input', l => l.map(i => `${i.dataset.p}.${i.dataset.k}=${i.checked}`));
-  assert.deepEqual(grid, ['kick.stream=true', 'twitch.stream=true', 'youtube.stream=true', 'kick.chat=false', 'twitch.chat=false', 'youtube.chat=false']);
+  assert.deepEqual(grid, ['kick.stream=true', 'twitch.stream=true', 'youtube.stream=true', 'rumble.stream=true', 'kick.chat=false', 'twitch.chat=false', 'youtube.chat=false', 'rumble.chat=false']);
   await a.win.check('#extDlg .ex-grid input[data-p=twitch][data-k=chat]');
   await a.win.click('#extDlg .ex-yes');
   await a.win.waitForSelector('#settingsDlg .ex-card');
@@ -187,7 +187,7 @@ test('A site watched signed in has one switch for its chats and streams; sites i
   assert.equal(await a.win.locator(card + ' .ex-grid input[data-p=kick]').count(), 2, 'Streams and Chats again');
   assert.equal(await a.win.isHidden(card + ' .ex-note'), true);
 
-  // an extension made for Kick only: Twitch and YouTube are marked in the install dialog
+  // an extension made for Kick only: Twitch, YouTube and Rumble are marked in the install dialog
   const dir = tempDir('kick-ext');
   fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ manifest_version: 3, name: 'Kick Only', version: '1.0',
     content_scripts: [{ matches: ['https://kick.com/*'], js: ['c.js'] }] }));
@@ -197,7 +197,7 @@ test('A site watched signed in has one switch for its chats and streams; sites i
     await a.win.click('#settingsDlg .ex-folder');
     await a.win.waitForSelector('#extDlg:not([hidden])');
     const off = await a.win.$$eval('#extDlg .ex-grid .h.ex-off', l => l.map(h => h.textContent));
-    assert.deepEqual(off, ['TwitchDoesn\'t run here', 'YouTubeDoesn\'t run here']);
+    assert.deepEqual(off, ['TwitchDoesn\'t run here', 'YouTubeDoesn\'t run here', 'RumbleDoesn\'t run here']);
     await a.win.click('#extDlg .ex-no');
     await a.win.waitForSelector('#extDlg', { state: 'hidden' });
   } finally { await a.app.evaluate((_e, d) => { globalThis.__pick = d; }, FIXTURE); }

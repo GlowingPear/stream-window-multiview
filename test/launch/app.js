@@ -65,8 +65,8 @@ async function launchApp(opts = {}) {
         try {
           s.protocol.handle('https', req => {
             const u = req.url;
-            if (/player\.kick\.com|player\.twitch\.tv|youtube\.com\/embed/.test(u)) return page(player);
-            if (/\/popout\/|live_chat|\/chat\?/.test(u)) return page(chat);
+            if (/player\.kick\.com|player\.twitch\.tv|youtube\.com\/embed|rumble\.com\/embed\//.test(u)) return page(player);
+            if (/\/popout\/|live_chat|\/chat\?|rumble\.com\/chat\/popup\//.test(u)) return page(chat);
             if (/^https:\/\/www\.youtube\.com\/watch\?/.test(u)) return page(ytWatch);
             // Kick's polls: what was sent is kept in __polls; the answer is __pollAnswer ({ status, body }), or Kick's OK
             if (/^https:\/\/kick\.com\/api\/v2\/channels\/[^/]+\/polls$/.test(u)) return req.text().then(body => {
@@ -87,12 +87,12 @@ async function launchApp(opts = {}) {
               const a = answer || { status: 404, body: { message: 'Not Found' } };
               return new Response(JSON.stringify(a.body), { status: a.status, headers: { 'content-type': 'application/json', ...cors } });
             });
-            if (/^https:\/\/(www\.)?(kick\.com|twitch\.tv|youtube\.com)\//.test(u)) return page('<!doctype html><title>site</title>');
+            if (/^https:\/\/(www\.)?(kick\.com|twitch\.tv|youtube\.com|rumble\.com)\//.test(u)) return page('<!doctype html><title>site</title>');
             return new Response('', { status: 404 });
           });
         } catch {}
       };
-      ['persist:kick', 'persist:twitch', 'persist:youtube'].forEach(p => fake(session.fromPartition(p)));
+      ['persist:kick', 'persist:twitch', 'persist:youtube', 'persist:rumble'].forEach(p => fake(session.fromPartition(p)));
       eapp.on('session-created', fake);
       globalThis.__fake = fake;
     });
@@ -234,6 +234,6 @@ function saved(data) {
 
 // Streams watched logged out on every site ("Watch signed in" off, as saved since it's on by default): for tests of
 // the players' own storage
-const SIGNED_OUT = { 'kickMultiview.watchSignedIn': { kick: false, twitch: false, youtube: false, v: 2 } };
+const SIGNED_OUT = { 'kickMultiview.watchSignedIn': { kick: false, twitch: false, youtube: false, rumble: false, v: 2 } };
 
 module.exports = { SIGNED_OUT, nameIs, launchApp, stubExists, mainWindow, inView, viewLoaded, winSel, assert, openChannel, setMode, typeChannel, saved };

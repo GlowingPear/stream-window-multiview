@@ -1123,7 +1123,11 @@ appIpc.handle('profile:list', (_e, chs) => {
 // such channel) or 'unknown' (the site couldn't be asked: offline, rate-limited, slow), which doesn't stop it opening.
 appIpc.handle('channel:exists', async (_e, ch) => {
   if (!okCh(ch)) return 'unknown';
-  const p = await Promise.race([siteProfile(normCh(ch)).catch(() => null), sleep(8000).then(() => null)]);
+  const ask = c => Promise.race([siteProfile(c).catch(() => null), sleep(8000).then(() => null)]);
+  const p = await ask(normCh(ch));
+  // not there: the same name may be another kind of channel on its site (its alsoAt), then that one is used instead
+  const other = p && p.missing && siteOf(normCh(ch)).alsoAt ? siteOf(normCh(ch)).alsoAt(normCh(ch)) : null;
+  if (other && validCh(other)) { const q = await ask(other); if (q && !q.missing) return { use: other }; }
   return !p ? 'unknown' : p.missing ? 'missing' : 'yes';
 });
 // Looking up a name that isn't saved: the same name on each site.
@@ -1131,7 +1135,12 @@ appIpc.handle('profile:lookup', async (_e, q) => {
   const name = String(q || '').trim().replace(/^@/, '').toLowerCase();
   if (!/^[a-z0-9_.\-]{2,40}$/.test(name)) return [];
   const cands = sites.list.map(a => a.byName(name)).filter(c => validCh(c));
-  const found = await Promise.all(cands.map(async ch => { const p = await siteProfile(ch); return p && !p.missing ? { ch, name: p.name, avatar: p.avatar, followers: p.followers, followersText: p.followersText || '', live: p.live ? { title: p.live.title, viewers: p.live.viewers } : null } : null; }));
+  const found = await Promise.all(cands.map(async c => {
+    let ch = c, p = await siteProfile(c);
+    // (not there: the same name as another kind of channel on its site, its alsoAt: Rumble's users)
+    const other = p && p.missing && siteOf(c).alsoAt ? siteOf(c).alsoAt(c) : null;
+    if (other && validCh(other)) { ch = other; p = await siteProfile(other); }
+    return p && !p.missing ? { ch, name: p.name, avatar: p.avatar, followers: p.followers, followersText: p.followersText || '', live: p.live ? { title: p.live.title, viewers: p.live.viewers } : null } : null; }));
   return found.filter(Boolean);
 });
 appIpc.handle('profile:meta', (_e, ch, patch) => {

@@ -66,9 +66,10 @@ test('links on its pages, requests in words, and whether a page shows you signed
   assert.equal(describeRequest(new URL('https://rumble.com/api/Media/oembed.json?url=x')), 'a video\'s player (oEmbed)');
   assert.equal(describeRequest(new URL('https://rumble.com/')), 'page');
   assert.equal(describeRequest(new URL('https://kick.com/')), null);
-  assert.equal(signedInOn('x'.repeat(600) + '<a href="/login.php">Sign in</a>'), false);
-  assert.equal(signedInOn('x'.repeat(600) + '<a href="/account">You</a>'), true);
-  assert.equal(signedInOn('short'), false);
+  assert.equal(signedInOn({ user: { logged_in: false }, data: {} }), false);
+  assert.equal(signedInOn({ user: { logged_in: true } }), true);
+  assert.equal(signedInOn({ user: {} }), null, 'not its answer: can\'t tell');
+  assert.equal(signedInOn(null), null);
 });
 
 /* ---------- the adapter, with Rumble's pages made up ---------- */
@@ -121,21 +122,26 @@ test('a profile; a video has none; the tests\' stand-in pages', async () => {
   assert.equal(stand.rec.fetched[0].url, 'http://127.0.0.1:9/c/nightowl/livestreams');
 });
 
-test('the adapter: its login page, signed in by its home page (asked once a minute, again after logging out), names and links', async () => {
-  let page = 'x'.repeat(600) + '<a href="/account">You</a>';
-  const { a, rec } = rumbleWith({}, { loginFetch: () => answer({ text: page }) });
+test('the adapter: its login page, signed in by its own answer (asked once a minute, again after logging out), names and links', async () => {
+  let logged = true;
+  const none = rumbleWith({}, { loginFetch: () => answer({ json: { user: { logged_in: true } } }) });
+  assert.equal(await none.a.account(), false, 'no cookies of its own: not asked');
+  assert.equal(none.rec.fetched.length, 0);
+  const { a, rec } = rumbleWith({}, { cookies: [{ name: 'ui_t', domain: '.rumble.com' }], loginFetch: () => answer({ json: { user: { logged_in: logged } } }) });
   assert.equal(a.loginUrl, 'https://rumble.com/login.php');
   assert.equal(a.named, false);
   assert.equal(await a.account(), true);
   assert.equal(await a.signedIn(), true);
   assert.equal(rec.fetched.filter(f => f.login).length, 1, 'asked once a minute');
-  page = 'x'.repeat(600) + '<a href="/login.php">Sign in</a>';
+  assert.equal(rec.fetched[0].url, 'https://rumble.com/service.php?name=emote.list');
+  logged = false;
   a.loggedOut();
   assert.equal(await a.account(), false);
-  const down = rumbleWith({}, { loginFetch: () => answer({ status: 503 }) });
+  const down = rumbleWith({}, { cookies: [{ name: 'ui_t' }], loginFetch: () => answer({ status: 503 }) });
   assert.equal(await down.a.account(), false, 'can\'t tell: not signed in');
   assert.equal(await down.a.signedIn(), false);
   assert.equal(a.byName('NightOwl'), 'ru:nightowl');
+  assert.deepEqual(['ru:nightowl', 'ru:u:pip', 'ru:v:v35waq4'].map(a.alsoAt), ['ru:u:nightowl', null, null], 'a channel\'s name may be a user\'s');
   assert.equal(a.fromLink('https://rumble.com/c/x'), 'ru:x');
   assert.equal(a.emoteHost('hugh.cdn.rumble.cloud'), true);
   assert.equal(a.emoteHost('example.com'), false);

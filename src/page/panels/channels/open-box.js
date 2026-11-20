@@ -43,13 +43,14 @@ async function openFromBox(saveToo){
   if (addBusy) return;
   const t = addTarget();
   if (!t){ if (input.value.trim()) flash('Couldn’t read that link or channel name'); return; }
-  const ch = t.p.channel;
+  let ch = t.p.channel;
   if (ch && window.kmv && window.kmv.channelExists && !isVideo(ch)){
     const btn = saveToo ? $('#spOpenSave') : $('#spOpen');
     addBusy = true; btn.classList.add('busy');
     const r = await window.kmv.channelExists(ch).catch(() => 'unknown');
     addBusy = false; btn.classList.remove('busy');
     if (input.value.trim() !== t.raw) return;          // typed something else meanwhile
+    if (r && r.use){ ch = r.use; t.p = { ...t.p, channel: ch }; }   // the same name as another kind of channel there (Rumble's users)
     if (r === 'missing'){
       const pb = $(`#spPlat [data-p=${t.plat}]`); if (pb) pb.classList.add('bad');
       const e = $('#spErr');

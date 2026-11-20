@@ -79,8 +79,9 @@ function describeRequest(u) {
   const p = u.pathname;
   return /\/livestreams$/.test(p) ? 'live streams page' : /^\/api\/Media\/oembed/.test(p) ? 'a video\'s player (oEmbed)' : 'page';
 }
-// Its pages say you're signed out with their "Sign in" link (/login.php); signed in, they don't have one
-const signedInOn = html => typeof html === 'string' && html.length > 500 && !/href="\/login\.php"/.test(html);
+// Its own answers say whether you're signed in (user.logged_in, in any service.php answer): true, false, or null when
+// it isn't one of them (its Cloudflare check's page, an error)
+const signedInOn = d => (d && d.user && typeof d.user.logged_in === 'boolean' ? d.user.logged_in : null);
 
 /* ---------- the app's side (ctx: sites/index.js) ---------- */
 function create(ctx) {
@@ -131,12 +132,15 @@ function create(ctx) {
       return o ? { ...rest, videoId: `${o.embed}.${chat}` } : null;   // (live, but its player can't be found: can't tell yet)
     } catch { return null; }
   }
-  // Signed in: its home page, with your login, has no "Sign in" link (asked at most once a minute)
+  // Signed in: its own answer, with your login (its emote list's, the smallest; asked at most once a minute)
   let signed = { at: 0, v: null };
   async function signedIn() {
+    // (no cookies of its own at all: never signed in here, so nothing to ask)
+    const any = await ctx.session().cookies.get({ domain: 'rumble.com' }).then(l => l.length > 0, () => true);
+    if (!any) return false;
     if (Date.now() - signed.at < 60e3 && signed.v !== null) return signed.v;
     let v = null;
-    try { const r = await ctx.loginFetch(page(RU + '/'), { headers: ctx.headers(), signal: ctx.netSignal() }); if (r.ok) v = signedInOn(await r.text()); } catch {}
+    try { const r = await ctx.loginFetch(page(RU + '/service.php?name=emote.list'), { headers: ctx.headers(), signal: ctx.netSignal() }); if (r.ok) v = signedInOn(await r.json()); } catch {}
     if (v !== null) signed = { at: Date.now(), v };
     return v;
   }
@@ -157,6 +161,8 @@ function create(ctx) {
     liveOne,
     profile,
     byName: name => 'ru:' + String(name).toLowerCase(),
+    // a name without a channel page (/c/<name>) may be a user's (/user/<name>): many streamers only have that
+    alsoAt: ch => (/^ru:[^:]+$/.test(ch) ? 'ru:u:' + ch.slice(3) : null),
     fromLink,
     emoteHost: h => h === 'hugh.cdn.rumble.cloud'
   });

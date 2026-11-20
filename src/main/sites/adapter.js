@@ -18,6 +18,7 @@ const SLOTS = {
   liveOne: ['function', true, '(ch) -> its live info, { missing }, or null: is one channel live'],
   profile: ['function', true, '(ch) -> its profile, { missing }, or null'],
   byName: ['function', true, '(name) -> the channel id a plain name is there'],
+  alsoAt: ['function', false, '(ch) -> the other channel id the same name can be when that one isn\'t there (Rumble: a user\'s page, /user/<name>, for a channel\'s, /c/<name>), or null'],
   fromLink: ['function', true, '(href) -> the channel id a link on its pages is for, or null'],
   openLogin: ['function', false, '() -> signs in some other way, without a login window (YouTube: Firefox)'],
   keeps: ['function', false, '(win) -> a window of its own that logging out leaves open'],
