@@ -76,7 +76,7 @@
 <body>
 <header>
   <div class="brand" title="Stream Multiview"><svg class="pear" viewBox="0 0 64 64" aria-hidden="true"><path d="M33.2 15.5C33 11.5 34.2 8 36.6 4.8" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><path d="M36.2 9.6C40 4.2 47.5 3.2 52.5 5.4 49.6 10.8 42.4 12.8 36.2 9.6Z"/><path d="M32 14.2C25.6 14.2 23.4 19.4 23.4 24.6 23.4 29.6 20.4 31.6 17.2 35.6 13.2 40.6 12 46.8 14.2 52 17.2 58.8 24.4 62 32 62 39.6 62 46.8 58.8 49.8 52 52 46.8 50.8 40.6 46.8 35.6 43.6 31.6 40.6 29.6 40.6 24.6 40.6 19.4 38.4 14.2 32 14.2Z"/></svg><span class="brand-txt">Stream Multiview</span></div>
-  <button class="btn tb" id="loginBtn" hidden data-label="Logins" aria-label="Logins" title="Log in to Kick, Twitch or YouTube"><i data-ico="signin"></i><span class="tb-l">Logins</span><span class="car"></span></button>
+  <button class="btn tb" id="loginBtn" hidden data-label="Logins" aria-label="Logins" title="Log in to Kick, Twitch, YouTube or Rumble"><i data-ico="signin"></i><span class="tb-l">Logins</span><span class="car"></span></button>
   <button class="btn tb" id="savedBtn" data-label="Channels" aria-label="Channels" title="Your channels: open one, add a new one, see who's live"><i data-ico="star"></i><span class="tb-l">Channels</span><span class="sv-badge" hidden><i></i><b></b></span><span class="car"></span></button>
   <button class="btn tb" id="profBtn" hidden data-label="Profiles" aria-label="Profiles" title="Streamer profiles: search your saved streamers, see when they stream, keep notes"><i data-ico="user"></i><span class="tb-l">Profiles</span></button>
   <button class="btn tb" id="palBtn" hidden data-label="Search" aria-label="Search and actions" title="Search and actions (Ctrl+K)"><i data-ico="search"></i><span class="tb-l">Search</span><kbd class="pal-kk">Ctrl K</kbd></button>
@@ -119,7 +119,7 @@
   <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
     <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
   <div class="am-row" data-p="rumble"><i class="pdot"></i><div class="am-txt"><b>Rumble</b><span class="am-st">Checking…</span></div>
-    <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+    <button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
 </div>
 
 <div id="layoutMenu" class="menu" hidden>
@@ -211,7 +211,7 @@
   </div>
   <div class="pf-body">
     <div class="pf-dir">
-      <label class="pf-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="pfQ" placeholder="Search your saved streamers, or type a name to find it on Kick, Twitch and YouTube" aria-label="Search streamers" autocomplete="off" spellcheck="false"></label>
+      <label class="pf-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="pfQ" placeholder="Search your saved streamers, or type a name to find it on Kick, Twitch, YouTube and Rumble" aria-label="Search streamers" autocomplete="off" spellcheck="false"></label>
       <div class="pf-filters">
         <div class="pf-chips" data-g="plat"><button data-v="all" class="on">All</button><button data-v="kick">Kick</button><button data-v="twitch">Twitch</button><button data-v="youtube">YouTube</button><button data-v="rumble">Rumble</button></div>
         <span class="pf-sep"></span>
@@ -220,7 +220,7 @@
       </div>
       <div class="pf-sec">Saved <span class="pf-shown"></span></div>
       <div class="pf-grid"></div>
-      <div class="pf-look" hidden><div class="pf-sec">Not saved yet <span>The same name on Kick, Twitch and YouTube</span></div><div class="pf-look-list"></div></div>
+      <div class="pf-look" hidden><div class="pf-sec">Not saved yet <span>The same name on Kick, Twitch, YouTube and Rumble</span></div><div class="pf-look-list"></div></div>
     </div>
     <div class="pf-prof" hidden></div>
   </div>
@@ -363,7 +363,7 @@
         <h4>Chat</h4><p class="st-sub">How chat windows look and behave.</p>
         <div class="st-tabs" id="chatTabs"><button data-t="box" class="on">Chat box</button><button data-t="messages" class="desk-only">Messages</button><button data-t="emotes">Emotes</button><button data-t="translate">Translation</button><button data-t="bots" class="desk-only">Chat bots</button></div>
         <div class="st-subpane" data-t="box">
-        <label class="st-row"><span class="st-t">Channel name in chat boxes<small>Chat boxes show the channel you're typing in instead of the site's &quot;Send a message&quot;, so you don't post in the wrong chat. A box that says why you can't chat (followers-only, slow mode, sign in) keeps the site's words. Kick, Twitch and YouTube.</small></span><input type="checkbox" class="st-sw" id="chatNameSet"></label>
+        <label class="st-row"><span class="st-t">Channel name in chat boxes<small>Chat boxes show the channel you're typing in instead of the site's &quot;Send a message&quot;, so you don't post in the wrong chat. A box that says why you can't chat (followers-only, slow mode, sign in) keeps the site's words. Kick, Twitch, YouTube and Rumble.</small></span><input type="checkbox" class="st-sw" id="chatNameSet"></label>
         <div class="st-row cn-row" id="chatNameRow" hidden><span class="st-t">Text in the box<small><b>{channel}</b> is the channel's name. Empty: just the name.</small></span>
           <div class="cn-edit"><input class="st-in" id="chatNameText" maxlength="60" placeholder="{channel}" autocomplete="off" spellcheck="false" aria-label="Text in the chat box"><span class="cn-arrow" aria-hidden="true">→</span><div class="cn-sample" aria-label="How a chat box looks"><span id="chatNameSample"></span><i aria-hidden="true">☺</i></div>
             <div class="cn-ideas" id="chatNameIdeas" aria-label="Suggestions"></div></div></div>
@@ -434,7 +434,7 @@
       <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
         <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
       <div class="am-row" data-p="rumble"><i class="pdot"></i><div class="am-txt"><b>Rumble</b><span class="am-st">Checking…</span></div>
-        <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+        <button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
         <div class="st-sec">Logins</div>
         <div class="am-sec">
           <div class="am-enc"><span class="am-lock"></span><span class="am-enc-txt">Checking how logins are stored…</span></div>
@@ -449,7 +449,7 @@
       </section>
       <section class="st-pane" data-s="linked" hidden>
         <h4>Linked channels</h4><p class="st-sub">A streamer on several sites, linked into one: one row in Channels, one window for their streams and one for their chats.</p>
-        <label class="st-row la-on"><span class="st-t">Link channels across sites<small id="laOnSub">Off: every channel stands alone. Turn on to link a streamer's Kick, Twitch and YouTube channels.</small></span><input type="checkbox" class="st-sw" id="linkedOnSet"></label>
+        <label class="st-row la-on"><span class="st-t">Link channels across sites<small id="laOnSub">Off: every channel stands alone. Turn on to link a streamer's Kick, Twitch, YouTube and Rumble channels.</small></span><input type="checkbox" class="st-sw" id="linkedOnSet"></label>
         <div class="la-off" id="laOff"><b>While it's off</b><ul><li>Channels, the empty stage and the search box show one row per channel</li><li>No tabs: each site's stream and chat opens in its own window</li><li>No suggestions, and no <i>Link channels…</i> in menus, profiles or the search box</li></ul><span>Title bars still show the site's icon, without the suffix.</span></div>
         <div class="la-rest" id="laRest" hidden>
         <div class="st-tabs" id="laTabs" role="tablist" aria-label="Linked channels"><button role="tab" data-t="tabs" class="on" aria-selected="true">Tabs</button><button role="tab" data-t="playing" aria-selected="false" tabindex="-1">Playing</button><button role="tab" data-t="live" aria-selected="false" tabindex="-1">Live &amp; raids</button><button role="tab" data-t="sugs" aria-selected="false" tabindex="-1">Suggestions <em class="la-n" id="laSugN" hidden></em></button><button role="tab" data-t="linked" aria-selected="false" tabindex="-1">Linked streamers</button></div>
@@ -539,7 +539,7 @@
         </div>
       </section>
       <section class="st-pane" data-s="mentions" hidden>
-        <h4>Mentions &amp; replies</h4><p class="st-sub">When someone writes @you or replies to you in an open Kick, Twitch or YouTube chat. The chat already highlights the message itself; these make the <b>window</b> stand out so you can see which chat it's in.</p>
+        <h4>Mentions &amp; replies</h4><p class="st-sub">When someone writes @you or replies to you in an open Kick, Twitch, YouTube or Rumble chat. The chat already highlights the message itself; these make the <b>window</b> stand out so you can see which chat it's in.</p>
         <label class="st-lead"><span class="st-t"><b>Alert me</b><small>When someone mentions or replies to the usernames below, or writes one of your words.</small></span><input type="checkbox" class="st-sw" id="mentOn"></label>
         <div class="st-tabs" id="mentTabs"><button data-t="alerts" class="on">How it alerts</button><button data-t="names">Names &amp; words</button><button data-t="bots">Chat bots</button></div>
         <div class="st-subpane" data-t="names" hidden>
@@ -581,7 +581,7 @@
       </section>
       <section class="st-pane" data-s="support" hidden>
         <h4>Support alerts</h4><p class="st-sub">When someone supports a stream in an open chat: KICKs, bits and Super Chats, gifted subs, raids, and new subs and members. Read from the chat's own notices, so it works without logging in. Your own never alert you.</p>
-        <label class="st-lead"><span class="st-t"><b>Alert me when someone supports the stream</b><small>In any open Kick, Twitch or YouTube chat.</small></span><input type="checkbox" class="st-sw" data-al="support.on" id="supportOn"></label>
+        <label class="st-lead"><span class="st-t"><b>Alert me when someone supports the stream</b><small>In any open Kick, Twitch, YouTube or Rumble chat.</small></span><input type="checkbox" class="st-sw" data-al="support.on" id="supportOn"></label>
         <div class="st-tabs" id="supportTabs"><button data-t="what" class="on">What alerts</button><button data-t="how">How it alerts</button></div>
         <div class="st-subpane st-opts" data-t="what" data-for="support">
         <div class="st-sec">The smallest that alerts</div>

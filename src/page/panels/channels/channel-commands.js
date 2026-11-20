@@ -113,7 +113,7 @@ function channelMore(ch){
     add('notify', 'Notify me when live', { group: 'Channel', col: 1, icon: 'bell', disabled: () => !notifyAll && 'Live notifications are off (Channels › the bell)',
       toggle: { get: () => notifyAll && !notifyOff.includes(ch), set: on => setNotify(ch, on) } });
   }
-  if (DESKTOP && ROLE === 'main' && mentOn && mentCovered(ch)) add('mentions', 'Mentions in its chat', { group: 'Channel', col: 1, icon: 'at', sub: 'Kick, Twitch and YouTube', toggle: { get: () => !mentMuted.has(ch), set: () => toggleChatMentions(ch) } });
+  if (DESKTOP && ROLE === 'main' && mentOn && mentCovered(ch)) add('mentions', 'Mentions in its chat', { group: 'Channel', col: 1, icon: 'at', sub: 'Kick, Twitch, YouTube and Rumble', toggle: { get: () => !mentMuted.has(ch), set: () => toggleChatMentions(ch) } });
   if (isModOf(ch) && winsOf(ch).length) add('mod', 'Mod view', { group: 'Channel', col: 1, icon: 'mod', sub: 'You moderate this channel', run: () => openModView(ch) });
   for (const w of winsOf(ch)) out.push(...winActions(w).map(x => ({ ...x, col: 1 })));
   return out;
@@ -191,7 +191,7 @@ function typedItems(q){
         live && live.viewers != null && `${fmtViewers(live.viewers)} watching`, ...siteIds().filter(s => s !== typed.site).map(stateOf)] }];
   }
   return [{ id: 'open:as', kind: 'channel', openAs: true, group: 'Open as a channel', title: `Open “${name}” as a channel`, icon: 'plus', matched: 30, boost: -40,
-    sub: !look || look.busy ? (canLook() ? 'Checking Kick, Twitch and YouTube…' : 'Kick, Twitch or YouTube') : look.items ? 'Not found on Kick, Twitch or YouTube' : 'Kick, Twitch or YouTube',
+    sub: !look || look.busy ? (canLook() ? 'Checking Kick, Twitch, YouTube and Rumble…' : 'Kick, Twitch, YouTube or Rumble') : look.items ? 'Not found on Kick, Twitch, YouTube or Rumble' : 'Kick, Twitch, YouTube or Rumble',
     sites, ...pick, run: () => openCh(chOf(typed.site)) }];
 }
 

@@ -4,8 +4,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-let rumbleTap, rumbleShown, rumbleConsent;
-test.before(async () => { ({ rumbleTap, rumbleShown, rumbleConsent } = await import('../../../../../../src/page/sites/rumble/in-site/feed.js')); });
+let rumbleTap, rumbleShown, rumbleConsent, rumbleSignedOut;
+test.before(async () => { ({ rumbleTap, rumbleShown, rumbleConsent, rumbleSignedOut } = await import('../../../../../../src/page/sites/rumble/in-site/feed.js')); });
 
 // its chat page: where it is, and its emote list's answer
 function page(emotes = { data: { items: [{ emotes: [{ name: 'r+wave', file: 'https://hugh.cdn.rumble.cloud/w.gif' }, { name: 'bad' }] }, null] } }) {
@@ -39,10 +39,12 @@ test('its tap: each message on its own, with its sender, their badges\' pictures
   assert.deepEqual(pushed[0], { t: 'pin', m: { id: 'p1', time: '', text: 'welcome', rant: null }, u: { id: '1', username: 'Pip', color: '#417eeb', badges: ['moderator', 'premium'] },
     pics: [{ url: 'https://hugh.cdn.rumble.cloud/mod48.png', title: 'Moderator' }], emotes: {} });
   assert.deepEqual(pushed[1].emotes, { ':r+wave:': 'https://hugh.cdn.rumble.cloud/w.gif' }, 'only its emotes the chat has');
-  assert.equal(pushed[2].u.username, 'OwlChannel', 'a message sent as a channel is the channel\'s');
+  assert.deepEqual(pushed[2].u, { id: '7', username: 'OwlChannel', color: '', badges: [] }, 'a message sent as a channel is the channel\'s');
   assert.deepEqual([pushed[3].t, pushed[3].m.rant], ['rant', { cents: 1000 }]);
   assert.deepEqual(pushed.slice(4).map(x => [x.t, x.id || (x.m && x.m.id) || '']), [['delete', '11'], ['delete', '12'], ['mute', '2'], ['pin', 'p2'], ['unpin', '']]);
   assert.deepEqual(samples.map(s => s[0]), ['init', 'messages', 'messages:rant', 'delete_messages', 'mute_users', 'pin_message', 'unpin_message', 'livestream_started']);
+  heard(ev('messages', { messages: [{ id: 'm4', user_id: '1', channel_id: '7', text: 'my channel' }] }));
+  assert.deepEqual(pushed[pushed.length - 1].u, { id: '1', username: 'OwlChannel', color: '#417eeb', badges: ['moderator', 'premium'] }, '... with the person\'s id, colour and badges');
 });
 
 test('its tap without a chat to ask about, and with an emote list it can\'t read', async () => {
@@ -98,4 +100,12 @@ test('its cookie question: "Reject all" pressed as its banner shows, once; other
   assert.deepEqual(pressed, ['Reject All']);
   assert.equal(rumbleConsent(), true, 'once a page');
   delete globalThis.window; delete globalThis.document; delete globalThis.MutationObserver;
+});
+
+test('whether its chat shows you signed out: its "Sign in to chat!", its box, or neither yet', () => {
+  const page = shown => { globalThis.document = { querySelector: s => (shown[s] === undefined ? null : { offsetParent: shown[s] ? {} : null }) }; };
+  page({ '#chat-signin-trigger': true }); assert.equal(rumbleSignedOut(), true);
+  page({ '#chat-signin-trigger': false, '#chat-message-text-input': true }); assert.equal(rumbleSignedOut(), false);
+  page({}); assert.equal(rumbleSignedOut(), null);
+  delete globalThis.document;
 });

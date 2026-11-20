@@ -85,7 +85,7 @@ const ES_LEARN = [
 ];
 const TOUR = [
   { sel: '#savedBtn', t: 'Your channels', d: 'Type or paste a channel here to open it, save the ones you watch, and see who’s live. Shortcut: N.' },
-  { sel: '#loginBtn', t: 'Log in', d: 'Log in to Kick, Twitch and YouTube once. Chats use these logins, and Import follows brings in the channels you follow.' },
+  { sel: '#loginBtn', t: 'Log in', d: 'Log in to Kick, Twitch, YouTube and Rumble once. Chats use these logins, and Import follows brings in the channels you follow.' },
   { sel: '#layoutBtn', t: 'Layouts', d: 'Arrange every window at once: Columns, Focus with one big stream, Chat focus, Game and more.' },
   { sel: '#swBtn', t: 'Switch control', d: 'One panel for all your streams: pick the big one, mute, pause or preview. Dock it, float it or give it its own window.' },
   { sel: '#bellBtn', t: 'Notifications', d: 'Who just went live, @mentions and replies, and spam alerts if you moderate.' },
@@ -102,7 +102,7 @@ function esBuild(){
     <div class="es-cols">
       <div class="es-col es-get"><h3>Get watching</h3>${ES_BOX()}
         <div class="desk-blk"><h4>Log in once</h4><div class="es-row es-accts"></div>
-        <h4>Import the channels you follow</h4><div class="es-imp">${siteIds().map(p => `<button class="btn" data-imp="${p}" title="Import the channels you follow on ${PLAT_NAME[p]} into your channels">${platIcon(p)} ${PLAT_NAME[p]}</button>`).join('')}</div></div>
+        <h4>Import the channels you follow</h4><div class="es-imp">${siteIds().filter(p => document.querySelector(`#importRow [data-imp="${p}"]`)).map(p => `<button class="btn" data-imp="${p}" title="Import the channels you follow on ${PLAT_NAME[p]} into your channels">${platIcon(p)} ${PLAT_NAME[p]}</button>`).join('')}</div></div>
         <h4>Handy keys</h4><div class="es-keys"><div><kbd>F1</kbd> All shortcuts</div><div><kbd>N</kbd> Add a channel</div><div><kbd>${navigator.platform.startsWith('Mac') ? '⌘' : 'Ctrl'}</kbd>+<kbd>Z</kbd> Undo</div><div><kbd>W</kbd> Another app’s window</div><div><kbd>L</kbd> Layouts</div><div><kbd>Esc</kbd> Close menus</div></div>
       </div>
       <div class="es-col"><h3>Learn the app <small class="es-prog"></small></h3><div class="es-learn"></div>

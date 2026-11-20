@@ -54,7 +54,8 @@ function init(){
         inB.textContent = lost ? 'Sign in again' : 'Log in';
         inB.classList.toggle('primary', lost);
         row.querySelector('.am-sw').hidden = !v || lost;
-        row.querySelector('.am-imp').hidden = lost;   // (it can't read your follows until you sign in again)
+        const imp = row.querySelector('.am-imp');   // (a site whose follows the app can't import has none)
+        if (imp) imp.hidden = lost;   // (it can't read your follows until you sign in again)
         row.querySelector('.am-out').hidden = !v;
         row.classList.toggle('on', !!v && !lost);
         row.classList.toggle('lost', lost);

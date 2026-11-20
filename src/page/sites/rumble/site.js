@@ -1,6 +1,6 @@
 import { Site } from '../adapter.js';
 import { rumbleFeed } from './feed.js';
-import { rumbleConsent, rumbleShown, rumbleTap } from './in-site/feed.js';
+import { rumbleConsent, rumbleShown, rumbleSignedOut, rumbleTap } from './in-site/feed.js';
 
 // Rumble, as the rest of the page sees it (the same shape as kick.js, which says more).
 // Rumble's channel ids are "ru:name" (rumble.com/c/name), "ru:u:name" (rumble.com/user/name) or "ru:v:v35waq4" (one
@@ -44,7 +44,7 @@ const rumble = new Site({   // (what each slot is for, and its default: sites/ad
   inSite: {
     tap: rumbleTap, pins: null, shown: rumbleShown, badges: null, modes: null,   // (its pin comes as its chat opens; its badges come with their pictures)
     icons: null, look: null, room: null, hypeTrain: null, channels: null, commands: null,
-    reply: null, replyAt: null, replyPress: null, heldCard: null, signedOut: null,
+    reply: null, replyAt: null, replyPress: null, heldCard: null, signedOut: rumbleSignedOut,
     emote: { look: ['#85c742', '#061726', 'Rumble emote'], find: (img, u) => (u.hostname === 'hugh.cdn.rumble.cloud' && img.classList && img.classList.contains('chat-history--emote') ? { big: u.href } : null),
       host: null, path: null, pics: 'hugh\\.cdn\\.rumble\\.cloud\\/' }   // (host: its emotes aren't read in a message's words)
   },

@@ -1,4 +1,4 @@
-/* ---- Runs inside a Kick, Twitch or YouTube chat page (turned into text: see src/page/README.md). Keeps the chat at its
+/* ---- Runs inside a Kick, Twitch, YouTube or Rumble chat page (turned into text: see src/page/README.md). Keeps the chat at its
    newest messages while you're there. The sites stop following new messages when they think you scrolled up, and
    they think so too when their chat was out of sight for a while (under Chat Stage's stage chat, behind Chat Rail's
    rail) or was resized or zoomed. Only your own scrolling (the wheel, keys, dragging) moves you away from the bottom;

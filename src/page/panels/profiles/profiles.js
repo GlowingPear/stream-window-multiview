@@ -179,13 +179,13 @@ function pfRenderLook(q){
   if (look.hidden) return;
   if (!pf.look || pf.look.q !== q){
     box.innerHTML = '<div class="pf-look-row"><span class="pf-who"><b></b><span>Isn\'t in your saved streamers.</span></span><button class="btn pf-find">Look it up</button></div>';
-    box.querySelector('b').textContent = `“${q}” on Kick, Twitch and YouTube`;
+    box.querySelector('b').textContent = `“${q}” on Kick, Twitch, YouTube and Rumble`;
     box.querySelector('.pf-find').onclick = () => pfLookup(q);
     return;
   }
-  if (pf.look.busy){ box.innerHTML = '<div class="pf-look-row pf-load"><span class="spin"></span> Looking on Kick, Twitch and YouTube…</div>'; return; }
+  if (pf.look.busy){ box.innerHTML = '<div class="pf-look-row pf-load"><span class="spin"></span> Looking on Kick, Twitch, YouTube and Rumble…</div>'; return; }
   box.innerHTML = '';
-  if (!pf.look.items.length){ box.innerHTML = '<div class="pf-look-row"><span class="pf-who"><b>Nobody by that name</b><span>No Kick, Twitch or YouTube channel is called exactly that. Check the spelling, or paste a link.</span></span></div>'; return; }
+  if (!pf.look.items.length){ box.innerHTML = '<div class="pf-look-row"><span class="pf-who"><b>Nobody by that name</b><span>No Kick, Twitch, YouTube or Rumble channel is called exactly that. Check the spelling, or paste a link.</span></span></div>'; return; }
   pf.look.items.forEach(x => {
     const row = document.createElement('div'); row.className = 'pf-look-row';
     row.appendChild(pfAvatar(x.ch, x.name, x.avatar, !!x.live));
@@ -888,7 +888,7 @@ function init(){
           words: ['favorites'], icon: 'user', run: () => openProfilesAt({ plat, flag }) }))
     ]);
     commands.provide('profiles.lookup', q => /^@?[a-z0-9_.\-]{2,40}$/i.test(q.trim()) ? [{ id: 'profiles.lookup', kind: 'profile', fallback: true, order: 2, group: 'Nothing found',
-      title: `Look up “${q.trim()}” in Profiles`, sub: 'On Kick, Twitch and YouTube', icon: 'user', run: () => openProfilesAt({ q: q.trim() }) }] : []);
+      title: `Look up “${q.trim()}” in Profiles`, sub: 'On Kick, Twitch, YouTube and Rumble', icon: 'user', run: () => openProfilesAt({ q: q.trim() }) }] : []);
     profDlg.querySelectorAll('.pf-chips button').forEach(b => { b.dataset.cmd = 'profiles.' + b.dataset.v; });
     // an open profile's buttons (Favourite, Live alerts, Unfollow on Kick, Watch now…), while it shows
     commands.fromControls('#profDlg .pf-prof', { group: 'Streamer profile', prefix: 'Profile: ', icon: 'user' });

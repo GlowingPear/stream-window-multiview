@@ -20,26 +20,26 @@ async function withSaved(page, saved){
 test('on for every site by default', async t => {
   const page = await openApp(t);
   await withSaved(page, {});
-  assert.deepEqual(await watching(page), { kick: true, twitch: true, youtube: true });
-  assert.deepEqual(JSON.parse(await ls(page, 'watchSignedIn')), { kick: true, twitch: true, youtube: true, v: 2 });
+  assert.deepEqual(await watching(page), { kick: true, twitch: true, youtube: true, rumble: true });
+  assert.deepEqual(JSON.parse(await ls(page, 'watchSignedIn')), { kick: true, twitch: true, youtube: true, rumble: true, v: 2 });
 });
 
 test('switched off from before it was on by default: on once, with your Kick choice under Pear Drops\' Auto', async t => {
   const page = await openApp(t);
   await withSaved(page, { watchSignedIn: JSON.stringify({ kick: false, twitch: true }), 'link.kickBefore': 'false' });
-  assert.deepEqual(await watching(page), { kick: true, twitch: true, youtube: true });
-  assert.deepEqual(JSON.parse(await ls(page, 'watchSignedIn')), { kick: true, twitch: true, youtube: true, v: 2 });
+  assert.deepEqual(await watching(page), { kick: true, twitch: true, youtube: true, rumble: true });
+  assert.deepEqual(JSON.parse(await ls(page, 'watchSignedIn')), { kick: true, twitch: true, youtube: true, rumble: true, v: 2 });
   assert.equal(await ls(page, 'link.kickBefore'), 'true', 'Auto off gives you signed-in Kick players');
 
   // Auto never took over (nothing kept): left as it is
   await withSaved(page, { watchSignedIn: JSON.stringify({ youtube: false }) });
   assert.equal(await ls(page, 'link.kickBefore'), null);
-  assert.deepEqual(await watching(page), { kick: true, twitch: true, youtube: true });
+  assert.deepEqual(await watching(page), { kick: true, twitch: true, youtube: true, rumble: true });
 });
 
 test('switched off since: stays off', async t => {
   const page = await openApp(t);
   await withSaved(page, { watchSignedIn: JSON.stringify({ kick: false, twitch: true, youtube: false, v: 2 }), 'link.kickBefore': 'false' });
-  assert.deepEqual(await watching(page), { kick: false, twitch: true, youtube: false });
+  assert.deepEqual(await watching(page), { kick: false, twitch: true, youtube: false, rumble: true });
   assert.equal(await ls(page, 'link.kickBefore'), 'false');
 });

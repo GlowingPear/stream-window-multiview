@@ -479,7 +479,7 @@ test('two channels on one site: the card links a second Kick channel; their tabs
   const page = await linkedApp(t, { streamers: [{ ...STREAMER, accounts: ['quietkoala', 'tw:quietkoala'] }], saved: ['quietkoala', 'tw:quietkoala'] });
   await page.evaluate(live => window.smvNotes.liveStatus(live), { ...LIVE, koalaclips: { live: true, viewers: 80, title: 'clips', checked: Date.now() } });
   await page.evaluate(() => window.openLinkCard('quietkoala'));
-  assert.deepEqual(await page.$$eval('#linkDlg .lc-plat button', bs => bs.map(b => b.dataset.p + (b.classList.contains('on') ? '*' : ''))), ['kick', 'twitch', 'youtube*'],
+  assert.deepEqual(await page.$$eval('#linkDlg .lc-plat button', bs => bs.map(b => b.dataset.p + (b.classList.contains('on') ? '*' : ''))), ['kick', 'twitch', 'youtube*', 'rumble'],
     'every site, the one they don\'t have yet picked');
   await page.click('#linkDlg .lc-plat button[data-p=kick]');
   await page.fill('#lcIn', 'quietkoala');

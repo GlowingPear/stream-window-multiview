@@ -21,7 +21,10 @@ function rumbleTap({ F, push, sample }){
     return url ? { url: String(url), title: String((c.label && (c.label.en || Object.values(c.label)[0])) || b) } : null; }).filter(Boolean);
   const raw = (t, m) => {
     if (!m || !m.id) return null;
-    const u = person((m.channel_id && channels[m.channel_id]) || users[m.user_id]), e = {};
+    // (sent as a channel: its name is the channel's, as its chat shows it; the colour, badges and id, which a mute
+    // clears by, are still the person's)
+    const who = users[m.user_id], as = m.channel_id && channels[m.channel_id];
+    const u = person(as ? { ...(who || {}), id: (who && who.id) || as.id, username: as.username } : who), e = {};
     String(m.text || '').replace(/:[\w+-]+:/g, x => { if (emotes[x]) e[x] = emotes[x]; return x; });
     return { t, m: { id: String(m.id), time: m.time || '', text: String(m.text || ''), rant: m.rant && m.rant.price_cents ? { cents: +m.rant.price_cents } : null }, u, pics: pics(u), emotes: e };
   };
@@ -64,6 +67,14 @@ async function rumbleShown({ wait }){
   }).filter(Boolean);
 }
 
+// signedOut's part (toolbar/login-lost.js): whether its chat shows you signed out. Its "Sign in to chat!" where the box
+// would be: signed out (true); its box: signed in (false); neither yet: null
+const rumbleSignedOut = () => {
+  const shown = el => !!(el && el.offsetParent);
+  if (shown(document.querySelector('#chat-signin-trigger'))) return true;
+  return shown(document.querySelector('#chat-message-text-input')) ? false : null;
+};
+
 // Its cookie question (a Ketch banner on every rumble.com page: its chat and its player): answered "Reject all" as
 // it shows, by its own button, which saves the answer and loads the page again without it. Run in its stream and chat
 // pages as they load (cookieJs); it watches for a minute, as the banner comes a moment after the page.
@@ -81,4 +92,4 @@ function rumbleConsent(){
   return true;
 }
 
-export { rumbleConsent, rumbleShown, rumbleTap };
+export { rumbleConsent, rumbleShown, rumbleSignedOut, rumbleTap };

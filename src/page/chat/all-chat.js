@@ -51,7 +51,7 @@ import { askIn, pressIn, runIn, viewId, zoomOf } from '../windows/view.js';
 import { copyEmote, emoteOn, freshEmotes, newEmotesOn, reloadWin } from '../windows/views.js';
 import { syncModBtn } from '../windows/windows.js';
 
-/* ---- ALL: a linked streamer's Kick, Twitch and YouTube chats as one list (issue #203) ----
+/* ---- ALL: a linked streamer's Kick, Twitch, YouTube and Rumble chats as one list (issue #203) ----
    An ALL tab before the site tabs of a linked streamer's chat window. It covers the chat you watched with the app's
    own list; the site tabs stay as they are (loaded, playing their part), and clicking one shows that site's chat
    again. The messages come from each site's own connection, heard inside its chat page (in-site/feed.js, read by

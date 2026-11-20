@@ -112,7 +112,7 @@ test('a saved channel named by the start of its name stays big when a site finds
   assert.deepEqual([r[0].id, r[0].hero], ['ch:sampleplays', true], 'and after: it doesn\'t jump');
   const found = r.find(x => x.id === 'open:tw:sample');
   assert.deepEqual([found.hero, found.group], [false, 'Channels'], 'the one found: a row of its own');
-  assert.deepEqual(await page.$$eval('#palList .pal-row[data-id="open:tw:sample"] .pal-site', bs => bs.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['K', 'T*', 'Y'], 'with its sites');
+  assert.deepEqual(await page.$$eval('#palList .pal-row[data-id="open:tw:sample"] .pal-site', bs => bs.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['K', 'T*', 'Y', 'R'], 'with its sites');
   // Enter: still the saved one's first button
   assert.match(await page.textContent('#palList .pal-btn.on'), /^Stream \+ chat/);
   // on its row, Tab / ⇧Tab pick its site
@@ -176,8 +176,8 @@ test('a name nobody saved: “Open … as a channel” with K / T / Y (Tab: the 
   await find(page, 'qvbrandy');
   let r = await rows(page);
   assert.equal(r[0].id, 'open:as');
-  assert.match(await page.textContent('#palList .pal-row.on'), /Open “qvbrandy” as a channel.*Checking Kick, Twitch and YouTube…/);
-  assert.deepEqual(await page.$$eval('#palList .pal-row.on .pal-site', bs => bs.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['K*', 'T', 'Y']);
+  assert.match(await page.textContent('#palList .pal-row.on'), /Open “qvbrandy” as a channel.*Checking Kick, Twitch, YouTube and Rumble…/);
+  assert.deepEqual(await page.$$eval('#palList .pal-row.on .pal-site', bs => bs.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['K*', 'T', 'Y', 'R']);
   assert.match(await page.textContent('#palBg .pal-foot'), /Tab⇧Tab\s*next \/ previous site/);
   const site = () => page.$$eval('#palList .pal-row.on .pal-site.on', bs => bs.map(b => b.textContent));
   await page.keyboard.press('Tab');
@@ -185,7 +185,7 @@ test('a name nobody saved: “Open … as a channel” with K / T / Y (Tab: the 
   await page.keyboard.press('Shift+Tab');
   assert.deepEqual(await site(), ['K'], '⇧Tab: the one before');
   await page.keyboard.press('Shift+Tab');
-  assert.deepEqual(await site(), ['Y'], 'from the first, round to the last');
+  assert.deepEqual(await site(), ['R'], 'from the first, round to the last');
   await page.keyboard.press('Tab'); await page.keyboard.press('Tab');
   assert.deepEqual(await site(), ['T'], 'and Tab round again');
   // found on Twitch: its big row, on Twitch, with what each site said
@@ -195,7 +195,7 @@ test('a name nobody saved: “Open … as a channel” with K / T / Y (Tab: the 
   assert.equal(r[0].id, 'open:tw:qvbrandy');
   assert.match(await page.textContent('#palList .pal-row.hero .pal-sub'), /✓ Found on Twitch·live·Hello·214 watching·not on Kick·not on YouTube/);
   assert.deepEqual(await heroButtons(page), ['Open', 'Open & save', 'Stream only', 'Chat only']);
-  assert.deepEqual(await page.$$eval('#palList .pal-row.hero .pal-site', bs => bs.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['K Kick', 'T Twitch*', 'Y YouTube']);
+  assert.deepEqual(await page.$$eval('#palList .pal-row.hero .pal-site', bs => bs.map(b => b.textContent + (b.classList.contains('on') ? '*' : ''))), ['K Kick', 'T Twitch*', 'Y YouTube', 'R Rumble']);
   // its big row: ← → its buttons, Tab / ⇧Tab its sites
   const heroSite = () => page.$$eval('#palList .pal-row.hero .pal-site.on', bs => bs.map(b => b.textContent));
   assert.match(await page.textContent('#palBg .pal-foot'), /←→\s*pick an action·Tab⇧Tab\s*next \/ previous site/);
@@ -215,7 +215,7 @@ test('a name nobody saved: “Open … as a channel” with K / T / Y (Tab: the 
   assert.deepEqual(await page.evaluate(() => window.asked), ['qvbrandy']);
   // a name not found anywhere: nothing called it, still offered as a channel on the site picked
   await find(page, 'zzunknown');
-  await page.waitForFunction(() => /Not found on Kick, Twitch or YouTube/.test(document.querySelector('#palList').textContent));
+  await page.waitForFunction(() => /Not found on Kick, Twitch, YouTube or Rumble/.test(document.querySelector('#palList').textContent));
   assert.match(await page.textContent('#palList .pal-none'), /Nothing called “zzunknown”/);
   await page.keyboard.press('Enter');
   assert.deepEqual((await windows(page)).map(w => w.title).filter(t => t === 'zzunknown'), ['zzunknown', 'zzunknown'], 'opened on Kick');

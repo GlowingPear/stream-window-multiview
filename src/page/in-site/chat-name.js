@@ -1,4 +1,4 @@
-/* ---- Runs inside a Kick, Twitch or YouTube chat page (turned into text: see src/page/README.md). Shows the channel's
+/* ---- Runs inside a Kick, Twitch, YouTube or Rumble chat page (turned into text: see src/page/README.md). Shows the channel's
    name (or your text, chat/chat-name.js) as the chat box's empty text instead of the site's "Send a message", and keeps
    it there as the site redraws its box (React, with Slate or Lexical editors). Only the site's usual text changes: a
    box that says something else (followers-only, slow mode, "Sign in to chat") says why you can't chat, so it stays.

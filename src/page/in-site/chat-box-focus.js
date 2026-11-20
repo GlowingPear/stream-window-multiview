@@ -1,4 +1,4 @@
-/* ---- Runs inside a Kick, Twitch or YouTube chat page (turned into text: see src/page/README.md). Puts the keyboard in
+/* ---- Runs inside a Kick, Twitch, YouTube or Rumble chat page (turned into text: see src/page/README.md). Puts the keyboard in
    the chat box, so you can type straight away in a chat you just switched to with Tab (windows/frames.js). A chat
    that's still loading draws its box later: it waits for it, up to ms. The sites draw their box before it can take
    the keyboard, and draw it again as they finish loading (Kick): for hold ms after it has the keyboard, it's put back

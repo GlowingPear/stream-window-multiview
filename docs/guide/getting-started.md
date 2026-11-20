@@ -9,7 +9,7 @@ related: [adding-streams, logging-in]
 order: 1
 ---
 
-Watch several Kick, Twitch and YouTube streams and their chats at once.
+Watch several Kick, Twitch, YouTube and Rumble streams and their chats at once.
 The toolbar: Logins, Channels and Profiles on the left; on the right, Layout and then buttons that show just an icon (point at one for its name). In a small window, buttons that don't fit move into the ⋯ (More) button at the end of the toolbar.
 
 - Download the installer from the project's GitHub page (Releases):

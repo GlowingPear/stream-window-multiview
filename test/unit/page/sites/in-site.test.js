@@ -32,8 +32,8 @@ test('every site has the same slots for its parts; each part runs on its own as 
     [['kick', true, true, true, true, true], ['twitch', true, true, true, true, true], ['youtube', true, true, true, false, true],
       ['rumble', true, false, true, false, false]], 'YouTube\'s and Rumble\'s badges come with their pictures; Rumble\'s pin comes as its chat opens');
   assert.deepEqual(Object.values(PLATFORMS).map(p => ['icons', 'look', 'room', 'hypeTrain', 'channels', 'commands', 'reply', 'replyAt', 'replyPress', 'heldCard', 'signedOut'].filter(k => p.inSite[k])),
-    [['icons', 'reply'], ['room', 'hypeTrain', 'channels', 'commands', 'replyAt', 'replyPress', 'heldCard'], ['look', 'heldCard', 'signedOut'], []],
-    'only YouTube\'s chat page shows you signed out (Kick\'s and Twitch\'s look the same: those sites are asked)');
+    [['icons', 'reply'], ['room', 'hypeTrain', 'channels', 'commands', 'replyAt', 'replyPress', 'heldCard'], ['look', 'heldCard', 'signedOut'], ['signedOut']],
+    'only YouTube\'s and Rumble\'s chat pages show you signed out (Kick\'s and Twitch\'s look the same: those sites are asked)');
 });
 
 test('a site\'s parts slot fits what it says it can do (chat flags, replies, held messages, its own commands)', () => {
