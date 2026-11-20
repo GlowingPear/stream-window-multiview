@@ -489,3 +489,18 @@ test('Channels: with nothing saved, suggestions still show', async t => {
   assert.match(await page.textContent('#savedList'), /Nothing saved yet/);
   assert.equal(await page.locator('#savedList .fsug').count(), 0);
 });
+
+test('Channels: a name the site has as another kind of channel opens that one (a Rumble user\'s page for a name without a channel page)', async t => {
+  const page = await openApp(t, { init: () => {
+    window.asked = [];
+    window.kmv = { channelExists: ch => { window.asked.push(ch); return Promise.resolve(ch === 'ru:pip' ? { use: 'ru:u:pip' } : 'yes'); } };
+  } });
+  await page.click('#savedBtn');
+  await page.fill('#savedInput', 'pip');
+  await page.click('#spPlat [data-p=rumble]');
+  await page.click('#spOpenSave');
+  await page.waitForSelector('#stage .win');
+  assert.deepEqual(await page.evaluate(() => window.asked), ['ru:pip']);
+  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('kickMultiview.saved'))), ['ru:u:pip'], 'saved as the one that\'s there');
+  assert.equal(await page.$$eval('#stage .win', ws => ws.every(w => w.classList.contains('plat-rumble'))), true);
+});
