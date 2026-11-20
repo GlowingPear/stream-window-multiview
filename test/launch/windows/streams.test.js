@@ -274,8 +274,8 @@ test('chat text size: − and + in the Layout menu (and Settings > Chat) change 
 test('a YouTube channel that isn\'t live waits, says so, and opens when it goes live', T, async () => {
   await a.app.evaluate(({ ipcMain }) => {
     globalThis.__yt = { live: false, n: 0 };
-    ipcMain.removeHandler('yt:resolve');
-    ipcMain.handle('yt:resolve', () => { globalThis.__yt.n++; return globalThis.__yt.live ? { live: true, videoId: 'dQw4w9WgXcQ', name: 'Some Channel' } : { live: false, name: 'Some Channel' }; });
+    ipcMain.removeHandler('live:resolve');
+    ipcMain.handle('live:resolve', () => { globalThis.__yt.n++; return globalThis.__yt.live ? { live: true, videoId: 'dQw4w9WgXcQ', name: 'Some Channel' } : { live: false, name: 'Some Channel' }; });
   });
   await setMode(a.win, 'stream');
   await add('https://www.youtube.com/@somechannel');
@@ -293,8 +293,8 @@ test('a YouTube channel that isn\'t live waits, says so, and opens when it goes 
 test('a YouTube channel live again with a new stream: its window follows it, and Reload asks YouTube again', T, async () => {
   await a.app.evaluate(({ ipcMain }) => {
     globalThis.__yt = { vid: 'firstStrm01', n: 0 };
-    ipcMain.removeHandler('yt:resolve');
-    ipcMain.handle('yt:resolve', () => { globalThis.__yt.n++; return { live: true, videoId: globalThis.__yt.vid, name: 'Some Channel' }; });
+    ipcMain.removeHandler('live:resolve');
+    ipcMain.handle('live:resolve', () => { globalThis.__yt.n++; return { live: true, videoId: globalThis.__yt.vid, name: 'Some Channel' }; });
   });
   await setMode(a.win, 'stream');
   await add('https://www.youtube.com/@restartchan');

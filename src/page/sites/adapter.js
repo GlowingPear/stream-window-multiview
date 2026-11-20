@@ -39,6 +39,8 @@ const SLOTS = {
   roundsFollowers: ['boolean', false, 'its follower counts are rounded'],
   // Its streams
   liveVideo: ['boolean', false, 'its channel\'s stream is a video of its own, looked up while it\'s live (windows/views.js)'],
+  videoId: ['function', () => null, '(ch) -> the video id a one-video channel id holds (its player and chat need), or null: looked up as a channel\'s is (liveVideo)'],
+  cookieJs: ['string', null, 'run in its stream and chat pages as they load: answers its cookie question (windows/views.js); null: it has none to answer'],
   likes: ['boolean', false, 'a like button on its streams (sites/youtube/options.js)'],
   quality: [{ siteMax: ['number', null] }, null, 'its stream\'s quality can be set (windows/quality.js); siteMax: how high its player goes by itself'],
   stuckJs: ['string', null, 'run in its player: \'error\', \'offline\' or \'ok\' (windows/stuck.js); null: it comes back by itself'],

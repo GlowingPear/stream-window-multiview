@@ -1,0 +1,142 @@
+// Rumble's main-process side (src/main/sites/rumble/site.js): reading a channel's "Live" page (its videos' JSON), its
+// oEmbed answer, a profile, links, and the adapter with Rumble's pages replaced by made-up ones. Runs offline.
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const rumble = require('../../../../../src/main/sites/rumble/site');
+const { parseRumbleLive, parseRumbleProfile, parseOembed, rumbleItems, rumbleItem, rumblePage, rumbleLivePage, fromLink, describeRequest, signedInOn } = rumble;
+const { stubCtx, answer } = require('../stub-ctx');
+
+const BY = { type: 'channel', url: 'https://rumble.com/c/NightOwl', name: 'Night Owl', title: 'Night Owl', followers: 144274, verified_badge: true,
+  thumb: 'https://hugh.cdn.rumble.cloud/video/z8/owl.png' };
+const item = (o = {}) => ({ object_type: 'video', id: 186945454, permalink_id: 'v35waq4', url: 'https://rumble.com/v35waq4-night-owl-live.html', title: 'Late show',
+  live: true, live_placeholder: false, livestream_status: 2, watching_now: 568, live_streamed_on: '2026-11-20T19:30:42+00:00', by: BY, ...o });
+// a channel's "Live" page, as Rumble draws it: its header, and its videos as JSON in its <rum-videos-grid>
+const livePage = (items, head = '<h1 class="channel-header--title">Night Owl</h1><span>144K Followers</span>') =>
+  `<html>${'x'.repeat(600)}${head}<rum-videos-grid>  <script type="application/json">${JSON.stringify({ items })}</script></rum-videos-grid></html>`;
+const OEMBED = { type: 'video', title: 'Late show', author_name: 'Night Owl', author_url: 'https://rumble.com/c/NightOwl',
+  html: '<iframe src="https://rumble.com/embed/v33aw1a/" width="1920"></iframe>' };
+
+/* ---------- reading Rumble's pages ---------- */
+test('its pages: a channel\'s, a user\'s, a video\'s (any words after its id), and their "Live" lists', () => {
+  assert.deepEqual(['ru:nightowl', 'ru:u:pip', 'ru:v:v35waq4'].map(rumblePage), ['https://rumble.com/c/nightowl', 'https://rumble.com/user/pip', 'https://rumble.com/v35waq4-x.html']);
+  assert.equal(rumbleLivePage('ru:u:pip'), 'https://rumble.com/user/pip/livestreams');
+});
+
+test('a channel\'s "Live" page: live (its stream\'s chat number, page, title, viewers, start), offline, and nothing to read', () => {
+  const live = parseRumbleLive(livePage([item({ id: 1, live: false, permalink_id: 'old' }), item()]), 'ru:nightowl');
+  assert.deepEqual({ ...live, checked: 0 }, { live: true, chat: '186945454', url: 'https://rumble.com/v35waq4-night-owl-live.html', title: 'Late show', viewers: 568, category: '',
+    startedAt: Date.UTC(2026, 10, 20, 19, 30, 42), name: 'Night Owl', checked: 0 });
+  assert.equal(parseRumbleLive(livePage([item({ livestream_status: 1 })]), 'ru:nightowl').live, false, 'one waiting to start isn\'t live');
+  assert.equal(parseRumbleLive(livePage([item({ live_placeholder: true })]), 'ru:nightowl').live, false);
+  const none = parseRumbleLive(livePage([]), 'ru:nightowl');
+  assert.deepEqual([none.live, none.chat, none.name, none.viewers], [false, null, 'Night Owl', null], 'no videos: its name from its header');
+  assert.equal(parseRumbleLive(livePage([], ''), 'ru:nightowl'), null);
+  assert.equal(parseRumbleLive(null, 'ru:nightowl'), null);
+  assert.equal(parseRumbleLive('<rum-videos-grid><script type="application/json">{bad</script>', 'ru:nightowl'), null);
+  assert.equal(parseRumbleLive(livePage([item({ by: undefined, watching_now: 'many' })], ''), 'ru:nightowl').name, 'nightowl', 'no name anywhere: its id');
+  assert.deepEqual(rumbleItems(`<rum-videos-grid><script type="application/json">{"items":[1,{"id":2}]}</script>`), [{ id: 2 }]);
+  assert.equal(rumbleItems('<rum-videos-grid><script type="application/json">{"items":"no"}</script>'), null);
+  assert.equal(rumbleItem(livePage([item()]), 'v35waq4').id, 186945454);
+  assert.equal(rumbleItem(livePage([item()]), 'vnope'), null);
+});
+
+test('its oEmbed answer: its player\'s id and its channel', () => {
+  assert.deepEqual(parseOembed(OEMBED), { embed: 'v33aw1a', channel: 'https://rumble.com/c/NightOwl', title: 'Late show', name: 'Night Owl' });
+  assert.equal(parseOembed({ html: '<iframe src="https://example.com/x">' }), null);
+  assert.equal(parseOembed(null), null);
+});
+
+test('a profile: its name, picture and followers from its videos; with none, from its header', () => {
+  const p = parseRumbleProfile(livePage([item()]), 'ru:nightowl');
+  assert.deepEqual([p.platform, p.url, p.name, p.avatar, p.followers, p.followersText, p.verified], ['rumble', 'https://rumble.com/c/nightowl', 'Night Owl', BY.thumb, 144274, '', true]);
+  const bare = parseRumbleProfile(livePage([]), 'ru:u:pip');
+  assert.deepEqual([bare.name, bare.followers, bare.followersText, bare.avatar, bare.url], ['Night Owl', null, '144K', '', 'https://rumble.com/user/pip']);
+  assert.equal(parseRumbleProfile(livePage([item({ by: { ...BY, thumb: 'http://x', followers: 'n/a' } })]), 'ru:nightowl').avatar, '', 'only https pictures');
+  assert.equal(parseRumbleProfile(livePage([], ''), 'ru:nightowl'), null);
+  assert.equal(parseRumbleProfile('short', 'ru:nightowl'), null);
+});
+
+test('links on its pages, requests in words, and whether a page shows you signed in', () => {
+  assert.equal(fromLink('https://rumble.com/c/NightOwl'), 'ru:nightowl');
+  assert.equal(fromLink('/user/Pip/'), 'ru:u:pip');
+  assert.equal(fromLink('https://rumble.com/v35waq4-x.html'), null);
+  assert.equal(fromLink('https://kick.com/c/x'), null);
+  assert.equal(fromLink('http://['), null);
+  assert.equal(describeRequest(new URL('https://rumble.com/c/x/livestreams')), 'live streams page');
+  assert.equal(describeRequest(new URL('https://rumble.com/api/Media/oembed.json?url=x')), 'a video\'s player (oEmbed)');
+  assert.equal(describeRequest(new URL('https://rumble.com/')), 'page');
+  assert.equal(describeRequest(new URL('https://kick.com/')), null);
+  assert.equal(signedInOn('x'.repeat(600) + '<a href="/login.php">Sign in</a>'), false);
+  assert.equal(signedInOn('x'.repeat(600) + '<a href="/account">You</a>'), true);
+  assert.equal(signedInOn('short'), false);
+});
+
+/* ---------- the adapter, with Rumble's pages made up ---------- */
+// pages: { url part -> answer }
+function rumbleWith(pages, over = {}) {
+  const get = url => { const k = Object.keys(pages).find(p => url.includes(p)); return k ? pages[k] : answer({ status: 404 }); };
+  const { ctx, rec } = stubCtx('rumble', { pageFetch: get, ...over });
+  return { a: rumble.create(ctx), rec };
+}
+
+test('one channel: live, with its player\'s id from oEmbed (asked once a video); offline; missing; unreadable', async () => {
+  const { a, rec } = rumbleWith({ '/c/nightowl/livestreams': answer({ text: livePage([item()]) }), oembed: answer({ json: OEMBED }),
+    '/c/quiet/livestreams': answer({ text: livePage([item({ live: false })]) }), '/c/broken/livestreams': answer({ status: 500 }), '/c/junk/livestreams': answer({ text: 'junk' }) });
+  const r = await a.liveOne('ru:nightowl');
+  assert.deepEqual({ ...r, checked: 0 }, { live: true, videoId: 'v33aw1a.186945454', title: 'Late show', viewers: 568, category: '', startedAt: Date.UTC(2026, 10, 20, 19, 30, 42), name: 'Night Owl', checked: 0 });
+  assert.equal(rec.fetched[1].url, 'https://rumble.com/api/Media/oembed.json?url=' + encodeURIComponent('https://rumble.com/v35waq4-night-owl-live.html'));
+  await a.liveOne('ru:nightowl');
+  assert.equal(rec.fetched.filter(f => f.url.includes('oembed')).length, 1, 'a video keeps its player');
+  const q = await a.liveOne('ru:quiet');
+  assert.deepEqual([q.live, q.videoId], [false, null]);
+  assert.deepEqual(await a.liveOne('ru:gone'), { missing: true });
+  assert.equal(await a.liveOne('ru:broken'), null);
+  assert.equal(await a.liveOne('ru:junk'), null);
+  const noPlayer = rumbleWith({ '/livestreams': answer({ text: livePage([item()]) }), oembed: answer({ status: 500 }) });
+  assert.equal(await noPlayer.a.liveOne('ru:nightowl'), null, 'live, but its player can\'t be found: can\'t tell yet');
+  const offline = rumbleWith({}, { pageFetch: () => { throw new Error('offline'); } });
+  assert.equal(await offline.a.liveOne('ru:nightowl'), null);
+});
+
+test('one video: its channel (oEmbed), whose list says whether it\'s live and its chat\'s number', async () => {
+  const pages = { oembed: answer({ json: OEMBED }), '/c/nightowl/livestreams': answer({ text: livePage([item()]) }) };
+  const r = await rumbleWith(pages).a.liveOne('ru:v:v35waq4');
+  assert.deepEqual([r.live, r.videoId, r.viewers, r.name], [true, 'v33aw1a.186945454', 568, 'Late show']);
+  const old = await rumbleWith({ ...pages, '/c/nightowl/livestreams': answer({ text: livePage([item({ live: false })]) }) }).a.liveOne('ru:v:v35waq4');
+  assert.deepEqual([old.live, old.videoId, old.viewers], [false, null, null], 'a video that isn\'t live (its player alone isn\'t enough: no chat)');
+  assert.deepEqual(await rumbleWith({}).a.liveOne('ru:v:v35waq4'), { missing: true });
+  assert.equal(await rumbleWith({ oembed: answer({ status: 500 }) }).a.liveOne('ru:v:v35waq4'), null, 'no answer isn\'t missing');
+  assert.equal(await rumbleWith({ oembed: answer({ json: { ...OEMBED, author_url: 'https://example.com/' } }) }).a.liveOne('ru:v:v35waq4'), null);
+  assert.equal(await rumbleWith({ oembed: answer({ json: OEMBED }), '/livestreams': answer({ status: 500 }) }).a.liveOne('ru:v:v35waq4'), null);
+});
+
+test('a profile; a video has none; the tests\' stand-in pages', async () => {
+  const { a } = rumbleWith({ '/c/nightowl/livestreams': answer({ text: livePage([item()]) }), '/c/broken': answer({ status: 500 }) });
+  assert.equal((await a.profile('ru:nightowl')).followers, 144274);
+  assert.deepEqual(await a.profile('ru:v:v35waq4'), { missing: true, video: true });
+  assert.deepEqual(await a.profile('ru:gone'), { missing: true });
+  assert.equal(await a.profile('ru:broken'), null);
+  const stand = rumbleWith({ '127.0.0.1': answer({ text: livePage([]) }) }, { env: { SMV_RUMBLE_PAGES: 'http://127.0.0.1:9' } });
+  await stand.a.liveOne('ru:nightowl');
+  assert.equal(stand.rec.fetched[0].url, 'http://127.0.0.1:9/c/nightowl/livestreams');
+});
+
+test('the adapter: its login page, signed in by its home page (asked once a minute, again after logging out), names and links', async () => {
+  let page = 'x'.repeat(600) + '<a href="/account">You</a>';
+  const { a, rec } = rumbleWith({}, { loginFetch: () => answer({ text: page }) });
+  assert.equal(a.loginUrl, 'https://rumble.com/login.php');
+  assert.equal(a.named, false);
+  assert.equal(await a.account(), true);
+  assert.equal(await a.signedIn(), true);
+  assert.equal(rec.fetched.filter(f => f.login).length, 1, 'asked once a minute');
+  page = 'x'.repeat(600) + '<a href="/login.php">Sign in</a>';
+  a.loggedOut();
+  assert.equal(await a.account(), false);
+  const down = rumbleWith({}, { loginFetch: () => answer({ status: 503 }) });
+  assert.equal(await down.a.account(), false, 'can\'t tell: not signed in');
+  assert.equal(await down.a.signedIn(), false);
+  assert.equal(a.byName('NightOwl'), 'ru:nightowl');
+  assert.equal(a.fromLink('https://rumble.com/c/x'), 'ru:x');
+  assert.equal(a.emoteHost('hugh.cdn.rumble.cloud'), true);
+  assert.equal(a.emoteHost('example.com'), false);
+});

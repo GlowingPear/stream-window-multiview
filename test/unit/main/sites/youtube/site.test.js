@@ -150,15 +150,13 @@ function youtubeWith(over = {}) {
   return { a: youtube.create(ctx), rec };
 }
 
-test('one channel: its live page (with YouTube\'s cookie question answered), a missing one, and yt:resolve', async () => {
+test('one channel: its live page (with YouTube\'s cookie question answered), and a missing one', async () => {
   const { a, rec } = youtubeWith({ pageFetch: url => (url.includes('@gone') ? answer({ status: 404 }) : answer({ text: livePage('abcdefghijk', true) })) });
   const r = await a.liveOne('yt:@lofi');
   assert.equal(r.live, true);
   assert.equal(rec.fetched[0].url, 'https://www.youtube.com/@lofi/live');
   assert.match(rec.fetched[0].opts.headers.Cookie, /SOCS=CAI/);
   assert.deepEqual(await a.liveOne('yt:@gone'), { missing: true });
-  assert.equal((await rec.handlers.app['yt:resolve'](null, 'yt:@lofi')).videoId, 'abcdefghijk');
-  assert.equal(await rec.handlers.app['yt:resolve'](null, 'tw:alpha'), null, 'only YouTube\'s channels');
   const stand = youtubeWith({ env: { SMV_YT_PAGES: 'http://127.0.0.1:9' }, pageFetch: () => answer({ text: livePage('abcdefghijk', false) }) });
   await stand.a.liveOne('yt:@lofi');
   assert.equal(stand.rec.fetched[0].url, 'http://127.0.0.1:9/@lofi/live', 'the tests\' stand-in pages');

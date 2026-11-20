@@ -148,6 +148,7 @@ function mountView(w){
     frame.addEventListener('dom-ready', () => {
       w.ready = true;
       if (w.kind === 'stream') trimPlayerPage(frame, w.channel);
+      if ((w.kind === 'stream' || w.kind === 'chat') && w.channel && platform(w.channel).cookieJs) runIn(frame, platform(w.channel).cookieJs);   // its cookie question answered
       if (hasVol){ w.enforceUntil = Date.now() + 8000; pushVol(w); w.audioHeld = true; w.audioLoading = false; liftAudioSoon(w); }
       else setMuted(frame, false);
       if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); watchStuck(w); }

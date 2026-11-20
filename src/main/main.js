@@ -881,6 +881,9 @@ const sites = createSites(site => ({
   cachedProfile: ch => { const c = siteCache.get(ch); return c && c.data ? c.data : null; }
 }));
 const siteOf = ch => sites.of(ch);
+// A channel's live stream when it's a video of its own (the page's liveVideo sites: YouTube, Rumble): its site's live
+// check, which says the live video's id. (window.kmv.ytResolve, as the page has always called it.)
+appIpc.handle('live:resolve', async (_e, ch) => (typeof ch === 'string' && validCh(normCh(ch)) ? siteOf(normCh(ch)).liveOne(normCh(ch)) : null));
 
 /* ---------- live alerts for saved channels ---------- */
 // Notifications are kept so their click handlers work. Electron doesn't always say when one is closed

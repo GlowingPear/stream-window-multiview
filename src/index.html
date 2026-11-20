@@ -68,6 +68,7 @@
 <link rel="stylesheet" href="page/sites/kick/site.css">
 <link rel="stylesheet" href="page/sites/twitch/site.css">
 <link rel="stylesheet" href="page/sites/youtube/site.css">
+<link rel="stylesheet" href="page/sites/rumble/site.css">
 <style id="themeVars"></style>
 <!-- before the first paint: the macOS toolbar's room for the traffic lights, and the saved colour theme -->
 <script src="page/boot.js"></script>
@@ -116,6 +117,8 @@
   <div class="am-row" data-p="twitch"><i class="pdot"></i><div class="am-txt"><b>Twitch</b><span class="am-st">Checking…</span></div>
     <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
   <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
+    <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+  <div class="am-row" data-p="rumble"><i class="pdot"></i><div class="am-txt"><b>Rumble</b><span class="am-st">Checking…</span></div>
     <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
 </div>
 
@@ -186,11 +189,11 @@
     <select id="mode" title="What to open for a channel"><option value="both">Stream + chat</option><option value="stream">Stream only</option><option value="chat">Chat only</option></select></div>
   <div class="sp-addrow" id="spAddRow" hidden>
     <span class="sp-addl">Add “<b id="spAddName"></b>”<span id="spFrom"> from</span></span>
-    <div class="sp-plat" id="spPlat" role="radiogroup" aria-label="Site"><button data-p="kick" role="radio">Kick</button><button data-p="twitch" role="radio">Twitch</button><button data-p="youtube" role="radio">YouTube</button></div>
+    <div class="sp-plat" id="spPlat" role="radiogroup" aria-label="Site"><button data-p="kick" role="radio">Kick</button><button data-p="twitch" role="radio">Twitch</button><button data-p="youtube" role="radio">YouTube</button><button data-p="rumble" role="radio">Rumble</button></div>
     <button class="btn primary" id="spOpen" title="Open it (Enter)">Open</button><button class="btn" id="spOpenSave" title="Open it and save it to your channels">☆ Open &amp; save</button>
   </div>
   <div class="sp-err" id="spErr" role="alert" hidden></div>
-  <div class="sv-tabs" id="savedTabs"><button data-t="all">All</button><button data-t="kick">Kick</button><button data-t="twitch">Twitch</button><button data-t="youtube">YouTube</button></div>
+  <div class="sv-tabs" id="savedTabs"><button data-t="all">All</button><button data-t="kick">Kick</button><button data-t="twitch">Twitch</button><button data-t="youtube">YouTube</button><button data-t="rumble">Rumble</button></div>
   <div id="savedList"></div>
   <div class="sp-foot"><button class="btn primary" id="openLive" hidden title="Open every saved channel that is live right now">Open live</button><button class="btn" id="openAll" title="Open every saved channel and auto-arrange">Open all</button><button class="btn" id="spMore" title="More" aria-haspopup="menu" aria-expanded="false">⋯</button>
     <div class="sp-menu" id="spMenu" role="menu" hidden>
@@ -210,7 +213,7 @@
     <div class="pf-dir">
       <label class="pf-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="pfQ" placeholder="Search your saved streamers, or type a name to find it on Kick, Twitch and YouTube" aria-label="Search streamers" autocomplete="off" spellcheck="false"></label>
       <div class="pf-filters">
-        <div class="pf-chips" data-g="plat"><button data-v="all" class="on">All</button><button data-v="kick">Kick</button><button data-v="twitch">Twitch</button><button data-v="youtube">YouTube</button></div>
+        <div class="pf-chips" data-g="plat"><button data-v="all" class="on">All</button><button data-v="kick">Kick</button><button data-v="twitch">Twitch</button><button data-v="youtube">YouTube</button><button data-v="rumble">Rumble</button></div>
         <span class="pf-sep"></span>
         <div class="pf-chips" data-g="flag"><button data-v="live">Live now</button><button data-v="fav">★ Favourites</button><button data-v="notes">Has notes</button><button data-v="tagged">Tagged</button></div>
         <label class="pf-sort">Sort <select id="pfSort"><option value="live">Live first</option><option value="fav">Favourites first</option><option value="recent">Recently live</option><option value="name">Name</option><option value="followers">Followers</option></select></label>
@@ -430,13 +433,15 @@
         <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
       <div class="am-row" data-p="youtube"><i class="pdot"></i><div class="am-txt"><b>YouTube</b><span class="am-st">Checking…</span></div>
         <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+      <div class="am-row" data-p="rumble"><i class="pdot"></i><div class="am-txt"><b>Rumble</b><span class="am-st">Checking…</span></div>
+        <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
         <div class="st-sec">Logins</div>
         <div class="am-sec">
           <div class="am-enc"><span class="am-lock"></span><span class="am-enc-txt">Checking how logins are stored…</span></div>
-          <div class="am-forget" data-st="Forget my login when I close the app" data-st-sub="Kick, Twitch, YouTube"><span>Forget my login when I close the app:</span>
-            <label class="chk"><input type="checkbox" data-f="kick">Kick</label><label class="chk"><input type="checkbox" data-f="twitch">Twitch</label><label class="chk"><input type="checkbox" data-f="youtube">YouTube</label></div>
+          <div class="am-forget" data-st="Forget my login when I close the app" data-st-sub="Kick, Twitch, YouTube, Rumble"><span>Forget my login when I close the app:</span>
+            <label class="chk"><input type="checkbox" data-f="kick">Kick</label><label class="chk"><input type="checkbox" data-f="twitch">Twitch</label><label class="chk"><input type="checkbox" data-f="youtube">YouTube</label><label class="chk"><input type="checkbox" data-f="rumble">Rumble</label></div>
           <div class="am-watch" data-st="Watch signed in" data-st-sub="Streams play with your login too"><span>Watch signed in: streams play with your login too, so you watch as your account, not as a logged-out viewer. Uses more memory.</span>
-            <label class="chk"><input type="checkbox" data-w="kick">Kick</label><em class="am-auto" title="Set by Pear Drops (Settings › Connected apps)" hidden><i class="am-auto-lock"></i>Kick<b>Auto</b></em><label class="chk"><input type="checkbox" data-w="twitch">Twitch</label><label class="chk"><input type="checkbox" data-w="youtube">YouTube</label>
+            <label class="chk"><input type="checkbox" data-w="kick">Kick</label><em class="am-auto" title="Set by Pear Drops (Settings › Connected apps)" hidden><i class="am-auto-lock"></i>Kick<b>Auto</b></em><label class="chk"><input type="checkbox" data-w="twitch">Twitch</label><label class="chk"><input type="checkbox" data-w="youtube">YouTube</label><label class="chk"><input type="checkbox" data-w="rumble">Rumble</label>
             <div class="am-auto-note" hidden><img class="am-auto-ic" alt="" width="28" height="28"><p><b>Kick is set by Pear Drops.</b> Players are signed in, except while Pear Drops is farming, so they never take its drop credit. <button class="linkish" data-go="apps">Change in Connected apps</button></p></div></div>
         </div>
         <div class="am-alt">YouTube sign-in currently only works through Firefox. <button class="linkish am-ff">Sign in to YouTube with Firefox</button><br>You don't need to sign in to watch YouTube.</div>
@@ -543,6 +548,7 @@
         <div class="st-row"><span class="st-t">Kick</span><input class="st-in" id="mentUser" data-me="kick" placeholder="e.g. YourName" autocomplete="off" spellcheck="false"><button class="btn" id="mentDetect" title="Read them from your Kick and Twitch logins">Detect</button></div>
         <div class="st-row"><span class="st-t">Twitch</span><input class="st-in" id="mentTwitch" data-me="twitch" placeholder="(optional)" autocomplete="off" spellcheck="false"></div>
         <div class="st-row"><span class="st-t">YouTube</span><input class="st-in" id="mentYouTube" data-me="youtube" placeholder="@handle (optional)" autocomplete="off" spellcheck="false"></div>
+        <div class="st-row"><span class="st-t">Rumble</span><input class="st-in" id="mentRumble" data-me="rumble" placeholder="(optional)" autocomplete="off" spellcheck="false"></div>
         <span class="mp-note" id="mentNote"></span>
         <div class="st-sec">Also alert me for</div>
         <p class="st-sub" style="margin:2px 0 0">Nicknames or other words that mean you. A message with one counts as a mention, with or without an @. Whole words only, any case: "pear" finds "hi Pear!" but not "pears". Your own messages never count.</p>

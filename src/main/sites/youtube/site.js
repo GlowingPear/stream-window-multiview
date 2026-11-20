@@ -186,7 +186,6 @@ function create(ctx) {
     } catch {}
     return null;
   }
-  ctx.ipc.app.handle('yt:resolve', async (_e, ch) => (typeof ch === 'string' && ch.startsWith(site.prefix) ? liveOne(ch) : null));
 
   /* the API key: optional, stored encrypted with the system's key store, never sent to the page */
   let ytKey = '', ytKeySaved = false;

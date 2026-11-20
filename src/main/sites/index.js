@@ -34,7 +34,8 @@ const { checkModule } = require('./adapter');
 const MODULES = {
   kick: checkModule('kick', require('./kick/site')),
   twitch: checkModule('twitch', require('./twitch/site')),
-  youtube: checkModule('youtube', require('./youtube/site'))
+  youtube: checkModule('youtube', require('./youtube/site')),
+  rumble: checkModule('rumble', require('./rumble/site'))
 };
 const moduleOf = id => (SmvSites.IDS.includes(id) ? MODULES[id] : null);
 

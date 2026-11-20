@@ -70,6 +70,7 @@ const youtube = new Site({   // (what each slot is for, and its default: sites/a
   roundsFollowers: true,
   offlineChat: false,    // (its live chat is the live stream's)
   liveVideo: true,
+  videoId: ch => ch.slice(5),   // "yt:v:VIDEOID": the video's own id (its player's and chat's)
   chatMax: 200,
   emotes: { none: 'YouTube\'s emoji are in its own chat box', paste: null },
   feed: youtubeFeed,   // its chat's data as ALL's messages (feed.js; chat/feed-parse.js)

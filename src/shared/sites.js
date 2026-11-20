@@ -4,7 +4,8 @@
 // src/page/sites/<id>/ and src/main/sites/<id>/ (README.md, "Adding a site").
 //
 // A channel id is the site's prefix and the channel's name there: Kick "name" (the site with no prefix), Twitch
-// "tw:name", YouTube "yt:@handle" | "yt:c:UC…" (a channel's id) | "yt:v:VIDEOID" (one video, not a channel).
+// "tw:name", YouTube "yt:@handle" | "yt:c:UC…" (a channel's id) | "yt:v:VIDEOID" (one video, not a channel), Rumble
+// "ru:name" (rumble.com/c/name) | "ru:u:name" (rumble.com/user/name) | "ru:v:v35waq4" (one video, by its page's id).
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.SmvSites = factory();
@@ -23,7 +24,9 @@
       ids: [/^tw:[a-z0-9_]{1,25}$/], video: null, keepCase: null },
     { id: 'youtube', name: 'YouTube', letter: 'Y', prefix: 'yt:', partition: 'persist:youtube', hosts: ['youtube.com', 'youtu.be'],
       signIn: ['google.com'], home: 'https://www.youtube.com/', ids: [/^yt:@[\w.\-]{1,100}$/, /^yt:c:UC[\w-]{10,40}$/, /^yt:v:[\w-]{11}$/],
-      video: /^yt:v:/, keepCase: /^yt:(v|c):/i }
+      video: /^yt:v:/, keepCase: /^yt:(v|c):/i },
+    { id: 'rumble', name: 'Rumble', letter: 'R', prefix: 'ru:', partition: 'persist:rumble', hosts: ['rumble.com'], signIn: [], home: 'https://rumble.com/c/',
+      ids: [/^ru:[a-z0-9_.-]{1,60}$/, /^ru:u:[a-z0-9_.-]{1,60}$/, /^ru:v:v[a-z0-9]{3,12}$/], video: /^ru:v:/, keepCase: null }
   ];
 
   // The list's helpers, for a list of sites (the tests make one with a made-up site too). DEFAULT: the site a bare

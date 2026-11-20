@@ -8,7 +8,7 @@ contextBridge.exposeInMainWorld('kmv', {
   logout: plat => ipcRenderer.invoke('account:logout', plat),
   accountsStatus: () => ipcRenderer.invoke('accounts:status'),
   accountsCheck: site => ipcRenderer.invoke('accounts:check', site),
-  ytResolve: ch => ipcRenderer.invoke('yt:resolve', ch),
+  ytResolve: ch => ipcRenderer.invoke('live:resolve', ch),
   modCheck: ch => ipcRenderer.invoke('mod:check', ch),
   ytKeyStatus: () => ipcRenderer.invoke('ytkey:status'),
   ytKeySet: key => ipcRenderer.invoke('ytkey:set', key),

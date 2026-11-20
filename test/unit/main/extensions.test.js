@@ -123,7 +123,7 @@ test('the saved list: bad entries, duplicates and stray values are dropped', () 
   ]);
   assert.equal(list.length, 2);
   assert.deepEqual(list[0], { id: ID, source: 'store', enabled: false,
-    grid: { kick: { stream: false, chat: false }, twitch: { stream: true, chat: false }, youtube: { stream: true, chat: false } },
+    grid: { kick: { stream: false, chat: false }, twitch: { stream: true, chat: false }, youtube: { stream: true, chat: false }, rumble: { stream: true, chat: false } },
     win: { 'persist:kmv-stream-a': true } });
   assert.deepEqual([list[1].source, list[1].path], ['folder', '/x/ext']);
   assert.deepEqual(x.normalizeList('nope'), []);
@@ -163,11 +163,11 @@ test('which of the sites it runs on, from its manifest', () => {
   assert.deepEqual(x.sitesOf({ content_scripts: [{ matches: ['https://kick.com/*', 'https://www.twitch.tv/*'] }] }), ['kick', 'twitch']);
   assert.deepEqual(x.sitesOf({ host_permissions: ['*://*.youtube.com/*'] }), ['youtube'], 'any subdomain');
   assert.deepEqual(x.sitesOf({ manifest_version: 2, permissions: ['tabs', 'https://player.kick.com:443/*'] }), ['kick'], 'MV2 hosts, with a port');
-  assert.deepEqual(x.sitesOf({ host_permissions: ['<all_urls>'] }), ['kick', 'twitch', 'youtube']);
-  assert.deepEqual(x.sitesOf({ content_scripts: [{ matches: ['*://*/*'] }] }), ['kick', 'twitch', 'youtube']);
+  assert.deepEqual(x.sitesOf({ host_permissions: ['<all_urls>'] }), ['kick', 'twitch', 'youtube', 'rumble']);
+  assert.deepEqual(x.sitesOf({ content_scripts: [{ matches: ['*://*/*'] }] }), ['kick', 'twitch', 'youtube', 'rumble']);
   assert.deepEqual(x.sitesOf({ content_scripts: [{ matches: ['https://notkick.com/*'] }] }), [], 'not a lookalike');
-  assert.deepEqual(x.sitesOf({ permissions: ['activeTab'] }), ['kick', 'twitch', 'youtube'], 'no sites named: could be anywhere');
-  assert.deepEqual(x.sitesOf(null), ['kick', 'twitch', 'youtube']);
+  assert.deepEqual(x.sitesOf({ permissions: ['activeTab'] }), ['kick', 'twitch', 'youtube', 'rumble'], 'no sites named: could be anywhere');
+  assert.deepEqual(x.sitesOf(null), ['kick', 'twitch', 'youtube', 'rumble']);
 });
 
 test('its icon from the folder, as a picture the page can show', () => {
