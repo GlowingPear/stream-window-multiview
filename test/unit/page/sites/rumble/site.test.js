@@ -23,7 +23,8 @@ test('channel ids, names and labels: a channel, a user\'s channel, one video', (
   assert.equal(rumble.idFor('@nightowl'), 'ru:nightowl');
   assert.deepEqual(['ru:nightowl', 'ru:u:pip', 'ru:v:v35waq4'].map(rumble.handle), ['nightowl', 'pip', 'v35waq4']);
   assert.deepEqual(['ru:nightowl', 'ru:u:pip', 'ru:v:v35waq4'].map(rumble.label), ['nightowl', 'pip', 'Rumble video']);
-  assert.deepEqual(['ru:nightowl', 'ru:v:v35waq4'].map(rumble.namedBySite), [false, true], 'a video takes the name Rumble gives it');
+  assert.deepEqual(['ru:nightowl', 'ru:u:pip', 'ru:v:v35waq4', 'ru:c-7777674', 'ru:c-owl'].map(rumble.namedBySite), [false, false, true, true, false],
+    'a video, and a channel known by its number, take the name Rumble gives them');
   assert.deepEqual(rumble.fromText('ru:NightOwl'), { channel: 'ru:nightowl', only: null });
   assert.deepEqual(rumble.fromText('rumble: @nightowl'), { channel: 'ru:nightowl', only: null });
   assert.equal(rumble.fromText('nightowl'), undefined, 'a bare name is Kick\'s');

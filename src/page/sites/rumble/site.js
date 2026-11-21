@@ -71,8 +71,9 @@ const rumble = new Site({   // (what each slot is for, and its default: sites/ad
   label: ch => (ch.startsWith('ru:v:') ? 'Rumble video' : ch.replace(/^ru:(u:)?/, '')),
   // one person can have a user page and channels of their own, live on either: which kind it is, in words
   idText: ch => (ch.startsWith('ru:u:') ? 'User · ' + ch.slice(5) : ch.startsWith('ru:v:') ? 'Video · ' + ch.slice(5) : 'Channel · ' + ch.slice(3)),
-  // A video takes the name Rumble gives it; a channel's name is already its name
-  namedBySite: ch => ch.startsWith('ru:v:'),
+  // A video, and a channel whose address is its number (rumble.com/c/c-7777674: one without its own address), take the
+  // name Rumble gives them; another channel's name is already its name
+  namedBySite: ch => /^ru:(v:|c-\d+$)/.test(ch),
   fromUrl(host, parts){
     if (host !== 'rumble.com' && !host.endsWith('.rumble.com')) return undefined;
     if (parts[0] === 'c' && parts[1]) return rumbleName(parts[1]) ? { channel: 'ru:' + rumbleName(parts[1]), only: null } : null;
