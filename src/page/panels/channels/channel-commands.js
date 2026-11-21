@@ -10,7 +10,7 @@ import { openLinkCard } from '../linked/link-card.js';
 import { openProfile } from '../profiles/profiles.js';
 import { mainOf, nameOf, streamerName, streamerOf } from '../../platforms/linked.js';
 import { PLAT_NAME, chLabel, chNames, externalFor, isModOf, isVideo, normCh, openModView, parseInput, platOf,
-  platform, siteIds } from '../../platforms/platforms.js';
+  platform, siteIds, siteLetter } from '../../platforms/platforms.js';
 import { commands } from '../../shared/commands.js';
 import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
@@ -178,7 +178,7 @@ function typedItems(q){
   const chOf = s => normCh(PLATFORMS[s].idFor(name)), hitOf = s => hits.find(x => x.ch === chOf(s));
   const found = siteIds().filter(s => hitOf(s) && !known.has(chOf(s)));
   if (!typed.picked && found.length && !hitOf(typed.site)) typed.site = found[0];
-  const sites = () => siteIds().map(s => ({ p: s, letter: PLATFORMS[s].letter, name: PLAT_NAME[s], on: s === typed.site }));
+  const sites = () => siteIds().map(s => ({ p: s, letter: siteLetter(s), name: PLAT_NAME[s], on: s === typed.site }));
   const step = d => { const ids = siteIds(); typed.site = ids[(ids.indexOf(typed.site) + d + ids.length) % ids.length]; typed.picked = true; };
   const pick = { pickSite: s => { typed.site = s; typed.picked = true; }, nextSite: () => step(1), prevSite: () => step(-1) };
   const ch = chOf(typed.site), hit = hitOf(typed.site);

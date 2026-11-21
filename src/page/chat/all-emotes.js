@@ -1,5 +1,5 @@
 import { overBox, sendEmote, sendSite, setLock } from './all-chat.js';
-import { PLAT_NAME, platOf, platform } from '../platforms/platforms.js';
+import { PLAT_NAME, platOf, platform, siteBadge } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
 import { chAvatar } from '../windows/channel-picker.js';
@@ -234,7 +234,7 @@ const ADDON_LETTER = { '7tv': '7', bttv: 'B', ffz: 'F' };
 function kindIcon(id, ch, pic){
   const kind = String(id || 'all').replace(/^(kick|twitch)-/, '');
   if (kind === 'channel') return pic ? chPic({ pic }) : chAvatar(ch);   // (its picture, as the sites send it with the emotes)
-  if (kind === 'global'){ const p = platOf(ch); return element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]); }
+  if (kind === 'global') return siteBadge(platOf(ch));
   if (ADDON_LETTER[kind]) return element('span', 'all-ep-ic addon', ADDON_LETTER[kind]);
   const svg = kind === 'emoji' ? SMILEY : KIND_SVG[kind];
   return svg ? element('span', { class: 'all-ep-ic ' + kind, html: svg }) : null;

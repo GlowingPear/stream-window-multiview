@@ -80,6 +80,17 @@ test('code outside the sites\' folders doesn\'t name a site (the few that do on 
   assert.deepEqual(ALLOWED.filter(a => !used.has(a)).map(a => a[0] + ': ' + a[1]), [], 'an allowed one that\'s gone: take it off the list');
 });
 
+// A site's badge shows the letter from the list of sites: built only by platIcon and siteBadge (platforms/platforms.js),
+// so no part has its own idea of a site's letter (the streamer profile's said "?" for Rumble)
+test('every site badge is built by platIcon or siteBadge', () => {
+  const found = [];
+  for (const f of files('src/page', /\.js$/)) {
+    if (f === 'src/page/platforms/platforms.js') continue;
+    code(read(f)).split('\n').forEach((line, i) => { if (/pi pi-/.test(line)) found.push(`${f}:${i + 1}: ${line.trim().slice(0, 140)}`); });
+  }
+  assert.deepEqual(found, [], 'use siteBadge(site), chBadge(ch) or platIcon(site)');
+});
+
 test('CSS outside the sites\' folders doesn\'t style a site: each site\'s colours are its site.css', () => {
   const SEL = new RegExp(`[.-](${ids})\\b|=(${ids})\\]`);
   const found = [];

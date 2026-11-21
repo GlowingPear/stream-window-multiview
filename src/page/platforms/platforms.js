@@ -2,6 +2,7 @@ import { wins } from '../core.js';
 import { nameOf } from './linked.js';
 import { kickAuto, kickOut, reportPlayers } from './pear-drops.js';
 import { effectiveSignedIn } from './players-link.js';
+import { element } from '../shared/element.js';
 import { DESKTOP } from '../shared/env.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
@@ -31,8 +32,13 @@ const heldWho = site => heldByOf(site) || (PLAT_NAME || {})[site] || '';
 // The sites' names in a sentence: "Kick, Twitch or YouTube"
 const siteNames = (and = 'or') => { const n = sites().map(p => p.name); return n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ` ${and} ` + n[n.length - 1]; };
 let PLAT_NAME;
-// Small platform badge (K / T / Y in each platform's colour) shown next to channel names.
-const platIcon = p => `<i class="pi pi-${p}" title="${PLAT_NAME[p]}" aria-label="${PLAT_NAME[p]}">${(PLATFORMS[p] || {}).letter || '?'}</i>`;
+// A site's letter, from the list of sites ("K", "R"): on its badge and its tabs
+const siteLetter = p => (PLATFORMS[p] || {}).letter || '?';
+// A site's badge: its letter in its colour, next to channel names. platIcon(p) as markup; siteBadge(p, props, ...more)
+// as an element: props as element()'s, their class added to "pi pi-<site>", tag: 'button' for one you press; more after
+// the letter (a channel's number: chBadge in linked.js). Every badge is built here, so a new site needs nothing else.
+const platIcon = p => `<i class="pi pi-${p}" title="${PLAT_NAME[p]}" aria-label="${PLAT_NAME[p]}">${siteLetter(p)}</i>`;
+const siteBadge = (p, { tag = 'i', class: cls, ...props } = {}, ...more) => element(tag, { ...props, class: `pi pi-${p}${cls ? ' ' + cls : ''}` }, siteLetter(p), ...more);
 const platOf = ch => SmvSites.siteOf(ch);
 const platform = ch => PLATFORMS[platOf(ch)];
 // One video rather than a channel ("yt:v:…"): no profile, no channel settings, no linking
@@ -219,5 +225,5 @@ function init(){
 export { chatSrc, checkMod, chLabel, chLabelP, chNames, deniedWord, extCount, externalFor, heldByOf, heldWho,
   infoNames, init, isModOf, isVideo, modIs, modOk, modUrl, normCh, openModView, parseInput, PLAT_NAME, platform,
   platformVars, platIcon, platOf, popUp, readLogins, rememberName, rememberNames, setWatchSignedIn, shoutSiteNames,
-  shoutSites, siteIds, siteNames, sites, srcFor, streamSignedIn, streamSrc, syncStreams, trimPlayerPage,
-  viewPartition, watchSignedIn, ytVidOf };
+  shoutSites, siteBadge, siteIds, siteLetter, siteNames, sites, srcFor, streamSignedIn, streamSrc, syncStreams,
+  trimPlayerPage, viewPartition, watchSignedIn, ytVidOf };

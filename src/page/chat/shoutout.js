@@ -8,7 +8,7 @@ import { shoutAgent } from '../in-site/shoutout.js';
 import { myNameOn } from '../panels/bell/bell.js';
 import { isSaved } from '../panels/channels/channels.js';
 import { listStreamers, nameOf, streamerOf } from '../platforms/linked.js';
-import { PLAT_NAME, chLabel, platOf, platform, shoutSites } from '../platforms/platforms.js';
+import { PLAT_NAME, chLabel, platOf, platform, shoutSites, siteBadge } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
@@ -350,7 +350,7 @@ async function runDialog(w, lines){
     const g = soKnown[soKey(p)] && soKnown[soKey(p)].game;
     const sub = [p.raid ? 'Raided' : '', g ? `Streams ${g}` : PLAT_NAME[p.site]].filter(Boolean).join(' · ');
     const tick = element('input', { type: 'checkbox', checked: !!on, 'aria-label': `Shout out ${p.name}`, onchange: e => { state.ticks.set(soKey(p), e.target.checked); sync(); } });
-    return element('label', { class: 'so-row' + (why ? ' off' : '') }, tick, element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0]),
+    return element('label', { class: 'so-row' + (why ? ' off' : '') }, tick, siteBadge(p.site),
       element('span', 'nm', element('b', null, p.name), element('small', null, sub)), element('span', 'ago', why || (p.at ? soAgo(p.at).replace(' ago', '') : '')));
   };
   const draw = () => {

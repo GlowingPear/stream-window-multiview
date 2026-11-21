@@ -1,4 +1,5 @@
 import { $, wins } from '../../core.js';
+import { siteBadge, siteIds } from '../../platforms/platforms.js';
 import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
 import { icon } from '../../shared/icons.js';
@@ -123,7 +124,7 @@ function renderWindowsPane(){
   list.replaceChildren(...keys.map(row));
   // the preview: a title bar with the buttons in this order, the ones always in ⋯ left out
   const shown = keys.filter(k => !cfg.always.includes(k) && !['state', 'inspect'].includes(k));
-  preview.replaceChildren(element('span', { class: 'wb-av' }, 'QU'), element('b', 'wb-nm', 'quietkoala ▾'), element('i', { class: 'pi pi-kick' }, 'K'), element('span', 'wb-gap'),
+  preview.replaceChildren(element('span', { class: 'wb-av' }, 'QU'), element('b', 'wb-nm', 'quietkoala ▾'), siteBadge(siteIds()[0]), element('span', 'wb-gap'),
     ...shown.map(k => k === 'quality' ? element('span', { class: 'wb-b wb-txt' + (k === cfg.never ? ' pinned' : ''), title: BAR_BUTTONS[k][0], dataset: { k } }, '720p')   // (on the bar: what it plays)
       : element('span', { class: 'wb-b' + (k === cfg.never ? ' pinned' : ''), title: BAR_BUTTONS[k][0], dataset: { k }, html: k === 'chat' ? icon.plus : icon[BAR_BUTTONS[k][2]] || '' })),
     element('span', { class: 'wb-b', title: 'More' }, '⋯'), element('span', { class: 'wb-b', html: icon.close }));

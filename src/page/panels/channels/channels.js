@@ -13,7 +13,7 @@ import { appendFollowSugs } from './follow-suggestions.js';
 import { esRefresh } from '../empty-stage/empty-stage.js';
 import { openLinkCard } from '../linked/link-card.js';
 import { openProfile } from '../profiles/profiles.js';
-import { accountsOf, canLink, laterPair, link, linkedOn, listStreamers, nameOf, notSame, optFor, siteName, siteNum,
+import { accountsOf, canLink, chBadge, laterPair, link, linkedOn, listStreamers, nameOf, notSame, optFor, siteName,
   streamerName, streamerOf, suggestions } from '../../platforms/linked.js';
 import { PLAT_NAME, chLabel, infoNames, isVideo, normCh, platIcon, platOf, rememberNames } from '../../platforms/platforms.js';
 import { element } from '../../shared/element.js';
@@ -311,7 +311,7 @@ function streamerRow(e){
 // A site's tiny icon, dimmed when that channel is offline
 function siteIcon(ch, plain){
   const p = platOf(ch), info = infoFor(ch);
-  return element('i', { class: `pi pi-${p}${!plain && !(info && info.live) ? ' dim' : ''}`, title: siteName(ch) + (plain ? '' : info ? info.live ? ' · live' : ' · offline' : ''), 'aria-label': siteName(ch) }, PLAT_NAME[p][0], siteNum(ch));
+  return chBadge(ch, { class: !plain && !(info && info.live) && 'dim', title: siteName(ch) + (plain ? '' : info ? info.live ? ' · live' : ' · offline' : ''), 'aria-label': siteName(ch) });
 }
 function accountRows(e){
   const box = element('div', 'sv-accs');

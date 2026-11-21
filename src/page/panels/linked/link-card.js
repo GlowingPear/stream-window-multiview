@@ -6,7 +6,7 @@ import { openSettings } from '../settings/settings.js';
 import { shoutCardEl } from '../settings/shout-cards.js';
 import { accountsOf, botsOf, canLink, chanOpt, link, linkOpt, linkedOn, nameOf, notSame, ordered, setChanOpt,
   setMain, setOn, setStreamerOpt, siteNum, streamerBots, streamerName, streamerOf, suggestions, unlink, unlinkAll } from '../../platforms/linked.js';
-import { PLAT_NAME, chLabel, isVideo, parseInput, platOf } from '../../platforms/platforms.js';
+import { PLAT_NAME, chLabel, isVideo, parseInput, platOf, siteBadge } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
 import { element } from '../../shared/element.js';
 import { flash } from '../../shared/flash.js';
@@ -43,7 +43,7 @@ function liveText(ch){
   if (i.missing) return element('span', 'lc-st lc-bad', 'Channel not found');
   return i.live ? element('span', 'lc-st lc-live', `Live · ${Number(i.viewers || 0).toLocaleString()} watching`) : element('span', 'lc-st', 'Offline');
 }
-const lcPlat = p => element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]);
+const lcPlat = p => siteBadge(p);
 const lcSite = ch => { const i = lcPlat(platOf(ch)), n = siteNum(ch); if (n) i.append(n); return i; };
 function renderCard(){
   if (dlg.hidden) return;
@@ -96,7 +96,7 @@ function renderCard(){
   inp.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); submit(); } });
   inp.addEventListener('input', () => { err.hidden = true; const r = parseInput(inp.value, curPlat); if (r && r.channel && /[/.:]/.test(inp.value) && sites.includes(platOf(r.channel))){ curPlat = platOf(r.channel); segs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.p === curPlat)); } });
   const segs = element('div', { class: 'seg lc-plat', role: 'radiogroup', 'aria-label': 'Site' }, ...sites.map(p => element('button', { type: 'button', class: p === curPlat ? 'on' : '', role: 'radio', 'aria-checked': String(p === curPlat), title: PLAT_NAME[p], dataset: { p },
-    onclick: () => { curPlat = p; segs.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.p === p); b.setAttribute('aria-checked', String(b.dataset.p === p)); }); inp.focus(); } }, element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]))));
+    onclick: () => { curPlat = p; segs.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.p === p); b.setAttribute('aria-checked', String(b.dataset.p === p)); }); inp.focus(); } }, siteBadge(p))));
   parts.push(element('div', 'lc-sec', chs.length ? 'Add a channel' : 'Their first channel'), element('div', 'lc-add', segs, inp, go), err);
   if (addFocus) setTimeout(() => inp.focus(), 0);
   if (chs.length) T.chat.push(...botsPart(s, chs));

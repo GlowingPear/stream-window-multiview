@@ -4,9 +4,9 @@ import { addParsed } from '../../layout/placement.js';
 import { bell } from '../bell/bell.js';
 import { channelVars, infoFor, loadSavedProfiles, notifyAll, notifyOff, persistSaved, saved, sendWatch, toggleSaved } from '../channels/channels.js';
 import { openLinkCard } from '../linked/link-card.js';
-import { linkedOn, nameOf, ordered, siteName, siteNo, siteNum, streamerOf } from '../../platforms/linked.js';
+import { chBadge, linkedOn, nameOf, ordered, siteName, siteNo, streamerOf } from '../../platforms/linked.js';
 import { PLAT_NAME, chLabel, isVideo, modUrl, normCh, parseInput, platOf, platform, rememberName, rememberNames,
-  siteIds } from '../../platforms/platforms.js';
+  siteIds, siteLetter } from '../../platforms/platforms.js';
 import { ask, askChecked } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
 import { element, esc } from '../../shared/element.js';
@@ -46,8 +46,7 @@ const pfName = ch => pfMeta(ch).nick || pfInfo(ch).name || chLabel(ch);
 const pfLive = ch => !!(infoFor(ch) && infoFor(ch).live);
 /* ---- linked channels (platforms/linked.js): a streamer is one card and one profile; notes, tags, nickname and
    favourite are one set for them, written to every account (so unlinking leaves each a copy) ---- */
-const SITE_LETTER = { kick: 'K', twitch: 'T', youtube: 'Y' };
-const pfSiteIco = (ch, dim) => element('i', { class: `pi pi-${platOf(ch)}${dim ? ' dim' : ''}`, title: siteName(ch) }, SITE_LETTER[platOf(ch)] || '?', siteNum(ch));
+const pfSiteIco = (ch, dim) => chBadge(ch, { class: dim && 'dim', title: siteName(ch) });
 const andList = l => l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1];
 function mergeMeta(metas, first = 0){
   const notes = [...new Set(metas.map(x => (x.notes || '').trim()).filter(Boolean))];
@@ -656,7 +655,7 @@ function pfRenderLinked(){
     live.forEach(c => { const v = (infoFor(c) || {}).viewers; if (v == null) return; if (sub.childNodes.length) sub.append(' · '); sub.append(pfSiteIco(c), ` ${Number(v).toLocaleString()} watching`); });
     if (live.length > 1 && together) sub.append(` · ${together.toLocaleString()} together`);
     txt.appendChild(sub);
-    const w = element('button', 'btn primary', live.length > 1 ? `Watch (tabs: ${live.map(c => SITE_LETTER[platOf(c)] + (siteNo(c) || '')).join(', ')})` : 'Watch now');
+    const w = element('button', 'btn primary', live.length > 1 ? `Watch (tabs: ${live.map(c => siteLetter(platOf(c)) + (siteNo(c) || '')).join(', ')})` : 'Watch now');
     w.onclick = () => { profDlg.hidden = true; openStreamer(main, 'both', live); };
     const c2 = element('button', 'btn', 'Chat only'); c2.onclick = () => { profDlg.hidden = true; openStreamer(main, 'chat', live); };
     btns.append(w, c2);

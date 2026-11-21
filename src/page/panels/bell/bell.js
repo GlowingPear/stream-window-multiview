@@ -10,7 +10,7 @@ import { SmvNotes } from './notifications.js';
 import { infoFor } from '../channels/channels.js';
 import { showHelp } from '../help/help.js';
 import { ignoreSender, renderSpamHist, syncAlertControls } from '../settings/alerts.js';
-import { nameOf, siteName, siteNum } from '../../platforms/linked.js';
+import { chBadge, nameOf, siteName } from '../../platforms/linked.js';
 import { PLAT_NAME, chLabel, chLabelP, deniedWord, heldByOf, platOf } from '../../platforms/platforms.js';
 import { element, esc } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
@@ -246,7 +246,7 @@ function noteRow(n, o = {}){
     else { top.textContent = n.label || chLabel(n.channel); k.textContent = `raided by ${n.from ? chLabel(n.from) : 'someone'}`; }
     k.classList.add('plain');
     where.textContent = sites ? '' : PLAT_NAME[platOf(n.channel)] || '';
-    if (sites) where.append(...sites.map((c, i) => element('span', 'nc-site', element('i', { class: 'pi pi-' + platOf(c) }, PLAT_NAME[platOf(c)][0], siteNum(c)),
+    if (sites) where.append(...sites.map((c, i) => element('span', 'nc-site', chBadge(c),
       ` ${siteName(c)}` + (n.viewersBy && n.viewersBy[c] != null ? ` · ${Number(n.viewersBy[c]).toLocaleString()}` : '') + (i && n.at && n.at[c] && n.at[sites[0]] ? ` · ${Math.max(1, Math.round((n.at[c] - n.at[sites[0]]) / 60000))} min later` : ''))));
     if (n.auto) where.insertAdjacentHTML('afterend', '<span class="nc-auto">opened by itself</span>');
     const together = sites && n.viewersBy ? sites.reduce((t, c) => t + (+n.viewersBy[c] || 0), 0) : null;
