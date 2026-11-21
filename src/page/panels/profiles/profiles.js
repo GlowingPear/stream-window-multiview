@@ -6,7 +6,7 @@ import { channelVars, infoFor, loadSavedProfiles, notifyAll, notifyOff, persistS
 import { openLinkCard } from '../linked/link-card.js';
 import { chBadge, linkedOn, nameOf, ordered, siteName, siteNo, streamerOf } from '../../platforms/linked.js';
 import { PLAT_NAME, chLabel, isVideo, modUrl, normCh, parseInput, platOf, platform, rememberName, rememberNames,
-  siteIds, siteLetter } from '../../platforms/platforms.js';
+  siteIds, siteLetter, siteNames } from '../../platforms/platforms.js';
 import { ask, askChecked } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
 import { element, esc } from '../../shared/element.js';
@@ -178,13 +178,13 @@ function pfRenderLook(q){
   if (look.hidden) return;
   if (!pf.look || pf.look.q !== q){
     box.innerHTML = '<div class="pf-look-row"><span class="pf-who"><b></b><span>Isn\'t in your saved streamers.</span></span><button class="btn pf-find">Look it up</button></div>';
-    box.querySelector('b').textContent = `“${q}” on Kick, Twitch, YouTube and Rumble`;
+    box.querySelector('b').textContent = `“${q}” on ${siteNames('and')}`;
     box.querySelector('.pf-find').onclick = () => pfLookup(q);
     return;
   }
-  if (pf.look.busy){ box.innerHTML = '<div class="pf-look-row pf-load"><span class="spin"></span> Looking on Kick, Twitch, YouTube and Rumble…</div>'; return; }
+  if (pf.look.busy){ box.innerHTML = `<div class="pf-look-row pf-load"><span class="spin"></span> Looking on ${siteNames('and')}…</div>`; return; }
   box.innerHTML = '';
-  if (!pf.look.items.length){ box.innerHTML = '<div class="pf-look-row"><span class="pf-who"><b>Nobody by that name</b><span>No Kick, Twitch, YouTube or Rumble channel is called exactly that. Check the spelling, or paste a link.</span></span></div>'; return; }
+  if (!pf.look.items.length){ box.innerHTML = `<div class="pf-look-row"><span class="pf-who"><b>Nobody by that name</b><span>No ${siteNames()} channel is called exactly that. Check the spelling, or paste a link.</span></span></div>`; return; }
   pf.look.items.forEach(x => {
     const row = document.createElement('div'); row.className = 'pf-look-row';
     row.appendChild(pfAvatar(x.ch, x.name, x.avatar, !!x.live));
@@ -479,13 +479,13 @@ function pfRenderProf(){
   // heatmap
   const hb = element('div', 'pf-box');
   hb.innerHTML = `<h4>When they usually stream <span>${sm.heat ? `last ${sm.heat.weeks} week${sm.heat.weeks === 1 ? '' : 's'}, your time` : ''}</span></h4>`;
-  if (sm.heat) hb.appendChild(pfHeat(sm.heat, st)); else hb.appendChild(element('div', 'pf-none', 'Not enough streams yet: this fills in as the app sees them stream (and from past broadcasts on Kick and Twitch).'));
+  if (sm.heat) hb.appendChild(pfHeat(sm.heat, st)); else hb.appendChild(element('div', 'pf-none', `Not enough streams yet: this fills in as the app sees them stream (and from past broadcasts on ${siteNames('and', 'pastStreams')}).`));
   left.appendChild(hb);
   // history
   const hist = element('div', 'pf-box');
   const list = sm.history || [];
   hist.innerHTML = `<h4>Live history <span>${list.length ? `${sm.sessions} stream${sm.sessions === 1 ? '' : 's'} known` : ''}</span></h4>`;
-  if (!list.length) hist.appendChild(element('div', 'pf-none', 'No streams known yet. The app records each stream it sees while it\'s open; Kick and Twitch past broadcasts are added when the streamer keeps them.'));
+  if (!list.length) hist.appendChild(element('div', 'pf-none', `No streams known yet. The app records each stream it sees while it's open; ${siteNames('and', 'pastStreams')} past broadcasts are added when the streamer keeps them.`));
   else {
     const wrap = element('div', 'pf-hist'), tb = document.createElement('table');
     tb.innerHTML = '<thead><tr><th>Date</th><th>Time · length</th><th>Title</th><th>Category</th><th class="n" title="Highest viewer count the app saw (or the broadcast\'s views)">Peak</th></tr></thead><tbody></tbody>';
@@ -717,12 +717,12 @@ function pfRenderLinked(){
     const heat = { weeks: Math.max(...heats.map(h => h.weeks)), cells: heats[0].cells.map((row, d) => row.map((_, h) => Math.max(...heats.map(x => (x.cells[d] || [])[h] || 0)))) };
     hb.querySelector('h4 span').textContent = `last ${heat.weeks} week${heat.weeks === 1 ? '' : 's'}, every site, your time`;
     hb.appendChild(pfHeat(heat, { dayCounts }));
-  } else hb.appendChild(element('div', 'pf-none', 'Not enough streams yet: this fills in as the app sees them stream (and from past broadcasts on Kick and Twitch).'));
+  } else hb.appendChild(element('div', 'pf-none', `Not enough streams yet: this fills in as the app sees them stream (and from past broadcasts on ${siteNames('and', 'pastStreams')}).`));
   left.appendChild(hb);
   const hbox = element('div', 'pf-box');
   hbox.innerHTML = '<h4>Live history <span></span></h4>';
   if (hist.length) hbox.querySelector('h4 span').textContent = `${hist.length} stream${hist.length === 1 ? '' : 's'} known`;
-  if (!hist.length) hbox.appendChild(element('div', 'pf-none', 'No streams known yet. The app records each stream it sees while it\'s open; Kick and Twitch past broadcasts are added when the streamer keeps them.'));
+  if (!hist.length) hbox.appendChild(element('div', 'pf-none', `No streams known yet. The app records each stream it sees while it's open; ${siteNames('and', 'pastStreams')} past broadcasts are added when the streamer keeps them.`));
   else {
     const wrap = element('div', 'pf-hist'), tb = document.createElement('table');
     tb.innerHTML = '<thead><tr><th>Sites</th><th>Date</th><th>Time · length</th><th>Title</th><th>Category</th><th class="n" title="Highest viewer count the app saw, every site added up">Peak</th></tr></thead><tbody></tbody>';
@@ -887,7 +887,7 @@ function init(){
           words: ['favorites'], icon: 'user', run: () => openProfilesAt({ plat, flag }) }))
     ]);
     commands.provide('profiles.lookup', q => /^@?[a-z0-9_.\-]{2,40}$/i.test(q.trim()) ? [{ id: 'profiles.lookup', kind: 'profile', fallback: true, order: 2, group: 'Nothing found',
-      title: `Look up “${q.trim()}” in Profiles`, sub: 'On Kick, Twitch, YouTube and Rumble', icon: 'user', run: () => openProfilesAt({ q: q.trim() }) }] : []);
+      title: `Look up “${q.trim()}” in Profiles`, sub: `On ${siteNames('and')}`, icon: 'user', run: () => openProfilesAt({ q: q.trim() }) }] : []);
     profDlg.querySelectorAll('.pf-chips button').forEach(b => { b.dataset.cmd = 'profiles.' + b.dataset.v; });
     // an open profile's buttons (Favourite, Live alerts, Unfollow on Kick, Watch now…), while it shows
     commands.fromControls('#profDlg .pf-prof', { group: 'Streamer profile', prefix: 'Profile: ', icon: 'user' });

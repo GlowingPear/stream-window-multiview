@@ -32,7 +32,6 @@ const devTab = () => dev.tab;                  // (Chat events draws its own tab
 // a site's answer that went wrong: no answer, or not a 2xx
 const badAnswer = r => !(r.status >= 200 && r.status < 300);
 const DV_WHEN = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-const DV_SITE = { kick: 'Kick', twitch: 'Twitch', youtube: 'YouTube' };
 const tick = on => (on ? '✓' : '–');
 const plural = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
@@ -91,7 +90,7 @@ async function renderDev(){
     if (!d.responses.length) list.append(element('div', 'dv-empty', 'Nothing asked yet. Live checks, follows and profiles show here.'));
     else if (!shown.length) list.append(element('div', 'dv-empty', 'No errors: every answer was OK.'));
     for (const r of shown) list.append(element('button', { class: 'dv-row dv-resp', type: 'button', title: 'Click to copy the request and the answer', onclick: () => copyText(exchangeText(r), 'Copied the request and the answer') },
-      element('span', 'dv-t', DV_WHEN(r.t)), element('span', 'dv-site dv-' + r.site, DV_SITE[r.site] || r.site),
+      element('span', 'dv-t', DV_WHEN(r.t)), element('span', 'dv-site dv-' + r.site, PLAT_NAME[r.site] || r.site),
       element('span', 'dv-msg', `${r.what} · ${r.method} ${r.url}`),
       element('span', 'dv-st ' + (badAnswer(r) ? 'bad' : 'ok'), r.status ? String(r.status) : r.error ? 'failed' : 'no answer'),
       element('span', 'dv-cnt', r.ms + ' ms')));
@@ -101,7 +100,7 @@ async function renderDev(){
 const tidyJson = t => { try { return JSON.stringify(JSON.parse(t), null, 2); } catch { return t; } };
 const exchangeText = r => [
   `${r.method} ${r.url}`,
-  `→ ${r.status || (r.error ? 'failed: ' + r.error : 'no answer')} · ${r.ms} ms · ${new Date(r.t).toLocaleString()} · ${DV_SITE[r.site] || r.site} ${r.what}`,
+  `→ ${r.status || (r.error ? 'failed: ' + r.error : 'no answer')} · ${r.ms} ms · ${new Date(r.t).toLocaleString()} · ${PLAT_NAME[r.site] || r.site} ${r.what}`,
   r.request ? '\nRequest:\n' + tidyJson(r.request) : '',
   r.body != null ? '\nResponse:\n' + tidyJson(r.body) : devOn ? '' : '\n(The answer\'s text is only kept while Developer tools are on.)'
 ].filter(Boolean).join('\n');

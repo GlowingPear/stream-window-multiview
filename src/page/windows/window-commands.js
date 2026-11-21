@@ -111,9 +111,10 @@ function winActions(w){
       }
     });
     if (pageCmdMod(w)){
-      add('clip', 'Make a clip', () => makeClip(w), { icon: 'capture', sub: 'Kick: the last moments of the stream, as /clip does', words: ['/clip'] });
-      add('poll', 'Start a poll', () => openPollForm(w), { icon: 'chatview', sub: 'Kick: as /poll does', words: ['/poll', 'vote'] });
-      add('prediction', 'Start a prediction', () => openPredictionForm(w), { icon: 'sparkle', sub: 'Kick: as /prediction does', words: ['/prediction', 'bet'] });
+      const site = PLAT_NAME[platOf(w.channel)];
+      add('clip', 'Make a clip', () => makeClip(w), { icon: 'capture', sub: `${site}: the last moments of the stream, as /clip does`, words: ['/clip'] });
+      add('poll', 'Start a poll', () => openPollForm(w), { icon: 'chatview', sub: `${site}: as /poll does`, words: ['/poll', 'vote'] });
+      add('prediction', 'Start a prediction', () => openPredictionForm(w), { icon: 'sparkle', sub: `${site}: as /prediction does`, words: ['/prediction', 'bet'] });
     }
   }
   // its title bar's buttons, each as its button says (with the ⋯ menu's)

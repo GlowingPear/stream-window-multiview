@@ -85,7 +85,7 @@ const ES_LEARN = [
 ];
 const TOUR = [
   { sel: '#savedBtn', t: 'Your channels', d: 'Type or paste a channel here to open it, save the ones you watch, and see who’s live. Shortcut: N.' },
-  { sel: '#loginBtn', t: 'Log in', d: 'Log in to Kick, Twitch, YouTube and Rumble once. Chats use these logins, and Import follows brings in the channels you follow.' },
+  { sel: '#loginBtn', t: 'Log in', get d(){ return `Log in to ${siteNames('and')} once. Chats use these logins, and Import follows brings in the channels you follow.`; } },
   { sel: '#layoutBtn', t: 'Layouts', d: 'Arrange every window at once: Columns, Focus with one big stream, Chat focus, Game and more.' },
   { sel: '#swBtn', t: 'Switch control', d: 'One panel for all your streams: pick the big one, mute, pause or preview. Dock it, float it or give it its own window.' },
   { sel: '#bellBtn', t: 'Notifications', d: 'Who just went live, @mentions and replies, and spam alerts if you moderate.' },
@@ -264,7 +264,7 @@ function init(){
     { id: 'welcome.learn', group: 'Help', kind: 'help', title: 'Learn the app', sub: 'The welcome screen and its feature cards (with nothing open)', words: ['welcome'], icon: 'book', when: empty, run: () => { intro.done = false; saveIntro(); esRefresh(); } },
     { id: 'welcome.skip', group: 'Help', kind: 'help', title: 'Skip to the launchpad', icon: 'arrowR', when: () => empty() && !intro.done, run: () => { intro.done = true; saveIntro(); esRefresh(); } },
     { id: 'welcome.reopen', title: 'Reopen last session', sub: 'The windows you had open last time', words: ['restore'], icon: 'undo', when: () => empty() && lastSession().length > 0, run: reopenSession },
-    { id: 'channels.import', group: 'Channels', title: 'Import follows', sub: 'The channels you follow on Kick, Twitch or YouTube, into your channels', icon: 'download', when: () => DESKTOP && ROLE === 'main',
+    { id: 'channels.import', group: 'Channels', title: 'Import follows', sub: `The channels you follow on ${siteNames()}, into your channels`, icon: 'download', when: () => DESKTOP && ROLE === 'main',
       run: () => { if (panel.hidden) savedBtn.click(); showSpMenu(true); const r = $('#importRow'); if (r){ r.hidden = false; r.scrollIntoView({ block: 'nearest' }); } } }
   ]);
   $('#tourLayer .tour-next').onclick = () => { if (!tour) return; if (tour.i < tour.steps.length - 1){ tour.i++; showTourStep(); } else endTour(); };

@@ -1,5 +1,7 @@
 import { $ } from '../core.js';
 import { kickUser, linkConnected, linkOn, linkReward, rewardShared, showReward } from '../platforms/pear-drops.js';
+import { PLAT_NAME } from '../platforms/platforms.js';
+import { PEAR_SITE } from '../platforms/players-link.js';
 import { commands } from '../shared/commands.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
@@ -46,7 +48,7 @@ function chestView(){
   const mine = kickUser();
   if (!mine) return null;
   const r = linkReward();
-  if (!rewardShared() || !r || typeof r.state !== 'string') return { state: 'plain', frac: 0, tip: ['Daily reward on Kick'] };
+  if (!rewardShared() || !r || typeof r.state !== 'string') return { state: 'plain', frac: 0, tip: [`Daily reward on ${PLAT_NAME[PEAR_SITE]}`] };
   if (r.state === 'signed-out') return null;
   const theirs = r.account && r.account.user;
   if (!theirs || String(theirs).toLowerCase() !== String(mine).toLowerCase()) return null;
@@ -62,7 +64,7 @@ function chestView(){
     const next = r.endsAt ? timeLeft(r.endsAt) : '';
     return { state, frac: 0, tip: next ? ['Daily reward claimed', 'Next one in ' + next] : ['Daily reward claimed'] };
   }
-  return { state, frac: 0, tip: ["Kick's daily reward isn't answering"] };
+  return { state, frac: 0, tip: [`${PLAT_NAME[PEAR_SITE]}'s daily reward isn't answering`] };
 }
 
 function render(){
@@ -98,7 +100,7 @@ function init(){
   btn.querySelector('.dr-ic').innerHTML = chestSvg();
   ring = btn.querySelector('.dr-ring-value');
   btn.onclick = openReward;
-  commands.add({ id: 'peardrops.reward', group: 'Pear Drops', title: 'Daily reward: claim', sub: 'Kick\'s daily reward, in Pear Drops', words: ['chest', 'kick reward', 'pear drops'], icon: 'gift', button: '#rewardBtn' });
+  commands.add({ id: 'peardrops.reward', group: 'Pear Drops', title: 'Daily reward: claim', sub: `${PLAT_NAME[PEAR_SITE]}'s daily reward, in Pear Drops`, words: ['chest', PLAT_NAME[PEAR_SITE].toLowerCase() + ' reward', 'pear drops'], icon: 'gift', button: '#rewardBtn' });
   store.watch('reward', render);
   // the left toolbar's words for a ready reward differ from the chip's on top
   new MutationObserver(render).observe(document.body, { attributes: true, attributeFilter: ['class'] });

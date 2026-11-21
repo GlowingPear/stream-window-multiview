@@ -10,8 +10,9 @@ import { unfollowKick } from '../panels/profiles/profiles.js';
 import { openSettings } from '../panels/settings/settings.js';
 import { suggestions } from '../platforms/linked.js';
 import { applyLink, kickAuto, linkIcon } from '../platforms/pear-drops.js';
-import { PLAT_NAME, checkMod, modOk, platOf, readLogins, rememberNames, setWatchSignedIn, siteIds, siteNames, sites,
-  streamSignedIn, watchSignedIn } from '../platforms/platforms.js';
+import { PLAT_NAME, checkMod, modOk, platOf, readLogins, rememberNames, setWatchSignedIn, siteIds, siteNames,
+  siteWith, sites, streamSignedIn, watchSignedIn } from '../platforms/platforms.js';
+import { PEAR_SITE } from '../platforms/players-link.js';
 import { ask } from '../shared/ask.js';
 import { commands } from '../shared/commands.js';
 import { esc } from '../shared/element.js';
@@ -116,7 +117,7 @@ function init(){
     }
     commands.add([
       { id: 'account.menu', group: 'Accounts', title: 'Logins', sub: 'Log in to ' + siteNames(), icon: 'signin', words: ['accounts'], button: '#loginBtn' },
-      { id: 'account.firefox', group: 'Accounts', title: 'Sign in to YouTube with Firefox', sub: 'Copies your YouTube login from Firefox', icon: 'signin', button: '.am-ff', when: () => true },
+      { id: 'account.firefox', group: 'Accounts', title: `Sign in to ${siteWith('login.firefox')} with Firefox`, sub: `Copies your ${siteWith('login.firefox')} login from Firefox`, icon: 'signin', button: '.am-ff', when: () => true },
       { id: 'account.settings', group: 'Accounts', title: 'Account settings', sub: 'Settings › Accounts', icon: 'gear', button: '#accountMenu .am-more', when: () => true }
     ]);
     sa.addEventListener('click', onAccountClick);
@@ -150,13 +151,13 @@ function init(){
       if (!st) return;
       yk.querySelector('.am-yk-row:not(.am-yk-set)').hidden = !!st.set;
       yk.querySelector('.am-yk-set').hidden = !st.set;
-      let msg = 'Makes live checks for saved YouTube channels faster and more reliable.', warn = false;
+      let msg = `Makes live checks for saved ${siteWith('apiKey')} channels faster and more reliable.`, warn = false;
       if (err){ msg = YK_ERR[err] || YK_ERR.network; warn = true; }
       else if (st.set){
-        if (st.state === 'quota'){ msg = `Over today's quota: checking YouTube pages instead until ${hhmm(st.until)}.`; warn = true; }
-        else if (st.state === 'rate'){ msg = `Too many requests: checking YouTube pages instead until ${hhmm(st.until)}.`; warn = true; }
-        else if (st.state === 'badkey'){ msg = 'Key not accepted any more: checking YouTube pages instead. Check it\'s enabled for "YouTube Data API v3", or remove it and add a new one.'; warn = true; }
-        else msg = 'Key added: YouTube live checks use it.' + (st.saved ? '' : ' It\'s kept until you close the app, because this computer can\'t store it securely.');
+        if (st.state === 'quota'){ msg = `Over today's quota: checking ${siteWith('apiKey')} pages instead until ${hhmm(st.until)}.`; warn = true; }
+        else if (st.state === 'rate'){ msg = `Too many requests: checking ${siteWith('apiKey')} pages instead until ${hhmm(st.until)}.`; warn = true; }
+        else if (st.state === 'badkey'){ msg = `Key not accepted any more: checking ${siteWith('apiKey')} pages instead. Check it's enabled for "YouTube Data API v3", or remove it and add a new one.`; warn = true; }
+        else msg = `Key added: ${siteWith('apiKey')} live checks use it.` + (st.saved ? '' : ' It\'s kept until you close the app, because this computer can\'t store it securely.');
       }
       ykSt.textContent = msg; ykSt.classList.toggle('warn', warn);
     }
@@ -175,7 +176,7 @@ function init(){
       yk.querySelector('.am-yk-add').onclick = add;
       ykIn.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); add(); } e.stopPropagation(); });
       yk.querySelector('.am-yk-rm').onclick = async () => {
-        if (!await ask('Remove the YouTube API key?', 'YouTube live checks go back to reading each channel\'s page.', { ok: 'Remove', danger: true })) return;
+        if (!await ask(`Remove the ${siteWith('apiKey')} API key?`, `${siteWith('apiKey')} live checks go back to reading each channel's page.`, { ok: 'Remove', danger: true })) return;
         showYtKey(await window.kmv.ytKeyRemove().catch(() => null));
       };
       yk.querySelector('.am-yk-how').onclick = () => showHelp('guide', 'youtube', 'API key');
@@ -215,11 +216,12 @@ function init(){
       sa.querySelectorAll('.am-watch input').forEach(i => { i.checked = !!watchSignedIn[i.dataset.w]; });
     });
     // While a linked Pear Drops sets Kick (Settings › Connected apps), Kick's box is a locked "Kick · Auto" chip
-    const autoChip = sa.querySelector('.am-auto'), autoNote = sa.querySelector('.am-auto-note');
+    const autoChip = sa.querySelector('.am-auto'), autoNote = sa.querySelector('.am-auto-note'), pearBox = sa.querySelector(`.am-watch input[data-w="${PEAR_SITE}"]`).closest('label');
     autoChip.querySelector('.am-auto-lock').innerHTML = icon.lock;
+    pearBox.after(autoChip);   // (in its site's place)
     const showKickAuto = () => {
       const on = kickAuto();
-      sa.querySelector('.am-watch input[data-w=kick]').closest('label').hidden = on;
+      pearBox.hidden = on;
       autoChip.hidden = autoNote.hidden = !on;
       sa.querySelectorAll('.am-watch input').forEach(i => { i.checked = !!watchSignedIn[i.dataset.w]; });
       if (on) linkIcon().then(src => { if (src) autoNote.querySelector('img').src = src; });
@@ -378,13 +380,13 @@ function init(){
       btn.disabled = false;
       if (!r || r.error){
         note.textContent = !r || r.error === 'read' ? 'Couldn\'t read Firefox\'s login. Close Firefox and try again.'
-          : r.error === 'nofirefox' ? 'Couldn\'t find Firefox on this computer. Install it from firefox.com and sign in to YouTube there first.'
-          : 'Firefox isn\'t signed in to YouTube. Open youtube.com in Firefox, sign in, then click the button again.';
+          : r.error === 'nofirefox' ? `Couldn't find Firefox on this computer. Install it from firefox.com and sign in to ${siteWith('login.firefox')} there first.`
+          : `Firefox isn't signed in to ${siteWith('login.firefox')}. Open youtube.com in Firefox, sign in, then click the button again.`;
         return;
       }
       const st = await refreshAccount();
-      if (r.signedIn || st.youtube){ ffDlg.hidden = true; flash('Signed in to YouTube with your Firefox login', { subject: 'accounts' }); }
-      else note.textContent = 'Copied the login, but YouTube still looks signed out. Sign out and back in to YouTube in Firefox, then try again.';
+      if (r.signedIn || st.youtube){ ffDlg.hidden = true; flash(`Signed in to ${siteWith('login.firefox')} with your Firefox login`, { subject: 'accounts' }); }
+      else note.textContent = `Copied the login, but ${siteWith('login.firefox')} still looks signed out. Sign out and back in to ${siteWith('login.firefox')} in Firefox, then try again.`;
     };
 
     // Chat text size: in the Layout menu and in Settings > Chat, both the same setting

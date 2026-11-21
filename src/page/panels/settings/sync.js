@@ -1,7 +1,7 @@
 import { ALERT_KINDS, SOUND_KEY } from '../../alerts/alerts.js';
 import { $, ROLE } from '../../core.js';
 import { openSettings, settingsDlg } from './settings.js';
-import { chLabel, platIcon, platOf } from '../../platforms/platforms.js';
+import { chLabel, platIcon, platOf, sites } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
@@ -22,7 +22,7 @@ const syOn = () => !!(sy && sy.on);
 const SY_FOLDER_ICON = { icloud: 'cloud', dropbox: 'dropbox', onedrive: 'cloud', gdrive: 'cloud', nextcloud: 'cloud' };
 // What a sync changed, in words: "2 channels added", "the theme changed"
 const SY_KEY_WORDS = { theme: 'the theme', themes: 'your themes', toolbar: 'the toolbar', keys: 'keyboard shortcuts', mentWords: 'your mention words',
-  myName: 'your Kick username', myTwitch: 'your Twitch username', myYouTube: 'your YouTube handle', myRumble: 'your Rumble username', shoutText: 'the shoutout message', streamers: 'your linked streamers' };
+  shoutText: 'the shoutout message', streamers: 'your linked streamers' };
 const syPlural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
 function syDescribe(s){
   if (!s) return [];
@@ -30,9 +30,9 @@ function syDescribe(s){
   if (s.added && s.added.length) out.push(syPlural(s.added.length, 'channel') + ' added');
   if (s.removed && s.removed.length) out.push(syPlural(s.removed.length, 'channel') + ' removed');
   if (s.changed && s.changed.length) out.push(syPlural(s.changed.length, 'channel') + ' changed');
-  const keys = (s.keys || []), named = keys.filter(k => SY_KEY_WORDS[k]), sounds = keys.filter(k => /^alertSound\./.test(k));
+  const keys = (s.keys || []), named = keys.filter(syKeyWords), sounds = keys.filter(k => /^alertSound\./.test(k));
   const rest = keys.length - named.length - sounds.length;
-  named.forEach(k => out.push(SY_KEY_WORDS[k] + ' changed'));
+  named.forEach(k => out.push(syKeyWords(k) + ' changed'));
   if (sounds.length) out.push(syPlural(sounds.length, 'alert sound') + ' changed');
   if (rest) out.push(syPlural(rest, 'setting') + ' changed');
   return out;
@@ -44,16 +44,20 @@ const SY_LABEL = { theme: 'Theme', themes: 'Your themes', keys: 'Keyboard shortc
   paletteOn: 'Search box', paletteRecent: 'Search box history', notifyAll: 'Live alerts for every channel', chanOpts: 'Channel settings',
   linkedOn: 'Linked channels', streamers: 'Linked streamers', linkedNot: 'Not the same streamer', linkedOpts: 'Linked channels options',
   allBots: "ALL: chat bots", allEvents: 'ALL: events', allSend: 'ALL: sending', allTimeout: 'ALL: timeouts', allHype: 'ALL: hype train', allHidden: 'ALL: hidden sites',
-  mentOn: 'Mentions', mentMuted: 'Muted mentions', mentWords: 'Mention words', myName: 'Kick username', myTwitch: 'Twitch username', myYouTube: 'YouTube handle', myRumble: 'Rumble username',
+  mentOn: 'Mentions', mentMuted: 'Muted mentions', mentWords: 'Mention words',
   dndFor: 'Do not disturb', desktopNotify: 'Desktop notifications', alerts: 'Alerts',
   autoTranslate: 'Translate chat', noTranslate: "Languages not translated", translateAll: 'Translate every message', emotePreview: 'Emote previews', newEmotes: 'New emotes', bigEmoteMenu: 'Big emote in menus',
   chatName: 'Name in chat', chatNameText: 'Name in chat text', chatOverlay: 'Chat overlay', chatOverlayOff: 'Chat overlay off for', chatOverlayKeep: 'Chat overlay stays',
   chatOverlaySecs: 'Chat overlay time', chatOverlayLines: 'Chat overlay lines', chatCounts: 'Chat counts',
   shoutOn: 'Shoutouts', shoutModOnly: 'Shoutouts: only as a mod', shoutSend: 'Shoutouts: sending', shoutText: 'Shoutout message', shoutChannels: 'Shoutout cards',
-  shoutTwitch: "Twitch's shoutouts", shoutAgain: 'Shoutouts: asking again', shoutRunN: 'Shoutouts: run size', shoutStreamers: 'Shoutouts: streamers only', shoutListFirst: 'Shoutouts: list first',
-  ytSkip: 'YouTube: skip ads', ytAutoLike: 'YouTube: auto-like', ytChatView: 'YouTube: chat view', startMuted: 'Start muted', autoPause: 'Auto-pause', snap: 'Snap windows',
+  shoutAgain: 'Shoutouts: asking again', shoutRunN: 'Shoutouts: run size', shoutStreamers: 'Shoutouts: streamers only', shoutListFirst: 'Shoutouts: list first',
+  startMuted: 'Start muted', autoPause: 'Auto-pause', snap: 'Snap windows',
   quality: 'Stream quality', qualityFit: 'Fits the window\'s range', qualityHidden: 'Hidden streams\' quality' };
-const syLabel = k => SY_LABEL[k] || (/^alertSound\./.test(k) ? syCap(k.slice(11)) + ' sound' : '');
+// A site's own setting, as its site says it: your name there ("Kick username"), or one of its settingWords ("YouTube: skip ads")
+const sySiteKey = k => { const me = sites().find(p => p.me.setting === k), own = sites().find(p => p.settingWords[k]);
+  return me ? { name: `${me.name} ${me.me.word}`, words: `your ${me.name} ${me.me.word}` } : own ? { name: `${own.name}: ${own.settingWords[k]}` } : null; };
+const syKeyWords = k => SY_KEY_WORDS[k] || (sySiteKey(k) || {}).words;
+const syLabel = k => SY_LABEL[k] || (sySiteKey(k) || {}).name || (/^alertSound\./.test(k) ? syCap(k.slice(11)) + ' sound' : '');
 
 // "Just now", "3 min ago", "Yesterday", "2 days ago"; long: "2 minutes ago"
 function syAgo(at, long = false){

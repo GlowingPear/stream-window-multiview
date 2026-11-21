@@ -1,8 +1,8 @@
 import { wins } from '../core.js';
 import { nameOf } from './linked.js';
 import { kickAuto, kickOut, reportPlayers } from './pear-drops.js';
-import { effectiveSignedIn } from './players-link.js';
-import { element } from '../shared/element.js';
+import { PEAR_SITE, effectiveSignedIn } from './players-link.js';
+import { element, esc } from '../shared/element.js';
 import { DESKTOP } from '../shared/env.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
@@ -20,17 +20,63 @@ let DEFAULT_SITE;              // a bare name is a channel of the site with no p
 // the sites' ids, in the shared list's order
 const siteIds = () => Object.keys(PLATFORMS);
 const sites = () => Object.values(PLATFORMS);
+// A slot's value on a site, by its path in sites/adapter.js ('spamAlerts', 'login.firefox', 'chat.hypeTrains')
+const slotOf = (site, path) => String(path).split('.').reduce((o, k) => (o == null ? o : o[k]), site);
+// Whether a site has something: a slot's path, or a list slot's path and a kind in it ('support.finds:bits')
+const siteHas = (site, path) => { const [slot, kind] = String(path).split(':'), v = slotOf(site, slot); return kind ? Array.isArray(v) && v.some(x => x && x.kind === kind) : !!v; };
+// The sites that have something (siteHas; none: every site), in the shared list's order
+const sitesWith = path => sites().filter(p => !path || siteHas(p, path));
+// The one site that has something ('login.firefox': YouTube): its name
+const siteWith = path => (sitesWith(path)[0] || {}).name || '';
 // The sites that do shoutouts (their module's `shoutouts`: chat/shoutout.js)
-const shoutSites = () => sites().filter(p => p.shoutouts).map(p => p.id);
-const shoutSiteNames = () => shoutSites().map(p => PLATFORMS[p].name).join(' or ');
+const shoutSites = () => sitesWith('shoutouts').map(p => p.id);
+const shoutSiteNames = () => siteNames('or', 'shoutouts');
 // Who holds a site's held messages: "AutoMod" (its held.by), or '' for the site itself ("held for review"); and as said
 // in a sentence ("AutoMod", "YouTube")
 const heldByOf = site => ((PLATFORMS[site] || {}).held || {}).by || '';
 // "Denied" (Twitch), "Hidden" (YouTube): a held message its moderators turned down
 const deniedWord = site => { const d = ((PLATFORMS[site] || {}).held || {}).denied || 'denied'; return d[0].toUpperCase() + d.slice(1); };
 const heldWho = site => heldByOf(site) || (PLAT_NAME || {})[site] || '';
-// The sites' names in a sentence: "Kick, Twitch or YouTube"
-const siteNames = (and = 'or') => { const n = sites().map(p => p.name); return n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ` ${and} ` + n[n.length - 1]; };
+// The sites' names in a sentence: "Kick, Twitch, YouTube or Rumble"; with a slot's path, the ones that have it
+// (siteNames('and', 'spamAlerts'): "Kick, Twitch and Rumble"). Never write a site's name in the page: ask for it.
+const siteNames = (and = 'or', path) => { const n = sitesWith(path).map(p => p.name); return n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ` ${and} ` + n[n.length - 1]; };
+// The sites' names in the page's markup (index.html), filled in as it starts, so it never spells out a site:
+//   {sites}, {sites or}, {sites and spamAlerts}  the names in a sentence (siteNames): all of them, or the ones with a slot
+//   {site login.firefox}                          the one site with a slot
+//   {name}                                        the site its nearest data-site="<id>" is for (a site's own Settings page)
+//   {pear}                                        the site Pear Drops farms (players-link.js)
+// in text and in attributes (title, placeholder, data-st-sub, …). A row for each site is a <template data-each-site>
+// (data-each-site="<slot>": each site with it), copied for each with {id}, {name}, {letter} and {me} (what your name
+// there looks like: "username", "@handle") filled in, and data-site="{id}" for its {name}s; an element with data-first
+// in it only stays in the first site's copy.
+const SITE_TOKEN = /\{(sites|site|name|pear)(?: ([^{}]*))?\}/g;
+function siteToken(el, kind, arg = ''){
+  const [join, path] = /^(and|or)\b/.test(arg) ? [arg.split(' ')[0], arg.split(' ')[1]] : ['and', arg || undefined];
+  if (kind === 'sites') return siteNames(join, path);
+  if (kind === 'site') return siteWith(arg);
+  if (kind === 'pear') return PLAT_NAME[PEAR_SITE];
+  const at = el && el.closest('[data-site]');
+  return at ? PLAT_NAME[at.dataset.site] || '' : '';
+}
+function fillSiteNames(root = document){
+  root.querySelectorAll('template[data-each-site]').forEach(t => {
+    const html = t.innerHTML;
+    sitesWith(t.dataset.eachSite).forEach((p, i) => {
+      const me = p.me ? (p.me.at ? '@' : '') + p.me.word : '';
+      const row = document.createElement('template');
+      row.innerHTML = html.replace(/\{(id|name|letter|me)\}/g, (_, k) => esc(k === 'id' ? p.id : k === 'name' ? p.name : k === 'letter' ? p.letter : me));
+      row.content.querySelectorAll('[data-first]').forEach(e => { if (i) e.remove(); else e.removeAttribute('data-first'); });
+      [...row.content.children].forEach(e => { if (!e.dataset.site) e.dataset.site = p.id; });
+      t.before(row.content);
+    });
+    t.remove();
+  });
+  const fill = (el, v) => v.replace(SITE_TOKEN, (_, kind, arg) => siteToken(el, kind, arg));
+  const walk = document.createTreeWalker(root.body || root, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) if (n.nodeValue.includes('{')) n.nodeValue = fill(n.parentElement, n.nodeValue);
+  (root.body || root).querySelectorAll('*').forEach(el => { for (const a of el.attributes) if (a.value.includes('{')) a.value = fill(el, a.value); });
+  if (root.title && root.title.includes('{')) root.title = fill(null, root.title);
+}
 let PLAT_NAME;
 // A site's letter, from the list of sites ("K", "R"): on its badge and its tabs
 const siteLetter = p => (PLATFORMS[p] || {}).letter || '?';
@@ -195,6 +241,7 @@ function setWatchSignedIn(p, on){
 function init(){
   DEFAULT_SITE = PLATFORMS[SmvSites.DEFAULT];
   PLAT_NAME = Object.fromEntries(Object.values(PLATFORMS).map(p => [p.id, p.name]));
+  fillSiteNames();
   for (const p of siteIds()) watchSignedIn[p] = true;
   Object.assign(chNames, settings.json('ytNames', {}), settings.json(NAMES, {}));
   settings.onChange(NAMES, (_, v) => {          // learned in the other window
@@ -225,5 +272,5 @@ function init(){
 export { chatSrc, checkMod, chLabel, chLabelP, chNames, deniedWord, extCount, externalFor, heldByOf, heldWho,
   infoNames, init, isModOf, isVideo, modIs, modOk, modUrl, normCh, openModView, parseInput, PLAT_NAME, platform,
   platformVars, platIcon, platOf, popUp, readLogins, rememberName, rememberNames, setWatchSignedIn, shoutSiteNames,
-  shoutSites, siteBadge, siteIds, siteLetter, siteNames, sites, srcFor, streamSignedIn, streamSrc, syncStreams,
-  trimPlayerPage, viewPartition, watchSignedIn, ytVidOf };
+  shoutSites, siteBadge, siteIds, siteLetter, siteNames, sites, siteWith, srcFor, streamSignedIn, streamSrc,
+  syncStreams, trimPlayerPage, viewPartition, watchSignedIn, ytVidOf };

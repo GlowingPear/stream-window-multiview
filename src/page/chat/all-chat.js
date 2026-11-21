@@ -29,7 +29,7 @@ import { openExtMenu } from '../panels/extensions/extensions.js';
 import { accountsOf, chBadge, chanOpt, nameOf, optFor, setChanOpt, siteName, siteNo, siteNum, streamerBots,
   streamerOf } from '../platforms/linked.js';
 import { PLAT_NAME, chLabel, heldByOf, heldWho, isVideo, modIs, modUrl, openModView, platOf, platform, popUp,
-  rememberName, shoutSites, siteBadge } from '../platforms/platforms.js';
+  rememberName, shoutSites, siteBadge, siteNames, siteWith } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { element } from '../shared/element.js';
 import { DESKTOP, keyName } from '../shared/env.js';
@@ -576,7 +576,7 @@ const bigEmote = u => String(u).replace(/(static-cdn\.jtvnw\.net\/emoticons\/v2\
 function emoteEl(src, name, from, ch, fresh, send){
   const isNew = !!(fresh && fresh.has(name));
   const img = element('img', { class: 'al-e' + (isNew ? ' al-new' : ''), src, alt: name, title: emoteOn ? '' : isNew ? `${name} · new` : from ? `${name} · ${from}` : name, loading: 'lazy', referrerPolicy: 'no-referrer',
-    dataset: { send: send || name, from: from || PLAT_NAME[platOf(ch || '')] || '', site: ({ '7TV': '7TV', BetterTTV: 'BTTV', FrankerFaceZ: 'FFZ' })[from] || PLAT_NAME[platOf(ch || '')] || 'Kick' } });
+    dataset: { send: send || name, from: from || PLAT_NAME[platOf(ch || '')] || '', site: ({ '7TV': '7TV', BetterTTV: 'BTTV', FrankerFaceZ: 'FFZ' })[from] || PLAT_NAME[platOf(ch || '')] || PLATFORMS[SmvSites.DEFAULT].name } });
   img.onerror = () => img.replaceWith(document.createTextNode(name));
   img.onpointerenter = () => { if (isNew) emoteSeen(ch, name); if (emoteOn) emoteCard(img); };
   return img;
@@ -795,7 +795,7 @@ function lineEl(m){
       m.soon ? element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' is raiding ', element('b', null, chLabel(m.to)), element('span', 'al-amt', viewers))
         : m.off ? element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' called off the raid on ', element('b', null, chLabel(m.to)))
         : element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' raided ', element('b', null, chLabel(m.to)), element('span', 'al-amt', ` on ${PLAT_NAME[m.site]}${viewers}`)),
-      m.soon ? left >= 0 && element('span', { class: 'al-tag al-tag-raid al-raidin', title: 'Twitch sends the raid by then, or sooner' }, left ? `in ${left >= 60 ? `${Math.floor(left / 60)}m ${left % 60}s` : `${left}s`}` : 'any moment')
+      m.soon ? left >= 0 && element('span', { class: 'al-tag al-tag-raid al-raidin', title: `${PLAT_NAME[m.site]} sends the raid by then, or sooner` }, left ? `in ${left >= 60 ? `${Math.floor(left / 60)}m ${left % 60}s` : `${left}s`}` : 'any moment')
         : m.off ? ''
         : m.opened ? element('span', 'al-tag al-tag-raid', 'Opened') : element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.raidOpen' }, title: `Open ${chLabel(m.to)} in a window of its own`,
           onclick: () => { addParsed({ channel: m.to, only: null }); m.opened = true; redrawLine(m); } }, 'Open ›'));
@@ -855,7 +855,7 @@ function lineEl(m){
     first && element('span', { class: 'al-tag al-tag-first', title: MARKS.first_time_chatter[1]() }, MARKS.first_time_chatter[0]),
     ...flagTags(m),
     m.allowed && element('span', { class: 'al-held-end ok', title: `A moderator let it through after ${heldWho(m.site)} held it${heldByOf(m.site) ? '' : ' for review'}` }, '✓ allowed' + resolvedBy(m.allowed)),
-    ...marks.map(x => { const k = MARKS[x.type]; return element('span', { class: 'al-tag al-tag-mark', title: k ? k[1](x) : `Twitch marks it: ${x.type.replace(/_/g, ' ')}` }, k ? k[0] : x.type.replace(/_/g, ' ')); }),
+    ...marks.map(x => { const k = MARKS[x.type]; return element('span', { class: 'al-tag al-tag-mark', title: k ? k[1](x) : `${PLAT_NAME[m.site]} marks it: ${x.type.replace(/_/g, ' ')}` }, k ? k[0] : x.type.replace(/_/g, ' ')); }),
     m.streak && element('span', { class: 'al-tag al-tag-streak', title: `Watched ${m.streak} streams in a row` }, `Watch streak · ${m.streak}`),
     m.announce && element('span', 'al-tag al-tag-ann', 'Announcement'),
     m.bits && element('span', 'al-tag al-tag-bits', `${m.bits} bits`),
@@ -1440,7 +1440,7 @@ function openFilters(view){
   view.fm.replaceChildren(element('div', 'all-mvh', 'Show in ALL'),
     seg('Bots', 'Their messages, or one line to open', [[false, 'Hidden'], [true, 'Shown']], botsShown, setBotsShown, 'all.bots'),
     seg('Events', 'Subs, gifts, raids and Super Chats', [['short', 'Short'], ['full', 'Full'], ['hidden', 'Hidden']], eventsMode, setEventsMode, 'all.events'),
-    seg('Hype train', 'Twitch’s, over the chat', [[true, 'Shown'], [false, 'Hidden']], hypeShown, setHypeShown, 'all.hype'));
+    seg('Hype train', `${siteNames('and', 'chat.hypeTrains')}’s, over the chat`, [[true, 'Shown'], [false, 'Hidden']], hypeShown, setHypeShown, 'all.hype'));
   view.fm.hidden = false;
   placeAt(view, view.fm, view.filt);
 }
@@ -1873,9 +1873,10 @@ function jumpHeld(view){
 }
 // Twitch's suspicious-user flags on a message (to moderators): tags on its line, or its held card. Flags that come
 // before their message wait for it (the newest 50).
-const FLAGS = { 'evader-possible': ['Possible ban evader', 'Twitch thinks they may be evading a ban'], 'evader-likely': ['Likely ban evader', 'Twitch thinks they\'re likely evading a ban'],
-  monitored: ['Monitored', 'Moderators are keeping an eye on them'], restricted: ['Restricted', 'Only moderators see their messages'] };
-const flagTags = m => (m.flags || []).filter(x => FLAGS[x]).map(x => element('span', { class: 'al-tag al-tag-flag al-flag-' + x.replace(/-.*/, ''), title: FLAGS[x][1] }, FLAGS[x][0]));
+// (what each says: [its tag, its title for the site's name])
+const FLAGS = { 'evader-possible': ['Possible ban evader', s => `${s} thinks they may be evading a ban`], 'evader-likely': ['Likely ban evader', s => `${s} thinks they're likely evading a ban`],
+  monitored: ['Monitored', () => 'Moderators are keeping an eye on them'], restricted: ['Restricted', () => 'Only moderators see their messages'] };
+const flagTags = m => (m.flags || []).filter(x => FLAGS[x]).map(x => element('span', { class: 'al-tag al-tag-flag al-flag-' + x.replace(/-.*/, ''), title: FLAGS[x][1](PLAT_NAME[m.site] || siteWith('suspicious')) }, FLAGS[x][0]));
 function flagLine(f, m){
   const k = 'twitch:' + m.msgId, line = f.byId.get(k);
   if (line){ line.flags = m.flags; redrawLine(line); return; }

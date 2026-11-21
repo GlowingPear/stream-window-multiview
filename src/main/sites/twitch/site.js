@@ -235,7 +235,7 @@ function create(ctx) {
     const tok = await token();
     // (the owners' pictures at the profiles' size, TW_PROFILE: the same address, so one download for both)
     const r = tok ? await gql(tok, 'query($l:String!){currentUser{emoteSets{id owner{login displayName profileImageURL(width:300)} emotes{id token}}} user(login:$l){id profileImageURL(width:300)}}', { l: login(ch) }).catch(() => null) : null;
-    return { groups: twitchGroups(r && r.d, login(ch)) || [], id: r && r.d && r.d.data && r.d.data.user && r.d.data.user.id };
+    return { groups: twitchGroups(r && r.d, login(ch), SmvSites.byId.twitch.name) || [], id: r && r.d && r.d.data && r.d.data.user && r.d.data.user.id };
   }
 
   return new SiteAdapter({

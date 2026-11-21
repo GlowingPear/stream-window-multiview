@@ -37,8 +37,11 @@ const SLOTS = {
   login: [{ fromPages: ['boolean', false], firefox: ['boolean', false], unfollow: ['boolean', false] }, {},
     'its login: your name read from its pages (window.kmv.detectMe), sign-in by copying Firefox\'s, Import follows and profiles can unfollow'],
   following: ['boolean', false, 'a profile says whether you follow them'],
+  pastStreams: ['boolean', false, 'a profile\'s history has its past broadcasts too (when the streamer keeps them)'],
   roundsFollowers: ['boolean', false, 'its follower counts are rounded'],
+  settingWords: ['object', {}, 'its own saved settings (Settings › Sync\'s History): { key: what it is }, shown as "<its name>: skip ads"'],
   // Its streams
+  apiKey: ['boolean', false, 'live checks for its channels can use your API key (its page in Settings)'],
   liveVideo: ['boolean', false, 'its channel\'s stream is a video of its own, looked up while it\'s live (windows/views.js)'],
   videoId: ['function', () => null, '(ch) -> the video id a one-video channel id holds (its player and chat need), or null: looked up as a channel\'s is (liveVideo)'],
   cookieJs: ['string', null, 'run in its stream and chat pages as they load: answers its cookie question (windows/views.js); null: it has none to answer'],
@@ -74,6 +77,7 @@ const SLOTS = {
   modRequest: ['function', null, '(ch, name, secs) -> { url, method, body }: a timeout or ban as its own request (else the command is typed)'],
   deleteMods: ['boolean', false, 'ALL\'s Delete works on another mod\'s message'],
   flagged: ['boolean', false, 'Settings › Flagged: it holds messages, or flags people, for moderators'],
+  suspicious: ['boolean', false, '... it flags suspicious users (possible ban evaders) to moderators (Settings › Flagged, ALL\'s tags)'],
   held: [{ by: ['string', ''], expires: ['boolean', false], yours: ['boolean', false], allow: ['string', REQUIRED], deny: ['string', REQUIRED], denied: ['string', REQUIRED] }, null,
     'held messages: who holds them (\'\': the site, "held for review"), whether a hold runs out, whether yours can be held, its buttons\' words'],
   // Its parts with code of their own (in its folder)

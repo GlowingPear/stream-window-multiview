@@ -87,6 +87,8 @@ const youtube = new Site({   // (what each slot is for, and its default: sites/a
   // text, and it may only take a real press
   send: { button: '#send-button', inner: ['button', 'yt-button-renderer'], waitEnabled: true, realPress: true },
   likes: true,
+  settingWords: { ytSkip: 'skip ads', ytAutoLike: 'auto-like', ytChatView: 'chat view' },   // (Settings › Sync's History)
+  apiKey: true,          // live checks can use your API key (Settings › YouTube)
   chatCommands: [],   // (its live chat has no commands)
   liveCommands: null,
   // A name in ALL (see kick.js): YouTube colours a name by who they are, not by them. As its chat page draws them (look:
