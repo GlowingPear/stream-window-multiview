@@ -122,9 +122,9 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   assert.deepEqual(tabs, ['general', 'chat', 'search', 'windows', 'layouts', 'themes', 'accounts', 'linked', 'apps', 'youtube', 'extensions', 'notify', 'mentions', 'support', 'shoutouts', 'spam', 'flagged', 'guide', 'keys', 'updates', 'sync', 'developer']);
   assert.deepEqual(await win.$$eval('#settingsDlg .st-rail-sec', h => h.filter(x => !x.hidden).map(x => x.textContent)), ['Appearance', 'Sites', 'Alerts', 'Moderation', 'Help']);
   assert.ok(await win.isVisible('#settingsDlg .am-watch'), 'Watch signed in moved here');
-  assert.ok(await win.isHidden('#mentUser'), 'your usernames are under Mentions');
+  assert.ok(await win.isHidden('[data-me="kick"]'), 'your usernames are under Mentions');
   await win.click('#settingsDlg .st-rail [data-s=mentions]');
-  assert.ok(await win.isVisible('#mentUser'), 'here');
+  assert.ok(await win.isVisible('[data-me="kick"]'), 'here');
   await win.click('#settingsDlg .st-rail [data-s=accounts]');
 
   // Import follows opens over Settings, and Esc closes only the top one
@@ -239,7 +239,7 @@ test('spam alerts: off until you turn them on, remembered, and Try it explains a
 test('alert sounds: each one plays, and you can pick your own sound file', T, async () => {
   await win.evaluate(() => window.openSettings('mentions'));
   await win.click('#mentTabs [data-t=alerts]');
-  assert.ok(await win.isHidden('#mentUser') && await win.isHidden('[data-add=mbots]'), 'one sub-tab at a time');
+  assert.ok(await win.isHidden('[data-me="kick"]') && await win.isHidden('[data-add=mbots]'), 'one sub-tab at a time');
   await win.uncheck('#mentOn');
   assert.equal(await win.evaluate(() => localStorage.getItem('kickMultiview.mentOn')), '0', 'mention alerts off');
   assert.ok(await win.$eval('.st-opts[data-for=mention]', e => e.classList.contains('st-dim')), 'their options dim');

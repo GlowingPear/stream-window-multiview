@@ -49,8 +49,8 @@ test('popped out into the Streams window, the stream still shows its chat\'s new
 test('your own messages show over the stream too (mentions still skip them)', { timeout: 60000 }, async () => {
   await a.win.evaluate(() => window.openSettings('mentions'));
   await a.win.click('#mentTabs [data-t=names]');
-  await a.win.fill('#mentUser', 'mename');
-  await a.win.press('#mentUser', 'Enter');
+  await a.win.fill('[data-me="kick"]', 'mename');
+  await a.win.press('[data-me="kick"]', 'Enter');
   await a.win.keyboard.press('Escape');
   if ((await a.win.getAttribute('#overlayBtn', 'aria-pressed')) !== 'true') await a.win.click('#overlayBtn');
   await waitArmed();

@@ -265,7 +265,7 @@ test('Settings › Mentions opens on Alerts, its first tab, as Notifications and
   for (const p of ['support', 'flagged']) assert.ok(await page.$$eval(`[data-s=${p}] .st-tabs button`, e => e.some(b => b.textContent === 'How it alerts')), `and the same name as ${p}'s`);
   await page.click('#mentTabs [data-t=names]');
   assert.deepEqual(await shown(), ['names']);
-  assert.ok(await page.isVisible('#mentUser'));
+  assert.ok(await page.isVisible('[data-me="kick"]'));
   // a link with a tab: Spam alerts › Lists › Chat bots to ignore links to Chat › Chat bots
   await page.evaluate(() => openSettings('spam'));
   await page.click('#spamTabs [data-t=lists]');
