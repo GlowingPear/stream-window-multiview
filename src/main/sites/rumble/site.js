@@ -79,6 +79,14 @@ function describeRequest(u) {
   const p = u.pathname;
   return /\/livestreams$/.test(p) ? 'live streams page' : /^\/api\/Media\/oembed/.test(p) ? 'a video\'s player (oEmbed)' : 'page';
 }
+// Its Followed Channels page (rumble.com/followed-channels): the list, a row a channel, the name in a row (its picture's
+// link comes first, with the name's first letter when there's no picture), and that page signed out (its "Sign in"
+// link, no list)
+const FOLLOW_SCOPE = 'ol.followed-channels__list';
+const FOLLOW_NAME = '.line-clamp-2';
+const SIGNED_OUT_JS = `(!document.querySelector('ol.followed-channels__list') && !!document.querySelector('a[href*="/login.php"]'))`;
+// Its login's cookie
+const LOGIN_COOKIE = 'u_s';
 // Its own answers say whether you're signed in (user.logged_in, in any service.php answer): true, false, or null when
 // it isn't one of them (its Cloudflare check's page, an error)
 const signedInOn = d => (d && d.user && typeof d.user.logged_in === 'boolean' ? d.user.logged_in : null);
@@ -132,17 +140,28 @@ function create(ctx) {
       return o ? { ...rest, videoId: `${o.embed}.${chat}` } : null;   // (live, but its player can't be found: can't tell yet)
     } catch { return null; }
   }
-  // Signed in: its own answer, with your login (its emote list's, the smallest; asked at most once a minute)
-  let signed = { at: 0, v: null };
-  async function signedIn() {
-    // (no cookies of its own at all: never signed in here, so nothing to ask)
-    const any = await ctx.session().cookies.get({ domain: 'rumble.com' }).then(l => l.length > 0, () => true);
-    if (!any) return false;
-    if (Date.now() - signed.at < 60e3 && signed.v !== null) return signed.v;
-    let v = null;
-    try { const r = await ctx.loginFetch(page(RU + '/service.php?name=emote.list'), { headers: ctx.headers(), signal: ctx.netSignal() }); if (r.ok) v = signedInOn(await r.json()); } catch {}
-    if (v !== null) signed = { at: Date.now(), v };
-    return v;
+  // Signed in: its login cookie (u_s, kept only for its signed-in accounts)
+  const signedIn = () => ctx.session().cookies.get({ name: LOGIN_COOKIE }).then(l => l.some(c => /(^|\.)rumble\.com$/.test(c.domain) && c.value), () => false);
+  // Whether that login still works: its own answer, with it (its emote list's, the smallest)
+  async function loginWorks() {
+    try {
+      const r = await ctx.loginFetch(page(RU + '/service.php?name=emote.list'), { headers: ctx.headers(), signal: ctx.netSignal() });
+      return r.ok ? signedInOn(await r.json()) : null;
+    } catch { return null; }
+  }
+  /* the channels you follow: its Followed Channels page; for suggestions, read again in the background at most once a
+     day while you're signed in (no live state) */
+  const importFollows = () => ctx.scrapeFollowPage(RU + '/followed-channels', { scope: FOLLOW_SCOPE, name: FOLLOW_NAME, signedOut: SIGNED_OUT_JS });
+  let followTried = 0;
+  async function followsTick(now) {
+    const saved = ctx.follows.saved();
+    if ((!saved || now - saved.at > 24 * 3600e3) && now - followTried > 6 * 3600e3 && !ctx.importing.busy() && (await signedIn())) {
+      await ctx.importing.run(async () => {
+        followTried = now;
+        const r = await importFollows().catch(() => null);
+        if (r && r.items && r.items.length) ctx.follows.keep(r.items);
+      });
+    }
   }
   async function profile(ch) {
     if (ch.startsWith('ru:v:')) return { missing: true, video: true };
@@ -155,10 +174,9 @@ function create(ctx) {
     id: site.id, site,
     loginUrl: RU + '/login.php',
     named: false,                     // (its pages only say that you're signed in)
-    signedIn: () => signedIn().then(Boolean),
-    account: () => signedIn().then(v => v === true),
-    loggedOut() { signed = { at: 0, v: null }; },
+    signedIn, account: signedIn, loginWorks,
     liveOne,
+    follows: { import: importFollows, tick: followsTick, retry() { followTried = 0; } },
     profile,
     byName: name => 'ru:' + String(name).toLowerCase(),
     // a name without a channel page (/c/<name>) may be a user's (/user/<name>): many streamers only have that
@@ -168,4 +186,4 @@ function create(ctx) {
   });
 }
 
-module.exports = { create, describeRequest, fromLink, parseRumbleLive, parseRumbleProfile, parseOembed, rumbleItems, rumbleItem, rumblePage, rumbleLivePage, signedInOn };
+module.exports = { create, describeRequest, fromLink, FOLLOW_SCOPE, SIGNED_OUT_JS, LOGIN_COOKIE, parseRumbleLive, parseRumbleProfile, parseOembed, rumbleItems, rumbleItem, rumblePage, rumbleLivePage, signedInOn };

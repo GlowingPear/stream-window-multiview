@@ -1343,6 +1343,12 @@ function openLogin(id) {
   if (a.openLogin) { a.openLogin(); return; }      // a site that signs in some other way (no login window)
   const w = openSiteWindow(a.loginUrl, 1100, 800, a.site.partition);
   w?.on('closed', () => mainWin?.webContents.send('account:changed', { platform: id, loggedOut: false }));
+  // Signed in there: the window closes by itself (once a page loads with the site's login), when it opened signed out
+  const was = a.signedIn().catch(() => true);
+  w?.webContents.on('did-navigate', async () => {
+    if (await was || !(await a.signedIn().catch(() => false))) return;
+    setTimeout(() => { if (!w.isDestroyed()) w.close(); }, 600);
+  });
 }
 mainIpc.handle('account:logout', async (_e, plat) => { await logout(siteId(plat)); return true; });
 mainIpc.handle('account:login', (_e, plat) => { openLogin(siteId(plat)); });
@@ -1411,7 +1417,7 @@ const progress = (plat, text) => mainWin?.webContents.send('follows:progress', {
 // Open a page with your login in a hidden window, keep scrolling until no more channels load,
 // and collect the channel links on it (a's fromLink). scope: where on the page its channels are; signedOut: the
 // page's own way of saying you're signed out (a script's expression), for a page that doesn't send you to sign in.
-async function scrapeFollowPage(a, url, { maxRounds = 70, scope = 'main', signedOut = '' } = {}) {
+async function scrapeFollowPage(a, url, { maxRounds = 70, scope = 'main', signedOut = '', name = '' } = {}) {
   const plat = a.id;
   const win = new BrowserWindow({ show: false, width: 1280, height: 1000,
     webPreferences: { partition: a.site.partition, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
@@ -1427,7 +1433,7 @@ async function scrapeFollowPage(a, url, { maxRounds = 70, scope = 'main', signed
       scope.querySelectorAll('a[href]').forEach(a => {
         if (a.closest('nav, header, aside, ytd-guide-renderer, #guide, ytd-mini-guide-renderer, tp-yt-app-drawer, [data-a-target="side-nav-bar"], #masthead')) return;
         const card = a.closest('ytd-channel-renderer, [data-a-target="user-card-modal"], article, li, [class*="card" i]') || a;
-        const t = (card.querySelector('#channel-title #text, #text.ytd-channel-name, h3, h4, p[title], [data-a-target="preview-card-channel-link"]') || a);
+        const t = (card.querySelector(${JSON.stringify(name ? name + ', ' : '')} + '#channel-title #text, #text.ytd-channel-name, h3, h4, p[title], [data-a-target="preview-card-channel-link"]') || a);
         out.push({ href: a.getAttribute('href'), name: (t.getAttribute && t.getAttribute('title')) || (t.textContent || '').trim() || (a.querySelector('img') && a.querySelector('img').alt) || '' });
       });
       return { links: out, signedOut: ${signedOut || 'false'} };
@@ -1443,15 +1449,16 @@ async function scrapeFollowPage(a, url, { maxRounds = 70, scope = 'main', signed
       if (r && r.signedOut && !found.size) return { error: 'login' };
       const before = found.size;
       (r ? r.links : []).forEach(l => {
-        const ch = a.fromLink(l.href);
-        if (ch && validCh(ch) && !found.has(ch)) found.set(ch, String(l.name || '').replace(/\s+/g, ' ').trim().slice(0, 60) || SmvSites.bare(ch).replace(/^@/, ''));
+        const ch = a.fromLink(l.href), name = String(l.name || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+        // (a channel's first link can be its picture, with no words: its name comes from a later one)
+        if (ch && validCh(ch) && (!found.has(ch) || (!found.get(ch) && name))) found.set(ch, name);
       });
       if (found.size !== before) progress(plat, `Found ${found.size} so far…`);
       stable = found.size === before ? stable + 1 : 0;
       await win.webContents.executeJavaScript(scrollJs, true).catch(() => {});
       await sleep(1300);
     }
-    return { items: [...found].map(([ch, name]) => ({ ch, name })) };
+    return { items: [...found].map(([ch, name]) => ({ ch, name: name || SmvSites.bare(ch).replace(/^@/, '') })) };
   } finally { if (!win.isDestroyed()) win.destroy(); }
 }
 // Whether you can moderate a channel (its moderator, or your own channel): true, false, or null when it can't be

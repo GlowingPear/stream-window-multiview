@@ -38,7 +38,7 @@ A desktop app for watching **Kick, Twitch, YouTube and Rumble** streams and chat
 - Saved list with Kick / Twitch / YouTube / Rumble tabs, with live channels listed first
 - Desktop notifications when saved channels go live, and optional auto-open when they do
 - Suggestions from the channels you follow but haven't saved, as you type in the Channels box (and who's live among them)
-- **Import follows** from Kick, Twitch and YouTube (and unfollow Kick channels right from that list)
+- **Import follows** from Kick, Twitch, YouTube and Rumble (and unfollow Kick channels right from that list)
 - **Streamer profiles**: search your saved streamers and open a profile for each one: what the site says (picture, about, followers, links, the live stream), plus a live history, a "when they usually stream" chart, usual start time, average length and viewers that the app records from its live checks, with Kick and Twitch past broadcasts filling the gaps. Notes, tags, nicknames, favourites, and **Unfollow on Kick**
 - **Emote preview**: point at an emote in chat to see it bigger with its name, then copy the name or download it
 - **Chat over streams** (off by default): each stream's new chat messages over it for a few seconds, also when popped out; a toolbar button switches it, and each stream can turn it off
@@ -303,7 +303,7 @@ Everything about one site is in a folder of its own on each side, so a new site 
 - Windows from other apps (like Discord) are shown as a live picture. Interact with them in the real window.
 - YouTube sign-in only works through Firefox: Google blocks signing in inside apps, and Chrome and Edge lock their logins so they can't be copied. Sign in to YouTube in Firefox, then use **Copy my login from Firefox** in the app. Watching YouTube doesn't need a login.
 - YouTube chats aren't watched for @mentions.
-- Rumble: Import follows, its emote picker in ALL and stream quality aren't there yet, and a Rumble video link plays only while it's live.
+- Rumble: its emote picker in ALL and stream quality aren't there yet, and a Rumble video link plays only while it's live.
 - Chrome extensions: each chat site and each stream keeps its own extension settings. Extensions that need Chrome features the app doesn't have (blocking rules, capturing a page's sound, offscreen documents) only partly work.
 - The app depends on how Kick, Twitch, YouTube and Rumble's websites work today, so a change on their side can break a feature until the app is updated.
 

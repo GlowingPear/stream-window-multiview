@@ -15,7 +15,7 @@ test('the four sites, in order, each with what both sides read', () => {
     assert.equal(S.byId[s.id], s);
     for (const k of ['name', 'letter', 'prefix', 'partition', 'home']) assert.equal(typeof s[k], 'string', `${s.id}.${k}`);
     for (const k of ['hosts', 'signIn', 'ids']) assert.ok(Array.isArray(s[k]), `${s.id}.${k}`);
-    assert.ok('video' in s && 'keepCase' in s, `${s.id}: video and keepCase (null for none)`);
+    assert.ok('video' in s && 'keepCase' in s && 'kinds' in s, `${s.id}: video, keepCase and kinds (null for none)`);
     assert.match(s.partition, /^persist:/);
     assert.match(s.home, /^https:\/\/.+\/$/);
   }
@@ -46,6 +46,7 @@ test('valid channel ids; names an object already has never are (they\'re keys in
 
 test('a channel\'s name on its site, and whether it\'s one video', () => {
   assert.deepEqual(['pixelpear', 'tw:alpha', 'yt:@lofi', 'yt:c:UCabc', 'yt:v:abc', ''].map(S.bare), ['pixelpear', 'alpha', '@lofi', 'UCabc', 'abc', '']);
+  assert.deepEqual(['ru:nightowl', 'ru:u:pip', 'ru:v:v35waq4', 'ru:c-297201'].map(S.bare), ['nightowl', 'pip', 'v35waq4', 'c-297201'], 'Rumble\'s kind of channel isn\'t part of its name');
   assert.deepEqual(['yt:v:abcdefghijk', 'yt:@lofi', 'tw:alpha', 'pixelpear', '', 'ru:v:v35waq4', 'ru:nightowl'].map(S.isVideo), [true, false, false, false, false, true, false]);
 });
 

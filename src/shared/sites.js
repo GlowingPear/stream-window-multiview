@@ -15,18 +15,19 @@
   // window and signed-in players share; hosts: its web addresses (a page there opens with its login), signIn: the
   // sign-in pages it sends you to (they open with its login too); ids: what its channel ids look like (after norm),
   // video: the ids that are one video rather than a channel; keepCase: the ids whose case matters (norm keeps it), null
+  // for none; kinds: the ids with a kind after the prefix ("ru:u:"), left out of the channel's name there (bare), null
   // for none;
   // home: a channel's page is home + its name there (lower case).
   const SITES = [
     { id: 'kick', name: 'Kick', letter: 'K', prefix: '', partition: 'persist:kick', hosts: ['kick.com'], signIn: [], home: 'https://kick.com/',
-      ids: [/^[a-z0-9_-]{1,40}$/i], video: null, keepCase: null },
+      ids: [/^[a-z0-9_-]{1,40}$/i], video: null, keepCase: null, kinds: null },
     { id: 'twitch', name: 'Twitch', letter: 'T', prefix: 'tw:', partition: 'persist:twitch', hosts: ['twitch.tv'], signIn: [], home: 'https://twitch.tv/',
-      ids: [/^tw:[a-z0-9_]{1,25}$/], video: null, keepCase: null },
+      ids: [/^tw:[a-z0-9_]{1,25}$/], video: null, keepCase: null, kinds: null },
     { id: 'youtube', name: 'YouTube', letter: 'Y', prefix: 'yt:', partition: 'persist:youtube', hosts: ['youtube.com', 'youtu.be'],
       signIn: ['google.com'], home: 'https://www.youtube.com/', ids: [/^yt:@[\w.\-]{1,100}$/, /^yt:c:UC[\w-]{10,40}$/, /^yt:v:[\w-]{11}$/],
-      video: /^yt:v:/, keepCase: /^yt:(v|c):/i },
+      video: /^yt:v:/, keepCase: /^yt:(v|c):/i, kinds: null },
     { id: 'rumble', name: 'Rumble', letter: 'R', prefix: 'ru:', partition: 'persist:rumble', hosts: ['rumble.com'], signIn: [], home: 'https://rumble.com/c/',
-      ids: [/^ru:[a-z0-9_.-]{1,60}$/, /^ru:u:[a-z0-9_.-]{1,60}$/, /^ru:v:v[a-z0-9]{3,12}$/], video: /^ru:v:/, keepCase: null }
+      ids: [/^ru:[a-z0-9_.-]{1,60}$/, /^ru:u:[a-z0-9_.-]{1,60}$/, /^ru:v:v[a-z0-9]{3,12}$/], video: /^ru:v:/, keepCase: null, kinds: /^ru:(u|v):/ }
   ];
 
   // The list's helpers, for a list of sites (the tests make one with a made-up site too). DEFAULT: the site a bare
@@ -56,12 +57,13 @@
     }
     // (names an object already has, like __proto__, never: channels are keys in the saved lists)
     const OBJECT_NAMES = new Set(['__proto__', 'constructor', 'prototype', 'tostring', 'valueof', 'hasownproperty']);
-    // The channel's name on its site: the id without the prefix ("yt:@handle" -> "@handle", "yt:c:UC…" -> "UC…")
+    // The channel's name on its site: the id without the prefix ("yt:@handle" -> "@handle", "yt:c:UC…" -> "UC…",
+  // "ru:u:name" -> "name")
     function bare(ch) {
       const s = siteOfId(ch); ch = String(ch || '');
       if (!s) return ch;
       const r = ch.slice(s.prefix.length);
-      return s.keepCase && s.keepCase.test(ch) ? r.replace(/^[a-z]:/i, '') : r;
+      return (s.keepCase && s.keepCase.test(ch)) || (s.kinds && s.kinds.test(ch)) ? r.replace(/^[a-z]:/i, '') : r;
     }
     // Whether it's a channel id of one of the sites (a kept one: normCh first)
     function validCh(c) {

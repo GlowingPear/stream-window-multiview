@@ -122,27 +122,53 @@ test('a profile; a video has none; the tests\' stand-in pages', async () => {
   assert.equal(stand.rec.fetched[0].url, 'http://127.0.0.1:9/c/nightowl/livestreams');
 });
 
-test('the adapter: its login page, signed in by its own answer (asked once a minute, again after logging out), names and links', async () => {
+test('the adapter: its login page, signed in by its login cookie, the login checked by its own answer, names and links', async () => {
   let logged = true;
-  const none = rumbleWith({}, { loginFetch: () => answer({ json: { user: { logged_in: true } } }) });
-  assert.equal(await none.a.account(), false, 'no cookies of its own: not asked');
-  assert.equal(none.rec.fetched.length, 0);
-  const { a, rec } = rumbleWith({}, { cookies: [{ name: 'ui_t', domain: '.rumble.com' }], loginFetch: () => answer({ json: { user: { logged_in: logged } } }) });
+  const none = rumbleWith({}, { cookies: [{ name: 'ui_t', domain: 'rumble.com', value: 'x' }] });
+  assert.equal(await none.a.account(), false, 'only its own cookies, not its login\'s');
+  const { a, rec } = rumbleWith({}, { cookies: [{ name: 'u_s', domain: '.rumble.com', value: 'x' }], loginFetch: () => answer({ json: { user: { logged_in: logged } } }) });
   assert.equal(a.loginUrl, 'https://rumble.com/login.php');
   assert.equal(a.named, false);
   assert.equal(await a.account(), true);
   assert.equal(await a.signedIn(), true);
-  assert.equal(rec.fetched.filter(f => f.login).length, 1, 'asked once a minute');
+  assert.equal(rec.fetched.length, 0, 'no question to Rumble for that');
+  assert.equal(await a.loginWorks(), true);
   assert.equal(rec.fetched[0].url, 'https://rumble.com/service.php?name=emote.list');
+  assert.equal(rec.fetched[0].login, true, 'with your login');
   logged = false;
-  a.loggedOut();
-  assert.equal(await a.account(), false);
-  const down = rumbleWith({}, { cookies: [{ name: 'ui_t' }], loginFetch: () => answer({ status: 503 }) });
-  assert.equal(await down.a.account(), false, 'can\'t tell: not signed in');
-  assert.equal(await down.a.signedIn(), false);
+  assert.equal(await a.loginWorks(), false, 'Rumble has signed the app out');
+  assert.equal(await rumbleWith({}, { loginFetch: () => answer({ status: 503 }) }).a.loginWorks(), null, 'no answer: can\'t tell');
+  assert.equal(await rumbleWith({}, { loginFetch: () => { throw new Error('offline'); } }).a.loginWorks(), null);
+  assert.equal(await rumbleWith({}, { cookies: [{ name: 'u_s', domain: '.example.com', value: 'x' }] }).a.signedIn(), false, 'another site\'s cookie of that name');
   assert.equal(a.byName('NightOwl'), 'ru:nightowl');
   assert.deepEqual(['ru:nightowl', 'ru:u:pip', 'ru:v:v35waq4'].map(a.alsoAt), ['ru:u:nightowl', null, null], 'a channel\'s name may be a user\'s');
   assert.equal(a.fromLink('https://rumble.com/c/x'), 'ru:x');
   assert.equal(a.emoteHost('hugh.cdn.rumble.cloud'), true);
   assert.equal(a.emoteHost('example.com'), false);
+});
+
+test('follows: its Followed Channels page (its list, signed out without it), read again in the background at most once a day', async () => {
+  const cookies = [{ name: 'u_s', domain: '.rumble.com', value: 'x' }];
+  const { a, rec } = rumbleWith({}, { cookies, scrape: () => ({ items: [{ ch: 'ru:u:pip', name: 'Pip' }, { ch: 'ru:nightowl', name: 'Night Owl' }] }) });
+  const r = await a.follows.import();
+  assert.equal(r.items.length, 2);
+  assert.deepEqual([rec.scraped[0][0], rec.scraped[0][1].scope, rec.scraped[0][1].name], ['https://rumble.com/followed-channels', 'ol.followed-channels__list', '.line-clamp-2']);
+  assert.match(rec.scraped[0][1].signedOut, /login\.php/);
+  await a.follows.tick(Date.now());
+  assert.deepEqual(rec.kept, [[{ ch: 'ru:u:pip', name: 'Pip' }, { ch: 'ru:nightowl', name: 'Night Owl' }]]);
+  await a.follows.tick(Date.now());
+  assert.equal(rec.kept.length, 1, 'not again so soon');
+  a.follows.retry();
+  rec.saved = { at: Date.now(), items: [] };
+  await a.follows.tick(Date.now());
+  assert.equal(rec.kept.length, 1, 'read today');
+  const out = rumbleWith({});
+  await out.a.follows.tick(Date.now());
+  assert.equal(out.rec.scraped.length, 0, 'signed out: not read');
+  const busy = rumbleWith({}, { busy: true, cookies });
+  await busy.a.follows.tick(Date.now());
+  assert.equal(busy.rec.scraped.length, 0, 'another import is running');
+  const nothing = rumbleWith({}, { cookies, scrape: () => ({ items: [] }) });
+  await nothing.a.follows.tick(Date.now());
+  assert.equal(nothing.rec.kept.length, 0, 'an empty list isn\'t kept');
 });
