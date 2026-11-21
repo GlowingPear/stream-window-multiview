@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { setup, add, windows } = require('../app');
 const { openApp } = setup();
 
-const SAVED = ['pixelbandit', 'retro-rally', 'tw:nightowlgames', 'tw:kanjiname', 'yt:@maplerye', 'yt:c:UCabcdefghijklmnop'];
+const SAVED = ['pixelbandit', 'retro-rally', 'tw:nightowlgames', 'tw:kanjiname', 'yt:@maplerye', 'yt:c:UCabcdefghijklmnop', 'ru:c-7777674'];
 const savedNames = async page => {
   if (!(await page.isVisible('#savedPanel'))) await page.click('#savedBtn');
   return page.$$eval('#savedList .nm', els => els.map(e => e.textContent).sort());
@@ -25,10 +25,11 @@ test('display names from a live check replace the lowercase ids, but only for th
     'tw:kanjiname': { live: false, name: '漢字', checked: Date.now() },              // another script: keeps the handle
     'yt:@maplerye': { live: false, name: 'Maple & Rye', checked: Date.now() },      // a @handle stays as it is
     'yt:c:UCabcdefghijklmnop': { live: false, name: 'Some Channel', checked: Date.now() },
+    'ru:c-7777674': { live: false, name: 'Night Owl', checked: Date.now() },          // a Rumble channel known by its number
     gone: { missing: true, name: 'Gone' }
   }));
   assert.deepEqual((await windows(page)).filter(w => w.kind === 'stream').map(w => w.title).sort(), ['NightOwlGames', 'PixelBandit']);
-  assert.deepEqual(await savedNames(page), ['@maplerye', 'kanjiname', 'NightOwlGames', 'PixelBandit', 'Retro_Rally', 'Some Channel'].sort());
+  assert.deepEqual(await savedNames(page), ['@maplerye', 'kanjiname', 'Night Owl', 'NightOwlGames', 'PixelBandit', 'Retro_Rally', 'Some Channel'].sort());
 
   // a name that's only the id again, or empty, doesn't undo it; search still finds it by its id
   await page.evaluate(() => smvNotes.liveStatus({ pixelbandit: { live: false, name: 'pixelbandit' }, 'tw:nightowlgames': { live: false, name: '' } }));
@@ -39,7 +40,7 @@ test('display names from a live check replace the lowercase ids, but only for th
 
   // kept for next time
   await page.reload();
-  assert.deepEqual(await savedNames(page), ['@maplerye', 'kanjiname', 'NightOwlGames', 'PixelBandit', 'Retro_Rally', 'Some Channel'].sort());
+  assert.deepEqual(await savedNames(page), ['@maplerye', 'kanjiname', 'Night Owl', 'NightOwlGames', 'PixelBandit', 'Retro_Rally', 'Some Channel'].sort());
 });
 
 test('names learned earlier for YouTube ids are kept, and names learned in the other window show here', async t => {
