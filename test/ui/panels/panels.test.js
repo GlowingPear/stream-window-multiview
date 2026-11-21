@@ -28,7 +28,7 @@ test('Channels: one box searches your channels and opens (or opens and saves) a 
   assert.equal(await page.isVisible('#spAddRow'), false, 'nothing to add before typing');
   assert.ok(await page.isVisible('#savedPanel #mode'), 'Stream + chat / Stream only / Chat only is in the box');
 
-  // a name: "Add alpha from" Kick (on All), then Open & save
+  // a name: "On" Kick (on All), then Open & save
   await page.fill('#savedInput', 'alpha');
   assert.equal(await page.textContent('#spAddName'), 'alpha');
   assert.equal(await page.getAttribute('#spPlat [data-p=kick]', 'aria-checked'), 'true', 'Kick is picked on the All tab');
@@ -58,6 +58,8 @@ test('Channels: one box searches your channels and opens (or opens and saves) a 
   await page.fill('#savedInput', 'https://www.youtube.com/@charlie');
   assert.equal(await page.getAttribute('#spPlat [data-p=youtube]', 'aria-checked'), 'true', 'a link picks its site');
   assert.ok(await page.isDisabled('#spPlat [data-p=kick]'), 'and the others are off');
+  assert.equal(await page.isHidden('#spPlat [data-p=kick]'), true, '... and left out, so the row says what it adds');
+  assert.match((await page.innerText('.sp-addl')).trim(), /^Add “.+” from$/);
   await page.press('#savedInput', 'Enter');
   assert.equal(await page.locator('#stage .win.stream').count(), 3, 'Enter opens it');
   assert.equal((await savedList()).length, 2, '…without saving it');
@@ -131,7 +133,10 @@ test('Channels: the open/save row fits on one line, and a channel the site says 
   await page.click('#savedBtn');
   await page.fill('#savedInput', 'ghost');
   const row = await page.$$eval('#spAddRow > *:not([hidden])', els => new Set(els.filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().top + e.getBoundingClientRect().height / 2))).size);
-  assert.equal(row, 1, 'Add “ghost” from, the sites, Open and Open & save sit on one line');
+  assert.equal(row, 1, '"On", the sites, Open and Open & save sit on one line');
+  assert.equal((await page.innerText('.sp-addl')).trim(), 'On', 'a name: it\'s in the box already, so the row only asks where');
+  const room = await page.$eval('#spAddRow', r => { const kids = [...r.children].filter(e => e.offsetParent); const used = kids.reduce((s, e) => s + e.getBoundingClientRect().width, 0) + 6 * (kids.length - 1); return used / r.getBoundingClientRect().width; });
+  assert.ok(room < 0.85, `room to spare for wider fonts (Linux): ${Math.round(room * 100)}% used`);
   await page.click('#spOpen');
   assert.ok(await page.$eval('#spOpen', b => b.classList.contains('busy')), 'Open shows it\'s checking');
   await page.waitForSelector('#spErr:not([hidden])');

@@ -29,11 +29,15 @@ function renderAddRow(){
   if (!t) return;
   $('#spAddName').textContent = t.name;
   $('#spFrom').hidden = $('#spPlat').hidden = !t.plat;
+  // a name to pick a site for: "On" and every site (the name is in the box already, so the row stays one line); a link
+  // or @handle: "Add “its name” from" its own site
+  $('#spAddWhat').hidden = !!t.plat && t.bare;
+  $('#spFrom').textContent = t.bare ? 'On' : ' from';
   $('#spPlat').querySelectorAll('button').forEach(b => {
     const on = b.dataset.p === t.plat;
     b.classList.toggle('on', on); b.classList.remove('bad');
     b.setAttribute('aria-checked', on); b.tabIndex = on ? 0 : -1;
-    b.disabled = !t.bare && !on;       // a link or @handle is on its own site
+    b.disabled = b.hidden = !t.bare && !on;       // a link or @handle is on its own site
   });
   const os = $('#spOpenSave'), isSaved = !!t.p.channel && saved.includes(t.p.channel);
   os.hidden = !t.p.channel || isSaved;
