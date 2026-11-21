@@ -1,7 +1,7 @@
 import { allOn } from '../../chat/all-chat.js';
 import { $, wins } from '../../core.js';
 import { openSettings, settingsDlg, settingsTab } from '../settings/settings.js';
-import { PLAT_NAME, extCount, platOf, platformVars, siteIds, viewPartition, watchSignedIn } from '../../platforms/platforms.js';
+import { PLAT_NAME, extCount, platOf, platformVars, siteBadge, siteIds, viewPartition, watchSignedIn } from '../../platforms/platforms.js';
 import { ask } from '../../shared/ask.js';
 import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
@@ -128,7 +128,7 @@ async function openExtMenu(w, btn){
   parts.forEach((part, i) => {
     if (ws.length > 1){
       const p = platOf(ws[i].channel);
-      extMenu.appendChild(element('div', 'em-site', element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0]), PLAT_NAME[p] + ' chat'));
+      extMenu.appendChild(element('div', 'em-site', siteBadge(p), PLAT_NAME[p] + ' chat'));
     }
     extMenu.append(...part);
   });

@@ -30,7 +30,6 @@ const ALLOWED = [
   ['src/page/platforms/pear-drops.js', 'watchSignedIn.kick', 'Pear Drops\' Kick choice (PEAR_SITE\'s), saved as link.kickBefore'],
   ['src/page/platforms/pear-drops.js', "settings.json('accounts', {}) || {}).kick", 'your Kick account, for Pear Drops'],
   ['src/page/toolbar/daily-reward.js', 'https://kick.com/?daily-reward=open', 'Kick\'s daily reward, from Pear Drops'],
-  ['src/page/panels/settings/activity.js', 'p.platforms.kick', 'Grapevine\'s players capability, as Pear Drops sends it'],
   // saved data from before
   ['src/page/toolbar/accounts-menu.js', "acct.kick = acct.kick || settings.text('account')", 'older copies kept only your Kick account'],
   ['src/page/chat/shoutout-text.js', "r.site === 'twitch' ? 'twitch' : 'kick'", '#300\'s People rows, only ever Kick\'s and Twitch\'s, made into cards once'],
@@ -80,6 +79,17 @@ test('code outside the sites\' folders doesn\'t name a site (the few that do on 
   assert.deepEqual(ALLOWED.filter(a => !used.has(a)).map(a => a[0] + ': ' + a[1]), [], 'an allowed one that\'s gone: take it off the list');
 });
 
+// A site's badge shows the letter from the list of sites: built only by platIcon and siteBadge (platforms/platforms.js),
+// so no part has its own idea of a site's letter (the streamer profile's said "?" for Rumble)
+test('every site badge is built by platIcon or siteBadge', () => {
+  const found = [];
+  for (const f of files('src/page', /\.js$/)) {
+    if (f === 'src/page/platforms/platforms.js') continue;
+    code(read(f)).split('\n').forEach((line, i) => { if (/pi pi-/.test(line)) found.push(`${f}:${i + 1}: ${line.trim().slice(0, 140)}`); });
+  }
+  assert.deepEqual(found, [], 'use siteBadge(site), chBadge(ch) or platIcon(site)');
+});
+
 test('CSS outside the sites\' folders doesn\'t style a site: each site\'s colours are its site.css', () => {
   const SEL = new RegExp(`[.-](${ids})\\b|=(${ids})\\]`);
   const found = [];
@@ -91,18 +101,60 @@ test('CSS outside the sites\' folders doesn\'t style a site: each site\'s colour
   assert.deepEqual(found, []);
 });
 
-test('every site has what the page\'s markup and CSS need for it', () => {
+// A row for each site in the markup is one <template data-each-site>, copied for every site as the page starts
+// (fillSiteNames, platforms/platforms.js), so a new site gets them all with nothing to add
+test('the page\'s rows for each site are templates, so every site has one', () => {
+  const html = read('src/index.html');
+  for (const [what, re] of [
+    ['its row in the Accounts menu and in Settings › Accounts', /<template data-each-site><div class="am-row" data-p="\{id\}"[\s\S]*<template data-each-site><div class="am-row" data-p="\{id\}"/],
+    ['its button in the Channels box\'s site picker', /id="spPlat"[^\n]*<template data-each-site><button data-p="\{id\}"/],
+    ['its Channels tab', /id="savedTabs"[^\n]*<template data-each-site><button data-t="\{id\}"/],
+    ['its Import follows button', /id="importRow"[^\n]*<template data-each-site><button class="btn" data-imp="\{id\}"/],
+    ['its filter in Profiles', /data-g="plat"[^\n]*<template data-each-site><button data-v="\{id\}"/],
+    ['its "Forget my login" box', /<template data-each-site><label class="chk"><input type="checkbox" data-f="\{id\}">/],
+    ['its "Watch signed in" box', /<template data-each-site><label class="chk"><input type="checkbox" data-w="\{id\}">/],
+    ['its name box (Settings › Mentions)', /<template data-each-site>[^\n]*data-me="\{id\}"/]
+  ]) assert.match(html, re, `${what}: a <template data-each-site> (src/index.html)`);
+  // and none written out for one site
+  const lineOf = re => (html.split('\n').find(l => re.test(l)) || '');
+  for (const id of SmvSites.IDS) {
+    assert.doesNotMatch(html, new RegExp(`data-(imp|f|w|me)="${id}"`), `${id}: a row of its own: make it the template's`);
+    for (const re of [/id="spPlat"/, /id="savedTabs"/, /data-g="plat"/]) assert.doesNotMatch(lineOf(re), new RegExp(`data-[ptv]="${id}"`), `${id}: a button of its own (${re.source}): make it the template's`);
+  }
+});
+
+// A site's name shows only as its site says it: siteNames() and siteWith() in code, {sites} and {site …} in the
+// markup (platforms/platforms.js), never written out, so a new site is named everywhere it belongs and nowhere else
+const SITE_NAMES = new RegExp(`\\b(${SmvSites.SITES.map(s => s.name).join('|')})\\b`, 'g');
+const NAMED = [
+  // Google's own product, whose name has YouTube in it
+  ['src/page/toolbar/accounts-menu.js', 'YouTube Data API v3', 'Google\'s API the key is for'],
+  // the app's old name (its data folder from before)
+  ['src/main/main.js', "'Kick Multiview'", 'the data folder older copies used'],
+  // a profile's social links (YouTube next to Instagram and the rest)
+  ['src/main/profiles.js', "youtube: ['YouTube'", 'a profile\'s social links'],
+  ['src/main/profiles.js', "kick: ['Kick'", 'a profile\'s social links'],
+  ['src/main/profiles.js', "twitch: ['Twitch'", 'a profile\'s social links'],
+];
+test('the page and the app never write out a site\'s name (the few that do on purpose, and why, are listed here)', () => {
+  const found = [], used = new Set();
+  const markup = t => t.replace(/<!--[\s\S]*?-->/g, m => m.replace(/[^\n]/g, ' '));
+  for (const f of [...files('src/page', /\.js$/), ...files('src/main', /\.js$/), ...files('src/shared', /\.js$/), ...files('src/preload', /\.js$/), 'src/index.html']) {
+    if (inFolders(f)) continue;
+    (f.endsWith('.html') ? markup(read(f)) : code(read(f))).split('\n').forEach((line, i) => {
+      if (!line.match(SITE_NAMES)) return;
+      const ok = NAMED.find(([file, text]) => file === f && line.includes(text));
+      if (ok) used.add(ok); else found.push(`${f}:${i + 1}: ${line.trim().slice(0, 140)}`);
+    });
+  }
+  assert.deepEqual(found, [], 'ask for it: PLAT_NAME[site], siteNames(and, slot), siteWith(slot), or {sites} / {site slot} / {name} in the markup');
+  assert.deepEqual(NAMED.filter(a => !used.has(a)).map(a => a[0] + ': ' + a[1]), [], 'an allowed one that\'s gone: take it off the list');
+});
+
+test('every site has its colours and badge', () => {
   const html = read('src/index.html');
   for (const id of SmvSites.IDS) {
-    for (const [what, re] of [
-      ['its colours (site.css), after every part\'s CSS', new RegExp(`<link rel="stylesheet" href="page/sites/${id}/site\\.css">`)],
-      ['its row in the Accounts menu and in Settings › Accounts', new RegExp(`class="am-row" data-p="${id}"[\\s\\S]*class="am-row" data-p="${id}"`)],
-      ['its button in the Channels box\'s site picker', new RegExp(`id="spPlat"[^\\n]*data-p="${id}"`)],
-      ['its Channels tab', new RegExp(`id="savedTabs"[^\\n]*data-t="${id}"`)],
-      ['its "Forget my login" box', new RegExp(`data-f="${id}"`)],
-      ['its "Watch signed in" box', new RegExp(`data-w="${id}"`)],
-      ['its name box (Settings › Mentions)', new RegExp(`data-me="${id}"`)]
-    ]) assert.match(html, re, `${id}: ${what} (src/index.html)`);
+    assert.match(html, new RegExp(`<link rel="stylesheet" href="page/sites/${id}/site\\.css">`), `${id}: its colours (site.css), after every part's CSS (src/index.html)`);
     const css = read(`src/page/sites/${id}/site.css`);
     assert.match(css, new RegExp(`\\.pi-${id}\\{`), `${id}: its badge (.pi-${id}) in site.css`);
     const links = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(m => m[1]);

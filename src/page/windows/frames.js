@@ -15,9 +15,9 @@ import { readChat } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
 import { openLinkCard } from '../panels/linked/link-card.js';
 import { save } from '../persistence.js';
-import { accountsOf, linkOpt, linkedOn, listStreamers, nameOf, optFor, setMain, siteName, siteNo, siteNum,
+import { accountsOf, chBadge, linkOpt, linkedOn, listStreamers, nameOf, optFor, setMain, siteName, siteNo, siteNum,
   streamerOf, unlink } from '../platforms/linked.js';
-import { PLAT_NAME, chLabel, externalFor, isVideo, platOf, platform, srcFor } from '../platforms/platforms.js';
+import { PLAT_NAME, chLabel, externalFor, isVideo, platOf, platform, siteLetter, srcFor } from '../platforms/platforms.js';
 import { element } from '../shared/element.js';
 import { DESKTOP, keyName } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
@@ -99,7 +99,7 @@ function renderSiteTabs(w){
       info && info.missing && streamerOf(ch) ? 'gone' : '', !solo && tabLocked(w, ch) ? 'locked' : ''].filter(Boolean).join(' ');   // gone: a renamed or deleted channel (Fix or Unlink in its menu)
     const name = tabTip(w, ch);
     const b = element('button', { class: cls, type: 'button', role: 'tab', 'aria-selected': String(!!on), tabindex: on ? '0' : '-1', 'aria-disabled': !solo && tabLocked(w, ch) && 'true',
-      'aria-label': name.split('\n')[0], dataset: { ch, cmd: 'win.tab' } }, (PLAT_NAME[p] || '?')[0], siteNum(ch));
+      'aria-label': name.split('\n')[0], dataset: { ch, cmd: 'win.tab' } }, siteLetter(p), siteNum(ch));
     b.title = name;
     return b;
   });
@@ -333,7 +333,7 @@ function openAddMenu(w, at){
   const lead = leaderOf(w), closed = (closedTabs[lead.frame] || []).filter(ch => !memberFor(lead, ch));
   tabMenu.replaceChildren(element('div', { class: 'tm-head', role: 'presentation' }, 'Open again'),
     ...closed.map(ch => element('button', { type: 'button', role: 'menuitem', disabled: siteOffline(ch), dataset: { cmd: 'win.tabAdd' }, onclick: () => { tabMenu.hidden = true; addTab(lead, ch, true); } },
-      element('span', 'tm-ico', element('i', { class: 'pi pi-' + platOf(ch) }, PLAT_NAME[platOf(ch)][0], siteNum(ch))), element('span', 'tm-t', `${PLAT_NAME[platOf(ch)]} · ${chLabel(ch)}`),
+      element('span', 'tm-ico', chBadge(ch)), element('span', 'tm-t', `${PLAT_NAME[platOf(ch)]} · ${chLabel(ch)}`),
       siteOffline(ch) && element('small', null, 'offline'))));
   tabMenu.hidden = false; tabMenuFor = at;
   const r = at.getBoundingClientRect();

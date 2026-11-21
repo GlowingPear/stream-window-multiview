@@ -1,6 +1,8 @@
 import { $ } from '../../core.js';
 import { chipFor } from './connected.js';
 import { linkActivity, linkIcon, linkOn, linkState } from '../../platforms/pear-drops.js';
+import { PLAT_NAME } from '../../platforms/platforms.js';
+import { PEAR_SITE } from '../../platforms/players-link.js';
 import { element } from '../../shared/element.js';
 import { fromApp } from '../../shared/incoming.js';
 import { store } from '../../shared/store.js';
@@ -61,23 +63,23 @@ function farmingWords(f){
     const where = f.channel && (f.channel.name || f.channel.slug), p = f.drop.progress;
     return 'Farming ' + (f.drop.campaign || f.drop.category || 'a drop') + (where ? ' on ' + where : '') + (p ? ' · ' + Math.floor(p.done) + ' of ' + p.total + ' min' : '');
   }
-  return { farming: 'Farming', paused: 'Paused', done: 'Every drop is done', 'signed-out': 'Signed out of Kick', waiting: 'Waiting for a stream with drops' }[f.state] || 'State: ' + f.state;
+  return { farming: 'Farming', paused: 'Paused', done: 'Every drop is done', 'signed-out': `Signed out of ${PLAT_NAME[PEAR_SITE]}`, waiting: 'Waiting for a stream with drops' }[f.state] || 'State: ' + f.state;
 }
 
 // rewards.daily's state, in words.
 function rewardWords(r){
   if (r.state === 'earning') return 'Daily reward' + (Number.isFinite(r.minutes) && r.threshold ? ' · ' + r.minutes + ' of ' + r.threshold + ' min watched' : '');
-  return { ready: 'Daily reward is ready to claim', claimed: 'Daily reward claimed for today', unavailable: "Kick's daily reward isn't answering", 'signed-out': 'Signed out of Kick' }[r.state]
+  return { ready: 'Daily reward is ready to claim', claimed: 'Daily reward claimed for today', unavailable: `${PLAT_NAME[PEAR_SITE]}'s daily reward isn't answering`, 'signed-out': `Signed out of ${PLAT_NAME[PEAR_SITE]}` }[r.state]
     || 'Daily reward: ' + (r.state || 'no state');
 }
 
 // players' state (what this app sends), in words: signed in or out, and why (Auto: out while Pear Drops farms).
 function playersWords(p){
-  const k = p && p.platforms && p.platforms.kick;
-  if (!k || !k.open || !k.open.length) return 'No Kick players open';
+  const k = p && p.platforms && p.platforms[PEAR_SITE];
+  if (!k || !k.open || !k.open.length) return `No ${PLAT_NAME[PEAR_SITE]} players open`;
   const state = k.signedIn ? 'signed in' : 'signed out';
   const how = { auto: k.signedIn ? 'signed in (Auto)' : 'signed out while Pear Drops farms', 'signed-in': 'signed in (always)', 'signed-out': 'signed out (always)' }[k.mode];
-  return actPlural(k.open.length, 'Kick player') + ' open, ' + (how || state + (k.mode ? ' · ' + k.mode : ''));
+  return actPlural(k.open.length, PLAT_NAME[PEAR_SITE] + ' player') + ' open, ' + (how || state + (k.mode ? ' · ' + k.mode : ''));
 }
 
 // One entry in plain words, from this app's side: { title (the method, or what happened), kind, text }.

@@ -26,9 +26,10 @@ import { mentMuted, mentOn, mentWords, myNameOn, readChat, syncAtBtn } from '../
 import { infoFor, isSaved, toggleSaved } from '../panels/channels/channels.js';
 import { copyWinState, devOn, inspectWin } from '../panels/developer/developer.js';
 import { openExtMenu } from '../panels/extensions/extensions.js';
-import { accountsOf, chanOpt, nameOf, optFor, setChanOpt, siteName, siteNo, siteNum, streamerBots, streamerOf } from '../platforms/linked.js';
+import { accountsOf, chBadge, chanOpt, nameOf, optFor, setChanOpt, siteName, siteNo, siteNum, streamerBots,
+  streamerOf } from '../platforms/linked.js';
 import { PLAT_NAME, chLabel, heldByOf, heldWho, isVideo, modIs, modUrl, openModView, platOf, platform, popUp,
-  rememberName, shoutSites } from '../platforms/platforms.js';
+  rememberName, shoutSites, siteBadge, siteNames, siteWith } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { element } from '../shared/element.js';
 import { DESKTOP, keyName } from '../shared/env.js';
@@ -508,7 +509,7 @@ function renderPins(view){
   // one line each: site, name, the message, and when (or 1 of 2). A press on the message shows all of it (and again: one line)
   const row = (p, sub, ...end) => {
     const text = p.msg.parts.map(x => x.text || x.name).join('');
-    return element('div', { class: 'all-pin-row' + (view.pinFull ? ' full' : ''), title: `${p.msg.sender}: ${text}${p.by ? `\nPinned by ${p.by}` : ''}` }, element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0], siteNum(p.ch)),
+    return element('div', { class: 'all-pin-row' + (view.pinFull ? ' full' : ''), title: `${p.msg.sender}: ${text}${p.by ? `\nPinned by ${p.by}` : ''}` }, siteBadge(p.site, {}, siteNum(p.ch)),
       element('div', { class: 'all-pin-t', role: 'button', tabindex: '0', 'aria-expanded': String(!!view.pinFull), dataset: { cmd: 'all.pinFull' },
         onclick: () => { view.pinFull = !view.pinFull; renderPins(view); }, onkeydown: e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.target.click(); } } },
         (st => element('b', { class: pillCls(st).trim(), style: st }, p.msg.sender))(nameStyle(p.msg, p.ch)), ' ', ...partsEl(p.msg.parts, p.ch)), element('small', 'all-pin-s', sub), ...end);
@@ -519,8 +520,8 @@ function renderPins(view){
   }
   const cur = f.pins.find(p => p.ch === view.pinAt) || f.pins[0];
   view.pins.replaceChildren(row(cur, pinAgo(cur.t),
-    n > 1 && element('span', 'all-pin-sw', ...f.pins.map(p => element('button', { type: 'button', class: 'pi pi-' + p.site + (p === cur ? ' on' : ''), title: `${siteName(p.ch)}'s pin`, 'aria-pressed': String(p === cur), dataset: { cmd: 'all.pinSite' },
-      onclick: () => { view.pinAt = p.ch; renderPins(view); } }, PLAT_NAME[p.site][0], siteNum(p.ch)))),
+    n > 1 && element('span', 'all-pin-sw', ...f.pins.map(p => siteBadge(p.site, { tag: 'button', type: 'button', class: p === cur && 'on', title: `${siteName(p.ch)}'s pin`, 'aria-pressed': String(p === cur), dataset: { cmd: 'all.pinSite' },
+      onclick: () => { view.pinAt = p.ch; renderPins(view); } }, siteNum(p.ch)))),
     n > 1 && element('button', { type: 'button', class: 'all-pin-open', title: `All ${n}`, 'aria-label': `All ${n} pins`, 'aria-expanded': 'false', html: CHEVRON, dataset: { cmd: 'all.pinsOpen' }, onclick: () => { view.pinsOpen = true; renderPins(view); } })));
 }
 
@@ -575,7 +576,7 @@ const bigEmote = u => String(u).replace(/(static-cdn\.jtvnw\.net\/emoticons\/v2\
 function emoteEl(src, name, from, ch, fresh, send){
   const isNew = !!(fresh && fresh.has(name));
   const img = element('img', { class: 'al-e' + (isNew ? ' al-new' : ''), src, alt: name, title: emoteOn ? '' : isNew ? `${name} · new` : from ? `${name} · ${from}` : name, loading: 'lazy', referrerPolicy: 'no-referrer',
-    dataset: { send: send || name, from: from || PLAT_NAME[platOf(ch || '')] || '', site: ({ '7TV': '7TV', BetterTTV: 'BTTV', FrankerFaceZ: 'FFZ' })[from] || PLAT_NAME[platOf(ch || '')] || 'Kick' } });
+    dataset: { send: send || name, from: from || PLAT_NAME[platOf(ch || '')] || '', site: ({ '7TV': '7TV', BetterTTV: 'BTTV', FrankerFaceZ: 'FFZ' })[from] || PLAT_NAME[platOf(ch || '')] || PLATFORMS[SmvSites.DEFAULT].name } });
   img.onerror = () => img.replaceWith(document.createTextNode(name));
   img.onpointerenter = () => { if (isNew) emoteSeen(ch, name); if (emoteOn) emoteCard(img); };
   return img;
@@ -790,19 +791,19 @@ function lineEl(m){
     // (Twitch's countdown: getting ready, then raided; or called off)
     const viewers = m.viewers ? ` · ${m.viewers.toLocaleString('en-US')} ${m.viewers === 1 ? 'viewer' : 'viewers'}` : '', left = m.soon ? raidLeft(m) : -1;
     return element('div', { class: `al-ev al-raidout al-${SITE_CLASS[m.site]}${m.soon ? ' al-raidsoon' : ''}${m.off ? ' al-raidoff' : ''}`, dataset: { key: m.site + ':' + m.id } },
-      element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0], siteNum(m.ch)), element('span', { class: 'al-evt', html: icon.raid }),
+      siteBadge(m.site, {}, siteNum(m.ch)), element('span', { class: 'al-evt', html: icon.raid }),
       m.soon ? element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' is raiding ', element('b', null, chLabel(m.to)), element('span', 'al-amt', viewers))
         : m.off ? element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' called off the raid on ', element('b', null, chLabel(m.to)))
         : element('span', 'al-evw', element('b', null, nameOf(m.ch)), ' raided ', element('b', null, chLabel(m.to)), element('span', 'al-amt', ` on ${PLAT_NAME[m.site]}${viewers}`)),
-      m.soon ? left >= 0 && element('span', { class: 'al-tag al-tag-raid al-raidin', title: 'Twitch sends the raid by then, or sooner' }, left ? `in ${left >= 60 ? `${Math.floor(left / 60)}m ${left % 60}s` : `${left}s`}` : 'any moment')
+      m.soon ? left >= 0 && element('span', { class: 'al-tag al-tag-raid al-raidin', title: `${PLAT_NAME[m.site]} sends the raid by then, or sooner` }, left ? `in ${left >= 60 ? `${Math.floor(left / 60)}m ${left % 60}s` : `${left}s`}` : 'any moment')
         : m.off ? ''
         : m.opened ? element('span', 'al-tag al-tag-raid', 'Opened') : element('button', { type: 'button', class: 'al-go', dataset: { cmd: 'all.raidOpen' }, title: `Open ${chLabel(m.to)} in a window of its own`,
           onclick: () => { addParsed({ channel: m.to, only: null }); m.opened = true; redrawLine(m); } }, 'Open ›'));
   }
   if (m.kind === 'modlog') return element('div', { class: `al-ev al-log al-${SITE_CLASS[m.site]}` + (m.lift ? ' al-lift' : ''), dataset: { key: m.site + ':' + m.id } },
-    element('i', { class: 'pi pi-' + m.site }, (PLAT_NAME[m.site] || m.site)[0], siteNum(m.ch)), element('span', { class: 'al-evt', html: SHIELD }), element('span', 'al-evw', ...m.words.map(x => x instanceof Node ? x.cloneNode(true) : x)));
+    siteBadge(m.site, {}, siteNum(m.ch)), element('span', { class: 'al-evt', html: SHIELD }), element('span', 'al-evw', ...m.words.map(x => x instanceof Node ? x.cloneNode(true) : x)));
   const site = PLAT_NAME[m.site] || m.site;
-  const who = element('span', 'al-who', element('i', { class: 'pi pi-' + m.site, title: site }, site[0], siteNum(m.ch)), (m.sentIn || m.sharedAs) && sharedEl(m), ...badgeEls(m));
+  const who = element('span', 'al-who', siteBadge(m.site, { title: site }, siteNum(m.ch)), (m.sentIn || m.sharedAs) && sharedEl(m), ...badgeEls(m));
   const can = m.kind === 'message' && !whyNot(m, 'delete'), canAll = can && !whyNot(m);
   const st = nameStyle(m);
   const name = element('b', { class: 'al-n' + (can ? ' can' : '') + pillCls(st), style: st, role: 'button', tabindex: '-1', dataset: { cmd: 'all.profile' },
@@ -819,7 +820,7 @@ function lineEl(m){
     const to = m.gift ? m.gift.to : [], me = meOn(m.site);
     const open = m.open && !full;
     return element('div', { class: `al-ev al-${SITE_CLASS[m.site]}${full ? ' al-full' : ''}${open ? ' al-open al-can' : ''}${to.length ? ' al-gift' : ''}${m.gift && m.gift.me ? ' al-gift-me' : ''}`, dataset: { key: m.site + ':' + m.id },
-      'aria-expanded': open && 'true', title: open && 'Back to one line', onpointerenter: e => evOpenable(m, e.currentTarget), onclick: e => evToggle(m, e) }, element('i', { class: 'pi pi-' + m.site }, site[0], siteNum(m.ch)),
+      'aria-expanded': open && 'true', title: open && 'Back to one line', onpointerenter: e => evOpenable(m, e.currentTarget), onclick: e => evToggle(m, e) }, siteBadge(m.site, {}, siteNum(m.ch)),
       element('span', 'al-evt', element('span', 'al-evw', ...words), m.parts.length ? element('span', 'al-evm', ...partsEl(m.parts, m.ch)) : ''),
       // (a raid: shout out who raided, Settings › Shoutouts; then that it's done)
       raidSo(m), eventSo(m), goalEl(m),
@@ -854,7 +855,7 @@ function lineEl(m){
     first && element('span', { class: 'al-tag al-tag-first', title: MARKS.first_time_chatter[1]() }, MARKS.first_time_chatter[0]),
     ...flagTags(m),
     m.allowed && element('span', { class: 'al-held-end ok', title: `A moderator let it through after ${heldWho(m.site)} held it${heldByOf(m.site) ? '' : ' for review'}` }, '✓ allowed' + resolvedBy(m.allowed)),
-    ...marks.map(x => { const k = MARKS[x.type]; return element('span', { class: 'al-tag al-tag-mark', title: k ? k[1](x) : `Twitch marks it: ${x.type.replace(/_/g, ' ')}` }, k ? k[0] : x.type.replace(/_/g, ' ')); }),
+    ...marks.map(x => { const k = MARKS[x.type]; return element('span', { class: 'al-tag al-tag-mark', title: k ? k[1](x) : `${PLAT_NAME[m.site]} marks it: ${x.type.replace(/_/g, ' ')}` }, k ? k[0] : x.type.replace(/_/g, ' ')); }),
     m.streak && element('span', { class: 'al-tag al-tag-streak', title: `Watched ${m.streak} streams in a row` }, `Watch streak · ${m.streak}`),
     m.announce && element('span', 'al-tag al-tag-ann', 'Announcement'),
     m.bits && element('span', 'al-tag al-tag-bits', `${m.bits} bits`),
@@ -1008,7 +1009,7 @@ function renderHealth(view, w, chs){
   const bad = chs.map(ch => [ch, healthState(ch)]).filter(([, h]) => h && !h.hidden);
   view.health.hidden = !bad.length;
   view.health.replaceChildren(...bad.map(([ch, h]) => element('div', 'all-hl',
-    element('i', { class: 'all-hl-ic', html: icon.alert }), element('i', { class: 'pi pi-' + platOf(ch) }, PLAT_NAME[platOf(ch)][0], siteNum(ch)),
+    element('i', { class: 'all-hl-ic', html: icon.alert }), chBadge(ch),
     element('span', 'all-hl-t', h.why),
     element('button', { type: 'button', class: 'all-hl-x', 'aria-label': 'Hide', title: 'Hide (it comes back if it changes)', html: icon.close, dataset: { cmd: 'all.healthHide' }, onclick: () => { h.hidden = true; renderHealth(view, w, chs); } }),
     element('div', 'all-hl-acts',
@@ -1021,8 +1022,8 @@ function renderTop(view, w){
   // each site's switch: shown in ALL or hidden (faded and crossed), and whether it's offline or ALL has trouble reading it
   view.el.querySelector('.all-sites').replaceChildren(...chs.map(ch => { const bad = healthState(ch), p = platOf(ch), off = siteOff(view.s, ch), name = siteName(ch);
     const state = bad ? bad.why : `${name}${heard.includes(ch) ? '' : ': offline'}`;
-    return element('button', { type: 'button', class: 'pi pi-' + p + (heard.includes(ch) ? '' : ' dim') + (bad ? ' warn' : '') + (off ? ' off' : ''), 'aria-pressed': String(!off), dataset: { cmd: 'all.site' },
-      title: `${state}\n${off ? `Show ${name} in ALL` : `Hide ${name} in ALL`}`, 'aria-label': `${name} in ALL`, onclick: () => toggleSite(view.s, ch) }, PLAT_NAME[p][0], siteNum(ch)); }));
+    return chBadge(ch, { tag: 'button', type: 'button', class: [heard.includes(ch) ? '' : 'dim', bad ? 'warn' : '', off ? 'off' : ''].filter(Boolean).join(' '), 'aria-pressed': String(!off), dataset: { cmd: 'all.site' },
+      title: `${state}\n${off ? `Show ${name} in ALL` : `Hide ${name} in ALL`}`, 'aria-label': `${name} in ALL`, onclick: () => toggleSite(view.s, ch) }); }));
   renderHealth(view, w, chs);
   view.filt.title = `What ALL shows · bots ${botsShown ? 'shown' : 'hidden'}, events ${eventsMode}`;
   view.filt.classList.toggle('set', botsShown || eventsMode !== 'short' || !hypeShown);   // (a dot: not as it starts)
@@ -1137,7 +1138,7 @@ function syncSendB(view, w){
 }
 function renderCmp(view, w){
   const ch = sendSite(w), p = ch && platOf(ch);
-  view.pick.replaceChildren(p ? element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0], siteNum(ch)) : element('i', { class: 'pi dim' }, '–'),
+  view.pick.replaceChildren(p ? chBadge(ch) : element('i', { class: 'pi dim' }, '–'),
     view.lock ? element('i', { class: 'all-lock', html: icon.lock, title: 'Locked to this site' }) : element('span', 'all-caret', '▾'));
   view.pick.classList.toggle('locked', !!view.lock);
   renderLock(view, w);
@@ -1162,7 +1163,7 @@ function openPickMenu(view, w){
     ...tabChannels(w).map(ch => { const p = platOf(ch), can = ok.includes(ch);
       return element('button', { type: 'button', role: 'menuitemradio', class: 'all-mi' + (ch === cur ? ' on' : ''), disabled: !can, 'aria-checked': String(ch === cur), dataset: { cmd: 'all.sendOn' },
         onclick: () => { setSendSite(view, w, ch); view.menu.hidden = true; view.input.focus(); } },
-        element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0], siteNum(ch)), element('span', null, siteName(ch) + (can ? '' : ' · ' + why(ch))), ch === main ? element('small', null, 'Main') : ''); }),
+        chBadge(ch), element('span', null, siteName(ch) + (can ? '' : ' · ' + why(ch))), ch === main ? element('small', null, 'Main') : ''); }),
     element('div', 'all-mh', element('kbd', null, 'Tab'), ' next site · ', element('kbd', null, '⇧Tab'), ' its own tab'));
   view.menu.hidden = false;
 }
@@ -1312,7 +1313,7 @@ function renderCmds(view){
       element('span', 'all-cmd-n', element('b', null, '/' + c.name.slice(0, q.length)), c.name.slice(q.length)), c.args && element('span', 'all-cmd-a', c.args), element('small', { class: 'all-cmd-d', title: c.does }, c.does)));
   });
   view.at.classList.add('all-at-cmds');
-  view.at.replaceChildren(element('div', 'all-at-h', element('i', { class: 'pi pi-' + site }, PLAT_NAME[site][0]), element('span', null, `${PLAT_NAME[site]} commands`)), ...rows,
+  view.at.replaceChildren(element('div', 'all-at-h', siteBadge(site), element('span', null, `${PLAT_NAME[site]} commands`)), ...rows,
     element('div', 'all-mh', element('kbd', null, '↑'), element('kbd', null, '↓'), ' pick · ', element('kbd', null, 'Tab'), ' fills it in', view.atList.length > CMD_SHOWN ? ` · ${view.atList.length} in all, keep typing` : ''));
 }
 function pickCmd(view, w, c){
@@ -1352,7 +1353,7 @@ function renderAt(view){
   view.at.replaceChildren(element('div', 'all-at-h', view.lock ? `${PLAT_NAME[platOf(view.lock.ch)]} names` : 'Names in chat'),
     ...view.atList.map((m, i) => element('button', { type: 'button', role: 'option', class: 'all-ati' + (i === view.atSel ? ' on' : ''), 'aria-selected': String(i === view.atSel), dataset: { cmd: 'all.atPick' },
       onmousedown: e => e.preventDefault(), onclick: () => pickAt(view, view.w, m) },
-      element('i', { class: 'pi pi-' + m.site }, PLAT_NAME[m.site][0], siteNum(m.ch)), element('span', null, element('b', null, m.sender.slice(0, view.atQ.length + (m.sender.startsWith('@') ? 1 : 0))), m.sender.slice(view.atQ.length + (m.sender.startsWith('@') ? 1 : 0))),
+      siteBadge(m.site, {}, siteNum(m.ch)), element('span', null, element('b', null, m.sender.slice(0, view.atQ.length + (m.sender.startsWith('@') ? 1 : 0))), m.sender.slice(view.atQ.length + (m.sender.startsWith('@') ? 1 : 0))),
       element('small', null, PLAT_NAME[m.site]))),
     element('div', 'all-mh', element('kbd', null, '↑'), element('kbd', null, '↓'), ' pick · ', element('kbd', null, 'Tab'), ' or ', element('kbd', null, 'Enter'), ' adds it and locks to its site'));
 }
@@ -1439,7 +1440,7 @@ function openFilters(view){
   view.fm.replaceChildren(element('div', 'all-mvh', 'Show in ALL'),
     seg('Bots', 'Their messages, or one line to open', [[false, 'Hidden'], [true, 'Shown']], botsShown, setBotsShown, 'all.bots'),
     seg('Events', 'Subs, gifts, raids and Super Chats', [['short', 'Short'], ['full', 'Full'], ['hidden', 'Hidden']], eventsMode, setEventsMode, 'all.events'),
-    seg('Hype train', 'Twitch’s, over the chat', [[true, 'Shown'], [false, 'Hidden']], hypeShown, setHypeShown, 'all.hype'));
+    seg('Hype train', `${siteNames('and', 'chat.hypeTrains')}’s, over the chat`, [[true, 'Shown'], [false, 'Hidden']], hypeShown, setHypeShown, 'all.hype'));
   view.fm.hidden = false;
   placeAt(view, view.fm, view.filt);
 }
@@ -1479,7 +1480,7 @@ function openLineMenu(m, at){
   const short = x => `“${x.length > 24 ? x.slice(0, 23) + '…' : x}”`;
   const cw = chatFor(m), trAuto = autoTrFor(m.ch), tr = window.kmv && window.kmv.translate;
   view.fly.close();
-  lm.replaceChildren(...[em && emotePreview(em), element('div', 'all-lh', element('i', { class: 'pi pi-' + m.site, title: site }, site[0], siteNum(m.ch)), element('b', null, m.sender)),   // (its site: the badge)
+  lm.replaceChildren(...[em && emotePreview(em), element('div', 'all-lh', siteBadge(m.site, { title: site }, siteNum(m.ch)), element('b', null, m.sender)),   // (its site: the badge)
     link && item('Open link in your browser', icon.pop, () => openInBrowser(link.href), { cmd: 'all.menuLink' }),
     link && item('Copy link address', icon.link, () => copy(link.href, 'Copied the link'), { cmd: 'all.menuLinkCopy' }),
     selIn && item('Copy', icon.copy, () => copy(selectedText(window.getSelection()) || sel), { cmd: 'all.menuSelCopy' }),
@@ -1544,7 +1545,7 @@ function siteRow(ch, text, run, { off = '', title = '', cmd, end = icon.pop, kee
   const p = platOf(ch);
   return element('button', { type: 'button', role: on === null ? 'menuitem' : 'menuitemcheckbox', class: 'all-li all-mvi' + (on ? ' on' : ''), disabled: !!off, title: off ? title : title || '', 'aria-checked': on === null ? null : String(on), dataset: { cmd },
     onclick: e => { const mv = e.currentTarget.closest('.all-mv'); if (!keep) mv.hidden = true; run(); } },
-    element('i', { class: 'pi pi-' + p }, PLAT_NAME[p][0], siteNum(ch)), element('span', null, off || text), off ? '' : element('i', { class: 'all-mvx', html: end }));
+    chBadge(ch), element('span', null, off || text), off ? '' : element('i', { class: 'all-mvx', html: end }));
 }
 const chatOf = ch => wins.find(o => o.kind === 'chat' && o.channel === ch);
 // The mod button: each site's mod view (where you're a mod), or all of them at once
@@ -1813,13 +1814,13 @@ function heldEl(h){
   const site = PLAT_NAME[h.site], m = h.msg, st = nameStyle(m), key = h.site + ':' + h.id;
   const name = element('b', { class: 'al-n' + pillCls(st), style: st, role: 'button', tabindex: '-1', dataset: { cmd: 'all.profile' }, title: `${m.sender}'s card on ${site}`, onclick: () => openSiteCard(m) }, m.sender);
   if (h.status !== 'PENDING') return element('div', { class: 'al-m al-held-x', dataset: { key } },
-    element('div', 'al-line', element('span', 'al-who', element('i', { class: 'pi pi-' + h.site, title: site }, site[0], siteNum(h.ch))), name, ': ', element('span', 'al-txt', ...partsEl(m.parts, h.ch)),
+    element('div', 'al-line', element('span', 'al-who', siteBadge(h.site, { title: site }, siteNum(h.ch))), name, ': ', element('span', 'al-txt', ...partsEl(m.parts, h.ch)),
       element('span', { class: 'al-held-end', title: heldByOf(h.site) ? `${heldWho(h.site)} held it, and it wasn't posted` : `${heldWho(h.site)} held it for review, and it wasn't shown` },
         h.status === 'EXPIRED' ? '✕ expired · not posted' : `✕ ${PLATFORMS[h.site].held.denied}${resolvedBy(h)}`)));
   const act = allow => element('button', { type: 'button', class: 'al-held-b ' + (allow ? 'ok' : 'no'), disabled: !!h.busy, dataset: { cmd: allow ? 'all.heldAllow' : 'all.heldDeny' },
     title: `${PLATFORMS[h.site].held[allow ? 'allow' : 'deny']} it, with ${site}'s own button`, onclick: () => heldAct(h, allow) }, allow ? '✓ Allow' : '✕ Deny');
   return element('div', { class: 'al-held', dataset: { key }, role: 'group', 'aria-label': `${heldByOf(h.site) ? heldByOf(h.site) + ' held' : 'Held for review'}: ${m.sender}`, oncontextmenu: e => e.preventDefault() },
-    element('div', 'al-held-h', element('i', { class: 'al-held-ic', html: SHIELD }), element('i', { class: 'pi pi-' + h.site, title: site }, site[0], siteNum(h.ch)),
+    element('div', 'al-held-h', element('i', { class: 'al-held-ic', html: SHIELD }), siteBadge(h.site, { title: site }, siteNum(h.ch)),
       element('b', { title: h.note || '' }, heldByOf(h.site) ? heldByOf(h.site) + ' held this' : 'Held for review'), h.why && element('span', 'al-held-why', h.why)),
     element('div', 'al-line', ...badgeEls({ ...m, ch: h.ch }), name, ': ', element('span', 'al-txt', ...partsEl(m.parts, h.ch)), ...flagTags(h)),
     element('div', 'al-held-acts', act(true), act(false), element('span', 'al-held-who', 'Only you and other mods see this')));
@@ -1872,9 +1873,10 @@ function jumpHeld(view){
 }
 // Twitch's suspicious-user flags on a message (to moderators): tags on its line, or its held card. Flags that come
 // before their message wait for it (the newest 50).
-const FLAGS = { 'evader-possible': ['Possible ban evader', 'Twitch thinks they may be evading a ban'], 'evader-likely': ['Likely ban evader', 'Twitch thinks they\'re likely evading a ban'],
-  monitored: ['Monitored', 'Moderators are keeping an eye on them'], restricted: ['Restricted', 'Only moderators see their messages'] };
-const flagTags = m => (m.flags || []).filter(x => FLAGS[x]).map(x => element('span', { class: 'al-tag al-tag-flag al-flag-' + x.replace(/-.*/, ''), title: FLAGS[x][1] }, FLAGS[x][0]));
+// (what each says: [its tag, its title for the site's name])
+const FLAGS = { 'evader-possible': ['Possible ban evader', s => `${s} thinks they may be evading a ban`], 'evader-likely': ['Likely ban evader', s => `${s} thinks they're likely evading a ban`],
+  monitored: ['Monitored', () => 'Moderators are keeping an eye on them'], restricted: ['Restricted', () => 'Only moderators see their messages'] };
+const flagTags = m => (m.flags || []).filter(x => FLAGS[x]).map(x => element('span', { class: 'al-tag al-tag-flag al-flag-' + x.replace(/-.*/, ''), title: FLAGS[x][1](PLAT_NAME[m.site] || siteWith('suspicious')) }, FLAGS[x][0]));
 function flagLine(f, m){
   const k = 'twitch:' + m.msgId, line = f.byId.get(k);
   if (line){ line.flags = m.flags; redrawLine(line); return; }
@@ -1917,7 +1919,7 @@ function mineEl(p){
   }[p.state];
   return element('div', { class: 'al-m al-mine al-mine-' + p.state, dataset: { key: p.site + ':' + p.id } },
     p.threaded && element('span', 'al-q', '↩ replying to ', element('b', null, p.lock.msg.sender)),
-    element('div', 'al-line', element('span', 'al-who', element('i', { class: 'pi pi-' + p.site, title: site }, site[0], siteNum(p.ch)),
+    element('div', 'al-line', element('span', 'al-who', siteBadge(p.site, { title: site }, siteNum(p.ch)),
       ...badgeEls({ site: p.site, ch: p.ch, badges: p.badges, pics: p.myPics })), (st => element('b', { class: 'al-n' + pillCls(st), style: st }, p.sender))(nameStyle(p)), ': ', element('span', 'al-txt', ...partsEl(p.parts, p.ch)), p.state === 'failed' ? '' : state || ''),
     p.state === 'failed' && state);
 }
@@ -1993,9 +1995,9 @@ function renderPoll(view){
     const top = Math.max(...p.choices.map(c => c.ratio)), voted = top > 0, pct = c => Math.round(c.ratio * 100);
     return element('div', { class: 'all-poll-card all-poll-' + platOf(p.ch), dataset: { ch: p.ch } },
       element('div', 'all-poll-h', list.length > 1
-        ? element('span', 'all-pin-sw', ...list.map(x => element('button', { type: 'button', class: 'pi pi-' + platOf(x.ch) + (x === p ? ' on' : ''), title: `${siteName(x.ch)}'s poll`, 'aria-pressed': String(x === p), dataset: { cmd: 'all.pollSite' },
-            onclick: () => { view.pollAt = x.ch; renderPoll(view); fitRoom(view); } }, PLAT_NAME[platOf(x.ch)][0], siteNum(x.ch))))
-        : element('i', { class: 'pi pi-' + platOf(p.ch) }, PLAT_NAME[platOf(p.ch)][0], siteNum(p.ch)),
+        ? element('span', 'all-pin-sw', ...list.map(x => chBadge(x.ch, { tag: 'button', type: 'button', class: x === p && 'on', title: `${siteName(x.ch)}'s poll`, 'aria-pressed': String(x === p), dataset: { cmd: 'all.pollSite' },
+            onclick: () => { view.pollAt = x.ch; renderPoll(view); fitRoom(view); } })))
+        : chBadge(p.ch),
         element('i', { class: 'all-poll-i', html: POLL }), element('b', { class: 'all-poll-q', title: p.question || '' }, p.question || 'Poll')),
       element('div', 'all-poll-cs', ...p.choices.map(c => element('div', { class: 'all-poll-c' + (voted && c.ratio === top ? ' top' : '') },
         element('span', { class: 'all-poll-bar', style: { width: pct(c) + '%' } }), element('span', { class: 'all-poll-t', title: c.text }, c.text), voted && element('b', 'all-poll-p', pct(c) + '%')))),

@@ -1,9 +1,9 @@
 import { $, wins } from '../../core.js';
 import { autoOpen, linkPair, svHue, svInitials, svProf } from '../channels/channels.js';
 import { openLinkCard } from './link-card.js';
-import { dismissed, forgetNot, linkOpt, linkedOn, listStreamers, notSame, setOn, setOpt, siteName, siteNum,
+import { chBadge, dismissed, forgetNot, linkOpt, linkedOn, listStreamers, notSame, setOn, setOpt, siteName,
   streamerName, suggestions } from '../../platforms/linked.js';
-import { PLAT_NAME, chLabel, platOf } from '../../platforms/platforms.js';
+import { chLabel, siteNames } from '../../platforms/platforms.js';
 import { element } from '../../shared/element.js';
 import { store } from '../../shared/store.js';
 import { wireTabs } from '../../toolbar/toolbar.js';
@@ -17,14 +17,14 @@ const laPic = (ch, name) => {
   const p = svProf[ch] && svProf[ch].info; if (p && p.avatar){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = p.avatar; a.appendChild(im); }
   return a;
 };
-const laSite = (ch, dim) => element('i', { class: 'pi pi-' + platOf(ch) + (dim ? ' dim' : ''), title: siteName(ch) }, PLAT_NAME[platOf(ch)][0], siteNum(ch));
+const laSite = (ch, dim) => chBadge(ch, { class: dim && 'dim', title: siteName(ch) });
 const laAgo = t => { const d = Math.floor((Date.now() - t) / 864e5); return !t ? '' : d < 1 ? 'today' : d === 1 ? 'yesterday' : d < 7 ? `${d} days ago` : new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
 function renderLinkedPane(){
   if (!pane) return;
   const on = linkedOn();
   $('#linkedOnSet').checked = on;
   $('#laOnSub').textContent = on ? 'Turning it off keeps your linked streamers, and splits their windows back into one per site.'
-    : 'Off: every channel stands alone, as before. Turn on to link a streamer\'s Kick, Twitch, YouTube and Rumble channels.';
+    : `Off: every channel stands alone, as before. Turn on to link a streamer's ${siteNames('and')} channels.`;
   $('#laOff').hidden = on; $('#laRest').hidden = !on;
   pane.querySelectorAll('[data-lo]').forEach(c => { const v = linkOpt(c.dataset.lo); if (c.type === 'checkbox') c.checked = !!v; else c.value = v; });
   // what's playing now: tabs you can't see are streams too

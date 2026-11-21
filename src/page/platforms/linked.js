@@ -1,7 +1,7 @@
 import { wins } from '../core.js';
 import { saved, sendWatch, svProf } from '../panels/channels/channels.js';
 import { follows } from '../panels/channels/follow-suggestions.js';
-import { PLAT_NAME, chLabel, chNames, isVideo, parseInput, platOf, platform } from './platforms.js';
+import { PLAT_NAME, chLabel, chNames, isVideo, parseInput, platOf, platform, siteBadge } from './platforms.js';
 import { element } from '../shared/element.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
@@ -66,6 +66,8 @@ function siteNo(ch){
 const siteName = ch => PLAT_NAME[platOf(ch)] + (siteNo(ch) ? ` (${chLabel(ch)})` : '');
 // The tiny number at the bottom right of a site's badge or tab, when their streamer has more than one account on that site
 const siteNum = ch => { const n = siteNo(ch); return n ? element('span', { class: 'pn', 'aria-hidden': 'true' }, String(n)) : null; };
+// A channel's site badge (siteBadge), with its number when their streamer has more than one account there
+const chBadge = (ch, props) => siteBadge(platOf(ch), props, siteNum(ch));
 // A streamer's own chat bots (their card): names for one site each, { p: 'kick', name: 'quietkoala' }. Never a mention
 // or spam in their chats on that site, on top of the app's list.
 const botsOf = s => s && Array.isArray(s.bots) ? s.bots.filter(b => b && typeof b.name === 'string' && b.name && PLATFORMS[b.p]) : [];
@@ -204,6 +206,7 @@ function init(){
   window.linkedApi = { link, unlink, unlinkAll, setOn, setOpt, setMain, notSame, suggestions, listStreamers, streamerOf, setStreamerOpt, streamerBots };   // for the tests
 }
 
-export { accountsOf, botsOf, canLink, chanOpt, dismissed, forgetNot, groupKey, init, laterPair, link, linkedOn,
-  linkOpt, listStreamers, mainOf, nameOf, notSame, optFor, ordered, sameStreamer, setChanOpt, setMain, setOn, setOpt,
-  setStreamerOpt, siteName, siteNo, siteNum, streamerBots, streamerName, streamerOf, suggestions, unlink, unlinkAll };
+export { accountsOf, botsOf, canLink, chanOpt, chBadge, dismissed, forgetNot, groupKey, init, laterPair, link,
+  linkedOn, linkOpt, listStreamers, mainOf, nameOf, notSame, optFor, ordered, sameStreamer, setChanOpt, setMain,
+  setOn, setOpt, setStreamerOpt, siteName, siteNo, siteNum, streamerBots, streamerName, streamerOf, suggestions,
+  unlink, unlinkAll };

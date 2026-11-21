@@ -132,6 +132,7 @@ const twitch = new Site({   // (what each slot is for, and its default: sites/ad
   spamAlerts: true,
   isHost: (ch, name) => !!name && String(name).toLowerCase() === ch.slice(3).toLowerCase(),   // (a display name in another script than the login: only ALL's badge says so)
   flagged: true,         // Settings › Flagged: AutoMod's holds and suspicious users, to moderators (alerts/flagged.js)
+  suspicious: true,      // suspicious users (possible ban evaders), to moderators: ALL's tags, Settings › Flagged
   feedReaders: true,     // the alerts, chat over the stream and counts read its chat's connection (chat/chat-feed.js)
   emoteLists: true,
   pageCommands: false,
@@ -160,6 +161,7 @@ const twitch = new Site({   // (what each slot is for, and its default: sites/ad
   // How in-site/send.js sends in its chat (see kick.js's send): its send button
   send: { button: '[data-a-target="chat-send-button"]', inner: null, waitEnabled: false, realPress: false },
   likes: false,
+  pastStreams: true,     // a profile's history has its past broadcasts too
   chatCommands: TW_COMMANDS,
   liveCommands: twLiveCommands,   // (its own page's list, read live: above)
   // A name in ALL as its chat shows it (see kick.js): their colour, or one of Twitch's own, made readable
@@ -168,6 +170,7 @@ const twitch = new Site({   // (what each slot is for, and its default: sites/ad
   me: { setting: 'myTwitch', valid: /^[A-Za-z0-9_]{2,30}$/, at: false, named: true, word: 'username' },
   login: { fromPages: false, firefox: false, unfollow: false },
   colors: { dot: '#a970ff', brand: '#9146ff' },
+  settingWords: { shoutTwitch: 'its own shoutouts too' },   // (Settings › Sync's History)
   shoutouts: twitchShoutouts,   // (shoutouts.js; Settings › Shoutouts › Twitch's own shoutout too)
   idFor: name => 'tw:' + name,
   fromText(raw){ const m = raw.match(/^(?:tw|twitch)\s*:\s*([A-Za-z0-9_]{1,25})$/i); return m ? { channel: 'tw:' + m[1].toLowerCase(), only: null } : undefined; },

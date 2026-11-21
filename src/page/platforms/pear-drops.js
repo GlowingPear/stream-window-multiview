@@ -1,5 +1,5 @@
 import { ROLE, wins } from '../core.js';
-import { platOf, setWatchSignedIn, syncStreams, watchSignedIn } from './platforms.js';
+import { PLAT_NAME, platOf, setWatchSignedIn, syncStreams, watchSignedIn } from './platforms.js';
 import { PEAR_SITE, SIGN_BACK_IN_MS, autoSwitched, needOut, nextKickOut, playersReport } from './players-link.js';
 import { fromApp } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
@@ -58,9 +58,9 @@ const waitSpan = ms => (ms >= 60000 ? Math.round(ms / 60000) + ' min' : Math.rou
 function noteWait(waited, wait){
   if (ROLE !== 'main' || !appCall('linkNote')) return;
   if (waited == null && backAt != null)
-    window.kmv.linkNote('Farming stopped · Kick players sign back in at '
+    window.kmv.linkNote(`Farming stopped · ${PLAT_NAME[PEAR_SITE]} players sign back in at `
       + new Date(backAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' (in ' + waitSpan(wait) + ')');
-  else if (waited != null && backAt == null && kickOut) window.kmv.linkNote('Farming again · Kick players stay signed out');
+  else if (waited != null && backAt == null && kickOut) window.kmv.linkNote(`Farming again · ${PLAT_NAME[PEAR_SITE]} players stay signed out`);
 }
 
 // What this window's Kick players are, for Pear Drops (players.changed). The main process merges both windows'.

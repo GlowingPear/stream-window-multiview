@@ -95,8 +95,8 @@ const ready = () => win.waitForTimeout(3000);   // the chat helper treats what's
 test('a mention lights up that chat window and is listed, a normal message doesn\'t', T, async () => {
   await win.evaluate(() => window.openSettings('mentions'));
   await win.click('#mentTabs [data-t=names]');   // (it opens on Alerts)
-  await win.fill('#mentUser', 'mename');
-  await win.press('#mentUser', 'Enter');
+  await win.fill('[data-me="kick"]', 'mename');
+  await win.press('[data-me="kick"]', 'Enter');
   await win.keyboard.press('Escape');
   await ready();
   await say('bravo', 'someone', 'nice one');
@@ -118,14 +118,14 @@ test('your YouTube handle (Settings › Mentions): its @ left off, kept as typed
   await win.evaluate(() => window.openSettings('mentions'));
   await win.click('#mentTabs [data-t=names]');
   const handle = () => win.evaluate(() => localStorage.getItem('kickMultiview.myYouTube'));
-  await win.fill('#mentYouTube', ' @Me-YT.tv ');
-  await win.press('#mentYouTube', 'Enter');
+  await win.fill('[data-me="youtube"]', ' @Me-YT.tv ');
+  await win.press('[data-me="youtube"]', 'Enter');
   assert.equal(await handle(), 'Me-YT.tv');
-  assert.equal(await win.inputValue('#mentYouTube'), 'Me-YT.tv');
-  await win.fill('#mentYouTube', 'not a handle');
-  await win.press('#mentYouTube', 'Enter');
+  assert.equal(await win.inputValue('[data-me="youtube"]'), 'Me-YT.tv');
+  await win.fill('[data-me="youtube"]', 'not a handle');
+  await win.press('[data-me="youtube"]', 'Enter');
   assert.equal(await handle(), '');
-  assert.equal(await win.inputValue('#mentYouTube'), '');
+  assert.equal(await win.inputValue('[data-me="youtube"]'), '');
   await win.keyboard.press('Escape');
 });
 
@@ -612,7 +612,7 @@ test('support alerts from the site\'s connection: Kicks, gifted subs (once, also
   if (!(await win.isChecked('#supportOn'))) await win.click('label:has(#supportOn)');
   await win.evaluate(() => window.openSettings('mentions'));
   await win.click('#mentTabs [data-t=names]');
-  if ((await win.inputValue('#mentUser')) !== 'mename'){ await win.fill('#mentUser', 'mename'); await win.press('#mentUser', 'Enter'); }   // (your own)
+  if ((await win.inputValue('[data-me="kick"]')) !== 'mename'){ await win.fill('[data-me="kick"]', 'mename'); await win.press('[data-me="kick"]', 'Enter'); }   // (your own)
   await win.keyboard.press('Escape');
   await ready();
   const said = () => notesOf('support').then(l => l.filter(n => n.channel === 'bravo').map(n => `${n.sender} ${n.body}`));

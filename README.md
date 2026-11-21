@@ -283,7 +283,7 @@ The app's code is in `src/`. The top folder only has the docs, the launchers and
 
 ### Adding a site
 
-Everything about one site is in a folder of its own on each side, so a new site is those two folders and its entry in the list of sites; nothing else names a site. `npm test` checks it: code outside the sites' folders that names one fails (`test/unit/sites-in-their-folders.test.js`, with the few that do on purpose and why), and so does a site that's missing something or has it wrong.
+Everything about one site is in a folder of its own on each side, so a new site is those two folders and its entry in the list of sites; nothing else names a site, by its id or by its name. `npm test` checks it: code outside the sites' folders that names one fails (`test/unit/sites-in-their-folders.test.js`, with the few that do on purpose and why), and so does a site that's missing something or has it wrong.
 
 1. **Its entry in `src/shared/sites.js`:** its id, name, letter, the prefix of its channel ids (`tw:` for Twitch), what its channel ids look like, its storage, its web addresses and the sign-in pages it sends you to.
 2. **Its page folder, `src/page/sites/<id>/`**, and a line for it in `src/page/sites/sites.js`:
@@ -292,7 +292,7 @@ Everything about one site is in a folder of its own on each side, so a new site 
    - `site.css`: its colours wherever the page shows something as its own (its badge, a login's dot, ALL's send box…): a copy of another site's with its own colours, and its `<link>` next to theirs in `src/index.html`.
    - Its own features, if it has some no other site has (Kick's poll, prediction and clip panels).
 3. **Its main-process folder, `src/main/sites/<id>/`**, and a line for it in `src/main/sites/index.js`: `site.js` exports `create(ctx)`, returning `new SiteAdapter({ … })` (`src/main/sites/adapter.js` lists and checks what it has: its login page, whether you're signed in, its live checks, its profile; and as it has them, follows, a moderator check, emotes), and the plain things `adapter.js`'s `MODULE` lists.
-4. **Its rows in `src/index.html`:** the Accounts menu and Settings › Accounts, the Channels box's site picker and tabs, Forget my login, Watch signed in, and its name box in Settings › Mentions (`npm test` says which one is missing). A saved setting for your name there (its `me.setting`) goes in `src/page/shared/settings.js`'s list, and in Settings › Sync's names (`panels/settings/sync.js`).
+4. **Nothing in `src/index.html`:** the page's rows for each site (the Accounts menu and Settings › Accounts, the Channels box's site picker and tabs, Import follows, Profiles' filter, Forget my login, Watch signed in, its name box in Settings › Mentions) are templates copied for every site, and every place that names sites asks for them (`{sites}`, `{sites and spamAlerts}`, `{site login.firefox}` in the markup; `siteNames()`, `siteWith()` in code: `src/page/platforms/platforms.js`), so its name shows wherever its slots say it belongs. `npm test` fails on a site's name written out. A saved setting for your name there (its `me.setting`) goes in `src/page/shared/settings.js`'s list; Settings › Sync names it from the site (`me.word`, and `settingWords` for settings of its own).
 5. **Tests** next to the other sites': `test/unit/page/sites/<id>/` and `test/unit/main/sites/<id>/`.
 
 ---

@@ -10,8 +10,8 @@ import { SmvNotes } from './notifications.js';
 import { infoFor } from '../channels/channels.js';
 import { showHelp } from '../help/help.js';
 import { ignoreSender, renderSpamHist, syncAlertControls } from '../settings/alerts.js';
-import { nameOf, siteName, siteNum } from '../../platforms/linked.js';
-import { PLAT_NAME, chLabel, chLabelP, deniedWord, heldByOf, platOf } from '../../platforms/platforms.js';
+import { chBadge, nameOf, siteName } from '../../platforms/linked.js';
+import { PLAT_NAME, chLabel, chLabelP, deniedWord, heldByOf, platOf, siteNames } from '../../platforms/platforms.js';
 import { element, esc } from '../../shared/element.js';
 import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
@@ -246,7 +246,7 @@ function noteRow(n, o = {}){
     else { top.textContent = n.label || chLabel(n.channel); k.textContent = `raided by ${n.from ? chLabel(n.from) : 'someone'}`; }
     k.classList.add('plain');
     where.textContent = sites ? '' : PLAT_NAME[platOf(n.channel)] || '';
-    if (sites) where.append(...sites.map((c, i) => element('span', 'nc-site', element('i', { class: 'pi pi-' + platOf(c) }, PLAT_NAME[platOf(c)][0], siteNum(c)),
+    if (sites) where.append(...sites.map((c, i) => element('span', 'nc-site', chBadge(c),
       ` ${siteName(c)}` + (n.viewersBy && n.viewersBy[c] != null ? ` · ${Number(n.viewersBy[c]).toLocaleString()}` : '') + (i && n.at && n.at[c] && n.at[sites[0]] ? ` · ${Math.max(1, Math.round((n.at[c] - n.at[sites[0]]) / 60000))} min later` : ''))));
     if (n.auto) where.insertAdjacentHTML('afterend', '<span class="nc-auto">opened by itself</span>');
     const together = sites && n.viewersBy ? sites.reduce((t, c) => t + (+n.viewersBy[c] || 0), 0) : null;
@@ -360,7 +360,7 @@ function drawNotes(root, v, { limit, q = '', onTab } = {}){
 }
 const EMPTY = {
   all: 'Nothing yet. Mentions, spam alerts, channels going live and the app\'s messages show here.',
-  mentions: 'No mentions yet. When someone @mentions you, replies to you or writes one of your words in an open Kick, Twitch, YouTube or Rumble chat, it shows here.',
+  mentions: () => `No mentions yet. When someone @mentions you, replies to you or writes one of your words in an open ${siteNames('or', 'mentions')} chat, it shows here.`,
   spam: 'Nothing flagged. Spam alerts watch the chats you moderate (Settings › Spam alerts).',
   live: 'Nobody has gone live yet. Saved channels show here when they go live, and raids the app followed.',
   app: 'No messages from the app.'
@@ -377,7 +377,7 @@ function renderBell(){
   $('#bellRead').hidden = !unread; $('#bellClear').hidden = unread || !inTab.length;
   const all = $('#bellAll'); all.textContent = `All notifications (${notes.length}) ›`;
   const list = $('#bellList'); list.innerHTML = '';
-  if (!shown.length){ list.innerHTML = `<div class="sv-empty">${inTab.length ? 'Nothing matches.' : EMPTY[bell.tab]}</div>`; return; }
+  if (!shown.length){ list.innerHTML = `<div class="sv-empty">${inTab.length ? 'Nothing matches.' : esc(typeof EMPTY[bell.tab] === 'function' ? EMPTY[bell.tab]() : EMPTY[bell.tab])}</div>`; return; }
   shown.forEach(n => list.appendChild(noteRow(n, { close: () => { p.hidden = true; } })));
 }
 // The bell's open tab is seen: its rows keep their "new" mark until it's opened again.
@@ -394,7 +394,7 @@ function init(){
   // Settings › Mentions, changed in the other window or on another computer (Settings › Sync)
   settings.onChange([...nameSettings(), 'mentOn', 'mentMuted', 'mentWords'], () => {
     readMentions();
-    if ($('#mentUser')){ $('#mentOn').checked = mentOn; showNames(); }
+    if ($('[data-me]')){ $('#mentOn').checked = mentOn; showNames(); }
     renderMentWords(); pushMyName(); renderMentions(); syncAlertControls();
     wins.forEach(w => { if (w.kind === 'chat') syncAtBtn(w); });
   });

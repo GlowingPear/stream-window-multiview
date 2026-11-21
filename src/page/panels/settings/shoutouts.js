@@ -3,7 +3,7 @@ import { soCardAvatars, soCards, soCheckCards, soSaveCards } from '../../chat/sh
 import { $ } from '../../core.js';
 import { myNameOn } from '../bell/bell.js';
 import { shoutAddEl, shoutCardEl, shoutTokensEl } from './shout-cards.js';
-import { PLAT_NAME, shoutSites } from '../../platforms/platforms.js';
+import { shoutSites, siteBadge } from '../../platforms/platforms.js';
 import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
 import { settings } from '../../shared/settings.js';
@@ -25,7 +25,7 @@ function renderPreview(){
   previewEl.replaceChildren(...samples().map(x => {
     const text = fillShout(textEl.value, { name: x.name, link: shoutLink(x.site, x.login), links: shoutLink(x.site, x.login), game: x.game });
     const parts = text.split(/(https:\/\/\S+)/).map((t, i) => (i % 2 ? element('span', 'lnk', t) : t));
-    return element('span', null, element('i', { class: 'pi pi-' + x.site }, PLAT_NAME[x.site][0]), element('b', null, myNameOn(x.site) || 'you'), ': ', ...parts, ...(x.game ? [] : [' ', element('em', null, 'no game found')]));
+    return element('span', null, siteBadge(x.site), element('b', null, myNameOn(x.site) || 'you'), ': ', ...parts, ...(x.game ? [] : [' ', element('em', null, 'no game found')]));
   }));
 }
 /* ---- Channels: a card for each channel with a shoutout of its own (panels/settings/shout-cards.js draws one), by name,

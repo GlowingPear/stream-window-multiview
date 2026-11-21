@@ -2,7 +2,7 @@ import { reportHealth } from './all-health.js';
 import { feedParse } from './feed-parse.js';
 import { $, wins } from '../core.js';
 import { copyText, devTab } from '../panels/developer/developer.js';
-import { PLAT_NAME, platOf, siteIds } from '../platforms/platforms.js';
+import { PLAT_NAME, platOf, siteBadge, siteIds } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
@@ -10,7 +10,6 @@ import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { fromSite } from '../shared/incoming.js';
 import { settings } from '../shared/settings.js';
-import { PLATFORMS } from '../sites/sites.js';
 import { runIn } from '../windows/view.js';
 
 /* ---- Settings › Developer › Chat events (#233): every kind of event the sites' chat connections send ----
@@ -56,7 +55,7 @@ async function renderEvents(){
   const unknown = rows.filter(r => !r.does && only(r)).sort((a, b) => b.e.first - a.e.first), shown = rows.filter(r => r.does && !r.ign && only(r)).sort((a, b) => b.e.n - a.e.n), ignored = rows.filter(r => r.ign && only(r)).sort((a, b) => b.e.n - a.e.n);
   const tab = $('#devTabs [data-t=events] .dv-n'); if (tab) tab.textContent = allNew ? `(${allNew} new)` : '';
   const site = s => element('span', 'dv-site dv-' + s, PLAT_NAME[s]);
-  const letter = s => element('i', { class: 'pi pi-' + s, 'aria-label': PLAT_NAME[s] }, PLATFORMS[s].letter);   // the site's badge (platIcon), so the counts and buttons fit one line
+  const letter = s => siteBadge(s, { 'aria-label': PLAT_NAME[s] });   // the site's badge, so the counts and buttons fit one line
   const row = r => {
     const key = r.s + ' ' + r.kind, open = evs.open === key, fresh = !r.does && Date.now() - r.e.first < 86400000;
     return [element('button', { type: 'button', class: 'ev-row' + (open ? ' open' : '') + (r.does ? '' : ' ev-unk') + (r.ign ? ' ev-ign' : ''), 'aria-expanded': String(open), dataset: { cmd: 'dev.eventOpen' },

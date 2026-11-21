@@ -1,4 +1,5 @@
 import { $, wins } from '../../core.js';
+import { siteBadge, siteIds, siteNames } from '../../platforms/platforms.js';
 import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
 import { icon } from '../../shared/icons.js';
@@ -14,9 +15,9 @@ import { wireTabs } from '../../toolbar/toolbar.js';
 const BAR_BUTTONS = {
   chat: ['+ Chat', 'Stream windows: open its chat beside it', 'plus'],
   feat: ['Highlight', 'Make this stream big', 'feat'],
-  at: ['Mentions (@)', 'Kick, Twitch, YouTube and Rumble chats', 'at'],
+  at: ['Mentions (@)', () => `${siteNames('and', 'mentions')} chats`, 'at'],   // (where: words, or the sites' names when it's asked)
   overlay: ['Chat over the stream', 'Stream windows', 'chat'],
-  like: ['Like', 'YouTube streams', 'like'],
+  like: ['Like', () => `${siteNames('and', 'likes')} streams`, 'like'],
   star: ['Save', 'Every window', 'star'],
   profile: ['Profile', 'Every window', 'user'],
   ext: ['Extensions', 'When a window has some', 'ext'],
@@ -96,7 +97,7 @@ function renderWindowsPane(){
   $('#barNameStream').checked = settings.flag('barNameStream', true);
   $('#barNameChat').checked = settings.flag('barNameChat', true);
   const row = k => {
-    const [name, where, ico] = BAR_BUTTONS[k], c = choiceOf(cfg, k), pinned = c === 'never';
+    const [name, whereIs, ico] = BAR_BUTTONS[k], where = typeof whereIs === 'function' ? whereIs() : whereIs, c = choiceOf(cfg, k), pinned = c === 'never';
     const seg = element('div', { class: 'seg wb-seg', role: 'radiogroup', 'aria-label': `${name}: in the ⋯ menu` },
       ...CHOICES.map(([v, label, tip]) => element('button', { type: 'button', class: v === c ? 'on' : '', role: 'radio', 'aria-checked': String(v === c), title: tip,
         dataset: { cmd: `bar.${k}.${v}` }, onclick: () => setChoice(k, v) }, label)));
@@ -123,7 +124,7 @@ function renderWindowsPane(){
   list.replaceChildren(...keys.map(row));
   // the preview: a title bar with the buttons in this order, the ones always in ⋯ left out
   const shown = keys.filter(k => !cfg.always.includes(k) && !['state', 'inspect'].includes(k));
-  preview.replaceChildren(element('span', { class: 'wb-av' }, 'QU'), element('b', 'wb-nm', 'quietkoala ▾'), element('i', { class: 'pi pi-kick' }, 'K'), element('span', 'wb-gap'),
+  preview.replaceChildren(element('span', { class: 'wb-av' }, 'QU'), element('b', 'wb-nm', 'quietkoala ▾'), siteBadge(siteIds()[0]), element('span', 'wb-gap'),
     ...shown.map(k => k === 'quality' ? element('span', { class: 'wb-b wb-txt' + (k === cfg.never ? ' pinned' : ''), title: BAR_BUTTONS[k][0], dataset: { k } }, '720p')   // (on the bar: what it plays)
       : element('span', { class: 'wb-b' + (k === cfg.never ? ' pinned' : ''), title: BAR_BUTTONS[k][0], dataset: { k }, html: k === 'chat' ? icon.plus : icon[BAR_BUTTONS[k][2]] || '' })),
     element('span', { class: 'wb-b', title: 'More' }, '⋯'), element('span', { class: 'wb-b', html: icon.close }));

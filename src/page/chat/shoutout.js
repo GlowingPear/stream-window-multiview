@@ -8,7 +8,7 @@ import { shoutAgent } from '../in-site/shoutout.js';
 import { myNameOn } from '../panels/bell/bell.js';
 import { isSaved } from '../panels/channels/channels.js';
 import { listStreamers, nameOf, streamerOf } from '../platforms/linked.js';
-import { PLAT_NAME, chLabel, platOf, platform, shoutSites } from '../platforms/platforms.js';
+import { PLAT_NAME, chLabel, platOf, platform, shoutSites, siteBadge, siteNames } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { commands } from '../shared/commands.js';
 import { element } from '../shared/element.js';
@@ -295,7 +295,7 @@ async function openRun(w, { flip = false } = {}){
   if (!w || !shoutOn()) return;
   if (soRun && !soRun.stop) return flash('Already shouting out: Stop it first');
   const ch = soRunCh(w);
-  if (!ch || !shoutSites().includes(platOf(ch))) return flash(ch ? `Shoutouts are for Kick and Twitch: pick one of them to send on` : 'No chat to send on right now');
+  if (!ch || !shoutSites().includes(platOf(ch))) return flash(ch ? `Shoutouts are for ${siteNames('and', 'shoutouts')}: pick one of them to send on` : 'No chat to send on right now');
   if (!shoutHere(ch)) return flash(SO_NOT_MOD);
   const lines = (await soRunLines(w)).filter(p => !soOutWhy(p));   // (not who's banned or timed out there)
   if (!lines.length) return flash('No one has chatted here yet');
@@ -350,7 +350,7 @@ async function runDialog(w, lines){
     const g = soKnown[soKey(p)] && soKnown[soKey(p)].game;
     const sub = [p.raid ? 'Raided' : '', g ? `Streams ${g}` : PLAT_NAME[p.site]].filter(Boolean).join(' · ');
     const tick = element('input', { type: 'checkbox', checked: !!on, 'aria-label': `Shout out ${p.name}`, onchange: e => { state.ticks.set(soKey(p), e.target.checked); sync(); } });
-    return element('label', { class: 'so-row' + (why ? ' off' : '') }, tick, element('i', { class: 'pi pi-' + p.site }, PLAT_NAME[p.site][0]),
+    return element('label', { class: 'so-row' + (why ? ' off' : '') }, tick, siteBadge(p.site),
       element('span', 'nm', element('b', null, p.name), element('small', null, sub)), element('span', 'ago', why || (p.at ? soAgo(p.at).replace(' ago', '') : '')));
   };
   const draw = () => {
@@ -425,7 +425,7 @@ async function startRun(w, list){
       if (r.stop) return;
       if (res === 'sent'){ done++; break; }
       if (res === 'out'){ flash(`Skipped ${soOutSaid(p)}`); break; }
-      if (res === 'missing' || res === 'gone' || res === 'no-box' || tries >= 2){ flash(`Skipped ${p.name}: ${res === 'missing' ? 'couldn\'t find their Kick channel' : (SHOUT_FAIL[res] || SHOUT_FAIL['no-answer'])(PLAT_NAME[platOf(p.ch)])}`); break; }
+      if (res === 'missing' || res === 'gone' || res === 'no-box' || tries >= 2){ flash(`Skipped ${p.name}: ${res === 'missing' ? `couldn't find their ${PLAT_NAME[platOf(p.ch)]} channel` : (SHOUT_FAIL[res] || SHOUT_FAIL['no-answer'])(PLAT_NAME[platOf(p.ch)])}`); break; }
       // held back (slow mode, the site's limit, a filter): its modes again, then wait and try again
       const c = soChatWin(p.ch);
       if (c && c.view){ const x = await askIn(c.view, modesJs(platOf(p.ch))).catch(() => null); if (x) setModes(p.ch, x); }

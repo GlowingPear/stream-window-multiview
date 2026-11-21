@@ -2,7 +2,7 @@ import { SHOUT_MAX, SHOUT_TOKENS, SHOUT_TPL, fillShout, loginOfCh, shoutLink, si
 import { myNameOn } from '../bell/bell.js';
 import { svHue } from '../channels/channels.js';
 import { listStreamers, streamerName, streamerOf } from '../../platforms/linked.js';
-import { PLAT_NAME, parseInput, shoutSiteNames, shoutSites } from '../../platforms/platforms.js';
+import { PLAT_NAME, parseInput, shoutSiteNames, shoutSites, siteBadge } from '../../platforms/platforms.js';
 import { element } from '../../shared/element.js';
 import { flash } from '../../shared/flash.js';
 import { icon } from '../../shared/icons.js';
@@ -31,7 +31,7 @@ function soAvatar(card, small){
   const chs = soCardChs(card);
   const av = element('span', { class: 'shc-av' + (small ? ' sm' : ''), style: { background: svHue(card.ch) } }, soInitials(card.name || loginOfCh(card.ch)));
   if (card.avatar && /^https:\/\//.test(card.avatar)){ const im = new Image(); im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => im.remove(); im.src = card.avatar; av.appendChild(im); }
-  if (chs.length === 1) av.appendChild(element('i', { class: 'pi pi-' + siteOfCh(chs[0]) }, soSiteName(siteOfCh(chs[0]))[0]));
+  if (chs.length === 1) av.appendChild(siteBadge(siteOfCh(chs[0])));
   return av;
 }
 // A textarea that grows to show all of its text
@@ -51,7 +51,7 @@ function soPreview(card, site, text){
   const ch = soCardChs(card).find(c => siteOfCh(c) === site) || card.ch, login = loginOfCh(ch);
   const msg = fillShout(text || settings.text('shoutText') || SHOUT_TPL, { name: card.name || login, link: shoutLink(site, login), links: soCardChs(card).map(c => shoutLink(siteOfCh(c), loginOfCh(c))).join(' '), game: SO_SAMPLE_GAME });
   const me = myNameOn(site) || 'you';
-  return element('div', 'shc-pv', element('i', { class: 'pi pi-' + site }, soSiteName(site)[0]), element('b', null, me), ': ',
+  return element('div', 'shc-pv', siteBadge(site), element('b', null, me), ': ',
     ...msg.split(/(https:\/\/\S+)/).map((t, i) => (i % 2 ? element('span', 'lnk', t) : t)));
 }
 
@@ -71,7 +71,7 @@ function shoutCardEl(card, { save, remove, open = false, bare = false } = {}){
     onclick: () => { const n = shoutCardEl(card, { save, remove, open: !open }); el.replaceWith(n); if (!open) n.querySelector('textarea')?.focus(); } });
   const head = element('div', { class: 'shc-hd', onclick: e => { if (!e.target.closest('button, input, textarea')) toggle.click(); } }, soAvatar(card),
     element('span', 'tx', element('span', 'nm', card.name || loginOfCh(card.ch), linked && element('span', 'shc-pill', 'Linked')),
-      open || linked ? element('span', 'sites', ...chs.map(ch => element('span', 'shc-site', element('i', { class: 'pi pi-' + siteOfCh(ch) }, soSiteName(siteOfCh(ch))[0]), loginOfCh(ch)))) : sum(),
+      open || linked ? element('span', 'sites', ...chs.map(ch => element('span', 'shc-site', siteBadge(siteOfCh(ch)), loginOfCh(ch)))) : sum(),
       linked && !open ? sum() : null),
     toggle);
   if (bare) el.classList.add('shc-bare'); else el.appendChild(head);
@@ -84,7 +84,7 @@ function shoutCardEl(card, { save, remove, open = false, bare = false } = {}){
     t.value = value || '';
     const pvs = element('div', 'shc-pvs', ...(site ? [site] : sites).map(x => soPreview(card, x, t.value)));
     t.addEventListener('input', () => { onInput(t.value); pvs.replaceChildren(...(site ? [site] : sites).map(x => soPreview(card, x, t.value))); });
-    return element('div', 'shc-msg', site && element('span', 'mh', element('i', { class: 'pi pi-' + site }, soSiteName(site)[0]), `On ${soSiteName(site)}`), t, shoutTokensEl(t), pvs);
+    return element('div', 'shc-msg', site && element('span', 'mh', siteBadge(site), `On ${soSiteName(site)}`), t, shoutTokensEl(t), pvs);
   };
   const msgs = element('div', 'shc-msgs');
   const drawMsgs = () => msgs.replaceChildren(...(card.perSite ? sites.map(x => field(x, (card.sites || {})[x], v => { card.sites = { ...(card.sites || {}), [x]: v }; save(card); }))
@@ -102,7 +102,7 @@ function shoutCardEl(card, { save, remove, open = false, bare = false } = {}){
   body.append(element('div', 'shc-row', element('span', 'lbl', 'Their message'), seg), msgs);
   // the chatters whose shoutout is this channel's (their other accounts)
   const chips = element('div', 'shc-chips');
-  const drawChips = () => chips.replaceChildren(...(card.also || []).map(a => element('span', 'shc-chip', a.site ? element('i', { class: 'pi pi-' + a.site }, soSiteName(a.site)[0]) : element('i', { class: 'pi shc-any', title: 'Any site' }, '∗'), a.name || a.login,
+  const drawChips = () => chips.replaceChildren(...(card.also || []).map(a => element('span', 'shc-chip', a.site ? siteBadge(a.site) : element('i', { class: 'pi shc-any', title: 'Any site' }, '∗'), a.name || a.login,
     element('button', { type: 'button', class: 'x', title: `Remove ${a.name || a.login}`, 'aria-label': `Remove ${a.name || a.login}`, html: SO_X, dataset: { cmd: 'settings.shoutChatterRemove' },
       onclick: () => { card.also = card.also.filter(x => x !== a); save(card); drawChips(); } }))), adder());
   let addSite = sites[0] || shoutSites()[0];

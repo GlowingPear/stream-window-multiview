@@ -135,6 +135,7 @@ const kick = new Site({   // (what each slot is for, and its default: sites/adap
   // press, then the app presses it for real)
   send: { button: null, inner: null, waitEnabled: false, realPress: false },
   likes: false,          // a like button on its streams
+  pastStreams: true,     // a profile's history has its past broadcasts too (main/profiles.js reads them)
   chatCommands: KICK_COMMANDS,   // its chat's commands, for ALL's / list (above)
   liveCommands: null,   // (its list can't be read from its page without typing / in it: npm run check:commands checks the copy)
   // A name in ALL (chat/all-chat.js) as its own chat shows it: m a message (feed-parse.js), light whether the app's

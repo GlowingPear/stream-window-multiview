@@ -8,7 +8,7 @@ test('Kick: the channel\'s, Kick\'s and the emoji, each sent as Kick writes an e
     { slug: 'Alpha', emotes: [{ id: 1, name: 'pearHype', subscribers_only: true }, { id: 2, name: 'pearWave' }, { id: 3, name: '' }, null] },
     { id: 'Global', emotes: [{ id: 9, name: 'KEKW' }, { id: 9, name: 'KEKW' }] },
     { id: 'Emoji', emotes: [] }
-  ], 'alpha');
+  ], 'alpha', null, 'Kick');
   assert.deepEqual(g.map(x => [x.id, x.label, x.emotes.map(e => e.name)]), [['kick-channel', 'Channel', ['pearHype', 'pearWave']], ['kick-global', 'Kick', ['KEKW']]], 'empty groups left out');
   assert.deepEqual(g[0].emotes[0], { name: 'pearHype', url: 'https://files.kick.com/emotes/1/fullsize', send: '[emote:1:pearHype]', subs: true });
   assert.equal(kickGroups({ message: 'no' }, 'alpha'), null);
@@ -19,7 +19,7 @@ test('Kick: the emotes of the other channels you\'re subscribed to (signed in), 
     { slug: 'alpha', user: { username: 'Alpha', profile_pic: 'https://files.kick.com/images/user/1/alpha.webp' }, emotes: [{ id: 1, name: 'pearHype', subscribers_only: true }] },
     { slug: 'beta', user: { username: 'Beta', profile_pic: 'https://files.kick.com/images/user/2/beta.webp' }, emotes: [{ id: 2, name: 'betaWave', subscribers_only: true }] }, { slug: 'gamma', emotes: [{ id: 3, name: 'gammaLUL', subscribers_only: true }] },
     { id: 'Global', emotes: [{ id: 9, name: 'KEKW' }] }, { id: 'Collectibles', emotes: [{ id: 7, name: 'collectiblesCooked' }] }
-  ], 'Alpha');
+  ], 'Alpha', null, 'Kick');
   assert.deepEqual(g.map(x => [x.id, x.label, x.emotes.map(e => e.name)]), [['kick-channel', 'Channel', ['pearHype']], ['kick-yours', 'Sub emotes', ['betaWave', 'gammaLUL']], ['kick-collectibles', 'Collectibles', ['collectiblesCooked']], ['kick-global', 'Kick', ['KEKW']]]);
   assert.deepEqual(g[1].emotes[0], { name: 'betaWave', url: 'https://files.kick.com/emotes/2/fullsize', send: '[emote:2:betaWave]', from: 'Beta' }, 'yours to use: not marked subs; its channel as Kick names it');
   assert.equal(g[1].emotes[1].from, 'gamma', 'or its slug');
@@ -36,7 +36,7 @@ test('Kick: your favourites first (signed in), as Kick\'s menu has them after Re
   ];
   const fav = { data: { limit: 30, emotes: [{ id: 9, name: 'KEKW', type: 'global' }, { id: 3, name: 'betaWave', type: 'subscriber', channel_id: 5 },
     { id: 77, name: 'notHere', type: 'subscriber' }, { id: 2, name: 'pearWave', type: 'subscriber' }, null, { name: 'noId' }] } };
-  const g = kickGroups(d, 'alpha', fav);
+  const g = kickGroups(d, 'alpha', fav, 'Kick');
   assert.deepEqual(g.map(x => [x.id, x.label]), [['kick-favourites', 'Favourites'], ['kick-channel', 'Channel'], ['kick-yours', 'Sub emotes'], ['kick-global', 'Kick']]);
   assert.deepEqual(g[0].emotes.map(e => e.name), ['KEKW', 'betaWave', 'pearWave'], 'one this channel doesn\'t let you use (locked on Kick) left out');
   assert.deepEqual(g[0].emotes[1], { name: 'betaWave', url: 'https://files.kick.com/emotes/3/fullsize', send: '[emote:3:betaWave]', from: 'Beta' }, 'as in its own group');
@@ -51,7 +51,7 @@ test('Twitch: the channel\'s, your other sets, and Twitch\'s own', () => {
     { id: 's3', owner: { login: 'beta', displayName: 'Beta', profileImageURL: 'https://static-cdn.jtvnw.net/beta-300x300.png' }, emotes: [{ id: 'e3', token: 'betaHype' }] },
     { id: '0', owner: null, emotes: [{ id: '25', token: 'Kappa' }, { token: 'noid' }] },
     { id: 'ht', owner: { login: 'twitchhypetrain', displayName: 'TwitchHypeTrain' }, emotes: [{ id: 'h1', token: 'HypeChimp' }] }
-  ] }, user: { id: '1', profileImageURL: 'https://static-cdn.jtvnw.net/alpha-300x300.png' } } }, 'Alpha');
+  ] }, user: { id: '1', profileImageURL: 'https://static-cdn.jtvnw.net/alpha-300x300.png' } } }, 'Alpha', 'Twitch');
   assert.deepEqual(g.map(x => [x.label, x.emotes.map(e => e.name)]), [['Channel', ['alphaHi']], ['Sub emotes', ['betaWave', 'betaHype']], ['Twitch', ['Kappa']], ['Hype Train', ['HypeChimp']]], 'the hype train\'s rewards: Twitch\'s, not a channel\'s');
   assert.equal(g[1].emotes[0].from, 'Beta', 'each with its channel');
   assert.equal(g[0].pic, 'https://static-cdn.jtvnw.net/alpha-300x300.png', 'the channel\'s own picture');

@@ -10,7 +10,7 @@ import { openLinkCard } from '../linked/link-card.js';
 import { openProfile } from '../profiles/profiles.js';
 import { mainOf, nameOf, streamerName, streamerOf } from '../../platforms/linked.js';
 import { PLAT_NAME, chLabel, chNames, externalFor, isModOf, isVideo, normCh, openModView, parseInput, platOf,
-  platform, siteIds } from '../../platforms/platforms.js';
+  platform, siteIds, siteLetter, siteNames } from '../../platforms/platforms.js';
 import { commands } from '../../shared/commands.js';
 import { DESKTOP } from '../../shared/env.js';
 import { flash } from '../../shared/flash.js';
@@ -113,7 +113,7 @@ function channelMore(ch){
     add('notify', 'Notify me when live', { group: 'Channel', col: 1, icon: 'bell', disabled: () => !notifyAll && 'Live notifications are off (Channels › the bell)',
       toggle: { get: () => notifyAll && !notifyOff.includes(ch), set: on => setNotify(ch, on) } });
   }
-  if (DESKTOP && ROLE === 'main' && mentOn && mentCovered(ch)) add('mentions', 'Mentions in its chat', { group: 'Channel', col: 1, icon: 'at', sub: 'Kick, Twitch, YouTube and Rumble', toggle: { get: () => !mentMuted.has(ch), set: () => toggleChatMentions(ch) } });
+  if (DESKTOP && ROLE === 'main' && mentOn && mentCovered(ch)) add('mentions', 'Mentions in its chat', { group: 'Channel', col: 1, icon: 'at', sub: siteNames('and', 'mentions'), toggle: { get: () => !mentMuted.has(ch), set: () => toggleChatMentions(ch) } });
   if (isModOf(ch) && winsOf(ch).length) add('mod', 'Mod view', { group: 'Channel', col: 1, icon: 'mod', sub: 'You moderate this channel', run: () => openModView(ch) });
   for (const w of winsOf(ch)) out.push(...winActions(w).map(x => ({ ...x, col: 1 })));
   return out;
@@ -178,7 +178,7 @@ function typedItems(q){
   const chOf = s => normCh(PLATFORMS[s].idFor(name)), hitOf = s => hits.find(x => x.ch === chOf(s));
   const found = siteIds().filter(s => hitOf(s) && !known.has(chOf(s)));
   if (!typed.picked && found.length && !hitOf(typed.site)) typed.site = found[0];
-  const sites = () => siteIds().map(s => ({ p: s, letter: PLATFORMS[s].letter, name: PLAT_NAME[s], on: s === typed.site }));
+  const sites = () => siteIds().map(s => ({ p: s, letter: siteLetter(s), name: PLAT_NAME[s], on: s === typed.site }));
   const step = d => { const ids = siteIds(); typed.site = ids[(ids.indexOf(typed.site) + d + ids.length) % ids.length]; typed.picked = true; };
   const pick = { pickSite: s => { typed.site = s; typed.picked = true; }, nextSite: () => step(1), prevSite: () => step(-1) };
   const ch = chOf(typed.site), hit = hitOf(typed.site);
@@ -191,7 +191,7 @@ function typedItems(q){
         live && live.viewers != null && `${fmtViewers(live.viewers)} watching`, ...siteIds().filter(s => s !== typed.site).map(stateOf)] }];
   }
   return [{ id: 'open:as', kind: 'channel', openAs: true, group: 'Open as a channel', title: `Open “${name}” as a channel`, icon: 'plus', matched: 30, boost: -40,
-    sub: !look || look.busy ? (canLook() ? 'Checking Kick, Twitch, YouTube and Rumble…' : 'Kick, Twitch, YouTube or Rumble') : look.items ? 'Not found on Kick, Twitch, YouTube or Rumble' : 'Kick, Twitch, YouTube or Rumble',
+    sub: !look || look.busy ? (canLook() ? `Checking ${siteNames('and')}…` : siteNames()) : look.items ? `Not found on ${siteNames()}` : siteNames(),
     sites, ...pick, run: () => openCh(chOf(typed.site)) }];
 }
 

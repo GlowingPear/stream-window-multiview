@@ -30,7 +30,8 @@ function subGroup(id, label, sets){
 // fav: web.kick.com/api/v1/chat/emotes/favourites -> { data: { emotes: [{ id, name, type, channel_id }], limit } } (signed in:
 // the ones you starred in Kick's emote menu, up to its limit). They come first, as Kick's menu has them after Recent: the
 // ones this channel lets you use (Kick shows the others locked; sent from here, they'd be words)
-function kickGroups(d, slug, fav) {
+// (siteName: its site's own emotes' group, from src/shared/sites.js)
+function kickGroups(d, slug, fav, siteName) {
   if (!Array.isArray(d)) return null;
   const emote = e => e && e.id != null && { name: String(e.name || ''), url: `https://files.kick.com/emotes/${encodeURIComponent(e.id)}/fullsize`, send: `[emote:${e.id}:${e.name}]`,
     ...(e.subscribers_only ? { subs: true } : {}) };
@@ -43,7 +44,7 @@ function kickGroups(d, slug, fav) {
     subGroup('kick-yours', 'Sub emotes', yours.map(s => ({ name: String((s.user && s.user.username) || s.slug), pic: s.user && s.user.profile_pic,
       emotes: s.emotes.map(e => { const x = emote(e); if (x) delete x.subs; return x; }) }))),
     group('kick-collectibles', 'Collectibles', other('Collectibles').flatMap(s => s.emotes.map(emote))),
-    group('kick-global', 'Kick', other('Global').flatMap(s => s.emotes.map(emote))),
+    group('kick-global', siteName, other('Global').flatMap(s => s.emotes.map(emote))),
     group('kick-emoji', 'Emoji', other('Emoji').flatMap(s => s.emotes.map(emote)))
   ].filter(Boolean);
   const favs = fav && fav.data && Array.isArray(fav.data.emotes) ? fav.data.emotes : [], byId = new Map();
@@ -54,7 +55,7 @@ function kickGroups(d, slug, fav) {
 // Twitch: currentUser { emoteSets { id owner { login displayName profileImageURL } emotes { id token } } }: what your account can use
 // Twitch's own sets under accounts of their own, not channels: its hype trains' rewards
 const TWITCH_OWN = new Set(['twitch', 'twitchhypetrain']);
-function twitchGroups(d, login) {
+function twitchGroups(d, login, siteName) {
   const sets = d && d.data && d.data.currentUser && d.data.currentUser.emoteSets;
   if (!Array.isArray(sets)) return null;
   const emote = e => e && e.id && { name: String(e.token || ''), url: `https://static-cdn.jtvnw.net/emoticons/v2/${encodeURIComponent(e.id)}/default/dark/1.0`, send: String(e.token || '') };
@@ -64,7 +65,7 @@ function twitchGroups(d, login) {
     withPic(group('twitch-channel', 'Channel', of(s => owner(s) === String(login).toLowerCase())), d.data.user && d.data.user.profileImageURL),
     subGroup('twitch-yours', 'Sub emotes', sets.filter(s => s && Array.isArray(s.emotes) && owner(s) && owner(s) !== String(login).toLowerCase() && !TWITCH_OWN.has(owner(s)))
       .map(s => ({ name: String(s.owner.displayName || s.owner.login), pic: s.owner.profileImageURL, emotes: s.emotes.map(emote) }))),
-    group('twitch-global', 'Twitch', of(s => !owner(s) || owner(s) === 'twitch')),
+    group('twitch-global', siteName, of(s => !owner(s) || owner(s) === 'twitch')),
     group('twitch-hypetrain', 'Hype Train', of(s => owner(s) === 'twitchhypetrain'))
   ].filter(Boolean);
 }

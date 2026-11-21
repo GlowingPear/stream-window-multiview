@@ -92,3 +92,16 @@ test('Profiles: with Linked channels off, every account is its own card', async 
   await page.waitForSelector('.pf-prof .pf-hero');
   assert.equal(await page.locator('.pf-view').count(), 0, 'no All sites / site chips');
 });
+
+test('Profiles: every site\'s badge shows its own letter, numbered when the streamer has two accounts there (Rumble\'s said "?")', async t => {
+  // Kick, Twitch and two Rumble accounts
+  const acc = ['quietkoala', 'tw:quietkoala', 'ru:quietkoala', 'ru:quietkoalagames'];
+  const page = await openApp(t, { init: `(${init})(${JSON.stringify([true, H, D])}); localStorage.setItem('kickMultiview.saved', ${JSON.stringify(JSON.stringify(acc))});
+    localStorage.setItem('kickMultiview.streamers', ${JSON.stringify(JSON.stringify([{ id: 's1', name: '', main: 'quietkoala', accounts: acc }]))});` });
+  await page.evaluate(() => smvNotes.liveStatus({ quietkoala: { live: true, viewers: 900, checked: Date.now() }, 'ru:quietkoala': { live: true, viewers: 300, checked: Date.now() } }));
+  await page.evaluate(() => openProfile('quietkoala'));
+  await page.waitForSelector('.pf-view');
+  assert.deepEqual(await page.$$eval('.pf-view .pf-chips .pi', els => els.map(e => e.className + ' ' + e.textContent)),
+    ['pi pi-kick K', 'pi pi-twitch T', 'pi pi-rumble R1', 'pi pi-rumble R2']);
+  assert.equal(await page.textContent('.pf-now-btns .primary'), 'Watch (tabs: K, R1)');
+});

@@ -7,6 +7,7 @@ const { toTime, withTimeout } = require('../../live');
 const { parseKickProfile, parseKickVideos } = require('../../profiles');
 const { parseKickEmotes } = require('../../emote-lists');
 const { kickGroups } = require('../../emote-picker');
+const SmvSites = require('../../../shared/sites');
 
 const KICK = 'https://kick.com';
 const SLUG_RE = /^[a-z0-9_-]{1,40}$/i;                       // a Kick channel name
@@ -317,7 +318,7 @@ function create(ctx) {
       kickApi('https://web.kick.com/api/v1/chat/emotes/favourites').catch(() => null)]);
     if (!(r && r.status === 200)) return { groups: [], id: null };
     const own = Array.isArray(r.d) && r.d.find(s => s && String(s.slug || '').toLowerCase() === ch);
-    return { groups: kickGroups(r.d, ch, fav && fav.status === 200 ? fav.d : null) || [], id: own && own.user_id };
+    return { groups: kickGroups(r.d, ch, fav && fav.status === 200 ? fav.d : null, SmvSites.byId.kick.name) || [], id: own && own.user_id };
   }
 
   /* Kick only */

@@ -1,7 +1,7 @@
 import { $ } from '../../core.js';
 import { allowLink, applyLink, backAt, disconnectLink, kickAuto, kickOut, linkIcon, linkOn, linkState, pairAgainLink,
   setKickAuto, setLinkOn, testLink } from '../../platforms/pear-drops.js';
-import { watchSignedIn } from '../../platforms/platforms.js';
+import { PLAT_NAME, watchSignedIn } from '../../platforms/platforms.js';
 import { PEAR_SITE, effectiveSignedIn } from '../../platforms/players-link.js';
 import { commands } from '../../shared/commands.js';
 import { element } from '../../shared/element.js';
@@ -41,17 +41,17 @@ function lineFor(st, ctx){
   if (peer.status !== 'connected' && peer.installed === false) return { line: ['Free for Windows, macOS and Linux.'], tone: 'off', act: 'download' };
   if (peer.status === 'connected'){
     const paired = peer.pairedAt ? 'Paired ' + pairedDay(peer.pairedAt) : '';
-    const signed = ctx.signedIn ? 'Kick players are signed in' : 'Kick players are signed out';
+    const kick = PLAT_NAME[PEAR_SITE], signed = `${kick} players are signed ${ctx.signedIn ? 'in' : 'out'}`;
     if (peer.report && peer.report.state === 'limited') return { line: [peer.report.text], tone: 'wait', act: 'disconnect', paired };
     if (farming && farming.state === 'farming'){
       const what = (farming.drop && (farming.drop.campaign || farming.drop.category)) || '';
       const where = farming.channel ? (farming.channel.name || farming.channel.slug) : '';
-      const players = ctx.out ? 'Your Kick players are signed out'
+      const players = ctx.out ? `Your ${kick} players are signed out`
         : !ctx.auto ? signed + ' (signing out is off)'
-        : 'On another Kick account, so ' + signed;
+        : `On another ${kick} account, so ` + signed;
       return { line: [element('b', null, what ? 'Farming ' + what : 'Farming'), where ? ' on ' + where : '', element('small', 'ca-sub', players)], tone: 'ok', act: 'disconnect', paired };
     }
-    if (ctx.out && ctx.backAt != null) return { line: ['Signing Kick players back in at ' + clock(ctx.backAt)], tone: 'ok', act: 'disconnect', paired };
+    if (ctx.out && ctx.backAt != null) return { line: [`Signing ${kick} players back in at ` + clock(ctx.backAt)], tone: 'ok', act: 'disconnect', paired };
     return { line: ["Pear Drops isn't farming", element('small', 'ca-sub', signed)], tone: 'ok', act: 'disconnect', paired };   // (the players: a line of their own)
   }
   if (peer.status === 'waiting'){
