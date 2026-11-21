@@ -59,13 +59,21 @@ async function launchApp(opts = {}) {
         + 'lb.onclick = () => { window.__likes++; lb.setAttribute("aria-pressed", String(lb.getAttribute("aria-pressed") !== "true")); };'
         + 'window.ytcfg = { get: k => k === "LOGGED_IN" ? /(^|; )SAPISID=/.test(document.cookie) : undefined };'
         + '</script></body>';
+      // Rumble's player: it waits for a real press to start (its <video> never loads here), counted in __presses, and
+      // asks its cookie question (a Ketch banner's Reject All, its presses in __rejected)
+      const rumblePlayer = '<!doctype html><title>player</title><body style="margin:0;background:#000"><video id="v" muted playsinline style="width:100%;height:100%"></video>'
+        + '<button aria-label="Reject All" class="ketch-relative" style="position:fixed;left:0;bottom:0">Reject All</button><script>'
+        + 'window.__presses = 0; window.__rejected = 0; addEventListener("mousedown", e => { if (e.isTrusted) window.__presses++; });'
+        + 'document.querySelector("button").onclick = () => { window.__rejected++; };'
+        + '</script></body>';
       const chat = '<!doctype html><title>chat</title><body><div id="chat"><div class="row"><b>regular</b>: <span>evening all</span></div></div></body>';
       const page = html => new Response(html, { headers: { 'content-type': 'text/html' } });
       const fake = s => {
         try {
           s.protocol.handle('https', req => {
             const u = req.url;
-            if (/player\.kick\.com|player\.twitch\.tv|youtube\.com\/embed|rumble\.com\/embed\//.test(u)) return page(player);
+            if (/rumble\.com\/embed\//.test(u)) return page(rumblePlayer);
+            if (/player\.kick\.com|player\.twitch\.tv|youtube\.com\/embed/.test(u)) return page(player);
             if (/\/popout\/|live_chat|\/chat\?|rumble\.com\/chat\/popup\//.test(u)) return page(chat);
             if (/^https:\/\/www\.youtube\.com\/watch\?/.test(u)) return page(ytWatch);
             // Kick's polls: what was sent is kept in __polls; the answer is __pollAnswer ({ status, body }), or Kick's OK

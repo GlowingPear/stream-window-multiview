@@ -318,3 +318,25 @@ test('a YouTube channel live again with a new stream: its window follows it, and
   assert.match(await url(), /thirdStrm03/);
   await clear();
 });
+
+test('a Rumble stream: its player, which waits for a real press, is pressed until it starts (not while it\'s paused); its cookie question is answered', T, async () => {
+  await a.app.evaluate(({ ipcMain }) => {
+    ipcMain.removeHandler('live:resolve');
+    ipcMain.handle('live:resolve', () => ({ live: true, videoId: 'v33aw1a.186945454', name: 'Night Owl' }));
+  });
+  await setMode(a.win, 'stream');
+  await add('https://rumble.com/c/nightowl');
+  await a.win.waitForSelector('#stage .win.stream.plat-rumble webview');
+  const title = await a.win.textContent('#stage .win.stream .title');
+  await viewLoaded(a.win, title, 'stream', /rumble\.com\/embed\/v33aw1a\//);
+  const inPlayer = prop => inView(a.win, title, 'stream', p => window[p], prop);
+  await until(async () => (await inPlayer('__presses')) >= 1);
+  await until(async () => (await inPlayer('__rejected')) >= 1);
+  assert.equal(await inPlayer('__kmvConsent'), true, 'its cookie script ran');
+  // paused by you: no more presses (it's still waiting, but that's yours to start)
+  await a.win.evaluate(async () => (await import('./page/windows/pause.js')).togglePause(window.openWins()[0]));
+  const n = await inPlayer('__presses');
+  await new Promise(r => setTimeout(r, 3500));
+  assert.equal(await inPlayer('__presses'), n, 'paused: not pressed');
+  await clear();
+});
