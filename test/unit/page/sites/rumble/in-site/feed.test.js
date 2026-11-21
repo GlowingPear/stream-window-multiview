@@ -4,8 +4,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-let rumbleTap, rumbleShown, rumbleConsent, rumbleSignedOut;
-test.before(async () => { ({ rumbleTap, rumbleShown, rumbleConsent, rumbleSignedOut } = await import('../../../../../../src/page/sites/rumble/in-site/feed.js')); });
+let rumbleTap, rumbleShown, rumbleConsent, rumbleSignedOut, rumbleModAction;
+test.before(async () => { ({ rumbleTap, rumbleShown, rumbleConsent, rumbleSignedOut, rumbleModAction } = await import('../../../../../../src/page/sites/rumble/in-site/feed.js')); });
 
 // its chat page: where it is, and its emote list's answer
 function page(emotes = { data: { items: [{ emotes: [{ name: 'r+wave', file: 'https://hugh.cdn.rumble.cloud/w.gif' }, { name: 'bad' }] }, null] } }) {
@@ -108,4 +108,49 @@ test('whether its chat shows you signed out: its "Sign in to chat!", its box, or
   page({ '#chat-signin-trigger': false, '#chat-message-text-input': true }); assert.equal(rumbleSignedOut(), false);
   page({}); assert.equal(rumbleSignedOut(), null);
   delete globalThis.document;
+});
+
+test('its tap: gifts (as bought, in a message), its notices, a raid going out (also one on its way as the chat opens)', async () => {
+  page();
+  const pushed = [], samples = [];
+  const heard = rumbleTap({ F: { on: true }, push: x => pushed.push(x), sample: k => samples.push(k) });
+  heard(ev('init', { users: [{ id: '1', username: 'Pip' }], raid: { target_url: 'https://rumble.com/v6abcde-x.html', target_channel_name: 'Night Owl', audience: 40, start_ts: 9 } }));
+  heard(ev('messages', { messages: [{ id: 'g1', user_id: '1', text: '', gift_purchase_notification: { gift_type: 'rumble', total_gifts: 3 } }] }));
+  heard(ev('messages', { messages: [{ id: 'n1', user_id: '1', text: '', notification: { text: 'just subscribed!', badge: 'recurring_subscription' } }] }));
+  heard(ev('gift_purchased', { user_id: '1', total_gifts: 2, gift_type: 'premium' }));
+  heard(ev('gift_purchased', { user_id: '1' }));
+  heard(ev('raid_confirmed', { target_url: 'https://rumble.com/v7zzz-y.html', audience: 12 }));
+  heard(ev('raid_confirmed', {}));
+  assert.deepEqual(pushed.map(x => x.t), ['raid', 'message', 'message', 'gift', 'raid']);
+  assert.deepEqual(pushed[0].d, { url: 'https://rumble.com/v6abcde-x.html', name: 'Night Owl', title: '', viewers: 40, at: 9 });
+  assert.deepEqual(pushed[1].m.gift, { type: 'rumble', n: 3 });
+  assert.deepEqual(pushed[2].m.note, { text: 'just subscribed!', badge: 'recurring_subscription' });
+  assert.deepEqual(pushed[3].d, { user: '1', who: 'Pip', n: 2, type: 'premium', time: '' }, 'its name from the people it knows');
+  assert.deepEqual(samples, ['init', 'messages:gift', 'messages:notification', 'gift_purchased', 'gift_purchased', 'raid_confirmed', 'raid_confirmed']);
+});
+
+test('ALL\'s mod actions from its chat page: a message deleted, someone timed out or banned (muted), with your login', async () => {
+  const calls = [];
+  let status = 200, body = { data: { success: true } };
+  globalThis.location = { pathname: '/chat/popup/186945454' };
+  globalThis.fetch = async (url, o) => { calls.push({ url, method: o.method, body: o.body instanceof FormData ? Object.fromEntries(o.body) : o.body, cred: o.credentials }); return { ok: status < 300, status, json: async () => body }; };
+  assert.equal(await rumbleModAction('delete', { id: 'm 1' }), 'done');
+  assert.deepEqual(calls[0], { url: 'https://web7.rumble.com/chat/api/chat/186945454/message/m%201', method: 'DELETE', body: undefined, cred: 'include' });
+  assert.equal(await rumbleModAction('timeout', { name: 'Pip', secs: 600 }), 'done');
+  assert.deepEqual(calls[1], { url: '/service.php?name=moderation.mute', method: 'POST', cred: 'include',
+    body: { user_to_mute: 'Pip', entity_type: 'user', video: '186945454', type: 'channel', duration: '600' } });
+  assert.equal(await rumbleModAction('ban', { name: 'Pip', secs: 0 }), 'done');
+  assert.equal('duration' in calls[2].body, false, 'a ban: for good');
+  body = { errors: [{ message: 'nope' }] };
+  assert.equal(await rumbleModAction('ban', { name: 'Pip' }), 'failed', 'its answer says no');
+  status = 404;
+  assert.equal(await rumbleModAction('delete', { id: 'gone' }), 'no-line');
+  status = 500;
+  assert.equal(await rumbleModAction('delete', { id: 'x' }), 'failed');
+  assert.equal(await rumbleModAction('pin', { id: 'x' }), 'no-button', 'pinning isn\'t one of them');
+  assert.equal(await rumbleModAction('nonsense', { id: 'x' }), 'no-button');
+  globalThis.fetch = async () => { throw new Error('offline'); };
+  assert.equal(await rumbleModAction('delete', { id: 'x' }), 'failed');
+  globalThis.location = { pathname: '/elsewhere' };
+  assert.equal(await rumbleModAction('delete', { id: 'x' }), 'failed', 'not its chat page');
 });

@@ -81,6 +81,14 @@ function rumbleGroups(d) {
       ...(own && /^https:\/\//.test(g.channel_picture || '') ? { pic: g.channel_picture } : {}) };
   }).filter(Boolean);
 }
+// Its chat connection's first event ("init", data: … can_moderate) -> whether you can moderate it, or null
+const canModerateIn = d => (d && d.type === 'init' && d.data && typeof d.data.can_moderate === 'boolean' ? d.data.can_moderate : null);
+// The first event in an event stream's text so far ("data: {…}\n"), or undefined until it's all there
+function firstEvent(text) {
+  const m = /^data:[ \t]*(\{.*)$/m.exec(text);
+  if (!m || !/\n/.test(text.slice(m.index + m[0].length, m.index + m[0].length + 1))) return undefined;
+  try { return JSON.parse(m[1]); } catch { return null; }
+}
 // A link on its pages -> the channel id it's for, or null
 function fromLink(href) {
   let u; try { u = new URL(href, RU); } catch { return null; }
@@ -111,6 +119,7 @@ function create(ctx) {
   const { site } = ctx;
   const RU_PAGES = ctx.devEnv('SMV_RUMBLE_PAGES');   // the tests' stand-in for its pages
   const page = url => (RU_PAGES ? url.replace(/^https:\/\/rumble\.com/, RU_PAGES) : url);
+  const CHAT_API = ctx.devEnv('SMV_RUMBLE_CHAT') || 'https://web7.rumble.com/chat/api';   // (and its chat's)
   const get = url => ctx.pageFetch(page(url), { headers: ctx.headers(), signal: ctx.netSignal() });
   // A video's player id (oEmbed), by its page: kept, as a video keeps it. -> its answer, false (Rumble has no such
   // video), or null (no answer)
@@ -179,6 +188,28 @@ function create(ctx) {
     } catch { return []; }
   }
 
+  /* whether you can moderate a channel: its live chat's first event says, with your login (signed out, or not live:
+     can't tell) */
+  async function modCheck(ch) {
+    if (!(await signedIn())) return null;
+    const chat = await chatOf(ch);
+    if (!chat) return null;
+    const ac = new AbortController(), stop = setTimeout(() => ac.abort(), ctx.netTimeout || 20000);
+    try {
+      const r = await ctx.loginFetch(CHAT_API + `/chat/${chat}/stream`, { headers: { ...ctx.headers(), Accept: 'text/event-stream' }, signal: ac.signal });
+      if (!r.ok || !r.body) return null;
+      const rd = r.body.getReader(), dec = new TextDecoder();
+      for (let text = ''; text.length < 4e6; ) {
+        const { value, done } = await rd.read();
+        if (value) text += dec.decode(value, { stream: true });
+        const d = firstEvent(text);
+        if (d !== undefined) return canModerateIn(d);
+        if (done) return null;
+      }
+      return null;
+    } catch { return null; } finally { clearTimeout(stop); ac.abort(); }
+  }
+
   /* the channels you follow: its Followed Channels page; for suggestions, read again in the background at most once a
      day while you're signed in (no live state) */
   const importFollows = () => ctx.scrapeFollowPage(RU + '/followed-channels', { scope: FOLLOW_SCOPE, name: FOLLOW_NAME, signedOut: SIGNED_OUT_JS });
@@ -207,6 +238,7 @@ function create(ctx) {
     signedIn, account: signedIn, loginWorks,
     liveOne,
     follows: { import: importFollows, tick: followsTick, retry() { followTried = 0; } },
+    modCheck,
     // its emotes: the picker's groups (ALL); the channel's own names (new emotes)
     emotes: {
       pick: async ch => ({ groups: await emoteGroups(ch), id: null }),
@@ -222,4 +254,4 @@ function create(ctx) {
   });
 }
 
-module.exports = { create, describeRequest, fromLink, rumbleGroups, FOLLOW_SCOPE, SIGNED_OUT_JS, LOGIN_COOKIE, parseRumbleLive, parseRumbleProfile, parseOembed, rumbleItems, rumbleItem, rumblePage, rumbleLivePage, signedInOn };
+module.exports = { create, describeRequest, fromLink, rumbleGroups, canModerateIn, firstEvent, FOLLOW_SCOPE, SIGNED_OUT_JS, LOGIN_COOKIE, parseRumbleLive, parseRumbleProfile, parseOembed, rumbleItems, rumbleItem, rumblePage, rumbleLivePage, signedInOn };

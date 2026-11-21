@@ -1,6 +1,6 @@
 import { Site } from '../adapter.js';
 import { rumbleFeed } from './feed.js';
-import { rumbleConsent, rumbleShown, rumbleSignedOut, rumbleTap } from './in-site/feed.js';
+import { rumbleConsent, rumbleModAction, rumbleShown, rumbleSignedOut, rumbleTap } from './in-site/feed.js';
 
 // Rumble, as the rest of the page sees it (the same shape as kick.js, which says more).
 // Rumble's channel ids are "ru:name" (rumble.com/c/name), "ru:u:name" (rumble.com/user/name) or "ru:v:v35waq4" (one
@@ -19,7 +19,7 @@ const rumble = new Site({   // (what each slot is for, and its default: sites/ad
   screenMentions: false, // (only from its connection)
   mentionEnd: '\\b',     // its chat's @names are letters, numbers and _
   threadedReplies: false,   // (no replies in its chat: ALL replies with an @)
-  timeoutCmd: null, banCmd: null, modRequest: null,   // (moderating from its own chat)
+  timeoutCmd: null, banCmd: null, modRequest: null,   // (ALL's mod actions are its chat page's own requests: inSite.modAction)
   deleteMods: false,
   spamAlerts: true,      // spam alerts read its chat
   isHost: (ch, name) => !!name && !ch.startsWith('ru:v:') && String(name).toLowerCase() === ch.replace(/^ru:(u:)?/, ''),
@@ -45,7 +45,7 @@ const rumble = new Site({   // (what each slot is for, and its default: sites/ad
   inSite: {
     tap: rumbleTap, pins: null, shown: rumbleShown, badges: null, modes: null,   // (its pin comes as its chat opens; its badges come with their pictures)
     icons: null, look: null, room: null, hypeTrain: null, channels: null, commands: null,
-    reply: null, replyAt: null, replyPress: null, heldCard: null, signedOut: rumbleSignedOut,
+    reply: null, replyAt: null, replyPress: null, heldCard: null, signedOut: rumbleSignedOut, modAction: rumbleModAction,
     emote: { look: ['#85c742', '#061726', 'Rumble emote'], find: (img, u) => (u.hostname === 'hugh.cdn.rumble.cloud' && img.classList && img.classList.contains('chat-history--emote') ? { big: u.href } : null),
       host: null, path: null, pics: 'hugh\\.cdn\\.rumble\\.cloud\\/' }   // (host: its emotes aren't read in a message's words)
   },
@@ -58,7 +58,7 @@ const rumble = new Site({   // (what each slot is for, and its default: sites/ad
   liveCommands: null,
   // A name in ALL (see kick.js): Rumble shows the colour each account has
   nameStyle: m => (/^#[0-9a-f]{6}$/i.test(m.color || '') ? { color: m.color } : null),
-  quality: null,
+  quality: { siteMax: null },   // its stream's quality can be set (windows/quality.js: its player is hls.js); by itself it goes as high as the stream
   // your username: its chat names people "@name"; its login doesn't say whose
   me: { setting: 'myRumble', valid: /^[A-Za-z0-9_]{2,40}$/, at: true, named: false, word: 'username' },
   login: { fromPages: false, firefox: false, unfollow: false },
@@ -93,9 +93,17 @@ const rumble = new Site({   // (what each slot is for, and its default: sites/ad
   support: null,
   chatBox: { box: '#chat-message-text-input', hint: '#chat-message-text-input', attrs: ['placeholder'], says: '^your message here!?$' },
   stuckJs: null,   // a stream that comes back is a new video, which the live check finds (see kick.js)
+  // Its player waits on its big play button for a real press (a script's play() or click it ignores): where that is,
+  // the player's middle, while its video hasn't started (nothing loaded yet), else null
+  startJs: `(() => { const v = document.querySelector('video');
+    return v && v.paused && v.readyState === 0 && !v.currentTime ? { x: Math.round(innerWidth / 2), y: Math.round(innerHeight / 2) } : null; })()`,
   playerCss: null,
   playerFitJs: null,
-  raidTarget: () => null
+  // A raid: its chat sends you on to the raided live stream's page (rumble.com/v….html), a video of its own
+  raidTarget(kind, u){
+    const host = u.hostname.replace(/^(www|m)\./, ''), m = /^\/(v[a-z0-9]{3,12})(?:-[^/]*)?\.html$/i.exec(u.pathname);
+    return host === 'rumble.com' && m ? 'ru:v:' + m[1].toLowerCase() : null;
+  }
 });
 
 export { rumble };

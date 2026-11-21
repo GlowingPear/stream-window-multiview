@@ -72,4 +72,23 @@ test('its chat: the streamer by their name, names in their own colour, its box a
   assert.match(rumble.cookieJs, /^\(function rumbleConsent\(\)\{/);
   assert.equal(kick.cookieJs, null, 'the default: no question to answer');
   assert.ok(rumble.me.valid.test('Night_Owl') && !rumble.me.valid.test('a'));
+  assert.equal(rumble.inSite.modAction.name, 'rumbleModAction', 'ALL\'s mod actions: its chat page\'s own requests');
+  assert.deepEqual(rumble.quality, { siteMax: null });
+  assert.equal(kick.startJs, null, 'the default: its player starts by itself');
+});
+
+test('its player waits for a real press to start: where, until it has started', () => {
+  const run = video => new Function('document', 'innerWidth', 'innerHeight', 'return ' + rumble.startJs)({ querySelector: () => video }, 800, 450);
+  assert.deepEqual(run({ paused: true, readyState: 0, currentTime: 0 }), { x: 400, y: 225 });
+  assert.equal(run({ paused: false, readyState: 0, currentTime: 0 }), null, 'started (loading)');
+  assert.equal(run({ paused: true, readyState: 4, currentTime: 12 }), null, 'paused after playing: yours to start');
+  assert.equal(run(null), null, 'no player yet');
+});
+
+test('a raid: its chat sends you to the raided live stream\'s page, a video of its own; nothing else is one', () => {
+  const at = s => rumble.raidTarget('chat', new URL(s));
+  assert.equal(at('https://rumble.com/v6abcde-late-show.html'), 'ru:v:v6abcde');
+  assert.equal(at('https://www.rumble.com/v6ABCDE.html'), 'ru:v:v6abcde');
+  assert.equal(at('https://rumble.com/c/nightowl'), null);
+  assert.equal(at('https://example.com/v6abcde.html'), null);
 });

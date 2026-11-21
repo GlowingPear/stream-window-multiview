@@ -68,3 +68,28 @@ test('what ALL says of each kind its tap counts: the ones it reads, the ones it 
   assert.equal(Object.keys(ignored).some(k => known[k]), false);
   assert.deepEqual(feedParse.parseFeed({ s: 'rumble', raw: [{ t: 'delete', id: '1' }, { t: '??' }] }).map(m => m.kind), ['delete']);
 });
+
+test('gifted subscriptions (as bought, and as its line in the chat: one id), Rumble Premium gifts, its notices, a raid going out', async () => {
+  const { parse } = await load();
+  const at = '2026-11-20T21:05:45+00:00';
+  const bought = parse({ t: 'gift', d: { user: '7', who: 'Pip', n: 5, type: 'rumble', time: at } });
+  assert.deepEqual([bought.kind, bought.event, bought.text, bought.support], ['event', 'gifts', 'Pip gifted 5 subscriptions', { kind: 'gifts', who: 'Pip', n: 5 }]);
+  const line = parse(msg('message', { time: at, gift: { type: 'rumble', n: 5 } }, { u: { ...PIP, id: '7', username: 'Pip' } }));
+  assert.equal(line.id, bought.id, 'the same gift: its line in the chat isn\'t shown twice');
+  assert.deepEqual([line.color, line.badges], ['#417eeb', ['mod', 'sub']], 'with the gifter\'s look');
+  const one = parse({ t: 'gift', d: { user: '7', who: 'Pip', n: 1, type: 'premium' } });
+  assert.equal(one.text, 'Pip gifted 1 Rumble Premium membership');
+  assert.deepEqual(one.support, { kind: 'gifts', who: 'Pip', n: 1, unit: 'memberships' });
+  assert.equal(parse({ t: 'gift', d: { user: '7', n: 1, type: 'rumble' } }).sender, 'Someone');
+  assert.equal(parse({ t: 'gift', d: { n: 0 } }), null);
+  // its notices: someone subscribing (a subscriber's badge: support), another kind (just its words)
+  const sub = parse(msg('message', { note: { text: 'just subscribed!', badge: 'recurring_subscription' } }));
+  assert.deepEqual([sub.kind, sub.event, sub.text, sub.support], ['event', 'sub', 'PipTheOwl just subscribed!', { kind: 'sub', who: 'PipTheOwl', n: 1 }]);
+  const other = parse(msg('message', { note: { text: 'joined the Locals community', badge: 'whatever' } }));
+  assert.deepEqual([other.event, other.support], ['notice', undefined]);
+  // a raid going out: to the raided live stream's page, with its channel's name
+  const raid = parse({ t: 'raid', d: { url: 'https://rumble.com/v6abcde-late-show.html?e9s=x', name: 'Night Owl', title: 'Late show', viewers: 120, at: 1795209000 } });
+  assert.deepEqual(raid, { site: 'rumble', kind: 'raid', state: 'go', id: 'rd-ru:v:v6abcde-1795209000', t: raid.t, to: 'ru:v:v6abcde', toName: 'Night Owl', viewers: 120, at: 0 });
+  assert.equal(parse({ t: 'raid', d: { url: 'https://example.com/v6abcde.html' } }), null);
+  assert.equal(parse({ t: 'raid', d: { url: 'https://rumble.com/v6abcde.html', title: 'Late show' } }).toName, 'Late show', 'no channel name: the stream\'s title');
+});

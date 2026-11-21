@@ -199,3 +199,26 @@ test('emotes: its live chat\'s list as the picker\'s groups (the channel\'s with
   const broken = rumbleWith({}, { snapshot: { 'ru:nightowl': { live: true, videoId: 'v33aw1a.186945454' } }, loginFetch: () => { throw new Error('offline'); } });
   assert.deepEqual((await broken.a.emotes.pick('ru:nightowl')).groups, []);
 });
+
+test('whether you moderate a channel: its live chat\'s first event (can_moderate), read as it comes, with your login', async () => {
+  const { canModerateIn, firstEvent } = rumble;
+  assert.equal(canModerateIn({ type: 'init', data: { can_moderate: true } }), true);
+  assert.equal(canModerateIn({ type: 'messages', data: { can_moderate: true } }), null);
+  assert.equal(canModerateIn(null), null);
+  assert.equal(firstEvent(': \ndata: {"type":"in'), undefined, 'not all there yet');
+  assert.deepEqual(firstEvent(': \ndata: {"type":"init"}\n'), { type: 'init' });
+  assert.equal(firstEvent('data: {bad}\n'), null);
+  // its stream, in pieces; the live check says its chat
+  const stream = (...parts) => answer({ text: '' }) && { ok: true, status: 200, body: { getReader: () => { let i = 0; return { read: async () => (i < parts.length ? { value: new TextEncoder().encode(parts[i++]), done: false } : { value: undefined, done: true }) }; } } };
+  const cookies = [{ name: 'u_s', domain: '.rumble.com', value: 'x' }], snapshot = { 'ru:nightowl': { live: true, videoId: 'v33aw1a.186945454' } };
+  const mod = rumbleWith({}, { cookies, snapshot, loginFetch: url => stream(': ok\n\ndata: {"type":"init","data":{"chat":', '{"id":"1"},"can_moderate":true}}\n\n') });
+  assert.equal(await mod.a.modCheck('ru:nightowl'), true);
+  assert.equal(mod.rec.fetched[0].url, 'https://web7.rumble.com/chat/api/chat/186945454/stream');
+  assert.equal(mod.rec.fetched[0].opts.headers.Accept, 'text/event-stream');
+  assert.equal(await rumbleWith({}, { cookies, snapshot, loginFetch: () => stream('data: {"type":"init","data":{"can_moderate":false}}\n') }).a.modCheck('ru:nightowl'), false);
+  assert.equal(await rumbleWith({}, { cookies, snapshot, loginFetch: () => stream('data: {"type":"in') }).a.modCheck('ru:nightowl'), null, 'it ended before its first event');
+  assert.equal(await rumbleWith({}, { cookies, snapshot, loginFetch: () => answer({ status: 403 }) }).a.modCheck('ru:nightowl'), null);
+  assert.equal(await rumbleWith({}, { cookies, snapshot, loginFetch: () => { throw new Error('offline'); } }).a.modCheck('ru:nightowl'), null);
+  assert.equal(await rumbleWith({}, { snapshot }).a.modCheck('ru:nightowl'), null, 'signed out: can\'t tell');
+  assert.equal(await rumbleWith({ '/livestreams': answer({ text: livePage([item({ live: false })]) }) }, { cookies }).a.modCheck('ru:nightowl'), null, 'not live: no chat to ask');
+});

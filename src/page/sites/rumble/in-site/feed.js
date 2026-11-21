@@ -26,8 +26,17 @@ function rumbleTap({ F, push, sample }){
     const who = users[m.user_id], as = m.channel_id && channels[m.channel_id];
     const u = person(as ? { ...(who || {}), id: (who && who.id) || as.id, username: as.username } : who), e = {};
     String(m.text || '').replace(/:[\w+-]+:/g, x => { if (emotes[x]) e[x] = emotes[x]; return x; });
-    return { t, m: { id: String(m.id), time: m.time || '', text: String(m.text || ''), rant: m.rant && m.rant.price_cents ? { cents: +m.rant.price_cents } : null }, u, pics: pics(u), emotes: e };
+    const g = m.gift_purchase_notification, n = m.notification;
+    return { t, m: { id: String(m.id), time: m.time || '', text: String(m.text || ''), rant: m.rant && m.rant.price_cents ? { cents: +m.rant.price_cents } : null,
+      ...(g ? { gift: { type: String(g.gift_type || ''), n: +g.total_gifts || 1 } } : {}), ...(n && n.text ? { note: { text: String(n.text), badge: String(n.badge || '') } } : {}) },
+      u, pics: pics(u), emotes: e };
   };
+  // a gift of subscriptions (gift_purchased, as it's bought): who, how many, which kind
+  const gift = d => d && d.total_gifts ? { t: 'gift', d: { user: String(d.user_id || ''), who: String(d.gift_author_name || (users[d.user_id] || {}).username || ''), n: +d.total_gifts || 1,
+    type: String(d.gift_type || ''), time: d.gift_time || '' } } : null;
+  // a raid going out from this channel (raid_confirmed): where to, and how many go
+  const raid = d => d && d.target_url ? { t: 'raid', d: { url: String(d.target_url), name: String(d.target_channel_name || ''), title: String(d.target_video_title || ''),
+    viewers: +d.audience || 0, at: +d.start_ts || 0 } } : null;
   const heard = text => {
     let d; try { d = JSON.parse(text); } catch (e) { return; }
     if (!d || typeof d.type !== 'string') return;
@@ -35,9 +44,15 @@ function rumbleTap({ F, push, sample }){
     (Array.isArray(data.users) ? data.users : []).forEach(u => { if (u && u.id) users[u.id] = u; });
     (Array.isArray(data.channels) ? data.channels : []).forEach(c => { if (c && c.id) channels[c.id] = c; });
     if (data.config && data.config.badges && typeof data.config.badges === 'object') Object.assign(badges, data.config.badges);
-    sample(d.type === 'messages' && list.some(m => m && m.rant) ? 'messages:rant' : d.type, text);
+    const kindOf = m => (!m ? '' : m.rant ? ':rant' : m.gift_purchase_notification ? ':gift' : m.notification ? ':notification' : '');
+    sample(d.type === 'messages' ? 'messages' + (list.map(kindOf).find(Boolean) || '') : d.type, text);
     if (d.type === 'messages') list.forEach(m => { const r = raw(m && m.rant ? 'rant' : 'message', m); if (r) push(r); });
-    else if (d.type === 'init' && data.pinned_message){ const r = raw('pin', data.pinned_message); if (r) push(r); }
+    else if (d.type === 'init'){
+      const r = data.pinned_message && raw('pin', data.pinned_message); if (r) push(r);
+      [raid(data.raid)].filter(Boolean).forEach(push);   // (a raid already on its way as the chat opens; its gift, the messages bring)
+    }
+    else if (d.type === 'gift_purchased'){ const r = gift(data); if (r) push(r); }
+    else if (d.type === 'raid_confirmed'){ const r = raid(data); if (r) push(r); }
     else if (d.type === 'delete_messages') (data.message_ids || []).forEach(id => push({ t: 'delete', id: String(id) }));
     else if (d.type === 'mute_users') (data.user_ids || []).forEach(id => push({ t: 'mute', id: String(id) }));
     else if (d.type === 'pin_message'){ const r = raw('pin', data.message); if (r) push(r); }
@@ -75,6 +90,28 @@ const rumbleSignedOut = () => {
   return shown(document.querySelector('#chat-message-text-input')) ? false : null;
 };
 
+// ALL's mod actions (inSite.modAction), as its own chat does them: its requests from its chat page, with your login.
+// delete: the message (its chat's DELETE); timeout and ban: the person muted in the channel (its moderation.mute: for
+// secs, or for good). Pinning isn't one of them. -> 'done', 'failed', 'no-line' (it's gone) or 'no-button' (not here)
+async function rumbleModAction(action, { id, name, secs }){
+  const chat = (location.pathname.match(/\/chat\/popup\/(\d+)/) || [])[1];
+  if (!chat) return 'failed';
+  if (action === 'pin') return 'no-button';
+  try {
+    if (action === 'delete'){
+      const r = await fetch(`https://web7.rumble.com/chat/api/chat/${chat}/message/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' });
+      return r.ok ? 'done' : r.status === 404 ? 'no-line' : 'failed';
+    }
+    if (action !== 'timeout' && action !== 'ban') return 'no-button';
+    const f = new FormData();
+    f.append('user_to_mute', name); f.append('entity_type', 'user'); f.append('video', chat); f.append('type', 'channel');
+    if (action === 'timeout' && secs) f.append('duration', String(secs));
+    const r = await fetch('/service.php?name=moderation.mute', { method: 'POST', body: f, credentials: 'include' });
+    const j = await r.json().catch(() => null);
+    return r.ok && !(j && j.errors && j.errors.length) ? 'done' : 'failed';
+  } catch (e) { return 'failed'; }
+}
+
 // Its cookie question (a Ketch banner on every rumble.com page: its chat and its player): answered "Reject all" as
 // it shows, by its own button, which saves the answer and loads the page again without it. Run in its stream and chat
 // pages as they load (cookieJs); it watches for a minute, as the banner comes a moment after the page.
@@ -92,4 +129,4 @@ function rumbleConsent(){
   return true;
 }
 
-export { rumbleConsent, rumbleShown, rumbleSignedOut, rumbleTap };
+export { rumbleConsent, rumbleModAction, rumbleShown, rumbleSignedOut, rumbleTap };

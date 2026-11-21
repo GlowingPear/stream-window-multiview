@@ -3008,6 +3008,15 @@ test('ALL: a Rumble chat\'s messages, as its tap hands them over: names in their
   assert.equal(await page.$eval('.all-list [data-key="rumble:r1"] .al-n', n => n.style.color), 'rgb(65, 126, 235)', 'its own colour');
   assert.equal(await page.$eval('.all-list [data-key="rumble:r1"] img.al-e', i => [i.alt, i.src.startsWith('data:image/gif')].join()), 'r+wave,true', 'its emote as a picture');
   assert.ok(await page.$('.all-list [data-key="rumble:r1"] .al-b-mod, .all-list [data-key="rumble:r1"] img[src="https://hugh.cdn.rumble.cloud/mod48.png"]'), 'its moderator badge');
+  // a mod there: its line's menu has the mod buttons (done by Rumble's chat page's own requests); a mod's message can't be acted on
+  await page.evaluate(() => window.allChat.modKnown.set('ru:quietkoala', true));
+  await page.click('.all-list [data-key="rumble:r3"]', { button: 'right' });
+  assert.deepEqual(await page.$$eval('.all-lm .all-modb', l => l.map(b => [b.getAttribute('aria-label'), b.disabled])).then(l => l.filter(([, off]) => !off).length > 0), true, 'mod buttons, on');
+  await page.keyboard.press('Escape');
+  await page.click('.all-list [data-key="rumble:r1"]', { button: 'right' });
+  assert.deepEqual(await page.$$eval('.all-lm .all-modb', l => l.filter(b => !b.disabled).map(b => b.getAttribute('aria-label'))), await page.$$eval('.all-lm .all-modb', l => l.filter(b => !b.disabled && /pin/i.test(b.getAttribute('aria-label'))).map(b => b.getAttribute('aria-label'))), 'MossRunner is a mod on Rumble: only pinning is left (Rumble then says it doesn\'t offer it)');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.allChat.modKnown.set('ru:quietkoala', false));
   // where you aren't a mod, what's removed goes, as Rumble's chat does
   await feed(page, 'ru:quietkoala', { s: 'rumble', raw: [{ t: 'delete', id: 'r3' }, { t: 'mute', id: '9' }] });
   await page.waitForFunction(() => !document.querySelector('.all-list [data-key="rumble:r3"]') && !document.querySelector('.all-list [data-key="rumble:r4"]'));

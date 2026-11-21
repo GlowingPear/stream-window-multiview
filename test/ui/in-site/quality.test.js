@@ -83,3 +83,34 @@ test('YouTube\'s player: the one asked for (the highest under the cap), or its o
   assert.equal(await page.evaluate(() => { window.yt.getPlaybackQuality = () => 'unknown'; Object.defineProperty(document.querySelector('video'), 'videoHeight', { get: () => 400 }); return window.agent(null).now.h; }), 360);
   assert.equal(await page.evaluate(() => { window.yt.getAvailableQualityLevels = () => ['auto']; return window.agent(null); }), null, 'nothing to pick yet');
 });
+
+test('an hls.js player (Rumble\'s, its instance kept to itself): caught by its own events, then capped in its own automatic choice, moved down at once', async t => {
+  const page = await openApp(t);
+  await page.evaluate(async () => {
+    window.agent = (await import('./page/in-site/quality.js')).qualityAgent;
+    const v = document.createElement('video'); document.body.append(v);
+    // a stand-in hls.js: its events on a parent prototype (trigger), its levels lowest first
+    class Emitter { trigger(){ return true; } }
+    class Hls extends Emitter {
+      constructor(){ super(); this.levels = [{ height: 360 }, { height: 720 }, { height: 1080 }]; this.media = v; this.currentLevel = 2; this.autoLevelCapping = -1; this.autoLevelEnabled = true; this.nextAutoLevel = -1; }
+    }
+    window.Hls = Hls;
+    window.h = new Hls();                    // (made before the app's script: only its events say it's there)
+    Object.defineProperty(v, 'videoHeight', { get: () => window.h.levels[window.h.currentLevel].height });
+  });
+  assert.equal(await run(page, 720), null, 'the first ask hooks it; not caught yet');
+  await page.evaluate(() => window.h.trigger('hlsFragLoaded'));
+  const r = await run(page, 720);
+  assert.deepEqual(r.all, [{ h: 1080, name: '1080p' }, { h: 720, name: '720p' }, { h: 360, name: '360p' }]);
+  assert.deepEqual(r.now, { h: 1080, name: '1080p' }, 'what it plays until its next pick');
+  assert.deepEqual(await page.evaluate(() => [window.h.autoLevelCapping, window.h.nextAutoLevel]), [1, 1], 'capped at 720p, its next pick made now');
+  await page.evaluate(() => { window.h.currentLevel = 1; });
+  assert.deepEqual((await run(page, 0)).now, { h: 720, name: '720p' });
+  assert.equal(await page.evaluate(() => window.h.autoLevelCapping), 0, 'its lowest');
+  await run(page, null);
+  assert.equal(await page.evaluate(() => window.h.autoLevelCapping), -1, 'its own choice again');
+  await page.evaluate(() => { window.h.levels = []; });
+  assert.equal(await run(page, 720), null, 'no levels yet: nothing');
+  await page.evaluate(() => { window.h.levels = [{ height: 720 }]; window.h.media.remove(); });
+  assert.equal(await run(page, 720), null, 'its video gone: not that player');
+});
