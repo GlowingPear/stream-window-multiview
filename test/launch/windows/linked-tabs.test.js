@@ -210,7 +210,7 @@ test('the pointer moved over a chat page (ALL\'s Twitch replies): only a page th
 });
 
 // A linked streamer's YouTube chat, a tab you can't see: it loads as soon as the live check knows its live video, without
-// a click and without waiting for its own 2-minute check. yt:resolve (YouTube's page) answers "not live" here unless a
+// a click and without waiting for its own 2-minute check. live:resolve (YouTube's page) answers "not live" here unless a
 // test says otherwise: it can lag behind the live check.
 const ytWin = ch => a.win.evaluate(ch => {
   const w = window.openWins().find(o => o.kind === 'chat' && o.channel === ch); if (!w) return null;
@@ -219,8 +219,8 @@ const ytWin = ch => a.win.evaluate(ch => {
 }, ch);
 const ytAnswers = (live, ms = 0) => a.app.evaluate(({ ipcMain }, [live, ms]) => {
   globalThis.__yt = { live, n: 0 };
-  ipcMain.removeHandler('yt:resolve');
-  ipcMain.handle('yt:resolve', async () => { globalThis.__yt.n++; if (ms) await new Promise(r => setTimeout(r, ms));
+  ipcMain.removeHandler('live:resolve');
+  ipcMain.handle('live:resolve', async () => { globalThis.__yt.n++; if (ms) await new Promise(r => setTimeout(r, ms));
     return globalThis.__yt.live ? { live: true, videoId: 'pageVideo01' } : { live: false }; });
 }, [live, ms]);
 const asked = () => a.app.evaluate(() => globalThis.__yt.n);

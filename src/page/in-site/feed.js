@@ -3,7 +3,8 @@
    site.js's inSite). It doesn't read the page: it hears what the site's own connection brings, as the page reads it,
    so nothing the page skips or hasn't drawn yet is missed, and deletions arrive as they happen. A websocket message is
    seen when the page reads it (MessageEvent's data), so it works for a connection that was open before this ran; the
-   site's tap says which of its texts ALL uses (push) and what kind each thing is (sample), or hooks what else its
+   site's tap says which of its texts ALL uses (push) and what kind each thing is (sample) (an EventSource's too, when
+   its heard says so: heard.events), or hooks what else its
    page reads (YouTube: its fetch of new messages). Only what the app uses is passed on, a batch at a time, while the
    app has it on (window.__kmvFeed.on): "__kmv:feed {"s":"twitch","raw":[...]}".
    Settings › Developer › Chat events (#233), while window.__kmvFeed.samp is on: every kind of thing the connection
@@ -40,7 +41,9 @@ function feedAgent(site, tap){
   const seen = new WeakSet(), d = Object.getOwnPropertyDescriptor(MessageEvent.prototype, 'data');
   if (d && d.get) Object.defineProperty(MessageEvent.prototype, 'data', { configurable: true, enumerable: d.enumerable, get(){
     const v = d.get.call(this);
-    try { if ((F.on || F.samp) && !seen.has(this) && this.target instanceof WebSocket){ seen.add(this); if (heard && typeof v === 'string') heard(v); if (typeof v === 'string'){ F.recent.push({ t: Date.now(), v: v.slice(0, 4000) }); if (F.recent.length > 60) F.recent.shift(); } } } catch (e) {}
+    // (a site whose chat comes over an EventSource, Rumble's: its tap's heard says so, heard.events)
+    const from = this.target instanceof WebSocket || (heard && heard.events && typeof EventSource !== 'undefined' && this.target instanceof EventSource);
+    try { if ((F.on || F.samp) && !seen.has(this) && from){ seen.add(this); if (heard && typeof v === 'string') heard(v); if (typeof v === 'string'){ F.recent.push({ t: Date.now(), v: v.slice(0, 4000) }); if (F.recent.length > 60) F.recent.shift(); } } } catch (e) {}
     return v;
   } });
   return true;
@@ -105,11 +108,12 @@ async function modesAgent(site, modes, nameAs, wait = 8000){
 // one's text (it changes when a message comes: compared on this computer only). With html: the newest line's HTML for a
 // report, its words replaced and only its structure's attributes kept (class, id, role, data-a-target, data-index).
 function lineProbe(html){
-  const rows = document.querySelectorAll('.chat-line__message, [data-index], yt-live-chat-text-message-renderer');
+  const rows = document.querySelectorAll('.chat-line__message, [data-index], yt-live-chat-text-message-renderer, li[data-message-id]');
   const last = rows[rows.length - 1];
   const out = { n: rows.length, last: last ? last.innerText.replace(/\s+/g, ' ').slice(0, 200) : '', id: '' };
   // its message's id (as messageHtml finds it): a line drawn late, of a message already read, is no sign of trouble
   if (last && last.id) out.id = last.id;
+  else if (last && last.dataset.messageId) out.id = last.dataset.messageId;   // (Rumble's line says it)
   else for (const node of last ? [last, last.querySelector('.group')].filter(Boolean) : []){
     const k = Object.keys(node).find(x => x.startsWith('__reactFiber'));
     for (let f = k && node[k], i = 0; f && i < 6 && !out.id; f = f.return, i++){ const p = f.memoizedProps || {}, m = p.message || p.notice || p.msg; if (m && m.id) out.id = String(m.id); }
@@ -129,9 +133,10 @@ function lineProbe(html){
 // props, message.id; YouTube as the line's own id): its HTML (Copy message HTML), or with why, how the mention and spam
 // alerts read it (Why didn't this alert?: in-site/mentions.js explain)
 function messageHtml(id, why){
-  const rows = document.querySelectorAll('.chat-line__message, .chat-line__status, [class*="user-notice-line"], [data-index], yt-live-chat-text-message-renderer, yt-live-chat-paid-message-renderer, yt-live-chat-membership-item-renderer');
+  const rows = document.querySelectorAll('.chat-line__message, .chat-line__status, [class*="user-notice-line"], [data-index], yt-live-chat-text-message-renderer, yt-live-chat-paid-message-renderer, yt-live-chat-membership-item-renderer, li[data-message-id]');
   const idOf = el => {
     if (el.id && el.id === id) return id;
+    if (el.dataset && el.dataset.messageId) return el.dataset.messageId;
     for (const node of [el, el.querySelector('.group')].filter(Boolean)){   // (Kick's row has props of its own too)
       const k = Object.keys(node).find(x => x.startsWith('__reactFiber'));
       for (let f = k && node[k], i = 0; f && i < 6; f = f.return, i++){ const p = f.memoizedProps || {}, m = p.message || p.notice || p.msg; if (m && m.id) return m.id; }

@@ -54,7 +54,8 @@ function init(){
         inB.textContent = lost ? 'Sign in again' : 'Log in';
         inB.classList.toggle('primary', lost);
         row.querySelector('.am-sw').hidden = !v || lost;
-        row.querySelector('.am-imp').hidden = lost;   // (it can't read your follows until you sign in again)
+        const imp = row.querySelector('.am-imp');   // (a site whose follows the app can't import has none)
+        if (imp) imp.hidden = lost;   // (it can't read your follows until you sign in again)
         row.querySelector('.am-out').hidden = !v;
         row.classList.toggle('on', !!v && !lost);
         row.classList.toggle('lost', lost);
@@ -263,7 +264,7 @@ function init(){
         cb.checked = have || (keep.has(x.ch) ? keep.get(x.ch) : x.pick !== false); cb.disabled = have;
         cb.onchange = () => { x.pick = cb.checked; impCount(); };
         l.querySelector('.nm').textContent = x.name;
-        l.querySelector('.id').textContent = have ? 'already saved' : SmvSites.bare(x.ch);
+        l.querySelector('.id').textContent = have ? 'already saved' : PLATFORMS[impPlat].idText(x.ch);
         if (PLATFORMS[impPlat].login.unfollow && window.kmv.kickUnfollow){
           const u = document.createElement('button'); u.type = 'button'; u.className = 'unf'; u.textContent = 'Unfollow';
           u.title = `Unfollow ${x.name} on ${PLATFORMS[impPlat].hosts[0]}`;

@@ -15,7 +15,7 @@ test('the store: counts, first and last heard, the last 3 samples of each kind; 
   assert.equal(s.add('kick', null), false);
   s.add('twitch', { ['k'.repeat(200)]: { n: 1 }, '': { n: 1 }, ok: 'not an object' });
   assert.deepEqual(s.list().twitch, {});
-  s.clear(); assert.deepEqual(s.list(), { kick: {}, twitch: {}, youtube: {} });
+  s.clear(); assert.deepEqual(s.list(), { kick: {}, twitch: {}, youtube: {}, rumble: {} });
 });
 
 test('the store: several samples at once (newest last, at most 3, text only); an old x alone is counted without a sample', () => {
@@ -51,8 +51,8 @@ test('the store keeps each variant past 3 samples: the oldest one whose status a
 
 test('the store keeps what was saved (tidied), and drops the least recently heard kinds past 300', () => {
   const s = createSampleStore({ saved: { kick: { A: { n: 2, first: 1, last: 2, samples: [{ t: 1, x: 'x' }, { t: 2 }, null] }, B: 'bad' }, nope: {} } });
-  assert.deepEqual(s.toSave(), { kick: { A: { n: 2, first: 1, last: 2, samples: [{ t: 1, x: 'x' }] } }, twitch: {}, youtube: {} });
-  assert.deepEqual(createSampleStore({ saved: 'junk' }).list(), { kick: {}, twitch: {}, youtube: {} });
+  assert.deepEqual(s.toSave(), { kick: { A: { n: 2, first: 1, last: 2, samples: [{ t: 1, x: 'x' }] } }, twitch: {}, youtube: {}, rumble: {} });
+  assert.deepEqual(createSampleStore({ saved: 'junk' }).list(), { kick: {}, twitch: {}, youtube: {}, rumble: {} });
   let t = 0; const big = createSampleStore({ now: () => ++t });
   for (let i = 0; i < 305; i++) big.add('youtube', { ['k' + i]: { n: 1 } });
   const keys = Object.keys(big.list().youtube);

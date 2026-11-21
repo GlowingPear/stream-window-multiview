@@ -79,7 +79,7 @@ function renderCard(){
   const err = element('div', { class: 'lc-err', hidden: true });
   const go = element('button', { type: 'button', class: 'btn', dataset: { cmd: 'link.add' } }, 'Link');
   const submit = async () => {
-    const r = parseInput(inp.value, curPlat), ch = r && r.channel;
+    const r = parseInput(inp.value, curPlat); let ch = r && r.channel;
     if (!ch){ err.textContent = 'Couldn’t read that link or name'; err.hidden = false; return; }
     if (isVideo(ch)){ err.textContent = 'A video isn’t a channel: paste their channel’s link or @handle'; err.hidden = false; return; }
     if (chs.includes(ch)){ err.textContent = `${chLabel(ch)} on ${PLAT_NAME[platOf(ch)]} is already one of theirs`; err.hidden = false; return; }
@@ -88,6 +88,7 @@ function renderCard(){
       const ok = await window.kmv.channelExists(ch).catch(() => 'unknown');
       go.classList.remove('busy');
       if (ok === 'missing'){ err.textContent = `There's no ${PLAT_NAME[platOf(ch)]} channel called “${chLabel(ch)}”.`; err.hidden = false; return; }
+      if (ok && ok.use){ ch = ok.use; if (chs.includes(ch)){ err.textContent = `${chLabel(ch)} on ${PLAT_NAME[platOf(ch)]} is already one of theirs`; err.hidden = false; return; } }   // (Rumble's users)
     }
     addAccount(ch, chs[0]);
   };

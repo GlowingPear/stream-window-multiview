@@ -108,6 +108,9 @@ const kick = new Site({   // (what each slot is for, and its default: sites/adap
   //   reply (threadedReplies true: id -> whether its own Reply started), replyAt / replyPress (threadedReplies
   //     'pointer': id -> where the pointer goes | null; id -> 'ok' | 'cant' | '')
   //   heldCard (held: id -> the held message's card in its chat | null; in-site/mod.js heldAgent)
+  //   modAction (ALL's mod actions done by its own chat page's requests, with its login, instead of commands or its
+  //     buttons: (action: 'delete' | 'timeout' | 'ban' | 'pin', { id, name, userId, secs }) -> 'done' | 'failed' |
+  //     'no-line' | 'no-button'; Rumble's)
   //   signedOut (-> true: its chat page shows you signed out (its sign-in where the box would be), false: its chat box,
   //     null: can't tell yet; toolbar/login-lost.js. null: its page can't say, so the site's asked instead)
   //   emote: its emotes in a chat page: look (the emote card's badge: [background, colour, words]), find((img, url,

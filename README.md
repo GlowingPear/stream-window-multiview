@@ -1,8 +1,8 @@
-<p align="center"><img src=".github/assets/hero.svg" alt="Stream Multiview: Kick, Twitch and YouTube streams and chats side by side, moving between the Focus view, Tile and Columns layouts" width="100%"></p>
+<p align="center"><img src=".github/assets/hero.svg" alt="Stream Multiview: Kick, Twitch, YouTube and Rumble streams and chats side by side, moving between the Focus view, Tile and Columns layouts" width="100%"></p>
 
 # 🍐 Stream Multiview
 
-A desktop app for watching **Kick, Twitch and YouTube** streams and chats side by side, with custom layouts, live alerts, a game focus mode and color themes.
+A desktop app for watching **Kick, Twitch, YouTube and Rumble** streams and chats side by side, with custom layouts, live alerts, a game focus mode and color themes.
 
 ![Version](https://img.shields.io/github/v/release/GlowingPear/stream-window-multiview?include_prereleases&label=version&color=53fc18) ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey) ![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848f)
 
@@ -11,7 +11,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 ## Features
 
 **Watch everything at once**
-- Kick, Twitch and YouTube streams and chats, plus regular YouTube videos
+- Kick, Twitch, YouTube and Rumble streams and chats, plus regular YouTube videos
 - Drag, resize and snap windows anywhere, or let a layout arrange them
 - Layouts: **Focus view**, **Game focus**, **Columns**, **Chat Stage**, **Chat Rail**, **Chat focus**, **Auto** and **Tile**
 - Save your own named layouts and switch between them from a dropdown
@@ -34,11 +34,11 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - These windows appear in the switch control and can be made the big one
 
 **Channels and alerts**
-- One **Channels** box to open a channel (name or link, on Kick, Twitch or YouTube, checked to exist first) or open and save it, and to search your saved channels
-- Saved list with Kick / Twitch / YouTube tabs, with live channels listed first
+- One **Channels** box to open a channel (name or link, on Kick, Twitch, YouTube or Rumble, checked to exist first) or open and save it, and to search your saved channels
+- Saved list with Kick / Twitch / YouTube / Rumble tabs, with live channels listed first
 - Desktop notifications when saved channels go live, and optional auto-open when they do
 - Suggestions from the channels you follow but haven't saved, as you type in the Channels box (and who's live among them)
-- **Import follows** from Kick, Twitch and YouTube (and unfollow Kick channels right from that list)
+- **Import follows** from Kick, Twitch, YouTube and Rumble (and unfollow Kick channels right from that list)
 - **Streamer profiles**: search your saved streamers and open a profile for each one: what the site says (picture, about, followers, links, the live stream), plus a live history, a "when they usually stream" chart, usual start time, average length and viewers that the app records from its live checks, with Kick and Twitch past broadcasts filling the gaps. Notes, tags, nicknames, favourites, and **Unfollow on Kick**
 - **Emote preview**: point at an emote in chat to see it bigger with its name, then copy the name or download it
 - **Chat over streams** (off by default): each stream's new chat messages over it for a few seconds, also when popped out; a toolbar button switches it, and each stream can turn it off
@@ -47,7 +47,7 @@ A desktop app for watching **Kick, Twitch and YouTube** streams and chats side b
 - **Like YouTube streams** from their title bar with your YouTube login, or have them liked automatically once they're playing
 - **Right-click menu** in chats and streams: copy, paste, open or copy links, translate selected text to your language, open or save emotes and images
 - **Follows raids**: when a Kick or Twitch channel raids another, its stream and chat switch to the raided channel in the same spot
-- Alerts when someone @mentions you, replies to you, or writes one of your own words (nicknames) in Kick, Twitch or YouTube chat, with a searchable history of the last 500: that chat window lights up (and can get stronger until you look), with a sound and desktop notification of your choice
+- Alerts when someone @mentions you, replies to you, or writes one of your own words (nicknames) in Kick, Twitch, YouTube or Rumble chat, with a searchable history of the last 500: that chat window lights up (and can get stronger until you look), with a sound and desktop notification of your choice
 - **Support alerts** (off by default): an alert when someone sends KICKs, bits or a Super Chat, gifts subs, subscribes or raids in, with the smallest amount that alerts for each
 - **Spam alerts for moderators** (off by default): in chats you moderate, promo-bot messages are tagged "likely spam" and the chat window lights up. Nothing is hidden or removed.
 
@@ -112,7 +112,7 @@ The app is free, and it isn't signed with a paid Apple or Microsoft certificate 
 
 **Then:**
 1. Open **Channels** (top left, or press `N`), type a channel's name or paste a link, and press **Open** (see *Adding streams* below).
-2. To chat, log in to Kick, Twitch or YouTube with **Logins** in the toolbar. You log in once per site.
+2. To chat, log in to Kick, Twitch, YouTube or Rumble with **Logins** in the toolbar. You log in once per site.
 
 Stream Multiview updates itself: Settings › Updates shows when there's a new version. Installing it closes the app, updates it and opens it again. (On a Mac this needs the app in a folder you can write to, like Applications; otherwise it opens the new disk image to drag in.)
 
@@ -144,6 +144,7 @@ Open **Channels** (top left, or press `N`), paste or type any of these into its 
 | Twitch | `twitch.tv/name` or `tw:name` |
 | YouTube channel | `youtube.com/@name` or `@name` (opens their live stream) |
 | YouTube video | any `watch?v=`, `youtu.be/`, `/live/` or `/shorts/` link |
+| Rumble | `rumble.com/c/name`, `rumble.com/user/name` or `ru:name` (opens their live stream), or a live stream's `rumble.com/v…html` link |
 
 ---
 
@@ -302,14 +303,15 @@ Everything about one site is in a folder of its own on each side, so a new site 
 - Windows from other apps (like Discord) are shown as a live picture. Interact with them in the real window.
 - YouTube sign-in only works through Firefox: Google blocks signing in inside apps, and Chrome and Edge lock their logins so they can't be copied. Sign in to YouTube in Firefox, then use **Copy my login from Firefox** in the app. Watching YouTube doesn't need a login.
 - YouTube chats aren't watched for @mentions.
+- Rumble: a Rumble video link plays only while it's live, and ALL can't pin a Rumble message.
 - Chrome extensions: each chat site and each stream keeps its own extension settings. Extensions that need Chrome features the app doesn't have (blocking rules, capturing a page's sound, offscreen documents) only partly work.
-- The app depends on how Kick, Twitch and YouTube's websites work today, so a change on their side can break a feature until the app is updated.
+- The app depends on how Kick, Twitch, YouTube and Rumble's websites work today, so a change on their side can break a feature until the app is updated.
 
 ---
 
 ## Disclaimer
 
-Stream Multiview is an independent project. It is not affiliated with or endorsed by Kick, Twitch, YouTube, Google or Discord. All trademarks belong to their owners.
+Stream Multiview is an independent project. It is not affiliated with or endorsed by Kick, Twitch, YouTube, Rumble, Google or Discord. All trademarks belong to their owners.
 
 ---
 

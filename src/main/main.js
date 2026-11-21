@@ -881,6 +881,9 @@ const sites = createSites(site => ({
   cachedProfile: ch => { const c = siteCache.get(ch); return c && c.data ? c.data : null; }
 }));
 const siteOf = ch => sites.of(ch);
+// A channel's live stream when it's a video of its own (the page's liveVideo sites: YouTube, Rumble): its site's live
+// check, which says the live video's id. (window.kmv.ytResolve, as the page has always called it.)
+appIpc.handle('live:resolve', async (_e, ch) => (typeof ch === 'string' && validCh(normCh(ch)) ? siteOf(normCh(ch)).liveOne(normCh(ch)) : null));
 
 /* ---------- live alerts for saved channels ---------- */
 // Notifications are kept so their click handlers work. Electron doesn't always say when one is closed
@@ -1120,7 +1123,11 @@ appIpc.handle('profile:list', (_e, chs) => {
 // such channel) or 'unknown' (the site couldn't be asked: offline, rate-limited, slow), which doesn't stop it opening.
 appIpc.handle('channel:exists', async (_e, ch) => {
   if (!okCh(ch)) return 'unknown';
-  const p = await Promise.race([siteProfile(normCh(ch)).catch(() => null), sleep(8000).then(() => null)]);
+  const ask = c => Promise.race([siteProfile(c).catch(() => null), sleep(8000).then(() => null)]);
+  const p = await ask(normCh(ch));
+  // not there: the same name may be another kind of channel on its site (its alsoAt), then that one is used instead
+  const other = p && p.missing && siteOf(normCh(ch)).alsoAt ? siteOf(normCh(ch)).alsoAt(normCh(ch)) : null;
+  if (other && validCh(other)) { const q = await ask(other); if (q && !q.missing) return { use: other }; }
   return !p ? 'unknown' : p.missing ? 'missing' : 'yes';
 });
 // Looking up a name that isn't saved: the same name on each site.
@@ -1128,7 +1135,12 @@ appIpc.handle('profile:lookup', async (_e, q) => {
   const name = String(q || '').trim().replace(/^@/, '').toLowerCase();
   if (!/^[a-z0-9_.\-]{2,40}$/.test(name)) return [];
   const cands = sites.list.map(a => a.byName(name)).filter(c => validCh(c));
-  const found = await Promise.all(cands.map(async ch => { const p = await siteProfile(ch); return p && !p.missing ? { ch, name: p.name, avatar: p.avatar, followers: p.followers, followersText: p.followersText || '', live: p.live ? { title: p.live.title, viewers: p.live.viewers } : null } : null; }));
+  const found = await Promise.all(cands.map(async c => {
+    let ch = c, p = await siteProfile(c);
+    // (not there: the same name as another kind of channel on its site, its alsoAt: Rumble's users)
+    const other = p && p.missing && siteOf(c).alsoAt ? siteOf(c).alsoAt(c) : null;
+    if (other && validCh(other)) { ch = other; p = await siteProfile(other); }
+    return p && !p.missing ? { ch, name: p.name, avatar: p.avatar, followers: p.followers, followersText: p.followersText || '', live: p.live ? { title: p.live.title, viewers: p.live.viewers } : null } : null; }));
   return found.filter(Boolean);
 });
 appIpc.handle('profile:meta', (_e, ch, patch) => {
@@ -1331,6 +1343,12 @@ function openLogin(id) {
   if (a.openLogin) { a.openLogin(); return; }      // a site that signs in some other way (no login window)
   const w = openSiteWindow(a.loginUrl, 1100, 800, a.site.partition);
   w?.on('closed', () => mainWin?.webContents.send('account:changed', { platform: id, loggedOut: false }));
+  // Signed in there: the window closes by itself (once a page loads with the site's login), when it opened signed out
+  const was = a.signedIn().catch(() => true);
+  w?.webContents.on('did-navigate', async () => {
+    if (await was || !(await a.signedIn().catch(() => false))) return;
+    setTimeout(() => { if (!w.isDestroyed()) w.close(); }, 600);
+  });
 }
 mainIpc.handle('account:logout', async (_e, plat) => { await logout(siteId(plat)); return true; });
 mainIpc.handle('account:login', (_e, plat) => { openLogin(siteId(plat)); });
@@ -1399,7 +1417,7 @@ const progress = (plat, text) => mainWin?.webContents.send('follows:progress', {
 // Open a page with your login in a hidden window, keep scrolling until no more channels load,
 // and collect the channel links on it (a's fromLink). scope: where on the page its channels are; signedOut: the
 // page's own way of saying you're signed out (a script's expression), for a page that doesn't send you to sign in.
-async function scrapeFollowPage(a, url, { maxRounds = 70, scope = 'main', signedOut = '' } = {}) {
+async function scrapeFollowPage(a, url, { maxRounds = 70, scope = 'main', signedOut = '', name = '' } = {}) {
   const plat = a.id;
   const win = new BrowserWindow({ show: false, width: 1280, height: 1000,
     webPreferences: { partition: a.site.partition, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
@@ -1415,7 +1433,7 @@ async function scrapeFollowPage(a, url, { maxRounds = 70, scope = 'main', signed
       scope.querySelectorAll('a[href]').forEach(a => {
         if (a.closest('nav, header, aside, ytd-guide-renderer, #guide, ytd-mini-guide-renderer, tp-yt-app-drawer, [data-a-target="side-nav-bar"], #masthead')) return;
         const card = a.closest('ytd-channel-renderer, [data-a-target="user-card-modal"], article, li, [class*="card" i]') || a;
-        const t = (card.querySelector('#channel-title #text, #text.ytd-channel-name, h3, h4, p[title], [data-a-target="preview-card-channel-link"]') || a);
+        const t = (card.querySelector(${JSON.stringify(name ? name + ', ' : '')} + '#channel-title #text, #text.ytd-channel-name, h3, h4, p[title], [data-a-target="preview-card-channel-link"]') || a);
         out.push({ href: a.getAttribute('href'), name: (t.getAttribute && t.getAttribute('title')) || (t.textContent || '').trim() || (a.querySelector('img') && a.querySelector('img').alt) || '' });
       });
       return { links: out, signedOut: ${signedOut || 'false'} };
@@ -1431,15 +1449,16 @@ async function scrapeFollowPage(a, url, { maxRounds = 70, scope = 'main', signed
       if (r && r.signedOut && !found.size) return { error: 'login' };
       const before = found.size;
       (r ? r.links : []).forEach(l => {
-        const ch = a.fromLink(l.href);
-        if (ch && validCh(ch) && !found.has(ch)) found.set(ch, String(l.name || '').replace(/\s+/g, ' ').trim().slice(0, 60) || SmvSites.bare(ch).replace(/^@/, ''));
+        const ch = a.fromLink(l.href), name = String(l.name || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+        // (a channel's first link can be its picture, with no words: its name comes from a later one)
+        if (ch && validCh(ch) && (!found.has(ch) || (!found.get(ch) && name))) found.set(ch, name);
       });
       if (found.size !== before) progress(plat, `Found ${found.size} so far…`);
       stable = found.size === before ? stable + 1 : 0;
       await win.webContents.executeJavaScript(scrollJs, true).catch(() => {});
       await sleep(1300);
     }
-    return { items: [...found].map(([ch, name]) => ({ ch, name })) };
+    return { items: [...found].map(([ch, name]) => ({ ch, name: name || SmvSites.bare(ch).replace(/^@/, '') })) };
   } finally { if (!win.isDestroyed()) win.destroy(); }
 }
 // Whether you can moderate a channel (its moderator, or your own channel): true, false, or null when it can't be

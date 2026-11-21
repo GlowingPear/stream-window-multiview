@@ -2984,3 +2984,41 @@ test('polls on several sites: one card, the others a press away in its corner, t
   await twitch('POLL_ARCHIVE', [5, 3], 0);
   assert.equal((await card()).site, 'youtube', 'archived: gone');
 });
+
+test('ALL: a Rumble chat\'s messages, as its tap hands them over: names in their colour, its badges\' pictures, its emotes; a rant is an event with its amount; a deletion, someone muted', async t => {
+  const accounts = ['quietkoala', 'ru:quietkoala'];
+  const page = await allApp(t, { allOpen: '["s1"]', saved: JSON.stringify(accounts), streamers: JSON.stringify([{ ...STREAMER, accounts }]) }, accounts,
+    { ...LIVE, 'ru:quietkoala': { live: true, videoId: 'v33aw1a.186945454', checked: now } });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(() => window.allChat.modKnown.set('ru:quietkoala', false));
+  const PIC = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';   // (a picture that loads offline: ALL puts a picture that doesn't back as its name)
+  const who = (id, username, color = '', badges = []) => ({ id, username, color, badges });
+  const RU = (t, id, u, text, extra = {}) => ({ t, m: { id, time: new Date().toISOString(), text, rant: null }, u, pics: [], emotes: {}, ...extra });
+  await feed(page, 'ru:quietkoala', { s: 'rumble', raw: [
+    RU('message', 'r1', who('7', 'MossRunner', '#417eeb', ['moderator']), 'hello :r+wave:', { emotes: { ':r+wave:': PIC },
+      pics: [{ url: 'https://hugh.cdn.rumble.cloud/mod48.png', title: 'Moderator' }] }),
+    RU('rant', 'r2', who('8', 'Driftwood'), 'great stream', { m: { id: 'r2', time: new Date().toISOString(), text: 'great stream', rant: { cents: 500 } } }),
+    RU('message', 'r3', who('9', 'Loudmouth'), 'trash lol'),
+    RU('message', 'r4', who('9', 'Loudmouth'), 'and again')
+  ] });
+  const rows = await lines(page);
+  assert.deepEqual(rows.map(r => r.split(' | ')[0]), ['al-m', 'al-ev', 'al-m', 'al-m']);
+  assert.match(rows[0], /MossRunner: hello/);
+  assert.match(rows[1], /Driftwood.*Rant.*\$5/);
+  assert.equal(await page.$eval('.all-list [data-key="rumble:r1"] .al-n', n => n.style.color), 'rgb(65, 126, 235)', 'its own colour');
+  assert.equal(await page.$eval('.all-list [data-key="rumble:r1"] img.al-e', i => [i.alt, i.src.startsWith('data:image/gif')].join()), 'r+wave,true', 'its emote as a picture');
+  assert.ok(await page.$('.all-list [data-key="rumble:r1"] .al-b-mod, .all-list [data-key="rumble:r1"] img[src="https://hugh.cdn.rumble.cloud/mod48.png"]'), 'its moderator badge');
+  // a mod there: its line's menu has the mod buttons (done by Rumble's chat page's own requests); a mod's message can't be acted on
+  await page.evaluate(() => window.allChat.modKnown.set('ru:quietkoala', true));
+  await page.click('.all-list [data-key="rumble:r3"]', { button: 'right' });
+  assert.deepEqual(await page.$$eval('.all-lm .all-modb', l => l.map(b => [b.getAttribute('aria-label'), b.disabled])).then(l => l.filter(([, off]) => !off).length > 0), true, 'mod buttons, on');
+  await page.keyboard.press('Escape');
+  await page.click('.all-list [data-key="rumble:r1"]', { button: 'right' });
+  assert.deepEqual(await page.$$eval('.all-lm .all-modb', l => l.filter(b => !b.disabled).map(b => b.getAttribute('aria-label'))), await page.$$eval('.all-lm .all-modb', l => l.filter(b => !b.disabled && /pin/i.test(b.getAttribute('aria-label'))).map(b => b.getAttribute('aria-label'))), 'MossRunner is a mod on Rumble: only pinning is left (Rumble then says it doesn\'t offer it)');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.allChat.modKnown.set('ru:quietkoala', false));
+  // where you aren't a mod, what's removed goes, as Rumble's chat does
+  await feed(page, 'ru:quietkoala', { s: 'rumble', raw: [{ t: 'delete', id: 'r3' }, { t: 'mute', id: '9' }] });
+  await page.waitForFunction(() => !document.querySelector('.all-list [data-key="rumble:r3"]') && !document.querySelector('.all-list [data-key="rumble:r4"]'));
+  assert.equal((await lines(page)).length, 2);
+});

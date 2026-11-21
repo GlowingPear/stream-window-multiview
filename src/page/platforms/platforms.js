@@ -102,8 +102,9 @@ function trimPlayerPage(view, ch){
   runIn(view, p.playerFitJs);
 }
 
-// Addresses for each platform's player and chat. YouTube needs the live video's id (looked up when needed).
-const ytVidOf = w => isVideo(w.channel || '') ? w.channel.slice(5) : (w.ytVid || null);
+// Addresses for each platform's player and chat. A site whose stream is a video of its own (liveVideo) needs the live
+// video's id: the one a video's channel id holds (its videoId), else looked up when needed (w.ytVid).
+const ytVidOf = w => (isVideo(w.channel || '') && platform(w.channel).videoId(w.channel)) || w.ytVid || null;
 const streamSrc = (ch, muted, vid) => (platform(ch) || DEFAULT_SITE).streamUrl(ch, muted, vid);
 const chatSrc = (ch, vid) => (platform(ch) || DEFAULT_SITE).chatUrl(ch, vid);
 // Each platform's moderator dashboard for a channel (YouTube has none for each channel).

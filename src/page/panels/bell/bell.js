@@ -360,7 +360,7 @@ function drawNotes(root, v, { limit, q = '', onTab } = {}){
 }
 const EMPTY = {
   all: 'Nothing yet. Mentions, spam alerts, channels going live and the app\'s messages show here.',
-  mentions: 'No mentions yet. When someone @mentions you, replies to you or writes one of your words in an open Kick, Twitch or YouTube chat, it shows here.',
+  mentions: 'No mentions yet. When someone @mentions you, replies to you or writes one of your words in an open Kick, Twitch, YouTube or Rumble chat, it shows here.',
   spam: 'Nothing flagged. Spam alerts watch the chats you moderate (Settings › Spam alerts).',
   live: 'Nobody has gone live yet. Saved channels show here when they go live, and raids the app followed.',
   app: 'No messages from the app.'

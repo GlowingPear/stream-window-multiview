@@ -43,7 +43,6 @@ const ALLOWED = [
   ['src/page/toolbar/accounts-menu.js', 'st.youtube', 'signing in to YouTube through Firefox'],
   ['src/main/firefox-login.js', "const DOMAINS = ['youtube.com', 'google.com']", 'the YouTube login copied from Firefox'],
   ['src/preload/signin-preload.js', 'accounts\\.youtube\\.com', 'Google\'s sign-in pages, where the app shows itself as Firefox'],
-  ['src/preload/preload.js', "'yt:resolve'", 'a message\'s name (YouTube\'s live video, sites/youtube/)'],
   // badge pictures, as each site's in-site part sends them (keyed by its id)
   ['src/page/chat/all-chat.js', 'kick = got.kick, own = (!m.from && got.twitch)', 'badge pictures from the sites\' in-site badges parts'],
   ['src/page/chat/all-chat.js', 'r.twitch && r.twitch.global', 'badge pictures (as above)'],

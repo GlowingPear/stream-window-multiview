@@ -181,8 +181,8 @@ test('the error log and the sites\' answers: from the main process, the page and
   assert.match(report, /\nwindows   main window · layout \w+ · 0 streams, 1 chat\n {2}Kick {6}alpha +chat +loaded/);
   assert.match(report, /\ndeveloper tools on\n/);
   assert.match(report, /\ngpu {7}\S.*\nmemory {4}[\d.]+ [MG]B in \d+ processes.*\nrunning {3}\d+ (s|min)\n/, 'the graphics card, memory and how long the app has run');
-  assert.match(report, /\nsigned in Kick ✓ {2}Twitch – {2}YouTube –\n/, 'Kick by its login cookie');
-  assert.match(report, /\nplayers {3}Kick signed out {2}Twitch signed out {2}YouTube signed out\n/);
+  assert.match(report, /\nsigned in Kick ✓ {2}Twitch – {2}YouTube – {2}Rumble –\n/, 'Kick by its login cookie');
+  assert.match(report, /\nplayers {3}Kick signed out {2}Twitch signed out {2}YouTube signed out {2}Rumble signed out\n/);
   assert.match(report, /## Errors \(\d+, newest first\)\n[\s\S]*main went wrong/);
   assert.match(report, /## Requests \(\d+, newest first\)\n.*kick +channel +failed/);
   assert.ok(!/SECRET/.test(report), 'nothing private');
@@ -225,8 +225,8 @@ test('Chat events: what the chats\' readers send, sorted by what ALL does with i
   const needed = await texts('#devList .ev-sec .ev-chip');
   assert.ok(needed.includes('KickStreamHostedEventa raid coming in') && needed.includes('TwitchUSERNOTICE:raida raid') && !needed.some(n => /ChatMessageEventa message/.test(n)), needed.join(' | '));
   assert.match(await a.win.textContent('#devList .ev-desc'), /none has come yet/);
-  assert.match(await a.win.textContent('#devList .ev-stats'), /^K3·47T0·0Y0·0$/, 'each site by its letter, so the row fits one line');
-  assert.deepEqual(await a.win.$$eval('#devList .ev-stat .pi', l => l.map(e => e.getAttribute('aria-label'))), ['Kick', 'Twitch', 'YouTube']);
+  assert.match(await a.win.textContent('#devList .ev-stats'), /^K3·47T0·0Y0·0R0·0$/, 'each site by its letter, so the row fits one line');
+  assert.deepEqual(await a.win.$$eval('#devList .ev-stat .pi', l => l.map(e => e.getAttribute('aria-label'))), ['Kick', 'Twitch', 'YouTube', 'Rumble']);
   assert.match(await a.win.getAttribute('#devList .ev-stat:has(.pi-kick)', 'title'), /^Kick: 3 kinds, 47 heard/);
   // a site's pill: only that site's (the others dimmed), the tabs' counts too; again: every site
   await a.win.click('#devList .ev-stat:has(.pi-twitch)');

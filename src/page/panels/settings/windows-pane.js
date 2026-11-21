@@ -14,7 +14,7 @@ import { wireTabs } from '../../toolbar/toolbar.js';
 const BAR_BUTTONS = {
   chat: ['+ Chat', 'Stream windows: open its chat beside it', 'plus'],
   feat: ['Highlight', 'Make this stream big', 'feat'],
-  at: ['Mentions (@)', 'Kick, Twitch and YouTube chats', 'at'],
+  at: ['Mentions (@)', 'Kick, Twitch, YouTube and Rumble chats', 'at'],
   overlay: ['Chat over the stream', 'Stream windows', 'chat'],
   like: ['Like', 'YouTube streams', 'like'],
   star: ['Save', 'Every window', 'star'],

@@ -104,7 +104,7 @@ test('the bell\'s tabs and sub-filters, the new ones marked once, and the rows o
 
   await tab(page, 'live');
   assert.deepEqual(await page.$$eval('#bellPanel .nc-chips button', e => e.map(b => b.textContent)), ['All 2', 'Went live 1', 'Raids 1', 'Opened by itself']);
-  assert.deepEqual(await page.$$eval('#bellPanel .nc-pick option', e => e.map(o => o.textContent)), ['All sites', 'Kick', 'Twitch', 'YouTube']);
+  assert.deepEqual(await page.$$eval('#bellPanel .nc-pick option', e => e.map(o => o.textContent)), ['All sites', 'Kick', 'Twitch', 'YouTube', 'Rumble']);
   const live = page.locator('#bellList .nc-row[data-id=l1]');
   assert.equal(await live.locator('.mp-body').textContent(), 'Late night chess · Chess · 1,200 watching');
   assert.equal(await page.textContent('#bellList .nc-row[data-id=r1] .mp-kind'), 'raided by echo');

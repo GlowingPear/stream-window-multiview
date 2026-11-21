@@ -1,0 +1,26 @@
+/* Rumble: how the page shows something as Rumble's, everywhere it does (youtube/site.css says how these files work).
+   Its green is its logo's; on its green, text is its own dark blue. */
+
+/* A linked window's site tabs (windows/frames.css): its tab, and the tab showing */
+.ptab.rumble{color:#9bd65e}
+.ptab.on.rumble{background:#85c742;color:#061726}
+
+/* The switch control's list (platforms.css): the dot by its channels' names */
+.fs-item.plat-rumble .fs-name .dot{background:#85c742}
+
+/* ALL (chat/all-chat.css): the send box and its button, a reward's line, pins, the chat's modes, polls */
+.all-view[data-send=rumble]{--site:#85c742}
+.all-pinchip.ping-rumble{--pc:#85c742;background:#85c742}
+.all-modes-rumble{--sc:#9bd65e}
+
+/* Its badge (alerts/alerts.css's .pi): next to channel names, on ALL's lines, in lists */
+.pi-rumble{background:#85c742;color:#061726}
+
+/* Accounts (panels/channels/import-progress.css): the dot of a login that's on */
+.am-row[data-p=rumble].on .pdot{background:#85c742}
+
+/* Profiles (panels/profiles/profiles.css): its site chip */
+.pf-plat.rumble{background:rgba(133,199,66,.18);color:#b5e08a}
+
+/* Settings › Developer (panels/developer/developer.css): its pill */
+.dv-rumble{background:#85c742;color:#061726}

@@ -6,7 +6,7 @@ import { dropMini } from '../layout/switch-control.js';
 import { addNote, noteActs } from '../panels/bell/bell.js';
 import { infoFor } from '../panels/channels/channels.js';
 import { save } from '../persistence.js';
-import { chLabel, rememberName } from '../platforms/platforms.js';
+import { PLAT_NAME, chLabel, platOf, rememberName } from '../platforms/platforms.js';
 import { DESKTOP } from '../shared/env.js';
 import { flash } from '../shared/flash.js';
 import { flyouts } from '../shared/flyout.js';
@@ -137,11 +137,12 @@ function setWait(w, text, retry){
 }
 async function resolveYt(w){
   if (!wins.includes(w) || w.view) return;
-  if (!DESKTOP || !window.kmv.ytResolve){ setWait(w, 'YouTube channels need the desktop app. Paste a video link instead.', false); return; }
+  const site = PLAT_NAME[platOf(w.channel)];
+  if (!DESKTOP || !window.kmv.ytResolve){ setWait(w, `${site} channels need the desktop app. Paste a video link instead.`, false); return; }
   if (w.ytBusy) return;
   w.ytBusy = true;
   setWait(w, `Looking for ${chLabel(w.channel)}'s live stream…`, false);
-  // the live check already knows its live video: no need to ask (YouTube's page can say "not live" for a while yet)
+  // the live check already knows its live video: no need to ask (the site's page can say "not live" for a while yet)
   const i = infoFor(w.channel);
   let r = i && i.live && i.videoId ? { live: true, videoId: i.videoId }
     : ytCache[w.channel] && Date.now() - ytCache[w.channel].t < 30000 ? ytCache[w.channel].r : undefined;
@@ -153,8 +154,8 @@ async function resolveYt(w){
   if (!wins.includes(w) || w.view) return;                                       // (or it loaded meanwhile: the live check, see followYtStreams)
   if (r && r.name) rememberName(w.channel, r.name);
   if (r && r.live && r.videoId){ w.ytVid = r.videoId; mountView(w); return; }
-  setWait(w, !r ? 'Couldn’t reach YouTube. Trying again in 2 minutes.'
-              : r.missing ? `Couldn’t find ${chLabel(w.channel)} on YouTube.`
+  setWait(w, !r ? `Couldn’t reach ${site}. Trying again in 2 minutes.`
+              : r.missing ? `Couldn’t find ${chLabel(w.channel)} on ${site}.`
               : `${chLabel(w.channel)} isn’t live right now. Checking again every 2 minutes.`, true);
   stopWinTimer(w, 'yt');
   if (!(r && r.missing)) winTimer(w, 'yt', () => resolveYt(w), 120000);

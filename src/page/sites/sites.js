@@ -1,4 +1,5 @@
 import { kick } from './kick/site.js';
+import { rumble } from './rumble/site.js';
 import { twitch } from './twitch/site.js';
 import { youtube } from './youtube/site.js';
 
@@ -11,6 +12,6 @@ import { youtube } from './youtube/site.js';
 // data as ALL's messages), shoutouts.js, in-site/ (scripts that run inside its pages), site.css (its colours), and
 // features only it has (Kick's poll, prediction and clip panels). A new site: its folder, a line here, and the rest of
 // README.md's "Adding a site".
-const PLATFORMS = { kick, twitch, youtube };
+const PLATFORMS = { kick, twitch, youtube, rumble };
 
 export { PLATFORMS };

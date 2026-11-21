@@ -64,10 +64,10 @@ test('Settings is in the app menu on a Mac, and in File on Windows and Linux', T
 
 test('the Account menu has one item per site that follows your login', T, async () => {
   await win.waitForTimeout(Math.max(0, started + 6500 - Date.now()));   // after the page's own login check, 5 s in
-  assert.deepEqual(await menu('Account'), ['Log in to Kick…', 'Log in to Twitch…', 'Log in to YouTube…', 'Account settings…']);
+  assert.deepEqual(await menu('Account'), ['Log in to Kick…', 'Log in to Twitch…', 'Log in to YouTube…', 'Log in to Rumble…', 'Account settings…']);
   await win.evaluate(() => window.kmv.accountsState({ kick: 'someone', twitch: '', youtube: true }));
   await win.waitForTimeout(200);
-  assert.deepEqual(await menu('Account'), ['Log out of Kick (someone)', 'Log in to Twitch…', 'Log out of YouTube', 'Account settings…']);
+  assert.deepEqual(await menu('Account'), ['Log out of Kick (someone)', 'Log in to Twitch…', 'Log out of YouTube', 'Log in to Rumble…', 'Account settings…']);
   await clickMenu('Account', 'Log out of Kick');
   await win.waitForSelector('#askDlg:not([hidden])');
   assert.equal(await win.textContent('#askTitle'), 'Log out of Kick?', 'it asks first, like the Accounts button');
@@ -139,7 +139,7 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   await win.keyboard.press('Escape');
   assert.ok(await win.isHidden('#settingsDlg'));
   await win.click('#loginBtn');
-  assert.equal(await win.$$eval('#accountMenu .am-imp', b => b.length), 3, 'Import follows is in the Accounts menu too');
+  assert.equal(await win.$$eval('#accountMenu .am-imp', b => b.length), 4, 'Import follows is in the Accounts menu too');
   await win.keyboard.press('Escape');
 });
 

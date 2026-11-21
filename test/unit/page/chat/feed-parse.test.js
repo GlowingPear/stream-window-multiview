@@ -90,8 +90,8 @@ test('ignoredKinds: of the kinds heard, those ALL leaves out on purpose, with wh
   const { ignoredKinds } = await load();
   assert.deepEqual(ignoredKinds({ kick: { PointsUpdated: {}, ChatMessageEvent: {}, MysteryEvent: {}, 'pusher:pong': {} }, twitch: { '001': {}, 'hermes:update-message': {}, PRIVMSG: {} } }), {
     kick: { PointsUpdated: 'your channel points', 'pusher:pong': 'the connection’s own' },
-    twitch: { '001': 'the connection’s own', 'hermes:update-message': 'a message edited (it carries only the message’s id, not its new words)' }, youtube: {} });
-  assert.deepEqual(ignoredKinds(null), { kick: {}, twitch: {}, youtube: {} });
+    twitch: { '001': 'the connection’s own', 'hermes:update-message': 'a message edited (it carries only the message’s id, not its new words)' }, youtube: {}, rumble: {} });
+  assert.deepEqual(ignoredKinds(null), { kick: {}, twitch: {}, youtube: {}, rumble: {} });
   assert.deepEqual(ignoredKinds({ kick: { GamificationLevelUp: {} } }).kick, { GamificationLevelUp: 'your Kick level going up' }, 'on your own channel (private-<you>), like your points');
 });
 

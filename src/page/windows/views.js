@@ -27,17 +27,18 @@ import { fromApp, fromSite, siteMessage } from '../shared/incoming.js';
 import { viewPressed } from '../shared/popover.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
-import { stopWinTimer } from '../shared/timers.js';
+import { stopWinTimer, winTimer } from '../shared/timers.js';
 import { KICK_CMD_JS } from '../sites/kick/commands.js';
 import { applyChatView, syncLike } from '../sites/youtube/options.js';
 import { chatLoginCheck } from '../toolbar/login-lost.js';
 import { mountCapture, openCapturePicker } from './capture.js';
 import { focusBoxNow, tabKeyAgent, tabKeyJs } from './frames.js';
+import { isPausedBy } from './pause-state.js';
 import { applyPlay } from './pause.js';
 import { applyQuality } from './quality.js';
 import { watchRaid } from './raids.js';
 import { watchStuck } from './stuck.js';
-import { addCss, loadView, reloadView, runIn, setMuted, setZoom, viewId } from './view.js';
+import { addCss, askIn, loadView, pressIn, reloadView, runIn, setMuted, setZoom, viewId } from './view.js';
 import { liftAudioSoon, pushVol } from './windows.js';
 
 /* The player / chat inside a window. YouTube channels first need their current live video looked up. */
@@ -148,9 +149,10 @@ function mountView(w){
     frame.addEventListener('dom-ready', () => {
       w.ready = true;
       if (w.kind === 'stream') trimPlayerPage(frame, w.channel);
+      if ((w.kind === 'stream' || w.kind === 'chat') && w.channel && platform(w.channel).cookieJs) runIn(frame, platform(w.channel).cookieJs);   // its cookie question answered
       if (hasVol){ w.enforceUntil = Date.now() + 8000; pushVol(w); w.audioHeld = true; w.audioLoading = false; liftAudioSoon(w); }
       else setMuted(frame, false);
-      if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); watchStuck(w); }
+      if (w.kind === 'stream'){ w.sentPause = false; applyPlay(w); watchStuck(w); startPlayer(w, frame); }
       if (w.kind === 'chat') setZoom(frame, chatZoom());
       if (w.kind === 'stream') setTimeout(() => applyQuality(w), 1500);   // its quality, once its player is there (windows/quality.js)
       if (w.kind === 'chat' && w === blownWin()) blowUp(w, true);
@@ -171,6 +173,21 @@ function mountView(w){
       applyChatView(w);
     });
   }
+}
+// A player that waits for a real press to start (its site's startJs): pressed for real where it says, a few times as it
+// loads, unless the stream is paused (you, or the app) or the window has loaded something else since
+function startPlayer(w, frame, tries = 12){
+  const js = w.channel && platform(w.channel).startJs;
+  if (!js || !tries) return;
+  winTimer(w, 'start', async () => {
+    if (w.view !== frame || !wins.includes(w)) return;
+    if (!isPausedBy(w.pause)){
+      const at = await askIn(frame, js).catch(() => null);
+      if (!at){ if (tries < 12) return; }   // (started: its first look can come before the player is there)
+      else if (w.view === frame) pressIn(frame, at.x, at.y);
+    }
+    startPlayer(w, frame, tries - 1);
+  }, 1500);
 }
 // New emotes (Settings > Chat, off unless switched on): ask the app which are new for this channel, mark them,
 // and say so once when there are newly added ones.

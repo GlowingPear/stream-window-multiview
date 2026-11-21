@@ -28,7 +28,7 @@ import { copyWinState, devOn, inspectWin } from '../panels/developer/developer.j
 import { openExtMenu } from '../panels/extensions/extensions.js';
 import { accountsOf, chanOpt, nameOf, optFor, setChanOpt, siteName, siteNo, siteNum, streamerBots, streamerOf } from '../platforms/linked.js';
 import { PLAT_NAME, chLabel, heldByOf, heldWho, isVideo, modIs, modUrl, openModView, platOf, platform, popUp,
-  shoutSites } from '../platforms/platforms.js';
+  rememberName, shoutSites } from '../platforms/platforms.js';
 import { ask } from '../shared/ask.js';
 import { element } from '../shared/element.js';
 import { DESKTOP, keyName } from '../shared/env.js';
@@ -51,7 +51,7 @@ import { askIn, pressIn, runIn, viewId, zoomOf } from '../windows/view.js';
 import { copyEmote, emoteOn, freshEmotes, newEmotesOn, reloadWin } from '../windows/views.js';
 import { syncModBtn } from '../windows/windows.js';
 
-/* ---- ALL: a linked streamer's Kick, Twitch and YouTube chats as one list (issue #203) ----
+/* ---- ALL: a linked streamer's Kick, Twitch, YouTube and Rumble chats as one list (issue #203) ----
    An ALL tab before the site tabs of a linked streamer's chat window. It covers the chat you watched with the app's
    own list; the site tabs stay as they are (loaded, playing their part), and clicking one shows that site's chat
    again. The messages come from each site's own connection, heard inside its chat page (in-site/feed.js, read by
@@ -408,6 +408,7 @@ const sameRaid = (f, from, to) => [...f.msgs].reverse().find(x => x.kind === 'ra
    the raid's line (Open ›; the raid followed later, allRaid, finds it); called off, it says so. Kick says only that it
    went (its chat moved to the raided channel): straight to the raid's line. */
 function raidNews(f, view, r, w){
+  if (r.toName) rememberName(r.to, r.toName);   // (its target's name as the raid says it: Rumble's is a stream's page)
   let m = f.byId.get(r.site + ':' + r.id);
   if (!m){
     if (r.state === 'cancel') return;
@@ -1379,7 +1380,7 @@ const modViewChs = w => tabChannels(w).filter(ch => modUrl(ch) && youMod(ch));
 // deleted where the site lets another mod do it (deleteMods); a mod is never timed out or banned from here
 function whyNot(m, action = 'ban'){
   const site = PLAT_NAME[m.site];
-  if (!platform(m.ch).timeoutCmd) return `From ${site}'s own tab`;
+  if (!modsHere(m.ch)) return `From ${site}'s own tab`;
   if (!youMod(m.ch)) return `You're not a mod on ${site}`;
   if (m.login && m.login === meOn(m.site)) return 'That\'s you';
   if (m.badges.includes('host')) return `${m.sender} is the streamer`;
@@ -1390,16 +1391,20 @@ const TIMEOUTS = [60, 600, 3600, 86400];
 const durText = secs => secs >= 86400 ? `${secs / 86400}d` : secs >= 3600 ? `${secs / 3600}h` : `${Math.round(secs / 60)}m`;
 const lastTimeout = () => TIMEOUTS.includes(settings.num('allTimeout')) ? settings.num('allTimeout') : 600;
 const chatFor = m => wins.find(o => o.kind === 'chat' && o.channel === m.ch);
+// Whether ALL can moderate on a channel's site: its chat commands, or its own chat page's requests (inSite.modAction)
+const modsHere = ch => !!(platform(ch).timeoutCmd || inSiteOf(platOf(ch)).modAction);
 // A mod action on m's sender. quick: from the keys on a name, so a ban doesn't ask first
 async function modAct(m, action, secs, { quick } = {}){
   const c = chatFor(m), site = PLAT_NAME[m.site], who = m.sender; if (!c) return;
-  const why = action === 'pin' ? (youMod(m.ch) && platform(m.ch).timeoutCmd ? '' : whyNot(m) || `You're not a mod on ${site}`) : whyNot(m, action);
+  const why = action === 'pin' ? (youMod(m.ch) && modsHere(m.ch) ? '' : whyNot(m) || `You're not a mod on ${site}`) : whyNot(m, action);
   if (why) return flash(why);
   if (action === 'ban' && !quick && !await ask(`Ban ${who} on ${site}?`, `They can't chat on ${site} until they're unbanned.`, { ok: 'Ban', danger: true })) return;
   if (action === 'timeout') settings.set('allTimeout', secs);
   let r, said = '';
   try {
-    if (action === 'delete' || action === 'pin') r = await sender.mod(c, action, m.id);
+    const own = inSiteOf(platOf(m.ch)).modAction;
+    if (own) r = await askIn(c.view, inSiteCall(own, action, { id: m.id, name: m.sender || m.login, userId: m.userId || '', secs: action === 'timeout' ? secs : 0 }));
+    else if (action === 'delete' || action === 'pin') r = await sender.mod(c, action, m.id);
     else if (platform(m.ch).modRequest){ const a = await sender.request(c, platform(m.ch).modRequest(m.ch, m.sender || m.login, action === 'ban' ? 0 : secs)); r = a.ok ? 'done' : 'failed'; said = a.message; }
     else { const cmd = action === 'ban' ? platform(m.ch).banCmd(m.login) : platform(m.ch).timeoutCmd(m.login, secs); r = (await pressed(c, await sender.send(c, cmd), cmd)) === 'sent' ? 'done' : 'failed'; }
   } catch { r = 'failed'; }
@@ -1454,7 +1459,7 @@ function copyData(m){
 // copying, translating and the developer tools in submenus (shared/flyout.js)
 function openLineMenu(m, at){
   const view = viewFor(ownerOf(m.ch)); if (!view) return;
-  const site = PLAT_NAME[m.site], why = whyNot(m), whyDel = whyNot(m, 'delete'), mod = youMod(m.ch) && !!platform(m.ch).timeoutCmd, lm = view.lm;
+  const site = PLAT_NAME[m.site], why = whyNot(m), whyDel = whyNot(m, 'delete'), mod = youMod(m.ch) && modsHere(m.ch), lm = view.lm;
   const item = (label, ic, run, more = {}) => element('button', { type: 'button', role: 'menuitem', class: 'all-li' + (more.red ? ' red' : ''), disabled: !!more.off, title: more.off || '', dataset: { cmd: more.cmd },
     onclick: () => { lm.hidden = true; run(); } }, element('i', { html: ic }), element('span', null, label), more.kb ? element('small', null, more.kb) : '');
   const modBtn = (label, what, ic, run, more = {}) => element('button', { type: 'button', role: 'menuitem', class: 'all-modb' + (more.red ? ' red' : ''), disabled: !!more.off, 'aria-label': what,

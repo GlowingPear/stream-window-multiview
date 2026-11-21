@@ -188,7 +188,7 @@ test('Connected apps: Auto keeps your own Kick choice and gives it back; Disconn
   await page.evaluate(() => localStorage.setItem('kickMultiview.link.kickBefore', 'true'));
   await page.click('#caKickAuto');                                     // Auto off: your choice back
   assert.equal(await ls('link.kickBefore'), null);
-  assert.deepEqual(JSON.parse(await ls('watchSignedIn')), { kick: true, twitch: true, youtube: false, v: 2 });
+  assert.deepEqual(JSON.parse(await ls('watchSignedIn')), { kick: true, twitch: true, youtube: false, rumble: true, v: 2 });
   await page.click('#caKickAuto');                                     // on again
   assert.equal(await ls('link.kickBefore'), 'true');
   await push(page, { on: true, peer: peer(), farming: null, open: true });

@@ -29,10 +29,11 @@ test('every site has the same slots for its parts; each part runs on its own as 
     if (typeof v === 'function') assert.doesNotMatch(String(v), /\b(PLATFORMS|SmvSites|platform|platOf|settings|wins)\b/, `${p.id}'s ${k} is self-contained`);
   }
   assert.deepEqual(Object.values(PLATFORMS).map(p => [p.id, !!p.inSite.tap, !!p.inSite.pins, !!p.inSite.shown, !!p.inSite.badges, !!p.inSite.modes]),
-    [['kick', true, true, true, true, true], ['twitch', true, true, true, true, true], ['youtube', true, true, true, false, true]], 'YouTube\'s badges come with their pictures');
+    [['kick', true, true, true, true, true], ['twitch', true, true, true, true, true], ['youtube', true, true, true, false, true],
+      ['rumble', true, false, true, false, false]], 'YouTube\'s and Rumble\'s badges come with their pictures; Rumble\'s pin comes as its chat opens');
   assert.deepEqual(Object.values(PLATFORMS).map(p => ['icons', 'look', 'room', 'hypeTrain', 'channels', 'commands', 'reply', 'replyAt', 'replyPress', 'heldCard', 'signedOut'].filter(k => p.inSite[k])),
-    [['icons', 'reply'], ['room', 'hypeTrain', 'channels', 'commands', 'replyAt', 'replyPress', 'heldCard'], ['look', 'heldCard', 'signedOut']],
-    'only YouTube\'s chat page shows you signed out (Kick\'s and Twitch\'s look the same: those sites are asked)');
+    [['icons', 'reply'], ['room', 'hypeTrain', 'channels', 'commands', 'replyAt', 'replyPress', 'heldCard'], ['look', 'heldCard', 'signedOut'], ['signedOut']],
+    'only YouTube\'s and Rumble\'s chat pages show you signed out (Kick\'s and Twitch\'s look the same: those sites are asked)');
 });
 
 test('a site\'s parts slot fits what it says it can do (chat flags, replies, held messages, its own commands)', () => {
@@ -69,7 +70,7 @@ test('shoutouts\' look for the script in a chat page: the site\'s page part with
 test('the sites\' emotes: their pictures\' hosts for the mention and new-emote readers (YouTube\'s aren\'t read there), and the card\'s look and finder for each', () => {
   assert.deepEqual(m.emoteHosts(), [{ host: 'files\\.kick\\.com', path: '^/emotes/' }, { host: 'static-cdn\\.jtvnw\\.net', path: null }]);
   const sites = m.emoteSites();
-  assert.deepEqual(sites.map(s => [s.name, s.look]), [['Kick', ['#53fc18', '#0a0c0d', 'Kick emote']], ['Twitch', ['#8a4fff', '#fff', 'Twitch emote']], ['YouTube', ['#ff3d3d', '#fff', 'YouTube emoji']]]);
+  assert.deepEqual(sites.map(s => [s.name, s.look]), [['Kick', ['#53fc18', '#0a0c0d', 'Kick emote']], ['Twitch', ['#8a4fff', '#fff', 'Twitch emote']], ['YouTube', ['#ff3d3d', '#fff', 'YouTube emoji']], ['Rumble', ['#85c742', '#061726', 'Rumble emote']]]);
   const img = { closest: () => null }, find = (i, url) => sites.map(s => s.find(img, new URL(url), 'pogg')).findIndex(Boolean) === i;
   const [kick, twitch] = sites;
   assert.deepEqual(kick.find(img, new URL('https://files.kick.com/emotes/123/fullsize'), 'x'), { big: 'https://files.kick.com/emotes/123/fullsize' });
@@ -79,4 +80,7 @@ test('the sites\' emotes: their pictures\' hosts for the mention and new-emote r
   assert.equal(twitch.find(img, new URL('https://static-cdn.jtvnw.net/jtv_user_pictures/a.png'), 'x'), null);
   assert.equal(find(0, 'https://files.kick.com/emotes/1/fullsize') && find(1, 'https://static-cdn.jtvnw.net/emoticons/v2/1/default/dark/1.0'), true);
   assert.equal(sites.some(s => s.find(img, new URL('https://cdn.7tv.app/emote/abc/1x.webp'), 'x')), false, 'the add-ons\' are the card\'s own');
+  const rumble = sites[3], pic = cls => ({ classList: { contains: c => c === cls } });
+  assert.deepEqual(rumble.find(pic('chat-history--emote'), new URL('https://hugh.cdn.rumble.cloud/video/z12/S/1/x/Y/S1xYQ.baa.gif'), 'x'), { big: 'https://hugh.cdn.rumble.cloud/video/z12/S/1/x/Y/S1xYQ.baa.gif' });
+  assert.equal(rumble.find(pic('chat-history--user-avatar'), new URL('https://hugh.cdn.rumble.cloud/video/z0/a.jpeg'), 'x'), null, 'a picture there that isn\'t an emote (someone\'s avatar)');
 });
