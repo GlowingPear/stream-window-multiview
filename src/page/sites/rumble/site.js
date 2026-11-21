@@ -37,7 +37,8 @@ const rumble = new Site({   // (what each slot is for, and its default: sites/ad
   // (a video's id here is its page's: its player's and chat's ids are looked up, as for a channel)
   videoId: () => null,
   chatMax: 200,
-  emotes: { none: 'Rumble\'s emotes are in its own chat box', paste: null },
+  // ALL's emote picker: its live chat's emotes (the channel's and Rumble's), sent as ":name:"
+  emotes: { none: null, paste: null },
   feed: rumbleFeed,   // its chat's data as ALL's messages (feed.js; chat/feed-parse.js)
   chat: { ownIcons: false, globalBadges: false, look: false, shared: false, modByLater: false, hypeTrains: false, modesAgain: false },
   // The scripts that run inside its chat page, its parts of them (see kick.js's inSite): in-site/feed.js

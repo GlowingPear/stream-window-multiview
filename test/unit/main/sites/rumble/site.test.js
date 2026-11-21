@@ -172,3 +172,30 @@ test('follows: its Followed Channels page (its list, signed out without it), rea
   await nothing.a.follows.tick(Date.now());
   assert.equal(nothing.rec.kept.length, 0, 'an empty list isn\'t kept');
 });
+
+test('emotes: its live chat\'s list as the picker\'s groups (the channel\'s with its picture, then Rumble\'s), sent as :name:', async () => {
+  const { rumbleGroups } = rumble;
+  const LIST = { user: { logged_in: true }, data: { items: [
+    { id: 1, title: 'Night Owl Emotes', channel_id: 669235, channel_picture: 'https://hugh.cdn.rumble.cloud/owl.png', emotes: [{ name: 'owlhoot', is_subs_only: true, file: 'https://hugh.cdn.rumble.cloud/hoot.png' }, { name: 'bad', file: 'http://x' }] },
+    { id: 2, title: 'Rumble Emotes', channel_id: null, emotes: [{ name: 'r+rumblecharge', is_subs_only: false, file: 'https://hugh.cdn.rumble.cloud/charge.gif' }] },
+    { id: 3, title: 'Empty', channel_id: 7, emotes: [] }, null] } };
+  assert.deepEqual(rumbleGroups(LIST), [
+    { id: 'rumble-channel', label: 'Night Owl Emotes', emotes: [{ name: 'owlhoot', url: 'https://hugh.cdn.rumble.cloud/hoot.png', send: ':owlhoot:', subs: true }], pic: 'https://hugh.cdn.rumble.cloud/owl.png' },
+    { id: 'rumble', label: 'Rumble', emotes: [{ name: 'r+rumblecharge', url: 'https://hugh.cdn.rumble.cloud/charge.gif', send: ':r+rumblecharge:' }] }]);
+  assert.equal(rumbleGroups({ user: {} }), null);
+  // the live check knows the chat: asked with your login
+  const { a, rec } = rumbleWith({}, { snapshot: { 'ru:nightowl': { live: true, videoId: 'v33aw1a.186945454' } }, loginFetch: () => answer({ json: LIST }) });
+  const picked = await a.emotes.pick('ru:nightowl');
+  assert.deepEqual([picked.groups.map(g => g.id), picked.id], [['rumble-channel', 'rumble'], null]);
+  assert.equal(rec.fetched[0].url, 'https://rumble.com/service.php?name=emote.list&chat_id=186945454');
+  assert.deepEqual(await a.emotes.list('ru:nightowl'), { names: ['owlhoot'], id: null }, 'the channel\'s own, for new emotes');
+  assert.deepEqual(a.emotes.addOns, {});
+  // not known yet: its live check says; offline: none
+  const asked = rumbleWith({ '/livestreams': answer({ text: livePage([item()]) }), oembed: answer({ json: OEMBED }) }, { loginFetch: () => answer({ json: LIST }) });
+  assert.equal((await asked.a.emotes.pick('ru:nightowl')).groups.length, 2);
+  const off = rumbleWith({ '/livestreams': answer({ text: livePage([item({ live: false })]) }) }, { loginFetch: () => answer({ json: LIST }) });
+  assert.deepEqual(await off.a.emotes.pick('ru:nightowl'), { groups: [], id: null });
+  assert.equal(await off.a.emotes.list('ru:nightowl'), null);
+  const broken = rumbleWith({}, { snapshot: { 'ru:nightowl': { live: true, videoId: 'v33aw1a.186945454' } }, loginFetch: () => { throw new Error('offline'); } });
+  assert.deepEqual((await broken.a.emotes.pick('ru:nightowl')).groups, []);
+});

@@ -66,6 +66,21 @@ function parseRumbleProfile(html, ch) {
     verified: !!(by && by.verified_badge), partner: false, affiliate: false, created: null, socials: [], live: null, chat: null, badges: [], vods: []
   };
 }
+// Its emote list (service.php?name=emote.list&chat_id=<a live stream's chat>) -> the picker's groups (emote-picker.js):
+// the channel's own (with its picture), then Rumble's own. Each is sent as ":name:", which its chat shows as the emote;
+// subs: only its subscribers can use it. Empty sets are left out; null when it isn't its answer
+function rumbleGroups(d) {
+  const items = d && d.data && Array.isArray(d.data.items) ? d.data.items : null;
+  if (!items) return null;
+  return items.filter(g => g && Array.isArray(g.emotes)).map(g => {
+    const emotes = g.emotes.filter(e => e && e.name && /^https:\/\//.test(e.file || ''))
+      .map(e => ({ name: String(e.name), url: e.file, send: `:${e.name}:`, ...(e.is_subs_only ? { subs: true } : {}) }));
+    if (!emotes.length) return null;
+    const own = g.channel_id != null;
+    return { id: own ? 'rumble-channel' : 'rumble', label: own ? String(g.title || 'Channel emotes') : 'Rumble', emotes,
+      ...(own && /^https:\/\//.test(g.channel_picture || '') ? { pic: g.channel_picture } : {}) };
+  }).filter(Boolean);
+}
 // A link on its pages -> the channel id it's for, or null
 function fromLink(href) {
   let u; try { u = new URL(href, RU); } catch { return null; }
@@ -149,6 +164,21 @@ function create(ctx) {
       return r.ok ? signedInOn(await r.json()) : null;
     } catch { return null; }
   }
+  /* emotes: its live stream's chat's list (a channel's own emotes are only asked of its chat) */
+  async function chatOf(ch) {
+    const known = (ctx.live.snapshot() || {})[ch];
+    const vid = (known && known.live && known.videoId) || ((await liveOne(ch)) || {}).videoId || '';
+    return (/^v[a-z0-9]+\.(\d+)$/.exec(vid) || [])[1] || '';
+  }
+  async function emoteGroups(ch) {
+    const chat = await chatOf(ch);
+    if (!chat) return [];
+    try {
+      const r = await ctx.loginFetch(page(`${RU}/service.php?name=emote.list&chat_id=${chat}`), { headers: ctx.headers(), signal: ctx.netSignal() });
+      return (r.ok && rumbleGroups(await r.json())) || [];
+    } catch { return []; }
+  }
+
   /* the channels you follow: its Followed Channels page; for suggestions, read again in the background at most once a
      day while you're signed in (no live state) */
   const importFollows = () => ctx.scrapeFollowPage(RU + '/followed-channels', { scope: FOLLOW_SCOPE, name: FOLLOW_NAME, signedOut: SIGNED_OUT_JS });
@@ -177,6 +207,12 @@ function create(ctx) {
     signedIn, account: signedIn, loginWorks,
     liveOne,
     follows: { import: importFollows, tick: followsTick, retry() { followTried = 0; } },
+    // its emotes: the picker's groups (ALL); the channel's own names (new emotes)
+    emotes: {
+      pick: async ch => ({ groups: await emoteGroups(ch), id: null }),
+      list: async ch => { const g = (await emoteGroups(ch)).find(x => x.id === 'rumble-channel'); return g ? { names: g.emotes.map(e => e.name), id: null } : null; },
+      addOns: {}
+    },
     profile,
     byName: name => 'ru:' + String(name).toLowerCase(),
     // a name without a channel page (/c/<name>) may be a user's (/user/<name>): many streamers only have that
@@ -186,4 +222,4 @@ function create(ctx) {
   });
 }
 
-module.exports = { create, describeRequest, fromLink, FOLLOW_SCOPE, SIGNED_OUT_JS, LOGIN_COOKIE, parseRumbleLive, parseRumbleProfile, parseOembed, rumbleItems, rumbleItem, rumblePage, rumbleLivePage, signedInOn };
+module.exports = { create, describeRequest, fromLink, rumbleGroups, FOLLOW_SCOPE, SIGNED_OUT_JS, LOGIN_COOKIE, parseRumbleLive, parseRumbleProfile, parseOembed, rumbleItems, rumbleItem, rumblePage, rumbleLivePage, signedInOn };

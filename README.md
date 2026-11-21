@@ -303,7 +303,7 @@ Everything about one site is in a folder of its own on each side, so a new site 
 - Windows from other apps (like Discord) are shown as a live picture. Interact with them in the real window.
 - YouTube sign-in only works through Firefox: Google blocks signing in inside apps, and Chrome and Edge lock their logins so they can't be copied. Sign in to YouTube in Firefox, then use **Copy my login from Firefox** in the app. Watching YouTube doesn't need a login.
 - YouTube chats aren't watched for @mentions.
-- Rumble: its emote picker in ALL and stream quality aren't there yet, and a Rumble video link plays only while it's live.
+- Rumble: stream quality can't be set yet, and a Rumble video link plays only while it's live.
 - Chrome extensions: each chat site and each stream keeps its own extension settings. Extensions that need Chrome features the app doesn't have (blocking rules, capturing a page's sound, offscreen documents) only partly work.
 - The app depends on how Kick, Twitch, YouTube and Rumble's websites work today, so a change on their side can break a feature until the app is updated.
 
