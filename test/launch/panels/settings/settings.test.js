@@ -139,7 +139,7 @@ test('every tab is there in the app, and the Accounts menu links to the rest', T
   await win.keyboard.press('Escape');
   assert.ok(await win.isHidden('#settingsDlg'));
   await win.click('#loginBtn');
-  assert.equal(await win.$$eval('#accountMenu .am-imp', b => b.length), 3, 'Import follows is in the Accounts menu too');
+  assert.equal(await win.$$eval('#accountMenu .am-imp', b => b.length), 4, 'Import follows is in the Accounts menu too');
   await win.keyboard.press('Escape');
 });
 

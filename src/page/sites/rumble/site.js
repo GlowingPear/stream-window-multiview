@@ -69,6 +69,8 @@ const rumble = new Site({   // (what each slot is for, and its default: sites/ad
   fromText(raw){ const m = raw.match(/^(?:ru|rumble)\s*:\s*@?([A-Za-z0-9_.-]{1,60})$/i); return m ? { channel: 'ru:' + m[1].toLowerCase(), only: null } : undefined; },
   handle: ch => ch.replace(/^ru:(u:|v:)?/, ''),
   label: ch => (ch.startsWith('ru:v:') ? 'Rumble video' : ch.replace(/^ru:(u:)?/, '')),
+  // one person can have a user page and channels of their own, live on either: which kind it is, in words
+  idText: ch => (ch.startsWith('ru:u:') ? 'User · ' + ch.slice(5) : ch.startsWith('ru:v:') ? 'Video · ' + ch.slice(5) : 'Channel · ' + ch.slice(3)),
   // A video takes the name Rumble gives it; a channel's name is already its name
   namedBySite: ch => ch.startsWith('ru:v:'),
   fromUrl(host, parts){

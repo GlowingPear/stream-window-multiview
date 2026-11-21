@@ -28,6 +28,8 @@ test('channel ids, names and labels: a channel, a user\'s channel, one video', (
   assert.deepEqual(rumble.fromText('rumble: @nightowl'), { channel: 'ru:nightowl', only: null });
   assert.equal(rumble.fromText('nightowl'), undefined, 'a bare name is Kick\'s');
   assert.equal(rumble.videoId('ru:v:v35waq4'), null, 'a video\'s player and chat ids are looked up');
+  assert.deepEqual(['ru:u:pip', 'ru:c-7777674', 'ru:v:v35waq4'].map(rumble.idText), ['User · pip', 'Channel · c-7777674', 'Video · v35waq4'], 'a user\'s page and a channel told apart');
+  assert.deepEqual([kick.idText('owl'), youtube.idText('yt:@owl')], ['owl', '@owl'], 'the default: its name there');
   assert.equal(youtube.videoId('yt:v:dQw4w9WgXcQ'), 'dQw4w9WgXcQ', 'YouTube\'s video id is in its channel id');
   assert.equal(kick.videoId('owl'), null, 'the default: none');
 });

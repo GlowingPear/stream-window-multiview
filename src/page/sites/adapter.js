@@ -19,6 +19,7 @@ const SLOTS = {
   idFor: ['function', REQUIRED, '(name) -> the channel id of a bare name typed in the Channels box'],
   handle: ['function', REQUIRED, '(ch) -> the channel\'s name on the site'],
   label: ['function', REQUIRED, '(ch) -> what a channel is called until the site\'s own spelling is known'],
+  idText: ['function', ch => SmvSites.bare(ch), '(ch) -> how a channel is told apart in a list beside its name (Import follows): its name there, or its address\'s part when one name can be several kinds of channel'],
   namedBySite: ['function', null, '(ch) -> its name only comes from the site (YouTube\'s channel and video ids); null: a name in other capitals'],
   fromText: ['function', () => undefined, '(raw) -> { channel, only } for text in its own short form ("tw:name", "@handle"), or undefined'],
   fromUrl: ['function', REQUIRED, '(host, parts, url) -> { channel, only } for its link, null for its page that isn\'t a channel, undefined for another site\'s'],

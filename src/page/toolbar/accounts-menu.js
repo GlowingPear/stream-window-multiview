@@ -264,7 +264,7 @@ function init(){
         cb.checked = have || (keep.has(x.ch) ? keep.get(x.ch) : x.pick !== false); cb.disabled = have;
         cb.onchange = () => { x.pick = cb.checked; impCount(); };
         l.querySelector('.nm').textContent = x.name;
-        l.querySelector('.id').textContent = have ? 'already saved' : SmvSites.bare(x.ch);
+        l.querySelector('.id').textContent = have ? 'already saved' : PLATFORMS[impPlat].idText(x.ch);
         if (PLATFORMS[impPlat].login.unfollow && window.kmv.kickUnfollow){
           const u = document.createElement('button'); u.type = 'button'; u.className = 'unf'; u.textContent = 'Unfollow';
           u.title = `Unfollow ${x.name} on ${PLATFORMS[impPlat].hosts[0]}`;
