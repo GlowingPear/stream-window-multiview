@@ -2,7 +2,11 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.41 (current)
+## 0.4.42 (current)
+- Rumble: a channel without its own address shows its name
+- README artwork: add Rumble
+
+## 0.4.41
 - Add Rumble as a site
 
 ## 0.4.40
