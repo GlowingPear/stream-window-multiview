@@ -3022,3 +3022,20 @@ test('ALL: a Rumble chat\'s messages, as its tap hands them over: names in their
   await page.waitForFunction(() => !document.querySelector('.all-list [data-key="rumble:r3"]') && !document.querySelector('.all-list [data-key="rumble:r4"]'));
   assert.equal((await lines(page)).length, 2);
 });
+
+test('ALL: an emote you type as its code on Rumble (:Spin:) is seen when its chat brings it back as the emote: the real line takes its place', async t => {
+  const accounts = ['quietkoala', 'ru:quietkoala'];
+  const page = await allApp(t, { allOpen: '["s1"]', allSend: JSON.stringify({ s1: 'ru:quietkoala' }), saved: JSON.stringify(accounts), streamers: JSON.stringify([{ ...STREAMER, accounts }]) }, accounts,
+    { ...LIVE, 'ru:quietkoala': { live: true, videoId: 'v33aw1a.186945454', checked: now } });
+  await page.waitForSelector('.all-view');
+  await page.evaluate(live => { window.openWins().forEach(w => { if (w.kind === 'chat') w.ready = true; }); window.smvNotes.liveStatus(live); window.allChat.sender.send = async () => 'sent'; },
+    { ...LIVE, 'ru:quietkoala': { live: true, videoId: 'v33aw1a.186945454', checked: now } });
+  const PIC = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
+  await page.fill('.all-in', ':Spin:');
+  await page.press('.all-in', 'Enter');
+  await page.waitForSelector('.al-mine-sent');
+  await feed(page, 'ru:quietkoala', { s: 'rumble', raw: [{ t: 'message', m: { id: 'r9', time: new Date().toISOString(), text: ':Spin:', rant: null },
+    u: { id: '5', username: 'MeRumble', color: '', badges: [] }, pics: [], emotes: { ':Spin:': PIC } }] });
+  await page.waitForFunction(() => !document.querySelector('.all-list .al-mine'));
+  assert.ok(await page.$('.all-list [data-key="rumble:r9"]'), 'the real line');
+});

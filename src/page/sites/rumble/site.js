@@ -87,7 +87,26 @@ const rumble = new Site({   // (what each slot is for, and its default: sites/ad
   pageUrl: (ch, kind, vid) => (kind === 'chat' && vidParts(vid) ? rumble.chatUrl(ch, vid) : ch.startsWith('ru:v:') ? pageOf(ch) : pageOf(ch) + '/livestreams'),
   profileUrl: pageOf,
   modUrl: () => null,
-  chatCss: null,
+  // Its chat's pop-ups, kept inside the chat window:
+  // - the $ (rant) panel opens under the message box, and the two scrolled together, so the scrollbar narrowed the
+  //   box's row and moved the send button: only the panel scrolls now
+  // - the gift and subscribe panels: a long channel name (one word) pushed their close button past the right edge,
+  //   and the chat's pinned and sponsor cards covered them
+  // - its emoji picker is 394px wide and slid the whole chat sideways: as wide as the chat, with fewer columns
+  // - in a narrow chat the top emotes next to the send button give way to it
+  chatCss: `.chat-form-overflow-wrapper { display: flex !important; flex-direction: column !important; overflow: hidden !important; }
+.chat-form-overflow-wrapper > * { flex: none; }
+.chat-form-overflow-wrapper > #chat-rant-form { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+.chat-form-overflow-wrapper > form.absolute, .chat-form-overflow-wrapper > .chat-subscribe-form { z-index: 3; }
+.flex-1:has(> .chat--subscribe-header--image), .chat--subscribe-header--image ~ * { min-width: 0; overflow-wrap: anywhere; }
+.cxm:has(> emoji-picker) { left: 4px !important; right: auto !important; max-width: calc(100vw - 8px); }
+.cxm > emoji-picker { max-width: 100%; }
+@media (max-width: 360px) { emoji-picker { --emote-num-columns: 5 !important; } }
+@media (max-width: 328px) { emoji-picker { --num-columns: 7 !important; } }
+@media (max-width: 304px) { emoji-picker { --emote-num-columns: 4 !important; } }
+@media (max-width: 290px) { emoji-picker { --num-columns: 6 !important; } }
+@media (max-width: 252px) { emoji-picker { --emote-num-columns: 3 !important; --num-columns: 5 !important; } }
+.chat--rant-row-top-emotes { min-width: 0; flex-wrap: wrap; justify-content: flex-end; height: 36px; overflow: hidden; }`,
   // its chat's message list (in-site/stick-bottom.js)
   chatScroll: { list: '#chat-history-list', resume: null },
   // Someone supporting the stream (Settings › Support): a rant, read from its connection (feed.js)
