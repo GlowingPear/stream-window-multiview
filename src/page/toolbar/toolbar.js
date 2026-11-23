@@ -281,7 +281,7 @@ function init(){
       let found = false;
       for (const p of named()){
         const n = p.login.fromPages ? fromPages : st && st[p.id];
-        if (!n) continue;
+        if (!n || typeof n !== 'string') continue;   // (true: signed in, but its login didn't say whose)
         found = true;
         if (!quiet || !myNameOn(p.id)) setMyName(p.id, n);
       }

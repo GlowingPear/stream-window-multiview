@@ -8,9 +8,9 @@ let a;
 test.before(async () => {
   a = await launchApp({ storage: { 'kickMultiview.saved': ['alpha', 'bravo', 'tw:charlie'] } });
   await a.app.evaluate(({ ipcMain, Notification }) => {
-    const s = globalThis.__t = { kick: 'someone', twitch: 'tw_user', youtube: true, logouts: [], notes: [], logins: [] };
+    const s = globalThis.__t = { kick: 'someone', twitch: 'tw_user', youtube: true, rumble: true, logouts: [], notes: [], logins: [] };
     ipcMain.removeHandler('me:detect'); ipcMain.handle('me:detect', () => s.kick || null);
-    ipcMain.removeHandler('accounts:status'); ipcMain.handle('accounts:status', () => ({ kick: s.kick || null, twitch: s.twitch || null, youtube: s.youtube }));
+    ipcMain.removeHandler('accounts:status'); ipcMain.handle('accounts:status', () => ({ kick: s.kick || null, twitch: s.twitch || null, youtube: s.youtube, rumble: s.rumble }));
     ipcMain.removeHandler('account:logout'); ipcMain.handle('account:logout', (_e, p) => { s.logouts.push(p); s[p] = p === 'youtube' ? false : ''; return true; });
     ipcMain.removeHandler('account:login'); ipcMain.handle('account:login', (_e, p) => { s.logins.push(p); });
     // desktop notifications are recorded instead of shown
@@ -37,6 +37,8 @@ test('the Accounts menu shows who\'s logged in; Log out and Switch ask first', T
   assert.ok(await a.win.$eval('#loginBtn', b => b.classList.contains('has-acct')), 'green while logged in');
   assert.match(await a.win.$eval('#loginBtn', b => b.title || b.dataset.tipTitle), /Kick \(someone\), Twitch \(tw_user\), YouTube/, 'its tooltip names the logins');
   assert.match(await a.win.textContent(row('#accountMenu', 'twitch') + ' .am-st'), /Logged in as tw_user/);
+  assert.equal((await a.win.textContent(row('#accountMenu', 'rumble') + ' .am-st')).trim(), 'Logged in', 'signed in, but its login didn\'t say whose: no name');
+  assert.equal(await a.win.evaluate(() => localStorage.getItem('kickMultiview.myRumble') || ''), '', 'nor one filled in');
   assert.ok(await a.win.isHidden(row('#accountMenu', 'kick') + ' .am-in'), 'no Log in when logged in');
 
   await a.win.click(row('#accountMenu', 'twitch') + ' .am-out');
@@ -83,6 +85,12 @@ test('a new login reloads that site\'s chats and fills in your username; "Forget
   while (await inView(a.win, 'charlie', 'chat', () => !!window.__before).catch(() => true)) { if (Date.now() > end) throw new Error('the chat didn\'t reload'); await new Promise(r => setTimeout(r, 200)); }
   await a.win.click('#loginBtn');
   await a.win.waitForFunction(() => /new_name/.test(document.querySelector('#accountMenu .am-row[data-p=twitch] .am-st').textContent));
+  await a.win.keyboard.press('Escape');
+  // Rumble's login now says whose (its home page's current user): your username there, filled in
+  await a.app.evaluate(({ BrowserWindow }) => { globalThis.__t.rumble = 'ru_user'; BrowserWindow.getAllWindows().forEach(w => w.webContents.send('account:changed', { platform: 'rumble', loggedOut: false })); });
+  await a.win.waitForFunction(() => localStorage.getItem('kickMultiview.myRumble') === 'ru_user');
+  await a.win.click('#loginBtn');
+  assert.match(await a.win.textContent(row('#accountMenu', 'rumble') + ' .am-st'), /Logged in as ru_user/);
   await a.win.keyboard.press('Escape');
 
   await a.win.evaluate(() => window.openSettings('accounts'));

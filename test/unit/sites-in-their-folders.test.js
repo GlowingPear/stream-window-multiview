@@ -35,7 +35,6 @@ const ALLOWED = [
   ['src/page/chat/shoutout-text.js', "r.site === 'twitch' ? 'twitch' : 'kick'", '#300\'s People rows, only ever Kick\'s and Twitch\'s, made into cards once'],
   ['src/page/chat/shoutout-text.js', 'sites: per ? { kick: sites.kick', '#300\'s People rows (as above)'],
   // YouTube's own settings and sign-in (Settings › YouTube; Google blocks signing in inside the app)
-  ['src/page/panels/settings/settings.js', "settingsTab === 'youtube'", 'the YouTube settings page\'s tab'],
   ['src/page/panels/help/guide.js', "youtube: 'youtube'", 'the guide\'s YouTube section'],
   ['src/page/toolbar/accounts-menu.js', "showHelp('guide', 'youtube', 'API key')", 'the YouTube API key\'s help'],
   ['src/page/toolbar/accounts-menu.js', 'Open youtube.com in Firefox', 'signing in to YouTube through Firefox'],

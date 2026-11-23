@@ -62,7 +62,7 @@ const rumble = new Site({   // (what each slot is for, and its default: sites/ad
   nameStyle: m => (/^#[0-9a-f]{6}$/i.test(m.color || '') ? { color: m.color } : null),
   quality: { siteMax: null },   // its stream's quality can be set (windows/quality.js: its player is hls.js); by itself it goes as high as the stream
   // your username: its chat names people "@name"; its login doesn't say whose
-  me: { setting: 'myRumble', valid: /^[A-Za-z0-9_]{2,40}$/, at: true, named: false, word: 'username' },
+  me: { setting: 'myRumble', valid: /^[A-Za-z0-9_]{2,40}$/, at: true, named: true, word: 'username' },
   login: { fromPages: false, firefox: false, unfollow: false },
   colors: { dot: '#85c742', brand: '#85c742' },
   shoutouts: null,

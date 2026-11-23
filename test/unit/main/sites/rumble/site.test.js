@@ -128,8 +128,7 @@ test('the adapter: its login page, signed in by its login cookie, the login chec
   assert.equal(await none.a.account(), false, 'only its own cookies, not its login\'s');
   const { a, rec } = rumbleWith({}, { cookies: [{ name: 'u_s', domain: '.rumble.com', value: 'x' }], loginFetch: () => answer({ json: { user: { logged_in: logged } } }) });
   assert.equal(a.loginUrl, 'https://rumble.com/login.php');
-  assert.equal(a.named, false);
-  assert.equal(await a.account(), true);
+  assert.equal(a.named, true);
   assert.equal(await a.signedIn(), true);
   assert.equal(rec.fetched.length, 0, 'no question to Rumble for that');
   assert.equal(await a.loginWorks(), true);
@@ -285,4 +284,22 @@ test('your like on a live stream: read from its page (found by the live check) a
   assert.equal(await broken.a.like.set('ru:nightowl', VID, true), null);
   const refused = rumbleWith(pages, { cookies, loginFetch: () => answer({ json: { user: { logged_in: true } } }) });
   assert.equal(await refused.a.like.set('ru:nightowl', VID, true), null, 'its answer without data: it didn\'t take it');
+});
+
+test('who is signed in: the username its home page carries as its current user (with your login); signed in when it doesn\'t say', async () => {
+  const cookies = [{ name: 'u_s', domain: '.rumble.com', value: 'x' }];
+  const home = name => `<script>Rumble.x({ value: {"current_user": {"id":7,"uid":"_u7","username":"${name}","thumb":"https://hugh.cdn.rumble.cloud/t.jpg"}} });</script>`;
+  const { a, rec } = rumbleWith({}, { cookies, loginFetch: () => answer({ text: home('Night_Owl') }) });
+  assert.equal(await a.account(), 'Night_Owl');
+  assert.equal(rec.fetched[0].url, 'https://rumble.com/');
+  assert.equal(rec.fetched[0].login, true, 'with your login');
+  assert.equal(await rumbleWith({}, { cookies, loginFetch: () => answer({ text: '<html>no one</html>' }) }).a.account(), true, 'signed in, its page didn\'t say whose');
+  assert.equal(await rumbleWith({}, { cookies, loginFetch: () => answer({ text: home('no way!') }) }).a.account(), true, 'not a name');
+  assert.equal(await rumbleWith({}, { cookies, loginFetch: () => answer({ status: 503 }) }).a.account(), true, 'no answer');
+  assert.equal(await rumbleWith({}, { cookies, loginFetch: () => { throw new Error('offline'); } }).a.account(), true);
+  const out = rumbleWith({}, { loginFetch: () => answer({ text: home('Night_Owl') }) });
+  assert.equal(await out.a.account(), false, 'signed out');
+  assert.equal(out.rec.fetched.length, 0, 'not asked');
+  assert.equal(rumble.currentUser(home('Pip')), 'Pip');
+  assert.equal(rumble.currentUser(null), '');
 });

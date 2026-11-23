@@ -128,6 +128,11 @@ function likedOn(html, id) {
 }
 // A live video's id here ("<embed id>.<chat id>") -> its number (its chat's), or ''
 const voteId = vid => ((/^v[a-z0-9]+\.(\d+)$/.exec(vid || '') || [])[1] || '');
+// Who is signed in: its pages carry you as their "current_user" (its home page's, with your login) -> your username, or ''
+function currentUser(html) {
+  const m = /"current_user"\s*:\s*\{[^{}]*?"username"\s*:\s*"([A-Za-z0-9_]{2,40})"/.exec(typeof html === 'string' ? html : '');
+  return m ? m[1] : '';
+}
 
 /* ---------- the app's side (ctx: sites/index.js) ---------- */
 function create(ctx) {
@@ -186,6 +191,16 @@ function create(ctx) {
   }
   // Signed in: its login cookie (u_s, kept only for its signed-in accounts)
   const signedIn = () => ctx.session().cookies.get({ name: LOGIN_COOKIE }).then(l => l.some(c => /(^|\.)rumble\.com$/.test(c.domain) && c.value), () => false);
+  // Who: your username, from its home page with your login (your own messages are never mentions of you); signed in
+  // but its page didn't say: true (signed in, name unknown); signed out: false
+  async function account() {
+    if (!(await signedIn())) return false;
+    try {
+      const r = await ctx.loginFetch(page(RU + '/'), { headers: ctx.headers(), signal: ctx.netSignal() });
+      if (r.ok) return currentUser(await r.text()) || true;
+    } catch {}
+    return true;
+  }
   // Whether that login still works: its own answer, with it (its emote list's, the smallest)
   async function loginWorks() {
     try {
@@ -283,8 +298,8 @@ function create(ctx) {
   return new SiteAdapter({
     id: site.id, site,
     loginUrl: RU + '/login.php',
-    named: false,                     // (its pages only say that you're signed in)
-    signedIn, account: signedIn, loginWorks, like,
+    named: true,                      // (its pages carry who you are: account())
+    signedIn, account, loginWorks, like,
     liveOne,
     follows: { import: importFollows, tick: followsTick, retry() { followTried = 0; } },
     modCheck,
@@ -303,4 +318,4 @@ function create(ctx) {
   });
 }
 
-module.exports = { create, describeRequest, fromLink, rumbleGroups, canModerateIn, firstEvent, FOLLOW_SCOPE, SIGNED_OUT_JS, LOGIN_COOKIE, parseRumbleLive, parseRumbleProfile, parseOembed, rumbleItems, rumbleItem, rumblePage, rumbleLivePage, signedInOn, likedOn, voteId };
+module.exports = { create, describeRequest, fromLink, rumbleGroups, canModerateIn, firstEvent, FOLLOW_SCOPE, SIGNED_OUT_JS, LOGIN_COOKIE, parseRumbleLive, parseRumbleProfile, parseOembed, rumbleItems, rumbleItem, rumblePage, rumbleLivePage, signedInOn, currentUser, likedOn, voteId };
