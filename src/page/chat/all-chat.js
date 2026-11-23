@@ -1622,7 +1622,11 @@ function openSiteCard(m){
 /* ---- what you send: a line of yours straight away (sending…), replaced by the real one when the site's chat brings it
    back; if it fails, it stays, red, with why, Retry and Edit. One message at a time, so Enter can't send it twice. ---- */
 let mineN = 0;
-const sameText = (a, b) => a.replace(/\s+/g, ' ').trim().toLowerCase() === b.replace(/\s+/g, ' ').trim().toLowerCase();
+// (an emote typed as its code, ":Spin:" on Rumble, comes back as the emote "Spin": the same either way)
+const sameText = (a, b) => {
+  const norm = s => s.replace(/:([\w+-]+):/g, '$1').replace(/\s+/g, ' ').trim().toLowerCase();
+  return norm(a) === norm(b);
+};
 // Your line's words as ALL draws a message's: each emote you picked in the box as its picture, the rest text
 function mineParts(text, pics, sends){
   const out = [];
