@@ -3,12 +3,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-let kick, twitch, youtube;
+let kick, twitch, youtube, rumble;
 test.before(async () => {
   globalThis.SmvSites = require('../../../../src/shared/sites.js');   // (the page loads it before its modules)
   ({ kick } = await import('../../../../src/page/sites/kick/site.js'));
   ({ twitch } = await import('../../../../src/page/sites/twitch/site.js'));
   ({ youtube } = await import('../../../../src/page/sites/youtube/site.js'));
+  ({ rumble } = await import('../../../../src/page/sites/rumble/site.js'));
 });
 // a link as platforms.js hands it over: host without www. or m., and the path's parts
 const link = s => { const u = new URL(s); return [u.hostname.replace(/^(www|m)\./, ''), u.pathname.split('/').filter(Boolean), u]; };
@@ -148,6 +149,14 @@ test('YouTube trims its watch page to the player; Kick and Twitch keep their use
   assert.match(twitch.chatCss, /\.emote-picker \{ width: min\(32rem, 100vw - 1\.6rem\)/, 'and its emote picker');
   assert.match(twitch.chatCss, /\[role="dialog"\]:has\(\.reward-center__content, \.emote-picker\)[^{]*\{ max-width: none/, 'their frame lets them use the whole width');
   assert.equal(youtube.chatCss, null);
+});
+
+test("Rumble keeps its chat's pop-ups inside the chat: the $ panel scrolls on its own, the gift and subscribe panels' close button and its emoji picker fit", () => {
+  assert.match(rumble.chatCss, /#chat-rant-form \{[^}]*min-height: 0; overflow-y: auto/, 'only the $ panel scrolls, not the send button row');
+  assert.match(rumble.chatCss, /\.chat--subscribe-header--image ~ \* \{ min-width: 0; overflow-wrap: anywhere/, 'a long channel name wraps');
+  assert.match(rumble.chatCss, /\.chat-subscribe-form \{ z-index: 3/, 'the panels are above the pinned cards');
+  assert.match(rumble.chatCss, /\.cxm:has\(> emoji-picker\) \{[^}]*max-width: calc\(100vw - 8px\)/, 'the emoji picker fits the chat');
+  assert.match(rumble.chatCss, /\.chat--rant-row-top-emotes \{ min-width: 0/, 'the top emotes give way to the send button');
 });
 
 test('a stuck player (#120): Kick\'s error page and offline screen; Twitch and YouTube come back by themselves', () => {
