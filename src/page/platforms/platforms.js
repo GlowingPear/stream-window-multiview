@@ -7,7 +7,7 @@ import { DESKTOP } from '../shared/env.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { PLATFORMS } from '../sites/sites.js';
-import { syncLike } from '../sites/youtube/options.js';
+import { syncLike } from '../windows/likes.js';
 import { addCss, runIn } from '../windows/view.js';
 import { mountView } from '../windows/views.js';
 

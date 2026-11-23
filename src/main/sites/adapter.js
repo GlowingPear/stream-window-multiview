@@ -31,6 +31,8 @@ const SLOTS = {
   follows: [{ import: ['function', true], tick: ['function', true], retry: ['function', true], live: ['function', false], clearLive: ['function', false] }, false,
     'the channels you follow: Import follows, the background read (tick), who\'s live among them'],
   modCheck: ['function', false, '(ch) -> true | false | null: whether you can moderate the channel'],
+  like: [{ state: ['function', true], set: ['function', true] }, false,
+    'your like on a live stream, with your login (a site whose player has no like button of its own): state(ch, vid) -> { signedIn, liked } or null; set(ch, vid, on) -> { liked } or null (like:state, like:set)'],
   emotes: [{ list: ['function', true], pick: ['function', true], addOns: ['object', true] }, false,
     'its channels\' emotes: the names (new emotes glow), the picker\'s groups, the add-ons (7TV, BTTV, FFZ) it has'],
   emoteHost: ['function', false, '(host) -> its emote pictures\' host (downloads, Copy image)'],

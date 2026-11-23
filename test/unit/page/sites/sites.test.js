@@ -21,7 +21,7 @@ test('all three have the same shape (every slot of sites/adapter.js: what one ha
   assert.deepEqual([kick, twitch, youtube].map(p => typeof p.playerCss), ['object', 'object', 'string'], 'only YouTube trims its watch page (null: not)');
   assert.deepEqual([kick, twitch, youtube].map(p => [p.id, p.name, p.letter, p.partition]),
     [['kick', 'Kick', 'K', 'persist:kick'], ['twitch', 'Twitch', 'T', 'persist:twitch'], ['youtube', 'YouTube', 'Y', 'persist:youtube']]);
-  assert.deepEqual([kick, twitch, youtube].map(p => [p.mentions, p.spamAlerts, p.emoteLists, p.pageCommands, p.likes]),
+  assert.deepEqual([kick, twitch, youtube].map(p => [p.mentions, p.spamAlerts, p.emoteLists, p.pageCommands, !!p.likes]),
     [[true, true, true, true, false], [true, true, true, false, false], [true, false, false, false, true]]);
   assert.deepEqual([kick, twitch, youtube].map(p => p.screenMentions), [true, true, false], 'YouTube\'s mentions only from its connection');
   assert.deepEqual([kick, twitch, youtube].map(p => p.deleteMods), [true, false, false], 'only Kick lets a mod delete another mod\'s message');

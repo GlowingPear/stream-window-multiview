@@ -43,7 +43,7 @@ const SETTING_NAMES = new Set([
   // who's who (their address, last game, whether they stream) and when you shouted them out
   'shoutOn', 'shoutModOnly', 'shoutSend', 'shoutText', 'shoutChannels', 'shoutPeople', 'shoutTwitch', 'shoutAgain', 'shoutRunN', 'shoutStreamers', 'shoutListFirst', 'shoutKnown', 'shoutSent',
   // YouTube
-  'ytSkip', 'ytConsent', 'ytAutoLike', 'ytAutoLiked', 'ytChatView',
+  'ytSkip', 'ytConsent', 'ytAutoLike', 'ytAutoLiked', 'ytChatView', 'ruAutoLike', 'ruAutoLiked',
   // the app
   'theme', 'themes', 'settingsTab', 'keys', 'arrowSound', 'intro', 'seenVersion',
   'palette',               // the search box (Ctrl/⌘+K): what you ran last, and how often (shared/commands.js)
@@ -65,7 +65,7 @@ const SYNCED = new Set([
   'autoTranslate', 'noTranslate', 'translateAll', 'emotePreview', 'newEmotes', 'bigEmoteMenu', 'chatName', 'chatNameText',
   'chatOverlay', 'chatOverlayOff', 'chatOverlayKeep', 'chatOverlaySecs', 'chatOverlayLines', 'chatCounts',
   'shoutOn', 'shoutModOnly', 'shoutSend', 'shoutText', 'shoutChannels', 'shoutTwitch', 'shoutAgain', 'shoutRunN', 'shoutStreamers', 'shoutListFirst',
-  'ytSkip', 'ytAutoLike', 'ytChatView',
+  'ytSkip', 'ytAutoLike', 'ytChatView', 'ruAutoLike',
   'startMuted', 'autoPause', 'snap', 'quality', 'qualityFit', 'qualityHidden'
 ]);
 const NOT_SYNCED = new Set([
@@ -73,7 +73,7 @@ const NOT_SYNCED = new Set([
   'switchMode', 'monitors', 'switchRect', 'layoutLocked', 'focusOnly', 'autoFit', 'game', 'chatZoom', 'chatBlowup', 'chatBlowSize',
   'stageCh', 'stageSplit', 'stageZoom', 'railCh', 'railZoom', 'lastSession', 'presets',
   'accounts', 'account', 'link.peardrops', 'link.kickAuto', 'link.kickBefore', 'link.widget', 'link.dailyReward',
-  'notifications', 'bellCount', 'msg', 'dnd', 'shoutKnown', 'shoutSent', 'allRecentEmotes', 'allMyLook', 'ytAutoLiked', 'ytConsent', 'spamHistory', 'mentions',
+  'notifications', 'bellCount', 'msg', 'dnd', 'shoutKnown', 'shoutSent', 'allRecentEmotes', 'allMyLook', 'ytAutoLiked', 'ruAutoLiked', 'ytConsent', 'spamHistory', 'mentions',
   'dev', 'devWarned', 'eventSamples', 'seenVersion', 'intro', 'settingsTab', 'savedTab', 'profView', 'allOpen', 'linkedTabs', 'linkedTip', 'watchSignedIn', 'palette', 'syncSeen',
   'ytNames', 'shoutPeople'   // (only read once, from older versions)
 ]);

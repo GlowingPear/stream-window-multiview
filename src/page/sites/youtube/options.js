@@ -1,9 +1,8 @@
-import { $, ROLE, wins } from '../../core.js';
-import { openSettings } from '../../panels/settings/settings.js';
-import { platOf, watchSignedIn, ytVidOf } from '../../platforms/platforms.js';
+import { $, wins } from '../../core.js';
+import { platOf } from '../../platforms/platforms.js';
 import { DESKTOP } from '../../shared/env.js';
-import { flash } from '../../shared/flash.js';
 import { settings } from '../../shared/settings.js';
+import { ytLikeAgent } from './likes.js';
 import { askIn, pressIn, reloadView, runIn } from '../../windows/view.js';
 
 /* Settings > YouTube: skip ads, and answer YouTube's cookie question (it keeps the video paused until
@@ -51,73 +50,6 @@ function ytTick(view, skip, answer){
     if (!r.skip || !skipChk.checked) return;
     pressIn(view, r.skip.x, r.skip.y);   // (a real click, the keyboard left where you were typing)
   }).catch(() => {});
-}
-/* The like button on YouTube streams. The watch page keeps YouTube's own like button (hidden with the rest
-   of the page, see YT_CSS), so the app reads whether it's pressed once a second and clicks it for you. It
-   works when the player uses your login: Watch signed in for YouTube (Settings > Accounts), and signed in. */
-function ytLikeAgent(click){
-  const b = document.querySelector('ytd-watch-metadata like-button-view-model button[aria-pressed]');
-  const signedIn = !!(window.ytcfg && window.ytcfg.get && window.ytcfg.get('LOGGED_IN'));
-  const vid = new URLSearchParams(location.search).get('v');
-  // the stream itself is playing: no ad, and no cookie question waiting for an answer
-  const p = document.getElementById('movie_player'), dlg = document.querySelector('ytd-consent-bump-v2-lightbox tp-yt-paper-dialog');
-  const playing = !!(p && p.getPlayerState && p.getPlayerState() === 1 && !p.classList.contains('ad-showing') && !p.classList.contains('ad-interrupting') && !(dlg && dlg.opened));
-  if (!b) return { vid, signedIn, liked: null, playing };
-  let liked = b.getAttribute('aria-pressed') === 'true';
-  if (click && signedIn){ b.click(); liked = !liked; }
-  return { vid, signedIn, liked, playing };
-}
-// w.like: what the page said last ({ signedIn, liked }), or null while it's loading
-function syncLike(w){
-  const b = w.el.querySelector('[data-a=like]'); if (!b) return;
-  const l = w.like, on = !!(l && l.signedIn && l.liked);
-  b.classList.toggle('on', on);
-  b.classList.toggle('dim', !(l && l.signedIn && l.liked !== null));
-  b.setAttribute('aria-pressed', String(on));
-  b.title = likeHelp(w) || (on ? 'You like this stream on YouTube: click to remove your like' : 'Like this stream on YouTube');
-}
-// Why the button can't like right now (or '' when it can)
-function likeHelp(w){
-  const l = w.like;
-  if (!watchSignedIn.youtube) return 'To like streams, tick "Watch signed in" for YouTube in Settings › Accounts';
-  if (!l) return 'The stream is still loading';
-  if (!l.signedIn) return 'To like streams, sign in to YouTube in Settings › Accounts';
-  if (l.liked === null) return 'YouTube\'s like button isn\'t on this page';
-  return '';
-}
-function readLike(w, click){
-  const view = w.view;
-  return askIn(view, `(${ytLikeAgent})(${!!click})`).then(r => {
-    if (!r || w.view !== view || r.vid !== ytVidOf(w)) return;   // an old page's answer
-    w.like = { signedIn: r.signedIn, liked: r.liked };
-    syncLike(w);
-    if (!click) autoLike(w, r);
-  }).catch(() => {});
-}
-let autoLikeChk;
-const loadAutoLike = () => { autoLikeChk.checked = settings.flag('ytAutoLike'); };
-const likedVids = () => { const l = settings.json('ytAutoLiked', []); return Array.isArray(l) ? l : []; };
-function markLiked(vid){
-  const l = likedVids().filter(v => v !== vid); l.push(vid);
-  settings.set('ytAutoLiked', l.slice(-500));
-}
-function autoLike(w, r){
-  if (!autoLikeChk.checked || !r.signedIn || r.liked === null || !r.vid) return;
-  if (likedVids().includes(r.vid)){ w.likeWait = 0; return; }
-  if (r.liked){ markLiked(r.vid); return; }                 // already liked (by you, or on youtube.com)
-  w.likeWait = r.playing ? (w.likeWait || 0) + 1 : 0;      // seconds the stream itself has been playing
-  if (w.likeWait < 3) return;
-  w.likeWait = 0; markLiked(r.vid);
-  readLike(w, true);
-}
-function toggleLike(w){
-  const help = likeHelp(w);
-  if (help){
-    flash(help);
-    if (ROLE === 'main' && /Settings/.test(help)) openSettings('accounts');
-    return;
-  }
-  readLike(w, true);
 }
 /* Settings > YouTube > Chat to show: Top chat (YouTube's default, hides some messages) or Live chat (all of
    them, so mention and spam alerts see every message). Runs inside each YouTube chat: in the first moments
@@ -192,7 +124,6 @@ function init(){
     const skip = skipChk.checked, answer = consentChk.checked ? consentPick.value : '';
     wins.forEach(w => {
       if (w.kind !== 'stream' || platOf(w.channel) !== 'youtube') return;
-      if (w.ready) readLike(w);
       if (!skip && !answer) return;
       if (w.ready) ytTick(w.view, skip, answer);
       if (w.mini && w.mini.ready) ytTick(w.mini.wv, skip, answer);
@@ -200,13 +131,6 @@ function init(){
   }, 1000);
   window.ytAgent = ytAgent;   // for the tests
 
-  /* Settings > YouTube > Like streams automatically: once the stream itself has played for a few seconds (after
-     the cookie question and any ads), it's liked. Each video once: one you've liked, or removed the like from,
-     isn't touched again (remembered between launches). */
-  autoLikeChk = $('#ytAutoLike');
-  loadAutoLike();
-  autoLikeChk.addEventListener('change', () => { settings.set('ytAutoLike', autoLikeChk.checked); });
-  settings.onChange('ytAutoLike', loadAutoLike);   // main and streams windows
   window.ytLikeAgent = ytLikeAgent;   // for the tests
 
   chatViewPick = $('#ytChatView');
@@ -219,4 +143,4 @@ function init(){
   window.ytChatAgent = ytChatAgent;   // for the tests
 }
 
-export { applyChatView, init, likeHelp, syncLike, toggleLike };
+export { applyChatView, init };

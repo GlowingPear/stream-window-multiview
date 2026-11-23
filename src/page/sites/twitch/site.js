@@ -160,7 +160,7 @@ const twitch = new Site({   // (what each slot is for, and its default: sites/ad
   },
   // How in-site/send.js sends in its chat (see kick.js's send): its send button
   send: { button: '[data-a-target="chat-send-button"]', inner: null, waitEnabled: false, realPress: false },
-  likes: false,
+  likes: null,
   pastStreams: true,     // a profile's history has its past broadcasts too
   chatCommands: TW_COMMANDS,
   liveCommands: twLiveCommands,   // (its own page's list, read live: above)

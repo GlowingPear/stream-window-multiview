@@ -45,9 +45,9 @@ import { emoteLook, inSiteCall, inSiteOf, modesJs, sendSpec } from '../sites/in-
 import { KICK_PAGE_CMDS, kickCmdHeard } from '../sites/kick/commands.js';
 import { askKick, openInBrowser } from '../sites/kick/panel.js';
 import { PLATFORMS } from '../sites/sites.js';
-import { likeHelp, toggleLike } from '../sites/youtube/options.js';
 import { sendFoundNoBox } from '../toolbar/login-lost.js';
 import { addTab, cycleTabs, drawTab, frameOf, leaderOf, renderSiteTabs, showTab, syncFrameAlert, tabChannels } from '../windows/frames.js';
+import { likeHelp, toggleLike } from '../windows/likes.js';
 import { askIn, pressIn, runIn, viewId, zoomOf } from '../windows/view.js';
 import { copyEmote, emoteOn, freshEmotes, newEmotesOn, reloadWin } from '../windows/views.js';
 import { syncModBtn } from '../windows/windows.js';

@@ -3,6 +3,7 @@ import { youtubeFeed } from './feed.js';
 import { youtubeEmote } from './in-site/emotes.js';
 import { youtubeHeldCard, youtubeModes, youtubePins, youtubeShown, youtubeTap, ytLookAgent } from './in-site/feed.js';
 import { youtubeSignedOut } from './in-site/signed-out.js';
+import { youtubeLikes } from './likes.js';
 
 // YouTube, as the rest of the page sees it (the same shape as kick.js, which says more).
 // YouTube's channel ids are "yt:@handle", "yt:c:UC…" (a channel id) or "yt:v:VIDEOID" (a specific video). A
@@ -86,7 +87,7 @@ const youtube = new Site({   // (what each slot is for, and its default: sites/a
   // yt-button-renderer wrapper comes first in the page and a click on that does nothing), off until it has seen the
   // text, and it may only take a real press
   send: { button: '#send-button', inner: ['button', 'yt-button-renderer'], waitEnabled: true, realPress: true },
-  likes: true,
+  likes: youtubeLikes,
   settingWords: { ytSkip: 'skip ads', ytAutoLike: 'auto-like', ytChatView: 'chat view' },   // (Settings › Sync's History)
   apiKey: true,          // live checks can use your API key (Settings › YouTube)
   chatCommands: [],   // (its live chat has no commands)

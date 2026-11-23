@@ -100,6 +100,7 @@ function fromLink(href) {
 function describeRequest(u) {
   if (!/(^|\.)rumble\.com$/.test(u.hostname)) return null;
   const p = u.pathname;
+  if (p === '/service.php' && u.searchParams.get('name') === 'user.rumbles') return 'your like on a video (its vote)';
   return /\/livestreams$/.test(p) ? 'live streams page' : /^\/api\/Media\/oembed/.test(p) ? 'a video\'s player (oEmbed)' : 'page';
 }
 // Its Followed Channels page (rumble.com/followed-channels): the list, a row a channel, the name in a row (its picture's
@@ -113,6 +114,20 @@ const LOGIN_COOKIE = 'u_s';
 // Its own answers say whether you're signed in (user.logged_in, in any service.php answer): true, false, or null when
 // it isn't one of them (its Cloudflare check's page, an error)
 const signedInOn = d => (d && d.user && typeof d.user.logged_in === 'boolean' ? d.user.logged_in : null);
+// Your like on a video (its 👍): its page carries Rumble's vote pill for it (data-id: the video's number, which is its
+// chat's), with its 👍 button "active" once you've liked it (read with your login) -> true, false, or null (no pill)
+function likedOn(html, id) {
+  if (typeof html !== 'string' || !/^\d+$/.test(String(id))) return null;
+  const at = html.search(new RegExp(`data-js="rumble_vote_pill"[^>]*data-id="${id}"`));
+  if (at < 0) return null;
+  const part = html.slice(at, at + 3000);
+  const up = /<button[^>]*data-js="rumble_vote_up"[^>]*>/.exec(part) || /<button[^>]*data-vote="1"[^>]*>/.exec(part);
+  if (!up) return null;
+  const cls = (/class="([^"]*)"/.exec(up[0]) || [])[1] || '';
+  return /(^|\s)active(\s|$)/.test(cls);
+}
+// A live video's id here ("<embed id>.<chat id>") -> its number (its chat's), or ''
+const voteId = vid => ((/^v[a-z0-9]+\.(\d+)$/.exec(vid || '') || [])[1] || '');
 
 /* ---------- the app's side (ctx: sites/index.js) ---------- */
 function create(ctx) {
@@ -135,6 +150,9 @@ function create(ctx) {
     if (o) { if (embeds.size > 500) embeds.clear(); embeds.set(url, o); }
     return o;
   }
+  // Each live video's own page, by its number (the live checks find it): where your like on it is read
+  const pages = new Map();
+  const keepPage = (id, url) => { if (!id || !url) return; if (pages.size > 500) pages.clear(); pages.set(String(id), url); };
   // One channel (or video): is it live, and its live stream's ids
   async function liveOne(ch) {
     try {
@@ -150,6 +168,7 @@ function create(ctx) {
         if (!r.ok) return null;
         const it = rumbleItem(await r.text(), vid);
         const live = !!(it && isLive(it));
+        if (live) keepPage(it.id, rumblePage(ch));
         return { live, videoId: live ? `${o.embed}.${it.id}` : null, title: o.title, viewers: live && Number.isFinite(+it.watching_now) ? +it.watching_now : null,
           category: '', startedAt: live ? toTime(it.live_streamed_on) : null, name: o.title || o.name, checked: Date.now() };
       }
@@ -160,6 +179,7 @@ function create(ctx) {
       if (!info) return null;
       const { chat, url, ...rest } = info;
       if (!info.live) return { ...rest, videoId: null };
+      if (url) keepPage(chat, url);
       const o = url ? await oembed(url) : null;
       return o ? { ...rest, videoId: `${o.embed}.${chat}` } : null;   // (live, but its player can't be found: can't tell yet)
     } catch { return null; }
@@ -173,6 +193,35 @@ function create(ctx) {
       return r.ok ? signedInOn(await r.json()) : null;
     } catch { return null; }
   }
+  /* your like on a live stream (the like button on its stream window): read from its page, set with its own vote
+     request (what its 👍 sends), both with your login. vid: the stream's video id here */
+  const like = {
+    // -> { signedIn, liked: true | false | null (couldn't tell) }, or null (not a live video of its)
+    async state(ch, vid) {
+      const id = voteId(vid);
+      if (!id) return null;
+      if (!(await signedIn())) return { signedIn: false, liked: null };
+      if (!pages.has(id)) await liveOne(ch);
+      const url = pages.get(id);
+      if (!url) return { signedIn: true, liked: null };
+      try {
+        const r = await ctx.loginFetch(page(url), { headers: ctx.headers(), signal: ctx.netSignal() });
+        return { signedIn: true, liked: r.ok ? likedOn(await r.text(), id) : null };
+      } catch { return { signedIn: true, liked: null }; }
+    },
+    // on: like it (true) or take your like back (false) -> { liked }, or null (signed out, or it didn't take it)
+    async set(ch, vid, on) {
+      const id = voteId(vid);
+      if (!id || !(await signedIn())) return null;
+      try {
+        const r = await ctx.loginFetch(page(RU + '/service.php?name=user.rumbles'), { method: 'POST', signal: ctx.netSignal(),
+          headers: { ...ctx.headers(), 'Content-Type': 'application/x-www-form-urlencoded' }, body: `type=1&id=${id}&vote=${on ? 1 : 0}` });
+        const d = r.ok ? await r.json() : null;
+        return d && d.data ? { liked: !!on } : null;
+      } catch { return null; }
+    }
+  };
+
   /* emotes: its live stream's chat's list (a channel's own emotes are only asked of its chat) */
   async function chatOf(ch) {
     const known = (ctx.live.snapshot() || {})[ch];
@@ -235,7 +284,7 @@ function create(ctx) {
     id: site.id, site,
     loginUrl: RU + '/login.php',
     named: false,                     // (its pages only say that you're signed in)
-    signedIn, account: signedIn, loginWorks,
+    signedIn, account: signedIn, loginWorks, like,
     liveOne,
     follows: { import: importFollows, tick: followsTick, retry() { followTried = 0; } },
     modCheck,
@@ -254,4 +303,4 @@ function create(ctx) {
   });
 }
 
-module.exports = { create, describeRequest, fromLink, rumbleGroups, canModerateIn, firstEvent, FOLLOW_SCOPE, SIGNED_OUT_JS, LOGIN_COOKIE, parseRumbleLive, parseRumbleProfile, parseOembed, rumbleItems, rumbleItem, rumblePage, rumbleLivePage, signedInOn };
+module.exports = { create, describeRequest, fromLink, rumbleGroups, canModerateIn, firstEvent, FOLLOW_SCOPE, SIGNED_OUT_JS, LOGIN_COOKIE, parseRumbleLive, parseRumbleProfile, parseOembed, rumbleItems, rumbleItem, rumblePage, rumbleLivePage, signedInOn, likedOn, voteId };
