@@ -146,7 +146,7 @@ function esRefresh(){
     const a = esAccounts();
     first.querySelector('.es-accts').innerHTML = siteIds().map(p => {
       const v = a[p];
-      return `<div class="es-acct${v ? ' on' : ''}">${platIcon(p)}<span>${PLAT_NAME[p]}<small>${v ? (PLATFORMS[p].me.named ? 'Logged in as ' + esc(String(v)) : 'Logged in') : 'Not logged in'}</small></span>${v ? '' : `<button class="btn" data-login="${p}">Log in</button>`}</div>`;
+      return `<div class="es-acct${v ? ' on' : ''}">${platIcon(p)}<span>${PLAT_NAME[p]}<small>${v ? (typeof v === 'string' ? 'Logged in as ' + esc(v) : 'Logged in') : 'Not logged in'}</small></span>${v ? '' : `<button class="btn" data-login="${p}">Log in</button>`}</div>`;
     }).join('');
     const list = esLearnList(), seen = new Set(intro.seen || []);
     first.querySelector('.es-prog').textContent = `${list.filter(c => seen.has(c.id)).length} of ${list.length} seen`;

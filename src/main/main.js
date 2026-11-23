@@ -1987,11 +1987,12 @@ appIpc.handle('app:version', () => app.getVersion());
 
 /* ---------- menu ---------- */
 // Who is logged in where, as the page last told us (it checks on start and after every log in or out).
-// (a site that's named: its account's name, '' signed out; the others: whether you're signed in)
+// (a site that's named: its account's name, '' signed out, true signed in when its login didn't say whose; the others:
+// whether you're signed in)
 let menuAccounts = Object.fromEntries(sites.list.map(a => [a.id, a.named ? '' : false]));
 appIpc.on('accounts:state', (_e, a) => {
   const clean = v => (typeof v === 'string' && /^[A-Za-z0-9_]{1,30}$/.test(v) ? v : '');
-  const next = Object.fromEntries(sites.list.map(x => [x.id, x.named ? clean(a && a[x.id]) : !!(a && a[x.id])]));
+  const next = Object.fromEntries(sites.list.map(x => { const v = a && a[x.id]; return [x.id, x.named && typeof v === 'string' ? clean(v) : !!v]; }));
   if (JSON.stringify(next) === JSON.stringify(menuAccounts)) return;
   menuAccounts = next; buildMenu();
 });

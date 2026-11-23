@@ -36,7 +36,8 @@ function init(){
     lb.hidden = false;
     // Accounts menu (log in and out) and Settings > Accounts (that, and everything else about logins)
     const am = $('#accountMenu'), sa = $('#settingsDlg .st-pane[data-s=accounts]'), sy = $('#settingsDlg .st-pane[data-s=youtube]');
-    // Who you're logged in as on each site: your name there, or (a site whose login doesn't say whose: me.named) true / false
+    // Who you're logged in as on each site: your name there, or (a site whose login doesn't say whose: me.named; or that
+    // didn't this time) true / false
     const loggedOut = p => (PLATFORMS[p].me.named ? '' : false);
     let acct = Object.fromEntries(siteIds().map(p => [p, loggedOut(p)]));
     acct = Object.assign(acct, settings.json('accounts', {})); acct.kick = acct.kick || settings.text('account');   // (older copies kept Kick's alone)
@@ -46,10 +47,10 @@ function init(){
       lb.classList.toggle('has-acct', !!on.length);
       lb.classList.toggle('acct-lost', !!gone.length);
       lb.title = (gone.length ? gone.map(p => `${p.name} has signed this app out: sign in again`).join('\n') + '\n' : '')
-        + (on.length ? 'Logged in: ' + on.map(p => p.me.named ? `${p.name} (${acct[p.id]})` : p.name).join(', ') : 'Log in to ' + siteNames());
+        + (on.length ? 'Logged in: ' + on.map(p => typeof acct[p.id] === 'string' ? `${p.name} (${acct[p.id]})` : p.name).join(', ') : 'Log in to ' + siteNames());
       document.querySelectorAll('#accountMenu .am-row, #settingsDlg .am-row').forEach(row => {
         const p = row.dataset.p, v = acct[p], lost = !!v && loginLost(p);
-        row.querySelector('.am-st').textContent = lost ? `Signed out by ${PLAT_NAME[p]}` : v ? (PLATFORMS[p].me.named ? `Logged in as ${v}` : 'Logged in') : 'Not logged in';
+        row.querySelector('.am-st').textContent = lost ? `Signed out by ${PLAT_NAME[p]}` : v ? (typeof v === 'string' ? `Logged in as ${v}` : 'Logged in') : 'Not logged in';
         const inB = row.querySelector('.am-in');
         inB.hidden = !!v && !lost;
         inB.textContent = lost ? 'Sign in again' : 'Log in';
@@ -135,7 +136,7 @@ function init(){
       markBack(p, { relogged: true });   // (a new login, or none: either way not the one the site took back)
       if (info.loggedOut){ acct[p] = loggedOut(p); showAccounts(); return; }
       await refreshAccount();
-      if (ROLE === 'main' && typeof setMyName === 'function' && PLATFORMS[p].me.named && acct[p] && !myNameOn(p)) setMyName(p, acct[p]);
+      if (ROLE === 'main' && typeof setMyName === 'function' && PLATFORMS[p].me.named && typeof acct[p] === 'string' && acct[p] && !myNameOn(p)) setMyName(p, acct[p]);
     });
     if (ROLE === 'main') setTimeout(refreshAccount, 5000);
 
