@@ -2,7 +2,14 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.42 (current)
+## 0.4.43 (current)
+- Site badges and names come from each site (Rumble's profile badge showed "?")
+- Rumble's chat pop-ups fit the chat, and ALL confirms what you send there
+- Your own messages on Rumble no longer ping you: your Rumble username fills itself in from your login
+- Like Rumble streams: the like button, Like in ALL, and Settings › Rumble › Like streams automatically
+- Rumble chatters' badges show in ALL
+
+## 0.4.42
 - Rumble: a channel without its own address shows its name
 - README artwork: add Rumble
 
