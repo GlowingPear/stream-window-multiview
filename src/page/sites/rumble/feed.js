@@ -24,19 +24,25 @@ function rumbleParts(text, emotes = {}){
 // A rant's amount (its price in cents) as words: "$5", "$2.50"
 const dollars = cents => '$' + (cents % 100 ? (cents / 100).toFixed(2) : String(cents / 100));
 
+// Its badges' pictures, when its chat has them ({ pics }); without any, nothing: ALL then draws its own for the badges
+// it knows (verified, subscriber, staff, moderator), as an empty list would say the person has none
+function picsOf(r){
+  const pics = Array.isArray(r.pics) ? r.pics.filter(p => p && p.url) : [];
+  return pics.length ? { pics } : {};
+}
 function rumbleMsg(r){
   const m = r.m || {}, u = r.u || {};
   if (!m.id) return null;
   const sender = u.username || '';
   return { site: 'rumble', kind: 'message', id: String(m.id), t: Date.parse(m.time) || Date.now(), sender, login: sender.toLowerCase(),
     color: /^#[0-9a-f]{6}$/i.test(u.color || '') ? u.color : '', userId: u.id ? String(u.id) : '', badges: rumbleBadges(u.badges),
-    pics: Array.isArray(r.pics) ? r.pics.filter(p => p && p.url) : [], parts: Array.isArray(r.parts) ? r.parts : rumbleParts(m.text, r.emotes || {}) };
+    ...picsOf(r), parts: Array.isArray(r.parts) ? r.parts : rumbleParts(m.text, r.emotes || {}) };
 }
 // A gift's words: Rumble's gift of subscriptions to the channel ('rumble'), or of Rumble Premium ('premium')
 const giftWhat = (type, n) => type === 'premium' ? `${n} Rumble Premium ${n === 1 ? 'membership' : 'memberships'}` : `${n} ${n === 1 ? 'subscription' : 'subscriptions'}`;
 function giftEvent(id, t, who, userId, n, type){
   const what = giftWhat(type, n), name = who || 'Someone';
-  return { site: 'rumble', kind: 'event', event: 'gifts', id, t, sender: name, login: name.toLowerCase(), color: '', userId, badges: [], pics: [], parts: [],
+  return { site: 'rumble', kind: 'event', event: 'gifts', id, t, sender: name, login: name.toLowerCase(), color: '', userId, badges: [], parts: [],
     text: `${name} gifted ${what}`, summary: [{ strong: name }, { text: ' gifted ' }, { strong: what }],
     support: { kind: 'gifts', who: name, n, ...(type === 'premium' ? { unit: 'memberships' } : {}) } };
 }
@@ -70,7 +76,7 @@ function parseRumble(r){
   }
   // gifted subscriptions, as a line in its chat (the same id as the gift as it was bought)
   const g = r.m.gift;
-  if (g && g.n > 0){ const t = msg.t; return { ...giftEvent(`gift-${msg.userId}-${g.type}-${g.n}-${Math.floor(t / 300000)}`, t, msg.sender, msg.userId, g.n, g.type), color: msg.color, badges: msg.badges, pics: msg.pics }; }
+  if (g && g.n > 0){ const t = msg.t; return { ...giftEvent(`gift-${msg.userId}-${g.type}-${g.n}-${Math.floor(t / 300000)}`, t, msg.sender, msg.userId, g.n, g.type), color: msg.color, badges: msg.badges, ...(msg.pics ? { pics: msg.pics } : {}) }; }
   // its own notice about someone (subscribed, became a supporter): its words; a sub when its badge is a subscriber's
   const note = r.m.note;
   if (note && note.text){

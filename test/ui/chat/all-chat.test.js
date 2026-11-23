@@ -3008,6 +3008,9 @@ test('ALL: a Rumble chat\'s messages, as its tap hands them over: names in their
   assert.equal(await page.$eval('.all-list [data-key="rumble:r1"] .al-n', n => n.style.color), 'rgb(65, 126, 235)', 'its own colour');
   assert.equal(await page.$eval('.all-list [data-key="rumble:r1"] img.al-e', i => [i.alt, i.src.startsWith('data:image/gif')].join()), 'r+wave,true', 'its emote as a picture');
   assert.ok(await page.$('.all-list [data-key="rumble:r1"] .al-b-mod, .all-list [data-key="rumble:r1"] img[src="https://hugh.cdn.rumble.cloud/mod48.png"]'), 'its moderator badge');
+  // its chat's badge list not heard yet (no pictures): ALL's own badges for the ones it knows
+  await feed(page, 'ru:quietkoala', { s: 'rumble', raw: [RU('message', 'r5', who('11', 'Fernwood', '', ['verified', 'recurring_subscription']), 'evening')] });
+  assert.deepEqual(await page.$$eval('.all-list [data-key="rumble:r5"] .al-b', l => l.map(b => b.className)), ['al-b al-b-verified', 'al-b al-b-sub']);
   // a mod there: its line's menu has the mod buttons (done by Rumble's chat page's own requests); a mod's message can't be acted on
   await page.evaluate(() => window.allChat.modKnown.set('ru:quietkoala', true));
   await page.click('.all-list [data-key="rumble:r3"]', { button: 'right' });
@@ -3020,7 +3023,7 @@ test('ALL: a Rumble chat\'s messages, as its tap hands them over: names in their
   // where you aren't a mod, what's removed goes, as Rumble's chat does
   await feed(page, 'ru:quietkoala', { s: 'rumble', raw: [{ t: 'delete', id: 'r3' }, { t: 'mute', id: '9' }] });
   await page.waitForFunction(() => !document.querySelector('.all-list [data-key="rumble:r3"]') && !document.querySelector('.all-list [data-key="rumble:r4"]'));
-  assert.equal((await lines(page)).length, 2);
+  assert.equal((await lines(page)).length, 3);
 });
 
 test('ALL: an emote you type as its code on Rumble (:Spin:) is seen when its chat brings it back as the emote: the real line takes its place', async t => {
