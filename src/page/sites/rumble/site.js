@@ -1,6 +1,7 @@
 import { Site } from '../adapter.js';
 import { rumbleFeed } from './feed.js';
 import { rumbleConsent, rumbleModAction, rumbleShown, rumbleSignedOut, rumbleTap } from './in-site/feed.js';
+import { rumbleLikes } from './likes.js';
 
 // Rumble, as the rest of the page sees it (the same shape as kick.js, which says more).
 // Rumble's channel ids are "ru:name" (rumble.com/c/name), "ru:u:name" (rumble.com/user/name) or "ru:v:v35waq4" (one
@@ -53,7 +54,8 @@ const rumble = new Site({   // (what each slot is for, and its default: sites/ad
   cookieJs: `(${rumbleConsent})()`,
   // How in-site/send.js sends in its chat (see kick.js's send): its send button, off until it has seen the text
   send: { button: '#chat-message-form .chat--send', inner: null, waitEnabled: true, realPress: false },
-  likes: false,
+  likes: rumbleLikes,   // its like, asked of Rumble itself (likes.js)
+  settingWords: { ruAutoLike: 'auto-like' },   // (Settings › Sync's History)
   chatCommands: [],
   liveCommands: null,
   // A name in ALL (see kick.js): Rumble shows the colour each account has

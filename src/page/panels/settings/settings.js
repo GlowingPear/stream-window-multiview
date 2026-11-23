@@ -22,7 +22,7 @@ import { renderLayoutsPane } from '../../toolbar/layout-menu.js';
 let settingsDlg;
 let settingsTab = 'general';
 let MAIN_DESK;
-const ST_ICONS = { general: 'sliders', windows: 'winbar', linked: 'layers', layouts: 'layout', chat: 'chat', shoutouts: 'megaphone', accounts: 'user', apps: 'link', youtube: 'ytPlay', notify: 'bell', mentions: 'at', support: 'gift', spam: 'mod', flagged: 'flag', extensions: 'ext', themes: 'palette', search: 'search', updates: 'update', sync: 'syncFolder', guide: 'book', keys: 'keys', developer: 'code' };
+const ST_ICONS = { general: 'sliders', windows: 'winbar', linked: 'layers', layouts: 'layout', chat: 'chat', shoutouts: 'megaphone', accounts: 'user', apps: 'link', youtube: 'ytPlay', rumble: 'ruPlay', notify: 'bell', mentions: 'at', support: 'gift', spam: 'mod', flagged: 'flag', extensions: 'ext', themes: 'palette', search: 'search', updates: 'update', sync: 'syncFolder', guide: 'book', keys: 'keys', developer: 'code' };
 // tab: a page (its data-s), sub: a tab inside it (Spam alerts › Scoring)
 function openSettings(tab, { sub } = {}){
   const ok = t => { const b = settingsDlg.querySelector(`.st-rail [data-s="${t}"]`); return b && !b.hidden; };
@@ -36,7 +36,8 @@ function openSettings(tab, { sub } = {}){
   if (settingsTab === 'themes') renderThemeDlg();
   if (settingsTab === 'updates') renderUpdates();
   settingsDlg.querySelector('.upd-host').hidden = !MAIN_DESK;
-  if ((settingsTab === 'accounts' || settingsTab === 'youtube') && typeof refreshAccountsPane === 'function') refreshAccountsPane();
+  // a page with logins on it (Accounts, a site's own page): who's logged in, asked again
+  if (settingsDlg.querySelector(`.st-pane[data-s="${settingsTab}"] .am-row`) && typeof refreshAccountsPane === 'function') refreshAccountsPane();
   if (settingsTab === 'general') $('#keysSet').checked = keysOn;
   if (settingsTab === 'notify') syncNotifyPane();
   renderSpamHist();   // (only drawn while Settings is open)

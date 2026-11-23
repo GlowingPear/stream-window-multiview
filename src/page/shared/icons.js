@@ -50,6 +50,7 @@ const icon = {
   volOff:'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>',
   sliders:'<svg viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>',
   ytPlay:'<svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="4"/><path d="M10 9.2v5.6l4.8-2.8z" fill="currentColor"/></svg>',
+  ruPlay:'<svg viewBox="0 0 32 34"><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M19.1 19a2.5 2.5 0 0 0 0-4c-2-1.5-4-2.8-6.2-3.7-1.5-.7-3.2.2-3.4 1.9-.4 2.5-.5 5.1-.2 7.5a2.4 2.4 0 0 0 3.4 2 28.3 28.3 0 0 0 6.4-3.6Zm10-7.3a7.8 7.8 0 0 1 0 10.8c-5.2 5.3-11.6 9-18.8 10.7a7.3 7.3 0 0 1-8.8-5A39.6 39.6 0 0 1 1.7 6 7.3 7.3 0 0 1 10.3.7c7 1.6 13.7 5.7 18.7 11Z"/></svg>',   // (Rumble's logo mark)
   update:'<svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>',
   book:'<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2z"/><path d="M4 20a2 2 0 0 0 2 2h13v-4"/><path d="M9 7h6"/></svg>',
   star:'<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z"/></svg>',

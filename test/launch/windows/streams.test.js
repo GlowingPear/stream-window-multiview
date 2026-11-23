@@ -42,6 +42,55 @@ test('YouTube: the cookie question is answered with the button you picked, in an
   assert.equal(await a.win.evaluate(() => window.kmv.ytConsentFallback('persist:kick')), false);
 });
 
+test('YouTube: Chat to show picks Live chat (or Top chat) in its chat\'s own menu, by position, then stops; a pick of yours wins; a half-dark chat goes light', T, async () => {
+  await a.win.evaluate(async () => {
+    const wait = ms => new Promise(res => setTimeout(res, ms));
+    // its chat's view menu: two items (Top chat, Live chat), the selected one in its data and on its links
+    const sel = document.createElement('div'); sel.id = 'view-selector';
+    sel.style.cssText = 'position:fixed;left:10px;top:60px;z-index:2147483647;background:#fff;color:#000;padding:4px';
+    const menu = document.createElement('yt-sort-filter-sub-menu-renderer'), box = document.createElement('tp-yt-paper-listbox'), clicked = [];
+    const links = ['Top', 'Live'].map((t, i) => { const l = document.createElement('a'); l.textContent = t; l.style.cssText = 'display:block;padding:4px 12px;cursor:pointer'; l.onclick = () => { clicked.push(i); pick(i); }; box.append(l); return l; });
+    const pick = i => { menu.data = { subMenuItems: [{ selected: i === 0 }, { selected: i === 1 }] }; links.forEach((l, j) => l.setAttribute('aria-selected', String(j === i))); };
+    pick(0); menu.append(box); sel.append(menu); document.body.append(sel);
+    const out = {};
+    out.first = ytChatAgent(true, false);                    // Live chat wanted: picked at once
+    out.after = ytChatAgent(true, false);                    // set: nothing more
+    menu.data = null; pick(1); menu.data = null;             // no data: its links say which
+    out.byLinks = ytChatAgent(false, true);                  // Top chat wanted, again (forced)
+    await wait(1700);                                        // (it waits 1.5 s between presses)
+    out.byLinksLater = ytChatAgent(false, false);
+    window.__ytChatTest = { out, clicked, sel };
+    return null;
+  });
+  // you pick one yourself (a real click in the menu): yours stays until forced
+  await a.win.click('#view-selector tp-yt-paper-listbox a >> nth=1');
+  const r = await a.win.evaluate(async () => {
+    const wait = ms => new Promise(res => setTimeout(res, ms));
+    const { out, clicked, sel } = window.__ytChatTest; delete window.__ytChatTest;
+    out.yours = window.__kmvYtChat.mine;
+    // a chat drawn half dark (white list under dark mode): light, and kept light
+    const list = document.createElement('yt-live-chat-renderer'); list.style.background = 'rgb(255, 255, 255)'; document.body.append(list);
+    document.documentElement.setAttribute('dark', '');
+    ytChatAgent(false, true);
+    await wait(600);
+    out.light = !document.documentElement.hasAttribute('dark');
+    document.documentElement.setAttribute('dark', ''); await wait(50);
+    out.keptLight = !document.documentElement.hasAttribute('dark');
+    clearInterval(window.__kmvYtChat.timer); delete window.__kmvYtChat; sel.remove(); list.remove();
+    out.noMenu = ytChatAgent(true, false);
+    clearInterval(window.__kmvYtChat.timer); delete window.__kmvYtChat;
+    return { out, clicked };
+  });
+  assert.deepEqual(r.out.first, { view: 1, mine: false }, 'Live chat picked in its own menu');
+  assert.deepEqual(r.out.after, { view: 1, mine: false });
+  assert.equal(r.out.byLinks.view, 1, 'read from its links when its data has none');
+  assert.equal(r.out.byLinksLater.view, 0, 'Top chat picked');
+  assert.equal(r.out.yours, true, 'a real click in its menu is yours');
+  assert.deepEqual([r.out.light, r.out.keptLight], [true, true]);
+  assert.deepEqual(r.out.noMenu, { view: -1, mine: false }, 'no chat menu (yet)');
+  assert.deepEqual(r.clicked.slice(0, 2), [1, 0]);
+});
+
 test('YouTube: Skip is clicked for real without taking your keyboard, and a question it can\'t answer falls back to "Reject all"', T, async () => {
   await setMode(a.win, 'stream');
   await add('https://www.youtube.com/watch?v=abcdefghijk');

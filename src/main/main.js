@@ -1469,6 +1469,19 @@ appIpc.handle('mod:check', async (_e, ch) => {
   if (!a || !a.modCheck) return null;
   try { return await a.modCheck(ch); } catch { return null; }
 });
+// Your like on a live stream, on a site whose player has no like button (its like: Rumble's): whether you like it, and
+// liking it or taking it back. vid: its video id here. -> the site's answer, or null
+const likeSite = (ch, vid) => (typeof ch === 'string' && validCh(ch) && typeof vid === 'string' && vid.length < 100 ? siteOf(ch) : null);
+appIpc.handle('like:state', async (_e, ch, vid) => {
+  const a = likeSite(ch, vid);
+  if (!a || !a.like) return null;
+  try { return await a.like.state(ch, vid); } catch { return null; }
+});
+appIpc.handle('like:set', async (_e, ch, vid, on) => {
+  const a = likeSite(ch, vid);
+  if (!a || !a.like || typeof on !== 'boolean') return null;
+  try { return await a.like.set(ch, vid, on); } catch { return null; }
+});
 mainIpc.handle('follows:import', async (_e, plat) => {
   const a = SmvSites.IDS.includes(plat) ? sites.get(plat) : null;
   if (!a || !a.follows) return { error: 'bad' };

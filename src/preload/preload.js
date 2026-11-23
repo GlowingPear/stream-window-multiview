@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('kmv', {
   accountsCheck: site => ipcRenderer.invoke('accounts:check', site),
   ytResolve: ch => ipcRenderer.invoke('live:resolve', ch),
   modCheck: ch => ipcRenderer.invoke('mod:check', ch),
+  likeState: (ch, vid) => ipcRenderer.invoke('like:state', ch, vid),
+  likeSet: (ch, vid, on) => ipcRenderer.invoke('like:set', ch, vid, on),
   ytKeyStatus: () => ipcRenderer.invoke('ytkey:status'),
   ytKeySet: key => ipcRenderer.invoke('ytkey:set', key),
   ytKeyRemove: () => ipcRenderer.invoke('ytkey:remove'),

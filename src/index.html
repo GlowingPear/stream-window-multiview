@@ -284,6 +284,7 @@
       <button data-s="linked">Linked channels</button>
       <button data-s="apps" class="desk-only">Connected apps</button>
       <button data-s="youtube" data-site="youtube" class="desk-only">{name}</button>
+      <button data-s="rumble" data-site="rumble" class="desk-only">{name}</button>
       <button data-s="extensions" class="desk-only">Extensions</button>
       <div class="st-rail-sec">Alerts</div>
       <button data-s="notify">Notifications</button>
@@ -506,6 +507,13 @@
           <div class="am-yk-row"><input class="am-yk-in" type="password" placeholder="Paste your API key" autocomplete="off" spellcheck="false" aria-label="{site apiKey} API key"><button class="btn am-yk-add">Add</button></div>
           <div class="am-yk-row am-yk-set" hidden><button class="btn am-yk-rm">Remove key</button></div>
         </div>
+      </section>
+      <section class="st-pane" data-s="rumble" data-site="rumble" hidden>
+        <h4>{name}</h4><p class="st-sub">Your {name} login, and liking {name} streams.</p>
+      <div class="am-row" data-p="rumble"><i class="pdot"></i><div class="am-txt"><b>{name}</b><span class="am-st">Checking…</span></div>
+        <button class="btn am-imp" title="Import the channels you follow into your saved channels">Import follows</button><button class="btn am-in">Log in</button><button class="btn am-sw">Switch</button><button class="btn am-out">Log out</button></div>
+        <div class="st-sec">Playing streams</div>
+        <label class="st-row"><span class="st-t">Like streams automatically<small>Likes each {name} stream you open once it has played for a few seconds. Needs you signed in to {name} (Settings › Accounts). Remove a like and it isn't liked again.</small></span><input type="checkbox" class="st-sw" id="ruAutoLike"></label>
       </section>
       <section class="st-pane" data-s="notify" hidden>
         <h4>Notifications</h4><p class="st-sub">What happens when something new arrives. Everything is kept under the bell in the toolbar either way.</p>

@@ -46,6 +46,7 @@ import { init as layoutSwitchControl } from './layout/switch-control.js';
 import { init as windowsPause } from './windows/pause.js';
 import { init as windowsQuality } from './windows/quality.js';
 import { init as sitesYoutubeOptions } from './sites/youtube/options.js';
+import { init as windowsLikes } from './windows/likes.js';
 import { init as layoutFocusOnly } from './layout/focus-only.js';
 import { init as layoutColumnDrag } from './layout/column-drag.js';
 import { init as layoutSavedLayouts } from './layout/saved-layouts.js';
@@ -157,6 +158,7 @@ import { init as panelsSettingsSync } from './panels/settings/sync.js';
   windowsPause,
   windowsQuality,
   sitesYoutubeOptions,
+  windowsLikes,
   layoutFocusOnly,
   layoutColumnDrag,
   layoutSavedLayouts,

@@ -222,6 +222,70 @@ test('whether you moderate a channel: its live chat\'s first event (can_moderate
   assert.equal(await rumbleWith({ '/livestreams': answer({ text: livePage([item({ live: false })]) }) }, { cookies }).a.modCheck('ru:nightowl'), null, 'not live: no chat to ask');
 });
 
+/* ---------- your like on a live stream ---------- */
+// its page's vote pill, as Rumble draws it: liked (its 👍 "active") or not
+const pill = (id, liked) => `<div data-js="video_action_button_visible_location" data-type="vote_button"> <div class="rumbles-vote-pill" data-js="rumble_vote_pill" data-type="1" data-id="${id}">
+  <div class="rumbles-vote-pill-buttons-container"> <button data-vote="1" class="rumbles-vote-pill-up rumblers-vote-pill-button${liked ? ' active' : ''}" aria-label="Rumbles up vote" data-js="rumble_vote_up">
+  <span data-js="rumbles_up_votes">38</span></button> <button data-vote="-1" class="rumbles-vote-pill-down rumblers-vote-pill-button" data-js="rumble_vote_down"></button></div></div></div>`;
+
+test('your like on a video: its page\'s vote pill for it (its 👍 "active"), and a live video\'s number', () => {
+  assert.equal(rumble.likedOn(pill(186945454, true), 186945454), true);
+  assert.equal(rumble.likedOn(pill(186945454, false), '186945454'), false);
+  assert.equal(rumble.likedOn(pill(447491264, true), 186945454), null, 'another video\'s pill (a page lists others too)');
+  assert.equal(rumble.likedOn('<html>no pill</html>', 186945454), null);
+  assert.equal(rumble.likedOn(pill(1, true).replace(/<button data-vote="1"[^>]*>/, ''), 1), null, 'no 👍 in it');
+  assert.equal(rumble.likedOn(pill(1, true).replace('data-js="rumble_vote_up"', ''), 1), true, 'its 👍 by its vote');
+  assert.equal(rumble.likedOn(pill(1, true).replace(' active', ' inactive'), 1), false, 'only the word itself');
+  assert.equal(rumble.likedOn(null, 1), null);
+  assert.equal(rumble.likedOn(pill(1, true), 'x'), null);
+  assert.equal(rumble.voteId('v33aw1a.186945454'), '186945454');
+  assert.deepEqual(['v33aw1a', '', null, '186945454', 'v33aw1a.x'].map(rumble.voteId), ['', '', '', '', '']);
+  assert.equal(rumble.describeRequest(new URL('https://rumble.com/service.php?name=user.rumbles')), 'your like on a video (its vote)');
+  assert.equal(rumble.describeRequest(new URL('https://rumble.com/service.php?name=emote.list')), 'page');
+});
+
+test('your like on a live stream: read from its page (found by the live check) and sent as its own vote, with your login', async () => {
+  const cookies = [{ name: 'u_s', domain: '.rumble.com', value: 'x' }], VID = 'v33aw1a.186945454';
+  let liked = true, sent = [];
+  const loginFetch = (url, opts) => {
+    if (/service\.php\?name=user\.rumbles/.test(url)) { sent.push([opts.method, opts.body, opts.headers['Content-Type']]); return answer({ json: { user: { logged_in: true }, data: { num_votes_up: 39 } } }); }
+    if (url.includes('/v35waq4-night-owl-live.html')) return answer({ text: pill(186945454, liked) });
+    return answer({ status: 404 });
+  };
+  const pages = { '/c/nightowl/livestreams': answer({ text: livePage([item()]) }), oembed: answer({ json: OEMBED }) };
+  const { a, rec } = rumbleWith(pages, { cookies, loginFetch });
+  assert.deepEqual(await a.like.state('ru:nightowl', VID), { signedIn: true, liked: true }, 'its page wasn\'t known: the live check finds it');
+  const read = rec.fetched.filter(f => f.login);
+  assert.deepEqual([read.length, read[0].url], [1, 'https://rumble.com/v35waq4-night-owl-live.html']);
+  liked = false;
+  assert.deepEqual(await a.like.state('ru:nightowl', VID), { signedIn: true, liked: false });
+  assert.equal(rec.fetched.filter(f => f.page && /livestreams/.test(f.url)).length, 1, 'its page kept: the live check isn\'t asked again');
+  assert.deepEqual(await a.like.set('ru:nightowl', VID, true), { liked: true });
+  assert.deepEqual(await a.like.set('ru:nightowl', VID, false), { liked: false });
+  assert.deepEqual(sent, [['POST', 'type=1&id=186945454&vote=1', 'application/x-www-form-urlencoded'], ['POST', 'type=1&id=186945454&vote=0', 'application/x-www-form-urlencoded']]);
+  assert.ok(rec.fetched.filter(f => /user\.rumbles/.test(f.url)).every(f => f.login), 'with your login');
+  // a video's own id: its page is where the live check found it
+  const v = rumbleWith(pages, { cookies, loginFetch: url => (url.includes('/v35waq4-x.html') ? answer({ text: pill(186945454, true) }) : answer({ status: 404 })) });
+  assert.deepEqual(await v.a.like.state('ru:v:v35waq4', VID), { signedIn: true, liked: true });
+  // not one of its live videos, signed out, no page, no answer
+  assert.equal(await a.like.state('ru:nightowl', 'nope'), null);
+  assert.equal(await a.like.set('ru:nightowl', 'nope', true), null);
+  const out = rumbleWith(pages, { loginFetch });
+  assert.deepEqual(await out.a.like.state('ru:nightowl', VID), { signedIn: false, liked: null });
+  assert.equal(await out.a.like.set('ru:nightowl', VID, true), null, 'signed out: nothing sent');
+  assert.equal(out.rec.fetched.filter(f => f.login).length, 0);
+  const gone = rumbleWith({ '/c/nightowl/livestreams': answer({ text: livePage([item({ live: false })]) }) }, { cookies, loginFetch });
+  assert.deepEqual(await gone.a.like.state('ru:nightowl', VID), { signedIn: true, liked: null }, 'no longer live: its page isn\'t known');
+  const down = rumbleWith(pages, { cookies, loginFetch: () => answer({ status: 503 }) });
+  assert.deepEqual(await down.a.like.state('ru:nightowl', VID), { signedIn: true, liked: null });
+  assert.equal(await down.a.like.set('ru:nightowl', VID, true), null);
+  const broken = rumbleWith(pages, { cookies, loginFetch: () => { throw new Error('offline'); } });
+  assert.deepEqual(await broken.a.like.state('ru:nightowl', VID), { signedIn: true, liked: null });
+  assert.equal(await broken.a.like.set('ru:nightowl', VID, true), null);
+  const refused = rumbleWith(pages, { cookies, loginFetch: () => answer({ json: { user: { logged_in: true } } }) });
+  assert.equal(await refused.a.like.set('ru:nightowl', VID, true), null, 'its answer without data: it didn\'t take it');
+});
+
 test('who is signed in: the username its home page carries as its current user (with your login); signed in when it doesn\'t say', async () => {
   const cookies = [{ name: 'u_s', domain: '.rumble.com', value: 'x' }];
   const home = name => `<script>Rumble.x({ value: {"current_user": {"id":7,"uid":"_u7","username":"${name}","thumb":"https://hugh.cdn.rumble.cloud/t.jpg"}} });</script>`;

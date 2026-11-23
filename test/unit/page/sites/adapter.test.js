@@ -37,8 +37,8 @@ test('a site with only what every site must have: the rest is its defaults (it h
   const p = new Site(least());
   assert.equal(p.name, 'Pearstream');
   assert.equal(p.partition, 'persist:pearstream');
-  for (const k of ['feed', 'shoutouts', 'held', 'quality', 'chatBox', 'chatScroll', 'support', 'stuckJs', 'timeoutCmd', 'modRequest']) assert.equal(p[k], null, k);
-  for (const k of ['mentions', 'spamAlerts', 'flagged', 'pageCommands', 'likes', 'liveVideo', 'emoteLists']) assert.equal(p[k], false, k);
+  for (const k of ['feed', 'shoutouts', 'held', 'quality', 'chatBox', 'chatScroll', 'support', 'stuckJs', 'timeoutCmd', 'modRequest', 'likes']) assert.equal(p[k], null, k);
+  for (const k of ['mentions', 'spamAlerts', 'flagged', 'pageCommands', 'liveVideo', 'emoteLists']) assert.equal(p[k], false, k);
   assert.equal(p.offlineChat, true);
   assert.equal(p.chatMax, 500);
   assert.deepEqual(p.chatCommands, []);
