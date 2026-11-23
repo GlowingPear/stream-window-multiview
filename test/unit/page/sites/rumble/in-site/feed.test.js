@@ -9,7 +9,7 @@ test.before(async () => { ({ rumbleTap, rumbleShown, rumbleConsent, rumbleSigned
 
 // its chat page: where it is, and its emote list's answer
 function page(emotes = { data: { items: [{ emotes: [{ name: 'r+wave', file: 'https://hugh.cdn.rumble.cloud/w.gif' }, { name: 'bad' }] }, null] } }) {
-  globalThis.location = { pathname: '/chat/popup/186945454' };
+  globalThis.location = { pathname: '/chat/popup/186945454', href: 'https://rumble.com/chat/popup/186945454' };
   const asked = [];
   globalThis.fetch = async url => { asked.push(url); return { json: async () => emotes }; };
   return asked;
@@ -153,4 +153,13 @@ test('ALL\'s mod actions from its chat page: a message deleted, someone timed ou
   assert.equal(await rumbleModAction('delete', { id: 'x' }), 'failed');
   globalThis.location = { pathname: '/elsewhere' };
   assert.equal(await rumbleModAction('delete', { id: 'x' }), 'failed', 'not its chat page');
+});
+
+test('its badges\' pictures are its own addresses (/i/badges/…): passed on as full ones, to load in the app\'s page', async () => {
+  page();
+  const pushed = [];
+  const heard = rumbleTap({ F: { on: true }, push: x => pushed.push(x), sample: () => {} });
+  heard(ev('init', { config: { badges: { verified: { icons: { 48: '/i/badges/verified_48.png' }, label: { en: 'Verified' } }, broken: { icons: { 48: 'http://[' } } } } }));
+  heard(ev('messages', { users: [{ id: '3', username: 'Moss', badges: ['verified', 'broken'] }], messages: [{ id: 'm9', user_id: '3', text: 'hi' }] }));
+  assert.deepEqual(pushed.at(-1).pics, [{ url: 'https://rumble.com/i/badges/verified_48.png', title: 'Verified' }], 'one that isn\'t an address is left out');
 });

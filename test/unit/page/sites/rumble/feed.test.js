@@ -93,3 +93,11 @@ test('gifted subscriptions (as bought, and as its line in the chat: one id), Rum
   assert.equal(parse({ t: 'raid', d: { url: 'https://example.com/v6abcde.html' } }), null);
   assert.equal(parse({ t: 'raid', d: { url: 'https://rumble.com/v6abcde.html', title: 'Late show' } }).toName, 'Late show', 'no channel name: the stream\'s title');
 });
+
+test('a message without its badges\' pictures (its chat\'s list not heard yet) has none: ALL draws its own for the badges it knows', async () => {
+  const { parse } = await load();
+  const m = parse(msg('message', { text: 'hello' }, { u: { ...PIP, badges: ['verified', 'recurring_subscription'] }, pics: [] }));
+  assert.deepEqual(m.badges, ['verified', 'sub']);
+  assert.equal('pics' in m, false, 'no empty list (that says they have none)');
+  assert.equal('pics' in parse(msg('message', {}, { pics: [{ title: 'no picture' }] })), false);
+});

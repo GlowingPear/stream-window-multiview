@@ -18,7 +18,9 @@ function rumbleTap({ F, push, sample }){
     .catch(() => {});
   const person = u => (u ? { id: String(u.id || ''), username: String(u.username || ''), color: String(u.color || ''), badges: Array.isArray(u.badges) ? u.badges.map(String) : [] } : null);
   const pics = u => (u ? u.badges : []).map(b => { const c = badges[b]; const url = c && c.icons && (c.icons[48] || c.icons[24] || Object.values(c.icons)[0]);
-    return url ? { url: String(url), title: String((c.label && (c.label.en || Object.values(c.label)[0])) || b) } : null; }).filter(Boolean);
+    // (its addresses are its site's own, /i/badges/…: as full ones, to load in the app's page)
+    const full = (() => { try { return url ? new URL(String(url), location.href).href : ''; } catch (e) { return ''; } })();
+    return full ? { url: full, title: String((c.label && (c.label.en || Object.values(c.label)[0])) || b) } : null; }).filter(Boolean);
   const raw = (t, m) => {
     if (!m || !m.id) return null;
     // (sent as a channel: its name is the channel's, as its chat shows it; the colour, badges and id, which a mute
