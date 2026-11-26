@@ -2,7 +2,10 @@
 
 Stream Multiview is in beta, so versions start with 0. Every update raises the last number (0.2.9 → 0.2.10 → 0.2.11 …). The middle number only goes up for a big milestone (0.2 → 0.3). Version 1.0 will be the first finished release.
 
-## 0.4.43 (current)
+## 0.4.44 (current)
+- Watch Anyway on Twitch's content gate plays the stream
+
+## 0.4.43
 - Site badges and names come from each site (Rumble's profile badge showed "?")
 - Rumble's chat pop-ups fit the chat, and ALL confirms what you send there
 - Your own messages on Rumble no longer ping you: your Rumble username fills itself in from your login
