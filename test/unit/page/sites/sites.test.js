@@ -26,6 +26,9 @@ test('all three have the same shape (every slot of sites/adapter.js: what one ha
   assert.deepEqual([kick, twitch, youtube].map(p => p.screenMentions), [true, true, false], 'YouTube\'s mentions only from its connection');
   assert.deepEqual([kick, twitch, youtube].map(p => p.deleteMods), [true, false, false], 'only Kick lets a mod delete another mod\'s message');
   assert.deepEqual([kick, twitch, youtube].map(p => p.flagged), [false, true, true], 'Settings › Flagged: Kick holds nothing for moderators');
+  // only Twitch's player keeps its content gate up after its own Watch Anyway (windows/content-gate.js)
+  assert.deepEqual([kick, twitch, youtube, rumble].map(p => p.contentGate), [null,
+    { press: '[data-a-target="content-classification-gate-overlay-watch-anyway-button"]', skip: 'showMature=false' }, null, null]);
 });
 
 test('what ends an @name: Kick\'s and Twitch\'s at a word\'s end, a YouTube handle also not at - or a . inside it', () => {
