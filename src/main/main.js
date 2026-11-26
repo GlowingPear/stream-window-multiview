@@ -851,6 +851,15 @@ appIpc.handle('view:hover', (e, id, x, y) => {
   wc.sendInputEvent({ type: 'mouseMove', x: Math.round(x), y: Math.round(y) });
   return true;
 });
+// A script in one of this window's own stream or chat pages now, also while it's still loading (a web view's own
+// executeJavaScript waits until it has loaded: windows/view.js runEarly). Only a page this window holds, which it can
+// already run scripts in.
+appIpc.handle('view:run-early', async (e, id, js) => {
+  if (!Number.isInteger(id) || typeof js !== 'string' || js.length > 20000) return false;
+  const wc = webContents.fromId(id);
+  if (!wc || wc.isDestroyed() || wc.getType() !== 'webview' || wc.hostWebContents !== e.sender) return false;
+  try { await wc.mainFrame.executeJavaScript(js); return true; } catch { return false; }
+});
 appIpc.handle('chat:add', (_e, channel) => {
   if (typeof channel === 'string' && validCh(normCh(channel)) && mainWin) { mainWin.webContents.send('chat:add', channel); mainWin.focus(); }
 });
