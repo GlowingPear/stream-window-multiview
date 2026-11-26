@@ -187,6 +187,9 @@ const twitch = new Site({   // (what each slot is for, and its default: sites/ad
     return null;
   },
   stuckJs: null,   // its player comes back by itself (see kick.js)
+  // Its player's gate for a stream whose labels your Twitch content preferences limit: its "Watch Anyway" only notes it in
+  // the page, and the embedded player never reads that note for this gate, so it stays. Its showMature=false leaves it out.
+  contentGate: { press: '[data-a-target="content-classification-gate-overlay-watch-anyway-button"]', skip: 'showMature=false' },
   streamUrl: (ch, muted) => `https://player.twitch.tv/?channel=${encodeURIComponent(ch.slice(3))}&parent=localhost&autoplay=true&muted=${muted ? 'true' : 'false'}`,
   chatUrl: ch => `https://www.twitch.tv/popout/${encodeURIComponent(ch.slice(3))}/chat?popout=`,
   pageUrl: (ch, kind) => kind === 'chat' ? twitch.chatUrl(ch) : `https://www.twitch.tv/${ch.slice(3)}`,

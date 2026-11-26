@@ -51,6 +51,7 @@ const SLOTS = {
   quality: [{ siteMax: ['number', null] }, null, 'its stream\'s quality can be set (windows/quality.js); siteMax: how high its player goes by itself'],
   startJs: ['string', null, 'run in its player until it plays: where to press, { x, y }, while it waits for a real press to start (its play button), else null (windows/views.js presses it for real)'],
   stuckJs: ['string', null, 'run in its player: \'error\', \'offline\' or \'ok\' (windows/stuck.js); null: it comes back by itself'],
+  contentGate: [{ press: ['string', REQUIRED], skip: ['string', REQUIRED] }, null, 'its player\'s content gate keeps showing after its own "Watch Anyway" (windows/content-gate.js): press: that button; skip: what its player\'s address gets to leave the gate out'],
   playerCss: ['string', null, 'its watch page trimmed to the player (YouTube\'s): the CSS'],
   playerFitJs: ['string', null, '... and the script that fits it'],
   // Its chat

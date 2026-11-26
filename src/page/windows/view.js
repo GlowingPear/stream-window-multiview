@@ -26,6 +26,14 @@ function runIn(view, js){
   const w = whenLoaded(view);
   return (w ? w.then(() => runNow(view, js)) : runNow(view, js)).catch(() => {});
 }
+// Runs a script in the view's page now, also while it's still loading (runIn waits until it has loaded, which a player
+// can take seconds after it shows): for something that has to be there before you press anything in it. Never fails.
+// Without the desktop app's help (the UI tests), as runIn.
+function runEarly(view, js){
+  const id = viewId(view), kmv = window.kmv;
+  if (id === null || !kmv || !kmv.viewRunEarly) return runIn(view, js);
+  return kmv.viewRunEarly(id, js).then(ok => ok ? undefined : runIn(view, js), () => runIn(view, js));
+}
 // Runs a script in the view's page for its result: fails when the page can't run it (the caller decides).
 function askIn(view, js){
   if (!view || !view.executeJavaScript) return Promise.reject(new Error('no view'));
@@ -75,5 +83,5 @@ function focusView(view, { take = false } = {}){
 }
 function viewId(view){ try { return view && view.getWebContentsId ? view.getWebContentsId() : null; } catch { return null; } }
 
-export { addCss, askIn, focusView, loadView, pressIn, reloadView, runIn, setMuted, setViewScale, setZoom, viewId,
-  zoomOf };
+export { addCss, askIn, focusView, loadView, pressIn, reloadView, runEarly, runIn, setMuted, setViewScale, setZoom,
+  viewId, zoomOf };

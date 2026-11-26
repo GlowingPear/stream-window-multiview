@@ -32,6 +32,7 @@ import { KICK_CMD_JS } from '../sites/kick/commands.js';
 import { applyChatView } from '../sites/youtube/options.js';
 import { chatLoginCheck } from '../toolbar/login-lost.js';
 import { mountCapture, openCapturePicker } from './capture.js';
+import { gateMessage, watchGate } from './content-gate.js';
 import { focusBoxNow, tabKeyAgent, tabKeyJs } from './frames.js';
 import { syncLike } from './likes.js';
 import { isPausedBy } from './pause-state.js';
@@ -147,9 +148,12 @@ function mountView(w){
     });
     // Download from an emote card (see emoteAgent): the chat page asks through a console message
     if (w.kind === 'chat') frame.addEventListener('console-message', e => siteMessage(w, frame, e.message));   // (see fromSite)
+    // A stream's player only says when you press its content gate's Watch Anyway (windows/content-gate.js)
+    if (w.kind === 'stream' && platform(w.channel).contentGate) frame.addEventListener('console-message', e => gateMessage(w, frame, e.message));
     frame.addEventListener('dom-ready', () => {
       w.ready = true;
       if (w.kind === 'stream') trimPlayerPage(frame, w.channel);
+      if (w.kind === 'stream') watchGate(w, frame);        // its content gate's Watch Anyway (windows/content-gate.js)
       if ((w.kind === 'stream' || w.kind === 'chat') && w.channel && platform(w.channel).cookieJs) runIn(frame, platform(w.channel).cookieJs);   // its cookie question answered
       if (hasVol){ w.enforceUntil = Date.now() + 8000; pushVol(w); w.audioHeld = true; w.audioLoading = false; liftAudioSoon(w); }
       else setMuted(frame, false);

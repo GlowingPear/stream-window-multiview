@@ -15,7 +15,7 @@ const SETTING_NAMES = new Set([
   // Settings › General: the streams' quality, Fits the window's range, and what streams you can't see play at (windows/quality.js)
   'quality', 'qualityFit', 'qualityHidden',
   // channels
-  'saved', 'savedTab', 'autoOpen', 'notifyAll', 'notifyOff', 'chNames', 'ytNames', 'watchSignedIn',
+  'saved', 'savedTab', 'autoOpen', 'notifyAll', 'notifyOff', 'chNames', 'ytNames', 'watchSignedIn', 'watchAnyway',
   'chanOpts',              // Channel settings of a channel that isn't linked: its chat bots, its ALL tab, its streams' quality (platforms/linked.js)
   'accounts', 'account', 'profView',
   // Settings › Linked channels: the switch, the linked streamers, pairs answered "Not the same", the page's options,
@@ -74,7 +74,7 @@ const NOT_SYNCED = new Set([
   'stageCh', 'stageSplit', 'stageZoom', 'railCh', 'railZoom', 'lastSession', 'presets',
   'accounts', 'account', 'link.peardrops', 'link.kickAuto', 'link.kickBefore', 'link.widget', 'link.dailyReward',
   'notifications', 'bellCount', 'msg', 'dnd', 'shoutKnown', 'shoutSent', 'allRecentEmotes', 'allMyLook', 'ytAutoLiked', 'ruAutoLiked', 'ytConsent', 'spamHistory', 'mentions',
-  'dev', 'devWarned', 'eventSamples', 'seenVersion', 'intro', 'settingsTab', 'savedTab', 'profView', 'allOpen', 'linkedTabs', 'linkedTip', 'watchSignedIn', 'palette', 'syncSeen',
+  'dev', 'devWarned', 'eventSamples', 'seenVersion', 'intro', 'settingsTab', 'savedTab', 'profView', 'allOpen', 'linkedTabs', 'linkedTip', 'watchSignedIn', 'watchAnyway', 'palette', 'syncSeen',
   'ytNames', 'shoutPeople'   // (only read once, from older versions)
 ]);
 /* A synced setting's version (1 unless it says otherwise). Changing what a synced setting holds means a new

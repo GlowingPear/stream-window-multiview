@@ -7,6 +7,7 @@ import { DESKTOP } from '../shared/env.js';
 import { settings } from '../shared/settings.js';
 import { store } from '../shared/store.js';
 import { PLATFORMS } from '../sites/sites.js';
+import { gateSkip } from '../windows/content-gate.js';
 import { syncLike } from '../windows/likes.js';
 import { addCss, runIn } from '../windows/view.js';
 import { mountView } from '../windows/views.js';
@@ -157,7 +158,8 @@ function trimPlayerPage(view, ch){
 // Addresses for each platform's player and chat. A site whose stream is a video of its own (liveVideo) needs the live
 // video's id: the one a video's channel id holds (its videoId), else looked up when needed (w.ytVid).
 const ytVidOf = w => (isVideo(w.channel || '') && platform(w.channel).videoId(w.channel)) || w.ytVid || null;
-const streamSrc = (ch, muted, vid) => (platform(ch) || DEFAULT_SITE).streamUrl(ch, muted, vid);
+// (with the player's content gate left out for a channel you pressed its "Watch Anyway" on: windows/content-gate.js)
+const streamSrc = (ch, muted, vid) => gateSkip(ch, (platform(ch) || DEFAULT_SITE).streamUrl(ch, muted, vid));
 const chatSrc = (ch, vid) => (platform(ch) || DEFAULT_SITE).chatUrl(ch, vid);
 // Each platform's moderator dashboard for a channel (YouTube has none for each channel).
 const modUrl = ch => ch ? platform(ch).modUrl(ch) : null;

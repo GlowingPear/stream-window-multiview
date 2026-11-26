@@ -66,6 +66,15 @@ async function launchApp(opts = {}) {
         + 'window.__presses = 0; window.__rejected = 0; addEventListener("mousedown", e => { if (e.isTrusted) window.__presses++; });'
         + 'document.querySelector("button").onclick = () => { window.__rejected++; };'
         + '</script></body>';
+      // Twitch's player for a channel named "gated": its content gate for labels your Twitch preferences limit, over the
+      // video, with Watch Anyway (its presses in __acks), which (as Twitch's) doesn't take the gate away. showMature=false
+      // in its address leaves the gate out. A picture that takes 15 s keeps it loading meanwhile (__loaded once it has).
+      const gatedPlayer = player.replace('</body>', '<script>window.__acks = 0; addEventListener("load", () => { window.__loaded = true; });'
+        + 'if (!/[?&]showMature=false(&|$)/.test(location.search)) { const g = document.createElement("div"); g.dataset.aTarget = "content-classification-gate-overlay";'
+        + 'g.style.cssText = "position:fixed;inset:0;background:#18181b;display:grid;place-items:center";'
+        + 'g.innerHTML = \'<button data-a-target="content-classification-gate-overlay-watch-anyway-button"><div>Watch Anyway</div></button>\';'
+        + 'g.querySelector("button").onclick = () => { window.__acks++; }; document.body.append(g); }'
+        + '</script><img src="https://player.twitch.tv/slow.png" alt=""></body>');
       const chat = '<!doctype html><title>chat</title><body><div id="chat"><div class="row"><b>regular</b>: <span>evening all</span></div></div></body>';
       const page = html => new Response(html, { headers: { 'content-type': 'text/html' } });
       const fake = s => {
@@ -73,6 +82,8 @@ async function launchApp(opts = {}) {
           s.protocol.handle('https', req => {
             const u = req.url;
             if (/rumble\.com\/embed\//.test(u)) return page(rumblePlayer);
+            if (/^https:\/\/player\.twitch\.tv\/slow\.png$/.test(u)) return new Promise(r => setTimeout(() => r(new Response('', { status: 404 })), 15000));
+            if (/^https:\/\/player\.twitch\.tv\/\?(.*&)?channel=gated(&|$)/.test(u)) return page(gatedPlayer);
             if (/player\.kick\.com|player\.twitch\.tv|youtube\.com\/embed/.test(u)) return page(player);
             if (/\/popout\/|live_chat|\/chat\?|rumble\.com\/chat\/popup\//.test(u)) return page(chat);
             if (/^https:\/\/www\.youtube\.com\/watch\?/.test(u)) return page(ytWatch);

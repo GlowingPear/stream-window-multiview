@@ -151,6 +151,7 @@ contextBridge.exposeInMainWorld('kmv', {
   emotesSeen: (ch, name) => ipcRenderer.invoke('emotes:seen', ch, name),
   emotesPick: (ch, fresh) => ipcRenderer.invoke('emotes:pick', ch, !!fresh),
   viewHover: (id, x, y) => ipcRenderer.invoke('view:hover', id, x, y),
+  viewRunEarly: (id, js) => ipcRenderer.invoke('view:run-early', id, js),
   emoteDownload: (url, name, small) => ipcRenderer.invoke('emote:download', url, name, small),
   emoteShow: id => ipcRenderer.invoke('emote:show', id),
   emoteOpen: url => ipcRenderer.invoke('emote:open', url),

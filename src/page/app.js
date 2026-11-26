@@ -45,6 +45,7 @@ import { init as layoutSwitcher } from './layout/switcher.js';
 import { init as layoutSwitchControl } from './layout/switch-control.js';
 import { init as windowsPause } from './windows/pause.js';
 import { init as windowsQuality } from './windows/quality.js';
+import { init as windowsContentGate } from './windows/content-gate.js';
 import { init as sitesYoutubeOptions } from './sites/youtube/options.js';
 import { init as windowsLikes } from './windows/likes.js';
 import { init as layoutFocusOnly } from './layout/focus-only.js';
@@ -157,6 +158,7 @@ import { init as panelsSettingsSync } from './panels/settings/sync.js';
   layoutSwitchControl,
   windowsPause,
   windowsQuality,
+  windowsContentGate,
   sitesYoutubeOptions,
   windowsLikes,
   layoutFocusOnly,
