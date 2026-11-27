@@ -448,3 +448,12 @@ test('a channel window\'s name dropdown starts with the channel\'s picture: its 
   assert.deepEqual(await page.$$eval('.dd-list button .ch-av', l => l.map(a => a.className)), ['ch-av live', 'ch-av off', 'ch-av']);
   await page.keyboard.press('Escape');
 });
+
+test('Select All on the page leaves the streams and chats out: they aren\'t tinted blue (grey once a view has the focus)', async t => {
+  const page = await openApp(t);
+  await add(page, 'alpha');
+  await page.waitForSelector('#stage .win .body iframe');
+  await page.evaluate(() => { document.activeElement?.blur(); document.execCommand('selectAll'); });
+  assert.ok(await page.evaluate(() => String(getSelection()).length > 0), 'the page\'s text is selected');
+  assert.deepEqual(await page.$$eval('#stage .win .body iframe', fs => [...new Set(fs.map(f => getComputedStyle(f).userSelect))]), ['none'], 'but no view can be');
+});
