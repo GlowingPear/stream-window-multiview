@@ -132,6 +132,9 @@ function mountView(w){
   if (DESKTOP){
     const hasVol = w.kind === 'stream';
     frame.addEventListener('focus', () => viewTouched(w, frame));
+    // A player's own fullscreen makes the view the page's fullscreen element. When the player leaves it, Electron takes
+    // the window out of fullscreen but leaves the page in it, and the stream fills the whole window: see leaveViewFullscreen
+    frame.addEventListener('leave-html-full-screen', () => { fsLeaving = frame; if (!document.body.classList.contains('fullscreen')) leaveViewFullscreen(); });
     frame.addEventListener('pointerdown', () => viewTouched(w, frame));          // a press this page gets for the view (Linux, after it was scaled)
     // a raid moves the chat (or player) to another channel: follow it with every window of this channel
     const nav = e => { if (e.isMainFrame !== false && w.view === frame){ watchRaid(w, e.url); watchStuck(w); } };
@@ -243,6 +246,15 @@ async function pngOf(src){
   } catch { return null; }
 }
 
+// The page leaves its fullscreen once the window is out of its own: asked while the window is still on its way out
+// (when the player's leave comes), the page never hears back and stays in it.
+let fsLeaving = null;
+function leaveViewFullscreen(){
+  const view = fsLeaving;
+  fsLeaving = null;
+  if (view && document.fullscreenElement === view) document.exitFullscreen().catch(() => {});
+}
+
 // What this part does as the page starts (app.js runs each part's init(), in the order it lists).
 function init(){
   newEmotesOn = settings.flag('newEmotes');
@@ -252,6 +264,7 @@ function init(){
   // sites) and copies a still of it, and a moving one also as a file
   fromSite('emote-copy', (w, json) => copyEmote(json));
   if (DESKTOP) fromApp('onViewCopyEmote', json => copyEmote(json));
+  if (DESKTOP) fromApp('onFullscreen', on => { if (!on) leaveViewFullscreen(); });
   if (DESKTOP) fromApp('onViewPressed', id => { const w = wins.find(x => x.view && viewId(x.view) === id); if (w) viewTouched(w, w.view); });
   store.watch('live', () => followYtStreams());
   window.ytFollow_ = { reloadWin, followYtStreams };   // for the tests
