@@ -134,7 +134,7 @@ function mountView(w){
     frame.addEventListener('focus', () => viewTouched(w, frame));
     // A player's own fullscreen makes the view the page's fullscreen element. When the player leaves it, Electron takes
     // the window out of fullscreen but leaves the page in it, and the stream fills the whole window: see leaveViewFullscreen
-    frame.addEventListener('leave-html-full-screen', () => { fsLeaving = frame; if (!document.body.classList.contains('fullscreen')) leaveViewFullscreen(); });
+    frame.addEventListener('leave-html-full-screen', () => { fsLeaving = frame; if (!winFullscreen) leaveViewFullscreen(); });
     frame.addEventListener('pointerdown', () => viewTouched(w, frame));          // a press this page gets for the view (Linux, after it was scaled)
     // a raid moves the chat (or player) to another channel: follow it with every window of this channel
     const nav = e => { if (e.isMainFrame !== false && w.view === frame){ watchRaid(w, e.url); watchStuck(w); } };
@@ -248,7 +248,7 @@ async function pngOf(src){
 
 // The page leaves its fullscreen once the window is out of its own: asked while the window is still on its way out
 // (when the player's leave comes), the page never hears back and stays in it.
-let fsLeaving = null;
+let fsLeaving = null, winFullscreen = false;   // (the window's own fullscreen, as main.js says)
 function leaveViewFullscreen(){
   const view = fsLeaving;
   fsLeaving = null;
@@ -264,11 +264,12 @@ function init(){
   // sites) and copies a still of it, and a moving one also as a file
   fromSite('emote-copy', (w, json) => copyEmote(json));
   if (DESKTOP) fromApp('onViewCopyEmote', json => copyEmote(json));
-  if (DESKTOP) fromApp('onFullscreen', on => { if (!on) leaveViewFullscreen(); });
+  if (DESKTOP) fromApp('onFullscreen', on => { winFullscreen = on; if (!on) leaveViewFullscreen(); });
   if (DESKTOP) fromApp('onViewPressed', id => { const w = wins.find(x => x.view && viewId(x.view) === id); if (w) viewTouched(w, w.view); });
   store.watch('live', () => followYtStreams());
   window.ytFollow_ = { reloadWin, followYtStreams };   // for the tests
   window.freshEmotes = freshEmotes;   // for the tests
+  window.winIsFullscreen = () => winFullscreen;   // for the tests
 }
 
 export { copyEmote, emoteOn, freshEmotes, init, markNewEmotes, mountView, newEmotesOn, pngOf, reloadPage, reloadWin,

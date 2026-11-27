@@ -30,13 +30,14 @@ const winFullscreen = on => a.app.evaluate(({ BrowserWindow }, on) => {
 test('the player leaves fullscreen while the window is still in it: the page leaves its own once the window is out', T, async () => {
   await standIn();
   await winFullscreen(true);
-  await a.win.waitForFunction(() => document.body.classList.contains('fullscreen'));
+  await a.win.waitForFunction(() => window.winIsFullscreen());
   await leave();
   assert.equal(await exits(), 0, 'not while the window is on its way out');
   await winFullscreen(false);
   await a.win.waitForFunction(() => window.__exits === 1);
   assert.equal(await a.win.evaluate(() => document.fullscreenElement), null);
-  await winFullscreen(true); await winFullscreen(false);
+  await winFullscreen(true); await a.win.waitForFunction(() => window.winIsFullscreen());
+  await winFullscreen(false); await a.win.waitForFunction(() => !window.winIsFullscreen());
   assert.equal(await exits(), 1, 'and only then: the window leaving fullscreen another time doesn\'t ask again');
 });
 
